@@ -12,7 +12,12 @@
 //! is `secret: true` or carries the `▒ HUNT ANSWER` marker is dropped (the
 //! share is refused before it lands; this is the second check). A filing
 //! is its question id, never the answer, confidence, verdict or ruling.
+//! A house line (or a gift title) that mentions any facts.json answer form
+//! is dropped too, before the verdict and after it (`answerMentions`): his
+//! public song after the pickup line is accepted is the house's, never a
+//! line of his prompt.
 
+import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import type { AgentRecent } from "./agents.ts";
 import { CODEX_ROOM, type ChatMessage } from "./chat.ts";
 import { CHART_NOBODY, SCREEN_CHARTS } from "./routes/screen.ts";
@@ -83,6 +88,25 @@ export interface RecentInput {
   persons: ReadonlyArray<{ id: string; name: string }>;
   /** The facts ledger's filings (person id, question id, when it was seen). */
   filings: ReadonlyArray<{ person: string; question: string; at: number }>;
+  /** Does a text mention a facts.json answer (`answerMentions`)? Absent: no
+   *  facts book in force, nothing to drop. */
+  mentionsAnswer?: (text: string) => boolean;
+}
+
+/**
+ * The leak check over the facts book's answer forms, as the show's
+ * secrecy tests read them: a form's words as a run, under the judge's
+ * spelling rules (`mentionsKey`). A form made only of numbers below 100
+ * (`11`, `eleven`, `9:00`) is everywhere a clock or a fragment number is,
+ * so it counts only beside one of its own question's topics.
+ */
+export function answerMentions(keys: ReadonlyArray<{ forms: readonly string[]; topics: readonly string[] }>): (text: string) => boolean {
+  const weak = (form: string): boolean => {
+    const t = nearTokens(form);
+    return t.length > 0 && t.every((w) => /^[0-9]+$/u.test(w) && Number(w) < 100);
+  };
+  const prepared = keys.map((k) => ({ forms: k.forms.filter((f) => f.trim() !== "").map((f) => ({ f, weak: weak(f) })), topics: k.topics }));
+  return (text: string): boolean => prepared.some((k) => k.forms.some(({ f, weak }) => mentionsKey(text, f) && (!weak || k.topics.some((t) => mentionsKey(text, t)))));
 }
 
 /** A world value as a display string, as the screen state reads it
@@ -117,8 +141,8 @@ export function buildRecent(input: RecentInput): AgentRecent[] {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]!;
     if (!inWindow(m)) continue;
-    if (house.length < RECENT_HOUSE_MAX && m.from === character && m.kind === "line" && m.audience === "all" && !m.hidden) {
-      house.push({ kind: "house", text: m.text, at: m.ts });
+    if (m.from === character && m.kind === "line" && m.audience === "all" && !m.hidden) {
+      if (house.length < RECENT_HOUSE_MAX && input.mentionsAnswer?.(m.text) !== true) house.push({ kind: "house", text: m.text, at: m.ts });
       continue;
     }
     if (m.channel !== CODEX_ROOM.channel || m.kind !== "codex" || m.codex === undefined) continue;
@@ -127,6 +151,7 @@ export function buildRecent(input: RecentInput): AgentRecent[] {
     const def = input.codex(m.codex.entry);
     if (def === undefined || def.secret) continue;
     if (carriesMark(def.title) || carriesMark(def.text) || carriesMark(m.codex.title) || carriesMark(m.text)) continue;
+    if (input.mentionsAnswer?.(m.codex.title) === true) continue;
     gifts.push({ kind: "gift", title: m.codex.title, new: true, at: m.ts });
   }
 

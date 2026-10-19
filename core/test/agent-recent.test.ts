@@ -25,7 +25,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { buildRecent, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
+import { answerMentions, buildRecent, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
 import type { AgentRecent, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
@@ -392,13 +392,42 @@ describe("buildRecent (C1.2)", () => {
   it("the window: the last 10 story-minutes, or since his last free reply here, whichever reaches further back", () => {
     const messages = [gift("The Ribbon", 100_000), house("old", 150_000), gift("The Recipe", 900_000)];
     // No free reply yet: everything counts.
-    expect(buildRecent(input({ messages, storyAt: 2_000_000 })).map((r) => r.at)).toEqual([150_000, 900_000, 100_000]);
+    expect(buildRecent(input({ messages, storyAt: 2_000_000 })).map((r) => ("at" in r ? r.at : null))).toEqual([150_000, 900_000, 100_000]);
     // He answered at 1.9 M: the last 10 minutes reach further (1.4 M) — nothing.
     expect(buildRecent(input({ messages, storyAt: 2_000_000, lastFreeReply: 1_900_000 }))).toEqual([]);
     // He answered at 800 k, the guest came back at 2 M: since 800 k.
     expect(buildRecent(input({ messages, storyAt: 2_000_000, lastFreeReply: 800_000 }))).toEqual([{ kind: "gift", title: "The Recipe", new: true, at: 900_000 }]);
     // He answered at 1.9 M, the guest came back at 1.95 M: the last 10 minutes (from 1.35 M).
     expect(buildRecent(input({ messages: [...messages, house("recent", 1_400_000)], storyAt: 1_950_000, lastFreeReply: 1_900_000 }))).toEqual([{ kind: "house", text: "recent", at: 1_400_000 }]);
+  });
+});
+
+describe("answerMentions: a house line naming an answer never reaches him", () => {
+  // Made-up keys: nothing here is a show answer.
+  const mentions = answerMentions([
+    { forms: ["Captain Biscuit", "Cpt Biscuit"], topics: ["the dog"] },
+    { forms: ["14"], topics: ["the bus", "route"] },
+    { forms: ["the moon is cheese"], topics: [] },
+  ]);
+
+  it("finds a form under the judge's spelling rules, and a bare small number only beside its topic", () => {
+    expect(mentions("Hail CAPTAIN BISCUITS, good dog")).toBe(true);
+    expect(mentions("Cpt. Biscuit!")).toBe(true);
+    expect(mentions("The moon is cheese, friends.")).toBe(true);
+    expect(mentions("Route fourteen leaves at noon")).toBe(true);
+    expect(mentions("It is 14 minutes to midnight")).toBe(false);
+    expect(mentions("Welcome to the kitchen.")).toBe(false);
+  });
+
+  it("buildRecent drops such a house line (the next older one takes its place) and such a gift", () => {
+    const messages = [house("Hello, house.", 1), house("Captain Biscuit! Sing it!", 2), house("Goodnight.", 3), gift("The Ribbon", 4), { ...gift("The Recipe", 5), codex: { entry: "The Recipe", title: "The moon is cheese", about: null, via: "share" as const, from: "Ada" } }];
+    expect(buildRecent(input({ messages, mentionsAnswer: mentions }))).toEqual([
+      { kind: "house", text: "Goodnight.", at: 3 },
+      { kind: "house", text: "Hello, house.", at: 1 },
+      { kind: "gift", title: "The Ribbon", new: true, at: 4 },
+    ]);
+    // With no facts book in force nothing is dropped.
+    expect(buildRecent(input({ messages })).map((r) => r.kind)).toEqual(["house", "house", "gift", "gift"]);
   });
 });
 

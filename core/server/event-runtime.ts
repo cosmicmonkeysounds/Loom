@@ -117,7 +117,7 @@ import {
   type AgentRequest,
   type AgentThread,
 } from "./agents.ts";
-import { agentRecentOn, buildRecent, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
+import { agentRecentOn, answerMentions, buildRecent, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
 /** A guest view is never rendered against a null sim — this stands in. */
@@ -1984,8 +1984,10 @@ export class EventRuntime {
         break;
       }
     }
-    const book = kind === "guest" ? this.factsBook() : null;
-    const filings = book === null ? [] : this.factsWatch.all(sim, book.confirm).map((f) => ({ person: f.person, question: f.question, at: f.at }));
+    const book = this.factsBook();
+    const filings = book === null || kind !== "guest" ? [] : this.factsWatch.all(sim, book.confirm).map((f) => ({ person: f.person, question: f.question, at: f.at }));
+    const topics = new Map((book?.raw.questions ?? []).map((q) => [q.id, q.topics ?? []] as const));
+    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
     const recent = buildRecent({
       character: thread.character,
       speaker: { kind, id, name },
@@ -1999,6 +2001,7 @@ export class EventRuntime {
       peek: (path) => worldString(sim.world.peek(path)),
       persons: [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
       filings,
+      ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}),
     });
     return { recent, storyAt };
   }
