@@ -338,10 +338,13 @@ class Agents:
                 self._orchestrator_task = None
 
     def abandon_all(self) -> None:
+        from .wire import wire_of
+
         for task in [*self.tasks.values(), *self.judging.values()]:
             task.cancel()
         self.tasks.clear()
         self.judging.clear()
+        wire_of(self).flush_saves()  # a (re)connect or a shutdown never loses a debounced save
 
     # -- minds ----------------------------------------------------------------
 
@@ -361,11 +364,12 @@ class Agents:
                 log.info("%s's trace restored (%d thoughts)", name, loaded)
         self.orchestrator.minds = self.minds
 
-    def _save_mind(self, name: str) -> None:
-        mind = self.minds.get(name)
-        if mind is not None:
-            mind.event = self.event
-            mind.save(mind_path(self.cfg.state_dir, self.event, name))
+    def _save_mind(self, name: str, now: bool = False) -> None:
+        """Persist one mind: at most once every 2 s per character, trailing
+        (`wire.py`); `now=True` writes at once."""
+        from .wire import wire_of
+
+        wire_of(self).save(self, name, now=now)
 
     async def _facts(self, force: bool = False) -> Facts | None:
         if self.facts is None:
@@ -392,13 +396,11 @@ class Agents:
         }
 
     async def _mirror(self, character: str) -> None:
-        mind = self.minds.get(character)
-        if mind is None or self.cfg.dry_run or self.mod is None:
-            return
-        try:
-            await self.mod.post("/api/agent/mind", mind.report(self.worker, self.status(character)))
-        except ModApiError as err:
-            log.warning("could not mirror %s's mind: %s", character, err)
+        """Mirror one mind to the server — only when it changed, at most once
+        every 2 s, trailing (`wire.py`)."""
+        from .wire import wire_of
+
+        await wire_of(self).mirror(self, character)
 
     async def _mind_updated(self, character: str, mind: Mind, job: Job, touched: list[str]) -> None:
         self._save_mind(character)
@@ -409,26 +411,37 @@ class Agents:
         await self._mirror(character)
 
     async def _thought_recorded(self, thought: Thought) -> None:
+        from .wire import FLUSH_KINDS, wire_of
+
+        if thought.kind in FLUSH_KINDS:
+            wire_of(self).flush_now(thought)  # a director is watching: no window
         if self.cfg.dry_run or self.mod is None:
             return
         try:
-            await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [thought.to_json()]})
+            await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [self.trace.stored(thought)]})
         except ModApiError as err:
+            self.trace.forget_prefix(thought)  # the server lacks its full copy: never refer to it
             log.warning("could not send %s's thought %s: %s", thought.character, thought.id, err)
 
     async def _push_history(self) -> None:
         """On (re)connect: hand the server the mind and the recent trace, so
         a server restart or a fresh console starts with the night so far."""
+        from .wire import REPLAY_BATCH, replay_thoughts, wire_of
+
         if self.cfg.dry_run or self.mod is None:
             return
+        wire = wire_of(self)
+        after_map = wire.trace_after
         for name in self.minds:
-            await self._mirror(name)
-            recent = [t.to_json() for t in self.trace.recent(name, 40)]
-            if recent:
+            await wire.mirror(self, name, force=True)  # always, right after hello
+            after = None if after_map is None else after_map.get(name)
+            recent = replay_thoughts(self.trace, name, after)
+            for start in range(0, len(recent), REPLAY_BATCH):
                 try:
-                    await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": recent})
+                    await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": recent[start : start + REPLAY_BATCH]})
                 except ModApiError as err:
                     log.warning("could not replay %s's trace: %s", name, err)
+                    break
 
     async def reset_minds(self, by: str = "server", reason: str = "restart") -> None:
         self.orchestrator.drop_all()
@@ -583,6 +596,10 @@ class Agents:
             log.info("agents online as %r for %s", self.cfg.name, ", ".join(hello.get("characters", [])))
             for name in hello.get("unknown", []):
                 log.warning("%s is not marked `mind: external` in the running story — nobody will ask for it", name)
+            from .wire import trace_after_of, wire_of
+
+            wire_of(self).trace_after = trace_after_of(hello)  # replay only what the server lacks
+            self.trace.restart_prefixes()  # the next thought carries its full prefix again
             await self._push_history()
             if self.cfg.orchestrator.enabled:
                 for name in self.minds:
