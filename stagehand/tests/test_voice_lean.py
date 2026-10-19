@@ -615,3 +615,15 @@ def test_a_hyphenated_or_plural_answer_from_another_thread_is_dropped():
     p3 = render_p3(p, request(), context(said=Said(elsewhere=lines)))
     block = p3.split("=== ALREADY SAID (never repeat these; say something new) ===\n", 1)[1].split("\n\n", 1)[0]
     assert block.split("\n")[-2:] == ["Elsewhere tonight:", "- Bring me the bingo card."]
+
+
+def test_a_retried_request_records_only_scrubbed_memos():
+    old = "I will continue to listen and record your truths, program."
+    model = Model(say(old, memo="talked about the snow globe: quokka"), say("Say it again, slower."))
+    trace = Trace()
+    reply = run(answer_lean(P, MODEL, request(), context(said=Said(to_them=(old,))), model, trace=trace))
+    first, second = trace.all("Trabolta")
+    assert (first.trigger, second.trigger) == ("line", "retry")
+    assert first.result["memo"] == "talked about the snow globe: …"
+    assert "memo scrubbed" in first.note
+    assert second.result["memo"] == reply.memo == "talked about the snow globe: …"

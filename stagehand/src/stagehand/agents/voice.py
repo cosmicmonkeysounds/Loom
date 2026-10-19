@@ -604,7 +604,9 @@ async def answer_lean(
         return _done(persona, final, started)
 
     # -- the one retry ---------------------------------------------------------------------
-    await record(kind, trigger, used, completion, first.reply, note=_notes(call_note, notes))
+    # The trace is persisted and fanned out: the first thought carries the
+    # memo as it may be kept, as every other thought does.
+    await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
     retry_msgs = build(retry=first.rejected) if kind == "voice" else used + [{"role": "system", "content": retry_message(first.rejected)}]
     try:
         completion, call_note = await _complete_with_room(complete_fn, retry_msgs, model, persona.character)
