@@ -386,7 +386,7 @@ def test_dry_run_rules_but_sends_nothing(tmp_path):
 def test_a_reason_carrying_a_never_word_is_dropped_but_the_ruling_stands(tmp_path):
     # The shipped persona's mind file declares `secrets.never` (the door code).
     async def fake(messages, cfg):
-        return '{"same": false, "why": "They typed 1997, which is not the answer."}'
+        return '{"same": false, "why": "They typed 4826, which is not the answer."}'
 
     persona = (SHOW / "trabolta.persona.md").read_text(encoding="utf-8")
     (tmp_path / "trabolta.mind.md").write_text((SHOW / "trabolta.mind.md").read_text(encoding="utf-8"), encoding="utf-8")
@@ -398,7 +398,7 @@ def test_a_reason_carrying_a_never_word_is_dropped_but_the_ruling_stands(tmp_pat
 
     run(go())
     assert posts(agents, "/api/agent/judge") == [{"id": "aj-1", "same": False, "why": "", "worker": "w-1"}]
-    assert "1997" not in json.dumps(thoughts(agents)[0]["result"])
+    assert "4826" not in json.dumps(thoughts(agents)[0]["result"])
 
 
 def test_a_judge_thought_reruns_on_the_judge_model(tmp_path):
