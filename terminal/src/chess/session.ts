@@ -58,7 +58,8 @@ export type ChessEvent =
   | { type: "refused"; text: string; now: number }
   | { type: "ended"; game: number; result: ChessResult }
   | { type: "posted"; game: number; ok: boolean; armed: boolean | null; now: number }
-  | { type: "abandon" }
+  /** Give up / the leash; `notice` says why on the attract screen. */
+  | { type: "abandon"; notice?: string; now?: number }
   | { type: "tick"; now: number };
 
 export const INITIAL: ChessSession = { kind: "attract", notice: null };
@@ -95,7 +96,8 @@ export function reduce(s: ChessSession, e: ChessEvent): ChessSession {
       return { ...s, post: e.ok ? "sent" : "failed", armed: e.armed, settledAt: e.now };
     case "abandon":
       // Give up / the leash: silent, nothing reaches the story.
-      return s.kind === "playing" || s.kind === "checking" ? INITIAL : s;
+      if (s.kind !== "playing" && s.kind !== "checking") return s;
+      return e.notice === undefined ? INITIAL : notice(e.notice, e.now ?? 0);
     case "tick":
       if (s.kind === "attract" && s.notice !== null && e.now >= s.notice.until) return INITIAL;
       if (s.kind === "over" && s.settledAt !== null && e.now - s.settledAt >= RESULT_MS) return INITIAL;

@@ -8,7 +8,7 @@ import { Chess } from "chess.js";
 import type { Color, Move, PieceSymbol, Square } from "chess.js";
 import type { Stage } from "./stage.ts";
 
-export type { Color, Move, PieceSymbol, Square };
+export type { Chess, Color, Move, PieceSymbol, Square };
 
 /** From White's (the player's) side. */
 export type Outcome = "won" | "lost" | "drawn";

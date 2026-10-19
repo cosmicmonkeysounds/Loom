@@ -44,6 +44,7 @@ describe("the chess board's session", () => {
   it("giving up or the leash is silent: straight back to attract", () => {
     const playing = run([{ type: "typed", id: "g-aaaaaa" }, { type: "resolved", guest: ada, king: king(15), game: 1, now: 0 }]);
     expect(reduce(playing, { type: "abandon" })).toEqual(INITIAL);
+    expect(reduce(playing, { type: "abandon", notice: "NO INPUT", now: 50 })).toEqual({ kind: "attract", notice: { text: "NO INPUT", until: 50 + NOTICE_MS } });
     expect(CHESS_IDLE_MS).toBe(120_000);
   });
 
