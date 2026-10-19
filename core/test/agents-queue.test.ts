@@ -211,6 +211,22 @@ describe("AgentHub — a stalled worker", () => {
     expect(h.held).toEqual(["g-0"]);
   });
 
+  it("a guest who writes again while stalled loses nothing: the late reply carries a follow-up, and the head's retry stays on the worker", () => {
+    const h = harness({ replyTimeoutMs: 120_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.run(61_000);
+    h.hub.line(th(0)); // more said while the stalled worker holds it
+    h.run(60_000); // the head's reply timeout: cancelled and re-sent to the same worker
+    expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(1);
+    expect(a.requests().map((r) => r.id)).toEqual([a.requests()[0]!.id, a.requests()[0]!.id]);
+    expect(h.hub.pending).toHaveLength(1);
+    // The old copy's late answer settles it, and says more was said meanwhile.
+    expect(h.hub.settle(a.requests()[0]!.id, "laptop")).toMatchObject({ followUp: true });
+    expect(h.hub.queue("Trabolta").stalled).toBe(false);
+  });
+
   it("no double hold with the offline hold line: held while offline, then stalled after the worker comes back", () => {
     const h = harness();
     h.hub.line(th(0));

@@ -37,7 +37,8 @@
 //! it, and no new work while it stays stalled. New requests stay queued in
 //! the hub, except that a stalled worker with nothing in hand gets the
 //! oldest one (a *probe*: a lone laptop has to have something to answer to
-//! show it is back). The stall clears on its next answer or a reconnect
+//! show it is back); what it already holds keeps the reply timeout's
+//! retries as before. The stall clears on its next answer or a reconnect
 //! (a new stream is a new worker); the queue then goes to it at once. No
 //! request is ever moved between workers on a stall.
 //!
@@ -848,18 +849,27 @@ export class AgentHub {
     return load;
   }
 
-  /** Send `r` to the least-busy worker voicing its character that is
-   *  answering; failing that, to a stalled one with nothing in hand (the
-   *  probe); else it stays queued. */
+  /**
+   * Send `r` to the least-busy worker voicing its character that is
+   * answering. A stalled worker takes no new work: only a re-send of a
+   * request already given out (the reply timeout's retry, exactly as for a
+   * healthy worker — so a sent request never sits queued while an old copy
+   * may still be answered), or one new request when it holds nothing (the
+   * probe). Else `r` stays queued.
+   */
   private dispatch(r: OpenRequest): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
-    let probe: AgentWorker | null = null;
+    let fallback: AgentWorker | null = null;
+    let fallbackLoad = Infinity;
     for (const w of this.workers.values()) {
       if (!w.characters.has(r.req.character)) continue;
       const load = this.loadOf(w.id);
       if (this.stalls.has(w.id)) {
-        if (load === 0 && probe === null) probe = w;
+        if ((r.attempts > 0 || load === 0) && load < fallbackLoad) {
+          fallback = w;
+          fallbackLoad = load;
+        }
         continue;
       }
       if (load < bestLoad) {
@@ -867,7 +877,7 @@ export class AgentHub {
         bestLoad = load;
       }
     }
-    best ??= probe;
+    best ??= fallback;
     if (best === null) return;
     r.worker = best.id;
     r.dispatchedAt = this.now();
