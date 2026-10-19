@@ -10,8 +10,12 @@
 //! ghosts wearing the same picture decode it once, and an avatar's
 //! `dispose()` never frees it (that would blank every other ghost wearing
 //! it). A night's worth is ≤ ~50 tiles of 64 KB. A failed load (a 404, an
-//! image the browser can't decode) resolves null — cached too, so nothing
-//! retries in a loop; a ghost with no picture keeps its plain capsule.
+//! image the browser can't decode) resolves null and is remembered for
+//! `PICTURE_RETRY_MS`, so nothing retries in a loop — but it expires: the
+//! server's 404 is often transient (an upstream fetch still running, a
+//! restart), and the terminals run all night without a reload, so the next
+//! ask after a minute tries once more. A ghost with no picture keeps its
+//! plain capsule meanwhile.
 
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type { Texture } from "three";
@@ -22,13 +26,27 @@ export const PICTURE_PX = 128;
 /** The bevel + the white margin round the picture. */
 const INSET = 10;
 
+/** How long a failed load is remembered before the next ask tries it again. */
+export const PICTURE_RETRY_MS = 60_000;
+
 const cache = new Map<string, Promise<Texture | null>>();
+/** When each URL's last load failed (wall clock, ms); absent = loaded or in flight. */
+const failedAt = new Map<string, number>();
 
 /** The picture at `url` as a framed tile texture; null without a DOM or when it won't load. */
 export function loadPicture(url: string): Promise<Texture | null> {
   const hit = cache.get(url);
-  if (hit !== undefined) return hit;
-  const made = hasDom() && typeof Image === "function" ? decode(url) : Promise.resolve(null);
+  if (hit !== undefined) {
+    const failed = failedAt.get(url);
+    if (failed === undefined || Date.now() - failed < PICTURE_RETRY_MS) return hit;
+    // A failure that has expired: forget it and ask once more.
+    cache.delete(url);
+    failedAt.delete(url);
+  }
+  const made = (hasDom() && typeof Image === "function" ? decode(url) : Promise.resolve(null)).then((tex) => {
+    if (tex === null && cache.get(url) === made) failedAt.set(url, Date.now());
+    return tex;
+  });
   cache.set(url, made);
   return made;
 }
@@ -36,6 +54,7 @@ export function loadPicture(url: string): Promise<Texture | null> {
 /** Forget every cached picture (tests only — live textures are never freed). */
 export function clearPictureCache(): void {
   cache.clear();
+  failedAt.clear();
 }
 
 function decode(url: string): Promise<Texture | null> {

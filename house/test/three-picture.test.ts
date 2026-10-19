@@ -6,13 +6,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Sprite, Texture } from "three";
 import { AVATAR_HEIGHT, createAvatar, createKing, loadPicture, PICTURE_PX } from "../src/three/index.ts";
-import { clearPictureCache } from "../src/three/picture.ts";
+import { clearPictureCache, PICTURE_RETRY_MS } from "../src/three/picture.ts";
 import { healthBarTexture } from "../src/three/textures.ts";
 import { loadHouse, SHOW_HOUSE } from "./golden.ts";
 
 type Call = { op: string; args: unknown[] };
 let calls: Call[] = [];
 let images = 0;
+/** URLs that fail to load right now (as well as any with "broken" in them). */
+const failing = new Set<string>();
 
 function fakeContext(): CanvasRenderingContext2D {
   const record =
@@ -45,7 +47,7 @@ class FakeImage {
     images++;
   }
   set src(url: string) {
-    queueMicrotask(() => (url.includes("broken") ? this.onerror?.() : this.onload?.()));
+    queueMicrotask(() => (url.includes("broken") || failing.has(url) ? this.onerror?.() : this.onload?.()));
   }
 }
 
@@ -56,6 +58,7 @@ const settle = async () => {
 beforeEach(() => {
   calls = [];
   images = 0;
+  failing.clear();
   clearPictureCache();
   vi.stubGlobal("document", {
     createElement: () => ({ width: 0, height: 0, getContext: () => fakeContext() }),
@@ -64,6 +67,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   clearPictureCache();
 });
@@ -93,10 +97,29 @@ describe("loadPicture", () => {
     expect(images).toBe(1);
   });
 
-  it("a picture that won't load is null — and never asked for again", async () => {
+  it("a picture that won't load is null — and not asked for again straight away", async () => {
     expect(await loadPicture("/e/ev/api/avatar/broken")).toBeNull();
     expect(await loadPicture("/e/ev/api/avatar/broken")).toBeNull();
     expect(images).toBe(1);
+  });
+
+  it("a failure expires: a transient 404 is asked for once more after PICTURE_RETRY_MS", async () => {
+    const url = "/e/ev/api/avatar/dddddddddddddddd";
+    let now = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    failing.add(url); // the server is still fetching upstream: 404
+    expect(await loadPicture(url)).toBeNull();
+    failing.delete(url); // now it would load
+    now += PICTURE_RETRY_MS - 1;
+    expect(await loadPicture(url)).toBeNull(); // still remembered — no loop
+    expect(images).toBe(1);
+    now += 1;
+    const tex = await loadPicture(url);
+    expect(tex).not.toBeNull();
+    expect(images).toBe(2);
+    now += 10 * PICTURE_RETRY_MS;
+    expect(await loadPicture(url)).toBe(tex); // a success stays cached for good
+    expect(images).toBe(2);
   });
 });
 
@@ -151,6 +174,31 @@ describe("a ghost wearing its picture", () => {
     expect(tiles).toHaveLength(1);
     expect(tiles[0]!.material.map).toBe(await loadPicture("/e/ev/api/avatar/2222222222222222"));
     expect(a.picture).toBe("/e/ev/api/avatar/2222222222222222");
+    a.dispose();
+  });
+
+  it("a ghost whose picture failed wears it once the failure expires and it is asked again", async () => {
+    const url = "/e/ev/api/avatar/eeeeeeeeeeeeeeee";
+    let now = 2_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    failing.add(url);
+    const a = createAvatar("Excel", "g-1", { picture: url });
+    await settle();
+    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    failing.delete(url);
+    a.setPicture(url); // the next sync, too soon
+    await settle();
+    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    expect(images).toBe(1);
+    now += PICTURE_RETRY_MS;
+    a.setPicture(url); // a sync a minute later
+    a.setPicture(url); // and the frame after, while it loads: one load
+    await settle();
+    expect(a.object.getObjectByName("avatar:picture")).toBeDefined();
+    expect(images).toBe(2);
+    a.setPicture(url); // worn: a no-op
+    await settle();
+    expect(images).toBe(2);
     a.dispose();
   });
 

@@ -54,7 +54,8 @@ export interface Avatar {
   tag: Sprite | null;
   /** The picture URL asked for (null = none); the tile shows once it has loaded. */
   readonly picture: string | null;
-  /** Wear another picture (null takes it off). A no-op for the URL already worn. */
+  /** Wear another picture (null takes it off). A no-op for the URL already worn
+   *  or loading; the same URL after a failed load asks again (see `loadPicture`). */
   setPicture(url: string | null): void;
   /** House-frame pose: base position, yaw + pitch in degrees (pitch > 0 looks up). */
   setPose(p: Vec3, yaw: number, pitch?: number): void;
@@ -141,6 +142,8 @@ export function createAvatar(name: string, colorSeed: string | number = name, op
   // The picture: the URL asked for, and the tile once it has loaded.
   let picture: string | null = null;
   let tile: Sprite | null = null;
+  /** The URL a load is in flight for (null = none). */
+  let loading: string | null = null;
   let disposed = false;
   const takeOff = (): void => {
     if (tile === null) return;
@@ -151,11 +154,20 @@ export function createAvatar(name: string, colorSeed: string | number = name, op
   };
   const setPicture = (url: string | null): void => {
     const next = url === "" ? null : url;
-    if (next === picture || disposed) return;
-    picture = next;
-    takeOff();
-    if (next === null) return;
+    if (disposed) return;
+    if (next === picture) {
+      // Worn, loading, or none: nothing to do. The same URL with no tile and
+      // nothing in flight is a load that failed — ask again (`loadPicture`
+      // answers its remembered null until the failure expires).
+      if (next === null || tile !== null || loading === next) return;
+    } else {
+      picture = next;
+      takeOff();
+      if (next === null) return;
+    }
+    loading = next;
     void loadPicture(next).then((tex) => {
+      if (loading === next) loading = null;
       if (tex === null || disposed || picture !== next) return;
       tile = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
       tile.name = "avatar:picture";
