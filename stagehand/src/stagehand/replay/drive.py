@@ -63,7 +63,19 @@ from .sources import (
 SCRATCH = Path("/private/tmp/claude-501/-Users-jjm-Documents-prism-root-packages-loom/13e70ce3-885f-4913-a37a-84a01505ca3b/scratchpad/w12")
 RUNS_ROOT = Path(os.environ.get("LOOM_REPLAY_RUNS") or SCRATCH / "H" / "runs")
 LOCK = Path(os.environ.get("LOOM_REPLAY_LOCK") or SCRATCH / "ollama.lock")
-PORTS = range(7920, 7930)
+
+
+def _ports(spec: str | None) -> range:
+    """`LOOM_REPLAY_PORTS=7990-7999` moves the harness to another lane's
+    block (inclusive); absent or unreadable = lane H's 7920–7929."""
+    try:
+        lo, hi = (int(x) for x in str(spec).split("-", 1))
+    except (TypeError, ValueError):
+        return range(7920, 7930)
+    return range(lo, hi + 1) if 1024 < lo <= hi < 65536 else range(7920, 7930)
+
+
+PORTS = _ports(os.environ.get("LOOM_REPLAY_PORTS"))
 REPLY_CAP_S = 150.0
 BURST_CAP_S = 600.0
 #: A burst is over once its end condition held this long (the hub's

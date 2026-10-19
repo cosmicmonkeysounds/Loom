@@ -811,3 +811,8 @@ def test_the_cli_extracts_a_script_that_carries_no_answer(tmp_path: Path) -> Non
     assert main(["extract", "--trace", str(_trace_file(tmp_path)), "--out", str(out)]) == 0
     doc = json.loads(out.read_text())
     assert doc["name"] == "s" and [s.get("say") for s in doc["steps"] if "say" in s] == ["hello", "hi there"]
+
+
+def test_the_port_block_can_move_to_another_lane():
+    assert drive._ports("7990-7999") == range(7990, 8000)
+    assert drive._ports(None) == range(7920, 7930) and drive._ports("nope") == range(7920, 7930) and drive._ports("80-90") == range(7920, 7930)
