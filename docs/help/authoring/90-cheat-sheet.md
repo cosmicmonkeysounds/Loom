@@ -2,7 +2,7 @@
 title: Cheat sheet — every symbol
 section: Reference
 order: 90
-keywords: act, watch, countdown, arm, reserved, busy, for guests, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
+keywords: act, watch, countdown, arm, reserved, busy, judge, for guests, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
 ---
 
 **Structure**
@@ -140,6 +140,7 @@ openers end with `:` and indent their body.
 | `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone; end it `, for guests` and the guests' app shows it too |
 | `reserved: true` (a guest's program CHARACTER) | held for an invitee: 🔒 to everyone without its claim link ([live shows](live-shows.md)) |
 | `hold: …` / `busy: …` (a `mind: external` CHARACTER) | said for it when no agent answers / when a message waits behind others ([codex](codex.md)) |
+| `judge: Trabolta` (header) | a `mind: external` CHARACTER rules on the facts judge's near misses in `auto` mode; a director can override ([cards & widgets](widgets.md); lint `L1206` when it names nobody an agent voices) |
 | `currency: score as Truthcoin, max 500, expiry 10m` (header) | a wallet over a ROLE slot ([currency](currency.md)) |
 | `wallet: approver, every 3, window 60s` / `wallet: minter, limit 3, while <cond>` | on a CHARACTER: who audits transfers / who mints a stimulus |
 | `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` / `while` | background life |

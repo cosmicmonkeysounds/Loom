@@ -99,8 +99,11 @@ out, the right answer with a few more words). An abbreviation (*Mr.
 Pickles*) is simply accurate. It is never judged a lie or a guess by itself: it is *proposed
 accurate*, a ⚠ line in `# hosts` names the answer it is close to, and it
 waits for a person (you, with the buttons below, or the director's
-Judging card). If nobody judges it, it counts as accurate when the round
-closes. At *Trapped in the Internet* the
+Judging card). At *Trapped in the Internet* Trabolta rules on it first
+when his laptop is online: `# hosts` says *… asked Trabolta to rule*,
+then *🤖 Trabolta ruled …* with his verdict and reason, and the story
+reacts as if a host had pressed. You only step in when you disagree.
+If nobody judges it, it counts as accurate when the round closes. At *Trapped in the Internet* the
 `# hosts` room shows each filing as it lands ("📝 *Name* filed H5 (round
 2 Q2): *answer* — certain. Judged lie."). The story's buttons on that guest's card —
 **📝 Filed fact: accurate** / **confident lie** / **uncertain (a

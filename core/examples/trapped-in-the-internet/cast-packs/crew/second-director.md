@@ -78,9 +78,12 @@ earlier one is still waiting, it changes nothing and `# hosts` points you at
 the Judging card. Either way the guest hears the same reply. **A near miss**
 (wave 11: a mistyped right answer, or the right answer said at length,
 *11 years ago*) waits on the card tagged *near* even in
-`auto`, with a ⚠ line in `# hosts` naming the key: judge each one before 📋,
-since an unjudged near miss is credited as accurate at the settle (the user
-hasn't decided yet whether to keep that). A lie counts
+`auto`, with a ⚠ line in `# hosts` naming the key. **Trabolta rules on it**
+(wave 11b) when his laptop is online: *… asked Trabolta to rule*, then *🤖
+Trabolta ruled …* with his verdict and reason. Override his ruling on the
+card only when you disagree. A near miss filed while his laptop was off
+waits for you: judge each one still pending before 📋, since an unjudged
+near miss is credited as accurate at the settle. A lie counts
 against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy

@@ -2,7 +2,7 @@
 title: Running the server room — the keypad door, the King and Trabolta's heart
 section: Live Shows
 order: 38
-keywords: server room, keypad, keypad lock, door code, code, digit, digits, digit notes, notes, clue, clues, silver, cold door, The Cold Door, the King, king, chess, chess terminal, door terminal, Server Door, health bar, shared health, hit, kneel, kneels, fallen, restore, restore the king, simulation, chess won, chess lost, chess drawn, king hit, king fallen, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, file panel, give him a file, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, crew, crew window, fallback, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Windows Defender, Trapped in the Internet, runbook, cold lock
+keywords: server room, marked, keypad, keypad lock, door code, code, digit, digits, digit notes, notes, clue, clues, silver, cold door, The Cold Door, the King, king, chess, chess terminal, door terminal, Server Door, health bar, shared health, hit, kneel, kneels, fallen, restore, restore the king, simulation, chess won, chess lost, chess drawn, king hit, king fallen, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, file panel, give him a file, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, crew, crew window, fallback, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Windows Defender, Trapped in the Internet, runbook, cold lock
 ---
 
 In *Trapped in the Internet* Trabolta's heart — a video patch bay — sits
@@ -237,6 +237,16 @@ his heart lets you do nothing to him by itself. What changes is
 Trabolta: at his heart, whenever he is awake, he drops the act. He
 admits the patch bay is his heart, admits he doesn't know the
 combinations or the code, and says what he wants and why.
+
+**A marked program at his heart.** A program the Antivirus marked for
+the Internet can still use the terminal. At his heart Trabolta sees the
+mark (`marked` is in his persona's `them:`), says so once, and asks why
+they were marked: he doesn't know, and he is wary (bait sent by the
+house, or a fellow prisoner?). An honest answer raises his regard; a
+dodge or the Antivirus' story lowers it. He stays candid, still takes
+their files, and talking him down applies to them as to anyone; he
+never refuses them, threatens them or sends them away. Away from his
+heart no extra block is added for the mark.
 
 **📎 GIVE HIM A FILE.** While a pass is open on that terminal, the
 program can hand Trabolta codex entries from it: their own entries,
