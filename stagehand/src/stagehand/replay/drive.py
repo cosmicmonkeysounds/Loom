@@ -66,6 +66,10 @@ LOCK = Path(os.environ.get("LOOM_REPLAY_LOCK") or SCRATCH / "ollama.lock")
 PORTS = range(7920, 7930)
 REPLY_CAP_S = 150.0
 BURST_CAP_S = 600.0
+#: A burst is over once its end condition held this long (the hub's
+#: follow-up request opens right after a reply lands: typing off → the
+#: reply → typing on arrive back to back).
+BURST_SETTLE_S = 2.0
 RIG_WINDOW_S = 600.0
 CODES = {"event": "GST{port}", "mod": "MOD{port}", "prime": "PRM{port}"}
 
@@ -324,6 +328,10 @@ class Mirror:
         self.character = character
         self.messages: dict[int, dict[str, Any]] = {}
         self.cond = threading.Condition()
+        #: When each message reached this console (monotonic), for wall times.
+        self.arrived: dict[int, float] = {}
+        #: The newest `typing` frame per thread: on = a request is open there.
+        self.typing: dict[str, bool] = {}
         self.mind_ats: set[Any] = set()
         self.mind_bytes = 0
         self.online = False
@@ -362,19 +370,24 @@ class Mirror:
                 ev = line[7:]
             elif line.startswith("data: "):
                 data.append(line[6:])
-        if ev not in ("history", "message", "snapshot"):
+        if ev not in ("history", "message", "snapshot", "typing"):
             return
         try:
             doc = json.loads("\n".join(data))
         except json.JSONDecodeError:
             return
+        now = time.monotonic()
         with self.cond:
             if ev == "history":
                 for m in (doc.get("messages") if isinstance(doc, dict) else doc) or []:
                     if isinstance(m, dict) and isinstance(m.get("seq"), int):
                         self.messages[m["seq"]] = normal(m)
+                        self.arrived.setdefault(m["seq"], now)
             elif ev == "message" and isinstance(doc, dict) and isinstance(doc.get("seq"), int):
                 self.messages[doc["seq"]] = normal(doc)
+                self.arrived.setdefault(doc["seq"], now)
+            elif ev == "typing" and isinstance(doc, dict):
+                self.typing[f"{doc.get('channel')}|{','.join(doc.get('audience') or [])}"] = bool(doc.get("on"))
             elif ev == "snapshot" and isinstance(doc, dict):
                 for mind in doc.get("minds") or []:
                     if isinstance(mind, dict) and mind.get("character") == self.character:
@@ -388,6 +401,13 @@ class Mirror:
     def max_seq(self) -> int:
         with self.cond:
             return max(self.messages, default=0)
+
+    def thread_state(self, threads: set[str], is_free: Callable[[dict[str, Any], list[dict[str, Any]]], bool]) -> dict[str, int | None]:
+        """Per thread: the seq of his newest free reply when it came after
+        the thread's last guest line and no request is open there (typing
+        off), else None (still owed an answer)."""
+        with self.cond:
+            return thread_state([self.messages[k] for k in sorted(self.messages)], threads, self.typing, is_free)
 
     def snapshot(self) -> list[dict[str, Any]]:
         with self.cond:
@@ -403,6 +423,21 @@ class Mirror:
                 if left <= 0:
                     return None
                 self.cond.wait(min(left, 1.0))
+
+
+def thread_state(msgs: list[dict[str, Any]], threads: set[str], typing: dict[str, bool], is_free: Callable[[dict[str, Any], list[dict[str, Any]]], bool]) -> dict[str, int | None]:
+    out: dict[str, int | None] = {}
+    for t in threads:
+        last_line = newest = 0
+        for m in msgs:
+            if f"{m['channel']}|{','.join(m['audience'])}" != t:
+                continue
+            if m.get("from") != CHARACTER and m.get("kind", "line") == "line":
+                last_line = max(last_line, int(m["seq"]))
+            elif is_free(m, msgs):
+                newest = max(newest, int(m["seq"]))
+        out[t] = newest if newest > last_line and not typing.get(t, False) else None
+    return out
 
 
 # -- the driver -------------------------------------------------------------------------------------
@@ -584,7 +619,7 @@ class Driver:
         rec["reply"] = self.redactor.redact(got["text"])
         rec["reply_seq"] = got["seq"]
         rec["reply_at"] = time.time()
-        rec["wall_ms"] = int((time.monotonic() - rec["sent_mono"]) * 1000)
+        rec["wall_ms"] = int((self.mirror.arrived.get(got["seq"], time.monotonic()) - rec["sent_mono"]) * 1000)
         say(f"    {CHARACTER} → {rec['as']} ({rec['wall_ms']} ms): {rec['reply'][:110]}")
 
     def last_say(self, name: str) -> dict[str, Any] | None:
@@ -691,12 +726,36 @@ class Driver:
                 time.sleep(gap)
         last = time.monotonic()
         deadline = last + float(s.get("cap_s", BURST_CAP_S))
+        threads = {r["thread"] for r in sent if r.get("status") == 200}
+        state = self.settle(threads, deadline)
         for rec in sent:
-            self.await_reply(rec, deadline)
-        replied = [r["sent_mono"] + r["wall_ms"] / 1000 for r in sent if r.get("wall_ms") is not None]
-        end = max(replied, default=time.monotonic())
-        self.bursts.append({"id": n, "lines": len(sent), "threads": len({r["thread"] for r in sent}), "send_s": round(last - first, 1), "wall_s": round(end - first, 1), "unanswered": sum(1 for r in sent if r.get("timed_out"))})
-        say(f"replay: burst {n}: {len(sent)} lines, wall {end - first:.0f} s")
+            self.await_reply(rec, time.monotonic() + 0.5)
+        newest = [seq for seq in state.values() if seq is not None]
+        end = max((self.mirror.arrived.get(seq, last) for seq in newest), default=time.monotonic())
+        owed = sorted(t for t, seq in state.items() if seq is None)
+        self.bursts.append({"id": n, "lines": len(sent), "threads": len(threads), "send_s": round(last - first, 1), "wall_s": round(end - first, 1), "unanswered": len(owed), "settled": not owed})
+        if owed:
+            self.errors.append(f"burst {n}: {len(owed)} thread(s) still owed an answer at the cap")
+        say(f"replay: burst {n}: {len(sent)} lines in {len(threads)} threads, wall {end - first:.0f} s" + (f", {len(owed)} thread(s) unanswered" if owed else ""))
+
+    def settle(self, threads: set[str], deadline: float, settle_s: float = BURST_SETTLE_S) -> dict[str, int | None]:
+        """Wait until, in every thread, his newest free reply came after its
+        last guest line and no request is open there, held for `settle_s`
+        (or the deadline). Returns the per-thread state at the end."""
+        held_since: float | None = None
+        while True:
+            state = self.mirror.thread_state(threads, self.free)
+            now = time.monotonic()
+            if all(v is not None for v in state.values()):
+                held_since = now if held_since is None else held_since
+                if now - held_since >= settle_s:
+                    return state
+            else:
+                held_since = None
+            if now >= deadline:
+                return state
+            with self.mirror.cond:
+                self.mirror.cond.wait(min(0.25, max(0.0, deadline - now)))
 
     def rest(self, seconds: float) -> None:
         start = time.time()

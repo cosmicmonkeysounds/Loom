@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import types
 from contextlib import contextmanager
@@ -431,6 +432,42 @@ def test_the_gap_paces_guest_lines_but_not_the_first(monkeypatch: pytest.MonkeyP
     d.gap_s = 20.0
     d.run({"steps": [{"say": "a", "as": "Ada", "wait": False}, {"unlock": "X", "for": "Ada"}, {"say": "b", "as": "Ada", "wait": False}]})
     assert slept == [20.0]
+
+
+def _frame(ev: str, doc: dict) -> str:
+    return f"event: {ev}\ndata: {json.dumps(doc)}"
+
+
+def _dm(seq: int, frm: str, text: str, who: str = "g-a") -> str:
+    return _frame("message", {"seq": seq, "channel": "dm:Trabolta", "from": frm, "text": text, "audience": [who], "kind": "line"})
+
+
+def test_a_burst_waits_for_the_follow_up_to_lines_sent_before_the_first_reply() -> None:
+    """Lines 2 and 3 land while reply 1 is being written: reply 1's seq is
+    after them, but the hub owes one follow-up (typing on again) — the burst
+    ends only at that follow-up."""
+    d = fake_driver(FakeServer())
+    t = "dm:Trabolta|g-a"
+    for f in (_dm(10, "Ada", "one"), _frame("typing", {"channel": "dm:Trabolta", "from": "Trabolta", "on": True, "audience": ["g-a"]}), _dm(11, "Ada", "two"), _dm(12, "Ada", "three")):
+        d.mirror.frame(f)
+    assert d.mirror.thread_state({t}, d.free) == {t: None}
+    for f in (_frame("typing", {"channel": "dm:Trabolta", "from": "Trabolta", "on": False, "audience": ["g-a"]}), _dm(13, "Trabolta", "Reply one."), _frame("typing", {"channel": "dm:Trabolta", "from": "Trabolta", "on": True, "audience": ["g-a"]})):
+        d.mirror.frame(f)
+    assert d.mirror.thread_state({t}, d.free) == {t: None}  # reply 1 is after line 3, but the follow-up is open
+    late = threading.Timer(0.3, lambda: [d.mirror.frame(f) for f in (_frame("typing", {"channel": "dm:Trabolta", "from": "Trabolta", "on": False, "audience": ["g-a"]}), _dm(20, "Trabolta", "Reply two."))])
+    late.start()
+    state = d.settle({t}, time.monotonic() + 5, settle_s=0.2)
+    late.join()
+    assert state == {t: 20}
+    assert d.mirror.arrived[20] > d.mirror.arrived[13]
+
+
+def test_a_burst_thread_still_owed_at_the_cap_counts_as_unanswered() -> None:
+    d = fake_driver(FakeServer())
+    for f in (_dm(10, "Ada", "one"), _dm(11, "Trabolta", "Reply."), _dm(12, "Ada", "two")):
+        d.mirror.frame(f)
+    state = d.settle({"dm:Trabolta|g-a"}, time.monotonic() + 0.3, settle_s=0.1)
+    assert state == {"dm:Trabolta|g-a": None}
 
 
 def test_an_unanswered_say_times_out() -> None:
