@@ -1887,7 +1887,24 @@ tent is captured by the tablet's scan.
   ⚠. In `auto`
   that filing takes the review path (pending on the Judging card, `near: {key}`), the story's
   📝 *Proposed: accurate* line plus a server ⚠ line in `# hosts` naming the key. Unjudged, the
-  settle credits it (the user's call is open: OCT31.md §5 *Wave 11 status*).
+  settle credits it.
+  Wave 11b (the user: *"Can't Trabolta judge things?"*): `main.loom`'s header has `judge:
+  Trabolta`, so in `auto` a near miss goes to Trabolta's worker when one is online and not
+  stalled — a `judge` frame on `/api/agent/stream`, apart from his DM queue — and the ⚠ line
+  ends *… asked Trabolta to rule*. The worker makes one stateless call on his voice model at
+  temperature 0.1 (`stagehand/src/stagehand/agents/judge.py`: the question, the key + aliases
+  and the filed answer, no persona, mind, live state or confidence) and answers `POST
+  /api/agent/judge {id, worker, same, why}`. Same → accurate; not → lie at confidence 100,
+  else uncertain; applied through the Judging card's journaled confirm (`fact_accurate` /
+  `fact_lie` / `fact_uncertain` on the filer, the question named), `by: agent:Trabolta`, the
+  ruling in its args so a replay rebuilds it, then *🤖 Trabolta ruled <name>'s <Q> filing
+  "<answer>": the same as / not "<key>" (<verdict>). <why>* in `# hosts`. A director's verdict
+  first cancels the ask (a late answer gets 410); a director's verdict after it wins, the
+  ruling kept on the card. No worker online at the filing → wave 11's rule (pending, credited
+  at the settle unless a director judges it), never asked later; a ruling unanswered in 60 s
+  is dropped the same way; only a server restore asks the near misses still pending. Review
+  mode asks nothing. The key never enters his voice, his mind, the orchestrator or
+  `/api/agent/facts`; the ruling is a `judge` thought on Run → Mind, for directors only.
   Wave 9 (D5): the director overrides any judged filing on the Judging card (✅ / 😤 / 🤷 per
   filing, both modes, naming the question); a booth's 📝 `fact_accurate` / `fact_lie` /
   `fact_uncertain` with no `question:` judges the program's latest filing only, and while an
@@ -2389,6 +2406,13 @@ riddle, `door.clue`) into `generated/print-stacks.md`. A program learns it three
 The Y2K Clock at the final round — *The Cold Lock* is retired), a checkmate from the Y2K hour
 (E2b), or the majority (E1). The Legendary Fact, the four combo halves, *The Cold Door* and *The
 Door Code* are all `secret: true`, so no model ever reads them.
+(Wave 11b) **The code moved.** The live check of `w11-1019` found the old code as a year in
+Password Manager's public bio, which reaches `/api/agent/facts`, so a guest who read the bio
+could guess the keypad. The bio is lore and stays; the code is now a number with no story
+behind it (`facts.json` `door.code`; never write it in a doc), and a facts test fails if any
+non-secret codex entry holds it. `titi:facts` regenerated the digit notes' Codex text, the
+`== Facts Seed` and `secrets.never`; the notes' titles and QRs and the keypad sign did not
+change. The keypad must be reprogrammed by hand to the new code.
 
 **Wave 11 (2026-10-18, the user's design): the code, the King and the heart.** The riddle is
 no longer a path. A program learns the code three ways, all night until 📄 truth.txt: **the four
@@ -2523,6 +2547,15 @@ terminal, so a line opened there pushes out whoever was at his heart before, eve
 persona's `them:` carries it and its `situations:` make him candid with exactly that program
 (wave 11: whenever he is awake, `when: them.at_the_heart == true`; a separate *standing down*
 block keeps `Night.step >= 14`, and he never fires `stand_down` without it).
+Wave 11b (the user: *"marked programs can use the terminal, but Trabolta should change what he
+says / thinks of them, still letting them continue"*): `program.marked` joined the persona's
+`them:` (public: the house pins the mark on their phone; never `marked_for`, so he doesn't know
+why), and the *marked at your heart* situation has him notice it, ask why and let the answer
+move his regard, while the heart's candour, his taking their files and standing down all still
+hold. The mind file's MARKED PROGRAMS section tells the orchestrator to note in their dossier
+that they came marked and what they said, and to move their trust on the answer. Away from the
+heart the voice gets no block for the mark (a passing remark was tried live on gpt-oss:20b and
+dropped: he repeated it in every reply).
 - (Wave 11) **The file panel.** While a pass is piloted there, the heart terminal's **📎 GIVE HIM
   A FILE** lists the guest's own codex with **Give** (the guest's own `POST
   /api/guest/codex/share {entry, to: "Trabolta"}`, so the story hears `when Trabolta learns X`
@@ -3105,7 +3138,7 @@ character: Trabolta
 variables: truth, untruth, composure, love, regard
 max_step: 8
 facts: Night.phase, Night.step, Night.clock, Night.facts_accepted, Night.facts_requested, Night.livejournal_read, Night.lj_reader, Night.scenario, Night.most_trusted, Night.least_trusted, Night.heart_opened, Night.talked_down
-them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart
+them: truths_accepted, internet_visits, assessment, trust, read_livejournal, delivered, corrupted, afk, featured, at_the_heart, marked
 mind: trabolta.mind.md
 thread_window: 12
 summarize_after: 18
@@ -3134,6 +3167,13 @@ situations:            # wave 7: stagehand appends each block whose `when:` hold
                        # combinations or the door code; what he wants and why; still never a hunt
                        # answer, a verdict, a combination, a cable, a code or her one line;
                        # nothing he says in this room ends the night by itself
+  - name: marked at your heart               # wave 11b
+    when: them.at_the_heart == true && them.marked == true
+    prompt: …          # he sees the Antivirus' mark, says so once, does not know why and asks;
+                       # wary (bait sent by the house, or a fellow prisoner?); an honest answer
+                       # raises his regard, a dodge or the Antivirus' story lowers it; still
+                       # candid, still takes their files, standing down applies as to anyone;
+                       # never refuses, threatens or sends them away
   - name: standing down                      # wave 11: the stand_down rule moved here
     when: them.at_the_heart == true && Night.step >= 14
     prompt: …          # fires stand_down only when this program has shown him it is impossible
@@ -3165,8 +3205,10 @@ rules (1999 corporate, Win98 dialog-box diction, short; second person when forma
 speak only of what your codex holds and what your stage permits; your mind says your stage";
 outside the cold room never admit where his heart is kept (candid at his heart, from the Y2K
 hour: the *at your heart* situation); never know a combination or a door code; never say the
-year he met her (wave 7: it is the door code; since the review no file he holds says it, and
-the worker's `secrets.never` keeps a code a program types out of his voice and memory); never fire
+year he met her (wave 7: it was the door code; since wave 11b the code is no year, but the
+rule stays, and the worker's `secrets.never` keeps a code a program types out of his voice and
+memory); never give out the answers to his own questions and, since wave 11b, never make one
+up (a program asking for the right answer is told to file what they found); never fire
 `stand_down` except at his heart; never confirm a fact is true or false
 (judging belongs to Clippy and the Moments of Truth); the JSON reply protocol of the current
 file (`say`, `adjust`, optional `lookup`, optional `act` with `share` / `fire`). No Sandy, no
