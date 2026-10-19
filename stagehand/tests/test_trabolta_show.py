@@ -285,3 +285,98 @@ def test_the_persona_never_hands_out_an_answer_it_made_up():
     # 2026-10-19: he truly does not know them (no answer reaches any prompt:
     # core/test/trabolta-answers.test.ts), and the persona says so.
     assert "You do not know the answers to your own questions: that is why you ask." in system
+
+
+# -- wave 12: the phase table, and a Trabolta hungry for the facts he asks for -------------
+
+CARD_KEYS = {"stage", "favours", "drives", "powers", "tell", "brief", "cue"}
+CATCHPHRASES = ("your request has been logged", "please wait", "this program has performed an operation")
+
+
+def resolved_cards() -> dict[str, dict]:
+    """CONTRACTS C4.1's inheritance, in file order: stage / favours / powers
+    / tell carry over, drives merge, the brief never does."""
+    front = mind_front()
+    prev = {"stage": front["stages"][0], "favours": "none", "drives": dict(front["drives"]), "powers": [], "tell": []}
+    out = {}
+    for phase, card in phase_table().items():
+        card = {"cue": card} if isinstance(card, str) else card
+        cur = {k: card.get(k, prev[k]) for k in ("stage", "favours", "powers", "tell")}
+        cur["drives"] = {**prev["drives"], **(card.get("drives") or {})}
+        cur["brief"] = flat(card.get("brief") or card.get("cue"))
+        out[phase] = prev = cur
+    return out
+
+
+def test_the_phase_table_is_well_formed():
+    # The rules W2's parser and `stagehand check` enforce (CONTRACTS C4.3),
+    # checked here on the plain YAML so the show text is right before either.
+    front = mind_front()
+    stages, drives = front["stages"], front["drives"]
+    assert stages == ["asleep", "formal", "hungry", "rattled", "judge", "unravelling", "desperate", "last act"]
+    assert drives == {"hunger": 30, "pride": 60, "candour": 10, "longing": 40}
+    cards = front["phases"]["_stages"]
+    assert list(cards) == stages and all(isinstance(t, str) and t.strip() for t in cards.values())
+    for phase, card in phase_table().items():
+        assert isinstance(card, dict), phase  # every phase is a card now, none a bare cue
+        assert set(card) <= CARD_KEYS, (phase, set(card) - CARD_KEYS)
+        assert card.get("stage", stages[0]) in stages, phase
+        assert card.get("favours", "none") in ("none", "earned", "loose"), phase
+        for name, value in (card.get("drives") or {}).items():
+            assert name in drives and isinstance(value, int) and 0 <= value <= 100, (phase, name)
+        for key in ("powers", "tell"):
+            assert all(isinstance(x, str) and x.strip() for x in card.get(key, [])), (phase, key)
+        # A brief never carries over: every card writes its own, and a cue for classic.
+        assert isinstance(card.get("brief"), str) and card["brief"].strip(), phase
+        assert isinstance(card.get("cue"), str) and card["cue"].strip(), phase
+
+
+def test_the_cards_follow_the_night():
+    cards = resolved_cards()
+    assert [p for p, c in cards.items() if c["stage"] == "asleep"] == ["arrivals", "desktop", "bingo", "bingo_results"]
+    assert cards["truth_1"]["stage"] == "hungry"  # never "asleep" during the hunt again (DESIGN §1.8)
+    assert {p: c["favours"] for p, c in cards.items() if p in ("hunt_1", "truth_1", "beans", "y2k", "final_reveal")} == {
+        "hunt_1": "none", "truth_1": "earned", "beans": "loose", "y2k": "earned", "final_reveal": "none",
+    }
+    assert cards["y2k"]["drives"] == {"hunger": 90, "pride": 70, "candour": 80, "longing": 75}
+    assert cards["advice"]["drives"]["candour"] == 100 and cards["grok_prom"]["drives"]["longing"] == 95
+    # stand_down is live only while the story would take it; its situation still gates it.
+    assert [p for p, c in cards.items() if "stand_down" in c["powers"]] == ["y2k", "majority", "final_reveal", "bobbing"]
+
+
+def test_no_card_the_house_reads_names_her_says_a_secret_or_reaches_for_the_catchphrase():
+    # Every conversation reads the brief and the stage card (P2): no heart, no
+    # code, no catchphrase, and her name only from the verdict (truth.txt is
+    # read to the house; grok_prom on).
+    p = load_persona(TRABOLTA)
+    cards = resolved_cards()
+    phases = list(cards)
+    verdict = phases.index("grok_prom")
+    texts = [("_stages." + k, flat(v)) for k, v in mind_front()["phases"]["_stages"].items()]
+    texts += [(phase, cards[phase]["brief"]) for phase in phases]
+    for where, text in texts:
+        low = text.lower()
+        assert not p.secrets.leaks(text), where
+        assert not any(c in low for c in CATCHPHRASES), where
+        assert not re.search(r"\b(?:suspicio\w*|bluster)\b", low), where
+        if where.startswith("_") or phases.index(where) < verdict:
+            assert "sandy" not in low, where
+            assert not re.search(r"\b(?:heart|server room|patch bay|cold room|cables?)\b", low), where
+    for phase in phases:
+        assert not p.secrets.leaks(cue_of(phase)), phase
+        assert "suspicion" not in cue_of(phase).lower() and "bluster" not in cue_of(phase).lower(), phase
+
+
+
+
+def test_the_mind_page_no_longer_makes_him_wary_of_facts():
+    p = load_persona(TRABOLTA)
+    mind = flat(p.mind_prompt)
+    assert "bluster" not in mind and "about me" not in mind and "suspicious" not in mind
+    assert "Your request has been logged" not in mind
+    assert "a gift that delights him the same, whatever it says" in mind
+    assert "never lower anyone's trust for it" in mind
+    assert "never anyone for asking about facts" in mind
+    # No hunt topic as an example (DESIGN §3: the 412 example; the summary's
+    # billboard fact).
+    assert "412" not in mind and "billboard" not in mind.lower()
