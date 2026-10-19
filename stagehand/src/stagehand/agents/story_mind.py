@@ -233,6 +233,13 @@ def first_met_line(persona: Persona, req: dict[str, Any], phase: str) -> str:
     return line
 
 
+def gift_line(title: str) -> str:
+    """How a gift reaches the voice (since-you-last-spoke and what just
+    happened word it alike, so P3 says it once). K-04 w11b-heart: told only
+    "They gave you X." he kept asking the giver for a fact in exchange."""
+    return f"They gave you “{one_line(title, 120)}”: a gift. Name it, say what it does to you, and ask nothing more for it."
+
+
 def absorb(mind: Mind, persona: Persona, req: dict[str, Any], phase: str) -> tuple[Dossier, tuple[str, ...]]:
     """Fold what the story says about the speaker into their dossier, and
     word what moved since their previous turn (CONTRACTS.md §C3.3–§C3.4).
@@ -281,7 +288,7 @@ def absorb(mind: Mind, persona: Persona, req: dict[str, Any], phase: str) -> tup
         since.extend(f"You said to the whole house: “{one_line(h['text'], 200)}”." for h in newer)
         if d.marked and not before_marked:
             since.append("They were marked for the Internet.")
-        since.extend(f"They gave you “{one_line(g['title'], 120)}”." for g in reversed(gifts) if (_story_at(g.get("at")) or 0.0) > since_at)
+        since.extend(gift_line(g["title"]) for g in reversed(gifts) if (_story_at(g.get("at")) or 0.0) > since_at)
     return d, tuple(since[:MAX_SINCE])
 
 

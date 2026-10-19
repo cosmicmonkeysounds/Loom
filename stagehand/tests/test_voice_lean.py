@@ -305,7 +305,9 @@ def test_p3_what_just_happened_skips_what_since_already_said():
         {"kind": "gift", "title": "The Orchard", "new": True, "at": 10},
         {"kind": "filing", "question": "H2"},
     ]
-    since = ("They were marked for the Internet.", "They gave you “The Orchard”.")
+    from stagehand.agents.story_mind import gift_line
+
+    since = ("They were marked for the Internet.", gift_line("The Orchard"))
     p3 = render_p3(P, request(recent=recent), context(since=since))
     block = p3.split("=== WHAT JUST HAPPENED ===\n", 1)[1].split("\n\n", 1)[0]
     assert block.split("\n") == [
@@ -903,3 +905,14 @@ def test_a_power_for_another_program_aimed_at_the_speaker_is_dropped():
     model = Model({"say": "Let me look at Bob.", "act": {"fire": "snoop", "args": {"target": "Bob"}}})
     reply = run(answer_lean(P, MODEL, request(powers=powers), context(), model))
     assert [a.get("name") for a in reply.acts] == ["snoop"]
+
+
+def test_a_gift_reaches_him_as_a_gift_that_has_been_paid_for():
+    """K-04 w11b-heart: told only "They gave you X." he kept asking the
+    giver for a fact in exchange for a card on the wall terminals."""
+    p3 = render_p3(P, request(recent=[{"kind": "gift", "title": "The Orchard", "new": True, "at": 10}]), context(since=()))
+    assert "They gave you “The Orchard”: a gift. Name it, say what it does to you, and ask nothing more for it." in p3
+    show = load_persona(SHOW / "trabolta.persona.md")
+    heart = next(s.prompt for s in show.situations if s.name == "at your heart")
+    marked = next(s.prompt for s in show.situations if s.name == "marked at your heart")
+    assert "No prices in this room." in heart and "theirs not yours" in marked

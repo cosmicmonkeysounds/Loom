@@ -43,6 +43,7 @@ from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import allowed_powers, build_messages, gate_context, matching_situations, situation_block, their_variables
 from .reply import MAX_MEMO, Reply, fold, parse_reply
+from .story_mind import card_for, gift_line
 from .trace import Trace, new_thought
 
 log = logging.getLogger("stagehand.agents.voice")
@@ -288,8 +289,6 @@ def story_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     card's own brief in place of the mind's (a director's brief, or one
     restored from an older night, is never answer-scrubbed against the
     `match` list as it stands), plus the `tell` entries P2 shows."""
-    from .story_mind import card_for  # story_mind imports nothing from here
-
     card = card_for(persona, ctx.phase.phase)
     brief = card.brief if card is not None else ""
     return render_p2(persona, req, replace(ctx, phase=replace(ctx.phase, brief=brief, brief_by="story")))
@@ -366,7 +365,7 @@ def _person(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
 def _recent_line(item: dict[str, Any]) -> str | None:
     kind = item.get("kind")
     if kind == "gift" and item.get("title"):
-        return f"They gave you “{_one_line(item['title'])}”."
+        return gift_line(str(item["title"]))
     if kind == "house" and item.get("text"):
         return f"You said to the whole house: “{_one_line(item['text'])}”."
     if kind == "filing" and item.get("question"):
