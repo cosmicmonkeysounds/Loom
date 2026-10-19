@@ -6,10 +6,12 @@
 ##
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline] [--smooth-turn]
-##         [--autopilot]
+##         [--autopilot [--hit-king]]
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
-## quits when the session is over — see [Autopilot].
+## quits when the session is over — see [Autopilot]. With `--hit-king` it
+## walks to the King first and hits him once (the shared bar's end-to-end
+## check).
 ##
 ## `--key value` and `--key=value` both work. Pure: everything but
 ## [method load_station] takes its inputs as arguments, so the tests drive it.
@@ -33,6 +35,7 @@ const KEYS := {
 	"offline": TYPE_BOOL,
 	"smooth_turn": TYPE_BOOL,
 	"autopilot": TYPE_BOOL,
+	"hit_king": TYPE_BOOL,
 }
 
 
@@ -46,6 +49,7 @@ static func defaults() -> Dictionary:
 		"offline": false,
 		"smooth_turn": false,
 		"autopilot": false,
+		"hit_king": false,
 	}
 
 

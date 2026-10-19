@@ -5,6 +5,14 @@
 ## glowing screens, and a floating label per room — each solid piece with a
 ## [StaticBody3D] collider, so the player's [CharacterBody3D] walks it.
 ##
+## The King (a `king` prop) stands in his guarded door with the shared
+## health bar over him ("THE KING  n / 15", [method set_king]); each door he
+## guards has a closed leaf. While he has fallen he kneels, his collider and
+## the leaves' are off and the leaves hide — the door is open; a restore
+## stands him up and shuts it again — unless the game holds it open for a
+## player still behind it or in the doorway ([method hold_door]): then he
+## stands, but his collider and the leaves' stay off until they are clear.
+##
 ## Children are placed in **house coordinates**; this node carries the
 ## map's `spaces.vr` transform (identity for the procedural build), so its
 ## children land in the VR world frame and [method to_house] /
@@ -33,6 +41,16 @@ var walls: Array = []
 var space: Dictionary = HouseFrames.IDENTITY
 
 var _body: StaticBody3D
+## The shared King's state in force ([method set_king]; `{}` = none: no
+## bar, standing).
+var king_state: Dictionary = {}
+## King prop id → `{body, crown, health, text, bar, collider, height}`.
+var _kings := {}
+## Guarded door id → `{guard, mesh, collider}`.
+var _leaves := {}
+## King prop id → true: this game holds his doors open although he stands
+## ([method hold_door]); kept across rebuilds.
+var _held := {}
 
 
 ## (Re)build everything from `map`.
@@ -50,8 +68,10 @@ func build(map: Dictionary) -> void:
 	_build_ground()
 	_build_ramps()
 	_build_props()
+	_build_door_leaves()
 	_build_terminals()
 	_build_labels()
+	_apply_king()
 	built.emit()
 
 
@@ -61,6 +81,8 @@ func clear() -> void:
 		c.queue_free()
 	walls = []
 	_body = null
+	_kings = {}
+	_leaves = {}
 
 
 ## World (VR space) point → house `[x, y, z]`.
@@ -85,13 +107,14 @@ func yaw_to_world(yaw: float) -> float:
 # --- pieces ------------------------------------------------------------------
 
 
-func _collide_box(center: Vector3, size: Vector3, basis := Basis.IDENTITY) -> void:
+func _collide_box(center: Vector3, size: Vector3, basis := Basis.IDENTITY) -> CollisionShape3D:
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
 	cs.transform = Transform3D(basis, center)
 	_body.add_child(cs)
+	return cs
 
 
 func _mesh(st: SurfaceTool, mat: Material, node_name: String) -> void:
@@ -376,25 +399,7 @@ func _build_props() -> void:
 				if solid:
 					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
 			"king":
-				# The King (a chess boss in a doorway): a gold body with a small
-				# crown on top. He only stands here — the fight is the tablet's
-				# (U16); nothing opens the door he guards in VR.
-				var mi := MeshInstance3D.new()
-				var box := BoxMesh.new()
-				box.size = Vector3(size.x, size.y - 0.15, size.z)
-				mi.mesh = box
-				mi.position.y = (size.y - 0.15) / 2.0
-				mi.material_override = HouseLook.paint(prop.get("color", "#d4af37"), Color("#d4af37"))
-				root.add_child(mi)
-				var crown := MeshInstance3D.new()
-				var cbox := BoxMesh.new()
-				cbox.size = Vector3(size.x * 0.5, 0.15, size.z * 0.5)
-				crown.mesh = cbox
-				crown.position.y = size.y - 0.075
-				crown.material_override = HouseLook.paint(prop.get("color", "#d4af37"), Color("#d4af37"))
-				root.add_child(crown)
-				if solid:
-					_collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
+				_build_king(root, prop, pos, size, basis, solid)
 		if prop.get("label") != null and str(prop["label"]) != "":
 			var color := HouseLook.INK
 			if kind == "label" and prop.get("color") is String:
@@ -407,6 +412,155 @@ func _build_props() -> void:
 				l.width = maxf(size.x, 0.2) / l.pixel_size
 				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			root.add_child(l)
+
+
+## The King (a chess boss in a doorway): a gold body with a small crown on
+## top, and over him the shared health bar — a name line and a Win98 bar,
+## both turning to face the player.
+func _build_king(root: Node3D, prop: Dictionary, pos: Vector3, size: Vector3, basis: Basis, solid: bool) -> void:
+	var gold := HouseLook.paint(prop.get("color", "#d4af37"), Color("#d4af37"))
+	var mi := MeshInstance3D.new()
+	mi.name = "Body"
+	var box := BoxMesh.new()
+	box.size = Vector3(size.x, size.y - 0.15, size.z)
+	mi.mesh = box
+	mi.position.y = (size.y - 0.15) / 2.0
+	mi.material_override = gold
+	root.add_child(mi)
+	var crown := MeshInstance3D.new()
+	crown.name = "Crown"
+	var cbox := BoxMesh.new()
+	cbox.size = Vector3(size.x * 0.5, 0.15, size.z * 0.5)
+	crown.mesh = cbox
+	crown.position.y = size.y - 0.075
+	crown.material_override = gold
+	root.add_child(crown)
+	var health := Node3D.new()
+	health.name = "Health"
+	health.position.y = size.y + 0.22
+	root.add_child(health)
+	var text := HouseLook.label("THE KING", 0.07, HouseLook.GOLD)
+	text.name = "HealthText"
+	text.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	text.position.y = 0.09
+	health.add_child(text)
+	var bar := Sprite3D.new()
+	bar.name = "HealthBar"
+	bar.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	bar.shaded = false
+	bar.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	bar.pixel_size = 0.5 / 100.0  # the bar image is 100 px: half a metre wide
+	health.add_child(bar)
+	var collider: CollisionShape3D = null
+	if solid:
+		collider = _collide_box(pos + basis * Vector3(0, size.y / 2.0, 0), size, basis)
+	_kings[str(prop["id"])] = {"body": mi, "crown": crown, "health": health, "text": text, "bar": bar, "collider": collider, "height": size.y}
+
+
+## A closed leaf in every guarded door's gap ([method HouseGeometry.door_gap];
+## a hair narrower than the gap, so it never z-fights the jambs), with a
+## collider filling the gap — shut until its King falls.
+func _build_door_leaves() -> void:
+	var wt: float = HouseGeometry.style_of(house)["wallThickness"]
+	for door: Dictionary in house.get("doors", []):
+		if door.get("guard") == null:
+			continue
+		var gap: Variant = HouseGeometry.door_gap(house, door)
+		if gap == null:
+			continue
+		var width: float = maxf(0.02, float(gap["hi"]) - float(gap["lo"]) - 0.02)
+		var height: float = maxf(0.02, float(gap["top"]) - float(gap["bottom"]))
+		var mid: float = (float(gap["lo"]) + float(gap["hi"])) / 2.0
+		var along_x: bool = gap["axis"] == "x"
+		var center := Vector3(mid if along_x else float(gap["c"]), float(gap["bottom"]) + height / 2.0, float(gap["c"]) if along_x else mid)
+		var mi := MeshInstance3D.new()
+		mi.name = "Door_%s" % door["id"]
+		var box := BoxMesh.new()
+		var thick := wt * 0.5
+		box.size = Vector3(width, height, thick) if along_x else Vector3(thick, height, width)
+		mi.mesh = box
+		mi.position = center
+		mi.material_override = HouseLook.paint("#3a3f47")
+		add_child(mi)
+		var full: float = float(gap["hi"]) - float(gap["lo"])
+		var collider := _collide_box(center, Vector3(full, height, wt) if along_x else Vector3(wt, height, full))
+		_leaves[str(door["id"])] = {"guard": str(door["guard"]), "mesh": mi, "collider": collider}
+
+
+## The shared King changed (`KingState`, `{}` = none): his bar, his stance,
+## and the doors he guards.
+func set_king(state: Dictionary) -> void:
+	king_state = state
+	_apply_king()
+
+
+## Hold the doors King `id` guards open for this player although he stands
+## (`on`), or let them follow his state again — the web game's
+## `keepDoorOpen`: a restore must never shut a player in behind his door,
+## or inside the leaf or him ([method HouseKing.keep_door_open]).
+func hold_door(id: String, on: bool) -> void:
+	if on == _held.has(id):
+		return
+	if on:
+		_held[id] = true
+	else:
+		_held.erase(id)
+	_apply_king()
+
+
+## Whether this game holds King `id`'s doors open ([method hold_door]).
+func door_held(id: String) -> bool:
+	return _held.has(id)
+
+
+func _apply_king() -> void:
+	var s := king_state
+	for id: String in _kings:
+		var k: Dictionary = _kings[id]
+		var ours: bool = not s.is_empty() and (str(s.get("id", "")) == id or str(s.get("id", "")) == "")
+		var fallen: bool = ours and s.get("fallen") == true
+		var open: bool = fallen or _held.has(id)
+		(k["health"] as Node3D).visible = ours
+		if ours:
+			(k["text"] as Label3D).text = "THE KING  %d / %d" % [int(s["hp"]), int(s["max"])]
+			(k["bar"] as Sprite3D).texture = ImageTexture.create_from_image(HouseLook.health_bar(int(s["hp"]), int(s["max"])))
+		_kneel(k, fallen)
+		if k["collider"] != null:
+			(k["collider"] as CollisionShape3D).disabled = open
+		for door_id: String in _leaves:
+			var leaf: Dictionary = _leaves[door_id]
+			if leaf["guard"] != id:
+				continue
+			(leaf["mesh"] as Node3D).visible = not open
+			(leaf["collider"] as CollisionShape3D).disabled = open
+
+
+## Down on one knee (half his height, bowed forward), or standing.
+func _kneel(k: Dictionary, on: bool) -> void:
+	var h: float = k["height"]
+	var body: MeshInstance3D = k["body"]
+	var body_h := h - 0.15
+	var f := 0.55 if on else 1.0
+	body.scale = Vector3(1.0, f, 1.0)
+	body.position.y = body_h * f / 2.0
+	body.rotation.x = deg_to_rad(-14.0) if on else 0.0
+	(k["crown"] as Node3D).position.y = body_h * f + 0.075
+	(k["health"] as Node3D).position.y = body_h * f + 0.15 + 0.22
+
+
+## Whether the King `id` is kneeling (fallen), for the tests.
+func king_kneeling(id: String) -> bool:
+	return _kings.has(id) and (_kings[id]["body"] as Node3D).scale.y < 1.0
+
+
+## Whether King `id` blocks the body (his collider on), for the tests.
+func king_solid(id: String) -> bool:
+	return _kings.has(id) and _kings[id]["collider"] != null and not (_kings[id]["collider"] as CollisionShape3D).disabled
+
+
+## Whether the leaf of guarded door `id` is shut.
+func door_shut(id: String) -> bool:
+	return _leaves.has(id) and (_leaves[id]["mesh"] as Node3D).visible and not (_leaves[id]["collider"] as CollisionShape3D).disabled
 
 
 func _build_terminals() -> void:

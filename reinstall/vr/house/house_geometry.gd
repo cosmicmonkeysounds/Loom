@@ -466,6 +466,54 @@ static func _cmp(a: String, b: String) -> int:
 	return -1 if a < b else (1 if a > b else 0)
 
 
+## The gap a door cuts (`doorGap`): the wall axis + line it sits on (room
+## `a`'s own edge, mm-rounded like [method build_walls] step 2) and the
+## gap's `lo..hi` (`mmi(t ± width / 2)`), with `bottom` = the room's floor
+## elevation and `top` = the door top — a wall segment `{floor, axis, c, lo,
+## hi, bottom, top, kind: "wall"}`. Null when no edge of room `a` carries
+## the door (± [constant DOOR_TOLERANCE]). The games stand a closed leaf in it.
+static func door_gap(house: Dictionary, door: Dictionary) -> Variant:
+	var room: Variant = room_by_id(house, door.get("a"))
+	if room == null:
+		return null
+	var fl: Variant = floor_by_id(house, str(room["floor"]))
+	var elevation: float = float(fl["elevation"]) if fl != null else 0.0
+	var poly: Array = room["poly"]
+	var n := poly.size()
+	var at: Array = door["at"]
+	var best: Dictionary = {}
+	for axis: String in ["x", "z"]:
+		var coord: float = float(at[1]) if axis == "x" else float(at[0])
+		var tm := mmi(float(at[0]) if axis == "x" else float(at[1]))
+		for i in n:
+			var p: Array = poly[i]
+			var q: Array = poly[(i + 1) % n]
+			var p_along := mmi(float(p[0]) if axis == "x" else float(p[1]))
+			var q_along := mmi(float(q[0]) if axis == "x" else float(q[1]))
+			var p_across := mmi(float(p[1]) if axis == "x" else float(p[0]))
+			var q_across := mmi(float(q[1]) if axis == "x" else float(q[0]))
+			if p_across != q_across or p_along == q_along:
+				continue
+			var dist := absf(p_across - coord * 1000.0)
+			if dist > DOOR_TOLERANCE * 1000.0 + 1e-6:
+				continue
+			if tm < mini(p_along, q_along) or tm > maxi(p_along, q_along):
+				continue
+			if best.is_empty() or dist < float(best["dist"]) or (dist == float(best["dist"]) and p_across < int(best["c"])):
+				best = {"axis": axis, "c": p_across, "dist": dist}
+		if not best.is_empty():
+			break
+	if best.is_empty():
+		return null
+	var t: float = float(at[0]) if best["axis"] == "x" else float(at[1])
+	var height: float = float(door["height"]) if door.get("height") != null else float(style_of(house)["doorHeight"])
+	return {
+		"floor": str(room["floor"]), "axis": best["axis"], "c": int(best["c"]) / 1000.0,
+		"lo": mmi(t - float(door["width"]) / 2.0) / 1000.0, "hi": mmi(t + float(door["width"]) / 2.0) / 1000.0,
+		"bottom": mmi(elevation) / 1000.0, "top": mmi(elevation + height) / 1000.0, "kind": "wall",
+	}
+
+
 ## A wall segment's plan end points `[a, b]`.
 static func wall_ends(w: Dictionary) -> Array:
 	if w["axis"] == "x":

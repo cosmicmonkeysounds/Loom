@@ -8,6 +8,7 @@ var poses: Array = []
 var found_calls := 0
 var ended: Array = []
 var candidate_requests := 0
+var king_hits := 0
 
 
 func begin(guest: String) -> void:
@@ -29,6 +30,19 @@ func send_pose(p: Array, yaw: float, pitch: float) -> void:
 
 func report_found() -> void:
 	found_calls += 1
+
+
+func hit_king() -> void:
+	king_hits += 1
+
+
+func avatar_url(key: String) -> String:
+	return "fixture://avatar/" + key if key != "" else ""
+
+
+## The server's word on the shared King (a `hello` / `king` frame).
+func give_king(k: Variant) -> void:
+	_adopt_king(k)
 
 
 func end_session(reason: String) -> void:

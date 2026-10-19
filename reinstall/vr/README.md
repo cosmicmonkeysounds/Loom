@@ -6,22 +6,25 @@ golden duck, in a virtual copy of the house. The design contract is
 [`docs/loom-reinstall.md`](../../docs/loom-reinstall.md) (§5 for this game, §1
 for the house map, §2 for the server).
 
-Thumbsticks only, no buttons anywhere:
+Thumbsticks, plus one button for the King:
 
 | | |
 |---|---|
 | **Left stick** | walk where you look (dead zone 0.15, 1.8 m/s) |
 | **Right stick** | snap-turn 45° (flick, let go, flick); smooth turn with `smooth_turn` |
+| **Trigger** (either hand) or **A / X** | hit the King, near and facing him — once per visit |
 | **Lobby** | stick up / down picks a program, hold **right** for 1 s to start |
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `house/house_geometry.gd` · `house_locate.gd` · `house_route.gd` · `house_frames.gd` · `house_duck.gd` | Literal GDScript ports of `@loom/house` (`buildWalls` / `buildFloors` / `buildRamps`, `locate` / `heightAt`, `route` / `sampleTrail`, space transforms, `pickDuckSpot`). They are diffed against the goldens. |
-| `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; terminal screens; room labels. The Web-1.0 look is built from procedural textures. |
+| `house/house_geometry.gd` · `house_locate.gd` · `house_route.gd` · `house_frames.gd` · `house_duck.gd` | Literal GDScript ports of `@loom/house` (`buildWalls` / `buildFloors` / `buildRamps` / `doorGap`, `locate` / `heightAt`, `route` / `sampleTrail`, space transforms, `pickDuckSpot`). They are diffed against the goldens. |
+| `house/house_king.gd` | The King's reach (`kingReach`: `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°), the fallen map the trail routes over (the web game's `trailMap`), and the shared `KingState` off the wire. |
+| `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; terminal screens; room labels. The Web-1.0 look is built from procedural textures. |
 | `house/house.json` | The show's map. It is a copy, so do not edit it here; see below. |
-| `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / end, house fetch, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only (`pose_pump.gd`). |
+| `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
+| `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
 | `net/config.gd` | Station configuration and its precedence. |
 | `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), and the comfort vignette. |
 | `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby and its picker, the duck, the chevron trail, ghosts of other players, and the HUD. |
@@ -51,8 +54,8 @@ house may be wrong until the event's map arrives.
 ## Run it on a desktop
 
 Without an OpenXR runtime (a Mac) the game runs on the desktop rig. WASD or
-↑↓ walk, Q/E or ←→ turn, and the mouse looks (click to capture it, Esc to
-release it). In the lobby the same keys drive the picker: W/S choose, and
+↑↓ walk, Q/E or ←→ turn, Space or F hits the King, and the mouse looks
+(click to capture it, Esc to release it). In the lobby the same keys drive the picker: W/S choose, and
 holding D or E for 1 s confirms.
 
 ```bash
@@ -64,7 +67,8 @@ $G --headless --path reinstall/vr --xr-mode off -- --server … --code … --gue
 ```
 
 `--offline` plays with no server: the duck is picked locally with the same
-FNV-1a pick the server uses.
+FNV-1a pick the server uses, and the King's bar is kept on the headset (one
+hit per session, he falls at 0).
 
 `--autopilot` (dev / CI only, `game/autopilot.gd`) plays by itself: it
 walks to the duck through the real sticks and collision, then quits — exit 0
@@ -77,7 +81,9 @@ that the route's own visibility test would refuse detours over the route's
 corner waypoints in that room. When the body makes no headway for 3 s it
 re-plans from where it stands, and it re-plans when the map or the duck
 changes. With `--headless --xr-mode off` it is the end-to-end check of a
-headset against a live event server.
+headset against a live event server. `--hit-king` sends it to the King first: it stops 0.9 m in
+front of him, faces him, presses the hit button once and goes on to the duck
+whatever the answer — the shared bar's end-to-end check.
 
 ## Station config
 
@@ -203,6 +209,27 @@ with `released: true` while you walk to Gerald.
   (never, or freed mid-walk); "GERALD CAN'T HELP" means the story kept them
   captured (the banishment) — the duck stays put. After the
   celebration the headset returns to the lobby.
+- **The King** stands in the Server Room door with **one health bar for
+  every guest** ("THE KING  n / 15"), held by the server: the `hello` frame's
+  `king`, `king` frames, and the session's map fetch. Near him the HUD says
+  "Pull the trigger to hit the King — once per visit." A press of the
+  trigger (or A / X) within 1.25 m and facing him (55°) flushes the newest
+  pose and posts `POST /api/spatial/king/hit` with the session token; the
+  server judges the reach off that pose. "You hit him." — and one hit per
+  reinstallation visit (the server's 409 `already hit` counts too). At 0 he
+  kneels for everyone: his collider and the door leaf go, the trail routes
+  through the door, and the HUD says "He is down: the cold door is open."
+  A director's restore stands him up and shuts the door again — but not on
+  a player behind it, in the doorway or on his spot: for them it stays open
+  (his collider and the leaf off, the trail through it) until they are
+  clear (the web game's `keepDoorOpen`, `HouseKing.keep_door_open`). A
+  remap while crossing a fallen King's spot keeps them there. The chess
+  itself is at the real door's terminal; nothing here plays it. A server
+  with no shared King (an older release) shows no bar and takes no hit.
+- **Ghosts wear the guest's profile picture** as a head (the event's
+  `/api/avatar/<key>`, the `avatar` key on each player and the `avatar`
+  frame); a guest with no picture, or one Godot can't decode (GIF, AVIF),
+  stays a plain capsule.
 
 ## Tests
 
@@ -222,9 +249,18 @@ scene, then runs `test/game.gd` headless with `--offline`:
 - latest-only pose coalescing, and the SSE parser
 - the lobby picker's hold-to-confirm
 - the server link over a fake transport: the heartbeat, the claim schedule,
-  the map refetch / warning when the wrong map is up, and the duck adopted
-  from the map answer and from `duck` frames
-- the game's state machine with a fake link
+  the map refetch / warning when the wrong map is up, the duck adopted
+  from the map answer and from `duck` frames, the shared King from `hello` /
+  `king` frames and the map answer, and the hit (pose flushed first, every
+  answer, one claim at a time, offline)
+- the King's reach, his door's gap and the fallen map; the picture decoder
+  (tiny PNG / JPEG / WebP / SVG drawn in the test, a 40000 px SVG rendered
+  once near 256 px, GIF / AVIF refused)
+- the game's state machine with a fake link, incl. the King (bar, notice,
+  hit once per visit, the fall for everyone — the body walks through his
+  door — and the restore, held open for a player behind it until they
+  walk out) and ghosts' pictures (two at a time, cached, a failure retried
+  once on the next visit, `avatar` frames)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once

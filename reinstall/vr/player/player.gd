@@ -13,10 +13,13 @@
 ##   world back instead of letting the head through it.
 ## - A comfort vignette closes in while moving or turning — at once on a
 ##   snap turn, opening gently after.
+## - **Hit** ([member hit_button]): either trigger, or A / X — the King's
+##   hit (the game takes the press, not the hold).
 ##
 ## Without OpenXR (a Mac, the tests) it is a desktop rig: WASD / ↑↓ walk,
-## Q/E / ←→ turn, mouse look (click to capture, Esc to release) — all
-## feeding the same sticks, so the game logic can't tell the difference.
+## Q/E / ←→ turn, Space / F hit, mouse look (click to capture, Esc to
+## release) — all feeding the same sticks and button, so the game logic
+## can't tell the difference.
 class_name VrPlayer
 extends CharacterBody3D
 
@@ -47,6 +50,9 @@ var xr_active := false
 ## picker reads them). Tests write them directly with [member read_input] off.
 var left_stick := Vector2.ZERO
 var right_stick := Vector2.ZERO
+## The hit button held (a trigger, A / X; Space / F on the desktop rig),
+## refreshed with the sticks.
+var hit_button := false
 ## Read the devices each tick (off in tests that drive the sticks).
 var read_input := true
 
@@ -163,11 +169,16 @@ func _read_sticks() -> void:
 	if xr_active:
 		left_stick = Locomotion.dead_zone(left_hand.get_vector2("primary"))
 		right_stick = Locomotion.dead_zone(right_hand.get_vector2("primary"))
+		hit_button = false
+		for hand: XRController3D in [right_hand, left_hand]:
+			if hand.is_button_pressed("trigger_click") or hand.is_button_pressed("ax_button") or hand.get_float("trigger") > 0.8:
+				hit_button = true
 		return
 	var k := func(a: Key, b: Key) -> float:
 		return 1.0 if Input.is_physical_key_pressed(a) or Input.is_physical_key_pressed(b) else 0.0
 	left_stick = Vector2(k.call(KEY_D, KEY_NONE) - k.call(KEY_A, KEY_NONE), k.call(KEY_W, KEY_UP) - k.call(KEY_S, KEY_DOWN)).limit_length(1.0)
 	right_stick = Vector2(k.call(KEY_E, KEY_RIGHT) - k.call(KEY_Q, KEY_LEFT), 0.0)
+	hit_button = k.call(KEY_SPACE, KEY_F) > 0.0
 
 
 ## Room scale: move the body under the head with a slide of its own (floor
