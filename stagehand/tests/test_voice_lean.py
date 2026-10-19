@@ -390,12 +390,18 @@ def test_facts_are_fetched_only_for_acts_and_args_are_made_canonical():
     assert fetched == [1]
 
 
-def test_a_power_the_card_says_is_not_live_is_dropped():
+def test_a_power_the_card_leaves_off_is_noted_and_sent_for_the_story_to_decide():
     model = Model(say("Darkness.", act={"fire": "cut_the_lights", "args": {"room": "The Desktop"}}))
     trace = Trace()
     reply = run(answer_lean(P, MODEL, request(), context(), model, trace=trace))
-    assert reply.acts == () and reply.say == "Darkness."
-    assert "act not live dropped" in trace.all("Trabolta")[0].note
+    assert reply.say == "Darkness." and [a["name"] for a in reply.acts] == ["cut_the_lights"]
+    assert "act not on the card (sent; the story decides)" in trace.all("Trabolta")[0].note
+    # Classic lists every power as usable: no note.
+    model = Model(say("Darkness.", act={"fire": "cut_the_lights"}))
+    trace = Trace()
+    reply = run(answer_lean(P, MODEL, request(), context(options=VoiceOptions(layout="classic")), model, trace=trace))
+    assert [a["name"] for a in reply.acts] == ["cut_the_lights"]
+    assert "not on the card" not in trace.all("Trabolta")[0].note
     # No card (live_powers None): every allowed power may fire.
     model = Model(say("Darkness.", act={"fire": "cut_the_lights"}))
     reply = run(answer_lean(P, MODEL, request(), context(phase=PhaseView(live_powers=None)), model))

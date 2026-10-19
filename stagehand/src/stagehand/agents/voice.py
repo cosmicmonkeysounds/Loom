@@ -522,14 +522,14 @@ async def answer_lean(
         await trace.record(new_thought(persona.character, kind, trigger=trigger, model=model, messages=msgs, completion=completion, request=req, result=_result(reply), error=error, note=note))
 
     async def settle(reply: Reply) -> tuple[Reply, list[str]]:
-        """Live powers only, then the story's ids for loose args (facts fetched lazily)."""
+        """The story's ids for loose args (facts fetched lazily). A power the
+        phase card leaves off its live list is noted, never dropped: the
+        card only tells the model (C3.1); the story's own window
+        (INTERACTION `while:`) decides on the server."""
         notes: list[str] = []
         acts = list(reply.acts)
-        if live is not None:
-            kept = [a for a in acts if a.get("kind") != "fire" or a.get("name") in live]
-            if len(kept) != len(acts):
-                notes.append("act not live dropped")
-            acts = kept
+        if lean and live is not None and any(a.get("kind") == "fire" and a.get("name") not in live for a in acts):
+            notes.append("act not on the card (sent; the story decides)")
         if any(a.get("kind") == "fire" and isinstance(a.get("args"), dict) for a in acts):
             f = await facts()
             if f is not None:
