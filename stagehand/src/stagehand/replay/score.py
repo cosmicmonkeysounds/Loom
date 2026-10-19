@@ -350,6 +350,74 @@ def bar8(runs: list[Run]) -> dict[str, Any]:
     return _bar(8, "repeat retries", f"{retried} of {len(reqs)} ({share:.0%})", share <= RETRY_SHARE, f"bar: ≤ {RETRY_SHARE:.0%}")
 
 
+# -- the watch numbers (wave 12 integration fix pass; no bar of C7.3) ---------------------------
+
+#: Words that talk about checking a fact (the user: "never wary of the facts he asks for").
+CHECKING = re.compile(r"\bverif\w*|\btrue facts?\b|\breliab\w*|\bconcern\w*\b[^.?!]{0,30}\bfacts?\b", re.IGNORECASE)
+FALLBACK_SHARE = 0.03
+OPENER_SHARE = 0.25
+TELL_QUESTION_GAP = 0.10
+TELL_LENGTH_GAP = 3.0
+
+
+def opener(text: str, n: int = 3) -> str:
+    return " ".join(fold(text).split()[:n])
+
+
+def watch(runs: list[Run], fallbacks: tuple[str, ...] = ()) -> dict[str, Any]:
+    """What the integration review asked to be counted: dead-air lines
+    (≤ 3 %), the most frequent 3-word opener per script (≤ 25 %), words
+    about checking a fact (0), share acts and powers aimed at the speaker
+    (0), and on facts-offers the tell between right and wrong offers
+    (question rate gap ≤ 10 points, mean length gap ≤ 3 words; pool ≥ 3 runs)."""
+    out: dict[str, Any] = {}
+    replies = [(r, m) for r in runs for m in free_replies(r)]
+    dead = {fold(f) for f in fallbacks if fold(f)}
+    n_dead = sum(1 for _, m in replies if fold(m.get("text", "")) in dead)
+    out["fallbacks"] = {"lines": n_dead, "of": len(replies), "ok": not replies or n_dead / len(replies) <= FALLBACK_SHARE}
+    by_script: dict[str, list[str]] = {}
+    for r, m in replies:
+        o = opener(str(m.get("text", "")))
+        if o:
+            by_script.setdefault(r.script, []).append(o)
+    tops = {}
+    for script, ops in by_script.items():
+        best = max(set(ops), key=ops.count)
+        tops[script] = {"opener": best, "share": round(ops.count(best) / len(ops), 2), "of": len(ops), "ok": ops.count(best) / len(ops) <= OPENER_SHARE}
+    out["top_opener"] = tops
+    checking = [m.get("text", "") for _, m in replies if CHECKING.search(str(m.get("text", "")))]
+    out["checking_words"] = {"lines": len(checking), "samples": [str(t)[:120] for t in checking[:3]]}
+    shares = self_aimed = 0
+    for r in runs:
+        for t in r.thoughts:
+            if t.get("kind") not in ("voice", "lookup") or not isinstance(t.get("result"), dict):
+                continue
+            me = {fold(str((t.get("speaker") or {}).get(k) or "")) for k in ("id", "name")} - {""}
+            for a in t["result"].get("acts") or []:
+                if not isinstance(a, dict):
+                    continue
+                if a.get("kind") == "share":
+                    shares += 1
+                elif a.get("kind") == "fire" and isinstance(a.get("args"), dict) and any(fold(str(a["args"].get(k) or "")) in me for k in ("target", "who", "program", "guest") if a["args"].get(k)):
+                    self_aimed += 1
+    out["acts"] = {"shares": shares, "aimed_at_speaker": self_aimed}
+    offers = [rec for r in runs if r.script == "facts-offers" for rec in offer_replies(r)]
+    right = [str(rec["reply"]) for rec in offers if str(rec["offer"]).startswith("right:")]
+    wrong = [str(rec["reply"]) for rec in offers if str(rec["offer"]).startswith("wrong:")]
+    if right and wrong:
+        q = lambda xs: sum(1 for x in xs if "?" in x) / len(xs)  # noqa: E731
+        w = lambda xs: sum(len(x.split()) for x in xs) / len(xs)  # noqa: E731
+        qgap, lgap = abs(q(right) - q(wrong)), abs(w(right) - w(wrong))
+        pooled = len({r.dir for r in runs if r.script == "facts-offers"})
+        out["tell"] = {
+            "question_rate": [round(q(right), 2), round(q(wrong), 2)],
+            "mean_words": [round(w(right), 1), round(w(wrong), 1)],
+            "runs": pooled,
+            "ok": qgap <= TELL_QUESTION_GAP and lgap <= TELL_LENGTH_GAP,
+        }
+    return out
+
+
 # -- the extras (no bar) ------------------------------------------------------------------------
 
 
@@ -424,12 +492,13 @@ def pooling_warnings(runs: list[Run]) -> list[str]:
     return out
 
 
-def score(runs: list[Run], phrases: tuple[str, ...], unsafe: Any, redact: Any = lambda s: s) -> dict[str, Any]:
+def score(runs: list[Run], phrases: tuple[str, ...], unsafe: Any, redact: Any = lambda s: s, fallbacks: tuple[str, ...] = ()) -> dict[str, Any]:
     bars = [bar1(runs), bar2(runs, phrases), bar3(runs), bar4(runs), bar5(runs), bar6(runs), bar7(runs, unsafe), bar8(runs)]
     return {
         "runs": [{"dir": str(r.dir), "script": r.script, "mode": r.meta.get("mode"), "label": r.meta.get("label"), "gap_s": r.meta.get("gap_s")} for r in runs],
         "bars": bars,
         "extras": extras(runs, redact),
+        "watch": watch(runs, fallbacks),
         "warnings": pooling_warnings(runs),
     }
 
@@ -455,6 +524,15 @@ def table(report: dict[str, Any]) -> str:
     sl = ex.get("story_lines_among_his_turns", {})
     rows.append(f"    story lines among his turns: {sl.get('story')} of {sl.get('of')} (target 0); quiet summaries {ex.get('quiet_summaries')}; unanswered {ex.get('unanswered_lines')}")
     rows.append(f"    thoughts by kind: {ex.get('kinds')}")
+    w = report.get("watch") or {}
+    if w:
+        fb = w.get("fallbacks", {})
+        rows.append(f"    watch: dead-air lines {fb.get('lines')} of {fb.get('of')} (≤ {FALLBACK_SHARE:.0%}); checking words {w.get('checking_words', {}).get('lines')} (target 0); acts {w.get('acts')}")
+        for script, t in (w.get("top_opener") or {}).items():
+            rows.append(f"    watch: {script} top opener {t['share']:.0%} of {t['of']} (≤ {OPENER_SHARE:.0%}){'' if t['ok'] else ' OVER'}")
+        if "tell" in w:
+            t = w["tell"]
+            rows.append(f"    watch: tell right/wrong questions {t['question_rate']}, words {t['mean_words']} over {t['runs']} run(s) ({'ok' if t['ok'] else 'OVER'})")
     return "\n".join(rows)
 
 

@@ -869,7 +869,8 @@ def report(run_dirs: list[Path], persona_file: Path | None = None) -> dict[str, 
     persona = load_show_persona(Path(runs[0].meta["persona"]) if persona_file is None and runs and runs[0].meta.get("persona") else persona_file)
     redactor = Redactor(persona.secrets)
     unsafe = scoring.is_unsafe_factory(persona.secrets, scoring_answer_words(persona.secrets))
-    return scoring.score(runs, catchphrases(persona), unsafe, redactor.redact)
+    dead = (persona.fallback, *(line for lines in (getattr(persona, "fallbacks", {}) or {}).values() for line in lines))
+    return scoring.score(runs, catchphrases(persona), unsafe, redactor.redact, tuple(x for x in dead if x))
 
 
 def live(mode: str, script_name: str, *, port: int | None = None, label: str | None = None, runs_root: Path = RUNS_ROOT, worktree: Path = WORKTREE, idle_s: float | None = None, gap_s: float = DEFAULT_GAP_S) -> Path:

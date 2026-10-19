@@ -880,3 +880,21 @@ def test_runs_and_the_lock_default_under_the_machines_temp_dir_and_the_env_moves
         monkeypatch.delenv("LOOM_REPLAY_RUNS", raising=False)
         monkeypatch.delenv("LOOM_REPLAY_LOCK", raising=False)
         importlib.reload(drive)
+
+
+def test_watch_counts_dead_air_openers_checking_words_acts_and_the_tell(tmp_path: Path) -> None:
+    hist = [
+        msg(1, "Ada", "hi"),
+        msg(2, "Trabolta", "Thank you for the fact."),
+        msg(3, "Trabolta", "Thank you for the gift, program."),
+        msg(4, "Trabolta", "…packet loss."),
+        msg(5, "Trabolta", "If you require a verified fact, let me know."),
+    ]
+    ts = [{"kind": "voice", "trigger": "line", "request_id": "r1", "ms": 10, "at": 1.0, "speaker": {"id": "g1", "name": "Ada"}, "result": {"acts": [{"kind": "share", "entry": "X"}, {"kind": "fire", "name": "snoop", "args": {"target": "g1"}}]}}]
+    recs = [{"kind": "say", "offer": "right:H1", "reply": "Thank you? Tell me more about it please."}, {"kind": "say", "offer": "wrong:H2", "reply": "Thanks."}]
+    w = S.watch(load(make_run(tmp_path, "facts-offers", history=hist, thoughts=ts, records=recs)), ("…packet loss.",))
+    assert w["fallbacks"] == {"lines": 1, "of": 4, "ok": False}
+    assert w["top_opener"]["facts-offers"]["opener"] == "thank you for" and not w["top_opener"]["facts-offers"]["ok"]
+    assert w["checking_words"]["lines"] == 1
+    assert w["acts"] == {"shares": 1, "aimed_at_speaker": 1}
+    assert w["tell"]["question_rate"] == [1.0, 0.0] and not w["tell"]["ok"]
