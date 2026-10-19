@@ -297,7 +297,9 @@ function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSes
  * character's own (or anyone's) and on offer right now (`while:`), in
  * story order; `more` — the rest (another character's, out of phase, and
  * for an admin the director's cues), folded under "More…" so the button a
- * performer needs is never at the bottom of a long scroll.
+ * performer needs is never at the bottom of a long scroll. Another
+ * character's `by:` button (`only`) is left out: the server refuses it from
+ * this booth. An admin's booth keeps it under More (a moderator may press any).
  */
 export function splitInteractions(list: readonly Interaction[], character: string, admin: boolean): { mine: Interaction[]; more: Interaction[] } {
   const mine: Interaction[] = [];
@@ -309,6 +311,7 @@ export function splitInteractions(list: readonly Interaction[], character: strin
       continue;
     }
     const ours = i.actors === undefined || i.actors.some((a) => foldName(a) === me);
+    if (!ours && i.only === true && !admin) continue;
     (ours && i.live !== false ? mine : more).push(i);
   }
   return { mine, more };
