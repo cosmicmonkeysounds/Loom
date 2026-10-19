@@ -4,7 +4,11 @@
 //! per session, so the render loop interpolates ~120 ms behind), who moved
 //! last (the director follows them), the celebrations a `found` frame
 //! starts, and where each duck sits (a `duck` frame moves it when a map
-//! save re-deals it).
+//! save re-deals it), plus the shared King (`hello.king` and every `king`
+//! frame: his one bar for the whole night, kneeling at 0) and each ghost's
+//! profile picture key (`PlayerState.avatar`, an `avatar` frame when it
+//! changes; a server that sends neither keeps the plain capsule and a King
+//! who just stands).
 //!
 //! A find that released nobody while the story keeps the program captured
 //! (the banishment: "Gerald cannot help you") is `kept`: the frame says
@@ -22,7 +26,7 @@
 //! carried across by reference — it is the render loop's, and pushing the
 //! same arrival time twice replaces rather than duplicates.
 
-import type { DuckSpot, PlayerPose, PlayerState, SpatialFrame, SpatialWorld, Vec3 } from "@loom/house";
+import type { DuckSpot, KingState, PlayerPose, PlayerState, SpatialFrame, SpatialWorld, Vec3 } from "@loom/house";
 import { PoseBuffer } from "@loom/house/three";
 
 /** A move this far (metres, plan + height) since the last one counts as activity. */
@@ -53,6 +57,8 @@ export interface WorldPlayer {
   /** The find released nobody and the program is still captured: Gerald
    *  stays put (no egg, no fly-off). */
   kept: boolean;
+  /** The guest's profile picture key (`/api/avatar/<key>`), null = none. */
+  avatar: string | null;
   /** Interpolation buffer (shared by reference across states). */
   buffer: PoseBuffer;
 }
@@ -93,9 +99,37 @@ export interface WorldState {
   celebrations: readonly Celebration[];
   /** The last `reset` (local ms) — the story restarted, every session ended. */
   resetAt: number | null;
+  /** The shared King, null when the server shares none (none on the map, or an old server). */
+  king: KingState | null;
 }
 
-export const EMPTY_WORLD: WorldState = { houseVersion: null, players: new Map(), celebrations: [], resetAt: null };
+export const EMPTY_WORLD: WorldState = { houseVersion: null, players: new Map(), celebrations: [], resetAt: null, king: null };
+
+/** A picture key off the wire: a non-empty string, else null. */
+export function avatarKeyOf(v: unknown): string | null {
+  return typeof v === "string" && v !== "" ? v : null;
+}
+
+/** A ghost's picture URL: the event's public `/api/avatar/<key>` (same origin), null without a key. */
+export function avatarUrl(base: string, key: string | null): string | null {
+  return key === null ? null : `${base}/api/avatar/${encodeURIComponent(key)}`;
+}
+
+/** The shared King off the wire: a well-formed `KingState`, else null;
+ *  `undefined` when the server said nothing (keep what we had). */
+export function kingOf(v: unknown): KingState | null | undefined {
+  if (v === undefined) return undefined;
+  if (typeof v !== "object" || v === null) return null;
+  const k = v as Record<string, unknown>;
+  const num = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+  if (typeof k["id"] !== "string" || !num(k["hp"]) || !num(k["max"])) return null;
+  const hp = Math.max(0, k["hp"]);
+  return { id: k["id"], hp, max: Math.max(1, k["max"]), fallen: k["fallen"] === true || hp <= 0 };
+}
+
+function sameKing(a: KingState | null, b: KingState | null): boolean {
+  return a === b || (a !== null && b !== null && a.id === b.id && a.hp === b.hp && a.max === b.max && a.fallen === b.fallen);
+}
 
 function copyPose(p: PlayerPose): PlayerPose {
   return { p: [p.p[0], p.p[1], p.p[2]] as Vec3, yaw: p.yaw, pitch: p.pitch };
@@ -131,6 +165,7 @@ function fromState(s: PlayerState, now: number, prior: WorldPlayer | undefined):
     foundAt: s.found ? now : null,
     // The player list never says; a reconnect keeps what a `found` frame told us.
     kept: s.found && prior?.kept === true,
+    avatar: avatarKeyOf((s as { avatar?: unknown }).avatar),
     buffer: b,
   };
 }
@@ -147,7 +182,8 @@ export function reduce(state: WorldState, frame: SpatialFrame, now: number): Wor
       // sessions we already knew so their ghosts don't jump.
       const players = new Map<string, WorldPlayer>();
       for (const s of frame.data.players) players.set(s.session, fromState(s, now, state.players.get(s.session)));
-      return { ...state, houseVersion: frame.data.houseVersion, players };
+      const king = kingOf((frame.data as { king?: unknown }).king);
+      return { ...state, houseVersion: frame.data.houseVersion, players, ...(king !== undefined ? { king } : {}) };
     }
     case "join": {
       const players = new Map(state.players);
@@ -203,7 +239,21 @@ export function reduce(state: WorldState, frame: SpatialFrame, now: number): Wor
     }
     case "house":
       return frame.data.version === state.houseVersion ? state : { ...state, houseVersion: frame.data.version };
+    case "king": {
+      // Every change to the shared bar: a hit in either game, a director's edit.
+      const king = kingOf(frame.data) ?? null;
+      return sameKing(state.king, king) ? state : { ...state, king };
+    }
+    case "avatar": {
+      const cur = state.players.get(frame.data.session);
+      const avatar = avatarKeyOf(frame.data.avatar);
+      if (!cur || cur.avatar === avatar) return state;
+      const players = new Map(state.players);
+      players.set(cur.session, { ...cur, avatar });
+      return { ...state, players };
+    }
     case "reset":
+      // The sessions end; the King's bar is the story's and comes back on a `king` frame.
       return { ...state, players: new Map(), celebrations: [], resetAt: now };
   }
 }
@@ -220,7 +270,7 @@ export function byActivity(state: WorldState): WorldPlayer[] {
 }
 
 /** The stream's frame names (`addEventListener` on each). */
-export const FRAME_NAMES: ReadonlySet<string> = new Set(["hello", "join", "poses", "found", "leave", "house", "duck", "reset"]);
+export const FRAME_NAMES: ReadonlySet<string> = new Set(["hello", "join", "poses", "found", "leave", "house", "duck", "reset", "king", "avatar"]);
 
 /** Decode one SSE frame (`event` name + JSON `data`); null for anything unknown or malformed. */
 export function decodeFrame(event: string, data: string): SpatialFrame | null {

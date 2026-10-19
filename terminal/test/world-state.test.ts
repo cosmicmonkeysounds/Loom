@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SpatialFrame } from "@loom/house";
-import { CELEBRATION_MS, EMPTY_WORLD, byActivity, celebrationLine, decodeFrame, laysEgg, moved, prune, reduce, type WorldState } from "../src/world/state.ts";
+import { CELEBRATION_MS, EMPTY_WORLD, avatarUrl, byActivity, celebrationLine, decodeFrame, kingOf, laysEgg, moved, prune, reduce, type WorldState } from "../src/world/state.ts";
 import { playerState } from "./world-fixture.ts";
 
 const fold = (frames: Array<[SpatialFrame, number]>, start: WorldState = EMPTY_WORLD) => frames.reduce((s, [f, t]) => reduce(s, f, t), start);
@@ -134,5 +134,62 @@ describe("world state", () => {
     expect(decodeFrame("message", "{}")).toBeNull();
     expect(decodeFrame("poses", "{nope")).toBeNull();
     expect(decodeFrame("poses", "3")).toBeNull();
+  });
+});
+
+describe("the shared King (wave 11)", () => {
+  const KING = { id: "cold-lock-king", hp: 15, max: 15, fallen: false };
+  const hello = (extra: Record<string, unknown>): SpatialFrame => ({ event: "hello", data: { eventId: "e", houseVersion: "v1", players: [], ...extra } }) as unknown as SpatialFrame;
+  const king = (data: Record<string, unknown>): SpatialFrame => ({ event: "king", data }) as unknown as SpatialFrame;
+
+  it("starts from hello's king; an old server's hello (no field) keeps what we had", () => {
+    expect(EMPTY_WORLD.king).toBeNull();
+    let s = reduce(EMPTY_WORLD, hello({ king: KING }), 0);
+    expect(s.king).toEqual(KING);
+    s = reduce(s, hello({}), 1);
+    expect(s.king).toEqual(KING);
+    expect(reduce(s, hello({ king: null }), 2).king).toBeNull(); // none on the map
+  });
+
+  it("follows every king frame; the same state again is the same object; a reset keeps his bar", () => {
+    let s = reduce(EMPTY_WORLD, king({ ...KING, hp: 14, by: "Excel" }), 0);
+    expect(s.king).toEqual({ ...KING, hp: 14 });
+    expect(reduce(s, king({ ...KING, hp: 14, by: null }), 1)).toBe(s);
+    s = reduce(s, king({ ...KING, hp: 0, fallen: true, by: "Winamp" }), 2);
+    expect(s.king).toEqual({ ...KING, hp: 0, fallen: true });
+    s = reduce(s, { event: "reset", data: { kind: "reset" } }, 3);
+    expect(s.king).toEqual({ ...KING, hp: 0, fallen: true });
+    expect(decodeFrame("king", JSON.stringify(KING))).toEqual({ event: "king", data: KING });
+  });
+
+  it("kingOf: fallen ⇔ hp ≤ 0; junk is none", () => {
+    expect(kingOf({ ...KING, hp: 0 })).toEqual({ ...KING, hp: 0, fallen: true });
+    expect(kingOf({ id: "k", hp: "x", max: 15 })).toBeNull();
+    expect(kingOf(undefined)).toBeUndefined();
+  });
+});
+
+describe("ghost pictures (wave 11)", () => {
+  it("a player's picture key rides hello / join and changes on an avatar frame; none is null", () => {
+    let s = fold([
+      [{ event: "join", data: { player: { ...playerState("s1", [1, 0, 1]), avatar: "0123456789abcdef" } as never } }, 0],
+      [{ event: "join", data: { player: playerState("s2", [1, 0, 1]) } }, 0],
+    ]);
+    expect(s.players.get("s1")!.avatar).toBe("0123456789abcdef");
+    expect(s.players.get("s2")!.avatar).toBeNull(); // an old server: no field
+    const avatar = (session: string, key: string | null): SpatialFrame => ({ event: "avatar", data: { session, avatar: key } }) as unknown as SpatialFrame;
+    const buffer = s.players.get("s2")!.buffer;
+    s = reduce(s, avatar("s2", "aaaaaaaaaaaaaaaa"), 10);
+    expect(s.players.get("s2")!.avatar).toBe("aaaaaaaaaaaaaaaa");
+    expect(s.players.get("s2")!.buffer).toBe(buffer);
+    expect(reduce(s, avatar("s2", "aaaaaaaaaaaaaaaa"), 11)).toBe(s);
+    expect(reduce(s, avatar("ghost", "bbbbbbbbbbbbbbbb"), 11)).toBe(s);
+    expect(reduce(s, avatar("s1", null), 12).players.get("s1")!.avatar).toBeNull();
+    expect(decodeFrame("avatar", '{"session":"s1","avatar":"0123456789abcdef"}')).toEqual({ event: "avatar", data: { session: "s1", avatar: "0123456789abcdef" } });
+  });
+
+  it("the URL is the event's public avatar route", () => {
+    expect(avatarUrl("/e/ev", "0123456789abcdef")).toBe("/e/ev/api/avatar/0123456789abcdef");
+    expect(avatarUrl("/e/ev", null)).toBeNull();
   });
 });
