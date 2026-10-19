@@ -314,10 +314,34 @@ keep that ≥ 1000 with the mind block in the prompt. JSON mode stays
 off: the reply parser copes with prose, code fences, and `<think>`
 blocks.
 
+### The judge: ruling on near misses
+
+A story whose header names `judge: <Character>` (an agent-voiced
+character) hands that character the facts judge's **near misses** in
+auto mode (a small typo, the key said at length) instead of leaving them
+to the directors. The server sends a `judge` frame `{id, character,
+filing, question: {id, text}, key: {answer, aliases}, answer,
+confidence}`; the worker makes **one** call on the character's voice
+model at temperature 0.1 (`agents/judge.py`): an impartial same-or-not
+check, nothing of the persona, the mind or the live state in it, and the
+filer's confidence left out. It answers `POST /api/agent/judge {id,
+worker, same, why}` (≤ 200 characters); the server applies the verdict
+through the director's journaled path. A ruling never touches the mind,
+never enters any voice / orchestrator / lookup prompt, and is never
+remembered: its one record is a `judge` thought in the trace (directors
+only). Output that doesn't parse (prose, malformed JSON, no `same`), a
+model failure, or a call past 55 s answers nothing, so the request
+expires and the facts judge's own fallback stands. A `cancel {id}` (a
+director ruled first) or a restart aborts it; a 410 is logged quietly;
+like a request, it still runs while the mind is paused. A reason carrying
+a `secrets.never` word is sent empty.
+
 Wire: `GET /api/agent/stream?characters=A,B&name=laptop` (SSE: `hello`,
-`request`, `cancel`, `reset`), `POST /api/agent/reply {id, worker, say,
-adjust, acts}`, `GET /api/agent/facts`, `POST /api/agent/mind`. All use
-the mod capability. Server side: `core/server/agents.ts`.
+`request`, `judge`, `cancel`, `control`), `POST /api/agent/reply {id,
+worker, say, adjust, acts}`, `POST /api/agent/judge {id, worker, same,
+why}`, `GET /api/agent/facts`, `POST /api/agent/mind`, `POST
+/api/agent/trace`. All use the mod capability. Server side:
+`core/server/agents.ts`.
 
 ## show — story ⇄ house
 
@@ -518,7 +542,8 @@ Pure units: directive parsing, conditions, topic patterns, both maps,
 the SSE parser, config and module selection, plus the whole agents path
 (persona, prompt, reply parsing/clamping, the OpenAI-compatible call over
 a mock transport, and the worker loop's dispatch, cancel, concurrency,
-and dry-run against a fake server), answer secrecy (`test_secrets`), the
+and dry-run against a fake server), the judge's rulings (`test_judge`),
+answer secrecy (`test_secrets`), the
 `alexa` player, launchd plists, the `.local.yaml` overlay, `edge` /
 retained sensor rules, the real rig against the story
 (`test_trapped_house`) and the server-room firmware's broker settings
