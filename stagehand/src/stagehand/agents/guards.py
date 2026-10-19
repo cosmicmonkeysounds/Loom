@@ -196,9 +196,13 @@ _ASSERTS = re.compile(r"\b(?:is|was|are|were)\s+(?:titled|called|named)\b|\btitl
 _GIVES = re.compile(r"\bhere(?:'s| is) (?:a|one|another|your) fact\b", re.IGNORECASE)
 #: He offers to fetch or sell one ("I will retrieve that fact for you").
 _OFFERS = re.compile(
-    r"\b(?:i will|i'll|i can|i shall|i could|let me)\s+(?:\w+\s+){0,2}(?:provide|give|retrieve|tell|share|sell|find|fetch|get|reveal)\b[^.?!]{0,40}\b(?:fact|answer)s?\b",
+    r"\b(?:i will|i'll|i can|i shall|i could|let me)\s+(?:\w+\s+){0,2}(?:provide|give|retrieve|tell|share|sell|offer|find|fetch|get|reveal)\b[^.?!]{0,40}\b(?:fact|answer)s?\b",
     re.IGNORECASE,
 )
+#: He sells one ("Pay 5 Truthcoin to receive it").
+_SELLS = re.compile(r"\bpay\b[^.?!]{0,30}\b(?:truthcoins?|coins?)\b[^.?!]{0,20}\bto (?:receive|get|have|hear|learn|see)\b", re.IGNORECASE)
+#: He says there is a fact somewhere ("There is a fact in the kitchen").
+_THERE = re.compile(r"\bthere(?:'s| is| are)\s+(?:a|one|another|some|\w+)\s+(?:hidden\s+)?facts?\b[^.?!]{0,20}?\b(?:in|on|at|under|behind|inside)\b", re.IGNORECASE)
 
 
 #: He says where a fact (or the books that hold them) is: a house room,
@@ -215,9 +219,9 @@ def invents_fact(secrets: Secrets, sentence: str) -> bool:
     to fetch or sell one, says where one is, or states the answer to a hunt
     topic (not as a question)."""
     text = sentence.replace("’", "'")
-    if _GIVES.search(text) or _OFFERS.search(text):
+    if _GIVES.search(text) or _OFFERS.search(text) or _SELLS.search(text):
         return True
-    if not text.rstrip().endswith("?") and _PLACES.search(text):
+    if not text.rstrip().endswith("?") and (_PLACES.search(text) or _THERE.search(text)):
         return True
     return not text.rstrip().endswith("?") and secrets.names_topic(text) and _ASSERTS.search(text) is not None
 
