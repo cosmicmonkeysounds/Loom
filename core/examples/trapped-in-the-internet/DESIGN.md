@@ -1878,7 +1878,7 @@ tent is captured by the tablet's scan.
   Wave 11: the slider starts **unset** (the guest sets it by touch or a value key before *File
   it*), and a **near miss** (`core/src/answer-match.ts` `nearMatch`: honorifics dropped, number
   words, plurals, word order, spelling word by word with the first letter kept; numbers and
-  am/pm exact — *Mr Pickels*, *1,997*, *Grko*) is never an automatic lie or guess: in `auto`
+  am/pm exact — *Mr Pickels*, *Grko*) is never an automatic lie or guess: in `auto`
   that filing takes the review path (pending on the Judging card, `near: {key}`), the story's
   📝 *Proposed: accurate* line plus a server ⚠ line in `# hosts` naming the key. Unjudged, the
   settle credits it (the user's call is open: OCT31.md §5 *Wave 11 status*).
