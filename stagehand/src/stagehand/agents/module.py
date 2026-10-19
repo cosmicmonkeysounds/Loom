@@ -614,8 +614,16 @@ class Agents:
                     continue
                 voice = self.models[character]
                 model = judge_model(voice) if thought.kind == "judge" else voice if thought.kind in ("voice", "lookup", "brief", "summary") else None
+                if new and model is None and thought.kind == "rerun":
+                    model = voice  # the new mind only ever re-runs voice-model calls
+                if new and model is None:
+                    # A reflect / survey from a classic run: the new mind never
+                    # calls the orchestrator's model (CONTRACTS.md §C5.2).
+                    outcomes["ok"] = False
+                    outcomes["error"] = f"classic thought ({thought.kind}): re-run it in mind_mode: classic"
+                    continue
                 if new:
-                    self._spawn(self._rerun_now(thought, model or self.orchestrator.models.get(character) or voice))
+                    self._spawn(self._rerun_now(thought, model))
                 else:
                     self.orchestrator.rerun(thought, model)
                 note = f"re-run {thought.id} ({thought.kind})"

@@ -579,6 +579,11 @@ def test_a_rerun_in_the_new_mind_runs_directly_and_is_never_applied(tmp_path):
         await asyncio.gather(*agents._side)
         bad = await agents.control({"action": "rerun", "character": "Trabolta", "thought": ref.id})
         assert not bad["ok"] and bad["error"] == "prefix not found"
+        for kind in ("reflect", "survey"):  # a classic thought restored from an earlier run
+            old = await agents.trace.record(new_thought("Trabolta", kind, messages=[{"role": "system", "content": "orchestrator"}]))
+            refused = await agents.control({"action": "rerun", "character": "Trabolta", "thought": old.id})
+            assert not refused["ok"] and refused["error"] == f"classic thought ({kind}): re-run it in mind_mode: classic"
+        assert not agents._side
 
     run(go())
     assert seen == [t.messages]
