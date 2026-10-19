@@ -711,6 +711,7 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).toContain('Survey now')
     expect(html).not.toContain('Rewrite brief')
     expect(html).toContain('Mind reasoning off')
+    expect(html).toContain('Pause mind')
     expect(html).toContain('qwen-distill')
     expect(html).toContain('2 exchanges · 2 reflections · 1 surveys · rev 2')
     expect(html).toContain('trust 64/100')
@@ -727,6 +728,8 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).toContain('Rewrite brief')
     expect(html).not.toContain('Survey now')
     expect(html).not.toContain('Mind reasoning')
+    // Pause freezes the orchestrator, which the story mind never starts.
+    expect(html).not.toContain('data-testid="mind-pause"')
     expect(html).toContain('data-testid="mind-mode"')
     expect(html).toContain('layout lean · memo on · repeat guard on · phase watch 30 s')
     expect(html).toContain('2 exchanges · rev 2 · phase hunt_1')
@@ -756,6 +759,11 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).toMatch(/title="Ada Lovelace" data-testid="mind-revision-by"[^>]*>set by director</)
     expect(html).toMatch(/title="Ada Lovelace" data-testid="mind-revision-by"[^>]*>reset</)
     expect(html).not.toContain('>Ada Lovelace<')
+  })
+  it('a story mind a classic run left paused can still be resumed', () => {
+    const m = newModeReport()
+    const html = render({ minds: [{ ...m, status: { ...(m.status as Record<string, unknown>), mind: { paused: true } } } as AgentMindSummary] })
+    expect(html).toMatch(/data-testid="mind-pause"[^>]*>Resume mind</)
   })
   it('opens a new-mode file: first met, memos by voice (🫀 at the heart), gifts, filings, the chart, no Set trust', () => {
     const m = newModeReport()

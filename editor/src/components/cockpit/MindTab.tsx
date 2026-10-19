@@ -707,9 +707,14 @@ function ControlPanel({ character, mind }: { character: string | null; mind: Age
           {survey.label}
         </button>
       )}
-      <button className={btn} disabled={disabled} onClick={() => void send({ action: 'pause', character, on: !paused })} title="Pause: replies keep coming, but the mind stops changing">
-        {paused ? 'Resume mind' : 'Pause mind'}
-      </button>
+      {/* Pause freezes the orchestrator. The story mind never starts one, so
+          the button would do nothing there; it stays only to resume a mind a
+          classic run left paused. */}
+      {(!fresh || paused) && (
+        <button className={btn} disabled={disabled} onClick={() => void send({ action: 'pause', character, on: !paused })} title="Pause: replies keep coming, but the mind stops changing" data-testid="mind-pause">
+          {paused ? 'Resume mind' : 'Pause mind'}
+        </button>
+      )}
       {!fresh && (
         <button className={btn} disabled={disabled} onClick={() => void send({ action: 'thinking', character, on: !thinking })} title="Show the orchestrator model's reasoning in the trace (slower)">
           Mind reasoning {thinking ? 'on' : 'off'}

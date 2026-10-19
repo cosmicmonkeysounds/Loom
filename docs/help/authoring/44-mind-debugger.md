@@ -199,7 +199,7 @@ thoughts, so a console opened late still sees the night.
 | **Nudge** | whisper to the mind. The voice obeys it on its very next line. In classic, the survey it queues folds it into the brief and clears it; under the story mind there is no survey, and the whisper stays until the next Rewrite brief or phase change. "Be shaken: someone just read your LiveJournal." |
 | **Survey now** (classic) | the orchestrator looks at the house immediately |
 | **Rewrite brief** (story mind) | one voice call rewrites his brief from the phase card, your whispers and a digest of the house; it holds as *set by director* until the next phase |
-| **Pause / Resume mind** | freeze the mind: replies keep coming, but nothing changes it until you resume |
+| **Pause / Resume mind** (classic) | freeze the mind: replies keep coming, but nothing changes it until you resume. The story mind has no orchestrator to pause, so the button is gone there (it shows *Resume mind* only for a mind a classic run left paused) |
 | **Mind reasoning on / off** (classic) | show the orchestrator's thinking in the trace (slower) |
 | **voice effort** | the voice model's reasoning effort: none / low / medium / high |
 | **Reset mind** | the character back at the doors — stage one, drives at their opening values, nothing learned. The story keeps running. A story restart (↺ in the header) does exactly this on its own, through the same channel. |
