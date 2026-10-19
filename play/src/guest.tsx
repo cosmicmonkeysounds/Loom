@@ -39,7 +39,7 @@ import { claimFromSearch, registerErrorText } from "./claim.ts";
 import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, defectTargets, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
-import { WALLET_ROOM, withThe } from "./threads.ts";
+import { CODEX_ROOM, WALLET_ROOM, withThe } from "./threads.ts";
 import { BalancePill, FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, frozenUntil, guestWalletActions, useWalletClock, type WalletSheet } from "./wallet.tsx";
 import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
@@ -49,6 +49,7 @@ import { redeemErrorText } from "./codex.ts";
 import { activePins, activeTakeover } from "./pins.ts";
 import { Takeover } from "./takeover.tsx";
 import { CountdownStrip } from "./countdown.tsx";
+import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "./guest-scan.tsx";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const host = usePlayHost();
@@ -422,7 +423,7 @@ function PeopleSheet({ session, only, onClose }: { session: GuestSession; only?:
 }
 
 /** The identity card at the top of the sidebar: who you are, where you are. */
-function IdentityCard({ s, onPeople, onHelp, onProfile, onWallet }: { s: GuestSession; onPeople: () => void; onHelp: () => void; onProfile: () => void; onWallet: () => void }) {
+function IdentityCard({ s, onPeople, onHelp, onProfile, onWallet, onScan }: { s: GuestSession; onPeople: () => void; onHelp: () => void; onProfile: () => void; onWallet: () => void; onScan: () => void }) {
   const st = s.status;
   const captured = st?.captured ?? false;
   const restricted = st?.restricted ?? false;
@@ -443,6 +444,9 @@ function IdentityCard({ s, onPeople, onHelp, onProfile, onWallet }: { s: GuestSe
         </div>
       </div>
       <div className="hud">
+        <button className="icon-btn" title="Scan a code on the wall" aria-label="Scan a code" onClick={onScan}>
+          📷
+        </button>
         <button className="icon-btn" title="People" onClick={onPeople} data-tour="people">
           👥
         </button>
@@ -501,6 +505,13 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [codexNote, setCodexNote] = useState<string | null>(null);
   // The Wallet room's sheets: Send / Request / Trade a fact / Stimulus.
   const [walletSheet, setWalletSheet] = useState<WalletSheet | null>(null);
+  // 📷 Scan: a wall code read in this session (never a new tab).
+  const [scanning, setScanning] = useState(false);
+  // A codex / check-in link opened with no session here: the landing says
+  // to type it in the app the guest joined with, unless they pick Join.
+  const [landing] = useState(() => (host.ownsPage ? landingLink(window.location.search) : null));
+  const [joinAnyway, setJoinAnyway] = useState(false);
+  const landingTitle = useLandingBrand().title;
   const rootRef = useRef<HTMLDivElement>(null);
   useDocumentTitle(s.me?.title);
   // K-31a: `!` alerts + a character's DMs on a locked phone.
@@ -541,7 +552,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     if (tourSeq !== null && !wide && activeId !== null) t.back();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourSeq, wide]);
-  if (!s.me) return host.embedded ? <SessionEnded notice={s.notice} /> : <GuestRegister session={s} />;
+  if (!s.me) {
+    if (host.embedded) return <SessionEnded notice={s.notice} />;
+    if (landing !== null && !joinAnyway) return <LinkLanding link={landing} title={landingTitle} onJoin={() => setJoinAnyway(true)} onPerformer={onLeave} />;
+    return <GuestRegister session={s} />;
+  }
 
   const captured = st?.captured ?? false;
   const banner = s.alert ? <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} /> : null;
@@ -556,6 +571,27 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // under the room header — and under the identity card on a phone's room
   // list, so the clock is never one tap away.
   const clocks = <CountdownStrip countdowns={st?.countdowns} clock={st?.clock} paused={st?.paused === true} />;
+  // A scanned codex code redeems like a typed one (the Codex room answers a
+  // wrong code itself); a room's sign checks in and opens that room.
+  const onScanned = async (scan: Exclude<GuestScan, { kind: "note" }>): Promise<string | null> => {
+    if (scan.kind === "checkin") {
+      await s.checkin(scan.at);
+      return null;
+    }
+    t.open(CODEX_ROOM);
+    try {
+      await s.redeem(scan.code);
+      setCodexNote(null);
+    } catch (e) {
+      setCodexNote(redeemErrorText(e));
+    }
+    return null;
+  };
+  const scanButton = (
+    <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => setScanning(true)}>
+      📷
+    </button>
+  );
   const widgets = {
     answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}),
     answered: s.widgetAnswers,
@@ -642,6 +678,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           widgets={widgets}
           onPeople={() => setPeople(new Set((active.people ?? []).map((p) => p.id)))}
           strip={clocks}
+          composerExtra={active.kind === "codex" ? scanButton : undefined}
           footer={
             active.kind === "codex" && codexNote !== null ? (
               <p className="notice" role="status">
@@ -666,7 +703,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       onOpen={t.open}
       header={
         <>
-          <IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} onWallet={() => t.open(WALLET_ROOM)} />
+          <IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} onWallet={() => t.open(WALLET_ROOM)} onScan={() => setScanning(true)} />
           {!wide && clocks}
         </>
       }
@@ -727,6 +764,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
+      {scanning && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => setScanning(false)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (
         <PeopleAmountSheet
           mode={walletSheet}

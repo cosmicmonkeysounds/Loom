@@ -771,6 +771,10 @@ export interface GuestSession {
   leaveChannel: (channel: string) => Promise<unknown>;
   /** Codex: type (or scan) an unlock code. Resolves to the entry unlocked, if any. */
   redeem: (code: string) => Promise<string | null>;
+  /** Check in at a room's sign (its slug, K-13) and open that room — or
+   *  banner why not (captured, on rails, a room not open yet). Resolves to
+   *  the room's channel, or null when refused. */
+  checkin: (at: string) => Promise<string | null>;
   /** Codex: hand an entry you hold to another participant or a listed character. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
   /** The wallet (a story with a `currency:`): every call posts to its route;
@@ -1118,6 +1122,21 @@ export function useGuestSession(): GuestSession {
     threads.open(CODEX_ROOM);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCodex]);
+  const threadsRef = useRef(threads);
+  threadsRef.current = threads;
+  const checkin = useCallback(
+    async (at: string): Promise<string | null> => {
+      try {
+        const r = await post<{ channel: string }>("/api/guest/checkin", { at });
+        threadsRef.current.open(r.channel);
+        return r.channel;
+      } catch (e) {
+        alertsRef.current?.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true });
+        return null;
+      }
+    },
+    [post],
+  );
   // A room's sign carries `?checkin=<slug>` (K-13): check in once signed in
   // with the doors open, then open that room's chat — or banner why not
   // (captured, still on rails, a room the story hasn't opened yet).
@@ -1131,9 +1150,7 @@ export function useGuestSession(): GuestSession {
     } catch {
       /* fine */
     }
-    void post<{ channel: string }>("/api/guest/checkin", { at })
-      .then((r) => threads.open(r.channel))
-      .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true }));
+    void checkin(at);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
   const roomLinkPending = useRoomLinks(threads, me !== null && ready && status !== null, false);
@@ -1161,6 +1178,7 @@ export function useGuestSession(): GuestSession {
     inviteToChannel,
     leaveChannel,
     redeem,
+    checkin,
     shareCodex,
     wallet,
     message,

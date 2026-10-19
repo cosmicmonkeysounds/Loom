@@ -42,6 +42,7 @@ import {
   type WorldLine,
 } from "../../core/src/cue-sheet.ts";
 import { claimFromSearch } from "./claim.ts";
+import { landingLink } from "./guest-scan.tsx";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -103,13 +104,14 @@ export type AppRole = "none" | "guest" | "prime" | "director";
 
 /** The role a fresh page opens on: `?role=director` whatever the phone
  *  holds, else the stored session (guest, performer, then director), else
- *  an invitation's `?claim=` link (only ever a guest's) the guest join. */
+ *  a guest's link: an invitation's `?claim=` (the guest join) or a wall
+ *  QR's `?unlock=` / `?checkin=` (the guest app's wrong-browser landing). */
 export function initialRole(search: string, stored: (key: string) => string | null): AppRole {
   if (directorFromSearch(search)) return "director";
   if (stored("loom.guest")) return "guest";
   if (stored("loom.prime")) return "prime";
   if (stored(DIRECTOR_KEY)) return "director";
-  if (claimFromSearch(search) !== null) return "guest";
+  if (claimFromSearch(search) !== null || landingLink(search) !== null) return "guest";
   return "none";
 }
 
