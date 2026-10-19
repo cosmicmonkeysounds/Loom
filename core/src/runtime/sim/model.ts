@@ -288,8 +288,10 @@ export interface InteractionDef {
    *  suggesting it as NEXT after it has fired. */
   repeat: boolean;
   /** `by: Clippy, Antivirus` — whose button this is (characters, or a
-   *  GROUP's members): a performer's guest card leads with their own and
-   *  folds the rest away. Empty = anyone's. Advisory, never enforced. */
+   *  GROUP's members, plus any character owning a hook for it): a
+   *  performer's guest card leads with their own, and `/api/prime/act`
+   *  refuses another booth's press (403; a moderator's booth may press
+   *  any). Empty = anyone's. */
   by: string[];
   /** `while: Night.phase == "bingo_results"` — when the button is on offer.
    *  A guest's is hidden while false (evaluated with the guest as the

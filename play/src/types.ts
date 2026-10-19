@@ -107,6 +107,9 @@ export interface Interaction {
   /** Whose button this is (character ids, the INTERACTION's `by:` + owned
    *  hooks). Absent = anyone's. */
   actors?: string[];
+  /** True when the INTERACTION declares `by:`: only its `actors` may press
+   *  it (the server refuses another booth), so a booth doesn't offer it. */
+  only?: true;
   /** False while its `while:` is false — not on offer right now. */
   live?: false;
   /** `arm: true`: the button arms on the first tap and fires on the second

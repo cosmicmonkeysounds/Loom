@@ -354,6 +354,113 @@ describe("/api/prime/act", () => {
   });
 });
 
+// `by:` on a performer button: whose it is. A ROLE hook ignores the press's
+// actor, so before wave 11's integration any booth could press another's
+// (the show's ♟ `beat_the_machine`, `by: Hosts, Antivirus`).
+const BY_SOURCE = `# By
+start: Gate
+
+LOCATION Gate
+
+GROUP Hosts
+  joinable: false
+
+ROLE Guest
+  marks: 0 to 10 = 0
+  pats: 0 to 10 = 0
+  when verdict for guest:
+    set guest.marks += 1
+  when pat for guest:
+    set guest.pats += 1
+
+CHARACTER Clippy
+  faction: Hosts
+  listed: true
+
+CHARACTER Norton
+  listed: true
+
+CHARACTER Recycling Bin
+  when empty for guest:
+    set guest.pats += 5
+
+INTERACTION verdict
+  label: Mark them
+  who: performer
+  by: Hosts
+
+INTERACTION pat
+  label: Pat them
+  who: performer
+
+INTERACTION empty
+  label: Empty the bin
+  who: performer
+  by: Recycling Bin
+
+== Gate
+  setting: Gate
+Narrator: The gate.
+`;
+
+describe("/api/prime/act honours an INTERACTION's `by:`", () => {
+  const byRuntime = () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-ix-by-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "by", scenarioSource: BY_SOURCE, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    return rt;
+  };
+  const booth = async (rt: EventRuntime, character: string) =>
+    (await post(rt, "/api/prime/login", { character, passcode: CODES.prime })).json.token as string;
+  const num = (rt: EventRuntime, path: string) => (rt.liveSim!.world.get(path) as { value: number } | undefined)?.value;
+
+  it("a GROUP's member presses it; another booth gets a 403 that never reads as signed out, and nothing fires", async () => {
+    const rt = byRuntime();
+    const g = await guest(rt);
+    const norton = await booth(rt, "Norton");
+    const before = rt.liveSim!.log.len();
+    const refused = await post(rt, "/api/prime/act", { token: norton, name: "verdict", guest: g.id });
+    expect(refused.status).toBe(403);
+    expect(refused.json.error).toMatch(/not your button/u);
+    expect(refused.json.error).toContain("Hosts");
+    expect(refused.json.error).not.toMatch(/sign in/iu); // the booth would drop its session
+    expect(rt.liveSim!.log.len()).toBe(before);
+    expect(num(rt, `${g.id}.marks`)).toBe(0);
+    const clippy = await booth(rt, "Clippy");
+    expect((await post(rt, "/api/prime/act", { token: clippy, name: "verdict", guest: g.id })).status).toBe(200);
+    expect(num(rt, `${g.id}.marks`)).toBe(1);
+  });
+
+  it("a button with no `by:` stays anyone's; a character's own hook-owned button is theirs", async () => {
+    const rt = byRuntime();
+    const g = await guest(rt);
+    const norton = await booth(rt, "Norton");
+    expect((await post(rt, "/api/prime/act", { token: norton, name: "pat", guest: g.id })).status).toBe(200);
+    expect((await post(rt, "/api/prime/act", { token: norton, name: "empty", guest: g.id })).status).toBe(403);
+    const bin = await booth(rt, "Recycling Bin");
+    expect((await post(rt, "/api/prime/act", { token: bin, name: "empty", guest: g.id })).status).toBe(200);
+    expect(num(rt, `${g.id}.pats`)).toBe(6);
+  });
+
+  it("a moderator's booth may press any, as the director's quick-fire can", async () => {
+    const rt = byRuntime();
+    const g = await guest(rt);
+    const norton = await booth(rt, "Norton");
+    expect((await post(rt, "/api/mod/login", { token: norton, passcode: CODES.mod })).status).toBe(200);
+    expect((await post(rt, "/api/prime/act", { token: norton, name: "verdict", guest: g.id })).status).toBe(200);
+    expect(num(rt, `${g.id}.marks`)).toBe(1);
+  });
+
+  it("the booth's view says which buttons are enforced (`only`), never one with no `by:`", () => {
+    const sim = Sim.fromSources(BY_SOURCE);
+    const p = primeView(sim, "Norton").interactions;
+    expect(p.find((i) => i.id === "verdict")).toMatchObject({ actors: ["Clippy"], only: true });
+    expect(p.find((i) => i.id === "empty")).toMatchObject({ actors: ["Recycling Bin"], only: true });
+    expect(p.find((i) => i.id === "pat")?.only).toBeUndefined();
+  });
+});
+
 describe("/api/mod/signal as a character (`actor`)", () => {
   it("fires only that character's hooks — the director's performer-lens path", async () => {
     const rt = freshRuntime();

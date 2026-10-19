@@ -2978,7 +2978,9 @@ INTERACTION crew_through_the_door
 // `by:` names whose button it is (a character, or a GROUP's members; a
 // character that owns a hook for it counts too) and `while:` when it is
 // on offer: a booth's card leads with its own live buttons and folds the
-// rest under More. Neither is enforced — the hooks still guard.
+// rest under More. `by:` is enforced: the server refuses another booth's
+// press (a director's quick-fire still fires it), and a booth never offers
+// another character's. `while:` is not — the hooks still guard.
 // A performer button's `while:` is read once per booth, with no guest
 // bound: it sees Night.* / self.* only, never program.* (an unbound
 // `program.x` reads false and folds the button on every card). Per-guest

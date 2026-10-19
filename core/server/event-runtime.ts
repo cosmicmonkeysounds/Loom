@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { byRefusal, cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -4293,6 +4293,18 @@ export class EventRuntime {
           return true;
         }
         const character = this.characterOf(token);
+        // `by:` is whose button it is (its characters, a GROUP's members, and
+        // any character owning a hook for it — `interactionActors`, what the
+        // booth leads with): another booth's press is refused, so a ROLE hook
+        // (which ignores the actor) can't be pressed from the wrong card. A
+        // button with no `by:` stays anyone's; a moderator's booth may press
+        // any (as the director's quick-fire can). Never "sign in" here: that
+        // answer drops a booth.
+        const refusal = admin ? null : byRefusal(this.sim!, def, character);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: refusal });
+          return true;
+        }
         this.fanout(this.commit("signal", name, guest, null, character));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest) });
         return true;

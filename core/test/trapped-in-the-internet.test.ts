@@ -2037,6 +2037,31 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(booth.find((i) => i.id === "send to the internet")?.arm).toBeUndefined();
   });
 
+  it("integration: a booth presses only its own `by:` buttons — a Hosts verdict or the patch-bay radio from Norton's is refused", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-by-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    expect(g.status).toBe(200);
+    const id = g.json["id"] as string;
+    const booth = async (character: string) => (await call(rt, "POST", "/api/prime/login", { character, passcode: CODES.prime })).json["token"] as string;
+    const norton = await booth("Norton Anti-Virus");
+    const act = (token: string, name: string) => call(rt, "POST", "/api/prime/act", { name, guest: id }, { token });
+    // ✅ is a ROLE hook (it ignores who pressed): only the Hosts' booths may.
+    const refused = await act(norton, "accurate_q1");
+    expect(refused.status).toBe(403);
+    expect(String(refused.json["error"])).toMatch(/not your button/u);
+    expect((await act(norton, "radio_combo_a")).status).toBe(403); // the patch-bay watch's
+    expect((await act(norton, "send to the internet")).status).toBe(200); // no `by:`: anyone's
+    expect((await act(norton, "unmark_for_reinstallation")).status).toBe(200); // by: Hosts, Antivirus
+    expect((await act(await booth("Clippy"), "accurate_q1")).status).toBe(200);
+    // Norton's booth no longer offers the Hosts' verdicts at all.
+    const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(norton)}`, {})).json as unknown as PrimeView;
+    expect(view.interactions.find((i) => i.id === "accurate_q1")?.only).toBe(true);
+    expect(view.interactions.find((i) => i.id === "send to the internet")?.only).toBeUndefined();
+  });
+
   it("the first opening reveals the room to everyone first, then Trabolta speaks candidly in The Server Room (the server-room terminal)", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
