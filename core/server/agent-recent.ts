@@ -15,7 +15,12 @@
 //! A house line (or a gift title) that mentions any facts.json answer form
 //! is dropped too, before the verdict and after it (`answerMentions`): his
 //! public song after the pickup line is accepted is the house's, never a
-//! line of his prompt.
+//! line of his prompt. So is a house line (or a gift title) carrying any
+//! current value of a `secret: true` character (the show's Kernel:
+//! *"{Kernel.virus_planter} planted a virus in me."* in his recount), by
+//! word, before the verdict and after it (`secretMentions`). A house line
+//! filled in from a public global (`Night.award_value` in the Best Liar
+//! award) stays: that value already rides every request's `world`.
 
 import { mentionsKey, nearTokens } from "../src/answer-match.ts";
 import type { AgentRecent } from "./agents.ts";
@@ -91,6 +96,34 @@ export interface RecentInput {
   /** Does a text mention a facts.json answer (`answerMentions`)? Absent: no
    *  facts book in force, nothing to drop. */
   mentionsAnswer?: (text: string) => boolean;
+  /** Does a text carry a value no agent may read (`secretMentions`)?
+   *  Absent: nothing to drop. */
+  mentionsSecret?: (text: string) => boolean;
+}
+
+/** Fold (the contract's): lowercase, every run of characters other than
+ *  `a-z0-9` one space, trimmed. */
+const fold = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim();
+
+/**
+ * The leak check over the values no agent may read — the current string
+ * values of every `secret: true` character (the Kernel's verdicts, combos,
+ * facts.json door.code, the virus planter's name …): a value's folded
+ * words as a whole-word run of the text's. `none` and the empty value are
+ * unset; a value of under three letters counts only when it is a
+ * participant's display name (a two-letter program planting the virus),
+ * so a stray letter never drops every line. Over-matching is the safe
+ * side: a house line that only happens to say *stay* while the Kernel's
+ * majority is `stay` is dropped too, and his prompt merely loses it.
+ */
+export function secretMentions(values: readonly string[], names: readonly string[] = []): (text: string) => boolean {
+  const people = new Set(names.map(fold).filter((n) => n !== ""));
+  const runs = [...new Set(values.map(fold))].filter((v) => v !== "" && v !== "none" && (v.length >= 3 || people.has(v)));
+  if (runs.length === 0) return () => false;
+  return (text: string): boolean => {
+    const t = ` ${fold(text)} `;
+    return runs.some((v) => t.includes(` ${v} `));
+  };
 }
 
 /**
@@ -142,7 +175,7 @@ export function buildRecent(input: RecentInput): AgentRecent[] {
     const m = messages[i]!;
     if (!inWindow(m)) continue;
     if (m.from === character && m.kind === "line" && m.audience === "all" && !m.hidden) {
-      if (house.length < RECENT_HOUSE_MAX && input.mentionsAnswer?.(m.text) !== true) house.push({ kind: "house", text: m.text, at: m.ts });
+      if (house.length < RECENT_HOUSE_MAX && input.mentionsAnswer?.(m.text) !== true && input.mentionsSecret?.(m.text) !== true) house.push({ kind: "house", text: m.text, at: m.ts });
       continue;
     }
     if (m.channel !== CODEX_ROOM.channel || m.kind !== "codex" || m.codex === undefined) continue;
@@ -151,7 +184,7 @@ export function buildRecent(input: RecentInput): AgentRecent[] {
     const def = input.codex(m.codex.entry);
     if (def === undefined || def.secret) continue;
     if (carriesMark(def.title) || carriesMark(def.text) || carriesMark(m.codex.title) || carriesMark(m.text)) continue;
-    if (input.mentionsAnswer?.(m.codex.title) === true) continue;
+    if (input.mentionsAnswer?.(m.codex.title) === true || input.mentionsSecret?.(m.codex.title) === true) continue;
     gifts.push({ kind: "gift", title: m.codex.title, new: true, at: m.ts });
   }
 

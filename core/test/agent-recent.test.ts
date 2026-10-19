@@ -25,7 +25,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { answerMentions, buildRecent, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
+import { answerMentions, buildRecent, secretMentions, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
 import type { AgentRecent, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
@@ -431,6 +431,32 @@ describe("answerMentions: a house line naming an answer never reaches him", () =
   });
 });
 
+describe("secretMentions: a house line carrying a secret character's value never reaches him (C0.1)", () => {
+  // Made-up values: nothing here is a show secret.
+  const mentions = secretMentions(["Bea", "none", "", "x", "the moon is cheese", "accurate"], ["Ada", "Bea", "Cy"]);
+
+  it("finds a value as a whole-word run, folded; none, empty and a stray short value are unset", () => {
+    expect(mentions("Bea planted a virus in me.")).toBe(true);
+    expect(mentions("THE MOON, is cheese!")).toBe(true);
+    expect(mentions("Your fact is accurate.")).toBe(true);
+    expect(mentions("Beatrice planted nothing.")).toBe(false);
+    expect(mentions("None of you saw x coming.")).toBe(false);
+    expect(mentions("Welcome to the kitchen.")).toBe(false);
+    // A two-letter value counts when it is a participant's display name.
+    expect(secretMentions(["Cy"], ["Cy"])("Cy planted a virus in me.")).toBe(true);
+    expect(secretMentions(["Cy"], [])("Cy planted a virus in me.")).toBe(false);
+    expect(secretMentions([])("anything")).toBe(false);
+  });
+
+  it("buildRecent drops such a house line (the next older one takes its place) and such a gift", () => {
+    const messages = [house("Hello, house.", 1), house("Bea planted a virus in me.", 2), gift("The Ribbon", 3), { ...gift("The Recipe", 4), codex: { entry: "The Recipe", title: "The moon is cheese", about: null, via: "share" as const, from: "Ada" } }];
+    expect(buildRecent(input({ messages, mentionsSecret: mentions }))).toEqual([
+      { kind: "house", text: "Hello, house.", at: 1 },
+      { kind: "gift", title: "The Ribbon", new: true, at: 3 },
+    ]);
+  });
+});
+
 // ───────────────────────── on the runtime ─────────────────────────
 
 describe("the request (recent on, the default)", () => {
@@ -521,6 +547,45 @@ describe("the request (recent on, the default)", () => {
     expect(r!.recent).toEqual([
       { kind: "house", text: "Attention, house. The kitchen is open.", at: expect.any(Number) },
       { kind: "gift", title: "The Clip", new: true, at: expect.any(Number) },
+    ]);
+    rt.dispose();
+  });
+
+  it("a house line filled in from a secret character is dropped, one from a public global stays (C0.1)", async () => {
+    const rt = runtime(
+      `${SOURCE}
+CHARACTER Vault
+  playable: false
+  secret: true
+  planter: text? = none
+
+INTERACTION plant
+  who: guest
+
+when plant for program:
+  set Vault.planter = program.name
+  set Tally.count = 3
+
+== Recount
+Trabolta: {Vault.planter} planted a virus in me.
+
+== Tally Up
+Trabolta: Lies I believed tonight: {Tally.count}.
+`,
+    );
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Dot", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    expect((await call(rt, "POST", "/api/guest/act", { name: "plant" }, { token })).status).toBe(200);
+    for (const name of ["Announce", "Tally Up", "Recount"]) expect((await call(rt, "POST", "/api/mod/beat", { name }, { moderator: true })).status, name).toBe(200);
+    // Not vacuous: his recount said the planter's name to the whole house.
+    expect(rt.chatHistoryFor(g.json["id"] as string).some((m) => m.from === "Trabolta" && m.audience === "all" && m.text === "Dot planted a virus in me.")).toBe(true);
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hi" }, { token });
+    const [r] = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
+    expect(r!.recent).toEqual([
+      { kind: "house", text: "Lies I believed tonight: 3.", at: expect.any(Number) },
+      { kind: "house", text: "Attention, house. The kitchen is open.", at: expect.any(Number) },
     ]);
     rt.dispose();
   });
