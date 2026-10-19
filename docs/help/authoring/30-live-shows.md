@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, reserved, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: live, judge, reserved, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -138,7 +138,8 @@ COHORT Early Arrivals
   (*Trapped in the Internet*'s nine featured programs). Everyone else's
   picker shows it **🔒 Reserved**, and its `wiki:` article too in the
   directory search; registering it without the invitation answers 409
-  *reserved*. Each reserved program has a secret **claim link**, the
+  *reserved*. Its name without the first word is held too (*Excel* for
+  *Microsoft Excel*, *Paint* for *MS Paint*). Each reserved program has a secret **claim link**, the
   same across restarts and End → relaunch: Run → 🖨 Print sheet prints
   one invitation per program, and an invitee who scans it gets their
   program (with the claim, registering its `wiki:` article makes them
@@ -175,7 +176,10 @@ Gardeners)`, `guest.group == The_Gardeners` — and react to them with
 `when` hooks ([Live verbs](live-verbs.md)). A show can also give its
 guests money: one header line, `currency: score as Truthcoin`, turns a
 ROLE slot into a wallet they send, request and trade from their phones
-([currency](currency.md)).
+([currency](currency.md)). A show that judges filed facts against a
+`facts.json` key can name an agent-voiced character to rule on the
+near misses with `judge: <Character>` in the header (*Trapped in the
+Internet*: `judge: Trabolta`); [cards & widgets](widgets.md) has how.
 
 ## One beat, many participants
 
