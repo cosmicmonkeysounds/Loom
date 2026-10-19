@@ -247,16 +247,17 @@ countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
   stops while the run is paused. The Director page's NOW card lists the
   running countdowns when there is nothing to press, so a quiet sheet
   during a timer reads as meant.
-- End a `countdown:` line with **`, for guests`** and the guests see it
-  too, in a strip under their room header:
 
-  ```loom
-  countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guests
-  ```
+End a `countdown:` line with **`, for guests`** and the guests see it
+too, ticking in a strip under their room header:
 
-  Only the flagged lines reach guests, never a head on a `secret: true`
-  CHARACTER, and only while one is running. `for guests` on a `watch:`
-  line is a lint (`L1205`): only a countdown takes it.
+```loom
+countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guests
+```
+
+Only the flagged lines reach guests, never a head on a `secret: true`
+CHARACTER, and only while one is running. `for guests` on a `watch:`
+line is a lint (`L1205`): only a countdown takes it.
 
 These lines belong in the **header** — above the file's first beat,
 declaration or rule, which is what ends it (blank and comment lines
