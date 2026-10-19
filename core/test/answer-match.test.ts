@@ -14,7 +14,9 @@ describe("nearMatch", () => {
     ["Mister Pickles", "Pickles", "honorific dropped"],
     ["Mr. Pickles", "Dr Pickles", "another honorific"],
     ["Mister Pickles", "mister pickle", "plural"],
-    ["Hopelessly Devoted to You", "hopelessly devoted to yu", "one deletion"],
+    ["Mr. Pickles", "Mr Pickels", "the task's own pair"],
+    ["Mister Pickles", "Mister Pickels", "a transposition"],
+    ["Tabby", "tabbby", "one insertion in a word"],
     ["Hopelessly Devoted to You", "hopelesly devotd to you", "two edits on 8+ chars"],
     ["Grok", "Grko", "a transposition"],
     ["Grok", "Groc", "a substitution"],
@@ -30,6 +32,9 @@ describe("nearMatch", () => {
     ["Appendix Z Loose Ends", "loose ends appendix z", "token set in another order"],
     ["ext 1978", "1978 ext", "token set with a number"],
     ["Room 101", "Rooom 101", "a spelling slip beside an exact number"],
+    ["9 a.m.", "9am", "a.m. run together"],
+    ["9 a.m.", "nine am", "an hour in words"],
+    ["pickle jar", "picklejar", "a missing space between words"],
     ["you are the one that I want", "you are the one that i wnat", "a transposition in a long line"],
     ["Mister Pickles", "Mister Pickles", "exact is near too"],
     ["Mr. Pickles", "mrpickles", "a missing space after the honorific"],
@@ -50,6 +55,26 @@ describe("nearMatch", () => {
     ["ab", "ac", "too short to misspell"],
     ["Tabby", "", "empty"],
     ["Mister Pickles", "Mr", "only an honorific"],
+    // Wave 11 review: a short word decides the answer, never swallowed by the
+    // words around it.
+    ["Appendix Z Loose Ends", "Appendix A Loose Ends", "a one-letter word changed"],
+    ["appendix z", "Appendix A", "a one-letter word changed"],
+    ["appendix z", "appendix y", "a one-letter word changed"],
+    ["didn't understand", "did understand", "the opposite meaning"],
+    ["Hopelessly Devoted to You", "hopelessly devoted to yu", "a short word must be exact"],
+    ["Grok", "grk", "a short word must be exact"],
+    ["Mister Pickles", "Mister Tickles", "another first letter"],
+    ["Mister Pickles", "nickles", "another first letter"],
+    // A digit inside a word is a number; a.m. / p.m. are exact.
+    ["9am", "8am", "another hour inside a word"],
+    ["9am", "9pm", "a.m. is not p.m."],
+    ["9:00am", "9:00pm", "a.m. is not p.m."],
+    ["9:00 a.m.", "9:00 p.m.", "a.m. is not p.m."],
+    ["9:00 a.m.", "9 p.m.", "a.m. is not p.m."],
+    ["9 a.m.", "nine p.m.", "a.m. is not p.m., in words"],
+    ["9 a.m.", "9:00 p.m.", "an extra number and p.m."],
+    ["Room 101", "Room101b", "a letter beside a number is a word"],
+    ["Appendix Z", "appendixa", "a run-together word must match exactly"],
   ];
   it.each(near)("%s ≈ %s (%s)", (key, answer) => {
     expect(nearMatch(key, answer)).toBe(true);
@@ -73,6 +98,8 @@ describe("nearTokens", () => {
     expect(nearTokens("oh no")).toEqual(["oh", "no"]); // "oh" starts no number
     expect(nearTokens("the virus")).toEqual(["virus"]);
     expect(nearTokens("Mister")).toEqual(["mister"]); // nothing left without it → kept
+    expect(nearTokens("9:00am")).toEqual(["9", "00", "am"]); // a digit run is its own token
+    expect(nearTokens("9:00 p.m.")).toEqual(["9", "00", "pm"]); // p.m. reads as one word
   });
 });
 

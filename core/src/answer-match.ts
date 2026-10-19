@@ -14,13 +14,20 @@
 //!   a thousands separator joins (`1,997` → `1997`);
 //! - **plurals** fold (`pickles` → `pickle`, `boxes` → `box`, `flies` → `fly`);
 //! - **token sets**: the same words in another order match;
-//! - **spelling**: a Damerau (optimal string alignment) distance ≤ 1 — ≤ 2
-//!   once both sides are 8+ characters — on what is left; nothing for a side
-//!   of 1–2 characters.
+//! - **spelling**, word by word (never over the joined line, so a short word
+//!   that decides the answer is never swallowed by a long one around it): a
+//!   word of 1–3 letters must match exactly (`a` ≠ `z`, `am` ≠ `pm`, `did` ≠
+//!   `didnt`); a word of 4–7 letters takes ≤ 1 Damerau (optimal string
+//!   alignment) edit, one of 8+ ≤ 2; a misspelled word keeps its first
+//!   letter (`Tickles` is not `Pickles`); and the line as a whole takes ≤ 1
+//!   edit (≤ 2 once 8+ characters) — a missing space (`mrpickles`) is one,
+//!   when the joined words match exactly.
 //!
-//! **Numbers match exactly only**: when either side carries a number, both
+//! **Numbers match exactly only**: a digit run is its own token even inside a
+//! word (`9am` → `9 am`), `a.m.` / `p.m.` read as `am` / `pm`, both sides
 //! must carry the same numbers in the same order (`1996` is never near
-//! `1997`, `10:00` never near `9:00`), and no edit may touch a digit.
+//! `1997`, `10:00` never near `9:00`, `9am` never near `8am` or `9pm`), and
+//! no edit may touch a digit.
 //!
 //! Pure, dependency-free, deterministic; the one fold is `facts.ts`'s.
 
@@ -120,7 +127,17 @@ function singular(w: string): string {
 export function nearTokens(s: string, opts: { honorifics?: boolean } = {}): string[] {
   const folded = foldAnswer(s);
   if (folded === "") return [];
-  const raw = folded.split(" ");
+  // A digit run is its own token (`9am` → `9 am`), and `a m` / `p m` (the
+  // fold of `a.m.` / `p.m.`) read as one word, so the hour is a number.
+  const split = folded.split(" ").flatMap((w) => w.match(/[0-9]+|[a-z]+/gu) ?? []);
+  const raw: string[] = [];
+  for (let i = 0; i < split.length; i++) {
+    const w = split[i]!;
+    if ((w === "a" || w === "p") && split[i + 1] === "m") {
+      raw.push(`${w}m`);
+      i += 1;
+    } else raw.push(w);
+  }
   // `grouped`: a digit token that may take a thousands group after it — one
   // the filer typed as 1–3 digits (`1` of `1,997`), or such a run joined.
   const tokens: string[] = [];
@@ -204,11 +221,43 @@ function nearAs(k: readonly string[], a: readonly string[]): boolean {
   if (kn.length !== an.length || kn.some((x, i) => x !== an[i])) return false;
   if (k.join(" ") === a.join(" ")) return true;
   if ([...new Set(k)].sort().join(" ") === [...new Set(a)].sort().join(" ")) return true;
-  // Spelling: the words around the numbers (the numbers already agree).
-  // Spaces stay in: a missing or extra one is one edit (`pickle sjar`).
+  // Spelling, word by word, under one budget for the whole line (spaces
+  // count: the line is the words joined, numbers left out).
   const kw = k.filter((t) => !isDigits(t)).join(" ");
   const aw = a.filter((t) => !isDigits(t)).join(" ");
   const shorter = Math.min(kw.length, aw.length);
   if (shorter < 3) return false;
-  return damerau(kw, aw) <= (shorter >= 8 ? 2 : 1);
+  const budget = shorter >= 8 ? 2 : 1;
+  if (k.length === a.length) return alignedEdits(k, a) <= budget;
+  // One space missing or extra: two neighbouring words of the longer side,
+  // run together, are exactly one word of the shorter side (the space is the
+  // one edit), and the rest lines up.
+  const [long, short] = k.length > a.length ? [k, a] : [a, k];
+  if (long.length - short.length !== 1 || budget < 1) return false;
+  for (let i = 0; i + 1 < long.length; i++) {
+    if (isDigits(long[i]!) || isDigits(long[i + 1]!)) continue;
+    const merged = [...long.slice(0, i), long[i]! + long[i + 1]!, ...long.slice(i + 2)];
+    if (merged[i] !== short[i]) continue;
+    if (1 + alignedEdits(merged, short) <= budget) return true;
+  }
+  return false;
+}
+
+/** The edits that turn `a` into `k` word by word (same length), or
+ *  Infinity when any word pair is past its own allowance: numbers exactly,
+ *  1–3 letters exactly, 4–7 letters ≤ 1 with the first letter kept, 8+ ≤ 2. */
+function alignedEdits(k: readonly string[], a: readonly string[]): number {
+  let total = 0;
+  for (let i = 0; i < k.length; i++) {
+    const x = k[i]!;
+    const y = a[i]!;
+    if (x === y) continue;
+    if (isDigits(x) || isDigits(y)) return Infinity;
+    const shorter = Math.min(x.length, y.length);
+    if (shorter <= 3 || x[0] !== y[0]) return Infinity;
+    const d = damerau(x, y);
+    if (d > (shorter >= 8 ? 2 : 1)) return Infinity;
+    total += d;
+  }
+  return total;
 }
