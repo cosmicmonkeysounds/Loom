@@ -27,6 +27,27 @@
 //! in silence when the laptop is down. The request stays queued, so a worker
 //! that comes back still answers it.
 //!
+//! **Behind, and stalled** (wave 11, single-worker first — the show runs one
+//! laptop). A worker answers its line one request at a time, so a burst
+//! waits: a request that has waited `busyAfterMs` (40 s), part of it in a
+//! worker's line behind another request, on a worker still answering posts
+//! the character's authored busy line (`CHARACTER … busy: …`) **once per
+//! thread** — never for a lone request the worker went straight to (its
+//! silence is the stall's to call). A worker whose head request goes
+//! unanswered `stallAfterMs` (60 s) is **stalled** — connected, but not
+//! answering: one `# hosts` line (`stalled`), the hold line once in every
+//! thread waiting on it, and no new dispatch while it stays stalled: new
+//! requests stay queued in the hub, and only what it already holds keeps
+//! the reply timeout's re-sends to it as before. The stall clears on its
+//! next answer (a late one to a cancelled copy too) or a reconnect (a new
+//! stream is a new worker); the queue then goes to it at once. No request is
+//! ever moved between workers on a stall.
+//!
+//! Within one stall a thread hears the hold line once, however many
+//! requests the guest's lines open meanwhile (a given-up request's thread
+//! starts its next request held); once the stall ends — or the worker goes
+//! offline, where the offline rule takes over — that is forgotten.
+//!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
 //! everything said meanwhile. The hub is transport-agnostic — workers are
@@ -637,6 +658,19 @@ interface OpenRequest {
   createdAt: number;
   /** The hold line was already offered for this request. */
   held: boolean;
+  /** It waited in a worker's line behind another request (a burst) — the
+   *  busy line's case; a request its worker went straight to never was. */
+  behind: boolean;
+}
+
+/** One agent character's line of requests, for the director (`CastSummary.agentQueue`). */
+export interface AgentQueue {
+  /** Open requests: in a worker's line, or queued in the hub. */
+  depth: number;
+  /** How long the oldest has waited (ms, hub clock); null when none. */
+  oldestMs: number | null;
+  /** Every connected worker voicing it has stalled (connected, not answering). */
+  stalled: boolean;
 }
 
 export interface AgentHubOptions {
@@ -663,6 +697,20 @@ export interface AgentHubOptions {
   hold?: (req: AgentRequest) => boolean;
   /** How long a queued request waits with nobody online before `hold` (20 s). */
   holdAfterMs?: number;
+  /**
+   * The request has waited `busyAfterMs` on a worker that is online and not
+   * stalled (a burst): post the character's busy line into the thread.
+   * Called at most once per thread (until a restart); returns whether a line
+   * was posted.
+   */
+  busy?: (req: AgentRequest) => boolean;
+  /** How long a request waits on a healthy worker before `busy` (40 s). */
+  busyAfterMs?: number;
+  /** A worker's head unanswered this long marks it stalled (60 s). */
+  stallAfterMs?: number;
+  /** A worker just stalled: the one `# hosts` line. `waiting` = the open
+   *  requests for its characters. */
+  stalled?: (worker: { name: string; characters: string[] }, waiting: number) => void;
   /** Dispatch attempts before a request is given up. */
   maxAttempts?: number;
   now?: () => number;
@@ -678,6 +726,15 @@ export class AgentHub {
   private readonly workers = new Map<string, AgentWorker>();
   private readonly open = new Map<string, OpenRequest>(); // request id →
   private readonly byThread = new Map<string, string>(); // thread key → request id
+  /** Stalled workers → the hub clock the stall was found at. */
+  private readonly stalls = new Map<string, number>();
+  /** Threads that heard the busy line (once per thread, until a restart). */
+  private readonly busyThreads = new Set<string>();
+  /** Threads that heard the hold line during the current stall of their
+   *  character's worker (thread key → character): a new request there
+   *  starts held, so one stall never says it twice. Forgotten when the
+   *  stall ends, the worker goes, or the character speaks. */
+  private readonly heldThreads = new Map<string, string>();
   private dispatches = 0;
 
   private readonly o: AgentHubOptions;
@@ -707,6 +764,24 @@ export class AgentHub {
     return false;
   }
 
+  /** Is a worker voicing `character` connected *and* answering (not stalled)? */
+  private canAnswer(character: string): boolean {
+    for (const w of this.workers.values()) if (w.characters.has(character) && !this.stalls.has(w.id)) return true;
+    return false;
+  }
+
+  /** `character`'s line right now (the director's queue readout). */
+  queue(character: string): AgentQueue {
+    let depth = 0;
+    let oldest: number | null = null;
+    for (const r of this.open.values()) {
+      if (r.req.character !== character) continue;
+      depth += 1;
+      if (oldest === null || r.createdAt < oldest) oldest = r.createdAt;
+    }
+    return { depth, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: this.isOnline(character) && !this.canAnswer(character) };
+  }
+
   /** Open requests (queued or in flight). */
   get pending(): AgentRequest[] {
     return [...this.open.values()].map((r) => r.req);
@@ -717,6 +792,7 @@ export class AgentHub {
   /** A worker connected: register it and hand it every queued request it can answer. */
   attach(worker: AgentWorker): void {
     this.workers.set(worker.id, worker);
+    this.pruneHeld();
     this.o.presence?.();
     for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
   }
@@ -724,6 +800,8 @@ export class AgentHub {
   /** A worker went away: its in-flight requests go back in the queue. */
   detach(workerId: string): void {
     if (!this.workers.delete(workerId)) return;
+    this.stalls.delete(workerId);
+    this.pruneHeld();
     for (const r of this.open.values()) {
       if (r.worker !== workerId) continue;
       r.worker = null;
@@ -765,20 +843,34 @@ export class AgentHub {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
-    const r: OpenRequest = { req, key: threadKey(thread), worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held };
+    const key = threadKey(thread);
+    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held: held || this.heldThreads.has(key), behind: false };
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
   }
 
-  /** Send `r` to the least-busy worker voicing its character (no-op if none). */
-  private dispatch(r: OpenRequest): void {
+  /** How many requests are in `workerId`'s line. */
+  private loadOf(workerId: string): number {
+    let load = 0;
+    for (const o of this.open.values()) if (o.worker === workerId) load += 1;
+    return load;
+  }
+
+  /**
+   * Send `r` to the least-busy worker voicing its character that is
+   * answering. A stalled worker takes no new dispatch: only `retryOn`, the
+   * worker the reply timeout just took `r` back from, gets its re-send
+   * (exactly as for a healthy worker — so a sent request never sits queued
+   * while an old copy may still be answered). Else `r` stays queued.
+   */
+  private dispatch(r: OpenRequest, retryOn: string | null = null): void {
     let best: AgentWorker | null = null;
     let bestLoad = Infinity;
     for (const w of this.workers.values()) {
       if (!w.characters.has(r.req.character)) continue;
-      let load = 0;
-      for (const o of this.open.values()) if (o.worker === w.id) load += 1;
+      if (this.stalls.has(w.id) && w.id !== retryOn) continue;
+      const load = this.loadOf(w.id);
       if (load < bestLoad) {
         best = w;
         bestLoad = load;
@@ -793,6 +885,7 @@ export class AgentHub {
     best.send("request", r.req);
     this.o.typing?.(r.req.thread, true);
     this.startHead(best.id);
+    if (r.startedAt === null) r.behind = true; // in line behind another
   }
 
   /** The oldest request in flight on `workerId` — the one it is working on
@@ -822,13 +915,65 @@ export class AgentHub {
    */
   settle(requestId: string, workerId?: string): { req: AgentRequest; followUp: boolean } | null {
     const r = this.open.get(requestId);
-    if (r === undefined) return null;
-    if (workerId !== undefined && r.worker !== null && r.worker !== workerId) return null;
+    // Any answer shows its worker is answering — a late one the hub refuses too.
+    if (r === undefined || (workerId !== undefined && r.worker !== null && r.worker !== workerId)) {
+      if (workerId !== undefined) this.answering(workerId);
+      return null;
+    }
     this.open.delete(requestId);
     if (this.byThread.get(r.key) === requestId) this.byThread.delete(r.key);
+    this.heldThreads.delete(r.key); // the character speaks
     this.o.typing?.(r.req.thread, false);
     if (r.worker !== null) this.startHead(r.worker);
+    const by = workerId ?? r.worker;
+    if (by !== null) this.answering(by);
     return { req: r.req, followUp: r.followUp };
+  }
+
+  /** `workerId` answered something: a stall ends, and the queue goes to it. */
+  private answering(workerId: string): void {
+    if (!this.workers.has(workerId) || !this.stalls.delete(workerId)) return;
+    this.pruneHeld();
+    this.o.presence?.();
+    for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
+  }
+
+  /** `workerId`'s head went unanswered `stallAfterMs`: mark it stalled, tell
+   *  the hosts once, and give every thread waiting on it the hold line. */
+  private stall(worker: AgentWorker): void {
+    this.stalls.set(worker.id, this.now());
+    this.o.presence?.();
+    const waiting = [...this.open.values()].filter((r) => r.worker === worker.id || (r.worker === null && worker.characters.has(r.req.character) && !this.canAnswer(r.req.character)));
+    this.o.stalled?.({ name: worker.name, characters: [...worker.characters].sort() }, waiting.length);
+    for (const r of waiting) this.holdOnce(r);
+  }
+
+  /** Is `character` online with only stalled workers (a stall episode)? */
+  private stalledOnly(character: string): boolean {
+    return this.isOnline(character) && !this.canAnswer(character);
+  }
+
+  /** The hold line landed in `r`'s thread: within a stall, remember it. */
+  private heard(r: OpenRequest): void {
+    if (this.stalledOnly(r.req.character)) this.heldThreads.set(r.key, r.req.character);
+  }
+
+  /** Forget the threads held during a stall that is over (an answer, a
+   *  reconnect, or nobody online — the offline rule's turn). */
+  private pruneHeld(): void {
+    for (const [key, character] of [...this.heldThreads]) if (!this.stalledOnly(character)) this.heldThreads.delete(key);
+  }
+
+  /** Say the hold line in `r`'s thread unless it was offered already;
+   *  a queued body is rebuilt so its eventual worker knows it was said. */
+  private holdOnce(r: OpenRequest): void {
+    if (r.held) return;
+    r.held = true;
+    if (this.o.hold?.(r.req) !== true) return;
+    this.heard(r);
+    if (r.worker !== null) return; // the worker answers the copy it holds
+    const fresh = this.o.build(r.req.thread, r.req.id);
+    if (fresh !== null) r.req = fresh;
   }
 
   /**
@@ -852,10 +997,14 @@ export class AgentHub {
     const maxAge = this.o.queueMaxAgeMs ?? AGENT_QUEUE_MAX_AGE_MS;
     const maxAttempts = this.o.maxAttempts ?? 2;
     const holdAfter = this.o.holdAfterMs ?? 20_000;
+    const busyAfter = this.o.busyAfterMs ?? 40_000;
+    const stallAfter = this.o.stallAfterMs ?? 60_000;
     const heads = new Set<OpenRequest>(); // each worker's oldest in flight
-    for (const w of this.workers.keys()) {
-      const h = this.headOf(w);
-      if (h !== null) heads.add(h);
+    for (const w of this.workers.values()) {
+      const h = this.headOf(w.id);
+      if (h === null) continue;
+      heads.add(h);
+      if (!this.stalls.has(w.id) && h.startedAt !== null && now - h.startedAt > stallAfter) this.stall(w);
     }
     for (const [id, r] of [...this.open]) {
       if (r.worker !== null && r.dispatchedAt !== null) {
@@ -875,20 +1024,22 @@ export class AgentHub {
           this.giveUp(id, r);
           continue;
         }
-        this.dispatch(r);
+        this.dispatch(r, worker);
       } else if (r.worker === null && now - r.req.at > maxAge) {
         this.giveUp(id, r);
-      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.isOnline(r.req.character)) {
-        // Nobody can answer: say the hold line once, keep the request queued
-        // so a worker that comes back still answers it.
-        r.held = true;
-        if (this.o.hold?.(r.req) === true) {
-          // The line is in the thread now: rebuild the queued body so a
-          // worker that comes back answers knowing it already said it.
-          const fresh = this.o.build(r.req.thread, r.req.id);
-          if (fresh !== null) r.req = fresh;
-        }
+      } else if (r.worker === null && !r.held && now - r.createdAt >= holdAfter && !this.canAnswer(r.req.character)) {
+        // Nobody can answer (none online, or only a stalled worker): say the
+        // hold line once, keep the request queued so a worker that comes
+        // back (or answers again) still answers it.
+        this.holdOnce(r);
       }
+    }
+    // Behind a burst on a worker still answering: the busy line, once per
+    // thread. A lone request's own wait is the stall's to call.
+    for (const r of this.open.values()) {
+      if (!r.behind || r.held || r.worker === null || this.stalls.has(r.worker) || this.busyThreads.has(r.key) || now - r.createdAt <= busyAfter) continue;
+      this.busyThreads.add(r.key);
+      this.o.busy?.(r.req);
     }
   }
 
@@ -896,10 +1047,9 @@ export class AgentHub {
    *  thread never got it. */
   private giveUp(id: string, r: OpenRequest): void {
     this.drop(id, r);
-    if (!r.held) {
-      r.held = true;
-      this.o.hold?.(r.req);
-    }
+    if (r.held) return;
+    r.held = true;
+    if (this.o.hold?.(r.req) === true) this.heard(r);
   }
 
   /**
@@ -919,6 +1069,7 @@ export class AgentHub {
       if (r.startedAt !== null) r.startedAt = moved(r.startedAt);
       r.req = { ...r.req, at: moved(r.req.at) };
     }
+    for (const [w, at] of this.stalls) this.stalls.set(w, moved(at));
   }
 
   /**
@@ -936,6 +1087,7 @@ export class AgentHub {
     const r = id === undefined ? undefined : this.open.get(id);
     if (id === undefined || r === undefined) return false;
     this.drop(id, r);
+    this.heldThreads.delete(key); // the character (a director) spoke
     if (r.worker !== null) {
       this.workers.get(r.worker)?.send("cancel", { id });
       this.o.typing?.(r.req.thread, false);
@@ -966,6 +1118,13 @@ export class AgentHub {
     }
     this.open.clear();
     this.byThread.clear();
+    // A new story: no stall carried over (a still-wedged worker stalls
+    // again on its first head), every thread may hear busy / hold anew.
+    const wasStalled = this.stalls.size > 0;
+    this.stalls.clear();
+    this.busyThreads.clear();
+    this.heldThreads.clear();
+    if (wasStalled) this.o.presence?.();
     this.control({ action: "reset", character: null, by, reason });
   }
 

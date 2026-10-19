@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -79,7 +79,7 @@ import {
   type ParsedMap,
   type ProjectLink,
 } from "./house-maps.ts";
-import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
+import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, judgeFiling, judgeMode, parseFactsBook, readFactsFile, worldReader, type FactsBook, type FactsView } from "./facts.ts";
 import {
   AGENT_QUEUE_MAX_AGE_MS,
   AgentHub,
@@ -93,6 +93,7 @@ import {
   type AgentFacts,
   type AgentLine,
   type AgentPower,
+  type AgentQueue,
   type AgentRequest,
   type AgentThread,
 } from "./agents.ts";
@@ -266,6 +267,27 @@ const showHouseWarned = new Map<string, string>();
  *  (`agent:<Character>`): a replay counts these against the power's
  *  `limit:`, never a director's fire of the same interaction. */
 const AGENT_BY = "agent:";
+/** The journal's `by` on the judging-mode flip around a near-miss filing
+ *  (`commitUnderReview`): the facts judge, not a director. */
+const JUDGE_BY = "Judge";
+
+/** The story's staff room for server notices: a `kind: faction` CHANNEL
+ *  whose GROUP no guest may join (`staffRoomIds`), `hosts` first; null when
+ *  the story has none. */
+function hostsRoomOf(model: Sim["model"]): string | null {
+  const staff = staffRoomIds(model);
+  const names = [...model.channels.keys()].map((id) => id.replace(/^room:/u, "")).filter((n) => staff.has(n.toLowerCase().replace(/[#_-]/g, " ").replace(/\s+/g, " ").trim()));
+  return names.find((n) => n.toLowerCase() === "hosts") ?? names[0] ?? null;
+}
+
+/** The `# hosts` line after a 📝 near miss's own (`commitUnderReview`):
+ *  the proposal is the near-miss rule's, and an unjudged one is credited. */
+function nearNotice(name: string, args: Record<string, string | number | boolean>, near: string | null): string | null {
+  if (near === null) return null;
+  const q = typeof args["question"] === "string" ? args["question"] : "?";
+  const a = typeof args["answer"] === "string" ? args["answer"] : "";
+  return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate and is credited if nobody judges it. Judge it on Run → Mind → Judging.`;
+}
 
 /** Who a mutation is done by, for the facts ledger's provenance (wave 5
  *  issue 8): the journal's `by` (a director, a device, an impersonator),
@@ -585,6 +607,8 @@ export class EventRuntime {
     admits: (thread) => this.agentAdmits(thread),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
+    busy: (req) => this.postAgentBusy(req),
+    stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
     now: () => this.clock(),
     presence: () => this.pushSnapshots(),
   });
@@ -865,6 +889,7 @@ export class EventRuntime {
       lastSeen: this.lastSeen,
       unlocks: this.claims.openWindows(),
       agents: new Set(this.agents.onlineCharacters()),
+      agentQueues: this.agentQueues(),
       held: heldCharacters(this.sessions.entries()),
       minds: [...this.agentMinds.values()],
       facts: this.factsView(),
@@ -1357,9 +1382,11 @@ export class EventRuntime {
    * the client's) and {text}. Null = nothing to judge (no key in force, an
    * un-keyed card, another kind); "refused" = a bad filing (400). A `fact`
    * filing for a question the key lacks is refused only while a key exists;
-   * without one the args pass untouched (other projects).
+   * without one the args pass untouched (other projects). `review`: a near
+   * miss filed while the mode is `auto` — that one filing takes the review
+   * path (`commitUnderReview`); `near` = the key form it is close to.
    */
-  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): Record<string, string | number> | null | "refused" {
+  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean; near: string | null } | null | "refused" {
     const book = this.factsBook();
     if (book === null) return null;
     if (card.kind === "fact") {
@@ -1367,12 +1394,20 @@ export class EventRuntime {
       const a = args["answer"];
       const c = args["confidence"];
       if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
-      const verdict = judgeAnswer(book, q, a, c);
-      if (verdict === null) return "refused";
+      // A near miss (`Mr Pickels`) is proposed accurate, never a lie or a
+      // guess by itself: a director decides it (wave 11, C6).
+      const judged = judgeFiling(book, q, a, c);
+      if (judged === null) return "refused";
+      const { verdict } = judged;
       // An accurate filing also carries the key's canonical answer, so the
       // story reads "Mister Pickles", never whichever alias came in last.
-      // Only a filer who already knew it ever puts it in the journal.
-      return verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict };
+      // Only a filer who already knew it (or all but typed it) ever puts it
+      // in the journal.
+      return {
+        args: verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict },
+        review: judged.near !== null && judgeMode(book, worldReader(this.sim!)) === "auto",
+        near: judged.near,
+      };
     }
     if (card.kind === "answer") {
       const q = card.params["question"];
@@ -1380,12 +1415,47 @@ export class EventRuntime {
       if (q === undefined) return null;
       if (typeof t !== "string" || t.trim() === "") return "refused";
       const verdict = judgeAnswer(book, q, t, 100);
-      return verdict === null ? "refused" : { verdict, question: q };
+      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false, near: null };
     }
     return null;
   }
 
+  /**
+   * Commit `apply` (a 📝 near-miss filing) as if the judging mode were
+   * `review`: the book's mode var is set to `review` just before and put
+   * back just after, each a journaled `setVar` by the judge — so the story's
+   * own review path holds the filing pending for a director (Run → Mind →
+   * Judging, one `# hosts` line from the story), and a replay lands the same.
+   * `notice`: the server's own `# hosts` line after the story's, saying the
+   * proposal came from the near-miss rule, not an exact match (the story's
+   * line only reads "Proposed: accurate").
+   */
+  private commitUnderReview(apply: () => SimEvent[], notice: string | null = null): SimEvent[] {
+    const book = this.factsBook();
+    const sim = this.sim;
+    if (book === null || sim === null) return apply();
+    const was = worldReader(sim)(book.modeVar) ?? "auto";
+    const actingBy = this.actingBy;
+    this.actingBy = JUDGE_BY;
+    const before = this.commit("setVar", book.modeVar, "review");
+    this.actingBy = actingBy;
+    const events = apply();
+    this.actingBy = JUDGE_BY;
+    const after = this.commit("setVar", book.modeVar, was);
+    const room = notice === null ? null : hostsRoomOf(sim.model);
+    const told = room === null ? [] : this.commit("broadcast", `channel(${room})`, notice!);
+    this.actingBy = actingBy;
+    return [...before, ...events, ...after, ...told];
+  }
+
   // -- agent-voiced characters ---------------------------------------------
+
+  /** Every agent character's request line, for the director's cast rows. */
+  private agentQueues(): Map<string, AgentQueue> {
+    const out = new Map<string, AgentQueue>();
+    for (const c of this.sim?.model.characters.values() ?? []) if (c.mind === "external") out.set(c.id, this.agents.queue(c.id));
+    return out;
+  }
 
   /** May this thread reach the agent at all? Not a guest's DM with a
    *  character still hidden from that guest (K-16): before Clippy introduces
@@ -1494,45 +1564,47 @@ export class EventRuntime {
     this.agents.line({ character, channel, audience }, { held });
   }
 
-  /** After a restore: every agent thread still owed an answer — its last
-   *  line someone else's, or the character's hold line right after one —
-   *  gets its request again, as the hub's queue died with the process (a
-   *  worker answers it, or the hold line follows, never twice: a thread
-   *  with a hold line since the character last really spoke is re-asked as
-   *  already held, however many lines the guest typed after it —
-   *  R1-diff-server-02). Only a line from the last `AGENT_QUEUE_MAX_AGE_MS`
-   *  of the story clock: live, an older request has been dropped. */
+  /** After a restore: every agent thread still owed an answer — someone
+   *  else's line since the character last really spoke (its hold and busy
+   *  lines are the server's, not the character speaking) — gets its request
+   *  again, as the hub's queue died with the process (a worker answers it,
+   *  or the hold line follows, never twice: a thread with a hold line since
+   *  the character last really spoke is re-asked as already held, however
+   *  many lines the guest typed after it — R1-diff-server-02). Only a line
+   *  from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live, an
+   *  older request has been dropped. */
   private requeueAgentThreads(): void {
     const sim = this.sim;
     if (sim === null) return;
     interface Tail {
-      prev: ChatMessage | undefined;
-      last: ChatMessage;
-      /** A hold line (after someone else's) since the character's last real line. */
+      /** The newest line from someone else since the character's last real line. */
+      owed: ChatMessage | null;
+      /** A hold line after it (since the character's last real line). */
       held: boolean;
+      last: ChatMessage;
     }
     const tails = new Map<string, Tail>(); // thread →
-    const holdOf = (character: string) => sim.model.characters.get(character)?.hold ?? null;
-    const theirs = (m: ChatMessage | undefined, character: string): m is ChatMessage => m !== undefined && m.kind === "line" && m.from !== character;
     for (const m of this.chat.all()) {
       if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
       const character = m.channel.slice("dm:".length);
       if (!this.isAgent(character)) continue;
       const key = `${m.channel}|${m.audience[0]}`;
       const t = tails.get(key);
+      const def = sim.model.characters.get(character);
+      let owed = t?.owed ?? null;
       let held = t?.held ?? false;
-      if (m.from === character) {
-        const hold = holdOf(character);
-        held = hold !== null && m.text === hold ? held || theirs(t?.last, character) : false;
+      if (m.from !== character) {
+        if (m.kind === "line") owed = m;
+      } else if (def?.hold !== null && def?.hold !== undefined && m.text === def.hold) {
+        if (owed !== null) held = true;
+      } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy)) {
+        owed = null;
+        held = false;
       }
-      tails.set(key, { prev: t?.last, last: m, held });
+      tails.set(key, { owed, held, last: m });
     }
     const now = sim.elapsed();
-    for (const { prev, last, held } of tails.values()) {
-      const character = last.channel.slice("dm:".length);
-      const hold = holdOf(character);
-      const lastIsHold = hold !== null && last.from === character && last.text === hold && theirs(prev, character);
-      const owed = theirs(last, character) ? last : lastIsHold ? prev! : null;
+    for (const { owed, held, last } of tails.values()) {
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
       this.agentHeard(last.channel, last.audience as string[], held);
     }
@@ -1546,6 +1618,32 @@ export class EventRuntime {
     if (line === null) return false;
     this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
     return true;
+  }
+
+  /** `req` has waited behind a burst on a worker still answering: post the
+   *  character's authored `busy:` line once in the thread — once ever, so a
+   *  restart (which forgets the hub's own once-per-thread) never says it
+   *  twice. */
+  private postAgentBusy(req: AgentRequest): boolean {
+    const line = this.sim?.model.characters.get(req.character)?.busy ?? null;
+    if (line === null) return false;
+    const who = req.thread.audience.join(",");
+    const said = this.chat.all().some((m) => m.channel === req.thread.channel && m.from === req.character && m.text === line && Array.isArray(m.audience) && m.audience.join(",") === who);
+    if (said) return false;
+    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
+    return true;
+  }
+
+  /** A worker stopped answering (its head waited 60 s): one line in the
+   *  story's staff room (`# hosts`), so a director answers by hand. No staff
+   *  room → nothing (Run still shows `agentQueue.stalled`). */
+  private postAgentStall(worker: { name: string; characters: string[] }, waiting: number): void {
+    const sim = this.sim;
+    const room = sim === null ? null : hostsRoomOf(sim.model);
+    if (room === null) return;
+    const who = worker.characters.join(" / ") || "the agent";
+    const many = waiting === 1 ? "1 thread is waiting" : `${waiting} threads are waiting`;
+    this.fanout(this.commit("broadcast", `channel(${room})`, `⏳ ${who} stopped answering (worker ${worker.name}): ${many} and got the hold line. Answer them from Run as ${who}; it clears when ${who} answers again.`));
   }
 
   /**
@@ -1678,7 +1776,9 @@ export class EventRuntime {
     const varsOf = this.agentVarsOf(world);
     const globals = this.agentGlobals(world);
     const online = new Set(this.agents.onlineCharacters());
-    const primes = this.presence().primes;
+    // The booths online, as `presence()` counts them (not the whole presence:
+    // that builds the facts view too).
+    const primes = new Set([...this.clients].filter((c) => c.role === "prime").map((c) => c.id));
     const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
     const programs = [...sim.persons.values()].map((p) => ({
       id: p.id,
@@ -3801,7 +3901,8 @@ export class EventRuntime {
         this.answeredWidgets.add(key);
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
-        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, { ...args, ...(judged ?? {}), card: seq }));
+        const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
+        this.fanout(judged?.review === true ? this.commitUnderReview(answered, nearNotice(this.sim!.persons.get(id)?.name ?? id, args, judged.near)) : answered());
         sendJson(res, 200, { ok: true });
         return true;
       }
