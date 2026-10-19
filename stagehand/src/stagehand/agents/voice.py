@@ -749,7 +749,7 @@ async def answer_lean(
 
     reply, settle_notes = await settle(reply)
     mine = thread_replies(req)
-    first: Pass = guard_pass(persona, reply, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine)
+    first: Pass = guard_pass(persona, reply, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage)
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
@@ -798,7 +798,7 @@ async def answer_lean(
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
     again, settle_notes = await settle(again)
-    second = guard_pass(persona, again, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine)
+    second = guard_pass(persona, again, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage)
     rnotes = settle_notes + second.notes
     final = second.reply
     if not final.say:

@@ -38,6 +38,8 @@
     bargain: "…"                       # guidance on when a favour is earned
     catchphrases:                      # rationed by the new voice (wave 12): once
       - "Your request has been logged" #   per person, at first contact
+    catchphrase_stages: [formal]       # …and only while his stage is one of these
+                                       #   (none = any stage)
     situations:                        # optional extra instructions for a moment:
       - name: at his heart             #   (name optional — the block's heading)
         when: them.at_the_heart == true  # a gate expression, read like `when:`
@@ -90,6 +92,7 @@ _KNOWN = {
     "bargain",
     "situations",
     "catchphrases",
+    "catchphrase_stages",
 }
 
 _SITUATION_KEYS = {"name", "when", "prompt"}
@@ -154,6 +157,10 @@ class Persona:
     situations: tuple[Situation, ...] = ()
     #: Lines the new voice rations to once per person (`catchphrases:`).
     catchphrases: tuple[str, ...] = ()
+    #: The stages a catchphrase may be said in at all (`catchphrase_stages:`;
+    #: empty = any): the dialog-box greeting is the formal helper's, never the
+    #: last act's (K-04: the finale's "Your request has been logged.").
+    catchphrase_stages: tuple[str, ...] = ()
     #: The mind file's phase cards, in file order, inheritance resolved
     #: (`parse_mind_table`). A bare cue string is a card too.
     phase_cards: dict[str, "PhaseCard"] = field(default_factory=dict)
@@ -336,6 +343,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         secrets=secrets,
         situations=_situations(meta.get("situations"), source),
         catchphrases=_catchphrases(meta.get("catchphrases"), source),
+        catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
         warnings=table.warnings,
@@ -350,6 +358,14 @@ def _catchphrases(value: Any, source: str) -> tuple[str, ...]:
     if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
         raise ConfigError(f"{source}: catchphrases: expected a list of lines")
     return tuple(" ".join(v.split()) for v in value)
+
+
+def _catchphrase_stages(value: Any, stages: tuple[str, ...], source: str) -> tuple[str, ...]:
+    names = _names(value, f"{source}: catchphrase_stages")
+    unknown = [n for n in names if stages and n not in stages]
+    if unknown:
+        raise ConfigError(f"{source}: catchphrase_stages: {', '.join(unknown)} is not a declared stage ({', '.join(stages)})")
+    return names
 
 
 _MIND_KNOWN = {"stages", "drives", "phases", "secrets"}

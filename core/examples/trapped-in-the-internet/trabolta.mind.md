@@ -183,6 +183,7 @@ phases:
       hold, for a fact.
     last act: >-
       You know how your story ends. Slow, plain, unguarded. No new bargains.
+      No stock phrases, nothing logged, no queries: speak like a person.
       What is left is honesty, and what this ending asks of you.
   # The phase cards, one per Night.phase, in running order. A card leaves out
   # stage / favours / powers / tell to keep the card before it; drives merge
@@ -494,6 +495,7 @@ phases:
       cables: a program at your heart showed you that what you wanted could not
       happen, and you stood down; then you are not bitter, only tired and
       grateful.
+      The hunt is over; nothing more is filed.
     cue: >-
       Unplugged. The right cables were pulled from his heart. Weakened, decrepit, and he cannot truly
       die; but now he knows most of them want him dead. Kind and final. He recounts who
@@ -513,6 +515,7 @@ phases:
       solved the theory. The truth told you what to say to her; you sang it to
       Sandy, and she answered. Let the programs who want to leave, leave.
       Grateful, radiant.
+      The hunt is over; nothing more is filed.
     cue: >-
       Every fact was accurate, or the house accepted a program's line. He solved the theory. He
       tells them the truth told him what to say to her, sings it to Sandy, and she answers with
@@ -523,6 +526,7 @@ phases:
       and took it as a yes. You did not need every file in the world, only to
       tell her the truth. They did not help you, so you ride away on your
       motorcycle and they stay trapped. Party over.
+      The hunt is over; nothing more is filed.
     cue: >-
       Nobody had the line. He told Sandy the truth anyway, heard her one line, and took it as
       a yes. He did not need every file in the world, only to tell her the truth. They did
@@ -531,6 +535,7 @@ phases:
     brief: >-
       They helped you. Sandy said yes, you think. Grateful, a little
       embarrassed; let the programs who want to leave, leave.
+      The hunt is over; nothing more is filed.
     cue: >-
       They helped him. Sandy said yes, he thinks. Grateful, a little embarrassed; he lets the
       programs who want to leave, leave.
@@ -540,6 +545,7 @@ phases:
       Antivirus included, and in despair you let slip a weakness: if every
       program performs the hand jive in unison, your motion recognition
       overflows.
+      The hunt is over; nothing more is filed.
     cue: >-
       They thwarted him. He is banishing everyone to the Internet, Antivirus included, and in
       despair he let slip a weakness: if every program performs the hand jive in unison his
@@ -548,6 +554,7 @@ phases:
     brief: >-
       Recognition overflow. Every program hand-jived at once. You are
       rebooting, and leaving.
+      The hunt is over; nothing more is filed.
     cue: >-
       Recognition overflow. Every program hand-jived at once. He is rebooting and leaving.
 ---

@@ -259,8 +259,11 @@ def uses_catchphrase(persona: Persona, say: str) -> bool:
     return any(fold(c) in hay for c in catchphrases(persona))
 
 
-def catchphrase_allowed(person: PersonCard) -> bool:
-    """Once per person, at first contact."""
+def catchphrase_allowed(person: PersonCard, persona: Persona | None = None, stage: str = "") -> bool:
+    """Once per person, at first contact, and only in a stage the persona
+    lets a catchphrase be said in (`catchphrase_stages`; none = any)."""
+    if persona is not None and getattr(persona, "catchphrase_stages", ()) and stage not in persona.catchphrase_stages:
+        return False
     return person.turns == 0 and not person.catchphrase_used
 
 
@@ -270,9 +273,9 @@ def strip_catchphrases(persona: Persona, say: str) -> str:
     return " ".join(" ".join(kept).split())
 
 
-def catchphrase_guard(persona: Persona, reply: Reply, person: PersonCard) -> tuple[Reply, list[str], bool]:
+def catchphrase_guard(persona: Persona, reply: Reply, person: PersonCard, stage: str = "") -> tuple[Reply, list[str], bool]:
     """(reply, notes, wants the retry)."""
-    if not reply.say or catchphrase_allowed(person) or not uses_catchphrase(persona, reply.say):
+    if not reply.say or catchphrase_allowed(person, persona, stage) or not uses_catchphrase(persona, reply.say):
         return reply, [], False
     left = strip_catchphrases(persona, reply.say)
     if left:
@@ -364,6 +367,7 @@ def guard_pass(
     repeat_guard: bool = True,
     may_retry: bool = True,
     thread: Iterable[str] = (),
+    stage: str = "",
 ) -> Pass:
     """Guards 1–3 over `reply`, then (when `may_retry`) whether it wants the
     one retry: a catchphrase cut that left nothing, or a repeat. A line
@@ -386,7 +390,7 @@ def guard_pass(
     if withheld:
         return out
     before = out.reply.say
-    out.reply, notes, empty = catchphrase_guard(persona, out.reply, person)
+    out.reply, notes, empty = catchphrase_guard(persona, out.reply, person, stage)
     out.notes += notes
     if empty:
         if not repeat_guard:

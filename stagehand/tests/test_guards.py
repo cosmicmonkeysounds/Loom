@@ -174,6 +174,19 @@ def test_the_catchphrase_is_his_at_first_contact_only():
     assert (out.say, notes, retry) == ("Who are you?", ["catchphrase stripped"], False)
 
 
+def test_the_catchphrase_is_never_his_outside_its_stages():
+    """K-04 finale: "Your request has been logged." at the last act. With
+    `catchphrase_stages` a first contact outside them is stripped too."""
+    from dataclasses import replace as _r
+
+    staged = _r(P, catchphrase_stages=("formal",))
+    line = Reply(say="Your request has been logged. Who are you?")
+    assert catchphrase_guard(staged, line, NEW, "formal") == (line, [], False)
+    assert catchphrase_guard(staged, line, NEW, "last act")[0].say == "Who are you?"
+    show = load_persona(SHOW / "trabolta.persona.md")
+    assert show.catchphrase_stages == ("formal",)
+
+
 def test_a_line_that_is_only_catchphrases_asks_for_the_retry():
     out, notes, retry = catchphrase_guard(P, Reply(say="Your request has been logged! Please wait…"), OLD)
     assert out.say == "" and retry is True and notes == ["catchphrase stripped"]
