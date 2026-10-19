@@ -17,8 +17,9 @@ import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/house";
+import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVariantsResponse } from "@loom/house";
 
+import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
@@ -57,9 +58,9 @@ import { printExtras } from "./routes/k12.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { guestSide } from "./routes/sides.ts";
-import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost } from "./routes/screen.ts";
+import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
-import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type SessionRef } from "./spatial.ts";
+import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type KingRef, type SessionRef } from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
   activeVariant,
@@ -609,6 +610,14 @@ export class EventRuntime {
       ...(init.now !== undefined ? { now: init.now } : {}),
       // The speedrun survives a server restart mid-show (SW-RE-14).
       onRun: (run) => this.store.appendRun(run),
+      // The shared King's hit points live in the story world (C2: the
+      // prop's `health` path, journaled, restart-safe).
+      kingHp: (path) => {
+        const v = this.sim?.world.peek(path);
+        return v == null ? undefined : (asNumber(v) ?? undefined);
+      },
+      // A ghost wears the program's profile picture (C3), read live.
+      avatarOf: (_guest, name) => this.avatars.keyFor(name),
     });
     this.spatial.setOpen(false); // idle until the doors open
     this.checkin = new GuestCheckin({
@@ -2134,7 +2143,8 @@ export class EventRuntime {
         // A game reading with its session token also learns its duck — a
         // map edit mid-game may have moved (or re-dealt) it.
         const duck = this.spatial.duckFor(token);
-        sendJson(res, 200, { house, version: this.spatial.version, source: this.spatial.source, ...(duck !== null ? { duck } : {}) });
+        // Every read carries the shared King (C2; null = the map has none).
+        sendJson(res, 200, { house, version: this.spatial.version, source: this.spatial.source, ...(duck !== null ? { duck } : {}), king: this.spatial.king() });
       }
       return true;
     }
@@ -2178,6 +2188,7 @@ export class EventRuntime {
             captured: sim.isCaptured(p.id),
             restricted: sim.isRestricted(p.id),
             location: sim.locationOf(p.id),
+            avatar: this.avatars.keyFor(p.name),
           })),
         );
         sendJson(res, 200, { players });
@@ -2252,6 +2263,43 @@ export class EventRuntime {
         }
         return true;
       }
+      case "/api/spatial/king/hit": {
+        // A hit on the shared King (C2): one per reinstallation visit,
+        // judged on the session's last pose (the game flushes one first).
+        if (!this.open || this.sim === null) {
+          // Like `found`: nothing commits while the doors are closed; the
+          // visit keeps its hit. A dead token still hears 401 / 410.
+          if (!this.spatial.hasToken(token)) refuse(this.spatial.tokenState(token));
+          else sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const out = this.spatial.hit(token, (s, next, ref) => this.commitKingHit(s, next, ref));
+        switch (out.kind) {
+          case "unknown":
+          case "over":
+            refuse(out.kind);
+            return true;
+          case "parked":
+            sendJson(res, 409, { error: "this session has not started — send a pose first" });
+            return true;
+          case "none":
+            sendJson(res, 404, { error: "no king" });
+            return true;
+          case "fallen":
+            sendJson(res, 409, { error: "fallen", king: out.king });
+            return true;
+          case "already":
+            sendJson(res, 409, { error: "already hit", king: out.king });
+            return true;
+          case "far":
+            sendJson(res, 409, { error: "not near", reach: out.reach });
+            return true;
+          case "hit":
+            sendJson(res, 200, { ok: true, king: out.king });
+            return true;
+        }
+        return true;
+      }
       case "/api/spatial/end": {
         const out = this.spatial.endByToken(token);
         if (out !== "ok") refuse(out);
@@ -2260,6 +2308,25 @@ export class EventRuntime {
       }
       default:
         return false;
+    }
+  }
+
+  /** A hit on the King landed: journaled `by` the game's device — his new
+   *  hit points into the story world (his `health` path; a King the hub
+   *  counts has none), then the story's `hit` signal for the hitter with
+   *  `{hp, max}`, then `fallen` once he is down. */
+  private commitKingHit(s: SessionRef, next: KingState, ref: KingRef): void {
+    const sim = this.sim;
+    if (sim === null) return;
+    this.actingBy = s.device;
+    try {
+      if (ref.path !== null) this.fanout(this.commit("setVar", ref.path, String(next.hp)));
+      if (!sim.persons.has(s.guest)) return;
+      const args = { hp: next.hp, max: next.max };
+      this.fanout(this.commit("signal", kingSignal(ref.prop, "hit"), s.guest, args));
+      if (next.fallen) this.fanout(this.commit("signal", kingSignal(ref.prop, "fallen"), s.guest, args));
+    } finally {
+      this.actingBy = undefined;
     }
   }
 
@@ -2352,6 +2419,7 @@ export class EventRuntime {
     this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy));
     const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
     if (m === "signal") notePress(this.sim!, out); // the cue sheet judges a press by its own events
+    this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
     return out;
   }
 
@@ -2362,7 +2430,9 @@ export class EventRuntime {
     this.flushTick();
     this.store.appendCommand("wallet", [op], this.actingBy);
     if (this.sim !== null) this.factsWatch.mark(this.sim, this.actingBy ?? null);
-    return this.wallet!.apply(op);
+    const out = this.wallet!.apply(op);
+    this.spatial.syncKing();
+    return out;
   }
 
   /** Settle / expire whatever the story clock has made due, one journal
@@ -2471,6 +2541,7 @@ export class EventRuntime {
     this.scenarioName = name;
     this.setPhase("paused");
     this.seedAvatars();
+    this.spatial.syncKing(); // a fresh world: a standing King (or the hub's own count)
   }
 
   // -- profile pictures ----------------------------------------------------
@@ -2521,8 +2592,17 @@ export class EventRuntime {
         void this.images.get(url);
         this.persistAvatars();
         this.pushSnapshots();
+        this.refreshGhosts(name);
       });
     }
+  }
+
+  /** A picture for `name` changed: every live reinstallation session of a
+   *  person by that name hears it (an `avatar` frame, C3). */
+  private refreshGhosts(name: string): void {
+    if (this.sim === null) return;
+    const folded = foldName(name);
+    for (const p of this.sim.persons.values()) if (foldName(p.name) === folded) this.spatial.refreshAvatar(p.id);
   }
 
   /**
@@ -2609,6 +2689,7 @@ export class EventRuntime {
     if (evs.length > 0) {
       this.flushTick();
       this.fanout(evs);
+      this.spatial.syncKing(); // a story timer is a committed mutation too (journaled as the tick)
     } else if (this.pendingTickMs >= 15000) {
       this.flushTick();
     }
@@ -2878,6 +2959,7 @@ export class EventRuntime {
     this.sessions.load(entries);
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
     this.requeueAgentThreads();
+    this.spatial.syncKing(); // the replayed world's King
     if (this.phase === "open") this.startTicker();
     // Restored with the doors paused: the re-asked requests wait out the
     // pause like live ones do.
@@ -3158,7 +3240,22 @@ export class EventRuntime {
 
     // --- the wall terminals' lean screen state (K-16, routes/screen.ts) ---
     if (method === "GET" && path === "/api/screen/state") {
-      return handleScreenGet(this.screens, this.sim, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t), (c) => this.agents.isOnline(c), () => this.chat.all(), () => this.declaredModel);
+      return handleScreenGet(
+        this.screens,
+        this.sim,
+        req,
+        res,
+        url,
+        (t) => opts.moderator === true || this.sessions.canModerate(t),
+        (c) => this.agents.isOnline(c),
+        () => this.chat.all(),
+        () => this.declaredModel,
+        // The shared King for the chess terminal (C2).
+        () => {
+          this.spatialHouse();
+          return screenKingOf(this.spatial.king(), this.spatial.kingRef()?.prop.armed, this.sim);
+        },
+      );
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
@@ -3467,6 +3564,7 @@ export class EventRuntime {
           this.avatars.assign(me.name, this.avatars.urlFor(key)!, true);
           this.persistAvatars();
           this.pushSnapshots();
+          this.refreshGhosts(me.name);
         }
         sendJson(res, 200, { options, avatar: this.avatars.keyFor(me.name) });
         return true;
@@ -4358,6 +4456,28 @@ export class EventRuntime {
       case "/api/mod/spatial/end": {
         this.spatial.end(str(body, "session"));
         sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/mod/spatial/king": {
+        // A director sets (or restores) the shared King's hit points (C2):
+        // a journaled set of his `health` path, `by` the director.
+        this.spatialHouse();
+        const current = this.spatial.king();
+        if (current === null) {
+          sendJson(res, 404, { error: "no king" });
+          return true;
+        }
+        const hp = body["hp"];
+        if (typeof hp !== "number" || !Number.isInteger(hp) || hp < 0 || hp > current.max) {
+          sendJson(res, 400, { error: `hp must be an integer 0–${current.max}` });
+          return true;
+        }
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const king = this.spatial.setKingHp(hp, (ref, n) => this.fanout(this.commit("setVar", ref.path!, String(n))));
+        sendJson(res, 200, { ok: true, king });
         return true;
       }
       case "/api/mod/agent/control": {

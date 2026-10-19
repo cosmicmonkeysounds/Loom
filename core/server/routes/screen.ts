@@ -49,6 +49,12 @@
 //!                 Before the doors (no sim) the name resolves against the
 //!                 story's declared LOCATIONs: a correct one is `{id, open:
 //!                 false}`, so only a typo reads as "no room called …".
+//! - `king`      — (wave 11, C2) the shared King of the house map: `{hp, max,
+//!                 fallen, armed}` — his one health bar for the night (it sets
+//!                 how well he plays at the chess terminal) and whether a
+//!                 checkmate counts now (`armed`: his prop's `armed` world var
+//!                 at or above its `min`; null = no `armed` path, or no story
+//!                 yet). Null when the map has no King.
 //!
 //! The director's side (K-29): `GET /api/mod/screen/terminals` answers just
 //! the heartbeat list + the TV-voice mute, without recording a poll, for the
@@ -67,6 +73,8 @@
 //! injected clock for tests.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+
+import type { KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import type { SimModel } from "../../src/runtime/sim/model.ts";
@@ -448,6 +456,34 @@ export interface ScreenState {
    *  (a fresh sim numbers its announcements from 1 again) and server boot, so
    *  a terminal resyncs its cursor however the new seqs compare to the old. */
   announceEpoch: string;
+  /** The shared King (wave 11, C2); null = the map has none. */
+  king: ScreenKing | null;
+}
+
+/** The shared King as the chess terminal reads him (C2). `armed`: a
+ *  checkmate counts now; null = unknown (no `armed` path, or no story). */
+export interface ScreenKing {
+  hp: number;
+  max: number;
+  fallen: boolean;
+  armed: boolean | null;
+}
+
+/**
+ * The screen state's `king` block from the hub's King and his prop's
+ * `armed` rule: armed while the world var at `armed.path` is a number at or
+ * above `armed.min` (unset reads as not armed); null with no `armed` rule
+ * or no story loaded.
+ */
+export function screenKingOf(king: KingState | null, armed: { path: string; min: number } | undefined, sim: Sim | null): ScreenKing | null {
+  if (king === null) return null;
+  let on: boolean | null = null;
+  if (armed !== undefined && sim !== null) {
+    const v = sim.world.peek(armed.path);
+    const n = v === null ? null : v.kind === "number" ? v.value : v.kind === "string" && v.value.trim() !== "" ? Number(v.value) : null;
+    on = n !== null && Number.isFinite(n) && n >= armed.min;
+  }
+  return { hp: king.hp, max: king.max, fallen: king.fallen, armed: on };
 }
 
 /** The LOCATION a room terminal belongs to (wave 7): `open` once it is open
@@ -621,7 +657,14 @@ export class ScreenWatch {
    *  `messages` is the chat timeline (only read for a `voice` poll);
    *  `declared` is the story's model while no sim exists (before the doors),
    *  so a room terminal's correct LOCATION still resolves (asleep). */
-  poll(sim: Sim | null, who: ScreenWho, online: (character: string) => boolean, messages: readonly ChatMessage[] = [], declared: SimModel | null = null): ScreenState {
+  poll(
+    sim: Sim | null,
+    who: ScreenWho,
+    online: (character: string) => boolean,
+    messages: readonly ChatMessage[] = [],
+    declared: SimModel | null = null,
+    king: ScreenKing | null = null,
+  ): ScreenState {
     const first = this.sync(sim);
     this.note(who);
     const peek = (path: string): string | null => {
@@ -757,6 +800,7 @@ export class ScreenWatch {
       identify: identifyLeft > 0,
       identifyLeft,
       announceEpoch: `${this.boot}.${this.sims}`,
+      king,
     };
   }
 }
@@ -776,6 +820,7 @@ export function handleScreenGet(
   online: (character: string) => boolean,
   messages: () => readonly ChatMessage[] = () => [],
   declared: () => SimModel | null = () => null,
+  king: () => ScreenKing | null = () => null,
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
@@ -798,7 +843,7 @@ export function handleScreenGet(
     ...(voice !== "" || room !== "" ? { after } : {}),
   };
   const named = voice !== "" || room !== "";
-  sendJson(res, 200, watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null));
+  sendJson(res, 200, watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()));
   return true;
 }
 

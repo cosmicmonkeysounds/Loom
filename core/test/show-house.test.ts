@@ -104,10 +104,22 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     // badge reads the Y2K gate off `Night.step` (U15).
     expect(door.guard).toBe("cold-lock-king");
     const king = house.props.find((p) => p.id === "cold-lock-king");
-    expect(king).toMatchObject({ kind: "king", room: outside, hp: 8, signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn" }, armed: { path: "Night.step", min: 14 } });
+    // One shared bar for the night (C1): 15 HP in Night.king_hp, a checkmate counting while Night.king_armed.
+    expect(king).toMatchObject({
+      kind: "king",
+      room: outside,
+      hp: 15,
+      health: "Night.king_hp",
+      signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn", hit: "king hit", fallen: "king fallen" },
+      armed: { path: "Night.king_armed", min: 1 },
+    });
     expect(Math.hypot(king!.pos[0] - door.at[0], king!.pos[2] - door.at[1])).toBeLessThan(0.5);
-    // Nothing routes through a guarded door: the Server Room is unreachable for the golden trail.
+    // Nothing routes through a guarded door: the Server Room is unreachable for the golden trail…
     expect(route(house, house.spawn.pos, [-5, -2.7, 9.5])).toHaveLength(2);
+    // …until he falls: then his door is open for everyone.
+    expect(route(house, house.spawn.pos, [-5, -2.7, 9.5], { fallen: new Set(["cold-lock-king"]) }).length).toBeGreaterThan(2);
+    // The Server Door terminal hangs in the hall, looking at him.
+    expect(house.terminals.find((t) => t.id === "server-room-door")).toMatchObject({ name: "Server Door", room: outside });
   });
 
   it("stacks the real house's three levels, each room on its own floor, joined by the hall's two stairs", () => {
@@ -211,7 +223,7 @@ describe("the two variants", () => {
 
   it("share the terminal ids, the duck spots and the LOCATIONs", () => {
     const ids = (h: HouseMap) => h.terminals.map((t) => t.id).sort();
-    expect(ids(tent)).toEqual(["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "start-bar", "tent"]);
+    expect(ids(tent)).toEqual(["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "server-room-door", "start-bar", "tent"]);
     expect(ids(shed)).toEqual(ids(tent));
     expect(shed.duck.spots).toEqual(tent.duck.spots);
     const locations = (h: HouseMap) => h.rooms.map((r) => r.location).sort();
