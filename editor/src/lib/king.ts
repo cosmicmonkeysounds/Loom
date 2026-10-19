@@ -78,3 +78,24 @@ export function kingConfirm(k: KingView, hp: number): { title: string; body: str
   else if (k.fallen) lines.push('He stands up again and his door shuts in both games.')
   return { title: restore ? `Restore the King to full health (${k.max})?` : `Set the King's health to ${hp}?`, body: lines.join('\n\n') }
 }
+
+/** Orders the card's King polls against a Set… / Restore: a poll begun
+ *  before a write's answer was adopted may carry the old health, so its
+ *  answer is dropped (it would flash the pre-restore bar back for a poll
+ *  period and invite a second restore). */
+export class KingReadOrder {
+  private n = 0
+  private floor = 0
+  /** A poll starts: its ticket. */
+  begin(): number {
+    return ++this.n
+  }
+  /** A write's answer was adopted: every poll begun before now is stale. */
+  adopt(): void {
+    this.floor = ++this.n
+  }
+  /** Whether a poll's answer may still be shown. */
+  fresh(ticket: number): boolean {
+    return ticket > this.floor
+  }
+}

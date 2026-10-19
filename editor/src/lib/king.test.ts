@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kingConfirm, kingFill, kingFromScreen, kingFromWire, kingHpText, kingStatusLine, parseKingHp } from './king'
+import { KingReadOrder, kingConfirm, kingFill, kingFromScreen, kingFromWire, kingHpText, kingStatusLine, parseKingHp } from './king'
 
 describe('the shared King (wave 11 C2)', () => {
   it('reads the screen state king, and no King off an older server or a map without one', () => {
@@ -48,5 +48,19 @@ describe('the shared King (wave 11 C2)', () => {
     expect(kingConfirm(k, 0).body).toMatch(/kneels/)
     expect(kingConfirm({ ...k, hp: 0, fallen: true }, 5).body).toMatch(/stands up/)
     expect(kingConfirm(k, 8).body).toMatch(/3 \/ 15 to 8 \/ 15/)
+  })
+})
+
+describe('the King poll against a Set… / Restore', () => {
+  it('drops a poll begun before a write was adopted; keeps one begun after', () => {
+    const order = new KingReadOrder()
+    const before = order.begin() // a poll in flight while the restore POST runs
+    order.adopt() // the restore's answer lands: 8 / 8
+    expect(order.fresh(before)).toBe(false) // its 3 / 8 reading would flash back
+    const after = order.begin()
+    expect(order.fresh(after)).toBe(true)
+    // with no write, every poll counts
+    const plain = new KingReadOrder()
+    expect(plain.fresh(plain.begin())).toBe(true)
   })
 })

@@ -15,12 +15,12 @@
 //! few seconds, with **Set…** and **👑 Restore** (`POST /api/mod/spatial/king
 //! {hp}`, journaled `by` you). Rules + wire parsing in pure `lib/king.ts`.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { useCockpit } from '@/store/cockpit'
 import { confirmAction, promptText } from '@/store/dialog'
 import { ApiError, mapApi } from '@/lib/api'
-import { kingConfirm, kingFill, kingHpText, kingStatusLine, parseKingHp, type KingView } from '@/lib/king'
+import { KingReadOrder, kingConfirm, kingFill, kingHpText, kingStatusLine, parseKingHp, type KingView } from '@/lib/king'
 import { canSwitchTo, freshTarget, switchBase, switchConfirm, variantLabel, variantTitle, type MapVariant, type MapVariantsResponse } from '@/lib/map-variants'
 
 /** How often the card re-reads the King (a hit in the tent shows within it). */
@@ -28,16 +28,23 @@ const KING_POLL_MS = 4000
 
 /** The King off the lean screen state, re-read every `KING_POLL_MS` while
  *  the card is mounted; null = no King (or an older server). `set` adopts a
- *  route's answer at once. */
+ *  route's answer at once, and a poll begun before it is dropped
+ *  (`KingReadOrder`). */
 function useKing(eventId: string | null): [KingView | null, (k: KingView | null) => void] {
   const [king, setKing] = useState<KingView | null>(null)
+  const order = useRef(new KingReadOrder())
+  const adopt = useCallback((k: KingView | null) => {
+    order.current.adopt()
+    setKing(k)
+  }, [])
   useEffect(() => {
     if (eventId === null) return
     let cancelled = false
     const read = async () => {
+      const ticket = order.current.begin()
       try {
         const k = await mapApi.king(eventId)
-        if (!cancelled) setKing(k)
+        if (!cancelled && order.current.fresh(ticket)) setKing(k)
       } catch {
         // keep the last reading; the next poll retries
       }
@@ -49,7 +56,7 @@ function useKing(eventId: string | null): [KingView | null, (k: KingView | null)
       clearInterval(t)
     }
   }, [eventId])
-  return [king, setKing]
+  return [king, adopt]
 }
 
 function KingRow({ eventId, king, onKing }: { eventId: string; king: KingView; onKing: (k: KingView | null) => void }) {
