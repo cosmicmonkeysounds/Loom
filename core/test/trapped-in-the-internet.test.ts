@@ -3560,6 +3560,31 @@ describe("Trapped in the Internet — the server-room terminal over HTTP (wave 7
     expect(rt.liveSim!.world.peek(`${id}.at_the_heart`)).toMatchObject({ value: false });
     rt.dispose();
   });
+
+  it("a program holding the four digit notes: his worker never learns how many it holds or that The Cold Door is done", { timeout: SLOW }, async () => {
+    const dir = mkdtempSync(join(tmpdir(), "loom-trapped-"));
+    tmp.push(dir);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Calculator", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    const token = g.json["token"] as string;
+    const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+    await mod("captcha answered", { subject: id, args: { passed: false } });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+    await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true });
+    for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta"]) await mod(n);
+    for (const c of FACTS.door!.clues!) expect((await call(rt, "POST", "/api/guest/codex/redeem", { code: c.code }, { token })).status).toBe(200);
+    expect(rt.liveSim!.holdsCodex(id, FACTS.door!.codex.id)).toBe(true);
+    expect(rt.liveSim!.world.peek(`${id}.door_digits`)).toMatchObject({ value: 4 });
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "Guess what I found." }, { token })).status).toBe(200);
+    const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
+    expect(Object.keys(req.them.vars).filter((k) => /door|cold/u.test(k))).toEqual([]);
+    for (const leak of ["door_digits", "the_cold_door", "cold_door", "the_door_code", "DIGIT IS"]) expect(JSON.stringify(req), leak).not.toContain(leak);
+    rt.dispose();
+  });
 });
 
 // ───────────────────────── director mistakes (verify-pass regressions) ─────────────────────────
