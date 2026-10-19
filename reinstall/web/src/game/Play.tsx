@@ -11,7 +11,7 @@ import { baseOf, type ReinstallConfig } from "../config.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
 import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
-import { HIT_USED, STAGE_LINE } from "./fight.ts";
+import { HIT_USED, KNEELING_LINE, STAGE_LINE } from "./fight.ts";
 import { bearingOf, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
@@ -255,7 +255,7 @@ function KingBar({ king, onHit }: { king: KingHud; onHit: () => void }) {
       <div className="hud-king open">
         <span className="hud-king-label">♚ {king.label}</span>
         <span className="hud-king-state">KNEELING · {king.meter}</span>
-        <small>{STAGE_LINE.pawns} His door stands open.</small>
+        <small>{KNEELING_LINE}</small>
       </div>
     );
   }

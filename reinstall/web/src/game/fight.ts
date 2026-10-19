@@ -54,14 +54,19 @@ export function stageFor(hp: number, max: number): Stage {
   return k >= 4 ? "grandmaster" : k === 3 ? "club" : k === 2 ? "beginner" : k === 1 ? "dizzy" : "pawns";
 }
 
-/** Flavour under the bar: how he is holding up (the simulation's King, not the board's). */
+/** Flavour under the bar while he stands: how he is holding up (the
+ *  simulation's King, not the board's). "pawns" is any hp that rounds to 0
+ *  but isn't 0 (1 of 15) — he is still up, his door still shut. */
 export const STAGE_LINE: Record<Stage, string> = {
   grandmaster: "The King is at full strength.",
   club: "The King is rattled.",
   beginner: "The King is reeling.",
   dizzy: "The King is dizzy.",
-  pawns: "The King is on his knees.",
+  pawns: "The King is barely standing.",
 };
+
+/** Under the bar once he has fallen (hp 0): only then does he kneel. */
+export const KNEELING_LINE = "The King is on his knees. His door stands open.";
 
 /** Above this many points the meter is "n / max" (as the bar over his head). */
 const HEARTS_MAX = 9;

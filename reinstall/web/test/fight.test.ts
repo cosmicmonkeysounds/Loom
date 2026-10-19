@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { doorGap, locate } from "@loom/house";
 import type { Prop, Vec3 } from "@loom/house";
-import { HIT_USED, keepDoorOpen, KING_REACH, kingMeter, kingReach, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
+import { HIT_USED, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
 import { SHOW } from "./houses.ts";
 
 const house = SHOW();
@@ -29,6 +29,12 @@ describe("stageFor", () => {
       expect(STAGE_LINE[s]).toMatch(/King/);
       expect(STAGE_LINE[s]).not.toMatch(/board|chess|hit him|pawns only/iu);
     }
+  });
+
+  it("no standing line says he kneels — at 1 of 15 he is still up, his door shut", () => {
+    for (let hp = 1; hp <= 15; hp++) expect(STAGE_LINE[stageFor(hp, 15)]).not.toMatch(/knee|kneel|open/iu);
+    expect(KNEELING_LINE).toMatch(/knees/iu);
+    expect(KNEELING_LINE).toMatch(/door stands open/iu);
   });
 });
 
