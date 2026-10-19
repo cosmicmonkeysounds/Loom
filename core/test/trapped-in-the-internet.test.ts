@@ -2797,6 +2797,119 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
   });
 });
 
+// ───────────────────────── 5b · Trabolta's phase table (wave 12) ─────────────────────────
+
+/** One phase card of trabolta.mind.md, after inheritance (CONTRACTS C4.1):
+ *  a card leaves out stage / powers / tell to keep the card before it. */
+interface PhaseCard {
+  stage: string;
+  powers: string[];
+  tell: string[];
+}
+/** The mind file's `phases:` table, read line by line: the show writes every
+ *  `stage:` / `powers:` / `tell:` on one line (a flow list), so no YAML
+ *  library is needed. `_` keys (the stage cards) are never phases. */
+function phaseTable(): Map<string, PhaseCard> {
+  const text = readFileSync(join(scenarioDir(SHOW), "trabolta.mind.md"), "utf8");
+  const from = text.indexOf("\nphases:\n");
+  const table = text.slice(from, text.indexOf("\n---\n", from));
+  const list = (s: string) => s.split(",").map((x) => x.trim().replace(/^"|"$/gu, "")).filter((x) => x !== "");
+  const out = new Map<string, PhaseCard>();
+  let prev: PhaseCard = { stage: "asleep", powers: [], tell: [] };
+  let cur: PhaseCard | null = null;
+  for (const line of table.split("\n")) {
+    const head = /^ {2}([a-z_0-9]+):(?: >-)?$/u.exec(line);
+    if (head !== null) {
+      if (cur !== null) prev = cur;
+      cur = head[1]!.startsWith("_") ? null : { ...prev, powers: [...prev.powers], tell: [...prev.tell] };
+      if (cur !== null) out.set(head[1]!, cur);
+      continue;
+    }
+    if (cur === null) continue;
+    const stage = /^ {4}stage: (.+)$/u.exec(line);
+    if (stage !== null) cur.stage = stage[1]!.trim();
+    const many = /^ {4}(powers|tell): \[(.*)\]$/u.exec(line);
+    if (many !== null) cur[many[1] as "powers" | "tell"] = list(many[2]!);
+  }
+  return out;
+}
+/** A power's refusals that mean "not in this phase" (cast/trabolta.loom). */
+const OUT_OF_PHASE = ["That function is not available yet.", "I do not have the strength.", "The screens are not answering me.", "It is already over.", "The truth has been read. It is too late for that now."];
+
+describe("Trapped in the Internet — Trabolta's phase table (wave 12)", () => {
+  it("every phase the story sets has a card, and the cards keep the stage floors", () => {
+    const set = new Set<string>();
+    for (const f of FILES) for (const m of f.source.matchAll(/set Night\.phase = "([a-z_0-9]+)"/gu)) set.add(m[1]!);
+    const table = phaseTable();
+    expect([...table.keys()].sort()).toEqual([...set].sort());
+    const floor: Record<string, string> = {
+      arrivals: "asleep", desktop: "asleep", bingo: "asleep", bingo_results: "asleep",
+      introduced: "formal", hunt_1: "formal", truth_1: "hungry",
+      malware: "rattled", hunt_2: "rattled", summons: "rattled",
+      truth_pong: "judge", trust_chart: "judge", beans: "unravelling", overshare: "unravelling",
+      y2k: "desperate", majority: "desperate",
+    };
+    for (const [phase, card] of table) expect(card.stage, phase).toBe(floor[phase] ?? "last act");
+  });
+
+  it("each card's powers are exactly the ones the story lets through in that phase", { timeout: SLOW }, () => {
+    const sim = boot();
+    const table = phaseTable();
+    const declared = new Set(POWERS.map(([p]) => p));
+    for (const [phase, card] of table) for (const p of card.powers) expect(declared.has(p), `${phase}: ${p}`).toBe(true);
+    const seen = new Map<string, string[]>();
+    let n = 0;
+    const probe = () => {
+      const phase = v(sim, "Night.phase") as string;
+      if (seen.has(phase)) return;
+      const targets = ["g4", "g5", "g6"];
+      const live: string[] = [];
+      for (const [p, a] of POWERS) {
+        const args = a === null ? null : { ...a, ...(a.target !== undefined ? { target: targets[n++ % targets.length]! } : {}) };
+        const t = lines(fire(sim, p, "g1", args, "Trabolta"), "Trabolta");
+        if (!t.some((x) => OUT_OF_PHASE.includes(x))) live.push(p);
+      }
+      seen.set(phase, live);
+    };
+    const step = (...names: string[]) => {
+      for (const name of names) {
+        fire(sim, name);
+        probe();
+      }
+    };
+    probe();
+    step("call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth");
+    readResults(sim);
+    step("second_hunt_preview", "start_the_second_hunt");
+    advance(sim, 120);
+    sim.choose("g2", 0);
+    sim.choose("g3", 0);
+    step("five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock", "majority_reached", "final_reveal", "bobbing_for_truth");
+    expect([...seen.keys()]).toEqual(["arrivals", "desktop", "bingo", "bingo_results", "introduced", "hunt_1", "truth_1", "malware", "hunt_2", "summons", "truth_pong", "trust_chart", "beans", "overshare", "y2k", "majority", "final_reveal", "bobbing"]);
+    for (const [phase, live] of seen) expect(table.get(phase)!.powers, phase).toEqual(live);
+    // After the verdict and in every ending nothing is his to fire.
+    for (const [phase, card] of table) if (!seen.has(phase)) expect(card.powers, phase).toEqual([]);
+  });
+
+  it("each card's `tell` names only files he holds from the doors, never a secret one", () => {
+    const sim = boot();
+    const byTitle = new Map([...sim.model.codex].map(([id, e]) => [e.title, { id, ...e }]));
+    for (const [phase, card] of phaseTable()) {
+      for (const title of card.tell) {
+        const e = byTitle.get(title);
+        expect(e, `${phase}: ${title}`).toBeDefined();
+        expect(e!.secret, `${phase}: ${title}`).not.toBe(true);
+        expect(sim.holdsCodex("Trabolta", e!.id), `${phase}: ${title}`).toBe(true);
+      }
+    }
+    // Her name stays out of what he may tell until the verdict has read
+    // truth.txt to the house (the files that name her: The Sandy File, the
+    // LiveJournal).
+    const before = [...phaseTable()].slice(0, [...phaseTable().keys()].indexOf("grok_prom"));
+    for (const [phase, card] of before) for (const title of card.tell) expect(byTitle.get(title)!.text, `${phase}: ${title}`).not.toMatch(/sandy/iu);
+  });
+});
+
 // ───────────────────────── 6 · secrecy through the real event server ─────────────────────────
 
 const CODES = { event: "EVT777", prime: "PRM777", mod: "MOD777" };
