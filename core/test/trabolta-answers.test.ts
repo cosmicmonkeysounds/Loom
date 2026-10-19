@@ -264,7 +264,10 @@ async function night() {
   const guestSays = (g: Guest, text: string) => ask(() => call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text }, { token: g.token }));
   const clippySays = (text: string) => ask(() => call(rt, "POST", "/api/prime/say", { channel: "cast:Trabolta", text }, { token: clippy.json["token"] as string }));
   const factsDoc = async () => (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json;
-  const v = (path: string) => rt.liveSim!.world.peek(path)?.value;
+  const v = (path: string) => {
+    const got = rt.liveSim!.world.peek(path);
+    return got && got.kind !== "null" && "value" in got ? got.value : undefined;
+  };
   return { rt, mod, guests, guestSays, clippySays, factsDoc, v };
 }
 

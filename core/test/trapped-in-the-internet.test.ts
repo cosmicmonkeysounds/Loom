@@ -2896,7 +2896,7 @@ describe("Trapped in the Internet — Trabolta's phase table (wave 12)", () => {
 
   it("each card's `tell` names only files he holds from the doors, never a secret one", () => {
     const sim = boot();
-    const byTitle = new Map([...sim.model.codex].map(([id, e]) => [e.title, { id, ...e }]));
+    const byTitle = new Map([...sim.model.codex].map(([id, e]) => [e.title, { ...e, id }]));
     for (const [phase, card] of phaseTable()) {
       for (const title of card.tell) {
         const e = byTitle.get(title);
