@@ -5,9 +5,9 @@
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import { asNumber } from "../src/runtime/expr.ts";
 import { foldName } from "../src/parser/names.ts";
-import type { AgentMindReport } from "./agents.ts";
+import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
-export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentThought } from "./agents.ts";
+export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
 import type { CodexDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
@@ -428,6 +428,11 @@ export interface CastSummary {
   /** `mind: external` — voiced by a stagehand agents worker, not a performer
    *  (`online` then means a worker for it is connected). */
   agent?: boolean;
+  /** An agent character's line of requests (wave 11): how many wait, how
+   *  long the oldest has, and whether its worker stalled (connected, not
+   *  answering — the hold line went out, a director answers by hand).
+   *  Present on agent characters where connection tracking exists. */
+  agentQueue?: AgentQueue;
   /** A part a performer can sign in to (`identity.ts` `performerPickable`):
    *  the Run page's sign-in list shows only these. */
   part?: boolean;
@@ -454,6 +459,8 @@ export interface ModPresence {
   owners?: Map<string, string>;
   /** Agent characters with a stagehand worker connected. */
   agents?: Set<string>;
+  /** Each agent character's request line (`AgentHub.queue`). */
+  agentQueues?: Map<string, AgentQueue>;
   /** Folded character names a performer's session token holds (streaming or
    *  not — `identity.ts` `heldCharacters`). */
   held?: Set<string>;
@@ -946,6 +953,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
         ...(presence !== undefined
           ? { online: c.mind === "external" ? (presence.agents?.has(c.id) ?? false) : presence.primes.has(c.id) }
           : {}),
+        ...(c.mind === "external" && presence?.agentQueues?.has(c.id) === true ? { agentQueue: presence.agentQueues.get(c.id)! } : {}),
         ...(part ? { part: true } : {}),
         ...(part && presence?.held !== undefined ? { held: presence.held.has(foldName(c.id)) } : {}),
         ...(c.secret ? { secret: true as const } : {}),

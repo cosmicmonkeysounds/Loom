@@ -21,7 +21,7 @@ import { validateHouse, type HouseMap, type MapVariantsResponse } from "@loom/ho
 
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -90,6 +90,7 @@ import {
   type AgentFacts,
   type AgentLine,
   type AgentPower,
+  type AgentQueue,
   type AgentRequest,
   type AgentThread,
 } from "./agents.ts";
@@ -270,6 +271,15 @@ const JUDGE_BY = "Judge";
 /** Who a mutation is done by, for the facts ledger's provenance (wave 5
  *  issue 8): the journal's `by` (a director, a device, an impersonator),
  *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
+/** The story's staff room for server notices: a `kind: faction` CHANNEL
+ *  whose GROUP no guest may join (`staffRoomIds`), `hosts` first; null when
+ *  the story has none. */
+function hostsRoomOf(model: Sim["model"]): string | null {
+  const staff = staffRoomIds(model);
+  const names = [...model.channels.keys()].map((id) => id.replace(/^room:/u, "")).filter((n) => staff.has(n.toLowerCase().replace(/[#_-]/g, " ").replace(/\s+/g, " ").trim()));
+  return names.find((n) => n.toLowerCase() === "hosts") ?? names[0] ?? null;
+}
+
 function factsBy(m: Mutation, args: readonly unknown[], by: string | undefined): string | null {
   if (by !== undefined && by.startsWith(AGENT_BY)) return by.slice(AGENT_BY.length);
   if (by !== undefined && by !== "") return by;
@@ -572,6 +582,8 @@ export class EventRuntime {
     admits: (thread) => this.agentAdmits(thread),
     typing: (thread, on) => this.pushTyping(thread, on),
     hold: (req) => this.postAgentHold(req),
+    busy: (req) => this.postAgentBusy(req),
+    stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
     now: () => this.clock(),
     presence: () => this.pushSnapshots(),
   });
@@ -810,6 +822,7 @@ export class EventRuntime {
       directors,
       owners: this.personaOwners,
       agents: new Set(this.agents.onlineCharacters()),
+      agentQueues: this.agentQueues(),
       held: heldCharacters(this.sessions.entries()),
       minds: [...this.agentMinds.values()],
       facts: this.factsView(),
@@ -1362,6 +1375,13 @@ export class EventRuntime {
 
   // -- agent-voiced characters ---------------------------------------------
 
+  /** Every agent character's request line, for the director's cast rows. */
+  private agentQueues(): Map<string, AgentQueue> {
+    const out = new Map<string, AgentQueue>();
+    for (const c of this.sim?.model.characters.values() ?? []) if (c.mind === "external") out.set(c.id, this.agents.queue(c.id));
+    return out;
+  }
+
   /** May this thread reach the agent at all? Not a guest's DM with a
    *  character still hidden from that guest (K-16): before Clippy introduces
    *  Trabolta nothing — a wall terminal, a stale tab — may draw a hold line
@@ -1469,45 +1489,47 @@ export class EventRuntime {
     this.agents.line({ character, channel, audience }, { held });
   }
 
-  /** After a restore: every agent thread still owed an answer — its last
-   *  line someone else's, or the character's hold line right after one —
-   *  gets its request again, as the hub's queue died with the process (a
-   *  worker answers it, or the hold line follows, never twice: a thread
-   *  with a hold line since the character last really spoke is re-asked as
-   *  already held, however many lines the guest typed after it —
-   *  R1-diff-server-02). Only a line from the last `AGENT_QUEUE_MAX_AGE_MS`
-   *  of the story clock: live, an older request has been dropped. */
+  /** After a restore: every agent thread still owed an answer — someone
+   *  else's line since the character last really spoke (its hold and busy
+   *  lines are the server's, not the character speaking) — gets its request
+   *  again, as the hub's queue died with the process (a worker answers it,
+   *  or the hold line follows, never twice: a thread with a hold line since
+   *  the character last really spoke is re-asked as already held, however
+   *  many lines the guest typed after it — R1-diff-server-02). Only a line
+   *  from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live, an
+   *  older request has been dropped. */
   private requeueAgentThreads(): void {
     const sim = this.sim;
     if (sim === null) return;
     interface Tail {
-      prev: ChatMessage | undefined;
-      last: ChatMessage;
-      /** A hold line (after someone else's) since the character's last real line. */
+      /** The newest line from someone else since the character's last real line. */
+      owed: ChatMessage | null;
+      /** A hold line after it (since the character's last real line). */
       held: boolean;
+      last: ChatMessage;
     }
     const tails = new Map<string, Tail>(); // thread →
-    const holdOf = (character: string) => sim.model.characters.get(character)?.hold ?? null;
-    const theirs = (m: ChatMessage | undefined, character: string): m is ChatMessage => m !== undefined && m.kind === "line" && m.from !== character;
     for (const m of this.chat.all()) {
       if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
       const character = m.channel.slice("dm:".length);
       if (!this.isAgent(character)) continue;
       const key = `${m.channel}|${m.audience[0]}`;
       const t = tails.get(key);
+      const def = sim.model.characters.get(character);
+      let owed = t?.owed ?? null;
       let held = t?.held ?? false;
-      if (m.from === character) {
-        const hold = holdOf(character);
-        held = hold !== null && m.text === hold ? held || theirs(t?.last, character) : false;
+      if (m.from !== character) {
+        if (m.kind === "line") owed = m;
+      } else if (def?.hold !== null && def?.hold !== undefined && m.text === def.hold) {
+        if (owed !== null) held = true;
+      } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy)) {
+        owed = null;
+        held = false;
       }
-      tails.set(key, { prev: t?.last, last: m, held });
+      tails.set(key, { owed, held, last: m });
     }
     const now = sim.elapsed();
-    for (const { prev, last, held } of tails.values()) {
-      const character = last.channel.slice("dm:".length);
-      const hold = holdOf(character);
-      const lastIsHold = hold !== null && last.from === character && last.text === hold && theirs(prev, character);
-      const owed = theirs(last, character) ? last : lastIsHold ? prev! : null;
+    for (const { owed, held, last } of tails.values()) {
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
       this.agentHeard(last.channel, last.audience as string[], held);
     }
@@ -1521,6 +1543,32 @@ export class EventRuntime {
     if (line === null) return false;
     this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
     return true;
+  }
+
+  /** `req` has waited behind a burst on a worker still answering: post the
+   *  character's authored `busy:` line once in the thread — once ever, so a
+   *  restart (which forgets the hub's own once-per-thread) never says it
+   *  twice. */
+  private postAgentBusy(req: AgentRequest): boolean {
+    const line = this.sim?.model.characters.get(req.character)?.busy ?? null;
+    if (line === null) return false;
+    const who = req.thread.audience.join(",");
+    const said = this.chat.all().some((m) => m.channel === req.thread.channel && m.from === req.character && m.text === line && Array.isArray(m.audience) && m.audience.join(",") === who);
+    if (said) return false;
+    this.fanout(this.commit("say", req.character, req.thread.channel, line, null, req.thread.audience));
+    return true;
+  }
+
+  /** A worker stopped answering (its head waited 60 s): one line in the
+   *  story's staff room (`# hosts`), so a director answers by hand. No staff
+   *  room → nothing (Run still shows `agentQueue.stalled`). */
+  private postAgentStall(worker: { name: string; characters: string[] }, waiting: number): void {
+    const sim = this.sim;
+    const room = sim === null ? null : hostsRoomOf(sim.model);
+    if (room === null) return;
+    const who = worker.characters.join(" / ") || "the agent";
+    const many = waiting === 1 ? "1 thread is waiting" : `${waiting} threads are waiting`;
+    this.fanout(this.commit("broadcast", `channel(${room})`, `⏳ ${who} stopped answering (worker ${worker.name}): ${many} and got the hold line. Answer them from Run as ${who}; it clears when ${who} answers again.`));
   }
 
   /**

@@ -133,6 +133,11 @@ export interface CharDef {
    *  online to voice it (the server posts it after ~20 s of silence). Plain
    *  words: a terminal reads it aloud. Null = say nothing. */
   hold: string | null;
+  /** `busy: …` — what an agent-voiced character says once in a thread whose
+   *  request has waited over 40 s on a worker that is online but behind (a
+   *  burst of DMs): the server posts it, never the model. Plain words, like
+   *  `hold:`. Null = say nothing. */
+  busy: string | null;
   /** Declared numeric ranges (`truth: 0 to 100 = 35`) — the bounds an
    *  agent's variable adjustments are clamped to. */
   ranges: Map<string, [number, number]>;
@@ -775,6 +780,7 @@ function charDef(id: string, body: CharacterBody): CharDef {
     hidden: body.properties.get("hidden")?.value.trim() === "true",
     mind: mind === "" ? null : mind,
     hold: holdOf(body.properties.get("hold")?.value),
+    busy: holdOf(body.properties.get("busy")?.value),
     ranges,
     playable: body.properties.get("playable")?.value.trim() !== "false",
     avatar: avatarsOf(body.properties.get("avatar")?.value),
@@ -862,7 +868,7 @@ export function parseCurrency(raw: string): CurrencyDef | null {
   return def;
 }
 
-/** An authored `hold:` line, surrounding quotes optional. */
+/** An authored `hold:` / `busy:` line, surrounding quotes optional. */
 function holdOf(raw: string | undefined): string | null {
   let v = (raw ?? "").trim();
   if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1).trim();
