@@ -53,6 +53,51 @@ def test_example_agents_config_loads():
     # its version and the machine's memory.
     assert agents.cfg.models["Trabolta"].context_window == 32768
     assert agents.warnings() == []
+    # The example shows the new mind with every wave 12 key at its default.
+    assert agents.cfg.mind_mode == "new" and agents.cfg.orchestrator.enabled is False
+    assert (agents.cfg.voice.memo, agents.cfg.voice.repeat_guard, agents.cfg.voice.dossier_on_close, agents.cfg.voice.layout) == (True, True, True, "lean")
+    assert (agents.cfg.mind.stage_from_phase, agents.cfg.mind.phase_poll_s) == (True, 30.0)
+
+
+def _agents(tmp_path, **section):
+    from stagehand.agents.config import parse_agents
+
+    (tmp_path / "t.persona.md").write_text("---\ncharacter: T\n---\nYou are T.\n", encoding="utf-8")
+    return parse_agents({"characters": ["t.persona.md"], **section}, str(tmp_path))
+
+
+def test_mind_mode_is_classic_when_absent_and_the_new_keys_default_on(tmp_path):
+    cfg = _agents(tmp_path)
+    assert cfg.mind_mode == "classic" and not cfg.new_mind
+    new = _agents(tmp_path, mind_mode="NEW", voice={"memo": "off", "repeat_guard": False, "layout": "classic"}, mind={"stage_from_phase": "off", "phase_poll_s": 0})
+    assert new.new_mind
+    assert (new.voice.memo, new.voice.repeat_guard, new.voice.dossier_on_close, new.voice.layout) == (False, False, True, "classic")
+    assert (new.mind.stage_from_phase, new.mind.phase_poll_s) == (False, 0.0)
+
+
+@pytest.mark.parametrize(
+    "section, match",
+    [
+        ({"mind_mode": "fancy"}, "mind_mode"),
+        ({"voice": {"memos": True}}, "agents.voice: unknown key"),
+        ({"voice": {"layout": "wide"}}, "agents.voice.layout"),
+        ({"voice": {"memo": "maybe"}}, "agents.voice.memo: expected on or off"),
+        ({"voice": "on"}, "agents.voice: must be a mapping"),
+        ({"mind": {"poll": 3}}, "agents.mind: unknown key"),
+        ({"mind": {"phase_poll_s": -1}}, "phase_poll_s"),
+        ({"mind": {"phase_poll_s": "often"}}, "phase_poll_s"),
+        ({"mind": {"stage_from_phase": 2}}, "stage_from_phase"),
+    ],
+)
+def test_the_new_mind_keys_are_validated(tmp_path, section, match):
+    with pytest.raises(ConfigError, match=match):
+        _agents(tmp_path, **section)
+
+
+def test_on_off_read_from_yaml_as_booleans(tmp_path):
+    doc = yaml.safe_load("voice: {memo: off, repeat_guard: on}\nmind: {stage_from_phase: off}\n")
+    cfg = _agents(tmp_path, mind_mode="new", **doc)
+    assert cfg.voice.memo is False and cfg.voice.repeat_guard is True and cfg.mind.stage_from_phase is False
 
 
 def test_missing_auth_rejected():
