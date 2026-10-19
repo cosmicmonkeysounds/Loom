@@ -418,10 +418,14 @@ class Agents:
         if self.cfg.dry_run or self.mod is None:
             return
         try:
-            await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [self.trace.stored(thought)]})
-        except ModApiError as err:
-            self.trace.forget_prefix(thought)  # the server lacks its full copy: never refer to it
+            await self.mod.post("/api/agent/trace", {"worker": self.worker or self.cfg.name, "thoughts": [self.trace.server_copy(thought)]})
+        except Exception as err:  # noqa: BLE001 — a refusal, a refused connection, a timeout: all alike
+            # The server may hold none of our full copies (it is down, or came
+            # back empty): the next thought for every character goes whole.
+            self.trace.restart_prefixes()
             log.warning("could not send %s's thought %s: %s", thought.character, thought.id, err)
+            return
+        self.trace.delivered(thought.id)
 
     async def _push_history(self) -> None:
         """On (re)connect: hand the server the mind and the recent trace, so

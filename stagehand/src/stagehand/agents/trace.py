@@ -33,7 +33,10 @@ full text. The in-memory ring keeps the full text (a re-run needs it),
 `load_recent` expands references from the file, and a reference it cannot
 resolve stays the literal — a re-run of that thought is refused ("prefix not
 found"). The first thought for a character after a worker start, or after a
-reconnect (`restart_prefixes`), always carries the full text.
+reconnect (`restart_prefixes`), always carries the full text. The server copy
+(`server_copy`) refers only to a full copy the server has taken
+(`delivered`): a thought recorded while its holder's POST is still in flight,
+or after that POST failed, goes whole.
 """
 
 from __future__ import annotations
@@ -207,6 +210,8 @@ class Trace:
         self._refs: dict[str, str] = {}
         #: Thoughts read back with a prefix nobody holds any more.
         self._missing: set[str] = set()
+        #: Thoughts whose server copy the server took (since the last restart_prefixes).
+        self._delivered: set[str] = set()
 
     def listen(self, fn: Any) -> None:
         self._listeners.append(fn)
@@ -258,6 +263,11 @@ class Trace:
         """A new connection: the server may hold none of the full copies, so
         the next thought for each character carries its prefix in full."""
         self._prefixes.clear()
+        self._delivered.clear()
+
+    def delivered(self, thought_id: str) -> None:
+        """The server took this thought's server copy: later ones may refer to it."""
+        self._delivered.add(thought_id)
 
     def forget_prefix(self, thought: Thought) -> None:
         """This thought's full copy did not reach the server: never refer to it."""
@@ -298,11 +308,22 @@ class Trace:
             doc["messages"][0]["content"] = prefix_ref(ref)
         return doc
 
+    def server_copy(self, thought: Thought) -> dict[str, Any]:
+        """The thought as it is posted live: like `stored`, but a reference
+        only to a holder the server has taken (`delivered`). One whose holder
+        is still in flight, or never arrived, carries the full text."""
+        doc = thought.to_json()
+        ref = self._refs.get(thought.id)
+        if ref is not None and ref in self._delivered and doc.get("messages"):
+            doc["messages"][0]["content"] = prefix_ref(ref)
+        return doc
+
     def _push_ring(self, ring: deque[Thought], thought: Thought) -> None:
         if ring.maxlen is not None and len(ring) >= ring.maxlen:
             gone = ring[0]
             self._refs.pop(gone.id, None)
             self._missing.discard(gone.id)
+            self._delivered.discard(gone.id)
         ring.append(thought)
 
     # -- recording ------------------------------------------------------------------

@@ -6,6 +6,7 @@ server's `traceAfter`."""
 import asyncio
 import json
 
+import httpx
 import pytest
 
 from stagehand.agents.config import parse_agents
@@ -427,6 +428,84 @@ def test_the_server_copy_carries_the_reference_and_a_failed_full_copy_is_not_ref
     sent = [t for body in agents.mod.of("/api/agent/trace") for t in body["thoughts"]]
     assert [t["id"] for t in sent] == [b.id, c.id]
     assert sent[0]["messages"][0]["content"] == STATIC and sent[1]["messages"][0]["content"] == prefix_ref(b.id)
+
+
+@pytest.mark.parametrize("error", [httpx.ConnectError("refused"), httpx.ReadTimeout("slow"), OSError("unreachable"), ModApiError("down", 502)])
+def test_a_full_copy_lost_to_any_error_is_never_referred_to(tmp_path, error):
+    agents = worker(tmp_path)
+
+    class Down(FakeMod):
+        async def post(self, p, body):
+            if p == "/api/agent/trace" and not self.posts_ok:
+                raise error
+            return await super().post(p, body)
+
+    agents.mod = Down()
+    agents.mod.posts_ok = False
+    a = voice()
+
+    async def go():
+        await agents.trace.record(a)  # a transport error, not only a non-200
+        agents.mod.posts_ok = True
+        b, c = voice(), voice()
+        await agents.trace.record(b)
+        await agents.trace.record(c)
+        return b, c
+
+    b, c = run(go())
+    sent = [t for body in agents.mod.of("/api/agent/trace") for t in body["thoughts"]]
+    assert [t["id"] for t in sent] == [b.id, c.id]
+    assert sent[0]["messages"][0]["content"] == STATIC  # never "[same prefix as <a>]"
+    assert sent[1]["messages"][0]["content"] == prefix_ref(b.id)
+
+
+def test_a_failed_send_makes_every_characters_next_thought_whole(tmp_path):
+    agents = worker(tmp_path)
+    run(agents.trace.record(voice()))
+    run(agents.trace.record(voice(character="Sandy")))
+    agents.mod.fail_paths.add("/api/agent/trace")
+    run(agents.trace.record(voice()))  # the server is gone: it may hold no full copy at all
+    agents.mod.fail_paths.clear()
+    agents.mod.posts.clear()
+    run(agents.trace.record(voice(character="Sandy")))
+    sent = agents.mod.of("/api/agent/trace")[0]["thoughts"][0]
+    assert sent["messages"][0]["content"] == STATIC
+
+
+def test_a_thought_recorded_while_its_holders_post_is_in_flight_goes_whole(tmp_path):
+    agents = worker(tmp_path)
+
+    class Slow(FakeMod):
+        async def post(self, p, body):
+            if p == "/api/agent/trace" and body["thoughts"][0]["id"] == self.slow_id:
+                await self.gate.wait()
+                if self.slow_fails:
+                    raise httpx.ReadTimeout("slow")
+            return await super().post(p, body)
+
+    for fails in (False, True):
+        agents.trace = Trace(None)
+        agents.trace.listen(agents._thought_recorded)
+        agents.mod = Slow()
+        a = voice()
+        agents.mod.slow_id, agents.mod.slow_fails = a.id, fails
+
+        async def go():
+            gate = agents.mod.gate = asyncio.Event()
+            holder = asyncio.ensure_future(agents.trace.record(a))
+            await asyncio.sleep(0)
+            b = voice()
+            await agents.trace.record(b)  # a's POST has not answered yet
+            gate.set()
+            await holder
+            c = voice()
+            await agents.trace.record(c)
+            return b, c
+
+        b, c = run(go())
+        sent = {t["id"]: t["messages"][0]["content"] for body in agents.mod.of("/api/agent/trace") for t in body["thoughts"]}
+        assert sent[b.id] == STATIC
+        assert sent[c.id] == (STATIC if fails else prefix_ref(a.id))
 
 
 def test_load_recent_expands_references_even_from_before_the_window(tmp_path):
