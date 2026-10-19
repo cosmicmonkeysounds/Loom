@@ -12,30 +12,13 @@
 //! chess here any more.
 
 import { doorGap, floorOf, locate } from "@loom/house";
-import type { HouseMap, Prop, Vec3 } from "@loom/house";
-import { relativeBearing } from "./hud.ts";
+import type { HouseMap, KingReach, Prop, Vec3 } from "@loom/house";
 import { RADIUS } from "./physics.ts";
 
-/** Plan metres, feet → the king's base centre (the body stops ≈ 0.55 m from it). */
-export const KING_REACH = 1.25;
-/** |relative bearing| allowed: the player must face him. */
-export const KING_CONE_DEG = 55;
-
-/** Where a hit stands: in reach (`ok`), on another floor, too far, or not facing him. */
-export type KingReach = "ok" | "floor" | "far" | "facing";
-
-/**
- * May a hit be asked for from here? In order: the player is on another
- * floor; too far; not facing him; ok. The same rule as the server's (and
- * `@loom/house`'s `kingReach`, which the server judges with some slack):
- * this copy is only the tablet's pre-check.
- */
-export function kingReach(house: HouseMap, feet: Vec3, yaw: number, king: Prop): KingReach {
-  if (floorOf(house, feet[1]) !== floorOf(house, king.pos[1])) return "floor";
-  if (Math.hypot(feet[0] - king.pos[0], feet[2] - king.pos[2]) > KING_REACH) return "far";
-  if (Math.abs(relativeBearing(feet, king.pos, yaw)) > KING_CONE_DEG) return "facing";
-  return "ok";
-}
+// The reach rule is `@loom/house`'s, the one the server judges a hit by
+// (with its slack): the tablet only pre-checks it to nudge the player
+// closer before it asks. Standing on his very centre counts as facing him.
+export { kingReach, KING_CONE_DEG, KING_REACH, type KingReach } from "@loom/house";
 
 /** What the HUD says when a hit can't be asked for from here. */
 export function nudgeFor(reach: Exclude<KingReach, "ok">): string {
