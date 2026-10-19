@@ -658,6 +658,12 @@ class Orchestrator:
         self.submit(Job("reflect", character, f"reflect:{character}:{thread_key}", {"req": req, "reply": reply, "thread_key": thread_key}, trigger="exchange"))
 
     def survey(self, character: str, trigger: str = "timer") -> None:
+        if self.cfg.survey_every_s <= 0 and (trigger or "timer") in CLOCK_TRIGGERS:
+            # `survey_every_s: 0`: no timer and no hello survey — not even queued
+            # (rule 1; `_execute` keeps the same check for a job queued earlier).
+            self.skipped += 1
+            log.debug("orchestrator: skipped the %s survey for %s: survey_every_s is 0", trigger or "timer", character)
+            return
         self.submit(Job("survey", character, f"survey:{character}", trigger=trigger))
 
     def rerun(self, thought: Thought, model: LlmConfig | None = None) -> None:

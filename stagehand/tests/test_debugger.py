@@ -425,7 +425,7 @@ def test_hello_replays_the_mind_and_the_recent_trace(tmp_path):
     assert paths[:2] == ["/api/agent/mind", "/api/agent/trace"]
     replay = agents.mod.posts[1][1]
     assert replay["worker"] == "w-9" and [t["note"] for t in replay["thoughts"]] == ["earlier tonight"]
-    assert agents.orchestrator.pending == 1  # the first look at the house
+    assert agents.orchestrator.pending == 0  # survey_every_s: 0 queues no first look (A0 rule 1)
 
 
 def test_a_voice_request_traces_the_lookup_round_too(tmp_path):
