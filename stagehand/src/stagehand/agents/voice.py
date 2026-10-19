@@ -508,6 +508,13 @@ async def answer_lean(
                 facts_box.append(None)
         return facts_box[0]
 
+    # C3.2: the classic layout is today's prompt *with the mind* (the
+    # phase-applied brief, stage and drives). A caller that forgets `mind=`
+    # gets a prompt with none of that: say so in the log and the thought.
+    no_mind = "classic layout without a mind (no brief / stage / drives)" if not lean and mind is None else ""
+    if no_mind:
+        log.warning("%s: %s — the caller passed no mind=", persona.character, no_mind)
+
     def build(*, retry: str | None = None, lookups: dict[str, str] | None = None, prior_json: str | None = None) -> list[dict[str, str]]:
         if lean:
             return build_lean_messages(persona, req, ctx, retry=retry, lookups=lookups, prior_json=prior_json)
@@ -589,6 +596,7 @@ async def answer_lean(
     reply, settle_notes = await settle(reply)
     first: Pass = guard_pass(persona, reply, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard)
     wants = first.retry
+    call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
     if wants == "repeat":
         notes.append("repeat retry" if opts.retry_allowed else "repeat (no retry: a line is waiting)")

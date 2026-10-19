@@ -639,3 +639,29 @@ def test_a_retried_request_records_only_scrubbed_memos():
     assert first.result["memo"] == "talked about the snow globe: …"
     assert "memo scrubbed" in first.note
     assert second.result["memo"] == reply.memo == "talked about the snow globe: …"
+
+
+def test_classic_layout_sends_todays_prompt_with_the_mind():
+    from stagehand.agents.mind import Mind
+
+    mind = Mind("Trabolta")
+    mind.seed(stages=("asleep", "hungry"), drives={"hunger": 70})
+    mind.brief = "Ask everyone for a fact."
+    mind.stage = "hungry"
+    req = request()
+    model = Model(say("Bring me one."))
+    trace = Trace()
+    ctx = context(options=VoiceOptions(layout="classic"))
+    reply = run(answer_lean(P, MODEL, req, ctx, model, trace=trace, mind=mind))
+    assert model.calls[0] == build_messages(P, req, mind=mind)
+    assert model.calls[0] != build_messages(P, req, mind=None)
+    assert any("Right now: Ask everyone for a fact." in m["content"] for m in model.calls[0])
+    assert reply.say == "Bring me one."
+    assert "without a mind" not in trace.all("Trabolta")[0].note
+
+
+def test_classic_layout_without_a_mind_says_so_in_the_thought():
+    model = Model(say("Bring me one."))
+    trace = Trace()
+    run(answer_lean(P, MODEL, request(), context(options=VoiceOptions(layout="classic")), model, trace=trace))
+    assert "classic layout without a mind" in trace.all("Trabolta")[0].note
