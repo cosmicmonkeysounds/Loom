@@ -513,10 +513,11 @@ only, one per line: no JSON, no numbering, no heading."""
 SUMMARY_HEAD = """=== WHAT YOU MAKE OF THEM ===
 Nobody is waiting on you. Condense what you know of the one below into
 what you make of them so far: two or three sentences, in your own words,
-under 400 characters, the way you would remember them tomorrow. Keep what
-they gave you, asked you and promised. Never write a hunt answer, never
-say whether anything they told you is true or false. Reply with the
-sentences only: no JSON, no heading."""
+under 400 characters, the way you would remember them tomorrow: what you
+think of them and what you suspect, not a list of facts, and no file words
+like neutral, entrant or stance. Keep what they gave you, asked you and
+promised. Never write a hunt answer, never say whether anything they told
+you is true or false. Reply with the sentences only: no JSON, no heading."""
 
 
 #: The last message of a summary / rewrite call. Both reuse P1 for the

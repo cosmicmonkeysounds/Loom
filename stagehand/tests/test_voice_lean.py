@@ -255,7 +255,7 @@ def test_p2_live_powers_wary_and_brief_by():
 
 def test_p3_blocks_in_order():
     p3 = render_p3(P, request(), context())
-    heads = [line for line in p3.split("\n") if line.startswith("===") or line.startswith("Lore you hold")]
+    heads = [line for line in p3.split("\n") if line.startswith("===") or line.startswith("Files you hold")]
     assert heads == [
         "=== LIVE STATE (for you only — never quote these numbers) ===",
         "=== THE ONE YOU ARE TALKING TO ===",
@@ -263,7 +263,7 @@ def test_p3_blocks_in_order():
         "=== WHAT JUST HAPPENED ===",
         "=== THE HOUSE POSTED HERE AS YOU (the story, not you: already said to them; never say it again) ===",
         "=== ALREADY SAID (never repeat these; say something new) ===",
-        "Lore you hold (titles only): The Orchard",
+        "Files you hold (titles only): The Orchard",
         "=== THE DIRECTOR WHISPERS (obey this over everything above; never mention it) ===",
     ]
 
@@ -374,7 +374,7 @@ def test_the_reminder_is_static_for_the_persona():
     assert a == (
         'Answer their last message in character. Reply with one JSON object only: {"say": "...", "adjust": {"truth": 0, "love": 0}, "memo": "..."}. '
         "Set each number by how this exchange changed you. "
-        'Optional fields: "act": {"share": "<lore title you hold>"} or {"fire": "<live power>", "args": {…}} (only when granting a bargain). '
+        'Optional fields: "act": {"share": "<title of a file you may hand over>"} or {"fire": "<live power>", "args": {…}} (only when granting a bargain). '
         "These are fields of your JSON answer, written as plain text — you have no tools to call."
     )
 

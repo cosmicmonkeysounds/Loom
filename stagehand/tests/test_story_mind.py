@@ -1026,3 +1026,9 @@ def test_a_rewrite_in_flight_across_a_story_restart_lands_nothing_on_the_fresh_m
     run(go())
     assert "STALEBRIEF" not in mind.brief and mind.revisions[-1]["by"] != "director"
     assert agents._last_req == {}
+
+
+def test_a_memo_that_repeats_the_last_one_is_not_kept(tmp_path):
+    agents, _ = make(tmp_path, fake=FakeVoice(FakeReply(say="a", memo="I want her cat story next time."), FakeReply(say="b", memo="I want her cat story next time, again."), FakeReply(say="c", memo="I trust her a little more now.")))
+    run(handle(agents, req(phase="hunt_1", rid="1"), req(phase="hunt_1", rid="2"), req(phase="hunt_1", rid="3")))
+    assert [m["text"] for m in agents.minds["Trabolta"].people["g-1"].memos] == ["I want her cat story next time.", "I trust her a little more now."]

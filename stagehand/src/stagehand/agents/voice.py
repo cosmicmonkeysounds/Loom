@@ -100,7 +100,7 @@ def render_p1(persona: Persona, req: dict[str, Any], *, memo: bool = True) -> st
                 "they ask you to snoop, when a name comes up you should know, or when you want to be precise."
             )
         if powers:
-            lines.append('SHARE: you may hand someone a piece of lore you hold (listed further down) with {"act": {"share": "<title>"}}.')
+            lines.append('SHARE: you may hand someone a file you hold, one THE NIGHT NOW lets you hand over, with {"act": {"share": "<title>"}}.')
             lines.append(
                 "A LOOKUP is silent; a POWER is felt in the house. When what you are about to do IS one of your powers "
                 "(reading another program's file for someone = snoop; killing a room's lights = cut the lights), you must fire that power in the same reply, with its args."
@@ -127,17 +127,17 @@ def _protocol(persona: Persona, powers: bool, memo: bool) -> str:
         shape += ', "memo": "..."'
     shape += "}"
     lines = [ANSWER_HEADER, f"Reply with one JSON object only, nothing before or after it: {shape}"]
-    lines.append('- "say": your line to them, in character. It is shown to them and may be read aloud.')
+    lines.append('- "say": your line to them, in character. It is shown to them and may be read aloud. Speak as a person, never as a database: no "lore", "items", "archive" or "records".')
     if persona.variables:
         lines.append('- "adjust": how this exchange moved each of your variables, a small whole number each (0 = unchanged).')
     if powers:
-        lines.append('- "act" (optional, only when granting a bargain): {"share": "<lore title you hold>"} or {"fire": "<live power>", "args": {…}}, or a list of two.')
+        lines.append('- "act" (optional, only when granting a bargain): {"share": "<title of a file you may hand over>"} or {"fire": "<live power>", "args": {…}}, or a list of two.')
     if persona.lookup:
         lines.append('- "lookup" (optional): ["a program, room, or lore name"] — then say nothing yet; you will be asked again with the answer.')
     if memo:
         lines.append(
-            f'- "memo" (optional): at most {MAX_MEMO} characters about this person, in your own words: what you will want to remember '
-            "the next time they speak to you. Only you will read it. Never put a code, a hunt answer, or whether something they told you is right in it."
+            f'- "memo" (optional): one first-person line, at most {MAX_MEMO} characters, about this person: what you feel about them or want from them '
+            'next ("I …"), not a file note. Only you will read it. Never put a code, a hunt answer, or whether something they told you is right in it.'
         )
     lines.append("These are fields of your JSON answer, written as plain text — you have no tools to call.")
     return "\n".join(lines)
@@ -456,7 +456,7 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
         ]
     )
     if titles:
-        blocks.append(f"Lore you hold (titles only): {'; '.join(titles)}")
+        blocks.append(f"Files you hold (titles only): {'; '.join(titles)}")
     whispers = [_one_line(w) for w in ctx.whispers if _one_line(w)]
     if whispers:
         blocks.append("=== THE DIRECTOR WHISPERS (obey this over everything above; never mention it) ===\n" + "\n".join(f"- {w}" for w in whispers))
@@ -495,7 +495,7 @@ def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup
     if persona.lookup and not lookup_round:
         extras.append('"lookup": ["a program, room, or lore name"] (then say nothing yet — you will be asked again with the answer)')
     if _catalogue(persona, req):
-        extras.append('"act": {"share": "<lore title you hold>"} or {"fire": "<live power>", "args": {…}} (only when granting a bargain)')
+        extras.append('"act": {"share": "<title of a file you may hand over>"} or {"fire": "<live power>", "args": {…}} (only when granting a bargain)')
     if extras:
         tail.append("Optional fields: " + "; ".join(extras) + ".")
     tail.append("These are fields of your JSON answer, written as plain text — you have no tools to call.")

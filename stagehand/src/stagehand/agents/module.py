@@ -68,6 +68,7 @@ from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
 from .persona import Persona
 from .prompt import build_messages, gate_context
+from .guards import repeats_line
 from .reply import Reply, parse_reply
 from .secrets import drop_counts
 from .trace import Thought, Trace, new_thought
@@ -1029,6 +1030,8 @@ class Agents:
             return  # asleep: the unavailable line went out; nobody is on file yet
         heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
         memo = story_mind.keep_memo(persona, getattr(reply, "memo", "") or "") if v.memo else ""
+        if memo and d.memos and repeats_line(memo, str(d.memos[-1].get("text") or "")):
+            memo = ""  # the same note again (K-04 returning-guest: memos 3 and 4 were near copies)
         if memo:
             d.add_memo(memo, heart=heart, thought=self._voice_thought(character, rid))
         story_mind.note_heart(d, req, heart)
