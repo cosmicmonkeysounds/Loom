@@ -27,6 +27,16 @@
         quiet_s: 1.5               #   idle seconds before a reflection may start
         preempt: true              #   a new request cancels a running reflection
         survey_every_s: 120        #   look at the whole house this often (0 = never)
+      mind_mode: new               # new | classic (wave 12). ABSENT = classic: today's
+                                   #   two-model mind, so an unedited YAML keeps it
+      voice:                       # read only in mind_mode: new (each on | off)
+        memo: on                   #   the voice keeps a ≤ 140-character note per person
+        repeat_guard: on           #   one retry when a reply repeats his last lines
+        dossier_on_close: on       #   the quiet-conversation summary (120 s idle, ≥ 3 turns)
+        layout: lean               #   lean | classic (today's prompt, inside the new mind)
+      mind:                        # read only in mind_mode: new
+        stage_from_phase: on       #   the mind file's phase cards set stage / drives / brief
+        phase_poll_s: 30           #   the phase watch (no model call); 0 = off
       state_dir: .stagehand-minds  # where minds persist (per event / character)
       facts_ttl_s: 5               # how long a facts snapshot is reused
       characters:                  # one persona file per voiced character
@@ -69,6 +79,31 @@ ORCHESTRATOR_NUM_CTX = 20480
 VOICE_NUM_CTX = 32768
 
 
+MIND_MODES = ("new", "classic")
+VOICE_LAYOUTS = ("lean", "classic")
+
+
+@dataclass(frozen=True)
+class VoiceSettings:
+    """`agents.voice:` — read only in `mind_mode: new` (CONTRACTS.md §C5.1)."""
+
+    memo: bool = True
+    repeat_guard: bool = True
+    #: The quiet-conversation summary.
+    dossier_on_close: bool = True
+    #: "lean" | "classic"
+    layout: str = "lean"
+
+
+@dataclass(frozen=True)
+class MindSettings:
+    """`agents.mind:` — read only in `mind_mode: new`."""
+
+    stage_from_phase: bool = True
+    #: Seconds between the phase watch's facts fetches; 0 = no phase watch.
+    phase_poll_s: float = 30.0
+
+
 @dataclass(frozen=True)
 class AgentsConfig:
     name: str = "agents"
@@ -84,6 +119,15 @@ class AgentsConfig:
     orchestrator_models: dict[str, LlmConfig] = field(default_factory=dict)
     state_dir: Path = field(default_factory=lambda: Path(".stagehand-minds"))
     facts_ttl_s: float = 5.0
+    #: "new" (wave 12: one voice call per line, the story keeps the mind) or
+    #: "classic" (today's two models). Absent in the YAML = classic.
+    mind_mode: str = "classic"
+    voice: VoiceSettings = field(default_factory=VoiceSettings)
+    mind: MindSettings = field(default_factory=MindSettings)
+
+    @property
+    def new_mind(self) -> bool:
+        return self.mind_mode == "new"
 
 
 def _llm(raw: Any, base: LlmConfig, where: str) -> LlmConfig:
@@ -126,10 +170,57 @@ def _ollama_only(cfg: LlmConfig) -> LlmConfig:
     return cfg if cfg.api == "ollama" else replace(cfg, num_ctx=None)
 
 
+def _switch(value: Any, where: str) -> bool:
+    """`on` / `off` as YAML reads them (booleans) or as strings."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ("on", "true", "yes"):
+        return True
+    if isinstance(value, str) and value.strip().lower() in ("off", "false", "no"):
+        return False
+    raise ConfigError(f"{where}: expected on or off")
+
+
+def _voice(raw: Any) -> VoiceSettings:
+    if raw is None:
+        return VoiceSettings()
+    if not isinstance(raw, dict):
+        raise ConfigError("agents.voice: must be a mapping")
+    unknown = sorted(str(k) for k in set(raw) - set(VoiceSettings.__dataclass_fields__))
+    if unknown:
+        raise ConfigError(f"agents.voice: unknown key(s) {', '.join(unknown)}")
+    layout = str(raw.get("layout", "lean")).strip().lower()
+    if layout not in VOICE_LAYOUTS:
+        raise ConfigError(f"agents.voice.layout: must be one of {', '.join(VOICE_LAYOUTS)}")
+    return VoiceSettings(
+        memo=_switch(raw.get("memo", True), "agents.voice.memo"),
+        repeat_guard=_switch(raw.get("repeat_guard", True), "agents.voice.repeat_guard"),
+        dossier_on_close=_switch(raw.get("dossier_on_close", True), "agents.voice.dossier_on_close"),
+        layout=layout,
+    )
+
+
+def _mind(raw: Any) -> MindSettings:
+    if raw is None:
+        return MindSettings()
+    if not isinstance(raw, dict):
+        raise ConfigError("agents.mind: must be a mapping")
+    unknown = sorted(str(k) for k in set(raw) - set(MindSettings.__dataclass_fields__))
+    if unknown:
+        raise ConfigError(f"agents.mind: unknown key(s) {', '.join(unknown)}")
+    try:
+        poll = float(raw.get("phase_poll_s", 30.0))
+    except (TypeError, ValueError) as err:
+        raise ConfigError("agents.mind.phase_poll_s: must be a number of seconds (0 = off)") from err
+    if poll < 0 or isinstance(raw.get("phase_poll_s"), bool):
+        raise ConfigError("agents.mind.phase_poll_s: must be a number of seconds (0 = off)")
+    return MindSettings(stage_from_phase=_switch(raw.get("stage_from_phase", True), "agents.mind.stage_from_phase"), phase_poll_s=poll)
+
+
 def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
     if not isinstance(doc, dict):
         raise ConfigError("'agents:' must be a mapping")
-    unknown = sorted(set(doc) - {"name", "concurrency", "dry_run", "llm", "characters", "orchestrator", "state_dir", "facts_ttl_s"})
+    unknown = sorted(set(doc) - {"name", "concurrency", "dry_run", "llm", "characters", "orchestrator", "state_dir", "facts_ttl_s", "mind_mode", "voice", "mind"})
     if unknown:
         raise ConfigError(f"agents: unknown key(s) {', '.join(unknown)}")
     # The section's defaults keep the voice's context until each character's
@@ -197,6 +288,11 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
         facts_ttl_s = max(0.0, float(doc.get("facts_ttl_s", 5.0)))
     except (TypeError, ValueError) as err:
         raise ConfigError("agents.concurrency / facts_ttl_s must be numbers") from err
+    mind_mode = "classic" if doc.get("mind_mode") is None else str(doc.get("mind_mode")).strip().lower()
+    if mind_mode not in MIND_MODES:
+        raise ConfigError(f"agents.mind_mode: must be one of {', '.join(MIND_MODES)} (absent = classic)")
+    voice = _voice(doc.get("voice"))
+    mind = _mind(doc.get("mind"))
     state_dir = Path(str(doc.get("state_dir") or ".stagehand-minds"))
     if not state_dir.is_absolute():
         state_dir = Path(base_dir) / state_dir
@@ -211,4 +307,7 @@ def parse_agents(doc: Any, base_dir: str = ".") -> AgentsConfig:
         orchestrator_models=orchestrator_models,
         state_dir=state_dir,
         facts_ttl_s=facts_ttl_s,
+        mind_mode=mind_mode,
+        voice=voice,
+        mind=mind,
     )

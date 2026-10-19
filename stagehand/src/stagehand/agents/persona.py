@@ -18,7 +18,12 @@
                                        #   May open with its own frontmatter:
                                        #   stages: [a, b, c]   the arc, in order
                                        #   drives: {hunger: 40, suspicion: 55}
-                                       #   phases: {glitch: "cue text"}  per Night.phase
+                                       #   phases: {glitch: "cue text"}  per Night.phase,
+                                       #     or a phase card per phase (wave 12):
+                                       #     {stage, favours, drives, powers, tell,
+                                       #      brief, cue} + `_stages:` (a card of
+                                       #     text per declared stage); see
+                                       #     `parse_mind_table`
                                        #   secrets: {topics, match, lore}  hunt answers
                                        #     it must never be able to check
                                        #     (see `secrets.py`)
@@ -31,6 +36,8 @@
                                        #   lookup resolves a program — so being read is *felt*
     powers: all                        # which `who: agent` powers it may use (or a list, or none)
     bargain: "…"                       # guidance on when a favour is earned
+    catchphrases:                      # rationed by the new voice (wave 12): once
+      - "Your request has been logged" #   per person, at first contact
     situations:                        # optional extra instructions for a moment:
       - name: at his heart             #   (name optional — the block's heading)
         when: them.at_the_heart == true  # a gate expression, read like `when:`
@@ -82,6 +89,7 @@ _KNOWN = {
     "powers",
     "bargain",
     "situations",
+    "catchphrases",
 }
 
 _SITUATION_KEYS = {"name", "when", "prompt"}
@@ -144,6 +152,57 @@ class Persona:
     secrets: Secrets = field(default_factory=Secrets)
     #: Extra instructions per kind of moment (`situations:`), in file order.
     situations: tuple[Situation, ...] = ()
+    #: Lines the new voice rations to once per person (`catchphrases:`).
+    catchphrases: tuple[str, ...] = ()
+    #: The mind file's phase cards, in file order, inheritance resolved
+    #: (`parse_mind_table`). A bare cue string is a card too.
+    phase_cards: dict[str, "PhaseCard"] = field(default_factory=dict)
+    #: One paragraph per declared stage (`phases._stages`).
+    stage_cards: dict[str, str] = field(default_factory=dict)
+    #: Not fatal, worth a look (`stagehand check` prints them).
+    warnings: tuple[str, ...] = ()
+
+
+POLICY_FAVOURS = ("none", "earned", "loose")
+CARD_KEYS = frozenset({"stage", "favours", "drives", "powers", "tell", "brief", "cue"})
+#: The reserved `phases:` key for the stage cards (no `_` key is ever a phase).
+STAGES_KEY = "_stages"
+
+
+@dataclass(frozen=True)
+class PhaseCard:
+    """One `Night.phase`'s card (CONTRACTS.md §C4.1), inheritance resolved:
+    `stage` / `favours` / `powers` / `tell` come from the card before when
+    left out, `drives` merge over the card before's, and `brief` never
+    inherits (no brief → the card's `cue`, else "")."""
+
+    phase: str
+    stage: str = ""
+    favours: str = "none"
+    drives: dict[str, int] = field(default_factory=dict)
+    powers: tuple[str, ...] = ()
+    tell: tuple[str, ...] = ()
+    brief: str = ""
+    #: The classic orchestrator's cue as written ("" = none; classic then reads the brief).
+    cue: str = ""
+    #: The keys this card wrote itself (the rest were inherited).
+    own: frozenset[str] = frozenset()
+
+    @property
+    def classic_cue(self) -> str:
+        """What classic hands the orchestrator for this phase (§C4.2)."""
+        return " ".join((self.cue or self.brief).split())
+
+
+@dataclass(frozen=True)
+class PhaseTable:
+    cards: dict[str, PhaseCard] = field(default_factory=dict)
+    stage_cards: dict[str, str] = field(default_factory=dict)
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def cues(self) -> dict[str, str]:
+        return {phase: card.classic_cue for phase, card in self.cards.items() if card.classic_cue}
 
 
 def _names(value: Any, where: str) -> tuple[str, ...]:
@@ -227,6 +286,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
     drives: dict[str, int] = {}
     phase_cues: dict[str, str] = {}
     secrets = Secrets()
+    table = PhaseTable()
     if meta.get("mind") not in (None, ""):
         mind_path = Path(str(meta["mind"]))
         if not mind_path.is_absolute() and source not in ("<persona>", ""):
@@ -237,6 +297,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
             raise ConfigError(f"{source}: cannot read mind file {mind_path}: {err}") from err
         mind_prompt, stages, drives, phase_cues = parse_mind_file(mind_text, str(mind_path))
         secrets = parse_mind_secrets(mind_text, str(mind_path))
+        table = parse_mind_table(mind_text, str(mind_path))
     orchestrator = meta.get("orchestrator")
     if orchestrator is not None and not isinstance(orchestrator, dict):
         raise ConfigError(f"{source}: orchestrator: must be a mapping of model overrides")
@@ -274,7 +335,21 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         bargain=str(meta.get("bargain") or "").strip(),
         secrets=secrets,
         situations=_situations(meta.get("situations"), source),
+        catchphrases=_catchphrases(meta.get("catchphrases"), source),
+        phase_cards=dict(table.cards),
+        stage_cards=dict(table.stage_cards),
+        warnings=table.warnings,
     )
+
+
+def _catchphrases(value: Any, source: str) -> tuple[str, ...]:
+    if value in (None, ""):
+        return ()
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+        raise ConfigError(f"{source}: catchphrases: expected a list of lines")
+    return tuple(" ".join(v.split()) for v in value)
 
 
 _MIND_KNOWN = {"stages", "drives", "phases", "secrets"}
@@ -283,45 +358,159 @@ _MIND_KNOWN = {"stages", "drives", "phases", "secrets"}
 def parse_mind_file(text: str, source: str = "<mind>") -> tuple[str | None, tuple[str, ...], dict[str, int], dict[str, str]]:
     """A mind file is the orchestrator's prompt, optionally opening with a
     frontmatter block that declares the character's arc (`stages:`), its
-    drives with opening values (`drives:`), and a cue per story phase
-    (`phases:`). Returns (prompt, stages, drives, phase_cues)."""
+    drives with opening values (`drives:`), and a cue or a card per story
+    phase (`phases:`, see `parse_mind_table`). Returns (prompt, stages,
+    drives, phase_cues): classic's cue per phase is a card's `cue:` (or its
+    brief), and a bare string's text, as before."""
     body = text
     stages: tuple[str, ...] = ()
     drives: dict[str, int] = {}
     phases: dict[str, str] = {}
     if text.startswith("---"):
         end = text.find("\n---", 3)
-        if end < 0:
-            raise ConfigError(f"{source}: unterminated frontmatter (no closing '---')")
-        try:
-            meta = yaml.safe_load(text[3:end]) or {}
-        except yaml.YAMLError as err:
-            raise ConfigError(f"{source}: bad frontmatter YAML: {err}") from err
-        if not isinstance(meta, dict):
-            raise ConfigError(f"{source}: frontmatter must be a mapping")
+        meta = _frontmatter(text, source)
         unknown = sorted(set(meta) - _MIND_KNOWN)
         if unknown:
             raise ConfigError(f"{source}: unknown frontmatter key(s) {', '.join(unknown)}")
         stages = _names(meta.get("stages"), f"{source}: stages")
-        raw_drives = meta.get("drives")
-        if isinstance(raw_drives, dict):
-            for name, start in raw_drives.items():
-                try:
-                    drives[str(name).strip()] = max(0, min(100, int(start if start is not None else 50)))
-                except (TypeError, ValueError) as err:
-                    raise ConfigError(f"{source}: drives.{name} must be a number 0–100") from err
-        elif isinstance(raw_drives, (str, list)):
-            drives = {name: 50 for name in _names(raw_drives, f"{source}: drives")}
-        elif raw_drives is not None:
-            raise ConfigError(f"{source}: drives must be a mapping of name → opening value")
-        raw_phases = meta.get("phases")
-        if isinstance(raw_phases, dict):
-            phases = {str(k).strip(): " ".join(str(v).split()) for k, v in raw_phases.items() if v is not None and str(v).strip()}
-        elif raw_phases is not None:
-            raise ConfigError(f"{source}: phases must be a mapping of phase → cue")
+        drives = _drives(meta, source)
+        if meta.get("phases") is not None:
+            phases = _phase_table(meta, stages, drives, parse_mind_secrets(text, source), source).cues
         body = text[end + 4 :]
     prompt = body.strip() or None
     return prompt, stages, drives, phases
+
+
+def _frontmatter(text: str, source: str) -> dict[str, Any]:
+    if not text.startswith("---"):
+        return {}
+    end = text.find("\n---", 3)
+    if end < 0:
+        raise ConfigError(f"{source}: unterminated frontmatter (no closing '---')")
+    try:
+        meta = yaml.safe_load(text[3:end]) or {}
+    except yaml.YAMLError as err:
+        raise ConfigError(f"{source}: bad frontmatter YAML: {err}") from err
+    if not isinstance(meta, dict):
+        raise ConfigError(f"{source}: frontmatter must be a mapping")
+    return meta
+
+
+def parse_mind_table(text: str, source: str = "<mind>") -> PhaseTable:
+    """The mind file's phase table (wave 12, CONTRACTS.md §C4): a card per
+    `Night.phase` and a paragraph per declared stage, validated. Every
+    failure is a `ConfigError` (the worker will not boot; `check` fails).
+    A bare cue string is a card with only `cue:`."""
+    meta = _frontmatter(text, source)
+    if meta.get("phases") is None:
+        return PhaseTable()
+    stages = _names(meta.get("stages"), f"{source}: stages")
+    return _phase_table(meta, stages, _drives(meta, source), parse_mind_secrets(text, source), source)
+
+
+def _drives(meta: dict[str, Any], source: str) -> dict[str, int]:
+    drives: dict[str, int] = {}
+    raw_drives = meta.get("drives")
+    if isinstance(raw_drives, dict):
+        for name, start in raw_drives.items():
+            try:
+                drives[str(name).strip()] = max(0, min(100, int(start if start is not None else 50)))
+            except (TypeError, ValueError) as err:
+                raise ConfigError(f"{source}: drives.{name} must be a number 0–100") from err
+    elif isinstance(raw_drives, (str, list)):
+        drives = {name: 50 for name in _names(raw_drives, f"{source}: drives")}
+    elif raw_drives is not None:
+        raise ConfigError(f"{source}: drives must be a mapping of name → opening value")
+    return drives
+
+
+def _card_strings(value: Any, where: str) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+        raise ConfigError(f"{where}: expected a list of non-empty names")
+    return tuple(v.strip() for v in value)
+
+
+def _phase_table(meta: dict[str, Any], stages: tuple[str, ...], drives: dict[str, int], secrets: Secrets, source: str) -> PhaseTable:
+    raw = meta.get("phases")
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{source}: phases must be a mapping of phase → cue or card")
+    warnings: list[str] = []
+    stage_cards: dict[str, str] = {}
+    if STAGES_KEY in raw:
+        given = raw[STAGES_KEY]
+        if not isinstance(given, dict):
+            raise ConfigError(f"{source}: phases.{STAGES_KEY} must map each declared stage to its text")
+        for name, card in given.items():
+            stage = str(name).strip()
+            if stage not in stages:
+                raise ConfigError(f"{source}: phases.{STAGES_KEY}.{name}: not a declared stage ({', '.join(stages) or 'none declared'})")
+            if not isinstance(card, str) or not card.strip():
+                raise ConfigError(f"{source}: phases.{STAGES_KEY}.{name}: needs its text")
+            if secrets.leaks(card):
+                raise ConfigError(f"{source}: phases.{STAGES_KEY}.{name}: carries a secrets.never word")
+            stage_cards[stage] = " ".join(card.split())
+    missing = [s for s in stages if s not in stage_cards]
+    if missing and (stage_cards or any(isinstance(v, dict) for k, v in raw.items() if not str(k).startswith("_"))):
+        warnings.append(f"{source}: no stage card for {', '.join(missing)} (the voice sees the stage name alone)")
+    cards: dict[str, PhaseCard] = {}
+    prev = PhaseCard(phase="", stage=stages[0] if stages else "", favours="none", drives=dict(drives))
+    for key, value in raw.items():
+        phase = str(key).strip()
+        if phase.startswith("_"):
+            if phase != STAGES_KEY:
+                raise ConfigError(f"{source}: phases.{phase}: a leading '_' is reserved ({STAGES_KEY} is the only one)")
+            continue
+        where = f"{source}: phases.{phase}"
+        if isinstance(value, str):
+            if not value.strip():
+                raise ConfigError(f"{where}: an empty cue")
+            body: dict[str, Any] = {"cue": value}
+        elif isinstance(value, dict):
+            body = value
+        else:
+            raise ConfigError(f"{where}: expected a cue (text) or a card (a mapping)")
+        unknown = sorted(str(k) for k in set(body) - CARD_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unknown card key(s) {', '.join(unknown)} (a card has {', '.join(sorted(CARD_KEYS))})")
+        stage = prev.stage
+        if "stage" in body:
+            stage = str(body["stage"]).strip() if isinstance(body["stage"], str) else ""
+            if stage not in stages:
+                raise ConfigError(f"{where}: stage {body['stage']!r} is not a declared stage ({', '.join(stages) or 'none declared'})")
+        favours = prev.favours
+        if "favours" in body:
+            favours = str(body["favours"]).strip().lower() if isinstance(body["favours"], str) else ""
+            if favours not in POLICY_FAVOURS:
+                raise ConfigError(f"{where}: favours must be one of {', '.join(POLICY_FAVOURS)}")
+        merged = dict(prev.drives)
+        if "drives" in body:
+            given = body["drives"]
+            if not isinstance(given, dict):
+                raise ConfigError(f"{where}: drives must map declared drives to 0–100")
+            for name, v in given.items():
+                if str(name) not in drives:
+                    raise ConfigError(f"{where}: drives.{name}: not a declared drive ({', '.join(drives) or 'none declared'})")
+                if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= 100:
+                    raise ConfigError(f"{where}: drives.{name} must be a whole number 0–100")
+                merged[str(name)] = v
+        powers = _card_strings(body["powers"], f"{where}: powers") if "powers" in body else prev.powers
+        tell = _card_strings(body["tell"], f"{where}: tell") if "tell" in body else prev.tell
+        texts: dict[str, str] = {}
+        for k in ("brief", "cue"):
+            if k in body:
+                if not isinstance(body[k], str):
+                    raise ConfigError(f"{where}: {k} must be text")
+                if secrets.leaks(body[k]):
+                    raise ConfigError(f"{where}: {k} carries a secrets.never word")
+                texts[k] = body[k].strip()
+        cue = texts.get("cue", "")
+        brief = texts.get("brief") or cue
+        card = PhaseCard(phase=phase, stage=stage, favours=favours, drives=merged, powers=powers, tell=tell, brief=brief, cue=cue, own=frozenset(body))
+        cards[phase] = card
+        prev = card
+    return PhaseTable(cards=cards, stage_cards=stage_cards, warnings=tuple(warnings))
 
 
 def parse_mind_secrets(text: str, source: str = "<mind>") -> Secrets:
