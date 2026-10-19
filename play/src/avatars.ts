@@ -52,6 +52,9 @@ export interface ProgramHit {
   description: string;
   avatar: string | null;
   claimed: boolean;
+  /** A featured program found by its article name, saved for an invited
+   *  guest and locked for this caller. Absent from an older server → open. */
+  reserved?: boolean;
   /** Why a guest can't be this: `antivirus` (the enforcers' caste). */
   blocked: "antivirus" | null;
 }
@@ -154,10 +157,11 @@ export function rowTitle(row: IdentityRow): string {
 export function hitNote(hit: ProgramHit): string {
   if (hit.blocked === "antivirus") return "Antivirus — programs can't be antivirus software";
   if (hit.claimed) return "Taken tonight";
+  if (hit.reserved === true) return "🔒 Reserved — saved for an invited guest";
   return hit.description;
 }
 
-/** May this hit be picked? */
+/** May this hit be picked (not antivirus, not taken, not reserved)? */
 export function hitPickable(hit: ProgramHit): boolean {
-  return !hit.claimed && hit.blocked === null;
+  return !hit.claimed && hit.blocked === null && hit.reserved !== true;
 }

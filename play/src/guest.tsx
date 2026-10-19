@@ -117,7 +117,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
     setSearching(true);
     setErr("");
     try {
-      setHits(await searchPrograms(resolved.eventId, code.trim(), query));
+      setHits(await searchPrograms(resolved.eventId, code.trim(), query, claim));
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -220,7 +220,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
                       key={h.name}
                       type="button"
                       role="listitem"
-                      className={`choice pick ghost ${hitPickable(h) ? "" : "claimed"}`}
+                      className={`choice pick ghost ${hitPickable(h) ? "" : "claimed"} ${!h.claimed && h.reserved === true ? "reserved" : ""}`}
                       disabled={busy || !hitPickable(h)}
                       onClick={() => void pick(h.name, h.name)}
                     >

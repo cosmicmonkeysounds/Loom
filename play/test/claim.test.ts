@@ -4,11 +4,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow } from "../src/avatars.ts";
+import { hitNote, hitPickable, orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow, type ProgramHit } from "../src/avatars.ts";
 import { RESERVED_TEXT, claimField, claimFromSearch, isReservedRefusal, registerErrorText, withoutClaim } from "../src/claim.ts";
 import { ApiError } from "../src/client.ts";
 import { initialRole } from "../src/director.tsx";
-import { fetchIdentities, fetchPictures, registerBody } from "../src/session.ts";
+import { fetchIdentities, fetchPictures, registerBody, searchPrograms } from "../src/session.ts";
 
 const row = (name: string, extra: Partial<IdentityRow> = {}): IdentityRow => ({ name, faction: null, avatar: null, claimed: false, ...extra });
 
@@ -55,6 +55,19 @@ describe("reserved tiles", () => {
   });
 });
 
+describe("reserved search hits", () => {
+  const hit = (extra: Partial<ProgramHit> = {}): ProgramHit => ({ name: "Microsoft Excel", description: "Spreadsheet editor", avatar: null, claimed: false, blocked: null, ...extra });
+
+  it("a featured program found by its article name is locked and says so", () => {
+    expect(hitPickable(hit({ reserved: true }))).toBe(false);
+    expect(hitNote(hit({ reserved: true }))).toContain("🔒 Reserved");
+    // Taken and antivirus outrank it; an older server's hit (no field) is open.
+    expect(hitNote(hit({ reserved: true, claimed: true }))).toBe("Taken tonight");
+    expect(hitPickable(hit())).toBe(true);
+    expect(hitNote(hit())).toBe("Spreadsheet editor");
+  });
+});
+
 describe("the claim rides the picker calls", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -76,6 +89,20 @@ describe("the claim rides the picker calls", () => {
       { passcode: "EVT1" },
     ]);
     expect(bodies.find((b) => b.url.endsWith("/pictures"))?.body).toEqual({ passcode: "EVT1", name: "Excel", claim: "ab12cd" });
+  });
+
+  it("the directory search carries it, so an invitee's own program is open to them", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", (async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      return new Response(JSON.stringify({ results: [] }), { status: 200 });
+    }) as unknown as typeof fetch);
+    await searchPrograms("e1", "EVT1", "excel", "ab12cd");
+    await searchPrograms("e1", "EVT1", "excel");
+    expect(bodies).toEqual([
+      { passcode: "EVT1", q: "excel", claim: "ab12cd" },
+      { passcode: "EVT1", q: "excel" },
+    ]);
   });
 
   it("the register carries it too", () => {

@@ -203,8 +203,8 @@ export async function fetchPictures(eventId: string, code: string, pick: { name:
 }
 
 /** Search the program directory (any software; antivirus flagged). */
-export async function searchPrograms(eventId: string, code: string, q: string): Promise<ProgramHit[]> {
-  const r = await api<{ results: ProgramHit[] }>(`/e/${encodeURIComponent(eventId)}/api/identities/search`, { passcode: code, q });
+export async function searchPrograms(eventId: string, code: string, q: string, claim?: string | null): Promise<ProgramHit[]> {
+  const r = await api<{ results: ProgramHit[] }>(`/e/${encodeURIComponent(eventId)}/api/identities/search`, { passcode: code, q, ...claimField(claim) });
   return r.results;
 }
 
