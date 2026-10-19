@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@loom/play/client.ts";
-import { filesOf, giveEntry, redeemCode, unlockOfScan } from "../src/files.ts";
+import { filesOf, foldCode, giveEntry, redeemCode, scanStep, unlockOfScan } from "../src/files.ts";
 
 const config = { eventId: "evt" };
 const pilot = { token: "PILOT" };
@@ -53,5 +53,29 @@ describe("the heart terminal's file panel", () => {
     expect(filesOf({ codex: [a, b] }, null).map((e) => e.id)).toEqual(["b", "a"]);
     expect(filesOf({ codex: [a] }, [a, b]).map((e) => e.id)).toEqual(["b", "a"]);
     expect(filesOf(null, null)).toEqual([]);
+  });
+
+  it("keeps following the stream after a redeem: entries gained later still show", () => {
+    const a = { id: "a", title: "Beta", about: null, text: "" };
+    const b = { id: "b", title: "Alpha", about: null, text: "" };
+    const c = { id: "c", title: "Gamma", about: null, text: "" };
+    // The redeem answered [a, b]; then a story grant (c) reached the stream.
+    expect(filesOf({ codex: [a, b, c] }, [a, b]).map((e) => e.id)).toEqual(["b", "a", "c"]);
+    // The stream lagging behind the redeem still lists the new entry, once.
+    expect(filesOf({ codex: [a, c] }, [a, b]).map((e) => e.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("redeems a QR held to the camera once, never while one is in flight, never a code it unlocked", () => {
+    const qr = "https://loom.example/?code=ABC&unlock=sinkhole4am";
+    const none = new Map<string, string>();
+    expect(scanStep(qr, { busy: false, redeemed: none })).toEqual({ kind: "redeem", code: "sinkhole4am" });
+    // The camera re-reports the same QR while the redeem is out: dropped.
+    expect(scanStep(qr, { busy: true, redeemed: none })).toEqual({ kind: "ignore" });
+    // Once unlocked here, the same code (any spelling) never reaches the server again.
+    const done = new Map([[foldCode("sinkhole4am"), "the-sinkhole"]]);
+    expect(scanStep(qr, { busy: false, redeemed: done })).toEqual({ kind: "again", entry: "the-sinkhole" });
+    expect(scanStep("SINKHOLE-4AM", { busy: false, redeemed: done })).toEqual({ kind: "again", entry: "the-sinkhole" });
+    expect(scanStep("g-3f9a1c", { busy: false, redeemed: none })).toEqual({ kind: "bad" });
+    expect(foldCode(" Sink_hole 4-AM ")).toBe("sinkhole4am");
   });
 });

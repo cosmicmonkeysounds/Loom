@@ -60,9 +60,47 @@ export function unlockOfScan(text: string): string | null {
   return null; // a pass
 }
 
-/** The entries to list, newest view first: the redeem's answer when it is
- *  newer than the stream's snapshot. Sorted by title. */
+/** The entries to list: the stream's snapshot (it keeps moving — a story
+ *  grant, a share from another program, a code redeemed on the phone) plus
+ *  anything a redeem here answered that the snapshot hasn't caught up with
+ *  yet. A union by id (the stream's copy wins); sorted by title. Entries
+ *  are only ever gained, so the union is never stale. */
 export function filesOf(view: { codex?: CodexEntry[] } | null, fresher: CodexEntry[] | null): CodexEntry[] {
-  const list = fresher ?? view?.codex ?? [];
-  return [...list].sort((a, b) => a.title.localeCompare(b.title));
+  const byId = new Map<string, CodexEntry>();
+  for (const e of fresher ?? []) byId.set(e.id, e);
+  for (const e of view?.codex ?? []) byId.set(e.id, e);
+  return [...byId.values()].sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/** An unlock code as the story matches it (case, dashes, underscores and
+ *  spaces are noise — core's `foldCode`). */
+export function foldCode(code: string): string {
+  return code.trim().toLowerCase().replace(/[\s_\-]+/gu, "");
+}
+
+/** What one camera read in the file panel does. */
+export type ScanStep =
+  /** A redeem is in flight: the read is dropped. */
+  | { kind: "ignore" }
+  /** Not a file's QR (a pass, a join QR, junk). */
+  | { kind: "bad" }
+  /** A code this panel already unlocked: show that entry again, no server call. */
+  | { kind: "again"; entry: string }
+  /** A new code: redeem it (once — the panel stops the camera). */
+  | { kind: "redeem"; code: string };
+
+/**
+ * Decide a camera read. The camera keeps reporting a QR held in front of it
+ * (every few seconds), and every redeem is a journaled command — a wrong
+ * one fires the story's `wrong code` and counts toward the guest's redeem
+ * lockout — so a read is redeemed at most once: never while one is in
+ * flight, never a code this panel already unlocked (`redeemed`: folded
+ * code → entry id). The panel also stops the camera after a read it redeems.
+ */
+export function scanStep(text: string, o: { busy: boolean; redeemed: ReadonlyMap<string, string> }): ScanStep {
+  if (o.busy) return { kind: "ignore" };
+  const code = unlockOfScan(text);
+  if (code === null) return { kind: "bad" };
+  const entry = o.redeemed.get(foldCode(code));
+  return entry !== undefined ? { kind: "again", entry } : { kind: "redeem", code };
 }

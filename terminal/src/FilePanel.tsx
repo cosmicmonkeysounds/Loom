@@ -1,21 +1,50 @@
 //! "📎 GIVE HIM A FILE" — the heart terminal's file panel (wave 11, see
 //! `files.ts`): the piloted program's codex entries with a Give each, a box
 //! to type an unlock code, and the camera for a codex QR. While it is open
-//! the line's leash holds (the app passes it as busy).
+//! the line's leash runs longer (`FILES_IDLE_MS`, see `idle.ts`); every tap,
+//! key and camera read here feeds it (`onActivity`).
+//!
+//! A camera read is redeemed at most once (`scanStep`): the camera stops
+//! after it, a read while a redeem is in flight is dropped, and a code this
+//! panel already unlocked is shown again without asking the server — every
+//! redeem is journaled, and a wrong one is a `wrong code` for the story.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CodexEntry, GuestView } from "@loom/play/types.ts";
 import type { TerminalConfig } from "./config.ts";
 import type { Pilot } from "./pilot.ts";
 import { Scanner } from "./scanner.tsx";
-import { filesOf, giveEntry, redeemCode, unlockOfScan } from "./files.ts";
+import { filesOf, foldCode, giveEntry, redeemCode, scanStep } from "./files.ts";
 
 type Note = { kind: "ok" | "bad"; text: string } | null;
 
-export function FilePanel({ config, pilot, view, character, onClose }: { config: TerminalConfig; pilot: Pilot; view: GuestView | null; character: string; onClose: () => void }) {
+export function FilePanel({
+  config,
+  pilot,
+  view,
+  character,
+  onClose,
+  onActivity,
+}: {
+  config: TerminalConfig;
+  pilot: Pilot;
+  view: GuestView | null;
+  character: string;
+  onClose: () => void;
+  /** Someone is using the panel (a camera read — taps and keys reach the leash on their own). */
+  onActivity?: () => void;
+}) {
   const [fresher, setFresher] = useState<CodexEntry[] | null>(null);
   const [given, setGiven] = useState<ReadonlySet<string>>(() => new Set());
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusyState] = useState<string | null>(null);
+  // The same, synchronously: two camera reads can land before a re-render.
+  const busyRef = useRef<string | null>(null);
+  const setBusy = (b: string | null) => {
+    busyRef.current = b;
+    setBusyState(b);
+  };
+  /** Codes this panel unlocked (folded code → entry id). */
+  const redeemed = useRef(new Map<string, string>());
   const [note, setNote] = useState<Note>(null);
   const [code, setCode] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -25,7 +54,7 @@ export function FilePanel({ config, pilot, view, character, onClose }: { config:
   const who = character.toUpperCase();
 
   const give = async (e: CodexEntry) => {
-    if (busy !== null) return;
+    if (busyRef.current !== null) return;
     setBusy(e.id);
     const r = await giveEntry(config, pilot, e.id, character);
     setBusy(null);
@@ -36,8 +65,19 @@ export function FilePanel({ config, pilot, view, character, onClose }: { config:
     } else setNote({ kind: "bad", text: `${who} DIDN'T TAKE IT — ${r.error.toUpperCase()}` });
   };
 
+  const offer = (entry: string, title: string, again: boolean) => {
+    setUnlocked(entry);
+    setNote({ kind: "ok", text: `${again ? "ALREADY UNLOCKED" : "UNLOCKED"}: ${title.toUpperCase()} — GIVE IT TO ${who}?` });
+  };
+
   const redeem = async (raw: string) => {
-    if (busy !== null) return;
+    if (busyRef.current !== null) return;
+    const known = redeemed.current.get(foldCode(raw));
+    if (known !== undefined) {
+      setCode("");
+      offer(known, files.find((e) => e.id === known)?.title ?? known, true);
+      return;
+    }
     setBusy("redeem");
     const r = await redeemCode(config, pilot, raw);
     setBusy(null);
@@ -51,9 +91,8 @@ export function FilePanel({ config, pilot, view, character, onClose }: { config:
       return;
     }
     setCode("");
-    setUnlocked(r.unlocked);
-    const title = (r.codex ?? files).find((e) => e.id === r.unlocked)?.title ?? r.unlocked;
-    setNote({ kind: "ok", text: `UNLOCKED: ${title.toUpperCase()} — GIVE IT TO ${who}?` });
+    redeemed.current.set(foldCode(raw), r.unlocked);
+    offer(r.unlocked, (r.codex ?? files).find((e) => e.id === r.unlocked)?.title ?? r.unlocked, false);
   };
 
   const first = unlocked === null ? files : [...files.filter((e) => e.id === unlocked), ...files.filter((e) => e.id !== unlocked)];
@@ -100,11 +139,18 @@ export function FilePanel({ config, pilot, view, character, onClose }: { config:
         <div className="scan-frame file-scan">
           <Scanner
             facing={config.camera}
-            active={busy === null}
+            active
             onCode={(text) => {
-              const c = unlockOfScan(text);
-              if (c === null) setNote({ kind: "bad", text: "THAT ISN'T A FILE'S QR" });
-              else void redeem(c);
+              onActivity?.();
+              const step = scanStep(text, { busy: busyRef.current !== null, redeemed: redeemed.current });
+              if (step.kind === "bad") setNote({ kind: "bad", text: "THAT ISN'T A FILE'S QR" });
+              else if (step.kind === "again") offer(step.entry, files.find((e) => e.id === step.entry)?.title ?? step.entry, true);
+              else if (step.kind === "redeem") {
+                // One read per SCAN tap: a QR held to the lens would
+                // otherwise be redeemed again every few seconds.
+                setScanning(false);
+                void redeem(step.code);
+              }
             }}
           />
         </div>
