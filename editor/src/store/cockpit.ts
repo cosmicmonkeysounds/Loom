@@ -322,6 +322,12 @@ export interface CastSummary {
   held?: boolean
   /** `secret: true` (the Kernel): its values are masked on the Director. */
   secret?: true
+  /** A guest's program held for its invitee (wave 11 C5): taken only with
+   *  its claim. */
+  reserved?: true
+  /** A reserved program a director opened to anyone until then (epoch ms,
+   *  `/api/mod/claim/unlock`): present only while that window is open. */
+  unlockedUntil?: number
   /** An agent-voiced character's request queue (wave 11 C6): how many
    *  threads wait, the oldest wait (ms), and whether its worker stalled (a
    *  head request unanswered > 60 s). Absent on an older server / locally. */

@@ -395,9 +395,11 @@ export const modApi = {
     await req('POST', `/e/${eventId}/api/mod/guest/gone`, { id, gone })
   },
   /** 🔓 A lost invitation (wave 11 C5): open a reserved program to anyone
-   *  for `minutes` (the server's default is 2). */
-  async claimUnlock(eventId: string, character: string, minutes?: number): Promise<void> {
-    await req('POST', `/e/${eventId}/api/mod/claim/unlock`, minutes !== undefined ? { character, minutes } : { character })
+   *  for `minutes` (the server's default is 2; 0 shuts it). Answers when
+   *  the window closes (epoch ms), null when shut. */
+  async claimUnlock(eventId: string, character: string, minutes?: number): Promise<number | null> {
+    const r = await req<{ until?: number | null }>('POST', `/e/${eventId}/api/mod/claim/unlock`, minutes !== undefined ? { character, minutes } : { character })
+    return typeof r.until === 'number' ? r.until : null
   },
   /** Write any world variable (the World browser's inline editing). */
   async setVar(eventId: string, path: string, value: string): Promise<void> {

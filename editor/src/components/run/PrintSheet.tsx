@@ -15,7 +15,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { modApi } from '@/lib/api'
-import { buildPrintItems, PrintKind, qrSvg, stackInk, stackLine, type PerPage, type PrintItem } from '@/lib/print-sheet'
+import { buildPrintItems, PrintKind, qrSvg, stackInk, stackLine, unlockButton, unlockOpenUntil, UnlockPhase, type PerPage, type PrintItem } from '@/lib/print-sheet'
+import { useCockpit } from '@/store/cockpit'
+import { useNow } from '@/components/cockpit/director/clock'
 
 const SECTION_LABEL: Record<PrintKind, string> = {
   [PrintKind.Join]: 'Join poster',
@@ -76,36 +78,41 @@ const CSS = `
 
 /** 🔓 on an invitation (screen only): a lost card's program opens to anyone
  *  for two minutes (`POST /api/mod/claim/unlock`). Tap twice — the sheet
- *  sits above the app's dialogs, so the confirm is the button itself. */
+ *  sits above the app's dialogs, so the confirm is the button itself. The
+ *  label follows the real window (the cast row's `unlockedUntil`): a
+ *  countdown while open, idle again once it closes; tap twice to shut. */
 function UnlockClaim({ eventId, character }: { eventId: string; character: string }) {
-  const [state, setState] = useState<'idle' | 'armed' | 'busy' | 'open' | 'failed'>('idle')
+  const [phase, setPhase] = useState<UnlockPhase>(UnlockPhase.Idle)
+  const cast = useCockpit((s) => s.cast)
+  const castUntil = cast.find((c) => c.id === character)?.unlockedUntil
+  // This console's own answer, kept only until the next snapshot: then the
+  // cast row is the truth (a closed or restarted window drops the field).
+  const [local, setLocal] = useState<{ until: number | null; cast: unknown } | null>(null)
+  const localUntil = local !== null && local.cast === cast ? local.until : null
+  const now = useNow(castUntil !== undefined || localUntil !== null, 1000)
+  const open = unlockOpenUntil(castUntil, localUntil, now)
   useEffect(() => {
-    if (state !== 'armed') return
-    const t = setTimeout(() => setState('idle'), 4000)
+    if (phase !== UnlockPhase.Armed) return
+    const t = setTimeout(() => setPhase(UnlockPhase.Idle), 4000)
     return () => clearTimeout(t)
-  }, [state])
+  }, [phase])
   const press = async () => {
-    if (state !== 'armed') {
-      setState('armed')
+    if (phase !== UnlockPhase.Armed) {
+      setPhase(UnlockPhase.Armed)
       return
     }
-    setState('busy')
+    setPhase(UnlockPhase.Busy)
     try {
-      await modApi.claimUnlock(eventId, character, 2)
-      setState('open')
+      const until = await modApi.claimUnlock(eventId, character, open !== null ? 0 : 2)
+      setLocal({ until, cast })
+      setPhase(UnlockPhase.Idle)
     } catch {
-      setState('failed')
+      setPhase(UnlockPhase.Failed)
     }
   }
-  const label = { idle: '🔓 lost? open 2 min', armed: `tap again: anyone may take ${character} for 2 min`, busy: '…', open: '🔓 open for 2 min', failed: '🔓 failed — again?' }[state]
+  const { label, title } = unlockButton(character, phase, open, now)
   return (
-    <button
-      className="unlock"
-      onClick={() => void press()}
-      disabled={state === 'busy'}
-      title={`For a lost invitation: anyone who picks ${character} in the next two minutes gets it — do it with the guest beside you.`}
-      data-testid={`print-unlock-${character}`}
-    >
+    <button className="unlock" onClick={() => void press()} disabled={phase === UnlockPhase.Busy} title={title} data-testid={`print-unlock-${character}`}>
       {label}
     </button>
   )

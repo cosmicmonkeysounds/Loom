@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPrintItems, DIGIT_CLUE_STACK, doorWording, isDigitClue, PrintKind, qrSvg, stackInk, stackLine, stackRank, STACK_ORDER, type PrintCodes } from './print-sheet'
+import { buildPrintItems, DIGIT_CLUE_STACK, doorWording, isDigitClue, PrintKind, qrSvg, stackInk, stackLine, stackRank, STACK_ORDER, unlockButton, unlockOpenUntil, UnlockPhase, type PrintCodes } from './print-sheet'
 
 const CODES: PrintCodes = {
   eventPass: 'EVT777',
@@ -164,5 +164,28 @@ describe('print sheet', () => {
     expect(svg.startsWith('<svg')).toBe(true)
     expect(svg).toContain('#000000')
     expect(await qrSvg('a')).not.toBe(svg)
+  })
+})
+
+describe('🔓 a lost invitation (wave 11 C5)', () => {
+  const NOW = 1_000_000
+  it('the window is the cast row’s unlockedUntil, else this console’s answer; a closed one is shut', () => {
+    expect(unlockOpenUntil(NOW + 90_000, null, NOW)).toBe(NOW + 90_000)
+    expect(unlockOpenUntil(undefined, NOW + 30_000, NOW)).toBe(NOW + 30_000)
+    expect(unlockOpenUntil(undefined, null, NOW)).toBeNull()
+    // the window closed: back to idle even with no new snapshot
+    expect(unlockOpenUntil(NOW - 1, null, NOW)).toBeNull()
+    expect(unlockOpenUntil(undefined, NOW - 1, NOW)).toBeNull()
+  })
+
+  it('the label counts the real window down and never says open once it closed', () => {
+    expect(unlockButton('Excel', UnlockPhase.Idle, null, NOW).label).toBe('🔓 lost? open 2 min')
+    expect(unlockButton('Excel', UnlockPhase.Armed, null, NOW).label).toBe('tap again: anyone may take Excel for 2 min')
+    expect(unlockButton('Excel', UnlockPhase.Idle, NOW + 102_000, NOW).label).toBe('🔓 open · 1:42 left')
+    expect(unlockButton('Excel', UnlockPhase.Armed, NOW + 102_000, NOW).label).toBe('tap again: shut Excel now')
+    expect(unlockButton('Excel', UnlockPhase.Failed, null, NOW).label).toBe('🔓 failed — again?')
+    // after the window: the same button reads idle, not "open"
+    const after = unlockButton('Excel', UnlockPhase.Idle, unlockOpenUntil(NOW + 1000, null, NOW + 5000), NOW + 5000)
+    expect(after.label).toBe('🔓 lost? open 2 min')
   })
 })

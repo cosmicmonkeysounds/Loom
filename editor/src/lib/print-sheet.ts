@@ -245,3 +245,36 @@ export type PerPage = 1 | 2 | 4 | 8
 export async function qrSvg(text: string): Promise<string> {
   return await QRCode.toString(text, { type: 'svg', errorCorrectionLevel: 'M', margin: 2, color: { dark: '#000000', light: '#ffffff' } })
 }
+
+// ---------------------------------------------------------------------------
+// 🔓 A lost invitation's unlock (screen only)
+// ---------------------------------------------------------------------------
+
+export const UnlockPhase = { Idle: 'idle', Armed: 'armed', Busy: 'busy', Failed: 'failed' } as const
+export type UnlockPhase = (typeof UnlockPhase)[keyof typeof UnlockPhase]
+
+/** When a reserved program's open window closes: the live cast row's
+ *  `unlockedUntil` (the server's truth), else this console's own unlock
+ *  answer until the next snapshot lands; null = shut (or already closed). */
+export function unlockOpenUntil(castUntil: number | undefined, local: number | null, now: number): number | null {
+  const until = castUntil ?? local
+  return until !== null && until > now ? until : null
+}
+
+/** The 🔓 button: the real window (a countdown, back to idle once it
+ *  closes or a restart shuts it), a two-tap open, a two-tap shut. */
+export function unlockButton(character: string, phase: UnlockPhase, openUntil: number | null, now: number): { label: string; title: string } {
+  if (phase === UnlockPhase.Busy) return { label: '…', title: '' }
+  if (openUntil !== null) {
+    const s = Math.max(0, Math.ceil((openUntil - now) / 1000))
+    const left = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+    return phase === UnlockPhase.Armed
+      ? { label: `tap again: shut ${character} now`, title: `Only its invitation takes ${character} again.` }
+      : { label: `🔓 open · ${left} left`, title: `Anyone who picks ${character} now gets it. Tap twice to shut it early.` }
+  }
+  if (phase === UnlockPhase.Armed) return { label: `tap again: anyone may take ${character} for 2 min`, title: '' }
+  return {
+    label: phase === UnlockPhase.Failed ? '🔓 failed — again?' : '🔓 lost? open 2 min',
+    title: `For a lost invitation: anyone who picks ${character} in the next two minutes gets it — do it with the guest beside you.`,
+  }
+}
