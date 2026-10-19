@@ -22,6 +22,14 @@
 //! still cover it), and tells the story when a pass opens and closes a line
 //! there (`terminal opened` / `terminal closed`, `pilot.ts`).
 //!
+//! The King's chess board outside the server-room door (wave 11, `view=chess`,
+//! `chess/ChessTerminal.tsx`): awake all night, a pass scan deals one game
+//! against the King at the strength his shared health bar sets, and the
+//! result goes to the story as `chess won` / `lost` / `drawn`. It belongs to
+//! no room and speaks for no character (`character` is only the poll's):
+//!
+//!   /terminal/?code=<mod passcode>&name=Server Door&spot=server-room-door&view=chess
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -62,7 +70,8 @@ export interface TerminalConfig {
    *  the world view), `face` (never), `mirror` (a full-screen spectator —
    *  no scanner, no chat), `tv` (the room voice, K-18: the face full screen
    *  speaking the character's lines in `room`, the world pane while someone
-   *  is in the simulation — no scanner). */
+   *  is in the simulation — no scanner), `chess` (the King's board at the
+   *  server-room door: scan a pass, play him — no line, no room). */
   view: TerminalView;
   /** `view: tv` — the LOCATION whose lines it speaks ("" = `DEFAULT_TV_ROOM`).
    *  Any other view — the LOCATION this terminal belongs to ("" = none; see
@@ -74,8 +83,8 @@ export interface TerminalConfig {
   announce: boolean;
 }
 
-export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv";
-export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv"];
+export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess"];
 
 export const VOICE_CHOICES: readonly VoiceChoice[] = ["browser", "fully", "silent", "server"];
 
@@ -101,9 +110,10 @@ export function tvRoomOf(c: Pick<TerminalConfig, "room">): string {
 }
 
 /** The LOCATION a wall terminal belongs to (the server-room terminal), or
- *  null: no room, or the TV (whose `room` is only the room it speaks for). */
+ *  null: no room, the TV (whose `room` is only the room it speaks for) or the
+ *  chess board (awake all night, whatever room it was given). */
 export function roomOf(c: Pick<TerminalConfig, "room" | "view">): string | null {
-  if (c.view === "tv") return null;
+  if (c.view === "tv" || c.view === "chess") return null;
   const room = c.room.trim();
   return room === "" ? null : room;
 }

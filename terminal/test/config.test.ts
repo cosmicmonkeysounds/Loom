@@ -54,6 +54,16 @@ describe("terminal config", () => {
     expect(h).toMatchObject({ name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
     expect(withoutSecrets("?code=M&room=The%20Server%20Room&view=face")).toBe("");
   });
+  it("keeps the chess view (wave 11): it belongs to no room, whatever room it was given", () => {
+    const s = memory();
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", view: "chess", spot: "server-room-door", room: "The Server Room" }), s);
+    const back = loadConfig(s)!;
+    expect(back).toMatchObject({ view: "chess", spot: "server-room-door" });
+    expect(roomOf(back)).toBeNull();
+    const h = hintsFromSearch("?code=M&name=Server%20Door&spot=server-room-door&view=chess");
+    expect(h).toMatchObject({ name: "Server Door", spot: "server-room-door", view: "chess", character: null, room: null });
+    expect(withoutSecrets("?code=M&name=Server%20Door&spot=server-room-door&view=chess")).toBe("");
+  });
   it("refuses a config with no event or token, or junk", () => {
     const s = memory();
     expect(loadConfig(s)).toBeNull();
