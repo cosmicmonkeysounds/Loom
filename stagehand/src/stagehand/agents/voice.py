@@ -38,7 +38,7 @@ from typing import Any
 
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
-from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies
+from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies, uses_catchphrase
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import allowed_powers, build_messages, gate_context, matching_situations, situation_block, their_variables
@@ -405,7 +405,7 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
         blocks.append("=== WHAT JUST HAPPENED ===\n" + "\n".join(happened))
     posted = [_one_line(t, MAX_HOUSE_LINE) for t in story_lines(req)[-HOUSE_LINES:] if t.strip()]
     if posted:
-        blocks.append("=== THE HOUSE POSTED HERE AS YOU (the story, not you) ===\n" + " · ".join(posted))
+        blocks.append("=== THE HOUSE POSTED HERE AS YOU (the story, not you: already said to them; never say it again) ===\n" + " · ".join(posted))
     to_them = [_one_line(x) for x in ctx.said.to_them[-3:] if _one_line(x) and not s.leaks(x)]
     # Another guest's thread: any hunt word at all (every `match` entry, a
     # topic) drops the line — he must never carry one guest's answer to another.
@@ -747,8 +747,15 @@ async def answer_lean(
         reply = replace(reply, say=persona.fallback)  # asked to look up with no session to ask
 
     reply, settle_notes = await settle(reply)
-    mine = thread_replies(req)
-    first: Pass = guard_pass(persona, reply, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage)
+    # What this guest heard from him in this thread: his free replies and the
+    # story's lines posted as him (K-04: 9 of 44 threads opened with the
+    # story's greeting said again right under it).
+    house = tuple(t for t in story_lines(req) if t.strip())
+    mine = (*thread_replies(req), *house)
+    person = ctx.person
+    if not person.catchphrase_used and any(uses_catchphrase(persona, t) for t in house):
+        person = replace(person, catchphrase_used=True)  # the story's greeting used his ration
+    first: Pass = guard_pass(persona, reply, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine, stage=ctx.phase.stage)
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
@@ -797,7 +804,7 @@ async def answer_lean(
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
     again, settle_notes = await settle(again)
-    second = guard_pass(persona, again, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage)
+    second = guard_pass(persona, again, person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine, stage=ctx.phase.stage)
     rnotes = settle_notes + second.notes
     final = second.reply
     if not final.say:

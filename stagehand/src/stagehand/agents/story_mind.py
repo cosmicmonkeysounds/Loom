@@ -365,8 +365,9 @@ def keep_said(persona: Persona, say: str) -> bool:
 
 
 def uses_catchphrase(persona: Persona, say: str) -> bool:
-    text = fold(say)
-    return any(fold(c) and fold(c) in text for c in persona.catchphrases)
+    from .guards import uses_catchphrase as _uses  # one rule for the ration and its bookkeeping
+
+    return _uses(persona, say)
 
 
 def after_turn(persona: Persona, d: Dossier, req: dict[str, Any], phase: str, say: str) -> None:

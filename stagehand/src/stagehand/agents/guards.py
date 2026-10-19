@@ -253,10 +253,25 @@ def catchphrases(persona: Persona) -> tuple[str, ...]:
     return tuple(c for c in getattr(persona, "catchphrases", ()) or () if isinstance(c, str) and fold(c))
 
 
+def stem_fold(text: str) -> str:
+    """`fold`, then each word stemmed crudely (a plural's `s` off, `have` →
+    `has`), so the story's "Your requests have been logged" is the
+    catchphrase "Your request has been logged" too."""
+    out = []
+    for w in fold(text).split():
+        if w == "have":
+            w = "has"
+        elif len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+            w = w[:-1]
+        out.append(w)
+    return " ".join(out)
+
+
 def uses_catchphrase(persona: Persona, say: str) -> bool:
-    """True when `say` carries one of the persona's catchphrases (folded)."""
-    hay = fold(say)
-    return any(fold(c) in hay for c in catchphrases(persona))
+    """True when `say` carries one of the persona's catchphrases (folded,
+    word-stemmed: `stem_fold`)."""
+    hay = f" {stem_fold(say)} "
+    return any(f" {stem_fold(c)} " in hay for c in catchphrases(persona))
 
 
 def catchphrase_allowed(person: PersonCard, persona: Persona | None = None, stage: str = "") -> bool:
