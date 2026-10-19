@@ -71,9 +71,11 @@ every change.
   reach on that pose (with slack), takes a point off, and fires `king
   hit` for the guest (`king fallen` at 0). A visit lasts until that
   guest's duck is found: Leave + re-scan, a director's end, a timeout
-  or a re-scan mid-walk is the same visit (409 `already hit`: *You hit
-  him. Come back on your next reinstallation.*). A story reset or a
-  server restart forgets the visits.
+  or a re-scan mid-walk is the same visit. The assignment's `kingHit`
+  says so, so ⚔ shows as spent from the start, with *You hit him this
+  reinstallation. Find Gerald before you hit him again.* (also the line
+  for a 409 `already hit`). A story reset or a server restart forgets the
+  visits.
 - **The HUD** shows his bar (`n / 15`) and how he is holding up (*at
   full strength* → *rattled* → *reeling* → *dizzy* → *barely
   standing*). Another program's hit staggers him on every screen.

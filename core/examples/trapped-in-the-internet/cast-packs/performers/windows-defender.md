@@ -25,6 +25,11 @@ the scanner)
 | **any time** | **🛡 Send to the Internet** | only if a host or the director asks: you stay at the door |
 | **any time** | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy |
 | the summons (⏳ → 🚨) | any Antivirus scan of a cleared program counts as their check-in at the Desktop, so scan only new arrivals and send everyone else to the living room | |
+| **only if you saw a checkmate** on the door terminal and it could not report it (OP-12) | **♟ They beat the machine** | the winner |
+
+**Not your buttons:** the server room's 🔌 💥 ❌ 🚪 🔧 belong to Norton,
+McAfee, Password Manager and CRA Agent Software. Your booth never shows
+them (the server refuses a press from it): you never leave the door.
 
 **Your booth** reads every Antivirus readout (the escort list, Bathroom
 Mode, the alarm). They are for the patrolling Antivirus: you hold the door.

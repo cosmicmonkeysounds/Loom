@@ -216,7 +216,10 @@ with `released: true` while you walk to Gerald.
   trigger (or A / X) within 1.25 m and facing him (55°) flushes the newest
   pose and posts `POST /api/spatial/king/hit` with the session token; the
   server judges the reach off that pose. "You hit him." — and one hit per
-  reinstallation visit (the server's 409 `already hit` counts too). At 0 he
+  reinstallation visit (the server's 409 `already hit` counts too). A visit
+  ends at the duck: a re-scan before it is the same visit, and the
+  assignment's `kingHit` starts it spent ("You hit him this reinstallation.
+  Find Gerald before you hit him again."). At 0 he
   kneels for everyone: his collider and the door leaf go, the trail routes
   through the door, and the HUD says "He is down: the cold door is open."
   A director's restore stands him up and shuts the door again — but not on

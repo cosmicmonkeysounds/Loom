@@ -71,12 +71,17 @@ They scan **all night**, like any codex code:
 - A program who already has the code (a checkmate, the majority) gains
   nothing more; the quest closes on the code itself.
 - **After 📄 truth.txt** (or an ending) the notes still count and the
-  quest still steps, but four of four gives no code: `# hosts` hears
-  *"… found all four digit notes after truth.txt. The verdict is in: no
-  door code."*
+  quest still steps, but four of four gives no code: the quest **fails**
+  (*"4 of 4. The verdict is in: the notes open nothing now."*, or *The
+  night is over* after an ending) and `# hosts` hears why: *"… found all
+  four digit notes after truth.txt. The verdict is in: no door code."*
+  or *"… after the night ended …"*.
 
 Notes can be shared between programs like any entry, so a group can
-pool them. Trabolta won't take one.
+pool them. Trabolta won't take one, and a phone's *Share…* never offers
+him one. How many notes a program holds (`door_digits`) and how far
+their *The Cold Door* has got are ROLE Program `secret:` slots, so his
+worker never learns who is close to the code.
 
 ## The King
 
@@ -98,8 +103,9 @@ elsewhere.
   in a headset. The server judges the reach, knocks a point off, and
   tells the story `king hit` for that program. A visit lasts until that
   program's duck is found: leaving and scanning again, a director's end,
-  a timeout or a re-scan mid-walk is the same visit, and answers *"You
-  hit him. Come back on your next reinstallation."*
+  a timeout or a re-scan mid-walk is the same visit: ⚔ shows as spent
+  from the start, with *"You hit him this reinstallation. Find Gerald
+  before you hit him again."*
 - `# hosts` reads every hit: *"⚔ X hit the King in the simulation:
   14/15"*. The house hears him stagger at 10 and at 5.
 - **At 0 he kneels for everyone** (`king fallen`): a house-wide alert,
@@ -147,10 +153,15 @@ on the tent tablet, not in a headset.
   board says *"Checkmate. The door code is in your phone's Codex."*
   There is no practice game: it counts from the moment the doors open.
 - A second win (a ♟ after the terminal's own post, a late retry, a
-  winner playing again) changes nothing but a `# hosts` note.
+  winner playing again), or a win by a program who already holds the code
+  (from the digit notes or the majority), changes nothing but a `# hosts`
+  note. Their phone says *"♟ Checkmate again. You already hold the door
+  code: it is in your Codex."* and the board still says the code is in
+  their Codex.
 - **After 📄 truth.txt** a win only tells `# hosts` (*"♟ A King win after
   truth.txt: the verdict is in, no door code. Nothing happens in the
-  story."*); the board says *"Checkmate. No prize now."*
+  story."*); the board says *"Checkmate. No prize now."* So does a win
+  after an ending. Nothing else ever reads *No prize now.*
 - **A loss or a draw** wins nothing. `# hosts` gets a readout every
   time. Once Trabolta is awake he gloats on the TV in The Desktop at most
   once every five minutes (losses and draws share the window), and never
@@ -296,10 +307,12 @@ in), instead of radioing you:
 | **🚪 The server-room door opened** | `server_door_opened` | once Trabolta is awake, before 📄, never inside a crew window |
 | **🔧 Crew going through the door (2 min)** | the crew window | all night |
 
-They are `by: Antivirus`: any Antivirus booth may press them (Norton,
-McAfee, Password Manager, CRA Agent Software, Windows Defender), and the
-server refuses them from a Host's or any other performer's booth (*not
-your button … is for Antivirus*), which never shows them. Each arms on
+They are `by:` the four room Antivirus: only Norton's, McAfee's,
+Password Manager's and CRA Agent Software's booths may press them. The
+server refuses them from Windows Defender's (the door-only part), a
+Host's or any other performer's booth (*not your button … is for Norton
+Anti-Virus, …*), which never shows them; Windows Defender's booth still
+shows ♟ *They beat the machine*. Each arms on
 the first tap and fires on the second. Your own quick-fire of the same
 cue still fires it once. **🫘 The printer lid is open** is Adobe
 Acrobat's only, at the printer.

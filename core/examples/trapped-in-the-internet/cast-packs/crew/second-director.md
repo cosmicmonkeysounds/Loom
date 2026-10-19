@@ -76,9 +76,11 @@ program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
 **latest** filing only; when a program has filed more than once and an
 earlier one is still waiting, it changes nothing and `# hosts` points you at
 the Judging card. Either way the guest hears the same reply. **A near miss**
-(wave 11: a mistyped right answer) waits on the card tagged *near* even in
+(wave 11: a mistyped right answer, or the right answer said at length,
+*11 years ago*) waits on the card tagged *near* even in
 `auto`, with a ⚠ line in `# hosts` naming the key: judge each one before 📋,
-since an unjudged near miss is credited as accurate at the settle. A lie counts
+since an unjudged near miss is credited as accurate at the settle (the user
+hasn't decided yet whether to keep that). A lie counts
 against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy
@@ -98,7 +100,9 @@ pressing ✅ for the same question on the same program. The key, for reference
 
 The judge folds case, punctuation and one leading article and matches the
 answer or any alias in `facts.json` exactly ("11", "pickles", "appendix z"
-are aliases); a different fact at 100% is a lie, below 100% a guess (marked).
+are aliases), then again with abbreviations spelled out ("Mr. Pickles",
+"11 yrs", "ext 1978", "0900" are accurate, no ⚠); a different fact at 100%
+is a lie, below 100% a guess (marked).
 
 **3b. The escort list and the Wallet.** Marks are the hosts' buttons; you
 only step in from Run when nobody is near: fire `mark_for_reinstallation` or

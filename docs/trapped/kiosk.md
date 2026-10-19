@@ -304,7 +304,10 @@ one link:
   program, labelled *Terminal · Server Door* in the Log (retried for a
   few seconds; kept across a reload for 60 s). A win that never landed
   says *The win didn't reach the house: tell a host (♟).* — the host
-  who saw it presses ♟ on the winner's card.
+  who saw it presses ♟ on the winner's card. A win that landed reads
+  *Checkmate. The door code is in your phone's Codex.*, also for a
+  program who already held the code; *Checkmate. No prize now.* only
+  after truth.txt or an ending.
 - Overlays (the blackout, the alarm) cover the board and hold the game;
   no story slides, no countdown corner, no Y2K clock. The poll is its
   heartbeat on Run → Terminals, like any terminal's.

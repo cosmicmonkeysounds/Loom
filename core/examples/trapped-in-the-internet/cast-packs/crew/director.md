@@ -76,9 +76,12 @@ uncertain (the current verdict is outlined; a filing that was settled as a
 mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
 `# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **A near miss** (wave
-11: a mistyped right answer, *Mr Pickels*, *Grko*) is never judged by itself, even in `auto`: it
+11: a mistyped right answer, *Mr Pickels*, *Grko*, or the right answer said at length, *11
+years ago*) is never judged by itself, even in `auto`: it
 waits on the Judging card tagged *near* and `# hosts` gets a ⚠ line naming the key. Nobody
-judges it → the settle credits it as accurate, so **judge every ⚠ before 📋**. A program may file every
+judges it → the settle credits it as accurate (the user hasn't decided yet whether to keep
+that), so **judge every ⚠ before 📋**. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
+simply accurate, no ⚠; a plainly wrong answer at 100% is still an automatic lie. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at
 Truth Pong and the final reveal (✅ / 😤 / 🤷 by question number).

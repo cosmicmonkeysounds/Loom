@@ -38,9 +38,10 @@ Every entry's card has a **Share…** button. Pick a person and they now
 hold it too — you keep your copy, and your Codex notes who you gave it
 to. Sharing is permanent and the story sees it:
 some characters *change* when they learn things. Share carefully. Some
-characters (Trabolta, at *Trapped in the Internet*) won't take lore
-about someone else, or a secret file: the app says *⛔ Not shared* with
-the reason, and nothing moves.
+characters (Trabolta, at *Trapped in the Internet*) won't take a secret
+file, or lore about someone or somewhere else, so **Share…** leaves
+them off the list for that entry. If a share is still turned down, the
+app says *⛔ Not shared* with the reason, and nothing moves.
 
 ## People
 

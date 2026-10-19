@@ -156,7 +156,7 @@ It shows even before a worker has reported; on a project with no
   card names (`Night.judge_mode` by default) through the same journaled
   `set` as the World page. In `auto` every filed fact gets its verdict
   at once — except a **near miss** (a typo of the key, a number written
-  out), which waits here as in review; in `review` every verdict is a
+  out, the key said at length), which waits here as in review; in `review` every verdict is a
   proposal until someone confirms it, and a round closing settles the
   rest by the proposal. Beside it: *nothing pending* or *N pending*,
   and how many of those are near misses.
@@ -165,8 +165,9 @@ It shows even before a worker has reported; on a project with no
   the answer in quotes, the confidence, and *proposed accurate / lie /
   uncertain*. A near miss is tagged *⚠ near "<key>"*, the key it is
   close to, and is proposed accurate: **if nobody judges it before the
-  round settles, it is credited**, so check every ⚠ before the results
-  are read ([cards & widgets](widgets.md) has the near rules). Three buttons
+  round settles, it is credited** (that rule waits on the user's
+  decision), so check every ⚠ before the results are read ([cards &
+  widgets](widgets.md) has the near rules). Three buttons
   settle it: **✅ accurate**, **😤 confident lie**, **🤷 uncertain** —
   the proposal's button is outlined; press it to confirm, another to
   override. Each fires the story's own confirm event for that program
@@ -184,8 +185,8 @@ It shows even before a worker has reported; on a project with no
   overrides it (*Override: accurate (judged lie)*). The press names
   that filing's question, so it judges that filing and never just the
   program's latest. A *marked* row has no buttons. This is the place to
-  fix a near miss the key didn't list ("Mr. Pickles" for *Mister
-  Pickles*) and the place a host's booth sends you when a program has
+  fix an answer the key didn't list and the judge called a lie (an
+  abbreviation like "Mr. Pickles" is already accurate) and the place a host's booth sends you when a program has
   more than one filing waiting.
 
 Judging runs on the event server, so a local-folder run shows the card

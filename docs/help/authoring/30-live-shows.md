@@ -131,7 +131,9 @@ COHORT Early Arrivals
   software on Wikipedia — **never antivirus**) and becomes that. A
   guest can never take a part, and never a name in a `joinable: false`
   group. `playable: false` keeps a character off both lists (a scanned
-  prop).
+  prop). A program typed in another case (`bugdom`) is registered under
+  the story's own spelling (`Bugdom`), so `program.name == "Bugdom"`
+  still hears them.
 - **`reserved: true`** holds a guest's program for one invited person
   (*Trapped in the Internet*'s nine featured programs). Everyone else's
   picker shows it **🔒 Reserved**, and its `wiki:` article too in the

@@ -295,7 +295,8 @@ tolerance: metres, and m² for orientations).
      doors are portals and he is no obstacle. Both games route their trail
      that way while he is fallen (reinstall/web `trailMap`, VR
      `house_king.gd`), and keep doing so for a player a restore would shut
-     in (§3 *The King*).
+     in (§3 *The King*): once he is down a player can be behind his door,
+     and a trail from there over the map as it is would cross a wall.
    - *Reflex waypoints*: per room (array order), per vertex `v = p[i]`
      (vertex order) with neighbours `p = p[i−1]`, `q = p[i+1]` (cyclic):
      with `A = Σ (xᵢ·zᵢ₊₁ − xᵢ₊₁·zᵢ)` and `k = (v−p)ₓ·(q−v)_z − (v−p)_z·(q−v)ₓ`,
@@ -539,7 +540,7 @@ calls; it can do nothing else.
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
 | `POST /api/spatial/pose` | session token (`x-loom-token`) | `{p: Vec3, yaw, pitch?, t?}` (≤ 2 KB body, read before the generic 4 MiB parse); `p` is the player's **feet** (the floor point under the body — the eye is 1.6 m above it), `yaw` the view direction, `pitch` the head (degrees, + = up) | 204 · 400 malformed · 401 unknown token · 410 session over (the last 1000 ended tokens are remembered). First pose **claims** a parked assignment — and ends any *other* session on that station (`leave {reason: "replaced"}`: a headset that crashed mid-game never ended its last one). Poses (and the stream) **ignore pause**: they never touch the story. |
 | `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, captured, already}` (`captured`: the program is still captured after the commit — the story kept them, e.g. the banishment; wave 9); commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
-| `POST /api/spatial/king/hit` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (the visit keeps its hit) · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment · 404 `{error: "no king"}` · 409 `{error: "fallen", king}` · 409 `{error: "already hit", king}` — this visit already hit · 409 `{error: "not near", reach}` unless `kingReach` with `KING_HIT_SLACK` on the session's **last pose** is `"ok"` (`reach` = the verdict; the game flushes a pose first) · 200 `{ok, king}`. On a hit: a journaled `set` of the `health` path to `hp − 1`, then `signal(signals.hit, guest, {hp, max})`, then at 0 `signal(signals.fallen, guest, {hp, max})`, all `by` the session's `device`; then a `king` frame naming the hitter. **One hit per visit**: a visit is spent from its hit until that guest's duck is found — `begin` for a guest whose visit already hit (a re-scan mid-walk, Leave and scan again, after a director's end or a timeout) carries the hit over; a find ends the visit (a re-scan in the 8 s the found session lingers starts a fresh one); a story restart forgets every visit, and so does a server restart (in memory, like sessions) |
+| `POST /api/spatial/king/hit` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (the visit keeps its hit) · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment · 404 `{error: "no king"}` · 409 `{error: "fallen", king}` · 409 `{error: "already hit", king}` — this visit already hit · 409 `{error: "not near", reach}` unless `kingReach` with `KING_HIT_SLACK` on the session's **last pose** is `"ok"` (`reach` = the verdict; the game flushes a pose first) · 200 `{ok, king}`. On a hit: a journaled `set` of the `health` path to `hp − 1`, then `signal(signals.hit, guest, {hp, max})`, then at 0 `signal(signals.fallen, guest, {hp, max})`, all `by` the session's `device`; then a `king` frame naming the hitter. **One hit per visit**: a visit is spent from its hit until that guest's duck is found — `begin` for a guest whose visit already hit (a re-scan mid-walk, Leave and scan again, after a director's end or a timeout) carries the hit over; a find ends the visit (a re-scan in the 8 s the found session lingers starts a fresh one); a story restart forgets every visit, and so does a server restart (in memory, like sessions). The `Assignment`'s `kingHit` says a re-scan is the visit that already hit, so a game shows ⚔ spent from the start |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -553,6 +554,7 @@ interface Assignment {
   spawn: { room: string; pos: Vec3; yaw: number };
   houseVersion: string;
   avatar?: string | null;                    // the profile picture's avatar key (`/e/<eventId>/api/avatar/<key>`)
+  kingHit?: boolean;                         // this visit already hit the King: ⚔ starts spent (missing: an old server, not yet)
 }
 ```
 
@@ -733,8 +735,11 @@ is the **Server Door** terminal's (§4), at the strength his bar sets.
   nudges (*Get closer to the King.* / *Face him.*); when it is `"ok"`
   it flushes the pose pump and posts `POST /api/spatial/king/hit`. 200:
   a thud, *⚔ You hit the King!*, the bar from the answer. 409 `already
-  hit`: *You hit him. Come back on your next reinstallation.* (the HUD
-  keeps saying so for the rest of the visit). 409 `not near`: a buzz and
+  hit`: *You hit him this reinstallation. Find Gerald before you hit him
+  again.* (`HIT_USED`; the HUD keeps saying so for the rest of the visit,
+  which ends at the duck, not at Leave, a director's end or a pose
+  timeout). An assignment with `kingHit` starts the visit spent
+  (`hitSpentAtStart`), so a re-scan before the duck never offers ⚔. 409 `not near`: a buzz and
   *Get closer to the King and face him.* 409 `doors are closed`: the
   paused notice. 404: no King. 410: the session is over.
 - **The HUD** (`KingBar` in `Play.tsx`): ⚔ *THE KING*, his meter
@@ -948,7 +953,9 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   **trigger** (either hand) or **A / X**, within `KING_REACH` and facing
   him (`KING_CONE_DEG`), flushes the newest pose and posts `POST
   /api/spatial/king/hit`; "You hit him." — one hit per reinstallation
-  visit (the server's 409 `already hit` counts as spent). At 0 he kneels
+  visit (the server's 409 `already hit` counts as spent; an assignment's
+  `kingHit` starts the visit spent, and the HUD says "You hit him this
+  reinstallation. Find Gerald before you hit him again."). At 0 he kneels
   for everyone: his collider and the leaf go, the trail routes through
   the door, the HUD says "He is down: the cold door is open." A
   director's restore stands him up and shuts the door — except for a

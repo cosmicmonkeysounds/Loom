@@ -102,10 +102,12 @@ over his head reads *15 / 15* at the start of the night.
   **trigger** in a headset. *⚔ You hit the King!* — one point off his
   bar, for everyone. Too far, or looking away? It says *Get closer to
   the King.* or *Face him.*
-- **One hit, then that's it until your next reinstallation.** Leaving
-  and scanning your pass again doesn't give you another: *You hit him.
-  Come back on your next reinstallation.* Your reinstallation ends when
-  you find the duck; the next time you're sent, you may hit him again.
+- **One hit, then that's it until you find the duck.** Your
+  reinstallation ends when you find Gerald, not when you leave or the
+  game times out. Scanning your pass again before then is the same
+  reinstallation: ⚔ is already spent, and the game says *You hit him
+  this reinstallation. Find Gerald before you hit him again.* The next
+  time you're sent, you may hit him again.
 - When someone else hits him while you're playing, you see him stagger
   and the bar drop.
 - **At 0 he kneels**, for everyone: he goes down on one knee and the
