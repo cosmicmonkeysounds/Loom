@@ -62,6 +62,9 @@ import {
   personExtras,
   prefixRef,
   sliderStep,
+  phaseTitle,
+  stageFromPhase,
+  stagePrompt,
   surveyButton,
   timingText,
   type MindControl,
@@ -866,8 +869,9 @@ function Arc({ mind }: { mind: AgentMindSummary }) {
       <div className={clsx(heading, 'flex items-center gap-2')}>
         The arc
         {phase !== null && (
-          <span className="font-mono text-[10px] normal-case tracking-normal text-zinc-500" title="Night.phase, as the worker last read it; the story's phase table sets the stage from it" data-testid="mind-phase">
+          <span className="font-mono text-[10px] normal-case tracking-normal text-zinc-500" title={phaseTitle(mind)} data-testid="mind-phase">
             phase {phase}
+            {isNewMind(mind) && !stageFromPhase(mind) && ' · stage by hand'}
           </span>
         )}
       </div>
@@ -886,7 +890,7 @@ function Arc({ mind }: { mind: AgentMindSummary }) {
                 void (async () => {
                   const why = await promptText({
                     title: `Move ${mind.character} to “${seg.stage}”`,
-                    body: isNewMind(mind) ? 'Why? (goes into the stage history). The stage holds until the next phase change, when the story sets it again.' : 'Why? (goes into the stage history)',
+                    body: stagePrompt(mind),
                     placeholder: 'we skipped ahead',
                     allowEmpty: true,
                   })

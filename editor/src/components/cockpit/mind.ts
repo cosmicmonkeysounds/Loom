@@ -615,6 +615,31 @@ export function mindModeOf(mind: AgentMindSummary): MindMode | null {
 /** True only for a worker that says it runs the story mind. */
 export const isNewMind = (mind: AgentMindSummary | null): boolean => mind !== null && mindModeOf(mind) === 'new'
 
+/** True when the story moves this mind's stage (the story mind's phase
+ *  table). False on a classic or old worker, and on a story mind whose YAML
+ *  turns `mind.stage_from_phase` off (DESIGN's kill-switch rung 4) — when the
+ *  worker says so in `status.stageFromPhase`; directors then step the stage
+ *  by hand, as in classic. */
+export function stageFromPhase(mind: AgentMindSummary): boolean {
+  if (!isNewMind(mind)) return false
+  const status = field(mind, 'status')
+  return !(status !== null && typeof status === 'object' && (status as Record<string, unknown>)['stageFromPhase'] === false)
+}
+
+/** The stage stepper's question, worded for who moves the stage next. */
+export function stagePrompt(mind: AgentMindSummary): string {
+  if (stageFromPhase(mind)) return 'Why? (goes into the stage history). The stage holds until the next phase change, when the story sets it again (unless stage_from_phase is off in the worker\'s YAML: then it moves only by hand).'
+  if (isNewMind(mind)) return 'Why? (goes into the stage history). stage_from_phase is off in the worker\'s YAML, so the stage moves only by hand.'
+  return 'Why? (goes into the stage history)'
+}
+
+/** The phase chip's hover text. */
+export function phaseTitle(mind: AgentMindSummary): string {
+  if (stageFromPhase(mind)) return "Night.phase, as the worker last read it; the story's phase table sets the stage from it"
+  if (isNewMind(mind)) return 'Night.phase, as the worker last read it; stage_from_phase is off, so step the stage by hand'
+  return 'Night.phase, as the worker last read it'
+}
+
 /** The story's `Night.phase` as the worker last saw it, else null. */
 export function mindPhaseOf(mind: AgentMindSummary): string | null {
   const p = field(mind, 'phase')

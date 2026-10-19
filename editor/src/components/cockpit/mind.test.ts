@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
 import { Messages, MindTab, PersonFile } from './MindTab'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindChips, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
+import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindChips, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, phaseTitle, prefixRef, promptMsOf, sliderStep, stageFromPhase, stagePrompt, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
 import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
@@ -489,6 +489,21 @@ describe('wave 12 report fields', () => {
     expect(mindPhaseOf(wideMind({ phase: 'hunt_1' }))).toBe('hunt_1')
     expect(mindPhaseOf(wideMind({ phase: '  ' }))).toBeNull()
   })
+  it('says who moves the stage: the story, or a director by hand under stage_from_phase off', () => {
+    expect(stageFromPhase(mind())).toBe(false)
+    expect(stageFromPhase(wideMind({ mode: 'classic' }))).toBe(false)
+    expect(stageFromPhase(wideMind({ mode: 'new' }))).toBe(true)
+    expect(stageFromPhase(wideMind({ mode: 'new', status: { stageFromPhase: true } }))).toBe(true)
+    const byHand = wideMind({ mode: 'new', status: { stageFromPhase: false } })
+    expect(stageFromPhase(byHand)).toBe(false)
+    expect(stagePrompt(mind())).toBe('Why? (goes into the stage history)')
+    expect(stagePrompt(wideMind({ mode: 'new' }))).toContain('when the story sets it again (unless stage_from_phase is off')
+    expect(stagePrompt(byHand)).toContain('moves only by hand')
+    expect(stagePrompt(byHand)).not.toContain('the story sets it again')
+    expect(phaseTitle(mind())).toBe('Night.phase, as the worker last read it')
+    expect(phaseTitle(wideMind({ mode: 'new' }))).toContain("phase table sets the stage")
+    expect(phaseTitle(byHand)).toContain('step the stage by hand')
+  })
   it('labels who set a field (C6.2)', () => {
     expect(byLabel('story')).toBe('set by story')
     expect(byLabel('director')).toBe('set by director')
@@ -755,6 +770,12 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).toContain('1.2 s (prompt 300 ms)')
     expect(html).toContain('data-testid="mind-kind-brief"')
     expect(html).toContain('data-testid="mind-kind-summary"')
+    expect(html).not.toContain('stage by hand')
+  })
+  it('a story mind with stage_from_phase off says the stage moves by hand', () => {
+    const m = newModeReport()
+    const html = render({ minds: [{ ...m, status: { ...(m.status as Record<string, unknown>), stageFromPhase: false } } as AgentMindSummary] })
+    expect(html).toMatch(/data-testid="mind-phase">phase hunt_1 · stage by hand</)
   })
   it('a brief or summary chip shows on any worker once such a thought is loaded', () => {
     expect(kindChips([thought()], false)).not.toContain('brief')

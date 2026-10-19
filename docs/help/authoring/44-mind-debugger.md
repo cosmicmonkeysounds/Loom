@@ -99,8 +99,10 @@ spends one.
   asked for the reason, which goes into the history. Each move in the
   history says who made it: *set by story* (the phase table), *set by
   director*, or *reset*. Under the story mind, a stage you set holds
-  until the next phase change, when the story sets it again. The
-  current `Night.phase` shows beside the heading.
+  until the next phase change, when the story sets it again, unless the
+  worker's YAML turns `stage_from_phase` off: then the phase reads
+  *stage by hand* and the stage moves only when you step it, as in
+  classic. The current `Night.phase` shows beside the heading.
 - **The brief** — the second-person instructions the voice is handed
   right now, with the mood. A label says who set it: *set by story* (the
   phase card) or *set by director* (an Edit, a Rewrite brief).
@@ -323,7 +325,9 @@ is generated; read it in the mind file, never in a doc.
 
 Under the story mind, the phase table moves the arc on its own: each
 phase names its stage, and the move reads *set by story*. In classic,
-a director keeps the arc in step by hand: click the stage on the
+and under the story mind with `stage_from_phase: off` in the worker's
+YAML (the phase reads *stage by hand*), a director keeps the arc in
+step by hand: click the stage on the
 stepper as the night reaches it. For *Trapped in the Internet*:
 introduced → *formal*, the first Moment of Truth → *hungry*, the
 malware → *rattled*, Truth Pong → *judge*, the beans → *unravelling*,
