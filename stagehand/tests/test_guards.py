@@ -203,17 +203,15 @@ def test_short_lines_repeat_only_when_the_same_words():
     assert not repeats_line("Please go.", "please wait")
 
 
-def test_repeats_checks_his_lines_to_them_closely_and_elsewhere_word_for_word():
+def test_repeats_checks_what_this_guest_heard_and_leaves_elsewhere_to_the_prompt():
     said = Said(to_them=("a b c d e", "nine ten eleven twelve thirteen"), elsewhere=("x y z w v", "one two three four five six"))
     assert repeats("nine ten eleven twelve thirteen fourteen", said)  # near-repeat of a line to them
-    assert repeats("One two three, four five six!", said)  # word for word elsewhere
-    # A near-repeat of a line to someone else is left to the prompt's warning (K-04, risk 5).
+    # A line said to someone else, even word for word, is the prompt's warning only (K-04, risk 5).
+    assert not repeats("One two three, four five six!", said)
     assert not repeats("one two three four five six seven", said)
     assert not repeats("something wholly new and different here", said)
     # His free replies in this thread count like lines to them.
     assert repeats("seven eight nine ten eleven", Said(), thread=("seven eight nine ten eleven twelve",))
-    # Only the last 5 elsewhere count.
-    assert not repeats("old line", Said(elsewhere=("old line", "p", "q", "r", "s", "t")))
 
 
 def test_the_cut_after_the_retry_keeps_what_was_said_to_someone_else():

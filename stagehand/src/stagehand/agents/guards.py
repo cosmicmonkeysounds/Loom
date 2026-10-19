@@ -252,19 +252,15 @@ def lines_to_them(said: Said, thread: Iterable[str] = ()) -> tuple[str, ...]:
 
 
 def repeats(say: str, said: Said, thread: Iterable[str] = ()) -> bool:
-    """A near-repeat (half its 4-word runs) of a line this guest heard, or a
-    word-for-word copy (folded) of one of his last 5 lines elsewhere.
+    """A near-repeat (half its 4-word runs) of a line this guest heard: his
+    last 3 lines to them and his free replies in this thread.
 
-    K-04 (risk 5): with the near-repeat rule over the elsewhere lines too,
-    14 guests offering facts in a row retried 4 of 14 requests, each for
-    "please file it on the card" said to another guest. Near-repeats across
-    guests are left to the ALREADY SAID warning in the prompt."""
-    if not say:
-        return False
-    if any(repeats_line(say, old) for old in lines_to_them(said, thread)):
-        return True
-    f = fold(say)
-    return bool(f) and any(fold(old) == f for old in said.elsewhere[-5:])
+    Lines he said to other guests are left to the ALREADY SAID warning in
+    the prompt (design risk 5: "keep only the prompt warning"). K-04
+    facts-offers, 14 guests offering facts in a row: the near-repeat rule
+    over those lines retried 4 of 14 requests, and a word-for-word-only rule
+    still 3 of 14, each a copy of the line the guest before had been given."""
+    return bool(say) and any(repeats_line(say, old) for old in lines_to_them(said, thread))
 
 
 def thread_replies(req: dict[str, Any]) -> tuple[str, ...]:
