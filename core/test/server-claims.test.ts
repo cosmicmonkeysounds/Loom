@@ -267,18 +267,15 @@ describe("reserved programs at the door (W-03)", () => {
 });
 
 describe("lastSeen, went home, personas (W-04)", () => {
-  it("the roster's lastSeen stamps a guest's own requests and stream, not a director's", async () => {
+  it("the roster's lastSeen stamps a guest's registration, own requests and stream, not a director's", async () => {
     let now = 5_000_000;
     const rt = runtime(tempDir(), { now: () => now });
     rt.openDoors();
     const { id, token } = (await register(rt, "Calculator")).json as { id: string; token: string };
     const seen = async () => (await state(rt, "role=mod", { moderator: true })).roster.find((r: { id: string }) => r.id === id).lastSeen;
-    expect(await seen()).toBeNull(); // registered, never heard from on their token
-
-    await state(rt, "role=guest", { token });
-    expect(await seen()).toBe(now);
+    expect(await seen()).toBe(now); // registering is being here
     const first = now;
-    now += 5_000;
+    now += 1_000;
     await state(rt, "role=guest", { token }); // under 15 s: no new stamp
     expect(await seen()).toBe(first);
     now += 20_000;

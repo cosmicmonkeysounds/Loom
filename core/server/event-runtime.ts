@@ -3519,6 +3519,7 @@ export class EventRuntime {
           this.lookupAvatars([name]);
         }
         this.fanout(this.commit("createPerson", id, name));
+        this.seen(id, true);
         sendJson(res, 200, { id, name, token, avatar: this.avatars.keyFor(name) });
         return true;
       }
