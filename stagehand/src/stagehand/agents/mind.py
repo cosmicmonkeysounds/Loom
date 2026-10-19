@@ -560,6 +560,24 @@ class Mind:
             self._revision("story", touched, None)
         return touched
 
+    def leave_cards(self, phase: str) -> list[str]:
+        """A phase with no card: every allowed power is live again and nothing
+        is told in full. Only those two fields move — the stage, favours,
+        drives, the brief (and who set it) and the whispers all stay — with
+        one revision `by: story` when either changed."""
+        touched: list[str] = []
+        if self.live_powers is not None:
+            self.live_powers = None
+            touched.append("powers")
+        if self.tell:
+            self.tell = []
+            touched.append("tell")
+        self.phase_applied = phase
+        if touched:
+            self.updated_at = time.time()
+            self._revision("story", touched, None)
+        return touched
+
     def remember_said(self, thread: str, text: str, at: float | None = None, heart: bool = False) -> None:
         """One final line he sent (the voice's "ALREADY SAID", every thread).
         `heart`: said at his heart — shown elsewhere only at the heart."""

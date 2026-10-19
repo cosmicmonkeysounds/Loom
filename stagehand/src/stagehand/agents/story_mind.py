@@ -114,12 +114,9 @@ def apply_phase(mind: Mind, persona: Persona, phase: str) -> list[str] | None:
     card = card_for(persona, phase)
     if card is None:
         _warn_once(f"nocard:{persona.character}:{phase}", f"{persona.character}: no phase card for {phase!r} — the mind keeps its stage and brief")
-        if mind.live_powers is None and not mind.tell:
-            mind.phase_applied = phase
-            return []
-        # Leaving a card's phase for one with none: every allowed power is
-        # live again and nothing is told in full; the rest stays.
-        return mind.set_phase(phase, stage=mind.stage, favours=str(mind.policy.get("favours") or "none"), drives={}, live_powers=None, tell=[], brief=mind.brief)
+        # Every allowed power is live again and nothing is told in full; the
+        # brief keeps who set it, and a director's whispers stay.
+        return mind.leave_cards(phase)
     return mind.set_phase(
         phase,
         stage=card.stage,

@@ -311,6 +311,24 @@ def test_a_phase_with_no_card_makes_every_power_live_again(tmp_path):
     assert voice.calls[1][1].phase.live_powers is None
 
 
+def test_a_phase_with_no_card_keeps_a_directors_brief_and_whispers(tmp_path):
+    touched = {"introduced": [["powers", "tell"]], "arrivals": [["powers"]], "nowhere": []}  # powers + tell, no powers, no card
+    for first in touched:
+        agents, voice = make(tmp_path / first)
+        run(handle(agents, req(phase=first, rid="a")))
+        mind = agents.minds["Trabolta"]
+        mind.brief, mind.brief_by = "Director's own brief.", "director"
+        mind.whisper("be kind to Ada")
+        revs = len(mind.revisions)
+        run(handle(agents, req(phase="somewhere_new", rid="b")))
+        assert mind.phase_applied == "somewhere_new" and mind.live_powers is None and mind.tell == []
+        assert (mind.brief, mind.brief_by, mind.director) == ("Director's own brief.", "director", ["be kind to Ada"])
+        assert voice.calls[1][1].phase.brief_by == "director"
+        new_revs = mind.revisions[revs:]
+        assert all(r["by"] == "story" and "brief" not in r["touched"] and "director" not in r["touched"] for r in new_revs)
+        assert [r["touched"] for r in new_revs] == touched[first]
+
+
 def test_stage_from_phase_off_applies_nothing(tmp_path):
     agents, voice = make(tmp_path, mind={"stage_from_phase": "off"})
     run(handle(agents, req(phase="hunt_1")))
