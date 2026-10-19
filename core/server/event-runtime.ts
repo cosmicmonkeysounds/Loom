@@ -268,9 +268,6 @@ const AGENT_BY = "agent:";
  *  (`commitUnderReview`): the facts judge, not a director. */
 const JUDGE_BY = "Judge";
 
-/** Who a mutation is done by, for the facts ledger's provenance (wave 5
- *  issue 8): the journal's `by` (a director, a device, an impersonator),
- *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
 /** The story's staff room for server notices: a `kind: faction` CHANNEL
  *  whose GROUP no guest may join (`staffRoomIds`), `hosts` first; null when
  *  the story has none. */
@@ -280,6 +277,18 @@ function hostsRoomOf(model: Sim["model"]): string | null {
   return names.find((n) => n.toLowerCase() === "hosts") ?? names[0] ?? null;
 }
 
+/** The `# hosts` line after a 📝 near miss's own (`commitUnderReview`):
+ *  the proposal is the near-miss rule's, and an unjudged one is credited. */
+function nearNotice(name: string, args: Record<string, string | number | boolean>, near: string | null): string | null {
+  if (near === null) return null;
+  const q = typeof args["question"] === "string" ? args["question"] : "?";
+  const a = typeof args["answer"] === "string" ? args["answer"] : "";
+  return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate and is credited if nobody judges it. Judge it on Run → Mind → Judging.`;
+}
+
+/** Who a mutation is done by, for the facts ledger's provenance (wave 5
+ *  issue 8): the journal's `by` (a director, a device, an impersonator),
+ *  else a `signal`'s actor (a booth's character — `/api/prime/act`). */
 function factsBy(m: Mutation, args: readonly unknown[], by: string | undefined): string | null {
   if (by !== undefined && by.startsWith(AGENT_BY)) return by.slice(AGENT_BY.length);
   if (by !== undefined && by !== "") return by;
@@ -1315,9 +1324,9 @@ export class EventRuntime {
    * filing for a question the key lacks is refused only while a key exists;
    * without one the args pass untouched (other projects). `review`: a near
    * miss filed while the mode is `auto` — that one filing takes the review
-   * path (`commitUnderReview`).
+   * path (`commitUnderReview`); `near` = the key form it is close to.
    */
-  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean } | null | "refused" {
+  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean; near: string | null } | null | "refused" {
     const book = this.factsBook();
     if (book === null) return null;
     if (card.kind === "fact") {
@@ -1337,6 +1346,7 @@ export class EventRuntime {
       return {
         args: verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict },
         review: judged.near !== null && judgeMode(book, worldReader(this.sim!)) === "auto",
+        near: judged.near,
       };
     }
     if (card.kind === "answer") {
@@ -1345,7 +1355,7 @@ export class EventRuntime {
       if (q === undefined) return null;
       if (typeof t !== "string" || t.trim() === "") return "refused";
       const verdict = judgeAnswer(book, q, t, 100);
-      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false };
+      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false, near: null };
     }
     return null;
   }
@@ -1356,8 +1366,11 @@ export class EventRuntime {
    * back just after, each a journaled `setVar` by the judge — so the story's
    * own review path holds the filing pending for a director (Run → Mind →
    * Judging, one `# hosts` line from the story), and a replay lands the same.
+   * `notice`: the server's own `# hosts` line after the story's, saying the
+   * proposal came from the near-miss rule, not an exact match (the story's
+   * line only reads "Proposed: accurate").
    */
-  private commitUnderReview(apply: () => SimEvent[]): SimEvent[] {
+  private commitUnderReview(apply: () => SimEvent[], notice: string | null = null): SimEvent[] {
     const book = this.factsBook();
     const sim = this.sim;
     if (book === null || sim === null) return apply();
@@ -1369,8 +1382,10 @@ export class EventRuntime {
     const events = apply();
     this.actingBy = JUDGE_BY;
     const after = this.commit("setVar", book.modeVar, was);
+    const room = notice === null ? null : hostsRoomOf(sim.model);
+    const told = room === null ? [] : this.commit("broadcast", `channel(${room})`, notice!);
     this.actingBy = actingBy;
-    return [...before, ...events, ...after];
+    return [...before, ...events, ...after, ...told];
   }
 
   // -- agent-voiced characters ---------------------------------------------
@@ -3697,7 +3712,7 @@ export class EventRuntime {
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
         const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
-        this.fanout(judged?.review === true ? this.commitUnderReview(answered) : answered());
+        this.fanout(judged?.review === true ? this.commitUnderReview(answered, nearNotice(this.sim!.persons.get(id)?.name ?? id, args, judged.near)) : answered());
         sendJson(res, 200, { ok: true });
         return true;
       }

@@ -208,6 +208,8 @@ describe("near misses on the event — auto mode routes them to review", () => {
     ]);
     expect(hostsLines(rt)).toEqual([
       "📝 Ada filed Q2: Mr Pickels. Proposed: accurate.",
+      // The server says the proposal is the near-miss rule's (wave 11 review).
+      '⚠ Near miss, not an exact match: Ada\'s Q2 filing "Mr Pickels" is close to "Mister Pickles", so it is proposed accurate and is credited if nobody judges it. Judge it on Run → Mind → Judging.',
       "📝 Ben filed Q2: Mister Pickles. Judged accurate.",
       "📝 Cy filed Q1: 1996. Judged lie.",
     ]);
@@ -222,6 +224,7 @@ describe("near misses on the event — auto mode routes them to review", () => {
     expect([journal[i + 1]!.m, journal[i + 1]!.a[0], journal[i + 1]!.a[1]]).toEqual(["signal", "fact answered", ada.id]);
     expect(journal[i + 1]!.a[2]).toMatchObject({ verdict: "accurate", key_answer: "Mister Pickles" });
     expect(journal[i + 2]).toBe(flips[1]);
+    expect([journal[i + 3]!.m, journal[i + 3]!.by]).toEqual(["broadcast", "Judge"]);
     rt.dispose();
   });
 
@@ -266,7 +269,8 @@ describe("near misses on the event — auto mode routes them to review", () => {
     const ada = await guest(rt, "Ada");
     expect((await file(rt, ada, "Q2", "Mr Pickels", 100)).status).toBe(200);
     expect(rows(await facts(rt))).toEqual([["Ada", "Q2", "Mr Pickels", "accurate", null, "Mister Pickles"]]);
-    expect(new Store(d).readJournal().filter((e) => e.m === "setVar" && e.by === "Judge")).toEqual([]);
+    expect(new Store(d).readJournal().filter((e) => e.by === "Judge")).toEqual([]);
+    expect(hostsLines(rt)).toEqual(["📝 Ada filed Q2: Mr Pickels. Proposed: accurate."]); // every filing waits: no ⚠
     expect(mode(rt)).toEqual({ kind: "string", value: "review" });
     rt.dispose();
   });
