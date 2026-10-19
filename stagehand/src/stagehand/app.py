@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import signal
 
 from .config import StagehandConfig
 from .modapi import ModClient
@@ -38,9 +39,32 @@ async def run(cfg: StagehandConfig, base_dir: str = ".", restart_after: float = 
     )
     ctx = Context(server=cfg.server, mod=mod, base_dir=base_dir)
     tasks = [asyncio.ensure_future(_supervise(m, ctx, restart_after)) for m in cfg.modules.values()]
+    # SIGTERM (a launchd restart: `launchctl kickstart -k`) stops the modules
+    # the way Ctrl+C does, so each one's `finally` runs (the agents' debounced
+    # mind saves are flushed) instead of the process dying mid-window.
+    loop = asyncio.get_running_loop()
+    terminated = False
+
+    def _terminate() -> None:
+        nonlocal terminated
+        terminated = True
+        log.info("SIGTERM: stopping every module")
+        for t in tasks:
+            t.cancel()
+
+    try:
+        loop.add_signal_handler(signal.SIGTERM, _terminate)
+        handler = True
+    except (NotImplementedError, RuntimeError, ValueError):  # not the main thread / no signals here
+        handler = False
     try:
         await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        if not terminated:
+            raise
     finally:
+        if handler:
+            loop.remove_signal_handler(signal.SIGTERM)
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
