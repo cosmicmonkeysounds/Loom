@@ -793,6 +793,31 @@ def test_a_reset_clears_the_new_minds_bookkeeping(tmp_path):
     assert saved["people"] == {} and saved["mode"] == "new"
 
 
+def test_a_resets_immediate_save_raises_a_real_error_and_saves_once(tmp_path):
+    agents, _ = make(tmp_path)
+    calls = []
+
+    def debounced(name, now=False):
+        calls.append(now)
+
+    agents._save_mind = debounced
+    agents._save_mind_now("Trabolta")
+    assert calls == [True]
+
+    def broken(name, now=False):
+        calls.append(now)
+        raise TypeError("Object of type set is not JSON serializable")
+
+    agents._save_mind = broken
+    with pytest.raises(TypeError):
+        agents._save_mind_now("Trabolta")
+    assert calls == [True, True]  # never retried through the debounced path
+
+    agents._save_mind = lambda name: calls.append("old")  # the base signature (before lane W3)
+    agents._save_mind_now("Trabolta")
+    assert calls[-1] == "old"
+
+
 def test_describe_and_warnings_name_the_new_mind(tmp_path):
     agents, _ = make(tmp_path)
     text = "\n".join(agents.describe())
