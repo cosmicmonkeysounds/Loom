@@ -590,6 +590,18 @@ def test_a_live_run_refuses_a_port_outside_the_lane_block() -> None:
         drive.live("classic", "empty-house", port=7000)
 
 
+def test_the_childrens_logs_are_redacted_after_the_run_but_minds_are_not(tmp_path: Path) -> None:
+    (tmp_path / "worker.log").write_text("INFO Trabolta ← Ada: is it Mister Wigglesworth?\nINFO reply: the code is 4242\n")
+    (tmp_path / "server.log").write_text("listening\n")
+    (tmp_path / "minds").mkdir()
+    (tmp_path / "minds" / "Trabolta.trace.jsonl").write_text('{"say": "Wigglesworth"}\n')
+    drive.redact_logs(tmp_path, src.Redactor(FAKE))
+    log = (tmp_path / "worker.log").read_text()
+    assert "Wigglesworth" not in log and "4242" not in log and log.count("\n") == 2 and "Trabolta ← Ada" in log
+    assert (tmp_path / "server.log").read_text() == "listening\n"
+    assert "Wigglesworth" in (tmp_path / "minds" / "Trabolta.trace.jsonl").read_text()
+
+
 def test_a_proc_is_stopped_by_its_own_group(tmp_path: Path) -> None:
     p = drive.Proc("sleeper", [sys.executable, "-c", "import time; time.sleep(60)"], tmp_path, dict(os.environ), tmp_path / "s.log")
     assert p.alive()

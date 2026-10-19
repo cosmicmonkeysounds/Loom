@@ -785,6 +785,21 @@ class Driver:
 # -- writing a run ----------------------------------------------------------------------------------
 
 
+LOGS = ("worker.log", "server.log")
+
+
+def redact_logs(run_dir: Path, redactor: Redactor) -> None:
+    """The children's logs, rewritten through the redactor line by line once
+    both have stopped (the worker logs each guest line and reply). `minds/`
+    stays as the worker wrote it: it is the system under test (C7.1)."""
+    for name in LOGS:
+        path = run_dir / name
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        path.write_text("".join(redactor.redact(line) for line in text.splitlines(keepends=True)), encoding="utf-8")
+
+
 def write_transcripts(run_dir: Path, history: list[dict[str, Any]], driver: Driver) -> None:
     out = run_dir / "transcripts"
     out.mkdir(parents=True, exist_ok=True)
@@ -898,6 +913,7 @@ def live(mode: str, script_name: str, *, port: int | None = None, label: str | N
                 mirror.stop()
             if server is not None:
                 server.stop()
+            redact_logs(run_dir, redactor)
             if driver is not None:
                 history = [redactor.deep(m) for m in mirror.snapshot()] if mirror is not None else []
                 (run_dir / "history.json").write_text(json.dumps(history, ensure_ascii=False, indent=1), encoding="utf-8")

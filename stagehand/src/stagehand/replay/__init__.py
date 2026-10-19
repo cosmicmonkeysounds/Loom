@@ -17,8 +17,8 @@ through today's mind and the new one, scored against the K-04 bars.
 
 Secrecy (C0): no committed script carries a hunt answer — `{answer:<Q>}` and
 `{near:<Q>}` are resolved from facts.json when a line is sent, and every text
-a run writes (transcripts, `history.json`, `run.json`, `report.json`) is
-redacted first: an answer word becomes `‹aN›`, a `never` word `‹never›`. The
+a run writes (transcripts, `history.json`, `run.json`, `report.json`, and
+`worker.log` / `server.log` once both children stop) is redacted first: an answer word becomes `‹aN›`, a `never` word `‹never›`. The
 worker's own `minds/` (mind + trace) are the system under test and are left as
 the worker wrote them; nothing from a run is committed.
 """
