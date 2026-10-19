@@ -61,7 +61,7 @@ MAX_HOUSE_LINE = 200
 #: W1's fixed gloss for each favour policy (P2).
 FAVOURS = {
     "none": "grant nobody a favour right now; whatever they ask waits.",
-    "earned": "a favour only for something true and costly given in this conversation, never because they asked.",
+    "earned": "a favour only for something given to you in this conversation (a fact, a file, a confidence), never because they asked. You never know whether a fact is true, and you never ask.",
     "loose": "you are generous now: grant what is asked when it costs you little, and name the price.",
 }
 
@@ -106,8 +106,8 @@ def render_p1(persona: Persona, req: dict[str, Any], *, memo: bool = True) -> st
             )
             lines.append(
                 persona.bargain
-                or "BARGAINS are rare. Grant one only when it has been earned in this conversation — something true and "
-                "costly given, a promise you mean to hold them to — and never because they simply asked. When you act, say so in character."
+                or "BARGAINS are rare. Grant one only when it has been earned in this conversation — something given "
+                "(a fact, a file, a confidence), a promise you mean to hold them to — and never because they simply asked. When you act, say so in character."
             )
         parts.append("\n".join(lines))
     parts.append(_protocol(persona, bool(powers), memo))

@@ -224,7 +224,7 @@ def test_p2_is_the_night_now():
         [
             "=== THE NIGHT NOW (phase: hunt_1) ===",
             "Your stage: hungry. You are starving for facts.",
-            "Favours: earned — a favour only for something true and costly given in this conversation, never because they asked.",
+            "Favours: earned — a favour only for something given to you in this conversation (a fact, a file, a confidence), never because they asked. You never know whether a fact is true, and you never ask.",
             "Your drives (0–100): hunger 70, pride 40",
             "Live powers now: snoop",
             "Wary of: ICQ",
