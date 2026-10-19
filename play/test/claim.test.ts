@@ -9,7 +9,7 @@ import { CLAIM_KEY, RESERVED_TEXT, claimField, claimFromSearch, isReservedRefusa
 import { memoryStore } from "../src/host.ts";
 import { ApiError } from "../src/client.ts";
 import { initialRole } from "../src/director.tsx";
-import { fetchIdentities, fetchPictures, registerBody, searchPrograms } from "../src/session.ts";
+import { RESERVED_POLL_MS, fetchIdentities, fetchPictures, reaskReason, registerBody, retryDelay, searchPrograms } from "../src/session.ts";
 
 const row = (name: string, extra: Partial<IdentityRow> = {}): IdentityRow => ({ name, faction: null, avatar: null, claimed: false, ...extra });
 
@@ -65,6 +65,19 @@ describe("reserved tiles", () => {
     expect(rowNote(row("Excel", { reserved: true, claimed: true }))).toBe("taken");
     expect(rowPickable(row("Notepad"))).toBe(true);
     expect(rowNote(row("Notepad"))).toBeNull();
+  });
+
+  it("an open picker with a locked tile re-asks, so a director's unlock reaches the join screen", () => {
+    const ok = (identities: IdentityRow[], doorsOpen = true) => ({ kind: "ok" as const, role: "guest", identities, search: false, doorsOpen, eventId: "e1", title: null });
+    const closed = (ids: { doorsOpen?: boolean }) => ids.doorsOpen === false;
+    expect(reaskReason(ok([row("Excel", { reserved: true }), row("Notepad")]), closed)).toBe("reserved");
+    expect(retryDelay("reserved", 0)).toBe(RESERVED_POLL_MS);
+    expect(RESERVED_POLL_MS).toBeLessThanOrEqual(15_000);
+    // Nothing locked (or only taken) → no re-ask; closed doors and a busy server keep theirs.
+    expect(reaskReason(ok([row("Notepad"), row("Excel", { reserved: true, claimed: true })]), closed)).toBeNull();
+    expect(reaskReason(ok([row("Excel", { reserved: true })], false), closed)).toBe("closed");
+    expect(reaskReason({ kind: "busy" }, closed)).toBe("busy");
+    expect(reaskReason({ kind: "unknown" }, closed)).toBeNull();
   });
 
   it("the 409 reserved refusal asks for a host; anything else keeps the server's words", () => {

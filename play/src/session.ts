@@ -131,17 +131,33 @@ async function identitiesOf(code: string, ev: KnownEvent, role: string, characte
 /** How long the join screen waits before re-asking: every 5 s while the
  *  doors are closed (a minute of that, then every 15 s); a busy server
  *  backs off 10 → 20 → 30 s. `attempt` counts re-asks in a row from 0. */
-export function retryDelay(kind: "closed" | "busy", attempt: number): number {
+export function retryDelay(kind: "closed" | "busy" | "reserved", attempt: number): number {
   if (kind === "busy") return Math.min(30_000, 10_000 * (attempt + 1));
+  if (kind === "reserved") return RESERVED_POLL_MS;
   return attempt < 12 ? DOORS_POLL_MS : 15_000;
 }
 
+/** How often an open picker showing a 🔒 Reserved tile re-asks: a
+ *  director's "Unlock for 2 min" (`/api/mod/claim/unlock`) opens it to the
+ *  guest standing at the join screen without a reload. */
+export const RESERVED_POLL_MS = 12_000;
+
 type Picker = Extract<IdentityLookup, { kind: "ok" }>;
+
+/** Why an answer is asked again: the doors are closed, the server is busy,
+ *  a tile is still 🔒 Reserved (a director may open it), or not at all. */
+export function reaskReason(r: IdentityLookup, waiting: (ids: Picker) => boolean): "closed" | "busy" | "reserved" | null {
+  if (r.kind === "busy") return "busy";
+  if (r.kind !== "ok") return null;
+  if (waiting(r)) return "closed";
+  return r.identities.some((row) => row.reserved === true && !row.claimed) ? "reserved" : null;
+}
 
 /**
  * The join screens' picker for a typed / scanned code, kept fresh. A code
- * answered `waiting` (the doors are closed) is re-asked on `retryDelay`
- * straight at its event, never through the throttled resolve; a busy
+ * answered `waiting` (the doors are closed), or showing a 🔒 Reserved tile,
+ * is re-asked on `retryDelay` straight at its event, never through the
+ * throttled resolve; a busy
  * server keeps the last good screen and backs off. `refresh` re-asks now
  * (someone may have just taken a name). `claim`: an invitation's token.
  */
@@ -150,7 +166,7 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean, c
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
   const known = useRef<{ code: string; event: KnownEvent } | null>(null);
-  const streak = useRef<{ kind: "closed" | "busy"; n: number }>({ kind: "closed", n: 0 });
+  const streak = useRef<{ kind: "closed" | "busy" | "reserved"; n: number }>({ kind: "closed", n: 0 });
   const waitingRef = useRef(waiting);
   waitingRef.current = waiting;
   useEffect(() => {
@@ -168,16 +184,14 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean, c
     const event = known.current?.code === c ? known.current.event : undefined;
     void fetchIdentities(c, event, claim).then((r) => {
       if (!alive) return;
-      let again: "closed" | "busy" | null = null;
+      const again = reaskReason(r, waitingRef.current);
       if (r.kind === "busy") {
-        again = "busy";
         setBusy(true);
         setIds((prev) => (keep(prev) ? prev : null));
       } else {
         setBusy(false);
         setIds(r);
         known.current = r.kind === "ok" ? { code: c, event: { eventId: r.eventId, title: r.title, role: r.role } } : null;
-        if (r.kind === "ok" && waitingRef.current(r)) again = "closed";
       }
       if (again === null) {
         streak.current = { kind: "closed", n: 0 };
