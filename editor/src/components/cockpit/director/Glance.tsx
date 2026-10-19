@@ -115,7 +115,9 @@ function valueTone(tone: ValueTone): string {
 // Needs you
 // ---------------------------------------------------------------------------
 
-function useNeeds() {
+/** The Needs-you items and the clock they were worked out against (the
+ *  unseen list's ages read the same tick). */
+function useNeeds(): { items: NeedItem[]; now: number } {
   // The last press's outcome lives with the cockpit, so the tray's column
   // (outside the Director page) keeps a refusal too.
   const { refused } = usePressOutcome(useContext(CockpitContext))
@@ -131,18 +133,17 @@ function useNeeds() {
   // A refusal counts down by the second; "unseen 30 min" only needs a
   // slow tick (the snapshot moves `lastSeen` itself).
   const now = useNow(true, refused !== null ? 1000 : 30_000)
-  return needsYou({ refused, now, messages, channels, world, facts, wallet, cast, doorsOpen, roster, minds })
+  return { items: needsYou({ refused, now, messages, channels, world, facts, wallet, cast, doorsOpen, roster, minds }), now }
 }
 
 /** The unseen guests' row (wave 11): the line opens the list, and each
  *  guest is one tap — 👋 *went home* (journaled `<id>.gone`, undone from
  *  the Inspector's Back) — or a tap on the name to inspect them first. */
-function UnseenNeed({ need }: { need: NeedItem }) {
+function UnseenNeed({ need, now }: { need: NeedItem; now: number }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const markGone = useCockpit((s) => s.markGone)
   const go = useGo()
-  const now = useNow(open, 30_000)
   return (
     <div className="flex flex-col text-xs" data-testid={`glance-need-${need.kind}`}>
       <button onClick={() => setOpen((o) => !o)} className="text-left text-amber-200 hover:text-indigo-300" aria-expanded={open}>
@@ -180,7 +181,7 @@ function UnseenNeed({ need }: { need: NeedItem }) {
 }
 
 function NeedsYou() {
-  const items = useNeeds()
+  const { items, now } = useNeeds()
   const go = useGo()
   if (items.length === 0) return null
   return (
@@ -188,7 +189,7 @@ function NeedsYou() {
       <Lines
         items={items.map((n) =>
           n.kind === NeedKind.Unseen ? (
-            <UnseenNeed key={n.key} need={n} />
+            <UnseenNeed key={n.key} need={n} now={now} />
           ) : (
             <button key={n.key} onClick={() => go(n.link)} className="flex w-full flex-col text-left text-xs hover:text-indigo-300" data-testid={`glance-need-${n.kind}`}>
               <span className={n.kind === 'refused' ? 'text-red-400' : n.kind === NeedKind.AgentQueue || n.kind === NeedKind.NearMiss ? 'text-amber-200' : 'text-zinc-200'}>{n.text}</span>
@@ -589,7 +590,7 @@ type StripSection = (typeof StripSection)[keyof typeof StripSection]
  *  section inline. (Watching shows the whole column at every width.) */
 export function GlanceStrip() {
   const [open, setOpen] = useState<StripSection | null>(null)
-  const needs = useNeeds()
+  const needs = useNeeds().items
   const roster = useCockpit((s) => s.roster)
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)

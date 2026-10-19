@@ -6,15 +6,20 @@ import { useEffect, useState } from 'react'
 import { CockpitPhase, storyNow, useCockpit, type CountdownSummary } from '@/store/cockpit'
 import { countdownLeft } from '@loom/core/cue-sheet'
 
-/** `Date.now()`, re-read every `ms` while `active`. */
+/** `Date.now()`, re-read every `ms` while `active` — and at once when it
+ *  turns active, so a clock that sat idle never reads its mount time. */
 export function useNow(active: boolean, ms = 1000): number {
   const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    if (!active) return
-    const t = setInterval(() => setNow(Date.now()), ms)
-    return () => clearInterval(t)
-  }, [active, ms])
+  useEffect(() => (active ? startTick(setNow, ms) : undefined), [active, ms])
   return now
+}
+
+/** The tick behind `useNow`: reads the clock now, then every `ms`; returns
+ *  the stop. */
+export function startTick(setNow: (ms: number) => void, ms: number): () => void {
+  setNow(Date.now())
+  const t = setInterval(() => setNow(Date.now()), ms)
+  return () => clearInterval(t)
 }
 
 export interface LiveCountdown {
