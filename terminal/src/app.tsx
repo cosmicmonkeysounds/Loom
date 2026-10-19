@@ -52,7 +52,7 @@ import { Composer, Thread } from "./chat.tsx";
 import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
-import { useIdleTimeout } from "./idle.ts";
+import { lineLeash, useIdleTimeout } from "./idle.ts";
 import { FilePanel } from "./FilePanel.tsx";
 import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
@@ -757,11 +757,13 @@ function Terminal({
     return () => window.removeEventListener("pagehide", onHide);
   }, [pilot, config, visits]);
   // The heart terminal's file panel (a room terminal, wave 11): open, it
-  // holds the leash — choosing a file to hand him takes a while.
+  // lengthens the leash (choosing a file to hand him takes a while) but
+  // never holds it — a guest who walks away still gets disconnected.
   const [filesOpen, setFilesOpen] = useState(false);
   useEffect(() => setFilesOpen(false), [pilot]);
-  const busy = session.typing || speaking || queue.busy || roomBusy || filesOpen;
-  const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, onTimeout: () => end("timeout") });
+  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen });
+  const busy = leash.busy;
+  const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, limit: leash.limit, warnMs: leash.warnMs, onTimeout: () => end("timeout") });
   useEffect(() => {
     if (session.dead !== null && pilot !== null) end("dead");
   }, [session.dead, pilot, end]);
@@ -913,7 +915,7 @@ function Terminal({
               <div className="big blink">CONNECTING…</div>
             </div>
           )}
-          {screen.kind === "piloting" && pilot !== null && filesOpen && <FilePanel config={config} pilot={pilot} view={session.view} character={characterIdOf(config.character, session.view)} onClose={() => setFilesOpen(false)} />}
+          {screen.kind === "piloting" && pilot !== null && filesOpen && <FilePanel config={config} pilot={pilot} view={session.view} character={characterIdOf(config.character, session.view)} onClose={() => setFilesOpen(false)} onActivity={touch} />}
           {screen.kind === "piloting" && pilot !== null && !filesOpen && (
             <>
               {room !== null && (
@@ -937,7 +939,7 @@ function Terminal({
       </main>
 
       {flash !== null && <div className="flash">{flash}</div>}
-      {warning !== null && pilot !== null && <div className="leash">DISCONNECTING IN {warning} — TOUCH TO STAY</div>}
+      {warning !== null && pilot !== null && <div className="leash">{filesOpen ? "STILL THERE? " : ""}DISCONNECTING IN {warning} — TOUCH TO STAY</div>}
       <div className="scanlines" aria-hidden="true" />
     </div>
   );

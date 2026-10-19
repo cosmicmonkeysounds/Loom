@@ -11,6 +11,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export const IDLE_MS = 30_000;
 /** Show the countdown once this much is left. */
 export const WARN_MS = 10_000;
+/** The heart terminal's file panel: choosing a file takes a while, so the
+ *  leash runs this long while it is open — but it still runs (a guest who
+ *  walks away from an open panel must not leave their identity piloted). */
+export const FILES_IDLE_MS = 120_000;
+/** …with the countdown for its last 20 s. */
+export const FILES_WARN_MS = 20_000;
+
+/**
+ * The piloted line's leash: held only while the character is answering
+ * (`answering`: composing, speaking, a room line playing); an open file
+ * panel lengthens it instead of holding it.
+ */
+export function lineLeash(o: { answering: boolean; filesOpen: boolean }): { busy: boolean; limit: number; warnMs: number } {
+  return o.filesOpen ? { busy: o.answering, limit: FILES_IDLE_MS, warnMs: FILES_WARN_MS } : { busy: o.answering, limit: IDLE_MS, warnMs: WARN_MS };
+}
 
 export class IdleClock {
   private lastInput: number;
@@ -66,6 +81,8 @@ export function useIdleTimeout(opts: { active: boolean; busy: boolean; onTimeout
   const [remaining, setRemaining] = useState<number | null>(null);
   const onTimeout = useRef(opts.onTimeout);
   onTimeout.current = opts.onTimeout;
+  const busyNow = useRef(opts.busy);
+  busyNow.current = opts.busy;
   const limit = opts.limit ?? IDLE_MS;
   const warnMs = opts.warnMs ?? WARN_MS;
 
@@ -77,6 +94,8 @@ export function useIdleTimeout(opts: { active: boolean; busy: boolean; onTimeout
       return;
     }
     clock.current = new IdleClock(Date.now(), limit);
+    // A new limit mid-session (the file panel opening) keeps a hold that is on.
+    clock.current.setBusy(busyNow.current, Date.now());
     let fired = false;
     const tick = window.setInterval(() => {
       const c = clock.current;
