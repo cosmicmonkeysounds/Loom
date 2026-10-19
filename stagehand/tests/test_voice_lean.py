@@ -147,11 +147,37 @@ def say(text, **more):
 
 def test_the_message_list_is_p1_p2_p3_the_thread_then_the_reminder():
     msgs = build_lean_messages(P, request(), context())
-    assert [m["role"] for m in msgs] == ["system", "system", "system", "user", "assistant", "user", "system"]
+    assert [m["role"] for m in msgs] == ["system", "system", "system", "user", "assistant", "user", "system", "system"]
     assert msgs[0]["content"].startswith("You are TRABOLTA")
     assert msgs[1]["content"].startswith("=== THE NIGHT NOW (phase: hunt_1) ===")
     assert msgs[2]["content"].startswith("=== LIVE STATE")
+    assert msgs[-2]["content"].startswith("Your last line to them was “Speak, program.”")
     assert msgs[-1]["content"].startswith("Answer their last message in character.")
+
+
+def test_his_last_line_to_them_is_named_after_the_thread_and_before_the_reminder():
+    msgs = build_lean_messages(P, request(), context(said=Said(to_them=("Bring me a fact.", "Speak,   program."))))
+    note = msgs[-2]["content"]
+    assert note == "Your last line to them was “Speak, program.”. Do not say it again or open the same way: answer what they just said, in new words."
+    assert msgs[-1]["content"] == reminder(P, request())  # the reminder stays static
+    # Not in the cached prefix: P1–P3 are what they were without it.
+    bare = build_lean_messages(P, request(), context(said=Said(to_them=("Bring me a fact.", "Speak,   program.")), options=VoiceOptions(repeat_guard=False)))
+    assert bare[:6] == msgs[:6] and not any("Your last line" in m["content"] for m in bare)
+
+
+def test_the_last_line_falls_back_to_the_thread_and_is_absent_before_his_first_reply():
+    msgs = build_lean_messages(P, request(), context(said=Said()))
+    assert msgs[-2]["content"].startswith("Your last line to them was “Speak, program.”")
+    first = request(history=[{"seq": 1, "mine": False, "from": "Ada", "text": "hello"}], text="hello")
+    msgs = build_lean_messages(P, first, context(said=Said()))
+    assert not any("Your last line" in m["content"] for m in msgs)
+    assert msgs[-1]["content"].startswith("Answer their last message in character.")
+
+
+def test_the_retry_keeps_the_last_line_note_so_it_is_the_first_call_plus_one_message():
+    first = build_lean_messages(P, request(), context())
+    again = build_lean_messages(P, request(), context(), retry="Speak, program.")
+    assert again[:-1] == first and again[-1]["content"].startswith("=== RETRY ===")
 
 
 def test_p1_is_byte_identical_for_any_speaker_phase_and_hour():
@@ -594,7 +620,8 @@ def test_a_lookup_round_when_the_persona_may_look_up():
     trace = Trace()
     reply = run(answer_lean(looker, MODEL, request(), context(), model, trace=trace, facts_fn=facts))
     assert reply.say == "Notepad sits at the Desktop."
-    assert "LOOKUP RESULTS" in model.calls[1][-2]["content"] and "No further lookups" in model.calls[1][-2]["content"]
+    looked = next(m["content"] for m in model.calls[1] if m["content"].startswith("LOOKUP RESULTS"))
+    assert "No further lookups" in looked and model.calls[1][-1]["content"].startswith("Answer their last message")
     assert model.calls[1][0] == model.calls[0][0]  # the static start holds through the lookup
     assert "LOOKUP:" in model.calls[0][0]["content"]
     assert [(t.kind, t.trigger) for t in trace.all("Trabolta")] == [("voice", "line"), ("lookup", "lookup")]
