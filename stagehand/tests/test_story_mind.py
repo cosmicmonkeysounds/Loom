@@ -230,6 +230,7 @@ def test_one_voice_call_per_line_and_no_facts_fetch_per_request(tmp_path):
     report = agents.mod.of("/api/agent/mind")[-1]
     assert report["mode"] == "new" and report["people"][0]["memos"][0]["by"] == "voice"
     assert report["status"]["mindMode"] == "new" and report["status"]["voice"]["memo"] is True and report["status"]["phaseWatchS"] == 30
+    assert report["status"]["stageFromPhase"] is True  # the Mind page's rung-4 wording reads it
 
 
 def test_options_follow_the_config(tmp_path):
@@ -361,7 +362,7 @@ def test_stage_from_phase_off_applies_nothing(tmp_path):
     run(handle(agents, req(phase="hunt_1")))
     mind = agents.minds["Trabolta"]
     assert mind.stage == "asleep" and mind.revisions == [] and voice.calls[0][1].phase.live_powers is None
-    assert agents.status("Trabolta")["phaseWatchS"] == 0
+    assert agents.status("Trabolta")["phaseWatchS"] == 0 and agents.status("Trabolta")["stageFromPhase"] is False
 
 
 def test_the_phase_watch_and_the_hello_fetch_apply_the_card_without_a_model(tmp_path):

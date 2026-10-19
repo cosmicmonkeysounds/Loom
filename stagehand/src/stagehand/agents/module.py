@@ -450,7 +450,7 @@ class Agents:
             "thoughts": len(self.trace.all(character)),
             "mindMode": self.cfg.mind_mode,
             "phaseWatchS": self.cfg.mind.phase_poll_s if self.cfg.new_mind and self.cfg.mind.stage_from_phase else 0,
-        } | ({"voice": self._voice_status(voice)} if self.cfg.new_mind else {})
+        } | ({"voice": self._voice_status(voice), "stageFromPhase": self.cfg.mind.stage_from_phase} if self.cfg.new_mind else {})
 
     def _voice_status(self, voice: LlmConfig | None) -> dict[str, Any]:
         v = self.cfg.voice
