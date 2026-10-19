@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
+import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -130,6 +130,11 @@ describe("📝 fact card", () => {
     expect(factFileHint("H3", "  ", 70)).toBe("Type your answer");
     expect(factFileHint("H3", "x".repeat(FACT_MAX + 1), 70)).toContain(String(FACT_MAX));
     expect(factFileHint("H3", "Clippy", 70)).toBeNull();
+  });
+
+  it("only the value keys set the slider: tabbing onto it leaves it unset (W11)", () => {
+    for (const k of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]) expect(setsConfidence(k)).toBe(true);
+    for (const k of ["Tab", "Shift", "Enter", " ", "Escape", "Meta", "Alt", "Control"]) expect(setsConfidence(k)).toBe(false);
   });
 
   it("the confidence slider starts unset: File it waits until the guest sets it (W11)", () => {

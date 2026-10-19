@@ -364,6 +364,16 @@ export function confidenceFrom(raw: string): number | null {
   return Number.isInteger(n) && n >= CONFIDENCE_MIN && n <= CONFIDENCE_MAX ? n : null;
 }
 
+/** The keys that move a range input. Only these set the slider from the
+ *  keyboard: the Tab that moves focus onto it releases on the slider too,
+ *  and must not file a resting 50 nobody chose. */
+const SLIDER_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
+
+/** Whether a key released on the slider is the guest setting it. */
+export function setsConfidence(key: string): boolean {
+  return SLIDER_KEYS.has(key);
+}
+
 /**
  * `show fact "📝 File a fact" to program with thread: Trabolta, questions:
  * "H1: … | H2: …"` — file an answer to one of tonight's questions with a
@@ -445,7 +455,7 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
             <span>{CONFIDENCE_LABEL}</span>
             {/* A range always has a value, so an unset one rests greyed in
                 the middle. A tap on the thumb itself changes nothing, so
-                pointer-up and the keys set it too. */}
+                pointer-up and the value keys set it too (never Tab). */}
             <input
               type="range"
               min={CONFIDENCE_MIN}
@@ -454,7 +464,9 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
               value={confidence ?? CONFIDENCE_REST}
               onChange={(e) => setConfidence(confidenceFrom(e.target.value))}
               onPointerUp={(e) => setConfidence(confidenceFrom(e.currentTarget.value))}
-              onKeyUp={(e) => setConfidence(confidenceFrom(e.currentTarget.value))}
+              onKeyUp={(e) => {
+                if (setsConfidence(e.key)) setConfidence(confidenceFrom(e.currentTarget.value));
+              }}
               aria-valuetext={confidence === null ? CONFIDENCE_UNSET : `${confidence}%`}
             />
             <output>{confidence === null ? CONFIDENCE_UNSET : `${confidence}%`}</output>
