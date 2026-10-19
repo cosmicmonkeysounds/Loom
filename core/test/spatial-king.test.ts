@@ -97,6 +97,20 @@ describe("SpatialHub — the shared King", () => {
     expect(h.hub.hit(d.token, () => {})).toEqual({ kind: "hit", king: { id: "king", hp: 0, max: 3, fallen: true } });
   });
 
+  it("a find ends the visit: a re-scan while the found session lingers starts a fresh visit that may hit", () => {
+    const h = hub();
+    const a = h.begin("g-1");
+    h.hub.pose(a.token, NEAR);
+    expect(h.hub.hit(a.token, () => {}).kind).toBe("hit");
+    const duck = h.hub.players().find((p) => p.session === a.session)!.duck;
+    h.hub.pose(a.token, { p: [...duck.pos], yaw: 0, pitch: 0 });
+    expect(h.hub.found(a.token, () => true).kind).toBe("found");
+    // The clock never moves here, so the found session is still lingering (FOUND_LINGER_MS).
+    const b = h.begin("g-1");
+    h.hub.pose(b.token, NEAR);
+    expect(h.hub.hit(b.token, () => {}).kind).toBe("hit");
+  });
+
   it("refuses far / facing / another floor with the server's slack, a parked session, a fallen King, an unknown or ended token", () => {
     const h = hub();
     const a = h.begin("g-1");

@@ -613,7 +613,9 @@ export class SpatialHub {
     let kingHit = false;
     for (const s of [...this.sessions.values()]) {
       if (s.guest === input.guest) {
-        kingHit ||= s.kingHit;
+        // Only a live walk carries its hit (D2: a re-scan mid-walk); a found
+        // session lingering for its celebration is a finished visit.
+        if (!s.found) kingHit ||= s.kingHit;
         this.finish(s, "replaced");
       } else if (input.station !== null && s.station === input.station && !s.claimed) this.finish(s, "replaced");
     }
