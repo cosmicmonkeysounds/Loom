@@ -167,6 +167,13 @@ def _pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
     return re.compile(rf"(?<![a-z0-9])(?:{body})(?![a-z0-9])", re.IGNORECASE)
 
 
+@lru_cache(maxsize=1024)
+def _word_pattern(word: str) -> re.Pattern[str] | None:
+    """One answer word's pattern: `answer_hits` asks word by word, and the
+    shared `_pattern` cache is too small for a whole hunt's words."""
+    return _pattern((word,))
+
+
 @dataclass(frozen=True)
 class Secrets:
     topics: tuple[str, ...] = ()
@@ -300,7 +307,7 @@ class Secrets:
         if not isinstance(text, str) or not text:
             return ()
         hay = text.replace("’", "'")
-        return tuple(w for w in (self.answer_words() if words is None else words) if (pat := _pattern((w,))) is not None and pat.search(hay))
+        return tuple(w for w in (self.answer_words() if words is None else words) if (pat := _word_pattern(w)) is not None and pat.search(hay))
 
     def scrub(self, update: dict[str, Any]) -> list[str]:
         """Strip hunt verdicts, and anything carrying a `never` word, from an
