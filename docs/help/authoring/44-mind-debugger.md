@@ -206,7 +206,8 @@ thoughts, so a console opened late still sees the night.
 
 Everything the panel does is recorded as a **control** row in the
 trace with your name, and every direct edit is a revision *set by
-director*, so a rehearsal's log says what the models, the story and a
+director* (hover the label for the director's name, when the worker
+recorded one), so a rehearsal's log says what the models, the story and a
 human did. A control that changes nothing (a value it already has) is
 not recorded by a newer worker.
 

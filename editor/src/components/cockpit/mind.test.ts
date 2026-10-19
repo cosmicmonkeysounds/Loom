@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
 import { Messages, MindTab, PersonFile } from './MindTab'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
+import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
 import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
@@ -496,6 +496,28 @@ describe('wave 12 report fields', () => {
     expect(byLabel('reflect')).toBe('reflect')
     expect(byLabel('survey')).toBe('survey')
   })
+  it('reads any `by` the worker does not write for itself as a director, by name or not', () => {
+    // A base or classic worker (and a half-merged story mind) writes the
+    // director's own name; the story mind writes `director`.
+    expect(byLabel('Ada Lovelace')).toBe('set by director')
+    expect(byTitle('Ada Lovelace')).toBe('Ada Lovelace')
+    expect(byTitle('director')).toBeUndefined()
+    for (const own of ['story', 'reflect', 'survey', 'rerun', 'reset', 'server', 'agent:Trabolta', '']) {
+      expect(isDirectorBy(own)).toBe(false)
+      expect(byTitle(own)).toBeUndefined()
+    }
+    expect(byLabel('rerun')).toBe('rerun')
+    expect(byLabel('agent:Trabolta')).toBe('agent:Trabolta')
+    // A reset revision reads as a reset whoever pressed it.
+    expect(byLabel('Ada Lovelace', ['reset'])).toBe('reset')
+    expect(byLabel('server', ['reset'])).toBe('reset')
+  })
+  it('labels a brief a named director set, from briefBy or the revisions', () => {
+    const rev = (n: number, by: string, touched: string[]) => ({ rev: n, at: n, by, touched, thought: null, brief: '', mood: '', stage: '', drives: {}, policy_favours: 'none', notes: 0, people: 0, learned: 0 })
+    expect(briefLabel(mind({ revisions: [rev(1, 'story', ['brief']), rev(2, 'Ada Lovelace', ['brief'])] }))).toBe('set by director')
+    expect(briefLabel(wideMind({ briefBy: 'Ada Lovelace' }))).toBe('set by director')
+    expect(briefLabel(mind({ revisions: [rev(1, 'reflect', ['brief'])] }))).toBeNull()
+  })
   it('says who set the brief: briefBy, else the newest brief revision by the story or a director', () => {
     expect(briefLabel(wideMind({ briefBy: 'story' }))).toBe('set by story')
     expect(briefLabel(wideMind({ briefBy: 'director' }))).toBe('set by director')
@@ -720,6 +742,20 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).not.toContain('trust 50/100')
     expect(html).toContain('rewrote the brief: “Be delighted.”')
     expect(html).toContain('1.2 s (prompt 300 ms)')
+  })
+  it('names a director who edited an old worker\'s mind: set by director, the name on hover', () => {
+    const rev = (n: number, by: string, touched: string[]) => ({ rev: n, at: 100 + n, by, touched, thought: null, brief: '', mood: '', stage: 'appetite', drives: {}, policy_favours: 'earned', notes: 0, people: 1, learned: 0 })
+    const m = mind({
+      ...answersReport(),
+      stageHistory: [{ stage: 'appetite', at: 50, why: 'we skipped ahead', by: 'Ada Lovelace', rev: 2 }],
+      revisions: [rev(1, 'reflect', ['brief']), rev(2, 'Ada Lovelace', ['stage']), rev(3, 'Ada Lovelace', ['reset'])],
+    })
+    const html = render({ minds: [m], thoughts: [thought()] })
+    expect(html).toContain('(set by director)')
+    expect(html).toContain('title="Ada Lovelace"')
+    expect(html).toMatch(/title="Ada Lovelace" data-testid="mind-revision-by"[^>]*>set by director</)
+    expect(html).toMatch(/title="Ada Lovelace" data-testid="mind-revision-by"[^>]*>reset</)
+    expect(html).not.toContain('>Ada Lovelace<')
   })
   it('opens a new-mode file: first met, memos by voice (🫀 at the heart), gifts, filings, the chart, no Set trust', () => {
     const m = newModeReport()

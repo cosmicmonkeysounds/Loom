@@ -609,11 +609,33 @@ export function mindPhaseOf(mind: AgentMindSummary): string | null {
   return typeof p === 'string' && p.trim() !== '' ? p : null
 }
 
-/** What a revision's or a stage move's `by` reads as on the page (C6.2). */
-export function byLabel(by: string): string {
+/** The `by` values a worker writes for itself. Any other `by` is a
+ *  director: the story mind writes `director` (C6.2), but a base or classic
+ *  worker writes the director's own name ("Ada"), and a half-merged one may
+ *  still. */
+const MIND_BYS: ReadonlySet<string> = new Set(['story', 'reflect', 'survey', 'rerun', 'reset', 'server', 'phase', 'hello', 'timer', 'exchange', 'voice'])
+
+/** True when a revision's or a stage move's `by` names a director. */
+export function isDirectorBy(by: string): boolean {
+  const b = by.trim()
+  return b !== '' && !MIND_BYS.has(b) && !b.startsWith('agent:')
+}
+
+/** What a revision's or a stage move's `by` reads as on the page (C6.2):
+ *  "set by story", "set by director" (whatever name the worker wrote — the
+ *  name goes in `byTitle`), and a reset revision as "reset", whoever
+ *  pressed it. Everything else as the worker wrote it. */
+export function byLabel(by: string, touched: readonly string[] = []): string {
+  if (touched.includes('reset')) return 'reset'
   if (by === 'story') return 'set by story'
-  if (by === 'director') return 'set by director'
+  if (isDirectorBy(by)) return 'set by director'
   return by
+}
+
+/** The hover text naming the director behind a "set by director" (or a
+ *  reset), when the worker wrote a name rather than `director`. */
+export function byTitle(by: string): string | undefined {
+  return isDirectorBy(by) && by.trim() !== 'director' ? by.trim() : undefined
 }
 
 /** Who set the brief now in force — "set by story" or "set by director":
@@ -622,10 +644,10 @@ export function byLabel(by: string): string {
  *  reflect-written brief keeps today's unlabelled panel). */
 export function briefLabel(mind: AgentMindSummary): string | null {
   const b = field(mind, 'briefBy')
-  if (b === 'story' || b === 'director') return byLabel(b)
+  if (b === 'story' || (typeof b === 'string' && isDirectorBy(b))) return byLabel(b)
   for (let i = mind.revisions.length - 1; i >= 0; i--) {
     const r = mind.revisions[i]!
-    if (r.touched.includes('brief')) return r.by === 'story' || r.by === 'director' ? byLabel(r.by) : null
+    if (r.touched.includes('brief')) return r.by === 'story' || isDirectorBy(r.by) ? byLabel(r.by) : null
   }
   return null
 }

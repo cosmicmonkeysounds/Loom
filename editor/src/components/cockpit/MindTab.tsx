@@ -48,6 +48,7 @@ import {
   VERDICT_BUTTONS,
   briefLabel,
   byLabel,
+  byTitle,
   driveControl,
   effortControl,
   favoursControl,
@@ -897,7 +898,7 @@ function Arc({ mind }: { mind: AgentMindSummary }) {
       {mind.stageHistory.length > 0 && (
         <ul className="mt-2 space-y-0.5 text-xs text-zinc-500">
           {mind.stageHistory.slice(-4).map((h) => (
-            <li key={`${h.rev}-${h.stage}`}>
+            <li key={`${h.rev}-${h.stage}`} title={byTitle(h.by)}>
               <span className="text-zinc-300">{h.stage}</span> at {timeOf(h.at)} ({byLabel(h.by)}){h.why !== '' && <> — {h.why}</>}
             </li>
           ))}
@@ -1232,8 +1233,8 @@ function Revisions({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThou
           <li key={r.rev} className="flex items-center gap-2">
             <span className="w-8 font-mono text-zinc-500">#{r.rev}</span>
             <span className="w-16 text-zinc-500">{timeOf(r.at)}</span>
-            <span className={clsx('w-24 shrink-0', r.by === 'reflect' || r.by === 'survey' || r.by === 'story' ? 'text-zinc-300' : 'text-amber-300')} data-testid="mind-revision-by">
-              {byLabel(r.by)}
+            <span className={clsx('w-24 shrink-0', r.by === 'reflect' || r.by === 'survey' || r.by === 'story' ? 'text-zinc-300' : 'text-amber-300')} title={byTitle(r.by)} data-testid="mind-revision-by">
+              {byLabel(r.by, r.touched)}
             </span>
             <span className="flex-1 truncate text-zinc-400">
               {r.touched.join(', ')}
