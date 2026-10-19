@@ -16,7 +16,7 @@ import { useRooms, useRoomCounts } from './rooms'
 import { channelGlyph, worldBadge } from './format'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
-import { isGone, isPersonaRow, seenAgo } from './guests'
+import { isGone, isPersonaRow, seenLine } from './guests'
 import { useNow } from './director/clock'
 
 /** One numeric readout in the header strip. */
@@ -142,7 +142,7 @@ function GuestRow({ r, hasChoice, gone, persona, now }: { r: RosterRow; hasChoic
     <button
       onClick={() => inspect({ kind: SelectionKind.Guest, id: r.id })}
       onContextMenu={(e) => menu(r, e)}
-      title={`${r.name} — ${r.location ?? 'no location'} · ${r.score} pts${r.owner ? (r.owner === me ? ' · your persona' : ` · ${r.owner}'s persona`) : persona ? ' · a persona' : ''}${gone ? ' · went home' : ''}${r.online !== true && seenAgo(r.lastSeen, now) !== null ? ` · ${seenAgo(r.lastSeen, now)}` : ''}`}
+      title={`${r.name} — ${r.location ?? 'no location'} · ${r.score} pts${r.owner ? (r.owner === me ? ' · your persona' : ` · ${r.owner}'s persona`) : persona ? ' · a persona' : ''}${gone ? ' · went home' : ''}${r.online !== true && seenLine(r, persona, now) !== null ? ` · ${seenLine(r, persona, now)}` : ''}`}
       className={clsx(
         'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm',
         selected ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-900/60',

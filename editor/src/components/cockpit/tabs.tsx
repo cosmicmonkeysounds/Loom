@@ -29,7 +29,7 @@ import { walletCardTag } from './wallet'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
 import { VarTable } from './VarTable'
-import { isGone, isPersonaRow, seenAgo } from './guests'
+import { isGone, isPersonaRow, seenCell } from './guests'
 import { useNow } from './director/clock'
 
 /** A page the current identity may not use — you are a participant, not
@@ -696,7 +696,7 @@ export function RosterTab() {
               <td className="px-3 py-2 text-zinc-300">{r.score}</td>
               {tracksSeen && (
                 <td className={clsx('px-3 py-2 text-xs', r.online === true ? 'text-emerald-400' : 'text-zinc-500')} data-testid={`roster-seen-${r.id}`}>
-                  {r.online === true ? 'online' : (seenAgo(r.lastSeen, now)?.replace(/^seen /u, '') ?? '—')}
+                  {seenCell(r, isPersonaRow(r, byPath), now)}
                 </td>
               )}
               <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>

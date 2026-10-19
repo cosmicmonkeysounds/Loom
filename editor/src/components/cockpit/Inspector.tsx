@@ -33,7 +33,7 @@ import { useGlanceInTray } from './director/tray'
 import { useDirectorMode } from './director/director-mode'
 import { DirectorMode } from './director/director-keys'
 import { useNow } from './director/clock'
-import { isGone, isPersonaRow, seenAgo } from './guests'
+import { isGone, isPersonaRow, seenLine } from './guests'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -450,7 +450,7 @@ function GuestInspector({ id }: { id: string }) {
 
   const gone = isGone(world, id)
   const persona = isPersonaRow(row, world)
-  const seen = row.online === true ? 'online now' : seenAgo(row.lastSeen, now)
+  const seen = seenLine(row, persona, now)
 
   const commitScore = () => {
     setEditing(false)
