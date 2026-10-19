@@ -465,6 +465,12 @@ def test_a_line_of_nothing_but_the_catchphrase_retries_then_falls_back():
     model = Model(say("Your request has been logged."))
     ctx = context(options=VoiceOptions(retry_allowed=False))
     assert run(answer_lean(P, MODEL, request(), ctx, model)).say == "...static..." and len(model.calls) == 1
+    # With the repeat guard off (kill-switch step 2) there is no extra call either.
+    model = Model(say("Your request has been logged."))
+    trace = Trace()
+    ctx = context(options=VoiceOptions(repeat_guard=False))
+    assert run(answer_lean(P, MODEL, request(), ctx, model, trace=trace)).say == "...static..." and len(model.calls) == 1
+    assert "catchphrase → fallback (no retry: repeat guard off)" in trace.all("Trabolta")[0].note
 
 
 def test_an_answer_word_he_brought_up_himself_is_withheld_and_not_retried():

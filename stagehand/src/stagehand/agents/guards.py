@@ -274,7 +274,8 @@ def guard_pass(
 ) -> Pass:
     """Guards 1–3 over `reply`, then (when `may_retry`) whether it wants the
     one retry: a catchphrase cut that left nothing, or a repeat. A line
-    guard 1 or 2 withheld is the fallback and is never retried."""
+    guard 1 or 2 withheld is the fallback and is never retried; with
+    `repeat_guard` off nothing is (a catchphrase-only line is the fallback)."""
     out = Pass(reply=reply)
     original = reply.say
     out.reply, notes = never_guard(persona, out.reply)
@@ -291,6 +292,12 @@ def guard_pass(
     out.reply, notes, empty = catchphrase_guard(persona, out.reply, person)
     out.notes += notes
     if empty:
+        if not repeat_guard:
+            # The retry is step 4's: with the repeat guard off (kill-switch
+            # step 2) nothing costs a second call — the line is the fallback.
+            out.reply = replace(out.reply, say=persona.fallback)
+            out.notes.append("catchphrase → fallback (no retry: repeat guard off)")
+            return out
         out.retry, out.rejected = "catchphrase", before
         return out
     if may_retry and repeat_guard and repeats(out.reply.say, said):

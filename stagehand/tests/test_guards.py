@@ -240,7 +240,11 @@ def test_the_repeat_guard_can_be_switched_off_but_the_ration_stays():
     off = guard_pass(P, Reply(say="Bring me a fact about the printer, quickly now."), OLD, said, (), repeat_guard=False)
     assert off.retry is None
     cp = guard_pass(P, Reply(say="Please wait."), OLD, said, (), repeat_guard=False)
-    assert cp.retry == "catchphrase" and cp.rejected == "Please wait."
+    # The ration still cuts it; with no retry (step 4 is off) it is the fallback.
+    assert cp.retry is None and cp.reply.say == "...static..."
+    assert cp.notes == ["catchphrase stripped", "catchphrase → fallback (no retry: repeat guard off)"]
+    on = guard_pass(P, Reply(say="Please wait."), OLD, said, ())
+    assert on.retry == "catchphrase" and on.rejected == "Please wait."
 
 
 def test_the_retry_pass_never_asks_again():
