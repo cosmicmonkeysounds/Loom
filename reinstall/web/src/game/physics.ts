@@ -21,7 +21,7 @@
 //! Units: metres, seconds, degrees. Yaw follows the house frame (0 = north,
 //! + = counter-clockwise from above, i.e. turning left).
 
-import { buildWalls, doorGap, heightAt, pointInRect, propSolid, rampHeight, standable, STEP_UP, surfacesAt, wallEnds } from "@loom/house";
+import { buildWalls, doorGap, heightAt, pointInRect, propSolid, rampHeight, standable, STEP_UP, surfacesAt, wallEnds, withFallenKings } from "@loom/house";
 import type { HouseMap, Vec2, Vec3, WallSegment } from "@loom/house";
 
 export const RADIUS = 0.25;
@@ -128,10 +128,13 @@ export function spawnBody(house: HouseMap, at: { pos: Vec3; yaw: number } = hous
  * `docs/loom-reinstall.md` §1.3): where it stands when that is still
  * `standable` on the new map, else back at the new map's spawn (facing its
  * way, pitch kept) — a player inside what is now a solid prop (the shed on
- * the tent map) or outside every room would be stuck there.
+ * the tent map) or outside every room would be stuck there. `fallen` names
+ * the kings that are down: standing room is judged with them out of the way
+ * (`withFallenKings` — a kneeling King is no solid prop), as the server's
+ * `setHouse` re-seats, so a player on his spot or in his doorway stays put.
  */
-export function bodyAfterRemap(house: HouseMap, body: Body): { body: Body; respawned: boolean } {
-  if (standable(house, body.p)) return { body, respawned: false };
+export function bodyAfterRemap(house: HouseMap, body: Body, fallen: ReadonlySet<string> = new Set()): { body: Body; respawned: boolean } {
+  if (standable(withFallenKings(house, fallen), body.p)) return { body, respawned: false };
   return { body: { ...spawnBody(house), pitch: body.pitch }, respawned: true };
 }
 

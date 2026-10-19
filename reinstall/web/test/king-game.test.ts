@@ -18,6 +18,12 @@ vi.mock("../src/api.ts", async (orig) => ({
     return hits.replies.shift() ?? { kind: "error", message: "no reply queued" };
   },
 }));
+// A remap rebuilds the scene: a stub one (no canvas here).
+vi.mock("@loom/house/three", async (orig) => ({
+  ...(await orig<object>()),
+  buildHouseScene: () => ({ root: { removeFromParent: () => {} }, dispose: () => {}, walls: [], kings: new Map(), showKing: () => {} }),
+  applySpace: () => {},
+}));
 const worlds = vi.hoisted(() => ({ built: [] as unknown[] }));
 vi.mock("../src/game/physics.ts", async (orig) => ({
   ...(await orig<object>()),
@@ -215,6 +221,27 @@ describe("the shared bar — everyone's hits, the kneel, the restore", () => {
     expect(g.doorOpen).toBe(false);
     expect(shown.at(-1)).toEqual([prop.id, full, false]);
     expect(worlds.built.at(-1)).toEqual({ closedDoors: new Set([door.id]) });
+  });
+
+  it("a remap with the King down keeps a player on his spot there, as the server does; standing, back to the start", () => {
+    const swap = (king: KingState, incoming?: KingState | null) => {
+      const { g, said } = game(king, [prop.pos[0], prop.pos[1], prop.pos[2]]);
+      Object.assign(g, { root: { add: () => {} }, distHistory: [], mapVersion: "v1" });
+      Object.assign((g as unknown as { house: object }).house, { root: { removeFromParent: () => {} }, dispose: () => {} });
+      (g as unknown as { swapMap(h: unknown, v: string, k?: KingState | null): void }).swapMap(SHOW(), "v2", incoming);
+      return { g, said };
+    };
+    const down: KingState = { ...full, hp: 0, fallen: true };
+    // What we knew (no word from the GET): down, so his spot is floor.
+    const kept = swap(down);
+    expect(kept.g.body.p).toEqual([prop.pos[0], prop.pos[1], prop.pos[2]]);
+    expect(kept.said).toContain("The house was remapped.");
+    // The GET's word wins: he stood up meanwhile, so he is solid again.
+    const restored = swap(down, full);
+    expect(restored.g.body.p).not.toEqual([prop.pos[0], prop.pos[1], prop.pos[2]]);
+    expect(restored.said).toContain("The house was remapped — you're back at the start.");
+    // Standing all along: back to the start.
+    expect(swap(full).said).toContain("The house was remapped — you're back at the start.");
   });
 
   it("a restore with the player clear shuts it at once", () => {

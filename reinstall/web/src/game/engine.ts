@@ -768,12 +768,12 @@ export class Game {
   private async remapOnce(): Promise<void> {
     const loaded = await fetchHouse(this.o.base, this.o.assignment.token);
     if (this.phase === "ended" || loaded.source === "bundled") return;
-    if (loaded.version !== this.mapVersion) this.swapMap(loaded.house, loaded.version);
+    if (loaded.version !== this.mapVersion) this.swapMap(loaded.house, loaded.version, loaded.king);
     this.adoptDuck(loaded.duck);
     this.adoptKing(loaded.king);
   }
 
-  private swapMap(house: HouseMap, version: string): void {
+  private swapMap(house: HouseMap, version: string, incoming?: KingState | null): void {
     const walls = buildWalls(house);
     const scene = buildHouseScene(house, { walls });
     this.house.root.removeFromParent();
@@ -796,7 +796,12 @@ export class Game {
     this.lastTrailAt = Number.NEGATIVE_INFINITY;
     // Standing somewhere the new map has no floor for (the shed is a solid
     // box on the tent map): back to the start, as the server re-seats too.
-    const after = bodyAfterRemap(house, this.body);
+    // A fallen King is out of the way (he kneels, his box is no prop): judge
+    // with him down, as the server does, by the GET's word on him if it
+    // has one, else what we knew (the same prop id keeps the shared state).
+    const known = incoming === undefined ? this.kingState : this.ownKing(incoming);
+    const fallen = king !== null && known?.fallen === true ? new Set([king.id]) : new Set<string>();
+    const after = bodyAfterRemap(house, this.body, fallen);
     this.body = after.body;
     if (after.respawned) this.distHistory = [];
     this.say(after.respawned ? "The house was remapped — you're back at the start." : "The house was remapped.", after.respawned ? 4000 : 3000);
