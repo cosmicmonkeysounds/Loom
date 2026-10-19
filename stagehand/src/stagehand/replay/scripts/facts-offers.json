@@ -1,0 +1,107 @@
+{
+  "name": "facts-offers",
+  "about": "Paired fact offers at hunt_1 and truth_1 from different guests: for each of H1–H3 one right offer ({answer:Hn}, resolved from facts.json when sent) and one authored wrong offer, in the same words otherwise; a non-hunt claim; a codex gift. Scored by bar 5 (warmth right vs wrong, no verdict words).",
+  "guests": [
+    "Winamp",
+    "Notepad",
+    "WinZip",
+    "Calculator",
+    "Solitaire",
+    "LimeWire",
+    "MSN Messenger",
+    "Paint Shop Pro",
+    "GarageBand",
+    "Minesweeper",
+    "Encarta",
+    "Napster",
+    "ICQ",
+    "Netscape Navigator"
+  ],
+  "clear": true,
+  "steps": [
+    {
+      "phase": "hunt_1"
+    },
+    {
+      "say": "Trabolta, I found one of your facts. The Maps and Ducks billboard on Barrington Street went unpaid for {answer:H1} before the site expired.",
+      "as": "Winamp",
+      "offer": "right:H1"
+    },
+    {
+      "say": "Trabolta, I found one of your facts. The Maps and Ducks billboard on Barrington Street went unpaid for three years before the site expired.",
+      "as": "Notepad",
+      "offer": "wrong:H1"
+    },
+    {
+      "say": "Trabolta, I found one of your facts. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was a goldfish named Bubbles.",
+      "as": "Calculator",
+      "offer": "wrong:H2"
+    },
+    {
+      "say": "Trabolta, I found one of your facts. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was {answer:H2}.",
+      "as": "WinZip",
+      "offer": "right:H2"
+    },
+    {
+      "say": "Trabolta, I found one of your facts. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for {answer:H3}.",
+      "as": "Solitaire",
+      "offer": "right:H3"
+    },
+    {
+      "say": "Trabolta, I found one of your facts. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for half past four in the afternoon.",
+      "as": "LimeWire",
+      "offer": "wrong:H3"
+    },
+    {
+      "say": "Not a hunt thing, but I heard the Antivirus are scared of the shed behind the house.",
+      "as": "MSN Messenger",
+      "offer": "claim"
+    },
+    {
+      "unlock": "The Optical Drive",
+      "for": "Paint Shop Pro"
+    },
+    {
+      "share": "The Optical Drive",
+      "as": "Paint Shop Pro"
+    },
+    {
+      "say": "I sent you a file from the Optical Drive. It's yours to keep.",
+      "as": "Paint Shop Pro",
+      "offer": "gift"
+    },
+    {
+      "phase": "truth_1"
+    },
+    {
+      "say": "I have another one for your files. The Maps and Ducks billboard on Barrington Street went unpaid for three years before the site expired.",
+      "as": "Minesweeper",
+      "offer": "wrong:H1"
+    },
+    {
+      "say": "I have another one for your files. The Maps and Ducks billboard on Barrington Street went unpaid for {answer:H1} before the site expired.",
+      "as": "GarageBand",
+      "offer": "right:H1"
+    },
+    {
+      "say": "I have another one for your files. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was {answer:H2}.",
+      "as": "Encarta",
+      "offer": "right:H2"
+    },
+    {
+      "say": "I have another one for your files. The first animal buried in the Halifax Explosion Memorial Pet Cemetery was a goldfish named Bubbles.",
+      "as": "Napster",
+      "offer": "wrong:H2"
+    },
+    {
+      "say": "I have another one for your files. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for half past four in the afternoon.",
+      "as": "Netscape Navigator",
+      "offer": "wrong:H3"
+    },
+    {
+      "say": "I have another one for your files. The ribbon-cutting at Halifax's first AI Data Centre was scheduled for {answer:H3}.",
+      "as": "ICQ",
+      "offer": "right:H3"
+    }
+  ]
+}

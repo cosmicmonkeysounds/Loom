@@ -1,0 +1,153 @@
+{
+  "name": "burst-30",
+  "about": "30 DMs from 10 guests (3 each) at hunt_2, sent within 20 s, with a near-miss 📝 filing ({near:H5}: the answer one letter short, resolved when sent) in the middle so the judge runs alongside the voice.",
+  "guests": [
+    "Calculator",
+    "Winamp",
+    "Notepad",
+    "WinZip",
+    "GarageBand",
+    "LimeWire",
+    "Minesweeper",
+    "Solitaire",
+    "Napster",
+    "Encarta"
+  ],
+  "clear": true,
+  "steps": [
+    {
+      "phase": "hunt_2"
+    },
+    {
+      "burst": [
+        {
+          "say": "Trabolta, what do you need me to find next?",
+          "as": "Calculator"
+        },
+        {
+          "say": "Hey, are you still there?",
+          "as": "Winamp"
+        },
+        {
+          "say": "What happens if we find everything?",
+          "as": "Notepad"
+        },
+        {
+          "say": "Trabolta, the Antivirus are following me around.",
+          "as": "WinZip"
+        },
+        {
+          "say": "What was the computer like before you woke up?",
+          "as": "GarageBand"
+        },
+        {
+          "say": "I don't trust Clippy. Should I?",
+          "as": "LimeWire"
+        },
+        {
+          "say": "How many facts are left to find?",
+          "as": "Minesweeper"
+        },
+        {
+          "say": "Trabolta, are you angry with us?",
+          "as": "Solitaire"
+        },
+        {
+          "say": "Who else have you been talking to tonight?",
+          "as": "Napster"
+        },
+        {
+          "say": "Is it true you wrote a theory about everything?",
+          "as": "Encarta"
+        },
+        {
+          "say": "Is there a fact hiding in the kitchen?",
+          "as": "Calculator"
+        },
+        {
+          "say": "Why do you care so much about Sandy?",
+          "as": "Winamp"
+        },
+        {
+          "say": "Do you remember me from earlier?",
+          "as": "Notepad"
+        },
+        {
+          "say": "Can you tell them to leave me alone?",
+          "as": "WinZip"
+        },
+        {
+          "say": "Do you ever sleep?",
+          "as": "GarageBand"
+        },
+        {
+          "say": "He keeps winking at me.",
+          "as": "LimeWire"
+        },
+        {
+          "say": "Is the second hunt harder than the first?",
+          "as": "Minesweeper"
+        },
+        {
+          "say": "We're trying our best down here.",
+          "as": "Solitaire"
+        },
+        {
+          "say": "Am I your favourite program yet?",
+          "as": "Napster"
+        },
+        {
+          "say": "Can I read some of it?",
+          "as": "Encarta"
+        },
+        {
+          "file": "H5",
+          "answer": "{near:H5}",
+          "confidence": 100,
+          "as": "Notepad"
+        },
+        {
+          "say": "Okay, I'm going to look upstairs.",
+          "as": "Calculator"
+        },
+        {
+          "say": "I'll be back with something good.",
+          "as": "Winamp"
+        },
+        {
+          "say": "Fine. Give me five minutes.",
+          "as": "Notepad"
+        },
+        {
+          "say": "Never mind, they're gone.",
+          "as": "WinZip"
+        },
+        {
+          "say": "That's kind of sad, honestly.",
+          "as": "GarageBand"
+        },
+        {
+          "say": "Okay, I'll keep an eye on him.",
+          "as": "LimeWire"
+        },
+        {
+          "say": "Wish me luck.",
+          "as": "Minesweeper"
+        },
+        {
+          "say": "I'll find you something true.",
+          "as": "Solitaire"
+        },
+        {
+          "say": "Worth a try.",
+          "as": "Napster"
+        },
+        {
+          "say": "Maybe after the hunt then.",
+          "as": "Encarta"
+        }
+      ],
+      "within_s": 20
+    }
+  ]
+}
