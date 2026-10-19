@@ -669,7 +669,7 @@ are **183**, and **94** of them carry a code (the 60 generated from
 3. **A person.** Every named character holds the entries *about* them (plus
    `known to:`) and shares them from the booth. Guests share theirs from a
    card. Sharing an entry **to Trabolta** marks the guest `delivered` and
-   adds +2 to his truth. *The Prom Ticket* and *The LiveJournal* rattle him.
+   adds +2 to his truth. *The LiveJournal* rattles him.
 4. **Show hardware**, through `POST /api/mod/codex {who, entry}`.
 5. **A trade.** From the pinned **Wallet** room a program offers another
    Truthcoin for an entry (or an entry for Truthcoin); on accept the server

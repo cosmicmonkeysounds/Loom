@@ -3,7 +3,10 @@
 //! for"). He asks the guests for the hunt answers (facts.json `questions`,
 //! H1–H6 / F1–F2, and the pickup line, `answers` P1); none of them, nor any
 //! alias, may reach his worker by any door the event server or the show
-//! opens:
+//! opens — except the near-miss judge frame (wave 11b), which carries the key
+//! to a separate stateless ruling call on purpose and is pinned apart from his
+//! voice and mind by stagehand's tests/test_judge.py. Also not covered: P1 in
+//! the post-verdict cues (grok_prom, advice, finale_*), exempt below:
 //!
 //!   - his **agent requests** at the night's turns — his own codex, the
 //!     speaker's codex and vars, the world's globals, the thread history

@@ -75,14 +75,12 @@ yourself:
 
 ```loom
 CHARACTER Trabolta
-  when who learns The Prom Ticket:
+  when who learns The LiveJournal:
     if who == self:
       set self.composure -= 15
-      set self.love -= 10
 ```
 
-That is how "show him who is taking Sandy to prom" rattles him into
-oversharing.
+That is how being shown his own diary rattles him.
 
 One exception: an **agent-voiced** character (`mind: external`, below)
 never takes an entry that is `about` *someone or somewhere else*. Its

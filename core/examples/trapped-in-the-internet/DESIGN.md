@@ -577,8 +577,8 @@ in ROLE hooks and story rules.
 | Trabolta.awake | `awake: bool = false` | `introduce_trabolta` → true; `computer_destroyed` → false. The worker's gate reads `self.awake`. |
 | Trabolta.truth | `truth: 0 to 100 = 20` | voice adjust; +4 per accepted answer at a Moment of Truth (**accurate and confident alike**: he cannot tell them apart), +2 per fact shared to him |
 | Trabolta.untruth | `untruth: 0 to 100 = 0` | **voice adjust only** (lies he catches himself in DMs). The story never moves it: a story write on a confident lie would tell him which answer was false. |
-| Trabolta.composure | `composure: 0 to 100 = 85` | voice adjust; story: −20 malware, −20 beans, −10 LiveJournal read, −15 Prom Ticket shared to him, −25 y2k, −10 per alarm, −10 virus planted |
-| Trabolta.love | `love: 0 to 100 = 40` | voice adjust; −10 Prom Ticket; +20 advice_helped; −30 advice_thwarted |
+| Trabolta.composure | `composure: 0 to 100 = 85` | voice adjust; story: −20 malware, −20 beans, −10 LiveJournal read, −25 y2k, −10 per alarm, −10 virus planted |
+| Trabolta.love | `love: 0 to 100 = 40` | voice adjust; +20 advice_helped; −30 advice_thwarted |
 | Trabolta.regard | `regard: -50 to 50 = 0` | voice adjust only (what he thinks of the programs; the director reads it when choosing the advice branch) |
 
 Drop `trusts Program`, `stance`, `destruct`, `glitched`.
@@ -3092,8 +3092,6 @@ when snoop for program:
 Other Trabolta hooks (`cast/trabolta.loom`):
 - `when introduce_trabolta:` → `set self.awake = true` · `reveal self`.
 - `when computer_destroyed:` → `set self.awake = false`.
-- `when who learns The Prom Ticket:` → `if who == self:` `set self.composure -= 15` · `set
-  self.love -= 10` (no `Trabolta:` line here: `who` binding makes it public).
 - `when who learns The LiveJournal:` → `if who == self:` `set self.composure -= 15`.
 - Generic delivery is a story rule in main.loom: `when share:` → `if to == Trabolta: fire
   trabolta_heard for from` → ROLE `when trabolta_heard for program:` → `delivered = true`,
@@ -3109,7 +3107,7 @@ accepted answer truth +4 — accurate and confident alike, never `untruth` —, 
 | Lever | Mechanism | Effect |
 |---|---|---|
 | A checked fact in a DM | orchestrator verdict → dossier trust, `policy.credit`; voice `truth +` | warmth, a T1 entry as payment, a snoop; chart credit via `assess` |
-| Sharing a codex entry to him | `when share:` → `delivered`, `Trabolta.truth += 2`; per-entry hooks (Prom Ticket jealousy, LiveJournal confrontation) | hungry+: favours; unravelling: the Prom Ticket rattles him into oversharing |
+| Sharing a codex entry to him | `when share:` → `delivered`, `Trabolta.truth += 2`; per-entry hooks (the LiveJournal confrontation); a hunt-answer card is secret, so he never takes one | hungry+: favours |
 | A confident lie at a Moment of Truth | `confident_q1..3` → `Kernel.q<n> = "lie"`, `Kernel.lies_accepted` (hidden from him: Kernel vars never reach the worker; his own `truth` rises exactly as for an accurate answer) | accepted tonight; decides `grok_prom` at the verdict |
 | Uncertain answers, misses, lateness | capture → `internet_visits` → −5 each on the chart | the chart; his contempt |
 | Flattery | voice `regard +`, drive pride | works until `judge`, then reads as bluster |
