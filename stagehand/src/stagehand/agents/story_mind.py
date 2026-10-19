@@ -259,7 +259,7 @@ def absorb(mind: Mind, persona: Persona, req: dict[str, Any], phase: str) -> tup
         d.marked = any(r.get("kind") == "marked" for r in recent)
         for r in reversed(recent):  # recent is newest first; the dossier is oldest first
             kind_ = r.get("kind")
-            if kind_ == "gift" and isinstance(r.get("title"), str):
+            if kind_ == "gift" and isinstance(r.get("title"), str) and persona.secrets.lore_ok({"title": r["title"]}) and not persona.secrets.leaks(r["title"]):
                 d.note_story("gifts", r["title"])
                 gifts.append(r)
             elif kind_ == "filing" and isinstance(r.get("question"), str):
@@ -346,9 +346,11 @@ def after_turn(persona: Persona, d: Dossier, req: dict[str, Any], phase: str, sa
 
 
 def keep_memo(persona: Persona, memo: str) -> str:
-    """W2's re-check before a memo is stored (§C2.3): never a `never` word."""
+    """W2's re-check before a memo is stored (§C2.3): never a `never` word
+    — and, belt and braces behind the voice's own scrub, never an answer
+    word (the full `match` list: a memo is shown to the voice all night)."""
     line = one_line(memo, 140)
-    if not line or persona.secrets.leaks(line):
+    if not line or persona.secrets.leaks(line) or Secrets(match=persona.secrets.match).names_topic(line):
         return ""
     return line
 

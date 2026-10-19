@@ -252,9 +252,9 @@ def test_a_waiting_request_forbids_the_retry(tmp_path):
 
 
 def test_a_memo_off_or_carrying_a_never_word_is_not_stored(tmp_path):
-    agents, _ = make(tmp_path, FakeVoice(FakeReply(say="ok", memo="typed XYZZY-PLUGH at me")))
-    run(handle(agents, req()))
-    assert agents.minds["Trabolta"].people["g-1"].memos == []
+    agents, _ = make(tmp_path, FakeVoice(FakeReply(say="ok", memo="typed XYZZY-PLUGH at me"), FakeReply(say="ok", memo="says it is marmalade"), FakeReply(say="ok", memo="asked about the velvet lighthouse")))
+    run(handle(agents, req(rid="1"), req(rid="2"), req(rid="3")))
+    assert [m["text"] for m in agents.minds["Trabolta"].people["g-1"].memos] == ["asked about the velvet lighthouse"]
     agents2, _ = make(tmp_path / "b", FakeVoice(FakeReply(say="ok", memo="a fine memo")), voice={"memo": False})
     run(handle(agents2, req()))
     assert agents2.minds["Trabolta"].people["g-1"].memos == []
@@ -346,6 +346,7 @@ def test_the_person_card_reads_the_story_and_writes_first_met_once(tmp_path):
     recent = [
         {"kind": "marked"},
         {"kind": "chart", "rank": 2, "of": 9, "called": "top"},
+        {"kind": "gift", "title": "▒ HUNT ANSWER H1 ▒ in a title", "new": True, "at": 101},
         {"kind": "gift", "title": "The Optical Drive", "new": True, "at": 100},
         {"kind": "filing", "question": "H2"},
         {"kind": "filing", "question": "H1"},
