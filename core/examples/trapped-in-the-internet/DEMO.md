@@ -40,7 +40,7 @@ change the order here, change it there.
      mute until you do.
    - **The tent tablet**: `https://app.mapsandducks.com/reinstall/?code=<moderator code>&name=Tent tablet`
      (the reinstallation game; keyboard WASD / arrows, Q/E turn, Shift runs;
-     ⚔ / Space hits the King, ♟ / C challenges him).
+     ⚔ / Space hits the King, once per visit).
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
    laptop/house Mac (`uv run stagehand run --config <machine>.yaml --only agents`,
    see `stagehand/README.md`). Without it, DMs to Trabolta get his hold line
@@ -119,7 +119,7 @@ guest's card in that performer's booth (phone C / D), or in Run while you
    Download choice, so he never sees *Choose your side*: **☰ → Your pass →
    Leave … for The Way Out** (a defection). Then fire **🧾 Let a faction win without its leader's task** (OpenOffice isn't here) — or just fire **🗳 Force the majority: The Way Out**.
    Members get the whole truth (50+ codex entries, *The Legendary Fact*, and *The Door Code* last) and The Server Room appears on their phones.
-   *(Optional, wave 7)* **🚪 Server room door opened** → **The Heart**: The Server Room opens on every phone, and Trabolta speaks his candid opener there (and on the server-room terminal, if one is provisioned). Fire it again at once: nothing (the 2-minute quiet window).
+   *(Optional, wave 7; any time once Trabolta is awake since wave 11)* **🚪 Server room door opened** → **The Heart**: The Server Room opens on every phone, and Trabolta speaks his candid opener there (and on the server-room terminal, if one is provisioned). Fire it again at once: nothing (the 2-minute quiet window).
 2. **🔌 Patch: Combo A** → every phone: 🔔 **GO TO THE LIVING ROOM**; the TV: blackout, then the flashing overlay; 10 s later the dance look.
 3. **🏍 After the dance: weakened Trabolta recounts** — he reads every identity of the programs who came, the first reinstall, the virus planter, the best and worst program, and rides off. Everyone is released.
 
@@ -152,7 +152,8 @@ them out).
 
 ## What is built but not in the cue order above (show it if there's time)
 
-- **The King** (the door code, in the simulation): in the tent tablet's game a gold chess king with eight hearts (the show maps' `hp: 8`) guards the server-room door of the virtual house. Walk up to him (⚔ / Space) — every hit knocks a heart off and makes his chess AI dumber (grandmaster → club → beginner → dizzy → pawns only) — then challenge him (♟ / C) on the tablet's board (its badge reads PRACTICE, then FOR THE CODE from the Y2K hour). Mate him and the game fires `chess won` for that program; before the 🕚 Y2K clock it's practice (`# hosts` says so), after it the winner gets *The Door Code* in their Codex, exactly as **♟ They beat the King** (naming the winner) does. The real door has a standalone keypad lock nothing in the house drives. Not device-checked yet: the Lichess phone stays the fallback on the night.
+- **The King** (wave 11): in both reinstallation games a gold chess king guards the server-room door of the virtual house with **one health bar shared by everyone all night** (15 points, `Night.king_hp`; each program may hit him once per visit, the server takes the point off, `# hosts` hears every hit; 👑 *Restore the King's health* puts him back). His **chess** is only on the wall terminal outside the real server-room door: scan a pass, play, no hints, and the lower his bar the worse he plays. Mate him and the terminal fires `chess won` for that program: the winner gets *The Door Code* in their Codex any time before 📄 truth.txt, exactly as **♟ They beat the King** (naming the winner) does. The real door has a standalone keypad lock nothing in the house drives.
+- **The digit notes** (wave 11): four secret QR notes, one digit of the door code each, hidden in four rooms (the silver pile in `generated/print-stacks.md`). Scan them all night; the quest *The Cold Door* counts them, and the fourth puts *The Door Code* in the Codex.
 - **The Wallet**: every phone has a pinned **Wallet** room (🪙 balance on the pass): send Truthcoin to another program, request it, or trade coin for a codex entry (an escrowed offer the other side accepts). Every third transfer waits for **Approve** in CRA Agent Software's booth (sign a fourth phone in as her: the editor's performer lens doesn't show a booth's Wallet room yet, though Run's operator view lists the pending transfers as text); any transfer can be denied within 60 s. Runescape's phone can mint a stimulus to everyone (three a night). The hosts' 🪙 Pay / Charge buttons are corrections only. A local-folder rehearsal has no wallet — use the server project.
 - **facts.json is the team's file**: the hunt questions + answer key, the Desktop's scannable facts (main / trabolta / character), the Truth-or-Dare questions and the pickup line all live in `core/examples/trapped-in-the-internet/facts.json`; `pnpm --filter @loom/core titi:facts` regenerates the story files from it. The server judges every 📝 filing against it (`Night.judge_mode` = `auto`; switch to `review` on Run → Mind's Judging card to confirm each verdict by hand). Rehearse filings on the server project: a folder run has no judge.
 - **Marked for reinstallation**: 🎯 / 🤷 / 🎩 / 🙅 / 🏓 missed / 🍎 failed / a guess at settle / a late program no longer capture on the spot. The phone greys out (DMs and the Tube / Internet rooms only) with a pinned 🚨 GO TO THE INTERNET card; the Antivirus booths chime and `# quarantine` lists who to escort. 🛡 captures; **🩹 Unmark** (any host or Antivirus) undoes a mis-tap.
@@ -161,8 +162,8 @@ them out).
 ## What is not built yet (say so on the day)
 
 - **The house map is a placeholder** (3 floors + the tent, not measured; K-28). The game walks it fine; the rooms won't line up with the real ones yet.
-- **No hardware in the loop**: the server-room door (🚪), the patch bay and the printer button are the admin fallback buttons on the cue sheet; the door code comes from the King on the tent tablet (above), with the chess phone as its fallback. The ESP32 firmware exists but isn't wired to the VPS demo, and the keypad lock is a real lock on a real door.
-- **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game minus the King's fight — it only shows him; the tablet has the fight).
+- **No hardware in the loop**: the server-room door (🚪), the patch bay and the printer button are the admin fallback buttons on the cue sheet; the door code comes from the King at the door terminal or the four digit notes (above), with ♟ as the fallback. The ESP32 firmware exists but isn't wired to the VPS demo, and the keypad lock is a real lock on a real door.
+- **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game, the King's shared health bar included).
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
 - **Phones at the server-room endings** show the GO TO THE LIVING ROOM *alert banner*, not a full-screen flashing screen (the TV and terminals do flash it).
 - **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.
