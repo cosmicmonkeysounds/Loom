@@ -48,9 +48,11 @@ describe.each([
     expect(king.kind).toBe("king");
     expect(king.room).toBe(door.a);
     expect(propSolid(king)).toBe(true);
-    expect(king.hp).toBe(8);
-    expect(king.signals).toEqual({ won: "chess won", lost: "chess lost", drawn: "chess drawn" });
-    expect(king.armed).toEqual({ path: "Night.step", min: 14 });
+    // One shared bar for the night (C1): 15 HP in the story's Night.king_hp.
+    expect(king.hp).toBe(15);
+    expect(king.health).toBe("Night.king_hp");
+    expect(king.signals).toEqual({ won: "chess won", lost: "chess lost", drawn: "chess drawn", hit: "king hit", fallen: "king fallen" });
+    expect(king.armed).toEqual({ path: "Night.king_armed", min: 1 });
     // He stands in the gap: a body (radius 0.25) can't pass on either side.
     expect(Math.hypot(king.pos[0] - door.at[0], king.pos[2] - door.at[1])).toBeLessThan(0.5);
     const inside: Vec3 = [-5, -2.7, 9.5];
@@ -59,6 +61,23 @@ describe.each([
     const path = route(open, open.spawn.pos, inside);
     expect(path.length).toBeGreaterThan(2);
     expect(path.some((p) => p[0] === door.at[0] && p[2] === door.at[1])).toBe(true);
+    // Fallen, the same door through route()'s own option.
+    const fallen = route(house, house.spawn.pos, inside, { fallen: new Set([king.id]) });
+    expect(fallen.length).toBeGreaterThan(2);
+    expect(fallen.some((p) => p[0] === door.at[0] && p[2] === door.at[1])).toBe(true);
+  });
+
+  it("hangs the Server Door terminal in the basement hall, facing the King and the server-room door", () => {
+    const spot = house.terminals.find((t) => t.id === "server-room-door")!;
+    expect(spot).toMatchObject({ name: "Server Door", room: "basement-hall" });
+    const door = house.doors.find((d) => d.id === "server-door")!;
+    const king = house.props.find((p) => p.id === door.guard)!;
+    // Its screen looks at the door: the bearing to it is well inside the view.
+    for (const target of [[door.at[0], spot.pos[1], door.at[1]], king.pos] as Vec3[]) {
+      const toward = (Math.atan2(-(target[0] - spot.pos[0]), -(target[2] - spot.pos[2])) * 180) / Math.PI;
+      expect(Math.abs(((toward - spot.yaw + 540) % 360) - 180)).toBeLessThan(20);
+    }
+    expect(locate(house, spot.pos).floor).toBe(locate(house, king.pos).floor);
   });
 
   it("puts every terminal on a wall, facing into its room", () => {
@@ -70,7 +89,7 @@ describe.each([
       expect(locate(house, behind).room, `${t.id} hangs on a wall`).not.toBe(t.room);
     }
     expect(house.terminals.map((t) => t.id).sort()).toEqual(
-      ["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "start-bar", "tent"].sort(),
+      ["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "server-room-door", "start-bar", "tent"].sort(),
     );
   });
 

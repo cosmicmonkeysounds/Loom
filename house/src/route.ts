@@ -8,6 +8,7 @@
 //! line-for-line.
 
 import { distanceToBoundary, pointInPolyStrict, propSolid, roomById, roomElevation, stairEnds } from "./geometry.ts";
+import { withFallenKings } from "./king.ts";
 import { locate } from "./locate.ts";
 import type { HouseMap, Portal, Prop, Room, Vec2, Vec3 } from "./types.ts";
 
@@ -150,10 +151,9 @@ function outerCorners(r: readonly [number, number, number, number]): Vec2[] {
  */
 export function routeNodes(house: HouseMap): RouteNode[] {
   // A guarded door (`Door.guard`, a king standing in it) is shut for routing:
-  // its portal is left out, so nothing paths through it. The games open it
-  // per session, and once the king has fallen a player can be behind it, so
-  // the web trail routes over a copy without that guard (reinstall/web
-  // `trailMap`); VR never fells him.
+  // its portal is left out, so nothing paths through it. Once its king has
+  // fallen (the shared bar at 0) it is open for everyone: `route()`'s
+  // `fallen` option routes over `withFallenKings`, a copy without the guard.
   const guarded = new Set(house.doors.filter((d) => d.guard !== undefined).map((d) => d.id));
   const out: RouteNode[] = portals(house)
     .filter((p) => !(p.kind === "door" && guarded.has(p.id)))
@@ -289,6 +289,13 @@ function adjacent(house: HouseMap, ns: RouteNode[], i: number, j: number): boole
   return false;
 }
 
+/** `route()`'s options. */
+export interface RouteOptions {
+  /** The ids of the kings who have fallen: the doors they guard are open and
+   *  they are no longer obstacles (`withFallenKings`). */
+  fallen?: ReadonlySet<string>;
+}
+
 /**
  * `[from, …node points, to]`. An unlocatable end ⇒ `[from, to]`; the same
  * room and visible ⇒ `[from, to]`; no path ⇒ `[from, to]`.
@@ -297,9 +304,11 @@ function adjacent(house: HouseMap, ns: RouteNode[], i: number, j: number): boole
  * sees) to a virtual end (joined from every node of the end room that sees
  * it); weights are 3-D distances. Nodes settle in order of (distance,
  * index) — the end node's index is after every node — and relaxation is
- * strict `<`, so ties go to the lower node index.
+ * strict `<`, so ties go to the lower node index. With `opts.fallen`, over
+ * `withFallenKings(map, opts.fallen)`.
  */
-export function route(house: HouseMap, from: Vec3, to: Vec3): Vec3[] {
+export function route(map: HouseMap, from: Vec3, to: Vec3, opts: RouteOptions = {}): Vec3[] {
+  const house = opts.fallen === undefined ? map : withFallenKings(map, opts.fallen);
   const a = locate(house, from).room;
   const b = locate(house, to).room;
   if (a === null || b === null) return [from, to];
