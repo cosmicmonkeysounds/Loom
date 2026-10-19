@@ -241,13 +241,37 @@ def repeats_line(say: str, old: str) -> bool:
     return len(s_new & s_old) / len(s_new) >= REPEAT_SHARE
 
 
-def last_lines(said: Said) -> tuple[str, ...]:
-    """His last 8 lines: ≤ 3 to them, ≤ 5 elsewhere."""
-    return tuple(said.to_them[-3:]) + tuple(said.elsewhere[-5:])
+def last_lines(said: Said, thread: Iterable[str] = ()) -> tuple[str, ...]:
+    """His last 8 lines (≤ 3 to them, ≤ 5 elsewhere), plus every free reply
+    of his in this thread's history (`thread`): a line he said to them five
+    turns ago is as much a repeat as the last one."""
+    out = list(said.to_them[-3:]) + list(said.elsewhere[-5:])
+    for line in thread:
+        if line and line not in out:
+            out.append(line)
+    return tuple(out)
 
 
-def repeats(say: str, said: Said) -> bool:
-    return bool(say) and any(repeats_line(say, old) for old in last_lines(said))
+def repeats(say: str, said: Said, thread: Iterable[str] = ()) -> bool:
+    return bool(say) and any(repeats_line(say, old) for old in last_lines(said, thread))
+
+
+def thread_replies(req: dict[str, Any]) -> tuple[str, ...]:
+    """His free replies in this request's history (`mine`, not a story line)."""
+    return tuple(
+        str(h.get("text", ""))
+        for h in req.get("history") or []
+        if isinstance(h, dict) and h.get("mine") and h.get("story") is not True and str(h.get("text", "")).strip()
+    )
+
+
+def cut_exact_repeats(say: str, said: Said, thread: Iterable[str] = ()) -> str:
+    """After the one retry: drop each sentence he has already said word for
+    word (folded) in one of those lines. What is left is sent; "" when every
+    sentence was old (the caller sends the fallback)."""
+    olds = [fold(o) for o in last_lines(said, thread)]
+    kept = [s for s in _SENTENCE.split(say) if s.strip() and not any(fold(s) and fold(s) in o for o in olds)]
+    return " ".join(kept).strip()
 
 
 def retry_message(rejected: str) -> str:
@@ -271,6 +295,7 @@ def guard_pass(
     *,
     repeat_guard: bool = True,
     may_retry: bool = True,
+    thread: Iterable[str] = (),
 ) -> Pass:
     """Guards 1–3 over `reply`, then (when `may_retry`) whether it wants the
     one retry: a catchphrase cut that left nothing, or a repeat. A line
@@ -300,7 +325,7 @@ def guard_pass(
             return out
         out.retry, out.rejected = "catchphrase", before
         return out
-    if may_retry and repeat_guard and repeats(out.reply.say, said):
+    if may_retry and repeat_guard and repeats(out.reply.say, said, thread):
         out.retry, out.rejected = "repeat", out.reply.say
     return out
 

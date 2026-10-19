@@ -38,7 +38,7 @@ from typing import Any
 
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
-from .guards import Pass, allowed_answer_words, guard_pass, mentions_hunt, repeats, retry_message, scrub_memo
+from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, repeats, retry_message, scrub_memo, thread_replies
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import allowed_powers, build_messages, gate_context, matching_situations, situation_block, their_variables
@@ -458,6 +458,11 @@ def build_lean_messages(
 # -- the call ---------------------------------------------------------------------------------
 
 
+#: The one retry runs this much hotter, up to the cap.
+RETRY_TEMPERATURE_STEP = 0.3
+RETRY_TEMPERATURE_MAX = 1.2
+
+
 async def _complete_with_room(complete_fn: CompleteFn, messages: list[dict[str, str]], model: LlmConfig, who: str) -> tuple[Completion, str]:
     """`module._complete_with_room`'s twin (its own copy: the lean voice
     imports nothing from `module.py`): one call, and once more with twice the
@@ -620,7 +625,8 @@ async def answer_lean(
         reply = replace(reply, say=persona.fallback)  # asked to look up with no session to ask
 
     reply, settle_notes = await settle(reply)
-    first: Pass = guard_pass(persona, reply, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard)
+    mine = thread_replies(req)
+    first: Pass = guard_pass(persona, reply, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, thread=mine)
     wants = first.retry
     call_note = " · ".join(x for x in (no_mind, call_note) if x)
     notes = settle_notes + first.notes
@@ -643,7 +649,10 @@ async def answer_lean(
     await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
     retry_msgs = build(retry=first.rejected) if kind == "voice" else used + [{"role": "system", "content": retry_message(first.rejected)}]
     try:
-        completion, call_note = await _complete_with_room(complete_fn, retry_msgs, model, persona.character)
+        # A little hotter than the first call: at the house temperature the
+        # model tends to write the rejected line again word for word.
+        hotter = replace(model, temperature=min(RETRY_TEMPERATURE_MAX, (model.temperature or 0.0) + RETRY_TEMPERATURE_STEP))
+        completion, call_note = await _complete_with_room(complete_fn, retry_msgs, hotter, persona.character)
     except LlmError as err:
         log.warning("%s: model failed on the retry (%s)", persona.character, err)
         final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
@@ -655,14 +664,24 @@ async def answer_lean(
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
     again, settle_notes = await settle(again)
-    second = guard_pass(persona, again, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False)
+    second = guard_pass(persona, again, ctx.person, ctx.said, allowed, repeat_guard=opts.repeat_guard, may_retry=False, thread=mine)
     rnotes = settle_notes + second.notes
     final = second.reply
     if not final.say:
         final = replace(final, say=persona.fallback)
         rnotes.append("retry empty → fallback")
-    elif opts.repeat_guard and not second.withheld and repeats(final.say, ctx.said):
-        rnotes.append("retry still repeats (sent)")
+    elif opts.repeat_guard and not second.withheld and repeats(final.say, ctx.said, mine):
+        # Never word for word: a sentence he has already said is cut; a reply
+        # that was nothing but old sentences is the fallback.
+        cut = cut_exact_repeats(final.say, ctx.said, mine)
+        if not cut:
+            final = replace(final, say=persona.fallback)
+            rnotes.append("retry still repeats → fallback")
+        elif cut != final.say:
+            final = replace(final, say=cut)
+            rnotes.append("retry still repeats (old sentences cut)")
+        else:
+            rnotes.append("retry still repeats (sent)")
     if not final.memo and first.reply.memo:
         final = replace(final, memo=first.reply.memo)
     final = _scrub(persona, final, memo_on, rnotes)
