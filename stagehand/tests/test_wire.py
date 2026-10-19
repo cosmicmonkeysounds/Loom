@@ -764,3 +764,32 @@ def test_a_replay_that_cannot_connect_never_breaks_the_stream_and_is_tried_again
     run(agents.on_frame("hello", _hello(thoughts[-1].at)))
     assert _replayed(agents) == [t.id for t in thoughts]
     assert not wire_of(agents).suspect
+
+
+def test_a_thought_the_server_answered_accepted_0_is_never_a_prefix_holder(tmp_path):
+    """w11b-1019 answers 200 {accepted: 0} for a kind it doesn't know (a
+    `brief`): a later voice thought must carry its full prefix, never a
+    reference the server can't expand."""
+    agents = worker(tmp_path)
+
+    class Drops(FakeMod):
+        async def post(self, p, body):
+            await super().post(p, body)
+            if p == "/api/agent/trace":
+                return {"ok": True, "accepted": 0 if body["thoughts"][0]["kind"] == "brief" else 1, "seq": len(self.posts)}
+            return {"ok": True}
+
+    agents.mod = Drops()
+    brief = voice()
+    brief.kind = "brief"
+
+    async def go():
+        await agents.trace.record(brief)
+        b = voice()
+        await agents.trace.record(b)
+        return b
+
+    b = run(go())
+    sent = [t for body in agents.mod.of("/api/agent/trace") for t in body["thoughts"]]
+    assert [t["id"] for t in sent] == [brief.id, b.id]
+    assert sent[1]["messages"][0]["content"] == STATIC

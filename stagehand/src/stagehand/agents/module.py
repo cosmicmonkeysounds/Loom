@@ -504,7 +504,15 @@ class Agents:
             wire.lost(self)
             log.warning("could not send %s's thought %s: %s", thought.character, thought.id, err)
             return
-        self.trace.delivered(thought.id)
+        accepted = answer.get("accepted") if isinstance(answer, dict) else None
+        if isinstance(accepted, int) and not isinstance(accepted, bool) and accepted < 1:
+            # A 200 that took nothing: an older server drops a kind it does
+            # not know (w11b-1019 has no `brief` / `summary`), the new one any
+            # thought its sanitiser refuses. Never refer to it: the next
+            # thought carries the full prefix.
+            self.trace.forget_prefix(thought)
+        else:
+            self.trace.delivered(thought.id)
         wire.trace_posted(self, answer)
 
     async def _push_history(self) -> None:
