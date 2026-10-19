@@ -2311,6 +2311,16 @@ describe("Trapped in the Internet — the cold door's digit notes (wave 11)", ()
   });
 
   it("after truth.txt or an ending the notes still count and the quest still steps, but four of four gives no code (like a late checkmate)", { timeout: SLOW }, () => {
+    const late: Record<string, [string, string]> = {
+      "Night.r3_closed": [
+        "fail: 4 of 4. The verdict is in: the notes open nothing now.",
+        '"🔢 Calculator found all four digit notes after truth.txt. The verdict is in: no door code. Nothing happens in the story."',
+      ],
+      "Night.ended": [
+        "fail: 4 of 4. The night is over: the notes open nothing now.",
+        '"🔢 Calculator found all four digit notes after the night ended: no door code. Nothing happens in the story."',
+      ],
+    };
     for (const flag of ["Night.r3_closed", "Night.ended"]) {
       const sim = boot();
       toTruth1(sim);
@@ -2321,9 +2331,9 @@ describe("Trapped in the Internet — the cold door's digit notes (wave 11)", ()
       expect(learned(last).map((x) => x.entry), flag).toEqual([CLUES[3]!.id]);
       expect(sim.holdsCodex("g1", "The Door Code"), flag).toBe(false);
       expect(v(sim, "g1.door_digits"), flag).toBe(4);
-      expect(questSteps(last), flag).toEqual(["update: 4 of 4."]);
-      expect(sim.questStatus("g1", "The Cold Door"), flag).toBe("active");
-      expect(hostsSaid(last), flag).toEqual(['"🔢 Calculator found all four digit notes after truth.txt. The verdict is in: no door code. Nothing happens in the story."']);
+      expect(questSteps(last), flag).toEqual([late[flag]![0]]);
+      expect(sim.questStatus("g1", "The Cold Door"), flag).toBe("failed");
+      expect(hostsSaid(last), flag).toEqual([late[flag]![1]]);
       expect(texts(last).some((t) => t.includes("door code is in your Codex")), flag).toBe(false);
     }
   });
