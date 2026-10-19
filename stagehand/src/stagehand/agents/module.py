@@ -77,6 +77,8 @@ log = logging.getLogger("stagehand.agents")
 CompleteFn = Callable[[list[dict[str, str]], LlmConfig], Awaitable[Any]]
 
 CONTROL_ACTIONS = ("reset", "survey", "nudge", "set", "forget", "thinking", "effort", "pause", "rerun", "rewrite")
+#: How often a director's waiting Rewrite / re-run looks for an idle worker.
+DIRECTOR_IDLE_S = 0.25
 #: The new mind's quiet-conversation summary (CONTRACTS.md §C5.2).
 QUIET_TURNS = 3
 QUIET_S = 120.0
@@ -279,6 +281,12 @@ class Agents:
         #: Background work the new mind starts (the phase watch, the quiet
         #: watch, a Rewrite, a re-run) — cancelled with the stream.
         self._side: set[asyncio.Task[Any]] = set()
+        #: A director's Rewrite / re-run call while it runs: a guest line or a
+        #: ruling that arrives cancels it, and it runs again once idle.
+        self._director_calls: set[asyncio.Task[Any]] = set()
+        #: Bumped by every story restart: a director's job begun before one
+        #: lands nothing on the fresh mind.
+        self._gen = 0
 
     @property
     def event(self) -> str:
@@ -528,6 +536,12 @@ class Agents:
         self._quiet.clear()
         if self._summary_task is not None and not self._summary_task.done():
             self._summary_task.cancel()
+        # A Rewrite / re-run in flight belonged to the old night (classic's
+        # Orchestrator.drop_all does the same to a survey).
+        self._gen += 1
+        for task in list(self._director_calls):
+            task.cancel()
+        self._last_req.clear()
         for name, mind in self.minds.items():
             mind.reset(by=by)
             self._save_mind_now(name)
@@ -574,7 +588,8 @@ class Agents:
                 self.orchestrator.survey(character, "director")
                 note = "survey the house now"
             elif action == "rewrite":
-                self._spawn(self._rewrite(character, by))
+                gen = self._gen
+                self._spawn(self._director_job(lambda c=character, b=by, g=gen: self._rewrite(c, b, gen=g), f"{character}'s Rewrite brief"))
                 note = "rewrite the brief (one voice call)"
             elif action == "nudge":
                 text = str(doc.get("text") or "").strip()
@@ -645,7 +660,7 @@ class Agents:
                     outcomes["error"] = f"classic thought ({thought.kind}): re-run it in mind_mode: classic"
                     continue
                 if new:
-                    self._spawn(self._rerun_now(thought, model))
+                    self._spawn(self._director_job(lambda t=thought, m=model: self._rerun_now(t, m), f"the re-run of {thought.id}"))
                 else:
                     self.orchestrator.rerun(thought, model)
                 note = f"re-run {thought.id} ({thought.kind})"
@@ -755,8 +770,7 @@ class Agents:
             rid = str(req.get("id"))
             if rid in self.tasks:
                 return
-            if self._summary_task is not None and not self._summary_task.done():
-                self._summary_task.cancel()  # a guest is waiting: the summary runs later
+            self._preempt()  # a guest is waiting: a summary or a director's call runs later
             self.tasks[rid] = asyncio.ensure_future(self._handle(req))
         elif event == "judge":
             frame = json.loads(data)
@@ -765,6 +779,7 @@ class Agents:
             jid = str(frame.get("id"))
             if jid in self.judging:
                 return
+            self._preempt()  # a ruling has a 55 s deadline: nothing else holds the voice slot
             self.judging[jid] = asyncio.ensure_future(self._judge(frame))
         elif event == "cancel":
             cid = str(json.loads(data).get("id"))
@@ -865,6 +880,49 @@ class Agents:
 
             self._voice_fn = answer_lean
         return self._voice_fn
+
+    def _preempt(self) -> None:
+        """Give the voice slot to a guest line or a ruling: a running quiet
+        summary and a director's Rewrite / re-run are cancelled and run
+        again once the worker is idle (classic's orchestrator is preempted
+        the same way)."""
+        if self._summary_task is not None and not self._summary_task.done():
+            self._summary_task.cancel()
+        for task in list(self._director_calls):
+            if not task.done():
+                task.cancel()
+
+    def _busy(self) -> bool:
+        return bool(self.tasks or self.judging or self._inflight)
+
+    async def _director_job(self, make: Callable[[], Awaitable[Any]], label: str) -> None:
+        """Run a director's call (`make()`) when no guest line or ruling
+        waits, and give way to one that arrives while it runs: it is
+        cancelled and runs again from the start once the worker is idle. A
+        story restart in between drops it (`_gen`)."""
+        gen = self._gen
+        while True:
+            while self._busy():
+                await asyncio.sleep(DIRECTOR_IDLE_S)
+            if gen != self._gen:
+                log.info("%s dropped: the run restarted", label)
+                return
+            task = asyncio.ensure_future(make())
+            self._director_calls.add(task)
+            try:
+                await task
+                return
+            except asyncio.CancelledError:
+                current = asyncio.current_task()
+                if task.cancelled() and not (current is not None and current.cancelling()):
+                    if gen != self._gen:
+                        log.info("%s dropped: the run restarted", label)
+                        return
+                    log.info("%s gave way to a guest: it runs again once the worker is idle", label)
+                    continue
+                raise
+            finally:
+                self._director_calls.discard(task)
 
     def _spawn(self, coro: Awaitable[Any]) -> asyncio.Task[Any]:
         task = asyncio.ensure_future(coro)
@@ -995,7 +1053,7 @@ class Agents:
         ctx = VoiceContext(phase=PhaseView(), person=PersonCard(id="", name=""), options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout="lean"))
         return build_lean_messages(persona, req, ctx)[0]["content"]
 
-    async def _rewrite(self, character: str, by: str) -> None:
+    async def _rewrite(self, character: str, by: str, gen: int | None = None) -> None:
         """A director's Rewrite brief (CONTRACTS.md §C6.1): one voice call
         from the phase card + a digest built in code; every line that leaks
         a `never` word, names an answer word or judges a hunt topic is
@@ -1020,6 +1078,11 @@ class Agents:
         lines = story_mind.parse_brief(completion.content)
         kept, dropped = story_mind.scrub_brief(persona, lines)
         thought = new_thought(character, "brief", trigger=by, model=model, messages=messages, completion=completion, result={"brief": kept, "dropped": dropped}, note=note)
+        if gen is not None and gen != self._gen:
+            # Written from the old night's request and digest: never onto the fresh mind.
+            thought.note = (thought.note + "; " if thought.note else "") + "dropped: the run restarted"
+            await self.trace.record(thought)
+            return
         if not kept:
             thought.error = "no usable brief in the output" if not lines else f"every line was dropped ({dropped})"
             await self.trace.record(thought)

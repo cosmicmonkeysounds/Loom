@@ -941,3 +941,88 @@ def test_a_kill_switch_stops_what_was_stored_under_it_reaching_the_voice(tmp_pat
     if voice.get("layout") == "classic":
         assert all(p.summary == "" for p in fake.mind.people.values())
         assert again.minds["Trabolta"].people["g-1"].summary.startswith("SENTINELSUMMARY")  # the mind itself keeps it
+
+
+def test_a_guest_line_cuts_in_ahead_of_a_directors_rewrite_which_runs_again_after(tmp_path):
+    order: list[str] = []
+    calls = {"n": 0}
+
+    async def complete(messages, cfg):
+        calls["n"] += 1
+        order.append(f"rewrite-start-{calls['n']}")
+        if calls["n"] == 1:
+            await asyncio.sleep(10)  # a slow first call: the guest must not wait for it
+        order.append(f"rewrite-end-{calls['n']}")
+        return Completion(content="- You want facts.", ms=5)
+
+    class OrderVoice(FakeVoice):
+        async def __call__(self, *a, **k):
+            order.append("voice")
+            return await super().__call__(*a, **k)
+
+    agents, _ = make(tmp_path, complete_fn=complete, fake=OrderVoice(), facts={"world": {"Night.phase": "hunt_1"}, "programs": [], "locations": [], "codex": []})
+    agents._p1 = lambda character: "P1"
+    run(handle(agents, req(phase="hunt_1", rid="0")))
+    order.clear()
+
+    async def go():
+        await agents.control({"action": "rewrite", "character": "Trabolta", "by": "Jo"})
+        while "rewrite-start-1" not in order:
+            await asyncio.sleep(0.01)
+        await agents.on_frame("request", json.dumps(req(phase="hunt_1", rid="g")))
+        await asyncio.gather(*agents.tasks.values())
+        await asyncio.wait_for(asyncio.gather(*agents._side), 5)
+
+    run(go())
+    assert order.index("voice") < order.index("rewrite-end-2") and "rewrite-end-1" not in order
+    assert agents.minds["Trabolta"].brief == "You want facts."
+
+
+def test_a_judge_frame_cancels_a_running_summary(tmp_path):
+    gate: dict[str, Any] = {}
+
+    async def complete(messages, cfg):
+        gate["started"].set()
+        await asyncio.sleep(10)
+        return "never"
+
+    agents, _ = make(tmp_path, complete_fn=complete)
+    agents._p1 = lambda character: "P1"
+    _chat(agents, 3)
+    agents._judge = lambda frame: asyncio.sleep(0)  # the ruling itself is test_judge's
+
+    async def go():
+        gate["started"] = asyncio.Event()
+        agents._summary_task = asyncio.ensure_future(agents._summarise("Trabolta", "g-1"))
+        await gate["started"].wait()
+        await agents.on_frame("judge", json.dumps({"id": "j1", "character": "Trabolta"}))
+        await asyncio.sleep(0)
+        assert agents._summary_task.cancelled()
+
+    run(go())
+
+
+def test_a_rewrite_in_flight_across_a_story_restart_lands_nothing_on_the_fresh_mind(tmp_path):
+    gate: dict[str, Any] = {}
+
+    async def complete(messages, cfg):
+        gate["started"].set()
+        await gate["release"].wait()
+        return Completion(content="- STALEBRIEF from before the restart.", ms=5)
+
+    agents, _ = make(tmp_path, complete_fn=complete, facts={"world": {"Night.phase": "hunt_1"}, "programs": [], "locations": [], "codex": []})
+    agents._p1 = lambda character: "P1"
+    run(handle(agents, req(phase="hunt_1", rid="0")))
+    mind = agents.minds["Trabolta"]
+
+    async def go():
+        gate["started"], gate["release"] = asyncio.Event(), asyncio.Event()
+        await agents.control({"action": "rewrite", "character": "Trabolta", "by": "Jo"})
+        await gate["started"].wait()
+        await agents.on_frame("control", json.dumps({"action": "reset", "by": "server", "reason": "restart"}))
+        gate["release"].set()
+        await asyncio.wait_for(asyncio.gather(*agents._side, return_exceptions=True), 5)
+
+    run(go())
+    assert "STALEBRIEF" not in mind.brief and mind.revisions[-1]["by"] != "director"
+    assert agents._last_req == {}
