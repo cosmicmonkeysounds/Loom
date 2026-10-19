@@ -124,6 +124,12 @@ CHARACTER Adobe Acrobat is Host
     if Night.phase == "bobbing" and Night.bag_up == true and Night.r3_closed != true:
       reply 📄 Hand the bobber the truth.txt printout. They read it aloud; when they finish, the director presses ⚖ for the verdict.
 
+  // 🫘 her own button at the printer (INTERACTION radio_beans in main.loom):
+  // the admin cue, pressed by the lid. A hook on this character, never a
+  // story rule, so no other booth's press reaches it.
+  when radio_beans:
+    fire printer_opened
+
 CHARACTER Recycling Bin is Host
   avatar: File:User-trash-full.svg
   wiki: Trash (computing)

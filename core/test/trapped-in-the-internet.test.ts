@@ -1984,6 +1984,37 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(["radio_combo_a", "radio_door_opened", "radio_crew_door"].map(live)).toEqual([false, false, false]);
   });
 
+  it("the room's own buttons answer only their own booth: 💥 / 🔌 / ❌ / 🚪 / 🔧 / 🫘 pressed from another booth reach nothing; a director's quick-fire still lands", { timeout: SLOW }, () => {
+    const sim = boot();
+    toY2k(sim);
+    for (const by of ["Norton Anti-Virus", "Clippy", "Windows Defender", "Adobe Acrobat"]) {
+      for (const id of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch", "radio_door_opened", "radio_crew_door"]) {
+        const e = fire(sim, id, "g1", null, by);
+        expect(beats(e), `${id} by ${by}`).toEqual([]);
+        expect(hostsSaid(e), `${id} by ${by}`).toEqual([]);
+      }
+    }
+    for (const by of ["CRA Agent Software", "Clippy"]) expect(beats(fire(sim, "radio_beans", "g6", null, by)), by).toEqual([]);
+    expect(v(sim, "Night.ended")).toBe(false);
+    expect(v(sim, "Night.wrong_combos")).toBe(0);
+    expect(v(sim, "Night.heart_opened")).toBe(false);
+    expect(v(sim, "Night.crew_door_until")).toBe(0);
+    // The director's quick-fire (no actor) is the cue itself.
+    fire(sim, "radio_combo_b");
+    expect(v(sim, "Night.ending")).toBe("destroyed");
+  });
+
+  it("🚪 on the server-room booth hides inside a 🔧 crew window (the opening would only tell # hosts)", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const live = (id: string) => sim.holds(sim.model.interactions.get(id)!.while!, null, null);
+    expect(live("radio_door_opened")).toBe(true);
+    fire(sim, "radio_crew_door", "g1", null, "CRA Agent Software");
+    expect(live("radio_door_opened")).toBe(false);
+    advance(sim, 120);
+    expect(live("radio_door_opened")).toBe(true);
+  });
+
   it("the first opening reveals the room to everyone first, then Trabolta speaks candidly in The Server Room (the server-room terminal)", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);

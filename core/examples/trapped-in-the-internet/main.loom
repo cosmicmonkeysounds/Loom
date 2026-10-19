@@ -3118,8 +3118,8 @@ INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
   who: performer
   by: CRA Agent Software
-  while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true
-  description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart.
+  while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Time.elapsed >= Night.crew_door_until
+  description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart. Hidden inside a 🔧 crew window.
 
 INTERACTION radio_crew_door
   label: 🔧 Crew going through the door (2 min)
@@ -4062,26 +4062,11 @@ when crew_through_the_door:
     broadcast "🔧 The night is over: the door does nothing now anyway." to channel(hosts)
 
 // The server-room Antivirus' and Adobe Acrobat's own buttons for the
-// hardware fallbacks (the INTERACTIONs' `radio_*`): each is the admin cue,
-// pressed in the room instead of over the radio. A press lands on a
-// program's card, but the cue is the room's, not theirs.
-when radio_combo_a:
-  fire patch_combo_a
-
-when radio_combo_b:
-  fire patch_combo_b
-
-when radio_wrong_patch:
-  fire patch_rejected
-
-when radio_door_opened:
-  fire server_door_opened
-
-when radio_crew_door:
-  fire crew_through_the_door
-
-when radio_beans:
-  fire printer_opened
+// hardware fallbacks (the INTERACTIONs' `radio_*`) are CHARACTER hooks on
+// CRA Agent Software (cast/antivirus.loom) and Adobe Acrobat
+// (cast/hosts.loom), never story rules: a booth's press carries its
+// character as the actor and only that character's hooks hear it, so
+// another booth tapping 💥 under More… reaches nothing.
 
 // The latch clears after 120 s. The box's siren times itself out, but the
 // alarm look is house-wide (a red strobe everywhere): put back the look it
