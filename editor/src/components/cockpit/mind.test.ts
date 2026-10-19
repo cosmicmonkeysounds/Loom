@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
 import { agentQueueOf, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
+import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
 
@@ -354,6 +355,33 @@ describe("an agent's queue (wave 11 C6)", () => {
     expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true }], [mind('Trabolta', { depth: 1, oldestMs: null, stalled: true })])).toEqual({ depth: 1, oldestMs: null, stalled: true })
     expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true }], [mind('Trabolta')])).toBeNull()
     expect(agentQueueOf('Trabolta', [], [mind('Trabolta', { depth: 'x' })])).toBeNull()
+  })
+
+  it('agentQueueOf with a clock: the wait ages between snapshots from when it arrived', () => {
+    const q = { depth: 2, oldestMs: 3000, stalled: false, receivedAt: 1_000_000 }
+    const cast = [{ id: 'Trabolta', faction: null, agent: true, agentQueue: q }]
+    // a quiet minute with no new snapshot: 0:03 is now 1:03, ⚠ slow
+    const aged = agentQueueOf('Trabolta', cast, [], 1_060_000)!
+    expect(aged.oldestMs).toBe(63_000)
+    expect(queueBadge(aged)).toMatchObject({ text: '⚠ 2 waiting · oldest 1:03', tone: QueueTone.Slow })
+    // no clock / no stamp / an empty queue: as sent
+    expect(agentQueueOf('Trabolta', cast, [])!.oldestMs).toBe(3000)
+    expect(agentQueueOf('Trabolta', [{ ...cast[0]!, agentQueue: { depth: 2, oldestMs: 3000, stalled: false } }], [], 1_060_000)!.oldestMs).toBe(3000)
+    expect(agentQueueOf('Trabolta', [{ ...cast[0]!, agentQueue: { depth: 0, oldestMs: null, stalled: false, receivedAt: 1 } }], [], 1_060_000)!.oldestMs).toBeNull()
+    // a clock behind the stamp never ages it backwards
+    expect(agentQueueOf('Trabolta', cast, [], 999_000)!.oldestMs).toBe(3000)
+  })
+
+  it('stampAgentQueues: a new queue is stamped now; one a patch left alone keeps its stamp', () => {
+    const row = (agentQueue?: AgentQueue): CastSummary => ({ id: 'Trabolta', faction: null, agent: true, ...(agentQueue ? { agentQueue } : {}) })
+    const first = stampAgentQueues([row({ depth: 1, oldestMs: 2000, stalled: false }), { id: 'Clippy', faction: null }], [], 500)
+    expect(first[0]!.agentQueue!.receivedAt).toBe(500)
+    expect(first[1]).toEqual({ id: 'Clippy', faction: null })
+    // the same queue again (an unrelated patch): still the first arrival
+    expect(stampAgentQueues([row({ depth: 1, oldestMs: 2000, stalled: false })], first, 9000)[0]!.agentQueue!.receivedAt).toBe(500)
+    // a re-sent queue (a fresh oldestMs): stamped again
+    expect(stampAgentQueues([row({ depth: 1, oldestMs: 10_500, stalled: false })], first, 9000)[0]!.agentQueue!.receivedAt).toBe(9000)
+    expect(stampAgentQueues([row()], first, 9000)[0]!.agentQueue).toBeUndefined()
   })
 
   it('queueBadge: empty, waiting, slow past the busy line, stalled', () => {

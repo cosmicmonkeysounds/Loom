@@ -431,12 +431,20 @@ const isQueue = (v: unknown): v is AgentQueue =>
   typeof (v as AgentQueue).stalled === 'boolean'
 
 /** A character's request queue: the cast row's `agentQueue`, else the mind
- *  summary's (C6 allows either); null on an older server. */
-export function agentQueueOf(character: string, cast: readonly CastSummary[], minds: readonly AgentMindSummary[]): AgentQueue | null {
+ *  summary's (C6 allows either); null on an older server. With `now`, a
+ *  waiting queue's `oldestMs` is aged by the time since it arrived
+ *  (`receivedAt`): the server works it out at send time, and a quiet
+ *  stretch sends no new snapshot. */
+export function agentQueueOf(character: string, cast: readonly CastSummary[], minds: readonly AgentMindSummary[], now?: number): AgentQueue | null {
   const c = cast.find((x) => x.id === character)?.agentQueue
-  if (isQueue(c)) return c
+  if (isQueue(c)) return aged(c, now)
   const m = (minds.find((x) => x.character === character) as (AgentMindSummary & { agentQueue?: unknown }) | undefined)?.agentQueue
-  return isQueue(m) ? m : null
+  return isQueue(m) ? aged(m, now) : null
+}
+
+function aged(q: AgentQueue, now: number | undefined): AgentQueue {
+  if (now === undefined || q.receivedAt === undefined || q.oldestMs === null || q.depth === 0) return q
+  return { ...q, oldestMs: q.oldestMs + Math.max(0, now - q.receivedAt) }
 }
 
 /** `1:20` — a wait in minutes and seconds. */

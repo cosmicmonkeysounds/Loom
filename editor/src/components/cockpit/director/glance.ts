@@ -554,7 +554,7 @@ export function needsYou(input: NeedsInput): NeedItem[] {
     if (p === PartPresence.Unvoiced) {
       out.push({ kind: NeedKind.NoWorker, key: `agent:${c.id}`, text: `🤖 ${c.id}: no worker`, link: { kind: 'tab', tab: CockpitTab.Mind } })
     } else if (c.agent === true) {
-      const q = agentQueueOf(c.id, input.cast, input.minds ?? [])
+      const q = agentQueueOf(c.id, input.cast, input.minds ?? [], now)
       if (q !== null) {
         const b = queueBadge(q)
         if (b.tone === QueueTone.Stalled || b.tone === QueueTone.Slow) {

@@ -106,6 +106,10 @@ describe('needsYou', () => {
     expect(needsYou({ ...base, now: 0, world: [], facts: null, cast: [agent({ depth: 2, oldestMs: 45_000, stalled: false })] }).map((i) => i.kind)).toEqual([NeedKind.AgentQueue])
     // a short wait is no business of the director's
     expect(needsYou({ ...base, now: 0, world: [], facts: null, cast: [agent({ depth: 2, oldestMs: 5000, stalled: false })] })).toEqual([])
+    // …until it has aged past the busy line on this console's clock (no new snapshot came)
+    expect(needsYou({ ...base, now: 50_000, world: [], facts: null, cast: [agent({ depth: 2, oldestMs: 5000, stalled: false, receivedAt: 0 })] }).map((i) => i.text)).toEqual([
+      '🤖 Trabolta: ⚠ 2 waiting · oldest 0:55',
+    ])
 
     const now = 100 * 60_000
     const roster = [

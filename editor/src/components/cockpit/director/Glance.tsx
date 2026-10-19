@@ -132,7 +132,10 @@ function useNeeds(): { items: NeedItem[]; now: number } {
   const doorsOpen = useCockpit((s) => s.phase === CockpitPhase.Open)
   // A refusal counts down by the second; "unseen 30 min" only needs a
   // slow tick (the snapshot moves `lastSeen` itself).
-  const now = useNow(true, refused !== null ? 1000 : 30_000)
+  // A waiting agent queue ages on this clock between snapshots (C6's
+  // `oldestMs` is as of the send), so ⚠ slow lands within a few seconds.
+  const waiting = cast.some((c) => c.agent === true && (c.agentQueue?.depth ?? 0) > 0)
+  const now = useNow(true, refused !== null ? 1000 : waiting ? 5_000 : 30_000)
   return { items: needsYou({ refused, now, messages, channels, world, facts, wallet, cast, doorsOpen, roster, minds }), now }
 }
 

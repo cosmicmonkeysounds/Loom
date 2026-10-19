@@ -30,6 +30,7 @@ import type { AgentMindSummary, AgentThought } from '@loom/core/views'
 import { RunBackend, useCockpit } from '@/store/cockpit'
 import { confirmAction, promptText } from '@/store/dialog'
 import { LensGate } from './tabs'
+import { useNow } from './director/clock'
 import {
   ALL_KINDS,
   KIND_META,
@@ -463,7 +464,10 @@ function Header({ characters, character, onPick, mind }: { characters: string[];
   const running = typeof orch['running'] === 'string' ? (orch['running'] as string) : null
   const cast = useCockpit((s) => s.cast)
   const minds = useCockpit((s) => s.minds)
-  const queue = character === null ? null : agentQueueOf(character, cast, minds)
+  // The wait ages by the second between snapshots (C6 sends it as of the send).
+  const raw = character === null ? null : agentQueueOf(character, cast, minds)
+  const now = useNow(raw !== null && raw.depth > 0, 1000)
+  const queue = character === null ? null : agentQueueOf(character, cast, minds, now)
   const badge = queue === null ? null : queueBadge(queue)
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-800 px-3 py-2 text-xs">

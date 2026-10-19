@@ -331,8 +331,26 @@ export interface CastSummary {
 /** `CastSummary.agentQueue` (or the agent mind summary's), wave 11 C6. */
 export interface AgentQueue {
   depth: number
+  /** The oldest wait as of the server's send (it never ages on the wire). */
   oldestMs: number | null
   stalled: boolean
+  /** Client only: the wall ms this console received `oldestMs`, so the
+   *  wait keeps aging between snapshots (`agentQueueOf(…, now)`). */
+  receivedAt?: number
+}
+
+/** Stamp each cast row's `agentQueue` with when it arrived. A queue the
+ *  snapshot did not change (a keyed patch left the row alone) keeps its
+ *  earlier stamp: its `oldestMs` is still that earlier send's. */
+export function stampAgentQueues(next: readonly CastSummary[], prev: readonly CastSummary[], at: number): CastSummary[] {
+  const before = new Map(prev.map((c) => [c.id, c.agentQueue]))
+  return next.map((c) => {
+    const q = c.agentQueue
+    if (q === undefined || q === null || typeof q !== 'object') return c
+    const old = before.get(c.id)
+    const same = old !== undefined && old.depth === q.depth && old.oldestMs === q.oldestMs && old.stalled === q.stalled
+    return { ...c, agentQueue: { ...q, receivedAt: same && old.receivedAt !== undefined ? old.receivedAt : at } }
+  })
 }
 
 /** One live world-state entry (`g-1a2b.score` → `42`), display-stringed. */
