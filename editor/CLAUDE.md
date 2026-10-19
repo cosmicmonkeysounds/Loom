@@ -220,7 +220,11 @@ performer sign-in pre-filled (play's `roleForBrand`), so the card says
 "Scan, then pick <name>."), QRs drawn in the browser as SVG
 (`qrcode`; a 60–80 card sheet would trip `/api/qr`'s 60/min), sections /
 skip a card / 1-2-4-8 per Letter page (cast cards always `.pp-8` business
-cards on their own page), `@media print` hides the editor), **Directing now**
+cards on their own page; wave 11: **Invitations** — one claim QR per
+`/api/mod/codes` `claims` row, 4-up on their own page, no typed code, a
+screen-only two-tap 🔓 → `POST /api/mod/claim/unlock {character, minutes: 2}`;
+the door code's digit clues sit on the `silver` stack (`DIGIT_CLUE_STACK`)
+and print title + QR only, no digit anywhere), `@media print` hides the editor), **Directing now**
 (names, `(you)`, started-by + age), **Terminals** (K-29,
 `run/TerminalsCard.tsx`: every wall terminal + the TV by last poll, red
 after 20 s silent with a chime — again each minute until *ack* — the
@@ -249,7 +253,10 @@ one button per `GET /api/mod/spatial/variants` variant, Tent | Shed for
 the show, always confirmed off a list re-read at the press (`freshTarget`,
 so a save made since the card loaded still warns), warns on `edited`, then `mapApi.switchVariant`
 → `POST /api/mod/spatial/variant {file, base}` (`switchBase`: the re-read list's `version`, so a switch or save made while the confirm was open is refused with a 409 and the list reloads); hidden when the
-event has no map or the server lacks the route), **Look up a guest** (camera QR /
+event has no map or the server lacks the route; wave 11: the **shared King**
+row — his health bar off `GET /api/screen/state` `king` (polled 4 s, pure
+`lib/king.ts`), **Set…** / **👑 Restore** → `POST /api/mod/spatial/king {hp}`,
+confirmed), **Look up a guest** (camera QR /
 manual id → Inspector); a local run gets one explainer card. A source
 test pins that `RunPage.tsx` renders none of the lifecycle testids.
 **Director** (wave 10, `components/cockpit/director/`; `tabs.tsx`
@@ -324,7 +331,10 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
   j/k/↑/↓, `/`, `.`; editable targets, modifiers and `e.repeat` ignored;
   Enter/Space on a focused non-cue control are that control's; a cursor
   on a row no longer on screen is dropped).
-- `Glance.tsx` + pure `glance.ts` — `glance-needs` (refused press 60 s,
+- `Glance.tsx` + pure `glance.ts` — `glance-needs` (wave 11 adds: ⚠ near
+  misses in auto mode, an agent queue stalled or past 40 s, and *👋 N guests
+  unseen 30 min — mark gone?* with a one-tap 👋 per guest off pure
+  `cockpit/guests.ts` `unseenGuests`; refused press 60 s,
   review filings, held transfers, offline / free parts, unvoiced agents),
   `glance-watch` (`CockpitState.watch` rows: values with ◆ on change,
   role counts over roster rows on that ROLE, person rows, secret values
@@ -474,7 +484,12 @@ once judged — and `verdictCall`, which always names the question, so it
 judges that filing, never the program's latest), so an auto-mode verdict
 the key got wrong is one tap to fix. The verdict never reaches a phone or the voice
 worker; this card is the only place it is shown. Tests: the judging
-cases in `cockpit/mind.test.ts`.
+cases in `cockpit/mind.test.ts`. **Wave 11 C6:** a pending near miss
+(`FactsFiling.near {key}`, `nearKeyOf`) is tagged *⚠ near "<key>"* in both
+lists and counted in the header (`nearCount`: the view's `near` when sent);
+the Mind header carries the agent's queue badge (`agentQueueOf` off
+`CastSummary.agentQueue` or the mind summary, `queueBadge`: depth · oldest
+wait · ⛔ stalled).
 
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact
@@ -497,7 +512,12 @@ single-use code good for ten minutes —
 plus **Sign out old phones** = `revokeOthers`; not shown for personas,
 which the server refuses anyway) and a character's **⏏ Release**
 (`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);
-the local backend refuses both with an explanation. A guest's **Restricted**
+the local backend refuses both with an explanation. **Wave 11 C5:** a
+guest shows `RosterRow.lastSeen` (*seen 12 m ago*, also the rail tooltip and
+the Roster's Seen column), a persona badge (`isPersonaRow`: `<id>.persona`,
+an owner or a `p…` id) and **👋 Went home / Back** (`CockpitState.markGone`
+→ `POST /api/mod/guest/gone {id, gone}`; locally the same `<id>.gone` world
+var, and local personas get `<id>.persona = true`). A guest's **Restricted**
 field (wave 5) is **Restrict / Unrestrict** → `setStat(id, 'restricted',
 …)` (`/api/mod/set restricted` / `Sim.restrict`/`unrestrict`, a plain
 restrict with no places — not the story's own mark event, whose flags and
