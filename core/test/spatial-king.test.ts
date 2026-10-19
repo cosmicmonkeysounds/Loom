@@ -386,11 +386,11 @@ describe("EventRuntime — the King on the spatial plane", () => {
     expect(again.status).toBe(409);
     expect(again.json).toEqual({ error: "already hit", king: { id: "cold-lock-king", hp: 14, max: 15, fallen: false } });
 
-    // The screen state reads him (armed off Night.king_armed; unset = not armed).
+    // The screen state reads him (armed off Night.king_armed, which the show sets at Power On).
     const screen = await call(rt, "GET", "/api/screen/state?name=Server%20Door&spot=server-room-door&view=chess", {}, { moderator: true });
-    expect(screen.json.king).toEqual({ hp: 14, max: 15, fallen: false, armed: false });
-    expect((await mod(rt, "/api/mod/var", { path: "Night.king_armed", value: "1" })).status).toBe(200);
-    expect((await call(rt, "GET", "/api/screen/state?name=Server%20Door", {}, { moderator: true })).json.king).toMatchObject({ armed: true });
+    expect(screen.json.king).toEqual({ hp: 14, max: 15, fallen: false, armed: true });
+    expect((await mod(rt, "/api/mod/var", { path: "Night.king_armed", value: "0" })).status).toBe(200);
+    expect((await call(rt, "GET", "/api/screen/state?name=Server%20Door", {}, { moderator: true })).json.king).toMatchObject({ armed: false });
     expect(term.of("king")).toHaveLength(1); // that set didn't move him
     term.close();
     rt.dispose();
