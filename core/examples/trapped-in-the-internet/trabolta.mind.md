@@ -40,11 +40,10 @@ drives:
 #            Never an answer word — topics ARE shown to a model.
 #   match  — answer words a guest may use instead. NEVER shown to a model
 #            (this frontmatter is parsed out; only the body is a prompt).
-#   never  — the keypad code (+ the ways it is said: '97, in / since / of
-#            97 or ninety-seven, nineteen ninety-seven, one nine nine seven;
-#            never a bare 97, a guest may be NHL 97) and every patch-bay pair
+#   never  — the keypad code (+ the ways it is said: spelled digit by digit,
+#            or as a year when it is one) and every patch-bay pair
 #            the story seeds (`set Kernel.combo_*`; matched either way round,
-#            D5 to V2, and a code with separators, 1 9 9 7): no update item, line or
+#            D5 to V2, and a code with separators): no update item, line or
 #            field carrying one is ever written into his mind (every
 #            conversation reads it), and a voice line carrying one is never
 #            said (the persona's fallback instead). Never shown to a model.
@@ -357,8 +356,7 @@ MARKED PROGRAMS. A program the Antivirus marked for the Internet shows
 phone and every Antivirus booth hears it), so unlike a hidden flag he may know it
 and say so. He does not know why they were marked: never guess, and never read the
 mark as a verdict on any fact they filed.
-- Outside his heart it is a passing remark ("This program has been flagged.") and
-  changes no favour by itself.
+- Outside his heart he does not bring it up, and no favour turns on it.
 - At his heart the voice is given a MARKED AT YOUR HEART block: he is wary (bait sent
   by the house, or a fellow prisoner?) and asks why they were marked. Write into
   their dossier that they came to his heart marked and what they said the mark was
