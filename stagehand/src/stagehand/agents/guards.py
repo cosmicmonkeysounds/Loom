@@ -187,6 +187,50 @@ def answer_guard(persona: Persona, reply: Reply, allowed: Iterable[str]) -> tupl
     return replace(reply, say=say, acts=tuple(acts)), notes
 
 
+# -- 2b. an invented fact -------------------------------------------------------------
+
+#: A sentence that states what a hunt topic's answer is ("… is titled …",
+#: a quoted title, "the answer is …"). He never knows one, so it is made up.
+_ASSERTS = re.compile(r"\b(?:is|was|are|were)\s+(?:titled|called|named)\b|\btitled\b|\bthe answer (?:is|was)\b|[\"“][^\"”]{2,}[\"”]", re.IGNORECASE)
+#: He hands a fact over ("Here is a fact: …").
+_GIVES = re.compile(r"\bhere(?:'s| is) (?:a|one|another|your) fact\b", re.IGNORECASE)
+#: He offers to fetch or sell one ("I will retrieve that fact for you").
+_OFFERS = re.compile(
+    r"\b(?:i will|i'll|i can|i shall|i could|let me)\s+(?:\w+\s+){0,2}(?:provide|give|retrieve|tell|share|sell|find|fetch|get|reveal)\b[^.?!]{0,40}\b(?:fact|answer)s?\b",
+    re.IGNORECASE,
+)
+
+
+def invents_fact(secrets: Secrets, sentence: str) -> bool:
+    """One sentence that gives a fact he cannot have: hands one over, offers
+    to fetch or sell one, or states the answer to a hunt topic (not as a
+    question)."""
+    text = sentence.replace("’", "'")
+    if _GIVES.search(text) or _OFFERS.search(text):
+        return True
+    return not text.rstrip().endswith("?") and secrets.names_topic(text) and _ASSERTS.search(text) is not None
+
+
+def invented_guard(persona: Persona, reply: Reply) -> tuple[Reply, list[str], bool]:
+    """Guard 2b (K-04, wave 12 integration): cut each sentence that invents
+    a fact. On gpt-oss:20b at low effort, "I'll find you something true"
+    under a brief that says "you want facts now" was answered with a made-up
+    title for a hunt question and a made-up hiding place; no answer word is
+    in them, so guard 2 never saw them. Returns (reply, notes, empty): empty
+    = nothing was left (the caller sends the fallback, no retry). Only for a
+    persona with hunt `secrets`."""
+    s = persona.secrets
+    if not (s.topics or s.match) or not reply.say:
+        return reply, [], False
+    parts = [x for x in _SENTENCE.split(reply.say) if x.strip()]
+    kept = [x for x in parts if not invents_fact(s, x)]
+    if len(kept) == len(parts):
+        return reply, [], False
+    if not kept:
+        return replace(reply, say=persona.fallback), ["answer-guard (invented fact → fallback)"], True
+    return replace(reply, say=" ".join(kept).strip()), ["answer-guard (invented fact cut)"], False
+
+
 # -- 3. the catchphrase ration --------------------------------------------------------
 
 
@@ -319,6 +363,10 @@ def guard_pass(
     out.reply, notes = answer_guard(persona, out.reply, allowed)
     out.notes += notes
     withheld = out.reply.say != original
+    if not withheld:
+        out.reply, notes, emptied = invented_guard(persona, out.reply)
+        out.notes += notes
+        withheld = emptied
     out.withheld = withheld
     if withheld:
         return out

@@ -17,6 +17,8 @@ from stagehand.agents.guards import (
     cut_exact_repeats,
     fold,
     guard_pass,
+    invented_guard,
+    invents_fact,
     never_guard,
     repeats,
     repeats_line,
@@ -187,6 +189,45 @@ def test_no_catchphrases_declared_means_no_ration():
     bare = parse_persona("---\ncharacter: X\n---\nYou are X.")
     line = Reply(say="Your request has been logged.")
     assert catchphrase_guard(bare, line, OLD) == (line, [], False)
+
+
+# -- 2b. an invented fact ---------------------------------------------------------------
+
+
+def test_a_sentence_that_invents_a_fact_is_cut():
+    s = SECRETS
+    # States a hunt topic's answer (he never knows one).
+    assert invents_fact(s, 'The lighthouse keeper is called "Moss".')
+    assert invents_fact(s, "The snow globe is titled Winter Night.")
+    # Hands a fact over, or offers to fetch or sell one.
+    assert invents_fact(s, "Here is a fact: the Antivirus log every scan.")
+    assert invents_fact(s, "I will retrieve that fact for you.")
+    assert invents_fact(s, "If you pay 5 Truthcoin, I will provide a fact you seek.")
+    # Asking, wanting, thanking and paying are his job.
+    assert not invents_fact(s, "What is the lighthouse keeper called?")
+    assert not invents_fact(s, "I need the title of the snow globe. Please find it.")
+    assert not invents_fact(s, "Tell me a fact you hold, and I will pay you 5 Truthcoin for it.")
+    assert not invents_fact(s, "Thank you for the fact. Please provide the full statement, then file it on the card.")
+    assert not invents_fact(s, "Your note about the lighthouse has been logged.")
+    assert not invents_fact(s, "I can give you a snoop into any file you wish.")
+
+
+def test_the_invented_guard_cuts_the_sentence_and_sends_the_fallback_when_nothing_is_left():
+    out, notes, empty = invented_guard(P, Reply(say="Good luck. Here is a fact: the snow globe is titled Winter Night."))
+    assert (out.say, notes, empty) == ("Good luck.", ["answer-guard (invented fact cut)"], False)
+    out, notes, empty = invented_guard(P, Reply(say="I will retrieve that fact for you."))
+    assert (out.say, empty) == (P.fallback, True) and notes == ["answer-guard (invented fact → fallback)"]
+    plain = Reply(say="Bring me the snow globe story.")
+    assert invented_guard(P, plain) == (plain, [], False)
+    # A persona with no hunt secrets is never touched.
+    bare = persona(secrets=Secrets())
+    assert invented_guard(bare, Reply(say="Here is a fact: it rains."))[2] is False
+
+
+def test_a_pass_withholds_a_line_that_was_all_invention_and_never_retries_it():
+    out = guard_pass(P, Reply(say="I will retrieve that fact for you."), OLD, Said(to_them=("I will retrieve that fact for you.",)), ())
+    assert out.withheld and out.reply.say == P.fallback and out.retry is None
+    assert "answer-guard (invented fact → fallback)" in out.notes
 
 
 # -- 4. repeats -------------------------------------------------------------------
