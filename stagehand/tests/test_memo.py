@@ -118,3 +118,29 @@ def test_a_plain_verdict_word_beside_a_topic_drops_the_memo():
     assert out == "" and notes == ["memo dropped (verdict on a topic)"]
     # The same word with no topic and no cut nearby is only a word.
     assert scrub_memo(SECRETS, "came right back for more")[0] == "came right back for more"
+
+
+@pytest.mark.parametrize(
+    "memo",
+    [
+        "said periwinkle-tuesday for the snow globe",
+        "said periwinkle_tuesday for the snow globe",
+        "said PeriwinkleTuesday for the snow globe",
+        "said quokkas for the snow globe",
+        "said quokka's for the snow globe",
+        "said 4417s for the snow globe",
+    ],
+)
+def test_hyphenated_joined_and_plural_answers_are_cut_too(memo):
+    out, notes = scrub_memo(SECRETS, memo)
+    assert out == "said … for the snow globe" and notes == ["memo scrubbed"]
+
+
+def test_a_hyphenated_topic_with_a_verdict_drops_the_memo():
+    assert scrub_memo(SECRETS, "her snow-globe story is a lie")[0] == ""
+    assert scrub_memo(SECRETS, "her snow-globe story was long")[0] == "her snow-globe story was long"
+
+
+def test_loose_matching_stays_word_bounded():
+    out, _ = scrub_memo(SECRETS, "a quokkaesque mood, 44171 crumbs, the 11th visitor")
+    assert out == "a quokkaesque mood, 44171 crumbs, the 11th visitor"

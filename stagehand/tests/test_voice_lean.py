@@ -606,3 +606,12 @@ def test_already_said_to_them_keeps_his_own_lines_to_this_person():
 def test_already_said_to_them_never_carries_a_never_word():
     p3 = render_p3(P, request(), context(said=Said(to_them=("It was XYZZY-PLUGH.", "Speak, program."))))
     assert "XYZZY" not in p3 and "- Speak, program." in p3
+
+
+def test_a_hyphenated_or_plural_answer_from_another_thread_is_dropped():
+    s = Secrets(topics=("snow globe",), match=("periwinkle tuesday", "quokka"))
+    p = persona(secrets=s)
+    lines = ("Periwinkle-Tuesday, they said.", "Quokkas everywhere.", "The snow-globe.", "Bring me the bingo card.")
+    p3 = render_p3(p, request(), context(said=Said(elsewhere=lines)))
+    block = p3.split("=== ALREADY SAID (never repeat these; say something new) ===\n", 1)[1].split("\n\n", 1)[0]
+    assert block.split("\n")[-2:] == ["Elsewhere tonight:", "- Bring me the bingo card."]

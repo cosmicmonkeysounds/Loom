@@ -20,7 +20,10 @@ CONTRACTS.md §C2.2, in this order:
      never retried;
   5. **the memo scrub** — a memo keeps its topic and loses any answer and
      any verdict: a `never` word drops it, every `match` word becomes `…`,
-     and a verdict anywhere near a cut (or on a topic) drops it.
+     and a verdict anywhere near a cut (or on a topic) drops it. The memo
+     scrub and the ALREADY SAID filter match loosely (`loose_pattern`:
+     hyphens, joins, plurals), where matching too much costs nothing;
+     guard 2 keeps the contract's exact phrase match.
 
 Every function is pure; the notes they return go into the voice thought's
 `note` (`guard: catchphrase stripped; repeat retry`). No note ever carries
@@ -33,6 +36,7 @@ import json
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
+from functools import lru_cache
 from typing import Any
 
 from .cards import PersonCard, Said
@@ -123,15 +127,38 @@ def allowed_answer_words(persona: Persona, req: dict[str, Any], p2: str = "") ->
     return frozenset(out)
 
 
+_WORD_PART = re.compile(r"[^\W_]+")
+
+
+@lru_cache(maxsize=64)
+def loose_pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
+    """A forgiving pattern over `words`, for the places where matching too
+    much costs nothing (the memo scrub, another thread's lines): the words
+    of an entry folded, any run of other characters (or none) between them
+    — `periwinkle-tuesday`, `periwinkle_tuesday`, `periwinkletuesday` —
+    and an optional plural (`quokkas`, `quokka's`). Word-bounded at both
+    ends, case-folded. None when empty."""
+    alts: list[str] = []
+    for raw in words:
+        parts = _WORD_PART.findall(str(raw).lower())
+        if parts:
+            alts.append(r"[\W_]*".join(re.escape(p) for p in parts))
+    if not alts:
+        return None
+    body = "|".join(sorted(set(alts), key=len, reverse=True))
+    return re.compile(rf"(?<![^\W_])(?:{body})(?:['’]?s|es)?(?![^\W_])", re.IGNORECASE)
+
+
 def mentions_hunt(secrets: Secrets, text: str) -> bool:
     """True when `text` carries a `never` word, *any* `match` entry (the
     short numbers and single number words guard 2 lets pass included) or a
-    hunt topic: for the places where dropping a line costs nothing — the
-    ALREADY SAID lines from other threads."""
+    hunt topic, matched loosely (`loose_pattern`): for the places where
+    dropping a line costs nothing — the ALREADY SAID lines from other
+    threads."""
     if secrets.leaks(text) or secrets.names_topic(text):
         return True
-    pat = secrets.answer_pattern(tuple(secrets.match)) if secrets.match else None
-    return pat is not None and pat.search(str(text).replace("’", "'")) is not None
+    pat = loose_pattern(tuple(secrets.match) + tuple(secrets.topics))
+    return pat is not None and pat.search(str(text)) is not None
 
 
 def forbidden_hits(secrets: Secrets, text: str, allowed: Iterable[str]) -> tuple[str, ...]:
@@ -280,12 +307,14 @@ def scrub_memo(secrets: Secrets, memo: str) -> tuple[str, list[str]]:
         return "", []
     if secrets.leaks(memo):
         return "", ["memo dropped (never)"]
-    pat = secrets.answer_pattern(tuple(secrets.match)) if secrets.match else None
+    pat = loose_pattern(tuple(secrets.match))
     text = memo.replace("’", "'")
     cut = pat.sub(_CUT, text) if pat is not None else text
     replaced = cut != text
     plain = cut.replace(_CUT, " ")
-    if secrets.judges_topic(plain) or (secrets.names_topic(plain) and _NEAR_VERDICT.search(plain)):
+    topic = loose_pattern(tuple(secrets.topics))
+    on_topic = secrets.names_topic(plain) or (topic is not None and topic.search(plain) is not None)
+    if on_topic and (_VERDICT.search(plain) or _NEAR_VERDICT.search(plain)):
         return "", ["memo dropped (verdict on a topic)"]
     if replaced:
         tokens = list(_MEMO_TOKEN.finditer(cut))
