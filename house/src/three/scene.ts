@@ -100,6 +100,14 @@ export interface HouseScene {
   /** Door id → the closed leaf standing in a guarded door's gap (`door:<id>`); hide it when the guard falls. */
   doors: Map<string, Mesh>;
   /**
+   * Show King `id`'s shared state (the server's `KingState`): his bar at
+   * `hp / max`, kneeling while `fallen`, and the leaf of every door he
+   * guards hidden while `open` (default: while he has fallen — a game may
+   * hold it open a little longer for a player still in the doorway). A
+   * King not on this map is ignored.
+   */
+  showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open?: boolean): void;
+  /**
    * Advance the animated bits (terminal scanlines + glow) by `dt` seconds.
    * With a `camera`, room labels fade out as it comes within ~2.5 m (a label
    * hangs near the ceiling — standing under it, it would fill the view).
@@ -415,6 +423,17 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
     walls,
     kings,
     doors,
+    showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open = king.fallen) {
+      const k = kings.get(id);
+      if (k === undefined || disposed) return;
+      k.setHp(king.hp, king.max);
+      k.kneel(king.fallen);
+      for (const door of house.doors) {
+        if (door.guard !== id) continue;
+        const leaf = doors.get(door.id);
+        if (leaf !== undefined) leaf.visible = !open;
+      }
+    },
     update(dt: number, camera?: Camera) {
       if (disposed || !Number.isFinite(dt)) return;
       time += dt;

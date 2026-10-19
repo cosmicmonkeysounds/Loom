@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Chess } from "chess.js";
+import { doorGap, locate } from "@loom/house";
 import type { Prop, Vec3 } from "@loom/house";
-import { canHit, fell, hearts, hit, HIT_COOLDOWN_MS, HIT_REACH, KING_HP, newFight, redeals, stageFor, STAGE_LINE } from "../src/game/fight.ts";
-import { bannerOf, newGame, outcome, PAWNS_ONLY_FEN } from "../src/chess/rules.ts";
+import { HIT_USED, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
 import { SHOW } from "./houses.ts";
 
 const house = SHOW();
@@ -16,123 +15,91 @@ describe("stageFor", () => {
     expect([4, 3, 2, 1, 0].map((hp) => stageFor(hp, 4))).toEqual(["grandmaster", "club", "beginner", "dizzy", "pawns"]);
   });
 
-  it("scales another max (round(4·hp/max))", () => {
-    expect(stageFor(9, 9)).toBe("grandmaster");
-    expect(stageFor(5, 9)).toBe("beginner"); // 2.2 → 2
-    expect(stageFor(2, 9)).toBe("dizzy"); // 0.9 → 1
-    expect(stageFor(1, 9)).toBe("pawns"); // 0.44 → 0
-    expect(stageFor(1, 1)).toBe("grandmaster");
-    expect(stageFor(0, 1)).toBe("pawns");
-    expect(stageFor(7, 4)).toBe("grandmaster"); // clamped
+  it("scales the show's 15 (round(4·hp/max))", () => {
+    expect(stageFor(15, 15)).toBe("grandmaster");
+    expect(stageFor(14, 15)).toBe("grandmaster"); // 3.73 → 4
+    expect(stageFor(13, 15)).toBe("club"); // 3.47 → 3
+    expect(stageFor(2, 15)).toBe("dizzy"); // 0.53 → 1
+    expect(stageFor(1, 15)).toBe("pawns"); // 0.27 → 0
+    expect(stageFor(0, 15)).toBe("pawns");
   });
 
-  it("every stage has a line", () => {
-    for (const s of ["grandmaster", "club", "beginner", "dizzy", "pawns"] as const) expect(STAGE_LINE[s]).toMatch(/King/);
-  });
-});
-
-describe("newFight / hit / fell / hearts", () => {
-  it("deals the prop's hp (default 4, clamped to 1–9)", () => {
-    expect(newFight()).toEqual({ hp: KING_HP, max: KING_HP, hits: 0, lastHitAt: Number.NEGATIVE_INFINITY, fallen: false });
-    expect(newFight(7).max).toBe(7);
-    expect(newFight(0).max).toBe(KING_HP);
-    expect(newFight(12).max).toBe(9);
-    expect(newFight(2.5).max).toBe(KING_HP);
-  });
-
-  it("hit never goes below 0, counts hits, stamps the time", () => {
-    let f = newFight(2);
-    f = hit(f, 1000);
-    expect(f).toMatchObject({ hp: 1, hits: 1, lastHitAt: 1000 });
-    f = hit(f, 3000);
-    f = hit(f, 5000);
-    expect(f).toMatchObject({ hp: 0, hits: 3, lastHitAt: 5000, fallen: false });
-    expect(fell(f).fallen).toBe(true);
-    expect(f.fallen).toBe(false); // pure
-  });
-
-  it("the show's King (hp 8) takes two hits a stage and 8 to reach pawns only, one per cooldown", () => {
-    expect(king.hp).toBe(8);
-    let f = newFight(king.hp);
-    const stages: string[] = [stageFor(f.hp, f.max)];
-    let now = 0;
-    while (stageFor(f.hp, f.max) !== "pawns") {
-      expect(canHit(f, now, house, [king.pos[0] + 0.7, king.pos[1], king.pos[2]], WEST, king)).toBe("ok");
-      f = hit(f, now);
-      stages.push(stageFor(f.hp, f.max));
-      now += HIT_COOLDOWN_MS;
+  it("every stage has a line, and none of them is a chess tip", () => {
+    for (const s of ["grandmaster", "club", "beginner", "dizzy", "pawns"] as const) {
+      expect(STAGE_LINE[s]).toMatch(/King/);
+      expect(STAGE_LINE[s]).not.toMatch(/board|chess|hit him|pawns only/iu);
     }
-    expect(f.hits).toBe(8);
-    expect(stages).toEqual(["grandmaster", "grandmaster", "club", "club", "beginner", "beginner", "dizzy", "dizzy", "pawns"]);
-    expect(HIT_COOLDOWN_MS).toBeGreaterThanOrEqual(2000); // ≥ 14 s of hitting from full strength to pawns only
   });
 
-  it("hearts: ♥ per point left, ♡ per point lost, nothing at 0", () => {
-    expect(hearts(newFight(4))).toBe("♥♥♥♥");
-    expect(hearts(hit(newFight(4), 0))).toBe("♥♥♥♡");
-    expect(hearts({ ...newFight(4), hp: 1 })).toBe("♥♡♡♡");
-    expect(hearts({ ...newFight(4), hp: 0 })).toBe("");
+  it("no standing line says he kneels — at 1 of 15 he is still up, his door shut", () => {
+    for (let hp = 1; hp <= 15; hp++) expect(STAGE_LINE[stageFor(hp, 15)]).not.toMatch(/knee|kneel|open/iu);
+    expect(KNEELING_LINE).toMatch(/knees/iu);
+    expect(KNEELING_LINE).toMatch(/door stands open/iu);
   });
 });
 
-describe("canHit (on the show's map)", () => {
+describe("kingMeter", () => {
+  it("hearts up to nine points, n / max past that", () => {
+    expect(kingMeter(4, 4)).toBe("♥♥♥♥");
+    expect(kingMeter(3, 4)).toBe("♥♥♥♡");
+    expect(kingMeter(0, 4)).toBe("♡♡♡♡");
+    expect(kingMeter(12, 15)).toBe("12 / 15");
+    expect(kingMeter(0, 15)).toBe("0 / 15");
+    expect(kingMeter(99, 15)).toBe("15 / 15"); // clamped
+  });
+});
+
+describe("kingReach (on the show's map)", () => {
   const feet = (dx: number, dz = 0): Vec3 => [king.pos[0] + dx, king.pos[1], king.pos[2] + dz];
   const near = feet(0.7); // 0.7 m east of him, facing west
 
-  it("fallen / other floor / too far / not facing / cooldown / ok, in that order", () => {
-    const f = newFight();
-    expect(canHit(fell(f), 0, house, near, WEST, king)).toBe("fallen");
-    expect(canHit(f, 0, house, [near[0], 0, near[2]], WEST, king)).toBe("floor"); // on the main floor, right above him
-    expect(canHit(f, 0, house, feet(HIT_REACH + 0.05), WEST, king)).toBe("far");
-    expect(canHit(f, 0, house, near, EAST, king)).toBe("facing"); // back to him
-    expect(canHit(f, 0, house, near, WEST + 50, king)).toBe("ok"); // inside the 55° cone
-    expect(canHit(f, 0, house, near, WEST + 60, king)).toBe("facing");
-    const just = hit(f, 10_000);
-    expect(canHit(just, 10_000 + HIT_COOLDOWN_MS - 1, house, near, WEST, king)).toBe("cooldown");
-    expect(canHit(just, 10_000 + HIT_COOLDOWN_MS, house, near, WEST, king)).toBe("ok");
-    expect(canHit(f, 0, house, near, WEST, king)).toBe("ok");
-  });
-
-  it("a fallen king is never hittable, whatever else is true", () => {
-    expect(canHit(fell(newFight()), 0, house, feet(5), EAST, king)).toBe("fallen");
+  it("other floor / too far / not facing / ok, in that order", () => {
+    expect(kingReach(house, [near[0], 0, near[2]], WEST, king)).toBe("floor"); // on the main floor, right above him
+    expect(kingReach(house, feet(KING_REACH + 0.05), WEST, king)).toBe("far");
+    expect(kingReach(house, near, EAST, king)).toBe("facing"); // back to him
+    expect(kingReach(house, near, WEST + 50, king)).toBe("ok"); // inside the 55° cone
+    expect(kingReach(house, near, WEST + 60, king)).toBe("facing");
+    expect(kingReach(house, near, WEST, king)).toBe("ok");
   });
 
   it("reach is measured on the plan to his base centre", () => {
-    expect(canHit(newFight(), 0, house, feet(HIT_REACH - 0.01), WEST, king)).toBe("ok");
-    expect(canHit(newFight(), 0, house, feet(0.5, 0.5), WEST, king)).toBe("ok"); // 0.71 m, diagonal
-    expect(canHit(newFight(), 0, house, feet(0.9, 0.9), WEST, king)).toBe("far"); // 1.27 m
+    expect(kingReach(house, feet(KING_REACH - 0.01), WEST, king)).toBe("ok");
+    expect(kingReach(house, feet(0.5, 0.5), WEST, king)).toBe("ok"); // 0.71 m, diagonal
+    expect(kingReach(house, feet(0.9, 0.9), WEST, king)).toBe("far"); // 1.27 m
+  });
+
+  it("the nudges: closer, or face him; the spent hit's line names the next visit", () => {
+    expect(nudgeFor("far")).toBe("Get closer to the King.");
+    expect(nudgeFor("floor")).toBe("Get closer to the King.");
+    expect(nudgeFor("facing")).toBe("Face him.");
+    expect(HIT_USED).toBe("You hit him. Come back on your next reinstallation.");
   });
 });
 
-describe("a game that ends without checkmate deals again (decision 6)", () => {
-  it("a loss or a draw re-deals; a win or giving up closes the board", () => {
-    expect(redeals("lost")).toBe(true);
-    expect(redeals("drawn")).toBe(true);
-    expect(redeals("won")).toBe(false);
-    expect(redeals("abandoned")).toBe(false);
+describe("keepDoorOpen (a restore while a player is behind or in his door)", () => {
+  const door = house.doors.find((d) => d.guard === king.id)!;
+  const behind = door.a === king.room ? door.b! : door.a;
+  const gap = doorGap(house, door)!;
+  const y = king.pos[1];
+
+  it("behind the door (in the Server Room): stays open, or they would be shut in", () => {
+    const inside: Vec3 = [gap.c - 1.5, y, (gap.lo + gap.hi) / 2];
+    expect(locate(house, inside).room).toBe(behind);
+    expect(keepDoorOpen(house, king, inside)).toBe(true);
   });
 
-  it("a pawns-only stalemate says so and deals a fresh board at the same dizziness, the fight untouched", () => {
-    let f = newFight(4);
-    for (let i = 0; i < 4; i++) f = hit(f, i * HIT_COOLDOWN_MS);
-    const stage = stageFor(f.hp, f.max);
-    expect(stage).toBe("pawns");
-    // White to move has no move and is not in check: the King and his pawn stalemate us.
-    const stuck = new Chess("8/8/8/8/8/1k6/p7/K7 w - - 0 1");
-    expect(outcome(stuck)).toBe("drawn");
-    expect(bannerOf(stuck, "drawn")).toBe("STALEMATE. AGAIN.");
-    expect(redeals(outcome(stuck)!)).toBe(true);
-    expect(newGame(stage).fen()).toBe(PAWNS_ONLY_FEN);
-    expect(f.fallen).toBe(false);
+  it("in the doorway, or in his box: stays open, or they would be stuck in the leaf or in him", () => {
+    const mid = (gap.lo + gap.hi) / 2;
+    const inGap: Vec3 = gap.axis === "z" ? [gap.c, y, mid] : [mid, y, gap.c];
+    expect(keepDoorOpen(house, king, inGap)).toBe(true);
+    expect(keepDoorOpen(house, king, [king.pos[0], y, king.pos[2]])).toBe(true);
   });
 
-  it("the banner: checkmate, the King's win and a non-stalemate draw", () => {
-    const fools = new Chess();
-    for (const m of ["f3", "e5", "g4", "Qh4"]) fools.move(m);
-    expect(bannerOf(fools, "lost")).toBe("THE KING WINS. AGAIN.");
-    expect(bannerOf(new Chess("7k/8/6K1/8/8/8/8/8 w - - 0 1"), "drawn")).toBe("DRAW. AGAIN.");
-    const mate = new Chess("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1");
-    mate.move("Ra8");
-    expect(bannerOf(mate, "won")).toBe("CHECKMATE");
+  it("clear of both on his side of the door: it shuts", () => {
+    const clear: Vec3 = [king.pos[0] + 1.6, y, king.pos[2]];
+    expect(locate(house, clear).room).toBe(king.room);
+    expect(keepDoorOpen(house, king, clear)).toBe(false);
+    // On another floor, right above him: nothing to be stuck in.
+    expect(keepDoorOpen(house, king, [king.pos[0], 0, king.pos[2]])).toBe(false);
   });
 });

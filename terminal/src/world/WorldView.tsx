@@ -3,8 +3,10 @@
 //! renders it, with every player in the simulation as a ghost (interpolated
 //! ~120 ms behind, name tag over the head) and each session's golden duck
 //! (it lays its egg and flies on `found` — never for a find the story kept:
-//! "GERALD CAN'T HELP", Gerald stays put). The indicator trail is the
-//! player's, not the audience's — it is not drawn here.
+//! "GERALD CAN'T HELP", Gerald stays put). Ghosts wear the guest's profile
+//! picture; the King shows the shared bar and kneels at 0, his door open
+//! (`HouseScene.showKing`). The indicator trail is the player's, not the
+//! audience's — it is not drawn here.
 //!
 //! One camera, cut by `director.ts` (mount / follow / orbit); overlays in
 //! the DOM: the banner, the camera's mode tag, the corner mini-map, the
@@ -22,7 +24,7 @@ import { roomById, type HouseMap } from "@loom/house";
 import { buildHouseScene, createAvatar, createDuck, houseAtmosphere, type Avatar, type Duck } from "@loom/house/three";
 import { direct, insideHead, shotFloor, shotKey, type Director, type DirectorPlayer, type Shot } from "./director.ts";
 import { MiniMap } from "./MiniMap.tsx";
-import { byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
+import { avatarUrl, byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
 
 const FRAME_MS = 1000 / 30;
@@ -85,6 +87,8 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
     const ducks = new Map<string, Duck>();
     let director: Director | null = null;
     let reported = "";
+    /** What the scene shows of the King (redrawn only on a change). */
+    let kingShown = "";
 
     const resize = () => {
       const w = Math.max(1, box.clientWidth);
@@ -110,11 +114,13 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
         ducks.delete(id);
       }
       for (const p of players.values()) {
-        if (!ghosts.has(p.session)) {
-          const g = createAvatar(p.name, p.guest);
+        const picture = avatarUrl(store.base, p.avatar);
+        const ghost = ghosts.get(p.session);
+        if (!ghost) {
+          const g = createAvatar(p.name, p.guest, { picture });
           scene.add(g.object);
           ghosts.set(p.session, g);
-        }
+        } else ghost.setPicture(picture); // a no-op unless an `avatar` frame changed it
         let duck = ducks.get(p.session);
         if (!duck) {
           duck = createDuck();
@@ -140,6 +146,10 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
 
       const { world: w } = store.snapshot;
       sync(w.players);
+      const k = w.king;
+      const kingKey = k === null ? "" : `${k.id}/${k.hp}/${k.max}/${k.fallen}`;
+      if (k !== null && kingKey !== kingShown) built.showKing(k.id, k);
+      kingShown = kingKey;
       const players: DirectorPlayer[] = [];
       for (const p of w.players.values()) {
         const pose = p.buffer.sample(t) ?? p.pose;

@@ -125,14 +125,14 @@ describe("keyDown / keyUp — the held-key set", () => {
   });
 });
 
-describe("the King's keys", () => {
-  it("KeyC and Space are game keys (their defaults are suppressed) and never move the body", () => {
+describe("the King's key", () => {
+  it("Space is a game key (its default is suppressed) and never moves the body; C is no longer one", () => {
     expect(GAME_KEYS.has("Space")).toBe(true);
-    expect(GAME_KEYS.has("KeyC")).toBe(true);
+    expect(GAME_KEYS.has("KeyC")).toBe(false); // there is no chess on the tablet
     const held = new Set<string>();
     const key = (code: string): KeyLike => ({ code, key: code, metaKey: false, ctrlKey: false, altKey: false });
-    expect(keyDown(held, key("KeyC"))).toBe(true);
     expect(keyDown(held, key("Space"))).toBe(true);
+    expect(keyDown(held, key("KeyC"))).toBe(false);
     const input = combineInput(src({ keys: held }));
     expect(input.move).toEqual([0, 0]);
     expect(input.turn).toBe(0);

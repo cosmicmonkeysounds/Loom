@@ -78,6 +78,9 @@ export class WorldStore {
   snapshot: WorldSnapshot = { world: EMPTY_WORLD, house: null, connected: false, gone: null };
   private listeners = new Set<() => void>();
 
+  /** `base` = the event's API base (`/e/<id>`): where the ghosts' pictures are fetched. */
+  constructor(readonly base = "") {}
+
   subscribe = (fn: () => void): (() => void) => {
     this.listeners.add(fn);
     return () => void this.listeners.delete(fn);
@@ -218,7 +221,7 @@ export function openSpatialFeed(store: WorldStore, opts: FeedOptions): () => voi
 /** Open the spatial feed for a terminal (`enabled` false: a closed, empty store). */
 export function useSpatialStream(config: TerminalConfig, enabled: boolean): WorldStore {
   const { eventId, token, name } = config;
-  const store = useMemo(() => new WorldStore(), [eventId, token, enabled]);
+  const store = useMemo(() => new WorldStore(baseOf({ eventId })), [eventId, token, enabled]);
 
   // The stream.
   useEffect(() => {

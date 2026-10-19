@@ -14,7 +14,7 @@ import {
   createKing,
   createTrail,
   hasDom,
-  KING_FALL,
+  KING_KNEEL,
   planeGeometry,
   rampGeometry,
   spaceGroup,
@@ -340,6 +340,22 @@ describe("createAvatar", () => {
     expect(freed).toBe(geoms.size);
   });
 
+  it("without a DOM a picture is asked for but never drawn: the plain capsule, nothing thrown", async () => {
+    const a = createAvatar("Excel", "g-1", { picture: "/e/ev/api/avatar/0123456789abcdef" });
+    expect(a.picture).toBe("/e/ev/api/avatar/0123456789abcdef");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(a.object.getObjectByName("avatar:picture")).toBeUndefined();
+    expect(a.object.getObjectByName("avatar:body")).toBeDefined();
+    a.setPicture(null);
+    expect(a.picture).toBeNull();
+    a.setPicture("");
+    expect(a.picture).toBeNull();
+    a.dispose();
+    a.setPicture("/e/ev/api/avatar/ffffffffffffffff"); // after dispose: ignored
+    expect(a.picture).toBeNull();
+    expect(createAvatar("Word").picture).toBeNull();
+  });
+
   it("tints by seed, stably", () => {
     const tint = (seed: string) => {
       const body = createAvatar("x", seed).object.getObjectByName("avatar:body") as Mesh<BufferGeometry, MeshLambertMaterial>;
@@ -429,11 +445,12 @@ describe("createKing + guarded doors in buildHouseScene", () => {
     off.dispose();
   });
 
-  it("king: setHp / hit / fall drive the state machine on update(dt); reset stands him up", async () => {
+  it("king: setHp / hit / kneel drive the state machine on update(dt); reset stands him up", () => {
     const k = createKing(kingProp);
     const body = k.object.getObjectByName("king:body")!;
     expect(k.state).toBe("standing");
     k.setHp(4, 4); // no DOM: no bar, no throw
+    k.setHp(11, 15); // past nine cells: still no throw
     k.update(0.1);
     k.hit();
     expect(k.state).toBe("staggering");
@@ -442,36 +459,64 @@ describe("createKing + guarded doors in buildHouseScene", () => {
     for (let i = 0; i < 5; i++) k.update(0.1);
     expect(k.state).toBe("standing");
     expect(body.rotation.x).toBe(0);
-    let done = false;
-    const p = k.fall().then(() => (done = true));
-    expect(k.fall()).toBe(k.fall());
-    expect(k.state).toBe("fallen");
-    k.hit(); // a fallen king takes no more hits
-    expect(k.state).toBe("fallen");
-    let t = 0;
-    while (t < KING_FALL - 0.2) {
-      k.update(0.1);
-      t += 0.1;
-      await Promise.resolve();
-    }
-    expect(done).toBe(false);
-    expect(body.rotation.x).toBeLessThan(-1); // most of the way over
-    for (let i = 0; i < 5; i++) {
-      k.update(0.1);
-      await Promise.resolve();
-    }
-    await p;
-    expect(done).toBe(true);
-    expect(k.object.getObjectByName("king:mesh")!.visible).toBe(false);
+    // Down on one knee: lower, squashed, bowed — the crown (the one mesh) kept.
+    k.kneel(true);
+    expect(k.state).toBe("kneeling");
+    k.update(KING_KNEEL / 2);
+    const half = body.scale.y;
+    expect(half).toBeLessThan(1);
+    for (let i = 0; i < 10; i++) k.update(0.1);
+    expect(body.scale.y).toBeLessThan(half);
+    expect(body.scale.y).toBeCloseTo(0.7);
+    expect(body.rotation.x).toBeLessThan(-0.3);
+    expect(body.position.y).toBeLessThan(0);
+    expect(k.object.getObjectByName("king:mesh")!.visible).toBe(true);
+    k.hit(); // a kneeling king takes no hits
+    expect(k.state).toBe("kneeling");
+    // Back up, the same way.
+    k.kneel(false);
+    expect(k.state).toBe("standing");
+    k.update(KING_KNEEL / 2);
+    expect(body.scale.y).toBeGreaterThan(0.7);
+    expect(body.scale.y).toBeLessThan(1);
+    k.hit(); // still getting up: no stagger yet
+    expect(k.state).toBe("standing");
+    for (let i = 0; i < 10; i++) k.update(0.1);
+    expect(body.scale.y).toBe(1);
+    expect(body.rotation.x).toBe(0);
+    // reset is at once.
+    k.kneel(true);
+    k.update(1);
     k.reset();
     expect(k.state).toBe("standing");
-    expect(k.object.getObjectByName("king:mesh")!.visible).toBe(true);
-    expect(body.rotation.x).toBe(0);
+    k.update(0.01);
+    expect(body.scale.y).toBe(1);
     const geoms = geometries(k.object);
     let freed = 0;
     for (const g of geoms) g.addEventListener("dispose", () => freed++);
     k.dispose();
     expect(freed).toBe(geoms.size);
+  });
+
+  it("showKing: his bar, the kneel while fallen, and his doors' leaves hidden while open", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    const k = scene.kings.get(kingProp.id)!;
+    const leaves = guarded.map((d) => scene.doors.get(d.id)!);
+    scene.showKing(kingProp.id, { hp: 3, max: 15, fallen: false });
+    expect(k.state).toBe("standing");
+    expect(leaves.every((l) => l.visible)).toBe(true);
+    scene.showKing(kingProp.id, { hp: 0, max: 15, fallen: true });
+    expect(k.state).toBe("kneeling");
+    expect(leaves.every((l) => !l.visible)).toBe(true);
+    // A restore with a player still in the doorway: he stands, the leaf stays open.
+    scene.showKing(kingProp.id, { hp: 15, max: 15, fallen: false }, true);
+    expect(k.state).toBe("standing");
+    expect(leaves.every((l) => !l.visible)).toBe(true);
+    scene.showKing(kingProp.id, { hp: 15, max: 15, fallen: false });
+    expect(leaves.every((l) => l.visible)).toBe(true);
+    scene.showKing("no-such-king", { hp: 0, max: 15, fallen: true }); // ignored
+    expect(leaves.every((l) => l.visible)).toBe(true);
+    scene.dispose();
   });
 
   it("the scene's update drives its kings and dispose frees them", () => {
