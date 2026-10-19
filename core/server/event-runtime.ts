@@ -454,6 +454,12 @@ function powerSpent(events: readonly SimEvent[]): boolean {
   return events.some((e) => !POWER_FREE_EVENTS.has(e.type));
 }
 
+/** The 403 an agent-voiced character's refused codex share answers
+ *  (`Sim.agentRefusal`): a secret file, or lore about someone else. */
+export function agentRefusalText(refusal: "secret" | "about"): string {
+  return refusal === "secret" ? "they won't take a secret file" : "they won't take lore about someone else";
+}
+
 export class EventRuntime {
   readonly eventId: string;
   readonly codes: Passcodes;
@@ -4054,8 +4060,9 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
-        if (this.sim!.agentRefuses(to, entry)) {
-          sendJson(res, 403, { error: "they won't take lore about someone else" });
+        const refusal = this.sim!.agentRefusal(to, entry);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: agentRefusalText(refusal) });
           return true;
         }
         this.fanout(this.commit("share", id, to, entry));
@@ -4139,8 +4146,9 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
-        if (this.sim!.agentRefuses(to, entry)) {
-          sendJson(res, 403, { error: "they won't take lore about someone else" });
+        const refusal = this.sim!.agentRefusal(to, entry);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: agentRefusalText(refusal) });
           return true;
         }
         const events = this.commit("share", character, to, entry);

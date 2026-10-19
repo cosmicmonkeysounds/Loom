@@ -449,11 +449,20 @@ export class Sim {
    * never a `secret: true` entry (a holder's private orders).
    */
   agentRefuses(to: string, entry: string): boolean {
+    return this.agentRefusal(to, entry) !== null;
+  }
+
+  /** Why `agentRefuses` turns the entry down: `"secret"` (a `secret: true`
+   *  entry, whoever it is about), `"about"` (lore about someone or
+   *  somewhere else), or null when the agent takes it. */
+  agentRefusal(to: string, entry: string): "secret" | "about" | null {
     const id = this.resolveCodex(entry);
-    if (id === null) return false;
+    if (id === null) return null;
+    if (this.model.characters.get(to)?.mind !== "external") return null;
     const def = this.model.codex.get(id);
+    if (def?.secret === true) return "secret";
     const about = def?.about ?? null;
-    return this.model.characters.get(to)?.mind === "external" && ((about !== null && about !== to) || def?.secret === true);
+    return about !== null && about !== to ? "about" : null;
   }
 
   /** Does this holder have the entry? */

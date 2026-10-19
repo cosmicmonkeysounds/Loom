@@ -587,6 +587,47 @@ The doors open.
   });
 });
 
+describe("an agent-voiced character and a secret file (wave 11: the heart terminal's file panel)", () => {
+  const SRC = `# Agents
+start: Open
+
+CHARACTER Bot
+  mind: external
+
+CODEX Door Digit
+  about: Bot
+  code: DIGIT
+  secret: true
+  text: The first digit is 1.
+
+CODEX Loose Talk
+  code: LOOSE
+  text: Anyone may know this.
+
+== Open
+The doors open.
+`;
+  it("refuses a secret file even about itself, with its own reason; the guest's codex marks it secret", async () => {
+    const sim = Sim.fromSources(SRC);
+    expect(sim.agentRefusal("Bot", "Door Digit")).toBe("secret");
+    expect(sim.agentRefusal("Bot", "Loose Talk")).toBeNull();
+    const d = mkdtempSync(join(tmpdir(), "loom-codex-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "agents", scenarioSource: SRC, joinBase: () => "http://x" });
+    rt.openDoors();
+    const g = await guest(rt, "Minesweeper");
+    expect((await post(rt, "/api/guest/codex/redeem", { code: "DIGIT" }, g.token)).status).toBe(200);
+    expect((await post(rt, "/api/guest/codex/redeem", { code: "LOOSE" }, g.token)).status).toBe(200);
+    const codex = guestView(rt.liveSim!, g.id).codex;
+    expect(codex.find((e) => e.id === "Door Digit")?.secret).toBe(true);
+    expect(codex.find((e) => e.id === "Loose Talk")).not.toHaveProperty("secret");
+    const refused = await post(rt, "/api/guest/codex/share", { entry: "Door Digit", to: "Bot" }, g.token);
+    expect(refused.status).toBe(403);
+    expect(refused.json).toEqual({ error: "they won't take a secret file" });
+    expect((await post(rt, "/api/guest/codex/share", { entry: "Loose Talk", to: "Bot" }, g.token)).status).toBe(200);
+  });
+});
+
 describe("codex cards for a character's booth (wave 4, lane D)", () => {
   it("`audienceOf` is a guest's id, else `@<Character>`", () => {
     const sim = fresh();

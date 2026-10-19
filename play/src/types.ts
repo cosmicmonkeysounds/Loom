@@ -124,6 +124,8 @@ export interface CodexEntry {
   /** The subject it concerns — a character, or a topic. */
   about: string | null;
   text: string;
+  /** `secret: true` — an agent-voiced character never takes it. */
+  secret?: boolean;
 }
 
 /** A row of the participants directory (mirror of server views.ts `PersonCard`). */

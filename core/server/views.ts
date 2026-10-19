@@ -29,10 +29,15 @@ export interface CodexEntryView {
   /** The subject it concerns (a character, or a topic). */
   about: string | null;
   text: string;
+  /** `secret: true` — an agent-voiced character never takes it (the heart
+   *  terminal's file panel offers no Give for it). Present only when set. */
+  secret?: true;
 }
 
 function codexEntry(e: CodexDef): CodexEntryView {
-  return { id: e.id, title: e.title, about: e.about, text: e.text };
+  const out: CodexEntryView = { id: e.id, title: e.title, about: e.about, text: e.text };
+  if (e.secret) out.secret = true;
+  return out;
 }
 
 /** A quest in someone's log, where it stands now. Its steps are the

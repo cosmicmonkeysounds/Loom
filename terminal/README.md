@@ -218,7 +218,10 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Room&character=Trabol
   stream), each with **Give** (the guest's own `POST
   /api/guest/codex/share {entry, to: <character>}` with the pilot token,
   so the story hears it as from the phone; a refusal is shown in the
-  server's words, e.g. an agent won't take an entry about someone else),
+  server's words). A file he always turns down has no Give: a
+  `secret: true` one (the digit notes, *The Door Code*) or lore about
+  someone else reads *A SECRET FILE: HE WON'T TAKE IT* / *ABOUT X: HE
+  WON'T TAKE IT* (`refusalOf`, the server's own 403 rule),
   a **TYPE A CODE** box and **SCAN A FILE'S QR** (a codex QR's
   `?unlock=`) that redeem for the guest (`/api/guest/codex/redeem`) and
   then offer the new entry to give. A camera read is redeemed once: the

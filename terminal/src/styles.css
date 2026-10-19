@@ -899,6 +899,7 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   color: var(--phosphor);
 }
 .file-give:disabled { opacity: 0.5; }
+.file-kept { color: var(--phosphor-dim); white-space: nowrap; }
 .file-code { flex-wrap: wrap; }
 .file-code button[type="submit"] {
   background: none;

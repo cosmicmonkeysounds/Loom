@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@loom/play/client.ts";
-import { filesOf, foldCode, giveEntry, redeemCode, scanStep, unlockOfScan } from "../src/files.ts";
+import { filesOf, foldCode, giveEntry, redeemCode, refusalOf, scanStep, unlockOfScan } from "../src/files.ts";
 
 const config = { eventId: "evt" };
 const pilot = { token: "PILOT" };
@@ -77,5 +77,16 @@ describe("the heart terminal's file panel", () => {
     expect(scanStep("SINKHOLE-4AM", { busy: false, redeemed: done })).toEqual({ kind: "again", entry: "the-sinkhole" });
     expect(scanStep("g-3f9a1c", { busy: false, redeemed: none })).toEqual({ kind: "bad" });
     expect(foldCode(" Sink_hole 4-AM ")).toBe("sinkhole4am");
+  });
+});
+
+describe("the file panel's GIVE: only files he takes", () => {
+  it("a secret file or lore about someone else shows why instead of GIVE; his own and unowned lore can be given", () => {
+    expect(refusalOf({ about: "The Server Room", secret: true }, "Trabolta")).toBe("a secret file: he won't take it");
+    expect(refusalOf({ about: null, secret: true }, "Trabolta")).toBe("a secret file: he won't take it");
+    expect(refusalOf({ about: "Clippy" }, "Trabolta")).toBe("about Clippy: he won't take it");
+    expect(refusalOf({ about: "trabolta" }, "Trabolta")).toBeNull();
+    expect(refusalOf({ about: null }, "Trabolta")).toBeNull();
+    expect(refusalOf({ about: null, secret: false }, "Trabolta")).toBeNull();
   });
 });
