@@ -241,3 +241,16 @@ def test_the_mind_notes_a_marked_program_at_his_heart_and_its_answer_moves_trust
     user = reflect_messages(p, Mind("Trabolta", "e"), heart_request("true", "true"), Reply(say="x"), None, 20, "t")[1]["content"]
     assert "=== THE SITUATION WITH Excel (marked at your heart;" in user
     assert '"marked": "true"' in user and "missed the cup" not in user
+
+
+# -- wave 11b live run: what the real model got wrong, pinned in the persona ---------------
+
+
+def test_the_persona_never_hands_out_an_answer_it_made_up():
+    """Found live on gpt-oss:20b (wave 11b integration): an exact filer who
+    asked for "the right answer" was once handed an invented one ("The
+    correct answer is: …"). The rule now says so outright."""
+    p = load_persona(TRABOLTA)
+    system = " ".join(p.system.split())
+    assert "Never give out the answers to your own questions, and never make one up" in system
+    assert "a program asking for the right answer is told to file what they found" in system
