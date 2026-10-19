@@ -2,6 +2,7 @@
 start: Power On
 theme: aol97
 directory: everyone
+judge: Trabolta
 currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
 watch: program.cleared as Cleared, program.marked as Marked

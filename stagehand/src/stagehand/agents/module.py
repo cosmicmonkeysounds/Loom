@@ -8,7 +8,12 @@
               — the control panel (and the server itself on a restart):
                 reset · survey · nudge · set · forget · thinking · effort ·
                 pause · rerun — see `Agents.control`
+      judge   {id, character, filing, question: {id, text}, key: {answer, aliases},
+               answer, confidence}
+              — a near-miss 📝 filing for the story's `judge:` character to
+                rule on (wave 11b; `judge.py`); `cancel {id}` drops it too
     POST /api/agent/reply {id, worker, say, adjust, acts}
+    POST /api/agent/judge {id, worker, same, why}  — 410: a director ruled first / expired
     GET  /api/agent/facts                       — the whole session, for lookups
     POST /api/agent/mind  {character, …the whole mind…, status}   — the mirror
     POST /api/agent/trace {thoughts: [Thought…]}                  — the debugger's feed
@@ -46,6 +51,7 @@ from ..modapi import ModApiError, ModClient, run_stream
 from ..module import Context
 from .config import AgentsConfig, parse_agents
 from .facts import Facts, FactsClient
+from .judge import JUDGE_DEADLINE_S, Ruling, judge_messages, judge_model, parse_ruling
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from .mind import Mind, mind_path
 from .orchestrator import Job, Orchestrator, reflect_tokens_needed, voice_tokens_needed
@@ -212,6 +218,9 @@ class Agents:
         self.worker: str | None = None
         self._event: str = ""
         self.tasks: dict[str, asyncio.Task[None]] = {}
+        #: Judge rulings in flight, by request id (never thread-bound, never
+        #: a `request`: `judge.py`).
+        self.judging: dict[str, asyncio.Task[None]] = {}
         self.mod: ModClient | None = None
         self._slots = asyncio.Semaphore(cfg.concurrency)
         self.facts: FactsClient | None = None
@@ -329,9 +338,10 @@ class Agents:
                 self._orchestrator_task = None
 
     def abandon_all(self) -> None:
-        for task in self.tasks.values():
+        for task in [*self.tasks.values(), *self.judging.values()]:
             task.cancel()
         self.tasks.clear()
+        self.judging.clear()
 
     # -- minds ----------------------------------------------------------------
 
@@ -501,7 +511,8 @@ class Agents:
                     outcomes["ok"] = False
                     outcomes["error"] = "no such thought"
                     continue
-                self.orchestrator.rerun(thought, self.models[character] if thought.kind in ("voice", "lookup") else None)
+                voice = self.models[character]
+                self.orchestrator.rerun(thought, judge_model(voice) if thought.kind == "judge" else voice if thought.kind in ("voice", "lookup") else None)
                 note = f"re-run {thought.id} ({thought.kind})"
             self._save_mind(character)
             await self.trace.record(new_thought(character, "control", trigger=by, note=note))
@@ -582,10 +593,20 @@ class Agents:
             if rid in self.tasks:
                 return
             self.tasks[rid] = asyncio.ensure_future(self._handle(req))
+        elif event == "judge":
+            frame = json.loads(data)
+            if not isinstance(frame, dict):
+                return
+            jid = str(frame.get("id"))
+            if jid in self.judging:
+                return
+            self.judging[jid] = asyncio.ensure_future(self._judge(frame))
         elif event == "cancel":
-            task = self.tasks.pop(str(json.loads(data).get("id")), None)
-            if task is not None:
-                task.cancel()
+            cid = str(json.loads(data).get("id"))
+            for tasks in (self.tasks, self.judging):
+                task = tasks.pop(cid, None)
+                if task is not None:
+                    task.cancel()
         elif event == "control":
             doc = json.loads(data)
             if not isinstance(doc, dict):
@@ -665,3 +686,83 @@ class Agents:
                 log.info("request %s was already settled (timed out or the run restarted)", rid)
             else:
                 raise
+
+    # -- the judge (wave 11b) --------------------------------------------------------
+
+    async def _judge(self, frame: dict[str, Any]) -> None:
+        """Rule on one near-miss filing: one call on the character's voice
+        model (`judge.py`), traced as a `judge` thought, answered on
+        `/api/agent/judge`. Touches no mind, enters no prompt, keeps
+        nothing. Like a request it runs while the mind is paused (the
+        control panel's `pause` stops the orchestrator only). No ruling —
+        the model failed, said nothing usable, or ran past the deadline —
+        answers nothing: the server's request expires and the facts
+        judge's own fallback stands."""
+        jid = str(frame.get("id"))
+        character = str(frame.get("character") or "")
+        counted = False
+        try:
+            persona = self.cfg.personas.get(character)
+            if persona is None:
+                return  # not ours — the server expires it
+            model = judge_model(self.models[character])
+            messages = judge_messages(frame)
+            question = frame.get("question") if isinstance(frame.get("question"), dict) else {}
+            qid = str(question.get("id") or "?")
+            log.info("%s ⚖ rules on a near miss for %s: %r", character, qid, str(frame.get("answer") or "")[:80])
+            self.orchestrator.busy(+1)
+            self._inflight += 1
+            counted = True
+            completion: Completion | None = None
+            error: str | None = None
+            note = ""
+            ruling: Ruling | None = None
+            try:
+                completion, note = await asyncio.wait_for(self._judge_call(messages, model, character), JUDGE_DEADLINE_S)
+                ruling = parse_ruling(completion.content)
+            except LlmError as err:
+                error = str(err)
+            except asyncio.TimeoutError:
+                error = f"no ruling within {JUDGE_DEADLINE_S:.0f}s"
+            if ruling is not None and ruling.why and persona.secrets.leaks(ruling.why):
+                ruling = Ruling(same=ruling.same, why="")  # never a code, not even to a director's # hosts
+            if ruling is None and error is None:
+                error = "no ruling in the output (answered nothing; the request expires)"
+            result = None if ruling is None else {"same": ruling.same, "why": ruling.why, "question": qid}
+            await self.trace.record(
+                new_thought(character, "judge", trigger="judge", model=model, messages=messages, completion=completion, request={"id": jid}, result=result, error=error, note=note)
+            )
+            if ruling is None:
+                log.warning("%s ⚖ %s: %s", character, qid, error)
+                return
+            log.info("%s ⚖ %s: %s — %s", character, qid, "same" if ruling.same else "not the same", ruling.why or "(no reason)")
+            if not self.cfg.dry_run:
+                await self._send_judge(jid, ruling)
+        except asyncio.CancelledError:
+            log.info("judge %s cancelled", jid)
+            raise
+        except Exception:  # noqa: BLE001 — one bad ruling must not kill the worker
+            log.exception("judge %s failed", jid)
+        finally:
+            if counted:
+                self.orchestrator.busy(-1)
+                self._inflight = max(0, self._inflight - 1)
+            if self.judging.get(jid) is asyncio.current_task():
+                del self.judging[jid]
+
+    async def _judge_call(self, messages: list[dict[str, str]], model: LlmConfig, who: str) -> tuple[Completion, str]:
+        async with self._slots:
+            return await _complete_with_room(self.complete_fn, messages, model, who)
+
+    async def _send_judge(self, jid: str, ruling: Ruling) -> None:
+        assert self.mod is not None
+        body: dict[str, Any] = {"id": jid, "same": ruling.same, "why": ruling.why}
+        if self.worker:
+            body["worker"] = self.worker
+        try:
+            await self.mod.post("/api/agent/judge", body)
+        except ModApiError as err:
+            if err.status == 410:
+                log.info("judge %s was already settled (a director ruled, it expired, or the run restarted)", jid)
+            else:
+                log.warning("could not send ruling %s: %s", jid, err)

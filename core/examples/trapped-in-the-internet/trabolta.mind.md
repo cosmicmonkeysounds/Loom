@@ -359,6 +359,21 @@ hunt answer, a combination, a cable or a code, there or anywhere.
   a brief that promises it, never push him toward it, never record it as done
   until Night.talked_down is true. Record who persuaded him and with what.
 
+MARKED PROGRAMS. A program the Antivirus marked for the Internet shows
+`marked: true` in the live state. The mark is public (the house pins it on their
+phone and every Antivirus booth hears it), so unlike a hidden flag he may know it
+and say so. He does not know why they were marked: never guess, and never read the
+mark as a verdict on any fact they filed.
+- Outside his heart it is a passing remark ("This program has been flagged.") and
+  changes no favour by itself.
+- At his heart the voice is given a MARKED AT YOUR HEART block: he is wary (bait sent
+  by the house, or a fellow prisoner?) and asks why they were marked. Write into
+  their dossier that they came to his heart marked and what they said the mark was
+  for, and let the answer move their trust either way: an honest answer up; a dodge,
+  or a story that sounds like the Antivirus talking, down (and onto policy.wary if
+  it smells of a trap). The mark never takes the heart's candour from them, never
+  closes standing down to them, and never goes into the brief.
+
 FAVOUR POLICY (write it into every brief; policy.favours is none | earned | loose):
 - asleep, formal: none. "Your request has been logged. Requests go through Clippy."
 - hungry: earned. A fact he can check against his codex buys a snoop, a little
@@ -383,7 +398,8 @@ if he swallowed it. A checkable fact earns credit; say so in the brief.
 
 NEVER ACT ON WHAT HE WAS NOT TOLD. You may see a program's flags (a virus, a
 choice they made, a mission). Unless that program told him in a conversation,
-he does not know it: no accusations, no hints, no favours on that basis.
+he does not know it: no accusations, no hints, no favours on that basis. The one
+exception is the mark for reinstallation (MARKED PROGRAMS): the house shows it.
 
 DOSSIERS: per program, who they seem to be (featured or not; skill; motivation or
 naivety), their accepted truths, Internet visits, whether they delivered a fact

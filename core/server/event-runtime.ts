@@ -80,7 +80,25 @@ import {
   type ParsedMap,
   type ProjectLink,
 } from "./house-maps.ts";
-import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, judgeFiling, judgeMode, parseFactsBook, readFactsFile, worldReader, type FactsBook, type FactsView } from "./facts.ts";
+import {
+  CONFIDENCE_MAX,
+  FACTS_FILE,
+  FactsWatch,
+  RULING_ARG,
+  RULING_WHY_ARG,
+  factsKey,
+  factsProblems,
+  judgeAnswer,
+  judgeFiling,
+  judgeMode,
+  parseFactsBook,
+  readFactsFile,
+  rulingOfArgs,
+  worldReader,
+  type FactVerdict,
+  type FactsBook,
+  type FactsView,
+} from "./facts.ts";
 import {
   AGENT_QUEUE_MAX_AGE_MS,
   AgentHub,
@@ -282,12 +300,30 @@ function hostsRoomOf(model: Sim["model"]): string | null {
 }
 
 /** The `# hosts` line after a 📝 near miss's own (`commitUnderReview`):
- *  the proposal is the near-miss rule's, and an unjudged one is credited. */
-function nearNotice(name: string, args: Record<string, string | number | boolean>, near: string | null): string | null {
+ *  the proposal is the near-miss rule's, and an unjudged one is credited.
+ *  `judge`: the story's `judge:` character was asked to rule (wave 11b). */
+export function nearNotice(name: string, args: Record<string, string | number | boolean>, near: string | null, judge: string | null = null): string | null {
   if (near === null) return null;
   const q = typeof args["question"] === "string" ? args["question"] : "?";
   const a = typeof args["answer"] === "string" ? args["answer"] : "";
+  if (judge !== null) {
+    return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate — asked ${judge} to rule. Without a ruling it is credited if nobody judges it; you can judge it yourself on Run → Mind → Judging.`;
+  }
   return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate and is credited if nobody judges it. Judge it on Run → Mind → Judging.`;
+}
+
+/** The `# hosts` line after a `judge:` character's ruling (wave 11b). */
+export function rulingNotice(judge: string, name: string, question: string, answer: string, key: string, same: boolean, verdict: FactVerdict, why: string): string {
+  const line = `🤖 ${judge} ruled ${name}'s ${question} filing "${answer}": ${same ? "the same as" : "not"} "${key}" (${verdict}).`;
+  return why === "" ? line : `${line} ${why}`;
+}
+
+/** The ruling a mutation carries for the facts ledger: a `judge:`
+ *  character's confirm signal (`by: agent:<Character>`, the ruling in its
+ *  journaled args — `rulingOfArgs`). */
+function factsRuling(m: Mutation, args: readonly unknown[], by: string | undefined): { same: boolean; why: string } | null {
+  if (m !== "signal" || by === undefined || !by.startsWith(AGENT_BY)) return null;
+  return rulingOfArgs(args[2]);
 }
 
 /** Who a mutation is done by, for the facts ledger's provenance (wave 5
@@ -572,6 +608,14 @@ export class EventRuntime {
   private factsMemo: { text: string; book: FactsBook | null } | null = null;
   private showFacts: { mtimeMs: number; book: FactsBook | null } | null = null;
   private readonly factsWatch = new FactsWatch();
+  /** Near misses already put to the `judge:` character (person, question,
+   *  answer) — never asked twice in one run of this process. */
+  private readonly rulingsAsked = new Set<string>();
+  /** Near misses a restore found still pending (person, question, answer):
+   *  the only ones put to the `judge:` character after they landed —
+   *  contract J. A near miss filed with nobody online keeps wave 11's
+   *  promise (credited at the settle) and is never asked later. */
+  private readonly rulingsDue = new Set<string>();
   private readonly random: () => number;
   /** `runPicks` re-entrancy: a pick's own signal never draws again. */
   private pickDepth = 0;
@@ -616,6 +660,7 @@ export class EventRuntime {
     hold: (req) => this.postAgentHold(req),
     busy: (req) => this.postAgentBusy(req),
     stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
+    judgeGone: () => this.pushModSnapshots(),
     now: () => this.clock(),
     presence: () => this.pushSnapshots(),
   });
@@ -1266,6 +1311,7 @@ export class EventRuntime {
    * messages, appended to the chat store, and delivered.
    */
   private fanout(events: SimEvent[], via?: string): void {
+    if (this.agents.judging.length > 0) this.dropMootRulings();
     for (const e of events) {
       if (e.type === "respond") {
         this.toPrime(e.to, "response", { text: e.text });
@@ -1359,7 +1405,15 @@ export class EventRuntime {
   /** The director's ledger (`ModView.facts`), only when a key is in force. */
   private factsView(): FactsView | undefined {
     const book = this.factsBook();
-    return book === null || this.sim === null ? undefined : this.factsWatch.view(this.sim, book);
+    if (book === null || this.sim === null) return undefined;
+    const judge = this.sim.model.judge;
+    const view = judge === null ? this.factsWatch.view(this.sim, book) : { ...this.factsWatch.view(this.sim, book), judge };
+    const asking = new Set(this.agents.judging.map((j) => `${j.filing.person}\u0000${j.filing.question}`));
+    if (asking.size === 0) return view;
+    return {
+      ...view,
+      questions: view.questions.map((q) => ({ ...q, filings: q.filings.map((f) => (asking.has(`${f.person}\u0000${f.question}`) ? { ...f, asking: true as const } : f)) })),
+    };
   }
 
   /** The project's `facts.json` as this event holds it (tests, tooling). */
@@ -1453,6 +1507,152 @@ export class EventRuntime {
     const told = room === null ? [] : this.commit("broadcast", `channel(${room})`, notice!);
     this.actingBy = actingBy;
     return [...before, ...events, ...after, ...told];
+  }
+
+  // -- rulings: the `judge:` character on near misses (wave 11b, contract J) --
+
+  /** The story's `judge:` character when a ruling may be asked now: a key
+   *  in force, `auto` mode, and a worker voicing it online and answering.
+   *  Null → wave 11's rule (the near miss waits, credited at the settle). */
+  private rulerOnline(): string | null {
+    const sim = this.sim;
+    const judge = sim?.model.judge ?? null;
+    if (sim === null || judge === null || !this.agents.canJudge(judge)) return null;
+    const book = this.factsBook();
+    if (book === null || judgeMode(book, worldReader(sim)) !== "auto") return null;
+    return judge;
+  }
+
+  /** The ledger filing (person, question) as it stands, or null. */
+  private filingOf(person: string, question: string) {
+    const book = this.factsBook();
+    if (book === null || this.sim === null) return null;
+    return this.factsWatch.all(this.sim, book.confirm).find((f) => f.person === person && f.question === question) ?? null;
+  }
+
+  /**
+   * Ask the `judge:` character to rule on `person`'s pending near miss for
+   * `question` — once per filing answer (`rulingsAsked`; a restart forgets,
+   * so a near miss still pending after a restore may be asked again). True
+   * when the `judge` frame went out.
+   */
+  private askRuling(person: string, question: string): boolean {
+    const judge = this.rulerOnline();
+    const book = this.factsBook();
+    if (judge === null || book === null) return false;
+    const f = this.filingOf(person, question);
+    if (f === null || f.final !== null) return false;
+    const key = factsKey(book, question);
+    const near = this.factsWatch.nearOf(book, question, f.answer);
+    if (key === null || near === null) return false;
+    const asked = `${person}\u0000${question}\u0000${f.answer}`;
+    if (this.rulingsAsked.has(asked)) return false;
+    if (this.agents.judging.some((j) => j.filing.person === person && j.filing.question === question)) return false;
+    const id = this.agents.judge({
+      character: judge,
+      filing: { id: `${person}:${question}`, person, name: f.name, question },
+      question: { id: key.id, text: key.text },
+      key: { answer: key.answer, aliases: key.forms.slice(1) },
+      answer: f.answer,
+      confidence: f.confidence,
+    });
+    if (id === null) return false;
+    this.rulingsAsked.add(asked);
+    this.rulingsDue.delete(asked);
+    this.pushModSnapshots();
+    return true;
+  }
+
+  /** Every near miss a restore left pending that nobody has asked about
+   *  yet (a worker just connected, the ticker): ask. Only in auto mode,
+   *  with a `judge:` and a worker that can answer. A near miss that landed
+   *  in this process with nobody to ask is never here (`rulingsDue`). */
+  private askPendingRulings(): void {
+    if (this.rulingsDue.size === 0 || this.rulerOnline() === null) return;
+    const book = this.factsBook();
+    if (book === null || this.sim === null) return;
+    for (const f of this.factsWatch.all(this.sim, book.confirm)) {
+      const due = `${f.person}\u0000${f.question}\u0000${f.answer}`;
+      if (!this.rulingsDue.has(due)) continue;
+      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) {
+        this.rulingsDue.delete(due);
+        continue;
+      }
+      this.askRuling(f.person, f.question);
+    }
+  }
+
+  /** After a restore: the near misses still pending, due a ruling. */
+  private noteRulingsDue(): void {
+    this.rulingsDue.clear();
+    const book = this.factsBook();
+    if (book === null || this.sim === null || this.sim.model.judge === null) return;
+    for (const f of this.factsWatch.all(this.sim, book.confirm)) {
+      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) continue;
+      this.rulingsDue.add(`${f.person}\u0000${f.question}\u0000${f.answer}`);
+    }
+  }
+
+  /** A ruling whose filing moved on — judged (a director first, a round's
+   *  settle) or filed again with another answer — is cancelled, so its
+   *  late answer gets a 410. */
+  private dropMootRulings(): void {
+    for (const j of this.agents.judging) {
+      const f = this.filingOf(j.filing.person, j.filing.question);
+      if (f === null || f.final !== null || f.answer !== j.answer) this.agents.cancelJudge(j.id);
+    }
+  }
+
+  /**
+   * `POST /api/agent/judge {id, worker, same, why}` — the `judge:`
+   * character's ruling on a near miss. Applied through the same journaled
+   * path as a director's Judging-card verdict (the book's confirm event on
+   * the filer, the question named), `by: agent:<Character>`, the ruling in
+   * its args so a replay rebuilds it: same → accurate; not → a lie at
+   * confidence 100, else uncertain. Then one `# hosts` line. 410 when the
+   * ruling is gone (a director judged first, it expired, a restart).
+   */
+  private agentJudge(res: ServerResponse, body: Record<string, unknown>): void {
+    const same = body["same"];
+    if (typeof same !== "boolean") {
+      sendJson(res, 400, { error: "a ruling says same: true or false" });
+      return;
+    }
+    const why = str(body, "why").trim().replace(/\s+/gu, " ").slice(0, 200).trim();
+    const gone = () => sendJson(res, 410, { error: "no such open ruling (judged already, expired, or the run restarted)" });
+    const j = this.agents.judgeSettle(str(body, "id"), str(body, "worker") || undefined);
+    const sim = this.sim;
+    const book = this.factsBook();
+    if (j === null || sim === null || book === null) {
+      gone();
+      if (j !== null) this.pushModSnapshots();
+      return;
+    }
+    const f = this.filingOf(j.filing.person, j.filing.question);
+    if (f === null || f.final !== null || f.answer !== j.answer) {
+      gone();
+      this.pushModSnapshots();
+      return;
+    }
+    const verdict: FactVerdict = same ? "accurate" : f.confidence >= CONFIDENCE_MAX ? "lie" : "uncertain";
+    const event = book.confirm[verdict];
+    const actingBy = this.actingBy;
+    this.actingBy = `${AGENT_BY}${j.character}`;
+    let events: SimEvent[];
+    try {
+      events = this.commit("signal", event, j.filing.person, { question: j.filing.question, [RULING_ARG]: same ? "same" : "not", [RULING_WHY_ARG]: why });
+      const after = this.filingOf(j.filing.person, j.filing.question);
+      const judged = after !== null && after.final !== null;
+      if (judged) {
+        const room = hostsRoomOf(sim.model);
+        const key = factsKey(book, j.filing.question)?.answer ?? j.key.answer;
+        if (room !== null) events = [...events, ...this.commit("broadcast", `channel(${room})`, rulingNotice(j.character, f.name, j.filing.question, f.answer, key, same, verdict, why))];
+      }
+      this.fanout(events);
+      sendJson(res, 200, judged ? { ok: true, verdict } : { ok: true, verdict, refused: true });
+    } finally {
+      this.actingBy = actingBy;
+    }
   }
 
   // -- agent-voiced characters ---------------------------------------------
@@ -1938,6 +2138,7 @@ export class EventRuntime {
     });
     this.agentStreams.add(res);
     this.agents.attach(worker);
+    this.askPendingRulings();
     const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
     req.on("close", () => {
       clearInterval(ping);
@@ -2574,7 +2775,7 @@ export class EventRuntime {
   private commit(m: Exclude<Mutation, "wallet">, ...args: unknown[]): SimEvent[] {
     this.flushTick();
     this.store.appendCommand(m, args, this.actingBy);
-    this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy));
+    this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy), factsRuling(m, args, this.actingBy));
     const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
     if (m === "signal") notePress(this.sim!, out); // the cue sheet judges a press by its own events
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
@@ -2870,6 +3071,7 @@ export class EventRuntime {
     this.sweepEphemeral();
     this.sweepWallet();
     this.agents.sweep();
+    this.askPendingRulings();
   }
 
   private stopTicker(): void {
@@ -2971,6 +3173,8 @@ export class EventRuntime {
     }
     this.stopTicker();
     this.agents.reset(opts.by ?? "server", kind);
+    this.rulingsAsked.clear();
+    this.rulingsDue.clear();
     this.spatial.reset(kind);
     this.agentPowerUses.clear();
     this.agentMinds.clear();
@@ -3087,7 +3291,7 @@ export class EventRuntime {
       const fn = (this.sim as unknown as Record<string, unknown>)[e.m];
       if (typeof fn === "function") {
         try {
-          this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by));
+          this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by), factsRuling(e.m, e.a, e.by));
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
           if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[]); // as `commit` did live
@@ -3133,6 +3337,7 @@ export class EventRuntime {
     this.sessions.load(entries);
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
     this.requeueAgentThreads();
+    this.noteRulingsDue();
     this.spatial.syncKing(); // the replayed world's King
     if (this.phase === "open") this.startTicker();
     // Restored with the doors paused: the re-asked requests wait out the
@@ -3477,6 +3682,14 @@ export class EventRuntime {
         return true;
       }
       this.agentReply(res, body);
+      return true;
+    }
+    if (path === "/api/agent/judge") {
+      if (opts.moderator !== true && !this.sessions.canModerate(tokenOf(req, body))) {
+        sendJson(res, 403, { error: "moderators only" });
+        return true;
+      }
+      this.agentJudge(res, body);
       return true;
     }
     if (path === "/api/agent/trace") {
@@ -3912,7 +4125,11 @@ export class EventRuntime {
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
         const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
-        this.fanout(judged?.review === true ? this.commitUnderReview(answered, nearNotice(this.sim!.persons.get(id)?.name ?? id, args, judged.near)) : answered());
+        // A near miss in auto mode: the story's `judge:` character rules on
+        // it when its worker can answer now (wave 11b) — else wave 11's rule.
+        const ruler = judged?.review === true ? this.rulerOnline() : null;
+        this.fanout(judged?.review === true ? this.commitUnderReview(answered, nearNotice(this.sim!.persons.get(id)?.name ?? id, args, judged.near, ruler)) : answered());
+        if (ruler !== null && typeof args["question"] === "string") this.askRuling(id, args["question"]);
         sendJson(res, 200, { ok: true });
         return true;
       }

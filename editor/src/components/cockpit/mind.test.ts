@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { agentQueueOf, judgeModeTitle, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
+import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
@@ -223,7 +223,7 @@ describe('judging', () => {
       ['Ben', 'Q1', 'lie', 20],
       ['Ada', 'Q1', 'accurate', 30],
     ])
-    expect(pendingFilings(view())[0]).toEqual({ person: 'g2', name: 'Ben', question: 'Q1', answer: 'twelve', confidence: 100, proposed: 'lie', final: null, at: 20, near: null })
+    expect(pendingFilings(view())[0]).toEqual({ person: 'g2', name: 'Ben', question: 'Q1', answer: 'twelve', confidence: 100, proposed: 'lie', final: null, at: 20, near: null, asking: false, ruling: null })
   })
 
   it('questionTallies: counts per question, a marked final under uncertain, consensus only when every filing is accurate at 100', () => {
@@ -276,7 +276,7 @@ describe('judging', () => {
     // verdict must not read as confirmed after a switch to review).
     expect(questionFilings(view({ ...v, mode: 'auto' }), 'Q1').find((r) => r.name === 'Ada')!.how).toBe('kept')
     expect(questionFilings(view({ ...v, mode: 'review' }), 'Q1').find((r) => r.name === 'Ada')!.how).toBe('kept')
-    expect(questionFilings(v, 'Q1')[0]).toEqual({ person: 'g2', name: 'Ben', answer: 'eleven', confidence: 100, proposed: 'lie', final: 'accurate', how: 'overridden', by: null, at: 10, near: null })
+    expect(questionFilings(v, 'Q1')[0]).toEqual({ person: 'g2', name: 'Ben', answer: 'eleven', confidence: 100, proposed: 'lie', final: 'accurate', how: 'overridden', by: null, at: 10, near: null, asking: false, ruling: null })
     expect(questionFilings(v, 'nope')).toEqual([])
     expect(questionFilings(view(), 'P1')).toEqual([])
   })
@@ -303,6 +303,45 @@ describe('judging', () => {
     expect(nearCount({ ...v, near: 3 } as FactsView)).toBe(3)
     expect(questionFilings(v, 'H2')[0]!.near).toBe('Mr. Pickles')
     expect(nearCount(view())).toBe(0)
+  })
+
+  it('rulings (wave 11b): asking while the judge is asked, then its ruling on the row, newest first, with the override buttons', () => {
+    const extra = (o: Record<string, unknown>) => o as unknown as Partial<FactsFiling>
+    const q = [
+      filing({ person: 'g1', name: 'Calculator', question: 'H2', answer: 'Mr Pickels', verdict: 'accurate', at: 1, ...extra({ near: { key: 'Mister Pickles' }, asking: true }) }),
+      filing({ person: 'g2', name: 'VLC', question: 'H2', answer: 'Mrs Pickles', verdict: 'accurate', final: 'lie', how: 'overridden', by: 'Trabolta', at: 2, ...extra({ near: { key: 'Mister Pickles' }, ruling: { by: 'Trabolta', same: false, why: 'A different cat.', at: 50 } }) }),
+      filing({ person: 'g3', name: 'Winamp', question: 'H2', answer: 'Mister Pickels', verdict: 'accurate', final: 'accurate', how: 'confirmed', by: 'Trabolta', at: 3, ...extra({ ruling: { by: 'Trabolta', same: true, why: '', at: 60 } }) }),
+      filing({ person: 'g4', name: 'Excel', question: 'H2', answer: 'x', verdict: 'lie', at: 4, ...extra({ asking: 'yes', ruling: { by: 7, same: true } }) }),
+    ]
+    const v = view({ mode: 'auto', pending: 2, questions: [{ id: 'H2', round: 1, text: 'The cat?', filings: q, tally: tally(q) }], ...({ judge: 'Trabolta' } as Partial<FactsView>) })
+    expect(pendingFilings(v).map((r) => [r.name, r.asking, r.ruling])).toEqual([
+      ['Calculator', true, null],
+      ['Excel', false, null], // a malformed ruling / asking from a confused server is none
+    ])
+    expect(askingText(v)).toBe('🤖 asking Trabolta…')
+    expect(askingText(view())).toBe('🤖 asking the judge…')
+    const ruled = ruledFilings(v)
+    expect(ruled.map((r) => [r.name, r.question, rulingText(r.ruling)])).toEqual([
+      ['Winamp', 'H2', '🤖 Trabolta: same'],
+      ['VLC', 'H2', '🤖 Trabolta: not the same — A different cat.'],
+    ])
+    // A director can still override a ruling: the usual three buttons.
+    expect(filingButtons(v, ruled[1]!).map((b) => [b.verdict, b.current])).toEqual([
+      ['accurate', false],
+      ['lie', true],
+      ['uncertain', false],
+    ])
+    expect(rulingOf(q[0]!)).toBeNull()
+    expect(askingOf(q[3]!)).toBe(false)
+  })
+
+  it('a judge thought (wave 11b) reads as its ruling', () => {
+    expect(KIND_META.judge.label).toBe('judge')
+    expect(ALL_KINDS).toContain('judge')
+    expect(summarizeThought(thought({ kind: 'judge', result: { same: true, why: 'A typo of the name.' } }))).toBe('same — A typo of the name.')
+    expect(summarizeThought(thought({ kind: 'judge', result: { same: false, why: '' } }))).toBe('not the same')
+    expect(summarizeThought(thought({ kind: 'judge', result: null, note: '' }))).toBe('no ruling')
+    expect(summarizeThought(thought({ kind: 'judge', error: 'unparseable' }))).toBe('✗ unparseable')
   })
 
   it('confirmEvent: the confirm event per verdict, null without one', () => {

@@ -24,7 +24,7 @@ import {
 } from "../parser/index.ts";
 import { Bundle, type LoomFileEntry } from "../runtime/bundle.ts";
 import { lowerRawBody } from "../runtime/sim/effects.ts";
-import { compileModel, parseCurrency, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
+import { compileModel, judgeOf, parseCurrency, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
 import { boardLineProblems, parseBoardLine } from "../runtime/sim/board.ts";
 import { parseExpr } from "../runtime/expr.ts";
 import { buildStoryGraph, type StoryGraph } from "./graph.ts";
@@ -184,6 +184,39 @@ export class Workspace {
     this.addNameLints();
     this.addCurrencyLints();
     this.addBoardLints();
+    this.addJudgeLints();
+  }
+
+  /**
+   * `L1206 JudgeUnresolved` (a warning) — the header `judge: <Character>`
+   * (wave 11b) names the agent-voiced character that rules on the facts
+   * judge's near misses. A name that is no CHARACTER, or a CHARACTER no
+   * agent voices (`mind: external`), compiles to no judge at all, so the
+   * near misses quietly wait for a director: say so. Only the first file's
+   * header is read (as with `currency:`, the first that has one wins).
+   */
+  private addJudgeLints(): void {
+    const model = this.compiled;
+    if (model === null) return;
+    for (const [uri, doc] of this.orderedDocs()) {
+      const prop = doc.file.header.properties.get("judge");
+      if (prop === undefined) continue;
+      const name = prop.value.trim();
+      if (judgeOf(model, name === "" ? null : name) !== null) return;
+      const id = name === "" ? null : model.characters.has(name) ? name : model.entityIndex.get(name);
+      const def = id === null ? undefined : model.characters.get(id);
+      const why =
+        name === ""
+          ? "names nobody"
+          : def === undefined
+            ? `names no CHARACTER (\`${name}\`)`
+            : `names ${def.id}, who is not \`mind: external\` (no agent voices it)`;
+      const d: LspDiagnostic = { range: spanToRange(prop.span), severity: DiagnosticSeverity.Warning, code: Code.L1206JudgeUnresolved, source: "loom", message: `\`judge:\` ${why}, so nobody rules on the near misses — they wait for a director on Run → Mind → Judging` };
+      const list = this.projectDiagnostics.get(uri);
+      if (list) list.push(d);
+      else this.projectDiagnostics.set(uri, [d]);
+      return;
+    }
   }
 
   /**

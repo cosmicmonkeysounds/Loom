@@ -48,6 +48,15 @@
 //! starts its next request held); once the stall ends — or the worker goes
 //! offline, where the offline rule takes over — that is forgotten.
 //!
+//! **Rulings** (wave 11b, contract J). The story header's `judge:
+//! <Character>` names an agent character that rules on the facts judge's
+//! near misses. A ruling is no request: the hub sends it as a `judge` frame
+//! to an online, unstalled worker voicing the judge (never queued, never in
+//! `AgentQueue`, never thread-bound), the worker answers
+//! `POST /api/agent/judge`, and an unanswered one expires after
+//! `AGENT_JUDGE_TIMEOUT_MS` (60 s, a pause excluded) — the runtime then
+//! keeps wave 11's fallback.
+//!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
 //! everything said meanwhile. The hub is transport-agnostic — workers are
@@ -347,7 +356,7 @@ export interface AgentThought {
   character: string;
   worker: string;
   at: number;
-  kind: "voice" | "lookup" | "reflect" | "survey" | "rerun" | "reset" | "control" | "error";
+  kind: "voice" | "lookup" | "reflect" | "survey" | "rerun" | "judge" | "reset" | "control" | "error";
   trigger: string;
   model: { name: string; api: string; endpoint: string; temperature: number | null; max_tokens: number | null; reasoning_effort: string | null; think: boolean | string | null } | null;
   request_id: string | null;
@@ -368,7 +377,7 @@ export interface AgentThought {
   note: string;
 }
 
-const THOUGHT_KINDS = new Set<AgentThought["kind"]>(["voice", "lookup", "reflect", "survey", "rerun", "reset", "control", "error"]);
+const THOUGHT_KINDS = new Set<AgentThought["kind"]>(["voice", "lookup", "reflect", "survey", "rerun", "judge", "reset", "control", "error"]);
 /** Characters kept per message / per output field on the server. */
 const THOUGHT_TEXT_MAX = 32_000;
 
@@ -663,6 +672,39 @@ interface OpenRequest {
   behind: boolean;
 }
 
+/**
+ * A **ruling** the facts judge asks of the story's `judge:` character (wave
+ * 11b, contract J): is this near-miss filing the same thing as the key?
+ * Sent as a `judge` frame on the worker's stream — never a `request`, never
+ * bound to a thread, never in the DM queue (`AgentQueue`) — and answered by
+ * `POST /api/agent/judge {id, worker, same, why}`. Carries the key, so it
+ * goes to the judge's worker only (mod-gated, like every frame); the worker
+ * keeps it out of the character's mind.
+ */
+export interface AgentJudgeRequest {
+  id: string;
+  character: string;
+  /** The filing, as the facts ledger keys it (one per person + question). */
+  filing: { id: string; person: string; name: string; question: string };
+  question: { id: string; text: string };
+  key: { answer: string; aliases: string[] };
+  answer: string;
+  confidence: number;
+  /** Server wall clock when the ruling was asked. */
+  at: number;
+}
+
+interface OpenJudge {
+  req: AgentJudgeRequest;
+  worker: string;
+  /** Hub clock when it was sent. */
+  sentAt: number;
+}
+
+/** A ruling nobody gives within this long is dropped (wave 11's fallback
+ *  then stands: the near miss waits, and is credited at the round's settle). */
+export const AGENT_JUDGE_TIMEOUT_MS = 60_000;
+
 /** One agent character's line of requests, for the director (`CastSummary.agentQueue`). */
 export interface AgentQueue {
   /** Open requests: in a worker's line, or queued in the hub. */
@@ -713,6 +755,11 @@ export interface AgentHubOptions {
   stalled?: (worker: { name: string; characters: string[] }, waiting: number) => void;
   /** Dispatch attempts before a request is given up. */
   maxAttempts?: number;
+  /** A ruling unanswered this long is dropped (`AGENT_JUDGE_TIMEOUT_MS`). */
+  judgeTimeoutMs?: number;
+  /** A ruling went unanswered: it expired, its worker left, or a restart
+   *  dropped it (the runtime refreshes the Judging card's "asking…"). */
+  judgeGone?: (req: AgentJudgeRequest, why: "expired" | "offline" | "cancelled") => void;
   now?: () => number;
 }
 
@@ -736,6 +783,8 @@ export class AgentHub {
    *  stall ends, the worker goes, or the character speaks. */
   private readonly heldThreads = new Map<string, string>();
   private dispatches = 0;
+  /** Rulings out with a worker (id →), apart from the DM requests. */
+  private readonly judges = new Map<string, OpenJudge>();
 
   private readonly o: AgentHubOptions;
 
@@ -800,6 +849,11 @@ export class AgentHub {
   /** A worker went away: its in-flight requests go back in the queue. */
   detach(workerId: string): void {
     if (!this.workers.delete(workerId)) return;
+    for (const [id, j] of [...this.judges]) {
+      if (j.worker !== workerId) continue;
+      this.judges.delete(id);
+      this.o.judgeGone?.(j.req, "offline");
+    }
     this.stalls.delete(workerId);
     this.pruneHeld();
     for (const r of this.open.values()) {
@@ -999,6 +1053,13 @@ export class AgentHub {
     const holdAfter = this.o.holdAfterMs ?? 20_000;
     const busyAfter = this.o.busyAfterMs ?? 40_000;
     const stallAfter = this.o.stallAfterMs ?? 60_000;
+    const judgeTimeout = this.o.judgeTimeoutMs ?? AGENT_JUDGE_TIMEOUT_MS;
+    for (const [id, j] of [...this.judges]) {
+      if (now - j.sentAt <= judgeTimeout) continue;
+      this.judges.delete(id);
+      this.workers.get(j.worker)?.send("cancel", { id });
+      this.o.judgeGone?.(j.req, "expired");
+    }
     const heads = new Set<OpenRequest>(); // each worker's oldest in flight
     for (const w of this.workers.values()) {
       const h = this.headOf(w.id);
@@ -1070,6 +1131,7 @@ export class AgentHub {
       r.req = { ...r.req, at: moved(r.req.at) };
     }
     for (const [w, at] of this.stalls) this.stalls.set(w, moved(at));
+    for (const j of this.judges.values()) j.sentAt = moved(j.sentAt);
   }
 
   /**
@@ -1118,6 +1180,8 @@ export class AgentHub {
     }
     this.open.clear();
     this.byThread.clear();
+    for (const [id, j] of this.judges) this.workers.get(j.worker)?.send("cancel", { id });
+    this.judges.clear();
     // A new story: no stall carried over (a still-wedged worker stalls
     // again on its first head), every thread may hear busy / hold anew.
     const wasStalled = this.stalls.size > 0;
@@ -1126,6 +1190,67 @@ export class AgentHub {
     this.heldThreads.clear();
     if (wasStalled) this.o.presence?.();
     this.control({ action: "reset", character: null, by, reason });
+  }
+
+  // -- rulings (wave 11b, contract J) ---------------------------------------
+
+  /** Could a ruling by `character` be asked right now — a worker voicing it
+   *  connected and not stalled? */
+  canJudge(character: string): boolean {
+    return this.canAnswer(character);
+  }
+
+  /**
+   * Ask `body.character` for a ruling: sent as a `judge` frame to the
+   * least-busy worker voicing it that is answering (a stalled one never
+   * gets one). Returns the ruling's id, or null when nobody can answer — the
+   * caller falls back to wave 11's rule. Never queued: a ruling is asked now
+   * or not at all.
+   */
+  judge(body: Omit<AgentJudgeRequest, "id" | "at">): string | null {
+    let best: AgentWorker | null = null;
+    let bestLoad = Infinity;
+    for (const w of this.workers.values()) {
+      if (!w.characters.has(body.character) || this.stalls.has(w.id)) continue;
+      let load = 0;
+      for (const j of this.judges.values()) if (j.worker === w.id) load += 1;
+      if (load < bestLoad) {
+        best = w;
+        bestLoad = load;
+      }
+    }
+    if (best === null) return null;
+    const id = `jr-${globalThis.crypto.randomUUID().slice(0, 8)}`;
+    const req: AgentJudgeRequest = { ...body, id, at: Date.now() };
+    this.judges.set(id, { req, worker: best.id, sentAt: this.now() });
+    best.send("judge", req);
+    return id;
+  }
+
+  /** The rulings still out (the Judging card's "asking…"). */
+  get judging(): AgentJudgeRequest[] {
+    return [...this.judges.values()].map((j) => j.req);
+  }
+
+  /** A worker answered ruling `id`: it is closed and returned, or null when
+   *  it is gone (answered, cancelled, expired, a restart) or another
+   *  worker holds it. */
+  judgeSettle(id: string, workerId?: string): AgentJudgeRequest | null {
+    const j = this.judges.get(id);
+    if (j === undefined || (workerId !== undefined && j.worker !== workerId)) return null;
+    this.judges.delete(id);
+    return j.req;
+  }
+
+  /** The ruling is moot (a director judged the filing first, it was filed
+   *  again): drop it and tell its worker, so a late answer gets a 410. */
+  cancelJudge(id: string): boolean {
+    const j = this.judges.get(id);
+    if (j === undefined) return false;
+    this.judges.delete(id);
+    this.workers.get(j.worker)?.send("cancel", { id });
+    this.o.judgeGone?.(j.req, "cancelled");
+    return true;
   }
 
   /**

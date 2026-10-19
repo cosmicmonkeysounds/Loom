@@ -2,7 +2,10 @@
 
 A character's night is a sequence of **thoughts**: the voice model
 answering a line (`voice`, plus a `lookup` round when it asked the
-session first), the orchestrator reflecting on an exchange (`reflect`)
+session first), a stateless ruling on a near-miss 📝 filing for the
+story's `judge:` (`judge`, wave 11b — the only thought whose messages
+carry an answer key; the trace is never read back into any prompt), the
+orchestrator reflecting on an exchange (`reflect`)
 or surveying the house (`survey`), a director re-running a past call to
 compare (`rerun`), and markers with no model behind them (`reset`,
 `control`, `error`). Each thought keeps the *whole* input (the messages
@@ -42,7 +45,7 @@ MAX_OUTPUT = 16_000
 #: Thoughts kept in memory per character.
 RING = 200
 
-KINDS = ("voice", "lookup", "reflect", "survey", "rerun", "reset", "control", "error")
+KINDS = ("voice", "lookup", "judge", "reflect", "survey", "rerun", "reset", "control", "error")
 
 
 @dataclass
