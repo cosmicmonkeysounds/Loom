@@ -3,8 +3,11 @@
 ## transport, never on the frame loop — a request lands on its own signal),
 ## bodies capped at [constant MAX_BYTES], one request per URL in flight,
 ## every picture cached by URL for as long as the app runs, and a failure
-## (an error, a 404, a picture Godot can't decode) remembered and never
-## retried — that ghost just stays a capsule.
+## (an error, a 404, a picture Godot can't decode) remembered and not
+## retried for the rest of the visit — that ghost just stays a capsule. A
+## new visit forgets the failures ([method forget_failures]), so a picture
+## that timed out once (the server's upstream fetch, a slow VPS) is asked
+## for again then, never in a loop.
 ##
 ## Decoded by magic bytes ([method decode]): PNG, JPEG, WebP, SVG (rendered
 ## near 256 px). GIF and AVIF have no Godot decoder: they fail. Each picture
@@ -68,6 +71,11 @@ func fetch(url: String) -> void:
 		return
 	_queue.append(url)
 	_pump()
+
+
+## A new visit: every failed URL may be fetched once more.
+func forget_failures() -> void:
+	_failed.clear()
 
 
 ## Requests out right now.

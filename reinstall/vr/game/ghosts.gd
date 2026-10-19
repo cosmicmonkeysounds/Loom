@@ -62,6 +62,18 @@ func on_frame(event: String, data: Variant) -> void:
 			clear()
 
 
+## A new visit: the pictures that failed in an earlier one are asked for
+## once more (a timeout then is no reason to leave a guest a capsule all
+## night) — for the ghosts here now, and for any that join.
+func new_visit() -> void:
+	if avatars == null:
+		return
+	avatars.forget_failures()
+	for g: Dictionary in _ghosts.values():
+		if g["url"] != "" and avatars.texture(g["url"]) == null:
+			avatars.fetch(g["url"])
+
+
 func clear() -> void:
 	for s: String in _ghosts.keys():
 		_remove(s)

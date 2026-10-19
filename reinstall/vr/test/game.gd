@@ -1125,7 +1125,7 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 
 
 ## Ghosts wear their profile pictures: fetched once per URL (two at a time,
-## deduplicated, cached, a failure never retried), shown as a head once the
+## deduplicated, cached, a failure not retried within the visit), shown as a head once the
 ## bytes land; an `avatar` frame changes it; no key → the plain capsule.
 func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
 	var g := game.ghosts
@@ -1178,6 +1178,20 @@ func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
 	_check(not g.has_picture("excel") and g.picture_url("excel") == "", "ghosts: an avatar frame with no key takes the picture off")
 	link.stream_frame.emit("avatar", {"session": "nobody", "avatar": "eeee"})
 	_check(asked.size() == 4, "ghosts: an avatar frame for no ghost fetches nothing")
+	# A new visit asks once more for what failed in an earlier one (a
+	# timeout is no reason to stay a capsule all night) — once.
+	var before := asked.size()
+	link.session_over.emit("test")
+	link.assignment_received.emit(_assignment(game.builder.house, "s-pic", true))
+	var again: Array = []
+	for i in range(before, asked.size()):
+		again.append(str(asked[i][0]))
+	_check(not g.avatars.has_failed("fixture://avatar/bbbb") and again.has("fixture://avatar/bbbb") and again.has("fixture://avatar/cccc") and not again.has("fixture://avatar/aaaa"), "ghosts: a new visit retries the failed pictures, not the cached ones (%s)" % [again])
+	for i in range(before, asked.size()):
+		(asked[i][1] as Callable).call(false, PackedStringArray(), PackedByteArray())
+	var settled := asked.size()
+	link.stream_frame.emit("join", {"player": pose.call("word3", "Word", "bbbb")})
+	_check(asked.size() == settled and g.avatars.has_failed("fixture://avatar/bbbb"), "ghosts: … and failing again, not within the visit (%d)" % asked.size())
 	link.stream_frame.emit("reset", {})
 	_check(g.count() == 0, "ghosts: a reset clears them")
 	g.avatars.requester = Callable()

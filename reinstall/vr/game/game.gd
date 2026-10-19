@@ -344,6 +344,7 @@ func _on_assignment(a: Dictionary) -> void:
 	duck.place(builder.to_world(a["duck"]["pos"]))
 	ghosts.own_session = str(a.get("session", ""))
 	ghosts.on_frame("leave", {"session": ghosts.own_session})
+	ghosts.new_visit()
 	_trail_in = 0.0
 	_found_pending = false
 	_found_retry = 0.0
