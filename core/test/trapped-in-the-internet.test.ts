@@ -2015,6 +2015,21 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(live("radio_door_opened")).toBe(true);
   });
 
+  it("wave 11: the buttons with no way back arm first, on the booth and the pass; the rest fire on one tap", () => {
+    const sim = Sim.fromSources(SRC);
+    const armed = [...sim.model.interactions.values()].filter((i) => i.arm).map((i) => i.id).sort();
+    expect(armed).toEqual([
+      "beat_the_machine", "brought_up_the_bag", "pickup_line_works", "plant_the_virus",
+      "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_opened", "radio_wrong_patch",
+    ]);
+    // No admin cue carries it: the Director already arms every cue.
+    for (const i of sim.model.interactions.values()) if (i.who === "admin") expect(i.arm, i.id).toBe(false);
+    // It rides the booth's view (the patch-bay watch's 🔌 / 💥), never an unarmed button.
+    const booth = primeView(sim, "CRA Agent Software").interactions ?? [];
+    expect(booth.find((i) => i.id === "radio_combo_a")?.arm).toBe(true);
+    expect(booth.find((i) => i.id === "send to the internet")?.arm).toBeUndefined();
+  });
+
   it("the first opening reveals the room to everyone first, then Trabolta speaks candidly in The Server Room (the server-room terminal)", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);

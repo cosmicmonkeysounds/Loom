@@ -2983,6 +2983,12 @@ INTERACTION crew_through_the_door
 // bound: it sees Night.* / self.* only, never program.* (an unbound
 // `program.x` reads false and folds the button on every card). Per-guest
 // conditions belong in the hook.
+// `arm: true` (wave 11) marks a press with no way back: one that ends the
+// night (🔌 💥 💘), trips the alarm (❌), spends The Heart (🚪), changes
+// the room for two minutes (🔧), hands over a secret (♟ the door code,
+// 🍎 The Truth File) or plays a once-a-night moment (🫘). The booth arms
+// it on the first tap and fires it on the second (the Director's arm
+// model); the server never refuses an unarmed press. Guest 💾 too.
 
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
@@ -3090,6 +3096,7 @@ INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
   by: Hosts, Antivirus
+  arm: true
   description: Hosts or Antivirus who saw the King checkmated on the door terminal when the door terminal could not report it, on the winner's card. Until truth.txt it gives them the door code (once).
 
 // The same four hardware fallbacks on the server-room Antivirus' own
@@ -3102,6 +3109,7 @@ INTERACTION radio_combo_a
   label: 🔌 Patch: Combo A is in
   who: performer
   by: CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo A on the patch-bay card. Disables Trabolta.
 
@@ -3109,6 +3117,7 @@ INTERACTION radio_combo_b
   label: 💥 Patch: Combo B is in
   who: performer
   by: CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo B on the patch-bay card. Self-destructs the computer.
 
@@ -3116,6 +3125,7 @@ INTERACTION radio_wrong_patch
   label: ❌ Patch: wrong combination
   who: performer
   by: CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Four cables in that are neither combination. The first is forgiven; the second trips the alarm.
 
@@ -3123,6 +3133,7 @@ INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
   who: performer
   by: CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Time.elapsed >= Night.crew_door_until
   description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart. Hidden inside a 🔧 crew window.
 
@@ -3130,6 +3141,7 @@ INTERACTION radio_crew_door
   label: 🔧 Crew going through the door (2 min)
   who: performer
   by: CRA Agent Software
+  arm: true
   while: Night.ended != true
   description: Before you (or the crew) open the cold door for yourselves: for 2 minutes an opening only tells # hosts, and The Heart is kept for the programs.
 
@@ -3137,6 +3149,7 @@ INTERACTION radio_beans
   label: 🫘 The printer lid is open: full of beans
   who: performer
   by: Adobe Acrobat
+  arm: true
   while: Night.printer_called == true and Night.beans != true
   description: When VLC's printer lid lifts and the beans show and the room heard nothing (the lid's sensor failed).
 
@@ -3204,6 +3217,7 @@ INTERACTION brought_up_the_bag
   label: 🍎 Brought up the Bag of Truth
   who: performer
   by: Clippy, Adobe Acrobat
+  arm: true
   while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION failed_the_bob
@@ -3223,6 +3237,7 @@ INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
   who: performer
   by: Hosts
+  arm: true
   while: Night.phase == "grok_prom" and Night.ended != true
 
 // Guest buttons (on the pass). `while:` hides one that would do nothing
@@ -3246,6 +3261,7 @@ INTERACTION back from the bathroom
 INTERACTION plant_the_virus
   label: 💾 Insert a disk into the computer
   who: guest
+  arm: true
   while: program.carries_virus == true and program.planted_virus != true
 
 // ── House rules ─────────────────────────────────────────────────────
