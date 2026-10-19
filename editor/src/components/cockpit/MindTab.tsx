@@ -44,7 +44,6 @@ import { useNow } from './director/clock'
 import {
   ALL_KINDS,
   KIND_META,
-  SLIDER_IDLE,
   VERDICT_BUTTONS,
   briefLabel,
   byLabel,
@@ -61,7 +60,8 @@ import {
   mindPhaseOf,
   personExtras,
   prefixRef,
-  sliderStep,
+  heldState,
+  sliderHold,
   phaseTitle,
   stageFromPhase,
   stagePrompt,
@@ -69,7 +69,7 @@ import {
   timingText,
   type MindControl,
   type SliderEvent,
-  type SliderState,
+  type SliderHold,
   askingText,
   ruledFilings,
   rulingText,
@@ -954,16 +954,16 @@ function DriveSlider({ mind, name, live }: { mind: AgentMindSummary; name: strin
   const control = useCockpit((s) => s.mindControl)
   // The slider's state belongs to the drive value it started from: once the
   // mirror moves (a sent value landed, or someone else set it), it lapses.
-  const [held, setHeld] = useState<{ state: SliderState; base: number } | null>(null)
-  const state = held !== null && held.base === live ? held.state : SLIDER_IDLE
+  const [held, setHeld] = useState<SliderHold | null>(null)
+  const state = heldState(held, live)
   useEffect(() => {
     if (state.sent === null) return
     const t = setTimeout(() => setHeld(null), SLIDER_GRACE_MS)
     return () => clearTimeout(t)
   }, [state.sent])
   const step = (ev: SliderEvent) => {
-    const r = sliderStep(state, ev, live)
-    setHeld(r.state.local === null ? null : { state: r.state, base: live })
+    const r = sliderHold(held, ev, live)
+    setHeld(r.held)
     if (r.send !== null) void control(asControl(driveControl(mind, name, r.send)))
   }
   const shown = state.local ?? live

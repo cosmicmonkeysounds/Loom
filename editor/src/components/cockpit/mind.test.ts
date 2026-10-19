@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
 import { Messages, MindTab, PersonFile } from './MindTab'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindChips, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, phaseTitle, prefixRef, promptMsOf, sliderStep, stageFromPhase, stagePrompt, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
+import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindChips, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, heldState, personExtras, phaseTitle, prefixRef, promptMsOf, sliderHold, sliderStep, stageFromPhase, stagePrompt, surveyButton, timingText, type SliderEvent, type SliderHold, type SliderState } from './mind'
 import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
@@ -668,6 +668,40 @@ describe('wave 12 controls', () => {
     const first = drive([{ type: 'change', value: 50 }, { type: 'pointerup' }], 70)
     expect(drive([{ type: 'change', value: 55 }, { type: 'pointerup' }], 70, first.state).sends).toEqual([55])
     expect(drive([{ type: 'change', value: 50 }, { type: 'pointerup' }], 70, first.state).sends).toEqual([])
+  })
+
+  /** DriveSlider's whole loop but the grace timer: each step is one event
+   *  at the mirrored value `live` the component would render with. */
+  function slide(steps: Array<[SliderEvent, number]>): { sends: number[]; held: SliderHold | null } {
+    let held: SliderHold | null = null
+    const sends: number[] = []
+    for (const [ev, live] of steps) {
+      const r = sliderHold(held, ev, live)
+      held = r.held
+      if (r.send !== null) sends.push(r.send)
+    }
+    return { sends, held }
+  }
+  const change = (value: number): SliderEvent => ({ type: 'change', value })
+
+  it('DriveSlider: one drag, then the mirror landing, sends one control and goes idle', () => {
+    const drag = Array.from({ length: 145 }, (_, i): [SliderEvent, number] => [change(70 - Math.round((i * 30) / 144)), 70])
+    const { sends, held } = slide([...drag, [{ type: 'pointerup' }, 70], [{ type: 'blur' }, 70]])
+    expect(sends).toEqual([40])
+    expect(heldState(held, 70)).toEqual({ local: 40, sent: 40 })
+    // The worker's mirror echoes 40: the hold lapses and the slider shows the mirror.
+    expect(heldState(held, 40)).toEqual(SLIDER_IDLE)
+    expect(sliderHold(held, { type: 'blur' }, 40)).toEqual({ held: null, send: null })
+  })
+  it('DriveSlider: a mirror that moves under a drag drops the stale hold', () => {
+    // Someone else sets the drive to 55 mid-drag; the director's next move
+    // starts from there and its release sends once.
+    const r = slide([[change(65), 70], [change(60), 70], [change(58), 55], [{ type: 'pointerup' }, 55], [{ type: 'blur' }, 55]])
+    expect(r.sends).toEqual([58])
+    // A release landing right after the mirror moved away sends nothing stale.
+    expect(slide([[change(65), 70], [{ type: 'pointerup' }, 55]]).sends).toEqual([])
+    // Dragging back to where the mirror already is sends nothing and idles.
+    expect(slide([[change(65), 70], [change(70), 70], [{ type: 'pointerup' }, 70]])).toEqual({ sends: [], held: null })
   })
 })
 

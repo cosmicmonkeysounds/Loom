@@ -844,6 +844,27 @@ export function sliderStep(state: SliderState, ev: SliderEvent, live: number): {
   return { state: { local: state.local, sent: state.local }, send: state.local }
 }
 
+/** A drive slider's state, tied to the mirrored drive value it started
+ *  from: once the mirror moves (the sent value landed, or someone else set
+ *  the drive), the hold lapses and the slider shows the mirror again. */
+export interface SliderHold {
+  state: SliderState
+  base: number
+}
+
+/** The slider state in force for this mirrored value. */
+export function heldState(held: SliderHold | null, live: number): SliderState {
+  return held !== null && held.base === live ? held.state : SLIDER_IDLE
+}
+
+/** One slider event against the hold: the next hold (null = idle) and the
+ *  value to send, if any. This is all of DriveSlider's logic but the grace
+ *  timer, which drops a hold whose sent value the mirror never echoed. */
+export function sliderHold(held: SliderHold | null, ev: SliderEvent, live: number): { held: SliderHold | null; send: number | null } {
+  const r = sliderStep(heldState(held, live), ev, live)
+  return { held: r.state.local === null ? null : { state: r.state, base: live }, send: r.send }
+}
+
 export function driveControl(mind: AgentMindSummary, name: string, value: number): MindControl {
   return { action: 'set', character: mind.character, field: 'drive', name, value }
 }
