@@ -149,6 +149,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.stream_frame.connect(ghosts.on_frame)
 	link.king_changed.connect(_on_king_changed)
 	link.king_hit_answered.connect(_on_king_hit_answered)
+	ghosts.url_of = link.avatar_url
 
 	lobby.set_station(link.station_name())
 	lobby.set_status(link.status)

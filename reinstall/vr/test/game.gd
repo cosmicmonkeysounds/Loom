@@ -4,7 +4,7 @@
 ## (`res://test/golden/`, copied by `pnpm --filter @loom/house sync`) at
 ## 1e-3; the rest covers what has no golden: frames, the duck pick,
 ## locomotion maths, config precedence, the pose pump, the SSE parser, the
-## lobby picker, the King's reach + his doors, the
+## lobby picker, the King's reach + his doors, the picture decoder, the
 ## game state machine (with a fake link) and a smoke test that `main.tscn`
 ## builds the house.
 ##
@@ -37,6 +37,7 @@ func _run() -> void:
 	_test_frames()
 	_test_duck()
 	_test_king_rules()
+	_test_avatar_decode()
 	_test_config()
 	_test_sse_parser()
 	_test_pose_pump()
@@ -322,6 +323,41 @@ func _test_king_rules() -> void:
 	_check(st.get("hp") == 0 and st.get("max") == 15 and st.get("fallen") == true and st.get("by") == "Ada", "king state: hp 0 is fallen whatever the flag (%s)" % [st])
 	_check(not HouseKing.changed(st, HouseKing.state_of({"id": "k", "hp": 0, "max": 15, "fallen": true, "by": null})), "king state: who did it isn't a change")
 	_check(HouseKing.changed({}, st) and HouseKing.changed(st, {}) and not HouseKing.changed({}, {}), "king state: appearing and going are changes")
+
+
+## A tiny picture of each kind, by magic bytes (the fixtures are drawn here:
+## no binary files in the repo).
+func _test_avatar_decode() -> void:
+	var src := Image.create(4, 3, false, Image.FORMAT_RGBA8)
+	src.fill(Color(0.2, 0.4, 0.8))
+	var png := src.save_png_to_buffer()
+	var jpg := src.save_jpg_to_buffer()
+	var webp := src.save_webp_to_buffer()
+	var svg := '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="5" fill="#d4af37"/></svg>'.to_utf8_buffer()
+	var bom := PackedByteArray([0xEF, 0xBB, 0xBF, 0x0A, 0x20])
+	bom.append_array(svg)
+	var gif := "GIF89a".to_ascii_buffer()
+	gif.append_array(PackedByteArray([1, 0, 1, 0, 0, 0, 0]))
+	var avif := PackedByteArray([0, 0, 0, 0x1C])
+	avif.append_array("ftypavif".to_ascii_buffer())
+	_check(AvatarCache.sniff(png) == "png" and AvatarCache.sniff(jpg) == "jpeg" and AvatarCache.sniff(webp) == "webp", "avatar: png / jpeg / webp by magic bytes")
+	_check(AvatarCache.sniff(svg) == "svg" and AvatarCache.sniff(bom) == "svg", "avatar: an svg starts with < (after a BOM and whitespace)")
+	_check(AvatarCache.sniff("not a picture".to_utf8_buffer(), "image/svg+xml") == "svg", "avatar: … or is served as image/svg+xml")
+	_check(AvatarCache.sniff(gif) == "gif" and AvatarCache.sniff(avif) == "avif" and AvatarCache.sniff("hello".to_utf8_buffer()) == "", "avatar: gif / avif / junk are told apart")
+	var p := AvatarCache.decode(png)
+	_check(p != null and p.get_width() == 4 and p.get_height() == 3, "avatar: a png decodes")
+	_check(AvatarCache.decode(jpg) != null and AvatarCache.decode(webp) != null, "avatar: a jpeg and a webp decode")
+	var s := AvatarCache.decode(bom)
+	_check(s != null and maxi(s.get_width(), s.get_height()) >= 128 and maxi(s.get_width(), s.get_height()) <= 512, "avatar: a sizeless svg renders near 256 px (%s)" % [s.get_size() if s != null else null])
+	_check(AvatarCache.decode(gif) == null and AvatarCache.decode(avif) == null, "avatar: gif and avif stay on the capsule")
+	_check(AvatarCache.decode("hello".to_utf8_buffer()) == null and AvatarCache.decode(PackedByteArray()) == null, "avatar: junk and nothing decode to nothing")
+	var broken := png.slice(0, 20)
+	_check(AvatarCache.decode(broken) == null, "avatar: a truncated png is nothing")
+	var t := AvatarCache.tile_of(p)
+	_check(t.get_width() == AvatarCache.TILE and t.get_height() == AvatarCache.TILE and t.has_mipmaps(), "avatar: the head is a square, mipmapped tile")
+	_check(t.get_pixel(0, 0) == Color.WHITE and t.get_pixel(AvatarCache.TILE - 1, AvatarCache.TILE - 1) == Color.BLACK, "avatar: … bevelled light top-left, dark bottom-right")
+	var mid: Color = t.get_pixel(AvatarCache.TILE / 2, AvatarCache.TILE / 2)
+	_check(mid.b > 0.6 and mid.r < 0.4, "avatar: … with the picture in the middle (%s)" % mid)
 
 
 # --- net ---------------------------------------------------------------------
@@ -1037,6 +1073,65 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 # --- main.tscn + the game, with a fake link --------------------------------------
 
 
+## Ghosts wear their profile pictures: fetched once per URL (two at a time,
+## deduplicated, cached, a failure never retried), shown as a head once the
+## bytes land; an `avatar` frame changes it; no key → the plain capsule.
+func _test_ghost_pictures(game: Game, link: LinkBase) -> void:
+	var g := game.ghosts
+	var asked: Array = []  # [url, done]
+	g.avatars.requester = func(url: String, done: Callable) -> void: asked.append([url, done])
+	var src := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	src.fill(Color(0.9, 0.1, 0.1))
+	var png := src.save_png_to_buffer()
+	var ok_headers := PackedStringArray(["Content-Type: image/png"])
+	var pose := func(sid: String, name: String, avatar: Variant) -> Dictionary:
+		var p := {"session": sid, "name": name, "p": [0.0, 0.0, 1.0], "yaw": 0.0, "pitch": 0.0}
+		if avatar != null or sid == "nokey":
+			p["avatar"] = avatar
+		return p
+	link.stream_frame.emit("hello", {"eventId": "e", "houseVersion": "test", "players": [
+		pose.call("excel", "Excel", "aaaa"), pose.call("word", "Word", "bbbb"), pose.call("paint", "MS Paint", "cccc"),
+		pose.call("nokey", "Persona", null), pose.call("old", "Old Server", null),
+	]})
+	_check(g.count() == 5 and g.picture_url("excel") == "fixture://avatar/aaaa", "ghosts: a ghost's avatar key names its picture (%s)" % g.picture_url("excel"))
+	_check(g.picture_url("nokey") == "" and g.picture_url("old") == "" and not g.has_picture("nokey") and not g.has_picture("old"), "ghosts: no key (null, or an old server's missing field) → the plain capsule")
+	_check(asked.size() == 2 and g.avatars.in_flight() == 2, "ghosts: two picture requests at a time (%d)" % asked.size())
+	_check(not g.has_picture("excel"), "ghosts: … no head before the bytes land")
+	(asked[0][1] as Callable).call(true, ok_headers, png)
+	_check(g.has_picture("excel"), "ghosts: the picture lands as a head")
+	var pic: Sprite3D = null
+	for c in g.get_children():
+		if c.get_node_or_null("Picture") != null:
+			pic = c.get_node("Picture")
+	_check(pic != null and pic.billboard == BaseMaterial3D.BILLBOARD_ENABLED and _near(pic.pixel_size * AvatarCache.TILE, Ghosts.PICTURE_SIZE) and pic.texture.get_width() == AvatarCache.TILE, "ghosts: … a billboard square, %.2f m" % Ghosts.PICTURE_SIZE)
+	_check(asked.size() == 3 and str(asked[2][0]) == "fixture://avatar/cccc", "ghosts: the third request goes once one lands")
+	(asked[1][1] as Callable).call(false, PackedStringArray(), PackedByteArray())  # word: a 404
+	var gif := "GIF89a".to_ascii_buffer()
+	gif.append_array(PackedByteArray([1, 0, 1, 0, 0]))
+	(asked[2][1] as Callable).call(true, PackedStringArray(["Content-Type: image/gif"]), gif)  # paint: a GIF
+	_check(not g.has_picture("word") and not g.has_picture("paint") and g.avatars.has_failed("fixture://avatar/bbbb") and g.avatars.has_failed("fixture://avatar/cccc"), "ghosts: a failed or undecodable picture leaves the capsule")
+
+	# The same key again: cached (no request, at once); a failed one: never retried.
+	link.stream_frame.emit("join", {"player": pose.call("excel2", "Excel", "aaaa")})
+	link.stream_frame.emit("join", {"player": pose.call("word2", "Word", "bbbb")})
+	_check(asked.size() == 3 and g.has_picture("excel2") and not g.has_picture("word2"), "ghosts: a cached picture shows at once, a failed one isn't fetched again (%d)" % asked.size())
+	link.stream_frame.emit("poses", {"t": 2, "players": [{"session": "excel", "p": [1.0, 0.0, 1.0], "yaw": 0.0, "pitch": 0.0}]})
+	_check(g.has_picture("excel"), "ghosts: a pose without the field keeps the picture")
+
+	# `avatar` frames: a new picture, none, and one for a stranger.
+	link.stream_frame.emit("avatar", {"session": "nokey", "avatar": "dddd"})
+	_check(g.picture_url("nokey") == "fixture://avatar/dddd" and asked.size() == 4, "ghosts: an avatar frame fetches the new picture")
+	(asked[3][1] as Callable).call(true, ok_headers, png)
+	_check(g.has_picture("nokey"), "ghosts: … and wears it")
+	link.stream_frame.emit("avatar", {"session": "excel", "avatar": null})
+	_check(not g.has_picture("excel") and g.picture_url("excel") == "", "ghosts: an avatar frame with no key takes the picture off")
+	link.stream_frame.emit("avatar", {"session": "nobody", "avatar": "eeee"})
+	_check(asked.size() == 4, "ghosts: an avatar frame for no ghost fetches nothing")
+	link.stream_frame.emit("reset", {})
+	_check(g.count() == 0, "ghosts: a reset clears them")
+	g.avatars.requester = Callable()
+
+
 ## The shared King in the game: the bar, the approach notice, the hit (near
 ## and facing, once per visit, every answer), the fall for everyone (kneels,
 ## the door opens for the body and the trail) and the restore.
@@ -1448,6 +1543,7 @@ func _test_main_and_game() -> void:
 	link.stream_frame.emit("poses", {"t": 1, "players": [{"session": "other", "p": [2.0, 0.0, 1.0], "yaw": 90.0, "pitch": 0.0}]})
 	link.stream_frame.emit("leave", {"session": "other", "reason": "ended"})
 	_check(game.ghosts.count() == 0, "game: a leave removes the ghost")
+	_test_ghost_pictures(game, link)
 
 	# Is-at-duck: plan radius 0.9 on the duck's own floor.
 	var ground_duck := [0.5, 0.0, 4.25]

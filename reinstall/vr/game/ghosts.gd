@@ -1,20 +1,42 @@
 ## Other players as ghosts (§2.2 stream → `hello` / `join` / `poses` /
-## `found` / `leave` / `reset`): a translucent teal capsule with a visor
-## showing where they look and a name tag, eased toward each new pose. Our
-## own session is skipped. Poses arrive in house coordinates; [member
-## builder] maps them into the VR world.
+## `found` / `leave` / `reset` / `avatar`): a translucent teal capsule with
+## a visor showing where they look and a name tag, eased toward each new
+## pose. A guest with a profile picture (`avatar`: the avatar key) also
+## wears it as a head — a Win98-bevelled billboard square over the capsule
+## ("Picture"), fetched through [member avatars]; no key, or a picture that
+## won't load, leaves the plain capsule. Our own session is skipped. Poses
+## arrive in house coordinates; [member builder] maps them into the VR world.
 class_name Ghosts
 extends Node3D
 
 ## Seconds to ease halfway toward a new pose (~10 Hz updates).
 const EASE := 0.06
+## The picture head: its side (m) and its centre's height; the name tag
+## rises above it.
+const PICTURE_SIZE := 0.42
+const PICTURE_Y := 1.78
+const TAG_Y := 1.85
+const TAG_Y_PICTURE := 2.1
 
 var builder: HouseBuilder
 ## Our own session id (never drawn).
 var own_session := ""
 
-## session → {node, target: Vector3, yaw: float, name}
+## Avatar key → picture URL ("" = none to fetch): [method LinkBase.avatar_url].
+var url_of: Callable = func(_key: String) -> String: return ""
+## The picture fetcher (made on first use when not given).
+var avatars: AvatarCache
+
+## session → {node, target: Vector3, yaw: float, url: String}
 var _ghosts := {}
+
+
+func _ready() -> void:
+	if avatars == null:
+		avatars = AvatarCache.new()
+		avatars.name = "Avatars"
+		add_child(avatars)
+	avatars.loaded.connect(_on_picture)
 
 
 func on_frame(event: String, data: Variant) -> void:
@@ -32,6 +54,10 @@ func on_frame(event: String, data: Variant) -> void:
 				_upsert(p)
 		"leave":
 			_remove(str(d.get("session", "")))
+		"avatar":
+			var sid := str(d.get("session", ""))
+			if _ghosts.has(sid):
+				_set_avatar(sid, d.get("avatar"))
 		"reset":
 			clear()
 
@@ -59,13 +85,74 @@ func _upsert(p: Dictionary) -> void:
 		var node := _make(str(p.get("name", "")))
 		add_child(node)
 		node.global_position = pos
-		_ghosts[sid] = {"node": node, "target": pos, "yaw": yaw}
+		_ghosts[sid] = {"node": node, "target": pos, "yaw": yaw, "url": ""}
+		_set_avatar(sid, p.get("avatar"))
 		return
 	var g: Dictionary = _ghosts[sid]
 	g["target"] = pos
 	g["yaw"] = yaw
 	if p.has("name"):
 		(g["node"].get_node("Tag") as Label3D).text = str(p["name"])
+	if p.has("avatar"):
+		_set_avatar(sid, p["avatar"])
+
+
+## A ghost's avatar key (`null` / "" = none): fetch its picture, show it
+## once it lands (at once when cached), or back to the plain capsule.
+func _set_avatar(sid: String, key: Variant) -> void:
+	var g: Dictionary = _ghosts[sid]
+	var url: String = str(url_of.call(str(key))) if key is String and str(key) != "" else ""
+	if url == g["url"]:
+		return
+	g["url"] = url
+	_show_picture(g["node"], null)
+	if url == "" or avatars == null:
+		return
+	var tex := avatars.texture(url)
+	if tex != null:
+		_show_picture(g["node"], tex)
+	else:
+		avatars.fetch(url)
+
+
+func _on_picture(url: String, tex: Texture2D) -> void:
+	for g: Dictionary in _ghosts.values():
+		if g["url"] == url:
+			_show_picture(g["node"], tex)
+
+
+## Put `tex` on the ghost's head (null: take it off).
+func _show_picture(node: Node3D, tex: Texture2D) -> void:
+	var pic := node.get_node_or_null("Picture") as Sprite3D
+	var tag := node.get_node("Tag") as Label3D
+	if tex == null:
+		if pic != null:
+			node.remove_child(pic)
+			pic.queue_free()
+		tag.position.y = TAG_Y
+		return
+	if pic == null:
+		pic = Sprite3D.new()
+		pic.name = "Picture"
+		pic.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		pic.shaded = false
+		pic.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		pic.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		pic.position.y = PICTURE_Y
+		node.add_child(pic)
+	pic.texture = tex
+	pic.pixel_size = PICTURE_SIZE / float(maxi(1, maxi(tex.get_width(), tex.get_height())))
+	tag.position.y = TAG_Y_PICTURE
+
+
+## The URL a ghost's picture is (or would be) from ("" = none).
+func picture_url(session: String) -> String:
+	return str(_ghosts[session]["url"]) if _ghosts.has(session) else ""
+
+
+## Whether a ghost wears its picture.
+func has_picture(session: String) -> bool:
+	return _ghosts.has(session) and (_ghosts[session]["node"] as Node).get_node_or_null("Picture") != null
 
 
 func _remove(sid: String) -> void:
@@ -107,7 +194,7 @@ func _make(display: String) -> Node3D:
 	var tag := HouseLook.label(display, 0.1, HouseLook.TEAL_GLOW)
 	tag.name = "Tag"
 	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	tag.position.y = 1.85
+	tag.position.y = TAG_Y
 	root.add_child(tag)
 	return root
 
