@@ -146,6 +146,8 @@ func setup(l: LinkBase, xr: bool) -> void:
 		autopilot = Autopilot.new()
 		player.read_input = false
 		print("autopilot: on — waiting for an assignment")
+		ghosts.avatars.loaded.connect(func(url: String, tex: Texture2D) -> void:
+			print("autopilot: a ghost's picture landed — %s (%d px)" % [url, tex.get_width()]))
 
 	link.status_changed.connect(lobby.set_status)
 	link.assignment_received.connect(_on_assignment)
