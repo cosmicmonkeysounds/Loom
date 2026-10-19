@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
 import { Messages, MindTab, PersonFile } from './MindTab'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
+import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, byTitle, isDirectorBy, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindChips, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
 import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
@@ -722,6 +722,11 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).not.toContain('the house&#x27;s trust')
     expect(html).not.toContain('data-testid="mind-mode"')
     expect(html).not.toContain('(prompt ')
+    // The story mind's kinds get no chip on an old worker's trace.
+    expect(html).toContain('data-testid="mind-kind-voice"')
+    expect(html).toContain('data-testid="mind-kind-reflect"')
+    expect(html).not.toContain('data-testid="mind-kind-brief"')
+    expect(html).not.toContain('data-testid="mind-kind-summary"')
   })
   it('renders a new-mode report: Rewrite brief, the story mind, by-story labels, the house\'s trust and ⛔', () => {
     const html = render({ minds: [newModeReport()], thoughts: [wide({ kind: 'brief', result: { brief: 'Be delighted.' }, prompt_ms: 300 })] })
@@ -745,6 +750,15 @@ describe('Mind page fixtures (wave 12)', () => {
     expect(html).not.toContain('trust 50/100')
     expect(html).toContain('rewrote the brief: “Be delighted.”')
     expect(html).toContain('1.2 s (prompt 300 ms)')
+    expect(html).toContain('data-testid="mind-kind-brief"')
+    expect(html).toContain('data-testid="mind-kind-summary"')
+  })
+  it('a brief or summary chip shows on any worker once such a thought is loaded', () => {
+    expect(kindChips([thought()], false)).not.toContain('brief')
+    expect(kindChips([thought()], false)).toEqual(ALL_KINDS.filter((k) => k !== 'brief' && k !== 'summary'))
+    expect(kindChips([wide({ kind: 'summary' })], false)).toContain('summary')
+    expect(kindChips([wide({ kind: 'summary' })], false)).not.toContain('brief')
+    expect(kindChips([], true)).toEqual(ALL_KINDS)
   })
   it('names a director who edited an old worker\'s mind: set by director, the name on hover', () => {
     const rev = (n: number, by: string, touched: string[]) => ({ rev: n, at: 100 + n, by, touched, thought: null, brief: '', mood: '', stage: 'appetite', drives: {}, policy_favours: 'earned', notes: 0, people: 1, learned: 0 })

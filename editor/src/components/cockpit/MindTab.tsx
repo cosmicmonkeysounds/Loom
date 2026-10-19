@@ -54,6 +54,7 @@ import {
   favoursControl,
   fetchThought,
   isNewMind,
+  kindChips,
   kindMeta,
   localPrefix,
   memoLabel,
@@ -187,7 +188,7 @@ function MindDebugger() {
           {selectedThought !== null ? (
             <ThoughtDetail thought={selectedThought} onBack={() => setSelected(null)} onOpenThought={setSelected} />
           ) : (
-            <TraceList character={character} thoughts={thoughts} onOpen={setSelected} />
+            <TraceList character={character} thoughts={thoughts} fresh={isNewMind(mind)} onOpen={setSelected} />
           )}
         </div>
       </div>
@@ -1261,12 +1262,13 @@ function Revisions({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThou
 // The trace
 // ---------------------------------------------------------------------------
 
-function TraceList({ character, thoughts, onOpen }: { character: string | null; thoughts: AgentThought[]; onOpen: (id: string) => void }) {
+function TraceList({ character, thoughts, fresh, onOpen }: { character: string | null; thoughts: AgentThought[]; fresh: boolean; onOpen: (id: string) => void }) {
   const [kinds, setKinds] = useState<Set<string>>(() => new Set(ALL_KINDS))
   const [person, setPerson] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const rows = useMemo(() => filterThoughts(thoughts, { character, kinds, person, query }), [thoughts, character, kinds, person, query])
   const speakers = useMemo(() => speakersOf(thoughts, character), [thoughts, character])
+  const chips = useMemo(() => kindChips(thoughts, fresh), [thoughts, fresh])
   const toggle = (k: string) =>
     setKinds((prev) => {
       const n = new Set(prev)
@@ -1277,7 +1279,7 @@ function TraceList({ character, thoughts, onOpen }: { character: string | null; 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="mind-trace">
       <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
-        {ALL_KINDS.map((k) => (
+        {chips.map((k) => (
           <button
             key={k}
             onClick={() => toggle(k)}

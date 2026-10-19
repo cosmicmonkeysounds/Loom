@@ -38,6 +38,18 @@ export const KIND_META: Record<string, KindMeta> = {
 
 export const ALL_KINDS: string[] = Object.keys(KIND_META)
 
+/** The kinds only the story mind records (C6.7). */
+const NEW_MIND_KINDS: ReadonlySet<string> = new Set(['brief', 'summary'])
+
+/** The trace's filter chips: every kind an old worker had, plus the story
+ *  mind's `brief` / `summary` only on a story-mind worker or once a loaded
+ *  thought has that kind — so an old worker's trace reads as it always did. */
+export function kindChips(thoughts: readonly AgentThought[], fresh: boolean): string[] {
+  if (fresh) return ALL_KINDS
+  const seen = new Set(thoughts.map((t) => t.kind as string))
+  return ALL_KINDS.filter((k) => !NEW_MIND_KINDS.has(k) || seen.has(k))
+}
+
 /** A kind's label, falling back to the kind itself in neutral ink. */
 export function kindMeta(kind: string): KindMeta {
   return KIND_META[kind] ?? { label: kind, who: 'mind', color: '#a1a1aa' }
