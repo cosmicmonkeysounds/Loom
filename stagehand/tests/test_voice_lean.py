@@ -665,3 +665,34 @@ def test_classic_layout_without_a_mind_says_so_in_the_thought():
     trace = Trace()
     run(answer_lean(P, MODEL, request(), context(options=VoiceOptions(layout="classic")), model, trace=trace))
     assert "classic layout without a mind" in trace.all("Trabolta")[0].note
+
+
+def test_a_power_a_situation_names_is_never_live_in_p2_and_counted_only_in_its_situation():
+    """Integration (C × W1): the show's stand_down is live from the Y2K hour to
+    truth.txt, but only STANDING DOWN (at his heart) offers it. P2 is the same
+    for every speaker, so it never lists it; P3 counts its use only there."""
+    from stagehand.agents.persona import Situation
+    from stagehand.conditions import Condition
+
+    standing = Situation(when=Condition("them.at_the_heart == true"), prompt="STANDING DOWN. Fire stand_down only here.", name="standing down")
+    p = persona(situations=(standing,), powers=("snoop", "stand_down"))
+    powers = [dict(POWERS[0]), {"id": "stand_down", "label": "Offer to stand down", "description": "end it", "limit": 1, "used": 0}]
+    ctx = context(phase=replace(context().phase, live_powers=("stand_down",)))
+    away = request(powers=powers)
+    p2 = render_p2(p, away, ctx)
+    assert "Live powers now: none." in p2 and "stand_down" not in p2
+    assert "stand_down" not in render_p3(p, away, ctx)  # no uses-left line away from the heart
+    heart = request(powers=powers, them={**away["them"], "vars": {**away["them"]["vars"], "at_the_heart": "true"}})
+    assert render_p2(p, heart, ctx) == p2  # P2 never depends on the speaker
+    p3 = render_p3(p, heart, ctx)
+    assert "Uses left tonight: stand_down 1 of 1" in p3 and "STANDING DOWN" in p3
+    # Still in the static catalogue (P1), still fireable: the story decides.
+    assert "- stand_down: end it" in render_p1(p, heart)
+
+
+def test_the_shipped_persona_keeps_stand_down_out_of_p2_on_the_final_reveal():
+    shipped = load_persona(str(SHOW / "trabolta.persona.md"))
+    powers = [{"id": "stand_down", "label": "Offer to stand down", "description": "end it", "limit": 1, "used": 0}, {"id": "assess", "label": "Assess", "description": "rate them", "limit": None, "used": 0}]
+    ctx = context(phase=replace(context().phase, phase="bobbing", live_powers=("assess", "stand_down"), tell=()))
+    req = request(powers=powers, world={"Night.phase": "bobbing", "Night.step": "16", "Night.lj_reader": "none"})
+    assert "Live powers now: assess" in render_p2(shipped, req, ctx) and "stand_down" not in render_p2(shipped, req, ctx)

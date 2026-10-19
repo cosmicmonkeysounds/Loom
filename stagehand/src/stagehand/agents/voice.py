@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
@@ -165,6 +166,27 @@ def _live_ids(persona: Persona, req: dict[str, Any], phase: PhaseView) -> list[s
     return out
 
 
+def situation_powers(persona: Persona, req: dict[str, Any]) -> set[str]:
+    """Allowed power ids that a persona situation names in its prompt (the
+    show's `stand_down`, in STANDING DOWN). Such a power belongs to its
+    situation: P2's "Live powers now" never lists it (P2 is the same for every
+    speaker), and P3's uses-left line counts it only while one of the
+    situations naming it holds. It stays fireable: the story decides."""
+    if not persona.situations:
+        return set()
+    out: set[str] = set()
+    for p in _catalogue(persona, req):
+        pid = str(p.get("id", ""))
+        if pid and any(re.search(rf"(?<![A-Za-z0-9_]){re.escape(pid)}(?![A-Za-z0-9_])", s.prompt) for s in persona.situations):
+            out.add(pid)
+    return out
+
+
+def _situation_held(persona: Persona, req: dict[str, Any], pid: str) -> bool:
+    pattern = rf"(?<![A-Za-z0-9_]){re.escape(pid)}(?![A-Za-z0-9_])"
+    return any(re.search(pattern, s.prompt) for s in matching_situations(persona, req))
+
+
 def _wary(req: dict[str, Any], phase: PhaseView) -> list[str]:
     out = [w for w in phase.wary if isinstance(w, str) and w.strip()]
     reader = str(_world(req).get("Night.lj_reader") or "").strip()
@@ -206,7 +228,8 @@ def render_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     if phase.drives:
         order = [d for d in persona.drives if d in phase.drives] + [d for d in phase.drives if d not in persona.drives]
         lines.append("Your drives (0–100): " + ", ".join(f"{d} {phase.drives[d]}" for d in order))
-    live = _live_ids(persona, req, phase)
+    gated = situation_powers(persona, req)
+    live = [pid for pid in _live_ids(persona, req, phase) if pid not in gated]
     lines.append(f"Live powers now: {', '.join(live)}" if live else "Live powers now: none.")
     wary = _wary(req, phase)
     if wary:
@@ -243,7 +266,10 @@ def _live_state(persona: Persona, req: dict[str, Any], live: list[str]) -> str:
             lines.append(f"{path}: {world[path]}")
     uses = []
     by_id = {str(p.get("id", "")): p for p in _catalogue(persona, req)}
+    gated = situation_powers(persona, req)
     for pid in live:
+        if pid in gated and not _situation_held(persona, req, pid):
+            continue  # its situation's block is not in this prompt
         p = by_id.get(pid) or {}
         limit = p.get("limit")
         if isinstance(limit, (int, float)) and not isinstance(limit, bool):

@@ -424,4 +424,4 @@ INTERACTION stand_down
   label: Offer to stand down
   who: agent
   limit: 1
-  description: Fire this only when the program you are talking to at your heart (them.at_the_heart is true) has truly shown you that what you want is impossible, that she can never answer you. You only offer; the humans decide. No args. Only during the Y2K hour, only for a program at your heart, once a night.
+  description: Fire this only when the program you are talking to at your heart (them.at_the_heart is true) has truly shown you that what you want is impossible, that she can never answer you. You only offer; the humans decide. No args. Only from the Y2K hour until truth.txt is read, only for a program at your heart, once a night.
