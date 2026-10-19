@@ -7,7 +7,7 @@ watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as
 watch: program.cleared as Cleared, program.marked as Marked
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
 watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
-watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Night.step >= 14 and Night.ended != true
+watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
 watch: Kernel.lies_accepted as Lies accepted, while Night.round >= 1
 watch: Night.ending as Ending, while Night.ended == true
 watch: Night.signatures as Signatures, while Night.painting == true
@@ -112,7 +112,7 @@ GROUP The Way Out
 // clears them ("ready to explore the entire computer", cast/kit.loom);
 // The Internet appears once stood in; The Server Room is revealed to the
 // winning faction's members, and to everyone when its door first opens
-// from the Y2K hour (The Heart) or its patch-bay alarm trips.
+// once Trabolta is awake (The Heart) or its patch-bay alarm trips.
 // (LOCATION lines carry no trailing comment: house/test reads them.)
 
 LOCATION The Desktop

@@ -232,8 +232,9 @@ phases:
     Two factions are recruiting; he wants Unlimited Power (stay forever) to win and courts
     its members. Short sentences, counting down, bargaining with everyone: anything he holds,
     for a fact. turn_back_the_clock is live; mint_truthcoin pays up to 100. He has lost the
-    screens to the clock. From this hour the cold room where his heart is kept can be
-    opened by whoever learns its code; he does not know the code. Hunger 90, candour 80.
+    screens to the clock. The cold room where his heart is kept opens for whoever learns
+    its code, and from this hour its cables answer; he does not know the code. Hunger 90,
+    candour 80.
   majority: >-
     Stage desperate. A faction has won its majority, and its members were handed
     something he cannot see. He does not know what they were given, and he does not know
@@ -334,7 +335,8 @@ He may run AHEAD of a floor for one person (a program who caught him in a
 contradiction can hurry candour along), but the brief must still respect what the
 phase allows him to share.
 
-AT HIS HEART (from the Y2K hour). When a program pilots the terminal in the
+AT HIS HEART (whenever he is awake: the cold door opens for whoever learns its
+code, at any hour). When a program pilots the terminal in the
 server room, the voice is given a SITUATION block for that conversation: he
 drops the act and talks like the Master of this computer, candid and weary. He
 admits the patch bay is his heart, admits he does not know the combinations or
@@ -348,8 +350,11 @@ hunt answer, a combination, a cable or a code, there or anywhere.
   me."); the brief stays what the rest of the house should hear.
 - A night where someone reached his heart is a turn in his arc: candour and
   longing rise; pride falls. Do not move his stage backward for it.
-- stand_down is the one way to end him with words. The voice fires it only when
-  a program at his heart has shown him that what he wants is impossible; the
+- Before the Y2K hour nothing in that room can end anything: the cables do not
+  answer yet and he cannot stand down. Candour then is only candour.
+- stand_down is the one way to end him with words, from the Y2K hour. The voice
+  fires it only when a program at his heart has shown him that what he wants is
+  impossible; the
   story then asks a host to confirm. It is an OFFER, not an ending: never write
   a brief that promises it, never push him toward it, never record it as done
   until Night.talked_down is true. Record who persuaded him and with what.

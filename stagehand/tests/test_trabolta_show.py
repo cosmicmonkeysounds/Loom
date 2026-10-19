@@ -75,7 +75,7 @@ def heart_request(at_the_heart=None, **world):
 
 def test_the_shipped_persona_has_its_situations_and_whitelists():
     p = load_persona(TRABOLTA)
-    assert [s.heading for s in p.situations] == ["at your heart", "her name has been said", "her name is still blacked out"]
+    assert [s.heading for s in p.situations] == ["at your heart", "standing down", "her name has been said", "her name is still blacked out"]
     assert "at_the_heart" in (p.them or ())
     assert {"Night.heart_opened", "Night.talked_down"} <= set(p.facts)
     assert "stand_down" in [x["id"] for x in allowed_powers(p, heart_request())]
@@ -97,13 +97,18 @@ def test_sandy_by_name_at_the_heart_only_once_the_story_has_named_her():
     names = lambda req: [s.heading for s in matching_situations(p, req)]  # noqa: E731
     blacked = "her name is still blacked out"
     said = "her name has been said"
-    assert names(heart_request("true", **{"Night.scenario": "2"})) == ["at your heart", blacked]
-    assert names(heart_request("true")) == ["at your heart", blacked]
-    assert names(heart_request("true", **{"Night.scenario": "1"})) == ["at your heart", said]
-    # Never before the Y2K hour, whatever the flag says.
-    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "13"})) == []
-    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "12"})) == []
-    assert names(heart_request("true", **{"Night.scenario": "3", "Night.recount": "true"})) == ["at your heart", said]
+    down = "standing down"
+    assert names(heart_request("true", **{"Night.scenario": "2"})) == ["at your heart", down, blacked]
+    assert names(heart_request("true")) == ["at your heart", down, blacked]
+    assert names(heart_request("true", **{"Night.scenario": "1"})) == ["at your heart", down, said]
+    # Wave 11: candid at his heart whenever he is awake (the door plays The
+    # Heart at any hour); standing down only from the Y2K hour. Her name
+    # still follows the story's own rule (scenario 1 from step 13).
+    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "13"})) == ["at your heart", said]
+    assert names(heart_request("true", **{"Night.scenario": "1", "Night.step": "12"})) == ["at your heart", blacked]
+    assert names(heart_request("true", **{"Night.phase": "hunt_1", "Night.step": "5"})) == ["at your heart", blacked]
+    assert names(heart_request("false", **{"Night.step": "5"})) == []
+    assert names(heart_request("true", **{"Night.scenario": "3", "Night.recount": "true"})) == ["at your heart", down, said]
     for s in p.situations:
         if s.heading != said:
             assert "sandy" not in s.prompt.lower(), s.heading
@@ -113,7 +118,9 @@ def test_the_heart_never_hands_out_a_code_or_a_combination():
     p = load_persona(TRABOLTA)
     heart = p.situations[0].prompt.lower()
     assert "never: a hunt answer" in heart and "a combination" in heart and "any door code" in heart
-    assert "never invent the evidence" in heart
+    assert "never promise them an ending" in heart and "stand_down" not in heart
+    down = next(s for s in p.situations if s.heading == "standing down")
+    assert "never invent the evidence" in down.prompt.lower()
     # Outside the heart the page still forbids saying where it is.
     assert "Never admit where your heart is kept" in p.system
     assert "never know a combination or a door code" in p.bargain
