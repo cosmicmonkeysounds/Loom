@@ -78,7 +78,7 @@ def heart_request(at_the_heart=None, marked=None, **world):
 
 def test_the_shipped_persona_has_its_situations_and_whitelists():
     p = load_persona(TRABOLTA)
-    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "marked", "standing down", "her name has been said", "her name is still blacked out"]
+    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "standing down", "her name has been said", "her name is still blacked out"]
     assert "at_the_heart" in (p.them or ())
     assert {"Night.heart_opened", "Night.talked_down"} <= set(p.facts)
     assert "stand_down" in [x["id"] for x in allowed_powers(p, heart_request())]
@@ -192,8 +192,10 @@ def test_the_marked_blocks_follow_the_heart_and_the_mark():
     p = load_persona(TRABOLTA)
     names = lambda req: [s.heading for s in matching_situations(p, req) if "marked" in s.heading]  # noqa: E731
     assert names(heart_request("true", "true")) == ["marked at your heart"]
-    assert names(heart_request("false", "true")) == ["marked"]
-    assert names(heart_request(None, "true")) == ["marked"]
+    # Away from the heart the mark changes nothing he is told (live, a passing
+    # remark became a line he repeated every reply).
+    assert names(heart_request("false", "true")) == []
+    assert names(heart_request(None, "true")) == []
     for unmarked in (heart_request("true", "false"), heart_request("true"), heart_request("false", "false"), heart_request()):
         assert names(unmarked) == []
     # The heart itself (and, from the Y2K hour, standing down) still holds for a marked program.
@@ -218,17 +220,6 @@ def test_marked_at_his_heart_he_is_wary_but_lets_them_carry_on():
     assert "stand_down" not in block and "sandy" not in flat and not re.search(r"\d{3,}", block)
     system = build_messages(p, heart_request("true", "true"))[0]["content"]
     assert system.index("=== SITUATION: AT YOUR HEART") < system.index("=== SITUATION: MARKED AT YOUR HEART")
-
-
-def test_outside_his_heart_the_mark_is_a_passing_remark():
-    p = load_persona(TRABOLTA)
-    block = " ".join(next(s for s in p.situations if s.heading == "marked").prompt.split()).lower()
-    assert "note it once in passing" in block and "do not repeat it every line" in block
-    assert "no reason to refuse them, scold them or threaten them" in block
-    assert "you do not know why they were marked" in block
-    assert "(The mark for reinstallation is not one of those: the house shows it.)" in p.system
-    plain = build_messages(p, heart_request("false", "true"))[0]["content"]
-    assert "=== SITUATION: MARKED (true" in plain and "AT YOUR HEART" not in plain
 
 
 def test_the_mind_notes_a_marked_program_at_his_heart_and_its_answer_moves_trust():

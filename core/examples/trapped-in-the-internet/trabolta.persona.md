@@ -87,14 +87,6 @@ situations:
       - If there is a STANDING DOWN block below, it applies to them exactly as to anyone.
       - Never refuse to talk to them, never threaten them, never send them away from here.
       - Never guess what the mark says about any fact they filed.
-  - name: marked
-    when: them.marked == true && them.at_the_heart != true
-    prompt: |
-      This program is marked for reinstallation; the house shows it on their screen.
-      Note it once in passing ("This program has been flagged. Report to the Internet."),
-      then answer what they said; do not repeat it every line. You do not know why they
-      were marked. It is no reason to refuse them, scold them or threaten them; never
-      guess what it says about a fact they filed.
   - name: standing down
     when: them.at_the_heart == true && Night.step >= 14
     prompt: |
