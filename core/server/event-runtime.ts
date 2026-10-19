@@ -36,6 +36,7 @@ import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
 import {
   guestNameRefusal,
+  reservedDefFor,
   guestPickable,
   heldCharacters,
   identityDefs,
@@ -2653,9 +2654,8 @@ export class EventRuntime {
   /** Is `name` a reserved program locked for a caller holding `claim`? */
   private reservedFor(name: string, claim: string | null): boolean {
     if (this.sim === null) return false;
-    const folded = foldName(name);
-    const def = identityDefs(this.sim.model).find((d) => d.reserved && guestPickable(d) && foldName(d.name) === folded);
-    return def !== undefined && !this.claims.mayClaim(def.name, claim);
+    const def = reservedDefFor(this.sim.model, name);
+    return def !== null && !this.claims.mayClaim(def.name, claim);
   }
 
   // -- autonomous clock ----------------------------------------------------
@@ -3372,8 +3372,9 @@ export class EventRuntime {
         name: h.title,
         description: h.description,
         avatar: h.image === null ? null : this.avatars.offer(h.image),
-        claimed: taken.has(foldName(h.title)),
-        // A featured program found by its article name is still held.
+        claimed: taken.has(foldName(this.sim === null ? h.title : (reservedDefFor(this.sim.model, h.title)?.name ?? h.title))),
+        // A featured program found by its name or its `wiki:` article is
+        // still held.
         reserved: this.reservedFor(h.title, claim),
         blocked: isAntivirusSoftware(h.title, h.description) ? "antivirus" : null,
       }));
@@ -3488,6 +3489,16 @@ export class EventRuntime {
           name = hit.title;
           picture = hit.image;
         }
+        // The article of a reserved program (`wiki:`) IS that program: the
+        // claim holder becomes the featured CHARACTER (its own picture), and
+        // anyone else is refused `reserved` below — never a lookalike.
+        const heldAs = reservedDefFor(this.sim!.model, name);
+        let pictureFor = wiki;
+        if (heldAs !== null && foldName(heldAs.name) !== foldName(name)) {
+          name = heldAs.name;
+          picture = null;
+          pictureFor = "";
+        }
         // A reserved (featured) program needs its invitation's claim, or a
         // director's open window (`/api/mod/claim/unlock`) — 409 `reserved`.
         const claim = str(body, "claim").trim() || null;
@@ -3498,7 +3509,7 @@ export class EventRuntime {
         }
         let chosen: string | null = null;
         if (chosenKey !== "") {
-          const opts = await this.pictureOptions(wiki !== "" ? wiki : name, wiki !== "" ? wiki : undefined);
+          const opts = await this.pictureOptions(pictureFor !== "" ? pictureFor : name, pictureFor !== "" ? pictureFor : undefined);
           if (opts === null || !opts.options.some((o) => o.key === chosenKey)) {
             sendJson(res, 400, { error: "that picture isn't one of this program's" });
             return true;

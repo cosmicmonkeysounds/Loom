@@ -19,7 +19,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { EventRuntime, type EventRuntimeInit } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
-import { claimMatches, claimToken, guestNameRefusal, RESERVED } from "../server/identity.ts";
+import { claimMatches, claimToken, guestNameRefusal, reservedDefFor, RESERVED } from "../server/identity.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { foldName } from "../src/parser/names.ts";
 
@@ -156,6 +156,30 @@ describe("claim tokens (identity.ts)", () => {
   });
 });
 
+describe("reservedDefFor (identity.ts)", () => {
+  it("finds a reserved program by its name or its `wiki:` article, never an unreserved one", () => {
+    const sim = Sim.fromSources(`# R
+start: Go
+
+CHARACTER VLC
+  reserved: true
+  wiki: VLC media player
+
+CHARACTER MS Paint
+  wiki: Microsoft Paint
+
+== Go
+Hi.
+`);
+    expect(reservedDefFor(sim.model, "VLC")?.name).toBe("VLC");
+    expect(reservedDefFor(sim.model, "vlc media player")?.name).toBe("VLC");
+    expect(reservedDefFor(sim.model, "Microsoft Paint")).toBeNull();
+    expect(guestNameRefusal(sim.model, "VLC media player", new Set())).toBe(RESERVED);
+    expect(guestNameRefusal(sim.model, "VLC media player", new Set(), () => true)).toBeNull();
+    expect(guestNameRefusal(sim.model, "Microsoft Paint", new Set())).toBeNull();
+  });
+});
+
 describe("reserved programs at the door (W-03)", () => {
   it("the picker locks a reserved program for a caller without its claim, and opens it with one", async () => {
     const rt = runtime();
@@ -263,6 +287,45 @@ describe("reserved programs at the door (W-03)", () => {
     rt.openDoors();
     expect(await claimsOf(rt)).toEqual([]);
     expect((await register(rt, "Microsoft Excel")).status).toBe(200);
+  });
+
+  it("a reserved program's `wiki:` article is held too: locked in the search, refused at register, the claim holder becomes the program", async () => {
+    const story = `# Alias
+start: Doors
+
+CHARACTER VLC
+  reserved: true
+  wiki: VLC media player
+
+CHARACTER Calculator
+
+== Doors
+Hello.
+`;
+    const hit = { title: "VLC media player", description: "Media player software", image: "https://img.test/vlc.png" };
+    // Only what the door calls: the directory search and the title lookup.
+    const wiki = {
+      search: async () => [hit, { title: "Winamp", description: "Media player", image: null }],
+      lookup: async (t: string) => (foldName(t) === foldName(hit.title) ? hit : null),
+      pictures: async () => [],
+      avatarFor: async () => null,
+    } as unknown as NonNullable<EventRuntimeInit["wiki"]>;
+    const rt = runtime(tempDir(), { scenarioSource: story, wiki });
+    rt.openDoors();
+    const search = async (claim?: string) =>
+      (await post(rt, "/api/identities/search", { passcode: CODES.event, q: "vlc", ...(claim !== undefined ? { claim } : {}) })).json.results as Array<{ name: string; reserved: boolean; claimed: boolean }>;
+    expect(row(await search(), "VLC media player").reserved).toBe(true);
+    expect(row(await search(), "Winamp").reserved).toBe(false);
+    const claim = (await claimsOf(rt)).find((c) => c.character === "VLC")!.claim;
+    expect(row(await search(claim), "VLC media player").reserved).toBe(false);
+    // Without the claim: refused by the article name, by `wiki` or typed.
+    expect(await post(rt, "/api/guest/register", { passcode: CODES.event, name: "VLC media player", wiki: "VLC media player" })).toMatchObject({ status: 409, json: { error: "reserved" } });
+    expect(await register(rt, "vlc media player")).toMatchObject({ status: 409, json: { error: "reserved" } });
+    // With it: the guest is the featured CHARACTER, not a lookalike.
+    const ok = await post(rt, "/api/guest/register", { passcode: CODES.event, name: "VLC media player", wiki: "VLC media player", claim });
+    expect(ok).toMatchObject({ status: 200, json: { name: "VLC" } });
+    expect((await search(claim)).find((r) => r.name === "VLC media player")!.claimed).toBe(true);
+    expect((await register(rt, "VLC media player", claim)).status).toBe(409);
   });
 });
 

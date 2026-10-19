@@ -145,6 +145,17 @@ export interface PictureChoice {
  *  taken without its claim. */
 export const RESERVED = "reserved";
 
+/** The reserved program a name stands for: its own name, or its `wiki:`
+ *  article (a featured `VLC` is `wiki: VLC media player`, and a directory
+ *  search finds it by the article). Null when the name holds no reserved
+ *  program. */
+export function reservedDefFor(model: SimModel, name: string): IdentityDef | null {
+  const folded = foldName(name);
+  if (folded === "") return null;
+  const defs = identityDefs(model).filter((d) => d.reserved && guestPickable(d));
+  return defs.find((d) => foldName(d.name) === folded) ?? defs.find((d) => d.wiki !== null && foldName(d.wiki) === folded) ?? null;
+}
+
 /** Why a guest may not register a name, or null when they may. `mayClaim`
  *  says whether this caller may take a `reserved: true` program (they hold
  *  its claim, or a director opened it); without it a reserved program is
@@ -154,7 +165,11 @@ export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlyS
   if (folded === "") return "pick a program";
   if (taken.has(folded)) return `${name} is already here tonight — pick another program`;
   const def = identityDefs(model).find((d) => foldName(d.name) === folded);
-  if (def === undefined) return null;
+  if (def === undefined) {
+    // The article name of a reserved program is held like the program.
+    const held = reservedDefFor(model, name);
+    return held !== null && !mayClaim(held.name) ? RESERVED : null;
+  }
   if (def.caste) return `${name} is ${def.faction} — programs can't be ${def.faction}`;
   if (def.kind === "special" || !def.playable) return `${name} is a part in the story — pick a program from the list`;
   if (def.reserved && !mayClaim(def.name)) return RESERVED;
