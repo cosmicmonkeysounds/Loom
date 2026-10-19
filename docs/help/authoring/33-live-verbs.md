@@ -349,7 +349,7 @@ pass — so **Back from the bathroom** only shows while they are away.
 INTERACTION radio_combo_b
   label: 💥 Patch: Combo B is in
   who: performer
-  by: Antivirus
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
 ```
 

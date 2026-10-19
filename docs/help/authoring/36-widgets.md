@@ -109,7 +109,7 @@ answer to a question nobody got right never reaches the story:
 
 | Verdict | When |
 |---|---|
-| `accurate` | the filed answer matches the key after folding |
+| `accurate` | the filed answer matches the key after folding, or after spelling out abbreviations on both sides |
 | `lie` | no match, filed at confidence **100** |
 | `uncertain` | no match, filed below 100 (an `answer` card always files at 100, so it is `accurate` or `lie`) |
 
@@ -118,7 +118,11 @@ answer to a question nobody got right never reaches the story:
 `you're` ≡ `youre`), every other run of non-alphanumerics becomes a
 space, and one leading `the` / `a` / `an` is stripped. *The Y2K Bug*,
 `y2k bug` and `Y2K-BUG!` are the same answer; list genuinely different
-wordings under `accept`.
+wordings under `accept`. If that misses, the judge takes a second exact
+look with **abbreviations spelled out** on both sides: *Mr.* / *Mrs.* /
+*Dr.*, *yr(s)*, *ext*, *hr(s)*, *min(s)*, *sec(s)*, and a leading-zero
+clock time (*0900* reads as *9 00*). So *Mr. Pickles*, *11 yrs* and
+*extension 1978* are simply accurate, with no ⚠.
 
 **Near misses.** An answer that doesn't fold to the key but is close to
 it is a **near miss**, and it is never judged a lie or a guess by
@@ -127,8 +131,14 @@ itself. Close means, after folding: honorifics dropped (*Mr*, *Mrs*,
 joined (*nineteen ninety seven*, *1,997*), plurals folded, the same
 words in another order, and small typos checked word by word — a word
 of 1–3 letters must match exactly, 4–7 letters may be one edit off, 8
-or more two, and a misspelled word keeps its first letter. Numbers and
-am / pm must match exactly. *Mr Pickels* for *Mister Pickles* and
+or more two, and a misspelled word keeps its first letter. A right
+answer **said at length** is near too: every word of the key, in order,
+plus up to four more (*11 years ago* for *11*, *Mister Pickles the cat*),
+unless an extra word turns it around or hedges (*not*, *never*, *or*,
+*but*…), adds an am / pm the key leaves open (*9:00 pm* for *9:00*), or
+is a lone letter (*Appendix A* for *appendix*). Numbers and am / pm must
+match exactly, and a plainly wrong answer at 100 is still an automatic
+lie. *Mr Pickels* for *Mister Pickles* and
 *Grko* for *Grok* are near; *Appendix A* for *Appendix Z*, *9pm* for
 *9:00 a.m.* and *did understand* for *didn't understand* are not. In
 `auto` mode a near miss takes the `review` path for that one filing: it
@@ -139,7 +149,9 @@ miss, not an exact match: X's H2 filing "Mr Pickels" is close to
 judges it.*). If nobody judges it before the round settles, the
 proposal stands: the filer is credited. Real but different answers can
 be near too (*Groq* for *Grok*, *Mrs Pickles* for *Mister Pickles*),
-so a director checks every ⚠ before the results are read.
+so a director checks every ⚠ before the results are read. Crediting
+an unjudged near miss at the settle is waiting on the user's decision
+(hold it with no credit, or a ⚠ check on the director's card before 📋).
 
 The verdict is journaled with the filing, so a restart replays the same
 verdicts whatever changed since — the key, the mode, the code. The

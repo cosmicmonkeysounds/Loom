@@ -14,7 +14,7 @@ story can react every time knowledge moves.
 ```loom
 CODEX The Sandy File
   about: Trabolta
-  code: SANDY-1997
+  code: SANDY-LOOM
   text:
     Trabolta does not want omnipotence. Trabolta wants Sandy.
     She has never understood a word he said.
