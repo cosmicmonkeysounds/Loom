@@ -128,8 +128,11 @@ the map fetch and `king` frames). Near him and facing him, ⚔ / Space
 flushes the pose and posts `POST /api/spatial/king/hit` (`game/fight.ts`
 pre-checks `kingReach`: *Get closer to the King.* / *Face him.*). The
 first hit of a visit says *⚔ You hit the King!*; after that, and on the
-server's 409 `already hit`, *You hit him. Come back on your next
-reinstallation.* A visit ends when its duck is found. At 0 he kneels
+server's 409 `already hit`, *You hit him this reinstallation. Find
+Gerald before you hit him again.* A visit ends when its duck is found,
+not at Leave, a director's end or a pose timeout: a re-scan before the
+duck is the same visit, and its assignment's `kingHit` shows ⚔ spent
+from the start (`hitSpentAtStart`). At 0 he kneels
 for everyone and his door opens (*The King kneels. His door stands
 open.*); a restore stands him up (*The King stands again.*) but keeps
 the door open for a player behind it or in it until they are clear
