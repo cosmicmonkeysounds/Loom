@@ -1290,6 +1290,15 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	# A remap keeps him down.
 	link.give_house(house)
 	_check(b.king_kneeling(kid) and not b.door_shut("server-door"), "game king: a remap keeps him down")
+	# A remap while crossing his spot (his door is behind it) keeps the
+	# player there: fallen, he is no solid prop.
+	var on_him: Array = HouseKing.king_prop(house)["pos"]
+	player.teleport(b.to_world(on_him), west_yaw)
+	game.hud.notice("")
+	link.give_house(house)
+	var after: Array = b.to_house(player.feet())
+	_check(Vector2(float(after[0]) - float(on_him[0]), float(after[2]) - float(on_him[2])).length() < 0.05 and sub.text == "", "game king: fallen, a remap on his spot keeps the player there (at %s, %s)" % [after, sub.text])
+	player.teleport(b.to_world(in_server), west_yaw)
 
 	# A director's restore stands him up — but the player is behind his
 	# door: it stays open for them (no shutting anyone in) …

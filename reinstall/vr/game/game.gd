@@ -285,9 +285,14 @@ func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
 
 ## Put the player back at the map's spawn when where they stand is not
 ## standable on it; returns the spawn used, `{}` when they stay put.
+## Judged on [member route_house], where a fallen (or held-open) King is no
+## solid prop: a player crossing his spot to his door stays put.
 func respawn_after_remap() -> Dictionary:
 	var house := builder.house
-	if house.is_empty() or HouseLocate.standable(house, builder.to_house(player.feet())):
+	if house.is_empty():
+		return {}
+	_update_route_house()
+	if HouseLocate.standable(route_house, builder.to_house(player.feet())):
 		return {}
 	var spawn: Dictionary = house["spawn"]
 	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
