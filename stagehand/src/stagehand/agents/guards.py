@@ -345,13 +345,36 @@ def cut_exact_repeats(say: str, said: Said, thread: Iterable[str] = ()) -> str:
     return " ".join(kept).strip()
 
 
-def retry_message(rejected: str) -> str:
-    """The one retry's closing system message (CONTRACTS.md §C2.2 step 4)."""
+def retry_message(rejected: str, heard: str = "", stage: str = "") -> str:
+    """The one retry's closing system message (CONTRACTS.md §C2.2 step 4,
+    amended at the wave 12 integration): it quotes what the guest just said
+    and names his stage. K-04: "Answer what they said, shorter" pushed the
+    retry toward his stock deflection ("I cannot disclose that
+    information."), word for word, and the line became the fallback."""
+    said = " ".join(str(heard).split())
+    if len(said) > 200:
+        said = said[:199].rstrip() + "…"
+    ask = f"They said “{said}”. Answer that" if said else "Answer what they said"
+    as_stage = f", as you are now ({stage})," if stage else ""
     return (
         "=== RETRY ===\n"
         f"You just wrote: “{' '.join(str(rejected).split())}”. That repeats what you have already said. "
-        "Answer what they said, shorter, in new words."
+        f"{ask}{as_stage} in one new sentence."
     )
+
+
+def pick_fallback(persona: Persona, stage: str = "", heard: Iterable[str] = ()) -> str:
+    """The line sent when nothing usable is left: one of the persona's
+    `fallbacks` for this stage that this guest has not heard yet, else the
+    persona's `fallback` (K-04: one fixed "…packet loss" line, five times in
+    102 replies, itself a repeat)."""
+    pool = getattr(persona, "fallbacks", {}) or {}
+    lines = tuple(pool.get(stage) or ()) + tuple(pool.get("") or ())
+    old = {fold(h) for h in heard}
+    for line in lines:
+        if fold(line) not in old:
+            return line
+    return persona.fallback
 
 
 # -- one pass ------------------------------------------------------------------------

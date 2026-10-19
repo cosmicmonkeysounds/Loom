@@ -452,7 +452,7 @@ def test_a_repeat_earns_exactly_one_retry():
     assert retry[:-1] == model.calls[0]
     assert retry[-1] == {
         "role": "system",
-        "content": f"=== RETRY ===\nYou just wrote: “{old}”. That repeats what you have already said. Answer what they said, shorter, in new words.",
+        "content": f"=== RETRY ===\nYou just wrote: “{old}”. That repeats what you have already said. They said “I have a fact for you”. Answer that, as you are now (hungry), in one new sentence.",
     }
     thoughts = trace.all("Trabolta")
     assert [(t.kind, t.trigger, t.request_id) for t in thoughts] == [("voice", "line", "ar-1"), ("voice", "retry", "ar-1")]
@@ -916,3 +916,20 @@ def test_a_gift_reaches_him_as_a_gift_that_has_been_paid_for():
     heart = next(s.prompt for s in show.situations if s.name == "at your heart")
     marked = next(s.prompt for s in show.situations if s.name == "marked at your heart")
     assert "No prices in this room." in heart and "theirs not yours" in marked
+
+
+def test_a_retry_that_still_repeats_sends_the_first_line_cut_and_a_stage_line_never_twice():
+    """K-04 october-21: "i love you" → a repeat → the retry gave his previous
+    line word for word → "…packet loss". Now the first line goes with only
+    the sentences they already heard cut; with nothing left, a dead-air line
+    for his stage this guest has not heard yet."""
+    old = "I cannot disclose that information about my feelings."
+    first = "I cannot disclose that information about my feelings. Love is not filed."
+    model = Model(say(first), say(old))
+    reply = run(answer_lean(P, MODEL, request(), context(said=Said(to_them=(old,))), model))
+    assert len(model.calls) == 2 and reply.say == "Love is not filed."
+    pooled = persona(fallbacks={"hungry": ("Say that again. Slowly.", "Again, program."), "": ("One moment.",)})
+    heard = request(history=[{"seq": 1, "mine": False, "from": "Ada", "text": "hi"}, {"seq": 2, "mine": True, "from": "Trabolta", "text": "Say that again. Slowly."}, {"seq": 3, "mine": False, "from": "Ada", "text": "i love you"}], text="i love you")
+    model = Model(say(old), say(old))
+    reply = run(answer_lean(pooled, MODEL, heard, context(said=Said(to_them=(old,))), model))
+    assert reply.say == "Again, program."

@@ -293,11 +293,12 @@ def test_the_cut_after_the_retry_keeps_what_was_said_to_someone_else():
     assert not repeats("stale old line that repeats", said)
 
 
-def test_the_retry_message_is_the_contracts():
-    assert retry_message("Your request  has been logged.") == (
+def test_the_retry_message_quotes_them_and_names_his_stage():
+    assert retry_message("Your request  has been logged.", "i  love you", "formal") == (
         "=== RETRY ===\nYou just wrote: “Your request has been logged.”. That repeats what you have already said. "
-        "Answer what they said, shorter, in new words."
+        "They said “i love you”. Answer that, as you are now (formal), in one new sentence."
     )
+    assert retry_message("x").endswith("Answer what they said in one new sentence.")
 
 
 # -- one pass -------------------------------------------------------------------------

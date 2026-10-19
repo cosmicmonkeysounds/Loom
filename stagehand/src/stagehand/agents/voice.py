@@ -38,7 +38,7 @@ from typing import Any
 
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
-from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, repeats, retry_message, scrub_memo, thread_replies
+from .guards import Pass, allowed_answer_words, cut_exact_repeats, guard_pass, mentions_hunt, pick_fallback, repeats, retry_message, scrub_memo, thread_replies
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import allowed_powers, build_messages, gate_context, matching_situations, situation_block, their_variables
@@ -524,7 +524,7 @@ def build_lean_messages(
         out.append({"role": "system", "content": last})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})
     if retry is not None:
-        out.append({"role": "system", "content": retry_message(retry)})
+        out.append({"role": "system", "content": retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
     return out
 
 
@@ -648,7 +648,7 @@ async def answer_lean(
             return build_lean_messages(persona, req, ctx, retry=retry, lookups=lookups, prior_json=prior_json)
         msgs = build_messages(persona, req, mind=mind, lookups=lookups, prior_json=prior_json)
         if retry is not None:
-            msgs.append({"role": "system", "content": retry_message(retry)})
+            msgs.append({"role": "system", "content": retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
         return msgs
 
     async def record(kind: str, trigger: str, msgs: list[dict[str, str]], completion: Completion | None, reply: Reply | None, error: str | None = None, note: str = "") -> None:
@@ -772,15 +772,15 @@ async def answer_lean(
             elif cut != final.say:
                 final = replace(final, say=cut)
                 notes.append("repeat: old sentences cut")
-        final = _scrub(persona, final, memo_on, notes)
+        final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, notes)
         await record(kind, trigger, used, completion, final, note=_notes(call_note, notes))
-        return _done(persona, final, started)
+        return _done(persona, final, started, ctx, req)
 
     # -- the one retry ---------------------------------------------------------------------
     # The trace is persisted and fanned out: the first thought carries the
     # memo as it may be kept, as every other thought does.
     await record(kind, trigger, used, completion, _scrub(persona, first.reply, memo_on, notes), note=_notes(call_note, notes))
-    retry_msgs = build(retry=first.rejected) if kind == "voice" else used + [{"role": "system", "content": retry_message(first.rejected)}]
+    retry_msgs = build(retry=first.rejected) if kind == "voice" else used + [{"role": "system", "content": retry_message(first.rejected, str(req.get("text") or ""), ctx.phase.stage)}]
     try:
         # A little hotter than the first call: at the house temperature the
         # model tends to write the rejected line again word for word.
@@ -790,9 +790,9 @@ async def answer_lean(
         log.warning("%s: model failed on the retry (%s)", persona.character, err)
         final = first.reply if wants == "repeat" else replace(first.reply, say=persona.fallback)
         rnotes = [f"retry failed → {'the first line' if wants == 'repeat' else 'fallback'}"]
-        final = _scrub(persona, final, memo_on, rnotes)
+        final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, rnotes)
         await record("voice", "retry", retry_msgs, None, final, error=str(err), note=_notes(rnotes))
-        return _done(persona, final, started)
+        return _done(persona, final, started, ctx, req)
     again = parse(completion)
     if again.wants_lookup:
         again = replace(again, say="", lookup=())
@@ -807,7 +807,14 @@ async def answer_lean(
         # Never word for word: a sentence he has already said is cut; a reply
         # that was nothing but old sentences is the fallback.
         cut = cut_exact_repeats(final.say, ctx.said, mine)
-        if not cut:
+        first_cut = cut_exact_repeats(first.reply.say, ctx.said, mine) if not cut and wants == "repeat" else ""
+        if not cut and first_cut:
+            # The retry said nothing new either: the first line with only
+            # what they already heard word for word cut (K-04: "i love you"
+            # got the retry's stock deflection, then "…packet loss").
+            final = replace(final, say=first_cut)
+            rnotes.append("retry still repeats → the first line, old sentences cut")
+        elif not cut:
             final = replace(final, say=persona.fallback)
             rnotes.append("retry still repeats → fallback")
         elif cut != final.say:
@@ -817,9 +824,9 @@ async def answer_lean(
             rnotes.append("retry still repeats (sent)")
     if not final.memo and first.reply.memo:
         final = replace(final, memo=first.reply.memo)
-    final = _scrub(persona, final, memo_on, rnotes)
+    final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, rnotes)
     await record("voice", "retry", retry_msgs, completion, final, note=_notes(call_note, rnotes))
-    return _done(persona, final, started)
+    return _done(persona, final, started, ctx, req)
 
 
 def _scrub(persona: Persona, reply: Reply, memo_on: bool, notes: list[str]) -> Reply:
@@ -833,12 +840,21 @@ def _scrub(persona: Persona, reply: Reply, memo_on: bool, notes: list[str]) -> R
     return replace(reply, memo=memo) if memo != reply.memo else reply
 
 
-def _done(persona: Persona, reply: Reply, started: float) -> Reply:
+def _pooled(persona: Persona, reply: Reply, ctx: VoiceContext | None, req: dict[str, Any] | None) -> Reply:
+    """The fixed fallback swapped for a line from the persona's `fallbacks`
+    for his stage that this guest has not heard (`guards.pick_fallback`)."""
+    if ctx is None or req is None or not persona.fallback or reply.say != persona.fallback:
+        return reply
+    line = pick_fallback(persona, ctx.phase.stage, (*thread_replies(req), *ctx.said.to_them))
+    return reply if line == reply.say else replace(reply, say=line)
+
+
+def _done(persona: Persona, reply: Reply, started: float, ctx: VoiceContext | None = None, req: dict[str, Any] | None = None) -> Reply:
     if reply.empty:
         log.warning("%s: the model said nothing usable", persona.character)
-        return Reply(say=persona.fallback)
+        return _pooled(persona, Reply(say=persona.fallback), ctx, req)
     if not reply.say and not reply.acts:
         # Numbers but no words: silence is the worst thing to send a guest.
-        return replace(reply, say=persona.fallback, lookup=())
+        return _pooled(persona, replace(reply, say=persona.fallback, lookup=()), ctx, req)
     log.info("%s: answered in %.1fs", persona.character, time.monotonic() - started)
     return reply

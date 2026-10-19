@@ -10,6 +10,9 @@
     when: self.glitched == true        # optional gate — else `unavailable`
     unavailable: "…"                   # said when the gate is closed (else silence)
     fallback: "…"                      # said when the model fails (else silence)
+    fallbacks: {formal: ["One moment."]}  # the new voice's dead-air lines, by stage
+                                       #   (a list = any stage): one this guest
+                                       #   has not heard yet, else `fallback`
     temperature: 0.9                   # optional per-character model overrides:
     max_tokens: 800                    #   model / temperature / max_tokens /
     reasoning_effort: low              #   reasoning_effort
@@ -93,6 +96,7 @@ _KNOWN = {
     "situations",
     "catchphrases",
     "catchphrase_stages",
+    "fallbacks",
 }
 
 _SITUATION_KEYS = {"name", "when", "prompt"}
@@ -161,6 +165,9 @@ class Persona:
     #: empty = any): the dialog-box greeting is the formal helper's, never the
     #: last act's (K-04: the finale's "Your request has been logged.").
     catchphrase_stages: tuple[str, ...] = ()
+    #: The new voice's lines for nothing usable left, by stage ("" = any
+    #: stage; `fallbacks:`); `guards.pick_fallback` picks one not heard yet.
+    fallbacks: dict[str, tuple[str, ...]] = field(default_factory=dict)
     #: The mind file's phase cards, in file order, inheritance resolved
     #: (`parse_mind_table`). A bare cue string is a card too.
     phase_cards: dict[str, "PhaseCard"] = field(default_factory=dict)
@@ -344,6 +351,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         situations=_situations(meta.get("situations"), source),
         catchphrases=_catchphrases(meta.get("catchphrases"), source),
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
+        fallbacks=_fallbacks(meta.get("fallbacks"), stages, secrets, source),
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
         warnings=table.warnings,
@@ -366,6 +374,27 @@ def _catchphrase_stages(value: Any, stages: tuple[str, ...], source: str) -> tup
     if unknown:
         raise ConfigError(f"{source}: catchphrase_stages: {', '.join(unknown)} is not a declared stage ({', '.join(stages)})")
     return names
+
+
+def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: str) -> dict[str, tuple[str, ...]]:
+    if value in (None, ""):
+        return {}
+    raw = {"": value} if isinstance(value, list) else value
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{source}: fallbacks: expected a list of lines, or a mapping of stage → lines")
+    out: dict[str, tuple[str, ...]] = {}
+    for key, lines in raw.items():
+        stage = str(key).strip()
+        if stage and stages and stage not in stages:
+            raise ConfigError(f"{source}: fallbacks.{stage}: not a declared stage ({', '.join(stages)})")
+        if isinstance(lines, str):
+            lines = [lines]
+        if not isinstance(lines, list) or not all(isinstance(x, str) and x.strip() for x in lines):
+            raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: expected a list of lines")
+        if any(secrets.leaks(x) for x in lines):
+            raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: carries a secrets.never word")
+        out[stage] = tuple(" ".join(x.split()) for x in lines)
+    return out
 
 
 _MIND_KNOWN = {"stages", "drives", "phases", "secrets"}
