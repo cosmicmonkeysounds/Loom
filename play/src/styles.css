@@ -1063,6 +1063,10 @@ footer {
 .cue-row.next { box-shadow: var(--raised), inset 0 0 0 3px var(--navy); }
 .cue-row.last { background: var(--highlight); color: var(--black); }
 .cue-row.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+/* W11: a story button marked `arm: true` (arm.ts), after its first tap —
+   the director phone's armed look, with "Tap again to fire" under it */
+.choice.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+.choice .arm-line { display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; margin-top: 2px; }
 .cue-n { flex: 0 0 auto; min-width: 22px; font: 800 13px var(--ui-font); opacity: 0.6; padding-top: 2px; }
 .cue-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cue-title { font-weight: 700; overflow-wrap: anywhere; }

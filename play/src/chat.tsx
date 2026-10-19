@@ -11,6 +11,7 @@
 //! drills in.
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { ARM_LINE } from "./arm.ts";
 import { useAvatars } from "./avatars.ts";
 import { usePlayHost } from "./host.ts";
 import { occupancyLabel } from "./presence.ts";
@@ -418,8 +419,9 @@ export function ActionRow({ actions }: { actions: Action[] }) {
   return (
     <div className="actionrow">
       {actions.map((a, i) => (
-        <button key={i} className={`choice ${a.tone ?? "ghost"}`} onClick={a.onClick} disabled={a.disabled}>
+        <button key={i} className={`choice ${a.tone ?? "ghost"} ${a.armed ? "armed" : ""}`} onClick={a.onClick} disabled={a.disabled} aria-pressed={a.armed || undefined}>
           {a.label}
+          {a.armed && <span className="arm-line">{ARM_LINE}</span>}
         </button>
       ))}
     </div>

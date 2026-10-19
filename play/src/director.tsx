@@ -41,6 +41,7 @@ import {
   type Tap,
   type WorldLine,
 } from "../../core/src/cue-sheet.ts";
+import { disarmOnLeave } from "./arm.ts";
 import { claimFromSearch } from "./claim.ts";
 import { landingLink } from "./guest-scan.tsx";
 import { ApiError, api } from "./client.ts";
@@ -370,22 +371,7 @@ export function armWarnings(row: Pick<CueRow, "id" | "live" | "sequence">, layou
   return out;
 }
 
-/** Call `disarm` when the page goes hidden (the screen locks, the director
- *  switches to the radio app) or the window loses focus: an arm never
- *  survives the director looking away (spec §4.3). A hidden page may also
- *  freeze the 4 s timer, which would leave a stale "Tap again to fire".
- *  Returns the unsubscribe. */
-export function disarmOnLeave(doc: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">, win: Pick<Window, "addEventListener" | "removeEventListener">, disarm: () => void): () => void {
-  const onVisibility = () => {
-    if (doc.visibilityState === "hidden") disarm();
-  };
-  doc.addEventListener("visibilitychange", onVisibility);
-  win.addEventListener("blur", disarm);
-  return () => {
-    doc.removeEventListener("visibilitychange", onVisibility);
-    win.removeEventListener("blur", disarm);
-  };
-}
+export { disarmOnLeave };
 
 /** The toast when a stale arm is dropped. */
 export const STALE_TOAST = "Cues moved — tap again";

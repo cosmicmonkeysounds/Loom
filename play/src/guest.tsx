@@ -48,6 +48,7 @@ import { opensHome } from "./room.ts";
 import { redeemErrorText } from "./codex.ts";
 import { activePins, activeTakeover } from "./pins.ts";
 import { Takeover } from "./takeover.tsx";
+import { ARM_LINE, useArmButtons } from "./arm.ts";
 import { CountdownStrip } from "./countdown.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "./guest-scan.tsx";
 
@@ -296,8 +297,10 @@ function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSessi
   // One switch-sides button per other public group — driven by the story's
   // declared groups, not a baked-in pair; none while restricted.
   const others = defectTargets(session.status);
-  // The story's `who: guest` INTERACTIONs — buttons the story itself declares.
+  // The story's `who: guest` INTERACTIONs — buttons the story itself declares
+  // (an `arm: true` one arms on the first tap and fires on the second).
   const interactions = session.status?.interactions ?? [];
+  const arm = useArmButtons();
   return (
     <Sheet title="Your pass" onClose={onClose}>
       {session.me && (
@@ -314,14 +317,18 @@ function ProfileSheet({ session, push, onClose, onLeave }: { session: GuestSessi
       {interactions.map((i) => (
         <button
           key={i.id}
-          className="choice"
+          className={`choice ${arm.armed === i.id ? "armed" : ""}`}
           title={i.description ?? undefined}
-          onClick={() => {
-            onClose(); // the reply banners over the app, not behind the sheet
-            void session.act(i.id, i.label).catch(() => {});
-          }}
+          aria-pressed={arm.armed === i.id || undefined}
+          onClick={() =>
+            arm.tap(i.id, i.arm, () => {
+              onClose(); // the reply banners over the app, not behind the sheet
+              void session.act(i.id, i.label).catch(() => {});
+            })
+          }
         >
           {i.label}
+          {arm.armed === i.id && <span className="arm-line">{ARM_LINE}</span>}
         </button>
       ))}
       {faction &&

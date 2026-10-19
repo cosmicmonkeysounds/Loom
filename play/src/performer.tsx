@@ -27,6 +27,7 @@ import {
   type WidgetHook,
 } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
+import { interactionAction, useArmButtons } from "./arm.ts";
 import { usePlayHost } from "./host.ts";
 import { WalletActionsProvider, approvalBadge, useWalletClock } from "./wallet.tsx";
 import { AvatarsContext, avatarLookup, avatarUrl, foldName, orderPicker, type IdentityRow } from "./avatars.ts";
@@ -336,13 +337,16 @@ function GuestCard({
   const lore = session.view?.codex ?? [];
   const where = guest.location ? (session.view?.channels.find((c) => c.id === `loc:${guest.location}`)?.title ?? guest.location) : null;
   const [more, setMore] = useState(false);
+  const arm = useArmButtons();
   const actions: Action[] = [{ label: "📡 Scan this guest", onClick: () => void session.scan(guest.id), tone: "primary" }];
   if (lore.length > 0) actions.push({ label: "📓 Share lore…", onClick: () => setSharing(true) });
   // The story's buttons: this character's own, on offer now, first; every
   // other one (someone else's, out of phase, a director's) folds under More.
+  // An `arm: true` button arms on the first tap and fires on the second.
   const split = splitInteractions(session.view?.interactions ?? [], session.auth?.character ?? "", admin);
-  for (const i of split.mine) actions.push({ label: i.label, onClick: () => void session.act(i.id, guest.id) });
-  const others: Action[] = split.more.map((i) => ({ label: i.label, onClick: () => void session.act(i.id, guest.id) }));
+  const button = (i: Interaction): Action => interactionAction(i, arm, () => void session.act(i.id, guest.id));
+  for (const i of split.mine) actions.push(button(i));
+  const others: Action[] = split.more.map(button);
   if (admin && session.view?.legacyCapture) {
     actions.push(
       guest.captured
