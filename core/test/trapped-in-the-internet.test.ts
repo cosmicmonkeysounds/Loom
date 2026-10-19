@@ -2908,6 +2908,12 @@ describe("Trapped in the Internet — Trabolta's phase table (wave 12)", () => {
     const before = [...phaseTable()].slice(0, [...phaseTable().keys()].indexOf("grok_prom"));
     for (const [phase, card] of before) for (const title of card.tell) expect(byTitle.get(title)!.text, `${phase}: ${title}`).not.toMatch(/sandy/iu);
   });
+
+  it("his own file no longer makes the catchphrase his signature: a dialog box once, then he talks", () => {
+    const text = fresh().model.codex.get("Jean Trabolta")!.text;
+    expect(text).not.toMatch(/signs his\s+messages/u);
+    expect(text).toMatch(/first\s+message to a program/u);
+  });
 });
 
 // ───────────────────────── 6 · secrecy through the real event server ─────────────────────────
