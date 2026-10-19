@@ -1512,10 +1512,10 @@ export class EventRuntime {
   private rulerOnline(): string | null {
     const sim = this.sim;
     const judge = sim?.model.judge ?? null;
+    if (sim === null || judge === null || !this.agents.canJudge(judge)) return null;
     const book = this.factsBook();
-    if (sim === null || judge === null || book === null) return null;
-    if (judgeMode(book, worldReader(sim)) !== "auto") return null;
-    return this.agents.canJudge(judge) ? judge : null;
+    if (book === null || judgeMode(book, worldReader(sim)) !== "auto") return null;
+    return judge;
   }
 
   /** The ledger filing (person, question) as it stands, or null. */
