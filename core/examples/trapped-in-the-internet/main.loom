@@ -3108,13 +3108,16 @@ INTERACTION beat_the_machine
 // the director would press from a radio call is pressed in the room: on
 // the card of the program at the cables (or the one who came in). Each
 // fires the admin cue; `while:` shows it only when that cue would do
-// something. `by: Antivirus`: whichever Antivirus is stationed there (the
+// something. `by:` the four Antivirus who may be stationed there (the
 // read-through picks who), never a Host's or a performer's booth (the
-// server refuses those). 🫘 is Adobe Acrobat's, at the printer.
+// server refuses those), and never Windows Defender, the door-only part
+// who never leaves the Optical Drive, so a late arrival's card at the door
+// leads with nothing that ends the night. 🫘 is Adobe Acrobat's, at the
+// printer.
 INTERACTION radio_combo_a
   label: 🔌 Patch: Combo A is in
   who: performer
-  by: Antivirus
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo A on the patch-bay card. Disables Trabolta.
@@ -3122,7 +3125,7 @@ INTERACTION radio_combo_a
 INTERACTION radio_combo_b
   label: 💥 Patch: Combo B is in
   who: performer
-  by: Antivirus
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo B on the patch-bay card. Self-destructs the computer.
@@ -3130,7 +3133,7 @@ INTERACTION radio_combo_b
 INTERACTION radio_wrong_patch
   label: ❌ Patch: wrong combination
   who: performer
-  by: Antivirus
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Four cables in that are neither combination. The first is forgiven; the second trips the alarm.
@@ -3138,7 +3141,7 @@ INTERACTION radio_wrong_patch
 INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
   who: performer
-  by: Antivirus
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Time.elapsed >= Night.crew_door_until
   description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart. Hidden inside a 🔧 crew window.
@@ -3146,7 +3149,7 @@ INTERACTION radio_door_opened
 INTERACTION radio_crew_door
   label: 🔧 Crew going through the door (2 min)
   who: performer
-  by: Antivirus
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
   while: Night.ended != true
   description: Before you (or the crew) open the cold door for yourselves: for 2 minutes an opening only tells # hosts, and The Heart is kept for the programs.
@@ -4089,7 +4092,7 @@ when crew_through_the_door:
     broadcast "🔧 The night is over: the door does nothing now anyway." to channel(hosts)
 
 // The server-room Antivirus' own buttons for the hardware fallbacks (the
-// INTERACTIONs' `radio_*`, `by: Antivirus`): each is the admin cue,
+// INTERACTIONs' `radio_*`, `by:` the four room Antivirus): each is the admin cue,
 // pressed in the room instead of over the radio, from whichever Antivirus
 // booth is stationed there. Story rules, so a director's quick-fire (no
 // actor) lands once; `/api/prime/act` refuses the press from any booth

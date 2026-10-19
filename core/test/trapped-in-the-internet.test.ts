@@ -1980,10 +1980,11 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
 
   it("the room's own buttons: the server-room Antivirus' 🔌 💥 ❌ 🚪 and Adobe Acrobat's 🫘 fire the admin cues, live only when those would act", { timeout: SLOW }, () => {
     const m = fresh().model;
-    for (const [id, by] of [["radio_combo_a", "Antivirus"], ["radio_combo_b", "Antivirus"], ["radio_wrong_patch", "Antivirus"], ["radio_door_opened", "Antivirus"], ["radio_crew_door", "Antivirus"], ["radio_beans", "Adobe Acrobat"]] as const) {
+    const ROOM = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"];
+    for (const [id, by] of [["radio_combo_a", ROOM], ["radio_combo_b", ROOM], ["radio_wrong_patch", ROOM], ["radio_door_opened", ROOM], ["radio_crew_door", ROOM], ["radio_beans", ["Adobe Acrobat"]]] as const) {
       const i = m.interactions.get(id)!;
       expect(i.who, id).toBe("performer");
-      expect(i.by, id).toEqual([by]);
+      expect(i.by, id).toEqual(by);
       expect(i.while, id).toBeTruthy();
     }
     const sim = boot();
@@ -2031,7 +2032,9 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const booth = async (character: string) => (await call(rt, "POST", "/api/prime/login", { character, passcode: CODES.prime })).json["token"] as string;
     const act = (token: string, name: string) => call(rt, "POST", "/api/prime/act", { name, guest: id }, { token });
     const RADIO = ["radio_crew_door", "radio_door_opened", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
-    for (const who of ["Clippy", "Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
+    // Windows Defender is the door-only part: it never leaves the Optical
+    // Drive, so a late arrival's card there leads with nothing that ends the night.
+    for (const who of ["Clippy", "Adobe Acrobat", "Task Manager", "Recycling Bin", "Windows Defender"]) {
       const t = await booth(who);
       for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
@@ -2039,7 +2042,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     }
     expect(v(rt.liveSim!, "Night.wrong_combos") ?? 0).toBe(0);
     expect(v(rt.liveSim!, "Night.crew_door_until") ?? 0).toBe(0);
-    for (const who of ANTIVIRUS) {
+    for (const who of ANTIVIRUS.filter((a) => a !== "Windows Defender")) {
       const t = await booth(who);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
       for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.actors, `${name} on ${who}`).toContain(who);
@@ -2093,7 +2096,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const refused = await act(norton, "accurate_q1");
     expect(refused.status).toBe(403);
     expect(String(refused.json["error"])).toMatch(/not your button/u);
-    expect((await act(norton, "radio_combo_a")).status).toBe(200); // by: Antivirus — the patch-bay watch's
+    expect((await act(norton, "radio_combo_a")).status).toBe(200); // by: the room Antivirus — the patch-bay watch's
     expect((await act(norton, "send to the internet")).status).toBe(200); // no `by:`: anyone's
     expect((await act(norton, "unmark_for_reinstallation")).status).toBe(200); // by: Hosts, Antivirus
     expect((await act(await booth("Clippy"), "accurate_q1")).status).toBe(200);
