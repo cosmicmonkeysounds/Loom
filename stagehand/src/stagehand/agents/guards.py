@@ -52,6 +52,10 @@ REPEAT_SHARE = 0.5
 SHINGLE = 4
 #: How close (in words) a verdict word may sit to a cut answer in a memo.
 VERDICT_REACH = 6
+#: Beside `secrets._VERDICT`, the plain words that rule on an answer when
+#: they stand by one in a memo ("… — that is right"); too common to drop a
+#: memo for anywhere else.
+_NEAR_VERDICT = re.compile(r"\b(right|exactly|spot[\s-]on|nailed)\b", re.IGNORECASE)
 
 
 def fold(text: str) -> str:
@@ -274,7 +278,7 @@ def scrub_memo(secrets: Secrets, memo: str) -> tuple[str, list[str]]:
     if replaced:
         tokens = list(_MEMO_TOKEN.finditer(cut))
         cuts = [i for i, t in enumerate(tokens) if t.group() == _CUT]
-        for m in _VERDICT.finditer(cut):
+        for m in [*_VERDICT.finditer(cut), *_NEAR_VERDICT.finditer(cut)]:
             at = sum(1 for t in tokens if t.start() < m.start())
             if any(abs(at - c) <= VERDICT_REACH for c in cuts):
                 return "", ["memo dropped (verdict by an answer)"]
