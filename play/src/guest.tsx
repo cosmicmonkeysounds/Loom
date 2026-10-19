@@ -579,7 +579,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // The story's guest-facing clocks (`countdown: … for guests`), ticking
   // under the room header — and under the identity card on a phone's room
   // list, so the clock is never one tap away.
-  const clocks = <CountdownStrip countdowns={st?.countdowns} clock={st?.clock} paused={st?.paused === true} />;
+  const clocks = <CountdownStrip countdowns={st?.countdowns} clock={st?.clock} paused={st?.paused === true} stamp={st} />;
   // A scanned codex code redeems like a typed one (the Codex room answers a
   // wrong code itself); a room's sign checks in and opens that room.
   const onScanned = async (scan: Exclude<GuestScan, { kind: "note" }>): Promise<string | null> => {

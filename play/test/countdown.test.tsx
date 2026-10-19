@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { ChannelView } from "../src/chat.tsx";
-import { COUNTDOWN_PAUSED, CountdownStrip, CountdownStripView, countdownItemText, countdownItems } from "../src/countdown.tsx";
+import { COUNTDOWN_PAUSED, CountdownStrip, CountdownStripView, countdownItemText, countdownItems, rebaseStory } from "../src/countdown.tsx";
+import { storyNow } from "../src/director.tsx";
 import type { Channel, CountdownSummary } from "../src/types.ts";
 
 const SUMMONS: CountdownSummary = { label: "Summons", path: "Night.summons_end", endsAt: 1300 };
@@ -56,5 +57,30 @@ describe("the strip", () => {
     const html = renderToStaticMarkup(<ChannelView channel={room} onBack={() => {}} strip={<CountdownStripView items={[{ label: "Summons", left: 90 }]} paused={false} />} />);
     expect(html.indexOf("</header>")).toBeLessThan(html.indexOf("countdown-strip"));
     expect(html).toContain("⏳ Summons 1:30");
+  });
+});
+
+describe("the phone's story clock across a pause", () => {
+  it("re-bases on the resume snapshot even though the clock did not move", () => {
+    // Running at clock 600 s (wall 1 000 s), paused at 610 s, resumed ten
+    // minutes later with the clock still at 610 s (a pause holds it still).
+    const running = { clock: 600_000 };
+    let a = rebaseStory(null, running.clock, false, running, 1_000_000);
+    expect(storyNow(a.clock, a.at, 1_010_000, true)).toBe(610_000);
+    const pause = { clock: 610_000, paused: true };
+    a = rebaseStory(a, pause.clock, true, pause, 1_010_000);
+    expect(storyNow(a.clock, a.at, 1_610_000, false)).toBe(610_000);
+    const resume = { clock: 610_000 };
+    a = rebaseStory(a, resume.clock, false, resume, 1_610_000);
+    expect(storyNow(a.clock, a.at, 1_610_000, true)).toBe(610_000);
+    expect(storyNow(a.clock, a.at, 1_615_000, true)).toBe(615_000);
+  });
+
+  it("re-bases on a new snapshot alone (an old server sends no paused), and keeps the anchor between ticks", () => {
+    const one = { clock: 610_000 };
+    const a = rebaseStory(null, one.clock, false, one, 1_010_000);
+    expect(rebaseStory(a, one.clock, false, one, 1_011_000)).toBe(a);
+    const two = { clock: 610_000 };
+    expect(rebaseStory(a, two.clock, false, two, 1_610_000).at).toBe(1_610_000);
   });
 });
