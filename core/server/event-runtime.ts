@@ -611,6 +611,11 @@ export class EventRuntime {
   /** Near misses already put to the `judge:` character (person, question,
    *  answer) — never asked twice in one run of this process. */
   private readonly rulingsAsked = new Set<string>();
+  /** Near misses a restore found still pending (person, question, answer):
+   *  the only ones put to the `judge:` character after they landed —
+   *  contract J. A near miss filed with nobody online keeps wave 11's
+   *  promise (credited at the settle) and is never asked later. */
+  private readonly rulingsDue = new Set<string>();
   private readonly random: () => number;
   /** `runPicks` re-entrancy: a pick's own signal never draws again. */
   private pickDepth = 0;
@@ -1553,21 +1558,38 @@ export class EventRuntime {
     });
     if (id === null) return false;
     this.rulingsAsked.add(asked);
+    this.rulingsDue.delete(asked);
     this.pushModSnapshots();
     return true;
   }
 
-  /** Every near miss still pending that nobody has asked about yet (a
-   *  worker just connected, a restore, the ticker): ask. Only in auto mode,
-   *  with a `judge:` and a worker that can answer. */
+  /** Every near miss a restore left pending that nobody has asked about
+   *  yet (a worker just connected, the ticker): ask. Only in auto mode,
+   *  with a `judge:` and a worker that can answer. A near miss that landed
+   *  in this process with nobody to ask is never here (`rulingsDue`). */
   private askPendingRulings(): void {
-    if (this.rulerOnline() === null) return;
+    if (this.rulingsDue.size === 0 || this.rulerOnline() === null) return;
     const book = this.factsBook();
     if (book === null || this.sim === null) return;
     for (const f of this.factsWatch.all(this.sim, book.confirm)) {
-      if (f.final !== null) continue;
-      if (this.factsWatch.nearOf(book, f.question, f.answer) === null) continue;
+      const due = `${f.person}\u0000${f.question}\u0000${f.answer}`;
+      if (!this.rulingsDue.has(due)) continue;
+      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) {
+        this.rulingsDue.delete(due);
+        continue;
+      }
       this.askRuling(f.person, f.question);
+    }
+  }
+
+  /** After a restore: the near misses still pending, due a ruling. */
+  private noteRulingsDue(): void {
+    this.rulingsDue.clear();
+    const book = this.factsBook();
+    if (book === null || this.sim === null || this.sim.model.judge === null) return;
+    for (const f of this.factsWatch.all(this.sim, book.confirm)) {
+      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) continue;
+      this.rulingsDue.add(`${f.person}\u0000${f.question}\u0000${f.answer}`);
     }
   }
 
@@ -3152,6 +3174,7 @@ export class EventRuntime {
     this.stopTicker();
     this.agents.reset(opts.by ?? "server", kind);
     this.rulingsAsked.clear();
+    this.rulingsDue.clear();
     this.spatial.reset(kind);
     this.agentPowerUses.clear();
     this.agentMinds.clear();
@@ -3314,6 +3337,7 @@ export class EventRuntime {
     this.sessions.load(entries);
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
     this.requeueAgentThreads();
+    this.noteRulingsDue();
     this.spatial.syncKing(); // the replayed world's King
     if (this.phase === "open") this.startTicker();
     // Restored with the doors paused: the re-asked requests wait out the

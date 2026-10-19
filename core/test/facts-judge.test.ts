@@ -409,7 +409,7 @@ describe("the event — the judge character rules on near misses", () => {
     rt.dispose();
   });
 
-  it("no worker online: wave 11's wording and fallback; a worker that connects later is asked", async () => {
+  it("no worker online: wave 11's wording and fallback — a worker that connects later is never asked, the filing settles accurate", async () => {
     const { rt } = fresh();
     const ada = await guest(rt, "Ada");
     await file(rt, ada, "Q2", "Mr Pickels", 100);
@@ -417,8 +417,17 @@ describe("the event — the judge character rules on near misses", () => {
     expect(hostsLines(rt)[1]).toMatch(/is credited if nobody judges it\. Judge it on Run → Mind → Judging\.$/u);
     expect(filingOf(await facts(rt), "Q2", "Ada").asking).toBeUndefined();
     const w = await worker(rt);
-    expect(w.judges().map((j) => j.filing.person)).toEqual([ada.id]);
-    expect(filingOf(await facts(rt), "Q2", "Ada").asking).toBe(true);
+    for (let i = 0; i < 3; i++) rt.tickOnce(1000);
+    // # hosts was promised the credit: no late ruling may turn it into a lie.
+    expect(w.judges()).toEqual([]);
+    expect(filingOf(await facts(rt), "Q2", "Ada").asking).toBeUndefined();
+    expect(hostsLines(rt).some((l) => l.startsWith("🤖"))).toBe(false);
+    expect((await mod(rt, "/api/mod/signal", { name: "settle", subject: ada.id })).status).toBe(200);
+    expect(filingOf(await facts(rt), "Q2", "Ada").final).toBe("accurate");
+    // A near miss filed once the worker is online is still asked.
+    const ben = await guest(rt, "Ben");
+    await file(rt, ben, "Q2", "Mister Pickels", 100);
+    expect(w.judges().map((j) => j.filing.person)).toEqual([ben.id]);
     rt.dispose();
   });
 
