@@ -502,6 +502,28 @@ describe("the request (recent on, the default)", () => {
     rt.dispose();
   });
 
+  it("leaves out of the guest's titles an entry carrying the hunt-answer marker, even one not flagged secret", async () => {
+    const rt = runtime(`${SOURCE}
+CODEX The Unflagged Card
+  code: CARD-1
+  text: ▒ HUNT ANSWER Q9 ▒ a placeholder, never a show answer.
+`);
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Eve", passcode: CODES.event });
+    const token = g.json["token"] as string;
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    for (const code of ["RIBBON-1", "CARD-1"]) expect((await call(rt, "POST", "/api/guest/codex/redeem", { code }, { token })).json["unlocked"], code).toBeTruthy();
+    const requests = () => worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hi" }, { token });
+    expect(requests()[0]!.them.codex.map((e) => e.title)).toEqual(["The Ribbon"]);
+    // Off: the base request, the text with it (the worker's guard reads it there).
+    await call(rt, "POST", "/api/agent/reply", { id: requests()[0]!.id, say: "Hello.", adjust: {} }, { moderator: true });
+    process.env["LOOM_AGENT_RECENT"] = "off";
+    await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "again" }, { token });
+    expect(requests()[1]!.them.codex.map((e) => e.title)).toEqual(["The Ribbon", "The Unflagged Card"]);
+    rt.dispose();
+  });
+
   it("sends an empty recent as [], never omitted", async () => {
     const rt = runtime();
     rt.openDoors();

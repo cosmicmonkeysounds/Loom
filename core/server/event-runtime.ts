@@ -117,7 +117,7 @@ import {
   type AgentRequest,
   type AgentThread,
 } from "./agents.ts";
-import { agentRecentOn, answerMentions, buildRecent, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
+import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
 /** A guest view is never rendered against a null sim — this stands in. */
@@ -1937,7 +1937,14 @@ export class EventRuntime {
     const world = sim.worldEntries();
     const varsOf = this.agentVarsOf(world);
     const globals = this.agentGlobals(world);
-    const codex = (holder: string, text = true) => sim.codexFor(holder).filter((e) => !e.secret).map((e) => ({ id: e.id, title: e.title, about: e.about, text: text ? e.text : "" }));
+    // Titles only (wave 12, C1.3) blanks the text the worker's own guard
+    // reads for the hunt-answer marker, so an entry carrying it is left out
+    // here (the gift check's twin); with the text sent the worker sees it.
+    const codex = (holder: string, text = true) =>
+      sim
+        .codexFor(holder)
+        .filter((e) => !e.secret && (text || !(e.title.includes(HUNT_ANSWER_MARK) || e.text.includes(HUNT_ANSWER_MARK))))
+        .map((e) => ({ id: e.id, title: e.title, about: e.about, text: text ? e.text : "" }));
     const speakerId = performer ?? who;
     const speakerName = performer ?? sim.persons.get(who)?.name ?? who;
     return {
