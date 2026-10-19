@@ -2,14 +2,16 @@
 //! with material + piece-square evaluation (Michniewski's "simplified
 //! evaluation function"), iterative deepening with node and time budgets,
 //! MVV-LVA capture ordering. Runs on the main thread (the oldest tablets
-//! have no module workers): `pickMoveAsync` yields to the browser between
-//! root moves. One profile per fight stage: the grandmaster searches three
+//! have no module workers): the search is a generator that can stop at any
+//! node, and `pickMoveAsync` hands the browser back the thread every
+//! `SLICE_MS`, so a tap during the King's think is answered at once even on
+//! an old tablet. One profile per stage of his health bar (`stage.ts`): the grandmaster searches three
 //! plies, the dizzy King plays at random, the pawns-only King picks his own
 //! worst move. Deterministic for an injected `rng` + `now`.
 
 import { Chess } from "chess.js";
 import type { Move, PieceSymbol, Square } from "chess.js";
-import type { Stage } from "../game/fight.ts";
+import type { Stage } from "./stage.ts";
 
 export interface AiProfile {
   depth: 0 | 1 | 2 | 3;
@@ -100,6 +102,8 @@ const INF = MATE * 2;
 const BEST_SLACK = 5;
 /** The least a move takes to feel like thought, ms (`pickMoveAsync`). */
 const FEEL_MS = 600;
+/** The longest `pickMoveAsync` keeps the main thread before yielding, ms. */
+export const SLICE_MS = 12;
 
 /** Centipawns from White's side: material + piece-square tables. Draws (no moves) score 0 here; mate is the search's. */
 export function evaluate(g: Chess): number {
@@ -135,11 +139,13 @@ function ordered(moves: Move[]): Move[] {
   return [...moves].sort((a, b) => key(b) - key(a));
 }
 
-/** Negamax with alpha-beta from the mover's side; `ply` for mate distances. */
-function negamax(g: Chess, depth: number, alpha: number, beta: number, ply: number, b: Budget): number {
+/** Negamax with alpha-beta from the mover's side; `ply` for mate distances.
+ *  A generator that yields once per node, so the caller may stop anywhere. */
+function* negamax(g: Chess, depth: number, alpha: number, beta: number, ply: number, b: Budget): Generator<void, number, void> {
   b.nodes++;
   if (b.maxNodes > 0 && b.nodes > b.maxNodes) b.cut = true;
   else if (b.deadline > 0 && (b.nodes & 63) === 0 && b.now() > b.deadline) b.cut = true;
+  yield;
   // A leaf: static eval — unless the mover is in check, when a mate must be
   // seen (a quiet stalemate at a leaf is let through: chess.js's legal move
   // generation is the costly part, and this halves it).
@@ -153,7 +159,7 @@ function negamax(g: Chess, depth: number, alpha: number, beta: number, ply: numb
   let best = -INF;
   for (const m of ordered(moves)) {
     g.move(m);
-    const s = -negamax(g, depth - 1, -beta, -alpha, ply + 1, b);
+    const s = -(yield* negamax(g, depth - 1, -beta, -alpha, ply + 1, b));
     g.undo();
     if (s > best) best = s;
     if (best > alpha) alpha = best;
@@ -168,8 +174,8 @@ interface RootScore {
 }
 
 /**
- * The search as steps: each `next()` scores one root move at the current
- * depth; iterative deepening 1..`depth`. The result after the generator
+ * The search as steps: each `next()` runs one node; iterative deepening
+ * 1..`depth`. The result after the generator
  * ends (or when the caller stops early) is `state.result()` — the last
  * fully searched depth's choice (depth 1 always completes).
  */
@@ -192,7 +198,7 @@ function* search(fen: string, profile: AiProfile, rng: () => number, now: () => 
     let alpha = -INF;
     for (const m of order) {
       g.move(m);
-      const s = -negamax(g, d - 1, -INF, -alpha, 1, d === 1 ? { ...b, maxNodes: 0, deadline: 0 } : b);
+      const s = -(yield* negamax(g, d - 1, -INF, -alpha, 1, d === 1 ? { ...b, maxNodes: 0, deadline: 0 } : b));
       g.undo();
       scores.push({ move: m, score: s });
       // The worst-move picker needs every root move scored, not a window.
@@ -215,7 +221,7 @@ function* search(fen: string, profile: AiProfile, rng: () => number, now: () => 
   return { move: pack(pick.move), score: pick.score, depth: completed!.depth, nodes: b.nodes };
 }
 
-/** The King's move for `fen` under `profile` — synchronous (tests, hints). */
+/** The King's move for `fen` under `profile` — synchronous (tests). */
 export function pickMove(fen: string, profile: AiProfile, rng: () => number, now: () => number = () => 0): SearchResult {
   const it = search(fen, profile, rng, now);
   for (;;) {
@@ -224,29 +230,29 @@ export function pickMove(fen: string, profile: AiProfile, rng: () => number, now
   }
 }
 
-/** The same search, yielding to the browser between root moves, and never back before `FEEL_MS`. */
-export async function pickMoveAsync(fen: string, profile: AiProfile, rng: () => number, opts: { now?: () => number; sleep?: (ms: number) => Promise<void> } = {}): Promise<SearchResult> {
+/** The same search, giving the browser the thread back every `SLICE_MS`, and never back before `FEEL_MS`. */
+export async function pickMoveAsync(fen: string, profile: AiProfile, rng: () => number, opts: { now?: () => number; sleep?: (ms: number) => Promise<void>; sliceMs?: number } = {}): Promise<SearchResult> {
   const now = opts.now ?? (() => (typeof performance !== "undefined" ? performance.now() : Date.now()));
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const slice = opts.sliceMs ?? SLICE_MS;
   const started = now();
   const it = search(fen, profile, rng, now);
   let result: SearchResult;
+  let sliceStart = now();
   for (;;) {
     const r = it.next();
     if (r.done) {
       result = r.value;
       break;
     }
-    await sleep(0);
+    if (now() - sliceStart >= slice) {
+      await sleep(0);
+      sliceStart = now();
+    }
   }
   const left = FEEL_MS - (now() - started);
   if (left > 0) await sleep(left);
   return result;
-}
-
-/** A good move for the side to move (depth 2, finds mates in one): the 💡 Hint. */
-export function hint(fen: string, rng: () => number = () => 0): SearchResult {
-  return pickMove(fen, { depth: 2, thinkMs: 0, maxNodes: 2500, pick: "best" }, rng);
 }
 
 /** A small deterministic PRNG (the same mulberry32 as `@loom/house/three`'s textures — copied, not imported, so this chunk stays free of three). */

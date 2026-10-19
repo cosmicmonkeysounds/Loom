@@ -27,6 +27,7 @@ COPY bank/package.json bank/
 COPY play/package.json play/
 COPY terminal/package.json terminal/
 COPY house/package.json house/
+COPY chess/package.json chess/
 COPY reinstall/web/package.json reinstall/web/
 COPY editor/package.json editor/
 COPY desktop/package.json desktop/
@@ -40,6 +41,8 @@ COPY bank bank
 COPY play play
 COPY terminal terminal
 COPY house house
+# @loom/chess (the King's board + AI) is TS source the terminal build bundles.
+COPY chess chess
 COPY reinstall/web reinstall/web
 COPY editor editor
 COPY invite invite
@@ -66,6 +69,7 @@ COPY bank/package.json bank/
 COPY play/package.json play/
 COPY terminal/package.json terminal/
 COPY house/package.json house/
+COPY chess/package.json chess/
 COPY reinstall/web/package.json reinstall/web/
 COPY editor/package.json editor/
 COPY desktop/package.json desktop/

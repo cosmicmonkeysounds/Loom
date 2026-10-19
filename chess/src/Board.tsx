@@ -1,5 +1,6 @@
-//! The 8×8 board — pure presentation, tap-tap moves (no drag: the tent
-//! tablet has a coarse pointer). White (the player) at the bottom; pieces
+//! The 8×8 board — pure presentation, tap-tap moves (no drag: the door
+//! terminal's tablet has a coarse pointer). No hint highlight: the King is
+//! played with no help. White (the player) at the bottom; pieces
 //! are Unicode glyphs on a classic brown / cream board.
 
 import { board, describe, glyphOf, type Cell, type Square } from "./rules.ts";
@@ -10,12 +11,11 @@ export interface BoardProps {
   selected: Square | null;
   targets: readonly Square[];
   lastMove: { from: Square; to: Square } | null;
-  hint: { from: Square; to: Square } | null;
   disabled: boolean;
   onSquare: (sq: Square) => void;
 }
 
-export function Board({ game, selected, targets, lastMove, hint, disabled, onSquare }: BoardProps) {
+export function Board({ game, selected, targets, lastMove, disabled, onSquare }: BoardProps) {
   const cells = board(game);
   return (
     <div className="board" role="grid" aria-label="chess board">
@@ -27,7 +27,6 @@ export function Board({ game, selected, targets, lastMove, hint, disabled, onSqu
           selected={selected === cell.square}
           target={targets.includes(cell.square)}
           last={lastMove !== null && (lastMove.from === cell.square || lastMove.to === cell.square)}
-          hint={hint !== null && (hint.from === cell.square || hint.to === cell.square)}
           disabled={disabled}
           onSquare={onSquare}
         />
@@ -42,7 +41,6 @@ function BoardSquare({
   selected,
   target,
   last,
-  hint,
   disabled,
   onSquare,
 }: {
@@ -51,11 +49,10 @@ function BoardSquare({
   selected: boolean;
   target: boolean;
   last: boolean;
-  hint: boolean;
   disabled: boolean;
   onSquare: (sq: Square) => void;
 }) {
-  const cls = ["square", dark ? "dark" : "light", selected ? "selected" : "", target ? "target" : "", last ? "last" : "", hint ? "hint" : ""].filter(Boolean).join(" ");
+  const cls = ["square", dark ? "dark" : "light", selected ? "selected" : "", target ? "target" : "", last ? "last" : ""].filter(Boolean).join(" ");
   return (
     <button type="button" role="gridcell" className={cls} aria-label={describe(cell)} aria-selected={selected} disabled={disabled} onClick={() => onSquare(cell.square)}>
       {cell.piece !== null && (

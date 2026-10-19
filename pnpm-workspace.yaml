@@ -10,6 +10,7 @@ packages:
   - play
   - terminal
   - house
+  - chess
   - reinstall/web
   - editor
   - desktop

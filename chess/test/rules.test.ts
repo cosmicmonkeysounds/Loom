@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { board, describe as describeCell, GLYPH, glyphOf, newGame, outcome, PAWNS_ONLY_FEN, play, START_FEN, startFen, targets } from "../src/chess/rules.ts";
+import { board, describe as describeCell, GLYPH, glyphOf, newGame, outcome, PAWNS_ONLY_FEN, play, START_FEN, startFen, targets } from "../src/rules.ts";
 
 describe("the pawns-only start", () => {
   it("PAWNS_ONLY_FEN is valid for chess.js and has a lone black king + 8 pawns against a full white army", () => {
