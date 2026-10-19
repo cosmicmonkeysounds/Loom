@@ -327,7 +327,7 @@ def test_p3_house_lines_are_the_last_three_story_lines_in_one_block():
 def test_p3_already_said_drops_elsewhere_lines_with_a_secret_and_names_no_one():
     p3 = render_p3(P, request(), context())
     block = p3.split("=== ALREADY SAID (never repeat these; say something new) ===\n", 1)[1].split("\n\n", 1)[0]
-    assert block.split("\n") == ["To them:", "- Speak, program.", "Elsewhere tonight:", "- Bring me the bingo card."]
+    assert block.split("\n") == ["To them:", "- Speak, program.", "Elsewhere tonight you opened with (never open the same way):", "- Bring me the bingo…"]
 
 
 def test_p3_situations_come_last_when_they_hold():
@@ -480,7 +480,7 @@ def test_a_line_said_to_another_guest_is_no_retry_even_word_for_word():
     trace = Trace()
     reply = run(answer_lean(P, MODEL, request(), context(said=said), model, trace=trace))
     assert len(model.calls) == 1 and reply.say == line
-    assert "Elsewhere tonight:" in model.calls[0][2]["content"] and line in model.calls[0][2]["content"]
+    assert "Elsewhere tonight you opened with" in model.calls[0][2]["content"] and "- Thank you for the…" in model.calls[0][2]["content"]
 
 
 def test_in_a_burst_a_repeat_has_no_retry_but_never_goes_out_word_for_word():
@@ -715,7 +715,7 @@ def test_a_short_number_or_a_topic_from_another_thread_is_dropped():
     lines = ("Eleven, you say.", "It was 11 years.", "The snow globe again.", "A quokka? No.", "Bring me the bingo card.")
     p3 = render_p3(p, request(), context(said=Said(elsewhere=lines)))
     block = p3.split("=== ALREADY SAID (never repeat these; say something new) ===\n", 1)[1].split("\n\n", 1)[0]
-    assert block.split("\n")[-2:] == ["Elsewhere tonight:", "- Bring me the bingo card."]
+    assert block.split("\n")[-2:] == ["Elsewhere tonight you opened with (never open the same way):", "- Bring me the bingo…"]
 
 
 def test_already_said_to_them_keeps_his_own_lines_to_this_person():
@@ -736,7 +736,7 @@ def test_a_hyphenated_or_plural_answer_from_another_thread_is_dropped():
     lines = ("Periwinkle-Tuesday, they said.", "Quokkas everywhere.", "The snow-globe.", "Bring me the bingo card.")
     p3 = render_p3(p, request(), context(said=Said(elsewhere=lines)))
     block = p3.split("=== ALREADY SAID (never repeat these; say something new) ===\n", 1)[1].split("\n\n", 1)[0]
-    assert block.split("\n")[-2:] == ["Elsewhere tonight:", "- Bring me the bingo card."]
+    assert block.split("\n")[-2:] == ["Elsewhere tonight you opened with (never open the same way):", "- Bring me the bingo…"]
 
 
 def test_a_retried_request_records_only_scrubbed_memos():
@@ -948,3 +948,10 @@ def test_the_storys_greeting_uses_his_ration_and_counts_as_heard():
     model = Model(say("I am Trabolta, the computer's AI helper."), say("What brings you to me, Ada?"))
     reply = run(answer_lean(P, MODEL, request(history=hist, text="hello"), first, model))
     assert len(model.calls) == 2 and reply.say == "What brings you to me, Ada?"
+
+
+def test_elsewhere_shows_each_opener_once():
+    lines = ("Thank you for the fact. Please file it.", "Thank you for the fact. File it on the card.", "Bring me more.")
+    p3 = render_p3(P, request(), context(said=Said(elsewhere=lines)))
+    block = p3.split("Elsewhere tonight you opened with (never open the same way):\n", 1)[1].split("\n\n", 1)[0]
+    assert block.split("\n") == ["- Thank you for the…", "- Bring me more."]

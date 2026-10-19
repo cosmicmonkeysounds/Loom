@@ -378,6 +378,26 @@ def _recent_line(item: dict[str, Any]) -> str | None:
     return None
 
 
+#: Words of a line said elsewhere that P3 shows (its opener).
+OPENER_WORDS = 4
+
+
+def openers(lines: Any) -> list[str]:
+    """The first `OPENER_WORDS` words of each line, deduplicated (folded)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        words = _one_line(line).split()
+        if not words:
+            continue
+        head = " ".join(words[:OPENER_WORDS]) + ("…" if len(words) > OPENER_WORDS else "")
+        key = fold(" ".join(words[:OPENER_WORDS]))
+        if key not in seen:
+            seen.add(key)
+            out.append(head)
+    return out
+
+
 def story_lines(req: dict[str, Any]) -> list[str]:
     """The story's lines posted here as him (`mine` and `story`), oldest first."""
     return [str(h.get("text") or "") for h in req.get("history") or [] if isinstance(h, dict) and h.get("mine") and h.get("story") is True]
@@ -409,14 +429,16 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
     to_them = [_one_line(x) for x in ctx.said.to_them[-3:] if _one_line(x) and not s.leaks(x)]
     # Another guest's thread: any hunt word at all (every `match` entry, a
     # topic) drops the line — he must never carry one guest's answer to another.
-    elsewhere = [_one_line(x) for x in ctx.said.elsewhere[-5:] if _one_line(x) and not mentions_hunt(s, x)]
+    elsewhere = openers(x for x in ctx.said.elsewhere[-5:] if _one_line(x) and not mentions_hunt(s, x))
     if to_them or elsewhere:
         lines = ["=== ALREADY SAID (never repeat these; say something new) ==="]
         if to_them:
             lines.append("To them:")
             lines.extend(f"- {x}" for x in to_them)
         if elsewhere:
-            lines.append("Elsewhere tonight:")
+            # Only how he opened, once each (K-04 facts-offers: the whole
+            # line listed twice was copied, word for word, to the next guest).
+            lines.append("Elsewhere tonight you opened with (never open the same way):")
             lines.extend(f"- {x}" for x in elsewhere)
         blocks.append("\n".join(lines))
     told_f = {fold(t) for t in told}
