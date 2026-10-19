@@ -1,6 +1,6 @@
 # Demo — the Oct 31 WIP in 20–30 minutes
 
-How to show *Trapped in the Internet* as it stands (wave 9, 2026-10-18) on
+How to show *Trapped in the Internet* as it stands (wave 11, 2026-10-18) on
 **https://app.mapsandducks.com** with **2–4 phones and one laptop**. It plays the
 night from the door to an ending and the awards, compressed: every timed
 stretch (Bingo's 20 min, the hunts, the hour, the Y2K hour) is skipped by
@@ -13,9 +13,11 @@ change the order here, change it there.
 ## Before you start (once)
 
 1. The VPS runs a current release (`scripts/ops/ship.sh <tag>`, the server
-   **before** the sync; as of 2026-10-18 it runs `w8-1018`, and wave 9 is
-   merged and ships as `w9-1018`: this page follows wave 9, whose cue sheet
-   refuses 📺 until all three 📋 are read), and the show's story is in your
+   **before** the sync; as of 2026-10-18 it runs `w10-1018`, and wave 11 is
+   merged and ships next, with one `sync-show --replace-maps` for its maps:
+   this page follows wave 11, whose featured programs join only with their
+   invitations; since wave 9 the cue sheet refuses 📺 until all three 📋
+   are read), and the show's story is in your
    server project: `LOOM_SSH=loom-vps pnpm sync-show` (with
    `LOOM_PROJECT="<your project name>"` if it isn't *Untitled Project*;
    since wave 9 it refuses to reload a **live** event with real guests,
@@ -31,7 +33,7 @@ change the order here, change it there.
 3. The **Run page** shows three codes. Write them down:
    - **Event code** — guests (and its QR: point the phones' cameras at it).
    - **Performer code** — the cast's phones.
-   - **Moderator code** — the TV and the tent tablet.
+   - **Moderator code** — the TV, the tent tablet and the Server Door terminal.
 4. Open two more tabs on the laptop (or a second screen):
    - **The TV**: `https://app.mapsandducks.com/terminal/?code=<moderator code>&name=TV&character=Trabolta&view=tv`
      (the living-room screen: screensaver, then Trabolta's face, the slides, the live Trust Chart, the overlays).
@@ -41,6 +43,9 @@ change the order here, change it there.
    - **The tent tablet**: `https://app.mapsandducks.com/reinstall/?code=<moderator code>&name=Tent tablet`
      (the reinstallation game; keyboard WASD / arrows, Q/E turn, Shift runs;
      ⚔ / Space hits the King, once per visit).
+   - *(Optional)* **The Server Door terminal**: `https://app.mapsandducks.com/terminal/?code=<moderator code>&name=Server Door&spot=server-room-door&view=chess`
+     (THE KING, his bar, the scanner: hold up a phone's pass and play him;
+     there is no chess on the tent tablet any more).
 5. Optional: Trabolta's voice. Start stagehand's `agents` worker on the
    laptop/house Mac (`uv run stagehand run --config <machine>.yaml --only agents`,
    see `stagehand/README.md`). Without it, DMs to Trabolta get his hold line
@@ -153,6 +158,7 @@ them out).
 ## What is built but not in the cue order above (show it if there's time)
 
 - **The King** (wave 11): in both reinstallation games a gold chess king guards the server-room door of the virtual house with **one health bar shared by everyone all night** (15 points, `Night.king_hp`; each program may hit him once per visit, the server takes the point off, `# hosts` hears every hit; 👑 *Restore the King's health* puts him back). His **chess** is only on the wall terminal outside the real server-room door: scan a pass, play, no hints, and the lower his bar the worse he plays. Mate him and the terminal fires `chess won` for that program: the winner gets *The Door Code* in their Codex any time before 📄 truth.txt, exactly as **♟ They beat the King** (naming the winner) does. The real door has a standalone keypad lock nothing in the house drives.
+- **The guest's phone** (wave 11): **📷 Scan** in the header and the Codex composer reads a wall QR inside the app (a QR scanned with the Camera app into another browser lands on *Type X into your Codex in the app you joined with*); the clocks Clippy announces (Bingo, hunt 1, the last-chance filing, the summons, midnight) tick in a strip under the room header; the 📝 card's confidence slider starts unset; a mistyped right answer is a **near miss** a director judges on Run → Mind → Judging (⚠ in `# hosts`). Buttons with no way back (🔌 💥 ❌ 🚪 🔧 ♟ 🍎 🫘 💘, the guest's 💾) arm on the first tap and fire on the second.
 - **The digit notes** (wave 11): four secret QR notes, one digit of the door code each, hidden in four rooms (the silver pile in `generated/print-stacks.md`). Scan them all night; the quest *The Cold Door* counts them, and the fourth puts *The Door Code* in the Codex.
 - **The Wallet**: every phone has a pinned **Wallet** room (🪙 balance on the pass): send Truthcoin to another program, request it, or trade coin for a codex entry (an escrowed offer the other side accepts). Every third transfer waits for **Approve** in CRA Agent Software's booth (sign a fourth phone in as her: the editor's performer lens doesn't show a booth's Wallet room yet, though Run's operator view lists the pending transfers as text); any transfer can be denied within 60 s. Runescape's phone can mint a stimulus to everyone (three a night). The hosts' 🪙 Pay / Charge buttons are corrections only. A local-folder rehearsal has no wallet — use the server project.
 - **facts.json is the team's file**: the hunt questions + answer key, the Desktop's scannable facts (main / trabolta / character), the Truth-or-Dare questions and the pickup line all live in `core/examples/trapped-in-the-internet/facts.json`; `pnpm --filter @loom/core titi:facts` regenerates the story files from it. The server judges every 📝 filing against it (`Night.judge_mode` = `auto`; switch to `review` on Run → Mind's Judging card to confirm each verdict by hand). Rehearse filings on the server project: a folder run has no judge.
@@ -165,7 +171,6 @@ them out).
 - **No hardware in the loop**: the server-room door (🚪), the patch bay and the printer button are the admin fallback buttons on the cue sheet; the door code comes from the King at the door terminal or the four digit notes (above), with ♟ as the fallback. The ESP32 firmware exists but isn't wired to the VPS demo, and the keypad lock is a real lock on a real door.
 - **VR headsets** aren't part of this demo (the Quest build exists; a headset runs the same game, the King's shared health bar included).
 - **Trabolta's voice needs the laptop worker**; without it he has his hold line and a director answers as him.
-- **Phones at the server-room endings** show the GO TO THE LIVING ROOM *alert banner*, not a full-screen flashing screen (the TV and terminals do flash it).
 - **TV slides are text placeholders** (no artwork yet: "CEREMONY", "AWARD MOST TRUSTED"); the award slide doesn't name the winner — the winner's phone and the host's line do. Only the Trust Chart is drawn for real.
 - **The hunt questions, the facts and the Truth-or-Dare questions are DRAFT placeholders** in `facts.json` until the team writes the real ones (the character facts quote the invitations' real-world details — the team's call before printing).
 - Not built: the tablet bench (K-02), the live tent run (K-03), the live mind run (K-04), the cellular sheet (K-07), K-31b, the printed QR posters on the walls (the Run page's 🖨 Print sheet makes them; the Desktop's piles are `generated/print-stacks.md`), cast-pack rehearsals.
