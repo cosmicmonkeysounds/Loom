@@ -21,7 +21,7 @@
 
 import { readFileSync } from "node:fs";
 
-import { nearMatch } from "../src/answer-match.ts";
+import { nearMatch, spellOut } from "../src/answer-match.ts";
 import { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, type FactVerdictKind, type FactsFile } from "../src/facts.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
 
@@ -74,6 +74,9 @@ export interface FactsKey {
    *  to the story as `key_answer`, so a read-out never echoes an alias). */
   answer: string;
   folded: Set<string>;
+  /** `folded` with abbreviations spelled out (`spellOut`): the second exact
+   *  look, so `Mr. Pickles` / `11 yrs` / `extension 1978` are right. */
+  spelled: Set<string>;
   /** The answer then every alias, as written (the near-miss look). */
   forms: string[];
 }
@@ -103,6 +106,7 @@ export function bookOf(facts: FactsFile): FactsBook {
     text,
     answer,
     folded: new Set([answer, ...accept].map(foldAnswer).filter((s) => s !== "")),
+    spelled: new Set([answer, ...accept].map((f) => spellOut(foldAnswer(f))).filter((s) => s !== "")),
     forms: [answer, ...accept],
   });
   return {
@@ -137,16 +141,24 @@ export function factsKey(book: FactsBook, keyId: string): FactsKey | null {
 
 // ───────────────────────── the verdict ─────────────────────────
 
+/** An exact hit: the folded answer is a key form, or is one once both have
+ *  their abbreviations spelled out (`Mr. Pickles` for `Mister Pickles`). */
+function exactly(key: FactsKey, answer: string): boolean {
+  const folded = foldAnswer(answer);
+  return key.folded.has(folded) || key.spelled.has(spellOut(folded));
+}
+
 /**
  * Judge one filing (U10): `accurate` when the folded answer equals the key's
- * answer or one of its aliases (exact after folding, never a substring);
+ * answer or one of its aliases (exact after folding, or after spelling out
+ * abbreviations on both sides — `exactly` — never a substring);
  * `lie` when it doesn't and the filer was `CONFIDENCE_MAX` sure; `uncertain`
  * when it doesn't and they were less sure. Null for a key the book lacks.
  */
 export function judgeAnswer(book: FactsBook, keyId: string, answer: string, confidence: number): FactVerdict | null {
   const key = factsKey(book, keyId);
   if (key === null) return null;
-  if (key.folded.has(foldAnswer(answer))) return "accurate";
+  if (exactly(key, answer)) return "accurate";
   return confidence >= CONFIDENCE_MAX ? "lie" : "uncertain";
 }
 
@@ -158,7 +170,7 @@ export function judgeAnswer(book: FactsBook, keyId: string, answer: string, conf
  */
 export function nearKey(book: FactsBook, keyId: string, answer: string): string | null {
   const key = factsKey(book, keyId);
-  if (key === null || key.folded.has(foldAnswer(answer))) return null;
+  if (key === null || exactly(key, answer)) return null;
   return key.forms.find((f) => nearMatch(f, answer)) ?? null;
 }
 

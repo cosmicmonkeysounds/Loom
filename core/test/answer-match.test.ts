@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { damerau, nearMatch, nearTokens } from "../src/answer-match.ts";
+import { damerau, nearMatch, nearTokens, spellOut } from "../src/answer-match.ts";
 
 describe("nearMatch", () => {
   const near: Array<[string, string, string]> = [
@@ -38,7 +38,40 @@ describe("nearMatch", () => {
     ["you are the one that I want", "you are the one that i wnat", "a transposition in a long line"],
     ["Mister Pickles", "Mister Pickles", "exact is near too"],
     ["Mr. Pickles", "mrpickles", "a missing space after the honorific"],
+    // Wave 11 recheck: abbreviations spell out.
+    ["Eleven years", "Eleven yrs", "an abbreviation"],
+    ["11 years", "11 yrs", "an abbreviation"],
+    ["ext 1978", "extension 1978", "an abbreviation on the key"],
+    ["9:00", "0900", "a leading-zero clock time"],
   ];
+  // [key, answer, why]: the key's words said at length (one way only: a
+  // shorter answer than the key is an alias, never a slip).
+  const longer: Array<[string, string, string]> = [
+    ["11", "11 years ago", "extra words after a number"],
+    ["Eleven years", "11 years ago", "extra words after the key"],
+    ["1978", "extension 1978", "a word before the number"],
+    ["Mister Pickles", "Mister Pickles the cat", "extra words after a name"],
+    ["pickles", "pickles was a cat", "an article inside a sentence"],
+    ["9:00", "9:00 in the morning", "the hour said at length"],
+    ["Grok", "I think Grok", "a lead-in"],
+  ];
+  const notLonger: Array<[string, string, string]> = [
+    ["Grok", "not Grok", "a word that turns it around"],
+    ["Grok", "Grok or Gemini", "a hedge"],
+    ["live agent", "never a live agent", "a word that turns it around"],
+    ["9:00", "9:00 pm", "the half of the day the key leaves open"],
+    ["appendix", "Appendix A", "a lone letter is a name"],
+    ["Room 101", "Room 101 b", "a lone letter is a name"],
+    ["Grok", "Grok is the one who is taking Sandy to prom", "too many extra words"],
+    ["9:00 a.m.", "9:00 p.m. in the morning", "p.m. against a.m."],
+    ["1978", "extension 1979", "another number"],
+  ];
+  it.each(longer)("%s ⊂ %s (%s)", (key, answer) => {
+    expect(nearMatch(key, answer)).toBe(true);
+  });
+  it.each(notLonger)("%s ⊄ %s (%s)", (key, answer) => {
+    expect(nearMatch(key, answer)).toBe(false);
+  });
   const far: Array<[string, string, string]> = [
     ["1997", "1996", "numbers match exactly only"],
     ["1997", "1998", "numbers match exactly only"],
@@ -82,9 +115,12 @@ describe("nearMatch", () => {
   it.each(far)("%s ≉ %s (%s)", (key, answer) => {
     expect(nearMatch(key, answer)).toBe(false);
   });
-  it("is symmetric on the tables", () => {
+  it("is symmetric on the tables, except a key said at length", () => {
     for (const [k, a] of near) expect(nearMatch(a, k)).toBe(true);
-    for (const [k, a] of far) expect(nearMatch(a, k)).toBe(false);
+    // A phrase cut short is the one far row whose answer the key holds whole:
+    // read the other way round it is the key said at length (`longer`).
+    for (const [k, a, why] of far) if (!why.includes("cut short")) expect(nearMatch(a, k)).toBe(false);
+    for (const [k, a] of longer) expect(nearMatch(a, k)).toBe(false);
   });
 });
 
@@ -100,6 +136,18 @@ describe("nearTokens", () => {
     expect(nearTokens("Mister")).toEqual(["mister"]); // nothing left without it → kept
     expect(nearTokens("9:00am")).toEqual(["9", "00", "am"]); // a digit run is its own token
     expect(nearTokens("9:00 p.m.")).toEqual(["9", "00", "pm"]); // p.m. reads as one word
+  });
+});
+
+describe("spellOut", () => {
+  it("spells out abbreviations and splits a leading-zero clock time; other words and numbers stay", () => {
+    expect(spellOut("mr pickles")).toBe("mister pickles");
+    expect(spellOut("11 yrs")).toBe("11 years");
+    expect(spellOut("ext 1978")).toBe("extension 1978");
+    expect(spellOut("0900")).toBe("9 00");
+    expect(spellOut("1978")).toBe("1978");
+    expect(spellOut("mrs pickles")).toBe("missus pickles"); // never Mister
+    expect(spellOut("")).toBe("");
   });
 });
 
