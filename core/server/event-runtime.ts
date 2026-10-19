@@ -76,7 +76,7 @@ import {
   type ParsedMap,
   type ProjectLink,
 } from "./house-maps.ts";
-import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, parseFactsBook, readFactsFile, type FactsBook, type FactsView } from "./facts.ts";
+import { FACTS_FILE, FactsWatch, factsKey, factsProblems, judgeAnswer, judgeFiling, judgeMode, parseFactsBook, readFactsFile, worldReader, type FactsBook, type FactsView } from "./facts.ts";
 import {
   AGENT_QUEUE_MAX_AGE_MS,
   AgentHub,
@@ -263,6 +263,9 @@ const showHouseWarned = new Map<string, string>();
  *  (`agent:<Character>`): a replay counts these against the power's
  *  `limit:`, never a director's fire of the same interaction. */
 const AGENT_BY = "agent:";
+/** The journal's `by` on the judging-mode flip around a near-miss filing
+ *  (`commitUnderReview`): the facts judge, not a director. */
+const JUDGE_BY = "Judge";
 
 /** Who a mutation is done by, for the facts ledger's provenance (wave 5
  *  issue 8): the journal's `by` (a director, a device, an impersonator),
@@ -1297,9 +1300,11 @@ export class EventRuntime {
    * the client's) and {text}. Null = nothing to judge (no key in force, an
    * un-keyed card, another kind); "refused" = a bad filing (400). A `fact`
    * filing for a question the key lacks is refused only while a key exists;
-   * without one the args pass untouched (other projects).
+   * without one the args pass untouched (other projects). `review`: a near
+   * miss filed while the mode is `auto` — that one filing takes the review
+   * path (`commitUnderReview`).
    */
-  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): Record<string, string | number> | null | "refused" {
+  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean } | null | "refused" {
     const book = this.factsBook();
     if (book === null) return null;
     if (card.kind === "fact") {
@@ -1307,12 +1312,19 @@ export class EventRuntime {
       const a = args["answer"];
       const c = args["confidence"];
       if (typeof q !== "string" || typeof a !== "string" || a.trim() === "" || typeof c !== "number" || !Number.isInteger(c) || c < 1 || c > 100) return "refused";
-      const verdict = judgeAnswer(book, q, a, c);
-      if (verdict === null) return "refused";
+      // A near miss (`Mr Pickels`) is proposed accurate, never a lie or a
+      // guess by itself: a director decides it (wave 11, C6).
+      const judged = judgeFiling(book, q, a, c);
+      if (judged === null) return "refused";
+      const { verdict } = judged;
       // An accurate filing also carries the key's canonical answer, so the
       // story reads "Mister Pickles", never whichever alias came in last.
-      // Only a filer who already knew it ever puts it in the journal.
-      return verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict };
+      // Only a filer who already knew it (or all but typed it) ever puts it
+      // in the journal.
+      return {
+        args: verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict },
+        review: judged.near !== null && judgeMode(book, worldReader(this.sim!)) === "auto",
+      };
     }
     if (card.kind === "answer") {
       const q = card.params["question"];
@@ -1320,9 +1332,32 @@ export class EventRuntime {
       if (q === undefined) return null;
       if (typeof t !== "string" || t.trim() === "") return "refused";
       const verdict = judgeAnswer(book, q, t, 100);
-      return verdict === null ? "refused" : { verdict, question: q };
+      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false };
     }
     return null;
+  }
+
+  /**
+   * Commit `apply` (a 📝 near-miss filing) as if the judging mode were
+   * `review`: the book's mode var is set to `review` just before and put
+   * back just after, each a journaled `setVar` by the judge — so the story's
+   * own review path holds the filing pending for a director (Run → Mind →
+   * Judging, one `# hosts` line from the story), and a replay lands the same.
+   */
+  private commitUnderReview(apply: () => SimEvent[]): SimEvent[] {
+    const book = this.factsBook();
+    const sim = this.sim;
+    if (book === null || sim === null) return apply();
+    const was = worldReader(sim)(book.modeVar) ?? "auto";
+    const actingBy = this.actingBy;
+    this.actingBy = JUDGE_BY;
+    const before = this.commit("setVar", book.modeVar, "review");
+    this.actingBy = actingBy;
+    const events = apply();
+    this.actingBy = JUDGE_BY;
+    const after = this.commit("setVar", book.modeVar, was);
+    this.actingBy = actingBy;
+    return [...before, ...events, ...after];
   }
 
   // -- agent-voiced characters ---------------------------------------------
@@ -3613,7 +3648,8 @@ export class EventRuntime {
         this.answeredWidgets.add(key);
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
-        this.fanout(this.commit("signal", `${m.widget.kind} answered`, id, { ...args, ...(judged ?? {}), card: seq }));
+        const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
+        this.fanout(judged?.review === true ? this.commitUnderReview(answered) : answered());
         sendJson(res, 200, { ok: true });
         return true;
       }

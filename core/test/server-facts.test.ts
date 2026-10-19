@@ -190,7 +190,7 @@ describe("the judge hop — /api/guest/widget with a facts.json", () => {
     const cy = await guest(rt, "Cy");
     expect((await answer(rt, ada, cardSeq(rt, ada, "fact"), { question: "Q1", answer: " eleven ", confidence: 100 })).status).toBe(200);
     expect((await answer(rt, ben, cardSeq(rt, ben, "fact"), { question: "Q1", answer: "twelve", confidence: 100 })).status).toBe(200);
-    expect((await answer(rt, cy, cardSeq(rt, cy, "fact"), { question: "Q2", answer: "Doctor Pickles", confidence: 40 })).status).toBe(200);
+    expect((await answer(rt, cy, cardSeq(rt, cy, "fact"), { question: "Q2", answer: "Doctor Seuss", confidence: 40 })).status).toBe(200);
     expect(replies(rt, ada).at(-1)).toBe("Filed: accurate.");
     expect(replies(rt, ben).at(-1)).toBe("Filed: lie.");
     expect(replies(rt, cy).at(-1)).toBe("Filed: uncertain.");

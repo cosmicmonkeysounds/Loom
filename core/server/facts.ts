@@ -6,7 +6,10 @@
 //! file into a **book** the event runtime holds in memory (`FactsBook` —
 //! every key's answer + aliases pre-folded), judges one filing against it
 //! (`judgeAnswer`: accurate = fold-match; lie = no match at confidence 100;
-//! uncertain = no match below), reads the judging **mode** off the world
+//! uncertain = no match below; `judgeFiling` adds the **near miss** — a
+//! filing `nearMatch` puts close to the key is never judged a lie or a guess
+//! by itself: it is proposed accurate and goes to a director, in `auto`
+//! mode too), reads the judging **mode** off the world
 //! (`judgeMode`: `Night.judge_mode` = `auto` | `review`), and folds the
 //! director's **ledger view** (`FactsWatch` → `ModView.facts`) off the sim
 //! log, from two generic directives the story emits — `do fact_filed …` and
@@ -18,6 +21,7 @@
 
 import { readFileSync } from "node:fs";
 
+import { nearMatch } from "../src/answer-match.ts";
 import { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, type FactVerdictKind, type FactsFile } from "../src/facts.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
 
@@ -70,6 +74,8 @@ export interface FactsKey {
    *  to the story as `key_answer`, so a read-out never echoes an alias). */
   answer: string;
   folded: Set<string>;
+  /** The answer then every alias, as written (the near-miss look). */
+  forms: string[];
 }
 
 export interface FactsBook {
@@ -97,6 +103,7 @@ export function bookOf(facts: FactsFile): FactsBook {
     text,
     answer,
     folded: new Set([answer, ...accept].map(foldAnswer).filter((s) => s !== "")),
+    forms: [answer, ...accept],
   });
   return {
     version: 1,
@@ -141,6 +148,40 @@ export function judgeAnswer(book: FactsBook, keyId: string, answer: string, conf
   if (key === null) return null;
   if (key.folded.has(foldAnswer(answer))) return "accurate";
   return confidence >= CONFIDENCE_MAX ? "lie" : "uncertain";
+}
+
+/**
+ * The key form (the answer or an alias, as written) a filing is a **near
+ * miss** of — not an exact match after folding, but `nearMatch` puts it
+ * close (`Mr Pickels` for `Mister Pickles`, `1,997` for `1997`). Null for an
+ * exact match, a clear miss, or a key the book lacks.
+ */
+export function nearKey(book: FactsBook, keyId: string, answer: string): string | null {
+  const key = factsKey(book, keyId);
+  if (key === null || key.folded.has(foldAnswer(answer))) return null;
+  return key.forms.find((f) => nearMatch(f, answer)) ?? null;
+}
+
+/** A 📝 filing's verdict and, for a near miss, the key form it is near. */
+export interface FilingJudgement {
+  verdict: FactVerdict;
+  near: string | null;
+}
+
+/**
+ * Judge a 📝 filing (wave 11, C6): `judgeAnswer`, except that a near miss
+ * (`nearKey`) is never a lie or a guess by itself — it is **proposed
+ * accurate** with `near` set, and the runtime routes that one filing down
+ * the review path whatever the mode, so a director decides; left alone, a
+ * round's settle takes the proposal, so a mistyped right answer is never
+ * marked. Null for a key the book lacks.
+ */
+export function judgeFiling(book: FactsBook, keyId: string, answer: string, confidence: number): FilingJudgement | null {
+  const verdict = judgeAnswer(book, keyId, answer, confidence);
+  if (verdict === null) return null;
+  if (verdict === "accurate") return { verdict, near: null };
+  const near = nearKey(book, keyId, answer);
+  return near === null ? { verdict, near: null } : { verdict: "accurate", near };
 }
 
 /** The mode the world holds at the book's `modeVar`: `review` exactly, else `auto`. */
@@ -206,6 +247,10 @@ export interface FactsFiling {
   by: string | null;
   /** When this server first saw the filing (epoch ms). */
   at: number;
+  /** A near miss (`nearKey`): the key form it is close to, for the director
+   *  deciding it on the Judging card. Absent for an exact match or a clear
+   *  miss; set by `FactsWatch.view` against the book in force. */
+  near?: { key: string };
 }
 
 /** The step a `fact_judged` line landed in (internal to the fold). */
@@ -425,7 +470,10 @@ export class FactsWatch {
     const seen = new Set<string>();
     for (const k of [...book.questions, ...book.answers]) {
       seen.add(k.id);
-      const list = byQuestion.get(k.id) ?? [];
+      const list = (byQuestion.get(k.id) ?? []).map((f) => {
+        const near = nearKey(book, k.id, f.answer);
+        return near === null ? f : { ...f, near: { key: near } };
+      });
       questions.push({ id: k.id, round: k.round, text: k.text, filings: list, tally: tallyFilings(list) });
     }
     for (const [id, list] of byQuestion) {

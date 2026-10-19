@@ -247,14 +247,14 @@ describe("FactsWatch", () => {
     });
     s.signal("fact answered", "g1", { question: "Q1", answer: "Eleven years", confidence: 100, verdict: "accurate", card: 1 });
     s.signal("fact answered", "g2", { question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", card: 2 });
-    s.signal("fact answered", "g1", { question: "Q2", answer: "Doctor Pickles", confidence: 60, verdict: "uncertain", card: 3 });
+    s.signal("fact answered", "g1", { question: "Q2", answer: "Doctor Seuss", confidence: 60, verdict: "uncertain", card: 3 });
     const v = watch.view(s, b);
     expect(v.questions[0]!.filings).toEqual([
       { person: "g1", name: "Ada", question: "Q1", answer: "Eleven years", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234 },
       { person: "g2", name: "Ben", question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234 },
     ]);
     expect(v.questions[0]!.tally).toEqual({ filed: 2, accurate: 2, lie: 0, uncertain: 0, consensus: true });
-    expect(v.questions[1]!.filings).toEqual([{ person: "g1", name: "Ada", question: "Q2", answer: "Doctor Pickles", confidence: 60, verdict: "uncertain", final: "uncertain", how: "auto", by: null, at: 1234 }]);
+    expect(v.questions[1]!.filings).toEqual([{ person: "g1", name: "Ada", question: "Q2", answer: "Doctor Seuss", confidence: 60, verdict: "uncertain", final: "uncertain", how: "auto", by: null, at: 1234 }]);
     expect(v.questions[1]!.tally).toEqual({ filed: 1, accurate: 0, lie: 0, uncertain: 1, consensus: false });
     expect(v.pending).toBe(0);
     // a later settle (the guess is marked) lands on the same filing
