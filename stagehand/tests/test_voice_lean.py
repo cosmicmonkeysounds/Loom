@@ -870,3 +870,25 @@ def test_a_directors_brief_never_unlocks_an_answer_word_for_guard_2():
     model = Model({"say": "It was a quokka, I hear."})
     reply = run(answer_lean(P, MODEL, request(text="what was it?"), ctx, model))
     assert "quokka" not in reply.say.lower() and reply.say == P.fallback
+
+
+def test_with_phase_cards_he_hands_over_only_what_the_card_lets_him_tell():
+    """K-04 october-21: at `introduced` (Favours: none, "Share no files
+    yet") he answered "Who is Sandy?" by handing over The Sandy File. With
+    phase cards the card's `tell` list is the share list, every share is
+    off while favours are none, and P3 names no other title."""
+    from stagehand.agents.persona import PhaseCard
+
+    carded = persona(phase_cards={"introduced": PhaseCard(phase="introduced", stage="formal"), "truth_1": PhaseCard(phase="truth_1", tell=("The Orchard",), favours="earned")})
+    req = request(text="Who is Sandy?", world={"Night.phase": "introduced", "Night.step": "4", "Night.lj_reader": "none"})
+    none_ctx = context(phase=PhaseView(phase="introduced", stage="formal", favours="none", live_powers=("snoop",), tell=()))
+    model = Model({"say": "Here is my file.", "act": {"share": "The Sandy File"}})
+    reply = run(answer_lean(carded, MODEL, req, none_ctx, model))
+    assert reply.acts == () and "The Sandy File" not in model.calls[0][2]["content"]
+    assert "You hand nobody a file now." in model.calls[0][1]["content"]
+    # Favours earned and The Orchard on the card: that one may go, nothing else.
+    earned = context(phase=PhaseView(phase="truth_1", stage="hungry", favours="earned", live_powers=("snoop",), tell=("The Orchard",)))
+    model = Model({"say": "Take both.", "act": [{"share": "The Orchard"}, {"share": "The Sandy File"}]})
+    reply = run(answer_lean(carded, MODEL, request(), earned, model))
+    assert [a.get("entry") for a in reply.acts] == ["The Orchard"]
+    assert "The Sandy File" not in model.calls[0][2]["content"]

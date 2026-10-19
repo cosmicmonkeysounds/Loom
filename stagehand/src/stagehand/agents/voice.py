@@ -216,6 +216,22 @@ def tell_entries(persona: Persona, req: dict[str, Any], phase: PhaseView) -> lis
     ]
 
 
+def shareable(persona: Persona, req: dict[str, Any], phase: PhaseView) -> tuple[str, ...] | None:
+    """The titles he may hand over now (a `share` act), or None for no limit.
+
+    With phase cards (the show's mind file) the card's `tell` list is also
+    its share list: what he may tell in full he may hand over, nothing else,
+    and nothing at all while the favours are `none` (K-04: at `introduced`,
+    "Favours: none / Share no files yet", he handed The Sandy File to a
+    program who asked who Sandy was). A persona with no cards keeps every
+    held title, as before wave 12."""
+    if not persona.phase_cards:
+        return None
+    if phase.favours == "none":
+        return ()
+    return tuple(str(e.get("title", "")) for e in tell_entries(persona, req, phase))
+
+
 def render_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     phase = ctx.phase
     name = phase.phase or str(_world(req).get("Night.phase") or "") or "unknown"
@@ -235,10 +251,13 @@ def render_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     if wary:
         lines.append(f"Wary of: {', '.join(wary)}")
     tell = tell_entries(persona, req, phase)
+    shares = shareable(persona, req, phase)
     if tell:
-        lines.append("You may tell in full now:")
+        lines.append("You may tell in full now:" if shares is None or not shares else "You may tell in full, or hand over, now:")
         for e in tell:
             lines.append(f"- {e.get('title', '')}: {_one_line(e.get('text', ''), MAX_TELL)}")
+    if shares is not None and not shares:
+        lines.append("You hand nobody a file now.")
     if phase.brief.strip():
         by = "set by director" if phase.brief_by == "director" else "set by story"
         lines.append(f"Your brief ({by}):")
@@ -384,11 +403,19 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
             lines.extend(f"- {x}" for x in elsewhere)
         blocks.append("\n".join(lines))
     told_f = {fold(t) for t in told}
-    titles = [
-        str(e.get("title", ""))
-        for e in s.visible((req.get("self") or {}).get("codex"))
-        if e.get("title") and fold(e.get("title", "")) not in told_f and not s.leaks(str(e.get("title", "")))
-    ]
+    # With phase cards he sees only what the card lets him tell (P2): a
+    # title outside it is never named to him, so he can neither hand it over
+    # nor say it (a private file's title can carry a name the house has not
+    # said yet).
+    titles = (
+        []
+        if persona.phase_cards
+        else [
+            str(e.get("title", ""))
+            for e in s.visible((req.get("self") or {}).get("codex"))
+            if e.get("title") and fold(e.get("title", "")) not in told_f and not s.leaks(str(e.get("title", "")))
+        ]
+    )
     if titles:
         blocks.append(f"Lore you hold (titles only): {'; '.join(titles)}")
     whispers = [_one_line(w) for w in ctx.whispers if _one_line(w)]
@@ -619,6 +646,13 @@ async def answer_lean(
         (INTERACTION `while:`) decides on the server."""
         notes: list[str] = []
         acts = list(reply.acts)
+        allowed_shares = shareable(persona, req, ctx.phase)
+        if allowed_shares is not None:
+            ok = {fold(t) for t in allowed_shares}
+            kept = [a for a in acts if a.get("kind") != "share" or fold(str(a.get("entry") or "")) in ok]
+            if len(kept) != len(acts):
+                notes.append("act dropped (not shareable now)")
+                acts = kept
         if lean and live is not None and any(a.get("kind") == "fire" and a.get("name") not in live for a in acts):
             notes.append("act not on the card (sent; the story decides)")
         if any(a.get("kind") == "fire" and isinstance(a.get("args"), dict) for a in acts):
