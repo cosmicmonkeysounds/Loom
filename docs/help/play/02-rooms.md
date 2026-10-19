@@ -51,9 +51,11 @@ the list of who's here — tap a name to message them.
 ## Checking in at a room's sign
 
 Some rooms have a sign with a QR code: **Scan to enter this room's
-chat**. Point your phone's own camera at it and open the link — in the
-same browser you joined in — and you're checked in: you're standing in
-that room and its chat opens. It won't work while you're captured or
+chat**. Tap **📷** in the app and point it at the sign, and you're
+checked in: you're standing in that room and its chat opens. (Your
+phone's own camera works too if it opens the same browser you joined
+in; if it opens another one, the page names the room and tells you to
+scan it with the app's 📷 instead.) It won't work while you're captured or
 **restricted** by the story (the story has to lift that first — see
 [Your pass](your-pass.md)), before you've finished getting in, or for a
 room the story hasn't opened for you yet; and one check-in every 20

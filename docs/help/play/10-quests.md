@@ -40,11 +40,15 @@ Some stories let you hand an answer to a character instead of saying it
 out loud: a **📝 File a fact** card in their private thread. Pick the
 question (with only one left, it's picked for you), type your answer,
 set the slider — *Please select your confidence level in this response*,
-1 to 100 — and tap **File it**. Until it can go, the card says what it
-is waiting for: *Pick a question above*, or *Type your answer*.
+1 to 100 — and tap **File it**. The slider starts **not set** (greyed):
+touch or drag it, or use the arrow keys, to choose how sure you are;
+moving onto it with Tab doesn't count. Until the card can go, it says
+what it is waiting for: *Pick a question above*, *Type your answer*, or
+*Set how sure you are*.
 Only filed facts count — telling the character in chat is just a rumour.
 You can file each open question once, and the reply is the same whether
-you were right or not: it is judged the moment you file it, and the
+you were right or not: it is judged the moment you file it (an answer
+that is nearly right, a typo, waits for a person to judge it), and the
 story decides what to do with a right answer, a wrong one you were sure
 of, and a guess. Mind the slider — at *Trapped in the Internet*, a wrong
 answer filed at 100 is a lie on the record, and a guess filed below 100
