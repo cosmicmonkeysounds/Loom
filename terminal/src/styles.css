@@ -858,3 +858,52 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 
 .setup label.check { display: flex; align-items: center; gap: 0.6em; flex-wrap: wrap; }
 .setup label.check input { width: auto; }
+
+/* --- the heart terminal's file panel (wave 11, `FilePanel.tsx`) -------- */
+
+.line-pane.with-files { grid-template-rows: auto 1fr auto; }
+.file-open {
+  justify-self: center;
+  margin: 0.4em 0 0;
+  background: #000;
+  border: 2px solid var(--amber);
+  border-radius: 4px;
+  padding: 0.25em 1em;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  font-size: 0.85em;
+}
+.file-open:active { background: var(--amber); color: var(--ink); }
+.file-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: var(--pad);
+  min-height: 0;
+  overflow: auto;
+}
+.file-head { display: flex; justify-content: space-between; align-items: center; gap: 1em; color: var(--amber); letter-spacing: 0.1em; }
+.file-note { font-size: 0.8em; letter-spacing: 0.06em; padding: 0.3em 0.6em; border: 1px solid currentColor; }
+.file-note.ok { color: var(--phosphor); }
+.file-note.bad { color: var(--amber); }
+.file-list { display: flex; flex-direction: column; gap: 0.3em; min-height: 0; overflow: auto; flex: 1 1 auto; }
+.file-row { display: flex; align-items: center; justify-content: space-between; gap: 0.8em; padding: 0.2em 0.4em; border-bottom: 1px solid var(--phosphor-faint); }
+.file-row.fresh { border: 1px solid var(--amber); }
+.file-title { min-width: 0; overflow-wrap: anywhere; }
+.file-give {
+  flex: none;
+  background: none;
+  border: 2px solid var(--phosphor-dim);
+  border-radius: 4px;
+  padding: 0.1em 0.8em;
+  color: var(--phosphor);
+}
+.file-give:disabled { opacity: 0.5; }
+.file-code { flex-wrap: wrap; }
+.file-code button[type="submit"] {
+  background: none;
+  border: 2px solid var(--phosphor-dim);
+  border-radius: 4px;
+  padding: 0.1em 0.8em;
+}
+.file-scan { align-self: center; width: min(100%, 40vh); }

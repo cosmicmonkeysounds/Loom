@@ -53,7 +53,8 @@ import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { useIdleTimeout } from "./idle.ts";
-import { VisitLatch, beginPilot, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { FilePanel } from "./FilePanel.tsx";
+import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
 import { parseScan } from "./scan.ts";
 import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
@@ -755,7 +756,11 @@ function Terminal({
     window.addEventListener("pagehide", onHide);
     return () => window.removeEventListener("pagehide", onHide);
   }, [pilot, config, visits]);
-  const busy = session.typing || speaking || queue.busy || roomBusy;
+  // The heart terminal's file panel (a room terminal, wave 11): open, it
+  // holds the leash — choosing a file to hand him takes a while.
+  const [filesOpen, setFilesOpen] = useState(false);
+  useEffect(() => setFilesOpen(false), [pilot]);
+  const busy = session.typing || speaking || queue.busy || roomBusy || filesOpen;
   const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, onTimeout: () => end("timeout") });
   useEffect(() => {
     if (session.dead !== null && pilot !== null) end("dead");
@@ -870,7 +875,7 @@ function Terminal({
           )}
         </section>
 
-        <section className="line-pane">
+        <section className={`line-pane${room !== null && pilot !== null && !filesOpen ? " with-files" : ""}`}>
           {screen.kind === "attract" && (
             <div className="attract">
               <div className="scan-frame">
@@ -908,8 +913,14 @@ function Terminal({
               <div className="big blink">CONNECTING…</div>
             </div>
           )}
-          {screen.kind === "piloting" && pilot !== null && (
+          {screen.kind === "piloting" && pilot !== null && filesOpen && <FilePanel config={config} pilot={pilot} view={session.view} character={characterIdOf(config.character, session.view)} onClose={() => setFilesOpen(false)} />}
+          {screen.kind === "piloting" && pilot !== null && !filesOpen && (
             <>
+              {room !== null && (
+                <button type="button" className="file-open" onClick={() => setFilesOpen(true)}>
+                  📎 GIVE HIM A FILE
+                </button>
+              )}
               <Thread lines={session.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} />
               <Composer
                 onSend={async (t) => {
