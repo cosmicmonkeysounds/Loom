@@ -4,8 +4,9 @@
 ## (`res://test/golden/`, copied by `pnpm --filter @loom/house sync`) at
 ## 1e-3; the rest covers what has no golden: frames, the duck pick,
 ## locomotion maths, config precedence, the pose pump, the SSE parser, the
-## lobby picker, the game state machine (with a fake link) and a smoke
-## test that `main.tscn` builds the house.
+## lobby picker, the King's reach + his doors, the
+## game state machine (with a fake link) and a smoke test that `main.tscn`
+## builds the house.
 ##
 ##   ./test/run.sh   (or: godot --headless --path . --script res://test/game.gd -- --offline)
 extends SceneTree
@@ -35,10 +36,11 @@ func _run() -> void:
 	_test_goldens()
 	_test_frames()
 	_test_duck()
+	_test_king_rules()
 	_test_config()
 	_test_sse_parser()
 	_test_pose_pump()
-	_test_server_link()
+	await _test_server_link()
 	_test_locomotion()
 	_test_picker()
 	_test_flow()
@@ -109,6 +111,7 @@ func _test_goldens() -> void:
 		_golden_walls(name, house)
 		_golden_routes(name, house)
 		_golden_locate(name, house)
+		_golden_king(name, house)
 
 
 ## A deep compare: numbers within TOL, everything else equal. Returns the
@@ -187,6 +190,44 @@ func _golden_locate(name: String, house: Dictionary) -> void:
 	_report("golden %s.locate" % name, mismatches, want.size())
 
 
+## A king map's goldens (when `house:sync` has copied them): `kingReach`
+## plain and with the server's slack, and the route queries with every king
+## fallen (his doors open).
+func _golden_king(name: String, house: Dictionary) -> void:
+	var reach_path := GOLDEN_DIR + name + ".king.json"
+	if FileAccess.file_exists(reach_path):
+		var want: Array = _read_json(reach_path)
+		var mismatches: Array = []
+		for q: Dictionary in want:
+			var prop: Dictionary = {}
+			for pr: Dictionary in house.get("props", []):
+				if str(pr.get("id", "")) == str(q["king"]):
+					prop = pr
+			if prop.is_empty():
+				mismatches.append("%s: no such king" % q["king"])
+				continue
+			var got := {"reach": HouseKing.king_reach(house, q["feet"], float(q["yaw"]), prop), "slack": HouseKing.king_reach(house, q["feet"], float(q["yaw"]), prop, HouseKing.KING_HIT_SLACK)}
+			var d := _diff(got, {"reach": q["reach"], "slack": q["slack"]}, "%s yaw %s" % [JSON.stringify(q["feet"]), q["yaw"]])
+			if d != "":
+				mismatches.append(d)
+		_report("golden %s.king" % name, mismatches, want.size())
+	var fallen_path := GOLDEN_DIR + name + ".fallen.json"
+	if FileAccess.file_exists(fallen_path):
+		var fallen := {}
+		for pr: Dictionary in house.get("props", []):
+			if str(pr.get("kind", "")) == "king":
+				fallen[str(pr["id"])] = true
+		var open := HouseKing.with_fallen_kings(house, fallen)
+		var want: Array = _read_json(fallen_path)
+		var mismatches: Array = []
+		for q: Dictionary in want:
+			var got := HouseRoute.route(open, q["from"], q["to"])
+			var d := _diff(got, q["path"], "route")
+			if d != "":
+				mismatches.append("%s → %s: %s" % [JSON.stringify(q["from"]), JSON.stringify(q["to"]), d])
+		_report("golden %s.fallen" % name, mismatches, want.size())
+
+
 # --- frames + duck ---------------------------------------------------------
 
 
@@ -225,6 +266,62 @@ func _test_duck() -> void:
 	_check(str(HouseDuck.pick_duck_spot(house, "s-1")["id"]) == str(spot["id"]), "duck: deterministic per seed")
 	var other: Dictionary = HouseDuck.pick_duck_spot(house, "s-1", [spot["id"]])
 	_check(str(other["id"]) != str(spot["id"]), "duck: avoid skips the last spot")
+
+
+# --- the King + pictures ---------------------------------------------------
+
+
+## The show map's King, standing in the Server Room door ([-3, 11.2], the
+## basement hall to the east): `kingReach`, the door's gap, the fallen map.
+func _test_king_rules() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var king := HouseKing.king_prop(house)
+	_check(not king.is_empty() and str(king["id"]) == "cold-lock-king", "king: the show's King is a king prop")
+	if king.is_empty():
+		return
+	var kp: Array = king["pos"]
+	var east := [float(kp[0]) + 0.95, float(kp[1]), float(kp[2])]
+	# Yaw 90 looks west (at him from the east), 0 north, −90 east.
+	_check(HouseKing.king_reach(house, east, 90.0, king) == "ok", "king: near and facing him is ok")
+	_check(HouseKing.king_reach(house, east, 0.0, king) == "facing", "king: looking north past him is facing")
+	_check(HouseKing.king_reach(house, east, 90.0 + 54.0, king) == "ok" and HouseKing.king_reach(house, east, 90.0 + 56.0, king) == "facing", "king: the cone is 55° either side")
+	_check(HouseKing.king_reach(house, east, 90.0 - 54.0, king) == "ok" and HouseKing.king_reach(house, east, 90.0 - 56.0, king) == "facing", "king: … on both sides")
+	_check(HouseKing.king_reach(house, [float(kp[0]) + 1.24, float(kp[1]), float(kp[2])], 90.0, king) == "ok", "king: 1.24 m is in reach")
+	_check(HouseKing.king_reach(house, [float(kp[0]) + 1.26, float(kp[1]), float(kp[2])], 90.0, king) == "far", "king: 1.26 m is far (KING_REACH 1.25)")
+	_check(HouseKing.king_reach(house, [float(kp[0]) + 0.95, 0.0, float(kp[2])], 90.0, king) == "floor", "king: right above him, a floor up, is floor")
+	_check(HouseKing.king_reach(house, [float(kp[0]) + 3.0, 0.0, float(kp[2])], 0.0, king) == "floor", "king: floor is judged before far")
+	_check(HouseKing.king_reach(house, [kp[0], kp[1], kp[2]], -123.0, king) == "ok", "king: standing on his centre counts as facing him")
+	var wide := [float(kp[0]) + 1.4, float(kp[1]), float(kp[2])]
+	_check(HouseKing.king_reach(house, wide, 90.0 + 70.0, king) == "far" and HouseKing.king_reach(house, wide, 90.0 + 70.0, king, HouseKing.KING_HIT_SLACK) == "ok", "king: the server's slack reaches 1.4 m and 70° off")
+	_check(HouseKing.king_max(king) == int(king["hp"]) and HouseKing.king_max({"kind": "king"}) == HouseKing.KING_HP and HouseKing.king_max({"hp": 2.5}) == HouseKing.KING_HP, "king: his max hp is the prop's integer hp, else KING_HP")
+
+	var door: Dictionary = {}
+	for d: Dictionary in house["doors"]:
+		if str(d.get("guard", "")) == str(king["id"]):
+			door = d
+	_check(not door.is_empty(), "king: he guards a door")
+	var gap: Variant = HouseGeometry.door_gap(house, door)
+	_check(gap is Dictionary and gap["axis"] == "z" and _near(gap["c"], -3.0) and _near(gap["lo"], 10.8) and _near(gap["hi"], 11.6), "door gap: the Server Room door is the x = −3 line, z 10.8–11.6 (%s)" % [gap])
+	_check(gap is Dictionary and _near(gap["bottom"], -2.7) and _near(gap["top"], -2.7 + float(HouseGeometry.style_of(house)["doorHeight"])), "door gap: floor to door top")
+	_check(HouseGeometry.door_gap(house, {"id": "x", "a": "nowhere", "at": [0, 0], "width": 1.0}) == null, "door gap: no room, no gap")
+
+	var inside := [-5.0, -2.7, 9.5]
+	var shut := HouseRoute.route(house, house["spawn"]["pos"], inside)
+	_check(shut.size() == 2, "route: the guarded door is shut for routing")
+	_check(HouseKing.trail_map(house, str(king["id"]), false) == house, "king: standing, the trail's map is the map")
+	var open := HouseKing.trail_map(house, str(king["id"]), true)
+	_check(HouseKing.king_prop(open).get("solid") == false and not HouseGeometry.prop_solid(HouseKing.king_prop(open)) and open["doors"].size() == house["doors"].size(), "king: fallen, he is no longer solid and every door stays")
+	_check(open["doors"].all(func(d: Dictionary) -> bool: return d.get("guard") == null), "king: … none guarded")
+	_check(HouseKing.with_fallen_kings(house, {"nobody": true}) == house, "king: a set naming no king is the map itself")
+	_check(house["doors"].any(func(d: Dictionary) -> bool: return d.get("guard") != null), "king: … the source map is untouched")
+	var through := HouseRoute.route(open, house["spawn"]["pos"], inside)
+	_check(through.size() > 2 and through.any(func(q: Array) -> bool: return _near3(q, [-3.0, -2.7, 11.2], 0.01)), "route: fallen, the trail goes through his door (%s)" % [through])
+
+	_check(HouseKing.state_of(null).is_empty() and HouseKing.state_of({"hp": "x", "max": 15}).is_empty(), "king state: null / junk is no shared King")
+	var st := HouseKing.state_of({"id": "k", "hp": 0.0, "max": 15.0, "fallen": false, "by": "Ada"})
+	_check(st.get("hp") == 0 and st.get("max") == 15 and st.get("fallen") == true and st.get("by") == "Ada", "king state: hp 0 is fallen whatever the flag (%s)" % [st])
+	_check(not HouseKing.changed(st, HouseKing.state_of({"id": "k", "hp": 0, "max": 15, "fallen": true, "by": null})), "king state: who did it isn't a change")
+	_check(HouseKing.changed({}, st) and HouseKing.changed(st, {}) and not HouseKing.changed({}, {}), "king state: appearing and going are changes")
 
 
 # --- net ---------------------------------------------------------------------
@@ -329,6 +426,18 @@ func _test_pose_pump() -> void:
 	_check(g.is_in_flight() and g.tick(1.0) == null, "pump: a stale answer never frees the next session's send (one in flight)")
 	g.sent(g.generation())
 	_check(g.tick(1.0) == "b2", "pump: its own answer does")
+
+	# Claims have a kind (the duck's `found`, the King's hit), one at a time.
+	var k := PosePump.new()
+	_check(k.claim_kind() == "" and k.want_claim("king") and k.claim_kind() == "king", "pump: a king claim is wanted")
+	_check(not k.want_claim("found") and k.claim_kind() == "king", "pump: … and a second claim waits its turn")
+	k.offer("p")
+	var first_step := k.step(0.0)
+	_check(first_step["pose"] == "p" and not first_step["claim"], "pump: the hit flushes the newest pose first")
+	k.sent(k.generation())
+	_check(k.step(0.0)["claim"] and k.claim_kind() == "king", "pump: … then claims")
+	k.claim_done(k.generation())
+	_check(k.claim_kind() == "" and not k.is_claiming() and k.want_claim("found"), "pump: its answer frees the pump for the next claim")
 
 	# The claim schedule, at a 72 fps game with slow and fast round trips.
 	for rtt: float in [0.15, 0.05, 0.4]:
@@ -485,6 +594,112 @@ func _test_server_link() -> void:
 	_free_server_link(sl)
 
 	_test_server_link_map()
+	await _test_server_link_king()
+
+
+## The shared King over the wire: the `hello` / `king` frames and the
+## session's map fetch set it; a hit flushes the newest pose, then posts
+## with the session token; every answer is handed on.
+func _test_server_link_king() -> void:
+	var sl := _linked_server_link()
+	var tr: Variant = sl.get("transport")
+	var kings: Array = []
+	var answers: Array = []
+	sl.king_changed.connect(func(k: Dictionary) -> void: kings.append(k.duplicate()))
+	sl.king_hit_answered.connect(func(r: String, _d: Dictionary) -> void: answers.append(r))
+	var full := {"id": "cold-lock-king", "hp": 15, "max": 15, "fallen": false}
+
+	sl._on_frame("hello", {"eventId": "e1", "houseVersion": "", "players": []})
+	_check(sl.king.is_empty() and kings.is_empty(), "link king: an old server's hello (no king) is no shared King")
+	sl._on_frame("hello", {"eventId": "e1", "houseVersion": "", "players": [], "king": full})
+	_check(sl.king.get("hp") == 15 and sl.king.get("max") == 15 and kings.size() == 1, "link king: hello.king is the shared King")
+	sl._on_frame("king", {"id": "cold-lock-king", "hp": 15, "max": 15, "fallen": false, "by": null})
+	_check(kings.size() == 1, "link king: a king frame that changes nothing is no change")
+	sl._on_frame("king", {"id": "cold-lock-king", "hp": 14, "max": 15, "fallen": false, "by": "Zed"})
+	_check(kings.size() == 2 and sl.king.get("hp") == 14 and sl.king.get("by") == "Zed", "link king: a king frame moves the bar (%s)" % [sl.king])
+	sl._on_frame("hello", {"eventId": "e1", "houseVersion": "", "players": [], "king": null})
+	_check(sl.king.is_empty() and kings.size() == 3, "link king: hello.king null is no shared King")
+
+	sl.adopt({"session": "s-k", "token": "t-k", "houseVersion": "v1"})
+	tr.answer("/spatial/house", 200, {"house": sl.house, "version": "v1", "king": {"id": "cold-lock-king", "hp": 9, "max": 15, "fallen": false}})
+	_check(sl.king.get("hp") == 9, "link king: the session's map fetch carries the King")
+
+	# The hit: the newest pose first, then the claim (session token), nothing between.
+	sl.send_pose([1.0, -2.7, 11.2], 90.0, 0.0)
+	sl.hit_king()
+	sl._process(0.016)
+	_check(tr.count("/api/spatial/pose") == 1 and tr.count("/api/spatial/king/hit") == 0, "link king: a hit flushes the newest pose first")
+	sl.send_pose([1.1, -2.7, 11.2], 90.0, 0.0)
+	tr.answer("/spatial/station", 200, {"assignment": null})
+	sl._process(0.016)
+	_check(tr.count("/api/spatial/king/hit") == 0, "link king: … and waits for it to land")
+	tr.answer("/spatial/pose", 200, {"ok": true})
+	sl._process(0.016)
+	_check(tr.count("/api/spatial/king/hit") == 1 and tr.count("/api/spatial/pose") == 1, "link king: … then posts the hit, no pose in between")
+	var hit_call: Dictionary = tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/king/hit"))[0]
+	_check(hit_call["method"] == "POST" and hit_call["path"] == "/e/e1/api/spatial/king/hit" and hit_call["token"] == "t-k", "link king: POST /e/<event>/api/spatial/king/hit with the session token")
+	tr.answer("/king/hit", 200, {"ok": true, "king": {"id": "cold-lock-king", "hp": 8, "max": 15, "fallen": false}})
+	_check(answers == ["ok"] and sl.king.get("hp") == 8, "link king: 200 → ok, the bar from the answer (%s)" % [answers])
+	sl._process(0.2)
+	_check(tr.count("/api/spatial/pose") == 2, "link king: poses resume after the answer")
+
+	# 409 already hit / not near / fallen / paused, 404 no king, 410 gone.
+	for c: Array in [
+		[409, {"error": "already hit", "king": {"id": "cold-lock-king", "hp": 8, "max": 15, "fallen": false}}, "already hit"],
+		[409, {"error": "not near"}, "not near"],
+		[409, {"error": "fallen", "king": {"id": "cold-lock-king", "hp": 0, "max": 15, "fallen": true}}, "fallen"],
+		[409, {"error": "doors are closed"}, "doors are closed"],
+		[409, {"error": "unclaimed session"}, "error"],
+		[404, {"error": "no king"}, "no king"],
+	]:
+		answers.clear()
+		sl.hit_king()
+		for i in 4:
+			tr.answer("/spatial/pose", 200, {"ok": true})
+			tr.answer("/spatial/station", 200, {"assignment": null})
+			sl._process(0.2)
+		var sent: bool = tr.answer("/king/hit", c[0], c[1])
+		_check(sent and answers == [c[2]], "link king: %d %s → %s (%s)" % [c[0], c[1].get("error"), c[2], answers])
+	_check(sl.king.is_empty(), "link king: … a 404 forgets the King")
+	_check(sl.has_session(), "link king: none of those ends the session")
+
+	# A hit asked for while the found claim is out goes once that answers.
+	sl.report_found()
+	sl.hit_king()
+	for i in 4:
+		tr.answer("/spatial/pose", 200, {"ok": true})
+		tr.answer("/spatial/station", 200, {"assignment": null})
+		sl._process(0.2)
+	_check(tr.count("/api/spatial/found") == 1 and tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/king/hit")).is_empty(), "link king: one claim at a time — the found goes first")
+	tr.answer("/spatial/found", 409, {"error": "not near the duck"})
+	for i in 4:
+		tr.answer("/spatial/pose", 200, {"ok": true})
+		tr.answer("/spatial/station", 200, {"assignment": null})
+		sl._process(0.2)
+	_check(tr.calls.filter(func(c: Dictionary) -> bool: return str(c["path"]).contains("/king/hit")).size() == 1, "link king: … then the hit")
+	tr.answer("/king/hit", 410, {"error": "gone"})
+	_check(not sl.has_session(), "link king: 410 → the session is over")
+	tr.base = "http://127.0.0.1:7999"
+	_check(sl.avatar_url("0123456789abcdef") == "http://127.0.0.1:7999/e/e1/api/avatar/0123456789abcdef" and sl.avatar_url("") == "", "link: a picture's URL is the event's avatar route")
+	_free_server_link(sl)
+
+	# Offline: the map's King, kept here; a hit lands once per session.
+	var off: LinkBase = load("res://net/server_link.gd").new()
+	off.config = StationConfig.merge(StationConfig.defaults(), {"offline": true})
+	off.config["offline"] = true
+	off.house = _read_json("res://house/house.json")
+	off.seed_offline_king()
+	var max_hp := int(HouseKing.king_prop(off.house)["hp"])
+	_check(off.king.get("hp") == max_hp and off.king.get("fallen") == false, "link offline: the King starts at the map's hp")
+	var offline_answers: Array = []
+	off.king_hit_answered.connect(func(r: String, _d: Dictionary) -> void: offline_answers.append(r))
+	off.session = {"session": "offline-1", "name": "Ada"}
+	off.hit_king()
+	off.hit_king()
+	await process_frame
+	_check(offline_answers == ["ok", "already hit"] and off.king.get("hp") == max_hp - 1, "link offline: one hit per session (%s)" % [offline_answers])
+	_check(off.avatar_url("abc") == "", "link offline: no pictures to fetch")
+	off.free()
 
 
 ## The map in play is never silently the wrong one, and the duck follows
@@ -822,6 +1037,140 @@ func _test_builder_geometry(b: HouseBuilder, house: Dictionary) -> void:
 # --- main.tscn + the game, with a fake link --------------------------------------
 
 
+## The shared King in the game: the bar, the approach notice, the hit (near
+## and facing, once per visit, every answer), the fall for everyone (kneels,
+## the door opens for the body and the trail) and the restore.
+func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
+	var player := game.player
+	var b := game.builder
+	var sub: Label3D = game.hud.get("_sub")
+	var kid := "cold-lock-king"
+	var east := [-1.6, -2.7, 11.2]  # 0.95 m east of him, in the basement hall
+	var west_yaw := b.yaw_to_world(90.0)
+
+	# No shared King (an old server): no notice, the button does nothing.
+	link.give_king(null)
+	link.assignment_received.emit(_assignment(house, "s-3k0", true))
+	game.hud.notice("")
+	player.teleport(b.to_world(east), west_yaw)
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	player.hit_button = false
+	game._process(0.016)
+	_check(sub.text == "" and link.king_hits == 0, "game king: an old server's King says nothing and takes no hit (%s)" % sub.text)
+	link.session_over.emit("test")
+
+	link.give_king({"id": kid, "hp": 15, "max": 15, "fallen": false})
+	var text := b.get_node("Prop_%s/Health/HealthText" % kid) as Label3D
+	var bar := b.get_node("Prop_%s/Health/HealthBar" % kid) as Sprite3D
+	_check((b.get_node("Prop_%s/Health" % kid) as Node3D).visible and text.text == "THE KING  15 / 15" and bar.texture != null, "game king: the shared bar over him (%s)" % text.text)
+	_check(not b.king_kneeling(kid) and b.door_shut("server-door"), "game king: … standing, his door shut")
+
+	link.assignment_received.emit(_assignment(house, "s-3k", true))
+	game.hud.notice("")
+	player.teleport(b.to_world(east), b.yaw_to_world(0.0))  # beside him, looking north
+	game._process(0.016)
+	_check(sub.text == Game.KING_NOTICE, "game king: near him the HUD says how to hit him (%s)" % sub.text)
+	_check(Game.KING_NOTICE == "Pull the trigger to hit the King — once per visit.", "game king: the notice's words")
+	game.hud.notice("")
+	game._process(0.016)
+	_check(sub.text == "", "game king: … and not again while still beside him")
+	player.hit_button = true
+	game._process(0.016)
+	_check(link.king_hits == 0 and sub.text == Game.KING_CLOSER, "game king: a press not facing him is no hit (%s)" % sub.text)
+	player.hit_button = false
+	game._process(0.016)
+	player.teleport(b.to_world(east), west_yaw)
+	player.hit_button = true
+	game._process(0.016)
+	_check(link.king_hits == 1, "game king: a press near and facing him hits")
+	game._process(0.016)
+	_check(link.king_hits == 1, "game king: holding the button is one press")
+	player.hit_button = false
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	_check(link.king_hits == 1, "game king: no second hit while one is out")
+	player.hit_button = false
+	link.give_king({"id": kid, "hp": 14, "max": 15, "fallen": false, "by": "Ada"})
+	link.king_hit_answered.emit("ok", {"ok": true})
+	_check(game.king_hit_used and sub.text == "You hit him." and text.text == "THE KING  14 / 15", "game king: ok → \"You hit him.\", the bar drops (%s / %s)" % [sub.text, text.text])
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	player.hit_button = false
+	_check(link.king_hits == 1 and sub.text == Game.KING_USED, "game king: once per visit (%s)" % sub.text)
+	link.session_over.emit("test")
+
+	# A new visit may hit again; the server's "already hit" (the same visit
+	# re-scanned) counts as used; "not near" and a pause say so.
+	link.assignment_received.emit(_assignment(house, "s-3k2", true))
+	_check(not game.king_hit_used, "game king: a new visit has its hit back")
+	player.teleport(b.to_world(east), west_yaw)
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	player.hit_button = false
+	_check(link.king_hits == 2, "game king: … and hits")
+	link.king_hit_answered.emit("not near", {"error": "not near"})
+	_check(not game.king_hit_used and sub.text == Game.KING_CLOSER, "game king: not near → closer, still unused")
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	player.hit_button = false
+	link.king_hit_answered.emit("doors are closed", {"error": "doors are closed"})
+	_check(sub.text == Game.KING_PAUSED and not game.king_hit_used, "game king: a pause says so")
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	player.hit_button = false
+	link.king_hit_answered.emit("already hit", {"error": "already hit"})
+	_check(game.king_hit_used and sub.text == Game.KING_USED and link.king_hits == 4, "game king: already hit → used")
+
+	# Someone else's hit fells him: he kneels for everyone, the door opens.
+	var spawn: Array = house["spawn"]["pos"]
+	var inside := [-5.0, -2.7, 9.5]
+	_check(Game.trail_path(game.route_house, spawn, inside).size() == 2, "game king: standing, no trail through his door")
+	link.give_king({"id": kid, "hp": 0, "max": 15, "fallen": true, "by": "Zed"})
+	_check(b.king_kneeling(kid) and not b.door_shut("server-door") and text.text == "THE KING  0 / 15", "game king: fallen, he kneels and his door opens")
+	_check(sub.text == "He is down: the cold door is open.", "game king: … and the HUD says so (%s)" % sub.text)
+	var through := Game.trail_path(game.route_house, spawn, inside)
+	_check(through.size() > 2, "game king: … the trail goes through his door (%d points)" % through.size())
+	game._process(0.016)
+	player.hit_button = true
+	game._process(0.016)
+	player.hit_button = false
+	_check(link.king_hits == 4 and sub.text == Game.KING_DOWN, "game king: no hit on a fallen King")
+
+	# The body walks through the open door (west, from beside him) …
+	player.locomotion_enabled = true
+	player.teleport(b.to_world(east), west_yaw)
+	player.left_stick = Vector2(0, 1)
+	for i in 110:
+		player._physics_process(1.0 / 90.0)
+	var room: Variant = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
+	_check(str(room) == "server-room", "game king: fallen, the body walks through his door (in %s at %s)" % [room, b.to_house(player.feet())])
+	player.left_stick = Vector2.ZERO
+	# A remap keeps him down.
+	link.give_house(house)
+	_check(b.king_kneeling(kid) and not b.door_shut("server-door"), "game king: a remap keeps him down")
+
+	# … and a director's restore stands him up and shuts it again.
+	link.give_king({"id": kid, "hp": 15, "max": 15, "fallen": false, "by": null})
+	_check(not b.king_kneeling(kid) and b.door_shut("server-door") and sub.text == Game.KING_STANDS, "game king: a restore stands him up, the door shut (%s)" % sub.text)
+	_check(Game.trail_path(game.route_house, spawn, inside).size() == 2, "game king: … and the trail shut again")
+	player.teleport(b.to_world(east), west_yaw)
+	player.left_stick = Vector2(0, 1)
+	for i in 110:
+		player._physics_process(1.0 / 90.0)
+	room = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
+	_check(str(room) == "basement-hall", "game king: standing, he blocks the body (in %s at %s)" % [room, b.to_house(player.feet())])
+	player.left_stick = Vector2.ZERO
+	link.session_over.emit("test")
+	await process_frame
+
+
 func _assignment(house: Dictionary, sid: String, captured: bool) -> Dictionary:
 	return {
 		"session": sid, "token": "tok-" + sid, "guest": "g-aaaaaa", "name": "Ada", "world": "vr",
@@ -856,7 +1205,8 @@ func _test_main_and_game() -> void:
 		_check(b.get_node_or_null("Ramp_%s" % s["id"]) != null, "main: ramp %s" % s["id"])
 	for t: Dictionary in house["terminals"]:
 		_check(b.get_node_or_null("Terminal_%s" % t["id"]) != null, "main: terminal screen %s" % t["id"])
-	# The King (a `king` prop) stands at the cold door, solid, with a crown.
+	# The King (a `king` prop) stands at the cold door, solid, with a crown;
+	# with no shared King (an old server) he has no bar; his door's leaf is shut.
 	var king_prop: Dictionary = {}
 	for pr: Dictionary in house["props"]:
 		if str(pr.get("kind", "")) == "king":
@@ -864,6 +1214,9 @@ func _test_main_and_game() -> void:
 	_check(not king_prop.is_empty() and b.get_node_or_null("Prop_%s" % king_prop.get("id", "")) != null, "main: the king stands at the cold door")
 	_check(not king_prop.is_empty() and HouseGeometry.prop_solid(king_prop), "house: the king is solid")
 	_check(not king_prop.is_empty() and b.get_node_or_null("Prop_%s" % king_prop.get("id", "")).get_child_count() >= 3, "main: the king has a body, a crown and his name")
+	var health := b.get_node_or_null("Prop_%s/Health" % king_prop.get("id", "")) as Node3D
+	_check(health != null and not health.visible, "main: no shared King, no health bar over him")
+	_check(b.door_shut("server-door") and b.get_node_or_null("Door_server-door") != null, "main: the door he guards has a shut leaf")
 	for r: Dictionary in house["rooms"]:
 		_check(b.get_node_or_null("Label_%s" % r["id"]) != null, "main: room label %s" % r["id"])
 	_test_builder_geometry(b, house)
@@ -1013,23 +1366,7 @@ func _test_main_and_game() -> void:
 	_check(_v3(player.feet(), HouseFrames.vec(kitchen)), "game: a remap where they still stand keeps them put")
 	link.session_over.emit("test")
 
-	# The King (U16): a headset near him is told the fight is the tablet's,
-	# once per approach; the guarded door never opens here.
-	link.assignment_received.emit(_assignment(house, "s-3k", true))
-	game.hud.notice("")
-	player.teleport(HouseFrames.vec([-1.6, -2.7, 11.2]), 0.0)
-	game._process(0.016)
-	_check(sub.text.begins_with("The King is fought"), "game: near the King the HUD says he is fought on the tablet (%s)" % sub.text)
-	game.hud.notice("")
-	game._process(0.016)
-	_check(sub.text == "", "game: … and not again while still beside him")
-	player.teleport(HouseFrames.vec([2.0, -2.7, 11.2]), 0.0)  # across the hall, > 3 m away
-	game._process(0.016)
-	player.teleport(HouseFrames.vec([-1.6, -2.7, 11.2]), 0.0)
-	game._process(0.016)
-	_check(sub.text.begins_with("The King is fought"), "game: … but again on the next approach")
-	_check(HouseRoute.route(house, house["spawn"]["pos"], [-5.0, -2.7, 9.5]).size() == 2, "route: the guarded door is shut for routing")
-	link.session_over.emit("test")
+	await _test_game_king(game, link, house)
 
 	# Headset off, on a wall clock (a sleeping Quest runs no frames).
 	game.clock = func() -> float: return _now

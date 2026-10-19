@@ -12,6 +12,13 @@
 ##   moves the duck moves it here too ([signal LinkBase.duck_changed]); a
 ##   map that may be the wrong one is said on the HUD
 ##   ([signal LinkBase.map_warning]).
+## - **The King** (a `king` prop guarding the Server Room door): one health
+##   bar shared by every guest, held by the server ([member LinkBase.king]).
+##   Near him and facing him, the hit button (a trigger, A / X) knocks one
+##   point off — once per reinstallation visit ([method LinkBase.hit_king]).
+##   At 0 he kneels for everyone and his door is open: no leaf, no collider,
+##   and the trail routes through it ([method HouseKing.trail_map]); a
+##   director's restore stands him up and shuts it again.
 ## - **Found**: egg, flight, "REINSTALLATION COMPLETE" (or "YOU FOUND
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
@@ -39,11 +46,17 @@ const PRESENCE_GRACE := 2.0
 ## Lost focus (system menu, or off on a runtime without user presence).
 const UNFOCUSED_GRACE := 15.0
 const NOTICE_TIME := 4.0
-## Within this (plan metres, same floor) of a `king` prop the headset is told where he is fought (U16).
+## Within this (plan metres, same floor) of a `king` prop the headset is told how to hit him.
 const KING_NEAR := 1.5
 ## Beyond this the notice may be said again on the next approach.
 const KING_FAR := 3.0
-const KING_NOTICE := "The King is fought on the tent tablet."
+const KING_NOTICE := "Pull the trigger to hit the King — once per visit."
+const KING_HIT := "You hit him."
+const KING_DOWN := "He is down: the cold door is open."
+const KING_USED := "You hit him this visit — once per reinstallation."
+const KING_CLOSER := "Get closer to the King and face him."
+const KING_STANDS := "The King stands again."
+const KING_PAUSED := "The show is paused."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
 
@@ -70,9 +83,19 @@ var _away_until := {}
 ## Seconds now (wall clock); tests inject a fake.
 var clock: Callable = func() -> float: return Time.get_unix_time_from_system()
 var _notice_left := 0.0
-## "The King is fought on the tent tablet." was said for this approach
-## (cleared again beyond KING_FAR).
+## The King's notice was said for this approach (cleared again beyond KING_FAR).
 var _king_said := false
+## This visit (session) has hit the King ("ok" or the server's "already hit").
+var king_hit_used := false
+## A hit is out (waiting for its answer).
+var _king_hit_pending := false
+## The hit button on the last frame (a hit is the press, not the hold).
+var _hit_was := false
+## Whether the shared King was down, last we heard.
+var _king_fallen := false
+## The map the trail and the autopilot route over: [member HouseBuilder.house]
+## with the fallen King's doors open ([method HouseKing.trail_map]).
+var route_house: Dictionary = {}
 ## Non-null in `--autopilot` mode.
 var autopilot: Autopilot = null
 ## Quit the process when an autopilot session is over (the tests keep it
@@ -124,11 +147,14 @@ func setup(l: LinkBase, xr: bool) -> void:
 	link.duck_changed.connect(_on_duck_changed)
 	link.map_warning.connect(_on_map_warning)
 	link.stream_frame.connect(ghosts.on_frame)
+	link.king_changed.connect(_on_king_changed)
+	link.king_hit_answered.connect(_on_king_hit_answered)
 
 	lobby.set_station(link.station_name())
 	lobby.set_status(link.status)
 	if not link.house.is_empty():
 		_on_house(link.house, link.house_version)
+	_on_king_changed(link.king)
 	enter_lobby()
 
 
@@ -161,6 +187,7 @@ func enter_lobby() -> void:
 
 func _on_house(h: Dictionary, _version: String) -> void:
 	builder.build(h)
+	_update_route_house()
 	if flow.state != GameFlow.State.LOBBY:
 		duck.place(builder.to_world(flow.assignment["duck"]["pos"]))
 	if flow.state == GameFlow.State.PLAYING:
@@ -171,7 +198,48 @@ func _on_house(h: Dictionary, _version: String) -> void:
 			_notice("The house was remapped — you're back at the start.")
 		_trail_in = 0.0
 		if autopilot != null:
-			autopilot.plan(builder.house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+			autopilot.plan(route_house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+
+
+func _update_route_house() -> void:
+	var k := link.king
+	route_house = HouseKing.trail_map(builder.house, str(HouseKing.king_prop(builder.house).get("id", "")), not k.is_empty() and k["fallen"] == true)
+
+
+## The shared King changed: his bar, his stance, his doors, the trail; a
+## player in the house hears when he falls or stands again.
+func _on_king_changed(k: Dictionary) -> void:
+	builder.set_king(k)
+	_update_route_house()
+	var fallen: bool = not k.is_empty() and k["fallen"] == true
+	if fallen == _king_fallen:
+		return
+	_king_fallen = fallen
+	if flow.state != GameFlow.State.PLAYING:
+		return
+	_notice(KING_DOWN if fallen else KING_STANDS)
+	_trail_in = 0.0
+	if autopilot != null:
+		autopilot.plan(route_house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+
+
+func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
+	_king_hit_pending = false
+	if flow.state != GameFlow.State.PLAYING:
+		return
+	match result:
+		"ok":
+			king_hit_used = true
+			_notice(KING_DOWN if _king_fallen else KING_HIT)
+		"already hit":
+			king_hit_used = true
+			_notice(KING_USED)
+		"fallen":
+			_notice(KING_DOWN)
+		"not near":
+			_notice(KING_CLOSER)
+		"doors are closed":
+			_notice(KING_PAUSED)
 
 
 ## Put the player back at the map's spawn when where they stand is not
@@ -195,7 +263,7 @@ func _on_duck_changed(d: Dictionary) -> void:
 	_trail_in = 0.0
 	_found_retry = 0.0
 	if autopilot != null:
-		autopilot.plan(builder.house, builder.to_house(player.feet()), d["pos"])
+		autopilot.plan(route_house, builder.to_house(player.feet()), d["pos"])
 		print("autopilot: the duck moved to %s in %s — re-planned" % [d.get("id", ""), d.get("room", "")])
 	_notice("Gerald moved — follow the arrows.")
 
@@ -235,12 +303,15 @@ func _on_assignment(a: Dictionary) -> void:
 	_found_retry = 0.0
 	_notice_left = 0.0
 	_king_said = false
+	king_hit_used = false
+	_king_hit_pending = false
+	_hit_was = player.hit_button
 	hud.show_play(_room_label(HouseLocate.locate(builder.house, spawn["pos"])["room"]))
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
 	if autopilot != null:
 		_autopilot_played = true
-		autopilot.plan(builder.house, spawn["pos"], a["duck"]["pos"])
+		autopilot.plan(route_house, spawn["pos"], a["duck"]["pos"])
 		print("autopilot: playing %s (%s) — %d waypoints to duck %s in %s" % [
 			a.get("name", ""), a.get("session", ""), autopilot.path.size(), a["duck"].get("id", ""), a["duck"].get("room", "")])
 	state_changed.emit(flow.state)
@@ -415,34 +486,47 @@ func _tick_play(delta: float) -> void:
 	if not _found_pending and _found_retry <= 0.0 and is_at_duck(house, feet, duck_p):
 		_found_pending = true
 		link.report_found()
-	_tick_king(house, feet)
+	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
 
 
-## Near a `king` prop (the chess boss the tablet fights, U16): say once per
-## approach that the fight is the tablet's. The door he guards never opens
-## here — nothing is behind it for a headset.
-func _tick_king(house: Dictionary, feet: Array) -> void:
+## Near the King (a `king` prop, with a shared King on the server): say
+## once per approach how to hit him; on a press of the hit button, near and
+## facing him ([method HouseKing.king_reach]), hit — once per visit.
+func _tick_king(house: Dictionary, feet: Array, yaw: float) -> void:
+	var pressed := player.hit_button and not _hit_was
+	_hit_was = player.hit_button
+	var prop := HouseKing.king_prop(house)
+	var k := link.king
+	if prop.is_empty() or k.is_empty():
+		return  # no King here, or an old server with no shared one
+	var pos: Array = prop["pos"]
 	var nearest := INF
-	for prop: Dictionary in house.get("props", []):
-		if str(prop.get("kind", "")) != "king":
-			continue
-		var pos: Array = prop["pos"]
-		if HouseLocate.floor_of(house, float(feet[1])) != HouseLocate.floor_of(house, float(pos[1])):
-			continue
-		var d: float = sqrt(pow(float(feet[0]) - float(pos[0]), 2) + pow(float(feet[2]) - float(pos[2]), 2))
-		nearest = minf(nearest, d)
+	if HouseLocate.floor_of(house, float(feet[1])) == HouseLocate.floor_of(house, float(pos[1])):
+		nearest = Vector2(float(feet[0]) - float(pos[0]), float(feet[2]) - float(pos[2])).length()
 	if nearest <= KING_NEAR and not _king_said:
 		_king_said = true
-		_notice(KING_NOTICE)
+		if k["fallen"] != true:
+			_notice(KING_USED if king_hit_used else KING_NOTICE)
 	elif nearest > KING_FAR:
 		_king_said = false
+	if not pressed or nearest > KING_FAR or _king_hit_pending:
+		return
+	if k["fallen"] == true:
+		_notice(KING_DOWN)
+	elif king_hit_used:
+		_notice(KING_USED)
+	elif HouseKing.king_reach(house, feet, yaw, prop) != "ok":
+		_notice(KING_CLOSER)
+	else:
+		_king_hit_pending = true
+		link.hit_king()
 
 
 func _tick_autopilot(feet: Array, delta: float) -> void:
 	var s := autopilot.steer(feet, delta)
 	if s["replan"]:
 		print("autopilot: stuck at %s — re-planning" % [feet])
-		autopilot.plan(builder.house, feet, flow.assignment["duck"]["pos"])
+		autopilot.plan(route_house, feet, flow.assignment["duck"]["pos"])
 		s = autopilot.steer(feet, delta)
 	player.face(builder.yaw_to_world(float(s["yaw"])))
 	player.left_stick = s["stick"]
@@ -584,7 +668,7 @@ static func stair_step_out(house: Dictionary, stair: Dictionary, p: Array) -> Va
 ## Re-route the chevrons from `from` to the duck (house frame).
 func refresh_trail(from: Array, to: Array) -> void:
 	var points: Array = []
-	for s: Dictionary in HouseRoute.sample_trail(trail_path(builder.house, from, to)):
+	for s: Dictionary in HouseRoute.sample_trail(trail_path(route_house, from, to)):
 		points.append({"pos": builder.to_world(s["p"]), "yaw": builder.yaw_to_world(s["yaw"])})
 	trail.show_points(points)
 

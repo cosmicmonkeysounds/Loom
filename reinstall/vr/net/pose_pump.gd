@@ -3,11 +3,13 @@
 ## *replaces* the waiting one — poses are never queued, so a slow network
 ## costs freshness, never a growing backlog.
 ##
-## It also schedules the `found` claim: [method want_claim] stops the
-## regular schedule, the newest pose is flushed once, and the claim goes as
-## soon as that has landed — then no pose goes until [method claim_done],
-## so nothing moves the player between the flushed pose and the server
-## judging the claim. (Interleaving the claim with the 10 Hz schedule
+## It also schedules the claims the server judges off the last pose — the
+## `found` claim and the King's hit (`kind` "found" / "king"):
+## [method want_claim] stops the regular schedule, the newest pose is
+## flushed once, and the claim goes as soon as that has landed — then no
+## pose goes until [method claim_done], so nothing moves the player between
+## the flushed pose and the server judging the claim. One claim at a time
+## ([method claim_kind] says which). (Interleaving the claim with the 10 Hz schedule
 ## starved it: whenever a round trip took 100 ms or more, the next pose
 ## always went first.)
 ##
@@ -29,6 +31,7 @@ var _pending: Variant = null
 var _in_flight := false
 var _since := INTERVAL
 var _claim := Claim.NONE
+var _claim_kind := ""
 var _gen := 0
 
 
@@ -83,10 +86,20 @@ func step(delta: float) -> Dictionary:
 	return {"pose": null, "claim": true}
 
 
-## Claim the duck: flush the newest pose, then [method step] says to claim.
-func want_claim() -> void:
-	if _claim == Claim.NONE:
-		_claim = Claim.WANTED
+## Claim (`kind` "found": the duck, "king": a hit): flush the newest pose,
+## then [method step] says to claim. False (nothing changes) while another
+## claim is wanted or out.
+func want_claim(kind := "found") -> bool:
+	if _claim != Claim.NONE:
+		return false
+	_claim = Claim.WANTED
+	_claim_kind = kind
+	return true
+
+
+## The claim wanted or out ("" when none).
+func claim_kind() -> String:
+	return _claim_kind if _claim != Claim.NONE else ""
 
 
 ## The claim's answer arrived (`gen` = [method generation] when it was sent):
@@ -94,6 +107,7 @@ func want_claim() -> void:
 func claim_done(gen: int) -> void:
 	if gen == _gen and _claim == Claim.OUT:
 		_claim = Claim.NONE
+		_claim_kind = ""
 
 
 ## Whether a claim is wanted or waiting for its answer.
@@ -127,3 +141,4 @@ func clear() -> void:
 	_in_flight = false
 	_since = INTERVAL
 	_claim = Claim.NONE
+	_claim_kind = ""

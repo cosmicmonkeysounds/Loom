@@ -30,6 +30,14 @@ signal duck_changed(duck: Dictionary)
 ## or an older map is up, or the server's map moved on): `text` for the
 ## HUD; `""` once the event's map is in again.
 signal map_warning(text: String)
+## The shared King changed (`KingState` `{id, hp, max, fallen, by}`, or
+## `{}`: no shared King — an old server, or none on the map): from the
+## `hello` / `king` frames, the session's map fetch, or a hit's answer.
+signal king_changed(king: Dictionary)
+## The answer to [method hit_king]: `result` "ok" | "already hit" (this
+## visit already hit) | "not near" | "fallen" | "doors are closed" |
+## "no king" | "error"; `data` the reply ([member king] is already updated).
+signal king_hit_answered(result: String, data: Dictionary)
 ## A raw spatial stream frame (`hello`, `join`, `poses`, `leave`, …) for the ghosts.
 signal stream_frame(event: String, data: Variant)
 
@@ -42,6 +50,8 @@ var house_version := ""
 var session: Dictionary = {}
 ## The last status text.
 var status := ""
+## The shared King ([signal king_changed]; `{}` = none).
+var king: Dictionary = {}
 ## The map warning in force ([signal map_warning]; `""` = the event's map is up).
 var map_warning_text := ""
 
@@ -71,6 +81,18 @@ func report_found() -> void:
 	pass
 
 
+## Hit the King ([signal king_hit_answered]) — once per visit, judged by
+## the server on the newest pose.
+func hit_king() -> void:
+	pass
+
+
+## The URL of an avatar key's picture (`/e/<event>/api/avatar/<key>`), ""
+## when there is none to fetch (offline, no key).
+func avatar_url(_key: String) -> String:
+	return ""
+
+
 ## End our session (found + celebrated, headset off, …).
 func end_session(_reason: String) -> void:
 	session = {}
@@ -91,6 +113,18 @@ func station_name() -> String:
 func _set_status(text: String) -> void:
 	status = text
 	status_changed.emit(text)
+
+
+## Take the shared King's state off the wire ([method HouseKing.state_of]);
+## emits [signal king_changed] when what it shows changed.
+func _adopt_king(k: Variant) -> void:
+	var next := HouseKing.state_of(k)
+	if not HouseKing.changed(king, next):
+		if not next.is_empty():
+			king = next
+		return
+	king = next
+	king_changed.emit(king)
 
 
 ## Parse and emit a map from a JSON string; false when it isn't one.

@@ -19,7 +19,14 @@
 ## During a session the map is fetched with the session token, so the
 ## answer carries the session's (possibly moved) duck; a `duck {session,
 ## duck}` stream frame moves it too ([signal LinkBase.duck_changed]).
-## `--offline` plays without a server at all (the duck is picked locally).
+## The shared King (one health bar for every guest, held by the server):
+## the `hello` frame's `king`, `king` frames and the session's map fetch set
+## [member LinkBase.king]; [method hit_king] posts `POST
+## /api/spatial/king/hit` with the session token right after flushing the
+## newest pose (the server judges the reach off it), as `found` does.
+##
+## `--offline` plays without a server at all (the duck is picked locally,
+## the King's bar is kept here).
 extends LinkBase
 
 const BUNDLED_HOUSE := "res://house/house.json"
@@ -56,6 +63,10 @@ var _house_in_flight := false
 ## A fetch was asked for while one was in flight: send another when it lands.
 var _house_again := false
 var _house_retry_in := 0.0
+## Claims (`found` / `king`) asked for while another was out, oldest first.
+var _claims_waiting: Array[String] = []
+## Offline: the sessions that already hit the King.
+var _offline_hits := {}
 
 
 func _ready() -> void:
@@ -82,6 +93,17 @@ func _load_bundled_house() -> void:
 		return
 	if FileAccess.file_exists(BUNDLED_HOUSE):
 		_load_house_text(FileAccess.get_file_as_string(BUNDLED_HOUSE), "bundled")
+	if is_offline():
+		seed_offline_king()
+
+
+## Offline: the map's King at full health, kept here (no server to share it).
+func seed_offline_king() -> void:
+	var prop := HouseKing.king_prop(house)
+	if prop.is_empty() or not king.is_empty():
+		return
+	var hp := HouseKing.king_max(prop)
+	_adopt_king({"id": str(prop["id"]), "hp": hp, "max": hp, "fallen": false})
 
 
 func is_offline() -> bool:
@@ -162,11 +184,31 @@ func _process(delta: float) -> void:
 		_poll_station()
 	# The pump runs the 10 Hz poses and the claim schedule (flush the newest
 	# pose, claim once it has landed, no poses until the answer).
+	if not pump.is_claiming() and not _claims_waiting.is_empty():
+		pump.want_claim(_claims_waiting.pop_front())
+	var kind := pump.claim_kind()
 	var s := pump.step(delta)
 	if s["pose"] != null:
 		_send_pose(s["pose"])
 	if s["claim"]:
-		_send_found()
+		if kind == "king":
+			_send_king_hit()
+		else:
+			_send_found()
+
+
+## Claim `kind` once the pump is free (one claim out at a time).
+func _want_claim(kind: String) -> void:
+	if pump.claim_kind() == kind or _claims_waiting.has(kind):
+		return
+	if not pump.want_claim(kind):
+		_claims_waiting.append(kind)
+
+
+## The session ended: forget its claims.
+func _clear_pump() -> void:
+	pump.clear()
+	_claims_waiting.clear()
 
 
 func _poll_station() -> void:
@@ -252,7 +294,7 @@ func _on_begin(status_code: int, data: Variant) -> void:
 func adopt(assignment: Dictionary) -> void:
 	session = assignment
 	_seen_sessions[str(assignment.get("session", ""))] = true
-	pump.clear()
+	_clear_pump()
 	var v := str(assignment.get("houseVersion", ""))
 	_duck_version = v
 	if v != "":
@@ -300,7 +342,7 @@ func report_found() -> void:
 	if is_offline():
 		found_answered.emit.call_deferred(true, {"ok": true, "released": bool(session.get("captured", false)), "already": false})
 		return
-	pump.want_claim()  # sent once the newest pose has landed (the server judges from it)
+	_want_claim("found")  # sent once the newest pose has landed (the server judges from it)
 
 
 func _send_found() -> void:
@@ -319,12 +361,75 @@ func _send_found() -> void:
 				found_answered.emit(false, data if data is Dictionary else {}))
 
 
+func hit_king() -> void:
+	if not has_session():
+		return
+	if is_offline():
+		_hit_offline()
+		return
+	_want_claim("king")  # sent once the newest pose has landed (the server judges the reach from it)
+
+
+func _send_king_hit() -> void:
+	var sid := session_id()
+	var gen := pump.generation()
+	transport.send("POST", _base() + "/api/spatial/king/hit", {}, str(session.get("token", "")),
+		func(status_code: int, data: Variant) -> void:
+			pump.claim_done(gen)
+			if sid != session_id():
+				return
+			_on_king_hit(status_code, data if data is Dictionary else {}))
+
+
+func _on_king_hit(status_code: int, d: Dictionary) -> void:
+	if d.has("king"):
+		_adopt_king(d["king"])
+	match status_code:
+		200:
+			king_hit_answered.emit("ok", d)
+		409:
+			var e := str(d.get("error", ""))
+			king_hit_answered.emit(e if e in ["already hit", "not near", "fallen", "doors are closed"] else "error", d)
+		404:
+			_adopt_king(null)
+			king_hit_answered.emit("no king", d)
+		410, 401:
+			_lose_session("over")
+		_:
+			king_hit_answered.emit("error", d)
+
+
+func _hit_offline() -> void:
+	var sid := session_id()
+	var result := "ok"
+	if king.is_empty():
+		result = "no king"
+	elif king["fallen"]:
+		result = "fallen"
+	elif _offline_hits.has(sid):
+		result = "already hit"
+	else:
+		_offline_hits[sid] = true
+		var hp: int = maxi(0, int(king["hp"]) - 1)
+		_adopt_king({"id": king["id"], "hp": hp, "max": king["max"], "fallen": hp <= 0, "by": session.get("name")})
+	var data := {"ok": result == "ok"} if result == "ok" else {"error": result}
+	if not king.is_empty():
+		data["king"] = king.duplicate()
+	king_hit_answered.emit.call_deferred(result, data)
+
+
+func avatar_url(key: String) -> String:
+	if key == "" or is_offline() or event_id == "":
+		return ""
+	return transport.base + _base() + "/api/avatar/" + key.uri_encode()
+
+
 func end_session(_reason: String) -> void:
 	if not has_session():
 		return
 	var token := str(session.get("token", ""))
 	session = {}
-	pump.clear()
+	_clear_pump()
 	_session_gone()
 	if not is_offline() and phase == "ready":
 		transport.send("POST", _base() + "/api/spatial/end", {}, token, func(_c: int, _d: Variant) -> void: pass)
@@ -335,7 +440,7 @@ func _lose_session(reason: String) -> void:
 	if not has_session():
 		return
 	session = {}
-	pump.clear()
+	_clear_pump()
 	_session_gone()
 	session_over.emit(reason)
 
@@ -373,6 +478,8 @@ func _on_house(status_code: int, data: Variant, sid: String) -> void:
 			_duck_version = house_version
 			if data.get("duck") is Dictionary:
 				_adopt_duck(data["duck"])
+		if data.has("king"):  # the session's fetch carries the shared King
+			_adopt_king(data["king"])
 		house_loaded.emit(house, house_version)
 	# else: keep the map we have (the bundled one at worst) — and say so.
 	if _house_again:
@@ -446,6 +553,10 @@ func _on_frame(event: String, data: Variant) -> void:
 				_want_version = v
 			if map_is_stale():
 				fetch_house()
+			if event == "hello":
+				_adopt_king(d.get("king"))  # missing (an old server) = no shared King
+		"king":
+			_adopt_king(d)
 		"duck":
 			if str(d.get("session", "")) == session_id() and session_id() != "":
 				# Sent right after the `house` frame: the duck on the map it named.

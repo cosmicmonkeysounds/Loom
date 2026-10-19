@@ -208,6 +208,31 @@ static func gilded() -> Material:
 		return m)
 
 
+## The King's health bar, Win98 progress-bar style: a sunken grey frame
+## (dark top/left, white bottom/right) and navy blocks for the points left —
+## `hp` of `max`, empty at 0. Not cached: it changes with every hit.
+static func health_bar(hp: int, max_hp: int) -> Image:
+	var w := 100
+	var h := 12
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color("#c0c0c0"))
+	for x in w:
+		img.set_pixel(x, 0, Color("#808080"))
+		img.set_pixel(x, h - 1, Color.WHITE)
+	for y in h:
+		img.set_pixel(0, y, Color("#808080"))
+		img.set_pixel(w - 1, y, Color.WHITE)
+	var inner := w - 4
+	var filled := int(round(inner * clampf(float(hp) / float(maxi(1, max_hp)), 0.0, 1.0)))
+	# Blocks 6 px wide with a 1 px gap, as a Win98 progress bar draws them.
+	var x := 2
+	while x < 2 + filled:
+		var bw := mini(6, 2 + filled - x)
+		img.fill_rect(Rect2i(x, 2, bw, h - 4), Color("#000080"))
+		x += 7
+	return img
+
+
 ## A [Label3D] in the house's type.
 static func label(text: String, height := 0.18, color := INK) -> Label3D:
 	var l := Label3D.new()
