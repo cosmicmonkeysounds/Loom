@@ -1,0 +1,467 @@
+"""The story mind (wave 12, `mind_mode: new`): the mind kept by code, not a model.
+
+Classic grows the character's mind with a second model between turns. The
+new mind keeps it in plain code from what the story already says:
+
+  - **the phase card** (`apply_phase`): the mind file's card for the current
+    `Night.phase` sets the stage, favours, drives, live powers, the `tell`
+    list and the brief — one revision `by: story` per change of phase
+    (CONTRACTS.md §C4.5). A director's override holds until the next one.
+  - **the person card** (`absorb` + `person_card`): who is talking, what the
+    story says about them (`recent`: their gifts, filings, the mark, the
+    Trust Chart; their `trust`), the first-met line, the voice's own memos —
+    only theirs, and a heart memo only while they stand at his heart.
+  - **since you last spoke** (`since_lines`): up to 4 things that moved in
+    the house since their previous turn.
+  - **already said** (`said_for`): his last free replies to them and his
+    last lines anywhere, so he stops reciting.
+  - the **Rewrite brief** and the **quiet-conversation summary** prompts,
+    and the scrubs their output passes before it is kept.
+
+Everything here is pure (no network, no model): `module.py` calls it and
+the lean voice (`voice.py`) renders the shapes in `cards.py`. Nothing here
+ever reads another person's memos into a card, and no output is kept that
+carries a `secrets.never` word or names a hunt answer word.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+from typing import Any
+
+from .cards import PersonCard, PhaseView, Said
+from .mind import Dossier, Mind
+from .persona import PhaseCard, Persona
+from .prompt import their_variables
+from .reply import strip_think
+from .secrets import Secrets
+
+log = logging.getLogger("stagehand.agents.story_mind")
+
+#: Lines "since you last spoke" may carry (CONTRACTS.md §C3.4).
+MAX_SINCE = 4
+#: History lines a summary is shown.
+SUMMARY_HISTORY = 8
+MAX_SUMMARY = 400
+MAX_BRIEF_LINES = 8
+MAX_FIRST_WORDS = 100
+
+_warned: set[str] = set()
+
+
+def _warn_once(key: str, message: str) -> None:
+    if key in _warned:
+        return
+    _warned.add(key)
+    log.info("%s", message)
+
+
+def fold(text: Any) -> str:
+    """CONTRACTS.md's fold: lowercase, every run of non `a-z0-9` → one space, trim."""
+    return re.sub(r"[^a-z0-9]+", " ", str(text).lower()).strip()
+
+
+def one_line(text: Any, limit: int | None = None) -> str:
+    line = " ".join(str(text).split())
+    if limit is not None and len(line) > limit:
+        line = line[: limit - 1].rstrip() + "…"
+    return line
+
+
+def _true(value: Any) -> bool:
+    return str(value).strip().lower() == "true"
+
+
+# -- the phase --------------------------------------------------------------------
+
+
+def current_phase(world: Any) -> str:
+    """`Night.phase` when present, else the first key (sorted) ending `.phase`."""
+    if not isinstance(world, dict):
+        return ""
+    if world.get("Night.phase") not in (None, ""):
+        return str(world["Night.phase"])
+    for key in sorted(str(k) for k in world):
+        if key.endswith(".phase") and world.get(key) not in (None, ""):
+            return str(world[key])
+    return ""
+
+
+def card_for(persona: Persona, phase: str) -> PhaseCard | None:
+    if not phase:
+        return None
+    card = persona.phase_cards.get(phase)
+    if card is not None:
+        return card
+    key = "".join(ch for ch in phase.lower() if ch.isalnum())
+    for name, c in persona.phase_cards.items():
+        if "".join(ch for ch in name.lower() if ch.isalnum()) == key:
+            return c
+    return None
+
+
+def apply_phase(mind: Mind, persona: Persona, phase: str) -> list[str] | None:
+    """Apply the card for `phase` when it differs from the one last applied.
+    Returns the touched fields (`[]` = nothing changed), or None when the
+    phase is unknown / unchanged (nothing to do). A phase with no card
+    leaves the mind as it is but for the powers (every allowed one is live)
+    and the `tell` list (nothing in full)."""
+    if not phase or phase == mind.phase_applied:
+        return None
+    card = card_for(persona, phase)
+    if card is None:
+        _warn_once(f"nocard:{persona.character}:{phase}", f"{persona.character}: no phase card for {phase!r} — the mind keeps its stage and brief")
+        if mind.live_powers is None and not mind.tell:
+            mind.phase_applied = phase
+            return []
+        # Leaving a card's phase for one with none: every allowed power is
+        # live again and nothing is told in full; the rest stays.
+        return mind.set_phase(phase, stage=mind.stage, favours=str(mind.policy.get("favours") or "none"), drives={}, live_powers=None, tell=[], brief=mind.brief)
+    return mind.set_phase(
+        phase,
+        stage=card.stage,
+        favours=card.favours,
+        drives=dict(card.drives),
+        live_powers=list(card.powers),
+        tell=list(card.tell),
+        brief=card.brief,
+    )
+
+
+def phase_view(mind: Mind, persona: Persona, req: dict[str, Any], stage_from_phase: bool = True) -> PhaseView:
+    """What the voice's P2 shows (CONTRACTS.md §C3.1), from the mind as the
+    cards (and any director) left it."""
+    world = req.get("world") or {}
+    allowed = _allowed_power_ids(persona, req)
+    live: tuple[str, ...] | None = None
+    tell: tuple[str, ...] = ()
+    if stage_from_phase and mind.live_powers is not None:
+        known = {p.lower(): p for p in allowed}
+        picked: list[str] = []
+        for pid in mind.live_powers:
+            hit = known.get(pid.lower())
+            if hit is None:
+                _warn_once(f"power:{persona.character}:{pid}", f"{persona.character}: the phase card names power {pid!r}, which the story does not offer — ignored")
+                continue
+            if hit not in picked:
+                picked.append(hit)
+        live = tuple(picked)
+    if stage_from_phase and mind.tell:
+        held = {fold(e.get("title", "")): str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex"))}
+        out: list[str] = []
+        for title in mind.tell:
+            hit = held.get(fold(title))
+            if hit is None:
+                _warn_once(f"tell:{persona.character}:{fold(title)}", f"{persona.character}: the phase card's tell names {title!r}, which he does not hold (yet) — left out")
+                continue
+            if hit not in out:
+                out.append(hit)
+        tell = tuple(out)
+    wary = list(mind.policy.get("wary") or [])
+    reader = str(world.get("Night.lj_reader") or "").strip()
+    if reader and reader.lower() != "none" and reader not in wary:
+        wary.append(reader)
+    stage = mind.stage
+    return PhaseView(
+        phase=current_phase(world) or mind.phase_applied,
+        stage=stage,
+        stage_card=persona.stage_cards.get(stage, ""),
+        favours=str(mind.policy.get("favours") or "none"),
+        drives=dict(mind.drives),
+        live_powers=live,
+        tell=tell,
+        brief=mind.brief,
+        brief_by=mind.brief_by if mind.brief_by in ("story", "director") else "story",
+        wary=tuple(wary),
+    )
+
+
+def _allowed_power_ids(persona: Persona, req: dict[str, Any]) -> list[str]:
+    powers = [str(p.get("id", "")) for p in (req.get("powers") or []) if isinstance(p, dict) and p.get("id")]
+    if persona.powers is None:
+        return powers
+    allowed = {p.lower() for p in persona.powers}
+    return [p for p in powers if p.lower() in allowed]
+
+
+# -- the person --------------------------------------------------------------------
+
+
+def speaker_of(req: dict[str, Any]) -> tuple[str, str, str]:
+    speaker = req.get("speaker") or {}
+    sid = str(speaker.get("id") or "")
+    return sid, str(speaker.get("name") or sid or "?"), str(speaker.get("kind") or "guest")
+
+
+def recent_items(req: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """The request's `recent` (None from an older server, or with the switch off)."""
+    recent = req.get("recent")
+    if not isinstance(recent, list):
+        return None
+    return [r for r in recent if isinstance(r, dict)]
+
+
+def chart_line(item: dict[str, Any]) -> str | None:
+    try:
+        rank, of = int(item.get("rank")), int(item.get("of"))
+    except (TypeError, ValueError):
+        return None
+    line = f"{rank} of {of}"
+    if item.get("called") == "top":
+        line += "; you named them Most Trusted"
+    elif item.get("called") == "bottom":
+        line += "; you named them Least Trusted"
+    return line
+
+
+def _story_at(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def first_met_line(persona: Persona, req: dict[str, Any], phase: str) -> str:
+    them = req.get("them") or {}
+    where = f" in {them['location']}" if them.get("location") else ""
+    line = f"First met during {phase or 'the night'}{where}."
+    words = one_line(req.get("text") or "", MAX_FIRST_WORDS)
+    if words and not persona.secrets.leaks(words) and not persona.secrets.names_topic(words):
+        line += f" Their first words to you: “{words}”"
+    return line
+
+
+def absorb(mind: Mind, persona: Persona, req: dict[str, Any], phase: str) -> tuple[Dossier, tuple[str, ...]]:
+    """Fold what the story says about the speaker into their dossier, and
+    word what moved since their previous turn (CONTRACTS.md §C3.3–§C3.4).
+    Returns the dossier and the "since you last spoke" lines."""
+    sid, name, kind = speaker_of(req)
+    d = mind.dossier(sid, name, kind)
+    them = req.get("them") or {}
+    vars_ = them.get("vars") or {}
+    recent = recent_items(req)
+    before_marked, before_chart = d.marked, d.chart
+    since_at = d.last_story_at
+    if d.turns == 0 and not d.first_met:
+        d.first_met = first_met_line(persona, req, phase)
+    if "trust" in vars_:
+        d.story_trust = str(vars_["trust"])
+    if _true(vars_.get("at_the_heart")):
+        d.heart = True
+    gifts: list[dict[str, Any]] = []
+    houses: list[dict[str, Any]] = []
+    if recent is None:
+        if "marked" in vars_:
+            d.marked = _true(vars_.get("marked"))
+    else:
+        d.marked = any(r.get("kind") == "marked" for r in recent)
+        for r in reversed(recent):  # recent is newest first; the dossier is oldest first
+            kind_ = r.get("kind")
+            if kind_ == "gift" and isinstance(r.get("title"), str):
+                d.note_story("gifts", r["title"])
+                gifts.append(r)
+            elif kind_ == "filing" and isinstance(r.get("question"), str):
+                d.note_story("filings", r["question"])
+            elif kind_ == "house" and isinstance(r.get("text"), str):
+                houses.append(r)
+        chart = next((chart_line(r) for r in recent if r.get("kind") == "chart"), None)
+        if chart is not None:
+            d.chart = chart
+    since: list[str] = []
+    if d.turns >= 1:
+        if d.last_phase and phase and d.last_phase != phase:
+            since.append(f"The night moved: {d.last_phase} → {phase}.")
+        for label in ("Most", "Least"):
+            mark = f"you named them {label} Trusted"
+            if d.chart and mark in d.chart and not (before_chart and mark in before_chart):
+                since.append(f"You named them {label} Trusted on the TV.")
+        newer = [h for h in reversed(houses) if (_story_at(h.get("at")) or 0.0) > since_at][:2]
+        since.extend(f"You said to the whole house: “{one_line(h['text'], 200)}”." for h in newer)
+        if d.marked and not before_marked:
+            since.append("They were marked for the Internet.")
+        since.extend(f"They gave you “{one_line(g['title'], 120)}”." for g in reversed(gifts) if (_story_at(g.get("at")) or 0.0) > since_at)
+    return d, tuple(since[:MAX_SINCE])
+
+
+def person_card(persona: Persona, d: Dossier, req: dict[str, Any]) -> PersonCard:
+    them = req.get("them") or {}
+    vars_ = them.get("vars") or {}
+    speaker = req.get("speaker") or {}
+    at_heart = _true(vars_.get("at_the_heart"))
+    memos = tuple(str(m.get("text") or "") for m in d.memos if at_heart or not m.get("heart"))[-6:]
+    numbers = tuple((k, str(v)) for k, v in their_variables(persona, vars_).items() if k not in ("trust", "marked"))
+    holds = tuple(str(e.get("title", "")) for e in persona.secrets.visible(them.get("codex")) if e.get("title"))
+    trust = vars_.get("trust")
+    return PersonCard(
+        id=d.id,
+        name=d.name,
+        kind="performer" if speaker.get("kind") == "performer" else "guest",
+        faction=speaker.get("faction") or None,
+        turns=d.turns,
+        trust=None if trust is None else str(trust),
+        location=them.get("location") or None,
+        first_met=d.first_met,
+        gifts=tuple(d.gifts),
+        filings=tuple(d.filings),
+        marked=d.marked,
+        chart=d.chart,
+        memos=memos,
+        summary=d.summary,
+        numbers=numbers,
+        holds=holds,
+        catchphrase_used=d.catchphrase_used,
+    )
+
+
+def free_replies(req: dict[str, Any]) -> list[str]:
+    """His own free replies in this thread (oldest first): `mine` lines the
+    story did not post. With no `story` tag on any line and no `recent`
+    (an old server, or the switch off) every `mine` line counts (§C1.7)."""
+    history = [h for h in req.get("history") or [] if isinstance(h, dict)]
+    tagged = any("story" in h for h in history) or recent_items(req) is not None
+    return [str(h.get("text", "")) for h in history if h.get("mine") and not (tagged and h.get("story"))]
+
+
+def said_for(mind: Mind, req: dict[str, Any], thread: str) -> Said:
+    to_them = tuple(one_line(t) for t in free_replies(req)[-3:])
+    elsewhere = tuple(one_line(x.get("text", "")) for x in mind.said if x.get("thread") != thread)[-5:]
+    return Said(to_them=to_them, elsewhere=elsewhere)
+
+
+def uses_catchphrase(persona: Persona, say: str) -> bool:
+    text = fold(say)
+    return any(fold(c) and fold(c) in text for c in persona.catchphrases)
+
+
+def after_turn(persona: Persona, d: Dossier, req: dict[str, Any], phase: str, say: str) -> None:
+    """Bookkeeping once a reply went out (before `saw_exchange` counts it)."""
+    d.last_phase = phase
+    at = _story_at(req.get("storyAt"))
+    if at is not None:
+        d.last_story_at = at
+    if say and uses_catchphrase(persona, say):
+        d.catchphrase_used = True
+
+
+def keep_memo(persona: Persona, memo: str) -> str:
+    """W2's re-check before a memo is stored (§C2.3): never a `never` word."""
+    line = one_line(memo, 140)
+    if not line or persona.secrets.leaks(line):
+        return ""
+    return line
+
+
+def history_lines(req: dict[str, Any], limit: int = SUMMARY_HISTORY) -> list[dict[str, Any]]:
+    """The last lines of a thread with the story's receipts taken out."""
+    history = [h for h in req.get("history") or [] if isinstance(h, dict)]
+    tagged = any("story" in h for h in history) or recent_items(req) is not None
+    kept = [h for h in history if not (tagged and h.get("mine") and h.get("story"))]
+    return kept[-limit:]
+
+
+# -- the Rewrite brief and the quiet summary --------------------------------------
+
+
+REWRITE_HEAD = """=== REWRITE THE BRIEF ===
+A director asked you to rewrite your own brief for the rest of this phase,
+from the phase card and the house below. Write 3 to 8 short lines of
+instructions to yourself, in the second person and the present tense
+("You want…", "Ask them…", "Do not…"): what you want now, what to push,
+how open you are to bargains. Never name a hunt answer, never say whether
+any fact is true or false, never mention the director. Reply with the lines
+only, one per line: no JSON, no numbering, no heading."""
+
+SUMMARY_HEAD = """=== WHAT YOU MAKE OF THEM ===
+Nobody is waiting on you. Condense what you know of the one below into
+what you make of them so far: two or three sentences, in your own words,
+under 400 characters, the way you would remember them tomorrow. Keep what
+they gave you, asked you and promised. Never write a hunt answer, never
+say whether anything they told you is true or false. Reply with the
+sentences only: no JSON, no heading."""
+
+
+def rewrite_digest(persona: Persona, mind: Mind, view: PhaseView, digest: str | None) -> str:
+    lines = [f"Phase: {view.phase or '—'}. Your stage: {view.stage or '—'}. Favours: {view.favours}."]
+    if view.live_powers is None:
+        lines.append("Live powers now: every power you have.")
+    else:
+        lines.append(f"Live powers now: {', '.join(view.live_powers) if view.live_powers else 'none'}.")
+    card = card_for(persona, view.phase)
+    lines.append(f"The phase card's brief: {one_line(card.brief) if card is not None and card.brief else '(none)'}")
+    lines.append(f"Your brief until now: {one_line(mind.brief) or '(none)'}")
+    if mind.director:
+        lines.append("Director whispers:")
+        lines.extend(f"- {w}" for w in mind.director)
+    if view.wary:
+        lines.append(f"Wary of: {', '.join(view.wary)}")
+    people = list(mind.people.values())
+    lines.append(
+        f"People tonight: {len(people)} on file, {sum(1 for d in people if d.filings)} have filed answers, {sum(1 for d in people if d.marked)} marked for the Internet."
+    )
+    if digest:
+        lines.append("The house:")
+        lines.append(digest)
+    return "\n".join(lines)
+
+
+def rewrite_messages(p1: str, digest: str) -> list[dict[str, str]]:
+    return [{"role": "system", "content": p1}, {"role": "system", "content": REWRITE_HEAD}, {"role": "user", "content": digest}]
+
+
+def _plain(raw: str, key: str) -> str:
+    text = strip_think(raw or "")
+    fence = re.sub(r"^```(?:json|text)?\s*|\s*```$", "", text.strip())
+    if fence.startswith("{"):
+        try:
+            doc = json.loads(fence)
+        except json.JSONDecodeError:
+            doc = None
+        if isinstance(doc, dict) and isinstance(doc.get(key), str):
+            return doc[key]
+    return fence
+
+
+def parse_brief(raw: str) -> list[str]:
+    lines = []
+    for line in _plain(raw, "brief").split("\n"):
+        line = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip()
+        if line and not line.startswith("==="):
+            lines.append(one_line(line, 300))
+    return lines[:MAX_BRIEF_LINES]
+
+
+def scrub_brief(persona: Persona, lines: list[str]) -> tuple[list[str], int]:
+    """Drop every line that leaks a `never` word, names an answer word, or
+    passes judgement on a hunt topic (§C6.1). Returns (kept, dropped)."""
+    answers = Secrets(match=persona.secrets.match)
+    kept = [x for x in lines if not persona.secrets.leaks(x) and not answers.names_topic(x) and not persona.secrets.judges_topic(x)]
+    return kept, len(lines) - len(kept)
+
+
+def summary_messages(p1: str, persona: Persona, d: Dossier, history: list[dict[str, Any]]) -> list[dict[str, str]]:
+    parts = [f"{d.name} ({'a fellow character' if d.kind == 'performer' else 'a guest'})"]
+    if d.first_met:
+        parts.append(d.first_met)
+    if d.memos:
+        parts.append("Your notes on them (oldest first):")
+        parts.extend(f"- {m.get('text', '')}" for m in d.memos)
+    if d.summary:
+        parts.append(f"What you made of them before: {d.summary}")
+    if history:
+        parts.append("Your last lines together:")
+        parts.extend(f"{persona.character if h.get('mine') else d.name}: {one_line(h.get('text', ''), 300)}" for h in history)
+    return [{"role": "system", "content": p1}, {"role": "system", "content": SUMMARY_HEAD}, {"role": "user", "content": "\n".join(parts)}]
+
+
+def parse_summary(persona: Persona, raw: str) -> str:
+    """The summary as kept (≤ 400 characters), or "" when it carries a
+    `never` word, names an answer word or judges a hunt topic."""
+    text = one_line(_plain(raw, "summary"))
+    if len(text) > MAX_SUMMARY:
+        cut = text.rfind(" ", 0, MAX_SUMMARY)
+        text = text[: cut if cut > 0 else MAX_SUMMARY - 1].rstrip() + "…"
+    if not text or persona.secrets.leaks(text) or Secrets(match=persona.secrets.match).names_topic(text) or persona.secrets.judges_topic(text):
+        return ""
+    return text
