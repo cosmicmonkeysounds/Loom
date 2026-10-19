@@ -272,6 +272,36 @@ class Secrets:
     def judges_topic(self, text: Any) -> bool:
         return self.names_topic(text) and _VERDICT.search(str(text)) is not None
 
+    # -- answer words (wave 12: the voice's answer-word guard) -------------------
+
+    def answer_words(self) -> tuple[str, ...]:
+        """The `match` words the voice's answer-word guard watches for
+        (normalised, in file order): every entry but the ones too common to
+        guard on a line — two characters or fewer, digits only under three
+        digits (`11`), or a single number word (`eleven`). Never shown to a
+        model."""
+        out: list[str] = []
+        for raw in self.match:
+            w = _norm(raw).replace("’", "'")
+            if len(w) <= 2 or (w.isdigit() and len(w) < 3) or w in _NUMBER_WORDS or w in out:
+                continue
+            out.append(w)
+        return tuple(out)
+
+    def answer_pattern(self, words: tuple[str, ...] | None = None) -> re.Pattern[str] | None:
+        """One word-bounded, case-folded pattern over `words` (default: every
+        `answer_words()`), built like `names_topic`'s. None when empty."""
+        return _pattern(tuple(self.answer_words() if words is None else words))
+
+    def answer_hits(self, text: Any, words: tuple[str, ...] | None = None) -> tuple[str, ...]:
+        """The answer words (default `answer_words()`) `text` carries, each
+        once, in word order — so a caller can tell a word the guest typed
+        from one the character brought up himself."""
+        if not isinstance(text, str) or not text:
+            return ()
+        hay = text.replace("’", "'")
+        return tuple(w for w in (self.answer_words() if words is None else words) if (pat := _pattern((w,))) is not None and pat.search(hay))
+
     def scrub(self, update: dict[str, Any]) -> list[str]:
         """Strip hunt verdicts, and anything carrying a `never` word, from an
         orchestrator update in place; returns what was dropped (for the
