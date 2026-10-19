@@ -81,6 +81,11 @@ describe("the wrong-browser landing", () => {
     expect(landingLink("?code=EVT1")).toBeNull();
     expect(roomFromSlug("disk_cleanup")).toBe("Disk Cleanup");
     expect(roomFromSlug("The%20RAM")).toBe("The RAM");
+    // The show's computer words keep their capitals off a lower-cased slug.
+    expect(roomFromSlug("the-cpu")).toBe("The CPU");
+    expect(roomFromSlug("the-ram")).toBe("The RAM");
+    expect(roomFromSlug("the-fan-closet")).toBe("The Fan Closet");
+    expect(roomFromSlug("the-graphics-card")).toBe("The Graphics Card");
   });
 
   it("shows the code in big type to type in the app the guest joined with — not the picker", () => {

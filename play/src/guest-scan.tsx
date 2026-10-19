@@ -147,9 +147,18 @@ export function landingLink(search: string): LandingLink | null {
   return null;
 }
 
-/** A sign's slug as the room's name: `the-start-bar` → `The Start Bar`
- *  (the server folds the slug onto the declared LOCATION; the landing has
- *  no session to ask, so it reads the sign's own words). */
+/** The computer words a room name spells in capitals (`the-cpu` is the
+ *  show's `The CPU`, `the-ram` its `The RAM`): the slug is lower-cased, so
+ *  title-casing alone would sign them "The Cpu" / "The Ram". */
+const ACRONYMS: ReadonlySet<string> = new Set([
+  "ai", "aol", "bios", "cd", "cpu", "crt", "dns", "dos", "dvd", "gpu", "hdd", "html", "http", "io", "ip", "irc", "isp",
+  "lan", "led", "msn", "os", "pc", "ram", "rom", "ssd", "tv", "url", "usb", "vga", "vr", "wifi", "www", "y2k",
+]);
+
+/** A sign's slug as the room's name: `the-start-bar` → `The Start Bar`,
+ *  `the-cpu` → `The CPU` (the server folds the slug onto the declared
+ *  LOCATION; the landing has no session to ask, so it reads the sign's own
+ *  words). */
 export function roomFromSlug(slug: string): string {
   let s = slug;
   try {
@@ -160,7 +169,7 @@ export function roomFromSlug(slug: string): string {
   return s
     .split(/[-_\s]+/u)
     .filter(Boolean)
-    .map((w) => w[0]!.toUpperCase() + w.slice(1))
+    .map((w) => (ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w[0]!.toUpperCase() + w.slice(1)))
     .join(" ");
 }
 
