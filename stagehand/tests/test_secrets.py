@@ -312,8 +312,9 @@ def test_shipped_topics_spare_the_finale_song_and_prom_talk():
 #: Answer words the shipped lore block may carry, by entry: a bare number
 #: in a clock. Since 2026-10-19 nothing else: Trabolta must never know what
 #: he asks for, so no entry he holds names an answer (his LiveJournal no
-#: longer quotes Sandy or names Grok, Greased Lightning and the MONOPOLY GO!
-#: handle no longer carry 1978; core/test/trabolta-answers.test.ts).
+#: longer quotes Sandy or names Grok, his runtime file (Oil And Lightning,
+#: once Greased Lightning) and the MONOPOLY GO! handle no longer carry 1978;
+#: core/test/trabolta-answers.test.ts).
 LORE_ALLOWED = {
     "The Y2K Clock": {"11"},
 }

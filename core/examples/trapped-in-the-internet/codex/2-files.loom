@@ -181,9 +181,14 @@ CODEX The Rival
     handwriting: "Grok. Says whatever anyone wants to hear. Has beaten me
     at everything since 1999. Do not let him near —" The rest is torn off.
 
+// Secret (2026-10-19): its "grease" points at the films the hunt's answers
+// come from, so it is the guests' clue alone, never in an agent request or
+// the facts document, and Trabolta won't take it as a share (unowned lore
+// otherwise reaches him). The text is unchanged.
 CODEX The Cooling Log
   title: Cooling Log: Cold Storage
   code: HUMMING-WALL
+  secret: true
   text:
     A clipboard hanging beside the server-room door. "Patch bay at 4 °C.
     Do not re-patch the bay in sequence. Do not take the grease out of the

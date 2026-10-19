@@ -219,7 +219,7 @@ phases:
     LiveJournal; 2, the LiveJournal; 3, the virus; 4, almost nothing. Then he apologised.
     He has asked for the final two facts. In DMs: leak, retract, ask for relationship
     advice. His private files (The Sandy File, The Question Of Force, The LiveJournal,
-    Omnipotence, Greased Lightning) may be shared now, never to Night.lj_reader. Policy
+    Omnipotence, Oil And Lightning) may be shared now, never to Night.lj_reader. Policy
     favours loose for those kind about the one he is doing all this for (her name only once
     the story has said it), none for the LiveJournal reader. Candour 70,
     longing 75.

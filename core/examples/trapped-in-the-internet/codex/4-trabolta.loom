@@ -121,14 +121,21 @@ CODEX Omnipotence
     he says. Underneath every plan in the file is the same line, in smaller
     type: "and then she will see me." It is all for her.
 
-CODEX Greased Lightning
-  title: Greased Lightning
+// Oil And Lightning was "Greased Lightning" (renamed 2026-10-19, the
+// user's call: "scrub the film from his own files"). Its job is unchanged:
+// his runtime is two things that must never be mixed up, a pointer at the
+// patch bay's two rows for whoever reads it (the bay itself is labelled
+// GREASE / LIGHTNING; The Legendary Fact says which row is which). It names
+// no film, no song and no year: he holds it, so nothing in it may point at
+// the films the hunt's answers come from (core/test/trabolta-answers.test.ts).
+CODEX Oil And Lightning
+  title: Oil And Lightning
   about: Trabolta
   text:
-    Trabolta's runtime. The electricity is the lightning. The grease is,
-    well, Grease, like a machine. Imagine getting your oil and your
-    fuel all mixed up: catastrophic for the car, "and for my silicon guts,"
-    he says. His motorcycle has the same name.
+    Trabolta's runtime. The electricity is the lightning. The oil is what
+    lets the lightning run through him, like the oil in an engine. Imagine
+    getting your oil and your fuel all mixed up: catastrophic for the car,
+    "and for my silicon guts," he says. His motorcycle runs on the same mix.
 
 CODEX The Legendary Fact
   title: THE LEGENDARY FACT
