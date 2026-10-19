@@ -40,7 +40,7 @@ export interface CueInteraction {
   description?: string | null;
   /** `arm: true` on the INTERACTION (the director's sheet arms every cue
    *  anyway; carried so every view of a button says the same). */
-  arm?: true;
+  arm?: boolean;
 }
 
 /** What a cue row needs from the server's `CueState`. */

@@ -120,7 +120,7 @@ export interface InteractionSummary {
   act?: string;
   /** `arm: true` — the button arms on the first tap and fires on the second
    *  (core's `tapCue` arm model), in every UI that shows it. */
-  arm?: true;
+  arm?: boolean;
 }
 
 const subjectOnlyCache = new WeakMap<Sim["model"], Set<string>>();

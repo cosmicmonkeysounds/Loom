@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
-import { boardFor, guestView, modView, pressRefused, primeView, staffRoomIds, titleOf } from "../server/views.ts";
+import { boardFor, guestView, modView, pressRefused, primeView, staffRoomIds, titleOf, type InteractionSummary } from "../server/views.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { heldCharacters } from "../server/identity.ts";
-import { cueSheetView } from "../src/cue-sheet.ts";
+import { cueSheetView, type CueInteraction } from "../src/cue-sheet.ts";
 
 const SCENARIO = scenarioSource("escape-the-internet");
 
@@ -800,6 +800,11 @@ Hello.
     expect(mod.interactions?.filter((i) => i.arm === true).map((i) => i.id)).toEqual(["confess", "verdict", "blackout"]);
     expect(cueSheetView(mod).interactions.find((i) => i.id === "blackout")?.arm).toBe(true);
     expect(sim.model.interactions.get("wave")!.arm).toBe(false);
+    // C5 types it `arm?: boolean` (only ever sent when true): a mirrored
+    // summary that carries `arm: false` must still type-check.
+    const off: InteractionSummary = { ...guest.find((i) => i.id === "wave")!, arm: false };
+    const cue: CueInteraction = { ...cueSheetView(mod).interactions[0]!, arm: false };
+    expect([off.arm, cue.arm]).toEqual([false, false]);
   });
 
   it("the roster marks gone guests and personas off the world; the cast marks reserved programs", () => {
