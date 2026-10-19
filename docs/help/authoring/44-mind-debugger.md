@@ -209,9 +209,11 @@ frontmatter): extra instructions for one kind of moment, each with a
 prompt gains a `=== SITUATION: … ===` block and the reflect on that
 exchange sees it too, so a thought's messages show exactly when it
 applied. Trabolta's *at your heart* situation is the server-room
-terminal (`them.at_the_heart`, from the Y2K hour): there, and only
+terminal (`them.at_the_heart`, whenever he is awake): there, and only
 there, he is candid, and the reflect keeps that candour in the program's
-dossier, never the shared brief. Two more decide whether he may say
+dossier, never the shared brief. A separate *standing down* situation
+(the same place, from the Y2K hour) carries the `stand_down` rules; the
+persona never fires that power without it. Two more decide whether he may say
 Sandy's name yet. A situation's `when:` reads the same values as the
 gate, so a `secret:` slot never reaches one. See [the server
 room](server-room.md) for what a director does when he offers to stand
@@ -220,15 +222,15 @@ down.
 The mind file's `secrets:` keep the hunt's answers from him, and its
 `never` list (written by `titi:facts` from `facts.json` and the story's
 combos) holds what no line of his mind may carry and his voice may never
-say, whoever typed it: the door code and the ways it is said (*'97*, *in
-97*, *since 97*, *in / since / of ninety-seven*, *nineteen
-ninety-seven*, *one nine nine seven*) and every patch-bay pair. A pair
-matches either way round (*D5 to V2*, *v-2*); a code with spaces, commas
-or hyphens between its digits (*1 9 9 7*, *1,997*), but not dots, so
-*$19.97* is a price; number words in any spacing (*ninety seven*). Never
-a bare *97* or *of 97*: a program may be called NHL 97, and *3 of 97* is
-a count. A voice line carrying one is replaced by the persona's
-`fallback`.
+say, whoever typed it: the door code and the ways it is said (the
+digits, a short year form, the number in words, *in / since / of* in
+front of it) and every patch-bay pair. A pair matches either way round
+(*D5 to V2*, *v-2*); a code with spaces, commas or hyphens between its
+digits (*1 2 3 4*, *1,234*), but not dots, so a price like *$12.34*
+passes; number words in any spacing. Never the bare short form, or
+*of* + it: a program may be called NHL 97, and *3 of 97* is a count. A voice line
+carrying one is replaced by the persona's `fallback`. The list itself
+is generated; read it in the mind file, never in a doc.
 
 Until the orchestrator learns to follow the story's phases on its own,
 a director can keep the arc in step by hand: click the stage on the
