@@ -45,11 +45,11 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from .facts import Facts, world_view
+from .facts import Facts, fold, world_view
 from .llm import Completion, LlmConfig, LlmError
 from .mind import MAX_ANSWERS, MAX_PER_PERSON, Mind
 from .persona import Persona
-from .prompt import build_messages, matching_situations, their_variables
+from .prompt import build_messages, gate_context, matching_situations, their_variables
 from .reply import Reply, extract_json, strip_think
 from .secrets import Secrets, drop_counts, split_dropped
 from .trace import Thought, Trace, new_thought
@@ -66,7 +66,8 @@ class OrchestratorConfig:
     quiet_s: float = 1.5
     #: A new request cancels a running job (it re-runs later).
     preempt: bool = True
-    #: Survey the whole session this often (0 = never).
+    #: Survey the whole session this often (0 = never: no timer survey and
+    #: no first look on a stream hello; a director's survey still runs).
     survey_every_s: float = 120.0
     #: Retries for a job that keeps getting preempted / failing.
     max_attempts: int = 4
@@ -487,6 +488,84 @@ class Job:
 OnUpdate = Callable[[str, Mind, Job, list[str]], Awaitable[None]]
 
 
+@dataclass
+class SurveyMark:
+    """What the last survey that reached the model saw, per character: the
+    house it looked at, how many exchanges the mind had had, and the exact
+    messages it sent. The skip rules compare the next survey against it."""
+
+    facts: Facts
+    exchanges: int
+    messages: list[dict[str, str]]
+
+
+#: Survey triggers the `survey_every_s: 0` switch turns off.
+CLOCK_TRIGGERS = ("timer", "hello")
+
+
+def character_vars(facts: Facts, character: str) -> dict[str, Any] | None:
+    """The character's own variables as the facts document carries them, or
+    None when the document does not list the character (an old server, a
+    secret character): then nothing is known about its gate."""
+    key = fold(character)
+    for c in facts.characters:
+        if fold(str(c.get("id", ""))) == key:
+            v = c.get("vars")
+            return dict(v) if isinstance(v, dict) else {}
+    return None
+
+
+def asleep(persona: Persona, facts: Facts) -> bool:
+    """The persona's `when:` gate is false over the house as the facts show
+    it (the world paths and the character's own vars; nobody speaking): the
+    character is offline, so there is nothing for it to look at."""
+    if persona.when is None:
+        return False
+    mine = character_vars(facts, persona.character)
+    if mine is None:
+        return False
+    ctx = gate_context({"world": facts.world, "self": {"vars": mine}, "them": {}, "speaker": {}})
+    try:
+        return not persona.when.evaluate(ctx)
+    except Exception:  # noqa: BLE001 — a gate that can't be read never silences the mind
+        return False
+
+
+def survey_skip(
+    job: Job,
+    persona: Persona,
+    mind: Mind,
+    facts: Facts,
+    mark: SurveyMark | None,
+    delta: list[str],
+    phase_changed: bool,
+) -> str | None:
+    """Why this survey should not reach the model, or None to run it (the
+    rules that need no prompt built; `same_survey` is the last one). A
+    `director` survey always runs; a `phase` survey (queued for, or finding,
+    a phase change) is spared only the idle rule."""
+    if job.trigger == "director":
+        return None
+    if facts.raw.get("paused") is True:
+        return "the event is paused"
+    if asleep(persona, facts):
+        return "asleep (the persona's when: gate is closed)"
+    if (facts.phase or "").startswith("finale"):
+        return "after the ending"
+    is_phase = job.trigger == "phase" or phase_changed
+    if not is_phase and mark is not None and mind.exchanges == mark.exchanges and not mind.director and not delta and facts.phase == mark.facts.phase:
+        return "idle (no line, no whisper, no change since the last survey)"
+    return None
+
+
+def same_survey(job: Job, mark: SurveyMark | None, messages: list[dict[str, str]]) -> str | None:
+    """The built survey is byte for byte the last one the model answered:
+    the model would only be asked the same question again."""
+    if job.trigger == "director" or mark is None or messages != mark.messages:
+        return None
+    return "the same input as the last survey"
+
+
 class Orchestrator:
     """The job runner. One instance per worker; minds are keyed by character."""
 
@@ -516,9 +595,12 @@ class Orchestrator:
         self._current: asyncio.Task[None] | None = None
         self._current_job: Job | None = None
         self._preempted = False
-        self._last_facts: Facts | None = None
+        #: The last survey that reached the model, per character.
+        self._marks: dict[str, SurveyMark] = {}
         self._last_survey = 0.0
         self.completed = 0
+        #: Surveys the skip rules kept from the model.
+        self.skipped = 0
         self.paused = False
         self.last_error: str | None = None
 
@@ -561,7 +643,7 @@ class Orchestrator:
     def drop_all(self) -> None:
         """The run restarted: nothing queued is about this night any more."""
         self._jobs.clear()
-        self._last_facts = None
+        self._marks.clear()
         if self._current is not None and not self._current.done():
             self._preempted = False
             self._current.cancel()
@@ -686,10 +768,17 @@ class Orchestrator:
         if job.kind == "rerun":
             await self._rerun(job, job.payload.get("model") or model)
             return
+        if job.kind == "survey" and self.cfg.survey_every_s <= 0 and (job.trigger or "timer") in CLOCK_TRIGGERS:
+            # `survey_every_s: 0` turns the survey clock off, the first look
+            # on a stream hello included: no facts fetched, no model call.
+            self.skipped += 1
+            log.debug("orchestrator: skipped the %s survey for %s: survey_every_s is 0", job.trigger or "timer", job.character)
+            return
         facts = None
         if self.facts_fn is not None:
             facts = await self.facts_fn(job.kind == "survey")
         phase_changed_to: str | None = None
+        survey_mark: SurveyMark | None = None
         if job.kind == "reflect":
             req = job.payload["req"]
             thread_key = job.payload["thread_key"]
@@ -700,14 +789,22 @@ class Orchestrator:
         else:
             if facts is None:
                 return
-            delta = facts.delta(self._last_facts, persona.secrets, persona.facts)
-            if self._last_facts is not None and self._last_facts.phase != facts.phase:
-                phase_changed_to = facts.phase
-            self._last_facts = facts
             self._last_survey = time.time()
-            if mind.surveys > 0 and not delta and mind.exchanges == 0 and not mind.director and job.trigger == "timer":
-                return  # a quiet house and nothing said: nothing to think about
-            messages = survey_messages(persona, mind, facts, delta, phase_changed_to)
+            # The delta and the phase change are since the last survey that
+            # reached the model, so a skipped one never hides a change.
+            mark = self._marks.get(job.character)
+            delta = facts.delta(mark.facts if mark is not None else None, persona.secrets, persona.facts)
+            if mark is not None and mark.facts.phase != facts.phase:
+                phase_changed_to = facts.phase
+            why = survey_skip(job, persona, mind, facts, mark, delta, phase_changed_to is not None)
+            if why is None:
+                messages = survey_messages(persona, mind, facts, delta, phase_changed_to)
+                why = same_survey(job, mark, messages)
+            if why is not None:
+                self.skipped += 1
+                log.debug("orchestrator: skipped the %s survey for %s: %s", job.trigger or "timer", job.character, why)
+                return
+            survey_mark = SurveyMark(facts, mind.exchanges, messages)
             speaker_id = None
             thread_key = None
             upto = 0
@@ -724,6 +821,10 @@ class Orchestrator:
             log.warning("orchestrator: model failed for %s (%s)", job.character, err)
             await self._record(new_thought(job.character, job.kind, trigger=trigger, model=model, messages=messages, request=req_for_trace, error=str(err)))
             return
+        if survey_mark is not None:
+            # The model answered: this is the survey the next one is compared
+            # with (a failed call is retried on the same input).
+            self._marks[job.character] = survey_mark
         update = parse_update(completion.content)
         if update is None:
             self.last_error = f"unusable {job.kind} output"

@@ -115,7 +115,8 @@ def test_a_surveys_delta_drops_globals_outside_the_personas_facts():
     async def facts_fn(force):
         return Facts({**state, "programs": [], "locations": [], "codex": []})
 
-    orch = Orchestrator(OrchestratorConfig(quiet_s=0, survey_every_s=0), complete, {"Trabolta": LlmConfig()}, {"Trabolta": persona}, {"Trabolta": Mind("Trabolta", "e")}, on_update, facts_fn)
+    # A survey clock is on (a timer survey under `survey_every_s: 0` never runs).
+    orch = Orchestrator(OrchestratorConfig(quiet_s=0, survey_every_s=120), complete, {"Trabolta": LlmConfig()}, {"Trabolta": persona}, {"Trabolta": Mind("Trabolta", "e")}, on_update, facts_fn)
     orch.survey("Trabolta")
     run(run_until(orch, lambda: len(updates) == 1))
     state["world"] = {"Night.phase": "hunt", "Night.step": "2", "Night.help_votes": "7"}
@@ -220,7 +221,7 @@ def test_a_survey_reads_the_facts_and_a_reset_drops_the_queue():
         assert "=== THE HOUSE NOW ===" in messages[1]["content"]
         return '{"world_add": ["Ada is here"], "people": {"g1": {"trust": 12}}}'
 
-    orch, mind, updates = harness(complete, facts=facts)
+    orch, mind, updates = harness(complete, cfg=OrchestratorConfig(quiet_s=0, survey_every_s=120), facts=facts)
     orch.survey("Trabolta")
     run(run_until(orch, lambda: updates))
     assert updates == [("survey", ["people", "world"])] and mind.world == ["Ada is here"] and mind.people["g1"].trust == 12 and mind.surveys == 1
