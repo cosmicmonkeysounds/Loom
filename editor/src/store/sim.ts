@@ -505,7 +505,12 @@ export const useSim = create<SimState>((set, get) => {
       const id = `p${personaSeq}`
       const label = name !== undefined && name.trim() !== '' ? name.trim() : `Guest ${personaSeq}`
       set((s) => ({ personas: [...s.personas, id] }))
-      run((s) => void s.createPerson(id, label))
+      // `<id>.persona` as the server sets it on `/api/mod/persona` (C5), so
+      // a story that leaves personas out of a count rehearses the same here.
+      run((s) => {
+        s.createPerson(id, label)
+        s.setVar(`${id}.persona`, 'true')
+      })
       return id
     },
     // The play app talks to an event server; an in-browser run has none.
@@ -518,6 +523,16 @@ export const useSim = create<SimState>((set, get) => {
     pairGuest: async () => {
       set({ error: 'Re-pairing a phone needs an event server — open a server project.' })
       return null
+    },
+    // The same world var `/api/mod/guest/gone` sets.
+    markGone: async (id, gone) => {
+      if (sim === null) return false
+      if (!sim.persons.has(id)) {
+        set({ error: `unknown guest: ${id}` })
+        return false
+      }
+      run((s) => void s.setVar(`${id}.gone`, gone ? 'true' : 'false'))
+      return true
     },
     releasePart: async () => {
       set({ error: 'Performer booths sign in to an event server — there is nothing to release in an in-browser run.' })

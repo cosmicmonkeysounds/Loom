@@ -47,6 +47,7 @@ import {
   OPERATOR_LENS,
   RunBackend,
   RunMode,
+  stampAgentQueues,
   storyNow,
   type CastSummary,
   type ChannelSummary,
@@ -412,7 +413,7 @@ export const useOperate = create<OperateState>((set, get) => {
         roster,
         factions: snap.factions ?? [],
         locations: snap.locations ?? [],
-        cast: snap.cast ?? [],
+        cast: stampAgentQueues(snap.cast ?? [], get().cast, Date.now()),
         channels: snap.channels ?? [],
         spaces: snap.spaces ?? [],
         beats: snap.beats ?? [],
@@ -906,6 +907,19 @@ export const useOperate = create<OperateState>((set, get) => {
       } catch (e) {
         set({ error: (e as Error).message })
         return null
+      }
+    },
+    // Journaled `<id>.gone` `by` this director (C5); the next snapshot's
+    // world shows it on every console.
+    markGone: async (id, gone) => {
+      const ev = get().event
+      if (!ev) return false
+      try {
+        await modApi.guestGone(ev.id, id, gone)
+        return true
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return false
       }
     },
     walletAct: async (action, arg) => {

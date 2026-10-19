@@ -20,7 +20,8 @@ import {
   type WatchSummary,
   type WorldEntry,
 } from '@/store/cockpit'
-import { judgeModeOf, pendingFilings, stageSegments } from '../mind'
+import { QueueTone, agentQueueOf, judgeModeOf, nearCount, pendingFilings, queueBadge, stageSegments } from '../mind'
+import { UNSEEN_MS, unseenGuests } from '../guests'
 import { heldTransfers } from '../wallet'
 import { PartPresence, castPresence, isSignedIn, performerParts } from '../parts'
 
@@ -459,6 +460,12 @@ export const NeedKind = {
   PhoneOffline: 'phone-offline',
   Free: 'free',
   NoWorker: 'no-worker',
+  /** Wave 11: a near-miss filing held for a director in auto mode (C6). */
+  NearMiss: 'near',
+  /** Wave 11: an agent's queue is stalled, or a guest waits past 40 s (C6). */
+  AgentQueue: 'agent-queue',
+  /** Wave 11: real guests nobody has seen for half an hour — mark gone? (C5) */
+  Unseen: 'unseen',
 } as const
 export type NeedKind = (typeof NeedKind)[keyof typeof NeedKind]
 
@@ -469,6 +476,9 @@ export interface NeedItem {
   /** A second line (the `# hosts` reason for a refused press). */
   detail?: string
   link: GlanceLink
+  /** `unseen`: the guests it asks about, longest-unseen first — each gets a
+   *  one-tap 👋 *went home* in the row. */
+  guests?: Array<{ id: string; name: string; lastSeen: number }>
 }
 
 /** A press this console sent that the story refused. */
@@ -505,6 +515,10 @@ export interface NeedsInput {
   cast: readonly CastSummary[]
   /** The doors are open (a part nobody holds only matters then). */
   doorsOpen: boolean
+  /** The guests (wave 11: who has gone unseen; `now` is wall ms). */
+  roster?: readonly RosterRow[]
+  /** The agent minds (a queue may ride the mind summary instead of the cast). */
+  minds?: readonly AgentMindSummary[]
 }
 
 export function needsYou(input: NeedsInput): NeedItem[] {
@@ -521,9 +535,16 @@ export function needsYou(input: NeedsInput): NeedItem[] {
       link: room !== undefined ? { kind: 'tab', tab: CockpitTab.Chat, channel: room } : { kind: 'tab', tab: CockpitTab.Log },
     })
   }
-  if (input.facts !== null && judgeModeOf([...input.world], input.facts) === 'review') {
-    const n = pendingFilings(input.facts).length
-    if (n > 0) out.push({ kind: NeedKind.Filings, key: 'filings', text: `📝 ${n} filing${n === 1 ? '' : 's'} to review`, link: { kind: 'tab', tab: CockpitTab.Mind } })
+  if (input.facts !== null) {
+    const near = nearCount(input.facts)
+    const nearText = near > 0 ? ` (⚠ ${near} near miss${near === 1 ? '' : 'es'})` : ''
+    if (judgeModeOf([...input.world], input.facts) === 'review') {
+      const n = pendingFilings(input.facts).length
+      if (n > 0) out.push({ kind: NeedKind.Filings, key: 'filings', text: `📝 ${n} filing${n === 1 ? '' : 's'} to review${nearText}`, link: { kind: 'tab', tab: CockpitTab.Mind } })
+    } else if (near > 0) {
+      // Auto mode judges the rest itself; a near miss waits for a director.
+      out.push({ kind: NeedKind.NearMiss, key: 'near', text: `⚠ ${near} near miss${near === 1 ? '' : 'es'} to judge`, link: { kind: 'tab', tab: CockpitTab.Mind } })
+    }
   }
   const held = heldTransfers(input.wallet).length
   if (held > 0) out.push({ kind: NeedKind.Held, key: 'held', text: `💰 ${held} held transfer${held === 1 ? '' : 's'}`, link: { kind: 'tab', tab: CockpitTab.Run } })
@@ -532,11 +553,29 @@ export function needsYou(input: NeedsInput): NeedItem[] {
     const p = castPresence(c, parts.has(c.id))
     if (p === PartPresence.Unvoiced) {
       out.push({ kind: NeedKind.NoWorker, key: `agent:${c.id}`, text: `🤖 ${c.id}: no worker`, link: { kind: 'tab', tab: CockpitTab.Mind } })
+    } else if (c.agent === true) {
+      const q = agentQueueOf(c.id, input.cast, input.minds ?? [], now)
+      if (q !== null) {
+        const b = queueBadge(q)
+        if (b.tone === QueueTone.Stalled || b.tone === QueueTone.Slow) {
+          out.push({ kind: NeedKind.AgentQueue, key: `queue:${c.id}`, text: `🤖 ${c.id}: ${b.text}`, link: { kind: 'tab', tab: CockpitTab.Mind } })
+        }
+      }
     } else if (input.doorsOpen && p === PartPresence.PhoneOffline) {
       out.push({ kind: NeedKind.PhoneOffline, key: `part:${c.id}`, text: `📱 ${c.id}: phone offline`, link: { kind: 'inspect', selection: { kind: SelectionKind.Character, id: c.id } } })
     } else if (input.doorsOpen && p === PartPresence.Free) {
       out.push({ kind: NeedKind.Free, key: `part:${c.id}`, text: `🎭 ${c.id}: nobody signed in`, link: { kind: 'inspect', selection: { kind: SelectionKind.Character, id: c.id } } })
     }
+  }
+  const unseen = unseenGuests(input.roster ?? [], input.world, now)
+  if (unseen.length > 0) {
+    out.push({
+      kind: NeedKind.Unseen,
+      key: 'unseen',
+      text: `👋 ${unseen.length} guest${unseen.length === 1 ? '' : 's'} unseen ${Math.round(UNSEEN_MS / 60_000)} min — mark gone?`,
+      link: { kind: 'tab', tab: CockpitTab.Roster },
+      guests: unseen,
+    })
   }
   return out
 }

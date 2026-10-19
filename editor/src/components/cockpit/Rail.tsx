@@ -9,13 +9,15 @@
 //! serves every page, not just Chat. Identical on both backends; the
 //! identity control ("who am I right now") lives in the stage header.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { CockpitPhase, CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
 import { useRooms, useRoomCounts } from './rooms'
 import { channelGlyph, worldBadge } from './format'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
+import { isGone, isPersonaRow, seenLine } from './guests'
+import { useNow } from './director/clock'
 
 /** One numeric readout in the header strip. */
 function Stat({ value, label, tone }: { value: string | number; label: string; tone?: string }) {
@@ -102,8 +104,16 @@ function PresenceDot({ online }: { online: boolean | undefined }) {
 }
 
 /** Whose persona this is — "you", a co-writer's name, or nothing for a real guest. */
-function OwnerChip({ owner, me }: { owner: string | null | undefined; me: string }) {
-  if (!owner) return null
+function OwnerChip({ owner, me, persona }: { owner: string | null | undefined; me: string; persona: boolean }) {
+  if (!owner) {
+    // A persona nobody here owns (its owner left, or a server that marks
+    // `<id>.persona` only): still never a real guest.
+    return persona ? (
+      <span title="a Run persona, not a real guest" className="shrink-0 rounded bg-zinc-800 px-1 text-[9px] uppercase tracking-wide text-zinc-400">
+        persona
+      </span>
+    ) : null
+  }
   const mine = owner === me
   return (
     <span
@@ -118,7 +128,7 @@ function OwnerChip({ owner, me }: { owner: string | null | undefined; me: string
   )
 }
 
-function GuestRow({ r, hasChoice }: { r: RosterRow; hasChoice: boolean }) {
+function GuestRow({ r, hasChoice, gone, persona, now }: { r: RosterRow; hasChoice: boolean; gone: boolean; persona: boolean; now: number }) {
   const selection = useCockpit((s) => s.selection)
   const me = useCockpit((s) => s.me)
   const perspective = useCockpit((s) => s.perspective)
@@ -132,17 +142,23 @@ function GuestRow({ r, hasChoice }: { r: RosterRow; hasChoice: boolean }) {
     <button
       onClick={() => inspect({ kind: SelectionKind.Guest, id: r.id })}
       onContextMenu={(e) => menu(r, e)}
-      title={`${r.name} — ${r.location ?? 'no location'} · ${r.score} pts${r.owner ? (r.owner === me ? ' · your persona' : ` · ${r.owner}'s persona`) : ''}`}
+      title={`${r.name} — ${r.location ?? 'no location'} · ${r.score} pts${r.owner ? (r.owner === me ? ' · your persona' : ` · ${r.owner}'s persona`) : persona ? ' · a persona' : ''}${gone ? ' · went home' : ''}${r.online !== true && seenLine(r, persona, now) !== null ? ` · ${seenLine(r, persona, now)}` : ''}`}
       className={clsx(
         'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm',
         selected ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-900/60',
         being && 'border-l-2 border-indigo-400',
+        gone && !selected && 'opacity-50',
       )}
       data-testid={`rail-guest-${r.id}`}
     >
       <PresenceDot online={r.online} />
       <span className="min-w-0 flex-1 truncate">{r.name}</span>
-      <OwnerChip owner={r.owner} me={me} />
+      <OwnerChip owner={r.owner} me={me} persona={persona} />
+      {gone && (
+        <span title="went home" className="shrink-0 text-[10px]">
+          👋
+        </span>
+      )}
       {hasChoice && (
         <span title="waiting on a decision" className="shrink-0 text-[10px] text-indigo-300">
           ⏳
@@ -178,6 +194,9 @@ export function CockpitRail() {
   const selectChannel = useCockpit((s) => s.selectChannel)
   const rooms = useRooms()
   const counts = useRoomCounts()
+  const worldVars = useCockpit((s) => s.world)
+  const byPath = useMemo(() => new Map(worldVars.map((w) => [w.path, w.value])), [worldVars])
+  const now = useNow(roster.some((r) => r.lastSeen !== undefined), 30_000)
 
   const [guestsOpen, setGuestsOpen] = useState(true)
   const [roomsOpen, setRoomsOpen] = useState(true)
@@ -252,7 +271,7 @@ export function CockpitRail() {
           </div>
         )}
         {roster.map((r) => (
-          <GuestRow key={r.id} r={r} hasChoice={(choices[r.id]?.length ?? 0) > 0} />
+          <GuestRow key={r.id} r={r} hasChoice={(choices[r.id]?.length ?? 0) > 0} gone={isGone(byPath, r.id)} persona={isPersonaRow(r, byPath)} now={now} />
         ))}
         {running && <AddPersonaRow />}
       </Section>

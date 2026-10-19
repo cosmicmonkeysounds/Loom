@@ -2,8 +2,10 @@
 //! director prints — the join poster, the iPhone door sign (SW-QR-11), one
 //! poster per codex entry (title + QR + the typed code; sorted and banded
 //! by fact stack, K-12-stacks), one check-in sign per room (QR + room name
-//! only — no typed code) and one business-card cast card per performer part
-//! (the performer passcode QR, SW-QR-11). QRs are drawn here,
+//! only — no typed code), one business-card cast card per performer part
+//! (the performer passcode QR, SW-QR-11) and, on their own page, one
+//! invitation per reserved program (wave 11 C5: the claim QR, no typed
+//! code — the claim is secret). QRs are drawn here,
 //! in the browser (`qrcode` → inline SVG): `/api/qr` allows 60/min per IP
 //! and a full sheet needs 60–80. Pure, unit-tested in `print-sheet.test.ts`.
 
@@ -24,6 +26,9 @@ export interface PrintCodes {
   cast?: string[]
   /** Codex id → its fact stack (`facts.json`). Absent → posters unsorted. */
   stacks?: Record<string, PrintStack>
+  /** Wave 11 C5: one claim link per reserved program (`?code=<guest
+   *  code>&claim=<token>`) — the invitations. Absent on an older server. */
+  claims?: Array<{ character: string; claim: string; url: string }>
 }
 
 /** Which printed pile a codex poster goes in (`routes/k12.ts` `CodexStack`). */
@@ -49,11 +54,12 @@ export const PrintKind = {
   Codex: 'codex',
   Room: 'room',
   Cast: 'cast',
+  Invite: 'invite',
 } as const
 export type PrintKind = (typeof PrintKind)[keyof typeof PrintKind]
 
 export interface PrintItem {
-  /** Small id printed in the corner (`J1`, `D1`, `C07`, `R03`, `P02`) — "which poster?". */
+  /** Small id printed in the corner (`J1`, `D1`, `C07`, `R03`, `P02`, `I04`) — "which poster?". */
   ref: string
   kind: PrintKind
   title: string
@@ -71,6 +77,8 @@ export interface PrintItem {
   steps?: string[]
   /** A codex poster's fact stack: a coloured band + the pile, printed. */
   stack?: PrintStack | null
+  /** An invitation's reserved program (the screen-only 🔓 unlock names it). */
+  character?: string
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -100,9 +108,21 @@ export function doorWording(homescreen: boolean): { title: string; hint: string;
   }
 }
 
-/** Print order of the stacks (gold = the hunt answers first); any other
- *  colour after these, unstacked posters last. */
-export const STACK_ORDER = ['gold', 'green', 'blue', 'red'] as const
+/** Print order of the stacks (gold = the hunt answers first, silver = the
+ *  door's digit clues last of the named piles); any other colour after
+ *  these, unstacked posters last. */
+export const STACK_ORDER = ['gold', 'green', 'blue', 'red', 'silver'] as const
+
+/** The stack the door code's digit clues print in (wave 11: one clue = one
+ *  digit, `facts.json` → `codexStacks`). Their posters print the title and
+ *  the QR only — never a typed code, and never a digit in the pile line —
+ *  so nothing printed gives a digit away. */
+export const DIGIT_CLUE_STACK = 'silver'
+
+/** A poster on the digit-clue stack. */
+export function isDigitClue(stack: PrintStack | null | undefined): boolean {
+  return stack !== null && stack !== undefined && stack.colour.toLowerCase() === DIGIT_CLUE_STACK
+}
 
 export function stackRank(stack: PrintStack | null | undefined): number {
   if (!stack) return STACK_ORDER.length + 1
@@ -122,14 +142,19 @@ export function stackInk(colour: string): string {
       return '#2563eb'
     case 'red':
       return '#dc2626'
+    case 'silver':
+      return '#8b98a5'
     default:
       return '#a1a1aa'
   }
 }
 
-/** The printed pile line: `GOLD · hunt answers · <where>`. */
+/** The printed pile line: `GOLD · hunt answers · <where>`. On the
+ *  digit-clue stack any part holding a digit is left off (a hiding place
+ *  like "shelf 9" must not read as a digit of the code). */
 export function stackLine(stack: PrintStack): string {
-  return [stack.colour.toUpperCase(), stack.stack, stack.where].filter((s) => s !== null && s !== '').join(' · ')
+  const parts = [stack.colour.toUpperCase(), stack.stack, stack.where].filter((s): s is string => s !== null && s !== '')
+  return (isDigitClue(stack) ? parts.filter((p) => !/\d/u.test(p)) : parts).join(' · ')
 }
 
 /** Every card, in print order: join poster, door sign, codex posters (by
@@ -154,18 +179,21 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
   const stackOf = (id: string): PrintStack | null => (Object.hasOwn(stacks, id) ? stacks[id]! : null)
   // `sort` is stable, so model order holds within a stack.
   const codex = [...codes.codex].sort((a, b) => stackRank(stackOf(a.id)) - stackRank(stackOf(b.id)))
-  codex.forEach((e, i) =>
+  codex.forEach((e, i) => {
+    const stack = stackOf(e.id)
+    const clue = isDigitClue(stack)
     items.push({
       ref: `C${pad(i + 1)}`,
       kind: PrintKind.Codex,
       title: e.title,
-      hint: 'Scan, or type the code into your Codex.',
-      code: e.code,
+      hint: clue ? 'Scan it into your Codex.' : 'Scan, or type the code into your Codex.',
+      // A digit clue prints its title + QR only (`DIGIT_CLUE_STACK`).
+      code: clue ? '' : e.code,
       url: e.url,
-      note: e.about ? `about ${e.about}` : null,
-      stack: stackOf(e.id),
-    }),
-  )
+      note: clue ? 'a digit clue — title + QR only' : e.about ? `about ${e.about}` : null,
+      stack,
+    })
+  })
   ;(codes.checkin ?? []).forEach((r, i) =>
     items.push({
       ref: `R${pad(i + 1)}`,
@@ -192,6 +220,20 @@ export function buildPrintItems(codes: PrintCodes, opts: PrintOptions = {}): Pri
       note: 'performer passcode — never post it',
     }),
   )
+  // An invitation's QR claims one reserved program (C5). The claim is
+  // secret: no typed code, and the link is shown on screen only.
+  ;(codes.claims ?? []).forEach((c, i) =>
+    items.push({
+      ref: `I${pad(i + 1)}`,
+      kind: PrintKind.Invite,
+      title: c.character,
+      hint: `You're invited — scan to join as ${c.character}. This card is yours alone.`,
+      code: '',
+      url: c.url,
+      note: `invitation for ${c.character} — the QR claims the name`,
+      character: c.character,
+    }),
+  )
   return items
 }
 
@@ -202,4 +244,37 @@ export type PerPage = 1 | 2 | 4 | 8
  *  level M (a poster survives a crease or a thumb). */
 export async function qrSvg(text: string): Promise<string> {
   return await QRCode.toString(text, { type: 'svg', errorCorrectionLevel: 'M', margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+}
+
+// ---------------------------------------------------------------------------
+// 🔓 A lost invitation's unlock (screen only)
+// ---------------------------------------------------------------------------
+
+export const UnlockPhase = { Idle: 'idle', Armed: 'armed', Busy: 'busy', Failed: 'failed' } as const
+export type UnlockPhase = (typeof UnlockPhase)[keyof typeof UnlockPhase]
+
+/** When a reserved program's open window closes: the live cast row's
+ *  `unlockedUntil` (the server's truth), else this console's own unlock
+ *  answer until the next snapshot lands; null = shut (or already closed). */
+export function unlockOpenUntil(castUntil: number | undefined, local: number | null, now: number): number | null {
+  const until = castUntil ?? local
+  return until !== null && until > now ? until : null
+}
+
+/** The 🔓 button: the real window (a countdown, back to idle once it
+ *  closes or a restart shuts it), a two-tap open, a two-tap shut. */
+export function unlockButton(character: string, phase: UnlockPhase, openUntil: number | null, now: number): { label: string; title: string } {
+  if (phase === UnlockPhase.Busy) return { label: '…', title: '' }
+  if (openUntil !== null) {
+    const s = Math.max(0, Math.ceil((openUntil - now) / 1000))
+    const left = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+    return phase === UnlockPhase.Armed
+      ? { label: `tap again: shut ${character} now`, title: `Only its invitation takes ${character} again.` }
+      : { label: `🔓 open · ${left} left`, title: `Anyone who picks ${character} now gets it. Tap twice to shut it early.` }
+  }
+  if (phase === UnlockPhase.Armed) return { label: `tap again: anyone may take ${character} for 2 min`, title: '' }
+  return {
+    label: phase === UnlockPhase.Failed ? '🔓 failed — again?' : '🔓 lost? open 2 min',
+    title: `For a lost invitation: anyone who picks ${character} in the next two minutes gets it — do it with the guest beside you.`,
+  }
 }

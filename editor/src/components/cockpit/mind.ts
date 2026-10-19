@@ -3,7 +3,7 @@
 //! and sparklines. No React here — `MindTab.tsx` renders these.
 
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import type { FactVerdict, FactsView, WorldEntry } from '@/store/cockpit'
+import type { AgentQueue, CastSummary, FactVerdict, FactsFiling, FactsView, WorldEntry } from '@/store/cockpit'
 
 /** The kinds of thought a worker records, with how the page labels them.
  *  Colours are the reference dark palette's categorical slots, in fixed
@@ -240,7 +240,7 @@ export function judgeModeOf(world: WorldEntry[], facts: FactsView | null): Judge
   return world.find((w) => w.path === path)?.value === 'review' ? 'review' : 'auto'
 }
 
-/** One filing awaiting a verdict (review mode). */
+/** One filing awaiting a verdict (review mode, or a near miss in auto). */
 export interface JudgingRow {
   person: string
   name: string
@@ -251,6 +251,19 @@ export interface JudgingRow {
   proposed: FactVerdict
   final: string | null
   at: number
+  /** Wave 11 C6: the answer is a near miss of this key answer (a typo, a
+   *  plural, digits for words) — the judge held it for a director instead
+   *  of calling it a lie or a guess. Null for any other filing. */
+  near: string | null
+}
+
+/** A filing's near-miss key (`near: {key}`, wave 11 C6; the server sets it
+ *  on a pending filing), else null — an older server sends none. */
+export function nearKeyOf(f: FactsFiling): string | null {
+  const near = (f as FactsFiling & { near?: unknown }).near
+  if (near === null || typeof near !== 'object') return null
+  const key = (near as { key?: unknown }).key
+  return typeof key === 'string' && key.trim() !== '' ? key : null
 }
 
 /** Every filing with no `final` yet, oldest first (ties keep the ledger's
@@ -260,10 +273,18 @@ export function pendingFilings(facts: FactsView): JudgingRow[] {
   for (const q of facts.questions) {
     for (const f of q.filings) {
       if (f.final !== null) continue
-      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at })
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f) })
     }
   }
   return rows.sort((a, b) => a.at - b.at)
+}
+
+/** How many filings wait as near misses: the view's own `near` count when
+ *  a server sends one, else the pending filings carrying a near key. */
+export function nearCount(facts: FactsView): number {
+  const n = (facts as FactsView & { near?: unknown }).near
+  if (typeof n === 'number' && Number.isFinite(n) && n >= 0) return n
+  return pendingFilings(facts).filter((r) => r.near !== null).length
 }
 
 export interface QuestionTally {
@@ -317,6 +338,8 @@ export interface FilingRow {
   by: string | null
   /** When the server first saw the filing — a restart re-stamps every one. */
   at: number
+  /** The key answer it nearly matched (wave 11 C6), else null. */
+  near: string | null
 }
 
 /** One question's filings, oldest first, for the provenance rows under the
@@ -331,7 +354,7 @@ export function questionFilings(facts: FactsView, id: string): FilingRow[] {
     return f.final === f.verdict ? 'kept' : 'overridden'
   }
   return q.filings
-    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at }))
+    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, near: nearKeyOf(f) }))
     .sort((a, b) => a.at - b.at)
 }
 
@@ -391,4 +414,70 @@ export function verdictCall(facts: FactsView, row: { person: string; question: s
   const event = confirmEvent(facts, verdict)
   if (event === null) return null
   return { event, person: row.person, args: { question: row.question } }
+}
+
+// ---------------------------------------------------------------------------
+// Trabolta's queue (wave 11 C6): depth, oldest wait, a stalled worker
+// ---------------------------------------------------------------------------
+
+/** A wait worth a director's eye: the story's busy line goes out at 40 s. */
+export const QUEUE_SLOW_MS = 40_000
+
+const isQueue = (v: unknown): v is AgentQueue =>
+  v !== null &&
+  typeof v === 'object' &&
+  typeof (v as AgentQueue).depth === 'number' &&
+  ((v as AgentQueue).oldestMs === null || typeof (v as AgentQueue).oldestMs === 'number') &&
+  typeof (v as AgentQueue).stalled === 'boolean'
+
+/** A character's request queue: the cast row's `agentQueue`, else the mind
+ *  summary's (C6 allows either); null on an older server. With `now`, a
+ *  waiting queue's `oldestMs` is aged by the time since it arrived
+ *  (`receivedAt`): the server works it out at send time, and a quiet
+ *  stretch sends no new snapshot. */
+export function agentQueueOf(character: string, cast: readonly CastSummary[], minds: readonly AgentMindSummary[], now?: number): AgentQueue | null {
+  const c = cast.find((x) => x.id === character)?.agentQueue
+  if (isQueue(c)) return aged(c, now)
+  const m = (minds.find((x) => x.character === character) as (AgentMindSummary & { agentQueue?: unknown }) | undefined)?.agentQueue
+  return isQueue(m) ? aged(m, now) : null
+}
+
+function aged(q: AgentQueue, now: number | undefined): AgentQueue {
+  if (now === undefined || q.receivedAt === undefined || q.oldestMs === null || q.depth === 0) return q
+  return { ...q, oldestMs: q.oldestMs + Math.max(0, now - q.receivedAt) }
+}
+
+/** `1:20` — a wait in minutes and seconds. */
+export function waitText(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+export const QueueTone = { Idle: 'idle', Waiting: 'waiting', Slow: 'slow', Stalled: 'stalled' } as const
+export type QueueTone = (typeof QueueTone)[keyof typeof QueueTone]
+
+/** The queue badge: `queue 0`, `3 waiting · oldest 0:12`, ⚠ slow past the
+ *  busy line's 40 s, ⛔ stalled (the worker's head request went unanswered
+ *  > 60 s: no new dispatch until it answers or reconnects). */
+export function queueBadge(q: AgentQueue): { text: string; tone: QueueTone; title: string } {
+  const oldest = q.oldestMs !== null && q.oldestMs > 0 ? ` · oldest ${waitText(q.oldestMs)}` : ''
+  if (q.stalled) {
+    return { text: `⛔ stalled · ${q.depth} waiting${oldest}`, tone: QueueTone.Stalled, title: 'The worker stopped answering (a request unanswered over a minute). Nothing new is sent to it; every waiting guest got the hold line once. It clears on its next reply or a reconnect — restart the worker, or answer from the performer lens.' }
+  }
+  if (q.depth === 0) return { text: 'queue empty', tone: QueueTone.Idle, title: 'No conversation is waiting for a reply.' }
+  const slow = q.oldestMs !== null && q.oldestMs >= QUEUE_SLOW_MS
+  return {
+    text: `${slow ? '⚠ ' : ''}${q.depth} waiting${oldest}`,
+    tone: slow ? QueueTone.Slow : QueueTone.Waiting,
+    title: slow ? 'A guest has waited past the busy line (40 s): the worker is behind.' : 'Conversations waiting for the worker, oldest first.',
+  }
+}
+
+
+/** The Judging card's mode button tooltip. Auto judges at once — except a
+ *  near miss, which waits on the card for a director in either mode (C6). */
+export function judgeModeTitle(mode: 'auto' | 'review'): string {
+  return mode === 'auto'
+    ? 'Every filed fact gets its verdict at once, except a near miss (a letter or a word from the key), which waits here for you'
+    : 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest. A near miss waits here too.'
 }

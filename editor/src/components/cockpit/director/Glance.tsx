@@ -14,8 +14,10 @@ import { PresenceDot } from '../presence'
 import { PartPresence, partPresenceTitle } from '../parts'
 import { usePressOutcome } from './useArmed'
 import { useNow } from './clock'
+import { goneCount, seenAgo } from '../guests'
 import {
   MASK,
+  NeedKind,
   RoleAggKind,
   ValueTone,
   agentGlance,
@@ -32,6 +34,7 @@ import {
   watchRows,
   worldValue,
   type GlanceLink,
+  type NeedItem,
   type RoleAgg,
   type Seen,
   type WatchRow,
@@ -112,7 +115,9 @@ function valueTone(tone: ValueTone): string {
 // Needs you
 // ---------------------------------------------------------------------------
 
-function useNeeds() {
+/** The Needs-you items and the clock they were worked out against (the
+ *  unseen list's ages read the same tick). */
+function useNeeds(): { items: NeedItem[]; now: number } {
   // The last press's outcome lives with the cockpit, so the tray's column
   // (outside the Director page) keeps a refusal too.
   const { refused } = usePressOutcome(useContext(CockpitContext))
@@ -122,24 +127,79 @@ function useNeeds() {
   const facts = useCockpit((s) => s.facts)
   const wallet = useCockpit((s) => s.wallet)
   const cast = useCockpit((s) => s.cast)
+  const roster = useCockpit((s) => s.roster)
+  const minds = useCockpit((s) => s.minds)
   const doorsOpen = useCockpit((s) => s.phase === CockpitPhase.Open)
-  const now = useNow(refused !== null, 1000)
-  return needsYou({ refused, now, messages, channels, world, facts, wallet, cast, doorsOpen })
+  // A refusal counts down by the second; "unseen 30 min" only needs a
+  // slow tick (the snapshot moves `lastSeen` itself).
+  // A waiting agent queue ages on this clock between snapshots (C6's
+  // `oldestMs` is as of the send), so ⚠ slow lands within a few seconds.
+  const waiting = cast.some((c) => c.agent === true && (c.agentQueue?.depth ?? 0) > 0)
+  const now = useNow(true, refused !== null ? 1000 : waiting ? 5_000 : 30_000)
+  return { items: needsYou({ refused, now, messages, channels, world, facts, wallet, cast, doorsOpen, roster, minds }), now }
+}
+
+/** The unseen guests' row (wave 11): the line opens the list, and each
+ *  guest is one tap — 👋 *went home* (journaled `<id>.gone`, undone from
+ *  the Inspector's Back) — or a tap on the name to inspect them first. */
+function UnseenNeed({ need, now }: { need: NeedItem; now: number }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
+  const markGone = useCockpit((s) => s.markGone)
+  const go = useGo()
+  return (
+    <div className="flex flex-col text-xs" data-testid={`glance-need-${need.kind}`}>
+      <button onClick={() => setOpen((o) => !o)} className="text-left text-amber-200 hover:text-indigo-300" aria-expanded={open}>
+        {open ? '▾' : '▸'} {need.text}
+      </button>
+      {open && (
+        <ul className="mt-0.5 flex flex-col gap-0.5 pl-3">
+          {(need.guests ?? []).map((g) => (
+            <li key={g.id} className="flex items-center gap-2">
+              <button
+                onClick={() => go({ kind: 'inspect', selection: { kind: SelectionKind.Guest, id: g.id } })}
+                className="min-w-0 flex-1 truncate text-left text-zinc-200 hover:text-indigo-300"
+                title={`Inspect ${g.name}`}
+              >
+                {g.name} <span className="text-zinc-500">· {seenAgo(g.lastSeen, now)}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setBusy(g.id)
+                  void markGone(g.id, true).finally(() => setBusy(null))
+                }}
+                disabled={busy !== null}
+                className="shrink-0 rounded border border-zinc-700 px-1.5 text-[10px] text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
+                title={`${g.name} went home: the story can leave them out of its counts. Undo from the Inspector (Back).`}
+                data-testid={`glance-gone-${g.id}`}
+              >
+                👋 went home
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 function NeedsYou() {
-  const items = useNeeds()
+  const { items, now } = useNeeds()
   const go = useGo()
   if (items.length === 0) return null
   return (
     <Section title="Needs you" testid="glance-needs">
       <Lines
-        items={items.map((n) => (
-          <button key={n.key} onClick={() => go(n.link)} className="flex w-full flex-col text-left text-xs hover:text-indigo-300" data-testid={`glance-need-${n.kind}`}>
-            <span className={n.kind === 'refused' ? 'text-red-400' : 'text-zinc-200'}>{n.text}</span>
-            {n.detail !== undefined && <span className="truncate pl-3 text-zinc-500">“{n.detail}”</span>}
-          </button>
-        ))}
+        items={items.map((n) =>
+          n.kind === NeedKind.Unseen ? (
+            <UnseenNeed key={n.key} need={n} now={now} />
+          ) : (
+            <button key={n.key} onClick={() => go(n.link)} className="flex w-full flex-col text-left text-xs hover:text-indigo-300" data-testid={`glance-need-${n.kind}`}>
+              <span className={n.kind === 'refused' ? 'text-red-400' : n.kind === NeedKind.AgentQueue || n.kind === NeedKind.NearMiss ? 'text-amber-200' : 'text-zinc-200'}>{n.text}</span>
+              {n.detail !== undefined && <span className="truncate pl-3 text-zinc-500">“{n.detail}”</span>}
+            </button>
+          ),
+        )}
       />
     </Section>
   )
@@ -332,8 +392,10 @@ function People() {
   const roster = useCockpit((s) => s.roster)
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)
+  const world = useCockpit((s) => s.world)
   const go = useGo()
   const g = useMemo(() => peopleGlance(roster, factions, locations), [roster, factions, locations])
+  const gone = useMemo(() => goneCount(roster, world), [roster, world])
   if (g.joined === 0) return null
   const lines: ReactNode[] = []
   for (const p of g.prisons) {
@@ -388,6 +450,11 @@ function People() {
             {' · '}
             <span className="tabular-nums">{g.online}</span> online
           </>
+        )}
+        {gone > 0 && (
+          <span className="text-zinc-400" title="Marked 👋 went home by a director (the story may leave them out of its counts)" data-testid="glance-gone-count">
+            {' · '}👋 <span className="tabular-nums">{gone}</span> went home
+          </span>
         )}
       </div>
       <Lines items={lines} />
@@ -526,7 +593,7 @@ type StripSection = (typeof StripSection)[keyof typeof StripSection]
  *  section inline. (Watching shows the whole column at every width.) */
 export function GlanceStrip() {
   const [open, setOpen] = useState<StripSection | null>(null)
-  const needs = useNeeds()
+  const needs = useNeeds().items
   const roster = useCockpit((s) => s.roster)
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)

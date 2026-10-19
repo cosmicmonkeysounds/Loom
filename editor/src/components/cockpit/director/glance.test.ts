@@ -78,6 +78,52 @@ describe('needsYou', () => {
     expect(later.map((i) => i.kind)).toEqual([NeedKind.NoWorker])
   })
 
+  it('wave 11: near misses in auto mode, a stalled or slow agent queue, and unseen guests with one-tap gone', () => {
+    const base = { refused: null, messages: [], channels: CHANNELS, wallet: null, doorsOpen: true }
+    const nearFacts = {
+      mode: 'auto',
+      questions: [
+        {
+          id: 'H2',
+          filings: [
+            { person: 'g-1', name: 'Excel', question: 'H2', answer: 'Mr Pickels', confidence: 100, verdict: 'lie', final: null, at: 1, near: { key: 'Mr. Pickles' } },
+            { person: 'g-2', name: 'VLC', question: 'H2', answer: 'Garfield', confidence: 100, verdict: 'lie', final: 'lie', at: 2 },
+          ],
+        },
+      ],
+    } as unknown as FactsView
+    const auto = needsYou({ ...base, now: 0, world: [], facts: nearFacts, cast: [] })
+    expect(auto.map((i) => [i.kind, i.text])).toEqual([[NeedKind.NearMiss, '⚠ 1 near miss to judge']])
+    expect(auto[0]!.link).toEqual({ kind: 'tab', tab: CockpitTab.Mind })
+    // review mode folds the count into its own line
+    const review = needsYou({ ...base, now: 0, world: [], facts: { ...nearFacts, mode: 'review' } as FactsView, cast: [] })
+    expect(review.map((i) => i.text)).toEqual(['📝 1 filing to review (⚠ 1 near miss)'])
+
+    const agent = (q: CastSummary['agentQueue']): CastSummary => ({ id: 'Trabolta', faction: null, agent: true, online: true, agentQueue: q })
+    expect(needsYou({ ...base, now: 0, world: [], facts: null, cast: [agent({ depth: 4, oldestMs: 70_000, stalled: true })] }).map((i) => i.text)).toEqual([
+      '🤖 Trabolta: ⛔ stalled · 4 waiting · oldest 1:10',
+    ])
+    expect(needsYou({ ...base, now: 0, world: [], facts: null, cast: [agent({ depth: 2, oldestMs: 45_000, stalled: false })] }).map((i) => i.kind)).toEqual([NeedKind.AgentQueue])
+    // a short wait is no business of the director's
+    expect(needsYou({ ...base, now: 0, world: [], facts: null, cast: [agent({ depth: 2, oldestMs: 5000, stalled: false })] })).toEqual([])
+    // …until it has aged past the busy line on this console's clock (no new snapshot came)
+    expect(needsYou({ ...base, now: 50_000, world: [], facts: null, cast: [agent({ depth: 2, oldestMs: 5000, stalled: false, receivedAt: 0 })] }).map((i) => i.text)).toEqual([
+      '🤖 Trabolta: ⚠ 2 waiting · oldest 0:55',
+    ])
+
+    const now = 100 * 60_000
+    const roster = [
+      row('g-1', 'Excel', { lastSeen: now - 31 * 60_000 }),
+      row('g-2', 'Winamp', { lastSeen: now - 50 * 60_000 }),
+      row('g-3', 'VLC', { lastSeen: now - 5 * 60_000 }),
+      row('g-4', 'Paint', { lastSeen: now - 50 * 60_000 }),
+    ]
+    const unseen = needsYou({ ...base, now, world: [w('g-4.gone', 'true')], facts: null, cast: [], roster })
+    expect(unseen.map((i) => [i.kind, i.text])).toEqual([[NeedKind.Unseen, '👋 2 guests unseen 30 min — mark gone?']])
+    expect(unseen[0]!.guests!.map((g) => g.id)).toEqual(['g-2', 'g-1'])
+    expect(needsYou({ ...base, now, world: [], facts: null, cast: [], roster: [roster[0]!] })[0]!.text).toBe('👋 1 guest unseen 30 min — mark gone?')
+  })
+
   it('a refusal waits 3 s for its reason, then says none came', () => {
     expect(refusalReason(null, CHANNELS, 1000)).toBe('waiting for the staff room…')
     expect(refusalReason(null, CHANNELS, 3000)).toBe('the story gave no reason')

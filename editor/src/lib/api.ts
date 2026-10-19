@@ -11,6 +11,7 @@ import type { AgentControl, AgentMindSummary, AgentThought, GuestView, PrimeView
 import type { ScreenTerminals } from '@/lib/terminals'
 import type { RecapWire } from '@/components/cockpit/award-suggest'
 import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variants'
+import { kingFromScreen, kingFromWire, type KingView } from '@/lib/king'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -389,6 +390,17 @@ export const modApi = {
     const r = await req<{ released?: number }>('POST', `/e/${eventId}/api/mod/prime/release`, { character })
     return r.released ?? 0
   },
+  /** 👋 Went home / Back (wave 11 C5): a journaled world set of `<id>.gone`, `by` you. */
+  async guestGone(eventId: string, id: string, gone: boolean): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/guest/gone`, { id, gone })
+  },
+  /** 🔓 A lost invitation (wave 11 C5): open a reserved program to anyone
+   *  for `minutes` (the server's default is 2; 0 shuts it). Answers when
+   *  the window closes (epoch ms), null when shut. */
+  async claimUnlock(eventId: string, character: string, minutes?: number): Promise<number | null> {
+    const r = await req<{ until?: number | null }>('POST', `/e/${eventId}/api/mod/claim/unlock`, minutes !== undefined ? { character, minutes } : { character })
+    return typeof r.until === 'number' ? r.until : null
+  },
   /** Write any world variable (the World browser's inline editing). */
   async setVar(eventId: string, path: string, value: string): Promise<void> {
     await req('POST', `/e/${eventId}/api/mod/var`, { path, value })
@@ -483,5 +495,18 @@ export const mapApi = {
    *  server re-seats live players itself. */
   async switchVariant(eventId: string, file: string, base?: string): Promise<SwitchVariantResult> {
     return await req<SwitchVariantResult>('POST', `/e/${eventId}/api/mod/spatial/variant`, base !== undefined ? { file, base } : { file })
+  },
+  /** The shared King (wave 11 C2) off the lean screen state every terminal
+   *  polls (`GET /api/screen/state` — no terminal name, so this read never
+   *  shows up as a terminal on the heartbeat card). Null: no King on the
+   *  map, or an older server. */
+  async king(eventId: string): Promise<KingView | null> {
+    return kingFromScreen(await req<unknown>('GET', `/e/${eventId}/api/screen/state`))
+  },
+  /** Set (or 👑 restore) the King's shared health: a journaled set of the
+   *  prop's health path, `by` you. Resolves to the King as it now stands. */
+  async setKing(eventId: string, hp: number): Promise<KingView | null> {
+    const r = await req<{ king?: unknown }>('POST', `/e/${eventId}/api/mod/spatial/king`, { hp })
+    return kingFromWire(r.king)
   },
 }

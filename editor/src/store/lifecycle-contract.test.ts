@@ -63,6 +63,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
       reset: vi.fn(async () => {}),
       grantCodex: vi.fn(async () => {}),
       stepQuest: vi.fn(async () => {}),
+      guestGone: vi.fn(async () => {}),
       wallet: vi.fn(async (_ev: string, action: string) => ({ ...WALLET, counter: action === 'stimulus' ? 9 : WALLET.counter })),
     },
   }
@@ -237,6 +238,42 @@ describe('codex + quest grants (server, S4)', () => {
     expect(modApi.stepQuest).toHaveBeenLastCalledWith('evt-1', 'g-1', 'The Hunt', 'fail', 'Too slow.')
     expect(useOperate.getState().error).toBeNull()
     useOperate.getState().detach()
+  })
+})
+
+describe('👋 went home (wave 11 C5)', () => {
+  it('server: markGone posts /api/mod/guest/gone, a refusal lands in error', async () => {
+    const { ApiError, modApi } = await import('@/lib/api')
+    const gone = vi.mocked(modApi.guestGone)
+    useAuth.setState({ user: { id: 'u1', name: 'Ada', email: 'ada@example.test' } })
+    useOperate.getState().detach()
+    useOperate.getState().attach('p-1')
+    await useOperate.getState().startRun(RunMode.Rehearsal)
+    expect(await useOperate.getState().markGone('g-1', true)).toBe(true)
+    expect(gone).toHaveBeenLastCalledWith('evt-1', 'g-1', true)
+    expect(await useOperate.getState().markGone('g-1', false)).toBe(true)
+    expect(gone).toHaveBeenLastCalledWith('evt-1', 'g-1', false)
+    gone.mockRejectedValueOnce(new ApiError(404, { error: 'no such guest' }))
+    expect(await useOperate.getState().markGone('g-9', true)).toBe(false)
+    expect(useOperate.getState().error).toBe('no such guest')
+    useOperate.getState().detach()
+  })
+
+  it('local: the same world var, and a persona is marked a persona', async () => {
+    await useSim.getState().end()
+    lspWorkspaceSync().reset()
+    lspWorkspaceSync().updateMany([[uriFor('main.loom'), MAIN]])
+    await useSim.getState().startRun(RunMode.Rehearsal)
+    const id = useSim.getState().personas[0]!
+    const value = (path: string) => useSim.getState().world.find((w) => w.path === path)?.value
+    expect(value(`${id}.persona`)).toBe('true')
+    expect(await useSim.getState().markGone(id, true)).toBe(true)
+    expect(value(`${id}.gone`)).toBe('true')
+    expect(await useSim.getState().markGone(id, false)).toBe(true)
+    expect(value(`${id}.gone`)).toBe('false')
+    expect(await useSim.getState().markGone('nobody', true)).toBe(false)
+    expect(useSim.getState().error).toMatch(/unknown guest/)
+    await useSim.getState().end()
   })
 })
 

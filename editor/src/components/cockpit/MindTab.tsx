@@ -30,6 +30,7 @@ import type { AgentMindSummary, AgentThought } from '@loom/core/views'
 import { RunBackend, useCockpit } from '@/store/cockpit'
 import { confirmAction, promptText } from '@/store/dialog'
 import { LensGate } from './tabs'
+import { useNow } from './director/clock'
 import {
   ALL_KINDS,
   KIND_META,
@@ -42,6 +43,11 @@ import {
   formatMs,
   judgeModeOf,
   mindCharacters,
+  agentQueueOf,
+  judgeModeTitle,
+  nearCount,
+  queueBadge,
+  QueueTone,
   pendingFilings,
   pickMind,
   questionFilings,
@@ -163,7 +169,9 @@ function MindDebugger() {
  * a proposal until a director confirms or overrides it here (the story
  * event named by `facts.json` `judge.confirm`, fired on the person with the
  * question as an argument — the hosts' booth buttons fire the same names)
- * or the round settles it by the proposal. The verdict never reaches a
+ * or the round settles it by the proposal. A **near miss** (wave 11 C6: a
+ * letter or a word from the key) is never judged on its own: it waits here
+ * in either mode, `auto` included. The verdict never reaches a
  * phone or the voice worker; this card is the only place it is shown.
  */
 function JudgingCard({ local = false }: { local?: boolean }) {
@@ -185,6 +193,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
     )
   }
   const pending = pendingFilings(facts)
+  const near = nearCount(facts)
   const tallies = questionTallies(facts)
   const switchMode = async (m: JudgeMode) => {
     if (m === mode || busy !== null) return
@@ -219,7 +228,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
               aria-pressed={m === mode}
               disabled={busy !== null}
               onClick={() => void switchMode(m)}
-              title={m === 'auto' ? 'Every filed fact gets its verdict at once' : 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest'}
+              title={judgeModeTitle(m)}
               data-testid={`judging-mode-${m}`}
             >
               {m}
@@ -229,6 +238,11 @@ function JudgingCard({ local = false }: { local?: boolean }) {
         <span className="text-xs text-zinc-500">
           <span className="font-mono">{facts.modeVar}</span> · {facts.pending === 0 ? 'nothing pending' : `${facts.pending} pending`}
         </span>
+        {near > 0 && (
+          <span className="text-xs text-amber-300" title="Answers a letter or a word away from the key (a typo, a plural, digits for words): never judged a lie or a guess on their own — they wait here, in either mode." data-testid="judging-near-count">
+            ⚠ {near} near miss{near === 1 ? '' : 'es'}
+          </span>
+        )}
       </div>
       {pending.length > 0 && (
         <ul className="mt-2 space-y-1 text-xs" data-testid="judging-pending">
@@ -238,7 +252,14 @@ function JudgingCard({ local = false }: { local?: boolean }) {
               <li key={key} className="flex flex-wrap items-center gap-2 rounded border border-zinc-800 px-2 py-1">
                 <span className="font-medium text-zinc-100">{row.name}</span>
                 <span className="font-mono text-zinc-400">{row.question}</span>
-                <span className="flex-1 text-zinc-200">“{row.answer}”</span>
+                <span className="flex-1 text-zinc-200">
+                  “{row.answer}”
+                  {row.near !== null && (
+                    <span className="ml-2 rounded bg-amber-500/15 px-1 text-amber-300" title="A near miss: the judge held it for you instead of calling it a lie or a guess" data-testid="judging-near">
+                      ⚠ near “{row.near}”
+                    </span>
+                  )}
+                </span>
                 <span className="text-zinc-500">{row.confidence}%</span>
                 <span className="text-zinc-500">
                   proposed <span className="text-zinc-300">{row.proposed}</span>
@@ -387,7 +408,9 @@ function FilingRows({
           <tr key={r.person} className="text-zinc-300">
             <td className="pr-2 font-mono text-zinc-500">{timeOf(r.at)}</td>
             <td className="pr-2">{r.name}</td>
-            <td className="pr-2 text-zinc-200">“{r.answer}”</td>
+            <td className="pr-2 text-zinc-200">
+              “{r.answer}”{r.near !== null && <span className="ml-1 text-amber-300" title={`A near miss of “${r.near}”`}>⚠ “{r.near}”</span>}
+            </td>
             <td className="pr-2 text-right text-zinc-500">{r.confidence}%</td>
             <td className="pl-2 pr-2 text-zinc-400">{r.proposed}</td>
             <td className={HOW_STYLE[r.how]}>
@@ -442,6 +465,13 @@ function Header({ characters, character, onPick, mind }: { characters: string[];
   const thinking = orch['thinking'] === true
   const pending = Array.isArray(orch['pending']) ? (orch['pending'] as unknown[]).length : 0
   const running = typeof orch['running'] === 'string' ? (orch['running'] as string) : null
+  const cast = useCockpit((s) => s.cast)
+  const minds = useCockpit((s) => s.minds)
+  // The wait ages by the second between snapshots (C6 sends it as of the send).
+  const raw = character === null ? null : agentQueueOf(character, cast, minds)
+  const now = useNow(raw !== null && raw.depth > 0, 1000)
+  const queue = character === null ? null : agentQueueOf(character, cast, minds, now)
+  const badge = queue === null ? null : queueBadge(queue)
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-800 px-3 py-2 text-xs">
       {characters.length > 1 ? (
@@ -455,6 +485,18 @@ function Header({ characters, character, onPick, mind }: { characters: string[];
       ) : (
         <span className="text-sm font-semibold text-zinc-100" data-testid="mind-character">
           {character}
+        </span>
+      )}
+      {queue !== null && (
+        <span
+          className={clsx(
+            'rounded-full border px-2 py-0.5',
+            badge!.tone === QueueTone.Stalled ? 'border-red-700 text-red-300' : badge!.tone === QueueTone.Slow ? 'border-amber-700 text-amber-300' : 'border-zinc-800 text-zinc-400',
+          )}
+          title={badge!.title}
+          data-testid="mind-queue"
+        >
+          {badge!.text}
         </span>
       )}
       {mind !== null && (
