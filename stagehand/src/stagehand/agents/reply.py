@@ -32,6 +32,10 @@ _FOLD = re.compile(r"[^a-z0-9]+")
 MAX_SAY = 600
 MAX_LOOKUPS = 3
 MAX_ACTS = 2
+#: A memo's length cap (CONTRACTS.md §C2.1).
+MAX_MEMO = 140
+#: Where a memo spilled into the line: `"memo"` (a JSON key) or `memo:`.
+_MEMO_SPILL = re.compile(r'"memo"|\bmemo\s*:', re.IGNORECASE)
 
 
 def fold(name: str) -> str:
@@ -51,6 +55,10 @@ class Reply:
     lookup: tuple[str, ...] = ()
     #: Validated acts for the server: {"kind": "share", "entry"} / {"kind": "fire", "name", "args"}.
     acts: tuple[dict[str, Any], ...] = ()
+    #: Wave 12: the voice's private note about this person (≤ MAX_MEMO
+    #: characters, in his own words), parsed only when asked for
+    #: (`parse_reply(…, memo=True)`); "" = none. Never sent to the server.
+    memo: str = ""
 
     @property
     def empty(self) -> bool:
@@ -67,9 +75,13 @@ def parse_reply(
     max_step: int,
     powers: list[dict[str, Any]] | tuple[dict[str, Any], ...] = (),
     codex: tuple[str, ...] = (),
+    *,
+    memo: bool = False,
 ) -> Reply:
     """Never raises. `powers` are the request's `powers` (id/limit/used);
-    `codex` the titles the character holds (what it may share)."""
+    `codex` the titles the character holds (what it may share). With
+    `memo` (wave 12's lean voice) the optional `memo` field is read too,
+    and any of it that spilled into the line is cut out of `say`."""
     text = strip_think(raw)
     doc = extract_json(text)
     if doc is not None:
@@ -78,11 +90,44 @@ def parse_reply(
         adjust = clamp_adjust(doc.get("adjust"), allowed, max_step)
         lookup = parse_lookup(doc.get("lookup"))
         acts = parse_acts(doc.get("act", doc.get("acts")), powers, codex)
+        raw_memo = doc.get("memo")
+        note = parse_memo(raw_memo) if memo else ""
+        if memo:
+            say = unspill_memo(say, " ".join(raw_memo.split()) if isinstance(raw_memo, str) else "")
         if say or adjust or lookup or acts:
-            return Reply(say=say, adjust=adjust, lookup=lookup, acts=acts)
+            return Reply(say=say, adjust=adjust, lookup=lookup, acts=acts, memo=note)
     if text.lstrip().startswith("{"):
         return Reply()  # malformed JSON — never say raw braces to a guest
-    return Reply(say=_clean(_FENCE.sub("", text)))
+    say = _clean(_FENCE.sub("", text))
+    return Reply(say=unspill_memo(say, "") if memo else say)
+
+
+def parse_memo(raw: object) -> str:
+    """A memo as the contract keeps it (§C2.1): a string only, whitespace
+    collapsed, cut at the last space at or before character 139 with `…`
+    when it runs past MAX_MEMO. "" = no memo."""
+    if not isinstance(raw, str):
+        return ""
+    s = " ".join(raw.split())
+    if len(s) <= MAX_MEMO:
+        return s
+    cut = s.rfind(" ", 0, MAX_MEMO)
+    head = s[:cut].rstrip() if cut > 0 else s[: MAX_MEMO - 1]
+    return head[: MAX_MEMO - 1] + "…"
+
+
+def unspill_memo(say: str, memo: str) -> str:
+    """`say` with any memo that leaked into it removed: everything from a
+    `"memo"` key or a `memo:` label on, and the memo's own text verbatim
+    (when it is 20 characters or more)."""
+    m = _MEMO_SPILL.search(say)
+    if m is not None:
+        say = say[: m.start()]
+    if len(memo) >= 20 and memo in say:
+        say = say.replace(memo, " ")
+    out = " ".join(say.split())
+    # A cut can leave the JSON's punctuation behind ("…tonight. ,").
+    return out.rstrip(" ,;{").rstrip()
 
 
 def _clean(say: str) -> str:
