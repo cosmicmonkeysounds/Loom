@@ -9,13 +9,23 @@
 //!   `height` is `heightAt([x, z], y)`, `standable` is `standable(p)` (the
 //!   remap re-seat rule — queries include every solid prop's base).
 //!
+//! A map with a king prop also gets (C2, the shared King):
+//!
+//! - `<name>.king.json`   — `[{king, feet, yaw, reach, slack}]`: `kingReach`
+//!   plain and with `KING_HIT_SLACK` (the server's).
+//! - `<name>.fallen.json` — `[{from, to, path}]`: the route queries again,
+//!   with every king fallen (`route(…, {fallen})`: his doors open).
+//!
 //! Every number is rounded to 1 mm, queries included (answers are computed
 //! from the rounded queries). One JSON value per line, for readable diffs.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  KING_HIT_SLACK,
   breakpoints,
+  kingProps,
+  kingReach,
   heightAt,
   locate,
   propSolid,
@@ -129,6 +139,35 @@ export function routeQueries(house: HouseMap): { from: Vec3; to: Vec3 }[] {
   return out.map((q) => ({ from: round3(q.from), to: round3(q.to) }));
 }
 
+/**
+ * The reach queries round each king: feet on 8 bearings (from north,
+ * counter-clockwise, 45° apart) at plan radii 0.4 / 1.2 / 1.4 / 1.7 m on his
+ * floor, each facing him, then 50° / 70° / 90° off that (to the left) and
+ * away; plus one point 1 m east of him at every other floor's elevation.
+ */
+export function kingQueries(house: HouseMap): { king: string; feet: Vec3; yaw: number }[] {
+  const out: { king: string; feet: Vec3; yaw: number }[] = [];
+  for (const king of kingProps(house)) {
+    const [kx, ky, kz] = king.pos;
+    for (let k = 0; k < 8; k++) {
+      const a = (k * 45 * Math.PI) / 180;
+      for (const r of [0.4, 1.2, 1.4, 1.7]) {
+        // Bearing k·45° from north (−z), counter-clockwise (§1 yaw).
+        const feet: Vec3 = [kx - Math.sin(a) * r, ky, kz - Math.cos(a) * r];
+        const facing = k * 45 + 180;
+        for (const off of [0, 50, 70, 90, 180]) out.push({ king: king.id, feet: round3(feet), yaw: wrap(facing + off) });
+      }
+    }
+    for (const f of house.floors) {
+      if (Math.abs(f.elevation - ky) < 1e-9) continue;
+      out.push({ king: king.id, feet: round3([kx + 1, f.elevation, kz]), yaw: 90 });
+    }
+  }
+  return out;
+}
+
+const wrap = (yaw: number): number => (((yaw + 180) % 360) + 360) % 360 - 180;
+
 /** One JSON value per line inside a top-level array. */
 export function jsonLines(items: unknown[]): string {
   if (items.length === 0) return "[]\n";
@@ -153,6 +192,22 @@ export function goldenFiles(): Map<string, string> {
           return { p, floor, room, height: h === null ? null : mm(h), standable: standable(house, p) };
         }),
       ),
+    );
+    const kings = kingProps(house);
+    if (kings.length === 0) continue;
+    files.set(
+      `${name}.king.json`,
+      jsonLines(
+        kingQueries(house).map(({ king, feet, yaw }) => {
+          const prop = kings.find((k) => k.id === king)!;
+          return { king, feet, yaw, reach: kingReach(house, feet, yaw, prop), slack: kingReach(house, feet, yaw, prop, KING_HIT_SLACK) };
+        }),
+      ),
+    );
+    const fallen = new Set(kings.map((k) => k.id));
+    files.set(
+      `${name}.fallen.json`,
+      jsonLines(routeQueries(house).map(({ from, to }) => ({ from, to, path: route(house, from, to, { fallen }).map(round3) }))),
     );
   }
   return files;

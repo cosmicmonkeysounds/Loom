@@ -63,7 +63,7 @@ function hubHarness() {
 describe("SpatialHub", () => {
   it("says hello with the house version and the players already inside", () => {
     const h = hubHarness();
-    expect(h.of("hello")).toEqual([{ eventId: "evt", houseVersion: h.hub.version, players: [] }]);
+    expect(h.of("hello")).toEqual([{ eventId: "evt", houseVersion: h.hub.version, players: [], king: null }]);
     h.begin("g-1");
     const late: Array<[string, unknown]> = [];
     h.hub.attach({ id: "late", name: "TV", send: (e, d) => late.push([e, d]) });
@@ -548,7 +548,7 @@ describe("EventRuntime — the spatial plane", () => {
     await term.open;
     expect(term.status()).toBe(200);
     expect(term.raw().startsWith(":ok\n\n")).toBe(true);
-    expect(term.of("hello")).toEqual([{ eventId: "evt", houseVersion: rt.spatial.version, players: [] }]);
+    expect(term.of("hello")).toEqual([{ eventId: "evt", houseVersion: rt.spatial.version, players: [], king: { id: "cold-lock-king", hp: 15, max: 15, fallen: false } }]);
 
     const begun = await mod(rt, "/api/mod/spatial/begin", { guest: gid, world: "web", device: "Tent tablet" });
     expect(begun.status).toBe(200);

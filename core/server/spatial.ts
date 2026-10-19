@@ -9,21 +9,46 @@
 //!
 //! Poses never touch the journal, the chat or `fanout`: they live here, in
 //! memory, and stream to the terminals as `poses` frames (latest-only, only
-//! the players that moved). The only story outcome — finding the duck — is
-//! handed back to the runtime (`found(token, release)`), which commits it.
+//! the players that moved). The story outcomes — finding the duck, hitting
+//! the King — are handed back to the runtime (`found(token, release)`,
+//! `hit(token, commit)`), which commits them.
+//!
+//! **The King** (C2): one shared health bar per event, off the map's king
+//! prop. Its current hit points live in the story world (the prop's
+//! `health` path, read through `kingHp`) — or, with no path, here in
+//! memory. Each session (one reinstallation visit) may hit him once; a
+//! `king` frame goes out whenever his state changes (`syncKing`, which the
+//! runtime calls after every committed mutation).
 
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { DUCK_MAX_RISE, floorOf, guardWarnings, houseHash, locate, pickDuckSpot, standable, wrapYaw } from "@loom/house";
+import {
+  DUCK_MAX_RISE,
+  KING_HIT_SLACK,
+  floorOf,
+  guardWarnings,
+  houseHash,
+  kingProps,
+  kingReach,
+  kingStateOf,
+  locate,
+  pickDuckSpot,
+  standable,
+  withFallenKings,
+  wrapYaw,
+} from "@loom/house";
 import type {
   Assignment,
   DuckSpot,
   HouseMap,
   HouseSource,
+  KingReach,
+  KingState,
   LeaveReason,
   PlayerPose,
   PlayerState,
   PoseUpdate,
+  Prop,
   SpatialCandidate,
   SpatialFrames,
   SpatialWorld,
@@ -65,6 +90,13 @@ export interface SpatialHubOptions {
   /** A duck was found — the runtime keeps the run on disk (the ceremony's
    *  Golden Duck Speedrun, SW-RE-14). */
   onRun?: (run: DuckRun) => void;
+  /** Reads a world path (the King's `health`): his current hit points. A
+   *  missing or non-number value reads as full. Absent (or a king with no
+   *  `health` path): the hub keeps his hit points in memory. */
+  kingHp?: (path: string) => unknown;
+  /** A program's profile picture: its avatar key (`/api/avatar/<key>`), or
+   *  null. Read live, so a changed picture never goes stale. */
+  avatarOf?: (guest: string, name: string) => string | null;
 }
 
 /** One find of the duck: who, on what, and how long it took — from the
@@ -135,6 +167,10 @@ interface Session {
   /** Still captured once the find was committed (C4b): a find that
    *  released nobody while the story keeps the program (the banishment). */
   keptCaptured: boolean;
+  /** This visit hit the King (one hit per visit, D2). */
+  kingHit: boolean;
+  /** The avatar key last told the stream (`refreshAvatar` sends a change). */
+  avatar: string | null;
 }
 
 interface Station {
@@ -172,6 +208,28 @@ export interface SessionRef {
   device: string;
   captured: boolean;
 }
+
+/** The King a map carries, as the runtime needs it to commit a hit or a
+ *  director's edit: the prop and its `health` world path (null = the hub
+ *  holds his hit points). */
+export interface KingRef {
+  prop: Prop;
+  path: string | null;
+}
+
+export type HitOutcome =
+  | { kind: "unknown" }
+  | { kind: "over" }
+  /** A parked assignment nobody has played yet (no pose has claimed it). */
+  | { kind: "parked" }
+  /** The map has no king. */
+  | { kind: "none" }
+  | { kind: "fallen"; king: KingState }
+  /** This visit already hit him. */
+  | { kind: "already"; king: KingState }
+  /** The last pose doesn't reach him (`kingReach` with `KING_HIT_SLACK`). */
+  | { kind: "far"; reach: Exclude<KingReach, "ok"> }
+  | { kind: "hit"; king: KingState };
 
 /** Is this a game world name? */
 export function isWorld(v: unknown): v is SpatialWorld {
@@ -212,6 +270,11 @@ export function nearDuck(p: Vec3, duck: Vec3, house?: HouseMap | null): { near: 
   const dy = Math.abs(p[1] - duck[1]);
   const level = dy <= DUCK_MAX_RISE || (house != null && floorOf(house, p[1]) === floorOf(house, duck[1]));
   return { near: distance <= FOUND_PLAN_M && level, distance, dy };
+}
+
+/** A King's state as a comparable key (null = no King). */
+function kingKey(king: KingState | null): string | null {
+  return king === null ? null : `${king.id}:${king.hp}/${king.max}`;
 }
 
 /** Same spot, same room, same place? */
@@ -265,6 +328,12 @@ export class SpatialHub {
   /** Closed-doors time so far, and when the doors last closed (null = open). */
   private closedMs = 0;
   private closedSince: number | null = null;
+  /** The King's hit points when his prop names no `health` path (king id →). */
+  private readonly kingMemory = new Map<string, number>();
+  /** The King's state as last told the stream (JSON), for `syncKing`. */
+  private kingSent: string | null = null;
+  /** Whose hit is being committed: the `king` frame's `by`. */
+  private hitBy: string | null = null;
 
   constructor(o: SpatialHubOptions) {
     this.o = o;
@@ -312,7 +381,8 @@ export class SpatialHub {
    * position; a spot the new map no longer has is re-dealt. Rooms + floors
    * are recomputed (the next flush carries them), a parked assignment moves
    * to the new spawn — and so does a player whose pose is not `standable`
-   * on the new map (inside a solid prop, outside every room); the games
+   * on the new map (inside a solid prop, outside every room; a fallen King
+   * is not solid, as `withFallenKings` has it); the games
    * re-seat their body by the same rule. After the `house` frame, every player whose duck
    * moved or was re-dealt gets a `duck {session, duck}` frame; a game also
    * learns its (possibly new) duck from `GET /api/spatial/house` with its
@@ -321,6 +391,11 @@ export class SpatialHub {
   setHouse(house: HouseMap, source: HouseSource, announce = true): string {
     const version = houseVersion(house);
     this.map = { house, version, source };
+    // Judge where a player may stand on the map as the games walk it: a
+    // fallen King is no obstacle (the games drop him from the physics), so
+    // a player crossing his doorway keeps their place (`withFallenKings`).
+    const king = this.king();
+    const walk = king?.fallen === true ? withFallenKings(house, new Set([king.id])) : house;
     const moved: Session[] = [];
     for (const s of this.sessions.values()) {
       if (!s.found) {
@@ -338,7 +413,7 @@ export class SpatialHub {
       // where the new map has no floor (in a room that is a solid prop
       // there — the shed on the tent map — or outside every room) is put
       // back at it, as the games put their body back (`standable`).
-      if (!s.claimed || !standable(house, s.pose.p)) s.pose = { p: [...house.spawn.pos], yaw: house.spawn.yaw, pitch: 0 };
+      if (!s.claimed || !standable(walk, s.pose.p)) s.pose = { p: [...house.spawn.pos], yaw: house.spawn.yaw, pitch: 0 };
       const at = locate(house, s.pose.p);
       s.room = at.room;
       s.floor = at.floor;
@@ -347,7 +422,94 @@ export class SpatialHub {
     }
     if (announce) this.broadcast("house", { version });
     for (const s of moved) this.broadcast("duck", { session: s.id, duck: s.duck });
+    if (announce) this.syncKing(null);
+    else this.kingSent = kingKey(this.king());
     return version;
+  }
+
+  // -- the King -------------------------------------------------------------
+
+  /** The map's King (its first king prop) and where his hit points live;
+   *  null when there is no map or no king. */
+  kingRef(): KingRef | null {
+    const prop = this.map === null ? undefined : kingProps(this.map.house)[0];
+    if (prop === undefined) return null;
+    const path = prop.health !== undefined && prop.health !== "" && this.o.kingHp !== undefined ? prop.health : null;
+    return { prop, path };
+  }
+
+  /** The shared King now (null = none): his `health` world value, else the
+   *  hub's own count — full when neither holds a number. */
+  king(): KingState | null {
+    const ref = this.kingRef();
+    if (ref === null) return null;
+    const raw = ref.path !== null ? this.o.kingHp!(ref.path) : this.kingMemory.get(ref.prop.id);
+    return kingStateOf(ref.prop, raw);
+  }
+
+  /**
+   * Tell the stream if the King changed since it last heard (a `king`
+   * frame, `by` = the hitter's display name while a hit commits, else
+   * `by` as given — null for a director's edit). The runtime calls this
+   * after every committed mutation; nothing is sent when nothing changed.
+   * Returns the state.
+   */
+  syncKing(by: string | null = null): KingState | null {
+    const king = this.king();
+    const key = kingKey(king);
+    if (key === this.kingSent) return king;
+    this.kingSent = key;
+    if (king !== null) this.broadcast("king", { ...king, by: this.hitBy ?? by });
+    return king;
+  }
+
+  /**
+   * A game's player hits the King. The session must be claimed and must not
+   * have hit him this visit, he must be standing, and its last pose must
+   * reach him (`kingReach` with `KING_HIT_SLACK` — the pose pump is 10 Hz
+   * latest-only, so the game flushes one right before). Then `commit` writes
+   * his new hit points (`next`, one fewer) — when they live in the world —
+   * and posts the story's signals; with no world path the hub counts them
+   * itself. The `king` frame names the hitter.
+   */
+  hit(token: string | undefined, commit: (s: SessionRef, next: KingState, ref: KingRef) => void): HitOutcome {
+    const s = this.byTokenLive(token);
+    if (s === null) return { kind: this.tokenState(token) };
+    if (!s.claimed) return { kind: "parked" };
+    const ref = this.kingRef();
+    const king = this.king();
+    if (ref === null || king === null || this.map === null) return { kind: "none" };
+    if (king.fallen) return { kind: "fallen", king };
+    if (s.kingHit) return { kind: "already", king };
+    const reach = kingReach(this.map.house, s.pose.p, s.pose.yaw, ref.prop, KING_HIT_SLACK);
+    if (reach !== "ok") return { kind: "far", reach };
+    s.kingHit = true;
+    s.activeAt = this.now();
+    const hp = king.hp - 1;
+    const next: KingState = { id: king.id, hp, max: king.max, fallen: hp <= 0 };
+    if (ref.path === null) this.kingMemory.set(ref.prop.id, hp);
+    // Every `king` frame until this returns names the hitter: the commit's
+    // own mutations sync it (the runtime's choke point), and a hub-held
+    // King changes only here.
+    this.hitBy = s.name;
+    try {
+      commit({ id: s.id, guest: s.guest, device: s.device, captured: s.captured }, next, ref);
+      return { kind: "hit", king: this.syncKing() ?? next };
+    } finally {
+      this.hitBy = null;
+    }
+  }
+
+  /** A director sets his hit points (clamped to 0..max): `commit` writes the
+   *  world path, else the hub keeps them. Null when there is no King. */
+  setKingHp(hp: number, commit: (ref: KingRef, hp: number) => void): KingState | null {
+    const ref = this.kingRef();
+    const king = this.king();
+    if (ref === null || king === null) return null;
+    const next = Math.max(0, Math.min(king.max, Math.round(hp)));
+    if (ref.path === null) this.kingMemory.set(ref.prop.id, next);
+    else commit(ref, next);
+    return this.syncKing(null);
   }
 
   // -- the stream -----------------------------------------------------------
@@ -355,7 +517,7 @@ export class SpatialHub {
   /** Subscribe; the subscriber gets its `hello` at once. */
   attach(sub: SpatialSubscriber): void {
     this.subscribers.set(sub.id, sub);
-    const hello: SpatialFrames["hello"] = { eventId: this.o.eventId, houseVersion: this.version, players: this.players() };
+    const hello: SpatialFrames["hello"] = { eventId: this.o.eventId, houseVersion: this.version, players: this.players(), king: this.king() };
     sub.send("hello", hello);
   }
 
@@ -386,7 +548,32 @@ export class SpatialHub {
     return [...this.sessions.values()].filter((s) => s.joined).map((s) => this.stateOf(s));
   }
 
+  /** A program's avatar key, read live (null without a reader). */
+  private avatarFor(s: Session): string | null {
+    return this.o.avatarOf?.(s.guest, s.name) ?? null;
+  }
+
+  /**
+   * A program's picture changed (its own pick, a lookup that landed): every
+   * live session of that guest whose avatar key moved gets an `avatar
+   * {session, avatar}` frame. Returns how many frames went out.
+   */
+  refreshAvatar(guest: string): number {
+    let sent = 0;
+    for (const s of this.sessions.values()) {
+      if (s.guest !== guest) continue;
+      const avatar = this.avatarFor(s);
+      if (avatar === s.avatar) continue;
+      s.avatar = avatar;
+      if (!s.joined) continue;
+      this.broadcast("avatar", { session: s.id, avatar });
+      sent++;
+    }
+    return sent;
+  }
+
   private stateOf(s: Session): PlayerState {
+    s.avatar = this.avatarFor(s);
     return {
       session: s.id,
       guest: s.guest,
@@ -401,6 +588,7 @@ export class SpatialHub {
       duck: s.duck,
       found: s.found,
       startedAt: s.startedAt,
+      avatar: s.avatar,
     };
   }
 
@@ -415,15 +603,21 @@ export class SpatialHub {
 
   /**
    * Start a program's simulation. Ends any live session of the same guest
-   * (`replaced`), and — with a station — any older assignment still parked
-   * there. Null when there is no house map.
+   * (`replaced`) — the same visit (D2: a re-scan mid-walk), so a King hit
+   * it spent stays spent — and, with a station, any older assignment still
+   * parked there. Null when there is no house map.
    */
   begin(input: BeginInput): Assignment | null {
     const map = this.map;
     if (map === null) return null;
+    let kingHit = false;
     for (const s of [...this.sessions.values()]) {
-      if (s.guest === input.guest) this.finish(s, "replaced");
-      else if (input.station !== null && s.station === input.station && !s.claimed) this.finish(s, "replaced");
+      if (s.guest === input.guest) {
+        // Only a live walk carries its hit (D2: a re-scan mid-walk); a found
+        // session lingering for its celebration is a finished visit.
+        if (!s.found) kingHit ||= s.kingHit;
+        this.finish(s, "replaced");
+      } else if (input.station !== null && s.station === input.station && !s.claimed) this.finish(s, "replaced");
     }
     const id = this.mintSessionId();
     const token = this.o.newToken?.() ?? randomUUID();
@@ -457,7 +651,10 @@ export class SpatialHub {
       foundAt: 0,
       released: false,
       keptCaptured: false,
+      kingHit,
+      avatar: null,
     };
+    s.avatar = this.avatarFor(s);
     this.sessions.set(id, s);
     this.byToken.set(token, id);
     if (s.claimed) this.join(s);
@@ -477,6 +674,7 @@ export class SpatialHub {
       duck: s.duck,
       spawn: s.spawn,
       houseVersion: s.houseVersion,
+      avatar: this.avatarFor(s),
     };
   }
 
@@ -651,12 +849,16 @@ export class SpatialHub {
     }
   }
 
-  /** The story restarted: every session is over. Stations stay known. */
+  /** The story restarted: every session is over, and a hub-held King
+   *  stands up again (a world-held one follows the story's own reseed).
+   *  Stations stay known. */
   reset(kind: string): void {
     for (const s of [...this.sessions.values()]) this.finish(s, "reset");
     this.lastFound.clear();
     this.runLog.length = 0;
+    this.kingMemory.clear();
     this.broadcast("reset", { kind });
+    this.syncKing(null);
   }
 
   // -- stations -------------------------------------------------------------

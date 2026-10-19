@@ -34,8 +34,12 @@ const DUCK_CLEAR = 0.5;
 
 const PROP_KINDS = ["box", "cylinder", "screen", "label", "king"];
 /** The fields only a `king` prop may carry. */
-const KING_FIELDS = ["hp", "signals", "armed"] as const;
-const SIGNAL_KEYS = ["won", "lost", "drawn"];
+const KING_FIELDS = ["hp", "health", "signals", "armed"] as const;
+const SIGNAL_KEYS = ["won", "lost", "drawn", "hit", "fallen"];
+/** A king's largest `hp` (one shared bar for the night: 15 at the show). */
+export const KING_MAX_HP = 99;
+/** A world path: identifiers joined by dots (`Night.king_hp`). */
+const WORLD_PATH = /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/;
 /** A guard further than this (plan metres) from its door's point is warned about (`guardWarnings`). */
 export const GUARD_REACH = 1.0;
 const COMPASS = ["n", "s", "e", "w"];
@@ -246,17 +250,18 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["color", (v) => isStr(v) && COLOR.test(v), '"#rrggbb"', true],
     ["label", isStr, "a string", true],
     ["solid", (v) => typeof v === "boolean", "a boolean", true],
-    ["hp", (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 9, "an integer 1–9", true],
+    ["hp", (v) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= KING_MAX_HP, `an integer 1–${KING_MAX_HP}`, true],
+    ["health", (v) => isStr(v) && WORLD_PATH.test(v), 'a world path ("Night.king_hp")', true],
     [
       "signals",
       (v) => isObj(v) && Object.entries(v).every(([k, s]) => SIGNAL_KEYS.includes(k) && isStr(s) && s.trim() !== ""),
-      "{won?, lost?, drawn?} of non-empty strings",
+      "{won?, lost?, drawn?, hit?, fallen?} of non-empty strings",
       true,
     ],
     ["armed", (v) => isObj(v) && isStr(v["path"]) && v["path"] !== "" && isNum(v["min"]), "{path, min}", true],
   ]);
   ids("prop", props);
-  // `hp` / `signals` / `armed` mean nothing on anything but a king.
+  // `hp` / `health` / `signals` / `armed` mean nothing on anything but a king.
   props.forEach((item, i) => {
     if (!isObj(item) || item["kind"] === "king") return;
     for (const key of KING_FIELDS) {

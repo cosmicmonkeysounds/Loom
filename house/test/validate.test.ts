@@ -429,17 +429,31 @@ describe("king props and guarded doors", () => {
     );
   });
 
-  it("refuses hp outside 1–9, a bad signals object, a bad armed object, and hp / signals / armed on a box", () => {
-    refuses("two-rooms", (h) => h.props.push(king({ hp: 0 })), /^props\[0\] "king": hp must be an integer 1–9$/);
-    refuses("two-rooms", (h) => h.props.push(king({ hp: 2.5 })), /hp must be an integer 1–9/);
-    refuses("two-rooms", (h) => h.props.push(king({ hp: 10 })), /hp must be an integer 1–9/);
-    refuses("two-rooms", (h) => h.props.push(king({ signals: { won: "" } })), /signals must be \{won\?, lost\?, drawn\?\} of non-empty strings/);
+  it("accepts the shared bar: hp up to 99, a health world path, hit / fallen signals", () => {
+    for (const over of [{ hp: 15 }, { hp: 99 }, { hp: 1 }, { health: "Night.king_hp" }, { health: "king_hp" }, { signals: { hit: "king hit", fallen: "king fallen" } }]) {
+      expect(problems("two-rooms", (h) => h.props.push(king(over))), JSON.stringify(over)).toEqual([]);
+    }
+    const h = raw("two-rooms");
+    h.props.push(king({ hp: 15, health: "Night.king_hp", signals: { won: "chess won", hit: "king hit", fallen: "king fallen" } }));
+    expect(validateHouse(h).house!.props.at(-1)).toMatchObject({ hp: 15, health: "Night.king_hp", signals: { hit: "king hit", fallen: "king fallen" } });
+  });
+
+  it("refuses hp outside 1–99, a bad health path, a bad signals object, a bad armed object, and king fields on a box", () => {
+    refuses("two-rooms", (h) => h.props.push(king({ hp: 0 })), /^props\[0\] "king": hp must be an integer 1–99$/);
+    refuses("two-rooms", (h) => h.props.push(king({ hp: 2.5 })), /hp must be an integer 1–99/);
+    refuses("two-rooms", (h) => h.props.push(king({ hp: 100 })), /hp must be an integer 1–99/);
+    for (const health of ["", "Night.", "Night king", ".hp", 3]) {
+      refuses("two-rooms", (h) => h.props.push(king({ health } as never)), /^props\[0\] "king": health must be a world path \("Night\.king_hp"\)$/);
+    }
+    refuses("two-rooms", (h) => h.props.push(king({ signals: { won: "" } })), /signals must be \{won\?, lost\?, drawn\?, hit\?, fallen\?\} of non-empty strings/);
+    refuses("two-rooms", (h) => h.props.push(king({ signals: { hit: " " } })), /signals must be/);
     refuses("two-rooms", (h) => h.props.push(king({ signals: { tied: "x" } as never })), /signals must be/);
     refuses("two-rooms", (h) => h.props.push(king({ armed: { path: "", min: 1 } })), /armed must be \{path, min\}/);
     refuses("two-rooms", (h) => h.props.push(king({ armed: { path: "Night.step" } as never })), /armed must be/);
-    const p = problems("two-rooms", (h) => h.props.push({ id: "crate", room: "a", kind: "box", pos: [1, 0, 1], size: [0.5, 0.5, 0.5], hp: 3, signals: { won: "x" }, armed: { path: "a", min: 1 } }));
+    const p = problems("two-rooms", (h) => h.props.push({ id: "crate", room: "a", kind: "box", pos: [1, 0, 1], size: [0.5, 0.5, 0.5], hp: 3, health: "Night.hp", signals: { won: "x" }, armed: { path: "a", min: 1 } }));
     expect(p).toEqual([
       'props[0] "crate": "hp" is only for kind "king"',
+      'props[0] "crate": "health" is only for kind "king"',
       'props[0] "crate": "signals" is only for kind "king"',
       'props[0] "crate": "armed" is only for kind "king"',
     ]);

@@ -151,13 +151,30 @@ export interface Prop {
   label?: string;
   /** Collides. Default: true for box / cylinder / king, false otherwise (`propSolid`). */
   solid?: boolean;
-  /** kind "king" only: hit points before he is "pawns only" (1–9, default 4). */
+  /** kind "king" only: his maximum hit points, an integer 1–99 (default 4) —
+   *  one shared bar for every guest; at 0 he has fallen ("pawns only"). */
   hp?: number;
-  /** kind "king" only: the story signals the game posts (defaults "chess won" / "chess lost" / "chess drawn"). */
-  signals?: { won?: string; lost?: string; drawn?: string };
-  /** kind "king" only: when the fight is "armed" rather than practice — a numeric world var at or above `min`
-   *  (read off the mod view's `world`); absent = no badge. */
+  /** kind "king" only: the story world path (`Night.king_hp`) that holds his
+   *  CURRENT hit points — the server writes it on each validated hit, a
+   *  director sets it. Absent: the spatial hub holds them in memory,
+   *  starting at `hp`. A missing or non-number value reads as `hp`. */
+  health?: string;
+  /** kind "king" only: the story signals posted about him — the chess
+   *  terminal's `won` / `lost` / `drawn`, the server's `hit` / `fallen`
+   *  (defaults `KING_SIGNALS`). */
+  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string };
+  /** kind "king" only: when a checkmate counts — a numeric world var at or
+   *  above `min` (the screen state's `king.armed`); absent = unknown. */
   armed?: { path: string; min: number };
+}
+
+/** The one shared King of an event (C2): `hp` of `max` left, `fallen` ⇔
+ *  `hp ≤ 0`. `id` is the king prop's id. */
+export interface KingState {
+  id: string;
+  hp: number;
+  max: number;
+  fallen: boolean;
 }
 
 /** `world = Ry(yaw) · (scale · house) + offset`. */
@@ -271,6 +288,9 @@ export interface Assignment {
   duck: DuckSpot;
   spawn: Spawn;
   houseVersion: string;
+  /** The program's profile picture: an `AvatarBook` key, served at
+   *  `/e/<eventId>/api/avatar/<key>`; null / missing = no picture. */
+  avatar?: string | null;
 }
 
 export interface PlayerState {
@@ -287,6 +307,9 @@ export interface PlayerState {
   duck: DuckSpot;
   found: boolean;
   startedAt: number;
+  /** The profile picture's avatar key (`/e/<eventId>/api/avatar/<key>`),
+   *  resolved live; null / missing (an old server) = the plain capsule. */
+  avatar?: string | null;
 }
 
 export type LeaveReason = "ended" | "found" | "timeout" | "replaced" | "reset";
@@ -302,7 +325,9 @@ export interface PoseUpdate {
 
 /** `GET /api/spatial/stream` frames: event name → data. */
 export interface SpatialFrames {
-  hello: { eventId: string; houseVersion: string; players: PlayerState[] };
+  /** `king`: the shared King (null = the map has none; missing = an old
+   *  server, no shared King). */
+  hello: { eventId: string; houseVersion: string; players: PlayerState[]; king?: KingState | null };
   join: { player: PlayerState };
   poses: { t: number; players: PoseUpdate[] };
   /** `captured`: the program is still captured after the find (C4b) — a
@@ -313,6 +338,11 @@ export interface SpatialFrames {
   /** A map save moved (or re-dealt) a live player's duck. */
   duck: { session: string; duck: DuckSpot };
   reset: { kind: string };
+  /** The shared King changed (a hit, a director's edit, a map swap). `by`:
+   *  the display name of the guest whose hit changed it; null otherwise. */
+  king: KingState & { by?: string | null };
+  /** A live player's profile picture changed (or its lookup landed). */
+  avatar: { session: string; avatar: string | null };
 }
 
 export type SpatialFrameName = keyof SpatialFrames;
@@ -332,6 +362,16 @@ export interface HouseResponse {
   house: HouseMap;
   version: string;
   source: HouseSource;
+  /** The session's duck, on the session-token read. */
+  duck?: DuckSpot;
+  /** The shared King on the session-token read (null = none; missing = an old server). */
+  king?: KingState | null;
+}
+
+/** `POST /api/spatial/king/hit` (200) and `POST /api/mod/spatial/king` (200). */
+export interface KingHitResult {
+  ok: true;
+  king: KingState;
 }
 
 /** `POST /api/mod/spatial/house` (200). */
@@ -400,6 +440,8 @@ export interface SpatialCandidate {
    *  begins their reinstallation. */
   restricted: boolean;
   location: string | null;
+  /** The program's profile picture's avatar key; null / missing = none. */
+  avatar?: string | null;
 }
 
 /** `POST /api/spatial/found` (200). */
