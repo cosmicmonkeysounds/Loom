@@ -54,6 +54,7 @@ import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
+import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { guestSide } from "./routes/sides.ts";
@@ -357,6 +358,13 @@ export interface EventRuntimeInit {
   /** The show's facts key for an event with no project copy — `LOOM_FACTS`,
    *  default `facts.json` beside `houseFile` (`defaultFactsFile`). */
   factsFile?: string;
+  /** The reserved programs' claim secret as the event row pins it
+   *  (`event.claim_secret`, routes/claims.ts). Absent / null → the state
+   *  dir's copy, else a fresh one (saved there, and handed to
+   *  `onClaimSecret` so the row can keep it). */
+  claimSecret?: string | null;
+  /** Called once with a secret this runtime had to mint (no row copy). */
+  onClaimSecret?: (secret: string) => void;
   /** The `do pick … from […] else …` draw (tests inject; default `Math.random`). */
   random?: () => number;
   /** The spatial + agent hubs' clock (tests). */
@@ -475,6 +483,12 @@ export class EventRuntime {
   private readonly chat = new ChatStore();
   // Where each guest's pending decision docks (channel id). Ephemeral.
   private readonly decisionChannels = new Map<string, string>();
+  // W-03 reserved programs: the claim tokens + a director's open windows.
+  private readonly claims: Claims;
+  // W-04 / OP-11: guest id → when they were last heard from (wall ms): a
+  // stream opened or closed, a request on their own token. In memory only
+  // (a restart re-learns it from the reconnects).
+  private readonly lastSeen = new Map<string, number>();
   // persona id → the director (display name) who spawned it via
   // `/api/mod/persona`. Persisted in meta, cleared by every restart (the
   // personas die with the journal), surfaced as `RosterRow.owner`.
@@ -602,6 +616,7 @@ export class EventRuntime {
     if (init.facts !== undefined) this.store.saveFacts(init.facts);
     this.random = init.random ?? Math.random;
     if (init.now !== undefined) this.clock = init.now;
+    this.claims = new Claims({ secret: this.resolveClaimSecret(init), now: () => this.clock() });
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
     this.snapshotMs = Math.max(0, init.snapshotMs ?? snapshotMsFromEnv());
     this.spatial = new SpatialHub({
@@ -769,6 +784,37 @@ export class EventRuntime {
     this.spatial.setOpen(this.open);
   }
 
+  /** The claim secret: the row's (kept in the state dir too), else the state
+   *  dir's, else a fresh one — saved there and offered to the row. Stable
+   *  across a restart either way, and across End → relaunch with a row. */
+  private resolveClaimSecret(init: EventRuntimeInit): string {
+    const fromRow = typeof init.claimSecret === "string" && init.claimSecret !== "" ? init.claimSecret : null;
+    const stored = this.store.loadClaimSecret();
+    const secret = fromRow ?? stored ?? mintClaimSecret();
+    if (secret !== stored) this.store.saveClaimSecret(secret);
+    if (fromRow === null) init.onClaimSecret?.(secret);
+    return secret;
+  }
+
+  /** The claim token that takes reserved `character` (its invitation's
+   *  `?claim=`) — what `/api/mod/codes` lists. */
+  claimFor(character: string): string {
+    return this.claims.tokenFor(character);
+  }
+
+  /** Least gap between two `lastSeen` stamps from requests (a stream's open
+   *  / close always stamps): a busy phone must not churn every director's
+   *  roster patch. */
+  private static readonly SEEN_EVERY_MS = 15_000;
+
+  /** Note that guest `id` was just heard from (`force`: a stream opened or
+   *  closed — always stamped). */
+  private seen(id: string, force = false): void {
+    const now = this.clock();
+    const last = this.lastSeen.get(id);
+    if (force || last === undefined || now - last >= EventRuntime.SEEN_EVERY_MS) this.lastSeen.set(id, now);
+  }
+
   /** The live sim, or null before the doors open / after the event ends. */
   get liveSim(): Sim | null {
     return this.sim;
@@ -806,6 +852,8 @@ export class EventRuntime {
       mods,
       directors,
       owners: this.personaOwners,
+      lastSeen: this.lastSeen,
+      unlocks: this.claims.openWindows(),
       agents: new Set(this.agents.onlineCharacters()),
       held: heldCharacters(this.sessions.entries()),
       minds: [...this.agentMinds.values()],
@@ -827,6 +875,8 @@ export class EventRuntime {
       answered: this.answeredFor(id),
       avatars,
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
+      // The story clock is stopped: the phone's countdown strip holds still.
+      ...(this.phase !== "open" ? { paused: true as const } : {}),
     };
   }
 
@@ -2385,7 +2435,11 @@ export class EventRuntime {
     if (!token) return null;
     const imp = this.impersonations.get(token);
     if (imp !== undefined) return imp.role === "guest" ? imp.id : null;
-    return this.guestTokens.get(token) ?? null;
+    // Only the guest's own token says they are here: a director's play-as
+    // pane (or a terminal piloting them) is not the phone in their hand.
+    const id = this.guestTokens.get(token) ?? null;
+    if (id !== null) this.seen(id);
+    return id;
   }
 
   /** The character a token performs as — a performer session, or an
@@ -2574,21 +2628,34 @@ export class EventRuntime {
   }
 
   /** The names on a join screen's picker: the story's pool of programs
-   *  for a guest, its parts for a performer — each with its picture and
-   *  whether someone already holds it. */
-  identities(role: "guest" | "prime"): IdentityRow[] {
+   *  for a guest, its parts for a performer — each with its picture,
+   *  whether someone already holds it, and whether it is a reserved program
+   *  locked for this caller (`claim`: the invitation's token, if any). */
+  identities(role: "guest" | "prime", claim?: string | null): IdentityRow[] {
     if (this.sim === null) return [];
     const defs = identityDefs(this.sim.model);
     if (role === "guest") {
       const taken = takenNames(this.sim.persons.values());
-      return defs
-        .filter(guestPickable)
-        .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: taken.has(foldName(d.name)) }));
+      return defs.filter(guestPickable).map((d) => ({
+        name: d.name,
+        faction: d.faction,
+        avatar: this.avatars.keyFor(d.name),
+        claimed: taken.has(foldName(d.name)),
+        reserved: d.reserved && !this.claims.mayClaim(d.name, claim),
+      }));
     }
     const held = heldCharacters(this.sessions.entries());
     return defs
       .filter(performerPickable)
-      .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: held.has(foldName(d.name)) }));
+      .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: held.has(foldName(d.name)), reserved: false }));
+  }
+
+  /** Is `name` a reserved program locked for a caller holding `claim`? */
+  private reservedFor(name: string, claim: string | null): boolean {
+    if (this.sim === null) return false;
+    const folded = foldName(name);
+    const def = identityDefs(this.sim.model).find((d) => d.reserved && guestPickable(d) && foldName(d.name) === folded);
+    return def !== undefined && !this.claims.mayClaim(def.name, claim);
   }
 
   // -- autonomous clock ----------------------------------------------------
@@ -2955,6 +3022,9 @@ export class EventRuntime {
         client.admin = false;
       }
       this.clients.add(client);
+      // The guest's own phone opened its stream: they are here (W-04).
+      const ownGuest = role === "guest" && imp === undefined;
+      if (ownGuest) this.seen(id, true);
       const fullMod = role === "mod" && client.lean !== true;
       if (fullMod) {
         // One `ModView` frame to every full director — the newcomer's first
@@ -2976,6 +3046,7 @@ export class EventRuntime {
       req.on("close", () => {
         clearInterval(ping);
         this.clients.delete(client);
+        if (ownGuest) this.seen(id, true);
         this.pushPresence();
       });
       return true;
@@ -3275,7 +3346,8 @@ export class EventRuntime {
       }
       // `doorsOpen: false` — before the director opens the doors there is
       // no cast to list yet: the join screen says so and polls.
-      sendJson(res, 200, { role, identities: this.identities(role), search: role === "guest" && this.wiki !== null, doorsOpen: this.open });
+      const claim = str(body, "claim").trim() || null;
+      sendJson(res, 200, { role, identities: this.identities(role, claim), search: role === "guest" && this.wiki !== null, doorsOpen: this.open });
       return true;
     }
     // A guest's search of the program directory: any software on Wikipedia
@@ -3295,11 +3367,14 @@ export class EventRuntime {
       const q = str(body, "q").trim().slice(0, 80);
       const hits = await this.wiki.search(q);
       const taken = takenNames(this.sim?.persons.values() ?? []);
+      const claim = str(body, "claim").trim() || null;
       const results = hits.map((h) => ({
         name: h.title,
         description: h.description,
         avatar: h.image === null ? null : this.avatars.offer(h.image),
         claimed: taken.has(foldName(h.title)),
+        // A featured program found by its article name is still held.
+        reserved: this.reservedFor(h.title, claim),
         blocked: isAntivirusSoftware(h.title, h.description) ? "antivirus" : null,
       }));
       sendJson(res, 200, { results });
@@ -3413,7 +3488,10 @@ export class EventRuntime {
           name = hit.title;
           picture = hit.image;
         }
-        const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()));
+        // A reserved (featured) program needs its invitation's claim, or a
+        // director's open window (`/api/mod/claim/unlock`) — 409 `reserved`.
+        const claim = str(body, "claim").trim() || null;
+        const refusal = guestNameRefusal(this.sim!.model, name, takenNames(this.sim!.persons.values()), (c) => this.claims.mayClaim(c, claim));
         if (refusal !== null) {
           sendJson(res, 409, { error: refusal });
           return true;
@@ -4402,6 +4480,8 @@ export class EventRuntime {
           modPass: this.codes.mod,
           joinUrl: base,
           codex,
+          // W-03: each reserved program's invitation link (its claim token).
+          claims: this.claims.links(this.sim?.model ?? this.declaredModel, base, this.codes.event),
           ...printExtras(this.sim?.model ?? null, base, this.codes.event, this.factsBook()?.raw ?? null),
         });
         return true;
@@ -4877,6 +4957,32 @@ export class EventRuntime {
         sendJson(res, 200, { ok: true });
         return true;
       }
+      case CLAIM_UNLOCK_ROUTE:
+        // A lost invitation: open a reserved program to anyone for a few
+        // minutes (routes/claims.ts). Not story state — never journaled.
+        return this.claims.handleUnlock(res, body, this.sim?.model ?? this.declaredModel, () => this.pushModSnapshots());
+      case "/api/mod/guest/gone": {
+        // W-04: a director marks a guest gone home (or back): a journaled
+        // world set of `<id>.gone`, `by` the director, so the story's head
+        // counts can leave them out (`p.gone != true`).
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const id = str(body, "id");
+        if (!this.sim.persons.has(id)) {
+          sendJson(res, 404, { error: "unknown guest" });
+          return true;
+        }
+        const gone = body["gone"];
+        if (typeof gone !== "boolean") {
+          sendJson(res, 400, { error: "gone must be true or false" });
+          return true;
+        }
+        this.fanout(this.commit("setVar", `${id}.gone`, gone ? "true" : "false"));
+        sendJson(res, 200, { ok: true, id, gone });
+        return true;
+      }
       case "/api/mod/persona": {
         // Spawn a test persona — a guest the director puppets, no passcode
         // and no play-app registration. This is what makes a server-hosted
@@ -4896,6 +5002,9 @@ export class EventRuntime {
         this.personaOwners.set(id, by);
         this.persistMeta();
         this.fanout(this.commit("createPerson", id, name));
+        // A persona is nobody at the party: `<id>.persona` lets the story's
+        // head counts leave it out (W-04), journaled like the creation.
+        this.fanout(this.commit("setVar", `${id}.persona`, "true"));
         sendJson(res, 200, { ok: true, guest: { ...rosterRow(this.sim, id)!, owner: by } });
         return true;
       }

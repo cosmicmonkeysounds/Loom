@@ -455,8 +455,14 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
 
   it("a featured program is a guest's to claim, once; the secret state holder is nobody's", async () => {
     const rt = freshRuntime();
-    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).status).toBe(200);
-    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).status).toBe(409);
+    // A featured program is `reserved: true` (wave 11): it takes its
+    // invitation's claim, which `/api/mod/codes` lists. Without the key
+    // (an older story text) it needs none.
+    const codes = await post(rt, "/api/mod/codes", {}, undefined, { moderator: true });
+    const claim = (codes.json.claims as Array<{ character: string; claim: string }>).find((c) => c.character === "Microsoft Excel")?.claim;
+    if (claim !== undefined) expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).json.error).toBe("reserved");
+    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim })).status).toBe(200);
+    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim })).status).toBe(409);
     expect((await post(rt, "/api/guest/register", { name: "Kernel", passcode: CODES.event })).status).toBe(409);
     expect((await post(rt, "/api/prime/login", { character: "Kernel", passcode: CODES.prime })).status).toBe(409);
   });
@@ -468,8 +474,8 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
     const search = await post(rt, "/api/identities/search", { passcode: CODES.event, q: "norton" });
     expect(search.status).toBe(200);
     expect(search.json.results).toEqual([
-      { name: "Norton AntiVirus", description: "Anti-virus software", avatar: avatarKey("https://img.test/nav.png"), claimed: false, blocked: "antivirus" },
-      { name: "Norton Commander", description: "Discontinued orthodox file manager software", avatar: avatarKey("https://img.test/nc.png"), claimed: false, blocked: null },
+      { name: "Norton AntiVirus", description: "Anti-virus software", avatar: avatarKey("https://img.test/nav.png"), claimed: false, reserved: false, blocked: "antivirus" },
+      { name: "Norton Commander", description: "Discontinued orthodox file manager software", avatar: avatarKey("https://img.test/nc.png"), claimed: false, reserved: false, blocked: null },
     ]);
     // Even a client that ignores the flag can't register it.
     const bad = await post(rt, "/api/guest/register", { name: "Norton AntiVirus", wiki: "Norton AntiVirus", passcode: CODES.event });
