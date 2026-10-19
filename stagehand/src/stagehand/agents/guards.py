@@ -241,11 +241,11 @@ def guard_pass(
     original = reply.say
     out.reply, notes = never_guard(persona, out.reply)
     out.notes += notes
+    # Guard 2 always runs: a line guard 1 withheld still has its acts (and
+    # the fallback it now says is checked like any line).
+    out.reply, notes = answer_guard(persona, out.reply, allowed)
+    out.notes += notes
     withheld = out.reply.say != original
-    if not withheld:
-        out.reply, notes = answer_guard(persona, out.reply, allowed)
-        out.notes += notes
-        withheld = out.reply.say != original
     out.withheld = withheld
     if withheld:
         return out

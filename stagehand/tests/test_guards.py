@@ -253,3 +253,14 @@ def test_the_retry_pass_never_asks_again():
 def test_a_pass_withholds_every_never_spelling(say):
     out = guard_pass(P, Reply(say=f"It is {say}."), OLD, Said(), ())
     assert out.reply.say == "...static..." and out.withheld
+
+
+def test_a_never_word_line_still_loses_an_act_carrying_an_answer_word():
+    act = {"kind": "fire", "name": "pop_up", "args": {"text": "It was a quokka all along"}}
+    out = guard_pass(P, Reply(say="It is XYZZY-PLUGH.", acts=(act,)), OLD, Said(), ())
+    assert out.reply.say == "...static..." and out.withheld
+    assert out.reply.acts == ()
+    assert out.notes == ["never (line withheld)", "answer-guard (act dropped)"]
+    # The same act beside a clean line is dropped the same way.
+    clean = guard_pass(P, Reply(say="Look at the screens.", acts=(act,)), OLD, Said(), ())
+    assert clean.reply.acts == () and clean.reply.say == "Look at the screens."
