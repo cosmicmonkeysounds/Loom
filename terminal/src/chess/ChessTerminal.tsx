@@ -18,7 +18,7 @@
 //! board but never ends the game — it holds the leash while it is up.
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { Board, PROFILES, type Chess, STAGE_LINE, bannerOf, mulberry32, newGame, outcome, pickMoveAsync, play, stageFor, targets, type Outcome, type Square } from "@loom/chess";
+import { Board, PROFILES, type Chess, bannerOf, mulberry32, newGame, outcome, pickMoveAsync, play, targets, type Outcome, type Square } from "@loom/chess";
 import "@loom/chess/board.css";
 import "./chess.css";
 import type { TerminalConfig } from "../config.ts";
@@ -217,7 +217,6 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
             </div>
             <div className="king-title">THE KING</div>
             <HealthBar king={king} />
-            {king !== null && <div className="small">{STAGE_LINE[stageFor(king.hp, king.max)]}</div>}
             {stakesLine(king?.armed) !== null && <div className="king-stakes">{stakesLine(king?.armed)}</div>}
           </section>
           <section className="line-pane">
@@ -266,7 +265,6 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
               <span>THE KING</span>
             </div>
             <HealthBar king={king} />
-            {stage !== null && <div className="small">{STAGE_LINE[stage]}</div>}
             {s.kind === "playing" && (
               <>
                 <div className={`chess-status${thinking ? " blink" : ""}`}>{status}</div>

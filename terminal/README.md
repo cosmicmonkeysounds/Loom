@@ -241,10 +241,10 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Door&spot=server-room
 - **Awake all night**: it never follows the character's hidden / asleep
   (no screensaver). The attract screen is THE KING, his one shared health
   bar (`n / 15`, off the screen state's `king {hp, max, fallen, armed}`;
-  an older server sends none: no bar, full strength), the strength line
-  and the stakes line (`armed` true: *Checkmate him and the server-room
-  door code goes to your Codex.*; false: *No prize now.*), and the
-  scanner + typed fallback.
+  an older server sends none: no bar, full strength), the stakes line
+  (`armed` true: *Checkmate him and the server-room door code goes to
+  your Codex.*; false: *No prize now.*), and the scanner + typed
+  fallback. Never the strength ladder: no hints, no tips, no ladder copy.
 - A pass is checked through the moderator lens (`GET
   /api/state?role=guest&as=<id>`: 404 unknown, `restricted`); a marked
   program is refused (*⛔ Marked programs can't challenge the King.*).
