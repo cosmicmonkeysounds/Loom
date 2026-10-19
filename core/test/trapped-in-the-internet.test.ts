@@ -18,7 +18,7 @@ import { FactsWatch, judgeAnswer, parseFactsBook } from "../server/facts.ts";
 import { foldCode } from "../src/runtime/sim/model.ts";
 import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
-import { cueState, guestView, modView, primeView } from "../server/views.ts";
+import { cueState, guestView, modView, pressRefused, primeView } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
 import { composeGuestMessages } from "../server/chat.ts";
 import { liesByPerson } from "../server/recap.ts";
@@ -1760,7 +1760,11 @@ describe("Trapped in the Internet — the King gives the door code (wave 7; all 
     // A duplicate (a host's ♟ after the terminal's post, a late retry, a second win) changes nothing.
     const dup = fire(sim, "beat_the_machine", "g1", null, "Clippy");
     expect(learned(dup)).toEqual([]);
-    expect(hostsSaid(dup)).toEqual([`"♟ ${name("g1")} already has the door code: nothing changed."`]);
+    expect(hostsSaid(dup)).toEqual([
+      '"♟ Checkmate again. You already hold the door code: it is in your Codex."',
+      `"♟ ${name("g1")} already has the door code: nothing changed."`,
+    ]);
+    expect(casts(dup).filter((b) => b.cue.includes("Checkmate again")).map(aud)).toEqual(['["g1"]']);
     // ♟ on another winner's card works the same.
     expect(learned(fire(sim, "beat_the_machine", "g4", null, "Clippy")).map((e) => e.entry)).toEqual(["The Door Code"]);
     // The director's cue names the winner; with nobody named it only reminds # hosts.
@@ -5521,7 +5525,19 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     const dup = fire(sim, "chess won", "g1", null, "Terminal · Server Door");
     expect(learned(dup)).toEqual([]);
     expect(cues(dup)).toEqual([]);
-    expect(casts(dup).map((b) => b.cue.replace(/^"|"$/gu, ""))).toEqual(["♟ Calculator already has the door code: nothing changed."]);
+    expect(casts(dup).map((b) => b.cue.replace(/^"|"$/gu, ""))).toEqual([
+      "♟ Checkmate again. You already hold the door code: it is in your Codex.",
+      "♟ Calculator already has the door code: nothing changed.",
+    ]);
+    // The winner hears it, so the press is no refusal: the door terminal
+    // says the code is in their Codex, never "No prize now".
+    expect(pressRefused(sim, dup)).toBe(false);
+    // The same for a program who assembled it from the four digit notes.
+    for (const c of FACTS.door!.clues!) sim.redeem("g4", c.code);
+    expect(sim.holdsCodex("g4", "The Door Code")).toBe(true);
+    const notes = fire(sim, "chess won", "g4", null, "Terminal · Server Door");
+    expect(learned(notes)).toEqual([]);
+    expect(pressRefused(sim, notes)).toBe(false);
   });
 
   it("a reset clears the wrong-combo count: one wrong patch is forgiven again", { timeout: SLOW }, () => {

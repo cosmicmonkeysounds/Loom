@@ -4205,6 +4205,10 @@ when chess_won for program:
     if program.name == null:
       broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
     else if program.codex.the_door_code == true:
+      // They hold it already (an earlier win, the four digit notes, the
+      // majority): say so to them too, so the door terminal never reads a
+      // second win as "no prize".
+      broadcast "♟ Checkmate again. You already hold the door code: it is in your Codex." to participant(program)
       broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
     else:
       unlock The Door Code for program
