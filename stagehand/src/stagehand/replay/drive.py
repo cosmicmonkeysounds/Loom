@@ -442,6 +442,9 @@ class Driver:
     cursor: int = 0
     worker_alive: Callable[[], bool] = lambda: True
     http: httpx.Client | None = None
+    #: Seconds of quiet before every top-level say after his reply (a guest's
+    #: pace: the classic mind reflects in the gaps, the new one summarises).
+    gap_s: float = 0.0
 
     def __post_init__(self) -> None:
         if self.http is None:
@@ -706,7 +709,11 @@ class Driver:
         self.idle.append({"start": start, "end": time.time()})
 
     def run(self, script: dict[str, Any]) -> None:
+        said = False
         for s in script["steps"]:
+            if "say" in s and said and self.gap_s > 0:
+                time.sleep(self.gap_s)
+            said = said or "say" in s
             self.step(s)
 
 
@@ -743,7 +750,7 @@ def report(run_dirs: list[Path], persona_file: Path | None = None) -> dict[str, 
     return scoring.score(runs, catchphrases(persona), unsafe, redactor.redact)
 
 
-def live(mode: str, script_name: str, *, port: int | None = None, label: str | None = None, runs_root: Path = RUNS_ROOT, worktree: Path = WORKTREE, idle_s: float | None = None) -> Path:
+def live(mode: str, script_name: str, *, port: int | None = None, label: str | None = None, runs_root: Path = RUNS_ROOT, worktree: Path = WORKTREE, idle_s: float | None = None, gap_s: float = 0.0) -> Path:
     from .sources import load_script
 
     script = load_script(script_name)
@@ -777,6 +784,7 @@ def live(mode: str, script_name: str, *, port: int | None = None, label: str | N
         "worktree": str(worktree),
         "match_digest": redactor.digest,
         "holds": [redactor.redact(h) for h in holds],
+        "gap_s": gap_s,
         "started": time.time(),
     }
     say(f"replay: {meta['script']} on the {mode} mind → {run_dir}")
@@ -800,7 +808,7 @@ def live(mode: str, script_name: str, *, port: int | None = None, label: str | N
                     raise HarnessError("the scratch server never answered /api/health")
                 time.sleep(1)
             mirror = Mirror(base, "")
-            driver = Driver(base=base, port=port, mirror=mirror, facts=facts, redactor=redactor, holds=holds, worktree=worktree)
+            driver = Driver(base=base, port=port, mirror=mirror, facts=facts, redactor=redactor, holds=holds, worktree=worktree, gap_s=gap_s)
             driver.login()
             mirror.token = driver.mod
             mirror.start()

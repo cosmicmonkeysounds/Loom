@@ -424,6 +424,15 @@ def test_a_say_resolves_its_placeholder_and_waits_for_his_free_reply_only() -> N
     assert rec["reply_seq"] == 8 and "Wigglesworth" not in rec["reply"] and rec["timed_out"] is False
 
 
+def test_the_gap_paces_guest_lines_but_not_the_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    slept: list[float] = []
+    monkeypatch.setattr(drive.time, "sleep", slept.append)
+    d = fake_driver(FakeServer())
+    d.gap_s = 20.0
+    d.run({"steps": [{"say": "a", "as": "Ada", "wait": False}, {"unlock": "X", "for": "Ada"}, {"say": "b", "as": "Ada", "wait": False}]})
+    assert slept == [20.0]
+
+
 def test_an_unanswered_say_times_out() -> None:
     d = fake_driver(FakeServer())
     rec = d.send({"say": "anyone?", "as": "Ada"})
