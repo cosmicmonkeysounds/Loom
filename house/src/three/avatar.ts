@@ -4,6 +4,13 @@
 //! without a DOM). Feed it interpolated poses (`PoseBuffer`) in house
 //! coordinates; `p` is the body's base (the feet, floor level), as on the
 //! wire.
+//!
+//! With a profile picture (`opts.picture` / `setPicture`, the guest's own —
+//! Excel looks like Excel) the ghost wears it as its head: a billboard
+//! Windows 98 tile over the capsule, and the same picture as the tag's
+//! window icon, the tag lifted above the tile. The texture is the shared
+//! `loadPicture` one, never freed here. No picture (none set, no DOM, a load
+//! that failed) is the plain tinted capsule.
 
 import {
   AdditiveBlending,
@@ -22,6 +29,7 @@ import {
 import { fnv1a32 } from "../duck.ts";
 import type { Vec3 } from "../types.ts";
 import { Bin, DEG } from "./dispose.ts";
+import { loadPicture } from "./picture.ts";
 import { titleBarTexture } from "./textures.ts";
 
 /** Body height (the top of the capsule). */
@@ -29,11 +37,25 @@ export const AVATAR_HEIGHT = 1.6;
 const RADIUS = 0.22;
 const EYE = 1.42;
 const TAG_HEIGHT = 0.16;
+/** The picture tile's side (metres) and its centre: a head just over the capsule. */
+export const PICTURE_SIZE = 0.42;
+const PICTURE_Y = AVATAR_HEIGHT + PICTURE_SIZE / 2 + 0.04;
+const TAG_Y = AVATAR_HEIGHT + 0.25;
+const TAG_Y_PICTURED = PICTURE_Y + PICTURE_SIZE / 2 + 0.14;
+
+export interface AvatarOptions {
+  /** The profile picture's URL (same-origin `…/api/avatar/<key>`); null or absent = the plain capsule. */
+  picture?: string | null;
+}
 
 export interface Avatar {
   object: Group;
   /** The name tag sprite (null without a DOM). */
   tag: Sprite | null;
+  /** The picture URL asked for (null = none); the tile shows once it has loaded. */
+  readonly picture: string | null;
+  /** Wear another picture (null takes it off). A no-op for the URL already worn. */
+  setPicture(url: string | null): void;
   /** House-frame pose: base position, yaw + pitch in degrees (pitch > 0 looks up). */
   setPose(p: Vec3, yaw: number, pitch?: number): void;
   /** Ghostly shimmer; `dt` seconds. */
@@ -47,7 +69,7 @@ export function avatarColor(seed: string | number): Color {
   return new Color().setHSL((h % 360) / 360, 0.75, 0.62);
 }
 
-export function createAvatar(name: string, colorSeed: string | number = name): Avatar {
+export function createAvatar(name: string, colorSeed: string | number = name, opts: AvatarOptions = {}): Avatar {
   const bin = new Bin();
   const color = avatarColor(colorSeed);
   const object = new Group();
@@ -95,21 +117,67 @@ export function createAvatar(name: string, colorSeed: string | number = name): A
   object.add(ring);
 
   let tag: Sprite | null = null;
-  const made = titleBarTexture(name, undefined, { buttons: true });
-  if (made) {
-    bin.add(made.texture);
-    tag = new Sprite(bin.add(new SpriteMaterial({ map: made.texture, depthTest: false, depthWrite: false, transparent: true })));
-    tag.name = "avatar:tag";
+  let tagMat: SpriteMaterial | null = null;
+  /** Draw the tag (again, with the picture as its icon once it has loaded). */
+  const drawTag = (icon: CanvasImageSource | null): void => {
+    const made = titleBarTexture(name, undefined, { buttons: true, icon });
+    if (!made) return;
+    if (tag === null || tagMat === null) {
+      tagMat = new SpriteMaterial({ map: made.texture, depthTest: false, depthWrite: false, transparent: true });
+      tag = new Sprite(tagMat);
+      tag.name = "avatar:tag";
+      tag.renderOrder = 10;
+      object.add(tag);
+    } else {
+      tagMat.map?.dispose();
+      tagMat.map = made.texture;
+      tagMat.needsUpdate = true;
+    }
     tag.scale.set(TAG_HEIGHT * made.aspect, TAG_HEIGHT, 1);
-    tag.position.y = AVATAR_HEIGHT + 0.25;
-    tag.renderOrder = 10;
-    object.add(tag);
-  }
+    tag.position.y = icon !== null ? TAG_Y_PICTURED : TAG_Y;
+  };
+  drawTag(null);
+
+  // The picture: the URL asked for, and the tile once it has loaded.
+  let picture: string | null = null;
+  let tile: Sprite | null = null;
+  let disposed = false;
+  const takeOff = (): void => {
+    if (tile === null) return;
+    tile.removeFromParent();
+    tile.material.dispose(); // the material is ours; its map is the shared picture
+    tile = null;
+    if (tag !== null && !disposed) drawTag(null);
+  };
+  const setPicture = (url: string | null): void => {
+    const next = url === "" ? null : url;
+    if (next === picture || disposed) return;
+    picture = next;
+    takeOff();
+    if (next === null) return;
+    void loadPicture(next).then((tex) => {
+      if (tex === null || disposed || picture !== next) return;
+      tile = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+      tile.name = "avatar:picture";
+      tile.scale.set(PICTURE_SIZE, PICTURE_SIZE, 1);
+      tile.position.y = PICTURE_Y;
+      tile.renderOrder = 5;
+      object.add(tile);
+      if (tag !== null) drawTag(tex.image as CanvasImageSource);
+    });
+  };
+  setPicture(opts.picture ?? null);
 
   let time = fnv1a32(String(colorSeed)) % 1000;
   return {
     object,
-    tag,
+    get tag() {
+      return tag;
+    },
+    get picture() {
+      return picture;
+    },
+    setPicture,
     setPose(p: Vec3, yaw: number, pitch = 0) {
       object.position.set(p[0], p[1], p[2]);
       body.rotation.y = yaw * DEG;
@@ -123,6 +191,10 @@ export function createAvatar(name: string, colorSeed: string | number = name): A
       ringMat.opacity = 0.35 + 0.2 * Math.sin(time * 3);
     },
     dispose() {
+      disposed = true;
+      takeOff();
+      tagMat?.map?.dispose();
+      tagMat?.dispose();
       object.removeFromParent();
       bin.dispose();
     },

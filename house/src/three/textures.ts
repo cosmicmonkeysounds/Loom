@@ -333,16 +333,24 @@ export function captionScreenTexture(text: string): CanvasTexture | null {
   );
 }
 
+/** Above this many hit points the bar is one red fill reading "n / max"
+ *  (fifteen cells don't fit 160 px); at or below it, one cell per point. */
+export const BAR_CELLS_MAX = 9;
+
 /**
  * A boss's health bar as a Windows 98 window: a navy title bar with the
- * label, and under it a sunken track of `max` cells, `hp` of them red (the
- * rest grey) — "PAWNS ONLY" across the track at 0. Returns the texture and
- * its width / height ratio; null without a DOM.
+ * label, and under it a sunken track. Up to `BAR_CELLS_MAX` points it is
+ * `max` cells, `hp` of them red (the rest grey), with "PAWNS ONLY" across
+ * the track at 0; past that one red fill `hp / max` long with "n / max"
+ * over it. Returns the texture and its width / height ratio; null without
+ * a DOM.
  */
 export function healthBarTexture(label: string, hp: number, max: number): { texture: CanvasTexture; aspect: number } | null {
   if (!hasDom()) return null;
-  const cells = Math.max(1, Math.min(9, Math.round(max)));
-  const full = Math.max(0, Math.min(cells, Math.round(hp)));
+  const top = Math.max(1, Math.round(max));
+  const cells = Math.min(BAR_CELLS_MAX, top);
+  const count = top > BAR_CELLS_MAX;
+  const full = Math.max(0, Math.min(top, Math.round(hp)));
   const w = 160;
   const h = 56;
   const texture = drawTexture(
@@ -375,6 +383,21 @@ export function healthBarTexture(label: string, hp: number, max: number): { text
       g.fillRect(6, 27, w - 12, 1);
       g.fillRect(6, 27, 1, 23);
       const inner = w - 16;
+      if (count) {
+        g.fillStyle = "#d8d8d8";
+        g.fillRect(8, 30, inner, 17);
+        g.fillStyle = "#d00000";
+        g.fillRect(8, 30, Math.round((inner * full) / top), 17);
+        g.font = "bold 14px Tahoma, 'MS Sans Serif', Geneva, Verdana, sans-serif";
+        g.textAlign = "center";
+        g.lineWidth = 3;
+        g.strokeStyle = "#ffffff";
+        g.strokeText(`${full} / ${top}`, w / 2, 39);
+        g.fillStyle = "#000000";
+        g.fillText(`${full} / ${top}`, w / 2, 39);
+        g.textAlign = "left";
+        return;
+      }
       const cw = (inner - (cells - 1) * 2) / cells;
       for (let i = 0; i < cells; i++) {
         g.fillStyle = i < full ? "#d00000" : "#d8d8d8";
@@ -396,12 +419,13 @@ export function healthBarTexture(label: string, hp: number, max: number): { text
 /**
  * A Windows 98 title bar with `text` (and an optional smaller second line
  * under it): navy → blue gradient, bold white text, the three window
- * buttons. Returns the texture and its width / height ratio.
+ * buttons, and with `icon` a small square picture at the bar's left edge
+ * (a window's icon). Returns the texture and its width / height ratio.
  */
 export function titleBarTexture(
   text: string,
   sub?: string,
-  opts: { buttons?: boolean; from?: string; to?: string } = {},
+  opts: { buttons?: boolean; from?: string; to?: string; icon?: CanvasImageSource | null } = {},
 ): { texture: CanvasTexture; aspect: number } | null {
   if (!hasDom()) return null;
   const font = "bold 22px Tahoma, 'MS Sans Serif', Geneva, Verdana, sans-serif";
@@ -415,7 +439,11 @@ export function titleBarTexture(
   const sw = sub ? pg.measureText(sub).width : 0;
   const buttons = opts.buttons !== false;
   const barH = 32;
-  const w = Math.ceil(Math.max(tw + (buttons ? 70 : 16), sw + 16, 64) + 8);
+  const icon = opts.icon ?? null;
+  /** The icon's square side, and how far it pushes the title right. */
+  const iconSide = barH - 6;
+  const indent = icon !== null ? iconSide + 4 : 0;
+  const w = Math.ceil(Math.max(tw + indent + (buttons ? 70 : 16), sw + 16, 64) + 8);
   const h = sub ? barH + 28 : barH + 4;
   const texture = drawTexture(
     w,
@@ -435,10 +463,17 @@ export function titleBarTexture(
       grad.addColorStop(1, opts.to ?? PALETTE.titleEnd);
       g.fillStyle = grad;
       g.fillRect(2, 2, w - 4, barH);
+      if (icon !== null) {
+        try {
+          g.drawImage(icon, 5, 5, iconSide, iconSide);
+        } catch {
+          /* an image that can't be drawn: the title alone */
+        }
+      }
       g.fillStyle = "#ffffff";
       g.font = font;
       g.textBaseline = "middle";
-      g.fillText(text, 8, 2 + barH / 2 + 1);
+      g.fillText(text, 8 + indent, 2 + barH / 2 + 1);
       if (buttons) {
         const glyphs = ["_", "□", "×"];
         glyphs.forEach((glyph, i) => {
