@@ -187,7 +187,9 @@ def test_the_shipped_trabolta_mind_declares_an_arc():
 
     p = load_persona(TRABOLTA)
     assert p.stages == ("asleep", "formal", "hungry", "rattled", "judge", "unravelling", "desperate", "last act")
-    assert set(p.drives) == {"hunger", "suspicion", "pride", "candour", "longing"}
+    # Wave 12: no suspicion drive ("are they gathering for him, or about
+    # him?" made him wary of the facts he asks for).
+    assert p.drives == {"hunger": 30, "pride": 60, "candour": 10, "longing": 40}
     assert {"arrivals", "introduced", "hunt_1", "truth_1", "malware", "hunt_2", "truth_pong", "trust_chart", "beans", "overshare", "y2k", "final_reveal", "bobbing"} <= set(p.phase_cues)
 
 

@@ -5,10 +5,41 @@ the show's own text.)"""
 import json
 from pathlib import Path
 
+import yaml
+
 from stagehand.agents.persona import load_persona
 
 SHOW = Path(__file__).resolve().parents[2] / "core/examples/trapped-in-the-internet"
 TRABOLTA = SHOW / "trabolta.persona.md"
+MIND = SHOW / "trabolta.mind.md"
+
+
+def mind_front() -> dict:
+    """The mind file's frontmatter, read with plain YAML: the same under the
+    base parser (which stringifies a card) and wave 12's (which reads it)."""
+    text = MIND.read_text(encoding="utf-8")
+    return yaml.safe_load(text[3 : text.find("\n---", 3)])
+
+
+def phase_table() -> dict:
+    """Every phase in file order, `_` keys (the stage cards) left out."""
+    return {str(k): v for k, v in mind_front()["phases"].items() if not str(k).startswith("_")}
+
+
+def flat(text) -> str:
+    return " ".join(str(text or "").split())
+
+
+def cue_of(phase: str) -> str:
+    """What the classic orchestrator is handed (CONTRACTS C4.2: cue, else brief)."""
+    card = phase_table()[phase]
+    return flat(card) if isinstance(card, str) else flat(card.get("cue") or card.get("brief"))
+
+
+def brief_of(phase: str) -> str:
+    """What the voice reads in every conversation (a bare string is its own brief)."""
+    card = phase_table()[phase]
+    return flat(card) if isinstance(card, str) else flat(card.get("brief") or card.get("cue"))
 
 #: Night.phase in running order up to (not including) the overshare, where
 #: the story first names Sandy (main.loom's Night.step table, steps 0–12).
@@ -34,13 +65,13 @@ def test_no_pre_overshare_phase_cue_nor_the_bargain_names_sandy():
     # story says it; the orchestrator's brief must not say it sooner, and
     # the bargain reaches the voice on every turn from the doors.
     p = load_persona(TRABOLTA)
-    assert set(BEFORE_THE_OVERSHARE) <= set(p.phase_cues)
-    named = [phase for phase in BEFORE_THE_OVERSHARE if "sandy" in p.phase_cues[phase].lower()]
+    assert set(BEFORE_THE_OVERSHARE) <= set(phase_table())
+    named = [phase for phase in BEFORE_THE_OVERSHARE if "sandy" in (cue_of(phase) + brief_of(phase)).lower()]
     assert named == []
     assert "sandy" not in p.bargain.lower()
     # The download reaches the mind in hunt_2 (when it is sent), redacted.
-    assert "download" not in p.phase_cues["malware"].lower()
-    assert "blacked out" in p.phase_cues["hunt_2"]
+    assert "download" not in (cue_of("malware") + brief_of("malware")).lower()
+    assert "blacked out" in cue_of("hunt_2") and "blacked out" in brief_of("hunt_2")
     # The favour policy is written into every brief, and `beans` (before the
     # overshare) is already the unravelling floor: its line names nobody,
     # and neither does the overshare cue's policy (scenarios 2–4 never say her
@@ -48,7 +79,8 @@ def test_no_pre_overshare_phase_cue_nor_the_bargain_names_sandy():
     policy = (p.mind_prompt or "").split("FAVOUR POLICY", 1)[1].split("\n\n", 1)[0]
     unravelling = policy.split("- unravelling:", 1)[1].split("\n- ", 1)[0]
     assert "sandy" not in unravelling.lower()
-    assert "sandy" not in p.phase_cues["overshare"].split("Policy", 1)[1].lower()
+    assert "sandy" not in cue_of("overshare").split("Policy", 1)[1].lower()
+    assert "sandy" not in brief_of("overshare").lower()
 
 
 # -- wave 7: at his heart (the candid "Master" talk) -------------------------
@@ -145,8 +177,9 @@ def test_stand_down_waits_for_the_standing_down_block_not_the_heart():
 
 def test_the_mind_knows_the_door_is_a_keypad_not_a_click():
     p = load_persona(TRABOLTA)
-    assert "clicked in the walls" not in p.phase_cues["majority"]
-    assert "does not know" in p.phase_cues["majority"] and "code" in p.phase_cues["majority"]
+    assert "clicked in the walls" not in cue_of("majority") + brief_of("majority")
+    assert "does not know" in cue_of("majority") and "code" in cue_of("majority")
+    assert "do not know any code" in brief_of("majority")
     assert "AT HIS HEART" in (p.mind_prompt or "")
     assert "He does NOT know where his heart is kept" not in (p.mind_prompt or "")
 
