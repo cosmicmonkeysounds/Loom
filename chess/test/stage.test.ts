@@ -7,15 +7,18 @@ describe("stageFor", () => {
   it("reads the shared 15 HP bar: full = grandmaster … 0 = pawns only", () => {
     const ladder = Array.from({ length: 16 }, (_, hp) => stageFor(hp, 15));
     expect(ladder[15]).toBe("grandmaster");
-    expect(ladder[14]).toBe("grandmaster");
-    expect(ladder[13]).toBe("club");
+    // The first hit already weakens him.
+    expect(ladder[14]).toBe("club");
     expect(ladder[10]).toBe("club");
     expect(ladder[9]).toBe("beginner");
-    expect(ladder[6]).toBe("beginner");
-    expect(ladder[5]).toBe("dizzy");
-    expect(ladder[2]).toBe("dizzy");
-    expect(ladder[1]).toBe("pawns");
+    expect(ladder[5]).toBe("beginner");
+    expect(ladder[4]).toBe("dizzy");
+    // Still standing on his last point: dizzy, never pawns only.
+    expect(ladder[1]).toBe("dizzy");
     expect(ladder[0]).toBe("pawns");
+    // Only a full bar is grandmaster, only an empty one pawns.
+    expect(ladder.filter((s) => s === "grandmaster")).toHaveLength(1);
+    expect(ladder.filter((s) => s === "pawns")).toHaveLength(1);
     // Never stronger with fewer points.
     for (let hp = 1; hp <= 15; hp++) expect(STAGES.indexOf(ladder[hp]!)).toBeLessThanOrEqual(STAGES.indexOf(ladder[hp - 1]!));
     // Every stage is reached somewhere on the bar.
