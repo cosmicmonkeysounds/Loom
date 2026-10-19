@@ -4221,11 +4221,19 @@ when restore_the_king:
 // whoever learns one. It counts the notes they hold, steps the quest The
 // Cold Door ("N of 4"), and at four assembles The Door Code, once. A
 // program who already has the code (a checkmate, the majority) gains
-// nothing here: the quest closes on the code itself (ROLE watcher).
+// nothing here: the quest closes on the code itself (ROLE watcher). Once
+// the verdict is in (📄 truth.txt closed round three) or the night has
+// ended, the notes still count and the quest still steps, but four of four
+// gives no code, like a late checkmate (`when chess_won`): it would say the
+// door is yours, and the door does nothing now. Only # hosts hears of it.
 when door_digit_found for program:
   set program.door_digits = count([x for x in [program.codex.cold_door_first_digit, program.codex.cold_door_second_digit, program.codex.cold_door_third_digit, program.codex.cold_door_fourth_digit] where x])
   if program.codex.the_door_code != true:
-    if program.door_digits >= 4:
+    if program.door_digits >= 4 and (Night.r3_closed == true or Night.ended == true):
+      if program.quest.the_cold_door == "active":
+        update quest The Cold Door for program "4 of 4."
+      broadcast "🔢 {program.name} found all four digit notes after truth.txt. The verdict is in: no door code. Nothing happens in the story." to channel(hosts)
+    else if program.door_digits >= 4:
       complete quest The Cold Door for program "Four of four. The notes fit together: the door code is in your Codex."
       unlock The Door Code for program
       broadcast "🔢 {program.name} found all four digit notes: the door code is in their Codex." to channel(hosts)

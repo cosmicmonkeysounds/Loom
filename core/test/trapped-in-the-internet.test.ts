@@ -2222,6 +2222,24 @@ describe("Trapped in the Internet — the cold door's digit notes (wave 11)", ()
     expect(learned(sim.redeem("g6", CLUES[1]!.code)).map((x) => x.entry)).toEqual([CLUES[1]!.id]);
   });
 
+  it("after truth.txt or an ending the notes still count and the quest still steps, but four of four gives no code (like a late checkmate)", { timeout: SLOW }, () => {
+    for (const flag of ["Night.r3_closed", "Night.ended"]) {
+      const sim = boot();
+      toTruth1(sim);
+      for (const c of CLUES.slice(0, 3)) sim.redeem("g1", c.code);
+      expect(v(sim, "g1.door_digits"), flag).toBe(3);
+      sim.setVar(flag, "true");
+      const last = sim.redeem("g1", CLUES[3]!.code);
+      expect(learned(last).map((x) => x.entry), flag).toEqual([CLUES[3]!.id]);
+      expect(sim.holdsCodex("g1", "The Door Code"), flag).toBe(false);
+      expect(v(sim, "g1.door_digits"), flag).toBe(4);
+      expect(questSteps(last), flag).toEqual(["update: 4 of 4."]);
+      expect(sim.questStatus("g1", "The Cold Door"), flag).toBe("active");
+      expect(hostsSaid(last), flag).toEqual(['"🔢 Calculator found all four digit notes after truth.txt. The verdict is in: no door code. Nothing happens in the story."']);
+      expect(texts(last).some((t) => t.includes("door code is in your Codex")), flag).toBe(false);
+    }
+  });
+
   it("Trabolta refuses a digit note shared to him (secret), and no agent request ever carries one", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
