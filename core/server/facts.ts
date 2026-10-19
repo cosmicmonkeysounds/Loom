@@ -338,6 +338,9 @@ export interface FactsView {
   questions: FactsQuestion[];
   /** Filings with no `final` yet. */
   pending: number;
+  /** The story's `judge:` character (wave 11b), who rules on near misses
+   *  in `auto` mode — set by the runtime; absent when the story names none. */
+  judge?: string;
 }
 
 /** `do fact_filed <personId> <keyId> <confidence> <verdict> <answer…>` → its parts, or null. */

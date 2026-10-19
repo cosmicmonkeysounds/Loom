@@ -320,6 +320,7 @@ describe("the event — the judge character rules on near misses", () => {
     expect(hostsLines(rt)).toEqual(["📝 Ada filed Q2: Mr Pickels. Proposed: accurate.", nearNotice("Ada", { question: "Q2", answer: "Mr Pickels" }, "Mister Pickles", "The Oracle")]);
     expect(hostsLines(rt)[1]).toMatch(/^⚠ Near miss, not an exact match: .* — asked The Oracle to rule\./u);
     const view = await modView(rt);
+    expect(view.facts!.judge).toBe("The Oracle");
     expect(filingOf(view.facts!, "Q2", "Ada")).toMatchObject({ final: null, asking: true, near: { key: "Mister Pickles" } });
     expect(view.cast.find((c) => c.id === "The Oracle")?.agentQueue).toMatchObject({ depth: 0 });
     // Exact hits and clear misses are never put to the judge.
@@ -451,6 +452,7 @@ describe("the event — the judge character rules on near misses", () => {
       await file(rt, ada, "Q2", "Mr Pickels", 100);
       for (let i = 0; i < 3; i++) rt.tickOnce(1000);
       expect(w.judges()).toEqual([]);
+      if (source !== SOURCE) expect((await facts(rt)).judge).toBeUndefined();
       rt.dispose();
     }
   });

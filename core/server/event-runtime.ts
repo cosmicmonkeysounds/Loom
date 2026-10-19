@@ -1401,7 +1401,8 @@ export class EventRuntime {
   private factsView(): FactsView | undefined {
     const book = this.factsBook();
     if (book === null || this.sim === null) return undefined;
-    const view = this.factsWatch.view(this.sim, book);
+    const judge = this.sim.model.judge;
+    const view = judge === null ? this.factsWatch.view(this.sim, book) : { ...this.factsWatch.view(this.sim, book), judge };
     const asking = new Set(this.agents.judging.map((j) => `${j.filing.person}\u0000${j.filing.question}`));
     if (asking.size === 0) return view;
     return {
