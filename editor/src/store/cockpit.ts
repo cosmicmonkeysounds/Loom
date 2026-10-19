@@ -217,6 +217,10 @@ export interface RosterRow {
   /** The director who spawned this persona (display name), null/undefined
    *  for a real guest. Server: `ModPresence.owners`; local: `me`. */
   owner?: string | null
+  /** The guest's last activity (stream open, any authenticated guest
+   *  request), epoch ms — null when never seen. Server only (wave 11 C5);
+   *  absent on the local sim and an older server. */
+  lastSeen?: number | null
 }
 
 export interface CockpitMessage {
@@ -318,6 +322,17 @@ export interface CastSummary {
   held?: boolean
   /** `secret: true` (the Kernel): its values are masked on the Director. */
   secret?: true
+  /** An agent-voiced character's request queue (wave 11 C6): how many
+   *  threads wait, the oldest wait (ms), and whether its worker stalled (a
+   *  head request unanswered > 60 s). Absent on an older server / locally. */
+  agentQueue?: AgentQueue
+}
+
+/** `CastSummary.agentQueue` (or the agent mind summary's), wave 11 C6. */
+export interface AgentQueue {
+  depth: number
+  oldestMs: number | null
+  stalled: boolean
 }
 
 /** One live world-state entry (`g-1a2b.score` → `42`), display-stringed. */
@@ -592,6 +607,11 @@ export interface CockpitState {
    *  local backend has no phones — null, reason in `error`). `revokeOthers`
    *  also signs out the guest's other phones (a lost phone someone found). */
   pairGuest(id: string, opts?: { revokeOthers?: boolean }): Promise<{ url: string; name: string; expiresAt: number } | null>
+  /** Mark a guest as gone home (👋, wave 11 C5) or back: a journaled world
+   *  set of `<id>.gone`, `by` you (`/api/mod/guest/gone` on the server, the
+   *  same world var locally). Resolves true when it landed; a refusal lands
+   *  in `error`. */
+  markGone(id: string, gone: boolean): Promise<boolean>
   /** Release a performer's part (N-10) so they can re-sign on a loaner.
    *  Resolves to how many sessions held it (null on failure / local runs). */
   releasePart(character: string): Promise<number | null>
@@ -718,6 +738,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   stepQuest: noop,
   pairGuest: async () => null,
   releasePart: async () => null,
+  markGone: async () => false,
   walletAct: async () => false,
   minds: [],
   thoughts: [],

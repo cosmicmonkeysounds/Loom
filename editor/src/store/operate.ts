@@ -908,6 +908,19 @@ export const useOperate = create<OperateState>((set, get) => {
         return null
       }
     },
+    // Journaled `<id>.gone` `by` this director (C5); the next snapshot's
+    // world shows it on every console.
+    markGone: async (id, gone) => {
+      const ev = get().event
+      if (!ev) return false
+      try {
+        await modApi.guestGone(ev.id, id, gone)
+        return true
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return false
+      }
+    },
     walletAct: async (action, arg) => {
       const ev = get().event
       if (!ev) return false

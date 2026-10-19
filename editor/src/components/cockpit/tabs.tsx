@@ -29,6 +29,8 @@ import { walletCardTag } from './wallet'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
 import { VarTable } from './VarTable'
+import { isGone, isPersonaRow, seenAgo } from './guests'
+import { useNow } from './director/clock'
 
 /** A page the current identity may not use — you are a participant, not
  *  the director, until you switch back to the Operator. */
@@ -593,6 +595,11 @@ export function RosterTab() {
   // Under a lens: no god-view secrets (true factions), no moderation.
   const locked = useCockpit((s) => s.lens !== null)
   const inspect = useInspect()
+  const world = useCockpit((s) => s.world)
+  const byPath = useMemo(() => new Map(world.map((w) => [w.path, w.value])), [world])
+  // `lastSeen` rides a server's roster rows (wave 11); none on a local run.
+  const tracksSeen = roster.some((r) => r.lastSeen !== undefined)
+  const now = useNow(tracksSeen, 30_000)
 
   const guestMenu = (r: RosterRow, e: React.MouseEvent) => {
     e.preventDefault()
@@ -633,13 +640,14 @@ export function RosterTab() {
             <th className="px-3 py-2">Faction</th>
             <th className="px-3 py-2">Location</th>
             <th className="px-3 py-2">Score</th>
+            {tracksSeen && <th className="px-3 py-2">Seen</th>}
             <th className="px-3 py-2"></th>
           </tr>
         </thead>
         <tbody>
           {roster.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-3 py-4 text-sm text-zinc-600">
+              <td colSpan={tracksSeen ? 6 : 5} className="px-3 py-4 text-sm text-zinc-600">
                 No participants yet.
               </td>
             </tr>
@@ -669,6 +677,16 @@ export function RosterTab() {
                     {r.owner === me ? 'you' : r.owner}
                   </span>
                 )}
+                {!r.owner && isPersonaRow(r, byPath) && (
+                  <span className="ml-1.5 rounded bg-zinc-800 px-1 text-[9px] uppercase tracking-wide text-zinc-400" title="a Run persona, not a real guest">
+                    persona
+                  </span>
+                )}
+                {isGone(byPath, r.id) && (
+                  <span className="ml-1 text-xs text-zinc-400" title="went home">
+                    👋
+                  </span>
+                )}
                 <div className="text-[10px] text-zinc-600">{r.id}</div>
               </td>
               <td className="px-3 py-2">
@@ -676,6 +694,11 @@ export function RosterTab() {
               </td>
               <td className="px-3 py-2 text-zinc-400">{r.location ?? '—'}</td>
               <td className="px-3 py-2 text-zinc-300">{r.score}</td>
+              {tracksSeen && (
+                <td className={clsx('px-3 py-2 text-xs', r.online === true ? 'text-emerald-400' : 'text-zinc-500')} data-testid={`roster-seen-${r.id}`}>
+                  {r.online === true ? 'online' : (seenAgo(r.lastSeen, now)?.replace(/^seen /u, '') ?? '—')}
+                </td>
+              )}
               <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                 {locked ? null : r.captured ? (
                   <button onClick={() => void release(r.id)} className="rounded px-2 py-1 text-xs text-emerald-400 hover:bg-zinc-800">

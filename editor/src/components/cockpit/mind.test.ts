@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, pendingFilings, pickMind, questionFilings, questionTallies, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall } from './mind'
+import { agentQueueOf, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
 
@@ -222,7 +222,7 @@ describe('judging', () => {
       ['Ben', 'Q1', 'lie', 20],
       ['Ada', 'Q1', 'accurate', 30],
     ])
-    expect(pendingFilings(view())[0]).toEqual({ person: 'g2', name: 'Ben', question: 'Q1', answer: 'twelve', confidence: 100, proposed: 'lie', final: null, at: 20 })
+    expect(pendingFilings(view())[0]).toEqual({ person: 'g2', name: 'Ben', question: 'Q1', answer: 'twelve', confidence: 100, proposed: 'lie', final: null, at: 20, near: null })
   })
 
   it('questionTallies: counts per question, a marked final under uncertain, consensus only when every filing is accurate at 100', () => {
@@ -275,9 +275,33 @@ describe('judging', () => {
     // verdict must not read as confirmed after a switch to review).
     expect(questionFilings(view({ ...v, mode: 'auto' }), 'Q1').find((r) => r.name === 'Ada')!.how).toBe('kept')
     expect(questionFilings(view({ ...v, mode: 'review' }), 'Q1').find((r) => r.name === 'Ada')!.how).toBe('kept')
-    expect(questionFilings(v, 'Q1')[0]).toEqual({ person: 'g2', name: 'Ben', answer: 'eleven', confidence: 100, proposed: 'lie', final: 'accurate', how: 'overridden', by: null, at: 10 })
+    expect(questionFilings(v, 'Q1')[0]).toEqual({ person: 'g2', name: 'Ben', answer: 'eleven', confidence: 100, proposed: 'lie', final: 'accurate', how: 'overridden', by: null, at: 10, near: null })
     expect(questionFilings(v, 'nope')).toEqual([])
     expect(questionFilings(view(), 'P1')).toEqual([])
+  })
+
+  it('near misses (wave 11 C6): the key on a pending filing, counted, tagged in both lists', () => {
+    const near = (key: unknown) => ({ near: key }) as unknown as Partial<FactsFiling>
+    const q = [
+      filing({ person: 'g1', name: 'Calculator', question: 'H2', answer: 'Mr Pickels', confidence: 100, verdict: 'lie', at: 1, ...near({ key: 'Mr. Pickles' }) }),
+      filing({ person: 'g2', name: 'VLC', question: 'H2', answer: 'Garfield', verdict: 'lie', at: 2 }),
+      filing({ person: 'g3', name: 'Winamp', question: 'H2', answer: '1,997', verdict: 'uncertain', at: 3, ...near({ key: '' }) }),
+      filing({ person: 'g4', name: 'Excel', question: 'H2', answer: 'pickle', verdict: 'lie', at: 4, ...near('Mr. Pickles') }),
+    ]
+    const v = view({ mode: 'auto', pending: 4, questions: [{ id: 'H2', round: 1, text: 'The cat?', filings: q, tally: tally(q) }] })
+    expect(pendingFilings(v).map((r) => [r.name, r.near])).toEqual([
+      ['Calculator', 'Mr. Pickles'],
+      ['VLC', null],
+      // a blank key or a bare string is not a near miss
+      ['Winamp', null],
+      ['Excel', null],
+    ])
+    expect(nearKeyOf(q[0]!)).toBe('Mr. Pickles')
+    expect(nearCount(v)).toBe(1)
+    // a server's own count wins
+    expect(nearCount({ ...v, near: 3 } as FactsView)).toBe(3)
+    expect(questionFilings(v, 'H2')[0]!.near).toBe('Mr. Pickles')
+    expect(nearCount(view())).toBe(0)
   })
 
   it('confirmEvent: the confirm event per verdict, null without one', () => {
@@ -320,3 +344,24 @@ describe('judging', () => {
     expect(verdictCall(view({ confirm: null }), { person: 'g1', question: 'H2' }, 'lie')).toBeNull()
   })
 })
+
+describe("an agent's queue (wave 11 C6)", () => {
+  const mind = (character: string, agentQueue?: unknown) => ({ character, ...(agentQueue !== undefined ? { agentQueue } : {}) }) as unknown as AgentMindSummary
+
+  it('agentQueueOf: the cast row first, then the mind summary, else null', () => {
+    const q = { depth: 2, oldestMs: 5000, stalled: false }
+    expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true, agentQueue: q }], [])).toEqual(q)
+    expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true }], [mind('Trabolta', { depth: 1, oldestMs: null, stalled: true })])).toEqual({ depth: 1, oldestMs: null, stalled: true })
+    expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true }], [mind('Trabolta')])).toBeNull()
+    expect(agentQueueOf('Trabolta', [], [mind('Trabolta', { depth: 'x' })])).toBeNull()
+  })
+
+  it('queueBadge: empty, waiting, slow past the busy line, stalled', () => {
+    expect(queueBadge({ depth: 0, oldestMs: null, stalled: false })).toMatchObject({ text: 'queue empty', tone: QueueTone.Idle })
+    expect(queueBadge({ depth: 3, oldestMs: 12_000, stalled: false })).toMatchObject({ text: '3 waiting · oldest 0:12', tone: QueueTone.Waiting })
+    expect(queueBadge({ depth: 3, oldestMs: QUEUE_SLOW_MS + 40_000, stalled: false })).toMatchObject({ text: '⚠ 3 waiting · oldest 1:20', tone: QueueTone.Slow })
+    expect(queueBadge({ depth: 4, oldestMs: 95_000, stalled: true })).toMatchObject({ text: '⛔ stalled · 4 waiting · oldest 1:35', tone: QueueTone.Stalled })
+    expect(waitText(61_400)).toBe('1:01')
+  })
+})
+

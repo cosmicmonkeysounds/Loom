@@ -32,6 +32,8 @@ import { GlanceTray } from './director/Glance.tsx'
 import { useGlanceInTray } from './director/tray'
 import { useDirectorMode } from './director/director-mode'
 import { DirectorMode } from './director/director-keys'
+import { useNow } from './director/clock'
+import { isGone, isPersonaRow, seenAgo } from './guests'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -405,6 +407,9 @@ function GuestInspector({ id }: { id: string }) {
   const say = useCockpit((s) => s.say)
   const setPerspective = useCockpit((s) => s.setPerspective)
   const setTab = useCockpit((s) => s.setTab)
+  const world = useCockpit((s) => s.world)
+  const markGone = useCockpit((s) => s.markGone)
+  const now = useNow(row?.lastSeen !== undefined, 30_000)
 
   const [score, setScore] = useState('')
   const [scoreSeen, setScoreSeen] = useState<number | null>(null)
@@ -443,6 +448,10 @@ function GuestInspector({ id }: { id: string }) {
     await setStat(id, 'restricted', next)
   }
 
+  const gone = isGone(world, id)
+  const persona = isPersonaRow(row, world)
+  const seen = row.online === true ? 'online now' : seenAgo(row.lastSeen, now)
+
   const commitScore = () => {
     setEditing(false)
     setScoreSeen(row.score)
@@ -465,10 +474,20 @@ function GuestInspector({ id }: { id: string }) {
     <div className="h-full overflow-auto">
       <div className="border-b border-zinc-800 px-3 py-2">
         <div className="text-[10px] uppercase tracking-widest text-zinc-500">
-          {row.owner ? (row.owner === me ? 'Your persona' : `${row.owner}'s persona`) : 'Guest'}
+          {row.owner ? (row.owner === me ? 'Your persona' : `${row.owner}'s persona`) : persona ? 'Persona' : 'Guest'}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-zinc-100">{row.name}</span>
+          {persona && (
+            <span className="rounded bg-violet-500/20 px-1 text-[9px] uppercase tracking-wide text-violet-300" title="A Run persona, not a real guest" data-testid="inspector-persona">
+              persona
+            </span>
+          )}
+          {gone && (
+            <span className="text-xs text-zinc-400" title="A director marked them gone home" data-testid="inspector-gone">
+              👋 went home
+            </span>
+          )}
           {row.captured && <span className="text-xs text-red-400">🔒 captured</span>}
           {row.restricted && <span className="text-xs text-red-400" title="restricted">⛔ restricted</span>}
           <button
@@ -493,7 +512,15 @@ function GuestInspector({ id }: { id: string }) {
             </button>
           )}
         </div>
-        <div className="text-[10px] text-zinc-600">{row.id}</div>
+        <div className="text-[10px] text-zinc-600">
+          {row.id}
+          {seen !== null && (
+            <span className={row.online === true ? 'text-emerald-500' : undefined} title={typeof row.lastSeen === 'number' ? new Date(row.lastSeen).toLocaleTimeString() : undefined} data-testid="inspector-seen">
+              {' · '}
+              {seen}
+            </span>
+          )}
+        </div>
         {server && !row.owner && (
           <div className="mt-1 flex flex-wrap">
             <RePair id={id} name={row.name} />
@@ -595,6 +622,21 @@ function GuestInspector({ id }: { id: string }) {
             data-testid={`inspector-mark-${id}`}
           >
             {row.restricted ? 'Unrestrict' : 'Restrict'}
+          </button>
+        </Field>
+
+        <Field label="Went home">
+          <button
+            onClick={() => void markGone(id, !gone)}
+            className={
+              gone
+                ? 'rounded bg-emerald-700/40 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-700/60'
+                : 'rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-700'
+            }
+            title={gone ? `${row.name} is back: count them again` : `${row.name} went home: the story can leave them out of its counts (a majority)`}
+            data-testid={`inspector-gone-${id}`}
+          >
+            {gone ? 'Back' : '👋 Went home'}
           </button>
         </Field>
       </fieldset>
