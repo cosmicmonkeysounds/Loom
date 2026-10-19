@@ -24,7 +24,7 @@ Thumbsticks, plus one button for the King:
 | `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; terminal screens; room labels. The Web-1.0 look is built from procedural textures. |
 | `house/house.json` | The show's map. It is a copy, so do not edit it here; see below. |
 | `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
-| `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, failures never retried; PNG / JPEG / WebP / SVG by magic bytes, drawn as a Win98-bevelled tile. |
+| `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
 | `net/config.gd` | Station configuration and its precedence. |
 | `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), and the comfort vignette. |
 | `game/` | The state machine (`game_flow.gd`, `game.gd`), the lobby and its picker, the duck, the chevron trail, ghosts of other players, and the HUD. |
@@ -219,7 +219,11 @@ with `released: true` while you walk to Gerald.
   reinstallation visit (the server's 409 `already hit` counts too). At 0 he
   kneels for everyone: his collider and the door leaf go, the trail routes
   through the door, and the HUD says "He is down: the cold door is open."
-  A director's restore stands him up and shuts the door again. The chess
+  A director's restore stands him up and shuts the door again — but not on
+  a player behind it, in the doorway or on his spot: for them it stays open
+  (his collider and the leaf off, the trail through it) until they are
+  clear (the web game's `keepDoorOpen`, `HouseKing.keep_door_open`). A
+  remap while crossing a fallen King's spot keeps them there. The chess
   itself is at the real door's terminal; nothing here plays it. A server
   with no shared King (an older release) shows no bar and takes no hit.
 - **Ghosts wear the guest's profile picture** as a head (the event's
@@ -250,11 +254,13 @@ scene, then runs `test/game.gd` headless with `--offline`:
   `king` frames and the map answer, and the hit (pose flushed first, every
   answer, one claim at a time, offline)
 - the King's reach, his door's gap and the fallen map; the picture decoder
-  (tiny PNG / JPEG / WebP / SVG drawn in the test, GIF / AVIF refused)
+  (tiny PNG / JPEG / WebP / SVG drawn in the test, a 40000 px SVG rendered
+  once near 256 px, GIF / AVIF refused)
 - the game's state machine with a fake link, incl. the King (bar, notice,
   hit once per visit, the fall for everyone — the body walks through his
-  door — and the restore) and ghosts' pictures (two at a time, cached,
-  failures never retried, `avatar` frames)
+  door — and the restore, held open for a player behind it until they
+  walk out) and ghosts' pictures (two at a time, cached, a failure retried
+  once on the next visit, `avatar` frames)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once
