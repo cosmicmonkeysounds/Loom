@@ -234,8 +234,9 @@ house map's `server-room` spot is on the room's south wall, facing in
   ends — the 30 s leash, DISCONNECT, an overlay, a restart, or the page
   going away. Best-effort: a lost signal never holds up the line. The
   story uses them for `program.at_the_heart`, which makes Trabolta candid
-  with that program from the Y2K hour and is the only place he can offer
-  to stand down (🕊 in `# hosts`; Help → *Running the server room*). A
+  with that program whenever he is awake, and is the only place he can
+  offer to stand down, from the Y2K hour (🕊 in `# hosts`; Help →
+  *Running the server room*). A
   visit a crash or reload left open is closed on the tablet's next boot,
   and a close the Wi-Fi lost is sent again before the next line opens
   (or on the next boot). The next pass scanned at the server-room
@@ -249,13 +250,73 @@ house map's `server-room` spot is on the room's south wall, facing in
   row with a room on any **other** spot is amber: a tablet that was the
   TV once keeps `room=The Desktop` when its view changes, then sleeps on
   attract and speaks The Desktop's lines. Clear its room in ⚙.
+- **📎 GIVE HIM A FILE** (any room terminal): while a pass is open, the
+  line has a file panel — the guest's own codex entries, each with
+  **Give** (the same share as their phone's), a **TYPE A CODE** box and
+  **SCAN A FILE'S QR** to unlock a new entry there and give it. A file he
+  always refuses shows why in place of Give: *A SECRET FILE: HE WON'T
+  TAKE IT* (the digit notes, *The Door Code*, *The Cold Door*) or
+  *ABOUT X: HE WON'T TAKE IT*. The panel's camera stops after each QR it
+  redeems: tap SCAN A FILE'S QR again for the next one; a code it already
+  unlocked is offered again, never redeemed twice. With the panel open
+  the leash is **120 s** instead of 30, with *STILL THERE?* for the last
+  20 s; it is never held, so a guest who walks off is still disconnected.
 - Volume: loud enough to be heard over the server rack's fans from the
   doorway; the cutscene is spoken here, nowhere else.
 
 Install-day check: before the doors, the terminal is on the screensaver
 with the server running (Run → Terminals shows it green, with
-`room The Server Room` on its row). Fire 🚪 `server_door_opened` from the cue sheet on a
-rehearsal after the Y2K hour: it wakes and speaks the opener; scan a test
-pass, type, wait out the leash, and check the Log for `terminal opened`
-then `terminal closed` by *Terminal · Server Room*.
+`room The Server Room` on its row). On a rehearsal after 🤖 (Trabolta
+awake), fire 🚪 `server_door_opened` from the cue sheet: it wakes and
+speaks the opener; scan a test pass, type, open 📎 and give a file, wait
+out the leash, and check the Log for `terminal opened` then `terminal
+closed` by *Terminal · Server Room*.
+
+## The Server Door terminal — the King's chess
+
+One tablet hangs on the basement hall wall **outside** the server-room
+door, by the keypad (wave 11). It is **the King**: the only place in the
+house he is played at chess. The map's `server-room-door` spot (name
+*Server Door*, room `basement-hall`, on both variants). Provision it with
+one link:
+
+```
+/terminal/?code=<mod passcode>&name=Server Door&spot=server-room-door&view=chess
+```
+
+- **`view=chess`** needs no `character` and ignores `room`. It is
+  **awake all night**: no screensaver, whatever Trabolta is doing.
+- The attract screen is THE KING, his one shared health bar (*n / 15*,
+  *HE KNEELS* at 0; off the screen state's `king`), the stakes line
+  (*Checkmate him and the server-room door code goes to your Codex.*,
+  or *No prize now.* after truth.txt or an ending) and the scanner with
+  the typed-name fallback. **No hints, no tips, no strength line**: the
+  bar is all a guest sees of how strong he is.
+- **One game per pass scan.** A marked program is refused (*⛔ Marked
+  programs can't challenge the King.*); an unknown pass says to register
+  first. The board is dealt at the bar's strength **when it is dealt**
+  (full = grandmaster … 0 = pawns only); a hit landing mid-game changes
+  the next board, not this one. **GIVE UP** takes two taps.
+- The leash is **120 s** with no touch (held while he thinks), *STILL
+  THERE?* for the last 20 s; it abandons the game silently, like Give
+  up: nothing reaches the story.
+- A game's end posts `chess won` / `chess lost` / `chess drawn` for that
+  program, labelled *Terminal · Server Door* in the Log (retried for a
+  few seconds; kept across a reload for 60 s). A win that never landed
+  says *The win didn't reach the house: tell a host (♟).* — the host
+  who saw it presses ♟ on the winner's card.
+- Overlays (the blackout, the alarm) cover the board and hold the game;
+  no story slides, no countdown corner, no Y2K clock. The poll is its
+  heartbeat on Run → Terminals, like any terminal's.
+- The chess is a lazy chunk (~60 kB), preloaded at boot on this tablet
+  only. It thinks in short slices, so taps stay live on the oldest
+  tablets; a grandmaster move takes a couple of seconds.
+- Volume: it never speaks. Brightness up: guests stand to play.
+
+Install-day check: Run → Terminals shows *Server Door* green. On a
+rehearsal, scan a test pass, play to a mate (knock him to 0 first on
+the tent tablet, or Run → House map **Set…** 0, then **👑 Restore**
+after), and check `# hosts` for *♟ … beat the King* and the Log for
+`chess won` by *Terminal · Server Door*. Put him back to 15/15 before
+the doors.
 
