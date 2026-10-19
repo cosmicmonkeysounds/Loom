@@ -520,6 +520,7 @@ def test_rewrite_is_one_voice_call_on_p1_scrubbed_and_by_director(tmp_path):
     assert messages[0] == {"role": "system", "content": "THE STATIC P1"} and messages[1]["content"].startswith("=== REWRITE THE BRIEF ===")
     assert model.model == agents.models["Trabolta"].model  # the voice model
     assert "Phase: hunt_1. Your stage: hungry." in messages[2]["content"] and "- be warmer" in messages[2]["content"]
+    assert messages[-1] == {"role": "system", "content": story_mind.REWRITE_CLOSE}
     assert mind.brief == "You want facts.\nDo not grant favours." and mind.brief_by == "director" and mind.director == []
     assert mind.revisions[-1]["by"] == "director"
     brief = [t for t in agents.mod.thoughts() if t["kind"] == "brief"][0]
@@ -667,6 +668,8 @@ def test_a_quiet_conversation_is_condensed_once_on_the_voice_model(tmp_path):
     assert d.summary.startswith("A careful program") and len(calls) == 1
     messages, model = calls[0]
     assert messages[0]["content"] == "P1" and "- memo 0" in messages[2]["content"] and model.model == agents.models["Trabolta"].model
+    # The last word after the digest: a note to himself, not a reply (K-04).
+    assert messages[-1] == {"role": "system", "content": story_mind.SUMMARY_CLOSE}
     thought = [t for t in agents.mod.thoughts() if t["kind"] == "summary"][0]
     assert thought["trigger"] == "quiet" and thought["speaker"]["id"] == "g-1"
     assert agents.minds["Trabolta"].revisions[-1]["by"] == "story"  # no revision for a summary
@@ -798,6 +801,26 @@ def test_a_summary_naming_an_answer_word_or_a_secret_is_dropped():
     assert story_mind.parse_summary(p, "Brought me something about the velvet lighthouse.") == "Brought me something about the velvet lighthouse."
     long = story_mind.parse_summary(p, "word " * 200)
     assert len(long) <= 400 and long.endswith("…")
+
+
+def test_a_reply_shaped_answer_is_no_summary_and_no_brief():
+    """K-04 returning-guest: P1 ends on the voice's JSON format, and the
+    summary came back as a line to the guest. It was kept as the summary,
+    JSON and all; now it is dropped (the thought says so)."""
+    from stagehand.agents.persona import parse_persona
+
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "t.mind.md").write_text(MIND, encoding="utf-8")
+        p = parse_persona(PERSONA, str(Path(tmp) / "t.persona.md"))
+    reply = json.dumps({"say": "Acknowledged. Have a safe stay.", "adjust": {"truth": 0}, "memo": "polite"})
+    assert story_mind.parse_summary(p, reply) == ""
+    assert story_mind.parse_summary(p, "```json\n" + reply + "\n```") == ""
+    assert story_mind.parse_summary(p, json.dumps({"summary": "A polite newcomer."})) == "A polite newcomer."
+    assert story_mind.parse_brief(reply) == []
+    assert story_mind.parse_brief(json.dumps({"brief": "You want facts.\nAsk them."})) == ["You want facts.", "Ask them."]
 
 
 def test_a_request_preempts_a_running_summary(tmp_path):

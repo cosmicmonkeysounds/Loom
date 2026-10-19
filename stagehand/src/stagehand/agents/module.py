@@ -1134,7 +1134,7 @@ class Agents:
         text = story_mind.parse_summary(persona, completion.content)
         thought = new_thought(character, "summary", trigger="quiet", model=model, messages=messages, completion=completion, request=speaker, result={"summary": text or None}, note=note)
         if not text:
-            thought.error = "the summary was dropped (empty, or it carried a secret or an answer word)"
+            thought.error = "the summary was dropped (empty, a reply instead of a summary, or it carried a secret or an answer word)"
             await self.trace.record(thought)
             return
         d.summary = text

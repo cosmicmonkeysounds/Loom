@@ -473,6 +473,14 @@ say whether anything they told you is true or false. Reply with the
 sentences only: no JSON, no heading."""
 
 
+#: The last message of a summary / rewrite call. Both reuse P1 for the
+#: cache, and P1 ends on the voice's JSON reply format: without a closing
+#: word after the digest gpt-oss answers the guest instead (K-04: the
+#: returning-guest summary came back as {"say": …, "adjust": …, "memo": …}).
+SUMMARY_CLOSE = "Now write what you make of them, as plain sentences. This is a note to yourself, not a reply to anyone: not the JSON reply format, no \"say\"."
+REWRITE_CLOSE = "Now write the brief, as plain lines. This is a note to yourself, not a reply to anyone: not the JSON reply format, no \"say\"."
+
+
 def rewrite_digest(persona: Persona, mind: Mind, view: PhaseView, digest: str | None) -> str:
     lines = [f"Phase: {view.phase or '—'}. Your stage: {view.stage or '—'}. Favours: {view.favours}."]
     if view.live_powers is None:
@@ -498,7 +506,7 @@ def rewrite_digest(persona: Persona, mind: Mind, view: PhaseView, digest: str | 
 
 
 def rewrite_messages(p1: str, digest: str) -> list[dict[str, str]]:
-    return [{"role": "system", "content": p1}, {"role": "system", "content": REWRITE_HEAD}, {"role": "user", "content": digest}]
+    return [{"role": "system", "content": p1}, {"role": "system", "content": REWRITE_HEAD}, {"role": "user", "content": digest}, {"role": "system", "content": REWRITE_CLOSE}]
 
 
 def _plain(raw: str, key: str) -> str:
@@ -509,8 +517,10 @@ def _plain(raw: str, key: str) -> str:
             doc = json.loads(fence)
         except json.JSONDecodeError:
             doc = None
-        if isinstance(doc, dict) and isinstance(doc.get(key), str):
-            return doc[key]
+        if isinstance(doc, dict):
+            # A JSON object without the key is the voice's reply format (a
+            # line to a guest), never a brief or a summary: nothing usable.
+            return doc[key] if isinstance(doc.get(key), str) else ""
     return fence
 
 
@@ -545,7 +555,7 @@ def summary_messages(p1: str, persona: Persona, d: Dossier, history: list[dict[s
     if history:
         parts.append("Your last lines together:")
         parts.extend(f"{persona.character if h.get('mine') else d.name}: {one_line(h.get('text', ''), 300)}" for h in history)
-    return [{"role": "system", "content": p1}, {"role": "system", "content": SUMMARY_HEAD}, {"role": "user", "content": "\n".join(parts)}]
+    return [{"role": "system", "content": p1}, {"role": "system", "content": SUMMARY_HEAD}, {"role": "user", "content": "\n".join(parts)}, {"role": "system", "content": SUMMARY_CLOSE}]
 
 
 def parse_summary(persona: Persona, raw: str) -> str:
