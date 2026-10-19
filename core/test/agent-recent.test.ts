@@ -701,7 +701,7 @@ function neverWords(): string[] {
 const hasPhrase = (text: string, phrase: string): boolean => ` ${fold(text)} `.includes(` ${phrase} `);
 
 describe("on the show: recent and the history never carry a secret (C1.6)", () => {
-  it("no secret codex title, no hunt-answer card, nothing from the Kernel, no verdict in a filing, no answer in a house line, from his introduction to the bob", { timeout: SLOW }, async () => {
+  it("no secret codex title, no hunt-answer card, nothing from the Kernel, no verdict in a filing, no answer in a house line, from his introduction to the bob and his recount", { timeout: SLOW }, async () => {
     const d = mkdtempSync(join(tmpdir(), "loom-recent-show-"));
     dirs.push(d);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: SHOW_CODES, scenarioName: SHOW, scenarioSource: SHOW_SRC, facts: FACTS_TEXT, joinBase: () => "http://localhost" });
@@ -773,6 +773,10 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     for (const g of guests.slice(0, 3)) for (const q of ["H4", "H5", "H6"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
     expect((await file(calc, "H4", keyOf("H4"))).status).toBe(200);
     await call(rt, "POST", "/api/guest/codex/redeem", { code: "TRABOLTA-4EVER" }, { token: calc.token });
+    // Winamp brings a virus back and plants it: the Kernel names the planter.
+    expect((await call(rt, "POST", "/api/mod/codex", { who: amp.id, entry: "ILOVEYOU" }, { moderator: true })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/act", { name: "plant_the_virus" }, { token: amp.token })).status).toBe(200);
+    expect(sim().world.peek("Kernel.virus_planter")).toMatchObject({ value: amp.name });
     await offerAll();
     await askAll();
     for (const n of TO_Y2K.slice(13, 19)) await mod(n); // → the Trust Chart and the rankings
@@ -790,15 +794,41 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
     await mod("bobbing_for_truth");
     expect(sim().world.peek("Night.phase")).toMatchObject({ value: "bobbing" });
     await askAll(); // the bob: the verdict is not read yet
+    const beforeRecount = requests().length;
+    // His recount, said to the whole house, names the planter (a Kernel value).
+    expect((await call(rt, "POST", "/api/mod/beat", { name: "Trabolta Recounts" }, { moderator: true })).status).toBe(200);
+    const virusLine = rt.chatHistoryFor(calc.id).find((m) => m.from === "Trabolta" && m.audience === "all" && hasPhrase(m.text, fold(amp.name)) && /planted a virus/u.test(m.text));
+    expect(virusLine, "the recount's virus line").toBeDefined();
+    // The runtime's own rule (a secret: true character's string values,
+    // the participants' names) drops it; the newest two of his recount
+    // reach the requests below, and none may name the planter.
+    expect(sim().model.characters.get("Kernel")?.secret).toBe(true);
+    const kernelStrings = sim()
+      .world.entries()
+      .flatMap(([path, v]) => (path.startsWith("Kernel.") && v.kind === "string" ? [v.value] : []));
+    expect(secretMentions(kernelStrings, [...sim().persons.values()].map((p) => p.name))(virusLine!.text)).toBe(true);
+    await askAll();
+    expect(requests().length).toBeGreaterThan(beforeRecount);
 
     // ── the checks, over every request the worker saw ──
     const all = requests();
     expect(all.length).toBeGreaterThan(20);
     const secretTitles = [...sim().model.codex.values()].filter((e) => e.secret).flatMap((e) => [e.id, e.title]).map(fold);
-    const kernel = sim()
-      .worldEntries()
-      .filter((w) => /^Kernel\.(?:combo_a|combo_b|door_code|anti_ai)$/u.test(w.path) && w.value !== "none" && w.value !== "")
-      .map((w) => fold(w.value));
+    // Every Kernel string value (verdicts, combos, facts.json door.code,
+    // the said / answer logs, the planter …) of four letters or more,
+    // except a participant's display name (a guest's own name is in their
+    // thread anyway; the planter's is checked on its own below).
+    const names = new Set([...sim().persons.values()].map((p) => fold(p.name)));
+    const kernel = [
+      ...new Set(
+        sim()
+          .world.entries()
+          .flatMap(([path, v]) => (path.startsWith("Kernel.") && v.kind === "string" ? [fold(v.value)] : []))
+          .filter((v) => v.length >= 4 && v !== "none" && !names.has(v)),
+      ),
+    ];
+    expect(kernel.length, "Kernel values to look for").toBeGreaterThan(3);
+    const planter = fold(amp.name);
     const doorCode = fold(String(FACTS.door?.code ?? ""));
     const never = neverWords();
     expect(never.length).toBeGreaterThan(0);
@@ -834,7 +864,11 @@ describe("on the show: recent and the history never carry a secret (C1.6)", () =
           expect(Object.keys(item).sort(), at).toEqual(["kind", "question"]);
           expect(questionIds.has(item.question), `${at}: ${item.question}`).toBe(true);
         }
-        if (item.kind === "house") scanAnswers(`${at} recent house`, item.text);
+        if (item.kind === "house") {
+          scanAnswers(`${at} recent house`, item.text);
+          // The planter is a Kernel value: no house line naming them reaches him.
+          if (hasPhrase(item.text, planter)) leaks.push(`${at} recent house: names the virus planter`);
+        }
         if (item.kind === "gift") {
           scanTitle(`${at} recent gift`, item.title);
           scanAnswers(`${at} recent gift`, item.title);
