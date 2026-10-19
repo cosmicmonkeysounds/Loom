@@ -15,7 +15,7 @@ import httpx
 import pytest
 
 from stagehand.agents.cards import PersonCard, PhaseView, Said, VoiceContext, VoiceOptions
-from stagehand.agents.llm import Completion, LlmConfig, LlmError, complete
+from stagehand.agents.llm import Completion, LlmConfig, LlmError, LlmTruncated, complete
 from stagehand.agents.persona import Persona, load_persona, parse_persona
 from stagehand.agents.prompt import build_messages
 from stagehand.agents.secrets import Secrets
@@ -787,3 +787,59 @@ def test_the_shipped_persona_keeps_stand_down_out_of_p2_on_the_final_reveal():
     ctx = context(phase=replace(context().phase, phase="bobbing", live_powers=("assess", "stand_down"), tell=()))
     req = request(powers=powers, world={"Night.phase": "bobbing", "Night.step": "16", "Night.lj_reader": "none"})
     assert "Live powers now: assess" in render_p2(shipped, req, ctx) and "stand_down" not in render_p2(shipped, req, ctx)
+
+
+# -- the warm head (K-04: the prompt cache under gpt-oss's sliding window) ---------------
+
+
+OLLAMA = LlmConfig(model="fake", max_tokens=100, api="ollama")
+
+
+class Cut(Model):
+    """The one-token warm call is cut short, as on the real server."""
+
+    async def __call__(self, messages, cfg):
+        if cfg.max_tokens == 1:
+            self.calls.append(messages)
+            raise LlmTruncated("fake hit num_predict=1 before answering")
+        return await super().__call__(messages, cfg)
+
+
+def test_the_warm_head_sends_p1_and_p2_alone_before_the_line():
+    model = Cut(say("Bring me the printer story."))
+    trace = Trace()
+    reply = run(answer_lean(P, OLLAMA, request(), context(), model, trace=trace))
+    assert reply.say == "Bring me the printer story."
+    warm, line = model.calls
+    assert warm == line[:2]  # exactly the shared head: P1 + P2
+    assert line[0]["content"].startswith("You are TRABOLTA") and line[1]["content"].startswith("=== THE NIGHT NOW")
+    thought = trace.all("Trabolta")[0]
+    assert "warm head" in thought.note and thought.messages == line  # the warm call is no thought of its own
+    assert len(trace.all("Trabolta")) == 1
+
+
+def test_no_warm_head_before_the_retry_and_the_retry_is_still_the_first_call_plus_one():
+    old = "I will continue to listen and record your truths, program."
+    model = Cut(say(old), say("Say it again, slower."))
+    reply = run(answer_lean(P, OLLAMA, request(), context(said=Said(to_them=(old,))), model, trace=Trace()))
+    assert reply.say == "Say it again, slower."
+    warm, first, retry = model.calls
+    assert warm == first[:2] and retry[:-1] == first
+
+
+def test_the_warm_head_is_off_by_switch_on_the_openai_dialect_and_in_the_classic_layout():
+    for cfg, opts in ((OLLAMA, VoiceOptions(warm_head=False)), (MODEL, VoiceOptions()), (OLLAMA, VoiceOptions(layout="classic"))):
+        model = Cut(say("Bring me the printer story."))
+        run(answer_lean(P, cfg, request(), context(options=opts), model, trace=Trace()))
+        assert len(model.calls) == 1, (cfg.api, opts)
+
+
+def test_a_failed_warm_head_never_stops_the_line():
+    class Down(Model):
+        async def __call__(self, messages, cfg):
+            if cfg.max_tokens == 1:
+                raise RuntimeError("connection reset")
+            return await super().__call__(messages, cfg)
+
+    reply = run(answer_lean(P, OLLAMA, request(), context(), Down(say("Speak.")), trace=Trace()))
+    assert reply.say == "Speak."

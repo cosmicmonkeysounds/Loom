@@ -663,7 +663,7 @@ def test_offline_classic_resends_each_recorded_prompt_once(monkeypatch: pytest.M
     monkeypatch.setattr(drive, "wait_for_rig", lambda *a, **k: None)
     sent = []
 
-    async def chat(messages):
+    async def chat(messages, cfg=None):
         sent.append(messages)
         return '{"say": "Your request has been logged."}', {"ms": 4000, "prompt_tokens": 3000, "prompt_ms": 900.0, "eval_count": 40, "thinking": "", "finish": "stop"}
 
@@ -683,14 +683,14 @@ def test_offline_new_needs_the_lean_voice(monkeypatch: pytest.MonkeyPatch, tmp_p
     monkeypatch.setitem(sys.modules, "stagehand.agents.voice", None)
     monkeypatch.delattr(agents_pkg, "voice", raising=False)
 
-    async def no_model(messages):  # never the real model from a unit test
+    async def no_model(messages, cfg=None):  # never the real model from a unit test
         raise AssertionError("offline reached the model")
 
     with pytest.raises(drive.HarnessError, match="needs lean-voice"):
         drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=no_model)
 
 
-def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list) -> None:
+def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list, warm: bool = False) -> None:
     """Stand-ins for W1's `cards` + `voice`, whose `answer_lean` applies the
     persona's `when:` gate exactly as `module.answer` does (C3.6)."""
     cards = types.ModuleType("stagehand.agents.cards")
@@ -726,11 +726,16 @@ def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list) -> None:
         if persona.when is not None and not persona.when.evaluate(gate_context(req)):
             return Reply(say=persona.unavailable)
         seen.append((req, ctx))
+        if warm:
+            import dataclasses
+
+            await complete_fn([{"role": "system", "content": "head"}], dataclasses.replace(model, max_tokens=voice.WARM_TOKENS))
         await complete_fn([{"role": "user", "content": req["text"]}], model)
         await complete_fn([{"role": "user", "content": "retry"}], model)
         return Reply(say=f"new words {len(seen)}")
 
     voice.answer_lean = answer_lean
+    voice.WARM_TOKENS = 1
     import stagehand.agents as agents_pkg
 
     monkeypatch.setitem(sys.modules, "stagehand.agents.cards", cards)
@@ -743,7 +748,7 @@ def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list) -> None:
     monkeypatch.setattr(drive, "wait_for_rig", lambda *a, **k: None)
 
 
-async def _chat_2500(messages):
+async def _chat_2500(messages, cfg=None):
     return "{}", {"ms": 2500, "prompt_tokens": 1200, "prompt_ms": 150.0, "eval_count": 30, "thinking": "", "finish": "stop"}
 
 
@@ -761,6 +766,23 @@ def test_offline_new_builds_a_voice_context_per_line_and_times_every_call(monkey
     assert [r["ms"] for r in recs] == [5000, 5000] and all(r["calls"] == 2 and r["gated"] is False for r in recs)
     rep = json.loads((run / "report.json").read_text())
     assert rep["bars"][0]["pass"] is True and rep["extras"]["no_call_lines"] == 0
+
+
+def test_offline_new_counts_a_warm_head_call_in_the_lines_ms_but_not_its_prompt_numbers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    seen: list = []
+    _fake_lean_voice(monkeypatch, seen, warm=True)
+    budgets: list = []
+
+    async def chat(messages, cfg=None):
+        budgets.append((cfg or {}).get("max_tokens"))
+        if (cfg or {}).get("max_tokens") == 1:
+            return "", {"ms": 100, "prompt_tokens": 3000, "prompt_ms": 50.0, "eval_count": 1, "thinking": "", "finish": "length"}
+        return await _chat_2500(messages)
+
+    run = drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=chat)
+    assert budgets[:3] == [1, drive.HOUSE_LLM["max_tokens"], drive.HOUSE_LLM["max_tokens"]]
+    recs = json.loads((run / "offline.json").read_text())["records"]
+    assert [(r["calls"], r["warm_calls"], r["ms"], r["prompt_ms"]) for r in recs] == [(2, 1, 5100, 150.0)] * 2
 
 
 def test_offline_new_with_the_gate_shut_makes_no_call_and_scores_n_a(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

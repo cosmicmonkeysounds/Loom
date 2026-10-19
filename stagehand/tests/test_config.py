@@ -56,6 +56,7 @@ def test_example_agents_config_loads():
     # The example shows the new mind with every wave 12 key at its default.
     assert agents.cfg.mind_mode == "new" and agents.cfg.orchestrator.enabled is False
     assert (agents.cfg.voice.memo, agents.cfg.voice.repeat_guard, agents.cfg.voice.dossier_on_close, agents.cfg.voice.layout) == (True, True, True, "lean")
+    assert agents.cfg.voice.warm_head is True
     assert (agents.cfg.mind.stage_from_phase, agents.cfg.mind.phase_poll_s) == (True, 30.0)
 
 
@@ -73,6 +74,8 @@ def test_mind_mode_is_classic_when_absent_and_the_new_keys_default_on(tmp_path):
     assert new.new_mind
     assert (new.voice.memo, new.voice.repeat_guard, new.voice.dossier_on_close, new.voice.layout) == (False, False, True, "classic")
     assert (new.mind.stage_from_phase, new.mind.phase_poll_s) == (False, 0.0)
+    assert new.voice.warm_head is True and cfg.voice.warm_head is True
+    assert _agents(tmp_path, mind_mode="new", voice={"warm_head": "off"}).voice.warm_head is False
 
 
 @pytest.mark.parametrize(

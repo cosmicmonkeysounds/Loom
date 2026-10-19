@@ -1136,10 +1136,13 @@ def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int
                 say(f"  the persona's gate is shut for {s['as']}'s line: no model call (the score reads n/a)")
             key = s["as"]
             timings: list[dict[str, Any]] = []
+            warms: list[dict[str, Any]] = []
 
-            async def complete_fn(messages: list[dict[str, str]], cfg: Any, timings: list[dict[str, Any]] = timings) -> Any:
-                content, timing = await chat(messages)
-                timings.append(timing)
+            async def complete_fn(messages: list[dict[str, str]], cfg: Any, timings: list[dict[str, Any]] = timings, warms: list[dict[str, Any]] = warms) -> Any:
+                # The lean voice's warm head is a one-token call: its time counts
+                # in the line's ms, never as the line's prompt numbers.
+                content, timing = await chat(messages, {"max_tokens": cfg.max_tokens})
+                (warms if cfg.max_tokens == getattr(voice, "WARM_TOKENS", None) else timings).append(timing)
                 extra = {"prompt_ms": timing["prompt_ms"]} if "prompt_ms" in Completion.__dataclass_fields__ else {}
                 return Completion(content=content, thinking=timing["thinking"], finish=timing["finish"], prompt_tokens=timing["prompt_tokens"], completion_tokens=timing["eval_count"], ms=timing["ms"], **extra)
 
@@ -1159,8 +1162,9 @@ def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int
                     "thread": f"dm:{CHARACTER}|{req['speaker']['id']}",
                     "say": redactor.redact(reply.say),
                     "calls": len(timings),
+                    "warm_calls": len(warms),
                     "gated": gated,
-                    "ms": sum(t["ms"] for t in timings),
+                    "ms": sum(t["ms"] for t in timings) + sum(t["ms"] for t in warms),
                     "prompt_tokens": timings[0]["prompt_tokens"] if timings else None,
                     "prompt_ms": timings[0]["prompt_ms"] if timings else None,
                 }

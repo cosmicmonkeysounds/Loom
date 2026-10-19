@@ -499,6 +499,31 @@ async def _complete_with_room(complete_fn: CompleteFn, messages: list[dict[str, 
     return Completion.of(await complete_fn(messages, roomy)), note
 
 
+#: The warm head's budget: one token (the call exists for its prompt).
+WARM_TOKENS = 1
+
+
+async def warm_head(complete_fn: CompleteFn, messages: list[dict[str, str]], model: LlmConfig, who: str) -> int:
+    """Send P1 + P2 alone (one token), so the model server holds a cache
+    checkpoint at the end of the head every guest's prompt shares; returns
+    the wall ms.
+
+    K-04: gpt-oss uses sliding-window attention, and Ollama's llama.cpp can
+    only restore a cached prefix from a checkpoint, which it takes near the
+    end of each prompt (about the last 512 tokens). A voice prompt changes
+    near the top of P3 (his variables, the guest), well over 512 tokens from
+    its end, so every call re-read all ~4.5 k tokens (~5 s). With the head
+    warmed first (~50 ms once cached) the call reads only P3 and the thread
+    (~1.8 s). Never fatal: the call that follows is the same either way."""
+    started = time.monotonic()
+    try:
+        await complete_fn(messages[:2], replace(model, max_tokens=WARM_TOKENS))
+    except Exception as err:  # noqa: BLE001 — a one-token call is cut short by design
+        if not isinstance(err, LlmError):
+            log.debug("%s: the warm head call failed (%s)", who, err)
+    return int((time.monotonic() - started) * 1000)
+
+
 def _result(reply: Reply | None) -> dict[str, Any] | None:
     if reply is None:
         return None
@@ -594,10 +619,21 @@ async def answer_lean(
     def parse(completion: Completion) -> Reply:
         return parse_reply(completion.content, persona.variables, persona.max_step, powers, codex, memo=memo_on)
 
+    warm = lean and opts.warm_head and model.api == "ollama"
+
+    async def call(msgs: list[dict[str, str]]) -> tuple[Completion, str]:
+        """One call, after the warm head when it is on; the warm's ms count
+        in the thought's `ms` (a reply's time is honest) and its note."""
+        warm_ms = await warm_head(complete_fn, msgs, model, persona.character) if warm else None
+        completion, note = await _complete_with_room(complete_fn, msgs, model, persona.character)
+        if warm_ms is None:
+            return completion, note
+        return replace(completion, ms=completion.ms + warm_ms), _notes(note, f"warm head {warm_ms} ms")
+
     # -- the first call (+ the lookup round) --------------------------------------------
     messages = build()
     try:
-        completion, call_note = await _complete_with_room(complete_fn, messages, model, persona.character)
+        completion, call_note = await call(messages)
     except LlmError as err:
         log.warning("%s: model failed (%s)%s", persona.character, err, " — using fallback" if persona.fallback else "")
         await record("voice", "line", messages, None, None, error=str(err))
@@ -613,7 +649,7 @@ async def answer_lean(
             used = build(lookups=cards, prior_json=json.dumps({"lookup": list(reply.lookup)}))
             kind, trigger = "lookup", "lookup"
             try:
-                completion, call_note = await _complete_with_room(complete_fn, used, model, persona.character)
+                completion, call_note = await call(used)
             except LlmError as err:
                 log.warning("%s: model failed on the lookup round (%s)", persona.character, err)
                 await record("lookup", "lookup", used, None, None, error=str(err))

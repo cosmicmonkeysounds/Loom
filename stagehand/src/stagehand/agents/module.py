@@ -317,7 +317,7 @@ class Agents:
             onoff = lambda b: "on" if b else "off"  # noqa: E731
             lines.append(
                 f"  mind     : NEW (one voice call per line) · layout {v.layout} · memo {onoff(v.memo)} · repeat guard {onoff(v.repeat_guard)} · "
-                f"quiet summary {onoff(v.dossier_on_close)} · phase cards {onoff(m.stage_from_phase)} · phase watch {f'{m.phase_poll_s:.0f}s' if m.phase_poll_s else 'off'}"
+                f"quiet summary {onoff(v.dossier_on_close)} · warm head {onoff(v.warm_head)} · phase cards {onoff(m.stage_from_phase)} · phase watch {f'{m.phase_poll_s:.0f}s' if m.phase_poll_s else 'off'}"
             )
             for name, persona in self.cfg.personas.items():
                 lines.append(f"    {name:<7}: {len(persona.phase_cards)} phase card(s), {len(persona.stage_cards)} stage card(s), {len(persona.catchphrases)} catchphrase(s)")
@@ -931,7 +931,7 @@ class Agents:
             said=story_mind.said_for(mind, req, thread),
             since=since,
             whispers=tuple(mind.director),
-            options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1),
+            options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1, warm_head=v.warm_head),
         )
         async with self._slots:
             reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=mind)

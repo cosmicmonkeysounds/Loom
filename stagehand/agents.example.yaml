@@ -25,6 +25,8 @@ agents:
     memo: on                   #   he writes a ≤ 140-character note on each person as he answers
     repeat_guard: on           #   one retry when a reply repeats his last 8 lines (never in a burst)
     dossier_on_close: on       #   condense a quiet conversation (≥ 3 turns, 120 s idle) on the voice model
+    warm_head: on              #   api: ollama — a one-token call with the shared head first, so the
+                               #   prompt cache holds under gpt-oss's sliding window (~5 s → ~2 s a line)
     layout: lean               #   lean (the cached P1–P4 prompt) | classic (today's prompt, new mind)
   mind:                        # read only in mind_mode: new
     stage_from_phase: on       #   Night.phase's card sets stage, favours, drives, live powers, brief

@@ -70,6 +70,8 @@ class VoiceOptions:
     layout: str = "lean"
     #: False while another request waits in the worker (a burst): no retry.
     retry_allowed: bool = True
+    #: `voice.warm_head`: a one-token call with P1 + P2 first (lean, api: ollama).
+    warm_head: bool = True
 
 
 @dataclass(frozen=True)
