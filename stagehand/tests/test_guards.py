@@ -14,6 +14,7 @@ from stagehand.agents.guards import (
     allowed_answer_words,
     answer_guard,
     catchphrase_guard,
+    cut_exact_repeats,
     fold,
     guard_pass,
     never_guard,
@@ -202,10 +203,24 @@ def test_short_lines_repeat_only_when_the_same_words():
     assert not repeats_line("Please go.", "please wait")
 
 
-def test_repeats_checks_his_last_eight_lines():
-    said = Said(to_them=("a b c d e",) * 4, elsewhere=("x y z w v", "one two three four five six"))
-    assert repeats("one two three four five six seven", said)
+def test_repeats_checks_his_lines_to_them_closely_and_elsewhere_word_for_word():
+    said = Said(to_them=("a b c d e", "nine ten eleven twelve thirteen"), elsewhere=("x y z w v", "one two three four five six"))
+    assert repeats("nine ten eleven twelve thirteen fourteen", said)  # near-repeat of a line to them
+    assert repeats("One two three, four five six!", said)  # word for word elsewhere
+    # A near-repeat of a line to someone else is left to the prompt's warning (K-04, risk 5).
+    assert not repeats("one two three four five six seven", said)
     assert not repeats("something wholly new and different here", said)
+    # His free replies in this thread count like lines to them.
+    assert repeats("seven eight nine ten eleven", Said(), thread=("seven eight nine ten eleven twelve",))
+    # Only the last 5 elsewhere count.
+    assert not repeats("old line", Said(elsewhere=("old line", "p", "q", "r", "s", "t")))
+
+
+def test_the_cut_after_the_retry_keeps_what_was_said_to_someone_else():
+    said = Said(to_them=("Speak, program.",), elsewhere=("Please file it on the card.",))
+    assert cut_exact_repeats("Speak, program. Please file it on the card.", said) == "Please file it on the card."
+    assert cut_exact_repeats("Speak, program.", said) == ""
+    assert cut_exact_repeats("Noted. Speak again.", said, thread=("Speak again.",)) == "Noted."
     # Only the last 3 to them count.
     said = Said(to_them=("stale old line that repeats", "q", "r", "s"))
     assert not repeats("stale old line that repeats", said)

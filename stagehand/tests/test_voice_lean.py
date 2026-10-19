@@ -463,6 +463,23 @@ def test_there_is_never_a_second_retry():
     assert "retry still repeats → fallback" in trace.all("Trabolta")[1].note
 
 
+def test_a_line_said_to_another_guest_word_for_word_earns_one_retry_and_is_never_the_fallback():
+    # K-04 facts-offers: 14 guests offering facts in a row. The procedural
+    # line he gave the last guest, word for word, retries once; if the retry
+    # still says it, it goes out (this guest never heard it), not "…packet loss".
+    line = "Thank you for the fact. Please file it on the card."
+    said = Said(to_them=(), elsewhere=(line,))
+    model = Model(say(line), say(line))
+    trace = Trace()
+    reply = run(answer_lean(P, MODEL, request(), context(said=said), model, trace=trace))
+    assert len(model.calls) == 2 and reply.say == line
+    assert "retry still repeats (sent)" in trace.all("Trabolta")[1].note
+    # A near-repeat of it (not word for word) is no retry at all.
+    model = Model(say("Thank you for the fact. Please file it on the card now."))
+    reply = run(answer_lean(P, MODEL, request(), context(said=said), model, trace=Trace()))
+    assert len(model.calls) == 1 and reply.say.endswith("card now.")
+
+
 class TempModel(Model):
     def __init__(self, *answers):
         super().__init__(*answers)

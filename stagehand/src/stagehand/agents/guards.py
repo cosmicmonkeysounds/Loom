@@ -241,11 +241,10 @@ def repeats_line(say: str, old: str) -> bool:
     return len(s_new & s_old) / len(s_new) >= REPEAT_SHARE
 
 
-def last_lines(said: Said, thread: Iterable[str] = ()) -> tuple[str, ...]:
-    """His last 8 lines (≤ 3 to them, ≤ 5 elsewhere), plus every free reply
-    of his in this thread's history (`thread`): a line he said to them five
-    turns ago is as much a repeat as the last one."""
-    out = list(said.to_them[-3:]) + list(said.elsewhere[-5:])
+def lines_to_them(said: Said, thread: Iterable[str] = ()) -> tuple[str, ...]:
+    """What this guest has heard from him: his last 3 lines to them plus his
+    free replies in this thread's history."""
+    out = list(said.to_them[-3:])
     for line in thread:
         if line and line not in out:
             out.append(line)
@@ -253,7 +252,19 @@ def last_lines(said: Said, thread: Iterable[str] = ()) -> tuple[str, ...]:
 
 
 def repeats(say: str, said: Said, thread: Iterable[str] = ()) -> bool:
-    return bool(say) and any(repeats_line(say, old) for old in last_lines(said, thread))
+    """A near-repeat (half its 4-word runs) of a line this guest heard, or a
+    word-for-word copy (folded) of one of his last 5 lines elsewhere.
+
+    K-04 (risk 5): with the near-repeat rule over the elsewhere lines too,
+    14 guests offering facts in a row retried 4 of 14 requests, each for
+    "please file it on the card" said to another guest. Near-repeats across
+    guests are left to the ALREADY SAID warning in the prompt."""
+    if not say:
+        return False
+    if any(repeats_line(say, old) for old in lines_to_them(said, thread)):
+        return True
+    f = fold(say)
+    return bool(f) and any(fold(old) == f for old in said.elsewhere[-5:])
 
 
 def thread_replies(req: dict[str, Any]) -> tuple[str, ...]:
@@ -266,10 +277,12 @@ def thread_replies(req: dict[str, Any]) -> tuple[str, ...]:
 
 
 def cut_exact_repeats(say: str, said: Said, thread: Iterable[str] = ()) -> str:
-    """After the one retry: drop each sentence he has already said word for
-    word (folded) in one of those lines. What is left is sent; "" when every
-    sentence was old (the caller sends the fallback)."""
-    olds = [fold(o) for o in last_lines(said, thread)]
+    """After the one retry: drop each sentence this guest has already heard
+    from him word for word (folded). What is left is sent; "" when every
+    sentence was old (the caller sends the fallback). A sentence he said to
+    someone else is kept: cutting it sent the fallback to a guest offering
+    a fact (K-04, facts-offers)."""
+    olds = [fold(o) for o in lines_to_them(said, thread)]
     kept = [s for s in _SENTENCE.split(say) if s.strip() and not any(fold(s) and fold(s) in o for o in olds)]
     return " ".join(kept).strip()
 
