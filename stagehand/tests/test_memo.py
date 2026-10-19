@@ -111,3 +111,10 @@ def test_a_verdict_far_from_any_cut_is_kept():
 def test_a_clean_memo_passes_as_it_is():
     assert scrub_memo(SECRETS, "came back twice, owes me the printer story") == ("came back twice, owes me the printer story", [])
     assert scrub_memo(SECRETS, "") == ("", [])
+
+
+def test_a_plain_verdict_word_beside_a_topic_drops_the_memo():
+    out, notes = scrub_memo(SECRETS, "filed quokka for the snow globe, that is right")
+    assert out == "" and notes == ["memo dropped (verdict on a topic)"]
+    # The same word with no topic and no cut nearby is only a word.
+    assert scrub_memo(SECRETS, "came right back for more")[0] == "came right back for more"

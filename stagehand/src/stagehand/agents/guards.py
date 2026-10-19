@@ -53,8 +53,8 @@ SHINGLE = 4
 #: How close (in words) a verdict word may sit to a cut answer in a memo.
 VERDICT_REACH = 6
 #: Beside `secrets._VERDICT`, the plain words that rule on an answer when
-#: they stand by one in a memo ("… — that is right"); too common to drop a
-#: memo for anywhere else.
+#: they stand by one in a memo ("… — that is right"), or share it with a
+#: hunt topic; too common to drop a memo for anywhere else.
 _NEAR_VERDICT = re.compile(r"\b(right|exactly|spot[\s-]on|nailed)\b", re.IGNORECASE)
 
 
@@ -273,7 +273,8 @@ def scrub_memo(secrets: Secrets, memo: str) -> tuple[str, list[str]]:
     text = memo.replace("’", "'")
     cut = pat.sub(_CUT, text) if pat is not None else text
     replaced = cut != text
-    if secrets.judges_topic(cut.replace(_CUT, " ")):
+    plain = cut.replace(_CUT, " ")
+    if secrets.judges_topic(plain) or (secrets.names_topic(plain) and _NEAR_VERDICT.search(plain)):
         return "", ["memo dropped (verdict on a topic)"]
     if replaced:
         tokens = list(_MEMO_TOKEN.finditer(cut))
