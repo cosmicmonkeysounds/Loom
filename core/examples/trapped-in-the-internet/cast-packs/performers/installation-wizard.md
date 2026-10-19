@@ -33,16 +33,14 @@
    **GERALD CAN'T HELP** (*"…The Internet keeps you — your phone says what
    happens next."*), with no egg and no fanfare. The way out is the hand
    jive; that is expected.
-   **The King** (tablet only): a big gold chess king with eight hearts
-   guards the server-room door of the virtual house. Hitting him (⚔ HIT /
-   Space) knocks a heart off, and every two make his chess dumber; ♟ CHALLENGE opens a board
-   on the tablet. A checkmate is reported to the story as *chess won, by
-   Tent tablet*: practice before the Y2K hour; after it, the winner gets the
-   real server-room door code in their Codex (the board's badge reads
-   PRACTICE or FOR THE CODE). Once truth.txt is read (or the night has
-   ended) the badge goes away and a win gives no code.
-   Nobody has to fight him to be reinstalled; a headset only shows him with
-   "The King is fought on the tent tablet."
+   **The King** (both games, the tablet and the headset): a big gold chess
+   king guards the server-room door of the virtual house, with **one health
+   bar for everyone, all night** (15 points; it never comes back by
+   itself). Each program may hit him **once per visit**, and every point
+   off makes him play worse at the real chess, which is **only on the
+   terminal outside the real server-room door** (nothing to play here).
+   At 0 he kneels for everyone and the virtual door opens. Nobody has to
+   fight him to be reinstalled. Never tell a program what to do about him.
 
 4. Game won't finish, or a device dies → ask an Antivirus to press
    **✅ Mark as reinstalled** on their card, or radio the director

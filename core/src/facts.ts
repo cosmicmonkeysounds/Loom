@@ -113,19 +113,42 @@ export interface Truth {
   draft?: true;
 }
 
+/** One hidden note carrying one digit of the door code (wave 11): a
+ *  `secret: true` CODEX with a QR code, scannable all night. Nothing a
+ *  poster prints (the title, the code) and nothing the crew reads (the
+ *  id, `where`) holds a digit; the generator writes the digit into the
+ *  text in place of `{digit}`. */
+export interface DoorClue {
+  /** The CODEX id (no digit: the position in words). */
+  id: string;
+  /** The poster's title, e.g. `The Cold Door · the first digit` (no digit). */
+  title: string;
+  /** The QR unlock code (no digit, nothing like another clue's). */
+  code: string;
+  /** Where the crew hides it (a room of the house, never the server room). */
+  where: string;
+  /** The note's words: names its position in words and carries `{digit}`
+   *  once (the generator fills it in); no other digit. */
+  text: string;
+}
+
 /** The server-room door's keypad code (wave 7): set by hand on a
  *  standalone lock, never networked. The generator seeds it onto the secret
- *  Kernel and emits the secret CODEX that hands it out (a chess win from
- *  the Y2K hour, the majority's Truther Download). Changing it = this one
- *  edit + regenerate + reprogram the keypad by hand. */
+ *  Kernel and emits the secret CODEX that hands it out (a checkmate against
+ *  the King at the door terminal, the majority's Truther Download, or all
+ *  of the `clues` in one program's Codex — main.loom assembles them), plus
+ *  one secret coded CODEX per clue. Changing it = this one edit +
+ *  regenerate + reprogram the keypad by hand. */
 export interface DoorConfig {
   /** 4–8 digits (a string, so a leading zero survives). */
   code: string;
-  /** The printed sign by the keypad (the riddle). Must not contain the code. */
+  /** The printed sign by the keypad. Must not contain the code. */
   clue?: string;
   /** The secret CODEX carrying the code (no unlock code: nobody can type
    *  their way to it). Its text must contain the code. */
   codex: { id: string; title: string; text: string };
+  /** One note per digit, in order (exactly `code.length` of them). */
+  clues?: DoorClue[];
 }
 
 export type FactVerdictKind = "accurate" | "lie" | "uncertain";
@@ -386,6 +409,19 @@ export const CODE = /^[A-Z0-9][A-Z0-9-]*$/u;
 /** A keypad code: 4–8 digits. */
 export const DOOR_CODE = /^[0-9]{4,8}$/u;
 
+/** A door clue's position in words, 1-based (`first` … `eighth`). */
+export const POSITION_WORDS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"] as const;
+
+/** The placeholder a clue's text carries for its digit. */
+export const DIGIT_SLOT = "{digit}";
+
+/** A door clue's text with its digit filled in. */
+export function clueText(clue: DoorClue, digit: string): string {
+  return clue.text.split(DIGIT_SLOT).join(digit);
+}
+
+const ANY_DIGIT = /[0-9]/u;
+
 /** Characters that break a generated string literal / `match` arm line. */
 const BAD_TEXT = /["{}|]/u;
 
@@ -398,8 +434,9 @@ const BAD_TEXT = /["{}|]/u;
  *  `existing` facts) unique, codes matching `CODE`; no `"`, `{`, `}` or
  *  `|` in a question's or a truth's text; a `character` fact's codex has
  *  an `about`; a fact is `existing` xor has a `codex`; a `door`, when
- *  present, has a 4–8 digit `code`, a clue that never contains it and a
- *  codex (unique id) whose text does. */
+ *  present, has a 4–8 digit `code`, a clue that never contains it, a
+ *  codex (unique id) whose text does, and — with `clues` — one note per
+ *  digit (`doorProblems`). */
 export function showFactsProblems(f: FactsFile): string[] {
   const problems: string[] = [];
 
@@ -470,15 +507,20 @@ export function showFactsProblems(f: FactsFile): string[] {
   if (f.truths.length < SHOW_MIN_TRUTHS) problems.push(`truths: need at least ${SHOW_MIN_TRUTHS} (got ${f.truths.length})`);
   for (const t of f.truths) if (BAD_TEXT.test(t.text)) problems.push(`truth ${t.id}: text must not contain " { } or |`);
 
-  if (f.door !== undefined) problems.push(...doorProblems(f.door, codexIds));
+  if (f.door !== undefined) problems.push(...doorProblems(f.door, codexIds, codes));
 
   return problems;
 }
 
 /** The keypad's rules: a 4–8 digit string code; a codex with a non-empty
  *  id / title / text whose text carries the code and whose id is nobody
- *  else's; a clue (the printed sign) that never gives the code away. */
-function doorProblems(raw: unknown, codexIds: Map<string, string>): string[] {
+ *  else's; a clue (the printed sign) that never gives the code away; and
+ *  `clues`, when present: exactly one per digit, each with an id, title,
+ *  code and `where` holding no digit (a poster prints the title + code),
+ *  a code matching `CODE` that no other entry carries, an id nobody else
+ *  uses, and a text naming its own position in words with `{digit}` once
+ *  and no other digit. */
+function doorProblems(raw: unknown, codexIds: Map<string, string>, codes: Map<string, string>): string[] {
   const problems: string[] = [];
   if (!isRec(raw)) return ["door must be an object"];
   const code = raw["code"];
@@ -491,11 +533,56 @@ function doorProblems(raw: unknown, codexIds: Map<string, string>): string[] {
   const c = raw["codex"];
   if (!isRec(c)) {
     problems.push("door.codex is missing");
-    return problems;
+  } else {
+    for (const k of ["id", "title", "text"] as const) if (!isStr(c[k]) || (c[k] as string).trim() === "") problems.push(`door.codex.${k} is missing`);
+    if (isStr(c["id"]) && codexIds.has(c["id"])) problems.push(`door: codex id ${JSON.stringify(c["id"])} is also used by ${codexIds.get(c["id"])}`);
+    if (isStr(c["text"]) && isStr(code) && DOOR_CODE.test(code) && !c["text"].includes(code)) problems.push("door.codex.text must carry the code");
   }
-  for (const k of ["id", "title", "text"] as const) if (!isStr(c[k]) || (c[k] as string).trim() === "") problems.push(`door.codex.${k} is missing`);
-  if (isStr(c["id"]) && codexIds.has(c["id"])) problems.push(`door: codex id ${JSON.stringify(c["id"])} is also used by ${codexIds.get(c["id"])}`);
-  if (isStr(c["text"]) && isStr(code) && DOOR_CODE.test(code) && !c["text"].includes(code)) problems.push("door.codex.text must carry the code");
+  const clues = raw["clues"];
+  if (clues !== undefined) problems.push(...clueProblems(clues, isStr(code) && DOOR_CODE.test(code) ? code : null, isRec(c) && isStr(c["id"]) ? c["id"] : null, codexIds, codes));
+  return problems;
+}
 
+function clueProblems(raw: unknown, code: string | null, doorId: string | null, codexIds: Map<string, string>, codes: Map<string, string>): string[] {
+  if (!Array.isArray(raw)) return ["door.clues must be an array"];
+  const problems: string[] = [];
+  if (code !== null && raw.length !== code.length) problems.push(`door.clues: need one per digit of the code (${code.length}, got ${raw.length})`);
+  const ids = new Set<string>();
+  const own = new Set<string>();
+  raw.forEach((x, i) => {
+    const at = `door.clues[${i}]`;
+    if (!isRec(x)) {
+      problems.push(`${at} must be an object`);
+      return;
+    }
+    for (const k of ["id", "title", "code", "where", "text"] as const) {
+      const val = x[k];
+      if (!isStr(val) || val.trim() === "") problems.push(`${at}.${k} is missing`);
+      else if (k !== "text" && ANY_DIGIT.test(val)) problems.push(`${at}.${k} must not contain a digit (write the position in words): ${JSON.stringify(val)}`);
+    }
+    const id = x["id"];
+    if (isStr(id) && id.trim() !== "") {
+      if (codexIds.has(id)) problems.push(`${at}: codex id ${JSON.stringify(id)} is also used by ${codexIds.get(id)}`);
+      if (id === doorId || ids.has(id)) problems.push(`${at}: codex id ${JSON.stringify(id)} is used twice`);
+      ids.add(id);
+    }
+    const cc = x["code"];
+    if (isStr(cc) && cc.trim() !== "") {
+      if (!CODE.test(cc)) problems.push(`${at}: code ${JSON.stringify(cc)} must match ${CODE.source}`);
+      const k = foldCode(cc);
+      if (codes.has(k)) problems.push(`${at}: code ${JSON.stringify(cc)} is also used by ${codes.get(k)}`);
+      if (own.has(k)) problems.push(`${at}: code ${JSON.stringify(cc)} is used twice`);
+      own.add(k);
+    }
+    const text = x["text"];
+    if (isStr(text) && text.trim() !== "") {
+      const slots = text.split(DIGIT_SLOT).length - 1;
+      if (slots !== 1) problems.push(`${at}.text must carry ${DIGIT_SLOT} exactly once (got ${slots})`);
+      if (ANY_DIGIT.test(text.split(DIGIT_SLOT).join(""))) problems.push(`${at}.text must not contain a digit but its own ${DIGIT_SLOT}`);
+      const word = POSITION_WORDS[i];
+      if (word !== undefined && !new RegExp(`\\b${word}\\b`, "iu").test(text)) problems.push(`${at}.text must name its position (${JSON.stringify(word)})`);
+      if (/["{}|]/u.test(text.split(DIGIT_SLOT).join(""))) problems.push(`${at}.text must not contain " { } or | (but its ${DIGIT_SLOT})`);
+    }
+  });
   return problems;
 }

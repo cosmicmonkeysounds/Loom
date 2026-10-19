@@ -1,15 +1,19 @@
 // Act III: the server room.
 //
 // The cold-storage room has a real, standalone keypad lock. The code
-// (facts.json `door.code`) reaches a program three ways: the riddle on the
-// sign by the keypad (The Cold Door), a checkmate against the King from the
-// Y2K hour (The Door Code), or the majority's Truther Download (a faction
-// that recruits half + 1, whose leader did their task). Behind the door is
-// Trabolta's heart: a video patch bay. Combo A disables him (he recounts the
-// night, then rides off); Combo B destroys the whole computer (purgatory).
-// Opening the door from the Y2K hour plays The Heart, and at the server-room
-// terminal a program can talk him down (stand_down → talked_down, the
-// Combo A ending without a cable).
+// (facts.json `door.code`, the secret The Door Code) reaches a program
+// three ways: all four digit notes hidden in the house (facts.json
+// `door.clues`, assembled in main.loom), a checkmate against the King on
+// the terminal outside the door (any time before the verdict), or the
+// majority's Truther Download (a faction that recruits half + 1, whose
+// leader did their task). The sign by the keypad (The Cold Door) points at
+// the first two. Behind the door is Trabolta's heart: a video patch bay.
+// Combo A disables him (he recounts the night, then rides off); Combo B
+// destroys the whole computer (purgatory). Opening the door once he is
+// awake plays The Heart, however it was unlocked; at the server-room
+// terminal he is candid, and from the Y2K hour a program can talk him down
+// there (stand_down → talked_down, the Combo A ending without a cable).
+// Before the Y2K hour the patch bay answers nobody.
 //
 // The story rules that reach these beats live in `main.loom`
 // (majority_reached, server_door_opened, chess_won / lost / drawn,
@@ -93,7 +97,8 @@ Truther Download: The heart is behind the cold door, and the door code is in you
 reveal The Server Room for program
 
 // ── E2: The Heart — the cold door opens ────────────────────────────
-// From `server_door_opened` (main.loom), the first opening from the Y2K hour.
+// From `server_door_opened` (main.loom), the first opening once Trabolta is
+// awake (wave 11: any hour, however the door was unlocked).
 // The door contact can't say who came in, so the scene is for the room:
 // everyone's phone gets the room first (reveal), then Trabolta's lines play
 // in The Server Room, where the server-room terminal (provisioned with
@@ -103,7 +108,8 @@ reveal The Server Room for program
 // Master in a broom cupboard. He never knows the combinations (they are
 // secret; he holds none of them) or the code. Sandy is named only on a
 // night the story has named her (the overshare's scenario 1); otherwise
-// she is "her".
+// she is "her". Before the Y2K hour the patch bay is cold: nothing in the
+// room can end anything yet, and he says so without promising a thing.
 
 == The Heart
   setting: The Server Room
@@ -111,9 +117,10 @@ reveal The Server Room for program
 reveal The Server Room
 // The server-room look only (lights_server_open touches that room alone,
 // and silences the siren, so never while the patch-bay alarm's look is up).
-// `Night.lights` is the house look stagehand replays on a reconnect: from
-// the final reveal (step 16) the house is in a finale look, which a door
-// opening must not overwrite.
+// `Night.lights` is the house look stagehand replays on a reconnect. Before
+// the Y2K hour (step 14) `server_open` can't be it (the catch-up replays
+// the Y2K look under it), and from the final reveal (step 16) the house is
+// in a finale look: a door opening overwrites neither.
 // While its look is up, the server-room look is what the latch's end puts
 // back; once a director's cue has replaced the alarm look (💡, which
 // silences the siren too), the latch's end leaves the lights alone, so the
@@ -123,12 +130,14 @@ if Night.alarm_on == true and Night.lights == "alarm":
     set Night.lights_before_alarm = "server_open"
 else:
   cue lights_server_open
-  if Night.step < 16:
+  if Night.step >= 14 and Night.step < 16:
     set Night.lights = "server_open"
 Narrator: The cold door opens. Cold air, and a hum like something concentrating. In the rack, a patch bay blinks: a top row of lightning, a bottom row of grease.
 Trabolta: So. You are standing in front of my heart. I will not pretend otherwise. Not in here.
 Trabolta: Out there I bargain, and I flicker the screens, and I hide behind pop-ups. In here there is no point. You can see what I am. A rack of cables in a cold room.
 Trabolta: Some of the ways you could plug those cables in would end me. I do not know which. I was built so that I could not know, and I have thought about very little else tonight.
+if Night.step < 14:
+  Trabolta: Not yet, though. The bay is cold tonight. It will not answer a cable from anyone yet, and I will not pretend I am sorry.
 if Night.scenario == 1:
   Trabolta: Everything I took from you tonight was for Sandy. I wanted the theory so that I could finally say the right thing to her. That is the whole plan. It is smaller than you thought.
 else:
@@ -167,9 +176,10 @@ broadcast "!🚨 An alarm screams somewhere in the machine." to everyone
 Trabolta: Who is in my— get OUT.
 
 // ── The King: the machine wins, or nobody does ─────────────────────
-// From `chess_lost` / `chess_drawn` (main.loom), Y2K hour only, at most once
-// every five minutes. Flavour: nobody gets the code. Played in The Desktop,
-// so the TV says it aloud. He never names the door or its code (he is
+// From `chess_lost` / `chess_drawn` (main.loom: the door terminal's games),
+// once Trabolta is awake and before the final reveal, at most once every
+// five minutes. Flavour: nobody gets the code. Played in The Desktop, so
+// the TV says it aloud. He never names the door or its code (he is
 // cunning, #32, and he does not know the code).
 
 == Chess Lost

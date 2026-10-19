@@ -15,12 +15,15 @@
 //!                              the voice worker hides;
 //!   codex/9-facts.loom         every scannable + character fact as a coded
 //!                              CODEX, grouped by category (colour), the
-//!                              secret *The Door Code* (`door`), and
+//!                              secret *The Door Code* (`door`), one secret
+//!                              coded CODEX per digit clue (`door.clues`), and
 //!                              `== Facts Bundle` (an `unlock … for program`
 //!                              per main + Trabolta fact, generated or
 //!                              `existing`) that The Whole Truth diverts into;
-//!   generated/print-stacks.md  the colour-coded QR stacks for the Desktop
-//!                              and the keypad sign (the riddle, never the code);
+//!   generated/print-stacks.md  the colour-coded QR stacks for the Desktop,
+//!                              the cold door's digit notes (where each
+//!                              hides, never its digit) and the keypad sign
+//!                              (never the code);
 //!   trabolta.mind.md           the `secrets:` block between
 //!                              `# <titi-facts:secrets>` … `# </titi-facts:secrets>`;
 //!   DESIGN.md                  the H1–F2 table between
@@ -40,7 +43,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FACTS_FILE, parseFactsText, showFactsProblems } from "../src/facts.ts";
+import { FACTS_FILE, POSITION_WORDS, clueText, parseFactsText, showFactsProblems } from "../src/facts.ts";
 import type { Fact, FactsFile, Question } from "../src/facts.ts";
 import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
@@ -77,6 +80,12 @@ export const SHOW_SHAPE = {
   noMoreQuestions: "I have no more questions. Answer the last one again.",
   /** The hunt answers' stack on the print sheet. */
   huntColour: "gold",
+  /** The door's digit notes on the print sheet (`door.clues`): their own
+   *  pile, hidden one per room (core/server/routes/k12.ts reads the same). */
+  clueColour: "silver",
+  clueStack: "the cold door's digits",
+  /** The room every digit note is about (as the combo halves are). */
+  clueAbout: "The Server Room",
 } as const;
 
 /** The lore marker on every hunt-answer entry (`trabolta.mind.md`
@@ -352,8 +361,9 @@ function factsLoom(f: FactsFile): string {
     const d = f.door.codex;
     out.push(
       "// ── THE DOOR · the server-room keypad (secret, never printed) ──",
-      "// No unlock code: nobody types their way to it. A chess win from the Y2K",
-      "// hour and the majority's Truther Download hand it out (main.loom,",
+      "// No unlock code: nobody types their way to it. A checkmate at the door",
+      "// terminal, all four digit notes in one Codex (main.loom assembles",
+      "// them) and the majority's Truther Download hand it out (main.loom,",
       "// beats/server-room.loom). `secret: true` keeps it out of every agent",
       "// request and the orchestrator's lore.",
       `CODEX ${d.id}`,
@@ -363,6 +373,30 @@ function factsLoom(f: FactsFile): string {
       textBlock(d.text),
       "",
     );
+    const clues = f.door.clues ?? [];
+    if (clues.length > 0) {
+      out.push(
+        `// ── THE DOOR'S DIGITS · ${SHOW_SHAPE.clueColour} · one note per digit, hidden in the house ──`,
+        "// Scannable all night; holding every one assembles The Door Code",
+        "// (main.loom). Secret: never in an agent request, and Trabolta refuses",
+        "// one shared to him. The poster prints the title and the code, never",
+        "// the digit (it is only in the text).",
+        "",
+      );
+      clues.forEach((c, i) => {
+        out.push(
+          `// ${POSITION_WORDS[i] ?? String(i + 1)} digit · ${SHOW_SHAPE.clueColour} · ${c.where}`,
+          `CODEX ${c.id}`,
+          `  title: ${c.title}`,
+          `  about: ${SHOW_SHAPE.clueAbout}`,
+          "  secret: true",
+          `  code: ${c.code}`,
+          "  text:",
+          textBlock(clueText(c, f.door!.code[i] ?? "")),
+          "",
+        );
+      });
+    }
   }
   const S = SHOW_SHAPE;
   const bundle = [...new Set(f.facts.filter((x) => (S.bundleCategories as readonly string[]).includes(x.category)).map((x) => x.codex?.id ?? x.existing!))];
@@ -384,6 +418,7 @@ function factsLoom(f: FactsFile): string {
 export const DRAFT_NOTE = "DRAFT — awaiting sign-off in facts.json";
 
 const HEADER = "| # | Colour | Code | Title | Where in the Desktop | What it says |\n|---|---|---|---|---|---|";
+const CLUE_HEADER = "| Digit | Colour | Code | Title | Where in the house | What it is |\n|---|---|---|---|---|---|";
 
 function printStacks(f: FactsFile): string {
   const S = SHOW_SHAPE;
@@ -416,14 +451,33 @@ function printStacks(f: FactsFile): string {
     out.push("", `## ${meta.colour[0]!.toUpperCase()}${meta.colour.slice(1)} — ${cat}`, "", `Stack: ${meta.stack}`, "", HEADER);
     for (const x of own) out.push(stackRow(x, meta.colour, meta.stack));
   }
+  const clues = f.door?.clues ?? [];
+  if (clues.length > 0) {
+    const colour = S.clueColour;
+    out.push(
+      "",
+      `## ${colour[0]!.toUpperCase()}${colour.slice(1)} — ${S.clueStack}`,
+      "",
+      `One note per digit of the door code, ${numberWord(clues.length)} in all. Hide each one where its`,
+      "row says, never in the server room. The poster prints the title and the",
+      "code; the digit is only in the Codex once scanned, and is never printed",
+      "here. Scannable all night: all of them in one program's Codex assemble",
+      "the door code.",
+      "",
+      CLUE_HEADER,
+    );
+    clues.forEach((c, i) => {
+      out.push(`| ${POSITION_WORDS[i] ?? String(i + 1)} | ${colour} | \`${c.code}\` | ${cell(c.title)} | ${cell(c.where)} | ${cell(`the ${POSITION_WORDS[i] ?? "next"} digit of the door code (of ${numberWord(clues.length)})`)} |`);
+    });
+  }
   if (f.door?.clue !== undefined) {
     out.push(
       "",
       "## The cold door — the keypad sign",
       "",
       "Print this and tape it beside the server-room keypad. Never print the code",
-      "itself: it reaches a program only through their Codex (a chess win from the",
-      "Y2K hour, or the majority's Truther Download).",
+      "itself: it reaches a program only through their Codex (a checkmate at the",
+      "door terminal, every digit note, or the majority's Truther Download).",
       "",
       `> ${f.door.clue}`,
     );
@@ -509,6 +563,15 @@ export function neverWords(f: FactsFile, combos: string[] = []): string[] {
       if (code.includes("0")) out.add(digitWords(code, "oh"));
     }
   }
+  // The digit notes: a single digit can't be a never word (it would scrub
+  // every number), so the notes' unlock codes and "the first digit" …
+  // phrases are: a program telling him one never reaches his shared mind.
+  const clues = f.door?.clues ?? [];
+  for (const c of clues) out.add(c.code);
+  clues.forEach((_, i) => {
+    const word = POSITION_WORDS[i];
+    if (word !== undefined) out.add(`${word} digit`);
+  });
   for (const combo of combos) {
     for (const pair of combo.split(",")) {
       const p = pair.trim().toUpperCase().replace(/\s+/gu, "");
@@ -557,7 +620,15 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
     out.push("  never:");
     never.forEach((w, i) => {
       const entry = `    - ${JSON.stringify(w)}`;
-      const tag = i === 0 && f.door !== undefined ? "the door code" : PAIR_WORD.test(w) && !never.slice(0, i).some((x) => PAIR_WORD.test(x)) ? "the patch-bay pairs" : null;
+      const firstClue = f.door?.clues?.[0]?.code;
+      const tag =
+        i === 0 && f.door !== undefined
+          ? "the door code"
+          : w === firstClue
+            ? "the digit notes"
+            : PAIR_WORD.test(w) && !never.slice(0, i).some((x) => PAIR_WORD.test(x))
+              ? "the patch-bay pairs"
+              : null;
       out.push(tag === null ? entry : `${entry.padEnd(26)} # ${tag}`);
     });
   }
@@ -632,6 +703,7 @@ export function modelProblems(facts: FactsFile, dir: string): string[] {
   };
   for (const q of facts.questions) codexConflict(q.codex!.id, q.codex!.code, `question ${q.id}`);
   if (facts.door !== undefined && model.codex.has(facts.door.codex.id)) out.push(`door: CODEX ${JSON.stringify(facts.door.codex.id)} is already declared by a hand-written file`);
+  for (const c of facts.door?.clues ?? []) codexConflict(c.id, c.code, `door clue ${JSON.stringify(c.id)}`);
   for (const x of facts.facts) {
     if (x.codex !== undefined) codexConflict(x.codex.id, x.codex.code, `fact ${x.id}`);
     if (x.existing !== undefined) {

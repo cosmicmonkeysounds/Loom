@@ -26,7 +26,7 @@
 | any time | **🖌 Signed the painting** (a program who just signed MS Paint's canvas; once each) |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** |
 | Grok Prom | **💘 Said "You're the one that I want"** |
-| Y2K on | **♟ They beat the machine** (only if you **saw** the checkmate) |
+| any time, until 📄 | **♟ They beat the machine** (only if the door terminal could not report it and you **saw** the checkmate) |
 
 **Bathroom Mode:** the 🚻 button on every program's pass. They learn it three
 times: Clippy's tour ends on it (a step over the pass button: *tap 🚻 before

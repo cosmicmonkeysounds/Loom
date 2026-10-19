@@ -299,18 +299,18 @@ describe("wave 9 — a featured goal met before the Truther Download completes i
 describe("wave 9 — a King win after truth.txt gives no door code (R2-diff-clients-03)", () => {
   const guestCasts = (evs: SimEvent[]) => casts(evs).filter((b) => b.scope !== "channel(hosts)");
 
-  it("Grok Prom and the banishment: a checkmate tells # hosts only; Night.king_armed is 1 only from the Y2K hour to 📄", { timeout: SLOW }, () => {
+  it("Grok Prom and the banishment: a checkmate tells # hosts only; Night.king_armed is 1 from Power On to 📄 (wave 11)", { timeout: SLOW }, () => {
     const sim = boot();
-    expect(v(sim, "Night.king_armed")).toBe(0);
+    expect(v(sim, "Night.king_armed")).toBe(1);
     toBobbing(sim, { lie: true });
-    // toBobbing passes the Y2K clock: the King played for the code until 📄.
+    // The King plays for the code all night, until 📄.
     expect(v(sim, "Night.king_armed")).toBe(1);
     truthTxt(sim);
     expect(v(sim, "Night.r3_closed")).toBe(true);
     expect(v(sim, "Night.ended")).not.toBe(true);
     expect(v(sim, "Night.king_armed")).toBe(0);
     const after = "♟ A King win after truth.txt: the verdict is in, no door code. Nothing happens in the story.";
-    const w = fire(sim, "chess won", "g1", null, "Tent tablet");
+    const w = fire(sim, "chess won", "g1", null, "Terminal · Server Door");
     expect(hostsSaid(w)).toEqual([after]);
     expect(guestCasts(w)).toEqual([]);
     expect(sim.holdsCodex("g1", "The Door Code")).toBe(false);

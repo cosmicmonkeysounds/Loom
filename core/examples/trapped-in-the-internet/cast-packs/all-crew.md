@@ -8,10 +8,10 @@
 | Word | Means | Who usually says it |
 |---|---|---|
 | **INTRO** | Clippy is about to introduce Trabolta. Julia (the tent): let the first reinstalled program start the game now | director → the tent, Clippy |
-| **BEANS** | The printer lid is open. Director: press 🫘 | Adobe Acrobat |
+| **BEANS** | The printer lid is open and the room heard nothing (Adobe Acrobat presses 🫘 on their booth first; the radio call is for when they can't). Director: press 🫘 | Adobe Acrobat |
 | **LATE** | The late list is coming (after 🚨 Summons closed) | director → Antivirus |
-| **IN** | The patch-bay watch is inside the server room with the door shut: the director may fire 🕚 (from 🕚 the first opening plays The Heart, crew or not) | server-room Antivirus → director |
-| **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination | server-room Antivirus → director |
+| **IN** | The patch-bay watch is inside the server room with the door shut: the director may fire 🕚 (once Trabolta is awake the first opening plays The Heart, crew or not: press 🔧 before the crew go through) | server-room Antivirus → director |
+| **A** / **B** / **WRONG** | Patch bay (Tier 0): Combo A is in / Combo B is in / a wrong combination (only when the server-room Antivirus can't press 🔌 / 💥 / ❌ on their own booth) | server-room Antivirus → director |
 | **ALARM** | The patch-bay alarm is going (a second wrong combination), or should be and isn't | anyone → Antivirus |
 | **LIGHTS** | The lights are wrong for this moment: the tech op restarts the `show` job (it replays the current look) or sets it by hand | anyone → tech op |
 | **HOLD** | Stop the next cue: something is not ready | anyone → director |

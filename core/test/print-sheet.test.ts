@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { scenarioFactsFile, scenarioSource } from "../examples/load.ts";
-import { checkinSigns, checkinSlug, codexStacks, HUNT_COLOUR, printExtras } from "../server/routes/k12.ts";
+import { checkinSigns, checkinSlug, CLUE_COLOUR, CLUE_STACK, codexStacks, HUNT_COLOUR, printExtras } from "../server/routes/k12.ts";
 import { foldName } from "../src/parser/names.ts";
 import { parseFactsText, type FactsFile } from "../src/facts.ts";
 
@@ -78,9 +78,11 @@ describe("K-12 print extras", () => {
         { id: "X1", category: "nowhere", text: "x", codex: { id: "Lost", title: "Lost", code: "LOST", text: "t" } },
       ],
       truths: [],
+      door: { code: "12", codex: { id: "Door", title: "Door", text: "12" }, clues: [{ id: "Digit One", title: "One", code: "ONE", where: "the kitchen", text: "first {digit}" }] },
     } as FactsFile;
     expect(codexStacks(facts)).toEqual({
       "The Lease": { colour: HUNT_COLOUR, stack: "hunt answers", where: "volume B" },
+      "Digit One": { colour: CLUE_COLOUR, stack: CLUE_STACK, where: "the kitchen" },
       Silicon: { colour: "green", stack: "shelf", where: null },
       "The Theory": { colour: "green", stack: "shelf", where: "already placed" },
     });
@@ -99,6 +101,17 @@ describe("K-12 print extras", () => {
     // every id is a real entry (one without a code just never gets a poster)
     for (const id of Object.keys(stacks)) expect(sim.model.codex.has(id), id).toBe(true);
     const colours = new Set(Object.values(stacks).map((s) => s.colour));
-    expect([...colours].sort()).toEqual(["blue", "gold", "green", "red"]);
+    expect([...colours].sort()).toEqual(["blue", "gold", "green", "red", "silver"]);
+    // The door's digit notes: their own silver pile, one room each, each a
+    // coded secret entry; the door code itself never gets a poster.
+    const clues = facts.door!.clues!;
+    expect(clues).toHaveLength(facts.door!.code.length);
+    for (const c of clues) {
+      expect(stacks[c.id]).toEqual({ colour: "silver", stack: "the cold door's digits", where: c.where });
+      expect(sim.model.codex.get(c.id)!.secret).toBe(true);
+      expect(sim.model.codex.get(c.id)!.code).toBeTruthy();
+    }
+    expect(new Set(clues.map((c) => c.where.split(" (")[0])).size).toBe(clues.length);
+    expect(stacks[facts.door!.codex.id]).toBeUndefined();
   });
 });

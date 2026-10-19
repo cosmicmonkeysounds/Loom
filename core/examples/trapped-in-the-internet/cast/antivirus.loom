@@ -63,3 +63,32 @@ CHARACTER CRA Agent Software is Enforcer
   when truther_download:
     if Night.truther_sent != true:
       reply 🧾 Every program has a Wallet now. Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Elaborate security questions encouraged.
+
+  // The server-room watch's own buttons (the INTERACTIONs `radio_*` in
+  // main.loom): each is the admin cue, pressed in the room instead of over
+  // the radio. Hooks on this character, never story rules, so a press from
+  // any other booth reaches nothing (a booth's press carries its character
+  // as the actor); a director's quick-fire has no actor and still lands.
+  when radio_combo_a:
+    fire patch_combo_a
+
+  when radio_combo_b:
+    fire patch_combo_b
+
+  when radio_wrong_patch:
+    fire patch_rejected
+
+  when radio_door_opened:
+    fire server_door_opened
+
+  when radio_crew_door:
+    fire crew_through_the_door
+
+// The door-only part (wave 11): an extra Antivirus who stands at the
+// Optical Drive for late arrivals once the others are busy (the summons,
+// the server room). Nothing of their own: the Enforcer trait's door scan
+// clears a program exactly as the other four do, and their booth gets the
+// same readouts.
+CHARACTER Windows Defender is Enforcer
+  avatar: File:Microsoft Defender Icon Logo 2025 English.svg
+  wiki: Microsoft Defender Antivirus

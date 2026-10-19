@@ -17,7 +17,7 @@
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** | each arrival |
-| Y2K on (if you saw it) | **♟ They beat the machine** | only after you **saw** "checkmate" on the chess phone: it gives them the door code |
+| any time, until 📄 (if you saw it) | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it: it gives them the door code |
 
 **Your scenes:** every clearance (your line, in the app) · introduced by
 Clippy at C1 (one line about yourself) · V3 the fake card if needed · the

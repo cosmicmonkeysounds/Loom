@@ -33,8 +33,10 @@ after the content lock). Accurate and confident look the same in public.
 Never say which.
 
 **The printer:** at 🏆 your booth says *🖨 Stand by the printer*. VLC presses
-START; nothing happens. When the **lid lifts and the beans show, radio
-"BEANS"** (OP-09). The director presses 🫘.
+START; nothing happens. When the **lid lifts and the beans show** and the
+room heard nothing (the lid's sensor failed), press **🫘 The printer lid is
+open: full of beans** on your booth, on VLC's card (OP-09); radio **"BEANS"**
+only if you can't, and the director presses 🫘.
 
 **The Bag of Truth:** you hold it and the **dry truth.txt printout**. At 🍎
 the bag goes in the tub. When the director fires 📄, hand the printout to the
@@ -75,8 +77,8 @@ yes."
   inside). Missed → 🏓 Missed (marked; an Antivirus escorts them). Keep the
   line moving.
 - **🏆 → 🫘:** stand by the bean printer. VLC is told to press START. If
-  nobody opens the lid, MS Paint is nudged to encourage VLC. **Radio BEANS the
-  moment the lid lifts.**
+  nobody opens the lid, MS Paint is nudged to encourage VLC. **🫘 on your
+  booth the moment the lid lifts** if the beans don't play by themselves.
 - **🍎 Bobbing for Truth:** the Bag of Truth goes into the tub (a towel and mat
   under it, away from the stairs). Whoever surfaces with it: 🍎 Brought up the
   Bag. Comes up empty: 🍎 Failed the bob (marked for reinstallation).

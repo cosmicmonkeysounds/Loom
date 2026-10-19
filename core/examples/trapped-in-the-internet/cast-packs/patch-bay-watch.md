@@ -29,38 +29,45 @@ keypad, never on the radio).
 ## What you do
 
 1. **Be inside with the door shut before 🕚**, then radio the director
-   **"IN"**: the director fires 🕚 only after it. From 🕚 the **first opening of the door plays The Heart**,
-   whoever opens it, and the door contact can't tell you from a guest: walk
-   in after 🕚, or step out before the first guests arrive, and it plays to
-   an empty room (and opens The Server Room on every phone). Stand where you
-   can see the bay and the door, and don't open it until guests have come in.
-2. When four cables are in, check them against the table. Radio the director:
-   **"A"**, **"B"** or **"WRONG"**. The director fires 🔌 / 💥 / ❌.
+   **"IN"**: the director fires 🕚 only after it. Once Trabolta is awake
+   the **first opening of the door plays The Heart**, whoever opens it, and
+   the door contact can't tell you from a guest: **press 🔧 *Crew going
+   through the door* on your booth (any program's card) before you open
+   it yourself**, and for 2 minutes an opening only tells `# hosts`. Stand
+   where you can see the bay and the door, and don't open it until guests
+   have come in.
+2. When four cables are in, check them against the table and press it
+   yourself on your booth, on the card of the program at the cables: **🔌
+   Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
+   buttons show only from 🕚, before 📄). Radio the director **"A"**, **"B"**
+   or **"WRONG"** only if your phone can't: the director fires 🔌 / 💥 / ❌.
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the
    alarm. The director's 🔄 *Server room: reset the patch-bay alarm* forgives
    one again.)
 4. Reset after an ending only if the director asks: every cable out.
 
-## Also yours, from the Y2K clock
+## Also yours
 
 - **The door.** It has a standalone keypad lock (nothing in the show drives
   it). Whoever opens it with the code is a clean entry, whoever they are: let
-  them in. The door never alarms. From the Y2K clock the first opening plays
-  **The Heart**: the room opens on every phone and Trabolta speaks from the
+  them in. The door never alarms. Once Trabolta is awake the first opening
+  plays **The Heart**: the room opens on every phone and Trabolta speaks from the
   server-room terminal on the wall. If nothing happens when the door first
-  opens, radio the director, who fires **🚪** (the door contact's fallback).
+  opens, press **🚪 The server-room door opened** on your booth (on the
+  card of whoever came in), or radio the director, who fires **🚪**.
   Never say the code on the radio.
 - **The server-room terminal.** A guest scans their pass and talks to Trabolta
   on their own thread; at his heart he is candid. If he offers to stand down,
   `# hosts` reads "🕊 Trabolta offers to stand down for …" and the director
   decides. You do nothing but keep the queue polite.
-- **The chess phone.** Glance at it each act. From the Y2K clock a guest who
-  checkmates the machine gets the door code in their Codex. Press **♟ They
-  beat the machine** on the winner's card **only after you saw "checkmate" on
-  the phone** (OP-12). Phone dead → radio the director, who fires ♟ naming the
-  winner. **The King** in the tent tablet's game (a chess king at this door
-  inside the simulation) reports his own checkmates: nobody presses anything.
+- **The door terminal** (outside, by the keypad). Programs scan their pass
+  and play the King at chess: no hints, and how well he plays is his
+  health in the simulation (the bar on the screen). A checkmate reports
+  itself and puts the door code in the winner's Codex. **Only if the
+  terminal could not** and you **saw** "checkmate" (OP-12): press **♟ They
+  beat the machine** on the winner's card. Terminal dead → radio the
+  director, who fires ♟ naming the winner.
 - **The real gear** (router, UPS, the dongle, the ESP32 power) is taped off and
   out of reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.

@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FACTS_FILE, parseFactsText } from "../src/facts.ts";
+import { FACTS_FILE, POSITION_WORDS, parseFactsText } from "../src/facts.ts";
 import type { FactsFile } from "../src/facts.ts";
 import { scenarioDir } from "../examples/load.ts";
 import { parse } from "../src/parser/index.ts";
@@ -451,6 +451,29 @@ describe("titi-facts — codex/9-facts.loom", () => {
     const bundle = read(OUTPUTS.codex).split(`== ${SHOW_SHAPE.bundleBeat}`)[1]!;
     expect(bundle).not.toContain(d.codex.id);
   });
+  it("declares one secret coded entry per digit note: the digit in its text, never in its title or code, not in the bundle (wave 11)", () => {
+    const m = fixtureSim().model;
+    const d = facts.door!;
+    const clues = d.clues!;
+    expect(clues).toHaveLength(d.code.length);
+    const bundle = read(OUTPUTS.codex).split(`== ${SHOW_SHAPE.bundleBeat}`)[1]!;
+    clues.forEach((c, i) => {
+      const entry = m.codex.get(c.id)!;
+      expect(entry, c.id).toBeDefined();
+      expect(entry.title).toBe(c.title);
+      expect(entry.secret).toBe(true);
+      expect(entry.about).toBe(SHOW_SHAPE.clueAbout);
+      expect(entry.code).toBe(foldCode(c.code));
+      expect(m.codexCodes.get(foldCode(c.code))).toBe(c.id);
+      const text = entry.text.replace(/\s+/gu, " ");
+      expect(text).toContain(`${POSITION_WORDS[i]!.toUpperCase()} DIGIT IS ${d.code[i]}`);
+      expect(text).not.toContain("{digit}");
+      expect(text.replace(new RegExp(`IS ${d.code[i]}\\b`, "u"), "")).not.toMatch(/[0-9]/u); // only its own digit
+      expect(text).not.toContain(d.code);
+      for (const k of [c.id, c.title, c.code]) expect(k).not.toMatch(/[0-9]/u);
+      expect(bundle).not.toContain(c.id);
+    });
+  });
   it("wraps every text line at the width and never starts one like dialogue", () => {
     for (const file of [OUTPUTS.codex, OUTPUTS.questions]) {
       const bodyLines = read(file)
@@ -523,11 +546,25 @@ describe("titi-facts — generated/print-stacks.md", () => {
       else expect(row).toContain(`\`${x.codex!.code}\``);
     }
   });
-  it("prints the keypad sign (the riddle) and never the code", () => {
+  it("prints the keypad sign and never the code", () => {
     const text = read(OUTPUTS.stacks);
     expect(text).toContain("## The cold door — the keypad sign");
     expect(text).toContain(`> ${facts.door!.clue}`);
     expect(text).not.toContain(facts.door!.code);
+  });
+  it("prints the digit notes on their own silver pile, where each hides, never a digit (wave 11)", () => {
+    const text = read(OUTPUTS.stacks);
+    const section = text.slice(text.indexOf("## Silver — the cold door's digits"), text.indexOf("## The cold door — the keypad sign"));
+    expect(section.length).toBeGreaterThan(0);
+    const rows = section.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("| Digit"));
+    expect(rows).toHaveLength(facts.door!.clues!.length);
+    facts.door!.clues!.forEach((c, i) => {
+      const row = rows[i]!;
+      expect(row).toContain(`\`${c.code}\``);
+      expect(row).toContain(c.where);
+      expect(row).toContain(`the ${POSITION_WORDS[i]} digit of the door code`);
+    });
+    expect(section).not.toMatch(/[0-9]/u); // no digit at all, let alone the code
   });
 });
 
@@ -576,15 +613,19 @@ describe("titi-facts — secrets.never", () => {
     // W8 T8-01: the spelled year and the year as a time ("In 97 I met her") —
     // never a bare "97", which silenced him toward a guest called NHL 97 (W8 review).
     const said = neverWords(year, ["V2-D5, v4-d1", "junk,V2-D5"]);
+    // Wave 11: the digit notes' unlock codes and "the first digit" … phrases
+    // (a single digit can't be a never word).
+    const notes = [...facts.door!.clues!.map((c) => c.code), "first digit", "second digit", "third digit", "fourth digit"];
     expect(said).toEqual([
       "1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of ninety-seven",
-      "nineteen ninety-seven", "one nine nine seven", "V2-D5", "V4-D1",
+      "nineteen ninety-seven", "one nine nine seven", ...notes, "V2-D5", "V4-D1",
     ]);
+    expect(neverWords({ ...facts, door: { ...facts.door!, clues: undefined } }, ["V2-D5"])).toEqual(["1997", "'97", "in 97", "in ninety-seven", "since 97", "since ninety-seven", "of ninety-seven", "nineteen ninety-seven", "one nine nine seven", "V2-D5"]);
     expect(said).not.toContain("97");
     expect(said).not.toContain("of 97"); // "a balance of 97 Truthcoin" is a count (W8 recheck)
     expect(neverWords({ ...facts, door: { ...facts.door!, code: "2007" } })).toContain("in 07");
     expect(neverWords(facts)[0]).toBe(facts.door!.code);
-    expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412", "zero four one two", "oh four one two"]);
+    expect(neverWords({ ...facts, door: { ...facts.door!, code: "0412" } })).toEqual(["0412", "zero four one two", "oh four one two", ...notes]);
     expect(neverWords({ ...facts, door: undefined })).toEqual([]);
     expect(mindBlock({ ...facts, door: undefined })).not.toContain("never:");
   });
@@ -607,6 +648,7 @@ describe("titi-facts — secrets.never", () => {
     const block = mindBlock({ ...facts, door: { ...facts.door!, code: "1997" } }, ["V2-D5"]);
     expect(block).toMatch(/- "1997"\s+# the door code/u);
     expect(block).toMatch(/- "V2-D5"\s+# the patch-bay pairs/u);
+    expect(block).toMatch(new RegExp(`- "${facts.door!.clues![0]!.code}"\\s+# the digit notes`, "u"));
     expect(block).toContain('    - "nineteen ninety-seven"\n');
   });
 });

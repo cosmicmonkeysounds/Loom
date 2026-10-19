@@ -36,13 +36,14 @@
 9. Wall tablets in Fully Kiosk (`view=auto`: they show the screensaver + ads
    until Trabolta is introduced), all green on the heartbeat card (the Run
    page's Terminals card; the `📟 N/N` pill goes red + chimes on a tablet silent 20 s).
-10. The tent tablet on `/reinstall/?code=<mod>&name=Tent tablet` (the name
-    is what the journal shows when the King is mated: *chess won, by Tent
-    tablet*). The King is tablet-only (⚔ HIT / ♟ CHALLENGE; a headset shows
-    "The King is fought on the tent tablet"); it is not device-checked, so
-    the **chess phone outside the server room stays the fallback** (Lichess,
-    charged, awake). Neither sends a heartbeat: they never show on the
-    Terminals card.
+10. The tent tablet on `/reinstall/?code=<mod>&name=Tent tablet`. In both
+    games a program may hit the King once per visit; his one health bar is
+    shared all night (Run shows it; 👑 restores it). The King's **chess**
+    is only on the **door terminal** outside the server room (a wall
+    terminal by the keypad, on the Terminals card like the others; its
+    name is what the journal shows when the King is mated: *chess won, by
+    Terminal · <name>*). [[EDIT: the door terminal's provisioning URL, from
+    the chess lane]]
 
 The **mod code is never printed**: [[EDIT: where it lives — your password
 manager]].
@@ -102,7 +103,7 @@ the look yourself. [[EDIT: fill the preset numbers / scene names after the
 | `lights_trust_chart` (📊) | [[EDIT]] | `printer_grind` (🖨) |
 | `lights_y2k` (🕚) | [[EDIT]] | `y2k_chime` (+ each clock warning) |
 | (🗜 zip everyone out) | — | `zip` |
-| `lights_y2k` + `lights_server_open` (majority; The Heart, the first door opening from 🕚: the server-room look sits on top of the Y2K house look) | [[EDIT]] | — |
+| `lights_y2k` + `lights_server_open` (majority; The Heart, the first door opening once Trabolta is awake: from 🕚 the server-room look sits on top of the Y2K house look, before 🕚 it lights the server room alone) | [[EDIT]] | — |
 | `lights_alarm` (the patch-bay alarm: a second wrong combination) | [[EDIT]] | `alarm_siren` |
 | `lights_blackout` → +10 s `lights_dance` (Combo A/B) | blackout (safety bulbs stay on) → dance | `dance_song` (+ `windows_shutdown` on B) |
 | `lights_final_reveal` (🌑) | [[EDIT]] | — |

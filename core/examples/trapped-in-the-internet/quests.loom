@@ -120,6 +120,18 @@ QUEST Find The Exit
     This whole place runs on algorithms. Find out what Trabolta really is,
     and help whoever is getting out.
 
+// Wave 11: started by the first of the cold door's four digit notes
+// (main.loom `door_digit_found`), stepped "N of 4", completed at four or
+// whenever the program holds The Door Code by any road.
+QUEST The Cold Door
+  title: The Cold Door
+  from: A Tired Sysadmin
+  text:
+    Four notes are hidden around the house, one digit of the cold door's
+    keypad code on each. Find all four and the code is yours. Or beat the
+    King at chess on the terminal by the door.
+    - Never in the server room. Never in the bathrooms.
+
 QUEST The Painting
   title: The Million Dollar Painting
   from: The Uploader

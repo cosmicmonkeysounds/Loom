@@ -24,7 +24,7 @@ verified (OP-04).
 | any time (from login; busy from 📥) | **Approve** / **Deny** on a card in your **Wallet** room | each held transfer (every third one), any transfer inside its 60 s window |
 | from the 📥 Truther Download | **🪙 Charge 100 Truthcoin** | any program that profits without declaring it |
 | the summons (⏳ → 🚨) | scan arrivals at the living-room door, or **📍 Checked in** | |
-| Y2K on | **♟ They beat the machine** | only after you **saw** "checkmate" |
+| any time, until 📄 | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it |
 
 **The escort list.** The hosts mark programs (🎯 🤷 🙅 🎩 🏓 🍎, a late
 arrival, a filed guess); your booth reads *🚨 X is marked for reinstallation
@@ -71,9 +71,12 @@ early. How it works:
 requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
 **Server room (if stationed there from 🕚):** inside with the door shut
-**before 🕚**, then radio **IN** (from 🕚 the first opening plays The Heart,
-whoever opens it; once out, only the house manager lets you back in). The
-patch-bay card, the door, the chess phone, the taped-off gear. The door has a keypad lock: whoever opens it
+**before 🕚**, then radio **IN** (once Trabolta is awake the first opening
+plays The Heart, whoever opens it: press **🔧 Crew going through the door**
+on your booth before you open it yourself; once out, only the house manager
+lets you back in). The patch-bay card (press **🔌 / 💥 / ❌** yourself, on the
+card of the program at the cables, and **🚪** if the door opened and nothing
+happened), the door, the door terminal (the King's chess), the taped-off gear. The door has a keypad lock: whoever opens it
 with the code belongs inside, so let them in. Only the patch bay alarms (the
 second wrong combination), and then whoever is at the cables goes to the
 Internet. From inside, the handle always opens with no code.

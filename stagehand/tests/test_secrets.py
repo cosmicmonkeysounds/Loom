@@ -538,3 +538,18 @@ def test_the_shipped_mind_file_never_lets_a_typed_code_reach_another_programs_pr
     system = build_messages(persona, other, mind=mind)[0]["content"]
     for leak in [code, *pairs]:
         assert leak not in mind.prompt_block("g9") and leak not in system, leak
+
+
+def test_the_shipped_mind_file_never_carries_a_digit_note():
+    """Wave 11: the cold door's four digit notes (facts.json door.clues). A
+    single digit can't be a never word, so their unlock codes and the
+    "first digit" … phrases are: a program telling him one never reaches
+    his shared memory or his voice."""
+    s = load_persona(SHOW / "trabolta.persona.md").secrets
+    clues = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))["door"]["clues"]
+    assert len(clues) == 4
+    assert set(s.never) >= {c["code"] for c in clues} | {"first digit", "second digit", "third digit", "fourth digit"}
+    for said in ["The second digit is nine.", "first digit: 1", "Calculator found FROSTED-MIRROR", "the Fourth Digit is 7"]:
+        assert s.leaks(said), said
+    for fine in ["A digit is a number.", "Your first program tonight", "the second floor"]:
+        assert not s.leaks(fine), fine
