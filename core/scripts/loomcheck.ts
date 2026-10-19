@@ -300,7 +300,7 @@ for (const item of cfile.items) {
   const body = d.character;
   if ((d.kind === "character" || d.kind === "role") && body) {
     for (const p of body.typedProperties) {
-      if (["hidden", "listed", "playable", "mind", "avatar", "wiki", "faction", "label", "stats", "joinable", "secret", "reserved"].includes(p.name)) continue;
+      if (["hidden", "listed", "playable", "mind", "avatar", "wiki", "faction", "label", "stats", "joinable", "secret", "reserved", "busy"].includes(p.name)) continue;
       if (p.default === null && p.rawType !== null && /^(true|false|-?\d+(\.\d+)?)$/.test(p.rawType.trim()))
         report("WARN", `${where(p.span.start.line)} ${d.kind.toUpperCase()} ${d.name}: \`${p.name}: ${p.rawType}\` seeds NO value — write \`${p.name}: bool = ${p.rawType}\` / \`${p.name}: 0 to 100 = ${p.rawType}\``);
     }
