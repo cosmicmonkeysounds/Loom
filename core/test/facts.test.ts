@@ -386,6 +386,11 @@ describe("Trapped in the Internet — facts.json (the seed)", () => {
     expect(parsed.problems).toEqual([]);
     expect(facts).not.toBeNull();
   });
+  it("the door code is in no entry an agent or a curious guest can read (a bio once said it as a year)", () => {
+    const code = facts.door!.code;
+    const open = [...m.codex.values()].filter((c) => !c.secret && `${c.title} ${c.text}`.includes(code)).map((c) => c.id);
+    expect(open).toEqual([]);
+  });
   it("passes the show's rules", () => {
     expect(showFactsProblems(facts)).toEqual([]);
   });
@@ -547,9 +552,9 @@ describe("showFactsProblems — the server-room door (wave 7)", () => {
   it("clueText fills the digit in", () => {
     expect(clueText(clue(2), "9")).toBe("The third digit is 9.");
   });
-  it("the show's door: 1997 (the year he met Sandy, never a hunt answer), on its sign never", () => {
+  it("the show's door: 4826 (a number with no story behind it, never a hunt answer), on its sign never", () => {
     const d = parseFactsText(readFileSync(join(scenarioDir(SHOW), FACTS_FILE), "utf8")).facts!.door!;
-    expect(d.code).toBe("1997");
+    expect(d.code).toBe("4826");
     // Wave 11: the sign points at the four notes and the King's terminal;
     // it no longer asks for the year.
     expect(d.clue).toBe("FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.");
