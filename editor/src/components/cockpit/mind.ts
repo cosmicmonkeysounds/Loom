@@ -473,3 +473,11 @@ export function queueBadge(q: AgentQueue): { text: string; tone: QueueTone; titl
   }
 }
 
+
+/** The Judging card's mode button tooltip. Auto judges at once — except a
+ *  near miss, which waits on the card for a director in either mode (C6). */
+export function judgeModeTitle(mode: 'auto' | 'review'): string {
+  return mode === 'auto'
+    ? 'Every filed fact gets its verdict at once, except a near miss (a letter or a word from the key), which waits here for you'
+    : 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest. A near miss waits here too.'
+}

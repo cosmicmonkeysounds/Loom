@@ -44,6 +44,7 @@ import {
   judgeModeOf,
   mindCharacters,
   agentQueueOf,
+  judgeModeTitle,
   nearCount,
   queueBadge,
   QueueTone,
@@ -168,7 +169,9 @@ function MindDebugger() {
  * a proposal until a director confirms or overrides it here (the story
  * event named by `facts.json` `judge.confirm`, fired on the person with the
  * question as an argument — the hosts' booth buttons fire the same names)
- * or the round settles it by the proposal. The verdict never reaches a
+ * or the round settles it by the proposal. A **near miss** (wave 11 C6: a
+ * letter or a word from the key) is never judged on its own: it waits here
+ * in either mode, `auto` included. The verdict never reaches a
  * phone or the voice worker; this card is the only place it is shown.
  */
 function JudgingCard({ local = false }: { local?: boolean }) {
@@ -225,7 +228,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
               aria-pressed={m === mode}
               disabled={busy !== null}
               onClick={() => void switchMode(m)}
-              title={m === 'auto' ? 'Every filed fact gets its verdict at once' : 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest'}
+              title={judgeModeTitle(m)}
               data-testid={`judging-mode-${m}`}
             >
               {m}

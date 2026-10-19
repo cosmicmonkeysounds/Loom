@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
-import { agentQueueOf, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
+import { agentQueueOf, judgeModeTitle, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
 import { mergeThoughts } from '@/store/operate'
@@ -393,3 +393,10 @@ describe("an agent's queue (wave 11 C6)", () => {
   })
 })
 
+
+describe('the Judging mode tooltip (wave 11 C6)', () => {
+  it('auto names the near-miss exception; review says a near miss waits too', () => {
+    expect(judgeModeTitle('auto')).toMatch(/at once, except a near miss/u)
+    expect(judgeModeTitle('review')).toMatch(/near miss waits here/u)
+  })
+})
