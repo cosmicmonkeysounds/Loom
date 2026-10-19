@@ -347,9 +347,9 @@ Six lanes built the user's 18 asks of 2026-10-16 (numbered below as the user gav
 - **U11** consensus = every filed answer matches the key **and** every confidence is 100.
 - **U12 / U13** the bottle: a cue picks a random cleared program not yet picked this question, wherever they are in the house; Trabolta asks on the TV; a Truth / Dare card; Dare → marked; Truth → the next personal question; 🗣 / 🙅 in Clippy's booth; "five rounds" = five picks per hunt question.
 - **U14** the verdict (Song vs Grok Prom) counts only answered questions: all accepted answers accurate → Song; any lie on record → Grok Prom.
-- **U15** the King can be fought any time; a win fires `chess won`, which keeps its Y2K gate (before it the in-game door opens as practice).
-- **U16** a tablet-only board; VR shows the King with a "play it on the tablet" notice.
-- **U17** the wall chess phone stays as the fallback until the King is device-checked.
+- **U15** the King can be fought any time; a win fires `chess won`, which keeps its Y2K gate (before it the in-game door opens as practice). *(Wave 11: no gate; the board is the Server Door terminal and a win gives the code until 📄.)*
+- **U16** a tablet-only board; VR shows the King with a "play it on the tablet" notice. *(Wave 11: no board in either game; both hit his shared bar.)*
+- ~~**U17** the wall chess phone stays as the fallback until the King is device-checked.~~ *Retired in wave 11: the chess game is only on the Server Door terminal; ♟ / `chess_won` stay the fallback.*
 - **U18** after truth.txt Trabolta DMs everyone for a pickup line (an `answer` card) in both branches.
 - **U19** a marked program keeps DMs + The Tube / The Internet, loses buttons, filings, check-in and room posting, and sees one pinned 🚨 card; `captured` is unchanged; the Antivirus get a `!` alert + a `# quarantine` task.
 - **U20** ~20 personal questions drafted in `facts.json` `truths` from the team's 4 samples (TD05–TD20 `draft: true`).
