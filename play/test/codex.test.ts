@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiError } from "../src/client.ts";
-import { REDEEM_THROTTLED, pmChannelId, pmOtherParty, redeemErrorText, shareErrorText, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
+import { REDEEM_THROTTLED, pmChannelId, pmOtherParty, redeemErrorText, shareErrorText, shareTargets, unlockFromSearch, withoutUnlock } from "../src/codex.ts";
+import type { CodexEntry, PersonCard } from "../src/types.ts";
 
 describe("private threads", () => {
   it("one id whoever opens it, and the other party from my side", () => {
@@ -45,5 +46,23 @@ describe("a refused Share… (T5-05)", () => {
     expect(shareErrorText(new ApiError("unknown guest", 404))).toBeNull();
     expect(shareErrorText(new ApiError("unknown event", 404))).toBeNull();
     expect(shareErrorText(new ApiError("sign in first", 403))).toBeNull();
+  });
+});
+
+describe("Share… offers no one who would refuse the entry", () => {
+  const person = (id: string, agent = false): PersonCard => ({ id, name: id, kind: agent ? "character" : "guest", faction: null, known: [], location: null, ...(agent ? { agent: { online: true } } : {}) });
+  const people = [person("g-1"), person("Clippy"), person("Trabolta", true)];
+  const entry = (e: Partial<CodexEntry>): CodexEntry => ({ id: "x", title: "X", about: null, text: "", ...e });
+  const ids = (e: CodexEntry | undefined) => shareTargets(people, e).map((p) => p.id);
+  it("a secret file (a digit note) goes to anyone but the agent", () => {
+    expect(ids(entry({ secret: true }))).toEqual(["g-1", "Clippy"]);
+  });
+  it("lore about someone or somewhere else skips the agent; about him, or about nothing, he takes", () => {
+    expect(ids(entry({ about: "The Server Room" }))).toEqual(["g-1", "Clippy"]);
+    expect(ids(entry({ about: "Trabolta" }))).toEqual(["g-1", "Clippy", "Trabolta"]);
+    expect(ids(entry({}))).toEqual(["g-1", "Clippy", "Trabolta"]);
+  });
+  it("an entry the view doesn't list filters nothing", () => {
+    expect(ids(undefined)).toEqual(["g-1", "Clippy", "Trabolta"]);
   });
 });
