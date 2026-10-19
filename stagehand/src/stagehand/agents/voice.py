@@ -692,6 +692,17 @@ async def answer_lean(
         final = first.reply
         if wants == "catchphrase":
             final = replace(final, say=persona.fallback)
+        elif wants == "repeat":
+            # No retry in a burst, but still never word for word (K-04
+            # burst-30: a reply this guest had just heard went out again): a
+            # sentence they already heard is cut; nothing left is the fallback.
+            cut = cut_exact_repeats(final.say, ctx.said, mine)
+            if not cut:
+                final = replace(final, say=persona.fallback)
+                notes.append("repeat → fallback")
+            elif cut != final.say:
+                final = replace(final, say=cut)
+                notes.append("repeat: old sentences cut")
         final = _scrub(persona, final, memo_on, notes)
         await record(kind, trigger, used, completion, final, note=_notes(call_note, notes))
         return _done(persona, final, started)

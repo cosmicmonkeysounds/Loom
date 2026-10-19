@@ -481,6 +481,20 @@ def test_a_line_said_to_another_guest_is_no_retry_even_word_for_word():
     assert "Elsewhere tonight:" in model.calls[0][2]["content"] and line in model.calls[0][2]["content"]
 
 
+def test_in_a_burst_a_repeat_has_no_retry_but_never_goes_out_word_for_word():
+    old = "I have no record of a prior encounter with you."
+    busy = VoiceOptions(retry_allowed=False)
+    model = Model(say(old))
+    trace = Trace()
+    reply = run(answer_lean(P, MODEL, request(), context(said=Said(to_them=(old,)), options=busy), model, trace=trace))
+    assert len(model.calls) == 1 and reply.say == P.fallback
+    assert "repeat → fallback" in trace.all("Trabolta")[0].note
+    # Only the old sentence goes; a new one beside it is sent.
+    model = Model(say(f"{old} Give me five minutes, then."))
+    reply = run(answer_lean(P, MODEL, request(), context(said=Said(to_them=(old,)), options=busy), model, trace=Trace()))
+    assert len(model.calls) == 1 and reply.say == "Give me five minutes, then."
+
+
 class TempModel(Model):
     def __init__(self, *answers):
         super().__init__(*answers)
@@ -528,11 +542,12 @@ def test_a_line_he_said_to_them_before_the_last_three_is_still_a_repeat():
 
 def test_no_retry_while_another_line_waits():
     old = "I will continue to listen and record your truths, program."
-    model = Model(say(old))
+    near = "Program, I will continue to listen and record your truths."  # a near-repeat, not word for word
+    model = Model(say(near))
     trace = Trace()
     ctx = context(said=Said(to_them=(old,)), options=VoiceOptions(retry_allowed=False))
     reply = run(answer_lean(P, MODEL, request(), ctx, model, trace=trace))
-    assert reply.say == old and len(model.calls) == 1
+    assert reply.say == near and len(model.calls) == 1
     assert trace.all("Trabolta")[0].note == "guard: repeat (no retry: a line is waiting)"
 
 
