@@ -50,10 +50,11 @@ export class IdleClock {
 }
 
 /**
- * Run the leash while `active`. `busy` holds it. Returns `touch` to feed
+ * Run the leash while `active` (`limit` long, the countdown shown for the
+ * last `warnMs`; the chess board's is longer). `busy` holds it. Returns `touch` to feed
  * inputs and the seconds left once inside the warning window (else null).
  */
-export function useIdleTimeout(opts: { active: boolean; busy: boolean; onTimeout: () => void; limit?: number }): {
+export function useIdleTimeout(opts: { active: boolean; busy: boolean; onTimeout: () => void; limit?: number; warnMs?: number }): {
   touch: () => void;
   /** Seconds left, once inside the warning window (else null). */
   warning: number | null;
@@ -66,6 +67,7 @@ export function useIdleTimeout(opts: { active: boolean; busy: boolean; onTimeout
   const onTimeout = useRef(opts.onTimeout);
   onTimeout.current = opts.onTimeout;
   const limit = opts.limit ?? IDLE_MS;
+  const warnMs = opts.warnMs ?? WARN_MS;
 
   useEffect(() => {
     if (!opts.active) {
@@ -82,14 +84,14 @@ export function useIdleTimeout(opts: { active: boolean; busy: boolean; onTimeout
       const now = Date.now();
       const left = c.remaining(now);
       setRemaining(c.busy ? null : Math.ceil(left / 1000));
-      setWarning(left <= WARN_MS ? Math.ceil(left / 1000) : null);
+      setWarning(left <= warnMs ? Math.ceil(left / 1000) : null);
       if (c.expired(now)) {
         fired = true;
         onTimeout.current();
       }
     }, 250);
     return () => window.clearInterval(tick);
-  }, [opts.active, limit]);
+  }, [opts.active, limit, warnMs]);
 
   useEffect(() => {
     clock.current?.setBusy(opts.busy, Date.now());
