@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { damerau, nearMatch, nearTokens, spellOut } from "../src/answer-match.ts";
+import { damerau, mentionsKey, nearMatch, nearTokens, spellOut } from "../src/answer-match.ts";
 
 describe("nearMatch", () => {
   const near: Array<[string, string, string]> = [
@@ -157,5 +157,25 @@ describe("damerau", () => {
     expect(damerau("grok", "grko")).toBe(1);
     expect(damerau("", "abc")).toBe(3);
     expect(damerau("kitten", "sitting")).toBe(3);
+  });
+});
+
+describe("mentionsKey — a key form named anywhere in a text (the answer-secrecy guard)", () => {
+  it("finds the form as a run of words, under the judge's folding and slips", () => {
+    expect(mentionsKey("Somebody said Mr. Pickels was first.", "Mister Pickles")).toBe(true);
+    expect(mentionsKey("the film came out in nineteen seventy-eight", "1978")).toBe(true);
+    expect(mentionsKey("Dial ext. 1978 now", "ext 1978")).toBe(true);
+    expect(mentionsKey("I'm sorry, I didn't understand that.", "i didn't understand that")).toBe(true);
+    expect(mentionsKey("GROK'S prom ticket", "Grok")).toBe(true);
+    expect(mentionsKey("hopelesly devoted, on repeat", "hopelessly devoted")).toBe(true);
+  });
+  it("is word-bounded, keeps numbers exact, and gives a short lone word no slip", () => {
+    expect(mentionsKey("1979 was the year", "1978")).toBe(false);
+    expect(mentionsKey("item 119 in the list", "11")).toBe(false);
+    expect(mentionsKey("QUESTIONS TO GROW", "Grok")).toBe(false);
+    expect(mentionsKey("a grog at the bar", "Grok")).toBe(false);
+    expect(mentionsKey("groks", "Grok")).toBe(true); // a plural (or a possessive) is the word
+    expect(mentionsKey("the appendix of the binder", "appendix z")).toBe(false);
+    expect(mentionsKey("", "Grok")).toBe(false);
   });
 });
