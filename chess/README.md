@@ -8,7 +8,7 @@ React as a peer for the board.
 
 | Module | What |
 |---|---|
-| `stage.ts` | `Stage` (`grandmaster` · `club` · `beginner` · `dizzy` · `pawns`), `stageFor(hp, max)` = `round(4·hp/max)` off the King's one shared health bar (15 HP for the night, knocked down in the reinstallation games), `STAGE_LINE` |
+| `stage.ts` | `Stage` (`grandmaster` · `club` · `beginner` · `dizzy` · `pawns`), `stageFor(hp, max)` off the King's one shared health bar (15 HP for the night, knocked down in the reinstallation games): grandmaster only at a full bar, pawns only only at 0, and every point between split over club / beginner / dizzy (`1 + floor(3·hp/max)`: on 15 HP, 10–14 club, 5–9 beginner, 1–4 dizzy), so the first hit already weakens him. `STAGE_LINE` is exported but used nowhere: the door terminal never shows a strength line (no hints), and the tent tablet's HUD has its own (`reinstall/web` `fight.ts`) |
 | `rules.ts` | the chess.js wrapper: `newGame(stage)` (pawns only at 0), `targets`, `play` (auto-queen), `outcome`, `bannerOf`, `board`, glyphs, `describe` |
 | `ai.ts` | the King: negamax / alpha-beta, Michniewski tables, iterative deepening, node + time budgets, `PROFILES` per stage. The search is a generator that can stop at any node; `pickMoveAsync` gives the thread back every `SLICE_MS` (12 ms) so taps stay live on the oldest tablets (no workers) |
 | `Board.tsx` | the tap-tap 8×8 board; styles in `@loom/chess/board.css` (`--chess-*` overrides) |
