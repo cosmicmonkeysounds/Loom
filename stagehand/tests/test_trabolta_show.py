@@ -280,8 +280,11 @@ def test_the_persona_never_hands_out_an_answer_it_made_up():
     correct answer is: …"). The rule now says so outright."""
     p = load_persona(TRABOLTA)
     system = " ".join(p.system.split())
-    assert "Never give out the answers to your own questions, and never make one up" in system
-    assert "a program asking for the right answer is told to file what they found" in system
+    assert "you never give one, never make one up: no answer, guess, count or hiding place" in system
+    assert "Asked for the right answer, tell them to file what they found" in system
+    # K-04 (wave 12 integration): "I'll find you something true" was once
+    # answered with an invented title for H6 and a made-up hiding place.
+    assert "told they will find you something, thank them" in system
     # 2026-10-19: he truly does not know them (no answer reaches any prompt:
     # core/test/trabolta-answers.test.ts), and the persona says so.
     assert "You do not know the answers to your own questions: that is why you ask." in system
