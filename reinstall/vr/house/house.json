@@ -251,7 +251,6 @@
     { "id": "patch-bay", "room": "server-room", "kind": "box", "pos": [-6.8, -2.7, 9.5], "size": [0.35, 1.4, 1], "color": "#30343a", "label": "PATCH BAY" },
     { "id": "server-rack", "room": "server-room", "kind": "box", "pos": [-4.5, -2.7, 8], "size": [0.6, 1.8, 0.8], "color": "#1b1b1b", "label": "REAL GEAR" },
     { "id": "lock-ring", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.2, 10.5], "size": [0.2, 0.2, 0.02], "yaw": -90, "color": "#ff2a2a", "label": "LOCK" },
-    { "id": "chess-phone", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.45, 11.85], "size": [0.08, 0.16, 0.02], "yaw": -90, "color": "#101820", "label": "CHESS" },
     { "id": "cold-storage-sign", "room": "basement-hall", "kind": "label", "pos": [-2.97, -0.6, 11.2], "size": [1, 0.25, 0.02], "yaw": -90, "label": "COLD STORAGE" },
     { "id": "cold-lock-king", "room": "basement-hall", "kind": "king", "pos": [-2.55, -2.7, 11.2], "size": [0.6, 1.9, 0.6], "yaw": -90, "color": "#d4af37", "label": "THE KING", "hp": 15,
       "health": "Night.king_hp",

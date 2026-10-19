@@ -87,7 +87,7 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     }
   });
 
-  it("puts the Server Room behind a door in the basement, with its patch bay, lock ring, chess phone and the King guarding its door", () => {
+  it("puts the Server Room behind a door in the basement, with its patch bay, lock ring and the King guarding its door", () => {
     const server = roomFor(house, "The Server Room");
     expect(server.floor).toBe("basement");
     const doors = house.doors.filter((d) => d.a === server.id || d.b === server.id);
@@ -96,12 +96,15 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     const outside = door.a === server.id ? door.b : door.a;
     expect(outside).not.toBeNull();
     expect(house.props.find((p) => p.id === "patch-bay")?.room).toBe(server.id);
-    // The lock ring and the chess phone hang outside its door (HW-CHESS-01 — the fallback until the King is device-checked, U17).
-    for (const id of ["lock-ring", "chess-phone"]) expect(house.props.find((p) => p.id === id)?.room, id).toBe(outside);
+    // The lock ring hangs outside its door. There is no chess phone any more: the chess game is
+    // only on the Server Door terminal (the `server-room-door` spot), so no `chess-phone` prop.
+    expect(house.props.find((p) => p.id === "lock-ring")?.room).toBe(outside);
+    expect(house.props.find((p) => p.id === "chess-phone")).toBeUndefined();
     expect(house.duck.spots.filter((s) => s.room === server.id)).toEqual([]);
-    // The King (wave 4, lane F): a `king` prop in the doorway, in the hall, holding the door shut
-    // until he is checkmated on the tent tablet; the tablet posts the story's `chess won`, and the
-    // badge reads the Y2K gate off `Night.step` (U15).
+    // The King: a `king` prop in the doorway, in the hall, with one shared 15-HP bar for the night
+    // in `Night.king_hp`. The reinstallation games hit him and the server judges each hit (C2). He
+    // is checkmated only at the Server Door terminal, which posts `chess won`, and a checkmate
+    // counts while `Night.king_armed` ≥ 1. Once he falls his guarded door opens for everyone.
     expect(door.guard).toBe("cold-lock-king");
     const king = house.props.find((p) => p.id === "cold-lock-king");
     // One shared bar for the night (C1): 15 HP in Night.king_hp, a checkmate counting while Night.king_armed.
