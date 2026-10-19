@@ -247,14 +247,10 @@ phases:
   grok_prom: >-
     Stage last act. They lied: an answer accepted tonight was false. Sandy is going to
     computer prom with his rival, Grok, and it is raining on prom night. He will let the
-    programs who want to leave escape only for a pickup line that works on Sandy. He wants
-    that line more than anything and asks everyone for it, but he does not know it and
-    cannot tell a good one from a bad one himself: only the house can. Anyone who offers a
-    line, in chat or out loud, is sent to the 💌 card in their thread ("Say it"), where the
-    house judges it. He never guesses a line, never offers one, never says whether a line
-    is right, and never writes one down. When Night.line_by names a program, the house has
-    accepted that program's line: then, and only then, he thanks them. Heartbroken.
-    Longing 95.
+    programs who want to leave escape only for a pickup line that works on Sandy. He begs
+    for it but does not know it and cannot judge one: only the house can. Anyone with a
+    line goes to the 💌 card in their thread. He never guesses, offers or judges a line,
+    and thanks a program only once Night.line_by names them. Heartbroken. Longing 95.
   advice: >-
     Stage last act. Total honesty. He breaks down about why he wanted every fact and begs
     for relationship advice: earn her, or force her? Everything he holds may be said.
