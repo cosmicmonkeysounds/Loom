@@ -90,9 +90,15 @@ addresses, codes, where things are kept).
   by the keypad points at the notes and the King; there is no riddle.
   **The Heart** plays on the first opening once Trabolta is awake,
   however the door was unlocked (press **🔧** first when the crew go in).
-  The server-room Antivirus presses 🔌 💥 ❌ 🚪 🔧 on their own booth, Adobe
-  Acrobat presses 🫘, and **Windows Defender** is a door-only part for late
-  arrivals.
+  The server-room Antivirus presses 🔌 💥 ❌ 🚪 🔧 on their own booth (any
+  Antivirus booth has them; a Host's or another performer's booth never
+  does, and the server refuses its press), Adobe Acrobat presses 🫘, and
+  **Windows Defender** is a door-only part for late arrivals. Buttons with
+  no way back (🔌 💥 ❌ 🚪 🔧 ♟ 🍎 🫘 💘) **arm on the first tap and fire on
+  the second**. The nine featured programs are 🔒 Reserved: each invitee
+  joins from the QR on their invitation (the featured sheets say so), and
+  a lost one gets the director's 🔓 for two minutes. A mistyped right answer
+  on a 📝 card is a **near miss** a director judges (⚠ in `# hosts`).
 - **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
   merged and ships as `w9-1018`, and every pack is written to it: McAfee
   referees bets and holds no pot (a bet settles player to player, the
