@@ -445,6 +445,14 @@ def thread_state(msgs: list[dict[str, Any]], threads: set[str], typing: dict[str
     return out
 
 
+def refused(doc: Any) -> bool:
+    return isinstance(doc, dict) and doc.get("refused") is True
+
+
+def truthy(value: Any) -> bool:
+    return value is True or str(value).strip().lower() in ("true", "1")
+
+
 # -- the driver -------------------------------------------------------------------------------------
 
 
@@ -530,9 +538,13 @@ class Driver:
         return g
 
     def clear(self, g: Guest) -> None:
-        self.modpost("/api/mod/signal", {"name": "captcha answered", "subject": g.id, "args": {"passed": False}})
-        self.post("/api/guest/choose", {"index": 0}, g.token)
-        self.post("/api/guest/choose", {"index": 0}, g.token)
+        status, doc = self.modpost("/api/mod/signal", {"name": "captcha answered", "subject": g.id, "args": {"passed": False}})
+        if status != 200 or refused(doc):
+            self.errors.append(f"captcha {g.name} → {status}{' refused' if refused(doc) else ''}")
+        for n in (1, 2):
+            status, _ = self.post("/api/guest/choose", {"index": 0}, g.token)
+            if status != 200:
+                self.errors.append(f"choose {n} {g.name} → {status}")
         status, _ = self.modpost("/api/mod/scan", {"as": "Norton Anti-Virus", "target": g.id})
         if status != 200:
             self.errors.append(f"scan {g.name} → {status}")
@@ -555,8 +567,7 @@ class Driver:
         if cue.get("actor"):
             body["actor"] = cue["actor"]
         status, doc = self.modpost("/api/mod/signal", body)
-        refused = isinstance(doc, dict) and doc.get("refused") is True
-        if status != 200 or (refused and cue["name"] not in self.self_pressed):
+        if status != 200 or (refused(doc) and cue["name"] not in self.self_pressed):
             raise HarnessError(f"the night stopped at {cue['name']} ({status} {doc}) — # hosts says why")
 
     def to_phase(self, target: str) -> None:
@@ -690,14 +701,20 @@ class Driver:
             if status != 200:
                 raise HarnessError(f"impersonate {g.name} → {status} {doc}")
             g.pilot = doc["token"]
-            self.modpost("/api/mod/signal", {"name": "terminal opened", "subject": g.id, "args": {"at": s.get("at", "The Server Room")}, "label": label})
-            self.note("pilot", who=g.name)
+            status, doc = self.modpost("/api/mod/signal", {"name": "terminal opened", "subject": g.id, "args": {"at": s.get("at", "The Server Room")}, "label": label})
+            heart = truthy(self.world().get(f"{g.id}.at_the_heart"))
+            self.note("pilot", who=g.name, status=status, refused=refused(doc), at_the_heart=heart)
+            if status != 200 or refused(doc) or not heart:
+                # Its lines would be scored as heart replies with at_the_heart never set.
+                raise HarnessError(f"terminal opened for {g.name} → {status}{' refused' if refused(doc) else ''}, at_the_heart {heart} — # hosts says why")
         elif kind == "unpilot":
             g = self.guests[s["unpilot"]]
             label = s.get("label", "Terminal · Server Room")
-            self.modpost("/api/mod/signal", {"name": "terminal closed", "subject": g.id, "args": {"at": s.get("at", "The Server Room")}, "label": label})
+            status, doc = self.modpost("/api/mod/signal", {"name": "terminal closed", "subject": g.id, "args": {"at": s.get("at", "The Server Room")}, "label": label})
             g.pilot = None
-            self.note("unpilot", who=g.name)
+            self.note("unpilot", who=g.name, status=status, refused=refused(doc), at_the_heart=truthy(self.world().get(f"{g.id}.at_the_heart")))
+            if status != 200 or refused(doc):
+                self.errors.append(f"terminal closed for {g.name} → {status}{' refused' if refused(doc) else ''}")
         elif kind == "signal":
             body: dict[str, Any] = {"name": s["signal"]}
             if s.get("subject"):

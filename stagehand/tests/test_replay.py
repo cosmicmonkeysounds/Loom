@@ -392,16 +392,25 @@ class FakeServer:
     refuse: set = field(default_factory=set)
     pressed: list = field(default_factory=list)
     said: list = field(default_factory=list)
+    world: dict = field(default_factory=dict)
+    heart: bool = True  # does `terminal opened` set at_the_heart?
+    status: dict = field(default_factory=dict)  # path → a forced status
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path.removeprefix("/e/default")
         body = json.loads(request.content or b"{}")
+        if path in self.status:
+            return httpx.Response(self.status[path], json={"error": "nope"})
         if path == "/api/state":
-            return httpx.Response(200, json={"world": [{"path": "Night.phase", "value": self.phase}]})
+            return httpx.Response(200, json={"world": [{"path": "Night.phase", "value": self.phase}] + [{"path": k, "value": v} for k, v in self.world.items()]})
+        if path == "/api/mod/impersonate":
+            return httpx.Response(200, json={"token": "pilot-" + body["id"]})
         if path == "/api/mod/signal":
             self.pressed.append(body["name"])
             if body["name"] in self.refuse:
                 return httpx.Response(200, json={"ok": True, "refused": True})
+            if body["name"] in ("terminal opened", "terminal closed") and (self.heart or body["name"] == "terminal closed"):
+                self.world[f"{body['subject']}.at_the_heart"] = "true" if body["name"] == "terminal opened" else "false"
             self.phase = self.phases.get(body["name"], self.phase)
             return httpx.Response(200, json={"ok": True})
         if path == "/api/guest/say":
@@ -500,6 +509,29 @@ def test_a_burst_thread_still_owed_at_the_cap_counts_as_unanswered() -> None:
         d.mirror.frame(f)
     state = d.settle({"dm:Trabolta|g-a"}, time.monotonic() + 0.3, settle_s=0.1)
     assert state == {"dm:Trabolta|g-a": None}
+
+
+def test_a_pilot_checks_the_terminal_opened_and_that_they_stand_at_the_heart() -> None:
+    server = FakeServer()
+    d = fake_driver(server)
+    d.step({"pilot": "Ada", "label": "Terminal · Server Room"})
+    assert d.guests["Ada"].pilot == "pilot-g-a"
+    assert {k: d.records[-1][k] for k in ("kind", "status", "refused", "at_the_heart")} == {"kind": "pilot", "status": 200, "refused": False, "at_the_heart": True}
+    d.step({"unpilot": "Ada"})
+    assert d.records[-1]["at_the_heart"] is False and d.guests["Ada"].pilot is None and d.errors == []
+    with pytest.raises(drive.HarnessError, match="terminal opened for Ada → 200 refused"):
+        fake_driver(FakeServer(refuse={"terminal opened"})).step({"pilot": "Ada"})
+    with pytest.raises(drive.HarnessError, match="at_the_heart False"):
+        fake_driver(FakeServer(heart=False)).step({"pilot": "Ada"})
+
+
+def test_clearing_a_guest_records_every_failed_step() -> None:
+    d = fake_driver(FakeServer(refuse={"captcha answered"}, status={"/api/guest/choose": 409}))
+    d.clear(d.guests["Ada"])
+    assert d.errors == ["captcha Ada → 200 refused", "choose 1 Ada → 409", "choose 2 Ada → 409"]
+    ok = fake_driver(FakeServer())
+    ok.clear(ok.guests["Ada"])
+    assert ok.errors == []
 
 
 def test_an_unanswered_say_times_out() -> None:
