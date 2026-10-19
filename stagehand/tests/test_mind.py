@@ -212,6 +212,20 @@ FACTS = {
 }
 
 
+def test_a_restored_mind_loses_a_drive_the_mind_file_no_longer_declares(tmp_path):
+    old = Mind("Trabolta", event="evt")
+    old.seed(("asleep", "formal"), {"hunger": 30, "suspicion": 35, "pride": 60})
+    old.apply({"drives": {"hunger": 70}}, by="reflect")
+    path = mind_path(tmp_path, "evt", "Trabolta")
+    old.save(path)
+    back = Mind.load(path, "Trabolta", "evt")
+    back.seed(("asleep", "formal"), {"hunger": 30, "pride": 60, "longing": 40})
+    assert back.drives == {"hunger": 70, "pride": 60, "longing": 40}  # kept, gone, added
+    assert "suspicion" not in back.drive_starts and "suspicion" not in back.prompt_block(None)
+    back.reset(by="server")
+    assert back.drives == {"hunger": 30, "pride": 60, "longing": 40}
+
+
 def test_facts_find_names_the_way_the_story_folds_them():
     f = Facts(FACTS)
     assert f.find("excel").kind == "program" and f.find("MICROSOFT_EXCEL").id == "g1"

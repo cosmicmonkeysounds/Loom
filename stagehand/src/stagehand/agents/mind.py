@@ -286,6 +286,13 @@ class Mind:
             self.drive_starts[str(name)] = _int(start, 50)
             if name not in self.drives:
                 self.drives[str(name)] = _int(start, 50)
+        if drives:
+            # A drive the mind file no longer declares (a retired name in a
+            # restored mind.json) is dropped, so no prompt shows it; the rest
+            # keep their values, in the declared order.
+            declared = [str(n) for n in drives]
+            self.drives = {n: self.drives[n] for n in declared}
+            self.drive_starts = {n: self.drive_starts[n] for n in declared}
 
     # -- bookkeeping ----------------------------------------------------------
 
