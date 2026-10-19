@@ -141,6 +141,12 @@ export interface CharDef {
    *  the story is a performer's; one with no part is a program a guest may
    *  be (see `server/identity.ts`). */
   playable: boolean;
+  /** `reserved: true` — a guest's program held for one invitee (a featured
+   *  program): off the picker's free list, and `guest/register` refuses it
+   *  without its claim token (the invitation's `?claim=`) unless a director
+   *  has opened it for a few minutes (`/api/mod/claim/unlock`). Only a pool
+   *  character means anything by it. Default false. */
+  reserved: boolean;
   /** `avatar: https://…` or `avatar: File:Clippy-letter.PNG` — the
    *  hand-picked profile picture(s) for the character's tile, best first
    *  (`a | b | c` offers a guest several). The first is the default; the
@@ -294,6 +300,11 @@ export interface InteractionDef {
    *  `cueRows`). Display only: it never changes NEXT / LAST. Null = none
    *  written on this cue. */
   act: string | null;
+  /** `arm: true` — a button pressed by mistake costs too much (a guest's
+   *  irreversible choice, a booth's verdict): every UI arms it on the first
+   *  tap and fires on the second (core's `tapCue` arm model). Display only:
+   *  the server never refuses an unarmed press. Default false. */
+  arm: boolean;
 }
 
 export interface SimModel {
@@ -514,6 +525,7 @@ export function compileModel(bundle: Bundle): SimModel {
               while: decl.interaction.properties.get("while")?.value.trim() || null,
               allowRestricted: decl.interaction.properties.get("restricted")?.value.trim().toLowerCase() === "allow",
               act: decl.interaction.properties.get("act")?.value.trim() || null,
+              arm: decl.interaction.properties.get("arm")?.value.trim().toLowerCase() === "true",
             });
           }
           break;
@@ -777,6 +789,7 @@ function charDef(id: string, body: CharacterBody): CharDef {
     hold: holdOf(body.properties.get("hold")?.value),
     ranges,
     playable: body.properties.get("playable")?.value.trim() !== "false",
+    reserved: body.properties.get("reserved")?.value.trim().toLowerCase() === "true",
     avatar: avatarsOf(body.properties.get("avatar")?.value),
     wiki: body.properties.get("wiki")?.value.trim() || null,
     secret: body.properties.get("secret")?.value.trim() === "true",

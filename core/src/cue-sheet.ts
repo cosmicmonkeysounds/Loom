@@ -38,6 +38,9 @@ export interface CueInteraction {
   act?: string;
   /** What the cue does, in full (the laptop's NOW card; never the phone's). */
   description?: string | null;
+  /** `arm: true` on the INTERACTION (the director's sheet arms every cue
+   *  anyway; carried so every view of a button says the same). */
+  arm?: true;
 }
 
 /** What a cue row needs from the server's `CueState`. */
@@ -490,6 +493,7 @@ export function cueSheetView(view: {
         ...(i.repeat === true ? { repeat: true as const } : {}),
         ...(i.live === false ? { live: false as const } : {}),
         ...(typeof i.act === "string" && i.act.trim() !== "" ? { act: i.act } : {}),
+        ...(i.arm === true ? { arm: true as const } : {}),
       })),
     cues: view.cues ?? { last: null, fired: [] },
     world: world.filter((w) => w.path === "Night.phase").map((w) => ({ path: w.path, value: w.value })),
