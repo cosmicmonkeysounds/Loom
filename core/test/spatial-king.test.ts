@@ -176,6 +176,38 @@ describe("SpatialHub — the shared King", () => {
   });
 });
 
+describe("SpatialHub — a map swap with the King down", () => {
+  /** Standing in his footprint, in the doorway. */
+  const IN_KING = { p: [3.6, 0, 1.5] as [number, number, number], yaw: -90, pitch: 0 };
+
+  it("a standing King is solid: a player in his footprint goes back to the spawn", () => {
+    const h = hub();
+    const a = h.begin("g-1");
+    h.hub.pose(a.token, IN_KING);
+    h.hub.setHouse(kingHouse({ color: "#ffffff" }), "event");
+    expect(h.hub.players().find((p) => p.session === a.session)!.p).toEqual([1, 0, 2]);
+  });
+
+  it("a fallen King is no obstacle: a player walking through his doorway keeps their place", () => {
+    const h = hub();
+    h.hub.setKingHp(0, () => {});
+    expect(h.hub.king()?.fallen).toBe(true);
+    const a = h.begin("g-1");
+    h.hub.pose(a.token, IN_KING);
+    h.hub.setHouse(kingHouse({ color: "#ffffff" }), "event");
+    expect(h.hub.players().find((p) => p.session === a.session)!.p).toEqual(IN_KING.p);
+  });
+
+  it("reads him off the world path too (the show's Night.king_hp at 0)", () => {
+    const world = new Map<string, unknown>([["Night.king_hp", 0]]);
+    const h = hub({ house: kingHouse({ health: "Night.king_hp" }), world });
+    const a = h.begin("g-1");
+    h.hub.pose(a.token, IN_KING);
+    h.hub.setHouse(kingHouse({ health: "Night.king_hp", color: "#ffffff" }), "event");
+    expect(h.hub.players().find((p) => p.session === a.session)!.p).toEqual(IN_KING.p);
+  });
+});
+
 describe("SpatialHub — profile pictures on ghosts", () => {
   it("the assignment, hello and join carry the avatar key; a change sends an avatar frame per live session", () => {
     const h = hub({ avatars: new Map([["G-1", "aaaaaaaaaaaaaaaa"]]) });
