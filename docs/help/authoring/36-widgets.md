@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live Shows
 order: 36
-keywords: show, widget, card, fact, file a fact, judge, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
+keywords: show, widget, card, fact, file a fact, near miss, near, typo, judge, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -119,6 +119,27 @@ answer to a question nobody got right never reaches the story:
 space, and one leading `the` / `a` / `an` is stripped. *The Y2K Bug*,
 `y2k bug` and `Y2K-BUG!` are the same answer; list genuinely different
 wordings under `accept`.
+
+**Near misses.** An answer that doesn't fold to the key but is close to
+it is a **near miss**, and it is never judged a lie or a guess by
+itself. Close means, after folding: honorifics dropped (*Mr*, *Mrs*,
+*Mister*…), number words read as digits and thousands separators
+joined (*nineteen ninety seven*, *1,997*), plurals folded, the same
+words in another order, and small typos checked word by word — a word
+of 1–3 letters must match exactly, 4–7 letters may be one edit off, 8
+or more two, and a misspelled word keeps its first letter. Numbers and
+am / pm must match exactly. *Mr Pickels* for *Mister Pickles* and
+*Grko* for *Grok* are near; *Appendix A* for *Appendix Z*, *9pm* for
+*9:00 a.m.* and *did understand* for *didn't understand* are not. In
+`auto` mode a near miss takes the `review` path for that one filing: it
+is **proposed accurate**, waits on Run → Mind's Judging card tagged
+*⚠ near "<key>"*, and the server adds a line to the staff room (*⚠ Near
+miss, not an exact match: X's H2 filing "Mr Pickels" is close to
+"Mister Pickles", so it is proposed accurate and is credited if nobody
+judges it.*). If nobody judges it before the round settles, the
+proposal stands: the filer is credited. Real but different answers can
+be near too (*Groq* for *Grok*, *Mrs Pickles* for *Mister Pickles*),
+so a director checks every ⚠ before the results are read.
 
 The verdict is journaled with the filing, so a restart replays the same
 verdicts whatever changed since — the key, the mode, the code. The
