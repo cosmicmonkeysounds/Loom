@@ -228,6 +228,8 @@ def first_met_line(persona: Persona, req: dict[str, Any], phase: str) -> str:
     where = f" in {them['location']}" if them.get("location") else ""
     line = f"First met during {phase or 'the night'}{where}."
     words = one_line(req.get("text") or "", MAX_FIRST_WORDS)
+    if _true((them.get("vars") or {}).get("at_the_heart")):
+        return line  # words said at his heart stay there: the line is shown everywhere
     if words and not persona.secrets.leaks(words) and not persona.secrets.names_topic(words):
         line += f" Their first words to you: “{words}”"
     return line
@@ -355,6 +357,45 @@ def keep_memo(persona: Persona, memo: str) -> str:
     return line
 
 
+def _seq(h: dict[str, Any]) -> int:
+    try:
+        return int(h.get("seq") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def note_heart(d: Dossier, req: dict[str, Any], at_heart: bool) -> None:
+    """Move the dossier's heart line (`heart_seq`) on after a turn: the lines
+    of a turn taken at his heart, and his reply to it (the run of his own
+    lines right after, seen at their next turn), are heart lines a quiet
+    summary never reads (CONTRACTS.md §C2.3). Conservative: everything at or
+    before the newest heart line counts."""
+    history = sorted((h for h in req.get("history") or [] if isinstance(h, dict)), key=_seq)
+    if d.heart_open:
+        for h in history:
+            if _seq(h) <= d.heart_seq:
+                continue
+            if not h.get("mine"):
+                break
+            d.heart_seq = max(d.heart_seq, _seq(h))
+        d.heart_open = False
+    if at_heart:
+        d.heart_seq = max([d.heart_seq, *(_seq(h) for h in history)])
+        d.heart_open = True
+
+
+def summary_history(d: Dossier, history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The lines a quiet summary may read: none taken at his heart."""
+    if d.heart_open:
+        return []  # the newest turn was at his heart: every stored line is
+    return [h for h in history if _seq(h) > d.heart_seq]
+
+
+def summary_memos(d: Dossier) -> list[str]:
+    """The memos a quiet summary may read (and its signature): never a heart memo."""
+    return [str(m.get("text") or "") for m in d.memos if not m.get("heart")]
+
+
 def history_lines(req: dict[str, Any], limit: int = SUMMARY_HISTORY) -> list[dict[str, Any]]:
     """The last lines of a thread with the story's receipts taken out."""
     history = [h for h in req.get("history") or [] if isinstance(h, dict)]
@@ -446,11 +487,13 @@ def summary_messages(p1: str, persona: Persona, d: Dossier, history: list[dict[s
     parts = [f"{d.name} ({'a fellow character' if d.kind == 'performer' else 'a guest'})"]
     if d.first_met:
         parts.append(d.first_met)
-    if d.memos:
+    memos = summary_memos(d)
+    if memos:
         parts.append("Your notes on them (oldest first):")
-        parts.extend(f"- {m.get('text', '')}" for m in d.memos)
+        parts.extend(f"- {m}" for m in memos)
     if d.summary:
         parts.append(f"What you made of them before: {d.summary}")
+    history = summary_history(d, history)
     if history:
         parts.append("Your last lines together:")
         parts.extend(f"{persona.character if h.get('mine') else d.name}: {one_line(h.get('text', ''), 300)}" for h in history)

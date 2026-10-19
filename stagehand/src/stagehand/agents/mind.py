@@ -151,6 +151,12 @@ class Dossier:
     last_story_at: float = 0.0
     #: Has spoken to him at his heart tonight.
     heart: bool = False
+    #: The newest thread `seq` that may be a line said at his heart: a quiet
+    #: summary reads only the lines after it (CONTRACTS.md §C2.3).
+    heart_seq: int = 0
+    #: Their last turn was at his heart: his reply (seqs after `heart_seq`)
+    #: is a heart line too, folded in at their next turn.
+    heart_open: bool = False
 
     def apply(self, raw: dict[str, Any]) -> bool:
         """Merge an update; True when anything actually changed."""
@@ -884,6 +890,8 @@ class Mind:
             except (TypeError, ValueError):
                 d.last_story_at = 0.0
             d.heart = raw.get("heart") is True
+            d.heart_seq = _int(raw.get("heart_seq"), 0, 0, 10**9)
+            d.heart_open = raw.get("heart_open") is True
             m.people[d.id] = d
         for key, raw in (doc.get("threads") or {}).items():
             if isinstance(raw, dict):

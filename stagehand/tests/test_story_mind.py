@@ -626,6 +626,53 @@ def test_no_summary_asleep_after_the_ending_or_with_too_few_turns(tmp_path):
     assert agents._quiet_due(now) == ("Trabolta", "g-1")
 
 
+def test_nothing_said_at_his_heart_reaches_a_summary_or_a_later_card_away_from_it(tmp_path):
+    inputs: list[str] = []
+
+    async def complete(messages, cfg):
+        inputs.append(messages[2]["content"])
+        return "Summary: " + " ".join(messages[2]["content"].split())[:300]
+
+    replies = [FakeReply(say=f"HEARTA{i}", memo=f"HEARTMEMO{i}") for i in range(3)]
+    replies += [FakeReply(say=f"away line {i}", memo=f"away memo {i}") for i in range(4)]
+    agents, voice = make(tmp_path, FakeVoice(*replies), complete_fn=complete)
+    agents._p1 = lambda character: "P1"
+    history: list[dict[str, Any]] = []
+    seq = 0
+
+    def turn(text, heart):
+        nonlocal seq
+        if voice.calls:
+            seq += 1
+            history.append({"seq": seq, "mine": True, "from": "Trabolta", "text": voice.replies[len(voice.calls) - 1].say})
+        seq += 1
+        history.append({"seq": seq, "mine": False, "from": "Ada", "text": text})
+        them = {"at_the_heart": "true"} if heart else {}
+        run(handle(agents, req(phase="hunt_1", text=text, history=list(history), them_vars=them, rid=f"r{seq}")))
+
+    for i in range(3):
+        turn(f"HEARTQ{i}", True)
+    d = agents.minds["Trabolta"].people["g-1"]
+    assert agents._quiet_due(agents._quiet[("Trabolta", "g-1")]["at"] + 500) is None  # only heart talk: nothing to condense
+    run(agents._summarise("Trabolta", "g-1"))
+    for i in range(3):
+        turn(f"away hello {i}", False)
+    run(agents._summarise("Trabolta", "g-1"))
+    assert d.summary.startswith("Summary:") and "away memo" in d.summary
+    turn("one more", False)
+    assert inputs and all("HEART" not in text for text in inputs)
+    ctx = voice.calls[-1][1]
+    assert "HEART" not in repr(ctx)
+    # At the heart again, his heart memos come back (and only there).
+    turn("back at the heart", True)
+    assert any("HEARTMEMO" in m for m in voice.calls[-1][1].person.memos)
+    # A restart keeps the heart line.
+    from stagehand.agents.mind import Mind
+
+    again = Mind.from_json(json.loads(json.dumps(agents.minds["Trabolta"].to_json())))
+    assert again.people["g-1"].heart_seq == d.heart_seq and again.people["g-1"].heart_open is True
+
+
 def test_a_summary_naming_an_answer_word_or_a_secret_is_dropped():
     from stagehand.agents.persona import parse_persona
 

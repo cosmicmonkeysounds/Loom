@@ -914,10 +914,11 @@ class Agents:
             await self._send(rid, reply)
         if d is None:
             return  # asleep: the unavailable line went out; nobody is on file yet
+        heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
         memo = story_mind.keep_memo(persona, getattr(reply, "memo", "") or "") if v.memo else ""
         if memo:
-            heart = str(((req.get("them") or {}).get("vars") or {}).get("at_the_heart", "")).lower() == "true"
             d.add_memo(memo, heart=heart, thought=self._voice_thought(character, rid))
+        story_mind.note_heart(d, req, heart)
         story_mind.after_turn(persona, d, req, phase, reply.say)
         if reply.say:
             mind.remember_said(thread, reply.say)
@@ -1032,8 +1033,10 @@ class Agents:
                 continue  # the phase card has him asleep
             if (mind.phase_applied or "").startswith("finale"):
                 continue
-            if q["sig"] == tuple(m.get("text") for m in d.memos):
-                continue  # nothing new since the last summary
+            if not story_mind.summary_memos(d) and not story_mind.summary_history(d, q.get("history") or []):
+                continue  # only heart talk so far: nothing a summary may read
+            if q["sig"] == tuple(story_mind.summary_memos(d)):
+                continue  # nothing new since the last summary (a heart memo never counts)
             return character, pid
         return None
 
@@ -1061,7 +1064,7 @@ class Agents:
         q = self._quiet.get((character, pid))
         if d is None or q is None:
             return
-        sig = tuple(m.get("text") for m in d.memos)
+        sig = tuple(story_mind.summary_memos(d))
         messages = story_mind.summary_messages(self._p1(character), persona, d, q.get("history") or [])
         model = self.models[character]
         speaker = {"speaker": {"id": d.id, "name": d.name, "kind": d.kind}}
