@@ -177,8 +177,12 @@ gone since wave 4: the hunt questions and answers come from `facts.json` via `ti
 numbering, which is load-bearing**: stagehand's orchestrator feeds up to 60 codex entries to
 Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=60)`): the ones he holds
 first, then the rest in model order, so the environmental entries must come first and the
-scrambled Jeeves fragments last. (The hunt answers never reach it: the secrecy filter drops
-every `▒ HUNT ANSWER` entry and any clue that names an answer word.)
+scrambled Jeeves fragments last. (The hunt answers never reach it: every hunt-answer entry
+and The Rival are `secret: true`, so the server's facts document never carries them, and the
+worker's secrecy filter drops every `▒ HUNT ANSWER` entry and any unheld clue that names an
+answer word. Since 2026-10-19 no entry he holds names an answer either — Trabolta must never
+know what he asks for; `core/test/trabolta-answers.test.ts` scans his requests, the facts
+document and his prompt files for every answer and alias.)
 No test reads the codex paths.
 
 | File | Holds | Writer |
@@ -1120,7 +1124,7 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | Name | title | tier | code | Found in | Gist |
 |---|---|---|---|---|---|
 | Casino Nova Scotia Deed | Casino Nova Scotia — Deed Of Transfer | E · ID (DraftKings) | `CASINO-DEED` | framed on the Desktop mantel | Casino Nova Scotia signed over to "DK Holdings", paid for, the note says, "with one paperclip, eventually". |
-| The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Start Bar) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_1978" for a block of downtown Halifax "incl. the Boardwalk". jtrav_1978 wins. |
+| The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Start Bar) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_4ever" for a block of downtown Halifax "incl. the Boardwalk". jtrav_4ever wins. (Was jtrav_1978: H4's answer reached his ground truth.) |
 | The FBI Lanyard | Visitor Lanyard, Halifax Liaison Office | E · ID (OpenOffice) | `FBI-HALIFAX` | a coat pocket (The Fan Closet) | "Federal Bureau of Investigation — liaison, Halifax — D. Anderson", nine years expired, and a sticky note: "the landlord was innocent." |
 | The Site Schedule | Site Access Log: AI Data Centre | E · ID (OpenOffice) | `SITE-SCHEDULE` | a clipboard in the backyard shed (The Cloud); **on a rain night, The Optical Drive** (the shed is the Internet; wave 6, decision 4) | Anonymous handwriting: "Opening day. Charges set for dawn. Site empty until 9." Under it, in different ink: "Mayor's car in lot, 4:02 a.m." |
 | Barkmore For Mayor | Barkmore For Mayor (1988) | E · ID (Excel) | `BARKMORE-88` | a campaign button in the Desktop bookshelf | "Re-elect Randy Barkmore — 1988." Pinned next to it, a newer button: "Barkmore Jr. — Halifax Deserves A Future." |
@@ -1137,7 +1141,7 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | The Bootleg DVD | MASTERCLASS (BOOTLEG) | E · ID (Adobe Acrobat) | `MASTERCLASS-RIP` | in the DVD stack (The Desktop) | A pirated copy of Sheryl Terrio's masterclass. Whoever watched it never paid her a cent. |
 | The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The CPU) | A printout from webmaster@mapsandducks.com, signed M. Carney, Prime Minister: "…Did you ever see the movie Suicide Squad? I just watched it… approve or deny every third transaction." The signature is a font. (C16, wave 7: every account says every third.) |
 | The Domain Receipt | WHOIS: mapsandducks.com | T1 | `WHOIS-1999` | in the hall (The Tube) | Registrant "J. Trabolta", created the day after the old registration lapsed. Registrant address: this house. |
-| The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | "Grok. Says whatever anyone wants to hear. Has beaten me at everything since 1999. Do not let him near —" (torn off). |
+| The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | "Grok. Says whatever anyone wants to hear. Has beaten me at everything since 1999. Do not let him near —" (torn off). **`secret: true`** (it names F2): the guests' clue, never his; he won't take it as a share. |
 | The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. |
 | The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S, and under it a two-digit year (wave 7: a clue to the door's riddle; wave 11: the year is gone with the riddle, only the heart around the S). |
 
@@ -1145,6 +1149,10 @@ Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest m
 "D. Anderson" or "Barkmore" to a program by talking to people.
 
 #### generated/questions.loom (H — generated from facts.json; was codex/3-hunt.loom)
+
+Every entry here is **`secret: true`** (2026-10-19, generated): the guests find and read
+them as before, but no agent request or facts document carries one, and Trabolta refuses
+one as a share — he must never know what he is asking for.
 
 | Name | title | code | ✚ | Gist |
 |---|---|---|---|---|
@@ -1167,9 +1175,9 @@ Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest m
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
 | The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), a late-nineties automated customer-service agent who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
-| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
+| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy (her one line he "still cannot parse"), computer prom ("Somebody asked her… I do not know who. Whoever he is, he says whatever anyone wants to hear." — the guests' pointer to The Rival; since 2026-10-19 it neither quotes her nor names Grok: he holds this file, and F1 / F2 are what he asks for), "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
-| Greased Lightning | Greased Lightning | T2 | Trabolta | | | ✚ | His runtime: electricity is the lightning, Grease (1978) is the grease. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle has the same name. |
+| Greased Lightning | Greased Lightning | T2 | Trabolta | | | ✚ | His runtime: electricity is the lightning, Grease is the grease (no year: 1978 is H4's answer). Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle has the same name. |
 | The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door has a keypad; the patch bay forgives one wrong combination, and the second sets off the alarm." `secret: true` since wave 7. Never held by Trabolta. |
 | Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V2 → D5`, `V4 → D1` (all four halves `secret: true` since wave 7) |
 | Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V6 → D8`, `V7 → D3` |
