@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
+import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
 import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
 import { stampAgentQueues, type AgentQueue, type CastSummary } from '@/store/cockpit'
 import type { FactsFiling, FactsView } from '@/store/cockpit'
@@ -32,7 +33,7 @@ function thought(over: Partial<AgentThought> = {}): AgentThought {
     error: null,
     note: '',
     ...over,
-  }
+  } as AgentThought
 }
 
 function mind(over: Partial<AgentMindSummary> = {}): AgentMindSummary {
@@ -437,5 +438,190 @@ describe('the Judging mode tooltip (wave 11 C6)', () => {
   it('auto names the near-miss exception; review says a near miss waits too', () => {
     expect(judgeModeTitle('auto')).toMatch(/at once, except a near miss/u)
     expect(judgeModeTitle('review')).toMatch(/near miss waits here/u)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Wave 12 (CONTRACTS C6.7): the story mind's report, labels, controls, trace
+// ---------------------------------------------------------------------------
+
+/** A thought carrying fields the base core types don't name yet. */
+const wide = (over: Record<string, unknown>): AgentThought => thought(over as Partial<AgentThought>)
+/** A mind report carrying the new optional fields. */
+const wideMind = (over: Record<string, unknown>): AgentMindSummary => mind(over as Partial<AgentMindSummary>)
+
+describe('wave 12 kinds: brief and summary', () => {
+  it('labels both new kinds and falls back for a kind nobody knows', () => {
+    expect(KIND_META['brief']).toMatchObject({ label: 'brief', who: 'mind' })
+    expect(KIND_META['summary']).toMatchObject({ label: 'summary', who: 'mind' })
+    expect(ALL_KINDS).toEqual(expect.arrayContaining(['brief', 'summary', 'voice', 'judge']))
+    expect(kindMeta('voice')).toBe(KIND_META['voice'])
+    expect(kindMeta('dream')).toEqual({ label: 'dream', who: 'mind', color: '#a1a1aa' })
+  })
+  it('summarises a Rewrite brief, a quiet summary and an unknown kind', () => {
+    expect(summarizeThought(wide({ kind: 'brief', result: { brief: 'Be delighted by every offer.\nFile it.' } }))).toBe('rewrote the brief: “Be delighted by every offer.”')
+    expect(summarizeThought(wide({ kind: 'brief', result: null, note: 'kept the brief' }))).toBe('kept the brief')
+    expect(summarizeThought(wide({ kind: 'summary', result: { summary: 'Ada offered two facts and laughed.' } }))).toBe('summed up Ada: “Ada offered two facts and laughed.”')
+    expect(summarizeThought(wide({ kind: 'summary', result: {}, note: '' }))).toBe('no summary kept')
+    expect(summarizeThought(wide({ kind: 'dream', note: '', trigger: 'quiet' }))).toBe('quiet')
+  })
+  it('filters on the new kinds like any other', () => {
+    const rows = [thought(), wide({ id: 'th-b', kind: 'brief' }), wide({ id: 'th-s', kind: 'summary' })]
+    expect(filterThoughts(rows, { character: null, kinds: new Set(['brief', 'summary']), person: null, query: '' }).map((t) => t.id)).toEqual(['th-b', 'th-s'])
+  })
+})
+
+describe('wave 12 report fields', () => {
+  it('reads the mode and the phase, absent on an older worker', () => {
+    expect(mindModeOf(mind())).toBeNull()
+    expect(isNewMind(mind())).toBe(false)
+    expect(isNewMind(null)).toBe(false)
+    expect(mindModeOf(wideMind({ mode: 'new' }))).toBe('new')
+    expect(isNewMind(wideMind({ mode: 'new' }))).toBe(true)
+    expect(isNewMind(wideMind({ mode: 'classic' }))).toBe(false)
+    expect(mindModeOf(wideMind({ mode: 'odd' }))).toBeNull()
+    expect(mindPhaseOf(mind())).toBeNull()
+    expect(mindPhaseOf(wideMind({ phase: 'hunt_1' }))).toBe('hunt_1')
+    expect(mindPhaseOf(wideMind({ phase: '  ' }))).toBeNull()
+  })
+  it('labels who set a field (C6.2)', () => {
+    expect(byLabel('story')).toBe('set by story')
+    expect(byLabel('director')).toBe('set by director')
+    expect(byLabel('reset')).toBe('reset')
+    expect(byLabel('reflect')).toBe('reflect')
+    expect(byLabel('survey')).toBe('survey')
+  })
+  it('says who set the brief: briefBy, else the newest brief revision by the story or a director', () => {
+    expect(briefLabel(wideMind({ briefBy: 'story' }))).toBe('set by story')
+    expect(briefLabel(wideMind({ briefBy: 'director' }))).toBe('set by director')
+    const rev = (n: number, by: string, touched: string[]) => ({ rev: n, at: n, by, touched, thought: null, brief: '', mood: '', stage: '', drives: {}, policy_favours: 'none', notes: 0, people: 0, learned: 0 })
+    expect(briefLabel(mind({ revisions: [rev(1, 'story', ['brief']), rev(2, 'director', ['brief', 'mood']), rev(3, 'story', ['stage'])] }))).toBe('set by director')
+    expect(briefLabel(mind({ revisions: [rev(1, 'director', ['brief']), rev(2, 'story', ['brief'])] }))).toBe('set by story')
+    // An older worker's reflect-written brief keeps today's unlabelled panel.
+    expect(briefLabel(mind())).toBeNull()
+    expect(briefLabel(mind({ revisions: [] }))).toBeNull()
+  })
+  it('passes a person file\'s new fields only when present and well-typed', () => {
+    const base = { id: 'g1', name: 'Ada', kind: 'guest', summary: '', trust: 50, promises: [], asks: [], claims: [], turns: 3, lastSeen: 9 }
+    expect(personExtras(base)).toEqual({})
+    const full = personExtras({
+      ...base,
+      memos: [{ at: 5, text: 'Ada collects old mice.', by: 'voice', heart: false }, { at: 6, text: 'Came to the heart.', by: 'voice', heart: true }, { at: 7 }],
+      firstMet: 'First met during hunt_1 in The Desktop.',
+      gifts: ['The Sandy File'],
+      filings: ['H2', 'H5'],
+      marked: true,
+      chart: '3 of 12; you named them Most Trusted',
+      storyTrust: '62',
+    } as typeof base)
+    expect(full).toEqual({
+      memos: [{ at: 5, text: 'Ada collects old mice.', by: 'voice', heart: false }, { at: 6, text: 'Came to the heart.', by: 'voice', heart: true }],
+      firstMet: 'First met during hunt_1 in The Desktop.',
+      gifts: ['The Sandy File'],
+      filings: ['H2', 'H5'],
+      marked: true,
+      chart: '3 of 12; you named them Most Trusted',
+      storyTrust: '62',
+    })
+    expect(personExtras({ ...base, chart: null, storyTrust: null } as typeof base)).toEqual({ chart: null, storyTrust: null })
+    expect(personExtras({ ...base, gifts: [1, 2], marked: 'yes', firstMet: 3 } as unknown as typeof base)).toEqual({})
+  })
+  it('labels a memo by voice, with 🫀 at his heart', () => {
+    expect(memoLabel({ at: 1, text: 'x', by: 'voice', heart: false })).toBe('memo by voice')
+    expect(memoLabel({ at: 1, text: 'x', by: 'voice', heart: true })).toBe('🫀 memo by voice')
+  })
+})
+
+describe('wave 12 trace: prompt_ms and the stored-once prefix', () => {
+  it('shows prompt_ms next to ms when the worker sends it', () => {
+    expect(promptMsOf(thought())).toBeNull()
+    expect(timingText(thought())).toBe('1.2 s')
+    expect(promptMsOf(wide({ prompt_ms: 312.6 }))).toBe(312.6)
+    expect(timingText(wide({ prompt_ms: 312.6 }))).toBe('1.2 s (prompt 313 ms)')
+    expect(timingText(wide({ prompt_ms: 0 }))).toBe('1.2 s (prompt 0 ms)')
+    expect(timingText(wide({ prompt_ms: null }))).toBe('1.2 s')
+    expect(timingText(wide({ prompt_ms: 'fast' }))).toBe('1.2 s')
+    expect(timingText(wide({ ms: 0, prompt_ms: 40 }))).toBe('prompt 40 ms')
+  })
+  it('recognises exactly `[same prefix as th-<10 hex>]`', () => {
+    expect(prefixRef('[same prefix as th-0123456789]')).toBe('th-0123456789')
+    expect(prefixRef('[same prefix as th-abcdef0123]')).toBe('th-abcdef0123')
+    expect(prefixRef(' [same prefix as th-abcdef0123]')).toBeNull()
+    expect(prefixRef('[same prefix as th-abc]')).toBeNull()
+    expect(prefixRef('[same prefix as th-ABCDEF0123]')).toBeNull()
+    expect(prefixRef('You are Trabolta.')).toBeNull()
+  })
+  it('finds the full prefix among the loaded thoughts, never another reference', () => {
+    const full = wide({ id: 'th-aaaaaaaaaa', messages: [{ role: 'system', content: 'P1: who he is' }] })
+    const ref = wide({ id: 'th-bbbbbbbbbb', messages: [{ role: 'system', content: '[same prefix as th-aaaaaaaaaa]' }] })
+    expect(localPrefix('th-aaaaaaaaaa', [full, ref])).toBe('P1: who he is')
+    expect(localPrefix('th-bbbbbbbbbb', [full, ref])).toBeNull()
+    expect(localPrefix('th-cccccccccc', [full, ref])).toBeNull()
+  })
+  it('loads a thought by id from the existing trace route', async () => {
+    const calls: string[] = []
+    const ok = (async (url: string) => {
+      calls.push(url)
+      return new Response(JSON.stringify({ thought: thought({ id: 'th-aaaaaaaaaa' }) }), { status: 200 })
+    }) as unknown as typeof fetch
+    expect((await fetchThought('ev 1', 'th-aaaaaaaaaa', ok))?.id).toBe('th-aaaaaaaaaa')
+    expect(calls).toEqual(['/e/ev%201/api/mod/agent/trace?id=th-aaaaaaaaaa'])
+    const missing = (async () => new Response(JSON.stringify({ error: 'no such thought' }), { status: 404 })) as unknown as typeof fetch
+    expect(await fetchThought('ev', 'th-aaaaaaaaaa', missing)).toBeNull()
+    const down = (async () => new Response('', { status: 502 })) as unknown as typeof fetch
+    await expect(fetchThought('ev', 'th-aaaaaaaaaa', down)).rejects.toThrow('trace 502')
+  })
+})
+
+describe('wave 12 controls', () => {
+  it('Survey now becomes Rewrite brief on the new mind only', () => {
+    expect(surveyButton(mind(), 'Trabolta')).toEqual({ label: 'Survey now', title: 'Make the orchestrator look at the house now', control: { action: 'survey', character: 'Trabolta' } })
+    expect(surveyButton(null, 'Trabolta').control.action).toBe('survey')
+    expect(surveyButton(wideMind({ mode: 'classic' }), 'Trabolta').label).toBe('Survey now')
+    expect(surveyButton(wideMind({ mode: 'new' }), 'Trabolta')).toEqual({ label: 'Rewrite brief', title: 'Rewrite his brief from the phase and the house now (one voice call)', control: { action: 'rewrite', character: 'Trabolta' } })
+  })
+  it('selects send only on a real change', () => {
+    expect(favoursControl(mind(), 'earned')).toBeNull()
+    expect(favoursControl(mind(), 'loose')).toEqual({ action: 'set', character: 'Trabolta', field: 'policy', value: { favours: 'loose' } })
+    expect(effortControl('Trabolta', 'low', 'low')).toBeNull()
+    expect(effortControl('Trabolta', 'high', 'low')).toEqual({ action: 'effort', character: 'Trabolta', level: 'high' })
+    expect(driveControl(mind(), 'hunger', 80)).toEqual({ action: 'set', character: 'Trabolta', field: 'drive', name: 'hunger', value: 80 })
+  })
+
+  /** Run a slider through events; collect what it sends. */
+  function drive(events: SliderEvent[], live: number, from: SliderState = SLIDER_IDLE): { sends: number[]; state: SliderState } {
+    let state = from
+    const sends: number[] = []
+    for (const ev of events) {
+      const r = sliderStep(state, ev, live)
+      state = r.state
+      if (r.send !== null) sends.push(r.send)
+    }
+    return { sends, state }
+  }
+
+  it('one drag sends one control, on release', () => {
+    const drag: SliderEvent[] = Array.from({ length: 145 }, (_, i) => ({ type: 'change', value: 70 - Math.round((i * 30) / 144) }))
+    expect(drive(drag, 70).sends).toEqual([])
+    const { sends, state } = drive([...drag, { type: 'pointerup' }, { type: 'blur' }], 70)
+    expect(sends).toEqual([40])
+    expect(state).toEqual({ local: 40, sent: 40 })
+  })
+  it('the keyboard commits on an arrow / Home / End / Page key up, not on other keys', () => {
+    for (const key of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']) {
+      expect(SLIDER_COMMIT_KEYS.has(key)).toBe(true)
+      expect(drive([{ type: 'change', value: 71 }, { type: 'change', value: 72 }, { type: 'keyup', key }], 70).sends).toEqual([72])
+    }
+    expect(drive([{ type: 'change', value: 72 }, { type: 'keyup', key: 'Shift' }, { type: 'keyup', key: 'Tab' }], 70).sends).toEqual([])
+    expect(drive([{ type: 'change', value: 72 }, { type: 'keyup', key: 'Tab' }, { type: 'blur' }], 70).sends).toEqual([72])
+  })
+  it('sends nothing when the value ends where the mind already is, or on a bare release', () => {
+    expect(drive([{ type: 'change', value: 90 }, { type: 'change', value: 70 }, { type: 'pointerup' }], 70)).toEqual({ sends: [], state: SLIDER_IDLE })
+    expect(drive([{ type: 'pointerup' }, { type: 'blur' }, { type: 'keyup', key: 'ArrowUp' }], 70).sends).toEqual([])
+  })
+  it('a second drag before the mirror lands sends again; the same value twice does not', () => {
+    const first = drive([{ type: 'change', value: 50 }, { type: 'pointerup' }], 70)
+    expect(drive([{ type: 'change', value: 55 }, { type: 'pointerup' }], 70, first.state).sends).toEqual([55])
+    expect(drive([{ type: 'change', value: 50 }, { type: 'pointerup' }], 70, first.state).sends).toEqual([])
   })
 })
