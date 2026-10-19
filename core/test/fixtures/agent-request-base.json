@@ -1,0 +1,194 @@
+[
+  {
+    "id": "<request>",
+    "character": "Trabolta",
+    "thread": {
+      "character": "Trabolta",
+      "channel": "dm:Trabolta",
+      "audience": [
+        "<guest>"
+      ]
+    },
+    "speaker": {
+      "kind": "guest",
+      "id": "<guest>",
+      "name": "Ada",
+      "faction": null
+    },
+    "text": "Hello, are you there?",
+    "history": [
+      {
+        "seq": 2,
+        "mine": true,
+        "from": "Trabolta",
+        "text": "Welcome, program. I have been expecting you."
+      },
+      {
+        "seq": 4,
+        "mine": true,
+        "from": "Trabolta",
+        "text": "Filed for Q1."
+      },
+      {
+        "seq": 5,
+        "mine": false,
+        "from": "Ada",
+        "text": "Hello, are you there?"
+      }
+    ],
+    "self": {
+      "vars": {
+        "codex": "2",
+        "codex.the_ribbon": "true",
+        "truth": "35"
+      },
+      "ranges": {
+        "truth": [
+          0,
+          100
+        ]
+      },
+      "codex": [
+        {
+          "id": "The Ribbon",
+          "title": "The Ribbon",
+          "about": "Trabolta",
+          "text": "A blue ribbon from the county fair."
+        }
+      ]
+    },
+    "them": {
+      "vars": {
+        "codex": "2",
+        "codex.the_recipe": "true",
+        "codex.the_ribbon": "true",
+        "humanity": "20",
+        "name": "Ada",
+        "role": "Program"
+      },
+      "codex": [
+        {
+          "id": "The Ribbon",
+          "title": "The Ribbon",
+          "about": "Trabolta",
+          "text": "A blue ribbon from the county fair."
+        },
+        {
+          "id": "The Recipe",
+          "title": "The Recipe",
+          "about": "World",
+          "text": "Two cups of flour, one of sugar."
+        }
+      ],
+      "location": null
+    },
+    "world": {
+      "Program": "Program",
+      "The Cache": "The Cache"
+    },
+    "powers": [],
+    "at": 1000008
+  },
+  {
+    "id": "<request>",
+    "character": "Trabolta",
+    "thread": {
+      "character": "Trabolta",
+      "channel": "dm:Trabolta",
+      "audience": [
+        "<guest>"
+      ]
+    },
+    "speaker": {
+      "kind": "guest",
+      "id": "<guest>",
+      "name": "Ada",
+      "faction": null
+    },
+    "text": "Do you like it?",
+    "history": [
+      {
+        "seq": 2,
+        "mine": true,
+        "from": "Trabolta",
+        "text": "Welcome, program. I have been expecting you."
+      },
+      {
+        "seq": 4,
+        "mine": true,
+        "from": "Trabolta",
+        "text": "Filed for Q1."
+      },
+      {
+        "seq": 5,
+        "mine": false,
+        "from": "Ada",
+        "text": "Hello, are you there?"
+      },
+      {
+        "seq": 6,
+        "mine": true,
+        "from": "Trabolta",
+        "text": "I am here. Thank you for the ribbon."
+      },
+      {
+        "seq": 7,
+        "mine": false,
+        "from": "Ada",
+        "text": "Do you like it?"
+      }
+    ],
+    "self": {
+      "vars": {
+        "codex": "2",
+        "codex.the_ribbon": "true",
+        "truth": "35"
+      },
+      "ranges": {
+        "truth": [
+          0,
+          100
+        ]
+      },
+      "codex": [
+        {
+          "id": "The Ribbon",
+          "title": "The Ribbon",
+          "about": "Trabolta",
+          "text": "A blue ribbon from the county fair."
+        }
+      ]
+    },
+    "them": {
+      "vars": {
+        "codex": "2",
+        "codex.the_recipe": "true",
+        "codex.the_ribbon": "true",
+        "humanity": "20",
+        "name": "Ada",
+        "role": "Program"
+      },
+      "codex": [
+        {
+          "id": "The Ribbon",
+          "title": "The Ribbon",
+          "about": "Trabolta",
+          "text": "A blue ribbon from the county fair."
+        },
+        {
+          "id": "The Recipe",
+          "title": "The Recipe",
+          "about": "World",
+          "text": "Two cups of flour, one of sugar."
+        }
+      ],
+      "location": null
+    },
+    "world": {
+      "Program": "Program",
+      "The Cache": "The Cache"
+    },
+    "powers": [],
+    "at": 1000013
+  }
+]
