@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: near miss, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
+keywords: near miss, ruling, judge thought, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -97,7 +97,8 @@ Every model call the worker made, newest first, colour-badged and
 labelled: **voice** (the fast model answering a line), **lookup** (the
 second call after it asked the session about a program, room, or
 lore), **reflect** (the orchestrator after an exchange), **survey**
-(the orchestrator looking at the whole house), **re-run**, and the
+(the orchestrator looking at the whole house), **re-run**, **judge** (a
+ruling on a near-miss filing, below), and the
 markers **reset** / **control** / **error**. Each row says who it was
 with, which model, what triggered it, how long it took, and a summary
 (the line said and the numbers nudged; or the mind fields it updated).
@@ -156,7 +157,8 @@ It shows even before a worker has reported; on a project with no
   card names (`Night.judge_mode` by default) through the same journaled
   `set` as the World page. In `auto` every filed fact gets its verdict
   at once — except a **near miss** (a typo of the key, a number written
-  out, the key said at length), which waits here as in review; in `review` every verdict is a
+  out, the key said at length), which waits here as in review (or goes
+  to the story's `judge:` character first, below); in `review` every verdict is a
   proposal until someone confirms it, and a round closing settles the
   rest by the proposal. Beside it: *nothing pending* or *N pending*,
   and how many of those are near misses.
@@ -165,8 +167,8 @@ It shows even before a worker has reported; on a project with no
   the answer in quotes, the confidence, and *proposed accurate / lie /
   uncertain*. A near miss is tagged *⚠ near "<key>"*, the key it is
   close to, and is proposed accurate: **if nobody judges it before the
-  round settles, it is credited** (that rule waits on the user's
-  decision), so check every ⚠ before the results are read ([cards &
+  round settles, it is credited**, so check every ⚠ still pending
+  before the results are read ([cards &
   widgets](widgets.md) has the near rules). Three buttons
   settle it: **✅ accurate**, **😤 confident lie**, **🤷 uncertain** —
   the proposal's button is outlined; press it to confirm, another to
@@ -175,6 +177,27 @@ It shows even before a worker has reported; on a project with no
   `judge.confirm`; the hosts' 📝 booth buttons fire the same ones), so
   the story reacts exactly as it would to a host, and the override is
   journaled under your name.
+- **Rulings** (a story whose header names `judge: <Character>`, like
+  *Trapped in the Internet*'s `judge: Trabolta`). In `auto` mode a near
+  miss is put to that character's worker the moment it is filed, if a
+  worker voicing it is online and not stalled. Its row reads **🤖 asking
+  Trabolta…** and `# hosts` says *… asked Trabolta to rule*. The worker
+  makes one separate model call that sees only the question, the key and
+  the filed answer, and answers *same* or *not*. *Same* is judged
+  accurate; *not* is a confident lie at confidence 100, uncertain below.
+  It goes through the same confirm event as your buttons, journaled `by:
+  agent:Trabolta`, and `# hosts` gets *🤖 Trabolta ruled X's H2 filing
+  "Mr Pickels": the same as "Mister Pickles" (accurate).* plus his one-line
+  reason. The ruling then lists under the pending rows (*🤖 Trabolta: same
+  — why*, *now accurate*) with its own ✅ / 😤 / 🤷: press one to
+  override it (the later verdict wins, and the row says *overridden by*
+  you). Judge a row yourself while it is asking and his ruling is
+  dropped. If no worker is online when the filing lands, the near miss
+  waits for you as above and is never asked later (only a server
+  restart asks the ones still pending). A ruling with no answer in 60
+  seconds is dropped the same way. In `review` mode nothing is asked.
+  The key goes into that one call only: never his voice, his mind, the
+  orchestrator or `/api/agent/facts`.
 - **The tallies** — per question: filed, accurate, lie, uncertain,
   pending, and ✓ **consensus** (every filing accurate at confidence
   100 — what *Trapped in the Internet* reads as "Clippy happy").

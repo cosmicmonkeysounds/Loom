@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live Shows
 order: 36
-keywords: show, widget, card, fact, file a fact, near miss, near, typo, judge, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
+keywords: show, widget, card, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -148,10 +148,24 @@ miss, not an exact match: X's H2 filing "Mr Pickels" is close to
 "Mister Pickles", so it is proposed accurate and is credited if nobody
 judges it.*). If nobody judges it before the round settles, the
 proposal stands: the filer is credited. Real but different answers can
-be near too (*Groq* for *Grok*, *Mrs Pickles* for *Mister Pickles*),
-so a director checks every ⚠ before the results are read. Crediting
-an unjudged near miss at the settle is waiting on the user's decision
-(hold it with no credit, or a ⚠ check on the director's card before 📋).
+be near too (*Groq* for *Grok*, *Mrs Pickles* for *Mister Pickles*).
+
+**A judge for near misses.** A header line `judge: <Character>` names a
+`mind: external` character who rules on them, so a director doesn't
+have to (*Trapped in the Internet* has `judge: Trabolta`). In `auto`
+mode, when a worker voicing it is online, each near miss goes to that
+worker at once: one model call that sees the question, the key and the
+filed answer, nothing else, and answers *same* or *not*. *Same* →
+accurate; *not* → a confident lie at confidence 100, else uncertain. The
+verdict lands through the same confirm event a director's button fires,
+so the story reacts as it would to a host. The staff-room line then
+says *… asked Trabolta to rule* and his ruling follows (*🤖 Trabolta
+ruled X's H2 filing "Mr Pickels": the same as "Mister Pickles"
+(accurate).* and his reason). A director can still override it on the
+Judging card. With no worker online the near miss waits as above, and
+the settle credits it if nobody judges it. A `judge:` that names no
+`mind: external` CHARACTER is lint `L1206` and judges nothing. In
+`review` mode nothing goes to the character.
 
 The verdict is journaled with the filing, so a restart replays the same
 verdicts whatever changed since — the key, the mode, the code. The
