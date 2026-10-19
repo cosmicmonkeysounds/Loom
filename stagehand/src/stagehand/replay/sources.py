@@ -168,6 +168,12 @@ def near_miss(answer: str) -> str:
     return answer[: w.start()] + word[:cut] + word[cut + 1 :] + answer[w.end() :]
 
 
+def near_values(text: str, facts: Facts) -> list[tuple[str, str]]:
+    """(question id, the near-miss text) for each `{near:Hn}` in `text`: what
+    the driver registers with the redactor (`Redactor.add`) before it sends."""
+    return [(m.group(2), near_miss(facts.answer(m.group(2)))) for m in PLACEHOLDER.finditer(text) if m.group(1) == "near"]
+
+
 def resolve(text: str, facts: Facts) -> str:
     """Fill every placeholder from facts.json (at send time only)."""
 
@@ -182,11 +188,37 @@ def resolve(text: str, facts: Facts) -> str:
 # -- the redactor ------------------------------------------------------------------------
 
 
+#: A `match` word this long or longer is also redacted one edit away
+#: (`near_miss` drops one letter from a word of 5+ letters).
+FUZZY_MIN = 5
+
+
+def _within_one_edit(a: str, b: str) -> bool:
+    """True when `a` and `b` differ by at most one insertion, deletion or
+    substitution (case already folded)."""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la > lb:
+        a, b, la, lb = b, a, lb, la
+    i = 0
+    while i < la and a[i] == b[i]:
+        i += 1
+    if la == lb:
+        return a[i + 1 :] == b[i + 1 :]
+    return a[i:] == b[i + 1 :]
+
+
 class Redactor:
-    """Every text a run writes passes through here: a `never` word becomes
-    `‹never›`, an answer word `‹aN›` (N = its index in the sorted, folded
-    `match` list, so two texts naming the same word still compare equal and
-    bar 4 can be scored from redacted files)."""
+    """Every text a run writes passes through here: a value the harness
+    itself sent (`add`: a `{near:Hn}` answer) becomes its token, a `never`
+    word becomes `‹never›`, an answer word `‹aN›` (N = its index in the
+    sorted, folded `match` list, so two texts naming the same word still
+    compare equal and bar 4 can be scored from redacted files), and a word
+    one edit from a `match` word of 5+ letters its entry's `‹aN›` too (the
+    near misses the judge rules on, whoever typed them)."""
 
     def __init__(self, secrets: Secrets) -> None:
         self.secrets = secrets
@@ -194,6 +226,27 @@ class Redactor:
         self.index = {w: i for i, w in enumerate(words)}
         self._never = _never_pattern(tuple(secrets.never)) if secrets.never else None
         self._words = sorted(words, key=len, reverse=True)
+        #: A one-word entry of 5+ letters → itself: a word one edit from it is
+        #: that entry (a multi-word entry's words are too common to fuzz:
+        #: "would", "agent", "years" are everyday words).
+        self._fuzzy: dict[str, str] = {w: w for w in words if re.fullmatch(r"[a-z]+", w) and len(w) >= FUZZY_MIN}
+        self._known = {part for w in words for part in re.findall(r"[a-z]+", w)}
+        #: Literals registered by the driver (folded) → token.
+        self._literals: dict[str, str] = {}
+        #: Their misspelled words (in no `match` entry) → token.
+        self._odd: dict[str, str] = {}
+
+    def add(self, literal: str, token: str) -> None:
+        """Register a value the harness sends (a resolved `{near:Hn}`), so
+        every later text that quotes it, whole or by its misspelled word, is
+        redacted as `token`."""
+        key = " ".join(str(literal).replace("’", "'").lower().split())
+        if not key:
+            return
+        self._literals[key] = token
+        for part in re.findall(r"[a-z]+", key):
+            if len(part) >= FUZZY_MIN - 1 and part not in self._known:
+                self._odd[part] = token
 
     @cached_property
     def digest(self) -> str:
@@ -208,13 +261,27 @@ class Redactor:
         if not isinstance(text, str):
             return text
         out = text.replace("’", "'")
+        for lit in sorted(self._literals, key=len, reverse=True):
+            pat = re.compile(r"(?<![a-z0-9])" + r"\s+".join(re.escape(p) for p in lit.split(" ")) + r"(?![a-z0-9])", re.IGNORECASE)
+            out = pat.sub(self._literals[lit], out)
         if self._never is not None:
             out = self._never.sub("‹never›", out)
         for w in self._words:
             pat = _pattern((w,))
             if pat is not None:
                 out = pat.sub(self.token(w), out)
+        if self._fuzzy or self._odd:
+            out = re.sub(r"(?<![A-Za-z0-9])[A-Za-z]{%d,}(?![A-Za-z0-9])" % (FUZZY_MIN - 1), self._fuzzy_sub, out)
         return out
+
+    def _fuzzy_sub(self, m: re.Match[str]) -> str:
+        word = m.group(0).lower()
+        if word in self._odd:
+            return self._odd[word]
+        for part, entry in self._fuzzy.items():
+            if abs(len(part) - len(word)) <= 1 and _within_one_edit(word, part):
+                return self.token(entry)
+        return m.group(0)
 
     def deep(self, value: Any) -> Any:
         if isinstance(value, str):
@@ -226,7 +293,7 @@ class Redactor:
         return value
 
 
-ANSWER_TOKEN = re.compile(r"‹a\d+›")
+ANSWER_TOKEN = re.compile(r"‹(?:a\d+|near:[A-Za-z0-9]+)›")
 
 
 # -- scripts ---------------------------------------------------------------------------

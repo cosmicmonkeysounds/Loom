@@ -70,6 +70,28 @@ def test_redactor_marks_answer_words_stably_and_never_words() -> None:
     assert src.ANSWER_TOKEN.findall(r.redact("17 and seventeen")) and len(r.digest) == 12
 
 
+def test_redactor_hides_a_near_miss_the_harness_sent_and_a_one_letter_slip() -> None:
+    r = src.Redactor(FAKE)
+    near = src.resolve("{near:H1}", FACTS)
+    for qid, value in src.near_values("I think it is {near:H1}", FACTS):
+        r.add(value, f"‹near:{qid}›")
+    # The # hosts near-miss notice, the ruling line, the worker's judge log line.
+    notice = f'⚠ near "Mister Wigglesworth": Ada filed "{near}" for H1'
+    ruling = f"🤖 Trabolta ruled {near!r} the same as the key"
+    log_line = f"Trabolta ⚖ rules on a near miss for H1: {near.lower()!r}"
+    for text in (notice, ruling, log_line):
+        out = r.redact(text)
+        assert near.lower() not in out.lower() and "wigglesworh" not in out.lower(), out
+        assert src.ANSWER_TOKEN.findall(out)
+    # Its misspelled word alone, and a slip nobody registered, go too.
+    odd = [w for w in near.split() if w.lower() not in ("mister",)][0]
+    assert odd.lower() not in r.redact(f"they wrote {odd} again").lower()
+    fresh = src.Redactor(FAKE)
+    assert "wiglesworth" not in fresh.redact("a guest typed Wiglesworth").lower()
+    # Everyday words stay readable.
+    assert fresh.redact("I would like to speak to you") == "I would like to speak to you"
+
+
 def _voice(rid: str, who: str, text: str, phase: str | None, *, trigger: str = "line", kind: str = "voice", ms: int = 1000) -> dict:
     sys0 = "persona\n=== LIVE STATE ===\nYour variables: truth=40 (0..100), regard=-5 (-50..50)\n" + (f"Night.phase: {phase}\n" if phase else "") + "You are talking to: x (a guest)\nWhere they are: The Desktop\nTheir trust: 30\n"
     return {

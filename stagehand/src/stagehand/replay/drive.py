@@ -55,6 +55,7 @@ from .sources import (
     main_checkout,
     persona_path,
     read_jsonl,
+    near_values,
     resolve,
     scoring_answer_words,
     self_pressed,
@@ -603,9 +604,17 @@ class Driver:
         stories = {x["text"] for x in msgs if x.get("from") == CHARACTER and x.get("story")}
         return scoring.is_free_reply(m, stories, self.holds)
 
+    def register_near(self, text: str) -> None:
+        """A `{near:Hn}` this step sends is no exact answer form, so the
+        redactor's word passes miss it; it is registered first (C0.1: no
+        answer, near or exact, in any file a run writes)."""
+        for qid, value in near_values(text, self.facts):
+            self.redactor.add(value, f"‹near:{qid}›")
+
     def send(self, step: dict[str, Any], burst: int | None = None) -> dict[str, Any]:
         g = self.guests[step["as"]]
         after = self.mirror.max_seq()
+        self.register_near(step["say"])
         text = resolve(step["say"], self.facts)
         status, doc = self.post("/api/guest/say", {"channel": f"dm:{CHARACTER}", "text": text}, g.speaking_token)
         rec = {
@@ -671,6 +680,7 @@ class Driver:
             self.errors.append(f"{g.name} has no 📝 card to file on")
             self.note("file", q=step["file"], who=g.name, status=None)
             return
+        self.register_near(step["answer"])
         answer = resolve(step["answer"], self.facts)
         status, _ = self.post("/api/guest/widget", {"seq": cards[-1]["seq"], "result": {"question": step["file"], "answer": answer, "confidence": int(step.get("confidence", 100))}}, g.speaking_token)
         self.note("file", q=step["file"], who=g.name, status=status, near="{near:" in step["answer"])
@@ -1129,6 +1139,8 @@ def offline(mode: str, trace_path: Path, *, label: str | None = None, limit: int
             n += 1
             if limit and n > limit:
                 break
+            for qid, value in near_values(s["say"], facts):
+                redactor.add(value, f"‹near:{qid}›")
             s = {**s, "say": resolve(s["say"], facts)}
             req = lean_request(s, phase, threads.get(s["as"], []), persona)
             gated = not gate_open(persona, req)
