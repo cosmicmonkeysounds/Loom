@@ -126,7 +126,7 @@ describe("K-26 recap", () => {
     sim.share("g1", "g2", "The Sandy File");
     sim.share("g1", "Norton", "The Sandy File"); // a share to a character counts too
     sim.share("g2", "g3", "The Sandy File");
-    sim.signal("chess won", "g1"); // the tent tablet
+    sim.signal("chess won", "g1"); // the door terminal
     sim.signal("chess_won", "g1"); // the director's fallback button
     sim.signal("beat_the_machine", "g2"); // a host's ♟
     sim.signal("Chess Lost", "g2");

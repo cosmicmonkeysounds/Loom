@@ -12,51 +12,39 @@
 //! chess here any more.
 
 import { doorGap, floorOf, locate } from "@loom/house";
-import type { HouseMap, Prop, Vec3 } from "@loom/house";
-import { relativeBearing } from "./hud.ts";
+import type { HouseMap, KingReach, Prop, Vec3 } from "@loom/house";
+import type { Stage } from "@loom/chess/stage";
 import { RADIUS } from "./physics.ts";
 
-/** Plan metres, feet → the king's base centre (the body stops ≈ 0.55 m from it). */
-export const KING_REACH = 1.25;
-/** |relative bearing| allowed: the player must face him. */
-export const KING_CONE_DEG = 55;
-
-/** Where a hit stands: in reach (`ok`), on another floor, too far, or not facing him. */
-export type KingReach = "ok" | "floor" | "far" | "facing";
-
-/**
- * May a hit be asked for from here? In order: the player is on another
- * floor; too far; not facing him; ok. The same rule as the server's (and
- * `@loom/house`'s `kingReach`, which the server judges with some slack):
- * this copy is only the tablet's pre-check.
- */
-export function kingReach(house: HouseMap, feet: Vec3, yaw: number, king: Prop): KingReach {
-  if (floorOf(house, feet[1]) !== floorOf(house, king.pos[1])) return "floor";
-  if (Math.hypot(feet[0] - king.pos[0], feet[2] - king.pos[2]) > KING_REACH) return "far";
-  if (Math.abs(relativeBearing(feet, king.pos, yaw)) > KING_CONE_DEG) return "facing";
-  return "ok";
-}
+// The reach rule is `@loom/house`'s, the one the server judges a hit by
+// (with its slack): the tablet only pre-checks it to nudge the player
+// closer before it asks. Standing on his very centre counts as facing him.
+export { kingReach, KING_CONE_DEG, KING_REACH, type KingReach } from "@loom/house";
+// The stage ladder is the door terminal's (`@loom/chess`): the HUD names the
+// stage the King's board would be dealt at right now, never its own guess.
+export { stageFor, type Stage } from "@loom/chess/stage";
 
 /** What the HUD says when a hit can't be asked for from here. */
 export function nudgeFor(reach: Exclude<KingReach, "ok">): string {
   return reach === "facing" ? "Face him." : "Get closer to the King.";
 }
 
-/** Said (and shown under the bar) once this visit has hit him. */
-export const HIT_USED = "You hit him. Come back on your next reinstallation.";
+/** Said (and shown under the bar) once this visit has hit him. A visit
+ *  ends at the duck, not at Leave, a director's end or a timeout, so a
+ *  re-scan before Gerald is found is still the visit that hit him. */
+export const HIT_USED = "You hit him this reinstallation. Find Gerald before you hit him again.";
 
-export type Stage = "grandmaster" | "club" | "beginner" | "dizzy" | "pawns";
-
-/** The stage for `hp` of `max`: `round(4·hp/max)` → 4 grandmaster … 0 pawns. */
-export function stageFor(hp: number, max: number): Stage {
-  const m = Math.max(1, max);
-  const k = Math.round((4 * Math.max(0, Math.min(m, hp))) / m);
-  return k >= 4 ? "grandmaster" : k === 3 ? "club" : k === 2 ? "beginner" : k === 1 ? "dizzy" : "pawns";
+/** This visit's hit is spent from the start: the server's assignment says a
+ *  re-scan is the visit that already hit him (missing on an old server). */
+export function hitSpentAtStart(assignment: { kingHit?: boolean }): boolean {
+  return assignment.kingHit === true;
 }
 
 /** Flavour under the bar while he stands: how he is holding up (the
- *  simulation's King, not the board's). "pawns" is any hp that rounds to 0
- *  but isn't 0 (1 of 15) — he is still up, his door still shut. */
+ *  simulation's King, not the board's — no chess words on the tablet). The
+ *  stage is the terminal's (`stageFor`: full = grandmaster, 1 … max−1 club /
+ *  beginner / dizzy, 0 pawns), so "pawns" only ever names a felled King,
+ *  whose HUD reads `KNEELING_LINE` instead; it stays for completeness. */
 export const STAGE_LINE: Record<Stage, string> = {
   grandmaster: "The King is at full strength.",
   club: "The King is rattled.",

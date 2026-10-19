@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { byRefusal, cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -36,6 +36,7 @@ import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
 import {
+  canonicalGuestName,
   guestNameRefusal,
   reservedDefFor,
   guestPickable,
@@ -452,6 +453,12 @@ const POWER_FREE_EVENTS: ReadonlySet<string> = new Set(["signal", "dialogue", "a
  *  blackouts. Live and on a replay alike. */
 function powerSpent(events: readonly SimEvent[]): boolean {
   return events.some((e) => !POWER_FREE_EVENTS.has(e.type));
+}
+
+/** The 403 an agent-voiced character's refused codex share answers
+ *  (`Sim.agentRefusal`): a secret file, or lore about someone else. */
+export function agentRefusalText(refusal: "secret" | "about"): string {
+  return refusal === "secret" ? "they won't take a secret file" : "they won't take lore about someone else";
 }
 
 export class EventRuntime {
@@ -3704,6 +3711,9 @@ export class EventRuntime {
           sendJson(res, 409, { error: refusal });
           return true;
         }
+        // Typed in another case (`bugdom`): the guest is the story's own
+        // `Bugdom`, so its `program.name ==` checks (the featured parts) hear them.
+        name = canonicalGuestName(this.sim!.model, name);
         let chosen: string | null = null;
         if (chosenKey !== "") {
           const opts = await this.pictureOptions(pictureFor !== "" ? pictureFor : name, pictureFor !== "" ? pictureFor : undefined);
@@ -4054,8 +4064,9 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
-        if (this.sim!.agentRefuses(to, entry)) {
-          sendJson(res, 403, { error: "they won't take lore about someone else" });
+        const refusal = this.sim!.agentRefusal(to, entry);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: agentRefusalText(refusal) });
           return true;
         }
         this.fanout(this.commit("share", id, to, entry));
@@ -4139,8 +4150,9 @@ export class EventRuntime {
           sendJson(res, 404, { error: "unknown recipient" });
           return true;
         }
-        if (this.sim!.agentRefuses(to, entry)) {
-          sendJson(res, 403, { error: "they won't take lore about someone else" });
+        const refusal = this.sim!.agentRefusal(to, entry);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: agentRefusalText(refusal) });
           return true;
         }
         const events = this.commit("share", character, to, entry);
@@ -4293,6 +4305,18 @@ export class EventRuntime {
           return true;
         }
         const character = this.characterOf(token);
+        // `by:` is whose button it is (its characters, a GROUP's members, and
+        // any character owning a hook for it — `interactionActors`, what the
+        // booth leads with): another booth's press is refused, so a ROLE hook
+        // (which ignores the actor) can't be pressed from the wrong card. A
+        // button with no `by:` stays anyone's; a moderator's booth may press
+        // any (as the director's quick-fire can). Never "sign in" here: that
+        // answer drops a booth.
+        const refusal = admin ? null : byRefusal(this.sim!, def, character);
+        if (refusal !== null) {
+          sendJson(res, 403, { error: refusal });
+          return true;
+        }
         this.fanout(this.commit("signal", name, guest, null, character));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest) });
         return true;

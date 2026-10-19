@@ -6,6 +6,13 @@
 // picker, can be captured, redeems codes, holds quests, answers
 // choices, joins a faction and counts toward a majority.
 //
+// Each one is `reserved: true`: it is held for its invitee. The picker
+// shows it 🔒 Reserved (its `wiki:` article too) to anyone without the
+// invitation's claim link (Run → Print sheet → invitations, the
+// `?claim=` on `/api/mod/codes` `claims`), and a director's 🔓 opens it
+// to anyone for two minutes when an invitation is lost. `reserved` is
+// not a part: the program stays a guest's.
+//
 // THE RULE: nothing anywhere in the story may make one of these a
 // performer's part. No hooks, no beats, no `listed`, no `faction`, and
 // no line anywhere that parses as their speech — a line that starts
@@ -22,23 +29,29 @@
 // names never appear in the story.
 
 CHARACTER Microsoft Excel
+  reserved: true
   avatar: File:Microsoft Office Excel (2013–2019).svg | File:Office Excel 2007 logo.svg
 
 CHARACTER OpenOffice
+  reserved: true
   avatar: File:OOo3.2.1Icon.png
   wiki: Apache OpenOffice
 
 CHARACTER DraftKings
+  reserved: true
   avatar: File:DraftKings logo.svg
 
 CHARACTER Bugdom
+  reserved: true
   avatar: File:Bugdom.jpg
 
 CHARACTER Broken Ask Jeeves
+  reserved: true
   avatar: File:Jeeves-in-2009.jpg | File:Ask.com Logo.svg
   wiki: Ask.com
 
 CHARACTER Runescape
+  reserved: true
   avatar: File:Runescape 3 Logo.png
   wiki: RuneScape
   // the Truthcoin reserve: 💰 Stimulus pays every cleared program the same
@@ -48,13 +61,16 @@ CHARACTER Runescape
   wallet: minter, limit 3, grants 3, freeze 10m, while program.cleared == true
 
 CHARACTER MS Paint
+  reserved: true
   avatar: File:Microsoft Paint.svg
   wiki: Microsoft Paint
 
 CHARACTER VLC
+  reserved: true
   avatar: File:VLC Icon.svg
   wiki: VLC media player
 
 CHARACTER Pong
+  reserved: true
   avatar: File:Pong.png
   wiki: Pong

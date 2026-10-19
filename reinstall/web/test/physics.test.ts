@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { locate } from "@loom/house";
+import { locate, standable, withFallenKings } from "@loom/house";
 import type { HouseMap, Prop, Vec3 } from "@loom/house";
 import {
   blocksAt,
@@ -336,6 +336,22 @@ describe("physics — a remap (the tent ↔ shed switch)", () => {
         const after = bodyAfterRemap(to, body(p, 0));
         expect(canLeave(world, after.body.p), `${room} ${p.join(",")} on ${to.name}`).toBe(true);
       }
+    }
+  });
+
+  it("a fallen King is out of the way: a program on his spot stays put, as the server re-seats (wave 11)", () => {
+    for (const house of [SHOW(), SHOW_SHED()]) {
+      const king = house.props.find((p) => p.kind === "king")!;
+      const onHim = body([king.pos[0], king.pos[1], king.pos[2]], 0);
+      // Standing, he is a solid prop: a remap puts them back at the start…
+      expect(standable(house, onHim.p), house.name).toBe(false);
+      expect(bodyAfterRemap(house, onHim).respawned, house.name).toBe(true);
+      // …down, he is not, so the server keeps them there and so do we.
+      const fallen = new Set([king.id]);
+      expect(standable(withFallenKings(house, fallen), onHim.p), house.name).toBe(true);
+      expect(bodyAfterRemap(house, onHim, fallen), house.name).toEqual({ body: onHim, respawned: false });
+      // A set naming no king of this map changes nothing.
+      expect(bodyAfterRemap(house, onHim, new Set(["no-such-king"])).respawned, house.name).toBe(true);
     }
   });
 

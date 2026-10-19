@@ -90,11 +90,43 @@ describe("SpatialHub — the shared King", () => {
     const c = h.begin("g-2");
     h.hub.pose(c.token, NEAR);
     expect(h.hub.hit(c.token, () => {}).kind).toBe("hit");
-    // The visit ended (found / quit): the next begin is a new visit.
+    // The visit ended with its duck found: the next begin is a new visit.
+    const duck = h.hub.players().find((p) => p.session === b.session)!.duck;
+    h.hub.pose(b.token, { p: [...duck.pos], yaw: 0, pitch: 0 });
+    expect(h.hub.found(b.token, () => true).kind).toBe("found");
     h.hub.endByToken(b.token);
     const d = h.begin("g-1");
     h.hub.pose(d.token, NEAR);
     expect(h.hub.hit(d.token, () => {})).toEqual({ kind: "hit", king: { id: "king", hp: 0, max: 3, fallen: true } });
+  });
+
+  it("quitting is not a new visit: Leave + re-scan or a director's end keeps the hit spent until the duck is found; a reset forgets it", () => {
+    const h = hub();
+    const a = h.begin("g-1");
+    expect(a.kingHit).toBe(false);
+    h.hub.pose(a.token, NEAR);
+    expect(h.hub.hit(a.token, () => {}).kind).toBe("hit");
+    // Leave (the game quit) + re-scan, three times over: still the one hit,
+    // and the assignment says so, so the game starts with ⚔ spent.
+    let last = a;
+    for (let i = 0; i < 3; i++) {
+      expect(h.hub.endByToken(last.token)).toBe("ok");
+      last = h.begin("g-1");
+      expect(last.kingHit).toBe(true);
+      h.hub.pose(last.token, NEAR);
+      expect(h.hub.hit(last.token, () => {})).toEqual({ kind: "already", king: { id: "king", hp: 2, max: 3, fallen: false } });
+    }
+    // A director's end is no fresh visit either.
+    expect(h.hub.end(last.session)).toBe(true);
+    const b = h.begin("g-1");
+    h.hub.pose(b.token, NEAR);
+    expect(h.hub.hit(b.token, () => {}).kind).toBe("already");
+    // A story reset forgets every visit.
+    h.hub.reset("reset");
+    const c = h.begin("g-1");
+    expect(c.kingHit).toBe(false);
+    h.hub.pose(c.token, NEAR);
+    expect(h.hub.hit(c.token, () => {}).kind).toBe("hit");
   });
 
   it("a find ends the visit: a re-scan while the found session lingers starts a fresh visit that may hit", () => {

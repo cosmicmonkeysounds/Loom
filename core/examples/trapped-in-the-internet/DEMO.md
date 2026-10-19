@@ -51,8 +51,8 @@ change the order here, change it there.
 
 | Device | Signs in as | How |
 |---|---|---|
-| **Phone A** | a guest: **Microsoft Excel** (a featured program: he gets a secret mission at the Truther Download) | open the site → **I'm a Guest** → event code → pick *Microsoft Excel* |
-| **Phone B** | a guest: **MS Paint** (featured: the night's anti-AI program, the first one sent to the Internet) | same, pick *MS Paint* |
+| **Phone A** | a guest: **Microsoft Excel** (a featured program: he gets a secret mission at the Truther Download) | scan Excel's **invitation** QR (Run → **🖨 Print sheet…** → Invitations; it carries the event code and Excel's claim) → *Microsoft Excel*. The nine featured programs are 🔒 Reserved: without the invitation the picker refuses them. No printer? Tap **🔓 lost? open 2 min** twice on Excel's invitation, then join with the event code and pick *Microsoft Excel* within two minutes. |
+| **Phone B** | a guest: **MS Paint** (featured: the night's anti-AI program, the first one sent to the Internet) | same, with MS Paint's invitation (or its 🔓) |
 | **Phone C** (optional) | performer **Norton Anti-Virus** | **I'm a Performer** → performer code → pick *Norton Anti-Virus*. She scans passes at the door and sends programs to the Internet; a program *marked* for reinstallation shows up as an escort task pinned in her `# quarantine` (with a chime) until he presses 🛡. |
 | **Phone D** (optional) | performer **Clippy** | performer code → *Clippy*. She judges answers spoken in the room (✅ / 😤 / 🏓 / 💘) and settles the bottle (🗣 / 🙅) on a guest's card; filed facts are judged by the server. |
 | **Laptop** | the director | Run (cue sheet), plus the TV tab and the tent-tablet tab |

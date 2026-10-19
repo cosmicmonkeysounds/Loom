@@ -9,7 +9,7 @@ import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
-import type { CodexDef } from "../src/runtime/sim/model.ts";
+import type { CodexDef, InteractionDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "./identity.ts";
@@ -29,10 +29,15 @@ export interface CodexEntryView {
   /** The subject it concerns (a character, or a topic). */
   about: string | null;
   text: string;
+  /** `secret: true` — an agent-voiced character never takes it (the heart
+   *  terminal's file panel offers no Give for it). Present only when set. */
+  secret?: true;
 }
 
 function codexEntry(e: CodexDef): CodexEntryView {
-  return { id: e.id, title: e.title, about: e.about, text: e.text };
+  const out: CodexEntryView = { id: e.id, title: e.title, about: e.about, text: e.text };
+  if (e.secret) out.secret = true;
+  return out;
 }
 
 /** A quest in someone's log, where it stands now. Its steps are the
@@ -110,6 +115,10 @@ export interface InteractionSummary {
    *  hook for it (a trait's `when vouch for program:`). Absent = anyone's.
    *  A performer's guest card leads with their own; the rest fold away. */
   actors?: string[];
+  /** True when the INTERACTION declares `by:`: only its `actors` may press
+   *  it (`/api/prime/act` refuses another booth, 403). A booth leaves another
+   *  character's out of its More fold; a moderator's booth keeps them. */
+  only?: true;
   /** False while the INTERACTION's `while:` condition is false — a guest
    *  never sees it; a performer finds it under "More"; the director's cue
    *  sheet never suggests it as NEXT. */
@@ -169,6 +178,24 @@ export function interactionActors(sim: Sim): Map<string, string[]> {
   return out;
 }
 
+/**
+ * Why `character`'s booth may not press performer INTERACTION `def`, or
+ * null when it may. Only a button that declares `by:` is anyone's in
+ * particular: its actors (`interactionActors` — the `by:` characters, a
+ * GROUP's members, and every character owning a hook for it) may press it,
+ * nobody else. A `by:` naming nobody the story declares (a typo) stays open,
+ * as it was before it was enforced. The message never says "sign in" (a
+ * booth reads that as its session gone).
+ */
+export function byRefusal(sim: Sim, def: InteractionDef, character: string | null): string | null {
+  if (def.by.length === 0) return null;
+  const actors = interactionActors(sim).get(def.id);
+  if (actors === undefined || actors.length === 0) return null;
+  const me = character === null ? null : foldName(character);
+  if (me !== null && actors.some((a) => foldName(a) === me)) return null;
+  return `not your button: “${def.label}” is for ${def.by.join(", ")}`;
+}
+
 /** The INTERACTIONs `who` may fire. With `at`, each `while:` is evaluated
  *  (`subject` / `self` bound as given) and marked `live: false` when it
  *  fails; without (the director's cue sheet), only an admin cue's is, with
@@ -190,6 +217,7 @@ function interactionsFor(
       if (i.arm) s.arm = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
+      if (by !== undefined && i.by.length > 0) s.only = true;
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
       // The director's cue sheet: an admin cue's `while:` names the branch
       // of the night it belongs to (🏍 only after Combo A), so NEXT skips it

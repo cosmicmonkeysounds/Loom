@@ -26,8 +26,9 @@
 //!   `score`.
 //! - **shares** — codex entries handed to someone else (`codexUnlocked`
 //!   `via: "share"`, credited to `from`; a share to a character counts).
-//! - **chess** — wins against the King: `signal`s named `chess won` (the tent
-//!   tablet) or `beat the machine` (a host's ♟ fallback), names folded,
+//! - **chess** — wins against the King: `signal`s named `chess won` (the
+//!   chess terminal outside the server-room door, wave 11) or `beat the
+//!   machine` (a host's ♟ fallback), names folded,
 //!   per subject; `chessGames` adds the `chess lost` / `chess drawn` counts.
 //! - **bathroom** — Bathroom Mode trips: `go to the bathroom` signals per
 //!   subject, a repeat while still away not counted again. A trip ends at

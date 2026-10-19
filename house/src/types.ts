@@ -291,6 +291,10 @@ export interface Assignment {
   /** The program's profile picture: an `AvatarBook` key, served at
    *  `/e/<eventId>/api/avatar/<key>`; null / missing = no picture. */
   avatar?: string | null;
+  /** This visit already hit the King: a re-scan after Leave, a director's
+   *  end or a timeout is still the same visit until the duck is found, so
+   *  ⚔ starts spent. Missing (an old server) = not yet. */
+  kingHit?: boolean;
 }
 
 export interface PlayerState {

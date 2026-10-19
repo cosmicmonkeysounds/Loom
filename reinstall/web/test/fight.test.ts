@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { doorGap, locate } from "@loom/house";
 import type { Prop, Vec3 } from "@loom/house";
-import { HIT_USED, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
+import { HIT_USED, hitSpentAtStart, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
 import { SHOW } from "./houses.ts";
 
 const house = SHOW();
@@ -11,16 +11,23 @@ const WEST = 90;
 const EAST = -90;
 
 describe("stageFor", () => {
+  it("is the door terminal's own ladder (@loom/chess): the HUD names the board he would deal", async () => {
+    const chess = await import("@loom/chess/stage");
+    for (let max = 1; max <= 20; max++) for (let hp = -1; hp <= max + 1; hp++) expect(stageFor(hp, max), `${hp}/${max}`).toBe(chess.stageFor(hp, max));
+  });
+
   it("walks grandmaster → club → beginner → dizzy → pawns over 4 hp", () => {
     expect([4, 3, 2, 1, 0].map((hp) => stageFor(hp, 4))).toEqual(["grandmaster", "club", "beginner", "dizzy", "pawns"]);
   });
 
-  it("scales the show's 15 (round(4·hp/max))", () => {
+  it("on the show's 15: grandmaster only at full, the first hit weakens him, pawns only once he falls", () => {
     expect(stageFor(15, 15)).toBe("grandmaster");
-    expect(stageFor(14, 15)).toBe("grandmaster"); // 3.73 → 4
-    expect(stageFor(13, 15)).toBe("club"); // 3.47 → 3
-    expect(stageFor(2, 15)).toBe("dizzy"); // 0.53 → 1
-    expect(stageFor(1, 15)).toBe("pawns"); // 0.27 → 0
+    expect(stageFor(14, 15)).toBe("club");
+    expect(stageFor(10, 15)).toBe("club");
+    expect(stageFor(9, 15)).toBe("beginner");
+    expect(stageFor(5, 15)).toBe("beginner");
+    expect(stageFor(4, 15)).toBe("dizzy");
+    expect(stageFor(1, 15)).toBe("dizzy"); // still up, still a real game
     expect(stageFor(0, 15)).toBe("pawns");
   });
 
@@ -72,7 +79,11 @@ describe("kingReach (on the show's map)", () => {
     expect(nudgeFor("far")).toBe("Get closer to the King.");
     expect(nudgeFor("floor")).toBe("Get closer to the King.");
     expect(nudgeFor("facing")).toBe("Face him.");
-    expect(HIT_USED).toBe("You hit him. Come back on your next reinstallation.");
+    expect(HIT_USED).toBe("You hit him this reinstallation. Find Gerald before you hit him again.");
+    // A re-scan before the duck is the same visit: the assignment says so.
+    expect(hitSpentAtStart({ kingHit: true })).toBe(true);
+    expect(hitSpentAtStart({ kingHit: false })).toBe(false);
+    expect(hitSpentAtStart({})).toBe(false); // an old server
   });
 });
 

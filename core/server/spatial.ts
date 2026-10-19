@@ -167,7 +167,7 @@ interface Session {
   /** Still captured once the find was committed (C4b): a find that
    *  released nobody while the story keeps the program (the banishment). */
   keptCaptured: boolean;
-  /** This visit hit the King (one hit per visit, D2). */
+  /** This visit hit the King (one hit per visit, D2; `kingSpent`). */
   kingHit: boolean;
   /** The avatar key last told the stream (`refreshAvatar` sends a change). */
   avatar: string | null;
@@ -332,6 +332,12 @@ export class SpatialHub {
   private readonly kingMemory = new Map<string, number>();
   /** The King's state as last told the stream (JSON), for `syncKing`. */
   private kingSent: string | null = null;
+  /** Guests whose visit hit the King and has not found its duck yet. A
+   *  visit is a walk to the duck: quitting (Leave, `end`), a director's end,
+   *  a timeout or a re-scan never starts a fresh one, or one guest could
+   *  take the whole shared bar with Leave + re-scan. A find ends the visit
+   *  (the next scan may hit again); a story reset forgets them all. */
+  private readonly kingSpent = new Set<string>();
   /** Whose hit is being committed: the `king` frame's `by`. */
   private hitBy: string | null = null;
 
@@ -484,6 +490,7 @@ export class SpatialHub {
     const reach = kingReach(this.map.house, s.pose.p, s.pose.yaw, ref.prop, KING_HIT_SLACK);
     if (reach !== "ok") return { kind: "far", reach };
     s.kingHit = true;
+    if (!s.found) this.kingSpent.add(s.guest);
     s.activeAt = this.now();
     const hp = king.hp - 1;
     const next: KingState = { id: king.id, hp, max: king.max, fallen: hp <= 0 };
@@ -604,18 +611,18 @@ export class SpatialHub {
   /**
    * Start a program's simulation. Ends any live session of the same guest
    * (`replaced`) — the same visit (D2: a re-scan mid-walk), so a King hit
-   * it spent stays spent — and, with a station, any older assignment still
+   * it spent stays spent, as it does after a quit until the duck is found
+   * (`kingSpent`) — and, with a station, any older assignment still
    * parked there. Null when there is no house map.
    */
   begin(input: BeginInput): Assignment | null {
     const map = this.map;
     if (map === null) return null;
-    let kingHit = false;
+    // The visit's hit stays spent until its duck is found (`kingSpent`):
+    // a re-scan mid-walk (D2), or after quitting, is the same visit.
+    const kingHit = this.kingSpent.has(input.guest);
     for (const s of [...this.sessions.values()]) {
       if (s.guest === input.guest) {
-        // Only a live walk carries its hit (D2: a re-scan mid-walk); a found
-        // session lingering for its celebration is a finished visit.
-        if (!s.found) kingHit ||= s.kingHit;
         this.finish(s, "replaced");
       } else if (input.station !== null && s.station === input.station && !s.claimed) this.finish(s, "replaced");
     }
@@ -675,6 +682,7 @@ export class SpatialHub {
       spawn: s.spawn,
       houseVersion: s.houseVersion,
       avatar: this.avatarFor(s),
+      kingHit: s.kingHit,
     };
   }
 
@@ -781,6 +789,7 @@ export class SpatialHub {
     if (!near.near) return { kind: "far", distance: near.distance, dy: near.dy };
     s.found = true;
     s.foundAt = this.now();
+    this.kingSpent.delete(s.guest); // the visit is over: the next scan may hit
     s.activeAt = s.foundAt;
     const ref: SessionRef = { id: s.id, guest: s.guest, device: s.device, captured: s.captured };
     s.released = release(ref);
@@ -857,6 +866,7 @@ export class SpatialHub {
     this.lastFound.clear();
     this.runLog.length = 0;
     this.kingMemory.clear();
+    this.kingSpent.clear();
     this.broadcast("reset", { kind });
     this.syncKing(null);
   }

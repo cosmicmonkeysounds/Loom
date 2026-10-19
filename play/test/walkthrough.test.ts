@@ -84,6 +84,13 @@ describe("a performer's card leads with their own buttons", () => {
     expect(clippy.mine.map((i) => i.id)).toEqual(["judge", "check"]);
     expect(clippy.more.map((i) => i.id)).toEqual(["send", "bingo", "cue"]);
   });
+
+  it("leaves out another character's `by:` button (the server refuses it); an admin's booth keeps it under More", () => {
+    const only: Interaction[] = list.map((i) => (i.id === "judge" ? { ...i, only: true } : i));
+    expect(splitInteractions(only, "Norton Anti-Virus", false).more.map((i) => i.id)).toEqual(["bingo"]);
+    expect(splitInteractions(only, "Norton Anti-Virus", true).more.map((i) => i.id)).toEqual(["bingo", "judge", "cue"]);
+    expect(splitInteractions(only, "Clippy", false).mine.map((i) => i.id)).toEqual(["judge", "check"]);
+  });
 });
 
 describe("guest buttons answer where the guest is looking", () => {

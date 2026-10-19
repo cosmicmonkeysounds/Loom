@@ -55,7 +55,9 @@ const KING_FAR := 3.0
 const KING_NOTICE := "Pull the trigger to hit the King — once per visit."
 const KING_HIT := "You hit him."
 const KING_DOWN := "He is down: the cold door is open."
-const KING_USED := "You hit him this visit — once per reinstallation."
+## A visit ends at the duck, not at Leave or a timeout: a re-scan before
+## Gerald is found is still the visit that hit him.
+const KING_USED := "You hit him this reinstallation. Find Gerald before you hit him again."
 const KING_CLOSER := "Get closer to the King and face him."
 const KING_STANDS := "The King stands again."
 const KING_PAUSED := "The show is paused."
@@ -350,7 +352,9 @@ func _on_assignment(a: Dictionary) -> void:
 	_found_retry = 0.0
 	_notice_left = 0.0
 	_king_said = false
-	king_hit_used = false
+	# The server's assignment says when a re-scan is the visit that already
+	# hit him (missing on an old server = not yet).
+	king_hit_used = a.get("kingHit", false) == true
 	_king_hit_pending = false
 	_hit_was = player.hit_button
 	_update_route_house()

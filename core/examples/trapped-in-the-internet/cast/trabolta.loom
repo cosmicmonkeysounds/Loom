@@ -20,6 +20,11 @@
 // (decision #35: no hosted fallback model). Plain words — a terminal reads
 // it aloud. The worker's own gate line is `unavailable:` in the persona.
 //
+// `busy:` (wave 11) is what the server says for him when the worker IS
+// online but behind: a message that waited 40 s in his line behind other
+// programs' (a burst) hears it once per thread, then the real answer
+// follows. Plain words too, in the same Windows-dialog voice as the hold.
+//
 // The story decides the night; the model colours it. Set pieces are
 // scripted `Trabolta:` lines in the beats. The voice may nudge the five
 // numbers below (clamped to their ranges by the server); the story moves
@@ -46,6 +51,7 @@ CHARACTER Trabolta is Person
   avatar: File:HAL9000.svg
   mind: external
   hold: Jean Trabolta is not responding. Please do not move the mouse.
+  busy: Jean Trabolta is answering other programs. Your message is in the queue. Please do not move the mouse.
   hidden: true
   awake: bool = false
   truth: 0 to 100 = 20

@@ -15,13 +15,13 @@ watch: Microsoft Excel, OpenOffice, MS Paint
 watch: Kernel.door_code as Door code, Kernel.combo_a as Combo A, Kernel.combo_b as Combo B
 watch: Night.king_hp as King HP, program.codex.the_door_code as Have the door code, while Night.ended != true
 watch: Night.present as Present programs, while Night.final_round == true and Night.ended != true
-countdown: Night.bingo_end as Bingo ends, while Night.bingo_on == true
-countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true
-countdown: Night.filing_close as Filings close, while Night.filing_open == true
+countdown: Night.bingo_end as Bingo ends, while Night.bingo_on == true, for guests
+countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guests
+countdown: Night.filing_close as Filings close, while Night.filing_open == true, for guests
 countdown: Night.truther_at as Truther Download, while Night.hunt2_on == true and Night.truther_sent != true
 countdown: Night.warn_at as Five-minute warning, while Night.hunt2_on == true and Night.summons_open != true and Night.summons_closed != true
-countdown: Night.summons_end as Summons closes, while Night.summons_open == true
-countdown: Night.y2k_end as Midnight, while Night.final_round == true and Night.ended != true
+countdown: Night.summons_end as Summons closes, while Night.summons_open == true, for guests
+countdown: Night.y2k_end as Midnight, while Night.final_round == true and Night.ended != true, for guests
 countdown: Night.dance_at as Dance lights
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
@@ -206,12 +206,14 @@ ROLE Program
   // missions they chose and how far along they are, the dossier, the
   // frame, the centre-square secret, the 📝 filing record (the answer,
   // the slider, the verdict and the judge's proposal per question), and every
-  // featured mission and leader's recruiting quest (a hidden group's
+  // featured mission and leader's recruiting quest, how many of the cold
+  // door's digit notes they hold and The Cold Door's progress (four of four
+  // is the door code: he must never learn who holds it) (a hidden group's
   // membership the server masks itself until the group is revealed). The
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, door_digits, quest.the_cold_door
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -2584,6 +2586,11 @@ ROLE Program
 // server reads the first header. *At the heart* counts programs with
 // `at_the_heart` (Night.heart_holder keeps the last name after they walk
 // away); *Overshare scenario* shows from 🤖 until the ending.
+// `, for guests` puts a countdown on every guest's phone too, under the
+// room header: only the clocks the guests are told about out loud (Bingo,
+// hunt 1, the last-chance filing, the summons, midnight). The Truther
+// Download, the five-minute warning and the dance lights stay the
+// director's: each one is a surprise the countdown would give away.
 
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
@@ -2973,11 +2980,19 @@ INTERACTION crew_through_the_door
 // `by:` names whose button it is (a character, or a GROUP's members; a
 // character that owns a hook for it counts too) and `while:` when it is
 // on offer: a booth's card leads with its own live buttons and folds the
-// rest under More. Neither is enforced — the hooks still guard.
+// rest under More. `by:` is enforced: the server refuses another booth's
+// press (a director's quick-fire still fires it), and a booth never offers
+// another character's. `while:` is not — the hooks still guard.
 // A performer button's `while:` is read once per booth, with no guest
 // bound: it sees Night.* / self.* only, never program.* (an unbound
 // `program.x` reads false and folds the button on every card). Per-guest
 // conditions belong in the hook.
+// `arm: true` (wave 11) marks a press with no way back: one that ends the
+// night (🔌 💥 💘), trips the alarm (❌), spends The Heart (🚪), changes
+// the room for two minutes (🔧), hands over a secret (♟ the door code,
+// 🍎 The Truth File) or plays a once-a-night moment (🫘). The booth arms
+// it on the first tap and fires it on the second (the Director's arm
+// model); the server never refuses an unarmed press. Guest 💾 too.
 
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
@@ -3085,6 +3100,7 @@ INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
   by: Hosts, Antivirus
+  arm: true
   description: Hosts or Antivirus who saw the King checkmated on the door terminal when the door terminal could not report it, on the winner's card. Until truth.txt it gives them the door code (once).
 
 // The same four hardware fallbacks on the server-room Antivirus' own
@@ -3092,39 +3108,49 @@ INTERACTION beat_the_machine
 // the director would press from a radio call is pressed in the room: on
 // the card of the program at the cables (or the one who came in). Each
 // fires the admin cue; `while:` shows it only when that cue would do
-// something. 🫘 is Adobe Acrobat's, at the printer.
+// something. `by:` the four Antivirus who may be stationed there (the
+// read-through picks who), never a Host's or a performer's booth (the
+// server refuses those), and never Windows Defender, the door-only part
+// who never leaves the Optical Drive, so a late arrival's card at the door
+// leads with nothing that ends the night. 🫘 is Adobe Acrobat's, at the
+// printer.
 INTERACTION radio_combo_a
   label: 🔌 Patch: Combo A is in
   who: performer
-  by: CRA Agent Software
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo A on the patch-bay card. Disables Trabolta.
 
 INTERACTION radio_combo_b
   label: 💥 Patch: Combo B is in
   who: performer
-  by: CRA Agent Software
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Only once all four cables match Combo B on the patch-bay card. Self-destructs the computer.
 
 INTERACTION radio_wrong_patch
   label: ❌ Patch: wrong combination
   who: performer
-  by: CRA Agent Software
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.step >= 14 and Night.r3_closed != true
   description: Four cables in that are neither combination. The first is forgiven; the second trips the alarm.
 
 INTERACTION radio_door_opened
   label: 🚪 The server-room door opened
   who: performer
-  by: CRA Agent Software
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
   while: Night.ended != true and Night.r3_closed != true and Trabolta.awake == true and Time.elapsed >= Night.crew_door_until
   description: Only when the door opened and the room heard nothing (the contact failed). The first opening plays The Heart. Hidden inside a 🔧 crew window.
 
 INTERACTION radio_crew_door
   label: 🔧 Crew going through the door (2 min)
   who: performer
-  by: CRA Agent Software
+  by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  arm: true
   while: Night.ended != true
   description: Before you (or the crew) open the cold door for yourselves: for 2 minutes an opening only tells # hosts, and The Heart is kept for the programs.
 
@@ -3132,6 +3158,7 @@ INTERACTION radio_beans
   label: 🫘 The printer lid is open: full of beans
   who: performer
   by: Adobe Acrobat
+  arm: true
   while: Night.printer_called == true and Night.beans != true
   description: When VLC's printer lid lifts and the beans show and the room heard nothing (the lid's sensor failed).
 
@@ -3199,6 +3226,7 @@ INTERACTION brought_up_the_bag
   label: 🍎 Brought up the Bag of Truth
   who: performer
   by: Clippy, Adobe Acrobat
+  arm: true
   while: Night.phase == "bobbing" and Night.bag_up != true
 
 INTERACTION failed_the_bob
@@ -3218,6 +3246,7 @@ INTERACTION pickup_line_works
   label: 💘 Said "You're the one that I want"
   who: performer
   by: Hosts
+  arm: true
   while: Night.phase == "grok_prom" and Night.ended != true
 
 // Guest buttons (on the pass). `while:` hides one that would do nothing
@@ -3241,6 +3270,7 @@ INTERACTION back from the bathroom
 INTERACTION plant_the_virus
   label: 💾 Insert a disk into the computer
   who: guest
+  arm: true
   while: program.carries_virus == true and program.planted_virus != true
 
 // ── House rules ─────────────────────────────────────────────────────
@@ -4061,12 +4091,27 @@ when crew_through_the_door:
   else:
     broadcast "🔧 The night is over: the door does nothing now anyway." to channel(hosts)
 
-// The server-room Antivirus' and Adobe Acrobat's own buttons for the
-// hardware fallbacks (the INTERACTIONs' `radio_*`) are CHARACTER hooks on
-// CRA Agent Software (cast/antivirus.loom) and Adobe Acrobat
-// (cast/hosts.loom), never story rules: a booth's press carries its
-// character as the actor and only that character's hooks hear it, so
-// another booth tapping 💥 under More… reaches nothing.
+// The server-room Antivirus' own buttons for the hardware fallbacks (the
+// INTERACTIONs' `radio_*`, `by:` the four room Antivirus): each is the admin cue,
+// pressed in the room instead of over the radio, from whichever Antivirus
+// booth is stationed there. Story rules, so a director's quick-fire (no
+// actor) lands once; `/api/prime/act` refuses the press from any booth
+// outside the Antivirus (403), and no other booth offers it. Adobe
+// Acrobat's 🫘 is a hook on her (cast/hosts.loom).
+when radio_combo_a:
+  fire patch_combo_a
+
+when radio_combo_b:
+  fire patch_combo_b
+
+when radio_wrong_patch:
+  fire patch_rejected
+
+when radio_door_opened:
+  fire server_door_opened
+
+when radio_crew_door:
+  fire crew_through_the_door
 
 // The latch clears after 120 s. The box's siren times itself out, but the
 // alarm look is house-wide (a red strobe everywhere): put back the look it
@@ -4165,6 +4210,10 @@ when chess_won for program:
     if program.name == null:
       broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
     else if program.codex.the_door_code == true:
+      // They hold it already (an earlier win, the four digit notes, the
+      // majority): say so to them too, so the door terminal never reads a
+      // second win as "no prize".
+      broadcast "♟ Checkmate again. You already hold the door code: it is in your Codex." to participant(program)
       broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
     else:
       unlock The Door Code for program
@@ -4225,13 +4274,18 @@ when restore_the_king:
 // the verdict is in (📄 truth.txt closed round three) or the night has
 // ended, the notes still count and the quest still steps, but four of four
 // gives no code, like a late checkmate (`when chess_won`): it would say the
-// door is yours, and the door does nothing now. Only # hosts hears of it.
+// door is yours, and the door does nothing now. The quest fails (nothing can
+// finish it any more) and # hosts hears which of the two it was.
 when door_digit_found for program:
   set program.door_digits = count([x for x in [program.codex.cold_door_first_digit, program.codex.cold_door_second_digit, program.codex.cold_door_third_digit, program.codex.cold_door_fourth_digit] where x])
   if program.codex.the_door_code != true:
-    if program.door_digits >= 4 and (Night.r3_closed == true or Night.ended == true):
+    if program.door_digits >= 4 and Night.ended == true:
       if program.quest.the_cold_door == "active":
-        update quest The Cold Door for program "4 of 4."
+        fail quest The Cold Door for program "4 of 4. The night is over: the notes open nothing now."
+      broadcast "🔢 {program.name} found all four digit notes after the night ended: no door code. Nothing happens in the story." to channel(hosts)
+    else if program.door_digits >= 4 and Night.r3_closed == true:
+      if program.quest.the_cold_door == "active":
+        fail quest The Cold Door for program "4 of 4. The verdict is in: the notes open nothing now."
       broadcast "🔢 {program.name} found all four digit notes after truth.txt. The verdict is in: no door code. Nothing happens in the story." to channel(hosts)
     else if program.door_digits >= 4:
       complete quest The Cold Door for program "Four of four. The notes fit together: the door code is in your Codex."

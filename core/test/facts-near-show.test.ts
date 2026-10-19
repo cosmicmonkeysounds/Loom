@@ -18,6 +18,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { scenarioSource } from "../examples/load.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
+import { judgeFiling, parseFactsBook } from "../server/facts.ts";
 import { Store } from "../server/store.ts";
 import type { FactsView } from "../server/views.ts";
 
@@ -26,6 +27,45 @@ const SRC = scenarioSource(SHOW);
 const FACTS = readFileSync(join(import.meta.dirname, "..", "examples", SHOW, "facts.json"), "utf8");
 const CODES = { event: "EVT556", prime: "PRM556", mod: "MOD556" };
 const SLOW = 120_000;
+
+describe("the show's answer key, at confidence 100 (wave 11 recheck)", () => {
+  const book = parseFactsBook(FACTS).book!;
+  const judged = (q: string, answer: string) => {
+    const j = judgeFiling(book, q, answer, 100)!;
+    return j.near !== null ? "near" : j.verdict;
+  };
+  // A right answer abbreviated is simply right: no director, no # hosts lines.
+  it.each([
+    ["H2", "Mr. Pickles"],
+    ["H2", "mr pickles"],
+    ["H1", "11 yrs"],
+    ["H1", "Eleven yrs"],
+    ["H4", "extension 1978"],
+    ["H4", "Ext. 1978"],
+    ["H3", "0900"],
+  ])("%s %s is accurate", (q, answer) => {
+    expect(judged(q, answer)).toBe("accurate");
+  });
+  // A right answer said at length goes to a director, never an automatic lie.
+  it.each([
+    ["H1", "11 years ago"],
+    ["H2", "Mister Pickles the cat"],
+    ["H3", "9:00 in the morning"],
+    ["F2", "I think Grok"],
+  ])("%s %s is a near miss", (q, answer) => {
+    expect(judged(q, answer)).toBe("near");
+  });
+  // Wrong stays an automatic lie.
+  it.each([
+    ["H2", "Mrs Whiskers"],
+    ["H3", "9:00 pm"],
+    ["H6", "Appendix A"],
+    ["F2", "not Grok"],
+    ["H4", "extension 1979"],
+  ])("%s %s is a lie", (q, answer) => {
+    expect(judged(q, answer)).toBe("lie");
+  });
+});
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -76,7 +116,9 @@ describe("Trapped in the Internet — a near miss in auto mode goes to a directo
     rt.openDoors();
     const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
     const upload = async (name: string) => {
-      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event });
+      // a featured program (Microsoft Excel) is reserved: its invitee joins
+      // with the claim (a pool program's register ignores it)
+      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event, claim: rt.claimFor(name) });
       expect(g.status).toBe(200);
       const id = g.json["id"] as string;
       const token = g.json["token"] as string;

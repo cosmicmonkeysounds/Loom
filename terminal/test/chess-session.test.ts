@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CHESS_IDLE_MS, INITIAL, MARKED_NOTICE, NOTICE_MS, RESULT_MS, WIN_CODE, WIN_NOT_SENT, healthText, reduce, resultLine, settled, stakesLine, strengthLine, type ChessEvent, type ChessSession } from "../src/chess/session.ts";
+import { CHESS_IDLE_MS, INITIAL, MARKED_NOTICE, NOTICE_MS, RESULT_MS, WIN_CODE, WIN_NOT_SENT, healthText, reduce, resultLine, settled, stakesLine, type ChessEvent, type ChessSession } from "../src/chess/session.ts";
 
 const ada = { id: "g-aaaaaa", name: "Ada", restricted: false };
 const king = (hp: number, armed: boolean | null = true) => ({ hp, max: 15, fallen: hp <= 0, armed });
@@ -100,7 +102,15 @@ describe("the words", () => {
     expect(stakesLine(undefined)).toBeNull();
     expect(healthText({ hp: 9, max: 15 })).toBe("9 / 15");
     expect(healthText(null)).toBeNull();
-    for (const stage of ["grandmaster", "club", "beginner", "dizzy", "pawns"] as const) expect(strengthLine(stage)).not.toMatch(/hit|hint|tip|give up|weaker/i);
     for (const r of ["won", "lost", "drawn"] as const) for (const p of ["sending", "sent", "declined", "failed"] as const) expect(resultLine(over(r, p, true))).not.toMatch(/hit|hint|weaker|practice/i);
+  });
+});
+
+describe("the chess terminal's screen", () => {
+  it("shows his bar and the stakes, never the strength ladder (no hints, no tips, no ladder copy)", () => {
+    const src = readFileSync(fileURLToPath(new URL("../src/chess/ChessTerminal.tsx", import.meta.url)), "utf8");
+    expect(src).toMatch(/<HealthBar king=\{king\} \/>/u);
+    expect(src).not.toMatch(/STAGE_LINE|strengthLine|stageFor/u);
+    expect(src).not.toMatch(/full strength|rattled|reeling|dizzy|pawns only|grandmaster/iu);
   });
 });

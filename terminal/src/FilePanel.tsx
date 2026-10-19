@@ -14,7 +14,7 @@ import type { CodexEntry, GuestView } from "@loom/play/types.ts";
 import type { TerminalConfig } from "./config.ts";
 import type { Pilot } from "./pilot.ts";
 import { Scanner } from "./scanner.tsx";
-import { filesOf, foldCode, giveEntry, redeemCode, scanStep } from "./files.ts";
+import { filesOf, foldCode, giveEntry, redeemCode, refusalOf, scanStep } from "./files.ts";
 
 type Note = { kind: "ok" | "bad"; text: string } | null;
 
@@ -65,9 +65,12 @@ export function FilePanel({
     } else setNote({ kind: "bad", text: `${who} DIDN'T TAKE IT — ${r.error.toUpperCase()}` });
   };
 
-  const offer = (entry: string, title: string, again: boolean) => {
+  const offer = (entry: string, title: string, again: boolean, list: CodexEntry[] = files) => {
     setUnlocked(entry);
-    setNote({ kind: "ok", text: `${again ? "ALREADY UNLOCKED" : "UNLOCKED"}: ${title.toUpperCase()} — GIVE IT TO ${who}?` });
+    const e = list.find((f) => f.id === entry);
+    const no = e !== undefined ? refusalOf(e, character) : null;
+    const head = `${again ? "ALREADY UNLOCKED" : "UNLOCKED"}: ${title.toUpperCase()}`;
+    setNote({ kind: "ok", text: no === null ? `${head} — GIVE IT TO ${who}?` : `${head} — IT'S IN YOUR CODEX (${no.toUpperCase()})` });
   };
 
   const redeem = async (raw: string) => {
@@ -92,7 +95,8 @@ export function FilePanel({
     }
     setCode("");
     redeemed.current.set(foldCode(raw), r.unlocked);
-    offer(r.unlocked, (r.codex ?? files).find((e) => e.id === r.unlocked)?.title ?? r.unlocked, false);
+    const list = r.codex !== null ? filesOf(view, r.codex) : files;
+    offer(r.unlocked, list.find((e) => e.id === r.unlocked)?.title ?? r.unlocked, false, list);
   };
 
   const first = unlocked === null ? files : [...files.filter((e) => e.id === unlocked), ...files.filter((e) => e.id !== unlocked)];
@@ -108,17 +112,24 @@ export function FilePanel({
       {note !== null && <div className={`file-note ${note.kind}`}>{note.text}</div>}
       <div className="file-list">
         {first.length === 0 && <div className="small">your Codex is empty — type a code or scan a file's QR below</div>}
-        {first.map((e) => (
-          <div key={e.id} className={`file-row${e.id === unlocked ? " fresh" : ""}`}>
-            <span className="file-title">
-              {e.title}
-              {e.about !== null && <span className="small"> · about {e.about}</span>}
-            </span>
-            <button type="button" className="file-give" disabled={busy !== null || given.has(e.id)} onClick={() => void give(e)}>
-              {given.has(e.id) ? "GIVEN" : busy === e.id ? "…" : "GIVE"}
-            </button>
-          </div>
-        ))}
+        {first.map((e) => {
+          const no = refusalOf(e, character);
+          return (
+            <div key={e.id} className={`file-row${e.id === unlocked ? " fresh" : ""}${no !== null ? " kept" : ""}`}>
+              <span className="file-title">
+                {e.title}
+                {e.about !== null && <span className="small"> · about {e.about}</span>}
+              </span>
+              {no !== null ? (
+                <span className="file-kept small">{no.toUpperCase()}</span>
+              ) : (
+                <button type="button" className="file-give" disabled={busy !== null || given.has(e.id)} onClick={() => void give(e)}>
+                  {given.has(e.id) ? "GIVEN" : busy === e.id ? "…" : "GIVE"}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
       <form
         className="typed file-code"

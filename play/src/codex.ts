@@ -5,6 +5,7 @@
 //! `alerts.ts`.)
 
 import { eventGone, guestSessionDead, performerSessionDead } from "./lifecycle.ts";
+import type { CodexEntry, PersonCard } from "./types.ts";
 
 /** The private thread between two participants — one id whoever opens it. */
 export function pmChannelId(a: string, b: string): string {
@@ -47,9 +48,19 @@ export function redeemErrorText(e: unknown): string | null {
   return status === 429 ? REDEEM_THROTTLED : null;
 }
 
+/** Who Share… offers an entry to: everyone in the directory except an
+ *  agent-voiced character who would refuse it (the server's
+ *  `Sim.agentRefusal`, 403): a `secret: true` entry, or one `about` someone
+ *  or somewhere else. A guest is never offered Trabolta for a digit note.
+ *  An entry the view doesn't list (an old server) filters nothing. */
+export function shareTargets(people: readonly PersonCard[], entry: CodexEntry | undefined): PersonCard[] {
+  if (entry === undefined) return [...people];
+  return people.filter((p) => p.agent === undefined || (entry.secret !== true && (entry.about === null || entry.about === p.id)));
+}
+
 /** What a refused Share… says (T5-05): the server names the reason — an
- *  agent won't take lore about someone else, a restricted program can't
- *  share — so the guest isn't left thinking it worked. Null for a session
+ *  agent won't take lore about someone else, or a secret file — so the
+ *  guest isn't left thinking it worked. Null for a session
  *  the app is dropping anyway (it explains itself on the join screen). */
 export function shareErrorText(e: unknown): string | null {
   const status = typeof e === "object" && e !== null ? (e as { status?: unknown }).status : undefined;

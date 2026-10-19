@@ -204,12 +204,16 @@ describe("reserved programs at the door (W-03)", () => {
     expect(await register(rt, "Microsoft Excel", rt.claimFor("Runescape"))).toMatchObject({ status: 409, json: { error: "reserved" } });
     const ok = await register(rt, "microsoft excel", rt.claimFor("Microsoft Excel").toUpperCase());
     expect(ok.status).toBe(200);
+    // Typed in another case, the guest is still the story's own CHARACTER
+    // (its `program.name ==` checks hear them).
+    expect(ok.json.name).toBe("Microsoft Excel");
+    expect(rt.liveSim!.persons.get(ok.json.id as string)?.name).toBe("Microsoft Excel");
     // Once held, the program is taken for everyone (the claim is no second ticket).
     const again = await register(rt, "Microsoft Excel", rt.claimFor("Microsoft Excel"));
     expect(again.status).toBe(409);
     expect(again.json.error).toMatch(/already here/u);
-    // An unreserved program needs nothing.
-    expect((await register(rt, "Calculator")).status).toBe(200);
+    // An unreserved program needs nothing, and a pool name is spelled the story's way too.
+    expect(await register(rt, "calculator")).toMatchObject({ status: 200, json: { name: "Calculator" } });
   });
 
   it("the claim is stable across a process restart (the state dir) and pinned by the row", async () => {

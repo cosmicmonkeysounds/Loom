@@ -29,6 +29,20 @@
 //! `1997`, `10:00` never near `9:00`, `9am` never near `8am` or `9pm`), and
 //! no edit may touch a digit.
 //!
+//! **Extra words** (wave 11 recheck): an answer that holds every word of a
+//! key form, in order, plus up to four more (`11 years ago` for `11`,
+//! `Mister Pickles the cat`, `9:00 in the morning`) is near, so a right
+//! answer said at length goes to a director instead of being an automatic
+//! lie. Not when an extra word turns it around or hedges (`not`, `never`,
+//! `didnt`, `or` …), names the half of the day the key leaves open (`9:00
+//! pm` for `9:00`), or is a lone letter (`Appendix A` for `appendix`,
+//! `Room 101 b`) — a letter is a name, not a filler.
+//!
+//! **Abbreviations** spell out first (`yrs` → `years`, `ext` → `extension`,
+//! `mr` → `mister`, and a leading-zero clock time `0900` → `9 00`):
+//! `spellOut` is also the judge's second exact look, so `11 yrs`, `Mr.
+//! Pickles` and `extension 1978` are simply right.
+//!
 //! Pure, dependency-free, deterministic; the one fold is `facts.ts`'s.
 
 import { foldAnswer } from "./facts.ts";
@@ -61,6 +75,43 @@ const ONES: Readonly<Record<string, number>> = {
 };
 const TENS: Readonly<Record<string, number>> = { twenty: 20, thirty: 30, forty: 40, fourty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
 const SCALES: Readonly<Record<string, number>> = { hundred: 100, thousand: 1000, million: 1_000_000 };
+
+/** Folded abbreviations spelled out (`spellOut`, `nearTokens`): only ones
+ *  that can never be a different answer's word. Honorifics map to their
+ *  own long form (`mr` → `mister`, never `mrs`). */
+const ABBREVIATIONS: Readonly<Record<string, string>> = {
+  mr: "mister",
+  mrs: "missus",
+  dr: "doctor",
+  yr: "year",
+  yrs: "years",
+  ext: "extension",
+  hr: "hour",
+  hrs: "hours",
+  min: "minute",
+  mins: "minutes",
+  sec: "second",
+  secs: "seconds",
+};
+
+/** Words that turn an answer around or hedge it: never extra words (`not grok`). */
+const TURNING = new Set(["not", "no", "never", "nor", "neither", "none", "nothing", "isnt", "wasnt", "arent", "werent", "dont", "doesnt", "didnt", "cant", "cannot", "couldnt", "wont", "wouldnt", "shouldnt", "or", "either", "except", "but"]);
+
+/** A folded answer with its abbreviations spelled out and a leading-zero
+ *  clock time split (`0900` → `9 00`): the judge's second exact look
+ *  (`server/facts.ts`), so `Mr. Pickles` is `Mister Pickles` and `11 yrs`
+ *  is `11 years`. Takes an already-folded string (`foldAnswer`). */
+export function spellOut(folded: string): string {
+  if (folded === "") return "";
+  return folded
+    .split(" ")
+    .map((w) => {
+      const clock = /^0([0-9])([0-5][0-9])$/u.exec(w);
+      if (clock !== null) return `${clock[1]} ${clock[2]}`;
+      return ABBREVIATIONS[w] ?? w;
+    })
+    .join(" ");
+}
 
 const isNumberWord = (w: string): boolean => w in ONES || w in TENS || w in SCALES;
 const isDigits = (w: string): boolean => /^[0-9]+$/u.test(w);
@@ -125,7 +176,9 @@ function singular(w: string): string {
  *  words as digits, thousands separators joined, plurals singular and
  *  honorifics dropped (unless that would leave nothing). */
 export function nearTokens(s: string, opts: { honorifics?: boolean } = {}): string[] {
-  const folded = foldAnswer(s);
+  // Abbreviations spell out (`yrs` → `years`) except on the look that keeps
+  // honorifics, which compares the line as typed (`mrpickles` ≈ `Mr. Pickles`).
+  const folded = opts.honorifics === true ? foldAnswer(s) : spellOut(foldAnswer(s));
   if (folded === "") return [];
   // A digit run is its own token (`9am` → `9 am`), and `a m` / `p m` (the
   // fold of `a.m.` / `p.m.`) read as one word, so the hour is a number.
@@ -221,6 +274,7 @@ function nearAs(k: readonly string[], a: readonly string[]): boolean {
   if (kn.length !== an.length || kn.some((x, i) => x !== an[i])) return false;
   if (k.join(" ") === a.join(" ")) return true;
   if ([...new Set(k)].sort().join(" ") === [...new Set(a)].sort().join(" ")) return true;
+  if (extraWords(k, a)) return true;
   // Spelling, word by word, under one budget for the whole line (spaces
   // count: the line is the words joined, numbers left out).
   const kw = k.filter((t) => !isDigits(t)).join(" ");
@@ -241,6 +295,35 @@ function nearAs(k: readonly string[], a: readonly string[]): boolean {
     if (1 + alignedEdits(merged, short) <= budget) return true;
   }
   return false;
+}
+
+/** The most extra words a long answer may carry around a key form. */
+const MAX_EXTRA = 4;
+
+/**
+ * `a` is the key form `k` said at length: every word of `k`, in order, plus
+ * 1–`MAX_EXTRA` more, none of which turns it around (`TURNING`), adds the
+ * am / pm the key leaves open, or is a lone letter. One way only: the key's
+ * words are the answer; a shorter answer is a different one (an alias).
+ * Numbers are already equal (`nearAs`).
+ */
+function extraWords(k: readonly string[], a: readonly string[]): boolean {
+  if (a.length <= k.length || a.length - k.length > MAX_EXTRA) return false;
+  const extra: Array<{ w: string; at: number }> = [];
+  let i = 0;
+  a.forEach((w, at) => {
+    if (i < k.length && w === k[i]) i += 1;
+    else extra.push({ w, at });
+  });
+  if (i < k.length) return false;
+  return extra.every(({ w, at }) => {
+    if (TURNING.has(w)) return false;
+    if ((w === "am" || w === "pm") && !k.includes(w)) return false;
+    // A lone letter is a name (`Appendix A`, `Plan B`), except the article
+    // or `I` inside a sentence (`it was a tabby`, `i think grok`).
+    if (w.length === 1 && !isDigits(w)) return (w === "a" || w === "i") && at < a.length - 1;
+    return true;
+  });
 }
 
 /** The edits that turn `a` into `k` word by word (same length), or

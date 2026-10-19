@@ -486,8 +486,8 @@ describe("wave 9 — a booth's 📝 never judges a filing the host did not mean 
     const sim = boot();
     toTruth1(sim);
     sim.setVar("Night.judge_mode", "review");
-    const f2 = file(sim, "g1", "H2", "Mr Pickles");
-    expect(hostsSaid(f2)[0]).toBe("📝 Calculator filed H2 (round 1 Q2): Mr Pickles — certain. Proposed: lie. Confirm on Run → Mind → Judging (their card's 📝 judges their latest filing only).");
+    const f2 = file(sim, "g1", "H2", "Mister Whiskers");
+    expect(hostsSaid(f2)[0]).toBe("📝 Calculator filed H2 (round 1 Q2): Mister Whiskers — certain. Proposed: lie. Confirm on Run → Mind → Judging (their card's 📝 judges their latest filing only).");
     file(sim, "g1", "H3", "9am");
     expect([v(sim, "g1.fact_v2"), v(sim, "g1.fact_v3")]).toEqual(["pending", "pending"]);
     for (const press of ["fact_accurate", "fact_lie", "fact_uncertain"]) {
@@ -509,7 +509,7 @@ describe("wave 9 — a booth's 📝 never judges a filing the host did not mean 
     const sim = boot();
     toTruth1(sim);
     sim.setVar("Night.judge_mode", "review");
-    file(sim, "g1", "H2", "Mr Pickles");
+    file(sim, "g1", "H2", "Mister Whiskers");
     expect(hostsSaid(fire(sim, "fact_lie", "g1", null, "Clippy"))).toEqual(["📝 Calculator's H2 is judged a confident lie."]);
     expect(v(sim, "Kernel.q2")).toBe("lie");
   });
@@ -518,7 +518,7 @@ describe("wave 9 — a booth's 📝 never judges a filing the host did not mean 
     const sim = boot();
     toTruth1(sim);
     file(sim, "g1", "H1", "Elevn years", 90);
-    file(sim, "g1", "H2", "Mr Pickles");
+    file(sim, "g1", "H2", "Mister Whiskers");
     expect(v(sim, "g1.fact_v1")).toBe("uncertain");
     expect(hostsSaid(fire(sim, "fact_accurate", "g1", null, "Clippy"))).toEqual(["📝 Calculator's H2 is judged accurate."]);
     expect(v(sim, "g1.fact_v2")).toBe("accurate");

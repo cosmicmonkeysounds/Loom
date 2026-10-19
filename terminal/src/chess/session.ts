@@ -19,7 +19,7 @@
 //! overlay (blackout / alarm) covers the board but never ends the game —
 //! the component holds the leash while one is up.
 
-import { STAGE_LINE, stageFor, type Stage } from "@loom/chess";
+import { stageFor, type Stage } from "@loom/chess";
 import type { ScreenKing } from "../screen.ts";
 import type { Challenger, ChessResult } from "./post.ts";
 import { parseScan } from "../scan.ts";
@@ -119,11 +119,6 @@ export function stakesLine(armed: boolean | null | undefined): string | null {
 /** The health bar's words: `9 / 15`, or null with no shared King. */
 export function healthText(king: Pick<ScreenKing, "hp" | "max"> | null): string | null {
   return king === null ? null : `${king.hp} / ${king.max}`;
-}
-
-/** The line under the board saying how strong he is (never a tip). */
-export function strengthLine(stage: Stage): string {
-  return STAGE_LINE[stage];
 }
 
 /** Said when a checkmate's `chess won` landed while the King was armed. */

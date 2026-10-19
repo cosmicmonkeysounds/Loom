@@ -6,8 +6,9 @@
 //! hears it exactly as from the phone); a code typed in or a codex QR held
 //! to the camera (`?unlock=`) is the guest's own redeem (`POST
 //! /api/guest/codex/redeem {code}`), and the entry it unlocks is then
-//! offered to give. The server's refusals are shown as it words them (an
-//! agent won't take an entry about someone else: 403).
+//! offered to give. A file he always turns down (a `secret: true` one, or
+//! lore about someone else: `refusalOf`, the server's own 403 rule) shows
+//! why in place of GIVE; any other refusal is shown as the server words it.
 
 import { api, ApiError } from "@loom/play/client.ts";
 import type { CodexEntry } from "@loom/play/types.ts";
@@ -70,6 +71,22 @@ export function filesOf(view: { codex?: CodexEntry[] } | null, fresher: CodexEnt
   for (const e of fresher ?? []) byId.set(e.id, e);
   for (const e of view?.codex ?? []) byId.set(e.id, e);
   return [...byId.values()].sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/** Why the character won't take `entry`, or null when it will. It is
+ *  agent-voiced (`mind: external`), so — as the server's share refuses —
+ *  never a `secret: true` file and never lore about someone or somewhere
+ *  else (core's `Sim.agentRefusal`). The panel shows this in place of
+ *  GIVE, so a guest is never offered a file he always turns down. */
+export function refusalOf(entry: Pick<CodexEntry, "about" | "secret">, character: string): string | null {
+  if (entry.secret === true) return "a secret file: he won't take it";
+  if (entry.about !== null && foldName(entry.about) !== foldName(character)) return `about ${entry.about}: he won't take it`;
+  return null;
+}
+
+/** A name as the story matches it (case, `_`, `-` and spaces fold). */
+function foldName(name: string): string {
+  return name.trim().toLowerCase().replace(/[\s_\-]+/gu, " ");
 }
 
 /** An unlock code as the story matches it (case, dashes, underscores and

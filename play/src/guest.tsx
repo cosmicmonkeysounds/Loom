@@ -45,7 +45,7 @@ import type { Action, Channel, PersonCard } from "./types.ts";
 import { usePush, type Push } from "./push.ts";
 import { PushCard, PushRow } from "./push-card.tsx";
 import { opensHome } from "./room.ts";
-import { redeemErrorText } from "./codex.ts";
+import { redeemErrorText, shareTargets } from "./codex.ts";
 import { activePins, activeTakeover } from "./pins.ts";
 import { Takeover } from "./takeover.tsx";
 import { ARM_LINE, useArmButtons } from "./arm.ts";
@@ -768,7 +768,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       {sharing && (
         <PickerSheet
           title={`Share “${sharing.title}” with…`}
-          items={(st.people ?? []).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
+          items={shareTargets(st.people ?? [], (st.codex ?? []).find((e) => e.id === sharing.entry)).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
           onPick={(id) => void s.shareCodex(sharing.entry, id)}
           onClose={() => setSharing(null)}
           empty="Nobody else is here yet."
