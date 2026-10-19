@@ -561,7 +561,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   }, [tourSeq, wide]);
   if (!s.me) {
     if (host.embedded) return <SessionEnded notice={s.notice} />;
-    if (landing !== null && !joinAnyway) return <LinkLanding link={landing} title={landingTitle} onJoin={() => setJoinAnyway(true)} onPerformer={onLeave} />;
+    // Only while the link is still in the address bar: once it redeemed
+    // (and was stripped), leaving the event lands on the join screen.
+    if (landing !== null && !joinAnyway && landingLink(window.location.search) !== null) return <LinkLanding link={landing} title={landingTitle} onJoin={() => setJoinAnyway(true)} onPerformer={onLeave} />;
     return <GuestRegister session={s} />;
   }
 
