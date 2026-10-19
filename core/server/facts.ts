@@ -343,6 +343,10 @@ export class FactsWatch {
    *  each starts a step at its log index. */
   private marks: Array<{ at: number; by: string | null }> = [];
   private step: FactsStep = { id: 0, signal: null, subject: null, by: null };
+  /** `nearKey` per book, per (key, answer): a filing's near key never
+   *  changes while the book stays the same, and `view` runs on every mod
+   *  snapshot and director-phone poll. */
+  private readonly nearCache = new WeakMap<FactsBook, Map<string, string | null>>();
 
   constructor(o: { now?: () => number } = {}) {
     this.now = o.now ?? Date.now;
@@ -455,6 +459,21 @@ export class FactsWatch {
     });
   }
 
+  /** `nearKey`, memoised per book. */
+  nearOf(book: FactsBook, keyId: string, answer: string): string | null {
+    let cache = this.nearCache.get(book);
+    if (cache === undefined) {
+      cache = new Map();
+      this.nearCache.set(book, cache);
+    }
+    const k = FactsWatch.key(keyId, answer);
+    const hit = cache.get(k);
+    if (hit !== undefined) return hit;
+    const near = nearKey(book, keyId, answer);
+    cache.set(k, near);
+    return near;
+  }
+
   /** The view: the book's keys in order (questions, then answers), each
    *  with its filings + tally; a filing for a key the book lacks is listed
    *  after them under its own id, never dropped. */
@@ -471,7 +490,7 @@ export class FactsWatch {
     for (const k of [...book.questions, ...book.answers]) {
       seen.add(k.id);
       const list = (byQuestion.get(k.id) ?? []).map((f) => {
-        const near = nearKey(book, k.id, f.answer);
+        const near = this.nearOf(book, k.id, f.answer);
         return near === null ? f : { ...f, near: { key: near } };
       });
       questions.push({ id: k.id, round: k.round, text: k.text, filings: list, tally: tallyFilings(list) });

@@ -1716,7 +1716,9 @@ export class EventRuntime {
     const varsOf = this.agentVarsOf(world);
     const globals = this.agentGlobals(world);
     const online = new Set(this.agents.onlineCharacters());
-    const primes = this.presence().primes;
+    // The booths online, as `presence()` counts them (not the whole presence:
+    // that builds the facts view too).
+    const primes = new Set([...this.clients].filter((c) => c.role === "prime").map((c) => c.id));
     const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
     const programs = [...sim.persons.values()].map((p) => ({
       id: p.id,

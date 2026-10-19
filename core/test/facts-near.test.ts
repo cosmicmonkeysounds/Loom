@@ -12,14 +12,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import type { ChatMessage } from "../server/chat.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
-import { bookOf, judgeFiling, nearKey } from "../server/facts.ts";
+import { nearMatch } from "../src/answer-match.ts";
+import { FactsWatch, bookOf, judgeFiling, nearKey } from "../server/facts.ts";
 import { Store } from "../server/store.ts";
 import type { FactsView } from "../server/views.ts";
 import { validateFacts, type FactsFile } from "../src/facts.ts";
+
+// A pass-through spy, so a test can count the near-miss look's work.
+vi.mock("../src/answer-match.ts", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/answer-match.ts")>();
+  return { ...real, nearMatch: vi.fn(real.nearMatch) };
+});
 
 const CODES = { event: "EVT555", prime: "PRM555", mod: "MOD555" };
 
@@ -185,6 +192,24 @@ describe("judgeFiling — the pure judge", () => {
     expect(judgeFiling(book, "Q1", "1996", 99)).toEqual({ verdict: "uncertain", near: null });
     expect(judgeFiling(book, "Q9", "x", 100)).toBeNull();
     expect(nearKey(book, "Q2", "the mister pickles")).toBeNull(); // exact after folding
+  });
+
+  it("FactsWatch memoises the near look per book: every mod view would redo it", () => {
+    const watch = new FactsWatch();
+    const spy = vi.mocked(nearMatch);
+    spy.mockClear();
+    expect(watch.nearOf(book, "Q2", "Mr Pickels")).toBe("Mister Pickles");
+    expect(watch.nearOf(book, "Q2", "Mister Whiskers")).toBeNull();
+    const once = spy.mock.calls.length;
+    expect(once).toBeGreaterThan(0);
+    for (let i = 0; i < 5; i++) {
+      expect(watch.nearOf(book, "Q2", "Mr Pickels")).toBe("Mister Pickles");
+      expect(watch.nearOf(book, "Q2", "Mister Whiskers")).toBeNull();
+    }
+    expect(spy.mock.calls.length).toBe(once);
+    // Another book (a reload) looks again.
+    expect(watch.nearOf(bookOf(v.facts as FactsFile), "Q2", "Mr Pickels")).toBe("Mister Pickles");
+    expect(spy.mock.calls.length).toBeGreaterThan(once);
   });
 });
 
