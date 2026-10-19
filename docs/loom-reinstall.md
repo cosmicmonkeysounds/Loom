@@ -11,13 +11,16 @@ instructions: it explores a **virtual copy of the house** and finds the
 
 | Game | Where | Input | Code |
 |---|---|---|---|
-| **VR** | Quest 3 headset(s) in the tent | thumbsticks only: left stick walks (head-relative), right stick turns (snap 45°, or smooth) | `reinstall/vr/` — Godot 4.7 project, OpenXR |
-| **Web** | a tablet (the tent tablet, or anywhere) | on-screen twin joysticks (touch) **and** keyboard (WASD/arrows walk, Q/E or ←/→ turn, mouse-drag look) | `reinstall/web/` — Vite + three.js app `loom-reinstall`, served at `/reinstall/` |
+| **VR** | Quest 3 headset(s) in the tent | thumbsticks: left stick walks (head-relative), right stick turns (snap 45°, or smooth); the trigger (or A / X) hits the King | `reinstall/vr/` — Godot 4.7 project, OpenXR |
+| **Web** | a tablet (the tent tablet, or anywhere) | on-screen twin joysticks (touch) **and** keyboard (WASD/arrows walk, Q/E or ←/→ turn, mouse-drag look); ⚔ HIT or Space hits the King | `reinstall/web/` — Vite + three.js app `loom-reinstall`, served at `/reinstall/` |
 
 Both games stream the player's **pose** to the event server. Every
 **terminal** (the wall tablets, `terminal/`) receives that stream and shows
 the players exploring the virtual house — through a virtual window placed
-exactly where the terminal hangs on the real wall.
+exactly where the terminal hangs on the real wall. In both games the
+**King** guards the virtual server-room door with one health bar shared
+by every guest; the chess he plays for the real door's code is on the
+**Server Door** terminal outside the real door (§3, §4).
 
 ```
  pass QR ──scan──▶ web game / tent tablet ──POST /api/mod/spatial/begin──┐
@@ -25,8 +28,9 @@ exactly where the terminal hangs on the real wall.
  Quest 3 ──poll /api/mod/spatial/station──▶ assignment          SpatialHub (event server)
  Quest 3 / web ──POST /api/spatial/pose (10 Hz, house frame)──▶   │  ├─ journal: only the story outcome
  game ──POST /api/spatial/found──▶ signal "the simulation completed" + "the golden duck"
+ game ──POST /api/spatial/king/hit──▶ set Night.king_hp − 1 + signal "king hit" (+ "king fallen" at 0)
                                                                   ▼
- terminals ◀── SSE /api/spatial/stream (poses 10 Hz, hello/join/leave/found/house/duck/reset)
+ terminals ◀── SSE /api/spatial/stream (poses 10 Hz, hello/join/leave/found/house/duck/reset/king/avatar)
 ```
 
 ## 1. One house, one frame — `house.json`
@@ -107,13 +111,18 @@ interface Prop {
   pos: Vec3;                    // centre of the base
   size: Vec3;                   // [w (x), h (y), d (z)] before yaw
   yaw?: number; color?: string; label?: string; solid?: boolean;   // solid: collides (default true for box/cylinder/king)
-  hp?: number;                  // king only: hit points before he is "pawns only" (1–9, default 4)
-  signals?: { won?: string; lost?: string; drawn?: string };   // king only: the story signals the game posts
-                                //   (defaults "chess won" / "chess lost" / "chess drawn")
-  armed?: { path: string; min: number };   // king only: the fight is ARMED (not practice) while the world var
-                                //   at `path` (read off the mod view) is ≥ `min`; absent = no badge
+  hp?: number;                  // king only: his MAXIMUM hit points, one shared bar per event (1–99, default 4)
+  health?: string;              // king only: the story world path holding his CURRENT hit points ("Night.king_hp");
+                                //   absent = the spatial hub counts them in memory, starting at `hp`
+  signals?: { won?: string; lost?: string; drawn?: string; hit?: string; fallen?: string };
+                                // king only: the story signals about him — the chess terminal's won / lost /
+                                //   drawn, the server's hit / fallen (defaults "chess won" / "chess lost" /
+                                //   "chess drawn" / "king hit" / "king fallen")
+  armed?: { path: string; min: number };   // king only: a checkmate counts while the world var at `path` is
+                                //   a number ≥ `min` (the screen state's `king.armed`); absent = unknown
 }
 interface SpaceTransform { offset: Vec3; yaw: number; scale: number }
+interface KingState { id: string; hp: number; max: number; fallen: boolean }   // fallen ⇔ hp ≤ 0
 ```
 
 Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
@@ -141,9 +150,10 @@ Validation (`validateHouse`) returns `{ ok, problems: string[], house? }`
   on the same line (lines within 2 × 0.02 m); a `guard` that names an
   unknown prop, a prop that is not a `king`, or a king whose `room` is
   neither `a` nor `b`.
-- **The King:** `hp` not an integer 1–9, `signals` not `{won?, lost?,
-  drawn?}` of strings, `armed` not `{path, min}`; any of the three on a
-  prop that is not a `king`.
+- **The King:** `hp` not an integer 1–99 (`KING_MAX_HP`), `health` not a
+  world path (identifiers joined by dots), `signals` not `{won?, lost?,
+  drawn?, hit?, fallen?}` of non-empty strings, `armed` not `{path,
+  min}`; any of the four on a prop that is not a `king`.
 - **Stairs:** an unknown room; a rect that is not `x0 < x1`, `z0 < z1` by
   at least 1 mm; `from` and `to` on one floor, or `from` not the lower; a
   rect not inside both rooms; less than 0.3 m (`STAIR_CLEARANCE`) of `to`
@@ -181,6 +191,25 @@ line, `lo..hi` = `mmi(t ± width / 2)`, `bottom` = the floor elevation,
 `top` = the door top (null when no edge of `a` carries the door). The games
 stand a closed leaf in a guarded door's gap and collide with it like a
 wall while its king stands.
+
+**The King** (`king.ts`, wave 11). One shared health bar per event: the
+prop's `hp` is his maximum (`kingMax`, default `KING_HP` = 4), his current
+points live in the story world var `health` names (else in the hub), and
+`kingStateOf(king, raw)` reads a raw value as `KingState` (missing or not a
+number → full; rounded, clamped to `0..max`; `fallen` ⇔ `hp ≤ 0`).
+`kingSignal(king, which)` is the prop's signal or `KING_SIGNALS`'
+default. **`kingReach(house, feet, yaw, king, slack?)`** is the one hit
+rule, in order: another floor (`floorOf` of the two heights) → `"floor"`;
+plan distance feet → his base centre over `KING_REACH` (1.25 m) → `"far"`;
+the plan bearing to him more than `KING_CONE_DEG` (55°) off `yaw`
+(`wrapYaw`) → `"facing"`; else `"ok"` (standing on his very centre counts
+as facing). `slack` widens both; the server judges with `KING_HIT_SLACK`
+(+0.35 m, +25°), since the pose it reads is the 10 Hz latest-only one.
+Cooldowns and his falling are the server's, not this rule's.
+`withFallenKings(house, fallen)` is the map a fallen King leaves: a copy in
+which every door a king in `fallen` guards loses its `guard` and those
+kings are `solid: false` (an empty set, or one naming no king, returns
+`house` itself).
 
 ### 1.2 Geometry (normative — the Godot port is diffed against it)
 
@@ -261,12 +290,12 @@ tolerance: metres, and m² for orientations).
      stair the *foot*
      (centre of the edge opposite `up`, lower elevation, room `from`) and
      the *head* (centre of the `up` edge, upper elevation, room `to`).
-     A game that lets the King fall (the fight is per session) must not
-     route its trail over the map as it is: once he is down a player can
-     be behind his door, and a trail from there would cross a wall. It
-     routes over a copy with that king's doors unguarded and his prop
-     removed (reinstall/web `trailMap`, rebuilt on the fall, on bind and
-     on a remap). VR never fells him, so it routes over the map as is.
+     `route(house, from, to, {fallen})` routes over
+     `withFallenKings(house, fallen)`: once the shared King is down his
+     doors are portals and he is no obstacle. Both games route their trail
+     that way while he is fallen (reinstall/web `trailMap`, VR
+     `house_king.gd`), and keep doing so for a player a restore would shut
+     in (§3 *The King*).
    - *Reflex waypoints*: per room (array order), per vertex `v = p[i]`
      (vertex order) with neighbours `p = p[i−1]`, `q = p[i+1]` (cyclic):
      with `A = Σ (xᵢ·zᵢ₊₁ − xᵢ₊₁·zᵢ)` and `k = (v−p)ₓ·(q−v)_z − (v−p)_z·(q−v)ₓ`,
@@ -455,18 +484,25 @@ tolerance: metres, and m² for orientations).
 The shared code is the pure-TS package **`@loom/house`** (`house/`, no
 dependencies): schema, `validateHouse`, `buildWalls`/`buildFloors`/
 `buildRamps`, `locate`/`roomAt`/`floorOf`/`heightAt`, `route`, space
-transforms, `pickDuckSpot`. Its subpath **`@loom/house/three`** (peer
-dependency `three`) turns a map into a three.js scene: walls, floors,
-ceilings, ramps, rails, props, terminal screens, room labels; the duck
-model; the indicator trail; player avatars (ghosts with name tags). The web
-game and the terminal both render through it, so they always look alike.
+transforms, `pickDuckSpot`, and the King (`kingReach`, `withFallenKings`,
+`kingStateOf`). Its subpath **`@loom/house/three`** (peer dependency
+`three`) turns a map into a three.js scene: walls, floors, ceilings, ramps,
+rails, props, terminal screens, room labels; the duck model; the King
+(`createKing`: his bar, a stagger, `kneel`; `HouseScene.showKing` shows a
+`KingState` and hides his doors' leaves while open); the indicator trail;
+player avatars (ghosts with name tags, wearing the guest's profile picture
+as a Win98 tile head when there is one: `createAvatar(name, seed,
+{picture})`, `setPicture`, the `loadPicture` cache — a fixed draw size so a
+sizeless SVG renders, one texture per URL, a failure retried after
+`PICTURE_RETRY_MS` 60 s). The web game and the terminal both render
+through it, so they always look alike.
 
 Golden fixtures for the Godot port: `house/test/golden/<name>.walls.json`,
 `.routes.json`, `.locate.json`, generated by `pnpm --filter @loom/house
 goldens` from `house/test/fixtures/*.json` + the show's `house.json`
 (`name` = `show`). Each is a JSON array, one value per line, every number
 rounded to 1 mm: walls = `WallSegment[]`; routes = `[{from, to, path}]`;
-locate = `[{p, floor, room, height, standable}]` with `height = heightAt([x, z], y)` and `standable = standable(house, p)` (the queries include every solid prop's base and top).
+locate = `[{p, floor, room, height, standable}]` with `height = heightAt([x, z], y)` and `standable = standable(house, p)` (the queries include every solid prop's base and top). A map with a king also gets `<name>.king.json` = `[{king, feet, yaw, reach, slack}]` (`kingReach` plain and with `KING_HIT_SLACK`, feet on 8 bearings at 0.4 / 1.2 / 1.4 / 1.7 m facing him and 50° / 70° / 90° / 180° off, plus a point on every other floor) and `<name>.fallen.json` = the route queries again with every king fallen; today only `show` has a king.
 Queries are stored with their answers, so a port only reads and compares.
 A test fails when the committed goldens drift from the code.
 
@@ -490,7 +526,7 @@ calls; it can do nothing else.
 
 | Route | Auth | Body / query | Result |
 |---|---|---|---|
-| `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "project" \| "show", duck?}` (§1.3) — `duck` (the session's current `DuckSpot`) only when the caller is a live session token: a map save may have moved or re-dealt it, and this is how a parked assignment (not on the stream yet) learns of it |
+| `GET /api/spatial/house` | mod token (header or `?token=`), author session, or a session token | — | 401 none of those · 503 no map · `{house, version, source: "event" \| "project" \| "show", duck?, king?}` (§1.3) — `duck` (the session's current `DuckSpot`) and `king` (the shared `KingState`, null when the map has none) only when the caller is a live session token: a map save may have moved or re-dealt the duck, and this is how a parked assignment (not on the stream yet) learns of both |
 | `POST /api/mod/spatial/house` | mod | `{house, base?}` — `base` = the version the editor loaded | 400 `{error, problems}` (checked first) · 409 `{error: "the map changed — reload", version}` when `base` is given and is not the current version (the map is loaded first if nothing has yet; no / null `base` = no check, last write wins) · 200 `{ok, version, warnings}`; persists `spatial-house.json` in the event's state dir (§1.3); streams get `house {version}`, then a `duck` frame per player whose duck moved (§2.2) |
 | `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, label?, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file; `label` = the map's `variant` field, trimmed, when it has one — the map page's button reads it first), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
 | `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart) and on its row (`event.map_variant`, which End → relaunch starts on); a player standing where the new variant has no floor goes back to its spawn (§2.2); `dropped` = a director's save was in force and is gone |
@@ -498,10 +534,12 @@ calls; it can do nothing else.
 | `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
-| `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, location}]}` — every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name |
+| `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, location, avatar}]}` — every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name; `avatar` = the profile picture's avatar key or null |
+| `POST /api/mod/spatial/king` | mod / author | `{hp}` — an integer 0..max | 404 `{error: "no king"}` · 400 not an integer in range · 409 no scenario · 200 `{ok, king}`: a journaled `set` of the King's `health` path `by` the director (the hub's own count when the prop has no path); the stream gets a `king` frame with `by: null`. The story's 👑 `restore_the_king` does the same to full |
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
 | `POST /api/spatial/pose` | session token (`x-loom-token`) | `{p: Vec3, yaw, pitch?, t?}` (≤ 2 KB body, read before the generic 4 MiB parse); `p` is the player's **feet** (the floor point under the body — the eye is 1.6 m above it), `yaw` the view direction, `pitch` the head (degrees, + = up) | 204 · 400 malformed · 401 unknown token · 410 session over (the last 1000 ended tokens are remembered). First pose **claims** a parked assignment — and ends any *other* session on that station (`leave {reason: "replaced"}`: a headset that crashed mid-game never ended its last one). Poses (and the stream) **ignore pause**: they never touch the story. |
 | `POST /api/spatial/found` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (paused, or before the doors open) — the session stays un-found, so the game's retry lands after resume · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment no pose has claimed · 409 `{error: "not near the duck", distance, dy}` unless the last pose is within 2.0 m (plan, `FOUND_PLAN_M`) of the duck **and** either within 1.2 m of its height (`DUCK_MAX_RISE`; a pose is the feet) or on the same floor (`floorOf`) — `nearDuck` · 200 `{ok, released, captured, already}` (`captured`: the program is still captured after the commit — the story kept them, e.g. the banishment; wave 9); commits `signal("the simulation completed", guest)` then `signal("the golden duck", guest)`, journaled `by` the session's `device`, and appends the run (`DuckRun`: guest, name, world, device, `ms` from the begin — or a parked assignment's claiming pose — to the find, less any time the doors were closed — a pause mid-run is not the player's time) to `spatial-runs.jsonl` in the event's state dir, which `/api/mod/recap`'s `duck` board reads (cleared by a story restart). A repeat answers `already` without committing. |
+| `POST /api/spatial/king/hit` | session token | `{}` | 401 / 410 as for poses · 409 `{error: "doors are closed"}` while the event is not open (the visit keeps its hit) · 409 `{error: "this session has not started — send a pose first"}` for a parked assignment · 404 `{error: "no king"}` · 409 `{error: "fallen", king}` · 409 `{error: "already hit", king}` — this visit already hit · 409 `{error: "not near", reach}` unless `kingReach` with `KING_HIT_SLACK` on the session's **last pose** is `"ok"` (`reach` = the verdict; the game flushes a pose first) · 200 `{ok, king}`. On a hit: a journaled `set` of the `health` path to `hp − 1`, then `signal(signals.hit, guest, {hp, max})`, then at 0 `signal(signals.fallen, guest, {hp, max})`, all `by` the session's `device`; then a `king` frame naming the hitter. **One hit per visit**: a visit is spent from its hit until that guest's duck is found — `begin` for a guest whose visit already hit (a re-scan mid-walk, Leave and scan again, after a director's end or a timeout) carries the hit over; a find ends the visit (a re-scan in the 8 s the found session lingers starts a fresh one); a story restart forgets every visit, and so does a server restart (in memory, like sessions) |
 | `POST /api/spatial/end` | session token | `{}` | `{ok}` |
 | `GET /api/spatial/stream` | mod (`?token=` / author session) or session token | `?name=Kitchen` | SSE, below |
 
@@ -514,6 +552,7 @@ interface Assignment {
   duck: { id: string; room: string; pos: Vec3 };
   spawn: { room: string; pos: Vec3; yaw: number };
   houseVersion: string;
+  avatar?: string | null;                    // the profile picture's avatar key (`/e/<eventId>/api/avatar/<key>`)
 }
 ```
 
@@ -528,7 +567,7 @@ found last (when another spot remains).
 
 | Frame | Data |
 |---|---|
-| `hello` | `{eventId, houseVersion, players: PlayerState[]}` |
+| `hello` | `{eventId, houseVersion, players: PlayerState[], king}` — `king` the shared `KingState` (null: the map has none; missing: an older server, no shared King) |
 | `join` | `{player: PlayerState}` |
 | `poses` | `{t, players: [{session, p, yaw, pitch, room, floor}]}` — every 100 ms, only players whose pose changed since the last flush |
 | `found` | `{session, guest, name, duck, released, captured}` — `captured` as in the POST reply (wave 9; an older server sends none, read as never kept) |
@@ -536,10 +575,17 @@ found last (when another spot remains).
 | `house` | `{version}` — refetch the map |
 | `duck` | `{session, duck: DuckSpot}` — sent right after a `house` frame, once per player on the stream whose duck moved (another position or room) or was re-dealt (its spot is gone). Never for a parked assignment (it reads its duck from `GET /api/spatial/house`) or a session that already found its duck (that duck stays put) |
 | `reset` | `{kind}` — the story restarted; every session is over |
+| `king` | `KingState & {by}` — the shared King changed: a hit (`by` = the hitter's display name), a director's edit or the story's restore (`by: null`), a map swap. Sent **only when** `id:hp/max` differs from the last one sent; the runtime calls `syncKing()` after every committed mutation, so a story `set Night.king_hp = …` reaches the games too |
+| `avatar` | `{session, avatar}` — a live player's profile picture changed (their own pick on `/api/guest/picture`, a Wikipedia lookup that landed), one frame per live session of that guest |
 
 `PlayerState = {session, guest, name, world, device, p, yaw, pitch, room,
-floor, duck, found, startedAt}`; `room`/`floor` are computed server-side
-with `locate`. A session with no pose for 60 s leaves (`timeout`); a found
+floor, duck, found, startedAt, avatar}`; `room`/`floor` are computed
+server-side with `locate`; `avatar` is the guest's avatar key, resolved
+live (`AvatarBook.keyFor`), null when they have no picture. A client's
+picture URL is `${base}/api/avatar/${avatar}` with `base` = `/e/<eventId>`
+(the existing public route, same origin for every sub-app; VR uses its
+absolute server URL); a missing field (an older server) is the plain
+capsule. A session with no pose for 60 s leaves (`timeout`); a found
 session lingers 8 s (so terminals can celebrate) then leaves (`found`). A
 parked assignment is not a player yet (no `join` until its first pose); one
 nobody claims within 5 min is dropped. `released` (in `found` frames and
@@ -564,7 +610,9 @@ them), a parked assignment moves to the new spawn, and every session's
 `houseVersion` becomes the new one. A player stays where they stand
 unless that is not **`standable`** on the new map (`@loom/house`: in a
 room, over a surface, not buried in a solid prop — one stepped over at
-5 cm aside): then they go back to the new map's spawn. The rain variant
+5 cm aside): then they go back to the new map's spawn. While the King is
+fallen standing room is judged on `withFallenKings(house, {king})`, as the
+games walk it, so a player in his doorway keeps their place. The rain variant
 is the case that needs it — the shed is a room on `house.shed.json` and a
 solid box prop on `house.json`, flush with the yard's fence, so a program
 standing in it on a switch back to the tent would be wedged between the
@@ -572,7 +620,7 @@ box and the fence. The server re-seats its copy of the pose; the web game
 (`bodyAfterRemap`) and the VR game (`respawn_after_remap`) apply the same
 rule to their body when they load the new map (the locate goldens pin
 `standable` for the GDScript port). Then `house {version}`, then the
-`duck` frames above.
+`duck` frames above, then a `king` frame if the swap changed him.
 
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
@@ -661,86 +709,54 @@ Session lifecycle:
 
 ### The King
 
-The Cold Lock's chess game moved into the simulation (Wave 4, U15–U17;
-since wave 7 a checkmate gives the winner the real door's **code** — the
-door has a standalone keypad lock — and the Cold Lock is gone):
-a `king` prop stands in the server-room doorway of the show's map
-(`cold-lock-king`, `hp: 8` — two hits a stage, `armed: {path: "Night.step", min: 14}`; the
-door `server-door` names him as its `guard`). The web game is the only
-place he is fought; everything is **per session** — his health lives in
-the `Game`, nothing is shared between tablets, headsets or terminals. A
-result still on its way is kept across a reload for 60 s (below).
+**One King, one health bar, for every guest all night** (wave 11; before
+it the fight and the chess were per session, on the tablet). A `king`
+prop stands in the server-room doorway of the show's map
+(`cold-lock-king`, `hp: 15`, `health: "Night.king_hp"`, `armed: {path:
+"Night.king_armed", min: 1}`; the door `server-door` names him as its
+`guard`). The server holds his state (§2): the story seeds
+`Night.king_hp = 15` at Power On and never decrements it; only a
+validated hit, a director's edit (`POST /api/mod/spatial/king`) or the
+story's 👑 restore moves it. The game reads `KingState` off `hello`, the
+session-token map fetch and `king` frames; with none (an older server)
+he just stands, with no bar and no ⚔. The chess he plays is not here: it
+is the **Server Door** terminal's (§4), at the strength his bar sets.
 
 - **The door.** While he stands, the guarded door's gap (`doorGap`) is a
-  wall for the walker and `route` never passes it (`physics.ts`
-  `closedDoors`; the scene's closed leaf, `HouseScene.doors`). When he
-  falls the leaf is hidden, the physics world is rebuilt without him and
-  the door (`omitProps`), and the trail re-plans.
-- **Hits** (`game/fight.ts`, pure): **⚔** on the HUD or Space, one hit per
-  2 s (`HIT_COOLDOWN_MS`; ≈ 16 s of hitting from full strength to pawns only on the show's hp 8), landing only on his floor, within 1.25 m of
-  his base centre (`HIT_REACH`) and facing him within 55° (`HIT_CONE_DEG`);
-  else a nudge ("Get closer to the King and face him."). Each hit takes one
-  point (never below 0), staggers him and redraws his bar — ♥ per point,
-  ♡ per lost, "PAWNS ONLY" at 0 (`@loom/house/three` `createKing`, a Win98
-  title-bar sprite over his head). The stage is `stageFor(hp, max)` =
-  `round(4·hp/max)`: 4 **grandmaster** → 3 **club** → 2 **beginner** → 1
-  **dizzy** → 0 **pawns** (`STAGE_LINE` says which as it changes).
-- **The board** (`chess/`, a lazy chunk with chess.js 1.4 — pure JS, no
-  wasm, no worker, the tablet's CSP untouched): **♟** on the HUD or C (when
-  a hit could land, or during its cooldown) opens `ChessWindow`, a Win98
-  window over the simulation. The player is White; tap a piece, tap a
-  square (no drag); a pawn on the last rank becomes a queen. The AI
-  (`chess/ai.ts`, negamax / alpha-beta over material + piece-square tables,
-  iterative deepening with node and time budgets, on the main thread, yielding
-  between root moves) plays one profile per stage: grandmaster depth 3 /
-  2.5 s, club 2 / 1.2 s, beginner 1 / 0.4 s, **dizzy** a random legal
-  move, **pawns** his own worst move from `PAWNS_ONLY_FEN` (his king and
-  eight pawns against a full side). 💡 Hint shows a good move for 2 s
-  (10 s cooldown); Give up abandons — nothing changes. A badge reads
-  **FOR THE CODE** / **PRACTICE** (wave 7; was ARMED) when the prop
-  declares `armed`, read from the story's `Night.king_armed` when it has
-  one (wave 9: 1 = FOR THE CODE; 0 with `Night.r3_closed` = after 📄
-  truth.txt, read like an ending; 0 earlier = PRACTICE), else the prop's
-  `armed` gate (`fetchArmed`: the world var off `GET /api/state?role=mod`,
-  given up after 4 s, `ARMED_TIMEOUT_MS`; no badge while unknown), with a
-  `stakesLine` under it saying what a checkmate wins. Once `Night.ended`
-  is true the read answers `NIGHT_ENDED`: the badge goes (whatever an
-  earlier read said) and no win line promises the code.
-  Every tap touches the idle leash, so a game in progress is never ended.
-- **The result** (`Game.chessResult`): **checkmate** fells him (`fall()`
-  topples him over 1.6 s), opens his door in the simulation, plays the
-  fanfare, says "CHECKMATE — the King falls." and posts the prop's
-  `signals.won` (default `chess won`) and closes the board; once the post
-  settles it re-reads the step (`armedNow`) and says `winNotice`'s line —
-  "The server-room door code is in your phone's Codex." (counted),
-  "A practice win: the King guards nothing real until the Y2K clock."
-  (practice), the "tell a host (♟)" line for a counted or unknown win that
-  never landed, or nothing (always nothing after an ending); the King winning posts
-  `signals.lost` ("THE KING WINS. AGAIN."), a stalemate / insufficient
-  material / threefold / fifty moves posts `signals.drawn` ("STALEMATE.
-  AGAIN." / "DRAW. AGAIN."), and either deals a fresh board at the same
-  stage in the still-open window (`redeals`, OCT31 decision 6: only
-  checkmate fells him); an abandoned game posts nothing. Each goes through `postSignal`: `POST
-  /api/mod/signal {name, subject: <the program>, label: <device name>}`
-  with the tablet's moderator token, retried on a network failure or a
-  5xx (0.5 s doubling to 8 s, five retries); a 4xx is final. An attempt
-  that hangs is aborted after 5 s (`SIGNAL_ATTEMPT_TIMEOUT_MS`), or at the
-  60 s cap below if that comes first, and counts as a network failure. A win whose
-  every retry failed says "The win didn't reach the house: tell a host
-  (♟)." While a post is in flight it is also kept in `localStorage`
-  (`loom-reinstall.pending-signal`, the latest only, try/catch'd) and
-  forgotten once it lands, is refused, or fails for good (the host was
-  told, so a late post would hand the code over twice); a page that died
-  mid-retry leaves it, and the next page load posts it once (`flushPendingSignal`) only within 60 s of
-  the first try (`PENDING_SIGNAL_MAX_AGE_MS`, also checked before every
-  retry) and for the same event, and drops anything older: a late win
-  belongs to a guest who has left, and a host's ♟ covers it. The story treats `chess won` exactly as the ♟ fallback button
-  does (§6): the Y2K gate is the story's, not the game's — before it the
-  door still opens in the simulation, as practice.
-- **Out of scope** (device check pending — the wall chess phone stays the
-  fallback, U17): the hit feel, the glyph fonts on the oldest tablets, a
-  grandmaster stall on a slow SoC; a pawns-only stalemate opens nothing (it
-  deals again).
+  wall for the walker and the trail never passes it (`physics.ts`
+  `closedDoors`; the scene's closed leaf, `HouseScene.doors`). While he
+  is fallen, for everyone, the leaf is hidden, the physics world is
+  rebuilt without him and the door, and the trail routes over
+  `withFallenKings` (`trailMap`).
+- **The hit** (`game/fight.ts`, pure; the engine's `hitKing`): **⚔** on
+  the HUD or Space. The game pre-checks `kingReach` on its own body and
+  nudges (*Get closer to the King.* / *Face him.*); when it is `"ok"`
+  it flushes the pose pump and posts `POST /api/spatial/king/hit`. 200:
+  a thud, *⚔ You hit the King!*, the bar from the answer. 409 `already
+  hit`: *You hit him. Come back on your next reinstallation.* (the HUD
+  keeps saying so for the rest of the visit). 409 `not near`: a buzz and
+  *Get closer to the King and face him.* 409 `doors are closed`: the
+  paused notice. 404: no King. 410: the session is over.
+- **The HUD** (`KingBar` in `Play.tsx`): ⚔ *THE KING*, his meter
+  (`kingMeter`: ♥ / ♡ per point up to nine points, else *n / max*), and
+  a line — the stage the door terminal would deal right now
+  (`stageFor` from `@loom/chess/stage`: *The King is at full strength.*
+  / *rattled* / *reeling* / *dizzy* / *barely standing*), or
+  `HIT_USED` once this visit has hit him. Fallen: ♚ *KNEELING · n /
+  max* and *The King is on his knees. His door stands open.*
+- **Everyone's hits.** A `king` frame with fewer points staggers him
+  (`King.hit`) and, when `by` is another player, says *X hit the King.*
+  Reaching 0 plays the fanfare and *The King kneels. His door stands
+  open.*; coming back says *The King stands again.*
+- **A restore never shuts a player in.** When he stands again the door
+  stays open for this player while `keepDoorOpen(house, king, feet)`:
+  they are in a room behind a door he guards, in the doorway (within
+  `RADIUS` + 0.15 m of its gap), or inside his box grown by that much. It
+  shuts once they are clear. A remap while he is fallen re-seats on
+  `withFallenKings` too (`bodyAfterRemap`), as the server does.
+- **Nothing posts a chess result.** The tablet has no board, no ♟
+  CHALLENGE, no C key and no hint; `chess won / lost / drawn` come only
+  from the door terminal and the ♟ fallbacks (§6).
 
 The **map** page (`/reinstall/map`): the house plan (SVG, one floor at a
 time), live players, the duck of each session, terminals with their view
@@ -820,7 +836,7 @@ and every op is pure (`reinstall/web/src/map/`: `edit.ts`, `doors.ts`,
 ## 4. The terminals — world view
 
 `TerminalConfig` gains `spot` (a `house.terminals[].id`; the terminal's
-place) and `view: "auto" | "world" | "face" | "mirror" | "tv"`:
+place) and `view: "auto" | "world" | "face" | "mirror" | "tv" | "chess"`:
 
 - `auto` (default): the attract screen's face pane becomes the **world view**
   whenever a program is in the simulation, and the face comes back when
@@ -834,20 +850,48 @@ place) and `view: "auto" | "world" | "face" | "mirror" | "tv"`:
   (the server's `/api/mod/tts` is an opt-in);
   song beats and lore speakers are captioned only, nothing is said while
   the character is hidden or asleep.
+- `chess` (wave 11, `terminal/src/chess/`, on `@loom/chess`): **the King's
+  chess board**, the only place he is played — the Server Door terminal
+  on the basement hall wall outside the real server-room door (the
+  `server-room-door` spot). Awake all night (it never follows the
+  character's hidden / asleep), no `character`, `room` ignored. Attract:
+  THE KING, his shared bar off the screen state's `king` (*n / max*, *HE
+  KNEELS* at 0), the stakes line (`armed` true: *Checkmate him and the
+  server-room door code goes to your Codex.*; false: *No prize now.*) and
+  the scanner — never a strength line, never a hint. A pass is checked
+  through the moderator lens (`GET /api/state?role=guest&as=<id>`; a
+  restricted program: *⛔ Marked programs can't challenge the King.*);
+  one game per scan, the board dealt at `stageFor(hp, max)` read **at
+  the deal** (full = grandmaster, 1 … max−1 club / beginner / dizzy, only
+  0 pawns only; `PROFILES` in `@loom/chess/ai.ts`); the player is White,
+  tap-tap, auto-queen, a two-tap Give up, a 120 s leash that abandons
+  silently. Its end posts `POST /api/mod/signal {name: "chess won" |
+  "chess lost" | "chess drawn", subject: <guest id>, label: "Terminal ·
+  <name>"}` with its moderator token (retried 0.5 → 8 s, 5 s an attempt,
+  a 4xx final; kept in `localStorage` while in flight and re-sent on the
+  next boot only within 60 s). *Checkmate. The door code is in your
+  phone's Codex.* only once the win landed while `armed` and the story
+  took it; a 200 with `refused: true` (after truth.txt or an ending)
+  reads *Checkmate. No prize now.*; a win that never landed says *tell a
+  host (♟)*.
 
 Every view polls the lean screen state (`GET /e/:id/api/screen/state`,
 `core/server/routes/screen.ts`; every 2 s, the TV every 1 s) instead of
 the mod feed: the screen cues, attract mode (the character hidden or asleep → screensaver /
-ads, never "ONLINE", no pass piloting), the countdown, the TV's lines, and a
-heartbeat the editor's Run → Terminals card reads. A tablet without
+ads, never "ONLINE", no pass piloting), the countdown, the TV's lines, the shared King (`king: {hp, max, fallen,
+armed} | null` — `armed` off his prop's `armed` world var at or above its
+`min`, null with no such rule or no story; null when the map has no King),
+and a heartbeat the editor's Run → Terminals card reads. A tablet without
 **WebGL2** (probed once at boot, `terminal/src/webgl.ts`) behaves as
 `face` and never loads three.js; a `mirror` shows a still notice.
 
 The world view shows the King too — `buildHouseScene` draws every `king`
-prop standing (no health bar — the bar is drawn by the tablet's own
-`setHp`), and a closed leaf in each guarded door — but a terminal never
-fights him and never opens the door:
-it only watches (the fight is the tablet's own, per session, §3).
+prop and a closed leaf in each guarded door, and the view calls
+`HouseScene.showKing` with the stream's shared `KingState` (`hello`,
+`king` frames): his bar, the kneel and his door open for everyone while
+he is fallen. A terminal only watches; nothing it does hits him. Ghosts
+wear the guest's profile picture (`PlayerState.avatar`, `avatar`
+frames), in the mount, follow and mirror views alike.
 
 The world view (`terminal/src/world/`) renders through `@loom/house/three`
 with one camera, cut by a pure director (`world/director.ts`): **mount**
@@ -893,20 +937,36 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
 - `house/house_builder.gd` + `house_geometry.gd` + `house_route.gd` +
   `house_locate.gd`: the §1.2 algorithms in GDScript → StaticBody3D walls,
   floors (with stair holes), ramps, rails, props, terminal screens, labels.
-  A `king` prop is drawn as a gold body with a crown (solid, like a box);
-  a guarded door is shut for `house_route.gd` as for `route` (never a
-  portal); VR draws no leaf — his solid body stands in the gap and nothing
-  opens the door.
-- **The King is not fought in VR** (U16): within 1.5 m of a `king` prop on
-  his floor (`Game.KING_NEAR`) the headset says once per approach "The
-  King is fought on the tent tablet." (`KING_NOTICE`, re-armed beyond
-  3.0 m, `KING_FAR`); the door he guards stays shut, and no duck is behind
-  it.
+  A `king` prop is drawn as a gold body with a crown and his shared
+  health bar, with a shut leaf in each door he guards; a guarded door is
+  shut for `house_route.gd` as for `route` (never a portal) while he
+  stands.
+- **The King** (wave 11, `house/house_king.gd`: `kingReach`, the fallen
+  map, `KingState` off the wire): the bar ("THE KING  n / 15") from
+  `hello`, `king` frames and the session's map fetch. Near him the HUD
+  says "Pull the trigger to hit the King — once per visit." The
+  **trigger** (either hand) or **A / X**, within `KING_REACH` and facing
+  him (`KING_CONE_DEG`), flushes the newest pose and posts `POST
+  /api/spatial/king/hit`; "You hit him." — one hit per reinstallation
+  visit (the server's 409 `already hit` counts as spent). At 0 he kneels
+  for everyone: his collider and the leaf go, the trail routes through
+  the door, the HUD says "He is down: the cold door is open." A
+  director's restore stands him up and shuts the door — except for a
+  player behind it, in the doorway or on his spot, for whom it stays open
+  until they are clear (`HouseKing.keep_door_open`, the web game's
+  `keepDoorOpen`); `respawn_after_remap` judges standing room on the
+  fallen map. No chess in the headset. A server with no shared King shows
+  no bar and takes no hit.
+- **Ghosts wear the guest's profile picture** (`net/avatar_cache.gd`):
+  two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap,
+  decoded by magic bytes (PNG / JPEG / WebP / SVG — an SVG rendered once
+  near 256 px whatever size it declares; GIF / AVIF keep the capsule),
+  cached for the run; a failure is retried once on the next visit.
 - `player/`: XROrigin3D rig on a CharacterBody3D; **left stick** walks
   head-relative (dead zone 0.15, 1.8 m/s), **right stick** snap-turns 45°
   (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
-  room-scale head offset folded into the body. No buttons are needed
-  anywhere.
+  room-scale head offset folded into the body. The only button is the
+  King's hit (trigger, or A / X); on a Mac, Space or F.
 - `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
   picker of candidates — up/down chooses, hold right 1 s to confirm),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
@@ -937,21 +997,33 @@ The goose is now the **golden duck** (`INTERACTION the golden duck`,
 `the simulation completed` still releases a corrupted program; the
 games fire both events for whoever finds the duck.
 
-**The King** (§3) speaks to the story through `POST /api/mod/signal
-{name, subject, label}` with the tablet's moderator token: `chess won`
-(the mate), `chess lost`, `chess drawn`, `subject` = the program playing.
-The server honours `label` only when the caller's `by` is the generic
-"Director" — a mod-token device, never an author's session — and journals
-the signal `by` that label (the same rule as `/api/mod/impersonate`), so
-the journal line reads `by: "Tent tablet"` (the recap carries no `by`).
-The story keeps its Y2K gate: since wave 7 `when chess_won for program:`
-(a subject rule) from `Night.step >= 14` unlocks *The Door Code* for the
-winner, once (a duplicate or a fire with no subject only notes `# hosts`;
-before step 14 `# hosts` says the win is practice), and `chess lost` /
-`chess drawn` from the Y2K hour post a `# hosts` readout every time and make
-Trabolta gloat at most once every five minutes, never from the final
-reveal (`-> Chess Lost` / `-> Chess Drawn`; before the Y2K hour they are
-silent),
-and the fallback stays: **♟ They beat the machine** on the
-winner's card (`beat_the_machine` → `fire chess_won`), the admin
-`chess_won` INTERACTION, or the director firing `chess won` from Run.
+**The King** speaks to the story two ways (wave 11).
+
+- **Hits, from the games, through the server** (§2.1 `POST
+  /api/spatial/king/hit`): the journaled `set Night.king_hp = hp − 1`,
+  then `king hit` for the guest with `{hp, max}`, then at 0 `king
+  fallen`, all `by` the game's device. The show's `when king_hit for
+  program:` reads `Night.king_hp` (never the args) for a `# hosts`
+  readout and a house-wide line at 10 and 5; `when king_fallen for
+  program:` alerts everyone. Neither ever sets `Night.king_hp`; the
+  admin 👑 `restore_the_king` sets it back to `Night.king_hp_max`.
+  `Night.king_armed` is 1 from Power On until `Night.r3_closed` or
+  `Night.ended`, then 0 (the prop's `armed`, the screen state's
+  `king.armed`).
+- **Chess results, from the Server Door terminal** (§4 `chess`):
+  `POST /api/mod/signal {name, subject, label}` with its moderator
+  token — `chess won` (the mate), `chess lost`, `chess drawn`, `subject`
+  = the program playing. The server honours `label` only when the
+  caller's `by` is the generic "Director" — a mod-token device, never an
+  author's session — and journals the signal `by` that label (the same
+  rule as `/api/mod/impersonate`), so the journal line reads `by:
+  "Terminal · Server Door"`. `when chess_won for program:` unlocks *The
+  Door Code* for the winner, once, **any time before `Night.r3_closed`**
+  (no practice any more; a duplicate or a fire with no subject only
+  notes `# hosts`; after 📄 a win only tells `# hosts`). `chess lost` /
+  `chess drawn` post a `# hosts` readout every time and, once Trabolta
+  is awake, make him gloat at most once every five minutes, never from
+  the final reveal (`-> Chess Lost` / `-> Chess Drawn`). The fallbacks
+  stay: **♟ They beat the machine** on the winner's card
+  (`beat_the_machine` → `fire chess_won`, `arm: true`), the admin
+  `chess_won` INTERACTION, or the director firing `chess won` from Run.
