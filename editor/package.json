@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "The Loom author IDE \u2014 Writing (text + story-graph), Run (rehearse, go live, moderate, be anyone), and Integrations modes for authoring and operating live narrative events.",
+  "description": "The Loom author IDE — Writing (text + story-graph), Run (rehearse, go live, moderate, be anyone), and Integrations modes for authoring and operating live narrative events.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

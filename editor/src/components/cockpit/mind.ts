@@ -282,7 +282,7 @@ export interface FilingRuling {
 export function rulingOf(f: FactsFiling): FilingRuling | null {
   const r = (f as FactsFiling & { ruling?: unknown }).ruling
   if (r === null || typeof r !== 'object') return null
-  const { by, same, why, at } = r as Record<string, unknown>
+  const { by, same, why, at } = r as unknown as Record<string, unknown>
   if (typeof by !== 'string' || typeof same !== 'boolean') return null
   return { by, same, why: typeof why === 'string' ? why : '', at: typeof at === 'number' ? at : 0 }
 }
