@@ -2,7 +2,7 @@
 title: Lore — knowledge as a currency
 section: Live Shows
 order: 35
-keywords: secret, CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding
+keywords: secret, CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding, busy, queue, stalled, give him a file, refuse, refused
 ---
 
 Some shows run on what the guests *know*. A `CODEX` entry is a piece of
@@ -89,13 +89,20 @@ never takes an entry that is `about` *someone or somewhere else*. Its
 holdings are read into its model's prompt and it can share them on, so a
 guest could otherwise launder a secret (another person's file, a door
 code) through it. Entries with no `about:`, and entries about the agent
-itself, go through as usual. Performer characters accept anything.
+itself, go through as usual. Performer characters accept anything. The
+share answers 403 *they won't take lore about someone else* and nothing
+moves.
 
 Some lore must never reach a model at all, even in the holder's own
 conversation: a program's private orders, the virus they are carrying.
 Mark it `secret: true`. The entry is left out of every agent request and
 the agents' facts document (its title, its text, its holders, and the
-holder's `codex.<slug>` flag), and an agent refuses it as a share:
+holder's `codex.<slug>` flag), and an agent refuses it as a share (403
+*they won't take a secret file*). A guest's own view marks the entry
+`secret: true`, so a client can say so before anyone tries: the wall
+terminal's **📎 GIVE HIM A FILE** panel shows *A SECRET FILE: HE WON'T
+TAKE IT* in place of Give (and *ABOUT X: HE WON'T TAKE IT* for lore
+about someone else):
 
 ```loom
 CODEX ILOVEYOU
@@ -199,7 +206,24 @@ terminal reads it aloud:
 CHARACTER Trabolta
   mind: external
   hold: Jean Trabolta is not responding. Please do not move the mouse.
+  busy: Jean Trabolta is answering other programs. Your message is in the queue. Please do not move the mouse.
 ```
+
+An agent answers one message at a time, so a crowd makes a queue. Give
+the character a `busy:` line and the server says it for them when a
+message has waited 40 seconds **behind other people's** on an agent
+that is still answering — once per thread; the real answer follows. A
+lone message is never told it is busy.
+
+If the agent is connected but stops answering (the message at the head
+of its queue gets no answer for 60 seconds), it is **stalled**: the
+staff room gets one line (*⏳ Trabolta stopped answering …: 2 threads
+are waiting and got the hold line. Answer them from Run as Trabolta; it
+clears when Trabolta answers again.*), every waiting thread hears the
+`hold:` line once, and nothing new is sent to it. Messages stay queued.
+The stall clears on its next answer or when it reconnects (restarting
+the worker counts), and the queue goes to it at once. Run → Mind shows
+the queue: how many are waiting, the oldest wait, and ⛔ stalled.
 
 The character **grows** over the night. Two models share the work: a
 fast one speaks every line; a slower *orchestrator* runs between turns
