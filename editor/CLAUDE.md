@@ -222,7 +222,10 @@ performer sign-in pre-filled (play's `roleForBrand`), so the card says
 skip a card / 1-2-4-8 per Letter page (cast cards always `.pp-8` business
 cards on their own page; wave 11: **Invitations** — one claim QR per
 `/api/mod/codes` `claims` row, 4-up on their own page, no typed code, a
-screen-only two-tap 🔓 → `POST /api/mod/claim/unlock {character, minutes: 2}`;
+screen-only two-tap 🔓 → `POST /api/mod/claim/unlock {character, minutes: 2}`
+(the label follows the cast row's `unlockedUntil` — a countdown while
+open, idle once it closes, two taps while open shut it with `minutes: 0`;
+pure `unlockOpenUntil` / `unlockButton`);
 the door code's digit clues sit on the `silver` stack (`DIGIT_CLUE_STACK`)
 and print title + QR only, no digit anywhere), `@media print` hides the editor), **Directing now**
 (names, `(you)`, started-by + age), **Terminals** (K-29,
@@ -489,7 +492,11 @@ cases in `cockpit/mind.test.ts`. **Wave 11 C6:** a pending near miss
 lists and counted in the header (`nearCount`: the view's `near` when sent);
 the Mind header carries the agent's queue badge (`agentQueueOf` off
 `CastSummary.agentQueue` or the mind summary, `queueBadge`: depth · oldest
-wait · ⛔ stalled).
+wait · ⛔ stalled). The server sends `oldestMs` as of the send, so the
+operate store stamps each queue's arrival (`stampAgentQueues`, kept while a
+patch leaves the row alone) and `agentQueueOf(…, now)` ages it — the header
+ticks by the second while a queue waits, the glance every 5 s. In `auto`
+mode a near miss still waits on the card (`judgeModeTitle`).
 
 **The super-admin's peek** (`cockpit/Inspector.tsx`): a guest shows
 **Their view** (side / where / score / deciding / rooms / can — exact
@@ -514,7 +521,9 @@ which the server refuses anyway) and a character's **⏏ Release**
 (`CockpitState.releasePart` → `POST /api/mod/prime/release`, confirmed);
 the local backend refuses both with an explanation. **Wave 11 C5:** a
 guest shows `RosterRow.lastSeen` (*seen 12 m ago*, also the rail tooltip and
-the Roster's Seen column), a persona badge (`isPersonaRow`: `<id>.persona`,
+the Roster's Seen column; pure `guests.ts` `seenLine` / `seenCell`: a null
+reads *not seen since the server started* — the server's null is "no
+request since this process started" — and a persona shows none), a persona badge (`isPersonaRow`: `<id>.persona`,
 an owner or a `p…` id) and **👋 Went home / Back** (`CockpitState.markGone`
 → `POST /api/mod/guest/gone {id, gone}`; locally the same `<id>.gone` world
 var, and local personas get `<id>.persona = true`). A guest's **Restricted**
