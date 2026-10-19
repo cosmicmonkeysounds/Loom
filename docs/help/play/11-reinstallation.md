@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, challenge, door code, code, practice, for the code
+keywords: simulation, reinstallation, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -42,17 +42,18 @@ your reinstallation all the same.
 
 ## Moving around
 
-There are **no buttons** — only sticks.
+You walk with **sticks**. The only button is for the King (below).
 
 | | Headset | Tablet |
 |---|---|---|
 | Walk | **left stick** — forward is wherever you're looking | **left** on-screen stick |
 | Turn | **right stick** — left or right, a step at a time | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
+| Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
 
 On a tablet with a keyboard (or a laptop standing in for the tablet):
-**W A S D** or the arrows walk, **Q / E** turn, **Shift** runs, drag with
-the mouse to look.
+**W A S D** or the arrows walk, **Q / E** turn, **Shift** runs,
+**Space** hits the King, drag with the mouse to look.
 
 The walls are where the real walls are, the stairs go where the real
 stairs go. If moving in VR makes you queasy, stop pushing the stick and
@@ -87,28 +88,43 @@ jive, together.
 ## The King
 
 Down in the basement hall of the simulation a tall golden chess piece
-stands in the server-room doorway: **the King**, with a health bar. He
-is nothing to do with the duck — the chevrons never lead to him — but
-he guards the server room's door in the simulation, and late in the
-night he knows its code. **Only the tablet can fight him**: a headset
-just shows him and says so.
+stands in the server-room doorway: **the King**. He is nothing to do
+with the duck — the chevrons never lead to him — but he guards the
+server room's door in the simulation, and in the real house he plays
+chess for its code.
 
-Walk up and face him. **⚔ HIT** (or Space) lands a blow every second or
-so, and each one makes him dumber — *at full strength* → *rattled* →
-*reeling* → *dizzy* → *PAWNS ONLY*, a king with nothing but his eight
-pawns. **♟ CHALLENGE** (or C) opens a chessboard against him at whatever
-strength you've left him. A badge on the board says what a win is worth:
-**PRACTICE** until the Y2K clock, then **FOR THE CODE**, with a line
-under it saying what a checkmate wins. Once *truth.txt* has put the
-verdict in (or the night has ended) the badge goes: there is nothing
-left to win. Checkmate him and he falls, his
-door in the simulation opens, and the story hears about it: from the
-Y2K clock, the real server-room door's code lands in your Codex (the
-tablet tells you); before that it was practice, and after *truth.txt*
-a win promises nothing. Lose (or draw), and he
-deals you a new game at the same strength, the board still open. Too strong? **Give up** closes
-the board; hit him some more to make him weaker, then challenge again.
-He is fresh for the next player.
+He has **one health bar for everyone**, all night: every program in
+the house knocks it down together, and it never grows back. The bar
+over his head reads *15 / 15* at the start of the night.
+
+- **You may hit him once per reinstallation.** Walk up close and face
+  him, then press **⚔ HIT** on the tablet (or Space), or pull the
+  **trigger** in a headset. *⚔ You hit the King!* — one point off his
+  bar, for everyone. Too far, or looking away? It says *Get closer to
+  the King.* or *Face him.*
+- **One hit, then that's it until your next reinstallation.** Leaving
+  and scanning your pass again doesn't give you another: *You hit him.
+  Come back on your next reinstallation.* Your reinstallation ends when
+  you find the duck; the next time you're sent, you may hit him again.
+- When someone else hits him while you're playing, you see him stagger
+  and the bar drop.
+- **At 0 he kneels**, for everyone: he goes down on one knee and the
+  door he guards in the simulation stands open. A host can stand him
+  back up at full health; if you're behind his door when that happens,
+  it stays open until you walk out.
+
+**Why hit him?** The real chess game is on the **terminal outside the
+real server-room door**. The more he has been hit, the worse he plays
+there: at full health he is a grandmaster, and once he has fallen he
+has nothing but his pawns. There is no chess in the simulation. See
+[The terminals on the walls](terminals.md).
+
+## Ghosts
+
+Everyone else in the simulation walks past you as a **ghost** with their
+name over it, wearing **their own profile picture** as a head (Excel
+looks like Excel). A program with no picture is a plain glowing ghost.
+The wall terminals and the TV show the same ghosts.
 
 ## Everyone is watching
 
@@ -116,9 +132,9 @@ The **terminals** on the walls and the **TV** can show the simulation
 while anyone is in it. A terminal is a window into the virtual copy of
 *its own room*, hung exactly where the real tablet hangs — walk into that
 room in the simulation and you'll see the screen glowing on the wall; the
-people in the real room see you, a ghost with your name over it. When
-nobody is in its room it follows whoever is playing, with a little map of
-the floor. Find the duck and every screen watching you celebrates. See
+people in the real room see you, a ghost with your name and your
+picture. When nobody is in its room it follows whoever is playing, with
+a little map of the floor. Find the duck and every screen watching you celebrates. See
 [The terminals on the walls](terminals.md).
 
 Need the bathroom, or there's an emergency? Tap **🚻 Bathroom Mode** on

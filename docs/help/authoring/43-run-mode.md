@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, invitations, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -94,7 +94,15 @@ Front of house: getting people in.
   can deal them straight into the piles. Tick sections, skip single cards,
   choose 1, 2, 4 or 8 per page; cast cards always print 8 to a page as
   business cards, on a page of their own. A cast card is a performer
-  sign-in, so keep them with the cast and never post one.
+  sign-in, so keep them with the cast and never post one. A story with
+  `reserved: true` programs ([live shows](live-shows.md)) adds
+  **Invitations**: one card per reserved program with its claim QR (no
+  typed code), four to a page. Hand each to its invitee; whoever scans it
+  joins as that program. On screen only, each card has **🔓 lost? open 2
+  min** (two taps): it opens that program to anyone for two minutes, for
+  an invitee whose invitation is lost, and counts the window down; two
+  taps while it is open shut it early. The door code's digit notes print
+  on the **silver** stack, title and QR only, never a digit.
 - **Directing now** — every co-writer with a console open, who started
   the run, and when.
 - **Terminals** — every wall terminal and the TV that has checked in,
@@ -129,7 +137,12 @@ Front of house: getting people in.
   headset and terminal at once; it always asks first, and warns when this
   event's map edits would be dropped (✎ *edited on this event*: save them
   to the project from the map page first). Same switch as the map page's
-  **Map:** buttons — see [the house map](39-house-map.md).
+  **Map:** buttons — see [the house map](39-house-map.md). A map with
+  a King has his row too: his **one health bar** for every program
+  (*n / 15*), updated every few seconds, *Kneeling* once it is at 0
+  (his door open in both games). **Set…** types any value 0 to his
+  maximum; **👑 Restore** puts him back to full. Both ask first, and
+  are journaled under your name ([the server room](38-server-room.md)).
 - **Look up a guest** — scan a guest's pass QR (or type their id) to
   open them in the Inspector.
 
@@ -156,7 +169,7 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **Stage** | the floor plan: one card per location with its occupants as chips — **drag a chip between cards to move the guest** (hooks fire). The cast strip's dots: green a performer signed in, amber signed in · phone offline, sky blue an agent-voiced character a stagehand worker is voicing |
 | **Chat** | every room the current identity can see, with the composer. A GROUP's own room beside a room of the same name reads `#hosts (side)`: post in the plain one, where the story's readouts land |
 | **Story** | the story map, lit by the run ([story graph](story-graph.md)) |
-| **Roster** | all guests and the cast — group, location, score, presence, whose persona |
+| **Roster** | all guests and the cast — group, location, score, presence, when each guest was last seen, whose persona, who went home |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Director** | the night by **act** — the NOW card (NEXT, armed then fired), On hand, the running order — the glance column (Needs you, Watch, People, Cast, `# hosts`), and the Tools drawer: named events (with arguments), beats, broadcasts (below) |
 | **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
@@ -275,7 +288,7 @@ link. Each section hides when it has nothing to say:
 
 | Section | Shows | Goes to |
 |---|---|---|
-| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
+| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), ⚠ near misses waiting in `auto` mode, held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker, an agent whose queue is stalled or has waited 40 s or more, and *👋 N guests unseen 30 min — mark gone?* with a 👋 per guest | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
 | **Watch** | the header's `watch:` lines while their `while` holds: values (changed in the last 10 s → ◆), a ROLE path as a count over the guests (`Cleared 44/45` and a bar), a name as a person row (online, room, ⛓ / ⛔). A value on a `secret: true` CHARACTER shows `••••` — **press and hold 👁** to read it for 5 s. With no `watch:` line: **Recently changed**, the last few globals the story wrote | World, filtered to that path · Roster · the Inspector |
 | **People** | joined · online, who is in a prison room, how many are restricted, each faction's guests against a majority tick, the busiest rooms | the Inspector · Stage |
 | **Cast** | one dot per performer part (green signed in, amber phone offline, hollow free), each agent's stage and mood | the Inspector · Mind |
@@ -441,6 +454,18 @@ needs one; the others can be left blank). Use them when a puzzle box
 fails, a clue was found the wrong way, or a guest missed a step. Both
 work on a local run too, and are journaled under your name on a server
 run.
+
+**Who is still here.** A guest's Inspector says when the server last
+heard from them (*seen 12 m ago*; the same on the rail and in the
+Roster's Seen column). After a server restart or a release, a guest who
+hasn't made a request since reads *not seen since the server started*
+(*not since restart* in the Roster), not *never seen*. Personas show no
+seen line and carry a persona badge. **👋 Went home** marks a guest who
+left (*Back* undoes it): a journaled `<id>.gone = true` the story can
+leave out of its head counts. In *Trapped in the Internet* that is the
+Y2K majority, so mark the early leavers before 🕚; the board's *Present
+programs* line shows the count. The Director page's *Needs you* offers
+it for every guest unseen for half an hour.
 
 **Restrict or unrestrict someone.** A guest's Inspector has a
 **Restricted** field beside **Captured**: **Restrict** is a bare

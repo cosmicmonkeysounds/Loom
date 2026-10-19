@@ -28,6 +28,10 @@ Internet, and tap **Back from the bathroom** (the same spot) when you're
 back. It turns itself off after fifteen minutes; tap it again if you're
 still away. The guided tour points it out on your pass when the story uses it.
 
+A button you can't take back takes **two taps**: the first arms it (it
+turns black and says *Tap again to fire*), the second, within four
+seconds, presses it. Leave it alone and it disarms itself.
+
 ## Your group
 
 Once you've joined one of the story's groups — a side, a house, a

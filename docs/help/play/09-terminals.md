@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, give him a file, file, codex, secret file
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -99,13 +99,45 @@ story's notices (a blackout, an alarm) reach it. Opening a line there
 also tells the story that you're standing in that room, talking to him;
 the line is still the same private conversation as on your phone.
 
+A room terminal also lets you **give him a file**. Tap **📎 GIVE HIM A
+FILE**: your Codex entries are listed, each with **Give** — it is the
+same as sharing it to him from your phone. To hand over something you
+haven't unlocked yet, **TYPE A CODE** or **SCAN A FILE'S QR** there, and
+it goes into your Codex and is offered to give. Some files he never
+takes: a secret one reads *A SECRET FILE: HE WON'T TAKE IT*, and one
+about somebody else *ABOUT … : HE WON'T TAKE IT*. While the file panel
+is open the line waits two minutes for you instead of thirty seconds
+(*STILL THERE?* near the end).
+
+## The King's terminal
+
+At *Trapped in the Internet* one terminal hangs outside the server-room
+door. It is not a line to anyone: it is **the King**, and he plays
+chess. It is awake all night.
+
+1. Hold up your pass. One pass, one game.
+2. You play White: tap a piece, then the square it goes to. A pawn that
+   reaches the far side becomes a queen. **GIVE UP** takes two taps.
+3. **Checkmate him** and the server-room door code goes to your
+   Codex: *Checkmate. The door code is in your phone's Codex.* A loss
+   or a draw wins nothing — scan your pass to play him again.
+
+There are **no hints**. The screen shows his **health bar** — the same
+bar as in [the simulation](reinstallation.md), shared by everyone: the
+more he has been hit there, the worse he plays here. At full health he
+is a grandmaster. Late in the night (once the truth has been read) the
+screen says *No prize now.* and a win gives nothing. A program marked
+for reinstallation can't challenge him. Two minutes without a move and
+the game is abandoned.
+
 ## A window into the simulation
 
 When the event runs a **simulation** — a virtual copy of the house (see
 [The simulation](reinstallation.md)) — a terminal nobody is talking to
 becomes a **window into it**. It shows the virtual copy of *the room it
 hangs in*, seen from exactly where it hangs: anyone exploring that room
-in the simulation walks past it as a ghost with their name over it, and
+in the simulation walks past it as a ghost with their name over it and
+their profile picture for a head, and
 from inside they see the terminal glowing on the wall. When nobody is in
 its room, it follows whoever is playing, over their shoulder, with a
 little map of the floor and a banner — **REINSTALLATION IN PROGRESS** —

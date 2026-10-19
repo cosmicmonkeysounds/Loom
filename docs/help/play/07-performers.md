@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here, restricted, marked, pinned, pin, quest log, codex, inbox, wallet, approve, deny, audit, approval, transfer, booth card
+keywords: performer, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, readout, admin, moderator, capture, release, hide, guest thread, guest card, actions, who's here, restricted, marked, pinned, pin, quest log, codex, inbox, wallet, approve, deny, audit, approval, transfer, booth card, arm, tap twice, tap again to fire, near miss, not your button
 ---
 
 The performer station is the same chat surface, recomposed for the
@@ -93,7 +93,13 @@ of saying it (see [Filing a fact](quests.md)): a question, the answer,
 and a confidence slider. The **server judges it** the moment it is
 filed, against the story's answer key — *accurate*, a *confident lie*
 (wrong at 100%), or *uncertain* (wrong below) — and the story reacts at
-once; nothing waits for a host. At *Trapped in the Internet* the
+once; nothing waits for a host. The one exception is a **near miss**: an
+answer close to the key but not exact (*Mr Pickels*, a number written
+out). It is never judged a lie or a guess by itself: it is *proposed
+accurate*, a ⚠ line in `# hosts` names the answer it is close to, and it
+waits for a person (you, with the buttons below, or the director's
+Judging card). If nobody judges it, it counts as accurate when the round
+closes. At *Trapped in the Internet* the
 `# hosts` room shows each filing as it lands ("📝 *Name* filed H5 (round
 2 Q2): *answer* — certain. Judged lie."). The story's buttons on that guest's card —
 **📝 Filed fact: accurate** / **confident lie** / **uncertain (a
@@ -150,9 +156,20 @@ are and their group, and holds **📡 Scan**, **📓 Share lore…**, and the
 **story's own buttons** — whatever the writers declared for performers
 (a whisper, a blessing, a search…). Pressing one acts *as your
 character*, on that guest. The card leads with **your** buttons that
-make sense right now; the rest (another character's, or one for a later
-part of the night) fold under **More…** — still there if you need them.
+make sense right now; the rest (anyone's, or yours for a later part of
+the night) fold under **More…** — still there if you need them. A button
+the story gives to **another** character only (the server-room watch's
+patch-bay buttons, a host's verdict) isn't on your card at all: the
+server would refuse it from your booth (*not your button …*).
 Rooms themselves stay clean: just the conversation and your composer.
+
+**Some buttons take two taps.** A button with no way back — one that
+ends the night, trips an alarm, hands over a secret or plays a
+once-a-night moment — **arms** on the first tap (it turns black and
+says *Tap again to fire*) and fires on the second. Tap again within
+four seconds; a very fast double tap only arms it. Leave it and it
+disarms by itself. The guest's own buttons on their pass work the same
+way when the story marks them so.
 
 ## Rooms
 

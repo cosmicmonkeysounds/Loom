@@ -107,6 +107,7 @@ The layout works from a phone held either way up to a 1280 px laptop
 | turn | **right stick**, left–right | Q E, or ← → |
 | look up / down | **right stick**, up–down | drag on the view |
 | run | n/a | Shift |
+| hit the King | **⚔ HIT** under his bar | Space |
 
 The sticks appear on a touch device, or as soon as the screen is touched.
 Golden chevrons on the floor lead to Gerald along the house's real route
@@ -118,7 +119,27 @@ HUD shows:
 - the room you are in and its story location;
 - warmer / colder;
 - the clock;
-- a compass whose gold pip points along the trail.
+- a compass whose gold pip points along the trail;
+- the King's shared bar (`n / 15`) once the server shares one, with
+  **⚔ HIT** while he is near (below).
+
+**The King.** One health bar for every guest (`KingState` off `hello`,
+the map fetch and `king` frames). Near him and facing him, ⚔ / Space
+flushes the pose and posts `POST /api/spatial/king/hit` (`game/fight.ts`
+pre-checks `kingReach`: *Get closer to the King.* / *Face him.*). The
+first hit of a visit says *⚔ You hit the King!*; after that, and on the
+server's 409 `already hit`, *You hit him. Come back on your next
+reinstallation.* A visit ends when its duck is found. At 0 he kneels
+for everyone and his door opens (*The King kneels. His door stands
+open.*); a restore stands him up (*The King stands again.*) but keeps
+the door open for a player behind it or in it until they are clear
+(`keepDoorOpen`). There is no chess on the tablet: the game is at the
+Server Door terminal (`terminal/`, `view=chess`). An old server that
+shares no King shows no bar and no ⚔.
+
+Other players are ghosts wearing their profile picture as a head
+(`PlayerState.avatar` → `/e/<id>/api/avatar/<key>`, `@loom/house/three`
+`createAvatar`); an `avatar` frame swaps it live.
 
 Gerald quacks when you are near: louder as you get closer, and panned
 toward him. Walk within **0.9 m** of him on his floor (and no more than
@@ -293,6 +314,7 @@ To change the show's own map (`core/examples/trapped-in-the-internet/house.json`
 | `src/game/input.ts` | **pure**: keyboard + sticks + drag → one frame of intent; stick maths (dead zone 0.12) |
 | `src/game/pump.ts` | **pure**: the 10 Hz latest-only pose pump (keepalive, backoff, stop on 401 / 410) |
 | `src/game/hud.ts` | **pure**: room names, warmer / colder, compass, reach |
+| `src/game/fight.ts` | **pure**: the King's HUD lines and meter, `kingReach` (re-exported from `@loom/house`), `keepDoorOpen` |
 | `src/game/trail.ts` | **pure**: the chevrons' path, `route()` made walkable on a stair (`test/autopilot.test.ts` walks the real physics along it to every duck spot, on the show's map and the three-floor fixture) |
 | `src/game/leash.ts` | **pure**: the 120 s no-input leash (paused while the tab is hidden) |
 | `src/game/audio.ts` | WebAudio quack, fanfare and buzz (no assets) |

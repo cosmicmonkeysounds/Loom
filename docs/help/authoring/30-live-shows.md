@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: live, reserved, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -132,6 +132,17 @@ COHORT Early Arrivals
   guest can never take a part, and never a name in a `joinable: false`
   group. `playable: false` keeps a character off both lists (a scanned
   prop).
+- **`reserved: true`** holds a guest's program for one invited person
+  (*Trapped in the Internet*'s nine featured programs). Everyone else's
+  picker shows it **🔒 Reserved**, and its `wiki:` article too in the
+  directory search; registering it without the invitation answers 409
+  *reserved*. Each reserved program has a secret **claim link**, the
+  same across restarts and End → relaunch: Run → 🖨 Print sheet prints
+  one invitation per program, and an invitee who scans it gets their
+  program (with the claim, registering its `wiki:` article makes them
+  that program too). For a lost invitation the invitation card's
+  **🔓 lost? open 2 min** opens it to anyone for two minutes. `reserved`
+  is not a part: the program stays a guest's.
 - **Profile pictures** are hand-picked with `avatar:` — a link, or a
   Wikipedia / Commons file by name (`avatar: File:Winamp Logo.svg`,
   copied from the file's page). `avatar: File:A.png | File:B.png` offers
@@ -144,6 +155,18 @@ COHORT Early Arrivals
   gallery, and picks one (and can switch later from their pass).
 - A **COHORT** is a plain named grouping with a capacity, for when you
   need to count heads without it being a "side".
+
+**Who is still here.** A head count over `Persons` counts everyone who
+ever joined, so a show that needs the guests still in the house (a
+majority) leaves two kinds out. A director marks a guest who left
+**👋 Went home** on Run (a journaled `<id>.gone = true`), and every
+rehearsal persona made from Run carries `<id>.persona = true`, set
+before its join rules run:
+
+```loom
+when Night.final_round == true and count([p for p in Unlimited_Power.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
+  fire majority_reached
+```
 
 Your story can read all of these memberships and counts — `count(The
 Gardeners)`, `guest.group == The_Gardeners` — and react to them with
@@ -224,6 +247,17 @@ countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
   stops while the run is paused. The Director page's NOW card lists the
   running countdowns when there is nothing to press, so a quiet sheet
   during a timer reads as meant.
+
+End a `countdown:` line with **`, for guests`** and the guests see it
+too, ticking in a strip under their room header:
+
+```loom
+countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guests
+```
+
+Only the flagged lines reach guests, never a head on a `secret: true`
+CHARACTER, and only while one is running. `for guests` on a `watch:`
+line is a lint (`L1205`): only a countdown takes it.
 
 These lines belong in the **header** — above the file's first beat,
 declaration or rule, which is what ends it (blank and comment lines

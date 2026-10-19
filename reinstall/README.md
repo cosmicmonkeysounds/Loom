@@ -9,11 +9,12 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 
 | Piece | Where | What it is |
 |---|---|---|
-| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **tablet game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard. It is also where **the King** is fought (below). The same app serves the **house map** viewer and editor at `/reinstall/map`. §3. |
-| [`vr/`](./vr) | Quest 3 headsets in the tent | The **VR game**: a Godot 4.7 OpenXR project, thumbsticks only. A headset is a station that polls for work, or its wearer picks a program with the stick. On a Mac it runs as a desktop game. §5. |
-| [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema (incl. the `king` prop and a door's `guard`), validation, the procedural geometry, `locate` and `route` (a guarded door is shut), and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render, the King included. §1. |
-| [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`. A map save carries live sessions over and moves their ducks (`duck` frame). §2. |
+| [`web/`](./web) (`loom-reinstall`) | `/reinstall/` on the event server | The **tablet game**: Vite + React + three.js. Its screens are setup → scan a pass → **Play here** or **Send to <headset>** → play → found. You move with the on-screen twin sticks or the keyboard; **⚔ HIT** (or Space) is this visit's one hit on **the King** (below). The same app serves the **house map** viewer and editor at `/reinstall/map`. §3. |
+| [`vr/`](./vr) | Quest 3 headsets in the tent | The **VR game**: a Godot 4.7 OpenXR project, thumbsticks plus the trigger (or A / X) for the King. A headset is a station that polls for work, or its wearer picks a program with the stick. On a Mac it runs as a desktop game. §5. |
+| [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema (incl. the `king` prop and a door's `guard`), validation, the procedural geometry, `locate` and `route` (a guarded door is shut until its King falls), the King's reach rule (`kingReach`), and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render: the King with his shared bar, and ghosts wearing profile pictures. §1. |
+| [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`, and a hit on the shared King (`POST /api/spatial/king/hit`: his health into `Night.king_hp`, then `king hit` / `king fallen`). A map save carries live sessions over and moves their ducks (`duck` frame). Each player carries their profile picture's avatar key (`avatar` frame on a change). §2. |
 | [`../terminal/src/world/`](../terminal/src/world) | the wall tablets | The **world view**: each terminal shows the players exploring, seen from where it hangs on the real wall. `view=mirror` is the TV. §4. |
+| [`../chess`](../chess) (`@loom/chess`) | the Server Door terminal | **The King's chess**: the rules, his AI per stage of the shared bar, and the board. It is played only at the wall terminal outside the real server-room door (`terminal/`, `view=chess`), never in either game. §4. |
 
 **A server restart ends every walk.** `SpatialHub` keeps sessions,
 session tokens and parked station assignments in memory, so a crash, a
@@ -34,7 +35,7 @@ project**: `house.json` and any `house.<variant>.json` (the rain plan's
 launches (a reload refreshes them; End → relaunch plays the project's
 current map, on the variant the last event played). A sync keeps a
 project map that differs from the repo's (it only warns), so a change made
-here (the King's `hp: 8`, the `"variant"` labels) reaches a project that
+here (the King's `hp: 15` + `health`, the Server Door spot, the `"variant"` labels) reaches a project that
 already has maps only through one `pnpm sync-show --replace-maps`, run
 after checking the project's maps carry no surveyed edits worth keeping. An event plays, in order: a director's save from
 `/reinstall/map` (kept per event in the server's state directory as
@@ -51,41 +52,51 @@ by `main.tsx`) offers both as **Map: Tent ● live | Shed** buttons, plus
 **Download JSON**; a switch reloads the page onto the server's new map
 (`docs/loom-reinstall.md` §1.3, §2.1).
 
-### The King (the door code, in the simulation)
+### The King (one shared health bar)
 
 A `king` prop stands in the server-room doorway of the show's map
-(`cold-lock-king`, `hp: 8`; the door `server-door` names him as its
-`guard`), and the door is shut — a closed leaf in the gap — until he falls.
-On the **tablet** a program walks down to him and **hits** him (**⚔** or
-Space, one hit every 2 s, facing him within 1.25 m): every hit takes a
-heart and makes his chess worse — grandmaster → club → beginner → dizzy
-(random moves) → **pawns only** (his own worst move, with nothing but his
-eight pawns). **♟ CHALLENGE** (or C) opens the board (a lazy chunk with
-chess.js; tap a piece, tap a square; 💡 Hint; Give up changes nothing).
-Checkmate fells him ("CHECKMATE — the King falls."), his door opens in the
-simulation, and the tablet posts `chess won` to the story with its
-moderator token. A loss or a draw posts `chess lost` / `chess drawn` and
-deals a fresh board at the same stage ("STALEMATE. AGAIN."): only
-checkmate fells him. The story keeps its Y2K gate: the board's badge reads
-**FOR THE CODE** from step 14 and **PRACTICE** before it, with a line
-under it saying what a checkmate wins. Since wave 9 the badge reads the
-story's `Night.king_armed` off the mod view (1 from the Y2K hour until
-📄 truth.txt or an ending): 0 with `Night.r3_closed` reads like an ending
-(no badge, no win line — after 📄 a win gives no door code), 0 earlier
-reads PRACTICE, and a story without the variable falls back to the map's
-`armed` gate (`Night.step`); the maps are unchanged. From step 14 the story gives the winner the **real
-server-room door's code** (*The Door Code*, in their Codex) — the real
-door has a standalone keypad lock, and nothing the tablet does opens it;
-before step 14 `# hosts` says the win is practice. At checkmate the
-tablet re-reads the step (4 s timeout) and says "The server-room door
-code is in your phone's Codex." or "A practice win: the King guards
-nothing real until the Y2K clock."; once `Night.ended` is true it says
-neither, even for a board dealt **FOR THE CODE** before the ending played
-(the story's `when chess_won` does nothing after an ending). The fallen
-King's bar reads FALLEN. The fight is per session; a headset only
-shows him and says "The King is fought on the tent tablet." The design is
-`docs/loom-reinstall.md` §3 *The King*; the wall chess phone stays the
-fallback until this is device-checked (`scripts/accept/K-27.md`).
+(`cold-lock-king`, `hp: 15`, `health: "Night.king_hp"`; the door
+`server-door` names him as its `guard`), and the door is shut — a closed
+leaf in the gap — until he falls. He has **one health bar for every
+guest, all night**: the server holds it in the story's `Night.king_hp`
+(15 at Power On, never regenerating) and sends it as `KingState {id, hp,
+max, fallen}` on `hello`, the session's map fetch and a `king` frame on
+every change.
+
+- **One hit per program per reinstallation visit.** On the tablet
+  **⚔ HIT** or Space, in a headset the trigger or A / X, within 1.25 m
+  and facing him within 55° (`kingReach`; the game pre-checks it and
+  says *Get closer to the King.* / *Face him.*). The game flushes its
+  pose and posts `POST /api/spatial/king/hit`; the server judges the
+  reach on that pose (with slack), takes a point off, and fires `king
+  hit` for the guest (`king fallen` at 0). A visit lasts until that
+  guest's duck is found: Leave + re-scan, a director's end, a timeout
+  or a re-scan mid-walk is the same visit (409 `already hit`: *You hit
+  him. Come back on your next reinstallation.*). A story reset or a
+  server restart forgets the visits.
+- **The HUD** shows his bar (`n / 15`) and how he is holding up (*at
+  full strength* → *rattled* → *reeling* → *dizzy* → *barely
+  standing*). Another program's hit staggers him on every screen.
+- **At 0 he kneels** for everyone: down on one knee, his collider and
+  the door leaf gone, the trail routed through the door
+  (`withFallenKings`). A director's restore (👑, or Run → House map
+  **Set…**) stands him up and shuts the door again — but not on a
+  player behind it, in the doorway or on his spot: for them it stays
+  open until they are clear (`keepDoorOpen`, VR `keep_door_open`), and a
+  remap keeps a player on a fallen King's spot where they are.
+- **No chess here.** His bar sets how well he plays at the **Server
+  Door** terminal outside the real server-room door (`@loom/chess`,
+  `terminal/`, `view=chess`): full = grandmaster … 0 = pawns only.
+  Nothing in either game posts a chess result.
+
+The design is `docs/loom-reinstall.md` §3 *The King*; the director's
+side is Help → *Running the server room*.
+
+**Ghosts wear profile pictures.** Every player on the stream carries
+`avatar`, the guest's avatar key; the web game, the terminals and VR
+draw the event's `/api/avatar/<key>` as the ghost's head (a Win98 tile)
+and in its name tag. No picture, or one that won't load, is the plain
+tinted capsule.
 
 ### The map editor (`/reinstall/map`)
 
@@ -128,10 +139,11 @@ pnpm dev                                   # builds play + terminal + reinstall;
                                            # → http://localhost:7000/reinstall/  (map: /reinstall/map)
 pnpm dev --reinstall                       # + the game's own Vite with HMR on :5176
 pnpm --filter loom-reinstall test          # web: physics, input, pose pump, HUD, map editor,
-                                           #   the fight + the board (271 tests)
-pnpm --filter @loom/house test             # the map + the §1.2 goldens (151 + 4 skipped)
+                                           #   the King's hit (327 tests)
+pnpm --filter @loom/house test             # the map + the §1.2 goldens (179 + 4 skipped)
+pnpm --filter @loom/chess test             # the King's chess (23)
 pnpm test:vr                               # = reinstall/vr/test/run.sh (needs Godot 4.7;
-                                           #   255 checks + 26 for tools/quest.sh)
+                                           #   399 checks + 26 for tools/quest.sh)
 ```
 
 To provision a device, open a link that carries the event's **moderator**
@@ -141,6 +153,7 @@ passcode:
 ```
 /reinstall/?code=<mod>&name=Tent tablet
 /terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
+/terminal/?code=<mod>&name=Server Door&spot=server-room-door&view=chess
 ```
 
 At *Trapped in the Internet* the wall terminals are provisioned

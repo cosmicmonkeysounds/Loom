@@ -2,7 +2,7 @@
 title: Cheat sheet — every symbol
 section: Reference
 order: 90
-keywords: act, watch, countdown, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
+keywords: act, watch, countdown, arm, reserved, busy, for guests, cheat sheet, reference, symbols, syntax, quick reference, summary, verbs, when, loom 4
 ---
 
 **Structure**
@@ -134,9 +134,12 @@ openers end with `:` and indent their body.
 | `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
 | `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
 | `sequence: false` / `repeat: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed |
+| `arm: true` (a performer's or guest's button) | arms on the first tap, fires on the second ([live verbs](live-verbs.md)) |
 | `act: B · Act I` (a `who: admin` cue) | opens an act on the Director page; later admin cues join it (`act: Anytime` rejoins by name; never changes NEXT) |
 | `watch: Night.round as Round, program.cleared, Ivo Marsh, while <cond>` (header, first file) | what the Director page's glance column keeps in view ([run mode](run-mode.md)) |
-| `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone |
+| `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone; end it `, for guests` and the guests' app shows it too |
+| `reserved: true` (a guest's program CHARACTER) | held for an invitee: 🔒 to everyone without its claim link ([live shows](live-shows.md)) |
+| `hold: …` / `busy: …` (a `mind: external` CHARACTER) | said for it when no agent answers / when a message waits behind others ([codex](codex.md)) |
 | `currency: score as Truthcoin, max 500, expiry 10m` (header) | a wallet over a ROLE slot ([currency](currency.md)) |
 | `wallet: approver, every 3, window 60s` / `wallet: minter, limit 3, while <cond>` | on a CHARACTER: who audits transfers / who mints a stimulus |
 | `GENERATOR` / `SCENE` , `loop` / `wait until` / `tier:` / `while` | background life |

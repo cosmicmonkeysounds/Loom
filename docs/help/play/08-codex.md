@@ -2,7 +2,7 @@
 title: Lore, people & private messages
 section: Guest Guide
 order: 8
-keywords: codex, unlock, redeem, lore, knowledge, share, people, directory, message, private, dm, alert, chime, push, notifications, get alerts, locked, keep screen on, iphone, home screen, puzzle, wall, takeover, flashing, full screen, go to the living room
+keywords: codex, unlock, redeem, scan, camera, 📷, secret, lore, knowledge, share, people, directory, message, private, dm, alert, chime, push, notifications, get alerts, locked, keep screen on, iphone, home screen, puzzle, wall, takeover, flashing, full screen, go to the living room
 ---
 
 Some stories run on **knowledge**. What you know is yours to keep — or to
@@ -18,10 +18,13 @@ in the list shows how much of the night's knowledge you've found
 
 Lore reaches you three ways:
 
-- **A code.** Scan a QR code on a wall with your phone camera — it opens
-  the app, unlocks the entry, and shows it in your Codex — or type the
-  code into the Codex's message box and press **Unlock**, the way you'd
-  send a message. Codes don't care about capitals, dashes or spaces. A
+- **A code.** Tap **📷** (at the top of the app, or beside the Codex's
+  message box) and point it at a QR code on a wall: it unlocks the entry
+  and shows it in your Codex. Or type the code into the Codex's message
+  box and press **Unlock**, the way you'd send a message. Use the app's
+  📷, not the phone's own camera: that may open another browser, where
+  you aren't joined (it then shows the code in big letters to type in
+  here). Codes don't care about capitals, dashes or spaces. A
   miss says so right there in the room.
   A wrong code is *noticed* by the story, so don't guess in front of
   anyone. Too many tries in a row and the box asks you to wait a minute.
@@ -36,8 +39,8 @@ hold it too — you keep your copy, and your Codex notes who you gave it
 to. Sharing is permanent and the story sees it:
 some characters *change* when they learn things. Share carefully. Some
 characters (Trabolta, at *Trapped in the Internet*) won't take lore
-about someone else: the app says *⛔ Not shared* with the reason, and
-nothing moves.
+about someone else, or a secret file: the app says *⛔ Not shared* with
+the reason, and nothing moves.
 
 ## People
 

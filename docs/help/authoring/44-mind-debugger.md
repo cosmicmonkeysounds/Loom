@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
+keywords: near miss, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -31,11 +31,24 @@ message gets two minutes from the moment it reaches the front of the
 line (not from when the guest typed it), so a burst of sixty DMs on a
 healthy laptop is answered, not cancelled. A message that never gets an
 answer is sent once more, then given up with the `hold:` line, so the
-guest hears something and the thread shows in need. One gap is known:
-a worker that stays **connected but stops answering** (a wedged model)
-is only noticed at the front of its line, two minutes at a time, so the
-hold line can take a long while. If the Mind page's thoughts stop and
-"… is typing" hangs, answer from Chat and restart the worker.
+guest hears something and the thread shows in need. A message that
+waits 40 seconds behind other people's hears the character's `busy:`
+line once per thread.
+
+A worker that stays **connected but stops answering** (a wedged model)
+is **stalled** once the message at the front of its line has had no
+answer for 60 seconds: `# hosts` gets one *⏳ … stopped answering* line,
+every waiting thread hears the `hold:` line once, and nothing new is
+sent to it until it answers again or reconnects. Answer from Chat
+meanwhile, and if it stays stalled restart the worker (`stagehand
+launchd restart --job agents` on the house Mac): a worker that dropped
+the requests it was cancelled on has nothing left to answer, so only a
+reconnect clears it.
+
+The Mind header carries the character's **queue**: how many messages
+are waiting, the oldest wait (counting up by the second between
+updates) and **⛔ stalled**. The Director page's *Needs you* shows a
+queue that is stalled or has waited 40 seconds or more.
 
 While the run is **paused** the character's words still post, but its
 powers answer *doors are closed* and spend nothing; the waiting and
@@ -142,12 +155,18 @@ It shows even before a worker has reported; on a project with no
 - **The mode switch** — `auto` / `review`, writing the variable the
   card names (`Night.judge_mode` by default) through the same journaled
   `set` as the World page. In `auto` every filed fact gets its verdict
-  at once; in `review` every verdict is a proposal until someone
-  confirms it, and a round closing settles the rest by the proposal.
-  Beside it: *nothing pending* or *N pending*.
-- **Pending filings** (review mode): one row per filing waiting for a
-  verdict — the program, the question id, the answer in quotes, the
-  confidence, and *proposed accurate / lie / uncertain*. Three buttons
+  at once — except a **near miss** (a typo of the key, a number written
+  out), which waits here as in review; in `review` every verdict is a
+  proposal until someone confirms it, and a round closing settles the
+  rest by the proposal. Beside it: *nothing pending* or *N pending*,
+  and how many of those are near misses.
+- **Pending filings** (review mode, and near misses in either mode): one
+  row per filing waiting for a verdict — the program, the question id,
+  the answer in quotes, the confidence, and *proposed accurate / lie /
+  uncertain*. A near miss is tagged *⚠ near "<key>"*, the key it is
+  close to, and is proposed accurate: **if nobody judges it before the
+  round settles, it is credited**, so check every ⚠ before the results
+  are read ([cards & widgets](widgets.md) has the near rules). Three buttons
   settle it: **✅ accurate**, **😤 confident lie**, **🤷 uncertain** —
   the proposal's button is outlined; press it to confirm, another to
   override. Each fires the story's own confirm event for that program
@@ -190,9 +209,11 @@ frontmatter): extra instructions for one kind of moment, each with a
 prompt gains a `=== SITUATION: … ===` block and the reflect on that
 exchange sees it too, so a thought's messages show exactly when it
 applied. Trabolta's *at your heart* situation is the server-room
-terminal (`them.at_the_heart`, from the Y2K hour): there, and only
+terminal (`them.at_the_heart`, whenever he is awake): there, and only
 there, he is candid, and the reflect keeps that candour in the program's
-dossier, never the shared brief. Two more decide whether he may say
+dossier, never the shared brief. A separate *standing down* situation
+(the same place, from the Y2K hour) carries the `stand_down` rules; the
+persona never fires that power without it. Two more decide whether he may say
 Sandy's name yet. A situation's `when:` reads the same values as the
 gate, so a `secret:` slot never reaches one. See [the server
 room](server-room.md) for what a director does when he offers to stand
@@ -201,15 +222,15 @@ down.
 The mind file's `secrets:` keep the hunt's answers from him, and its
 `never` list (written by `titi:facts` from `facts.json` and the story's
 combos) holds what no line of his mind may carry and his voice may never
-say, whoever typed it: the door code and the ways it is said (*'97*, *in
-97*, *since 97*, *in / since / of ninety-seven*, *nineteen
-ninety-seven*, *one nine nine seven*) and every patch-bay pair. A pair
-matches either way round (*D5 to V2*, *v-2*); a code with spaces, commas
-or hyphens between its digits (*1 9 9 7*, *1,997*), but not dots, so
-*$19.97* is a price; number words in any spacing (*ninety seven*). Never
-a bare *97* or *of 97*: a program may be called NHL 97, and *3 of 97* is
-a count. A voice line carrying one is replaced by the persona's
-`fallback`.
+say, whoever typed it: the door code and the ways it is said (the
+digits, a short year form, the number in words, *in / since / of* in
+front of it) and every patch-bay pair. A pair matches either way round
+(*D5 to V2*, *v-2*); a code with spaces, commas or hyphens between its
+digits (*1 2 3 4*, *1,234*), but not dots, so a price like *$12.34*
+passes; number words in any spacing. Never the bare short form, or
+*of* + it: a program may be called NHL 97, and *3 of 97* is a count. A voice line
+carrying one is replaced by the persona's `fallback`. The list itself
+is generated; read it in the mind file, never in a doc.
 
 Until the orchestrator learns to follow the story's phases on its own,
 a director can keep the arc in step by hand: click the stage on the
