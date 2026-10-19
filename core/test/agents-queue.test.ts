@@ -2,9 +2,9 @@
 //! line once per thread when a request waits behind a burst on a worker
 //! still answering, and single-worker stall detection — a connected worker
 //! whose head goes unanswered 60 s is stalled: one `# hosts` line, the hold
-//! line once in every waiting thread, no new dispatch (bar a probe when it
-//! holds nothing), cleared on its next reply or a reconnect, and a story
-//! restart starts it clean. `CastSummary.agentQueue` reads it out.
+//! line once in every waiting thread, no new dispatch, cleared on its next
+//! reply or a reconnect, and a story restart starts it clean.
+//! `CastSummary.agentQueue` reads it out.
 
 import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -90,6 +90,20 @@ describe("AgentHub — the busy line", () => {
     expect(h.held).toEqual([]);
   });
 
+  it("is never said for a lone request the worker went straight to: its silence is the stall's", () => {
+    const h = harness();
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.run(59_000);
+    expect(h.busy).toEqual([]);
+    h.run(2000);
+    expect(h.stalls).toHaveLength(1);
+    expect(h.held).toEqual(["g-0"]);
+    h.run(5 * 60_000);
+    expect(h.busy).toEqual([]);
+  });
+
   it("is never said while nobody is online — the hold line covers that, once", () => {
     const h = harness();
     h.hub.line(th(0));
@@ -109,7 +123,7 @@ describe("AgentHub — a stalled worker", () => {
     expect(a.requests()).toHaveLength(3);
     h.run(60_000);
     expect(h.hub.queue("Trabolta").stalled).toBe(false); // 60 s exactly: not yet
-    expect(h.busy.sort()).toEqual(["g-0", "g-1", "g-2"]); // behind, before the stall
+    expect(h.busy.sort()).toEqual(["g-1", "g-2"]); // behind g-0, before the stall (g-0's own wait is the stall's)
     const before = h.presence();
     h.run(1000);
     expect(h.hub.queue("Trabolta")).toEqual({ depth: 3, oldestMs: 61_000, stalled: true });
@@ -127,7 +141,7 @@ describe("AgentHub — a stalled worker", () => {
     expect(h.stalls).toHaveLength(1);
     expect(h.held.sort()).toEqual(["g-0", "g-1", "g-2", "g-3"]);
     // It got no new thread while stalled: only re-sends of what it already
-    // had (the reply timeout's retry, the probe), never g-3.
+    // had (the reply timeout's retry), never g-3.
     expect(new Set(a.requests().map((r) => r.thread.audience[0]))).toEqual(new Set(["g-0", "g-1", "g-2"]));
     expect(h.hub.pending.map((p) => p.thread.audience[0])).toContain("g-3");
   });
@@ -177,7 +191,7 @@ describe("AgentHub — a stalled worker", () => {
     expect(h.held).toEqual(["g-0"]); // g-1 is in hand on a healthy worker: no hold line
   });
 
-  it("a lone stalled worker holding nothing gets the oldest queued request (the probe)", () => {
+  it("a lone stalled worker holding nothing gets no new dispatch: the queue waits for an answer or a reconnect", () => {
     const h = harness();
     const a = h.worker("laptop");
     h.hub.attach(a.w);
@@ -187,12 +201,13 @@ describe("AgentHub — a stalled worker", () => {
     h.run(1000);
     h.hub.line(th(2));
     expect(h.hub.answeredByHand(th(0))).toBe(true); // a director answers the head
-    h.run(1000);
-    expect(a.requests().map((r) => r.thread.audience[0])).toEqual(["g-0", "g-1"]); // the oldest only
+    h.run(5 * 60_000);
+    expect(a.requests().map((r) => r.thread.audience[0])).toEqual(["g-0"]); // nothing new
     expect(h.hub.queue("Trabolta")).toMatchObject({ depth: 2, stalled: true });
-    // It answers the probe: back, and the rest follows.
-    h.hub.settle(a.requests()[1]!.id, "laptop");
+    // A late answer to the cancelled copy ends the stall: the queue follows.
+    expect(h.hub.settle(a.requests()[0]!.id, "laptop")).toBeNull();
     expect(a.requests().map((r) => r.thread.audience[0])).toEqual(["g-0", "g-1", "g-2"]);
+    expect(h.hub.queue("Trabolta").stalled).toBe(false);
   });
 
   it("the reply timeout keeps working on a stalled worker, and nothing is held twice", () => {
@@ -201,14 +216,41 @@ describe("AgentHub — a stalled worker", () => {
     h.hub.attach(a.w);
     h.hub.line(th(0));
     h.run(4 * 60_000 + 2000);
-    // Sent, timed out, re-sent as the probe, timed out again → given up.
+    // Sent, timed out, re-sent to the same worker, timed out again → given up.
     expect(a.got.filter(([e]) => e === "cancel")).toHaveLength(2);
     expect(h.hub.pending).toHaveLength(0);
     expect(h.held).toEqual(["g-0"]);
-    // The guest writes again, still unanswered: the thread already holds the line.
+    // The guest writes again in the same stall, still unanswered: the thread
+    // already heard the line, and the new request waits (no new dispatch).
     h.hub.line(th(0));
     h.run(3 * 60_000);
     expect(h.held).toEqual(["g-0"]);
+    expect(a.requests()).toHaveLength(2);
+  });
+
+  it("the once-per-stall hold is forgotten when the stall ends: the worker goes, and offline the next request hears it again", () => {
+    const h = harness({ replyTimeoutMs: 120_000 });
+    const a = h.worker("laptop");
+    h.hub.attach(a.w);
+    h.hub.line(th(0));
+    h.run(4 * 60_000 + 2000); // stalled, held, given up
+    expect(h.held).toEqual(["g-0"]);
+    h.hub.detach("laptop"); // the laptop goes: offline now
+    h.hub.line(th(0));
+    h.run(21_000);
+    expect(h.held).toEqual(["g-0", "g-0"]); // the offline rule, as before wave 11
+  });
+
+  it("offline, a request after a given-up one hears the hold line again (the live behaviour before wave 11)", () => {
+    const h = harness({ queueMaxAgeMs: 60_000 });
+    h.hub.line(th(0));
+    h.run(21_000);
+    expect(h.held).toEqual(["g-0"]);
+    h.run(70_000); // queued past its max age: given up (already held)
+    expect(h.hub.pending).toHaveLength(0);
+    h.hub.line(th(0));
+    h.run(21_000);
+    expect(h.held).toEqual(["g-0", "g-0"]);
   });
 
   it("a guest who writes again while stalled loses nothing: the late reply carries a follow-up, and the head's retry stays on the worker", () => {
@@ -383,46 +425,56 @@ describe("EventRuntime — busy:, the stall's # hosts line and agentQueue", () =
     dirs.push(d);
     const rt = runtimeIn(d, () => clock);
     rt.openDoors();
-    const g = await call(rt, "POST", "/api/guest/register", { name: "Ada", passcode: CODES.event });
-    const token = g.json["token"] as string;
-    const id = g.json["id"] as string;
+    const join2 = async (name: string) => {
+      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event });
+      return { token: g.json["token"] as string, id: g.json["id"] as string };
+    };
+    const ada = await join2("Ada");
+    const ben = await join2("Ben");
     const w = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
-    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "hello?" }, { token: ada.token })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "me too?" }, { token: ben.token })).status).toBe(200);
     const tick = (ms: number) => {
       for (let t = 0; t < ms; t += 1000) {
         clock += 1000;
         rt.tickOnce(1000);
       }
     };
+    const BUSY = "Trabolta is processing a high volume of requests. Please hold.";
+    const HOLD = "Jean Trabolta is not responding.";
     const all = () => (rt as unknown as { chat: { all(): ChatMessage[] } }).chat.all();
-    const dm = () => all().filter((m) => m.channel === "dm:Trabolta").map((m) => m.text);
+    const dmOf = (msgs: ChatMessage[], id: string) => msgs.filter((m) => m.channel === "dm:Trabolta" && Array.isArray(m.audience) && m.audience.includes(id)).map((m) => m.text);
     const hosts = () => all().filter((m) => m.text.startsWith("⏳")).map((m) => [m.channel, m.text]).map(([c, t]) => { if (c !== "room:hosts") throw new Error(`hosts line in ${c}`); return t; });
     const queueRow = async () => ((await call(rt, "GET", "/api/state?role=mod", {}, { moderator: true })).json as unknown as ModView).cast.find((c) => c.id === "Trabolta")!.agentQueue;
     tick(41_000);
-    expect(dm()).toEqual(["hello?", "Trabolta is processing a high volume of requests. Please hold."]);
-    expect(await queueRow()).toEqual({ depth: 1, oldestMs: 41_000, stalled: false });
+    // Ben waits in line behind Ada: the busy line; Ada's own wait is the stall's.
+    expect(dmOf(all(), ada.id)).toEqual(["hello?"]);
+    expect(dmOf(all(), ben.id)).toEqual(["me too?", BUSY]);
+    expect(await queueRow()).toEqual({ depth: 2, oldestMs: 41_000, stalled: false });
     tick(20_000);
-    expect(dm()).toEqual(["hello?", "Trabolta is processing a high volume of requests. Please hold.", "Jean Trabolta is not responding."]);
+    expect(dmOf(all(), ada.id)).toEqual(["hello?", HOLD]);
+    expect(dmOf(all(), ben.id)).toEqual(["me too?", BUSY, HOLD]);
     expect(hosts()).toHaveLength(1);
-    expect(hosts()[0]).toMatch(/^⏳ Trabolta stopped answering \(worker laptop\): 1 thread is waiting and got the hold line\./u);
-    expect(await queueRow()).toMatchObject({ depth: 1, stalled: true });
+    expect(hosts()[0]).toMatch(/^⏳ Trabolta stopped answering \(worker laptop\): 2 threads are waiting and got the hold line\./u);
+    expect(await queueRow()).toMatchObject({ depth: 2, stalled: true });
     tick(30_000);
     expect(hosts()).toHaveLength(1);
-    // A restart of the process (no worker yet): the thread is re-asked as held,
-    // and the busy line is never said a second time.
+    // A restart of the process: both threads are re-asked as held, and the
+    // busy line is never said a second time.
     w.close();
     rt.dispose();
     const again = runtimeIn(d, () => clock);
     expect(again.restore()).not.toBeNull();
     const hub = (again as unknown as { agents: AgentHub }).agents;
-    expect(hub.pending.map((r) => r.thread.audience)).toEqual([[id]]);
+    expect(hub.pending.map((r) => r.thread.audience).sort()).toEqual([[ada.id], [ben.id]].sort());
     const w2 = await call(again, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
     for (let t = 0; t < 61_000; t += 1000) {
       clock += 1000;
       again.tickOnce(1000);
     }
-    const dm2 = (again as unknown as { chat: { all(): ChatMessage[] } }).chat.all().filter((m) => m.channel === "dm:Trabolta").map((m) => m.text);
-    expect(dm2).toEqual(["hello?", "Trabolta is processing a high volume of requests. Please hold.", "Jean Trabolta is not responding."]);
+    const after = (again as unknown as { chat: { all(): ChatMessage[] } }).chat.all();
+    expect(dmOf(after, ada.id)).toEqual(["hello?", HOLD]);
+    expect(dmOf(after, ben.id)).toEqual(["me too?", BUSY, HOLD]);
     w2.close();
     again.dispose();
   });
