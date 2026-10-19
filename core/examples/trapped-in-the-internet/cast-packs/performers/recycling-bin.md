@@ -12,10 +12,12 @@
   until 20:00 (OP-01).
 - Point every guest at the **door QR**. Phone dead or none → loaners
   [[EDIT: where]] + the charging station.
-- **The 9 featured names** (watch the picker as they sign in):
+- **The 9 featured names** (wave 11: each is 🔒 Reserved for its invitee):
   Microsoft Excel · OpenOffice · DraftKings · Bugdom · Broken Ask Jeeves ·
-  Runescape · MS Paint · VLC · Pong. If someone who isn't the invitee takes
-  one, radio the director (W-03, OP-02). Never say a guest's real name aloud.
+  Runescape · MS Paint · VLC · Pong. A featured guest scans the **QR on
+  their invitation**, not the door's. Lost it, or it reads locked → radio the
+  director, who opens that program for two minutes (W-03, OP-02). Never say a
+  guest's real name aloud.
 - Answer questions from the door FAQ ([`all-crew.md`](../all-crew.md)).
 
 **Your buttons**

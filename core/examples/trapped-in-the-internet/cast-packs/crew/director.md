@@ -75,7 +75,10 @@ the question, then that filing's ✅ accurate / 😤 confident lie / 🤷
 uncertain (the current verdict is outlined; a filing that was settled as a
 mark, a guess, has no buttons). A host's 📝 on a program's card judges only that program's
 **latest** filing: while an earlier one still waits, it changes nothing and
-`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. A program may file every
+`# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **A near miss** (wave
+11: a mistyped right answer, *Mr Pickels*, *Grko*) is never judged by itself, even in `auto`: it
+waits on the Judging card tagged *near* and `# hosts` gets a ⚠ line naming the key. Nobody
+judges it → the settle credits it as accurate, so **judge every ⚠ before 📋**. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at
 Truth Pong and the final reveal (✅ / 😤 / 🤷 by question number).
@@ -96,7 +99,10 @@ never from a guest card.
 | Clippy pressed 😤 for an answer that was right | Clippy presses ✅ for the same question on the same program: `# hosts` says *"⚖️ Corrected …"*, nothing is paid twice |
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
-| ghosts block the majority at Y2K | **🗳 Force the majority** (stay / leave) |
+| a guest left the party | Run → their row → **👋 Went home** (wave 11): they stop counting toward the majority (the board's *Present programs*); **Back** undoes it |
+| ghosts block the majority at Y2K | mark the ones who left 👋 Went home first; then **🗳 Force the majority** (stay / leave) |
+| a featured guest lost their invitation, or their program reads 🔒 | Run → Join → 🖨 Print sheet → Invitations → that program's **🔓 lost? open 2 min** (two taps): anyone can pick it for two minutes, so have the invitee ready |
+| `# hosts` says Trabolta's worker is stalled (⏳) | the tech op restarts the `agents` job; answer his DMs as Trabolta from Run meanwhile (every waiting thread got his hold line once) |
 | a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
 | dead door terminal (the King's chess) | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the door terminal reports its own wins *by Terminal · <name>* |
 | the King's health knocked down too early, or after a rehearsal | **👑** Restore the King's health (Anytime): back to 15/15 in both games and at the door |

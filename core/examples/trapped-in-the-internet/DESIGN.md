@@ -242,7 +242,7 @@ The map is still a **placeholder** (footprints and elevations guessed until the 
 SW-MAP-02 / K-28: basement −2.7, main 0, top +2.8), but its structure matches the house and the
 story: the tent is an indoor room in a notched backyard, the Server Room has its one door, patch
 bay and (wave 7) the `server-room` terminal spot on its south wall inside, the keypad + lock
-ring + chess phone outside, no duck; twelve duck spots cover every floor and the yard.
+ring outside (wave 11: the chess-phone prop is gone and the **`server-room-door`** terminal spot, "Server Door", stands in the basement hall facing the door: the King's chess board), no duck; twelve duck spots cover every floor and the yard.
 The rain variant `house.shed.json` (SW-MAP-13) binds The Internet to room `shed` at the back of
 the yard instead; `core/test/show-house.test.ts` checks both.
 
@@ -268,6 +268,13 @@ factions and count toward majorities. Therefore:
   sign-ins. A guest who *types* "microsoft excel" would register lowercase and miss the
   tag. That, and reserving each featured program for its invitee, are **needs-new-code**
   items (§7: featured-program claim codes + canonical names).
+- **Wave 11: reserved.** Each featured CHARACTER carries `reserved: true` (not a part: it
+  stays a guest's program). The picker and the directory search show it, and its `wiki:`
+  article, 🔒 Reserved to anyone without its invitation's claim (`?code=<guest code>&claim=<token>`,
+  Run → Print sheet → Invitations; a token per program, stable across End → relaunch), and
+  register answers 409 `reserved`. A lost invitation: the director's 🔓 opens one program to
+  anyone for two minutes (`POST /api/mod/claim/unlock`). The claim stays in the browser that
+  joined, so a cut session rejoins with it.
 
 | CHARACTER (exact) | `featured` tag | Invitee (actor) | Human identity (secret until the end) | Avatar |
 |---|---|---|---|---|
@@ -309,10 +316,14 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 | Norton Anti-Virus | `is Enforcer` | Julie | `File:Norton-logo-2021.svg` (wiki: Norton AntiVirus) | The **selected Antivirus** who interrupts the Bingo celebration. Door scans. |
 | McAfee Anti-Virus | `is Enforcer` | TBD | `File:McAfee logo.svg` (wiki: McAfee Antivirus) | Door scans; **broker of the `# truthcoin-exchange`** and referee of bets (wave 9, D1: he has no Wallet, holds no pot and takes no cut; a bet settles player to player, the winner's 🙏 Request paid by the loser; 🪙 pay/charge are corrections; CS: he wants to "exploit the exchange of information and become rich"); `every 20m` "Your protection has expired" pop-up gag (character timer, allowed). |
 | Password Manager | `is Enforcer` | Francine | `File:1password-logo.svg` (wiki: 1Password) | Door scans; reacts to `wrong code` (codex misses); **keeper of the clubs** (CS: "manage… who gets to be part of what clubs"): booth readouts on every faction join (§3 D10) and she owns the `# hidden-partition` / `# back-channel` invites. Yu-gi-oh! everywhere. |
+| Windows Defender | `is Enforcer` | [[EDIT: who]] | `File:Microsoft Defender Icon Logo 2025 English.svg` (wiki: Microsoft Defender Antivirus) | Wave 11: **the door, for late arrivals**: a part with no lines of its own (no hooks; the Enforcer trait's door scan clears a program exactly as the other four do), so the Optical Drive is never left without a scanner once the others are busy. Any Antivirus booth, this one too, presses the patch-bay fallbacks (§2.9). |
 | CRA Agent Software | `is Enforcer` | Emma | `File:Canada Revenue Agency logo.svg` (wiki: Canada Revenue Agency) | Replaces MalwareBytes. Door scans; audits Truthcoin (presses 🪙 charge). |
 
 **Agent:** `Trabolta` (`is Person`, `mind: external`, `hidden: true`, avatar
-`File:HAL9000.svg`). Never a guest or performer.
+`File:HAL9000.svg`). Never a guest or performer. Wave 11: `busy: Jean Trabolta is answering other
+programs. Your message is in the queue. Please do not move the mouse.` — the server says it once
+per thread when a message has waited 40 s behind other programs' on an online worker (`hold:` is
+still the line when no worker is online, or a stalled one).
 
 **Voices (playable: false, never on a picker):**
 
@@ -406,7 +417,7 @@ not refuse hidden groups; §7.)
 Reveal policy: house rooms 5–13 are revealed **per program** in `Clearance` (`reveal The Start Bar
 for program`, etc.; the chat folds them into one "📂 … are open now." notice); The Internet appears once stood in; The Server Room is revealed for each
 member of the majority faction (`reveal The Server Room for self`) and for everyone when its
-door first opens from the Y2K hour (The Heart, wave 7) or its patch-bay alarm first trips.
+door first opens once Trabolta is awake (The Heart; wave 7 said from the Y2K hour, wave 11 from the introduction, D1) or its patch-bay alarm first trips.
 
 ### 2.5 SPACE / CHANNELs (`rooms.loom`)
 
@@ -476,7 +487,7 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.alarm_on / Night.alarm_clear_at | bool false / number 0 | the patch-bay alarm latch: a second trip within 120 s does nothing (§3 E3; the door never alarms since wave 7) | |
 | Night.lights_before_alarm | string | the look the alarm replaced, put back when the latch clears (§3 E2; wave 8) | |
 | Night.wrong_combos | number 0 | rejected patch combinations (the second trips the alarm) | |
-| Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). Not secret | |
+| Night.heart_opened / Night.door_quiet_until | bool false / number 0 | wave 7: The Heart has played (the first door opening from step 14; wave 11: once `Trabolta.awake`); openings before `door_quiet_until` (120 s after the last) do nothing (§3 E2). Not secret | |
 | Night.gloat_at | number 0 | wave 7: Trabolta gloats over a lost / drawn King game only after this (then +300 s) | |
 | Night.stand_down_by / Night.talked_down | string `"none"` / bool false | wave 7: the program he offered to stand down for; the night ended by 🕊 (§3 E2c) | |
 | Night.ended / Night.ending | bool false / string `"none"` | final ending reached; `disabled`, `destroyed`, `song`, `song_pickup`, `rave`, `help`, `banished`, `hand_jive` | |
@@ -493,7 +504,10 @@ Trabolta's persona `facts:` whitelist (he sees it).
 | Night.resurrected | bool false | G11 ran: the show is over, out of character | |
 | Night._resurrect_ask_at | number 0 | wave 9 (renamed from `resurrect_ask_at`): when G11's "press again" ask was posted; a `_` last segment marks cue-sheet bookkeeping, so the ask never ticks G11 on the sheet | |
 | Night.award_lines | string `"template"` | wave 9, D4: `"director"` after ✍ `own_award_lines` — Present Award skips Trabolta's template line (Clippy's lines, the sounds and the slides stay) | |
-| Night.king_armed | number 0 | wave 9: the King's stakes for the tent tablet — 1 from the Y2K hour until 📄 (`r3_closed`) or an ending, else 0 (FOR THE CODE / no badge / PRACTICE) | |
+| Night.king_armed | number 1 | wave 9: the King's stakes — wave 11: **1 from Power On** until 📄 (`r3_closed`) or an ending, else 0; the map's king `armed` reads it, and the Server Door terminal's stakes line follows it (*Checkmate him and the server-room door code goes to your Codex.* / *No prize now.*) | |
+| Night.king_hp / Night.king_hp_max | number 15 / 15 | wave 11: the King's **one shared health bar** for the night (the king prop's `health`); only the server lowers it, one point per hit in a reinstallation game (§3 E2b); 👑 `restore_the_king` or Run → House map's Set… raise it. Not secret (the bar is on every screen) | King HP (board) |
+| Night.crew_door_until | number 0 | wave 11: until then a server-room door opening is the crew's own (🔧 `crew_through_the_door`, 120 s): `# hosts` only, The Heart kept | |
+| Night.present | number 0 | wave 11: the programs still here (`count` of Persons with neither `.gone` nor `.persona`), the majority's denominator, kept in step by a story rule for the board's *Present programs* | Present programs (board) |
 | Night.sweep_target | string `"none"` | the program Trabolta asked the Antivirus to sweep | |
 
 No secret lives in `Night.*` (§0 rule 21): stagehand's orchestrator digest prints **every**
@@ -617,13 +631,16 @@ bobbed: bool = false
 bob_failed: bool = false
 advice: text? = none               // "help" | "thwart" (poll answer)
 banished: bool = false
+door_digits: 0 to 4 = 0            // wave 11: the cold door's digit notes held (§3 E2d)
 ```
 
 Engine keys used, never declared: `program.score` = **Truthcoin** (the 🪙 balance on the
 phone's pass and in the pinned Wallet room — the header's `currency: score as Truthcoin, max
 500, expiry 10m`, wave 4; every program gets 100 at upload), `program.codex` (count;
 OpenOffice's facts), `program.codex.<slug>`, `program.captured`, `program.group`,
-`program.name`, `program.location`.
+`program.name`, `program.location`. Wave 11 adds two world keys a director's Run sets:
+`program.gone` (👋 *Went home*, `POST /api/mod/guest/gone`) and `program.persona` (a Run
+rehearsal persona), both left out of the majority (§3 D10).
 
 **The TRUST FORMULA** (paste exactly wherever a component changes: `accurate_truth`,
 `confident_lie`, `when captured`, the `assess` power):
@@ -717,7 +734,10 @@ watcher/rule, **S** = server hard-code.
 | mark_for_reinstallation | W (16 `fire … with reason:` sites in main.loom: 🎯, 🤷, 🙅, 🎩, 🏓, 🍎, a guess at settle, late for the summons) | program; args `reason` | ROLE hook (`restrict` to The Tube / The Internet, the 🚨 pins, `fire marked`) |
 | unmark_for_reinstallation | P (🩹, Hosts / Antivirus) | program | ROLE hook → `unmarked` |
 | unmarked | W (🩹 "cleared by a host"; the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
-| chess_won | H (the tent tablet: `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}`), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: from step 14 *The Door Code* for the winner, once; before it practice; no subject → a `# hosts` reminder) |
+| chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
+| king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
+| door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
+| crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by: Antivirus`; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
 | chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
 | reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
 | terminal_opened / terminal_closed | H (a wall terminal with a `room`: `terminal opened` / `terminal closed`, args `at`) | program; args `at` | rules (§3 E2a: `program.at_the_heart`) |
@@ -818,9 +838,9 @@ reads as a cue sheet):**
 | y2k_clock | `🕚 System clock → 11 PM, 31 Dec 1999 (final round, 60 min)` |
 | y2k_midnight | `🎆 Midnight (auto at 60 min)` |
 | waive_leader_tasks | `🧾 Let a faction win without its leader's task (leader absent)` |
-| server_door_opened | `🚪 Server room door opened (hardware fallback)` (`sequence: false`; the door contact fires it; from step 14 The Heart) |
+| server_door_opened | `🚪 Server room door opened (hardware fallback)` (`sequence: false`; the door contact fires it; The Heart once Trabolta is awake, wave 11; was from step 14) |
 | reset_server_room | `🔄 Server room: reset the patch-bay alarm` (wave 7; replaced `rearm_server_room`; `server_unlock` is gone) |
-| chess_won | `♟ They beat the King: the door code (fallback)` (`sequence: false`, asks who; the tent tablet posts it itself) |
+| chess_won | `♟ They beat the King: the door code (fallback)` (`sequence: false`, asks who; wave 11: the Server Door terminal posts it itself, any time before 📄) |
 | talked_down | `🕊 Trabolta stands down (talked down)` (`sequence: false`; wave 7, after his `stand_down` offer) |
 | force_majority_stay | `🗳 Force the majority: Unlimited Power (stay)` |
 | force_majority_leave | `🗳 Force the majority: The Way Out (leave)` |
@@ -848,12 +868,20 @@ reads as a cue sheet):**
 | the simulation completed | `Reinstallation: simulation completed (server)` |
 | the golden duck | `Reinstallation: the golden duck (server)` |
 | reinstallation begun | `Reinstallation: begun at the tent (server)` (`sequence: false`) |
+| restore_the_king | `👑 Restore the King's health (the simulation)` (`sequence: false`, Anytime; wave 11: `Night.king_hp = Night.king_hp_max`, §3 E2b) |
+| crew_through_the_door | `🔧 Crew going through the server-room door (2 min)` (`sequence: false`, Anytime; wave 11: `Night.crew_door_until = Time.elapsed + 120`, §3 E2) |
 
 Fire every admin cue from the cue sheet (Run → Director) / quick-fire, never from a guest card (§0 rule 23).
 
 Wave 10: eight `act:` lines group the sheet into the README's sections (B · Act I, C, D, E (🕚 opens it; ⏳ / 🚨 sit in C; 🏍 / 🪦 in F),
 Anytime (💡 + the reinstallation cues), F, G — display only, no cue moved), and the header's `watch:` / `countdown:` lines
 feed the Director page's glance column and the NOW card's countdowns (the Kernel's values masked).
+Wave 11: a `countdown:` line ending `, for guests` also ticks on every guest's phone under the
+room header (`GuestView.countdowns`): only the clocks guests are told about out loud (Bingo,
+hunt 1, the last-chance filing, the summons, midnight), never the Truther Download, the
+five-minute warning or the dance lights (each a surprise). Two new `watch:` lines: *King HP* +
+*Have the door code* (`Night.king_hp`, `program.codex.the_door_code`), and *Present programs*
+in the final round.
 
 The cue sheet's LAST / NEXT (wave 8): `sequence: false` marks every machine-fired, optional,
 anytime or fallback cue (🍾, the set pieces, the printer, 🗜, 🎆, 🧾, 🚪, 🔄, ♟, 🕊, 🗳, the
@@ -925,7 +953,11 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | failed_the_bob | `🍎 Failed the bob: marked for reinstallation` | Clippy / Adobe Acrobat |
 | pickup_line_works | `💘 Said "You're the one that I want"` | Clippy / any host |
 | signed_the_painting | `🖌 Signed the painting` | Hosts (`by:`; `while: Night.painting == true`: a booth reads `while:` with no guest bound, so the once-per-program and never-MS-Paint checks are the hook's) |
-| beat_the_machine | `♟ They beat the machine` | Hosts, Antivirus (`by:`) who saw the mate on the chess phone → `fire chess_won for program` |
+| beat_the_machine | `♟ They beat the machine` | Hosts, Antivirus (`by:`, `arm: true`) who saw the mate on the Server Door terminal when it could not report it (wave 11; was the chess phone) → `fire chess_won for program` |
+| radio_combo_a / radio_combo_b / radio_wrong_patch | `🔌 Patch: Combo A is in` · `💥 Patch: Combo B is in` · `❌ Patch: wrong combination` | wave 11: the server-room Antivirus on the card of the program at the cables (`by: Antivirus`, `arm: true`, `while:` step 14 to 📄) → story rules fire `patch_combo_a` / `patch_combo_b` / `patch_rejected` |
+| radio_door_opened | `🚪 The server-room door opened` | wave 11: the server-room Antivirus when the contact failed (`by: Antivirus`, `arm: true`; `while:` Trabolta awake, before 📄, outside a 🔧 window) → `server_door_opened` |
+| radio_crew_door | `🔧 Crew going through the door (2 min)` | wave 11: the server-room Antivirus before opening the door themselves (`by: Antivirus`, `arm: true`) → `crew_through_the_door` |
+| radio_beans | `🫘 The printer lid is open: full of beans` | wave 11: Adobe Acrobat at the printer when the lid sensor failed (`by: Adobe Acrobat`, `arm: true`; a hook on her) → `printer_opened` |
 
 **Guest (`who: guest`; buttons always shown, so hooks guard):**
 
@@ -933,9 +965,21 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 |---|---|
 | go to the bathroom | `🚻 Bathroom Mode` (description: `Leave honestly. Tells the Antivirus you are not hacking the Internet, and excuses you from a summons.`) · `restricted: allow` (a marked program keeps it, fact M20) |
 | back from the bathroom | `Back from the bathroom` · `restricted: allow` |
-| plant_the_virus | `💾 Insert a disk into the computer` |
+| plant_the_virus | `💾 Insert a disk into the computer` (`arm: true`, wave 11) |
 
 **Agent (`who: agent`, in `cast/trabolta.loom`)** — §4.3.
+
+**Wave 11: `by:` is enforced and `arm:` arms.** `/api/prime/act` refuses a press from a booth
+outside a button's `by:` (403 *not your button: … is for …*; the `by:` characters, a GROUP's
+members and any character owning a hook for it), and a booth never offers another character's
+button; a moderator's booth and a director's quick-fire (no actor) may press any. That is why
+the patch-bay fallbacks are story rules `by: Antivirus` (any Antivirus booth, Windows Defender
+too, while the read-through picks the holder; a trait hook would fire once per Antivirus on a
+director's quick-fire). `while:` is still not enforced. `arm: true` marks a press with no way
+back — an ending (🔌 💥 💘), the alarm (❌), The Heart (🚪), two minutes of the room (🔧), a
+secret handed over (♟, 🍎), a once-a-night moment (🫘), the guest's 💾 — and the booth or the
+pass arms it on the first tap and fires it on the second (core's `tapCue`, the Director's arm
+model); the server never refuses an unarmed press.
 
 ### 2.10 QUESTs (`quests.loom`, in this order)
 
@@ -959,6 +1003,7 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | The Painting | The Million Dollar Painting | The Uploader | every program signs one collaborative painting, revealed at a silent auction (her invitation; the canvas is physical) | Featured Briefing (clearance); a step per 🖌 signature; complete when every cleared program but her (≥ 5) has signed |
 | Go Viral | Your Followers Are Back | Truther Download | hype every Moment of Truth; win followers for Trabolta | VLC Glitch; director completes |
 | Keep The Ball In Play | Tennis For Two | Truther Download | non-proliferation: keep the two leaders talking | Pong Glitch; director completes |
+| The Cold Door | The Cold Door | A Tired Sysadmin | "Four notes are hidden around the house, one digit of the cold door's keypad code on each. Find all four and the code is yours. Or beat the King at chess on the terminal by the door." (wave 11) | started by the first digit note (`door_digit_found`), stepped "N of 4", completed at four or whenever the program holds *The Door Code* by any road (§3 E2d) |
 
 **The 7 staff quests** (wave 4, `for <Character>`, in the booths' Quest Logs): *Run The Bingo*, *Host The Hunt* and *Keep Everyone Calm* (Clippy), *The Selected Antivirus* (Norton), *The Clubs* (Password Manager), *The Exchange* (McAfee) and *The Audit* (CRA Agent Software). The Exchange and The Audit start at the Truther Download and complete at `final_reveal`, or at either server-room ending (Combo A / B), so they stay open while the wallet trades. With the 3 hunt QUESTs (Hunt One / Hunt Two / The Final Facts, generated) the story has **25** quests.
 
@@ -1032,8 +1077,9 @@ everyone at the end) · **X** finale artefact · **D** the server-room door code
 | The Printer | The Printer | E | | | | Full Of Beans (everyone) | ✚ | PC LOAD LETTER. It is full of beans. Routine operations like Print to PDF are failing: the malware is worsening. |
 | The Malware | The Malware | E | | | | Second Hunt (everyone) | ✚ | The official line: "minor irregularity." Signs: the ad, the clock. |
 | The Y2K Clock | The Y2K Clock | E | | | | The Y2K Clock (everyone) | ✚ | System clock reset to 11 p.m., 31 Dec 1999. Midnight: back to 1 Jan 1900 (94 years to wait for Internet in Halifax) or the Y2K Bug. |
-| The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The riddle on the keypad sign, word for word (`facts.json` `door.clue`: "FOUR DIGITS. THE DOOR REMEMBERS THE YEAR HE MET HER."), "the King … knows it", and "The patch bay forgives one wrong combination. Not two." |
-| The Door Code | The Door Code | D | | | | a checkmate from step 14 (`chess_won`); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
+| The Cold Door | The Cold Door | E | | | | with The Y2K Clock (every cleared program, the final round); wave 11: also with the first digit note (`door_digit_found`) | | Wave 7, replaces *The Cold Lock*; `secret: true`, no code. The keypad sign, word for word (`facts.json` `door.clue`; wave 11: "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.", no riddle), "He plays chess. Only checkmate counts. A draw is not a win. Neither is crying.", and "The patch bay forgives one wrong combination. Not two." |
+| The Door Code | The Door Code | D | | | | a checkmate at the Server Door terminal (`chess_won`, until 📄; wave 11, was from step 14); all four digit notes (`door_digit_found`, until 📄); The Whole Truth (last) | ✚ (last) | Wave 7: generated from `facts.json` `door` into `codex/9-facts.loom`, `secret: true`, no code; its text holds the keypad's four digits. Never held by Trabolta. |
+| Cold Door First Digit … Cold Door Fourth Digit | The Cold Door · the first digit … the fourth digit | D | | `FOGGED-KETTLE` · `FROSTED-MIRROR` · `WARM-LINT` · `LOST-PIECE` | | scanned at the Start Bar's kettle · the Graphics Card's mirror · the Fan Closet's dryer · the Steam Room's board-game box (silver, `generated/print-stacks.md`), or shared / sold | | Wave 11: generated from `facts.json` `door.clues` into `codex/9-facts.loom`, `secret: true`; each text names its position in words and the digit; no digit in any id, title or code; four of four → *The Door Code* (§3 E2d). |
 | The Truther Download | TRUTHER DOWNLOAD v0.9 | E | | | | Truther Download Arrives (every program) | | The user's text verbatim (below), `secret: true`, with **Sandy's name blacked out** `█████` (wave 6, decision 5: no Sandy before the overshare). Every holder then gets `The Truther Download Unredacted` (TRUTHER DOWNLOAD v1.0 (correction), `secret: true`: "The name we had to black out: SANDY.") once the story names her: `trabolta_overshares` on a scenario-1 night (`Night.step >= 13`), else the recount / truth.txt. |
 | ILOVEYOU | LOVE-LETTER-FOR-YOU.TXT.vbs | E | | `LOVE-LETTER-FOR-YOU` | | QR taped under VR station 2 (The Internet) | | A virus. Learning it sets `carries_virus`. |
 | Free Antivirus Trial | FREE_ANTIVIRUS_TRIAL.EXE | E | | `FREE-TRIAL-30-DAYS` | | QR on the tablet stand (The Internet) | | "Another antivirus" that turns out to be a virus anyway. Learning it sets `carries_virus`. |
@@ -1092,7 +1138,7 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | The Domain Receipt | WHOIS: mapsandducks.com | T1 | `WHOIS-1999` | in the hall (The Tube) | Registrant "J. Trabolta", created the day after the old registration lapsed. Registrant address: this house. |
 | The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | "Grok. Says whatever anyone wants to hear. Has beaten me at everything since 1999. Do not let him near —" (torn off). |
 | The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. |
-| The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S, and under it a two-digit year (wave 7: a clue to the door's riddle). |
+| The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S, and under it a two-digit year (wave 7: a clue to the door's riddle; wave 11: the year is gone with the riddle, only the heart around the S). |
 
 Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest must connect
 "D. Anderson" or "Barkmore" to a program by talking to people.
@@ -1829,6 +1875,13 @@ tent is captured by the tablet's scan.
   follow orders). Wave 4 (B) adds the two-minute last-chance filing window (`Night.filing_open`
   / `filing_close`), ⏱ / 📋 / 🍾 (B9) and the server-side judge for 📝 filings (`Night.judge_mode`
   auto | review; `verdict` rides the `fact answered` args; credits and marks land at settle).
+  Wave 11: the slider starts **unset** (the guest sets it by touch or a value key before *File
+  it*), and a **near miss** (`core/src/answer-match.ts` `nearMatch`: honorifics dropped, number
+  words, plurals, word order, spelling word by word with the first letter kept; numbers and
+  am/pm exact — *Mr Pickels*, *Grko*) is never an automatic lie or guess: in `auto`
+  that filing takes the review path (pending on the Judging card, `near: {key}`), the story's
+  📝 *Proposed: accurate* line plus a server ⚠ line in `# hosts` naming the key. Unjudged, the
+  settle credits it (the user's call is open: OCT31.md §5 *Wave 11 status*).
   Wave 9 (D5): the director overrides any judged filing on the Judging card (✅ / 😤 / 🤷 per
   filing, both modes, naming the question); a booth's 📝 `fact_accurate` / `fact_lie` /
   `fact_uncertain` with no `question:` judges the program's latest filing only, and while an
@@ -2293,11 +2346,11 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   `waive_leader_tasks` because a leader is absent or stuck **[verified, x1: parenthesised `or`
   in a watcher]**:
   ```
-  when Night.final_round == true and Kernel.majority_reached != true and (Kernel.excel_planted == true or Kernel.waive_leader_tasks == true) and count(Unlimited_Power.members) * 2 > count(Persons):
+  when Night.final_round == true and Kernel.majority_reached != true and (Kernel.excel_planted == true or Kernel.waive_leader_tasks == true) and count([p for p in Unlimited_Power.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
     set Kernel.majority_reached = true
     set Kernel.majority = "stay"
     fire majority_reached
-  when Night.final_round == true and Kernel.majority_reached != true and (Kernel.openoffice_dossier == true or Kernel.waive_leader_tasks == true) and count(The_Way_Out.members) * 2 > count(Persons):
+  when Night.final_round == true and Kernel.majority_reached != true and (Kernel.openoffice_dossier == true or Kernel.waive_leader_tasks == true) and count([p for p in The_Way_Out.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
     set Kernel.majority_reached = true
     set Kernel.majority = "leave"
     fire majority_reached
@@ -2307,7 +2360,11 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
   `Persons`, which counts every uploaded guest program, captured or not, featured or pool.
   **Engine limit:** performers — the Antivirus and the hosts — are never persons, so they
   neither count nor vote, although OV calls everyone in the room a program; Run-mode personas
-  do count in rehearsal, §7 #24.)
+  do count in rehearsal, §7 #24.) **Wave 11: only the programs still here count.** A program a
+  director marked 👋 *Went home* on Run (`POST /api/mod/guest/gone` → the journaled `<id>.gone`)
+  and a director's rehearsal persona (`<id>.persona = true`, set before its join hooks) count on
+  neither side of the sum; `Night.present` keeps the denominator for the board (*Present
+  programs*). N-06's forced majorities stay for whatever ghosts are left.
 - Password Manager keeps the club list: her `when who joins Unlimited Power:` / `when who
   joins The Way Out:` hooks put `🔑 {who.name} joined …` in her booth (§2.14).
 
@@ -2326,6 +2383,24 @@ riddle, `door.clue`) into `generated/print-stacks.md`. A program learns it three
 The Y2K Clock at the final round — *The Cold Lock* is retired), a checkmate from the Y2K hour
 (E2b), or the majority (E1). The Legendary Fact, the four combo halves, *The Cold Door* and *The
 Door Code* are all `secret: true`, so no model ever reads them.
+
+**Wave 11 (2026-10-18, the user's design): the code, the King and the heart.** The riddle is
+no longer a path. A program learns the code three ways, all night until 📄 truth.txt: **the four
+digit notes** (E2d: one secret note per digit, hidden in four rooms; holding all four assembles
+*The Door Code*), **a checkmate against the King** on the Server Door terminal outside the door
+(E2b), or **the majority** (E1, unchanged). The keypad sign (`door.clue`, also *The Cold Door*)
+now reads *FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING
+AT THE TERMINAL BY THIS DOOR.* The King has **one shared health bar for the night** in both
+reinstallation games (E2b). **The Heart plays on the first opening once Trabolta is awake**,
+however the door was unlocked (D1 below); like the Master in Fallout 1, reaching him is not
+stopping him: before the Y2K hour nothing in the room ends the night, and Trabolta says so.
+Decisions taken for the user (OCT31.md §5 *Wave 11 status*, veto any): **D1** The Heart needs
+`Trabolta.awake` (he stays strictly offline before `introduce_trabolta`); before it, inside a 🔧
+crew window and after 📄 an opening only tells `# hosts`; the patch bay, `stand_down` and 🕊 stay
+`Night.step >= 14`. **D2** one reinstallation visit = a walk to the duck (one hit per program per
+visit). **D3** `Night.king_hp` is a journaled story var that only the server lowers. **D4** a
+ghost's picture is a Win98 tile head. **D5** a marked program can't challenge the King; one game
+per scan.
 
 **E1 Majority — `majority_reached`** (W).
 - Rule: phase `majority`, step 15 · `cue lights_server_open` · `set Night.lights =
@@ -2351,7 +2426,11 @@ Door Code* are all `secret: true`, so no model ever reads them.
 it, and entry and exit both fire (stagehand `edge: true`, retained ignored, `debounce_s: 20`).
 ```
 when server_door_opened:
-  if Night.ended != true and Night.step >= 14:
+  if Night.ended != true and Night.r3_closed == true:
+    broadcast "🚪 The server-room door opened after truth.txt. The verdict is in: nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Time.elapsed < Night.crew_door_until:
+    broadcast "🚪 The server-room door opened inside the 🔧 crew window. Nothing happens in the story." to channel(hosts)
+  else if Night.ended != true and Trabolta.awake == true:
     if Night.heart_opened != true:
       set Night.heart_opened = true
       set Night.door_quiet_until = Time.elapsed + 120
@@ -2364,8 +2443,14 @@ when server_door_opened:
     else:
       set Night.door_quiet_until = Time.elapsed + 120
   else if Night.ended != true:
-    broadcast "🚪 The server-room door opened before the Y2K hour. Nothing happens in the story." to channel(hosts)
+    broadcast "🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story." to channel(hosts)
 ```
+- (Wave 11) **Once Trabolta is awake** replaces `Night.step >= 14`, so The Heart can play from
+  the introduction on, whichever way the door was unlocked. **🔧 `crew_through_the_door`** (the
+  director's Anytime cue, or `radio_crew_door` on any Antivirus booth) sets
+  `Night.crew_door_until = Time.elapsed + 120`: for two minutes an opening is the crew's own
+  (`# hosts` only), The Heart is kept for the programs, and the booth's 🚪 hides. 🔄 reset clears
+  it.
 - Every opening inside the quiet window pushes `Night.door_quiet_until` to 120 s after it (the
   `else:` branch, c2f075c), so a group filing in, someone stepping out or a Zigbee contact's
   double report never replays the scene; an opening after 120 quiet seconds plays *Back To The
@@ -2380,7 +2465,10 @@ when server_door_opened:
   narration (`The cold door opens. Cold air, and a hum like something concentrating…`) ·
   Trabolta's candid opener: he will not pretend, the patch bay is his heart, he does not know
   which cables end him, everything was for Sandy (scenario 1) / for her (otherwise), *"There is a
-  terminal on the wall. Scan your pass and talk to me."*
+  terminal on the wall. Scan your pass and talk to me."* (Wave 11) Before step 14 the server-room
+  look goes up but `Night.lights` stays the house's (the catch-up must not replay a Y2K-hour
+  look), and he adds *"Not yet, though. The bay is cold tonight. It will not answer a cable from
+  anyone yet, and I will not pretend I am sorry."*
 - `== Server Room Alarm` (`setting: The Server Room`; public), now reached **only from the patch
   bay** (E3): `set Night.alarms += 1` · `if Night.alarms == 1:` `set Trabolta.composure -= 10`
   (only the first alarm hurts him) · `reveal The Server Room` · `if Night.lights != "alarm":
@@ -2427,31 +2515,78 @@ Night.heart_holder != self.name: set self.at_the_heart = false` — there is one
 terminal, so a line opened there pushes out whoever was at his heart before, even if their
 `terminal closed` was lost (`Night.heart_holder`, `"none"` at Power On). `program.at_the_heart` is a plain ROLE slot (never `secret:`): the
 persona's `them:` carries it and its `situations:` make him candid with exactly that program
-from the Y2K hour (§5).
+(wave 11: whenever he is awake, `when: them.at_the_heart == true`; a separate *standing down*
+block keeps `Night.step >= 14`, and he never fires `stand_down` without it).
+- (Wave 11) **The file panel.** While a pass is piloted there, the heart terminal's **📎 GIVE HIM
+  A FILE** lists the guest's own codex with **Give** (the guest's own `POST
+  /api/guest/codex/share {entry, to: "Trabolta"}`, so the story hears `when Trabolta learns X`
+  exactly as from the phone), a **TYPE A CODE** box and **SCAN A FILE'S QR** (redeemed for the
+  guest). A file he always refuses has no Give: a `secret: true` entry (the digit notes, *The
+  Door Code*, *The Cold Door*) reads *A SECRET FILE: HE WON'T TAKE IT* (the server answers 403
+  *they won't take a secret file*, `Sim.agentRefusal`), lore about someone else *ABOUT X: HE
+  WON'T TAKE IT*. The leash is 120 s while the panel is open.
 
-**E2b The King — `chess_won`** (H the tent tablet, P `beat_the_machine`, or D; wave 4, U17;
-wave 7: the code). The King (`house.json` prop `cold-lock-king`: `kind: "king"`, `hp: 8` since
-wave 5 (one hit per 2 s, ≈ 16 s to pawns), gold, "THE KING", `armed: {path: "Night.step", min:
-14}`, `signals: {won: "chess won", lost: "chess lost", drawn: "chess drawn"}`) guards the door
-`server-door` of the virtual house (`guard:`; shut for `route()` until he falls). On the tent
-tablet (`reinstall/web`) the program hits him (⚔ / Space) — each hit drops a heart and dumbs his
-chess AI down a stage (grandmaster → club → beginner → dizzy → pawns only) — then challenges him
-(♟ / C) on the tablet's board (badge FOR THE CODE / PRACTICE, the `stakesLine` under it); mate
-posts `POST /api/mod/signal {name: "chess won", subject, label: "Tent tablet"}` with the
-tablet's mod token (the journal reads *by Tent tablet*) and the tablet says where the code went
-(`WIN_CODE` / `WIN_PRACTICE`, after re-reading `Night.ended`, then `Night.king_armed` and
-`Night.r3_closed`, with a 4 s timeout; the map's `Night.step` gate only on a story with no
-`king_armed`). A headset only
-shows him ("The King is fought on the tent tablet."). Until the King is device-checked, the
-Lichess phone outside the real door is the fallback: a host or Antivirus who saw the mate
-presses ♟ *They beat the machine* on the winner's card (`fire chess_won for program`), or the
-director fires `♟ They beat the King: the door code (fallback)` naming the winner (`sequence:
-false`; a subject cue since wave 7, so the cue sheet asks who).
+**E2b The King — `chess_won`, `king hit`, `king fallen`** (wave 11; was wave 4 U15–U17, wave
+7 the code). He stands at the server-room door twice.
+
+*In the simulation* (both reinstallation games): the `house.json` prop `cold-lock-king` (`kind:
+"king"`, gold, "THE KING", `hp: 15`, `health: "Night.king_hp"`, `armed: {path:
+"Night.king_armed", min: 1}`, `signals: {won: "chess won", lost: "chess lost", drawn: "chess
+drawn", hit: "king hit", fallen: "king fallen"}`) guards the door `server-door` (`guard:`; shut
+for `route()` while he stands). He has **one health bar shared by every program all night**:
+`Night.king_hp` / `Night.king_hp_max`, both 15 at Power On, never regenerating. A program next to
+him and facing him (`@loom/house` `kingReach`: 1.25 m, 55°) presses ⚔ HIT on the tent tablet or
+the trigger / A / X in the headset; `POST /api/spatial/king/hit` (session token) is judged by the
+**server** off the session's last pose, **once per program per reinstallation visit** (a visit
+ends when its duck is found; Leave + re-scan, a director's end, a timeout or a re-scan mid-walk
+is the same visit; the record is in memory, so a story reset or a server restart forgets it). The
+server journals the set `Night.king_hp = hp − 1` and fires `king hit` (args `hp`, `max`) for the
+guest, `by` the device, and at 0 `king fallen`. The story **never** lowers the bar:
 ```
+when king_hit for program:
+  if Night.ended != true:
+    broadcast "⚔ {program.name} hit the King in the simulation: {Night.king_hp}/{Night.king_hp_max}" to channel(hosts)
+    if Night.king_hp == 10:
+      broadcast "♔ Somewhere in the simulation, the King staggers. His game at the cold door is slipping." to everyone
+    else if Night.king_hp == 5:
+      broadcast "♔ The King in the simulation is bleeding pixels. At the cold door he hesitates over every move." to everyone
+
+when king_fallen for program:
+  if Night.ended != true:
+    broadcast "!♔ The King has fallen in the simulation. He kneels at the cold door, and its virtual copy stands open. At the real door he can barely move a pawn." to everyone
+    broadcast "♔ {program.name} felled the King in the simulation: 0/{Night.king_hp_max}. Both games' server-room door is open; 👑 restores him." to channel(hosts)
+
+when restore_the_king:
+  set Night.king_hp = Night.king_hp_max
+  broadcast "👑 The King is restored: {Night.king_hp}/{Night.king_hp_max}. He stands at the door in the simulation again." to channel(hosts)
+```
+At 0 he kneels for everyone and his guarded door opens in both games (`withFallenKings`: the
+door unguarded, his prop not solid); 👑 `restore_the_king` (admin, Anytime) or Run → House map's
+**Set…** (`POST /api/mod/spatial/king {hp}`) stands him up, but a player behind the door, in the
+doorway or on his spot keeps it open until they walk clear. Every screen reads the bar off the
+server (`hello.king`, the `king` frame on change, `/api/screen/state` `king {hp, max, fallen,
+armed}`). Nothing in either game plays chess or posts a chess result.
+
+*In the real house*: the King plays chess **only on the Server Door terminal** (`terminal`
+`view=chess`, spot `server-room-door` in the basement hall), awake all night, **with no hints**.
+A program scans their pass (a marked one is refused, D5) and plays one game, dealt at
+`@loom/chess` `stageFor(hp, max)`: grandmaster only at a full bar, club 10–14, beginner 5–9,
+dizzy 1–4, pawns only at 0. The screen shows THE KING, his bar (`n / 15`, *HE KNEELS* at 0) and
+the stakes (*Checkmate him and the server-room door code goes to your Codex.* while
+`Night.king_armed` is 1, else *No prize now.*), never the strength line. A game's end posts `POST
+/api/mod/signal {name: "chess won" | "chess lost" | "chess drawn", subject: <guest id>, label:
+"Terminal · <name>"}`. When the terminal could not, a host or Antivirus who **saw** the mate
+presses ♟ *They beat the machine* (`beat_the_machine`, `by: Hosts, Antivirus`, `arm: true`; →
+`fire chess_won for program`) on the winner's card, or the director fires `♟ They beat the King:
+the door code (fallback)` naming the winner (`sequence: false`, a subject cue).
+```
+when Night.king_armed == 1 and (Night.r3_closed == true or Night.ended == true):
+  set Night.king_armed = 0
+
 when chess_won for program:
   if Night.ended != true and Night.r3_closed == true:
     broadcast "♟ A King win after truth.txt: the verdict is in, no door code. Nothing happens in the story." to channel(hosts)
-  else if Night.ended != true and Night.step >= 14:
+  else if Night.ended != true:
     if program.name == null:
       broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
     else if program.codex.the_door_code == true:
@@ -2460,16 +2595,39 @@ when chess_won for program:
       unlock The Door Code for program
       broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
       broadcast "♟ {program.name} beat the King: the door code is in their Codex." to channel(hosts)
-  else if Night.ended != true:
-    broadcast "♟ A chess win before the Y2K hour is practice only: no door code." to channel(hosts)
 ```
-- Before the Y2K hour (`Night.step < 14`) a win is practice: the simulation's cold door opens
-  for that session, nobody learns the code.
-- `chess_lost` / `chess_drawn` (the tablet; a phone app may), from step 14: a `♟` readout in
-  `# hosts` every time (*"The King won a game. No door code."* / *"A draw with the King. No door
-  code."*), and Trabolta gloats on the TV (`-> Chess Lost` / `-> Chess Drawn`, The Desktop) only
-  when `Time.elapsed >= Night.gloat_at` and `Night.step < 16`, then `Night.gloat_at =
-  Time.elapsed + 300` (losses and draws share the window; wave 6 open issue 4).
+- `Night.king_armed` is 1 from Power On (no more practice games before the Y2K hour) until 📄 or
+  an ending; the map's king `armed` reads it, so the terminal's stakes line follows it.
+- `chess_lost` / `chess_drawn` (the door terminal), all night: a `♟` readout in `# hosts` every
+  time (*"The King won a game. No door code."* / *"A draw with the King. No door code."*), and,
+  once `Trabolta.awake`, Trabolta gloats on the TV (`-> Chess Lost` / `-> Chess Drawn`, The
+  Desktop) only when `Time.elapsed >= Night.gloat_at` and `Night.step < 16`, then
+  `Night.gloat_at = Time.elapsed + 300` (losses and draws share the window).
+
+**E2d The cold door's digits — `door_digit_found`** (wave 11, the user's "one clue = one
+digit"). `facts.json` `door.clues` holds four secret notes, one per digit of `door.code`;
+`titi:facts` generates them into `codex/9-facts.loom` (`secret: true`, coded, titles *The Cold Door
+· the first digit* … *the fourth digit*; no digit in any id, title or code) and into the
+**silver** print stack of `generated/print-stacks.md`, and adds their codes to the mind file's
+`secrets.never`. They hang all night in four rooms, never the server room or a bathroom:
+
+| Note | Code | Where |
+|---|---|---|
+| Cold Door First Digit | `FOGGED-KETTLE` | The Start Bar (kitchen): wedged behind the kettle |
+| Cold Door Second Digit | `FROSTED-MIRROR` | The Graphics Card (bedroom two): taped to the back of the mirror |
+| Cold Door Third Digit | `WARM-LINT` | The Fan Closet (laundry): in the dryer's lint-filter slot |
+| Cold Door Fourth Digit | `LOST-PIECE` | The Steam Room (game room): inside the lid of a board-game box |
+
+However a note arrives (a scan, a share, a sale), a ROLE hook (`when program learns Cold Door
+First Digit:` …) fires `door_digit_found for program`, which sets `program.door_digits` (0 to 4,
+the notes they hold) and, unless they already hold *The Door Code*: at the first note `start
+quest The Cold Door` (*"N of 4. A note with one digit of the cold door's code. The others are
+hidden around the house."*) + `unlock The Cold Door` (the sign's words); then `update quest …
+"N of 4."`; at four `complete quest The Cold Door` + `unlock The Door Code` + a `🔢` readout in
+`# hosts`. After 📄 or an ending four of four gives no code (like a late checkmate): the quest
+steps to *"4 of 4."* and only `# hosts` hears. A ROLE watcher (`when self.codex.the_door_code ==
+true and self.quest.the_cold_door == "active":`) completes the quest whichever way the code
+arrived. A secret note can't be given to Trabolta (E2a).
 
 **E2c Talked down — `stand_down` → `talked_down`** (wave 7, "like the Fallout Master").
 Trabolta's agent power `stand_down` (`who: agent`, `limit: 1`) only **offers**; the hook in
@@ -2953,19 +3111,22 @@ bargain: |
   currency; nothing for whoever read your LiveJournal. desperate: anything you hold, for a fact.
   Outside the cold room you never admit where your heart is kept, and you never know a
   combination or a door code. stand_down is never a favour: it is bought only with the truth,
-  at your heart (see the SITUATION block when there is one). When you act, name the price you
-  were paid.
+  at your heart (see the STANDING DOWN situation block when there is one; without it, it is not
+  yours to offer). When you act, name the price you were paid.
 situations:            # wave 7: stagehand appends each block whose `when:` holds
   - name: at your heart
-    when: them.at_the_heart == true && Night.step >= 14
+    when: them.at_the_heart == true          # wave 11: whenever he is awake (was && Night.step >= 14)
     prompt: …          # candid, the Master: the patch bay is his heart; he does not know the
                        # combinations or the door code; what he wants and why; still never a hunt
-                       # answer, a verdict, a combination, a cable, a code or her one line; fires
-                       # stand_down only when this program has shown him it is impossible
+                       # answer, a verdict, a combination, a cable, a code or her one line;
+                       # nothing he says in this room ends the night by itself
+  - name: standing down                      # wave 11: the stand_down rule moved here
+    when: them.at_the_heart == true && Night.step >= 14
+    prompt: …          # fires stand_down only when this program has shown him it is impossible
   - name: her name has been said
-    when: them.at_the_heart == true && Night.step >= 14 && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
+    when: them.at_the_heart == true && (Night.recount == true || (Night.scenario == 1 && Night.step >= 13))
   - name: her name is still blacked out
-    when: them.at_the_heart == true && Night.step >= 14 && Night.recount != true && !(Night.scenario == 1 && Night.step >= 13)
+    when: them.at_the_heart == true && Night.recount != true && !(Night.scenario == 1 && Night.step >= 13)
 ---
 ```
 `situations:` (wave 7, stagehand `agents/persona.py`): a list of `{name?, when, prompt}`; each
@@ -3059,7 +3220,7 @@ The mind body: the orchestrator's rules — move forward only, never behind a ph
 (`featured`, accepted truths, Internet visits, LiveJournal); questions to grow
 ("Should I earn her or force her?"); never invent where his heart is; never act on a
 program's flags that the program did not tell him (virus, choices). Wave 7 adds **AT HIS HEART
-(from the Y2K hour)**: the candour the voice shows at the server-room terminal goes into that
+(from the Y2K hour; wave 11: whenever he is awake)**: the candour the voice shows at the server-room terminal goes into that
 program's dossier, never the shared brief; `stand_down` is an offer a host confirms; and the
 year he met her is never said or written into a brief, note or dossier (it is the door code).
 The favour policy names "the one he is doing all this for", never Sandy, before the story has
@@ -3092,7 +3253,7 @@ Definitions:
   Run-mode personas too; never performers — an engine limit: OV counts the Antivirus as
   programs too).
 - **majority** for a faction G = `count(G.members) * 2 > count(Persons)` (strictly more than
-  half = "half + 1"), checked only while `Night.final_round == true` and
+  half = "half + 1"; wave 11: both counts leave out a program with `.gone` or `.persona`), checked only while `Night.final_round == true` and
   `Kernel.majority_reached != true`, **and only once G's leader has done their task**
   (stay: `Kernel.excel_planted`; leave: `Kernel.openoffice_dossier`; either:
   `Kernel.waive_leader_tasks`). First faction to cross wins; it latches.

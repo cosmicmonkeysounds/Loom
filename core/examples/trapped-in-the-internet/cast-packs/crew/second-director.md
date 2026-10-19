@@ -75,7 +75,10 @@ buttons). A host's 📝 on a
 program's card (*be Clippy* → **📝 Filed fact: …**) judges that program's
 **latest** filing only; when a program has filed more than once and an
 earlier one is still waiting, it changes nothing and `# hosts` points you at
-the Judging card. Either way the guest hears the same reply. A lie counts
+the Judging card. Either way the guest hears the same reply. **A near miss**
+(wave 11: a mistyped right answer) waits on the card tagged *near* even in
+`auto`, with a ⚠ line in `# hosts` naming the key: judge each one before 📋,
+since an unjudged near miss is credited as accurate at the settle. A lie counts
 against the final verdict for good; that is the point. A typo the key did
 not know → override that one filing, and tell John to add the alias to
 `facts.json`. Clippy's own mis-tap (😤 meant as ✅) is undone by Clippy

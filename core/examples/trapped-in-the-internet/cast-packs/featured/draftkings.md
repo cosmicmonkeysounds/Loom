@@ -8,8 +8,10 @@
 - **Sat Oct 31, after 8 pm.** Please come in the **first wave (8:00–8:30)**.
   [[EDIT: address]]
 - Bring a **charged phone**.
-- At the door, scan the QR and **pick DraftKings from the list** (don't type
-  it). If it's already taken, tell the door host.
+- At the door, scan the **QR on your invitation** (not the door's): it holds
+  **DraftKings** for you, and to everyone else it shows 🔒 Reserved. Pick it
+  (don't type it). Lost the invitation, or it says locked? Tell the door
+  host: the director opens it for you for two minutes.
 - Never type or say your real name tonight. You are DraftKings.
 - Costume: the green crown, odds on a board, a visor, a deck of cards, poker
   chips, a Monopoly top hat. [[EDIT]]

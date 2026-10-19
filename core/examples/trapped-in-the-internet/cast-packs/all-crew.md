@@ -96,8 +96,9 @@ his messages by hand. Nothing for performers to do except stay in character:
 
 - **How do I join?** Scan the QR on the door sign (or go to
   app.mapsandducks.com and type the event code [[EDIT: event code]]). Pick
-  your program from the list. Featured guests: pick the exact name on your
-  sheet.
+  your program from the list. Featured guests: scan the QR on your
+  invitation instead (your program is 🔒 Reserved for you); lost it → the
+  director opens it for two minutes.
 - **I closed the app / my browser lost me.** Don't sign up again. Find the
   director (or the house manager walks you there): they show a QR that puts
   you back exactly where you were (N-02).

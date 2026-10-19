@@ -42,8 +42,9 @@
     is only on the **door terminal** outside the server room (a wall
     terminal by the keypad, on the Terminals card like the others; its
     name is what the journal shows when the King is mated: *chess won, by
-    Terminal · <name>*). [[EDIT: the door terminal's provisioning URL, from
-    the chess lane]]
+    Terminal · <name>*). Provision it
+    `/terminal/?code=<mod>&name=Server Door&spot=server-room-door&view=chess`:
+    it is awake all night on THE KING and his bar (no screensaver).
 
 The **mod code is never printed**: [[EDIT: where it lives — your password
 manager]].

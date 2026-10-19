@@ -8,8 +8,10 @@
 - **Sat Oct 31, after 8 pm.** Please come in the **first wave (8:00–8:30)**.
   [[EDIT: address]]
 - Bring a **charged phone**.
-- At the door, scan the QR and **pick Microsoft Excel from the list** (don't
-  type it). If it's already taken, tell the door host.
+- At the door, scan the **QR on your invitation** (not the door's): it holds
+  **Microsoft Excel** for you, and to everyone else it shows 🔒 Reserved. Pick it
+  (don't type it). Lost the invitation, or it says locked? Tell the door
+  host: the director opens it for you for two minutes.
 - Never type or say your real name tonight. You are Microsoft Excel.
 - Costume: a 90s/00s Microsoft Excel. Ideas: the green X, a grid-paper shirt,
   cell references on sticky notes. Underneath, a ninety-year-old mayor: a
