@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { create } from 'zustand'
+import { CockpitContext, nullCockpit, type CockpitState } from '@/store/cockpit'
+import { Messages, MindTab, PersonFile } from './MindTab'
 import type { AgentMindSummary, AgentThought } from '@loom/core/views'
 import { SLIDER_COMMIT_KEYS, SLIDER_IDLE, briefLabel, byLabel, driveControl, effortControl, favoursControl, fetchThought, isNewMind, kindMeta, localPrefix, memoLabel, mindModeOf, mindPhaseOf, personExtras, prefixRef, promptMsOf, sliderStep, surveyButton, timingText, type SliderEvent, type SliderState } from './mind'
 import { ALL_KINDS, KIND_META, agentQueueOf, askingOf, askingText, judgeModeTitle, ruledFilings, rulingOf, rulingText, confirmEvent, diffRows, driveSeries, filingButtons, filterThoughts, judgeModeOf, mindCharacters, nearCount, nearKeyOf, pendingFilings, pickMind, questionFilings, questionTallies, queueBadge, QUEUE_SLOW_MS, QueueTone, sparklinePath, speakersOf, stageSegments, summarizeThought, verdictCall, waitText } from './mind'
@@ -623,5 +628,125 @@ describe('wave 12 controls', () => {
     const first = drive([{ type: 'change', value: 50 }, { type: 'pointerup' }], 70)
     expect(drive([{ type: 'change', value: 55 }, { type: 'pointerup' }], 70, first.state).sends).toEqual([55])
     expect(drive([{ type: 'change', value: 50 }, { type: 'pointerup' }], 70, first.state).sends).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Fixture renders (C6.7): the trabolta/answers report as an old worker sends
+// it renders as before; a new-mode report shows the new labels and controls.
+// ---------------------------------------------------------------------------
+
+/** A Trabolta report exactly as the trabolta/answers worker mirrors it
+ *  (after the server's sanitiser): no mode, no phase, no briefBy, files with
+ *  a worker trust and no story fields. */
+function answersReport(): AgentMindSummary {
+  return mind({
+    brief: 'You are hungry for facts tonight.',
+    status: { worker: 'laptop', voice: { model: 'gpt-oss:20b', effort: 'low' }, mind: { model: 'qwen-distill', thinking: false, paused: false, pending: [] } },
+    people: [{ id: 'g1', name: 'Ada', kind: 'guest', summary: 'Offered two facts.', trust: 64, promises: [], asks: [], claims: ['Clippy is lying'], turns: 4, lastSeen: 90 }],
+    learned: [{ claim: 'Clippy is lying', from: 'Ada', verdict: 'rumour' }],
+  })
+}
+
+/** The same character on a new worker (mind_mode: new). */
+function newModeReport(): AgentMindSummary {
+  const rev = (n: number, by: string, touched: string[]) => ({ rev: n, at: 100 + n, by, touched, thought: null, brief: '', mood: '', stage: 'appetite', drives: { hunger: 60 + n, suspicion: 50 }, policy_favours: 'earned', notes: 0, people: 1, learned: 0 })
+  return wideMind({
+    mode: 'new',
+    phase: 'hunt_1',
+    briefBy: 'story',
+    brief: 'Every fact offered is a gift.',
+    stageHistory: [{ stage: 'appetite', at: 101, why: 'phase hunt_1', by: 'story', rev: 1 }],
+    learned: [],
+    world: [],
+    questions: [],
+    revisions: [rev(1, 'story', ['stage', 'brief', 'drives']), rev(2, 'director', ['drives'])],
+    status: { worker: 'laptop', mindMode: 'new', voice: { model: 'gpt-oss:20b', effort: 'low', memo: true, repeatGuard: true, layout: 'lean' }, mind: { paused: false }, phaseWatchS: 30 },
+    people: [
+      {
+        id: 'g1', name: 'Ada', kind: 'guest', summary: '', trust: 50, promises: [], asks: [], claims: [], turns: 4, lastSeen: 90,
+        memos: [{ at: 80, text: 'Ada brings him old mice.', by: 'voice', heart: false }, { at: 85, text: 'She came to the heart.', by: 'voice', heart: true }],
+        firstMet: 'First met during hunt_1 in The Desktop.',
+        gifts: ['The Sandy File'],
+        filings: ['H2'],
+        marked: true,
+        chart: '3 of 12; you named them Most Trusted',
+        storyTrust: '62',
+      },
+    ],
+  })
+}
+
+function render(state: Partial<CockpitState>, el: Parameters<typeof createElement>[0] = MindTab, props: Record<string, unknown> | null = null): string {
+  const store = create<CockpitState>(() => ({ ...nullCockpit.getState(), ...state }))
+  return renderToStaticMarkup(createElement(CockpitContext.Provider, { value: store }, createElement(el as never, props as never)))
+}
+
+describe('Mind page fixtures (wave 12)', () => {
+  it('renders the trabolta/answers report as before: Survey now, the orchestrator, worker trust, no new labels', () => {
+    const html = render({ minds: [answersReport()], thoughts: [thought()] })
+    expect(html).toContain('Survey now')
+    expect(html).not.toContain('Rewrite brief')
+    expect(html).toContain('Mind reasoning off')
+    expect(html).toContain('qwen-distill')
+    expect(html).toContain('2 exchanges · 2 reflections · 1 surveys · rev 2')
+    expect(html).toContain('trust 64/100')
+    expect(html).toContain('Fed to him, and what he made of it')
+    expect(html).toContain('(reflect)')
+    expect(html).not.toContain('set by')
+    expect(html).not.toContain('memo')
+    expect(html).not.toContain('the house&#x27;s trust')
+    expect(html).not.toContain('data-testid="mind-mode"')
+    expect(html).not.toContain('(prompt ')
+  })
+  it('renders a new-mode report: Rewrite brief, the story mind, by-story labels, the house\'s trust and ⛔', () => {
+    const html = render({ minds: [newModeReport()], thoughts: [wide({ kind: 'brief', result: { brief: 'Be delighted.' }, prompt_ms: 300 })] })
+    expect(html).toContain('Rewrite brief')
+    expect(html).not.toContain('Survey now')
+    expect(html).not.toContain('Mind reasoning')
+    expect(html).toContain('data-testid="mind-mode"')
+    expect(html).toContain('layout lean · memo on · repeat guard on · phase watch 30 s')
+    expect(html).toContain('2 exchanges · rev 2 · phase hunt_1')
+    expect(html).toContain('phase hunt_1')
+    expect(html).toMatch(/data-testid="mind-brief-by"[^>]*>set by story</)
+    expect(html).toContain('(set by story)')
+    expect(html).toMatch(/data-testid="mind-revision-by"[^>]*>set by director</)
+    expect(html).toContain('the house&#x27;s trust <span class="font-mono text-zinc-200">62</span>')
+    expect(html).toContain('data-testid="mind-person-marked"')
+    expect(html).toContain('2 memos')
+    expect(html).not.toContain('Fed to him')
+    expect(html).not.toContain('Collecting answers to')
+    expect(html).not.toContain('trust 50/100')
+    expect(html).toContain('rewrote the brief: “Be delighted.”')
+    expect(html).toContain('1.2 s (prompt 300 ms)')
+  })
+  it('opens a new-mode file: first met, memos by voice (🫀 at the heart), gifts, filings, the chart, no Set trust', () => {
+    const m = newModeReport()
+    const html = render({ minds: [m] }, PersonFile, { mind: m, person: m.people[0] })
+    expect(html).toContain('First met during hunt_1 in The Desktop.')
+    expect(html).toContain('memo by voice')
+    expect(html).toContain('🫀 memo by voice')
+    expect(html).toContain('She came to the heart.')
+    expect(html).toContain('“The Sandy File”')
+    expect(html).toContain('H2')
+    expect(html).toContain('3 of 12; you named them Most Trusted')
+    expect(html).toContain('the house&#x27;s trust')
+    expect(html).not.toContain('Set trust')
+    expect(html).toContain('Forget')
+  })
+  it('an old file opens as before, with Set trust', () => {
+    const m = answersReport()
+    const html = render({ minds: [m] }, PersonFile, { mind: m, person: m.people[0] })
+    expect(html).toContain('Set trust')
+    expect(html).toContain('told him:')
+    expect(html).not.toContain('memo')
+    expect(html).not.toContain('first met')
+  })
+  it('a stored-once prefix shows as a button; any other message as text', () => {
+    const html = render({}, Messages, { messages: [{ role: 'system', content: '[same prefix as th-0123456789]' }, { role: 'user', content: 'Ada: hello' }] })
+    expect(html).toContain('data-testid="mind-prefix-load"')
+    expect(html).toMatch(/same prefix as <span class="font-mono">th-0123456789<\/span>/)
+    expect(html).toContain('Ada: hello')
+    expect(render({}, Messages, { messages: [{ role: 'system', content: 'You are Trabolta.' }] })).not.toContain('mind-prefix')
   })
 })
