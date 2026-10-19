@@ -4283,6 +4283,24 @@ const DEMO_ACT_2B = ["five_minute_warning", "summons_closed", "truth_pong"];
 const DEMO_ACT_2C = ["round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "zip_everyone_out", "trabolta_overshares", "y2k_clock"];
 
 describe("Trapped in the Internet — the WIP demo (DEMO.md)", () => {
+  it("every phone DEMO.md signs in as a reserved featured program joins with its invitation (or the 🔓), never a bare pick", () => {
+    const demoMd = readFileSync(join(scenarioDir(SHOW), "DEMO.md"), "utf8");
+    const reserved = [...fresh().model.characters.values()].filter((c) => c.reserved).map((c) => c.id);
+    expect(reserved).toContain("Microsoft Excel");
+    const rows = demoMd.split("\n").filter((l) => /^\| \*\*Phone /u.test(l));
+    expect(rows.length).toBeGreaterThan(0);
+    let checked = 0;
+    for (const row of rows) {
+      const signsIn = row.split("|")[2] ?? "";
+      for (const name of reserved) {
+        if (!signsIn.includes(`**${name}**`)) continue;
+        checked++;
+        expect(row, name).toMatch(/invitation/u);
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(2); // Excel + MS Paint
+  });
+
   /** Three phones (Excel, MS Paint, Calculator) through DEMO.md Acts 0–II. */
   function demo(): Sim {
     const sim = fresh();
