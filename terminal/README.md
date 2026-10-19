@@ -221,7 +221,12 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Room&character=Trabol
   server's words, e.g. an agent won't take an entry about someone else),
   a **TYPE A CODE** box and **SCAN A FILE'S QR** (a codex QR's
   `?unlock=`) that redeem for the guest (`/api/guest/codex/redeem`) and
-  then offer the new entry to give. The leash holds while it is open.
+  then offer the new entry to give. A camera read is redeemed once: the
+  camera stops after it, and a code the panel already unlocked is offered
+  again without a second redeem (every redeem is journaled; a wrong one is
+  the story's `wrong code`). While it is open the leash runs **120 s**
+  instead of 30 (*STILL THERE?* for the last 20 s) — it is never held, so
+  a guest who walks off with the panel open is still disconnected.
 
 Kiosk notes: [`docs/trapped/kiosk.md`](../docs/trapped/kiosk.md) → *The
 server-room terminal*.
@@ -244,7 +249,8 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Door&spot=server-room
   /api/state?role=guest&as=<id>`: 404 unknown, `restricted`); a marked
   program is refused (*⛔ Marked programs can't challenge the King.*).
   The board deals at `stageFor(hp, max)` read **at the deal**
-  (`@loom/chess`: grandmaster … pawns only); hits landing mid-game change
+  (`@loom/chess`: a full bar is grandmaster, 1 … 14 club / beginner /
+  dizzy, only a felled King pawns only); hits landing mid-game change
   nothing. **No hints, no tips**; a two-tap **Give up**. The King thinks
   in 12 ms slices (`pickMoveAsync`) so taps stay live on old tablets.
 - **One game per scan**. The leash is 120 s with no touch (held while he
@@ -256,7 +262,9 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Door&spot=server-room
   kept in `localStorage` (`loom.terminal.pending-chess`) while in flight
   and re-sent on the next boot only within 60 s. The result screen says
   *Checkmate. The door code is in your phone's Codex.* only once the win
-  landed while `armed`; a win that never landed says to tell a host (♟).
+  landed while `armed` and the story took it (a 200 with `refused: true`
+  — a win after truth.txt or an ending — says *Checkmate. No prize now.*);
+  a win that never landed says to tell a host (♟).
   It stays ~10 s after the post settles, then attract.
 - Layered like a room terminal: overlays only (they cover the board and
   hold the game), never a story slide, the countdown corner or the Y2K
@@ -397,8 +405,8 @@ Two settings, on the setup screen or in the provisioning link:
 | Setting | Values |
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
-| `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
+| `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. The `chess` view ignores it. |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator: there is no scanner, no chat and no wake tap (it never speaks).
@@ -443,7 +451,7 @@ src/config.ts          per-tablet config (localStorage) + URL provisioning
 src/scanner.tsx        camera + QR (BarcodeDetector, else jsQR)
 src/scan.ts            what a scanned code means; the typed-name fallback
 src/pilot.ts           impersonate / end / say; the DM thread off the guest stream; a room terminal's terminal opened / closed
-src/idle.ts            the 30 s leash (paused while the character is answering); the chess board's is 120 s
+src/idle.ts            the 30 s leash (paused while the character is answering); 120 s with the file panel open, and on the chess board
 src/controls.tsx       the typed fallback + the 2 s-hold ⚙, shared by the line and the chess board
 src/files.ts           the heart terminal's file panel: give / redeem as the piloted guest (pure-ish)
 src/FilePanel.tsx      📎 GIVE HIM A FILE: the guest's entries, a code box, a codex-QR camera
