@@ -47,6 +47,7 @@ SUMMARY_HISTORY = 8
 MAX_SUMMARY = 400
 MAX_BRIEF_LINES = 8
 MAX_FIRST_WORDS = 100
+FIRST_WORDS = " Their first words to you:"
 
 _warned: set[str] = set()
 
@@ -231,7 +232,7 @@ def first_met_line(persona: Persona, req: dict[str, Any], phase: str) -> str:
     if _true((them.get("vars") or {}).get("at_the_heart")):
         return line  # words said at his heart stay there: the line is shown everywhere
     if words and not persona.secrets.leaks(words) and not persona.secrets.names_topic(words):
-        line += f" Their first words to you: “{words}”"
+        line += f"{FIRST_WORDS} “{words}”"
     return line
 
 
@@ -405,6 +406,45 @@ def summary_history(d: Dossier, history: list[dict[str, Any]]) -> list[dict[str,
 def summary_memos(d: Dossier) -> list[str]:
     """The memos a quiet summary may read (and its signature): never a heart memo."""
     return [str(m.get("text") or "") for m in d.memos if not m.get("heart")]
+
+
+def prune_restored(persona: Persona, mind: Mind) -> tuple[int, int]:
+    """Re-check the new mind's stored fields against the secrets as they are
+    NOW (a restored mind.json was written under an older `never` / `match`
+    list — `titi:facts` may have moved the door code since). `Secrets.prune`
+    covers the classic fields; this covers the memos, the first-met quote,
+    the gifts, the summary's answer words and `said`. Returns what went, as
+    (hunt / answer words, `never` words) — `drop_counts` words them."""
+    secrets = persona.secrets
+    answers = Secrets(match=secrets.match)
+    hunt = never = 0
+
+    def why(text: str, topics: Secrets = answers) -> str | None:
+        if secrets.leaks(text):
+            return "never"
+        if topics.names_topic(text) or secrets.judges_topic(text):
+            return "hunt"
+        return None
+
+    def count(reason: str | None) -> bool:
+        nonlocal hunt, never
+        if reason == "never":
+            never += 1
+        elif reason == "hunt":
+            hunt += 1
+        return reason is None
+
+    for d in mind.people.values():
+        d.memos[:] = [m for m in d.memos if count(why(str(m.get("text") or "")))]
+        if FIRST_WORDS in d.first_met:
+            head, _, words = d.first_met.partition(FIRST_WORDS)
+            if not count(why(words, secrets)):  # the full topics + match, as when it was written
+                d.first_met = head
+        d.gifts[:] = [g for g in d.gifts if count("hunt" if not secrets.lore_ok({"title": g}) else "never" if secrets.leaks(g) else None)]
+        if d.summary and not count(why(d.summary)):
+            d.summary = ""
+    mind.said[:] = [x for x in mind.said if count(why(str(x.get("text") or "")))]
+    return hunt, never
 
 
 def history_lines(req: dict[str, Any], limit: int = SUMMARY_HISTORY) -> list[dict[str, Any]]:

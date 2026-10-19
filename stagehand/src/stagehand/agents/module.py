@@ -404,6 +404,8 @@ class Agents:
             mind.mode = self.cfg.mind_mode
             mind.seed(persona.stages, persona.drives)
             hunt, never = persona.secrets.prune(mind)
+            more_hunt, more_never = story_mind.prune_restored(persona, mind)  # the new mind's fields
+            hunt, never = hunt + more_hunt, never + more_never
             if hunt or never:
                 log.info("%s's mind: dropped restored %s", name, drop_counts(hunt, never))
             self.minds[name] = mind

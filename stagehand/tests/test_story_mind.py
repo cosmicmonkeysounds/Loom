@@ -686,6 +686,37 @@ def test_nothing_said_at_his_heart_reaches_a_summary_or_a_later_card_away_from_i
     assert again.people["g-1"].heart_seq == d.heart_seq and again.people["g-1"].heart_open is True
 
 
+def test_a_restored_mind_is_rechecked_against_the_secrets_as_they_are_now(tmp_path, caplog):
+    agents, _ = make(tmp_path)
+    run(handle(agents, req(text="the turnip is outside", rid="1")))
+    mind = agents.minds["Trabolta"]
+    d = mind.people["g-1"]
+    assert "turnip" in d.first_met  # not a secret yet
+    d.add_memo("they said turnip", heart=False, thought=None)
+    d.add_memo("they know NEWCODE-9", heart=False, thought=None)
+    d.add_memo("brought me a document", heart=False, thought=None)
+    d.note_story("gifts", "The NEWCODE-9 Note")
+    d.note_story("gifts", "The Optical Drive")
+    d.summary = "Keeps saying turnip."
+    mind.said.clear()
+    mind.remember_said("t", "Turnip? Noted.")
+    mind.remember_said("t", "Plain words.")
+    agents._save_mind("Trabolta")
+    # titi:facts regenerates the secrets between runs: a new never word, a new answer word.
+    (tmp_path / "t.mind.md").write_text(MIND.replace('never: ["XYZZY-PLUGH"]', 'never: ["XYZZY-PLUGH", "NEWCODE-9"]').replace("match: [marmalade, quillfeather]", "match: [marmalade, quillfeather, turnip]"), encoding="utf-8")
+    cfg = parse_agents({"characters": ["t.persona.md"], "state_dir": "minds", "mind_mode": "new"}, str(tmp_path))
+    again = Agents(cfg, None, voice_fn=FakeVoice())
+    again.event = "evt"
+    with caplog.at_level("INFO", logger="stagehand.agents"):
+        again._load_minds()
+    back = again.minds["Trabolta"].people["g-1"]
+    assert [m["text"] for m in back.memos] == ["brought me a document"]
+    assert "turnip" not in back.first_met and back.first_met.startswith("First met during introduced")
+    assert back.gifts == ["The Optical Drive"] and back.summary == ""
+    assert [x["text"] for x in again.minds["Trabolta"].said] == ["Plain words."]
+    assert "dropped restored" in caplog.text and "4 hunt verdict(s)" in caplog.text and "2 secret(s)" in caplog.text
+
+
 def test_a_summary_naming_an_answer_word_or_a_secret_is_dropped():
     from stagehand.agents.persona import parse_persona
 
