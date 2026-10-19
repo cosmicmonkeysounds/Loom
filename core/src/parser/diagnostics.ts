@@ -76,6 +76,9 @@ export const Code = {
   /** A header `watch:` / `countdown:` line (or an item on it) the director's
    *  board drops or cannot resolve (workspace lint, a warning). */
   L1205BoardLineUnparsed: "L1205",
+  /** The header `judge:` names no `mind: external` CHARACTER — near misses
+   *  wait for a director, as with no key (workspace lint, a warning). */
+  L1206JudgeUnresolved: "L1206",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

@@ -370,6 +370,11 @@ export interface SimModel {
   watch: BoardLine[];
   /** Header `countdown:` lines (paths only, each a story time in seconds). */
   countdowns: BoardLine[];
+  /** Header `judge: <Character>` (wave 11b, contract J): the agent-voiced
+   *  character that rules on the facts judge's near misses — its canonical
+   *  id, only when it names a `mind: external` CHARACTER (lint L1206 says
+   *  why not otherwise). Null = no key: the near miss waits for a director. */
+  judge: string | null;
 }
 
 /** Compile every loaded file in `bundle` into one `SimModel`. */
@@ -402,7 +407,10 @@ export function compileModel(bundle: Bundle): SimModel {
     gens: [],
     watch: [],
     countdowns: [],
+    judge: null,
   };
+  /** The raw `judge:` header value (first file that has one). */
+  let judgeName: string | null = null;
 
   // Resolve `is X, Y` inheritance so `mergedCharacters` is populated before
   // we read it below. Without this the merge is dead code (its only other
@@ -420,6 +428,8 @@ export function compileModel(bundle: Bundle): SimModel {
     if (model.directory === null && dirProp !== undefined) model.directory = dirProp.value.trim().toLowerCase();
     const curProp = entry.file.header.properties.get("currency");
     if (model.currency === null && curProp !== undefined) model.currency = parseCurrency(curProp.value);
+    const judgeProp = entry.file.header.properties.get("judge");
+    if (judgeName === null && judgeProp !== undefined && judgeProp.value.trim() !== "") judgeName = judgeProp.value.trim();
     for (const line of entry.file.header.lines ?? []) {
       if (line.key === "watch") {
         const b = parseBoardLine(line.value);
@@ -596,7 +606,18 @@ export function compileModel(bundle: Bundle): SimModel {
       }
     }
   }
+  model.judge = judgeOf(model, judgeName);
   return model;
+}
+
+/** The header `judge:` value as the canonical id of a `mind: external`
+ *  CHARACTER (names fold like every other — `trabolta` is Trabolta); null
+ *  for no value, an unknown name, or a character nobody's agent voices. */
+export function judgeOf(model: Pick<SimModel, "characters" | "entityIndex">, name: string | null): string | null {
+  if (name === null) return null;
+  const id = model.characters.has(name) ? name : model.entityIndex.get(name);
+  const def = id === null ? undefined : model.characters.get(id);
+  return def !== undefined && def.mind === "external" ? def.id : null;
 }
 
 function channelDef(body: ChannelBody, spaceId: string): ChannelDef {
