@@ -80,12 +80,9 @@ CHARACTER Trabolta is Person
 
   // Lore shared TO him. `who` is bound, so a `Trabolta:` line here would
   // be public; the reactions are numbers only (the generic delivery reward
-  // is the `when share:` rule in main.loom → `trabolta_heard`).
-  when who learns The Prom Ticket:
-    if who == self:
-      set self.composure -= 15
-      set self.love -= 10
-
+  // is the `when share:` rule in main.loom → `trabolta_heard`). No hunt
+  // answer can reach him (each is `secret: true`, so he won't take it as a
+  // share): he never learns The Prom Ticket, so nothing here listens for it.
   when who learns The LiveJournal:
     if who == self:
       set self.composure -= 15

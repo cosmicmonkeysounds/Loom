@@ -332,7 +332,7 @@ describe("titi-facts — generated/questions.loom", () => {
     expect(m.quests.get("The Final Facts")!.text).toContain(`- Q2. ${byRound(3)[1]!.text}`);
     expect(m.quests.get("The Final Facts")!.text).not.toContain("Q3.");
   });
-  it("the hunt-answer entries end with the lore marker and never say STAMPED", () => {
+  it("the hunt-answer entries are secret, end with the lore marker and never say STAMPED", () => {
     const text = read(OUTPUTS.questions);
     expect(text).not.toContain("STAMPED");
     const m = fixtureSim().model;
@@ -340,7 +340,8 @@ describe("titi-facts — generated/questions.loom", () => {
       const entry = m.codex.get(q.codex!.id)!;
       expect(entry.text.endsWith(`${HUNT_MARKER} ${q.id} ▒`), q.id).toBe(true);
       expect(entry.text.startsWith(q.codex!.text.split(" ")[0]!)).toBe(true);
-      expect(entry.secret).toBe(false);
+      // No agent reads or takes one (Trabolta must never know what he asks for).
+      expect(entry.secret, q.id).toBe(true);
     }
     // The marker is never split across lines (stagehand reads the raw file).
     expect(text.match(/▒ HUNT ANSWER [A-Z0-9]+ ▒/gu)).toHaveLength(facts.questions.length);

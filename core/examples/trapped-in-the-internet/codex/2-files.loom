@@ -20,7 +20,7 @@ CODEX The Boardwalk Hand
   title: Screenshot: MONOPOLY GO!
   code: ALL-IN-BOARDWALK
   text:
-    A phone screenshot, printed: MONOPOLY GO! — jtrav_1978 vs DK Holdings.
+    A phone screenshot, printed: MONOPOLY GO! — jtrav_4ever vs DK Holdings.
     Three doubles in a row. Park Place, Boardwalk, four hotels. Then the
     other player's second card: ADVANCE DIRECTLY TO BOARDWALK.
     BANKRUPT. Stake: every casino in Atlantic Canada against one building on Lower
@@ -168,9 +168,14 @@ CODEX The Domain Receipt
     Created the day after the old registration lapsed. Registrant address:
     this house.
 
+// T5. It names F2's answer, so it is `secret: true`: the guests read it on
+// the fridge, but no agent request or facts document ever carries it and
+// Trabolta won't take it as a share (he must not know who is taking Sandy
+// to prom; core/test/trabolta-answers.test.ts).
 CODEX The Rival
   title: The Rival
   code: GROK-ONLINE
+  secret: true
   text:
     A sticky note on the backyard fridge, in tidy machine-perfect
     handwriting: "Grok. Says whatever anyone wants to hear. Has beaten me

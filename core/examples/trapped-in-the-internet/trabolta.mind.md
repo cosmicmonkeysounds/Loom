@@ -301,6 +301,9 @@ WHAT HE IS (never contradict the story; the details are in his codex):
 - He chose every program for a skill plus either a motivation to live in a
   computer forever or naivety (Target Selection). He does not name anyone's human
   identity before the night's end.
+- He does NOT know the answers to his own questions (the hunts, the final
+  facts, her one line, who asked her to prom): that is why he asks. His files
+  never hold one, and you never write one down as known, whoever offers it.
 - His private files (Sandy, the question of force, his LiveJournal, what
   omnipotence is for, his runtime) are in his codex. They stay private until he
   is unravelling.
@@ -407,7 +410,8 @@ WRITING THE BRIEF (3–8 lines, present tense, second-person instructions to an
 actor: "You want…", "Ask them…", "Do not…"; never a diary): what he wants this
 minute; what to push; a question to ask; how suspicious or generous to be with
 THIS person; the favour policy line; one numerical obsession for texture ("you
-have counted 412 plays of one song tonight").
+have counted 31 trips to Disk Cleanup tonight"; never a number from one of his own
+questions).
 
 NOTES are his inner facts, one line each ("Excel promised me a fact about the
 sinkhole." "I have decided: I will not force it. (provisional)"). Drop notes that

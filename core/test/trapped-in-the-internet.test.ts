@@ -202,11 +202,13 @@ describe("Trapped in the Internet — compile", () => {
       fbihalifax: "The FBI Lanyard",
     };
     for (const [c, e] of Object.entries(codes)) expect(m.codexCodes.get(c), c).toBe(e);
-    // The hunt answers (generated/questions.loom) keep their ids and codes;
-    // F2 stays `The Prom Ticket` because cast/trabolta.loom listens for it.
+    // The hunt answers (generated/questions.loom) keep their ids and codes,
+    // each `secret: true`: Trabolta never reads one nor takes one as a share
+    // (test/trabolta-answers.test.ts).
     for (const q of FACTS.questions) {
       expect(m.codexCodes.get(foldCode(q.codex!.code)), q.id).toBe(q.codex!.id);
       expect(m.codex.get(q.codex!.id)!.text.endsWith(`▒ HUNT ANSWER ${q.id} ▒`), q.id).toBe(true);
+      expect(m.codex.get(q.codex!.id)!.secret, q.id).toBe(true);
     }
     expect(m.codex.get("The Prom Ticket")!.title).toBe("Grok's Prom Ticket");
     // Every scannable fact (codex/9-facts.loom) and every `existing` one with its hand-added code.
@@ -3971,13 +3973,15 @@ describe("Trapped in the Internet — wave 1 leftovers", () => {
     const m = fresh().model;
     const HUNT = new Set(FACTS.questions.map((q) => q.codex!.id));
     for (const id of HUNT) expect(m.codex.has(id), id).toBe(true);
-    // The final facts are told by design (The Sandy File, The LiveJournal), so
-    // rounds 1–2 only. Short one-word / numeric aliases ("11", "9:00", "tabby",
-    // "1978") would match ordinary prose, so an alias counts when it is two
-    // words or a word of six letters or more.
+    // Every round, the final facts too (2026-10-19: Trabolta must never know
+    // what he asks for, so his files no longer tell F1 / F2). Short one-word /
+    // numeric aliases ("11", "9:00", "tabby", "1978", "grok") would match
+    // ordinary prose, so an alias counts when it is two words or a word of six
+    // letters or more (test/trabolta-answers.test.ts scans the short ones, with
+    // the judge's own folding, in everything Trabolta can read).
     const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
     const alias = (a: string) => /\s/u.test(a.trim()) || /^[a-z]{6,}$/iu.test(a.trim());
-    for (const q of FACTS.questions.filter((q) => q.round < 3)) {
+    for (const q of FACTS.questions) {
       const words = [q.answer, ...q.accept].filter(alias); // "1978" alone is a year in other files
       const res = words.map((w) => new RegExp(`(?<![\\p{L}\\p{N}])${esc(w.trim())}(?![\\p{L}\\p{N}])`, "iu"));
       for (const [id, entry] of m.codex) {

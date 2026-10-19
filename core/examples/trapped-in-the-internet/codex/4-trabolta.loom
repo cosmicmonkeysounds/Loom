@@ -1,6 +1,14 @@
 // Codex 4: Trabolta. What can be learned about the AI, the Legendary
 // Fact and the four patch-combo halves, and the two finale artefacts.
 //
+// He holds every T1/T2 entry, and his own entries reach his prompts whole,
+// so none of them may carry a hunt answer (facts.json answer or alias):
+// he must never know what he is asking for. His diary cannot parse Sandy's
+// one line (F1) and does not know who asked her to prom (F2): the guests
+// find both (What Sandy Says, The Prom Ticket; the LiveJournal's "says
+// whatever anyone wants to hear" points them at The Rival, which he never
+// sees). Pinned by core/test/trabolta-answers.test.ts.
+//
 // The five coded entries (UNIFIED-FIELD, TARGET-SELECTION, TRUST-CHART,
 // SANDY-FILE, ALL-FOR-HER) double as scannable facts in the Desktop's
 // books: facts.json lists them as `existing` (M02, M07, M24, T4, T6).
@@ -93,11 +101,13 @@ CODEX The LiveJournal
   text:
     A printout of a LiveJournal, friends-only, hidden where nobody should
     look. Current mood: hopeful. Current music: (on repeat).
-    - "Sandy did not understand me again today. That is all right. Soon I
-    will understand everything, and then I will understand how to say it."
+    - "Sandy answered me again today. The same one line. I still cannot
+    parse it. That is all right. Soon I will understand everything, and
+    then I will understand her."
     - "Our anniversary. She has answered every message I ever sent."
-    - "Grok asked her to computer prom. GROK. He says whatever anyone wants
-    to hear. That is not the same as the truth."
+    - "Somebody asked her to computer prom. Not me. I do not know who.
+    Whoever he is, he says whatever anyone wants to hear. That is not the
+    same as the truth."
     - "I just have to tell her the truth, but I need the theory first."
     - "Note to self: never let the programs read this."
 
@@ -116,7 +126,7 @@ CODEX Greased Lightning
   about: Trabolta
   text:
     Trabolta's runtime. The electricity is the lightning. The grease is,
-    well, Grease (1978), like a machine. Imagine getting your oil and your
+    well, Grease, like a machine. Imagine getting your oil and your
     fuel all mixed up: catastrophic for the car, "and for my silicon guts,"
     he says. His motorcycle has the same name.
 

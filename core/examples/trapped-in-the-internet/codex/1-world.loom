@@ -11,7 +11,8 @@
 // by the story: the Optical Drive, the Reinstallation beat, the tutorial, the
 // Bingo ribbon, the Printer, the Truther Download, the clock.
 //
-// The hunt answers (Grok's Prom Ticket among them) are not here: they are
+// The hunt answers (Grok's Prom Ticket among them, all `secret: true`, so
+// Trabolta never reads or takes one) are not here: they are
 // generated from facts.json into generated/questions.loom, outside the
 // first 24, and every scannable fact of the Desktop's books is
 // codex/9-facts.loom (generated too).
