@@ -54,13 +54,15 @@ def test_no_pre_overshare_phase_cue_nor_the_bargain_names_sandy():
 
 import re  # noqa: E402
 
-from stagehand.agents.prompt import allowed_powers, build_messages, matching_situations  # noqa: E402
+from stagehand.agents.prompt import allowed_powers, build_messages, matching_situations, their_variables  # noqa: E402
 
 
-def heart_request(at_the_heart=None, **world):
-    them = {"trust": "50", "featured": "excel"}
+def heart_request(at_the_heart=None, marked=None, **world):
+    them = {"trust": "50", "featured": "excel", "marked_for": "missed the cup"}
     if at_the_heart is not None:
         them["at_the_heart"] = at_the_heart
+    if marked is not None:
+        them["marked"] = marked
     return {
         "thread": {"character": "Trabolta", "channel": "dm:Trabolta", "audience": ["g1"]},
         "speaker": {"kind": "guest", "id": "g1", "name": "Excel", "faction": None},
@@ -75,7 +77,7 @@ def heart_request(at_the_heart=None, **world):
 
 def test_the_shipped_persona_has_its_situations_and_whitelists():
     p = load_persona(TRABOLTA)
-    assert [s.heading for s in p.situations] == ["at your heart", "standing down", "her name has been said", "her name is still blacked out"]
+    assert [s.heading for s in p.situations] == ["at your heart", "marked at your heart", "marked", "standing down", "her name has been said", "her name is still blacked out"]
     assert "at_the_heart" in (p.them or ())
     assert {"Night.heart_opened", "Night.talked_down"} <= set(p.facts)
     assert "stand_down" in [x["id"] for x in allowed_powers(p, heart_request())]
@@ -169,3 +171,73 @@ def test_the_year_he_met_her_is_never_said():
     assert "1997" in p.secrets.never
     for prompt in (p.system, p.mind_prompt or ""):
         assert "1997" not in prompt and "'97" not in prompt
+
+
+# -- wave 11b: a marked program (the Antivirus flagged it for the Internet) ---------------
+
+
+def test_the_voice_and_the_mind_see_the_mark_but_never_why():
+    p = load_persona(TRABOLTA)
+    assert "marked" in (p.them or ()) and "marked_for" not in (p.them or ())
+    system = build_messages(p, heart_request("true", "true"))[0]["content"]
+    assert "Their marked: true" in system and "missed the cup" not in system
+    assert their_variables(p, heart_request("true", "true")["them"]["vars"]).get("marked") == "true"
+
+
+def test_the_marked_blocks_follow_the_heart_and_the_mark():
+    p = load_persona(TRABOLTA)
+    names = lambda req: [s.heading for s in matching_situations(p, req) if "marked" in s.heading]  # noqa: E731
+    assert names(heart_request("true", "true")) == ["marked at your heart"]
+    assert names(heart_request("false", "true")) == ["marked"]
+    assert names(heart_request(None, "true")) == ["marked"]
+    for unmarked in (heart_request("true", "false"), heart_request("true"), heart_request("false", "false"), heart_request()):
+        assert names(unmarked) == []
+    # The heart itself (and, from the Y2K hour, standing down) still holds for a marked program.
+    at = [s.heading for s in matching_situations(p, heart_request("true", "true"))]
+    assert at[:2] == ["at your heart", "marked at your heart"] and "standing down" in at
+    early = [s.heading for s in matching_situations(p, heart_request("true", "true", **{"Night.phase": "hunt_1", "Night.step": "5"}))]
+    assert early[:2] == ["at your heart", "marked at your heart"] and "standing down" not in early
+
+
+def test_marked_at_his_heart_he_is_wary_but_lets_them_carry_on():
+    p = load_persona(TRABOLTA)
+    block = next(s for s in p.situations if s.heading == "marked at your heart").prompt
+    flat = " ".join(block.split()).lower()
+    assert "you can see the mark" in flat and "you do not know why they were marked" in flat
+    assert "bait" in flat and "fellow prisoner" in flat and "ask them why they were marked" in flat
+    assert "raises your regard" in flat and "lowers it" in flat  # their answer moves him either way
+    assert "stay candid" in flat and "still take their files" in flat
+    assert "standing down block below, it applies to them exactly as to anyone" in flat
+    assert "never refuse to talk to them, never threaten them, never send them away" in flat
+    assert "never guess what the mark says about any fact they filed" in flat
+    # No literal power name (the heart's own rule), no name, no number.
+    assert "stand_down" not in block and "sandy" not in flat and not re.search(r"\d{3,}", block)
+    system = build_messages(p, heart_request("true", "true"))[0]["content"]
+    assert system.index("=== SITUATION: AT YOUR HEART") < system.index("=== SITUATION: MARKED AT YOUR HEART")
+
+
+def test_outside_his_heart_the_mark_is_a_passing_remark():
+    p = load_persona(TRABOLTA)
+    block = " ".join(next(s for s in p.situations if s.heading == "marked").prompt.split()).lower()
+    assert "note it once in passing" in block and "do not repeat it every line" in block
+    assert "no reason to refuse them, scold them or threaten them" in block
+    assert "you do not know why they were marked" in block
+    assert "(The mark for reinstallation is not one of those: the house shows it.)" in p.system
+    plain = build_messages(p, heart_request("false", "true"))[0]["content"]
+    assert "=== SITUATION: MARKED (true" in plain and "AT YOUR HEART" not in plain
+
+
+def test_the_mind_notes_a_marked_program_at_his_heart_and_its_answer_moves_trust():
+    from stagehand.agents.mind import Mind
+    from stagehand.agents.orchestrator import reflect_messages
+    from stagehand.agents.reply import Reply
+
+    p = load_persona(TRABOLTA)
+    mind_text = " ".join((p.mind_prompt or "").split())
+    assert "MARKED PROGRAMS." in mind_text and "The mark is public" in mind_text
+    assert "came to his heart marked" in mind_text and "move their trust either way" in mind_text
+    assert "never closes standing down to them, and never goes into the brief" in mind_text
+    assert "The one exception is the mark for reinstallation (MARKED PROGRAMS)" in mind_text
+    user = reflect_messages(p, Mind("Trabolta", "e"), heart_request("true", "true"), Reply(say="x"), None, 20, "t")[1]["content"]
+    assert "=== THE SITUATION WITH Excel (marked at your heart;" in user
+    assert '"marked": "true"' in user and "missed the cup" not in user
