@@ -48,8 +48,8 @@ export function redeemErrorText(e: unknown): string | null {
 }
 
 /** What a refused Share… says (T5-05): the server names the reason — an
- *  agent won't take lore about someone else, a restricted program can't
- *  share — so the guest isn't left thinking it worked. Null for a session
+ *  agent won't take lore about someone else, or a secret file — so the
+ *  guest isn't left thinking it worked. Null for a session
  *  the app is dropping anyway (it explains itself on the join screen). */
 export function shareErrorText(e: unknown): string | null {
   const status = typeof e === "object" && e !== null ? (e as { status?: unknown }).status : undefined;
