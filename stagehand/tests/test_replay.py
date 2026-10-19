@@ -816,3 +816,23 @@ def test_the_cli_extracts_a_script_that_carries_no_answer(tmp_path: Path) -> Non
 def test_the_port_block_can_move_to_another_lane():
     assert drive._ports("7990-7999") == range(7990, 8000)
     assert drive._ports(None) == range(7920, 7930) and drive._ports("nope") == range(7920, 7930) and drive._ports("80-90") == range(7920, 7930)
+
+
+def test_runs_and_the_lock_default_under_the_machines_temp_dir_and_the_env_moves_them(monkeypatch, tmp_path: Path):
+    import importlib
+    import tempfile
+
+    monkeypatch.delenv("LOOM_REPLAY_RUNS", raising=False)
+    monkeypatch.delenv("LOOM_REPLAY_LOCK", raising=False)
+    mod = importlib.reload(drive)
+    try:
+        base = Path(tempfile.gettempdir()) / "loom-replay"
+        assert mod.RUNS_ROOT == base / "runs" and mod.LOCK == base / "ollama.lock"
+        monkeypatch.setenv("LOOM_REPLAY_RUNS", str(tmp_path / "r"))
+        monkeypatch.setenv("LOOM_REPLAY_LOCK", str(tmp_path / "l.lock"))
+        mod = importlib.reload(drive)
+        assert mod.RUNS_ROOT == tmp_path / "r" and mod.LOCK == tmp_path / "l.lock"
+    finally:
+        monkeypatch.delenv("LOOM_REPLAY_RUNS", raising=False)
+        monkeypatch.delenv("LOOM_REPLAY_LOCK", raising=False)
+        importlib.reload(drive)

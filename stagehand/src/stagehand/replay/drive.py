@@ -27,6 +27,7 @@ import signal as signals
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from contextlib import contextmanager
@@ -60,8 +61,10 @@ from .sources import (
     step_kind,
 )
 
-SCRATCH = Path("/private/tmp/claude-501/-Users-jjm-Documents-prism-root-packages-loom/13e70ce3-885f-4913-a37a-84a01505ca3b/scratchpad/w12")
-RUNS_ROOT = Path(os.environ.get("LOOM_REPLAY_RUNS") or SCRATCH / "H" / "runs")
+#: Where runs and the Ollama lock live unless `LOOM_REPLAY_RUNS` /
+#: `LOOM_REPLAY_LOCK` say otherwise: `<tmp>/loom-replay` on this machine.
+SCRATCH = Path(tempfile.gettempdir()) / "loom-replay"
+RUNS_ROOT = Path(os.environ.get("LOOM_REPLAY_RUNS") or SCRATCH / "runs")
 LOCK = Path(os.environ.get("LOOM_REPLAY_LOCK") or SCRATCH / "ollama.lock")
 
 

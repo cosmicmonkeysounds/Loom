@@ -15,6 +15,10 @@ through today's mind and the new one, scored against the K-04 bars.
 - `score.py` — the eight K-04 bars and the extra numbers, pure functions over
   a run directory.
 
+Runs land in `<tmp>/loom-replay/runs` and the Ollama lock is
+`<tmp>/loom-replay/ollama.lock` (`tempfile.gettempdir()`), unless
+`LOOM_REPLAY_RUNS` / `LOOM_REPLAY_LOCK` name other paths.
+
 Secrecy (C0): no committed script carries a hunt answer — `{answer:<Q>}` and
 `{near:<Q>}` are resolved from facts.json when a line is sent, and every text
 a run writes (transcripts, `history.json`, `run.json`, `report.json`, and
