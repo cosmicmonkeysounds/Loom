@@ -941,7 +941,7 @@ class Agents:
             options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1),
         )
         async with self._slots:
-            reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts)
+            reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=mind)
         log.info(
             "%s → %s: %s%s%s",
             character,

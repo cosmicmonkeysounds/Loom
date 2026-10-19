@@ -129,8 +129,9 @@ class FakeVoice:
         self.replies = list(replies) or [FakeReply(say="Noted.")]
         self.calls: list[tuple[dict[str, Any], VoiceContext]] = []
 
-    async def __call__(self, persona, model, req, ctx, complete_fn, trace=None, facts_fn=None):
+    async def __call__(self, persona, model, req, ctx, complete_fn, trace=None, facts_fn=None, mind=None):
         self.calls.append((req, ctx))
+        self.mind = mind
         if persona.when is not None and not persona.when.evaluate(story_mind_gate(req)):
             return FakeReply(say=persona.unavailable)
         reply = self.replies[min(len(self.calls), len(self.replies)) - 1]
@@ -236,6 +237,32 @@ def test_options_follow_the_config(tmp_path):
     run(handle(agents, req()))
     opts = voice.calls[0][1].options
     assert (opts.memo, opts.repeat_guard, opts.layout, opts.retry_allowed) == (False, False, "classic", True)
+
+
+def test_classic_layout_through_agents_sends_todays_prompt_with_the_mind(tmp_path):
+    """Integration (W1 × W2): `voice.layout: classic` inside the new mind is
+    today's `build_messages(persona, req, mind=mind)`, brief and stage included."""
+    from stagehand.agents.prompt import build_messages
+
+    sent: list[list[dict[str, str]]] = []
+    expected: list[list[dict[str, str]]] = []
+
+    async def complete_fn(messages, model):
+        sent.append(messages)
+        expected.append(build_messages(agents.cfg.personas["Trabolta"], r, mind=agents.minds["Trabolta"]))  # the mind as it is at the call
+        return '{"say": "Bring me one fact."}'
+
+    agents, _ = make(tmp_path, complete_fn=complete_fn, voice={"layout": "classic"})
+    agents._voice_fn = None  # the real lean voice, not the fake
+    mind = agents.minds["Trabolta"]
+    mind.apply({"brief": "Ask everyone for one fact tonight."}, by="director")
+    r = req(phase="nowhere_on_the_table")  # no card: the director's brief stands
+    run(handle(agents, r))
+    assert len(sent) == 1
+    assert sent[0] == expected[0] != build_messages(agents.cfg.personas["Trabolta"], r, mind=None)
+    assert any("Ask everyone for one fact tonight." in m["content"] for m in sent[0])
+    voice = next(t for t in agents.trace.all("Trabolta") if t.kind == "voice")
+    assert "without a mind" not in voice.note
 
 
 def test_a_waiting_request_forbids_the_retry(tmp_path):
