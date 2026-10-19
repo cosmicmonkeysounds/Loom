@@ -26,7 +26,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import type { AgentMindSummary, AgentThought } from '@loom/core/views'
+import type { AgentControl, AgentMindSummary, AgentThought } from '@loom/core/views'
 import { RunBackend, useCockpit } from '@/store/cockpit'
 import { confirmAction, promptText } from '@/store/dialog'
 import { LensGate } from './tabs'
@@ -34,7 +34,27 @@ import { useNow } from './director/clock'
 import {
   ALL_KINDS,
   KIND_META,
+  SLIDER_IDLE,
   VERDICT_BUTTONS,
+  briefLabel,
+  byLabel,
+  driveControl,
+  effortControl,
+  favoursControl,
+  fetchThought,
+  isNewMind,
+  kindMeta,
+  localPrefix,
+  memoLabel,
+  mindPhaseOf,
+  personExtras,
+  prefixRef,
+  sliderStep,
+  surveyButton,
+  timingText,
+  type MindControl,
+  type SliderEvent,
+  type SliderState,
   askingText,
   ruledFilings,
   rulingText,
@@ -43,7 +63,6 @@ import {
   driveSeries,
   filingButtons,
   filterThoughts,
-  formatMs,
   judgeModeOf,
   mindCharacters,
   agentQueueOf,
@@ -72,6 +91,10 @@ const heading = 'mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-40
 const btn = 'rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40'
 const btnPrimary = 'rounded bg-indigo-600 px-2 py-0.5 text-xs text-white hover:bg-indigo-500 disabled:opacity-40'
 const input = 'rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-indigo-500'
+
+/** The page's controls include the new mind's `rewrite`, which the base core
+ *  types don't name; the server's own validator is the gate (C6.7). */
+const asControl = (c: MindControl): Omit<AgentControl, 'by'> => c as unknown as Omit<AgentControl, 'by'>
 
 export function MindTab() {
   const locked = useCockpit((s) => s.lens !== null)
@@ -123,9 +146,9 @@ function MindDebugger() {
           <div className="max-w-md">
             <p className="text-zinc-300">No agent worker has reported yet.</p>
             <p className="mt-2">
-              Start <span className="font-mono text-zinc-300">stagehand run --config laptop.yaml --only agents</span> on the show laptop. Its
-              first look at the house and every reply after that will appear here, with the prompts, the models' reasoning, and the
-              mind they leave behind.
+              Start <span className="font-mono text-zinc-300">stagehand run --config laptop.yaml --only agents</span> on the show laptop.
+              Every reply it makes will appear here, with the prompt, the model's reasoning, and the mind it leaves behind. The story
+              mind makes no model call until someone speaks to the character, so an empty house stays quiet.
             </p>
           </div>
         </div>
@@ -151,7 +174,7 @@ function MindDebugger() {
         </div>
         <div className="flex min-h-0 flex-col overflow-hidden">
           {selectedThought !== null ? (
-            <ThoughtDetail thought={selectedThought} onBack={() => setSelected(null)} />
+            <ThoughtDetail thought={selectedThought} onBack={() => setSelected(null)} onOpenThought={setSelected} />
           ) : (
             <TraceList character={character} thoughts={thoughts} onOpen={setSelected} />
           )}
@@ -525,6 +548,10 @@ function Header({ characters, character, onPick, mind }: { characters: string[];
   const now = useNow(raw !== null && raw.depth > 0, 1000)
   const queue = character === null ? null : agentQueueOf(character, cast, minds, now)
   const badge = queue === null ? null : queueBadge(queue)
+  // Wave 12: the story mind runs no orchestrator, so its chip says what does
+  // run instead (the phase table, the voice's options).
+  const fresh = isNewMind(mind)
+  const phase = mind === null ? null : mindPhaseOf(mind)
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-800 px-3 py-2 text-xs">
       {characters.length > 1 ? (
@@ -558,9 +585,15 @@ function Header({ characters, character, onPick, mind }: { characters: string[];
             worker <span className="text-zinc-300">{typeof status['worker'] === 'string' && status['worker'] !== '' ? status['worker'] : mind.worker || '—'}</span> · {timeOf(mind.at / 1000)}
           </span>
           <ModelChip who="voice" name={typeof voice['model'] === 'string' ? voice['model'] : '?'} detail={typeof voice['effort'] === 'string' ? `effort ${voice['effort']}` : 'no reasoning'} />
-          <ModelChip who="mind" name={typeof orch['model'] === 'string' ? orch['model'] : '?'} detail={`${thinking ? 'reasoning on' : 'reasoning off'}${paused ? ' · PAUSED' : ''}${running ? ' · thinking…' : pending > 0 ? ` · ${pending} queued` : ''}`} />
+          {fresh ? (
+            <StoryMindChip status={status} paused={paused} />
+          ) : (
+            <ModelChip who="mind" name={typeof orch['model'] === 'string' ? orch['model'] : '?'} detail={`${thinking ? 'reasoning on' : 'reasoning off'}${paused ? ' · PAUSED' : ''}${running ? ' · thinking…' : pending > 0 ? ` · ${pending} queued` : ''}`} />
+          )}
           <span className="text-zinc-500" data-testid="mind-counts">
-            {mind.exchanges} exchanges · {mind.reflections} reflections · {mind.surveys} surveys · rev {mind.rev}
+            {fresh
+              ? `${mind.exchanges} exchanges · rev ${mind.rev}${phase !== null ? ` · phase ${phase}` : ''}`
+              : `${mind.exchanges} exchanges · ${mind.reflections} reflections · ${mind.surveys} surveys · rev ${mind.rev}`}
           </span>
         </>
       )}
@@ -571,8 +604,32 @@ function Header({ characters, character, onPick, mind }: { characters: string[];
   )
 }
 
+/** The new mind's chip: no second model — the story sets the stage from
+ *  `Night.phase` and the voice keeps its own memos (`status.voice`, C5.2). */
+function StoryMindChip({ status, paused }: { status: Record<string, unknown>; paused: boolean }) {
+  const voice = (status['voice'] ?? {}) as Record<string, unknown>
+  const flag = (v: unknown) => (v === true || v === 'on' ? 'on' : v === false || v === 'off' ? 'off' : null)
+  const bits: string[] = []
+  if (typeof voice['layout'] === 'string') bits.push(`layout ${voice['layout']}`)
+  const memo = flag(voice['memo'])
+  if (memo !== null) bits.push(`memo ${memo}`)
+  const guard = flag(voice['repeatGuard'])
+  if (guard !== null) bits.push(`repeat guard ${guard}`)
+  const watch = status['phaseWatchS']
+  if (typeof watch === 'number') bits.push(watch > 0 ? `phase watch ${watch} s` : 'phase watch off')
+  if (paused) bits.push('PAUSED')
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-zinc-800 px-2 py-0.5" title="The story mind: the phase table sets his stage and brief; one voice call per line, no orchestrator" data-testid="mind-mode">
+      <span className="inline-block h-2 w-2 rounded-full" style={{ background: KIND_META.reflect!.color }} aria-hidden />
+      <span className="text-zinc-500">mind</span>
+      <span className="text-zinc-200">story</span>
+      {bits.length > 0 && <span className="text-zinc-500">· {bits.join(' · ')}</span>}
+    </span>
+  )
+}
+
 function ModelChip({ who, name, detail }: { who: 'voice' | 'mind'; name: string; detail: string }) {
-  const color = who === 'voice' ? KIND_META.voice.color : KIND_META.reflect.color
+  const color = who === 'voice' ? KIND_META.voice!.color : KIND_META.reflect!.color
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-zinc-800 px-2 py-0.5" title={`the ${who} model`}>
       <span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} aria-hidden />
@@ -593,15 +650,18 @@ function ControlPanel({ character, mind }: { character: string | null; mind: Age
   const paused = orch['paused'] === true
   const thinking = orch['thinking'] === true
   const effort = typeof voice['effort'] === 'string' ? (voice['effort'] as string) : 'none'
-  const send = async (c: Parameters<typeof control>[0]) => {
+  const fresh = isNewMind(mind)
+  const send = async (c: MindControl | null) => {
+    if (c === null) return
     setBusy(true)
     try {
-      await control(c)
+      await control(asControl(c))
     } finally {
       setBusy(false)
     }
   }
   const disabled = busy || character === null
+  const survey = character === null ? null : surveyButton(mind, character)
   return (
     <span className="flex flex-wrap items-center gap-1" data-testid="mind-controls">
       <form
@@ -621,24 +681,34 @@ function ControlPanel({ character, mind }: { character: string | null; mind: Age
           className={clsx(input, 'w-48')}
           disabled={disabled}
           data-testid="mind-nudge"
-          title="A director's nudge: the voice obeys it at once; the next reflection folds it into the brief and clears it"
+          title={
+            fresh
+              ? "A director's whisper: the voice obeys it on the next line; the next Rewrite brief or phase change clears it"
+              : "A director's nudge: the voice obeys it at once; the next reflection folds it into the brief and clears it"
+          }
         />
         <button type="submit" className={btnPrimary} disabled={disabled || nudge.trim() === ''}>
           Nudge
         </button>
       </form>
-      <button className={btn} disabled={disabled} onClick={() => void send({ action: 'survey', character })} title="Make the orchestrator look at the house now">
-        Survey now
-      </button>
+      {survey !== null && (
+        <button className={btn} disabled={disabled} onClick={() => void send(survey.control)} title={survey.title} data-testid="mind-survey">
+          {survey.label}
+        </button>
+      )}
       <button className={btn} disabled={disabled} onClick={() => void send({ action: 'pause', character, on: !paused })} title="Pause: replies keep coming, but the mind stops changing">
         {paused ? 'Resume mind' : 'Pause mind'}
       </button>
-      <button className={btn} disabled={disabled} onClick={() => void send({ action: 'thinking', character, on: !thinking })} title="Show the orchestrator model's reasoning in the trace (slower)">
-        Mind reasoning {thinking ? 'on' : 'off'}
-      </button>
+      {!fresh && (
+        <button className={btn} disabled={disabled} onClick={() => void send({ action: 'thinking', character, on: !thinking })} title="Show the orchestrator model's reasoning in the trace (slower)">
+          Mind reasoning {thinking ? 'on' : 'off'}
+        </button>
+      )}
       <label className="flex items-center gap-1 text-zinc-500" title="The voice model's reasoning effort (gpt-oss)">
         voice effort
-        <select value={effort} disabled={disabled} className={input} onChange={(e) => void send({ action: 'effort', character, level: e.target.value })} data-testid="mind-effort">
+        <select value={effort} disabled={disabled} className={input} onChange={(e) => {
+            if (character !== null) void send(effortControl(character, e.target.value, effort))
+          }} data-testid="mind-effort">
           {['none', 'low', 'medium', 'high'].map((l) => (
             <option key={l} value={l}>
               {l}
@@ -672,20 +742,36 @@ function ControlPanel({ character, mind }: { character: string | null; mind: Age
 // The mind now
 // ---------------------------------------------------------------------------
 
-function MindNow({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThought: (id: string) => void }) {
+export function MindNow({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThought: (id: string) => void }) {
   const control = useCockpit((s) => s.mindControl)
   const c = mind.character
+  const fresh = isNewMind(mind)
+  const setBy = briefLabel(mind)
   return (
     <div className="flex flex-col gap-3">
       <Arc mind={mind} />
       <section className={panel} data-testid="mind-brief">
         <div className="flex items-center justify-between">
-          <div className={heading}>The brief (what the voice is handed)</div>
+          <div className={clsx(heading, 'flex items-center gap-2')}>
+            The brief (what the voice is handed)
+            {setBy !== null && (
+              <span className={clsx('rounded px-1 text-[10px] normal-case tracking-normal', setBy === 'set by director' ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-800 text-zinc-400')} data-testid="mind-brief-by">
+                {setBy}
+              </span>
+            )}
+          </div>
           <button
             className={btn}
             onClick={() => {
               void (async () => {
-                const v = await promptText({ title: `Rewrite ${c}'s brief`, body: 'Second-person instructions to the actor. The next reflection may rewrite it again.', defaultValue: mind.brief, confirmLabel: 'Set brief' })
+                const v = await promptText({
+                  title: `Rewrite ${c}'s brief`,
+                  body: fresh
+                    ? 'Second-person instructions to the actor. It holds until the next phase change (when the story sets the brief again) or the next Rewrite brief.'
+                    : 'Second-person instructions to the actor. The next reflection may rewrite it again.',
+                  defaultValue: mind.brief,
+                  confirmLabel: 'Set brief',
+                })
                 if (v !== null) await control({ action: 'set', character: c, field: 'brief', value: v })
               })()
             }}
@@ -756,10 +842,18 @@ function MindNow({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThough
 function Arc({ mind }: { mind: AgentMindSummary }) {
   const control = useCockpit((s) => s.mindControl)
   const segments = stageSegments(mind)
+  const phase = mindPhaseOf(mind)
   if (segments.length === 0) return null
   return (
     <section className={panel} data-testid="mind-arc">
-      <div className={heading}>The arc</div>
+      <div className={clsx(heading, 'flex items-center gap-2')}>
+        The arc
+        {phase !== null && (
+          <span className="font-mono text-[10px] normal-case tracking-normal text-zinc-500" title="Night.phase, as the worker last read it; the story's phase table sets the stage from it" data-testid="mind-phase">
+            phase {phase}
+          </span>
+        )}
+      </div>
       <ol className="flex flex-wrap items-stretch gap-1">
         {segments.map((seg, i) => (
           <li key={seg.stage} className="flex items-center gap-1">
@@ -773,7 +867,12 @@ function Arc({ mind }: { mind: AgentMindSummary }) {
               onClick={() => {
                 if (seg.state === 'current') return
                 void (async () => {
-                  const why = await promptText({ title: `Move ${mind.character} to “${seg.stage}”`, body: 'Why? (goes into the stage history)', placeholder: 'we skipped ahead', allowEmpty: true })
+                  const why = await promptText({
+                    title: `Move ${mind.character} to “${seg.stage}”`,
+                    body: isNewMind(mind) ? 'Why? (goes into the stage history). The stage holds until the next phase change, when the story sets it again.' : 'Why? (goes into the stage history)',
+                    placeholder: 'we skipped ahead',
+                    allowEmpty: true,
+                  })
                   if (why !== null) await control({ action: 'set', character: mind.character, field: 'stage', value: seg.stage, why })
                 })()
               }}
@@ -789,7 +888,7 @@ function Arc({ mind }: { mind: AgentMindSummary }) {
         <ul className="mt-2 space-y-0.5 text-xs text-zinc-500">
           {mind.stageHistory.slice(-4).map((h) => (
             <li key={`${h.rev}-${h.stage}`}>
-              <span className="text-zinc-300">{h.stage}</span> at {timeOf(h.at)} ({h.by}){h.why !== '' && <> — {h.why}</>}
+              <span className="text-zinc-300">{h.stage}</span> at {timeOf(h.at)} ({byLabel(h.by)}){h.why !== '' && <> — {h.why}</>}
             </li>
           ))}
         </ul>
@@ -799,7 +898,6 @@ function Arc({ mind }: { mind: AgentMindSummary }) {
 }
 
 function Drives({ mind }: { mind: AgentMindSummary }) {
-  const control = useCockpit((s) => s.mindControl)
   const series = driveSeries(mind)
   if (series.length === 0) return null
   return (
@@ -812,16 +910,7 @@ function Drives({ mind }: { mind: AgentMindSummary }) {
             <svg width={120} height={22} className="shrink-0" role="img" aria-label={`${d.name} over ${d.values.length} revisions`}>
               <path d={sparklinePath(d.values, 120, 22)} fill="none" stroke={KIND_META.reflect.color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             </svg>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={d.current}
-              className="w-24 accent-indigo-500"
-              title="Set this drive"
-              onChange={(e) => void control({ action: 'set', character: mind.character, field: 'drive', name: d.name, value: Number(e.target.value) })}
-            />
-            <span className="w-8 text-right font-mono text-zinc-100">{d.current}</span>
+            <DriveSlider mind={mind} name={d.name} live={d.current} />
             <span className={clsx('w-10 font-mono', d.delta > 0 ? 'text-emerald-400' : d.delta < 0 ? 'text-rose-400' : 'text-zinc-600')}>
               {d.delta > 0 ? '+' : ''}
               {d.delta}
@@ -830,6 +919,51 @@ function Drives({ mind }: { mind: AgentMindSummary }) {
         ))}
       </ul>
     </section>
+  )
+}
+
+/** How long a sent drive value stays on the slider while the worker's
+ *  mirror (debounced up to 2 s on a new worker) catches up. */
+const SLIDER_GRACE_MS = 6000
+
+/** One drive's slider (C6.7): dragging only moves it here; letting go — the
+ *  pointer, an arrow / Home / End / Page key, or leaving it — sends one `set
+ *  drive`, and only when the value differs from the mind's own. */
+function DriveSlider({ mind, name, live }: { mind: AgentMindSummary; name: string; live: number }) {
+  const control = useCockpit((s) => s.mindControl)
+  // The slider's state belongs to the drive value it started from: once the
+  // mirror moves (a sent value landed, or someone else set it), it lapses.
+  const [held, setHeld] = useState<{ state: SliderState; base: number } | null>(null)
+  const state = held !== null && held.base === live ? held.state : SLIDER_IDLE
+  useEffect(() => {
+    if (state.sent === null) return
+    const t = setTimeout(() => setHeld(null), SLIDER_GRACE_MS)
+    return () => clearTimeout(t)
+  }, [state.sent])
+  const step = (ev: SliderEvent) => {
+    const r = sliderStep(state, ev, live)
+    setHeld(r.state.local === null ? null : { state: r.state, base: live })
+    if (r.send !== null) void control(asControl(driveControl(mind, name, r.send)))
+  }
+  const shown = state.local ?? live
+  return (
+    <>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={shown}
+        className="w-24 accent-indigo-500"
+        title="Set this drive (sent when you let go)"
+        aria-label={`${name} drive`}
+        data-testid={`mind-drive-${name}`}
+        onChange={(e) => step({ type: 'change', value: Number(e.target.value) })}
+        onPointerUp={() => step({ type: 'pointerup' })}
+        onKeyUp={(e) => step({ type: 'keyup', key: e.key })}
+        onBlur={() => step({ type: 'blur' })}
+      />
+      <span className={clsx('w-8 text-right font-mono', state.local !== null && state.local !== live ? 'text-indigo-300' : 'text-zinc-100')}>{shown}</span>
+    </>
   )
 }
 
@@ -842,7 +976,10 @@ function Policy({ mind }: { mind: AgentMindSummary }) {
       <div className={heading}>Bargains</div>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="text-zinc-500">favours</span>
-        <select value={p.favours} className={input} onChange={(e) => void control({ action: 'set', character: mind.character, field: 'policy', value: { favours: e.target.value } })} data-testid="mind-favours">
+        <select value={p.favours} className={input} onChange={(e) => {
+            const c = favoursControl(mind, e.target.value)
+            if (c !== null) void control(asControl(c))
+          }} data-testid="mind-favours">
           {['none', 'earned', 'loose'].map((f) => (
             <option key={f} value={f}>
               {f}
@@ -921,77 +1058,156 @@ function Learned({ mind }: { mind: AgentMindSummary }) {
 }
 
 function People({ mind }: { mind: AgentMindSummary }) {
-  const control = useCockpit((s) => s.mindControl)
   const [open, setOpen] = useState<string | null>(null)
   if (mind.people.length === 0) return null
+  // The new mind keeps no trust number of its own: the house's (the story's
+  // `them.trust`) is the one the voice is handed, so the row shows that.
+  const fresh = isNewMind(mind)
   return (
     <section className={panel} data-testid="mind-people">
       <div className={heading}>Files on people</div>
       <table className="w-full text-xs">
         <tbody>
-          {mind.people.map((p) => (
-            <Fragment key={p.id}>
-              <tr className="cursor-pointer border-b border-zinc-900 hover:bg-zinc-900/60" onClick={() => setOpen(open === p.id ? null : p.id)}>
-                <td className="py-1 pr-2 text-zinc-200">
-                  {p.name}
-                  {p.kind === 'performer' && <span className="ml-1 text-[10px] text-zinc-500">cast</span>}
-                </td>
-                <td className="w-28 py-1 pr-2">
-                  <div className="h-1.5 w-full rounded bg-zinc-800" title={`trust ${p.trust}/100`}>
-                    <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${Math.max(0, Math.min(100, p.trust))}%` }} />
-                  </div>
-                </td>
-                <td className="w-8 py-1 pr-2 text-right font-mono text-zinc-300">{p.trust}</td>
-                <td className="w-10 py-1 pr-2 text-right text-zinc-500">{p.turns}×</td>
-                <td className="max-w-0 truncate py-1 text-zinc-400">{p.summary}</td>
-              </tr>
-              {open === p.id && (
-                <tr className="border-b border-zinc-900">
-                  <td colSpan={5} className="space-y-1 py-2 pl-2 text-xs text-zinc-400">
-                    {p.summary !== '' && <p className="text-zinc-300">{p.summary}</p>}
-                    {p.claims.length > 0 && (
-                      <p>
-                        <span className="text-zinc-500">told him:</span> {p.claims.join(' | ')}
-                      </p>
+          {mind.people.map((p) => {
+            const x = personExtras(p)
+            const houseTrust = x.storyTrust ?? null
+            return (
+              <Fragment key={p.id}>
+                <tr className="cursor-pointer border-b border-zinc-900 hover:bg-zinc-900/60" onClick={() => setOpen(open === p.id ? null : p.id)} data-testid="mind-person">
+                  <td className="py-1 pr-2 text-zinc-200">
+                    {p.name}
+                    {p.kind === 'performer' && <span className="ml-1 text-[10px] text-zinc-500">cast</span>}
+                    {x.marked === true && (
+                      <span className="ml-1" title="Marked for the Internet" data-testid="mind-person-marked">
+                        ⛔
+                      </span>
                     )}
-                    {p.asks.length > 0 && (
-                      <p>
-                        <span className="text-zinc-500">asked for:</span> {p.asks.join(' | ')}
-                      </p>
-                    )}
-                    {p.promises.length > 0 && (
-                      <p>
-                        <span className="text-zinc-500">he promised:</span> {p.promises.join(' | ')}
-                      </p>
-                    )}
-                    <div className="flex gap-1 pt-1">
-                      <button
-                        className={btn}
-                        onClick={() => void (async () => {
-                          const v = await promptText({ title: `Trust in ${p.name}`, body: '0–100', defaultValue: String(p.trust) })
-                          if (v !== null && Number.isFinite(Number(v))) await control({ action: 'set', character: mind.character, field: 'trust', person: p.id, value: Number(v) })
-                        })()}
-                      >
-                        Set trust
-                      </button>
-                      <button
-                        className={clsx(btn, 'border-red-900 text-red-300 hover:bg-red-950')}
-                        onClick={() => void (async () => {
-                          if (await confirmAction({ title: `Forget ${p.name}?`, body: 'The whole file goes: summary, claims, asks, promises, trust.', confirmLabel: 'Forget', danger: true }))
-                            await control({ action: 'forget', character: mind.character, person: p.id })
-                        })()}
-                      >
-                        Forget
-                      </button>
-                    </div>
+                    {(x.memos?.length ?? 0) > 0 && <span className="ml-1 text-[10px] text-zinc-500">{x.memos!.length} memo{x.memos!.length === 1 ? '' : 's'}</span>}
                   </td>
+                  {fresh ? (
+                    <td className="w-36 py-1 pr-2 text-zinc-400" colSpan={2} title="The story's own trust value for them (them.trust), as the voice is handed it">
+                      {houseTrust !== null ? (
+                        <>
+                          the house's trust <span className="font-mono text-zinc-200">{houseTrust}</span>
+                        </>
+                      ) : (
+                        <span className="text-zinc-600">—</span>
+                      )}
+                    </td>
+                  ) : (
+                    <>
+                      <td className="w-28 py-1 pr-2">
+                        <div className="h-1.5 w-full rounded bg-zinc-800" title={`trust ${p.trust}/100`}>
+                          <div className="h-1.5 rounded bg-indigo-500" style={{ width: `${Math.max(0, Math.min(100, p.trust))}%` }} />
+                        </div>
+                      </td>
+                      <td className="w-8 py-1 pr-2 text-right font-mono text-zinc-300">{p.trust}</td>
+                    </>
+                  )}
+                  <td className="w-10 py-1 pr-2 text-right text-zinc-500">{p.turns}×</td>
+                  <td className="max-w-0 truncate py-1 text-zinc-400">{p.summary}</td>
                 </tr>
-              )}
-            </Fragment>
-          ))}
+                {open === p.id && (
+                  <tr className="border-b border-zinc-900">
+                    <td colSpan={5} className="space-y-1 py-2 pl-2 text-xs text-zinc-400" data-testid="mind-person-file">
+                      <PersonFile mind={mind} person={p} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </section>
+  )
+}
+
+/** One person's file, opened under their row: what the story and the voice
+ *  kept (first meeting, memos, gifts, filings, the house's trust, the chart)
+ *  beside today's summary / claims / asks / promises, and the file's controls. */
+export function PersonFile({ mind, person: p }: { mind: AgentMindSummary; person: AgentMindSummary['people'][number] }) {
+  const control = useCockpit((s) => s.mindControl)
+  const fresh = isNewMind(mind)
+  const x = personExtras(p)
+  const houseTrust = x.storyTrust ?? null
+  return (
+    <>
+      {p.summary !== '' && <p className="text-zinc-300">{p.summary}</p>}
+      {x.firstMet !== undefined && x.firstMet !== '' && (
+        <p>
+          <span className="text-zinc-500">first met:</span> {x.firstMet}
+        </p>
+      )}
+      {houseTrust !== null && (
+        <p>
+          <span className="text-zinc-500">the house's trust:</span> <span className="font-mono text-zinc-300">{houseTrust}</span>
+        </p>
+      )}
+      {x.chart !== undefined && x.chart !== null && x.chart !== '' && (
+        <p>
+          <span className="text-zinc-500">on the Trust Chart:</span> {x.chart}
+        </p>
+      )}
+      {(x.gifts?.length ?? 0) > 0 && (
+        <p>
+          <span className="text-zinc-500">gave him:</span> {x.gifts!.map((g) => `“${g}”`).join(', ')}
+        </p>
+      )}
+      {(x.filings?.length ?? 0) > 0 && (
+        <p>
+          <span className="text-zinc-500">filed:</span> <span className="font-mono">{x.filings!.join(' ')}</span>
+        </p>
+      )}
+      {(x.memos?.length ?? 0) > 0 && (
+        <ul className="space-y-0.5" data-testid="mind-memos">
+          {x.memos!.map((m, i) => (
+            <li key={`${i}-${m.at}`} className="flex gap-2">
+              <span className={clsx('shrink-0', m.heart ? 'text-rose-300' : 'text-zinc-500')}>{memoLabel(m)}</span>
+              <span className="text-zinc-200">{m.text}</span>
+              {m.at > 0 && <span className="text-zinc-600">{timeOf(m.at)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {p.claims.length > 0 && (
+        <p>
+          <span className="text-zinc-500">told him:</span> {p.claims.join(' | ')}
+        </p>
+      )}
+      {p.asks.length > 0 && (
+        <p>
+          <span className="text-zinc-500">asked for:</span> {p.asks.join(' | ')}
+        </p>
+      )}
+      {p.promises.length > 0 && (
+        <p>
+          <span className="text-zinc-500">he promised:</span> {p.promises.join(' | ')}
+        </p>
+      )}
+      <div className="flex gap-1 pt-1">
+        {!fresh && (
+          <button
+            className={btn}
+            onClick={() => void (async () => {
+              const v = await promptText({ title: `Trust in ${p.name}`, body: '0–100', defaultValue: String(p.trust) })
+              if (v !== null && Number.isFinite(Number(v))) await control({ action: 'set', character: mind.character, field: 'trust', person: p.id, value: Number(v) })
+            })()}
+          >
+            Set trust
+          </button>
+        )}
+        <button
+          className={clsx(btn, 'border-red-900 text-red-300 hover:bg-red-950')}
+          onClick={() => void (async () => {
+            if (await confirmAction({ title: `Forget ${p.name}?`, body: fresh ? 'The whole file goes: first meeting, memos, summary.' : 'The whole file goes: summary, claims, asks, promises, trust.', confirmLabel: 'Forget', danger: true }))
+              await control({ action: 'forget', character: mind.character, person: p.id })
+          })()}
+        >
+          Forget
+        </button>
+      </div>
+    </>
   )
 }
 
@@ -1006,7 +1222,9 @@ function Revisions({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThou
           <li key={r.rev} className="flex items-center gap-2">
             <span className="w-8 font-mono text-zinc-500">#{r.rev}</span>
             <span className="w-16 text-zinc-500">{timeOf(r.at)}</span>
-            <span className={clsx('w-14', r.by === 'reflect' || r.by === 'survey' ? 'text-zinc-300' : 'text-amber-300')}>{r.by}</span>
+            <span className={clsx('w-24 shrink-0', r.by === 'reflect' || r.by === 'survey' || r.by === 'story' ? 'text-zinc-300' : 'text-amber-300')} data-testid="mind-revision-by">
+              {byLabel(r.by)}
+            </span>
             <span className="flex-1 truncate text-zinc-400">
               {r.touched.join(', ')}
               {r.stage !== '' && <span className="text-zinc-600"> · {r.stage}</span>}
@@ -1028,12 +1246,12 @@ function Revisions({ mind, onOpenThought }: { mind: AgentMindSummary; onOpenThou
 // ---------------------------------------------------------------------------
 
 function TraceList({ character, thoughts, onOpen }: { character: string | null; thoughts: AgentThought[]; onOpen: (id: string) => void }) {
-  const [kinds, setKinds] = useState<Set<AgentThought['kind']>>(() => new Set(ALL_KINDS))
+  const [kinds, setKinds] = useState<Set<string>>(() => new Set(ALL_KINDS))
   const [person, setPerson] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const rows = useMemo(() => filterThoughts(thoughts, { character, kinds, person, query }), [thoughts, character, kinds, person, query])
   const speakers = useMemo(() => speakersOf(thoughts, character), [thoughts, character])
-  const toggle = (k: AgentThought['kind']) =>
+  const toggle = (k: string) =>
     setKinds((prev) => {
       const n = new Set(prev)
       if (n.has(k)) n.delete(k)
@@ -1050,8 +1268,8 @@ function TraceList({ character, thoughts, onOpen }: { character: string | null; 
             className={clsx('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', kinds.has(k) ? 'border-zinc-700 text-zinc-200' : 'border-zinc-900 text-zinc-600 line-through')}
             data-testid={`mind-kind-${k}`}
           >
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: KIND_META[k].color, opacity: kinds.has(k) ? 1 : 0.3 }} aria-hidden />
-            {KIND_META[k].label}
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: kindMeta(k).color, opacity: kinds.has(k) ? 1 : 0.3 }} aria-hidden />
+            {kindMeta(k).label}
           </button>
         ))}
         {speakers.length > 0 && (
@@ -1079,8 +1297,8 @@ function TraceList({ character, thoughts, onOpen }: { character: string | null; 
   )
 }
 
-function KindBadge({ kind }: { kind: AgentThought['kind'] }) {
-  const m = KIND_META[kind]
+function KindBadge({ kind }: { kind: string }) {
+  const m = kindMeta(kind)
   return (
     <span className="inline-flex w-16 shrink-0 items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-300">
       <span className="inline-block h-2 w-2 rounded-full" style={{ background: m.color }} aria-hidden />
@@ -1090,7 +1308,7 @@ function KindBadge({ kind }: { kind: AgentThought['kind'] }) {
 }
 
 function ThoughtRow({ thought: t, onOpen }: { thought: AgentThought; onOpen: () => void }) {
-  const marker = KIND_META[t.kind].who === 'marker'
+  const marker = kindMeta(t.kind).who === 'marker'
   return (
     <button
       onClick={onOpen}
@@ -1105,7 +1323,7 @@ function ThoughtRow({ thought: t, onOpen }: { thought: AgentThought; onOpen: () 
           {t.speaker !== null && <>with {t.speaker.name} · </>}
           {t.model !== null && <span className="font-mono">{t.model.name}</span>}
           {t.trigger !== '' && <> · {t.trigger}</>}
-          {t.ms > 0 && <> · {formatMs(t.ms)}</>}
+          {timingText(t) !== '' && <> · {timingText(t)}</>}
           {t.completion_tokens !== null && <> · {t.completion_tokens} tok</>}
           {t.thinking !== '' && <> · 💭</>}
           {t.revision !== null && <> · rev #{t.revision}</>}
@@ -1115,7 +1333,7 @@ function ThoughtRow({ thought: t, onOpen }: { thought: AgentThought; onOpen: () 
   )
 }
 
-function ThoughtDetail({ thought: t, onBack }: { thought: AgentThought; onBack: () => void }) {
+function ThoughtDetail({ thought: t, onBack, onOpenThought }: { thought: AgentThought; onBack: () => void; onOpenThought: (id: string) => void }) {
   const control = useCockpit((s) => s.mindControl)
   const [tab, setTab] = useState<'input' | 'thinking' | 'output' | 'result' | 'diff'>(t.thinking !== '' ? 'thinking' : t.messages.length > 0 ? 'input' : 'result')
   const rows = useMemo(() => diffRows(t.diff), [t.diff])
@@ -1143,7 +1361,11 @@ function ThoughtDetail({ thought: t, onBack }: { thought: AgentThought; onBack: 
           </span>
         )}
         {t.speaker !== null && <span className="text-zinc-500">with {t.speaker.name}</span>}
-        {t.ms > 0 && <span className="text-zinc-500">{formatMs(t.ms)}</span>}
+        {timingText(t) !== '' && (
+          <span className="text-zinc-500" data-testid="mind-thought-timing">
+            {timingText(t)}
+          </span>
+        )}
         {(t.prompt_tokens !== null || t.completion_tokens !== null) && (
           <span className="text-zinc-500">
             {t.prompt_tokens ?? '?'} in / {t.completion_tokens ?? '?'} out
@@ -1178,7 +1400,7 @@ function ThoughtDetail({ thought: t, onBack }: { thought: AgentThought; onBack: 
         ))}
       </div>
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-zinc-800 p-2 text-xs">
-        {tab === 'input' && <Messages messages={t.messages} />}
+        {tab === 'input' && <Messages messages={t.messages} onOpenThought={onOpenThought} />}
         {tab === 'thinking' && <pre className="whitespace-pre-wrap font-sans text-zinc-200">{t.thinking}</pre>}
         {tab === 'output' && <pre className="whitespace-pre-wrap font-mono text-zinc-200">{t.output}</pre>}
         {tab === 'result' && <pre className="whitespace-pre-wrap font-mono text-zinc-200">{JSON.stringify(t.result, null, 2)}</pre>}
@@ -1203,11 +1425,13 @@ function ThoughtDetail({ thought: t, onBack }: { thought: AgentThought; onBack: 
   )
 }
 
-function Messages({ messages }: { messages: AgentThought['messages'] }) {
+export function Messages({ messages, onOpenThought }: { messages: AgentThought['messages']; onOpenThought?: (id: string) => void }) {
   const [openSystem, setOpenSystem] = useState(false)
   return (
     <ol className="space-y-2">
       {messages.map((m, i) => {
+        const ref = prefixRef(m.content)
+        if (ref !== null) return <PrefixMessage key={i} role={m.role} id={ref} onOpenThought={onOpenThought} />
         const system = m.role === 'system'
         const long = system && m.content.length > 600 && !openSystem
         return (
@@ -1229,3 +1453,60 @@ function Messages({ messages }: { messages: AgentThought['messages'] }) {
   )
 }
 
+/**
+ * A message the trace stored once (C6.6): `[same prefix as th-…]`. It shows
+ * as a button; pressing it shows the static prefix, from the thoughts already
+ * on the page or else `GET …/api/mod/agent/trace?id=` (the server keeps the
+ * full text on the thought it names).
+ */
+function PrefixMessage({ role, id, onOpenThought }: { role: string; id: string; onOpenThought?: (id: string) => void }) {
+  const thoughts = useCockpit((s) => s.thoughts)
+  const eventId = useCockpit((s) => s.run?.eventId ?? null)
+  const [text, setText] = useState<string | null>(null)
+  const [state, setState] = useState<'idle' | 'loading' | 'missing' | 'failed'>('idle')
+  const load = async () => {
+    if (text !== null) {
+      setText(null)
+      return
+    }
+    const local = localPrefix(id, thoughts)
+    if (local !== null) {
+      setText(local)
+      return
+    }
+    if (eventId === null) {
+      setState('missing')
+      return
+    }
+    setState('loading')
+    try {
+      const t = await fetchThought(eventId, id)
+      const first = t?.messages[0]?.content
+      if (typeof first === 'string' && prefixRef(first) === null) {
+        setText(first)
+        setState('idle')
+      } else setState('missing')
+    } catch {
+      setState('failed')
+    }
+  }
+  return (
+    <li className="rounded border border-dashed border-zinc-800 bg-zinc-900/40 p-2" data-testid="mind-prefix">
+      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wide text-zinc-500">
+        {role}
+        <button className={clsx(btn, 'normal-case tracking-normal')} onClick={() => void load()} disabled={state === 'loading'} title="This prompt's static part is the same as an earlier thought's: show it" data-testid="mind-prefix-load">
+          {text !== null ? 'hide' : state === 'loading' ? 'loading…' : <>same prefix as <span className="font-mono">{id}</span></>}
+        </button>
+        {onOpenThought !== undefined && thoughts.some((t) => t.id === id) && (
+          <button className="normal-case tracking-normal text-indigo-400 hover:underline" onClick={() => onOpenThought(id)}>
+            open {id}
+          </button>
+        )}
+        {state === 'missing' && <span className="normal-case tracking-normal text-amber-300">prefix not found</span>}
+        {state === 'failed' && <span className="normal-case tracking-normal text-red-300">could not load it</span>}
+        {text !== null && <span className="text-zinc-700">{text.length} chars</span>}
+      </div>
+      {text !== null && <pre className="mt-1 whitespace-pre-wrap font-sans text-zinc-200">{text}</pre>}
+    </li>
+  )
+}
