@@ -424,7 +424,7 @@ def reminder(persona: Persona, req: dict[str, Any], *, memo: bool = True, lookup
     return " ".join(tail)
 
 
-def last_line_note(req: dict[str, Any], ctx: VoiceContext) -> str | None:
+def last_line_note(req: dict[str, Any], ctx: VoiceContext, persona: Persona | None = None) -> str | None:
     """His last free reply to them, named right before the reminder. At low
     reasoning effort gpt-oss tends to write its previous assistant turn again
     word for word (K-04: 4 of 21 october-21 requests), even with the line in
@@ -433,8 +433,8 @@ def last_line_note(req: dict[str, Any], ctx: VoiceContext) -> str | None:
     mine = thread_replies(req)
     last = ctx.said.to_them[-1] if ctx.said.to_them else (mine[-1] if mine else "")
     last = " ".join(str(last).split())
-    if not last:
-        return None
+    if not last or (persona is not None and persona.secrets.leaks(last)):
+        return None  # as ALREADY SAID: a line carrying a `never` word is never repeated back
     return f"Your last line to them was “{last}”. Do not say it again or open the same way: answer what they just said, in new words."
 
 
@@ -463,7 +463,7 @@ def build_lean_messages(
             out.append({"role": "assistant", "content": prior_json})
         found = "\n".join(f"- {v}" for v in lookups.values()) or "- nothing"
         out.append({"role": "system", "content": f"LOOKUP RESULTS from the live system (for you only; use them in character):\n{found}\nNow answer. No further lookups."})
-    last = last_line_note(req, ctx) if ctx.options.repeat_guard else None
+    last = last_line_note(req, ctx, persona) if ctx.options.repeat_guard else None
     if last:
         out.append({"role": "system", "content": last})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})

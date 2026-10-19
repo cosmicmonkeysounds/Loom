@@ -174,6 +174,11 @@ def test_the_last_line_falls_back_to_the_thread_and_is_absent_before_his_first_r
     assert msgs[-1]["content"].startswith("Answer their last message in character.")
 
 
+def test_a_last_line_carrying_a_never_word_is_not_named():
+    msgs = build_lean_messages(P, request(), context(said=Said(to_them=("It was XYZZY-PLUGH all along.",))))
+    assert not any("Your last line" in m["content"] for m in msgs)
+
+
 def test_the_retry_keeps_the_last_line_note_so_it_is_the_first_call_plus_one_message():
     first = build_lean_messages(P, request(), context())
     again = build_lean_messages(P, request(), context(), retry="Speak, program.")
