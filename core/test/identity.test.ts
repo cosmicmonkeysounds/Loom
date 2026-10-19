@@ -22,6 +22,8 @@ import { WikiClient, fileUrl, isAntivirusSoftware, pickFile, rankFiles, type Wik
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl, type ImageFetch } from "../server/avatars.ts";
 
 const SHOW = scenarioSource("trapped-in-the-internet");
+/** The show's nine featured programs (cast/featured.loom). */
+const FEATURED = ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"] as const;
 const CODES = { event: "EVT900", prime: "PRM900", mod: "MOD900" };
 
 // --- a fake Wikipedia ---------------------------------------------------------
@@ -207,8 +209,16 @@ describe("the story classifies its characters", () => {
     expect(byName("MS Paint").kind).toBe("pool");
     // The nine featured programs are guests with pre-written characters:
     // no hooks, no beats, no lines, so they stay on the guest picker.
-    for (const f of ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"]) {
+    for (const f of FEATURED) {
       expect(byName(f).kind, f).toBe("pool");
+    }
+  });
+
+  it("the nine featured programs, and only they, are reserved for their invitees: still guests, never parts", () => {
+    expect(defs.filter((d) => d.reserved).map((d) => d.name).sort()).toEqual([...FEATURED].sort());
+    for (const f of FEATURED) {
+      expect(guestPickable(byName(f)), f).toBe(true);
+      expect(performerPickable(byName(f)), f).toBe(false);
     }
   });
 
@@ -456,11 +466,18 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
   it("a featured program is a guest's to claim, once; the secret state holder is nobody's", async () => {
     const rt = freshRuntime();
     // A featured program is `reserved: true` (wave 11): it takes its
-    // invitation's claim, which `/api/mod/codes` lists. Without the key
-    // (an older story text) it needs none.
+    // invitation's claim, which `/api/mod/codes` lists.
     const codes = await post(rt, "/api/mod/codes", {}, undefined, { moderator: true });
-    const claim = (codes.json.claims as Array<{ character: string; claim: string }>).find((c) => c.character === "Microsoft Excel")?.claim;
-    if (claim !== undefined) expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).json.error).toBe("reserved");
+    const claims = codes.json.claims as Array<{ character: string; claim: string; url: string }>;
+    // The Print sheet's invitations: one per featured program.
+    expect(claims.map((c) => c.character).sort()).toEqual([...FEATURED].sort());
+    for (const c of claims) expect(c.url, c.character).toContain(`&claim=${encodeURIComponent(c.claim)}`);
+    const claim = claims.find((c) => c.character === "Microsoft Excel")?.claim;
+    expect(claim).toBeDefined();
+    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event })).json.error).toBe("reserved");
+    // Another featured program's claim is not this one's.
+    const vlc = claims.find((c) => c.character === "VLC")!.claim;
+    expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim: vlc })).json.error).toBe("reserved");
     expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim })).status).toBe(200);
     expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim })).status).toBe(409);
     expect((await post(rt, "/api/guest/register", { name: "Kernel", passcode: CODES.event })).status).toBe(409);

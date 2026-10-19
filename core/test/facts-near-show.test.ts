@@ -76,7 +76,9 @@ describe("Trapped in the Internet — a near miss in auto mode goes to a directo
     rt.openDoors();
     const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
     const upload = async (name: string) => {
-      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event });
+      // a featured program (Microsoft Excel) is reserved: its invitee joins
+      // with the claim (a pool program's register ignores it)
+      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event, claim: rt.claimFor(name) });
       expect(g.status).toBe(200);
       const id = g.json["id"] as string;
       const token = g.json["token"] as string;

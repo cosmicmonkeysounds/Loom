@@ -4147,7 +4147,8 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     tmp.push(dir);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
     rt.openDoors();
-    const g = await call(rt, "POST", "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event });
+    // a featured program is reserved: its invitee joins with the claim
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim: rt.claimFor("Microsoft Excel") });
     expect(g.status).toBe(200);
     const id = g.json["id"] as string;
     const token = g.json["token"] as string;
@@ -4593,7 +4594,8 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
     const mod = (name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
     /** A program through the door: register, fail the CAPTCHA, leave something behind, the Antivirus scan (clearance, 100 Truthcoin). */
     const program = async (name: string) => {
-      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event });
+      // a featured program (Runescape) is reserved: its invitee joins with the claim
+      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: CODES.event, claim: rt.claimFor(name) });
       expect(g.status).toBe(200);
       const id = g.json["id"] as string;
       const token = g.json["token"] as string;

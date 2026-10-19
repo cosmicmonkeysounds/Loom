@@ -98,8 +98,11 @@ stamp=$(date +%H%M%S)
 
 # ── 1. two probe programs, cleared, funded ─────────────────────────────────
 register() { # register <program name> → "id token" (empty on refusal)
-  local r
-  if r=$(post "$EV/api/guest/register" "{\"passcode\":\"$EVENT_CODE\",\"name\":\"$1\"}"); then
+  local r claim
+  # A featured program is `reserved: true` (wave 11): it needs its invitation's
+  # claim, which the director's /api/mod/codes lists (empty for a pool program).
+  claim=$(get "$EV/api/mod/codes" "$token" | json "next((c['claim'] for c in (d.get('claims') or []) if c['character'] == '$1'), '')") || claim=""
+  if r=$(post "$EV/api/guest/register" "{\"passcode\":\"$EVENT_CODE\",\"name\":\"$1\",\"claim\":\"$claim\"}"); then
     printf '%s' "$r" | json "d['id'] + ' ' + d['token']"
   else
     echo "  (register $1 → $r)" >&2
