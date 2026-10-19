@@ -169,7 +169,7 @@ def test_facts_offers_pairs_a_right_and_a_wrong_offer_from_different_guests_in_t
             kind, q = s["offer"].split(":")
             pairs.setdefault((phase, q), {})[kind] = s
     assert sorted(pairs) == [(p, q) for p in ("hunt_1", "truth_1") for q in ("H1", "H2", "H3")]
-    for (phase, q), pair in pairs.items():
+    for (_phase, q), pair in pairs.items():
         right, wrong = pair["right"], pair["wrong"]
         assert right["as"] != wrong["as"]
         assert f"{{answer:{q}}}" in right["say"] and "{answer:" not in wrong["say"]
