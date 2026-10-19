@@ -2914,6 +2914,24 @@ describe("Trapped in the Internet — Trabolta's phase table (wave 12)", () => {
     expect(text).not.toMatch(/signs his\s+messages/u);
     expect(text).toMatch(/first\s+message to a program/u);
   });
+
+  it("no file he may tell in full quotes a stock phrase: the `tell` texts sit in every conversation", () => {
+    // The persona's VOICE line lists the stock phrases it rations to first
+    // contact; a `tell` entry's whole text is printed into P2 on every call,
+    // so a quoted one there would plant the catchphrase in every reply.
+    const persona = readFileSync(join(scenarioDir(SHOW), "trabolta.persona.md"), "utf8");
+    const voice = /Your stock phrases\s*\(([^)]*)\)/u.exec(persona);
+    expect(voice).not.toBeNull();
+    const stock = [...voice![1]!.matchAll(/"([^"]+)"/gu)].map((m) => fold(m[1]!).replace(/[.!?]+$/u, ""));
+    expect(stock).toEqual(["your request has been logged", "please wait", "this program has performed an operation"]);
+    const byTitle = new Map([...fresh().model.codex.values()].map((e) => [e.title, e.text]));
+    const told = new Set([...phaseTable().values()].flatMap((card) => card.tell));
+    expect(told.size).toBeGreaterThan(0);
+    for (const title of told) {
+      const text = fold(byTitle.get(title) ?? "");
+      for (const phrase of stock) expect(text, `${title}: "${phrase}"`).not.toContain(phrase);
+    }
+  });
 });
 
 // ───────────────────────── 6 · secrecy through the real event server ─────────────────────────
