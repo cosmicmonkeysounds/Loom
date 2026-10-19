@@ -98,8 +98,10 @@ never from a guest card.
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | ghosts block the majority at Y2K | **🗳 Force the majority** (stay / leave) |
 | a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
-| dead chess phone | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the tent tablet's King reports its own wins *by Tent tablet* |
-| the server-room door opened and nothing happened | **🚪** Server room door opened (the contact's fallback): from the Y2K hour the first one plays The Heart |
+| dead door terminal (the King's chess) | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the door terminal reports its own wins *by Terminal · <name>* |
+| the King's health knocked down too early, or after a rehearsal | **👑** Restore the King's health (Anytime): back to 15/15 in both games and at the door |
+| the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |
+| the server-room door opened and nothing happened | **🚪** Server room door opened (the contact's fallback; the server-room Antivirus has it too): once Trabolta is awake the first one plays The Heart |
 | a wrong patch the crew forgave, or after a rehearsal | **🔄** Server room: reset the patch-bay alarm (clears the wrong-combination count, the alarm latch and The Heart); the lights stay as they are, so if the house is still red press **💡** Restore the house lights |
 | `# hosts`: "🕊 Trabolta offers to stand down for X" | your call: **🕊** Trabolta stands down (talked down) ends the night the Combo A way, without a cable |
 | a dead keypad battery or a jammed lock | the house manager's override key; prop the door; fire **🚪** if the cutscene has not played (W-35) |
@@ -194,11 +196,13 @@ after doors.
    the patch bay is all unplugged; the server-room terminal is green and asleep.
 8. Audio: one test cue per zone through the MOTU at show level; the house-announcement test.
 9. Push: the staff test alert arrived on every performer phone.
-10. Tent: tablet charged on `/reinstall/` (provisioned as `Tent tablet`, so
-    the King's wins journal *by Tent tablet*); the Installation Wizard video
+10. Tent: tablet charged on `/reinstall/` (provisioned as `Tent tablet`); the
+    King's bar reads 15/15 on the Run page (👑 if not); the Installation Wizard video
     on the 2nd device; Quest charged (if go); heater on its GFCI leg; EXIT
     sign on.
-11. Chess phone on Lichess, charging. Bean printer button paired.
+11. The door terminal by the keypad (the King's chess) green on the
+    Terminals card. The four silver digit notes hidden (never in the server
+    room). Bean printer button paired.
 12. Print: the QR stacks sorted by colour and hidden where
     `generated/print-stacks.md` says (gold = the hunt answers, green, blue,
     red), the check-in signs, Bingo cards + pens, trophies, every card.

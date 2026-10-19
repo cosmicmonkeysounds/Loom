@@ -25,6 +25,7 @@ addresses, codes, where things are kept).
 | [`performers/password-manager.md`](./performers/password-manager.md) | Password Manager (Francine) | |
 | [`performers/cra-agent.md`](./performers/cra-agent.md) | CRA Agent Software (Emma) | |
 | [`performers/installation-wizard.md`](./performers/installation-wizard.md) | the Installation Wizard (Julia — a voice, no booth), incl. the tent card | |
+| [`performers/windows-defender.md`](./performers/windows-defender.md) | Windows Defender (wave 11: the door-only Antivirus, late arrivals) ([[EDIT: who]]) | |
 | **Crew** | | trained 10-25 |
 | [`crew/director.md`](./crew/director.md) | the Director card (the Run console) + the show owner's day (John) | |
 | [`crew/second-director.md`](./crew/second-director.md) | the second director (at Run all night) | |
@@ -67,19 +68,31 @@ addresses, codes, where things are kept).
   escort them (`# quarantine`); Truthcoin moves from each program's Wallet
   (CRA approves every third transfer); Clippy and the Antivirus have Quest
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent
-  is in the backyard through the tunnel; the King guards the server-room
-  door on the tent tablet. Every pack below is written to that.
+  is in the backyard through the tunnel. Every pack below is written to that.
 - **Wave 7 (2026-10-17), not yet deployed:** the server-room door has a real,
   standalone **keypad lock** (outside only; the inside handle always opens
   with no code; nothing in the show can lock or unlock it). A program gets
-  the code by checkmating the King from the Y2K hour, by solving the riddle
-  on the sign by the keypad, or with the winning majority. Opening the door
-  is a clean entry, whoever does it: the door never alarms. The first opening
-  from the Y2K hour plays **The Heart** (Trabolta speaks candidly from the
-  server-room terminal on the wall, where a program can talk him down: 🕊).
+  the code with the winning majority (and, since wave 11, the two ways below).
+  Opening the door is a clean entry, whoever does it: the door never alarms.
+  Only the server-room terminal on the wall is his heart: Trabolta speaks
+  candidly there, and from the Y2K hour a program can talk him down (🕊).
   Only the patch bay alarms, on the **second** wrong combination. CRA
   approves or denies every third transaction (C16), everywhere. The code is
   never written on a card or said on the radio.
+- **Wave 11 (2026-10-18), not yet deployed:** the code also comes from
+  **four digit notes** hidden in four rooms (one digit each, the silver
+  pile; all four in one Codex assemble the code; the quest *The Cold
+  Door* counts them) and from **checkmating the King on the terminal
+  outside the server-room door** (all night until 📄, no hints). The King
+  also stands in both reinstallation games with **one health bar for the
+  whole night** (15 points, each program may hit him once per visit; the
+  lower it is, the worse he plays at the door; 👑 restores him). The sign
+  by the keypad points at the notes and the King; there is no riddle.
+  **The Heart** plays on the first opening once Trabolta is awake,
+  however the door was unlocked (press **🔧** first when the crew go in).
+  The server-room Antivirus presses 🔌 💥 ❌ 🚪 🔧 on their own booth, Adobe
+  Acrobat presses 🫘, and **Windows Defender** is a door-only part for late
+  arrivals.
 - **Waves 8 and 9:** wave 8 shipped as `w8-1018`; wave 9 (2026-10-18) is
   merged and ships as `w9-1018`, and every pack is written to it: McAfee
   referees bets and holds no pot (a bet settles player to player, the

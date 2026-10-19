@@ -21,7 +21,7 @@ under the QR. Not uploaded yet → "Not yet. Finish your upload." Use an
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | someone suspicious (doubt +25) |
 | the summons (⏳ → 🚨) | scan every arrival at the living-room door = their **check-in**, or **📍 Checked in at the Desktop** | |
-| Y2K on | **♟ They beat the machine** | only after you **saw** "checkmate" on the chess phone: it gives them the door code (the King on the tent tablet reports its own wins) |
+| any time, until 📄 | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it: it gives them the door code (the terminal reports its own wins) |
 
 **The escort list.** The hosts never send anyone to the Internet: they
 **mark** a program (🎯 named on the Bingo card, 🤷 a guess, 🙅 a refused

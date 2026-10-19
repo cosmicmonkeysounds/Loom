@@ -20,7 +20,7 @@ verified (OP-04).
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |
 | the summons (⏳ → 🚨) | scan arrivals at the living-room door, or **📍 Checked in** | |
-| Y2K on | **♟ They beat the machine** | only after you **saw** "checkmate" |
+| any time, until 📄 | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it |
 
 **The escort list.** The hosts mark programs (🎯 🤷 🙅 🎩 🏓 🍎, a late
 arrival, a filed guess); your booth reads *🚨 X is marked for reinstallation
