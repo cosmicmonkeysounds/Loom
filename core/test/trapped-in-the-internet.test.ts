@@ -121,6 +121,13 @@ describe("Trapped in the Internet — compile", () => {
     expect(hold).toMatch(/^[A-Za-z .,']+$/u);
   });
 
+  it("Trabolta has a plain-words busy line for a burst behind an online worker (wave 11, C6)", () => {
+    const busy = m.characters.get("Trabolta")?.busy ?? "";
+    expect(busy).toMatch(/^Jean Trabolta /u);
+    expect(busy).toMatch(/^[A-Za-z .,']+$/u); // read aloud on a terminal too
+    expect(busy).not.toBe(m.characters.get("Trabolta")?.hold); // behind, not gone
+  });
+
   it("parses clean, concatenated and per file; both builds agree on the rules", () => {
     const [, all] = parse(SRC);
     expect(all.filter((d) => d.severity === "error")).toEqual([]);
