@@ -153,7 +153,15 @@ export function reservedDefFor(model: SimModel, name: string): IdentityDef | nul
   const folded = foldName(name);
   if (folded === "") return null;
   const defs = identityDefs(model).filter((d) => d.reserved && guestPickable(d));
-  return defs.find((d) => foldName(d.name) === folded) ?? defs.find((d) => d.wiki !== null && foldName(d.wiki) === folded) ?? null;
+  // Its name without the vendor word is held too ("Excel" for "Microsoft Excel").
+  const short = (n: string): string | null => {
+    const rest = n.trim().split(/\s+/u).slice(1).join(" ");
+    return rest === "" ? null : foldName(rest);
+  };
+  return defs.find((d) => foldName(d.name) === folded)
+    ?? defs.find((d) => d.wiki !== null && foldName(d.wiki) === folded)
+    ?? defs.find((d) => short(d.name) === folded)
+    ?? null;
 }
 
 /** Why a guest may not register a name, or null when they may. `mayClaim`
