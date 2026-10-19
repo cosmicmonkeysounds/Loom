@@ -502,6 +502,16 @@ class SurveyMark:
 #: Survey triggers the `survey_every_s: 0` switch turns off.
 CLOCK_TRIGGERS = ("timer", "hello")
 
+#: How much a survey trigger bypasses: a `director` survey every skip rule, a
+#: `phase` survey the idle one, anything else none. Every survey of a character
+#: shares one queue key, so a weaker trigger queued behind a stronger one must
+#: never take its place (a stream hello behind a director's Survey now).
+SURVEY_RANK = {"director": 2, "phase": 1}
+
+
+def survey_rank(trigger: str) -> int:
+    return SURVEY_RANK.get(trigger or "timer", 0)
+
 
 def character_vars(facts: Facts, character: str) -> dict[str, Any] | None:
     """The character's own variables as the facts document carries them, or
@@ -621,6 +631,12 @@ class Orchestrator:
 
     def submit(self, job: Job) -> None:
         if not self.cfg.enabled:
+            return
+        prev = self._jobs.get(job.key)
+        if prev is not None and prev.kind == "survey" and job.kind == "survey" and survey_rank(prev.trigger) > survey_rank(job.trigger):
+            # The queued survey bypasses more of the skip rules than this one:
+            # it stays, trigger and place, and covers this one too.
+            self._wake.set()
             return
         prev = self._jobs.pop(job.key, None)
         if prev is not None:

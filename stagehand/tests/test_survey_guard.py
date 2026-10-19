@@ -85,6 +85,32 @@ class Rig:
         asyncio.new_event_loop().run_until_complete(go())
         return len(self.calls) > before
 
+    def queued(self, *triggers):
+        """Queue several surveys while a reply is in flight (so none runs
+        before the next is queued), then let the loop run them; returns the
+        triggers of the surveys that reached the model."""
+        before = len(self.thoughts)
+        self.orch.busy(+1)
+        for trigger in triggers:
+            self.orch.survey("Trabolta", trigger)
+
+        async def go():
+            task = asyncio.ensure_future(self.orch.run())
+            try:
+                await asyncio.sleep(0.05)
+                self.orch.busy(-1)
+                for _ in range(300):
+                    if self.orch.pending == 0 and self.orch._current is None:
+                        return
+                    await asyncio.sleep(0.01)
+                raise AssertionError("the surveys never finished")
+            finally:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
+        asyncio.new_event_loop().run_until_complete(go())
+        return [t.trigger for t in self.thoughts[before:] if t.kind == "survey"]
+
     @property
     def thoughts(self):
         return self.trace.all("Trabolta")
@@ -240,3 +266,25 @@ def test_a_reset_forgets_the_last_survey():
     assert rig.survey("timer") and not rig.survey("timer")
     rig.orch.drop_all()
     assert rig.survey("timer")
+
+
+def test_a_hello_queued_behind_a_director_survey_never_takes_its_place():
+    # Every survey of a character shares one queue key. A stream hello (or
+    # the clock) arriving while a director's Survey now still waits behind a
+    # reply must not turn it into a hello survey that the guard then skips.
+    for every in (0, 120):
+        rig = Rig(persona=OPEN, every=every)
+        if every:
+            assert rig.survey("director")  # a last survey, so the house is idle
+        assert rig.queued("director", "hello") == ["director"], every
+        assert rig.queued("director", "timer", "hello") == ["director"], every
+    # A director survey queued after a weaker one still replaces it.
+    rig = Rig(persona=OPEN, every=0)
+    assert rig.queued("hello", "director") == ["director"]
+
+
+def test_a_phase_survey_is_not_replaced_by_a_timer_survey():
+    rig = Rig()
+    assert rig.survey("timer")
+    assert not rig.survey("timer")  # idle
+    assert rig.queued("phase", "timer") == ["phase"]
