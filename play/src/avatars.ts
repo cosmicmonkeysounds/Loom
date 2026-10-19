@@ -26,6 +26,10 @@ export interface IdentityRow {
   avatar: string | null;
   /** Someone already holds this name: greyed out, refused on sign-in. */
   claimed: boolean;
+  /** Saved for an invited guest (`reserved: true`) and locked for this
+   *  caller — no matching `claim` rode in: 🔒 Reserved, refused on sign-in
+   *  (409 `reserved`). Absent from an older server → open. */
+  reserved?: boolean;
 }
 
 /** What `/api/identities` answers for a code. */
@@ -120,9 +124,30 @@ export function useAvatars(): AvatarLookup {
   return useContext(AvatarsContext);
 }
 
-/** Picker rows in display order: free names first, then the taken ones. */
+/** May this row be picked (not taken, not reserved for someone else)? */
+export function rowPickable(row: IdentityRow): boolean {
+  return !row.claimed && row.reserved !== true;
+}
+
+/** Picker rows in display order: free names first, then the reserved
+ *  ones, then the taken ones. */
 export function orderPicker(rows: readonly IdentityRow[]): IdentityRow[] {
-  return [...rows.filter((r) => !r.claimed), ...rows.filter((r) => r.claimed)];
+  const reserved = (r: IdentityRow) => !r.claimed && r.reserved === true;
+  return [...rows.filter(rowPickable), ...rows.filter(reserved), ...rows.filter((r) => r.claimed)];
+}
+
+/** A picker tile's note under the name (`· taken`, `🔒 Reserved`), or null. */
+export function rowNote(row: IdentityRow): string | null {
+  if (row.claimed) return "taken";
+  if (row.reserved === true) return "🔒 Reserved";
+  return null;
+}
+
+/** A picker tile's tooltip. */
+export function rowTitle(row: IdentityRow): string {
+  if (row.claimed) return `${row.name} is taken tonight`;
+  if (row.reserved === true) return `${row.name} is saved for an invited guest`;
+  return `Be ${row.name}`;
 }
 
 /** What a search hit's row says under the name. */

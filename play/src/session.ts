@@ -9,6 +9,7 @@ import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, t
 import { ApiError, RequestTimeout, api, useChatStream, withTimeout, type StreamVerdict } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
+import { claimField, withoutClaim } from "./claim.ts";
 import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
@@ -100,22 +101,23 @@ export interface KnownEvent {
  *  performer's unclaimed parts. Pass `known` (the event an earlier answer
  *  named) on a re-ask — the closed-doors poll, a refresh after a 409 — so
  *  only the event's own, unthrottled `/api/identities` is asked; a gone
- *  event falls back to a fresh resolve. */
-export async function fetchIdentities(code: string, known?: KnownEvent): Promise<IdentityLookup> {
+ *  event falls back to a fresh resolve. An invitation's `claim` rides
+ *  along, so its reserved program reads as open to this caller. */
+export async function fetchIdentities(code: string, known?: KnownEvent, claim?: string | null): Promise<IdentityLookup> {
   if (known !== undefined) {
-    const again = await identitiesOf(code, known, known.role);
+    const again = await identitiesOf(code, known, known.role, undefined, claim);
     if (again !== "gone") return again;
   }
   const r = await resolveOrBusy(code);
   if (r === "busy") return { kind: "busy" };
   if (r === null) return { kind: "unknown" };
-  const out = await identitiesOf(code, r, r.role, r.characters);
+  const out = await identitiesOf(code, r, r.role, r.characters, claim);
   return out === "gone" ? { kind: "unknown" } : out;
 }
 
-async function identitiesOf(code: string, ev: KnownEvent, role: string, characters?: string[]): Promise<IdentityLookup | "gone"> {
+async function identitiesOf(code: string, ev: KnownEvent, role: string, characters?: string[], claim?: string | null): Promise<IdentityLookup | "gone"> {
   try {
-    const ids = await api<Identities>(`/e/${encodeURIComponent(ev.eventId)}/api/identities`, { passcode: code });
+    const ids = await api<Identities>(`/e/${encodeURIComponent(ev.eventId)}/api/identities`, { passcode: code, ...claimField(claim) });
     return { kind: "ok", ...ids, eventId: ev.eventId, title: ev.title };
   } catch (e) {
     const err = e as Partial<ApiError>;
@@ -141,9 +143,9 @@ type Picker = Extract<IdentityLookup, { kind: "ok" }>;
  * answered `waiting` (the doors are closed) is re-asked on `retryDelay`
  * straight at its event, never through the throttled resolve; a busy
  * server keeps the last good screen and backs off. `refresh` re-asks now
- * (someone may have just taken a name).
+ * (someone may have just taken a name). `claim`: an invitation's token.
  */
-export function useIdentities(code: string, waiting: (ids: Picker) => boolean): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
+export function useIdentities(code: string, waiting: (ids: Picker) => boolean, claim?: string | null): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
   const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
@@ -164,7 +166,7 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean): 
     const keep = (prev: IdentityLookup | null | "loading") => prev !== null && prev !== "loading" && prev.kind === "ok";
     setIds((prev) => (keep(prev) ? prev : "loading"));
     const event = known.current?.code === c ? known.current.event : undefined;
-    void fetchIdentities(c, event).then((r) => {
+    void fetchIdentities(c, event, claim).then((r) => {
       if (!alive) return;
       let again: "closed" | "busy" | null = null;
       if (r.kind === "busy") {
@@ -189,15 +191,15 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean): 
       alive = false;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [code, reload]);
+  }, [code, reload, claim]);
   const refresh = useCallback(() => setReload((x) => x + 1), []);
   return { ids, busy, refresh };
 }
 
 /** The pictures a guest may choose for a program before signing in: one of
  *  the story's (`name`) or a directory pick (`wiki` = its article title). */
-export async function fetchPictures(eventId: string, code: string, pick: { name: string } | { wiki: string }): Promise<ProgramPictures> {
-  return api<ProgramPictures>(`/e/${encodeURIComponent(eventId)}/api/identities/pictures`, { passcode: code, ...pick });
+export async function fetchPictures(eventId: string, code: string, pick: { name: string } | { wiki: string }, claim?: string | null): Promise<ProgramPictures> {
+  return api<ProgramPictures>(`/e/${encodeURIComponent(eventId)}/api/identities/pictures`, { passcode: code, ...pick, ...claimField(claim) });
 }
 
 /** Search the program directory (any software; antivirus flagged). */
@@ -226,6 +228,12 @@ async function tokenDead(base: string, role: "guest" | "prime", token: string): 
   } catch {
     return null; // no answer at all: the server is away, not the session
   }
+}
+
+/** `/api/guest/register`'s body: the program, the code, a directory pick's
+ *  title, the chosen picture, and an invitation's claim — each only when set. */
+export function registerBody(name: string, code: string, wiki?: string, picture?: string, claim?: string | null): Record<string, string> {
+  return { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}), ...(picture !== undefined ? { picture } : {}), ...claimField(claim) };
 }
 
 /** The event code can ride in on a `?code=` link (e.g. a scanned QR). */
@@ -741,8 +749,9 @@ export interface GuestSession {
    *  ended) — shown on the join screen until the guest registers again. */
   notice: string | null;
   threads: Threads;
-  /** Join as `name` — a program from the picker, or (`wiki`) a directory title. */
-  register: (name: string, code: string, wiki?: string, picture?: string) => Promise<void>;
+  /** Join as `name` — a program from the picker, or (`wiki`) a directory
+   *  title; `claim` = an invitation's token for a reserved program. */
+  register: (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => Promise<void>;
   /** The pictures this guest may switch to (their program's options). */
   pictures: () => Promise<PictureChoices>;
   /** Switch to one of those pictures (a serving key). */
@@ -939,18 +948,27 @@ export function useGuestSession(): GuestSession {
     },
     [post],
   );
-  const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string) => {
+  const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => {
     // Resolve the short event code to its event, then register there.
     const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
     const r = await api<{ id: string; name: string; token: string }>(
       `/e/${encodeURIComponent(eventId)}/api/guest/register`,
-      { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}), ...(picture !== undefined ? { picture } : {}) },
+      registerBody(name, code, wiki, picture, claim),
     );
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     crawl.reset();
     save(GK, m);
     setMe(m);
     setNotice(null);
+    // The invitation's claim is a secret: out of the address bar once in.
+    if (claim && host.ownsPage) {
+      try {
+        window.history.replaceState(null, "", `${window.location.pathname}${withoutClaim(window.location.search)}`);
+      } catch {
+        /* fine */
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const pictures = useCallback(() => post<PictureChoices>("/api/guest/picture", {}), [post]);
   const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);

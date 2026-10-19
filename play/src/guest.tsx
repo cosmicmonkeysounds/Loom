@@ -34,7 +34,8 @@ import { PassQr } from "./pass-qr.tsx";
 import { useOfflineFor } from "./client.ts";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
-import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
+import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
+import { claimFromSearch, registerErrorText } from "./claim.ts";
 import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, defectTargets, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
@@ -50,7 +51,11 @@ import { Takeover } from "./takeover.tsx";
 import { CountdownStrip } from "./countdown.tsx";
 
 function GuestRegister({ session }: { session: GuestSession }) {
+  const host = usePlayHost();
   const [code, setCode] = useState(codeFromUrl);
+  // An invitation's `?claim=` opens its reserved program to this guest: kept
+  // for the whole join (the picker and the register both carry it).
+  const [claim] = useState(() => (host.ownsPage ? claimFromSearch(window.location.search) : null));
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<ProgramHit[] | null>(null);
@@ -62,7 +67,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
   // pictures, and (when the server has the program directory) a search.
   // Scanned before the director opened the doors: there is nobody to be
   // yet. Say so, and ask again until there is.
-  const { ids, busy: serverBusy, refresh } = useIdentities(code, (r) => r.doorsOpen === false);
+  const { ids, busy: serverBusy, refresh } = useIdentities(code, (r) => r.doorsOpen === false, claim);
   const resolved = ids !== null && ids !== "loading" && ids.kind === "ok" ? ids : null;
   const closed = resolved !== null && resolved.doorsOpen === false;
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
@@ -75,9 +80,9 @@ function GuestRegister({ session }: { session: GuestSession }) {
     setBusy(true);
     setErr("");
     try {
-      await session.register(name, code.trim(), wiki, picture);
+      await session.register(name, code.trim(), wiki, picture, claim);
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(registerErrorText(e));
       setPicking(null);
       refresh(); // someone may have just taken it — refresh the list
       if (hits !== null) setHits(null);
@@ -92,7 +97,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
     let options: PictureChoice[] = [];
     let as = name;
     try {
-      const r = await fetchPictures(resolved.eventId, code.trim(), wiki !== undefined ? { wiki } : { name });
+      const r = await fetchPictures(resolved.eventId, code.trim(), wiki !== undefined ? { wiki } : { name }, claim);
       options = r.options;
       as = r.name;
     } catch {
@@ -124,6 +129,7 @@ function GuestRegister({ session }: { session: GuestSession }) {
       <h1>{resolved?.title ?? fallback?.title ?? eventTitle ?? "Loom"}</h1>
       {session.notice && <p className="notice">{session.notice}</p>}
       <p className="sub">Enter the code from your host, then pick the program you are tonight.</p>
+      {claim !== null && <p className="pick-hint">Your invitation saved your program for you — pick it below.</p>}
       <input
         placeholder="Event code (from the host)"
         value={code}
@@ -176,15 +182,15 @@ function GuestRegister({ session }: { session: GuestSession }) {
               <button
                 key={r.name}
                 type="button"
-                className={`choice pick ghost ${r.claimed ? "claimed" : ""}`}
-                disabled={busy || r.claimed}
-                title={r.claimed ? `${r.name} is taken tonight` : `Be ${r.name}`}
+                className={`choice pick ghost ${rowPickable(r) ? "" : "claimed"} ${!r.claimed && r.reserved === true ? "reserved" : ""}`}
+                disabled={busy || !rowPickable(r)}
+                title={rowTitle(r)}
                 onClick={() => void pick(r.name)}
               >
                 <PersonAvatar name={r.name} size="lg" src={picture(r.avatar)} />
                 <span className="pick-label">
                   {r.name}
-                  {r.claimed && <span className="pick-sub"> · taken</span>}
+                  {rowNote(r) !== null && <span className="pick-sub"> · {rowNote(r)}</span>}
                 </span>
               </button>
             ))}

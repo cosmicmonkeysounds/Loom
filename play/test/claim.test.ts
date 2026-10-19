@@ -1,0 +1,86 @@
+//! W11 (SW-PLAY-01): reserved programs. An invitation's `?claim=` rides
+//! the whole join (the picker and the register), reserved tiles read
+//! 🔒 Reserved, and the 409 `reserved` refusal says to ask a host.
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow } from "../src/avatars.ts";
+import { RESERVED_TEXT, claimField, claimFromSearch, isReservedRefusal, registerErrorText, withoutClaim } from "../src/claim.ts";
+import { ApiError } from "../src/client.ts";
+import { initialRole } from "../src/director.tsx";
+import { fetchIdentities, fetchPictures, registerBody } from "../src/session.ts";
+
+const row = (name: string, extra: Partial<IdentityRow> = {}): IdentityRow => ({ name, faction: null, avatar: null, claimed: false, ...extra });
+
+describe("the claim link", () => {
+  it("reads and strips ?claim=", () => {
+    expect(claimFromSearch("?code=EVT1&claim=ab12cd")).toBe("ab12cd");
+    expect(claimFromSearch("?code=EVT1&claim=%20")).toBeNull();
+    expect(claimFromSearch("?code=EVT1")).toBeNull();
+    expect(withoutClaim("?code=EVT1&claim=ab12cd")).toBe("?code=EVT1");
+    expect(withoutClaim("?claim=ab12cd")).toBe("");
+    expect(claimField("ab12cd")).toEqual({ claim: "ab12cd" });
+    expect(claimField(null)).toEqual({});
+    expect(claimField("")).toEqual({});
+  });
+
+  it("opens the guest join from the chooser, never over a stored session", () => {
+    const none = () => null;
+    expect(initialRole("?code=EVT1&claim=ab12cd", none)).toBe("guest");
+    expect(initialRole("?code=EVT1", none)).toBe("none");
+    expect(initialRole("?code=EVT1&claim=ab12cd", (k) => (k === "loom.prime" ? "{}" : null))).toBe("prime");
+  });
+});
+
+describe("reserved tiles", () => {
+  it("are locked, read 🔒 Reserved, and sort after the free ones and before the taken", () => {
+    const rows = [row("Excel", { reserved: true }), row("Winamp", { claimed: true }), row("Notepad"), row("VLC", { reserved: false })];
+    expect(orderPicker(rows).map((r) => r.name)).toEqual(["Notepad", "VLC", "Excel", "Winamp"]);
+    expect(rowPickable(rows[0]!)).toBe(false);
+    expect(rowNote(rows[0]!)).toBe("🔒 Reserved");
+    expect(rowTitle(rows[0]!)).toContain("saved for an invited guest");
+    // Taken outranks reserved; an older server's row (no field) is open.
+    expect(rowNote(row("Excel", { reserved: true, claimed: true }))).toBe("taken");
+    expect(rowPickable(row("Notepad"))).toBe(true);
+    expect(rowNote(row("Notepad"))).toBeNull();
+  });
+
+  it("the 409 reserved refusal asks for a host; anything else keeps the server's words", () => {
+    expect(isReservedRefusal(new ApiError("reserved", 409))).toBe(true);
+    expect(registerErrorText(new ApiError("reserved", 409))).toBe(RESERVED_TEXT);
+    expect(RESERVED_TEXT).toBe("This program is saved for an invited guest — ask a host.");
+    expect(isReservedRefusal(new ApiError("that name is taken", 409))).toBe(false);
+    expect(registerErrorText(new ApiError("that name is taken", 409))).toBe("that name is taken");
+    expect(registerErrorText(new Error("offline"))).toBe("offline");
+  });
+});
+
+describe("the claim rides the picker calls", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("identities and pictures carry it when there is one, and not otherwise", async () => {
+    const bodies: Array<{ url: string; body: Record<string, unknown> }> = [];
+    vi.stubGlobal("fetch", (async (url: string, init: RequestInit) => {
+      bodies.push({ url, body: JSON.parse(String(init.body)) as Record<string, unknown> });
+      const body = url === "/api/resolve-code" ? { eventId: "e1", role: "guest" } : url.endsWith("/pictures") ? { name: "Excel", options: [] } : { role: "guest", identities: [], search: false };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }) as unknown as typeof fetch);
+    await fetchIdentities("EVT1", undefined, "ab12cd");
+    await fetchIdentities("EVT1", { eventId: "e1", role: "guest" }, "ab12cd");
+    await fetchIdentities("EVT1", { eventId: "e1", role: "guest" });
+    await fetchPictures("e1", "EVT1", { name: "Excel" }, "ab12cd");
+    const ids = bodies.filter((b) => b.url === "/e/e1/api/identities").map((b) => b.body);
+    expect(ids).toEqual([
+      { passcode: "EVT1", claim: "ab12cd" },
+      { passcode: "EVT1", claim: "ab12cd" },
+      { passcode: "EVT1" },
+    ]);
+    expect(bodies.find((b) => b.url.endsWith("/pictures"))?.body).toEqual({ passcode: "EVT1", name: "Excel", claim: "ab12cd" });
+  });
+
+  it("the register carries it too", () => {
+    expect(registerBody("Excel", "EVT1", undefined, "k1", "ab12cd")).toEqual({ name: "Excel", passcode: "EVT1", picture: "k1", claim: "ab12cd" });
+    expect(registerBody("Notepad", "EVT1")).toEqual({ name: "Notepad", passcode: "EVT1" });
+    expect(registerBody("NHL 97", "EVT1", "NHL 97", undefined, null)).toEqual({ name: "NHL 97", passcode: "EVT1", wiki: "NHL 97" });
+  });
+});

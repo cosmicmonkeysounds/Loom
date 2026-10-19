@@ -41,6 +41,7 @@ import {
   type Tap,
   type WorldLine,
 } from "../../core/src/cue-sheet.ts";
+import { claimFromSearch } from "./claim.ts";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -101,12 +102,14 @@ export function directorFromSearch(search: string): boolean {
 export type AppRole = "none" | "guest" | "prime" | "director";
 
 /** The role a fresh page opens on: `?role=director` whatever the phone
- *  holds, else the stored session (guest, performer, then director). */
+ *  holds, else the stored session (guest, performer, then director), else
+ *  an invitation's `?claim=` link (only ever a guest's) the guest join. */
 export function initialRole(search: string, stored: (key: string) => string | null): AppRole {
   if (directorFromSearch(search)) return "director";
   if (stored("loom.guest")) return "guest";
   if (stored("loom.prime")) return "prime";
   if (stored(DIRECTOR_KEY)) return "director";
+  if (claimFromSearch(search) !== null) return "guest";
   return "none";
 }
 

@@ -1,0 +1,50 @@
+//! Reserved programs (W11, SW-PLAY-01). The featured programs are saved for
+//! their invited guests: the story marks them `reserved: true`, and each
+//! invitation's QR carries that program's claim token —
+//! `…/?code=<guest code>&claim=<token>`. The join screen keeps the claim
+//! through the whole flow (the picker's `/api/identities` and
+//! `/api/guest/register` both carry it), so the invitee's program is open
+//! to them and 🔒 Reserved to everyone else. A register without the right
+//! claim answers 409 `reserved`. The token is a secret: it leaves the
+//! address bar once the guest is in. Pure helpers — `test/claim.test.ts`.
+
+import { ApiError } from "./client.ts";
+
+/** The claim token riding an invitation's link (`?claim=…`), or null. */
+export function claimFromSearch(search: string): string | null {
+  try {
+    const v = new URLSearchParams(search).get("claim");
+    return v !== null && v.trim() !== "" ? v.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `search` without its `claim` param (dropped once the guest has joined). */
+export function withoutClaim(search: string): string {
+  const p = new URLSearchParams(search);
+  p.delete("claim");
+  const s = p.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
+/** The claim as a request field: `{claim}` when there is one, else nothing
+ *  (an older server, or a plain join link). */
+export function claimField(claim: string | null | undefined): { claim?: string } {
+  return claim !== null && claim !== undefined && claim !== "" ? { claim } : {};
+}
+
+/** What the join screen says when a reserved program is refused. */
+export const RESERVED_TEXT = "This program is saved for an invited guest — ask a host.";
+
+/** Is this a register refusal for a reserved program (409 `reserved`)? */
+export function isReservedRefusal(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 409 && /^reserved$/i.test(e.message.trim());
+}
+
+/** What a failed register says on the join screen: the reserved message,
+ *  else the server's own words. */
+export function registerErrorText(e: unknown): string {
+  if (isReservedRefusal(e)) return RESERVED_TEXT;
+  return e instanceof Error ? e.message : "Couldn't join — try again.";
+}
