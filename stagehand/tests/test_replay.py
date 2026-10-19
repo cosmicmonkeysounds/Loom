@@ -675,9 +675,19 @@ def test_offline_classic_resends_each_recorded_prompt_once(monkeypatch: pytest.M
 
 
 def test_offline_new_needs_the_lean_voice(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import stagehand.agents as agents_pkg
+
+    # Hide the module and the package attribute: once another test has
+    # imported stagehand.agents.voice, `from ..agents import voice` reads the
+    # attribute and never looks at sys.modules.
     monkeypatch.setitem(sys.modules, "stagehand.agents.voice", None)
+    monkeypatch.delattr(agents_pkg, "voice", raising=False)
+
+    async def no_model(messages):  # never the real model from a unit test
+        raise AssertionError("offline reached the model")
+
     with pytest.raises(drive.HarnessError, match="needs lean-voice"):
-        drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs")
+        drive.offline("new", _trace_file(tmp_path), runs_root=tmp_path / "runs", chat=no_model)
 
 
 def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list) -> None:
@@ -721,8 +731,14 @@ def _fake_lean_voice(monkeypatch: pytest.MonkeyPatch, seen: list) -> None:
         return Reply(say=f"new words {len(seen)}")
 
     voice.answer_lean = answer_lean
+    import stagehand.agents as agents_pkg
+
     monkeypatch.setitem(sys.modules, "stagehand.agents.cards", cards)
     monkeypatch.setitem(sys.modules, "stagehand.agents.voice", voice)
+    # `from ..agents import cards, voice` reads the package attributes first,
+    # which the real modules set once anything imported them.
+    monkeypatch.setattr(agents_pkg, "cards", cards, raising=False)
+    monkeypatch.setattr(agents_pkg, "voice", voice, raising=False)
     monkeypatch.setattr(drive, "ollama_lock", _no_lock)
     monkeypatch.setattr(drive, "wait_for_rig", lambda *a, **k: None)
 
