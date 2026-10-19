@@ -336,6 +336,58 @@ describe("lastSeen, went home, personas (W-04)", () => {
     const guest = (await register(rt, "Calculator")).json.id as string;
     expect(rt.liveSim!.world.get(`${guest}.persona`)).toEqual({ kind: "null" });
   });
+
+  it("the persona flag is set before the join's own hooks run (a join rule can leave it out)", async () => {
+    const story = `# Joins
+start: Doors
+
+ROLE Guest
+  when someone joins:
+    if guest.persona == true:
+      set Night.persona_joins += 1
+    else:
+      set Night.real_joins += 1
+
+CHARACTER Calculator
+
+== Doors
+Hello.
+`;
+    const dir = tempDir();
+    const rt = runtime(dir, { scenarioSource: story });
+    rt.openDoors();
+    const id = (await mod(rt, "/api/mod/persona", { name: "Ana" })).json.guest.id as string;
+    await register(rt, "Calculator");
+    expect(rt.liveSim!.world.get("Night.persona_joins")).toEqual({ kind: "number", value: 1 });
+    expect(rt.liveSim!.world.get("Night.real_joins")).toEqual({ kind: "number", value: 1 });
+    // The flag is journaled ahead of the creation, so a replay agrees.
+    const ops = new Store(dir).readJournal().filter((e) => e.a[0] === id || e.a[0] === `${id}.persona`).map((e) => e.m);
+    expect(ops).toEqual(["setVar", "createPerson"]);
+    const again = runtime(dir, { scenarioSource: story });
+    again.restore();
+    expect(again.liveSim!.world.get("Night.persona_joins")).toEqual({ kind: "number", value: 1 });
+    expect(again.liveSim!.world.get(`${id}.persona`)).toEqual({ kind: "bool", value: true });
+  });
+
+  it("a ROLE that seeds a `persona` default does not clear a Run persona's flag", async () => {
+    const story = `# Roles
+start: Doors
+
+ROLE Guest
+  persona: bool = false
+
+CHARACTER Calculator
+
+== Doors
+Hello.
+`;
+    const rt = runtime(tempDir(), { scenarioSource: story });
+    rt.openDoors();
+    const id = (await mod(rt, "/api/mod/persona", { name: "Ana" })).json.guest.id as string;
+    expect(rt.liveSim!.world.get(`${id}.persona`)).toEqual({ kind: "bool", value: true });
+    const guest = (await register(rt, "Calculator")).json.id as string;
+    expect(rt.liveSim!.world.get(`${guest}.persona`)).toEqual({ kind: "bool", value: false });
+  });
 });
 
 describe("guest countdowns (W-06)", () => {

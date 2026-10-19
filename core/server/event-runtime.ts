@@ -5002,10 +5002,15 @@ export class EventRuntime {
         // survives a reload of their editor.
         this.personaOwners.set(id, by);
         this.persistMeta();
-        this.fanout(this.commit("createPerson", id, name));
         // A persona is nobody at the party: `<id>.persona` lets the story's
-        // head counts leave it out (W-04), journaled like the creation.
+        // head counts leave it out (W-04), journaled like the creation. It is
+        // set FIRST so the join's own drain (`when someone joins:`, every
+        // watcher) already sees the flag; a ROLE that seeds a `persona`
+        // default would overwrite it, so it is set again in that case.
         this.fanout(this.commit("setVar", `${id}.persona`, "true"));
+        this.fanout(this.commit("createPerson", id, name));
+        const flag = this.sim.world.get(`${id}.persona`);
+        if (flag.kind !== "bool" || !flag.value) this.fanout(this.commit("setVar", `${id}.persona`, "true"));
         sendJson(res, 200, { ok: true, guest: { ...rosterRow(this.sim, id)!, owner: by } });
         return true;
       }
