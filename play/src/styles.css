@@ -380,6 +380,10 @@ body {
 .fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
 .fact-confidence input[type=range] { width: 100%; margin: 0; }
 .fact-confidence output { justify-self: end; font-variant-numeric: tabular-nums; }
+/* Untouched: the thumb rests greyed in the middle and the readout says
+   "not set" — "confident" is something the guest chooses. */
+.fact-confidence.unset input[type=range] { opacity: 0.45; filter: grayscale(1); }
+.fact-confidence.unset output { font-style: italic; color: var(--muted-ink); }
 .answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
