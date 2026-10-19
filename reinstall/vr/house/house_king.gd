@@ -106,6 +106,55 @@ static func trail_map(house: Dictionary, king: String, fallen: bool) -> Dictiona
 	return with_fallen_kings(house, {king: true})
 
 
+## Within this (plan m) of his doorway, or of his box, a body would be
+## caught by the leaf or by him: the web game's `CLEAR` (its body radius
+## 0.25 + 0.15), the same as [constant VrPlayer.RADIUS] + 0.15.
+const KEEP_CLEAR := 0.4
+
+
+## Should the doors `king` guards stay open for a player at `feet` although
+## he stands again (a director's restore)? — a port of the web game's
+## `keepDoorOpen` (`reinstall/web/src/game/fight.ts`). While they are behind
+## one (in the room on its far side: shutting it would lock them in), or in
+## the doorway (within [constant KEEP_CLEAR] of its gap, or inside his box
+## grown by that): they would be stuck in the leaf or in him. Once clear, no.
+static func keep_door_open(house: Dictionary, king: Dictionary, feet: Array) -> bool:
+	var room: Variant = HouseLocate.locate(house, feet)["room"]
+	var fl := HouseLocate.floor_of(house, float(feet[1]))
+	var id := str(king.get("id", ""))
+	for door: Dictionary in house.get("doors", []):
+		if door.get("guard") == null or str(door["guard"]) != id:
+			continue
+		var behind: Variant = door.get("b") if door.get("a") == king.get("room") else door.get("a")
+		if room != null and behind != null and str(room) == str(behind):
+			return true
+		var gap: Variant = HouseGeometry.door_gap(house, door)
+		if gap == null or str(gap["floor"]) != fl:
+			continue
+		var a: Vector2
+		var b: Vector2
+		if gap["axis"] == "x":
+			a = Vector2(float(gap["lo"]), float(gap["c"]))
+			b = Vector2(float(gap["hi"]), float(gap["c"]))
+		else:
+			a = Vector2(float(gap["c"]), float(gap["lo"]))
+			b = Vector2(float(gap["c"]), float(gap["hi"]))
+		var p := Vector2(float(feet[0]), float(feet[2]))
+		if p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b)) < KEEP_CLEAR:
+			return true
+	var pos: Array = king["pos"]
+	if HouseLocate.floor_of(house, float(pos[1])) != fl:
+		return false
+	# His box, in his own frame (turned by his yaw).
+	var yaw := deg_to_rad(float(king.get("yaw", 0.0)))
+	var dx := float(feet[0]) - float(pos[0])
+	var dz := float(feet[2]) - float(pos[2])
+	var lx := dx * cos(yaw) - dz * sin(yaw)
+	var lz := dx * sin(yaw) + dz * cos(yaw)
+	var size: Array = king["size"]
+	return absf(lx) < float(size[0]) / 2.0 + KEEP_CLEAR and absf(lz) < float(size[2]) / 2.0 + KEEP_CLEAR
+
+
 ## A shared King's state off the wire (`KingState`: `{id, hp, max,
 ## fallen}`, optionally `by`), normalised; `{}` for anything else (null, an
 ## old server's missing field) — "no shared King".

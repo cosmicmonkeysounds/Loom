@@ -294,6 +294,14 @@ func _test_king_rules() -> void:
 	_check(HouseKing.king_reach(house, [kp[0], kp[1], kp[2]], -123.0, king) == "ok", "king: standing on his centre counts as facing him")
 	var wide := [float(kp[0]) + 1.4, float(kp[1]), float(kp[2])]
 	_check(HouseKing.king_reach(house, wide, 90.0 + 70.0, king) == "far" and HouseKing.king_reach(house, wide, 90.0 + 70.0, king, HouseKing.KING_HIT_SLACK) == "ok", "king: the server's slack reaches 1.4 m and 70° off")
+	# keepDoorOpen: behind his door (the Server Room), in its doorway or in
+	# his box grown by KEEP_CLEAR holds it open; beside him, clear, does not.
+	_check(HouseKing.keep_door_open(house, king, [-5.0, -2.7, 9.5]), "king: behind his door keeps it open")
+	_check(HouseKing.keep_door_open(house, king, [-3.1, -2.7, 11.2]), "king: in the doorway keeps it open")
+	_check(HouseKing.keep_door_open(house, king, [kp[0], kp[1], kp[2]]), "king: on his spot keeps it open")
+	_check(HouseKing.keep_door_open(house, king, [float(kp[0]) + 0.69, float(kp[1]), float(kp[2])]) and not HouseKing.keep_door_open(house, king, [float(kp[0]) + 0.71, float(kp[1]), float(kp[2])]), "king: his box grown by KEEP_CLEAR (0.3 + 0.4) keeps it open, beyond is clear")
+	_check(not HouseKing.keep_door_open(house, king, east), "king: beside him in the hall is clear")
+	_check(not HouseKing.keep_door_open(house, king, [float(kp[0]), 0.0, float(kp[2])]), "king: a floor up is clear")
 	_check(HouseKing.king_max(king) == int(king["hp"]) and HouseKing.king_max({"kind": "king"}) == HouseKing.KING_HP and HouseKing.king_max({"hp": 2.5}) == HouseKing.KING_HP, "king: his max hp is the prop's integer hp, else KING_HP")
 
 	var door: Dictionary = {}
@@ -1278,14 +1286,37 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	var room: Variant = HouseLocate.locate(house, b.to_house(player.feet()))["room"]
 	_check(str(room) == "server-room", "game king: fallen, the body walks through his door (in %s at %s)" % [room, b.to_house(player.feet())])
 	player.left_stick = Vector2.ZERO
+	var in_server: Array = b.to_house(player.feet())
 	# A remap keeps him down.
 	link.give_house(house)
 	_check(b.king_kneeling(kid) and not b.door_shut("server-door"), "game king: a remap keeps him down")
 
-	# … and a director's restore stands him up and shuts it again.
+	# A director's restore stands him up — but the player is behind his
+	# door: it stays open for them (no shutting anyone in) …
 	link.give_king({"id": kid, "hp": 15, "max": 15, "fallen": false, "by": null})
-	_check(not b.king_kneeling(kid) and b.door_shut("server-door") and sub.text == Game.KING_STANDS, "game king: a restore stands him up, the door shut (%s)" % sub.text)
+	_check(not b.king_kneeling(kid) and sub.text == Game.KING_STANDS, "game king: a restore stands him up (%s)" % sub.text)
+	_check(not b.door_shut("server-door") and b.door_held(kid) and not b.king_solid(kid) and game.king_door_open, "game king: … the door held open for a player behind it")
+	_check(Game.trail_path(game.route_house, in_server, spawn).size() > 2, "game king: … and their trail still leads out")
+	game._process(0.6)
+	_check(not b.door_shut("server-door"), "game king: … still open on the next check")
+	# … they walk out east, through the doorway and through him …
+	player.teleport(b.to_world(in_server), b.yaw_to_world(-90.0))
+	player.left_stick = Vector2(0, 1)
+	for i in 220:
+		player._physics_process(1.0 / 90.0)
+		game._process(1.0 / 90.0)
+	player.left_stick = Vector2.ZERO
+	var out: Array = b.to_house(player.feet())
+	room = HouseLocate.locate(house, out)["room"]
+	_check(str(room) == "basement-hall" and float(out[0]) > -2.55 + 0.3 + HouseKing.KEEP_CLEAR, "game king: … the player walks out past him (in %s at %s)" % [room, out])
+	game._process(0.6)
+	# … and once clear it shuts.
+	_check(b.door_shut("server-door") and not b.door_held(kid) and b.king_solid(kid) and not game.king_door_open, "game king: clear of it, the door shuts")
 	_check(Game.trail_path(game.route_house, spawn, inside).size() == 2, "game king: … and the trail shut again")
+	# A restore with the player clear shuts it at once.
+	link.give_king({"id": kid, "hp": 0, "max": 15, "fallen": true, "by": "Zed"})
+	link.give_king({"id": kid, "hp": 15, "max": 15, "fallen": false, "by": null})
+	_check(b.door_shut("server-door") and b.king_solid(kid), "game king: a restore with the player clear shuts it at once")
 	player.teleport(b.to_world(east), west_yaw)
 	player.left_stick = Vector2(0, 1)
 	for i in 110:

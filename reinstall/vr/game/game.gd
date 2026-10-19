@@ -100,8 +100,15 @@ var _hit_was := false
 ## Whether the shared King was down, last we heard.
 var _king_fallen := false
 ## The map the trail and the autopilot route over: [member HouseBuilder.house]
-## with the fallen King's doors open ([method HouseKing.trail_map]).
+## with the King's doors open while [member king_door_open]
+## ([method HouseKing.trail_map]).
 var route_house: Dictionary = {}
+## The King's doors are open in this game: while he has fallen, and after a
+## director's restore for as long as this player is still behind them or in
+## the doorway ([method HouseKing.keep_door_open], the web game's
+## `keepDoorOpen`) — a restore never shuts a player in. Re-checked with the
+## trail, twice a second.
+var king_door_open := false
 ## Non-null in `--autopilot` mode.
 var autopilot: Autopilot = null
 ## Quit the process when an autopilot session is over (the tests keep it
@@ -182,6 +189,7 @@ func enter_lobby() -> void:
 	if autopilot != null and _autopilot_played:
 		_autopilot_quit(0 if _autopilot_found else 1, "session over (%s)" % ("found" if _autopilot_found else "no find"))
 	flow.abort()
+	_update_route_house()
 	duck.remove()
 	trail.clear()
 	ghosts.own_session = ""
@@ -214,9 +222,26 @@ func _on_house(h: Dictionary, _version: String) -> void:
 			autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 
 
-func _update_route_house() -> void:
+## Open or shut the King's doors in this game ([member king_door_open]) and
+## re-derive [member route_house]: open while he has fallen; once he stands
+## again, held open ([method HouseBuilder.hold_door]) while this player is
+## behind them or in the doorway, shut once they are clear. Returns whether
+## it opened or shut.
+func _update_route_house() -> bool:
+	var prop := HouseKing.king_prop(builder.house)
+	var id := str(prop.get("id", ""))
 	var k := link.king
-	route_house = HouseKing.trail_map(builder.house, str(HouseKing.king_prop(builder.house).get("id", "")), not k.is_empty() and k["fallen"] == true)
+	var fallen: bool = not k.is_empty() and k["fallen"] == true
+	var hold := false
+	if id != "" and not fallen and king_door_open and flow.state == GameFlow.State.PLAYING:
+		hold = HouseKing.keep_door_open(builder.house, prop, builder.to_house(player.feet()))
+	if id != "":
+		builder.hold_door(id, hold)
+	var open := id != "" and (fallen or hold)
+	var moved := open != king_door_open
+	king_door_open = open
+	route_house = HouseKing.trail_map(builder.house, id, open)
+	return moved
 
 
 ## The shared King changed: his bar, his stance, his doors, the trail; a
@@ -322,6 +347,7 @@ func _on_assignment(a: Dictionary) -> void:
 	king_hit_used = false
 	_king_hit_pending = false
 	_hit_was = player.hit_button
+	_update_route_house()
 	hud.show_play(_room_label(HouseLocate.locate(builder.house, spawn["pos"])["room"]))
 	if link.map_warning_text != "":
 		_notice(link.map_warning_text)  # raised in the lobby, still in force
@@ -502,6 +528,8 @@ func _tick_play(delta: float) -> void:
 	_trail_in -= delta
 	if _trail_in <= 0.0:
 		_trail_in = TRAIL_INTERVAL
+		if king_door_open and not _king_fallen and _update_route_house() and autopilot != null:
+			autopilot.plan(route_house, feet, _autopilot_goal())
 		refresh_trail(feet, duck_p)
 
 	_found_retry -= delta

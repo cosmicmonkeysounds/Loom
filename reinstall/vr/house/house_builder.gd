@@ -9,7 +9,9 @@
 ## health bar over him ("THE KING  n / 15", [method set_king]); each door he
 ## guards has a closed leaf. While he has fallen he kneels, his collider and
 ## the leaves' are off and the leaves hide — the door is open; a restore
-## stands him up and shuts it again.
+## stands him up and shuts it again — unless the game holds it open for a
+## player still behind it or in the doorway ([method hold_door]): then he
+## stands, but his collider and the leaves' stay off until they are clear.
 ##
 ## Children are placed in **house coordinates**; this node carries the
 ## map's `spaces.vr` transform (identity for the procedural build), so its
@@ -46,6 +48,9 @@ var king_state: Dictionary = {}
 var _kings := {}
 ## Guarded door id → `{guard, mesh, collider}`.
 var _leaves := {}
+## King prop id → true: this game holds his doors open although he stands
+## ([method hold_door]); kept across rebuilds.
+var _held := {}
 
 
 ## (Re)build everything from `map`.
@@ -489,27 +494,48 @@ func set_king(state: Dictionary) -> void:
 	_apply_king()
 
 
+## Hold the doors King `id` guards open for this player although he stands
+## (`on`), or let them follow his state again — the web game's
+## `keepDoorOpen`: a restore must never shut a player in behind his door,
+## or inside the leaf or him ([method HouseKing.keep_door_open]).
+func hold_door(id: String, on: bool) -> void:
+	if on == _held.has(id):
+		return
+	if on:
+		_held[id] = true
+	else:
+		_held.erase(id)
+	_apply_king()
+
+
+## Whether this game holds King `id`'s doors open ([method hold_door]).
+func door_held(id: String) -> bool:
+	return _held.has(id)
+
+
 func _apply_king() -> void:
 	var s := king_state
 	for id: String in _kings:
 		var k: Dictionary = _kings[id]
 		var ours: bool = not s.is_empty() and (str(s.get("id", "")) == id or str(s.get("id", "")) == "")
 		var fallen: bool = ours and s.get("fallen") == true
+		var open: bool = fallen or _held.has(id)
 		(k["health"] as Node3D).visible = ours
 		if ours:
 			(k["text"] as Label3D).text = "THE KING  %d / %d" % [int(s["hp"]), int(s["max"])]
 			(k["bar"] as Sprite3D).texture = ImageTexture.create_from_image(HouseLook.health_bar(int(s["hp"]), int(s["max"])))
 		_kneel(k, fallen)
+		if k["collider"] != null:
+			(k["collider"] as CollisionShape3D).disabled = open
 		for door_id: String in _leaves:
 			var leaf: Dictionary = _leaves[door_id]
 			if leaf["guard"] != id:
 				continue
-			(leaf["mesh"] as Node3D).visible = not fallen
-			(leaf["collider"] as CollisionShape3D).disabled = fallen
+			(leaf["mesh"] as Node3D).visible = not open
+			(leaf["collider"] as CollisionShape3D).disabled = open
 
 
-## Down on one knee (half his height, bowed forward) with his collider off,
-## or standing.
+## Down on one knee (half his height, bowed forward), or standing.
 func _kneel(k: Dictionary, on: bool) -> void:
 	var h: float = k["height"]
 	var body: MeshInstance3D = k["body"]
@@ -520,13 +546,16 @@ func _kneel(k: Dictionary, on: bool) -> void:
 	body.rotation.x = deg_to_rad(-14.0) if on else 0.0
 	(k["crown"] as Node3D).position.y = body_h * f + 0.075
 	(k["health"] as Node3D).position.y = body_h * f + 0.15 + 0.22
-	if k["collider"] != null:
-		(k["collider"] as CollisionShape3D).disabled = on
 
 
 ## Whether the King `id` is kneeling (fallen), for the tests.
 func king_kneeling(id: String) -> bool:
 	return _kings.has(id) and (_kings[id]["body"] as Node3D).scale.y < 1.0
+
+
+## Whether King `id` blocks the body (his collider on), for the tests.
+func king_solid(id: String) -> bool:
+	return _kings.has(id) and _kings[id]["collider"] != null and not (_kings[id]["collider"] as CollisionShape3D).disabled
 
 
 ## Whether the leaf of guarded door `id` is shut.
