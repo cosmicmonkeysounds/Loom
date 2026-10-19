@@ -198,6 +198,7 @@ export class Workspace {
    *   global some line `set`s (`Night`), and is not `Time`;
    * - a countdown on a `secret: true` CHARACTER (`boardFor` drops it: its
    *   deadline would go out unmasked);
+   * - `for guests` on a `watch:` line (only a `countdown:` takes it);
    * - a person item that names no CHARACTER;
    * - a line in any file but the first (`main.loom`): the event server plays
    *   the files concatenated, so only the first file's header is a header;
@@ -266,6 +267,8 @@ export class Workspace {
         continue;
       }
       const opts = { pathsOnly: line.key === "countdown" };
+      if (!opts.pathsOnly && /(?:,\s*|\s+)for\s+guests\s*$/iu.test(line.value))
+        lint(uri, range, `${what}: \`for guests\` puts a \`countdown:\` line on the guests' phones — a \`watch:\` line is the director's only, so here it is read as part of the label`);
       const parsed = parseBoardLine(line.value, opts);
       const problems = boardLineProblems(line.value, opts);
       if (parsed === null) {

@@ -187,6 +187,13 @@ Hi.
     expect(out[4]!.message).toMatch(/no expression/);
   });
 
+  it("`for guests` is clean on a countdown (a secret head still flagged) and flagged on a watch", async () => {
+    const out = await lints([["file:///main.loom", STORY("countdown: Night.step as Soon for guests, while Night.step == 2\ncountdown: Night.step, Kernel.code as Lock, for guests\nwatch: Night.step as Step for guests")]]);
+    expect(out.map((d) => d.line)).toEqual([3, 4]);
+    expect(out[0]!.message).toMatch(/`Kernel` is a `secret: true` CHARACTER/);
+    expect(out[1]!.message).toMatch(/`for guests` puts a `countdown:` line on the guests' phones/);
+  });
+
   it("a countdown on a `secret: true` CHARACTER is flagged (the server drops it); a watch is not", async () => {
     const out = await lints([["file:///main.loom", STORY("watch: Kernel.code\ncountdown: Night.step, Kernel.code as Lock")]]);
     expect(out.map((d) => d.line)).toEqual([3]);
