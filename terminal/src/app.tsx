@@ -52,9 +52,11 @@ import { Composer, Thread } from "./chat.tsx";
 import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
-import { useIdleTimeout } from "./idle.ts";
-import { VisitLatch, beginPilot, closeVisit, endPilot, fetchCharacters, fetchRoster, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
-import { matchName, parseScan } from "./scan.ts";
+import { lineLeash, useIdleTimeout } from "./idle.ts";
+import { FilePanel } from "./FilePanel.tsx";
+import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchCharacters, openVisit, recoverVisit, tokenAlive, usePilotSession, type Line, type Pilot } from "./pilot.ts";
+import { parseScan } from "./scan.ts";
+import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
 import { ringChime, useAnnouncements } from "./announce.ts";
@@ -63,7 +65,7 @@ import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
 import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
 import { effectiveView, hasWebGL2 } from "./webgl.ts";
-import { HOLD_MS, screenWake, useLongPress } from "./kiosk.ts";
+import { screenWake } from "./kiosk.ts";
 import { attractOf, useScreenState, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
@@ -74,6 +76,8 @@ import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, type TvLine }
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
 const loadWorld = retryable(() => import("./world/WorldView.tsx").then((m) => ({ default: m.WorldView })));
+// chess.js + the King's board + his AI: only the chess terminal loads them.
+const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) => ({ default: m.ChessTerminal })));
 
 type Screen = { kind: "setup"; notice: string | null } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
 
@@ -121,7 +125,8 @@ export function App() {
   const webgl2 = hasWebGL2();
   const view = config?.view;
   useEffect(() => {
-    if (webgl2 && view !== undefined && view !== "face") void loadWorld().catch(() => {});
+    if (webgl2 && view !== undefined && view !== "face" && view !== "chess") void loadWorld().catch(() => {});
+    if (view === "chess") void loadChess().catch(() => {});
   }, [view, webgl2]);
 
   // Provision from the URL (`?code=…&name=…`) — a fleet is set up by opening one link each.
@@ -290,12 +295,16 @@ export function App() {
 
   const openSetup = () => setScreen({ kind: "setup", notice: null });
   const piloting = screen.kind === "piloting" || screen.kind === "connecting";
-  // An overlay (blackout / go to the living room / alarm) ends any pilot.
-  const takeover = screenLayers(screenState.state, Date.now(), { piloting, room: room !== null }).overlay !== null;
+  // The chess board is layered like a room terminal: overlays only, never a
+  // story slide, the countdown corner or the Y2K clock.
+  const bare = room !== null || config.view === "chess";
+  // An overlay (blackout / go to the living room / alarm) ends any pilot
+  // (and covers a chess game, which it holds rather than ends).
+  const takeover = screenLayers(screenState.state, Date.now(), { piloting, room: bare }).overlay !== null;
   const layer = (
     <>
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={room !== null} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       {announcement !== null && (
         <div className="announce-banner" role="status">
@@ -336,6 +345,16 @@ export function App() {
           gear={<Gear onOpen={openSetup} label="Set up this screen" className="mirror-gear" />}
           onGone={onGone}
         />
+        {layer}
+      </>
+    );
+  }
+
+  if (config.view === "chess") {
+    // Awake all night: the King is not the character, so no screensaver.
+    return (
+      <>
+        <ChessSlot config={config} state={screenState.state} polled={screenState.reachable} takeover={takeover} onSetup={openSetup} />
         {layer}
       </>
     );
@@ -475,6 +494,37 @@ function WorldSlot({ store, spotId, size, recover }: { store: WorldStore; spotId
     <WorldBoundary key={attempt} fallback={full ? <div className="world-note blink">SIMULATION UNAVAILABLE — RETRYING…</div> : null} onError={() => setBroken(true)}>
       <Suspense fallback={full ? <div className="world-note blink">LOADING THE SIMULATION…</div> : null}>
         <View store={store} spotId={spotId} size={size} />
+      </Suspense>
+    </WorldBoundary>
+  );
+}
+
+// --- the chess board, guarded ---------------------------------------------------
+
+/** The chess chunk behind an error boundary: a failed load says so and is
+ *  tried again `WORLD_RETRY_MS` later, in place. */
+function ChessSlot(props: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
+  const [attempt, setAttempt] = useState(0);
+  const [broken, setBroken] = useState(false);
+  const View = useMemo(() => lazy(loadChess), [attempt]);
+  useEffect(() => {
+    if (!broken) return;
+    const t = window.setTimeout(() => {
+      setBroken(false);
+      setAttempt((a) => a + 1);
+    }, WORLD_RETRY_MS);
+    return () => window.clearTimeout(t);
+  }, [broken]);
+  const note = (text: string) => (
+    <div className="terminal chess">
+      <div className="world-note blink">{text}</div>
+      <Gear onOpen={props.onSetup} label="Set up this terminal" className="mirror-gear" />
+    </div>
+  );
+  return (
+    <WorldBoundary key={attempt} fallback={note("THE BOARD DIDN'T LOAD — RETRYING…")} onError={() => setBroken(true)}>
+      <Suspense fallback={note("SETTING UP THE BOARD…")}>
+        <View {...props} />
       </Suspense>
     </WorldBoundary>
   );
@@ -706,8 +756,14 @@ function Terminal({
     window.addEventListener("pagehide", onHide);
     return () => window.removeEventListener("pagehide", onHide);
   }, [pilot, config, visits]);
-  const busy = session.typing || speaking || queue.busy || roomBusy;
-  const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, onTimeout: () => end("timeout") });
+  // The heart terminal's file panel (a room terminal, wave 11): open, it
+  // lengthens the leash (choosing a file to hand him takes a while) but
+  // never holds it — a guest who walks away still gets disconnected.
+  const [filesOpen, setFilesOpen] = useState(false);
+  useEffect(() => setFilesOpen(false), [pilot]);
+  const leash = lineLeash({ answering: session.typing || speaking || queue.busy || roomBusy, filesOpen });
+  const busy = leash.busy;
+  const { touch, warning, remaining } = useIdleTimeout({ active: pilot !== null, busy, limit: leash.limit, warnMs: leash.warnMs, onTimeout: () => end("timeout") });
   useEffect(() => {
     if (session.dead !== null && pilot !== null) end("dead");
   }, [session.dead, pilot, end]);
@@ -821,7 +877,7 @@ function Terminal({
           )}
         </section>
 
-        <section className="line-pane">
+        <section className={`line-pane${room !== null && pilot !== null && !filesOpen ? " with-files" : ""}`}>
           {screen.kind === "attract" && (
             <div className="attract">
               <div className="scan-frame">
@@ -859,8 +915,14 @@ function Terminal({
               <div className="big blink">CONNECTING…</div>
             </div>
           )}
-          {screen.kind === "piloting" && pilot !== null && (
+          {screen.kind === "piloting" && pilot !== null && filesOpen && <FilePanel config={config} pilot={pilot} view={session.view} character={characterIdOf(config.character, session.view)} onClose={() => setFilesOpen(false)} onActivity={touch} />}
+          {screen.kind === "piloting" && pilot !== null && !filesOpen && (
             <>
+              {room !== null && (
+                <button type="button" className="file-open" onClick={() => setFilesOpen(true)}>
+                  📎 GIVE HIM A FILE
+                </button>
+              )}
               <Thread lines={session.lines} revealed={revealed} typing={session.typing} character={config.character} guestName={pilot.name} />
               <Composer
                 onSend={async (t) => {
@@ -877,44 +939,9 @@ function Terminal({
       </main>
 
       {flash !== null && <div className="flash">{flash}</div>}
-      {warning !== null && pilot !== null && <div className="leash">DISCONNECTING IN {warning} — TOUCH TO STAY</div>}
+      {warning !== null && pilot !== null && <div className="leash">{filesOpen ? "STILL THERE? " : ""}DISCONNECTING IN {warning} — TOUCH TO STAY</div>}
       <div className="scanlines" aria-hidden="true" />
     </div>
-  );
-}
-
-// --- the typed fallback ------------------------------------------------------
-
-function TypedFallback({ config, onPick, onProblem }: { config: TerminalConfig; onPick: (id: string) => void; onProblem: (msg: string) => void }) {
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    if (name.trim() === "" || busy) return;
-    setBusy(true);
-    try {
-      const hit = matchName(name, await fetchRoster(config));
-      if (hit.kind === "one") onPick(hit.id);
-      else if (hit.kind === "many") onProblem(`SEVERAL PROGRAMS MATCH: ${hit.names.slice(0, 4).join(", ").toUpperCase()}`);
-      else onProblem("NO SUCH PROGRAM — REGISTER ON YOUR PHONE FIRST");
-    } catch (e) {
-      onProblem(`LOOKUP FAILED — ${(e as Error).message.toUpperCase()}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <form
-      className="typed"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-    >
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="your program name" autoFocus autoComplete="off" autoCapitalize="off" spellCheck={false} />
-      <button type="submit" disabled={busy || name.trim() === ""}>
-        CONNECT
-      </button>
-    </form>
   );
 }
 
@@ -942,25 +969,6 @@ function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; 
       <Gear onOpen={onSetup} label="Set up this screen" className="mirror-gear" />
       <div className="scanlines" aria-hidden="true" />
     </div>
-  );
-}
-
-// --- the gear ------------------------------------------------------------------
-
-/** The ⚙: opens setup only after a 2 s hold, filling up while held. A short
- *  tap (or a click) does nothing — a wall tablet is in guests' hands. */
-function Gear({ onOpen, label, className }: { onOpen: () => void; label: string; className?: string }) {
-  const { holding, handlers } = useLongPress(onOpen);
-  return (
-    <button
-      type="button"
-      className={`link gear${className ? ` ${className}` : ""}${holding ? " holding" : ""}`}
-      style={{ ["--hold-ms" as string]: `${HOLD_MS}ms` }}
-      aria-label={`${label} (hold for ${HOLD_MS / 1000} seconds)`}
-      {...handlers}
-    >
-      ⚙
-    </button>
   );
 }
 
@@ -1147,10 +1155,11 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
               <option value="face">face only</option>
               <option value="mirror">mirror — full-screen simulation, no scanner</option>
               <option value="tv">TV — the face speaks the room's lines, no scanner</option>
+              <option value="chess">chess — the King at the server-room door, no hints</option>
             </select>
           </label>
         </div>
-        {view === "tv" ? (
+        {view === "chess" ? null : view === "tv" ? (
           <label>
             the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
             <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder={DEFAULT_TV_ROOM} />
@@ -1212,7 +1221,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           )}
         </div>
         <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach; the server-room terminal adds <code>&amp;room=The Server Room</code>). The camera needs https:// (or localhost); without it, programs type their name instead.
+          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach; the server-room terminal adds <code>&amp;room=The Server Room</code>; the King's board outside its door is <code>?code=…&amp;name=Server Door&amp;spot=server-room-door&amp;view=chess</code>). The camera needs https:// (or localhost); without it, programs type their name instead.
         </p>
       </form>
     </div>

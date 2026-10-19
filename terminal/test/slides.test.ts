@@ -31,6 +31,7 @@ function state(over: Partial<Omit<ScreenState, "program">> & { program?: Partial
     identify: false,
     identifyLeft: null,
     announceEpoch: null,
+    king: null,
     ...over,
     program: { ...empty, ...over.program },
   };

@@ -6,9 +6,9 @@
 
 import { Chess } from "chess.js";
 import type { Color, Move, PieceSymbol, Square } from "chess.js";
-import type { Stage } from "../game/fight.ts";
+import type { Stage } from "./stage.ts";
 
-export type { Color, Move, PieceSymbol, Square };
+export type { Chess, Color, Move, PieceSymbol, Square };
 
 /** From White's (the player's) side. */
 export type Outcome = "won" | "lost" | "drawn";
@@ -51,11 +51,11 @@ export function outcome(g: Chess): Outcome | null {
   return null;
 }
 
-/** The banner over the final position: a loss or a draw says the board is dealt again (`redeals`). */
+/** The banner over the final position. One game per pass scan: nothing is dealt again. */
 export function bannerOf(g: Chess, o: Outcome): string {
   if (o === "won") return "CHECKMATE";
-  if (o === "lost") return "THE KING WINS. AGAIN.";
-  return g.isStalemate() ? "STALEMATE. AGAIN." : "DRAW. AGAIN.";
+  if (o === "lost") return "THE KING WINS.";
+  return g.isStalemate() ? "STALEMATE." : "DRAW.";
 }
 
 export interface Cell {

@@ -22,6 +22,12 @@
 //! whether that LOCATION is open (attract until it is) and its `voice` block
 //! carries the room's lines, never muted by the TV's mute.
 //!
+//! The King's chess board (wave 11, `view=chess`) reads the `king` block:
+//! his one shared health bar (`hp` of `max`, `fallen` at 0) and whether a
+//! checkmate wins anything right now (`armed`, off the King prop's `armed`
+//! path — `Night.king_armed`; null = the map names none). An older server
+//! sends no block (null).
+//!
 //! The answer also carries the latest house announcements (`announce` +
 //! the last few in `announces`, N-09); a terminal set to say announcements
 //! speaks each new one (`announce.ts`).
@@ -80,6 +86,26 @@ export interface ScreenRoom {
   open: boolean;
 }
 
+/** The King on the screen state (wave 11): his shared health bar + stakes. */
+export interface ScreenKing {
+  hp: number;
+  max: number;
+  fallen: boolean;
+  /** A checkmate gives the door code now (null: the map names no `armed` path). */
+  armed: boolean | null;
+}
+
+/** A king block off the wire; anything malformed is null (no shared King). */
+export function kingOf(raw: unknown): ScreenKing | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const hp = r["hp"];
+  const max = r["max"];
+  if (typeof hp !== "number" || !Number.isFinite(hp) || typeof max !== "number" || !Number.isFinite(max) || max < 1) return null;
+  const clamped = Math.max(0, Math.min(max, Math.round(hp)));
+  return { hp: clamped, max: Math.round(max), fallen: r["fallen"] === true || clamped <= 0, armed: typeof r["armed"] === "boolean" ? r["armed"] : null };
+}
+
 /** The TV's voice block (K-18). */
 export interface ScreenVoice {
   room: string;
@@ -119,6 +145,8 @@ export interface ScreenState {
   /** Which sim the announcements belong to (null: an older server): a change
    *  is a restart or a server boot, and the announce cursor resyncs. */
   announceEpoch: string | null;
+  /** The King's shared health bar (wave 11; null: no King, or an older server). */
+  king: ScreenKing | null;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -253,6 +281,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     identify: r["identify"] === true,
     identifyLeft: num(r["identifyLeft"]),
     announceEpoch: str(r["announceEpoch"]),
+    king: kingOf(r["king"]),
   };
 }
 

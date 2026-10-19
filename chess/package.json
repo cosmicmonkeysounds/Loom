@@ -1,0 +1,30 @@
+{
+  "name": "@loom/chess",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "The King's chess: the rules (a thin wrapper over chess.js), the King's AI (negamax, one profile per stage of his shared health bar, time-sliced for old tablets) and the tap-tap board. Played at the wall terminal outside the server-room door.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./board.css": "./src/board.css"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chess.js": "1.4.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "~5.6.3",
+    "vitest": "^2.1.0"
+  }
+}

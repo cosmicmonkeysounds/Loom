@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { IDENTIFY_MS, MISSES_OFFLINE, attractOf, identifyOn, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { IDENTIFY_MS, MISSES_OFFLINE, attractOf, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
@@ -39,6 +39,17 @@ describe("screen state", () => {
     const seen: Array<{ url: string; init?: RequestInit }> = [];
     await pollScreen(config, fakeFetch(200, body, seen));
     expect(new URL(`http://x${seen[0]!.url}`).searchParams.get("ver")).not.toBeNull();
+  });
+
+  it("reads the King's shared health bar (wave 11); an older server has none", () => {
+    expect(parseScreenState(body)?.king).toBeNull();
+    expect(parseScreenState({ ...body, king: { hp: 9, max: 15, fallen: false, armed: true } })?.king).toEqual({ hp: 9, max: 15, fallen: false, armed: true });
+    expect(kingOf({ hp: 0, max: 15, fallen: false, armed: false })).toEqual({ hp: 0, max: 15, fallen: true, armed: false });
+    expect(kingOf({ hp: 20, max: 15, armed: null })).toEqual({ hp: 15, max: 15, fallen: false, armed: null });
+    expect(kingOf({ hp: -2, max: 15, armed: "yes" })).toEqual({ hp: 0, max: 15, fallen: true, armed: null });
+    expect(kingOf({ hp: "9", max: 15 })).toBeNull();
+    expect(kingOf({ hp: 9, max: 0 })).toBeNull();
+    expect(kingOf(null)).toBeNull();
   });
 
   it("reads a director's identify off the answer (absent from an older server = off)", () => {

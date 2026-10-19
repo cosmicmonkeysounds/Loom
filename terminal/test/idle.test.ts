@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDLE_MS, IdleClock } from "../src/idle.ts";
+import { FILES_IDLE_MS, IDLE_MS, IdleClock, lineLeash } from "../src/idle.ts";
 
 describe("IdleClock — the 30-second leash", () => {
   it("runs out 30 s after the last input", () => {
@@ -42,5 +42,20 @@ describe("IdleClock — the 30-second leash", () => {
     const c = new IdleClock(0, 5_000);
     expect(c.expired(4_999)).toBe(false);
     expect(c.expired(5_000)).toBe(true);
+  });
+});
+
+describe("the file panel's leash", () => {
+  it("an open panel lengthens the leash to 120 s but never holds it", () => {
+    const open = lineLeash({ answering: false, filesOpen: true });
+    expect(open).toEqual({ busy: false, limit: FILES_IDLE_MS, warnMs: 20_000 });
+    expect(FILES_IDLE_MS).toBe(120_000);
+    // A guest who opens the panel and walks away is disconnected.
+    const c = new IdleClock(0, open.limit);
+    expect(c.expired(119_999)).toBe(false);
+    expect(c.expired(120_000)).toBe(true);
+    // The character answering still holds it, panel or not.
+    expect(lineLeash({ answering: true, filesOpen: true }).busy).toBe(true);
+    expect(lineLeash({ answering: false, filesOpen: false })).toEqual({ busy: false, limit: IDLE_MS, warnMs: 10_000 });
   });
 });

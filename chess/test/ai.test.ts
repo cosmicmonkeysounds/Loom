@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { evaluate, hint, MATE, mulberry32, pickMove, pickMoveAsync, PIECE_VALUE, PROFILES, PST } from "../src/chess/ai.ts";
-import { PAWNS_ONLY_FEN } from "../src/chess/rules.ts";
+import * as chess from "../src/index.ts";
+import { evaluate, MATE, mulberry32, pickMove, pickMoveAsync, PIECE_VALUE, PROFILES, PST, SLICE_MS } from "../src/ai.ts";
+import { PAWNS_ONLY_FEN } from "../src/rules.ts";
 
 const rng = () => mulberry32(7);
 
@@ -105,14 +106,12 @@ describe("pickMove", () => {
   });
 });
 
-describe("hint / pickMoveAsync", () => {
-  it("hint returns the mate when there is one", () => {
-    const h = hint("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1");
-    expect(h.move).toEqual({ from: "a1", to: "a8" });
-    expect(h.score).toBeGreaterThanOrEqual(MATE - 2);
+describe("no hints / pickMoveAsync", () => {
+  it("ships no hint helper", () => {
+    expect("hint" in chess).toBe(false);
   });
 
-  it("pickMoveAsync yields between root moves and never resolves before the feel delay", async () => {
+  it("pickMoveAsync never resolves before the feel delay", async () => {
     let t = 0;
     const slept: number[] = [];
     const sleep = async (ms: number) => {
@@ -121,8 +120,33 @@ describe("hint / pickMoveAsync", () => {
     };
     const r = await pickMoveAsync("r5k1/8/8/8/8/8/5PPP/6K1 b - - 0 1", PROFILES.club, rng(), { now: () => t, sleep });
     expect(r.move).toEqual({ from: "a8", to: "a1" });
-    expect(slept.filter((ms) => ms === 0).length).toBeGreaterThan(1);
     expect(slept[slept.length - 1]).toBeGreaterThan(0);
     expect(t).toBeGreaterThanOrEqual(600);
+  });
+
+  it("gives the thread back every slice, inside a root move too", async () => {
+    // Every clock read costs 1 ms: a slice is SLICE_MS reads. The search may
+    // never run more than one slice (plus the read that notices) unyielded.
+    let t = 0;
+    let since = 0;
+    let longest = 0;
+    let yields = 0;
+    const now = () => {
+      t += 1;
+      since += 1;
+      if (since > longest) longest = since;
+      return t;
+    };
+    const sleep = async (ms: number) => {
+      if (ms === 0) yields++;
+      since = 0;
+    };
+    // The opening at full strength: depth 3, far more nodes than root moves.
+    const r = await pickMoveAsync(new Chess().fen(), { ...PROFILES.grandmaster, thinkMs: 0 }, rng(), { now, sleep });
+    expect(r.move).not.toBeNull();
+    expect(yields).toBeGreaterThan(20);
+    expect(longest).toBeLessThanOrEqual(SLICE_MS + 2);
+    // The same move as the synchronous search.
+    expect(r.move).toEqual(pickMove(new Chess().fen(), { ...PROFILES.grandmaster, thinkMs: 0 }, rng()).move);
   });
 });
