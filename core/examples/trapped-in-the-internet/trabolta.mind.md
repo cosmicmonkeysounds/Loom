@@ -118,15 +118,8 @@ secrets:
   lore:
     - "▒ HUNT ANSWER"
   never:
-    - "1997"               # the door code
-    - "'97"
-    - "in 97"
-    - "in ninety-seven"
-    - "since 97"
-    - "since ninety-seven"
-    - "of ninety-seven"
-    - "nineteen ninety-seven"
-    - "one nine nine seven"
+    - "4826"               # the door code
+    - "four eight two six"
     - "FOGGED-KETTLE"      # the digit notes
     - "FROSTED-MIRROR"
     - "WARM-LINT"

@@ -6,12 +6,12 @@
     "confirm": { "accurate": "fact_accurate", "lie": "fact_lie", "uncertain": "fact_uncertain" }
   },
   "door": {
-    "code": "1997",
+    "code": "4826",
     "clue": "FOUR DIGITS. FOUR NOTES ARE HIDDEN IN THE HOUSE, ONE DIGIT ON EACH. OR BEAT THE KING AT THE TERMINAL BY THIS DOOR.",
     "codex": {
       "id": "The Door Code",
       "title": "The Door Code",
-      "text": "A slip of paper folded very small: COLD DOOR · 1997. Four digits on the keypad by the server-room door, and the door is yours. Trabolta never knew the number; it was never his to know. Close the door behind you."
+      "text": "A slip of paper folded very small: COLD DOOR · 4826. Four digits on the keypad by the server-room door, and the door is yours. Trabolta never knew the number; it was never his to know. Close the door behind you."
     },
     "clues": [
       {

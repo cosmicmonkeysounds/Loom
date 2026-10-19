@@ -2,6 +2,7 @@
 and when. (Mechanics live in test_agents / test_situations; this file pins
 the show's own text.)"""
 
+import json
 from pathlib import Path
 
 from stagehand.agents.persona import load_persona
@@ -168,9 +169,12 @@ def test_the_year_he_met_her_is_never_said():
     assert "Never say what year you met her" in p.system
     assert "The year he met her is never said" in (p.mind_prompt or "")
     assert "learned_add" in (p.mind_prompt or "")
-    assert "1997" in p.secrets.never
+    # Wave 11b: the code is no longer that year (4826, from facts.json); the
+    # year rule stays as lore, and the worker still never says the code.
+    code = json.loads((SHOW / "facts.json").read_text(encoding="utf-8"))["door"]["code"]
+    assert code in p.secrets.never
     for prompt in (p.system, p.mind_prompt or ""):
-        assert "1997" not in prompt and "'97" not in prompt
+        assert code not in prompt
 
 
 # -- wave 11b: a marked program (the Antivirus flagged it for the Internet) ---------------

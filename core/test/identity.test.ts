@@ -478,6 +478,9 @@ describe("guests: exclusive programs, any software, never antivirus", () => {
     // Another featured program's claim is not this one's.
     const vlc = claims.find((c) => c.character === "VLC")!.claim;
     expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim: vlc })).json.error).toBe("reserved");
+    // Its name without the vendor word is held too (the live check got in as "Excel").
+    expect((await post(rt, "/api/guest/register", { name: "Excel", passcode: CODES.event })).json.error).toBe("reserved");
+    expect((await post(rt, "/api/guest/register", { name: "paint", passcode: CODES.event })).json.error).toBe("reserved");
     expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim })).status).toBe(200);
     expect((await post(rt, "/api/guest/register", { name: "Microsoft Excel", passcode: CODES.event, claim })).status).toBe(409);
     expect((await post(rt, "/api/guest/register", { name: "Kernel", passcode: CODES.event })).status).toBe(409);
