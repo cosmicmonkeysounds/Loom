@@ -270,6 +270,19 @@ body {
 .presence-stack .pavatar:last-child { margin-right: 0; }
 .presence-n { white-space: nowrap; }
 
+/* the story's guest-facing clocks (countdown.tsx): a thin bar under the
+   room header — soonest first, red under a minute, ⏸ while paused */
+.countdown-strip {
+  display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: center;
+  max-width: var(--max); margin: 4px auto 0; width: 100%; box-sizing: border-box;
+  padding: 4px 10px; background: var(--face); box-shadow: var(--raised);
+  font: 700 13px var(--ui-font); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.countdown-strip .urgent { color: var(--bad); }
+.countdown-strip.held .countdown-item { opacity: 0.6; }
+.countdown-paused { color: var(--muted-ink); }
+.app.wide .countdown-strip { max-width: none; }
+
 .thread {
   flex: 1; overflow-y: auto; margin: 4px; padding: 8px 10px;
   background: var(--white); box-shadow: var(--sunken);
@@ -380,6 +393,10 @@ body {
 .fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
 .fact-confidence input[type=range] { width: 100%; margin: 0; }
 .fact-confidence output { justify-self: end; font-variant-numeric: tabular-nums; }
+/* Untouched: the thumb rests greyed in the middle and the readout says
+   "not set" — "confident" is something the guest chooses. */
+.fact-confidence.unset input[type=range] { opacity: 0.45; filter: grayscale(1); }
+.fact-confidence.unset output { font-style: italic; color: var(--muted-ink); }
 .answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
@@ -586,6 +603,16 @@ footer {
 /* ── pass / QR ──────────────────────────────────────────────────────────── */
 .pass { text-align: center; margin: 4px 8px 12px; }
 .pass img { display: block; margin: 0 auto; width: 168px; background: var(--white); box-shadow: var(--sunken); padding: 8px; border-radius: var(--radius); }
+/* 📷 Scan (guest-scan.tsx): the Codex composer's camera button, the sheet's
+   status line, and the wrong-browser landing's big code */
+.composer .composer-scan { flex: 0 0 auto; width: auto; margin: 0; padding: 6px 10px; font-size: 18px; line-height: 1; }
+.scan-note { font-weight: 700; padding: 8px 10px; margin: 4px 8px; background: var(--face-hi); box-shadow: var(--sunken); }
+.landing-code {
+  font: 800 34px/1.15 var(--ui-font); letter-spacing: 3px; word-break: break-all;
+  background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 10px 18px; margin: 8px 0 12px;
+}
+.landing-code.room { letter-spacing: 1px; font-size: 28px; }
+.landing-say { font-weight: 700; font-size: 17px; margin: 0 0 12px; }
 .bigid {
   font: 800 20px var(--ui-font); letter-spacing: 2px; margin-top: 8px;
   background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 4px 12px;
@@ -1036,6 +1063,10 @@ footer {
 .cue-row.next { box-shadow: var(--raised), inset 0 0 0 3px var(--navy); }
 .cue-row.last { background: var(--highlight); color: var(--black); }
 .cue-row.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+/* W11: a story button marked `arm: true` (arm.ts), after its first tap —
+   the director phone's armed look, with "Tap again to fire" under it */
+.choice.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+.choice .arm-line { display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; margin-top: 2px; }
 .cue-n { flex: 0 0 auto; min-width: 22px; font: 800 13px var(--ui-font); opacity: 0.6; padding-top: 2px; }
 .cue-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cue-title { font-weight: 700; overflow-wrap: anywhere; }

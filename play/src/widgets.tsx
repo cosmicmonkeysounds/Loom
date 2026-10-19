@@ -316,14 +316,21 @@ export const CONFIDENCE_MIN = 1;
 export const CONFIDENCE_MAX = 100;
 /** The slider's label, verbatim (the show's wording). */
 export const CONFIDENCE_LABEL = "Please select your confidence level in this response";
+/** Where an unset slider's thumb rests (greyed, reading "not set"): the
+ *  middle, so neither end is the default. Untouched, it files nothing. */
+export const CONFIDENCE_REST = 50;
+/** What the slider's readout says until the guest sets it. */
+export const CONFIDENCE_UNSET = "not set";
 
 /** The answer a fact card files, or null while it isn't fileable: a question
  *  picked, a non-empty answer within `FACT_MAX`, and a whole-number
- *  confidence between `CONFIDENCE_MIN` and `CONFIDENCE_MAX`. */
-export function factResult(question: string, answer: string, confidence: number): WidgetResult | null {
+ *  confidence between `CONFIDENCE_MIN` and `CONFIDENCE_MAX` that the guest
+ *  set (null = the slider is untouched: "confident" is a choice, never the
+ *  default a tipsy guest files without looking). */
+export function factResult(question: string, answer: string, confidence: number | null): WidgetResult | null {
   const a = answer.trim();
   if (question === "" || a === "" || a.length > FACT_MAX) return null;
-  if (!Number.isInteger(confidence) || confidence < CONFIDENCE_MIN || confidence > CONFIDENCE_MAX) return null;
+  if (confidence === null || !Number.isInteger(confidence) || confidence < CONFIDENCE_MIN || confidence > CONFIDENCE_MAX) return null;
   return { question, answer: a, confidence };
 }
 
@@ -340,12 +347,31 @@ export function factQuestionOf(picked: string, questions: ReadonlyArray<{ id: st
 }
 
 /** Why "File it" is off, under the button (`null` when it's on). */
-export function factFileHint(question: string, answer: string): string | null {
+export function factFileHint(question: string, answer: string, confidence: number | null): string | null {
   if (question === "") return "Pick a question above";
   const a = answer.trim();
   if (a === "") return "Type your answer";
   if (a.length > FACT_MAX) return `Keep it under ${FACT_MAX} characters`;
+  if (confidence === null) return "Set how sure you are";
   return null;
+}
+
+/** The slider's value from an input event (a whole number in range), or
+ *  null for anything else. Any touch, drag, click or key on the slider
+ *  sets it — even a tap that lands on the resting middle. */
+export function confidenceFrom(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= CONFIDENCE_MIN && n <= CONFIDENCE_MAX ? n : null;
+}
+
+/** The keys that move a range input. Only these set the slider from the
+ *  keyboard: the Tab that moves focus onto it releases on the slider too,
+ *  and must not file a resting 50 nobody chose. */
+const SLIDER_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
+
+/** Whether a key released on the slider is the guest setting it. */
+export function setsConfidence(key: string): boolean {
+  return SLIDER_KEYS.has(key);
 }
 
 /**
@@ -362,7 +388,8 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   const [picked, setQuestion] = useState("");
   const question = factQuestionOf(picked, questions);
   const [answer, setAnswer] = useState("");
-  const [confidence, setConfidence] = useState(CONFIDENCE_MAX);
+  // Unset until the guest touches the slider: File it stays off.
+  const [confidence, setConfidence] = useState<number | null>(null);
   const done = answered !== null && answered !== undefined;
   const result = factResult(question, answer, confidence);
   const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
@@ -424,18 +451,25 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
           />
-          <label className="fact-confidence">
+          <label className={`fact-confidence ${confidence === null ? "unset" : ""}`}>
             <span>{CONFIDENCE_LABEL}</span>
+            {/* A range always has a value, so an unset one rests greyed in
+                the middle. A tap on the thumb itself changes nothing, so
+                pointer-up and the value keys set it too (never Tab). */}
             <input
               type="range"
               min={CONFIDENCE_MIN}
               max={CONFIDENCE_MAX}
               step={1}
-              value={confidence}
-              onChange={(e) => setConfidence(Number(e.target.value))}
-              aria-valuetext={`${confidence}%`}
+              value={confidence ?? CONFIDENCE_REST}
+              onChange={(e) => setConfidence(confidenceFrom(e.target.value))}
+              onPointerUp={(e) => setConfidence(confidenceFrom(e.currentTarget.value))}
+              onKeyUp={(e) => {
+                if (setsConfidence(e.key)) setConfidence(confidenceFrom(e.currentTarget.value));
+              }}
+              aria-valuetext={confidence === null ? CONFIDENCE_UNSET : `${confidence}%`}
             />
-            <output>{confidence}%</output>
+            <output>{confidence === null ? CONFIDENCE_UNSET : `${confidence}%`}</output>
           </label>
         </>
       )}
@@ -444,7 +478,7 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
           <span className="widget-state">{sent} — the reply says whether it's accepted</span>
         ) : onAnswer ? (
           <>
-            {result === null && factFileHint(question, answer) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer)}</span>}
+            {result === null && factFileHint(question, answer, confidence) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer, confidence)}</span>}
             <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
               File it
             </button>

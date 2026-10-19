@@ -109,6 +109,9 @@ export interface Interaction {
   actors?: string[];
   /** False while its `while:` is false — not on offer right now. */
   live?: false;
+  /** `arm: true`: the button arms on the first tap and fires on the second
+   *  (core's `tapCue`, as on the director's phone). */
+  arm?: boolean;
 }
 
 /** A codex entry the viewer holds (mirror of server views.ts `CodexEntryView`). */
@@ -185,6 +188,21 @@ export interface GuestView {
   people?: PersonCard[];
   /** Profile pictures: folded display name → serving key (`avatars.ts`). */
   avatars?: Record<string, string>;
+  /** The story's guest-facing clocks (`countdown: … for guests` header
+   *  lines, never a secret head): present only while one is running.
+   *  `endsAt` is in story seconds, against `clock` (ms). */
+  countdowns?: CountdownSummary[];
+  /** The story clock is stopped (the event is paused): the countdowns hold
+   *  still. Absent = it runs (an older server never says). */
+  paused?: true;
+}
+
+/** One running countdown (mirror of server views.ts `CountdownSummary`). */
+export interface CountdownSummary {
+  label: string;
+  path: string;
+  /** The deadline, in story seconds (`Time.elapsed` units). */
+  endsAt: number;
 }
 
 export interface PrimeGuest {
@@ -241,6 +259,9 @@ export interface Action {
   tone?: Tone;
   /** Shown but not tappable (e.g. 💸 Send while the wallet is frozen). */
   disabled?: boolean;
+  /** Armed (an `arm: true` button after its first tap): it reads black,
+   *  with "Tap again to fire" under the label. */
+  armed?: boolean;
 }
 
 /** A decision that has been pulled to a thread, awaiting an answer. */

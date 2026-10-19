@@ -1,7 +1,9 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, FACT_MAX, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
+import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -124,10 +126,42 @@ describe("📝 fact card", () => {
     expect(factQuestionOf("H2", two)).toBe("H2");
     expect(factQuestionOf("H2", one)).toBe("H3");
     expect(factQuestionOf("", two)).toBe("");
-    expect(factFileHint("", "Clippy")).toBe("Pick a question above");
-    expect(factFileHint("H3", "  ")).toBe("Type your answer");
-    expect(factFileHint("H3", "x".repeat(FACT_MAX + 1))).toContain(String(FACT_MAX));
-    expect(factFileHint("H3", "Clippy")).toBeNull();
+    expect(factFileHint("", "Clippy", 70)).toBe("Pick a question above");
+    expect(factFileHint("H3", "  ", 70)).toBe("Type your answer");
+    expect(factFileHint("H3", "x".repeat(FACT_MAX + 1), 70)).toContain(String(FACT_MAX));
+    expect(factFileHint("H3", "Clippy", 70)).toBeNull();
+  });
+
+  it("only the value keys set the slider: tabbing onto it leaves it unset (W11)", () => {
+    for (const k of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]) expect(setsConfidence(k)).toBe(true);
+    for (const k of ["Tab", "Shift", "Enter", " ", "Escape", "Meta", "Alt", "Control"]) expect(setsConfidence(k)).toBe(false);
+  });
+
+  it("the confidence slider starts unset: File it waits until the guest sets it (W11)", () => {
+    // Untouched, nothing files — not even a perfect answer.
+    expect(factResult("H3", "Clippy", null)).toBeNull();
+    expect(factFileHint("H3", "Clippy", null)).toBe("Set how sure you are");
+    // The other reasons come first: the guest fixes the top one.
+    expect(factFileHint("", "Clippy", null)).toBe("Pick a question above");
+    expect(factFileHint("H3", "", null)).toBe("Type your answer");
+    // Any touch sets it — a tap on the resting middle included.
+    expect(confidenceFrom("50")).toBe(50);
+    expect(confidenceFrom("100")).toBe(100);
+    expect(confidenceFrom("1")).toBe(1);
+    expect(confidenceFrom("0")).toBeNull();
+    expect(confidenceFrom("abc")).toBeNull();
+    expect(factResult("H3", "Clippy", confidenceFrom("50"))).toEqual({ question: "H3", answer: "Clippy", confidence: 50 });
+  });
+
+  it("an unset card renders the slider greyed, reads 'not set', and File it is off", () => {
+    const html = renderToStaticMarkup(
+      createElement(() => WIDGETS["fact"]!.render({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H3: Who wrote it?" } }, seed: 1, onAnswer: () => {}, answered: null })),
+    );
+    expect(html).toContain("fact-confidence unset");
+    expect(html).toContain(`<output>${CONFIDENCE_UNSET}</output>`);
+    expect(html).toContain(`aria-valuetext="${CONFIDENCE_UNSET}"`);
+    expect(html).not.toContain(">100%<");
+    expect(html).toMatch(/<button[^>]*class="widget-go"[^>]*disabled=""/);
   });
 });
 

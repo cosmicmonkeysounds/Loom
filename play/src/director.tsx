@@ -41,6 +41,9 @@ import {
   type Tap,
   type WorldLine,
 } from "../../core/src/cue-sheet.ts";
+import { disarmOnLeave } from "./arm.ts";
+import { claimFromSearch } from "./claim.ts";
+import { landingLink } from "./guest-scan.tsx";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./chat.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -101,12 +104,15 @@ export function directorFromSearch(search: string): boolean {
 export type AppRole = "none" | "guest" | "prime" | "director";
 
 /** The role a fresh page opens on: `?role=director` whatever the phone
- *  holds, else the stored session (guest, performer, then director). */
+ *  holds, else the stored session (guest, performer, then director), else
+ *  a guest's link: an invitation's `?claim=` (the guest join) or a wall
+ *  QR's `?unlock=` / `?checkin=` (the guest app's wrong-browser landing). */
 export function initialRole(search: string, stored: (key: string) => string | null): AppRole {
   if (directorFromSearch(search)) return "director";
   if (stored("loom.guest")) return "guest";
   if (stored("loom.prime")) return "prime";
   if (stored(DIRECTOR_KEY)) return "director";
+  if (claimFromSearch(search) !== null || landingLink(search) !== null) return "guest";
   return "none";
 }
 
@@ -365,22 +371,7 @@ export function armWarnings(row: Pick<CueRow, "id" | "live" | "sequence">, layou
   return out;
 }
 
-/** Call `disarm` when the page goes hidden (the screen locks, the director
- *  switches to the radio app) or the window loses focus: an arm never
- *  survives the director looking away (spec §4.3). A hidden page may also
- *  freeze the 4 s timer, which would leave a stale "Tap again to fire".
- *  Returns the unsubscribe. */
-export function disarmOnLeave(doc: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">, win: Pick<Window, "addEventListener" | "removeEventListener">, disarm: () => void): () => void {
-  const onVisibility = () => {
-    if (doc.visibilityState === "hidden") disarm();
-  };
-  doc.addEventListener("visibilitychange", onVisibility);
-  win.addEventListener("blur", disarm);
-  return () => {
-    doc.removeEventListener("visibilitychange", onVisibility);
-    win.removeEventListener("blur", disarm);
-  };
-}
+export { disarmOnLeave };
 
 /** The toast when a stale arm is dropped. */
 export const STALE_TOAST = "Cues moved — tap again";

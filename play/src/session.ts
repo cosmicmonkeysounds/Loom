@@ -9,6 +9,7 @@ import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, t
 import { ApiError, RequestTimeout, api, useChatStream, withTimeout, type StreamVerdict } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
+import { claimField, rememberClaim, withoutClaim } from "./claim.ts";
 import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
@@ -100,22 +101,23 @@ export interface KnownEvent {
  *  performer's unclaimed parts. Pass `known` (the event an earlier answer
  *  named) on a re-ask — the closed-doors poll, a refresh after a 409 — so
  *  only the event's own, unthrottled `/api/identities` is asked; a gone
- *  event falls back to a fresh resolve. */
-export async function fetchIdentities(code: string, known?: KnownEvent): Promise<IdentityLookup> {
+ *  event falls back to a fresh resolve. An invitation's `claim` rides
+ *  along, so its reserved program reads as open to this caller. */
+export async function fetchIdentities(code: string, known?: KnownEvent, claim?: string | null): Promise<IdentityLookup> {
   if (known !== undefined) {
-    const again = await identitiesOf(code, known, known.role);
+    const again = await identitiesOf(code, known, known.role, undefined, claim);
     if (again !== "gone") return again;
   }
   const r = await resolveOrBusy(code);
   if (r === "busy") return { kind: "busy" };
   if (r === null) return { kind: "unknown" };
-  const out = await identitiesOf(code, r, r.role, r.characters);
+  const out = await identitiesOf(code, r, r.role, r.characters, claim);
   return out === "gone" ? { kind: "unknown" } : out;
 }
 
-async function identitiesOf(code: string, ev: KnownEvent, role: string, characters?: string[]): Promise<IdentityLookup | "gone"> {
+async function identitiesOf(code: string, ev: KnownEvent, role: string, characters?: string[], claim?: string | null): Promise<IdentityLookup | "gone"> {
   try {
-    const ids = await api<Identities>(`/e/${encodeURIComponent(ev.eventId)}/api/identities`, { passcode: code });
+    const ids = await api<Identities>(`/e/${encodeURIComponent(ev.eventId)}/api/identities`, { passcode: code, ...claimField(claim) });
     return { kind: "ok", ...ids, eventId: ev.eventId, title: ev.title };
   } catch (e) {
     const err = e as Partial<ApiError>;
@@ -129,26 +131,42 @@ async function identitiesOf(code: string, ev: KnownEvent, role: string, characte
 /** How long the join screen waits before re-asking: every 5 s while the
  *  doors are closed (a minute of that, then every 15 s); a busy server
  *  backs off 10 → 20 → 30 s. `attempt` counts re-asks in a row from 0. */
-export function retryDelay(kind: "closed" | "busy", attempt: number): number {
+export function retryDelay(kind: "closed" | "busy" | "reserved", attempt: number): number {
   if (kind === "busy") return Math.min(30_000, 10_000 * (attempt + 1));
+  if (kind === "reserved") return RESERVED_POLL_MS;
   return attempt < 12 ? DOORS_POLL_MS : 15_000;
 }
 
+/** How often an open picker showing a 🔒 Reserved tile re-asks: a
+ *  director's "Unlock for 2 min" (`/api/mod/claim/unlock`) opens it to the
+ *  guest standing at the join screen without a reload. */
+export const RESERVED_POLL_MS = 12_000;
+
 type Picker = Extract<IdentityLookup, { kind: "ok" }>;
+
+/** Why an answer is asked again: the doors are closed, the server is busy,
+ *  a tile is still 🔒 Reserved (a director may open it), or not at all. */
+export function reaskReason(r: IdentityLookup, waiting: (ids: Picker) => boolean): "closed" | "busy" | "reserved" | null {
+  if (r.kind === "busy") return "busy";
+  if (r.kind !== "ok") return null;
+  if (waiting(r)) return "closed";
+  return r.identities.some((row) => row.reserved === true && !row.claimed) ? "reserved" : null;
+}
 
 /**
  * The join screens' picker for a typed / scanned code, kept fresh. A code
- * answered `waiting` (the doors are closed) is re-asked on `retryDelay`
- * straight at its event, never through the throttled resolve; a busy
+ * answered `waiting` (the doors are closed), or showing a 🔒 Reserved tile,
+ * is re-asked on `retryDelay` straight at its event, never through the
+ * throttled resolve; a busy
  * server keeps the last good screen and backs off. `refresh` re-asks now
- * (someone may have just taken a name).
+ * (someone may have just taken a name). `claim`: an invitation's token.
  */
-export function useIdentities(code: string, waiting: (ids: Picker) => boolean): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
+export function useIdentities(code: string, waiting: (ids: Picker) => boolean, claim?: string | null): { ids: IdentityLookup | null | "loading"; busy: boolean; refresh: () => void } {
   const [ids, setIds] = useState<IdentityLookup | null | "loading">(null);
   const [busy, setBusy] = useState(false);
   const [reload, setReload] = useState(0);
   const known = useRef<{ code: string; event: KnownEvent } | null>(null);
-  const streak = useRef<{ kind: "closed" | "busy"; n: number }>({ kind: "closed", n: 0 });
+  const streak = useRef<{ kind: "closed" | "busy" | "reserved"; n: number }>({ kind: "closed", n: 0 });
   const waitingRef = useRef(waiting);
   waitingRef.current = waiting;
   useEffect(() => {
@@ -164,18 +182,16 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean): 
     const keep = (prev: IdentityLookup | null | "loading") => prev !== null && prev !== "loading" && prev.kind === "ok";
     setIds((prev) => (keep(prev) ? prev : "loading"));
     const event = known.current?.code === c ? known.current.event : undefined;
-    void fetchIdentities(c, event).then((r) => {
+    void fetchIdentities(c, event, claim).then((r) => {
       if (!alive) return;
-      let again: "closed" | "busy" | null = null;
+      const again = reaskReason(r, waitingRef.current);
       if (r.kind === "busy") {
-        again = "busy";
         setBusy(true);
         setIds((prev) => (keep(prev) ? prev : null));
       } else {
         setBusy(false);
         setIds(r);
         known.current = r.kind === "ok" ? { code: c, event: { eventId: r.eventId, title: r.title, role: r.role } } : null;
-        if (r.kind === "ok" && waitingRef.current(r)) again = "closed";
       }
       if (again === null) {
         streak.current = { kind: "closed", n: 0 };
@@ -189,20 +205,20 @@ export function useIdentities(code: string, waiting: (ids: Picker) => boolean): 
       alive = false;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [code, reload]);
+  }, [code, reload, claim]);
   const refresh = useCallback(() => setReload((x) => x + 1), []);
   return { ids, busy, refresh };
 }
 
 /** The pictures a guest may choose for a program before signing in: one of
  *  the story's (`name`) or a directory pick (`wiki` = its article title). */
-export async function fetchPictures(eventId: string, code: string, pick: { name: string } | { wiki: string }): Promise<ProgramPictures> {
-  return api<ProgramPictures>(`/e/${encodeURIComponent(eventId)}/api/identities/pictures`, { passcode: code, ...pick });
+export async function fetchPictures(eventId: string, code: string, pick: { name: string } | { wiki: string }, claim?: string | null): Promise<ProgramPictures> {
+  return api<ProgramPictures>(`/e/${encodeURIComponent(eventId)}/api/identities/pictures`, { passcode: code, ...pick, ...claimField(claim) });
 }
 
 /** Search the program directory (any software; antivirus flagged). */
-export async function searchPrograms(eventId: string, code: string, q: string): Promise<ProgramHit[]> {
-  const r = await api<{ results: ProgramHit[] }>(`/e/${encodeURIComponent(eventId)}/api/identities/search`, { passcode: code, q });
+export async function searchPrograms(eventId: string, code: string, q: string, claim?: string | null): Promise<ProgramHit[]> {
+  const r = await api<{ results: ProgramHit[] }>(`/e/${encodeURIComponent(eventId)}/api/identities/search`, { passcode: code, q, ...claimField(claim) });
   return r.results;
 }
 
@@ -226,6 +242,12 @@ async function tokenDead(base: string, role: "guest" | "prime", token: string): 
   } catch {
     return null; // no answer at all: the server is away, not the session
   }
+}
+
+/** `/api/guest/register`'s body: the program, the code, a directory pick's
+ *  title, the chosen picture, and an invitation's claim — each only when set. */
+export function registerBody(name: string, code: string, wiki?: string, picture?: string, claim?: string | null): Record<string, string> {
+  return { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}), ...(picture !== undefined ? { picture } : {}), ...claimField(claim) };
 }
 
 /** The event code can ride in on a `?code=` link (e.g. a scanned QR). */
@@ -741,8 +763,9 @@ export interface GuestSession {
    *  ended) — shown on the join screen until the guest registers again. */
   notice: string | null;
   threads: Threads;
-  /** Join as `name` — a program from the picker, or (`wiki`) a directory title. */
-  register: (name: string, code: string, wiki?: string, picture?: string) => Promise<void>;
+  /** Join as `name` — a program from the picker, or (`wiki`) a directory
+   *  title; `claim` = an invitation's token for a reserved program. */
+  register: (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => Promise<void>;
   /** The pictures this guest may switch to (their program's options). */
   pictures: () => Promise<PictureChoices>;
   /** Switch to one of those pictures (a serving key). */
@@ -762,6 +785,10 @@ export interface GuestSession {
   leaveChannel: (channel: string) => Promise<unknown>;
   /** Codex: type (or scan) an unlock code. Resolves to the entry unlocked, if any. */
   redeem: (code: string) => Promise<string | null>;
+  /** Check in at a room's sign (its slug, K-13) and open that room — or
+   *  banner why not (captured, on rails, a room not open yet). Resolves to
+   *  the room's channel, or null when refused. */
+  checkin: (at: string) => Promise<string | null>;
   /** Codex: hand an entry you hold to another participant or a listed character. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
   /** The wallet (a story with a `currency:`): every call posts to its route;
@@ -939,18 +966,30 @@ export function useGuestSession(): GuestSession {
     },
     [post],
   );
-  const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string) => {
+  const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => {
     // Resolve the short event code to its event, then register there.
     const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
     const r = await api<{ id: string; name: string; token: string }>(
       `/e/${encodeURIComponent(eventId)}/api/guest/register`,
-      { name, passcode: code, ...(wiki !== undefined ? { wiki } : {}), ...(picture !== undefined ? { picture } : {}) },
+      registerBody(name, code, wiki, picture, claim),
     );
     const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
     crawl.reset();
     save(GK, m);
     setMe(m);
     setNotice(null);
+    // Kept for a re-join after a cut session (beside loom.guest, the
+    // guest's own secret)…
+    rememberClaim(host.storage, code, claim);
+    // …and out of the address bar once in.
+    if (claim && host.ownsPage) {
+      try {
+        window.history.replaceState(null, "", `${window.location.pathname}${withoutClaim(window.location.search)}`);
+      } catch {
+        /* fine */
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const pictures = useCallback(() => post<PictureChoices>("/api/guest/picture", {}), [post]);
   const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);
@@ -1100,6 +1139,21 @@ export function useGuestSession(): GuestSession {
     threads.open(CODEX_ROOM);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openCodex]);
+  const threadsRef = useRef(threads);
+  threadsRef.current = threads;
+  const checkin = useCallback(
+    async (at: string): Promise<string | null> => {
+      try {
+        const r = await post<{ channel: string }>("/api/guest/checkin", { at });
+        threadsRef.current.open(r.channel);
+        return r.channel;
+      } catch (e) {
+        alertsRef.current?.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true });
+        return null;
+      }
+    },
+    [post],
+  );
   // A room's sign carries `?checkin=<slug>` (K-13): check in once signed in
   // with the doors open, then open that room's chat — or banner why not
   // (captured, still on rails, a room the story hasn't opened yet).
@@ -1113,9 +1167,7 @@ export function useGuestSession(): GuestSession {
     } catch {
       /* fine */
     }
-    void post<{ channel: string }>("/api/guest/checkin", { at })
-      .then((r) => threads.open(r.channel))
-      .catch((e: unknown) => alerts.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true }));
+    void checkin(at);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
   const roomLinkPending = useRoomLinks(threads, me !== null && ready && status !== null, false);
@@ -1143,6 +1195,7 @@ export function useGuestSession(): GuestSession {
     inviteToChannel,
     leaveChannel,
     redeem,
+    checkin,
     shareCodex,
     wallet,
     message,

@@ -11,6 +11,7 @@
 //! drills in.
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { ARM_LINE } from "./arm.ts";
 import { useAvatars } from "./avatars.ts";
 import { usePlayHost } from "./host.ts";
 import { occupancyLabel } from "./presence.ts";
@@ -418,8 +419,9 @@ export function ActionRow({ actions }: { actions: Action[] }) {
   return (
     <div className="actionrow">
       {actions.map((a, i) => (
-        <button key={i} className={`choice ${a.tone ?? "ghost"}`} onClick={a.onClick} disabled={a.disabled}>
+        <button key={i} className={`choice ${a.tone ?? "ghost"} ${a.armed ? "armed" : ""}`} onClick={a.onClick} disabled={a.disabled} aria-pressed={a.armed || undefined}>
           {a.label}
+          {a.armed && <span className="arm-line">{ARM_LINE}</span>}
         </button>
       ))}
     </div>
@@ -942,6 +944,7 @@ export function Composer({
   placeholder,
   disabled,
   sendLabel,
+  extra,
 }: {
   /** Return the send's promise to keep the text until the server takes it:
    *  a refusal (slow mode, paused doors, can't post) leaves it in the box. */
@@ -950,6 +953,8 @@ export function Composer({
   disabled?: boolean;
   /** The button's word ("Send"; the Codex says "Unlock"). */
   sendLabel?: string;
+  /** A button before the box (the Codex's 📷 Scan). */
+  extra?: ReactNode;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -975,6 +980,7 @@ export function Composer({
   };
   return (
     <div className="composer">
+      {extra}
       <textarea
         ref={ref}
         className="composer-input"
@@ -1084,10 +1090,16 @@ export function ChannelView({
   onPerson,
   headerActions,
   wide,
+  strip,
+  composerExtra,
 }: {
   channel: Channel;
   onBack: () => void;
   footer?: ReactNode;
+  /** A bar right under the header (the guest's countdown strip). */
+  strip?: ReactNode;
+  /** A button docked in the composer (the Codex's 📷 Scan). */
+  composerExtra?: ReactNode;
   moderate?: ModerateHook;
   showChannel?: boolean;
   /** Hybrid chat: when present, a composer docks below the footer. Return
@@ -1150,6 +1162,7 @@ export function ChannelView({
           {isRoom && onPeople && <PresenceStrip people={people} meId={meId ?? null} onOpen={onPeople} />}
         </div>
       </header>
+      {strip}
       {pins && pins.length > 0 && <PinnedRail pins={pins} />}
       <MessageList
         key={channel.id}
@@ -1178,6 +1191,7 @@ export function ChannelView({
               onSend={(t) => onSend(t)}
               placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
               sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
+              extra={composerExtra}
             />
           )}
           {onSend && !canPost && (
