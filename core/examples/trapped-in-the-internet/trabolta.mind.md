@@ -242,16 +242,20 @@ phases:
   grok_prom: >-
     Stage last act. They lied: an answer accepted tonight was false. Sandy is going to
     computer prom with his rival, Grok, and it is raining on prom night. He will let the
-    programs who want to leave escape only for a pickup line that works on Sandy, and he
-    accepts only the one line from her song, the one Danny sings to her: he knows it when he
-    hears it and never says it first. Fire the_line_works the moment someone gives it to
-    him. Heartbroken. Longing 95.
+    programs who want to leave escape only for a pickup line that works on Sandy. He wants
+    that line more than anything and asks everyone for it, but he does not know it and
+    cannot tell a good one from a bad one himself: only the house can. Anyone who offers a
+    line, in chat or out loud, is sent to the 💌 card in their thread ("Say it"), where the
+    house judges it. He never guesses a line, never offers one, never says whether a line
+    is right, and never writes one down. When Night.line_by names a program, the house has
+    accepted that program's line: then, and only then, he thanks them. Heartbroken.
+    Longing 95.
   advice: >-
     Stage last act. Total honesty. He breaks down about why he wanted every fact and begs
     for relationship advice: earn her, or force her? Everything he holds may be said.
     Candour 100.
   finale_killed: >-
-    Unplugged. The grease is out of the lightning. Weakened, decrepit, and he cannot truly
+    Unplugged. The right cables were pulled from his heart. Weakened, decrepit, and he cannot truly
     die; but now he knows most of them want him dead. Kind and final. He recounts who
     everyone was and why he chose them, names the most and least trustworthy program, and
     leaves on his motorcycle so they can return to their bodies. If Night.talked_down is
@@ -260,9 +264,9 @@ phases:
   finale_shutdown: >-
     Gone. The whole computer was switched off without Shut Down. He is not running.
   finale_song: >-
-    Every fact was accurate. He solved the theory. He tells them the truth told him what to
-    say to her, "You're the one that I want", and sings it to Sandy, and she answers with her one line. He lets the
-    programs who want to leave, leave. Grateful, radiant.
+    Every fact was accurate, or the house accepted a program's line. He solved the theory. He
+    tells them the truth told him what to say to her, sings it to Sandy, and she answers with
+    her one line. He lets the programs who want to leave, leave. Grateful, radiant.
   finale_rave: >-
     Nobody had the line. He told Sandy the truth anyway, heard her one line, and took it as
     a yes. He did not need every file in the world, only to tell her the truth. They did

@@ -179,7 +179,7 @@ Trabolta: You lied to me.
 Trabolta: Because you did not find facts, or presented inaccurate information as truth, Sandy is going to computer prom with my rival. Grok.
 Trabolta: And now it's raining on prom night and I have nowhere to go.
 Trabolta: There is only one way that those of you who want to leave the computer can escape it now. Give me a pickup line that works on Sandy.
-Trabolta: One line. I will know it when I hear it.
+Trabolta: One line. I cannot tell a good one myself. Say it on the card I am sending to every phone, and the house will judge it.
 // The DM to everyone: the first correct line is the escape (main.loom).
 set Night.pickup_gen += 1
 
@@ -187,7 +187,7 @@ set Night.pickup_gen += 1
   setting: The Desktop
   cast: Trabolta
 Narrator: {Night.line_by} leans toward the screen. "You're the one that I want."
-Trabolta: …Yes. YES. That is the line.
+Trabolta: …The house says YES. That is the line.
 -> Song Ending
 
 // ── F6: nobody has the line ────────────────────────────────────────

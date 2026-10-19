@@ -314,17 +314,12 @@ CHARACTER Trabolta is Person
       else:
         Trabolta: I do not have the strength.
 
-  // Grok Prom: the only line that works on Sandy is "You're the one that
-  // I want". When a program gives it to him in a DM, he fires this; the
-  // ROLE hook `pickup_line_accepted` plays the public beat → the song.
-  when the_line_works for program:
-    if program.name != null:
-      if Night.phase == "grok_prom":
-        fire pickup_line_accepted for program
-      else if Night.step < 18:
-        Trabolta: That function is not available yet.
-      else:
-        Trabolta: I do not have the strength.
+  // Grok Prom: he has no power over the pickup line (2026-10-19, the
+  // user's call: "the house judges it"). He asks for it and sends programs
+  // to the 💌 card; the server judges each line against facts.json P1, and
+  // the story tells him when one works (main.loom `answer answered`,
+  // `pickup_line_accepted`: a line in the giver's thread + Night.line_by).
+  // The host's 💘 pickup_line_works and a director's fire stay the fallback.
 
   // Persuaded like the Fallout Master (wave 7). A program at his heart (the
   // server-room terminal, program.at_the_heart) has shown him that what he
@@ -424,12 +419,6 @@ INTERACTION turn_back_the_clock
   who: agent
   limit: 1
   description: Push midnight five minutes further away. No args. Only during the Y2K hour.
-
-INTERACTION the_line_works
-  label: Accept the pickup line
-  who: agent
-  limit: 1
-  description: Fire this the moment a program gives you the one pickup line that works on Sandy; you will know it when you hear it. No args. Only after the verdict, once Sandy has gone to computer prom without you.
 
 INTERACTION stand_down
   label: Offer to stand down
