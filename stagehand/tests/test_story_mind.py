@@ -918,3 +918,26 @@ def test_a_directors_brief_naming_an_answer_is_trimmed_and_a_restored_one_is_rec
     again._load_minds()
     back = again.minds["Trabolta"]
     assert back.brief == "Be warm." and back.director == ["be kinder"]
+
+
+@pytest.mark.parametrize("voice", [{"memo": "off"}, {"dossier_on_close": "off"}, {"memo": "off", "layout": "classic"}, {"dossier_on_close": "off", "layout": "classic"}])
+def test_a_kill_switch_stops_what_was_stored_under_it_reaching_the_voice(tmp_path, voice):
+    agents, _ = make(tmp_path)
+    run(handle(agents, req(phase="hunt_1", rid="1")))
+    d = agents.minds["Trabolta"].people["g-1"]
+    d.add_memo("SENTINELMEMO owes me a story", heart=False, thought=None)
+    d.summary = "SENTINELSUMMARY a careful program"
+    agents._save_mind_now("Trabolta")
+    again, fake = make(tmp_path, voice=voice)
+    again._load_minds()
+    run(handle(again, req(phase="hunt_1", rid="2")))
+    _, ctx = fake.calls[-1]
+    assert ctx.person.summary == ""
+    if voice.get("memo") == "off":
+        assert ctx.person.memos == ()
+        assert again._quiet_due(10**9) is None  # nothing is condensed again
+    else:
+        assert any("SENTINELMEMO" in m for m in ctx.person.memos)  # memos stay: only the summary was switched off
+    if voice.get("layout") == "classic":
+        assert all(p.summary == "" for p in fake.mind.people.values())
+        assert again.minds["Trabolta"].people["g-1"].summary.startswith("SENTINELSUMMARY")  # the mind itself keeps it

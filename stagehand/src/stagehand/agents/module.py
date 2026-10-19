@@ -937,16 +937,18 @@ class Agents:
         if awake:
             d, since = story_mind.absorb(mind, persona, req, phase)
         v = self.cfg.voice
+        quiet_ok = v.memo and v.dossier_on_close  # what was stored under a switch now off stays out too
         ctx = VoiceContext(
             phase=story_mind.phase_view(mind, persona, req, self.cfg.mind.stage_from_phase),
-            person=story_mind.person_card(persona, d, req) if d is not None else PersonCard(id=sid, name=who, kind=kind),
+            person=story_mind.person_card(persona, d, req, memos=v.memo, summary=quiet_ok) if d is not None else PersonCard(id=sid, name=who, kind=kind),
             said=story_mind.said_for(mind, req, thread),
             since=since,
             whispers=tuple(mind.director),
             options=VoiceOptions(memo=v.memo, repeat_guard=v.repeat_guard, layout=v.layout, retry_allowed=len(self.tasks) <= 1, warm_head=v.warm_head),
         )
         async with self._slots:
-            reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=mind)
+            voice_mind = mind if quiet_ok or v.layout != "classic" else story_mind.without_summaries(mind)
+            reply = await self._voice()(persona, self.models[character], req, ctx, self.complete_fn, trace=self.trace, facts_fn=self._facts, mind=voice_mind)
         log.info(
             "%s → %s: %s%s%s",
             character,
@@ -1086,6 +1088,8 @@ class Agents:
         character's own (`_quiet_phase`)."""
         if self.tasks or self._inflight or self.judging:
             return None  # never while a request is in flight or queued
+        if not self.cfg.voice.memo:
+            return None  # memo: off — the memos are not condensed again either
         for (character, pid), q in self._quiet.items():
             if q["turns"] < QUIET_TURNS or now - q.get("at", now) < QUIET_S:
                 continue

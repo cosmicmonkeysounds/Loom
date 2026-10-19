@@ -285,12 +285,16 @@ def absorb(mind: Mind, persona: Persona, req: dict[str, Any], phase: str) -> tup
     return d, tuple(since[:MAX_SINCE])
 
 
-def person_card(persona: Persona, d: Dossier, req: dict[str, Any]) -> PersonCard:
+def person_card(persona: Persona, d: Dossier, req: dict[str, Any], *, memos: bool = True, summary: bool = True) -> PersonCard:
+    """The card the voice reads. `memos` / `summary` follow the kill
+    switches (`voice.memo`, `voice.dossier_on_close`): a switch turned off
+    stops what was stored under it reaching the voice too, not only new
+    writes (design §5 risk 2: a bad memo must not outlive the switch)."""
     them = req.get("them") or {}
     vars_ = them.get("vars") or {}
     speaker = req.get("speaker") or {}
     at_heart = _true(vars_.get("at_the_heart"))
-    memos = tuple(str(m.get("text") or "") for m in d.memos if at_heart or not m.get("heart"))[-6:]
+    kept = tuple(str(m.get("text") or "") for m in d.memos if at_heart or not m.get("heart"))[-6:] if memos else ()
     numbers = tuple((k, str(v)) for k, v in their_variables(persona, vars_).items() if k not in ("trust", "marked"))
     holds = tuple(str(e.get("title", "")) for e in persona.secrets.visible(them.get("codex")) if e.get("title"))
     trust = vars_.get("trust")
@@ -307,12 +311,24 @@ def person_card(persona: Persona, d: Dossier, req: dict[str, Any]) -> PersonCard
         filings=tuple(d.filings),
         marked=d.marked,
         chart=d.chart,
-        memos=memos,
-        summary=d.summary,
+        memos=kept,
+        summary=d.summary if summary else "",
         numbers=numbers,
         holds=holds,
         catchphrase_used=d.catchphrase_used,
     )
+
+
+def without_summaries(mind: Mind) -> Mind:
+    """A read-only view of `mind` with every dossier's summary blank, for
+    the classic layout's prompt while the quiet summary is switched off (in
+    the new mind a dossier's summary is only ever the quiet summary)."""
+    import copy
+    from dataclasses import replace as _replace
+
+    view = copy.copy(mind)
+    view.people = {pid: _replace(d, summary="") for pid, d in mind.people.items()}
+    return view
 
 
 def free_replies(req: dict[str, Any]) -> list[str]:
