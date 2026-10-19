@@ -16,6 +16,7 @@ export const KIND_META: Record<AgentThought['kind'], { label: string; who: 'voic
   reflect: { label: 'reflect', who: 'mind', color: '#199e70' },
   survey: { label: 'survey', who: 'mind', color: '#c98500' },
   rerun: { label: 're-run', who: 'mind', color: '#d55181' },
+  judge: { label: 'judge', who: 'voice', color: '#8a6fd8' },
   reset: { label: 'reset', who: 'marker', color: '#a1a1aa' },
   control: { label: 'control', who: 'marker', color: '#a1a1aa' },
   error: { label: 'error', who: 'marker', color: '#a1a1aa' },
@@ -50,6 +51,13 @@ export function summarizeThought(t: AgentThought): string {
       return t.touched.length > 0 ? `updated ${t.touched.join(', ')}` : 'looked, changed nothing'
     case 'rerun':
       return t.note || 're-run'
+    case 'judge': {
+      // A ruling on a near miss (wave 11b): {same, why}, or nothing parsed.
+      const r = t.result ?? {}
+      if (typeof r['same'] !== 'boolean') return t.note || 'no ruling'
+      const why = typeof r['why'] === 'string' ? r['why'] : ''
+      return `${r['same'] ? 'same' : 'not the same'}${why !== '' ? ` — ${why}` : ''}`
+    }
     case 'reset':
     case 'control':
     case 'error':
@@ -255,6 +263,54 @@ export interface JudgingRow {
    *  plural, digits for words) — the judge held it for a director instead
    *  of calling it a lie or a guess. Null for any other filing. */
   near: string | null
+  /** Wave 11b: the story's `judge:` character is being asked to rule. */
+  asking: boolean
+  /** Wave 11b: its ruling, once given (null before, or from an older server). */
+  ruling: FilingRuling | null
+}
+
+/** A `judge:` character's ruling on a near miss (wave 11b, contract J). */
+export interface FilingRuling {
+  by: string
+  same: boolean
+  why: string
+  at: number
+}
+
+/** A filing's ruling (`ruling: {by, same, why, at}`), else null — an older
+ *  server sends none. */
+export function rulingOf(f: FactsFiling): FilingRuling | null {
+  const r = (f as FactsFiling & { ruling?: unknown }).ruling
+  if (r === null || typeof r !== 'object') return null
+  const { by, same, why, at } = r as Record<string, unknown>
+  if (typeof by !== 'string' || typeof same !== 'boolean') return null
+  return { by, same, why: typeof why === 'string' ? why : '', at: typeof at === 'number' ? at : 0 }
+}
+
+/** Is a ruling being asked for this filing right now (`asking: true`)? */
+export function askingOf(f: FactsFiling): boolean {
+  return (f as FactsFiling & { asking?: unknown }).asking === true
+}
+
+/** The Judging card's line for a ruling: "🤖 Trabolta: same — why". */
+export function rulingText(r: FilingRuling): string {
+  return `🤖 ${r.by}: ${r.same ? 'same' : 'not the same'}${r.why !== '' ? ` — ${r.why}` : ''}`
+}
+
+/** The Judging card's line while a ruling is out: "🤖 asking Trabolta…". */
+export function askingText(facts: FactsView): string {
+  const judge = (facts as FactsView & { judge?: unknown }).judge
+  return `🤖 asking ${typeof judge === 'string' && judge !== '' ? judge : 'the judge'}…`
+}
+
+/** Every filing a `judge:` character ruled on, newest first — with the
+ *  usual override buttons on the card (a director's later verdict wins). */
+export function ruledFilings(facts: FactsView): Array<FilingRow & { question: string; ruling: FilingRuling }> {
+  const out: Array<FilingRow & { question: string; ruling: FilingRuling }> = []
+  for (const q of facts.questions) {
+    for (const row of questionFilings(facts, q.id)) if (row.ruling !== null) out.push({ ...row, question: q.id, ruling: row.ruling })
+  }
+  return out.sort((a, b) => b.ruling.at - a.ruling.at)
 }
 
 /** A filing's near-miss key (`near: {key}`, wave 11 C6; the server sets it
@@ -273,7 +329,7 @@ export function pendingFilings(facts: FactsView): JudgingRow[] {
   for (const q of facts.questions) {
     for (const f of q.filings) {
       if (f.final !== null) continue
-      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f) })
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) })
     }
   }
   return rows.sort((a, b) => a.at - b.at)
@@ -340,6 +396,10 @@ export interface FilingRow {
   at: number
   /** The key answer it nearly matched (wave 11 C6), else null. */
   near: string | null
+  /** Wave 11b: a ruling is being asked. */
+  asking: boolean
+  /** Wave 11b: the `judge:` character's ruling, else null. */
+  ruling: FilingRuling | null
 }
 
 /** One question's filings, oldest first, for the provenance rows under the
@@ -354,7 +414,7 @@ export function questionFilings(facts: FactsView, id: string): FilingRow[] {
     return f.final === f.verdict ? 'kept' : 'overridden'
   }
   return q.filings
-    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, near: nearKeyOf(f) }))
+    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) }))
     .sort((a, b) => a.at - b.at)
 }
 
