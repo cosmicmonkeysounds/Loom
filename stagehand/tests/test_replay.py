@@ -350,6 +350,38 @@ def test_score_and_table_print_every_bar(tmp_path: Path) -> None:
     assert S.percentile([1, 2, 3, 4, 100], 95) == 100 and S.percentile([5], 50) == 5 and S.percentile([], 50) is None
 
 
+def _with_meta(d: Path, **meta) -> Path:
+    doc = json.loads((d / "run.json").read_text())
+    doc.update(meta)
+    (d / "run.json").write_text(json.dumps(doc))
+    return d
+
+
+def test_pooling_warns_on_mixed_gaps_answer_lists_and_a_classic_run_that_never_reflected(tmp_path: Path) -> None:
+    a = _with_meta(make_run(tmp_path, "october-21", thoughts=[thought("r", 1, kind="reflect", trigger="quiet")], name="a"), mode="classic", gap_s=30.0, match_digest="x")
+    b = _with_meta(make_run(tmp_path, "facts-offers", thoughts=[thought("r", 1, kind="reflect", trigger="quiet")], name="b"), mode="classic", gap_s=30.0, match_digest="x")
+    assert S.pooling_warnings(load(a, b)) == []
+    c = _with_meta(make_run(tmp_path, "october-21", thoughts=[thought("r", 1)], name="c"), mode="classic", gap_s=0.0, match_digest="y")
+    burst = _with_meta(make_run(tmp_path, "burst-30", name="d"), mode="classic", gap_s=30.0, match_digest="x")
+    warns = S.pooling_warnings(load(a, c, burst))
+    assert any("paced differently" in w for w in warns) and any("answer lists" in w for w in warns)
+    assert [w for w in warns if "0 reflect" in w] == [w for w in warns if "(c)" in w] and len([w for w in warns if "0 reflect" in w]) == 1
+    rep = S.score(load(a, c), src.DEFAULT_CATCHPHRASES, lambda t: False)
+    assert S.table(rep).startswith("WARNING: ")
+
+
+def test_live_paces_guest_lines_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    import inspect
+
+    from stagehand.replay.__main__ import main
+
+    assert drive.DEFAULT_GAP_S >= 20 and inspect.signature(drive.live).parameters["gap_s"].default == drive.DEFAULT_GAP_S
+    seen: dict = {}
+    monkeypatch.setattr(drive, "live", lambda *a, **k: seen.update(k))
+    assert main(["live", "--mind", "classic", "--script", "october-21"]) == 0
+    assert seen["gap_s"] == drive.DEFAULT_GAP_S
+
+
 # -- the driver over a fake server ------------------------------------------------------------------
 
 

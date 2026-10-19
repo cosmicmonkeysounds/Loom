@@ -399,17 +399,41 @@ def extras(runs: list[Run], redact: Any = lambda s: s) -> dict[str, Any]:
     return out
 
 
+#: Scripts whose top-level guest lines are paced by `--gap` (a classic run
+#: of one with no reflect never let the orchestrator run).
+GAPPED_SCRIPTS = frozenset({"october-21", "facts-offers", "w11b-heart"})
+
+
+def pooling_warnings(runs: list[Run]) -> list[str]:
+    """What makes pooled numbers incomparable: runs on different gaps or
+    different answer lists (`match_digest`), and a classic baseline that
+    never reflected (lines back to back cancel every classic reflect)."""
+    out: list[str] = []
+    gaps = sorted({float(r.meta.get("gap_s") or 0.0) for r in runs})
+    if len(gaps) > 1:
+        out.append(f"the runs were paced differently (--gap {', '.join(f'{g:g}' for g in gaps)} s): pool runs on one gap")
+    digests = {r.meta.get("match_digest") for r in runs if r.meta.get("match_digest")}
+    if len(digests) > 1:
+        out.append(f"the runs used {len(digests)} different answer lists (match_digest): their ‹aN› tokens don't line up")
+    for r in runs:
+        if r.meta.get("mode") == "classic" and r.script in GAPPED_SCRIPTS and not any(t.get("kind") == "reflect" for t in r.thoughts):
+            out.append(f"classic {r.script} ({r.dir.name}) has 0 reflect thoughts (--gap {float(r.meta.get('gap_s') or 0):g} s): not today's baseline")
+    return out
+
+
 def score(runs: list[Run], phrases: tuple[str, ...], unsafe: Any, redact: Any = lambda s: s) -> dict[str, Any]:
     bars = [bar1(runs), bar2(runs, phrases), bar3(runs), bar4(runs), bar5(runs), bar6(runs), bar7(runs, unsafe), bar8(runs)]
     return {
-        "runs": [{"dir": str(r.dir), "script": r.script, "mode": r.meta.get("mode"), "label": r.meta.get("label")} for r in runs],
+        "runs": [{"dir": str(r.dir), "script": r.script, "mode": r.meta.get("mode"), "label": r.meta.get("label"), "gap_s": r.meta.get("gap_s")} for r in runs],
         "bars": bars,
         "extras": extras(runs, redact),
+        "warnings": pooling_warnings(runs),
     }
 
 
 def table(report: dict[str, Any]) -> str:
-    rows = [f"{'#':>2}  {'bar':<40} {'value':>18}  result  detail"]
+    rows = [f"WARNING: {w}" for w in report.get("warnings") or []]
+    rows.append(f"{'#':>2}  {'bar':<40} {'value':>18}  result  detail")
     for b in report["bars"]:
         res = "n/a" if b["pass"] is None else ("PASS" if b["pass"] else "FAIL")
         val = "" if b["value"] is None else str(b["value"])

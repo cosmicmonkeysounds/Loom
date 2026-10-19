@@ -23,7 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     lv.add_argument("--script", required=True, help="a name under replay/scripts/ or a path")
     lv.add_argument("--port", type=int, help=f"default: the first free one in {drive.PORTS.start}–{drive.PORTS.stop - 1}")
     lv.add_argument("--label")
-    lv.add_argument("--gap", type=float, default=0.0, help="seconds of quiet before each guest line after his reply (default 0: back to back)")
+    lv.add_argument("--gap", type=float, default=drive.DEFAULT_GAP_S, help=f"seconds of quiet before each top-level guest line after his reply (default {drive.DEFAULT_GAP_S:.0f}: a guest's pace, so the classic mind reflects between lines; 0 = back to back, which cancels every classic reflect). Runs pooled by score should share one gap.")
     lv.add_argument("--idle", type=float, help="override every idle step's seconds (a short smoke run; bar 6 then reads n/a)")
     of = sub.add_parser("offline", help="re-send recorded prompts (classic) or build lean ones (new) against the real model, no server")
     of.add_argument("--trace", required=True, type=Path)

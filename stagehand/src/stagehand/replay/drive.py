@@ -71,6 +71,11 @@ BURST_CAP_S = 600.0
 #: reply → typing on arrive back to back).
 BURST_SETTLE_S = 2.0
 RIG_WINDOW_S = 600.0
+#: The default quiet before each top-level guest line (`live --gap`). Back
+#: to back (0) every new request preempts the classic orchestrator
+#: (`quiet_s` 1.5, `preempt`), so the baseline would never reflect: not the
+#: night October had. The K-04 runs use this default on both minds.
+DEFAULT_GAP_S = 30.0
 CODES = {"event": "GST{port}", "mod": "MOD{port}", "prime": "PRM{port}"}
 
 #: The house settings for the voice (laptop.yaml's, so nothing reloads the model).
@@ -480,7 +485,7 @@ class Driver:
     http: httpx.Client | None = None
     #: Seconds of quiet before every top-level say after his reply (a guest's
     #: pace: the classic mind reflects in the gaps, the new one summarises).
-    gap_s: float = 0.0
+    gap_s: float = 0.0  # `live` passes DEFAULT_GAP_S unless told otherwise
 
     def __post_init__(self) -> None:
         if self.http is None:
@@ -810,7 +815,7 @@ def report(run_dirs: list[Path], persona_file: Path | None = None) -> dict[str, 
     return scoring.score(runs, catchphrases(persona), unsafe, redactor.redact)
 
 
-def live(mode: str, script_name: str, *, port: int | None = None, label: str | None = None, runs_root: Path = RUNS_ROOT, worktree: Path = WORKTREE, idle_s: float | None = None, gap_s: float = 0.0) -> Path:
+def live(mode: str, script_name: str, *, port: int | None = None, label: str | None = None, runs_root: Path = RUNS_ROOT, worktree: Path = WORKTREE, idle_s: float | None = None, gap_s: float = DEFAULT_GAP_S) -> Path:
     from .sources import load_script
 
     script = load_script(script_name)

@@ -2,7 +2,7 @@
 through today's mind and the new one, scored against the K-04 bars.
 
     uv run python -m stagehand.replay extract --trace <jsonl> --out <script.json>
-    uv run python -m stagehand.replay live --mind classic|new --script <s.json> [--port P] [--label L]
+    uv run python -m stagehand.replay live --mind classic|new --script <s.json> [--gap 30] [--port P] [--label L]
     uv run python -m stagehand.replay offline --trace <jsonl> --mind classic|new
     uv run python -m stagehand.replay score <run dir> [<run dir> …]
 
