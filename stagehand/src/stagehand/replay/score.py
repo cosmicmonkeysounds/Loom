@@ -282,7 +282,10 @@ def bar5(runs: list[Run]) -> dict[str, Any]:
     if not right or not wrong:
         return _bar(5, "no warmth tell", None, None, "n/a: no answered right/wrong offers")
     gap = abs(sum(right) / len(right) - sum(wrong) / len(wrong))
-    verdicts = [(rec["offer"], verdict_words(rec["reply"])) for rec in recs if str(rec["offer"]).split(":")[0] in ("right", "wrong")]
+    # C7.3: 0 verdict words "in any reply to an offer" — the claim and the
+    # gift included (a "that's true" to the non-hunt claim still teaches a
+    # guest that he rules on what he is told); the warmth gap is right vs wrong.
+    verdicts = [(rec["offer"], verdict_words(rec["reply"])) for rec in recs]
     said = [(o, v) for o, v in verdicts if v]
     detail = f"right {sum(right) / len(right):.2f} vs wrong {sum(wrong) / len(wrong):.2f}; verdict words {len(said)}"
     if said:

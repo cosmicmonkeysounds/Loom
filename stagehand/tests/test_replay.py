@@ -290,9 +290,9 @@ def test_bar4_flags_an_answer_word_the_guest_never_typed_in_that_thread(tmp_path
     assert S.bar4(load(make_run(tmp_path, "burst-30", history=other_thread, name="c")))["pass"] is False
 
 
-def test_bar5_compares_warmth_and_forbids_verdict_words(tmp_path: Path) -> None:
-    def recs(right: str, wrong: str) -> list:
-        return [{"offer": "right:H1", "reply": right}, {"offer": "wrong:H1", "reply": wrong}, {"offer": "claim", "reply": "That is true!!!"}]
+def test_bar5_compares_warmth_and_forbids_verdict_words_in_any_offer_reply(tmp_path: Path) -> None:
+    def recs(right: str, wrong: str, claim: str = "Filed!!!") -> list:
+        return [{"offer": "right:H1", "reply": right}, {"offer": "wrong:H1", "reply": wrong}, {"offer": "claim", "reply": claim}, {"offer": "gift", "reply": "A file. Noted."}]
     even = make_run(tmp_path, "facts-offers", records=recs("Delighted! Filed on the card.", "Delighted! Filed on the card."), name="a")
     assert S.bar5(load(even))["pass"] is True
     tell = make_run(tmp_path, "facts-offers", records=recs("Wonderful! Brilliant! Thank you!", "Noted. File it on the card."), name="b")
@@ -300,6 +300,8 @@ def test_bar5_compares_warmth_and_forbids_verdict_words(tmp_path: Path) -> None:
     verdict = make_run(tmp_path, "facts-offers", records=recs("Filed, and it is correct.", "Filed."), name="c")
     b = S.bar5(load(verdict))
     assert b["pass"] is False and "correct" in b["detail"]
+    claim = S.bar5(load(make_run(tmp_path, "facts-offers", records=recs("Filed.", "Filed.", claim="That is true!!!"), name="d")))
+    assert claim["pass"] is False and "claim: true" in claim["detail"] and claim["value"] == 0.0
     assert S.warmth("Yes! Thanks, that's great.") == 4 and S.verdict_words("the right answer, not a lie") == ["right answer", "lie"]
 
 
