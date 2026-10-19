@@ -77,6 +77,25 @@ arrives as `?unlock=<code>`, is redeemed on load, and opens the Codex.
 A room's sign arrives as `?checkin=<slug>` (`checkin.ts`, K-13): checked in
 on load (`/api/guest/checkin`), it opens that room's chat, or banners why
 not (captured, on rails, not open yet).
+**📷 Scan (wave 11, `guest-scan.tsx`).** The guest header and the Codex
+composer carry a 📷 button: the booth's `CameraScanner` in a sheet, read in
+*this* session (never a new tab). `guestScan` classifies the code: `unlock=`
+(or a bare code) redeems and opens the Codex, `checkin=` checks in
+(`GuestSession.checkin`) and opens the room, and the join QR / a pass / an
+invitation / a re-pair code / the director's page just say what they are.
+A `?unlock=` / `?checkin=` link that opens with **no** session (a QR app's
+webview, another browser) lands on `LinkLanding` — the code in big type
+("Type X into your Codex in the app you joined with") or the sign's room —
+with *I haven't joined yet → Join* as the secondary path; never the picker.
+**Reserved programs (wave 11, `claim.ts`).** An invitation's
+`?code=…&claim=<token>` opens the guest join and rides `/api/identities`,
+the picture lookup and `/api/guest/register`; rows with `reserved: true`
+read 🔒 Reserved, and a 409 `reserved` says *This program is saved for an
+invited guest — ask a host.* The claim leaves the URL once the guest is in.
+**Countdowns (wave 11, `countdown.tsx`).** `GuestView.countdowns` (the
+story's `countdown: … for guests` lines) tick in a strip under the room
+header (and the identity card on a phone's room list) off the snapshot's
+story clock; `paused` holds them with ⏸; none → no strip.
 A director's re-pair QR arrives as `?code=<event>&pair=<code>`
 (`resume.ts`, N-02): `main.tsx` strips the single-use code from the URL
 before rendering, and `App` trades it (resolve the event code, then
@@ -141,7 +160,9 @@ warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
 passes `bathroom:`), `pass`, the 📝 **File a fact** card
 (`show fact … with thread: Trabolta, questions: "H1: … | H2: …"`, K-24):
 pick a question, type an answer (≤ `FACT_MAX`, 200), set the slider
-*Please select your confidence level in this response* (1–100) →
+*Please select your confidence level in this response* (1–100; it starts
+**unset** — greyed, "not set" — and *File it* waits until the guest sets
+it, wave 11) →
 `{question, answer, confidence}` → `fact answered` (the server judges it;
 the phone never sees the verdict), and the 💬 **answer** card (`show
 answer "…" … with question: "P1"`): one free-text line → `{text}` →
@@ -213,6 +234,12 @@ coming back online, into view or out of the bfcache reopens at once.
 The header dot reads **reconnecting…** while down; the cutscene stage
 shows a **RECONNECTING…** strip after 5 s. A caller with no `probe`
 (the terminal's pilot) keeps the old rule: `onDead` at once.
+
+**Arm, then fire (wave 11, `arm.ts`).** A story button marked `arm: true`
+(`Interaction.arm`) — on a booth's guest card or the guest's *Things you can
+do* — arms on the first tap (the director phone's black look, *Tap again to
+fire*) and fires on a second tap ≥ `ARM_DEAD_MS` and < `ARM_MS` later
+(core's `tapCue`); it disarms after `ARM_MS` or when the page is left.
 
 **Sender runs (Slack/Discord).** Consecutive `line`s from one sender within
 five story-minutes coalesce under a single colored screen-name banner;
@@ -347,6 +374,9 @@ src/
   checkin.ts    # ?checkin=<slug> room signs (K-13) · resume.ts = ?pair= re-pair links (N-02)
   pass-qr.tsx   # the guest pass QR, drawn in the browser (wave 9)
   scanner.tsx   # booth camera (BarcodeDetector, else jsQR) · scan.ts = what a code means (N-01)
+  guest-scan.tsx # the guest's 📷 Scan sheet + the wrong-browser LinkLanding (wave 11)
+  claim.ts      # ?claim= reserved programs (wave 11) · countdown.tsx = the guest countdown strip
+  arm.ts        # arm-then-fire for `arm: true` story buttons (core's tapCue; wave 11)
   wake-lock.ts  # ☰ → Keep my screen on
   main.tsx      # entry
   styles.css    # the AOL-chatroom skin (Win95 bevels, navy bars, serif lines)
