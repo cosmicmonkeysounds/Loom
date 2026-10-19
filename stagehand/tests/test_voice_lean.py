@@ -892,3 +892,14 @@ def test_with_phase_cards_he_hands_over_only_what_the_card_lets_him_tell():
     reply = run(answer_lean(carded, MODEL, request(), earned, model))
     assert [a.get("entry") for a in reply.acts] == ["The Orchard"]
     assert "The Sandy File" not in model.calls[0][2]["content"]
+
+
+def test_a_power_for_another_program_aimed_at_the_speaker_is_dropped():
+    """K-04 facts-offers: "a fact buys a snoop" became a snoop on the giver."""
+    powers = [{"id": "snoop", "label": "Snoop", "description": "Open another program's file. They will feel it.", "limit": 8, "used": 0}]
+    model = Model({"say": "Thank you. I will look.", "act": {"fire": "snoop", "args": {"target": "Ada"}}})
+    reply = run(answer_lean(P, MODEL, request(powers=powers), context(), model))
+    assert reply.acts == ()
+    model = Model({"say": "Let me look at Bob.", "act": {"fire": "snoop", "args": {"target": "Bob"}}})
+    reply = run(answer_lean(P, MODEL, request(powers=powers), context(), model))
+    assert [a.get("name") for a in reply.acts] == ["snoop"]

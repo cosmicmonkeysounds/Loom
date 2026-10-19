@@ -232,6 +232,24 @@ def shareable(persona: Persona, req: dict[str, Any], phase: PhaseView) -> tuple[
     return tuple(str(e.get("title", "")) for e in tell_entries(persona, req, phase))
 
 
+#: Args that name a program a power is used on.
+TARGET_ARGS = ("target", "who", "program", "guest")
+
+
+def aims_at_speaker(act: dict[str, Any], req: dict[str, Any], powers: list[dict[str, Any]]) -> bool:
+    """A `fire` of a power whose description says it is for *another*
+    program ("Open another program's file"), aimed at the speaker: by id
+    (after `canonical_args`) or by name."""
+    if act.get("kind") != "fire" or not isinstance(act.get("args"), dict):
+        return False
+    power = next((p for p in powers if fold(str(p.get("id", ""))) == fold(str(act.get("name") or ""))), None)
+    if power is None or "anotherprogram" not in fold(str(power.get("description") or "")):
+        return False
+    speaker = req.get("speaker") or {}
+    me = {fold(str(speaker.get(k) or "")) for k in ("id", "name")} - {""}
+    return any(isinstance(act["args"].get(k), str) and fold(act["args"][k]) in me for k in TARGET_ARGS)
+
+
 def render_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     phase = ctx.phase
     name = phase.phase or str(_world(req).get("Night.phase") or "") or "unknown"
@@ -659,6 +677,13 @@ async def answer_lean(
             f = await facts()
             if f is not None:
                 acts = [{**a, "args": f.canonical_args(a["args"])} if a.get("kind") == "fire" and isinstance(a.get("args"), dict) else a for a in acts]
+        kept = [a for a in acts if not aims_at_speaker(a, req, powers)]
+        if len(kept) != len(acts):
+            # K-04 facts-offers: "a fact buys a snoop" became a snoop on the
+            # giver (doubt +3, "👁 Something has opened your file"): a power
+            # for another program never lands on the one he is talking to.
+            notes.append("act dropped (aimed at the speaker)")
+            acts = kept
         return (replace(reply, acts=tuple(acts)) if acts != list(reply.acts) else reply), notes
 
     def parse(completion: Completion) -> Reply:

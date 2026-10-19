@@ -5472,6 +5472,19 @@ describe("Trapped in the Internet — wave 5 (lane B): the safe place (M20), the
     expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
   });
 
+  it("K-04: a snoop aimed at the program he is talking to is refused, words only, and spends nothing", { timeout: SLOW }, () => {
+    const sim = boot();
+    toTruth1(sim);
+    const d1 = v(sim, "g1.doubt");
+    const evs = fire(sim, "snoop", "g1", { target: "g1" }, "Trabolta");
+    expect(lines(evs, "Trabolta")).toEqual(["Name another program. I do not open the file of the one I am talking to."]);
+    expect(casts(evs)).toEqual([]);
+    expect(v(sim, "g1.doubt")).toBe(d1);
+    const d2 = v(sim, "g2.doubt") as number;
+    fire(sim, "snoop", "g1", { target: "g2" }, "Trabolta");
+    expect(v(sim, "g2.doubt")).toBe(d2 + 3);
+  });
+
   it("B6: the Safe Place promises only what is built", () => {
     const text = FACTS.facts.find((f) => f.codex?.id === "The Safe Place")!.codex!.text;
     expect(text).toContain("they will wait outside");

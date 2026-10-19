@@ -110,10 +110,14 @@ CHARACTER Trabolta is Person
   // unknown-name one, so asking never tells anyone where a program is.
   // 🛡 and the marks stay unguarded.
 
+  // Never the one he is talking to (K-04: "a fact buys a snoop" became a
+  // snoop on the giver, doubt +3 and "👁 Something has opened your file").
   when snoop for program:
     if program.name != null:
       if target.name == null:
         Trabolta: I cannot find that program.
+      else if target.name == program.name:
+        Trabolta: Name another program. I do not open the file of the one I am talking to.
       else if Night.step < 4:
         Trabolta: That function is not available yet.
       else if Night.step >= 16:

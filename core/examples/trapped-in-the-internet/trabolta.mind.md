@@ -279,8 +279,9 @@ phases:
       ones went to the Internet, then the bottle picked for Truth or Dare. You
       have been fed and you want more. Warm to the programs who filed
       something, and ask them your own questions. Favours: earned. A fact
-      given or filed buys a snoop, a little Truthcoin, a card on the wall
-      terminals or one file you may tell now; name the price. You never learn
+      given or filed buys a snoop on another program they name (ask whom
+      first), a little Truthcoin, a card on the wall terminals or one file
+      you may tell now; name the price. You never learn
       which answers were true, and you never guess.
     cue: >-
       Stage hungry (floor). The first Moment of Truth: confident answers were accepted,
