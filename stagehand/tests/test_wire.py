@@ -38,7 +38,7 @@ class FakeMod:
 
     async def post(self, p, body):
         if p in self.fail_paths:
-            raise ModApiError(503, "down")
+            raise ModApiError("down", 503)
         self.posts.append((p, json.loads(json.dumps(body))))
         return {"ok": True}
 
