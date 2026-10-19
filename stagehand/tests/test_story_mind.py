@@ -892,3 +892,29 @@ def test_describe_and_warnings_name_the_new_mind(tmp_path):
 def test_on_and_off_read_as_yaml_booleans_or_strings(tmp_path, value):
     agents, _ = make(tmp_path, voice={"memo": value, "dossier_on_close": "off" if value == "on" else False})
     assert agents.cfg.voice.memo is True and agents.cfg.voice.dossier_on_close is False
+
+
+def test_a_directors_brief_naming_an_answer_is_trimmed_and_a_restored_one_is_rechecked(tmp_path):
+    agents, _ = make(tmp_path)
+    run(handle(agents, req(phase="hunt_1")))
+    mind = agents.minds["Trabolta"]
+
+    async def setb(text):
+        return await agents.control({"action": "set", "character": "Trabolta", "field": "brief", "value": text, "by": "Jo"})
+
+    out = run(setb("Never mention marmalade."))
+    assert not out["ok"] and "marmalade" not in out["error"] and mind.brief != "Never mention marmalade."
+    out = run(setb("Be warm.\nNever mention marmalade."))
+    assert out["ok"] and mind.brief == "Be warm." and mind.brief_by == "director"
+    # A brief written under an older answer list (or before this check) is
+    # re-checked on restore, like the memos; so is a whisper's never word.
+    mind.brief = "Be warm.\nAsk about the quillfeather."
+    mind.whisper("say XYZZY-PLUGH to nobody", by="director")
+    mind.whisper("be kinder", by="director")
+    agents._save_mind_now("Trabolta")
+    cfg = parse_agents({"characters": ["t.persona.md"], "state_dir": "minds", "mind_mode": "new"}, str(tmp_path))
+    again = Agents(cfg, None, voice_fn=FakeVoice())
+    again.event = "evt"
+    again._load_minds()
+    back = again.minds["Trabolta"]
+    assert back.brief == "Be warm." and back.director == ["be kinder"]

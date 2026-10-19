@@ -246,6 +246,18 @@ def render_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
     return "\n".join(lines)
 
 
+def story_p2(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str:
+    """P2 as the story alone writes it, for guard 2's allowance: the phase
+    card's own brief in place of the mind's (a director's brief, or one
+    restored from an older night, is never answer-scrubbed against the
+    `match` list as it stands), plus the `tell` entries P2 shows."""
+    from .story_mind import card_for  # story_mind imports nothing from here
+
+    card = card_for(persona, ctx.phase.phase)
+    brief = card.brief if card is not None else ""
+    return render_p2(persona, req, replace(ctx, phase=replace(ctx.phase, brief=brief, brief_by="story")))
+
+
 # -- P3: this call ------------------------------------------------------------------------
 
 
@@ -566,8 +578,7 @@ async def answer_lean(
     powers = [p for p in (req.get("powers") or []) if isinstance(p, dict)]
     codex = tuple(str(e.get("title", "")) for e in persona.secrets.visible((req.get("self") or {}).get("codex")))
     live = set(_live_ids(persona, req, ctx.phase)) if ctx.phase.live_powers is not None else None
-    p2 = render_p2(persona, req, ctx)
-    allowed = allowed_answer_words(persona, req, p2)
+    allowed = allowed_answer_words(persona, req, story_p2(persona, req, ctx))
     facts_box: list[Facts | None] = []
 
     async def facts() -> Facts | None:

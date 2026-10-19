@@ -410,7 +410,8 @@ def prune_restored(persona: Persona, mind: Mind) -> tuple[int, int]:
     NOW (a restored mind.json was written under an older `never` / `match`
     list — `titi:facts` may have moved the door code since). `Secrets.prune`
     covers the classic fields; this covers the memos, the first-met quote,
-    the gifts, the summary's answer words and `said`. Returns what went, as
+    the gifts, the summary's answer words, `said`, every brief line (as
+    `scrub_brief`, whoever wrote it) and the whispers' `never` words. Returns what went, as
     (hunt / answer words, `never` words) — `drop_counts` words them."""
     secrets = persona.secrets
     answers = Secrets(match=secrets.match)
@@ -441,7 +442,28 @@ def prune_restored(persona: Persona, mind: Mind) -> tuple[int, int]:
         if d.summary and not count(why(d.summary)):
             d.summary = ""
     mind.said[:] = [x for x in mind.said if count(why(str(x.get("text") or "")))]
+    # The brief is shown to every speaker (and guard 2 lets its words
+    # through for the classic layout's older shape): a line written under an
+    # older `match` list, or a director's, is re-checked like a Rewrite's.
+    if mind.brief:
+        lines = mind.brief.split("\n")
+        kept = [x for x in lines if not x.strip() or count(_brief_why(persona, x))]
+        if len(kept) != len(lines):
+            mind.brief = "\n".join(kept).strip()
+    # A director's whisper and the policy note: `never` words only (a
+    # whisper may well name a hunt topic: "don't let them rush the billboard").
+    mind.director[:] = [w for w in mind.director if count("never" if secrets.leaks(str(w)) else None)]
+    if isinstance(mind.policy, dict) and mind.policy.get("note") and not count("never" if secrets.leaks(str(mind.policy.get("note"))) else None):
+        mind.policy["note"] = ""
     return hunt, never
+
+
+def _brief_why(persona: Persona, line: str) -> str | None:
+    """`scrub_brief`'s rule for one line, worded as `prune_restored` counts it."""
+    if persona.secrets.leaks(line):
+        return "never"
+    _, dropped = scrub_brief(persona, [line])
+    return "hunt" if dropped else None
 
 
 def history_lines(req: dict[str, Any], limit: int = SUMMARY_HISTORY) -> list[dict[str, Any]]:

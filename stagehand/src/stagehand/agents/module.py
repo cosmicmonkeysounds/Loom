@@ -670,6 +670,18 @@ class Agents:
         if field in ("brief", "mood"):
             if not isinstance(value, str) or not value.strip():
                 return f"!{field} needs text", False
+            if field == "brief":
+                # P2 shows the brief to every speaker: a line naming a hunt
+                # answer, a `never` word or a verdict never goes in (§C6.1, as
+                # a Rewrite's). The note never names what was dropped.
+                persona = self.cfg.personas.get(mind.character)
+                if persona is not None:
+                    lines = [x for x in value.split("\n") if x.strip()]
+                    kept, dropped = story_mind.scrub_brief(persona, lines)
+                    if dropped and not kept:
+                        return f"!every line of that brief names a hunt answer or a secret ({dropped} dropped): nothing was set", False
+                    if dropped:
+                        value = "\n".join(kept)
             update = {field: value}
         elif field == "stage":
             if not isinstance(value, str) or not value.strip():

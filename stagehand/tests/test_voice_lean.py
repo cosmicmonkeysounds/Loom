@@ -859,3 +859,14 @@ def test_a_failed_warm_head_never_stops_the_line():
 
     reply = run(answer_lean(P, OLLAMA, request(), context(), Down(say("Speak.")), trace=Trace()))
     assert reply.say == "Speak."
+
+
+def test_a_directors_brief_never_unlocks_an_answer_word_for_guard_2():
+    """Guard 2 lets through answer words the story itself brought up (the
+    phase card's brief, the tell entries): a director's brief, or a stale
+    one restored from an older night, is never answer-scrubbed against the
+    `match` list as it stands, so it unlocks nothing."""
+    ctx = context(phase=replace(context().phase, brief="Never mention the quokka.", brief_by="director"))
+    model = Model({"say": "It was a quokka, I hear."})
+    reply = run(answer_lean(P, MODEL, request(text="what was it?"), ctx, model))
+    assert "quokka" not in reply.say.lower() and reply.say == P.fallback
