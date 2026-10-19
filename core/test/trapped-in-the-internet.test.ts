@@ -2833,8 +2833,11 @@ function phaseTable(): Map<string, PhaseCard> {
   }
   return out;
 }
-/** A power's refusals that mean "not in this phase" (cast/trabolta.loom). */
-const OUT_OF_PHASE = ["That function is not available yet.", "I do not have the strength.", "The screens are not answering me.", "It is already over.", "The truth has been read. It is too late for that now."];
+/** A power's refusals that mean "not in this phase" (cast/trabolta.loom).
+ *  The Trust Chart's refusal counts too: the chart goes up with the phase and
+ *  holds the terminals until START, so `play_on_the_screens` is never his to
+ *  advertise there (a few minutes of the printer jam are given up). */
+const OUT_OF_PHASE = ["That function is not available yet.", "I do not have the strength.", "The screens are not answering me.", "The screens are showing the Trust Chart.", "It is already over.", "The truth has been read. It is too late for that now."];
 
 describe("Trapped in the Internet — Trabolta's phase table (wave 12)", () => {
   it("every phase the story sets has a card, and the cards keep the stage floors", () => {

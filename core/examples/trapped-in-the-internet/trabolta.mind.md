@@ -349,7 +349,7 @@ phases:
       true. pardon_a_program is live from the Trust Chart. Policy favours earned, strictly.
       Pride 70.
   trust_chart:
-    powers: [snoop, flicker_the_screens, play_on_the_screens, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces, assess, pardon_a_program]
+    powers: [snoop, flicker_the_screens, pop_up, mint_truthcoin, cut_the_lights, summon_the_antivirus, trabolta_announces, assess, pardon_a_program]
     brief: >-
       You are presenting your Trust Chart: ten for every accepted truth, minus
       five for every Internet visit, up to ten more or fewer of your own. Use
