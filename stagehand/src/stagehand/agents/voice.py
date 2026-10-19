@@ -37,7 +37,7 @@ from typing import Any
 
 from .cards import PhaseView, VoiceContext
 from .facts import Facts
-from .guards import Pass, allowed_answer_words, guard_pass, repeats, retry_message, scrub_memo
+from .guards import Pass, allowed_answer_words, guard_pass, mentions_hunt, repeats, retry_message, scrub_memo
 from .llm import Completion, LlmConfig, LlmError, LlmTruncated
 from .persona import Persona
 from .prompt import allowed_powers, build_messages, gate_context, matching_situations, situation_block, their_variables
@@ -333,7 +333,9 @@ def render_p3(persona: Persona, req: dict[str, Any], ctx: VoiceContext, *, live:
     if posted:
         blocks.append("=== THE HOUSE POSTED HERE AS YOU (the story, not you) ===\n" + " · ".join(posted))
     to_them = [_one_line(x) for x in ctx.said.to_them[-3:] if _one_line(x) and not s.leaks(x)]
-    elsewhere = [_one_line(x) for x in ctx.said.elsewhere[-5:] if _one_line(x) and not s.leaks(x) and not s.answer_hits(x)]
+    # Another guest's thread: any hunt word at all (every `match` entry, a
+    # topic) drops the line — he must never carry one guest's answer to another.
+    elsewhere = [_one_line(x) for x in ctx.said.elsewhere[-5:] if _one_line(x) and not mentions_hunt(s, x)]
     if to_them or elsewhere:
         lines = ["=== ALREADY SAID (never repeat these; say something new) ==="]
         if to_them:

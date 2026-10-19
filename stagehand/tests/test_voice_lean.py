@@ -575,18 +575,32 @@ def test_the_shipped_persona_builds_a_stable_static_start_with_no_secret_in_it()
     assert show.secrets.answer_pattern(tuple(show.secrets.match)).search(p1) is None, "a match word in the static start"
 
 
-@pytest.mark.parametrize("field", ["to_them", "elsewhere"])
-def test_the_shipped_secrets_never_reach_already_said_from_elsewhere(field):
+def test_no_shipped_match_entry_reaches_already_said_from_elsewhere():
+    """One line per `secrets.match` entry, the short numbers and single
+    number words guard 2 lets pass included: none survives the render."""
     show = load_persona(SHOW / "trabolta.persona.md")
-    words = show.secrets.answer_words()
-    lines = tuple(f"It might be {w}." for w in words[:5])
-    said = Said(**{field: lines})
-    p3 = render_p3(show, request(), replace(context(), said=said))
-    if field == "elsewhere":
-        assert "Elsewhere tonight" not in p3
-        assert show.secrets.answer_hits(p3) == ()
-    else:
-        assert "To them:" in p3  # his own lines to this person are theirs already
+    assert show.secrets.match
+    reached = 0  # counted, never printed: a failure must not show the word
+    for word in show.secrets.match:
+        p3 = render_p3(show, request(), replace(context(), said=Said(elsewhere=(f"It might be {word}.",))))
+        reached += "Elsewhere tonight" in p3
+    assert reached == 0, "a match entry reached another guest's prompt"
+
+
+def test_a_short_number_or_a_topic_from_another_thread_is_dropped():
+    s = Secrets(topics=("snow globe",), match=("11", "eleven", "quokka"), never=("XYZZY-PLUGH",))
+    p = persona(secrets=s)
+    lines = ("Eleven, you say.", "It was 11 years.", "The snow globe again.", "A quokka? No.", "Bring me the bingo card.")
+    p3 = render_p3(p, request(), context(said=Said(elsewhere=lines)))
+    block = p3.split("=== ALREADY SAID (never repeat these; say something new) ===\n", 1)[1].split("\n\n", 1)[0]
+    assert block.split("\n")[-2:] == ["Elsewhere tonight:", "- Bring me the bingo card."]
+
+
+def test_already_said_to_them_keeps_his_own_lines_to_this_person():
+    show = load_persona(SHOW / "trabolta.persona.md")
+    lines = tuple(f"It might be {w}." for w in show.secrets.answer_words()[:3])
+    p3 = render_p3(show, request(), replace(context(), said=Said(to_them=lines)))
+    assert "To them:" in p3  # his own lines to this person are theirs already
 
 
 def test_already_said_to_them_never_carries_a_never_word():

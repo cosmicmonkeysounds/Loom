@@ -123,6 +123,17 @@ def allowed_answer_words(persona: Persona, req: dict[str, Any], p2: str = "") ->
     return frozenset(out)
 
 
+def mentions_hunt(secrets: Secrets, text: str) -> bool:
+    """True when `text` carries a `never` word, *any* `match` entry (the
+    short numbers and single number words guard 2 lets pass included) or a
+    hunt topic: for the places where dropping a line costs nothing — the
+    ALREADY SAID lines from other threads."""
+    if secrets.leaks(text) or secrets.names_topic(text):
+        return True
+    pat = secrets.answer_pattern(tuple(secrets.match)) if secrets.match else None
+    return pat is not None and pat.search(str(text).replace("’", "'")) is not None
+
+
 def forbidden_hits(secrets: Secrets, text: str, allowed: Iterable[str]) -> tuple[str, ...]:
     ok = set(allowed)
     return tuple(w for w in secrets.answer_hits(text) if w not in ok)
