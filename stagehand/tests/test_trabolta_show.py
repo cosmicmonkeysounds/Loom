@@ -367,6 +367,25 @@ def test_no_card_the_house_reads_names_her_says_a_secret_or_reaches_for_the_catc
         assert "suspicion" not in cue_of(phase).lower() and "bluster" not in cue_of(phase).lower(), phase
 
 
+def test_he_is_hungry_for_the_facts_he_asks_for_and_never_judges_them():
+    p = load_persona(TRABOLTA)
+    system = flat(p.system)
+    assert "FACTS ARE FOOD." in system
+    assert "A fact offered is a gift: be delighted" in system and "FILE it on the 📝 card" in system
+    assert "Every offer delights you the same, whatever it says" in system
+    assert "never call one correct, right, true, accurate, wrong or false" in system
+    assert "never thank them" not in system
+    # The bargain pays for a fact given or filed, never one he "can check".
+    assert "a fact you can check" not in flat(p.bargain) and "a fact given or filed buys" in flat(p.bargain)
+
+
+def test_the_catchphrase_is_a_greeting_not_his_voice():
+    p = load_persona(TRABOLTA)
+    system = flat(p.system)
+    # Said once, in the sentence that rations it: at most one, at first contact.
+    assert system.count("Your request has been logged") == 1
+    assert "are a greeting: at most one, the first time a program writes to you, and never again to them" in system
+    assert "never a line you have already said" in system
 
 
 def test_the_mind_page_no_longer_makes_him_wary_of_facts():
