@@ -740,6 +740,21 @@ def test_a_restored_mind_is_rechecked_against_the_secrets_as_they_are_now(tmp_pa
     assert "dropped restored" in caplog.text and "4 hunt verdict(s)" in caplog.text and "2 secret(s)" in caplog.text
 
 
+def test_with_the_cards_off_the_quiet_summary_reads_the_nights_phase(tmp_path):
+    agents, _ = make(tmp_path, mind={"stage_from_phase": "off"}, facts={"world": {"Night.phase": "finale_song"}})
+    _chat(agents, 3)
+    mind = agents.minds["Trabolta"]
+    assert mind.phase_applied == ""  # nothing applies the cards
+    now = agents._quiet[("Trabolta", "g-1")]["at"]
+    assert agents._quiet_due(now + 500) == ("Trabolta", "g-1")  # hunt_1, from the newest request
+    agents._last_req["Trabolta"]["world"] = {"Night.phase": "arrivals"}
+    assert agents._quiet_due(now + 500) is None  # the card for the newest request's phase has him asleep
+    agents._last_req["Trabolta"]["world"] = {"Night.phase": "hunt_1"}
+    assert run(agents._quiet_next(now + 60)) is None and agents.mod.gets == []  # nothing ripe: no fetch
+    assert run(agents._quiet_next(now + 500)) is None  # the facts say the night has ended
+    assert agents.mod.gets == ["/api/agent/facts"]
+
+
 def test_a_summary_naming_an_answer_word_or_a_secret_is_dropped():
     from stagehand.agents.persona import parse_persona
 

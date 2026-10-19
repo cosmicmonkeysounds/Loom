@@ -1030,8 +1030,29 @@ class Agents:
         q["at"] = time.monotonic()
         q["history"] = story_mind.history_lines(req)
 
-    def _quiet_due(self, now: float) -> tuple[str, str] | None:
-        """The next conversation to condense, or None (CONTRACTS.md §C5.2)."""
+    def _quiet_phase(self, character: str, mind: Mind) -> str:
+        """The phase a quiet summary is judged by. With the cards applied the
+        phase watch keeps `phase_applied` fresh; with `stage_from_phase` off
+        nothing does, so the newest request's world is read instead."""
+        if self.cfg.mind.stage_from_phase:
+            return mind.phase_applied
+        return story_mind.current_phase((self._last_req.get(character) or {}).get("world")) or mind.phase_applied
+
+    async def _quiet_next(self, now: float) -> tuple[str, str] | None:
+        """`_quiet_due`, with the night's phase read off the facts first when
+        the cards are not applied (only once a conversation is ripe, so an
+        idle worker fetches nothing)."""
+        phase = None
+        if not self.cfg.mind.stage_from_phase and any(q["turns"] >= QUIET_TURNS and now - q.get("at", now) >= QUIET_S for q in self._quiet.values()):
+            facts = await self._facts()
+            if facts is not None:
+                phase = story_mind.current_phase(facts.world) or None
+        return self._quiet_due(now, phase)
+
+    def _quiet_due(self, now: float, phase: str | None = None) -> tuple[str, str] | None:
+        """The next conversation to condense, or None (CONTRACTS.md §C5.2).
+        `phase`: the night's phase when known (the facts), else each
+        character's own (`_quiet_phase`)."""
         if self.tasks or self._inflight or self.judging:
             return None  # never while a request is in flight or queued
         for (character, pid), q in self._quiet.items():
@@ -1041,11 +1062,12 @@ class Agents:
             d = mind.people.get(pid) if mind is not None else None
             if mind is None or persona is None or d is None:
                 continue
-            card = story_mind.card_for(persona, mind.phase_applied)
+            now_phase = phase if phase is not None else self._quiet_phase(character, mind)
+            card = story_mind.card_for(persona, now_phase)
             stage = card.stage if card is not None and card.stage else mind.stage
             if mind.stages and stage == mind.stages[0]:
                 continue  # the phase card has him asleep
-            if (mind.phase_applied or "").startswith("finale"):
+            if (now_phase or "").startswith("finale"):
                 continue
             if not story_mind.summary_memos(d) and not story_mind.summary_history(d, q.get("history") or []):
                 continue  # only heart talk so far: nothing a summary may read
@@ -1057,7 +1079,7 @@ class Agents:
     async def _quiet_watch(self) -> None:
         while True:
             await asyncio.sleep(QUIET_TICK_S)
-            due = self._quiet_due(time.monotonic())
+            due = await self._quiet_next(time.monotonic())
             if due is None:
                 continue
             self._summary_task = asyncio.ensure_future(self._summarise(*due))
