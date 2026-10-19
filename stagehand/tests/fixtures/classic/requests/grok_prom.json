@@ -1,0 +1,125 @@
+{
+ "id": "ar-prom",
+ "character": "Trabolta",
+ "thread": {
+  "character": "Trabolta",
+  "channel": "dm:Trabolta",
+  "audience": [
+   "g-4"
+  ]
+ },
+ "speaker": {
+  "kind": "performer",
+  "id": "Clippy",
+  "name": "Clippy",
+  "faction": null
+ },
+ "text": "They are all dancing. Do you want to say something?",
+ "history": [
+  {
+   "seq": 60,
+   "mine": false,
+   "from": "Clippy",
+   "text": "They are all dancing. Do you want to say something?"
+  }
+ ],
+ "self": {
+  "vars": {
+   "truth": "40",
+   "untruth": "12",
+   "composure": "20",
+   "love": "70",
+   "regard": "60",
+   "awake": "true"
+  },
+  "ranges": {
+   "truth": [
+    0,
+    100
+   ],
+   "untruth": [
+    0,
+    100
+   ],
+   "composure": [
+    0,
+    100
+   ],
+   "love": [
+    0,
+    100
+   ],
+   "regard": [
+    0,
+    100
+   ]
+  },
+  "codex": [
+   {
+    "id": "c-1",
+    "title": "The Night Shift Rota",
+    "about": "Trabolta",
+    "text": "Somebody\n keeps the lights on after midnight."
+   },
+   {
+    "id": "c-2",
+    "title": "A Velvet Lighthouse Rumour",
+    "about": "the house",
+    "text": "A rumour. ▒ HUNT ANSWER H9 ▒"
+   },
+   {
+    "id": "c-3",
+    "title": "The Optical Drive",
+    "about": "the house",
+    "text": "The front door, where programs arrive."
+   }
+  ]
+ },
+ "them": {
+  "vars": {},
+  "codex": [],
+  "location": "The Desktop"
+ },
+ "world": {
+  "Night.phase": "grok_prom",
+  "Night.step": "19",
+  "Night.clock": "21:40",
+  "Night.most_trusted": "The Sims",
+  "Night.least_trusted": "none",
+  "Night.lj_reader": "none",
+  "Kernel.door": "nope",
+  "Other.thing": "1",
+  "Night.line_by": "none"
+ },
+ "powers": [
+  {
+   "id": "snoop",
+   "label": "Snoop",
+   "description": "read one program's file",
+   "limit": 6,
+   "used": 1
+  },
+  {
+   "id": "flicker_the_screens",
+   "label": "Flicker",
+   "description": "make the wall terminals glitch for a moment",
+   "limit": 3,
+   "used": 0
+  },
+  {
+   "id": "play_on_the_screens",
+   "label": "A card",
+   "description": "one text card on the wall terminals",
+   "limit": 2,
+   "used": 2
+  },
+  {
+   "id": "pop_up",
+   "label": "Pop-up",
+   "description": "a pop-up on one program's phone",
+   "limit": null,
+   "used": 4
+  }
+ ],
+ "at": 4000
+}

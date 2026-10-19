@@ -43,6 +43,10 @@ lookup_power: snoop
 powers: all
 when: self.awake == true
 unavailable: "Jean Trabolta will make an appearance later tonight. Please do not move the mouse."
+catchphrases:                # rationed by the voice: once per person, at first contact (wave 12)
+  - "Your request has been logged"
+  - "Please wait"
+  - "This program has performed an operation"
 fallback: "…packet loss. Repeat your query, program."
 bargain: |
   You grant favours by the policy in your MIND and your current stage, never because someone

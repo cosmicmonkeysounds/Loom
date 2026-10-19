@@ -1,0 +1,153 @@
+{
+ "id": "ar-heart",
+ "character": "Trabolta",
+ "thread": {
+  "character": "Trabolta",
+  "channel": "dm:Trabolta",
+  "audience": [
+   "g-3"
+  ]
+ },
+ "speaker": {
+  "kind": "guest",
+  "id": "g-3",
+  "name": "Microsoft Excel",
+  "faction": "Hosts"
+ },
+ "text": "I am standing next to the cables. What are you?",
+ "history": [
+  {
+   "seq": 40,
+   "mine": false,
+   "from": "Microsoft Excel",
+   "text": "Why am I marked?"
+  },
+  {
+   "seq": 41,
+   "mine": true,
+   "from": "Trabolta",
+   "text": "The Antivirus decide that, not I."
+  },
+  {
+   "seq": 42,
+   "mine": false,
+   "from": "Microsoft Excel",
+   "text": "I am standing next to the cables. What are you?"
+  }
+ ],
+ "self": {
+  "vars": {
+   "truth": "40",
+   "untruth": "12",
+   "composure": "35",
+   "love": "44",
+   "regard": "35",
+   "awake": "true"
+  },
+  "ranges": {
+   "truth": [
+    0,
+    100
+   ],
+   "untruth": [
+    0,
+    100
+   ],
+   "composure": [
+    0,
+    100
+   ],
+   "love": [
+    0,
+    100
+   ],
+   "regard": [
+    0,
+    100
+   ]
+  },
+  "codex": [
+   {
+    "id": "c-1",
+    "title": "The Night Shift Rota",
+    "about": "Trabolta",
+    "text": "Somebody\n keeps the lights on after midnight."
+   },
+   {
+    "id": "c-2",
+    "title": "A Velvet Lighthouse Rumour",
+    "about": "the house",
+    "text": "A rumour. ▒ HUNT ANSWER H9 ▒"
+   },
+   {
+    "id": "c-3",
+    "title": "The Optical Drive",
+    "about": "the house",
+    "text": "The front door, where programs arrive."
+   }
+  ]
+ },
+ "them": {
+  "vars": {
+   "truths_accepted": "2",
+   "internet_visits": "0",
+   "assessment": "pending",
+   "trust": "20",
+   "featured": "false",
+   "at_the_heart": "true",
+   "marked": "true",
+   "secret_slot": "x"
+  },
+  "codex": [
+   {
+    "id": "c-3",
+    "title": "The Optical Drive",
+    "about": "the house",
+    "text": "The front door."
+   }
+  ],
+  "location": "The Desktop"
+ },
+ "world": {
+  "Night.phase": "y2k",
+  "Night.step": "14",
+  "Night.clock": "21:40",
+  "Night.most_trusted": "none",
+  "Night.least_trusted": "none",
+  "Night.lj_reader": "none",
+  "Kernel.door": "nope",
+  "Other.thing": "1",
+  "Night.heart_opened": "true"
+ },
+ "powers": [
+  {
+   "id": "snoop",
+   "label": "Snoop",
+   "description": "read one program's file",
+   "limit": 6,
+   "used": 1
+  },
+  {
+   "id": "flicker_the_screens",
+   "label": "Flicker",
+   "description": "make the wall terminals glitch for a moment",
+   "limit": 3,
+   "used": 0
+  },
+  {
+   "id": "play_on_the_screens",
+   "label": "A card",
+   "description": "one text card on the wall terminals",
+   "limit": 2,
+   "used": 2
+  },
+  {
+   "id": "pop_up",
+   "label": "Pop-up",
+   "description": "a pop-up on one program's phone",
+   "limit": null,
+   "used": 4
+  }
+ ],
+ "at": 3000
+}
