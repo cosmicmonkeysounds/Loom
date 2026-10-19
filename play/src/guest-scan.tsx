@@ -173,6 +173,11 @@ export function roomFromSlug(slug: string): string {
     .join(" ");
 }
 
+/** What the landing says after a cut session: join again, the link waits. */
+export function rejoinLine(link: LandingLink): string {
+  return link.kind === "unlock" ? `Join again — ${link.code} goes into your Codex once you're in.` : `Join again — you'll be checked into ${link.room} once you're in.`;
+}
+
 /** The landing's headline for a codex link. */
 export function landingTypeLine(code: string): string {
   return `Type ${code} into your Codex in the app you joined with.`;
@@ -185,7 +190,28 @@ export function landingTypeLine(code: string): string {
  * sign is for — never the program picker. "I haven't joined yet" is the
  * secondary path (the link stays, so the code still redeems once in).
  */
-export function LinkLanding({ link, title, onJoin, onPerformer }: { link: LandingLink; title: string | null; onJoin: () => void; onPerformer?: () => void }) {
+export function LinkLanding({ link, title, notice, onJoin, onPerformer }: { link: LandingLink; title: string | null; notice?: string | null; onJoin: () => void; onPerformer?: () => void }) {
+  // A session in *this* browser was just cut (a restart, the event ended):
+  // it is the right browser, so say why and lead with joining again — the
+  // link stays, so the code still redeems (the sign still checks in) once in.
+  if (notice) {
+    return (
+      <div className="hero landing">
+        <div className="glyph">{link.kind === "unlock" ? "📓" : "📍"}</div>
+        {title && <h1>{title}</h1>}
+        <p className="notice">{notice}</p>
+        <p className="landing-say">{rejoinLine(link)}</p>
+        <button className="choice primary" onClick={onJoin}>
+          Join again →
+        </button>
+        {onPerformer && (
+          <button className="link" onClick={onPerformer}>
+            I'm a performer
+          </button>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="hero landing">
       <div className="glyph">{link.kind === "unlock" ? "📓" : "📍"}</div>

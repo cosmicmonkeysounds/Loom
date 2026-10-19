@@ -22,6 +22,7 @@ import {
   guestScan,
   landingLink,
   landingTypeLine,
+  rejoinLine,
   roomFromSlug,
 } from "../src/guest-scan.tsx";
 import type { Channel } from "../src/types.ts";
@@ -102,6 +103,18 @@ describe("the wrong-browser landing", () => {
     expect(html).toContain("The Start Bar");
     expect(html).toContain("📷 Scan");
     expect(html).toContain("I&#x27;m a performer");
+  });
+
+  it("a session just cut in this browser is not the wrong browser: the notice, then Join again", () => {
+    const notice = "The director restarted the story — join again.";
+    const html = renderToStaticMarkup(<LinkLanding link={{ kind: "unlock", code: "COLD-FIRST" }} title="Trapped" notice={notice} onJoin={() => {}} />);
+    expect(html).toContain(notice);
+    expect(html).toContain("Join again →");
+    expect(html).toContain(rejoinLine({ kind: "unlock", code: "COLD-FIRST" }).replace("'", "&#x27;"));
+    expect(html).not.toContain("isn&#x27;t the one you joined in");
+    expect(rejoinLine({ kind: "checkin", at: "the-cpu", room: "The CPU" })).toContain("checked into The CPU");
+    // No notice: the wrong-browser page as before.
+    expect(renderToStaticMarkup(<LinkLanding link={{ kind: "unlock", code: "COLD-FIRST" }} title="Trapped" notice={null} onJoin={() => {}} />)).toContain("isn&#x27;t the one you joined in");
   });
 
   it("a codex / check-in link opens the guest app from the chooser (where the landing lives)", () => {
