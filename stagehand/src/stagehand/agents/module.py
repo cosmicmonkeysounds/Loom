@@ -230,6 +230,9 @@ class Agents:
     name = "agents"
 
     def __init__(self, cfg: AgentsConfig, complete_fn: CompleteFn = complete, voice_fn: VoiceFn | None = None) -> None:
+        #: The YAML's orchestrator switch, before the new mind turns it off:
+        #: `check` still sizes its context for the way back (mind_mode: classic).
+        self._orchestrator_configured = cfg.orchestrator.enabled
         if cfg.new_mind and cfg.orchestrator.enabled:
             # The new mind never starts the orchestrator (nothing is submitted
             # to it, the second model is never called).
@@ -339,7 +342,7 @@ class Agents:
                     f"{name}'s voice: a late-night line needs ≈ {need} tokens but {m.model} runs with a {ctx}-token context — "
                     f"Ollama cuts the middle of the prompt; set llm.{m.context_key} to {need} or more"
                 )
-        if not self.cfg.orchestrator.enabled:
+        if not self._orchestrator_configured:
             return out
         for name, persona in self.cfg.personas.items():
             om = self.cfg.orchestrator_models[name]
