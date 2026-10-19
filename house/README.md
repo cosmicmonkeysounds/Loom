@@ -16,12 +16,13 @@ in this frame; a game with its own world frame converts through
 
 | Module | What |
 |---|---|
-| `types.ts` | `HouseMap` schema v1 + the wire types (`Assignment`, `PlayerState`, `SpatialFrames`, …); `PropKind` includes `king` (the chess boss: `hp`, `signals`, `armed`) and a `Door.guard` names the king who keeps it shut. Wave 9: `SpatialCandidate.restricted` (marked, not yet captured), and `captured` on `FoundResult` and `SpatialFrames.found` (still captured after the find: a kept find, no egg) |
+| `types.ts` | `HouseMap` schema v1 + the wire types (`Assignment`, `PlayerState`, `SpatialFrames`, …); `PropKind` includes `king` (the shared King: `hp` = his maximum, `health` = the story world path holding his current points, `signals` won / lost / drawn / hit / fallen, `armed`) and a `Door.guard` names the king who keeps it shut. Wave 9: `SpatialCandidate.restricted` (marked, not yet captured), and `captured` on `FoundResult` and `SpatialFrames.found` (still captured after the find: a kept find, no egg). Wave 11: `KingState {id, hp, max, fallen}` (on `hello`, the `king` frame, `HouseResponse.king`, `KingHitResult`), the `avatar` frame, and `avatar` (the profile picture's avatar key) on `PlayerState`, `Assignment` and `SpatialCandidate` |
 | `clone.ts` | `cloneData(v)` — a deep copy of plain data: `structuredClone` where the runtime has it, else a JSON round trip (old tablets' WebViews predate Chrome 98). Use it instead of `structuredClone` in anything a tablet loads |
-| `validate.ts` | `validateHouse(raw)` → `{ok, problems, house?}`; `normalizeHouse`. Beyond plan containment it checks heights (duck spot 0–`DUCK_MAX_RISE` above its room's floor, spawn within `STEP_UP`, terminal/prop within the room's storey, duck/spawn `locate` to their own room and not buried in a solid prop), floor spacing (> `FLOOR_SLACK`), walls rising through the floor above, stair head/foot clearance + no skipped floor + 1 mm rects + no stairwell stacked flight over flight (rects overlapping in plan on a shared floor), `b = null` doors on shared walls, overlapping door gaps, a door's `guard` (must name a `king` prop standing in one of the door's rooms) and `hp` / `signals` / `armed` on anything but a king. `guardWarnings(house)` is advice, not a refusal (a guard more than `GUARD_REACH` from his door); the server's `houseWarnings` folds it in |
+| `validate.ts` | `validateHouse(raw)` → `{ok, problems, house?}`; `normalizeHouse`. Beyond plan containment it checks heights (duck spot 0–`DUCK_MAX_RISE` above its room's floor, spawn within `STEP_UP`, terminal/prop within the room's storey, duck/spawn `locate` to their own room and not buried in a solid prop), floor spacing (> `FLOOR_SLACK`), walls rising through the floor above, stair head/foot clearance + no skipped floor + 1 mm rects + no stairwell stacked flight over flight (rects overlapping in plan on a shared floor), `b = null` doors on shared walls, overlapping door gaps, a door's `guard` (must name a `king` prop standing in one of the door's rooms), a king's `hp` (an integer 1–`KING_MAX_HP` 99), `health` (a world path such as `Night.king_hp`), `signals` and `armed`, and any of those on anything but a king. `guardWarnings(house)` is advice, not a refusal (a guard more than `GUARD_REACH` from his door); the server's `houseWarnings` folds it in |
 | `geometry.ts` | `buildWalls` (normative, golden-tested), `buildFloors`, `buildRamps`, `doorGap` (the segment a door's gap is — the games stand a closed leaf in a guarded one), `propSolid` (box / cylinder / king), plan helpers |
 | `locate.ts` | `floorOf`, `roomAt`, `locate` (with the stair rule), `heightAt`; `solidPropAt` (the buried-in-a-solid-prop rule `validateHouse` uses) and `standable` (in a room, over a surface, not buried — props ≤ `PROP_STEP_OVER` stepped over): the re-seat rule after a remap — the server and both games put a player who isn't standable on a new map back at its spawn (`docs/loom-reinstall.md` §2.2); the locate goldens carry it |
-| `route.ts` | `portals`, `route` (visibility-graph Dijkstra through doors + stairs, round reflex corners, stair holes and solid props — `roomObstacles`, `propObstacle`, `PROP_MARGIN`; a guarded door is shut: never a portal), `sampleTrail` |
+| `route.ts` | `portals`, `route` (visibility-graph Dijkstra through doors + stairs, round reflex corners, stair holes and solid props — `roomObstacles`, `propObstacle`, `PROP_MARGIN`; a guarded door is shut: never a portal; `route(house, from, to, {fallen})` routes over `withFallenKings`, those kings' doors open), `sampleTrail` |
+| `king.ts` | the shared King (wave 11): `kingReach(house, feet, yaw, king, slack?)` → `"ok" \| "floor" \| "far" \| "facing"` (the rule both games and the server judge a hit by; `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°, the server's `KING_HIT_SLACK` +0.35 m / +25°), `kingProps`, `kingMax` (`hp`, default `KING_HP` 4), `kingSignal` (`KING_SIGNALS` defaults `chess won` … `king fallen`), `kingStateOf(king, raw)` (a missing or non-number value reads as full), `guardedDoors`, `withFallenKings(house, fallen)` (a copy: the fallen kings' doors unguarded, the kings not solid) |
 | `frames.ts` | `toSpace` / `fromSpace` / `yawToSpace` / `yawFromSpace`, `forward`; `DEFAULT_SPOT_FOV` (70, vertical) + `horizontalFov(vfovDeg, aspect = TABLET_ASPECT = 16/10)` for terminal cameras |
 | `duck.ts` | `fnv1a32`, `pickDuckSpot`, `houseHash` |
 | `three/` | `@loom/house/three` — the three.js scene builder (peer dep `three`) |
@@ -33,7 +34,7 @@ Its rain variant `house.shed.json` (The Internet in the shed) is checked
 by `test/show.test.ts` + `test/route.test.ts` but has no golden.
 
 ```bash
-pnpm --filter @loom/house test        # vitest (validation, hand-computed walls, locate, route, goldens, sync) — 151 + 4 skipped
+pnpm --filter @loom/house test        # vitest (validation, hand-computed walls, locate, route, the King, three, goldens, sync) — 179 + 4 skipped
 pnpm --filter @loom/house typecheck
 pnpm --filter @loom/house goldens     # regenerate test/golden/ after a deliberate change, then commit
 pnpm --filter @loom/house sync        # copy house.json + goldens into reinstall/vr/ (a test fails on drift)
@@ -41,7 +42,11 @@ pnpm --filter @loom/house sync        # copy house.json + goldens into reinstall
 
 Golden files (`test/golden/<map>.{walls,routes,locate}.json`, one per
 fixture in `test/fixtures/` plus `show`) are what the GDScript port is
-diffed against; queries are stored with their answers.
+diffed against; queries are stored with their answers. A map with a king
+also gets `<map>.king.json` (`kingReach` round each king: 8 bearings,
+several distances and facings, with and without the server's slack) and
+`<map>.fallen.json` (the route queries again with every king fallen):
+today only `show` has them.
 
 ## `@loom/house/three` — the scene builder
 
@@ -58,8 +63,9 @@ unchanged. Yaw is `rotation.y` in degrees.
 | `houseAtmosphere(scene)` | a deep-navy background with fog to match |
 | `createDuck()` | Gerald: `{object, update(dt, t?), layEgg(), reset(), state, dispose()}`. `layEgg()` resolves `DUCK_FLIGHT` (2.5 s) of `update` time later. |
 | `createTrail()` | `{object, set(route), update(dt), points, dispose()}`. Golden chevrons every 0.75 m on one `InstancedMesh`, with a pulse running toward the duck. |
-| `createKing(prop)` | the King (`king.ts`): a gold body with a crown and a Win98 health-bar sprite — `setHp(hp, max)`, `hit()` (a stagger), `fall()` (topples over `KING_FALL` s, resolves when down), `reset()`, `update(dt, camera?)`. `buildHouseScene` makes one per `king` prop (`kings`) and stands a closed leaf in every guarded door (`doors`; `kings: false` skips both). The web game fights him; the terminals and VR only show him standing |
-| `createAvatar(name, seed)` | a ghost: `{object, tag, setPose(p, yaw, pitch), update(dt), dispose()}`. `p` is the feet, as on the wire. |
+| `createKing(prop)` | the King (`king.ts`): a gold body with a crown and a Win98 health-bar sprite — `setHp(hp, max)` (a cell per point up to `BAR_CELLS_MAX` nine, else one fill reading *n / max*), `hit()` (a stagger, `KING_STAGGER` s; ignored while he kneels), `kneel(on)` (down on one knee over `KING_KNEEL` s, lower and bowed, crown kept; `kneel(false)` stands him back up), `reset()`, `update(dt, camera?)`. `buildHouseScene` makes one per `king` prop (`kings`) and stands a closed leaf in every guarded door (`doors`; `kings: false` skips both). `HouseScene.showKing(id, {hp, max, fallen}, open?)` shows the server's shared `KingState`: the bar, the kneel, and his doors' leaves hidden while `open` (default: while fallen). The web game and the terminals both call it |
+| `createAvatar(name, seed, {picture?})` | a ghost: `{object, tag, picture, setPicture(url), setPose(p, yaw, pitch), update(dt), dispose()}`. `p` is the feet, as on the wire. With a picture (the guest's `/e/<id>/api/avatar/<key>`) the ghost wears it as a billboard Win98 tile head over the capsule (`PICTURE_SIZE` 0.42 m) and as the tag's icon; with none, or one that won't load, the plain tinted capsule |
+| `loadPicture(url)` | the picture cache behind it (`picture.ts`): drawn contain-fit on a fixed `PICTURE_PX` (128) canvas, so an SVG with no intrinsic size still renders; one texture per URL for the page's lifetime, never freed by an avatar; a failure resolves null and is remembered for `PICTURE_RETRY_MS` (60 s), then tried once more |
 | `PoseBuffer` | pure pose interpolation. `push(t, pose)` / `sample(t)` render `delay` (120) behind, with linear `p`, shortest-arc yaw, and extrapolation that is span-floored (`minSpan` 100, so frames delivered in one chunk can't fling the ghost), capped (`maxLead` 0.3 m, `maxTurn` 30°) and eased back onto the newest sample, so a player who stopped is drawn exactly where they stand. |
 | `spaceGroup(t)` / `applySpace` | `spaces.<name>` as a parent group (`T · R · S` = `Ry(yaw) · scale · house + offset`) |
 | `wallBoxes`, `trailPoints`, `labelPoint` | the pure placement maths, tested without three |
@@ -94,3 +100,5 @@ exported values, not its own copies (§1.1 / §1.2 / §2.1 of the contract):
 | `DUCK_MAX_RISE` | 1.2 m | duck-spot validation, the server's `nearDuck`, both games' reach rule |
 | `DEFAULT_SPOT_FOV` / `TABLET_ASPECT` | 70° vertical / 16:10 | terminal mount cameras; `horizontalFov` for plan cones |
 | `GUARD_REACH` | 1.0 m (plan) | `guardWarnings`: a door's guard standing further than this from the door's point is not in the doorway |
+| `KING_REACH` / `KING_CONE_DEG` | 1.25 m (plan, feet → his base centre) / 55° | `kingReach`: both games' pre-check, the server's hit (plus `KING_HIT_SLACK` +0.35 m / +25°), the `king` goldens |
+| `KING_MAX_HP` / `KING_HP` | 99 / 4 | a king's largest `hp`; his maximum when the prop declares none |
