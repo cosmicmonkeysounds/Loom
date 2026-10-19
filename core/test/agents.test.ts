@@ -1343,3 +1343,65 @@ describe("the agent and the event's lifecycle (D10, T9-timers-03, R1-diff-server
     rt2.dispose();
   });
 });
+
+describe("wave 12's wire additions (C1.5)", () => {
+  it("rewrite is a control with no payload", () => {
+    expect(agentControl({ action: "rewrite", character: "Trabolta", text: "ignored" }, "Jo")).toEqual({ action: "rewrite", character: "Trabolta", by: "Jo" });
+    expect(agentControl({ action: "rewrite" }, "")).toEqual({ action: "rewrite", character: null, by: "server" });
+  });
+
+  it("brief and summary are thought kinds, and prompt_ms is a finite number or null", () => {
+    const base = { id: "th-9", character: "Trabolta", messages: [], ms: 10 };
+    expect(agentThought({ ...base, kind: "brief", prompt_ms: 412.5 }, "w")).toMatchObject({ kind: "brief", prompt_ms: 412.5 });
+    expect(agentThought({ ...base, kind: "summary" }, "w")).toMatchObject({ kind: "summary", prompt_ms: null });
+    expect(agentThought({ ...base, kind: "voice", prompt_ms: "12" }, "w")!.prompt_ms).toBeNull();
+    expect(agentThought({ ...base, kind: "voice", prompt_ms: Number.NaN }, "w")!.prompt_ms).toBeNull();
+    expect(agentThought({ ...base, kind: "voice", prompt_ms: Number.POSITIVE_INFINITY }, "w")!.prompt_ms).toBeNull();
+  });
+
+  it("the mind report's new fields pass when present and well-typed, bounded, and stay absent otherwise", () => {
+    const old = agentMindReport({ character: "Trabolta", people: [{ id: "g1", name: "Ada" }] })!;
+    for (const k of ["mode", "phase", "briefBy"]) expect(k in old, k).toBe(false);
+    for (const k of ["memos", "firstMet", "gifts", "filings", "marked", "chart", "storyTrust"]) expect(k in old.people[0]!, k).toBe(false);
+
+    const memos = Array.from({ length: 9 }, (_, i) => ({ at: i, text: `${"m".repeat(150)}${i}`, by: "voice-and-then-some-more", heart: i === 8 }));
+    const r = agentMindReport({
+      character: "Trabolta",
+      mode: "new",
+      phase: "p".repeat(100),
+      briefBy: "director",
+      people: [
+        {
+          id: "g1",
+          name: "Ada",
+          memos: [...memos, { at: 99, text: 5 }],
+          firstMet: "f".repeat(300),
+          gifts: Array.from({ length: 14 }, (_, i) => `gift ${i} ${"x".repeat(130)}`),
+          filings: ["H1", "H2-and-far-too-long", 7],
+          marked: true,
+          chart: null,
+          storyTrust: "62",
+        },
+        { id: "g2", name: "Bo", marked: "yes", chart: 3, storyTrust: 5, memos: "no", gifts: "no", firstMet: 1 },
+      ],
+    })!;
+    expect(r.mode).toBe("new");
+    expect(r.phase).toHaveLength(80);
+    expect(r.briefBy).toBe("director");
+    const ada = r.people[0]!;
+    expect(ada.memos).toHaveLength(6);
+    expect(ada.memos![5]).toEqual({ at: 8, text: "m".repeat(140), by: "voice-and-then-some-", heart: true });
+    expect(ada.firstMet).toHaveLength(200);
+    expect(ada.gifts).toHaveLength(12);
+    expect(ada.gifts!.every((g) => g.length <= 120)).toBe(true);
+    expect(ada.filings).toEqual(["H1", "H2-and-far-t"]);
+    expect(ada.marked).toBe(true);
+    expect(ada.chart).toBeNull();
+    expect(ada.storyTrust).toBe("62");
+    const bo = r.people[1]!;
+    for (const k of ["memos", "firstMet", "gifts", "marked", "chart", "storyTrust"]) expect(k in bo, k).toBe(false);
+    // A bad mode / briefBy is dropped, never defaulted.
+    const bad = agentMindReport({ character: "Trabolta", mode: "fancy", briefBy: "reflect", phase: 3 })!;
+    for (const k of ["mode", "phase", "briefBy"]) expect(k in bad, k).toBe(false);
+  });
+});
