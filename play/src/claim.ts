@@ -6,9 +6,48 @@
 //! `/api/guest/register` both carry it), so the invitee's program is open
 //! to them and 🔒 Reserved to everyone else. A register without the right
 //! claim answers 409 `reserved`. The token is a secret: it leaves the
-//! address bar once the guest is in. Pure helpers — `test/claim.test.ts`.
+//! address bar once the guest is in, and is kept in this browser's storage
+//! (keyed by the event code, beside `loom.guest`), so a cut session — a
+//! restart, End → relaunch, Leave — rejoins with it. Pure helpers —
+//! `test/claim.test.ts`.
 
 import { ApiError } from "./client.ts";
+import type { SessionStorage } from "./host.ts";
+
+/** Where the browser keeps its invitation's claim. */
+export const CLAIM_KEY = "loom.guest.claim";
+
+interface StoredClaim {
+  code: string;
+  claim: string;
+}
+
+const foldCode = (code: string): string => code.trim().toUpperCase();
+
+/** Keep `claim` for event code `code` (the last invitation wins). */
+export function rememberClaim(storage: SessionStorage, code: string, claim: string | null | undefined): void {
+  if (claim === null || claim === undefined || claim === "" || foldCode(code) === "") return;
+  try {
+    storage.save(CLAIM_KEY, { code: foldCode(code), claim } satisfies StoredClaim);
+  } catch {
+    /* storage full / blocked — the address bar's claim still works once */
+  }
+}
+
+/** The claim this browser keeps for event code `code`, or null. */
+export function storedClaim(storage: SessionStorage, code: string): string | null {
+  try {
+    const s = storage.load<StoredClaim>(CLAIM_KEY);
+    return s !== null && typeof s.claim === "string" && s.claim !== "" && s.code === foldCode(code) ? s.claim : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The claim a join carries: the address bar's, else the one kept for the code. */
+export function joinClaim(urlClaim: string | null, storage: SessionStorage, code: string): string | null {
+  return urlClaim ?? storedClaim(storage, code);
+}
 
 /** The claim token riding an invitation's link (`?claim=…`), or null. */
 export function claimFromSearch(search: string): string | null {

@@ -5,7 +5,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { hitNote, hitPickable, orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow, type ProgramHit } from "../src/avatars.ts";
-import { RESERVED_TEXT, claimField, claimFromSearch, isReservedRefusal, registerErrorText, withoutClaim } from "../src/claim.ts";
+import { CLAIM_KEY, RESERVED_TEXT, claimField, claimFromSearch, isReservedRefusal, joinClaim, registerErrorText, rememberClaim, storedClaim, withoutClaim } from "../src/claim.ts";
+import { memoryStore } from "../src/host.ts";
 import { ApiError } from "../src/client.ts";
 import { initialRole } from "../src/director.tsx";
 import { fetchIdentities, fetchPictures, registerBody, searchPrograms } from "../src/session.ts";
@@ -29,6 +30,27 @@ describe("the claim link", () => {
     expect(initialRole("?code=EVT1&claim=ab12cd", none)).toBe("guest");
     expect(initialRole("?code=EVT1", none)).toBe("none");
     expect(initialRole("?code=EVT1&claim=ab12cd", (k) => (k === "loom.prime" ? "{}" : null))).toBe("prime");
+  });
+});
+
+describe("the kept claim", () => {
+  it("a cut session rejoins with the claim this browser kept for the code", () => {
+    const storage = memoryStore();
+    // The invitation's first join: the address bar's claim, then kept.
+    expect(joinClaim("ab12cd", storage, "EVT1")).toBe("ab12cd");
+    rememberClaim(storage, "evt1 ", "ab12cd");
+    // A restart cut the session; the address bar lost the claim at the join.
+    expect(joinClaim(null, storage, "EVT1")).toBe("ab12cd");
+    expect(storedClaim(storage, "evt1")).toBe("ab12cd");
+    // Another event's code gets nothing; a newer invitation replaces it.
+    expect(joinClaim(null, storage, "OTHER")).toBeNull();
+    rememberClaim(storage, "EVT1", "zz99");
+    expect(joinClaim(null, storage, "EVT1")).toBe("zz99");
+    // A plain join keeps what was there; junk in storage reads as nothing.
+    rememberClaim(storage, "EVT1", null);
+    expect(storedClaim(storage, "EVT1")).toBe("zz99");
+    storage.save(CLAIM_KEY, { code: "EVT1", claim: 7 });
+    expect(storedClaim(storage, "EVT1")).toBeNull();
   });
 });
 

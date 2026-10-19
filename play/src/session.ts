@@ -9,7 +9,7 @@ import { DOORS_POLL_MS, type Identities, type PictureChoices, type ProgramHit, t
 import { ApiError, RequestTimeout, api, useChatStream, withTimeout, type StreamVerdict } from "./client.ts";
 import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "./alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "./checkin.ts";
-import { claimField, withoutClaim } from "./claim.ts";
+import { claimField, rememberClaim, withoutClaim } from "./claim.ts";
 import { pmChannelId, pmOtherParty, shareErrorText, unlockFromSearch, withoutUnlock } from "./codex.ts";
 import { usePlayHost } from "./host.ts";
 import { roomFromMessage, roomFromSearch, roomTarget, withoutRoom } from "./room.ts";
@@ -964,7 +964,10 @@ export function useGuestSession(): GuestSession {
     save(GK, m);
     setMe(m);
     setNotice(null);
-    // The invitation's claim is a secret: out of the address bar once in.
+    // Kept for a re-join after a cut session (beside loom.guest, the
+    // guest's own secret)…
+    rememberClaim(host.storage, code, claim);
+    // …and out of the address bar once in.
     if (claim && host.ownsPage) {
       try {
         window.history.replaceState(null, "", `${window.location.pathname}${withoutClaim(window.location.search)}`);

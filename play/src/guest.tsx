@@ -35,7 +35,7 @@ import { useOfflineFor } from "./client.ts";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
 import { AvatarsContext, avatarLookup, avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type PictureChoice, type PictureChoices, type ProgramHit } from "./avatars.ts";
-import { claimFromSearch, registerErrorText } from "./claim.ts";
+import { claimFromSearch, joinClaim, registerErrorText } from "./claim.ts";
 import { PictureGrid } from "./picture-pick.tsx";
 import { codeFromUrl, defectTargets, fetchPictures, pendingWidget, personalStream, searchPrograms, useDocumentTitle, useGuestSession, useIdentities, useLandingBrand, type GuestSession } from "./session.ts";
 import { Tutorial, tourResult, tutorialSteps } from "./tutorial.tsx";
@@ -57,7 +57,10 @@ function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
   // An invitation's `?claim=` opens its reserved program to this guest: kept
   // for the whole join (the picker and the register both carry it).
-  const [claim] = useState(() => (host.ownsPage ? claimFromSearch(window.location.search) : null));
+  // An invitee whose session was cut (a restart, End → relaunch, Leave)
+  // rejoins with the claim this browser kept for the code.
+  const [urlClaim] = useState(() => (host.ownsPage ? claimFromSearch(window.location.search) : null));
+  const claim = joinClaim(urlClaim, host.storage, code);
   const [name, setName] = useState("");
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<ProgramHit[] | null>(null);
