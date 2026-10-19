@@ -47,7 +47,7 @@ export function FilePanel({ config, pilot, view, character, onClose }: { config:
     }
     if (r.codex !== null) setFresher(r.codex);
     if (r.unlocked === null) {
-      setNote({ kind: "bad", text: "NO FILE ANSWERS TO THAT CODE" });
+      setNote({ kind: "bad", text: "NO NEW FILE FOR THAT CODE — WRONG, OR ALREADY IN YOUR CODEX" });
       return;
     }
     setCode("");
