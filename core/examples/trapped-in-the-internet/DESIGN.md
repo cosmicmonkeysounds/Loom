@@ -316,7 +316,7 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 | Norton Anti-Virus | `is Enforcer` | Julie | `File:Norton-logo-2021.svg` (wiki: Norton AntiVirus) | The **selected Antivirus** who interrupts the Bingo celebration. Door scans. |
 | McAfee Anti-Virus | `is Enforcer` | TBD | `File:McAfee logo.svg` (wiki: McAfee Antivirus) | Door scans; **broker of the `# truthcoin-exchange`** and referee of bets (wave 9, D1: he has no Wallet, holds no pot and takes no cut; a bet settles player to player, the winner's 🙏 Request paid by the loser; 🪙 pay/charge are corrections; CS: he wants to "exploit the exchange of information and become rich"); `every 20m` "Your protection has expired" pop-up gag (character timer, allowed). |
 | Password Manager | `is Enforcer` | Francine | `File:1password-logo.svg` (wiki: 1Password) | Door scans; reacts to `wrong code` (codex misses); **keeper of the clubs** (CS: "manage… who gets to be part of what clubs"): booth readouts on every faction join (§3 D10) and she owns the `# hidden-partition` / `# back-channel` invites. Yu-gi-oh! everywhere. |
-| Windows Defender | `is Enforcer` | [[EDIT: who]] | `File:Microsoft Defender Icon Logo 2025 English.svg` (wiki: Microsoft Defender Antivirus) | Wave 11: **the door, for late arrivals**: a part with no lines of its own (no hooks; the Enforcer trait's door scan clears a program exactly as the other four do), so the Optical Drive is never left without a scanner once the others are busy. Any Antivirus booth, this one too, presses the patch-bay fallbacks (§2.9). |
+| Windows Defender | `is Enforcer` | [[EDIT: who]] | `File:Microsoft Defender Icon Logo 2025 English.svg` (wiki: Microsoft Defender Antivirus) | Wave 11: **the door, for late arrivals**: a part with no lines of its own (no hooks; the Enforcer trait's door scan clears a program exactly as the other four do), so the Optical Drive is never left without a scanner once the others are busy. Its booth never shows the patch-bay fallbacks 🔌 💥 ❌ 🚪 🔧 (they are `by:` the four room Antivirus, §2.9; the server refuses a press from it), but ♟ *They beat the machine* still shows there. |
 | CRA Agent Software | `is Enforcer` | Emma | `File:Canada Revenue Agency logo.svg` (wiki: Canada Revenue Agency) | Replaces MalwareBytes. Door scans; audits Truthcoin (presses 🪙 charge). |
 
 **Agent:** `Trabolta` (`is Person`, `mind: external`, `hidden: true`, avatar
@@ -737,7 +737,7 @@ watcher/rule, **S** = server hard-code.
 | chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
 | king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
 | door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
-| crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by: Antivirus`; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
+| crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by:` the four room Antivirus, never Windows Defender; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
 | chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
 | reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
 | terminal_opened / terminal_closed | H (a wall terminal with a `room`: `terminal opened` / `terminal closed`, args `at`) | program; args `at` | rules (§3 E2a: `program.at_the_heart`) |
@@ -954,9 +954,9 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 | pickup_line_works | `💘 Said "You're the one that I want"` | Clippy / any host |
 | signed_the_painting | `🖌 Signed the painting` | Hosts (`by:`; `while: Night.painting == true`: a booth reads `while:` with no guest bound, so the once-per-program and never-MS-Paint checks are the hook's) |
 | beat_the_machine | `♟ They beat the machine` | Hosts, Antivirus (`by:`, `arm: true`) who saw the mate on the Server Door terminal when it could not report it (wave 11; was the chess phone) → `fire chess_won for program` |
-| radio_combo_a / radio_combo_b / radio_wrong_patch | `🔌 Patch: Combo A is in` · `💥 Patch: Combo B is in` · `❌ Patch: wrong combination` | wave 11: the server-room Antivirus on the card of the program at the cables (`by: Antivirus`, `arm: true`, `while:` step 14 to 📄) → story rules fire `patch_combo_a` / `patch_combo_b` / `patch_rejected` |
-| radio_door_opened | `🚪 The server-room door opened` | wave 11: the server-room Antivirus when the contact failed (`by: Antivirus`, `arm: true`; `while:` Trabolta awake, before 📄, outside a 🔧 window) → `server_door_opened` |
-| radio_crew_door | `🔧 Crew going through the door (2 min)` | wave 11: the server-room Antivirus before opening the door themselves (`by: Antivirus`, `arm: true`) → `crew_through_the_door` |
+| radio_combo_a / radio_combo_b / radio_wrong_patch | `🔌 Patch: Combo A is in` · `💥 Patch: Combo B is in` · `❌ Patch: wrong combination` | wave 11: the server-room Antivirus on the card of the program at the cables (`by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software`, `arm: true`, `while:` step 14 to 📄) → story rules fire `patch_combo_a` / `patch_combo_b` / `patch_rejected` |
+| radio_door_opened | `🚪 The server-room door opened` | wave 11: the server-room Antivirus when the contact failed (`by:` the four room Antivirus, `arm: true`; `while:` Trabolta awake, before 📄, outside a 🔧 window) → `server_door_opened` |
+| radio_crew_door | `🔧 Crew going through the door (2 min)` | wave 11: the server-room Antivirus before opening the door themselves (`by:` the four room Antivirus, `arm: true`) → `crew_through_the_door` |
 | radio_beans | `🫘 The printer lid is open: full of beans` | wave 11: Adobe Acrobat at the printer when the lid sensor failed (`by: Adobe Acrobat`, `arm: true`; a hook on her) → `printer_opened` |
 
 **Guest (`who: guest`; buttons always shown, so hooks guard):**
@@ -973,8 +973,9 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 outside a button's `by:` (403 *not your button: … is for …*; the `by:` characters, a GROUP's
 members and any character owning a hook for it), and a booth never offers another character's
 button; a moderator's booth and a director's quick-fire (no actor) may press any. That is why
-the patch-bay fallbacks are story rules `by: Antivirus` (any Antivirus booth, Windows Defender
-too, while the read-through picks the holder; a trait hook would fire once per Antivirus on a
+the patch-bay fallbacks are story rules `by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software` (any of
+the four room Antivirus' booths, while the read-through picks the holder; never Windows Defender,
+the door-only part, whose booth never shows them; a trait hook would fire once per Antivirus on a
 director's quick-fire). `while:` is still not enforced. `arm: true` marks a press with no way
 back — an ending (🔌 💥 💘), the alarm (❌), The Heart (🚪), two minutes of the room (🔧), a
 secret handed over (♟, 🍎), a once-a-night moment (🫘), the guest's 💾 — and the booth or the
@@ -1877,8 +1878,13 @@ tent is captured by the tablet's scan.
   auto | review; `verdict` rides the `fact answered` args; credits and marks land at settle).
   Wave 11: the slider starts **unset** (the guest sets it by touch or a value key before *File
   it*), and a **near miss** (`core/src/answer-match.ts` `nearMatch`: honorifics dropped, number
-  words, plurals, word order, spelling word by word with the first letter kept; numbers and
-  am/pm exact — *Mr Pickels*, *Grko*) is never an automatic lie or guess: in `auto`
+  words, plurals, word order, spelling word by word with the first letter kept, and the key's
+  words in order plus up to 4 more unless one turns it around or hedges (*not*, *never*, *or*,
+  *but* …), adds an am/pm the key leaves open or is a lone letter; numbers and am/pm exact —
+  *Mr Pickels*, *Grko*, *11 years ago*) is never an automatic lie or guess (a wrong answer at
+  100 still is). Abbreviations are judged exact (`spellOut`: Mr. / Mrs. / Dr., yrs, ext,
+  hr(s), min(s), sec(s), a leading-zero time like 0900), so *Mr. Pickles* is accurate with no
+  ⚠. In `auto`
   that filing takes the review path (pending on the Judging card, `near: {key}`), the story's
   📝 *Proposed: accurate* line plus a server ⚠ line in `# hosts` naming the key. Unjudged, the
   settle credits it (the user's call is open: OCT31.md §5 *Wave 11 status*).
@@ -2447,7 +2453,7 @@ when server_door_opened:
 ```
 - (Wave 11) **Once Trabolta is awake** replaces `Night.step >= 14`, so The Heart can play from
   the introduction on, whichever way the door was unlocked. **🔧 `crew_through_the_door`** (the
-  director's Anytime cue, or `radio_crew_door` on any Antivirus booth) sets
+  director's Anytime cue, or `radio_crew_door` on a room Antivirus' booth) sets
   `Night.crew_door_until = Time.elapsed + 120`: for two minutes an opening is the crew's own
   (`# hosts` only), The Heart is kept for the programs, and the booth's 🚪 hides. 🔄 reset clears
   it.
@@ -2590,6 +2596,7 @@ when chess_won for program:
     if program.name == null:
       broadcast "♟ A win with no winner named: press ♟ on the winner's card to give them the door code." to channel(hosts)
     else if program.codex.the_door_code == true:
+      broadcast "♟ Checkmate again. You already hold the door code: it is in your Codex." to participant(program)
       broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
     else:
       unlock The Door Code for program
@@ -2598,6 +2605,10 @@ when chess_won for program:
 ```
 - `Night.king_armed` is 1 from Power On (no more practice games before the Y2K hour) until 📄 or
   an ending; the map's king `armed` reads it, so the terminal's stakes line follows it.
+- A program who already holds *The Door Code* (an earlier win, the four digit notes, the
+  majority) is told so, and the press is taken, so the terminal reads *Checkmate. The door code
+  is in your phone's Codex.* *Checkmate. No prize now.* is only for a win after 📄 or an ending
+  (the story's refusal, a 200 with `refused: true`).
 - `chess_lost` / `chess_drawn` (the door terminal), all night: a `♟` readout in `# hosts` every
   time (*"The King won a game. No door code."* / *"A draw with the King. No door code."*), and,
   once `Trabolta.awake`, Trabolta gloats on the TV (`-> Chess Lost` / `-> Chess Drawn`, The
@@ -2625,7 +2636,10 @@ quest The Cold Door` (*"N of 4. A note with one digit of the cold door's code. T
 hidden around the house."*) + `unlock The Cold Door` (the sign's words); then `update quest …
 "N of 4."`; at four `complete quest The Cold Door` + `unlock The Door Code` + a `🔢` readout in
 `# hosts`. After 📄 or an ending four of four gives no code (like a late checkmate): the quest
-steps to *"4 of 4."* and only `# hosts` hears. A ROLE watcher (`when self.codex.the_door_code ==
+**fails** (*"4 of 4. The verdict is in: the notes open nothing now."* / *"4 of 4. The night is
+over: …"*), since nothing can finish it any more, and `# hosts` hears which of the two it was.
+`door_digits` and `quest.the_cold_door` are ROLE Program `secret:` slots, so Trabolta's worker
+never learns who is close to the code. A ROLE watcher (`when self.codex.the_door_code ==
 true and self.quest.the_cold_door == "active":`) completes the quest whichever way the code
 arrived. A secret note can't be given to Trabolta (E2a).
 
