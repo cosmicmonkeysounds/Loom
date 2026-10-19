@@ -184,7 +184,7 @@ class Dossier:
         line = " ".join(str(text).split())[:MAX_MEMO]
         if not line:
             return
-        self.memos.append({"at": time.time() if at is None else at, "text": line, "heart": bool(heart), "thought": thought})
+        self.memos.append({"at": round(time.time() if at is None else at, 1), "text": line, "heart": bool(heart), "thought": thought})
         del self.memos[:-MAX_MEMOS]
 
     def note_story(self, key: str, value: str) -> bool:
@@ -914,7 +914,10 @@ class Mind:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(path.suffix + ".tmp")
-            tmp.write_text(json.dumps(self.to_json(), indent=1, ensure_ascii=False), encoding="utf-8")
+            # The new mind is written compactly (CONTRACTS.md §C6.4: a night's
+            # mind.json stays small); classic keeps today's indented file.
+            text = json.dumps(self.to_json(), ensure_ascii=False, separators=(",", ":")) if self.new else json.dumps(self.to_json(), indent=1, ensure_ascii=False)
+            tmp.write_text(text, encoding="utf-8")
             tmp.replace(path)
         except OSError as err:
             log.warning("could not save %s's mind to %s: %s", self.character, path, err)

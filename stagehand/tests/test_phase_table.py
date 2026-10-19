@@ -167,3 +167,23 @@ def test_the_shipped_mind_file_parses_and_every_card_validates():
     assert set(p.stage_cards) <= set(p.stages)
     # The catchphrases are the persona's (CONTRACTS.md §C4.4).
     assert p.catchphrases == ("Your request has been logged", "Please wait", "This program has performed an operation")
+
+
+def test_check_refuses_a_bad_card_and_prints_a_missing_stage_card(tmp_path, capsys):
+    from stagehand.cli import main
+
+    def config(mind_text: str) -> str:
+        (tmp_path / "t.mind.md").write_text(mind_text, encoding="utf-8")
+        (tmp_path / "t.persona.md").write_text("---\ncharacter: T\nmind: t.mind.md\n---\nYou are T.\n", encoding="utf-8")
+        path = tmp_path / "agents.yaml"
+        path.write_text(
+            "server: {url: 'http://127.0.0.1:1', event: default, mod_passcode: x}\n"
+            "agents:\n  mind_mode: new\n  llm: {api: openai}\n  characters: [t.persona.md]\n",
+            encoding="utf-8",
+        )
+        return str(path)
+
+    assert main(["check", "--config", config(mind("  doors:\n    stage: nowhere\n")), "--only", "agents"]) == 2
+    assert "not a declared stage" in capsys.readouterr().err
+    assert main(["check", "--config", config(mind("  doors:\n    stage: formal\n")), "--only", "agents"]) == 0
+    assert "warning: T's mind file:" in capsys.readouterr().err

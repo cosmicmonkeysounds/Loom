@@ -188,6 +188,7 @@ def test_the_new_fields_round_trip_and_reset(tmp_path):
     m.save(path)
     back = Mind.load(path, "Trabolta", "evt")
     assert back.to_json() == m.to_json()
+    assert "\n" not in path.read_text(encoding="utf-8")  # the new mind is written compactly
     for _ in range(25):
         m.remember_said("u", "line")
     assert len(m.said) == 20

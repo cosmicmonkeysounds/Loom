@@ -1026,8 +1026,10 @@ class Agents:
             d = mind.people.get(pid) if mind is not None else None
             if mind is None or persona is None or d is None:
                 continue
-            if mind.stages and mind.stage == mind.stages[0]:
-                continue  # asleep
+            card = story_mind.card_for(persona, mind.phase_applied)
+            stage = card.stage if card is not None and card.stage else mind.stage
+            if mind.stages and stage == mind.stages[0]:
+                continue  # the phase card has him asleep
             if (mind.phase_applied or "").startswith("finale"):
                 continue
             if q["sig"] == tuple(m.get("text") for m in d.memos):

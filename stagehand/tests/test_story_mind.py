@@ -618,9 +618,11 @@ def test_no_summary_asleep_after_the_ending_or_with_too_few_turns(tmp_path):
     assert agents._quiet_due(now) == ("Trabolta", "g-1")
     agents.minds["Trabolta"].phase_applied = "finale_song"
     assert agents._quiet_due(now) is None
-    agents.minds["Trabolta"].phase_applied = "hunt_1"
-    agents.minds["Trabolta"].stage = "asleep"
+    agents.minds["Trabolta"].phase_applied = "arrivals"  # the card's stage is asleep, whatever a director set
+    agents.minds["Trabolta"].stage = "judge"
     assert agents._quiet_due(now) is None
+    agents.minds["Trabolta"].phase_applied = "hunt_1"
+    assert agents._quiet_due(now) == ("Trabolta", "g-1")
 
 
 def test_a_summary_naming_an_answer_word_or_a_secret_is_dropped():
