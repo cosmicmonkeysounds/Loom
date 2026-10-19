@@ -281,11 +281,18 @@ is YAML frontmatter + the system prompt:
 
 Trabolta's situations (wave 7): **at your heart** (`them.at_the_heart ==
 true`, set by the story while the server-room terminal pilots that
-program, and `Night.step >= 14`, the Y2K hour) makes him candid, like the Master: he admits the patch bay is
+program; since wave 11 at any hour once he is awake) makes him candid, like the Master: he admits the patch bay is
 his heart and that he does not know the combinations or the door's code,
-says what he wants and why, and may fire `stand_down` only when the
+and says what he wants and why. **standing down** (the same, and
+`Night.step >= 14`, the Y2K hour) lets him fire `stand_down` only when the
 program has shown him what he wants is impossible (a host confirms it
-with 🕊). Two more say whether he may call her Sandy there, by the same
+with 🕊). **marked at your heart** (wave 11b: the same, and `them.marked
+== true`) has him notice the Antivirus' mark once, ask why (he doesn't
+know), and let the answer move his regard, wary but still candid: he
+takes their files, standing down applies as to anyone, and he never
+refuses or threatens them. Away from his heart there is no block for
+the mark (a passing-remark block was tried live and dropped: he
+repeated it in every reply). Two more say whether he may call her Sandy there, by the same
 rule that unredacts the Truther Download (`Night.scenario == 1` from
 the overshare, else `Night.recount`). Outside the cold room he still
 never admits where his heart is kept.
