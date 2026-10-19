@@ -25,7 +25,7 @@ describe("postChess (C4)", () => {
     const calls: Call[] = [];
     const storage = memory();
     const ok = await postChess(config, "won", "g-aaaaaa", { fetcher: fetcher([200], calls), storage, sleep: async () => {} });
-    expect(ok).toBe(true);
+    expect(ok).toBe("sent");
     expect(calls).toHaveLength(1);
     expect(calls[0]!.url).toBe("/e/evt/api/mod/signal");
     expect(JSON.parse(String(calls[0]!.init!.body))).toEqual({ name: "chess won", subject: "g-aaaaaa", label: "Terminal · Server Door" });
@@ -37,10 +37,10 @@ describe("postChess (C4)", () => {
   it("retries a network failure or a 5xx on the backoff; a 4xx is final", async () => {
     const slept: number[] = [];
     const sleep = async (ms: number) => void slept.push(ms);
-    expect(await postChess(config, "lost", "g-a", { fetcher: fetcher(["throw", 502, 200]), storage: null, sleep, now: () => 0 })).toBe(true);
+    expect(await postChess(config, "lost", "g-a", { fetcher: fetcher(["throw", 502, 200]), storage: null, sleep, now: () => 0 })).toBe("sent");
     expect(slept).toEqual([RETRY_MS[0], RETRY_MS[1]]);
     const calls: Call[] = [];
-    expect(await postChess(config, "drawn", "g-a", { fetcher: fetcher([409], calls), storage: null, sleep, now: () => 0 })).toBe(false);
+    expect(await postChess(config, "drawn", "g-a", { fetcher: fetcher([409], calls), storage: null, sleep, now: () => 0 })).toBe("failed");
     expect(calls).toHaveLength(1);
     expect(JSON.parse(String(calls[0]!.init!.body)).name).toBe("chess drawn");
   });
@@ -54,10 +54,23 @@ describe("postChess (C4)", () => {
       t += PENDING_MAX_AGE_MS; // the uplink hung for a minute
       throw new TypeError("network");
     }) as unknown as typeof fetch;
-    expect(await postChess(config, "won", "g-b", { fetcher: f, storage, sleep: async () => {}, now: () => t })).toBe(false);
+    expect(await postChess(config, "won", "g-b", { fetcher: f, storage, sleep: async () => {}, now: () => t })).toBe("failed");
     expect(seenWhileSending).toMatchObject({ eventId: "evt", name: "chess won", subject: "g-b", label: "Terminal · Server Door", at: 1_000 });
     // Failed for good: forgotten (the board says to get a host instead).
     expect(storage.getItem(PENDING_KEY)).toBeNull();
+  });
+});
+
+describe("a 200 the story turned down", () => {
+  it("is `declined`, not sent: a win after truth.txt gave no door code", async () => {
+    const storage = memory();
+    expect(await postChess(config, "won", "g-a", { fetcher: fetcher([200], [], { ok: true, refused: true, presses: 3 }), storage, sleep: async () => {}, now: () => 0 })).toBe("declined");
+    // Landed all the same: nothing left pending to re-post.
+    expect(readPending(storage)).toBeNull();
+    expect(await postChess(config, "won", "g-a", { fetcher: fetcher([200], [], { ok: true, presses: 3 }), storage: null, sleep: async () => {}, now: () => 0 })).toBe("sent");
+    // A body that won't parse is still a landed post.
+    const noBody = (async () => ({ status: 200, ok: true, json: async () => { throw new SyntaxError("x"); } }) as unknown as Response) as unknown as typeof fetch;
+    expect(await postChess(config, "won", "g-a", { fetcher: noBody, storage: null, sleep: async () => {}, now: () => 0 })).toBe("sent");
   });
 });
 

@@ -1,14 +1,18 @@
 //! The chess board speaks for the story with the terminal's moderator token:
 //! a game's end is `POST /api/mod/signal {name: "chess won" | "chess lost" |
 //! "chess drawn", subject: <guest id>, label: "Terminal · <name>"}` (C4,
-//! the label journaled as `by`). A win from the Y2K hour hands the winner
-//! the server-room door code, so it must land — and land while the guest is
+//! the label journaled as `by`). A win (any time before truth.txt or an
+//! ending) hands the winner the server-room door code, so it must land — and
+//! land while the guest is
 //! still at the door: a network failure or a 5xx is retried (0.5 → 8 s), each
 //! attempt is cut after 5 s, a 4xx is final, and the send is kept in
 //! `localStorage` while it is in flight so a reload mid-retry posts it from
 //! `flushPendingChess` — never once it is `PENDING_MAX_AGE_MS` (60 s) old (a
 //! host fires ♟ by hand instead, and a late post would count the win twice).
 //! The same pattern as the old tent tablet's `postSignal` (reinstall/web).
+//! A 200 can still say the story turned the result down (`{refused: true}`:
+//! it only told `# hosts`, e.g. a win after truth.txt) — that is `declined`,
+//! and the board must not promise a door code for it.
 //!
 //! Also here: who a scanned pass is (`fetchChallenger`, the guest's own
 //! view through the moderator lens: name + restricted).
@@ -104,9 +108,15 @@ function clearPending(storage: PendingStorage | null, p: PendingChess | null): v
   }
 }
 
-/** The retry loop: "ok" on a 200, "refused" on a 4xx (final), "failed" when
- *  every attempt failed or the result grew too old to send. */
-async function send(config: Poster, p: PendingChess, o: PostOptions): Promise<"ok" | "refused" | "failed"> {
+/** How a result fared: the story took it (`sent`), the server took it but
+ *  the story turned it down (`declined`: a 200 with `refused: true`), or it
+ *  never landed (`failed`: every attempt failed, a 4xx, or too old). */
+export type ChessPost = "sent" | "declined" | "failed";
+
+/** The retry loop: "ok" on a 200, "declined" on a 200 the story turned down,
+ *  "refused" on a 4xx (final), "failed" when every attempt failed or the
+ *  result grew too old to send. */
+async function send(config: Poster, p: PendingChess, o: PostOptions): Promise<"ok" | "declined" | "refused" | "failed"> {
   const attempts = Math.max(1, o.attempts ?? 1 + RETRY_MS.length);
   const fetcher = o.fetcher ?? fetch;
   const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -127,7 +137,10 @@ async function send(config: Poster, p: PendingChess, o: PostOptions): Promise<"o
         body,
         signal: ctl.signal,
       });
-      if (res.ok) return "ok";
+      if (res.ok) {
+        const answer = (await res.json().catch(() => null)) as { refused?: unknown } | null;
+        return answer !== null && typeof answer === "object" && answer.refused === true ? "declined" : "ok";
+      }
       if (res.status < 500) return "refused";
     } catch {
       /* the network (or the timeout): try again */
@@ -139,22 +152,22 @@ async function send(config: Poster, p: PendingChess, o: PostOptions): Promise<"o
 }
 
 /**
- * Tell the story how a game ended. Resolves true when the server took it.
- * Kept in storage while in flight; forgotten once it lands, is refused, or
- * fails for good (the board then says to get a host).
+ * Tell the story how a game ended (`ChessPost`). Kept in storage while in
+ * flight; forgotten once it lands, is refused, or fails for good (the board
+ * then says to get a host).
  */
-export async function postChess(config: Poster, result: ChessResult, subject: string, o: PostOptions = {}): Promise<boolean> {
+export async function postChess(config: Poster, result: ChessResult, subject: string, o: PostOptions = {}): Promise<ChessPost> {
   const storage = o.storage === undefined ? pageStorage() : o.storage;
   const p: PendingChess = { eventId: config.eventId, name: SIGNAL_OF[result], subject, label: chessLabel(config), at: (o.now ?? Date.now)() };
   writePending(storage, p);
   const r = await send(config, p, o);
   clearPending(storage, p);
-  return r === "ok";
+  return r === "ok" ? "sent" : r === "declined" ? "declined" : "failed";
 }
 
 /** On boot: post the result a previous page left unsent — once, while fresh
  *  and for this terminal's event; anything else is dropped unsent. */
-export async function flushPendingChess(config: Poster, o: PostOptions = {}): Promise<"none" | "dropped" | "sent" | "refused" | "failed"> {
+export async function flushPendingChess(config: Poster, o: PostOptions = {}): Promise<"none" | "dropped" | "sent" | "declined" | "refused" | "failed"> {
   const storage = o.storage === undefined ? pageStorage() : o.storage;
   const p = readPending(storage);
   if (p === null) {

@@ -37,7 +37,9 @@ export const NOTICE_MS = 6_000;
 
 export const MARKED_NOTICE = "⛔ Marked programs can't challenge the King.";
 
-export type Post = "sending" | "sent" | "failed";
+/** `declined`: the server took the result but the story turned it down
+ *  (a win after truth.txt / an ending — no door code, whatever `armed` said). */
+export type Post = "sending" | "sent" | "declined" | "failed";
 
 export interface Notice {
   text: string;
@@ -57,7 +59,7 @@ export type ChessEvent =
   | { type: "resolved"; guest: Challenger; king: ScreenKing | null; game: number; now: number }
   | { type: "refused"; text: string; now: number }
   | { type: "ended"; game: number; result: ChessResult }
-  | { type: "posted"; game: number; ok: boolean; armed: boolean | null; now: number }
+  | { type: "posted"; game: number; post: Exclude<Post, "sending">; armed: boolean | null; now: number }
   /** Give up / the leash; `notice` says why on the attract screen. */
   | { type: "abandon"; notice?: string; now?: number }
   | { type: "tick"; now: number };
@@ -87,13 +89,15 @@ export function reduce(s: ChessSession, e: ChessEvent): ChessSession {
       return { kind: "playing", game: e.game, guest: e.guest, stage, hp: e.king?.hp ?? null, max: e.king?.max ?? null };
     }
     case "refused":
-      return s.kind === "checking" ? notice(e.text, e.now) : s;
+      // A pass the house can't place (checking), or the typed fallback's own
+      // problem — no such program, several match — said on attract.
+      return s.kind === "checking" || s.kind === "attract" ? notice(e.text, e.now) : s;
     case "ended":
       if (s.kind !== "playing" || s.game !== e.game) return s;
       return { kind: "over", game: s.game, guest: s.guest, stage: s.stage, result: e.result, post: "sending", armed: null, settledAt: null };
     case "posted":
       if (s.kind !== "over" || s.game !== e.game || s.post !== "sending") return s;
-      return { ...s, post: e.ok ? "sent" : "failed", armed: e.armed, settledAt: e.now };
+      return { ...s, post: e.post, armed: e.armed, settledAt: e.now };
     case "abandon":
       // Give up / the leash: silent, nothing reaches the story.
       if (s.kind !== "playing" && s.kind !== "checking") return s;
@@ -129,13 +133,15 @@ export const WIN_NOT_SENT = "The win didn't reach the house: tell a host (♟)."
 
 /**
  * The result screen's line. A win names the door code only once the post
- * landed *and* the King was armed when it did; while the post is in flight
+ * landed, the story took it (not `declined`) *and* the King was armed; while the post is in flight
  * it says so; a win that never landed sends the guest to a host (unless the
  * King guards nothing now). A loss or a draw says so either way.
  */
 export function resultLine(s: Extract<ChessSession, { kind: "over" }>): string {
   if (s.result === "won") {
     if (s.post === "sending") return "Checkmate. Telling the house…";
+    // The story heard the win and turned it down: never promise the code.
+    if (s.post === "declined") return "Checkmate. No prize now.";
     if (s.post === "failed") return s.armed === false ? "Checkmate. No prize now." : WIN_NOT_SENT;
     if (s.armed === true) return WIN_CODE;
     if (s.armed === false) return "Checkmate. No prize now.";

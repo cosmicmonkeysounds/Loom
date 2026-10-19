@@ -112,7 +112,7 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
   const finish = useCallback(
     (gameId: number, guestId: string, result: Outcome) => {
       dispatch({ type: "ended", game: gameId, result });
-      void postChess(config, result, guestId).then((ok) => dispatch({ type: "posted", game: gameId, ok, armed: kingRef.current?.armed ?? null, now: Date.now() }));
+      void postChess(config, result, guestId).then((post) => dispatch({ type: "posted", game: gameId, post, armed: kingRef.current?.armed ?? null, now: Date.now() }));
     },
     [config],
   );
