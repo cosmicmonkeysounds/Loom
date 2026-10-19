@@ -357,6 +357,18 @@ func _test_avatar_decode() -> void:
 	_check(AvatarCache.decode(jpg) != null and AvatarCache.decode(webp) != null, "avatar: a jpeg and a webp decode")
 	var s := AvatarCache.decode(bom)
 	_check(s != null and maxi(s.get_width(), s.get_height()) >= 128 and maxi(s.get_width(), s.get_height()) <= 512, "avatar: a sizeless svg renders near 256 px (%s)" % [s.get_size() if s != null else null])
+	# A huge declared size renders once near 256 px (never full size first:
+	# 40000² would be past Godot's image limit, and seconds on a Quest).
+	var huge := '<svg xmlns="http://www.w3.org/2000/svg" width="40000" height="20000px" viewBox="0 0 10 5"><rect width="10" height="5" stroke-width="3" fill="#d4af37"/></svg>'.to_utf8_buffer()
+	_check(_near(AvatarCache.svg_side(huge), 40000.0) and _near(AvatarCache.svg_side(svg), 10.0) and _near(AvatarCache.svg_side('<svg width="1in" height="50%">'.to_utf8_buffer()), 96.0) and AvatarCache.svg_side('<svg>'.to_utf8_buffer()) == 0.0, "avatar: an svg's declared side (width / height in absolute units, else the viewBox)")
+	var t0 := Time.get_ticks_msec()
+	var h := AvatarCache.decode(huge)
+	var took := Time.get_ticks_msec() - t0
+	_check(h != null and maxi(h.get_width(), h.get_height()) >= 200 and maxi(h.get_width(), h.get_height()) <= 320 and took < 100, "avatar: a 40000 px svg renders once near 256 px (%s, %d ms)" % [h.get_size() if h != null else null, took])
+	var bare := '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="3000" height="3000" fill="#d4af37"/></svg>'.to_utf8_buffer()
+	var bs := AvatarCache.decode(bare)
+	_check(bs == null or maxi(bs.get_width(), bs.get_height()) <= 512, "avatar: an svg declaring no size never renders big (%s)" % [bs.get_size() if bs != null else null])
+	_check(AvatarCache.decode('<svg xmlns="http://www.w3.org/2000/svg" width="1e7" height="10"><rect width="10" height="10"/></svg>'.to_utf8_buffer()) == null, "avatar: an implausible declared size is refused")
 	_check(AvatarCache.decode(gif) == null and AvatarCache.decode(avif) == null, "avatar: gif and avif stay on the capsule")
 	_check(AvatarCache.decode("hello".to_utf8_buffer()) == null and AvatarCache.decode(PackedByteArray()) == null, "avatar: junk and nothing decode to nothing")
 	var broken := png.slice(0, 20)

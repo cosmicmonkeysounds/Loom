@@ -24,6 +24,12 @@ const TILE := 128
 const BEVEL := 3
 ## An SVG renders with its longest side here.
 const SVG_SIDE := 256.0
+## An SVG that declares no size is first probed at 1 / this scale.
+const SVG_PROBE := 64.0
+## An SVG declaring a longest side above this (px) is refused.
+const SVG_MAX_DECLARED := 100000.0
+## CSS px per unit, for an SVG root's `width` / `height`.
+const SVG_UNITS := {"": 1.0, "px": 1.0, "pt": 4.0 / 3.0, "pc": 16.0, "mm": 96.0 / 25.4, "cm": 96.0 / 2.54, "in": 96.0}
 
 ## Tests: `requester.call(url, done)` instead of an [HTTPRequest];
 ## `done.call(ok: bool, headers: PackedStringArray, body: PackedByteArray)`.
@@ -152,17 +158,46 @@ static func decode(b: PackedByteArray, content_type := "") -> Image:
 		"webp":
 			err = img.load_webp_from_buffer(b)
 		"svg":
-			err = img.load_svg_from_buffer(b, 1.0)
-			if err == OK and not img.is_empty():
-				# No intrinsic size worth the name: render it again near SVG_SIDE.
-				var side := maxi(img.get_width(), img.get_height())
-				if side < 128 or side > 512:
-					var again := Image.new()
-					if again.load_svg_from_buffer(b, SVG_SIDE / float(side)) == OK and not again.is_empty():
-						img = again
+			# Render once, near SVG_SIDE: the scale comes from the size the
+			# root declares (or a tiny probe render), never a full-size
+			# render first — a 2 MB file may declare 12000 px.
+			var side := svg_side(b)
+			if side <= 0.0:
+				var probe := Image.new()
+				if probe.load_svg_from_buffer(b, 1.0 / SVG_PROBE) == OK and not probe.is_empty():
+					side = maxf(probe.get_width(), probe.get_height()) * SVG_PROBE
+				elif probe.load_svg_from_buffer(b, 1.0) == OK and not probe.is_empty():
+					side = maxf(probe.get_width(), probe.get_height())  # under SVG_PROBE px: cheap
+			if side <= 0.0 or side > SVG_MAX_DECLARED:
+				return null
+			err = img.load_svg_from_buffer(b, SVG_SIDE / side)
 	if err != OK or img.is_empty():
 		return null
 	return img
+
+
+## The longest side (px) the SVG's root `<svg>` declares — its `width` /
+## `height` (absolute units only), else its `viewBox` — or 0 when it
+## declares none. Only the first 8 KB are read.
+static func svg_side(b: PackedByteArray) -> float:
+	var text := b.slice(0, mini(b.size(), 8192)).get_string_from_utf8()
+	var root := RegEx.create_from_string("<svg\\b[^>]*>").search(text)
+	if root == null:
+		return 0.0
+	var tag := root.get_string()
+	var side := 0.0
+	for attr: String in ["width", "height"]:
+		var m := RegEx.create_from_string("[\\s]%s\\s*=\\s*[\"']\\s*([0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\\s*([a-z]*)\\s*[\"']" % attr).search(tag)
+		if m != null and SVG_UNITS.has(m.get_string(2)):
+			side = maxf(side, float(m.get_string(1)) * float(SVG_UNITS[m.get_string(2)]))
+	if side > 0.0:
+		return side
+	var vb := RegEx.create_from_string("[\\s]viewBox\\s*=\\s*[\"']([^\"']*)[\"']").search(tag)
+	if vb != null:
+		var nums := vb.get_string(1).replace(",", " ").split(" ", false)
+		if nums.size() == 4:
+			side = maxf(absf(float(nums[2])), absf(float(nums[3])))
+	return side
 
 
 ## The ghost's head: the picture fitted (aspect kept) into a white square
