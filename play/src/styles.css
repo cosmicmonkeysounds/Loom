@@ -270,6 +270,19 @@ body {
 .presence-stack .pavatar:last-child { margin-right: 0; }
 .presence-n { white-space: nowrap; }
 
+/* the story's guest-facing clocks (countdown.tsx): a thin bar under the
+   room header — soonest first, red under a minute, ⏸ while paused */
+.countdown-strip {
+  display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: center;
+  max-width: var(--max); margin: 4px auto 0; width: 100%; box-sizing: border-box;
+  padding: 4px 10px; background: var(--face); box-shadow: var(--raised);
+  font: 700 13px var(--ui-font); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.countdown-strip .urgent { color: var(--bad); }
+.countdown-strip.held .countdown-item { opacity: 0.6; }
+.countdown-paused { color: var(--muted-ink); }
+.app.wide .countdown-strip { max-width: none; }
+
 .thread {
   flex: 1; overflow-y: auto; margin: 4px; padding: 8px 10px;
   background: var(--white); box-shadow: var(--sunken);

@@ -185,6 +185,21 @@ export interface GuestView {
   people?: PersonCard[];
   /** Profile pictures: folded display name → serving key (`avatars.ts`). */
   avatars?: Record<string, string>;
+  /** The story's guest-facing clocks (`countdown: … for guests` header
+   *  lines, never a secret head): present only while one is running.
+   *  `endsAt` is in story seconds, against `clock` (ms). */
+  countdowns?: CountdownSummary[];
+  /** The story clock is stopped (the event is paused): the countdowns hold
+   *  still. Absent = it runs (an older server never says). */
+  paused?: true;
+}
+
+/** One running countdown (mirror of server views.ts `CountdownSummary`). */
+export interface CountdownSummary {
+  label: string;
+  path: string;
+  /** The deadline, in story seconds (`Time.elapsed` units). */
+  endsAt: number;
 }
 
 export interface PrimeGuest {

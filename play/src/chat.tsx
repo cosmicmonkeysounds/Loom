@@ -1084,10 +1084,13 @@ export function ChannelView({
   onPerson,
   headerActions,
   wide,
+  strip,
 }: {
   channel: Channel;
   onBack: () => void;
   footer?: ReactNode;
+  /** A bar right under the header (the guest's countdown strip). */
+  strip?: ReactNode;
   moderate?: ModerateHook;
   showChannel?: boolean;
   /** Hybrid chat: when present, a composer docks below the footer. Return
@@ -1150,6 +1153,7 @@ export function ChannelView({
           {isRoom && onPeople && <PresenceStrip people={people} meId={meId ?? null} onOpen={onPeople} />}
         </div>
       </header>
+      {strip}
       {pins && pins.length > 0 && <PinnedRail pins={pins} />}
       <MessageList
         key={channel.id}

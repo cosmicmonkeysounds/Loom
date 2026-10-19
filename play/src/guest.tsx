@@ -47,6 +47,7 @@ import { opensHome } from "./room.ts";
 import { redeemErrorText } from "./codex.ts";
 import { activePins, activeTakeover } from "./pins.ts";
 import { Takeover } from "./takeover.tsx";
+import { CountdownStrip } from "./countdown.tsx";
 
 function GuestRegister({ session }: { session: GuestSession }) {
   const [code, setCode] = useState(codeFromUrl);
@@ -545,6 +546,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // restricted guest whose list hides the lobby still sees it.
   const takeover = <Takeover pin={activeTakeover(s.messages.values())} />;
   const restricted = st?.restricted ?? false;
+  // The story's guest-facing clocks (`countdown: … for guests`), ticking
+  // under the room header — and under the identity card on a phone's room
+  // list, so the clock is never one tap away.
+  const clocks = <CountdownStrip countdowns={st?.countdowns} clock={st?.clock} paused={st?.paused === true} />;
   const widgets = {
     answer: (seq: number, r: Parameters<GuestSession["answerWidget"]>[1]) => void s.answerWidget(seq, r).catch(() => {}),
     answered: s.widgetAnswers,
@@ -630,6 +635,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           onSend={send}
           widgets={widgets}
           onPeople={() => setPeople(new Set((active.people ?? []).map((p) => p.id)))}
+          strip={clocks}
           footer={
             active.kind === "codex" && codexNote !== null ? (
               <p className="notice" role="status">
@@ -652,7 +658,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       activeId={t.activeId}
       meId={s.me.id}
       onOpen={t.open}
-      header={<IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} onWallet={() => t.open(WALLET_ROOM)} />}
+      header={
+        <>
+          <IdentityCard s={s} onPeople={() => setPeople("all")} onHelp={() => setHelp(true)} onProfile={() => setProfile(true)} onWallet={() => t.open(WALLET_ROOM)} />
+          {!wide && clocks}
+        </>
+      }
       empty="Quiet… for now."
     />
   );
