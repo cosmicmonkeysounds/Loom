@@ -201,10 +201,12 @@ _OFFERS = re.compile(
 )
 
 
-#: He says where a fact (or the books that hold them) is: a named place
-#: ("… are in the Optical Drive", "a fact tucked away in the Start Bar").
+#: He says where a fact (or the books that hold them) is: a house room,
+#: named "the X" ("… are in the Optical Drive", "a fact tucked away in the
+#: Start Bar", "on the shelf in The Desktop"). Never a city: his own lore
+#: keeps "the last facts … stored on a computer in Halifax".
 _PLACES = re.compile(
-    r"\b(?i:facts?|books?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b[^.?!]{0,30}\b(?i:in|on|under|behind|inside|at)\s+(?:(?i:the)\s+)?[A-Z]"
+    r"\b(?i:facts?|books?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b(?:\s+[\w']+){0,3}?\s+(?i:in|on|under|behind|inside|at)\s+(?i:the)\s+[A-Z]"
 )
 
 

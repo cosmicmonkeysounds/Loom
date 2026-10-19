@@ -206,7 +206,10 @@ def test_a_sentence_that_invents_a_fact_is_cut():
     # Says where a fact, or the books that hold them, is: a named place.
     assert invents_fact(s, "The books with the facts are in the Optical Drive, tucked behind the rack.")
     assert invents_fact(s, "Yes, there is a fact tucked away in the Start Bar.")
+    assert invents_fact(s, "The books are on the shelf in The Desktop.")
     assert not invents_fact(s, "The facts are hidden around the house.")
+    # His own lore, a city not a room (K-04: a false cut before the fix).
+    assert not invents_fact(s, "The remaining facts are stored on a computer in Halifax that I cannot access directly.")
     assert not invents_fact(s, "I collect facts that appear in the house's books and print media.")
     assert not invents_fact(s, "Is the fact in the Desktop?")
     # Asking, wanting, thanking and paying are his job.
