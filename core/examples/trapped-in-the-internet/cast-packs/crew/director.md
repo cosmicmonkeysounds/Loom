@@ -78,9 +78,14 @@ mark, a guess, has no buttons). A host's 📝 on a program's card judges only th
 `# hosts` says *"📝 Not judged: … Judge it on Run → Mind → Judging"*. **A near miss** (wave
 11: a mistyped right answer, *Mr Pickels*, *Grko*, or the right answer said at length, *11
 years ago*) is never judged by itself, even in `auto`: it
-waits on the Judging card tagged *near* and `# hosts` gets a ⚠ line naming the key. Nobody
-judges it → the settle credits it as accurate (the user hasn't decided yet whether to keep
-that), so **judge every ⚠ before 📋**. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
+waits on the Judging card tagged *near* and `# hosts` gets a ⚠ line naming the key. **Trabolta
+rules on it** (wave 11b): with his laptop online the ⚠ line ends *… asked Trabolta to rule*,
+the card reads *🤖 asking Trabolta…*, and seconds later `# hosts` gets *🤖 Trabolta ruled …:
+the same as / not "<key>" (<verdict>).* with his reason. **You override only when you
+disagree**: that ruling's ✅ / 😤 / 🤷 on the card (the later verdict wins). Judging it
+yourself while he is asked cancels his ruling. A near miss filed while his laptop was off
+waits for you, and unjudged the settle credits it as accurate, so **judge every ⚠ still
+pending before 📋**. An abbreviation (*Mr. Pickles*, *11 yrs*, *0900*) is
 simply accurate, no ⚠; a plainly wrong answer at 100% is still an automatic lie. A program may file every
 open question, once each; a question not filed when its round closes never
 comes back. Clippy and the hosts still judge what is **said out loud** at
