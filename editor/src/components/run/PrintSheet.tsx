@@ -2,8 +2,11 @@
 //! poster, the iPhone door sign (worded off `/api/push/config`'s
 //! `homescreen`), every codex poster (title + QR + typed code, sorted by
 //! fact stack with a coloured band + the pile printed as text), a check-in
-//! sign per room and the cast cards (always 8-up business cards, on their
-//! own page), from `/api/mod/codes`. QRs are drawn in the browser
+//! sign per room, the cast cards (always 8-up business cards, on their
+//! own page) and the **Invitations** (wave 11 C5: one claim QR per reserved
+//! program, 4-up on their own page, with a screen-only 🔓 that opens a lost
+//! one to anyone for two minutes), from `/api/mod/codes`. A digit clue for
+//! the door code prints its title + QR only (`DIGIT_CLUE_STACK`). QRs are drawn in the browser
 //! (`lib/print-sheet.ts`), so a 60–80 card sheet never hits `/api/qr`'s
 //! rate limit. The toolbar (sections, skip a card, cards per page) never
 //! prints; `@media print` hides the editor and lays out one card per
@@ -20,6 +23,7 @@ const SECTION_LABEL: Record<PrintKind, string> = {
   [PrintKind.Codex]: 'Codex posters',
   [PrintKind.Room]: 'Room check-in signs',
   [PrintKind.Cast]: 'Cast cards',
+  [PrintKind.Invite]: 'Invitations',
 }
 
 // Plain CSS (not Tailwind) so the print layout doesn't depend on the dark
@@ -44,6 +48,7 @@ const CSS = `
 .loom-print-card.banded .note { top: 0.2in; }
 .loom-print-card .url { position: absolute; left: 0.15in; right: 0.6in; bottom: 0.1in; font-size: 9px; color: #2563eb; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .loom-print-card .skip { left: auto; right: 0.15in; color: #52525b; background: #f4f4f5; border: 1px solid #d4d4d8; border-radius: 4px; padding: 1px 6px; cursor: pointer; }
+.loom-print-card .unlock { position: absolute; right: 0.15in; top: 0.4in; font-size: 10px; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 6px; cursor: pointer; }
 .pp-1 { grid-template-columns: 7.5in; } .pp-1 .loom-print-card { height: 10in; }
 .pp-1 h2 { font-size: 40pt; } .pp-1 .hint { font-size: 18pt; } .pp-1 .qr { width: 5.5in; height: 5.5in; } .pp-1 .code { font-size: 30pt; }
 .pp-2 { grid-template-columns: 7.5in; } .pp-2 .loom-print-card { height: 4.9in; }
@@ -61,7 +66,7 @@ const CSS = `
   html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
   body > *:not(.loom-print) { display: none !important; }
   .loom-print { position: static; overflow: visible; background: #fff; }
-  .loom-print-bar, .loom-print-card.skipped, .loom-print-card .note, .loom-print-card .skip, .loom-print-card .url { display: none !important; }
+  .loom-print-bar, .loom-print-card.skipped, .loom-print-card .note, .loom-print-card .skip, .loom-print-card .unlock, .loom-print-card .url { display: none !important; }
   .loom-print-grid { padding: 0; gap: 0.2in 0.2in; }
   .loom-print-grid + .loom-print-grid { break-before: page; page-break-before: always; }
   .loom-print-card { border-color: #d4d4d8; }
@@ -69,12 +74,50 @@ const CSS = `
 }
 `
 
-function Card({ item, svg, skipped, onToggle }: { item: PrintItem; svg: string | undefined; skipped: boolean; onToggle: () => void }) {
+/** 🔓 on an invitation (screen only): a lost card's program opens to anyone
+ *  for two minutes (`POST /api/mod/claim/unlock`). Tap twice — the sheet
+ *  sits above the app's dialogs, so the confirm is the button itself. */
+function UnlockClaim({ eventId, character }: { eventId: string; character: string }) {
+  const [state, setState] = useState<'idle' | 'armed' | 'busy' | 'open' | 'failed'>('idle')
+  useEffect(() => {
+    if (state !== 'armed') return
+    const t = setTimeout(() => setState('idle'), 4000)
+    return () => clearTimeout(t)
+  }, [state])
+  const press = async () => {
+    if (state !== 'armed') {
+      setState('armed')
+      return
+    }
+    setState('busy')
+    try {
+      await modApi.claimUnlock(eventId, character, 2)
+      setState('open')
+    } catch {
+      setState('failed')
+    }
+  }
+  const label = { idle: '🔓 lost? open 2 min', armed: `tap again: anyone may take ${character} for 2 min`, busy: '…', open: '🔓 open for 2 min', failed: '🔓 failed — again?' }[state]
+  return (
+    <button
+      className="unlock"
+      onClick={() => void press()}
+      disabled={state === 'busy'}
+      title={`For a lost invitation: anyone who picks ${character} in the next two minutes gets it — do it with the guest beside you.`}
+      data-testid={`print-unlock-${character}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function Card({ item, svg, skipped, onToggle, eventId }: { item: PrintItem; svg: string | undefined; skipped: boolean; onToggle: () => void; eventId: string }) {
   return (
     <div className={`loom-print-card${skipped ? ' skipped' : ''}${item.stack ? ' banded' : ''}`} data-testid={`print-card-${item.ref}`}>
       {item.stack && <span className="band" style={{ background: stackInk(item.stack.colour) }} />}
       {item.note && <span className="note">{item.note}</span>}
       <button className="skip" onClick={onToggle}>{skipped ? 'include' : 'skip'}</button>
+      {item.kind === PrintKind.Invite && item.character !== undefined && <UnlockClaim eventId={eventId} character={item.character} />}
       <h2>{item.title}</h2>
       {item.hint !== '' && <p className="hint">{item.hint}</p>}
       {item.steps && item.steps.length > 0 && (
@@ -98,7 +141,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
   const [items, setItems] = useState<PrintItem[] | null>(null)
   const [svgs, setSvgs] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
-  const [sections, setSections] = useState<Record<PrintKind, boolean>>({ join: true, door: true, codex: true, room: true, cast: true })
+  const [sections, setSections] = useState<Record<PrintKind, boolean>>({ join: true, door: true, codex: true, room: true, cast: true, invite: true })
   const [skipped, setSkipped] = useState<Set<string>>(() => new Set())
   const [perPage, setPerPage] = useState<PerPage>(4)
 
@@ -132,8 +175,9 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
   }, [onClose])
 
   const shown = useMemo(() => (items ?? []).filter((i) => sections[i.kind]), [items, sections])
-  const posters = shown.filter((i) => i.kind !== PrintKind.Cast)
+  const posters = shown.filter((i) => i.kind !== PrintKind.Cast && i.kind !== PrintKind.Invite)
   const castCards = shown.filter((i) => i.kind === PrintKind.Cast)
+  const invites = shown.filter((i) => i.kind === PrintKind.Invite)
   const printing = shown.filter((i) => !skipped.has(i.ref)).length
   const ready = items !== null && shown.every((i) => svgs[i.ref] !== undefined)
 
@@ -174,7 +218,7 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
       {posters.length > 0 && (
         <div className={`loom-print-grid pp-${perPage}`}>
           {posters.map((i) => (
-            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} />
+            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} eventId={eventId} />
           ))}
         </div>
       )}
@@ -182,7 +226,15 @@ export function PrintSheet({ eventId, onClose }: { eventId: string; onClose: () 
       {castCards.length > 0 && (
         <div className="loom-print-grid pp-8" data-testid="print-cast-grid">
           {castCards.map((i) => (
-            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} />
+            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} eventId={eventId} />
+          ))}
+        </div>
+      )}
+      {/* Invitations: one per reserved program, 4-up, on their own page. */}
+      {invites.length > 0 && (
+        <div className="loom-print-grid pp-4" data-testid="print-invite-grid">
+          {invites.map((i) => (
+            <Card key={i.ref} item={i} svg={svgs[i.ref]} skipped={skipped.has(i.ref)} onToggle={() => toggle(i.ref)} eventId={eventId} />
           ))}
         </div>
       )}

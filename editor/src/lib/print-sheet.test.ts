@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPrintItems, doorWording, PrintKind, qrSvg, stackInk, stackLine, stackRank, type PrintCodes } from './print-sheet'
+import { buildPrintItems, DIGIT_CLUE_STACK, doorWording, isDigitClue, PrintKind, qrSvg, stackInk, stackLine, stackRank, STACK_ORDER, type PrintCodes } from './print-sheet'
 
 const CODES: PrintCodes = {
   eventPass: 'EVT777',
@@ -99,6 +99,57 @@ describe('print sheet', () => {
     expect(stackLine(items[5]!.stack!)).toBe('RED · deepest')
     expect(stackInk('gold')).not.toBe(stackInk('purple'))
     expect(stackRank(null)).toBeGreaterThan(stackRank({ colour: 'purple', stack: '', where: null }))
+  })
+
+  it('wave 11: the door code\'s digit clues sit on their own silver stack and print title + QR only', () => {
+    const entry = (id: string, code: string) => ({ id, title: id, about: null, code, url: `https://app.example.com/?code=EVT777&unlock=${code}` })
+    const items = buildPrintItems({
+      ...CODES,
+      codex: [entry('The First Note', 'first-note'), entry('Red1', 'red1'), entry('Lore', 'lore'), entry('The Second Note', 'second-note')],
+      stacks: {
+        'The First Note': { colour: 'silver', stack: 'the cold door', where: 'behind the fridge magnet 4' },
+        'The Second Note': { colour: 'Silver', stack: 'the cold door', where: 'under the stairs' },
+        Red1: { colour: 'red', stack: 'deepest', where: null },
+      },
+    }).filter((i) => i.kind === PrintKind.Codex)
+    // silver prints after red, before an unstacked poster
+    expect(items.map((i) => i.title)).toEqual(['Red1', 'The First Note', 'The Second Note', 'Lore'])
+    expect(STACK_ORDER.indexOf(DIGIT_CLUE_STACK)).toBeGreaterThan(STACK_ORDER.indexOf('red'))
+    const clues = items.filter((i) => isDigitClue(i.stack))
+    expect(clues).toHaveLength(2)
+    for (const c of clues) {
+      expect(c.code).toBe('')
+      expect(c.hint).not.toMatch(/type/)
+      // nothing printed holds a digit (the QR's link is the only way in)
+      expect([c.title, c.hint, c.code, stackLine(c.stack!)].join(' ')).not.toMatch(/\d/)
+    }
+    expect(stackLine(clues[0]!.stack!)).toBe('SILVER · the cold door')
+    expect(stackLine(clues[1]!.stack!)).toBe('SILVER · the cold door · under the stairs')
+    expect(stackInk('silver')).not.toBe(stackInk('purple'))
+    // every other poster keeps its typed code
+    expect(items.find((i) => i.title === 'Red1')!.code).toBe('red1')
+  })
+
+  it('wave 11: one invitation per reserved program, last, with the claim link and no typed code', () => {
+    const items = buildPrintItems({
+      ...CODES,
+      cast: ['Clippy'],
+      claims: [
+        { character: 'Microsoft Excel', claim: 'tok-excel', url: 'https://app.example.com/?code=EVT777&claim=tok-excel' },
+        { character: 'MS Paint', claim: 'tok-paint', url: 'https://app.example.com/?code=EVT777&claim=tok-paint' },
+      ],
+    })
+    const invites = items.filter((i) => i.kind === PrintKind.Invite)
+    expect(invites.map((i) => [i.ref, i.title, i.code, i.url, i.character])).toEqual([
+      ['I01', 'Microsoft Excel', '', 'https://app.example.com/?code=EVT777&claim=tok-excel', 'Microsoft Excel'],
+      ['I02', 'MS Paint', '', 'https://app.example.com/?code=EVT777&claim=tok-paint', 'MS Paint'],
+    ])
+    expect(items.at(-1)!.ref).toBe('I02')
+    // the claim token is never printed as text
+    for (const i of invites) expect([i.title, i.hint, i.code].join(' ')).not.toMatch(/tok-/)
+    expect(invites[0]!.hint).toMatch(/join as Microsoft Excel/)
+    // an older server: no invitations
+    expect(buildPrintItems(CODES).filter((i) => i.kind === PrintKind.Invite)).toEqual([])
   })
 
   it('falls back to building the join link on an older server (no rooms)', () => {
