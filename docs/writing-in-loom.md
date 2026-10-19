@@ -1489,7 +1489,7 @@ Some shows run on what the guests *know*. Declare a piece of lore with
 ```loom
 CODEX The Sandy File
   about: Trabolta
-  code: SANDY-1997
+  code: SANDY-LOOM
   text:
     Trabolta does not want omnipotence. Trabolta wants Sandy.
 ```

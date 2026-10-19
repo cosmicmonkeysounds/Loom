@@ -10,7 +10,7 @@
 //   (or `npx tsx scripts/accept/K-27.ts …`)
 //
 //   setup                walk the cue chain to y2k_clock on a fresh rehearsal
-//                        (Night.step 14: chess wins give the code from here)
+//                        (a chess win gives the code from Power On; wave 11)
 //   persona [--name N]   add a test persona to play the winner (prints its name)
 //   chess [--who N]      fire chess_won for that guest / persona (what ♟ They beat
 //                        the machine does) → The Door Code in their Codex. With no

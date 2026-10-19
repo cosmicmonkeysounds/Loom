@@ -522,7 +522,7 @@ The live layer is unchanged in shape; only its vocabulary generalised.
 ```loom
 CODEX The Sandy File
   about: Trabolta            // subject: a character, or a topic word
-  code: SANDY-1997           // unlock code (case / dashes / spaces ignored); omit → story-only
+  code: SANDY-LOOM           // unlock code (case / dashes / spaces ignored); omit → story-only
   known to: Norton           // extra holders from the start (the `about:` character always holds it)
   text:
     Trabolta does not want omnipotence. Trabolta wants Sandy.
