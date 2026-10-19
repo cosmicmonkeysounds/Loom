@@ -22,8 +22,9 @@ The mind file declares the hunt in its frontmatter (never shown to a model):
                                                   #   hunt answer
       never: ["1997", "'97", "V2-D5"]              # what no line of his may ever
                                                   #   carry, whoever typed it: the
-                                                  #   door code and every patch-bay
-                                                  #   pair (any spelling, either
+                                                  #   door code, every patch-bay
+                                                  #   pair and the pickup line
+                                                  #   the house judges (any spelling, either
                                                   #   way round: V2 → D5, v2-d5,
                                                   #   D5 to V2, V-2/D-5); a code
                                                   #   with separators (1 9 9 7,
@@ -96,7 +97,7 @@ _DROP = object()
 _LABELS = {"learned_add": "learned", "learned": "learned", "notes_add": "note", "brief": "brief", "claims_add": "claim", "summary": "summary"}
 
 
-#: What `scrub` puts before a `never` drop (a door code, a combination).
+#: What `scrub` puts before a `never` drop (a door code, a combination, the pickup line).
 NEVER_TAG = "secret · "
 
 
@@ -107,13 +108,14 @@ def split_dropped(dropped: list[str]) -> tuple[list[str], list[str]]:
 
 def drop_counts(hunt: int, never: int) -> str:
     """The director's log words for a scrub or a prune: hunt verdicts and
-    secrets (the door code, a combination) counted apart — a K-04 mind run
-    tells a program feeding him the code from a hunt claim."""
+    secrets (the door code, a combination, the pickup line: the `never`
+    list holds all three) counted apart — a K-04 mind run tells a program
+    feeding him the code from a hunt claim."""
     parts = []
     if hunt:
         parts.append(f"{hunt} hunt verdict(s)")
     if never:
-        parts.append(f"{never} secret(s) (door code / combo)")
+        parts.append(f"{never} secret(s) (door code / combo / pickup line)")
     return ", ".join(parts)
 
 

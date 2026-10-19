@@ -457,7 +457,7 @@ def test_scrub_drops_a_typed_door_code_or_combo_from_every_shared_line_of_the_mi
     from stagehand.agents.secrets import NEVER_TAG, split_dropped
 
     assert split_dropped(dropped) == ([], dropped) and all(d.startswith(NEVER_TAG) for d in dropped)
-    assert suppressed_summary(dropped) == "10 secret(s) (door code / combo)"
+    assert suppressed_summary(dropped) == "10 secret(s) (door code / combo / pickup line)"
 
 
 def test_scrub_counts_hunt_verdicts_and_secrets_apart():
@@ -472,7 +472,7 @@ def test_scrub_counts_hunt_verdicts_and_secrets_apart():
     dropped = NEVER.scrub(update)
     hunt, never = split_dropped(dropped)
     assert hunt == ["learned: the billboard says pickles"] and never == ["secret · note: Calculator says the door code is 1997."]
-    assert suppressed_summary(dropped) == "1 hunt verdict(s), 1 secret(s) (door code / combo)"
+    assert suppressed_summary(dropped) == "1 hunt verdict(s), 1 secret(s) (door code / combo / pickup line)"
     assert suppressed_summary(hunt) == "1 hunt verdict(s)"
 
 
@@ -487,8 +487,8 @@ def test_prune_drops_a_restored_code_from_everything_the_voice_reads():
     mind.people["g1"] = Dossier(id="g1", name="Ada", summary="Typed V4-D1.", claims=["V2 to D5", "plays chess"])
     mind.threads["dm:Trabolta"] = ThreadMemo(summary="She said the code was 1997.")
     # Secrets, not hunt verdicts: the restore log said "dropped 7 restored hunt verdict(s)" (W8 review).
-    assert NEVER.prune(mind) == (0, 7) and drop_counts(0, 7) == "7 secret(s) (door code / combo)"
-    assert drop_counts(2, 1) == "2 hunt verdict(s), 1 secret(s) (door code / combo)" and drop_counts(0, 0) == ""
+    assert NEVER.prune(mind) == (0, 7) and drop_counts(0, 7) == "7 secret(s) (door code / combo / pickup line)"
+    assert drop_counts(2, 1) == "2 hunt verdict(s), 1 secret(s) (door code / combo / pickup line)" and drop_counts(0, 0) == ""
     assert [e["claim"] for e in mind.learned] == ["Ada is a nurse"]
     assert mind.notes == ["Bo is loud"] and mind.brief == "Be desperate." and mind.world == ["the cold room is open"]
     assert mind.people["g1"].summary == "" and mind.people["g1"].claims == ["plays chess"] and mind.threads["dm:Trabolta"].summary == ""
@@ -586,3 +586,9 @@ def test_the_shipped_mind_file_never_lets_him_hold_or_say_the_pickup_line():
     assert update["brief"] == "You are heartbroken.\nAsk for the line."
     said = withhold_never(persona, Reply(say=f"Is it '{p1['answer']}'? I cannot tell."))
     assert said.say == persona.fallback
+
+
+def test_a_dropped_pickup_line_is_never_worded_as_the_door_code_alone() -> None:
+    """The pickup line sits on `never` too (trabolta/answers): the log must
+    not tell a director the door code reached his mind when it was the line."""
+    assert "pickup line" in drop_counts(0, 1) and drop_counts(0, 1).startswith("1 secret(s)")
