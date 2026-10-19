@@ -126,6 +126,20 @@ def test_the_heart_never_hands_out_a_code_or_a_combination():
     assert "never know a combination or a door code" in p.bargain
 
 
+def test_stand_down_waits_for_the_standing_down_block_not_the_heart():
+    # Wave 11: the heart block applies whenever he is awake; only the
+    # STANDING DOWN block (the Y2K hour) lets him fire stand_down, so the
+    # page's rule and the bargain must name that block, never "at your heart".
+    p = load_persona(TRABOLTA)
+    assert "Never fire stand_down unless the STANDING DOWN situation block is below." in p.system
+    assert "says the program is\n  at your heart" not in p.system
+    assert "STANDING DOWN situation block" in p.bargain
+    early = build_messages(p, heart_request("true", **{"Night.phase": "hunt_1", "Night.step": "5"}))[0]["content"]
+    assert "=== SITUATION: AT YOUR HEART" in early and "STANDING DOWN. You have one power" not in early
+    late = build_messages(p, heart_request("true"))[0]["content"]
+    assert "STANDING DOWN. You have one power" in late
+
+
 def test_the_mind_knows_the_door_is_a_keypad_not_a_click():
     p = load_persona(TRABOLTA)
     assert "clicked in the walls" not in p.phase_cues["majority"]
