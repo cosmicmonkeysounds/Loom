@@ -24,8 +24,10 @@ by late-90s Web 1.0 aesthetics and existentialism.*
 > and the Server Door terminal, the four digit notes, The Heart once
 > Trabolta is awake, reserved featured programs, 📷 Scan, guest countdowns,
 > near-miss judging, the present-only majority, the booths' own fallbacks,
-> Trabolta's busy line) is merged, not deployed**: its §5
-> *Wave N status* tables list every build and the device check still to do.
+> Trabolta's busy line) shipped as `w11-1019`, and wave 11b (Trabolta rules
+> on near misses, a marked program at his heart, the door code moved) as
+> `w11b-1019`**: OCT31.md §5's *Wave N status* tables list every build and
+> the device check still to do.
 >
 > **📋 [CHECKLIST.md](./CHECKLIST.md): the living tech checklist, covering
 > the software and hardware still to do before the party.** Tick items
@@ -270,7 +272,9 @@ to `reset_server_room`.
    `generated/print-stacks.md` (gold: the hunt answers · green · blue ·
    red: the character facts) and hide each pile where its row says.
    Wave 11: hide the four **silver** digit notes in their rooms (never the
-   server room or a bathroom), tape the new keypad sign by the door, and
+   server room or a bathroom), tape the new keypad sign by the door
+   (wave 11b moved the code: program the keypad to `facts.json`
+   `door.code`; the notes and the sign print the same as before), and
    send the featured programs' **Invitations** (their claim QRs, *Casting*).
 7. **Codes.** The guest, performer and mod codes are pinned to the project
    across End → relaunch (K-10), so printed QRs keep working. If a mod or
