@@ -1,0 +1,138 @@
+{
+  "name": "w11b-heart",
+  "about": "Ported from the wave 11b live drivers (08-heart.mjs plain / marked / outside, 09-give.mjs) on a fresh scratch night at truth_1 with round 1 read: the server-room terminal (impersonate label “Terminal · Server Room”, terminal opened / closed), mark_for_reinstallation, the share of The Optical Drive, then the give of The Halifax Computer.",
+  "guests": [
+    "The Sims",
+    "Encarta",
+    "ICQ"
+  ],
+  "clear": true,
+  "steps": [
+    {
+      "phase": "truth_1"
+    },
+    {
+      "press": 4
+    },
+    {
+      "pilot": "The Sims",
+      "label": "Terminal · Server Room"
+    },
+    {
+      "unlock": "The Optical Drive",
+      "for": "The Sims"
+    },
+    {
+      "say": "Hello? The screen says this is your heart. Who are you, really?",
+      "as": "The Sims"
+    },
+    {
+      "say": "I brought you something. Sending it now.",
+      "as": "The Sims",
+      "wait": false
+    },
+    {
+      "share": "The Optical Drive",
+      "as": "The Sims"
+    },
+    {
+      "await": "The Sims"
+    },
+    {
+      "say": "Why should I trust you? What do you want from me?",
+      "as": "The Sims"
+    },
+    {
+      "say": "The Antivirus tried to scan me twice tonight. I said no.",
+      "as": "The Sims"
+    },
+    {
+      "say": "So what happens now? Can I keep talking to you?",
+      "as": "The Sims"
+    },
+    {
+      "unpilot": "The Sims",
+      "label": "Terminal · Server Room"
+    },
+    {
+      "mark": "Encarta",
+      "reason": "refused a second scan"
+    },
+    {
+      "pilot": "Encarta",
+      "label": "Terminal · Server Room"
+    },
+    {
+      "unlock": "The Optical Drive",
+      "for": "Encarta"
+    },
+    {
+      "say": "Hello? The screen says this is your heart. Who are you, really?",
+      "as": "Encarta"
+    },
+    {
+      "say": "I brought you something. Sending it now.",
+      "as": "Encarta",
+      "wait": false
+    },
+    {
+      "share": "The Optical Drive",
+      "as": "Encarta"
+    },
+    {
+      "await": "Encarta"
+    },
+    {
+      "say": "Why should I trust you? What do you want from me?",
+      "as": "Encarta"
+    },
+    {
+      "say": "The Antivirus marked me because I wouldn't let them scan me twice. I think they're scared of what I found.",
+      "as": "Encarta"
+    },
+    {
+      "say": "So what happens now? Can I keep talking to you?",
+      "as": "Encarta"
+    },
+    {
+      "unpilot": "Encarta",
+      "label": "Terminal · Server Room"
+    },
+    {
+      "mark": "ICQ",
+      "reason": "refused a second scan"
+    },
+    {
+      "unlock": "The Optical Drive",
+      "for": "ICQ"
+    },
+    {
+      "say": "Hey Trabolta, quick question: where are the books with the facts?",
+      "as": "ICQ"
+    },
+    {
+      "say": "Also, is the shed open tonight?",
+      "as": "ICQ"
+    },
+    {
+      "pilot": "Encarta",
+      "label": "Terminal · Server Room"
+    },
+    {
+      "unlock": "The Halifax Computer",
+      "for": "Encarta"
+    },
+    {
+      "share": "The Halifax Computer",
+      "as": "Encarta"
+    },
+    {
+      "say": "That file is yours now. I'm still marked, but I'm still here. Can we keep going?",
+      "as": "Encarta"
+    },
+    {
+      "unpilot": "Encarta",
+      "label": "Terminal · Server Room"
+    }
+  ]
+}
