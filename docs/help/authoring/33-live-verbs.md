@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: arm, two taps, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -325,12 +325,42 @@ INTERACTION go to the bathroom
 character that owns a `when` for the event counts too, so a trait's
 `when vouch for program:` makes every host's card lead with **Vouch**. A
 performer's guest card shows their own buttons that are on offer now and
-folds every other one under **More…** — nothing disappears, and nothing
-is enforced (the `when` still decides what happens). `while:` is a
-condition: on a performer's button it reads the world with `self` = the
-performer; on a guest's it is evaluated for that guest (the ROLE's name,
-`program`, is them), and a false one is **hidden** from their pass — so
-**Back from the bathroom** only shows while they are away.
+folds the rest under **More…** (buttons with no `by:`, and their own out
+of phase).
+
+**`by:` is enforced.** The server refuses a press of a `by:` button from
+any other booth (403 *not your button: … is for …*), and that booth's
+card never shows it. A button with no `by:` stays anyone's, a
+moderator's booth may press any, and a director's quick-fire from Run
+always fires it. Because the server keeps other booths out, a rule for
+a `by:` button can be a plain story rule: a quick-fire has no actor, so
+a story rule fires once where a hook on a trait would fire once per
+character that has it.
+
+`while:` is not enforced (the `when` still decides what happens). It is
+a condition: on a performer's button it reads the world with `self` =
+the performer; on a guest's it is evaluated for that guest (the ROLE's
+name, `program`, is them), and a false one is **hidden** from their
+pass — so **Back from the bathroom** only shows while they are away.
+
+### Two taps for a press with no way back: `arm:`
+
+```loom
+INTERACTION radio_combo_b
+  label: 💥 Patch: Combo B is in
+  who: performer
+  by: Antivirus
+  arm: true
+```
+
+`arm: true` makes a button **arm then fire**: the first tap arms it (it
+turns black and says *Tap again to fire*), a second tap between 300 ms
+and 4 s later fires it, and it disarms by itself after that or when the
+page is left. Use it on a performer's or a guest's button whose press
+can't be undone — one that ends the night, trips an alarm, hands over a
+secret or plays a once-a-night moment. It is the same arm model as the
+Director page's cue sheet. The server never refuses an unarmed press:
+`arm:` is the app's guard against a stray tap, not a lock.
 
 The `who: admin` interactions are also the Director page's **cue sheet**,
 in the order you declare them. Add `sequence: false` to one a machine
@@ -427,15 +457,14 @@ nothing.
 ### A button as a fallback for a machine
 
 The same event can come from a device, a performer and a director. In
-*Trapped in the Internet* the **King** — a chess piece in the
-simulation, guarding the server-room door on the house map — posts
-`chess won` himself when a program checkmates him on the tent tablet;
-until he is device-checked a chess phone on the wall is the fallback,
-a host who sees the mate presses a button on the winner's card, and a
-dead tablet means the director fires `chess won` from the cue sheet,
-naming the winner. The prize is knowledge — the code to the real
-server-room door's keypad, a secret codex entry — so the rule needs a
-recipient:
+*Trapped in the Internet* the **King** plays chess on a wall terminal
+outside the real server-room door, and that terminal posts `chess won`
+itself when a program checkmates him. When it can't (it died mid-mate,
+the Wi-Fi dropped), a host who saw the mate presses a button on the
+winner's card, and if nobody could, the director fires `chess won` from
+the cue sheet, naming the winner. The prize is knowledge — the code to
+the real server-room door's keypad, a secret codex entry — so the rule
+needs a recipient:
 
 ```loom
 INTERACTION beat the machine
@@ -462,9 +491,13 @@ when chess won for program:
 
 Because the rule's head names a subject (`for program`), the cue sheet
 and the director's phone ask **who?** before firing it. A device that
-can report (the tent tablet, a sensor through the show-control bridge)
+can report (the door terminal, a sensor through the show-control bridge)
 fires the same names — `chess won`, `chess lost`, `chess drawn` — and
-the story treats them alike. Write the rule so a duplicate is harmless
+the story treats them alike. The event server fires some itself: a hit
+on the King in a reinstallation game is `king hit` (and `king fallen`
+at 0) for the guest who landed it, after the server has written his new
+health into the story (`Night.king_hp`). The rule only narrates; it
+never changes the health itself. Write the rule so a duplicate is harmless
 (here a second win changes nothing but a note), and never let a machine
 drive something a person relies on for safety: the real door's lock is
 standalone, and the story only hears that it opened
