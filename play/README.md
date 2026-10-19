@@ -87,11 +87,17 @@ A `?unlock=` / `?checkin=` link that opens with **no** session (a QR app's
 webview, another browser) lands on `LinkLanding` — the code in big type
 ("Type X into your Codex in the app you joined with") or the sign's room —
 with *I haven't joined yet → Join* as the secondary path; never the picker.
+A session just cut in this browser (a restart) shows its notice instead,
+with *Join again →* (the link still redeems / checks in once in).
 **Reserved programs (wave 11, `claim.ts`).** An invitation's
 `?code=…&claim=<token>` opens the guest join and rides `/api/identities`,
 the picture lookup and `/api/guest/register`; rows with `reserved: true`
 read 🔒 Reserved, and a 409 `reserved` says *This program is saved for an
-invited guest — ask a host.* The claim leaves the URL once the guest is in.
+invited guest — ask a host.* The claim leaves the URL once the guest is in
+and is kept in `loom.guest.claim` (keyed by the event code), so a cut
+session rejoins with it. The directory search carries it too and its
+`reserved` hits are locked; a picker showing a 🔒 tile re-asks every 12 s
+(`RESERVED_POLL_MS`), so a director's *Unlock for 2 min* reaches it.
 **Countdowns (wave 11, `countdown.tsx`).** `GuestView.countdowns` (the
 story's `countdown: … for guests` lines) tick in a strip under the room
 header (and the identity card on a phone's room list) off the snapshot's
@@ -162,7 +168,7 @@ passes `bathroom:`), `pass`, the 📝 **File a fact** card
 pick a question, type an answer (≤ `FACT_MAX`, 200), set the slider
 *Please select your confidence level in this response* (1–100; it starts
 **unset** — greyed, "not set" — and *File it* waits until the guest sets
-it, wave 11) →
+it by touch or a value key, never by tabbing onto it, wave 11) →
 `{question, answer, confidence}` → `fact answered` (the server judges it;
 the phone never sees the verdict), and the 💬 **answer** card (`show
 answer "…" … with question: "P1"`): one free-text line → `{text}` →
