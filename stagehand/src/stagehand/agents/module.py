@@ -920,8 +920,8 @@ class Agents:
             d.add_memo(memo, heart=heart, thought=self._voice_thought(character, rid))
         story_mind.note_heart(d, req, heart)
         story_mind.after_turn(persona, d, req, phase, reply.say)
-        if reply.say:
-            mind.remember_said(thread, reply.say)
+        if reply.say and story_mind.keep_said(persona, reply.say):
+            mind.remember_said(thread, reply.say, heart=heart)
         history = [h for h in req.get("history", []) if isinstance(h, dict)]
         newest = max((int(h.get("seq", 0)) for h in history), default=0)
         mind.saw_exchange(sid, who, kind, thread, newest)

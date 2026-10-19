@@ -263,7 +263,7 @@ class Mind:
     live_powers: list[str] | None = None
     #: Codex titles he may tell in full now (the card's `tell:`).
     tell: list[str] = field(default_factory=list)
-    #: His last final lines: [{"thread", "text", "at"}], last 20. Persisted, never reported.
+    #: His last final lines: [{"thread", "text", "at", "heart"}], last 20. Persisted, never reported.
     said: list[dict[str, Any]] = field(default_factory=list)
     rev: int = 0
     exchanges: int = 0
@@ -560,12 +560,13 @@ class Mind:
             self._revision("story", touched, None)
         return touched
 
-    def remember_said(self, thread: str, text: str, at: float | None = None) -> None:
-        """One final line he sent (the voice's "ALREADY SAID", every thread)."""
+    def remember_said(self, thread: str, text: str, at: float | None = None, heart: bool = False) -> None:
+        """One final line he sent (the voice's "ALREADY SAID", every thread).
+        `heart`: said at his heart — shown elsewhere only at the heart."""
         line = " ".join(str(text).split())
         if not line:
             return
-        self.said.append({"thread": str(thread), "text": line[:600], "at": time.time() if at is None else at})
+        self.said.append({"thread": str(thread), "text": line[:600], "at": time.time() if at is None else at, "heart": bool(heart)})
         del self.said[:-MAX_SAID]
 
     def _match_stage(self, name: str) -> str | None:
@@ -907,7 +908,7 @@ class Mind:
         m.live_powers = [str(p) for p in powers if isinstance(p, str)] if isinstance(powers, list) else None
         m.tell = _strs(doc.get("tell"), 40, 200)
         m.said = [
-            {"thread": str(x.get("thread") or ""), "text": str(x.get("text") or "")[:600], "at": float(x.get("at") or 0.0)}
+            {"thread": str(x.get("thread") or ""), "text": str(x.get("text") or "")[:600], "at": float(x.get("at") or 0.0), "heart": x.get("heart") is True}
             for x in _list(doc.get("said"))
             if isinstance(x, dict) and str(x.get("text") or "").strip()
         ][-MAX_SAID:]

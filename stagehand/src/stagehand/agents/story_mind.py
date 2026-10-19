@@ -327,9 +327,20 @@ def free_replies(req: dict[str, Any]) -> list[str]:
 
 
 def said_for(mind: Mind, req: dict[str, Any], thread: str) -> Said:
+    """His last free replies to them, and his last lines anywhere else — a
+    line said at his heart only while this speaker stands there too."""
     to_them = tuple(one_line(t) for t in free_replies(req)[-3:])
-    elsewhere = tuple(one_line(x.get("text", "")) for x in mind.said if x.get("thread") != thread)[-5:]
+    at_heart = _true(((req.get("them") or {}).get("vars") or {}).get("at_the_heart"))
+    elsewhere = tuple(one_line(x.get("text", "")) for x in mind.said if x.get("thread") != thread and (at_heart or not x.get("heart")))[-5:]
     return Said(to_them=to_them, elsewhere=elsewhere)
+
+
+def keep_said(persona: Persona, say: str) -> bool:
+    """A line goes into `Mind.said` (shown to other guests' turns) only with
+    no `never` word and no hunt answer word in it — a guest may have typed
+    an answer he then echoed in their own thread."""
+    line = one_line(say)
+    return bool(line) and not persona.secrets.leaks(line) and not Secrets(match=persona.secrets.match).names_topic(line)
 
 
 def uses_catchphrase(persona: Persona, say: str) -> bool:

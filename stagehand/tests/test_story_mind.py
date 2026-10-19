@@ -428,6 +428,19 @@ def test_already_said_drops_story_lines_and_names_no_recipient(tmp_path):
     assert story_mind.free_replies({"history": old}) == ["Filed for H1 · +50 Truthcoin.", "A free reply."]
 
 
+def test_already_said_keeps_no_answer_word_and_heart_lines_only_at_the_heart(tmp_path):
+    agents, voice = make(
+        tmp_path,
+        FakeVoice(FakeReply(say="Marmalade, you say? Noted."), FakeReply(say="XYZZY-PLUGH is mine."), FakeReply(say="Candid at my heart."), FakeReply(say="Plain words."), FakeReply(say="x"), FakeReply(say="y")),
+    )
+    run(handle(agents, req(pid="g-2", name="Bob", rid="1"), req(pid="g-2", name="Bob", rid="2"), req(pid="g-2", name="Bob", them_vars={"at_the_heart": "true"}, rid="3"), req(pid="g-2", name="Bob", rid="4")))
+    said = agents.minds["Trabolta"].said
+    assert [x["text"] for x in said] == ["Candid at my heart.", "Plain words."] and said[0]["heart"] is True
+    run(handle(agents, req(rid="5"), req(them_vars={"at_the_heart": "true"}, rid="6")))
+    assert voice.calls[4][1].said.elsewhere == ("Plain words.",)
+    assert voice.calls[5][1].said.elsewhere == ("Candid at my heart.", "Plain words.")
+
+
 def test_the_catchphrase_is_marked_used_once_he_has_said_it(tmp_path):
     agents, voice = make(tmp_path, FakeVoice(FakeReply(say="Your request has been LOGGED, program."), FakeReply(say="Next.")))
     run(handle(agents, req(rid="1"), req(rid="2")))
