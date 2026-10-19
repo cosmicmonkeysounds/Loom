@@ -24,13 +24,13 @@
         "text": "Welcome, program. I have been expecting you."
       },
       {
-        "seq": 4,
+        "seq": 6,
         "mine": true,
         "from": "Trabolta",
         "text": "Filed for Q1."
       },
       {
-        "seq": 5,
+        "seq": 7,
         "mine": false,
         "from": "Ada",
         "text": "Hello, are you there?"
@@ -52,7 +52,7 @@
         {
           "id": "The Ribbon",
           "title": "The Ribbon",
-          "about": "Trabolta",
+          "about": null,
           "text": "A blue ribbon from the county fair."
         }
       ]
@@ -70,7 +70,7 @@
         {
           "id": "The Ribbon",
           "title": "The Ribbon",
-          "about": "Trabolta",
+          "about": null,
           "text": "A blue ribbon from the county fair."
         },
         {
@@ -114,25 +114,25 @@
         "text": "Welcome, program. I have been expecting you."
       },
       {
-        "seq": 4,
+        "seq": 6,
         "mine": true,
         "from": "Trabolta",
         "text": "Filed for Q1."
       },
       {
-        "seq": 5,
+        "seq": 7,
         "mine": false,
         "from": "Ada",
         "text": "Hello, are you there?"
       },
       {
-        "seq": 6,
+        "seq": 8,
         "mine": true,
         "from": "Trabolta",
         "text": "I am here. Thank you for the ribbon."
       },
       {
-        "seq": 7,
+        "seq": 9,
         "mine": false,
         "from": "Ada",
         "text": "Do you like it?"
@@ -154,7 +154,7 @@
         {
           "id": "The Ribbon",
           "title": "The Ribbon",
-          "about": "Trabolta",
+          "about": null,
           "text": "A blue ribbon from the county fair."
         }
       ]
@@ -172,7 +172,7 @@
         {
           "id": "The Ribbon",
           "title": "The Ribbon",
-          "about": "Trabolta",
+          "about": null,
           "text": "A blue ribbon from the county fair."
         },
         {
