@@ -176,6 +176,18 @@ describe("Trapped in the Internet — compile", () => {
     for (const c of m.characters.values()) if (c.wallet !== null) expect(["CRA Agent Software", "Runescape"]).toContain(c.id);
   });
 
+  it("the runbook's door and terminal rows follow wave 11: no riddle path, The Heart once he is awake, chess from the Server Door terminal", () => {
+    const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
+    const row = (name: string) => readme.split("\n").find((l) => l.startsWith(`| **${name}**`)) ?? "";
+    const door = row("The server-room door");
+    expect(door).not.toMatch(/riddle|from step 14 the first opening/u);
+    expect(door).toMatch(/digit notes/u);
+    expect(door).toMatch(/once Trabolta is awake/iu);
+    const terminals = row("Terminals");
+    expect(terminals).not.toMatch(/tent tablet's `chess won`/u);
+    expect(terminals).toMatch(/view=chess/u);
+  });
+
   it("pins the codex: 183 entries, 94 codes, every facts.json code resolving, no STAMPED anywhere", () => {
     // Wave 11: + the cold door's four digit notes (facts.json door.clues).
     expect(m.codex.size).toBe(183);
