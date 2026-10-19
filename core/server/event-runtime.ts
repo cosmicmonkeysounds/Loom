@@ -113,9 +113,11 @@ import {
   type AgentLine,
   type AgentPower,
   type AgentQueue,
+  type AgentRecent,
   type AgentRequest,
   type AgentThread,
 } from "./agents.ts";
+import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
 
 /** A guest view is never rendered against a null sim — this stands in. */
@@ -1916,23 +1918,35 @@ export class EventRuntime {
     if (sim === null) return null;
     const who = thread.audience[0]!;
     const performer = who.startsWith("@") ? who.slice(1) : null;
-    const lines = this.chat
-      .all()
-      .filter((m) => m.channel === thread.channel && m.kind === "line" && !m.hidden && m.audience !== "all" && m.audience.includes(who));
+    // Wave 12 (C1.6): read on every build, so a flip needs no restart of
+    // the request; off = the base branch's request, field for field.
+    const recentOn = agentRecentOn();
+    const all = this.chat.all();
+    const lines = all.filter((m) => m.channel === thread.channel && m.kind === "line" && !m.hidden && m.audience !== "all" && m.audience.includes(who));
+    const def = sim.model.characters.get(thread.character);
+    const tag: StoryTagContext | null = recentOn ? { character: thread.character, hold: def?.hold ?? null, busy: def?.busy ?? null, storyTexts: storyTexts(all, thread.character) } : null;
     const history: AgentLine[] = lines.slice(-AGENT_HISTORY).map((m) => ({
       seq: m.seq,
       mine: m.from === thread.character,
       from: m.from,
       text: m.text,
+      ...(tag !== null && storyTag(m, tag) ? { story: true as const } : {}),
     }));
     const last = [...history].reverse().find((l) => !l.mine);
     if (last === undefined) return null; // nothing said to answer
     const world = sim.worldEntries();
     const varsOf = this.agentVarsOf(world);
     const globals = this.agentGlobals(world);
-    const codex = (holder: string) => sim.codexFor(holder).filter((e) => !e.secret).map((e) => ({ id: e.id, title: e.title, about: e.about, text: e.text }));
-    const def = sim.model.characters.get(thread.character);
+    // Titles only (wave 12, C1.3) blanks the text the worker's own guard
+    // reads for the hunt-answer marker, so an entry carrying it is left out
+    // here (the gift check's twin); with the text sent the worker sees it.
+    const codex = (holder: string, text = true) =>
+      sim
+        .codexFor(holder)
+        .filter((e) => !e.secret && (text || !(e.title.includes(HUNT_ANSWER_MARK) || e.text.includes(HUNT_ANSWER_MARK))))
+        .map((e) => ({ id: e.id, title: e.title, about: e.about, text: text ? e.text : "" }));
     const speakerId = performer ?? who;
+    const speakerName = performer ?? sim.persons.get(who)?.name ?? who;
     return {
       id,
       character: thread.character,
@@ -1950,7 +1964,9 @@ export class EventRuntime {
       },
       them: {
         vars: varsOf(speakerId),
-        codex: codex(speakerId),
+        // Wave 12 (C1.3): the guest's entries as titles only; his own keep
+        // their text (the classic prompt reads it).
+        codex: codex(speakerId, !recentOn),
         location: performer === null ? sim.locationOf(who) : null,
       },
       world: globals,
@@ -1958,7 +1974,51 @@ export class EventRuntime {
       // The hub's clock (an injected one in tests), so its max-age check
       // and a pause's shift read the same time.
       at: this.clock(),
+      ...(tag !== null ? this.agentRecentOf(thread, performer !== null ? "performer" : "guest", speakerId, speakerName, all, lines, tag) : {}),
     };
+  }
+
+  /** `recent` + `storyAt` for one request (wave 12, C1.2): rebuilt from the
+   *  chat log, the world and the facts ledger every time, never stored. */
+  private agentRecentOf(thread: AgentThread, kind: "guest" | "performer", id: string, name: string, all: readonly ChatMessage[], lines: readonly ChatMessage[], tag: StoryTagContext): { recent: AgentRecent[]; storyAt: number } {
+    const sim = this.sim!;
+    const storyAt = sim.elapsed();
+    let lastFreeReply: number | null = null;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const m = lines[i]!;
+      if (m.from === thread.character && !storyTag(m, tag)) {
+        lastFreeReply = m.ts;
+        break;
+      }
+    }
+    const book = this.factsBook();
+    const filings = book === null || kind !== "guest" ? [] : this.factsWatch.all(sim, book.confirm).map((f) => ({ person: f.person, question: f.question, at: f.at }));
+    const topics = new Map((book?.raw.questions ?? []).map((q) => [q.id, q.topics ?? []] as const));
+    const mentionsAnswer = book === null ? undefined : answerMentions([...book.questions, ...book.answers].map((k) => ({ forms: k.forms, topics: topics.get(k.id) ?? [] })));
+    // C0.1: a house line filled in from a secret character (the Kernel) is
+    // never his to read, whatever the hour.
+    const secretHeads = new Set([...sim.model.characters.values()].filter((c) => c.secret).map((c) => c.id));
+    const secretValues = sim.world
+      .entries()
+      .flatMap(([path, v]) => (v.kind === "string" && secretHeads.has(path.split(".")[0]!) ? [v.value] : []));
+    const mentionsSecret = secretMentions(secretValues, [...sim.persons.values()].map((p) => p.name));
+    const recent = buildRecent({
+      character: thread.character,
+      speaker: { kind, id, name },
+      messages: all,
+      storyAt,
+      lastFreeReply,
+      codex: (entry) => {
+        const e = sim.model.codex.get(entry);
+        return e === undefined ? undefined : { secret: e.secret, title: e.title, text: e.text };
+      },
+      peek: (path) => worldString(sim.world.peek(path)),
+      persons: [...sim.persons.values()].map((p) => ({ id: p.id, name: p.name })),
+      filings,
+      ...(mentionsAnswer !== undefined ? { mentionsAnswer } : {}),
+      mentionsSecret,
+    });
+    return { recent, storyAt };
   }
 
   /** Every `INTERACTION … who: agent`, with this run's use count. */
@@ -2027,6 +2087,7 @@ export class EventRuntime {
         hasCode: e.code !== null,
       })),
       powers: this.agentPowers(),
+      ...(this.phase === "paused" ? { paused: true } : {}),
     };
   }
 
@@ -2135,6 +2196,9 @@ export class EventRuntime {
       characters: [...characters],
       agents: known,
       unknown: [...characters].filter((c) => !known.includes(c)),
+      // Wave 12 (C1.4): the newest thought this server holds per character
+      // (the worker's own stamp), so a reconnect replays only what is newer.
+      traceAfter: Object.fromEntries([...characters].map((c) => [c, this.agentTrace.list(c, 0, 1)[0]?.at ?? 0])),
     });
     this.agentStreams.add(res);
     this.agents.attach(worker);
