@@ -28,6 +28,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { buildRecent, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
 import type { AgentRecent, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
+import { scenarioDir, scenarioSource } from "../examples/load.ts";
+import { parseFactsText, FACTS_FILE } from "../src/facts.ts";
+import { mentionsKey, nearTokens } from "../src/answer-match.ts";
+import { TO_Y2K } from "../../scripts/accept/chains.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 
@@ -538,6 +542,207 @@ describe("the stream hello and the facts document (C1.4, C1.5)", () => {
     expect((await facts())["paused"]).toBe(true);
     rt.openDoors();
     expect("paused" in (await facts())).toBe(false);
+    rt.dispose();
+  });
+});
+
+// ───────────────────────── the show: what never reaches him ─────────────────────────
+
+const SHOW = "trapped-in-the-internet";
+const SHOW_DIR = scenarioDir(SHOW);
+const SHOW_SRC = scenarioSource(SHOW);
+const FACTS_TEXT = readFileSync(join(SHOW_DIR, FACTS_FILE), "utf8");
+const FACTS = parseFactsText(FACTS_TEXT).facts!;
+const SHOW_CODES = { event: "EVT913", prime: "PRM913", mod: "MOD913" };
+const SLOW = 300_000;
+const MARK = "▒ HUNT ANSWER";
+
+/** Every answer form (hunt questions and the pickup line), read at run time. */
+const KEYS = [...FACTS.questions.map((q) => ({ id: q.id, forms: [q.answer, ...q.accept], topics: q.topics ?? [] })), ...FACTS.answers.map((a) => ({ id: a.id, forms: [a.answer, ...a.accept], topics: [] as string[] }))];
+/** A form made only of numbers below 100: counts only beside its own topic
+ *  (a clock or a fragment number is everywhere), as trabolta-answers does. */
+const weakForm = (form: string): boolean => {
+  const t = nearTokens(form);
+  return t.length > 0 && t.every((w) => /^[0-9]+$/u.test(w) && Number(w) < 100);
+};
+/** The ids of the answers `text` mentions (never the forms: nothing here prints one). */
+function answerIdsIn(text: string): string[] {
+  const out = new Set<string>();
+  for (const k of KEYS) for (const f of k.forms) if (mentionsKey(text, f) && (!weakForm(f) || k.topics.some((t) => mentionsKey(text, t)))) out.add(k.id);
+  return [...out];
+}
+const fold = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim();
+/** The mind file's generated `secrets.never` list, read at run time. */
+function neverWords(): string[] {
+  const mind = readFileSync(join(SHOW_DIR, "trabolta.mind.md"), "utf8");
+  const block = /^ {2}never:\n((?: {4}- .*\n)+)/mu.exec(mind)?.[1] ?? "";
+  return block
+    .split("\n")
+    .map((l) => l.replace(/^ {4}- /u, "").trim().replace(/^(['"])(.*)\1$/u, "$2"))
+    .map(fold)
+    .filter((w) => w !== "");
+}
+const hasPhrase = (text: string, phrase: string): boolean => ` ${fold(text)} `.includes(` ${phrase} `);
+
+describe("on the show: recent and the history never carry a secret (C1.6)", () => {
+  it("no secret codex title, no hunt-answer card, nothing from the Kernel, no verdict in a filing, no answer in a house line, from his introduction to the bob", { timeout: SLOW }, async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-recent-show-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: SHOW_CODES, scenarioName: SHOW, scenarioSource: SHOW_SRC, facts: FACTS_TEXT, joinBase: () => "http://localhost" });
+    rt.openDoors();
+    const sim = () => rt.liveSim!;
+    const mod = async (name: string, extra: Record<string, unknown> = {}) => {
+      const r = await call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
+      expect(r.status, name).toBe(200);
+      return r;
+    };
+    const guests: Array<{ id: string; token: string; name: string }> = [];
+    for (const name of ["Calculator", "Winamp", "Notepad", "Minesweeper"]) {
+      const g = await call(rt, "POST", "/api/guest/register", { name, passcode: SHOW_CODES.event });
+      expect(g.status, name).toBe(200);
+      const id = g.json["id"] as string;
+      const token = g.json["token"] as string;
+      await mod("captcha answered", { subject: id, args: { passed: false } });
+      await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+      await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token });
+      await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true });
+      guests.push({ id, token, name });
+    }
+    const [calc, amp, pad, mine] = guests as [(typeof guests)[0], (typeof guests)[0], (typeof guests)[0], (typeof guests)[0]];
+    const clippy = await call(rt, "POST", "/api/prime/login", { character: "Clippy", passcode: SHOW_CODES.prime });
+    expect(clippy.status).toBe(200);
+    const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
+    const requests = () => worker.res.frames().filter(([e]) => e === "request").map(([, x]) => x as AgentRequest);
+    let answered = 0;
+    const answerAll = async () => {
+      for (const r of requests().slice(answered)) await call(rt, "POST", "/api/agent/reply", { id: r.id, say: "Your request has been logged.", adjust: {} }, { moderator: true });
+      answered = requests().length;
+    };
+    const ask = async (g: (typeof guests)[0], text = "Hello. What do you need from me?") => {
+      expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text }, { token: g.token })).status).toBe(200);
+      await answerAll();
+    };
+    const askAll = async () => {
+      for (const g of guests) await ask(g);
+      expect((await call(rt, "POST", "/api/prime/say", { channel: "cast:Trabolta", text: "Boss, a report." }, { token: clippy.json["token"] as string })).status).toBe(200);
+      await answerAll();
+    };
+    /** Every guest offers him every entry they hold: the story refuses the
+     *  secret and the others' lore; what lands is a gift. */
+    const offerAll = async () => {
+      for (const g of guests) for (const e of sim().codexFor(g.id)) await call(rt, "POST", "/api/guest/codex/share", { entry: e.id, to: "Trabolta" }, { token: g.token });
+    };
+    const file = async (g: (typeof guests)[0], question: string, answer: string, confidence = 100) => {
+      const card = rt.chatHistoryFor(g.id).filter((m) => m.kind === "widget" && m.widget?.kind === "fact").at(-1);
+      expect(card, `${g.name}'s fact card`).toBeDefined();
+      return call(rt, "POST", "/api/guest/widget", { seq: card!.seq, result: { question, answer, confidence } }, { token: g.token });
+    };
+    const codeOf = (q: string) => FACTS.questions.find((x) => x.id === q)!.codex!.code;
+    const keyOf = (q: string) => FACTS.questions.find((x) => x.id === q)!.answer;
+
+    // Walk the night, asking him at every turn.
+    for (const n of TO_Y2K.slice(0, 4)) await mod(n); // → introduce_trabolta
+    await askAll();
+    await mod("mark_for_reinstallation", { subject: mine.id, args: { reason: "a test" } });
+    await mod("start_the_hunt");
+    for (const g of guests.slice(0, 3)) for (const q of ["H1", "H2", "H3"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    expect((await file(calc, "H1", keyOf("H1"))).status).toBe(200);
+    expect((await file(amp, "H2", keyOf("H2"))).status).toBe(200);
+    expect((await file(pad, "H3", keyOf("H3"), 60)).status).toBe(200);
+    expect((await file(pad, "H2", "a wrong guess")).status).toBe(200);
+    await offerAll();
+    await askAll();
+    for (const n of TO_Y2K.slice(5, 13)) await mod(n); // → the second hunt
+    rt.tickOnce(120_000); // the Truther Download
+    for (const g of guests.slice(0, 3)) for (const q of ["H4", "H5", "H6"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    expect((await file(calc, "H4", keyOf("H4"))).status).toBe(200);
+    await call(rt, "POST", "/api/guest/codex/redeem", { code: "TRABOLTA-4EVER" }, { token: calc.token });
+    await offerAll();
+    await askAll();
+    for (const n of TO_Y2K.slice(13, 19)) await mod(n); // → the Trust Chart and the rankings
+    await askAll();
+    await mod("printer_opened");
+    await mod("trabolta_overshares");
+    for (const g of guests.slice(0, 3)) for (const q of ["F1", "F2"]) await call(rt, "POST", "/api/guest/codex/redeem", { code: codeOf(q) }, { token: g.token });
+    await offerAll();
+    await askAll();
+    await mod("y2k_clock");
+    await askAll();
+    rt.tickOnce(3_600_000); // midnight: the final reveal
+    expect(sim().world.peek("Night.phase")).toMatchObject({ value: "final_reveal" });
+    await askAll();
+    await mod("bobbing_for_truth");
+    expect(sim().world.peek("Night.phase")).toMatchObject({ value: "bobbing" });
+    await askAll(); // the bob: the verdict is not read yet
+
+    // ── the checks, over every request the worker saw ──
+    const all = requests();
+    expect(all.length).toBeGreaterThan(20);
+    const secretTitles = [...sim().model.codex.values()].filter((e) => e.secret).flatMap((e) => [e.id, e.title]).map(fold);
+    const kernel = sim()
+      .worldEntries()
+      .filter((w) => /^Kernel\.(?:combo_a|combo_b|door_code|anti_ai)$/u.test(w.path) && w.value !== "none" && w.value !== "")
+      .map((w) => fold(w.value));
+    const doorCode = fold(String(FACTS.door?.code ?? ""));
+    const never = neverWords();
+    expect(never.length).toBeGreaterThan(0);
+    const questionIds = new Set([...FACTS.questions.map((q) => q.id), ...FACTS.answers.map((a) => a.id)]);
+    const leaks: string[] = [];
+    const seen = new Set<string>();
+    /** What may never reach him in any text: a hunt-answer card's marker,
+     *  the Kernel, its values, facts.json door.code, a secrets.never word. */
+    const scanSecret = (where: string, text: string) => {
+      if (text.includes(MARK)) leaks.push(`${where}: a hunt-answer marker`);
+      if (/kernel/iu.test(text)) leaks.push(`${where}: names the Kernel`);
+      for (const k of kernel) if (hasPhrase(text, k)) leaks.push(`${where}: a Kernel value`);
+      if (doorCode !== "" && hasPhrase(text, doorCode)) leaks.push(`${where}: facts.json door.code`);
+      for (const n of never) if (hasPhrase(text, n)) leaks.push(`${where}: a secrets.never word`);
+    };
+    /** An entry's title (a gift, the guest's codex) is never a secret one.
+     *  Only titles: a house line reading a hunt question aloud names the
+     *  card's subject ("the ribbon-cutting") and is public. */
+    const scanTitle = (where: string, title: string) => {
+      if (secretTitles.includes(fold(title))) leaks.push(`${where}: a secret codex title`);
+    };
+    const scanAnswers = (where: string, text: string) => {
+      for (const id of answerIdsIn(text)) leaks.push(`${where}: mentions the answer to ${id}`);
+    };
+    for (const [i, r] of all.entries()) {
+      const at = `request ${i} (${r.speaker.name}, ${String(r.world["Night.phase"])})`;
+      expect(Array.isArray(r.recent), at).toBe(true);
+      expect(r.recent!.length, at).toBeLessThanOrEqual(6);
+      for (const item of r.recent!) {
+        seen.add(item.kind);
+        scanSecret(`${at} recent ${item.kind}`, JSON.stringify(item));
+        if (item.kind === "filing") {
+          expect(Object.keys(item).sort(), at).toEqual(["kind", "question"]);
+          expect(questionIds.has(item.question), `${at}: ${item.question}`).toBe(true);
+        }
+        if (item.kind === "house") scanAnswers(`${at} recent house`, item.text);
+        if (item.kind === "gift") {
+          scanTitle(`${at} recent gift`, item.title);
+          scanAnswers(`${at} recent gift`, item.title);
+        }
+      }
+      if (r.speaker.kind === "performer") expect(r.recent!.every((x) => x.kind === "gift" || x.kind === "house"), at).toBe(true);
+      // The house's lines in the thread; a guest's own lines are theirs to type.
+      for (const l of r.history) {
+        if (!l.mine && l.from === r.speaker.name) continue;
+        scanSecret(`${at} history ${l.seq}`, l.text);
+        scanAnswers(`${at} history ${l.seq}`, l.text);
+      }
+      // The guest's codex: titles only, never a secret one.
+      expect(r.them.codex.every((e) => e.text === ""), at).toBe(true);
+      for (const e of r.them.codex) {
+        scanTitle(`${at} them.codex`, e.title);
+        scanSecret(`${at} them.codex`, e.title);
+      }
+    }
+    expect(leaks).toEqual([]);
+    // Not vacuous: every kind showed up on the way.
+    expect([...seen].sort()).toEqual(["chart", "filing", "gift", "house", "marked"]);
+    // And the story's lines in his threads were tagged.
+    expect(all.some((r) => r.history.some((l) => l.story === true))).toBe(true);
     rt.dispose();
   });
 });
