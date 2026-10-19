@@ -10,11 +10,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { Assignment, HouseMap, StationInfo } from "@loom/house";
+import type { Assignment, HouseMap, KingState, StationInfo } from "@loom/house";
 import { matchName, parseScan } from "@loom/terminal/scan.ts";
 import { Scanner, cameraProblem, type CameraState } from "@loom/terminal/scanner.tsx";
 import { hasWebGL2 } from "@loom/terminal/webgl.ts";
-import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, flushPendingSignal, postEnd, tokenAlive } from "./api.ts";
+import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, postEnd, tokenAlive } from "./api.ts";
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
@@ -31,10 +31,10 @@ type Screen =
   | { kind: "choose"; program: Program }
   | { kind: "starting"; program: Program; label: string }
   | { kind: "sent"; program: Program; station: string }
-  | { kind: "play"; assignment: Assignment; house: HouseMap; houseVersion: string };
+  | { kind: "play"; assignment: Assignment; house: HouseMap; houseVersion: string; king?: KingState | null };
 
 const STATION_POLL_MS = 2000;
-/** The bundled map has a King (a `king` prop): the choose screen says where he is fought. */
+/** The bundled map has a King (a `king` prop): the choose screen says what to do about him. */
 const HAS_KING = showHouse.props.some((p) => p.kind === "king");
 
 const SENT_BACK_MS = 9000;
@@ -84,16 +84,6 @@ export function App() {
     });
   }, [config]);
 
-  // A `chess won` the last page load left unsent lands now — once, and only
-  // within 60 s of the checkmate (it hands out the door code; older is
-  // dropped — the guest has moved on and a host's ♟ covers it).
-  const flushed = useRef(false);
-  useEffect(() => {
-    if (config === null || flushed.current) return;
-    flushed.current = true;
-    void flushPendingSignal(config);
-  }, [config]);
-
   useEffect(() => {
     if (flash === null) return;
     const t = window.setTimeout(() => setFlash(null), 7000);
@@ -128,6 +118,7 @@ export function App() {
         assignment={screen.assignment}
         house={screen.house}
         houseVersion={screen.houseVersion}
+        {...(screen.king !== undefined ? { king: screen.king } : {})}
         sfx={sfx}
         onExit={(e: PlayExit) => {
           setFlash(exitFlash(e));
@@ -236,7 +227,7 @@ function Device({
         setScreen({ kind: "scan" });
         return;
       }
-      setScreen({ kind: "play", assignment, house: loaded.house, houseVersion: loaded.version });
+      setScreen({ kind: "play", assignment, house: loaded.house, houseVersion: loaded.version, ...(loaded.king !== undefined ? { king: loaded.king } : {}) });
     } catch (e) {
       setFlash({ text: beginError(e), tone: "bad" });
       setScreen({ kind: "scan" });
@@ -309,13 +300,14 @@ function Device({
             <p>
               To be reinstalled, a program must prove it can follow instructions: walk the virtual house and find <b>Gerald, the golden duck</b>.
             </p>
-            {HAS_KING && config.role !== "station" && <p className="king-note">Find Gerald. In the simulation the King guards the Server Room's door — he can be fought on this tablet only.</p>}
+            {HAS_KING && config.role !== "station" && (
+              <p className="king-note">Find Gerald. In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation, and every hit weakens him for everyone.</p>
+            )}
             {!canDraw && config.role !== "station" && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
             {config.role !== "player" && (
               <fieldset className="w98-group">
                 <legend>Send to a headset</legend>
                 {vr.length === 0 && <div className="muted">No headsets have checked in.</div>}
-                {HAS_KING && vr.length > 0 && <div className="muted">Headsets can't fight the King.</div>}
                 <div className="station-buttons">
                   {vr.map((s) => (
                     <button key={s.id} className="w98-button station" disabled={!s.online || s.busy !== null} onClick={() => void sendTo(screen.program, s)}>

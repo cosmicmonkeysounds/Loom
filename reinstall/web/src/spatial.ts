@@ -1,10 +1,12 @@
 //! The spatial stream (`GET /api/spatial/stream`, §2.2) folded into a live
 //! player table — the one reducer the game (other players as ghosts) and
-//! the map page (live dots) share — plus the thin `EventSource` wiring.
+//! the map page (live dots) share — plus the thin `EventSource` wiring, and
+//! the wire helpers for what rides beside the players: the shared King
+//! (`kingOf`) and a ghost's profile picture (`avatarUrl`).
 
-import type { DuckSpot, PlayerState, SpatialFrame, SpatialFrameName } from "@loom/house";
+import type { DuckSpot, KingState, PlayerState, SpatialFrame, SpatialFrameName } from "@loom/house";
 
-export const FRAME_NAMES: readonly SpatialFrameName[] = ["hello", "join", "poses", "found", "leave", "house", "duck", "reset"];
+export const FRAME_NAMES: readonly SpatialFrameName[] = ["hello", "join", "poses", "found", "leave", "house", "duck", "reset", "king", "avatar"];
 
 /** Fold one frame into the player table (a new map when anything changed). */
 export function applyFrame(players: ReadonlyMap<string, PlayerState>, frame: SpatialFrame): ReadonlyMap<string, PlayerState> {
@@ -47,11 +49,50 @@ export function applyFrame(players: ReadonlyMap<string, PlayerState>, frame: Spa
       next.set(cur.session, { ...cur, duck: frame.data.duck });
       return next;
     }
+    case "avatar": {
+      // A live player's picture changed (or its lookup landed).
+      const cur = players.get(frame.data.session);
+      const avatar = avatarKeyOf(frame.data.avatar);
+      if (cur === undefined || avatarKeyOf(cur.avatar) === avatar) return players;
+      const next = new Map(players);
+      next.set(cur.session, { ...cur, avatar });
+      return next;
+    }
     case "reset":
       return players.size === 0 ? players : new Map();
     case "house":
+    case "king":
       return players;
   }
+}
+
+/** A picture key off the wire: a non-empty string, else null (none — an
+ *  old server sends no field, which reads as none too). */
+export function avatarKeyOf(v: unknown): string | null {
+  return typeof v === "string" && v !== "" ? v : null;
+}
+
+/** A ghost's picture URL: the event's public `/api/avatar/<key>` (same
+ *  origin as this app), null without a key. */
+export function avatarUrl(base: string, key: unknown): string | null {
+  const k = avatarKeyOf(key);
+  return k === null ? null : `${base}/api/avatar/${encodeURIComponent(k)}`;
+}
+
+/**
+ * The shared King off the wire (`hello.king`, a `king` frame, the map GET):
+ * a well-formed `KingState`, `null` when the server says there is none (no
+ * King on the map), `undefined` when it says nothing — an old server with
+ * no shared King, where the tablet offers no hit and he just stands.
+ */
+export function kingOf(v: unknown): KingState | null | undefined {
+  if (v === undefined) return undefined;
+  if (typeof v !== "object" || v === null) return null;
+  const k = v as Record<string, unknown>;
+  const num = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+  if (typeof k["id"] !== "string" || !num(k["hp"]) || !num(k["max"])) return null;
+  const hp = Math.max(0, k["hp"]);
+  return { id: k["id"], hp, max: Math.max(1, k["max"]), fallen: k["fallen"] === true || hp <= 0 };
 }
 
 /** A well-formed duck spot off the wire (`{id, room, pos: Vec3}`). */

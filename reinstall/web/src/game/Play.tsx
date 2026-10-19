@@ -1,16 +1,17 @@
 //! The play screen: the canvas the `Game` renders into, the HUD over it
 //! (where you are, warmer / colder, the clock, a compass whose gold pip
-//! points along the trail), the twin sticks on a touch screen, and the
-//! celebration when Gerald is found.
+//! points along the trail), the King's shared bar with this visit's one ⚔
+//! hit, the twin sticks on a touch screen, and the celebration when Gerald
+//! is found.
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import type { Assignment, HouseMap } from "@loom/house";
-import { fetchArmed, postEnd, postSignal, type FoundAnswer } from "../api.ts";
+import { useEffect, useRef, useState } from "react";
+import type { Assignment, HouseMap, KingState } from "@loom/house";
+import { postEnd, type FoundAnswer } from "../api.ts";
 import { baseOf, type ReinstallConfig } from "../config.ts";
 import { ProgressBar, Window } from "../wizard.tsx";
 import type { Sfx } from "./audio.ts";
-import { Game, type ChessContext, type GameEnd, type HudState, type KingHud } from "./engine.ts";
-import { STAGE_LINE } from "./fight.ts";
+import { Game, type GameEnd, type HudState, type KingHud } from "./engine.ts";
+import { HIT_USED, STAGE_LINE } from "./fight.ts";
 import { bearingOf, findCopy, findOutcome, HEAT_LABEL, type FindOutcome } from "./hud.ts";
 import { CENTRED, type StickVector } from "./input.ts";
 import { whyNoStart } from "./no-start.ts";
@@ -23,9 +24,6 @@ export { NO_WEBGL2 } from "./no-start.ts";
 /** Seconds the celebration stays before returning to the scanner by itself. */
 const CELEBRATE_S = 15;
 
-/** The board + chess.js, loaded on the first challenge (its own chunk). */
-const ChessWindow = lazy(() => import("../chess/ChessWindow.tsx"));
-
 function touchDevice(): boolean {
   return (typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches) || (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
 }
@@ -35,6 +33,7 @@ export function Play({
   assignment,
   house,
   houseVersion,
+  king,
   sfx,
   onExit,
 }: {
@@ -43,6 +42,8 @@ export function Play({
   house: HouseMap;
   /** The version of `house` (the stream's `hello` / `house` frames are compared with it). */
   houseVersion: string;
+  /** The shared King off the dealt map's GET (absent: an old server — no ⚔). */
+  king?: KingState | null;
   sfx: Sfx;
   onExit: (e: PlayExit) => void;
 }) {
@@ -51,7 +52,6 @@ export function Play({
   const sticks = useRef<{ left: StickVector; right: StickVector }>({ left: CENTRED, right: CENTRED });
   const [hud, setHud] = useState<HudState | null>(null);
   const [found, setFound] = useState<FoundAnswer | null>(null);
-  const [chess, setChess] = useState<ChessContext | null>(null);
   const [showSticks, setShowSticks] = useState(touchDevice);
   const [helpOpen, setHelpOpen] = useState(true);
   const exit = useRef(onExit);
@@ -76,9 +76,7 @@ export function Play({
         onHud: setHud,
         onFound: setFound,
         onEnd: (e: GameEnd) => exit.current(e.kind === "idle" ? { kind: "idle" } : e),
-        onChess: setChess,
-        signal: (name) => postSignal(config, name, assignment.guest),
-        armed: (path, min) => fetchArmed(config, path, min),
+        ...(king !== undefined ? { king } : {}),
       });
     } catch (e) {
       // No WebGL the probe missed (a context that exists but won't start:
@@ -94,6 +92,7 @@ export function Play({
       g.dispose();
       game.current = null;
     };
+    // `king` only seeds the game: the stream keeps it current after that.
   }, [house, houseVersion, assignment, base, config, sfx]);
 
   // A touch anywhere shows the sticks (a laptop with a touch screen).
@@ -171,7 +170,7 @@ export function Play({
             <span className={`led${hud.live ? " on" : ""}`} />
             {assignment.name} · {hud.others > 0 ? `${hud.others} other program${hud.others === 1 ? "" : "s"} in here` : "alone in the simulation"}
           </div>
-          {hud.king !== null && <KingBar king={hud.king} onHit={() => game.current?.hit()} onChallenge={() => game.current?.challenge()} />}
+          {hud.king !== null && <KingBar king={hud.king} onHit={() => game.current?.hit()} />}
           {hud.notice !== null && <div className="hud-notice">{hud.notice}</div>}
           {hud.idleLeft !== null && (
             <div className="hud-idle w98-raised">
@@ -190,7 +189,7 @@ export function Play({
                 {hud?.king !== null && hud?.king !== undefined && (
                   <>
                     {" "}
-                    · <b>⚔ / ♟</b> by the King
+                    · <b>⚔</b> by the King
                   </>
                 )}
               </>
@@ -200,7 +199,7 @@ export function Play({
                 {hud?.king !== null && hud?.king !== undefined && (
                   <>
                     {" "}
-                    · <b>Space</b> hits the King · <b>C</b> challenges him
+                    · <b>Space</b> hits the King
                   </>
                 )}
               </>
@@ -210,25 +209,11 @@ export function Play({
         </button>
       )}
 
-      {showSticks && found === null && chess === null && (
+      {showSticks && found === null && (
         <>
           <Joystick side="left" label="MOVE" onChange={(v) => (sticks.current.left = v)} />
           <Joystick side="right" label="LOOK" onChange={(v) => (sticks.current.right = v)} />
         </>
-      )}
-
-      {chess !== null && found === null && (
-        <Suspense fallback={<div className="chess-modal"><div className="chess-loading w98-raised">Setting up the board…</div></div>}>
-          <ChessWindow
-            stage={chess.stage}
-            label={chess.label}
-            armed={chess.armed}
-            onResult={(r) => game.current?.chessResult(r)}
-            onAbandon={() => game.current?.chessResult("abandoned")}
-            onActivity={() => game.current?.touch()}
-            onMove={() => sfx.clack()}
-          />
-        </Suspense>
       )}
 
       {found !== null && (
@@ -262,13 +247,15 @@ export function Play({
   );
 }
 
-/** The King's bar under the top HUD, and the ⚔ HIT / ♟ CHALLENGE buttons when he is near. */
-function KingBar({ king, onHit, onChallenge }: { king: KingHud; onHit: () => void; onChallenge: () => void }) {
+/** The King's shared bar under the top HUD, and ⚔ HIT when he is near —
+ *  spent (disabled, with the line why) once this visit has hit him. */
+function KingBar({ king, onHit }: { king: KingHud; onHit: () => void }) {
   if (king.fallen) {
     return (
       <div className="hud-king open">
-        <span className="hud-king-label">♟ {king.label}</span>
-        <span className="hud-king-state">FALLEN</span>
+        <span className="hud-king-label">♚ {king.label}</span>
+        <span className="hud-king-state">KNEELING · {king.meter}</span>
+        <small>{STAGE_LINE.pawns} His door stands open.</small>
       </div>
     );
   }
@@ -277,16 +264,13 @@ function KingBar({ king, onHit, onChallenge }: { king: KingHud; onHit: () => voi
     <>
       <div className={`hud-king${near ? " near" : ""}`}>
         <span className="hud-king-label">⚔ {king.label}</span>
-        <span className="hud-king-hearts">{king.hp > 0 ? king.hearts : "PAWNS ONLY"}</span>
-        <small>{STAGE_LINE[king.stage]}</small>
+        <span className="hud-king-hearts">{king.meter}</span>
+        <small>{king.hitUsed ? HIT_USED : STAGE_LINE[king.stage]}</small>
       </div>
       {near && (
         <div className="king-actions">
-          <button className="w98-button big" onClick={onHit} disabled={king.verdict === "cooldown"} aria-label="Hit the King">
+          <button className="w98-button big default" onClick={onHit} disabled={king.hitUsed || king.hitting} aria-label="Hit the King">
             ⚔ HIT
-          </button>
-          <button className="w98-button big default" onClick={onChallenge} aria-label="Challenge the King to chess">
-            ♟ CHALLENGE
           </button>
         </div>
       )}

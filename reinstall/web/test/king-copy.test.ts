@@ -1,9 +1,9 @@
-//! Wave 7: the server-room door has a standalone keypad lock that nothing in
-//! the house drives. The King's tablet copy must never promise that a win
-//! opens, unlocks or disarms the real door: from the Y2K hour a checkmate
-//! puts the door code in the winner's Codex (the story unlocks it on
-//! `chess won`), before that it is practice. In the simulation he still
-//! falls and his (virtual) door still opens.
+//! The King's tablet copy (wave 11): the chess game left the tablet for
+//! the real terminal outside the server-room door, so nothing on the tablet
+//! offers a board, a challenge or a win — and, as since wave 7, nothing
+//! promises that the real door opens (it has a standalone keypad lock). In
+//! the simulation every program hits him once per reinstallation, the bar
+//! is shared, and at 0 he kneels and his (virtual) door opens.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -16,8 +16,8 @@ function copyOf(path: string): string {
     .replace(/\s\/\/ .*$/gmu, "");
 }
 
-describe("the King's tablet copy (wave 7)", () => {
-  const files = ["game/engine.ts", "game/fight.ts", "game/Play.tsx", "chess/ChessWindow.tsx", "app.tsx"];
+describe("the King's tablet copy (wave 11)", () => {
+  const files = ["game/engine.ts", "game/fight.ts", "game/Play.tsx", "app.tsx", "api.ts", "map/Inspector.tsx"];
 
   it("no on-screen line promises the real door opens, unlocks or disarms", () => {
     for (const f of files) {
@@ -27,12 +27,20 @@ describe("the King's tablet copy (wave 7)", () => {
     }
   });
 
-  it("checkmate says the King falls; the board's badge reads FOR THE CODE / PRACTICE", () => {
-    expect(copyOf("game/engine.ts")).toContain('"CHECKMATE — the King falls."');
-    const board = copyOf("chess/ChessWindow.tsx");
-    expect(board).toContain('"FOR THE CODE"');
-    expect(board).toContain('"PRACTICE"');
-    expect(board).toContain("stakesLine(armed)");
-    expect(copyOf("app.tsx")).toContain("In the simulation the King guards the Server Room's door");
+  it("no chess on the tablet: no board, no challenge, no win line, no 'this tablet only'", () => {
+    for (const f of files.filter((f) => f !== "map/Inspector.tsx")) {
+      const text = copyOf(f);
+      expect(text, f).not.toMatch(/CHALLENGE|CHECKMATE|ChessWindow|chess\/|FOR THE CODE|PRACTICE|challenges him|on this tablet only|Headsets can't/u);
+      expect(text, f).not.toMatch(/\/api\/mod\/signal|chess won|chess lost|chess drawn/u);
+    }
+    expect(src("game/Play.tsx")).not.toMatch(/import\(.*chess/u);
+    expect(readFileSync(new URL("../vite.config.ts", import.meta.url), "utf8")).not.toMatch(/chess/u);
+  });
+
+  it("the hit is once per reinstallation, shared, and the King kneels at 0", () => {
+    expect(copyOf("app.tsx")).toContain("In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation");
+    expect(copyOf("game/fight.ts")).toContain('"You hit him. Come back on your next reinstallation."');
+    expect(copyOf("game/engine.ts")).toContain('"The King kneels. His door stands open."');
+    expect(copyOf("game/Play.tsx")).toContain("⚔ HIT");
   });
 });

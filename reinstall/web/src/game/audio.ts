@@ -15,8 +15,6 @@ export interface Sfx {
   buzz(): void;
   /** A hit landing on the King: a short low thump with a noise burst. */
   thud(): void;
-  /** A chess piece landing: a short click. */
-  clack(): void;
   dispose(): void;
 }
 
@@ -25,7 +23,7 @@ type Ctx = AudioContext;
 export function createSfx(): Sfx {
   const Ctor: typeof AudioContext | undefined =
     typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, clack() {}, dispose() {} };
+  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, dispose() {} };
   let ctx: Ctx | null = null;
   let master: GainNode | null = null;
   const get = (): { ctx: Ctx; out: GainNode } | null => {
@@ -150,13 +148,6 @@ export function createSfx(): Sfx {
       osc.start(t);
       osc.stop(t + 0.11);
       noise(a.ctx, a.out, t, 0.06, 0.16);
-    },
-    clack() {
-      const a = get();
-      if (a === null) return;
-      const t = a.ctx.currentTime + 0.005;
-      tone(a.ctx, a.out, t, 1800, 0.03, 0.08, "square");
-      noise(a.ctx, a.out, t, 0.02, 0.1);
     },
     dispose() {
       const c = ctx;

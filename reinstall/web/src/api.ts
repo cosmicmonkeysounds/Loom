@@ -11,6 +11,7 @@ import type {
   FoundResult,
   HouseMap,
   HouseResponse,
+  KingState,
   MapVariantsResponse,
   SaveHouseResult,
   SaveToProjectResult,
@@ -21,9 +22,8 @@ import type {
 } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
 import type { Program } from "./program.ts";
-import { NIGHT_ENDED, type ArmedRead } from "./game/fight.ts";
 import { showHouse } from "./show-house.ts";
-import { isDuckSpot } from "./spatial.ts";
+import { isDuckSpot, kingOf } from "./spatial.ts";
 
 export { ApiError };
 
@@ -99,6 +99,9 @@ export interface LoadedHouse {
   /** A game reading with its session token also learns its duck (§2.1) —
    *  a map edit mid-game may have moved or re-dealt it. */
   duck?: DuckSpot;
+  /** …and the shared King (`kingOf`: null = none on the map; absent = an
+   *  old server with no shared King). */
+  king?: KingState | null;
 }
 
 /**
@@ -108,9 +111,11 @@ export interface LoadedHouse {
  */
 export async function fetchHouse(base: string, token: string): Promise<LoadedHouse> {
   try {
-    const r = await getJson<HouseResponse & { duck?: unknown }>(`${base}/api/spatial/house`, token);
+    const r = await getJson<HouseResponse & { duck?: unknown; king?: unknown }>(`${base}/api/spatial/house`, token);
     const v = validateHouse(r.house);
-    if (v.ok && v.house !== undefined) return { house: v.house, version: r.version, source: r.source, ...(isDuckSpot(r.duck) ? { duck: r.duck } : {}) };
+    const king = kingOf(r.king);
+    if (v.ok && v.house !== undefined)
+      return { house: v.house, version: r.version, source: r.source, ...(isDuckSpot(r.duck) ? { duck: r.duck } : {}), ...(king !== undefined ? { king } : {}) };
   } catch {
     /* fall through to the bundled map */
   }
@@ -269,246 +274,55 @@ export async function postFound(base: string, token: string, fetcher: typeof fet
   return { kind: "error", message: typeof data["error"] === "string" ? data["error"] : `HTTP ${res.status}` };
 }
 
+/** What the server said to a hit on the King (`POST /api/spatial/king/hit`,
+ *  §2.1), every outcome a value. */
+export type KingHitReply =
+  /** Landed: one point off the shared bar, this visit's hit spent. */
+  | { kind: "hit"; king: KingState }
+  /** This visit already hit him (a re-scan mid-walk is the same visit). */
+  | { kind: "already"; king: KingState | null }
+  /** He has fallen already: nothing to hit. */
+  | { kind: "fallen"; king: KingState | null }
+  /** The server's copy of the pose isn't near him (or isn't facing him). */
+  | { kind: "far" }
+  /** The doors are closed (the run is paused): nothing was judged. */
+  | { kind: "paused" }
+  /** No shared King here (none on the map, or a server without the route). */
+  | { kind: "none" }
+  | { kind: "over"; status: number }
+  | { kind: "error"; message: string };
+
+/** `POST /api/spatial/king/hit {}` with the session token. Flush the pose
+ *  first: the server judges the reach on the last one it has. */
+export async function postKingHit(base: string, token: string, fetcher: typeof fetch = fetch): Promise<KingHitReply> {
+  let res: Response;
+  try {
+    res = await fetcher(`${base}/api/spatial/king/hit`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}" });
+  } catch (e) {
+    return { kind: "error", message: (e as Error).message };
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  const king = kingOf(data["king"]) ?? null;
+  const error = typeof data["error"] === "string" ? data["error"] : `HTTP ${res.status}`;
+  if (res.ok) return king !== null ? { kind: "hit", king } : { kind: "error", message: "no king in the answer" };
+  if (res.status === 409) {
+    if (error === DOORS_CLOSED) return { kind: "paused" };
+    if (error === "already hit") return { kind: "already", king };
+    if (error === "fallen") return { kind: "fallen", king };
+    if (error === "not near") return { kind: "far" };
+    return { kind: "error", message: error }; // an unclaimed or parked session: try again in a moment
+  }
+  if (res.status === 404) return { kind: "none" };
+  if (res.status === 401 || res.status === 410) return { kind: "over", status: res.status };
+  return { kind: "error", message: error };
+}
+
 /** `POST /api/spatial/end` — best effort (the session may be over already). */
 export async function postEnd(base: string, token: string): Promise<void> {
   try {
     await fetch(`${base}/api/spatial/end`, { method: "POST", headers: { "content-type": "application/json", "x-loom-token": token }, body: "{}", keepalive: true });
   } catch {
     /* gone either way */
-  }
-}
-
-// --- the King (the tablet speaks for the story, with its mod token) --------
-
-/** Retry waits for `postSignal`: 0.5 s doubling to 8 s. */
-export const SIGNAL_RETRY_MS = [500, 1000, 2000, 4000, 8000] as const;
-
-/** Where the tablet keeps its one pending story signal (the latest only), so
- *  a reload doesn't lose an unsent `chess won`. */
-export const PENDING_SIGNAL_KEY = "loom-reinstall.pending-signal";
-/** A pending signal this old is dropped, never posted: from the Y2K hour
- *  `chess won` hands the winner the server-room door code, so a win must not
- *  land minutes late (after a reload, the guest long gone) — a host fires ♟
- *  by hand instead. */
-export const PENDING_SIGNAL_MAX_AGE_MS = 60_000;
-/** One attempt is abandoned after this long (or when the signal would turn
- *  `PENDING_SIGNAL_MAX_AGE_MS` old): a black-holed uplink must fail fast,
- *  so "the win didn't reach the house" shows while the guest is still there. */
-export const SIGNAL_ATTEMPT_TIMEOUT_MS = 5_000;
-
-/** A story signal on its way to the event. */
-export interface PendingSignal {
-  eventId: string;
-  name: string;
-  subject: string;
-  label: string;
-  /** When the device first tried it (ms since the epoch). */
-  at: number;
-}
-
-export type SignalStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-
-export interface SignalOptions {
-  attempts?: number;
-  fetcher?: typeof fetch;
-  sleep?: (ms: number) => Promise<void>;
-  /** Defaults to `localStorage`; null (or a throwing one) keeps it in memory only. */
-  storage?: SignalStorage | null;
-  now?: () => number;
-  /** Per attempt (default `SIGNAL_ATTEMPT_TIMEOUT_MS`). */
-  timeoutMs?: number;
-}
-
-function browserStorage(): SignalStorage | null {
-  try {
-    return typeof localStorage === "undefined" ? null : localStorage;
-  } catch {
-    return null;
-  }
-}
-
-function writePending(storage: SignalStorage | null, p: PendingSignal): void {
-  try {
-    storage?.setItem(PENDING_SIGNAL_KEY, JSON.stringify(p));
-  } catch {
-    /* blocked or full: in memory only */
-  }
-}
-
-/** The stored pending signal, or null (none, unreadable, or not one). */
-export function readPendingSignal(storage: SignalStorage | null = browserStorage()): PendingSignal | null {
-  try {
-    const raw = storage?.getItem(PENDING_SIGNAL_KEY);
-    if (raw === null || raw === undefined) return null;
-    const p = JSON.parse(raw) as Partial<PendingSignal>;
-    const str = (v: unknown): v is string => typeof v === "string";
-    return str(p.eventId) && str(p.name) && str(p.subject) && str(p.label) && typeof p.at === "number" && Number.isFinite(p.at)
-      ? { eventId: p.eventId, name: p.name, subject: p.subject, label: p.label, at: p.at }
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Forget the stored signal — only when it is still `p` (a newer one wins), or whatever is there when `p` is null. */
-function clearPending(storage: SignalStorage | null, p: PendingSignal | null): void {
-  try {
-    if (p !== null) {
-      const cur = readPendingSignal(storage);
-      if (cur !== null && (cur.at !== p.at || cur.name !== p.name || cur.subject !== p.subject)) return;
-    }
-    storage?.removeItem(PENDING_SIGNAL_KEY);
-  } catch {
-    /* nothing stored */
-  }
-}
-
-/** The retry loop: "ok" on a 200, "refused" on a 4xx (final), "failed" when
- *  every attempt failed or the signal grew too old to send. */
-async function sendSignal(config: ReinstallConfig, p: PendingSignal, opts: SignalOptions): Promise<"ok" | "refused" | "failed"> {
-  const attempts = Math.max(1, opts.attempts ?? 1 + SIGNAL_RETRY_MS.length);
-  const fetcher = opts.fetcher ?? fetch;
-  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-  const now = opts.now ?? Date.now;
-  const body = JSON.stringify({ name: p.name, subject: p.subject, label: p.label });
-  for (let i = 0; i < attempts; i++) {
-    if (i > 0) await sleep(SIGNAL_RETRY_MS[Math.min(i - 1, SIGNAL_RETRY_MS.length - 1)]!);
-    const left = PENDING_SIGNAL_MAX_AGE_MS - (now() - p.at);
-    if (left <= 0) return "failed";
-    // A stalled request is aborted (a network failure): one that hung past
-    // the cap could still land minutes after the win.
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), Math.min(opts.timeoutMs ?? SIGNAL_ATTEMPT_TIMEOUT_MS, left));
-    try {
-      const res = await fetcher(`${baseOf(config)}/api/mod/signal`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-loom-token": config.token },
-        body,
-        signal: ctl.signal,
-      });
-      if (res.ok) return "ok";
-      if (res.status < 500) return "refused";
-    } catch {
-      /* the network (or the timeout): try again */
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-  return "failed";
-}
-
-/**
- * Fire a story signal as this device: `POST /api/mod/signal {name, subject,
- * label}` with the moderator token (`label` = the device's name, so the
- * journal reads "by Tent tablet" on a server that honours it). Retries a
- * network failure or a 5xx `attempts` times (0.5 → 8 s); a 4xx is final.
- * Resolves true on a 200. While a send is in flight it is also kept in
- * `localStorage` (the latest only), so a reload or crash mid-retry can post
- * it from `flushPendingSignal` — within `PENDING_SIGNAL_MAX_AGE_MS` of the
- * first try. Once it fails for good it is forgotten: the caller tells the
- * guest to get a host (`WIN_NOT_SENT`), and a late post after the host's ♟
- * would land the win twice.
- */
-export async function postSignal(config: ReinstallConfig, name: string, subject: string, opts: SignalOptions = {}): Promise<boolean> {
-  const storage = opts.storage === undefined ? browserStorage() : opts.storage;
-  const p: PendingSignal = { eventId: config.eventId, name, subject, label: config.name, at: (opts.now ?? Date.now)() };
-  writePending(storage, p);
-  const r = await sendSignal(config, p, opts);
-  clearPending(storage, p);
-  return r === "ok";
-}
-
-/**
- * On page load: post the signal a previous page left unsent — once, and
- * only while it is fresh (< `PENDING_SIGNAL_MAX_AGE_MS`) and for this
- * device's event. Anything older, or for another event, is dropped unsent.
- */
-export async function flushPendingSignal(config: ReinstallConfig, opts: SignalOptions = {}): Promise<"none" | "dropped" | "sent" | "refused" | "failed"> {
-  const storage = opts.storage === undefined ? browserStorage() : opts.storage;
-  const p = readPendingSignal(storage);
-  if (p === null) {
-    clearPending(storage, null); // an unreadable entry
-    return "none";
-  }
-  const age = (opts.now ?? Date.now)() - p.at;
-  if (p.eventId !== config.eventId || age < 0 || age >= PENDING_SIGNAL_MAX_AGE_MS) {
-    clearPending(storage, p);
-    return "dropped";
-  }
-  const r = await sendSignal(config, p, opts);
-  // A failure stays stored until it ages out (the next load drops it).
-  if (r !== "failed") clearPending(storage, p);
-  return r === "ok" ? "sent" : r;
-}
-
-/** `fetchArmed` gives up (null = unknown) after this long: the checkmate's
- *  notice waits on it, so a black-holed uplink must never hold back "tell a
- *  host" past the signal's own retries. */
-export const ARMED_TIMEOUT_MS = 4_000;
-
-/**
- * Is the fight armed? Reads the mod view (`GET /api/state?role=mod`, as
- * `fetchLocations` does) for the world var at `path` and compares it with
- * `min`; null when the server is away, too slow (`timeoutMs`), or the var
- * is absent / not a number; `NIGHT_ENDED` once the night has ended
- * (`ENDED_PATH` true: the story gives nothing for a win then, while an armed
- * var like `Night.step` stays past its gate — so no badge and no "the code
- * is in your Codex", whatever an earlier read said) or the verdict is in
- * (`KING_ARMED_PATH` 0 with `VERDICT_PATH` true). A story's
- * `KING_ARMED_PATH` overrides `path` / `min`.
- */
-export async function fetchArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch = fetch, timeoutMs: number = ARMED_TIMEOUT_MS): Promise<ArmedRead> {
-  const ctl = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<null>((resolve) => {
-    timer = setTimeout(() => {
-      ctl.abort();
-      resolve(null);
-    }, timeoutMs);
-  });
-  try {
-    return await Promise.race([readArmed(config, path, min, fetcher, ctl.signal), late]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** The world var a show sets once an ending plays (`Night.ended`). Never
- *  read as "practice": an ended night is `NIGHT_ENDED`, not unarmed. */
-export const ENDED_PATH = "Night.ended";
-
-/** The story's own word on the King's stakes (wave 9, story-rules): 1 from
- *  the Y2K hour until 📄 truth.txt or an ending, else 0. When the story
- *  declares it, it wins over the map's `armed` gate — `Night.step` stays
- *  past 14 after 📄, so the gate alone kept saying FOR THE CODE. A story
- *  without it (an older show) is read off the map's gate as before. */
-export const KING_ARMED_PATH = "Night.king_armed";
-/** Round three closed (📄 truth.txt): with the King disarmed, the verdict is
- *  in and a win gives nothing — read like `NIGHT_ENDED` (no badge, no win
- *  line, no "tell a host"), never "practice until the Y2K clock". */
-export const VERDICT_PATH = "Night.r3_closed";
-
-async function readArmed(config: ReinstallConfig, path: string, min: number, fetcher: typeof fetch, signal: AbortSignal): Promise<ArmedRead> {
-  try {
-    const res = await fetcher(`${baseOf(config)}/api/state?role=mod`, { headers: { "x-loom-token": config.token }, signal });
-    if (!res.ok) return null;
-    const r = (await res.json()) as { world?: unknown };
-    if (!Array.isArray(r.world)) return null;
-    const rowAt = (p: string) => (r.world as unknown[]).find((w: unknown) => typeof w === "object" && w !== null && (w as { path?: unknown }).path === p) as { value?: unknown } | undefined;
-    const yes = (v: unknown) => v === true || v === "true";
-    const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : Number.NaN);
-    if (yes(rowAt(ENDED_PATH)?.value)) return NIGHT_ENDED;
-    const king = rowAt(KING_ARMED_PATH);
-    if (king !== undefined && Number.isFinite(num(king.value))) {
-      if (num(king.value) >= 1) return true;
-      return yes(rowAt(VERDICT_PATH)?.value) ? NIGHT_ENDED : false;
-    }
-    const row = rowAt(path);
-    if (row === undefined) return null;
-    const v = num(row.value);
-    return Number.isFinite(v) ? v >= min : null;
-  } catch {
-    return null;
   }
 }
 

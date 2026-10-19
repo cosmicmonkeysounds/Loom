@@ -220,13 +220,14 @@ export function Inspector(props: InspectorProps) {
           {yawField}
           {p.kind === "king" && (
             <p className="muted small">
-              ♔ A King: {p.hp ?? 4} hit point{(p.hp ?? 4) === 1 ? "" : "s"} · posts {p.signals?.won ?? "chess won"} / {p.signals?.lost ?? "chess lost"} / {p.signals?.drawn ?? "chess drawn"}
-              {p.armed !== undefined ? ` · armed when ${p.armed.path} ≥ ${p.armed.min}` : " · never badged armed"}
+              ♔ A King: {p.hp ?? 4} hit point{(p.hp ?? 4) === 1 ? "" : "s"} shared by every program, one hit a reinstallation
+              {p.health !== undefined ? ` (the bar lives in ${p.health})` : ""} · a hit posts {p.signals?.hit ?? "king hit"}, 0 posts {p.signals?.fallen ?? "king fallen"}
+              {p.armed !== undefined ? ` · his chess counts while ${p.armed.path} ≥ ${p.armed.min}` : ""}
               {" "}
               — guards {house.doors.filter((d) => d.guard === p.id).map((d) => d.id).join(", ") || "no door"}.
             </p>
           )}
-          <p className="muted small">Size, colour and kind{p.kind === "king" ? ", hp, signals and armed" : ""} are edited in the JSON tab.</p>
+          <p className="muted small">Size, colour and kind{p.kind === "king" ? ", hp, health, signals and armed" : ""} are edited in the JSON tab.</p>
           {remove("prop")}
         </div>
       );
