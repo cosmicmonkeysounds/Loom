@@ -36,6 +36,7 @@ import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
 import {
+  canonicalGuestName,
   guestNameRefusal,
   reservedDefFor,
   guestPickable,
@@ -3710,6 +3711,9 @@ export class EventRuntime {
           sendJson(res, 409, { error: refusal });
           return true;
         }
+        // Typed in another case (`bugdom`): the guest is the story's own
+        // `Bugdom`, so its `program.name ==` checks (the featured parts) hear them.
+        name = canonicalGuestName(this.sim!.model, name);
         let chosen: string | null = null;
         if (chosenKey !== "") {
           const opts = await this.pictureOptions(pictureFor !== "" ? pictureFor : name, pictureFor !== "" ? pictureFor : undefined);

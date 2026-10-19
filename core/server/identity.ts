@@ -176,6 +176,15 @@ export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlyS
   return null;
 }
 
+/** A guest's name as the story spells it: the pool CHARACTER's own name
+ *  when the typed one folds to it (`bugdom` → `Bugdom`), so a story that
+ *  compares `program.name == "Bugdom"` hears the guest; any other name as
+ *  given. Asked after `guestNameRefusal` passed. */
+export function canonicalGuestName(model: SimModel, name: string): string {
+  const folded = foldName(name);
+  return identityDefs(model).find((d) => foldName(d.name) === folded)?.name ?? name;
+}
+
 /** Characters for the claim token: Crockford-style base32, lower case, no
  *  i / l / o / u (nothing to misread off a printed card). */
 const CLAIM_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
