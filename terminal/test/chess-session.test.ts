@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { STAGE_LINE } from "@loom/chess";
 import { describe, expect, it } from "vitest";
 import { CHESS_IDLE_MS, INITIAL, MARKED_NOTICE, NOTICE_MS, RESULT_MS, WIN_CODE, WIN_NOT_SENT, healthText, reduce, resultLine, settled, stakesLine, type ChessEvent, type ChessSession } from "../src/chess/session.ts";
 
@@ -111,7 +110,7 @@ describe("the chess terminal's screen", () => {
   it("shows his bar and the stakes, never the strength ladder (no hints, no tips, no ladder copy)", () => {
     const src = readFileSync(fileURLToPath(new URL("../src/chess/ChessTerminal.tsx", import.meta.url)), "utf8");
     expect(src).toMatch(/<HealthBar king=\{king\} \/>/u);
-    expect(src).not.toMatch(/STAGE_LINE|strengthLine/u);
-    for (const line of Object.values(STAGE_LINE)) expect(src).not.toContain(line);
+    expect(src).not.toMatch(/STAGE_LINE|strengthLine|stageFor/u);
+    expect(src).not.toMatch(/full strength|rattled|reeling|dizzy|pawns only|grandmaster/iu);
   });
 });

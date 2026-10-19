@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAGE_LINE, STAGES, stageFor } from "../src/stage.ts";
+import { STAGES, stageFor } from "../src/stage.ts";
 import { PROFILES } from "../src/ai.ts";
 import { PAWNS_ONLY_FEN, START_FEN, startFen } from "../src/rules.ts";
 
@@ -32,12 +32,8 @@ describe("stageFor", () => {
     expect(stageFor(4, 8)).toBe("beginner");
   });
 
-  it("every stage has a profile, a line and a start", () => {
-    for (const s of STAGES) {
-      expect(PROFILES[s]).toBeDefined();
-      expect(STAGE_LINE[s]).toMatch(/King/);
-      expect(STAGE_LINE[s]).not.toMatch(/hit|hint|tip|give up/i);
-    }
+  it("every stage has a profile and a start", () => {
+    for (const s of STAGES) expect(PROFILES[s]).toBeDefined();
     expect(startFen("pawns")).toBe(PAWNS_ONLY_FEN);
     expect(startFen("club")).toBe(START_FEN);
   });
