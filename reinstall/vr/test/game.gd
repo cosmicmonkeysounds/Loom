@@ -898,6 +898,37 @@ func _test_autopilot_physics() -> void:
 			missed.append("%s stuck at %s (waypoint %d/%d)" % [spot["id"], game.builder.to_house(player.feet()), game.autopilot.index, game.autopilot.path.size()])
 		link.session_over.emit("test")
 	_check(missed.is_empty(), "autopilot: walks (with collision) from the spawn to every duck spot %s" % [missed])
+
+	# `--hit-king`: to the King first (with collision), one press facing
+	# him, then on to the duck once the hit is answered.
+	_check(StationConfig.parse_args(PackedStringArray(["--hit-king"])).get("hit_king") == true and StationConfig.defaults()["hit_king"] == false, "autopilot: --hit-king parses, off by default")
+	link.config["hit_king"] = true
+	link.call("give_king", {"id": "cold-lock-king", "hp": 15, "max": 15, "fallen": false})
+	var ka := _assignment(house, "s-apk", true)
+	ka["duck"] = spots[0]
+	link.assignment_received.emit(ka)
+	_check(game.autopilot_king == "walk", "autopilot: --hit-king walks to the King first")
+	var hits_before: int = link.get("king_hits")
+	var steps := 0
+	while link.get("king_hits") == hits_before and steps < 90 * 60:
+		game._process(dt)
+		player._physics_process(dt)
+		steps += 1
+	var at := game.builder.to_house(player.feet())
+	var kp: Dictionary = HouseKing.king_prop(house)
+	_check(link.get("king_hits") == hits_before + 1, "autopilot: … and hits him (at %s after %.1f s)" % [at, steps * dt])
+	_check(HouseKing.king_reach(house, at, game.builder.yaw_to_house(player.head_yaw()), kp) == "ok", "autopilot: … near and facing him")
+	link.king_hit_answered.emit("ok", {"ok": true})
+	_check(game.autopilot_king == "", "autopilot: the answer sends it on to the duck")
+	var found_before: int = link.found_calls
+	steps = 0
+	while link.found_calls == found_before and steps < 90 * 60:
+		game._process(dt)
+		player._physics_process(dt)
+		steps += 1
+	_check(link.found_calls == found_before + 1, "autopilot: … and it finds the duck after the hit")
+	link.session_over.emit("test")
+	link.config["hit_king"] = false
 	main.queue_free()
 	await process_frame
 

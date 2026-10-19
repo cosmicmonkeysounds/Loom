@@ -29,7 +29,9 @@
 ##
 ## With `--autopilot` ([Autopilot], dev / CI) the game walks the trail itself
 ## and quits once its session is over: exit 0 after a find, 1 otherwise or
-## after [constant AUTOPILOT_LIMIT] s.
+## after [constant AUTOPILOT_LIMIT] s. With `--hit-king` too it first walks
+## up to the King, faces him and presses the hit button once (any answer
+## then sends it on to the duck).
 class_name Game
 extends Node3D
 
@@ -59,6 +61,10 @@ const KING_STANDS := "The King stands again."
 const KING_PAUSED := "The show is paused."
 ## `--autopilot` gives up (exit 1) after this many seconds.
 const AUTOPILOT_LIMIT := 180.0
+## `--hit-king`: the autopilot stops this far (plan m) in front of the King,
+## and waits at most this long (s) for the hit's answer.
+const AUTOPILOT_KING_STAND := 0.9
+const AUTOPILOT_KING_WAIT := 10.0
 
 var link: LinkBase
 var flow := GameFlow.new()
@@ -104,6 +110,10 @@ var autopilot_exit := true
 var _autopilot_found := false
 var _autopilot_played := false
 var _autopilot_left := AUTOPILOT_LIMIT
+## `--hit-king`: "" (off, or done) · "walk" (to the King) · "hit" (press
+## next tick) · "wait" (the answer); and the seconds left to wait.
+var autopilot_king := ""
+var _autopilot_king_wait := 0.0
 
 
 ## Build the scene and connect to `l`. Called once by `main.gd`.
@@ -199,7 +209,7 @@ func _on_house(h: Dictionary, _version: String) -> void:
 			_notice("The house was remapped — you're back at the start.")
 		_trail_in = 0.0
 		if autopilot != null:
-			autopilot.plan(route_house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+			autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 
 
 func _update_route_house() -> void:
@@ -221,13 +231,16 @@ func _on_king_changed(k: Dictionary) -> void:
 	_notice(KING_DOWN if fallen else KING_STANDS)
 	_trail_in = 0.0
 	if autopilot != null:
-		autopilot.plan(route_house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 
 
 func _on_king_hit_answered(result: String, _data: Dictionary) -> void:
 	_king_hit_pending = false
 	if flow.state != GameFlow.State.PLAYING:
 		return
+	if autopilot != null and autopilot_king != "":
+		print("autopilot: the King answered %s — %s" % [result, link.king])
+		_autopilot_to_duck()
 	match result:
 		"ok":
 			king_hit_used = true
@@ -264,7 +277,7 @@ func _on_duck_changed(d: Dictionary) -> void:
 	_trail_in = 0.0
 	_found_retry = 0.0
 	if autopilot != null:
-		autopilot.plan(route_house, builder.to_house(player.feet()), d["pos"])
+		autopilot.plan(route_house, builder.to_house(player.feet()), _autopilot_goal())
 		print("autopilot: the duck moved to %s in %s — re-planned" % [d.get("id", ""), d.get("room", "")])
 	_notice("Gerald moved — follow the arrows.")
 
@@ -315,6 +328,12 @@ func _on_assignment(a: Dictionary) -> void:
 		autopilot.plan(route_house, spawn["pos"], a["duck"]["pos"])
 		print("autopilot: playing %s (%s) — %d waypoints to duck %s in %s" % [
 			a.get("name", ""), a.get("session", ""), autopilot.path.size(), a["duck"].get("id", ""), a["duck"].get("room", "")])
+		autopilot_king = ""
+		var stand: Variant = autopilot_king_stand(builder.house)
+		if bool(link.config.get("hit_king", false)) and stand != null:
+			autopilot_king = "walk"
+			autopilot.plan(route_house, spawn["pos"], stand)
+			print("autopilot: --hit-king — %d waypoints to the King first" % autopilot.path.size())
 	state_changed.emit(flow.state)
 
 
@@ -523,11 +542,57 @@ func _tick_king(house: Dictionary, feet: Array, yaw: float) -> void:
 		link.hit_king()
 
 
+## Where `--hit-king` stands to hit him: [constant AUTOPILOT_KING_STAND] m
+## out along his facing (the prop's yaw; the hall side), else null.
+static func autopilot_king_stand(house: Dictionary) -> Variant:
+	var prop := HouseKing.king_prop(house)
+	if prop.is_empty():
+		return null
+	var f := HouseFrames.forward(float(prop.get("yaw", 0.0)) if prop.get("yaw") != null else 0.0)
+	var p: Array = prop["pos"]
+	return [float(p[0]) + f[0] * AUTOPILOT_KING_STAND, float(p[1]), float(p[2]) + f[2] * AUTOPILOT_KING_STAND]
+
+
+## Where the autopilot is walking to: the King's stand (`--hit-king`,
+## before the hit), else the duck.
+func _autopilot_goal() -> Array:
+	var stand: Variant = autopilot_king_stand(builder.house) if autopilot_king == "walk" else null
+	return stand if stand != null else flow.assignment["duck"]["pos"]
+
+
+func _autopilot_to_duck() -> void:
+	autopilot_king = ""
+	player.hit_button = false
+	autopilot.plan(route_house, builder.to_house(player.feet()), flow.assignment["duck"]["pos"])
+
+
 func _tick_autopilot(feet: Array, delta: float) -> void:
+	match autopilot_king:
+		"walk":
+			var stand: Variant = autopilot_king_stand(builder.house)
+			if stand != null and Vector2(float(feet[0]) - float(stand[0]), float(feet[2]) - float(stand[2])).length() <= Autopilot.REACH:
+				var p: Array = HouseKing.king_prop(builder.house)["pos"]
+				player.left_stick = Vector2.ZERO
+				player.face(builder.yaw_to_world(rad_to_deg(atan2(-(float(p[0]) - float(feet[0])), -(float(p[2]) - float(feet[2]))))))
+				autopilot_king = "hit"
+				print("autopilot: at the King (%s) — hitting" % [feet])
+				return
+		"hit":
+			player.hit_button = true
+			autopilot_king = "wait"
+			_autopilot_king_wait = AUTOPILOT_KING_WAIT
+			return
+		"wait":
+			player.hit_button = false
+			_autopilot_king_wait -= delta
+			if _autopilot_king_wait <= 0.0 or not _king_hit_pending:
+				print("autopilot: no hit (%s) — on to the duck" % ("no answer" if _autopilot_king_wait <= 0.0 else "refused here"))
+				_autopilot_to_duck()
+			return
 	var s := autopilot.steer(feet, delta)
 	if s["replan"]:
 		print("autopilot: stuck at %s — re-planning" % [feet])
-		autopilot.plan(route_house, feet, flow.assignment["duck"]["pos"])
+		autopilot.plan(route_house, feet, _autopilot_goal())
 		s = autopilot.steer(feet, delta)
 	player.face(builder.yaw_to_world(float(s["yaw"])))
 	player.left_stick = s["stick"]

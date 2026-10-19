@@ -81,7 +81,9 @@ that the route's own visibility test would refuse detours over the route's
 corner waypoints in that room. When the body makes no headway for 3 s it
 re-plans from where it stands, and it re-plans when the map or the duck
 changes. With `--headless --xr-mode off` it is the end-to-end check of a
-headset against a live event server.
+headset against a live event server. `--hit-king` sends it to the King first: it stops 0.9 m in
+front of him, faces him, presses the hit button once and goes on to the duck
+whatever the answer — the shared bar's end-to-end check.
 
 ## Station config
 
