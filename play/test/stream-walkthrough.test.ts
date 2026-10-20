@@ -78,3 +78,21 @@ describe("a fact card with no open questions is closed, not a task (B14)", () =>
     expect(two).toContain("Pick a question above");
   });
 });
+
+describe("the stick-to-bottom observers stay cheap", () => {
+  it("only the box's own rows are watched; a crawl tick inside a row adds none", async () => {
+    const { rowChanges } = await import("../src/stream/list.tsx");
+    const box = {};
+    const row = { nodeType: 1 };
+    const old = { nodeType: 1 };
+    const text = { nodeType: 3 };
+    const inner = {};
+    const records = [
+      { type: "characterData", target: text, addedNodes: [], removedNodes: [] },
+      { type: "childList", target: inner, addedNodes: [{ nodeType: 1 }], removedNodes: [] }, // a span inside a crawling row
+      { type: "childList", target: box, addedNodes: [row, text], removedNodes: [old] },
+    ];
+    expect(rowChanges(records, box)).toEqual({ added: [row], removed: [old] });
+    expect(rowChanges(records.slice(0, 2), box)).toEqual({ added: [], removed: [] });
+  });
+});

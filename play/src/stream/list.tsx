@@ -21,6 +21,22 @@ export function atBottom(el: { scrollTop: number; scrollHeight: number; clientHe
   return el.scrollHeight - el.scrollTop - el.clientHeight <= slack;
 }
 
+type NodeLike = { nodeType: number };
+type RecordLike = { type: string; target: unknown; addedNodes: ArrayLike<NodeLike>; removedNodes: ArrayLike<NodeLike> };
+
+/** The stream's own rows a batch of mutations added and removed — only the
+ *  box's direct children (a crawl tick deep inside a row is no new row). */
+export function rowChanges<N extends NodeLike>(records: readonly RecordLike[], box: unknown): { added: N[]; removed: N[] } {
+  const added: N[] = [];
+  const removed: N[] = [];
+  for (const r of records) {
+    if (r.type !== "childList" || r.target !== box) continue;
+    for (const n of Array.from(r.addedNodes)) if (n.nodeType === 1) added.push(n as N);
+    for (const n of Array.from(r.removedNodes)) if (n.nodeType === 1) removed.push(n as N);
+  }
+  return { added, removed };
+}
+
 /**
  * Keep a message stream on its newest line, the way every chat app does:
  * while the reader is at (or near) the bottom, anything that makes the
@@ -37,8 +53,20 @@ export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => voi
     cleanup.current = null;
     if (el === null) return;
     let pinned = true;
-    const stick = () => {
+    const stickNow = () => {
       if (pinned) el.scrollTop = el.scrollHeight;
+    };
+    // One jump per frame, however many ticks / rows / pictures asked for it
+    // (a crawl tick is every 16–40 ms; an old tablet has a 400-row lobby).
+    let frame: number | null = null;
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
+    const stick = () => {
+      if (raf === null) return stickNow();
+      if (frame !== null) return;
+      frame = raf(() => {
+        frame = null;
+        stickNow();
+      });
     };
     // Only the reader moves `pinned`: our own jump to the bottom lands
     // inside the slack, and a scroll the browser makes on its own (a tray
@@ -51,7 +79,7 @@ export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => voi
     const onScroll = () => {
       if (atBottom(el)) pinned = true;
       else if (Date.now() - touched < USER_SCROLL_MS) pinned = false;
-      else if (pinned) stick();
+      else if (pinned) stickNow();
     };
     for (const ev of ["touchstart", "touchmove", "wheel", "pointerdown", "keydown"]) el.addEventListener(ev, touch, { passive: true });
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -61,27 +89,30 @@ export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => voi
     // came in 200 px short of the bottom): watch every row's size, not
     // only the box's.
     const ro = typeof ResizeObserver === "function" ? new ResizeObserver(stick) : null;
-    const watchRows = () => {
-      if (ro === null) return;
-      for (const child of Array.from(el.children)) ro.observe(child);
-    };
+    if (ro !== null) for (const child of Array.from(el.children)) ro.observe(child);
     const mo =
       typeof MutationObserver === "function"
-        ? new MutationObserver(() => {
-            watchRows();
+        ? new MutationObserver((records) => {
+            // Watch new rows, let go of removed ones; a tick inside a row
+            // only asks for the (coalesced) jump.
+            if (ro !== null) {
+              const { added, removed } = rowChanges<Element>(records, el);
+              for (const n of removed) ro.unobserve(n);
+              for (const n of added) ro.observe(n);
+            }
             stick();
           })
         : null;
     mo?.observe(el, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
     ro?.observe(el);
-    watchRows();
-    stick();
+    stickNow();
     cleanup.current = () => {
       el.removeEventListener("scroll", onScroll);
       for (const ev of ["touchstart", "touchmove", "wheel", "pointerdown", "keydown"]) el.removeEventListener(ev, touch);
       el.removeEventListener("load", stick, true);
       mo?.disconnect();
       ro?.disconnect();
+      if (frame !== null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(frame);
     };
   }, []);
 }
