@@ -1980,7 +1980,6 @@ export class EventRuntime {
       last: ChatMessage;
     }
     const tails = new Map<string, Tail>(); // thread →
-    let tags: Map<string, StoryTagContext> | undefined;
     for (const m of this.chat.all()) {
       if (m.hidden || !m.channel.startsWith("dm:") || !Array.isArray(m.audience) || m.audience.length !== 1) continue;
       const character = m.channel.slice("dm:".length);
@@ -1992,12 +1991,13 @@ export class EventRuntime {
       let first = t?.first ?? null;
       let held = t?.held ?? false;
       // Recheck item 3: only a line the character *voiced* answers the
-      // thread — a worker's reply or a director typing as him. A line the
-      // story posted in his name ("Your fact for round 2 Q2 was not
-      // counted…", a scripted beat) is not him answering, live or here
-      // (`storyTag`, the same test the agent request's `story: true` uses).
-      const story = (tags ??= new Map()).get(character) ?? { character, hold: def?.hold ?? null, busy: def?.busy ?? null, storyTexts: storyTexts(this.chat.all(), character) };
-      tags.set(character, story);
+      // thread — a worker's reply or a director typing as him, as live (the
+      // hub settles on `/api/agent/reply` / `answeredByHand`, whatever the
+      // text). A line the story posted in his name ("Your fact for round 2
+      // Q2 was not counted…", a scripted beat) is not him answering: it
+      // carries its own `beat` key, which typed chat and a journaled `say`
+      // never do. (Not `storyTag`'s text match: a reply that repeats a story
+      // text was still him answering, and re-asking it answers twice.)
       if (m.from !== character) {
         // A story line from anyone else in the thread is not a guest asking.
         if (m.kind === "line" && !Object.hasOwn(m, "beat")) {
@@ -2006,7 +2006,7 @@ export class EventRuntime {
         }
       } else if (def?.hold !== null && def?.hold !== undefined && m.text === def.hold) {
         if (owed !== null) held = true;
-      } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy) && !storyTag(m, story)) {
+      } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy) && !Object.hasOwn(m, "beat")) {
         owed = null;
         first = null;
         held = false;
