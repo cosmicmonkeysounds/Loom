@@ -35,7 +35,7 @@ export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet
   const soon = soonest(view?.countdowns, nowMs);
   const held = heldCount(view?.wallet);
   // The performer's own act (the NOW objective's): "Doors" until the show starts, never the act of NEXT ahead of time.
-  const act = trayAct(view?.night?.act, view?.objectives);
+  const act = trayAct(view?.night?.act, view?.objectives, view?.night?.step);
   return (
     <>
       {held > 0 ? (

@@ -326,9 +326,12 @@ export function actChip(act: { code: string | null; title: string | null } | nul
 export function trayAct(
   act: { code: string | null; title: string | null } | null | undefined,
   objectives: readonly Pick<ObjectiveView, "act">[] | undefined,
+  step?: number | null,
 ): { text: string; title: string } | null {
   const own = objectives?.[0]?.act?.trim() ?? "";
-  if (own === "") return actChip(act);
+  // No act of its own (a host's "Keep things running"): the cue sheet's act,
+  // but never ahead of the show — `Night.step` 0 is the doors, before Act B.
+  if (own === "") return step === 0 && act !== null && act !== undefined ? { text: "Doors", title: "Doors: the first act has not started" } : actChip(act);
   const sheet = actChip(act);
   if (act?.code !== null && act?.code !== undefined && act.code === own && sheet !== null) return sheet;
   return /^[A-Z]$/u.test(own) ? { text: `Act ${own}`, title: `Act ${own}` } : { text: own, title: own };

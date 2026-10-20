@@ -106,6 +106,11 @@ describe("the tray's act (fix round)", () => {
     expect(trayAct(sheet, [{ act: null }])).toEqual(actChip(sheet));
     expect(trayAct(sheet, [])).toEqual(actChip(sheet));
     expect(trayAct(null, undefined)).toBeNull();
+    // An objective with no act (a host's help desk) during the doors (step 0): "Doors", never the act of NEXT.
+    expect(trayAct(sheet, [{ act: null }], 0)).toEqual({ text: "Doors", title: "Doors: the first act has not started" });
+    expect(trayAct(sheet, [], 1)).toEqual(actChip(sheet));
+    expect(trayAct(sheet, [{ act: "Doors" }], 0)).toEqual({ text: "Doors", title: "Doors" });
+    expect(trayAct(null, [], 0)).toBeNull();
   });
 });
 
