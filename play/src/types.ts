@@ -183,6 +183,9 @@ export interface PersonCard {
 }
 
 export interface GuestView {
+  /** The show clock (wave 13 K5): show minutes after midnight when the view
+   *  was built + whether it runs (`show-clock.ts`). Absent → no clock. */
+  showClock?: { minutes: number; running: boolean };
   id: string;
   name: string;
   /** The story's title + theme — every piece of chrome comes from the story. */
@@ -270,6 +273,9 @@ export interface PrimeGuest {
 }
 
 export interface PrimeView {
+  /** The show clock (wave 13 K5): show minutes after midnight when the view
+   *  was built + whether it runs (`show-clock.ts`). Absent → no clock. */
+  showClock?: { minutes: number; running: boolean };
   character: string;
   title?: string;
   theme?: string;
