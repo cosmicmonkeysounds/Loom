@@ -1,1 +1,33 @@
-/* chrome lane (wave 13). */
+/* chrome lane (wave 13): the Win95 primitives every lane builds on —
+   bevels under aol97, flat hairlines under plain, all from the tokens. */
+.w95-window {
+  display: flex; flex-direction: column; min-width: 0;
+  background: var(--dialog-face); color: var(--ink);
+  box-shadow: var(--raised); border-radius: var(--radius);
+}
+.w95-titlebar {
+  display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 3px 3px 8px;
+  background: var(--title-grad); color: var(--title-ink);
+  font: 700 13px var(--ui-font); border-radius: var(--radius) var(--radius) 0 0;
+}
+.w95-titlebar.alarm { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
+.w95-titlebar.restricted { background: var(--signal); }
+.w95-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.w95-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: var(--tap); min-height: var(--tap); margin: 0; padding: 0 12px;
+  border: none; border-radius: var(--radius); background: var(--face); color: var(--ink);
+  box-shadow: var(--raised); font: 13px var(--ui-font); cursor: pointer;
+}
+.w95-btn:active { box-shadow: var(--pressed); }
+.w95-btn:focus-visible { outline: 1px dotted var(--ink); outline-offset: -5px; }
+.w95-btn.w95-x { min-width: var(--tap); min-height: 28px; padding: 0; font-weight: 700; }
+.w95-inset { background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
+.w95-body { padding: 10px 12px; overflow: auto; }
+.w95-dialog-backdrop {
+  position: fixed; inset: 0; z-index: var(--z-moment);
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
+  background: var(--scrim);
+}
+.w95-dialog { width: 100%; max-width: 420px; max-height: 100%; }

@@ -53,3 +53,49 @@
 :root[data-theme="aol97"] .chrow:hover .chrow-occ { color: var(--white); }
 :root[data-theme="aol97"] .pavatar { box-shadow: var(--raised); text-shadow: none; }
 :root[data-theme="aol97"] .captcha-tile.on { background: #e0e0ff; }
+
+/* ── wave 13 tokens ──────────────────────────────────────────────────────
+   The shared layer order, the touch-target floor, the safe areas, and the
+   Win95 parts' colours (title bars, the tray, balloon tips, dialogs, the
+   blue screen) — defined for both themes, so every lane's Win95 part
+   renders under `plain` with the plain colours and no ornament. */
+:root {
+  --z-dock: 10; --z-drawer: 15; --z-sheet: 20; --z-tour: 30; --z-toast: 35;
+  --z-moment: 40; --z-pass: 45; --z-takeover: 50; --z-glitch: 55;
+  --tap: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --title-h: 44px;
+  --taskbar-h: 44px;
+  --title-grad: var(--navy);
+  --title-ink: var(--white);
+  --tray-face: var(--face);
+  --tray-inset: inset 0 0 0 1px var(--line);
+  --balloon-bg: var(--white);
+  --balloon-ink: var(--ink);
+  --dialog-face: var(--white);
+  --bsod-bg: var(--navy);
+  --bsod-ink: var(--white);
+  --dim-ink: #6b665c;        /* 5.4:1 on --face */
+  --scrim: rgba(0, 0, 0, 0.45);
+}
+:root[data-theme="aol97"] {
+  --z-dock: 10; --z-drawer: 15; --z-sheet: 20; --z-tour: 30; --z-toast: 35;
+  --z-moment: 40; --z-pass: 45; --z-takeover: 50; --z-glitch: 55;
+  --tap: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --title-h: 44px;
+  --taskbar-h: 44px;
+  --title-grad: linear-gradient(90deg, var(--navy), var(--navy-2));
+  --title-ink: var(--white);
+  --tray-face: var(--face);
+  --tray-inset: var(--sunken);
+  --balloon-bg: #ffffe1;
+  --balloon-ink: #000000;
+  --dialog-face: var(--face);
+  --bsod-bg: #0000aa;
+  --bsod-ink: #ffffff;
+  --dim-ink: #404040;        /* 5.7:1 on --face (silver) */
+  --scrim: rgba(0, 0, 0, 0.45);
+}

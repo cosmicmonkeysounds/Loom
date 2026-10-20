@@ -1,1 +1,63 @@
-/* chrome lane (wave 13). */
+/* chrome lane (wave 13): the frame. Plumbing's base — `.app-frame` fills
+   `.root` as a flex column [title bar][pins][shell][host dock][taskbar],
+   with the plain layout of the title bar and the taskbar, so the booth can
+   lay out its frame before the chrome lane styles it. The taskbar owns
+   the bottom safe-area inset inside the frame. */
+.app-frame { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; }
+.app-frame > .app, .app-frame > .screen { flex: 1 1 auto; min-height: 0; }
+.title-bar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+  min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 6px 0 10px;
+  background: var(--title-grad); color: var(--title-ink); font: 700 14px var(--ui-font);
+}
+.title-bar.alarm { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
+.title-bar.restricted { background: var(--signal); }
+.title-bar-btn {
+  flex: 1; min-width: 0; min-height: var(--tap); display: flex; flex-direction: column; justify-content: center;
+  margin: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.title-bar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-bar-sub { font-weight: 400; font-size: 12px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taskbar {
+  flex: 0 0 auto; position: relative; display: flex; align-items: center; gap: 4px;
+  min-height: calc(var(--taskbar-h) + var(--safe-bottom)); padding: 2px 4px var(--safe-bottom);
+  background: var(--tray-face); color: var(--ink); box-shadow: var(--raised);
+}
+.taskbar-btn { flex: 0 0 auto; }
+.taskbar-btn.primary { flex: 1 1 auto; font-weight: 700; }
+.taskbar-btn[aria-pressed="true"] { box-shadow: var(--pressed); }
+.taskbar-badge { min-width: 18px; padding: 0 4px; border-radius: 9px; background: var(--highlight); color: var(--black); font: 700 11px var(--ui-font); }
+.tray {
+  margin-left: auto; display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 6px;
+  box-shadow: var(--tray-inset); border-left: 3px solid var(--line); font: 12px var(--ui-font);
+}
+.tray.live { border-left-color: var(--live); }
+.tray.reconnecting { border-left-color: var(--highlight); }
+.tray.offline { border-left-color: var(--bad); }
+.tray-item { display: inline-flex; align-items: center; gap: 3px; min-height: 36px; padding: 0 4px; border: none; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
+button.tray-item { min-height: var(--tap); cursor: pointer; }
+.tray-item.alarm { color: var(--bad); font-weight: 700; }
+.tray-item.dim { color: var(--dim-ink); }
+.start-menu {
+  position: absolute; left: 4px; bottom: calc(100% + 2px); z-index: var(--z-sheet);
+  display: flex; flex-direction: column; min-width: 220px; max-width: calc(100% - 8px);
+  background: var(--face); box-shadow: var(--raised); border-radius: var(--radius);
+}
+.start-menu-head { padding: 8px 10px; background: var(--title-grad); color: var(--title-ink); font: 700 13px var(--ui-font); }
+.start-menu-item {
+  display: flex; align-items: center; gap: 8px; min-height: var(--tap); margin: 0; padding: 0 12px;
+  border: none; background: none; color: var(--ink); font: 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.start-menu-item.danger { color: var(--bad); }
+.start-menu-confirm { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; }
+.objective-card { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; background: var(--face); color: var(--ink); box-shadow: var(--raised); }
+.objective-head {
+  display: flex; align-items: center; gap: 8px; min-height: var(--tap); width: 100%; margin: 0; padding: 0;
+  border: none; background: none; color: inherit; font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.objective-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.objective-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--dim-ink); }
+.objective-brief { margin: 0; font-size: 13px; }
+.objective-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.objective-check.done { color: var(--dim-ink); text-decoration: line-through; }
+.objective-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
