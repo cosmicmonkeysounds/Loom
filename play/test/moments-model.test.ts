@@ -128,6 +128,9 @@ describe("which messages are moments", () => {
     expect(momentOf(msg(3, { alert: true, takeover: true, pin: "" }), guest, null)).toBeNull();
     expect(momentOf(msg(4, { alert: true, hidden: true }), guest, null)).toBeNull();
     expect(momentOf(msg(5, { kind: "line" }), guest, null)).toBeNull();
+    // A `!` alarm is marked as one, whatever kind it is (a `reply !…` readout: the red stop).
+    expect(momentOf(msg(6, { alert: true, readout: true, moment: "major" }), guest, null)).toMatchObject({ kind: "readout", alarm: true });
+    expect(momentOf(msg(7, { readout: true, moment: "major" }), guest, null)?.alarm).toBeUndefined();
   });
 
   it("a card that asks shows its own text; a quest names itself", () => {

@@ -117,10 +117,25 @@ describe("a new objective flashes the NOW bar", () => {
 });
 
 describe("severity is the icon", () => {
-  it("a `!` alarm is the red stop, other major the warning, minor information", () => {
+  it("the red stop only for a `!` alarm, the warning for another major message, information for notices and minor ones", () => {
     expect(iconOf({ severity: "major", kind: "alert" })).toBe("error");
-    expect(iconOf({ severity: "major", kind: "card" })).toBe("warning");
+    // a `reply !…` readout is a `!` alarm too
+    expect(iconOf({ severity: "major", kind: "readout", alarm: true })).toBe("error");
+    expect(iconOf({ severity: "major", kind: "readout" })).toBe("warning");
+    expect(iconOf({ severity: "major", kind: "other" })).toBe("warning");
+    // notices: a card that asks, a quest, an objective, a beat's line
+    for (const kind of ["card", "quest", "objective", "beat"] as const) expect(iconOf({ severity: "major", kind })).toBe("info");
     expect(iconOf({ severity: "minor", kind: "readout" })).toBe("info");
+    expect(iconOf({ severity: "minor", kind: "alert" })).toBe("info");
+  });
+
+  it("the icon follows the moment, never the level it is shown at", () => {
+    const notice = moment(30, { kind: "quest", text: "Round 2: one hour." });
+    for (const level of ["dialog", "bsod"] as const) {
+      const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(notice, level), index: 1, total: 1, canGo: false, onGo: noop, onDismiss: noop }));
+      expect(html).toContain("moments-ico-info");
+      expect(html).not.toContain("moments-ico-error");
+    }
   });
 
   it("an alarm's dialog keeps the navy caption and carries the stop icon", () => {

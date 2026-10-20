@@ -17,11 +17,17 @@ export const MODAL_DEAD_MS = 400;
 type IconKind = "error" | "warning" | "info";
 
 /** Which Win95 icon a moment carries — the way Win95 told severity, by the
- *  box's icon, never its title bar: a `!` alarm is the red stop (error), any
- *  other major moment the yellow warning, a minor one information. */
-export function iconOf(m: Pick<Moment, "severity"> & Partial<Pick<Moment, "kind">>): IconKind {
+ *  box's icon, never its title bar, and never by the rung it sits on (a
+ *  notice raised to a dialog is still a notice): the red stop only for a
+ *  major `!` alarm; the yellow warning for any other major message (a
+ *  readout that matters, a `reply` to you); information for a notice — a
+ *  card that asks, a quest, an objective, a beat's line — and for anything
+ *  minor (a booth's demoted guest alarm too). */
+export function iconOf(m: Pick<Moment, "severity"> & Partial<Pick<Moment, "kind" | "alarm">>): IconKind {
   if (m.severity !== "major") return "info";
-  return m.kind === "alert" ? "error" : "warning";
+  if (m.kind === "alert" || m.alarm === true) return "error";
+  if (m.kind === "card" || m.kind === "quest" || m.kind === "objective" || m.kind === "beat") return "info";
+  return "warning";
 }
 
 /** The Win95 message-box icons, drawn (32 × 32 grid). */

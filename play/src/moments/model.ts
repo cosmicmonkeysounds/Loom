@@ -37,6 +37,8 @@ export interface Moment {
   pass?: boolean;
   /** The beat the line was spoken in (a blue screen is one per beat). */
   beat?: string | null;
+  /** A `!` alarm (`ChatMessage.alert`), whatever made it — a cue, a pin, a `reply !…`: the red stop icon. */
+  alarm?: boolean;
   /** The story clock (ms) when it arrived. */
   at: number;
   /** `view.night.phase` when it arrived (a phase change makes a missed moment stale). */
@@ -218,6 +220,7 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
     seq: m.seq,
     severity,
     kind,
+    ...(m.alert === true ? { alarm: true } : {}),
     caption: momentCaption(m, kind),
     text: momentText(m),
     channel: m.channel,
