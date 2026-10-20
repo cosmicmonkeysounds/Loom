@@ -332,7 +332,11 @@ export const useOperate = create<OperateState>((set, get) => {
     try {
       const view = await modApi.lens(ev.id, isGuest ? 'guest' : 'prime', id)
       if (get().perspective === id) {
-        set({ lens: isGuest ? { kind: 'guest', id, view: view as GuestView } : { kind: 'performer', id, view: view as PrimeView } })
+        // A host part's booth (`PrimeView.host`, an `admin: true` part)
+        // may press another character's `by:` button: the lens says so,
+        // as the in-browser rehearsal's does (`store/sim.ts` `lensFor`).
+        const prime = view as PrimeView
+        set({ lens: isGuest ? { kind: 'guest', id, view: view as GuestView } : { kind: 'performer', id, view: prime, ...(prime.host === true ? { host: true } : {}) } })
       }
     } catch {
       /* transient — the next snapshot retries */
