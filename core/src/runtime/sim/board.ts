@@ -27,6 +27,7 @@
 //! cue state. Scope resolution (character / role / global / person) and the
 //! live `while` live with the server's views (`boardFor`).
 
+import { foldName } from "../../parser/names.ts";
 import { splitTopLevelCommas } from "../../parser/rust.ts";
 
 /** One thing a board line shows. Exactly one of `path` / `name` is set. */
@@ -53,6 +54,23 @@ export interface BoardLine {
 const PATH = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$/u;
 /** `Microsoft Excel`, `Norton Anti-Virus`: words, no dot, no operators. */
 const NAME = /^[\p{L}\p{N}][\p{L}\p{N}_'’&+!? -]*$/u;
+
+/**
+ * Is `rest` — a ROLE `watch:` path after its head (`quest.the_cold_door` of
+ * `program.quest.the_cold_door`) — one of the ROLE's `secret:` slots, or
+ * under one? Compared segment by segment, each folded (`foldName`), so a
+ * dotted secret and a spelling that differs only by case or `_` both match.
+ * Shared by the booth card's flags (`views.ts guestFlags`, which drops the
+ * item) and lint L1205 (which warns about it).
+ */
+export function isSecretRoleSlot(secret: Iterable<string>, rest: string): boolean {
+  const parts = rest.split(".").map(foldName);
+  for (const sec of secret) {
+    const s = sec.split(".").map(foldName);
+    if (s.length <= parts.length && s.every((x, k) => x === parts[k])) return true;
+  }
+  return false;
+}
 
 /** The label a path shows when the line gives none: its last segment,
  *  `_` read as a space, first letter capitalised (`Night.wrong_combos` →

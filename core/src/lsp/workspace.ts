@@ -26,7 +26,7 @@ import { Bundle, type LoomFileEntry } from "../runtime/bundle.ts";
 import { lowerRawBody } from "../runtime/sim/effects.ts";
 import { compileModel, isAlertsPath, judgeOf, parseCurrency, resolveObjectiveAudience, resolveObjectiveButtons, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
 import { identityDefs, performerPickable } from "../identity-kind.ts";
-import { boardLineProblems, parseBoardLine } from "../runtime/sim/board.ts";
+import { boardLineProblems, isSecretRoleSlot, parseBoardLine } from "../runtime/sim/board.ts";
 import { parseExpr } from "../runtime/expr.ts";
 import { buildStoryGraph, type StoryGraph } from "./graph.ts";
 import { renameBeatEdits } from "./rename.ts";
@@ -462,9 +462,9 @@ export class Workspace {
             // A ROLE slot in the ROLE's own `secret:` set would reach every
             // booth's guest card (wave 13): the card leaves it out.
             const role = [...model.roles.values()].find((r) => foldName(r.id) === foldName(head));
-            const slot = item.path.slice(head.length + 1).split(".")[0] ?? "";
-            if (role !== undefined && role.secret.has(slot))
-              lint(uri, range, `\`${item.path}\` on ${what}: \`${slot}\` is in ROLE ${role.id}'s \`secret:\` slots — a ROLE watch item reaches every booth's guest card, so the card leaves it out; watch a global count instead`);
+            const rest = item.path.slice(head.length + 1);
+            if (role !== undefined && isSecretRoleSlot(role.secret, rest))
+              lint(uri, range, `\`${item.path}\` on ${what}: \`${rest}\` is in ROLE ${role.id}'s \`secret:\` slots — a ROLE watch item reaches every booth's guest card, so the card leaves it out; watch a global count instead`);
           }
         } else if (item.name !== null && !people.has(foldName(item.name))) {
           lint(uri, range, `\`${item.name}\` on ${what} names no CHARACTER — a person item is a character's name (a path needs a dot)`);

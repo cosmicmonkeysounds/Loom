@@ -653,4 +653,12 @@ INTERACTION c
     expect(out.map((d) => d.code)).toEqual(["L1205"]);
     expect(out[0]!.message).toMatch(/secret/);
   });
+
+  it("L1205: a dotted secret and a spelling that differs only by case or _ warn too (the card drops both)", () => {
+    const src = (watch: string) =>
+      [["file:///main.loom", `# Night\nstart: Go\nwatch: ${watch}\n\nROLE Program\n  cleared: bool = false\n  secret: door_digits, quest.the_cold_door\n\n== Go\nHi.\n`]] as Array<[string, string]>;
+    expect(lints(src("program.quest.the_cold_door as Cold door")).map((d) => d.code)).toEqual(["L1205"]);
+    expect(lints(src("program.Door_Digits as Digits")).map((d) => d.code)).toEqual(["L1205"]);
+    expect(lints(src("program.quest.other as Other, program.cleared as Cleared"))).toEqual([]);
+  });
 });

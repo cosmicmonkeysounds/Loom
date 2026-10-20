@@ -8,6 +8,7 @@ import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
 import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
 import { codexAboutKind, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
+import { isSecretRoleSlot } from "../src/runtime/sim/board.ts";
 import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
@@ -1434,7 +1435,7 @@ function allGuestFlags(sim: Sim): Map<string, GuestFlag[]> {
         const rest = path.slice(dot + 1);
         if (foldName(head) !== foldName(p.role)) continue;
         const slot = rest.split(".")[0]!;
-        if (role !== undefined && [...role.secret].some((sec) => rest === sec || rest.startsWith(`${sec}.`) || slot === sec)) continue;
+        if (role !== undefined && isSecretRoleSlot(role.secret, rest)) continue;
         const v = sim.world.get(`${p.id}.${rest}`);
         const shown = v === undefined || v.kind === "null" ? "null" : display(v).replace(/^"(.*)"$/su, "$1");
         const on = flagOn(v);
