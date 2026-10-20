@@ -265,8 +265,13 @@
 .host-compact .cue-n { padding-top: 0; }
 .host-compact .cue-body { flex: 1; flex-direction: row; align-items: baseline; gap: 8px; }
 .host-compact .cue-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.host-compact .cue-tags { flex: 0 1 auto; max-width: 45%; min-width: 0; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
-/* Each tag gives way with an ellipsis, never a clean cut mid-word. */
+/* Whole tags only: a tag that doesn't fit wraps onto a second line the
+   row's one line hides ("👤 picks a person", never "picks a p… ser…"); a
+   first tag wider than the room alone gives way with an ellipsis. */
+.host-compact .cue-tags {
+  flex: 0 1 auto; max-width: 45%; min-width: 0; align-self: center;
+  flex-wrap: wrap; height: 16px; line-height: 16px; overflow: hidden; white-space: nowrap;
+}
 .host-compact .cue-tag { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Under a "fallbacks" line, folded: "aside" says nothing the row doesn't. */
 .host-compact .host-aside { display: none; }

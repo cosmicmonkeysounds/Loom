@@ -795,6 +795,14 @@ export function ArmDrain({ at, className }: { at: number; className?: string }) 
   );
 }
 
+/** Does an arm bring its row into view? Only one this row's own tap made
+ *  (a compact row grows from 44 px and its "Tap again to fire" and the
+ *  drain would sit under the bar below the list); an arm from the NEXT bar
+ *  leaves the list's scroll where the host left it. */
+export function revealOnArm(armedHere: boolean, tappedHere: boolean): boolean {
+  return armedHere && tappedHere;
+}
+
 /** An armed row's call to action: a subject cue names who it goes to on
  *  the row itself (the hint at the top of the list may be scrolled away). */
 export function armLine(armed: Pick<Armed, "subject" | "value">, subjectName: string | null): string {
@@ -806,16 +814,29 @@ export function CueButton({ row, armed, locked, sending, warnings, actCode, subj
   const isArmed = armed !== null && armed.id === row.id;
   const warn = isArmed && warnings.length > 0;
   const { title, tags } = cueTitleTags(row.title);
+  // A row armed by its own tap grows (a compact one from 44 px) and keeps
+  // its "Tap again to fire" and the drain in view, never under the bar
+  // below the list. An arm made elsewhere (the NEXT bar) leaves the scroll.
+  const btn = useRef<HTMLButtonElement>(null);
+  const tapped = useRef(false);
+  useEffect(() => {
+    if (revealOnArm(isArmed, tapped.current)) btn.current?.scrollIntoView?.({ block: "nearest" });
+    tapped.current = false;
+  }, [isArmed]);
   return (
     <li>
       <button
         type="button"
+        ref={btn}
         className={cueRowClass(row, isArmed, warn)}
         data-next={row.next ? "true" : undefined}
         data-last={row.last ? "true" : undefined}
         disabled={locked}
         aria-busy={sending || undefined}
-        onClick={onTap}
+        onClick={() => {
+          tapped.current = true;
+          onTap();
+        }}
       >
         <span className="cue-n">{row.n}</span>
         <span className="cue-body">
