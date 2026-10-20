@@ -552,3 +552,105 @@ describe("Workspace currency lints (wave 5 B2)", () => {
     expect(lints(files)).toEqual([]);
   });
 });
+
+describe("Workspace wave 13 lints (L1205 secret watch item, L1207–L1211)", () => {
+  const CODES = ["L1205", "L1207", "L1208", "L1209", "L1210", "L1211"];
+  const lints = (files: Array<[string, string]>) => {
+    const w = new Workspace();
+    w.updateMany(files);
+    return files.flatMap(([uri]) =>
+      (w.diagnosticsFor(uri)?.diagnostics ?? [])
+        .filter((d) => CODES.includes(String(d.code)))
+        .map((d) => ({ uri, code: d.code, severity: d.severity, line: d.range.start.line, message: d.message })),
+    );
+  };
+  const BASE = `ROLE Program
+  cleared: bool = false
+  secret: door_digits
+
+GROUP Antivirus
+  joinable: false
+
+CHARACTER Norton
+  faction: Antivirus
+  when scanned by program:
+    reply Clean.
+
+CHARACTER Calculator
+
+CHARACTER Trabolta
+  mind: external
+
+INTERACTION wave
+  who: guest
+
+INTERACTION mark
+  who: performer
+
+INTERACTION open the doors
+  who: admin
+
+INTERACTION a
+  who: performer
+INTERACTION b
+  who: performer
+INTERACTION c
+  who: performer
+`;
+  const story = (head: string, body: string) => [["file:///main.loom", `# Night\nstart: Go\n${head}\n${BASE}\n${body}\n== Go\nHi.\n`]] as Array<[string, string]>;
+
+  it("a clean OBJECTIVE lints clean", () => {
+    expect(lints(story("", "OBJECTIVE Ok\n  for: Program, Antivirus\n  while: program.cleared != true\n  text:\n    - Cleared, done when program.cleared == true\n  buttons: pass, wave, mark\n"))).toEqual([]);
+  });
+
+  it("L1207: an unresolved for: name warns; none resolving (or no for:) is an error", () => {
+    const some = lints(story("", "OBJECTIVE A\n  for: Program, Nobody\n"));
+    expect(some.map((d) => [d.code, d.severity])).toEqual([["L1207", DiagnosticSeverity.Warning]]);
+    expect(some[0]!.message).toMatch(/`Nobody`/);
+    const none = lints(story("", "OBJECTIVE A\n  for: Nobody\n"));
+    expect(none.map((d) => [d.code, d.severity])).toEqual([["L1207", DiagnosticSeverity.Error]]);
+    const missing = lints(story("", "OBJECTIVE A\n  title: Floating\n"));
+    expect(missing.map((d) => [d.code, d.severity])).toEqual([["L1207", DiagnosticSeverity.Error]]);
+  });
+
+  it("L1208: unknown, admin, wrong audience, and more than 3 interaction buttons", () => {
+    const msgs = (body: string) => lints(story("", body)).filter((d) => d.code === "L1208").map((d) => d.message);
+    expect(msgs("OBJECTIVE A\n  for: Program\n  buttons: nope\n")[0]).toMatch(/`nope`.*no INTERACTION/);
+    expect(msgs("OBJECTIVE A\n  for: Program\n  buttons: open the doors\n")[0]).toMatch(/who: admin/);
+    expect(msgs("OBJECTIVE A\n  for: Program\n  buttons: mark\n")[0]).toMatch(/for no performer/);
+    expect(msgs("OBJECTIVE A\n  for: performers\n  buttons: wave\n")[0]).toMatch(/for no guest/);
+    expect(msgs("OBJECTIVE A\n  for: performers\n  buttons: scan, mark, a, b, c\n")[0]).toMatch(/4 interaction buttons/);
+    expect(msgs("OBJECTIVE A\n  for: everyone\n  buttons: pass, scan, wave, mark\n")).toEqual([]);
+  });
+
+  it("L1209: an empty or unparsable while: / done when is an error", () => {
+    const out = lints(story("", "OBJECTIVE A\n  for: Program\n  while:\n  text:\n    - One, done when\n    - Two, done when ((\n    - Three, done when program.cleared\n"));
+    expect(out.map((d) => [d.code, d.severity])).toEqual([
+      ["L1209", DiagnosticSeverity.Error],
+      ["L1209", DiagnosticSeverity.Error],
+      ["L1209", DiagnosticSeverity.Error],
+    ]);
+    expect(out[0]!.message).toMatch(/`while:` .* is empty/);
+    expect(out[2]!.message).toMatch(/“Two”/);
+  });
+
+  it("L1210: alerts: that is no dotted path, or outside the story header", () => {
+    expect(lints(story("alerts: Night.alerts", ""))).toEqual([]);
+    const bad = lints(story("alerts: loud", ""));
+    expect(bad.map((d) => [d.code, d.line])).toEqual([["L1210", 2]]);
+    const second = lints([...story("", ""), ["file:///beats/late.loom", "# Late\nalerts: Night.other\n\n== Late\nHi.\n"]]);
+    expect(second.map((d) => [d.uri, d.code])).toEqual([["file:///beats/late.loom", "L1210"]]);
+  });
+
+  it("L1211: admin: true on a character nobody can sign in as", () => {
+    const out = lints(story("", "CHARACTER Prop\n  admin: true\n\nCHARACTER Voice\n  mind: external\n  admin: true\n"));
+    expect(out.map((d) => d.code)).toEqual(["L1211", "L1211"]);
+    expect(lints(story("", "CHARACTER Host\n  admin: true\n  when scanned by program:\n    reply Hi.\n"))).toEqual([]);
+  });
+
+  it("L1205: a ROLE watch item naming a secret slot", () => {
+    const out = lints(story("watch: program.door_digits as Digits, program.cleared as Cleared", ""));
+    expect(out.map((d) => d.code)).toEqual(["L1205"]);
+    expect(out[0]!.message).toMatch(/secret/);
+  });
+});

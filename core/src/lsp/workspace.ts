@@ -24,7 +24,8 @@ import {
 } from "../parser/index.ts";
 import { Bundle, type LoomFileEntry } from "../runtime/bundle.ts";
 import { lowerRawBody } from "../runtime/sim/effects.ts";
-import { compileModel, judgeOf, parseCurrency, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
+import { compileModel, isAlertsPath, judgeOf, parseCurrency, resolveObjectiveAudience, resolveObjectiveButtons, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
+import { identityDefs, performerPickable } from "../identity-kind.ts";
 import { boardLineProblems, parseBoardLine } from "../runtime/sim/board.ts";
 import { parseExpr } from "../runtime/expr.ts";
 import { buildStoryGraph, type StoryGraph } from "./graph.ts";
@@ -185,6 +186,132 @@ export class Workspace {
     this.addCurrencyLints();
     this.addBoardLints();
     this.addJudgeLints();
+    this.addObjectiveLints();
+    this.addAlertsLints();
+    this.addAdminLints();
+  }
+
+  /** Push one project diagnostic onto a document. */
+  private pushProject(uri: string, range: Range, error: boolean, code: string, message: string): void {
+    const d: LspDiagnostic = { range, severity: error ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning, code, source: "loom", message };
+    const list = this.projectDiagnostics.get(uri);
+    if (list) list.push(d);
+    else this.projectDiagnostics.set(uri, [d]);
+  }
+
+  /**
+   * The OBJECTIVE lints (wave 13, §3.1):
+   *
+   * - `L1207 ObjectiveForUnresolved` — a `for:` name that is no reserved
+   *   word (`guests` / `performers` / `everyone`), ROLE, CHARACTER or GROUP
+   *   (a warning each); an error when no name resolves or `for:` is missing
+   *   (the objective can never show).
+   * - `L1208 ObjectiveButtonUnresolved` (warnings) — a `buttons:` name that
+   *   is no INTERACTION and not `pass` / `scan`; a `who: admin` / `who:
+   *   agent` button; a button whose `who` reaches none of the objective's
+   *   audience; more than 3 interaction buttons.
+   * - `L1209 ObjectiveConditionInvalid` (errors) — an empty or unparsable
+   *   `while:` or `done when`.
+   */
+  private addObjectiveLints(): void {
+    const model = this.compiled;
+    for (const [uri, doc] of this.orderedDocs()) {
+      for (const item of doc.file.items) {
+        if (item.kind !== "declaration" || item.value.kind !== "objective" || item.value.objective === null) continue;
+        const decl = item.value;
+        const o = decl.objective!;
+        const at = (key: string): Range => {
+          const prop = [...o.properties.entries()].find(([k]) => k.toLowerCase().replace(/[-_\s]+/gu, "") === key)?.[1];
+          return prop !== undefined ? spanToRange(prop.span) : nameRangeInText(doc.text, decl.span, decl.name);
+        };
+        const lint = (range: Range, error: boolean, code: string, message: string): void => this.pushProject(uri, range, error, code, message);
+        // L1209: the conditions, model or not.
+        const badCond = (cond: string): string | null => {
+          if (cond.trim() === "") return "is empty";
+          try {
+            parseExpr(cond);
+            return null;
+          } catch {
+            return "is no expression";
+          }
+        };
+        if (o.while !== null) {
+          const why = badCond(o.while);
+          if (why !== null) lint(at("while"), true, Code.L1209ObjectiveConditionInvalid, `the \`while:\` on OBJECTIVE ${decl.name} ${why}, so the objective is never live`);
+        }
+        for (const c of o.checklist) {
+          if (c.done === null) continue;
+          const why = badCond(c.done);
+          if (why !== null) lint(spanToRange(c.span), true, Code.L1209ObjectiveConditionInvalid, `the \`done when\` on “${c.label}” (OBJECTIVE ${decl.name}) ${why}, so it never ticks`);
+        }
+        if (model === null) continue;
+        // L1207: who sees it.
+        if (o.for.length === 0) {
+          lint(nameRangeInText(doc.text, decl.span, decl.name), true, Code.L1207ObjectiveForUnresolved, `OBJECTIVE ${decl.name} has no \`for:\`, so nobody ever sees it — write \`for: guests\`, \`performers\`, \`everyone\`, a ROLE, a CHARACTER or a GROUP`);
+        } else {
+          const { audience, unresolved } = resolveObjectiveAudience(model, o.for);
+          const none = unresolved.length === o.for.length;
+          for (const name of unresolved)
+            lint(at("for"), none, Code.L1207ObjectiveForUnresolved, `\`${name}\` in the \`for:\` of OBJECTIVE ${decl.name} names no ROLE, CHARACTER or GROUP (nor guests / performers / everyone)${none ? ", and nothing else there resolves: nobody ever sees it" : ""}`);
+          // L1208: the buttons.
+          const { buttons, unknown } = resolveObjectiveButtons(model, o.buttons);
+          for (const name of unknown) lint(at("buttons"), false, Code.L1208ObjectiveButtonUnresolved, `\`${name}\` in the \`buttons:\` of OBJECTIVE ${decl.name} is no INTERACTION (nor \`pass\` / \`scan\`), so it is dropped`);
+          const guestSide = audience.guests || audience.roles.length > 0 || audience.groups.length > 0;
+          const boothSide = audience.performers || audience.characters.length > 0 || audience.groups.length > 0;
+          let count = 0;
+          for (const id of buttons) {
+            const def = model.interactions.get(id);
+            if (def === undefined) continue;
+            count += 1;
+            if (def.who === "admin" || def.who === "agent")
+              lint(at("buttons"), false, Code.L1208ObjectiveButtonUnresolved, `\`${id}\` on OBJECTIVE ${decl.name} is a \`who: ${def.who}\` INTERACTION — no guest or booth can press it from an objective`);
+            else if ((def.who === "guest" && !guestSide) || (def.who === "performer" && !boothSide))
+              lint(at("buttons"), false, Code.L1208ObjectiveButtonUnresolved, `\`${id}\` on OBJECTIVE ${decl.name} is a \`who: ${def.who}\` button, but the objective is for no ${def.who === "guest" ? "guest" : "performer"}, so nobody sees it there`);
+          }
+          if (count > 3)
+            lint(at("buttons"), false, Code.L1208ObjectiveButtonUnresolved, `OBJECTIVE ${decl.name} names ${count} interaction buttons — the apps show at most 3; the rest stay under "All buttons…"`);
+        }
+      }
+    }
+  }
+
+  /**
+   * `L1210 AlertsPathInvalid` (warnings) — the header `alerts:` names the
+   * world path the interrupt level lives at. Only the story header (the
+   * first file's, `main.loom`) counts: the event server plays the files
+   * concatenated, so a later file's `alerts:` line is no header at all.
+   * A value that is no dotted path falls back to `Night.alerts`.
+   */
+  private addAlertsLints(): void {
+    this.orderedDocs().forEach(([uri, doc], k) => {
+      const prop = doc.file.header.properties.get("alerts");
+      if (prop === undefined) return;
+      const range = spanToRange(prop.span);
+      if (k > 0) this.pushProject(uri, range, false, Code.L1210AlertsPathInvalid, `\`alerts: ${prop.value.trim()}\` is ignored — only the first file's header (main.loom) is read; move it there`);
+      else if (!isAlertsPath(prop.value)) this.pushProject(uri, range, false, Code.L1210AlertsPathInvalid, `\`alerts: ${prop.value.trim()}\` is no dotted world path, so the interrupt level is read from \`Night.alerts\` — write \`alerts: Night.alerts\``);
+    });
+  }
+
+  /**
+   * `L1211 AdminNotAPart` (warnings) — `admin: true` makes a CHARACTER a
+   * host part: whoever signs in as it gets the host panel. On a character
+   * no performer can sign in as (a guest's program, a prop, an agent-voiced
+   * one) it does nothing.
+   */
+  private addAdminLints(): void {
+    const model = this.compiled;
+    if (model === null) return;
+    const parts = new Set(identityDefs(model).filter(performerPickable).map((d) => d.name));
+    for (const [uri, doc] of this.orderedDocs()) {
+      for (const item of doc.file.items) {
+        if (item.kind !== "declaration" || item.value.kind !== "character") continue;
+        const d = item.value;
+        if (model.characters.get(d.name)?.admin !== true || parts.has(d.name)) continue;
+        const prop = d.character?.properties.get("admin");
+        const range = prop !== undefined ? spanToRange(prop.span) : nameRangeInText(doc.text, d.span, d.name);
+        this.pushProject(uri, range, false, Code.L1211AdminNotAPart, `\`admin: true\` on ${d.name} does nothing — no performer can sign in as ${d.name} (a guest's program, a prop or an agent-voiced character), so nobody gets its host panel`);
+      }
+    }
   }
 
   /**
@@ -331,6 +458,14 @@ export class Workspace {
             lint(uri, range, `\`${item.path}\` on ${what}: \`${head}\` names no CHARACTER, ROLE, GROUP or LOCATION, and no line sets a \`${head}.…\` global`);
           else if (opts.pathsOnly && secrets.has(foldName(head)))
             lint(uri, range, `\`${item.path}\` on ${what}: \`${head}\` is a \`secret: true\` CHARACTER, so the countdown is never shown (a countdown has no mask) — count down a global instead`);
+          else if (!opts.pathsOnly && model !== null) {
+            // A ROLE slot in the ROLE's own `secret:` set would reach every
+            // booth's guest card (wave 13): the card leaves it out.
+            const role = [...model.roles.values()].find((r) => foldName(r.id) === foldName(head));
+            const slot = item.path.slice(head.length + 1).split(".")[0] ?? "";
+            if (role !== undefined && role.secret.has(slot))
+              lint(uri, range, `\`${item.path}\` on ${what}: \`${slot}\` is in ROLE ${role.id}'s \`secret:\` slots — a ROLE watch item reaches every booth's guest card, so the card leaves it out; watch a global count instead`);
+          }
         } else if (item.name !== null && !people.has(foldName(item.name))) {
           lint(uri, range, `\`${item.name}\` on ${what} names no CHARACTER — a person item is a character's name (a path needs a dot)`);
         }
