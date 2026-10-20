@@ -69,6 +69,7 @@ import { sendRecap } from "./routes/recap.ts";
 import { guestSide } from "./routes/sides.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
+import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type KingRef, type SessionRef } from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
@@ -635,6 +636,8 @@ export class EventRuntime {
   // The reinstallation games (`docs/loom-reinstall.md` §2): sessions,
   // stations, poses and the house map. In memory; poses never journal.
   readonly spatial: SpatialHub;
+  /** The wall terminals' camera feeds (wave 14): the latest frame per spot, memory only. */
+  readonly cams: CamStore;
   private readonly houseFile: string;
   // The project's map files as snapshotted (launch / reload / a save to the
   // project), null = no project snapshot; and the active variant's file
@@ -757,6 +760,7 @@ export class EventRuntime {
       avatarOf: (_guest, name) => this.avatars.keyFor(name),
     });
     this.spatial.setOpen(false); // idle until the doors open
+    this.cams = new CamStore({ now: () => this.clock() });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
       open: () => this.open,
@@ -2785,9 +2789,59 @@ export class EventRuntime {
     });
   }
 
+  /** The current map's terminal ids; feeds of any other spot are dropped
+   *  (a terminal that left the map on a house change takes its feed along). */
+  private camSpots(): Set<string> {
+    const ids = new Set((this.spatialHouse()?.terminals ?? []).map((t) => t.id));
+    this.cams.retain(ids);
+    return ids;
+  }
+
+  /** `POST /api/mod/spatial/cam {spot, jpeg, w, h}` — a terminal's frame
+   *  (§2.3). Read under its own body cap, before the generic parse. */
+  private async handleCamUpload(req: IncomingMessage, res: ServerResponse, moderator: boolean): Promise<boolean> {
+    const body = await readBody(req, CAM_BODY_LIMIT);
+    if (!moderator && !this.sessions.canModerate(tokenOf(req, body))) {
+      sendJson(res, 403, { error: "moderators only" });
+      return true;
+    }
+    const up = parseCamUpload(body);
+    if (!up.ok) {
+      sendJson(res, up.status, { error: up.error });
+      return true;
+    }
+    if (!this.camSpots().has(up.spot)) {
+      sendJson(res, 404, { error: "no such spot" });
+      return true;
+    }
+    const out = this.cams.put(up.spot, up.jpeg, up.w, up.h);
+    sendJson(res, 200, { ok: true, at: out.at, ...(out.dropped ? { dropped: true } : {}) });
+    return true;
+  }
+
   /** The spatial plane's GET routes. True when `path` matched. */
   private handleSpatialGet(req: IncomingMessage, res: ServerResponse, path: string, url: URL, moderator: boolean): boolean {
     const token = queryTokenOf(req, url);
+    if (path === "/api/spatial/cams" || path === "/api/spatial/cam") {
+      // The camera feeds (§2.3): a game session or a moderator, like the map.
+      if (!this.spatialReader(token, moderator)) {
+        sendJson(res, 401, { error: "a moderator or game session token is required" });
+        return true;
+      }
+      this.camSpots();
+      if (path === "/api/spatial/cams") {
+        sendJson(res, 200, { cams: this.cams.list() });
+        return true;
+      }
+      const frame = this.cams.get((url.searchParams.get("spot") ?? "").trim());
+      if (frame === null) {
+        sendJson(res, 404, { error: "no feed" });
+        return true;
+      }
+      res.writeHead(200, { "content-type": "image/jpeg", "content-length": String(frame.jpeg.length), "cache-control": "no-store", "x-cam-at": String(frame.at) });
+      res.end(frame.jpeg);
+      return true;
+    }
     if (path === "/api/spatial/house" || path === "/api/spatial/stream") {
       if (!this.spatialReader(token, moderator)) {
         sendJson(res, 401, { error: "a moderator or game session token is required" });
@@ -4018,6 +4072,8 @@ export class EventRuntime {
     if (path.startsWith("/api/spatial/")) {
       return this.handleSpatialPost(req, res, path, await readBody(req, SPATIAL_BODY_LIMIT));
     }
+    // --- a terminal's camera frame (~3/s, ≤ 96 KB): its own cap, too ---
+    if (path === "/api/mod/spatial/cam") return this.handleCamUpload(req, res, opts.moderator === true);
 
     const body = await readBody(req);
 

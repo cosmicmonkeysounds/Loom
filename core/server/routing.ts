@@ -85,6 +85,8 @@ export function wantsModRead(subPath: string, params: URLSearchParams): boolean 
     (subPath === "/api/state" && params.has("as")) ||
     subPath === "/api/screen/state" ||
     subPath === "/api/spatial/house" ||
-    subPath === "/api/spatial/stream"
+    subPath === "/api/spatial/stream" ||
+    subPath === "/api/spatial/cams" ||
+    subPath === "/api/spatial/cam"
   );
 }

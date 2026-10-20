@@ -27,6 +27,7 @@ import type { Assignment, DuckSpot, HouseMap, KingState, PlayerPose, PlayerState
 import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, houseAtmosphere, PoseBuffer, spaceGroup } from "@loom/house/three";
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postKingHit, postPose, streamProbe, streamUrl, type FoundAnswer } from "../api.ts";
+import { CamFeeds } from "./cams.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
 import { HIT_USED, hitSpentAtStart, keepDoorOpen, kingMeter, kingReach, nudgeFor, stageFor, type KingReach, type Stage } from "./fight.ts";
@@ -143,6 +144,8 @@ export class Game {
   private readonly root: Group;
   private readonly pump: PosePump;
   private stream: SpatialStreamHandle | null = null;
+  /** The terminals' live camera windows (wave 14, `cams.ts`). */
+  private feeds: CamFeeds | null = null;
   private body: Body;
   private keys = new Set<string>();
   private drag: [number, number] = [0, 0];
@@ -254,7 +257,19 @@ export class Game {
       },
       { probe: streamProbe(this.o.base, this.o.assignment.token) },
     );
+    this.feeds = new CamFeeds({
+      base: this.o.base,
+      token: this.o.assignment.token,
+      sink: (spot, source) => void this.house.setTerminalFeed(spot, source),
+      where: () => ({ terminals: this.map.terminals, at: this.body.p }),
+    });
+    this.syncFeeds();
     this.loop(performance.now());
+  }
+
+  /** Camera feeds poll only while someone plays on screen. */
+  private syncFeeds(): void {
+    this.feeds?.setActive(!document.hidden && (this.phase === "playing" || this.phase === "finding"));
   }
 
   /** The player gave up (the ✕ button): end the session on the server. */
@@ -262,6 +277,7 @@ export class Game {
     if (this.phase === "ended") return;
     this.phase = "ended";
     this.pump.stop();
+    this.syncFeeds();
     void postEnd(this.o.base, this.o.assignment.token);
   }
 
@@ -277,6 +293,7 @@ export class Game {
     window.clearInterval(this.pumpTimer);
     this.pump.stop();
     this.stream?.close();
+    this.feeds?.dispose();
     this.resizeObserver?.disconnect();
     for (const c of this.cleanups) c();
     for (const g of this.ghosts.values()) g.avatar.dispose();
@@ -330,6 +347,7 @@ export class Game {
     const visibility = (): void => {
       cancelAnimationFrame(this.raf);
       const now = performance.now();
+      this.syncFeeds();
       if (document.hidden) {
         // No keepalives while nobody can play: the server's 60 s pose
         // timeout drops a tab left hidden. The idle leash pauses too.
@@ -680,6 +698,7 @@ export class Game {
     switch (reply.kind) {
       case "found":
         this.phase = "found";
+        this.syncFeeds();
         this.pump.stop();
         window.clearInterval(this.pumpTimer);
         this.trail.set([]);
@@ -780,6 +799,7 @@ export class Game {
     this.house.root.removeFromParent();
     this.house.dispose();
     this.house = scene;
+    this.feeds?.forget();
     this.root.add(scene.root);
     applySpace(this.root, spaceOf(house, "web"));
     this.map = house;
@@ -834,6 +854,7 @@ export class Game {
     this.phase = "ended";
     this.pump.stop();
     window.clearInterval(this.pumpTimer);
+    this.syncFeeds();
     this.o.onEnd(e);
   }
 

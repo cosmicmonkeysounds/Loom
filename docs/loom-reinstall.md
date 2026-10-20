@@ -624,6 +624,36 @@ rule to their body when they load the new map (the locate goldens pin
 `standable` for the GDScript port). Then `house {version}`, then the
 `duck` frames above, then a `king` frame if the swap changed him.
 
+### 2.3 Camera feeds (wave 14)
+
+Every wall terminal can send a small picture of its real room; the games
+show it as a live window where that terminal hangs in the virtual house
+(`HouseScene.setTerminalFeed`), and the terminal's `view=shadow` draws the
+players over its own camera. Server: `core/server/spatial-cams.ts`
+(`CamStore`, `parseCamUpload`), wired in `EventRuntime`. **Memory only**:
+the latest frame per spot with its receive time — never journaled, never on
+disk, a restart has no feeds until the next upload. A spot that leaves the
+map (a save, a variant switch) loses its feed at the next call.
+
+| Route | Auth | Body / query | Result |
+|---|---|---|---|
+| `POST /api/mod/spatial/cam` | mod token (`x-loom-token`) or author session — not a host-only booth, not a session token | `{spot, jpeg, w, h}` — `jpeg` base64 with no `data:` prefix, starting with the JPEG SOI (`FF D8`); `w`/`h` 1..4096. Read under its own 140 KB body cap (`CAM_BODY_LIMIT`) before the generic parse | 403 not a moderator · 400 bad body · 413 decoded JPEG over 96 KB (`CAM_MAX_BYTES`), or the body over the cap · 404 `{error: "no such spot"}` unless `spot` is a terminal id of the event's current map · 200 `{ok: true, at}`. **Rate cap:** a frame from the same spot < 150 ms after the last kept one (`CAM_MIN_GAP_MS`) is dropped, answering 200 `{ok: true, at, dropped: true}` with the kept frame's `at` — a terminal never needs to back off. A terminal sends ~3 frames/s at ~160×120, JPEG quality ~0.5 |
+| `GET /api/spatial/cams` | as `GET /api/spatial/house`: a session token, a mod token (header or `?token=`) or an author session | — | 401 · `{cams: [{spot, at, w, h}]}` — only frames newer than 15 s (`CAM_FRESH_MS`), by spot id |
+| `GET /api/spatial/cam` | as `cams` | `?spot=<id>` | 401 · 404 `{error: "no feed"}` when there is none or it is older than 15 s · 200 the JPEG bytes, `content-type: image/jpeg`, `cache-control: no-store`, `x-cam-at: <ms>` |
+
+Clients poll a frame at ~3 fps only for the feeds they are showing, and the
+list every ~2 s. The web game (`reinstall/web/src/game/cams.ts`, `CamFeeds`):
+the 4 nearest terminals with a fresh feed within 12 m on the plan and on the
+player's floor (`pickFeeds`), one request in flight per feed, a repeated
+`x-cam-at` never decoded twice, fetch → `createImageBitmap` →
+`setTerminalFeed` → `close()`; polling stops while the tab is hidden, after
+a find or an end (a pause on the server does not stop it — the feeds are the
+real room, which keeps moving); a feed that fails 3 times rests 5 s; a 401 /
+410 on the list stops it for good. The window: a 0.48 × 0.36 m (4:3,
+`FEED_W` × `FEED_H`) unlit picture in a thin Win98 bezel, proud of the
+terminal's screen and facing its yaw / pitch; with no feed the terminal's own
+screen look shows.
+
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
 React shell + three.js canvas (three r186 needs WebGL2: the wizard probes

@@ -340,3 +340,46 @@ export function streamProbe(base: string, token: string, fetcher: typeof fetch =
       () => null,
     );
 }
+
+// --- the terminals' camera feeds (wave 14, docs/loom-reinstall.md §2.3) ---
+
+/** A fresh feed (`GET /api/spatial/cams`). */
+export interface CamInfo {
+  spot: string;
+  at: number;
+  w: number;
+  h: number;
+}
+
+/** The fresh feeds; `status` null when the network failed (then `cams` is empty). */
+export async function fetchCams(base: string, token: string, fetcher: typeof fetch = fetch): Promise<{ status: number | null; cams: CamInfo[] }> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/cams`, { headers: { "x-loom-token": token }, cache: "no-store" });
+    if (!res.ok) return { status: res.status, cams: [] };
+    const data = (await res.json().catch(() => ({}))) as { cams?: unknown };
+    const cams = Array.isArray(data.cams)
+      ? data.cams.filter((c): c is CamInfo => typeof c === "object" && c !== null && typeof (c as CamInfo).spot === "string" && typeof (c as CamInfo).at === "number")
+      : [];
+    return { status: res.status, cams };
+  } catch {
+    return { status: null, cams: [] };
+  }
+}
+
+/** One feed's latest frame (`GET /api/spatial/cam?spot=`): the JPEG and its
+ *  `x-cam-at`, else the status (null = the network failed). */
+export async function fetchCamFrame(
+  base: string,
+  token: string,
+  spot: string,
+  fetcher: typeof fetch = fetch,
+): Promise<{ status: number | null; at: number | null; blob: Blob | null }> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/cam?spot=${encodeURIComponent(spot)}`, { headers: { "x-loom-token": token }, cache: "no-store" });
+    if (!res.ok) return { status: res.status, at: null, blob: null };
+    const at = Number(res.headers.get("x-cam-at"));
+    return { status: res.status, at: Number.isFinite(at) ? at : null, blob: await res.blob() };
+  } catch {
+    return { status: null, at: null, blob: null };
+  }
+}

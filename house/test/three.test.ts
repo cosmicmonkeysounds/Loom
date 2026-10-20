@@ -19,6 +19,8 @@ import {
   rampGeometry,
   spaceGroup,
   DUCK_FLIGHT,
+  FEED_H,
+  FEED_W,
 } from "../src/three/index.ts";
 import { buildFloors } from "../src/index.ts";
 import { fixture, loadHouse, SHOW_HOUSE } from "./golden.ts";
@@ -138,10 +140,49 @@ describe("buildHouseScene (the show's map, headless)", () => {
 
   it("keeps draw calls low (merged per material)", () => {
     const scene = buildHouseScene(show, { labels: false });
-    const terminalMeshes = show.terminals.length * 4;
+    const terminalMeshes = show.terminals.length * 6; // screen 4 + the camera window 2
     // walls/lintels/fences/rails + edges + floors + ceilings + props + screens, per floor.
     expect(meshes(scene.root).length - terminalMeshes).toBeLessThanOrEqual(show.floors.length * 9);
     scene.dispose();
+  });
+
+  it("a terminal's camera window: hidden by default, a 4:3 picture over the screen while a feed shows", () => {
+    const scene = buildHouseScene(show, { labels: false });
+    const spot = show.terminals[0]!;
+    const t = scene.terminals.get(spot.id)!;
+    const window = t.getObjectByName("feed")!;
+    expect(window.visible).toBe(false);
+    const picture = window.getObjectByName("feed-picture") as Mesh;
+    picture.geometry.computeBoundingBox();
+    const size = picture.geometry.boundingBox!.getSize(new Vector3());
+    expect(size.x).toBeCloseTo(FEED_W);
+    expect(size.y).toBeCloseTo(FEED_H);
+    expect(FEED_W / FEED_H).toBeCloseTo(4 / 3);
+    // Proud of the screen (local −z faces the room).
+    expect(picture.geometry.boundingBox!.max.z).toBeLessThan(-0.002);
+    // Under node there is no canvas: nothing shows, nothing throws.
+    expect(scene.setTerminalFeed(spot.id, {} as CanvasImageSource)).toBe(false);
+    expect(scene.setTerminalFeed("nope", null)).toBe(false);
+
+    // With a (fake) canvas the frame is copied and the window replaces the screen.
+    const drawn: unknown[] = [];
+    const g = globalThis as { document?: unknown };
+    g.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ({ drawImage: (src: unknown) => drawn.push(src) }) }) };
+    try {
+      const frame = { frame: 1 } as unknown as CanvasImageSource;
+      expect(scene.setTerminalFeed(spot.id, frame)).toBe(true);
+      expect(drawn).toEqual([frame]);
+      expect(window.visible).toBe(true);
+      expect(t.getObjectByName("panel")!.visible).toBe(false);
+      expect((picture.material as { map: unknown }).map).not.toBeNull();
+      expect(scene.setTerminalFeed(spot.id, null)).toBe(false);
+      expect(window.visible).toBe(false);
+      expect(t.getObjectByName("panel")!.visible).toBe(true);
+    } finally {
+      delete g.document;
+    }
+    scene.dispose();
+    expect(scene.setTerminalFeed(spot.id, null)).toBe(false);
   });
 
   it("options drop parts; update animates without throwing", () => {
