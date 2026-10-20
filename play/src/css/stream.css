@@ -130,10 +130,15 @@
    backlog too. While it crawls: scramble ahead of the cursor, flicker, jitter. */
 .stream-fx.line .bubble, .stream-fx.narration .bubble { text-shadow: 1px 0 var(--bad), -1px 0 var(--link); letter-spacing: 0.02em; }
 .stream-scramble { color: var(--signal); font-family: ui-monospace, "Courier New", monospace; }
-.stream-fx-live { animation: stream-flash 360ms steps(3, end) 1, stream-flicker 140ms steps(2, end) 360ms infinite; }
-.stream-fx-live .bubble { display: inline-block; animation: stream-jitter 110ms steps(2, end) infinite; }
-/* the line lands inverted, like a monitor losing sync, then flickers */
+/* The line's words land inverted, like a monitor losing sync, then the
+   row flickers. Only the words flash — the speaker's name keeps the
+   stream's own ground — and the scrambled glyphs turn highlight-yellow
+   while their ground is dark (≥ 6:1 on both bands, both themes). */
+.stream-fx-live { animation: stream-flicker 140ms steps(2, end) 360ms infinite; }
+.stream-fx-live .bubble { display: inline-block; animation: stream-flash 360ms steps(3, end) 1, stream-jitter 110ms steps(2, end) infinite; }
+.stream-fx-live .stream-scramble { animation: stream-flash-glyphs 360ms steps(3, end) 1; }
 @keyframes stream-flash { 0% { background: var(--ink); color: var(--white); } 50% { background: var(--signal); color: var(--white); } 100% { background: transparent; } }
+@keyframes stream-flash-glyphs { 0%, 50% { color: var(--highlight); } 100% { color: var(--signal); } }
 @keyframes stream-flicker { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
 @keyframes stream-jitter {
   0% { transform: translate(0, 0); }
@@ -148,7 +153,7 @@
 @media (prefers-reduced-motion: reduce) {
   /* Still an effect, never a movement: effect lines keep the split signal
      (above), alerts their highlight; nothing flickers or jumps. */
-  .stream-fx-live, .stream-fx-live .bubble, .stream-caret { animation: none; }
+  .stream-fx-live, .stream-fx-live .bubble, .stream-fx-live .stream-scramble, .stream-caret { animation: none; }
 }
 
 /* ── cards: the receipt, the settled line ───────────────────────────────── */

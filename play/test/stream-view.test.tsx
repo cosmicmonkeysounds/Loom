@@ -232,3 +232,13 @@ describe("a decision docks once its question has crawled", () => {
     expect(shown).toContain("Form A");
   });
 });
+
+describe("effect text keeps its speaker readable", () => {
+  it("only the words flash; the speaker's name never sits on the dark band", () => {
+    const css = readBundledCss();
+    expect(css).toMatch(/\.stream-fx-live \{ animation: stream-flicker[^;}]*; \}/u);
+    expect(css).not.toMatch(/\.stream-fx-live \{[^}]*stream-flash /u);
+    expect(css).toMatch(/\.stream-fx-live \.bubble \{[^}]*stream-flash 360ms/u);
+    expect(css).toMatch(/\.stream-fx-live \.stream-scramble \{ animation: stream-flash-glyphs/u);
+  });
+});
