@@ -82,6 +82,8 @@ const loadWorld = retryable(() => import("./world/WorldView.tsx").then((m) => ({
 // The shadow view (wave 14) is three.js too, in its own small chunk.
 const loadShadow = retryable(() => import("./shadow/ShadowView.tsx").then((m) => ({ default: m.ShadowView })));
 const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) => ({ default: m.ChessTerminal })));
+// The casino's tables (wave 15): only the casino terminal loads them.
+const loadCasino = retryable(() => import("./casino/CasinoTerminal.tsx").then((m) => ({ default: m.CasinoTerminal })));
 
 type Screen = { kind: "setup"; notice: string | null } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
 
@@ -131,9 +133,10 @@ export function App() {
   const webgl2 = hasWebGL2();
   const view = config?.view;
   useEffect(() => {
-    if (webgl2 && view !== undefined && view !== "face" && view !== "chess") void loadWorld().catch(() => {});
+    if (webgl2 && view !== undefined && view !== "face" && view !== "chess" && view !== "casino") void loadWorld().catch(() => {});
     if (webgl2 && (view === "shadow" || view === "auto")) void loadShadow().catch(() => {});
     if (view === "chess") void loadChess().catch(() => {});
+    if (view === "casino") void loadCasino().catch(() => {});
   }, [view, webgl2]);
 
   // Provision from the URL (`?code=…&name=…`) — a fleet is set up by opening one link each.
@@ -312,7 +315,7 @@ export function App() {
   const piloting = screen.kind === "piloting" || screen.kind === "connecting";
   // The chess board is layered like a room terminal: overlays only, never a
   // story slide, the countdown corner or the Y2K clock.
-  const bare = room !== null || config.view === "chess";
+  const bare = room !== null || config.view === "chess" || config.view === "casino";
   // An overlay (blackout / go to the living room / alarm) ends any pilot
   // (and covers a chess game, which it holds rather than ends).
   const takeover = screenLayers(screenState.state, Date.now(), { piloting, room: bare }).overlay !== null;
@@ -370,6 +373,16 @@ export function App() {
     return (
       <>
         <ChessSlot config={config} state={screenState.state} polled={screenState.reachable} takeover={takeover} onSetup={openSetup} />
+        {layer}
+      </>
+    );
+  }
+
+  if (config.view === "casino") {
+    // Awake all night, like the board.
+    return (
+      <>
+        <CasinoSlot config={config} state={screenState.state} polled={screenState.reachable} takeover={takeover} onSetup={openSetup} />
         {layer}
       </>
     );
@@ -537,12 +550,22 @@ function ShadowSlot({ store, spotId, facing, size, recover }: { store: WorldStor
 
 // --- the chess board, guarded ---------------------------------------------------
 
-/** The chess chunk behind an error boundary: a failed load says so and is
- *  tried again `WORLD_RETRY_MS` later, in place. */
-function ChessSlot(props: { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void }) {
+type SlotProps = { config: TerminalConfig; state: ScreenState | null; polled: boolean; takeover: boolean; onSetup: () => void };
+
+function ChessSlot(props: SlotProps) {
+  return <LazySlot {...props} load={loadChess} cls="chess" failed="THE BOARD DIDN'T LOAD — RETRYING…" loading="SETTING UP THE BOARD…" />;
+}
+
+function CasinoSlot(props: SlotProps) {
+  return <LazySlot {...props} load={loadCasino} cls="casino" failed="THE CASINO DIDN'T LOAD — RETRYING…" loading="OPENING THE CASINO…" />;
+}
+
+/** A lazy screen (the chess board, the casino) behind an error boundary: a
+ *  failed load says so and is tried again `WORLD_RETRY_MS` later, in place. */
+function LazySlot({ load, cls, failed, loading, ...props }: SlotProps & { load: () => Promise<{ default: (p: SlotProps) => ReactNode }>; cls: string; failed: string; loading: string }) {
   const [attempt, setAttempt] = useState(0);
   const [broken, setBroken] = useState(false);
-  const View = useMemo(() => lazy(loadChess), [attempt]);
+  const View = useMemo(() => lazy(load), [attempt, load]);
   useEffect(() => {
     if (!broken) return;
     const t = window.setTimeout(() => {
@@ -552,14 +575,14 @@ function ChessSlot(props: { config: TerminalConfig; state: ScreenState | null; p
     return () => window.clearTimeout(t);
   }, [broken]);
   const note = (text: string) => (
-    <div className="terminal chess">
+    <div className={`terminal ${cls}`}>
       <div className="world-note blink">{text}</div>
       <Gear onOpen={props.onSetup} label="Set up this terminal" className="mirror-gear" />
     </div>
   );
   return (
-    <WorldBoundary key={attempt} fallback={note("THE BOARD DIDN'T LOAD — RETRYING…")} onError={() => setBroken(true)}>
-      <Suspense fallback={note("SETTING UP THE BOARD…")}>
+    <WorldBoundary key={attempt} fallback={note(failed)} onError={() => setBroken(true)}>
+      <Suspense fallback={note(loading)}>
         <View {...props} />
       </Suspense>
     </WorldBoundary>
@@ -1244,7 +1267,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
             </select>
           </label>
         </div>
-        {view === "chess" ? null : view === "tv" ? (
+        {view === "chess" || view === "casino" ? null : view === "tv" ? (
           <label>
             the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
             <RoomPicker value={room} onChange={setRoom} rooms={rooms} blank={`${DEFAULT_TV_ROOM} (the default)`} />
@@ -1312,7 +1335,7 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
           )}
         </div>
         <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach; the server-room terminal adds <code>&amp;room=The Server Room</code>; the King's board outside its door is <code>?code=…&amp;name=Server Door&amp;spot=server-room-door&amp;view=chess</code>). The camera needs https:// (or localhost); without it, programs type their name instead.
+          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach; the server-room terminal adds <code>&amp;room=The Server Room</code>; the King's board outside its door is <code>?code=…&amp;name=Server Door&amp;spot=server-room-door&amp;view=chess</code>; the upstairs casino is <code>?code=…&amp;name=Casino&amp;spot=graphics-card&amp;view=casino</code>). The camera needs https:// (or localhost); without it, programs type their name instead.
         </p>
       </form>
     </div>
