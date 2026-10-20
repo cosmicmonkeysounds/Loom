@@ -1046,7 +1046,7 @@ The user's asks, in their words (2026-10-20, from the day's UX mapping of the li
 
 **Open issues after wave 13:**
 1. **The show text awaits the user's sign-off:** `SIGNOFF-w13.md` Q1–Q28 and §2 (the 69 objectives), §3 (every other line), §6 (delivery notes now shown), §8 (the tour's and the app's own words). Q1 — who calls the cues: the second director at Run, or a host from Play — decides the hosts' packs.
-2. The bank, the Rust engine and the TextMate grammar don't know `OBJECTIVE`, `admin:`, `crawl:`, `alerts:`, `~` or `category:` (the bank delegates or drops them; nothing on the night depends on them).
+2. The bank, the Rust engine and the TextMate grammar don't know `OBJECTIVE`, `admin:`, `crawl:`, `alerts:`, `~`, `category:` or `with moment:` (nothing on the night runs through them).
 3. Not device-checked: the iOS keyboard with the folded tray and the stepping-aside taskbar; a camera kept running hidden under a card on iOS Safari (and `play()` waking it on Next guest); the old Android tablets on the `:has()` / `color-mix()` fallbacks; a real camera and the held wake lock under the full-screen pass.
 4. A late-night guest snapshot is still ≈ 54 KB over uncompressed SSE (1.5 Mbit/s a phone at 45 guests): `LOOM_SNAPSHOT_MS` (decision 7) or compressing the guest stream.
 5. The ~31 s late-night replay: under Caddy's new 60 s hold, but a restart mid-show is still half a minute of *reconnecting…*.
