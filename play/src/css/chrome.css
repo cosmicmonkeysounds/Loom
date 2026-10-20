@@ -92,6 +92,8 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
   position: absolute; left: 3px; bottom: 100%; z-index: var(--z-sheet);
   display: flex; min-width: 248px; max-width: calc(100% - 6px);
   max-height: calc(100vh - var(--title-h) - var(--taskbar-h) - var(--safe-top) - var(--safe-bottom) - 12px);
+  /* iOS Safari: 100vh counts the hidden toolbars; the visible height where known */
+  max-height: calc(100dvh - var(--title-h) - var(--taskbar-h) - var(--safe-top) - var(--safe-bottom) - 12px);
   background: var(--face); color: var(--ink); box-shadow: var(--raised), 0 4px 14px var(--scrim); border-radius: var(--radius);
   overflow: hidden;
 }

@@ -74,6 +74,14 @@ describe("the guest taskbar", () => {
     expect(chrome).toContain("button.tray-item::after");
   });
 
+  it("the Start menu fits the visible height on iOS: dvh after its vh fallback", () => {
+    const rule = chrome.slice(chrome.indexOf(".start-menu {"), chrome.indexOf("}", chrome.indexOf(".start-menu {")));
+    const vh = rule.indexOf("max-height: calc(100vh");
+    const dvh = rule.indexOf("max-height: calc(100dvh");
+    expect(vh).toBeGreaterThan(-1);
+    expect(dvh).toBeGreaterThan(vh);
+  });
+
   it("the keyboard rule: the frame drops the taskbar while the keyboard is open, and brings it back", () => {
     const frame = (typing: boolean) =>
       html(
