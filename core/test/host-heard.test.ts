@@ -228,4 +228,15 @@ describe("/api/prime/act", () => {
     expect((await post(rt, "/api/prime/act", { token: norton, name: "shield", guest })).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${guest}.marked`)).toMatchObject({ value: true });
   });
+
+  it("a headless moderator's press (no character: no actor, so every character's hook hears it) is never refused", async () => {
+    const rt = runtime();
+    rt.openDoors();
+    const guest = (await post(rt, "/api/guest/register", { name: "Winamp", passcode: CODES.event })).json["id"] as string;
+    const mod = (await post(rt, "/api/mod/login", { passcode: CODES.mod })).json["token"] as string;
+    expect(pressRefusal(rt.liveSim!, rt.liveSim!.model.interactions.get("shield")!, null, true)).toBeNull();
+    const r = await post(rt, "/api/prime/act", { token: mod, name: "shield", guest });
+    expect(r.status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${guest}.marked`)).toMatchObject({ value: true });
+  });
 });

@@ -4911,8 +4911,10 @@ export class EventRuntime {
         // hears it (a story rule or a ROLE hook — `pressRefusal`): the press
         // fires as the host's own character, so a button only the actors'
         // hooks hear would do nothing, and its card never offers it
-        // (`primeViewFor` / `guestCardView` take `canHost`). The director's
-        // quick-fire (`/api/mod/signal`, with `actor`) still fires any.
+        // (`primeViewFor` / `guestCardView` take `canHost`). A headless mod
+        // token (no character) fires with no actor, which every hook hears,
+        // so it is never refused; the director's quick-fire
+        // (`/api/mod/signal`, with `actor`) still fires any.
         // Never "sign in" here: that answer drops a booth.
         const refusal = pressRefusal(this.sim!, def, character, this.canHostToken(token));
         if (refusal !== null) {

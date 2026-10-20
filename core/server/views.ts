@@ -257,10 +257,13 @@ export function byRefusal(sim: Sim, def: InteractionDef, character: string | nul
  * passcode in a booth): a host may press another character's `by:` button,
  * but not one only its actors' own hooks hear (`actorHeardOnly`): that one is refused with the same
  * message as any other booth's press, and a host's card never offers it.
+ * A headless moderator token (no character) is never refused: its press
+ * carries no actor, so every character's hook hears it (`Sim.matchHooks`).
  */
 export function pressRefusal(sim: Sim, def: InteractionDef, character: string | null, host: boolean): string | null {
   const refusal = byRefusal(sim, def, character);
   if (refusal === null || !host) return refusal;
+  if (character === null) return null;
   return actorHeardOnly(sim).has(def.id) ? refusal : null;
 }
 
