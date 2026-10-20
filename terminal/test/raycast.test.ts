@@ -19,6 +19,7 @@ import {
   shade,
   smoothCamera,
   spotCamera,
+  visibleHits,
   visibleRuns,
   wallLight,
   type RayCamera,
@@ -136,6 +137,18 @@ describe("rays", () => {
     for (const col of cols) for (let i = 1; i < col.length; i++) expect(col[i - 1]!.depth).toBeGreaterThanOrEqual(col[i]!.depth);
     // The door's lintel hangs over the centre column (nearer than the far wall).
     expect(cols[80]!.some((c) => c.wall.kind === "lintel")).toBe(true);
+  });
+
+  it("a column paints only the walls that show: one hidden behind a nearer, as-tall wall is dropped", () => {
+    const wall = (c: number, top = 2.5) => ({ axis: "x" as const, c, lo: -10, hi: 10, bottom: 0, top, kind: "wall" as const, solid: true, low: ["#888"], high: ["#888"] });
+    const hit = (depth: number, top = 2.5) => ({ depth, wall: wall(-depth, top), colour: "#888", light: 1 });
+    const focal = focalOf(70, 90);
+    const far = [hit(12), hit(9), hit(6, 4), hit(3)];
+    const shown = visibleHits(far, 3, 1.4, 45, focal, 90);
+    // The 4 m wall at 6 m pokes out over the 2.5 m wall at 3 m; the 2.5 m walls at 9 and 12 m don't.
+    expect(shown.map((c) => c.depth)).toEqual([6, 3]);
+    // No occluder: every hit stays.
+    expect(visibleHits(far, Infinity, 1.4, 45, focal, 90)).toHaveLength(4);
   });
 
   it("lights north / south walls more than east / west ones, both dimming with distance", () => {

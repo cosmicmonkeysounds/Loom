@@ -251,10 +251,35 @@ export function castColumns(walls: readonly RayWall[], cam: RayCamera, w: number
       if (wl.solid && wl.bottom <= eye && wl.top >= eye && hit.t < zbuf[x]!) zbuf[x] = hit.t;
     }
     hits.sort((a, b) => b.depth - a.depth);
-    // Anything behind the nearest eye-covering wall is hidden at the eye line; keep it only if it shows above / below.
-    cols.push(hits.filter((c) => c.depth <= zbuf[x]! + 1e-6 || c.wall.top > eye + 0.6 || c.wall.bottom < eye - 1.4));
+    cols.push(visibleHits(hits, zbuf[x]!, eye, horizon, focal, h));
   }
   return { cols, zbuf, focal, horizon };
+}
+
+/**
+ * The hits (far to near) a column actually shows: a wall behind the nearest
+ * eye-covering solid wall (at depth `occluder`) is drawn only where its rows
+ * (clipped to the screen) poke out above or below that wall's — so a column
+ * paints one or two slices, never every wall down the line (the old tablets
+ * pay per `fillRect`).
+ */
+export function visibleHits(hits: readonly ColumnHit[], occluder: number, eye: number, horizon: number, focal: number, h: number): ColumnHit[] {
+  if (occluder === Infinity) return [...hits];
+  let a1 = 0;
+  let b1 = 0;
+  for (const c of hits) {
+    if (Math.abs(c.depth - occluder) < 1e-9 && c.wall.solid && c.wall.bottom <= eye && c.wall.top >= eye) {
+      a1 = Math.max(0, rowOf(c.wall.top, eye, c.depth, horizon, focal));
+      b1 = Math.min(h, rowOf(c.wall.bottom, eye, c.depth, horizon, focal));
+      break;
+    }
+  }
+  return hits.filter((c) => {
+    if (c.depth <= occluder + 1e-6) return true;
+    const a2 = Math.max(0, rowOf(c.wall.top, eye, c.depth, horizon, focal));
+    const b2 = Math.min(h, rowOf(c.wall.bottom, eye, c.depth, horizon, focal));
+    return a2 < a1 - 0.5 || b2 > b1 + 0.5;
+  });
 }
 
 /** `#rgb` / `#rrggbb` scaled by `light` (0–1) as `rgb(…)`. */
