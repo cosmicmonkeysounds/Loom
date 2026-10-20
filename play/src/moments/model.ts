@@ -255,6 +255,18 @@ export function loudObjectives(objectives: readonly ObjectiveView[] | undefined,
   return out;
 }
 
+/**
+ * Where a moment's "Take me there" goes (pure): the pass when it is about
+ * the pass and the app can open it, its room when it has one and the app
+ * can open rooms, else nowhere (no button). A guest on rails in a cutscene
+ * opens no room, so a house announcement there offers no exit that would
+ * only change the room hidden behind the stage.
+ */
+export function momentExit(m: Pick<Moment, "pass" | "channel">, can: { room: boolean; pass: boolean }): "pass" | "room" | null {
+  if (m.pass === true) return can.pass ? "pass" : null;
+  return m.channel !== null && can.room ? "room" : null;
+}
+
 // --- the queue ----------------------------------------------------------------
 
 /** A moment in the queue, on its rung. */
