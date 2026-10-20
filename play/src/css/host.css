@@ -194,3 +194,4 @@
 }
 .host-drawer-title { min-height: var(--tap); padding: 0 0 0 8px; }
 .host-drawer-title .w95-x { min-height: var(--tap); }
+.host-bar .cue-code, .host-last .cue-code { flex: 0 0 auto; white-space: nowrap; }

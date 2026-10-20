@@ -4,7 +4,7 @@
 //! reason. Each row takes the host where they act on it.
 
 import type { HostNeed } from "../types.ts";
-import { needSection, needTab, refusedText, type RefusedPress } from "./model.ts";
+import { groupNeeds, needSection, needTab, refusedText, type RefusedPress } from "./model.ts";
 import { ActButton, HostEmpty, useHost } from "./kit.tsx";
 
 export function NeedsTab({ refused, reason }: { refused: RefusedPress | null; reason: string | null }) {
@@ -31,11 +31,13 @@ export function NeedsTab({ refused, reason }: { refused: RefusedPress | null; re
           </button>
         </li>
       )}
-      {view.needs.map((n) => (
+      {groupNeeds(view.needs).map((n) => (
         <li key={n.key} className={`host-need ${n.kind}`}>
           <button type="button" className="host-row-btn" onClick={() => open(n)}>
-            <span className="host-need-text">{n.text}</span>
-            {n.detail !== undefined && <span className="host-need-detail">{n.detail}</span>}
+            <span className="host-person-body">
+              <span className="host-need-text">{n.text}</span>
+              {n.detail !== undefined && <span className="host-need-detail">{n.detail}</span>}
+            </span>
             <span className="host-need-go" aria-hidden="true">
               ›
             </span>

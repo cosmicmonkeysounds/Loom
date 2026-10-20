@@ -6,7 +6,7 @@
 import type { AlertLevel } from "../../../core/src/delivery.ts";
 import { AWARD_SOURCES, PartPresence, REASON_WAIT_MS, REFUSED_NEEDS_MS, type NeedTarget } from "../../../core/src/host-board.ts";
 import type { CueRow } from "../../../core/src/cue-sheet.ts";
-import type { ChatMessage, HostPerson, HostView } from "../types.ts";
+import type { ChatMessage, HostNeed, HostPerson, HostView } from "../types.ts";
 import { STOPPED, actHandle, clockRuns, formatLeft, soonestCountdown, URGENT_S, type SheetLayout } from "../director.tsx";
 
 // --- the drawer's tabs ----------------------------------------------------------
@@ -25,7 +25,7 @@ export interface HostTabInfo {
  *  filings). */
 export function hostTabs(view: Pick<HostView, "needs" | "judging"> | null, refused: number): HostTabInfo[] {
   const out: HostTabInfo[] = [{ id: "cues", label: "Cues" }];
-  out.push({ id: "needs", label: "Needs", count: (view?.needs.length ?? 0) + refused });
+  out.push({ id: "needs", label: "Needs", count: groupNeeds(view?.needs ?? []).length + refused });
   if (view?.judging != null) out.push({ id: "judge", label: "Judge", count: view.judging.pending.length });
   out.push({ id: "people", label: "People" }, { id: "more", label: "More" });
   return out;
@@ -34,6 +34,28 @@ export function hostTabs(view: Pick<HostView, "needs" | "judging"> | null, refus
 /** `Needs (3)`, `Cues`. */
 export function tabLabel(t: HostTabInfo): string {
   return t.count !== undefined ? `${t.label} (${t.count})` : t.label;
+}
+
+/** The needs as the drawer lists them: two or more parts in the same state
+ *  ("nobody signed in", "phone offline") fold into one row naming them, so
+ *  ten empty booths before the doors are one line, not ten. Order kept (the
+ *  folded row sits where its first member was). */
+export function groupNeeds(needs: readonly HostNeed[]): HostNeed[] {
+  const out: HostNeed[] = [];
+  const folded = new Map<string, HostNeed[]>();
+  for (const n of needs) if (n.kind === "free" || n.kind === "phone-offline") folded.set(n.kind, [...(folded.get(n.kind) ?? []), n]);
+  for (const n of needs) {
+    const group = folded.get(n.kind);
+    if (group === undefined || group.length < 2) {
+      out.push(n);
+      continue;
+    }
+    if (group[0] !== n) continue;
+    const names = group.map((g) => g.character ?? g.key);
+    const text = n.kind === "free" ? `🎭 ${group.length} parts: nobody signed in` : `📱 ${group.length} parts: phone offline`;
+    out.push({ kind: n.kind, key: `parts:${n.kind}`, text, detail: names.join(", "), target: "part" });
+  }
+  return out;
 }
 
 /** Where a need's row takes the host: a tab, or the staff room itself. */

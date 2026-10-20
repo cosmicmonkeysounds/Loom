@@ -258,20 +258,25 @@ function Codes() {
 
 function Parts() {
   const { view, calls, run, session } = useHost();
+  const held = view.parts.filter((p) => releasable(p.presence));
+  const free = view.parts.filter((p) => !releasable(p.presence));
   return (
-    <HostSection id="parts" title="🎭 Performer parts">
-      <ul className="host-rows">
-        {view.parts.map((p) => (
-          <li key={p.id} className="host-subrow">
-            <span className="host-subrow-name">
-              {p.id}
-              {p.id === session.auth?.character ? " (you)" : ""}
-              <span className="host-subrow-sub">{presenceText(p.presence)}</span>
-            </span>
-            {releasable(p.presence) && p.id !== session.auth?.character && <ConfirmButton label="⏏ Release" ask={`Sign ${p.id}'s phone out?`} danger onConfirm={() => run(`⏏ ${p.id} released`, () => calls.release(p.id))} />}
-          </li>
-        ))}
-      </ul>
+    <HostSection id="parts" title="🎭 Performer parts" aside={`${held.length}/${view.parts.length} signed in`}>
+      {held.length > 0 && (
+        <ul className="host-rows">
+          {held.map((p) => (
+            <li key={p.id} className="host-subrow">
+              <span className="host-subrow-name">
+                {p.id}
+                {p.id === session.auth?.character ? " (you)" : ""}
+                <span className="host-subrow-sub">{presenceText(p.presence)}</span>
+              </span>
+              {p.id !== session.auth?.character && <ConfirmButton label="⏏ Release" ask={`Sign ${p.id}'s phone out?`} danger onConfirm={() => run(`⏏ ${p.id} released`, () => calls.release(p.id))} />}
+            </li>
+          ))}
+        </ul>
+      )}
+      {free.length > 0 && <p className="host-note">{presenceText(free[0]!.presence)}: {free.map((p) => p.id).join(", ")}</p>}
     </HostSection>
   );
 }

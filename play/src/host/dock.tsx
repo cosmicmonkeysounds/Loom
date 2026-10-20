@@ -17,7 +17,7 @@ import type { PrimeSession } from "../session/prime.ts";
 import { useHostView, useRecap } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
-import { awardsNear, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreSection, type RefusedPress } from "./model.ts";
+import { awardsNear, groupNeeds, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreSection, type RefusedPress } from "./model.ts";
 import { CuesTab } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
@@ -173,7 +173,7 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
   const nextRow = bar.kind === "next" ? bar.row : null;
   const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
   const sending = nextRow !== null && desk.pending === nextRow.id;
-  const needs = view.needs.length + (refused !== null ? 1 : 0);
+  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0);
   const strip = hostStrip(view, layout, nowMs, needs);
   const ctx: HostCtx = {
     view,

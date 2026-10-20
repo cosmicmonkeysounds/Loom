@@ -169,3 +169,20 @@ describe("awards and small inputs", () => {
     expect(releasable("free")).toBe(false);
   });
 });
+
+describe("needs fold", () => {
+  it("two or more parts in one state are one row naming them, where the first sat", async () => {
+    const { groupNeeds } = await import("../src/host/model.ts");
+    const needs = [
+      { kind: "near" as const, key: "near", text: "⚠ 1 near miss to judge", target: "judge" as const },
+      { kind: "free" as const, key: "part:Norton", text: "🎭 Norton: nobody signed in", target: "part" as const, character: "Norton" },
+      { kind: "phone-offline" as const, key: "part:Clippy", text: "📱 Clippy: phone offline", target: "part" as const, character: "Clippy" },
+      { kind: "free" as const, key: "part:McAfee", text: "🎭 McAfee: nobody signed in", target: "part" as const, character: "McAfee" },
+    ];
+    expect(groupNeeds(needs).map((n) => [n.text, n.detail])).toEqual([
+      ["⚠ 1 near miss to judge", undefined],
+      ["🎭 2 parts: nobody signed in", "Norton, McAfee"],
+      ["📱 Clippy: phone offline", undefined],
+    ]);
+  });
+});
