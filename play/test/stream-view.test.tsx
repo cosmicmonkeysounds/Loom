@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildGuestChannels, isVoiced } from "../src/session/channels.ts";
-import { ChannelView, MessageThread } from "../src/stream/channel-view.tsx";
+import { ChannelView, MessageThread, stillCrawling } from "../src/stream/channel-view.tsx";
 import { CardTray, trayCardKey, trayIndex, trayShown } from "../src/stream/card-tray.tsx";
 import { PlayHostContext, browserHost, createCrawl } from "../src/host.ts";
 import { NOBODY_READS_NOTE, cantPostNote } from "../src/stream/composer.tsx";
@@ -181,5 +181,27 @@ describe("the opened ticker", () => {
     expect(listed).toHaveLength(TICKER_HISTORY);
     expect(listed[0]).toBe("bark 6");
     expect(earlierBarks(barks.slice(0, 1))).toEqual([]);
+  });
+});
+
+describe("a decision docks once its question has crawled", () => {
+  const ask = () => m({ channel: "loc:The Desktop", beat: "Forms", text: "Which one? There is a form." });
+  const decision = { id: "d1", title: "Task Manager", options: [{ index: 0, label: "Form A" }, { index: 1, label: "Form B" }] };
+  it("held while a line above it is still owed its crawl, shown once it is done", () => {
+    const crawl = createCrawl();
+    crawl.loaded(0);
+    crawl.setOpen("loc:The Desktop");
+    const line = ask();
+    crawl.arrived(line, { id: "g1", name: "Ada" });
+    expect(stillCrawling(crawl, [line])).toBe(true);
+    // Rendered before the line has crawled: the tray waits.
+    const host = { ...browserHost, crawl };
+    const c = room({ id: "loc:The Desktop", kind: "location", messages: [line], decision: decision as Channel["decision"] });
+    const held = renderToStaticMarkup(createElement(PlayHostContext.Provider, { value: host }, createElement(ChannelView, { channel: c, onBack: () => {}, onSend: () => {}, widgets })));
+    expect(held).not.toContain("Form A");
+    crawl.finish(line.seq);
+    expect(stillCrawling(crawl, [line])).toBe(false);
+    const shown = renderToStaticMarkup(createElement(PlayHostContext.Provider, { value: host }, createElement(ChannelView, { channel: c, onBack: () => {}, onSend: () => {}, widgets })));
+    expect(shown).toContain("Form A");
   });
 });

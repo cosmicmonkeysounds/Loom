@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import { PERSONAL_STREAM } from "./crawl.ts";
 import { usePlayHost } from "./host.ts";
 import type { WidgetHook } from "./stream/bubble.tsx";
-import { DecisionTray } from "./stream/channel-view.tsx";
+import { DecisionTray, useDockReady } from "./stream/channel-view.tsx";
 import { MessageList } from "./stream/list.tsx";
 import type { ChatMessage, Decision } from "./types.ts";
 
@@ -52,6 +52,8 @@ export function CutsceneStage({
     host.crawl.setOpen(PERSONAL_STREAM);
     return () => host.crawl.setOpen(null);
   }, [host]);
+  // The decision docks once its question has crawled in (never under it).
+  const dockReady = useDockReady(PERSONAL_STREAM, messages, decision !== null);
   // The alert banner sits above the stage (the app's moments layer, wave 13).
   return (
     <div className="cutscene" role="region" aria-label={where ?? "Story"}>
@@ -69,13 +71,13 @@ export function CutsceneStage({
       )}
       <MessageList messages={messages} widgets={widgets} empty="Stand by." flushId={PERSONAL_STREAM} />
       <footer className="cut-foot">
-        {decision && <DecisionTray decision={decision} />}
+        {decision && dockReady && <DecisionTray decision={decision} />}
         {over && (
           <button type="button" className="choice primary cut-go" onClick={onContinue}>
             Continue ▸
           </button>
         )}
-        {!over && !decision && (
+        {!over && !(decision && dockReady) && (
           <span className="cut-cursor" aria-hidden>
             ▮
           </span>

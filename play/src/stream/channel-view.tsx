@@ -2,7 +2,7 @@
 //! the who's-here strip, the room view and the thread panel.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { usePlayHost } from "../host.ts";
+import { usePlayHost, type Crawl } from "../host.ts";
 import { PinnedRail } from "../moments/pins-rail.tsx";
 import type { Channel, ChatMessage, Decision } from "../types.ts";
 import { Avatar } from "../ui/primitives.tsx";
@@ -15,6 +15,46 @@ import { AmbientTicker } from "./ticker.tsx";
 import { Composer, cantPostNote } from "./composer.tsx";
 import { MessageList, useStickToBottom } from "./list.tsx";
 import { groupRuns, questStatusOf, repliesFor } from "./runs.ts";
+
+// --- holding the dock until its question has crawled ------------------------
+
+/** The newest messages a room checks for a line still crawling. */
+const DOCK_LOOKBACK = 40;
+/** A dock never waits longer than this: the room is flushed (fx cap + budget). */
+export const DOCK_HOLD_MAX_MS = 4000;
+
+/** Is any of the room's newest lines still owed its crawl? */
+export function stillCrawling(crawl: Pick<Crawl, "tierOf">, messages: readonly ChatMessage[]): boolean {
+  for (let i = messages.length - 1, n = 0; i >= 0 && n < DOCK_LOOKBACK; i--, n++) {
+    if (crawl.tierOf(messages[i]!.seq) !== "none") return true;
+  }
+  return false;
+}
+
+/**
+ * Whether a docked decision (or anything that answers the room's last line)
+ * may show yet: not while a line above it is still crawling in — the
+ * question would sit under its own answers, unread. A tap on the stream
+ * shows it at once; after `DOCK_HOLD_MAX_MS` the room is flushed anyway.
+ */
+export function useDockReady(roomId: string, messages: readonly ChatMessage[], waiting: boolean): boolean {
+  const crawl = usePlayHost().crawl;
+  const [crawling, setCrawling] = useState(() => waiting && stillCrawling(crawl, messages));
+  useEffect(() => {
+    if (!waiting) {
+      setCrawling(false);
+      return;
+    }
+    setCrawling(stillCrawling(crawl, messages));
+    return crawl.subscribe(() => setCrawling(stillCrawling(crawl, messages)));
+  }, [crawl, messages, waiting]);
+  useEffect(() => {
+    if (!waiting || !crawling) return;
+    const id = window.setTimeout(() => crawl.flush(roomId), DOCK_HOLD_MAX_MS);
+    return () => window.clearTimeout(id);
+  }, [crawl, roomId, waiting, crawling]);
+  return !crawling;
+}
 
 // --- decision tray (quick-reply buttons) ------------------------------------
 
@@ -184,6 +224,7 @@ export function ChannelView({
     return trayCards(roots, widgets.answered, supersededCards(roots));
   }, [channel.messages, channel.kind, widgets]);
   const mode = useMemo<StreamMode>(() => ({ tray: widgets !== undefined, settlePass: true, openTray: setTrayFocus }), [widgets]);
+  const dockReady = useDockReady(channel.id, channel.messages, channel.decision !== null);
   const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
   const emptyCopy =
     channel.kind === "codex"
@@ -258,7 +299,7 @@ export function ChannelView({
           {tray.length > 0 && widgets && (
             <CardTray key={channel.id} cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} />
           )}
-          {channel.decision && <DecisionTray decision={channel.decision} />}
+          {channel.decision && dockReady && <DecisionTray decision={channel.decision} />}
           {footer}
           {onSend && canPost && (
             // Keyed by room: a draft (or a refused line coming back) stays
