@@ -53,6 +53,7 @@ export const QUEST_LOG = "quests";
 export const WALLET_ROOM = "wallet";
 export const SPACES: Record<string, { title: string; order: number }> = {
   [PINNED_SPACE]: { title: "Pinned", order: -2 },
+  staff: { title: "Staff", order: -1.5 }, // a booth's staff rooms (# hosts), just under Pinned
   booth: { title: "Booth", order: -1 }, // the performer's tools, pinned on top
   [STORY_SPACE]: { title: "Story", order: 0 },
   cast: { title: "Cast", order: 0.5 }, // agent-voiced characters a performer can message

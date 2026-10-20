@@ -21,10 +21,13 @@ import { hasPendingCard } from "./channels.ts";
 import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
 import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
 
-interface PrimeAuth {
+export interface PrimeAuth {
   token: string;
   character: string;
   admin: boolean;
+  /** The host capability (wave 13): the part is `admin: true` in the story.
+   *  From `/api/prime/login`; absent on an older server or a stored sign-in. */
+  host?: boolean;
   /** Which event this performer signed into. */
   eventId: string;
   /** The event's display title (from `/api/resolve-code`). */
