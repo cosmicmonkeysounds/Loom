@@ -63,6 +63,7 @@ import { HOMESCREEN_ROUTE } from "./routes/k31b.ts";
 import { PushRoutes } from "./routes/k31.ts";
 import { PushHub, boothOwner, guestOwner, messagePush, pushConfigFromEnv, readoutPush, webPushSender, type PushSender } from "./push.ts";
 import { printExtras } from "./routes/k12.ts";
+import { buildCards } from "./routes/cards.ts";
 import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts";
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
@@ -2750,6 +2751,13 @@ export class EventRuntime {
 
   /** May this caller read the spatial plane (the map, the stream)? A
    *  moderator (token or author session), or a live game session. */
+  /** Does this token alone open the camera feeds (a mod token or a game
+   *  session)? The server asks first, so a terminal's token-bearing 1 s
+   *  poll never pays for an author-session lookup. */
+  camTokenReads(token: string | undefined): boolean {
+    return this.spatialReader(token, false);
+  }
+
   private spatialReader(token: string | undefined, moderator: boolean): boolean {
     return moderator || this.sessions.canModerate(token) || this.spatial.hasToken(token);
   }
@@ -3854,6 +3862,13 @@ export class EventRuntime {
       else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
       return true;
     }
+    // --- wave 14: the scan-from-the-screen cards (directors only, never a host booth) ---
+    if (method === "GET" && path === "/api/mod/cards") {
+      const token = queryTokenOf(req, url);
+      if (opts.moderator === true || this.sessions.canModerate(token)) await this.sendCards(res);
+      else sendJson(res, token === undefined ? 401 : 403, { error: "moderators only" });
+      return true;
+    }
     // --- process load for the K-32 load test (directors only) ---
     if (handleMetrics(req, res, method, path, url, () => opts.moderator === true || this.sessions.canModerate(queryTokenOf(req, url)), () => this.clients.size)) return true;
     // --- T7-03: the whole ledger, paged, for Run → Log's export (directors only) ---
@@ -4284,6 +4299,40 @@ export class EventRuntime {
     }
 
     return false;
+  }
+
+  /** Every codex entry with a code and its printable link — the QR a
+   *  guest scans on the wall: `?code=<event>&unlock=<code>`. */
+  private codexLinks(base: string, model: SimModel | null = this.sim?.model ?? null): { id: string; title: string; about: string | null; code: string; url: string; secret: boolean }[] {
+    return [...(model?.codex.values() ?? [])]
+      .filter((e) => e.code !== null)
+      .map((e) => ({
+        id: e.id,
+        title: e.title,
+        about: e.about,
+        code: e.code!,
+        url: `${base}/?code=${encodeURIComponent(this.codes.event)}&unlock=${encodeURIComponent(e.code!)}`,
+        secret: e.secret,
+      }));
+  }
+
+  /** `GET /api/mod/cards` (wave 14): every QR card for the `/cards` page —
+   *  the same links as `/api/mod/codes`, each drawn as an SVG. */
+  private async sendCards(res: ServerResponse): Promise<void> {
+    const base = this.joinBase();
+    // Before the doors the story's declared model stands in (nothing played).
+    const model = this.sim?.model ?? this.declaredModel ?? null;
+    sendJson(
+      res,
+      200,
+      await buildCards({
+        title: this.title,
+        eventPass: this.codes.event,
+        codex: this.codexLinks(base, model),
+        extras: printExtras(model, base, this.codes.event, this.factsBook()?.raw ?? null),
+        claims: this.claims.links(model, base, this.codes.event),
+      }),
+    );
   }
 
   /** A token holding the host capability but not the moderator one — a
@@ -5508,15 +5557,7 @@ export class EventRuntime {
         // Every codex entry with a code also gets its printable join link —
         // the QR a guest scans on the wall: `?code=<event>&unlock=<code>`.
         const base = this.joinBase();
-        const codex = [...(this.sim?.model.codex.values() ?? [])]
-          .filter((e) => e.code !== null)
-          .map((e) => ({
-            id: e.id,
-            title: e.title,
-            about: e.about,
-            code: e.code,
-            url: `${base}/?code=${encodeURIComponent(this.codes.event)}&unlock=${encodeURIComponent(e.code!)}`,
-          }));
+        const codex = this.codexLinks(base).map(({ secret: _secret, ...e }) => e);
         sendJson(res, 200, {
           eventPass: this.codes.event,
           primePass: this.codes.prime,
