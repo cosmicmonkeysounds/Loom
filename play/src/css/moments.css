@@ -79,8 +79,14 @@
   pointer-events: none;
 }
 .moments-balloon button { pointer-events: auto; }
-/* A room with a composer: the tip floats above the input and Send, never over them. */
-:where(.root:has(.composer)) .moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px + var(--moments-composer-h)); }
+/* A room with a composer: the tip floats above the input and Send, never
+   over them. A browser with no :has() (Chrome < 105, Safari < 15.4: the
+   old station tablets) can't tell, so there it always clears a composer. */
+.moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px + var(--moments-composer-h)); }
+@supports selector(:has(a)) {
+  .moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px); }
+  :where(.root:has(.composer)) .moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px + var(--moments-composer-h)); }
+}
 .moments-balloon::before, .moments-balloon::after {
   content: ""; position: absolute; right: 28px; width: 0; height: 0;
   border-style: solid; border-color: transparent;
