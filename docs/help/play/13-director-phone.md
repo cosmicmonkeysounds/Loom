@@ -7,7 +7,9 @@ keywords: director, cue, cue sheet, cues, phone, fire, arm, double tap, act, act
 ---
 
 Away from the laptop? The director's **cue sheet** — the same running
-order as Run → Director in the editor — fits on a phone.
+order as Run → Director in the editor — fits on a phone. A host who is
+also a performer doesn't need this page: their own booth carries the
+same cues in its NEXT bar and console ([The host console](hosts.md)).
 
 ## Opening it
 

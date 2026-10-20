@@ -25,8 +25,8 @@ Wizard's thread in your app. Click Next.
 
 ## Getting in
 
-In the tent there is a tablet. Hold your **pass** (the QR on **☰** in
-your app — see [Your pass](your-pass.md)) up to its camera. It offers two
+In the tent there is a tablet. Hold your **pass** (tap **🎟 Pass** on
+your app's taskbar — see [Your pass](your-pass.md)) up to its camera. It offers two
 ways to play:
 
 - **Play here** — the simulation runs on the tablet in your hands.
