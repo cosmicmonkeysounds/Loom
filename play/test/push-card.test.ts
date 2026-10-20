@@ -15,7 +15,10 @@ describe("iPhones (K-31b)", () => {
     const keep = iosPushCopy("ios-keep-open", false, "Trapped", true)!;
     expect(keep.head).toBe("Your iPhone can't get alerts");
     expect(keep.body).toContain("keep Trapped open");
-    expect(keep.body).toContain("☰ → Keep my screen on");
+    // A guest's settings live under ⊞ Start (wave 13); a booth keeps its ☰.
+    expect(keep.body).toContain("⊞ Start → Keep my screen on");
+    expect(keep.body).not.toContain("☰");
+    expect(iosPushCopy("ios-keep-open", true, "Trapped", true)!.body).toContain("☰ → Keep my screen on");
     expect(iosPushCopy("ios-keep-open", true, null, true)!.body).toContain("keep the app open");
     expect(iosPushCopy("ask", false, "Trapped", true)).toBeNull();
   });
