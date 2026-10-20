@@ -53,14 +53,28 @@ describe("activePins", () => {
 });
 
 describe("PinnedRail", () => {
-  it("renders one line per pin, an alert pin flagged; nothing when empty", () => {
+  it("folds to one line — the count and the newest pin — an alert pin turning it yellow; nothing when empty", () => {
     expect(renderToStaticMarkup(<PinnedRail pins={[]} />)).toBe("");
     const html = renderToStaticMarkup(<PinnedRail pins={[m(1, "lobby", { pin: "g1", text: "GO TO THE INTERNET.", alert: true }), m(2, "lobby", { pin: "", text: "Doors at nine." })]} />);
-    expect(html).toContain('class="pinned-rail"');
-    expect(html).toContain('class="pin alert"');
-    expect(html).toContain("📌 GO TO THE INTERNET.");
-    expect(html).toContain("📌 Doors at nine.");
-    expect(html.match(/class="pin /g)).toHaveLength(2);
+    expect(html).toContain('class="moments-pins alert"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain("📌 2");
+    expect(html).toContain('<span class="moments-pins-line">Doors at nine.</span>');
+    // Folded: the older pin is not on screen (a tap opens the list).
+    expect(html).not.toContain("moments-pins-list");
+    expect(html).toMatch(/aria-label="2 pinned notices: Doors at nine\.\. Tap to read\."/u);
+  });
+
+  it("one plain pin reads as itself, no count, no alert colour", () => {
+    const html = renderToStaticMarkup(<PinnedRail pins={[m(3, "lobby", { pin: "", text: "Doors at nine." })]} />);
+    expect(html).toContain('class="moments-pins "');
+    expect(html).toContain('aria-hidden="true">📌</span>');
+    expect(html).toContain("Doors at nine.");
+  });
+
+  it("the rail is one 44 px line from the tokens", () => {
+    const css = readBundledCss();
+    expect(/\.moments-pins-head \{[^}]*min-height: var\(--tap\)/u.test(css)).toBe(true);
   });
 });
 

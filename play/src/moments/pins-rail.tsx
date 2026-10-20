@@ -1,18 +1,37 @@
-//! The pinned rail (moved out of `chat.tsx` in wave 13).
+//! The pinned rail (wave 13, the moments lane): the sticky notices still up
+//! (`pin "…"`), folded to one line — "📌 <newest>" for one, "📌 3 · <newest>"
+//! for several — that opens on a tap into the full list, newest last. An
+//! alert pin (`pin "!…"`) turns the line yellow. Nothing to show → nothing.
 
+import { useState } from "react";
 import type { ChatMessage } from "../types.ts";
 
-/** The pinned rail — the sticky notices still up in this room (`pin "…"`),
- *  above the stream, newest per key. Nothing to show → nothing rendered. */
 export function PinnedRail({ pins }: { pins: ChatMessage[] }) {
+  const [open, setOpen] = useState(false);
   if (pins.length === 0) return null;
+  const newest = pins[pins.length - 1]!;
+  const alert = pins.some((m) => m.alert === true);
+  const label = pins.length === 1 ? "1 pinned notice" : `${pins.length} pinned notices`;
   return (
-    <div className="pinned-rail" role="status">
-      {pins.map((m) => (
-        <div key={m.seq} className={`pin ${m.alert ? "alert" : ""}`}>
-          📌 {m.text}
-        </div>
-      ))}
+    <div className={`moments-pins ${alert ? "alert" : ""}`} role="status">
+      <button type="button" className="moments-pins-head" aria-expanded={open} aria-label={`${label}${open ? "" : `: ${newest.text}`}. ${open ? "Tap to fold." : "Tap to read."}`} onClick={() => setOpen((o) => !o)}>
+        <span className="moments-pins-count" aria-hidden>
+          📌{pins.length > 1 ? ` ${pins.length}` : ""}
+        </span>
+        <span className="moments-pins-line">{open ? label : newest.text}</span>
+        <span className="moments-pins-caret" aria-hidden>
+          {open ? "▴" : "▾"}
+        </span>
+      </button>
+      {open && (
+        <ul className="moments-pins-list">
+          {pins.map((m) => (
+            <li key={m.seq} className={`moments-pin ${m.alert ? "alert" : ""}`}>
+              {m.text}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
