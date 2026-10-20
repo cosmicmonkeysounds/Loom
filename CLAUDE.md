@@ -226,8 +226,10 @@ survey-guard,replay,lean-voice,story-mind,mind-wire,mind-page,trabolta-voice}`
 merged `--no-ff` into `oct31-w12/integration` in the order S → A0 → H → W1 →
 W2 → W3 → E → C (6fbe086, 5f6fff8, ae1543a, ef0b51b, dfd014c, 08c02f6,
 96104fe, 1f5ad39), integration fixes, the K-04 replay on the real model, a
-review fix pass (to 2064550) and `oct31-w12/docs`; not on master, not
-deployed; OCT31.md §5 *Wave 12 status*). The user's asks: *"radically
+review fix pass (to 2064550) and `oct31-w12/docs`; merged to master as
+a954226 and **shipped as `w12-1019`** 2026-10-20 (rollback `w11b-1019`),
+checked live on the preview with the house worker on `mind_mode: new`;
+OCT31.md §5 *Wave 12 status*). The user's asks: *"radically
 rethink how Traboltas mind works from a "plumbing" perspective … Trabolta
 should *feel* alive"* and *"Trabolta shouldn't be weary to any of the actual
 facts he's truly asking for"* (read as not aware of the answers and not wary
