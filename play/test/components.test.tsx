@@ -5,8 +5,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Alerts } from "../src/alerts.ts";
-import { AmbientTicker } from "../src/stream/ticker.tsx";
-import { CardTray } from "../src/stream/card-tray.tsx";
 import { CountdownTray } from "../src/chrome/countdown-tray.tsx";
 import { FullPass } from "../src/chrome/pass.tsx";
 import { isTextEntry } from "../src/chrome/keyboard.ts";
@@ -139,9 +137,8 @@ describe("the moments layer, behaviour-identical in Stage A", () => {
 });
 
 describe("the Stage B stubs render nothing", () => {
-  it("card tray, ticker, NOW card, tray clock, host dock", () => {
-    expect(CardTray()).toBeNull();
-    expect(AmbientTicker()).toBeNull();
+  // The card tray and the ticker are the stream lane's now (card-tray / ticker tests).
+  it("NOW card, tray clock, host dock", () => {
     expect(NowCard()).toBeNull();
     expect(CountdownTray({})).toBeNull();
     expect(HostDock({ session: {} as never, wide: false, openCard: () => {} })).toBeNull();
