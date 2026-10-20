@@ -12,7 +12,7 @@
 .cutscene {
   height: 100%; display: flex; flex-direction: column; position: relative;
   max-width: 640px; margin: 0 auto; width: 100%;
-  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--navy) 35%, var(--black)), var(--black) 70%);
+  background: var(--black);
   color: var(--white);
   animation: cut-in 1.1s ease-out, cut-boot 1.6s steps(1) 1;
 }
@@ -34,11 +34,11 @@
 .cut-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
   padding: 14px 18px 6px; font: 700 10px var(--ui-font); letter-spacing: 0.5px;
-  text-transform: uppercase; color: color-mix(in srgb, var(--white) 55%, transparent);
+  text-transform: uppercase; color: var(--line);
 }
 .cut-where::before { content: "▸ "; }
 .cut-pass {
-  margin-left: 12px; background: none; border: 1px solid color-mix(in srgb, var(--white) 35%, transparent);
+  margin-left: 12px; background: none; border: 1px solid var(--line);
   color: var(--white); font: 700 10px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase;
   padding: 3px 8px; cursor: pointer; border-radius: var(--radius); flex-shrink: 0;
 }
@@ -56,27 +56,43 @@
   background: transparent; box-shadow: none; margin: 0; padding: 8px 18px 16px;
   font-size: 18px; line-height: 1.5; color: var(--white); gap: 10px;
 }
-.cutscene .thread-empty { color: color-mix(in srgb, var(--white) 45%, transparent); font-style: italic; }
+.cutscene .thread-empty { color: var(--line); font-style: italic; }
 .cutscene .msg.line { gap: 12px; }
 .cutscene .msg.line.tuck { padding-left: 42px; }
 .cutscene .speaker { color: var(--highlight) !important; font-size: 13px; font-family: var(--ui-font); text-transform: uppercase; letter-spacing: 0.6px; }
 .cutscene .bubble { color: var(--white); font-size: 18px; }
-.cutscene .bubble.plain, .cutscene .msg.narration { color: color-mix(in srgb, var(--white) 72%, transparent); border-left-color: color-mix(in srgb, var(--white) 25%, transparent); }
-.cutscene .msg.system .bubble.plain { color: color-mix(in srgb, var(--white) 60%, transparent); }
+.cutscene .bubble.plain, .cutscene .msg.narration { color: var(--face); border-left-color: var(--line); }
+.cutscene .msg.system .bubble.plain { color: var(--face); }
 .cutscene .msg.typing .bubble::after { color: var(--highlight); }
-.cutscene .pavatar { box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 30%, transparent); }
+.cutscene .pavatar { box-shadow: 0 0 0 1px var(--line); }
 .cutscene .replies { display: none; }
 .cutscene .widget { max-width: 420px; margin: 0 auto; }
 .cutscene .msg.widget-msg { align-self: center; width: 100%; }
 .cut-foot {
-  border-top: 1px solid color-mix(in srgb, var(--white) 15%, transparent);
+  border-top: 1px solid var(--muted-ink);
   padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); background: transparent;
   margin: 0; width: 100%; max-width: none; min-height: 44px; display: flex; flex-direction: column;
 }
-.cut-foot .tray.dialogue { background: color-mix(in srgb, var(--white) 8%, var(--black)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 20%, transparent); }
+.cut-foot .tray.dialogue { background: var(--black); box-shadow: 0 0 0 1px var(--line); }
 .cut-foot .tray.dialogue .tray-title { color: var(--white); }
 .cut-go { align-self: center; width: auto; padding: 10px 34px; margin-top: 2px; font-size: 15px; }
 .cut-cursor { color: var(--highlight); font-size: 14px; animation: dlg-caret-blink 1s steps(1) infinite; padding: 0 4px; }
+/* color-mix() (Safari 16.2) only under @supports: a value with var() in it
+   is never dropped at parse time, so on an older browser a color-mix line
+   after its plain fallback still wins the cascade, then computes to
+   nothing (the cutscene's stage went transparent on iOS 15). The plain
+   lines above are what the old tablets and iOS 15 phones get. */
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .cutscene { background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--navy) 35%, var(--black)), var(--black) 70%); }
+  .cut-head { color: color-mix(in srgb, var(--white) 55%, transparent); }
+  .cut-pass { border: 1px solid color-mix(in srgb, var(--white) 35%, transparent); }
+  .cutscene .thread-empty { color: color-mix(in srgb, var(--white) 45%, transparent); }
+  .cutscene .bubble.plain, .cutscene .msg.narration { color: color-mix(in srgb, var(--white) 72%, transparent); border-left-color: color-mix(in srgb, var(--white) 25%, transparent); }
+  .cutscene .msg.system .bubble.plain { color: color-mix(in srgb, var(--white) 60%, transparent); }
+  .cutscene .pavatar { box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 30%, transparent); }
+  .cut-foot { border-top: 1px solid color-mix(in srgb, var(--white) 15%, transparent); }
+  .cut-foot .tray.dialogue { background: color-mix(in srgb, var(--white) 8%, var(--black)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 20%, transparent); }
+}
 @keyframes cut-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cutscene, .cutscene::before, .cut-where, .cut-offline { animation: none; } .cut-cursor { animation: none; } }
 
@@ -88,8 +104,10 @@
 .cut-foot { flex-shrink: 0; }
 .cutscene .stream-settled-line, .cutscene .stream-receipt {
   background: var(--black); color: var(--white);
-  background: color-mix(in srgb, var(--white) 8%, var(--black));
   box-shadow: 0 0 0 1px var(--line);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .cutscene .stream-settled-line, .cutscene .stream-receipt { background: color-mix(in srgb, var(--white) 8%, var(--black)); }
 }
 .cutscene .stream-settled-body .widget { margin-top: 6px; }
 

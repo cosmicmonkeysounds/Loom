@@ -26,7 +26,9 @@ export interface ObjectiveRow {
   brief: string
   loud: boolean
   checks: Array<{ label: string; state: CheckState; glyph: string }>
-  /** `done of total` over the checks that have a condition; null when none has one. */
+  /** `done of total` over every check, the phone's own count (play's
+   *  `checkCount`): a to-do with no condition counts in the total and is
+   *  never done. Null when the objective has no checklist. */
   progress: string | null
   /** The interaction ids (plus `pass` / `scan`) the objective offers this viewer. */
   buttons: string[]
@@ -42,7 +44,6 @@ export function objectiveRows(objectives: readonly ObjectiveView[] | undefined):
       const state: CheckState = c.done === true ? CheckState.Done : c.done === false ? CheckState.Open : CheckState.Todo
       return { label: c.label, state, glyph: GLYPH[state] }
     })
-    const judged = checks.filter((c) => c.state !== CheckState.Todo)
     return {
       id: o.id,
       title: o.title,
@@ -51,7 +52,7 @@ export function objectiveRows(objectives: readonly ObjectiveView[] | undefined):
       brief: o.brief,
       loud: o.loud === true,
       checks,
-      progress: judged.length === 0 ? null : `${judged.filter((c) => c.state === CheckState.Done).length} of ${judged.length}`,
+      progress: checks.length === 0 ? null : `${checks.filter((c) => c.state === CheckState.Done).length} of ${checks.length}`,
       buttons: [...o.buttons],
     }
   })

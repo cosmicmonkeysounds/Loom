@@ -5,11 +5,18 @@
 import { Fragment, useState, type ReactNode } from "react";
 import type { ObjectiveView } from "../types.ts";
 
-/** "2/3 ✓" — how much of a checklist is done (conditions only). */
+/**
+ * "1/3", "3/3 ✓" — how much of a checklist is done. Every to-do counts in
+ * the total, including one with no `done when` (`done: null`, nothing the
+ * story can tick), which is never done; the ✓ shows only once every to-do
+ * is. "" when the objective has no checklist. The guest's card and the
+ * booth's NOW line both read this, so they never disagree.
+ */
 export function checkCount(o: Pick<ObjectiveView, "checklist">): string {
-  const scored = o.checklist.filter((c) => c.done !== null);
-  if (scored.length === 0) return "";
-  return `${scored.filter((c) => c.done === true).length}/${scored.length} ✓`;
+  const total = o.checklist.length;
+  if (total === 0) return "";
+  const done = o.checklist.filter((c) => c.done === true).length;
+  return done === total ? `${done}/${total} ✓` : `${done}/${total}`;
 }
 
 export function ObjectiveCard({

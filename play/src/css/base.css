@@ -81,7 +81,7 @@ body {
 .choice, .dlg-choice, .avatar, .badge, .icon-btn, .back, .tray, .sheet, .card, .readout,
 .composer .composer-input, .sheet input, .card input, .hero input, .help-sheet input,
 .help-body, .chlist, .thread, .screen, .space-title, .mod-toggle, .replies.has,
-.msg-channel, .decision-dot, .dlg-key, .bigid, .pavatar, .widget, .captcha-tile,
+.msg-channel, .decision-dot, .dlg-key, .pavatar, .widget, .captcha-tile,
 .presence, .here-tag, .stage-empty { border-radius: var(--radius); }
 
 .muted { color: var(--muted-ink); }
@@ -103,7 +103,7 @@ body {
 }
 .app.wide .side-pane, .app.wide .stage-pane { min-height: 0; min-width: 0; height: 100%; }
 .app.wide .screen { max-width: none; height: 100%; }
-.app.wide .inbox-head, .app.wide .thread-head, .app.wide footer, .app.wide .chlist, .app.wide .alert-banner { max-width: none; }
+.app.wide .inbox-head, .app.wide .thread-head, .app.wide footer, .app.wide .chlist { max-width: none; }
 .stage-empty {
   height: 100%; display: flex; align-items: center; justify-content: center;
   background: var(--face); box-shadow: var(--raised); color: var(--muted-ink);
@@ -122,10 +122,6 @@ body {
   margin: 0 auto; width: 100%; max-width: var(--max);
 }
 .inbox-head { justify-content: space-between; align-items: flex-start; }
-.inbox-head.trapped,
-.trapped-bg .inbox-head {
-  background: linear-gradient(90deg, var(--maroon), var(--maroon-2));
-}
 /* the identity card: avatar, name + group, where you are, the live dot */
 .me { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .me-body { min-width: 0; flex: 1; }
@@ -139,7 +135,7 @@ body {
   display: flex; align-items: center; gap: 6px;
   font-size: 11px; font-weight: 700; color: var(--on-bar); white-space: nowrap;
 }
-/* the window-control box on the title bar (the ☰ menu button) */
+/* the window-control box on a title bar (the director phone's ? and ⚙) */
 .icon-btn {
   background: var(--face); color: var(--ink);
   border: none; box-shadow: var(--raised);
@@ -148,8 +144,6 @@ body {
   align-items: center; justify-content: center; padding: 0;
 }
 .icon-btn:active { box-shadow: var(--pressed); padding: 1px 0 0 1px; }
-.icon-btn.wide { width: auto; padding: 0 7px; gap: 3px; font-size: 12px; font-weight: 700; }
-.hud .count { font-weight: 700; }
 
 .conn { display: inline-flex; align-items: center; gap: 5px; color: var(--on-bar); font-size: 11px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad);
@@ -197,12 +191,17 @@ body {
   padding: 5px 6px; border: 1px solid transparent;
   background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
 }
-.chrow:hover { background: color-mix(in srgb, var(--navy) 10%, var(--white)); border-color: transparent; }
+.chrow:hover { background: var(--face); border-color: transparent; }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .chrow:hover { background: color-mix(in srgb, var(--navy) 10%, var(--white)); }
+}
 .chrow.active, .chrow.active:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
 .chrow.active .chrow-sub, .chrow.active .chrow-title, .chrow.active .chrow-occ { color: var(--white); }
 .chrow:active { background: var(--navy-2); }
-.chrow.quiet { opacity: 0.55; }
-.chrow.quiet:hover, .chrow.quiet.active { opacity: 1; }
+/* a quiet row (the "Other rooms" fold) reads dimmer, but its text keeps
+   4.5:1: an opacity of 0.55 took the green "empty" to 2.3:1 on white */
+.chrow.quiet:not(.active) .chrow-title, .chrow.quiet:not(.active) .chrow-sub, .chrow.quiet:not(.active) .chrow-occ { color: var(--dim-ink); }
+.chrow.quiet:not(.active) .avatar, .chrow.quiet:not(.active) .pavatar { opacity: 0.55; }
 .chrow-body { flex: 1; min-width: 0; }
 .chrow-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .chrow-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -223,7 +222,6 @@ body {
   color: var(--white); background: var(--good); padding: 1px 5px; margin-left: 6px;
   flex-shrink: 0; vertical-align: middle;
 }
-.chrow.here { border-left: 3px solid var(--good); }
 
 /* the little room icon (a beveled tile, not a gradient blob) */
 .avatar {
@@ -266,9 +264,6 @@ body {
   background: var(--face); color: var(--ink); border: none; box-shadow: var(--raised);
   font: 700 11px var(--ui-font); cursor: pointer;
 }
-.presence-stack { display: inline-flex; }
-.presence-stack .pavatar { margin-right: -6px; box-shadow: 0 0 0 1.5px var(--face); }
-.presence-stack .pavatar:last-child { margin-right: 0; }
 .presence-n { white-space: nowrap; }
 
 /* the story's guest-facing clocks (countdown.tsx): a thin bar under the
@@ -380,7 +375,10 @@ body {
   border: 2px solid transparent; cursor: pointer; padding: 0;
 }
 .captcha-tile:disabled { cursor: default; }
-.captcha-tile.on { border-color: var(--navy); background: color-mix(in srgb, var(--navy) 14%, var(--white)); }
+.captcha-tile.on { border-color: var(--navy); background: var(--face); }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .captcha-tile.on { background: color-mix(in srgb, var(--navy) 14%, var(--white)); }
+}
 .captcha-tile.on::after { content: "✔"; position: relative; top: -14px; left: 12px; font-size: 14px; color: var(--white); background: var(--navy); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
 .widget.image { padding: 4px; }
 .widget.image img { display: block; max-width: 100%; height: auto; border-radius: calc(var(--radius) - 2px); }
@@ -545,7 +543,6 @@ footer {
    `width: 100%` plus the margins ran past the dialog's right border (a
    button never stretches by itself, so `auto` would shrink it) */
 .sheet > .choice, .sheet > .link { width: calc(100% - 16px); }
-.more-toggle { text-align: left; }
 .card-actions.more { opacity: 0.85; }
 /* a re-dealt card's earlier copy: one quiet line, not a live form */
 .widget.fact.folded { padding: 6px 10px; font-size: 13px; }
@@ -558,7 +555,6 @@ footer {
   box-shadow: var(--sunken); border: none; padding: 6px 8px;
   width: calc(100% - 16px); margin: 0 8px 8px;
 }
-.card-facts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
 .card-actions .actionrow { flex-direction: column; }
 .card-actions .actionrow .choice { min-width: 0; }
 .cast-pick { text-align: left; margin-top: 4px; }
@@ -602,8 +598,6 @@ footer {
 .cam { width: calc(100% - 16px); margin: 8px; background: var(--black); box-shadow: var(--sunken); }
 
 /* ── pass / QR ──────────────────────────────────────────────────────────── */
-.pass { text-align: center; margin: 4px 8px 12px; }
-.pass img { display: block; margin: 0 auto; width: 168px; background: var(--white); box-shadow: var(--sunken); padding: 8px; border-radius: var(--radius); }
 /* 📷 Scan (guest-scan.tsx): the Codex composer's camera button, the sheet's
    status line, and the wrong-browser landing's big code */
 .composer .composer-scan { flex: 0 0 auto; width: auto; margin: 0; padding: 6px 10px; font-size: 18px; line-height: 1; }
@@ -614,10 +608,6 @@ footer {
 }
 .landing-code.room { letter-spacing: 1px; font-size: 28px; }
 .landing-say { font-weight: 700; font-size: 17px; margin: 0 0 12px; }
-.bigid {
-  font: 800 20px var(--ui-font); letter-spacing: 2px; margin-top: 8px;
-  background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 4px 12px;
-}
 
 /* ── group pills — small tags. A group's colour comes from its name (see
    `colorFor` in chat.tsx); nothing here knows any particular story's sides. */
@@ -708,21 +698,10 @@ footer {
 }
 
 /* ── codex · people · alerts ──────────────────────────────────────────
-   Knowledge as a currency: the Codex room's cards, the People directory, and the
-   alert banner a `!` broadcast raises. Theme-neutral — variables only. */
-.alert-banner {
-  position: sticky; top: 0; z-index: 9;
-  display: flex; align-items: center; gap: 8px;
-  max-width: var(--max); margin: 0 auto; padding: 8px 10px; width: 100%;
-  background: var(--highlight); color: var(--black);
-  box-shadow: var(--raised); cursor: pointer;
-  font-weight: 700; animation: alert-in 0.25s ease-out;
-}
-.alert-glyph { font-size: 18px; animation: alert-ring 0.9s ease-in-out 3; }
-.alert-text { flex: 1; min-width: 0; }
-.alert-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
+   Knowledge as a currency: the Codex room's cards and the People directory.
+   A `!` broadcast is a moment now (moments.css). Theme-neutral — variables
+   only. `alert-in` is the tour card's entrance. */
 @keyframes alert-in { from { transform: translateY(-100%); } to { transform: none; } }
-@keyframes alert-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
 /* K-31a: the 🔔 "Get alerts" card — above the rooms until answered. */
 .push-card {
   display: flex; align-items: center; gap: 8px;
@@ -734,21 +713,9 @@ footer {
 .push-on { font: inherit; font-weight: 700; cursor: pointer; padding: 4px 10px; }
 .push-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
 .app.wide .push-card { max-width: none; }
-/* Wave 4: the pinned rail — sticky notices (`pin "…"`) above a stream; a
-   `!` pin reads like an alert. A restricted guest's app greys out around
-   it (the rail and the alert banner stay bright). */
-.pinned-rail {
-  position: sticky; top: 0; z-index: 4;
-  display: flex; flex-direction: column; gap: 4px;
-  width: 100%; max-width: var(--max); margin: 0 auto; padding: 6px 10px;
-  background: var(--face); box-shadow: var(--raised);
-}
-.pin { font-weight: 700; padding: 6px 8px; background: var(--face-hi); color: var(--black); border: 1px solid var(--line); }
-.pin.alert { background: var(--highlight); }
-.app.wide .pinned-rail { max-width: none; }
+/* A restricted guest's app greys out around the stream (the pinned rail is
+   `.moments-pins`, moments.css). */
 .restricted-bg .chlist, .restricted-bg .stage, .restricted-bg .stage-pane { filter: grayscale(1); opacity: .72; }
-.restricted-bg .pinned-rail, .restricted-bg .alert-banner { filter: none; opacity: 1; }
-.inbox-head.restricted, .restricted-bg .inbox-head { background: linear-gradient(90deg, #6b4a00, #9a6b00); color: #fff; }
 .msg.signal.alert .bubble.plain { font-weight: 700; color: var(--black); background: var(--highlight); padding: 2px 6px; }
 
 /* The pinned rooms — the Codex's entries and the Quest Log's quests are
@@ -766,13 +733,12 @@ footer {
 .codex-card-foot .link { margin: 0; width: auto; font-size: 12px; }
 .quest-card.openable { cursor: pointer; }
 .quest-card.openable:hover { box-shadow: var(--raised), 0 1px 6px rgba(0, 0, 0, 0.08); }
-.quest-card.done { border-left: 4px solid var(--good); }
-.quest-card.failed { border-left: 4px solid var(--bad); opacity: 0.8; }
-.quest-card.active { border-left: 4px solid var(--highlight); }
+.quest-card.failed { opacity: 0.8; }
 .quest-status {
   font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.05em;
   padding: 2px 6px; border-radius: 999px; background: var(--code-bg); color: var(--muted-ink);
 }
+.quest-status.active { background: var(--highlight); color: var(--black); }
 .quest-status.done { background: var(--good); color: var(--white); }
 .quest-status.failed { background: var(--bad); color: var(--white); }
 .quest-giver { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
@@ -780,8 +746,6 @@ footer {
 .quest-open { margin-top: 8px; font: 700 12px var(--ui-font); color: var(--link); text-align: right; }
 .msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
 .msg.quest-step .bubble.plain { font-style: normal; color: var(--ink); }
-.msg.quest-step.complete { border-left-color: var(--good); }
-.msg.quest-step.fail { border-left-color: var(--bad); }
 .quest-step-ico { flex: none; }
 
 /* The Wallet room — coin cards (a transfer, a request, an offer, the
@@ -796,18 +760,13 @@ footer {
 .wallet-ico { font-size: 18px; line-height: 1; }
 .wallet-title { flex: 1; min-width: 0; font: 800 14px var(--ui-font); color: var(--navy); }
 .wallet-amount { font: 800 14px var(--ui-font); color: var(--navy); white-space: nowrap; }
-.wallet-card.held, .wallet-card.open { border-left: 4px solid var(--highlight); }
-.wallet-card.pending, .wallet-card.paying { border-left: 4px solid var(--line); }
-.wallet-card.settled, .wallet-card.accepted, .wallet-card.paid { border-left: 4px solid var(--good); }
-.wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { border-left: 4px solid var(--bad); opacity: 0.85; }
+.wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { opacity: 0.85; }
 .wallet-party { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
 .msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
 .msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
-.msg.wallet-step.settled, .msg.wallet-step.approved, .msg.wallet-step.paid, .msg.wallet-step.accepted, .msg.wallet-step.received { border-left-color: var(--good); }
-.msg.wallet-step.denied, .msg.wallet-step.declined, .msg.wallet-step.failed, .msg.wallet-step.cancelled, .msg.wallet-step.expired { border-left-color: var(--bad); }
 .wallet-step-ico { flex: none; }
 /* The identity card's balance (replaces ⭐ when the story has a currency). */
 .wallet-pill {
@@ -816,7 +775,6 @@ footer {
 }
 .wallet-escrow { font-size: 0.9em; }
 .wallet-frozen { font-size: 0.9em; font-weight: 600; }
-.wallet-badge { font-weight: 700; }
 /* The sheets: a side toggle, an amount form, a title box. */
 .wallet-side { display: flex; gap: 8px; margin: 0 8px 8px; }
 .wallet-side .choice { flex: 1; width: auto; }

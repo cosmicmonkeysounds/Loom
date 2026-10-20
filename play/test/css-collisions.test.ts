@@ -23,6 +23,8 @@ const ALLOWED = new Set<string>([
   "chrome | .back::after",
   "chrome | .sheet-x",
   "chrome | .sheet-x::after",
+  "chrome | .msg-avatar[tabindex=\"0\"]",
+  "chrome | .msg-avatar[tabindex=\"0\"]::after",
   "chrome | .thread-head",
   "chrome | .thread-head .presence",
   "chrome | .thread-head .presence::after",
