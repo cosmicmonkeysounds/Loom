@@ -127,6 +127,40 @@ export function cleanGuestName(raw: string): string {
     .trim();
 }
 
+/** Letters from other scripts that read as a Latin letter, by case (after
+ *  NFD has split off accents): Cyrillic, Greek, the Turkish dotless ı. Only
+ *  the ones that look the same — not the full Unicode confusables table. */
+const CONFUSABLES: Readonly<Record<string, string>> = {
+  // Cyrillic
+  А: "A", В: "B", Е: "E", К: "K", М: "M", Н: "H", О: "O", Р: "P", С: "C", Т: "T", Х: "X", У: "Y", Ѕ: "S", І: "I", Ј: "J", Ү: "Y", Һ: "H", Ԛ: "Q", Ԝ: "W",
+  а: "a", е: "e", к: "k", о: "o", р: "p", с: "c", у: "y", х: "x", ѕ: "s", і: "i", ј: "j", һ: "h", ԁ: "d", ӏ: "l", ԛ: "q", ԝ: "w", ү: "y",
+  // Greek
+  Α: "A", Β: "B", Ε: "E", Ζ: "Z", Η: "H", Ι: "I", Κ: "K", Μ: "M", Ν: "N", Ο: "O", Ρ: "P", Τ: "T", Υ: "Y", Χ: "X",
+  α: "a", ε: "e", ι: "i", κ: "k", ν: "v", ο: "o", ρ: "p", υ: "u", χ: "x",
+  // Latin letters with a stroke or no dot (no NFD split)
+  ı: "i", ȷ: "j", ł: "l", Ł: "L", ø: "o", Ø: "O", đ: "d", Đ: "D", ħ: "h", Ħ: "H",
+};
+
+/**
+ * A guest name's skeleton — a stricter key than `foldName`, for the taken /
+ * part checks only (recheck item 5): `cleanGuestName`, accents dropped,
+ * every look-alike letter from another script mapped onto its Latin twin
+ * (`CONFUSABLES`), lower case, then only letters and digits kept — so
+ * `Win Zip`, `Fire fox`, `WınZip` (dotless ı) and `Wіnzip` (Cyrillic і) read
+ * as `winzip` / `firefox`, while `Word` and `WordPad` stay apart. Empty for a
+ * name with no letter or digit (an emoji): such a name is compared folded
+ * only.
+ */
+export function nameSkeleton(raw: string): string {
+  let out = "";
+  for (const ch of cleanGuestName(raw).normalize("NFD")) {
+    if (/\p{M}/u.test(ch)) continue;
+    const c = (CONFUSABLES[ch] ?? ch).toLowerCase();
+    if (/^[\p{L}\p{N}]+$/u.test(c)) out += c;
+  }
+  return out;
+}
+
 /** The first `max` characters (code points, never half a surrogate pair). */
 export function clipName(name: string, max: number): string {
   return Array.from(name).slice(0, max).join("");
@@ -140,7 +174,12 @@ export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlyS
   const folded = foldName(cleanGuestName(name));
   if (folded === "") return "pick a program";
   if (taken.has(folded)) return `${name} is already here tonight — pick another program`;
-  const def = identityDefs(model).find((d) => foldName(d.name) === folded);
+  // A lookalike (an inserted space, a dotless ı, a Cyrillic і) of a name
+  // already here is that name.
+  const skeleton = nameSkeleton(name);
+  if (skeleton !== "") for (const t of taken) if (nameSkeleton(t) === skeleton) return `${name} is already here tonight — pick another program`;
+  const defs = identityDefs(model);
+  const def = defs.find((d) => foldName(d.name) === folded) ?? (skeleton === "" ? undefined : defs.find((d) => nameSkeleton(d.name) === skeleton));
   if (def === undefined) {
     // The article name of a reserved program is held like the program.
     const held = reservedDefFor(model, name);
@@ -158,7 +197,12 @@ export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlyS
  *  given. Asked after `guestNameRefusal` passed. */
 export function canonicalGuestName(model: SimModel, name: string): string {
   const folded = foldName(name);
-  return identityDefs(model).find((d) => foldName(d.name) === folded)?.name ?? name;
+  const defs = identityDefs(model);
+  const exact = defs.find((d) => foldName(d.name) === folded);
+  if (exact !== undefined) return exact.name;
+  // `Fire fox` is the pool's Firefox (its skeleton), never a second one.
+  const skeleton = nameSkeleton(name);
+  return (skeleton === "" ? undefined : defs.find((d) => d.kind === "pool" && d.playable && nameSkeleton(d.name) === skeleton))?.name ?? name;
 }
 
 /** Characters for the claim token: Crockford-style base32, lower case, no
