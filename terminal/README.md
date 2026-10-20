@@ -569,7 +569,7 @@ on a laptop with Chromium's `--disable-webgl --disable-3d-apis`). Same feed as t
 
 One floor at a time, north up (`+z` south, like the map editor), fitted to
 the screen: the floor with the most players (a tie → this terminal's
-spot's floor, else the main floor; held 2.5 s before it moves), with tabs
+spot's floor, else the main floor; it follows them only once they have wanted another floor for 2.5 s, so a step onto the stairs never flips it), with tabs
 counting the players per floor. Rooms in their colours with their label and
 LOCATION, walls (doors read as gaps; a door the King guards has a red block
 until he falls), stairs; each player a Win98 tile (their picture, else a
@@ -578,7 +578,7 @@ behind (`PoseBuffer`); a 20 s fading trail; their duck pulsing gold and
 `route()`'s chevrons to it (recomputed ≤ 1/s); the King (♔, his shared bar
 `n / max`, grey ♚ *HE KNEELS* at 0); this terminal's spot as *YOU ARE
 HERE* with its view cone. A find shows *REINSTALLED: NAME* (*GERALD CAN'T
-HELP* for a kept one); joins / leaves toast; the corner reads *LIVE · n
+HELP* for a kept one); joins / leaves toast (never a reconnect's whole roster or a story reset); the corner reads *LIVE · n
 PLAYERS* with the stream's dot. With nobody playing, the floor dims under
 *NOBODY IS REINSTALLING* (`auto` keeps the face then, as before), and the
 attract screen still takes over while the character is asleep.
