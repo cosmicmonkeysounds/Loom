@@ -282,6 +282,8 @@ export type MomentsAction =
   | { type: "closeSummary" }
   /** While a hold lasts: modal moments queued too long move to missed. */
   | { type: "tick"; now: number; held: boolean }
+  /** The story changed the level live: everything still queued moves to its new rung (a blue screen only exists at `bsod`). */
+  | { type: "relevel"; level: AlertLevel; role: Viewer["role"] }
   /** `!` pins taken down since (`retractedPinSeqs`): drop them wherever they wait. */
   | { type: "retract"; seqs: ReadonlySet<number> }
   /** The story restarted: nothing queued is news any more. */
@@ -390,6 +392,25 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       const late = s.queue.filter((q) => isModal(q.level) && a.now - q.queuedAt > HOLD_MISS_MS);
       if (late.length === 0) return s;
       return { ...s, queue: s.queue.filter((q) => !late.includes(q)), missed: [...s.missed, ...late.map((q) => q.moment)] };
+    }
+    case "relevel": {
+      let changed = false;
+      const queue: Queued[] = [];
+      for (const q of s.queue) {
+        // A beat's blue screen has no lower rung: below `bsod` its line just stays in the stream.
+        if (q.moment.kind === "beat" && viewerLevel(a.level, a.role) !== "bsod") {
+          changed = true;
+          continue;
+        }
+        const level = rungFor(q.moment, a.level, a.role);
+        if (level === q.level) queue.push(q);
+        else {
+          changed = true;
+          queue.push({ ...q, level });
+        }
+      }
+      if (!changed) return s;
+      return { ...s, queue, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "retract": {
       const gone = (m: Moment) => m.seq !== null && a.seqs.has(m.seq);

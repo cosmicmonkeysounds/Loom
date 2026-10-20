@@ -144,6 +144,30 @@ describe("the queue", () => {
     expect(v.modal).toBeNull();
   });
 
+  it("lowering the level live lowers what is already queued (D2: switchable live)", () => {
+    let s = run([arrive([1, 2, 3].map((n) => moment(n, { channel: `dm:${n}` })), { level: "dialog" }), arrive([moment(4, { severity: "minor", kind: "readout" })], { level: "dialog" })]);
+    s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: 5_000 });
+    expect(surfacesOf(s, false).modalIndex).toBe(2);
+    s = momentsReducer(s, { type: "relevel", level: "balloon", role: "guest" });
+    const v = surfacesOf(s, false);
+    expect(v.modal).toBeNull();
+    expect(s.queue.map((q) => q.level)).toEqual(["balloon", "balloon", "balloon"]);
+    expect(s.burst).toBe(0);
+    // Back up: they climb again, and "1 of 2" starts over.
+    s = momentsReducer(s, { type: "relevel", level: "dialog", role: "guest" });
+    expect([surfacesOf(s, false).modal?.moment.seq, surfacesOf(s, false).modalIndex, surfacesOf(s, false).modalTotal]).toEqual([2, 1, 2]);
+    expect(momentsReducer(s, { type: "relevel", level: "dialog", role: "guest" })).toBe(s);
+  });
+
+  it("a queued blue screen leaves when the level drops below bsod; a booth never climbs past sticky", () => {
+    let s = run([arrive([moment(1, { kind: "beat", severity: "minor" }), moment(2)], { level: "bsod" })]);
+    expect(s.queue.map((q) => q.level)).toEqual(["bsod", "bsod"]);
+    s = momentsReducer(s, { type: "relevel", level: "dialog", role: "guest" });
+    expect(s.queue.map((q) => [q.moment.seq, q.level])).toEqual([[2, "dialog"]]);
+    const b = momentsReducer(run([arrive([moment(3)], { level: "balloon", role: "booth" })]), { type: "relevel", level: "bsod", role: "booth" });
+    expect(b.queue.map((q) => q.level)).toEqual(["sticky"]);
+  });
+
   it("the same moment never queues twice", () => {
     const s = run([arrive([moment(1)]), arrive([moment(1)])]);
     expect(s.queue).toHaveLength(1);

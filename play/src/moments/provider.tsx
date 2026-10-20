@@ -173,6 +173,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, session, alerts.epoch]);
 
+  // The level is switchable live (D2): what is still queued follows it, so a
+  // host who calms the room never leaves phones stepping through old modals.
+  useEffect(() => {
+    dispatch({ type: "relevel", level, role });
+  }, [level, role]);
+
   // A `!` pin taken down (an unpin, or a newer pin with its key) leaves the
   // queue, the missed list and the summary: a lifted mark is not news.
   useEffect(() => {
