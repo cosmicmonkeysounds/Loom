@@ -153,7 +153,11 @@ export function removeThing(house: HouseMap, sel: Selection): HouseMap {
   else if (sel.kind === "duck") next.duck.spots = keep(next.duck.spots);
   else if (sel.kind === "door") next.doors = keep(next.doors);
   else if (sel.kind === "stair") next.stairs = keep(next.stairs);
-  else next.props = keep(next.props);
+  else {
+    next.props = keep(next.props);
+    // A King's doors are let go with him (a guard naming no prop is refused).
+    for (const d of next.doors) if (d.guard === sel.id) delete d.guard;
+  }
   return next;
 }
 
@@ -287,10 +291,13 @@ export function setHeight(house: HouseMap, sel: Selection, y: number): HouseMap 
 /**
  * A wall terminal's provisioning link — **without** the moderator passcode
  * (the director appends `&code=<mod passcode>` before opening it on the
- * tablet; a printed link must not carry it).
+ * tablet; a printed link must not carry it). `view` is one of the terminal
+ * app's views (`TERMINAL_VIEWS`), `room` a story LOCATION.
  */
-export function provisionLink(origin: string, t: Pick<TerminalSpot, "id" | "name">): string {
-  const q = new URLSearchParams({ name: t.name, spot: t.id, view: "auto" });
+export function provisionLink(origin: string, t: Pick<TerminalSpot, "id" | "name">, opts: { view?: string; room?: string | null } = {}): string {
+  const q = new URLSearchParams({ name: t.name, spot: t.id, view: opts.view ?? "auto" });
+  // A room terminal (`room=` a story LOCATION): asleep until that room is open.
+  if (opts.room !== undefined && opts.room !== null && opts.room !== "") q.set("room", opts.room);
   return `${origin}/terminal/?${q.toString()}`;
 }
 

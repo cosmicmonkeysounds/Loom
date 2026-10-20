@@ -19,7 +19,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { polyBounds, validateHouse } from "@loom/house";
-import type { HouseMap, PlayerState, Vec2 } from "@loom/house";
+import type { HouseMap, PlayerState, PropKind, Vec2 } from "@loom/house";
 import { Setup } from "../app.tsx";
 import { fetchHouse, fetchLocations, saveHouse, streamProbe, streamUrl, tokenAlive, type LoadedHouse } from "../api.ts";
 import { baseOf, dropConfig, loadConfig, saveConfig, type ReinstallConfig } from "../config.ts";
@@ -33,6 +33,7 @@ import { EMPTY_HISTORY, pushed, redone, undone, type History } from "./history.t
 import { Inspector } from "./Inspector.tsx";
 import { JsonTab, PlayersTab, ProblemsPanel, TerminalsTab } from "./Panels.tsx";
 import { snap2, SNAP_STEPS } from "./plan.ts";
+import { addProp, duplicate, rotateBy, YAW_STEP } from "./props.ts";
 import { addFloor, addRoom, blankHouse, cascadeOf, deleteRoomText, deletesWith, floorDefaults, moveStair, placeRect, removeRoom } from "./structure.ts";
 import { flapsAdded, yardOf } from "./yards.ts";
 import { Toolbar } from "./Toolbar.tsx";
@@ -111,6 +112,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [floor, setFloor] = useState("");
   const [edit, setEdit] = useState(false);
   const [tool, setTool] = useState<Tool>("select");
+  /** A palette prop armed for the next click on the plan. */
+  const [placing, setPlacing] = useState<PropKind | null>(null);
   const [snapStep, setSnapStep] = useState(loadSnap);
   const [sel, setSel] = useState<Selection | null>(null);
   const [tab, setTab] = useState<Tab>("inspect");
@@ -202,8 +205,14 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     if (!editable) setEdit(false);
   }, [editable]);
   useEffect(() => {
-    if (!edit) setTool("select");
+    if (!edit) {
+      setTool("select");
+      setPlacing(null);
+    }
   }, [edit]);
+  useEffect(() => {
+    if (tool !== "select") setPlacing(null);
+  }, [tool]);
   useEffect(() => {
     try {
       window.localStorage.setItem(SNAP_KEY, String(snapStep));
@@ -337,8 +346,10 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     } else if (sel.kind === "duck") setNotice("A map needs at least one duck spot.");
   }, [sel, apply]);
 
-  // Keys: ⌘Z / ⇧⌘Z (⌘Y) undo / redo, Delete removes, arrows nudge (the
-  // snap step, Shift ×10), [ / ] turn, Esc back to Select, tool letters.
+  // Keys: ⌘Z / ⇧⌘Z (⌘Y) undo / redo, ⌘D duplicates, Delete removes,
+  // arrows nudge (the snap step, Shift ×10), R / ⇧R turn 15° (with a
+  // turnable selection; else R is the Room tool), [ / ] turn 5°, Esc
+  // cancels a palette prop, then back to Select, then deselects; tool letters.
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       if (!editorTakesKey({ typing: isTyping(e.target), editing: edit, asking: askingRef.current })) return;
@@ -355,10 +366,25 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         step("redo");
         return;
       }
+      if (mod && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        if (sel === null) return;
+        const out = duplicate(h, sel, snapStep < 0.1 ? 0.25 : snapStep);
+        if (out === null) return setNotice("Only a prop, a terminal or a duck spot can be duplicated.");
+        apply(out.house);
+        setSel(out.sel);
+        return;
+      }
       if (mod || e.altKey) return;
       if (e.key === "Escape") {
-        if (tool !== "select") setTool("select");
+        if (placing !== null) setPlacing(null);
+        else if (tool !== "select") setTool("select");
         else setSel(null);
+        return;
+      }
+      if (e.key.toLowerCase() === "r" && tool === "select" && sel !== null && yawOf(h, sel) !== null) {
+        e.preventDefault();
+        apply(rotateBy(h, sel, e.shiftKey ? -YAW_STEP : YAW_STEP));
         return;
       }
       const t = TOOLS.find((x) => x.key === e.key.toLowerCase());
@@ -398,7 +424,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
-  }, [edit, sel, tool, snapStep, apply, step, deleteSelected]);
+  }, [edit, sel, tool, placing, snapStep, apply, step, deleteSelected]);
 
   useEffect(() => {
     if (copied === null) return;
@@ -493,6 +519,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         }}
         onEdit={setEdit}
         onTool={setTool}
+        placing={placing}
+        onPlacing={(k) => {
+          setTool("select");
+          setPlacing(k);
+        }}
         onSnap={setSnapStep}
         onAddSized={addSized}
         onUndo={() => step("undo")}
@@ -546,7 +577,27 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             </Suspense>
           </div>
         ) : (
-          <Canvas house={house} floor={floor} edit={edit} tool={tool} snapStep={snapStep} sel={sel} players={players} onSelect={select} onEdit={apply} onNotice={setNotice} />
+          <Canvas
+            house={house}
+            floor={floor}
+            edit={edit}
+            tool={tool}
+            snapStep={snapStep}
+            sel={sel}
+            players={players}
+            onSelect={select}
+            onEdit={apply}
+            onNotice={setNotice}
+            placing={placing}
+            onPlace={(at) => {
+              if (placing === null) return;
+              const r = addProp(house, placing, floor, at);
+              if (r === null) return setNotice(`Click inside a room on this floor to place the ${placing}.`);
+              apply(r.house);
+              setPlacing(null);
+              select({ kind: "prop", id: r.id });
+            }}
+          />
         )}
 
         <aside className="map-side">

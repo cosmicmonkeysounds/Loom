@@ -5,10 +5,11 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { HouseMap, PlayerState } from "@loom/house";
+import type { HouseMap, PlayerState, PropKind } from "@loom/house";
 import type { LoadedHouse } from "../api.ts";
 import { SNAP_STEPS } from "./plan.ts";
 import { sourceLabel } from "./project.ts";
+import { PROP_PALETTE } from "./props.ts";
 import { TOOLS, type Tool } from "./tools.ts";
 
 export interface ToolbarProps {
@@ -36,6 +37,10 @@ export interface ToolbarProps {
   onEdit: (on: boolean) => void;
   onView3d: (on: boolean) => void;
   onTool: (t: Tool) => void;
+  /** The palette prop armed for the next click (null: none). */
+  placing: PropKind | null;
+  /** Arm a palette prop (null: disarm). */
+  onPlacing: (kind: PropKind | null) => void;
   onSnap: (step: number) => void;
   onAddSized: (w: number, d: number) => void;
   onUndo: () => void;
@@ -125,6 +130,20 @@ export function Toolbar(p: ToolbarProps) {
               </button>
             </span>
           )}
+          <span className="prop-palette" role="group" aria-label="Add a prop">
+            <span className="muted">+ prop</span>
+            {PROP_PALETTE.map((k) => (
+              <button
+                key={k.kind}
+                className={`w98-button small${p.placing === k.kind ? " pressed" : ""}`}
+                aria-pressed={p.placing === k.kind}
+                onClick={() => p.onPlacing(p.placing === k.kind ? null : k.kind)}
+                title={`Add a ${k.kind}: click here, then click inside a room on the plan (Esc cancels)`}
+              >
+                {k.label}
+              </button>
+            ))}
+          </span>
           <span className="spacer" />
           <label className="snap">
             snap
