@@ -655,6 +655,24 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(guestCardView(n.sim, n.chat.all(), "Clippy", "g4", false)!.live).not.toContain("unmark_for_reinstallation");
   }, SLOW);
 
+  it("CI 2's checklist reaches 4 / 4, and no to-do in the show is left without a `done when`", () => {
+    const n = boot();
+    for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
+    const ci2 = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners")!.checklist.map((c) => c.done);
+    expect(ci2()).toEqual([false, false, false, false]);
+    n.signal("bingo_winner", "g1", undefined, "Clippy");
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    // A ribbon for a program without a Bingo is not CI 2's ribbon.
+    n.signal("award_the_ribbon", "g2", undefined, "Clippy");
+    expect(ci2()).toEqual([true, true, false, false]);
+    n.signal("award_the_ribbon", "g1", undefined, "Clippy");
+    expect(ci2()).toEqual([true, true, true, false]);
+    n.signal("send to the internet", "g4", undefined, "Norton Anti-Virus");
+    expect(ci2()).toEqual([true, true, true, true]);
+    const manual = [...n.sim.model.objectives.values()].flatMap((o) => o.checklist.filter((c) => c.done === null).map((c) => `${o.id}: ${c.label}`));
+    expect(manual).toEqual([]);
+  }, SLOW);
+
   it("the escort list skips a program gone home and a rehearsal persona, and the summons outranks it", () => {
     const n = boot();
     const now = (p: string) => primeView(n.sim, p).objectives?.[0]?.id;

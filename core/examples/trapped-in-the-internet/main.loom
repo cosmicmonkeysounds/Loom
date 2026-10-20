@@ -533,6 +533,8 @@ ROLE Program
 
   when award_the_ribbon for program:
     if program.bingo == true:
+      // DRAFT for sign-off (w13 Q24): CI 2's 🎀 to-do ticks.
+      set Night.bingo_ribbons += 1
       unlock Computer Bingo for program
       broadcast "~🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
       reply 🎀 You won a Bingo Ribbon. Take a bow.
@@ -550,6 +552,8 @@ ROLE Program
   // from the Enforcer's hook).
   when named_at_bingo for program:
     if Night.phase == "bingo_results":
+      // DRAFT for sign-off (w13 Q24): CI 2's 🎯 to-do ticks.
+      set Night.bingo_named += 1
       fire mark_for_reinstallation for program with reason: "named on the Bingo card"
 
   // ── Moments of Truth: the room's judging (performer buttons) ──
@@ -4902,6 +4906,8 @@ set Night.clock = "--:--"
 set Night.bingo_on = false
 set Night.bingo_end = 0
 set Night.bingo_winners = 0
+set Night.bingo_named = 0
+set Night.bingo_ribbons = 0
 set Night.first_reinstall = "none"
 set Night.first_reinstall_done = false
 set Night.trabolta_introduced = false
