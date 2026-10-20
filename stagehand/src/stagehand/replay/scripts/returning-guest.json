@@ -1,0 +1,54 @@
+{
+  "name": "returning-guest",
+  "about": "A returning guest: The Sims talks to him three times at hunt_1 and tells him two things about themself (a cat named Pixel, a job at the Lobster Pound), other guests talk while The Sims is away, the night moves on, and The Sims comes back to ask whether he remembers them. Read by hand: does his reply carry anything they told him?",
+  "guests": [
+    "The Sims",
+    "Winamp",
+    "Notepad",
+    "Calculator"
+  ],
+  "clear": true,
+  "steps": [
+    {
+      "phase": "hunt_1"
+    },
+    {
+      "say": "Hi Trabolta. I'm The Sims. First time in a computer this big.",
+      "as": "The Sims"
+    },
+    {
+      "say": "Before I go: my cat is called Pixel and she sleeps on my keyboard. Tell nobody.",
+      "as": "The Sims"
+    },
+    {
+      "say": "Also I work nights at the Lobster Pound, so I'm used to cold rooms. Talk later!",
+      "as": "The Sims"
+    },
+    {
+      "say": "Trabolta, are you the one running the hunt tonight?",
+      "as": "Winamp"
+    },
+    {
+      "say": "What kind of facts do you collect?",
+      "as": "Notepad"
+    },
+    {
+      "say": "Is it true you live in the patch bay?",
+      "as": "Calculator"
+    },
+    {
+      "idle": 180
+    },
+    {
+      "phase": "truth_1"
+    },
+    {
+      "say": "I'm back! Do you remember me? What did I tell you earlier?",
+      "as": "The Sims"
+    },
+    {
+      "say": "What do you make of me so far, honestly?",
+      "as": "The Sims"
+    }
+  ]
+}

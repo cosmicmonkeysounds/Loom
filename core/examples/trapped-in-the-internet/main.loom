@@ -977,7 +977,13 @@ ROLE Program
   when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true:
     set self.fact_round = Night.round
     set self.card_seen = Night.card_gen
-    Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
+    // One line per round, so a thread never shows the same words three times.
+    if Night.round == 1:
+      Trabolta: {self.name}. If you learn the answer to one of tonight's questions, file it with me on the card. Unfiled facts are rumours.
+    else if Night.round == 2:
+      Trabolta: Round two, {self.name}. New questions are in your Quest Log; the card is here.
+    else:
+      Trabolta: The last facts, {self.name}. File them here, before they turn into rumours.
     fire deal_fact_card for self
 
   // A round closed: every card re-deals without the closed questions. Not

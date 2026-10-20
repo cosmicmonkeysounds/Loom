@@ -264,7 +264,10 @@ async function night() {
   const guestSays = (g: Guest, text: string) => ask(() => call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text }, { token: g.token }));
   const clippySays = (text: string) => ask(() => call(rt, "POST", "/api/prime/say", { channel: "cast:Trabolta", text }, { token: clippy.json["token"] as string }));
   const factsDoc = async () => (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json;
-  const v = (path: string) => rt.liveSim!.world.peek(path)?.value;
+  const v = (path: string) => {
+    const got = rt.liveSim!.world.peek(path);
+    return got && got.kind !== "null" && "value" in got ? got.value : undefined;
+  };
   return { rt, mod, guests, guestSays, clippySays, factsDoc, v };
 }
 
@@ -487,13 +490,21 @@ describe("Trabolta never knows what he is asking for", () => {
       return ENDINGS.test(sub) ? { keys: LINE_KEYS, pointers: false } : AFTER_THE_VERDICT_SCAN;
     });
     expect(leaks).toEqual([]);
-    // The grok_prom cue asks for the line and sends them to the card; it no
-    // longer gives him a way to accept one himself.
-    const cue = /^ {2}grok_prom: >-\n((?: {4}.*\n)+)/mu.exec(mind)![1]!.replace(/\s+/gu, " ");
-    expect(cue).toContain("only the house can");
-    expect(cue).not.toMatch(/the_line_works|knows it when/u);
-    // The phases skipped are exactly the ones from the verdict on.
-    const phases = [...mind.matchAll(/^ {2}([a-z_0-9]+): >-$/gmu)].map((m) => m[1]!);
+    // The grok_prom card asks for the line and sends them to the card, in the
+    // brief the voice reads and the classic cue alike; it no longer gives him
+    // a way to accept one himself.
+    const card = /^ {2}grok_prom:(?: >-)?\n((?: {4}.*\n)+)/mu.exec(mind)![1]!;
+    for (const key of ["brief", "cue"]) {
+      const text = new RegExp(`^ {4}${key}: >-\\n((?: {6}.*\\n)+)`, "mu").exec(card)?.[1]?.replace(/\s+/gu, " ") ?? "";
+      expect(text, key).toContain("only the house can");
+      expect(text, key).not.toMatch(/the_line_works|knows it when/u);
+    }
+    // The phases skipped are exactly the ones from the verdict on: every
+    // phase under `phases:`, a bare cue or a card (wave 12), never a `_` key.
+    const table = mind.slice(mind.indexOf("\nphases:\n"), mind.indexOf("\n---\n", mind.indexOf("\nphases:\n")));
+    const phases = [...table.matchAll(/^ {2}([a-z_0-9]+):(?: >-)?$/gmu)].map((m) => m[1]!).filter((p) => !p.startsWith("_"));
+    expect(phases).toContain("arrivals");
+    expect(phases).not.toContain("_stages");
     expect(phases.filter((p) => AFTER_THE_VERDICT.test(p))).toEqual(["grok_prom", "advice", "finale_killed", "finale_shutdown", "finale_song", "finale_rave", "finale_help", "finale_banish", "finale_hand_jive"]);
     expect(phases.indexOf("bobbing")).toBe(phases.indexOf("grok_prom") - 1);
   });

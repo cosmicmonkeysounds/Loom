@@ -1,0 +1,18 @@
+{
+  "name": "empty-house",
+  "about": "No guest line: the house is opened, three programs cleared, the night pressed to hunt_1, then left alone for 16 minutes. Bar 6 counts every model call in the idle window.",
+  "guests": [
+    "Calculator",
+    "Winamp",
+    "Notepad"
+  ],
+  "clear": true,
+  "steps": [
+    {
+      "phase": "hunt_1"
+    },
+    {
+      "idle": 960
+    }
+  ]
+}

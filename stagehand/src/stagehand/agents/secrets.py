@@ -22,8 +22,9 @@ The mind file declares the hunt in its frontmatter (never shown to a model):
                                                   #   hunt answer
       never: ["1997", "'97", "V2-D5"]              # what no line of his may ever
                                                   #   carry, whoever typed it: the
-                                                  #   door code and every patch-bay
-                                                  #   pair (any spelling, either
+                                                  #   door code, every patch-bay
+                                                  #   pair and the pickup line
+                                                  #   the house judges (any spelling, either
                                                   #   way round: V2 → D5, v2-d5,
                                                   #   D5 to V2, V-2/D-5); a code
                                                   #   with separators (1 9 9 7,
@@ -96,7 +97,7 @@ _DROP = object()
 _LABELS = {"learned_add": "learned", "learned": "learned", "notes_add": "note", "brief": "brief", "claims_add": "claim", "summary": "summary"}
 
 
-#: What `scrub` puts before a `never` drop (a door code, a combination).
+#: What `scrub` puts before a `never` drop (a door code, a combination, the pickup line).
 NEVER_TAG = "secret · "
 
 
@@ -107,13 +108,14 @@ def split_dropped(dropped: list[str]) -> tuple[list[str], list[str]]:
 
 def drop_counts(hunt: int, never: int) -> str:
     """The director's log words for a scrub or a prune: hunt verdicts and
-    secrets (the door code, a combination) counted apart — a K-04 mind run
-    tells a program feeding him the code from a hunt claim."""
+    secrets (the door code, a combination, the pickup line: the `never`
+    list holds all three) counted apart — a K-04 mind run tells a program
+    feeding him the code from a hunt claim."""
     parts = []
     if hunt:
         parts.append(f"{hunt} hunt verdict(s)")
     if never:
-        parts.append(f"{never} secret(s) (door code / combo)")
+        parts.append(f"{never} secret(s) (door code / combo / pickup line)")
     return ", ".join(parts)
 
 
@@ -165,6 +167,13 @@ def _pattern(words: tuple[str, ...]) -> re.Pattern[str] | None:
         return None
     body = "|".join(r"\s+".join(re.escape(part) for part in w.split(" ")) for w in alts)
     return re.compile(rf"(?<![a-z0-9])(?:{body})(?![a-z0-9])", re.IGNORECASE)
+
+
+@lru_cache(maxsize=1024)
+def _word_pattern(word: str) -> re.Pattern[str] | None:
+    """One answer word's pattern: `answer_hits` asks word by word, and the
+    shared `_pattern` cache is too small for a whole hunt's words."""
+    return _pattern((word,))
 
 
 @dataclass(frozen=True)
@@ -271,6 +280,36 @@ class Secrets:
 
     def judges_topic(self, text: Any) -> bool:
         return self.names_topic(text) and _VERDICT.search(str(text)) is not None
+
+    # -- answer words (wave 12: the voice's answer-word guard) -------------------
+
+    def answer_words(self) -> tuple[str, ...]:
+        """The `match` words the voice's answer-word guard watches for
+        (normalised, in file order): every entry but the ones too common to
+        guard on a line — two characters or fewer, digits only under three
+        digits (`11`), or a single number word (`eleven`). Never shown to a
+        model."""
+        out: list[str] = []
+        for raw in self.match:
+            w = _norm(raw).replace("’", "'")
+            if len(w) <= 2 or (w.isdigit() and len(w) < 3) or w in _NUMBER_WORDS or w in out:
+                continue
+            out.append(w)
+        return tuple(out)
+
+    def answer_pattern(self, words: tuple[str, ...] | None = None) -> re.Pattern[str] | None:
+        """One word-bounded, case-folded pattern over `words` (default: every
+        `answer_words()`), built like `names_topic`'s. None when empty."""
+        return _pattern(tuple(self.answer_words() if words is None else words))
+
+    def answer_hits(self, text: Any, words: tuple[str, ...] | None = None) -> tuple[str, ...]:
+        """The answer words (default `answer_words()`) `text` carries, each
+        once, in word order — so a caller can tell a word the guest typed
+        from one the character brought up himself."""
+        if not isinstance(text, str) or not text:
+            return ()
+        hay = text.replace("’", "'")
+        return tuple(w for w in (self.answer_words() if words is None else words) if (pat := _word_pattern(w)) is not None and pat.search(hay))
 
     def scrub(self, update: dict[str, Any]) -> list[str]:
         """Strip hunt verdicts, and anything carrying a `never` word, from an

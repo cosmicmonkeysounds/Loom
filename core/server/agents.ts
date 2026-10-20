@@ -87,7 +87,26 @@ export interface AgentLine {
   mine: boolean;
   from: string;
   text: string;
+  /** The story posted this line (a receipt, a scripted line, the hold or
+   *  busy line), not the character's own free reply (wave 12, C1.1).
+   *  Absent = a free line. Never sent while `LOOM_AGENT_RECENT=off`. */
+  story?: true;
 }
+
+/**
+ * Something the house holds about the character and this speaker, built at
+ * request time from what the server already holds (wave 12, C1.2): a gift
+ * (an entry the speaker shared with him), his own house-wide line, the
+ * speaker's filing (a question id, nothing else), the speaker being marked,
+ * the speaker's place on the Trust Chart. Never an answer, a verdict, a
+ * secret entry or anything from the Kernel. `at` is story time (ms).
+ */
+export type AgentRecent =
+  | { kind: "gift"; title: string; new: boolean; at: number }
+  | { kind: "house"; text: string; at: number }
+  | { kind: "filing"; question: string }
+  | { kind: "marked" }
+  | { kind: "chart"; rank: number; of: number; called: "top" | "bottom" | null };
 
 /** What a worker receives: everything needed to answer, no follow-up reads. */
 export interface AgentRequest {
@@ -109,6 +128,12 @@ export interface AgentRequest {
   powers: AgentPower[];
   /** Server wall clock when the request was built. */
   at: number;
+  /** Wave 12 (C1.2): at most 6 things the house holds about him and this
+   *  speaker, newest first within a kind. Absent while
+   *  `LOOM_AGENT_RECENT=off`, or from an older server. */
+  recent?: AgentRecent[];
+  /** The story clock (`sim.elapsed()`, ms) when this body was built. */
+  storyAt?: number;
 }
 
 /** An `INTERACTION … who: agent` — something the story lets the agent
@@ -165,6 +190,8 @@ export interface AgentFacts {
   locations: Array<{ id: string; label: string; occupants: string[] }>;
   codex: Array<{ id: string; title: string; about: string | null; text: string; holders: string[]; hasCode: boolean }>;
   powers: AgentPower[];
+  /** The event is paused (wave 12): the worker skips its timed surveys. */
+  paused?: boolean;
 }
 
 export interface AgentFactsPerson {
@@ -228,6 +255,12 @@ export interface AgentMindReport {
   surveys: number;
   updatedAt: number;
   status: Record<string, unknown>;
+  /** Wave 12: which mind the worker runs (absent from an older worker). */
+  mode?: "new" | "classic";
+  /** Wave 12: the phase card in force. */
+  phase?: string;
+  /** Wave 12: who wrote the brief in force — the phase card, or a director. */
+  briefBy?: "story" | "director";
 }
 
 export interface AgentMindPerson {
@@ -241,6 +274,19 @@ export interface AgentMindPerson {
   claims: string[];
   turns: number;
   lastSeen: number;
+  /** Wave 12: the voice's own notes on this person (newest last). */
+  memos?: Array<{ at: number; text: string; by: string; heart: boolean }>;
+  /** Wave 12: the first-met line. */
+  firstMet?: string;
+  /** Wave 12: the titles they gave him. */
+  gifts?: string[];
+  /** Wave 12: the question ids they filed. */
+  filings?: string[];
+  marked?: boolean;
+  /** Wave 12: their place on the Trust Chart, in words. */
+  chart?: string | null;
+  /** Wave 12: the house's own trust number for them, as a string. */
+  storyTrust?: string | null;
 }
 
 /** One numbered change to the mind: who made it, what it touched, the
@@ -316,6 +362,7 @@ export function agentMindReport(raw: unknown): AgentMindReport | null {
         claims: strs(p["claims"], 12, 300),
         turns: Math.round(n_(p["turns"])),
         lastSeen: n_(p["lastSeen"]),
+        ...personExtras(p),
       }))
       .filter((p) => p.id !== ""),
     threads: objs(r["threads"], 60).map((t) => ({ key: s_(t["key"], 200), summary: s_(t["summary"], 1200), upto: n_(t["upto"]), lines: n_(t["lines"]) })),
@@ -340,7 +387,29 @@ export function agentMindReport(raw: unknown): AgentMindReport | null {
     surveys: n_(r["surveys"]),
     updatedAt: n_(r["updatedAt"]),
     status,
+    ...(r["mode"] === "new" || r["mode"] === "classic" ? { mode: r["mode"] } : {}),
+    ...(typeof r["phase"] === "string" ? { phase: r["phase"].slice(0, 80) } : {}),
+    ...(r["briefBy"] === "story" || r["briefBy"] === "director" ? { briefBy: r["briefBy"] } : {}),
   };
+}
+
+/** Wave 12's optional person fields (C1.5): each passed only when present
+ *  and well-typed, bounded, never defaulted. */
+function personExtras(p: Record<string, unknown>): Partial<AgentMindPerson> {
+  const out: Partial<AgentMindPerson> = {};
+  if (Array.isArray(p["memos"])) {
+    out.memos = objs(p["memos"], 200)
+      .filter((m) => typeof m["text"] === "string")
+      .slice(-6)
+      .map((m) => ({ at: n_(m["at"]), text: s_(m["text"], 140), by: s_(m["by"], 20), heart: m["heart"] === true }));
+  }
+  if (typeof p["firstMet"] === "string") out.firstMet = p["firstMet"].slice(0, 200);
+  if (Array.isArray(p["gifts"])) out.gifts = strs(p["gifts"], 12, 120);
+  if (Array.isArray(p["filings"])) out.filings = strs(p["filings"], 12, 12);
+  if (typeof p["marked"] === "boolean") out.marked = p["marked"];
+  if (p["chart"] === null || typeof p["chart"] === "string") out.chart = p["chart"] === null ? null : (p["chart"] as string).slice(0, 80);
+  if (p["storyTrust"] === null || typeof p["storyTrust"] === "string") out.storyTrust = p["storyTrust"] === null ? null : (p["storyTrust"] as string).slice(0, 20);
+  return out;
 }
 
 /**
@@ -356,7 +425,7 @@ export interface AgentThought {
   character: string;
   worker: string;
   at: number;
-  kind: "voice" | "lookup" | "reflect" | "survey" | "rerun" | "judge" | "reset" | "control" | "error";
+  kind: "voice" | "lookup" | "reflect" | "survey" | "rerun" | "judge" | "reset" | "control" | "error" | "brief" | "summary";
   trigger: string;
   model: { name: string; api: string; endpoint: string; temperature: number | null; max_tokens: number | null; reasoning_effort: string | null; think: boolean | string | null } | null;
   request_id: string | null;
@@ -369,6 +438,10 @@ export interface AgentThought {
   prompt_tokens: number | null;
   completion_tokens: number | null;
   ms: number;
+  /** Wave 12: the model's prompt-evaluation time (Ollama), else null. The
+   *  sanitiser always sets it; optional so a thought built by an older
+   *  client still type-checks. */
+  prompt_ms?: number | null;
   result: Record<string, unknown> | null;
   touched: string[];
   diff: Record<string, unknown>;
@@ -377,7 +450,7 @@ export interface AgentThought {
   note: string;
 }
 
-const THOUGHT_KINDS = new Set<AgentThought["kind"]>(["voice", "lookup", "reflect", "survey", "rerun", "judge", "reset", "control", "error"]);
+const THOUGHT_KINDS = new Set<AgentThought["kind"]>(["voice", "lookup", "reflect", "survey", "rerun", "judge", "reset", "control", "error", "brief", "summary"]);
 /** Characters kept per message / per output field on the server. */
 const THOUGHT_TEXT_MAX = 32_000;
 
@@ -423,6 +496,7 @@ export function agentThought(raw: unknown, worker: string): Omit<AgentThought, "
     prompt_tokens: typeof r["prompt_tokens"] === "number" ? r["prompt_tokens"] : null,
     completion_tokens: typeof r["completion_tokens"] === "number" ? r["completion_tokens"] : null,
     ms: Math.round(n_(r["ms"])),
+    prompt_ms: typeof r["prompt_ms"] === "number" && Number.isFinite(r["prompt_ms"]) ? r["prompt_ms"] : null,
     result: obj(r["result"]),
     touched: strs(r["touched"], 20, 40),
     diff: obj(r["diff"]) ?? {},
@@ -521,8 +595,10 @@ function sizeOf(t: AgentThought): number {
 
 /** What a director asks a worker to do (`POST /api/mod/agent/control`),
  *  and what the server itself sends on a restart (`action: "reset"`). */
-export type AgentControlAction = "reset" | "survey" | "nudge" | "set" | "forget" | "thinking" | "effort" | "pause" | "rerun";
-export const AGENT_CONTROL_ACTIONS: readonly AgentControlAction[] = ["reset", "survey", "nudge", "set", "forget", "thinking", "effort", "pause", "rerun"];
+export type AgentControlAction = "reset" | "survey" | "nudge" | "set" | "forget" | "thinking" | "effort" | "pause" | "rerun" | "rewrite";
+/** `rewrite` (wave 12): rewrite the brief from the phase and the house now
+ *  (one voice call on a new-mode worker; a classic one runs a survey). */
+export const AGENT_CONTROL_ACTIONS: readonly AgentControlAction[] = ["reset", "survey", "nudge", "set", "forget", "thinking", "effort", "pause", "rerun", "rewrite"];
 export const AGENT_SET_FIELDS = ["brief", "mood", "stage", "drive", "policy", "trust", "note", "question"] as const;
 
 export interface AgentControl {
@@ -596,6 +672,7 @@ export function agentControl(raw: unknown, by: string): AgentControl | string {
       break;
     }
     case "survey":
+    case "rewrite":
       break;
   }
   return out;

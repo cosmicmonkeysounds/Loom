@@ -187,7 +187,9 @@ def test_the_shipped_trabolta_mind_declares_an_arc():
 
     p = load_persona(TRABOLTA)
     assert p.stages == ("asleep", "formal", "hungry", "rattled", "judge", "unravelling", "desperate", "last act")
-    assert set(p.drives) == {"hunger", "suspicion", "pride", "candour", "longing"}
+    # Wave 12: no suspicion drive ("are they gathering for him, or about
+    # him?" made him wary of the facts he asks for).
+    assert p.drives == {"hunger": 30, "pride": 60, "candour": 10, "longing": 40}
     assert {"arrivals", "introduced", "hunt_1", "truth_1", "malware", "hunt_2", "truth_pong", "trust_chart", "beans", "overshare", "y2k", "final_reveal", "bobbing"} <= set(p.phase_cues)
 
 
@@ -423,7 +425,7 @@ def test_hello_replays_the_mind_and_the_recent_trace(tmp_path):
     assert paths[:2] == ["/api/agent/mind", "/api/agent/trace"]
     replay = agents.mod.posts[1][1]
     assert replay["worker"] == "w-9" and [t["note"] for t in replay["thoughts"]] == ["earlier tonight"]
-    assert agents.orchestrator.pending == 1  # the first look at the house
+    assert agents.orchestrator.pending == 0  # survey_every_s: 0 queues no first look (A0 rule 1)
 
 
 def test_a_voice_request_traces_the_lookup_round_too(tmp_path):

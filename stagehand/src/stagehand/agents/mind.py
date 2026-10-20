@@ -37,9 +37,17 @@ can watch it grow.
              once and folded into the brief by the next orchestrator
              pass, which consumes them
     revisions every change to the mind, numbered: who made it (reflect /
-             survey / director / reset), what it touched, the thought
-             that produced it, and the small fields as they stood — the
-             debugger's scrubber
+             survey / director / reset, and in the new mind `story` for a
+             phase card), what it touched, the thought that produced it,
+             and the small fields as they stood — the debugger's scrubber
+
+The **new mind** (`mind_mode: new`, wave 12) keeps the same shape but is
+written by the story, not a second model: a phase card sets the stage,
+favours, drives, live powers, `tell` list and brief (`set_phase`, one
+revision `by: story`); each dossier gains the voice's memos, the first-met
+line, and what the story says about the person (gifts, filings, marked,
+the Trust Chart, the story's trust); `said` keeps his last final lines
+(the voice's "ALREADY SAID"). `story_mind.py` does the reading and writing.
 
 Everything the fast model sees from here is rendered by `prompt_block`;
 everything the director sees is `report()`. Bounded everywhere: an LLM
@@ -67,7 +75,18 @@ MAX_QUESTIONS = 8
 MAX_ANSWERS = 6
 MAX_DIRECTOR = 6
 MAX_REVISIONS = 300
+#: The new mind's revision cap on disk (no survey noise to keep).
+MAX_REVISIONS_NEW = 60
+#: Revisions sent with the report (both modes).
+REPORT_REVISIONS = 40
 MAX_STAGE_HISTORY = 40
+#: The voice's memos kept per person (oldest dropped first).
+MAX_MEMOS = 6
+MAX_MEMO = 140
+#: Gifts / filings remembered per person.
+MAX_STORY_ITEMS = 12
+#: His last final lines, across every thread (the voice's "ALREADY SAID").
+MAX_SAID = 20
 POLICY_FAVOURS = ("none", "earned", "loose")
 
 
@@ -111,23 +130,78 @@ class Dossier:
     claims: list[str] = field(default_factory=list)  # things they told the character
     turns: int = 0
     last_seen: float = 0.0
+    # -- the new mind (wave 12, CONTRACTS.md §C2.3) --------------------------
+    #: The voice's notes on them: [{"at", "text" ≤ 140, "heart", "thought"}], last 6.
+    memos: list[dict[str, Any]] = field(default_factory=list)
+    #: Written once, at first contact; never changed after.
+    first_met: str = ""
+    #: Codex titles they gave him, oldest first, deduped, last 12.
+    gifts: list[str] = field(default_factory=list)
+    #: Question ids they filed answers for, oldest first, deduped, last 12.
+    filings: list[str] = field(default_factory=list)
+    marked: bool = False
+    #: "<rank> of <of>[; you named them Most / Least Trusted]".
+    chart: str | None = None
+    #: The story's own `them.trust`, verbatim.
+    story_trust: str | None = None
+    catchphrase_used: bool = False
+    #: `Night.phase` at their previous turn.
+    last_phase: str = ""
+    #: `storyAt` (ms) at their previous turn.
+    last_story_at: float = 0.0
+    #: Has spoken to him at his heart tonight.
+    heart: bool = False
+    #: The newest thread `seq` that may be a line said at his heart: a quiet
+    #: summary reads only the lines after it (CONTRACTS.md §C2.3).
+    heart_seq: int = 0
+    #: Their last turn was at his heart: his reply (seqs after `heart_seq`)
+    #: is a heart line too, folded in at their next turn.
+    heart_open: bool = False
 
-    def apply(self, raw: dict[str, Any]) -> None:
+    def apply(self, raw: dict[str, Any]) -> bool:
+        """Merge an update; True when anything actually changed."""
+        changed = False
         if isinstance(raw.get("summary"), str) and raw["summary"].strip():
-            self.summary = " ".join(raw["summary"].split())[:600]
+            summary = " ".join(raw["summary"].split())[:600]
+            changed |= summary != self.summary
+            self.summary = summary
         if "trust" in raw:
-            self.trust = _int(raw["trust"], self.trust)
+            trust = _int(raw["trust"], self.trust)
+            changed |= trust != self.trust
+            self.trust = trust
         for key in ("promises", "asks", "claims"):
             add = _strs(raw.get(f"{key}_add", raw.get(key)), MAX_PER_PERSON)
             if add:
                 cur = getattr(self, key)
+                before = list(cur)
                 for item in add:
                     if item not in cur:
                         cur.append(item)
                 del cur[:-MAX_PER_PERSON]
+                changed |= cur != before
             drop = _strs(raw.get(f"{key}_drop"), MAX_PER_PERSON)
             if drop:
-                setattr(self, key, [x for x in getattr(self, key) if x not in drop])
+                kept = [x for x in getattr(self, key) if x not in drop]
+                changed |= kept != getattr(self, key)
+                setattr(self, key, kept)
+        return changed
+
+    def add_memo(self, text: str, heart: bool, thought: str | None, at: float | None = None) -> None:
+        line = " ".join(str(text).split())[:MAX_MEMO]
+        if not line:
+            return
+        self.memos.append({"at": round(time.time() if at is None else at, 1), "text": line, "heart": bool(heart), "thought": thought})
+        del self.memos[:-MAX_MEMOS]
+
+    def note_story(self, key: str, value: str) -> bool:
+        """Remember a gift title / a filed question id (oldest first, deduped)."""
+        items: list[str] = getattr(self, key)
+        value = " ".join(str(value).split())[:120]
+        if not value or value in items:
+            return False
+        items.append(value)
+        del items[:-MAX_STORY_ITEMS]
+        return True
 
     def render(self) -> str:
         who = "a fellow character" if self.kind == "performer" else "a guest"
@@ -178,6 +252,19 @@ class Mind:
     world: list[str] = field(default_factory=list)
     director: list[str] = field(default_factory=list)
     revisions: list[dict[str, Any]] = field(default_factory=list)
+    # -- the new mind (wave 12) ------------------------------------------------
+    #: "classic" | "new" — set by the worker; the report and the caps follow it.
+    mode: str = "classic"
+    #: The `Night.phase` whose card was last applied.
+    phase_applied: str = ""
+    #: Who set the brief: "story" (a phase card) | "director".
+    brief_by: str = "story"
+    #: The card's live power ids; None = every allowed power (no card applies).
+    live_powers: list[str] | None = None
+    #: Codex titles he may tell in full now (the card's `tell:`).
+    tell: list[str] = field(default_factory=list)
+    #: His last final lines: [{"thread", "text", "at", "heart"}], last 20. Persisted, never reported.
+    said: list[dict[str, Any]] = field(default_factory=list)
     rev: int = 0
     exchanges: int = 0
     reflections: int = 0
@@ -199,6 +286,13 @@ class Mind:
             self.drive_starts[str(name)] = _int(start, 50)
             if name not in self.drives:
                 self.drives[str(name)] = _int(start, 50)
+        if drives:
+            # A drive the mind file no longer declares (a retired name in a
+            # restored mind.json) is dropped, so no prompt shows it; the rest
+            # keep their values, in the declared order.
+            declared = [str(n) for n in drives]
+            self.drives = {n: self.drives[n] for n in declared}
+            self.drive_starts = {n: self.drive_starts[n] for n in declared}
 
     # -- bookkeeping ----------------------------------------------------------
 
@@ -255,11 +349,15 @@ class Mind:
         `survey`, `director`, `reset`."""
         touched: list[str] = []
         if isinstance(update.get("brief"), str) and update["brief"].strip():
-            self.brief = update["brief"].strip()[:2000]
-            touched.append("brief")
+            brief = update["brief"].strip()[:2000]
+            if brief != self.brief:
+                self.brief = brief
+                touched.append("brief")
         if isinstance(update.get("mood"), str) and update["mood"].strip():
-            self.mood = " ".join(update["mood"].split())[:120]
-            touched.append("mood")
+            mood = " ".join(update["mood"].split())[:120]
+            if mood != self.mood:
+                self.mood = mood
+                touched.append("mood")
         stage = update.get("stage")
         if isinstance(stage, str) and stage.strip():
             chosen = self._match_stage(stage)
@@ -343,23 +441,24 @@ class Mind:
             del self.notes[:-MAX_NOTES]
         person = update.get("person")
         if isinstance(person, dict) and speaker_id is not None and speaker_id in self.people:
-            self.people[speaker_id].apply(person)
-            touched.append("person")
+            if self.people[speaker_id].apply(person):
+                touched.append("person")
         others = update.get("people")
         if isinstance(others, dict):
             for pid, raw in others.items():
                 if not isinstance(raw, dict):
                     continue
                 d = self.people.get(pid) or self.person_by_name(str(pid))
-                if d is not None:
-                    d.apply(raw)
+                if d is not None and d.apply(raw):
                     touched.append("people")
         summary = update.get("thread_summary")
         if isinstance(summary, str) and summary.strip() and thread_key is not None:
             memo = self.thread(thread_key)
-            memo.summary = " ".join(summary.split())[:1200]
-            memo.upto = max(memo.upto, upto)
-            touched.append("thread")
+            text = " ".join(summary.split())[:1200]
+            if text != memo.summary or upto > memo.upto:
+                memo.summary = text
+                memo.upto = max(memo.upto, upto)
+                touched.append("thread")
         for raw in _list(update.get("learned_add", update.get("learned"))):
             if not isinstance(raw, dict):
                 continue
@@ -376,7 +475,7 @@ class Mind:
                 touched.append("learned")
         del self.learned[:-MAX_LEARNED]
         world = _strs(update.get("world_add", update.get("world")), MAX_WORLD)
-        if world:
+        if world and any(w not in self.world for w in world):
             for w in world:
                 if w not in self.world:
                     self.world.append(w)
@@ -409,6 +508,91 @@ class Mind:
         del self.people[d.id]
         self._revision("director", ["people"], None)
         return True
+
+    def set_phase(
+        self,
+        phase: str,
+        *,
+        stage: str,
+        favours: str,
+        drives: dict[str, int],
+        live_powers: list[str] | None,
+        tell: list[str],
+        brief: str,
+    ) -> list[str]:
+        """Apply a phase card (the new mind, CONTRACTS.md §C4.5): set every
+        field that differs and record ONE revision `by: story` naming them.
+        A director's override (brief / stage / drives / policy, a Rewrite)
+        ends here, and the whispers are cleared."""
+        touched: list[str] = []
+        chosen = self._match_stage(stage) if stage else None
+        if chosen is not None and chosen != self.stage:
+            self.stage = chosen
+            self.stage_since = time.time()
+            self.stage_history.append({"stage": chosen, "at": self.stage_since, "why": f"phase {phase}"[:300], "by": "story", "rev": self.rev + 1})
+            del self.stage_history[:-MAX_STAGE_HISTORY]
+            touched.append("stage")
+        fav = favours if favours in POLICY_FAVOURS else "none"
+        if fav != self.policy.get("favours"):
+            self.policy["favours"] = fav
+            touched.append("policy")
+        changed_drives = False
+        for name, value in drives.items():
+            target = self._match_drive(str(name))
+            if target is not None and _int(value, self.drives[target]) != self.drives[target]:
+                self.drives[target] = _int(value, self.drives[target])
+                changed_drives = True
+        if changed_drives:
+            touched.append("drives")
+        powers = None if live_powers is None else [str(p) for p in live_powers]
+        if powers != self.live_powers:
+            self.live_powers = powers
+            touched.append("powers")
+        if list(tell) != self.tell:
+            self.tell = [str(t) for t in tell]
+            touched.append("tell")
+        text = brief.strip()[:2000]
+        if text != self.brief or self.brief_by != "story":
+            if text != self.brief:
+                touched.append("brief")
+            self.brief = text
+            self.brief_by = "story"
+        if self.director:
+            self.director.clear()
+            touched.append("director")
+        self.phase_applied = phase
+        touched = sorted(set(touched))
+        if touched:
+            self.updated_at = time.time()
+            self._revision("story", touched, None)
+        return touched
+
+    def leave_cards(self, phase: str) -> list[str]:
+        """A phase with no card: every allowed power is live again and nothing
+        is told in full. Only those two fields move — the stage, favours,
+        drives, the brief (and who set it) and the whispers all stay — with
+        one revision `by: story` when either changed."""
+        touched: list[str] = []
+        if self.live_powers is not None:
+            self.live_powers = None
+            touched.append("powers")
+        if self.tell:
+            self.tell = []
+            touched.append("tell")
+        self.phase_applied = phase
+        if touched:
+            self.updated_at = time.time()
+            self._revision("story", touched, None)
+        return touched
+
+    def remember_said(self, thread: str, text: str, at: float | None = None, heart: bool = False) -> None:
+        """One final line he sent (the voice's "ALREADY SAID", every thread).
+        `heart`: said at his heart — shown elsewhere only at the heart."""
+        line = " ".join(str(text).split())
+        if not line:
+            return
+        self.said.append({"thread": str(thread), "text": line[:600], "at": time.time() if at is None else at, "heart": bool(heart)})
+        del self.said[:-MAX_SAID]
 
     def _match_stage(self, name: str) -> str | None:
         if not self.stages:
@@ -478,7 +662,15 @@ class Mind:
                 "learned": len(self.learned),
             }
         )
-        del self.revisions[:-MAX_REVISIONS]
+        del self.revisions[: -self.max_revisions]
+
+    @property
+    def max_revisions(self) -> int:
+        return MAX_REVISIONS_NEW if self.mode == "new" else MAX_REVISIONS
+
+    @property
+    def new(self) -> bool:
+        return self.mode == "new"
 
     @staticmethod
     def diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
@@ -599,9 +791,13 @@ class Mind:
     # -- what the director sees ------------------------------------------------------
 
     def report(self, worker: str | None, status: dict[str, Any] | None = None) -> dict[str, Any]:
-        """The whole mind, for the server mirror (`POST /api/agent/mind`)."""
+        """The whole mind, for the server mirror (`POST /api/agent/mind`).
+        The new mind sends the same shape (CONTRACTS.md §C6.4) plus `phase`,
+        `briefBy` and each person's story file; it has no learned / world /
+        questions (they are `[]`, so the Mind page hides those panels)."""
         people = sorted(self.people.values(), key=lambda d: -d.last_seen)[:60]
-        return {
+        new = self.new
+        doc = {
             "character": self.character,
             "worker": worker or "",
             "brief": self.brief,
@@ -612,35 +808,50 @@ class Mind:
             "stageHistory": self.stage_history[-MAX_STAGE_HISTORY:],
             "drives": dict(self.drives),
             "policy": copy.deepcopy(self.policy),
-            "questions": copy.deepcopy(self.questions),
+            "questions": [] if new else copy.deepcopy(self.questions),
             "notes": self.notes[-MAX_NOTES:],
-            "learned": self.learned[-MAX_LEARNED:],
-            "world": self.world[-MAX_WORLD:],
+            "learned": [] if new else self.learned[-MAX_LEARNED:],
+            "world": [] if new else self.world[-MAX_WORLD:],
             "director": list(self.director),
-            "people": [
-                {
-                    "id": d.id,
-                    "name": d.name,
-                    "kind": d.kind,
-                    "summary": d.summary,
-                    "trust": d.trust,
-                    "promises": list(d.promises),
-                    "asks": list(d.asks),
-                    "claims": list(d.claims),
-                    "turns": d.turns,
-                    "lastSeen": d.last_seen,
-                }
-                for d in people
-            ],
+            "people": [self._person_report(d, new) for d in people],
             "threads": [{"key": k, "summary": m.summary, "upto": m.upto, "lines": m.lines} for k, m in self.threads.items()],
-            "revisions": self.revisions[-120:],
+            "revisions": self.revisions[-REPORT_REVISIONS:],
             "rev": self.rev,
             "exchanges": self.exchanges,
             "reflections": self.reflections,
             "surveys": self.surveys,
             "updatedAt": self.updated_at,
             "status": dict(status or {}),
+            "mode": self.mode,
         }
+        if new:
+            doc["phase"] = self.phase_applied[:80]
+            doc["briefBy"] = self.brief_by if self.brief_by in ("story", "director") else "story"
+        return doc
+
+    @staticmethod
+    def _person_report(d: Dossier, new: bool) -> dict[str, Any]:
+        row: dict[str, Any] = {
+            "id": d.id,
+            "name": d.name,
+            "kind": d.kind,
+            "summary": d.summary,
+            "trust": d.trust,
+            "promises": list(d.promises),
+            "asks": list(d.asks),
+            "claims": list(d.claims),
+            "turns": d.turns,
+            "lastSeen": d.last_seen,
+        }
+        if new:
+            row["memos"] = [{"at": float(m.get("at") or 0.0), "text": str(m.get("text") or "")[:MAX_MEMO], "by": "voice", "heart": bool(m.get("heart"))} for m in d.memos[-MAX_MEMOS:]]
+            row["firstMet"] = d.first_met[:200]
+            row["gifts"] = [g[:120] for g in d.gifts[-MAX_STORY_ITEMS:]]
+            row["filings"] = [f[:12] for f in d.filings[-MAX_STORY_ITEMS:]]
+            row["marked"] = d.marked
+            row["chart"] = None if d.chart is None else d.chart[:80]
+            row["storyTrust"] = None if d.story_trust is None else str(d.story_trust)[:20]
+        return row
 
     # -- persistence -------------------------------------------------------------------
 
@@ -687,6 +898,26 @@ class Mind:
             d.claims = _strs(raw.get("claims"), MAX_PER_PERSON)
             d.turns = _int(raw.get("turns"), 0, 0, 10**6)
             d.last_seen = float(raw.get("last_seen") or 0.0)
+            d.memos = [
+                {"at": float(x.get("at") or 0.0), "text": " ".join(str(x.get("text") or "").split())[:MAX_MEMO], "heart": bool(x.get("heart")), "thought": x.get("thought") if isinstance(x.get("thought"), str) else None}
+                for x in _list(raw.get("memos"))
+                if isinstance(x, dict) and str(x.get("text") or "").strip()
+            ][-MAX_MEMOS:]
+            d.first_met = str(raw.get("first_met") or "")[:400]
+            d.gifts = _strs(raw.get("gifts"), MAX_STORY_ITEMS, 120)
+            d.filings = _strs(raw.get("filings"), MAX_STORY_ITEMS, 12)
+            d.marked = raw.get("marked") is True
+            d.chart = str(raw["chart"])[:80] if isinstance(raw.get("chart"), str) else None
+            d.story_trust = str(raw["story_trust"])[:20] if isinstance(raw.get("story_trust"), (str, int, float)) and not isinstance(raw.get("story_trust"), bool) else None
+            d.catchphrase_used = raw.get("catchphrase_used") is True
+            d.last_phase = str(raw.get("last_phase") or "")[:80]
+            try:
+                d.last_story_at = float(raw.get("last_story_at") or 0.0)
+            except (TypeError, ValueError):
+                d.last_story_at = 0.0
+            d.heart = raw.get("heart") is True
+            d.heart_seq = _int(raw.get("heart_seq"), 0, 0, 10**9)
+            d.heart_open = raw.get("heart_open") is True
             m.people[d.id] = d
         for key, raw in (doc.get("threads") or {}).items():
             if isinstance(raw, dict):
@@ -695,6 +926,17 @@ class Mind:
         m.world = _strs(doc.get("world"), MAX_WORLD)
         m.director = _strs(doc.get("director"), MAX_DIRECTOR, 400)
         m.revisions = [r for r in _list(doc.get("revisions")) if isinstance(r, dict)][-MAX_REVISIONS:]
+        m.mode = "new" if doc.get("mode") == "new" else "classic"
+        m.phase_applied = str(doc.get("phase_applied") or "")[:80]
+        m.brief_by = "director" if doc.get("brief_by") == "director" else "story"
+        powers = doc.get("live_powers")
+        m.live_powers = [str(p) for p in powers if isinstance(p, str)] if isinstance(powers, list) else None
+        m.tell = _strs(doc.get("tell"), 40, 200)
+        m.said = [
+            {"thread": str(x.get("thread") or ""), "text": str(x.get("text") or "")[:600], "at": float(x.get("at") or 0.0), "heart": x.get("heart") is True}
+            for x in _list(doc.get("said"))
+            if isinstance(x, dict) and str(x.get("text") or "").strip()
+        ][-MAX_SAID:]
         m.rev = _int(doc.get("rev"), 0, 0, 10**9)
         m.exchanges = _int(doc.get("exchanges"), 0, 0, 10**9)
         m.reflections = _int(doc.get("reflections"), 0, 0, 10**9)
@@ -706,7 +948,10 @@ class Mind:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(path.suffix + ".tmp")
-            tmp.write_text(json.dumps(self.to_json(), indent=1, ensure_ascii=False), encoding="utf-8")
+            # The new mind is written compactly (CONTRACTS.md §C6.4: a night's
+            # mind.json stays small); classic keeps today's indented file.
+            text = json.dumps(self.to_json(), ensure_ascii=False, separators=(",", ":")) if self.new else json.dumps(self.to_json(), indent=1, ensure_ascii=False)
+            tmp.write_text(text, encoding="utf-8")
             tmp.replace(path)
         except OSError as err:
             log.warning("could not save %s's mind to %s: %s", self.character, path, err)
@@ -740,6 +985,11 @@ class Mind:
         self.learned.clear()
         self.world.clear()
         self.director.clear()
+        self.phase_applied = ""
+        self.brief_by = "story"
+        self.live_powers = None
+        self.tell = []
+        self.said.clear()
         self.exchanges = 0
         self.reflections = 0
         self.surveys = 0

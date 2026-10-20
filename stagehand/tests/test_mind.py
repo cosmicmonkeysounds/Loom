@@ -4,7 +4,7 @@ import json
 import time
 
 from stagehand.agents.facts import Facts
-from stagehand.agents.mind import MAX_NOTES, Mind, mind_path
+from stagehand.agents.mind import MAX_NOTES, MAX_REVISIONS, MAX_REVISIONS_NEW, Mind, mind_path
 
 
 def test_exchanges_open_dossiers_and_count_turns():
@@ -102,6 +102,100 @@ def test_report_is_what_the_director_sees():
     json.dumps(r)  # serialisable
 
 
+# -- the new mind (wave 12) ----------------------------------------------------------
+
+
+def test_an_update_that_changes_nothing_touches_nothing_and_writes_no_revision():
+    """CONTRACTS.md §C6.3: brief and mood count as touched only on a real change."""
+    m = Mind("Trabolta", "evt")
+    m.saw_exchange("g1", "Ada", "guest", "t", 1)
+    assert m.apply({"brief": "Be brisk.", "mood": "dry", "person": {"trust": 40}, "world_add": ["w"], "thread_summary": "s"}, speaker_id="g1", thread_key="t", upto=2)
+    rev = m.rev
+    assert m.apply({"brief": "Be brisk.", "mood": " dry ", "person": {"trust": 40}, "world_add": ["w"], "thread_summary": "s"}, speaker_id="g1", thread_key="t", upto=2) == []
+    assert m.apply({"people": {"g1": {"trust": 40, "claims_add": []}}, "notes_add": [], "policy": {"favours": "none"}}) == []
+    assert m.rev == rev
+
+
+def test_a_phase_card_is_one_story_revision_and_ends_the_whispers():
+    m = Mind("Trabolta", "evt", mode="new")
+    m.seed(("asleep", "formal", "hungry"), {"hunger": 30, "pride": 60})
+    m.whisper("be kinder", by="Jo")
+    rev = m.rev
+    touched = m.set_phase("introduced", stage="formal", favours="earned", drives={"hunger": 45, "pride": 60}, live_powers=["snoop"], tell=["The Optical Drive"], brief="Be the helper.")
+    assert touched == ["brief", "director", "drives", "policy", "powers", "stage", "tell"]
+    assert m.rev == rev + 1 and m.revisions[-1]["by"] == "story" and m.revisions[-1]["touched"] == touched
+    assert m.stage_history[-1]["by"] == "story" and m.stage_history[-1]["why"] == "phase introduced"
+    assert (m.stage, m.policy["favours"], m.drives, m.live_powers, m.tell, m.brief, m.brief_by, m.director, m.phase_applied) == (
+        "formal", "earned", {"hunger": 45, "pride": 60}, ["snoop"], ["The Optical Drive"], "Be the helper.", "story", [], "introduced")
+    # The same card again changes nothing: no revision.
+    assert m.set_phase("introduced", stage="formal", favours="earned", drives={"hunger": 45}, live_powers=["snoop"], tell=["The Optical Drive"], brief="Be the helper.") == []
+    assert m.rev == rev + 1
+    # A director's brief holds until the next card, which takes it back.
+    m.apply({"brief": "Hold your tongue."}, by="director")
+    m.brief_by = "director"
+    assert m.set_phase("hunt_1", stage="hungry", favours="earned", drives={}, live_powers=None, tell=[], brief="Ask for facts.")[0] == "brief"
+    assert m.brief == "Ask for facts." and m.brief_by == "story" and m.live_powers is None
+
+
+def test_the_new_mind_reports_people_files_and_hides_what_it_does_not_keep():
+    m = Mind("Trabolta", "evt", mode="new")
+    m.saw_exchange("g1", "Ada", "guest", "t", 1)
+    d = m.people["g1"]
+    d.first_met = "First met during hunt_1 in The Desktop."
+    for i in range(8):
+        d.add_memo(f"memo {i} " + "x" * 200, heart=(i == 7), thought=f"th-{i}")
+    assert len(d.memos) == 6 and len(d.memos[-1]["text"]) == 140 and d.memos[-1]["heart"] is True
+    assert d.note_story("gifts", "The Optical Drive") and not d.note_story("gifts", "The Optical Drive")
+    d.note_story("filings", "H2")
+    d.marked, d.chart, d.story_trust = True, "3 of 9", "55"
+    m.learned.append({"claim": "k", "from": "", "verdict": "unknown"})
+    m.world.append("w")
+    m.questions.append({"q": "q", "answers": []})
+    m.phase_applied, m.brief_by = "hunt_1", "director"
+    r = m.report("laptop")
+    assert r["mode"] == "new" and r["phase"] == "hunt_1" and r["briefBy"] == "director"
+    assert r["learned"] == [] and r["world"] == [] and r["questions"] == []
+    p = r["people"][0]
+    assert p["memos"][-1] == {"at": d.memos[-1]["at"], "text": d.memos[-1]["text"], "by": "voice", "heart": True}
+    assert (p["firstMet"], p["gifts"], p["filings"], p["marked"], p["chart"], p["storyTrust"]) == (d.first_met, ["The Optical Drive"], ["H2"], True, "3 of 9", "55")
+    assert "said" not in r and "thought" not in json.dumps(p["memos"])
+    # Classic's report keeps today's shape (plus the mode).
+    c = Mind("Trabolta", "evt")
+    c.saw_exchange("g1", "Ada", "guest", "t", 1)
+    rc = c.report("laptop")
+    assert rc["mode"] == "classic" and "phase" not in rc and "briefBy" not in rc and "memos" not in rc["people"][0]
+
+
+def test_the_report_carries_the_last_40_revisions_and_the_disk_cap_follows_the_mode():
+    for mode, cap in (("classic", MAX_REVISIONS), ("new", MAX_REVISIONS_NEW)):
+        m = Mind("T", "e", mode=mode)
+        for i in range(cap + 10):
+            m.whisper(f"w{i}")
+        assert len(m.revisions) == cap
+        assert len(m.report(None)["revisions"]) == 40
+
+
+def test_the_new_fields_round_trip_and_reset(tmp_path):
+    m = Mind("Trabolta", "evt", mode="new")
+    m.saw_exchange("g1", "Ada", "guest", "t", 1)
+    d = m.people["g1"]
+    d.add_memo("brought me a document", heart=False, thought="th-1", at=5.0)
+    d.first_met, d.marked, d.chart, d.story_trust, d.catchphrase_used, d.last_phase, d.last_story_at, d.heart = "met", True, "1 of 2", "70", True, "hunt_1", 1234.0, True
+    d.note_story("gifts", "A"), d.note_story("filings", "H1")
+    m.remember_said("t", "Say it again.", at=6.0)
+    m.phase_applied, m.brief_by, m.live_powers, m.tell = "hunt_1", "director", ["snoop"], ["The Optical Drive"]
+    path = mind_path(tmp_path, "evt", "Trabolta")
+    m.save(path)
+    back = Mind.load(path, "Trabolta", "evt")
+    assert back.to_json() == m.to_json()
+    assert "\n" not in path.read_text(encoding="utf-8")  # the new mind is written compactly
+    for _ in range(25):
+        m.remember_said("u", "line")
+    assert len(m.said) == 20
+    m.reset()
+    assert (m.said, m.phase_applied, m.brief_by, m.live_powers, m.tell, m.people) == ([], "", "story", None, [], {})
+
+
 # -- facts ------------------------------------------------------------------------
 
 FACTS = {
@@ -116,6 +210,20 @@ FACTS = {
     "codex": [{"id": "The Sandy File", "title": "The Sandy File", "about": "Trabolta", "text": "He wants\n Sandy.", "holders": ["Trabolta", "Microsoft Excel"], "hasCode": True}],
     "powers": [],
 }
+
+
+def test_a_restored_mind_loses_a_drive_the_mind_file_no_longer_declares(tmp_path):
+    old = Mind("Trabolta", event="evt")
+    old.seed(("asleep", "formal"), {"hunger": 30, "suspicion": 35, "pride": 60})
+    old.apply({"drives": {"hunger": 70}}, by="reflect")
+    path = mind_path(tmp_path, "evt", "Trabolta")
+    old.save(path)
+    back = Mind.load(path, "Trabolta", "evt")
+    back.seed(("asleep", "formal"), {"hunger": 30, "pride": 60, "longing": 40})
+    assert back.drives == {"hunger": 70, "pride": 60, "longing": 40}  # kept, gone, added
+    assert "suspicion" not in back.drive_starts and "suspicion" not in back.prompt_block(None)
+    back.reset(by="server")
+    assert back.drives == {"hunger": 30, "pride": 60, "longing": 40}
 
 
 def test_facts_find_names_the_way_the_story_folds_them():

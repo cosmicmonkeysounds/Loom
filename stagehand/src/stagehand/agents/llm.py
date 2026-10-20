@@ -55,6 +55,10 @@ class Completion:
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     ms: int = 0
+    #: How long the model spent reading the prompt (Ollama's
+    #: `prompt_eval_duration`, in ms) — low when the prompt cache held. None
+    #: on the OpenAI dialect, which does not say.
+    prompt_ms: int | None = None
 
     @classmethod
     def of(cls, value: "str | Completion | None") -> "Completion":
@@ -251,7 +255,7 @@ def _text(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
-def _completion(content: str, thinking: str, finish: str, prompt_tokens: Any, completion_tokens: Any, ms: int) -> Completion:
+def _completion(content: str, thinking: str, finish: str, prompt_tokens: Any, completion_tokens: Any, ms: int, prompt_ns: Any = None) -> Completion:
     base = Completion.of(content)
     return Completion(
         content=base.content,
@@ -260,6 +264,7 @@ def _completion(content: str, thinking: str, finish: str, prompt_tokens: Any, co
         prompt_tokens=int(prompt_tokens) if isinstance(prompt_tokens, (int, float)) else None,
         completion_tokens=int(completion_tokens) if isinstance(completion_tokens, (int, float)) else None,
         ms=ms,
+        prompt_ms=int(prompt_ns / 1e6) if isinstance(prompt_ns, (int, float)) and not isinstance(prompt_ns, bool) and prompt_ns >= 0 else None,
     )
 
 
@@ -308,7 +313,7 @@ async def complete_ollama(
     if not content:
         folded = tool_calls_as_json(message)
         if folded:
-            return _completion(folded, thinking, finish or "tool_calls", data.get("prompt_eval_count"), data.get("eval_count"), ms)
+            return _completion(folded, thinking, finish or "tool_calls", data.get("prompt_eval_count"), data.get("eval_count"), ms, data.get("prompt_eval_duration"))
     if not content and finish == "length":
         raise LlmTruncated(f"{cfg.model} hit num_predict={cfg.max_tokens} before answering")
-    return _completion(content or "", thinking, finish, data.get("prompt_eval_count"), data.get("eval_count"), ms)
+    return _completion(content or "", thinking, finish, data.get("prompt_eval_count"), data.get("eval_count"), ms, data.get("prompt_eval_duration"))
