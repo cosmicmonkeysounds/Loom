@@ -33,13 +33,16 @@ export const ICON_NAMES: readonly IconName[] = ["start", "pass", "scan", "hourgl
 function shape(name: IconName): ReactElement {
   switch (name) {
     case "start":
-      // the four-pane flag
+      // the four-pane flag under aol97; a plain menu mark otherwise (no Win95 ornament)
       return (
         <>
-          <path className="ico-red" d="M2 3.2 7 2.4v4.8H2Z" />
-          <path className="ico-green" d="M8.2 2.2 14 1.4v5.8H8.2Z" />
-          <path className="ico-blue" d="M2 8.4h5v4.8L2 12.4Z" />
-          <path className="ico-yellow" d="M8.2 8.4H14v5.8l-5.8-.8Z" />
+          <g className="ico-flag">
+            <path className="ico-red" d="M2 3.2 7 2.4v4.8H2Z" />
+            <path className="ico-green" d="M8.2 2.2 14 1.4v5.8H8.2Z" />
+            <path className="ico-blue" d="M2 8.4h5v4.8L2 12.4Z" />
+            <path className="ico-yellow" d="M8.2 8.4H14v5.8l-5.8-.8Z" />
+          </g>
+          <path className="ico-menu ico-ink" d="M2 3h12v2H2ZM2 7h12v2H2ZM2 11h12v2H2Z" />
         </>
       );
     case "pass":

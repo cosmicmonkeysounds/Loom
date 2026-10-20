@@ -242,6 +242,8 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 /* the tray's bar already names the card: keep only its instructions */
 .stream-tray-body .widget-head > .widget-glyph, .stream-tray-body .widget-title { display: none; }
 .stream-tray-body .widget-head { margin-bottom: 6px; }
+/* a CAPTCHA in the tray: tiles small enough that VERIFY shows with them */
+.stream-tray-body .captcha-grid { max-width: 264px; margin: 0 auto; }
 
 /* ── the room header: the window's menu row (no second title bar) ──────── */
 .stream-room-head {

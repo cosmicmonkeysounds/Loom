@@ -56,6 +56,10 @@
 .ico .ico-door { fill: var(--ico-door); }
 .ico .ico-screen { fill: var(--ico-screen); }
 .ico .ico-frost { stroke: var(--navy); }
+/* Start: the Win95 flag is aol97's; plain draws a menu mark */
+.ico .ico-flag { display: none; }
+:root[data-theme="aol97"] .ico .ico-flag { display: inline; }
+:root[data-theme="aol97"] .ico .ico-menu { display: none; }
 /* on a caption-blue (attention) button the outline turns white */
 .taskbar-btn.attn .ico .ico-line, .start-menu-item:hover .ico .ico-line, .start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
 
@@ -348,14 +352,18 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .sheet { max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom)); overflow-y: auto; }
 
 /* ── narrow phones ─────────────────────────────────────────────────────── */
+/* Pass and the guest's Scan keep their words on every phone; the flag
+   alone says Start (the Win95 logo is the button), and the tray holds 3 */
 @media (max-width: 399px) {
   .taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }
-  .taskbar-btn.primary { min-width: 76px; }
+  .taskbar-start .taskbar-label { display: none; }
+  .taskbar-btn.primary { min-width: 64px; }
   .taskbar-btn:not(.primary) { padding: 0 8px; }
   .taskbar-tray > :nth-child(n+4) { display: none; }
 }
 @media (max-width: 379px) {
-  .taskbar-start .taskbar-label { display: none; }
+  .taskbar-btn, .taskbar-btn:not(.primary) { padding: 0 6px; }
+  .tray-item { padding: 0 3px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

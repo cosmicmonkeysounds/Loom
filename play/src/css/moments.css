@@ -10,7 +10,8 @@
   --moments-band: rgba(255, 255, 255, 0.16);
   --moments-rgb-a: rgba(255, 0, 72, 0.32);
   --moments-rgb-b: rgba(0, 224, 255, 0.32);
-  --moments-bsod-font: "Lucida Console", "Courier New", ui-monospace, monospace;
+  /* plain: the app's own face (no Win95 costume); aol97: the console's */
+  --moments-bsod-font: var(--ui-font);
   --moments-balloon-radius: 10px;
   --moments-toast-bg: var(--black);
   --moments-toast-ink: var(--white);
@@ -21,6 +22,7 @@
 }
 :root[data-theme="aol97"] {
   --moments-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35), 3px 3px 6px rgba(0, 0, 0, 0.2);
+  --moments-bsod-font: "Lucida Console", "Courier New", ui-monospace, monospace;
 }
 
 /* ── the Win95 message-box icons ───────────────────────────────────────── */

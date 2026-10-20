@@ -65,7 +65,7 @@ describe("the guest taskbar", () => {
     const block = narrow(399);
     expect(block).toContain(".taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }");
     expect(block).toContain(".taskbar-tray > :nth-child(n+4) { display: none; }");
-    expect(narrow(379)).toContain(".taskbar-start .taskbar-label { display: none; }");
+    expect(block).toContain(".taskbar-start .taskbar-label { display: none; }");
     // The label stays for screen readers at any width.
     const out = html(createElement(Taskbar, { start: [], buttons: guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} }) }));
     expect(out).toContain('aria-label="Scan"');
