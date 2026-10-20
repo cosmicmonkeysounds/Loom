@@ -158,14 +158,17 @@ gamble, and nor can a frozen wallet.
 
 When the event runs a **simulation** — a virtual copy of the house (see
 [The simulation](reinstallation.md)) — a terminal nobody is talking to
-becomes a **window into it**. It shows the virtual copy of *the room it
-hangs in*, seen from exactly where it hangs: anyone exploring that room
-in the simulation walks past it as a ghost with their name over it and
-their profile picture for a head, and
-from inside they see the terminal glowing on the wall. When nobody is in
-its room, it follows whoever is playing, over their shoulder, with a
-little map of the floor and a banner — **REINSTALLATION IN PROGRESS** —
-naming who and where. When someone finds the duck, it celebrates. On
+becomes a **window into it** from where the tablet hangs. It always
+shows the virtual copy of *the room it hangs in*, seen from exactly that
+spot on the wall, like a mirror: anyone exploring that room in the
+simulation walks past it as a ghost with their name over it and their
+profile picture for a head, and from inside they see the terminal glowing
+on the wall. The window never moves. When the room is empty, a banner —
+**REINSTALLATION IN PROGRESS** — names who is playing and where, a line
+like **2 REINSTALLING · 0 HERE** counts them, and a little map of the
+floor shows where they are. When someone finds the duck, it celebrates.
+(A tablet set up without a place on the map follows whoever is playing,
+over their shoulder, instead.) On
 a night the story keeps everyone in the Internet, a find shows **GERALD
 CAN'T HELP** instead, with no golden egg.
 

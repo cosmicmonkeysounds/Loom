@@ -8,9 +8,13 @@
 //! (`HouseScene.showKing`). The indicator trail is the player's, not the
 //! audience's — it is not drawn here.
 //!
-//! One camera, cut by `director.ts` (mount / follow / orbit); overlays in
-//! the DOM: the banner, the camera's mode tag, the corner mini-map, the
-//! celebration. Rendering is capped at 30 fps, at most 1.5× pixel ratio,
+//! One camera, cut by `director.ts`: a placed terminal is a fixed window
+//! from where it hangs (the mount shot, always — players cross it as
+//! ghosts), an unplaced one follows / orbits. Overlays in the DOM: the
+//! banner, the camera's mode tag, the counts line ("2 REINSTALLING · 1
+//! HERE", so a window on an empty room says where everyone is), the corner
+//! mini-map of the terminal's floor, and the celebration (a banner only: a
+//! find never moves a window's camera). Rendering is capped at 30 fps, at most 1.5× pixel ratio,
 //! stops while the page is hidden, and frees the GL context on unmount.
 //!
 //! Each run of the render effect (a new map, a new spot) draws on a canvas
@@ -24,6 +28,7 @@ import { roomById, type HouseMap } from "@loom/house";
 import { buildHouseScene, createAvatar, createDuck, houseAtmosphere, type Avatar, type Duck } from "@loom/house/three";
 import { direct, insideHead, shotFloor, shotKey, type Director, type DirectorPlayer, type Shot } from "./director.ts";
 import { MiniMap } from "./MiniMap.tsx";
+import { countsLine, windowCounts } from "./overlay.ts";
 import { avatarUrl, byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
 
@@ -210,6 +215,7 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
   const subject = subjectOf(shot, ordered);
   const floor = info !== null && shot !== null ? shotFloor(info.house, shot, ordered) : null;
   const celebration = world.celebrations[world.celebrations.length - 1] ?? null;
+  const counts = countsLine(windowCounts(ordered, spot), spot !== null);
 
   return (
     <div className={`world ${size}`} ref={host}>
@@ -228,6 +234,7 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
             {shotTag(shot, world.players)}
           </div>
         )}
+        {counts !== "" && <div className="world-counts">{counts}</div>}
       </div>
       {info !== null && floor !== null && <MiniMap house={info.house} floor={floor} players={ordered} spot={spot} subject={subject?.session ?? null} />}
       {celebration !== null && (

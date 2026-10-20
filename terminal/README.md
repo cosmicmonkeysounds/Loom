@@ -418,24 +418,31 @@ each one's duck lays its egg and flies away when they find it — never for
 a find the story kept (the banishment: the `found` frame says
 `released: false, captured: true`), where Gerald stays put.
 
-One camera, cut by a pure director (`world/director.ts`):
+One camera, cut by a pure director (`world/director.ts`, no three.js):
 
-- **mount**: while a player stands in this terminal's room, the camera is the
-  terminal itself, at its spot on the wall and looking along its
-  yaw/pitch/fov (default −8°, and `DEFAULT_SPOT_FOV` = 70° *vertical*; the
-  mini-map's cone is its `horizontalFov` on a 16:10 tablet, ≈ 96.5°). It is a window into the virtual copy of
-  the room you are standing in, tagged **LIVE · THIS ROOM**.
-- **follow**: otherwise the camera rides over the shoulder of the most
-  recently active player (**FOLLOWING ADA**). Whoever just found the duck
-  takes the camera. It holds a player for a few seconds and won't flicker
-  between two. It is pulled in short of any wall (each wall a slab of the
-  map's thickness, so never into or past one) and kept under the ceiling.
-  With their back to a wall it tries a raised chase, then the left
+- **mount** (a placed terminal — a `spot` on the map — always): a window into
+  the virtual house from where the tablet hangs. The camera is the terminal
+  itself, fixed at its spot on the wall and looking along its yaw/pitch/fov
+  (default −8°, and `DEFAULT_SPOT_FOV` = 70° *vertical*; the mini-map's cone
+  is its `horizontalFov` on a 16:10 tablet, ≈ 96.5°) — `windowPose(house,
+  spot)`, the same pose the shadow view projects through. It is the mirror of
+  the games' virtual terminals, which show the real room through the
+  tablet's camera: players cross it as ghosts, and it never follows them,
+  never orbits, and a find doesn't move it (the celebration is the overlay's).
+  Tagged **LIVE · THIS ROOM**.
+- **follow** (an unplaced terminal): the camera rides over the shoulder of the
+  most recently active player (**FOLLOWING ADA**). Whoever just found the
+  duck takes the camera. It holds a player for a few seconds and won't
+  flicker between two. It is pulled in short of any wall (each wall a slab
+  of the map's thickness, so never into or past one) and kept under the
+  ceiling. With their back to a wall it tries a raised chase, then the left
   shoulder, then looks out of the player's own eyes (their ghost hidden).
-- **orbit**: with nobody playing it circles this terminal's own room slowly.
+- **orbit** (an unplaced terminal with nobody playing): a slow circle of the
+  spawn room.
 
 Overlays: the banner *REINSTALLATION IN PROGRESS · <name> · <room>*, the
-camera's mode tag, a corner **mini-map** of the floor (every player's dot
+camera's mode tag, the counts line (**2 REINSTALLING · 1 HERE** — here = in
+this terminal's room — so a window on an empty room says where everyone is), a corner **mini-map** of the floor (every player's dot
 and heading, every unfound duck on that floor — whichever floor its player
 is on — this terminal's view cone), and the celebration
 *<NAME> HAS BEEN REINSTALLED* (or *FOUND THE GOLDEN DUCK* for a program
@@ -460,7 +467,7 @@ Two settings, on the setup screen or in the provisioning link:
 
 | Setting | Values |
 |---|---|
-| `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
+| `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. Placed: always a fixed window from that spot. |
 | `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. The `chess` view ignores it. |
 | `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). `casino`: the upstairs casino (*The casino*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) never loads three.js: wherever it would draw the world (`auto` while someone plays, `world`, `mirror`, `shadow`) it draws the live plan instead — never the *SIMULATION UNAVAILABLE* retry loop. The TV, chess, casino and face views are unchanged. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
@@ -545,7 +552,7 @@ src/speech/            engine.ts (device ladder: browser → Fully → silent; o
 src/announce.ts        the house announcements (N-09): which to say, the chime, the hook
 src/face/              Face.tsx (SVG + animation), mood.ts
 src/world/             stream.ts (spatial SSE + house map → WorldStore), state.ts (the reducer),
-                       director.ts (mount / follow / orbit), minimap.ts + MiniMap.tsx,
+                       director.ts (mount = the fixed window / follow / orbit), overlay.ts (the counts line), label-point.ts, minimap.ts + MiniMap.tsx,
                        WorldView.tsx (the three.js canvas + overlays, lazy-loaded)
 ```
 

@@ -1,15 +1,18 @@
 //! The world view's director — one camera, cut by a pure rule
 //! (`docs/loom-reinstall.md` §4):
 //!
-//!   mount   while a player is in this terminal's room: the camera *is* the
+//!   mount   a placed terminal (a `spot` on the map) is ALWAYS a fixed window
+//!           into the virtual copy of its own room: the camera *is* the
 //!           terminal — at its spot on the wall, looking along its yaw /
-//!           pitch / fov, a window into the virtual copy of this very room
-//!           (held a moment after they step out, so a doorway doesn't flicker);
-//!   follow  else over the shoulder of the most recently active player (a
-//!           player who just found the duck wins; a followed player is held
-//!           a few seconds, and only dropped for one clearly fresher);
-//!   orbit   else a slow circle of the terminal's own room (the spawn room
-//!           when the terminal is unplaced).
+//!           pitch / fov (`windowPose`) — whether or not anyone is in the
+//!           room, the way the games' virtual terminals show the real room
+//!           through the tablet's camera. It never follows, never orbits,
+//!           and a find doesn't move it (the celebration is the overlay's);
+//!   follow  an unplaced terminal rides over the shoulder of the most
+//!           recently active player (a player who just found the duck wins;
+//!           a followed player is held a few seconds, and only dropped for
+//!           one clearly fresher);
+//!   orbit   else (unplaced, nobody playing) a slow circle of the spawn room.
 //!
 //! The chase camera never ends up behind a wall: the segment from the
 //! player's head to the camera is tested against the `buildWalls` segments
@@ -22,14 +25,14 @@
 //! (`insideHead` tells the renderer to hide that ghost). Camera moves within
 //! a shot are smoothed exponentially; a change of shot is a cut.
 //!
+//! Pure: no three.js here (the shadow view imports `windowPose`).
+//!
 //! Times: `now` in milliseconds (the caller's clock, the same one the world
 //! state uses), `dt` in seconds. Angles in degrees, house frame.
 
 import { DEFAULT_SPOT_FOV, forward, polyBounds, styleOf, roomById, roomElevation, roomHeight, type HouseMap, type TerminalSpot, type Vec3, type WallSegment } from "@loom/house";
-import { labelPoint } from "@loom/house/three";
+import { labelPoint } from "./label-point.ts";
 
-/** Stay mounted this long (ms) after the last player left the room. */
-export const MOUNT_HOLD = 2000;
 /** A followed player is kept at least this long (ms) after a cut. */
 export const MIN_HOLD = 5000;
 /** …and after that only dropped for a player this much (ms) fresher. */
@@ -99,7 +102,7 @@ export interface DirectorPlayer {
 export interface DirectorInput {
   house: HouseMap;
   walls: readonly WallSegment[];
-  /** This terminal's place (null = unplaced: never mounts). */
+  /** This terminal's place (placed = always the mount shot; null = unplaced: follow / orbit). */
   spot: TerminalSpot | null;
   players: readonly DirectorPlayer[];
   now: number;
@@ -129,13 +132,12 @@ function freshestFirst(players: readonly DirectorPlayer[]): DirectorPlayer[] {
 export function chooseShot(input: DirectorInput, prev: Director | null): Shot {
   const { spot, players, now } = input;
   if (spot !== null) {
+    // A placed terminal is a fixed window: always mounted. The subject (for
+    // the overlays) is whoever is in its room, the one already named first.
     const inRoom = freshestFirst(players.filter((p) => p.room === spot.room));
-    const held = prev?.shot.kind === "mount" && prev.shot.spot === spot.id && prev.lastInRoom !== null && now - prev.lastInRoom < MOUNT_HOLD;
-    if (inRoom.length > 0 || held) {
-      const keep = prev?.shot.kind === "mount" ? prev.shot.subject : null;
-      const subject = inRoom.find((p) => p.session === keep)?.session ?? inRoom[0]?.session ?? null;
-      return { kind: "mount", spot: spot.id, room: spot.room, subject };
-    }
+    const keep = prev?.shot.kind === "mount" ? prev.shot.subject : null;
+    const subject = inRoom.find((p) => p.session === keep)?.session ?? inRoom[0]?.session ?? null;
+    return { kind: "mount", spot: spot.id, room: spot.room, subject };
   }
   if (players.length > 0) {
     const celebrating = players
@@ -150,7 +152,7 @@ export function chooseShot(input: DirectorInput, prev: Director | null): Shot {
     }
     return { kind: "follow", subject: fresh.session, room: fresh.room };
   }
-  return { kind: "orbit", room: spot?.room ?? input.house.spawn.room };
+  return { kind: "orbit", room: input.house.spawn.room };
 }
 
 const add = (a: Vec3, b: Vec3, k = 1): Vec3 => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
@@ -163,6 +165,19 @@ export function mountCamera(spot: TerminalSpot): CameraPose {
   // Stand in front of the screen's own (hidden) mesh and the wall box.
   const pos = add(spot.pos, forward(spot.yaw, 0), 0.15);
   return { pos, look: add(pos, f, 4), fov: spot.fov ?? MOUNT_FOV };
+}
+
+/**
+ * A placed terminal's window into the virtual house: `mountCamera`, kept
+ * under its room's ceiling. The one pose every view of "where this tablet
+ * hangs" uses (the world view's mount shot, the shadow view's projection).
+ */
+export function windowPose(house: HouseMap, spot: TerminalSpot): CameraPose {
+  const cam = mountCamera(spot);
+  const pos = underCeiling(house, spot.room, cam.pos);
+  if (pos === cam.pos) return cam;
+  const dy = pos[1] - cam.pos[1];
+  return { pos, look: [cam.look[0], cam.look[1] + dy, cam.look[2]], fov: cam.fov };
 }
 
 /**
@@ -296,12 +311,12 @@ export function orbitCamera(house: HouseMap, walls: readonly WallSegment[], room
 
 /** Where the camera wants to be for a shot. */
 export function framing(input: DirectorInput, shot: Shot): CameraPose {
-  if (shot.kind === "mount" && input.spot !== null) return mountCamera(input.spot);
+  if (shot.kind === "mount" && input.spot !== null) return windowPose(input.house, input.spot);
   if (shot.kind === "follow") {
     const p = input.players.find((x) => x.session === shot.subject);
     if (p) return followCamera(input.house, input.walls, p);
   }
-  return orbitCamera(input.house, input.walls, shot.kind === "orbit" ? shot.room : (input.spot?.room ?? input.house.spawn.room), input.now);
+  return orbitCamera(input.house, input.walls, shot.kind === "orbit" ? shot.room : input.house.spawn.room, input.now);
 }
 
 /** One frame of direction: the shot, and the (smoothed) camera. */
