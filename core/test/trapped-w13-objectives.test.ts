@@ -12,7 +12,7 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages } from "../server/chat.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { cueState, modView, notePress, pressRefused } from "../server/views.ts";
+import { cueState, guestView, modView, notePress, objectivesFor, primeView, pressRefused } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
 
 export const SRC = scenarioSource("trapped-in-the-internet");
@@ -122,5 +122,24 @@ describe("Trapped in the Internet — wave 13: codex categories", () => {
     }
     expect(m.codex.get("Clippy Instructions 1")!.category).toBe("Missions");
     expect(m.codex.get("The Door Code")!.category).toBe("The cold door");
+  });
+});
+
+describe("Trapped in the Internet — wave 13: the booth card's facts", () => {
+  it("a scan card lists Cleared / Marked / Bathroom Mode / Late / In the Internet (false booleans too), never a secret slot", () => {
+    const n = new Night();
+    n.upload("g1", "Calculator");
+    n.upload("g2", "Winamp", null);
+    const g1 = primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === "g1")!;
+    const on = (g: typeof g1) => Object.fromEntries((g.flags ?? []).map((f) => [f.label, f.on]));
+    expect(on(g1)).toMatchObject({ Cleared: true, Marked: false, "Bathroom Mode": false, Late: false, "In the Internet": false });
+    expect(on(g1)["Checked in"]).toBeUndefined(); // text "none": listed only once set
+    const g2 = primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === "g2")!;
+    expect(on(g2).Cleared).toBe(false); // "Not cleared"
+    n.signal("go to the bathroom", "g1");
+    const after = primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === "g1")!;
+    expect(on(after)["Bathroom Mode"]).toBe(true);
+    const secret = new Set(n.sim.model.roles.get("Program")!.secret ?? []);
+    for (const g of primeView(n.sim, "Norton Anti-Virus").guests) for (const f of g.flags ?? []) expect(secret.has(f.path.split(".").slice(1).join(".")), f.path).toBe(false);
   });
 });

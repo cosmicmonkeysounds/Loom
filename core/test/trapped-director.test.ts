@@ -305,7 +305,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     for (const w of kernel) expect(w.secret, w.label).toBe(true);
     for (const w of watch.filter((x) => !x.path?.startsWith("Kernel."))) expect(w.secret, w.label).toBeUndefined();
     // The roles count over guests; the featured programs are person rows.
-    expect(watch.filter((w) => w.scope === "role").map((w) => w.label)).toEqual(["Cleared", "Marked", "At the heart", "Have the door code"]);
+    expect(watch.filter((w) => w.scope === "role").map((w) => w.label)).toEqual(["Cleared", "Marked", "Bathroom Mode", "Late", "In the Internet", "Checked in", "At the heart", "Have the door code"]);
     expect(watch.filter((w) => w.scope === "person").map((w) => w.person)).toEqual(["Microsoft Excel", "OpenOffice", "MS Paint"]);
     // The phone's lean view never carries a secret (nor a role / person row).
     const lean = cueSheetView(modView(sim, "open", "x"));
@@ -318,7 +318,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
   it("the board has no throwing lines", { timeout: SLOW }, () => {
     const sim = boot();
     // Every header line was read (all of them sit above the first item).
-    expect(sim.model.watch).toHaveLength(12);
+    expect(sim.model.watch).toHaveLength(13); // wave 13: the booth card's ROLE flags
     expect(sim.model.countdowns).toHaveLength(8);
     const check = (when: string) => {
       for (const l of [...sim.model.watch, ...sim.model.countdowns]) {
