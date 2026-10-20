@@ -872,6 +872,15 @@ export class EventRuntime {
     return [...(this.declaredModel?.characters.keys() ?? [])];
   }
 
+  /** The parts a performer may sign in as, doors open or not — what a
+   *  performer code resolves (`ResolvedCode.characters`, the sign-in's
+   *  fallback list): never a `playable: false` prop (Night, the Kernel), an
+   *  agent-voiced character or a guest's program, which no booth can take. */
+  get performerParts(): string[] {
+    const model = this.declaredModel;
+    return model === null ? [] : identityDefs(model).filter(performerPickable).map((d) => d.name);
+  }
+
   /** The story's model, doors open or not: the live sim's when there is one,
    *  else compiled once from the scenario text (memoised on it; null when it
    *  won't compile). Before the doors it checks a booth's part and resolves a

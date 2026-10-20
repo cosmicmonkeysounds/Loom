@@ -28,9 +28,11 @@ export interface ResolvedCode {
   /** The story's `theme:` for the participant client (`plain` when unset). */
   theme: string;
   /** For a performer / moderator code: the characters a performer may sign
-   *  in as, so the booth offers a picker instead of a blank to spell — the
-   *  declared cast, doors open or not (a booth signs in before the doors,
-   *  and a terminal provisioned then checks its `character` against it). */
+   *  in as, so the booth offers a picker instead of a blank to spell, doors
+   *  open or not (a booth signs in before the doors): a performer code
+   *  lists the parts only (`EventRuntime.performerParts`); a moderator code
+   *  the whole declared cast (a terminal provisioned then checks its
+   *  `character` against it). */
   characters?: string[];
 }
 
@@ -169,7 +171,7 @@ export class EventRegistry {
     if (trimmed === "") return null;
     for (const rt of this.byId.values()) {
       if (passOk(trimmed, rt.codes.event)) return { eventId: rt.eventId, role: "guest", title: rt.title, theme: rt.theme };
-      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title, theme: rt.theme, characters: rt.declaredCharacters };
+      if (passOk(trimmed, rt.codes.prime)) return { eventId: rt.eventId, role: "prime", title: rt.title, theme: rt.theme, characters: rt.performerParts };
       if (passOk(trimmed, rt.codes.mod)) return { eventId: rt.eventId, role: "mod", title: rt.title, theme: rt.theme, characters: rt.declaredCharacters };
     }
     return null;
