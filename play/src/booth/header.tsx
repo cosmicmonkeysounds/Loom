@@ -1,5 +1,5 @@
 //! The booth's Start menu (wave 13): who you are in its banner, and the
-//! settings that used to sit behind ☰ — Help, Keep my screen on, Get
+//! settings that used to sit behind the old ☰ — Help, Keep my screen on, Get
 //! alerts, what the character knows, moderator powers, Sign out (confirmed).
 
 import { useState } from "react";
