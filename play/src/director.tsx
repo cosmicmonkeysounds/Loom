@@ -737,7 +737,7 @@ function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onL
 /** A cue row's classes. A fired row is muted (flat, grey) unless it is
  *  LAST, NEXT (a repeat cue) or armed, so what is still to go stands out;
  *  `off` (a `while:` that is false: dimmed) is a different look on purpose. */
-export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live">, armed: boolean, warn: boolean): string {
+export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live"> & Partial<Pick<CueRow, "sequence">>, armed: boolean, warn: boolean): string {
   return [
     "choice",
     "cue-row",
@@ -747,9 +747,52 @@ export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live"
     armed ? "armed" : null,
     warn ? "warn" : null,
     row.live ? null : "off",
+    compactCue(row, armed) ? "host-compact" : null,
   ]
     .filter((c) => c !== null)
     .join(" ");
+}
+
+/** Does a cue row fold to one line? An aside (`sequence: false`) or a cue
+ *  not on offer now, unless it is NEXT, LAST or armed: an act of fallbacks
+ *  was a wall of 120 px cards. Arming one opens it back up (the full title,
+ *  "Tap again to fire", the drain). */
+export function compactCue(row: Pick<CueRow, "last" | "next" | "live"> & Partial<Pick<CueRow, "sequence">>, armed: boolean): boolean {
+  if (armed || row.next || row.last) return false;
+  return row.sequence === false || !row.live;
+}
+
+/** The FIRE window's segments (Win95's progress blocks): one drops every
+ *  `ARM_MS / DRAIN_SEGMENTS`. */
+export const DRAIN_SEGMENTS = 8;
+
+/** Whole seconds left in the FIRE window armed at `at` (the reduced-motion
+ *  countdown: "4 s", "3 s" … "1 s"; 0 once it has lapsed). */
+export function drainSeconds(at: number, now: number, ms: number = ARM_MS): number {
+  const left = at + ms - now;
+  return left <= 0 ? 0 : Math.ceil(left / 1000);
+}
+
+/** The FIRE window draining (finish review #6): a segmented Win95 progress
+ *  bar that empties over `ARM_MS` from the arm's own moment (`at`), so a
+ *  re-render or the bar's twin in the Cues tab never restarts it. Reduced
+ *  motion: no bar, a "4 s" countdown in text. A screen reader already
+ *  hears "Tap FIRE within 4 s". */
+export function ArmDrain({ at, className }: { at: number; className?: string }) {
+  const [start] = useState(() => Math.max(0, Math.min(ARM_MS, Date.now() - at)));
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [at]);
+  return (
+    <span className={`host-drain ${className ?? ""}`.trim()} aria-hidden="true">
+      <span className="host-drain-track">
+        <span className="host-drain-fill" style={{ animationDuration: `${ARM_MS}ms`, animationDelay: `-${start}ms`, animationTimingFunction: `steps(${DRAIN_SEGMENTS}, end)` }} />
+      </span>
+      <span className="host-drain-secs">{drainSeconds(at, now)} s</span>
+    </span>
+  );
 }
 
 /** An armed row's call to action: a subject cue names who it goes to on
@@ -785,6 +828,7 @@ export function CueButton({ row, armed, locked, sending, warnings, actCode, subj
           ) : isArmed ? (
             <>
               <span className="cue-arm">{armLine(armed!, subjectName ?? null)}</span>
+              <ArmDrain key={armed!.at} at={armed!.at} />
               {warnings.map((w) => (
                 <span key={w} className="cue-warn" data-testid="cue-warn">
                   {w}
@@ -796,7 +840,7 @@ export function CueButton({ row, armed, locked, sending, warnings, actCode, subj
               {row.last && <span className="cue-tag last">LAST</span>}
               {row.next && <span className="cue-tag next">NEXT</span>}
               {row.fired && <span className="cue-tag">✓ fired</span>}
-              {!row.sequence && <span className="cue-tag">aside</span>}
+              {!row.sequence && <span className="cue-tag host-aside">aside</span>}
               {row.subject && <span className="cue-tag">👤 picks a person</span>}
               {!row.live && <span className="cue-tag">not on offer</span>}
               {tags.map((t) => (

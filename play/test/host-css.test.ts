@@ -44,7 +44,7 @@ describe("the host console's colours", () => {
     expect(contrast(token(themes, AOL, "--bad"), token(themes, AOL, "--face"))).toBeLessThan(4.5);
   });
   it("--bad is text only on white (the bar, a filing), never on the face", () => {
-    const onWhite = new Set([".host-strip-urgent", ".host-strip-needs", ".host-bar.armed .host-bar-tag", ".host-bar-stale, .host-bar-refused", ".host-filing-near"]);
+    const onWhite = new Set([".host-strip-urgent", ".host-strip-needs", ".host-bar.armed .host-bar-tag", ".host-bar-stale, .host-bar-refused", ".host-filing-near", ".host-bar-title.quiet.urgent"]);
     const red = rules(host).filter((r) => /(^|;|\s)color:\s*var\(--bad\)/u.test(r.body));
     for (const r of red) expect(onWhite.has(r.sel), r.sel).toBe(true);
     for (const sel of [".host-tab.counted", ".host-danger", ".host-confirm-yes.danger", ".host-note.alarm"]) {

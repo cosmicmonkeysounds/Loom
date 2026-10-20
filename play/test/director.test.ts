@@ -714,7 +714,7 @@ describe("fired rows are muted", () => {
     // A repeat cue the night has moved past is muted like any other.
     const again = directorRows({ interactions: [{ id: "results", label: "📋", who: "admin", repeat: true }, { id: "z", label: "z", who: "admin" }], cues: { last: "z", fired: ["results", "z"] } });
     expect(cueRowClass(again[0]!, false, false).split(" ")).toContain("fired");
-    expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off");
+    expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off host-compact");
   });
 });
 
