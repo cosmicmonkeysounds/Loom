@@ -304,6 +304,8 @@
    and says "(Paused)" after it (the white keeps the strip's red legible). FIRE stays live: a press still lands. */
 .host-bar.paused .host-bar-tag, .host-bar.paused .host-bar-title { color: var(--muted-ink); }
 .host-bar-paused { font-weight: 600; color: var(--muted-ink); }
+/* …but an arm stays loud: FIRE is live while paused. */
+.host-bar.paused.armed .host-bar-tag { color: var(--bad); }
 /* The bar's own countdown under a minute (its strip copy steps aside on a phone). */
 .host-bar-title.quiet.urgent { color: var(--bad); }
 /* A confirm brought into view (useRevealed) stops short of the body's edge. */

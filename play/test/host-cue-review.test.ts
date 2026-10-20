@@ -35,3 +35,9 @@ describe("a compact row's tags", () => {
     expect(r).toMatch(/overflow: hidden/u);
   });
 });
+
+describe("a paused bar keeps an arm loud", () => {
+  it("ARMED stays red under (Paused)", () => {
+    expect(rule(".host-bar.paused.armed .host-bar-tag")).toMatch(/color: var\(--bad\)/u);
+  });
+});
