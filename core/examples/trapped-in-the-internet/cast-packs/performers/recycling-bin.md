@@ -30,13 +30,15 @@
 | Grok Prom | **💘 Said "You're the one that I want"** |
 | any time, until 📄 | **♟ They beat the machine** (only if the door terminal could not report it and you **saw** the checkmate) |
 
-**Bathroom Mode:** the 🚻 button on every program's pass. They learn it three
-times: Clippy's tour ends on it (a step over the pass button: *tap 🚻 before
-you leave for Disk Cleanup, tap again when you're back*), the Installation
-Wizard repeats it in the tent, and your own scan greeting tells them to use
-it. Your booth shows *🚻 X is in Bathroom Mode* and *🚻 X is back*. A guest in
-Bathroom Mode is excused from a summons. Remind people to turn it **off** when
-they come out. A **marked** program (grey phone, the 🚨 card) has lost every
+**Bathroom Mode:** the 🚻 button in every program's ⊞ Start menu (the bottom
+taskbar's left corner). They learn it three times: Clippy's tour ends on it (a
+step over ⊞ Start: *open Start and tap 🚻 Bathroom Mode before you leave for
+Disk Cleanup; tap Back from the bathroom in Start when you're back*), the
+Installation Wizard repeats it in the tent, and your own scan greeting tells
+them to use it. Your booth shows *🚻 X is in Bathroom Mode* and *🚻 X is back*.
+A guest in Bathroom Mode is excused from a summons. Remind people to turn it
+**off** when they come out; if one forgets, their row in your console's
+**People** tab has **🚻 End Bathroom Mode**. A **marked** program (grey phone, the 🚨 card) has lost every
 other button but keeps 🚻 Bathroom Mode and Back: let them use Disk Cleanup.
 The Antivirus wait outside (their booth says so); never send a marked program
 away from the toilet.

@@ -93,7 +93,7 @@ left out.
 - **⏳ → 🚨:** scan arrivals; then the late list.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
 - **🔑 Moderating (if the director gives you the moderator passcode at
-  call):** ☰ → *Add moderator powers* → type it → *Become an admin*, reload
+  call):** ⊞ Start → *Add moderator powers* → type it → *Become an admin*, reload
   once, then tap **hide** on any message that is inappropriate or off topic.
   It vanishes from every phone. You can remove, never rewrite. Without the
   passcode, ask the director to hide it. The passcode also shows you the

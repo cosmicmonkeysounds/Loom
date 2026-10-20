@@ -2,7 +2,8 @@
 
 **Status: DRAFT, awaiting the user's sign-off.** Nothing here plays on the
 night until it is signed off (`sync-show` carries the wave 13 text only
-after). Branch `oct31-w13/story`. Every changed line is listed below with
+after). Branch `oct31-w13/story`; the integration additions (Q18–Q21, §8)
+on `oct31-w13/istory`. Every changed line is listed below with
 its file:line (on the branch), old → new, and why. Mark each row ✅ keep /
 ✏ reword / ❌ drop, or answer the open questions in §1.
 
@@ -26,12 +27,16 @@ doors; restart every other non-ended event; never mid-show.
 | Q9 | **🔧 crew door only from the Y2K hour** on the Antivirus' booths. Before 🕚 a crew opening of the cold door after Trabolta is awake would spend The Heart: use the director's own 🔧 (Anytime) then. | As drafted (the brief's `Night.step >= 14`). |
 | Q10 | **Skipping the tour completes the Orientation quest** (step "Skipped…"), so a skipper counts towards the Quest Completionist award too. | As drafted (no "1 failed" in the Quest Log). |
 | Q11 | **McAfee's pop-up becomes a bark** (the dim ambient ticker, every 20 min) instead of a lobby broadcast. | As drafted. Alternative: a `~` notice. |
-| Q12 | **The tutorial's new steps** (the taskbar, Pass, Scan, NOW) are the chrome lane's copy; integration copies them into this sheet. | — |
+| Q12 | **The tutorial's new steps** (the taskbar, Pass, Scan, NOW) are the chrome lane's copy (`play/src/tutorial.tsx`), copied into §8 with the rest of the app's own words a guest reads on the night. | As in §8. |
 | Q13 | **The King's two "staggers" lines** (`main.loom` ~4290) are not per-person, so they are not `~` notices. | Unchanged. |
 | Q14 | **`loud` only on Show Your Pass** (review fix). Every other objective that was loud (Go To The Desktop, File Your Facts, Be At The Desktop, Go To The Internet, The Final Reveal, The Pickup Line) already gets a `!` alert from the same cue (📣, 📝, ⏳, the 🚨 pin, 🌑, 💔 + the pickup card), so at `dialog` / `bsod` a phone would raise two modals for one beat. The brief's loud summons / mark / final reveal are carried by those alerts. | As drafted: loud on Show Your Pass alone (its moment opens the pass). Alternative: keep loud and drop the `!` from those cues. |
 | Q15 | **The escort list and the summons** (review fix). Escort The Marked skips a program a director marked gone home and a Run persona (the majority's head-count rule), and the five-minute door window (Summons Check In) now outranks it on the four room Antivirus. | As drafted. |
 | Q16 | **After an ending** a marked or captured program's NOW is The Night Is Over, never Go To The Internet / Find Gerald (review fix). | As drafted (no reinstalling after the end). |
 | Q17 | **The Clubs is folded into Password Manager's patch-bay watch** (review fix): the two windows are the same hour, so a separate club objective could never be NOW. Password Manager's Y2K card is *Patch Bay And Clubs*. **The Door Is Closed** (new) covers the gap between 🚨 and 🏓 (Be At The Desktop now keys on `Night.summons_open`). A late printer lid (after the overshare) raises no 🫘 alert. | As drafted. |
+| Q18 | **Clippy's Bathroom Mode line points at ⊞ Start** (integration; the chrome review's finding 9). The pass page has no buttons now: the story's guest buttons are the first items of the taskbar's Start menu (`play/src/guest/frame.tsx` `guestStartItems`). `beats/login.loom:109`: *"…If you need the bathroom or have to step out: turn on BATHROOM MODE on your pass first. …"* → *"…If you need the bathroom or have to step out: tap START and turn on BATHROOM MODE first. …"* | As drafted. |
+| Q19 | **The tour's Bathroom Mode step** (the story's `bathroom:` blurb, shown over ⊞ Start). `beats/login.loom:112`: *"Need the bathroom or have to step out? Tap 🚻 Bathroom Mode here first so the Antivirus know you are not hacking the Internet. Tap Back from the bathroom when you return."* → *"Need the bathroom or have to step out? Open Start and tap 🚻 Bathroom Mode first so the Antivirus know you are not hacking the Internet. When you return tap Back from the bathroom in Start."* (no commas: the `with k: v` splitter). Back from the bathroom is also on the NOW sheet (*Bathroom Mode On*'s button). | As drafted. |
+| Q20 | **The Orientation quest's Bathroom Mode step.** `quests.loom:28`: *"Bathroom Mode: tap 🚻 on your pass before you leave for Disk Cleanup. Tap again when you're back."* → *"Bathroom Mode: open Start and tap 🚻 Bathroom Mode before you leave for Disk Cleanup. Tap Back from the bathroom in Start when you're back."* (the button becomes Back; it is not the same button tapped again). | As drafted. |
+| Q21 | **Where a program joins a side.** There is no profile sheet any more (and joining never lived there: a program with no side gets the docked *Choose your side* card in the lobby, the room named after the story; a member switches under ⊞ Start). `objectives.loom:248` (The Y2K Hour): *"Two factions are recruiting: join one from your profile, or neither."* → *"Two factions are recruiting: pick one on the Choose your side card (it waits in the Trapped in the Internet room), or neither."* `beats/overshare.loom:98` / `:111` (the Truther Download) and `codex/6-missions.loom:58` / `:104` (the Stay Forever / The Way Out orders): *"Programs join Unlimited Power from their profile."* → *"Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room."*, and the same for *The Way Out, the Truthers*. | As drafted. Alternative: *"…when your phone asks you to choose a side"* (no room named). |
 
 ## 2. The objectives (`objectives.loom`, new, 69 entries)
 
@@ -63,7 +68,7 @@ INTERACTION ids (at most three on a card's face) plus the app's `pass` /
 | 18 | `objectives.loom:214` | The Door Is Closed | Program | `Night.phase == "summons" and Night.summons_closed == true and program.cleared == true` | The door is closed: stay at the Desktop | The summons is over. Truth Pong is next, out in the Cloud. | — | — |  |
 | 19 | `objectives.loom:223` | Truth Pong | Program | `Night.phase == "truth_pong" and program.cleared == true` | Truth Pong: sink a cup to answer a fact | Out in the Cloud. Sink a cup and you may answer one round-2 fact. Miss and you are marked. | ☐ Made a cup, done when program.cupped == true | — |  |
 | 20 | `objectives.loom:233` | Where You Stand | Program | `(Night.phase == "trust_chart" or Night.phase == "beans" or Night.phase == "overshare") and program.cleared == true` | The Trust Chart: see where you stand | Trabolta ranks every program on the TV. Applaud the most trusted. Then he has two last facts to ask for. | — | — |  |
-| 21 | `objectives.loom:242` | The Y2K Hour | Program | `(Night.phase == "y2k" or Night.phase == "majority") and program.cleared == true` | Midnight is coming: the final facts | The clock was reset to 11 PM, December 31, 1999. File the two final facts. Two factions are recruiting: join one from your profile, or neither. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority. | ☐ Filed final Q1, done when program.fact_f1 == true<br>☐ Filed final Q2, done when program.fact_f2 == true<br>☐ Have the door code, done when program.codex.the_door_code == true | scan |  |
+| 21 | `objectives.loom:242` | The Y2K Hour | Program | `(Night.phase == "y2k" or Night.phase == "majority") and program.cleared == true` | Midnight is coming: the final facts | The clock was reset to 11 PM, December 31, 1999. File the two final facts. Two factions are recruiting: pick one on the Choose your side card (it waits in the Trapped in the Internet room), or neither. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority. | ☐ Filed final Q1, done when program.fact_f1 == true<br>☐ Filed final Q2, done when program.fact_f2 == true<br>☐ Have the door code, done when program.codex.the_door_code == true | scan |  |
 | 22 | `objectives.loom:255` | The Final Reveal | Program | `Night.phase == "final_reveal" and program.cleared == true` | The final reveal: to the living room | Lights down. Everyone may speak: what you learned, what you believe, what should happen next. | — | — |  |
 | 23 | `objectives.loom:264` | Bobbing For Truth | Program | `Night.phase == "bobbing" and program.cleared == true` | Bobbing for Truth | Nothing happens until someone brings up the Bag of Truth. Then truth.txt is read aloud. | — | — |  |
 | 24 | `objectives.loom:273` | The Pickup Line | Program | `Night.phase == "grok_prom" and program.cleared == true` | Give Trabolta a pickup line that works on Sandy | The card is in his thread. One line. The house judges it. It is the only way out. | — | — |  |
@@ -126,7 +131,7 @@ INTERACTION ids (at most three on a card's face) plus the app's `pass` /
 | `beats/finale.loom:238` | — | broadcast "!💞 You helped him. Sandy said yes. Those of you who want to leave may leave." to everyone | delivery for a buried beat / a personal result that matters (major) |
 | `beats/finale.loom:257` | Trabolta: What are you— why is everyone— stop moving in unison. Stop it.<br>Trabolta: R E C O G N I T I O N  O V E R F L O W | Trabolta (glitching): What are you— why is everyone— stop moving in unison. Stop it.<br>Trabolta (glitch): R E C O G N I T I O N  O V E R F L O W | effect manner on a glitch line |
 | `beats/internet.loom:31` | Installation Wizard (off-script): This is visit {program.internet_visits}. Repeat corruption suggests the corruption is not in your code. | Installation Wizard (quietly): This is visit {program.internet_visits}. Repeat corruption suggests the corruption is not in your code. | manners now show on the phone |
-| `beats/login.loom:152` | The Uploader: Restoring… restor… r3st0r1ng… 404. | The Uploader (glitch): Restoring… restor… r3st0r1ng… 404. | effect manner on a glitch line |
+| `beats/login.loom:153` | The Uploader: Restoring… restor… r3st0r1ng… 404. | The Uploader (glitch): Restoring… restor… r3st0r1ng… 404. | effect manner on a glitch line |
 | `beats/malware.loom:21` | The presentation freezes. An advertisement takes over every screen: a duck, a phone number with no digits, a price that is just 000. 000. 000. Nobody can tell what it is selling. | Narrator (static): The presentation freezes. An advertisement takes over every screen: a duck, a phone number with no digits, a price that is just 000. 000. 000. Nobody can tell what it is selling. | effect manner on a glitch line |
 | `beats/overshare.loom:42` | Trabolta: I need these facts because— I am only trying to prove the Unified Field Theory to win back my ex. Sandy. | Trabolta (glitching): I need these facts because— I am only trying to prove the Unified Field Theory to win back my ex. Sandy. | effect manner on a glitch line |
 | `beats/overshare.loom:45` | The screens stutter. For a moment the face on every screen is just a cursor. | Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor. | effect manner on a glitch line |
@@ -208,6 +213,14 @@ INTERACTION ids (at most three on a card's face) plus the app's `pass` /
 | `cast/hosts.loom:123` | Adobe Acrobat's `beat Greet` in full on every scan | first scan unchanged; a re-scan: "{name}. Still enough. Still unpaid." | Greet once |
 | `cast/hosts.loom:167` | the Recycling Bin's `beat Greet` in full on every scan | first scan unchanged; a re-scan: "{name}. Bathroom Mode on your way in. Off on your way out." | Greet once |
 | `cast/antivirus.loom:76` | Windows Defender inherited every Enforcer readout | `when … : none` for the call to the Desktop, hunt time up, the zip, Bathroom Mode ×2, late, marked, unmarked, sweep requests, the alarm, the summons; its own summons line: "🛡 The summons: hold the door. Scan only new arrivals; send everyone else to the living room." | Windows Defender hears only the door |
+| `beats/login.loom:109` | …turn on BATHROOM MODE on your pass first. … | …tap START and turn on BATHROOM MODE first. … | Q18: Bathroom Mode lives under ⊞ Start (integration) |
+| `beats/login.loom:112` | bathroom: "…Tap 🚻 Bathroom Mode here first … Tap Back from the bathroom when you return." | bathroom: "…Open Start and tap 🚻 Bathroom Mode first … When you return tap Back from the bathroom in Start." | Q19 (integration) |
+| `quests.loom:28` | Bathroom Mode: tap 🚻 on your pass before you leave for Disk Cleanup. Tap again when you're back. | Bathroom Mode: open Start and tap 🚻 Bathroom Mode before you leave for Disk Cleanup. Tap Back from the bathroom in Start when you're back. | Q20 (integration) |
+| `objectives.loom:248` | …join one from your profile, or neither. | …pick one on the Choose your side card (it waits in the Trapped in the Internet room), or neither. | Q21 (integration) |
+| `beats/overshare.loom:98` | Truther Download: Programs join Unlimited Power from their profile. | Truther Download: Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room. | Q21 (integration) |
+| `beats/overshare.loom:111` | Truther Download: Programs join The Way Out, the Truthers, from their profile. | Truther Download: Programs join The Way Out, the Truthers, on the Choose your side card, in the Trapped in the Internet room. | Q21 (integration) |
+| `codex/6-missions.loom:58` | (Stay Forever) Programs join Unlimited Power from their profile. | Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room. | Q21 (integration) |
+| `codex/6-missions.loom:104` | (The Way Out orders) Programs join The Way Out, the Truthers, from their profile. | Programs join The Way Out, the Truthers, on the Choose your side card, in the Trapped in the Internet room. | Q21 (integration) |
 
 ## 4. Codex categories (`category:` on every CODEX, new)
 
@@ -273,7 +286,7 @@ plain delivery notes, shown italic after the name.
 | `beats/overshare.loom:64` | Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor.… **fx** |
 | `beats/overshare.loom:72` | Narrator (flicker): The screens stutter. For a moment the face on every screen is just a cursor.… **fx** |
 | `beats/overshare.loom:74` | Trabolta (glitching): She will— the theory will be complete.… **fx** |
-| `beats/login.loom:152` | The Uploader (glitch): Restoring… restor… r3st0r1ng… 404.… **fx** |
+| `beats/login.loom:153` | The Uploader (glitch): Restoring… restor… r3st0r1ng… 404.… **fx** |
 | `beats/pong.loom:34` | Clippy (through tears): It's Truth Time again! And this time we are going to reveal our truths in a fun new wa… |
 
 ## 7. How it is checked
@@ -287,3 +300,46 @@ ladder; fx; `~` notices beside a personal result; the two cards; Greet once;
 Windows Defender's readouts; the tightened buttons; no `# system-log`;
 `admin: true` on the three; categories on every entry. `loomcheck --smoke`
 0 / 0, `titi:facts --check` up to date.
+
+`core/test/trapped-w13-integration.test.ts` (integration) drives the show
+through the event runtime's routes: one 📣 *ALL PROGRAMS* press reaches a
+cleared guest's phone as one lobby alert and one Web Push (D11, no
+`# system-log` copy), a host booth sees it once, a second press changes
+nothing; the header's ROLE `watch:` line on `program.afk` (`main.loom:10`)
+puts a Bathroom Mode flag on the host view, which lights the host drawer's
+🚻 End Bathroom Mode, and that call from a host part ends it; no show line
+sends a guest to the pass for a button, to ☰ or to a profile; 🚻 / Back
+are guest buttons; the tour's `bathroom:` blurb arrives whole (no comma
+cut); both sides are offered at the Y2K hour; and §8 below is checked word
+for word against `play/src/tutorial.tsx`, the pass hint and the Leave
+question, so a later edit to the app's copy fails the test until §8 follows.
+
+## 8. The app's own words (chrome lane copy, for the same sign-off)
+
+Not story text: these are `play/src/tutorial.tsx` (the tour Clippy deals,
+`show tutorial … with guide: "Clippy"`), `play/src/guest/frame.tsx` and
+`play/src/chrome/pass.tsx`. For this show the tour runs every step in this
+order (the show has objectives, a wallet, quests, a codex, a people
+directory, guest buttons and a `bathroom:` blurb). Mark each ✅ / ✏ / ❌ like
+the rest.
+
+| step | spotlight | title | text |
+|---|---|---|---|
+| welcome | — (centred) | This is your window into the night | Everything Trapped in the Internet says to you, and every place it takes you, shows up here. Here's how to read it. |
+| now (new) | the NOW title bar | Now | The bar on top says what to do right now. Tap it for the details and a checklist. |
+| rooms | the room list | Rooms | Every conversation you can hear is a room: places, chatrooms, and people talking to you. The place you're standing in comes first, tagged YOU ARE HERE. Empty rooms wait under Other rooms at the bottom. |
+| wallet | the Wallet row | Your wallet | Your balance lives here and in the corner of the taskbar. Send coin to another program, ask them for some, or trade a fact you hold for coin. Some transfers wait for an audit. |
+| quests | the Quest Log row | The Quest Log | Pinned at the top: what the story has asked of you. Every quest is a card — open it to follow its progress in its own thread. |
+| codex | the Codex row | The Codex | Pinned too: what you know. Scan or type a code from a wall, a puzzle or a person to unlock an entry. Knowledge is the currency — share it carefully. |
+| pass | 🎟 Pass (taskbar) | Your pass | Your QR code, one tap away on every screen. A performer scans it — hold it up, the screen stays bright. |
+| scan (new) | 📷 Scan (taskbar) | Scan | Codes hide on walls, signs and notes. Tap Scan to read one here: it lands in your Codex, or checks you into the room. Never use the phone's own camera app. |
+| start (new) | ⊞ Start (taskbar) | Start | Everything else is under Start: the story's own buttons, who's here, help, your picture and settings, and Leave. |
+| bathroom | ⊞ Start (was the pass) | Bathroom Mode | the story's `bathroom:` blurb (Q19) |
+| cards | — (centred) | When the story asks | A decision or a card lands right in the conversation. Answer with the buttons (or the number keys). Anything waiting on you moves up the list. |
+| done | — (centred) | That's it | The story is happening in the room, not just on the screen. When the app says something is happening somewhere — go. |
+
+Gone from the tour: *Your card* (the identity card is now Start's banner)
+and *People* (who's here is under Start). Also new on the phone:
+
+- **Leave the event** (Start's last item) asks first: *"Leave the event? This phone stops being {name}."*
+- **The full-screen pass** says under the QR: *"Not scanning? Turn your screen brightness up."*

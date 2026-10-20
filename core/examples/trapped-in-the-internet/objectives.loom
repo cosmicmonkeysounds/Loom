@@ -245,7 +245,7 @@ OBJECTIVE The Y2K Hour
   act: E
   title: Midnight is coming: the final facts
   text:
-    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Two factions are recruiting: join one from your profile, or neither. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
+    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Two factions are recruiting: pick one on the Choose your side card (it waits in the Trapped in the Internet room), or neither. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
     - Filed final Q1, done when program.fact_f1 == true
     - Filed final Q2, done when program.fact_f2 == true
     - Have the door code, done when program.codex.the_door_code == true

@@ -98,17 +98,18 @@ show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhe
 // (the phone). `show tutorial` puts the app's own guided orientation on
 // the screen; the program can finish it or skip it, and either way the
 // story hears `tutorial answered` (main.loom) — skipping is noted. The
-// `bathroom:` blurb is the tour's Bathroom Mode step (over the pass
-// button); it must contain no commas (the `with k: v` splitter).
+// `bathroom:` blurb is the tour's Bathroom Mode step (over ⊞ Start,
+// where the button lives); it must contain no commas (the `with k: v` splitter).
 == Orientation
   setting: The Desktop
   cast: Clippy
 
 Clippy: Hi there, {program.name}! It looks like you're new to the computer. Would you like help with that?
-Clippy: One thing before the tour. If you need the bathroom or have to step out: turn on BATHROOM MODE on your pass first. The Antivirus can't tell a bathroom break from hacking the Internet. I can! They can't.
+// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q18 + Q19): Bathroom Mode lives under ⊞ Start now.
+Clippy: One thing before the tour. If you need the bathroom or have to step out: tap START and turn on BATHROOM MODE first. The Antivirus can't tell a bathroom break from hacking the Internet. I can! They can't.
 start quest Orientation for program
 unlock Bathroom Mode for program
-show tutorial "Clippy's orientation" to program with guide: "Clippy", bathroom: "Need the bathroom or have to step out? Tap 🚻 Bathroom Mode here first so the Antivirus know you are not hacking the Internet. Tap Back from the bathroom when you return."
+show tutorial "Clippy's orientation" to program with guide: "Clippy", bathroom: "Need the bathroom or have to step out? Open Start and tap 🚻 Bathroom Mode first so the Antivirus know you are not hacking the Internet. When you return tap Back from the bathroom in Start."
 
 // A program scanned at the Optical Drive station a second time
 // (The Uploader is `Prop(Re-upload)`).

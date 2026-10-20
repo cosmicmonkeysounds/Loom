@@ -312,7 +312,7 @@ describe("Trapped in the Internet — compile", () => {
     const qs = [...m.quests.values()].map((q) => [q.id, q.title, q.giver]);
     expect(qs).toEqual(QUESTS);
     expect(m.quests.size).toBe(26);
-    expect(m.quests.get("Orientation")!.text).toContain("Bathroom Mode: tap 🚻 on your pass");
+    expect(m.quests.get("Orientation")!.text).toContain("Bathroom Mode: open Start and tap 🚻 Bathroom Mode");
     // The generated quests list exactly their round's questions, from facts.json.
     for (const [id, round] of [["Hunt One", 1], ["Hunt Two", 2], ["The Final Facts", 3]] as const) {
       const text = m.quests.get(id)!.text;
