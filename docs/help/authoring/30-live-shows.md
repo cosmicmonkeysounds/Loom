@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, judge, reserved, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: live, judge, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -155,7 +155,20 @@ COHORT Early Arrivals
   would find the wrong one. Every picture is downloaded when the story
   loads, so the night never waits on Wikipedia. A guest choosing a
   program sees its hand-picked pictures first, then the article's own
-  gallery, and picks one (and can switch later from their pass).
+  gallery, and picks one (and can switch later from the Start menu).
+- **`admin: true`** on a CHARACTER makes it a **host part**: whoever
+  signs in as it with the performer code gets the host console in their
+  booth — the cue sheet's NEXT bar, judging, announcements, the alert
+  level, wallets, parts, answering as an agent-voiced character — never
+  the lifecycle (restart, push draft, go live, end) or the god view
+  (*Trapped in the Internet*: Task Manager, Adobe Acrobat, the Recycling
+  Bin). Signing in as another part drops it. Write it on the CHARACTER,
+  never on a TRAIT every host shares (a trait's keys are inherited, so it
+  would reach every deriver). Lint `L1211` warns when nobody can sign in
+  as that character (a guest's program, a prop, an agent-voiced one).
+  The moderator passcode in a booth still gives full admin.
+- **`crawl: fx`** on a CHARACTER makes every line it speaks **effect
+  text** (below).
 - A **COHORT** is a plain named grouping with a capacity, for when you
   need to count heads without it being a "side".
 
@@ -255,7 +268,8 @@ countdown: Night.hunt_end as Hunt ends, while Night.hunt_on == true
   during a timer reads as meant.
 
 End a `countdown:` line with **`, for guests`** and the guests see it
-too, ticking in a strip under their room header:
+too, as the clock in their taskbar's tray (*⏳ 4:59*; tap it for *Hunt 1
+ends in 14 min 59 s*):
 
 ```loom
 countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guests
@@ -272,3 +286,69 @@ plays the files as one source, so it reads the first header only. Lint
 `L1205` flags a line that won't parse, a head that names nothing in the
 story, or a board line in another file. With no `watch:` line the board
 shows the globals the story changed most recently instead.
+
+**ROLE items are the booth card's facts.** A `watch:` item on a ROLE
+path (`guest.cleared as Cleared`) is also a fact on every performer's
+guest card while its line is live: a yes / no slot shows when it's on
+(and when a gate such as *Cleared* or *Checked in* is off: *✗ Not
+cleared*), any other value when it's set. So list there what a performer
+must see at a glance, and never a ROLE `secret:` slot: the card leaves
+those out, and `L1205` warns.
+
+## How loud the phones are: `alerts:`
+
+The app delivers the story's big moments — an `!` alert, a card that
+asks one guest (`with moment: major`, [cards & widgets](widgets.md)), a
+loud [objective](objectives.md), a `reply` to someone, a quest starting —
+on a ladder of four levels, quiet to loud:
+
+| Level | On a phone |
+|---|---|
+| `balloon` | a tip by the taskbar's tray that goes away by itself |
+| `sticky` | a banner across the top until tapped (the default) |
+| `dialog` | a full-screen Win95 box with OK, one at a time (*1 of 3*) |
+| `bsod` | the blue screen: every story line addressed to the guest takes the screen too |
+
+A major moment renders at the level; a minor one (a quest starting, a
+readout, a note to one person) one step lower, never below a balloon. A
+booth never goes above `sticky`, so a performer is never stopped
+mid-scene. A `!!` takeover is above the ladder and unchanged. Moments a
+phone missed (asleep, or dismissed unread) replay on wake, all of them.
+
+The level is a world value the story sets. The header names it:
+
+```loom
+# Trapped in the Internet
+alerts: Night.alerts
+```
+
+`Night.alerts` is the default, so the line is only needed to choose
+another path. Then set it like any value — `set Night.alerts =
+"dialog"` at the summons, `"bsod"` at the final reveal, `"sticky"` after
+— and a host's console can switch it live. Anything other than the four
+words reads `sticky`. **Every phone glitches** for a moment when the
+level changes. `alerts:` is read from the first file's header only; lint
+`L1210` warns when it's elsewhere or is no dotted path.
+
+## Effect text
+
+A line can perform instead of just reading. It is **effect text** when
+its manner (the parenthetical after the name) contains one of the
+effect words — `glitch`, `glitching`, `glitched`, `static`, `corrupted`,
+`corrupt`, `scream`, `screaming`, `screams`, `distorted`, `garbled`,
+`error`, `flicker`, `flickering`, `bsod` — or its speaker has `crawl:
+fx`:
+
+```loom
+Truther Download (glitch): THEY ARE LYING TO YOU.
+Narrator (static): The screens roll.
+Wren (quietly, flickering): Is anyone there?
+```
+
+On the phone an effect line scrambles into place, flickers and shakes,
+slower on purpose; under Reduce Motion it shows at once with a still
+look. Alerts and takeovers are effect text by themselves. An ordinary
+manner (`quietly`, `whispering`, `through tears`) is a note to the
+performer, and now shows on the phone after the name, in italics.
+Everything else types out fast, and only when it arrives in a room the
+guest has open: the backlog, other rooms and a reload are instant.
