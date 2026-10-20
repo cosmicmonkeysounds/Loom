@@ -58,7 +58,8 @@ describe("passQrSvg", () => {
 
   it("no pass in the play app asks the server for its QR", () => {
     const dir = new URL("../src/", import.meta.url);
-    for (const f of readdirSync(dir)) {
+    // Recursive: since wave 13 the app lives in folders (stream/, guest/, …).
+    for (const f of readdirSync(dir, { recursive: true }) as string[]) {
       if (!/\.tsx?$/.test(f)) continue;
       // Code only — not the comments that say why there is no such URL.
       const code = readFileSync(new URL(f, dir), "utf8").replace(/^\s*(\/\/|\*).*$/gm, "");
