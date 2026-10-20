@@ -10,8 +10,10 @@
 // Order is the rule: for each viewer the FIRST live objective in this file
 // is NOW. So the urgent ones come first in each audience (a marked program
 // is told to go to the Internet before anything else), and every audience
-// ends with a fallback with no `while:`, so a phone always has an
-// objective, from the door to the end of the night.
+// ends with a fallback with no `while:` (the four room Antivirus: a pair
+// that splits the night, Patrol The Computer until the end and After The
+// Night after it), so a phone always has an objective, from the door to
+// the end of the night.
 //
 // `loud: true` only where no `!` delivery from the same cue already raises
 // a major moment for that phone (one modal per beat, not two): today that
@@ -450,6 +452,8 @@ OBJECTIVE Patrol The Computer
 // DRAFT for sign-off
 OBJECTIVE After The Night
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  // DRAFT for sign-off (w13 Q34): live only once the night has ended (Patrol The Computer covers the rest), so it is never under More objectives at 8 pm.
+  while: Night.ended == true
   act: G
   title: The night is over: guide everyone to the living room
   text:

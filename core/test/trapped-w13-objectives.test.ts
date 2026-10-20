@@ -879,6 +879,18 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     expect(replyTo(again, "Norton Anti-Virus").some((t) => t.startsWith("✅"))).toBe(false);
   }, SLOW);
 
+  it("After The Night is live only once the night has ended: never under More objectives before (Q34)", () => {
+    const n = boot();
+    const ids = () => (primeView(n.sim, "Norton Anti-Virus").objectives ?? []).map((o) => o.id);
+    expect(ids()).toContain("Patrol The Computer");
+    expect(ids()).not.toContain("After The Night");
+    for (const c of TO_Y2K) n.press(c);
+    expect(ids()).not.toContain("After The Night");
+    toCeremony(n);
+    expect(ids()).toContain("After The Night");
+    expect(ids()).not.toContain("Patrol The Computer");
+  }, SLOW);
+
   it("the late list is one readout per late program on every room Antivirus booth (Q31)", () => {
     const n = boot();
     for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c);
