@@ -736,7 +736,7 @@ watcher/rule, **S** = server hard-code.
 | named_at_bingo / truth_answered / truth_refused / chose_dare | P (Clippy's card buttons) | program | ROLE hooks (§3 B2, B9) |
 | mark_for_reinstallation | W (16 `fire … with reason:` sites in main.loom: 🎯, 🤷, 🙅, 🎩, 🏓, 🍎, a guess at settle, late for the summons) | program; args `reason` | ROLE hook (`restrict` to The Tube / The Internet, the 🚨 pins, `fire marked`) |
 | unmark_for_reinstallation | P (🩹, Hosts / Antivirus) | program | ROLE hook → `unmarked` |
-| unmarked | W (🩹 "cleared by a host"; the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
+| unmarked | W (🩹 "cleared by the Antivirus" from one Antivirus booth, else "cleared by a host", through `unmark_settle` (w13 Q32); the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
 | chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
 | king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
 | door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
@@ -1444,7 +1444,7 @@ Extra staff hooks (add to the traits / characters):
 | Where | Trigger | Body |
 |---|---|---|
 | `TRAIT Enforcer` | `when go to the bathroom for program:` | `reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.` (also on `Recycling Bin`) |
-| `TRAIT Enforcer` | `when program_late for program:` | `reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.` |
+| `TRAIT Enforcer` | `when program_late for program:` | only with `Night.auto_sweep`: `reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.` (otherwise the mark's readout says late, one per program: w13 Q31) |
 | `TRAIT Enforcer` | `when marked for program:` | `reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.` · `if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):` `reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.` (fact M20; a Disk Cleanup check-in counts for 15 minutes, since a location is sticky) · `when go to the bathroom for program:` adds `reply ⚠️ {program.name} is marked and in Bathroom Mode. Wait for them outside; never go in.` for a marked program |
 | `TRAIT Enforcer` | `when sweep_requested:` | `reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.` |
 | `TRAIT Enforcer` | `when alarm_tripped:` | `reply 🚨 Server room breach. Get there. Anyone inside who is not a member of the winning faction goes to the Internet.` |
@@ -1578,6 +1578,13 @@ when scanned by program:
   else if Night.summons_open == true:
     fire checked_in for program with at: The Desktop
     Self: Checked in. {program.name} is present at the Desktop.
+  else if program.marked == true and program.corrupted != true:
+    if self.holds_the_door == true:   // Windows Defender: never escorts
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. An Antivirus will escort you through the Tube to the Internet.
+      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Stay at the door: radio a room Antivirus to escort them. 🛡 only if a host or the director asks.
+    else:
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
+      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
   else:
     Self:
       cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.

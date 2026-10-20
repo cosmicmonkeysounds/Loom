@@ -10,8 +10,10 @@
 // Order is the rule: for each viewer the FIRST live objective in this file
 // is NOW. So the urgent ones come first in each audience (a marked program
 // is told to go to the Internet before anything else), and every audience
-// ends with a fallback with no `while:`, so a phone always has an
-// objective, from the door to the end of the night.
+// ends with a fallback with no `while:` (the four room Antivirus: a pair
+// that splits the night, Patrol The Computer until the end and After The
+// Night after it), so a phone always has an objective, from the door to
+// the end of the night.
 //
 // `loud: true` only where no `!` delivery from the same cue already raises
 // a major moment for that phone (one modal per beat, not two): today that
@@ -390,7 +392,7 @@ OBJECTIVE Blackout Guide
   act: F
   title: Lights down: walk everyone to the living room
   text:
-    The stairs stay lit. A failed bob is marked: escort them.
+    The stairs stay lit. A failed bob is marked: escort them. Still at the cables? The patch bay is live until 📄 truth.txt: 🔌 💥 ❌ are under All buttons… on any card.
 
 // Password Manager's Y2K hour is the patch-bay watch plus the club list
 // (one card: the two windows are the same hour, so a separate club
@@ -398,7 +400,8 @@ OBJECTIVE Blackout Guide
 // DRAFT for sign-off
 OBJECTIVE Patch Bay And Clubs
   for: Password Manager
-  while: Night.step >= 14 and Night.r3_closed != true and Night.ended != true
+  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW and the radios (still live until 📄) wait under All buttons…, off every guest card's face.
+  while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: the patch bay, and the club list
   text:
@@ -408,7 +411,8 @@ OBJECTIVE Patch Bay And Clubs
 // DRAFT for sign-off
 OBJECTIVE Patch Bay Watch
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
-  while: Night.step >= 14 and Night.r3_closed != true and Night.ended != true
+  // DRAFT for sign-off (w13 Q33): the Y2K hour only. From the final reveal Lights Down is NOW and the radios (still live until 📄) wait under All buttons…, off every guest card's face.
+  while: Night.step >= 14 and Night.step < 16 and Night.ended != true
   act: E
   title: The Y2K hour: patrol, or watch the patch bay
   text:
@@ -448,6 +452,8 @@ OBJECTIVE Patrol The Computer
 // DRAFT for sign-off
 OBJECTIVE After The Night
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  // DRAFT for sign-off (w13 Q34): live only once the night has ended (Patrol The Computer covers the rest), so it is never under More objectives at 8 pm.
+  while: Night.ended == true
   act: G
   title: The night is over: guide everyone to the living room
   text:
@@ -458,8 +464,9 @@ OBJECTIVE Hold The Door
   for: Windows Defender
   title: Hold the door: scan late arrivals
   text:
-    Stay in the Optical Drive. A scan clears a late arrival exactly like the others. During the summons, scan only new arrivals and send everyone else to the living room. Never leave the door empty: radio LATE if an escort comes through. 🛡 only if a host or the director asks.
-  buttons: scan, send to the internet
+    Stay in the Optical Drive. A scan clears a late arrival exactly like the others. During the summons, scan only new arrivals and send everyone else to the living room. Never leave the door empty: radio LATE if an escort comes through. 🛡 is under All buttons…, only if a host or the director asks (tap to arm, tap again to send).
+  // DRAFT for sign-off (w13 Q29): the door's face is the scan alone; 🛡 left it.
+  buttons: scan
 
 // ════════════════════════════════════════════════════════════════════
 // Clippy (the MC): one per Clippy Instructions window, the bottle first.

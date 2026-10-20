@@ -42,7 +42,8 @@ keypad, never on the radio).
 2. When four cables are in, check them against the table and press it
    yourself on your booth, on the card of the program at the cables: **🔌
    Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
-   buttons show only from 🕚, before 📄). Radio the director **"A"**, **"B"**
+   buttons lead the card from 🕚 through the Y2K hour; from 🌑 the final
+   reveal until 📄 they are under **All buttons…** on any card, DRAFT Q33). Radio the director **"A"**, **"B"**
    or **"WRONG"** only if your phone can't: the director fires 🔌 / 💥 / ❌.
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the

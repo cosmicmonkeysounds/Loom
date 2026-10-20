@@ -18,7 +18,7 @@ scanning until the iPhone scanner is verified (OP-04).
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
+| **any time** | **🛡 Send to the Internet** (tap to arm, tap again) | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
 | **any time** | **✅ Mark as reinstalled** | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | someone suspicious (doubt +25) |
@@ -38,7 +38,7 @@ left (the rooms read-only; they can still type in their DMs, but a 📝 filing
 and a room check-in are refused). Find them, walk them through the Tube,
 press 🛡 — a marked program who turns up at the tent on their own is captured
 when the tablet starts their run (wave 5). A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears on its own when they are captured, released,
-or unmarked (🩹): *✅ X: in the Internet / released / cleared by a host.*
+or unmarked (🩹): *✅ X: in the Internet / released / cleared by the Antivirus / cleared by a host.*
 
 **V3, your big moment.** Your Quest Log says it: *Patrol: the Bingo.*
 When the centre-square program is named (or the winner refuses to name
@@ -51,8 +51,8 @@ the door. They need to be taken to the Internet for a reinstallation.* Press
 named? 🛡 each.) The quest completes with the first reinstallation.
 
 **Sweeps:** C1 (everyone to the Desktop) · C2 (back from hunt 1) · ⏳ (the
-summons: scan arrivals) · 🚨 the late list (*⏰ X is late… Go get them*: they
-are marked; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
+summons: scan arrivals) · 🚨 the late list (*🚨 X is late… marked for reinstallation. Go get them*,
+one per program; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
 sweep of…*) · 🚨 server-room alarm · 🗜 zip everyone out of the Internet (the tent, or the shed on a rain night).
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.
@@ -93,7 +93,8 @@ regimes, who needs very badly to get it right this time.
 **Play:** at attention. Takes it personally. Interrupts parties. You failed
 to fight viruses once before; it will not happen again. Your scan cycles
 *"Scanning. Scanning."* / *"no threats found. Today."* / *"Your definitions
-are out of date. So are mine."*
+are out of date. So are mine."*; a marked program hears *"Corruption detected:
+you are marked for reinstallation…"* instead.
 
 ## Your night
 

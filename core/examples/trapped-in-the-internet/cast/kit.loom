@@ -57,6 +57,15 @@ TRAIT Enforcer is Person
     else if Night.summons_open == true:
       fire checked_in for program with at: The Desktop
       Self: Checked in. {program.name} is present at the Desktop.
+    else if program.marked == true and program.corrupted != true:
+      // DRAFT for sign-off (w13 Q30): a marked program is never "no threats found".
+      // Windows Defender holds the door (`holds_the_door`): it never escorts.
+      if self.holds_the_door == true:
+        Self: {program.name}. Corruption detected: you are marked for reinstallation. An Antivirus will escort you through the Tube to the Internet.
+        reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Stay at the door: radio a room Antivirus to escort them. 🛡 only if a host or the director asks.
+      else:
+        Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
+        reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
     else:
       Self:
         cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.
@@ -138,6 +147,12 @@ TRAIT Enforcer is Person
       Self: {program.name} has demonstrated compliance. Reinstallation successful.
       release program from The Internet
 
+  // 🩹 from an Antivirus booth: the ROLE hook names who lifted the mark
+  // (main.loom, `unmark_settle`).
+  when unmark_for_reinstallation for program:
+    if program.marked == true:
+      set program.unmark_av += 1
+
   when accuse for program:
     set program.doubt += 25
     Self: I am watching you, {program.name}. Your behaviour has been logged.
@@ -172,11 +187,19 @@ TRAIT Enforcer is Person
   when bathroom_timed_out for program:
     reply 🚻 {program.name}'s Bathroom Mode timed out (15 min).
 
+  // One readout per late program (w13 Q31, DRAFT for sign-off): without
+  // the auto sweep a late program is marked at once, and the mark's own
+  // readout says they are late; the ⏰ line is only for the auto sweep
+  // (a capture, no mark).
   when program_late for program:
-    reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.
+    if Night.auto_sweep == true:
+      reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.
 
   when marked for program:
-    reply !🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
+    if program.late == true and program.marked_for == "late for the Second Moment of Truth":
+      reply !🚨 {program.name} is late for the Second Moment of Truth: marked for reinstallation. Go get them, escort them through the Tube, then press 🛡 on their card.
+    else:
+      reply !🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
     if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):
       reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.
 

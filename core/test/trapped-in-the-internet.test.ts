@@ -1104,8 +1104,9 @@ describe("Trapped in the Internet — the whole night", () => {
     }
     expect(casts(late).filter((b) => b.cue.includes("late"))).toEqual([]);
     // Without the auto sweep the late are marked, not captured (wave 4, lane
-    // E): every Antivirus booth hears `program_late` and the escort readout,
-    // and # quarantine pins one task per late program.
+    // E): every Antivirus booth hears one escort readout per late program
+    // (w13 Q31: the mark's readout says they are late; no separate ⏰), and
+    // # quarantine pins one task per late program.
     for (const g of ["g9", "g13"]) {
       expect(sim.isCaptured(g), g).toBe(false);
       expect(v(sim, `${g}.marked`), g).toBe(true);
@@ -1117,6 +1118,7 @@ describe("Trapped in the Internet — the whole night", () => {
     for (const who of PATROL) {
       expect(replies(late).filter((r) => r.to === who && r.text.includes("is late")).length, who).toBe(lateOnes.length);
       expect(replies(late).filter((r) => r.to === who && r.text.includes("marked for reinstallation")).length, who).toBe(lateOnes.length);
+      expect(replies(late).filter((r) => r.to === who && r.text.startsWith("!⏰")).length, who).toBe(0);
     }
     expect(composeGuestMessages(sim, late).filter((m) => m.channel === "room:quarantine" && m.pin !== undefined).map((m) => m.pin).sort()).toEqual([...lateOnes].sort());
     // The director's 🩹 on every late program: mercy, no trip to the tent (the
@@ -2105,13 +2107,17 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(armed).toEqual([
       "beat_the_machine", "brought_up_the_bag", "pickup_line_works", "plant_the_virus",
       "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_opened", "radio_wrong_patch",
+      // w13 Q29: 🛡 captures on the spot, from any phase.
+      "send to the internet",
     ]);
     // No admin cue carries it: the Director already arms every cue.
     for (const i of sim.model.interactions.values()) if (i.who === "admin") expect(i.arm, i.id).toBe(false);
     // It rides the booth's view (the patch-bay watch's 🔌 / 💥), never an unarmed button.
     const booth = primeView(sim, "CRA Agent Software").interactions ?? [];
     expect(booth.find((i) => i.id === "radio_combo_a")?.arm).toBe(true);
-    expect(booth.find((i) => i.id === "send to the internet")?.arm).toBeUndefined();
+    expect(booth.find((i) => i.id === "send to the internet")?.arm).toBe(true);
+    expect(primeView(sim, "Windows Defender").interactions?.find((i) => i.id === "send to the internet")?.arm).toBe(true);
+    expect(booth.find((i) => i.id === "mark as reinstalled")?.arm).toBeUndefined();
   });
 
   it("integration: a booth presses only its own `by:` buttons — a Hosts verdict from Norton's is refused", { timeout: SLOW }, async () => {

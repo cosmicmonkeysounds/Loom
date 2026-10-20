@@ -644,7 +644,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
   }, SLOW);
 
-  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's its 🛡, and 🩹 only on a marked program", () => {
+  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's none (🛡 folded, armed), and 🩹 only on a marked program", () => {
     // Per checkpoint: Clippy's objective-sourced face on each cleared,
     // unmarked guest's card, and the act.
     const clippy = new Map<string, string[]>();
@@ -660,12 +660,26 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
       clippy.set(label, [...new Set(faces.flat())]);
       if (!acts.has(act)) acts.set(act, new Set());
       for (const id of faces.flat()) acts.get(act)!.add(id);
-      // Windows Defender leads with 🛡 on every cleared guest (its pack:
-      // only when a host or the director asks), never the patch bay.
+      // Windows Defender's face is the scan alone (w13 Q29): 🛡 is under
+      // All buttons… (armed, only when a host or the director asks), never
+      // the patch bay. ♟ rides it only while the King is armed.
       for (const g of guests) {
         const wd = cardFace(n, "Windows Defender", g).face;
-        expect(wd[0], `${label}: Windows Defender on ${g}`).toBe("send to the internet");
-        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch"]) expect(wd).not.toContain(b);
+        expect(wd, `${label}: Windows Defender on ${g}`).not.toContain("send to the internet");
+        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch", "accuse", "mark as reinstalled"]) expect(wd, `${label}: Windows Defender on ${g}`).not.toContain(b);
+      }
+      // The patch-bay radios are not about the scanned guest: on the four
+      // room Antivirus' faces in the Y2K hour (Patch Bay Watch is NOW), never
+      // from the final reveal on (w13 Q33: Lights Down is NOW, the radios fold).
+      const radios = ["radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
+      for (const g of guests) {
+        const norton = cardFace(n, "Norton Anti-Virus", g).face;
+        if (label === "+30 min") expect(norton, `${label}: Norton on ${g}`).toContain("radio_combo_a");
+        if (label === "final_reveal" || label === "bobbing_for_truth" || label === "Adobe Acrobat: brought_up_the_bag g1") {
+          for (const b of radios) expect(norton, `${label}: Norton on ${g}`).not.toContain(b);
+          // …but still pressable (the fold) until 📄.
+          expect(guestCardView(n.sim, n.chat.all(), "Norton Anti-Virus", g, false)!.live, `${label}: Norton on ${g}`).toContain("radio_combo_a");
+        }
       }
       // The Antivirus' own buttons never reach Clippy's card (no hook: dead).
       for (const g of guests) {
@@ -814,4 +828,129 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
     expect(sheet).toMatch(/DRAFT/u);
     for (const id of Sim.fromSources(SRC).model.objectives.keys()) expect(sheet, id).toContain(`| ${id} |`);
   });
+});
+
+describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the mark and the 📝 card", () => {
+  const facts = (evs: readonly SimEvent[], g: string) =>
+    evs.filter((e) => e.type === "widget" && (e as { widget: string }).widget === "fact" && (e as { audience: string[] }).audience[0] === g).map((e) => (e as { text: string }).text);
+  const replyTo = (ms: readonly ChatMessage[], who: string) => ms.filter((m) => m.channel === `dm:${who}` && m.readout === true).map((m) => m.text);
+
+  it("🛡 arms first on every Antivirus booth, and Windows Defender's door objective puts nothing but the scan on a card (Q29)", () => {
+    const n = boot();
+    expect(n.sim.model.interactions.get("send to the internet")!.arm).toBe(true);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"]) {
+      expect(primeView(n.sim, who).interactions?.find((i) => i.id === "send to the internet")?.arm, who).toBe(true);
+    }
+    const door = primeView(n.sim, "Windows Defender").objectives!;
+    expect(door.map((o) => o.id)).toEqual(["Hold The Door"]);
+    expect(door[0]!.buttons).toEqual(["scan"]);
+  });
+
+  it("an Antivirus scan of a marked program says they are marked and where to go, never 'no threats found' (Q30)", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    expect(v(n.sim, "g5.marked")).toBe(true);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus"]) {
+      const out = n.scan(who, "g5");
+      const said = forGuest(out, "g5").filter((m) => m.channel === `dm:${who}`).map((m) => m.text);
+      expect(said.join("\n"), who).not.toMatch(/no threats found|Scanning\. Scanning\.|definitions are out of date/u);
+      expect(said.some((t) => t.includes("you are marked for reinstallation") && t.includes("the Internet")), who).toBe(true);
+      expect(replyTo(out, who).some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("🛡")), who).toBe(true);
+    }
+    // Windows Defender holds the door: it never says "come with me".
+    const door = n.scan("Windows Defender", "g5");
+    const doorSaid = forGuest(door, "g5").filter((m) => m.channel === "dm:Windows Defender").map((m) => m.text).join("\n");
+    expect(doorSaid).toContain("An Antivirus will escort you through the Tube to the Internet.");
+    expect(doorSaid).not.toMatch(/Come with me|no threats found/u);
+    expect(replyTo(door, "Windows Defender").some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("Stay at the door"))).toBe(true);
+    // An unmarked, cleared program still gets the old patter.
+    const ok = n.scan("Norton Anti-Virus", "g1");
+    expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
+  }, SLOW);
+
+  it("🩹 from an Antivirus reads 'cleared by the Antivirus'; from a host, 'cleared by a host' (Q32)", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    n.signal("uncertain_answer", "g6", undefined, "Clippy");
+    const av = n.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
+    expect(v(n.sim, "g5.marked")).toBe(false);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus"]) expect(replyTo(av, who), who).toContain("✅ Winamp: cleared by the Antivirus. Off the escort list.");
+    const host = n.signal("unmark_for_reinstallation", "g6", undefined, "Task Manager");
+    expect(v(n.sim, "g6.marked")).toBe(false);
+    expect(replyTo(host, "Norton Anti-Virus")).toContain("✅ VLC: cleared by a host. Off the escort list.");
+    // The count is read once: an Antivirus 🩹, a new mark, then a director's
+    // own `unmark_settle` (no booth) reads "by a host", never the old count.
+    n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    expect(v(n.sim, "g5.marked")).toBe(true);
+    expect(v(n.sim, "g5.unmark_av")).toBe(0);
+    const direct = n.signal("unmark_settle", "g5");
+    expect(replyTo(direct, "Norton Anti-Virus")).toContain("✅ Winamp: cleared by a host. Off the escort list.");
+    // An unmarked program: nothing to lift, # hosts says so, nothing counted.
+    const again = n.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
+    expect(replyTo(again, "Norton Anti-Virus").some((t) => t.startsWith("✅"))).toBe(false);
+  }, SLOW);
+
+  it("After The Night is live only once the night has ended: never under More objectives before (Q34)", () => {
+    const n = boot();
+    const ids = () => (primeView(n.sim, "Norton Anti-Virus").objectives ?? []).map((o) => o.id);
+    expect(ids()).toContain("Patrol The Computer");
+    expect(ids()).not.toContain("After The Night");
+    for (const c of TO_Y2K) n.press(c);
+    expect(ids()).not.toContain("After The Night");
+    toCeremony(n);
+    expect(ids()).toContain("After The Night");
+    expect(ids()).not.toContain("Patrol The Computer");
+  }, SLOW);
+
+  it("a marked program is dealt no 📝 card: its live card closes at the mark, a filing deals nothing new, and 🩹 deals the open round again (Q35)", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    expect(v(n.sim, "g5.fact_card_live")).toBe(true);
+    const markEv = n.sim.signal("uncertain_answer", "g5", undefined, "Clippy");
+    n.take(markEv);
+    expect(v(n.sim, "g5.marked")).toBe(true);
+    expect(facts(markEv, "g5")).toEqual(["📝 The filing is closed"]);
+    expect(v(n.sim, "g5.fact_card_live")).toBe(false);
+    // Three refused filings in a row: no card after any of them.
+    for (let i = 0; i < 3; i++) {
+      const f = n.sim.signal("fact answered", "g5", { question: "H2", answer: "a guess", confidence: 50, verdict: "uncertain" });
+      n.take(f);
+      expect(facts(f, "g5"), `filing ${i}`).toEqual([]);
+    }
+    expect(guestView(n.sim, "g5").restricted).toBe(true);
+    // The mark comes off: the open round's card comes back, once.
+    const lift = n.sim.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
+    n.take(lift);
+    expect(facts(lift, "g5")).toEqual(["📝 File a fact"]);
+    expect(v(n.sim, "g5.fact_card_live")).toBe(true);
+    // A round that opens while marked deals through its watcher on the 🩹.
+    n.signal("uncertain_answer", "g6", undefined, "Clippy");
+    for (const c of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) n.press(c);
+    expect(v(n.sim, "Night.round")).toBe(2);
+    expect(v(n.sim, "g6.marked")).toBe(true);
+    expect(v(n.sim, "g6.fact_card_live")).not.toBe(true);
+    expect(v(n.sim, "g6.fact_round")).toBe(1);
+    const back = n.sim.signal("unmark_for_reinstallation", "g6", undefined, "Task Manager");
+    n.take(back);
+    expect(facts(back, "g6")).toEqual(["📝 File a fact"]);
+    expect(v(n.sim, "g6.fact_round")).toBe(2);
+    expect(back.some((e) => e.type === "dialogue" && (e as { text: string }).text.startsWith("Round two"))).toBe(true);
+  }, SLOW);
+
+  it("the late list is one readout per late program on every room Antivirus booth (Q31)", () => {
+    const n = boot();
+    for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c);
+    for (const g of ["g1", "g2", "g3", "g4"]) n.scan("Norton Anti-Virus", g);
+    const late = n.press("summons_closed");
+    const lateOnes = ["g5", "g6"];
+    for (const g of lateOnes) expect(v(n.sim, `${g}.marked`), g).toBe(true);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"]) {
+      const r = replyTo(late, who).filter((t) => t.includes("Winamp") || t.includes("VLC"));
+      expect(r, who).toHaveLength(lateOnes.length);
+      for (const t of r) expect(t, who).toMatch(/^🚨 .+ is late for the Second Moment of Truth: marked for reinstallation\./u);
+    }
+    expect(replyTo(late, "Windows Defender").filter((t) => t.includes("late"))).toEqual([]);
+  }, SLOW);
 });
