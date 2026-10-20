@@ -100,3 +100,12 @@ describe("Trapped in the Internet — wave 13: one home per broadcast", () => {
     expect(alerts[0]!.channelKind).not.toBe("announcement");
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: the host parts", () => {
+  it("admin: true is on Task Manager, Adobe Acrobat and the Recycling Bin only (never Clippy)", () => {
+    const m = Sim.fromSources(SRC).model;
+    const admins = [...m.characters.values()].filter((c) => c.admin).map((c) => c.id).sort();
+    expect(admins).toEqual(["Adobe Acrobat", "Recycling Bin", "Task Manager"]);
+    expect(m.characters.get("Clippy")!.admin).toBe(false);
+  });
+});

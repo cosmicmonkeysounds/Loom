@@ -77,6 +77,10 @@ CHARACTER Clippy is Host
 CHARACTER Task Manager is Host
   avatar: File:Windows 11 TASKMGR.png | File:Windows Task Manager screenshot.png
   wiki: Task Manager (Windows)
+  // A host part (wave 13, D1/D8): signing in as it makes the booth a host
+  // (cues, judging, announcements, the alert dial). Never on TRAIT Host,
+  // which would reach Clippy.
+  admin: true
   // A drone bee of a middle manager. Keeps things running. Has no opinions.
 
   beat Greet(program)
@@ -97,6 +101,10 @@ CHARACTER Task Manager is Host
 
 CHARACTER Adobe Acrobat is Host
   avatar: File:Adobe Acrobat DC logo 2020.svg | File:Adobe Reader XI icon.png
+  // A host part (wave 13, D1/D8): signing in as it makes the booth a host
+  // (cues, judging, announcements, the alert dial). Never on TRAIT Host,
+  // which would reach Clippy.
+  admin: true
   // The paid bottleneck to everyone's creativity. Relentlessly motivational.
 
   beat Greet(program)
@@ -133,6 +141,10 @@ CHARACTER Adobe Acrobat is Host
 CHARACTER Recycling Bin is Host
   avatar: File:User-trash-full.svg
   wiki: Trash (computing)
+  // A host part (wave 13, D1/D8): signing in as it makes the booth a host
+  // (cues, judging, announcements, the alert dial). Never on TRAIT Host,
+  // which would reach Clippy.
+  admin: true
   // Hygiene and maintenance. The attendant of Disk Cleanup (the bathroom).
 
   beat Greet(program)
