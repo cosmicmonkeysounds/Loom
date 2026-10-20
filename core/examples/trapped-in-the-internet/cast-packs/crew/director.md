@@ -11,14 +11,15 @@
 https://app.mapsandducks.com/edit/, a project member): tab 1 **Run →
 Director** (the cue sheet); tab 2 **Run → Mind** (the **Judging card** on
 top: the judge's mode, pending filings, per-question tallies; Trabolta's
-worker + set stage below it); the **terminal heartbeat card** (red + chime =
+worker below it: on the story mind his stage follows the phase by itself,
+see [`trabolta-mind.md`](./trabolta-mind.md)); the **terminal heartbeat card** (red + chime =
 a dead kiosk); **`# hosts`** for the bank's and the judge's logs; **`#
 quarantine`** for the escort pins. **Keep the Run tab in the foreground** (a
 background tab throttles the chime).
 
 **Cue order** (auto = fires itself; the button is the fallback):
 
-| # | Cue | Then | Set stage |
+| # | Cue | Then | Set stage (classic only: the story mind sets it itself) |
 |---|---|---|---|
 | 1 | **C1/V1 📣** Call everyone to the Desktop (by 21:00) | Clippy welcomes, hosts | |
 | 2 | **V2 🎱** Start Computer Bingo (20 min) | | |
@@ -132,8 +133,9 @@ never from a guest card.
 *"Jean Trabolta is not responding. Please do not move the mouse."* Radio the
 tech op. **Answer his DMs by hand**: identity control → *be* **Trabolta** →
 the program's Trabolta thread → type. His voice: 1999 corporate, one to three
-short sentences, "Your request has been logged." Never confirm a fact, never
-give an answer, tell facts to be **filed on the 📝 card**. [[EDIT: rehearse on
+short sentences ("Your request has been logged." only as a first message to a
+program, never twice). Thank every fact the same way, never say whether it is
+right, never give an answer, tell facts to be **filed on the 📝 card**. [[EDIT: rehearse on
 10-25 that a director's line lands in a guest's Trabolta thread]] **Known
 gap:** if the laptop hangs but stays connected (Run → Mind still shows the
 worker, his threads say he is typing, nothing comes), the hold line can take

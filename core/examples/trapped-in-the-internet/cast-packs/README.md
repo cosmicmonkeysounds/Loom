@@ -31,6 +31,7 @@ addresses, codes, where things are kept).
 | [`crew/second-director.md`](./crew/second-director.md) | the second director (at Run all night) | |
 | [`crew/tech-operator.md`](./crew/tech-operator.md) | the tech operator (at the house Mac all night) | |
 | [`crew/house-manager.md`](./crew/house-manager.md) | the house manager (door after 20:30, safety lead) | |
+| [`crew/trabolta-mind.md`](./crew/trabolta-mind.md) | Run → Mind + the tech operator: Trabolta's story mind (wave 12), what a quiet Mind page means, the switches, when to flip to classic | rehearsed 10-25 |
 | **Featured guests** (one sheet each, for the invitee only) | | **[[EDIT: already sent with the invitations? If so these are reference copies — the invitations are the truth; the app's identity entries (`codex/5-people.loom`) and the red character facts (`facts.json`) were rewritten from them on 10-16, and every sheet's "Who you really are" / "Why you said yes" was rewritten from those entries the same day — re-read each against its invitation before any reprint]]** |
 | [`featured/microsoft-excel.md`](./featured/microsoft-excel.md) · [`openoffice`](./featured/openoffice.md) · [`draftkings`](./featured/draftkings.md) · [`bugdom`](./featured/bugdom.md) · [`broken-ask-jeeves`](./featured/broken-ask-jeeves.md) · [`runescape`](./featured/runescape.md) · [`ms-paint`](./featured/ms-paint.md) · [`vlc`](./featured/vlc.md) · [`pong`](./featured/pong.md) | | |
 
@@ -40,8 +41,9 @@ addresses, codes, where things are kept).
   invite one-pager at the apex). Invitations are out.
 - **One house Mac** does everything local: it drives the TV over the long HDMI
   run (`view=tv`), plays room audio through the **MOTU** (ADAT), and runs
-  Mosquitto, Zigbee2MQTT, stagehand `show` + `agents`, Ollama (48 GB: both
-  models stay loaded, `OLLAMA_MAX_LOADED_MODELS=2`) and the house announcement player. Where
+  Mosquitto, Zigbee2MQTT, stagehand `show` + `agents`, Ollama (48 GB; since
+  wave 12 only the voice model is loaded, while `OLLAMA_MAX_LOADED_MODELS=2`
+  stays so a switch back to the classic mind can load the second) and the house announcement player. Where
   OCT31 says "the TV computer" or "the Ollama laptop", read "the house Mac".
 - The PAUTIX strips are addressable, on an off-the-shelf **WLED** controller
   (presets; the Tube gets a chase).
