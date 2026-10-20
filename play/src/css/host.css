@@ -68,7 +68,7 @@
 .host-fire.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
 @media (max-width: 479px) {
   .host-bar-line1 .host-code-wide { display: none; }
-  .host-bar .host-code-narrow { display: inline-block; flex: 0 0 auto; padding: 0 4px; font-size: 11px; }
+  .host-bar .host-code-narrow { display: inline-block; flex: 0 0 auto; align-self: flex-start; padding: 0 4px; font-size: 11px; }
   .host-strip-optional { display: none; }
   .host-fire { min-width: 64px; padding: 0 8px; }
 }

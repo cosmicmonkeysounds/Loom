@@ -70,6 +70,10 @@ describe("the host console's touch targets", () => {
     // phone's layout viewport by 6 px with the drawer open.
     expect(rules(host).find((r) => r.sel === ".host-drawer-title .w95-x::after")?.body).toMatch(/inset:\s*0\b/u);
   });
+  it("on a phone the NEXT bar's code chip stays one line tall beside a two-line refusal", () => {
+    const chips = rules(host).filter((r) => r.sel === ".host-bar .host-code-narrow");
+    expect(chips.some((r) => /display:\s*inline-block/u.test(r.body) && /align-self:\s*flex-start/u.test(r.body))).toBe(true);
+  });
   it("a reply box inside a sheet fits the sheet's 8 px insets", () => {
     expect(rules(host).find((r) => r.sel === ".host-text.in-sheet")?.body).toMatch(/width:\s*calc\(100% - 16px\)/u);
   });
