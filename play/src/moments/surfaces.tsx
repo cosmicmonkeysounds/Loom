@@ -7,23 +7,33 @@
 //! colour from a token, so `plain` renders the same structure flat.
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { usePlayHost } from "../host.ts";
 import { WinDialog } from "../ui/window.tsx";
 import { faultAddress, type Moment, type Queued } from "./model.ts";
 
 /** Taps this soon after a modal appears are ignored (a tap meant for the app underneath). */
 export const MODAL_DEAD_MS = 400;
 
-type IconKind = "warning" | "info";
+type IconKind = "error" | "warning" | "info";
 
-/** Which Win95 icon a moment carries: a major moment is a warning, a minor one information. */
-export function iconOf(m: Pick<Moment, "severity">): IconKind {
-  return m.severity === "major" ? "warning" : "info";
+/** Which Win95 icon a moment carries — the way Win95 told severity, by the
+ *  box's icon, never its title bar: a `!` alarm is the red stop (error), any
+ *  other major moment the yellow warning, a minor one information. */
+export function iconOf(m: Pick<Moment, "severity"> & Partial<Pick<Moment, "kind">>): IconKind {
+  if (m.severity !== "major") return "info";
+  return m.kind === "alert" ? "error" : "warning";
 }
 
 /** The Win95 message-box icons, drawn (32 × 32 grid). */
 export function MomentIcon({ kind, size = 32 }: { kind: IconKind; size?: number }) {
   return (
     <svg className={`moments-ico moments-ico-${kind}`} width={size} height={size} viewBox="0 0 32 32" aria-hidden focusable="false">
+      {kind === "error" && (
+        <>
+          <circle className="moments-ico-stop" cx="16" cy="16" r="13.5" />
+          <path className="moments-ico-cross" d="M10.6 8.5 16 13.9l5.4-5.4 2.1 2.1-5.4 5.4 5.4 5.4-2.1 2.1-5.4-5.4-5.4 5.4-2.1-2.1 5.4-5.4-5.4-5.4Z" />
+        </>
+      )}
       {kind === "warning" && (
         <>
           <path className="moments-ico-warn" d="M16 2.5 30.5 28.5H1.5Z" />
@@ -93,24 +103,45 @@ export function Balloon({ q, canGo, onGo, onDismiss }: { q: Queued; canGo: boole
 
 // --- sticky -------------------------------------------------------------------
 
-/** The sticky notification bar: under the title bar, in flow, until tapped. */
-export function StickyBanner({ q, count, canGo, onGo, onDismiss }: { q: Queued; count: number; canGo: boolean; onGo: () => void; onDismiss: () => void }) {
+/** Who a sticky names before its words ("Trabolta: …", "New quest: …"),
+ *  or null when the icon already says what it is (an announcement, a
+ *  message, an objective's own title). Never a caption above the text. */
+export function stickyLead(m: Pick<Moment, "caption" | "kind">): string | null {
+  if (m.kind === "objective") return null;
+  const c = m.caption.trim();
+  return c === "" || c === "Announcement" || c === "Message" ? null : c;
+}
+
+/** The sticky notification bar: under the title bar, in flow, until tapped.
+ *  A `!` alarm is the full-yellow bar; anything else the info-tip yellow
+ *  with a dark frame. More than one waiting: "Dismiss all (n)". */
+export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }: { q: Queued; count: number; canGo: boolean; onGo: () => void; onDismiss: () => void; onDismissAll?: () => void }) {
   const m = q.moment;
+  const lead = stickyLead(m);
+  const alarm = m.severity === "major" && m.kind === "alert";
   return (
-    <div className={`moments-sticky ${m.severity}`} role={m.severity === "major" ? "alert" : "status"}>
-      <button type="button" className="moments-sticky-body" onClick={onDismiss} aria-label={`${m.caption}: ${m.text}. Tap to dismiss.`}>
+    <div className={`moments-sticky ${m.severity}${alarm ? " alarm" : ""}`} role={m.severity === "major" ? "alert" : "status"}>
+      <button type="button" className="moments-sticky-body" onClick={onDismiss} aria-label={`${lead !== null ? `${lead}: ` : ""}${m.text}. Tap to dismiss.`}>
         <span className="moments-sticky-icon">
           <MomentIcon kind={iconOf(m)} size={24} />
         </span>
         <span className="moments-sticky-words">
-          <span className="moments-sticky-caption">
-            {m.caption}
-            {count > 1 && <span className="moments-count"> · 1 of {count}</span>}
-          </span>
-          <MomentText m={m} className="moments-sticky-text" />
+          {m.kind === "objective" ? (
+            <MomentText m={m} className="moments-sticky-text" />
+          ) : (
+            <span className="moments-sticky-text">
+              {lead !== null && <strong className="moments-sticky-lead">{lead}: </strong>}
+              {m.text}
+            </span>
+          )}
         </span>
       </button>
       <span className="moments-sticky-actions">
+        {count > 1 && onDismissAll !== undefined && (
+          <button type="button" className="w95-btn moments-sticky-all" onClick={onDismissAll}>
+            Dismiss all ({count})
+          </button>
+        )}
         {canGo && (
           <button type="button" className="w95-btn moments-go" onClick={onGo}>
             {goLabel(m)} ›
@@ -140,7 +171,9 @@ export function MomentDialog({ q, index, total, canGo, onGo, onDismiss }: { q: Q
     if (live()) fn();
   };
   return (
-    <WinDialog title={m.caption} onClose={guard(onDismiss)} tone={m.severity === "major" && m.kind === "alert" ? "alarm" : undefined} label={`${m.caption}: ${m.text}`}>
+    // Severity is the box's icon (the red stop for a `!` alarm), never a
+    // recoloured title bar: Win95's message boxes all wore the navy caption.
+    <WinDialog title={m.caption} onClose={guard(onDismiss)} label={`${m.caption}: ${m.text}`}>
       <div className="moments-dialog">
         <div className="moments-dialog-row">
           <MomentIcon kind={iconOf(m)} />
@@ -172,9 +205,19 @@ export function MomentDialog({ q, index, total, canGo, onGo, onDismiss }: { q: Q
 
 // --- blue screen ----------------------------------------------------------------
 
-/** The blue screen: the whole phone, white on blue, "Press any key to continue". */
-export function BlueScreen({ q, index, total, canGo, onGo, onDismiss }: { q: Queued; index: number; total: number; canGo: boolean; onGo: () => void; onDismiss: () => void }) {
+/** Does this pane wear the Win95 skin (`aol97`)? Unknown (no page) → yes. */
+function useWin95(): boolean {
+  const root = usePlayHost().themeRoot();
+  return root === null || root.dataset["theme"] === "aol97";
+}
+
+/** The blue screen: the whole phone, white on blue, "Press any key to
+ *  continue". Under `plain` the same full-screen frame with neutral copy:
+ *  no fault address, no "Press any key", just "Tap to continue". */
+export function BlueScreen({ q, index, total, canGo, onGo, onDismiss, win95: forced }: { q: Queued; index: number; total: number; canGo: boolean; onGo: () => void; onDismiss: () => void; win95?: boolean }) {
   const m = q.moment;
+  const skinned = useWin95();
+  const win95 = forced ?? skinned;
   const box = useRef<HTMLDivElement>(null);
   const live = useDeadTime();
   useEffect(() => {
@@ -203,7 +246,7 @@ export function BlueScreen({ q, index, total, canGo, onGo, onDismiss }: { q: Que
     e.stopPropagation();
     if (live()) onGo();
   };
-  const head = (m.caption || "Windows").toUpperCase();
+  const head = win95 ? (m.caption || "Windows").toUpperCase() : m.caption || "Important";
   return (
     <div ref={box} className="moments-bsod" role="alertdialog" aria-modal="true" aria-labelledby="moments-bsod-head" aria-describedby="moments-bsod-text" tabIndex={-1} onClick={onClick} onKeyDown={onKey}>
       <div className="moments-bsod-inner">
@@ -217,22 +260,40 @@ export function BlueScreen({ q, index, total, canGo, onGo, onDismiss }: { q: Que
             </span>
           )}
         </div>
-        <p className="moments-bsod-fault">
-          A fatal exception 0E has occurred at {faultAddress(m.key)}. The current program has stopped to show you this:
-        </p>
+        {win95 && (
+          <p className="moments-bsod-fault">
+            A fatal exception 0E has occurred at {faultAddress(m.key)}. The current program has stopped to show you this:
+          </p>
+        )}
         <MomentText m={m} className="moments-bsod-text" />
-        <ul className="moments-bsod-list">
-          <li>Tap anywhere to continue.</li>
-          {canGo && (
-            <li>
+        {win95 ? (
+          <ul className="moments-bsod-list">
+            <li>Tap anywhere to continue.</li>
+            {canGo && (
+              <li>
+                <button type="button" className="moments-bsod-go" onClick={go}>
+                  {goLabel(m)}
+                </button>
+              </li>
+            )}
+          </ul>
+        ) : (
+          canGo && (
+            <p className="moments-bsod-plain-go">
               <button type="button" className="moments-bsod-go" onClick={go}>
                 {goLabel(m)}
               </button>
-            </li>
-          )}
-        </ul>
+            </p>
+          )
+        )}
         <p id="moments-bsod-text" className="moments-bsod-press">
-          Press any key to continue <span className="moments-bsod-caret" aria-hidden>_</span>
+          {win95 ? (
+            <>
+              Press any key to continue <span className="moments-bsod-caret" aria-hidden>_</span>
+            </>
+          ) : (
+            "Tap to continue"
+          )}
         </p>
       </div>
     </div>
