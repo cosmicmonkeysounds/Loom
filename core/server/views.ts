@@ -6,7 +6,7 @@ import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import { asNumber, display, type Value } from "../src/runtime/expr.ts";
 import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
 import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
-import { codexAboutKind, type ChatMessage } from "./chat.ts";
+import { codexAboutKind, storyPhase, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
 import { isSecretRoleSlot } from "../src/runtime/sim/board.ts";
 import type { AgentMindReport, AgentQueue } from "./agents.ts";
@@ -1387,7 +1387,8 @@ export function nightView(sim: Sim): NightView {
     }
     const step = worldText(sim, "Night.step");
     const n = step === null ? NaN : Number(step);
-    return { act, phase: worldText(sim, "Night.phase"), step: Number.isFinite(n) ? n : null };
+    // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
+    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null };
   });
 }
 
