@@ -11,8 +11,8 @@ import { wakeLockSupported } from "./wake-lock.ts";
 /** What an iPhone card / row says (pure — `test/push.test.ts`). `booth`: a
  *  performer's icon signs in afresh, so they sign out of this tab first
  *  (that frees the part). `wakeLock`: the "Keep my screen on" item exists —
- *  under the guest's ⊞ Start, the booth's ☰ (Safari before iOS 16.4 has
- *  none — say Auto-Lock instead). */
+ *  under ⊞ Start, in a guest's app and a booth alike since wave 13 (Safari
+ *  before iOS 16.4 has none — say Auto-Lock instead). */
 export function iosPushCopy(
   state: PushState,
   booth: boolean,
@@ -22,12 +22,12 @@ export function iosPushCopy(
   const app = title ? title : "the app";
   if (state === "ios-install") {
     const then = booth
-      ? "then ☰ → Sign out, and sign in from the Home Screen icon. Tap 🔔 there."
+      ? "then ⊞ Start → Sign out, and sign in from the Home Screen icon. Tap 🔔 there."
       : `then open ${app} from the new icon and tap 🔔 there. You'll still be you.`;
     return { head: "Get alerts on your iPhone", body: `tap Share → Add to Home Screen, ${then}` };
   }
   if (state === "ios-keep-open") {
-    const how = wakeLock ? `${booth ? "☰" : "⊞ Start"} → Keep my screen on` : "Settings → Display & Brightness → Auto-Lock → Never";
+    const how = wakeLock ? "⊞ Start → Keep my screen on" : "Settings → Display & Brightness → Auto-Lock → Never";
     return { head: "Your iPhone can't get alerts", body: `keep ${app} open with the screen on (${how}).` };
   }
   return null;

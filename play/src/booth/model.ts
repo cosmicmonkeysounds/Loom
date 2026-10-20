@@ -249,6 +249,19 @@ export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: 
   return out;
 }
 
+/** The booth's own sections, never folded however quiet. */
+const BOOTH_KEEP_SPACES: ReadonlySet<string> = new Set(["pinned", "staff", "booth", "cast"]);
+
+/** Which booth rooms may fold into "Other rooms (n)": the house's — its
+ *  location rooms and the story's chatrooms (`# back-channel`, `# general`)
+ *  — when empty and quiet (`roomTier` decides that). Readouts, the Wallet,
+ *  the staff rooms, the Cast, the broadcast feed and a guest's thread stay
+ *  up. */
+export function boothFoldable(c: Pick<Channel, "kind" | "spaceId">): boolean {
+  if (BOOTH_KEEP_SPACES.has(c.spaceId)) return false;
+  return c.kind !== "lobby" && c.kind !== "guest";
+}
+
 /** The guests matching a search, by name or id (folded), sorted by name. */
 export function filterGuests(guests: readonly PrimeGuest[], q: string): PrimeGuest[] {
   const needle = foldName(q);

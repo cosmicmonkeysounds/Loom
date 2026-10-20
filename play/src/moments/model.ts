@@ -254,6 +254,18 @@ export function loudObjectives(objectives: readonly ObjectiveView[] | undefined,
   return out;
 }
 
+/**
+ * Where a moment's "Take me there" goes (pure): the pass when it is about
+ * the pass and the app can open it, its room when it has one and the app
+ * can open rooms, else nowhere (no button). A guest on rails in a cutscene
+ * opens no room, so a house announcement there offers no exit that would
+ * only change the room hidden behind the stage.
+ */
+export function momentExit(m: Pick<Moment, "pass" | "channel">, can: { room: boolean; pass: boolean }): "pass" | "room" | null {
+  if (m.pass === true) return can.pass ? "pass" : null;
+  return m.channel !== null && can.room ? "room" : null;
+}
+
 // --- the queue ----------------------------------------------------------------
 
 /** A moment in the queue, on its rung. */
@@ -308,6 +320,8 @@ export type MomentsAction =
   | { type: "relevel"; level: AlertLevel; role: Viewer["role"] }
   /** `!` pins taken down since (`retractedPinSeqs`): drop them wherever they wait. */
   | { type: "retract"; seqs: ReadonlySet<number> }
+  /** The objectives live now: a loud objective's moment (`o:<id>`) whose objective has ended leaves wherever it waits (a cleared guest is never told to show their pass). */
+  | { type: "objectives"; live: ReadonlySet<string> }
   /** The story restarted: nothing queued is news any more. */
   | { type: "reset" };
 
@@ -438,6 +452,18 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
     }
     case "retract": {
       const gone = (m: Moment) => m.seq !== null && a.seqs.has(m.seq);
+      const queue = s.queue.some((q) => gone(q.moment)) ? s.queue.filter((q) => !gone(q.moment)) : s.queue;
+      const missed = s.missed.some(gone) ? s.missed.filter((m) => !gone(m)) : s.missed;
+      let summary = s.summary;
+      if (summary !== null && summary.moments.some(gone)) {
+        const left = summary.moments.filter((m) => !gone(m));
+        summary = left.length === 0 ? null : { ...summary, moments: left };
+      }
+      if (queue === s.queue && missed === s.missed && summary === s.summary) return s;
+      return { ...s, queue, missed, summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+    }
+    case "objectives": {
+      const gone = (m: Moment) => m.kind === "objective" && m.key.startsWith("o:") && !a.live.has(m.key.slice(2));
       const queue = s.queue.some((q) => gone(q.moment)) ? s.queue.filter((q) => !gone(q.moment)) : s.queue;
       const missed = s.missed.some(gone) ? s.missed.filter((m) => !gone(m)) : s.missed;
       let summary = s.summary;

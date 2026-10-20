@@ -455,6 +455,24 @@ describe("the loud objective", () => {
     expect(first[1]!.text).toBe("Do c\nHold it up.");
     expect(loudObjectives(list, new Set(["a", "c"]), 0, null)).toEqual([]);
   });
+
+  it("an objective that ended takes its moment with it: a cleared guest is never told to show their pass", () => {
+    const [pass] = loudObjectives([o("pass", { loud: true, buttons: ["pass"] })], new Set(), 0, "arrival");
+    const other = moment(7, { text: "Other." });
+    // Waiting on screen, and missed behind a locked phone.
+    let s = run([arrive([pass!, other])]);
+    s = momentsReducer(s, { type: "objectives", live: new Set(["explore"]) });
+    expect(s.queue.map((q) => q.moment.key)).toEqual([other.key]);
+    let t = run([arrive([pass!], { visible: false })]);
+    t = momentsReducer(t, { type: "objectives", live: new Set() });
+    t = momentsReducer(t, { type: "wake", level: "sticky", role: "guest", now: 0, phase: "hunt" });
+    expect(t.queue).toEqual([]);
+    // Still live: kept, and the state is the same object.
+    const u = run([arrive([pass!])]);
+    expect(momentsReducer(u, { type: "objectives", live: new Set(["pass"]) })).toBe(u);
+    // A message moment is never an objective's.
+    expect(momentsReducer(run([arrive([other])]), { type: "objectives", live: new Set() }).queue).toHaveLength(1);
+  });
 });
 
 describe("the toast never replaces a moment", () => {

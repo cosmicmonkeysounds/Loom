@@ -7,12 +7,20 @@ import type { Channel } from "../types.ts";
 import { Avatar, Badge } from "../ui/primitives.tsx";
 import { widgetLabel } from "../widgets.tsx";
 import { foldRooms } from "./order.ts";
-import { groupBySpace, prettyName, type SpaceGroup } from "./spaces.ts";
+import { prettyName, type SpaceGroup } from "./spaces.ts";
 
 // --- the sidebar (rooms) ------------------------------------------------------
 
-function lastPreview(c: Channel): string {
-  const last = c.messages[c.messages.length - 1];
+/** The newest line a room's row previews: never a GENERATOR bark (barks
+ *  live in the room's dim ticker, not its conversation). */
+function lastSaid(c: Channel): Channel["messages"][number] | undefined {
+  for (let i = c.messages.length - 1; i >= 0; i--) if (c.messages[i]!.ambient !== true) return c.messages[i];
+  return undefined;
+}
+
+/** A room row's second line: the decision waiting, else the newest line. */
+export function lastPreview(c: Channel): string {
+  const last = lastSaid(c);
   if (c.decision) return `▶ ${c.decision.title}`;
   if (!last) return "";
   if (last.kind === "widget" && last.widget) return widgetLabel(last.widget);
@@ -52,6 +60,18 @@ export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel
   );
 }
 
+/** The sections with the folded rooms taken out (pure): each keeps its own
+ *  title and order (a booth's "Messages" stays "Messages"), and a section
+ *  left empty goes. */
+export function foldSections(spaces: readonly SpaceGroup[], folded: readonly Channel[]): SpaceGroup[] {
+  if (folded.length === 0) return [...spaces];
+  const gone = new Set(folded.map((c) => c.id));
+  return spaces.flatMap((s) => {
+    const channels = s.channels.filter((c) => !gone.has(c.id));
+    return channels.length > 0 ? [{ ...s, channels }] : [];
+  });
+}
+
 /** The fold's button: "Other rooms (9)". */
 export function otherRoomsLabel(n: number): string {
   return `Other rooms (${n})`;
@@ -78,13 +98,17 @@ export function SpaceList({
   onOpen: (id: string) => void;
   header?: ReactNode;
   empty?: ReactNode;
-  /** Gather the empty rooms into "Other rooms (n)" (the guest's list). */
-  fold?: boolean;
+  /** Gather the empty rooms into "Other rooms (n)": `true` any quiet room
+   *  (the guest's list), a predicate only the rooms it passes (the booth's). */
+  fold?: boolean | ((c: Channel) => boolean);
 }) {
   const [othersOpen, setOthersOpen] = useState(false);
   const all = spaces.flatMap((s) => s.channels);
-  const { shown, folded } = fold ? foldRooms(all, activeId) : { shown: all, folded: [] };
-  const sections = fold ? groupBySpace(shown) : spaces;
+  // `fold` may name which rooms are allowed to fold (a booth folds only the
+  // house's empty rooms, never its own tools).
+  const candidates = typeof fold === "function" ? all.filter(fold) : all;
+  const { folded } = fold !== false ? foldRooms(candidates, activeId) : { folded: [] };
+  const sections = foldSections(spaces, folded);
   const total = all.length;
   return (
     <div className="screen side">

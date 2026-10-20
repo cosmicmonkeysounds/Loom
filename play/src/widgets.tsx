@@ -261,7 +261,7 @@ function TutorialCard({ card, answered, onAnswer }: WidgetProps) {
  * `show pass "Hold it up for the Antivirus." to program` — the guest's own
  * pass, right in the conversation: the QR a performer scans (their id),
  * big enough to hold up. The story deals it at the moment it asks for it,
- * so a guest on rails never has to find the ☰ menu. Never answers.
+ * so a guest on rails never has to find ⊞ Start or the 🎟 Pass button. Never answers.
  */
 export function PassCard({ card, viewer }: WidgetProps) {
   return (

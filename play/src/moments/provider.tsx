@@ -25,6 +25,7 @@ import {
   arrivals,
   doneAbove,
   missedCount,
+  momentExit,
   momentsReducer,
   sameWords,
   settledMark,
@@ -55,8 +56,8 @@ export interface MomentsInput {
   /** `view.night.phase` (staleness). */
   phase: string | null | undefined;
   clock: number | undefined;
-  /** "Take me there". */
-  openRoom: (channelId: string) => void;
+  /** "Take me there". Absent → no room exit (a guest on rails in a cutscene). */
+  openRoom?: (channelId: string) => void;
   /** Booth filter (`boothAlertFilter(character)`); guests pass none. */
   filter?: (m: ChatMessage) => boolean;
   sound: boolean;
@@ -234,6 +235,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     if (session === null || input.objectives === undefined) return;
     const fresh = announceLoud(host.storage, role, session, input.objectives, storyNow([], input.clock), live.current.phase);
     arrive(fresh, false);
+    // An objective that ended takes its moment with it.
+    dispatch({ type: "objectives", live: new Set(input.objectives.map((o) => o.id)) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives, session]);
 
@@ -327,11 +330,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [input.alertLevel]);
 
   const { openRoom, openPass } = input;
-  const canGo = useCallback((m: Moment) => (m.pass === true ? openPass !== undefined : m.channel !== null), [openPass]);
+  const canGo = useCallback((m: Moment) => momentExit(m, { room: openRoom !== undefined, pass: openPass !== undefined }) !== null, [openRoom, openPass]);
   const go = useCallback(
     (m: Moment) => {
-      if (m.pass === true) openPass?.();
-      else if (m.channel !== null) openRoom(m.channel);
+      const exit = momentExit(m, { room: openRoom !== undefined, pass: openPass !== undefined });
+      if (exit === "pass") openPass?.();
+      else if (exit === "room" && m.channel !== null) openRoom?.(m.channel);
     },
     [openRoom, openPass],
   );

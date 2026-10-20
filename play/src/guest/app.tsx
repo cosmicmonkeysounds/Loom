@@ -70,6 +70,21 @@ export function useCutscene(inCutscene: boolean): { showing: boolean; over: bool
 }
 
 /**
+ * "Take me there" to a room, for the moments layer: none while the story
+ * keeps the guest on rails in a cutscene (the room would only change behind
+ * the stage, and the moment would close as done); once the story has moved
+ * them on (Continue is up) it steps into the app and opens the room.
+ */
+export function roomExit(cut: { showing: boolean; over: boolean; leave: () => void }, open: (id: string) => void): ((id: string) => void) | undefined {
+  if (!cut.showing) return open;
+  if (!cut.over) return undefined;
+  return (id) => {
+    cut.leave();
+    open(id);
+  };
+}
+
+/**
  * The guest frame's root: `.root.app-frame`, the flex column
  * `[title bar][pins][shell][taskbar]`. It owns the keyboard rule — while a
  * text field inside it has focus the taskbar steps aside, so a guest typing
@@ -100,7 +115,6 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const host = usePlayHost();
   const s = useGuestSession();
   const wide = useWide();
-  const [profile, setProfile] = useState(false);
   const [sharing, setSharing] = useState<{ entry: string; title: string } | null>(null);
   const [people, setPeople] = useState<ReadonlySet<string> | "all" | null>(null);
   const [help, setHelp] = useState(false);
@@ -141,8 +155,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // cutscene (it waits for the guest to step into the app).
   const tour = !cut.showing && s.me !== null ? pendingWidget(s.messages, "tutorial", new Set(s.widgetAnswers.keys())) : null;
   const tourSeq = tour?.seq ?? null;
-  // On a wide screen the stage is never blank: open the natural room.
-  const signedIn = s.me !== null && s.ready;
+  // On a wide screen the stage is never blank: open the natural room — once
+  // the guest is in the app. Not under the cutscene, or its rail-time room
+  // (The Uploader's thread, asking for the upload) would still be open
+  // after Continue instead of the room they now stand in.
+  const signedIn = s.me !== null && s.ready && !cut.showing;
   const activeId = t.activeId;
   const home = homeChannel(t.list);
   useEffect(() => {
@@ -219,7 +236,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     );
   }
 
-  // The moments layer (wave 13): Stage A renders the alert banner as before.
+  // The moments layer (wave 13): one provider over both the cutscene and the
+  // main frame, so the queue, its holds and the beat's blue screen carry
+  // across the cutscene → app switch.
   const moments: MomentsInput = {
     role: "guest",
     me: s.me.id,
@@ -230,15 +249,23 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     objectives: st.objectives,
     phase: st.night?.phase,
     clock: st.clock,
-    openRoom: t.open,
+    // No room exit while on rails in the cutscene.
+    openRoom: roomExit(cut, t.open),
     sound: host.sound,
+    // The room the guest stands in: its beat lines reach the blue screen.
+    here: st.location !== null ? `loc:${st.location}` : null,
+    // "Take me there" on the loud "show your pass" objective.
+    openPass: () => setPassing(true),
   };
+  // Both branches below return through `framed`, so the provider is the same
+  // element at the root: React keeps the one engine (its queue and holds)
+  // when the cutscene hands over to the app.
+  const framed = (body: ReactElement) => <MomentsProvider {...moments}>{body}</MomentsProvider>;
 
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
     const where = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
-    return (
-      <MomentsProvider {...moments}>
+    return framed(
       <div className="root cut-root">
         <MomentsLayer />
         <CutsceneStage
@@ -249,13 +276,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           widgets={widgets}
           over={cut.over}
           onContinue={cut.leave}
-          onPass={() => setProfile(true)}
+          onPass={() => setPassing(true)}
           offline={offline}
         />
-        {profile && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => setProfile(false)} />}
+        {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => setPassing(false)} />}
         {takeover}
-      </div>
-      </MomentsProvider>
+      </div>,
     );
   }
 
@@ -400,8 +426,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   );
   // The rooms a typed code may name (a sign's room name checks in).
   const scanRooms = t.list.filter((c) => c.kind === "location").map((c) => ({ id: c.id, title: c.title }));
-  return (
-    <MomentsProvider {...moments}>
+  return framed(
     <AvatarsContext.Provider value={avatars}>
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
     <WalletActionsProvider value={guestWalletActions(st.wallet ?? null, s.me.id, walletClock, restricted, s.wallet)}>
@@ -411,8 +436,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       taskbar={taskbar}
       head={
         <>
-          <MomentsLayer />
           <TitleBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} />
+          <MomentsLayer />
           <PinnedRail pins={pins} />
           <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
         </>
@@ -501,7 +526,6 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     </FrameRoot>
     </WalletActionsProvider>
     </CardActionsProvider>
-    </AvatarsContext.Provider>
-    </MomentsProvider>
+    </AvatarsContext.Provider>,
   );
 }
