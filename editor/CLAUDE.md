@@ -237,7 +237,15 @@ mute, per-row device badges (SW-SCR-21 `terminalBadges` / `majorityVersion`:
 amber *old build*), a room terminal's `room X` (amber off the
 `server-room` spot, `strayRoom`: a tablet that was the TV once and kept
 its room) and an **identify** button
-(`POST /api/mod/screen/identify`); a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
+(`POST /api/mod/screen/identify`); wave 14: each row's map spot
+(`📍 <spot name>`, amber *⚠ X not on map* or when two live terminals claim
+it, muted *no spot*), *Unclaimed spots:* (map spots no live terminal
+claims), and **🛠 Set up a terminal…** (`run/TerminalSetup.tsx`): spot /
+view / room / character selects off the house map (`mapApi.house` →
+`GET /api/spatial/house`, held on `store/terminals.ts` `map` / `mapRooms`),
+`TERMINAL_VIEWS` (shadow included), the story's LOCATIONs and the cast
+(agent-voiced first) → the `/terminal/?code=<mod>&…` link + QR + copy;
+pure rules in `lib/terminal-setup.ts`; a `📟 N/N` header pill; `store/terminals.ts` is bound from `App.tsx`
 to the server run so it chimes from any mode, rules in pure
 `lib/terminals.ts`, sound in `lib/chime.ts`), **Wallet** (wave 5 E2,
 `run/WalletCard.tsx` + pure `cockpit/wallet.ts`; only when the story has a

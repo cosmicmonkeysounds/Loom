@@ -6,7 +6,7 @@
 //! rules live in the pure `lib/terminals.ts`.
 
 import { create } from 'zustand'
-import { screensApi } from '@/lib/api'
+import { mapApi, screensApi } from '@/lib/api'
 import { playChime } from '@/lib/chime'
 import {
   TERMINALS_POLL_MS,
@@ -18,6 +18,7 @@ import {
   type TerminalMemory,
   type TerminalRow,
 } from '@/lib/terminals'
+import { mapLocations, mapTerminals, type MapTerminal } from '@/lib/terminal-setup'
 
 interface TerminalsState {
   eventId: string | null
@@ -26,6 +27,13 @@ interface TerminalsState {
   voiceMuted: boolean | null
   /** Why the last TV-mute flip failed (offline, a 403), shown on the card; null = fine. */
   muteError: string | null
+  /** The terminal spots of the house map the event plays now (wave 14);
+   *  null = no map (or not read yet / an older server) — nothing is flagged. */
+  map: MapTerminal[] | null
+  /** The LOCATIONs the map's rooms name (the builder's room options lead with them). */
+  mapRooms: string[]
+  /** Re-read the house map now (a variant switch moves the spots). */
+  loadMap: () => Promise<void>
   /** The last poll reached the server. */
   reachable: boolean
   /** Silent terminals the director has acknowledged (no re-chime). */
@@ -49,6 +57,10 @@ let timer: ReturnType<typeof setInterval> | null = null
 let memory: TerminalMemory = {}
 let lastChime = 0
 let inFlight = false
+let mapInFlight = false
+let ticks = 0
+/** The house map is re-read every this many polls (a tent ⇄ shed switch moves the spots). */
+const MAP_EVERY_TICKS = 8
 
 const keyOf = (eventId: string) => `loom.terminals.${eventId}`
 /** A remembered terminal unseen this long is dropped on load (last week's rehearsal tablets). */
@@ -85,6 +97,8 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   identifyError: null,
   reachable: true,
   acked: new Set(),
+  map: null,
+  mapRooms: [],
 
   bind: (eventId) => {
     if (get().eventId === eventId) return
@@ -92,10 +106,30 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
     timer = null
     memory = eventId === null ? {} : load(eventId)
     lastChime = 0
-    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, identifyError: null, reachable: true, acked: new Set() })
+    ticks = 0
+    set({ eventId, rows: mergeTerminals(memory, null, Date.now()).rows, voiceMuted: null, muteError: null, identifyError: null, reachable: true, acked: new Set(), map: null, mapRooms: [] })
     if (eventId === null) return
     timer = setInterval(() => void get().tick(), TERMINALS_POLL_MS)
     void get().tick()
+    void get().loadMap()
+  },
+
+  loadMap: async () => {
+    const eventId = get().eventId
+    if (eventId === null || mapInFlight) return
+    mapInFlight = true
+    try {
+      const wire = await mapApi.house(eventId)
+      if (get().eventId === eventId) {
+        const map = mapTerminals(wire)
+        // A map with no rooms read is no map (an older server's shape).
+        set({ map: map.length > 0 || mapLocations(wire).length > 0 ? map : null, mapRooms: mapLocations(wire) })
+      }
+    } catch {
+      // 503 "no house map" or a blip: keep the last reading (null until one lands).
+    } finally {
+      mapInFlight = false
+    }
   },
 
   ack: (name) => set((s) => ({ acked: new Set([...s.acked, name]) })),
@@ -132,6 +166,7 @@ export const useTerminals = create<TerminalsState>((set, get) => ({
   tick: async () => {
     const eventId = get().eventId
     if (eventId === null || inFlight) return
+    if (++ticks % MAP_EVERY_TICKS === 0) void get().loadMap()
     inFlight = true
     let server: ScreenTerminals | null
     try {

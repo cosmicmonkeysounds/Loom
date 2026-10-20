@@ -8,11 +8,17 @@
 //! terminal build reports and an **identify** button (SW-SCR-21): install
 //! day's "which tablet is this?" — its name full screen for 10 s. A room
 //! terminal (wave 7) says its room; one off the server-room spot is amber.
+//! Wave 14: each row says which house map spot it claims (amber when the spot
+//! isn't on the map playing now, or two live terminals claim it), the map's
+//! spots no live terminal claims are listed, and **Set up a terminal**
+//! (`TerminalSetup.tsx`) builds a tablet's provisioning link from pickers.
 
 import clsx from 'clsx'
 import { CockpitTab, useCockpit } from '@/store/cockpit'
 import { useTerminals } from '@/store/terminals'
 import { ROOM_TERMINAL_SPOT, TerminalStatus, formatSilence, isTvView, majorityVersion, strayRoom, terminalBadges } from '@/lib/terminals'
+import { SpotClaim, doubleClaims, spotClaim, unclaimedSpots, viewOption } from '@/lib/terminal-setup'
+import { TerminalSetup } from './TerminalSetup'
 
 /** `📟 5/6` in the stage header — red while any terminal is silent; click → Run. */
 export function TerminalsPill() {
@@ -48,7 +54,11 @@ export function TerminalsCard() {
   const muteError = useTerminals((s) => s.muteError)
   const identify = useTerminals((s) => s.identify)
   const identifyError = useTerminals((s) => s.identifyError)
+  const map = useTerminals((s) => s.map)
   const majority = majorityVersion(rows)
+  const doubled = doubleClaims(rows)
+  const unclaimed = map === null ? [] : unclaimedSpots(map, rows)
+  const spotName = (id: string) => map?.find((t) => t.id === id)?.name ?? id
   const silent = rows.some((r) => r.status === TerminalStatus.Silent)
   const hasTv = rows.some((r) => isTvView(r.view))
 
@@ -106,8 +116,9 @@ export function TerminalsCard() {
               >
                 <span className={clsx('h-2 w-2 shrink-0 rounded-full', dead ? 'bg-red-500' : 'bg-emerald-500')} />
                 <span className="font-medium">{r.name}</span>
-                <span className="text-zinc-500">
-                  {[r.spot, r.view].filter((x) => x !== '').join(' · ')}
+                <SpotBadge spot={r.spot} claim={spotClaim(r.spot, map)} doubled={!dead && doubled.has(r.spot)} name={spotName(r.spot)} />
+                <span className="text-zinc-500" title={viewOption(r.view)?.help}>
+                  {r.view}
                   {r.remembered ? ' · not seen since the server restarted' : ''}
                 </span>
                 {r.room !== '' && (
@@ -165,6 +176,18 @@ export function TerminalsCard() {
           })}
         </ul>
       )}
+      {unclaimed.length > 0 && (
+        <p className="mt-2 text-xs text-zinc-500" data-testid="run-terminals-unclaimed">
+          <span className="text-zinc-400">Unclaimed spots:</span>{' '}
+          {unclaimed.map((t, i) => (
+            <span key={t.id} title={`${t.id}${t.location !== '' ? ` · ${t.location}` : ''}: no live terminal says it hangs here`}>
+              {i > 0 ? ' · ' : ''}
+              {t.name}
+            </span>
+          ))}
+        </p>
+      )}
+      <TerminalSetup />
       {silent && (
         <p className="mt-2 text-xs text-zinc-500">
           A silent tablet: tap it / reload in Fully Kiosk, check its Wi-Fi and power, or swap the spare. The chess phone never shows
@@ -172,5 +195,38 @@ export function TerminalsCard() {
         </p>
       )}
     </section>
+  )
+}
+
+/** A row's map spot: plain when it is on the map playing now, amber when it
+ *  isn't (an old id, the other variant's) or another live terminal claims it,
+ *  muted *no spot* when the tablet was provisioned unplaced. */
+function SpotBadge({ spot, claim, doubled, name }: { spot: string; claim: SpotClaim; doubled: boolean; name: string }) {
+  if (claim === SpotClaim.Unplaced) {
+    return (
+      <span className="text-[10px] text-zinc-600" title="Provisioned with no map spot: no world view, and the map can’t place it" data-testid="run-terminal-spot" data-claim={claim}>
+        no spot
+      </span>
+    )
+  }
+  const warn = claim === SpotClaim.OffMap || doubled
+  return (
+    <span
+      className={clsx('rounded px-1 text-[10px]', warn ? 'bg-amber-950/60 text-amber-200' : 'text-zinc-400')}
+      title={
+        claim === SpotClaim.OffMap
+          ? `Spot “${spot}” is not on the house map playing now: re-provision it with Set up a terminal`
+          : doubled
+            ? `Two live terminals claim ${spot}: one was set up from a copied link`
+            : claim === SpotClaim.Unknown
+              ? `Spot ${spot} (the house map isn’t known)`
+              : `Hangs on the map’s ${spot} spot`
+      }
+      data-testid="run-terminal-spot"
+      data-claim={claim}
+      data-doubled={doubled ? 'true' : undefined}
+    >
+      {claim === SpotClaim.OffMap ? `⚠ ${spot} not on map` : `📍 ${claim === SpotClaim.OnMap ? name : spot}`}
+    </span>
   )
 }

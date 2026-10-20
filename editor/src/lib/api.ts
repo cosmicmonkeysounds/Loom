@@ -499,6 +499,12 @@ export const mapApi = {
   async switchVariant(eventId: string, file: string, base?: string): Promise<SwitchVariantResult> {
     return await req<SwitchVariantResult>('POST', `/e/${eventId}/api/mod/spatial/variant`, base !== undefined ? { file, base } : { file })
   },
+  /** The house map the event plays now (`GET /api/spatial/house`, read with
+   *  the author's session) — the Terminals card's spot pickers and claims
+   *  (wave 14). Raw: `lib/terminal-setup.ts` `mapTerminals` reads it. */
+  async house(eventId: string): Promise<unknown> {
+    return await req<unknown>('GET', `/e/${eventId}/api/spatial/house`)
+  },
   /** The shared King (wave 11 C2) off the lean screen state every terminal
    *  polls (`GET /api/screen/state` — no terminal name, so this read never
    *  shows up as a terminal on the heartbeat card). Null: no King on the
