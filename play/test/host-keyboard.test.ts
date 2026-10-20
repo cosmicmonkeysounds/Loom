@@ -4,7 +4,7 @@
 //! the open console.
 
 import { describe, expect, it } from "vitest";
-import { balloonClearance, BALLOON_ROOM_MIN, dockKeyboard, keyboardFit } from "../src/host/viewport.ts";
+import { balloonClearance, BALLOON_ROOM_MIN, dockKeyboard, keyboardFit, sheetCloseIn } from "../src/host/viewport.ts";
 import { keyboardIsOpen, keyboardStep, KEYBOARD_REST, type KeyboardState } from "../src/chrome/keyboard.ts";
 
 describe("typing in the host console (the blocker)", () => {
@@ -68,5 +68,17 @@ describe("a balloon while the console is open", () => {
   });
   it("wide: beside the drawer, to its left", () => {
     expect(balloonClearance({ top: 0, bottom: 800, right: 1280 }, { top: 120, left: 752 }, true)).toMatchObject({ mode: "beside", right: 528 });
+  });
+});
+
+describe("Escape over a sheet in the console", () => {
+  it("finds the open sheet's close button, else nothing (the console closes)", () => {
+    const x = { tag: "sheet-x" } as unknown as HTMLElement;
+    const asked: string[] = [];
+    const dock = { querySelector: (sel: string) => (asked.push(sel), x) } as unknown as Pick<ParentNode, "querySelector">;
+    expect(sheetCloseIn(dock)).toBe(x);
+    expect(asked).toEqual([".sheet-backdrop .sheet-x"]);
+    expect(sheetCloseIn({ querySelector: () => null } as unknown as Pick<ParentNode, "querySelector">)).toBeNull();
+    expect(sheetCloseIn(null)).toBeNull();
   });
 });

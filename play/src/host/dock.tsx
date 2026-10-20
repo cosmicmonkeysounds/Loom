@@ -23,7 +23,7 @@ import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
 import { NeedsTab } from "./tab-needs.tsx";
 import { PeopleTab } from "./tab-people.tsx";
-import { dockKeyboard, focusInside, useBalloonClearance, useFocusInside, useIsoLayoutEffect, useKeyboardFit, useSettledTrue, type KeyboardFit } from "./viewport.ts";
+import { dockKeyboard, focusInside, sheetCloseIn, useBalloonClearance, useFocusInside, useIsoLayoutEffect, useKeyboardFit, useSettledTrue, type KeyboardFit } from "./viewport.ts";
 
 /** How long the NEXT bar stays away after typing in the console ends. */
 const BAR_BACK_MS = 250;
@@ -179,7 +179,8 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   useBalloonClearance(open, wide, dockNode, frameNode, fit);
   // Escape closes the console from anywhere on the page — focus may sit on
   // <body> after a button disabled itself while busy — and focus goes back
-  // to the bar that opened it.
+  // to the bar that opened it. A sheet open over the console (a QR, the
+  // answer sheet) closes first, alone.
   const barMain = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => {
     setOpen(false);
@@ -190,11 +191,13 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopPropagation();
-      close();
+      const sheet = sheetCloseIn(dockNode);
+      if (sheet !== null) sheet.click();
+      else close();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, close]);
+  }, [open, close, dockNode]);
   const tabs = hostTabs(view, refused !== null ? 1 : 0);
   useEffect(() => {
     if (!tabs.some((t) => t.id === tab)) setTab("cues");

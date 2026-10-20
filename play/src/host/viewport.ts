@@ -70,6 +70,13 @@ export function focusInside(el: HTMLElement | null): boolean {
   return a !== null && el.contains(a) && isTextEntry(a);
 }
 
+/** The close button of a sheet open inside the dock (the answer sheet, a
+ *  QR, the re-pair code), or null: Escape closes that sheet first and
+ *  leaves the console open under it. */
+export function sheetCloseIn(dock: Pick<ParentNode, "querySelector"> | null): HTMLElement | null {
+  return dock?.querySelector<HTMLElement>(".sheet-backdrop .sheet-x") ?? null;
+}
+
 /** Tracks `focusInside(el)` through focus moving in and out of `el`. */
 export function useFocusInside(el: HTMLElement | null): boolean {
   const [inside, setInside] = useState(false);
