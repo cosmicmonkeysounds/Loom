@@ -219,8 +219,10 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-room-sub .here-tag { margin-left: 0; }
 .stream-presence { height: var(--tap); padding: 0 10px; font-size: 13px; }
 
-/* the footer: the taskbar owns the bottom safe area inside the app frame */
-.app-frame footer { padding-bottom: 8px; }
+/* the footer: the taskbar owns the bottom safe area inside the app frame —
+   only the room's and the thread's footers, which sit above it (the
+   cutscene's foot has no taskbar under it and keeps its safe area) */
+.app-frame .stream-foot { padding-bottom: 8px; }
 
 /* ── the Codex + Quest Log: filing cabinets ─────────────────────────────── */
 .stream-cabinet { gap: 10px; font-family: var(--ui-font); padding: 8px; }

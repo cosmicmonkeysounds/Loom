@@ -6,11 +6,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildGuestChannels, isVoiced } from "../src/session/channels.ts";
-import { ChannelView } from "../src/stream/channel-view.tsx";
+import { ChannelView, MessageThread } from "../src/stream/channel-view.tsx";
 import { CardTray } from "../src/stream/card-tray.tsx";
 import { NOBODY_READS_NOTE, cantPostNote } from "../src/stream/composer.tsx";
 import { AmbientTicker } from "../src/stream/ticker.tsx";
 import type { Channel, ChatMessage, GuestView } from "../src/types.ts";
+import { readBundledCss } from "./css.ts";
 
 let seq = 1;
 const m = (extra: Partial<ChatMessage>): ChatMessage => ({
@@ -117,5 +118,18 @@ describe("the ticker and the tray on their own", () => {
     expect(html).toContain("Second?");
     expect(html).toContain('aria-label="Previous card"');
     expect(renderToStaticMarkup(createElement(CardTray, { cards: [], widgets, focus: null, onFocus: () => {} }))).toBe("");
+  });
+});
+
+describe("the footers above the taskbar", () => {
+  it("only the room's and the thread's footers drop the bottom safe area; the cutscene's keeps it", () => {
+    const css = readBundledCss();
+    expect(css).toContain(".app-frame .stream-foot { padding-bottom: 8px; }");
+    expect(css).not.toMatch(/\.app-frame footer\b/u);
+    expect(css).toMatch(/\.cut-foot \{[^}]*env\(safe-area-inset-bottom\)/u);
+    const root = m({ text: "Root" });
+    const thread = renderToStaticMarkup(createElement(MessageThread, { channel: room({ messages: [root] }), rootSeq: root.seq, onClose: () => {}, onSend: () => {} }));
+    expect(thread).toContain('<footer class="stream-foot">');
+    expect(view(room({}))).toContain('<footer class="stream-foot">');
   });
 });

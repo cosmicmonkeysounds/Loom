@@ -319,7 +319,7 @@ export function MessageThread({
         ))}
       </div>
       {onSend && channel.canPost !== false && (
-        <footer>
+        <footer className="stream-foot">
           <Composer key={`${channel.id}#${rootSeq}`} onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
         </footer>
       )}
