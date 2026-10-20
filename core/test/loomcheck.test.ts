@@ -63,7 +63,9 @@ describe("loomcheck — wave 5 detectors", () => {
     expect(r.out).toMatch(/WARN .*`show … with question: P1` — quote it/);
     expect(r.out).toMatch(/WARN .*`fire flagged .*unbalanced quotes/);
     expect(r.out).toMatch(/WARN .*\[character Oracle · when answer answered\] .*`when answer answered for who:`/);
-    expect(r.out).toMatch(/2 error\(s\) · 3 warning\(s\)/);
+    // The workspace lint says it too (L1212: the card's answer, truncated).
+    expect(r.out).toMatch(/WARN .*L1212 `when answer answered:`/);
+    expect(r.out).toMatch(/2 error\(s\) · 4 warning\(s\)/);
   });
 
   it("wave 11's keys (`reserved: true`, INTERACTION `arm:`, a `for guests` countdown) report nothing", () => {
