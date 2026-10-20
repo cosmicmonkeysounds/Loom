@@ -265,3 +265,29 @@ describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
     expect(forGuest(out, "g5").some((m) => m.readout === true && m.text.startsWith("🎀 You won a Bingo Ribbon"))).toBe(true);
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: the cards that ask", () => {
+  it("the bottle's Truth / Dare card and the pickup-line card are major moments", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    n.press("close_the_filing");
+    n.press("read_the_results");
+    n.press("spin_the_bottle");
+    // The server's pick lands as `bottle_landed` (the Sim has no random).
+    const spin = n.signal("bottle_landed", "g2");
+    const pick = { id: "g2" };
+    const card = spin.find((m) => m.kind === "widget" && m.text.startsWith("🍾 The bottle landed on you"))!;
+    expect(card).toMatchObject({ moment: "major", audience: [pick.id] });
+    // The pickup line (after truth.txt, both branches).
+    for (const c of ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
+      if (v(n.sim, "Night.bottle_open") === true) n.signal("truth_answered", pick.id, undefined, "Clippy");
+      n.press(c);
+    }
+    n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
+    n.press("read_truth_txt");
+    const verdict = n.press("the_verdict");
+    const lines = verdict.filter((m) => m.kind === "widget" && m.text.startsWith("Give me a pickup line"));
+    expect(lines.length).toBeGreaterThan(0);
+    for (const m of lines) expect(m.moment, m.text).toBe("major");
+  }, SLOW);
+});

@@ -862,7 +862,7 @@ ROLE Program
     set Night.bottle_picks += 1
     set Night.bottle_pick = program.name
     fire bottle_announce
-    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare"
+    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare", moment: major
 
   when truth_answered for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
@@ -2137,7 +2137,7 @@ ROLE Program
   // director fires `pickup_line_accepted` with the subject.
   when Night.pickup_gen > self.pickup_seen and self.cleared == true:
     set self.pickup_seen = Night.pickup_gen
-    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
+    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it", moment: major
 
   // Only Grok Prom and the song hear it: after the rave he has ridden away,
   // and the advice poll, the banishment and the hand jive have moved on
