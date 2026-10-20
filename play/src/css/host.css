@@ -186,6 +186,9 @@
 .host-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 2px 8px 8px; }
 .host-pair { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 12px; text-align: center; }
 .host-pair img { width: min(72vw, 280px); height: auto; image-rendering: pixelated; background: var(--white); }
+/* Scanned off this phone at the door: as big as the sheet allows. */
+.host-qr img { width: min(80vw, 340px); }
+.host-qr p { margin: 0; font: 13px var(--ui-font); color: var(--ink); }
 
 /* Judge */
 .host-filing { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); }
@@ -216,6 +219,9 @@
 .host-thread-line { font-family: var(--chat-font); font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
 .host-thread-line strong { font-family: var(--ui-font); font-size: 13px; color: var(--avatar-guest); }
 .host-thread-line.them strong { color: var(--navy); }
+/* What the story put in the thread (a card, narration): dim, never the guest's words. */
+.host-thread-line.story { font: 13px var(--ui-font); color: var(--muted-ink); }
+.host-thread-line.story strong { color: var(--muted-ink); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
 
 @media (prefers-reduced-motion: reduce) {
   .host-meter > span { transition: none; }
@@ -223,3 +229,8 @@
 .host-drawer-title { min-height: var(--tap); padding: 0 0 0 8px; }
 .host-drawer-title .w95-x { min-height: var(--tap); }
 .host-bar .cue-code, .host-last .cue-code { flex: 0 0 auto; white-space: nowrap; }
+
+/* More › The show: the doors and a pause, tap to arm, tap again to fire. */
+.host-arm { width: 100%; flex-direction: column; gap: 2px; min-height: 52px; font-weight: 800; font-size: 15px; }
+.host-arm.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+.host-arm-line { font: 800 12px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px; }

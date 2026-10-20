@@ -82,7 +82,7 @@ export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocu
   return null;
 }
 
-export type MoreSection = "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents";
+export type MoreSection = "show" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents";
 
 /** Where More scrolls to: a section, or one agent-voiced character's. */
 export type MoreFocus = MoreSection | `agents-${string}`;
@@ -95,7 +95,7 @@ export function agentSection(character: string): `agents-${string}` {
 
 /** The More tab's sections in order, each only when the event has it. */
 export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents">): MoreSection[] {
-  const out: MoreSection[] = ["announce", "alerts"];
+  const out: MoreSection[] = ["show", "announce", "alerts"];
   if (view.wallet !== null) out.push("wallet");
   if (view.king !== null) out.push("king");
   if (view.terminals !== null) out.push("terminals");
@@ -103,6 +103,31 @@ export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals
   if (view.parts.length > 0) out.push("parts");
   if (view.agents.length > 0) out.push("agents");
   return out;
+}
+
+/** The show's one lifecycle control a host has (C2): open the doors before
+ *  they open, pause a running night, resume a paused one. Never restart,
+ *  push, go live or end (D5): those stay in Run. */
+export interface ShowControl {
+  id: "doors" | "pause" | "resume";
+  /** The button. */
+  label: string;
+  /** Where the night stands, beside the section's title. */
+  state: string;
+  /** What it does, under the button. */
+  note: string;
+  /** The feedback line once it went through. */
+  done: string;
+}
+
+export function showControl(view: Pick<HostView, "runtime" | "doorsClosed">): ShowControl {
+  if (view.runtime === "open") {
+    return { id: "pause", label: "⏸ Pause the show", state: "▶ running", note: "Stops the story clock on every phone and booth: countdowns hold, cues wait. Nothing is lost.", done: "⏸ Paused" };
+  }
+  if (view.runtime === "idle" || view.doorsClosed === true) {
+    return { id: "doors", label: "🚪 Open the doors", state: "🚪 doors closed", note: "Guests can join, and the story's opening beat plays on every phone.", done: "🚪 The doors are open" };
+  }
+  return { id: "resume", label: "▶ Resume the show", state: "⏸ paused", note: "The story clock runs again from where it stopped.", done: "▶ Resumed" };
 }
 
 // --- the NEXT bar's second line --------------------------------------------------
@@ -296,6 +321,42 @@ export function agentThread(messages: ReadonlyMap<number, ChatMessage>, agent: s
     out.push(m);
   }
   return out.sort((a, b) => a.seq - b.seq);
+}
+
+/** One line of an agent thread as the answer sheet labels it, by who
+ *  really sent it: the agent, the guest (or whoever typed it), or the story
+ *  (a card it dealt, narration, a notice) — a fact card is never shown as
+ *  the guest's own words. */
+export interface ThreadLine {
+  who: string;
+  text: string;
+  tone: "them" | "guest" | "story";
+}
+
+export function threadLine(m: Pick<ChatMessage, "from" | "kind" | "text" | "widget">, agent: string, guestName: string): ThreadLine {
+  if (m.kind === "widget" || m.kind === "codex" || m.kind === "quest" || m.kind === "wallet") {
+    const text = (m.widget?.text ?? "").trim() || m.text.trim() || m.widget?.kind || m.kind;
+    return { who: "card", text, tone: "story" };
+  }
+  const from = m.from.trim();
+  if (from !== "" && from === agent) return { who: agent, text: m.text, tone: "them" };
+  if (m.kind === "line" && from !== "") return { who: from, text: m.text, tone: from === guestName ? "guest" : "story" };
+  return { who: "story", text: m.text, tone: "story" };
+}
+
+/** An agent's queue as the More tab reads it: the oldest wait comes off the
+ *  same clock as each guest's own "waiting 1:42" (the rows' `since`), so the
+ *  two numbers in one card never disagree. With no guest row the server's
+ *  own `oldestMs` stands. */
+export function agentQueue(a: Pick<HostView["agents"][number], "queue" | "waiting">, now: number): { depth: number; oldestMs: number | null; stalled: boolean } | null {
+  if (a.queue === null && a.waiting.length === 0) return null;
+  let oldest: number | null = null;
+  for (const w of a.waiting) if (oldest === null || w.since < oldest) oldest = w.since;
+  return {
+    depth: Math.max(a.queue?.depth ?? 0, a.waiting.length),
+    oldestMs: oldest !== null ? Math.max(0, now - oldest) : a.queue?.oldestMs ?? null,
+    stalled: a.queue?.stalled ?? false,
+  };
 }
 
 /** "waiting 1:42". */

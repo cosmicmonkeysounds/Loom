@@ -50,8 +50,8 @@ describe("the drawer's tabs", () => {
   });
 
   it("More shows only what the event has: no currency → no wallet, no King, no terminals", () => {
-    expect(moreSections(hostFixture())).toEqual(["announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents"]);
-    expect(moreSections(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }))).toEqual(["announce", "alerts", "codes"]);
+    expect(moreSections(hostFixture())).toEqual(["show", "announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents"]);
+    expect(moreSections(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }))).toEqual(["show", "announce", "alerts", "codes"]);
   });
 
   it("a need opens its tab (and the staff room for a staff need)", () => {
