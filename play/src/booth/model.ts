@@ -134,6 +134,19 @@ export function pressOutcome(
   return [{ kind: "none", text: kind === "scan" ? "✔ Scanned — no reply from the story" : "✔ Sent — no reply from the story" }];
 }
 
+/**
+ * The server's answer to a second scan of the same guest by the same booth
+ * a moment after the first (429 "scanned a moment ago": nothing was
+ * journaled, the story did not run again). Not an error for the card: it
+ * says so quietly in place of an error.
+ */
+export function scanRepeated(e: unknown): boolean {
+  return e instanceof Error && (e as { status?: unknown }).status === 429 && /moment ago/iu.test(e.message);
+}
+
+/** What the card says for a repeated scan (`scanRepeated`). */
+export const SCAN_REPEATED: OutcomeLine = { kind: "none", text: "Scanned a moment ago: no new scan" };
+
 /** The "All buttons…" fold opens by itself only when it is this short. */
 export const FOLD_AUTO_MAX = 6;
 

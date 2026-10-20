@@ -7,7 +7,8 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, FOLD_AUTO_MAX, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, foldOpensItself, inFlightGate, pressOutcome } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, FOLD_AUTO_MAX, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, foldOpensItself, inFlightGate, pressOutcome, scanRepeated } from "../src/booth/model.ts";
+import { ApiError } from "../src/client.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import type { PrimeSession } from "../src/session/prime.ts";
@@ -253,6 +254,13 @@ describe("what a press or a scan came to (C1, fix round)", () => {
 });
 
 describe("📡 Scan again (fix round)", () => {
+  it("takes the server's 'scanned a moment ago' (429) as no new scan, never an error", () => {
+    expect(scanRepeated(new ApiError("scanned a moment ago", 429))).toBe(true);
+    expect(scanRepeated(new ApiError("too many requests", 429))).toBe(false);
+    expect(scanRepeated(new ApiError("scanned a moment ago", 409))).toBe(false);
+    expect(scanRepeated(new Error("scanned a moment ago"))).toBe(false);
+  });
+
   it("runs one scan at a time and ignores taps until the reply", async () => {
     const gate = inFlightGate();
     let calls = 0;

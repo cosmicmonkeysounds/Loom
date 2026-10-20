@@ -14,7 +14,7 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { boothHost, cardButtons, cardGuestFacts, cardReadKey, factChips, faceSettled, foldOpensItself, inFlightGate, pressOutcome, type CardButton, type OutcomeLine } from "./model.ts";
+import { boothHost, cardButtons, cardGuestFacts, cardReadKey, factChips, faceSettled, foldOpensItself, inFlightGate, pressOutcome, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
@@ -174,7 +174,9 @@ export function GuestCardBody({
       },
       (e) => {
         settle();
-        setErr(e instanceof Error ? e.message : String(e));
+        landed();
+        if (scanRepeated(e)) setOutcome([SCAN_REPEATED]);
+        else setErr(e instanceof Error ? e.message : String(e));
       },
     );
   };
