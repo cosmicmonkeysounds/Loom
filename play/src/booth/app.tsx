@@ -93,6 +93,11 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home, s.roomLinkPending]);
+  // The scanner or the Guests list opening shows no card yet: the last
+  // card's guest is not on screen, so an alert about them is news again.
+  useEffect(() => {
+    if (layer?.kind === "scan" || layer?.kind === "guests") cardGuest.current = null;
+  }, [layer?.kind]);
   // A notification's `?room=scanner` link (the old Scanner room's readouts)
   // opens Readouts, where those readouts live now.
   useEffect(() => {
