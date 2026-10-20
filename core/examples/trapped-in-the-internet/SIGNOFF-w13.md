@@ -309,7 +309,10 @@ nothing; the header's ROLE `watch:` line on `program.afk` (`main.loom:10`)
 puts a Bathroom Mode flag on the host view, which lights the host drawer's
 🚻 End Bathroom Mode, and that call from a host part ends it; no show line
 sends a guest to the pass for a button, to ☰ or to a profile; 🚻 / Back
-are guest buttons; both sides are offered at the Y2K hour.
+are guest buttons; the tour's `bathroom:` blurb arrives whole (no comma
+cut); both sides are offered at the Y2K hour; and §8 below is checked word
+for word against `play/src/tutorial.tsx`, the pass hint and the Leave
+question, so a later edit to the app's copy fails the test until §8 follows.
 
 ## 8. The app's own words (chrome lane copy, for the same sign-off)
 

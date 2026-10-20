@@ -11,9 +11,12 @@
 //!   call (the story's own `back from the bathroom` on the guest, from a host
 //!   part's token) ends it.
 //! - The show's copy names the wave 13 chrome (⊞ Start, the Choose your side
-//!   card), never the pass page's old buttons, ☰ or a profile sheet.
+//!   card), never the pass page's old buttons, ☰ or a profile sheet, and
+//!   the tour's `bathroom:` blurb reaches the phone whole.
+//! - SIGNOFF-w13 §8 stays the app's own words: every tour step's title and
+//!   text in `play/src/tutorial.tsx`, the pass hint and the Leave question.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -176,6 +179,8 @@ describe("Trapped in the Internet — wave 13 integration: one broadcast, one po
     expect(pushed, JSON.stringify(sent)).toHaveLength(1);
     expect(pushed[0]!.kind).toBe("alert");
     expect(sent.filter((s) => s.endpoint === endpoint && s.kind === "alert")).toHaveLength(1);
+    // Nothing else of the press reached the phone's push either (no second kind, no objective push).
+    expect(sent.filter((s) => s.endpoint === endpoint), JSON.stringify(sent)).toHaveLength(1);
     expect(summons(booth.res)).toHaveLength(1);
 
     // A second press is refused by the story (once only): still one post, one push.
@@ -277,6 +282,22 @@ describe("Trapped in the Internet — wave 13 integration: the copy names the ne
     expect(guestView(sim, "g1").interactions.map((i) => i.label)).toContain("Back from the bathroom");
   }, SLOW);
 
+  it("the tour's Bathroom Mode step arrives whole: the `bathroom:` blurb is never cut at a comma (the `with k: v` splitter)", () => {
+    const sim = Sim.fromSources(SRC);
+    const events = [...sim.fireBeat("Power On"), ...sim.createPerson("g1", "Calculator")];
+    events.push(...sim.signal("captcha answered", "g1", { passed: true } as never), ...sim.signal("captcha answered", "g1", { passed: false } as never));
+    const p = sim.pendingChoiceFor("g1");
+    if (p && p.length === 4) events.push(...sim.choose("g1", 0));
+    events.push(...sim.choose("g1", 0), ...sim.scan("Norton Anti-Virus", "g1"));
+    const tours = events.filter((e): e is Extract<typeof e, { type: "widget" }> => e.type === "widget" && e.widget === "tutorial");
+    expect(tours).toHaveLength(1);
+    expect(tours[0]!.audience).toEqual(["g1"]);
+    expect(tours[0]!.params).toEqual({
+      guide: "Clippy",
+      bathroom: "Need the bathroom or have to step out? Open Start and tap 🚻 Bathroom Mode first so the Antivirus know you are not hacking the Internet. When you return tap Back from the bathroom in Start.",
+    });
+  }, SLOW);
+
   it("at the Y2K hour a factionless program is offered both sides (the Choose your side card the copy names)", () => {
     const sim = boot();
     for (const c of TO_Y2K) sim.signal(c);
@@ -285,4 +306,29 @@ describe("Trapped in the Internet — wave 13 integration: the copy names the ne
     expect(g.faction ?? null).toBeNull();
     expect([...(g.factions ?? [])].sort()).toEqual(["The Way Out", "Unlimited Power"]);
   }, SLOW);
+});
+
+describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the app's own words", () => {
+  const PLAY = join(__dirname, "../../play/src");
+  const sheet = () => readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8").split("## 8.")[1] ?? "";
+  /** The string literals on `key: "…"` lines (a template with `${…}` is checked by its static parts). */
+  const literals = (src: string, key: string) => [...src.matchAll(new RegExp(`\\b${key}: (?:"([^"]*)"|\`([^\`]*)\`)`, "gu"))].map((m) => m[1] ?? m[2]!);
+
+  it.skipIf(!existsSync(join(PLAY, "tutorial.tsx")))("every tour step's title and text in play/src/tutorial.tsx is copied into §8, word for word", () => {
+    const tour = readFileSync(join(PLAY, "tutorial.tsx"), "utf8").split("export function tutorialSteps")[1]!;
+    const s8 = sheet();
+    const strings = [...literals(tour, "title"), ...literals(tour, "text")];
+    expect(strings.length).toBeGreaterThanOrEqual(20);
+    for (const str of strings) for (const part of str.split(/\$\{[^}]*\}/u).map((x) => x.trim()).filter((x) => x.length > 3)) expect(s8, part).toContain(part);
+  });
+
+  it.skipIf(!existsSync(join(PLAY, "chrome/pass.tsx")))("the pass hint and the Leave question in §8 are the app's", () => {
+    const s8 = sheet();
+    const hint = /PASS_HINT = "([^"]*)"/u.exec(readFileSync(join(PLAY, "chrome/pass.tsx"), "utf8"))?.[1];
+    expect(hint).toBeDefined();
+    expect(s8).toContain(hint!);
+    const leave = /return `(Leave the event\?[^`]*)`/u.exec(readFileSync(join(PLAY, "guest/frame.tsx"), "utf8"))?.[1];
+    expect(leave).toBeDefined();
+    for (const part of leave!.split(/\$\{[^}]*\}/u).map((x) => x.trim()).filter(Boolean)) expect(s8).toContain(part);
+  });
 });
