@@ -862,4 +862,18 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     const ok = n.scan("Norton Anti-Virus", "g1");
     expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
   }, SLOW);
-});
+
+  it("the late list is one readout per late program on every room Antivirus booth (Q31)", () => {
+    const n = boot();
+    for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c);
+    for (const g of ["g1", "g2", "g3", "g4"]) n.scan("Norton Anti-Virus", g);
+    const late = n.press("summons_closed");
+    const lateOnes = ["g5", "g6"];
+    for (const g of lateOnes) expect(v(n.sim, `${g}.marked`), g).toBe(true);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"]) {
+      const r = replyTo(late, who).filter((t) => t.includes("Winamp") || t.includes("VLC"));
+      expect(r, who).toHaveLength(lateOnes.length);
+      for (const t of r) expect(t, who).toMatch(/^🚨 .+ is late for the Second Moment of Truth: marked for reinstallation\./u);
+    }
+    expect(replyTo(late, "Windows Defender").filter((t) => t.includes("late"))).toEqual([]);
+  }, SLOW);});

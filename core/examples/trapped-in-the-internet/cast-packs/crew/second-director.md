@@ -125,7 +125,7 @@ ten-minute freezes early. Only a grant or a freeze is API-only:
 as yourself.
 
 **4. The late list** (OP-08b). At 🚨 Summons closed the Antivirus booths
-already read *⏰ X is late for the Second Moment of Truth. Go get them.* and
+already read *🚨 X is late for the Second Moment of Truth: marked for reinstallation. Go get them…* (one per late program; the ⏰ line only with the auto sweep) and
 `# quarantine` pins each one (marked: *late for the Second Moment of Truth*).
 Confirm the list by radio (**LATE**, then names and where) from Run → World
 (each guest's `late` var; the roster has no late column) if a booth missed

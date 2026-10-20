@@ -1444,7 +1444,7 @@ Extra staff hooks (add to the traits / characters):
 | Where | Trigger | Body |
 |---|---|---|
 | `TRAIT Enforcer` | `when go to the bathroom for program:` | `reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.` (also on `Recycling Bin`) |
-| `TRAIT Enforcer` | `when program_late for program:` | `reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.` |
+| `TRAIT Enforcer` | `when program_late for program:` | only with `Night.auto_sweep`: `reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.` (otherwise the mark's readout says late, one per program: w13 Q31) |
 | `TRAIT Enforcer` | `when marked for program:` | `reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.` · `if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):` `reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.` (fact M20; a Disk Cleanup check-in counts for 15 minutes, since a location is sticky) · `when go to the bathroom for program:` adds `reply ⚠️ {program.name} is marked and in Bathroom Mode. Wait for them outside; never go in.` for a marked program |
 | `TRAIT Enforcer` | `when sweep_requested:` | `reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.` |
 | `TRAIT Enforcer` | `when alarm_tripped:` | `reply 🚨 Server room breach. Get there. Anyone inside who is not a member of the winning faction goes to the Internet.` |

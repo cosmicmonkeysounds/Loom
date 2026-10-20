@@ -51,8 +51,8 @@ the door. They need to be taken to the Internet for a reinstallation.* Press
 named? 🛡 each.) The quest completes with the first reinstallation.
 
 **Sweeps:** C1 (everyone to the Desktop) · C2 (back from hunt 1) · ⏳ (the
-summons: scan arrivals) · 🚨 the late list (*⏰ X is late… Go get them*: they
-are marked; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
+summons: scan arrivals) · 🚨 the late list (*🚨 X is late… marked for reinstallation. Go get them*,
+one per program; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
 sweep of…*) · 🚨 server-room alarm · 🗜 zip everyone out of the Internet (the tent, or the shed on a rain night).
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.

@@ -176,11 +176,19 @@ TRAIT Enforcer is Person
   when bathroom_timed_out for program:
     reply 🚻 {program.name}'s Bathroom Mode timed out (15 min).
 
+  // One readout per late program (w13 Q31, DRAFT for sign-off): without
+  // the auto sweep a late program is marked at once, and the mark's own
+  // readout says they are late; the ⏰ line is only for the auto sweep
+  // (a capture, no mark).
   when program_late for program:
-    reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.
+    if Night.auto_sweep == true:
+      reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.
 
   when marked for program:
-    reply !🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
+    if program.late == true and program.marked_for == "late for the Second Moment of Truth":
+      reply !🚨 {program.name} is late for the Second Moment of Truth: marked for reinstallation. Go get them, escort them through the Tube, then press 🛡 on their card.
+    else:
+      reply !🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
     if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):
       reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.
 
