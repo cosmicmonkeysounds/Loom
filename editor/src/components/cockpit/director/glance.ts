@@ -20,9 +20,8 @@ import {
   type WatchSummary,
   type WorldEntry,
 } from '@/store/cockpit'
-import { QueueTone, agentQueueOf, judgeModeOf, nearCount, pendingFilings, queueBadge, stageSegments } from '../mind'
-import { UNSEEN_MS, unseenGuests } from '../guests'
-import { heldTransfers } from '../wallet'
+import { NeedKind, REASON_WAIT_MS, REFUSED_NEEDS_MS, hostNeeds, type HostNeed } from '@loom/core/host-board'
+import { stageSegments } from '../mind'
 import { PartPresence, castPresence, isSignedIn, performerParts } from '../parts'
 
 /** Where a glance row goes when clicked. */
@@ -453,21 +452,11 @@ export function lastSeq(messages: readonly CockpitMessage[]): number {
 // Needs you
 // ---------------------------------------------------------------------------
 
-export const NeedKind = {
-  Refused: 'refused',
-  Filings: 'filings',
-  Held: 'held',
-  PhoneOffline: 'phone-offline',
-  Free: 'free',
-  NoWorker: 'no-worker',
-  /** Wave 11: a near-miss filing held for a director in auto mode (C6). */
-  NearMiss: 'near',
-  /** Wave 11: an agent's queue is stalled, or a guest waits past 40 s (C6). */
-  AgentQueue: 'agent-queue',
-  /** Wave 11: real guests nobody has seen for half an hour — mark gone? (C5) */
-  Unseen: 'unseen',
-} as const
-export type NeedKind = (typeof NeedKind)[keyof typeof NeedKind]
+// Wave 13: `NeedKind`, `REFUSED_NEEDS_MS`, `REASON_WAIT_MS` and the rows
+// themselves (`hostNeeds`) moved to `@loom/core/host-board`, which a Play host
+// booth's Needs tab shares. `needsYou` adds this console's refused press and
+// maps each row's target onto a `GlanceLink`.
+export { NeedKind, REASON_WAIT_MS, REFUSED_NEEDS_MS } from '@loom/core/host-board'
 
 export interface NeedItem {
   kind: NeedKind
@@ -490,12 +479,6 @@ export interface RefusedPress {
   /** The newest message seq when it was sent: its reason follows it. */
   seq: number
 }
-
-/** How long a refused press stays under Needs you. */
-export const REFUSED_NEEDS_MS = 60_000
-
-/** How long a refusal waits for its staff-room line before saying none came. */
-export const REASON_WAIT_MS = 3000
 
 /** The second line of a refusal: the staff room's reason, or why there is none. */
 export function refusalReason(why: CockpitMessage | null, channels: readonly ChannelSummary[], age: number): string {
@@ -521,6 +504,29 @@ export interface NeedsInput {
   minds?: readonly AgentMindSummary[]
 }
 
+/** Where a host-board need goes in the editor: the judge and the agent
+ *  rows to the Mind tab, held transfers and the Run page's cards to Run, a
+ *  part to its character, the unseen guests to the Roster, the staff room to
+ *  its chat. */
+export function needLink(need: Pick<HostNeed, 'target' | 'character'>, channels: readonly ChannelSummary[]): GlanceLink {
+  switch (need.target) {
+    case 'judge':
+    case 'agent':
+      return { kind: 'tab', tab: CockpitTab.Mind }
+    case 'wallet':
+    case 'more':
+      return { kind: 'tab', tab: CockpitTab.Run }
+    case 'part':
+      return need.character !== undefined ? { kind: 'inspect', selection: { kind: SelectionKind.Character, id: need.character } } : { kind: 'tab', tab: CockpitTab.Run }
+    case 'people':
+      return { kind: 'tab', tab: CockpitTab.Roster }
+    case 'staff': {
+      const room = staffChannels(channels)[0]?.id
+      return room !== undefined ? { kind: 'tab', tab: CockpitTab.Chat, channel: room } : { kind: 'tab', tab: CockpitTab.Log }
+    }
+  }
+}
+
 export function needsYou(input: NeedsInput): NeedItem[] {
   const out: NeedItem[] = []
   const { refused, now } = input
@@ -535,47 +541,21 @@ export function needsYou(input: NeedsInput): NeedItem[] {
       link: room !== undefined ? { kind: 'tab', tab: CockpitTab.Chat, channel: room } : { kind: 'tab', tab: CockpitTab.Log },
     })
   }
-  if (input.facts !== null) {
-    const near = nearCount(input.facts)
-    const nearText = near > 0 ? ` (⚠ ${near} near miss${near === 1 ? '' : 'es'})` : ''
-    if (judgeModeOf([...input.world], input.facts) === 'review') {
-      const n = pendingFilings(input.facts).length
-      if (n > 0) out.push({ kind: NeedKind.Filings, key: 'filings', text: `📝 ${n} filing${n === 1 ? '' : 's'} to review${nearText}`, link: { kind: 'tab', tab: CockpitTab.Mind } })
-    } else if (near > 0) {
-      // Auto mode judges the rest itself; a near miss waits for a director.
-      out.push({ kind: NeedKind.NearMiss, key: 'near', text: `⚠ ${near} near miss${near === 1 ? '' : 'es'} to judge`, link: { kind: 'tab', tab: CockpitTab.Mind } })
-    }
-  }
-  const held = heldTransfers(input.wallet).length
-  if (held > 0) out.push({ kind: NeedKind.Held, key: 'held', text: `💰 ${held} held transfer${held === 1 ? '' : 's'}`, link: { kind: 'tab', tab: CockpitTab.Run } })
-  const parts = new Set(performerParts(input.cast).map((c) => c.id))
-  for (const c of input.cast) {
-    const p = castPresence(c, parts.has(c.id))
-    if (p === PartPresence.Unvoiced) {
-      out.push({ kind: NeedKind.NoWorker, key: `agent:${c.id}`, text: `🤖 ${c.id}: no worker`, link: { kind: 'tab', tab: CockpitTab.Mind } })
-    } else if (c.agent === true) {
-      const q = agentQueueOf(c.id, input.cast, input.minds ?? [], now)
-      if (q !== null) {
-        const b = queueBadge(q)
-        if (b.tone === QueueTone.Stalled || b.tone === QueueTone.Slow) {
-          out.push({ kind: NeedKind.AgentQueue, key: `queue:${c.id}`, text: `🤖 ${c.id}: ${b.text}`, link: { kind: 'tab', tab: CockpitTab.Mind } })
-        }
-      }
-    } else if (input.doorsOpen && p === PartPresence.PhoneOffline) {
-      out.push({ kind: NeedKind.PhoneOffline, key: `part:${c.id}`, text: `📱 ${c.id}: phone offline`, link: { kind: 'inspect', selection: { kind: SelectionKind.Character, id: c.id } } })
-    } else if (input.doorsOpen && p === PartPresence.Free) {
-      out.push({ kind: NeedKind.Free, key: `part:${c.id}`, text: `🎭 ${c.id}: nobody signed in`, link: { kind: 'inspect', selection: { kind: SelectionKind.Character, id: c.id } } })
-    }
-  }
-  const unseen = unseenGuests(input.roster ?? [], input.world, now)
-  if (unseen.length > 0) {
-    out.push({
-      kind: NeedKind.Unseen,
-      key: 'unseen',
-      text: `👋 ${unseen.length} guest${unseen.length === 1 ? '' : 's'} unseen ${Math.round(UNSEEN_MS / 60_000)} min — mark gone?`,
-      link: { kind: 'tab', tab: CockpitTab.Roster },
-      guests: unseen,
-    })
+  const needs = hostNeeds({
+    now,
+    world: input.world,
+    facts: input.facts,
+    wallet: input.wallet,
+    cast: input.cast,
+    doorsOpen: input.doorsOpen,
+    roster: input.roster,
+    minds: input.minds,
+  })
+  for (const n of needs) {
+    const item: NeedItem = { kind: n.kind, key: n.key, text: n.text, link: needLink(n, input.channels) }
+    if (n.detail !== undefined) item.detail = n.detail
+    if (n.guests !== undefined) item.guests = n.guests
+    out.push(item)
   }
   return out
 }

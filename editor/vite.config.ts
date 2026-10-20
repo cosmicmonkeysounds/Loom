@@ -37,6 +37,9 @@ export default defineConfig({
       '@loom/core/views': path.resolve(__dirname, '../core/server/views.ts'),
       '@loom/core/mod-patch': path.resolve(__dirname, '../core/server/mod-patch.ts'),
       '@loom/core/cue-sheet': path.resolve(__dirname, '../core/src/cue-sheet.ts'),
+      // The host board (wave 13): the judging / queue / parts / guests /
+      // wallet / award / needs helpers a Play host booth shares.
+      '@loom/core/host-board': path.resolve(__dirname, '../core/src/host-board.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.
@@ -45,6 +48,12 @@ export default defineConfig({
       // real guest / performer app (one per pane) instead of a look-alike.
       '@loom/play/embed': path.resolve(__dirname, '../play/src/embed.tsx'),
       '@': path.resolve(__dirname, './src'),
+      // The browser has no `node:crypto`; `@loom/core/chat` reaches it
+      // through the server's wallet + identity modules (the claim HMAC,
+      // never called here). Vite's externalized stub throws on import, so
+      // the dev server and the build get a stand-in; vitest (Node) keeps
+      // the real module.
+      ...(process.env.VITEST ? {} : { 'node:crypto': path.resolve(__dirname, './src/lib/node-crypto-stub.ts') }),
     },
   },
   // Unit tests only — the Playwright `e2e/*.spec.ts` suites run via the

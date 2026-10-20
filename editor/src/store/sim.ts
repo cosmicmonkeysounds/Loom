@@ -132,7 +132,14 @@ export const useSim = create<SimState>((set, get) => {
   const lensFor = (perspective: string): Lens => {
     if (sim === null || perspective === OPERATOR_LENS) return null
     if (sim.persons.has(perspective)) return { kind: 'guest', id: perspective, view: guestView(sim, perspective, null) }
-    if (sim.model.characters.has(perspective)) return { kind: 'performer', id: perspective, view: primeView(sim, perspective) }
+    const def = sim.model.characters.get(perspective)
+    if (def !== undefined) {
+      // A host part's (`admin: true`) booth holds the host capability, as
+      // the live booth's does (`event-runtime.ts` `primeViewFor`), so the
+      // lens shows the objective buttons that phone shows.
+      const host = def.admin === true
+      return { kind: 'performer', id: perspective, view: primeView(sim, perspective, undefined, { host }), host }
+    }
     return null
   }
 

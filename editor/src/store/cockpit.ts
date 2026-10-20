@@ -248,6 +248,12 @@ export interface CockpitMessage {
   quest?: { quest: string; title: string; action: string }
   /** A Wallet-room card (`kind: 'wallet'`), from its viewer's side. */
   wallet?: WalletCard
+  /** A booth readout (the story's `reply` to a scan or a press). Since wave
+   *  13 it lands in the character's own Inbox (`dm:<Character>`, addressed
+   *  `@<Character>`), not the lobby. */
+  readout?: true
+  /** A booth readout's subject guest id (the guest the scan or press was on). */
+  about?: string
 }
 
 export interface FactionSummary {
@@ -414,7 +420,11 @@ export interface RunInfo {
  *  Operator lens. */
 export type Lens =
   | { kind: 'guest'; id: string; view: GuestView }
-  | { kind: 'performer'; id: string; view: PrimeView }
+  /** `host`: the character is a host part (`admin: true`), whose booth
+   *  holds the host capability — it may press another character's `by:`
+   *  button. Absent: not known to be one (a server lens; the booth is
+   *  then treated as an ordinary performer's). */
+  | { kind: 'performer'; id: string; view: PrimeView; host?: boolean }
   | null
 
 /** A run that ended (here or by a co-writer) — kept so "Export run" still
@@ -471,8 +481,9 @@ export interface CockpitState {
   /** Model-enumerated authored events (`on lockdown`, …) for the director. */
   events: string[]
   /** Every declared `INTERACTION` (`ModView.interactions`) — rendered as
-   *  buttons under a guest lens (`who: guest`) / performer lens
-   *  (`who: performer | admin`, on a target guest). */
+   *  buttons under a guest lens (`who: guest`) and the Director page's cue
+   *  sheet (`who: admin`). A performer lens offers its booth's own
+   *  `PrimeView.interactions` instead (`performerActions` in `rooms.ts`). */
   interactions: InteractionSummary[]
   /** The cue sheet's state (`ModView.cues`): which `who: admin` cues have
    *  fired and which was last — off the sim log, so every director agrees. */

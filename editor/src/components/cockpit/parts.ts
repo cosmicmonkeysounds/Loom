@@ -8,45 +8,12 @@
 //! as its own dot. Pure, so the Run page's Performers list, the Stage cast
 //! strip and the Inspector agree.
 
-import type { CastSummary } from '@/store/cockpit'
+import { PartPresence } from '@loom/core/host-board'
 
-/** The rows a performer can sign in to. An older server flags no row as a
- *  part: then every non-agent character, as before. */
-export function performerParts(cast: readonly CastSummary[]): CastSummary[] {
-  if (cast.some((c) => c.part !== undefined)) return cast.filter((c) => c.part === true)
-  return cast.filter((c) => c.agent !== true)
-}
-
-export const PartPresence = {
-  /** Signed in and its phone streaming. */
-  Online: 'online',
-  /** A token holds the part but its phone isn't streaming (asleep, out of Wi-Fi, lost). */
-  PhoneOffline: 'phone-offline',
-  /** Nobody holds it. */
-  Free: 'free',
-  /** An agent-voiced character (`mind: external`) a stagehand worker is voicing. */
-  Voiced: 'voiced',
-  /** An agent-voiced character with no worker connected (its `hold:` line answers). */
-  Unvoiced: 'unvoiced',
-  /** The server doesn't say (a local run), or not a part at all. */
-  Unknown: 'unknown',
-} as const
-export type PartPresence = (typeof PartPresence)[keyof typeof PartPresence]
-
-export function partPresence(c: Pick<CastSummary, 'online' | 'held'>): PartPresence {
-  if (c.online === true) return PartPresence.Online
-  if (c.held === true) return PartPresence.PhoneOffline
-  if (c.online === false || c.held === false) return PartPresence.Free
-  return PartPresence.Unknown
-}
-
-/** Any cast row's dot: a part's performer presence, an agent's worker
- *  (`online` on an agent row means a worker is connected — the director's
- *  "is the laptop up" check), nothing for the rest of the ensemble. */
-export function castPresence(c: Pick<CastSummary, 'online' | 'held' | 'agent'>, isPart: boolean): PartPresence {
-  if (c.agent === true) return c.online === true ? PartPresence.Voiced : c.online === false ? PartPresence.Unvoiced : PartPresence.Unknown
-  return isPart ? partPresence(c) : PartPresence.Unknown
-}
+// Wave 13: the rules moved verbatim to `@loom/core/host-board` (a Play host
+// booth's People tab shares them); the editor keeps its own copy only of the
+// dot's words.
+export { PartPresence, castPresence, isSignedIn, partPresence, performerParts } from '@loom/core/host-board'
 
 /** The presence dot's words. */
 export function partPresenceTitle(id: string, p: PartPresence): string {
@@ -64,9 +31,4 @@ export function partPresenceTitle(id: string, p: PartPresence): string {
     default:
       return id
   }
-}
-
-/** Is someone signed in (held, phone online or not)? */
-export function isSignedIn(p: PartPresence): boolean {
-  return p === PartPresence.Online || p === PartPresence.PhoneOffline
 }

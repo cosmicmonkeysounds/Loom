@@ -23,10 +23,9 @@ export function requestCancellable(state: string): boolean {
   return state === 'open'
 }
 
-/** Held transfers, oldest first — what "Approve all held" clears. */
-export function heldTransfers(view: WalletModView | null): WalletTxView[] {
-  return (view?.open.transfers ?? []).filter((t) => t.state === 'held')
-}
+/** Held transfers, oldest first — what "Approve all held" clears (moved to
+ *  `@loom/core/host-board` in wave 13, re-exported here). */
+export { heldTransfers } from '@loom/core/host-board'
 
 /** `m:ss` until a story-clock deadline (`0:00` once it's due); null when
  *  either side is unknown. */
