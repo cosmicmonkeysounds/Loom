@@ -24,7 +24,7 @@ import {
 } from "../parser/index.ts";
 import { Bundle, type LoomFileEntry } from "../runtime/bundle.ts";
 import { lowerRawBody } from "../runtime/sim/effects.ts";
-import { compileModel, isAlertsPath, judgeOf, parseCurrency, resolveObjectiveAudience, resolveObjectiveButtons, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
+import { compileModel, isAlertsPath, isBuiltinVerb, isConditionTrigger, judgeOf, parseCurrency, parseTrigger, resolveObjectiveAudience, resolveObjectiveButtons, walletRoleOf, type SimModel } from "../runtime/sim/model.ts";
 import { identityDefs, performerPickable } from "../identity-kind.ts";
 import { boardLineProblems, isSecretRoleSlot, parseBoardLine } from "../runtime/sim/board.ts";
 import { parseExpr } from "../runtime/expr.ts";
@@ -189,6 +189,7 @@ export class Workspace {
     this.addObjectiveLints();
     this.addAlertsLints();
     this.addAdminLints();
+    this.addTriggerLints();
   }
 
   /** Push one project diagnostic onto a document. */
@@ -290,6 +291,47 @@ export class Workspace {
       if (k > 0) this.pushProject(uri, range, false, Code.L1210AlertsPathInvalid, `\`alerts: ${prop.value.trim()}\` is ignored — only the first file's header (main.loom) is read; move it there`);
       else if (!isAlertsPath(prop.value)) this.pushProject(uri, range, false, Code.L1210AlertsPathInvalid, `\`alerts: ${prop.value.trim()}\` is no dotted world path, so the interrupt level is read from \`Night.alerts\` — write \`alerts: Night.alerts\``);
     });
+  }
+
+  /**
+   * `L1212 TriggerTruncated` (warnings) — an event phrase of plain words
+   * with no `for` binding keeps only its first word as the event and binds
+   * the next as a subject (the v3 shape, `on rally guest`). When the whole
+   * phrase is a declared INTERACTION or a `fire`d event (`when glitch out:`
+   * against `INTERACTION glitch out`), that press or `fire` reaches nothing
+   * while a bare `glitch` would run the rule: say so, and how to write it.
+   */
+  private addTriggerLints(): void {
+    const model = this.compiled;
+    if (model === null) return;
+    // Every event something can raise: the INTERACTIONs, and each `fire <name>`.
+    const known = new Map<string, string>();
+    for (const id of model.interactions.keys()) known.set(foldName(id), id);
+    const docs = this.orderedDocs();
+    for (const [, doc] of docs) {
+      for (const m of doc.text.matchAll(/^[ \t]*fire[ \t]+(.+?)(?:[ \t]+(?:for|with)[ \t].*)?[ \t]*$/gmu)) {
+        const name = m[1]!.trim();
+        if (name !== "" && !known.has(foldName(name))) known.set(foldName(name), name);
+      }
+    }
+    if (known.size === 0) return;
+    for (const [uri, doc] of docs) {
+      const text = lines(doc.text);
+      text.forEach((line, n) => {
+        const m = /^([ \t]*)(when|on)[ \t]+(.+?)[ \t]*:[ \t]*(?:\/\/.*)?$/u.exec(line);
+        if (m === null) return;
+        const phrase = m[3]!.trim();
+        if (/\bfor\b/u.test(phrase) || isConditionTrigger(phrase)) return;
+        const { verb } = parseTrigger(phrase);
+        if (verb === "" || isBuiltinVerb(verb)) return;
+        const whole = known.get(foldName(phrase));
+        if (whole === undefined || foldName(verb) === foldName(phrase)) return;
+        const start = m[1]!.length;
+        const range: Range = { start: { line: n, character: start }, end: { line: n, character: line.trimEnd().length } };
+        const snake = phrase.trim().replace(/\s+/gu, "_");
+        this.pushProject(uri, range, false, Code.L1212TriggerTruncated, `\`${m[2]} ${phrase}:\` listens for the event \`${verb}\` (the rest binds a subject), not \`${whole}\` — pressing or firing \`${whole}\` runs nothing here; write \`${m[2]} ${snake}:\``);
+      });
+    }
   }
 
   /**
