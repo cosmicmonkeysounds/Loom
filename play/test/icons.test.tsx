@@ -2,6 +2,7 @@
 //! Start / Pass / Scan, the tray, the Start menu's own items — never emoji;
 //! a story button's own emoji (content) stays.
 
+import { readFileSync } from "node:fs";
 import { createElement, isValidElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -59,5 +60,14 @@ describe("the guest chrome draws its utility icons (finish review #8)", () => {
 
   it("the shared set has what a booth's chrome needs", () => {
     for (const name of ["receipt", "cards", "shield", "codex", "quest", "reply", "pin", "help", "bell", "leave"] as const) expect(ICON_NAMES).toContain(name);
+  });
+
+  it("the guest app's own sheet titles and room buttons carry no emoji (the picture sheet, a gated room's Leave)", () => {
+    const src = readFileSync(new URL("../src/guest/app.tsx", import.meta.url), "utf8");
+    const titles = [...src.matchAll(/<Sheet title="([^"]*)"/gu)].map((m) => m[1]!);
+    const labels = [...src.matchAll(/roomActions\.push\(\{ label: "([^"]*)"/gu)].map((m) => m[1]!);
+    expect(labels.length).toBeGreaterThan(0);
+    for (const t of [...titles, ...labels]) expect(EMOJI.test(t), t).toBe(false);
+    expect(src).toContain('<IconTitle icon="picture">Your picture</IconTitle>');
   });
 });

@@ -34,7 +34,7 @@ import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
-import { Icon } from "../chrome/icons.tsx";
+import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { titleFallback } from "../chrome/title-bar.tsx";
 import { defectTargets } from "../session/guest.ts";
 import { PictureChanger } from "./register.tsx";
@@ -345,7 +345,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       const roomActions: Action[] = [];
       if (gated && active.member) {
         roomActions.push({ label: "＋ Invite", onClick: () => setInviting(true), tone: "primary" });
-        roomActions.push({ label: "🚪 Leave", onClick: () => void s.leaveChannel(active.id), tone: "danger" });
+        roomActions.push({ label: "Leave room", onClick: () => void s.leaveChannel(active.id), tone: "danger" });
       }
       stage = (
         <ChannelView
@@ -525,7 +525,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         />
       )}
       {picturing && (
-        <Sheet title="🖼️ Your picture" onClose={() => setPicturing(false)}>
+        <Sheet title={<IconTitle icon="picture">Your picture</IconTitle>} onClose={() => setPicturing(false)}>
           <PictureChanger session={s} eventId={s.me.eventId} />
         </Sheet>
       )}
