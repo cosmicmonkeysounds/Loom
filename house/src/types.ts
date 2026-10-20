@@ -456,6 +456,9 @@ export interface SpatialCandidate {
   /** Marked by the story (restricted) but not yet captured: Play here
    *  begins their reinstallation. */
   restricted: boolean;
+  /** Captured or marked: `/api/mod/spatial/begin` lets them in. Missing on
+   *  an older server (treat as captured || restricted). */
+  eligible?: boolean;
   location: string | null;
   /** The program's profile picture's avatar key; null / missing = none. */
   avatar?: string | null;

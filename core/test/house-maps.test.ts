@@ -427,7 +427,12 @@ describe("EventRuntime — the project's maps", () => {
     rt.openDoors();
     const term = spatialStream(rt);
     await term.open;
-    const person = async (name: string) => ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
+    // A marked program (restricted): the tablet's begin lets them in (wave 16).
+    const person = async (name: string) => {
+      const id = ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
+      await mod(rt, "/api/mod/act", { id, action: "restrict" });
+      return id;
+    };
     const firstSpot = show().duck.spots[0]!.id;
     // Deal until one session holds the spot the shed lacks and one doesn't.
     const sessions: Assignment[] = [];
@@ -659,7 +664,9 @@ describe("EventRuntime — the project's maps", () => {
     const rt = runtimeAt(freshDir(), { houseMaps: twoVariants(), project: fakeProject().link });
     rt.openDoors();
     const pid = ((await mod(rt, "/api/mod/persona", { name: "Paint" })).json.guest as { id: string }).id;
+    await mod(rt, "/api/mod/act", { id: pid, action: "restrict" });
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web" })).json as unknown as Assignment;
+    expect(typeof a.token).toBe("string");
     for (const auth of [{}, { token: "nope" }, { token: a.token }]) {
       expect((await call(rt, "GET", "/api/mod/spatial/variants", {}, auth)).status).toBe(403);
       expect((await call(rt, "POST", "/api/mod/spatial/variant", { file: "house.shed.json" }, auth)).status).toBe(403);
