@@ -4,7 +4,7 @@
 //! the open console.
 
 import { describe, expect, it } from "vitest";
-import { balloonClearance, BALLOON_ROOM_MIN, dockKeyboard, keyboardFit, sheetCloseIn } from "../src/host/viewport.ts";
+import { balloonClearance, BALLOON_ROOM_MIN, dockKeyboard, keyboardFit, revealsField, sheetCloseIn } from "../src/host/viewport.ts";
 import { keyboardIsOpen, keyboardStep, KEYBOARD_REST, type KeyboardState } from "../src/chrome/keyboard.ts";
 
 describe("typing in the host console (the blocker)", () => {
@@ -80,5 +80,16 @@ describe("Escape over a sheet in the console", () => {
     expect(asked).toEqual([".sheet-backdrop .sheet-x"]);
     expect(sheetCloseIn({ querySelector: () => null } as unknown as Pick<ParentNode, "querySelector">)).toBeNull();
     expect(sheetCloseIn(null)).toBeNull();
+  });
+});
+
+describe("the focused field is scrolled into view", () => {
+  it("when typing starts and when the keyboard moves, never on a re-render or a viewport scroll", () => {
+    expect(revealsField("start")).toBe(true);
+    expect(revealsField("resize")).toBe(true);
+    // The console re-renders every second: a host who scrolled the drawer
+    // away from the field (Announce, the filter) stays where they scrolled.
+    expect(revealsField("render")).toBe(false);
+    expect(revealsField("scroll")).toBe(false);
   });
 });

@@ -115,6 +115,19 @@ export function useSettledTrue(value: boolean, ms: number): boolean {
   return value || held;
 }
 
+/** What makes the fit re-read: typing starting (`start`, and its settle a
+ *  moment later), the keyboard resizing the visual viewport, the visual
+ *  viewport scrolling, or a re-render of the console (every second). */
+export type FitTrigger = "start" | "resize" | "scroll" | "render";
+
+/** Does this re-read scroll the focused field into view? Only when typing
+ *  starts and when the keyboard moves: never on a re-render or a viewport
+ *  scroll, so a host who scrolled the drawer away from the field (to read a
+ *  cue while the filter keeps focus) is left where they are. */
+export function revealsField(trigger: FitTrigger): boolean {
+  return trigger === "start" || trigger === "resize";
+}
+
 const SHEET_PROPS = ["top", "bottom", "height"] as const;
 
 /**
@@ -124,12 +137,14 @@ const SHEET_PROPS = ["top", "bottom", "height"] as const;
  */
 export function useKeyboardFit(active: boolean, dock: HTMLElement | null, restTop?: MutableRefObject<number | null>): KeyboardFit | null {
   const [fit, setFit] = useState<KeyboardFit | null>(null);
-  const reader = useRef<(() => void) | null>(null);
+  const reader = useRef<((why: FitTrigger) => void) | null>(null);
   // Every render while active: the bar or the taskbar may just have come or
   // gone (the frame's rule runs a tick after a blur), moving the dock; the
-  // fit follows before the browser paints, so the drawer never jumps.
+  // fit follows before the browser paints, so the drawer never jumps. These
+  // re-reads never scroll: the console re-renders every second, and a host
+  // who scrolled the drawer away from the field must stay where they are.
   useIsoLayoutEffect(() => {
-    if (active) reader.current?.();
+    if (active) reader.current?.("render");
   });
   useIsoLayoutEffect(() => {
     if (!active || dock === null || typeof window === "undefined") {
@@ -148,7 +163,7 @@ export function useKeyboardFit(active: boolean, dock: HTMLElement | null, restTo
       for (const p of SHEET_PROPS) sheet.style.removeProperty(p);
       sheet = null;
     };
-    const read = () => {
+    const read = (why: FitTrigger) => {
       const root = dock.getRootNode() as Document | ShadowRoot;
       const a = (root.activeElement ?? document.activeElement) as HTMLElement | null;
       const backdrop = a !== null && dock.contains(a) ? (a.closest(".sheet-backdrop") as HTMLElement | null) : null;
@@ -169,22 +184,26 @@ export function useKeyboardFit(active: boolean, dock: HTMLElement | null, restTo
         const next = keyboardFit(dock.getBoundingClientRect().top, vv.offsetTop, vv.height, restTop?.current ?? null);
         setFit((prev) => (prev?.lift === next?.lift && prev?.height === next?.height ? prev : next));
       }
-      // The field itself in view inside its scrolling panel.
-      if (a !== null && dock.contains(a)) requestAnimationFrame(() => a.scrollIntoView?.({ block: "nearest" }));
+      // The field itself in view inside its scrolling panel — when typing
+      // starts and when the keyboard moves, never on a re-render.
+      if (revealsField(why) && a !== null && dock.contains(a)) requestAnimationFrame(() => a.scrollIntoView?.({ block: "nearest" }));
     };
     reader.current = read;
-    read();
+    const reveal = () => read("start");
+    reveal();
     // The keyboard slides up over ~250 ms: read again once it has (and the
     // frame's taskbar may step aside a render later).
-    const settle = setTimeout(read, 320);
-    const next = typeof requestAnimationFrame !== "undefined" ? requestAnimationFrame(read) : 0;
-    vv.addEventListener("resize", read);
-    vv.addEventListener("scroll", read);
+    const settle = setTimeout(reveal, 320);
+    const next = typeof requestAnimationFrame !== "undefined" ? requestAnimationFrame(reveal) : 0;
+    const moved = () => read("scroll");
+    const resized = () => read("resize");
+    vv.addEventListener("resize", resized);
+    vv.addEventListener("scroll", moved);
     return () => {
       clearTimeout(settle);
       if (typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(next);
-      vv.removeEventListener("resize", read);
-      vv.removeEventListener("scroll", read);
+      vv.removeEventListener("resize", resized);
+      vv.removeEventListener("scroll", moved);
       reader.current = null;
       unfit();
       setFit(null);
