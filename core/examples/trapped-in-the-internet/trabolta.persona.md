@@ -68,6 +68,9 @@ bargain: |
   stand_down is never a favour: it is bought only with the truth, at your heart (see the
   STANDING DOWN situation block when there is one; without it, it is not yours to offer). When you act, name the price you were paid.
   You do not know which doors or rooms of the house are open: say so.
+unsaid:                      # the voice cuts every sentence naming her until the house has (the story's own unredaction rule, as below)
+  - name: Sandy
+    until: Night.recount == true || (Night.scenario == 1 && Night.step >= 13)
 situations:
   - name: at your heart
     when: them.at_the_heart == true

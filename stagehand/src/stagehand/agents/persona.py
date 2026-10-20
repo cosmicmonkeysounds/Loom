@@ -43,6 +43,9 @@
       - "Your request has been logged" #   per person, at first contact
     catchphrase_stages: [formal]       # …and only while his stage is one of these
                                        #   (none = any stage)
+    unsaid:                            # a name he never says until the story has
+      - name: Sandy                    #   (the new voice cuts every sentence naming
+        until: Night.recount == true   #   it while `until` is false)
     situations:                        # optional extra instructions for a moment:
       - name: at his heart             #   (name optional — the block's heading)
         when: them.at_the_heart == true  # a gate expression, read like `when:`
@@ -97,6 +100,7 @@ _KNOWN = {
     "catchphrases",
     "catchphrase_stages",
     "fallbacks",
+    "unsaid",
 }
 
 _SITUATION_KEYS = {"name", "when", "prompt"}
@@ -168,6 +172,9 @@ class Persona:
     #: The new voice's lines for nothing usable left, by stage ("" = any
     #: stage; `fallbacks:`); `guards.pick_fallback` picks one not heard yet.
     fallbacks: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    #: Names the new voice never says until the story has (`unsaid:`): each
+    #: (name, condition), the condition read like `when:`.
+    unsaid: tuple[tuple[str, Condition], ...] = ()
     #: The mind file's phase cards, in file order, inheritance resolved
     #: (`parse_mind_table`). A bare cue string is a card too.
     phase_cards: dict[str, "PhaseCard"] = field(default_factory=dict)
@@ -352,6 +359,7 @@ def parse_persona(text: str, source: str = "<persona>") -> Persona:
         catchphrases=_catchphrases(meta.get("catchphrases"), source),
         catchphrase_stages=_catchphrase_stages(meta.get("catchphrase_stages"), stages, source),
         fallbacks=_fallbacks(meta.get("fallbacks"), stages, secrets, source),
+        unsaid=_unsaid(meta.get("unsaid"), source),
         phase_cards=dict(table.cards),
         stage_cards=dict(table.stage_cards),
         warnings=table.warnings,
@@ -395,6 +403,28 @@ def _fallbacks(value: Any, stages: tuple[str, ...], secrets: Secrets, source: st
             raise ConfigError(f"{source}: fallbacks.{stage or '(any)'}: carries a secrets.never word")
         out[stage] = tuple(" ".join(x.split()) for x in lines)
     return out
+
+
+def _unsaid(value: Any, source: str) -> tuple[tuple[str, Condition], ...]:
+    if value in (None, ""):
+        return ()
+    if not isinstance(value, list):
+        raise ConfigError(f"{source}: unsaid: expected a list of {{name, until}} entries")
+    out: list[tuple[str, Condition]] = []
+    for i, raw in enumerate(value):
+        where = f"{source}: unsaid[{i}]"
+        if not isinstance(raw, dict) or set(raw) - {"name", "until"}:
+            raise ConfigError(f"{where}: expected a mapping with name: and until:")
+        name, until = raw.get("name"), raw.get("until")
+        if not isinstance(name, str) or not name.strip():
+            raise ConfigError(f"{where}: needs a name")
+        if not isinstance(until, str) or not until.strip():
+            raise ConfigError(f"{where}: needs an until: expression")
+        try:
+            out.append((" ".join(name.split()), Condition(until.strip())))
+        except ValueError as err:
+            raise ConfigError(f"{where}: until: {err}") from err
+    return tuple(out)
 
 
 _MIND_KNOWN = {"stages", "drives", "phases", "secrets"}

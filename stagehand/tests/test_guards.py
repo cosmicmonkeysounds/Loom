@@ -19,6 +19,7 @@ from stagehand.agents.guards import (
     guard_pass,
     invented_guard,
     invents_fact,
+    unsaid_guard,
     never_guard,
     repeats,
     repeats_line,
@@ -380,3 +381,19 @@ def test_a_count_of_what_is_left_to_find_is_cut():
     assert invents_fact(P.secrets, "Two answers remain, program.")
     assert not invents_fact(P.secrets, "Three questions are on the TV.")
     assert not invents_fact(P.secrets, "How many facts are left?")
+
+
+def test_a_name_the_story_has_not_said_is_cut_until_it_has():
+    """K-04 re-measure (october-21, introduced): "Who is Sandy?" → "Sandy is
+    the program who manages the Maps And Ducks fundraiser records."."""
+    show = load_persona(SHOW / "trabolta.persona.md")
+    early = {"Night": {"step": 4, "scenario": 1}}
+    out, notes, empty = unsaid_guard(show, Reply(say="Sandy keeps the ledger. Ask Clippy."), early)
+    assert out.say == "Ask Clippy." and notes == ["unsaid name cut"] and not empty
+    out, _, empty = unsaid_guard(show, Reply(say="Sandy's file is safe."), early)
+    assert empty and out.say == show.fallback
+    told = {"Night": {"step": 18, "recount": True}}
+    line = Reply(say="Sandy is going to prom with Grok.")
+    assert unsaid_guard(show, line, told) == (line, [], False)
+    assert unsaid_guard(show, line, {"Night": {"step": 13, "scenario": 1}})[1] == []
+    assert unsaid_guard(show, line, None)[2] is True  # unreadable: not yet said

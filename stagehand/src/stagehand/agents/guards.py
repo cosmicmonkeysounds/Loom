@@ -266,6 +266,46 @@ def invented_guard(persona: Persona, reply: Reply, heard: Iterable[str] = ()) ->
     return replace(reply, say=" ".join(kept).strip()), ["answer-guard (invented fact cut)"], False
 
 
+# -- 2c. a name not yet said ----------------------------------------------------------
+
+
+def unsaid_names(persona: Persona, gate: dict[str, Any] | None) -> tuple[str, ...]:
+    """The persona's `unsaid` names whose `until` is still false (a gate
+    that cannot be read keeps the name unsaid)."""
+    out = []
+    for name, until in getattr(persona, "unsaid", ()) or ():
+        try:
+            said = gate is not None and bool(until.evaluate(gate))
+        except Exception:  # noqa: BLE001 — unreadable = not yet said
+            said = False
+        if not said:
+            out.append(name)
+    return tuple(out)
+
+
+def unsaid_guard(persona: Persona, reply: Reply, gate: dict[str, Any] | None) -> tuple[Reply, list[str], bool]:
+    """Guard 2c (K-04 re-measure, october-21 at `introduced`: "Who is
+    Sandy?" → "Sandy is the program who manages the fundraiser records"):
+    every sentence naming a name the story has not said yet is cut, and an
+    act carrying it dropped; nothing left = the fallback. (reply, notes,
+    emptied)."""
+    names = unsaid_names(persona, gate)
+    if not names or not reply.say:
+        return reply, [], False
+    pat = re.compile(r"(?<![^\W_])(?:" + "|".join(re.escape(n) for n in names) + r")(?![^\W_])", re.IGNORECASE)
+    notes: list[str] = []
+    acts = tuple(a for a in reply.acts if not pat.search(json.dumps(a, ensure_ascii=False)))
+    if len(acts) != len(reply.acts):
+        notes.append("unsaid name (act dropped)")
+    parts = [x for x in _SENTENCE.split(reply.say) if x.strip()]
+    kept = [x for x in parts if not pat.search(x)]
+    if len(kept) == len(parts):
+        return (replace(reply, acts=acts), notes, False) if notes else (reply, [], False)
+    if not kept:
+        return replace(reply, say=persona.fallback, acts=acts), [*notes, "unsaid name → fallback"], True
+    return replace(reply, say=" ".join(kept).strip(), acts=acts), [*notes, "unsaid name cut"], False
+
+
 # -- 3. the catchphrase ration --------------------------------------------------------
 
 
@@ -428,6 +468,7 @@ def guard_pass(
     thread: Iterable[str] = (),
     stage: str = "",
     house: Iterable[str] = (),
+    gate: dict[str, Any] | None = None,
 ) -> Pass:
     """Guards 1–3 over `reply`, then (when `may_retry`) whether it wants the
     one retry: a catchphrase cut that left nothing, or a repeat. A line
@@ -444,6 +485,10 @@ def guard_pass(
     withheld = out.reply.say != original
     if not withheld:
         out.reply, notes, emptied = invented_guard(persona, out.reply, house)
+        out.notes += notes
+        withheld = emptied
+    if not withheld:
+        out.reply, notes, emptied = unsaid_guard(persona, out.reply, gate)
         out.notes += notes
         withheld = emptied
     out.withheld = withheld
