@@ -253,8 +253,8 @@ It shows even before a worker has reported; on a project with no
   the filed answer, and answers *same* or *not*. *Same* is judged
   accurate; *not* is a confident lie at confidence 100, uncertain below.
   It goes through the same confirm event as your buttons, journaled `by:
-  agent:Trabolta`, and `# hosts` gets *🤖 Trabolta ruled X's H2 filing
-  "Mr Pickels": the same as "Mister Pickles" (accurate).* plus his one-line
+  agent:Trabolta`, and `# hosts` gets *🤖 Trabolta ruled X's Q2 filing
+  "Dr Whiskars": the same as "Doctor Whiskers" (accurate).* plus his one-line
   reason. The ruling then lists under the pending rows (*🤖 Trabolta: same
   — why*, *now accurate*) with its own ✅ / 😤 / 🤷: press one to
   override it (the later verdict wins, and the row says *overridden by*
@@ -276,7 +276,7 @@ It shows even before a worker has reported; on a project with no
   that filing's question, so it judges that filing and never just the
   program's latest. A *marked* row has no buttons. This is the place to
   fix an answer the key didn't list and the judge called a lie (an
-  abbreviation like "Mr. Pickles" is already accurate) and the place a host's booth sends you when a program has
+  abbreviation like "Dr. Whiskers" is already accurate) and the place a host's booth sends you when a program has
   more than one filing waiting.
 
 Judging runs on the event server, so a local-folder run shows the card

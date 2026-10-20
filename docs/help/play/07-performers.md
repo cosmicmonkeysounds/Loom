@@ -94,9 +94,9 @@ and a confidence slider. The **server judges it** the moment it is
 filed, against the story's answer key — *accurate*, a *confident lie*
 (wrong at 100%), or *uncertain* (wrong below) — and the story reacts at
 once; nothing waits for a host. The one exception is a **near miss**: an
-answer close to the key but not exact (*Mr Pickels*, a number written
-out, the right answer with a few more words). An abbreviation (*Mr.
-Pickles*) is simply accurate. It is never judged a lie or a guess by itself: it is *proposed
+answer close to the key but not exact (*Dr Whiskars* for *Doctor Whiskers*, a number written
+out, the right answer with a few more words). An abbreviation (*Dr.
+Whiskers*) is simply accurate. It is never judged a lie or a guess by itself: it is *proposed
 accurate*, a ⚠ line in `# hosts` names the answer it is close to, and it
 waits for a person (you, with the buttons below, or the director's
 Judging card). At *Trapped in the Internet* Trabolta rules on it first
