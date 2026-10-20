@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { byRefusal, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, byRefusal, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -453,7 +453,17 @@ export interface EventRuntimeInit {
   /** Least gap between two `snapshot` frames to the phones and booths
    *  (default `LOOM_SNAPSHOT_MS`, else 0 = one frame per step). */
   snapshotMs?: number;
+  /** Least gap between two host-view builds while only the log moved
+   *  (default `HOST_VIEW_MS`; tests pass 0 to read every step). */
+  hostViewMs?: number;
 }
+
+/** A host booth's panel (`?role=mod&host=1`) is rebuilt at most once per
+ *  this many ms while only the log moves (load test, wave 13: a build is
+ *  the whole mod view, 20–45 ms late in the night, and under load every 3 s
+ *  poll of every host missed the old per-second cache). A cue press or a
+ *  phase change rebuilds at once. */
+export const HOST_VIEW_MS = 2000;
 
 /** `LOOM_SNAPSHOT_MS`: coalesce guest + booth snapshots to at most one per
  *  this many ms (the K-32 contingency, SW-OPS-24). Off (0) unless set. */
@@ -708,6 +718,7 @@ export class EventRuntime {
     if (init.now !== undefined) this.clock = init.now;
     this.claims = new Claims({ secret: this.resolveClaimSecret(init), now: () => this.clock() });
     this.modSnapshotMs = Math.max(0, init.modSnapshotMs ?? MOD_SNAPSHOT_MS);
+    this.hostViewMs = Math.max(0, init.hostViewMs ?? HOST_VIEW_MS);
     this.snapshotMs = Math.max(0, init.snapshotMs ?? snapshotMsFromEnv());
     this.spatial = new SpatialHub({
       eventId: init.eventId,
@@ -994,9 +1005,12 @@ export class EventRuntime {
     };
   }
 
+  /** The last `modViewNow()` built (the host view reuses a fresh one). */
+  private modViewLast: { len: number; phase: RuntimePhase; at: number; view: ModView } | null = null;
+
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
-    return {
+    const view: ModView = {
       ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim),
       avatars: this.avatarMap(),
       ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}),
@@ -1004,44 +1018,82 @@ export class EventRuntime {
       // `start:` beat unplayed: the doors are still closed (the phone's strip).
       ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
     };
+    this.modViewLast = { len: this.sim?.log.len() ?? -1, phase: this.phase, at: Date.now(), view };
+    return view;
   }
 
-  /** The host view's last build, reused within the same second of the same log. */
-  private hostViewCache: { len: number; phase: RuntimePhase; sec: number; view: HostView } | null = null;
+  private readonly hostViewMs: number;
+  /** The host view's last build (`hostViewNow`). */
+  private hostViewCache: { len: number; phase: RuntimePhase; presses: number; writes: number; at: number; view: HostView } | null = null;
+  /** Bumped by every director / host write (`noteHostWrite`): the host's
+   *  re-poll right after its own write (`client.refresh()`) never reads the
+   *  build from before it. */
+  private hostWrites = 0;
+
+  /** A write a host's panel must show on its next poll: any `/api/mod/*`
+   *  POST, an agent's reply or ruling, and a host booth's own press or scan.
+   *  Counted now and again once the answer is sent (a poll that slipped in
+   *  while the handler awaited must not stand for the written state). */
+  private noteHostWrite(path: string, token: string | undefined, res: ServerResponse): void {
+    const write =
+      path.startsWith("/api/mod/") ||
+      path === "/api/agent/reply" ||
+      path === "/api/agent/judge" ||
+      ((path.startsWith("/api/prime/") || path === "/api/scan") && this.sessions.canHost(token));
+    if (!write) return;
+    this.hostWrites += 1;
+    const after = (): void => {
+      this.hostWrites += 1;
+    };
+    if (typeof res.once === "function") res.once("finish", after);
+  }
 
   /** A host booth's panel (`GET /api/state?role=mod&host=1`, §2.6): built on
    *  the mod view, plus the King, the terminals, every guest's flags and the
-   *  guests waiting on each agent-voiced character. Cached per second. */
+   *  guests waiting on each agent-voiced character. Built at most once per
+   *  `HOST_VIEW_MS` (the hosts poll every 3 s; a build is the whole mod view)
+   *  unless a cue was pressed or the run changed phase since — then at once,
+   *  so a host never reads NEXT from before their own press. */
   private hostViewNow(): HostView {
     const now = Date.now();
-    const len = this.sim?.log.len() ?? -1;
-    const sec = Math.floor(now / 1000);
-    const hit = this.hostViewCache;
-    if (hit !== null && hit.len === len && hit.phase === this.phase && hit.sec === sec) return hit.view;
     const sim = this.sim;
+    const len = sim?.log.len() ?? -1;
+    const presses = sim === null ? 0 : cueState(sim).presses;
+    const hit = this.hostViewCache;
+    // Reused only inside the window, whether or not the log moved: a quiet
+    // log still moves the clocks the panel shows (a terminal's silence, an
+    // agent's oldest wait, who was seen when).
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return hit.view;
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     for (const r of this.agents.pending) {
       if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
       const list = waiting.get(r.character) ?? [];
-      list.push({ guest: r.speaker.id, name: r.speaker.name, since: r.at, text: r.text.slice(0, 200) });
+      // Since the request was opened (or the owed line, after a restart) —
+      // the queue's `oldestMs` clock; `r.at` moves on every refresh.
+      list.push({ guest: r.speaker.id, name: r.speaker.name, since: this.agents.sinceOf(r.id) ?? r.at, text: r.text.slice(0, 200) });
       waiting.set(r.character, list);
     }
-    const flags = new Map<string, ReturnType<typeof guestFlags>>();
-    if (sim !== null) for (const id of sim.persons.keys()) flags.set(id, guestFlags(sim, id));
+    // Every guest's flags as a booth snapshot carries them (C3), shared with
+    // the booths' round; the mod view the directors' round just built, when
+    // it is this log's and under a second old.
+    const flags = sim === null ? new Map<string, ReturnType<typeof guestFlags>>() : allSnapshotFlags(sim);
+    const last = this.modViewLast;
+    const mod = last !== null && last.len === len && last.phase === this.phase && now - last.at < 1000 ? last.view : this.modViewNow();
     this.spatialHouse();
     const king = this.spatial.king();
     const terms = screenTerminals(this.screens);
     const model = sim?.model ?? this.declaredModel;
     const view = hostView({
-      mod: this.modViewNow(),
+      mod,
       waiting,
       king: king === null ? null : { hp: king.hp, max: king.max, fallen: king.fallen },
       terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
       flags,
       staffRooms: model === null ? [] : staffRoomChannels(model),
+      ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),
       now,
     });
-    this.hostViewCache = { len, phase: this.phase, sec, view };
+    this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
     return view;
   }
 
@@ -1825,11 +1877,11 @@ export class EventRuntime {
 
   /** A line just landed in `channel` for `audience` — if that's an agent's
    *  thread, the agent owes an answer. */
-  private agentHeard(channel: string, audience: string[], held = false): void {
+  private agentHeard(channel: string, audience: string[], held = false, since?: number): void {
     if (!channel.startsWith("dm:") || audience.length !== 1) return;
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
-    this.agents.line({ character, channel, audience }, { held });
+    this.agents.line({ character, channel, audience }, { held, ...(since !== undefined ? { since } : {}) });
   }
 
   /** After a restore: every agent thread still owed an answer — someone
@@ -1847,6 +1899,8 @@ export class EventRuntime {
     interface Tail {
       /** The newest line from someone else since the character's last real line. */
       owed: ChatMessage | null;
+      /** The first of those lines: since when they have been waiting. */
+      first: ChatMessage | null;
       /** A hold line after it (since the character's last real line). */
       held: boolean;
       last: ChatMessage;
@@ -1860,21 +1914,30 @@ export class EventRuntime {
       const t = tails.get(key);
       const def = sim.model.characters.get(character);
       let owed = t?.owed ?? null;
+      let first = t?.first ?? null;
       let held = t?.held ?? false;
       if (m.from !== character) {
-        if (m.kind === "line") owed = m;
+        if (m.kind === "line") {
+          owed = m;
+          first ??= m;
+        }
       } else if (def?.hold !== null && def?.hold !== undefined && m.text === def.hold) {
         if (owed !== null) held = true;
       } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy)) {
         owed = null;
+        first = null;
         held = false;
       }
-      tails.set(key, { owed, held, last: m });
+      tails.set(key, { owed, first, held, last: m });
     }
     const now = sim.elapsed();
-    for (const { owed, held, last } of tails.values()) {
+    const wall = this.clock();
+    for (const { owed, first, held, last } of tails.values()) {
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
-      this.agentHeard(last.channel, last.audience as string[], held);
+      // The guest has waited since their first unanswered line, not since
+      // this restart: its story time mapped onto the hub's wall clock.
+      const since = first === null ? undefined : wall - Math.max(0, now - first.ts);
+      this.agentHeard(last.channel, last.audience as string[], held, since);
     }
   }
 
@@ -3819,6 +3882,7 @@ export class EventRuntime {
       sendJson(res, 403, { error: NOT_FROM_A_BOOTH });
       return true;
     }
+    this.noteHostWrite(path, tokenOf(req, body), res);
 
     if (this.pushRoutes.handlePost(req, res, path, body)) return true;
     if (path === RESUME_ROUTE) {

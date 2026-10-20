@@ -37,6 +37,8 @@ export interface FilingLike {
   how?: FilingHow | null;
   by?: string | null;
   at: number;
+  /** The sim log position of its newest step (`FactsFiling.logAt`): survives a restart, `at` doesn't. */
+  logAt?: number;
   near?: { key: string } | null;
   ruling?: { by: string; same: boolean; why: string; at: number } | null;
   asking?: boolean;
@@ -142,6 +144,8 @@ export interface JudgingRow {
   proposed: FactVerdictLike;
   final: string | null;
   at: number;
+  /** `FilingLike.logAt`, when the server sends it (orders a restarted night). */
+  logAt?: number;
   /** The key answer it nearly matched, else null. */
   near: string | null;
   /** The story's `judge:` character is being asked to rule. */
@@ -188,6 +192,8 @@ export interface FilingRow {
   how: FilingHow;
   by: string | null;
   at: number;
+  /** `FilingLike.logAt`, when the server sends it. */
+  logAt?: number;
   near: string | null;
   asking: boolean;
   ruling: FilingRuling | null;
@@ -199,7 +205,9 @@ export function ruledFilings(facts: FactsLike): Array<FilingRow & { question: st
   for (const q of facts.questions) {
     for (const row of questionFilings(facts, q.id)) if (row.ruling !== null) out.push({ ...row, question: q.id, ruling: row.ruling });
   }
-  return out.sort((a, b) => b.ruling.at - a.ruling.at);
+  // By log position when both carry one (a restart re-stamps every
+  // `ruling.at`), else by when this server saw the ruling.
+  return out.sort((a, b) => (typeof a.logAt === "number" && typeof b.logAt === "number" ? b.logAt - a.logAt : b.ruling.at - a.ruling.at));
 }
 
 /** A filing's near-miss key, else null. */
@@ -216,10 +224,12 @@ export function pendingFilings(facts: FactsLike): JudgingRow[] {
   for (const q of facts.questions) {
     for (const f of q.filings) {
       if (f.final !== null) continue;
-      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) });
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, ...(typeof f.logAt === "number" ? { logAt: f.logAt } : {}), near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) });
     }
   }
-  return rows.sort((a, b) => a.at - b.at);
+  // Oldest first, by log position when both carry one: a restart re-stamps
+  // every `at`, which would list a whole night in question order.
+  return rows.sort((a, b) => (typeof a.logAt === "number" && typeof b.logAt === "number" ? a.logAt - b.logAt : a.at - b.at));
 }
 
 /** How many filings wait as near misses. */
@@ -240,7 +250,7 @@ export function questionFilings(facts: FactsLike, id: string): FilingRow[] {
     return f.final === f.verdict ? "kept" : "overridden";
   };
   return q.filings
-    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) }))
+    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, ...(typeof f.logAt === "number" ? { logAt: f.logAt } : {}), near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) }))
     .sort((a, b) => a.at - b.at);
 }
 
@@ -401,6 +411,18 @@ export function isSignedIn(p: PartPresence): boolean {
 // ---------------------------------------------------------------------------
 // Guests (moved from cockpit/guests.ts)
 // ---------------------------------------------------------------------------
+
+/** A boolean `watch:` flag whose *false* is the exception a performer must
+ *  see: the gates a guest passes on the way in ("Not cleared", "Not checked
+ *  in"). The server keeps a false one in a snapshot (`views.ts`
+ *  `snapshotFlags`, contract C3) and drops every other false boolean; the
+ *  booth card (`play/src/booth/model.ts` `factChips`) reads it the same way. */
+export const GATE_FLAG = /^(cleared|checked[\s-]?in|uploaded|registered|verified|scanned|approved|signed[\s-]?in|joined|arrived|present)\b/iu;
+
+/** Is a flag's label one of the entry gates (`GATE_FLAG`)? */
+export function isGateFlag(label: string): boolean {
+  return GATE_FLAG.test(label.trim());
+}
 
 /** How long without a sign of a guest before Needs you asks about them. */
 export const UNSEEN_MS = 30 * 60_000;
@@ -612,10 +634,15 @@ export interface AwardSuggestion {
   name: string;
   value: string;
   ties: Array<{ id: string; name: string }>;
+  /** The story lets only this program take the award (`HostView.awardOnly`). */
+  only?: true;
 }
 
-/** The suggestion for one award cue, or null. */
-export function awardSuggestion(cueId: string, recap: RecapWire | null): AwardSuggestion | null {
+/** The suggestion for one award cue, or null. `only`: the one program the
+ *  story's gate lets take it (`HostView.awardOnly[cueId]`) — offered first
+ *  whatever the recap says, with no value (the story reads its own). */
+export function awardSuggestion(cueId: string, recap: RecapWire | null, only?: { id: string; name: string } | null): AwardSuggestion | null {
+  if (only !== undefined && only !== null) return { id: only.id, name: only.name, value: "", ties: [], only: true };
   const src = AWARD_SOURCES[cueId];
   if (src === undefined || recap === null) return null;
   if (src.list === "duck") {
@@ -638,6 +665,7 @@ export function awardSuggestion(cueId: string, recap: RecapWire | null): AwardSu
 
 /** `suggested: Ada (82) · tied: Bob, Cy` — the row's hint. */
 export function suggestionHint(s: AwardSuggestion): string {
+  if (s.only === true) return `only ${s.name} can take this`;
   const tie = s.ties.length > 0 ? ` · tied: ${s.ties.map((t) => t.name).join(", ")}` : "";
   return `suggested: ${s.name} (${s.value})${tie}`;
 }
@@ -748,6 +776,10 @@ export interface HostView extends CueSheetView {
   people: HostPerson[];
   alerts: { path: string; level: AlertLevel };
   staffRooms: string[];
+  /** An award cue only one program can take (its story gate names them —
+   *  G10 is MS Paint's), by cue id: the picker offers them first
+   *  (`awardSuggestion`'s third argument). Absent when none. */
+  awardOnly?: Record<string, { id: string; name: string }>;
 }
 
 /** A `ModView`-shaped snapshot (the runtime's `modViewNow()`), structurally. */
@@ -799,14 +831,29 @@ export interface HostViewInput {
   /** Per-guest flags (`guestFlags`), by guest id. */
   flags: ReadonlyMap<string, Array<{ label: string; path: string; value: string; on: boolean }>>;
   staffRooms: string[];
+  /** Award cues whose story gate names one program (`awardOnly` in
+   *  `views.ts`): the one guest who can take it, by cue id. */
+  awardOnly?: Readonly<Record<string, { id: string; name: string }>>;
   /** Wall ms. */
   now: number;
+}
+
+/** Newest step first: by log position when both rows carry one (a restart
+ *  re-stamps every `at` to the replay's moment, which would sort a whole
+ *  night in question order), else by when this server saw it. */
+export function newestFilingFirst(a: Pick<FilingRow, "at" | "logAt" | "ruling">, b: Pick<FilingRow, "at" | "logAt" | "ruling">): number {
+  if (typeof a.logAt === "number" && typeof b.logAt === "number") return b.logAt - a.logAt;
+  const when = (r: Pick<FilingRow, "at" | "ruling">): number => Math.max(r.at, r.ruling?.at ?? 0);
+  return when(b) - when(a);
 }
 
 /** Pure; builds on `cueSheetView(input.mod)`. */
 export function hostView(input: HostViewInput): HostView {
   const { mod, now } = input;
   const world = mod.world ?? [];
+  // One lookup table per build: the people list asks two paths per row,
+  // and a late-night world has thousands of rows.
+  const byPath = new Map(world.map((w) => [w.path, w.value]));
   const facts = mod.facts ?? null;
   const cast = mod.cast ?? [];
   const minds = mod.minds ?? [];
@@ -824,8 +871,7 @@ export function hostView(input: HostViewInput): HostView {
         recent.push({ ...row, question: q.id, buttons: filingButtons(facts, row) });
       }
     }
-    const when = (r: FilingRow): number => Math.max(r.at, r.ruling?.at ?? 0);
-    recent.sort((a, b) => when(b) - when(a));
+    recent.sort(newestFilingFirst);
     judging = {
       mode: judgeModeOf(world, facts),
       judge: typeof facts.judge === "string" && facts.judge !== "" ? facts.judge : null,
@@ -856,7 +902,7 @@ export function hostView(input: HostViewInput): HostView {
   const people: HostPerson[] = [];
   for (const r of roster) {
     // A Run persona only while a director drives it (it has an owner).
-    if (isPersonaRow(r, world) && (r.owner === undefined || r.owner === null)) continue;
+    if (isPersonaRow(r, byPath) && (r.owner === undefined || r.owner === null)) continue;
     const flags = input.flags.get(r.id);
     people.push({
       id: r.id,
@@ -864,8 +910,8 @@ export function hostView(input: HostViewInput): HostView {
       location: r.location,
       ...(r.online !== undefined ? { online: r.online } : {}),
       ...(r.lastSeen !== undefined ? { lastSeen: r.lastSeen } : {}),
-      ...(r.gone === true || isGone(world, r.id) ? { gone: true as const } : {}),
-      ...(r.persona === true || isPersonaRow(r, world) ? { persona: true as const } : {}),
+      ...(r.gone === true || isGone(byPath, r.id) ? { gone: true as const } : {}),
+      ...(r.persona === true || isPersonaRow(r, byPath) ? { persona: true as const } : {}),
       restricted: r.restricted === true,
       captured: r.captured === true,
       ...(flags !== undefined && flags.length > 0 ? { flags: flags.map((f) => ({ ...f })) } : {}),
@@ -884,5 +930,6 @@ export function hostView(input: HostViewInput): HostView {
     people,
     alerts: mod.alerts ?? { path: "Night.alerts", level: "sticky" },
     staffRooms: [...input.staffRooms],
+    ...(input.awardOnly !== undefined && Object.keys(input.awardOnly).length > 0 ? { awardOnly: Object.fromEntries(Object.entries(input.awardOnly).map(([k, v]) => [k, { id: v.id, name: v.name }])) } : {}),
   };
 }

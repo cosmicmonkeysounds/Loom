@@ -69,6 +69,7 @@ import { mailer } from "./mail.ts";
 import { WebmasterPortal, resendSender } from "./webmaster.ts";
 import { HTML_CSP, PLAY_CSP, PLAY_PWA_FILES, REINSTALL_CSP, TERMINAL_CSP, appRelPath, pickJoinBase, subAppRoute, wantsModRead } from "./routing.ts";
 import { serveHomescreenManifest } from "./routes/k31b.ts";
+import { appCacheControl } from "./static-cache.ts";
 
 const PORT = Number(process.env.LOOM_PORT ?? 7000);
 const HOST = process.env.LOOM_HOST ?? "0.0.0.0";
@@ -138,7 +139,9 @@ function serveAppFile(pathname: string, res: ServerResponse, dist: URL = APP_DIS
     const ext = rel.slice(rel.lastIndexOf("."));
     const headers: Record<string, string> = { "content-type": CONTENT_TYPES[ext] ?? "application/octet-stream" };
     if (ext === ".html") headers["content-security-policy"] = csp;
-    if (noCache) headers["cache-control"] = "no-cache";
+    // A hashed `/assets/*` bundle is immutable; HTML and the PWA files revalidate.
+    const cache = appCacheControl(rel, noCache);
+    if (cache !== null) headers["cache-control"] = cache;
     res.writeHead(200, headers);
     res.end(buf);
     return true;

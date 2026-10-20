@@ -131,7 +131,8 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   // its value pre-filled, while the award cues are near.
   const recap = useRecap(injected !== undefined ? null : { token: auth.token, eventId: auth.eventId }, awardsNear(rows, layout));
   const picking = desk.picking;
-  const suggestion = picking !== null ? awardSuggestion(picking.id, recap) : null;
+  // An award only one program can take (G10 is MS Paint's) offers them first.
+  const suggestion = picking !== null ? awardSuggestion(picking.id, recap, view?.awardOnly?.[picking.id]) : null;
   const pickedFor = useRef<string | null>(null);
   useEffect(() => {
     const fill = awardPrefill(picking?.id ?? null, pickedFor.current, suggestion, desk.value);

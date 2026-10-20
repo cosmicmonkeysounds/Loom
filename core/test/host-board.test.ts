@@ -14,6 +14,7 @@ import {
   askingOf,
   askingText,
   awardSuggestion,
+  newestFilingFirst,
   castPresence,
   confirmEvent,
   fillAwards,
@@ -462,6 +463,12 @@ describe("award suggestions (moved from cockpit/award-suggest.ts)", () => {
   it("hints the winner, the value and the ties", () => {
     expect(suggestionHint(awardSuggestion("award_most_trusted", recap)!)).toBe("suggested: Ada (82) · tied: Bob");
     expect(suggestionHint(awardSuggestion("award_lore_hoarder", recap)!)).toBe("suggested: Bob (12)");
+    // An award the story lets only one program take (G10 is MS Paint's) offers them first, recap or not.
+    const only = awardSuggestion("award_the_painting", null, { id: "g9", name: "MS Paint" })!;
+    expect(only).toEqual({ id: "g9", name: "MS Paint", value: "", ties: [], only: true });
+    expect(awardSuggestion("award_most_trusted", recap, { id: "g9", name: "MS Paint" })!.id).toBe("g9");
+    expect(awardSuggestion("award_most_trusted", recap, null)!.id).toBe("g1");
+    expect(suggestionHint(only)).toBe("only MS Paint can take this");
   });
 
   const empty: AwardFields = { winners: {}, values: {}, auto: {} };
@@ -609,6 +616,39 @@ describe("hostView", () => {
     expect(people[0]).toEqual({ id: "g1", name: "Ada", location: "Hall", online: true, lastSeen: 1, restricted: true, captured: false, flags: [{ label: "Cleared", path: "Program.cleared", value: "false", on: false }] });
     expect(people[1]).toMatchObject({ gone: true, restricted: false, captured: false });
     expect(people[2]).toMatchObject({ persona: true });
+  });
+
+  it("judging recent: by log position when the server sends one (a restart re-stamps every `at`)", () => {
+    const restarted = mod({
+      facts: {
+        mode: "auto",
+        questions: [
+          { id: "H1", round: 1, text: "?", filings: [filing({ question: "H1", final: "accurate", how: "auto", at: 7, logAt: 10 })] },
+          { id: "H2", round: 2, text: "?", filings: [filing({ person: "g2", name: "Bo", question: "H2", final: "lie", how: "auto", at: 7, logAt: 30 })] },
+          { id: "H3", round: 2, text: "?", filings: [filing({ person: "g3", name: "Cy", question: "H3", final: "accurate", how: "auto", at: 7, logAt: 20 })] },
+        ],
+      },
+    });
+    expect(hostView(input({ mod: restarted })).judging!.recent.map((r) => r.question)).toEqual(["H2", "H3", "H1"]);
+    // Pending (oldest first) and the rulings list (newest first) follow the log too.
+    const waiting = mod({
+      facts: {
+        mode: "review",
+        questions: [
+          { id: "H1", round: 1, text: "?", filings: [filing({ question: "H1", final: null, at: 7, logAt: 30 }), filing({ person: "g4", name: "Di", question: "H1", final: "accurate", at: 7, logAt: 25, ruling: { by: "agent:T", same: true, why: "", at: 7 } })] },
+          { id: "H2", round: 2, text: "?", filings: [filing({ person: "g2", name: "Bo", question: "H2", final: null, at: 7, logAt: 10 }), filing({ person: "g5", name: "Ed", question: "H2", final: "accurate", at: 7, logAt: 40, ruling: { by: "agent:T", same: true, why: "", at: 7 } })] },
+        ],
+      },
+    });
+    expect(pendingFilings(waiting.facts!).map((r) => r.question)).toEqual(["H2", "H1"]);
+    expect(ruledFilings(waiting.facts!).map((r) => r.name)).toEqual(["Ed", "Di"]);
+    expect(newestFilingFirst({ at: 9, ruling: null }, { at: 1, ruling: { by: "T", same: true, why: "", at: 50 } })).toBeGreaterThan(0);
+  });
+
+  it("awardOnly rides the view when a cue has one; absent when none", () => {
+    expect(hostView(input()).awardOnly).toBeUndefined();
+    expect(hostView(input({ awardOnly: {} })).awardOnly).toBeUndefined();
+    expect(hostView(input({ awardOnly: { award_the_painting: { id: "g9", name: "MS Paint" } } })).awardOnly).toEqual({ award_the_painting: { id: "g9", name: "MS Paint" } });
   });
 
   it("an old snapshot with nothing new still builds", () => {

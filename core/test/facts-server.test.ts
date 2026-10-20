@@ -230,6 +230,22 @@ function sim(mode: "auto" | "review" = "auto"): Sim {
 }
 
 describe("FactsWatch", () => {
+  it("logAt orders filings by the log, the same after a replay that re-stamps every `at`", () => {
+    const s = sim("auto");
+    const b = book();
+    s.signal("fact answered", "g1", { question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", card: 1 });
+    s.signal("fact answered", "g2", { question: "Q2", answer: "Seuss", confidence: 60, verdict: "uncertain", card: 2 });
+    const live = new FactsWatch({ now: () => 100 }).view(s, b);
+    const replay = new FactsWatch({ now: () => 999 }).view(s, b);
+    const pos = (v: typeof live) => v.questions.flatMap((q) => q.filings.map((f) => [f.question, f.logAt]));
+    expect(pos(replay)).toEqual(pos(live));
+    const [q1, q2] = [live.questions[0]!.filings[0]!.logAt!, live.questions[1]!.filings[0]!.logAt!];
+    expect(q2).toBeGreaterThan(q1);
+    // A verdict moves the filing's logAt to its own step.
+    s.signal("judged", "g1", { question: "Q1", final: "marked" });
+    expect(new FactsWatch({ now: () => 5 }).view(s, b).questions[0]!.filings[0]!.logAt).toBeGreaterThan(q2);
+  });
+
   it("folds fact_filed / fact_judged off the sim log: filings, finals, tallies, consensus, pending", () => {
     const s = sim("auto");
     const watch = new FactsWatch({ now: () => 1234 });
@@ -250,11 +266,11 @@ describe("FactsWatch", () => {
     s.signal("fact answered", "g1", { question: "Q2", answer: "Doctor Seuss", confidence: 60, verdict: "uncertain", card: 3 });
     const v = watch.view(s, b);
     expect(v.questions[0]!.filings).toEqual([
-      { person: "g1", name: "Ada", question: "Q1", answer: "Eleven years", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234 },
-      { person: "g2", name: "Ben", question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234 },
+      { person: "g1", name: "Ada", question: "Q1", answer: "Eleven years", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234, logAt: expect.any(Number) },
+      { person: "g2", name: "Ben", question: "Q1", answer: "eleven", confidence: 100, verdict: "accurate", final: "accurate", how: "auto", by: null, at: 1234, logAt: expect.any(Number) },
     ]);
     expect(v.questions[0]!.tally).toEqual({ filed: 2, accurate: 2, lie: 0, uncertain: 0, consensus: true });
-    expect(v.questions[1]!.filings).toEqual([{ person: "g1", name: "Ada", question: "Q2", answer: "Doctor Seuss", confidence: 60, verdict: "uncertain", final: "uncertain", how: "auto", by: null, at: 1234 }]);
+    expect(v.questions[1]!.filings).toEqual([{ person: "g1", name: "Ada", question: "Q2", answer: "Doctor Seuss", confidence: 60, verdict: "uncertain", final: "uncertain", how: "auto", by: null, at: 1234, logAt: expect.any(Number) }]);
     expect(v.questions[1]!.tally).toEqual({ filed: 1, accurate: 0, lie: 0, uncertain: 1, consensus: false });
     expect(v.pending).toBe(0);
     // a later settle (the guess is marked) lands on the same filing

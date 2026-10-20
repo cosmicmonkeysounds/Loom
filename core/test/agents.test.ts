@@ -50,6 +50,28 @@ function hubHarness(opts: { replyTimeoutMs?: number; queueMaxAgeMs?: number } = 
 }
 
 describe("AgentHub", () => {
+  it("a request's waiting time starts when it opened, not at its last refresh; a restart's re-ask can carry the owed line's time", () => {
+    const h = hubHarness();
+    h.hub.line(T);
+    const id = h.hub.pending[0]!.id;
+    expect(h.hub.sinceOf(id)).toBe(1000);
+    h.tick(5000);
+    h.hub.line(T); // a second line refreshes the queued body…
+    expect(h.hub.pending[0]!.at).toBe(6000);
+    expect(h.hub.sinceOf(id)).toBe(1000); // …never the wait
+    expect(h.hub.queue("Trabolta").oldestMs).toBe(5000);
+    expect(h.hub.sinceOf("nope")).toBeNull();
+    const r = hubHarness();
+    r.tick(60_000);
+    r.hub.line(T, { since: 1000 });
+    expect(r.hub.sinceOf(r.hub.pending[0]!.id)).toBe(1000);
+    expect(r.hub.queue("Trabolta").oldestMs).toBe(60_000);
+    // Never in the future.
+    const f = hubHarness();
+    f.hub.line(T, { since: 9_999_999 });
+    expect(f.hub.sinceOf(f.hub.pending[0]!.id)).toBe(1000);
+  });
+
   it("answeredByHand drops a queued request and cancels an in-flight one", () => {
     const h = hubHarness();
     h.hub.line(T);

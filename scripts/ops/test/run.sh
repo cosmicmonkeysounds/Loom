@@ -414,7 +414,7 @@ echo "── Caddy holds requests through a loom restart (T4-01)"
 # A 502 closes an EventSource for good: the proxy must retry the dial while
 # loom is down, and keep flushing SSE writes at once.
 caddy_proxy() { awk '/reverse_proxy loom:7000 \{/{on=1; next} on && /\}/{exit} on' "$ROOT/deploy/Caddyfile"; }
-check "reverse_proxy retries the dial for 30 s" grep -qE '^[[:space:]]*lb_try_duration 30s$' <<<"$(caddy_proxy)"
+check "reverse_proxy retries the dial for 60 s" grep -qE '^[[:space:]]*lb_try_duration 60s$' <<<"$(caddy_proxy)"
 check "… every 250 ms" grep -qE '^[[:space:]]*lb_try_interval 250ms$' <<<"$(caddy_proxy)"
 check "… and still flushes at once" grep -qE '^[[:space:]]*flush_interval -1$' <<<"$(caddy_proxy)"
 
