@@ -180,11 +180,12 @@ describe("guestCardView", () => {
     expect(guestCardView(sim, chat.all(), "Norton", "g1", false)!.guestScoped).toEqual([]);
   });
 
-  it("drops another character's by: button unless host; null for an unknown guest", () => {
+  it("drops another character's by: button, a host's too when only its actors' hooks hear it; null for an unknown guest", () => {
     const sim = fresh();
     expect(guestCardView(sim, [], "Clippy", "g1", false)!.live).toEqual(["mark", "greet"]);
     expect(guestCardView(sim, [], "Norton", "g1", false)!.live).toEqual(["mark"]);
-    expect(guestCardView(sim, [], "Norton", "g1", true)!.live).toEqual(["mark", "greet"]);
+    // `greet` is heard only by Clippy's own hook: Norton's press (as a host) would do nothing.
+    expect(guestCardView(sim, [], "Norton", "g1", true)!.live).toEqual(["mark"]);
     expect(guestCardView(sim, [], "Norton", "nobody", false)).toBeNull();
   });
 

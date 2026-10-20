@@ -34,9 +34,11 @@ export interface CardButtons {
  * character's own (or anyone's) and on offer right now (`while:`), in
  * story order; `more` — the rest (another character's, out of phase).
  * Another character's `by:` button (`only`) is left out: the server refuses
- * it from this booth. A host or admin booth keeps it under More (it may
- * press any). Since wave 13 the booth view carries no `who: admin` cue (the
- * cue sheet is the host's), and one that slips through is never offered.
+ * it from this booth. A host or admin booth keeps it under More when a
+ * press from it is heard (`hostHeard` not false); one only its actors'
+ * own hooks hear is left out there too (the server refuses it). Since
+ * wave 13 the booth view carries no `who: admin` cue (the cue sheet is
+ * the host's), and one that slips through is never offered.
  */
 export function splitInteractions(list: readonly Interaction[], character: string, admin: boolean): { mine: Interaction[]; more: Interaction[] } {
   const mine: Interaction[] = [];
@@ -48,7 +50,7 @@ export function splitInteractions(list: readonly Interaction[], character: strin
       continue;
     }
     const ours = i.actors === undefined || i.actors.some((a) => foldName(a) === me);
-    if (!ours && i.only === true && !admin) continue;
+    if (!ours && i.only === true && (!admin || i.hostHeard === false)) continue;
     (ours && i.live !== false ? mine : more).push(i);
   }
   return { mine, more };

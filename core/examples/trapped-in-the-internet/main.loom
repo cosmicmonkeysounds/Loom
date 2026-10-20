@@ -3029,7 +3029,7 @@ INTERACTION crew_through_the_door
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
   who: performer
-  // DRAFT for sign-off (w13 Q22): the Antivirus' own (a host card lists it, but only TRAIT Enforcer's hooks hear it).
+  // DRAFT for sign-off (w13 Q22): the Antivirus' own. Only TRAIT Enforcer's hooks hear it, so no host's card lists it and a host's press is refused.
   by: Antivirus
   description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
 
@@ -3150,11 +3150,11 @@ INTERACTION beat_the_machine
 // the card of the program at the cables (or the one who came in). Each
 // fires the admin cue; `while:` shows it only when that cue would do
 // something. `by:` the four Antivirus who may be stationed there (the
-// read-through picks who), never a Host's or a performer's booth (the
-// server refuses those), and never Windows Defender, the door-only part
-// who never leaves the Optical Drive, so a late arrival's card at the door
-// leads with nothing that ends the night. 🫘 is Adobe Acrobat's, at the
-// printer.
+// read-through picks who). A host part may press them too (a story rule
+// hears any booth's press, Q2); no other booth may. Never Windows Defender,
+// the door-only part who never leaves the Optical Drive, so a late arrival's
+// card at the door leads with nothing that ends the night. 🫘 is Adobe
+// Acrobat's, at the printer (her own hook: no other host is offered it).
 INTERACTION radio_combo_a
   label: 🔌 Patch: Combo A is in
   who: performer
@@ -4151,8 +4151,8 @@ when crew_through_the_door:
 // pressed in the room instead of over the radio, from whichever Antivirus
 // booth is stationed there. Story rules, so a director's quick-fire (no
 // actor) lands once; `/api/prime/act` refuses the press from any booth
-// outside the Antivirus (403), and no other booth offers it. Adobe
-// Acrobat's 🫘 is a hook on her (cast/hosts.loom).
+// outside the four and the host parts (403), and no other booth offers it.
+// Adobe Acrobat's 🫘 is a hook on her (cast/hosts.loom): only hers offers it.
 when radio_combo_a:
   fire patch_combo_a
 

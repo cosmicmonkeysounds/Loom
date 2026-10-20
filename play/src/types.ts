@@ -140,6 +140,10 @@ export interface Interaction {
   /** True when the INTERACTION declares `by:`: only its `actors` may press
    *  it (the server refuses another booth), so a booth doesn't offer it. */
   only?: true;
+  /** False on an `only` button nothing outside its `actors` hears (only
+   *  their own hooks): a host's press would do nothing and the server
+   *  refuses it, so even a host or admin booth leaves it out. */
+  hostHeard?: false;
   /** False while its `while:` is false — not on offer right now. */
   live?: false;
   /** `arm: true`: the button arms on the first tap and fires on the second
@@ -310,7 +314,8 @@ export interface PrimeView {
    *  booth's countdowns hold still (`booth/model.ts` `viewPaused`). */
   paused?: true;
   /** The booth holds the host capability (an `admin: true` part, or the
-   *  moderator passcode): it may press another character's `by:` button.
+   *  moderator passcode): it may press another character's `by:` button,
+   *  unless that button says `hostHeard: false`.
    *  The server sends `false` too, so a revoked host reaches the booth. */
   host?: boolean;
 }
