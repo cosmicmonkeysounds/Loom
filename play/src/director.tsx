@@ -1087,7 +1087,9 @@ export function CuePicker({ desk, roster, suggest }: { desk: CueDesk; roster: Di
   if (row === null) return null;
   const items = subjectChoices(roster);
   const first = suggest != null ? items.find((i) => i.id === suggest.id) : undefined;
-  const ordered = first !== undefined ? [{ ...first, sub: suggest!.hint }, ...items.filter((i) => i !== first)] : items;
+  // The suggestion's reason (and any tie) gets its own line above the list:
+  // as the row's sub it squeezed the winner's name to nothing on a phone.
+  const ordered = first !== undefined ? [{ ...first, sub: "suggested" }, ...items.filter((i) => i !== first)] : items;
   return (
     <PickerSheet
       title={`Who for ${row.code ?? row.title}?`}
@@ -1096,11 +1098,16 @@ export function CuePicker({ desk, roster, suggest }: { desk: CueDesk; roster: Di
       onClose={desk.closePicker}
       empty="Nobody has joined yet."
       lead={
-        takesValue(row.id) ? (
-          <label className="cue-value">
-            <span>Value (optional) — lies accepted, the duck time, quests done</span>
-            <input value={desk.value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => desk.setValue(e.target.value)} />
-          </label>
+        first !== undefined || takesValue(row.id) ? (
+          <>
+            {first !== undefined && <p className="pick-hint cue-suggest">{suggest!.hint}</p>}
+            {takesValue(row.id) && (
+              <label className="cue-value">
+                <span>Value (optional) — lies accepted, the duck time, quests done</span>
+                <input value={desk.value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => desk.setValue(e.target.value)} />
+              </label>
+            )}
+          </>
         ) : undefined
       }
     />
