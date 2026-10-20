@@ -108,10 +108,10 @@ function stream(rt: EventRuntime, query: string): { open: Promise<void>; res: Re
   return { open: Promise.resolve(open).then(() => undefined), res };
 }
 
-function runtime(push?: PushSender): EventRuntime {
+function runtime(push?: PushSender, hostViewMs?: number): EventRuntime {
   const dir = mkdtempSync(join(tmpdir(), "loom-trapped-w13i-"));
   dirs.push(dir);
-  return new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SRC, joinBase: () => "http://localhost", ...(push ? { push } : {}) });
+  return new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "trapped-in-the-internet", scenarioSource: SRC, joinBase: () => "http://localhost", ...(push ? { push } : {}), ...(hostViewMs !== undefined ? { hostViewMs } : {}) });
 }
 
 const mod = (rt: EventRuntime, name: string, extra: Record<string, unknown> = {}) => call(rt, "POST", "/api/mod/signal", { name, ...extra }, { moderator: true });
@@ -193,7 +193,9 @@ describe("Trapped in the Internet — wave 13 integration: one broadcast, one po
 
 describe("Trapped in the Internet — wave 13 integration: the host drawer's 🚻 End Bathroom Mode", () => {
   it("a guest in Bathroom Mode carries an on Bathroom flag on the host view; the drawer's call from a host part ends it", { timeout: SLOW }, async () => {
-    const rt = runtime();
+    // Every read sees the step before it (the host view is otherwise rebuilt
+    // at most every 2 s while only the log moves — `HOST_VIEW_MS`).
+    const rt = runtime(undefined, 0);
     rt.openDoors();
     const g = await arrive(rt, "Winamp");
     const host = (await call(rt, "POST", "/api/prime/login", { character: "Recycling Bin", passcode: CODES.prime })).json;
@@ -206,20 +208,20 @@ describe("Trapped in the Internet — wave 13 integration: the host drawer's �
     };
     const bathroom = (p: Awaited<ReturnType<typeof person>>) => (p.flags ?? []).filter(isBathroomFlag);
 
-    // Before: the flag is listed (a boolean), off.
+    // Before: the flag is off, so the host view (a snapshot's lean flags,
+    // contract C3: on, or a failed gate) leaves it out.
     const before = bathroom(await person());
-    expect(before).toEqual([{ label: "Bathroom Mode", path: "Program.afk", value: "false", on: false }]);
+    expect(before).toEqual([]);
 
     // The guest's own 🚻 (a `who: guest` button, from ⊞ Start).
     expect((await call(rt, "POST", "/api/guest/act", { name: "go to the bathroom" }, { token: g.token })).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${g.id}.afk`)).toMatchObject({ value: true });
-    // The host view is cached per second of the same log: the press moved the log.
     expect(bathroom(await person()).map((f) => f.on)).toEqual([true]);
 
     // The drawer's 🚻 End Bathroom Mode: `backFromBathroom` in play/src/host/api.ts.
     expect((await call(rt, "POST", "/api/mod/signal", { name: "back from the bathroom", subject: g.id }, { token })).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${g.id}.afk`)).toMatchObject({ value: false });
-    expect(bathroom(await person()).map((f) => f.on)).toEqual([false]);
+    expect(bathroom(await person())).toEqual([]);
   });
 
   it("the flag is a plain ROLE watch item: never a secret slot, never a `for guests` line", () => {
