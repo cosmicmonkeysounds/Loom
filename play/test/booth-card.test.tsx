@@ -106,7 +106,26 @@ describe("the card's facts", () => {
       g({ restricted: true, captured: true, flags: [{ label: "Marked", path: "p.m", value: "true", on: true }, { label: "Room", path: "p.r", value: "Tent", on: true }, { label: "Checked in", path: "p.c", value: "false", on: false }] }),
       "The Internet",
     );
-    expect(chips.map((c) => c.text)).toEqual(["⛔ Restricted", "🔒 Captured", "✗ Not checked in", "📍 The Internet", "✓ Marked", "Room: Tent"]);
+    expect(chips.map((c) => c.text)).toEqual(["🔒 Captured", "Marked", "✗ Not checked in", "⛔ Restricted", "📍 The Internet", "Room: Tent"]);
+  });
+  it("by severity (fix round): Marked / In the Internet loud, Late / Bathroom Mode warn, Cleared quiet", () => {
+    const f = (label: string) => ({ label, path: `p.${label}`, value: "true", on: true });
+    const chips = factChips(g({ flags: [f("Cleared"), f("Late"), f("Marked"), f("Bathroom Mode"), f("In the Internet"), f("Checked in")] }), "The Desktop");
+    expect(chips).toEqual([
+      { text: "Marked", tone: "loud" },
+      { text: "In the Internet", tone: "loud" },
+      { text: "Late", tone: "warn" },
+      { text: "Bathroom Mode", tone: "warn" },
+      { text: "📍 The Desktop", tone: "quiet" },
+      { text: "✓ Cleared", tone: "quiet" },
+      { text: "✓ Checked in", tone: "quiet" },
+    ]);
+  });
+  it("marks the objective's own face button as the default; a button live only because of the guest is not", () => {
+    const out = cardButtons(list, [obj("a", ["send"])], card(["send", "crew", "reinstalled"], ["reinstalled"]), NORTON, false);
+    expect(out.face.map((b) => [b.interaction.id, b.named === true])).toEqual([["send", true], ["reinstalled", false]]);
+    const html = renderToStaticMarkup(<GuestCardBody session={fakeSession({ objectives: [obj("a", ["send"])] })} guestId="g-1" seed={{ card: card(["send", "crew", "reinstalled"], ["reinstalled"]) }} admin={false} onOpenThread={() => {}} />);
+    expect(html.match(/booth-default/g)?.length).toBe(1);
   });
 });
 

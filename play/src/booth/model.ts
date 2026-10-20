@@ -18,6 +18,8 @@ export interface CardButton {
   interaction: Interaction;
   /** On offer for this guest right now (the server's `card.live`). */
   live: boolean;
+  /** A live objective names it (a face button the objective asks for, not one only live because of this guest). */
+  named?: boolean;
 }
 
 /** A guest card's story buttons: the face (≤ 3) and the rest, under "All buttons…". */
@@ -81,9 +83,10 @@ export function cardButtons(
   };
   const objs = objectives ?? [];
   for (const o of objs) for (const id of o.buttons) if (!RESERVED.has(id)) add(id);
+  const named = new Set(faceIds);
   for (const id of card?.guestScoped ?? []) add(id);
   if (objs.length === 0) for (const i of split.mine) add(i.id);
-  const face = faceIds.map((id) => ({ interaction: byId.get(id)!, live: true }));
+  const face = faceIds.map((id) => ({ interaction: byId.get(id)!, live: true, ...(named.has(id) ? { named: true } : {}) }));
   // The rest: what this booth may press, minus the face; live ones first.
   const seen = new Set(faceIds);
   const restAll = offered.filter((i) => !seen.has(i.id) && i.who !== "admin");
@@ -182,10 +185,23 @@ export function cardReadKey(
   return JSON.stringify([guestId, (objectives ?? []).map((o) => [o.id, o.checklist.map((c) => c.done)]), night?.step ?? null, night?.phase ?? null, row]);
 }
 
-/** One fact on a guest card. `loud` = read it first (Not cleared, ⛔, 🔒). */
+/** One fact on a guest card. `loud` = read it first (Not cleared, 🔒,
+ *  Marked); `warn` = mind it (⛔, Late, Bathroom Mode); `quiet` = plain
+ *  text (📍, ✓ Cleared, a value). */
 export interface FactChip {
   text: string;
   tone: "quiet" | "loud" | "warn";
+}
+
+/** A true flag a performer must act on (escort them, keep them in): loud. */
+const LOUD_ON = /^(marked|in the internet|corrupt(ed)?|quarantin(e|ed)|banish(ed)?|captured|infected|flagged|wanted)\b/iu;
+/** A true flag to mind (late, away from their phone): warn. */
+const WARN_ON = /^(late|bathroom|afk|away|suspect(ed)?|watch(list|ed)?|on the watchlist)\b/iu;
+
+/** How loud a true flag reads on the card. */
+export function flagTone(label: string): FactChip["tone"] {
+  const l = label.trim();
+  return LOUD_ON.test(l) ? "loud" : WARN_ON.test(l) ? "warn" : "quiet";
 }
 
 /** A boolean flag whose *false* is the exception a performer must see:
@@ -197,24 +213,28 @@ function isBoolValue(v: string): boolean {
 }
 
 /**
- * The facts a guest card leads with, loud first: ⛔ restricted and 🔒
- * captured, a failed gate ("Not cleared"), then where they stand and the
- * story's other `watch:` flags (a true boolean reads its label; a value
- * reads "Label: value"). A false boolean that is not a gate is left out:
- * "Not marked" on every card would be noise.
+ * The facts a guest card leads with, by severity: the loud ones first (🔒
+ * captured, a failed gate "Not cleared", a true Marked / In the Internet),
+ * then the ones to mind (⛔ restricted, Late, Bathroom Mode), then where
+ * they stand and the quiet rest (✓ Cleared, "Label: value"). A false
+ * boolean that is not a gate is left out: "Not marked" on every card would
+ * be noise.
  */
 export function factChips(g: PrimeGuest, where: string | null): FactChip[] {
   const loud: FactChip[] = [];
+  const warn: FactChip[] = [];
   const quiet: FactChip[] = [];
-  if (g.restricted === true) loud.push({ text: "⛔ Restricted", tone: "warn" });
   if (g.captured) loud.push({ text: "🔒 Captured", tone: "loud" });
+  if (g.restricted === true) warn.push({ text: "⛔ Restricted", tone: "warn" });
   for (const f of g.flags ?? []) {
     if (isBoolValue(f.value)) {
-      if (f.on) quiet.push({ text: `✓ ${f.label}`, tone: "quiet" });
-      else if (GATE.test(f.label.trim())) loud.push({ text: `✗ Not ${f.label.trim().toLowerCase()}`, tone: "loud" });
+      if (f.on) {
+        const tone = flagTone(f.label);
+        (tone === "loud" ? loud : tone === "warn" ? warn : quiet).push({ text: tone === "quiet" ? `✓ ${f.label}` : f.label.trim(), tone });
+      } else if (GATE.test(f.label.trim())) loud.push({ text: `✗ Not ${f.label.trim().toLowerCase()}`, tone: "loud" });
     } else if (f.on) quiet.push({ text: `${f.label}: ${f.value}`, tone: "quiet" });
   }
-  return [...loud, ...(where !== null ? [{ text: `📍 ${where}`, tone: "quiet" as const }] : []), ...quiet];
+  return [...loud, ...warn, ...(where !== null ? [{ text: `📍 ${where}`, tone: "quiet" as const }] : []), ...quiet];
 }
 
 /**

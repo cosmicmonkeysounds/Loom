@@ -171,6 +171,8 @@ export function GuestCardBody({
     );
   };
 
+  // The Win95 default button: the first face button an objective asks for.
+  const defaultId = buttons.face.find((b) => b.named === true)?.interaction.id ?? null;
   const btn = (b: CardButton, size: "face" | "all") => {
     const i = b.interaction;
     const armed = arm.armed === i.id;
@@ -179,7 +181,7 @@ export function GuestCardBody({
       <button
         key={i.id}
         type="button"
-        className={`w95-btn booth-btn ${size === "face" ? "booth-face-btn" : "booth-all-btn"} ${armed ? "armed" : ""} ${b.live ? "" : "off"}`}
+        className={`w95-btn booth-btn ${size === "face" ? "booth-face-btn" : "booth-all-btn"}${size === "face" && i.id === defaultId ? " booth-default" : ""} ${armed ? "armed" : ""} ${b.live ? "" : "off"}`}
         aria-pressed={armed || undefined}
         aria-busy={busy === i.id || undefined}
         disabled={busy !== null}
