@@ -51,3 +51,14 @@ describe("ChatMessage.phase on the moments layer", () => {
     expect(replayable(backlog, {}, "y2k").map((m) => m.seq)).toEqual([2, 3]);
   });
 });
+
+describe("who pressed LAST (cues.lastName)", () => {
+  it("names the presser the server names; your own press is you; the story is the story", async () => {
+    const { lastByText } = await import("../src/host/tab-cues.tsx");
+    expect(lastByText("director", false, "Task Manager")).toBe("Task Manager");
+    expect(lastByText("director", true, "Task Manager")).toBe("you");
+    expect(lastByText("director", false)).toBe("a host or the director");
+    expect(lastByText("director", false, "  ")).toBe("a host or the director");
+    expect(lastByText("story", false, "Ada")).toBe("the story");
+  });
+});

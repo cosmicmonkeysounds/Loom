@@ -8,9 +8,11 @@ import { CueActList, DOORS_CLOSED, noCuesText, type CueDesk, type SheetLayout } 
 import { useHost } from "./kit.tsx";
 
 /** Who pressed LAST, as far as this booth can tell: its own press, the
- *  story, or another host / the director. */
-export function lastByText(lastBy: string | null | undefined, mine: boolean): string {
+ *  presser the server names (`cues.lastName`: "Task Manager", a director's
+ *  name), the story, else another host / the director (an older server). */
+export function lastByText(lastBy: string | null | undefined, mine: boolean, lastName?: string | null): string {
   if (mine) return "you";
+  if (lastBy === "director" && typeof lastName === "string" && lastName.trim() !== "") return lastName.trim();
   if (lastBy === "story") return "the story";
   if (lastBy === "director") return "a host or the director";
   return "";
@@ -20,7 +22,7 @@ export function CuesTab({ rows, layout, desk, mineLast }: { rows: CueRow[]; layo
   const { view } = useHost();
   const [query, setQuery] = useState("");
   const last = rows.find((r) => r.last) ?? null;
-  const by = lastByText(view.cues.lastBy, mineLast);
+  const by = lastByText(view.cues.lastBy, mineLast, view.cues.lastName);
   return (
     <div className="host-cues">
       {last !== null && (
@@ -28,7 +30,11 @@ export function CuesTab({ rows, layout, desk, mineLast }: { rows: CueRow[]; layo
           <span className="host-last-tag">LAST</span>
           {last.code !== null && <span className="cue-code">{last.code}</span>}
           <span className="host-last-title">{cueTitleTags(last.title).title}</span>
-          {by !== "" && <span className="host-last-by">· {by}</span>}
+          {by !== "" && (
+            <span className="host-last-by" title={`${by === "you" ? "You" : by} pressed LAST`}>
+              · {by}
+            </span>
+          )}
         </p>
       )}
       <input className="host-filter" type="search" aria-label="Filter cues" placeholder="Filter cues (code or words)" value={query} onChange={(e) => setQuery(e.target.value)} />
