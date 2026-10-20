@@ -34,7 +34,7 @@ func _run() -> void:
 	var game: Game = main.get("game")
 	var link: LinkBase = main.get("link")
 	print("link: ", link.name, " status: ", link.status)
-	link.candidates_received.emit([{"id": "g-000001", "name": "Offline Program", "captured": true}, {"id": "g-000002", "name": "Free Program", "captured": false}])
+	link.candidates_received.emit([{"id": "g-000001", "name": "Offline Program", "captured": true}, {"id": "g-000002", "name": "Free Program", "captured": false, "restricted": true}])
 	await _shot("lobby")
 	link.begin("g-000001")
 	for f in 3:

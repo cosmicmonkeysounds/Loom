@@ -102,8 +102,22 @@ func set_status(text: String) -> void:
 
 
 func set_candidates(players: Array) -> void:
-	picker.set_items(players)
+	picker.set_items(eligible_only(players))
 	_render_list()
+
+
+## Only the programs the story marked for reinstallation (wave 16): the
+## server's `eligible`, else (an older server) captured or restricted. The
+## server refuses the rest anyway; the picker never offers them.
+static func eligible_only(players: Array) -> Array:
+	var out: Array = []
+	for p in players:
+		if not p is Dictionary:
+			continue
+		var ok: bool = p.get("eligible") if p.get("eligible") is bool else (p.get("captured") == true or p.get("restricted") == true)
+		if ok:
+			out.append(p)
+	return out
 
 
 ## A message under the picker for a few seconds ("Nobody has that pass.").
@@ -141,6 +155,6 @@ func _render_list() -> void:
 	for i in range(first, mini(first + VISIBLE_ROWS, items.size())):
 		var p: Dictionary = items[i]
 		var mark := "> " if i == picker.index else "   "
-		var tag := "  [corrupted]" if p.get("captured") == true else ""
+		var tag := "  [corrupted]" if p.get("captured") == true else ("  [marked]" if p.get("restricted") == true else "")
 		lines.append("%s%s%s" % [mark, p.get("name", p.get("id", "?")), tag])
 	_list.text = "\n".join(lines)

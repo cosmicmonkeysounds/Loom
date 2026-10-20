@@ -266,6 +266,12 @@ func _relink(message: String, event_gone: bool) -> void:
 # --- calls ------------------------------------------------------------------
 
 
+## `/api/mod/spatial/begin`'s 409 for a program neither captured nor marked.
+const NOT_MARKED_ERROR := "not marked for reinstallation"
+## What the lobby says instead (the tablet's words).
+const NOT_MARKED := "Not marked — an Antivirus marks programs for reinstallation."
+
+
 func begin(guest: String) -> void:
 	if is_offline():
 		_begin_offline(guest)
@@ -286,7 +292,12 @@ func _on_begin(status_code: int, data: Variant) -> void:
 		404:
 			begin_failed.emit("Nobody has that pass.")
 		409:
-			begin_failed.emit("The show isn't running.")
+			# Wave 16: only a program the story marked (captured or
+			# restricted) may enter; the server says so in its own words.
+			if msg == NOT_MARKED_ERROR:
+				begin_failed.emit(NOT_MARKED)
+			else:
+				begin_failed.emit("The show isn't running.")
 		_:
 			begin_failed.emit(msg if msg != "" else "Couldn't start (%s)." % _code_text(status_code))
 
@@ -307,7 +318,7 @@ func request_candidates() -> void:
 	if is_offline():
 		candidates_received.emit.call_deferred([
 			{"id": "g-000001", "name": "Offline Program", "captured": true, "location": null},
-			{"id": "g-000002", "name": "Free Program", "captured": false, "location": null},
+			{"id": "g-000002", "name": "Free Program", "captured": false, "restricted": true, "location": null},
 		])
 		return
 	if phase != "ready":
