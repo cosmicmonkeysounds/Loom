@@ -378,6 +378,8 @@ export interface ScanResult {
   staff?: string[];
   /** Lines the booth's character spoke to the scanned guest in this commit (C1). */
   said?: Array<{ from: string; text: string }>;
+  /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
+  refused?: boolean;
 }
 /** `/api/prime/act` 200 body. */
 export interface PrimeActResult {
@@ -389,6 +391,8 @@ export interface PrimeActResult {
   staff?: string[];
   /** Lines the booth's character spoke to the guest in this commit (C1). */
   said?: Array<{ from: string; text: string }>;
+  /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
+  refused?: boolean;
 }
 
 // --- client-side view models (composed by the chat store) -------------------

@@ -104,24 +104,32 @@ export type OutcomeLine =
   | { kind: "reply"; text: string }
   /** What the character said to the guest (`Norton: Not yet. Finish your upload.`). */
   | { kind: "said"; from: string; text: string }
-  /** A staff-room line the press produced: the story refused it, and why. */
-  | { kind: "staff"; text: string }
+  /** A staff-room line the press produced (`# hosts` …). `refused`: the
+   *  server judged the press refused (`refused: true`, the cue sheet's
+   *  `pressRefused`); else it may as well be the story's note of a press
+   *  that worked ("🛡 WinZip sent to the Internet"), so it never reads "Not done". */
+  | { kind: "staff"; text: string; refused: boolean }
   /** Nothing came back: "✔ Sent — no reply from the story". */
   | { kind: "none"; text: string };
 
 /**
  * What the card says a press (or a scan) came to (C1): the story's replies,
- * the character's own lines to the guest, the staff-room explanation of a
- * refusal — and, when there is none of those, "✔ Sent — no reply from the
+ * the character's own lines to the guest, the staff-room lines (a refusal's
+ * reason, or the story's note of what the press did) — and, when there is
+ * none of those, "✔ Sent — no reply from the
  * story" (never a bare ✔ that reads as success). Replies first, then what
  * was said, then the refusal; empty strings dropped.
  */
-export function pressOutcome(r: { replies?: readonly string[]; said?: ReadonlyArray<{ from: string; text: string }>; staff?: readonly string[] }, kind: "press" | "scan"): OutcomeLine[] {
+export function pressOutcome(
+  r: { replies?: readonly string[]; said?: ReadonlyArray<{ from: string; text: string }>; staff?: readonly string[]; refused?: boolean },
+  kind: "press" | "scan",
+): OutcomeLine[] {
   const clean = (t: unknown) => (typeof t === "string" ? t.trim() : "");
   const out: OutcomeLine[] = [];
   for (const t of r.replies ?? []) if (clean(t) !== "") out.push({ kind: "reply", text: clean(t) });
   for (const l of r.said ?? []) if (l !== null && typeof l === "object" && clean(l.text) !== "") out.push({ kind: "said", from: clean(l.from), text: clean(l.text) });
-  for (const t of r.staff ?? []) if (clean(t) !== "") out.push({ kind: "staff", text: clean(t) });
+  const refused = r.refused === true;
+  for (const t of r.staff ?? []) if (clean(t) !== "") out.push({ kind: "staff", text: clean(t), refused });
   if (out.length > 0) return out;
   return [{ kind: "none", text: kind === "scan" ? "✔ Scanned — no reply from the story" : "✔ Sent — no reply from the story" }];
 }

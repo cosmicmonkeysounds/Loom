@@ -218,7 +218,9 @@ describe("what a press or a scan came to (C1, fix round)", () => {
       { kind: "said", from: "McAfee Anti-Virus", text: "Not yet. Finish your upload." },
     ]);
     // The bottle was on someone else: the story refused, and said why only in # hosts.
-    expect(pressOutcome({ replies: [], staff: ["🗣 The bottle is not on WinZip."] }, "press")).toEqual([{ kind: "staff", text: "🗣 The bottle is not on WinZip." }]);
+    expect(pressOutcome({ replies: [], staff: ["🗣 The bottle is not on WinZip."], refused: true }, "press")).toEqual([{ kind: "staff", text: "🗣 The bottle is not on WinZip.", refused: true }]);
+    // A staff line from a press that worked (the story's own note in # quarantine) is no refusal.
+    expect(pressOutcome({ replies: [], staff: ["🛡 Escort WinZip to the Internet."] }, "press")).toEqual([{ kind: "staff", text: "🛡 Escort WinZip to the Internet.", refused: false }]);
   });
 
   it("never a bare ✔: nothing back reads 'no reply from the story'", () => {
@@ -232,10 +234,18 @@ describe("what a press or a scan came to (C1, fix round)", () => {
     const said = render({ card: card(["send"]), replies: [], said: [{ from: "McAfee Anti-Virus", text: "Not yet. Finish your upload." }] });
     expect(said).toContain("McAfee Anti-Virus:");
     expect(said).toContain("Not yet. Finish your upload.");
-    const refused = render({ card: card(["send"]), replies: [], staff: ["🗣 The bottle is not on WinZip."] });
+    const refused = render({ card: card(["send"]), replies: [], staff: ["🗣 The bottle is not on WinZip."], refused: true });
     expect(refused).toContain("booth-reply w95-inset refused");
     expect(refused).toContain("Not done:");
     expect(refused).toContain("The bottle is not on WinZip.");
+    expect(refused).not.toContain("✔");
+    // Staff lines without the server's verdict: shown as the staff room's, never "Not done", never a ✔.
+    const noted = render({ card: card(["send"]), replies: [], staff: ["🛡 Escort WinZip to the Internet."] });
+    expect(noted).toContain("Staff room:");
+    expect(noted).toContain("Escort WinZip to the Internet.");
+    expect(noted).not.toContain("Not done:");
+    expect(noted).not.toContain("refused");
+    expect(noted).not.toContain("✔");
     expect(render({ card: card(["send"]), replies: [] })).toContain("✔ Scanned — no reply from the story");
     // A card opened from Guests (no scan) says nothing about a press.
     expect(render({ card: card(["send"]) })).not.toContain("no reply from the story");

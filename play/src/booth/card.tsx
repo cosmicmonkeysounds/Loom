@@ -27,6 +27,7 @@ export interface CardSeed {
   replies?: string[];
   said?: Array<{ from: string; text: string }>;
   staff?: string[];
+  refused?: boolean;
 }
 
 /** The fetch error a performer can act on (the doors, a guest who left). */
@@ -168,7 +169,7 @@ export function GuestCardBody({
       (r) => {
         settle();
         landed();
-        setOutcome(pressOutcome({ replies: r.responses, said: r.said, staff: r.staff }, "scan"));
+        setOutcome(pressOutcome({ replies: r.responses, said: r.said, staff: r.staff, refused: r.refused }, "scan"));
         if (r.card !== undefined) setCard(r.card);
       },
       (e) => {
@@ -300,7 +301,7 @@ export function GuestCardBody({
 /** What the last press or scan came to: the story's reply, the character's
  *  own line to the guest, a refusal from the staff room, or "no reply". */
 export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
-  const refused = lines.some((l) => l.kind === "staff");
+  const refused = lines.some((l) => l.kind === "staff" && l.refused);
   const none = lines.every((l) => l.kind === "none");
   return (
     <div className={`booth-reply ${none ? "none" : "w95-inset"}${refused ? " refused" : ""}`} role="status" aria-live="polite">
@@ -310,8 +311,8 @@ export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
             <span className="booth-said-from">{l.from !== "" ? `${l.from}:` : "Said:"}</span> {l.text}
           </p>
         ) : l.kind === "staff" ? (
-          <p key={n} className="booth-refusal">
-            <span className="booth-refusal-tag">Not done:</span> {l.text}
+          <p key={n} className={l.refused ? "booth-refusal" : "booth-staff"}>
+            <span className="booth-refusal-tag">{l.refused ? "Not done:" : "Staff room:"}</span> {l.text}
           </p>
         ) : (
           <p key={n} className={l.kind === "none" ? "booth-noreply" : undefined}>
