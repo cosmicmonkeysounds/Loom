@@ -699,4 +699,17 @@ Done.
     expect(letItem.value.name).toBe("x");
     expect(letItem.value.expression).toBe("42");
   });
+  it("a stray property line in a beat body is skipped once, never the line after it", () => {
+    const [file] = parse("== a\nfirst\n\nmood: tense\nsecond\n\nthird\n");
+    const beat = beatOf(file.items[0]!);
+    const texts = beat.body.filter((b) => b.kind === "action").map((b) => (b.kind === "action" ? b.value.value : ""));
+    expect(texts).toEqual(["first", "second", "third"]);
+  });
+
+  it("a later file's header-like property line no longer swallows the declaration after it", () => {
+    const src = "# ── main.loom ──\n# T\nentry: a\n\n== a\nhi\n\n# ── codex/x.loom ──\ncategory: People\nCODEX Foo\n  text: bar\n";
+    const [file] = parse(src);
+    const decls = file.items.filter((i) => i.kind === "declaration").map((i) => declOf(i).name);
+    expect(decls).toContain("Foo");
+  });
 });
