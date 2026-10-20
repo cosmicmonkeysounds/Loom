@@ -6,6 +6,7 @@
 import { useState } from "react";
 import type { PrimeView } from "../types.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
+import { Icon } from "../chrome/icons.tsx";
 import { BoothLayer } from "./layer.tsx";
 import { factChips, filterGuests } from "./model.ts";
 
@@ -15,7 +16,15 @@ export function GuestsSheet({ view, onPick, onClose }: { view: PrimeView | null;
   const hits = filterGuests(guests, q);
   const whereOf = (loc: string | null) => (loc === null ? null : (view?.channels.find((c) => c.id === `loc:${loc}`)?.title ?? loc));
   return (
-    <BoothLayer title={`🗂 Guests (${guests.length})`} label="Guests" onClose={onClose}>
+    <BoothLayer
+      title={
+        <span className="booth-layer-title">
+          <Icon name="people" /> Guests ({guests.length})
+        </span>
+      }
+      label="Guests"
+      onClose={onClose}
+    >
       <div className="booth-guests">
         <input
           className="w95-inset booth-search"

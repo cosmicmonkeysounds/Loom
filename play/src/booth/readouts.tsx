@@ -6,6 +6,7 @@
 
 import type { Channel, ChatMessage, PrimeGuest } from "../types.ts";
 import { MessageBubble, type WidgetHook } from "../stream/bubble.tsx";
+import { BoothIcon } from "./icons.tsx";
 
 /** The Readouts room's rows, newest first. */
 export function readoutRows(messages: readonly ChatMessage[]): ChatMessage[] {
@@ -54,7 +55,7 @@ export function ReadoutsView({
                 <p className="booth-readout-text">{m.text}</p>
                 {m.about !== undefined && (
                   <button type="button" className="w95-btn booth-readout-guest" onClick={() => onGuest(m.about!)}>
-                    🪪 {nameOf(m.about)} ›
+                    <BoothIcon name="card" /> {nameOf(m.about)} ›
                   </button>
                 )}
               </li>

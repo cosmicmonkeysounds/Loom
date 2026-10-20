@@ -10,6 +10,8 @@ import type { Push } from "../push.ts";
 import { PushRow } from "../push-card.tsx";
 import type { WakeLock } from "../wake-lock.ts";
 import { boothHost } from "./model.ts";
+import { Icon } from "../chrome/icons.tsx";
+import { BoothIcon } from "./icons.tsx";
 
 /** The pill a booth wears: a passcode admin, or a host part. */
 export function boothPill(auth: { admin: boolean; host?: boolean } | null): string | null {
@@ -56,14 +58,14 @@ export function boothStartItems({
   onSheet: (s: BoothSheet) => void;
   onSignOut: () => void;
 }): StartItem[] {
-  const items: StartItem[] = [{ id: "help", icon: "❓", label: "Help", onClick: onHelp }];
+  const items: StartItem[] = [{ id: "help", icon: <Icon name="help" />, label: "Help", onClick: onHelp }];
   if (!embedded && wake.supported) {
-    items.push({ id: "wake", icon: wake.on ? "🔆" : "🔅", label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
+    items.push({ id: "wake", icon: <Icon name={wake.on ? "screen-on" : "screen-off"} />, label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
   }
-  if (!embedded) items.push({ id: "alerts", icon: "🔔", label: "Get alerts", onClick: () => onSheet("alerts") });
-  if (knows > 0) items.push({ id: "knows", icon: "📓", label: `What ${character} knows`, onClick: () => onSheet("knows") });
-  if (!admin && !host) items.push({ id: "powers", icon: "🛡", label: "Add moderator powers", onClick: () => onSheet("powers") });
-  items.push({ id: "signout", icon: "🚪", label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });
+  if (!embedded) items.push({ id: "alerts", icon: <Icon name="bell" />, label: "Get alerts", onClick: () => onSheet("alerts") });
+  if (knows > 0) items.push({ id: "knows", icon: <BoothIcon name="lore" />, label: `What ${character} knows`, onClick: () => onSheet("knows") });
+  if (!admin && !host) items.push({ id: "powers", icon: <BoothIcon name="powers" />, label: "Add moderator powers", onClick: () => onSheet("powers") });
+  items.push({ id: "signout", icon: <Icon name="leave" />, label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });
   return items;
 }
 
