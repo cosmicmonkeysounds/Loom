@@ -37,15 +37,15 @@ describe("the NOW card", () => {
     expect(typing).not.toContain("booth-now-checks");
   });
 
-  it("pins the first three open to-dos when there are more, the rest behind More", () => {
+  it("pins the first three to-dos the story has not ticked when there are more, the rest behind More", () => {
     const o = obj("ci2", { brief: "", checklist: [{ label: "a", done: true }, { label: "b", done: false }, { label: "c", done: false }, { label: "d", done: null }, { label: "e", done: false }] });
-    expect(pinnedChecks(o, new Set())).toEqual({ shown: [1, 2, 3], rest: [0, 4] });
-    // Ticking d by hand moves e into view.
-    expect(pinnedChecks(o, new Set([tickKey("ci2", "d")]))).toEqual({ shown: [1, 2, 4], rest: [0, 3] });
+    expect(pinnedChecks(o)).toEqual({ shown: [1, 2, 3], rest: [0, 4] });
     // All done: the first three.
     const done = obj("x", { checklist: ["a", "b", "c", "d"].map((label) => ({ label, done: true })) });
-    expect(pinnedChecks(done, new Set())).toEqual({ shown: [0, 1, 2], rest: [3] });
+    expect(pinnedChecks(done)).toEqual({ shown: [0, 1, 2], rest: [3] });
+    // The performer's own tick on d keeps d in view (the card reads the story's verdicts only).
     const html = renderToStaticMarkup(<NowCard objectives={[o]} interactions={ints} character="Clippy" pill={null} closeKey={null} />);
+    expect(html).toContain(">d<");
     expect(html).toContain("2 more to-dos");
   });
 

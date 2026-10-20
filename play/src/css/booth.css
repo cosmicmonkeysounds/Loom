@@ -33,10 +33,9 @@
   background: var(--face); color: var(--ink); border-bottom: 1px solid var(--line);
 }
 .booth-now-checks { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.booth-now-check { display: flex; align-items: flex-start; gap: 8px; min-height: 30px; padding: 5px 2px; font: 14px/1.3 var(--ui-font); }
+.booth-now-check { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 5px 2px; font: 14px/1.3 var(--ui-font); }
 .booth-now-check + .booth-now-check { border-top: 1px solid var(--line); }
 .booth-now-check.done .booth-now-label { color: var(--dim-ink); text-decoration: line-through; }
-.booth-now-glyph { flex: 0 0 auto; width: 18px; text-align: center; color: var(--dim-ink); }
 .booth-now-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 /* The performer's own to-do: a real Win95 check box, a whole-row target. */
 .booth-now-check.mine { padding: 0; }
@@ -49,11 +48,14 @@
   flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
   background: var(--white); color: var(--ink); box-shadow: var(--sunken); font: 700 14px/1 var(--ui-font);
 }
+/* The story's own to-do: a disabled Win95 check box (face-grey, dim tick). */
+.booth-now-box.story { background: var(--face); color: var(--dim-ink); }
 .booth-now-more {
   display: block; width: 100%; min-height: var(--tap); margin: 0; padding: 0 2px;
-  border: none; border-top: 1px solid var(--line); background: none; color: var(--link);
+  border: none; background: none; color: var(--link);
   font: 700 13px var(--ui-font); text-align: left; cursor: pointer;
 }
+.booth-now-checks + .booth-now-more { border-top: 1px solid var(--line); }
 .booth-now-more:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
 .booth-now-brief { margin: 0 2px; font: 15px/1.4 var(--chat-font); max-width: 65ch; }
 .booth-now-other { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; background: var(--face); box-shadow: var(--raised); }
@@ -139,6 +141,8 @@
 .booth-refusal { color: var(--maroon); }
 .booth-refusal-tag { font: 700 13px var(--ui-font); }
 .booth-noreply { font: 13px var(--ui-font); color: var(--dim-ink); }
+/* Nothing came back: a quiet note on the face, not a text box. */
+.booth-reply.none { padding: 0 2px; background: none; box-shadow: none; }
 .booth-face { display: flex; flex-direction: column; gap: 8px; }
 .booth-btn {
   flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;

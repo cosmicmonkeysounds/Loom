@@ -33,13 +33,15 @@ export const PINNED_CHECKS = 3;
 
 /**
  * The checklist lines pinned in view: all of them when there are three or
- * fewer; else the first three still open (written order), topped up with
- * done ones when fewer are open. The rest sit in the drop-down.
+ * fewer; else the first three the story has not ticked (written order),
+ * topped up with ticked ones when fewer are left. A performer's own tick
+ * never moves a line: the one just ticked stays under the finger, to
+ * untick.
  */
-export function pinnedChecks(o: ObjectiveView, ticks: ReadonlySet<string>): { shown: number[]; rest: number[] } {
+export function pinnedChecks(o: ObjectiveView): { shown: number[]; rest: number[] } {
   const all = o.checklist.map((_, i) => i);
   if (all.length <= PINNED_CHECKS) return { shown: all, rest: [] };
-  const open = all.filter((i) => !checkDone(o.checklist[i]!, o.id, ticks));
+  const open = all.filter((i) => o.checklist[i]!.done !== true);
   const pick = new Set(open.slice(0, PINNED_CHECKS));
   for (const i of all) if (pick.size < PINNED_CHECKS) pick.add(i);
   const shown = all.filter((i) => pick.has(i));
@@ -52,8 +54,9 @@ function CheckLine({ o, c, ticks, onTick }: { o: ObjectiveView; c: ObjectiveChec
   if (!tickable(c)) {
     return (
       <li className={`booth-now-check ${done ? "done" : ""}`}>
-        <span className="booth-now-glyph" aria-hidden>
-          {done ? "☑" : "☐"}
+        {/* A greyed (disabled) check box: the story ticks this one. */}
+        <span className="booth-now-box story" aria-hidden title="The story ticks this one">
+          {done ? "✓" : ""}
         </span>
         <span className="booth-now-label">
           {c.label}
@@ -162,7 +165,7 @@ export function NowCard({
   }
   const count = nowCount(now, ticks);
   const others = list.slice(1);
-  const { shown, rest } = pinnedChecks(now, ticks);
+  const { shown, rest } = pinnedChecks(now);
   const hint = (o: ObjectiveView) => {
     const labels = objectiveButtonLabels(o, interactions);
     return labels.length > 0 ? <p className="booth-now-hint">On a guest's card: {labels.join(" · ")}</p> : null;

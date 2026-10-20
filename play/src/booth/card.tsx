@@ -155,6 +155,9 @@ export function GuestCardBody({
     });
   };
   const rescan = () => {
+    // A burst of taps is one scan: none while one is on its way, none in
+    // the settle after its reply (the same guard as the face buttons).
+    if (!faceSettled(landedAt.current, Date.now())) return;
     const pending = scanGate.run(() => session.scan(guestId));
     if (pending === null) return;
     setScanning(true);
@@ -298,8 +301,9 @@ export function GuestCardBody({
  *  own line to the guest, a refusal from the staff room, or "no reply". */
 export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
   const refused = lines.some((l) => l.kind === "staff");
+  const none = lines.every((l) => l.kind === "none");
   return (
-    <div className={`booth-reply w95-inset ${refused ? "refused" : ""}`} role="status" aria-live="polite">
+    <div className={`booth-reply ${none ? "none" : "w95-inset"}${refused ? " refused" : ""}`} role="status" aria-live="polite">
       {lines.map((l, n) =>
         l.kind === "said" ? (
           <p key={n} className="booth-said">
