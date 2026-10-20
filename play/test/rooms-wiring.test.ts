@@ -38,10 +38,14 @@ describe("foldSections", () => {
 });
 
 describe("the booth's fold", () => {
-  it("folds only the house's rooms: never Readouts, the Wallet or the feed", () => {
+  it("folds only the house's rooms: never Readouts, the Wallet, staff, the Cast or the feed", () => {
     expect(boothFoldable(ch("loc:The Cloud"))).toBe(true);
+    expect(boothFoldable(ch("back-channel", { kind: "private", spaceId: "os" }))).toBe(true);
     expect(boothFoldable(ch("__inbox", { kind: "dm", spaceId: "booth" }))).toBe(false);
     expect(boothFoldable(ch("wallet", { kind: "wallet", spaceId: "booth" }))).toBe(false);
+    expect(boothFoldable(ch("hosts", { spaceId: "staff", staff: true }))).toBe(false);
+    expect(boothFoldable(ch("cast:Trabolta", { kind: "dm", spaceId: "cast" }))).toBe(false);
+    expect(boothFoldable(ch("codex", { kind: "codex", spaceId: "pinned" }))).toBe(false);
     expect(boothFoldable(ch("__feed", { kind: "lobby" }))).toBe(false);
   });
 
