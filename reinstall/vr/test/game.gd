@@ -86,6 +86,14 @@ func _golden_names() -> Array:
 	return out
 
 
+## The show's three-floor placeholder map (waves 3–13), frozen in
+## `house/test/maps/` when the measured floor plan replaced it (wave 14):
+## the King / stair / game suites that pin its coordinates walk it, while
+## the goldens and both autopilots walk the live show map.
+static func _placeholder_house() -> Dictionary:
+	return _read_json(ProjectSettings.globalize_path("res://").path_join("../../house/test/maps/three-floor.json").simplify_path())
+
+
 func _house_for(name: String) -> Variant:
 	var path: String
 	if name == "show":
@@ -275,7 +283,7 @@ func _test_duck() -> void:
 ## The show map's King, standing in the Server Room door ([-3, 11.2], the
 ## basement hall to the east): `kingReach`, the door's gap, the fallen map.
 func _test_king_rules() -> void:
-	var house: Dictionary = _read_json("res://house/house.json")
+	var house: Dictionary = _placeholder_house()
 	var king := HouseKing.king_prop(house)
 	_check(not king.is_empty() and str(king["id"]) == "cold-lock-king", "king: the show's King is a king prop")
 	if king.is_empty():
@@ -957,7 +965,7 @@ func _test_autopilot_physics() -> void:
 ## a real step or lean never takes the head (or the reported feet) through
 ## a wall, and a real step up the stairs climbs them.
 func _test_room_scale() -> void:
-	var house: Dictionary = _read_json("res://house/house.json")
+	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
 	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Room Scale"})
 	link.house = house
@@ -1382,7 +1390,7 @@ func _assignment(house: Dictionary, sid: String, captured: bool) -> Dictionary:
 
 
 func _test_main_and_game() -> void:
-	var house: Dictionary = _read_json("res://house/house.json")
+	var house: Dictionary = _placeholder_house()
 	var link: LinkBase = preload("res://test/fake_link.gd").new()
 	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
 	link.house = house
