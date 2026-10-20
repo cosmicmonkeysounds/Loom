@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { doorGap, locate } from "@loom/house";
 import type { Vec3 } from "@loom/house";
 import { buildPhysicsWorld, move, NO_INPUT, RADIUS, type Body, type MoveInput, type PhysicsWorld } from "../src/game/physics.ts";
-import { SHOW, TWO_ROOMS } from "./houses.ts";
+import { THREE_FLOOR, TWO_ROOMS } from "./houses.ts";
 
 const FORWARD: MoveInput = { ...NO_INPUT, move: [0, 1] };
 const WEST = 90;
@@ -14,7 +14,7 @@ const walk = (world: PhysicsWorld, b: Body, seconds: number): Body => {
 };
 
 describe("a guarded door as a wall", () => {
-  const house = SHOW();
+  const house = THREE_FLOOR();
   const door = house.doors.find((d) => d.id === "server-door")!;
   const king = house.props.find((p) => p.id === door.guard)!;
   // Start in the basement hall, just east of the King, facing west through the door at x = −3.

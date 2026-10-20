@@ -377,8 +377,8 @@ function stream(rt: EventRuntime) {
   return { open, of, close: () => closer?.() };
 }
 
-/** The show's King stands at [-2.55, -2.7, 11.2] in the basement hall; this is in reach, facing him (east of him, facing west). */
-const AT_KING = { p: [-1.6, -2.7, 11.2], yaw: 90 };
+/** The show's King stands at [3.9, -2.7, 20.55] in the basement hall, before the server-room door; this is in reach, facing him (north of him, facing south). */
+const AT_KING = { p: [3.9, -2.7, 19.6], yaw: 180 };
 
 async function visitor(rt: EventRuntime, name: string): Promise<{ id: string; a: Assignment }> {
   const id = ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;

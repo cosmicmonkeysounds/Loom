@@ -55,7 +55,7 @@ describe.each([
     expect(king.armed).toEqual({ path: "Night.king_armed", min: 1 });
     // He stands in the gap: a body (radius 0.25) can't pass on either side.
     expect(Math.hypot(king.pos[0] - door.at[0], king.pos[2] - door.at[1])).toBeLessThan(0.5);
-    const inside: Vec3 = [-5, -2.7, 9.5];
+    const inside: Vec3 = [4.8, -2.7, 24.5];
     expect(route(house, house.spawn.pos, inside)).toHaveLength(2);
     const open: HouseMap = { ...house, doors: house.doors.map((d) => (d.id === door.id ? { ...d, guard: undefined } : d)), props: house.props.filter((p) => p.id !== king.id) };
     const path = route(open, open.spawn.pos, inside);
@@ -89,7 +89,10 @@ describe.each([
       expect(locate(house, behind).room, `${t.id} hangs on a wall`).not.toBe(t.room);
     }
     expect(house.terminals.map((t) => t.id).sort()).toEqual(
-      ["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "server-room-door", "start-bar", "tent"].sort(),
+      [
+        "backyard", "bathroom-1-door", "cpu", "desktop-tv", "graphics-card", "hall", "optical-drive", "ram", "server-room",
+        "server-room-door", "start-bar", "steam-room", "tent", "upstairs-hall",
+      ].sort(),
     );
   });
 
@@ -127,31 +130,31 @@ describe.each([
     for (let i = 0; i < 50; i++) expect(pickDuckSpot(house, `session-${i}`).room).not.toBe(variant);
   });
 
-  it.runIf(variant === "tent")("walks out of the tent, in by the back door, down the basement stairs and into the laundry", () => {
+  it.runIf(variant === "tent")("walks out of the tent, in by the back door, through the kitchen, down the basement stairs and into the laundry", () => {
     const mm3 = (p: Vec3): Vec3 => p.map((v) => Math.round(v * 1000) / 1000 + 0) as Vec3;
-    expect(route(house, house.spawn.pos, [-6.65, -1.85, 4.4]).map(mm3)).toEqual([
+    expect(route(house, house.spawn.pos, [6.25, -1.85, 14.45]).map(mm3)).toEqual([
       house.spawn.pos,
-      [3, 0, 20.6], // the tent flap
-      [-1, 0, 12], // the hall's back door
-      [-1.65, 0, 5.65], // round the stair hole's north-east corner
-      [-2.45, 0, 6], // the stair's head, in the hall
-      [-2.45, -2.7, 10], // its foot
-      [-1.65, -2.7, 10.3], // round the King's obstacle corner (a hair short of the stair's south-east one)
-      [-1.65, -2.7, 5.65], // and its north-east one
-      [-3, -2.7, 4.5], // the laundry door
-      [-6.65, -1.85, 4.4], // the duck on the dryer
+      [-5, 0, 25.3], // the tent flap
+      [-3.55, 0, 20.5], // the hall's back door
+      [-1, 0, 18.6], // the kitchen door
+      [1.55, 0, 13.15], // round the stair hole's north-west corner
+      [2.275, 0, 13.5], // the stair's head, in the kitchen
+      [2.275, -2.7, 17.15], // its foot, in the basement hall
+      [3, -2.7, 17.5], // round its south-east corner
+      [4.5, -2.7, 14.25], // the laundry door
+      [6.25, -1.85, 14.45], // the duck on the dryer
     ]);
   });
 
   it.runIf(variant === "tent")("climbs the upstairs from the hall to the top floor", () => {
     const mm3 = (p: Vec3): Vec3 => p.map((v) => Math.round(v * 1000) / 1000 + 0) as Vec3;
-    const path = route(house, house.spawn.pos, [5.5, 3.35, 6.6]).map(mm3);
+    const path = route(house, house.spawn.pos, [-3.4, 3.35, 24.75]).map(mm3);
     expect(path.slice(3)).toEqual([
-      [-0.3, 0, 5.65], // round the upstairs' north-west corner
-      [0.5, 0, 6], // its foot, in the hall
-      [0.5, 2.8, 10], // its head, upstairs
-      [3, 2.8, 11], // bedroom 2's door
-      [5.5, 3.35, 6.6], // the duck on the bed
+      [-2.2, 0, 18.2], // its foot, in the hall
+      [-2.2, 2.8, 14.35], // its head, upstairs
+      [-1.45, 2.8, 14], // round the hole's north-east corner
+      [-0.65, 2.8, 20.3], // bedroom 2's door
+      [-3.4, 3.35, 24.75], // the duck on the bed
     ]);
   });
 });

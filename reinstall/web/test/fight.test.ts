@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { doorGap, locate } from "@loom/house";
 import type { Prop, Vec3 } from "@loom/house";
 import { HIT_USED, hitSpentAtStart, keepDoorOpen, KING_REACH, kingMeter, kingReach, KNEELING_LINE, nudgeFor, stageFor, STAGE_LINE } from "../src/game/fight.ts";
-import { SHOW } from "./houses.ts";
+import { THREE_FLOOR } from "./houses.ts";
 
-const house = SHOW();
+const house = THREE_FLOOR();
 const king = house.props.find((p) => p.kind === "king") as Prop;
 // Yaw: 0 = north, 90 = west, −90 = east. The King stands in the hall, east of the door at x = −3.
 const WEST = 90;

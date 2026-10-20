@@ -299,14 +299,14 @@ describe.each([
   }
 
   it.runIf(variant === "tent")("catches the straight legs the portal chain used to draw", () => {
-    // East lawn → behind the tent, straight through the tent's north wall.
-    expect(badLegs([[6, 0, 18.5], [2, 0, 22.5]]).some((l) => l.includes("wall"))).toBe(true);
-    // Basement stair head → hall end across the hole's east rail.
-    expect(badLegs([[-2.45, 0, 5.7], [-0.5, 0, 11.6]]).some((l) => l.includes("rail"))).toBe(true);
+    // West lawn → north of the tent, straight through the tent's west wall.
+    expect(badLegs([[-8, 0, 27.5], [-5, 0, 24.5]]).some((l) => l.includes("wall"))).toBe(true);
+    // Across the kitchen straight over the basement stair's hole, through both rails.
+    expect(badLegs([[1.5, 0, 15], [3, 0, 15.5]]).some((l) => l.includes("rail"))).toBe(true);
     // Across the RAM straight over the studio couch.
-    expect(badLegs([[6.4, -2.7, 9.2], [6.4, -2.7, 11.8]])).toEqual(["[6.4,-2.7,9.2]→[6.4,-2.7,11.8] × prop studio-couch"]);
+    expect(badLegs([[-1.6, -2.7, 18.3], [-1.6, -2.7, 20.7]])).toEqual(["[-1.6,-2.7,18.3]→[-1.6,-2.7,20.7] × prop studio-couch"]);
     // Across the yard straight over the Truth Pong table.
-    expect(badLegs([[2.5, 0, 14.5], [2.5, 0, 16.5]])).toEqual(["[2.5,0,14.5]→[2.5,0,16.5] × prop truth-pong"]);
+    expect(badLegs([[-7.5, 0, 20.8], [-7.5, 0, 22.8]])).toEqual(["[-7.5,0,20.8]→[-7.5,0,22.8] × prop truth-pong"]);
   });
 
   it("from the spawn to every duck spot", () => {
@@ -340,21 +340,21 @@ describe.each([
   });
 
   it.runIf(variant === "tent")("walks round the tent's corner of the yard, and round the tables", () => {
-    expect(path(house, [6, 0, 18.5], [2, 0, 22.5])).toEqual([
-      [6, 0, 18.5],
-      [2.65, 0, 18.65], // the yard's reflex corner, off the tent's north-west
-      [2, 0, 22.5],
+    expect(path(house, [-8, 0, 27.5], [-5, 0, 24.5])).toEqual([
+      [-8, 0, 27.5],
+      [-7.35, 0, 24.95], // the yard's reflex corner, off the tent's north-west
+      [-5, 0, 24.5],
     ]);
-    expect(path(house, [2.5, 0, 14.5], [2.5, 0, 16.5])).toEqual([
-      [2.5, 0, 14.5],
-      [4.015, 0, 14.52], // the Truth Pong table's north-east corner waypoint
-      [4.015, 0, 16.48],
-      [2.5, 0, 16.5],
+    expect(path(house, [-7.5, 0, 20.8], [-7.5, 0, 22.8])).toEqual([
+      [-7.5, 0, 20.8],
+      [-9.015, 0, 20.82], // the Truth Pong table's north-west corner waypoint
+      [-9.015, 0, 22.78],
+      [-7.5, 0, 22.8],
     ]);
-    expect(path(house, [-1, -2.7, 9], [6.4, -2.7, 8.8])).toEqual([
-      [-1, -2.7, 9], // the basement hall, beside the stair
-      [1, -2.7, 5], // the studio door
-      [6.4, -2.7, 8.8], // the RAM, beside the couch
+    expect(path(house, [0, -2.7, 18], [-1.6, -2.7, 17.5])).toEqual([
+      [0, -2.7, 18], // the basement hall
+      [-1, -2.7, 13.8], // the studio door
+      [-1.6, -2.7, 17.5], // the RAM, beside the couch
     ]);
   });
 });

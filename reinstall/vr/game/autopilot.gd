@@ -125,7 +125,16 @@ static func _portal_sides(house: Dictionary, p: Array, prev: Array, next: Array)
 			if id1 == id2 or not (id1 in [door["a"], door["b"]]) or not (id2 in [door["a"], door["b"]]):
 				continue
 			var from_room: Variant = HouseLocate.locate(house, prev)["room"]
-			var first_is_1: bool = id1 == from_room if from_room in [id1, id2] else _dist(prev, s1) <= _dist(prev, s2)
+			# Off both rooms (`prev` another door on the same wall line, the
+			# leg hugging it): the side nearer where we came from and farther
+			# from where we go is first — plain distance from `prev` ties there.
+			var first_is_1: bool
+			if from_room in [id1, id2]:
+				first_is_1 = id1 == from_room
+			elif next.is_empty():
+				first_is_1 = _dist(prev, s1) <= _dist(prev, s2)
+			else:
+				first_is_1 = _dist(prev, s1) - _dist(next, s1) <= _dist(prev, s2) - _dist(next, s2)
 			return [s1, s2] if first_is_1 else [s2, s1]
 	for stair: Dictionary in house.get("stairs", []):
 		var ends := HouseGeometry.stair_ends(stair)

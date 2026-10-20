@@ -195,9 +195,10 @@ server room (OCT31 §10). OCT31 OP-22 points here.
 ## The bathroom terminal
 
 **Mounted outside the door, never inside.** The house map's
-`bathroom-1-door` spot is on the basement hall wall beside Bathroom 1's
-door (`house.json`: room `basement-hall`, facing into the hall), so its
-camera looks at the hall, not the bathroom. Provision it with
+`bathroom-1-door` spot is on the studio wall beside Bathroom 1's door
+(`house.json`: room `ram`, facing into the RAM; wave 14's measured plan
+puts Bathroom 1's only door in the studio), so its camera looks at the
+studio, not the bathroom. Provision it with
 `spot=bathroom-1-door`. If it ever has to go inside,
 run it as `view=face` with the camera taped and say so to the tech op —
 but the plan is outside.
@@ -275,7 +276,8 @@ closed` by *Terminal · Server Room*.
 ## The Server Door terminal — the King's chess
 
 One tablet hangs on the basement hall wall **outside** the server-room
-door, by the keypad (wave 11). It is **the King**: the only place in the
+door, by the keypad (wave 11; on the measured plan, wave 14, the hall's
+east wall beside the door, looking at it). It is **the King**: the only place in the
 house he is played at chess. The map's `server-room-door` spot (name
 *Server Door*, room `basement-hall`, on both variants). Provision it with
 one link:

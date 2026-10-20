@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { KingState, Prop, Vec3 } from "@loom/house";
 import { Game } from "../src/game/engine.ts";
 import { HIT_USED } from "../src/game/fight.ts";
-import { SHOW } from "./houses.ts";
+import { THREE_FLOOR } from "./houses.ts";
 
 const hits = vi.hoisted(() => ({ replies: [] as unknown[], calls: 0 }));
 vi.mock("../src/api.ts", async (orig) => ({
@@ -30,7 +30,7 @@ vi.mock("../src/game/physics.ts", async (orig) => ({
   buildPhysicsWorld: (_h: unknown, _w: unknown, opts: unknown) => (worlds.built.push(opts), {}),
 }));
 
-const house = SHOW();
+const house = THREE_FLOOR();
 const prop = house.props.find((p) => p.kind === "king") as Prop;
 const door = house.doors.find((d) => d.guard === prop.id)!;
 const WEST = 90;
@@ -228,7 +228,7 @@ describe("the shared bar — everyone's hits, the kneel, the restore", () => {
       const { g, said } = game(king, [prop.pos[0], prop.pos[1], prop.pos[2]]);
       Object.assign(g, { root: { add: () => {} }, distHistory: [], mapVersion: "v1" });
       Object.assign((g as unknown as { house: object }).house, { root: { removeFromParent: () => {} }, dispose: () => {} });
-      (g as unknown as { swapMap(h: unknown, v: string, k?: KingState | null): void }).swapMap(SHOW(), "v2", incoming);
+      (g as unknown as { swapMap(h: unknown, v: string, k?: KingState | null): void }).swapMap(THREE_FLOOR(), "v2", incoming);
       return { g, said };
     };
     const down: KingState = { ...full, hp: 0, fallen: true };

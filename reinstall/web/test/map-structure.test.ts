@@ -27,7 +27,7 @@ import {
 } from "../src/map/structure.ts";
 import { fillYard, flapsAdded, gridFor, partition, patchYard, touchesIndoor, traceCells, yardClash, yardOf, yardParts, yardShare } from "../src/map/yards.ts";
 import { floorOfSelection, isStep, parseNum, selectionExists } from "../src/map/tools.ts";
-import { L_ROOM, SHOW, SHOW_SHED, STAIR, TWO_ROOMS } from "./houses.ts";
+import { L_ROOM, SHOW, SHOW_SHED, STAIR, THREE_FLOOR, TWO_ROOMS } from "./houses.ts";
 
 /** The map is valid — or the test fails with `validateHouse`'s problems. */
 function valid(h: HouseMap): HouseMap {
@@ -363,7 +363,7 @@ describe("yards", () => {
   });
 
   it("a tent in the show's backyard leaves the show valid, every duck still walkable", () => {
-    const show = SHOW();
+    const show = THREE_FLOOR(); // the placeholder map: its yard touches the kitchen's back door
     const r = addRoom(show, "main", [0, 14, 3, 17], { label: "Tent" });
     const h = valid(r.house);
     expect(yardOf(h, "backyard").length).toBeGreaterThan(1);
@@ -392,7 +392,7 @@ describe("yards", () => {
   });
 
   it("a room that only borders a yard never gives it ground", () => {
-    const show = SHOW();
+    const show = THREE_FLOOR(); // the placeholder map: its kitchen borders the yard
     expect(yardShare(show, "start-bar", yardOf(show, "backyard"))).toBeLessThan(0.5);
     const shrunk = moveRectEdge(show, "start-bar", "s", 11);
     expect(room(shrunk, "backyard").poly).toEqual(room(show, "backyard").poly);
@@ -531,7 +531,7 @@ describe("number fields — commit a value, not its prefixes", () => {
 
   it("why: a typed width applied keystroke by keystroke would drag the doors", () => {
     // "10.5" typed into the backyard's W field: 1, then 10.5. Applied once, the back door stays.
-    const show = SHOW();
+    const show = THREE_FLOOR(); // the placeholder map: a back door on the yard's north edge
     const r = room(show, "backyard").poly;
     const [x0, z0, , z1] = [Math.min(...r.map((p) => p[0])), Math.min(...r.map((p) => p[1])), 0, Math.max(...r.map((p) => p[1]))];
     const once = setRoomRect(show, "backyard", [x0, z0, x0 + 10.5, z1]);
@@ -714,7 +714,7 @@ describe("check — a King guarding a door", () => {
     expect(unreachableRooms(h)).toEqual([]);
     expect(unreachableDucks(h)).toEqual([]);
     // …but a duck in there can't be walked to: `route()` treats the guarded door as shut.
-    const withDuck: HouseMap = { ...h, duck: { spots: [...h.duck.spots, { id: "cold-duck", room: "server-room", pos: [-5, -2.7, 9.5] }] } };
+    const withDuck: HouseMap = { ...h, duck: { spots: [...h.duck.spots, { id: "cold-duck", room: "server-room", pos: [4.8, -2.7, 24.5] }] } };
     expect(unreachableDucks(withDuck)).toEqual(["cold-duck"]);
     expect(walkabilityProblems(withDuck).map((p) => p.sel)).toContainEqual({ kind: "duck", id: "cold-duck" });
   });

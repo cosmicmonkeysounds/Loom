@@ -12,6 +12,8 @@ import { showHouse } from "../src/show-house.ts";
 import showShed from "../../../core/examples/trapped-in-the-internet/house.shed.json";
 import twoFloor from "../../../house/test/maps/two-floor.json";
 import twoFloorShed from "../../../house/test/maps/two-floor.shed.json";
+import threeFloor from "../../../house/test/maps/three-floor.json";
+import threeFloorShed from "../../../house/test/maps/three-floor.shed.json";
 
 function load(raw: unknown): HouseMap {
   const v = validateHouse(structuredClone(raw));
@@ -35,6 +37,11 @@ export const SHOW_SHED = (): HouseMap => load(showShed);
  *  don't move with the live map (`@loom/house` golden.ts `TWO_FLOOR_HOUSE`). */
 export const TWO_FLOOR = (): HouseMap => load(twoFloor);
 export const TWO_FLOOR_SHED = (): HouseMap => load(twoFloorShed);
+/** The show's three-floor placeholder map (Oct 31 waves 3–13, before the
+ *  user's measured floor plan replaced it in wave 14), frozen: the suites
+ *  that pin its coordinates (the King's doorway, the stairs, the yard) use it. */
+export const THREE_FLOOR = (): HouseMap => load(threeFloor);
+export const THREE_FLOOR_SHED = (): HouseMap => load(threeFloorShed);
 /** The real house's shape (2026-10-15): basement / main / top + the tent
  *  outside, two flights end to end in the hall (basement → main, then
  *  main → top; not stacked one over the other, which `validateHouse`
