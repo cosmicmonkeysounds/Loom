@@ -356,6 +356,12 @@ ROLE Program
   // How many of the cold door's four digit notes this program holds (the
   // story rule `door_digit_found` counts them; wave 11).
   door_digits: 0 to 4 = 0
+  // Each host's full scan greeting plays once per program (wave 13); a
+  // re-scan is one line (cast/hosts.loom).
+  met_clippy: bool = false
+  met_task_manager: bool = false
+  met_acrobat: bool = false
+  met_bin: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).

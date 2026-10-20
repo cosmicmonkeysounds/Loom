@@ -16,16 +16,24 @@ CHARACTER Clippy is Host
   avatar: File:Windows 11 Clippy paperclip emoji.png | File:Clippy-letter.PNG
   // The ambassador. Runs the games. Believes every word.
 
+  // The full greeting once per program (wave 13: a re-scan is one line).
   beat Greet(program)
-    Self: Hi there, {program.name}! It looks like you're trying to be a computer program. Would you like help with that?
-    if program.skipped_orientation:
-      Self: You skipped my orientation. I noticed. I notice everything. It's my whole thing.
-    if program.doubt >= 40:
-      Self (whispering): Between us? The Antivirus keeps asking about you. Try to look more like a program.
-    if program.corrupted:
-      Self: Oh! You're in the Internet! That's okay! That's normal! Follow the golden arrows and you'll be back in no time.
+    if program.met_clippy == true:
+      if program.corrupted:
+        Self: Still in the Internet? Follow the golden arrows!
+      else:
+        Self: {program.name}! Still here. Still helpful.
     else:
-      Self: If you need Help With That, I'll be available. I'm always available.
+      set program.met_clippy = true
+      Self: Hi there, {program.name}! It looks like you're trying to be a computer program. Would you like help with that?
+      if program.skipped_orientation:
+        Self: You skipped my orientation. I noticed. I notice everything. It's my whole thing.
+      if program.doubt >= 40:
+        Self (whispering): Between us? The Antivirus keeps asking about you. Try to look more like a program.
+      if program.corrupted:
+        Self: Oh! You're in the Internet! That's okay! That's normal! Follow the golden arrows and you'll be back in no time.
+      else:
+        Self: If you need Help With That, I'll be available. I'm always available.
 
   // ── Booth cues ────────────────────────────────────────────────────
   when call_to_the_desktop:
@@ -83,13 +91,18 @@ CHARACTER Task Manager is Host
   admin: true
   // A drone bee of a middle manager. Keeps things running. Has no opinions.
 
+  // The status check is the point: a re-scan reads the numbers alone.
   beat Greet(program)
-    Self: {program.name}. Status check.
-    Self: Truths accepted: {program.truths_accepted}. Visits to the Internet: {program.internet_visits}. Truthcoin: {program.score}.
-    if program.internet_visits >= 2:
-      Self: That's a lot of reinstalls. I'm not saying anything. I'm just tracking it.
+    if program.met_task_manager == true:
+      Self: Truths accepted: {program.truths_accepted}. Visits to the Internet: {program.internet_visits}. Truthcoin: {program.score}.
     else:
-      Self: Fine. Fine. Carry on. Good. Fine.
+      set program.met_task_manager = true
+      Self: {program.name}. Status check.
+      Self: Truths accepted: {program.truths_accepted}. Visits to the Internet: {program.internet_visits}. Truthcoin: {program.score}.
+      if program.internet_visits >= 2:
+        Self: That's a lot of reinstalls. I'm not saying anything. I'm just tracking it.
+      else:
+        Self: Fine. Fine. Carry on. Good. Fine.
 
   when bingo_time:
     if Night.step < 3:
@@ -108,11 +121,15 @@ CHARACTER Adobe Acrobat is Host
   // The paid bottleneck to everyone's creativity. Relentlessly motivational.
 
   beat Greet(program)
-    Self: {program.name}. Look at me. You are enough. You were always enough. Which is exactly why nobody ever paid me.
-    if program.truths_accepted >= 1:
-      Self: You told Trabolta the truth and he ACCEPTED it. You are a PDF of your best self. Portable! Documented!
+    if program.met_acrobat == true:
+      Self: {program.name}. Still enough. Still unpaid.
     else:
-      Self: Need something printed? For a small fee, yes. For no fee, I believe in you.
+      set program.met_acrobat = true
+      Self: {program.name}. Look at me. You are enough. You were always enough. Which is exactly why nobody ever paid me.
+      if program.truths_accepted >= 1:
+        Self: You told Trabolta the truth and he ACCEPTED it. You are a PDF of your best self. Portable! Documented!
+      else:
+        Self: Need something printed? For a small fee, yes. For no fee, I believe in you.
 
   // The same test Print The Certificate (beats/pong.loom) asks VLC by:
   // a cleared VLC who is not in the Internet. With none, Trabolta asks
@@ -148,8 +165,12 @@ CHARACTER Recycling Bin is Host
   // Hygiene and maintenance. The attendant of Disk Cleanup (the bathroom).
 
   beat Greet(program)
-    Self: {program.name}! Looking sharp. Looking very sharp. Could look sharper.
-    Self: Disk Cleanup is one floor down, and one floor up. Turn on Bathroom Mode on your way in so the Antivirus knows you are not hacking the Internet.
+    if program.met_bin == true:
+      Self: {program.name}. Bathroom Mode on your way in. Off on your way out.
+    else:
+      set program.met_bin = true
+      Self: {program.name}! Looking sharp. Looking very sharp. Could look sharper.
+      Self: Disk Cleanup is one floor down, and one floor up. Turn on Bathroom Mode on your way in so the Antivirus knows you are not hacking the Internet.
 
   when go to the bathroom for program:
     reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.

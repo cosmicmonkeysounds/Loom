@@ -25,10 +25,8 @@ CHARACTER McAfee Anti-Virus is Enforcer
   // Expired. Nobody renewed him. Still pops up. Secretly here to get rich:
   // he brokers the # truthcoin-exchange.
 
-  // Not once the night is over (there is nothing left to protect).
-  every 20m:
-    if Night.ended != true:
-      broadcast "🛡️ McAfee Anti-Virus: Your protection has expired. Your protection has expired. Renew now." to everyone
+  // His "protection has expired" pop-up is a bark now (atmosphere.loom,
+  // GENERATOR McAfeePopUp, wave 13): the dim ticker, never a stream row.
 
   when truther_download:
     if Night.truther_sent != true:
@@ -72,3 +70,20 @@ CHARACTER CRA Agent Software is Enforcer
 CHARACTER Windows Defender is Enforcer
   avatar: File:Microsoft Defender Icon Logo 2025 English.svg
   wiki: Microsoft Defender Antivirus
+  // Wave 13: the door hears only its door readouts. The patrol, the
+  // sweeps, the escort list, Bathroom Mode and the alarm are the four room
+  // Antivirus' (`: none` drops the Enforcer trait's hook for this part).
+  when call_to_the_desktop: none
+  when hunt_time_up: none
+  when zip_everyone_out: none
+  when go to the bathroom for program: none
+  when bathroom_timed_out for program: none
+  when program_late for program: none
+  when marked for program: none
+  when unmarked for program: none
+  when sweep_requested: none
+  when alarm_tripped: none
+  when five_minute_warning: none
+  when five_minute_warning:
+    if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
+      reply 🛡 The summons: hold the door. Scan only new arrivals; send everyone else to the living room.

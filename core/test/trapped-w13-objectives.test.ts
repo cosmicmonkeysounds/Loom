@@ -366,3 +366,50 @@ describe("Trapped in the Internet — wave 13: always-on buttons tightened", () 
     expect(live("Task Manager", "pay_truthcoin")).toBe(false);
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: booth noise", () => {
+  const lines = (ms: readonly ChatMessage[], from: string, id: string) => forGuest(ms, id).filter((m) => m.from === from && m.kind === "line").map((m) => m.text);
+
+  it("a host scan greets a guest in full once; a re-scan is one line", () => {
+    const n = boot();
+    for (const host of ["Clippy", "Task Manager", "Adobe Acrobat", "Recycling Bin"]) {
+      const first = lines(n.scan(host, "g5"), host, "g5");
+      const again = lines(n.scan(host, "g5"), host, "g5");
+      expect(first.length, host).toBeGreaterThanOrEqual(2);
+      expect(again, host).toHaveLength(1);
+    }
+    // Task Manager's re-scan is still the status check.
+    expect(lines(n.scan("Task Manager", "g5"), "Task Manager", "g5")[0]).toMatch(/^Truths accepted: 0\. Visits to the Internet: 0\. Truthcoin: \d+\.$/u);
+  }, SLOW);
+
+  it("Windows Defender hears only its door readouts: no sweep, escort, late, Bathroom Mode or alarm", () => {
+    const n = boot();
+    const wd = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "dm:Windows Defender" && m.readout === true).map((m) => m.text);
+    const norton = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "dm:Norton Anti-Virus" && m.readout === true).map((m) => m.text);
+    const cd = n.press("call_to_the_desktop");
+    expect(wd(cd)).toEqual([]);
+    expect(norton(cd).length).toBe(1);
+    expect(wd(n.signal("go to the bathroom", "g5"))).toEqual([]);
+    n.signal("back from the bathroom", "g5");
+    for (const c of ["start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) n.press(c);
+    const mark = n.signal("uncertain_answer", "g6", undefined, "Clippy");
+    expect(wd(mark)).toEqual([]);
+    expect(norton(mark).some((t) => t.startsWith("🚨 VLC is marked"))).toBe(true);
+    for (const c of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) n.press(c);
+    const summons = n.press("five_minute_warning");
+    expect(wd(summons)).toEqual(["🛡 The summons: hold the door. Scan only new arrivals; send everyone else to the living room."]);
+    // A late arrival still clears at the door.
+    const late = n.upload("g9", "Netscape", "Windows Defender");
+    expect(v(n.sim, "g9.cleared")).toBe(true);
+    expect(wd(late).some((t) => t.startsWith("✅ Cleared Netscape"))).toBe(true);
+  }, SLOW);
+
+  it("McAfee's expired-protection pop-up is a bark (the ambient ticker), not a broadcast", () => {
+    const n = boot();
+    const out = n.tick(20 * 60 + 5);
+    const pops = out.filter((m) => m.text.includes("Your protection has expired. Your protection has expired."));
+    expect(pops.length).toBeGreaterThan(0);
+    for (const m of pops) expect(m.ambient, m.text).toBe(true);
+    expect(out.some((m) => m.kind === "signal" && m.text.includes("McAfee"))).toBe(false);
+  }, SLOW);
+});
