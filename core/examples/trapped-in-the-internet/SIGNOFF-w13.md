@@ -28,6 +28,10 @@ doors; restart every other non-ended event; never mid-show.
 | Q11 | **McAfee's pop-up becomes a bark** (the dim ambient ticker, every 20 min) instead of a lobby broadcast. | As drafted. Alternative: a `~` notice. |
 | Q12 | **The tutorial's new steps** (the taskbar, Pass, Scan, NOW) are the chrome lane's copy; integration copies them into this sheet. | — |
 | Q13 | **The King's two "staggers" lines** (`main.loom` ~4290) are not per-person, so they are not `~` notices. | Unchanged. |
+| Q14 | **`loud` only on Show Your Pass** (review fix). Every other objective that was loud (Go To The Desktop, File Your Facts, Be At The Desktop, Go To The Internet, The Final Reveal, The Pickup Line) already gets a `!` alert from the same cue (📣, 📝, ⏳, the 🚨 pin, 🌑, 💔 + the pickup card), so at `dialog` / `bsod` a phone would raise two modals for one beat. The brief's loud summons / mark / final reveal are carried by those alerts. | As drafted: loud on Show Your Pass alone (its moment opens the pass). Alternative: keep loud and drop the `!` from those cues. |
+| Q15 | **The escort list and the summons** (review fix). Escort The Marked skips a program a director marked gone home and a Run persona (the majority's head-count rule), and the five-minute door window (Summons Check In) now outranks it on the four room Antivirus. | As drafted. |
+| Q16 | **After an ending** a marked or captured program's NOW is The Night Is Over, never Go To The Internet / Find Gerald (review fix). | As drafted (no reinstalling after the end). |
+| Q17 | **The Clubs is folded into Password Manager's patch-bay watch** (review fix): the two windows are the same hour, so a separate club objective could never be NOW. Password Manager's Y2K card is *Patch Bay And Clubs*. **The Door Is Closed** (new) covers the gap between 🚨 and 🏓 (Be At The Desktop now keys on `Night.summons_open`). A late printer lid (after the overshare) raises no 🫘 alert. | As drafted. |
 
 ## 2. The objectives (`objectives.loom`, new, 69 entries)
 
@@ -189,15 +193,15 @@ INTERACTION ids (at most three on a card's face) plus the app's `pass` /
 | `main.loom:3789` | — | broadcast "!🏓 TRUTH PONG. To the Cloud, out back: sink a cup and you may answer one fact. Miss and you are marked." to everyone | delivery for a buried beat / a personal result that matters (major) |
 | `main.loom:3834` | — | broadcast "!📊 THE TRUST CHART. Trabolta is ranking every program on the TV. Find your name." to everyone | delivery for a buried beat / a personal result that matters (major) |
 | `main.loom:3901` | — | broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone | delivery for a buried beat / a personal result that matters (major) |
-| `main.loom:3926` | — | broadcast "!🤖 Trabolta is sharing the final facts at the Desktop. They are in your Quest Log." to everyone | delivery for a buried beat / a personal result that matters (major) |
-| `main.loom:3958` | — | set Night.alerts = "dialog" | the interrupt ladder (D2) |
-| `main.loom:3972` | broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone | broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone | delivery for a buried beat / a personal result that matters (major) |
-| `main.loom:4259` | broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program) | broadcast "!♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program) | delivery for a buried beat / a personal result that matters (major) |
-| `main.loom:4332` | — | reply !🔢 Four of four. The notes fit together: the door code is in your Codex. | delivery for a buried beat / a personal result that matters (major) |
-| `main.loom:4572` | — | set Night.alerts = "bsod" | the interrupt ladder (D2) |
-| `main.loom:4732` | — | broadcast "!🕺 THE HAND JIVE. Everyone, together. Trabolta cannot take it." to everyone | delivery for a buried beat / a personal result that matters (major) |
-| `main.loom:4752` | — | set Night.alerts = "sticky" | the interrupt ladder (D2) |
-| `main.loom:5009` | — | set Night.alerts = "sticky" | the interrupt ladder (D2) |
+| `main.loom:3928` | — | broadcast "!🤖 Trabolta is sharing the final facts at the Desktop. They are in your Quest Log." to everyone | delivery for a buried beat / a personal result that matters (major) |
+| `main.loom:3960` | — | set Night.alerts = "dialog" | the interrupt ladder (D2) |
+| `main.loom:3974` | broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone | broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone | delivery for a buried beat / a personal result that matters (major) |
+| `main.loom:4261` | broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program) | broadcast "!♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program) | delivery for a buried beat / a personal result that matters (major) |
+| `main.loom:4334` | — | reply !🔢 Four of four. The notes fit together: the door code is in your Codex. | delivery for a buried beat / a personal result that matters (major) |
+| `main.loom:4574` | — | set Night.alerts = "bsod" | the interrupt ladder (D2) |
+| `main.loom:4734` | — | broadcast "!🕺 THE HAND JIVE. Everyone, together. Trabolta cannot take it." to everyone | delivery for a buried beat / a personal result that matters (major) |
+| `main.loom:4754` | — | set Night.alerts = "sticky" | the interrupt ladder (D2) |
+| `main.loom:5011` | — | set Night.alerts = "sticky" | the interrupt ladder (D2) |
 | `rooms.loom:19` | CHANNEL system log<br>kind: open<br>type: announcement<br>label: # system-log | — | delete # system-log (D11) |
 | `cast/hosts.loom:20` | Clippy's `beat Greet` played in full on every scan | first scan: unchanged (now under `else:` + `set program.met_clippy = true`); a re-scan: "{name}! Still here. Still helpful." (or, in the Internet, "Still in the Internet? Follow the golden arrows!") | Greet once per program per host (booth noise) |
 | `cast/hosts.loom:95` | Task Manager's `beat Greet` in full on every scan | first scan unchanged; a re-scan reads only "Truths accepted: … Visits to the Internet: … Truthcoin: …" | Greet once (his re-scan is still the status check) |
@@ -225,7 +229,8 @@ The Codex room groups entries by these words (guest-facing; never
 ## 5. Moments and deliveries (what now interrupts)
 
 - `!` broadcasts added: 🤖 Trabolta online, 🏓 Truth Pong, 📊 the Trust
-  Chart, 🫘 the beans, 🤖 the overshare, 🚪 The Heart, 🎵 the song ending,
+  Chart, 🫘 the beans (only when the lid opens on time: a late lid
+  raises nothing), 🤖 the overshare, 🚪 The Heart, 🎵 the song ending,
   💔 the Grok Prom verdict, 🏍 the rave, 💞 the advice helped, 🕺 the hand
   jive. Three existing alerts now name what they open (📓 `# clipboard`,
   📥 `# truthcoin-exchange`, 🕚 the two factions).
@@ -233,6 +238,7 @@ The Codex room groups entries by these words (guest-facing; never
   four digit notes, 🗝 The Whole Truth; ♟ checkmate is an alert.
 - Booth readouts made major: the 🚨 escort, ⏰ late and 🚨 alarm readouts.
 - `with moment: major`: the bottle's Truth / Dare card, the pickup-line card.
+- `loud: true` objectives: Show Your Pass only (Q14).
 - New personal replies beside a `~` notice: 🎀 ribbon ×2, 🗣 truth
   accepted, 🗣 chose Truth, 🏓 cup made.
 
