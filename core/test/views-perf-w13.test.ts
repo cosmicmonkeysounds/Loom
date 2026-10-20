@@ -1,12 +1,13 @@
 //! Wave 13 fix round (fperf): the booth flags off a per-model plan, the
 //! snapshot's lean flags (contract C3), the scan card's single-guest flags
 //! and readout index, the directory's codex index, the award gate (G10 is
-//! MS Paint's) and the guest view's act-free night.
+//! MS Paint's), the guest view's act-free night, and the static cache rule.
 
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { ChatStore, composeGuestMessages } from "../server/chat.ts";
 import { allSnapshotFlags, awardOnly, guestCardView, guestFlags, guestFlagsNow, guestView, nightView, primeView, snapshotFlags } from "../server/views.ts";
+import { appCacheControl, IMMUTABLE } from "../server/static-cache.ts";
 
 const SRC = `# Night
 start: opening
@@ -185,3 +186,17 @@ describe("GuestView.night", () => {
   });
 });
 
+describe("appCacheControl", () => {
+  it("a hashed Vite asset is immutable; HTML and the PWA files revalidate; anything else gets none", () => {
+    expect(appCacheControl("assets/index-n38yYZk7.js")).toBe(IMMUTABLE);
+    expect(appCacheControl("assets/index-DbZ_x-1q.css")).toBe(IMMUTABLE);
+    expect(appCacheControl("assets/ChessTerminal-AbCdEfGh.js")).toBe(IMMUTABLE);
+    expect(appCacheControl("index.html")).toBe("no-cache");
+    expect(appCacheControl("index.html", false)).toBe("no-cache");
+    expect(appCacheControl("sw.js", true)).toBe("no-cache");
+    expect(appCacheControl("assets/index-n38yYZk7.js", true)).toBe("no-cache");
+    expect(appCacheControl("favicon.ico")).toBeNull();
+    expect(appCacheControl("slides/truth_or_dare.png")).toBeNull();
+    expect(appCacheControl("assets/logo.svg")).toBeNull();
+  });
+});
