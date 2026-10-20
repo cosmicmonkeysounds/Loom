@@ -424,6 +424,17 @@ func avatar_url(key: String) -> String:
 	return transport.base + _base() + "/api/avatar/" + key.uri_encode()
 
 
+func cams_url() -> String:
+	if is_offline() or event_id == "":
+		return ""
+	return transport.base + _base() + "/api/spatial"
+
+
+func cams_token() -> String:
+	var token := str(session.get("token", "")) if has_session() else ""
+	return token if token != "" else _mod_token
+
+
 func end_session(_reason: String) -> void:
 	if not has_session():
 		return

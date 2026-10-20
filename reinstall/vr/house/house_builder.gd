@@ -13,6 +13,9 @@
 ## player still behind it or in the doorway ([method hold_door]): then he
 ## stands, but his collider and the leaves' stay off until they are clear.
 ##
+## A terminal with a live camera feed ([method set_cam], from [CamFeeds])
+## shows it on a 4:3 panel in place of its screen.
+##
 ## Children are placed in **house coordinates**; this node carries the
 ## map's `spaces.vr` transform (identity for the procedural build), so its
 ## children land in the VR world frame and [method to_house] /
@@ -29,6 +32,9 @@ const RAIL_THICKNESS := 0.05
 const FENCE_MAX_THICKNESS := 0.06
 ## Terminal screens stand this far proud of their wall's face (as in three.js).
 const TERMINAL_PROUD := 0.035
+## A terminal's camera feed panel (4:3, metres) and its bezel.
+const CAM_SIZE := Vector2(0.48, 0.36)
+const CAM_BEZEL := 0.015
 ## Floor colliders are this thick (below the surface).
 const SLAB := 0.2
 ## How far the outside ground reaches past the house.
@@ -51,6 +57,10 @@ var _leaves := {}
 ## King prop id → true: this game holds his doors open although he stands
 ## ([method hold_door]); kept across rebuilds.
 var _held := {}
+## Terminal id → its root node, rebuilt with the house.
+var _terminals := {}
+## Terminal id → the camera feed it shows ([method set_cam]); kept across rebuilds.
+var _cams := {}
 
 
 ## (Re)build everything from `map`.
@@ -564,20 +574,16 @@ func door_shut(id: String) -> bool:
 
 
 func _build_terminals() -> void:
+	_terminals.clear()
 	for t: Dictionary in house.get("terminals", []):
 		var root := Node3D.new()
 		root.name = "Terminal_%s" % t["id"]
-		var pitch := deg_to_rad(float(t["pitch"]) if t.get("pitch") != null else 0.0)
-		var basis := Basis.from_euler(Vector3(pitch, deg_to_rad(float(t["yaw"])), 0.0), EULER_ORDER_YXZ)
-		# `pos` is the screen's centre on the wall's centre line: stand proud of
-		# the wall box along the screen's facing (−z, = HouseFrames.forward),
-		# or the whole terminal is buried in the wall.
-		var out: float = HouseGeometry.style_of(house)["wallThickness"] / 2.0 + TERMINAL_PROUD
-		root.transform = Transform3D(basis, HouseFrames.vec(t["pos"]) + basis * Vector3(0, 0, -out))
+		root.transform = terminal_transform(house, t)
 		add_child(root)
 		var frame := MeshInstance3D.new()
 		var fb := BoxMesh.new()
 		fb.size = Vector3(0.36, 0.26, 0.03)
+		frame.name = "Frame"
 		frame.mesh = fb
 		frame.material_override = HouseLook.paint("#1a1a1a")
 		root.add_child(frame)
@@ -591,9 +597,83 @@ func _build_terminals() -> void:
 		glass.position.z = -0.017
 		root.add_child(glass)
 		var l := HouseLook.label("watching · %s" % t["name"], 0.05, HouseLook.TEAL_GLOW)
+		l.name = "Label"
 		l.rotation.y = PI
 		l.position = Vector3(0, -0.18, -0.02)
 		root.add_child(l)
+		_terminals[str(t["id"])] = root
+		if _cams.has(str(t["id"])):
+			_show_cam(root, _cams[str(t["id"])])
+
+
+## Terminal `t`'s screen centre and facing, in house coordinates: `pos` is
+## the screen's centre on the wall's centre line, so it stands proud of the
+## wall box along its facing (−z, = [method HouseFrames.forward] of its
+## yaw / pitch), or the whole terminal is buried in the wall.
+static func terminal_transform(map: Dictionary, t: Dictionary) -> Transform3D:
+	var pitch := deg_to_rad(float(t["pitch"]) if t.get("pitch") != null else 0.0)
+	var basis := Basis.from_euler(Vector3(pitch, deg_to_rad(float(t["yaw"])), 0.0), EULER_ORDER_YXZ)
+	var out: float = HouseGeometry.style_of(map)["wallThickness"] / 2.0 + TERMINAL_PROUD
+	return Transform3D(basis, HouseFrames.vec(t["pos"]) + basis * Vector3(0, 0, -out))
+
+
+## Show terminal `id`'s live camera feed (`texture`, updated in place by
+## [CamFeeds]) on a 4:3 panel in place of its screen; kept across rebuilds.
+func set_cam(id: String, texture: Texture2D) -> void:
+	_cams[id] = texture
+	if _terminals.has(id):
+		_show_cam(_terminals[id], texture)
+
+
+## Terminal `id` back to its own screen.
+func clear_cam(id: String) -> void:
+	_cams.erase(id)
+	if not _terminals.has(id):
+		return
+	var root: Node3D = _terminals[id]
+	var feed := root.get_node_or_null("Feed")
+	if feed != null:
+		root.remove_child(feed)
+		feed.queue_free()
+	(root.get_node("Frame") as Node3D).visible = true
+	(root.get_node("Glass") as Node3D).visible = true
+	(root.get_node("Label") as Node3D).position.y = -0.18
+
+
+## Whether terminal `id` shows a camera feed (for the tests).
+func cam_shown(id: String) -> bool:
+	return _terminals.has(id) and (_terminals[id] as Node3D).get_node_or_null("Feed") != null
+
+
+func _show_cam(root: Node3D, texture: Texture2D) -> void:
+	var feed := root.get_node_or_null("Feed") as Node3D
+	if feed == null:
+		feed = Node3D.new()
+		feed.name = "Feed"
+		var bezel := MeshInstance3D.new()
+		var bb := BoxMesh.new()
+		bb.size = Vector3(CAM_SIZE.x + 2.0 * CAM_BEZEL, CAM_SIZE.y + 2.0 * CAM_BEZEL, 0.03)
+		bezel.name = "Bezel"
+		bezel.mesh = bb
+		bezel.material_override = HouseLook.paint("#1a1a1a")
+		feed.add_child(bezel)
+		var video := MeshInstance3D.new()
+		var vq := QuadMesh.new()
+		vq.size = CAM_SIZE
+		video.name = "Video"
+		video.mesh = vq
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+		video.material_override = mat
+		video.rotation.y = PI  # faces −z, as the glass
+		video.position.z = -0.017
+		feed.add_child(video)
+		root.add_child(feed)
+	((feed.get_node("Video") as MeshInstance3D).material_override as StandardMaterial3D).albedo_texture = texture
+	(root.get_node("Frame") as Node3D).visible = false
+	(root.get_node("Glass") as Node3D).visible = false
+	(root.get_node("Label") as Node3D).position.y = -(CAM_SIZE.y / 2.0 + CAM_BEZEL + 0.03)
 
 
 func _build_labels() -> void:
