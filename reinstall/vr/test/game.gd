@@ -1061,7 +1061,8 @@ func _jpeg(w: int, h: int, c: Color) -> PackedByteArray:
 
 
 func _test_cam_feeds() -> void:
-	var house: Dictionary = _read_json("res://house/house.json")
+	# Pins terminal coordinates, so it walks the frozen placeholder map.
+	var house: Dictionary = _placeholder_house()
 	var all := ["optical-drive", "hall", "desktop-tv", "start-bar", "ram", "server-room", "nowhere"]
 	var feet := [0.0, 0.0, 5.0]
 	_check(CamFeeds.spots_to_poll(house, all, feet) == ["optical-drive", "start-bar", "hall", "desktop-tv"], "cams: the listed terminals on my floor, nearest first, at most four (%s)" % [CamFeeds.spots_to_poll(house, all, feet)])
