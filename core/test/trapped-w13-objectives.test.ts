@@ -635,6 +635,18 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(now("Norton Anti-Virus")).toBe("Escort The Marked");
   }, SLOW);
 
+  it("after an ending a marked or captured program's NOW is the ceremony, never the Internet or Gerald", () => {
+    const n = boot();
+    for (const c of TO_Y2K) n.press(c);
+    n.signal("send to the internet", "g5", undefined, "Norton Anti-Virus");
+    n.signal("mark_for_reinstallation", "g6", { reason: "test" });
+    expect(guestView(n.sim, "g5").objectives?.[0]?.id).toBe("Find Gerald");
+    expect(guestView(n.sim, "g6").objectives?.[0]?.id).toBe("Go To The Internet");
+    toCeremony(n);
+    expect(v(n.sim, "g6.marked")).toBe(true);
+    for (const g of ["g5", "g6"]) expect(guestView(n.sim, g).objectives?.[0]?.id, g).toBe("The Night Is Over");
+  }, SLOW);
+
   it("the Grok Prom night: the pickup line, the advice poll and the hand jive", () => {
     const table = new Map(walk("hand_jive"));
     const at = (label: string) => table.get(label)!;

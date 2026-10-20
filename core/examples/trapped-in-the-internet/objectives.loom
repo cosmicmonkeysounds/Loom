@@ -43,7 +43,7 @@ OBJECTIVE The Hand Jive
 // DRAFT for sign-off
 OBJECTIVE Go To The Internet
   for: Program
-  while: program.marked == true and program.corrupted != true
+  while: program.marked == true and program.corrupted != true and Night.ended != true
   title: Go to the Internet: you are marked
   text:
     An Antivirus will walk you through the Tube to the Internet for a reinstallation. Your buttons are off until you are reinstalled. Bathroom Mode still works: the Antivirus wait outside.
@@ -54,7 +54,7 @@ OBJECTIVE Go To The Internet
 // DRAFT for sign-off
 OBJECTIVE Find Gerald
   for: Program
-  while: program.corrupted == true
+  while: program.corrupted == true and Night.ended != true
   title: Find Gerald, the golden duck
   text:
     You are in the Internet. At the reinstallation station, scan your pass and walk the copy of the house: follow the golden arrows to Gerald. When he lays a golden egg you are reinstalled.
