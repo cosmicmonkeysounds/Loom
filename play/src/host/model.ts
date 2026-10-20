@@ -110,20 +110,40 @@ export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals
 export interface HostStripItem {
   text: string;
   tone?: "urgent" | "needs";
+  /** What the item is (a phone drops the phase first). */
+  kind?: "act" | "phase" | "clock" | "countdown" | "needs";
 }
 
 /** The strip: act · `Night.phase` · ⏸ / 🚪 · the soonest countdown · ⚠ n
  *  (what waits on a host). */
 export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: number | null, needs: number): HostStripItem[] {
   const out: HostStripItem[] = [];
-  if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!) });
+  if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!), kind: "act" });
   const phase = view?.world.find((w) => w.path === "Night.phase")?.value.trim().replace(/^"(.*)"$/u, "$1") ?? "";
-  if (phase !== "" && phase !== "null") out.push({ text: phase });
-  if (view !== null && !clockRuns({ phase: view.runtime, ...(view.paused === true ? { paused: true as const } : {}) })) out.push({ text: view.doorsClosed === true ? "🚪 doors closed" : STOPPED });
+  if (phase !== "" && phase !== "null") out.push({ text: phaseLabel(phase), kind: "phase" });
+  if (view !== null && !clockRuns({ phase: view.runtime, ...(view.paused === true ? { paused: true as const } : {}) })) out.push({ text: view.doorsClosed === true ? "🚪 doors closed" : STOPPED, kind: "clock" });
   const soon = soonestCountdown(view?.countdowns, nowMs);
-  if (soon !== null) out.push({ text: `⏳ ${soon.label} ${formatLeft(soon.left)}`, ...(soon.left < URGENT_S ? { tone: "urgent" as const } : {}) });
-  if (needs > 0) out.push({ text: `⚠ ${needs}`, tone: "needs" });
+  if (soon !== null) out.push({ text: countdownLeft(soon.label, soon.left), kind: "countdown", ...(soon.left < URGENT_S ? { tone: "urgent" as const } : {}) });
+  if (needs > 0) out.push({ text: `⚠ ${needs}`, tone: "needs", kind: "needs" });
   return out;
+}
+
+/** A story phase id as the strip reads it: `hunt_1` → "Hunt 1",
+ *  `truth_pong` → "Truth Pong", `y2k` → "Y2K" (a word mixing letters and
+ *  digits is a code: capitals). The story names no labels for its phases,
+ *  so the id is the label, made readable. */
+export function phaseLabel(id: string): string {
+  return id
+    .trim()
+    .split(/[_\s-]+/u)
+    .filter((w) => w !== "")
+    .map((w) => (/\d/u.test(w) && /\p{L}/u.test(w) ? w.toUpperCase() : `${w.charAt(0).toUpperCase()}${w.slice(1)}`))
+    .join(" ");
+}
+
+/** A countdown as time left, never a time of day: "⏳ Hunt 1 ends, 4:59 left". */
+export function countdownLeft(label: string, leftSec: number): string {
+  return `⏳ ${label}, ${formatLeft(leftSec)} left`;
 }
 
 // --- a refused press -----------------------------------------------------------
@@ -183,9 +203,9 @@ export function staleText(error: string | null, receivedAt: number, now: number)
   return `⚠ Last update ${agoText(now - receivedAt)} · ${error ?? "Reconnecting…"}`;
 }
 
-/** What the NEXT bar's second line shows, first match wins: a fresh toast,
- *  a stale view, the armed prompt, the reason a press was just refused, the
- *  strip. */
+/** What the NEXT bar's second line shows, first match wins: the armed
+ *  prompt (on a live view), a fresh toast, a stale view, the reason a press
+ *  was just refused, the strip. */
 export type BarLine = { kind: "toast" | "stale" | "armed" | "refused"; text: string } | { kind: "strip" };
 
 export function barLine(s: {
@@ -200,9 +220,13 @@ export function barLine(s: {
   refused: RefusedPress | null;
   reason: string | null;
 }): BarLine {
+  // A live arm outranks a toast: the "Cues moved — tap again" toast asked
+  // for exactly this new arm, and must not hide its 4 s window.
+  const armed = { kind: "armed" as const, text: s.subjectName !== null ? `Tap FIRE to fire → ${s.subjectName}` : "Tap FIRE within 4 s to fire" };
+  if (s.armed && s.connected) return armed;
   if (s.toast !== null) return { kind: "toast", text: s.toast };
   if (!s.connected) return { kind: "stale", text: staleText(s.error, s.receivedAt, s.now) };
-  if (s.armed) return { kind: "armed", text: s.subjectName !== null ? `Tap FIRE to fire → ${s.subjectName}` : "Tap FIRE within 4 s to fire" };
+  if (s.armed) return armed;
   if (s.refused !== null && s.now - s.refused.at < REFUSED_BAR_MS) return { kind: "refused", text: refusedText(s.refused, s.reason, s.now) };
   return { kind: "strip" };
 }

@@ -79,14 +79,15 @@ describe("the NEXT bar's second line", () => {
     const v = hostFixture();
     const rows = cueRows(v.interactions, v.cues);
     const items = hostStrip(v, sheetLayout(rows), 60_000, 3);
-    expect(items.map((i) => i.text)).toEqual(["B", "arrivals", "⏳ Hunt 1:00", "⚠ 3"]);
+    expect(items.map((i) => i.text)).toEqual(["B", "Arrivals", "⏳ Hunt, 1:00 left", "⚠ 3"]);
+    expect(items.map((i) => i.kind)).toEqual(["act", "phase", "countdown", "needs"]);
     expect(items[3]!.tone).toBe("needs");
   });
 
   it("a countdown under a minute is urgent; a paused clock says so; no needs, no ⚠", () => {
     const v = hostFixture({ runtime: "paused", paused: true });
     const items = hostStrip(v, sheetLayout(cueRows(v.interactions, v.cues)), 90_000, 0);
-    expect(items.map((i) => i.text)).toEqual(["B", "arrivals", "⏸ clock stopped", "⏳ Hunt 0:30"]);
+    expect(items.map((i) => i.text)).toEqual(["B", "Arrivals", "⏸ clock stopped", "⏳ Hunt, 0:30 left"]);
     expect(items[3]!.tone).toBe("urgent");
   });
 });

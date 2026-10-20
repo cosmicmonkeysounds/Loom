@@ -291,7 +291,7 @@ export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onT
   const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
   const sending = nextRow !== null && desk.pending === nextRow.id;
   return (
-    <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`} data-testid="host-nextbar">
+    <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""} ${line2.kind === "refused" || line2.kind === "stale" ? "long2" : ""}`} data-testid="host-nextbar">
       {/* No aria-label: it would replace the cue and the strip, so a
           screen reader never heard what is NEXT. The verb is read first. */}
       <button type="button" className="host-bar-main" ref={barMain} aria-expanded={open} aria-controls="host-drawer" onClick={onToggle}>
@@ -303,7 +303,7 @@ export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onT
           {bar.kind === "next" ? (
             <>
               <span className="host-bar-tag">{armedHere ? "ARMED" : bar.again ? "AGAIN" : "NEXT"}</span>
-              {bar.row.code !== null && <span className="cue-code">{bar.row.code}</span>}
+              {bar.row.code !== null && <span className="cue-code host-code-wide">{bar.row.code}</span>}
               <span className="host-bar-title">{cueTitleTags(bar.row.title).title}</span>
             </>
           ) : bar.kind === "countdown" ? (
@@ -315,13 +315,19 @@ export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onT
           )}
         </span>
         <span className="host-bar-line2" role="status" aria-live="polite">
+          {/* On a phone the code chip moves here, so the title keeps line 1. */}
+          {nextRow?.code != null && (
+            <span className="cue-code host-code-narrow" aria-hidden="true">
+              {nextRow.code}
+            </span>
+          )}
           {line2.kind !== "strip" ? (
             <span className={`host-bar-toast host-bar-${line2.kind}`} data-testid="host-line2">
               {line2.text}
             </span>
           ) : (
             strip.map((it, k) => (
-              <span key={k} className={it.tone !== undefined ? `host-strip-${it.tone}` : undefined}>
+              <span key={k} className={[it.tone !== undefined ? `host-strip-${it.tone}` : "", it.kind !== undefined ? `host-strip-${it.kind}` : ""].join(" ").trim() || undefined}>
                 {it.text}
               </span>
             ))
