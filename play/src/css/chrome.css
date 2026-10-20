@@ -10,6 +10,16 @@
   /* The restricted caption: ochre (white text ≥ 4.6:1 on both stops). */
   --restricted: #6b4a00;
   --restricted-2: #9a6b00;
+  /* The NOW bar's caption: the shared title gradient under plain. */
+  --now-grad: var(--title-grad);
+}
+/* Under aol97 the NOW bar keeps the navy → blue Win95 caption but ends on
+   a deeper blue than the windows' #1084d0: the title can run the bar's
+   whole width, and white there is 6.1:1, the pale sub-line 4.9:1
+   (on #1084d0 they were 4.0:1 and 3.3:1). */
+:root[data-theme="aol97"] {
+  --now-end: #0a64ad;
+  --now-grad: linear-gradient(90deg, var(--navy), var(--now-end));
 }
 
 /* ── the frame ─────────────────────────────────────────────────────────── */
@@ -21,7 +31,7 @@
 .title-bar {
   flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
   min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 8px 0 10px;
-  background: var(--title-grad); color: var(--title-ink); font: 700 14px/1.2 var(--ui-font);
+  background: var(--now-grad); color: var(--title-ink); font: 700 14px/1.2 var(--ui-font);
 }
 .title-bar.alarm { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
 .title-bar.restricted { background: linear-gradient(90deg, var(--restricted), var(--restricted-2)); }
@@ -80,7 +90,7 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
   display: inline-flex; align-items: center; gap: 3px; min-height: 36px; padding: 0 5px;
   border: none; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums;
 }
-button.tray-item { position: relative; cursor: pointer; }
+button.tray-item { position: relative; min-width: var(--tap); justify-content: center; cursor: pointer; }
 button.tray-item::after { content: ""; position: absolute; top: -4px; bottom: -4px; left: 0; right: 0; }
 button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
 .tray-item.alarm { color: var(--bad); font-weight: 700; }
@@ -235,10 +245,18 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 /* caption boxes keep their Win95 size; the touch target grows past them */
 .back { position: relative; width: 36px; height: 30px; }
 .back::after { content: ""; position: absolute; inset: -8px -6px; }
-.sheet-x::after { content: ""; position: absolute; inset: -8px -6px; }
+/* the sheet's × (28 × 24): 44 × 44 reaching up to the sheet's edge (3 px
+   caption padding + 4 px sheet padding) and down through the caption's
+   padding + margin (13 px), never over the sheet's content or the title */
+.sheet-x::after { content: ""; position: absolute; inset: -7px -8px -13px; }
 .sheet-x { position: relative; width: 28px; height: 24px; }
+/* a window's × (32 × 28): 44 × 44, 5 px past the caption on each side */
 .w95-btn.w95-x { position: relative; min-height: 28px; min-width: 32px; }
 .w95-btn.w95-x::after { content: ""; position: absolute; inset: -8px -6px; }
+/* a sender's avatar (30 × 30) opens their card: 44 × 44 inside the gap
+   beside the message and the tuck below it */
+.msg-avatar[tabindex="0"] { position: relative; }
+.msg-avatar[tabindex="0"]::after { content: ""; position: absolute; inset: -7px; }
 .thread-head { min-height: var(--tap); }
 .thread-head .presence { position: relative; min-height: 30px; }
 .thread-head .presence::after { content: ""; position: absolute; inset: -7px -2px; }
