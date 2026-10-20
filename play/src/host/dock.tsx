@@ -7,17 +7,17 @@
 //! writes is on the host allowlist (`host/api.ts`). Never in Play: restart,
 //! push, go live, end, the var table, the log, the Mind (D5).
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cueRows, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { suggestionHint, awardSuggestion } from "../../../core/src/host-board.ts";
-import { CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, STORY_RUNS, clockRuns, countdownText, nextBar, sheetLayout, storyNow, useCueDesk, type FireOutcome } from "../director.tsx";
+import { CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, STORY_RUNS, clockRuns, countdownText, nextBar, sheetLayout, storyNow, useCueDesk, type FireOutcome } from "../director.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { useMomentsHold } from "../moments/provider.tsx";
 import type { PrimeSession } from "../session/prime.ts";
-import { useHostView, useRecap } from "./client.ts";
+import { useHostView, useRecap, type HostClient } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
-import { awardsNear, barLine, groupNeeds, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type RefusedPress } from "./model.ts";
+import { awardsNear, barLine, groupNeeds, type BarLine, type HostStripItem, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type RefusedPress } from "./model.ts";
 import { CuesTab } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
@@ -32,12 +32,18 @@ export function isHostBooth(session: Pick<PrimeSession, "auth"> | null | undefin
   return a != null && (a.host === true || a.admin === true);
 }
 
-export function HostDock(p: {
+export interface HostDockProps {
   session: PrimeSession;
   wide: boolean;
   /** Open a guest's card in the booth (booth passes its opener). */
   openCard: (guestId: string) => void;
-}) {
+  /** Tests: a client in place of the live poll (and no recap read). */
+  client?: HostClient;
+  /** Tests: the keyboard state in place of the page's focus. */
+  keyboardOpen?: boolean;
+}
+
+export function HostDock(p: HostDockProps) {
   // No hooks here: a booth that isn't a host renders nothing at all.
   if (!isHostBooth(p.session)) return null;
   return <HostDockOn {...p} />;
@@ -50,9 +56,18 @@ export function fireLabel(armedHere: boolean, sending: boolean, subject: boolean
   return subject ? "PICK" : "ARM";
 }
 
-function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: boolean; openCard: (guestId: string) => void }) {
+/** An award's value box on opening the picker: the recap's suggestion, once
+ *  per opening (`filledFor` is the cue last filled), never over a typed one.
+ *  Null leaves the box alone. */
+export function awardPrefill(pickingId: string | null, filledFor: string | null, suggestion: { value: string } | null, value: string): string | null {
+  if (pickingId === null || pickingId === filledFor) return null;
+  return suggestion !== null && value === "" ? suggestion.value : null;
+}
+
+function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }: HostDockProps) {
   const auth = session.auth!;
-  const client = useHostView({ token: auth.token, eventId: auth.eventId });
+  const live = useHostView(injected !== undefined ? null : { token: auth.token, eventId: auth.eventId });
+  const client = injected ?? live;
   const view = client.view;
   const rows = useMemo(() => (view === null ? [] : cueRows(view.interactions, view.cues)), [view]);
   const layout = useMemo(() => sheetLayout(rows), [rows]);
@@ -114,18 +129,14 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
 
   // Awards: the recap's suggested winner is offered first in the picker,
   // its value pre-filled, while the award cues are near.
-  const recap = useRecap({ token: auth.token, eventId: auth.eventId }, awardsNear(rows, layout));
+  const recap = useRecap(injected !== undefined ? null : { token: auth.token, eventId: auth.eventId }, awardsNear(rows, layout));
   const picking = desk.picking;
   const suggestion = picking !== null ? awardSuggestion(picking.id, recap) : null;
   const pickedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (picking === null) {
-      pickedFor.current = null;
-      return;
-    }
-    if (pickedFor.current === picking.id) return;
-    pickedFor.current = picking.id;
-    if (suggestion !== null && desk.value === "") desk.setValue(suggestion.value);
+    const fill = awardPrefill(picking?.id ?? null, pickedFor.current, suggestion, desk.value);
+    pickedFor.current = picking?.id ?? null;
+    if (fill !== null) desk.setValue(fill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picking, suggestion]);
 
@@ -137,7 +148,26 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
   const dockRef = useCallback((el: HTMLDivElement | null) => {
     frame.current = el?.closest(".root") as HTMLElement | null;
   }, []);
-  const keyboard = useKeyboardOpen(frame as RefObject<HTMLElement>);
+  const focusKeyboard = useKeyboardOpen(frame as RefObject<HTMLElement>);
+  const keyboard = keyboardOpen ?? focusKeyboard;
+  // Escape closes the console from anywhere on the page — focus may sit on
+  // <body> after a button disabled itself while busy — and focus goes back
+  // to the bar that opened it.
+  const barMain = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    barMain.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      close();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, close]);
   const tabs = hostTabs(view, refused !== null ? 1 : 0);
   useEffect(() => {
     if (!tabs.some((t) => t.id === tab)) setTab("cues");
@@ -180,9 +210,7 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
   }
 
   const bar = nextBar(rows, view.countdowns, nowMs, runs);
-  const nextRow = bar.kind === "next" ? bar.row : null;
-  const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
-  const sending = nextRow !== null && desk.pending === nextRow.id;
+  const armedHere = bar.kind === "next" && desk.armed?.id === bar.row.id;
   const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0);
   const strip = hostStrip(view, layout, nowMs, needs);
   const line2 = barLine({ toast: desk.toast, connected: client.connected, error: client.error, receivedAt: client.receivedAt, now, armed: armedHere, subjectName: desk.subjectName, refused: refusedBar ? refused : null, reason });
@@ -205,20 +233,13 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
       openCard(id);
     },
   };
-  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape" && open) {
-      e.stopPropagation();
-      setOpen(false);
-    }
-  };
-
   return (
     <HostContext.Provider value={ctx}>
-      <div className={`host-dock ${wide ? "wide" : ""} ${open ? "open" : ""}`} ref={dockRef} onKeyDown={onKey}>
+      <div className={`host-dock ${wide ? "wide" : ""} ${open ? "open" : ""}`} ref={dockRef}>
         {open && (
           <>
-            <div className="host-scrim" aria-hidden="true" onClick={() => setOpen(false)} />
-            <Drawer tabs={tabs} tab={tab} setTab={(t) => { setTab(t); setSection(null); }} onClose={() => setOpen(false)} title={auth.character}>
+            <div className="host-scrim" aria-hidden="true" onClick={close} />
+            <Drawer tabs={tabs} tab={tab} setTab={(t) => { setTab(t); setSection(null); }} onClose={close} title={auth.character}>
               {tab === "cues" && <CuesTab rows={rows} layout={layout} desk={desk} mineLast={mine !== null && mine === view.cues.last} />}
               {tab === "needs" && <NeedsTab refused={refused} reason={reason} />}
               {tab === "judge" && <JudgeTab />}
@@ -227,70 +248,91 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
             </Drawer>
           </>
         )}
-        <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`} data-testid="host-nextbar">
-          <button type="button" className="host-bar-main" aria-expanded={open} aria-controls="host-drawer" aria-label={`${open ? "Close" : "Open"} the host console`} onClick={() => setOpen((o) => !o)}>
-            <span className="host-bar-line1">
-              <span className="host-bar-grip" aria-hidden="true">
-                {open ? "▾" : "▴"}
-              </span>
-              {bar.kind === "next" ? (
-                <>
-                  <span className="host-bar-tag">{armedHere ? "ARMED" : bar.again ? "AGAIN" : "NEXT"}</span>
-                  {bar.row.code !== null && <span className="cue-code">{bar.row.code}</span>}
-                  <span className="host-bar-title">{cueTitleTags(bar.row.title).title}</span>
-                </>
-              ) : bar.kind === "countdown" ? (
-                <span className="host-bar-title quiet">
-                  {NOTHING_TO_PRESS}. {bar.held === true ? CLOCK_HELD : STORY_RUNS} {countdownText(bar)}
-                </span>
-              ) : (
-                <span className="host-bar-title quiet">{NOTHING_TO_PRESS}</span>
-              )}
-            </span>
-            <span className="host-bar-line2" role="status" aria-live="polite">
-              {line2.kind !== "strip" ? (
-                <span className={`host-bar-toast host-bar-${line2.kind}`} data-testid="host-line2">
-                  {line2.text}
-                </span>
-              ) : (
-                strip.map((it, k) => (
-                  <span key={k} className={it.tone !== undefined ? `host-strip-${it.tone}` : undefined}>
-                    {it.text}
-                  </span>
-                ))
-              )}
-            </span>
-          </button>
-          {nextRow !== null && (
-            <button
-              type="button"
-              className={`host-fire ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`}
-              data-testid="host-fire"
-              disabled={desk.locked(nextRow)}
-              aria-busy={sending || undefined}
-              aria-label={armedHere ? `Fire ${nextRow.code ?? nextRow.title}` : `Arm ${nextRow.code ?? nextRow.title}`}
-              onClick={() => desk.tap(nextRow)}
-            >
-              {fireLabel(armedHere, sending, nextRow.subject && !armedHere)}
-            </button>
-          )}
-        </div>
+        <HostNextBar bar={bar} desk={desk} open={open} stale={stale} line2={line2} strip={strip} barMain={barMain} onToggle={() => (open ? close() : setOpen(true))} />
         <CuePicker desk={desk} roster={view.roster} suggest={suggestion !== null ? { id: suggestion.id, hint: suggestionHint(suggestion) } : null} />
       </div>
     </HostContext.Provider>
   );
 }
 
+/** The NEXT bar: the cue (or why there is none) and the night's second
+ *  line in one button that pulls the console up, then ARM → FIRE. It reads
+ *  the same desk as the Cues tab, so an arm made in one fires from the
+ *  other. */
+export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onToggle }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: RefObject<HTMLButtonElement>; onToggle: () => void }) {
+  const nextRow = bar.kind === "next" ? bar.row : null;
+  const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
+  const sending = nextRow !== null && desk.pending === nextRow.id;
+  return (
+    <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`} data-testid="host-nextbar">
+      {/* No aria-label: it would replace the cue and the strip, so a
+          screen reader never heard what is NEXT. The verb is read first. */}
+      <button type="button" className="host-bar-main" ref={barMain} aria-expanded={open} aria-controls="host-drawer" onClick={onToggle}>
+        <span className="host-bar-line1">
+          <span className="host-sr">{open ? "Close" : "Open"} the host console. </span>
+          <span className="host-bar-grip" aria-hidden="true">
+            {open ? "▾" : "▴"}
+          </span>
+          {bar.kind === "next" ? (
+            <>
+              <span className="host-bar-tag">{armedHere ? "ARMED" : bar.again ? "AGAIN" : "NEXT"}</span>
+              {bar.row.code !== null && <span className="cue-code">{bar.row.code}</span>}
+              <span className="host-bar-title">{cueTitleTags(bar.row.title).title}</span>
+            </>
+          ) : bar.kind === "countdown" ? (
+            <span className="host-bar-title quiet">
+              {NOTHING_TO_PRESS}. {bar.held === true ? CLOCK_HELD : STORY_RUNS} {countdownText(bar)}
+            </span>
+          ) : (
+            <span className="host-bar-title quiet">{NOTHING_TO_PRESS}</span>
+          )}
+        </span>
+        <span className="host-bar-line2" role="status" aria-live="polite">
+          {line2.kind !== "strip" ? (
+            <span className={`host-bar-toast host-bar-${line2.kind}`} data-testid="host-line2">
+              {line2.text}
+            </span>
+          ) : (
+            strip.map((it, k) => (
+              <span key={k} className={it.tone !== undefined ? `host-strip-${it.tone}` : undefined}>
+                {it.text}
+              </span>
+            ))
+          )}
+        </span>
+      </button>
+      {nextRow !== null && (
+        <button
+          type="button"
+          className={`host-fire ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`}
+          data-testid="host-fire"
+          disabled={desk.locked(nextRow)}
+          aria-busy={sending || undefined}
+          aria-label={armedHere ? `Fire ${nextRow.code ?? nextRow.title}` : `Arm ${nextRow.code ?? nextRow.title}`}
+          onClick={() => desk.tap(nextRow)}
+        >
+          {fireLabel(armedHere, sending, nextRow.subject && !armedHere)}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Drawer({ tabs, tab, setTab, onClose, title, children }: { tabs: ReturnType<typeof hostTabs>; tab: HostTab; setTab: (t: HostTab) => void; onClose: () => void; title: string; children: ReactNode }) {
   const body = useRef<HTMLDivElement>(null);
+  const x = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     body.current?.scrollTo?.({ top: 0 });
   }, [tab]);
+  // Opening moves focus into the console (its close button: no keyboard).
+  useEffect(() => {
+    x.current?.focus();
+  }, []);
   return (
     <div className="host-drawer w95-window" id="host-drawer" role="dialog" aria-label="Host console">
       <div className="w95-titlebar host-drawer-title">
         <span className="w95-title">▣ Host console · {title}</span>
-        <button type="button" className="w95-btn w95-x" aria-label="Close the host console" onClick={onClose}>
+        <button type="button" className="w95-btn w95-x" ref={x} aria-label="Close the host console" onClick={onClose}>
           ▾
         </button>
       </div>
