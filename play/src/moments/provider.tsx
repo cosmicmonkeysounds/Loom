@@ -234,6 +234,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     if (session === null || input.objectives === undefined) return;
     const fresh = announceLoud(host.storage, role, session, input.objectives, storyNow([], input.clock), live.current.phase);
     arrive(fresh, false);
+    // An objective that ended takes its moment with it.
+    dispatch({ type: "objectives", live: new Set(input.objectives.map((o) => o.id)) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives, session]);
 
