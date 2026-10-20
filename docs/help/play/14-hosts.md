@@ -104,7 +104,7 @@ Anything you can't take back asks in place first (*…? Yes / No*).
 
 A host's guest cards also offer other characters' buttons, but only the
 ones the story hears from your booth (at the show, the server room's
-patch-bay 🔌 💥 ❌). Buttons only their own characters' rules
+🔌 💥 ❌ 🚪 🔧). Buttons only their own characters' rules
 hear stay theirs: a host never sees the Antivirus' 🛡 / ✅ / 👁 or
 Adobe Acrobat's 🫘 from another booth, and the server refuses them
 (*not your button …*). Radio the performer instead.
