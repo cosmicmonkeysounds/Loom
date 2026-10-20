@@ -62,6 +62,16 @@ export function GuestCardBody({
   const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
   const arm = useArmButtons();
+  // Escape closes the "Share lore…" picker first (the booth window leaves
+  // Escape alone while a sheet is open inside it).
+  useEffect(() => {
+    if (!sharing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSharing(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sharing]);
   // When the card was last replaced: taps inside `FACE_SETTLE_MS` of it are
   // dropped (the face re-flowed, so the finger now sits on another button).
   const landedAt = useRef<number | null>(null);

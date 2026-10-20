@@ -51,5 +51,4 @@ describe("the camera's life", () => {
     expect(html).toContain("📷 Scan a pass");
     expect(html).not.toContain("behind");
   });
-
 });
