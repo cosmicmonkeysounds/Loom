@@ -167,6 +167,10 @@ export interface Impersonation {
   id: string;
   /** The director (display name) — journaled as `by` on every action. */
   by: string;
+  /** A booth pane of a host part (`admin: true`, C4): the play-as session
+   *  holds the host capability (the NEXT bar, the host routes), still
+   *  journaled `by` the director. */
+  host?: boolean;
 }
 
 /**
@@ -3028,6 +3032,10 @@ export class EventRuntime {
     this.setPhase("paused");
     this.seedAvatars();
     this.spatial.syncKing(); // a fresh world: a standing King (or the hub's own count)
+    // C4: every booth's host follows its part in the story now loaded (a
+    // restart or reload onto text that gives or takes `admin: true`), before
+    // the fresh snapshots (`host`) and history (its agent threads) go out.
+    this.rederiveHosts();
   }
 
   // -- profile pictures ----------------------------------------------------
@@ -3458,6 +3466,10 @@ export class EventRuntime {
     for (const [id, owner] of meta.owners ?? []) this.personaOwners.set(id, owner);
     const entries = this.store.loadSessions();
     this.sessions.load(entries);
+    // C4: host follows the part in the story this run plays (a session
+    // signed in before `sync-show` gave its part `admin: true`, or since it
+    // lost it).
+    this.rederiveHosts();
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
     this.requeueAgentThreads();
     this.noteRulingsDue();
@@ -3549,7 +3561,8 @@ export class EventRuntime {
         client.via = imp.by;
         client.token = token;
         client.admin = false;
-        client.host = false;
+        // A director's pane of a host part is a host booth (C4).
+        client.host = imp.host === true;
       }
       this.clients.add(client);
       // The guest's own phone opened its stream: they are here (W-04).
@@ -3594,7 +3607,7 @@ export class EventRuntime {
 
     // --- K-26: the ceremony's recap numbers (directors only) ---
     if (method === "GET" && path === "/api/mod/recap") {
-      if (opts.moderator !== true && !this.sessions.canHost(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      if (opts.moderator !== true && !this.canHostToken(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
       else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
       return true;
     }
@@ -3699,13 +3712,13 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
         }
-        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.sessions.canHost(token)));
+        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.canHostToken(token)));
         return true;
       }
       // `?host=1` (wave 13): a host booth's panel — the cue sheet, needs,
       // judging, wallet holds, parts, people and Trabolta's waiting guests.
       if (url.searchParams.get("host") === "1") {
-        if (opts.moderator !== true && !this.sessions.canHost(token)) {
+        if (opts.moderator !== true && !this.canHostToken(token)) {
           sendJson(res, 403, { error: "moderators only" });
           return true;
         }
@@ -3793,8 +3806,8 @@ export class EventRuntime {
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
     // A host booth may mute the TV and identify a terminal (§2.7).
-    if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canHost(t));
-    if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canHost(t));
+    if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
+    if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
 
     // --- the reinstallation games: the map, the stream, stations ---
     if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {
@@ -3994,14 +4007,15 @@ export class EventRuntime {
     if (path.startsWith("/api/mod/")) {
       const caller = tokenOf(req, body);
       // A host-only token already passed the allowlist above.
-      if (!opts.moderator && !this.sessions.canHost(caller)) {
+      if (!opts.moderator && !this.canHostToken(caller)) {
         sendJson(res, 403, { error: "moderators only" });
         return true;
       }
-      // The journal's `by`: the author's name, a booth's own part
-      // (`Booth · Task Manager`), else a headless mod token's "Director".
+      // The journal's `by`: the author's name, the director of a play-as
+      // pane (C4), a booth's own part (`Booth · Task Manager`), else a
+      // headless mod token's "Director".
       const booth = opts.moderator === true ? null : this.characterOf(caller);
-      const by = opts.moderatorName ?? (booth !== null ? `Booth · ${booth}` : "Director");
+      const by = opts.moderatorName ?? imp?.by ?? (booth !== null ? `Booth · ${booth}` : "Director");
       const hostOnly = opts.moderator !== true && this.hostOnly(caller);
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
       if (path === "/api/mod/load") await this.resyncProjectFiles();
@@ -4021,9 +4035,51 @@ export class EventRuntime {
     return false;
   }
 
-  /** A token holding the host capability but not the moderator one. */
+  /** A token holding the host capability but not the moderator one — a
+   *  host part's booth, or a director's play-as pane of one (C4). */
   private hostOnly(token: string | undefined): boolean {
+    const imp = token ? this.impersonations.get(token) : undefined;
+    if (imp !== undefined) return imp.host === true;
     return this.sessions.canHost(token) && !this.sessions.canModerate(token);
+  }
+
+  /** May this token act as a host (`canHost`, or a play-as pane of a host part)? */
+  private canHostToken(token: string | undefined): boolean {
+    const imp = token ? this.impersonations.get(token) : undefined;
+    if (imp !== undefined) return imp.host === true;
+    return this.sessions.canHost(token);
+  }
+
+  /**
+   * C4: each booth session's host follows its part's `admin: true` in the
+   * story now loaded — granted to a part that has it, taken from one that
+   * lost it (a passcode admin keeps admin, so stays a host). Connected booth
+   * streams follow (their next snapshot says `host`). Persisted on a change.
+   */
+  private rederiveHosts(): void {
+    const model = this.sim?.model ?? this.declaredModel;
+    if (model === null) return;
+    let changed = false;
+    for (const [token, session] of this.sessions.entries()) {
+      if (session.character === null) continue;
+      const want = model.characters.get(session.character)?.admin === true;
+      if (want === (session.host === true)) continue;
+      if (want) this.sessions.grant(token, { host: true });
+      else this.sessions.revokeHost(token);
+      changed = true;
+    }
+    if (changed) this.persistSessions();
+    for (const c of this.clients) {
+      if (c.role !== "prime") continue;
+      if (c.via !== undefined) {
+        const imp = c.token !== undefined ? this.impersonations.get(c.token) : undefined;
+        if (imp !== undefined) imp.host = model.characters.get(imp.id)?.admin === true;
+        c.host = imp?.host === true;
+        continue;
+      }
+      const own = this.sessions.entries().find(([, s]) => s.character === c.id);
+      if (own !== undefined) c.host = this.sessions.canHost(own[0]);
+    }
   }
 
   /** What the host allowlist's per-route limits read off the story. */
@@ -4637,7 +4693,7 @@ export class EventRuntime {
           this.fanout(events);
         }
         // Wave 13: the booth's card for this guest, after the scan's events.
-        const card = scanAs !== null ? guestCardView(this.sim!, this.chat.all(), scanAs, target, this.sessions.canHost(token)) : null;
+        const card = scanAs !== null ? guestCardView(this.sim!, this.chat.all(), scanAs, target, this.canHostToken(token)) : null;
         sendJson(res, 200, {
           ok: true,
           scannedAs: scanAs,
@@ -4664,7 +4720,7 @@ export class EventRuntime {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
         }
-        const card = guestCardView(this.sim!, this.chat.all(), character, str(body, "guest"), this.sessions.canHost(token));
+        const card = guestCardView(this.sim!, this.chat.all(), character, str(body, "guest"), this.canHostToken(token));
         if (card === null) sendJson(res, 404, { error: "unknown guest" });
         else sendJson(res, 200, card);
         return true;
@@ -4738,7 +4794,7 @@ export class EventRuntime {
         // booth may press any (as the director's quick-fire can, and as its
         // card offers them — `primeViewFor` / `guestCardView` take `canHost`).
         // Never "sign in" here: that answer drops a booth.
-        const refusal = this.sessions.canHost(token) ? null : byRefusal(this.sim!, def, character);
+        const refusal = this.canHostToken(token) ? null : byRefusal(this.sim!, def, character);
         if (refusal !== null) {
           sendJson(res, 403, { error: refusal });
           return true;
@@ -5636,9 +5692,12 @@ export class EventRuntime {
         // "Director") names itself — "Terminal · Kitchen" — so the journal
         // and the mod feed say which screen a program was piloted from.
         const label = str(body, "label").trim().slice(0, 60);
-        this.impersonations.set(token, { role, id, by: label !== "" ? label : by });
+        // C4: a booth pane of a host part (`admin: true`) is a host booth —
+        // the NEXT bar and the host routes, journaled `by` this director.
+        const host = role === "prime" && this.sim.model.characters.get(id)?.admin === true;
+        this.impersonations.set(token, { role, id, by: label !== "" ? label : by, ...(host ? { host: true } : {}) });
         const name = role === "guest" ? (this.sim.persons.get(id)?.name ?? id) : id;
-        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title });
+        sendJson(res, 200, { token, role, id, name, eventId: this.eventId, title: this.title, ...(role === "prime" ? { host } : {}) });
         return true;
       }
       case "/api/mod/impersonate/end": {

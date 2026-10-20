@@ -252,6 +252,9 @@ export interface PlayAsSession {
   name: string
   eventId: string
   title: string
+  /** A booth pane of a host part (`admin: true`): the session holds the host
+   *  capability, so the pane shows the NEXT bar and reaches the host routes. */
+  host?: boolean
 }
 
 /** What `/api/mod/guest/pair` mints (N-02). */

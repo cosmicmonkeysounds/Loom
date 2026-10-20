@@ -47,6 +47,72 @@ describe("C2: the doors, pause and resume from a host booth", () => {
   });
 });
 
+describe("C4: PrimeView.host on every path", () => {
+  it("a reload onto text that gives the part admin: true makes its booth a host; one that takes it away undoes it", async () => {
+    const rt = runtime({}, freshDir(), story(false));
+    rt.openDoors();
+    const login = (await booth(rt, "Task Manager")).json;
+    expect(login.host).toBe(false);
+    const token = login.token as string;
+    const s = primeStream(rt, token);
+    await s.open;
+    expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBeUndefined();
+    expect((await get(rt, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(403);
+    // sync-show's reload: the new text gives Task Manager `admin: true`.
+    expect((await mod(rt, "/api/mod/load", { source: story(true) })).status).toBe(200);
+    expect((await get(rt, `/api/state?role=prime&token=${token}`)).json.host).toBe(true);
+    expect((await get(rt, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(200);
+    // The open stream's fresh snapshot says host too (no sign-in again).
+    expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBe(true);
+    // …and back.
+    expect((await mod(rt, "/api/mod/load", { source: story(false) })).status).toBe(200);
+    expect((await get(rt, `/api/state?role=prime&token=${token}`)).json.host).toBeUndefined();
+    expect((await get(rt, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(403);
+  });
+
+  it("a restart of the process onto the new text re-derives host from the part", async () => {
+    const d = freshDir();
+    const rt = runtime({}, d, story(false));
+    rt.openDoors();
+    const token = (await booth(rt, "Task Manager")).json.token as string;
+    // The process restarts with the story now giving the part admin: true.
+    const meta = new Store(d).loadMeta()!;
+    new Store(d).saveMeta({ ...meta, scenarioSource: story(true) });
+    const rt2 = runtime({}, d, story(true));
+    rt2.restore();
+    rt2.openDoors();
+    expect((await get(rt2, `/api/state?role=prime&token=${token}`)).json.host).toBe(true);
+    expect((await get(rt2, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(200);
+  });
+
+  it("Run → Players: a pane of an admin: true part is a host booth, journaled by the director; a plain part's is not", async () => {
+    const d = freshDir();
+    const rt = runtime({}, d);
+    rt.openDoors();
+    const g = await guest(rt, "Winamp");
+    const minted = await mod(rt, "/api/mod/impersonate", { role: "prime", id: "Task Manager" });
+    expect(minted.json).toMatchObject({ role: "prime", id: "Task Manager", host: true });
+    const token = minted.json.token as string;
+    const s = primeStream(rt, token);
+    await s.open;
+    expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBe(true);
+    expect((await get(rt, `/api/state?role=prime&token=${token}`)).json.host).toBe(true);
+    expect((await get(rt, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(200);
+    expect((await post(rt, "/api/mod/signal", { name: "open the doors", token })).status).toBe(200);
+    expect(new Store(d).readJournal().filter((l) => l.m === "signal").at(-1)?.by).toBe("Ada");
+    // The pane is a host, never a moderator: the god view stays shut.
+    expect((await get(rt, `/api/state?role=mod&token=${token}`)).status).toBe(403);
+    expect((await post(rt, "/api/mod/set", { id: g.id, field: "score", value: 5, token })).status).toBe(403);
+    // A plain part's pane holds no host.
+    const plain = await mod(rt, "/api/mod/impersonate", { role: "prime", id: "Norton" });
+    expect(plain.json.host).toBe(false);
+    const pt = plain.json.token as string;
+    expect((await get(rt, `/api/state?role=prime&token=${pt}`)).json.host).toBeUndefined();
+    expect((await get(rt, `/api/state?role=mod&host=1&token=${pt}`)).status).toBe(403);
+    expect((await post(rt, "/api/mod/signal", { name: "open the doors", token: pt })).status).toBe(403);
+  });
+});
+
 describe("the editor's exact identity lens on a server project", () => {
   it("the router resolves the author session for ?as= reads", () => {
     expect(wantsModRead("/api/state", new URLSearchParams("role=prime&as=Task%20Manager"))).toBe(true);

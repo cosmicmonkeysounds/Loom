@@ -29,7 +29,7 @@ import type {
   WalletModView,
 } from '@loom/core/views'
 import { applyModPatch, type ModPatchFrame } from '@loom/core/mod-patch'
-import { ApiError, eventsApi, logApi, modApi, type EventInfo } from '@/lib/api'
+import { ApiError, eventsApi, logApi, modApi, type EventInfo, type PlayAsSession } from '@/lib/api'
 import { fetchWholeLedger } from '@/lib/run-export'
 import { onCollabEvent, type CollabEventNotice } from '@/lib/collab'
 import { reconnectDelay, streamClosed } from '@/lib/stream-retry'
@@ -58,6 +58,7 @@ import {
   type LastRun,
   type LedgerEntry,
   type Lens,
+  type PlayerSession,
   type LocationSummary,
   type RosterRow,
   type RunInfo,
@@ -198,6 +199,15 @@ const EMPTY_SNAPSHOT = {
 
 function phaseOf(status: string | undefined): CockpitPhase {
   return status === 'open' ? CockpitPhase.Open : status === 'paused' ? CockpitPhase.Paused : CockpitPhase.Idle
+}
+
+/** The embed's session for what `/api/mod/impersonate` minted. A booth
+ *  pane of a host part (`admin: true`) carries `host`, so the embedded play
+ *  app opens as a host booth (the NEXT bar) from its first frame. */
+export function playerSessionOf(s: PlayAsSession): PlayerSession {
+  return s.role === 'guest'
+    ? { role: 'guest', token: s.token, id: s.id, name: s.name, eventId: s.eventId, title: s.title }
+    : { role: 'prime', token: s.token, character: s.id, eventId: s.eventId, title: s.title, ...(s.host === true ? { host: true } : {}) }
 }
 
 /** Why a Players pane couldn't open, in words a director can act on. An
@@ -850,10 +860,7 @@ export const useOperate = create<OperateState>((set, get) => {
       const ev = get().event
       if (!ev) return null
       try {
-        const s = await modApi.impersonate(ev.id, role, id)
-        return s.role === 'guest'
-          ? { role: 'guest', token: s.token, id: s.id, name: s.name, eventId: s.eventId, title: s.title }
-          : { role: 'prime', token: s.token, character: s.id, eventId: s.eventId, title: s.title }
+        return playerSessionOf(await modApi.impersonate(ev.id, role, id))
       } catch (e) {
         set({ error: playerOpenError(e) })
         return null
