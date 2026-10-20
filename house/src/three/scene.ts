@@ -18,6 +18,7 @@ import {
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
+  CanvasTexture,
   Color,
   CylinderGeometry,
   DirectionalLight,
@@ -35,6 +36,7 @@ import {
   PlaneGeometry,
   Shape,
   ShapeGeometry,
+  SRGBColorSpace,
   Sprite,
   SpriteMaterial,
   Vector3,
@@ -108,6 +110,15 @@ export interface HouseScene {
    */
   showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open?: boolean): void;
   /**
+   * Show terminal `id`'s live camera frame (wave 14, `docs/loom-reinstall.md`
+   * §3.6) on a 4:3 window (`FEED_W` × `FEED_H`) in a thin Win98 bezel where
+   * the terminal hangs, or `null` for the terminal's own screen look. The
+   * source is copied at once (an `ImageBitmap` may be closed right after).
+   * False when nothing is shown: no such terminal, `null`, or no canvas
+   * (under node).
+   */
+  setTerminalFeed(id: string, source: CanvasImageSource | null): boolean;
+  /**
    * Advance the animated bits (terminal scanlines + glow) by `dt` seconds.
    * With a `camera`, room labels fade out as it comes within ~2.5 m (a label
    * hangs near the ceiling — standing under it, it would fill the view).
@@ -122,6 +133,10 @@ const SCREEN_W = 0.3;
 const SCREEN_H = 0.21;
 /** Room labels are hidden nearer than [0] metres, fully shown beyond [1]. */
 const LABEL_FADE = [1.2, 2.6] as const;
+/** A terminal's camera window (4:3), and the canvas its frames are drawn on. */
+export const FEED_W = 0.48;
+export const FEED_H = 0.36;
+const FEED_PX: readonly [number, number] = [160, 120];
 
 /** Background + fog for a scene showing a house (deep navy night, fog to match). */
 export function houseAtmosphere(scene: Scene, opts: { color?: string; near?: number; far?: number } = {}): void {
@@ -378,11 +393,31 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
       }),
     ),
   };
+  // A camera window per terminal (hidden until a frame arrives): a Win98
+  // bezel and a picture, proud of the screen. Unlit, so it reads in a dark room.
+  const feedParts = {
+    bezel: bin.add(new BoxGeometry(FEED_W + 0.03, FEED_H + 0.03, 0.012).translate(0, 0, -0.008)),
+    plane: bin.add(new PlaneGeometry(FEED_W, FEED_H).rotateY(Math.PI).translate(0, 0, -0.0145)),
+    bezelMat: bin.add(new MeshLambertMaterial({ color: PALETTE.face, emissive: PALETTE.shadow, emissiveIntensity: 0.35 })),
+  };
+  const feeds = new Map<string, { window: Group; screen: Object3D[]; mat: MeshBasicMaterial; tex: CanvasTexture | null; ctx: CanvasRenderingContext2D | null }>();
   if (opts.terminals !== false) {
     for (const spot of house.terminals) {
       const group = roomFloor(spot.room);
       if (!group) continue;
       const t = terminalGroup(spot, style.wallThickness, term);
+      const window = new Group();
+      window.name = "feed";
+      window.visible = false;
+      const mat = bin.add(new MeshBasicMaterial({ color: "#ffffff" }));
+      const bezel = new Mesh(feedParts.bezel, feedParts.bezelMat);
+      bezel.name = "feed-bezel";
+      const picture = new Mesh(feedParts.plane, mat);
+      picture.name = "feed-picture";
+      picture.renderOrder = 3;
+      window.add(bezel, picture);
+      t.add(window);
+      feeds.set(spot.id, { window, screen: t.children.filter((c) => c.name === "panel" || c.name === "scanlines"), mat, tex: null, ctx: null });
       terminals.set(spot.id, t);
       group.add(t);
     }
@@ -433,6 +468,35 @@ export function buildHouseScene(house: HouseMap, opts: HouseSceneOptions = {}): 
         const leaf = doors.get(door.id);
         if (leaf !== undefined) leaf.visible = !open;
       }
+    },
+    setTerminalFeed(id: string, source: CanvasImageSource | null): boolean {
+      const f = feeds.get(id);
+      if (f === undefined || disposed) return false;
+      const show = (on: boolean): boolean => {
+        f.window.visible = on;
+        for (const o of f.screen) o.visible = !on;
+        return on;
+      };
+      if (source === null) return show(false);
+      if (f.ctx === null) {
+        if (!hasDom()) return show(false);
+        const c = document.createElement("canvas");
+        [c.width, c.height] = FEED_PX;
+        const ctx = c.getContext("2d");
+        if (ctx === null) return show(false);
+        f.ctx = ctx;
+        f.tex = bin.add(new CanvasTexture(c));
+        f.tex.colorSpace = SRGBColorSpace;
+        f.mat.map = f.tex;
+        f.mat.needsUpdate = true;
+      }
+      try {
+        f.ctx.drawImage(source, 0, 0, FEED_PX[0], FEED_PX[1]);
+      } catch {
+        return show(false); // a closed bitmap, a broken image
+      }
+      if (f.tex !== null) f.tex.needsUpdate = true;
+      return show(true);
     },
     update(dt: number, camera?: Camera) {
       if (disposed || !Number.isFinite(dt)) return;
