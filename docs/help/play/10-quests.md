@@ -2,33 +2,36 @@
 title: Your quest log
 section: Guest Guide
 order: 10
-keywords: quest, quests, quest log, task, mission, objective, progress, complete, failed, pinned, thread, file a fact, fact, answer, confidence, sure, filed, judged, verdict, staff quest, performer quest
+keywords: quest, quests, quest log, task, mission, in progress, done, progress, complete, failed, pinned, steps, folded, file a fact, fact, answer, confidence, sure, filed, judged, verdict, staff quest, performer quest
 ---
 
 Some stories hand you things to **do**. They land in your **📜 Quest
 Log**, pinned at the top of your rooms list (right above your 📓 Codex).
 
-## One quest, one card
+## One quest, one line
 
-Every quest is a card in the Quest Log: its name, who gave it to you,
-what it asks, and where it stands — **in progress**, **complete**, or
-**failed**. The newest news bumps the room's badge, so you'll notice
-when something moves.
+The Quest Log is sorted for a glance: **In progress** first and open,
+then **Done** and **Failed**, folded until you tap their headings. Every
+quest is one line: its name and the last thing that happened on it
+(*▸ Find the second key*). Tap it to unfold who gave it to you, what it
+asks, and every step so far in order — a fact you found, a key someone
+turned, the moment it was done (or wasn't). Tap again to fold it. A
+quest that starts or moves bumps the room's badge, and a new one may
+pop up for a moment, so you'll notice.
 
-Tap a card to open **its own thread**. Everything that has happened on
-that quest is there in order — a fact you found, a key someone turned,
-the moment it was done (or wasn't). Each quest keeps its own thread, so
-they never get tangled.
+The **▣ NOW** bar at the top of the screen is something else: what to
+do this minute, with its own checklist. Quests are the night's longer
+errands.
 
 ## Moving a quest along
 
 You don't tick quests off yourself — the story does. Find the thing, go
 to the place, learn the lore, be scanned by the right person, and the
 quest moves. Some quests are everyone's at once: when somebody else
-does their part, your thread hears about it too.
+does their part, your quest hears about it too.
 
 A quest can be **failed** — time runs out, the story moves on. It stays
-in your log as a record of the night.
+in your log, under Failed, as a record of the night.
 
 Characters have quests too: the people running the night carry their
 own Quest Log in their booths, with the story's standing orders for
@@ -52,7 +55,8 @@ that is nearly right, a typo, waits for a person to judge it), and the
 story decides what to do with a right answer, a wrong one you were sure
 of, and a guess. Mind the slider — at *Trapped in the Internet*, a wrong
 answer filed at 100 is a lie on the record, and a guess filed below 100
-is a guess. A filed card says **sent** with your confidence; a fresh
-card arrives for the next question, and the old cards fold into one
-line each. The newest card lists every open question you haven't filed
+is a guess. The card waits in the tray above the message box while you
+fill it in; once filed it settles into one line naming the question
+(*Round 1 Q1*) and your confidence, a fresh card arrives for the next
+question, and the old ones fold. The newest card lists every open question you haven't filed
 yet; once a round closes, its unfiled questions are gone for good.

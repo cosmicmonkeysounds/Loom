@@ -288,7 +288,7 @@ link. Each section hides when it has nothing to say:
 
 | Section | Shows | Goes to |
 |---|---|---|
-| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), ⚠ near misses waiting in `auto` mode (one the story's `judge:` character is ruling on shows until it rules), held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker, an agent whose queue is stalled or has waited 40 s or more, and *👋 N guests unseen 30 min — mark gone?* with a 👋 per guest | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
+| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), ⚠ near misses waiting in `auto` mode (one the story's `judge:` character is ruling on shows until it rules), held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker, an agent whose queue is stalled or has waited 40 s or more, and *👋 N guests unseen 30 min — mark gone?* with a 👋 per guest. The same list a host's console shows under **Needs** in the Play app | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
 | **Watch** | the header's `watch:` lines while their `while` holds: values (changed in the last 10 s → ◆), a ROLE path as a count over the guests (`Cleared 44/45` and a bar), a name as a person row (online, room, ⛓ / ⛔). A value on a `secret: true` CHARACTER shows `••••` — **press and hold 👁** to read it for 5 s. With no `watch:` line: **Recently changed**, the last few globals the story wrote | World, filtered to that path · Roster · the Inspector |
 | **People** | joined · online, who is in a prison room, how many are restricted, each faction's guests against a majority tick, the busiest rooms | the Inspector · Stage |
 | **Cast** | one dot per performer part (green signed in, amber phone offline, hollow free), each agent's stage and mood | the Inspector · Mind |
@@ -414,12 +414,18 @@ server's own view of them, the same data their phone renders: their
 rooms (with the real "can post here" rule), their feed (a guest never
 sees a hidden message), their pending choice docked in the room, and the
 story's interaction buttons for them. As a **character** you get the
-performer's booth: one thread per guest with **📡 Scan** and the
-performer interactions, and you speak as the character everywhere. The
-booth's own rooms come too, read-only: its **Quest Log**, **Codex**,
-**Inbox** and (for the approver) **Wallet**. A wallet card shows what it
-is, who pays whom and how much; approve or deny it on the Run page's
-Wallet card.
+performer's booth: one thread per guest with **📡 Scan** and exactly
+the buttons that booth's phone offers (never the director's cues; a
+host part also lists the other characters' buttons its press is heard
+on), and you speak as the character everywhere. A scan's readout lands
+in the guest's thread and in the booth's **Readouts**. The booth's own
+rooms come too, read-only: its **Quest Log**, **Codex**, **Readouts**
+(*Norton · Inbox* under the Operator) and (for the approver)
+**Wallet**. A wallet card shows what it is, who pays whom and how much;
+approve or deny it on the Run page's Wallet card. Being a **host part**
+(a character with `admin: true`) is being a host: its lens says so, and
+a Players pane for it opens a host booth, NEXT bar and console included,
+journaled under your name.
 
 Actions happen *as* them. The World and Director pages and the
 Inspector's editors close until you switch back (`Esc`, or pick
@@ -435,8 +441,12 @@ you pick their name on purpose, confirm once, and the message shows
 Click any guest or character to open the **Inspector**: their **view**
 (what their screen says), their **feed** (everything they have seen —
 hidden lines greyed; for a character, every line they spoke and every
-scan readout), their story position on the map, their variables, and
-one button to **Be** them. A performer part's Inspector says whether a
+readout in its Readouts, each with the guest it was about), their story
+position on the map, their variables, and one button to **Be** them.
+While you are being them, *Their view* (a guest) or *Their booth* (a
+character) lists their live **objectives** in order: the NOW one tagged,
+its act, *loud*, the brief, the checklist with what has ticked
+(*1/2*), and the buttons it names ([Objectives](objectives.md)). A performer part's Inspector says whether a
 booth holds it (amber *signed in · phone offline* when that phone
 dropped); an agent-voiced character's says whether a stagehand worker is
 voicing it right now; with none, its `hold:` line answers and you can

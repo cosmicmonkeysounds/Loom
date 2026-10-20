@@ -12,8 +12,8 @@
 | V3 Bingo results, **only if nobody has a Bingo** | **🃏 Hand Clippy the fake Bingo card** | the anti-AI program (**MS Paint** unless changed) |
 | from the 📥 Truther Download | **🪙 Pay 100 Truthcoin** / **🪙 Charge 100 Truthcoin** | **corrections only** (a cash deal, a mis-send); programs move their own coin from their Wallet |
 | any time | **🤝 Vouch for this program** | clears a program's watchlist (doubt → 0) |
-| any time | **🎀 Award a ribbon** | anyone who earns one |
-| any time | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
+| any time | **🎀 Award a ribbon** | anyone who earns one (announced as *from the hosts*: DRAFT, Q28) |
+| any time | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy (on a marked program's card face) |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** | each arrival |
@@ -48,13 +48,28 @@ balance; `# hosts` logs it). McAfee brokers; CRA approves every third
 transfer and can deny any; Runescape alone mints a stimulus or a grant and
 can freeze a program's coin for ten minutes.
 
-**Booth readouts you'll get:** at V3 *🃏 If nobody has a Bingo…*; at the
-Truther Download *🪙 The bank is open…*. Your booth: Scanner · Inbox · Codex ·
-`# hosts` · `# quarantine` · `# task-manager` · the rooms · one thread per
-guest.
+**Booth readouts you'll get** (in Readouts): at V3 *🃏 If nobody has a
+Bingo…*; at the Truther Download *🪙 The bank is open…*.
 
-**When you step off-stage to direct:** tell the second director by radio
-first. Never fire a cue from your booth.
+**Your booth is a host's** (your part has `admin: true`): the **NOW card** on
+top · the **NEXT bar** above the taskbar (the cue sheet; tap the bar for the
+console: Cues · Needs · Judge · People · More) · **📷 Scan** and **🗂 Guests** on
+the taskbar · Codex · `# hosts` · `# quarantine` · `# task-manager` · **Readouts** ·
+**Messages** (a program typing to you) · the rooms. A scanned program's card
+leads with at most three buttons your objective needs; the rest are under
+**All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
+never on your card: radio one. Help → *The host console* has the rest.
+
+**Directing from your booth:** the NEXT bar is the same cue sheet as Run →
+Director, and **any host may fire it** (tap **ARM**, then **FIRE** within 4 s;
+agree by radio who calls). If two phones (or Run) press the same moment the
+server takes one and the other reads *Cues moved — tap again*; the Cues tab's
+**LAST** line says who pressed. The console also opens the doors, pauses and
+resumes the show, announces, sets the alert level, judges filings, shows the
+codes and the join and invitation QRs, releases a part and answers as
+Trabolta. Restart, push draft, go live and end stay at Run. When you step
+off-stage to direct, tell the second director by radio first. (Who calls the
+cues is DRAFT for sign-off, Q1.)
 
 **Radio:** HOLD · LIGHTS · ALL STOP.
 

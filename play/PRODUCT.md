@@ -75,12 +75,15 @@ speakers and lights.
 
 ## Capabilities and Constraints
 
-- Roles: guest, performer (booth), director phone (`/?role=director`),
-  plus admin powers. **Decision (2026-10-20):** a host gets admin
-  automatically by character: the story marks Acrobat, Recycling Bin and
-  Task Manager, and signing in as one gives the admin panel. The user
-  accepted the trade-off that whoever picks that part with the performer
-  code gets admin.
+- Roles: guest, performer (booth), host, director phone
+  (`/?role=director`), plus admin powers (the moderator passcode in a
+  booth). **Decision (2026-10-20):** hosts are hosts by character, inside
+  their own booth: the story marks Acrobat, Recycling Bin and Task Manager
+  (`CHARACTER … admin: true`; never Clippy), and signing in as one gives
+  that booth the host capability — the NEXT bar and the Cues · Needs ·
+  Judge · People · More console — never the lifecycle or the god view.
+  The user accepted the trade-off that whoever picks that part with the
+  performer code becomes a host.
 - **Decision (2026-10-20):** "can't miss" moments use every level (banner
   that times out, sticky banner until tapped, full-screen card until
   tapped, full-screen for everything), and the level can be switched live

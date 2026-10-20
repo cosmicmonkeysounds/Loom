@@ -2,13 +2,17 @@
 title: Quests — the quest log
 section: Live Shows
 order: 37
-keywords: QUEST, quest, quests, quest log, start quest, update quest, complete quest, finish quest, fail quest, objective, task, mission, completes quest, fails quest, starts quest
+keywords: QUEST, quest, quests, quest log, start quest, update quest, complete quest, finish quest, fail quest, task, mission, completes quest, fails quest, starts quest
 ---
 
 The codex is what a guest *knows*; a **quest** is what the night has
-asked them to *do*. Each quest a guest holds is a card in their pinned
-**Quest Log** room, and every step of it lands in that card's own
-thread, in the giver's voice.
+asked them to *do*. Each quest a guest holds is one line in their
+pinned **Quest Log** room (In progress first, Done and Failed folded),
+showing its latest step; tapped, it unfolds the giver, the brief and
+every step in order, in the giver's voice. A quest that starts is a
+small moment on the guest's phone. For what to do *this minute*, write
+an [objective](objectives.md) instead: a quest is the night's longer
+errand.
 
 ## Declaring a quest
 

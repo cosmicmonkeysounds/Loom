@@ -748,9 +748,11 @@ its own thread of steps.
 
 **Staff quests** (`start|update|complete quest X for <Character>`): Clippy
 and the four Antivirus have a pinned **Quest Log**, **Codex** and
-**Inbox** in their booths (performers answer cards there via `POST
-/api/prime/widget`; tonight no story line deals a card to a booth, so the
-Inbox stays empty), and Task Manager hands out the night's jobs. A booth's
+**Readouts** in their booths (since wave 13 every `reply` to the character
+lands in Readouts, persisted, with the guest it is about; performers
+answer cards there via `POST /api/prime/widget`, though tonight no story
+line deals a card to a booth), and Task Manager hands out the night's
+jobs. A booth's
 Quest Log shows each quest by its title:
 
 | QUEST (`title:`) | For | Started | Settled |

@@ -1226,22 +1226,27 @@ INTERACTION ring the bell
   who: guest
 ```
 
-A `who: performer` interaction is a button on every guest's thread in the
-performer's app; pressing it fires `whisper` **as that character**, so
-only *their* `when whisper for guest:` answers. A `who: guest` interaction
-is a button on the guest's own pass; it fires with the guest as subject —
-usually caught by a house rule (Part 6.4) or the role. `who: admin` needs
-the moderator passcode. Every interaction also appears in the Run
-cockpit's event list.
+A `who: performer` interaction is a button on the guest card a
+performer's app opens when it scans (or taps) a guest; pressing it fires
+`whisper` **as that character**, so only *their* `when whisper for
+guest:` answers. A `who: guest` interaction is a button in the guest's
+own **⊞ Start** menu; it fires with the guest as subject — usually
+caught by a house rule (Part 6.4) or the role. `who: admin` is a cue on
+the director's sheet (Run, the director phone, a host's NEXT bar). Every
+interaction also appears in the Run cockpit's event list.
 
 Two optional lines keep a busy show's buttons in order. `by: Clippy,
 Antivirus` says whose button it is (characters, or a GROUP's members —
-and any character with its own `when` for the event counts too): a
-performer's guest card leads with their own and folds the rest under
-**More…**. `while: Night.phase == "bingo_results"` says when it is on
-offer: a performer's out-of-phase button folds away the same way, and a
-guest's is hidden while false (`while: program.afk == true` — the guest
-is the subject). Neither is enforced; the hooks still decide.
+and any character with its own `when` for the event counts too); the
+server refuses it from any other booth, except a host's or a moderator's
+when the story would hear the press. `while: Night.phase ==
+"bingo_results"` says when it is on offer. On a guest card it is read
+with the scanned guest as the subject (`while: program.marked == true`
+offers Unmark only on a marked program), and a guest's own button is
+hidden while false (`while: program.afk == true`). Neither is enforced;
+the hooks still decide. Which buttons a card *leads* with — at most
+three, the rest under **All buttons…** — is what the live objectives
+name (11.13b).
 
 A fourth value, `who: agent`, is not a button at all: it declares a
 **power** a character voiced by a language model (`mind: external`) may
@@ -1451,9 +1456,12 @@ theme: plain
 ```
 
 `theme: plain` (the default) is a quiet, neutral skin. `theme: aol97`
-is a beveled 1997 chat-room look — the one an earlier party was built
-around. Whatever you pick, the lobby is named after the story, and a
-guest's group tag takes its colour from the group's name.
+is the Win95 / AOL world: teal desktop, bevelled buttons, navy title
+bars, balloon tips and the blue screen. Whatever you pick, every phone
+has the same frame — the NOW title bar on top (11.13b), the rooms, and a
+taskbar at the bottom with Start, Pass, Scan and a tray (the story's
+clock, the balance, missed moments) — the lobby is named after the
+story, and a guest's group tag takes its colour from the group's name.
 
 ### 11.12a Cards in the conversation: `show`
 
@@ -1512,15 +1520,17 @@ A guest can share an entry with anyone — including a character, whose
 own `when who learns X:` hook then runs (check `who == self`). Mark a
 character `listed: true` so guests can find and message them; write
 `directory: everyone` in the header to list every guest to every guest.
-A broadcast that starts with `!` is an **alert** — every phone chimes.
-Guests keep their codex in a pinned **Codex** room: each entry is a card,
-and the room's message box takes codes.
+A broadcast that starts with `!` is an **alert** — every phone chimes
+and it pops up (11.14). Guests keep their codex in a pinned **Codex**
+room: each entry is one folded line, grouped under its `category:`
+(`category: People`; without one, by what it is about), and the room's
+message box takes codes.
 
 ### 11.13a Things to do: Quests
 
 The codex's sibling. A `QUEST` is something the night asks a guest to
-*do*; each one is a card in their pinned **Quest Log**, and every step
-lands in that card's own thread:
+*do*; each one is a line in their pinned **Quest Log** (In progress
+first) that unfolds to its brief and every step so far:
 
 ```loom
 QUEST Three Keys
@@ -1541,6 +1551,94 @@ when guest learns The First Key:
 quoted line. Hear it with `when guest completes quest Three Keys:` (also
 `starts` / `fails`); read it as `guest.quest.three_keys` (`"active"`,
 `"done"`, `"failed"`).
+
+### 11.13b What to do now: Objectives
+
+A quest is an errand; an **objective** is what a phone should be doing
+*this minute*. The app shows the first live one as **NOW**: the title
+bar on a guest's phone, the card pinned at the top of a performer's
+booth.
+
+```loom
+OBJECTIVE Find The Cellar
+  for: Guest
+  while: guest.group == The_Gardeners and Night.phase == "harvest"
+  act: II
+  title: Find the cellar before the bell
+  text:
+    The Gardeners meet below. Ivo knows the way.
+    - Found Ivo, done when guest.met_ivo == true
+    - Down the stairs, done when guest.location == "The Cellar"
+  buttons: pass
+
+OBJECTIVE Door Duty
+  for: Ivo Marsh
+  while: Night.phase == "arrivals"
+  title: Scan every pass at the gate
+  buttons: scan, wave in
+```
+
+`for:` is who sees it: `guests`, `performers`, `everyone`, a ROLE, a
+CHARACTER or a GROUP. `while:` is when it is live; the first live one in
+file order is NOW, so write the urgent ones first and end every audience
+with a fallback that has no `while:`. `text:` is the brief; its `- `
+lines are a checklist, ticked by `, done when <condition>`. `buttons:`
+names INTERACTIONs (and `pass` / `scan`, the app's own) — the phone
+leads with them, and a scanned guest's card in a booth puts them on its
+face. `loud: true` interrupts that phone once when it goes live. A
+booth's conditions read the world and `self`, never the guest it scans:
+put per-guest tests on the buttons' own `while:`. Objectives are display
+only — never journaled, never sent to an agent.
+
+### 11.14 Hosts, alerts and effect text
+
+**Host parts.** `admin: true` on a CHARACTER a performer plays makes it
+a host: signing in as it gives that booth the cue sheet's NEXT bar and a
+console (judging, announcements, the alert level, wallets, parts,
+answering as an agent-voiced character), never restart / go live / end.
+Put it on the CHARACTER, not on a shared TRAIT.
+
+**How loud.** `!` alerts, loud objectives, `show … with moment: major`
+cards, a `reply` to someone and a starting quest reach a phone as
+**moments**, on a ladder the story picks: `balloon`, `sticky` (the
+default), `dialog`, `bsod`. The header names where the level lives:
+
+```loom
+alerts: Night.alerts
+
+when Night.phase == "finale":
+  set Night.alerts = "bsod"
+```
+
+A minor moment comes one rung lower; a booth never goes above `sticky`;
+every phone glitches when the level changes; what a phone missed
+replays, in order, when it wakes (an earlier phase's is skipped).
+
+**Notices about one person.** A run of *✅ Ada's answer is accepted*
+lines buries a room. Start the cue with `~` and the phones fold a run of
+them into one line (*✅ 12 · 🤷 3*):
+
+```loom
+broadcast "~✅ {guest.name}'s answer is accepted." to everyone
+reply ✅ Your answer is accepted.
+```
+
+The `reply` matters: the person it is about must still hear their own
+result.
+
+**Effect text.** A manner with an effect word (`glitch`, `static`,
+`corrupted`, `scream`, `flicker`, `distorted`, `garbled`, `error`,
+`bsod` and their forms) makes a line perform on the phone — it
+scrambles in, flickers, shakes — and `crawl: fx` on a CHARACTER does it
+for every line it says:
+
+```loom
+Truther Download (glitch): THEY ARE LYING TO YOU.
+```
+
+Any other manner (`quietly`) is a note to the performer, shown after the
+name. Other scripted lines type out fast, and only in a room the guest
+has open; typed chat and agent replies show at once.
 
 **That's the whole language.** Write a little, press Run, add one idea.
 That loop — not this guide — is how you'll actually learn Loom.
@@ -1600,7 +1698,7 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `move who to Place` | movement |
 | `add who to Group` / `remove who from Group` / `reveal Group` | groups |
 | `broadcast cue to scope` / `broadcast to scope:` | send to an audience |
-| `reply text` | private reply to whoever acted |
+| `reply text` / `reply !text` | private reply to whoever acted / as an alert |
 | `cast who as Role` / `promote` / `demote` | casting |
 | `spawn X` / `run X` / `cancel X` / `wait …` | background scenes |
 | `do verb args` | any custom cue |
@@ -1657,11 +1755,14 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `INTERACTION name` + `label:` `who:` | a button in the participant app (fires a named event) |
 | `sequence: false` · `repeat: true` · `act: A · The arrival` (a `who: admin` cue) | off the sheet's last / next · stays next while pressed · opens an act of the director's sheet |
 | `watch: path as Label, Name, while <cond>` · `countdown: path as Label, while <cond>` (header, first file) | the Director page's glance column · its countdowns |
-| `CODEX name` + `about:` `code:` `known to:` `text:` | a piece of lore guests hold, unlock, and share |
+| `CODEX name` + `about:` `code:` `known to:` `text:` `category:` | a piece of lore guests hold, unlock, and share |
+| `OBJECTIVE name` + `for:` `while:` `act:` `title:` `text:` (`- to-do, done when c`) `buttons:` `loud:` | what a phone shows as NOW |
+| `admin: true` · `crawl: fx` (character) | a host part · every line effect text |
+| `alerts: Night.alerts` (header) · `broadcast "~…"` · `show … with moment: major` | where the alert level lives · a per-person notice · a card that interrupts |
 | `unlock X for who` · `when who learns X:` · `when wrong code for who:` · `when share for who:` | lore moving |
 | `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |
 | `CHARACTER Name` with no body · `playable: false` · `avatar: File:X.png \| https://…` · `wiki: Article` | a program a guest may sign in as (one each) · nobody signs in as this · its hand-picked profile picture(s), first = default (else the article's best) · the Wikipedia article it is |
-| `broadcast "!…" to …` | an alert (chime + banner) |
+| `broadcast "!…" to …` | an alert (chime + a pop-up at the alert level) |
 | `joinable: false` (group) · `sealed: true` (prison) | no side chooser · no self-escape |
 | `hidden: true` (location · channel · character) · `reveal X [for who]` · `cutscene: true` (location) | rooms that appear as the night opens · the app on rails |
 | `show tutorial "…" to who with guide: "Name"` · `when tutorial answered for who:` (`skipped`) | the app's guided tour, and what skipping it means |

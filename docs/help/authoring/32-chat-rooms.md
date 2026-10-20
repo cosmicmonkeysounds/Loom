@@ -106,7 +106,9 @@ Beyond authored channels, every event automatically has:
 
 - **The lobby** — the story's own room, titled from your `# Title`
   line. Narration from a beat with no `setting:` and `reply` lines
-  with nowhere better to go land here.
+  with nowhere better to go land here, and so does every broadcast to
+  everyone: the lobby is the one home of an announcement (one post, one
+  push), and guests can type in it.
 - **Group rooms** — one per *public* `GROUP`, membership-gated. A
   `hidden: true` group gets its room only once the story `reveal`s it.
 - **Location rooms** — every `LOCATION` is a room; a beat whose
@@ -117,7 +119,10 @@ Beyond authored channels, every event automatically has:
   thread between them; so does `reply`.
 - **Pinned rooms** — a guest's Quest Log and Codex, and a **Wallet**
   when the story declares a [currency](currency.md); a performer's
-  booth has its own, plus an Inbox for cards dealt to the character.
+  booth has its own, plus **Readouts**: every `reply` to the character
+  (tagged with the guest it is about) and every card dealt to it. It
+  survives a reload. Staff rooms (an authored `CHANNEL` the performers
+  read, `# hosts`) sit just under the pinned rooms in a booth.
 
 Where a scripted line lands is decided by the
 [unified conversation model](first-scene.md): subject-bound dialogue →
@@ -138,5 +143,8 @@ the skin comes from a header line:
 theme: plain
 ```
 
-`plain` (the default) is a quiet neutral look; `aol97` is a beveled
-1997 chat-room look. Change the story and the app changes with it.
+`plain` (the default) is a quiet neutral look; `aol97` is the Win95 /
+AOL world (teal desktop, bevelled buttons, navy title bars, the
+taskbar, the blue screen). Either way the phone has the same frame: the
+NOW title bar on top, the rooms, and a taskbar with Start, Pass and Scan
+at the bottom. Change the story and the app changes with it.

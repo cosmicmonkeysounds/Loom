@@ -11,9 +11,10 @@ know for it. The story is watching every coin.
 
 ## Where it is
 
-Your balance sits on your card at the top of the rooms list — **🪙 120
-Truthcoin** where the ⭐ used to be. Tap it, or open the **🪙 Wallet**
-room pinned at the top (beside your Quest Log and Codex). Its line in
+Your balance sits in the taskbar's tray, bottom right — **🪙 120**
+(🧊 while frozen). Tap it for what's on hold and **Open the Wallet ›**,
+or open the **🪙 Wallet** room pinned at the top of your rooms (beside
+your Quest Log and Codex). Its line in
 the list says how much you have and how many deals are still open.
 
 Every deal is a card in the Wallet, with its own thread that updates as

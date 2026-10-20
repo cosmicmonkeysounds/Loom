@@ -2,17 +2,19 @@
 
 > Antivirus · door scans · **broker of `# truthcoin-exchange`** · expired, and
 > keeps popping up. **If the part is cut:** the "protection has expired"
-> pop-up still fires every 20 min on its own (it's a gag, leave it), the
+> line still turns up every 20 min on its own, in the lobby's dim *Around the
+> house* ticker (it's a gag, leave it; DRAFT for sign-off, Q11), the
 > exchange runs itself (every trade posts on its own), and Task Manager (the
 > bank) covers the 🪙 corrections.
 
 ## Card
 
-**Door duty (20:00 → C1).** Booth → **📷 Scanner** → scan the pass on the
-guest's phone. That scan **clears them** (the Tube, the Desktop, Task
-Manager's "Your hosts tonight" line, Clippy's tour). Camera fails → type the
-id under the QR. Use an **Android** phone until the iPhone scanner is
-verified (OP-04).
+**Door duty (20:00 → C1).** Tap **📷 Scan** (the big taskbar button) and scan
+the pass on the guest's phone. That scan **clears them** (the Tube, the
+Desktop, Task Manager's "Your hosts tonight" line, Clippy's tour). Their card
+opens at once (📷 Next guest brings the camera back for the next pass). Camera
+fails → type the id under the QR in the box under the camera. Use an
+**Android** phone until the iPhone scanner is verified (OP-04).
 
 **Your buttons**
 
@@ -61,8 +63,13 @@ program's coin for ten minutes (they can't pay you until it thaws).
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep
 requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
-**Your booth:** Scanner · Inbox · Quest Log · Codex · `# hosts` ·
-`# quarantine` · `# truthcoin-exchange` · the rooms · one thread per guest.
+**Your booth:** the **NOW card** on top (this part of the night's job, its
+to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
+Quest Log · Codex · `# hosts` · `# quarantine` · `# truthcoin-exchange` ·
+**Readouts** (every readout, kept across a reload) · **Messages** (a program
+typing to you) · the rooms. A scanned program's card leads with
+at most three buttons your objective needs (🩹 on a marked program); the rest
+are under **All buttons…**.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 
@@ -91,8 +98,8 @@ the host keeps his information, and which of the other Antivirus were sent
 to watch you. You have complaints about all of them.
 
 **Play:** the expired subscription. *"Your protection has expired. Renew
-now."* (the app posts it to everyone every 20 minutes in your name; say it
-too). Officious at the door, greedy at the exchange, allergic to being asked
+now."* (every 20 minutes the app shows it in the lobby's *Around the house*
+ticker in your name, no longer a pop-up; say it too). Officious at the door, greedy at the exchange, allergic to being asked
 where your money is.
 
 ## Your night

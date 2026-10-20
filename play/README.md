@@ -9,6 +9,18 @@ still threaded: every conversation is its own **channel (thread)** in an
 inbox, and each running instance streams its participant's slice of the
 live `Sim`.
 
+**The frame (wave 13, the Play app UX overhaul).** Every screen is a
+Win95 window: a **NOW title bar** on top (the first live `OBJECTIVE` for
+this viewer; tap → its card), the rooms, and a **taskbar** at the bottom —
+⊞ Start (the story's guest buttons, People, Help, picture, Keep my screen
+on, Get alerts, switching sides, Leave), **🎟 Pass** (full screen, held
+awake) and **📷 Scan** (camera + a typed-code box), and a tray (the story's
+guest countdown as a clock, the balance, missed moments, the live dot).
+Story moments interrupt through one ladder (balloon → sticky → dialog →
+blue screen, the story's `alertLevel`). Under `theme: plain` the same
+structure renders without the Win95 ornament. The product record is
+[`PRODUCT.md`](./PRODUCT.md).
+
 It talks to the [`@loom/core`](../core) event server over Server-Sent
 Events (push) + `fetch` POST (actions). Built with Vite + React 18, the
 same way the [`editor`](../editor) is.
@@ -146,8 +158,9 @@ it. Tested in `test/pins.test.tsx`.
 
 **People (2026-09-10).** The **👥 People** sheet lists every guest
 and listed character with exactly the lore about them the viewer holds,
-plus **💬 Message**. Performers see what their character knows in the ☰
-sheet and share it from a guest's thread (**📓 Share lore…**). A
+plus **💬 Message**. Performers see what their character knows under ⊞
+Start → *What … knows* and share it from a guest's card (**📓 Share
+lore…**). A
 broadcast whose cue starts with `!` is an **alert**: chime (synthesised,
 on one shared `AudioContext` unlocked on the first tap), vibration, and a
 banner — in guest *and* booth sessions (`src/alerts.ts` `useAlerts`,
@@ -157,7 +170,11 @@ unseen alert from the last 10 story-minutes (`GuestView.clock` /
 `PrimeView.clock`) banners on wake; a hidden page chimes when it becomes
 visible. A booth also banners + chimes any readout it didn't ask for
 (not within 4 s of its own scan / act — the late list, a private
-warning). **☰ → Keep my screen on** is an opt-in Screen Wake Lock
+warning). Since wave 13 an alert is a **moment** (`src/moments/`): it
+renders on the story's rung, a minor one a rung lower, a booth never
+above sticky, and every missed moment replays on wake (not only the
+newest); `alerts.ts` keeps the mark and the quiet feedback toast. **⊞
+Start → Keep my screen on** is an opt-in Screen Wake Lock
 (`src/wake-lock.ts`). A captive in a `sealed: true` prison gets no
 "make a break for it" button.
 
@@ -175,7 +192,8 @@ answer "…" … with question: "P1"`): one free-text line → `{text}` →
 `answer answered`. `with thread:` docks a card in that character's DM.
 
 **Push to a locked phone (K-31a, 2026-10-15).** A 🔔 **Get alerts** card
-(and a row in the ☰ / profile sheet) asks for notification permission
+(a one-time balloon by a guest's tray since wave 13, and ⊞ Start → Get
+alerts) asks for notification permission
 from a tap, then subscribes this phone through the push-only service
 worker `public/sw.js` (no fetch handler — nothing is cached) and
 `POST /e/:id/api/push/subscribe`; a phone that already said yes re-binds
@@ -259,26 +277,44 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
 ## Roles
 
 - **🎟️ Guest** — register with a name + the host's **event code** (or
-  arrive via a `?code=` link / QR that pre-fills it) → an inbox of
-  conversation threads with a status HUD (faction · score · location ·
-  captured) and a profile sheet (QR pass · defect · leave; a restricted
-  guest gets no side chooser or defect buttons, `defectTargets`). The
-  pass QR is drawn in the browser (`src/pass-qr.tsx`, `PassQr`, `qrcode`
+  arrive via a `?code=` link / QR that pre-fills it) → the frame above
+  (`src/guest/`: `app.tsx`, `frame.tsx` — the NOW bar's objective sheet,
+  the Start menu (`guestStartItems`; a restricted guest gets no side
+  switch, `defectTargets`), the tray's balance and the alerts balloon;
+  `src/chrome/`: the title bar, taskbar, tray, full-screen pass, balloon
+  tips). The pass QR is drawn in the browser (`src/pass-qr.tsx`, `PassQr`, `qrcode`
   ^1.5.4, the same margin and error correction as `/api/qr`) at all three
   pass sites — the play app never calls `/api/qr`. Re-login
   restores every thread.
-- **🎭 Performer** — sign in as a character → the *same* threaded surface,
-  recomposed for the booth: a pinned **Scanner** thread (camera via
-  `BarcodeDetector`, else `jsQR` on a canvas — iPhone Safari — left on
-  between passes; or manual id; `src/scanner.tsx` + pure `src/scan.ts`) + scan readouts, a read-only
-  **broadcast feed**, and one **conversation per guest** to scan into —
-  plus, since wave 4, the booth's own pinned **Quest Log / Codex / Inbox /
-  Wallet** rooms (the character's quests and lore, cards the story shows
-  the character, answered via `POST /api/prime/widget`; the approver's
-  Approve / Deny queue). An
-  admin (performer who also enters the moderator passcode) additionally
-  gets **hide/show** on every message and capture/release in each guest
-  thread. A booth whose token dies without a lifecycle frame (a
+- **🎭 Performer** — sign in as a character → the booth (`src/booth/`,
+  wave 13): the pinned **NOW card** (the character's live objectives, a
+  checklist the story ticks, hand ticks saved per sign-in), a taskbar with
+  ⊞ Start, a big **📷 Scan** and **🗂 Guests**, and a tray (the act, a
+  countdown, 🧾 held transfers for the approver, missed moments). The
+  scanner (camera via `BarcodeDetector`, else `jsQR` on a canvas — iPhone
+  Safari — kept running under the card; or a typed id; `src/scanner.tsx` +
+  pure `src/scan.ts`) opens the scanned guest's **card** at once from the
+  scan's `card` (`POST /api/prime/card` re-reads it): facts by severity,
+  at most three face buttons from the live objectives (`booth/model.ts`
+  `cardButtons`), the press's `replies` / `said` / `staff` lines, *All
+  buttons… (n)*. Rooms: staff rooms pinned, **Readouts** (the
+  character's `dm:` Inbox rows, persisted, a 🪪 link to each guest's card),
+  **Messages** (a guest's unread typed DM), the read-only broadcast feed,
+  the booth's own Quest Log / Codex / Wallet (cards the story shows the
+  character are answered via `POST /api/prime/widget`). An admin
+  (performer who also enters the moderator passcode) additionally gets
+  **hide/show** on every message and capture/release on each guest card.
+- **🧑‍💼 Host** — a booth whose part has `admin: true` (or a moderator's)
+  also gets the host dock (`src/host/`, wave 13): a **NEXT bar** above the
+  taskbar (ARM → FIRE through core's arm model, PICK for a subject; the
+  strip) and a pull-up console — **Cues · Needs · Judge · People · More**
+  — polling `GET /e/:id/api/state?role=mod&host=1` (the host view) every
+  few seconds and writing only to the host allowlist (`host/api.ts`:
+  signal, var for the alert level only, broadcast, say as an agent-voiced
+  character to a guest only, wallet holds, the King, terminals, codes
+  without the mod passcode, claims, gone, pair, release, scan, restrict /
+  unrestrict, start / stop). Never restart, push draft, go live, end, the
+  var table, the log or the Mind. A booth whose token dies without a lifecycle frame (a
   director's ⏏ Release) shows `BOOTH_SIGNED_OUT`: *"Your booth was signed
   out (a director released your part, or the show went live) — sign in
   again with your passcode."*
@@ -310,8 +346,8 @@ badges and sorts to the top, so a choice left unmade always pulls focus.
   true` toasts *"Not taken — X doesn't apply right now (# hosts says
   why)"* (`fireToast`).
 
-The operator/moderator surface is the [`editor`](../editor)'s Run mode
-(not this app); the phone cue sheet is the one director tool here.
+The full operator surface is the [`editor`](../editor)'s Run mode (not
+this app); here are the phone cue sheet and the hosts' booth console.
 
 ## Install
 
@@ -362,32 +398,38 @@ run a single process — `@loom/core serve` — on one origin, no Vite.
 
 ```
 src/
-  types.ts      # mirror server/chat.ts (ChatMessage incl. parentSeq / Channel incl. spaceId)
+  types.ts      # mirror of core's views + chat (ChatMessage, GuestView, PrimeView, HostView, ObjectiveView, …)
   client.ts     # api() POST + useChatStream (SSE → de-duped message map)
-  threads.ts    # group→channels + spaces (groupBySpace) + sender runs (groupRuns) + thread selectors
-  chat.tsx      # primitives: SpaceList/ChannelView/MessageGroup/MessageThread/Composer/…
-  session.ts    # useGuestSession / usePrimeSession (channels + decisions + actions + say())
-  guest.tsx     # the guest inbox app
-  performer.tsx # the performer / booth app
-  help.tsx      # the in-app Help window (searchable, role-aware; content from ../docs/help/play/)
-  ui.tsx        # the role chooser
-  director.tsx  # the director's phone cue sheet (?role=director, W-26)
+  guest/        # the guest app: app.tsx (frame + cutscene), frame.tsx (NOW sheet, Start items, tray), register.tsx, sheets.tsx
+  booth/        # the booth: app.tsx, now-card.tsx, scanner.tsx, card.tsx, guests.tsx, readouts.tsx, tray.tsx, layer.tsx, model.ts (pure rules)
+  host/         # the host dock: dock.tsx (NEXT bar + console), tab-{cues,needs,judge,people,more}.tsx, api.ts (allowlist calls), client.ts (?host=1 poll), model.ts
+  chrome/       # title-bar.tsx, taskbar.tsx, start-menu.tsx, countdown-tray.tsx, balloon.tsx, pass.tsx (full-screen pass), icons.tsx, keyboard.ts
+  stream/       # crawl tiers in bubble.tsx (+ ../crawl.ts), card-tray.tsx, settled.ts, ticker.tsx, notices.ts, badges.ts, codex-room.tsx + codex-groups.ts, channel-view.tsx, composer.tsx
+  moments/      # model.ts (rungs, queue, holds, missed, wake replay), provider.tsx, surfaces.tsx (balloon / sticky / dialog / blue screen / glitch), pins-rail.tsx
+  rooms/        # order.ts (fixed tiers, Other rooms fold), list.tsx (SpaceList + Shell), spaces.ts, threads-state.ts
+  session/      # guest.ts / prime.ts (the role sessions), channels.ts, shared.ts, stream-handlers.ts
+  ui/           # primitives.tsx (sheets, avatars), window.tsx (Win95 windows + dialogs), objective.tsx (the objective card)
+  css/          # base.css, themes.css, w95.css + one per lane (chrome, stream, moments, booth, host)
+  chat.tsx · guest.tsx · performer.tsx · session.ts · threads.ts   # barrels: every pre-wave-13 name still resolves
+  help.tsx      # the in-app Help window (searchable, role-aware; content from ../docs/help/play/), loaded lazily
+  ui.tsx        # the role chooser; the booth (host dock included) and the director phone load lazily from here
+  director.tsx  # the director's phone cue sheet (?role=director, W-26), loaded lazily
   widgets.tsx   # show-cards registry (captcha / image / poll / tutorial / pass / 📝 fact / 💬 answer)
-  wallet.tsx    # the Wallet room: BalancePill, cards, send / request / offer / stimulus / grant / freeze sheets, approvals
-  pins.ts       # sticky notices: activePins → PinnedRail (chat.tsx)
-  alerts.ts     # `!` alerts: chime, buzz, banner, the last-seen mark (K-06 / N-07)
+  wallet.tsx    # the Wallet room: cards, send / request / offer / stimulus / grant / freeze sheets, approvals
+  pins.ts       # sticky notices: activePins → the pinned rail
+  alerts.ts     # the last-seen mark + the quiet feedback toast (alarms are moments)
   push.ts       # Web Push subscribe / re-bind / release + visibility beacons (K-31a); push-card.tsx = the 🔔 card
   checkin.ts    # ?checkin=<slug> room signs (K-13) · resume.ts = ?pair= re-pair links (N-02)
   pass-qr.tsx   # the guest pass QR, drawn in the browser (wave 9)
   scanner.tsx   # booth camera (BarcodeDetector, else jsQR) · scan.ts = what a code means (N-01)
-  guest-scan.tsx # the guest's 📷 Scan sheet + the wrong-browser LinkLanding (wave 11)
-  claim.ts      # ?claim= reserved programs (wave 11) · countdown.tsx = the guest countdown strip
+  guest-scan.tsx # the guest's 📷 Scan sheet (typed codes too) + the wrong-browser LinkLanding (wave 11)
+  claim.ts      # ?claim= reserved programs (wave 11) · countdown.tsx = the story clock helpers behind the tray clock
   arm.ts        # arm-then-fire for `arm: true` story buttons (core's tapCue; wave 11)
-  wake-lock.ts  # ☰ → Keep my screen on
+  wake-lock.ts  # ⊞ Start → Keep my screen on; the full-screen pass's held lock
   main.tsx      # entry
-  styles.css    # the AOL-chatroom skin (Win95 bevels, navy bars, serif lines)
+  styles.css    # imports the css/ files
 public/sw.js    # push-only service worker (no fetch handler) + manifest.webmanifest
-test/           # vitest: grouping · spaces · threads · help · widgets · wallet · pins · alerts · push · checkin · resume · scan · …
+test/           # vitest: crawl · moments · taskbar · booth · host · rooms · help · widgets · wallet · pins · push · floor-css · browser-floor · …
 index.html      # Vite entry
 vite.config.ts  # react plugin + dev proxy to LOOM_SERVER (default :7000)
 ```
@@ -397,10 +439,11 @@ The guest and performer apps are thin: both assemble the same role-agnostic
 footer (decision tray / scanner / moderation), so new surfaces compose
 without duplication.
 
-**In-app Help**: the `?` button in either header (and "? What is this" on
-the sign-on screen) opens `HelpSheet` — a searchable, Win95-help-viewer-
+**In-app Help**: ⊞ Start → **Help** (and "? What is this" on the
+sign-on screen) opens `HelpSheet` — a searchable, Win95-help-viewer-
 styled manual. Guests see the guest guide; performers additionally get the
-performer-station article (`role: performer` frontmatter). Articles are
+performer-station and host-console articles (`role: performer`
+frontmatter). Articles are
 markdown in `docs/help/play/`, parsed by the shared
 `docs/help/helpdoc.ts` engine and bundled at build time —
 edit the markdown, rebuild (or let Vite HMR pick it up), done.

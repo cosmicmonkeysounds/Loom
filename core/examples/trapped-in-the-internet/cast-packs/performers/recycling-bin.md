@@ -24,7 +24,7 @@
 
 | When | Press |
 |---|---|
-| any time | **🎀 Award a ribbon** · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** |
+| any time | **🎀 Award a ribbon** (announced as *from the hosts*: DRAFT, Q28) · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** (on a marked program's card face) |
 | any time | **🖌 Signed the painting** (a program who just signed MS Paint's canvas; once each) |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** |
 | Grok Prom | **💘 Said "You're the one that I want"** |
@@ -43,9 +43,20 @@ other button but keeps 🚻 Bathroom Mode and Back: let them use Disk Cleanup.
 The Antivirus wait outside (their booth says so); never send a marked program
 away from the toilet.
 
-**Your booth:** Scanner · Inbox (empty tonight: the story deals no cards to
-a booth) · Codex · `# hosts` · `# quarantine` · the rooms · one thread per
-guest.
+**Your booth is a host's** (your part has `admin: true`): the **NOW card** on
+top · the **NEXT bar** above the taskbar (the cue sheet; tap the bar for the
+console: Cues · Needs · Judge · People · More) · **📷 Scan** and **🗂 Guests** on
+the taskbar · Codex · `# hosts` · `# quarantine` · **Readouts** ·
+**Messages** (a program typing to you) · the rooms. A scanned program's card
+leads with at most three buttons your objective needs; the rest are under
+**All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
+never on your card: radio one. Help → *The host console* has the rest.
+
+**The cue sheet:** NEXT sits above your taskbar. Fire a cue only when the
+director radios you: tap **ARM**, then **FIRE** within 4 s. Any host may
+fire; if two phones press the same moment the server takes one and the other
+reads *Cues moved — tap again*, and the Cues tab's **LAST** line says who
+pressed. Who calls the cues is DRAFT for sign-off (Q1).
 
 **Radio:** ARRIVAL · HOLD · ALL STOP.
 
@@ -76,8 +87,8 @@ use it.
   clean, keep the Bathroom Mode joke alive. There is a hunt clue in there
   (the customer-service card): never point at it.
 - **At each summons** (C1, C2, ⏳): nudge anyone lingering in Disk Cleanup.
-  Anyone who left Bathroom Mode on by mistake: tell the director (they clear
-  it in Run → World, W-10).
+  Anyone who left Bathroom Mode on by mistake: **🚻 End Bathroom Mode** on
+  their row in your console's People tab (or tell the director, W-10).
 
 ## Props
 

@@ -21,8 +21,8 @@ mouse." Once he is introduced, the terminals become his line.
 
 ## Connecting
 
-1. Open the app on your phone and tap **☰** — **Your pass** is the QR
-   code.
+1. Open the app on your phone and tap **🎟 Pass** on the taskbar: your
+   QR fills the screen.
 2. Hold it up to the terminal's camera. The screen says **CONNECTING…**,
    then the line is yours: the conversation on one side, the character's
    face on the other.

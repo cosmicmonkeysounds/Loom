@@ -37,7 +37,9 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
   "does nothing", radio the director instead of pressing it again. Only
   🛡 Send to the Internet, ✅ Mark as reinstalled, 🩹 Unmark, 🎀, 🤝, 👁, 🪙
   Pay / Charge and ♟ work at any time; the verdict buttons do nothing out of
-  phase.
+  phase. 🛡, ✅ and 👁 are the Antivirus' own: no host's or Clippy's booth
+  has them, so a host radios an Antivirus. 🩹 sits on a marked program's
+  card.
 - **Marked, not captured.** A host's verdict (🎯 named on the Bingo card, 🤷
   a guess, 🙅 a refused truth, 🎩 a Dare, 🏓 a missed cup, 🍎 a failed bob, a
   late arrival) **marks** a program: their phone greys out with a 🚨 GO TO
@@ -49,17 +51,35 @@ Keep radio talk short: call word, then where, then who. "LATE, two in the kitche
   to the Internet; so does walking into the tent: the moment the tablet
   scans their pass and starts **Play here** (or **Send to VR**), a marked
   program is captured. A mis-tap → 🩹 Unmark.
-- **Never press an admin cue.** The director fires the night's cues from Run.
-  Your buttons are on each guest's card.
-- **Act on a guest:** scan their pass (📷 in your booth), or tap their name
-  in the who's-here strip, then press a button on their card.
-- **Booth readouts** are the 📋/🛡/🃏/🚨 lines that appear in your booth. They
-  are for you only, and they disappear if you reload. Read them when your
-  phone chimes. Your booth also has pinned rooms that survive a reload: an
-  **Inbox** (empty tonight: the story deals no cards to a booth), a
-  **Quest Log** (your staff quests by their titles, "Per the agenda: …" or
-  "Patrol: …", from Task Manager; each step lands in its own thread) and a **Codex** (what your character knows). CRA Agent Software's
-  booth has a **Wallet** room on top of those.
+- **Your booth** (wave 13): the **NOW card** pinned on top says what the story
+  wants from your character right now, with a checklist that ticks itself;
+  the taskbar at the bottom has **⊞ Start** (help, keep the screen on, alerts,
+  what your character knows, sign out), **📷 Scan** (the big one) and
+  **🗂 Guests**; the tray shows the act, the soonest countdown and **🔔 n** for
+  anything you missed.
+- **The cue sheet is the hosts'.** A performer's booth has no director's
+  cues. The three host booths (Task Manager, Adobe Acrobat, the Recycling
+  Bin) carry them in a **NEXT bar** above the taskbar; any host may fire (tap
+  ARM, then FIRE), but only when the director radios, so the night has one
+  caller (DRAFT for sign-off, Q1). A double press is refused (*Cues moved —
+  tap again*), and the console's LAST line says who pressed. Clippy is not a
+  host.
+- **Act on a guest:** tap **📷 Scan** and scan their pass (or tap their name in
+  any room, or find them under 🗂 Guests): their card opens at once with the
+  facts (not cleared, marked, late, Bathroom Mode, where), **at most three
+  buttons your objective needs**, and **All buttons…** for the rest. What the
+  press came to shows on the card. **📷 Next guest** brings the camera back.
+- **Booth readouts** are the 📋/🛡/🃏/🚨 lines for you only. They land in the
+  pinned **Readouts** room, newest first, and survive a reload; a readout
+  about the guest whose card is open shows on the card. A program typing to
+  your character shows under **Messages** until you read it. Your booth also
+  has a **Quest Log** (your staff quests by their titles, "Per the agenda: …"
+  or "Patrol: …", from Task Manager) and a **Codex** (what your character
+  knows). CRA Agent Software's booth has a **Wallet** room on top of those.
+- **Alerts in a booth** never cover the screen: an alert to everyone is a
+  balloon tip by the tray, one to your character or a staff room a yellow
+  banner until you tap it. While a card is open, it waits as a balloon over
+  it.
 - **`# hosts` and `# quarantine` are staff rooms.** Every performer sees both.
   No guest can. `# hosts` carries the bank's and the judge's logs; `#
   quarantine` carries the escort pins (one per marked program; they clear

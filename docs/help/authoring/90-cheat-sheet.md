@@ -27,7 +27,8 @@ with underscores: `Ivo_Marsh.trusts.guest`.
 | Form | Meaning |
 |---|---|
 | `Ivo: You came back.` | a one-line speech |
-| `Ivo (quietly): …` | with a parenthetical — a hint to the performer |
+| `Ivo (quietly): …` | with a parenthetical — a hint to the performer (shown after the name on a phone) |
+| `Ivo (glitch): …` | an effect manner (`glitch`, `static`, `corrupted`, `scream`, `flicker`, …) — the line performs on the phone ([live shows](live-shows.md)) |
 | `Ivo:` then indented lines | a speech block |
 | `IVO` then indented lines | the screenplay cue (still works) |
 | `Ivo \| Mara: …` | two speakers at once |
@@ -62,8 +63,8 @@ openers end with `:` and indent their body.
 | `match value:` + `arm:` lines | pick an arm by value |
 | `cue x` / `sound x` / `pause` / `flash white, 200` / `anchor x` | stagecraft |
 | `fire lockdown` / `fire rally for guest` / `fire alarm with level: 3` | raise a named event |
-| `reply text` | private line back to whoever acted |
-| `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer`) |
+| `reply text` / `reply !text` | private line back to whoever acted (a booth: its Readouts) / the same as an alert |
+| `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer`); `with moment: major` makes it interrupt |
 | `unlock The Sandy File for guest` | hand out a codex entry |
 | `start quest X for who` / `update` / `complete` / `fail` (+ `"line"`) | the quest log — `who` may be a character |
 | `restrict guest to The Tube, The Internet` / `unrestrict guest` | shrink a guest's app to DMs + those places, no buttons — and lift it |
@@ -127,12 +128,17 @@ openers end with `:` and indent their body.
 | `move who to Place` | put a participant somewhere |
 | `add who to Group` / `remove who from Group` / `reveal X [for who]` | membership / open a hidden group, place, room or character |
 | `broadcast cue to scope` (+ indented lines) | send a cue to a subset |
+| `broadcast "!📣 text" to everyone` / `broadcast "~✅ text" to everyone` | an alert (a major moment on every phone) / a per-person notice (folds with its neighbours) |
 | `participant(X)` `group(G)` `location(L)` , `and` / `but` | broadcast scopes |
 | `(improv duration: 45s, advance on: any […])` | an improvised beat |
 | `SPACE` / `CHANNEL` | chat sections / rooms |
-| `CODEX Name` + `about:` / `code:` / `secret: true` | lore a participant holds, unlocks, shares |
+| `CODEX Name` + `about:` / `code:` / `secret: true` / `category:` | lore a participant holds, unlocks, shares (filed under its category) |
 | `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
 | `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
+| `OBJECTIVE Name` + `for:` / `while:` / `act:` / `title:` / `text:` (`- to-do, done when <cond>`) / `buttons:` (+ `pass`, `scan`) / `loud: true` | what a phone shows as NOW, and the buttons it leads with ([objectives](objectives.md)) |
+| `admin: true` (a performer's CHARACTER) | a host part: its booth gets the host console (cues, judging, announcements, the alert level) |
+| `crawl: fx` (a CHARACTER) | every line it speaks is effect text |
+| `alerts: Night.alerts` (header, first file) | the world path the phones' alert level is read from: `balloon` / `sticky` (default) / `dialog` / `bsod` |
 | `sequence: false` / `repeat: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed |
 | `arm: true` (a performer's or guest's button) | arms on the first tap, fires on the second ([live verbs](live-verbs.md)) |
 | `act: B · Act I` (a `who: admin` cue) | opens an act on the Director page; later admin cues join it (`act: Anytime` rejoins by name; never changes NEXT) |

@@ -2,14 +2,16 @@
 title: Messages & threads
 section: Guest Guide
 order: 3
-keywords: messages, send, composer, enter, threads, reply, narrator, typing, too long, limit, characters, not sent
+keywords: messages, send, composer, enter, threads, reply, narrator, typing, too long, limit, characters, not sent, typewriter, crawl, tap to finish, slow, glitch, effect, notices, folded, collapsed, accepted, keyboard
 ---
 
 ## Sending a message
 
 Type in the box at the bottom of any room and hit **Enter** to send
-(`Shift+Enter` makes a new line). If there's no box, the room is
-read-only — or you're not in the right place to speak.
+(`Shift+Enter` makes a new line). While you type, the taskbar steps
+aside for the keyboard and comes back when you're done. If there's no
+box, the room is read-only — or you're not in the right place to
+speak.
 
 If a line can't go, it stays in the box and a banner says why: *⏳ Not
 sent* (you're sending too fast; wait), *⏸ Not sent: the show is paused*,
@@ -24,12 +26,39 @@ never moves them.
 What you type is part of the show. Performers and the operator really
 do read it, and the story can react.
 
+## How lines arrive
+
+A line the story says **while you have its room open** types itself
+out, fast: at most 0.7 seconds a line, and a burst that would take more
+than a second and a half shows the rest at once. Everything else is simply there:
+what you missed while you were elsewhere, other rooms, a reload, your
+own words and other people's typed chat. **Tap the conversation** to
+finish whatever is still typing. Lines always arrive in order: a
+message that doesn't type out finishes anything still typing ahead of
+it.
+
+**Effect text** performs instead: an alert, a takeover, or a line the
+story marks as a glitch, static or a scream scrambles into place,
+flickers and shakes, slower on purpose. With Reduce Motion on, it shows
+at once with a still glitch look.
+
+## Busy rooms stay readable
+
+- **Cards** waiting for your answer dock in a tray just above the message
+  box (see [Decisions](decisions.md)); the conversation keeps a one-line
+  receipt.
+- **Notices about other people** (*✅ Excel's answer is accepted.*) fold:
+  a run of them is one line such as *✅ 12 · 🤷 3*. Tap it to see each.
+  A notice about you stays its own line.
+- **Badges** count only what is for you: lines addressed to you, cards
+  that ask you, decisions, alerts, new lore and quests.
+
 ## Threads
 
-Any message can grow a **thread** — a side conversation hanging off it,
-like a forum reply chain. Tap a message's reply affordance to open its
-thread, read the back-and-forth, and answer inside it without flooding
-the main room.
+Any typed message can grow a **thread** — a side conversation hanging
+off it, like a forum reply chain. Tap its 💬 to open the thread, read
+the back-and-forth, and answer inside it without flooding the main
+room. The story's own lines show 💬 only once someone has replied.
 
 ## Who's talking?
 
