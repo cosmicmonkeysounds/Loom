@@ -335,9 +335,10 @@ export function trayAct(
 }
 
 /** Does this booth hold the host capability now (C4)? The latest view
- *  says so (`PrimeView.host`, re-sent on every snapshot); an older server's
- *  view carries none, and then the sign-in's answer stands. */
-export function boothHost(auth: { host?: boolean } | null | undefined, view: { host?: true } | null | undefined): boolean {
+ *  says so (`PrimeView.host`, re-sent on every snapshot — `false` too, so a
+ *  host taken away reaches the booth); an older server's view carries none,
+ *  and then the sign-in's answer stands. */
+export function boothHost(auth: { host?: boolean } | null | undefined, view: { host?: boolean } | null | undefined): boolean {
   return (view?.host ?? auth?.host) === true;
 }
 

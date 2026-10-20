@@ -336,6 +336,8 @@ describe("lean snapshots and the host flag (C3 / C4, fix round)", () => {
     expect(boothHost({ host: true }, {})).toBe(true); // an older server's view
     expect(boothHost({ host: false }, null)).toBe(false);
     expect(boothHost(null, undefined)).toBe(false);
+    // A newer server says host: false on every view: a host taken away is gone.
+    expect(boothHost({ host: true }, { host: false })).toBe(false);
   });
 
   it("a host booth (from the view) gets another character's by: button in the fold", () => {
