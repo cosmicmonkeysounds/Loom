@@ -573,7 +573,7 @@ describe("A9: the minter's reserve — 🎁 grant, 🧊 freeze, a frozen wallet"
     expect(walletStateLine(held, "held", q, liveClock(1000, 50_000, 50_000))).toBe("auto-approves in 1:00");
     expect(walletStateLine(held, "held", q, liveClock(1000, 50_000, 70_000))).toBe("auto-approves in 0:40");
     // The booth feeds its cards that ticking clock, not the raw snapshot's.
-    const booth = readFileSync(new URL("../src/performer.tsx", import.meta.url), "utf8");
+    const booth = readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8");
     expect(booth).toContain("useWalletClock(s.view?.clock, s.view?.wallet)");
     expect(booth).toContain("clock: walletClock");
   });
