@@ -104,6 +104,8 @@ interface Engine {
   dismissStickies: () => void;
   /** "Dismiss all (n)" on a dialog / blue screen: every modal waiting, read. */
   dismissModals: () => void;
+  /** These moments are read (shown elsewhere in full): off the queue, never missed. */
+  readMany: (keys: readonly string[]) => void;
   /** Close a moment with no exit taken: `acted` = it was opened (never missed). */
   close: (q: Queued, acted: boolean) => void;
 }
@@ -397,6 +399,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dispatch({ type: "dismissMany", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stickyKeys]);
+  const readMany = useCallback((keys: readonly string[]) => {
+    if (keys.length === 0) return;
+    for (const k of keys) mem.shownAt.delete(k);
+    dispatch({ type: "dismissMany", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const modalKeys = surfaces.modalKeys.join("\u0000");
   const dismissModals = useCallback(() => {
     const keys = modalKeys === "" ? [] : modalKeys.split("\u0000");
@@ -427,6 +435,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     hold,
     dismissStickies,
     dismissModals,
+    readMany,
     close,
   };
 }
@@ -547,12 +556,16 @@ export function useNowMoment(): { moment: Moment | null; seen: (acted: boolean) 
   );
 }
 
-/** The sticky on screen, if any, and how many wait (the pin rail folds them into a "+n" on the guest's own pin). */
-export function useStickyMoment(): { key: string | null; count: number } {
+/** The sticky on screen, if any, how many wait and their keys (the pin rail
+ *  folds them into a "+n" on the guest's own pin), and `read` to take some
+ *  off the queue as read (the `!` pin the rail already shows in full). */
+export function useStickyMoment(): { key: string | null; count: number; keys: readonly string[]; read: (keys: readonly string[]) => void } {
   const e = useContext(EngineContext);
   const key = e?.surfaces.sticky?.moment.key ?? null;
   const count = e?.surfaces.stickyCount ?? 0;
-  return useMemo(() => ({ key, count }), [key, count]);
+  const joined = (e?.surfaces.stickyKeys ?? []).join("\u0000");
+  const read = e?.readMany;
+  return useMemo(() => ({ key, count, keys: joined === "" ? [] : joined.split("\u0000"), read: read ?? (() => {}) }), [key, count, joined, read]);
 }
 
 export function useMoments(): { missed: number; replay: () => void; level: AlertLevel } {

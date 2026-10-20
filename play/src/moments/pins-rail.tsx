@@ -12,7 +12,7 @@
 //! it — it folds into a "+n" on the pin (`MomentsAndPins`), and a tap on
 //! that shows it. Nothing to show → nothing.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "../chrome/icons.tsx";
 import type { ChatMessage } from "../types.ts";
 import { MomentsLayer, useStickyMoment } from "./provider.tsx";
@@ -72,6 +72,14 @@ export function PinnedRail({ pins, me, fold }: { pins: ChatMessage[]; me?: strin
   );
 }
 
+/** The waiting stickies that only repeat the pin the rail shows in full (a
+ *  `!` pin is a moment too): its own `m:<seq>` (pure). */
+export function stickiesOnRail(pins: readonly ChatMessage[], me: string | null | undefined, keys: readonly string[]): string[] {
+  const shown = shownPin(pins, me);
+  if (shown === null || !(shown.alert === true || isOwnPin(shown, me))) return [];
+  return keys.filter((k) => k === `m:${shown.seq}`);
+}
+
 /** Should the sticky fold into the pin's "+n" (pure): the viewer's own pin
  *  is up, a sticky is waiting, and the viewer has not asked to see it. */
 export function foldsSticky(pins: readonly ChatMessage[], me: string | null | undefined, sticky: { key: string | null; count: number }, opened: string | null): boolean {
@@ -87,6 +95,13 @@ export function foldsSticky(pins: readonly ChatMessage[], me: string | null | un
 export function MomentsAndPins({ pins, me }: { pins: ChatMessage[]; me: string | null }) {
   const sticky = useStickyMoment();
   const [opened, setOpened] = useState<string | null>(null);
+  // A `!` pin's own sticky would repeat the rail's line in a second yellow
+  // bar: the rail shows it whole, so it is read (it still chimed on arrival).
+  const dup = stickiesOnRail(pins, me, sticky.keys).join("\u0000");
+  const { read } = sticky;
+  useEffect(() => {
+    if (dup !== "") read(dup.split("\u0000"));
+  }, [dup, read]);
   const fold = foldsSticky(pins, me, sticky, opened);
   return (
     <>

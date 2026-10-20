@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PinnedRail } from "../src/chat.tsx";
-import { foldsSticky, isOwnPin, shownPin } from "../src/moments/pins-rail.tsx";
+import { foldsSticky, isOwnPin, shownPin, stickiesOnRail } from "../src/moments/pins-rail.tsx";
 import { readBundledCss } from "./css.ts";
 
 import { activePins, activeTakeover } from "../src/pins.ts";
@@ -103,6 +103,13 @@ describe("PinnedRail", () => {
     expect(foldsSticky(own, "g7", { key: null, count: 0 }, null)).toBe(false);
     const html = renderToStaticMarkup(<PinnedRail pins={own} me="g7" fold={{ count: 1, onOpen: () => {} }} />);
     expect(html).toMatch(/<button type="button" class="w95-btn moments-pins-more" aria-label="1 more notice — show it">\+1<\/button>/u);
+  });
+
+  it("a `!` pin's own sticky is read: the rail shows it whole, never a second yellow bar", () => {
+    const own = [m(7, "lobby", { pin: "g7", text: "GO TO THE INTERNET.", alert: true, audience: ["g7"] })];
+    expect(stickiesOnRail(own, "g7", ["m:7", "m:9"])).toEqual(["m:7"]);
+    // A plain room pin (folded to one line, cut with "…") is not read for the guest.
+    expect(stickiesOnRail([m(8, "lobby", { pin: "", text: "Doors at nine." })], "g7", ["m:8"])).toEqual([]);
   });
 
   it("the rail is one 44 px line from the tokens", () => {
