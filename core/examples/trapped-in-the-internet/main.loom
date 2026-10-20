@@ -524,7 +524,7 @@ ROLE Program
     if program.from_jeeves == 10:
       set Kernel.jeeves_reached += 1
 
-  // ── Computer Bingo (performer buttons) ──
+  // ── Computer Bingo (performer buttons; the ribbon's lines DRAFT for sign-off, w13 Q24 / Q28) ──
   when bingo_winner for program:
     if Night.phase == "bingo_results" and program.bingo != true:
       set program.bingo = true
@@ -539,7 +539,7 @@ ROLE Program
       broadcast "~🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
       reply 🎀 You won a Bingo Ribbon. Take a bow.
     else:
-      broadcast "~🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
+      broadcast "~🎀 {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone
       reply 🎀 You received a ribbon. Take a bow.
 
   when frame_for_bingo for program:

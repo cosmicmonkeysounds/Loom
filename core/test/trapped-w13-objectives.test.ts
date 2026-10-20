@@ -722,6 +722,15 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(manual).toEqual([]);
   }, SLOW);
 
+  it("a ribbon from any host names no one host (the story cannot tell who pressed it)", () => {
+    const n = boot();
+    n.press("call_to_the_desktop");
+    const said = n.signal("award_the_ribbon", "g3", undefined, "Task Manager");
+    const notice = said.find((m) => m.text.includes("receives a ribbon"));
+    expect(notice?.text).toContain("from the hosts");
+    expect(said.some((m) => /from Clippy/u.test(m.text))).toBe(false);
+  }, SLOW);
+
   it("the escort list skips a program gone home and a rehearsal persona, and the summons outranks it", () => {
     const n = boot();
     const now = (p: string) => primeView(n.sim, p).objectives?.[0]?.id;
