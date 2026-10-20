@@ -44,7 +44,7 @@ import { WikiClient } from "./wiki.ts";
 import { ImageCache } from "./avatars.ts";
 import { join } from "node:path";
 import { serveCardsPage } from "./cards-page.ts";
-import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
+import { ipOf, queryTokenOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
 import { limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
 import { dbReady, initSchema } from "./db/index.ts";
@@ -498,7 +498,10 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     let moderatorName: string | undefined;
     // (The spatial map + stream also accept a game's session token; the
     // author session lets the editor read them too.)
-    if (boot.controlPlane && (subPath.startsWith("/api/mod/") || wantsModRead(subPath, url.searchParams))) {
+    // A camera poll carrying its own token (a terminal's mod token, a game
+    // session) never needs the session lookup: the token decides.
+    const camPoll = method === "GET" && (subPath === "/api/spatial/cams" || subPath === "/api/spatial/cam") && runtime.camTokenReads(queryTokenOf(req, url));
+    if (boot.controlPlane && !camPoll && (subPath.startsWith("/api/mod/") || wantsModRead(subPath, url.searchParams))) {
       const user = await authUser(req);
       if (user !== null) {
         moderator = await canModerateEvent(eventId, user.id);
