@@ -9,10 +9,29 @@ import type { Viewer } from "../rooms/threads-state.ts";
 import type { Channel, ChatMessage } from "../types.ts";
 import { cardAsks } from "../widgets.tsx";
 
-/** Is this message addressed to the viewer (a guest by id, a booth as `@<character>`)? */
-export function addressedTo(m: Pick<ChatMessage, "audience">, me: Viewer): boolean {
+/**
+ * Is `m` a line a guest typed to this booth's character? The server stores
+ * a guest's own `dm:<Character>` line with the guest as its audience
+ * (`audience: [<guest id>]`, never `@<Character>`), so the audience alone
+ * never says it is for the booth: a typed line (no beat) in `dm:<me>` from
+ * someone other than the character is. The story's own lines in that thread
+ * (from the character, or a beat's) never are.
+ */
+export function guestLineToBooth(m: Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden">, character: string): boolean {
+  if (character === "" || m.hidden === true || m.kind !== "line") return false;
+  if (m.channel !== `dm:${character}`) return false;
+  if (m.beat !== undefined && m.beat !== null && m.beat !== "") return false;
+  const from = m.from.trim();
+  return from !== "" && from !== character && from !== "Narrator";
+}
+
+/** Is this message addressed to the viewer (a guest by id, a booth as
+ *  `@<character>`, or a guest's typed line in the booth's own DM thread)? */
+export function addressedTo(m: Pick<ChatMessage, "audience"> & Partial<Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden">>, me: Viewer): boolean {
   if (!Array.isArray(m.audience)) return false;
-  return me.booth ? m.audience.includes(`@${me.name}`) : m.audience.includes(me.id);
+  if (!me.booth) return m.audience.includes(me.id);
+  if (m.audience.includes(`@${me.name}`)) return true;
+  return m.channel !== undefined && m.from !== undefined && m.kind !== undefined && guestLineToBooth(m as Pick<ChatMessage, "channel" | "from" | "kind" | "beat" | "hidden">, me.name);
 }
 
 /** Does one message earn a badge for `me`? */
