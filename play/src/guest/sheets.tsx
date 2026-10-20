@@ -1,6 +1,7 @@
 //! The guest's sheets (moved out of `guest.tsx` in wave 13): the profile
 //! and pass, the People directory, and the identity card on the room list.
 
+import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { useState } from "react";
 import { ConnDot, connLabel, GroupPill, PersonAvatar, Sheet, WakeLockToggle } from "../ui/primitives.tsx";
 import { PassQr } from "../pass-qr.tsx";
@@ -97,8 +98,8 @@ export function PersonRow({ card, onMessage }: { card: PersonCard; onMessage: ()
             {card.location && <span className="people-where">📍 {card.location}</span>}
           </span>
         </div>
-        <button className="choice ghost" onClick={onMessage} aria-label={`Message ${card.name}`}>
-          💬
+        <button className="choice ghost" onClick={onMessage} aria-label={`Message ${card.name}`} title={`Message ${card.name}`}>
+          <Icon name="reply" />
         </button>
       </div>
       {card.known.length > 0 && (
@@ -129,9 +130,9 @@ export function PeopleSheet({ session, only, onClose }: { session: GuestSession;
     onClose();
   };
   return (
-    <Sheet title={only ? "👥 Who's here" : "👥 People"} onClose={onClose} tall>
+    <Sheet title={<IconTitle icon="people">{only ? "Who's here" : "People"}</IconTitle>} onClose={onClose} tall>
       {people.length === 0 && <div className="codex-empty">{only ? "Nobody else is in this room." : "Nobody else is here yet."}</div>}
-      {people.length > 0 && <div className="people-unknown">What your Codex holds about someone shows under their name. Tap 💬 to message them.</div>}
+      {people.length > 0 && <div className="people-unknown">What your Codex holds about someone shows under their name. Tap the speech bubble to message them.</div>}
       {/* The other programs first — they are who a guest is looking for. */}
       {guests.length > 0 && <div className="codex-about">Guests</div>}
       {guests.map((p) => (

@@ -6,8 +6,12 @@
 //! `plain` draws the same shapes in its own colours. Emoji the *story*
 //! authors (a button's "🚻 Bathroom Mode", a cue's glyph) are content and
 //! stay as written.
+//!
+//! The set is shared: the booth and the host draw their chrome from it too
+//! (`Icon`, `IconName`, `ICON_NAMES` — e.g. the booth's 🧾 held transfers
+//! → `receipt`, 🗂 Guests → `cards`, 🛡 → `shield`, 📓 → `codex`).
 
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export type IconName =
   | "start"
@@ -25,10 +29,41 @@ export type IconName =
   | "screen-on"
   | "screen-off"
   | "defect"
-  | "leave";
+  | "leave"
+  | "pin"
+  | "reply"
+  | "codex"
+  | "quest"
+  | "receipt"
+  | "cards"
+  | "shield";
 
 /** Every icon the chrome draws (tests walk the list). */
-export const ICON_NAMES: readonly IconName[] = ["start", "pass", "scan", "hourglass", "pause", "coin", "frozen", "bell", "star", "people", "help", "picture", "screen-on", "screen-off", "defect", "leave"];
+export const ICON_NAMES: readonly IconName[] = [
+  "start",
+  "pass",
+  "scan",
+  "hourglass",
+  "pause",
+  "coin",
+  "frozen",
+  "bell",
+  "star",
+  "people",
+  "help",
+  "picture",
+  "screen-on",
+  "screen-off",
+  "defect",
+  "leave",
+  "pin",
+  "reply",
+  "codex",
+  "quest",
+  "receipt",
+  "cards",
+  "shield",
+];
 
 function shape(name: IconName): ReactElement {
   switch (name) {
@@ -149,7 +184,77 @@ function shape(name: IconName): ReactElement {
           <path className="ico-red ico-line" d="M10.5 7h2V5.2l2.3 2.8-2.3 2.8V9h-2Z" />
         </>
       );
+    case "pin":
+      // a pushpin: the red head, its collar, the needle
+      return (
+        <>
+          <path className="ico-red ico-line" d="M5.5 1.5h5l-.8 3.6 2.3 2.4H4l2.3-2.4Z" />
+          <path className="ico-ink-line" d="M8 7.8v6.7" />
+        </>
+      );
+    case "reply":
+      // a speech bubble with its tail, three dots in it
+      return (
+        <>
+          <path className="ico-white ico-line" d="M1.5 2.5h13v8.5H7.2l-3.4 3v-3H1.5Z" />
+          <path className="ico-ink" d="M4.5 6h1.5v1.5H4.5ZM7.25 6h1.5v1.5h-1.5ZM10 6h1.5v1.5H10Z" />
+        </>
+      );
+    case "codex":
+      // a bound book: the navy cover, the page edge, a title label
+      return (
+        <>
+          <path className="ico-white ico-line" d="M3.5 12.5h10v2h-10a1 1 0 0 1 0-2Z" />
+          <path className="ico-navy ico-line" d="M3.5 1.5h10v11h-10a1.5 1.5 0 0 0-1.5 1.5V3a1.5 1.5 0 0 1 1.5-1.5Z" />
+          <rect className="ico-white" x="6" y="4" width="5" height="2" />
+        </>
+      );
+    case "quest":
+      // a scroll: the sheet, a roll at each end, its lines
+      return (
+        <>
+          <path className="ico-white ico-line" d="M3.5 3.5h9v9h-9Z" />
+          <rect className="ico-sand ico-line" x="2" y="1.5" width="12" height="2.5" rx="1.2" />
+          <rect className="ico-sand ico-line" x="2" y="12" width="12" height="2.5" rx="1.2" />
+          <path className="ico-ink" d="M5 6h6v1H5ZM5 8.5h5v1H5Z" />
+        </>
+      );
+    case "receipt":
+      // a till receipt: a torn foot, its lines, the total
+      return (
+        <>
+          <path className="ico-white ico-line" d="M3.5 1.5h9v13l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1Z" />
+          <path className="ico-ink" d="M5 4h6v1H5ZM5 6.5h6v1H5ZM5 9h3v1H5ZM9.5 9H11v1H9.5Z" />
+        </>
+      );
+    case "cards":
+      // a card file: two index cards, the front one with its tab
+      return (
+        <>
+          <path className="ico-face ico-line" d="M3.5 2.5h10v8h-10Z" />
+          <path className="ico-white ico-line" d="M1.5 5.5h4l1 1.5h6v7h-11Z" />
+          <path className="ico-ink" d="M3.5 9.5h7v1h-7ZM3.5 11.5h5v1h-5Z" />
+        </>
+      );
+    case "shield":
+      // an antivirus shield: the navy face, its white check
+      return (
+        <>
+          <path className="ico-navy ico-line" d="M8 1.5 13.5 3.5v4c0 3.4-2.3 5.8-5.5 7-3.2-1.2-5.5-3.6-5.5-7v-4Z" />
+          <path className="ico-white" d="m5.2 7.8 1.1-1.1 1.3 1.3 3-3 1.1 1.1-4.1 4.1Z" />
+        </>
+      );
   }
+}
+
+/** A caption with its icon in front ("🔔 Alerts" drawn): a sheet's or a balloon's title. */
+export function IconTitle({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <span className="ico-title">
+      <Icon name={icon} />
+      <span>{children}</span>
+    </span>
+  );
 }
 
 /** One chrome icon, decorative (its button carries the name). */

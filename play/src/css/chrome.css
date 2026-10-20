@@ -56,6 +56,10 @@
 .ico .ico-door { fill: var(--ico-door); }
 .ico .ico-screen { fill: var(--ico-screen); }
 .ico .ico-frost { stroke: var(--navy); }
+/* a caption led by its icon (a sheet's, a balloon's title) */
+.ico-title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+/* an icon set in a line of text (a card's head, the reply button, the who's-here count) */
+.ico-inline { display: inline-block; vertical-align: -3px; }
 /* Start: the Win95 flag is aol97's; plain draws a menu mark */
 .ico .ico-flag { display: none; }
 :root[data-theme="aol97"] .ico .ico-flag { display: inline; }

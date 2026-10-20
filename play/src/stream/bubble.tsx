@@ -3,6 +3,7 @@
 //! narration / widget / codex / quest / wallet) with cards docked, settled
 //! or inline (`settled.ts`), and the sender-run group.
 
+import { Icon } from "../chrome/icons.tsx";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { crawlDuration } from "../crawl.ts";
 import { usePlayHost, type CrawlTier } from "../host.ts";
@@ -170,7 +171,7 @@ function CodexCardView({ msg, modBtn }: { msg: ChatMessage; modBtn: ReactNode })
       <div className="codex-card">
         <div className="codex-card-head">
           <span className="codex-card-ico" aria-hidden>
-            📓
+            <Icon name="codex" size={18} />
           </span>
           <strong className="codex-card-title">{c.title}</strong>
           {c.about && <span className="pill kind">about {c.about}</span>}
@@ -233,7 +234,7 @@ function QuestView({
       >
         <div className="quest-head">
           <span className="quest-ico" aria-hidden>
-            📜
+            <Icon name="quest" size={18} />
           </span>
           <strong className="quest-title">{q.title}</strong>
           <span className={`quest-status ${st}`}>{QUEST_STATUS[st]}</span>
@@ -447,7 +448,9 @@ export function MessageBubble({
             title={replies ? `${replies} ${replies === 1 ? "reply" : "replies"}` : "Reply in thread"}
             aria-label={replies ? `${replies} replies` : "Reply in thread"}
           >
-            <span className="reply-ico">💬</span>
+            <span className="reply-ico" aria-hidden>
+              <Icon name="reply" className="ico-inline" />
+            </span>
             {replies && replies > 0 ? <span className="reply-n">{replies}</span> : null}
           </button>
         )}

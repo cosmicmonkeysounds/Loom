@@ -38,3 +38,26 @@ describe("the chrome's icons", () => {
     }
   });
 });
+
+describe("the guest chrome draws its utility icons (finish review #8)", () => {
+  it("the who's-here count, the reply button, a thread's head and the pin rail carry no emoji", async () => {
+    const { PresenceStrip } = await import("../src/stream/channel-view.tsx");
+    const { MessageBubble } = await import("../src/stream/bubble.tsx");
+    const { PinnedRail } = await import("../src/moments/pins-rail.tsx");
+    const strip = renderToStaticMarkup(createElement(PresenceStrip, { people: [{ id: "g1", name: "Ada" }] as never, meId: "g1", onOpen: () => {} }));
+    expect(strip).toContain("ico-people");
+    expect(EMOJI.test(strip)).toBe(false);
+    const line = { seq: 3, channel: "lobby", channelKind: "lobby", title: "Lobby", from: "Ada", kind: "line", text: "hi", ts: 3, audience: "all", parentSeq: null, hidden: false } as never;
+    const reply = renderToStaticMarkup(createElement(MessageBubble, { msg: line, onOpenThread: () => {} }));
+    expect(reply).toContain("ico-reply");
+    expect(EMOJI.test(reply)).toBe(false);
+    const pin = { seq: 4, channel: "lobby", channelKind: "lobby", title: "Lobby", from: "", kind: "signal", text: "Doors at nine.", ts: 4, audience: "all", parentSeq: null, hidden: false, pin: "" } as never;
+    const rail = renderToStaticMarkup(createElement(PinnedRail, { pins: [pin] }));
+    expect(rail).toContain("ico-pin");
+    expect(EMOJI.test(rail)).toBe(false);
+  });
+
+  it("the shared set has what a booth's chrome needs", () => {
+    for (const name of ["receipt", "cards", "shield", "codex", "quest", "reply", "pin", "help", "bell", "leave"] as const) expect(ICON_NAMES).toContain(name);
+  });
+});
