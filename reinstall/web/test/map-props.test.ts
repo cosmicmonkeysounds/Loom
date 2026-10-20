@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { validateHouse } from "@loom/house";
 import type { HouseMap } from "@loom/house";
-import { provisionLink } from "../src/map/edit.ts";
+import { provisionLink, removeThing } from "../src/map/edit.ts";
 import {
   addProp,
   duplicate,
+  guardableDoors,
   guardedBy,
   mapLocations,
   onFloor,
@@ -149,6 +150,23 @@ describe("the King's door", () => {
     h = setGuard(h, "king-1", null);
     expect(guardedBy(h, "king-1")).toEqual([]);
     expect(h.doors.every((d) => !("guard" in d))).toBe(true);
+  });
+
+  it("offers only the doors on his own room (plus the one he guards)", () => {
+    const r = addProp(TWO_ROOMS(), "king", "f", [5.5, 1])!;
+    expect(guardableDoors(r.house, r.id).map((d) => d.id)).toEqual(["ab"]);
+    expect(guardableDoors(withKing(), "king-1").map((d) => d.id).sort()).toEqual(["ab", "front"]);
+    const h = setGuard(r.house, r.id, "ab");
+    expect(validateHouse(h).ok).toBe(true);
+    expect(guardableDoors(h, "nope")).toEqual([]);
+  });
+
+  it("lets his door go when he is deleted, so the map stays valid", () => {
+    const h = setGuard(withKing(), "king-1", "ab");
+    const gone = removeThing(h, { kind: "prop", id: "king-1" });
+    expect(gone.props.some((p) => p.id === "king-1")).toBe(false);
+    expect(gone.doors.every((d) => !("guard" in d))).toBe(true);
+    expect(validateHouse(gone).ok).toBe(true);
   });
 
   it("refuses a non-King or an unknown door", () => {

@@ -166,6 +166,14 @@ export function guardedBy(house: HouseMap, kingId: string): string[] {
   return house.doors.filter((d) => d.guard === kingId).map((d) => d.id);
 }
 
+/** The doors a King can guard: those on his own room (a guard must stand
+ *  in one of its door's rooms), plus any he guards now. */
+export function guardableDoors(house: HouseMap, kingId: string): HouseMap["doors"] {
+  const king = house.props.find((p) => p.id === kingId);
+  if (king === undefined) return [];
+  return house.doors.filter((d) => d.a === king.room || d.b === king.room || d.guard === kingId);
+}
+
 /** Make `doorId` the one door a King guards (null: none) — any other door
  *  it guarded is let go; a door another King guarded passes to this one. */
 export function setGuard(house: HouseMap, kingId: string, doorId: string | null): HouseMap {

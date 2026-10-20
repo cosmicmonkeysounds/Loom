@@ -12,7 +12,7 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { guardedBy, mapLocations, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
+import { guardableDoors, guardedBy, mapLocations, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { isStep, parseNum } from "./tools.ts";
@@ -441,7 +441,7 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
               guards door
               <select className="w98-input" value={guarded[0] ?? ""} disabled={!edit} onChange={(e) => commit(setGuard(house, p.id, e.target.value === "" ? null : e.target.value))}>
                 <option value="">(no door)</option>
-                {house.doors.map((d) => (
+                {guardableDoors(house, p.id).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.id} · {roomById(house, d.a)?.label ?? d.a} ↔ {d.b === null ? "outside" : (roomById(house, d.b)?.label ?? d.b)}
                     {d.guard !== undefined && d.guard !== p.id ? ` (now ${d.guard}'s)` : ""}

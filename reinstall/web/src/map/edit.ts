@@ -153,7 +153,11 @@ export function removeThing(house: HouseMap, sel: Selection): HouseMap {
   else if (sel.kind === "duck") next.duck.spots = keep(next.duck.spots);
   else if (sel.kind === "door") next.doors = keep(next.doors);
   else if (sel.kind === "stair") next.stairs = keep(next.stairs);
-  else next.props = keep(next.props);
+  else {
+    next.props = keep(next.props);
+    // A King's doors are let go with him (a guard naming no prop is refused).
+    for (const d of next.doors) if (d.guard === sel.id) delete d.guard;
+  }
   return next;
 }
 
