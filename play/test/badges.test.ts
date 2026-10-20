@@ -1,7 +1,7 @@
 //! Wave 13: badges count only what is for you.
 
 import { describe, expect, it } from "vitest";
-import { badgeWorthy, guestLineToBooth, unreadOf } from "../src/stream/badges.ts";
+import { badgeWorthy, guestLineToBooth, staffLineWorthy, unreadOf } from "../src/stream/badges.ts";
 import type { Viewer } from "../src/rooms/threads-state.ts";
 import type { Channel, ChatMessage } from "../src/types.ts";
 
@@ -88,5 +88,35 @@ describe("unreadOf", () => {
     expect(unreadOf(room([a, b, c]), a.seq, ada)).toBe(1);
     expect(unreadOf(room([b], { title: "Your move", options: [] }), -1, ada)).toBe(1);
     expect(unreadOf(room([a, b, c]), -1, undefined)).toBe(3); // no viewer: the old rule
+  });
+});
+
+describe("a booth's staff rooms (recheck: # hosts lines never badged)", () => {
+  // The real shape off Password Manager's stream: Task Manager's typed line in # hosts.
+  const hostsLine = (over: Partial<ChatMessage> = {}): ChatMessage => ({
+    channel: "room:hosts", channelKind: "faction", title: "# hosts", from: "Task Manager", kind: "line", text: "Password Manager: the patch bay, NOW.", ts: 12000, audience: [], parentSeq: null, seq: seq++, hidden: false, ...over,
+  });
+  const pm: Viewer = { id: "Password Manager", name: "Password Manager", booth: true };
+  const room = (messages: ChatMessage[], staff = true): Channel => ({ id: "room:hosts", kind: "faction", title: "# hosts", spaceId: "staff", order: 0, messages, unread: 0, decision: null, lastTs: 0, ...(staff ? { staff: true as const } : {}) }) as Channel;
+
+  it("a line someone else put there counts: a host's, a director's, the story's own note", () => {
+    expect(staffLineWorthy(hostsLine(), pm)).toBe(true);
+    expect(staffLineWorthy(hostsLine({ from: "Operator" }), pm)).toBe(true);
+    expect(staffLineWorthy(hostsLine({ from: "", kind: "signal", text: "🌑 Not now: the bottle is still spinning." }), pm)).toBe(true);
+  });
+  it("never the booth's own words, a thread reply, a hidden or a system row, or a guest viewer", () => {
+    expect(staffLineWorthy(hostsLine({ from: "Password Manager" }), pm)).toBe(false);
+    expect(staffLineWorthy(hostsLine({ parentSeq: 4 }), pm)).toBe(false);
+    expect(staffLineWorthy(hostsLine({ hidden: true }), pm)).toBe(false);
+    expect(staffLineWorthy(hostsLine({ kind: "system" }), pm)).toBe(false);
+    expect(staffLineWorthy(hostsLine(), ada)).toBe(false);
+  });
+  it("badges the staff room (and only a staff room) past the read mark", () => {
+    const a = hostsLine();
+    const b = hostsLine({ from: "Password Manager" });
+    expect(unreadOf(room([a, b]), -1, pm)).toBe(1);
+    expect(unreadOf(room([a, b]), a.seq, pm)).toBe(0);
+    // The same line in a room that is not a staff room stays the room talking.
+    expect(unreadOf(room([a], false), -1, pm)).toBe(0);
   });
 });

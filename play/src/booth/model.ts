@@ -100,6 +100,97 @@ export function cardButtons(
   return { face, rest };
 }
 
+/** A press whose label says it marks, captures or sends the guest away
+ *  ("🛡 Send to the Internet", "🙅 Truth refused: marked for reinstallation",
+ *  "👁 Put on the watchlist"). Never one that takes a mark back. */
+const HARM = /(marked for reinstall|\bsend(?:s)?\b[^:]*\bto the internet|\bcaptur|\bquarantin|\bbanish|\bwatchlist|\bsweep them)/iu;
+const UNDO = /(\bunmark|\bnot going|\brelease|\bpardon|\bvouch)/iu;
+
+/**
+ * Does this press change the guest's fate (mark, capture, send to the
+ * Internet)? The card sets it apart (a Win95 warning sign, its own group,
+ * never the default button) and arms it: the first tap arms, the second
+ * fires, whatever the story says (`arm:`), so one stray tap never sends a
+ * guest who was just cleared to the Internet.
+ */
+export function destructive(i: Pick<Interaction, "label">): boolean {
+  return HARM.test(i.label) && !UNDO.test(i.label);
+}
+
+/** Does a tap on `i` arm first? The story's `arm: true`, or a destructive press. */
+export function armsFirst(i: Pick<Interaction, "label" | "arm">): boolean {
+  return i.arm === true || destructive(i);
+}
+
+/** The card face's two groups, top to bottom: the destructive presses
+ *  (farthest from the thumb, under a warning), then the harmless ones,
+ *  right above "📷 Next guest". Each keeps its order. */
+export function faceGroups<T extends { interaction: Pick<Interaction, "label"> }>(face: readonly T[]): { harm: T[]; safe: T[] } {
+  return { harm: face.filter((b) => destructive(b.interaction)), safe: face.filter((b) => !destructive(b.interaction)) };
+}
+
+/** The Win95 default button: the first face button an objective asks for
+ *  that fires on one tap — never a destructive press, nor one that arms
+ *  first (a capture, a patch-bay radio is never the obvious tap). */
+export function defaultFaceId(face: readonly CardButton[]): string | null {
+  return face.find((b) => b.named === true && !armsFirst(b.interaction))?.interaction.id ?? null;
+}
+
+/**
+ * The face after a press (finish review #4): it keeps its buttons where
+ * they were, so nothing slides under the finger while the outcome lands
+ * above. `frozen` = the face's ids at the press, top to bottom. A button
+ * that left the face stays in its place as a spent row (`gone`; still
+ * pressable from the fold when live there); a new face button joins at the
+ * top (the face sits on the bottom edge, so the rows under the thumb hold
+ * still). Without a press (`frozen` null) the face is the card's own.
+ */
+export function heldFace(face: readonly CardButton[], rest: readonly CardButton[], frozen: readonly string[] | null, interactions: readonly Interaction[]): { face: Array<CardButton & { gone?: true }>; rest: CardButton[] } {
+  if (frozen === null) return { face: [...face], rest: [...rest] };
+  const now = new Map(face.map((b) => [b.interaction.id, b]));
+  const inRest = new Map(rest.map((b) => [b.interaction.id, b]));
+  const byId = new Map(interactions.map((i) => [i.id, i]));
+  const fresh = face.filter((b) => !frozen.includes(b.interaction.id));
+  const kept: Array<CardButton & { gone?: true }> = [];
+  for (const id of frozen) {
+    const b = now.get(id) ?? (inRest.get(id)?.live === true ? inRest.get(id) : undefined);
+    if (b !== undefined) kept.push(b);
+    else {
+      const i = inRest.get(id)?.interaction ?? byId.get(id);
+      if (i !== undefined) kept.push({ interaction: i, live: false, gone: true });
+    }
+  }
+  const shown = new Set([...fresh, ...kept].map((b) => b.interaction.id));
+  return { face: [...fresh, ...kept], rest: rest.filter((b) => !shown.has(b.interaction.id)) };
+}
+
+/** What a spent row on the held face says (`heldFace`'s `gone`): "Done" for
+ *  the press that was just made, never for a sibling that merely left the
+ *  face with it (that one was not done, only taken off offer). */
+export function goneLine(id: string, pressed: string | null): string {
+  return id === pressed ? "Done: not on offer now" : "Not on offer now";
+}
+
+/** What the scanner says when a scan is turned down. "doors are closed" is
+ *  the server's word for a paused show (and for doors not yet open):
+ *  never the raw lowercase error. */
+export function scanError(e: unknown, view?: { paused?: unknown; night?: { step?: number | null } | null } | null): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/doors are closed/iu.test(msg)) {
+    const step = view?.night?.step;
+    // `Night.step` 0 is the doors (the first act not begun); a story with no
+    // Night says neither, so the line stays true either way.
+    if (step === 0 || step === null) return "The doors aren't open yet: scan again once they are.";
+    if (typeof step !== "number") return "The doors are closed right now: scan again once the show is running.";
+    return "The show is paused: scan again when it resumes.";
+  }
+  if (/unknown guest|no such guest|not a guest/iu.test(msg)) return "That pass isn't a guest in this event.";
+  return msg;
+}
+
+/** A refused press or scan with no staff line to say why (D1). */
+export const REFUSED_SILENT = "the story took no action on this right now.";
+
 /** One line of what a press or a scan came to, as the card shows it. */
 export type OutcomeLine =
   /** The story's reply to the booth (`respond` / `reply`). */
@@ -132,6 +223,9 @@ export function pressOutcome(
   for (const l of r.said ?? []) if (l !== null && typeof l === "object" && clean(l.text) !== "") out.push({ kind: "said", from: clean(l.from), text: clean(l.text) });
   const refused = r.refused === true;
   for (const t of r.staff ?? []) if (clean(t) !== "") out.push({ kind: "staff", text: clean(t), refused });
+  // D1: the story turned it down without a word (a press it does nothing
+  // with): say so, never "✔ Sent" — that reads as done.
+  if (refused && !out.some((l) => l.kind === "staff")) out.push({ kind: "staff", text: REFUSED_SILENT, refused: true });
   if (out.length > 0) return out;
   return [{ kind: "none", text: kind === "scan" ? "✔ Scanned — no reply from the story" : "✔ Sent — no reply from the story" }];
 }
@@ -290,11 +384,12 @@ export function soonest(countdowns: readonly CountdownSummary[] | undefined, now
 
 /** "⏳ 14:59" under ten minutes, "⏳ 14 m" above (a clock never reads as a
  *  time of day); "⏸ …" while the story clock is stopped. */
-export function trayClock(left: number, paused = false): string {
+export function trayClock(left: number, paused = false, glyph = true): string {
   const s = Math.max(0, Math.floor(left));
-  const icon = paused ? "⏸" : "⏳";
-  if (s >= 600) return `${icon} ${Math.floor(s / 60)} m`;
-  return `${icon} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  // The tray draws its own icon (`glyph` false); the text form keeps the emoji.
+  const icon = glyph ? `${paused ? "⏸" : "⏳"} ` : "";
+  if (s >= 600) return `${icon}${Math.floor(s / 60)} m`;
+  return `${icon}${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 /** Is the story clock stopped (the event paused, the doors not yet open)?
@@ -320,23 +415,21 @@ export function actChip(act: { code: string | null; title: string | null } | nul
 }
 
 /**
- * The tray's act: the performer's own NOW objective's `act:` when it names
- * one ("Doors" before the show starts, "Act B" once it is under way), else
- * the cue sheet's focus act. The focus act is the act of NEXT, so during
- * the doors it already reads "Act B" while every objective says Doors.
+ * The tray's act (D2): the story's current act — the cue sheet's focus act,
+ * the one the host's NEXT strip shows (`PrimeView.act` when the server sends
+ * it as a word, else `night.act`) — never a long-running objective's own
+ * `act:`. Before the first act starts (`Night.step` 0) it reads "Doors",
+ * never the act of NEXT ahead of time.
  */
 export function trayAct(
   act: { code: string | null; title: string | null } | null | undefined,
-  objectives: readonly Pick<ObjectiveView, "act">[] | undefined,
   step?: number | null,
+  word?: string | null,
 ): { text: string; title: string } | null {
-  const own = objectives?.[0]?.act?.trim() ?? "";
-  // No act of its own (a host's "Keep things running"): the cue sheet's act,
-  // but never ahead of the show — `Night.step` 0 is the doors, before Act B.
-  if (own === "") return step === 0 && act !== null && act !== undefined ? { text: "Doors", title: "Doors: the first act has not started" } : actChip(act);
-  const sheet = actChip(act);
-  if (act?.code !== null && act?.code !== undefined && act.code === own && sheet !== null) return sheet;
-  return /^[A-Z]$/u.test(own) ? { text: `Act ${own}`, title: `Act ${own}` } : { text: own, title: own };
+  if (step === 0 && ((act !== null && act !== undefined) || (word ?? "") !== "")) return { text: "Doors", title: "Doors: the first act has not started" };
+  const w = word?.trim() ?? "";
+  if (w !== "") return /^[A-Z]$/u.test(w) ? { text: `Act ${w}`, title: `Act ${w}` } : { text: w, title: w };
+  return actChip(act);
 }
 
 /** Does this booth hold the host capability now (C4)? The latest view
@@ -403,7 +496,7 @@ export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: 
       if (waiting.length > 0) messages = { ...s, title: "Messages", channels: waiting };
       continue;
     }
-    const channels = s.channels.filter((c) => !OFF_LIST.has(c.id) && c.kind !== "guest");
+    const channels = s.channels.filter((c) => !OFF_LIST.has(c.id) && c.kind !== "guest").map(staffRow);
     if (channels.length > 0) out.push({ ...s, channels });
   }
   if (messages !== null) {
@@ -413,6 +506,19 @@ export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: 
     out.splice(after < 0 ? out.length : after, 0, messages);
   }
   return out;
+}
+
+/**
+ * A staff room's row (`# hosts`): "staff only" until someone writes there,
+ * then the newest line as its preview — the room list's own rule
+ * (`lastPreview`), so a host's "Password Manager: the patch bay, NOW" shows
+ * on the row it was typed into.
+ */
+export function staffRow(c: Channel): Channel {
+  if (c.staff !== true || c.subtitle === undefined) return c;
+  if (!c.messages.some((m) => m.ambient !== true && m.parentSeq == null && !m.hidden && m.text.trim() !== "")) return c;
+  const { subtitle: _staffOnly, ...rest } = c;
+  return rest;
 }
 
 /** The booth's own sections, never folded however quiet. */

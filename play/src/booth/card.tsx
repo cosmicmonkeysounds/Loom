@@ -14,7 +14,9 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { boothHost, cardButtons, cardGuestFacts, cardReadKey, factChips, faceSettled, foldOpensItself, inFlightGate, pressOutcome, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
+import { armsFirst, boothHost, goneLine, cardButtons, cardGuestFacts, cardReadKey, defaultFaceId, destructive, faceGroups, factChips, faceSettled, foldOpensItself, heldFace, inFlightGate, pressOutcome, scanError, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
+import { Icon } from "../chrome/icons.tsx";
+import { BoothIcon } from "./icons.tsx";
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
@@ -31,9 +33,9 @@ export interface CardSeed {
 }
 
 /** The fetch error a performer can act on (the doors, a guest who left). */
-function cardError(e: unknown): string {
+function cardError(e: unknown, view?: Parameters<typeof scanError>[1]): string {
   const msg = e instanceof Error ? e.message : String(e);
-  if (/doors are closed/i.test(msg)) return "The doors aren't open yet — the buttons work once they are.";
+  if (/doors are closed/i.test(msg)) return scanError(e, view).replace(/scan again/u, "the buttons work again");
   if (/unknown guest/i.test(msg)) return "That guest isn't in the event any more.";
   return msg;
 }
@@ -73,6 +75,11 @@ export function GuestCardBody({
   const [all, setAll] = useState<boolean | null>(null);
   const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
+  // The face as it stood at the last press (top to bottom), held still while
+  // the outcome lands above it (`heldFace`); a re-scan lets it go.
+  const [frozen, setFrozen] = useState<string[] | null>(null);
+  // The press that froze it: only that spent row reads "Done" (`goneLine`).
+  const [pressedId, setPressedId] = useState<string | null>(null);
   const arm = useArmButtons();
   const host = usePlayHost();
   // Escape closes the "Share lore…" picker first (the booth window leaves
@@ -116,7 +123,7 @@ export function GuestCardBody({
         setCard(c);
       },
       (e) => {
-        if (readFor.current === key) setErr(cardError(e));
+        if (readFor.current === key) setErr(cardError(e, session.view));
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,17 +134,27 @@ export function GuestCardBody({
   const name = guest?.name ?? guestId;
   const where = guest?.location ? (view?.channels.find((c) => c.id === `loc:${guest.location}`)?.title ?? guest.location) : null;
   const chips = guest !== null ? factChips(guest, where) : [];
-  const buttons = cardButtons(view?.interactions ?? [], objectives, card, character, admin || boothHost(session.auth, view));
+  const read = cardButtons(view?.interactions ?? [], objectives, card, character, admin || boothHost(session.auth, view));
+  const buttons = heldFace(read.face, read.rest, frozen, view?.interactions ?? []);
   const lore = view?.codex ?? [];
   const restLive = buttons.rest.some((b) => b.live);
-  const allOpen = all ?? foldOpensItself(buttons, card !== null);
+  const allOpen = all ?? foldOpensItself(read, card !== null);
+  // Every control on the card ignores a tap inside the settle after the
+  // card was replaced — Next guest and the utility row too, so a second tap
+  // never lands on whatever moved under the finger.
+  const settled = () => faceSettled(landedAt.current, Date.now());
+  const guard = (f: () => void) => () => {
+    if (settled()) f();
+  };
   const shown = new Set((outcome ?? []).filter((l) => l.kind === "reply").map((l) => l.text));
   const past = (card?.readouts ?? []).filter((r) => !shown.has(r.text.trim()));
 
   const press = (b: CardButton) => {
     const i = b.interaction;
-    if (busy !== null || !faceSettled(landedAt.current, Date.now())) return;
-    arm.tap(i.id, i.arm, () => {
+    if (busy !== null || !settled()) return;
+    arm.tap(i.id, armsFirst(i), () => {
+      setFrozen(buttons.face.map((x) => x.interaction.id));
+      setPressedId(i.id);
       setBusy(i.id);
       setErr("");
       setOutcome(null);
@@ -150,7 +167,8 @@ export function GuestCardBody({
         },
         (e) => {
           setBusy(null);
-          setErr(e instanceof Error ? e.message : String(e));
+          landed();
+          setErr(cardError(e, session.view));
         },
       );
     });
@@ -164,6 +182,7 @@ export function GuestCardBody({
     setScanning(true);
     setErr("");
     setOutcome(null);
+    setFrozen(null);
     const settle = () => setScanning(false);
     pending.then(
       (r) => {
@@ -176,25 +195,26 @@ export function GuestCardBody({
         settle();
         landed();
         if (scanRepeated(e)) setOutcome([SCAN_REPEATED]);
-        else setErr(e instanceof Error ? e.message : String(e));
+        else setErr(cardError(e, session.view));
       },
     );
   };
 
-  // The Win95 default button: the first face button an objective asks for.
-  const defaultId = buttons.face.find((b) => b.named === true)?.interaction.id ?? null;
-  const btn = (b: CardButton, size: "face" | "all") => {
+  // The Win95 default button: the first harmless face button an objective asks for.
+  const defaultId = defaultFaceId(buttons.face);
+  const btn = (b: CardButton & { gone?: true }, size: "face" | "all") => {
     const i = b.interaction;
     const armed = arm.armed === i.id;
-    const sub = armed ? ARM_LINE : !b.live ? `Not on offer now${i.description ? ` · ${i.description}` : ""}` : i.description;
+    const harm = destructive(i);
+    const sub = armed ? ARM_LINE : b.gone === true ? goneLine(i.id, pressedId) : !b.live ? `Not on offer now${i.description ? ` · ${i.description}` : ""}` : i.description;
     return (
       <button
         key={i.id}
         type="button"
-        className={`w95-btn booth-btn ${size === "face" ? "booth-face-btn" : "booth-all-btn"}${size === "face" && i.id === defaultId ? " booth-default" : ""} ${armed ? "armed" : ""} ${b.live ? "" : "off"}`}
+        className={`w95-btn booth-btn ${size === "face" ? "booth-face-btn" : "booth-all-btn"}${size === "face" && i.id === defaultId ? " booth-default" : ""}${harm ? " harm" : ""} ${armed ? "armed" : ""} ${b.live ? "" : "off"}`}
         aria-pressed={armed || undefined}
         aria-busy={busy === i.id || undefined}
-        disabled={busy !== null}
+        disabled={busy !== null || b.gone === true}
         onClick={() => press(b)}
       >
         <span className="booth-btn-label">{busy === i.id ? `${i.label} …` : i.label}</span>
@@ -202,91 +222,119 @@ export function GuestCardBody({
       </button>
     );
   };
+  const face = faceGroups(buttons.face);
+  const restGroups = faceGroups(buttons.rest);
+  const harmGroup = (list: readonly CardButton[], size: "face" | "all") =>
+    list.length > 0 && (
+      <div className="booth-harm" role="group" aria-label={`Marks or captures ${name}`}>
+        <span className="booth-harm-head">
+          <BoothIcon name="warning" /> Marks or captures {name}: tap twice
+        </span>
+        {list.map((b) => btn(b, size))}
+      </div>
+    );
+  const none = buttons.face.length === 0 && card !== null && (
+    <p className="booth-none">
+      {restLive && (objectives ?? []).length > 0
+        ? allOpen
+          ? `Nothing your objective needs on ${name} right now — the other buttons are below.`
+          : `Nothing your objective needs on ${name} right now.`
+        : restLive
+          ? `Nothing to lead with on ${name} — the buttons are below.`
+          : `Nothing for ${character} to press on ${name} right now.`}
+    </p>
+  );
 
   return (
     <div className="booth-card">
-      <div className="booth-card-who">
-        <PersonAvatar name={name} size="md" />
-        <div className="booth-card-name">
-          <strong>{name}</strong>
-          <span className="booth-card-id">
-            {guest?.faction ?? "unaligned"} · {guestId}
-          </span>
+      <div className="booth-card-scroll">
+        <div className="booth-card-who">
+          <PersonAvatar name={name} size="md" />
+          <div className="booth-card-name">
+            <strong>{name}</strong>
+            <span className="booth-card-id">
+              {guest?.faction ?? "unaligned"} · {guestId}
+            </span>
+          </div>
         </div>
-      </div>
-      {chips.length > 0 && (
-        <ul className="booth-facts" aria-label="Facts">
-          {chips.map((c) => (
-            <li key={c.text} className={`booth-fact ${c.tone}`}>
-              {c.text}
-            </li>
-          ))}
-        </ul>
-      )}
-      {outcome !== null && <Outcome lines={outcome} />}
-      {err && (
-        <div className="booth-err" role="alert">
-          {err}
-        </div>
-      )}
-      <div className="booth-face">
-        {buttons.face.map((b) => btn(b, "face"))}
-        {buttons.face.length === 0 && card !== null && (
-          <p className="booth-none">
-            {restLive && (objectives ?? []).length > 0
-              ? allOpen
-                ? `Nothing your objective needs on ${name} right now — the other buttons are below.`
-                : `Nothing your objective needs on ${name} right now.`
-              : restLive
-                ? `Nothing to lead with on ${name} — the buttons are below.`
-                : `Nothing for ${character} to press on ${name} right now.`}
-          </p>
+        {chips.length > 0 && (
+          <ul className="booth-facts" aria-label="Facts">
+            {chips.map((c) => (
+              <li key={c.text} className={`booth-fact ${c.tone}`}>
+                {c.text}
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
-      <div className="booth-utils">
-        <button type="button" className="w95-btn" onClick={onOpenThread}>
-          💬 Message
-        </button>
-        {lore.length > 0 && (
-          <button type="button" className="w95-btn" onClick={() => setSharing(true)}>
-            📓 Share lore…
-          </button>
+        {outcome !== null && <Outcome lines={outcome} />}
+        {err && (
+          <div className="booth-err" role="alert">
+            {err}
+          </div>
         )}
-        <button type="button" className="w95-btn" onClick={rescan} disabled={scanning} aria-busy={scanning || undefined}>
-          {scanning ? "📡 Scanning…" : "📡 Scan again"}
-        </button>
-        {admin && view?.legacyCapture && (
-          <button type="button" className="w95-btn" onClick={() => void session.moderate(guestId, guest?.captured ? "release" : "capture")}>
-            {guest?.captured ? "🔓 Release" : "🔒 Capture"}
+        {none}
+        <div className="booth-utils">
+          <button type="button" className="w95-btn booth-util" onClick={guard(onOpenThread)}>
+            <BoothIcon name="message" /> Message
           </button>
-        )}
-      </div>
-      {past.length > 0 && (
-        <div className="booth-earlier">
-          <button type="button" className="booth-fold" aria-expanded={earlier} onClick={() => setEarlier((v) => !v)}>
-            {earlier ? "▾" : "▸"} Earlier readouts ({past.length})
+          {lore.length > 0 && (
+            <button type="button" className="w95-btn booth-util" onClick={guard(() => setSharing(true))}>
+              <BoothIcon name="lore" /> Share lore…
+            </button>
+          )}
+          <button type="button" className="w95-btn booth-util" onClick={rescan} disabled={scanning} aria-busy={scanning || undefined}>
+            <BoothIcon name="rescan" /> {scanning ? "Scanning…" : "Scan again"}
           </button>
-          {earlier && (
-            <ul className="booth-earlier-list">
-              {past.map((r) => (
-                <li key={r.seq}>{r.text}</li>
-              ))}
-            </ul>
+          {admin && view?.legacyCapture && (
+            <button type="button" className="w95-btn booth-util" onClick={guard(() => void session.moderate(guestId, guest?.captured ? "release" : "capture"))}>
+              {guest?.captured ? "🔓 Release" : "🔒 Capture"}
+            </button>
           )}
         </div>
-      )}
-      {buttons.rest.length > 0 && (
-        <div className="booth-all">
-          <button type="button" className="booth-fold" aria-expanded={allOpen} onClick={() => setAll(!allOpen)}>
-            {allOpen ? "▾" : "▸"} All buttons… ({buttons.rest.length})
-          </button>
-          {allOpen && <div className="booth-all-list">{buttons.rest.map((b) => btn(b, "all"))}</div>}
+        {past.length > 0 && (
+          <div className="booth-earlier">
+            <button type="button" className="booth-fold" aria-expanded={earlier} onClick={guard(() => setEarlier((v) => !v))}>
+              {earlier ? "▾" : "▸"} Earlier readouts ({past.length})
+            </button>
+            {earlier && (
+              <ul className="booth-earlier-list">
+                {past.map((r) => (
+                  <li key={r.seq}>{r.text}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {buttons.rest.length > 0 && (
+          <div className="booth-all">
+            <button type="button" className="booth-fold" aria-expanded={allOpen} onClick={guard(() => setAll(!allOpen))}>
+              {allOpen ? "▾" : "▸"} All buttons… ({buttons.rest.length})
+            </button>
+            {allOpen && (
+              <div className="booth-all-list">
+                {restGroups.safe.map((b) => btn(b, "all"))}
+                {harmGroup(restGroups.harm, "all")}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {/* The face and Next guest sit on the window's bottom edge, in thumb
+          reach, and hold still after a press (the outcome lands above). */}
+      {(buttons.face.length > 0 || onNext !== undefined) && (
+        <div className="booth-card-foot">
+          {buttons.face.length > 0 && (
+            <div className="booth-face">
+              {harmGroup(face.harm, "face")}
+              {face.safe.map((b) => btn(b, "face"))}
+            </div>
+          )}
+          {onNext !== undefined && (
+            <button type="button" className="w95-btn booth-next" onClick={guard(onNext)}>
+              <Icon name="scan" /> Next guest
+            </button>
+          )}
         </div>
-      )}
-      {onNext !== undefined && (
-        <button type="button" className="w95-btn booth-next" onClick={onNext}>
-          📷 Next guest
-        </button>
       )}
       {sharing && (
         <PickerSheet
@@ -314,6 +362,7 @@ export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
           </p>
         ) : l.kind === "staff" ? (
           <p key={n} className={l.refused ? "booth-refusal" : "booth-staff"}>
+            {l.refused && <BoothIcon name="warning" className="booth-refusal-ico" />}
             <span className="booth-refusal-tag">{l.refused ? "Not done:" : "Staff room:"}</span> {l.text}
           </p>
         ) : (
@@ -344,8 +393,18 @@ export function GuestCard({
 }) {
   const name = session.view?.guests.find((g) => g.id === guestId)?.name ?? seed?.card?.guest.name ?? guestId;
   return (
-    <BoothLayer title={`🪪 ${name}`} label={`${name}'s card`} onClose={onClose}>
-      <GuestCardBody session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} />
+    <BoothLayer title={<CardTitle name={name} />} label={`${name}'s card`} onClose={onClose}>
+      {/* Keyed per guest: a card's held face, outcome and fold never carry over to another guest. */}
+      <GuestCardBody key={guestId} session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} />
     </BoothLayer>
+  );
+}
+
+/** A card window's caption: the drawn ID card, then the guest's name. */
+export function CardTitle({ name }: { name: string }) {
+  return (
+    <span className="booth-layer-title">
+      <BoothIcon name="card" /> {name}
+    </span>
   );
 }

@@ -14,21 +14,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrimeSession } from "../session/prime.ts";
 import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "../scan.ts";
 import { CameraScanner } from "../scanner.tsx";
-import { GuestCardBody, type CardSeed } from "./card.tsx";
+import { CardTitle, GuestCardBody, type CardSeed } from "./card.tsx";
 import { BoothLayer } from "./layer.tsx";
-import { cameraOn, closedGate, passAccepted, scannerClose } from "./model.ts";
+import { cameraOn, closedGate, passAccepted, scanError, scannerClose } from "./model.ts";
+import { Icon } from "../chrome/icons.tsx";
 
 /** How long a just-closed card's pass is ignored by the camera. */
 export const CLOSED_PASS_MS = 4000;
 
-/** The typed-id fallback (no camera, plain http, a pass that won't read). */
-export function Scanner({ onScan, busy = false }: { onScan: (id: string) => void; busy?: boolean }) {
+/** The typed-id fallback (no camera, plain http, a pass that won't read).
+ *  `onScan` answers whether the scan went through: the typed id is cleared
+ *  only then, so a scan turned down (a paused show) keeps it for the retry. */
+export function Scanner({ onScan, busy = false }: { onScan: (id: string) => Promise<boolean> | void; busy?: boolean }) {
   const [manual, setManual] = useState("");
   const typed = () => {
     const target = typedTarget(manual);
     if (!target) return;
-    onScan(target);
-    setManual("");
+    const sent = onScan(target);
+    if (sent === undefined) setManual("");
+    else
+      void sent.then((ok) => {
+        if (ok) setManual((now) => (typedTarget(now) === target ? "" : now));
+      });
   };
   return (
     <form
@@ -104,23 +111,25 @@ export function ScannerScreen({
     else el.removeAttribute("inert");
   }, [card]);
 
-  const doScan = (id: string) => {
-    if (!id || busy) return;
+  const doScan = (id: string): Promise<boolean> => {
+    if (!id || busy) return Promise.resolve(false);
     setErr("");
     setNote(`Scanning ${id}…`);
     setBusy(true);
     onCardGuest?.(id);
-    session.scan(id).then(
+    return session.scan(id).then(
       (r) => {
         setBusy(false);
         setNote("");
         onCardGuest?.(r.guest.id);
         setCard({ id: r.guest.id, seed: { card: r.card, replies: r.responses, ...(r.said !== undefined ? { said: r.said } : {}), ...(r.staff !== undefined ? { staff: r.staff } : {}), ...(r.refused !== undefined ? { refused: r.refused } : {}) } });
+        return true;
       },
       (e) => {
         setBusy(false);
         setNote("");
-        setErr(e instanceof Error ? e.message : String(e));
+        setErr(scanError(e, session.view));
+        return false;
       },
     );
   };
@@ -132,7 +141,7 @@ export function ScannerScreen({
       return;
     }
     if (!passAccepted(card !== null, busy, gate.allows(hit.id))) return;
-    doScan(hit.id);
+    void doScan(hit.id);
   };
   const next = () => {
     if (card !== null) gate.closed(card.id);
@@ -144,7 +153,7 @@ export function ScannerScreen({
 
   const name = card === null ? "" : (card.seed.card?.guest.name ?? session.view?.guests.find((g) => g.id === card.id)?.name ?? card.id);
   return (
-    <BoothLayer title={card !== null ? `🪪 ${name}` : "📷 Scan a pass"} label={card !== null ? `${name}'s card` : "Scanner"} onClose={close}>
+    <BoothLayer title={card !== null ? <CardTitle name={name} /> : <span className="booth-layer-title"><Icon name="scan" /> Scan a pass</span>} label={card !== null ? `${name}'s card` : "Scanner"} onClose={close}>
       <div className={`booth-scan ${card !== null ? "behind" : ""}`} ref={scanBox} aria-hidden={card !== null || undefined}>
         <div className={`booth-cam ${cam}`}>
           {live && !problem && <CameraScanner onCode={onCode} onState={setCam} />}

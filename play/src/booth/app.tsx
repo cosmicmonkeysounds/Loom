@@ -16,7 +16,7 @@ import { WalletActionsProvider, useWalletClock } from "../wallet.tsx";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
 import { useDocumentTitle } from "../session/shared.ts";
 import { INBOX, usePrimeSession } from "../session/prime.ts";
-import type { Action, Channel } from "../types.ts";
+import type { Action, Channel, ChatMessage } from "../types.ts";
 import { usePush } from "../push.ts";
 import { PushCard } from "../push-card.tsx";
 import { opensHome } from "../room.ts";
@@ -32,11 +32,39 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothFoldable, boothHost, boothSidebar, closedGate, guestsWaiting } from "./model.ts";
+import { boothFoldable, boothHost, boothSidebar, closedGate, guestsWaiting, soonest, viewPaused } from "./model.ts";
+import { boothMomentFeed } from "./moments-feed.ts";
+import { Icon } from "../chrome/icons.tsx";
+import { BoothIcon } from "./icons.tsx";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
 import { BoothTray } from "./tray.tsx";
+
+/**
+ * A guest's thread as the booth shows it: its rows come from several rooms,
+ * so each wears its room's name as a chip — except the booth's own DM with
+ * the guest (`dm:<Character>`), whose room name is the character's own
+ * ("DOOR DEE Encarta: Is the party open yet?" read as the booth's name
+ * tagging the guest's line). Those rows wear no chip: the DM is the
+ * thread itself (an empty title; `booth.css` hides the empty chip).
+ */
+export function guestThreadView(c: Channel, character: string): Channel {
+  const own = `dm:${character}`;
+  if (character === "" || !c.messages.some((m) => m.channel === own)) return c;
+  return { ...c, messages: c.messages.map((m) => (m.channel === own ? dmRow(m) : m)) };
+}
+
+/** One relabelled row per message, kept: the stream sees the same object every render. */
+const dmRows = new WeakMap<ChatMessage, ChatMessage>();
+function dmRow(m: ChatMessage): ChatMessage {
+  let row = dmRows.get(m);
+  if (row === undefined) {
+    row = { ...m, title: "" };
+    dmRows.set(m, row);
+  }
+  return row;
+}
 
 /** The room a performer lands in wide: the broadcast feed. */
 export function boothHome(list: Channel[]): string | null {
@@ -46,11 +74,12 @@ export function boothHome(list: Channel[]): string | null {
 /** The booth's frame: owns the keyboard rule (the taskbar and the NEXT bar
  *  step aside while a text field in the frame has focus). Its own
  *  component, so the listener attaches when the frame mounts (after sign-in). */
-function BoothFrame({ children }: { children: (keyboard: boolean) => ReactNode }) {
+function BoothFrame({ children, clocked = false }: { children: (keyboard: boolean) => ReactNode; clocked?: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
   const keyboard = useKeyboardOpen(frame as RefObject<HTMLElement>); // React 19 types (the editor) widen the ref with null
   return (
-    <div className="app-frame booth-frame" ref={frame}>
+    // `clocked`: a countdown sits in the tray — a narrow phone's Guests drops its word for it.
+    <div className={`app-frame booth-frame${clocked ? " clocked" : ""}`} ref={frame}>
       {children(keyboard)}
     </div>
   );
@@ -86,6 +115,17 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const signedIn = s.auth !== null && s.ready;
   const activeId = t.activeId;
   const home = boothHome(t.list);
+  // What the moments layer reads (`moments-feed.ts`): staff-room lines from
+  // someone else raise a balloon, a burst of same-kind readouts is one sticky.
+  const character0 = s.auth?.character ?? "";
+  const staffKey = (s.view?.staffRooms ?? []).join("\n");
+  const guestKey = (s.view?.guests ?? []).map((g) => `${g.id}\t${g.name}`).join("\n");
+  const momentFeed = useMemo(() => {
+    const guests = s.view?.guests ?? [];
+    const byId = new Map(guests.map((g) => [g.id, g.name]));
+    return boothMomentFeed(s.messages, { character: character0, staffRooms: new Set(s.view?.staffRooms ?? []), guestName: (id) => byId.get(id) ?? null, names: guests.map((g) => g.name) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.messages, character0, staffKey, guestKey]);
   // The approver's queue countdowns tick between snapshots, as the guest
   // wallet's do (a quiet stretch pushes no view).
   const walletClock = useWalletClock(s.view?.clock, s.view?.wallet);
@@ -161,7 +201,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       const gid = active.id.slice("guest:".length);
       stage = (
         <ChannelView
-          channel={active}
+          channel={guestThreadView(active, character)}
           wide={wide}
           onBack={t.back}
           showChannel
@@ -172,7 +212,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
           pins={activePins(active.messages)}
           headerActions={
             <button className="w95-btn booth-head-btn" title="This guest's card" onClick={() => openCard(gid)}>
-              🪪 Card
+              <BoothIcon name="card" /> Card
             </button>
           }
         />
@@ -223,13 +263,14 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     // The room open now: a guest's line in the thread being read is no balloon.
     here: t.activeId,
     session: s.auth.token,
-    messages: s.messages,
+    messages: momentFeed,
     alerts: s.alerts,
     alertLevel: s.view?.alertLevel,
     objectives: s.view?.objectives,
     phase: s.view?.night?.phase,
     clock: s.view?.clock,
-    openRoom: t.open,
+    // A readout's room is the booth's own `dm:<Character>`: that is Readouts here.
+    openRoom: (id) => t.open(id === `dm:${character}` ? INBOX : id),
     filter: boothAlertFilter(character),
     sound: host.sound,
     cardGuest: () => cardGuest.current,
@@ -255,10 +296,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
           <div className="root">
-            <BoothFrame>
+            <BoothFrame clocked={soonest(s.view?.countdowns, s.view?.clock ?? null) !== null}>
               {(keyboard) => (
                 <>
-              <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={pill} closeKey={activeId} session={token} compact={keyboard} />
+              <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={pill} closeKey={activeId} session={token} compact={keyboard} paused={viewPaused(s.view)} />
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room — or 📷 Scan a pass." />
@@ -273,8 +314,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                   start={start}
                   startHeader={<StartHeader s={s} />}
                   buttons={[
-                    { id: "scan", label: "Scan", icon: "📷", primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
-                    { id: "guests", label: "Guests", icon: "🗂", title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
+                    { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
+                    { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
                   tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} />}
                   conn={s.connected ? "live" : "reconnecting"}

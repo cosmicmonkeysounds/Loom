@@ -97,20 +97,28 @@ describe("the performer's own ticks (fix round)", () => {
   });
 });
 
-describe("the tray's act (fix round)", () => {
-  it("reads the NOW objective's act: Doors during the doors, never the act of NEXT ahead of time", () => {
+describe("the tray's act (D2: the story's act, as the NEXT strip reads it)", () => {
+  it("reads the cue sheet's act, never a long objective's own; Doors before the first act", () => {
     const sheet = { code: "B", title: "Act I: the Desktop, Bingo and the first truth" };
-    expect(trayAct(sheet, [{ act: "Doors" }])).toEqual({ text: "Doors", title: "Doors" });
-    expect(trayAct(sheet, [{ act: "B" }])).toEqual({ text: "Act B", title: "Act B · Act I: the Desktop, Bingo and the first truth" });
-    expect(trayAct(sheet, [{ act: "C" }])).toEqual({ text: "Act C", title: "Act C" });
-    expect(trayAct(sheet, [{ act: null }])).toEqual(actChip(sheet));
-    expect(trayAct(sheet, [])).toEqual(actChip(sheet));
+    expect(trayAct(sheet, 3)).toEqual({ text: "Act B", title: "Act B · Act I: the Desktop, Bingo and the first truth" });
+    expect(trayAct(sheet, 3)).toEqual(actChip(sheet));
+    expect(trayAct({ code: null, title: "Anytime" }, 3)).toEqual({ text: "Anytime", title: "Act Anytime" });
+    expect(trayAct(null, 3)).toBeNull();
     expect(trayAct(null, undefined)).toBeNull();
-    // An objective with no act (a host's help desk) during the doors (step 0): "Doors", never the act of NEXT.
-    expect(trayAct(sheet, [{ act: null }], 0)).toEqual({ text: "Doors", title: "Doors: the first act has not started" });
-    expect(trayAct(sheet, [], 1)).toEqual(actChip(sheet));
-    expect(trayAct(sheet, [{ act: "Doors" }], 0)).toEqual({ text: "Doors", title: "Doors" });
-    expect(trayAct(null, [], 0)).toBeNull();
+    // The doors (step 0): "Doors", never the act of NEXT ahead of time.
+    expect(trayAct(sheet, 0)).toEqual({ text: "Doors", title: "Doors: the first act has not started" });
+    expect(trayAct(null, 0)).toBeNull();
+    // A server that names the act as a word (`PrimeView.act`) wins over the sheet.
+    expect(trayAct(sheet, 5, "D")).toEqual({ text: "Act D", title: "Act D" });
+    expect(trayAct(sheet, 5, "Finale")).toEqual({ text: "Finale", title: "Finale" });
+    expect(trayAct(null, 0, "B")).toEqual({ text: "Doors", title: "Doors: the first act has not started" });
+  });
+  it("is set in full ink, never the dim (disabled-looking) tray tone", () => {
+    const view = { night: { act: { code: "C", title: "Act II" }, phase: null, step: 5 }, objectives: [{ id: "o", title: "Long", brief: "", checklist: [], buttons: [], act: "B" }] } as unknown as PrimeView;
+    const html = renderToStaticMarkup(<BoothTray view={view} onWallet={() => {}} />);
+    expect(html).toContain("Act C");
+    expect(html).not.toContain("Act B");
+    expect(html).not.toContain("tray-item dim");
   });
 });
 
@@ -127,8 +135,10 @@ describe("the tray", () => {
     expect(viewPaused(null)).toBe(false);
     const view = { clock: 100_000, countdowns: [{ label: "Summons", path: "b", endsAt: 300 }], paused: true } as unknown as PrimeView;
     const html = renderToStaticMarkup(<BoothTray view={view} onWallet={() => {}} />);
-    expect(html).toContain("⏸ 3:20");
-    expect(html).not.toContain("⏳");
+    // The drawn pause icon, then the time held still.
+    expect(html).toContain("ico-pause");
+    expect(html).toContain("<span>3:20</span>");
+    expect(html).not.toContain("ico-hourglass");
   });
   it("the soonest live countdown at story time", () => {
     const cds = [{ label: "Hunt 1", path: "a", endsAt: 900 }, { label: "Summons", path: "b", endsAt: 300 }, { label: "Done", path: "c", endsAt: 10 }];

@@ -1,6 +1,7 @@
 //! The booth taskbar's tray (wave 13), three items at most: the act chip
-//! (the NOW objective's act, else the cue sheet's; the CRA approver's 🧾
-//! held transfers take its place while any wait),
+//! (the story's current act — the cue sheet's, the one the NEXT strip
+//! shows — set in full ink; the CRA approver's held transfers take its
+//! place while any wait),
 //! the soonest countdown, and the moments layer's missed count.
 //! (The chrome lane's `CountdownTray` is the guest's clock; integration may
 //! swap it in here once it lands.) A view with `paused: true` stops the
@@ -10,6 +11,8 @@ import { useEffect, useRef, useState } from "react";
 import { storyNow } from "../director.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { MissedTray } from "../moments/provider.tsx";
+import { Icon } from "../chrome/icons.tsx";
+import { BoothIcon } from "./icons.tsx";
 import type { PrimeView } from "../types.ts";
 import { heldCount, soonest, trayAct, trayClock, viewPaused } from "./model.ts";
 
@@ -34,18 +37,20 @@ export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet
   const nowMs = storyNow(got.current.clock, got.current.at, Date.now(), !paused);
   const soon = soonest(view?.countdowns, nowMs);
   const held = heldCount(view?.wallet);
-  // The performer's own act (the NOW objective's): "Doors" until the show starts, never the act of NEXT ahead of time.
-  const act = trayAct(view?.night?.act, view?.objectives, view?.night?.step);
+  // D2: the story's act (the cue sheet's, as the NEXT strip reads it): "Doors" until the show starts.
+  const word = (view as { act?: unknown } | null)?.act;
+  const act = trayAct(view?.night?.act, view?.night?.step, typeof word === "string" ? word : null);
   return (
     <>
       {held > 0 ? (
-        <TrayItem icon="🧾" text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" />
+        <TrayItem icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" />
       ) : act !== null ? (
-        <TrayItem text={act.text} title={act.title} tone="dim" />
+        <TrayItem text={act.text} title={act.title} />
       ) : null}
       {soon !== null && (
         <TrayItem
-          text={trayClock(soon.left, paused)}
+          icon={<Icon name={paused ? "pause" : "hourglass"} />}
+          text={trayClock(soon.left, paused, false)}
           title={paused ? `${soon.label}: the clock is stopped (${Math.ceil(soon.left / 60)} min left)` : `${soon.label} ends in ${Math.ceil(soon.left / 60)} min`}
           tone={soon.left < URGENT && !paused ? "alarm" : undefined}
         />

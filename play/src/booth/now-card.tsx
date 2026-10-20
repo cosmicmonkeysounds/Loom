@@ -28,6 +28,9 @@ export function nowCount(o: ObjectiveView | Pick<ObjectiveView, "checklist">, ti
   return "id" in o ? checkCount(withTicks(o, ticks)) : checkCount(o);
 }
 
+/** What a paused show adds to the caption, the Win95 way (the guest's NOW bar's word, D3). */
+export const PAUSED = " (Paused)";
+
 /** How many checklist lines the pinned card always shows. */
 export const PINNED_CHECKS = 3;
 
@@ -107,6 +110,7 @@ export function NowCard({
   closeKey,
   session = null,
   compact = false,
+  paused = false,
 }: {
   objectives: readonly ObjectiveView[] | undefined;
   interactions: readonly Interaction[];
@@ -119,6 +123,9 @@ export function NowCard({
   session?: string | null;
   /** The keyboard is up: only the title bar stays (the checklist steps aside). */
   compact?: boolean;
+  /** The show is paused (`PrimeView.paused`): the caption greys out and says
+   *  "(Paused)", as the guest's NOW bar does (D3). */
+  paused?: boolean;
 }) {
   const host = usePlayHost();
   const [open, setOpen] = useState(false);
@@ -155,9 +162,12 @@ export function NowCard({
   if (now === undefined) {
     return (
       <div className="booth-now" ref={box}>
-        <div className="booth-now-bar idle">
+        <div className={`booth-now-bar idle${paused ? " paused" : ""}`}>
           <PersonAvatar name={character} size="sm" kind="character" />
-          <span className="booth-now-title">{character}</span>
+          <span className="booth-now-title">
+            {character}
+            {paused && PAUSED}
+          </span>
           {pill !== null && <span className="booth-now-pill">{pill}</span>}
         </div>
       </div>
@@ -179,10 +189,13 @@ export function NowCard({
   const hasMore = parts.length > 0;
   return (
     <div className={`booth-now pinned ${compact ? "compact" : ""}`} ref={box}>
-      <div className="booth-now-bar" role="group" aria-label={`Now: ${now.title}`}>
+      <div className={`booth-now-bar${paused ? " paused" : ""}`} role="group" aria-label={`Now: ${now.title}${paused ? PAUSED : ""}`}>
         <PersonAvatar name={character} size="sm" kind="character" />
         <span className="booth-now-k">NOW:</span>
-        <span className="booth-now-title wrap">{now.title}</span>
+        <span className="booth-now-title wrap">
+          {now.title}
+          {paused && PAUSED}
+        </span>
         {count !== "" && <span className="booth-now-count">{count}</span>}
         {pill !== null && <span className="booth-now-pill">{pill}</span>}
       </div>

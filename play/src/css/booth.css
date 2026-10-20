@@ -12,6 +12,10 @@
   font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
 }
 .booth-now-bar.idle { cursor: default; }
+/* D3: a paused show greys the caption the Win95 way (inactive), as the
+   guest's NOW bar does, and its title says "(Paused)". */
+.booth-now-bar.paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); }
+.booth-now-bar.paused .booth-now-count { color: var(--title-ink); }
 .booth-now-bar:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -4px; }
 .booth-now-bar .pavatar { flex: 0 0 auto; }
 .booth-now-k { flex: 0 0 auto; font-weight: 800; letter-spacing: 0.02em; }
@@ -86,7 +90,13 @@
 .booth-layer-box { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; outline: none; }
 .booth-layer-win { flex: 1 1 auto; min-height: 0; }
 .booth-layer-win > .w95-titlebar { min-height: var(--tap); font-size: 15px; }
-.booth-layer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
+.booth-layer-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column;
+}
+/* A window caption with its drawn icon in front. */
+.booth-layer-title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.booth-layer-title > span, .booth-layer-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .booth-layer-foot { flex: 0 0 auto; padding: 8px 12px; box-shadow: var(--raised); }
 @media (min-width: 820px) {
   /* A centred window that stops above the taskbar, never over it. */
@@ -117,7 +127,24 @@
 .booth-err { color: var(--maroon); font: 700 13px var(--ui-font); }
 
 /* ── a guest's card ─────────────────────────────────────────────────── */
-.booth-card { display: flex; flex-direction: column; gap: 10px; }
+/* The card fills its window: what it says scrolls, its face and Next guest
+   sit on the bottom edge in thumb reach (`.booth-card-foot`). */
+.booth-card { flex: 1 0 auto; display: flex; flex-direction: column; }
+.booth-card-scroll { display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px; }
+.booth-card-foot {
+  position: sticky; bottom: -14px; z-index: 1; margin: auto -12px -14px; padding: 10px 12px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--dialog-face); box-shadow: 0 -1px 0 var(--line);
+}
+:root[data-theme="aol97"] .booth-card-foot { box-shadow: 0 -1px 0 var(--bevel-d), inset 0 1px 0 var(--white); }
+/* A short phone (360 × 640): the foot keeps each button's first line of
+   description, so what the card says above still has room to scroll. */
+@media (max-height: 700px) {
+  .booth-card-foot { gap: 6px; padding-top: 8px; }
+  .booth-card-foot .booth-face-btn { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
+  .booth-card-foot .booth-btn-sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
+  .booth-card-foot .booth-next { min-height: var(--tap); }
+}
 .booth-card-who { display: flex; align-items: center; gap: 10px; }
 .booth-card-name { display: flex; flex-direction: column; min-width: 0; }
 .booth-card-name strong { font: 700 17px var(--ui-font); overflow-wrap: anywhere; }
@@ -150,6 +177,12 @@
 /* Nothing came back: a quiet note on the face, not a text box. */
 .booth-reply.none { padding: 0 2px; background: none; box-shadow: none; }
 .booth-face { display: flex; flex-direction: column; gap: 8px; }
+/* Presses that mark, capture or send the guest away: their own group under
+   a Win95 warning, apart from the harmless ones, never the default button. */
+.booth-harm { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; background: var(--face); box-shadow: var(--sunken); }
+.booth-harm-head { display: flex; align-items: center; gap: 6px; font: 700 12px var(--ui-font); color: var(--ink); }
+.booth-btn-label { display: flex; align-items: center; gap: 8px; }
+.booth-all-list .booth-harm { margin-top: 4px; }
 .booth-btn {
   flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;
   width: 100%; padding: 8px 14px; text-align: left;
@@ -164,7 +197,7 @@
 .booth-btn:disabled { opacity: 0.6; cursor: progress; }
 .booth-none { margin: 0; font: 13px var(--ui-font); color: var(--dim-ink); }
 .booth-utils { display: flex; flex-wrap: wrap; gap: 6px; }
-.booth-utils .w95-btn { flex: 1 1 auto; }
+.booth-utils .w95-btn { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .booth-fold {
   display: block; width: 100%; min-height: var(--tap); margin: 0; padding: 0 2px;
   border: none; background: none; color: var(--link); font: 700 13px var(--ui-font);
@@ -175,7 +208,12 @@
 .booth-all-list { display: flex; flex-direction: column; gap: 6px; }
 .booth-all-btn { min-height: var(--tap); }
 .booth-earlier-list { margin: 0; padding-left: 20px; font: 14px/1.35 var(--chat-font); }
-.booth-next { width: 100%; min-height: 52px; font: 700 15px var(--ui-font); }
+.booth-next { width: 100%; min-height: 52px; font: 700 15px var(--ui-font); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.booth-refusal-ico { display: inline-block; vertical-align: -2px; margin-right: 4px; }
+.booth-head-btn, .booth-readout-guest { display: inline-flex; align-items: center; gap: 6px; }
+
+/* A guest's thread: the booth's own DM rows carry no room chip (`guestThreadView`). */
+.booth-frame .msg-channel:empty { display: none; }
 
 /* ── 🗂 Guests ───────────────────────────────────────────────────────── */
 .booth-guests { display: flex; flex-direction: column; gap: 8px; }
@@ -209,6 +247,21 @@
 @media (max-width: 399px) {
   .booth-frame .taskbar .taskbar-btn[data-tour="guests"] .taskbar-label { display: inline; }
 }
+/* 📷 Scan is the booth's job: always the biggest control on the bar. It
+   takes the room first (a floor of ~38% of the bar); Guests and the tray
+   give way — Guests drops its word before Scan ever shrinks. */
+.booth-frame .taskbar .taskbar-btn.primary { flex: 2 0 auto; }
+@media (max-width: 599px) { .booth-frame .taskbar .taskbar-btn.primary { min-width: max(96px, 36%); } }
+.booth-frame .taskbar .taskbar-btn[data-tour="guests"] { flex: 0 1 auto; min-width: var(--tap); }
+.booth-frame .taskbar .taskbar-tray { flex: 0 0 auto; }
+/* A phone with a countdown in the tray: Guests is its icon and its badge
+   (the word stays its aria-label), so the clock is never cut and Scan
+   keeps its room. */
+@media (max-width: 419px) {
+  .booth-frame.clocked .taskbar .taskbar-btn[data-tour="guests"] .taskbar-label { display: none; }
+  .booth-frame.clocked .taskbar .taskbar-btn[data-tour="guests"] { padding: 0 8px; }
+}
+.booth-frame .taskbar .taskbar-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .booth-dock { flex: 0 0 auto; }
 .booth-head-btn { flex: 0 0 auto; font-weight: 700; }
 .booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

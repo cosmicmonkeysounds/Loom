@@ -31,8 +31,8 @@ const alert = (seq: number, phase?: string | null): ChatMessage =>
 describe("PrimeView.paused on the booth tray", () => {
   it("a paused booth view holds its countdown at ⏸; a running one ticks ⏳", () => {
     const countdowns = [{ label: "Summons", path: "Night.summons_at", endsAt: 300 }];
-    expect(renderToStaticMarkup(<BoothTray view={prime({ clock: 100_000, countdowns, paused: true })} onWallet={() => {}} />)).toContain("⏸ 3:20");
-    expect(renderToStaticMarkup(<BoothTray view={prime({ clock: 100_000, countdowns })} onWallet={() => {}} />)).toContain("⏳");
+    expect(renderToStaticMarkup(<BoothTray view={prime({ clock: 100_000, countdowns, paused: true })} onWallet={() => {}} />)).toMatch(/ico-pause.*<span>3:20<\/span>/su);
+    expect(renderToStaticMarkup(<BoothTray view={prime({ clock: 100_000, countdowns })} onWallet={() => {}} />)).toContain("ico-hourglass");
   });
 });
 

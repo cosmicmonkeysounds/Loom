@@ -59,9 +59,30 @@ export function badgeWorthy(m: ChatMessage, me: Viewer): boolean {
   return false;
 }
 
+/**
+ * A line in a booth's staff room (`# hosts`, `# quarantine`: a channel the
+ * booth's view lists in `staffRooms`) from anyone but the booth itself —
+ * a host's or a director's typed word, another booth's, the story's own
+ * note or refusal. Staff rooms carry an empty audience (everyone on staff
+ * reads them), so the addressed-to-you rule never counts them; they are
+ * where the hosts brief the Antivirus, so a booth must see them land.
+ * Never the booth's own words, a reply in a thread, a hidden or ambient row,
+ * a system row or a card.
+ */
+export function staffLineWorthy(m: ChatMessage, me: Viewer): boolean {
+  if (!me.booth || m.parentSeq != null || m.hidden || m.ambient) return false;
+  if (m.kind !== "line" && m.kind !== "narration" && m.kind !== "signal") return false;
+  if (m.text.trim() === "") return false;
+  const from = m.from.trim();
+  return from === "" || (from !== me.name && from !== me.id);
+}
+
 /** How many badge-worthy messages `c` has past `seen` (its read mark). An
- *  unknown viewer (an old call site) counts every message, as before. */
+ *  unknown viewer (an old call site) counts every message, as before. A
+ *  booth's staff room (`c.staff`) also counts every line someone else put
+ *  there (`staffLineWorthy`). */
 export function unreadOf(c: Channel, seen: number, me: Viewer | undefined): number {
-  const fresh = c.messages.filter((m) => m.seq > seen && (me === undefined || badgeWorthy(m, me))).length;
+  const staff = c.staff === true && me?.booth === true;
+  const fresh = c.messages.filter((m) => m.seq > seen && (me === undefined || badgeWorthy(m, me) || (staff && staffLineWorthy(m, me)))).length;
   return c.decision ? Math.max(1, fresh) : fresh;
 }
