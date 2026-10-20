@@ -13,6 +13,11 @@
 // ends with a fallback with no `while:`, so a phone always has an
 // objective, from the door to the end of the night.
 //
+// `loud: true` only where no `!` delivery from the same cue already raises
+// a major moment for that phone (one modal per beat, not two): today that
+// is Show Your Pass alone. The summons, the mark, the final reveal and the
+// pickup line ride their `!` alerts.
+//
 // `for:` reads a ROLE (Program), a GROUP (Hosts reaches Clippy too) or a
 // character. A guest's conditions read `program.*` (the guest) and
 // `Night.*`; a booth's read `Night.*` and `self.*` only (a booth objective
@@ -49,7 +54,6 @@ OBJECTIVE Go To The Internet
     An Antivirus will walk you through the Tube to the Internet for a reinstallation. Your buttons are off until you are reinstalled. Bathroom Mode still works: the Antivirus wait outside.
     - Escorted to the Internet, done when program.corrupted == true
   buttons: pass
-  loud: true
 
 // DRAFT for sign-off
 OBJECTIVE Find Gerald
@@ -111,7 +115,6 @@ OBJECTIVE Go To The Desktop
   title: Go to the Desktop: a game is about to begin
   text:
     Everyone to the living room. Clippy welcomes the programs and introduces the hosts.
-  loud: true
 
 // DRAFT for sign-off
 OBJECTIVE Play Computer Bingo
@@ -164,7 +167,6 @@ OBJECTIVE File Your Facts
     - Filed Q1, done when program.fact_h1 == true
     - Filed Q2, done when program.fact_h2 == true
     - Filed Q3, done when program.fact_h3 == true
-  loud: true
 
 // DRAFT for sign-off
 OBJECTIVE The First Moment Of Truth
@@ -207,7 +209,6 @@ OBJECTIVE Be At The Desktop
     Check in at the living-room door: an Antivirus or a host scans your pass. Late without Bathroom Mode means the Internet, and no Truth Pong.
     - Checked in, done when program.summons_ok == true
   buttons: pass
-  loud: true
 
 // DRAFT for sign-off
 OBJECTIVE The Door Is Closed
@@ -258,7 +259,6 @@ OBJECTIVE The Final Reveal
   title: The final reveal: to the living room
   text:
     Lights down. Everyone may speak: what you learned, what you believe, what should happen next.
-  loud: true
 
 // DRAFT for sign-off
 OBJECTIVE Bobbing For Truth
@@ -277,7 +277,6 @@ OBJECTIVE The Pickup Line
   title: Give Trabolta a pickup line that works on Sandy
   text:
     The card is in his thread. One line. The house judges it. It is the only way out.
-  loud: true
 
 // DRAFT for sign-off
 OBJECTIVE Help Or Thwart

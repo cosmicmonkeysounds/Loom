@@ -648,6 +648,16 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     for (const g of ["g5", "g6"]) expect(guestView(n.sim, g).objectives?.[0]?.id, g).toBe("The Night Is Over");
   }, SLOW);
 
+  it("loud only where no `!` from the same cue already raises a major moment: Show Your Pass alone", () => {
+    const m = Sim.fromSources(SRC).model;
+    expect([...m.objectives.values()].filter((o) => o.loud).map((o) => o.id)).toEqual(["Show Your Pass"]);
+    // The cues whose objectives were loud each raise their own `!` for the guest.
+    const n = boot();
+    expect(majorFor(n.press("call_to_the_desktop"), "g1").map((m) => m.text).some((t) => t.startsWith("📣 ALL PROGRAMS"))).toBe(true);
+    for (const c of TO_HOUR.slice(1)) n.press(c);
+    expect(majorFor(n.press("five_minute_warning"), "g1").map((m) => m.text).some((t) => t.startsWith("⏳ FIVE MINUTES"))).toBe(true);
+  }, SLOW);
+
   it("the Grok Prom night: the pickup line, the advice poll and the hand jive", () => {
     const table = new Map(walk("hand_jive"));
     const at = (label: string) => table.get(label)!;
