@@ -70,11 +70,18 @@ export function Composer({
           }
         }}
       />
-      <button className="choice composer-send" onClick={send} disabled={disabled || sending}>
+      {/* Send keeps the focus in the box (a chat app's Send): the keyboard
+          stays up, nothing moves under the finger, the next line is ready. */}
+      <button className="choice composer-send" onMouseDown={keepFocus} onClick={send} disabled={disabled || sending}>
         {sendLabel ?? "Send"}
       </button>
     </div>
   );
+}
+
+/** A mousedown that leaves the focus where it is (the box keeps it). */
+export function keepFocus(e: { preventDefault: () => void }): void {
+  e.preventDefault();
 }
 
 /** Send a composer's text: `null` for nothing to send, else whether to

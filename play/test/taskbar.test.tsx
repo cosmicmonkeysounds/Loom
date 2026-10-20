@@ -96,8 +96,10 @@ describe("the guest taskbar", () => {
     expect(frame(false).indexOf("title-bar")).toBeLessThan(frame(false).indexOf("taskbar"));
     expect(frame(true)).not.toContain('aria-label="Taskbar"');
     expect(frame(true)).toContain('class="title-bar"');
-    // What decides `typing`: a focused composer, until the keyboard is seen to close.
-    const typed = keyboardStep(KEYBOARD_REST, { kind: "focus", text: isTextEntry({ tagName: "TEXTAREA" } as Element), height: 800 });
+    // What decides `typing`: a focused composer once the viewport shows the
+    // keyboard, until the keyboard is seen to close.
+    const focused = keyboardStep(KEYBOARD_REST, { kind: "focus", text: isTextEntry({ tagName: "TEXTAREA" } as Element), height: 800 });
+    const typed = keyboardStep(focused, { kind: "resize", height: 480 });
     expect(keyboardIsOpen(typed)).toBe(true);
     expect(keyboardIsOpen(keyboardStep(typed, { kind: "focus", text: false, height: 800 }))).toBe(false);
   });
