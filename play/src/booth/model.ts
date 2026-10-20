@@ -164,18 +164,32 @@ export function heldFace(face: readonly CardButton[], rest: readonly CardButton[
   return { face: [...fresh, ...kept], rest: rest.filter((b) => !shown.has(b.interaction.id)) };
 }
 
+/** What a spent row on the held face says (`heldFace`'s `gone`): "Done" for
+ *  the press that was just made, never for a sibling that merely left the
+ *  face with it (that one was not done, only taken off offer). */
+export function goneLine(id: string, pressed: string | null): string {
+  return id === pressed ? "Done: not on offer now" : "Not on offer now";
+}
+
 /** What the scanner says when a scan is turned down. "doors are closed" is
  *  the server's word for a paused show (and for doors not yet open):
  *  never the raw lowercase error. */
 export function scanError(e: unknown, view?: { paused?: unknown; night?: { step?: number | null } | null } | null): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/doors are closed/iu.test(msg)) {
-    const before = view?.night?.step === 0 || view?.night?.step === null;
-    return before ? "The doors aren't open yet: scan again once they are." : "The show is paused: scan again when it resumes.";
+    const step = view?.night?.step;
+    // `Night.step` 0 is the doors (the first act not begun); a story with no
+    // Night says neither, so the line stays true either way.
+    if (step === 0 || step === null) return "The doors aren't open yet: scan again once they are.";
+    if (typeof step !== "number") return "The doors are closed right now: scan again once the show is running.";
+    return "The show is paused: scan again when it resumes.";
   }
   if (/unknown guest|no such guest|not a guest/iu.test(msg)) return "That pass isn't a guest in this event.";
   return msg;
 }
+
+/** A refused press or scan with no staff line to say why (D1). */
+export const REFUSED_SILENT = "the story took no action on this right now.";
 
 /** One line of what a press or a scan came to, as the card shows it. */
 export type OutcomeLine =
@@ -209,6 +223,9 @@ export function pressOutcome(
   for (const l of r.said ?? []) if (l !== null && typeof l === "object" && clean(l.text) !== "") out.push({ kind: "said", from: clean(l.from), text: clean(l.text) });
   const refused = r.refused === true;
   for (const t of r.staff ?? []) if (clean(t) !== "") out.push({ kind: "staff", text: clean(t), refused });
+  // D1: the story turned it down without a word (a press it does nothing
+  // with): say so, never "✔ Sent" — that reads as done.
+  if (refused && !out.some((l) => l.kind === "staff")) out.push({ kind: "staff", text: REFUSED_SILENT, refused: true });
   if (out.length > 0) return out;
   return [{ kind: "none", text: kind === "scan" ? "✔ Scanned — no reply from the story" : "✔ Sent — no reply from the story" }];
 }

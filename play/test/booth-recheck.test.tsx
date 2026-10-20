@@ -6,11 +6,11 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { armsFirst, defaultFaceId, destructive, faceGroups, heldFace, scanError, staffRow, type CardButton } from "../src/booth/model.ts";
+import { armsFirst, defaultFaceId, destructive, faceGroups, goneLine, heldFace, pressOutcome, REFUSED_SILENT, scanError, staffRow, type CardButton } from "../src/booth/model.ts";
 import { BURST_MS, boothMomentFeed, burstLine, burstNames, staffMoment } from "../src/booth/moments-feed.ts";
 import { guestThreadView } from "../src/booth/app.tsx";
 import { NowCard, PAUSED } from "../src/booth/now-card.tsx";
-import { GuestCardBody } from "../src/booth/card.tsx";
+import { GuestCardBody, Outcome } from "../src/booth/card.tsx";
 import { BOOTH_ICON_NAMES, BoothIcon } from "../src/booth/icons.tsx";
 import { momentOf } from "../src/moments/model.ts";
 import { boothAlertFilter } from "../src/alerts.ts";
@@ -72,9 +72,33 @@ describe("the face holds still after a press (finish review #4)", () => {
     expect(s.face.map((b) => [b.interaction.id, b.live])).toEqual([["check_in_at_desktop", true], ["accuse", true]]);
     expect(s.rest.map((b) => b.interaction.id)).toEqual(["vouch"]);
   });
+  it("only the press just made reads Done; a sibling that left the face with it was never done", () => {
+    expect(goneLine("send to the internet", "send to the internet")).toBe("Done: not on offer now");
+    expect(goneLine("accuse", "send to the internet")).toBe("Not on offer now");
+    expect(goneLine("accuse", null)).toBe("Not on offer now");
+  });
   it("a new face button joins at the top, so the rows under the thumb (the bottom) never move", () => {
     const r = heldFace([live(ANSWERED), live(WATCH)], [], ["accuse"], all);
     expect(r.face.map((b) => b.interaction.id)).toEqual(["truth_answered", "accuse"]);
+  });
+});
+
+describe("a refused press (D1)", () => {
+  it("reads Not done with the staff line, and with none says so: never a neutral ✔ Sent", () => {
+    expect(pressOutcome({ staff: ["🍾 Read a question's results first (📋)."], refused: true }, "press")).toEqual([{ kind: "staff", text: "🍾 Read a question's results first (📋).", refused: true }]);
+    expect(pressOutcome({ refused: true }, "press")).toEqual([{ kind: "staff", text: REFUSED_SILENT, refused: true }]);
+    // Not refused: the same staff line is the story's note, and silence is ✔ Sent.
+    expect(pressOutcome({ staff: ["🛡 WinZip sent to the Internet."] }, "press")).toEqual([{ kind: "staff", text: "🛡 WinZip sent to the Internet.", refused: false }]);
+    expect(pressOutcome({}, "press")[0]!.kind).toBe("none");
+  });
+  it("renders a refusal apart from a neutral staff note: maroon, the warning sign, Not done", () => {
+    const refused = renderToStaticMarkup(<Outcome lines={pressOutcome({ refused: true }, "press")} />);
+    expect(refused).toContain('class="booth-refusal"');
+    expect(refused).toContain("Not done:");
+    expect(refused).toContain("ico-warning");
+    const note = renderToStaticMarkup(<Outcome lines={pressOutcome({ staff: ["🛡 WinZip sent to the Internet."] }, "press")} />);
+    expect(note).toContain('class="booth-staff"');
+    expect(note).not.toContain("Not done:");
   });
 });
 
@@ -83,6 +107,9 @@ describe("a scan turned down (recheck nit)", () => {
     const e = new Error("doors are closed");
     expect(scanError(e, { paused: true, night: { step: 7 } })).toBe("The show is paused: scan again when it resumes.");
     expect(scanError(e, { paused: true, night: { step: 0 } })).toBe("The doors aren't open yet: scan again once they are.");
+    // A story with no Night: neither paused nor before the doors, so it says neither.
+    expect(scanError(e, { paused: true })).toBe("The doors are closed right now: scan again once the show is running.");
+    expect(scanError(e, null)).toBe("The doors are closed right now: scan again once the show is running.");
     expect(scanError(new Error("unknown guest"), null)).toBe("That pass isn't a guest in this event.");
     expect(scanError(new Error("boom"), null)).toBe("boom");
   });

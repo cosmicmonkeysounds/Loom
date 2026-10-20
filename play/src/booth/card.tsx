@@ -14,7 +14,7 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { armsFirst, boothHost, cardButtons, cardGuestFacts, cardReadKey, defaultFaceId, destructive, faceGroups, factChips, faceSettled, foldOpensItself, heldFace, inFlightGate, pressOutcome, scanError, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
+import { armsFirst, boothHost, goneLine, cardButtons, cardGuestFacts, cardReadKey, defaultFaceId, destructive, faceGroups, factChips, faceSettled, foldOpensItself, heldFace, inFlightGate, pressOutcome, scanError, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
 
@@ -78,6 +78,8 @@ export function GuestCardBody({
   // The face as it stood at the last press (top to bottom), held still while
   // the outcome lands above it (`heldFace`); a re-scan lets it go.
   const [frozen, setFrozen] = useState<string[] | null>(null);
+  // The press that froze it: only that spent row reads "Done" (`goneLine`).
+  const [pressedId, setPressedId] = useState<string | null>(null);
   const arm = useArmButtons();
   const host = usePlayHost();
   // Escape closes the "Share lore…" picker first (the booth window leaves
@@ -152,6 +154,7 @@ export function GuestCardBody({
     if (busy !== null || !settled()) return;
     arm.tap(i.id, armsFirst(i), () => {
       setFrozen(buttons.face.map((x) => x.interaction.id));
+      setPressedId(i.id);
       setBusy(i.id);
       setErr("");
       setOutcome(null);
@@ -203,7 +206,7 @@ export function GuestCardBody({
     const i = b.interaction;
     const armed = arm.armed === i.id;
     const harm = destructive(i);
-    const sub = armed ? ARM_LINE : b.gone === true ? "Done: not on offer now" : !b.live ? `Not on offer now${i.description ? ` · ${i.description}` : ""}` : i.description;
+    const sub = armed ? ARM_LINE : b.gone === true ? goneLine(i.id, pressedId) : !b.live ? `Not on offer now${i.description ? ` · ${i.description}` : ""}` : i.description;
     return (
       <button
         key={i.id}
@@ -391,7 +394,8 @@ export function GuestCard({
   const name = session.view?.guests.find((g) => g.id === guestId)?.name ?? seed?.card?.guest.name ?? guestId;
   return (
     <BoothLayer title={<CardTitle name={name} />} label={`${name}'s card`} onClose={onClose}>
-      <GuestCardBody session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} />
+      {/* Keyed per guest: a card's held face, outcome and fold never carry over to another guest. */}
+      <GuestCardBody key={guestId} session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} />
     </BoothLayer>
   );
 }
