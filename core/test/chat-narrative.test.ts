@@ -135,6 +135,9 @@ describe("location rooms", () => {
 
   it("routes a <respond:> readout to the scanning person's lobby feed", () => {
     const sim = Sim.fromSources(STAGE);
+    // wave 13: a readout reaches the lobby only for a person (a character's
+    // goes to its booth's dm: Inbox), so the person must exist.
+    sim.createPerson("g1", "Ada");
     const drafts = composeGuestMessages(sim, [{ type: "respond", to: "g1", text: "CAPTCHA passed." }]);
     expect(drafts[0]).toMatchObject({ channel: "lobby", kind: "narration", audience: ["g1"] });
   });

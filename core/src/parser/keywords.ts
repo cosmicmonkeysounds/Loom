@@ -33,6 +33,7 @@ export const DECLARATIONS: readonly string[] = [
   "INTERACTION",
   "CODEX",
   "QUEST",
+  "OBJECTIVE",
 ];
 
 /** Every keyword that opens a declaration, aliases included (`GROUP`). */

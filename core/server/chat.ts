@@ -27,6 +27,7 @@
 
 import type { Sim, SimEvent, WalletCard } from "../src/runtime/sim/index.ts";
 import { walletLine } from "./wallet.ts";
+import { isEffectManner, noticeKey, splitNotice, type MomentClass } from "../src/delivery.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
 // `private` come from authored SPACE/CHANNEL declarations. `location` is the
@@ -46,6 +47,19 @@ export interface CodexCard {
   via: "code" | "story" | "share";
   /** Who shared it (display name), for `via: "share"`. */
   from: string | null;
+  /** `CodexDef.category`; absent when null. */
+  category?: string;
+  /** What `about` names (same rule as `CodexEntryView.aboutKind`); absent when `about` is null. */
+  aboutKind?: "character" | "location" | "topic";
+}
+
+/** What a codex entry's `about:` names: a declared character, a declared
+ *  location, or anything else (a topic). Null when there is no subject. */
+export function codexAboutKind(model: Sim["model"], about: string | null): "character" | "location" | "topic" | null {
+  if (about === null) return null;
+  if (model.characters.has(about)) return "character";
+  if (model.locations.has(about)) return "location";
+  return "topic";
 }
 
 /** The quest a `quest` message is a step of. A quest's first message
@@ -116,6 +130,20 @@ export interface ChatMessage {
   quest?: QuestCard;
   /** The card a `wallet` message renders. */
   wallet?: WalletCard;
+  /** A scripted line's dialogue manner (`(glitch)`), parens stripped — shown by the client, and the source of `fx`. */
+  manner?: string;
+  /** Effect text: an effect manner (`isEffectManner`) or a `crawl: fx` speaker. The client crawls it in the fx tier. Only on `line` / `narration`. */
+  fx?: true;
+  /** A GENERATOR bark (`ambient` event): the client shows it in the dim ticker, never as a stream row, never badged. */
+  ambient?: true;
+  /** A per-person notice (`broadcast "~…"`): its collapse key (`noticeKey`). Consecutive notices in a room collapse client-side. */
+  notice?: string;
+  /** A `reply` readout (the `respond` event). */
+  readout?: true;
+  /** A booth readout's subject guest id (`respond.about`), when one was bound. */
+  about?: string;
+  /** The server's moment class (§2.3 rules); absent = not a moment. */
+  moment?: MomentClass;
 }
 
 /** A message before the store assigns it a `seq` + resolves `hidden`. A
@@ -339,6 +367,15 @@ export function splitAlert(rawCue: string): { cue: string; alert: boolean } {
   return { cue: t, alert: false };
 }
 
+/** A `reply` text as its reader sees it: a leading alert `!` stripped (the
+ *  Inbox / lobby row's rule), with whether it was there. Every path that
+ *  hands a readout's text on — the act / scan replies, the booth's
+ *  `response` frame, the readout push — reads it through this. */
+export function readoutText(text: string): { text: string; alert: boolean } {
+  const { cue, alert } = splitAlert(text);
+  return { text: alert ? cue : text, alert };
+}
+
 /** Faction names referenced by a broadcast scope like `faction(Mods) | …`. */
 function factionsInScope(scope: string): string[] {
   return [...scope.matchAll(/faction\(([^)]+)\)/g)].map((m) => m[1]!.trim());
@@ -406,30 +443,40 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
 
   for (const e of events) {
     switch (e.type) {
-      case "dialogue":
+      case "dialogue": {
+        // The delivery: the block's manner rides the line, and a line is
+        // effect text when the manner says so or the speaker always crawls.
+        const fx = isEffectManner(e.manner) || sim.model.characters.get(e.speaker)?.crawl === "fx";
+        const delivery = { ...(e.manner !== undefined ? { manner: e.manner } : {}), ...(fx ? { fx: true as const } : {}) };
         if (e.audience.length > 0) {
           // A character addressing you → that character's DM thread.
           for (const p of e.audience) lastSpeaker.set(p, e.speaker);
-          out.push({ ...dmChannel(e.speaker), from: e.speaker, kind: "line", text: e.text, ts, audience: [...e.audience], parentSeq: null, beat: e.beat });
+          out.push({ ...dmChannel(e.speaker), from: e.speaker, kind: "line", text: e.text, ts, audience: [...e.audience], parentSeq: null, beat: e.beat, ...delivery });
         } else {
           // Un-addressed scripted speech (no participant bound — e.g. the
           // NARRATOR of an entry beat) is stage voice: it plays in the
           // setting's room for everyone, not a nobody-can-see-it DM.
-          out.push({ ...storyChannel(sim, e.setting), from: e.speaker, kind: "line", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat });
+          out.push({ ...storyChannel(sim, e.setting), from: e.speaker, kind: "line", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery });
         }
         break;
-      case "action":
+      }
+      case "action": {
         // Speakerless narration — the Narrator's word block, delivered to the
         // room the beat is set in. Previously dropped on the floor.
-        out.push({ ...storyChannel(sim, e.setting), from: "Narrator", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat });
+        const delivery = { ...(e.manner !== undefined ? { manner: e.manner } : {}), ...(isEffectManner(e.manner) ? { fx: true as const } : {}) };
+        out.push({ ...storyChannel(sim, e.setting), from: "Narrator", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, beat: e.beat, ...delivery });
         break;
+      }
       case "widget": {
         // `show kind "text" to scope` — a card the app renders inline. A
         // global one plays in the setting's room (else the lobby) for all;
         // an addressed one docks under whoever last spoke to each recipient
         // (their DM thread), else in the room, for those recipients.
         const widget = { kind: e.widget, text: e.text, params: { ...e.params } };
-        const base = { from: "", kind: "widget" as const, text: e.text, ts, parentSeq: null, beat: e.beat, widget };
+        // `with moment: major|minor` makes the card a moment (the param stays).
+        const momentParam = (e.params["moment"] ?? "").trim().toLowerCase();
+        const cardMoment = momentParam === "major" || momentParam === "minor" ? { moment: momentParam as MomentClass } : {};
+        const base = { from: "", kind: "widget" as const, text: e.text, ts, parentSeq: null, beat: e.beat, widget, ...cardMoment };
         if (e.audience.length === 0) {
           if (globalScope(e.scope)) out.push({ ...storyChannel(sim, e.setting), ...base, audience: "all" });
           break; // a narrowed scope that resolved to nobody: no card
@@ -460,11 +507,36 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         for (const { head, to } of byChannel.values()) out.push({ ...head, ...base, audience: to });
         break;
       }
-      case "respond":
-        // A device readout (`<respond:>`): a personal narration line in the
-        // lobby feed of whoever scanned (visible to the booth via SSE too).
-        out.push({ ...lobby, from: "", kind: "narration", text: e.text, ts, audience: e.to === "" ? "all" : [e.to], parentSeq: null });
+      case "respond": {
+        // A readout (`reply …`). A `reply !…` is an alert (a major moment);
+        // otherwise a personal readout is a minor one.
+        const { text, alert } = readoutText(e.text);
+        const flags = { readout: true as const, ...(alert ? { alert: true } : {}) };
+        if (e.to === "") {
+          // A story rule's reply with nobody acting: the lobby, for everyone.
+          out.push({ ...lobby, from: "", kind: "narration", text, ts, audience: "all", parentSeq: null, ...flags, ...(alert ? { moment: "major" as const } : {}) });
+        } else if (sim.persons.has(e.to)) {
+          // The participant's own readout, in their lobby feed.
+          out.push({ ...lobby, from: "", kind: "narration", text, ts, audience: [e.to], parentSeq: null, ...flags, moment: alert ? "major" : "minor" });
+        } else {
+          // A booth readout (a scanner prop → its performer): the character's
+          // own Inbox (`dm:<Character>`, addressed `@<Character>`), naming the
+          // guest it is about.
+          out.push({
+            ...dmChannel(e.to),
+            from: "",
+            kind: "narration",
+            text,
+            ts,
+            audience: [audienceOf(sim, e.to)],
+            parentSeq: null,
+            ...flags,
+            ...(e.about != null ? { about: e.about } : {}),
+            moment: alert ? "major" : "minor",
+          });
+        }
         break;
+      }
       case "chat": {
         // A participant typed into a channel. The sim baked the audience +
         // display name; route by the channel id (a reply carries parentSeq).
@@ -504,9 +576,14 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
       case "broadcast": {
         // A cue that begins with `!` (`broadcast "!Come to the Desktop." to
         // everyone`) is an alert: same message, plus the client's chime.
-        const { cue, alert } = splitAlert(e.cue);
+        // A `~` cue that is not an alert is a per-person notice: the client
+        // collapses a run of them by their leading glyph.
+        const split = splitAlert(e.cue);
+        const alert = split.alert;
+        const noticed = alert ? { cue: split.cue, notice: false } : splitNotice(split.cue);
+        const cue = noticed.cue;
         const text = cueText(cue);
-        const flag = alert ? { alert: true } : {};
+        const flag = alert ? { alert: true, moment: "major" as const } : noticed.notice ? { notice: noticeKey(text) } : {};
         const factions = factionsInScope(e.scope);
         const base: Audience = globalScope(e.scope) ? "all" : [...e.audience];
         const rooms = channelsInScope(sim, e.scope);
@@ -561,7 +638,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           const takeover = e.text.startsWith("!!");
           const alert = e.text.startsWith("!");
           const text = takeover ? e.text.slice(2).trim() : alert ? e.text.slice(1).trim() : e.text;
-          out.push({ ...h, kind: "signal", text, pin: e.key, ...(alert ? { alert: true } : {}), ...(takeover ? { takeover: true } : {}) });
+          // A `!` pin is a major moment; a takeover has its own layer.
+          out.push({ ...h, kind: "signal", text, pin: e.key, ...(alert ? { alert: true } : {}), ...(takeover ? { takeover: true } : alert ? { moment: "major" as const } : {}) });
         } else {
           out.push({ ...h, kind: "system", text: e.text ?? "📌 Cleared.", unpin: e.key });
         }
@@ -575,7 +653,17 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const title = def?.title ?? e.entry;
         const nameOf = (id: string) => sim.persons.get(id)?.name ?? id;
         {
-          const codex: CodexCard = { entry: e.entry, title, about: def?.about ?? null, via: e.via, from: e.from !== null ? nameOf(e.from) : null };
+          const about = def?.about ?? null;
+          const kind = codexAboutKind(sim.model, about);
+          const codex: CodexCard = {
+            entry: e.entry,
+            title,
+            about,
+            via: e.via,
+            from: e.from !== null ? nameOf(e.from) : null,
+            ...(def?.category != null ? { category: def.category } : {}),
+            ...(kind !== null ? { aboutKind: kind } : {}),
+          };
           out.push({ ...CODEX_ROOM, from: "", kind: "codex", text: def?.text ?? "", ts, audience: [audienceOf(sim, e.person)], parentSeq: null, codex });
         }
         if (e.via === "share" && e.from !== null && sim.persons.has(e.from)) {
@@ -602,7 +690,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           parentSeq: null,
           quest: { quest: e.quest, title, action: e.action },
           threadKey: `${e.person}\u0000${e.quest}`,
-          ...(e.action === "start" ? { threadRoot: true } : {}),
+          ...(e.action === "start" ? { threadRoot: true, moment: "minor" as const } : {}),
         });
         break;
       }
@@ -624,7 +712,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         });
         break;
       case "ambient":
-        out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null });
+        // A GENERATOR bark: the client's dim ticker, never a stream row.
+        out.push({ ...LOBBY, from: "", kind: "narration", text: e.text, ts, audience: "all", parentSeq: null, ambient: true });
         break;
       case "captured":
         out.push(sys(`⛓️ You've been taken to ${sim.model.locations.get(e.location)?.label ?? e.location}.`, [e.person]));

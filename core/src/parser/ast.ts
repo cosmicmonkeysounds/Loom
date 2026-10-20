@@ -87,6 +87,7 @@ export interface Declaration {
   interaction: InteractionBody | null;
   codex: CodexBody | null;
   quest: QuestBody | null;
+  objective: ObjectiveBody | null;
   span: Span;
 }
 
@@ -119,6 +120,7 @@ export function emptyDeclaration(
     interaction: null,
     codex: null,
     quest: null,
+    objective: null,
     span,
   };
 }
@@ -141,7 +143,8 @@ export type DeclarationKind =
   | "channel"
   | "interaction"
   | "codex"
-  | "quest";
+  | "quest"
+  | "objective";
 
 const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["CHARACTER", "character"],
@@ -162,6 +165,7 @@ const DECLARATION_KEYWORDS: ReadonlyArray<[string, DeclarationKind]> = [
   ["INTERACTION", "interaction"],
   ["CODEX", "codex"],
   ["QUEST", "quest"],
+  ["OBJECTIVE", "objective"],
 ];
 
 /**
@@ -523,6 +527,47 @@ export interface QuestBody {
 
 export function emptyQuestBody(): QuestBody {
   return { title: null, giver: null, text: "", properties: new Map() };
+}
+
+// ---------------------------------------------------------------------
+// OBJECTIVE — what someone should be doing right now (wave 13). A quest's
+// cousin with no log: display only, never journaled, recomputed from the
+// world on every view (`for:` names the audience, `while:` when it is live,
+// a `text:` block holds the brief and `- ` checklist bullets).
+// ---------------------------------------------------------------------
+
+/** `OBJECTIVE name` — what someone should be doing right now (wave 13).
+ *  Display only: never journaled, recomputed from the world on every view. */
+export interface ObjectiveBody {
+  /** `title:` (alias `label:`); null → the declaration name. */
+  title: string | null;
+  /** `for:` — names as written, comma-split, trimmed, empties dropped. */
+  for: string[];
+  /** `while:` condition text, trimmed; null when absent. "" when written empty (lint L1209). */
+  while: string | null;
+  /** `act:` as written (display only); null when absent. */
+  act: string | null;
+  /** `text:` (alias `brief:`) block lines that are NOT checklist bullets, re-flowed (`reflowText`). "" when none. */
+  brief: string;
+  /** The `- ` bullet lines inside the `text:` block, in order. */
+  checklist: ObjectiveCheckBody[];
+  /** `buttons:` — names as written, comma-split (`splitTopLevelCommas`), trimmed. */
+  buttons: string[];
+  /** `loud: true` (case-insensitive). */
+  loud: boolean;
+  properties: Map<string, PropertyValue>;
+}
+
+export interface ObjectiveCheckBody {
+  /** The bullet's text before `, done when`, trimmed (no leading `- `). */
+  label: string;
+  /** The condition after the first `, done when ` (case-insensitive), trimmed; null = a plain to-do. "" when written empty (lint L1209). */
+  done: string | null;
+  span: Span;
+}
+
+export function emptyObjectiveBody(): ObjectiveBody {
+  return { title: null, for: [], while: null, act: null, brief: "", checklist: [], buttons: [], loud: false, properties: new Map() };
 }
 
 // ---------------------------------------------------------------------

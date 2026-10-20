@@ -21,6 +21,12 @@ describe("keywords", () => {
     expect(declarationsWithKind().length).toBe(DECLARATIONS.length);
   });
 
+  it("knows OBJECTIVE (wave 13)", () => {
+    expect(DECLARATIONS).toContain("OBJECTIVE");
+    expect(declarationKind("OBJECTIVE")).toBe("objective");
+    expect(declarationKeyword("objective")).toBe("OBJECTIVE");
+  });
+
   it("has non-empty directive lists", () => {
     expect(SYNTACTIC_DIRECTIVES.length).toBeGreaterThan(0);
     expect(BUILTIN_DIRECTIVES.length).toBeGreaterThan(0);

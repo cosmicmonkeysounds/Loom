@@ -2,7 +2,7 @@
 //! `parseBoardLine` is pure — scope and the live `while` are `boardFor`'s.
 
 import { describe, expect, it } from "vitest";
-import { boardLineProblems, defaultBoardLabel, parseBoardLine } from "../src/runtime/sim/board.ts";
+import { boardLineProblems, defaultBoardLabel, isSecretRoleSlot, parseBoardLine } from "../src/runtime/sim/board.ts";
 
 describe("parseBoardLine", () => {
   it("splits items, labels each with its `as`, else the path's last segment", () => {
@@ -223,5 +223,22 @@ Hi.
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ uri: "file:///cast.loom", line: 0 });
     expect(out[0]!.message).toMatch(/only the first file's header \(main\.loom\)/);
+  });
+});
+
+describe("isSecretRoleSlot (the booth card's flags and L1205 share it)", () => {
+  const secret = new Set(["door_digits", "quest.the_cold_door"]);
+  it("matches a slot, a dotted slot and anything under one, folded per segment", () => {
+    expect(isSecretRoleSlot(secret, "door_digits")).toBe(true);
+    expect(isSecretRoleSlot(secret, "Door_Digits")).toBe(true);
+    expect(isSecretRoleSlot(secret, "door_digits.count")).toBe(true);
+    expect(isSecretRoleSlot(secret, "quest.the_cold_door")).toBe(true);
+    expect(isSecretRoleSlot(secret, "Quest.The Cold Door")).toBe(true);
+  });
+  it("never a sibling or a prefix of a secret", () => {
+    expect(isSecretRoleSlot(secret, "quest")).toBe(false);
+    expect(isSecretRoleSlot(secret, "quest.other")).toBe(false);
+    expect(isSecretRoleSlot(secret, "door")).toBe(false);
+    expect(isSecretRoleSlot(new Set<string>(), "door_digits")).toBe(false);
   });
 });

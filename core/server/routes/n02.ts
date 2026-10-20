@@ -63,14 +63,14 @@ export function resumeUrl(base: string, eventCode: string, pair: string): string
   return `${base.replace(/\/+$/u, "")}/?code=${encodeURIComponent(eventCode)}&pair=${encodeURIComponent(pair)}`;
 }
 
-/** Take `character` off every session holding it: a performer-only session
- *  is deleted, a performer+admin one keeps admin. Returns how many changed. */
+/** Take `character` off every session holding it: a performer-only (or
+ *  performer + host) session is deleted, a performer+admin one keeps admin
+ *  (`SessionStore.dropCharacter`). Returns how many changed. */
 export function releasePart(sessions: SessionStore, character: string): number {
   let n = 0;
   for (const [token, s] of sessions.entries()) {
     if (s.character !== character) continue;
-    if (s.admin) sessions.set(token, { character: null, admin: true });
-    else sessions.delete(token);
+    sessions.dropCharacter(token);
     n++;
   }
   return n;
@@ -195,8 +195,7 @@ export class Pairing {
   logout(res: ServerResponse, token: string | undefined): true {
     const s = this.host.sessions.get(token);
     if (token !== undefined && s !== undefined && s.character !== null) {
-      if (s.admin) this.host.sessions.set(token, { character: null, admin: true });
-      else this.host.sessions.delete(token);
+      this.host.sessions.dropCharacter(token);
       this.host.persistSessions();
     }
     sendJson(res, 200, { ok: true });

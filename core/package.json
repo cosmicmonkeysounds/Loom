@@ -15,7 +15,9 @@
     "./chat": "./server/chat.ts",
     "./views": "./server/views.ts",
     "./mod-patch": "./server/mod-patch.ts",
-    "./cue-sheet": "./src/cue-sheet.ts"
+    "./cue-sheet": "./src/cue-sheet.ts",
+    "./delivery": "./src/delivery.ts",
+    "./host-board": "./src/host-board.ts"
   },
   "scripts": {
     "test": "vitest run",

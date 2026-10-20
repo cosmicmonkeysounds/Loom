@@ -84,7 +84,16 @@ export type SimEvent =
   // (inherited through diverts) and `beat` the beat it was spoken in — chat
   // routes an un-addressed line to the setting's room, and the cockpit links
   // any line back to its beat on the story map.
-  | { type: "dialogue"; speaker: string; text: string; audience: string[]; setting: string | null; beat: string | null }
+  | {
+      type: "dialogue";
+      speaker: string;
+      text: string;
+      audience: string[];
+      setting: string | null;
+      beat: string | null;
+      /** The dialogue block's parenthetical, parens stripped, trimmed (`Truther Download (glitch):` → "glitch"); absent when none. */
+      manner?: string;
+    }
   // A participant typed a message into a channel. `from` is the display name,
   // `audience` is resolved at send time ("all" or guest ids), `parentSeq` links
   // a reply to its root message (null for a top-level message).
@@ -95,14 +104,29 @@ export type SimEvent =
   | { type: "channelLeft"; channel: string; person: string }
   // Speakerless narration — the Narrator's voice. Carries the same room
   // context as `dialogue` so it lands in the setting's channel, not a log.
-  | { type: "action"; text: string; setting: string | null; beat: string | null }
+  | {
+      type: "action";
+      text: string;
+      setting: string | null;
+      beat: string | null;
+      /** Set when the narration runs inside a `Narrator (manner):` block. */
+      manner?: string;
+    }
   | { type: "directive"; verb: string; args: string }
   // `subject` is the participant the beat is playing for (the `guest`
   // binding, else `self` when self is a person) — null for a global beat.
   // Powers per-person story-position tracking in every console.
   | { type: "beatEntered"; beat: string; setting: string | null; subject: string | null }
   | { type: "choicePrompted"; person: string | null; promptId: string; options: string[] }
-  | { type: "respond"; to: string; text: string }
+  | {
+      type: "respond";
+      to: string;
+      text: string;
+      /** The participant bound as the beat's subject when the reply ran
+       *  (`subjectAudience(bindings)[0]`), or null — which guest a booth
+       *  readout is about. */
+      about?: string | null;
+    }
   // `show <kind> ["text"] [to scope] [with k: v]` — a widget (a game, a
   // picture, a form) the participant app renders in the conversation.
   // `audience` + `scope` mirror `broadcast` (empty audience with a global

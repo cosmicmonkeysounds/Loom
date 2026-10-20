@@ -109,6 +109,13 @@ interface Frame {
   setting?: string;
   /** The beat this frame's items belong to (provenance on emitted lines). */
   beat?: string;
+  /**
+   * The dialogue block's parenthetical (`Truther Download (glitch):` →
+   * "glitch") — how this frame's lines are delivered. Set on a dialogue
+   * block (a `Narrator (manner):` block too), inherited by control-flow
+   * children exactly as `speaker` is; a divert does not carry it.
+   */
+  manner?: string;
 }
 
 /**
@@ -918,6 +925,7 @@ export class Sim {
           cast: host?.cast,
           setting: host?.setting,
           beat: host?.beat,
+          manner: host?.manner,
         });
         this.exec(stack);
       }
@@ -1638,6 +1646,9 @@ export class Sim {
       const cs = frame.cast; // inherited SELF-fallback for control-flow children
       const st = frame.setting; // inherited room context for emitted lines
       const bt = frame.beat;
+      const mn = frame.manner;
+      /** The manner on an emitted line, only when one is in scope. */
+      const mannerOf = mn !== undefined ? { manner: mn } : {};
       switch (item.kind) {
         case "action":
           if (sp !== undefined) {
@@ -1652,10 +1663,11 @@ export class Sim {
                 audience: this.subjectAudience(b),
                 setting: st ?? null,
                 beat: bt ?? null,
+                ...mannerOf,
               });
             }
           } else {
-            this.record({ type: "action", text: this.interpolate(item.value.value, b), setting: st ?? null, beat: bt ?? null });
+            this.record({ type: "action", text: this.interpolate(item.value.value, b), setting: st ?? null, beat: bt ?? null, ...mannerOf });
           }
           break;
         case "sceneHeading":
@@ -1672,6 +1684,7 @@ export class Sim {
           // is the stage voice (Loom 4 §4): its lines are narration, so they
           // land in the room like an action line, never in a DM thread.
           const speaker = this.resolveSelfSpeaker(item.value.speaker, b, cs);
+          const manner = item.value.parenthetical?.replace(/^\(|\)$/gu, "").trim() || undefined;
           stack.push({
             items: item.value.body,
             index: 0,
@@ -1680,6 +1693,7 @@ export class Sim {
             cast: cs,
             setting: st,
             beat: bt,
+            ...(manner !== undefined ? { manner } : {}),
           });
           break;
         }
@@ -1689,9 +1703,9 @@ export class Sim {
             // `cycle a | b | c` / `shuffle a | b | c` as a whole line: emit the
             // pick as a spoken line (under a speaker) or narration.
             if (sp !== undefined) {
-              this.record({ type: "dialogue", speaker: sp, text: variant, audience: this.subjectAudience(b), setting: st ?? null, beat: bt ?? null });
+              this.record({ type: "dialogue", speaker: sp, text: variant, audience: this.subjectAudience(b), setting: st ?? null, beat: bt ?? null, ...mannerOf });
             } else {
-              this.record({ type: "action", text: variant, setting: st ?? null, beat: bt ?? null });
+              this.record({ type: "action", text: variant, setting: st ?? null, beat: bt ?? null, ...mannerOf });
             }
           } else {
             this.runDirective(item.value.raw, b, { setting: st ?? null, beat: bt ?? null });
@@ -1700,12 +1714,12 @@ export class Sim {
         }
         case "directiveBlock":
           this.runDirective(item.value.directive.raw, b, { setting: st ?? null, beat: bt ?? null });
-          stack.push({ items: item.value.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
+          stack.push({ items: item.value.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt, manner: mn });
           break;
         case "conditional":
           for (const arm of item.value.arms) {
             if (arm.condition === null || this.evalCond(arm.condition, b)) {
-              stack.push({ items: arm.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
+              stack.push({ items: arm.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt, manner: mn });
               break;
             }
           }
@@ -1719,13 +1733,14 @@ export class Sim {
             cast: cs,
             setting: st,
             beat: bt,
+            manner: mn,
           });
           break;
         case "match": {
           const scrutinee = display(this.evalValue(item.value.scrutinee, b));
           for (const arm of item.value.arms) {
             if (arm.pattern === scrutinee) {
-              stack.push({ items: arm.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
+              stack.push({ items: arm.body, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt, manner: mn });
               break;
             }
           }
@@ -1738,7 +1753,7 @@ export class Sim {
           const ev = item.value;
           const arm =
             n <= 1 ? ev.first : n === 2 || ev.finally.length === 0 ? (ev.then.length > 0 ? ev.then : ev.first) : ev.finally;
-          stack.push({ items: arm, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt });
+          stack.push({ items: arm, index: 0, bindings: b, speaker: sp, cast: cs, setting: st, beat: bt, manner: mn });
           break;
         }
         case "inlineLet":
@@ -1786,6 +1801,7 @@ export class Sim {
             cast: f.cast,
             setting: f.setting,
             beat: f.beat,
+            manner: f.manner,
           }));
           const queue = this.pendingChoices.get(person) ?? [];
           queue.push({ options, bindings: b, continuation });
@@ -2143,7 +2159,9 @@ export class Sim {
         // To `self`'s device (a scanner prop → its performer; a role → the
         // participant); in a story rule, to the acting participant.
         const to = bindings.get("self") ?? this.subjectAudience(bindings)[0] ?? "";
-        this.record({ type: "respond", to, text: this.interpolate(rest, bindings) });
+        // `about`: the guest the reply concerns (the bound subject) — which
+        // guest a booth readout is about.
+        this.record({ type: "respond", to, text: this.interpolate(rest, bindings), about: this.subjectAudience(bindings)[0] ?? null });
         break;
       }
       case "fire": {
@@ -2411,6 +2429,10 @@ export class Sim {
       const { args, argIds } = this.parseEventArgs(head.slice(withIdx + 6), bindings);
       for (const [k, v] of args) params[k] = display(v);
       for (const [k, v] of argIds) params[k] = v;
+      // `with moment: major` (wave 13) is a word, not an expression: a bare
+      // `major` evaluates to null, so keep the written word for the client.
+      const moment = /(?:^|,)\s*moment\s*:\s*([A-Za-z]+)\s*(?:,|$)/u.exec(head.slice(withIdx + 6));
+      if (moment !== null && params["moment"] === "null") params["moment"] = moment[1]!;
       head = head.slice(0, withIdx).trim();
     }
     // Split `to scope` after a quoted text (which may itself contain " to ").

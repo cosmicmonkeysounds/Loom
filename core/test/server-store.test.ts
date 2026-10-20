@@ -57,12 +57,12 @@ describe("Store — durable round-trips", () => {
     const s = freshStore();
     expect(s.loadSessions()).toEqual([]);
     s.saveSessions([
-      ["t1", { character: null, admin: true }],
-      ["t2", { character: "Moderator_Prime", admin: false }],
+      ["t1", { character: null, admin: true, host: false }],
+      ["t2", { character: "Moderator_Prime", admin: false, host: false }],
     ]);
     expect(s.loadSessions()).toEqual([
-      ["t1", { character: null, admin: true }],
-      ["t2", { character: "Moderator_Prime", admin: false }],
+      ["t1", { character: null, admin: true, host: false }],
+      ["t2", { character: "Moderator_Prime", admin: false, host: false }],
     ]);
   });
 });

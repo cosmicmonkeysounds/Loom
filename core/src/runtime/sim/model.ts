@@ -10,6 +10,7 @@ import type {
   CharacterBody,
   CodexBody,
   QuestBody,
+  ObjectiveBody,
   FactionBody,
   LocationBody,
   Property,
@@ -108,6 +109,9 @@ export interface RoleDef {
    *  see: dropped from every agent request and the agents' facts document
    *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). */
   secret: Set<string>;
+  /** Slots declared `bool` (wave 13: a booth card lists a boolean ROLE
+   *  `watch:` item even when false — "Not cleared"). */
+  bools?: Set<string>;
 }
 
 export interface CharDef {
@@ -172,6 +176,12 @@ export interface CharDef {
    *  A property, never a part: it keeps a bare character on the guest picker.
    *  Null for everyone else. */
   wallet: WalletRole | null;
+  /** `admin: true` — a host part: `/api/prime/login` grants the booth token
+   *  the host capability (D1, §2.5 / §2.7). Default false. */
+  admin: boolean;
+  /** `crawl: fx` — every line this character speaks is effect text (the play
+   *  app's fx crawl). Null for anything else (only `fx` is meaningful). */
+  crawl: "fx" | null;
 }
 
 /**
@@ -222,6 +232,9 @@ export interface CodexDef {
    *  holder's `codex.<slug>` flag), and an agent refuses it as a share.
    *  For a holder's private orders, or the virus they carry. */
   secret: boolean;
+  /** `category:` on the CODEX itself, else null — the Codex room's section
+   *  (§3.7). There is no file-level default (adjustment 8). */
+  category: string | null;
 }
 
 /** A compiled `QUEST` — a task the story hands a participant, tracked in
@@ -234,6 +247,127 @@ export interface QuestDef {
   giver: string | null;
   /** The brief: the quest's opening line in the log. */
   text: string;
+}
+
+/** A compiled OBJECTIVE. Audience names resolve at compile time. */
+export interface ObjectiveDef {
+  /** The declaration name. */
+  id: string;
+  /** `title ?? id`. */
+  title: string;
+  /** Who sees it (`for:`), resolved (§3.1). */
+  audience: {
+    /** `guests` or `everyone`. */
+    guests: boolean;
+    /** `performers` or `everyone`. */
+    performers: boolean;
+    /** Canonical ROLE ids. */
+    roles: string[];
+    /** Canonical CHARACTER ids. */
+    characters: string[];
+    /** Canonical GROUP (faction) ids. */
+    groups: string[];
+  };
+  while: string | null;
+  act: string | null;
+  brief: string;
+  checklist: Array<{ label: string; done: string | null }>;
+  /** Resolved: canonical INTERACTION ids and the reserved words "pass" / "scan", in written order; unknown names dropped (L1208). */
+  buttons: string[];
+  loud: boolean;
+}
+
+/** The reserved `for:` words of an OBJECTIVE (folded). */
+export const OBJECTIVE_AUDIENCE_WORDS = ["guests", "performers", "everyone"] as const;
+/** The reserved `buttons:` words of an OBJECTIVE (folded). */
+export const OBJECTIVE_BUTTON_WORDS = ["pass", "scan"] as const;
+
+/** The world path an interrupt level lives at when the header names none. */
+export const DEFAULT_ALERTS_PATH = "Night.alerts";
+
+/** A dotted world path (`Night.alerts`) — the only shape header `alerts:` takes. */
+export function isAlertsPath(raw: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$/u.test(raw.trim());
+}
+
+/** The exact key of `map` that `name` names: exact first, then folded. */
+function foldedKeyOf(map: ReadonlyMap<string, unknown>, name: string): string | null {
+  if (map.has(name)) return name;
+  const want = foldName(name);
+  for (const k of map.keys()) if (foldName(k) === want) return k;
+  return null;
+}
+
+/**
+ * Resolve an OBJECTIVE's `for:` names (§3.1), first rule that matches:
+ * a reserved word (`guests` / `performers` / `everyone`) → a ROLE → a
+ * CHARACTER → a GROUP; anything else is `unresolved` (lint L1207).
+ */
+export function resolveObjectiveAudience(
+  model: Pick<SimModel, "roles" | "characters" | "factions">,
+  names: readonly string[],
+): { audience: ObjectiveDef["audience"]; unresolved: string[] } {
+  const audience: ObjectiveDef["audience"] = { guests: false, performers: false, roles: [], characters: [], groups: [] };
+  const unresolved: string[] = [];
+  const push = (list: string[], id: string) => {
+    if (!list.includes(id)) list.push(id);
+  };
+  for (const name of names) {
+    const f = foldName(name);
+    if (f === "guests") audience.guests = true;
+    else if (f === "performers") audience.performers = true;
+    else if (f === "everyone") {
+      audience.guests = true;
+      audience.performers = true;
+    } else {
+      const role = foldedKeyOf(model.roles, name);
+      if (role !== null) {
+        push(audience.roles, role);
+        continue;
+      }
+      const ch = foldedKeyOf(model.characters, name);
+      if (ch !== null) {
+        push(audience.characters, ch);
+        continue;
+      }
+      const group = foldedKeyOf(model.factions, name);
+      if (group !== null) push(audience.groups, group);
+      else unresolved.push(name);
+    }
+  }
+  return { audience, unresolved };
+}
+
+/** Resolve an OBJECTIVE's `buttons:` names to canonical INTERACTION ids and
+ *  the reserved `pass` / `scan`, in written order (duplicates once); an
+ *  unknown name is `unknown` (lint L1208). */
+export function resolveObjectiveButtons(
+  model: Pick<SimModel, "interactions">,
+  names: readonly string[],
+): { buttons: string[]; unknown: string[] } {
+  const buttons: string[] = [];
+  const unknown: string[] = [];
+  for (const name of names) {
+    const f = foldName(name);
+    const id = (OBJECTIVE_BUTTON_WORDS as readonly string[]).includes(f) ? f : foldedKeyOf(model.interactions, name);
+    if (id === null) unknown.push(name);
+    else if (!buttons.includes(id)) buttons.push(id);
+  }
+  return { buttons, unknown };
+}
+
+function objectiveDef(model: SimModel, id: string, body: ObjectiveBody): ObjectiveDef {
+  return {
+    id,
+    title: body.title ?? id,
+    audience: resolveObjectiveAudience(model, body.for).audience,
+    while: body.while,
+    act: body.act,
+    brief: body.brief,
+    checklist: body.checklist.map((c) => ({ label: c.label, done: c.done })),
+    buttons: resolveObjectiveButtons(model, body.buttons).buttons,
+    loud: body.loud,
+  };
 }
 
 /** The default space authored channels fall into when none is named. */
@@ -375,6 +509,14 @@ export interface SimModel {
    *  id, only when it names a `mind: external` CHARACTER (lint L1206 says
    *  why not otherwise). Null = no key: the near miss waits for a director. */
   judge: string | null;
+  /** Declared OBJECTIVEs, in model order (file order: main.loom first, then
+   *  by path; source order within a file). */
+  objectives: Map<string, ObjectiveDef>;
+  /** Header `alerts: <path>` of the **story header** (the first file's —
+   *  `main.loom`'s — header; a later file's `alerts:` line is not a header,
+   *  lint L1210). The world path the interrupt level is read from. Default
+   *  "Night.alerts" (also when the value is not a dotted path). Never null. */
+  alerts: string;
 }
 
 /** Compile every loaded file in `bundle` into one `SimModel`. */
@@ -408,7 +550,15 @@ export function compileModel(bundle: Bundle): SimModel {
     watch: [],
     countdowns: [],
     judge: null,
+    objectives: new Map(),
+    alerts: DEFAULT_ALERTS_PATH,
   };
+  /** OBJECTIVE bodies in model order, compiled once every name is known. */
+  const objectiveBodies: Array<[string, ObjectiveBody]> = [];
+  {
+    const alertsProp = bundle.files[0]?.file.header.properties.get("alerts");
+    if (alertsProp !== undefined && isAlertsPath(alertsProp.value)) model.alerts = alertsProp.value.trim();
+  }
   /** The raw `judge:` header value (first file that has one). */
   let judgeName: string | null = null;
 
@@ -552,6 +702,9 @@ export function compileModel(bundle: Bundle): SimModel {
         case "quest":
           if (decl.quest) model.quests.set(decl.name, questDef(decl.name, decl.quest));
           break;
+        case "objective":
+          if (decl.objective) objectiveBodies.push([decl.name, decl.objective]);
+          break;
         default:
           break;
       }
@@ -607,6 +760,7 @@ export function compileModel(bundle: Bundle): SimModel {
     }
   }
   model.judge = judgeOf(model, judgeName);
+  for (const [id, body] of objectiveBodies) model.objectives.set(id, objectiveDef(model, id, body));
   return model;
 }
 
@@ -690,6 +844,7 @@ function codexDef(id: string, body: CodexBody): CodexDef {
     knownTo: [...body.knownTo],
     text: body.text,
     secret: body.properties.get("secret")?.value.trim() === "true",
+    category: body.properties.get("category")?.value.trim() || null,
   };
 }
 
@@ -793,7 +948,12 @@ function roleDef(id: string, body: CharacterBody): RoleDef {
       .map((s) => s.trim())
       .filter((s) => s !== ""),
   );
-  return { id, defaults, hooks: hooksOf(id, "role", body), secret };
+  const bools = new Set(
+    body.typedProperties
+      .filter((p) => p.slotType !== null && p.slotType.kind === "concrete" && p.slotType.name.toLowerCase() === "bool")
+      .map((p) => p.name),
+  );
+  return { id, defaults, hooks: hooksOf(id, "role", body), secret, bools };
 }
 
 function charDef(id: string, body: CharacterBody): CharDef {
@@ -823,6 +983,8 @@ function charDef(id: string, body: CharacterBody): CharDef {
     wiki: body.properties.get("wiki")?.value.trim() || null,
     secret: body.properties.get("secret")?.value.trim() === "true",
     wallet: walletRoleOf(body.properties.get("wallet")?.value),
+    admin: body.properties.get("admin")?.value.trim().toLowerCase() === "true",
+    crawl: body.properties.get("crawl")?.value.trim().toLowerCase() === "fx" ? "fx" : null,
   };
 }
 

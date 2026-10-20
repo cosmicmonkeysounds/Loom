@@ -79,6 +79,17 @@ export const Code = {
   /** The header `judge:` names no `mind: external` CHARACTER — near misses
    *  wait for a director, as with no key (workspace lint, a warning). */
   L1206JudgeUnresolved: "L1206",
+  /** An OBJECTIVE's `for:` names nothing a viewer can be (wave 13): a
+   *  warning per unresolved name, an error when none resolves. */
+  L1207ObjectiveForUnresolved: "L1207",
+  /** An OBJECTIVE's `buttons:` names no usable INTERACTION (wave 13, a warning). */
+  L1208ObjectiveButtonUnresolved: "L1208",
+  /** An OBJECTIVE's `while:` or a `done when` is empty or no expression (wave 13, an error). */
+  L1209ObjectiveConditionInvalid: "L1209",
+  /** The header `alerts:` is no dotted path, or sits outside the story header (wave 13, a warning). */
+  L1210AlertsPathInvalid: "L1210",
+  /** `admin: true` on a CHARACTER no performer can sign in as (wave 13, a warning). */
+  L1211AdminNotAPart: "L1211",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

@@ -118,4 +118,57 @@ The doors close behind everyone.
       ["The doors close behind everyone.", "Hall", "gather"],
     ]);
   });
+  it("a line in a chosen option keeps its block's manner (wave 13)", () => {
+    const sim = Sim.fromSources(`
+CHARACTER Truther Download
+
+== leak
+Truther Download (glitch):
+  The truth is out there.
+  * Listen.
+    it is in the walls
+  The signal fades.
+`);
+    const first = sim.fireBeat("leak");
+    expect(dialogue(first).map((e) => [e.text, e.manner])).toEqual([["The truth is out there.", "glitch"]]);
+    const after = sim.choose("__global", 0);
+    expect(dialogue(after).map((e) => [e.text, e.manner])).toEqual([
+      ["it is in the walls", "glitch"],
+      ["The signal fades.", "glitch"],
+    ]);
+  });
+
+  it("Narrator (manner): narration carries the manner; plain lines carry none", () => {
+    const sim = Sim.fromSources(`
+== scene
+Narrator (static):
+  The screens hiss.
+Plain narration.
+`);
+    const evs = sim.fireBeat("scene");
+    expect(action(evs).map((e) => [e.text, e.manner])).toEqual([
+      ["The screens hiss.", "static"],
+      ["Plain narration.", undefined],
+    ]);
+    expect("manner" in action(evs)[1]!).toBe(false);
+  });
+
+  it("a divert does not carry the caller's manner", () => {
+    const sim = Sim.fromSources(`
+CHARACTER Wren
+
+== a
+Wren (glitch):
+  one
+  -> b
+
+== b
+Wren:
+  two
+`);
+    expect(dialogue(sim.fireBeat("a")).map((e) => [e.text, e.manner])).toEqual([
+      ["one", "glitch"],
+      ["two", undefined],
+    ]);
+  });
 });

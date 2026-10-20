@@ -308,7 +308,9 @@ class Parser {
             value: { name: k.value, span: scannedLineSpan(line) },
           };
         }
-        this.cursor += 1;
+        // A stray property line is skipped. Return without advancing: every
+        // caller steps past a null item itself, so advancing here too dropped
+        // the line after it (`mood: tense` swallowed the next line, wave 13).
         return null;
       }
       case "letBinding": {

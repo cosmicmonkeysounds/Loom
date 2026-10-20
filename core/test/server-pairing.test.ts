@@ -152,12 +152,12 @@ describe("resumeUrl / releasePart", () => {
   });
   it("takes the part off every holder; an admin keeps admin", () => {
     const s = new SessionStore();
-    s.set("a", { character: "Clippy", admin: false });
-    s.set("b", { character: "Clippy", admin: true });
-    s.set("c", { character: "Norton", admin: false });
+    s.set("a", { character: "Clippy", admin: false, host: false });
+    s.set("b", { character: "Clippy", admin: true, host: false });
+    s.set("c", { character: "Norton", admin: false, host: false });
     expect(releasePart(s, "Clippy")).toBe(2);
     expect(s.has("a")).toBe(false);
-    expect(s.get("b")).toEqual({ character: null, admin: true });
+    expect(s.get("b")).toEqual({ character: null, admin: true, host: false });
     expect(s.characterOf("c")).toBe("Norton");
     expect(releasePart(s, "Clippy")).toBe(0);
   });
