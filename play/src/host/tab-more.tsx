@@ -10,16 +10,20 @@ import type { AlertLevel } from "../../../core/src/delivery.ts";
 import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
 import type { HostCodes } from "./api.ts";
-import { ALERT_LADDER, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, stimulusInput, waitingFor, type MoreSection } from "./model.ts";
+import { ALERT_LADDER, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, stimulusInput, waitingFor, type MoreFocus } from "./model.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection, useHost } from "./kit.tsx";
 
-export function MoreTab({ focus }: { focus: MoreSection | null }) {
+export function MoreTab({ focus }: { focus: MoreFocus | null }) {
   const { view } = useHost();
   const sections = moreSections(view);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (focus === null) return;
-    root.current?.querySelector(`[data-section="${focus}"]`)?.scrollIntoView({ block: "start" });
+    // Matched by attribute value, not a selector string: a character's name
+    // never needs escaping.
+    const hit = Array.from(root.current?.querySelectorAll<HTMLElement>("[data-section]") ?? []).find((el) => el.dataset["section"] === focus);
+    const first = focus.startsWith("agents") ? root.current?.querySelector<HTMLElement>('[data-section^="agents"]') : null;
+    (hit ?? first)?.scrollIntoView({ block: "start" });
   }, [focus]);
   return (
     <div className="host-more" ref={root}>
@@ -287,7 +291,7 @@ function Agents() {
   return (
     <>
       {view.agents.map((a) => (
-        <HostSection key={a.id} id="agents" title={`🤖 ${a.id}`} aside={a.online ? "● worker on" : "○ no worker"}>
+        <HostSection key={a.id} id={agentSection(a.id)} title={`🤖 ${a.id}`} aside={a.online ? "● worker on" : "○ no worker"}>
           {a.queue !== null && <p className={`host-note ${a.queue.stalled ? "alarm" : ""}`}>{queueBadge(a.queue).text}</p>}
           {a.waiting.length === 0 ? (
             <HostEmpty>Nobody is waiting on {a.id}.</HostEmpty>

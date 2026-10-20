@@ -74,14 +74,19 @@ describe("the tabs", () => {
   });
   it("More: every section the event has, nothing it hasn't; no mod passcode anywhere", () => {
     const full = inDrawer(hostFixture(), createElement(MoreTab, { focus: null }));
-    for (const s of ["announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents"]) expect(full).toContain(`data-section="${s}"`);
+    for (const s of ["announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents-trabolta"]) expect(full).toContain(`data-section="${s}"`);
     expect(full).toContain("Ada → Bob · 20");
     expect(full).toContain("15 / 15");
     expect(full).toContain("🔴 Server Door");
+    // Two agent-voiced characters: two sections, two ids, no duplicate.
+    const two = inDrawer(hostFixture({ agents: [{ id: "Trabolta", online: true, queue: null, waiting: [] }, { id: "Clippy Mind", online: false, queue: null, waiting: [] }] }), createElement(MoreTab, { focus: null }));
+    expect(two).toContain('id="host-agents-trabolta"');
+    expect(two).toContain('id="host-agents-clippy-mind"');
+    expect(two.match(/id="host-agents/gu)).toHaveLength(2);
     expect(full).toContain("“Are you there?”");
     expect(full).toContain('role="radio" aria-checked="true"');
     const bare = inDrawer(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }), createElement(MoreTab, { focus: null }));
-    for (const s of ["wallet", "king", "terminals", "parts", "agents"]) expect(bare).not.toContain(`data-section="${s}"`);
+    for (const s of ["wallet", "king", "terminals", "parts", "agents"]) expect(bare).not.toContain(`data-section="${s}`);
     expect(full).not.toMatch(/restart|go live|push draft|end the run/iu);
   });
 });

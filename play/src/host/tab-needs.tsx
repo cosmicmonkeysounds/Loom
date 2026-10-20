@@ -16,7 +16,7 @@ export function NeedsTab({ refused, reason }: { refused: RefusedPress | null; re
       if (staff !== null) openRoom(staff);
       return;
     }
-    go(t, needSection(n.target));
+    go(t, needSection(n));
   };
   if (refused === null && view.needs.length === 0) {
     return <HostEmpty>Nothing needs you. Near misses, held transfers, a silent terminal or Trabolta's worker going quiet show up here.</HostEmpty>;

@@ -17,7 +17,7 @@ import type { PrimeSession } from "../session/prime.ts";
 import { useHostView, useRecap } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
-import { awardsNear, groupNeeds, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreSection, type RefusedPress } from "./model.ts";
+import { awardsNear, groupNeeds, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type RefusedPress } from "./model.ts";
 import { CuesTab } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
@@ -121,7 +121,7 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
 
   // The drawer.
   const [tab, setTab] = useState<HostTab>("cues");
-  const [section, setSection] = useState<MoreSection | null>(null);
+  const [section, setSection] = useState<MoreFocus | null>(null);
   useMomentsHold(open);
   const frame = useRef<HTMLElement | null>(null);
   const dockRef = useCallback((el: HTMLDivElement | null) => {

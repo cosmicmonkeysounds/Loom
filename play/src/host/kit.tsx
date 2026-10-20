@@ -7,7 +7,7 @@ import { ApiError } from "../client.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { HostView } from "../types.ts";
 import type { HostCalls } from "./api.ts";
-import type { HostTab, MoreSection } from "./model.ts";
+import type { HostTab, MoreFocus } from "./model.ts";
 
 export interface HostCtx {
   view: HostView;
@@ -19,7 +19,7 @@ export interface HostCtx {
    *  refusal, then a fresh poll. Resolves true when it went through. */
   run: (done: string, call: () => Promise<unknown> | null) => Promise<boolean>;
   /** Move the drawer to a tab (and a More section). */
-  go: (tab: HostTab, section?: MoreSection | null) => void;
+  go: (tab: HostTab, section?: MoreFocus | null) => void;
   /** Close the drawer and open a room (the staff room). */
   openRoom: (channel: string) => void;
   /** Close the drawer and open a guest's card in the booth. */

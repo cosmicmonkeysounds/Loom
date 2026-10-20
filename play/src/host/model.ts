@@ -73,15 +73,25 @@ export function needTab(target: NeedTarget): HostTab | "staff" {
   }
 }
 
-/** Which More section a need opens (the drawer scrolls to it). */
-export function needSection(target: NeedTarget): MoreSection | null {
-  if (target === "wallet") return "wallet";
-  if (target === "agent") return "agents";
-  if (target === "more") return "terminals";
+/** Which More section a need opens (the drawer scrolls to it): an agent's
+ *  need opens that agent's own section, not the first agent's. */
+export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocus | null {
+  if (n.target === "wallet") return "wallet";
+  if (n.target === "agent") return n.character !== undefined ? agentSection(n.character) : "agents";
+  if (n.target === "more") return "terminals";
   return null;
 }
 
 export type MoreSection = "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents";
+
+/** Where More scrolls to: a section, or one agent-voiced character's. */
+export type MoreFocus = MoreSection | `agents-${string}`;
+
+/** One agent-voiced character's section key (`agents-trabolta`): unique per
+ *  character, safe in an element id. */
+export function agentSection(character: string): `agents-${string}` {
+  return `agents-${character.toLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "")}`;
+}
 
 /** The More tab's sections in order, each only when the event has it. */
 export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents">): MoreSection[] {

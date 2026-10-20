@@ -16,6 +16,7 @@ import {
   kingHpInput,
   moreSections,
   needSection,
+  agentSection,
   needTab,
   personLine,
   presenceText,
@@ -61,10 +62,15 @@ describe("the drawer's tabs", () => {
     expect(needTab("agent")).toBe("more");
     expect(needTab("more")).toBe("more");
     expect(needTab("staff")).toBe("staff");
-    expect(needSection("wallet")).toBe("wallet");
-    expect(needSection("agent")).toBe("agents");
-    expect(needSection("more")).toBe("terminals");
-    expect(needSection("judge")).toBeNull();
+    expect(needSection({ target: "wallet" })).toBe("wallet");
+    expect(needSection({ target: "agent" })).toBe("agents");
+    expect(needSection({ target: "more" })).toBe("terminals");
+    expect(needSection({ target: "judge" })).toBeNull();
+  });
+  it("an agent's need opens that agent's own section, never the first agent's", () => {
+    expect(needSection({ target: "agent", character: "Trabolta" })).toBe("agents-trabolta");
+    expect(needSection({ target: "agent", character: "Second Mind" })).toBe("agents-second-mind");
+    expect(agentSection("Mr. O'Hare")).toBe("agents-mr-o-hare");
   });
 });
 
