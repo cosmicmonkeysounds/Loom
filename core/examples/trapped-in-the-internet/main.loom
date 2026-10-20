@@ -2115,15 +2115,17 @@ ROLE Program
 
   // ── The pickup line ──
   // After truth.txt Trabolta DMs EVERYONE for the line (both branches): an
-  // `answer` card keyed P1, judged by the server against facts.json. In
-  // Grok Prom the first correct line is the way out (`pickup_line_accepted`
-  // → the song); in the Song branch the first correct one is flavour. A
-  // host who hears it presses 💘; in a DM Trabolta's `the_line_works`
-  // power fires the same event; or the director fires
-  // `pickup_line_accepted` with the subject.
+  // `answer` card keyed P1, judged by the server against facts.json. The
+  // house judges it, never Trabolta (2026-10-19): he does not know the
+  // line and has no power to accept one; the lines below are the house's
+  // verdict in his thread, and Night.line_by (in his persona's facts) is
+  // how he learns that one worked. In Grok Prom the first correct line is
+  // the way out (`pickup_line_accepted` → the song); in the Song branch the
+  // first correct one is flavour. A host who hears it presses 💘, or the
+  // director fires `pickup_line_accepted` with the subject.
   when Night.pickup_gen > self.pickup_seen and self.cleared == true:
     set self.pickup_seen = Night.pickup_gen
-    show answer "Give me a pickup line that works on Sandy. One line. I will know it when I hear it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
+    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
 
   // Only Grok Prom and the song hear it: after the rave he has ridden away,
   // and the advice poll, the banishment and the hand jive have moved on
@@ -2140,19 +2142,21 @@ ROLE Program
           fire pickup_line_accepted for program
         else:
           set Night.line_by = program.name
-          Trabolta: …Yes. YES. That is the line, {program.name}.
+          Trabolta: The house says YES. That is the line, {program.name}.
           broadcast "💘 {program.name} knew the line." to everyone
       else if verdict == "accurate":
-        Trabolta: {Night.line_by} said it first, {program.name}. But yes. That is the line.
+        Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
       else:
-        Trabolta: No. That is not the line.
+        Trabolta: The house says no. That is not the line.
 
   when pickup_line_works for program:
     fire pickup_line_accepted for program
 
+  // The story tells him: a line in the giver's thread, and Night.line_by.
   when pickup_line_accepted for program:
     if Night.phase == "grok_prom" and Night.ended != true:
       set Night.line_by = program.name
+      Trabolta: The house says YES. That is the line, {program.name}.
       fire line_accepted
 
   // ── The polls: the bottle's Truth / Dare, the relationship advice ──

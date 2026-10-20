@@ -11,8 +11,10 @@
 //!                              Kernel), `== Truth Question` (the
 //!                              Truth-or-Dare question picked by
 //!                              `Night.truth_n`) and the hunt-answer CODEX
-//!                              entries, each ending with the lore marker
-//!                              the voice worker hides;
+//!                              entries, each `secret: true` (never in an
+//!                              agent request or the facts document) and
+//!                              ending with the lore marker the voice
+//!                              worker hides;
 //!   codex/9-facts.loom         every scannable + character fact as a coded
 //!                              CODEX, grouped by category (colour), the
 //!                              secret *The Door Code* (`door`), one secret
@@ -275,8 +277,8 @@ function questionsLoom(f: FactsFile): string {
     "// (the 📝 card strings, the truth count, the door code — the entry beat diverts here",
     "// as its last line), `== Truth Question` (the Truth-or-Dare question",
     `// picked by ${S.world}.truth_n) and the hunt-answer CODEX entries, each`,
-    `// ending with the lore marker the voice worker hides (${OUTPUTS.mind}`,
-    "// secrets.lore).",
+    "// `secret: true` (no agent ever reads or takes one) and ending with the",
+    `// lore marker the voice worker hides (${OUTPUTS.mind} secrets.lore).`,
     "",
   );
 
@@ -319,13 +321,18 @@ function questionsLoom(f: FactsFile): string {
   });
   out.push("else:", `  ${S.reader}: ${S.noMoreQuestions}`, "");
 
-  out.push("// The hunt answers. Each ends with the lore marker the worker hides.");
+  out.push(
+    "// The hunt answers: the guests' to find, never the reader's to know. Each",
+    "// is `secret: true` (the event server keeps it out of every agent request",
+    "// and the facts document, and an agent refuses it as a share), and ends",
+    "// with the lore marker the voice worker hides too.",
+  );
   for (const { questions } of rs) {
     for (const q of questions) {
       const c = q.codex!;
       out.push("", `// ${q.id} · the hunt answer · ${S.huntColour}`);
       if (q.draft) out.push(`// ${DRAFT_NOTE}`);
-      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  code: ${c.code}`, "  text:", textBlock(c.text, [`${HUNT_MARKER} ${q.id} ▒`]));
+      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [`${HUNT_MARKER} ${q.id} ▒`]));
     }
   }
   out.push("");
@@ -581,6 +588,26 @@ export function neverWords(f: FactsFile, combos: string[] = []): string[] {
   return [...out];
 }
 
+/** The keyed answers that are not hunt questions (`answers[]`: the pickup
+ *  line, P1). He asks for the line and the house judges it (2026-10-19, the
+ *  user's call): he must never be able to recognise it, so no line of his
+ *  mind may carry it (a program who types it must not hand it to every
+ *  other program's prompt through his notes) and his voice never says it.
+ *  Each answer + alias, lowercased, plus the apostrophe-less spelling the
+ *  judge's fold also accepts ("youre the one that i want"). */
+export function answerNeverWords(f: FactsFile): string[] {
+  const out = new Set<string>();
+  for (const a of f.answers) {
+    for (const form of [a.answer, ...a.accept]) {
+      const w = norm(form).replace(/[\u2018\u2019]/gu, "'");
+      if (w === "") continue;
+      out.add(w);
+      if (w.includes("'")) out.add(w.replace(/'/gu, ""));
+    }
+  }
+  return [...out];
+}
+
 /** The combinations the hand-written story seeds (`SHOW_SHAPE.comboSeed`). */
 export function comboSeeds(sources: Iterable<string>): string[] {
   const out: string[] = [];
@@ -591,7 +618,8 @@ export function comboSeeds(sources: Iterable<string>): string[] {
 /** The `secrets:` YAML block: every question's topics (deduped, question
  *  order, the first new one of each question commented `# H1`), every
  *  answer + alias (lowercased, deduped), the lore marker, and what no line
- *  of his mind may carry (`neverWords`: the door code + the combo pairs). */
+ *  of his mind may carry (`neverWords`: the door code + the combo pairs;
+ *  `answerNeverWords`: the pickup line). */
 export function mindBlock(f: FactsFile, combos: string[] = []): string {
   const out: string[] = [
     `# generated from facts.json by core/scripts/titi-facts.ts — DO NOT EDIT this block (${RERUN}).`,
@@ -615,20 +643,24 @@ export function mindBlock(f: FactsFile, combos: string[] = []): string {
   for (const q of f.questions) for (const a of [q.answer, ...q.accept]) words.add(norm(a));
   for (const w of words) out.push(`    - ${yamlScalar(w)}`);
   out.push("  lore:", `    - ${JSON.stringify(HUNT_MARKER)}`);
-  const never = neverWords(f, combos);
+  const door = neverWords(f, combos);
+  const line = answerNeverWords(f).filter((w) => !door.includes(w));
+  const never = [...door, ...line];
   if (never.length > 0) {
     out.push("  never:");
     never.forEach((w, i) => {
       const entry = `    - ${JSON.stringify(w)}`;
       const firstClue = f.door?.clues?.[0]?.code;
       const tag =
-        i === 0 && f.door !== undefined
+        i === 0 && f.door !== undefined && door.length > 0
           ? "the door code"
           : w === firstClue
             ? "the digit notes"
             : PAIR_WORD.test(w) && !never.slice(0, i).some((x) => PAIR_WORD.test(x))
               ? "the patch-bay pairs"
-              : null;
+              : i === door.length
+                ? "the pickup line"
+                : null;
       out.push(tag === null ? entry : `${entry.padEnd(26)} # ${tag}`);
     });
   }

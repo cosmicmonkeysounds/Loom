@@ -344,3 +344,40 @@ function alignedEdits(k: readonly string[], a: readonly string[]): number {
   }
   return total;
 }
+
+/**
+ * Does `text` **mention** the key form `key` anywhere — the leak check
+ * (the show's answer-secrecy guard): the form's words appear as a run in
+ * the text, word-bounded, under the judge's own spelling rules (`nearAs`'s
+ * per-word allowance and line budget, numbers exactly, number words as
+ * digits, plurals and honorifics folded), so `Mr. Pickels` in a prompt is
+ * a mention of `Mister Pickles` and `eleven` one of `11`. Only a run of
+ * the form's own length is compared (no token sets, no extra words: those
+ * are a filing's latitude, not a mention's). One more line of prose's own:
+ * a key form that is a single word of five letters or fewer takes no slip
+ * (in running text one slip of a short word is another word: `grow` for
+ * `grok`).
+ */
+export function mentionsKey(text: string, key: string): boolean {
+  for (const honorifics of [false, true]) {
+    const k = nearTokens(key, { honorifics });
+    if (k.length === 0) continue;
+    const exactOnly = k.length === 1 && k[0]!.length <= 5;
+    const t = nearTokens(text, { honorifics });
+    const kj = k.join(" ");
+    const kw = k.filter((w) => !isDigits(w)).join(" ");
+    for (let i = 0; i + k.length <= t.length; i++) {
+      const w = t.slice(i, i + k.length);
+      if (w.join(" ") === kj) return true;
+      if (exactOnly) continue;
+      const ww = w.filter((x) => !isDigits(x)).join(" ");
+      const shorter = Math.min(kw.length, ww.length);
+      if (shorter < 3) continue;
+      const kn = numbersOf(k);
+      const wn = numbersOf(w);
+      if (kn.length !== wn.length || kn.some((x, j) => x !== wn[j])) continue;
+      if (alignedEdits(k, w) <= (shorter >= 8 ? 2 : 1)) return true;
+    }
+  }
+  return false;
+}

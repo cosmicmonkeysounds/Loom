@@ -20,7 +20,7 @@ CODEX The Boardwalk Hand
   title: Screenshot: MONOPOLY GO!
   code: ALL-IN-BOARDWALK
   text:
-    A phone screenshot, printed: MONOPOLY GO! — jtrav_1978 vs DK Holdings.
+    A phone screenshot, printed: MONOPOLY GO! — jtrav_4ever vs DK Holdings.
     Three doubles in a row. Park Place, Boardwalk, four hotels. Then the
     other player's second card: ADVANCE DIRECTLY TO BOARDWALK.
     BANKRUPT. Stake: every casino in Atlantic Canada against one building on Lower
@@ -168,17 +168,31 @@ CODEX The Domain Receipt
     Created the day after the old registration lapsed. Registrant address:
     this house.
 
+// T5. It names F2's answer, so it is `secret: true`: the guests read it on
+// the fridge, but no agent request or facts document ever carries it and
+// Trabolta won't take it as a share (he must not know who is taking Sandy
+// to prom; core/test/trabolta-answers.test.ts). Somebody else wrote it
+// (2026-10-19): his diary (The LiveJournal, Alone At Prom: machine-perfect
+// handwriting) says he does not know who asked her, so the note is about
+// him, never by him.
 CODEX The Rival
   title: The Rival
   code: GROK-ONLINE
+  secret: true
   text:
-    A sticky note on the backyard fridge, in tidy machine-perfect
-    handwriting: "Grok. Says whatever anyone wants to hear. Has beaten me
-    at everything since 1999. Do not let him near —" The rest is torn off.
+    A sticky note on the backyard fridge in loopy gel pen, a heart over
+    every i: nothing like Trabolta's machine-perfect hand. "Grok. Says
+    whatever anyone wants to hear. Has beaten T. at everything since 1999.
+    Whatever you do, don't tell T. who —" The rest is torn off.
 
+// Secret (2026-10-19): its "grease" points at the films the hunt's answers
+// come from, so it is the guests' clue alone, never in an agent request or
+// the facts document, and Trabolta won't take it as a share (unowned lore
+// otherwise reaches him). The text is unchanged.
 CODEX The Cooling Log
   title: Cooling Log: Cold Storage
   code: HUMMING-WALL
+  secret: true
   text:
     A clipboard hanging beside the server-room door. "Patch bay at 4 °C.
     Do not re-patch the bay in sequence. Do not take the grease out of the

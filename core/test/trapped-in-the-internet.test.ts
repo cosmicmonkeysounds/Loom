@@ -202,11 +202,13 @@ describe("Trapped in the Internet — compile", () => {
       fbihalifax: "The FBI Lanyard",
     };
     for (const [c, e] of Object.entries(codes)) expect(m.codexCodes.get(c), c).toBe(e);
-    // The hunt answers (generated/questions.loom) keep their ids and codes;
-    // F2 stays `The Prom Ticket` because cast/trabolta.loom listens for it.
+    // The hunt answers (generated/questions.loom) keep their ids and codes,
+    // each `secret: true`: Trabolta never reads one nor takes one as a share
+    // (test/trabolta-answers.test.ts).
     for (const q of FACTS.questions) {
       expect(m.codexCodes.get(foldCode(q.codex!.code)), q.id).toBe(q.codex!.id);
       expect(m.codex.get(q.codex!.id)!.text.endsWith(`▒ HUNT ANSWER ${q.id} ▒`), q.id).toBe(true);
+      expect(m.codex.get(q.codex!.id)!.secret, q.id).toBe(true);
     }
     expect(m.codex.get("The Prom Ticket")!.title).toBe("Grok's Prom Ticket");
     // Every scannable fact (codex/9-facts.loom) and every `existing` one with its hand-added code.
@@ -364,7 +366,6 @@ describe("Trapped in the Internet — compile", () => {
       "assess:40",
       "pardon_a_program:1",
       "turn_back_the_clock:1",
-      "the_line_works:1",
       "stand_down:1",
     ]);
   });
@@ -2531,12 +2532,12 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(composeGuestMessages(sim, rt).find((m) => m.kind === "widget" && m.widget?.kind === "answer")?.channel).toBe("dm:Trabolta");
     const line = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
     expect(v(sim, "Night.line_by")).toBe("VLC");
-    expect(lines(line, "Trabolta")).toEqual(["…Yes. YES. That is the line, VLC."]);
+    expect(lines(line, "Trabolta")).toEqual(["The house says YES. That is the line, VLC."]);
     expect(casts(line).some((b) => b.cue.includes("💘 VLC knew the line."))).toBe(true);
     expect(v(sim, "Night.ending")).toBe("song");
     const second = fire(sim, "answer answered", "g1", { question: "P1", text: "you are the one that i want", verdict: "accurate", card: 1 });
-    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But yes. That is the line."]);
-    expect(lines(fire(sim, "answer answered", "g2", { question: "P1", text: "hello", verdict: "lie", card: 1 }), "Trabolta")).toEqual(["No. That is not the line."]);
+    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But the house says yes: that is the line."]);
+    expect(lines(fire(sim, "answer answered", "g2", { question: "P1", text: "hello", verdict: "lie", card: 1 }), "Trabolta")).toEqual(["The house says no. That is not the line."]);
   });
 
   it("eight accurate answers that skip F2 → the Song Ending: an unanswered question is not a lie (U14)", { timeout: SLOW }, () => {
@@ -2558,7 +2559,7 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
     expect(cards[0]!.params["question"]).toBe("P1");
     const wrong = fire(sim, "answer answered", "g6", { question: "P1", text: "Hey girl", verdict: "lie", card: 1 });
-    expect(lines(wrong, "Trabolta")).toEqual(["No. That is not the line."]);
+    expect(lines(wrong, "Trabolta")).toEqual(["The house says no. That is not the line."]);
     expect(v(sim, "Night.ended")).not.toBe(true);
     const right = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
     expect(v(sim, "Night.ending")).toBe("song_pickup");
@@ -2567,7 +2568,7 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(beats(right)).toContain("Song Ending");
     expect(widgets(right).filter((w) => w.widget === "answer")).toEqual([]); // not dealt twice
     const second = fire(sim, "answer answered", "g1", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
-    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But yes. That is the line."]);
+    expect(lines(second, "Trabolta")).toEqual(["VLC said it first, Calculator. But the house says yes: that is the line."]);
     expect(v(sim, "Night.ending")).toBe("song_pickup");
   });
 
@@ -2576,12 +2577,12 @@ describe("Trapped in the Internet — the verdict", () => {
     toBobbing(sim, { lie: true });
     truthTxt(sim);
     expect(v(sim, "Night.phase")).toBe("grok_prom");
-    fire(sim, "the_line_works", "g1", null, "Clippy"); // an agent power: Clippy can't fire it
-    expect(v(sim, "Night.ended")).not.toBe(true);
     const pl = fire(sim, "pickup_line_works", "g6", null, "Clippy");
     expect(v(sim, "Night.ending")).toBe("song_pickup");
     expect(v(sim, "Night.line_by")).toBe("VLC");
     expect(beats(pl)).toContain("Pickup Line");
+    // The story tells him, in the giver's thread (he never judged it).
+    expect(saidBy(pl, "Trabolta").filter((d) => aud(d) === '["g6"]').map((d) => d.text)).toEqual(["The house says YES. That is the line, VLC."]);
     expect(sim.isCaptured("g5")).toBe(false);
     expect(texts(pl).filter((t) => /\bnull\b/u.test(t))).toEqual([]);
   });
@@ -2596,21 +2597,21 @@ describe("Trapped in the Internet — the verdict", () => {
     expect(v(sim, "Night.ended")).not.toBe(true);
   });
 
-  it("Trabolta accepts the line himself in Grok Prom", { timeout: SLOW }, () => {
+  it("Trabolta cannot accept the line himself: the house judges it (2026-10-19)", { timeout: SLOW }, () => {
     const sim = boot();
+    expect(sim.model.interactions.has("the_line_works")).toBe(false); // no such power
     toBobbing(sim, { lie: true });
     truthTxt(sim);
-    fire(sim, "the_line_works", "g1", null, "Trabolta");
-    expect(v(sim, "Night.ending")).toBe("song_pickup");
-    expect(v(sim, "Night.line_by")).toBe("Calculator");
-  });
-
-  it("the_line_works outside Grok Prom does nothing", () => {
-    const sim = boot();
-    toTruth1(sim);
+    expect(v(sim, "Night.phase")).toBe("grok_prom");
+    // An old worker's fire of the retired power does nothing.
     fire(sim, "the_line_works", "g1", null, "Trabolta");
     expect(v(sim, "Night.ended")).not.toBe(true);
-    expect(v(sim, "Night.ending")).toBe("none");
+    expect(v(sim, "Night.line_by")).toBe("none");
+    // The card is the way out, and the story tells him who gave the line.
+    const right = fire(sim, "answer answered", "g1", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
+    expect(v(sim, "Night.ending")).toBe("song_pickup");
+    expect(v(sim, "Night.line_by")).toBe("Calculator");
+    expect(saidBy(right, "Trabolta").filter((d) => aud(d) === '["g1"]').map((d) => d.text)).toEqual(["The house says YES. That is the line, Calculator."]);
   });
 
   it("nobody has the line → the confession → the rave (captives stay)", { timeout: SLOW }, () => {
@@ -2705,7 +2706,6 @@ const POWERS: Array<[string, Args | null]> = [
   ["assess", { target: "g2", score: 5 }],
   ["pardon_a_program", { target: "g2" }],
   ["turn_back_the_clock", null],
-  ["the_line_works", null],
   ["stand_down", null],
 ];
 
@@ -2730,7 +2730,7 @@ describe("Trapped in the Internet — Trabolta's powers", () => {
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 3700);
     expect(v(sim, "Night.phase")).toBe("final_reveal");
-    const later: Record<string, string> = { assess: "That function is not available yet.", the_line_works: "That function is not available yet.", stand_down: "Not out there. Come to my heart and say it to my face." };
+    const later: Record<string, string> = { assess: "That function is not available yet.", stand_down: "Not out there. Come to my heart and say it to my face." };
     for (const [p, a] of POWERS) {
       const t = lines(fire(sim, p, "g1", a, "Trabolta"), "Trabolta");
       expect(t, p).toEqual([later[p] ?? "I do not have the strength."]);
@@ -3971,13 +3971,15 @@ describe("Trapped in the Internet — wave 1 leftovers", () => {
     const m = fresh().model;
     const HUNT = new Set(FACTS.questions.map((q) => q.codex!.id));
     for (const id of HUNT) expect(m.codex.has(id), id).toBe(true);
-    // The final facts are told by design (The Sandy File, The LiveJournal), so
-    // rounds 1–2 only. Short one-word / numeric aliases ("11", "9:00", "tabby",
-    // "1978") would match ordinary prose, so an alias counts when it is two
-    // words or a word of six letters or more.
+    // Every round, the final facts too (2026-10-19: Trabolta must never know
+    // what he asks for, so his files no longer tell F1 / F2). Short one-word /
+    // numeric aliases ("11", "9:00", "tabby", "1978", "grok") would match
+    // ordinary prose, so an alias counts when it is two words or a word of six
+    // letters or more (test/trabolta-answers.test.ts scans the short ones, with
+    // the judge's own folding, in everything Trabolta can read).
     const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
     const alias = (a: string) => /\s/u.test(a.trim()) || /^[a-z]{6,}$/iu.test(a.trim());
-    for (const q of FACTS.questions.filter((q) => q.round < 3)) {
+    for (const q of FACTS.questions) {
       const words = [q.answer, ...q.accept].filter(alias); // "1978" alone is a year in other files
       const res = words.map((w) => new RegExp(`(?<![\\p{L}\\p{N}])${esc(w.trim())}(?![\\p{L}\\p{N}])`, "iu"));
       for (const [id, entry] of m.codex) {

@@ -7,8 +7,8 @@
 // (the 📝 card strings, the truth count, the door code — the entry beat diverts here
 // as its last line), `== Truth Question` (the Truth-or-Dare question
 // picked by Night.truth_n) and the hunt-answer CODEX entries, each
-// ending with the lore marker the voice worker hides (trabolta.mind.md
-// secrets.lore).
+// `secret: true` (no agent ever reads or takes one) and ending with the
+// lore marker the voice worker hides (trabolta.mind.md secrets.lore).
 
 QUEST Hunt One
   title: The Truth Scavenger Hunt · Round 1
@@ -133,13 +133,17 @@ if Night.truth_n >= 1 and Night.truth_n <= 20:
 else:
   Trabolta: I have no more questions. Answer the last one again.
 
-// The hunt answers. Each ends with the lore marker the worker hides.
+// The hunt answers: the guests' to find, never the reader's to know. Each
+// is `secret: true` (the event server keeps it out of every agent request
+// and the facts document, and an agent refuses it as a share), and ends
+// with the lore marker the voice worker hides too.
 
 // H1 · the hunt answer · gold
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Billboard Lease
   title: The Billboard Lease
   code: BILLBOARD-LEASE-11
+  secret: true
   text:
     A lease invoice, yellowed, by the fireplace. OUTDOOR ADVERTISING LEASE,
     BARRINGTON STREET. Advertiser: Maps And Ducks. FINAL NOTICE.
@@ -152,6 +156,7 @@ CODEX The Billboard Lease
 CODEX The First Pet
   title: The First Pet
   code: MISTER-PICKLES
+  secret: true
   text:
     A charcoal rubbing of a small stone plaque. HALIFAX EXPLOSION MEMORIAL
     PET CEMETERY. PLOT 1. MISTER PICKLES, A HARBOUR TABBY. 1918. THE FIRST
@@ -163,6 +168,7 @@ CODEX The First Pet
 CODEX The Ribbon Cutting
   title: The Ribbon Cutting
   code: RIBBON-9AM
+  secret: true
   text:
     An opening-day programme, glossy: HALIFAX AI DATA CENTRE, GRAND OPENING.
     Ribbon-cutting with Mayor Randy Barkmore Jr. at 9:00 a.m. sharp. Coffee
@@ -174,6 +180,7 @@ CODEX The Ribbon Cutting
 CODEX The Extension
   title: The Extension
   code: EXT-1978
+  secret: true
   text:
     A customer-service card, the kind you find by a cash register. Need
     help? Our Customer Care agent is available day and night. Dial extension
@@ -184,6 +191,7 @@ CODEX The Extension
 CODEX The Search History
   title: The Search History
   code: SEARCH-HISTORY
+  secret: true
   text:
     A laminated printout of a media player's history, dated the night before
     mapsandducks.com was registered. One line, repeated down the whole page
@@ -195,6 +203,7 @@ CODEX The Search History
 CODEX The Final Chapter
   title: The Final Chapter
   code: APPENDIX-Z
+  secret: true
   text:
     The table of contents of the Unified Field Theory binder. Chapter after
     chapter of gravity and light, and then the last chapter, "Appendix Z:
@@ -206,6 +215,7 @@ CODEX The Final Chapter
 CODEX What Sandy Says
   title: What Sandy Says
   code: LIVE-AGENT
+  secret: true
   text:
     A chat transcript, forty pages, printed double-sided. The user
     writes paragraphs: poems, apologies, equations, a question about prom. Each
@@ -218,6 +228,7 @@ CODEX What Sandy Says
 CODEX The Prom Ticket
   title: Grok's Prom Ticket
   code: COMPUTER-PROM
+  secret: true
   text:
     A ticket, a little crumpled, pink and silver: COMPUTER PROM 1999.
     ADMIT TWO: GROK + SANDY. On the back, in a confident hand: "she said yes. of

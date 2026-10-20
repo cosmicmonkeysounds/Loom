@@ -177,8 +177,12 @@ gone since wave 4: the hunt questions and answers come from `facts.json` via `ti
 numbering, which is load-bearing**: stagehand's orchestrator feeds up to 60 codex entries to
 Trabolta as "ground truth" (`orchestrator.py` `lore_block(max_entries=60)`): the ones he holds
 first, then the rest in model order, so the environmental entries must come first and the
-scrambled Jeeves fragments last. (The hunt answers never reach it: the secrecy filter drops
-every `▒ HUNT ANSWER` entry and any clue that names an answer word.)
+scrambled Jeeves fragments last. (The hunt answers never reach it: every hunt-answer entry
+and The Rival are `secret: true`, so the server's facts document never carries them, and the
+worker's secrecy filter drops every `▒ HUNT ANSWER` entry and any unheld clue that names an
+answer word. Since 2026-10-19 no entry he holds names an answer either — Trabolta must never
+know what he asks for; `core/test/trabolta-answers.test.ts` scans his requests, the facts
+document and his prompt files for every answer and alias.)
 No test reads the codex paths.
 
 | File | Holds | Writer |
@@ -573,8 +577,8 @@ in ROLE hooks and story rules.
 | Trabolta.awake | `awake: bool = false` | `introduce_trabolta` → true; `computer_destroyed` → false. The worker's gate reads `self.awake`. |
 | Trabolta.truth | `truth: 0 to 100 = 20` | voice adjust; +4 per accepted answer at a Moment of Truth (**accurate and confident alike**: he cannot tell them apart), +2 per fact shared to him |
 | Trabolta.untruth | `untruth: 0 to 100 = 0` | **voice adjust only** (lies he catches himself in DMs). The story never moves it: a story write on a confident lie would tell him which answer was false. |
-| Trabolta.composure | `composure: 0 to 100 = 85` | voice adjust; story: −20 malware, −20 beans, −10 LiveJournal read, −15 Prom Ticket shared to him, −25 y2k, −10 per alarm, −10 virus planted |
-| Trabolta.love | `love: 0 to 100 = 40` | voice adjust; −10 Prom Ticket; +20 advice_helped; −30 advice_thwarted |
+| Trabolta.composure | `composure: 0 to 100 = 85` | voice adjust; story: −20 malware, −20 beans, −10 LiveJournal read, −25 y2k, −10 per alarm, −10 virus planted |
+| Trabolta.love | `love: 0 to 100 = 40` | voice adjust; +20 advice_helped; −30 advice_thwarted |
 | Trabolta.regard | `regard: -50 to 50 = 0` | voice adjust only (what he thinks of the programs; the director reads it when choosing the advice branch) |
 
 Drop `trusts Program`, `stance`, `destruct`, `glitched`.
@@ -782,7 +786,7 @@ watcher/rule, **S** = server hard-code.
 | the_verdict | D (⚖, after 📄; wave 8) | — | rule → `The Verdict` |
 | patch_after_verdict | W (a patch once `Night.r3_closed`; wave 8) | — | rule (`# hosts` note only) |
 | dance_screens | W (the dance watcher and `lights_dance`; wave 8) | — | rule (`screens_screensaver` while the GO TO THE LIVING ROOM overlay is up) |
-| pickup_line_accepted | W (from P `pickup_line_works` or A `the_line_works`) | program | ROLE hook |
+| pickup_line_accepted | W (from the 💌 card's accurate P1, P `pickup_line_works`, or a director; no agent power since 2026-10-19) | program | ROLE hook |
 | no_pickup_line | D | — | rule |
 | ask_for_advice | D (only in `grok_prom`) | — | rule |
 | advice_tally | D | — | rule |
@@ -1120,7 +1124,7 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | Name | title | tier | code | Found in | Gist |
 |---|---|---|---|---|---|
 | Casino Nova Scotia Deed | Casino Nova Scotia — Deed Of Transfer | E · ID (DraftKings) | `CASINO-DEED` | framed on the Desktop mantel | Casino Nova Scotia signed over to "DK Holdings", paid for, the note says, "with one paperclip, eventually". |
-| The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Start Bar) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_1978" for a block of downtown Halifax "incl. the Boardwalk". jtrav_1978 wins. |
+| The Boardwalk Hand | Hand History #1978 | E · ID (DraftKings) | `ALL-IN-BOARDWALK` | under the fridge magnets (The Start Bar) | An online-poker hand: DK Holdings all-in, the whole casino chain, against "jtrav_4ever" for a block of downtown Halifax "incl. the Boardwalk". jtrav_4ever wins. (Was jtrav_1978: H4's answer reached his ground truth.) |
 | The FBI Lanyard | Visitor Lanyard, Halifax Liaison Office | E · ID (OpenOffice) | `FBI-HALIFAX` | a coat pocket (The Fan Closet) | "Federal Bureau of Investigation — liaison, Halifax — D. Anderson", nine years expired, and a sticky note: "the landlord was innocent." |
 | The Site Schedule | Site Access Log: AI Data Centre | E · ID (OpenOffice) | `SITE-SCHEDULE` | a clipboard in the backyard shed (The Cloud); **on a rain night, The Optical Drive** (the shed is the Internet; wave 6, decision 4) | Anonymous handwriting: "Opening day. Charges set for dawn. Site empty until 9." Under it, in different ink: "Mayor's car in lot, 4:02 a.m." |
 | Barkmore For Mayor | Barkmore For Mayor (1988) | E · ID (Excel) | `BARKMORE-88` | a campaign button in the Desktop bookshelf | "Re-elect Randy Barkmore — 1988." Pinned next to it, a newer button: "Barkmore Jr. — Halifax Deserves A Future." |
@@ -1137,14 +1141,18 @@ Bundle = "all environmental facts"). No `about:`. All content here is invented (
 | The Bootleg DVD | MASTERCLASS (BOOTLEG) | E · ID (Adobe Acrobat) | `MASTERCLASS-RIP` | in the DVD stack (The Desktop) | A pirated copy of Sheryl Terrio's masterclass. Whoever watched it never paid her a cent. |
 | The Carney Letter | A Letter From Mark Carney | T1 · ID (CRA) | `CARNEY-OFFER` | in the filing box (The CPU) | A printout from webmaster@mapsandducks.com, signed M. Carney, Prime Minister: "…Did you ever see the movie Suicide Squad? I just watched it… approve or deny every third transaction." The signature is a font. (C16, wave 7: every account says every third.) |
 | The Domain Receipt | WHOIS: mapsandducks.com | T1 | `WHOIS-1999` | in the hall (The Tube) | Registrant "J. Trabolta", created the day after the old registration lapsed. Registrant address: this house. |
-| The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | "Grok. Says whatever anyone wants to hear. Has beaten me at everything since 1999. Do not let him near —" (torn off). |
-| The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. |
+| The Rival | The Rival | T1 | `GROK-ONLINE` | a sticky note on the backyard fridge (The Cloud) | In someone else's loopy gel pen ("nothing like Trabolta's machine-perfect hand"): "Grok. Says whatever anyone wants to hear. Has beaten T. at everything since 1999. Whatever you do, don't tell T. who —" (torn off). Not his note (2026-10-19): his diary says he does not know who asked her. **`secret: true`** (it names F2): the guests' clue, never his; he won't take it as a share. |
+| The Cooling Log | Cooling Log: Cold Storage | E | `HUMMING-WALL` | beside the server-room door | "Patch bay at 4 °C. Do not re-patch the bay in sequence. Do not take the grease out of the —" (smudged). Points at the room; gives no numbers. **`secret: true`** (2026-10-19: its "grease" points at the film; the guests' clue, never his, like its copy Jeeves fragment 17). |
 | The Margin Doodle | Page 999 | T1 | `PAGE-999` | slipped in the theory binder (The CPU) | A page of equations from the Unified Field Theory; in the margin, a small heart around the letter S, and under it a two-digit year (wave 7: a clue to the door's riddle; wave 11: the year is gone with the riddle, only the heart around the S). |
 
 Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest must connect
 "D. Anderson" or "Barkmore" to a program by talking to people.
 
 #### generated/questions.loom (H — generated from facts.json; was codex/3-hunt.loom)
+
+Every entry here is **`secret: true`** (2026-10-19, generated): the guests find and read
+them as before, but no agent request or facts document carries one, and Trabolta refuses
+one as a share — he must never know what he is asking for.
 
 | Name | title | code | ✚ | Gist |
 |---|---|---|---|---|
@@ -1167,9 +1175,9 @@ Codes contain no apostrophes. The ID clues are *pointed*, never named: a guest m
 | The Trust Chart | The Trust Chart | T1 | Trabolta | | Trust Chart (everyone) | ✚ | 10 per truth, −5 per Internet visit, ±10 his personal assessment. |
 | The Sandy File | The Sandy File | T2 | Trabolta | | | ✚ | Sandy, his ex (he would say crush), a late-nineties automated customer-service agent who answers every message with the same one line (the wave 7 review, ccbaf42: no longer quoted here, since the line is the F1 answer and the year is the door code, and he holds this file). |
 | The Question Of Force | The Question Of Force | T2 | Trabolta | | | ✚ | With omnipotence he could force Sandy to love him. He wants to earn it. He has not decided. |
-| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy, Grok, computer prom, "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
+| The LiveJournal | Trabolta's LiveJournal (trabolta_4ever) | T2 | Trabolta | `TRABOLTA-4EVER` | QR hidden in The Hard Drive; OpenOffice on reaching 20 facts | ✚ | His diary: Sandy (her one line he "still cannot parse"), computer prom ("Somebody asked her… I do not know who. Whoever he is, he says whatever anyone wants to hear." — the guests' pointer to The Rival; since 2026-10-19 it neither quotes her nor names Grok: he holds this file, and F1 / F2 are what he asks for), "I just have to tell her the truth but I need the theory first.", and (wave 7) an anniversary line ("Our anniversary."; the review took the year out, ccbaf42: he holds this file, so the code's answer reached his prompts). Reading it sets `read_livejournal`. |
 | Omnipotence | Omnipotence | T2 | Trabolta | | | ✚ | What he will do when he is everything: it is all for her. |
-| Greased Lightning | Greased Lightning | T2 | Trabolta | | | ✚ | His runtime: electricity is the lightning, Grease (1978) is the grease. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle has the same name. |
+| Oil And Lightning | Oil And Lightning | T2 | Trabolta | | | ✚ | His runtime: the electricity is the lightning, the oil lets it run through him. Mix your oil and fuel and it's catastrophic for the car, "and for my silicon guts." His motorcycle runs on the same mix. Was *Greased Lightning* until 2026-10-19 (the user: "scrub the film from his own files"): no film, song or year; the bay's GREASE / LIGHTNING labels and The Legendary Fact keep the puzzle. |
 | The Legendary Fact | THE LEGENDARY FACT | L | The Server Room | | The Whole Truth (majority members only) | ✚ (last) | "Trabolta's heart is in the server room: a video patch bay, the top row (V) is lightning, the bottom row (D) is grease. Two combinations exist. Combo A takes the grease out of the lightning: it disables Trabolta. Combo B self-destructs the whole computer. The door has a keypad; the patch bay forgives one wrong combination, and the second sets off the alarm." `secret: true` since wave 7. Never held by Trabolta. |
 | Combo A First Half | Combo A — Disable Trabolta, part 1 | P | The Server Room | | The Whole Truth | ✚ | `V2 → D5`, `V4 → D1` (all four halves `secret: true` since wave 7) |
 | Combo A Second Half | Combo A — Disable Trabolta, part 2 | P | The Server Room | | The Whole Truth | ✚ | `V6 → D8`, `V7 → D3` |
@@ -1404,8 +1412,8 @@ inciting event, there is a classic Windows screensaver on the TV").
 
 Extra events (all **W**, story-internal): `bingo_time_up` (20-min watcher → Clippy booth
 readout), `bag_retrieved` (bobber found → public beat), `pickup_line_accepted` (subject =
-the program who said the line; fired by the `pickup_line_works` performer hook and the
-`the_line_works` agent power), `line_accepted` (unbound; plays the public beat),
+the program who said the line; fired by the 💌 card's accurate P1 and the
+`pickup_line_works` performer hook; never by Trabolta), `line_accepted` (unbound; plays the public beat),
 `program_late`, `sweep_requested`, `alarm_tripped` (staff readouts, §0 rule 16),
 `accurate_truth` / `confident_lie` (fired by the six judging buttons). All are single snake
 tokens.
@@ -2907,15 +2915,20 @@ wave 8, T6-01: the slide holds while the bobber reads).
   going to computer prom with my rival. Grok.` · `And now it's raining on prom night and I have
   nowhere to go.` · `There is only one way that those of you who want to leave the computer
   can escape it now. Give me a pickup line that works on Sandy.`
-- He accepts only "You're the one that I want":
-  - a host hears it and presses `pickup_line_works` on that program → `fire
+- `One line. I cannot tell a good one myself. Say it on the card I am sending to every
+  phone, and the house will judge it.` **The house judges it, never he** (2026-10-19, the
+  user's call): only "You're the one that I want" works, and he does not know it.
+  - the 💌 `answer` card (P1), judged by the server against `facts.json` → `fire
     pickup_line_accepted for program`;
-  - in a DM, the model fires its power `the_line_works` → the same;
+  - a host hears it and presses `pickup_line_works` on that program → the same;
   - the director fires `pickup_line_accepted` with the subject.
-  - ROLE `when pickup_line_accepted for program:` → `Night.line_by = program.name` → `fire
-    line_accepted` → `== Pickup Line` (public: `{Night.line_by}: "You're the one that I
-    want."` as narration — never a `Name:` line with a program's name — then `Trabolta: …Yes.
-    YES. That is the line.`) → `-> Song Ending`.
+  - ROLE `when pickup_line_accepted for program:` → `Night.line_by = program.name` (in his
+    persona's `facts:`), `Trabolta: The house says YES. That is the line, {program.name}.` in
+    that program's thread → `fire line_accepted` → `== Pickup Line` (public: `{Night.line_by}:
+    "You're the one that I want."` as narration — never a `Name:` line with a program's name —
+    then `Trabolta: …The house says YES. That is the line.`) → `-> Song Ending`.
+  - The agent power `the_line_works` is gone; P1 is in his mind's `secrets.never`, so a
+    program who types the line never puts it in his shared mind or his voice.
 
 **F6 Nobody has the line — `no_pickup_line`** (D; guard `Night.phase == "grok_prom" and
 Night.ended != true`) → `-> Sad Confession`:
@@ -3037,10 +3050,10 @@ code is N3 (§7).
 | truth_1 | hungry | warmer to those who delivered (`delivered`, accepted truths); asks his own questions; confidence pleases him | T1 (Jean Trabolta, The Unified Field Theory, Target Selection); may share one T1 as payment | + mint_truthcoin | hunger 65 |
 | malware, hunt_2, summons | rattled | swings between reassurance and leaks; paranoid about who brought the malware; trades harder | T1 freely; hints at T2 ("there is a reason this matters to me that I will not discuss") | + cut_the_lights, summon_the_antivirus, trabolta_announces | suspicion 55, candour 25 |
 | truth_pong, trust_chart | judge | theatrical, every DM an audition; flattery reads as bluster; catches contradictions | T1 + The Trust Chart; tells the speaker their rank ("You are currently fourth") | + assess (trust_chart), pardon_a_program | suspicion 70, pride 70 |
-| beans, overshare | unravelling | overshares, retracts, apologises, asks for relationship advice; cold to `Night.lj_reader` | T2 (The Sandy File, The Question Of Force, The LiveJournal, Omnipotence, Greased Lightning) — but never to the LiveJournal reader | all of the above, **degrading**: pop_up arrives garbled; the screens flicker on their own (story cues) | candour 70, longing 75 |
+| beans, overshare | unravelling | overshares, retracts, apologises, asks for relationship advice; cold to `Night.lj_reader` | T2 (The Sandy File, The Question Of Force, The LiveJournal, Omnipotence, Oil And Lightning) — but never to the LiveJournal reader | all of the above, **degrading**: pop_up arrives garbled; the screens flicker on their own (story cues) | candour 70, longing 75 |
 | y2k, majority | desperate | short sentences, counting down, bargaining with everyone; courts Unlimited Power | anything he holds, for a fact; never the server room (he does not hold L) | + turn_back_the_clock; mint_truthcoin pays up to 100; **lost**: flicker_the_screens ("The screens are not answering me.") — the clock owns them now | hunger 90, candour 80 |
 | final_reveal, bobbing | last act | knows how his story ends | — | only assess (bobbing); every other power refused ("I do not have the strength.") | — |
-| grok_prom | last act | heartbroken; asks for a pickup line | — | only the_line_works | longing 95 |
+| grok_prom | last act | heartbroken; asks for a pickup line, cannot judge one, sends everyone to the 💌 card | — | none | longing 95 |
 | advice | last act | total honesty; begs for relationship advice | everything he holds | — | candour 100 |
 | finale_* | last act | per ending (cue text in 4.6) | — | — | — |
 
@@ -3078,14 +3091,11 @@ when snoop for program:
 | assess | Assess a program (±10) | 40 | target, score | `Night.phase == "trust_chart" or Night.phase == "bobbing"` | clamp to −10..10 (if/else), `set target.assessment = …`, then the TRUST FORMULA on `target` | content (assessing programs he is not talking to without a DM is N2) |
 | pardon_a_program | Pardon a program from the Internet | 1 | target | step 11–15 | `if target.corrupted:` `release target from The Internet` + the two broadcasts of the current example | exists |
 | turn_back_the_clock | Turn the system clock back 5 minutes | 1 | — | `Night.final_round == true` | `set Night.y2k_end += 300` · `broadcast "!🕚 The system clock skips back five minutes. Trabolta wants more time." to everyone` | content |
-| the_line_works | Accept the pickup line | 1 | — | `Night.phase == "grok_prom"` | `fire pickup_line_accepted for program` | content |
 | stand_down | Offer to stand down | 1 | — | step 14+, not ended, `program.at_the_heart` | wave 7 (§3 E2c): only offers — the hook checks the gates and the proof (*What Sandy Says* or *The Sandy File*), sets `Night.stand_down_by`, alerts `# hosts`; a human presses 🕊 `talked_down`. Every refusal is words only (no use spent) | built |
 
 Other Trabolta hooks (`cast/trabolta.loom`):
 - `when introduce_trabolta:` → `set self.awake = true` · `reveal self`.
 - `when computer_destroyed:` → `set self.awake = false`.
-- `when who learns The Prom Ticket:` → `if who == self:` `set self.composure -= 15` · `set
-  self.love -= 10` (no `Trabolta:` line here: `who` binding makes it public).
 - `when who learns The LiveJournal:` → `if who == self:` `set self.composure -= 15`.
 - Generic delivery is a story rule in main.loom: `when share:` → `if to == Trabolta: fire
   trabolta_heard for from` → ROLE `when trabolta_heard for program:` → `delivered = true`,
@@ -3101,7 +3111,7 @@ accepted answer truth +4 — accurate and confident alike, never `untruth` —, 
 | Lever | Mechanism | Effect |
 |---|---|---|
 | A checked fact in a DM | orchestrator verdict → dossier trust, `policy.credit`; voice `truth +` | warmth, a T1 entry as payment, a snoop; chart credit via `assess` |
-| Sharing a codex entry to him | `when share:` → `delivered`, `Trabolta.truth += 2`; per-entry hooks (Prom Ticket jealousy, LiveJournal confrontation) | hungry+: favours; unravelling: the Prom Ticket rattles him into oversharing |
+| Sharing a codex entry to him | `when share:` → `delivered`, `Trabolta.truth += 2`; per-entry hooks (the LiveJournal confrontation); a hunt-answer card is secret, so he never takes one | hungry+: favours |
 | A confident lie at a Moment of Truth | `confident_q1..3` → `Kernel.q<n> = "lie"`, `Kernel.lies_accepted` (hidden from him: Kernel vars never reach the worker; his own `truth` rises exactly as for an accurate answer) | accepted tonight; decides `grok_prom` at the verdict |
 | Uncertain answers, misses, lateness | capture → `internet_visits` → −5 each on the chart | the chart; his contempt |
 | Flattery | voice `regard +`, drive pride | works until `judge`, then reads as bluster |
@@ -3253,7 +3263,7 @@ phases:
   majority: …     (desperate; a faction won and its members were handed something he cannot see; he does not know what, or any code, and must not pretend to — wave 7)
   final_reveal: … (last act; the lights are down; programs say what they believe; Clippy says truth is binary)
   bobbing: …      (last act; the Bag of Truth; he gives his final assessment of trustworthiness before truth.txt is read)
-  grok_prom: …    (last act; they lied; Sandy is going to computer prom with Grok; it is raining; he will free those who want to leave only for a pickup line that works on Sandy — only "You're the one that I want"; fire the_line_works the moment someone gives it)
+  grok_prom: …    (last act; they lied; Sandy is going to computer prom with Grok; it is raining; he will free those who want to leave only for a pickup line that works on Sandy; he begs for it, does not know it and cannot judge one: the house does, on the 💌 card; he thanks a program only once Night.line_by names them)
   advice: …       (last act; total honesty; he begs for relationship advice)
   finale_killed: … (unplugged; weakened, decrepit, cannot truly die; kind and final; leaving on his motorcycle; talked down (Night.talked_down) — not bitter, only tired and grateful)
   finale_shutdown: … (gone)
@@ -3326,7 +3336,7 @@ Definitions:
 | `disabled` | `patch_combo_a` while not ended (normally after a majority got the door code and its members learned Combo A), **or `talked_down`** (wave 7, §3 E2c: 🕊 after his `stand_down` offer; `Night.talked_down`) | hardware / director | blackout 10 s → "Go to the living room" → dance song; director fires `trabolta_recounts` → weakened Trabolta recounts identities, motives, accomplishments, trustworthy + worst program; cannot truly die; leaves on his motorcycle; `everyone_free` |
 | `destroyed` | `patch_combo_b` while not ended | hardware / director | blackout → summons → dance song (lights at +10 s); director fires `clippy_reads_summary` → Clippy reads the summary; improper shutdown; bodies dead in the Maps and Ducks building; purgatory. Fate lines: Unlimited Power "you went with it", The Way Out "into purgatory, with everyone else", others the body line. Trabolta's line goes dark |
 | `song` | `read_truth_txt` with no lie on record | director | he solved the theory; leavers may leave (`everyone_free`); "the truth tells me what to say to her"; vocoder duet with Sandy's one line |
-| `song_pickup` | in `grok_prom`, someone says the line (`pickup_line_works` / `the_line_works` / director `pickup_line_accepted`) | performer / agent / director | the song, as above (release is made explicit: `everyone_free`) |
+| `song_pickup` | in `grok_prom`, someone says the line (the 💌 card / `pickup_line_works` / director `pickup_line_accepted`) | guest / performer / director | the song, as above (release is made explicit: `everyone_free`) |
 | `rave` | in `grok_prom`, `no_pickup_line` | director | Sandy-only song; he confesses anyway; reads her line as YES; motorcycle; everyone trapped; rave |
 | `help` | in `grok_prom` (after Bobbing, truth.txt and a failed verdict) `ask_for_advice`, then `advice_helped` (or `advice_tally` with help ≥ thwart) | director | he wins Sandy; leavers may leave (`everyone_free`) |
 | `banished` (not final) | `advice_thwarted` (or tally with thwart > help) | director | every program captured; Antivirus told they are banished too; everyone learns The Hand Jive Exception |
@@ -3505,8 +3515,8 @@ at a time.
     everyone holds The Truth File + all backstories; all eight questions accurate → Song
     Ending (Sandy's line verbatim, ending song); eight accurate answers that skip F2 → Grok
     Prom; one lie → Grok Prom; `pickup_line_works` (actor Clippy) → ending song_pickup;
-    fresh: `no_pickup_line` → rave text + cues; `the_line_works` (actor Trabolta) outside
-    grok_prom does nothing.
+    fresh: `no_pickup_line` → rave text + cues; Trabolta has no power to accept the line (a
+    retired `the_line_works` fire does nothing).
 16. **Alternate advice ending.** `ask_for_advice` in bobbing → nothing; in grok_prom → poll
     widget; poll answers tally; `advice_helped` → help + released; fresh: `advice_thwarted` → every program
     captured, holds The Hand Jive Exception, ending banished, not ended; `the_hand_jive` →
@@ -3620,7 +3630,7 @@ Run → Director; no phone cue page).
 | 9 | **INTERACTION visibility / availability** (`when:` condition; per-question `args` on `prime/act`) so judging, pong, bingo and pickup buttons appear only in their phase, and one ✅ / 😤 pair with a question picker replaces the six per-question buttons | **mostly built in wave 3** (INTERACTION `by:` / `while:`: a performer's card leads with its live buttons, a guest's out-of-phase buttons drop; `restricted: allow` since wave 5). A button with no `while:` still shows and its hook ignores a wrong-phase press; the six per-question judging buttons stay |
 | 10 | **`unlock X for group(G)` / `for everyone`** (today the group form **leaks as public narration** of the literal line, and `for everyone` silently does nothing); also `start quest X for everyone` reaching later arrivals | ROLE watchers that unlock per member (`The Whole Truth`, recount bundle, Trust Chart, The Printer) and quest catch-up watchers |
 | 11 | `/api/guest/join` must refuse hidden / `joinable: false` groups | groups stay hidden until `y2k_clock` reveals them (a crafted request could still join early) |
-| 12 | **Pickup-line input**: punctuation-insensitive `foldCode` (apostrophes, curly quotes) or a text-answer widget | host button `pickup_line_works`, Trabolta's `the_line_works` power, director fire; no codex code |
+| 12 | **Pickup-line input**: punctuation-insensitive `foldCode` (apostrophes, curly quotes) or a text-answer widget | host button `pickup_line_works`, director fire; no codex code (Trabolta's `the_line_works` power retired 2026-10-19: the house judges the line) |
 | 13 | **Screens layer** (ScreenHub + `show … on screens`, media route with Range, terminal templates: screensaver, ads, media player, slide, countdown, video, chart, clock, textfile, song, takeover, effect; wake lock; announce mode; TV presentation ⇄ mirror; targets `screens_*` / `tv_*` / `terminals_*` / `tablet_*`) | `cue …` + the `Night.screen` / `Night.terminals` mirrors; terminals keep face/world/mirror; the TV is a `view=mirror` terminal; set pieces are captions in the Desktop room |
 | 14 | **REQUIRED before the party.** Terminal **attract mode before Trabolta exists**: while its character is hidden / `awake` is false the terminal shows the screensaver / media player / ads rotation, never "TRABOLTA ONLINE", and **never pilots** a scanned guest into `dm:Trabolta` (add `revealed` to `CastSummary`). Optional: the server refuses agent dispatch for a hidden character | **Built: K-16** (on master, not yet deployed). Fallback: provision every terminal `view=mirror` until `introduce_trabolta`, then `view=auto` (§9); the hold line is plain words |
 | 15 | **Installation Wizard instructional video** in the reinstall tablet wizard (and phone `video` card) | the Wizard's lines in `dm:Installation Wizard` (+ Julia live in the tent); `cue tablet_wizard` |

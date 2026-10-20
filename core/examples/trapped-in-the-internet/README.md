@@ -116,7 +116,7 @@ cast/featured.loom     the 9 featured programs: bare names + avatars (they are G
 cast/pool.loom         22 more guest programs: bare names + avatars
 cast/props.loom        The Uploader · The Router · The Screensaver · The Tablet · Kernel (the
                        hidden secret state)
-cast/trabolta.loom     the AI: his vars, hooks, and 13 agent powers (wave 7: stand_down)
+cast/trabolta.loom     the AI: his vars, hooks, and 12 agent powers (wave 7: stand_down; the_line_works retired 2026-10-19)
 codex/1-world.loom …   183 CODEX entries: 175 in eight numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone). The order matters:
@@ -224,6 +224,20 @@ to `reset_server_room`.
    worker with a fresh `state_dir`. Otherwise `.stagehand-minds` keeps the
    old "lonely grandeur" arc, and a story restart sends `control reset`
    only to a worker that is connected.
+
+   **The `trabolta/answers` change (2026-10-19: he never holds a hunt
+   answer, the house judges the pickup line, no film in his own files)
+   needs `sync-show` WITH its reload (never `--no-reload`): the event must
+   play the new text, in which `the_line_works` is gone, the hunt answers,
+   The Rival, The Cooling Log and Jeeves fragment 17 are secret, and
+   *Greased Lightning* is *Oil And Lightning*. Then reset Trabolta's
+   worker mind (**Run → Mind → Reset**, the worker connected), because a
+   mind kept from rehearsals may still name Grok, quote a pickup line or
+   hold the old file's title in its notes, dossiers or `learned`. The
+   worker reads its persona, mind file and `secrets.never` (now with the
+   pickup line) only at start: once the house Mac's checkout has this
+   change, restart it there (`uv run stagehand launchd restart --job
+   agents`), then Reset.**
 2. **House map.** After the `Disk Cleanup` relabel (the bathroom used to be
    The Recycle Bin), make sure no director's save is in force on the
    preview event: Push draft and Go live in place keep one. The map page's
@@ -600,7 +614,7 @@ Server Room. Never say the code on the radio.
 | **🍎 Bobbing for Truth** (`bobbing_for_truth`) | Clippy / Adobe Acrobat: **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob** (marked for reinstallation) | Nothing moves until someone brings up the bag. Then come the Final Assessment and the bobber's truth.txt. |
 | **📄 Read truth.txt** (`read_truth_txt`; only once the bag is up) | the bobber reads it aloud (Adobe Acrobat has the printout; her booth says to wait for ⚖) | truth.txt goes up on every screen and **holds** there while it is read. Everyone gets every backstory; *The Final Facts* completes; the final round closes and its filings settle. Nothing else happens until ⚖. A second 📄 only tells `# hosts` to press ⚖. |
 | **⚖ truth.txt read → the verdict** (`the_verdict`; after 📄, when the bobber has finished) | — | **The Verdict** counts answered questions only (U14): no lie on record → **Song Ending**; any accepted lie → **Grok Prom**. A question nobody answered is not a lie. In **both** branches Trabolta DMs every program an answer card: *"Give me a pickup line that works on Sandy."* (judged by the server against `facts.json` → `answer answered`). Pressed before 📄 it only says so in `# hosts` (*"⚖ Not yet: 📄 Read truth.txt first."*). |
-| *(in Grok Prom)* | the first program to type the line on the card wins; or a host presses **💘 Said "You're the one that I want"**, or Trabolta fires `the_line_works` in a DM | **Pickup Line** → Song Ending. In the Song branch the first correct line is read before the song (flavour). |
+| *(in Grok Prom)* | the first program to type the line on the 💌 card wins (the house judges it against `facts.json` P1, never Trabolta: since 2026-10-19 he has no power to accept a line, and the story tells him who gave it, in their thread and `Night.line_by`); or a host presses **💘 Said "You're the one that I want"** | **Pickup Line** → Song Ending. In the Song branch the first correct line is read before the song (flavour). |
 | **💔 Nobody has the line → confession → rave** (`no_pickup_line`) | — | **Sad Confession** → rave. |
 | *(alt, only in Grok Prom)* **💌 Trabolta begs for relationship advice** → **🗳 Count the advice poll** (or **💞 helped** / **⛈ thwarted**, which only answer in the advice phase) → **🕺 Everyone hand-jived** | after thwarted: every Antivirus booth says they are banished too | Help → he wins Sandy. Thwart → everyone is banished to the Internet and learns *The Hand Jive Exception* (the TV keeps the banish card; the banishment is no reinstallation, and a duck find frees nobody: Gerald only says the way out is the hand jive) → the hand jive crashes him and puts the screensaver back on every screen. |
 | **🏍 After the dance: weakened Trabolta recounts** (`trabolta_recounts`, after Combo A) | — | Everyone gets every backstory + truth.txt. He names each identity, motive and accomplishment, plus the trustworthy and worst program, then leaves on his motorcycle and everyone is freed. |
@@ -640,7 +654,7 @@ final ending happens. `banished` is the one ending that is not final.
 | `disabled` | Combo A patched (normally after a majority got the door code), **or talked down** (🕊 `talked_down` after his `stand_down` offer: `Night.talked_down`) | blackout, the dance, then **Trabolta Recounts**: he cannot truly die, rides off on his motorcycle, and everyone returns. Talked down, the blackout opens on the patch bay going quiet on its own, the recount names who talked him down ("Nobody pulled a cable. I stopped."), and he hosts the ceremony quietly |
 | `destroyed` | Combo B patched | blackout, the dance, then **Purgatory**: improper shutdown, bodies dead in the Maps and Ducks building, purgatory forever together. Fate lines: Unlimited Power "went with it", The Way Out "into purgatory, with everyone else" |
 | `song` | truth.txt read with no lie on record (answered questions only) | he solved the theory; vocoder duet with Sandy; leavers may leave |
-| `song_pickup` | in Grok Prom, someone gives the line (the answer card, 💘 or `the_line_works`) | the song, and everyone is released |
+| `song_pickup` | in Grok Prom, someone gives the line (the answer card or 💘) | the song, and everyone is released |
 | `rave` | in Grok Prom, `no_pickup_line` | Sandy-only song; he confesses anyway, reads her line as YES, rides away; everyone is trapped; rave |
 | `help` | in Grok Prom, ask for advice → helped | he wins Sandy; leavers may leave |
 | `banished` (not final) | ask for advice → thwarted | every program is captured, Antivirus included; everyone learns The Hand Jive Exception |
@@ -669,7 +683,7 @@ are **183**, and **94** of them carry a code (the 60 generated from
 3. **A person.** Every named character holds the entries *about* them (plus
    `known to:`) and shares them from the booth. Guests share theirs from a
    card. Sharing an entry **to Trabolta** marks the guest `delivered` and
-   adds +2 to his truth. *The Prom Ticket* and *The LiveJournal* rattle him.
+   adds +2 to his truth. *The LiveJournal* rattles him.
 4. **Show hardware**, through `POST /api/mod/codex {who, entry}`.
 5. **A trade.** From the pinned **Wallet** room a program offers another
    Truthcoin for an entry (or an entry for Truthcoin); on accept the server
@@ -683,7 +697,7 @@ are **183**, and **94** of them carry a code (the 60 generated from
 | **H** hunt answers | `generated/questions.loom` (8, from `facts.json`) | One per question, each on a document in the Desktop's books. Each ends `▒ HUNT ANSWER <id> ▒`, the lore marker Trabolta's worker hides. The six-stamp pickup-line mechanic was retired 2026-10-16 (U9): the line is learnable from Sandy's lore and asked on the pickup-line card. |
 | **F** facts | `9-facts` (48 coded, from `facts.json`) | The team's scannable facts, in the Desktop's print media by colour — 48 generated from `facts.json`'s 60 rows: **main** (what this place is: 30 rows, 21 generated here; the other 9 point at hand-written entries in `1-world` / `4-trabolta`, 6 of them coded), **trabolta** (6 rows: 3 generated, 3 hand-written in `2-files` / `4-trabolta`) and **character** (24: two coded facts per invitee — their secret and their goal tonight — the second and third of the three entries each invitation promises; the first is the identity entry, and all three reach the invitee at Featured Briefing). `generated/print-stacks.md` says which stack and where. Five of the hand-written entries gained codes in wave 4 (`UNIFIED-FIELD`, `TARGET-SELECTION`, `TRUST-CHART`, `SANDY-FILE`, `ALL-FOR-HER`, all in `4-trabolta`). |
 | **T1** Trabolta surface | `4-trabolta` | *Jean Trabolta*, *The Unified Field Theory*, *Target Selection*, *The Trust Chart* (`about: Trabolta`, so he holds and may share them). |
-| **T2** Trabolta private | `4-trabolta` | *The Sandy File*, *The Question Of Force*, *The LiveJournal* (`TRABOLTA-4EVER`), *Omnipotence*, *Greased Lightning*. His stage rules keep these back until *unravelling*. |
+| **T2** Trabolta private | `4-trabolta` | *The Sandy File*, *The Question Of Force*, *The LiveJournal* (`TRABOLTA-4EVER`), *Omnipotence*, *Oil And Lightning* (was *Greased Lightning*: no film in his own files since 2026-10-19). His stage rules keep these back until *unravelling*. |
 | **L / P** the heart | `4-trabolta` | *The Legendary Fact* + four combo halves, `about: The Server Room`, all `secret: true` since wave 7 (no model ever reads them, not even the orchestrator's lore block). **He never holds them.** Only the majority faction gets them, via The Whole Truth. |
 | **D** the door | `9-facts` (generated) | *The Door Code*: the keypad's four digits, generated from `facts.json` `door.code`, `secret: true`, no code of its own. It reaches a program by a checkmate against the King at the door terminal (any time before 📄), by all four of the digit notes in one Codex (main.loom assembles them), or with the majority's Whole Truth. Since wave 11 the four notes are generated beside it from `facts.json` `door.clues`: `secret: true`, each with its own code (no digit in the code, the title or the hiding place; only its own digit in the text), printed on the silver pile. The same number seeds `Kernel.door_code` (the `== Facts Seed`), never `Night.*`. |
 | **X** finale | `4-trabolta` | *The Truth File* (truth.txt), *The Hand Jive Exception*. |
@@ -770,7 +784,7 @@ the gate closes again.
 | beans · overshare | **unravelling** | overshares, retracts, asks for relationship advice; cold to the LiveJournal reader | all, degrading (pop-ups arrive garbled) |
 | y2k · majority | **desperate** | short, counting down, bargaining; courts Unlimited Power | + turn_back_the_clock; mint pays up to 100; flicker is **lost** |
 | final_reveal · bobbing | **last act** | knows how his story ends | assess (bobbing only) |
-| grok_prom · advice · finale_* | last act | heartbroken / total honesty / per ending | the_line_works (grok_prom only) |
+| grok_prom · advice · finale_* | last act | heartbroken / total honesty / per ending | — (he asks for the pickup line; the house judges it on the 💌 card) |
 
 Drives: hunger 30, suspicion 35, pride 60, candour 10, longing 40. The
 voice may nudge `truth`, `untruth`, `composure`, `love` and `regard`
@@ -820,7 +834,6 @@ pop-up or announcement and a non-positive amount are refused out loud.
 | assess | 40 | target, score | trust_chart, bobbing | sets the ±10 assessment and recomputes trust |
 | pardon_a_program | 1 | target | step 11–15 | releases a captured program |
 | turn_back_the_clock | 1 | — | the Y2K hour | midnight moves 5 minutes later |
-| the_line_works | 1 | — | grok_prom | accepts the pickup line for the speaker → Song Ending |
 | stand_down | 1 | — | step 14+, before any ending, only for a program at his heart (the server-room terminal) | **only offers**: if the program holds *What Sandy Says* or *The Sandy File*, `Night.stand_down_by` = them, an `!🕊` alert in `# hosts`, and his concession on their thread; a human presses 🕊 `talked_down` to end the night. Every refusal (too early, over, not at his heart, already offered, no proof) is words only and spends nothing |
 
 He also shares any entry he holds, exactly like a performer's booth. Nobody

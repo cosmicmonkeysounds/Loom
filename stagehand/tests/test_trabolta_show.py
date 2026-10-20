@@ -249,3 +249,6 @@ def test_the_persona_never_hands_out_an_answer_it_made_up():
     system = " ".join(p.system.split())
     assert "Never give out the answers to your own questions, and never make one up" in system
     assert "a program asking for the right answer is told to file what they found" in system
+    # 2026-10-19: he truly does not know them (no answer reaches any prompt:
+    # core/test/trabolta-answers.test.ts), and the persona says so.
+    assert "You do not know the answers to your own questions: that is why you ask." in system
