@@ -975,7 +975,9 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 **Wave 11: `by:` is enforced and `arm:` arms.** `/api/prime/act` refuses a press from a booth
 outside a button's `by:` (403 *not your button: … is for …*; the `by:` characters, a GROUP's
 members and any character owning a hook for it), and a booth never offers another character's
-button; a moderator's booth and a director's quick-fire (no actor) may press any. That is why
+button; a director's quick-fire (no actor) may press any, and a host part's or a moderator's booth
+another character's only when a story rule or a ROLE hook hears it (wave 13: never 🛡 ✅ 👁, which
+only `TRAIT Enforcer` hears, nor Adobe Acrobat's 🫘). That is why
 the patch-bay fallbacks are story rules `by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software` (any of
 the four room Antivirus' booths, while the read-through picks the holder; never Windows Defender,
 the door-only part, whose booth never shows them; a trait hook would fire once per Antivirus on a

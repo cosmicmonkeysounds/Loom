@@ -1305,7 +1305,7 @@ export interface ObjectiveView {
    *  restriction-filtered with subject = the guest), so an objective never
    *  offers a button `/api/guest/act` would refuse. For a **booth**: the
    *  `who: performer` ids, another character's `by:` button dropped unless
-   *  the booth is host or admin; not filtered by `while:` (the card asks
+   *  the booth is host or admin and the press is heard (`pressRefusal`); not filtered by `while:` (the card asks
    *  `/api/prime/card`). */
   buttons: string[];
   /** `act:` as written, else null. Display only. */
@@ -1970,7 +1970,8 @@ export function agentContacts(sim: Sim, self: string | null, online?: ReadonlySe
 }
 
 /** `opts.host`: the booth holds the host (or moderator) capability — it
- *  keeps another character's `by:` buttons on its objectives. */
+ *  keeps another character's `by:` buttons on its objectives, except one
+ *  only its actors' own hooks hear (`pressRefusal`). */
 export function primeView(sim: Sim | null, character: string, agentsOnline?: ReadonlySet<string>, opts?: { host?: boolean }): PrimeView {
   if (sim === null) {
     return {

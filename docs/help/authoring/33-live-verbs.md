@@ -330,9 +330,14 @@ of phase).
 
 **`by:` is enforced.** The server refuses a press of a `by:` button from
 any other booth (403 *not your button: … is for …*), and that booth's
-card never shows it. A button with no `by:` stays anyone's, a
-moderator's booth may press any, and a director's quick-fire from Run
-always fires it. Because the server keeps other booths out, a rule for
+card never shows it. A button with no `by:` stays anyone's, and a
+director's quick-fire from Run always fires it. A host part
+(`admin: true`) or a moderator's booth may press another character's
+`by:` button when something outside its characters hears the press (a
+story rule or a ROLE hook): a booth's press fires as its own character,
+so a button only the `by:` characters' own hooks hear (a trait's
+`when … for program:`) would do nothing from there, and the server
+leaves it off that card and refuses it too. Because the server keeps other booths out, a rule for
 a `by:` button can be a plain story rule: a quick-fire has no actor, so
 a story rule fires once where a hook on a trait would fire once per
 character that has it.

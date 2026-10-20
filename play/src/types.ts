@@ -314,7 +314,8 @@ export interface PrimeView {
    *  booth's countdowns hold still (`booth/model.ts` `viewPaused`). */
   paused?: true;
   /** The booth holds the host capability (an `admin: true` part, or the
-   *  moderator passcode): it may press another character's `by:` button.
+   *  moderator passcode): it may press another character's `by:` button,
+   *  unless that button says `hostHeard: false`.
    *  The server sends `false` too, so a revoked host reaches the booth. */
   host?: boolean;
 }
