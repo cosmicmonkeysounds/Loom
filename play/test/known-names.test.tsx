@@ -34,3 +34,15 @@ describe("known names", () => {
     expect(lastPreview(room)).toBe("Vlc: hello from desktop");
   });
 });
+
+describe("a sender's name and avatar are controls only where they do something", () => {
+  it("a guest's are plain text (no 17 px button that does nothing); a booth's are 44 px buttons", () => {
+    const guest = renderToStaticMarkup(createElement(MessageBubble, { msg: line("Clippy") }));
+    expect(guest).not.toMatch(/<button[^>]*class="speaker"/u);
+    expect(guest).not.toMatch(/<button[^>]*class="msg-avatar"/u);
+    expect(guest).toMatch(/<span class="speaker"[^>]*>Clippy<\/span>/u);
+    const booth = renderToStaticMarkup(createElement(MessageBubble, { msg: line("Clippy"), onPerson: () => {} }));
+    expect(booth).toMatch(/<button type="button" class="speaker"[^>]*tabindex="0"/u);
+    expect(booth).toMatch(/<button type="button" class="msg-avatar" tabindex="0"/u);
+  });
+});

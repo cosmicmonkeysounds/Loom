@@ -405,18 +405,32 @@ export function MessageBubble({
   const threadable = onOpenThread !== undefined && (!msg.beat || (replies ?? 0) > 0);
   return (
     <div className={`msg line ${tuck ? "tuck" : ""} ${msg.hidden ? "hidden" : ""} ${crawlCls}`}>
-      {!tuck && (
-        <button type="button" className="msg-avatar" onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1} aria-label={name}>
-          <PersonAvatar name={msg.from} />
-        </button>
-      )}
+      {/* A tappable sender (a booth opens the guest's card) is a button with a
+          44 px hit area (chrome.css); a guest's is only a name, never a
+          17 px button that does nothing. */}
+      {!tuck &&
+        (onPerson ? (
+          <button type="button" className="msg-avatar" onClick={() => onPerson(msg.from)} tabIndex={0} aria-label={name}>
+            <PersonAvatar name={msg.from} />
+          </button>
+        ) : (
+          <span className="msg-avatar" aria-hidden>
+            <PersonAvatar name={msg.from} />
+          </span>
+        ))}
       <div className="msg-body">
         {!tuck && (
           <div className="msg-head">
             {showChannel && <span className="msg-channel">{msg.title}</span>}
-            <button type="button" className="speaker" style={{ color: colorFor(msg.from) }} onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1}>
-              {name}
-            </button>
+            {onPerson ? (
+              <button type="button" className="speaker" style={{ color: colorFor(msg.from) }} onClick={() => onPerson(msg.from)} tabIndex={0}>
+                {name}
+              </button>
+            ) : (
+              <span className="speaker" style={{ color: colorFor(msg.from) }}>
+                {name}
+              </span>
+            )}
             {msg.manner && <span className="stream-manner">{msg.manner}</span>}
             {msg.via && <span className="via">via {msg.via}</span>}
           </div>
