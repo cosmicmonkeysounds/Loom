@@ -4,20 +4,63 @@
 //! tray's balance, and the one-time "Get alerts" balloon. `guest/app.tsx`
 //! lays them out as `[TitleBar][PinnedRail][Shell][Taskbar]`.
 
-import { useState, type ReactElement } from "react";
+import { useState, type ComponentProps, type ReactElement } from "react";
 import { ARM_LINE, useArmButtons, type ArmButtons } from "../arm.ts";
 import { TrayBalloon, TraySlot } from "../chrome/balloon.tsx";
 import type { StartItem, TaskbarButton } from "../chrome/taskbar.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
+import { TitleBar } from "../chrome/title-bar.tsx";
+import { useNowMoment } from "../moments/provider.tsx";
+import type { LiveCard } from "../moments/model.ts";
+import { cardGlyph, trayCards } from "../stream/settled.ts";
+import { supersededCards, type WidgetResult } from "../widgets.tsx";
 import { usePlayHost } from "../host.ts";
 import type { Push } from "../push.ts";
 import { iosPushCopy, PushRow } from "../push-card.tsx";
 import { showPushCard } from "../push.ts";
 import { withThe } from "../rooms/spaces.ts";
-import type { Interaction, ObjectiveView, WalletView } from "../types.ts";
+import type { Channel, Interaction, ObjectiveView, WalletView } from "../types.ts";
 import { ObjectiveCard } from "../ui/objective.tsx";
 import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { useWakeLock } from "../wake-lock.ts";
+
+// --- the NOW title bar ---------------------------------------------------------
+
+/** The flash a loud objective's moment asks of the NOW bar (its key is `o:<id>`, its text "title\nbrief"). */
+export function nowFlashOf(m: { key: string; text: string } | null): { id: string; title: string; brief: string } | null {
+  if (m === null || !m.key.startsWith("o:")) return null;
+  const [title = "", ...rest] = m.text.split("\n");
+  return { id: m.key.slice(2), title, brief: rest.join("\n") };
+}
+
+/** The guest's NOW title bar, wired to the moments layer: a loud objective
+ *  going live flashes it open (never a second copy as a banner); opening
+ *  the objective is reading it. Inside `MomentsProvider`. */
+export function NowBar(props: Omit<ComponentProps<typeof TitleBar>, "flash">) {
+  const news = useNowMoment();
+  return (
+    <TitleBar
+      {...props}
+      flash={nowFlashOf(news.moment)}
+      onOpen={(o) => {
+        news.seen(true);
+        props.onOpen(o);
+      }}
+    />
+  );
+}
+
+/** The live cards waiting on the guest, room by room (the tray's own rule),
+ *  for a moment's "Take me there" (`exitRoomFor`). */
+export function liveCardsOf(list: readonly Channel[], answered: ReadonlyMap<number, WidgetResult>): LiveCard[] {
+  const out: LiveCard[] = [];
+  for (const c of list) {
+    if (c.kind === "codex" || c.kind === "quests" || c.kind === "wallet") continue;
+    const roots = c.messages.filter((m) => m.parentSeq == null);
+    for (const m of trayCards(roots, answered, supersededCards(roots))) out.push({ glyph: cardGlyph(m.widget!), channel: c.id, seq: m.seq });
+  }
+  return out;
+}
 
 // --- the Start menu ----------------------------------------------------------
 

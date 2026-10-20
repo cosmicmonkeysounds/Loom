@@ -33,10 +33,11 @@ import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
-import { TitleBar, titleFallback } from "../chrome/title-bar.tsx";
+import { titleFallback } from "../chrome/title-bar.tsx";
 import { defectTargets } from "../session/guest.ts";
 import { PictureChanger } from "./register.tsx";
-import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, ObjectiveSheet, guestStartItems, guestTaskbarButtons, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, NowBar, ObjectiveSheet, guestStartItems, guestTaskbarButtons, liveCardsOf, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import { exitRoomFor } from "../moments/model.ts";
 
 /** The room a guest should land in when the app opens wide: where they
  *  stand, else the room asking for a decision, else the story's lobby. */
@@ -256,6 +257,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     here: st.location !== null ? `loc:${st.location}` : null,
     // "Take me there" on the loud "show your pass" objective.
     openPass: () => setPassing(true),
+    // A loud objective flashes the NOW bar (below the modal rungs) — not on
+    // the cutscene's stage, which has no NOW bar: there it is the banner.
+    nowBar: !cut.showing,
+    // "Take me there": a live card's room for a moment about that card, and
+    // never the room already open (wide: the one beside the list).
+    exitRoom: (m) => exitRoomFor(m, { open: t.activeThreadRoot === null ? t.activeId : null, cards: liveCardsOf(t.list, s.widgetAnswers) }),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
@@ -436,7 +443,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       taskbar={taskbar}
       head={
         <>
-          <TitleBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} />
+          <NowBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} paused={st.paused === true} />
           <MomentsLayer />
           <PinnedRail pins={pins} />
           <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />

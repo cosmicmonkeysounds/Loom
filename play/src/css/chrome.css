@@ -12,6 +12,9 @@
   --restricted-2: #9a6b00;
   /* The NOW bar's caption: the shared title gradient under plain. */
   --now-grad: var(--title-grad);
+  /* The inactive (paused) caption: white is 9:1 and 5.3:1 on the stops. */
+  --paused-1: #4a4a4a;
+  --paused-2: #6b6b6b;
 }
 /* Under aol97 the NOW bar keeps the navy → blue Win95 caption but ends on
    a deeper blue than the windows' #1084d0: the title can run the bar's
@@ -41,11 +44,25 @@
 }
 button.title-bar-btn { cursor: pointer; }
 button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -3px; }
-.title-bar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the one line a guest reads: two lines before any ellipsis */
+.title-bar-title { overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .title-bar-sub { font-weight: 400; font-size: 12px; color: var(--on-bar); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* on the alarm and restricted captions the pale sub-line ink falls under
    4.5:1 at the gradients' light ends: white there */
 .title-bar.alarm .title-bar-sub, .title-bar.restricted .title-bar-sub { color: var(--title-ink); }
+/* a paused show: Win95's inactive caption, greyed (white stays ≥ 5.3:1 on
+   both stops), with "(Paused)" in the title */
+.title-bar.paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); }
+.title-bar.paused .title-bar-sub { color: var(--title-ink); }
+/* a loud objective just went live: the caption blinks twice like a window
+   asking for attention (FlashWindow) and unfolds its brief */
+.title-bar.flash { animation: title-bar-flash 0.5s steps(1) 4; }
+@keyframes title-bar-flash { 50% { background: var(--paused-2); } }
+.title-bar-news {
+  font-weight: 400; font-size: 13px; line-height: 1.3; color: var(--title-ink); padding: 1px 0 4px;
+  overflow: hidden; overflow-wrap: anywhere; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
 
 /* ── the taskbar ───────────────────────────────────────────────────────── */
 .taskbar {
@@ -289,5 +306,5 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .taskbar-btn.attn, .tray-balloon { animation: none; }
+  .taskbar-btn.attn, .tray-balloon, .title-bar.flash { animation: none; }
 }
