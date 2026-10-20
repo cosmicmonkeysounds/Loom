@@ -405,7 +405,9 @@ ROLE Program
       set program.doubt += 10
       Clippy: Oh. Okay! No help. That's— that's fine. Programs that don't want help are usually fine.
       Norton Anti-Virus: {program.name} declined orientation. Logged.
-      fail quest Orientation for program "You skipped the tour. Norton logged it. Clippy will remember."
+      // Skipping still finishes the step (wave 13): the Quest Log reads
+      // "skipped", never "1 failed".
+      complete quest Orientation for program "Skipped. You skipped the tour. Norton logged it. Clippy will remember."
     else:
       Clippy: Great job! You're ready to compute. I'll be around if you need me — I'm always around.
       unlock The Orientation List for program

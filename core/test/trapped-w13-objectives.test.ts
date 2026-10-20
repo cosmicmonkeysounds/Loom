@@ -413,3 +413,14 @@ describe("Trapped in the Internet — wave 13: booth noise", () => {
     expect(out.some((m) => m.kind === "signal" && m.text.includes("McAfee"))).toBe(false);
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: skipping the tour", () => {
+  it("completes the Orientation quest with a skipped step (never \"1 failed\"); the doubt and Norton's log stay", () => {
+    const n = new Night();
+    n.upload("g5", "Winamp");
+    const out = n.signal("tutorial answered", "g5", { skipped: true, step: 1, steps: 5 });
+    expect(n.sim.questStatus("g5", "Orientation")).toBe("done");
+    expect(out.some((m) => m.kind === "quest" && m.text.startsWith("Skipped."))).toBe(true);
+    expect(v(n.sim, "g5.doubt")).toBe(10);
+  });
+});

@@ -623,7 +623,7 @@ describe("Trapped in the Internet — the whole night", () => {
     const ts = sim.signal("tutorial answered", "g5", { skipped: true, step: 1, steps: 5 });
     expect(lines(ts, "Norton Anti-Virus")).toContain("Winamp declined orientation. Logged.");
     expect(v(sim, "g5.doubt")).toBe(10);
-    expect(sim.questStatus("g5", "Orientation")).toBe("failed");
+    expect(sim.questStatus("g5", "Orientation")).toBe("done"); // wave 13: skipped, not failed
 
     expect(v(sim, "g1.featured")).toBe("none");
     for (const [id, tag] of [["g2", "excel"], ["g3", "openoffice"], ["g4", "mspaint"], ["g6", "jeeves"], ["g7", "draftkings"], ["g8", "bugdom"], ["g9", "vlc"], ["g10", "pong"], ["g11", "runescape"]]) {
