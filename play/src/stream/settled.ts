@@ -82,7 +82,7 @@ function answeredText(card: WidgetCard, a: WidgetResult): string {
     case "tutorial":
       return a["skipped"] === true ? "skipped" : a["completed"] === true ? "completed" : "answered";
     case "fact": {
-      const q = typeof a["question"] === "string" ? a["question"] : null;
+      const q = typeof a["question"] === "string" ? factQuestionName(card, a["question"]) : null;
       const sure = typeof a["confidence"] === "number" ? ` · ${a["confidence"]}%` : "";
       return q !== null ? `sent for ${q}${sure}` : `sent${sure}`;
     }
@@ -91,6 +91,14 @@ function answeredText(card: WidgetCard, a: WidgetResult): string {
     default:
       return "answered";
   }
+}
+
+/** What a guest calls a filed question: its label's lead ("Round 1 Q1"),
+ *  else the whole label — never the story's internal id ("H1"). */
+export function factQuestionName(card: WidgetCard, id: string): string {
+  const label = factQuestions(card.params["questions"]).find((q) => q.id === id)?.label;
+  if (label === undefined) return /^[A-Z]+\d+$/u.test(id) ? "a question" : id;
+  return /^(Round \d+ Q\d+)\b/u.exec(label)?.[1] ?? label;
 }
 
 /** The receipt a tray card leaves in the stream. */
