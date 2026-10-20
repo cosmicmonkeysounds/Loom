@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_MOMENTS, exitRoomFor, missedCount, momentsReducer, priorityOf, surfacesOf, type Moment, type MomentsAction, type MomentsState } from "../src/moments/model.ts";
 import { BlueScreen, MomentDialog, StickyBanner, iconOf, stickyLead } from "../src/moments/surfaces.tsx";
 import type { AlertLevel } from "../src/types.ts";
+import { readBundledCss } from "./css.ts";
 
 function moment(seq: number, over: Partial<Moment> = {}): Moment {
   return { key: `m:${seq}`, seq, severity: "major", kind: "alert", caption: "Clippy", text: `moment ${seq}`, channel: "lobby", at: seq * 1000, phase: "hunt", ...over };
@@ -117,10 +118,25 @@ describe("a new objective flashes the NOW bar", () => {
 });
 
 describe("severity is the icon", () => {
-  it("a `!` alarm is the red stop, other major the warning, minor information", () => {
+  it("the red stop only for a `!` alarm, the warning for another major message, information for notices and minor ones", () => {
     expect(iconOf({ severity: "major", kind: "alert" })).toBe("error");
-    expect(iconOf({ severity: "major", kind: "card" })).toBe("warning");
+    // a `reply !…` readout is a `!` alarm too
+    expect(iconOf({ severity: "major", kind: "readout", alarm: true })).toBe("error");
+    expect(iconOf({ severity: "major", kind: "readout" })).toBe("warning");
+    expect(iconOf({ severity: "major", kind: "other" })).toBe("warning");
+    // notices: a card that asks, a quest, an objective, a beat's line
+    for (const kind of ["card", "quest", "objective", "beat"] as const) expect(iconOf({ severity: "major", kind })).toBe("info");
     expect(iconOf({ severity: "minor", kind: "readout" })).toBe("info");
+    expect(iconOf({ severity: "minor", kind: "alert" })).toBe("info");
+  });
+
+  it("the icon follows the moment, never the level it is shown at", () => {
+    const notice = moment(30, { kind: "quest", text: "Round 2: one hour." });
+    for (const level of ["dialog", "bsod"] as const) {
+      const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(notice, level), index: 1, total: 1, canGo: false, onGo: noop, onDismiss: noop }));
+      expect(html).toContain("moments-ico-info");
+      expect(html).not.toContain("moments-ico-error");
+    }
   });
 
   it("an alarm's dialog keeps the navy caption and carries the stop icon", () => {
@@ -160,6 +176,23 @@ describe("Take me there", () => {
     expect(exitRoomFor(m, { open: null, cards: [] })).toBe("lobby"); // no such card: its own room
     expect(exitRoomFor(moment(3, { channel: "lobby", text: "No glyph here." }), { open: null, cards })).toBe("lobby");
   });
+
+  it("an announcement that says 'check your messages' opens the DM it names, else the DM that heard last", () => {
+    const dms = [
+      { id: "dm:Trabolta", title: "Trabolta", last: 90 },
+      { id: "dm:Truther_Download", title: "Truther Download", last: 88 },
+      { id: "dm:Clippy", title: "Clippy", last: 12 },
+    ];
+    const truther = moment(4, { channel: "lobby", text: "📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." });
+    expect(exitRoomFor(truther, { open: null, cards: [], dms })).toBe("dm:Truther_Download");
+    expect(exitRoomFor(truther, { open: "dm:Truther_Download", cards: [], dms })).toBeNull();
+    // Names no DM: the one that heard last.
+    expect(exitRoomFor(moment(5, { channel: "lobby", text: "Something arrived. Check your messages." }), { open: null, cards: [], dms })).toBe("dm:Trabolta");
+    // Only a mention, no "check your messages": the lobby's own.
+    expect(exitRoomFor(moment(6, { channel: "lobby", text: "📊 THE TRUST CHART. Trabolta is ranking every program on the TV." }), { open: null, cards: [], dms })).toBe("lobby");
+    // A room's own moment never moves.
+    expect(exitRoomFor(moment(7, { channel: "loc:The Desktop", text: "Check your messages, Trabolta says." }), { open: null, cards: [], dms })).toBe("loc:The Desktop");
+  });
 });
 
 describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", () => {
@@ -176,5 +209,35 @@ describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", 
     // Dismiss all: the sticky and its peek leave, read.
     s = momentsReducer(s, { type: "dismissMany", keys: surfacesOf(s, true).stickyKeys });
     expect(s.queue).toEqual([]);
+  });
+});
+
+describe("a sticky's words stop at three lines (finish review #2)", () => {
+  it("a long sticky is clamped with 'more ›'; a short one has no 'more'", () => {
+    const long = moment(50, { kind: "quest", caption: "New quest: The Truth Scavenger Hunt", text: "Round 2: It is more important than ever that I get the information I need. One hour. The books have not moved. Return to the Desktop for the Second Moment of Truth.\n- Q1. What extension does the Customer Care card tell you to dial?" });
+    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(long, "sticky"), count: 1, canGo: true, onGo: noop, onDismiss: noop }));
+    expect(html).toContain('class="moments-sticky-words clamp"');
+    expect(html).toMatch(/<button type="button" class="w95-btn moments-sticky-more" aria-expanded="false">more ›<\/button>/u);
+    const short = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(51, { text: "Snacks are in The Start Bar." }), "sticky"), count: 1, canGo: false, onGo: noop, onDismiss: noop }));
+    expect(short).not.toContain("moments-sticky-more");
+    const css = readBundledCss();
+    expect(css).toMatch(/\.moments-sticky-words\.clamp \{[^}]*-webkit-line-clamp: 3;[^}]*overflow: hidden/u);
+  });
+});
+
+describe("the host balloon in the tight layout (finish review #3)", () => {
+  it("never clips the whole box mid-line, never leaves the screen: one row, then whole lines (≤ 2) or none", () => {
+    const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
+    // No max-height / overflow on the tight balloon box itself.
+    expect(css).not.toMatch(/\[data-host-drawer="tight"\] \.moments-balloon \{[^}]*max-height/u);
+    // One 44 px row: the head's parts and "Take me there" flow side by side.
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon \{[^}]*flex-direction: row;[^}]*flex-wrap: wrap/u);
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-head \{ display: contents; \}/u);
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-caption \{[^}]*white-space: nowrap/u);
+    // Never above the top of the screen: the row's top stays on it (over the console's edge when it must).
+    expect(css).toMatch(/@supports \(bottom: min\(1px, 2px\)\) \{\s*\[data-host-drawer="tight"\] \.moments-balloon \{ bottom: min\(calc\(var\(--host-drawer-lift\) \+ 14px\), calc\(100% - var\(--safe-top\) - var\(--tap\) - 16px\)\); \}/u);
+    // The fallback: the message is left out; with round(): whole lines, at most two.
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*display: none; \}/u);
+    expect(css).toMatch(/@supports \(max-height: round\(down, 100px, 10px\)\) \{\s*\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*-webkit-line-clamp: 2;[^}]*round\(down, calc\(var\(--host-drawer-room\) - 66px\), 1\.35em\), 2\.7em\)/u);
   });
 });

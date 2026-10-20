@@ -20,6 +20,7 @@ import { retractedPinSeqs } from "../pins.ts";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../types.ts";
 import {
   BALLOON_MS,
+  DISMISS_ALL_MODALS_OVER,
   GLITCH_MS,
   READOUT_WAIT_MS,
   afterWait,
@@ -101,6 +102,10 @@ interface Engine {
   hold: (delta: number) => void;
   /** "Dismiss all (n)": every sticky waiting, read. */
   dismissStickies: () => void;
+  /** "Dismiss all (n)" on a dialog / blue screen: every modal waiting, read. */
+  dismissModals: () => void;
+  /** These moments are read (shown elsewhere in full): off the queue, never missed. */
+  readMany: (keys: readonly string[]) => void;
   /** Close a moment with no exit taken: `acted` = it was opened (never missed). */
   close: (q: Queued, acted: boolean) => void;
 }
@@ -240,7 +245,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   // The level is switchable live (D2): what is still queued follows it, so a
   // host who calms the room never leaves phones stepping through old modals.
   useEffect(() => {
-    dispatch({ type: "relevel", level, role });
+    // The phase is read, not watched: a stale moment is dropped only on a rise.
+    dispatch({ type: "relevel", level, role, phase: live.current.phase });
   }, [level, role]);
 
   // A `!` pin taken down (an unpin, or a newer pin with its key) leaves the
@@ -384,7 +390,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     [go, close],
   );
   const hold = useCallback((delta: number) => setHolds((h) => Math.max(0, h + delta)), []);
-  const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null }), [level, role, input.phase]);
+  // The tray's 🔔: everything missed, the moments a level rise parked too.
+  const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null, manual: true }), [level, role, input.phase]);
   const closeSummary = useCallback(() => dispatch({ type: "closeSummary" }), []);
   const stickyKeys = surfaces.stickyKeys.join("\u0000");
   const dismissStickies = useCallback(() => {
@@ -393,6 +400,19 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dispatch({ type: "dismissMany", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stickyKeys]);
+  const readMany = useCallback((keys: readonly string[]) => {
+    if (keys.length === 0) return;
+    for (const k of keys) mem.shownAt.delete(k);
+    dispatch({ type: "dismissMany", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const modalKeys = surfaces.modalKeys.join("\u0000");
+  const dismissModals = useCallback(() => {
+    const keys = modalKeys === "" ? [] : modalKeys.split("\u0000");
+    for (const k of keys) mem.shownAt.delete(k);
+    dispatch({ type: "dismissMany", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalKeys]);
 
   // A loud raise (a booth's unsolicited readout) never toasts (useAlerts);
   // an older session's that did stands back for the moment saying it.
@@ -415,6 +435,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dismissToast: alerts.dismiss,
     hold,
     dismissStickies,
+    dismissModals,
+    readMany,
     close,
   };
 }
@@ -432,10 +454,15 @@ export function MomentsProvider(p: MomentsInput & { children: ReactNode }) {
   return <EngineContext.Provider value={engine}>{children}</EngineContext.Provider>;
 }
 
+/** "Dismiss all (n)" on a modal: only with more than two waiting. */
+function dismissAllOf(s: Surfaces, dismiss: () => void): { waiting?: number; onDismissAll?: () => void } {
+  return s.modalKeys.length > DISMISS_ALL_MODALS_OVER ? { waiting: s.modalKeys.length, onDismissAll: dismiss } : {};
+}
+
 /** The overlay: the feedback toast and the sticky banner (in flow, under the
  *  title bar), the balloon tip, the dialog box or the blue screen, the
  *  missed list, and the glitch. */
-export function MomentsLayer() {
+export function MomentsLayer({ foldSticky = false }: { foldSticky?: boolean } = {}) {
   const e = useContext(EngineContext);
   // A sticky summary opens its list on a tap (the one modal a booth sees: it asked).
   const [openList, setOpenList] = useState<string | null>(null);
@@ -447,7 +474,7 @@ export function MomentsLayer() {
   return (
     <>
       {summary !== null && !listOpen && <SummarySticky count={summary.moments.length} onOpen={() => setOpenList(summary.key)} onDismiss={e.closeSummary} />}
-      {s.sticky !== null && (
+      {s.sticky !== null && !foldSticky && (
         <StickyBanner
           q={s.sticky}
           count={s.stickyCount}
@@ -479,6 +506,7 @@ export function MomentsLayer() {
           canGo={e.canGo(modal.moment)}
           onGo={() => e.act(modal)}
           onDismiss={() => e.dismiss(modal)}
+          {...dismissAllOf(s, e.dismissModals)}
         />
       )}
       {modal !== null && modal.level === "bsod" && (
@@ -490,6 +518,7 @@ export function MomentsLayer() {
           canGo={e.canGo(modal.moment)}
           onGo={() => e.act(modal)}
           onDismiss={() => e.dismiss(modal)}
+          {...dismissAllOf(s, e.dismissModals)}
         />
       )}
       {summary !== null && listOpen && (
@@ -526,6 +555,18 @@ export function useNowMoment(): { moment: Moment | null; seen: (acted: boolean) 
     }),
     [q, close],
   );
+}
+
+/** The sticky on screen, if any, how many wait and their keys (the pin rail
+ *  folds them into a "+n" on the guest's own pin), and `read` to take some
+ *  off the queue as read (the `!` pin the rail already shows in full). */
+export function useStickyMoment(): { key: string | null; count: number; keys: readonly string[]; read: (keys: readonly string[]) => void } {
+  const e = useContext(EngineContext);
+  const key = e?.surfaces.sticky?.moment.key ?? null;
+  const count = e?.surfaces.stickyCount ?? 0;
+  const joined = (e?.surfaces.stickyKeys ?? []).join("\u0000");
+  const read = e?.readMany;
+  return useMemo(() => ({ key, count, keys: joined === "" ? [] : joined.split("\u0000"), read: read ?? (() => {}) }), [key, count, joined, read]);
 }
 
 export function useMoments(): { missed: number; replay: () => void; level: AlertLevel } {

@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, Sheet, useWide } from "../ui/primitives.tsx";
-import { PinnedRail } from "../moments/pins-rail.tsx";
+import { MomentsAndPins } from "../moments/pins-rail.tsx";
 import { Shell, SpaceList } from "../rooms/list.tsx";
 import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
@@ -13,6 +13,7 @@ import { useOfflineFor } from "../client.ts";
 import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
 import { usePlayHost } from "../host.ts";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
+import { KnownNamesProvider, knownNames } from "../rooms/names.ts";
 import { useDocumentTitle, useLandingBrand } from "../session/shared.ts";
 import { pendingWidget, personalStream } from "../session/channels.ts";
 import { useGuestSession, type GuestSession } from "../session/guest.ts";
@@ -33,7 +34,7 @@ import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
-import { Icon } from "../chrome/icons.tsx";
+import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { titleFallback } from "../chrome/title-bar.tsx";
 import { defectTargets } from "../session/guest.ts";
 import { PictureChanger } from "./register.tsx";
@@ -148,6 +149,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // Everyone's profile pictures (a program's Wikipedia image, an authored
   // `avatar:`), for every tile in the app.
   const avatars = useMemo(() => avatarLookup(s.me?.eventId ?? null, st?.avatars), [s.me?.eventId, st?.avatars]);
+  // The names as the story and the guests spell them (ICQ, VLC): a speaker
+  // matching one is never recased by prettyName.
+  const names = useMemo(
+    () => knownNames([s.me?.name], (st?.people ?? []).map((p) => p.name), (st?.roster ?? []).map((p) => p.name), st?.voiced),
+    [s.me?.name, st?.people, st?.roster, st?.voiced],
+  );
   // The wallet's countdowns tick between snapshots (a freeze's thaw, a held
   // transfer's auto-approve), off the snapshot clock + the wall time since.
   const walletClock = useWalletClock(st?.clock, st?.wallet);
@@ -266,12 +273,22 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     nowBar: !cut.showing,
     // "Take me there": a live card's room for a moment about that card, and
     // never the room already open (wide: the one beside the list).
-    exitRoom: (m) => exitRoomFor(m, { open: t.activeThreadRoot === null ? t.activeId : null, cards: liveCardsOf(t.list, s.widgetAnswers) }),
+    // An announcement that says "check your messages" opens the DM it names.
+    exitRoom: (m) =>
+      exitRoomFor(m, {
+        open: t.activeThreadRoot === null ? t.activeId : null,
+        cards: liveCardsOf(t.list, s.widgetAnswers),
+        dms: t.list.filter((c) => c.kind === "dm").map((c) => ({ id: c.id, title: c.title, last: c.messages[c.messages.length - 1]?.seq ?? -1 })),
+      }),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
   // when the cutscene hands over to the app.
-  const framed = (body: ReactElement) => <MomentsProvider {...moments}>{body}</MomentsProvider>;
+  const framed = (body: ReactElement) => (
+    <KnownNamesProvider value={names}>
+      <MomentsProvider {...moments}>{body}</MomentsProvider>
+    </KnownNamesProvider>
+  );
 
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
@@ -328,7 +345,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       const roomActions: Action[] = [];
       if (gated && active.member) {
         roomActions.push({ label: "＋ Invite", onClick: () => setInviting(true), tone: "primary" });
-        roomActions.push({ label: "🚪 Leave", onClick: () => void s.leaveChannel(active.id), tone: "danger" });
+        roomActions.push({ label: "Leave room", onClick: () => void s.leaveChannel(active.id), tone: "danger" });
       }
       stage = (
         <ChannelView
@@ -464,8 +481,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       head={
         <>
           <NowBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} paused={st.paused === true} />
-          <MomentsLayer />
-          <PinnedRail pins={pins} />
+          {/* One strip above the room: the guest's own pin folds a sticky into its "+n". */}
+          <MomentsAndPins pins={pins} me={s.me.id} />
           <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
         </>
       }
@@ -508,7 +525,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         />
       )}
       {picturing && (
-        <Sheet title="🖼️ Your picture" onClose={() => setPicturing(false)}>
+        <Sheet title={<IconTitle icon="picture">Your picture</IconTitle>} onClose={() => setPicturing(false)}>
           <PictureChanger session={s} eventId={s.me.eventId} />
         </Sheet>
       )}

@@ -56,12 +56,17 @@
 .ico .ico-door { fill: var(--ico-door); }
 .ico .ico-screen { fill: var(--ico-screen); }
 .ico .ico-frost { stroke: var(--navy); }
+/* a caption led by its icon (a sheet's, a balloon's title) */
+.ico-title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+/* an icon set in a line of text (a card's head, the reply button, the who's-here count) */
+.ico-inline { display: inline-block; vertical-align: -3px; }
 /* Start: the Win95 flag is aol97's; plain draws a menu mark */
 .ico .ico-flag { display: none; }
 :root[data-theme="aol97"] .ico .ico-flag { display: inline; }
 :root[data-theme="aol97"] .ico .ico-menu { display: none; }
 /* on a caption-blue (attention) button the outline turns white */
-.taskbar-btn.attn .ico .ico-line, .start-menu-item:hover .ico .ico-line, .start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
+.taskbar-btn.attn .ico .ico-line, .start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
+@media (hover: hover) { .start-menu-item:hover .ico .ico-line { stroke: var(--white); } }
 
 /* ── the frame ─────────────────────────────────────────────────────────── */
 .app-frame { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; }
@@ -93,6 +98,12 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
    both stops), with "(Paused)" in the title */
 .title-bar.paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); }
 .title-bar.paused .title-bar-sub { color: var(--title-ink); }
+/* the same grey on a booth's or a host's caption bar (D3: they add
+   `title-bar-paused`, `title-bar.tsx` PAUSED_CLASS, beside their own
+   class); doubled so it wins over a later lane file's background, and the
+   bar's pale sub-ink (`--on-bar`) turns white like the guest's */
+.title-bar-paused.title-bar-paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); --on-bar: var(--title-ink); }
+.title-bar-paused-tag { font-weight: 700; }
 /* a loud objective just went live: the caption blinks twice like a window
    asking for attention (FlashWindow) and unfolds its brief */
 .title-bar.flash { animation: title-bar-flash 0.5s steps(1) 4; }
@@ -200,9 +211,13 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
   display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin: 0; padding: 0 12px 0 8px;
   border: none; background: none; color: var(--ink); font: 14px var(--ui-font); text-align: left; cursor: pointer;
 }
-.start-menu-item:hover, .start-menu-item:focus-visible { background: var(--navy); color: var(--white); outline: none; }
+.start-menu-item:focus-visible { background: var(--navy); color: var(--white); outline: none; }
 .start-menu-item.danger { color: var(--bad); }
-.start-menu-item.danger:hover, .start-menu-item.danger:focus-visible { color: var(--white); }
+.start-menu-item.danger:focus-visible { color: var(--white); }
+@media (hover: hover) {
+  .start-menu-item:hover { background: var(--navy); color: var(--white); outline: none; }
+  .start-menu-item.danger:hover { color: var(--white); }
+}
 .start-menu-icon { flex: 0 0 24px; display: inline-flex; justify-content: center; text-align: center; font-size: 18px; }
 .start-menu-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* an `arm: true` story button, armed: the director phone's look */
@@ -307,7 +322,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
   display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); margin: 0; padding: 0 10px;
   border: none; background: none; color: var(--dim-ink); font: 700 13px var(--ui-font); cursor: pointer; text-align: left;
 }
-.rooms-fold-btn:hover { color: var(--ink); }
+@media (hover: hover) { .rooms-fold-btn:hover { color: var(--ink); } }
 .rooms-fold-btn:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
 
 /* ── the program picker's reserved fold ────────────────────────────────── */

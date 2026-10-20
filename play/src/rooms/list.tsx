@@ -7,7 +7,8 @@ import type { Channel } from "../types.ts";
 import { Avatar, Badge } from "../ui/primitives.tsx";
 import { widgetLabel } from "../widgets.tsx";
 import { foldRooms } from "./order.ts";
-import { prettyName, type SpaceGroup } from "./spaces.ts";
+import { type SpaceGroup } from "./spaces.ts";
+import { displayName, useKnownNames, type KnownNames } from "./names.ts";
 
 // --- the sidebar (rooms) ------------------------------------------------------
 
@@ -19,7 +20,7 @@ function lastSaid(c: Channel): Channel["messages"][number] | undefined {
 }
 
 /** A room row's second line: the decision waiting, else the newest line. */
-export function lastPreview(c: Channel): string {
+export function lastPreview(c: Channel, known?: KnownNames): string {
   const last = lastSaid(c);
   if (c.decision) return `▶ ${c.decision.title}`;
   if (!last) return "";
@@ -27,12 +28,13 @@ export function lastPreview(c: Channel): string {
   if (last.kind === "codex" && last.codex) return `📓 ${last.codex.title}`;
   if (last.kind === "quest" && last.quest) return `📜 ${last.quest.title}${last.text ? `: ${last.text}` : ""}`;
   if (last.kind === "wallet" && last.wallet) return last.text;
-  return last.kind === "line" ? `${last.from ? `${prettyName(last.from)}: ` : ""}${last.text}` : last.text;
+  return last.kind === "line" ? `${last.from ? `${displayName(last.from, known)}: ` : ""}${last.text}` : last.text;
 }
 
 export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel; active?: boolean; meId?: string | null; onOpen: (id: string) => void }) {
   const occupancy = occupancyLabel(channel, meId ?? null);
-  const sub = channel.typing ? `${channel.typing} is typing…` : (channel.subtitle ?? lastPreview(channel));
+  const known = useKnownNames();
+  const sub = channel.typing ? `${channel.typing} is typing…` : (channel.subtitle ?? lastPreview(channel, known));
   const quiet = channel.kind === "location" && (channel.people?.length ?? 0) === 0 && channel.messages.length === 0 && !channel.here;
   return (
     <button

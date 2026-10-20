@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PinnedRail } from "../src/chat.tsx";
+import { foldsSticky, isOwnPin, shownPin, stickiesOnRail } from "../src/moments/pins-rail.tsx";
 import { readBundledCss } from "./css.ts";
 
 import { activePins, activeTakeover } from "../src/pins.ts";
@@ -58,9 +59,9 @@ describe("PinnedRail", () => {
     const html = renderToStaticMarkup(<PinnedRail pins={[m(1, "lobby", { pin: "g1", text: "GO TO THE INTERNET.", alert: true }), m(2, "lobby", { pin: "", text: "Doors at nine." })]} />);
     expect(html).toContain('class="moments-pins alert"');
     expect(html).toContain('aria-expanded="false"');
-    expect(html).toContain("📌 2");
-    // The marked guest's instruction stays on the line, never behind a tap.
-    expect(html).toContain('<span class="moments-pins-line">GO TO THE INTERNET.</span>');
+    expect(html).toMatch(/ico-pin[^]*?<\/svg> 2<\/span>/u);
+    // The marked guest's instruction stays on the line, never behind a tap, and wraps rather than "…".
+    expect(html).toContain('<span class="moments-pins-line wrap">GO TO THE INTERNET.</span>');
     // Folded: the other pin is not on screen (a tap opens the list).
     expect(html).not.toContain("moments-pins-list");
     expect(html).toMatch(/aria-label="2 pinned notices: GO TO THE INTERNET\. Tap to read\."/u);
@@ -73,8 +74,46 @@ describe("PinnedRail", () => {
   it("one plain pin reads as itself, no count, no alert colour", () => {
     const html = renderToStaticMarkup(<PinnedRail pins={[m(3, "lobby", { pin: "", text: "Doors at nine." })]} />);
     expect(html).toContain('class="moments-pins "');
-    expect(html).toContain('aria-hidden="true">📌</span>');
+    expect(html).toMatch(/<span class="moments-pins-count" aria-hidden="true"><svg class="ico ico-pin"[^]*?<\/svg><\/span>/u);
     expect(html).toContain("Doors at nine.");
+  });
+
+  it("the guest's own pin is the line (before an alert pin to the room) and is read whole", () => {
+    const pins = [m(1, "lobby", { pin: "room", text: "Everyone: snacks in the kitchen.", alert: true }), m(2, "lobby", { pin: "g7", text: "GO TO THE INTERNET. You are marked for reinstallation.", alert: true, audience: ["g7"] }), m(3, "lobby", { pin: "x", text: "Doors at nine." })];
+    expect(shownPin(pins, "g7")?.seq).toBe(2);
+    expect(shownPin([pins[0]!, pins[2]!], "g8")?.seq).toBe(1); // no own pin: the alert pin
+    expect(isOwnPin(pins[1]!, "g7")).toBe(true);
+    expect(isOwnPin(pins[0]!, "g7")).toBe(false);
+    const html = renderToStaticMarkup(<PinnedRail pins={pins} me="g7" />);
+    expect(html).toContain('<span class="moments-pins-line wrap">GO TO THE INTERNET. You are marked for reinstallation.</span>');
+    const css = readBundledCss();
+    expect(/\.moments-pins-line\.wrap \{[^}]*white-space: normal[^}]*text-overflow: clip/u.test(css)).toBe(true);
+  });
+
+  it("one strip: a sticky folds into a '+n' on the guest's own pin, and shows on a tap", () => {
+    const own = [m(2, "lobby", { pin: "g7", text: "GO TO THE INTERNET.", alert: true, audience: ["g7"] })];
+    const room = [m(1, "lobby", { pin: "", text: "Doors at nine." })];
+    const sticky = { key: "m:40", count: 1 };
+    expect(foldsSticky(own, "g7", sticky, null)).toBe(true);
+    // Opened ("+1" tapped): this sticky shows; a newer one folds again.
+    expect(foldsSticky(own, "g7", sticky, "m:40")).toBe(false);
+    expect(foldsSticky(own, "g7", { key: "m:41", count: 1 }, "m:40")).toBe(true);
+    // No own pin (only a room's), or no sticky: nothing folds.
+    expect(foldsSticky(room, "g7", sticky, null)).toBe(false);
+    expect(foldsSticky(own, "g7", { key: null, count: 0 }, null)).toBe(false);
+    const html = renderToStaticMarkup(<PinnedRail pins={own} me="g7" fold={{ count: 1, onOpen: () => {} }} />);
+    expect(html).toMatch(/<button type="button" class="w95-btn moments-pins-more" aria-label="1 more notice — show it">\+1<\/button>/u);
+    // An alert pin's yellow runs under the "+n" too, and the "+n" is a 44 px target.
+    const css = readBundledCss();
+    expect(/\.moments-pins\.alert \.moments-pins-row \{ background: var\(--highlight\)/u.test(css)).toBe(true);
+    expect(/\.moments-pins-more \{[^}]*min-height: var\(--tap\)/u.test(css)).toBe(true);
+  });
+
+  it("a `!` pin's own sticky is read: the rail shows it whole, never a second yellow bar", () => {
+    const own = [m(7, "lobby", { pin: "g7", text: "GO TO THE INTERNET.", alert: true, audience: ["g7"] })];
+    expect(stickiesOnRail(own, "g7", ["m:7", "m:9"])).toEqual(["m:7"]);
+    // A plain room pin (folded to one line, cut with "…") is not read for the guest.
+    expect(stickiesOnRail([m(8, "lobby", { pin: "", text: "Doors at nine." })], "g7", ["m:8"])).toEqual([]);
   });
 
   it("the rail is one 44 px line from the tokens", () => {

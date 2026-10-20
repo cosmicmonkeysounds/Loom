@@ -70,9 +70,9 @@ export function CodexRoom({ messages, meId, empty }: { messages: readonly ChatMe
       return null;
     }
   });
-  // This device's first look: keep a record at once (all but the newest
-  // entry seen; nothing, when the Codex is still empty — the tour points
-  // at it), so everything learned from now on is NEW.
+  // This device's first look: keep a record at once, empty — nothing has
+  // been opened yet, so every entry held is NEW until it is (D7), the same
+  // entries the room-list badge counted as unread.
   useEffect(() => {
     if (seen !== null) return;
     const next = markSeen(rows, null, null);

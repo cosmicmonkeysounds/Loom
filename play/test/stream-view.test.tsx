@@ -29,7 +29,7 @@ describe("the room header", () => {
     expect(html).toContain('aria-label="Back to your rooms"');
     expect(html).toContain('<strong class="stream-room-title">The Desktop (living room)</strong>');
     expect(html).toContain("you are here");
-    expect(html).toMatch(/👥 <\/span>1 · you/u);
+    expect(html).toMatch(/ico-people ico-inline[^]*?<\/svg> <\/span>1 · you/u);
     expect(html).not.toContain("presence-stack"); // no avatar strip squeezing the title
   });
 

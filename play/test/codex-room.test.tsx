@@ -52,14 +52,22 @@ describe("categories", () => {
 });
 
 describe("new until opened", () => {
-  it("this device's first look flags only the newest; later entries are new until opened", () => {
+  it("this device's first look flags every entry held (nothing opened yet); each stays new until opened", () => {
     const rows = codexRows([entry({ entry: "A" }), entry({ entry: "B" })]);
-    expect([...newEntries(rows, null)]).toEqual(["B"]);
+    expect([...newEntries(rows, null)].sort()).toEqual(["A", "B"]);
     const record = markSeen(rows, null, null);
-    expect(record).toEqual(["A"]);
+    expect(record).toEqual([]);
     const more = codexRows([entry({ entry: "A" }), entry({ entry: "B" }), entry({ entry: "C" })]);
-    expect([...newEntries(more, new Set(record))].sort()).toEqual(["B", "C"]);
-    expect(markSeen(more, new Set(record), "C").sort()).toEqual(["A", "C"]);
+    expect([...newEntries(more, new Set(record))].sort()).toEqual(["A", "B", "C"]);
+    const opened = markSeen(more, new Set(record), "C");
+    expect(opened).toEqual(["C"]);
+    expect([...newEntries(more, new Set(opened))].sort()).toEqual(["A", "B"]);
+  });
+
+  it("the room's NEW count agrees with what the badge counted: a first look after a big unlock flags all of it", () => {
+    // The Truther Download: 45 entries at once, the Codex never opened on this device.
+    const rows = codexRows(Array.from({ length: 45 }, (_, i) => entry({ entry: `E${i}` })));
+    expect(newEntries(rows, null).size).toBe(45);
   });
 });
 
@@ -96,6 +104,12 @@ describe("the room", () => {
     expect(html.match(/class="stream-new"/gu)?.length).toBe(2);
     expect(html).toContain('type="search"');
     expect(render(four.slice(0, 2), [])).not.toContain('type="search"');
+  });
+
+  it("a first look (no record on this device) shows every row as New", () => {
+    const html = render(["A", "B", "C"].map((e) => entry({ entry: e })));
+    expect(html.match(/class="stream-new"/gu)?.length).toBe(3);
+    expect(html).toContain("3 · 3 new");
   });
 
   it("empty: the room teaches what to do", () => {

@@ -19,6 +19,7 @@ describe("a tight balloon shows whole lines, never a box cut mid-line", () => {
   it("moments.css clamps the text instead of clipping the whole tip", () => {
     const css = readFileSync(new URL("../src/css/moments.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//gu, "");
     expect(css).not.toMatch(/\[data-host-drawer="tight"\] \.moments-balloon \{[^}]*overflow: hidden/u);
-    expect(css).toContain('[data-host-drawer="tight"] .moments-balloon-text { -webkit-line-clamp: var(--host-balloon-lines, 1); }');
+    // The tight row's own CSS (moments-order.test.tsx) clamps the text to whole lines.
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*-webkit-line-clamp: 2;/u);
   });
 });

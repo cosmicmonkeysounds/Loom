@@ -1,6 +1,7 @@
 //! One open room (moved out of `chat.tsx` in wave 13): the decision tray,
 //! the who's-here strip, the room view and the thread panel.
 
+import { Icon } from "../chrome/icons.tsx";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { usePlayHost, type Crawl } from "../host.ts";
 import { isTextEntry } from "../chrome/keyboard.ts";
@@ -141,7 +142,9 @@ export function PresenceStrip({ people, meId, onOpen }: { people: Channel["peopl
       aria-label={`${list.length} here${here ? ", you included" : ""} — see who`}
     >
       <span className="presence-n">
-        <span aria-hidden>👥 </span>
+        <span aria-hidden>
+          <Icon name="people" className="ico-inline" />{" "}
+        </span>
         {list.length}
         {here ? " · you" : ""}
       </span>
@@ -413,7 +416,9 @@ export function MessageThread({
         <button type="button" className="back stream-back" onClick={onClose} aria-label="Back to the room">
           ‹
         </button>
-        <div className="avatar dm">{quest ? "📜" : "💬"}</div>
+        <div className="avatar dm" aria-hidden>
+          <Icon name={quest ? "quest" : "reply"} size={20} />
+        </div>
         <div className="thread-id stream-room-id">
           <strong className="stream-room-title">{quest ? quest.title : "Thread"}</strong>
           <span className="stream-room-sub">in {channel.title}</span>

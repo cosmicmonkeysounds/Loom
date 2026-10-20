@@ -11,6 +11,7 @@ import { boothAlertFilter } from "../src/alerts.ts";
 import {
   EMPTY_MOMENTS,
   GLANCE_MS,
+  MODAL_GLANCE_MS,
   HOLD_MISS_MS,
   MOMENT_WINDOW_MS,
   DONE_MAX,
@@ -127,6 +128,9 @@ describe("which messages are moments", () => {
     expect(momentOf(msg(3, { alert: true, takeover: true, pin: "" }), guest, null)).toBeNull();
     expect(momentOf(msg(4, { alert: true, hidden: true }), guest, null)).toBeNull();
     expect(momentOf(msg(5, { kind: "line" }), guest, null)).toBeNull();
+    // A `!` alarm is marked as one, whatever kind it is (a `reply !…` readout: the red stop).
+    expect(momentOf(msg(6, { alert: true, readout: true, moment: "major" }), guest, null)).toMatchObject({ kind: "readout", alarm: true });
+    expect(momentOf(msg(7, { readout: true, moment: "major" }), guest, null)?.alarm).toBeUndefined();
   });
 
   it("a card that asks shows its own text; a quest names itself", () => {
@@ -171,9 +175,10 @@ describe("the queue", () => {
     expect(v.modal).toBeNull();
     expect(s.queue.map((q) => q.level)).toEqual(["balloon", "balloon", "balloon"]);
     expect(s.burst).toBe(0);
-    // Back up: they climb again, and "1 of 2" starts over.
+    // Back up: only the newest climbs onto the modal rung; the other waits in the missed list.
     s = momentsReducer(s, { type: "relevel", level: "dialog", role: "guest" });
-    expect([surfacesOf(s, false).modal?.moment.seq, surfacesOf(s, false).modalIndex, surfacesOf(s, false).modalTotal]).toEqual([2, 1, 2]);
+    expect([surfacesOf(s, false).modal?.moment.seq, surfacesOf(s, false).modalIndex, surfacesOf(s, false).modalTotal]).toEqual([3, 1, 1]);
+    expect(s.missed.map((m) => m.seq)).toEqual([2]);
     expect(momentsReducer(s, { type: "relevel", level: "dialog", role: "guest" })).toBe(s);
   });
 
@@ -184,6 +189,92 @@ describe("the queue", () => {
     expect(s.queue.map((q) => [q.moment.seq, q.level])).toEqual([[2, "dialog"]]);
     const b = momentsReducer(run([arrive([moment(3)], { level: "balloon", role: "booth" })]), { type: "relevel", level: "bsod", role: "booth" });
     expect(b.queue.map((q) => q.level)).toEqual(["sticky"]);
+  });
+
+  it("a level rise never turns an hour of unread stickies into a queue of modals, oldest first", () => {
+    // Six stickies left up from the Y2K clock to the ceremony (different rooms and kinds, so none folded the others).
+    const kinds: Array<Partial<Moment>> = [
+      { kind: "alert", channel: "dm:Trabolta", phase: "y2k", text: "🕚 SYSTEM CLOCK RESET" },
+      { kind: "alert", channel: "lobby", phase: "y2k", text: "ALL PROGRAMS: to the living room" },
+      { kind: "alert", channel: "dm:Clippy", phase: "finale", text: "🎵 TRABOLTA SOLVED IT" },
+      { kind: "card", channel: "dm:Trabolta", phase: "ceremony", text: "Say Sandy's pickup line" },
+      { kind: "alert", channel: "lobby", phase: "ceremony", text: "🏆 The awards" },
+    ];
+    // (They reached the phone together — a reconnect, one drain — so none folded the others.)
+    let s = run([arrive(kinds.map((k, i) => moment(i + 1, { ...k, at: (i + 1) * MIN })), { level: "sticky" })]);
+    expect(surfacesOf(s, false).stickyCount).toBe(5);
+    s = momentsReducer(s, { type: "relevel", level: "dialog", role: "guest", phase: "ceremony" });
+    const v = surfacesOf(s, false);
+    // Only the newest still-relevant one shows, on the new rung, alone.
+    expect(v.modal?.moment.seq).toBe(5);
+    expect([v.modalIndex, v.modalTotal]).toEqual([1, 1]);
+    expect(s.queue.filter((q) => q.level === "dialog")).toHaveLength(1);
+    // Nothing from a phase that has passed waits anywhere; the rest of tonight's are missed (the tray, "You missed n moments").
+    expect([...s.queue.map((q) => q.moment.phase), ...s.missed.map((m) => m.phase)].every((p) => p === "ceremony")).toBe(true);
+  });
+
+  it("what a rise parks waits for the tray's 🔔: a wake or a reload never steps through it", () => {
+    let s = run([arrive([1, 2, 3].map((n) => moment(n, { channel: `dm:${n}`, phase: "hunt", at: n * MIN })), { level: "sticky" })]);
+    s = momentsReducer(s, { type: "relevel", level: "bsod", role: "guest", phase: "hunt" });
+    expect(surfacesOf(s, false).modal?.moment.seq).toBe(3);
+    expect(s.missed.map((m) => [m.seq, m.parked])).toEqual([
+      [1, true],
+      [2, true],
+    ]);
+    // The newest read; the phone locks and wakes: no blue screen comes back on its own.
+    s = momentsReducer(s, { type: "dismiss", key: "m:3", onScreenMs: 2_000 });
+    s = momentsReducer(s, { type: "wake", level: "bsod", role: "guest", now: 0, phase: "hunt" });
+    expect(surfacesOf(s, false).modal).toBeNull();
+    expect(s.missed).toHaveLength(2);
+    // A reload: they count as settled (the mark passes them, nothing above it waits).
+    expect(settledMark(s, 3)).toBe(3);
+    expect(doneAbove(s, [1, 2, 3], 0)).toEqual([1, 2, 3]);
+    // The tray's 🔔 replays them, as ordinary moments again.
+    s = momentsReducer(s, { type: "wake", level: "bsod", role: "guest", now: 0, phase: "hunt", manual: true });
+    expect(s.missed).toEqual([]);
+    expect(s.queue.map((q) => [q.moment.seq, q.moment.parked])).toEqual([
+      [1, undefined],
+      [2, undefined],
+    ]);
+  });
+
+  it("a rise keeps whatever does not climb: a minor sticky stays a sticky", () => {
+    let s = run([arrive([moment(1, { severity: "minor", kind: "readout", channel: "dm:A" }), moment(2, { channel: "dm:B" })], { level: "sticky" })]);
+    s = momentsReducer(s, { type: "relevel", level: "dialog", role: "guest", phase: "hunt" });
+    expect(s.queue.map((q) => [q.moment.seq, q.level]).sort()).toEqual([
+      [1, "sticky"],
+      [2, "dialog"],
+    ]);
+    expect(s.missed).toEqual([]);
+  });
+
+  it("Dismiss all (n) on a modal: every modal waiting is read, none of them missed", () => {
+    let s = run([arrive([1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` })), { level: "dialog" })]);
+    const v = surfacesOf(s, false);
+    expect(v.modalKeys).toEqual(["m:1", "m:2", "m:3", "m:4"]);
+    s = momentsReducer(s, { type: "dismissMany", keys: v.modalKeys });
+    expect(surfacesOf(s, false).modal).toBeNull();
+    expect(s.missed).toEqual([]);
+    expect(s.burst).toBe(0);
+    // Held (a busy surface): no modal shows, so there is nothing to dismiss all of.
+    expect(surfacesOf(run([arrive([moment(9)], { level: "dialog" })]), true).modalKeys).toEqual([]);
+  });
+
+  it("a quick deliberate tap on a modal is read: ≥ the dead time, or the second of a queue being tapped through", () => {
+    let s = run([arrive([moment(1, { channel: "dm:A" }), moment(2, { channel: "dm:B" }), moment(3, { channel: "dm:C" })], { level: "bsod" })]);
+    // The first: the dead time let the tap through (400 ms from its first render).
+    s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: MODAL_GLANCE_MS });
+    // The second, tapped through 120 ms after it came up: the guest is reading through the queue.
+    s = momentsReducer(s, { type: "dismiss", key: "m:2", onScreenMs: 120 });
+    expect(s.missed).toEqual([]);
+    // A modal closed under the dead time with no queue behind it (a programmatic close) still counts as missed.
+    let t = run([arrive([moment(5)], { level: "dialog" })]);
+    t = momentsReducer(t, { type: "dismiss", key: "m:5", onScreenMs: 40 });
+    expect(t.missed.map((m) => m.seq)).toEqual([5]);
+    // A sticky keeps the 1 s glance.
+    let u = run([arrive([moment(6)], { level: "sticky" })]);
+    u = momentsReducer(u, { type: "dismiss", key: "m:6", onScreenMs: MODAL_GLANCE_MS });
+    expect(u.missed.map((m) => m.seq)).toEqual([6]);
   });
 
   it("the same moment never queues twice", () => {
@@ -279,7 +370,7 @@ describe("missed moments", () => {
   });
 
   it("dismissed after a glance (< 1 s on screen) → missed; read → gone", () => {
-    let s = run([arrive([moment(1), moment(2)])]);
+    let s = run([arrive([moment(1), moment(2)], { level: "sticky" })]);
     s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: GLANCE_MS - 1 });
     s = momentsReducer(s, { type: "dismiss", key: "m:2", onScreenMs: GLANCE_MS });
     expect(s.missed.map((m) => m.seq)).toEqual([1]);
@@ -601,6 +692,16 @@ describe("the surfaces' markup", () => {
     expect(html).toContain("Press any key to continue");
     expect(html).toContain("Trabolta: I remember her.");
     expect(faultAddress("m:4")).toMatch(/^0028:C0[0-9A-F]{6}$/u);
+  });
+
+  it("Dismiss all (n) on a dialog and on the blue screen (both themes) when it is given", () => {
+    const d = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 4, canGo: false, onGo: noop, onDismiss: noop, waiting: 4, onDismissAll: noop }));
+    expect(d).toContain("Dismiss all (4)");
+    expect(renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 2, canGo: false, onGo: noop, onDismiss: noop }))).not.toContain("Dismiss all");
+    for (const win95 of [true, false]) {
+      const b = renderToStaticMarkup(createElement(BlueScreen, { q: q(moment(2), "bsod"), index: 1, total: 3, canGo: true, onGo: noop, onDismiss: noop, win95, waiting: 3, onDismissAll: noop }));
+      expect(b).toContain("Dismiss all (3)");
+    }
   });
 
   it("the missed list names every moment with its exit", () => {

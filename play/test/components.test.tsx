@@ -63,7 +63,7 @@ describe("the taskbar", () => {
 
 describe("the NOW title bar", () => {
   it("shows the first objective, else the room name; a tone marks it", () => {
-    expect(html(createElement(TitleBar, { objectives: [objective], fallback: "Lobby", onOpen: () => {}, sub: "📍 The Desktop" }))).toContain("▣ NOW: Clear the door ›");
+    expect(html(createElement(TitleBar, { objectives: [objective], fallback: "Lobby", onOpen: () => {}, sub: "📍 The Desktop" }))).toContain("▣ NOW: Clear the door\u00a0›");
     const none = html(createElement(TitleBar, { objectives: [], fallback: "Lobby", onOpen: () => {} }));
     expect(none).toContain("Lobby");
     expect(none).not.toContain("NOW");

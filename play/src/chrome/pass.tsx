@@ -5,6 +5,7 @@
 //! takeover (`--z-pass`): a guest holding up a QR is never interrupted by a
 //! dialog or a blue screen — those wait behind `useMomentsHold`.
 
+import { IconTitle } from "./icons.tsx";
 import { useEffect, useRef } from "react";
 import { usePlayHost } from "../host.ts";
 import { eventRoot } from "./balloon.tsx";
@@ -40,7 +41,9 @@ export function FullPass({ guestId, name, onClose }: { guestId: string; name: st
   return (
     <div className="fullpass" role="dialog" aria-modal="true" aria-label={`Your pass — ${name}`}>
       <div className="w95-titlebar fullpass-bar">
-        <span className="w95-title">🎟 Your pass</span>
+        <span className="w95-title">
+          <IconTitle icon="pass">Your pass</IconTitle>
+        </span>
         <button type="button" className="w95-btn w95-x" aria-label="Close the pass" onClick={onClose}>
           ×
         </button>

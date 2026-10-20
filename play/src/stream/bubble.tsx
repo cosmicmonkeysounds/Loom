@@ -3,10 +3,11 @@
 //! narration / widget / codex / quest / wallet) with cards docked, settled
 //! or inline (`settled.ts`), and the sender-run group.
 
+import { Icon } from "../chrome/icons.tsx";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { crawlDuration } from "../crawl.ts";
 import { usePlayHost, type CrawlTier } from "../host.ts";
-import { prettyName } from "../rooms/spaces.ts";
+import { displayName, useKnownNames } from "../rooms/names.ts";
 import type { ChatMessage, QuestStatus, WalletCard } from "../types.ts";
 import { PersonAvatar, colorFor } from "../ui/primitives.tsx";
 import { WalletCardView, lastWalletStep } from "../wallet.tsx";
@@ -170,7 +171,7 @@ function CodexCardView({ msg, modBtn }: { msg: ChatMessage; modBtn: ReactNode })
       <div className="codex-card">
         <div className="codex-card-head">
           <span className="codex-card-ico" aria-hidden>
-            📓
+            <Icon name="codex" size={18} />
           </span>
           <strong className="codex-card-title">{c.title}</strong>
           {c.about && <span className="pill kind">about {c.about}</span>}
@@ -233,7 +234,7 @@ function QuestView({
       >
         <div className="quest-head">
           <span className="quest-ico" aria-hidden>
-            📜
+            <Icon name="quest" size={18} />
           </span>
           <strong className="quest-title">{q.title}</strong>
           <span className={`quest-status ${st}`}>{QUEST_STATUS[st]}</span>
@@ -367,6 +368,7 @@ export function MessageBubble({
 }) {
   const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? (msg.alert ? "signal alert" : "signal") : msg.kind === "widget" ? "widget" : "narration";
   const c = useCrawl(msg.text, msg.seq);
+  const known = useKnownNames();
   // Effect text keeps its look after the crawl (and under reduced motion).
   const fx = msg.fx === true || (msg.kind === "signal" && (msg.alert === true || msg.takeover === true));
   const crawlCls = `${c.typing && !c.queued ? "stream-typing" : ""} ${c.queued ? "stream-queued" : ""} ${fx ? "stream-fx" : ""} ${fx && c.typing ? "stream-fx-live" : ""}`;
@@ -389,7 +391,7 @@ export function MessageBubble({
     return (
       <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${crawlCls}`}>
         {showChannel && <div className="msg-channel">{msg.title}</div>}
-        {msg.kind === "narration" && msg.from && msg.from !== "Narrator" && <span className="narrator-tag">{prettyName(msg.from)}</span>}
+        {msg.kind === "narration" && msg.from && msg.from !== "Narrator" && <span className="narrator-tag">{displayName(msg.from, known)}</span>}
         {msg.manner && <span className="stream-manner">({msg.manner}) </span>}
         <span className="bubble plain">
           <CrawlText text={msg.text} c={c} />
@@ -398,24 +400,38 @@ export function MessageBubble({
       </div>
     );
   }
-  const name = prettyName(msg.from);
+  const name = displayName(msg.from, known);
   // The 💬 thread affordance belongs on typed chat (no beat), where people
   // talk back — not under every scripted line. A line with replies shows them.
   const threadable = onOpenThread !== undefined && (!msg.beat || (replies ?? 0) > 0);
   return (
     <div className={`msg line ${tuck ? "tuck" : ""} ${msg.hidden ? "hidden" : ""} ${crawlCls}`}>
-      {!tuck && (
-        <button type="button" className="msg-avatar" onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1} aria-label={name}>
-          <PersonAvatar name={msg.from} />
-        </button>
-      )}
+      {/* A tappable sender (a booth opens the guest's card) is a button with a
+          44 px hit area (chrome.css); a guest's is only a name, never a
+          17 px button that does nothing. */}
+      {!tuck &&
+        (onPerson ? (
+          <button type="button" className="msg-avatar" onClick={() => onPerson(msg.from)} tabIndex={0} aria-label={name}>
+            <PersonAvatar name={msg.from} />
+          </button>
+        ) : (
+          <span className="msg-avatar" aria-hidden>
+            <PersonAvatar name={msg.from} />
+          </span>
+        ))}
       <div className="msg-body">
         {!tuck && (
           <div className="msg-head">
             {showChannel && <span className="msg-channel">{msg.title}</span>}
-            <button type="button" className="speaker" style={{ color: colorFor(msg.from) }} onClick={onPerson ? () => onPerson(msg.from) : undefined} tabIndex={onPerson ? 0 : -1}>
-              {name}
-            </button>
+            {onPerson ? (
+              <button type="button" className="speaker" style={{ color: colorFor(msg.from) }} onClick={() => onPerson(msg.from)} tabIndex={0}>
+                {name}
+              </button>
+            ) : (
+              <span className="speaker" style={{ color: colorFor(msg.from) }}>
+                {name}
+              </span>
+            )}
             {msg.manner && <span className="stream-manner">{msg.manner}</span>}
             {msg.via && <span className="via">via {msg.via}</span>}
           </div>
@@ -432,7 +448,9 @@ export function MessageBubble({
             title={replies ? `${replies} ${replies === 1 ? "reply" : "replies"}` : "Reply in thread"}
             aria-label={replies ? `${replies} replies` : "Reply in thread"}
           >
-            <span className="reply-ico">💬</span>
+            <span className="reply-ico" aria-hidden>
+              <Icon name="reply" className="ico-inline" />
+            </span>
             {replies && replies > 0 ? <span className="reply-n">{replies}</span> : null}
           </button>
         )}

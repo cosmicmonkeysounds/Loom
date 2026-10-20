@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { TitleBar, flashLine, moreObjectives, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
+import { PAUSED_CLASS, PAUSED_WORD, PausedTag, TITLE_CHEVRON, TitleBar, flashLine, moreObjectives, pausedClass, pausedTitle, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
 import { nowFlashOf, whereLine } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
@@ -13,7 +13,7 @@ const o = (id: string, title: string): ObjectiveView => ({ id, title, brief: "",
 
 describe("the NOW title bar", () => {
   it("names the first live objective, else falls back", () => {
-    expect(titleBarText([o("a", "Get scanned"), o("b", "Find Gerald")], "Lobby")).toEqual({ title: "▣ NOW: Get scanned ›", now: o("a", "Get scanned") });
+    expect(titleBarText([o("a", "Get scanned"), o("b", "Find Gerald")], "Lobby")).toEqual({ title: "▣ NOW: Get scanned\u00a0›", now: o("a", "Get scanned") });
     expect(titleBarText([], "The Desktop").title).toBe("The Desktop");
     expect(titleBarText(undefined, "Trapped in the Internet")).toEqual({ title: "Trapped in the Internet", now: null });
   });
@@ -26,7 +26,7 @@ describe("the NOW title bar", () => {
   });
 
   it("captured and restricted mark the title with ⛔ and tint the bar", () => {
-    expect(titleBarText([o("a", "Run")], "x", "alarm").title).toBe("⛔ ▣ NOW: Run ›");
+    expect(titleBarText([o("a", "Run")], "x", "alarm").title).toBe("⛔ ▣ NOW: Run\u00a0›");
     expect(titleBarText(undefined, "Lobby", "restricted").title).toBe("⛔ Lobby");
     expect(renderToStaticMarkup(createElement(TitleBar, { objectives: undefined, fallback: "Lobby", onOpen: () => {}, tone: "restricted" }))).toContain('class="title-bar restricted"');
   });
@@ -68,10 +68,30 @@ describe("the NOW title bar", () => {
 
 describe("the NOW bar's states (fguest)", () => {
   it("a paused show greys the caption and says (Paused), the Win95 way", () => {
-    expect(titleBarText([o("a", "Hunt")], "x", undefined, true).title).toBe("▣ NOW: Hunt (Paused) ›");
+    expect(titleBarText([o("a", "Hunt")], "x", undefined, true).title).toBe("▣ NOW: Hunt (Paused)\u00a0›");
     expect(titleBarText([], "Lobby", undefined, true).title).toBe("Lobby (Paused)");
     const html = renderToStaticMarkup(createElement(TitleBar, { objectives: [o("a", "Hunt")], fallback: "", onOpen: () => {}, paused: true }));
-    expect(html).toContain('class="title-bar  paused"');
+    expect(html).toContain('class="title-bar  paused title-bar-paused"');
+  });
+
+  it("the chevron is bound to the last word: a wrapped title never leaves › alone on its own line", () => {
+    const { title } = titleBarText([o("a", "Go to the Desktop: a game is about to begin")], "x");
+    expect(title.endsWith("begin\u00a0›")).toBe(true);
+    expect(title).not.toMatch(/ ›$/u);
+    expect(TITLE_CHEVRON).toBe("\u00a0›");
+  });
+
+  it("D3: what a booth's and a host's NOW bars use for a paused show", () => {
+    expect(PAUSED_WORD).toBe("(Paused)");
+    expect(pausedTitle("Hold the door", true)).toBe("Hold the door (Paused)");
+    expect(pausedTitle("Hold the door", false)).toBe("Hold the door");
+    expect(pausedClass("booth-now-bar", true)).toBe(`booth-now-bar ${PAUSED_CLASS}`);
+    expect(pausedClass("booth-now-bar", false)).toBe("booth-now-bar");
+    expect(renderToStaticMarkup(createElement(PausedTag, { paused: true }))).toBe('<span class="title-bar-paused-tag"> (Paused)</span>');
+    expect(renderToStaticMarkup(createElement(PausedTag, { paused: false }))).toBe("");
+    // The grey wins over a later lane file's bar background (doubled class) and whitens the sub-ink.
+    const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.title-bar-paused\.title-bar-paused \{[^}]*background: linear-gradient\(90deg, var\(--paused-1\), var\(--paused-2\)\);[^}]*--on-bar: var\(--title-ink\)/u);
   });
 
   it("a loud objective flashes it open with its brief instead of a banner", () => {

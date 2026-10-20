@@ -10,7 +10,7 @@ import { TrayBalloon, TraySlot } from "../chrome/balloon.tsx";
 import type { StartItem, TaskbarButton } from "../chrome/taskbar.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { TitleBar } from "../chrome/title-bar.tsx";
-import { Icon } from "../chrome/icons.tsx";
+import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { useNowMoment } from "../moments/provider.tsx";
 import type { LiveCard } from "../moments/model.ts";
 import { cardGlyph, trayCards } from "../stream/settled.ts";
@@ -209,7 +209,7 @@ export function AlertsBalloon({ push, why, title }: { push: Push; why: string; t
   if (!showPushCard(push.state, push.dismissed)) return null;
   const ios = iosPushCopy(push.state, false, title);
   return (
-    <TrayBalloon title={`🔔 ${ios?.head ?? "Get alerts"}`} onClose={push.dismiss} timeoutMs={null} closeOnTapAway={false} label="Get alerts" floating>
+    <TrayBalloon title={<IconTitle icon="bell">{ios?.head ?? "Get alerts"}</IconTitle>} onClose={push.dismiss} timeoutMs={null} closeOnTapAway={false} label="Get alerts" floating>
       <div className="tray-balloon-line">{ios?.body ?? why}</div>
       <div className="tray-balloon-row">
         {ios === null && (
@@ -237,7 +237,7 @@ export function AlertsBalloon({ push, why, title }: { push: Push; why: string; t
 /** 🔔 The alerts switch and where it stands. */
 export function AlertsSheet({ push, title, onClose }: { push: Push; title?: string | null; onClose: () => void }) {
   return (
-    <Sheet title="🔔 Alerts" onClose={onClose}>
+    <Sheet title={<IconTitle icon="bell">Alerts</IconTitle>} onClose={onClose}>
       <PushRow push={push} title={title} />
     </Sheet>
   );

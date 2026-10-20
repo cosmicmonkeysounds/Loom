@@ -37,6 +37,15 @@ export interface Moment {
   pass?: boolean;
   /** The beat the line was spoken in (a blue screen is one per beat). */
   beat?: string | null;
+  /** A `!` alarm (`ChatMessage.alert`), whatever made it — a cue, a pin, a `reply !…`: the red stop icon. */
+  alarm?: boolean;
+  /**
+   * Parked by a level rise (the rest of a backlog that climbed): it waits in
+   * the missed list for the tray's 🔔, and nothing else brings it back — not
+   * a wake, a hold ending or a reload (it counts as settled), so a phone that
+   * locks or reloads never steps through the backlog the rise just spared.
+   */
+  parked?: boolean;
   /** The story clock (ms) when it arrived. */
   at: number;
   /** `view.night.phase` when it arrived (a phase change makes a missed moment stale). */
@@ -75,6 +84,15 @@ export const BOOTH_CAP: AlertLevel = "sticky";
 export const BALLOON_MS = 8_000;
 /** A moment on screen for less than this before it was dismissed counts as missed. */
 export const GLANCE_MS = 1_000;
+/**
+ * A modal (dialog / blue screen) closed after this long was read: its dead
+ * time (`surfaces.tsx` `MODAL_DEAD_MS`, 400 ms from its first render)
+ * already refuses an earlier tap, so a tap it lets through is deliberate —
+ * this is that 400 ms less the few ms between the modal's first render and
+ * the provider's on-screen stamp. The second modal of a queue the guest is
+ * already tapping through is never missed at all.
+ */
+export const MODAL_GLANCE_MS = 350;
 /** A moment held behind a busy surface this long counts as missed. */
 export const HOLD_MISS_MS = 30_000;
 /** More missed moments than this replay as one "You missed n moments" list. */
@@ -209,6 +227,7 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
     seq: m.seq,
     severity,
     kind,
+    ...(m.alert === true ? { alarm: true } : {}),
     caption: momentCaption(m, kind),
     text: momentText(m),
     channel: m.channel,
@@ -312,12 +331,51 @@ export interface LiveCard {
  * - else the moment's own room;
  * - never the room already open on screen (there is nowhere to take you).
  */
-export function exitRoomFor(m: Pick<Moment, "channel" | "text" | "kind">, ctx: { open: string | null; cards: readonly LiveCard[] }): string | null {
+export function exitRoomFor(
+  m: Pick<Moment, "channel" | "text" | "kind">,
+  ctx: { open: string | null; cards: readonly LiveCard[]; dms?: readonly DmRoom[] },
+): string | null {
   const glyph = m.kind === "card" ? "•" : noticeKey(m.text);
   let card: LiveCard | undefined;
   if (glyph !== "•") for (const c of ctx.cards) if (c.glyph === glyph && (card === undefined || c.seq > card.seq)) card = c;
-  const room = card?.channel ?? m.channel;
+  const room = card?.channel ?? (m.channel !== null && SHARED_HOMES.has(m.channel) ? (namedDm(m.text, ctx.dms ?? []) ?? m.channel) : m.channel);
   return room !== null && room === ctx.open ? null : room;
+}
+
+/** A direct-message room the viewer has, for an announcement that sends them to it. */
+export interface DmRoom {
+  id: string;
+  title: string;
+  /** Its newest message's seq (-1 when empty). */
+  last: number;
+}
+
+/** "Check your messages", "read your DMs", "see your inbox". */
+const TO_MESSAGES = /\b(?:check|read|open|see)\s+(?:your\s+)?(?:messages|inbox|dms?|direct messages)\b/iu;
+
+function foldWords(s: string): string {
+  return ` ${s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
+}
+
+/**
+ * The DM an announcement in the lobby sends the viewer to ("📥 TRUTHER
+ * DOWNLOAD received. Check your messages."): one that tells them to check
+ * their messages goes to the DM it names (the longest name that appears in
+ * it, word for word), else to the DM that heard last. Null for any other
+ * announcement — a lobby line that only mentions Trabolta stays the lobby's.
+ */
+export function namedDm(text: string, dms: readonly DmRoom[]): string | null {
+  if (!TO_MESSAGES.test(text) || dms.length === 0) return null;
+  const said = foldWords(text);
+  let named: DmRoom | null = null;
+  for (const d of dms) {
+    const t = foldWords(d.title);
+    if (t.trim() !== "" && said.includes(t) && (named === null || d.title.length > named.title.length)) named = d;
+  }
+  if (named !== null) return named.id;
+  let newest: DmRoom | null = null;
+  for (const d of dms) if (d.last >= 0 && (newest === null || d.last > newest.last)) newest = d;
+  return newest?.id ?? null;
 }
 
 // --- the queue ----------------------------------------------------------------
@@ -362,8 +420,8 @@ export const EMPTY_MOMENTS: MomentsState = { queue: [], missed: [], summary: nul
 export type MomentsAction =
   /** Moments that just arrived. `batch` = a history replay (several at once): staleness + compression apply. */
   | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean }
-  /** The page became visible (or the last hold released): replay the missed list. */
-  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null }
+  /** The page became visible (or the last hold released): replay the missed list. `manual` (the tray's 🔔) replays the parked moments too. */
+  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; manual?: boolean }
   /** A moment left the screen. A plain close after `onScreenMs` < `GLANCE_MS` → missed; `acted` (the user took its exit, "Take me there") never is. */
   | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean }
   /** Close the summary list. */
@@ -372,8 +430,15 @@ export type MomentsAction =
   | { type: "dismissMany"; keys: readonly string[] }
   /** While a hold lasts: modal moments queued too long move to missed. */
   | { type: "tick"; now: number; held: boolean }
-  /** The story changed the level live: everything still queued moves to its new rung (a blue screen only exists at `bsod`). */
-  | { type: "relevel"; level: AlertLevel; role: Viewer["role"] }
+  /**
+   * The story changed the level live: everything still queued moves to its
+   * new rung (a blue screen only exists at `bsod`). On a rise, of the
+   * moments that climb onto a modal rung only the newest still-relevant one
+   * shows; the rest fold into the missed list ("You missed n moments",
+   * parked — the tray's 🔔 only), and
+   * any whose phase has passed (`phase`, when given) are dropped.
+   */
+  | { type: "relevel"; level: AlertLevel; role: Viewer["role"]; phase?: string | null }
   /** `!` pins taken down since (`retractedPinSeqs`): drop them wherever they wait. */
   | { type: "retract"; seqs: ReadonlySet<number> }
   /** The objectives live now: a loud objective's moment (`o:<id>`) whose objective has ended leaves wherever it waits (a cleared guest is never told to show their pass). */
@@ -501,6 +566,22 @@ function replay(s: MomentsState, all: Moment[], level: AlertLevel, role: Viewer[
   return { ...s, queue: enqueue(s.queue, list, level, role, now) };
 }
 
+/** A parked moment back in play (replayed from the tray): an ordinary one again. */
+function unpark(m: Moment): Moment {
+  if (m.parked !== true) return m;
+  const { parked: _parked, ...rest } = m;
+  return rest;
+}
+
+/** The newest of some queued moments: story time, then seq (a loud objective has none). */
+function newestOf(list: readonly Queued[]): Queued | null {
+  let best: Queued | null = null;
+  for (const q of list) {
+    if (best === null || q.moment.at > best.moment.at || (q.moment.at === best.moment.at && (q.moment.seq ?? -1) > (best.moment.seq ?? -1))) best = q;
+  }
+  return best;
+}
+
 export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState {
   switch (a.type) {
     case "arrive": {
@@ -518,9 +599,13 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       return replay(next, replayable(fresh.filter((m) => !isPeek(m)), lastMajor, a.phase), a.level, a.role, a.now);
     }
     case "wake": {
-      if (s.missed.length === 0) return s;
-      const list = replayable(s.missed, s.lastMajor, a.phase);
-      return replay({ ...s, missed: [] }, list, a.level, a.role, a.now);
+      // A wake on its own replays what was missed; the moments a level rise
+      // parked wait for the guest to ask (the tray's 🔔, `manual`).
+      const due = a.manual === true ? s.missed : s.missed.filter((m) => m.parked !== true);
+      if (due.length === 0) return s;
+      const kept = a.manual === true ? [] : s.missed.filter((m) => m.parked === true);
+      const list = replayable(due, s.lastMajor, a.phase).map(unpark);
+      return replay({ ...s, missed: kept }, list, a.level, a.role, a.now);
     }
     case "dismiss": {
       const hit = s.queue.find((q) => q.moment.key === a.key);
@@ -529,7 +614,8 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       // takes its sticky too — the performer went, it is not news after.
       const twin = a.acted === true ? hit.moment.peekOf : undefined;
       const queue = s.queue.filter((q) => q !== hit && q.moment.peekOf !== hit.moment.key && (twin === undefined || q.moment.key !== twin));
-      const missed = a.acted !== true && a.onScreenMs < GLANCE_MS && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
+      const glance = isModal(hit.level) ? (s.burst > 0 ? 0 : MODAL_GLANCE_MS) : GLANCE_MS;
+      const missed = a.acted !== true && a.onScreenMs < glance && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
       const modalLeft = queue.some((q) => isModal(q.level));
       const burst = isModal(hit.level) ? (modalLeft ? s.burst + 1 : 0) : s.burst;
       return { ...s, queue, missed, burst };
@@ -545,6 +631,8 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
     case "relevel": {
       let changed = false;
       const queue: Queued[] = [];
+      // Moments that climb onto a modal rung (a sticky that becomes a dialog).
+      const risen: Queued[] = [];
       for (const q of s.queue) {
         // A beat's blue screen has no lower rung: below `bsod` its line just stays in the stream.
         if (q.moment.kind === "beat" && viewerLevel(a.level, a.role) !== "bsod") {
@@ -555,13 +643,27 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
         if (level === q.level) queue.push(q);
         else {
           changed = true;
-          queue.push({ ...q, level });
+          const moved = { ...q, level };
+          if (isModal(level) && rungIndex(level) > rungIndex(q.level) && !isPeek(q.moment)) risen.push(moved);
+          else queue.push(moved);
         }
+      }
+      let missed = s.missed;
+      if (risen.length > 0) {
+        // An hour of unread stickies never becomes a queue of modals, oldest
+        // first: what is no longer news goes, the newest still-relevant one
+        // shows on the new rung, the rest wait in the missed list, parked:
+        // only the tray's 🔔 brings them back.
+        const live = a.phase === undefined ? risen : risen.filter((q) => !isStale(q.moment, s.lastMajor, a.phase ?? null));
+        const newest = newestOf(live);
+        if (newest !== null) queue.push(newest);
+        const rest = live.filter((q) => q !== newest).map((q): Moment => ({ ...q.moment, parked: true }));
+        if (rest.length > 0) missed = [...s.missed, ...rest];
       }
       const rung = summaryRung(a.level, a.role);
       const summary = s.summary !== null && s.summary.level !== rung ? { ...s.summary, level: rung } : s.summary;
       if (!changed && summary === s.summary) return s;
-      return { ...s, queue: ordered(queue), summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+      return { ...s, queue: ordered(queue), missed, summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "dismissMany": {
       // "Dismiss all (n)": read, every one — none of them is missed.
@@ -611,6 +713,8 @@ export interface Surfaces {
   /** Their keys ("Dismiss all (n)"). */
   stickyKeys: string[];
   modal: Queued | null;
+  /** Every modal waiting, the one on screen first ("Dismiss all (n)"). */
+  modalKeys: string[];
   /** "n of m" for the modal on screen. */
   modalIndex: number;
   modalTotal: number;
@@ -643,11 +747,15 @@ export function surfacesOf(s: MomentsState, held: boolean, nowBar = false): Surf
     stickyCount: stickies.length,
     stickyKeys: stickies.map((q) => q.moment.key),
     modal: modalOn ? (modals[0] ?? null) : null,
+    modalKeys: modalOn ? modals.map((q) => q.moment.key) : [],
     modalIndex: s.burst + 1,
     modalTotal: s.burst + modals.length,
     summary: held && modalSummary ? null : s.summary,
   };
 }
+
+/** The dialog and the blue screen offer "Dismiss all (n)" with more than this many waiting. */
+export const DISMISS_ALL_MODALS_OVER = 2;
 
 /** The tray's count: the missed list, plus modal moments a hold has kept back too long. */
 export function missedCount(s: MomentsState, held: boolean, now: number): number {
@@ -664,7 +772,8 @@ export function settledMark(s: MomentsState, processedMax: number, waiting: Iter
   let min = Number.POSITIVE_INFINITY;
   for (const seq of waiting) if (seq < min) min = seq;
   for (const q of s.queue) if (q.moment.seq !== null && q.moment.seq < min) min = q.moment.seq;
-  for (const m of s.missed) if (m.seq !== null && m.seq < min) min = m.seq;
+  // A parked moment is settled: a reload never replays it.
+  for (const m of s.missed) if (m.seq !== null && m.parked !== true && m.seq < min) min = m.seq;
   for (const m of s.summary?.moments ?? []) if (m.seq !== null && m.seq < min) min = m.seq;
   return Number.isFinite(min) ? Math.min(processedMax, min - 1) : processedMax;
 }
@@ -683,7 +792,7 @@ export const DONE_MAX = 2_000;
 export function doneAbove(s: MomentsState, processed: Iterable<number>, mark: number, also: Iterable<number> = []): number[] {
   const waiting = new Set<number>(also);
   for (const q of s.queue) if (q.moment.seq !== null) waiting.add(q.moment.seq);
-  for (const m of s.missed) if (m.seq !== null) waiting.add(m.seq);
+  for (const m of s.missed) if (m.seq !== null && m.parked !== true) waiting.add(m.seq);
   for (const m of s.summary?.moments ?? []) if (m.seq !== null) waiting.add(m.seq);
   const out: number[] = [];
   for (const seq of processed) if (seq > mark && !waiting.has(seq)) out.push(seq);
