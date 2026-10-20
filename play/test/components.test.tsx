@@ -145,7 +145,9 @@ describe("the Stage B stubs render nothing", () => {
     expect(NowCard()).toBeNull();
     expect(CountdownTray({})).toBeNull();
     expect(HostDock({ session: {} as never, wide: false, openCard: () => {} })).toBeNull();
-    expect(useHostView(null)).toMatchObject({ view: null, error: null });
+    // useHostView holds state now (the host lane): read it inside a render.
+    const HostProbe = () => createElement("i", null, JSON.stringify((({ view, error }) => ({ view, error }))(useHostView(null))));
+    expect(html(createElement(HostProbe))).toBe("<i>{&quot;view&quot;:null,&quot;error&quot;:null}</i>");
   });
 });
 
