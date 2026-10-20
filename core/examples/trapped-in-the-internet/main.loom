@@ -3029,7 +3029,7 @@ INTERACTION crew_through_the_door
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
   who: performer
-  // DRAFT for sign-off (w13 Q22): the Antivirus' own (a host part keeps it).
+  // DRAFT for sign-off (w13 Q22): the Antivirus' own (a host card lists it, but only TRAIT Enforcer's hooks hear it).
   by: Antivirus
   description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
 
