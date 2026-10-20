@@ -96,3 +96,43 @@ export function useWakeLock(storage: SessionStorage): WakeLock {
 
   return { supported: api !== null, on, toggle };
 }
+
+/**
+ * Hold the screen awake while `active` (wave 13: the full-screen pass —
+ * a guest holding up a QR must not watch it dim mid-scan), whatever the
+ * guest's own "Keep my screen on" choice; released on close. Re-taken when
+ * the page comes back. Nothing where the browser has no wake lock.
+ */
+export function useHeldWakeLock(active: boolean): void {
+  useEffect(() => {
+    const api = wakeLockApi();
+    if (!active || api === null) return;
+    let held: WakeLockSentinelLike | null = null;
+    let done = false;
+    const take = () => {
+      if (done || held !== null || document.visibilityState === "hidden") return;
+      api.request("screen").then(
+        (s) => {
+          if (done) return void s.release().catch(() => {});
+          held = s;
+          (s as unknown as EventTarget).addEventListener?.("release", () => {
+            if (held === s) held = null;
+          });
+        },
+        () => {
+          /* refused — the pass still shows */
+        },
+      );
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") take();
+    };
+    take();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      done = true;
+      document.removeEventListener("visibilitychange", onVis);
+      void held?.release().catch(() => {});
+    };
+  }, [active]);
+}

@@ -92,10 +92,13 @@ describe("the objective card", () => {
 });
 
 describe("the pass", () => {
-  it("FullPass is today's pass sheet", () => {
+  it("FullPass is the full-screen pass (the old pass sheet's barrel name renders it)", () => {
     const onClose = () => {};
     expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toBe(html(createElement(PassSheet, { me: { id: "g-1a2b", name: "Winamp" }, onClose })));
-    expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toContain("Winamp · show this to a performer to be scanned.");
+    const out = html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }));
+    expect(out).toContain('class="fullpass"');
+    expect(out).toContain("Hold this up to a performer");
+    expect(out).toContain("brightness");
   });
 });
 
