@@ -6175,7 +6175,7 @@ describe("Trapped in the Internet — wave 8 (story lane)", () => {
     const song = boot();
     toBobbing(song);
     truthTxt(song);
-    expect(casts(P1(song, "g3")).map((b) => b.cue)).toEqual(['"~💘 OpenOffice knew the line."'] // wave 13: a per-person notice);
+    expect(casts(P1(song, "g3")).map((b) => b.cue)).toEqual(['"~💘 OpenOffice knew the line."']); // wave 13: a per-person notice
   });
 
   it("T2-03: once truth.txt is read the server room is quiet: the patch bay, 🕊 and the door only tell # hosts", { timeout: SLOW }, () => {
