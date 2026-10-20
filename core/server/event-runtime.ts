@@ -1024,7 +1024,29 @@ export class EventRuntime {
 
   private readonly hostViewMs: number;
   /** The host view's last build (`hostViewNow`). */
-  private hostViewCache: { len: number; phase: RuntimePhase; presses: number; at: number; view: HostView } | null = null;
+  private hostViewCache: { len: number; phase: RuntimePhase; presses: number; writes: number; at: number; view: HostView } | null = null;
+  /** Bumped by every director / host write (`noteHostWrite`): the host's
+   *  re-poll right after its own write (`client.refresh()`) never reads the
+   *  build from before it. */
+  private hostWrites = 0;
+
+  /** A write a host's panel must show on its next poll: any `/api/mod/*`
+   *  POST, an agent's reply or ruling, and a host booth's own press or scan.
+   *  Counted now and again once the answer is sent (a poll that slipped in
+   *  while the handler awaited must not stand for the written state). */
+  private noteHostWrite(path: string, token: string | undefined, res: ServerResponse): void {
+    const write =
+      path.startsWith("/api/mod/") ||
+      path === "/api/agent/reply" ||
+      path === "/api/agent/judge" ||
+      ((path.startsWith("/api/prime/") || path === "/api/scan") && this.sessions.canHost(token));
+    if (!write) return;
+    this.hostWrites += 1;
+    const after = (): void => {
+      this.hostWrites += 1;
+    };
+    if (typeof res.once === "function") res.once("finish", after);
+  }
 
   /** A host booth's panel (`GET /api/state?role=mod&host=1`, §2.6): built on
    *  the mod view, plus the King, the terminals, every guest's flags and the
@@ -1038,7 +1060,10 @@ export class EventRuntime {
     const len = sim?.log.len() ?? -1;
     const presses = sim === null ? 0 : cueState(sim).presses;
     const hit = this.hostViewCache;
-    if (hit !== null && hit.phase === this.phase && hit.presses === presses && (hit.len === len || now - hit.at < this.hostViewMs) && now - hit.at < 60_000) return hit.view;
+    // Reused only inside the window, whether or not the log moved: a quiet
+    // log still moves the clocks the panel shows (a terminal's silence, an
+    // agent's oldest wait, who was seen when).
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return hit.view;
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     for (const r of this.agents.pending) {
       if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
@@ -1068,7 +1093,7 @@ export class EventRuntime {
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),
       now,
     });
-    this.hostViewCache = { len, phase: this.phase, presses, at: now, view };
+    this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
     return view;
   }
 
@@ -3857,6 +3882,7 @@ export class EventRuntime {
       sendJson(res, 403, { error: NOT_FROM_A_BOOTH });
       return true;
     }
+    this.noteHostWrite(path, tokenOf(req, body), res);
 
     if (this.pushRoutes.handlePost(req, res, path, body)) return true;
     if (path === RESUME_ROUTE) {

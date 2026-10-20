@@ -116,6 +116,51 @@ describe("the host view's coalescing", () => {
     }
   });
 
+  it("a director's or host's write is seen on the very next read, inside the window", async () => {
+    let now = 1_000_000;
+    const realNow = Date.now;
+    Date.now = () => now;
+    try {
+      const rt = runtime();
+      rt.openDoors();
+      const g = await register(rt, "Winamp");
+      const row = async () => (await hostRead(rt)).people.find((p) => p.id === g.id)!;
+      expect((await row()).restricted).toBe(false);
+      now += 500;
+      // A guest's own step waits out the window…
+      expect((await call(rt, "POST", "/api/guest/act", { token: g.token, name: "wave" })).status).toBe(200);
+      expect((await row()).flags?.map((f) => f.label)).toEqual(["Cleared"]);
+      // …but the host's own refresh after a write (`client.refresh()`) never
+      // reads the build from before it.
+      expect((await call(rt, "POST", "/api/mod/act", { action: "restrict", id: g.id }, true)).status).toBe(200);
+      const after = await row();
+      expect(after.restricted).toBe(true);
+      expect(after.flags?.map((f) => f.label)).toEqual(["Cleared", "Marked"]);
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
+  it("a quiet log still rebuilds after the window: the clocks on the panel move", async () => {
+    let now = 2_000_000;
+    const realNow = Date.now;
+    Date.now = () => now;
+    try {
+      const rt = runtime({ now: () => now });
+      rt.openDoors();
+      const g = await register(rt, "Winamp");
+      expect((await call(rt, "POST", "/api/guest/say", { token: g.token, channel: "dm:Trabolta", text: "are you there?" })).status).toBe(200);
+      now += 2_500;
+      const oldest = async () => (await hostRead(rt)).agents.find((a) => a.id === "Trabolta")!.queue!.oldestMs;
+      expect(await oldest()).toBe(2_500);
+      // No log entry for 30 s: the oldest wait still counts up.
+      now += 30_000;
+      expect(await oldest()).toBe(32_500);
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
   it("awardOnly names the one program a cue's gate lets take it", async () => {
     const rt = runtime({ hostViewMs: 0 });
     rt.openDoors();
