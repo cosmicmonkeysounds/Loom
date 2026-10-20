@@ -21,7 +21,9 @@ const FRAME_CSS = `
  * minifies `styles.css?inline` (`html,body,#root{…}`,
  * `:root[data-theme=aol97] body{…}` — no spaces, no quotes). The dynamic
  * viewport units (`dvh`, `svh`, `lvh`, and their `vw`s) become container
- * units too, so a full-screen layer sizes to its pane.
+ * units too, so a full-screen layer sizes to its pane, and a size query in
+ * range syntax (`@media (height>=520px)`, as the editor's lightningcss build
+ * writes it) becomes a container query like the `min-` / `max-` forms.
  */
 export function scopeCss(css: string): string {
   return (
@@ -33,6 +35,8 @@ export function scopeCss(css: string): string {
       .replace(/(^|[}\n])\s*body\s*\{/gu, "$1.play-root {")
       .replace(/(\d*\.?\d+)[dsl]?vh\b/gu, "$1cqh")
       .replace(/(\d*\.?\d+)[dsl]?vw\b/gu, "$1cqw")
-      .replace(/@media ?\((min|max)-(height|width):/gu, "@container play ($1-$2:") + FRAME_CSS
+      .replace(/@media ?\((min|max)-(height|width):/gu, "@container play ($1-$2:")
+      // Range syntax: the editor's build (lightningcss) writes `(height>=520px)`.
+      .replace(/@media ?\(((?:width|height)\s*[<>]=?|[\d.]+[a-z]*\s*[<>]=?\s*(?:width|height))/gu, "@container play ($1") + FRAME_CSS
   );
 }

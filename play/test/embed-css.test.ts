@@ -58,6 +58,11 @@ describe("the rewrite rules", () => {
     expect(out).toContain(".pass { height: 100cqh; height: 100cqh; min-height: 50cqh; max-height: 90cqh; width: 100cqw; }");
   });
 
+  it("turns range-syntax size queries into container queries (the editor's lightningcss build)", () => {
+    const out = scopeCss("@media (height>=520px){.a{top:0}}@media (width<=399px){.b{top:0}}@media (400px<width){.c{top:0}}@media print{.d{top:0}}");
+    expect(out).toContain("@container play (height>=520px){.a{top:0}}@container play (width<=399px){.b{top:0}}@container play (400px<width){.c{top:0}}@media print{.d{top:0}}");
+  });
+
   it("reads the minified forms: no spaces, no quotes", () => {
     const out = scopeCss('html,body,#root{height:100%}body{margin:0}:root[data-theme=aol97] body{font-size:13px}:root{--a:1}@media (max-width:400px){.x{top:0}}');
     expect(out).toContain('.play-root {height:100%}.play-root {margin:0}.play-root[data-theme="aol97"]{font-size:13px}.play-root{--a:1}@container play (max-width:400px){.x{top:0}}');
