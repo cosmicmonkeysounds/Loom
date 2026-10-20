@@ -53,16 +53,21 @@ describe("activePins", () => {
 });
 
 describe("PinnedRail", () => {
-  it("folds to one line — the count and the newest pin — an alert pin turning it yellow; nothing when empty", () => {
+  it("folds to one line — the count and the newest alert pin, else the newest — an alert pin turning it yellow; nothing when empty", () => {
     expect(renderToStaticMarkup(<PinnedRail pins={[]} />)).toBe("");
     const html = renderToStaticMarkup(<PinnedRail pins={[m(1, "lobby", { pin: "g1", text: "GO TO THE INTERNET.", alert: true }), m(2, "lobby", { pin: "", text: "Doors at nine." })]} />);
     expect(html).toContain('class="moments-pins alert"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain("📌 2");
-    expect(html).toContain('<span class="moments-pins-line">Doors at nine.</span>');
-    // Folded: the older pin is not on screen (a tap opens the list).
+    // The marked guest's instruction stays on the line, never behind a tap.
+    expect(html).toContain('<span class="moments-pins-line">GO TO THE INTERNET.</span>');
+    // Folded: the other pin is not on screen (a tap opens the list).
     expect(html).not.toContain("moments-pins-list");
-    expect(html).toMatch(/aria-label="2 pinned notices: Doors at nine\.\. Tap to read\."/u);
+    expect(html).toMatch(/aria-label="2 pinned notices: GO TO THE INTERNET\. Tap to read\."/u);
+    // No alert pin up: the newest pin.
+    const plain = renderToStaticMarkup(<PinnedRail pins={[m(4, "lobby", { pin: "a", text: "Snacks in the kitchen" }), m(5, "lobby", { pin: "b", text: "Doors at nine." })]} />);
+    expect(plain).toContain('<span class="moments-pins-line">Doors at nine.</span>');
+    expect(plain).toMatch(/aria-label="2 pinned notices: Doors at nine\. Tap to read\."/u);
   });
 
   it("one plain pin reads as itself, no count, no alert colour", () => {
