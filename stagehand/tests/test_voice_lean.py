@@ -147,17 +147,18 @@ def say(text, **more):
 
 def test_the_message_list_is_p1_p2_p3_the_thread_then_the_reminder():
     msgs = build_lean_messages(P, request(), context())
-    assert [m["role"] for m in msgs] == ["system", "system", "system", "user", "assistant", "user", "system", "system"]
+    assert [m["role"] for m in msgs] == ["system", "system", "system", "user", "assistant", "user", "system", "system", "system"]
     assert msgs[0]["content"].startswith("You are TRABOLTA")
     assert msgs[1]["content"].startswith("=== THE NIGHT NOW (phase: hunt_1) ===")
     assert msgs[2]["content"].startswith("=== LIVE STATE")
-    assert msgs[-2]["content"].startswith("Your last line to them was “Speak, program.”")
+    assert msgs[-3]["content"].startswith("Your last line to them was “Speak, program.”")
+    assert msgs[-2]["content"].startswith("Right now you are hungry:")
     assert msgs[-1]["content"].startswith("Answer their last message in character.")
 
 
 def test_his_last_line_to_them_is_named_after_the_thread_and_before_the_reminder():
     msgs = build_lean_messages(P, request(), context(said=Said(to_them=("Bring me a fact.", "Speak,   program."))))
-    note = msgs[-2]["content"]
+    note = msgs[-3]["content"]
     assert note == "Your last line to them was “Speak, program.”. Do not say it again or open the same way: answer what they just said, in new words."
     assert msgs[-1]["content"] == reminder(P, request())  # the reminder stays static
     # Not in the cached prefix: P1–P3 are what they were without it.
@@ -167,7 +168,7 @@ def test_his_last_line_to_them_is_named_after_the_thread_and_before_the_reminder
 
 def test_the_last_line_falls_back_to_the_thread_and_is_absent_before_his_first_reply():
     msgs = build_lean_messages(P, request(), context(said=Said()))
-    assert msgs[-2]["content"].startswith("Your last line to them was “Speak, program.”")
+    assert msgs[-3]["content"].startswith("Your last line to them was “Speak, program.”")
     first = request(history=[{"seq": 1, "mine": False, "from": "Ada", "text": "hello"}], text="hello")
     msgs = build_lean_messages(P, first, context(said=Said()))
     assert not any("Your last line" in m["content"] for m in msgs)
@@ -968,5 +969,7 @@ def test_a_sentence_they_heard_word_for_word_is_cut_from_a_line_that_is_no_repea
 def test_a_situation_that_holds_is_named_right_before_the_answer():
     heart = request(them={"vars": {"truths_accepted": "2", "trust": "55", "marked": "false", "at_the_heart": "true"}, "codex": [], "location": "The Server Room"})
     msgs = build_lean_messages(P, heart, context())
-    assert msgs[-2] == {"role": "system", "content": "Right now: AT YOUR HEART. That block outranks your brief and your favours for this conversation."}
-    assert not any(m["content"].startswith("Right now:") for m in build_lean_messages(P, request(), context()))
+    assert msgs[-2] == {"role": "system", "content": "Right now you are hungry: You are starving for facts. AT YOUR HEART: that block outranks your brief and your favours for this conversation."}
+    away = build_lean_messages(P, request(), context())
+    assert away[-2] == {"role": "system", "content": "Right now you are hungry: You are starving for facts."}
+    assert not any(m["content"].startswith("Right now") for m in build_lean_messages(P, request(), context(phase=PhaseView())))

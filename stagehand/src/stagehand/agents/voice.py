@@ -516,6 +516,23 @@ def last_line_note(req: dict[str, Any], ctx: VoiceContext, persona: Persona | No
     return f"Your last line to them was “{last}”. Do not say it again or open the same way: answer what they just said, in new words."
 
 
+def right_now(persona: Persona, req: dict[str, Any], ctx: VoiceContext) -> str | None:
+    """The closing note on where he is, right before the answer (after the
+    cached head, so the cache is untouched): his stage card, and any
+    situation that holds, which outranks the brief and the favours. K-04
+    re-measure: at finale_song the last act's "speak like a person" in P2
+    lost to the dialog-box voice of P1 ("I am as operational as ever"), and
+    at his heart the truth_1 brief's prices outranked "no prices here"."""
+    parts = []
+    card = _one_line(ctx.phase.stage_card)
+    if ctx.phase.stage and card:
+        parts.append(f"Right now you are {ctx.phase.stage}: {card}")
+    held = [x.heading for x in matching_situations(persona, req)]
+    if held:
+        parts.append(f"{' + '.join(h.upper() for h in held)}: that block outranks your brief and your favours for this conversation.")
+    return " ".join(parts) or None
+
+
 def build_lean_messages(
     persona: Persona,
     req: dict[str, Any],
@@ -544,12 +561,9 @@ def build_lean_messages(
     last = last_line_note(req, ctx, persona) if ctx.options.repeat_guard else None
     if last:
         out.append({"role": "system", "content": last})
-    held = [x.heading for x in matching_situations(persona, req)]
-    if held:
-        # K-04 re-measure (w11b-heart): at his heart the truth_1 brief's
-        # prices in P2 outranked the situation's "no prices here" far below
-        # it; named right before the answer, the situation leads.
-        out.append({"role": "system", "content": f"Right now: {' + '.join(h.upper() for h in held)}. That block outranks your brief and your favours for this conversation."})
+    now = right_now(persona, req, ctx)
+    if now:
+        out.append({"role": "system", "content": now})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})
     if retry is not None:
         out.append({"role": "system", "content": retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
