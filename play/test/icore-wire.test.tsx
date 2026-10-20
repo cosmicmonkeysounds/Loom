@@ -61,4 +61,19 @@ describe("who pressed LAST (cues.lastName)", () => {
     expect(lastByText("director", false, "  ")).toBe("a host or the director");
     expect(lastByText("story", false, "Ada")).toBe("the story");
   });
+
+  it("the server's name decides against this booth's part: a reload still says you, another host's repeat is theirs", async () => {
+    const { lastByText, lastByTitle } = await import("../src/host/tab-cues.tsx");
+    // Reloaded (no local memory of the press): the name is this booth's part.
+    expect(lastByText("director", false, "Task Manager", "task manager")).toBe("you");
+    // This booth pressed the cue, then another host pressed it again.
+    expect(lastByText("director", true, "Ada", "Task Manager")).toBe("Ada");
+    // The story fired the cue after this booth's press.
+    expect(lastByText("story", true, undefined, "Task Manager")).toBe("the story");
+    // An older server (no name): the local memory still says you.
+    expect(lastByText("director", true, undefined, "Task Manager")).toBe("you");
+    expect(lastByTitle("you")).toBe("You pressed LAST");
+    expect(lastByTitle("the story")).toBe("The story pressed LAST");
+    expect(lastByTitle("Task Manager")).toBe("Task Manager pressed LAST");
+  });
 });
