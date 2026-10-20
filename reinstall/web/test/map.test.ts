@@ -234,6 +234,11 @@ describe("edit — every op returns a copy", () => {
   it("patches terminals and rooms, dropping cleared optional fields", () => {
     const house = frozen();
     const t = patchTerminal(patchTerminal(house, "kitchen", { fov: 90, name: "Kitchen tablet" }), "kitchen", { fov: undefined });
+    const screen = patchTerminal(house, "kitchen", { view: "casino", speaks: true });
+    expect(screen.terminals.find((x) => x.id === "kitchen")).toMatchObject({ view: "casino", speaks: true });
+    expect(house.terminals.find((x) => x.id === "kitchen")!.view).toBeUndefined();
+    const back = patchTerminal(screen, "kitchen", { view: "auto", speaks: false }).terminals.find((x) => x.id === "kitchen")!;
+    expect("view" in back || "speaks" in back).toBe(false);
     const k = t.terminals.find((x) => x.id === "kitchen")!;
     expect(k.name).toBe("Kitchen tablet");
     expect("fov" in k).toBe(false);
@@ -248,13 +253,12 @@ describe("edit — every op returns a copy", () => {
   });
 
   it("offers a terminal's provisioning link without the passcode", () => {
-    const link = provisionLink("http://10.0.0.5:7000", { id: "kitchen", name: "Kitchen tablet" });
+    const link = provisionLink("http://10.0.0.5:7000", { id: "kitchen" });
     const url = new URL(link);
     expect(url.pathname).toBe("/terminal/");
-    expect(url.searchParams.get("name")).toBe("Kitchen tablet");
     expect(url.searchParams.get("spot")).toBe("kitchen");
-    expect(url.searchParams.get("view")).toBe("auto");
-    expect(url.searchParams.has("code")).toBe(false);
+    // The tablet takes its name, screen and room from the map's entry.
+    expect([...url.searchParams.keys()]).toEqual(["spot"]);
   });
 });
 

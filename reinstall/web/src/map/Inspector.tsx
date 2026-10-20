@@ -12,7 +12,7 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { guardableDoors, guardedBy, mapLocations, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
+import { guardableDoors, guardedBy, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { isStep, parseNum } from "./tools.ts";
@@ -301,13 +301,13 @@ interface PartsProps {
 }
 
 function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied, id, posFields, yawField, remove }: InspectorProps & PartsProps) {
-  const [view, setView] = useState<TerminalViewName>("auto");
-  const [room, setRoom] = useState("");
   const t = house.terminals.find((x) => x.id === id);
   if (t === undefined) return null;
   const roomName = roomById(house, t.room)?.label ?? t.room;
-  const locations = mapLocations(house);
-  const link = provisionLink(origin, t, { view, room: room === "" ? null : room });
+  const location = roomById(house, t.room)?.location?.trim() || roomName;
+  const view: TerminalViewName = t.view ?? "auto";
+  const roomless = view === "tv" || view === "chess" || view === "casino";
+  const link = provisionLink(origin, t);
   return (
     <div className="inspect">
       <h3>🖥 Terminal</h3>
@@ -345,31 +345,22 @@ function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied
           </button>
         </div>
       )}
+      <label className="field">
+        screen <span className="muted">(what the tablet on this spot shows)</span>
+        <select className="w98-input" value={view} disabled={!edit} onChange={(e) => commit(patchTerminal(house, t.id, { view: e.target.value as TerminalViewName }))}>
+          {TERMINAL_VIEWS.map((v) => (
+            <option key={v} value={v}>
+              {TERMINAL_VIEW_HINTS[v]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field check" title={roomless ? "The TV, the chess board and the casino belong to no room" : "Asleep until the story opens this room to everyone, then it speaks the character's lines said there"}>
+        <input type="checkbox" checked={t.speaks === true && !roomless} disabled={!edit || roomless} onChange={(e) => commit(patchTerminal(house, t.id, { speaks: e.target.checked }))} />
+        room terminal (speaks for {location})
+      </label>
       <div className="field">
-        provisioning link <span className="muted">(add <code>&amp;code=&lt;mod passcode&gt;</code>)</span>
-        <div className="num-row">
-          <label className="field">
-            view
-            <select className="w98-input" value={view} onChange={(e) => setView(e.target.value as TerminalViewName)}>
-              {TERMINAL_VIEWS.map((v) => (
-                <option key={v} value={v}>
-                  {TERMINAL_VIEW_HINTS[v]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            room <span className="muted">(asleep until it opens)</span>
-            <select className="w98-input" value={room} onChange={(e) => setRoom(e.target.value)}>
-              <option value="">(none)</option>
-              {locations.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        provisioning link <span className="muted">(add <code>&amp;code=&lt;mod passcode&gt;</code>; the tablet takes its name, screen and room from here — or open <code>/terminal/</code> and tap this terminal)</span>
         <div className="link-row">
           <input className="w98-input" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
           <button className="w98-button" onClick={() => copy(`i-${t.id}`, link)}>

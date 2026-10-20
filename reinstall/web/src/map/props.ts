@@ -238,8 +238,10 @@ export function snapTerminalToWall(house: HouseMap, id: string, within = Infinit
 }
 
 /** The terminal app's views (`terminal/src/config.ts` `TerminalView`). */
-export const TERMINAL_VIEWS = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"] as const;
-export type TerminalViewName = (typeof TERMINAL_VIEWS)[number];
+// The screen types live in `@loom/house` (`TerminalSpot.view`); the terminal app uses the same list.
+export { TERMINAL_VIEWS } from "@loom/house";
+export type { TerminalViewName } from "@loom/house";
+import type { TerminalViewName } from "@loom/house";
 
 /** What each view does, for the picker. */
 export const TERMINAL_VIEW_HINTS: Record<TerminalViewName, string> = {

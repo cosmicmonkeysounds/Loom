@@ -259,6 +259,9 @@ export function patchTerminal(house: HouseMap, id: string, patch: Partial<Omit<T
   Object.assign(t, patch);
   if (t.fov === undefined) delete t.fov;
   if (t.pitch === undefined) delete t.pitch;
+  // `auto` and "not a room terminal" are the defaults: kept off the map.
+  if (t.view === undefined || t.view === "auto") delete t.view;
+  if (t.speaks !== true) delete t.speaks;
   return next;
 }
 
@@ -291,14 +294,12 @@ export function setHeight(house: HouseMap, sel: Selection, y: number): HouseMap 
 /**
  * A wall terminal's provisioning link — **without** the moderator passcode
  * (the director appends `&code=<mod passcode>` before opening it on the
- * tablet; a printed link must not carry it). `view` is one of the terminal
- * app's views (`TERMINAL_VIEWS`), `room` a story LOCATION.
+ * tablet; a printed link must not carry it).
  */
-export function provisionLink(origin: string, t: Pick<TerminalSpot, "id" | "name">, opts: { view?: string; room?: string | null } = {}): string {
-  const q = new URLSearchParams({ name: t.name, spot: t.id, view: opts.view ?? "auto" });
-  // A room terminal (`room=` a story LOCATION): asleep until that room is open.
-  if (opts.room !== undefined && opts.room !== null && opts.room !== "") q.set("room", opts.room);
-  return `${origin}/terminal/?${q.toString()}`;
+export function provisionLink(origin: string, t: Pick<TerminalSpot, "id">): string {
+  // The tablet takes its name, screen and room from the map's entry (`view`,
+  // `speaks`) — the link only says which terminal it is.
+  return `${origin}/terminal/?${new URLSearchParams({ spot: t.id }).toString()}`;
 }
 
 /**
