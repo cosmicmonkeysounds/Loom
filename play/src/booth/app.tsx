@@ -32,7 +32,7 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothSidebar, closedGate } from "./model.ts";
+import { boothFoldable, boothSidebar, closedGate } from "./model.ts";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
@@ -193,12 +193,13 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       spaces={boothSidebar(t.spaces, { character, activeId: t.activeId })}
       activeId={t.activeId}
       onOpen={t.open}
+      fold={boothFoldable}
       header={<PushCard push={push} booth title={s.auth?.title} why="the server-room alarm and the late list reach you even with the phone locked." />}
       empty="No rooms yet."
     />
   );
 
-  // The moments layer (wave 13): Stage A renders the alert banner as before.
+  // The moments layer (wave 13), capped and filtered for a booth.
   const moments: MomentsInput = {
     role: "booth",
     me: character,
@@ -234,11 +235,12 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
           <div className="root">
-            <MomentsLayer />
             <BoothFrame>
               {(keyboard) => (
                 <>
               <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={boothPill(s.auth)} closeKey={activeId} />
+              {/* The sticky banner flows under the NOW card (the booth's title bar). */}
+              <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room — or 📷 Scan a pass." />
               <div className="booth-dock" hidden={keyboard}>
                 <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} />
