@@ -19,7 +19,7 @@ import { ringChime } from "./announce.ts";
 import { CHARACTER_VOICE, rankVoices } from "./speech/pick-voice.ts";
 import { bundledHouse, fetchHouse, type HouseInfo } from "./world/stream.ts";
 import { hasWebGL2 } from "./webgl.ts";
-import { UNPLACED, applyPick, groupTerminals, onlineBadge, type Heartbeat, type MapPick } from "./setup-map.ts";
+import { UNPLACED, applyPick, groupTerminals, onlineBadge, withManual, type Heartbeat, type MapPick } from "./setup-map.ts";
 
 interface Access {
   eventId: string;
@@ -50,9 +50,13 @@ function useHeartbeats(access: Access | null): { beats: Heartbeat[]; silentMs: n
   return state;
 }
 
-export function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig | null; notice: string | null; onDone: (c: TerminalConfig) => void; onForget: () => void }) {
-  const [access, setAccess] = useState<Access | null>(() => (current === null ? null : { eventId: current.eventId, token: current.token, title: current.title }));
+/** `step`: where setup opens — `connect` when the stored access is no good
+ *  (the event ended: a new passcode first), `character` when the story
+ *  lacks this terminal's character (advanced, unfolded). */
+export function Setup({ current, notice, step, onDone, onForget }: { current: TerminalConfig | null; notice: string | null; step?: "connect" | "character"; onDone: (c: TerminalConfig) => void; onForget: () => void }) {
+  const [access, setAccess] = useState<Access | null>(() => (current === null || step === "connect" ? null : { eventId: current.eventId, token: current.token, title: current.title }));
   const [changing, setChanging] = useState(false);
+  const [advanced, setAdvanced] = useState(step === "character");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
@@ -70,10 +74,12 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
   const [speed, setSpeed] = useState(current?.speed ?? 1);
   const [camFeed, setCamFeed] = useState(current?.camFeed ?? true);
   // A manual screen type / room ("" = the map's). A terminal not set up from
-  // the map keeps what it had as its manual choice.
+  // the map shows what it had; that applies to a tap on its own spot only
+  // (another terminal takes the map's) unless changed here.
   const manual = current !== null && current.fromMap !== true && current.spot !== "";
   const [viewOverride, setViewOverride] = useState<TerminalView | "">(manual ? current.view : "");
   const [roomOverride, setRoomOverride] = useState(manual ? current.room : "");
+  const [manualTouched, setManualTouched] = useState(false);
   const [tested, setTested] = useState<string | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const feed = useFeedStatus();
@@ -113,7 +119,9 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
 
   const groups = useMemo(() => (map === null ? [] : groupTerminals(map.house)), [map]);
   const rooms = useMemo(() => roomChoices(map?.house ?? null), [map]);
-  const self = current !== null && access !== null && current.eventId === access.eventId ? { name: current.name, spot: current.spot } : null;
+  // This tablet as it is now (its spot highlighted; its own heartbeat is no
+  // "other tablet") — across a new event's passcode too.
+  const self = current !== null ? { name: current.name, spot: current.spot } : null;
   const showConnect = access === null || changing;
 
   const doConnect = async () => {
@@ -145,9 +153,9 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
       const sameEvent = current !== null && current.eventId === access.eventId;
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
-      let next = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
-      if (viewOverride !== "" || roomOverride.trim() !== "") next = { ...next, view: viewOverride || next.view, room: roomOverride.trim() || next.room, fromMap: false };
-      onDone(next);
+      const next = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
+      const own = manualTouched || (current !== null && current.spot === pick.spot);
+      onDone(own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -259,8 +267,9 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
                 </button>
               )}
             </div>
-            <details className="advanced">
+            <details className="advanced" open={advanced} onToggle={(e) => setAdvanced(e.currentTarget.open)}>
               <summary>advanced — character, camera, voice, announcements, a manual screen</summary>
+              <div className="advanced-body">
               <p className="muted small">These apply when you tap a terminal above (tap this tablet's own to save them).</p>
               <label>
                 character (an agent-voiced one)
@@ -336,7 +345,10 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
               <label>
                 screen <span className="muted">(blank = the map's)</span>
-                <select value={viewOverride} onChange={(e) => setViewOverride(e.target.value as TerminalView | "")}>
+                <select value={viewOverride} onChange={(e) => {
+                    setViewOverride(e.target.value as TerminalView | "");
+                    setManualTouched(true);
+                  }}>
                   <option value="">the map's</option>
                   {VIEWS.map((v) => (
                     <option key={v} value={v}>
@@ -347,7 +359,10 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
               </label>
               <label>
                 room <span className="muted">(blank = the map's; a room terminal sleeps until the story opens it — the TV speaks for it, default {DEFAULT_TV_ROOM})</span>
-                <select value={roomOverride} onChange={(e) => setRoomOverride(e.target.value)}>
+                <select value={roomOverride} onChange={(e) => {
+                    setRoomOverride(e.target.value);
+                    setManualTouched(true);
+                  }}>
                   <option value="">the map's</option>
                   {rooms.map((r) => (
                     <option key={r.value} value={r.value}>
@@ -358,6 +373,7 @@ export function Setup({ current, notice, onDone, onForget }: { current: Terminal
                 </select>
               </label>
               {!hasWebGL2() && <div className="muted small">this tablet has no WebGL2 — it shows the face instead of the simulation</div>}
+              </div>
             </details>
           </div>
         )}

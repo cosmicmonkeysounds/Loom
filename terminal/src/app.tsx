@@ -86,7 +86,7 @@ const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) =
 // The casino's tables (wave 15): only the casino terminal loads them.
 const loadCasino = retryable(() => import("./casino/CasinoTerminal.tsx").then((m) => ({ default: m.CasinoTerminal })));
 
-type Screen = { kind: "setup"; notice: string | null } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
+type Screen = { kind: "setup"; notice: string | null; step?: "connect" | "character" } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
 
 export function App() {
   const [config, setConfig] = useState<TerminalConfig | null>(() => loadConfig());
@@ -234,14 +234,14 @@ export function App() {
   const badCharacter = castProblem !== null && castProblem.key === castKey ? castProblem.problem : null;
   useEffect(() => {
     if (badCharacter === null || screen.kind === "setup" || screen.kind === "piloting") return;
-    setScreen({ kind: "setup", notice: `${badCharacter} Set this terminal's character.` });
+    setScreen({ kind: "setup", notice: `${badCharacter} Set this terminal's character (under advanced).`, step: "character" });
   }, [badCharacter, screen.kind]);
 
   // The poll's event is gone (ended; a new one launched): back to setup, the
   // config kept so its name / character / spot carry over — like `onGone`.
   useEffect(() => {
     if (!screenState.ended) return;
-    setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one." });
+    setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one.", step: "connect" });
   }, [screenState.ended]);
 
   // Keep the screen on from boot: Chrome grants a wake lock to a visible
@@ -273,7 +273,7 @@ export function App() {
       setScreen({ kind: "setup", notice: "This terminal's access was revoked — enter the moderator passcode again." });
     } else {
       // Kept, so its name / character / spot carry over to the next event.
-      setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one." });
+      setScreen({ kind: "setup", notice: "The event this terminal was part of has ended — enter the moderator passcode of the next one.", step: "connect" });
     }
   }, []);
 
@@ -313,6 +313,7 @@ export function App() {
       <Setup
         current={config}
         notice={screen.kind === "setup" ? screen.notice : null}
+        step={screen.kind === "setup" ? screen.step : undefined}
         onDone={(c) => {
           wake();
           finish(c);
