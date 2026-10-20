@@ -157,6 +157,10 @@
 .moments-objective-brief { display: block; }
 .moments-dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .moments-dialog-buttons { display: flex; gap: 8px; margin-left: auto; }
+/* "1 of 4" and "Dismiss all (4)" on the left; the foot wraps rather than
+   squeezing a label onto two lines at 360 px */
+.moments-dialog-left { display: flex; align-items: center; gap: 8px; }
+.moments-dialog-foot .w95-btn { white-space: nowrap; }
 .moments-dialog-count { padding: 3px 8px; font: 12px var(--ui-font); font-variant-numeric: tabular-nums; }
 .moments-ok { min-width: 88px; box-shadow: 0 0 0 1px var(--ink), var(--raised); }
 .moments-ok:active { box-shadow: 0 0 0 1px var(--ink), var(--pressed); }

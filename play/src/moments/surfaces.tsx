@@ -229,19 +229,19 @@ export function MomentDialog({
           <MomentText m={m} className="moments-dialog-text" />
         </div>
         <div className="moments-dialog-foot">
-          {total > 1 ? (
-            <span className="moments-dialog-count w95-inset" aria-label={`Message ${index} of ${total}`}>
-              {index} of {total}
-            </span>
-          ) : (
-            <span />
-          )}
-          <span className="moments-dialog-buttons">
+          <span className="moments-dialog-left">
+            {total > 1 && (
+              <span className="moments-dialog-count w95-inset" aria-label={`Message ${index} of ${total}`}>
+                {index} of {total}
+              </span>
+            )}
             {onDismissAll !== undefined && waiting !== undefined && (
               <button type="button" className="w95-btn moments-dismiss-all" onClick={guard(onDismissAll)}>
                 Dismiss all ({waiting})
               </button>
             )}
+          </span>
+          <span className="moments-dialog-buttons">
             {canGo && (
               <button type="button" className="w95-btn" onClick={guard(onGo)}>
                 {goLabel(m)}
