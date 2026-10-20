@@ -2,7 +2,7 @@
 //! view, the calls, a feedback line), a button that asks before it does
 //! anything that can't be taken back, and a section heading.
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ApiError } from "../client.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { HostView } from "../types.ts";
@@ -40,6 +40,17 @@ export function failText(e: unknown): string {
   return `Not sure it went through — ${e instanceof Error ? e.message : String(e)}`;
 }
 
+/** Bring an ask that just opened into view inside the console's scroll
+ *  body: a confirm under the last rows (the alert dial's Switch / No at
+ *  390 px) opened below the fold, behind the NEXT bar, and read as a tap
+ *  that did nothing. */
+export function useRevealed(ref: RefObject<HTMLElement | null>, open: boolean): void {
+  useEffect(() => {
+    if (!open) return;
+    ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, ref]);
+}
+
 /**
  * A button that asks first: the first tap turns it into "<ask> Yes / No"
  * in place (no modal over the drawer), the second does it. Used for every
@@ -49,9 +60,11 @@ export function failText(e: unknown): string {
 export function ConfirmButton({ label, ask, yes = "Yes", onConfirm, danger, disabled, className, testId }: { label: ReactNode; ask: string; yes?: string; onConfirm: () => Promise<unknown> | void; danger?: boolean; disabled?: boolean; className?: string; testId?: string }) {
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useRevealed(box, asking);
   if (asking) {
     return (
-      <span className="host-confirm" role="group" aria-label={ask}>
+      <span className="host-confirm" role="group" aria-label={ask} ref={box}>
         <span className="host-confirm-ask">{ask}</span>
         <button
           type="button"

@@ -11,9 +11,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import { cueRows, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { suggestionHint, awardSuggestion } from "../../../core/src/host-board.ts";
 import { ArmDrain, CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, STORY_RUNS, clockRuns, countdownText, nextBar, sheetLayout, storyNow, useCueDesk, type FireOutcome } from "../director.tsx";
+import { eventRoot } from "../chrome/balloon.tsx";
+import { URGENT_S } from "../clock.ts";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { useMomentsHold } from "../moments/provider.tsx";
 import type { PrimeSession } from "../session/prime.ts";
+import type { HostView } from "../types.ts";
 import { useHostView, useRecap, type HostClient } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
@@ -51,6 +54,17 @@ export function HostDock(p: HostDockProps) {
   // No hooks here: a booth that isn't a host renders nothing at all.
   if (!isHostBooth(p.session)) return null;
   return <HostDockOn {...p} />;
+}
+
+/** What the NEXT bar adds while the show is paused: the guest's NOW bar's
+ *  Win95 word, after the cue (D3). FIRE stays live: a press still lands. */
+export const PAUSED_MARK = " (Paused)";
+
+/** Is the show paused (the doors open, the story clock stopped)? Not
+ *  before the doors: the strip says 🚪 doors closed then. */
+export function hostPaused(view: Pick<HostView, "runtime" | "paused" | "doorsClosed">): boolean {
+  if (view.doorsClosed === true || view.runtime === "idle") return false;
+  return view.runtime === "paused" || view.paused === true;
 }
 
 /** The NEXT bar's call to action: ARM, then FIRE inside the window. */
@@ -181,7 +195,9 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   // Escape closes the console from anywhere on the page — focus may sit on
   // <body> after a button disabled itself while busy — and focus goes back
   // to the bar that opened it. A sheet open over the console (a QR, the
-  // answer sheet) closes first, alone.
+  // answer sheet) closes first, alone. It listens where the dock lives: the
+  // document, or a Run → Players pane's shadow root (whose host keeps keys
+  // from the document).
   const barMain = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => {
     setOpen(false);
@@ -189,15 +205,17 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   }, []);
   useEffect(() => {
     if (!open || typeof document === "undefined") return;
-    const onKey = (e: globalThis.KeyboardEvent) => {
+    const root = eventRoot(dockNode);
+    const onKey = (ev: Event) => {
+      const e = ev as globalThis.KeyboardEvent;
       if (e.key !== "Escape") return;
       e.stopPropagation();
       const sheet = sheetCloseIn(dockNode);
       if (sheet !== null) sheet.click();
       else close();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    root.addEventListener("keydown", onKey);
+    return () => root.removeEventListener("keydown", onKey);
   }, [open, close, dockNode]);
   const tabs = hostTabs(view, refused !== null ? 1 : 0);
   useEffect(() => {
@@ -243,7 +261,10 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   const bar = nextBar(rows, view.countdowns, nowMs, runs);
   const armedHere = bar.kind === "next" && desk.armed?.id === bar.row.id;
   const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0);
-  const strip = hostStrip(view, layout, nowMs, needs);
+  // The countdown the bar's first line already reads ("nothing to press …
+  // ⏱ Midnight in 59:28") leaves the strip on a phone.
+  const strip = hostStrip(view, layout, nowMs, needs, bar.kind === "countdown");
+  const paused = hostPaused(view);
   const line2 = barLine({ toast: desk.toast, connected: client.connected, error: client.error, receivedAt: client.receivedAt, now, armed: armedHere, subjectName: desk.subjectName, refused: refusedBar ? refused : null, reason });
   const ctx: HostCtx = {
     view,
@@ -286,7 +307,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
             </Drawer>
           </>
         )}
-        {!barAway && <HostNextBar bar={bar} desk={desk} open={open} stale={stale} line2={line2} strip={strip} barMain={barMain} onToggle={toggle} />}
+        {!barAway && <HostNextBar bar={bar} desk={desk} open={open} stale={stale} paused={paused} line2={line2} strip={strip} barMain={barMain} onToggle={toggle} />}
         <CuePicker desk={desk} roster={view.roster} suggest={suggestion !== null ? { id: suggestion.id, hint: suggestionHint(suggestion) } : null} />
       </div>
     </HostContext.Provider>
@@ -297,12 +318,12 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
  *  line in one button that pulls the console up, then ARM → FIRE. It reads
  *  the same desk as the Cues tab, so an arm made in one fires from the
  *  other. */
-export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onToggle }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onToggle: () => void }) {
+export function HostNextBar({ bar, desk, open, stale, paused = false, line2, strip, barMain, onToggle }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; paused?: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onToggle: () => void }) {
   const nextRow = bar.kind === "next" ? bar.row : null;
   const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
   const sending = nextRow !== null && desk.pending === nextRow.id;
   return (
-    <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""} ${line2.kind === "refused" || line2.kind === "stale" ? "long2" : ""}`} data-testid="host-nextbar">
+    <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""} ${paused ? "paused" : ""} ${line2.kind === "refused" || line2.kind === "stale" ? "long2" : ""}`} data-testid="host-nextbar">
       {/* No aria-label: it would replace the cue and the strip, so a
           screen reader never heard what is NEXT. The verb is read first. */}
       <button type="button" className="host-bar-main" ref={barMain} aria-expanded={open} aria-controls="host-drawer" onClick={onToggle}>
@@ -315,14 +336,20 @@ export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onT
             <>
               <span className="host-bar-tag">{armedHere ? "ARMED" : bar.again ? "AGAIN" : "NEXT"}</span>
               {bar.row.code !== null && <span className="cue-code host-code-wide">{bar.row.code}</span>}
-              <span className="host-bar-title">{cueTitleTags(bar.row.title).title}</span>
+              <span className="host-bar-title">
+                {cueTitleTags(bar.row.title).title}
+                {paused && <span className="host-bar-paused">{PAUSED_MARK}</span>}
+              </span>
             </>
           ) : bar.kind === "countdown" ? (
-            <span className="host-bar-title quiet">
+            <span className={`host-bar-title quiet ${bar.left < URGENT_S && bar.held !== true ? "urgent" : ""}`}>
               {NOTHING_TO_PRESS}. {bar.held === true ? CLOCK_HELD : STORY_RUNS} {countdownText(bar)}
             </span>
           ) : (
-            <span className="host-bar-title quiet">{NOTHING_TO_PRESS}</span>
+            <span className="host-bar-title quiet">
+              {NOTHING_TO_PRESS}
+              {paused && <span className="host-bar-paused">{PAUSED_MARK}</span>}
+            </span>
           )}
         </span>
         <span className="host-bar-line2" role="status" aria-live="polite">
