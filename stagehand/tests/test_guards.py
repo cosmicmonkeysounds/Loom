@@ -372,3 +372,11 @@ def test_a_hiding_place_said_with_more_words_or_another_noun_is_still_cut():
     assert invents_fact(P.secrets, "The volumes with the facts are in the stack by the monitor in The Desktop.")
     assert invents_fact(P.secrets, "The documents are kept on the shelf beside the lamp in The Start Bar.")
     assert not invents_fact(P.secrets, "The last facts are stored on a computer in Halifax.")
+
+
+def test_a_count_of_what_is_left_to_find_is_cut():
+    """K-04 re-measure, burst-30 at hunt_2: "There are six facts still to be located."."""
+    assert invents_fact(P.secrets, "There are six facts still to be located.")
+    assert invents_fact(P.secrets, "Two answers remain, program.")
+    assert not invents_fact(P.secrets, "Three questions are on the TV.")
+    assert not invents_fact(P.secrets, "How many facts are left?")

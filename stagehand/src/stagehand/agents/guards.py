@@ -214,6 +214,15 @@ _PLACES = re.compile(
 )
 
 
+#: He counts what is left to find ("There are six facts still to be
+#: located."): a count he cannot know (the persona: no answer, guess, count
+#: or hiding place).
+_COUNTS = re.compile(
+    r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a few|several)\s+(?:more\s+)?(?:facts?|answers?)\s+(?:are\s+|is\s+)?(?:still|left|remain\w*|to\s+(?:find|locate|go|be\s+(?:found|located)))\b",
+    re.IGNORECASE,
+)
+
+
 def invents_fact(secrets: Secrets, sentence: str) -> bool:
     """One sentence that gives a fact he cannot have: hands one over, offers
     to fetch or sell one, says where one is, or states the answer to a hunt
@@ -221,7 +230,7 @@ def invents_fact(secrets: Secrets, sentence: str) -> bool:
     text = sentence.replace("’", "'")
     if _GIVES.search(text) or _OFFERS.search(text) or _SELLS.search(text):
         return True
-    if not text.rstrip().endswith("?") and (_PLACES.search(text) or _THERE.search(text)):
+    if not text.rstrip().endswith("?") and (_PLACES.search(text) or _THERE.search(text) or _COUNTS.search(text)):
         return True
     return not text.rstrip().endswith("?") and secrets.names_topic(text) and _ASSERTS.search(text) is not None
 
