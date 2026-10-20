@@ -14,6 +14,7 @@ import { URGENT_S } from "../director.tsx";
 import { countdownItems, useStoryNow, type CountdownItem } from "../countdown.tsx";
 import type { CountdownSummary } from "../types.ts";
 import { TrayBalloon, TraySlot } from "./balloon.tsx";
+import { Icon } from "./icons.tsx";
 import { TrayItem } from "./taskbar.tsx";
 
 /** The tray's short form of `left` seconds: `4:59` under ten minutes,
@@ -44,9 +45,9 @@ export function countdownBalloonLine(item: CountdownItem, paused: boolean): stri
 }
 
 /** What the tray item shows for the soonest countdown (pure, tested). */
-export function trayClock(item: CountdownItem, paused: boolean): { icon: string; text: string; tone?: "alarm" | "dim"; title: string } {
+export function trayClock(item: CountdownItem, paused: boolean): { icon: "pause" | "hourglass"; text: string; tone?: "alarm" | "dim"; title: string } {
   const tone = paused ? ("dim" as const) : item.left < URGENT_S ? ("alarm" as const) : undefined;
-  return { icon: paused ? "⏸" : "⏳", text: trayClockText(item.left), ...(tone !== undefined ? { tone } : {}), title: countdownBalloonLine(item, paused) };
+  return { icon: paused ? "pause" : "hourglass", text: trayClockText(item.left), ...(tone !== undefined ? { tone } : {}), title: countdownBalloonLine(item, paused) };
 }
 
 function LiveTray({ countdowns, clock, paused, stamp }: { countdowns: readonly CountdownSummary[]; clock?: number; paused: boolean; stamp?: unknown }) {
@@ -58,9 +59,9 @@ function LiveTray({ countdowns, clock, paused, stamp }: { countdowns: readonly C
   const shown = trayClock(first, paused);
   return (
     <TraySlot>
-      <TrayItem icon={shown.icon} text={shown.text} title={shown.title} tone={shown.tone} onClick={() => setOpen((v) => !v)} />
+      <TrayItem icon={<Icon name={shown.icon} />} text={shown.text} title={shown.title} tone={shown.tone} onClick={() => setOpen((v) => !v)} />
       {open && (
-        <TrayBalloon title={paused ? "⏸ The clock is paused" : "⏳ The clock is running"} onClose={() => setOpen(false)} label="The story's clocks">
+        <TrayBalloon title={paused ? "The clock is paused" : "The clock is running"} onClose={() => setOpen(false)} label="The story's clocks">
           {items.map((i) => (
             <div key={i.label} className={`tray-balloon-line ${!paused && i.left < URGENT_S ? "urgent" : ""}`}>
               {countdownBalloonLine(i, false)}

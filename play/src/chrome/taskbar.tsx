@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { eventRoot } from "./balloon.tsx";
+import { Icon } from "./icons.tsx";
 import { StartMenu, type StartItem } from "./start-menu.tsx";
 
 export type { StartItem } from "./start-menu.tsx";
@@ -24,10 +25,13 @@ export { startTap } from "./start-menu.tsx";
 export interface TaskbarButton {
   id: string;
   label: string;
-  icon: string;
+  /** A drawn icon (`chrome/icons.tsx`); a string still renders as text. */
+  icon: ReactNode;
   onClick: () => void;
   /** The role's main button (the booth's 📷 Scan, the guest's 🎟 Pass): wider, keeps its label at any width. */
   primary?: boolean;
+  /** Keeps its word on a narrow phone too (the guest's Scan, next to Pass). */
+  labelled?: boolean;
   badge?: number;
   title?: string;
   /** `data-tour` anchor. */
@@ -36,8 +40,8 @@ export interface TaskbarButton {
 }
 
 /** A taskbar button's classes (the order the tests and the CSS read). */
-export function taskbarButtonClass(b: Pick<TaskbarButton, "primary" | "active">): string {
-  return `w95-btn taskbar-btn${b.primary ? " primary" : ""}${b.active ? " attn" : ""}`;
+export function taskbarButtonClass(b: Pick<TaskbarButton, "primary" | "active" | "labelled">): string {
+  return `w95-btn taskbar-btn${b.primary ? " primary" : ""}${b.labelled ? " labelled" : ""}${b.active ? " attn" : ""}`;
 }
 
 export function Taskbar({
@@ -86,7 +90,7 @@ export function Taskbar({
         onClick={() => (open ? close() : setOpen(true))}
       >
         <span className="taskbar-icon" aria-hidden>
-          ⊞
+          <Icon name="start" />
         </span>
         <span className="taskbar-label">Start</span>
       </button>
@@ -123,10 +127,14 @@ export function Taskbar({
 }
 
 /** One tray item (a clock, a balance, a count): a ≥ 44 px tall tap target when `onClick`. */
-export function TrayItem({ icon, text, title, onClick, tone, tour }: { icon?: string; text: string; title?: string; onClick?: () => void; tone?: "alarm" | "dim"; tour?: string }) {
+export function TrayItem({ icon, text, title, onClick, tone, tour }: { icon?: ReactNode; text: string; title?: string; onClick?: () => void; tone?: "alarm" | "dim"; tour?: string }) {
   const body = (
     <>
-      {icon !== undefined && <span aria-hidden>{icon}</span>}
+      {icon !== undefined && (
+        <span className="tray-ico" aria-hidden>
+          {icon}
+        </span>
+      )}
       <span>{text}</span>
     </>
   );

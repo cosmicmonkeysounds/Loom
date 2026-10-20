@@ -10,6 +10,7 @@ import { TrayBalloon, TraySlot } from "../chrome/balloon.tsx";
 import type { StartItem, TaskbarButton } from "../chrome/taskbar.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { TitleBar } from "../chrome/title-bar.tsx";
+import { Icon } from "../chrome/icons.tsx";
 import { useNowMoment } from "../moments/provider.tsx";
 import type { LiveCard } from "../moments/model.ts";
 import { cardGlyph, trayCards } from "../stream/settled.ts";
@@ -138,17 +139,17 @@ export function guestStartItems(o: GuestStartInput): StartItem[] {
     onClick: () => o.open.act(i),
     ...(i.arm === true ? { arm: true } : {}),
   }));
-  if (o.people) items.push({ id: "people", label: "People", icon: "👥", onClick: o.open.people });
-  items.push({ id: "help", label: "Help", icon: "❓", onClick: o.open.help });
-  items.push({ id: "picture", label: "Change your picture", icon: "🖼️", onClick: o.open.picture });
+  if (o.people) items.push({ id: "people", label: "People", icon: <Icon name="people" />, onClick: o.open.people });
+  items.push({ id: "help", label: "Help", icon: <Icon name="help" />, onClick: o.open.help });
+  items.push({ id: "picture", label: "Change your picture", icon: <Icon name="picture" />, onClick: o.open.picture });
   if (o.wake !== null && o.wake.supported) {
-    items.push({ id: "wake", label: o.wake.on ? "Screen stays on — tap to allow sleep" : "Keep my screen on", icon: o.wake.on ? "🔆" : "🔅", onClick: o.open.wake });
+    items.push({ id: "wake", label: o.wake.on ? "Screen stays on — tap to allow sleep" : "Keep my screen on", icon: <Icon name={o.wake.on ? "screen-on" : "screen-off"} />, onClick: o.open.wake });
   }
-  if (o.push) items.push({ id: "alerts", label: "Get alerts", icon: "🔔", onClick: o.open.alerts });
+  if (o.push) items.push({ id: "alerts", label: "Get alerts", icon: <Icon name="bell" />, onClick: o.open.alerts });
   if (o.faction !== null) {
-    for (const to of o.defectTo) items.push({ id: `defect:${to}`, label: `Leave ${withThe(o.faction)} for ${withThe(to)}`, icon: "🔀", onClick: () => o.open.defect(to), confirm: `Switch to ${withThe(to)}?` });
+    for (const to of o.defectTo) items.push({ id: `defect:${to}`, label: `Leave ${withThe(o.faction)} for ${withThe(to)}`, icon: <Icon name="defect" />, onClick: () => o.open.defect(to), confirm: `Switch to ${withThe(to)}?` });
   }
-  items.push({ id: "leave", label: "Leave the event", icon: "🚪", onClick: o.open.leave, danger: true, confirm: leaveQuestion(o.name) });
+  items.push({ id: "leave", label: "Leave the event", icon: <Icon name="leave" />, onClick: o.open.leave, danger: true, confirm: leaveQuestion(o.name) });
   return items;
 }
 
@@ -166,8 +167,8 @@ export function useStartWake(): { supported: boolean; on: boolean; toggle: () =>
 export function guestTaskbarButtons(o: { now: ObjectiveView | null; pass: () => void; scan: () => void }): TaskbarButton[] {
   const wants = new Set(o.now?.buttons ?? []);
   return [
-    { id: "pass", label: "Pass", icon: "🎟", onClick: o.pass, primary: true, tour: "pass", title: "Show your pass", active: wants.has("pass") },
-    { id: "scan", label: "Scan", icon: "📷", onClick: o.scan, tour: "scan", title: "Scan a code on the wall", active: wants.has("scan") },
+    { id: "pass", label: "Pass", icon: <Icon name="pass" />, onClick: o.pass, primary: true, tour: "pass", title: "Show your pass", active: wants.has("pass") },
+    { id: "scan", label: "Scan", icon: <Icon name="scan" />, onClick: o.scan, labelled: true, tour: "scan", title: "Scan a code on the wall", active: wants.has("scan") },
   ];
 }
 
@@ -179,11 +180,11 @@ export function BalanceTray({ view, frozen, onOpen }: { view: WalletView; frozen
   const [open, setOpen] = useState(false);
   return (
     <TraySlot>
-      <TrayItem icon={frozen ? "🧊" : "🪙"} text={String(view.balance)} title={`${view.balance} ${view.name}`} tone={frozen ? "dim" : undefined} onClick={() => setOpen((v) => !v)} />
+      <TrayItem icon={<Icon name={frozen ? "frozen" : "coin"} />} text={String(view.balance)} title={`${view.balance} ${view.name}`} tone={frozen ? "dim" : undefined} onClick={() => setOpen((v) => !v)} />
       {open && (
-        <TrayBalloon title={`🪙 ${view.balance} ${view.name}`} onClose={() => setOpen(false)} label="Your wallet">
+        <TrayBalloon title={`${view.balance} ${view.name}`} onClose={() => setOpen(false)} label="Your wallet">
           {view.escrowed > 0 && <div className="tray-balloon-line">{view.escrowed} on hold</div>}
-          {frozen && <div className="tray-balloon-line">🧊 Frozen — you can't send for now.</div>}
+          {frozen && <div className="tray-balloon-line">Frozen — you can't send for now.</div>}
           <button
             type="button"
             className="w95-btn tray-balloon-go"

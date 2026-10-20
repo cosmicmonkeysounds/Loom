@@ -13,6 +13,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_ALERT_LEVEL } from "../../../core/src/delivery.ts";
 import { playChime, useVisible, vibrate, type Alert, type Alerts } from "../alerts.ts";
+import { Icon } from "../chrome/icons.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { usePlayHost } from "../host.ts";
 import { retractedPinSeqs } from "../pins.ts";
@@ -531,7 +532,7 @@ export function MissedTray() {
   const { missed, replay } = useMoments();
   if (missed === 0) return null;
   const label = missed === 1 ? "1 missed moment — show it" : `${missed} missed moments — show them`;
-  return <TrayItem icon="🔔" text={String(missed)} title={label} tone="alarm" onClick={replay} />;
+  return <TrayItem icon={<Icon name="bell" />} text={String(missed)} title={label} tone="alarm" onClick={replay} />;
 }
 
 /** A busy surface (the scanner, a guest card, the host drawer, the

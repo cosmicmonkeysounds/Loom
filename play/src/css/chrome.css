@@ -12,6 +12,10 @@
   --restricted-2: #9a6b00;
   /* The NOW bar's caption: the shared title gradient under plain. */
   --now-grad: var(--title-grad);
+  /* The chrome's drawn icons (chrome/icons.tsx): flat fills, an ink line. */
+  --ico-red: #c8382c; --ico-green: #2f8a3c; --ico-blue: #2e5fb8; --ico-yellow: #e8c33a;
+  --ico-gold: #d9a520; --ico-gold-hi: #f2cf5b; --ico-sand: #c99a2e; --ico-ticket: #e8836f;
+  --ico-skin: #f1c9a0; --ico-door: #9c6b3c; --ico-screen: #2f7f8a;
   /* The inactive (paused) caption: white is 9:1 and 5.3:1 on the stops. */
   --paused-1: #4a4a4a;
   --paused-2: #6b6b6b;
@@ -24,6 +28,36 @@
   --now-end: #0a64ad;
   --now-grad: linear-gradient(90deg, var(--navy), var(--now-end));
 }
+
+/* Under aol97 the icons wear Win95's own sixteen colours. */
+:root[data-theme="aol97"] {
+  --ico-red: #ff0000; --ico-green: #00a000; --ico-blue: #0000ff; --ico-yellow: #ffff00;
+  --ico-gold: #c0a000; --ico-gold-hi: #ffe060; --ico-sand: #c0a000; --ico-ticket: #ff8080;
+  --ico-skin: #ffc8a0; --ico-door: #808000; --ico-screen: #008080;
+}
+
+/* ── the chrome's icons ────────────────────────────────────────────────── */
+.ico { display: block; flex: 0 0 auto; shape-rendering: geometricPrecision; }
+.ico .ico-line { stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; }
+.ico .ico-ink-line { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; }
+.ico .ico-ink { fill: var(--ink); }
+.ico .ico-white { fill: var(--white); }
+.ico .ico-face { fill: var(--face); }
+.ico .ico-navy { fill: var(--navy); }
+.ico .ico-red { fill: var(--ico-red); }
+.ico .ico-green { fill: var(--ico-green); }
+.ico .ico-blue { fill: var(--ico-blue); }
+.ico .ico-yellow { fill: var(--ico-yellow); }
+.ico .ico-gold { fill: var(--ico-gold); }
+.ico .ico-gold-hi { fill: var(--ico-gold-hi); }
+.ico .ico-sand { fill: var(--ico-sand); }
+.ico .ico-ticket { fill: var(--ico-ticket); }
+.ico .ico-skin { fill: var(--ico-skin); }
+.ico .ico-door { fill: var(--ico-door); }
+.ico .ico-screen { fill: var(--ico-screen); }
+.ico .ico-frost { stroke: var(--navy); }
+/* on a caption-blue (attention) button the outline turns white */
+.taskbar-btn.attn .ico .ico-line, .start-menu-item:hover .ico .ico-line, .start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
 
 /* ── the frame ─────────────────────────────────────────────────────────── */
 .app-frame { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; }
@@ -78,7 +112,7 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
 }
 /* the visible bevel stays Win95-sized; the touch target reaches the bar's edges */
 .taskbar-btn::after { content: ""; position: absolute; top: -3px; bottom: -3px; left: 0; right: 0; }
-.taskbar-icon { font-size: 17px; line-height: 1; }
+.taskbar-icon { font-size: 17px; line-height: 1; display: inline-flex; }
 .taskbar-btn.primary { flex: 1 1 auto; min-width: 96px; max-width: 260px; }
 .taskbar-start.open { box-shadow: var(--pressed); }
 /* a button the current objective names: it asks for attention like a
@@ -91,7 +125,7 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
 }
 .taskbar-tray {
   margin-left: auto; display: flex; align-items: center; gap: 0; min-height: 38px; padding: 0 2px 0 4px;
-  box-shadow: var(--tray-inset); font: 12px var(--ui-font); white-space: nowrap;
+  box-shadow: var(--tray-inset); font: 15px var(--ui-font); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 /* the live dot: the tray's leading edge */
 .taskbar-tray::before {
@@ -112,6 +146,7 @@ button.tray-item::after { content: ""; position: absolute; top: -4px; bottom: -4
 button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
 .tray-item.alarm { color: var(--bad); font-weight: 700; }
 .tray-item.dim { color: var(--dim-ink); }
+.tray-ico { display: inline-flex; }
 
 /* The guest's taskbar is always on top (a Win95 taskbar was): sheets, the
    Start menu's catch-all, a moment's dialog and the blue screen paint under
@@ -161,7 +196,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .start-menu-item:hover, .start-menu-item:focus-visible { background: var(--navy); color: var(--white); outline: none; }
 .start-menu-item.danger { color: var(--bad); }
 .start-menu-item.danger:hover, .start-menu-item.danger:focus-visible { color: var(--white); }
-.start-menu-icon { flex: 0 0 24px; text-align: center; font-size: 18px; }
+.start-menu-icon { flex: 0 0 24px; display: inline-flex; justify-content: center; text-align: center; font-size: 18px; }
 .start-menu-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* an `arm: true` story button, armed: the director phone's look */
 .start-menu-item.armed, .start-menu-item.armed:hover, .start-menu-item.armed:focus-visible { background: var(--black); color: var(--highlight); box-shadow: inset 0 0 0 3px var(--highlight); }
@@ -311,7 +346,8 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 
 /* ── narrow phones ─────────────────────────────────────────────────────── */
 @media (max-width: 399px) {
-  .taskbar-btn:not(.primary):not(.taskbar-start) .taskbar-label { display: none; }
+  .taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }
+  .taskbar-btn.primary { min-width: 76px; }
   .taskbar-btn:not(.primary) { padding: 0 8px; }
   .taskbar-tray > :nth-child(n+4) { display: none; }
 }

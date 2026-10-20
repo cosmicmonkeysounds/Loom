@@ -33,6 +33,7 @@ import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
+import { Icon } from "../chrome/icons.tsx";
 import { titleFallback } from "../chrome/title-bar.tsx";
 import { defectTargets } from "../session/guest.ts";
 import { PictureChanger } from "./register.tsx";
@@ -421,7 +422,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       {st.wallet !== undefined ? (
         <BalanceTray view={st.wallet} frozen={frozen} onOpen={() => t.open(WALLET_ROOM)} />
       ) : st.score !== 0 ? (
-        <TrayItem icon="⭐" text={String(st.score)} title={`Score ${st.score}`} />
+        <TrayItem icon={<Icon name="star" />} text={String(st.score)} title={`Score ${st.score}`} />
       ) : null}
       <MissedTray />
     </>

@@ -26,9 +26,9 @@ describe("the tray clock", () => {
   });
 
   it("the tray item: ⏳ first, red under a minute, ⏸ and dim while paused", () => {
-    expect(trayClock({ label: "Hunt 1 ends", left: 899 }, false)).toEqual({ icon: "⏳", text: "15 m", title: "Hunt 1 ends in 14 min 59 s" });
-    expect(trayClock({ label: "Hunt 1 ends", left: 40, urgent: true }, false)).toMatchObject({ icon: "⏳", text: "0:40", tone: "alarm" });
-    expect(trayClock({ label: "Hunt 1 ends", left: 40 }, true)).toMatchObject({ icon: "⏸", tone: "dim", title: "Hunt 1 ends in 40 s (the clock is paused)" });
+    expect(trayClock({ label: "Hunt 1 ends", left: 899 }, false)).toEqual({ icon: "hourglass", text: "15 m", title: "Hunt 1 ends in 14 min 59 s" });
+    expect(trayClock({ label: "Hunt 1 ends", left: 40, urgent: true }, false)).toMatchObject({ icon: "hourglass", text: "0:40", tone: "alarm" });
+    expect(trayClock({ label: "Hunt 1 ends", left: 40 }, true)).toMatchObject({ icon: "pause", tone: "dim", title: "Hunt 1 ends in 40 s (the clock is paused)" });
   });
 
   it("the balloon spells the time out", () => {
