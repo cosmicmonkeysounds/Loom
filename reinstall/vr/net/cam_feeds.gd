@@ -32,10 +32,14 @@ const FRAME_RATE := 3.0
 ## Plan metres, same floor.
 const RANGE := 12.0
 const MAX_FEEDS := 4
-## A shown feed with no good frame for this long (s) is dropped (the
-## server's own staleness rule is 15 s too).
-const STALE := 15.0
+## A shown feed with no good frame for this long (s) is dropped: a picture
+## frozen longer is no window on the room (the server stops serving a
+## frame after 15 s).
+const STALE := 5.0
 const BACKOFF_MAX := 30.0
+## A spot's frames back off to at most this (s), so a terminal that comes
+## back is on the panel again within seconds.
+const FRAME_BACKOFF_MAX := 5.0
 ## The server refuses a frame over 96 KB; leave room for the list.
 const MAX_BYTES := 256 * 1024
 const TIMEOUT := 5.0
@@ -162,10 +166,10 @@ static func spots_to_poll(house: Dictionary, cams: Array, feet: Array, reach := 
 ## The wait (s) before the next call after `fails` failures in a row:
 ## `interval` with none, else `floor_s` doubling per failure, at most
 ## [constant BACKOFF_MAX].
-static func backoff(fails: int, interval: float, floor_s := 1.0) -> float:
+static func backoff(fails: int, interval: float, floor_s := 1.0, cap := BACKOFF_MAX) -> float:
 	if fails <= 0:
 		return interval
-	return minf(BACKOFF_MAX, floor_s * pow(2.0, fails - 1))
+	return minf(cap, floor_s * pow(2.0, fails - 1))
 
 
 ## Put `img` on `tex` in place (same size and format → `update`, else
@@ -241,12 +245,14 @@ func _fetch_frame(spot: String, base: String, token: String) -> void:
 				_shown[spot] = true
 				feed_shown.emit(spot, _textures[spot])
 			return
-		# 404 (no fresh frame), junk or no answer: the screen goes back to
-		# itself, and the spot is asked again later and later.
-		if _shown.has(spot):
+		# 404 (no fresh frame) or junk: the screen goes back to itself. No
+		# answer / a 5xx (a hiccup on the house wifi) keeps the last frame
+		# until it is [constant STALE]. Either way the spot is asked again
+		# later and later.
+		if _shown.has(spot) and status != 0 and status < 500:
 			_lose(spot)
 		s["fails"] = int(s["fails"]) + 1
-		s["in"] = backoff(int(s["fails"]), 1.0 / FRAME_RATE))
+		s["in"] = backoff(int(s["fails"]), 1.0 / FRAME_RATE, 1.0, FRAME_BACKOFF_MAX))
 
 
 ## A request on a free [HTTPRequest] (or the test requester); with none

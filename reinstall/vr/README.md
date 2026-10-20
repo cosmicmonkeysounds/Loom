@@ -243,8 +243,10 @@ with `released: true` while you walk to Gerald.
   the feeds' own HTTPRequests). A frame updates that spot's texture in
   place on an unshaded 4:3 panel (0.48 × 0.36 m, a thin bezel) where the
   terminal's screen hangs, facing its yaw / pitch. A 404, a bad frame, no
-  fresh frame for 15 s, leaving the floor / range or the session ending
-  puts the terminal's own screen back; failures back off up to 30 s.
+  good frame for 5 s, leaving the floor / range or the session ending
+  puts the terminal's own screen back (a timeout or a 5xx alone keeps the
+  last frame); failures back off, a spot's frames up to 5 s, the list up
+  to 30 s.
 
 ## Tests
 

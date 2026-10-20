@@ -1155,6 +1155,23 @@ func _test_cam_panels() -> void:
 	(asked[0][2] as Callable).call(200, PackedStringArray(), _jpeg(160, 120, Color.RED))
 	_check(b.cam_shown("optical-drive"), "cams: a good frame brings the feed back")
 
+	# A hiccup (no answer, a 5xx) keeps the last frame up until it is stale.
+	asked.clear()
+	c.tick(0.4, house, feet, base, "sess")
+	(asked[0][2] as Callable).call(0, PackedStringArray(), PackedByteArray())
+	_check(b.cam_shown("optical-drive"), "cams: no answer keeps the last frame up")
+	asked.clear()
+	c.tick(1.1, house, feet, base, "sess")
+	(asked[0][2] as Callable).call(502, PackedStringArray(), PackedByteArray())
+	_check(b.cam_shown("optical-drive"), "cams: … and a 502")
+	asked.clear()
+	c.tick(CamFeeds.STALE, house, feet, base, "sess")
+	_check(not b.cam_shown("optical-drive"), "cams: … until no good frame for %d s" % int(CamFeeds.STALE))
+	_check(_near(CamFeeds.backoff(9, 1.0 / CamFeeds.FRAME_RATE, 1.0, CamFeeds.FRAME_BACKOFF_MAX), CamFeeds.FRAME_BACKOFF_MAX), "cams: a spot's frames back off to a few seconds at most")
+	_check(asked.size() == 1, "cams: … and the stale spot is still asked (%s)" % [urls.call()])
+	(asked[0][2] as Callable).call(200, PackedStringArray(), _jpeg(160, 120, Color.RED))
+	_check(b.cam_shown("optical-drive"), "cams: … then a good frame is back on")
+
 	# A failing list backs off too; walking away drops the feed.
 	asked.clear()
 	c.tick(0.016, house, [0.0, 0.0, 30.0], base, "sess")
