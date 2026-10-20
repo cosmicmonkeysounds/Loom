@@ -3015,7 +3015,7 @@ INTERACTION the golden duck
   label: Reinstallation: the golden duck (server)
   who: admin
   sequence: false
-  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck, corrupted or just curious.
+  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck (only a captured or marked program gets in since wave 16).
 
 INTERACTION reinstallation begun
   label: Reinstallation: begun at the tent (server)
@@ -3661,7 +3661,8 @@ when are_you_sure:
 // A run's begin (the tablet's scan, a headset's station) fires `reinstallation
 // begun` first: a marked program who reached the tent without a 🛡 is
 // captured here, so the game starts them CORRUPTED and Gerald releases them.
-// A free program, curious, stays free; a corrupted one is already in.
+// A corrupted one is already in. A free, unmarked program never gets here:
+// since wave 16 the server refuses its begin (409 not marked for reinstallation).
 // During the Bingo results a capture here is the night's first
 // reinstallation as surely as the Enforcer's 🛡 (cast/kit.loom).
 when reinstallation begun for program:
@@ -3674,8 +3675,8 @@ when reinstallation begun for program:
 
 // The games fire both of these, in this order, for whoever walks up to
 // Gerald the golden duck. Only a corrupted program is released, and never
-// during the banishment (the hand jive frees everyone); anyone, captured
-// or just curious, learns The Golden Duck. A banished program hears only
+// during the banishment (the hand jive frees everyone); anyone who walks
+// him (captured, or marked and let in) learns The Golden Duck. A banished program hears only
 // that Gerald cannot help: no golden egg, no flying away, nothing that
 // reads as a release.
 when the simulation completed for program:
