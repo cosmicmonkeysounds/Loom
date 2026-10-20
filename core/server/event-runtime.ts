@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { byRefusal, cueState, guestView, modView, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { byRefusal, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -32,6 +32,7 @@ import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, read
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
+import { NOT_FROM_A_BOOTH, isHostRoute, isModSurface, type HostRouteContext } from "./routes/host.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -50,6 +51,7 @@ import {
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
+import { hostView, type HostView } from "../src/host-board.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE } from "./routes/n02.ts";
@@ -61,7 +63,7 @@ import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts"
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { guestSide } from "./routes/sides.ts";
-import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf } from "./routes/screen.ts";
+import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type KingRef, type SessionRef } from "./spatial.ts";
 import {
@@ -131,6 +133,9 @@ interface Client {
   name?: string; // person id (guest), character (prime), or "" (mod)
   /** A performer who also holds the mod capability sees the whole feed. */
   admin?: boolean;
+  /** A booth holding the host capability (a part with `admin: true`, wave
+   *  13): its own feed plus every agent-voiced character's `dm:` thread. */
+  host?: boolean;
   /** An operator session (`/api/mod/impersonate`): the director playing this
    *  participant from the editor, and the token it streams on (so revoking
    *  the session closes the stream). */
@@ -212,9 +217,12 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
   return out;
 }
 
-function visibleToPrime(m: ChatMessage, c: Client): boolean {
+function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) => boolean = () => false): boolean {
   if (c.admin === true) return true;
   if (m.channel.startsWith("pm:")) return false;
+  // A host booth also reads guests' threads with an agent-voiced character
+  // (Trabolta), so it can answer as him — never another character's DMs.
+  if (c.host === true && m.channel.startsWith("dm:") && isAgent(m.channel.slice(3))) return true;
   // The booth's own Quest Log / Codex: cards addressed `@<its character>`
   // (a guest's pinned rooms are their own).
   if (isPinnedRoom(m.channel)) return Array.isArray(m.audience) && m.audience.includes(`@${c.id}`);
@@ -953,7 +961,7 @@ export class EventRuntime {
   private snapshotFor(client: Client): unknown {
     const online = new Set(this.agents.onlineCharacters());
     if (client.role === "guest") return this.guestViewFor(client.id, online);
-    if (client.role === "prime") return this.primeViewFor(client.id, online);
+    if (client.role === "prime") return this.primeViewFor(client.id, online, undefined, client.host === true || client.admin === true);
     return this.modViewNow();
   }
 
@@ -971,9 +979,9 @@ export class EventRuntime {
 
   /** A performer's snapshot, plus the cards their character has already
    *  answered, with everyone's profile pictures. */
-  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap()): PrimeView {
+  private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
-    return { ...primeView(this.sim, character, online), answered: this.answeredFor(character), avatars, ...(queue !== null ? { wallet: queue } : {}) };
+    return { ...primeView(this.sim, character, online, { host }), answered: this.answeredFor(character), avatars, ...(queue !== null ? { wallet: queue } : {}) };
   }
 
   /** The operator's god view, with everyone's profile pictures. */
@@ -986,6 +994,45 @@ export class EventRuntime {
       // `start:` beat unplayed: the doors are still closed (the phone's strip).
       ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
     };
+  }
+
+  /** The host view's last build, reused within the same second of the same log. */
+  private hostViewCache: { len: number; phase: RuntimePhase; sec: number; view: HostView } | null = null;
+
+  /** A host booth's panel (`GET /api/state?role=mod&host=1`, §2.6): built on
+   *  the mod view, plus the King, the terminals, every guest's flags and the
+   *  guests waiting on each agent-voiced character. Cached per second. */
+  private hostViewNow(): HostView {
+    const now = Date.now();
+    const len = this.sim?.log.len() ?? -1;
+    const sec = Math.floor(now / 1000);
+    const hit = this.hostViewCache;
+    if (hit !== null && hit.len === len && hit.phase === this.phase && hit.sec === sec) return hit.view;
+    const sim = this.sim;
+    const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
+    for (const r of this.agents.pending) {
+      if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
+      const list = waiting.get(r.character) ?? [];
+      list.push({ guest: r.speaker.id, name: r.speaker.name, since: r.at, text: r.text.slice(0, 200) });
+      waiting.set(r.character, list);
+    }
+    const flags = new Map<string, ReturnType<typeof guestFlags>>();
+    if (sim !== null) for (const id of sim.persons.keys()) flags.set(id, guestFlags(sim, id));
+    this.spatialHouse();
+    const king = this.spatial.king();
+    const terms = screenTerminals(this.screens);
+    const model = sim?.model ?? this.declaredModel;
+    const view = hostView({
+      mod: this.modViewNow(),
+      waiting,
+      king: king === null ? null : { hp: king.hp, max: king.max, fallen: king.fallen },
+      terminals: { now: terms.now, silentMs: terms.silentMs, voiceMuted: terms.voiceMuted, terminals: terms.terminals.map((t) => ({ name: t.name, ago: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+      flags,
+      staffRooms: model === null ? [] : staffRoomChannels(model),
+      now,
+    });
+    this.hostViewCache = { len, phase: this.phase, sec, view };
+    return view;
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -1041,7 +1088,7 @@ export class EventRuntime {
       if ((c.role !== "guest" && c.role !== "prime") || c.lean === true) continue;
       online ??= new Set(this.agents.onlineCharacters());
       avatars ??= this.avatarMap();
-      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars) : this.primeViewFor(c.id, online, avatars));
+      sseSend(c.res, "snapshot", c.role === "guest" ? this.guestViewFor(c.id, online, avatars) : this.primeViewFor(c.id, online, avatars, c.host === true || c.admin === true));
     }
     if (online !== null) this.snapshotAt = Date.now();
   }
@@ -1180,7 +1227,7 @@ export class EventRuntime {
       : c.role === "mod"
         ? [...this.chat.all()]
         : capHistory(
-            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c)),
+            this.chat.all().filter((m) => !m.hidden && visibleToPrime(m, c, this.agentVoiced)),
             HISTORY_LIMIT,
             boothOwnRow(c.id),
           );
@@ -1245,7 +1292,7 @@ export class EventRuntime {
       if (c.role === "guest") {
         if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m));
       } else if (c.role === "prime") {
-        if (visibleToPrime(m, c)) sseSend(c.res, "message", m);
+        if (visibleToPrime(m, c, this.agentVoiced)) sseSend(c.res, "message", m);
       } else {
         sseSend(c.res, "message", m);
       }
@@ -3427,6 +3474,15 @@ export class EventRuntime {
     url: URL,
     opts: { moderator?: boolean; moderatorName?: string } = {},
   ): Promise<boolean> {
+    // --- the host allowlist (wave 13, §2.7): a booth holding only the host
+    // capability reaches the moderator surface on the listed routes alone ---
+    if (method === "GET" && opts.moderator !== true) {
+      const query = Object.fromEntries(url.searchParams);
+      if (this.hostOnly(queryTokenOf(req, url)) && isModSurface(method, path, query) && !isHostRoute(method, path, query, this.hostRouteContext())) {
+        sendJson(res, 403, { error: NOT_FROM_A_BOOTH });
+        return true;
+      }
+    }
     // --- SSE stream ---
     // Every projection is capability-gated: the mod feed (full god view,
     // every DM, hidden factions) needs the mod capability or the owning
@@ -3472,12 +3528,16 @@ export class EventRuntime {
       if (role === "mod" && url.searchParams.get("lean") === "1") client.lean = true;
       // `?delta=1` (a full console only): a keyframe, then keyed patches (C7).
       else if (role === "mod" && url.searchParams.get("delta") === "1") client.delta = true;
-      if (role === "prime") client.admin = this.sessions.canModerate(token);
+      if (role === "prime") {
+        client.admin = this.sessions.canModerate(token);
+        client.host = this.sessions.canHost(token);
+      }
       const imp = token ? this.impersonations.get(token) : undefined;
       if (imp !== undefined) {
         client.via = imp.by;
         client.token = token;
         client.admin = false;
+        client.host = false;
       }
       this.clients.add(client);
       // The guest's own phone opened its stream: they are here (W-04).
@@ -3522,7 +3582,7 @@ export class EventRuntime {
 
     // --- K-26: the ceremony's recap numbers (directors only) ---
     if (method === "GET" && path === "/api/mod/recap") {
-      if (opts.moderator !== true && !this.sessions.canModerate(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
+      if (opts.moderator !== true && !this.sessions.canHost(queryTokenOf(req, url))) sendJson(res, 403, { error: "moderators only" });
       else sendRecap(res, url, this.sim, { title: this.title, personas: this.personaOwners, duckRuns: this.spatial.runs() });
       return true;
     }
@@ -3623,7 +3683,18 @@ export class EventRuntime {
           sendJson(res, 403, { error: "no character — sign in" });
           return true;
         }
-        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters())));
+        sendJson(res, 200, this.primeViewFor(character, new Set(this.agents.onlineCharacters()), undefined, this.sessions.canHost(token)));
+        return true;
+      }
+      // `?host=1` (wave 13): a host booth's panel — the cue sheet, needs,
+      // judging, wallet holds, parts, people and Trabolta's waiting guests.
+      if (url.searchParams.get("host") === "1") {
+        if (opts.moderator !== true && !this.sessions.canHost(token)) {
+          sendJson(res, 403, { error: "moderators only" });
+          return true;
+        }
+        res.setHeader("cache-control", "no-store");
+        sendJson(res, 200, this.hostViewNow());
         return true;
       }
       if (opts.moderator !== true && !this.sessions.canModerate(token)) {
@@ -3705,8 +3776,9 @@ export class EventRuntime {
       );
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
-    if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
-    if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canModerate(t));
+    // A host booth may mute the TV and identify a terminal (§2.7).
+    if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canHost(t));
+    if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.sessions.canHost(t));
 
     // --- the reinstallation games: the map, the stream, stations ---
     if (method === "GET" && (path.startsWith("/api/spatial/") || path.startsWith("/api/mod/spatial/"))) {
@@ -3725,6 +3797,12 @@ export class EventRuntime {
     }
 
     const body = await readBody(req);
+
+    // The host allowlist for POSTs (the same rule as the GETs above).
+    if (opts.moderator !== true && this.hostOnly(tokenOf(req, body)) && isModSurface(method, path, body) && !isHostRoute(method, path, body, this.hostRouteContext())) {
+      sendJson(res, 403, { error: NOT_FROM_A_BOOTH });
+      return true;
+    }
 
     if (this.pushRoutes.handlePost(req, res, path, body)) return true;
     if (path === RESUME_ROUTE) {
@@ -3898,10 +3976,17 @@ export class EventRuntime {
     // Authorized by a per-event mod token OR by the owning author's session
     // (opts.moderator) — the same capability, two front doors.
     if (path.startsWith("/api/mod/")) {
-      if (!opts.moderator && !this.sessions.canModerate(tokenOf(req, body))) {
+      const caller = tokenOf(req, body);
+      // A host-only token already passed the allowlist above.
+      if (!opts.moderator && !this.sessions.canHost(caller)) {
         sendJson(res, 403, { error: "moderators only" });
         return true;
       }
+      // The journal's `by`: the author's name, a booth's own part
+      // (`Booth · Task Manager`), else a headless mod token's "Director".
+      const booth = opts.moderator === true ? null : this.characterOf(caller);
+      const by = opts.moderatorName ?? (booth !== null ? `Booth · ${booth}` : "Director");
+      const hostOnly = opts.moderator !== true && this.hostOnly(caller);
       if (path === "/api/mod/spatial/house/project") return this.saveMapToProject(res, body, opts.moderatorName ?? "Director");
       if (path === "/api/mod/load") await this.resyncProjectFiles();
       if (path === "/api/mod/resync") {
@@ -3914,11 +3999,28 @@ export class EventRuntime {
         else sendJson(res, 200, { ok: true, resynced: done === "resynced" });
         return true;
       }
-      return this.handleMod(res, path, body, opts.moderatorName ?? "Director");
+      return this.handleMod(res, path, body, by, hostOnly);
     }
 
     return false;
   }
+
+  /** A token holding the host capability but not the moderator one. */
+  private hostOnly(token: string | undefined): boolean {
+    return this.sessions.canHost(token) && !this.sessions.canModerate(token);
+  }
+
+  /** What the host allowlist's per-route limits read off the story. */
+  private hostRouteContext(): HostRouteContext {
+    const model = this.sim?.model ?? this.declaredModel;
+    return {
+      alertsPath: model?.alerts ?? "Night.alerts",
+      isAgent: (c) => model?.characters.get(c)?.mind === "external",
+    };
+  }
+
+  /** Is this character agent-voiced (a host booth reads its guests' threads)? */
+  private readonly agentVoiced = (character: string): boolean => this.sim?.model.characters.get(character)?.mind === "external";
 
   /**
    * Non-admin POST routes (guest actions, performer chat, prime/mod login).
@@ -4518,6 +4620,8 @@ export class EventRuntime {
             .map((e) => e.text);
           this.fanout(events);
         }
+        // Wave 13: the booth's card for this guest, after the scan's events.
+        const card = scanAs !== null ? guestCardView(this.sim!, this.chat.all(), scanAs, target, this.sessions.canHost(token)) : null;
         sendJson(res, 200, {
           ok: true,
           scannedAs: scanAs,
@@ -4526,7 +4630,27 @@ export class EventRuntime {
           guest: admin
             ? rosterRow(this.sim!, target)
             : { id: target, name: this.sim!.persons.get(target)?.name ?? target, captured: this.sim!.isCaptured(target) },
+          ...(card !== null ? { card } : {}),
         });
+        return true;
+      }
+
+      // --- wave 13: what this booth may do to one guest right now ---
+      // (the scan card on demand; not journaled — a read)
+      case "/api/prime/card": {
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        if (character === null) {
+          sendJson(res, 403, { error: "no performer capability — sign in" });
+          return true;
+        }
+        if (!open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        const card = guestCardView(this.sim!, this.chat.all(), character, str(body, "guest"), this.sessions.canHost(token));
+        if (card === null) sendJson(res, 404, { error: "unknown guest" });
+        else sendJson(res, 200, card);
         return true;
       }
 
@@ -4602,8 +4726,12 @@ export class EventRuntime {
           sendJson(res, 403, { error: refusal });
           return true;
         }
-        this.fanout(this.commit("signal", name, guest, null, character));
-        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest) });
+        const pressed = this.commit("signal", name, guest, null, character);
+        // Wave 13: the story's replies to this booth, and its fresh card.
+        const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [e.text] : []));
+        this.fanout(pressed);
+        const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.sessions.canHost(token));
+        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...(card !== null ? { card } : {}) });
         return true;
       }
       case "/api/prime/widget": {
@@ -4789,16 +4917,18 @@ export class EventRuntime {
 
   /** Admin-only routes (caller already proven to hold the mod capability).
    *  `by` is the director's display name — every mutation below journals it. */
-  private handleMod(res: ServerResponse, path: string, body: Record<string, unknown>, by: string): boolean {
+  private handleMod(res: ServerResponse, path: string, body: Record<string, unknown>, by: string, hostOnly = false): boolean {
     this.actingBy = by;
     try {
-      return this.handleModInner(res, path, body, by);
+      return this.handleModInner(res, path, body, by, hostOnly);
     } finally {
       this.actingBy = undefined;
     }
   }
 
-  private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string): boolean {
+  /** `hostOnly`: the caller holds the host capability alone (the
+   *  allowlist already admitted the route; `codes` leaves out `modPass`). */
+  private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string, hostOnly: boolean): boolean {
     if (this.pairing.handle(path, res, body)) return true;
     if (this.pushRoutes.handleMod(path, res)) return true;
     switch (path) {
@@ -5019,7 +5149,8 @@ export class EventRuntime {
         sendJson(res, 200, {
           eventPass: this.codes.event,
           primePass: this.codes.prime,
-          modPass: this.codes.mod,
+          // A host booth never learns the moderator passcode.
+          ...(hostOnly ? {} : { modPass: this.codes.mod }),
           joinUrl: base,
           codex,
           // W-03: each reserved program's invitation link (its claim token).
@@ -5265,7 +5396,7 @@ export class EventRuntime {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
             else sseSend(c.res, "message", forGuest(m));
-          } else if (c.role === "mod" || visibleToPrime(m, c)) {
+          } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced)) {
             sseSend(c.res, "messageModerated", m);
           }
         }
