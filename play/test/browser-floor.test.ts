@@ -5,8 +5,8 @@
 //! nesting, `dvh`/`svh`/`lvh` with no `vh` declared first, an authored
 //! `@container` (only `embed-css.ts` writes those), `<dialog>` /
 //! `showModal()`, the `inert` attribute, `Array.prototype.at`,
-//! `structuredClone`, and a `color-mix()` with no plain colour declared
-//! first for the same property.
+//! `structuredClone`, and a `color-mix()` outside an `@supports` guard or
+//! with no plain fallback for the same selector and property.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -102,8 +102,28 @@ describe("play's stylesheets stay inside the browser floor", () => {
     expect(unguarded(/\d(?:d|s|l)vh\b/u, (v) => /\dvh\b/u.test(v))).toEqual([]);
   });
 
-  it("color-mix() only after a plain colour for the same property", () => {
-    expect(unguarded(/color-mix\(/u, () => true)).toEqual([]);
+  // A declaration with var() in it is never dropped at parse time: on a
+  // browser with no color-mix() (Safari < 16.2) a color-mix line written
+  // after its plain fallback still wins the cascade, then computes to
+  // nothing (inherit / transparent). So every color-mix() sits inside an
+  // `@supports (… color-mix(…))` block, and the same selector declares the
+  // same property with a plain value outside it.
+  it("color-mix() only under an @supports (color-mix) guard, with a plain fallback outside it", () => {
+    const guarded = (at: string[]): boolean => at.some((a) => /^@supports\b[^{]*color-mix\(/u.test(a));
+    const bad: string[] = [];
+    for (const f of css) {
+      const rules = cssRules(f.text);
+      const plain = new Set<string>();
+      for (const r of rules)
+        if (!guarded(r.at)) for (const [prop, value] of declsOf(r.body)) if (!/color-mix\(/u.test(value)) plain.add(`${r.sel}|${prop}`);
+      for (const r of rules)
+        for (const [prop, value] of declsOf(r.body)) {
+          if (!/color-mix\(/u.test(value)) continue;
+          if (!guarded(r.at)) bad.push(`${f.path} | ${r.sel} | ${prop}: not under @supports`);
+          else if (!plain.has(`${r.sel}|${prop}`)) bad.push(`${f.path} | ${r.sel} | ${prop}: no plain fallback`);
+        }
+    }
+    expect(bad).toEqual([]);
   });
 });
 
