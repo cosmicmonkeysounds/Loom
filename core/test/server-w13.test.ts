@@ -458,6 +458,29 @@ describe("the booth's scan card", () => {
   });
 });
 
+describe("a host booth presses what its card offers", () => {
+  const PATCH = STORY.replace("== Opening", "INTERACTION patch\n  who: performer\n  by: Norton\n\n== Opening");
+  it("another character's by: button is on the host's card and its press lands; a plain booth's is refused", async () => {
+    const rt = freshRuntime({ scenarioSource: PATCH });
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    const host = await hostToken(rt);
+    const card = await post(rt, "/api/prime/card", { token: host, guest: g.id });
+    expect(card.json.live).toContain("patch");
+    const press = await post(rt, "/api/prime/act", { token: host, name: "patch", guest: g.id });
+    expect(press.status).toBe(200);
+    expect((press.json.card as { live: string[] }).live).toContain("patch");
+    // Clippy (a Host by faction, not an admin part) never sees it, and its press is refused.
+    const clippy = (await boothLogin(rt, "Clippy")).json.token as string;
+    expect((await post(rt, "/api/prime/card", { token: clippy, guest: g.id })).json.live).not.toContain("patch");
+    const refused = await post(rt, "/api/prime/act", { token: clippy, name: "patch", guest: g.id });
+    expect(refused.status).toBe(403);
+    expect(refused.json.error).toMatch(/not your button/u);
+    // who: admin still needs the moderator capability, host or not.
+    expect((await post(rt, "/api/prime/act", { token: host, name: "open the doors", guest: g.id })).status).toBe(404);
+  });
+});
+
 describe("the host booth's stream and ?host=1", () => {
   it("a host booth sees a guest's dm:Trabolta, never a pm: thread or another booth's Inbox", async () => {
     const rt = freshRuntime();

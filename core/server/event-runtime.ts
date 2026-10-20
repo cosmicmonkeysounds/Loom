@@ -4718,10 +4718,11 @@ export class EventRuntime {
         // any character owning a hook for it — `interactionActors`, what the
         // booth leads with): another booth's press is refused, so a ROLE hook
         // (which ignores the actor) can't be pressed from the wrong card. A
-        // button with no `by:` stays anyone's; a moderator's booth may press
-        // any (as the director's quick-fire can). Never "sign in" here: that
-        // answer drops a booth.
-        const refusal = admin ? null : byRefusal(this.sim!, def, character);
+        // button with no `by:` stays anyone's; a moderator's or a host's
+        // booth may press any (as the director's quick-fire can, and as its
+        // card offers them — `primeViewFor` / `guestCardView` take `canHost`).
+        // Never "sign in" here: that answer drops a booth.
+        const refusal = this.sessions.canHost(token) ? null : byRefusal(this.sim!, def, character);
         if (refusal !== null) {
           sendJson(res, 403, { error: refusal });
           return true;
