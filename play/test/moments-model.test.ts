@@ -28,6 +28,7 @@ import {
   sameWords,
   settledMark,
   shouldGlitch,
+  storyNow,
   surfacesOf,
   type Moment,
   type MomentsAction,
@@ -224,7 +225,8 @@ describe("missed moments", () => {
   });
 
   it("a phone locked through three alerts replays all three, in order, not just the newest", () => {
-    let s = run([1, 2, 3].map((n) => arrive([moment(n, { channel: `dm:${n}` })], { visible: false })));
+    // All three in the lobby, the one announcement home: none makes another stale.
+    let s = run([1, 2, 3].map((n) => arrive([moment(n, { channel: "lobby" })], { visible: false })));
     s = momentsReducer(s, { type: "wake", level: "sticky", role: "guest", now: 0, phase: "hunt" });
     expect(s.queue.map((q) => [q.moment.seq, q.level])).toEqual([
       [1, "sticky"],
@@ -243,16 +245,21 @@ describe("missed moments", () => {
 
   it("stale on wake: a newer major moment in the same room, or the phase moved on", () => {
     const s = run([
-      arrive([moment(1, { channel: "lobby" })], { visible: false }),
+      arrive([moment(1, { channel: "dm:Trabolta" })], { visible: false }),
       arrive([moment(2, { channel: "dm:Clippy", phase: "hunt" })], { visible: false }),
-      arrive([moment(3, { channel: "lobby" })], { visible: false }),
-      arrive([moment(4, { channel: "dm:Trabolta", phase: "pong" })], { visible: false }),
+      arrive([moment(3, { channel: "dm:Trabolta", phase: "pong" })], { visible: false }),
+      arrive([moment(4, { channel: "lobby", phase: "pong" })], { visible: false }),
     ]);
-    expect(isStale(s.missed[0]!, s.lastMajor, "pong")).toBe(true); // newer major in the lobby
+    expect(isStale(s.missed[0]!, s.lastMajor, "hunt")).toBe(true); // newer major in dm:Trabolta
     const woke = momentsReducer(s, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "pong" });
-    // 1: a newer major in the lobby; 2 and 3: the phase moved from hunt to pong.
-    expect(woke.queue.map((q) => q.moment.seq)).toEqual([4]);
+    // 1: a newer major in its room; 2: the phase moved from hunt to pong.
+    expect(woke.queue.map((q) => q.moment.seq)).toEqual([3, 4]);
     expect(isStale(moment(9, { phase: null }), {}, null)).toBe(false);
+  });
+
+  it("the lobby is every announcement's home: a newer one there never makes an older one stale", () => {
+    const s = run([arrive([moment(1, { text: "One." })], { visible: false }), arrive([moment(2, { text: "Two." })], { visible: false })]);
+    expect(isStale(s.missed[0]!, s.lastMajor, "hunt")).toBe(false);
   });
 
   it("more than three replay as one 'You missed n moments' list", () => {
@@ -268,7 +275,7 @@ describe("missed moments", () => {
   it("a history batch (a reconnect) gets the same treatment: staleness, and > 3 compress", () => {
     const s = run([arrive([1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` })), { batch: true })]);
     expect(s.summary?.moments).toHaveLength(4);
-    const t = run([arrive([moment(1, { channel: "lobby" }), moment(2, { channel: "lobby" })], { batch: true })]);
+    const t = run([arrive([moment(1, { channel: "dm:Clippy" }), moment(2, { channel: "dm:Clippy" })], { batch: true })]);
     expect(t.queue.map((q) => q.moment.seq)).toEqual([2]);
   });
 });
@@ -283,6 +290,24 @@ describe("arrivals from the message map", () => {
     const old = arrivals(list, -1, new Set(), guest, { now, phase: null, bsod: false, beats: new Map() });
     expect(old.moments.map((m) => m.seq)).toEqual([2, 3]);
     expect(old.seen).toContain(1); // looked at, never shown
+  });
+
+  it("a client echo (half seq, wall-clock ts) is never a moment and never moves story time", () => {
+    const echo = msg(4.5, { kind: "line", from: "Calculator", ts: 1_760_000_000_000 });
+    const list = [msg(4, { alert: true, ts: 30_000 }), echo];
+    expect(storyNow(list, 31_000)).toBe(31_000);
+    const r = arrivals(list, -1, new Set(), guest, { now: storyNow(list, 31_000), phase: null, bsod: true, beats: new Map() });
+    expect(r.moments.map((m) => m.seq)).toEqual([4]);
+    expect(r.seen).toEqual([4]);
+  });
+
+  it("one broadcast posted to two rooms is one moment (the first copy)", () => {
+    const s = run([arrive([moment(1, { channel: "lobby", text: "Go." }), moment(2, { channel: "room:system log", text: "Go." })])]);
+    expect(s.queue.map((q) => q.moment.seq)).toEqual([1]);
+    const t = run([arrive([moment(1, { text: "Go." })]), arrive([moment(2, { channel: "room:system log", text: "Go.", at: 1500 })])]);
+    expect(t.queue).toHaveLength(1);
+    const later = run([arrive([moment(1, { text: "Go." })]), arrive([moment(9, { text: "Go.", at: 60_000 })])]);
+    expect(later.queue).toHaveLength(2);
   });
 
   it("the mark settles under the oldest moment still waiting", () => {

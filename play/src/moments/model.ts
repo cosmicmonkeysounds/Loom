@@ -139,6 +139,8 @@ function momentCaption(m: ChatMessage, kind: MomentKind): string {
   if (kind === "quest" && m.quest !== undefined) return `New quest: ${m.quest.title}`;
   const from = m.from.trim();
   if (from !== "" && from !== "Narrator") return from;
+  // The lobby is the house's announcement room (its own title is the story's).
+  if (m.channel === "lobby") return "Announcement";
   return m.title.trim() !== "" ? m.title.trim() : "Message";
 }
 
@@ -297,14 +299,20 @@ function noteMajor(lastMajor: Record<string, number>, moments: readonly Moment[]
   return out;
 }
 
+/** Rooms every announcement shares (the lobby is the one broadcast home, D11):
+ *  a newer alert there is another announcement, not a correction of this
+ *  one, so only the phase rule can make one stale. */
+export const SHARED_HOMES: ReadonlySet<string> = new Set(["lobby"]);
+
 /**
- * Is a missed moment stale now: a newer major moment has its room, or the
+ * Is a missed moment stale now: a newer major moment has its room (never
+ * the lobby, `SHARED_HOMES`), or the
  * night's phase moved on since it arrived (`null` phases never compare
  * unequal to each other, so a story without `Night.phase` never goes stale
  * that way).
  */
 export function isStale(m: Moment, lastMajor: Readonly<Record<string, number>>, phase: string | null): boolean {
-  if (m.channel !== null && m.seq !== null && (lastMajor[m.channel] ?? -1) > m.seq) return true;
+  if (m.channel !== null && !SHARED_HOMES.has(m.channel) && m.seq !== null && (lastMajor[m.channel] ?? -1) > m.seq) return true;
   return (m.phase ?? null) !== (phase ?? null);
 }
 
@@ -313,14 +321,29 @@ export function replayable(missed: readonly Moment[], lastMajor: Readonly<Record
   return missed.filter((m) => !isStale(m, lastMajor, phase));
 }
 
+/** A moment that repeats one already waiting: the same words at the same story moment (one broadcast posted to two rooms). */
+export const ECHO_WINDOW_MS = 2_000;
+
+export function isEcho(m: Moment, others: readonly Moment[]): boolean {
+  return others.some((o) => o.key !== m.key && o.text === m.text && o.severity === m.severity && Math.abs(o.at - m.at) <= ECHO_WINDOW_MS);
+}
+
+/** Drop the echoes inside a list (the first copy stays). */
+export function withoutEchoes(moments: readonly Moment[], already: readonly Moment[] = []): Moment[] {
+  const out: Moment[] = [];
+  for (const m of moments) if (!isEcho(m, [...already, ...out])) out.push(m);
+  return out;
+}
+
 function enqueue(queue: Queued[], moments: readonly Moment[], level: AlertLevel, role: Viewer["role"], now: number): Queued[] {
   const have = new Set(queue.map((q) => q.moment.key));
-  const add = moments.filter((m) => !have.has(m.key)).map((moment) => ({ moment, level: rungFor(moment, level, role), queuedAt: now }));
+  const add = withoutEchoes(moments.filter((m) => !have.has(m.key)), queue.map((q) => q.moment)).map((moment) => ({ moment, level: rungFor(moment, level, role), queuedAt: now }));
   return add.length === 0 ? queue : [...queue, ...add];
 }
 
 /** Replay `list` (already filtered for staleness): one by one up to `REPLAY_MAX`, else one summary. */
-function replay(s: MomentsState, list: Moment[], level: AlertLevel, role: Viewer["role"], now: number): MomentsState {
+function replay(s: MomentsState, all: Moment[], level: AlertLevel, role: Viewer["role"], now: number): MomentsState {
+  const list = withoutEchoes(all);
   if (list.length === 0) return s;
   if (list.length > REPLAY_MAX) {
     const key = `summary:${list.map((m) => m.key).join(",")}`;
@@ -338,7 +361,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       const known = new Set([...s.queue.map((q) => q.moment.key), ...s.missed.map((m) => m.key)]);
       const fresh = a.moments.filter((m) => !known.has(m.key));
       if (fresh.length === 0) return { ...s, lastMajor };
-      if (!a.visible) return { ...s, lastMajor, missed: [...s.missed, ...fresh] };
+      if (!a.visible) return { ...s, lastMajor, missed: [...s.missed, ...withoutEchoes(fresh, s.missed)] };
       const next = { ...s, lastMajor };
       if (!a.batch) return { ...next, queue: enqueue(s.queue, fresh, a.level, a.role, a.now) };
       return replay(next, replayable(fresh, lastMajor, a.phase), a.level, a.role, a.now);
@@ -387,12 +410,12 @@ export function surfacesOf(s: MomentsState, held: boolean): Surfaces {
   const balloon = s.queue.find((q) => q.level === "balloon") ?? null;
   const stickies = s.queue.filter((q) => q.level === "sticky");
   const modals = s.queue.filter((q) => isModal(q.level));
-  const showModal = !held && s.summary === null;
+  const modalOn = !held && s.summary === null;
   return {
     balloon,
     sticky: stickies[0] ?? null,
     stickyCount: stickies.length,
-    modal: showModal ? (modals[0] ?? null) : null,
+    modal: modalOn ? (modals[0] ?? null) : null,
     modalIndex: s.burst + 1,
     modalTotal: s.burst + modals.length,
     summary: held ? null : s.summary,
@@ -430,7 +453,8 @@ export function arrivals(
   viewer: Viewer,
   ctx: { now: number; phase: string | null; bsod: boolean; beats: Map<string, number> },
 ): { moments: Moment[]; seen: number[] } {
-  const list = [...messages].filter((m) => m.seq > mark && !processed.has(m.seq)).sort((a, b) => a.seq - b.seq);
+  // Client-made rows (a choice echo: a half seq, a wall-clock ts) are never moments.
+  const list = [...messages].filter((m) => Number.isInteger(m.seq) && m.seq > mark && !processed.has(m.seq)).sort((a, b) => a.seq - b.seq);
   const moments: Moment[] = [];
   const seen: number[] = [];
   for (const m of list) {
@@ -452,7 +476,8 @@ export function arrivals(
 /** The story clock now: the later of the view's clock and the newest message. */
 export function storyNow(messages: Iterable<ChatMessage>, clock: number | null | undefined): number {
   let max = clock ?? Number.NEGATIVE_INFINITY;
-  for (const m of messages) if (m.ts > max) max = m.ts;
+  // Only the server's rows: a client echo carries wall-clock time (half seqs).
+  for (const m of messages) if (Number.isInteger(m.seq) && m.ts > max) max = m.ts;
   return Number.isFinite(max) ? max : 0;
 }
 
