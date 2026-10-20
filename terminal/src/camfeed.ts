@@ -241,6 +241,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     let alive = true;
     let stop: (() => void) | null = null;
     let retry = 0;
+    let unfollow: (() => void) | null = null;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -262,6 +263,13 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
       }
       video.srcObject = stream;
       void video.play().catch(() => {});
+      // The hub reopens a camera whose track ended: follow it to the new stream.
+      unfollow = hub.subscribe(() => {
+        const next = hub.snapshot.stream;
+        if (!alive || next === null || video.srcObject === next) return;
+        video.srcObject = next;
+        void video.play().catch(() => {});
+      });
       const url = `${baseOf({ eventId })}/api/mod/spatial/cam`;
       stop = runFeed({
         capture: videoCapture(video),
@@ -280,6 +288,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     return () => {
       alive = false;
       window.clearTimeout(retry);
+      unfollow?.();
       stop?.();
       video.srcObject = null;
       video.remove();

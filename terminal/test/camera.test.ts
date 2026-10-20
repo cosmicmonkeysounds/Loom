@@ -63,6 +63,23 @@ describe("the shared camera", () => {
     expect(s.stop).not.toHaveBeenCalled();
     expect(hub.snapshot.state).toBe("live");
   });
+  it("opens again when the camera's track ends under its holders", async () => {
+    const ended: (() => void)[] = [];
+    const track = { stop: vi.fn(), addEventListener: (_: string, fn: () => void) => ended.push(fn) };
+    const first = { getTracks: () => [track], getVideoTracks: () => [track] } as unknown as MediaStream;
+    const second = fakeStream();
+    const streams = [first, second.stream];
+    const gum = vi.fn(() => Promise.resolve(streams.shift()!));
+    const hub = new CameraHub(() => ({ secure: true, getUserMedia: gum }));
+    expect(await hub.acquire("user")).toBe(first);
+    ended[0]!();
+    expect(hub.snapshot.stream).toBeNull();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(gum).toHaveBeenCalledTimes(2);
+    expect(hub.snapshot.stream).toBe(second.stream);
+    expect(hub.snapshot.state).toBe("live");
+  });
   it("says why there is no camera", async () => {
     expect(await new CameraHub(env(() => Promise.reject(new Error("x")), false)).acquire("user")).toBeNull();
     const insecure = new CameraHub(() => ({ secure: false, getUserMedia: null }));

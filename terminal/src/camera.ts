@@ -108,6 +108,7 @@ export class CameraHub {
           return null;
         }
         this.set({ state: "live", stream });
+        this.watchEnd(stream, facing);
         return stream;
       },
       (e: unknown) => {
@@ -120,6 +121,21 @@ export class CameraHub {
     );
     this.opening = p;
     return p;
+  }
+
+  /** A track that ends under us (the OS took the camera back, a tablet
+   *  slept, the camera was unplugged): open it again for whoever still holds
+   *  it — the feed holds it all night, so nobody else would. */
+  private watchEnd(stream: MediaStream, facing: Facing): void {
+    const tracks = typeof stream.getVideoTracks === "function" ? stream.getVideoTracks() : [];
+    for (const t of tracks) {
+      t.addEventListener?.("ended", () => {
+        if (this.snapshot.stream !== stream) return;
+        stream.getTracks().forEach((x) => x.stop());
+        this.set({ stream: null, state: "starting" });
+        if (this.holders > 0 && this.opening === null) void this.open(facing);
+      });
+    }
   }
 
   private close(): void {
