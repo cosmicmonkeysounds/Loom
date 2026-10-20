@@ -12,7 +12,7 @@ import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages } from "../server/chat.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { cueState, guestView, modView, notePress, objectivesFor, primeView, pressRefused } from "../server/views.ts";
+import { cueState, guestCardView, guestView, modView, notePress, primeView, pressRefused } from "../server/views.ts";
 import { cueRows } from "../src/cue-sheet.ts";
 
 export const SRC = scenarioSource("trapped-in-the-internet");
@@ -423,4 +423,199 @@ describe("Trapped in the Internet — wave 13: skipping the tour", () => {
     expect(out.some((m) => m.kind === "quest" && m.text.startsWith("Skipped."))).toBe(true);
     expect(v(n.sim, "g5.doubt")).toBe(10);
   });
+});
+
+// ───────── the walk: a live objective for every phone at every cue ─────────
+
+export const PERFORMERS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender", "Clippy", "Task Manager", "Adobe Acrobat", "Recycling Bin"];
+export const HOST_PARTS = new Set(["Task Manager", "Adobe Acrobat", "Recycling Bin"]);
+const RESERVED = new Set(["pass", "scan"]);
+const interactionButtons = (b: readonly string[]) => b.filter((x) => !RESERVED.has(x));
+
+/** NOW for every phone, after checking the walk's invariants. */
+function checkpoint(n: Night, label: string): Record<string, string> {
+  const sim = n.sim;
+  const now: Record<string, string> = {};
+  const guests = [...sim.persons.keys()];
+  for (const g of guests) {
+    const obs = guestView(sim, g).objectives ?? [];
+    expect(obs.length, `${label}: ${g} has no live objective`).toBeGreaterThan(0);
+    for (const o of obs) expect(interactionButtons(o.buttons).length, `${label}: ${g} ${o.id}`).toBeLessThanOrEqual(3);
+    now[g] = obs[0]!.id;
+  }
+  for (const p of PERFORMERS) {
+    const host = HOST_PARTS.has(p);
+    const obs = primeView(sim, p, undefined, { host }).objectives ?? [];
+    expect(obs.length, `${label}: ${p} has no live objective`).toBeGreaterThan(0);
+    for (const o of obs) expect(interactionButtons(o.buttons).length, `${label}: ${p} ${o.id}`).toBeLessThanOrEqual(3);
+    const head = obs[0]!;
+    // Every face button of NOW is live on at least one guest's card.
+    const live = new Set(guests.flatMap((g) => guestCardView(sim, n.chat.all(), p, g, host)?.live ?? []));
+    for (const b of interactionButtons(head.buttons)) expect(live.has(b), `${label}: ${p}'s NOW ${head.id} offers ${b}, live on nobody's card`).toBe(true);
+    now[p] = head.id;
+  }
+  return now;
+}
+
+type Step = [string, (n: Night) => void];
+const press = (c: string): Step => [c, (n) => { n.press(c); }];
+const by = (c: string, g: string, who: string): Step => [`${who}: ${c} ${g}`, (n) => { n.signal(c, g, undefined, who); }];
+
+/** The night, cue by cue, with the performer presses and a few guests' own
+ *  turns (a mark, a capture, Bathroom Mode, a late arrival). */
+function nightSteps(ending: "song" | "hand_jive"): Step[] {
+  const head: Step[] = [
+    ["g7 at the door (uploaded, not scanned)", (n) => { n.upload("g7", "Netscape", null); }],
+    ["g8 mid-upload", (n) => { n.take(n.sim.createPerson("g8", "Winamp Classic")); }],
+    press("call_to_the_desktop"),
+    press("start_the_bingo"),
+    ["+20 min", (n) => { n.tick(1201); }],
+    press("bingo_time"),
+    by("bingo_winner", "g1", "Clippy"),
+    by("award_the_ribbon", "g1", "Clippy"),
+    by("named_at_bingo", "g4", "Clippy"),
+    by("send to the internet", "g4", "Norton Anti-Virus"),
+    press("introduce_trabolta"),
+    ["g4 finds Gerald", (n) => { n.signal("the simulation completed", "g4"); n.signal("the golden duck", "g4"); }],
+    press("start_the_hunt"),
+    ["g6 to the bathroom", (n) => { n.signal("go to the bathroom", "g6"); }],
+    ["+15 min", (n) => { n.tick(901); }],
+    press("first_moment_of_truth"),
+    ["g6 back", (n) => { n.signal("back from the bathroom", "g6"); }],
+    press("close_the_filing"),
+    press("read_the_results"),
+    press("spin_the_bottle"),
+    ["the bottle lands on g2", (n) => { n.signal("bottle_landed", "g2"); }],
+    by("truth_answered", "g2", "Clippy"),
+    by("uncertain_answer", "g5", "Clippy"),
+    press("read_the_results"),
+    press("read_the_results"),
+    press("second_hunt_preview"),
+    press("start_the_second_hunt"),
+    ["+2 min (the Truther Download)", (n) => { n.tick(125); }],
+    ["Windows Defender clears g7", (n) => { n.scan("Windows Defender", "g7"); }],
+    by("send to the internet", "g5", "McAfee Anti-Virus"),
+    press("five_minute_warning"),
+    ["check-ins at the door", (n) => { for (const g of ["g1", "g2", "g3", "g4", "g6", "g7"]) n.scan("Norton Anti-Virus", g); }],
+    press("summons_closed"),
+    press("truth_pong"),
+    by("made_the_cup", "g1", "Adobe Acrobat"),
+    by("missed_the_cup", "g3", "Adobe Acrobat"),
+    by("send to the internet", "g3", "Password Manager"),
+    press("round_two_tally"),
+    press("trust_chart"),
+    press("show_the_rankings"),
+    ["the rankings", (n) => { n.signal("praise_the_top"); n.signal("shame_the_bottom"); }],
+    by("radio_beans", "g6", "Adobe Acrobat"),
+    press("zip_everyone_out"),
+    press("trabolta_overshares"),
+    press("y2k_clock"),
+    ["sides", (n) => { n.take(n.sim.join("g2", "Unlimited Power")); n.take(n.sim.join("g3", "The Way Out")); }],
+    ["+30 min", (n) => { n.tick(1801); }],
+    press("final_reveal"),
+    press("bobbing_for_truth"),
+    by("brought_up_the_bag", "g1", "Adobe Acrobat"),
+    press("read_truth_txt"),
+  ];
+  const song: Step[] = [press("the_verdict"), press("start_the_ceremony"), ["🏆", (n) => { n.press("award_most_trusted", "g1"); }]];
+  const jive: Step[] = [
+    ["the verdict: Grok Prom", (n) => { n.take(n.sim.fireBeat("Grok Prom")); }],
+    press("ask_for_advice"),
+    ["g1 votes Thwart him", (n) => { n.signal("poll answered", "g1", { choice: "Thwart him", index: 1 }); }],
+    press("advice_tally"),
+    press("the_hand_jive"),
+    press("start_the_ceremony"),
+  ];
+  return [...head, ...(ending === "song" ? song : jive)];
+}
+
+function walk(ending: "song" | "hand_jive"): Array<[string, Record<string, string>]> {
+  const n = boot();
+  const out: Array<[string, Record<string, string>]> = [["doors", checkpoint(n, "doors")]];
+  for (const [label, run] of nightSteps(ending)) {
+    run(n);
+    out.push([label, checkpoint(n, label)]);
+  }
+  return out;
+}
+
+describe("Trapped in the Internet — wave 13: the objectives, walked through the night", () => {
+  it("every guest and every performer has a live objective at every cue, ≤ 3 interaction buttons each, and NOW's buttons are live on somebody's card (the song night)", () => {
+    const table = new Map(walk("song"));
+    const at = (label: string) => table.get(label)!;
+    // Guests at the big moments.
+    // The tour is NOW until the house calls the Desktop (its card stays up after).
+    expect(at("doors").g1).toBe("Take The Tour");
+    expect(at("g7 at the door (uploaded, not scanned)").g7).toBe("Show Your Pass");
+    expect(at("g8 mid-upload").g8).toBe("Finish Your Upload");
+    expect(at("call_to_the_desktop").g1).toBe("Go To The Desktop");
+    expect(at("start_the_bingo").g1).toBe("Play Computer Bingo");
+    expect(at("bingo_time").g1).toBe("Bingo Results");
+    expect(at("Clippy: named_at_bingo g4").g4).toBe("Go To The Internet");
+    expect(at("Norton Anti-Virus: send to the internet g4").g4).toBe("Find Gerald");
+    expect(at("introduce_trabolta").g1).toBe("Meet Trabolta");
+    expect(at("start_the_hunt").g1).toBe("Find Three Facts");
+    expect(at("g6 to the bathroom").g6).toBe("Bathroom Mode On");
+    expect(at("first_moment_of_truth").g1).toBe("File Your Facts");
+    expect(at("close_the_filing").g1).toBe("The First Moment Of Truth");
+    expect(at("second_hunt_preview").g1).toBe("Stay Calm");
+    expect(at("start_the_second_hunt").g1).toBe("The Hour");
+    expect(at("Windows Defender clears g7").g7).not.toBe("Show Your Pass");
+    expect(at("five_minute_warning").g1).toBe("Be At The Desktop");
+    expect(at("truth_pong").g1).toBe("Truth Pong");
+    expect(at("trust_chart").g1).toBe("Where You Stand");
+    expect(at("y2k_clock").g1).toBe("The Y2K Hour");
+    expect(at("final_reveal").g1).toBe("The Final Reveal");
+    expect(at("bobbing_for_truth").g1).toBe("Bobbing For Truth");
+    expect(at("the_verdict").g1).toBe("The Night Is Over");
+    expect(at("start_the_ceremony").g1).toBe("The Night Is Over");
+    // The booths.
+    expect(at("doors")).toMatchObject({ "Norton Anti-Virus": "Door Duty", "Windows Defender": "Hold The Door", Clippy: "Greet The Arrivals", "Task Manager": "The Help Desk", "Adobe Acrobat": "Documents And Printing", "Recycling Bin": "The Porch" });
+    expect(at("call_to_the_desktop")).toMatchObject({ "Norton Anti-Virus": "Sweep To The Desktop", Clippy: "Welcome Everyone" });
+    expect(at("start_the_bingo")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", "McAfee Anti-Virus": "Patrol The Computer", Clippy: "Welcome Everyone" });
+    expect(at("bingo_time")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", Clippy: "Celebrate The Winners", "Task Manager": "The Fake Bingo Card" });
+    expect(at("Clippy: named_at_bingo g4")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked", "McAfee Anti-Virus": "Escort The Marked", "Windows Defender": "Hold The Door" });
+    expect(at("introduce_trabolta")).toMatchObject({ Clippy: "Introduce Trabolta", "Norton Anti-Virus": "Patrol The Computer" });
+    expect(at("first_moment_of_truth")).toMatchObject({ Clippy: "The First Moment Of Truth Host" });
+    expect(at("the bottle lands on g2")).toMatchObject({ Clippy: "The Bottle" });
+    expect(at("Clippy: uncertain_answer g5")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked" });
+    expect(at("+2 min (the Truther Download)")).toMatchObject({ "McAfee Anti-Virus": "Escort The Marked", "CRA Agent Software": "Escort The Marked", "Task Manager": "The Bank" });
+    expect(at("McAfee Anti-Virus: send to the internet g5")).toMatchObject({ "McAfee Anti-Virus": "The Exchange", "CRA Agent Software": "The Audit", Clippy: "Keep Everyone Calm" });
+    expect(at("five_minute_warning")).toMatchObject({ "Norton Anti-Virus": "Summons Check In", "Task Manager": "Summons Door", "Recycling Bin": "Summons Door", Clippy: "Keep Everyone Calm" });
+    expect(at("truth_pong")).toMatchObject({ "Adobe Acrobat": "Judge The Cup", Clippy: "Judge Truth Pong" });
+    expect(at("trust_chart")).toMatchObject({ Clippy: "Lead The Applause" });
+    expect(at("the rankings")).toMatchObject({ "Adobe Acrobat": "Stand By The Printer" });
+    expect(at("y2k_clock")).toMatchObject({ "Norton Anti-Virus": "Patch Bay Watch", "Password Manager": "Patch Bay Watch", Clippy: "No Sides On Air" });
+    expect(at("final_reveal")).toMatchObject({ "Norton Anti-Virus": "Blackout Guide", Clippy: "The Final Round" });
+    expect(at("read_truth_txt")).toMatchObject({ "Norton Anti-Virus": "Blackout Guide", "Adobe Acrobat": "Hand Over Truth Txt" });
+    expect(at("zip_everyone_out")).toMatchObject({ "Norton Anti-Virus": "Zip Everyone Out", g5: "Where You Stand" });
+    expect(at("Password Manager: send to the internet g3")).toMatchObject({ g3: "Find Gerald", "Password Manager": "Patrol The Computer" });
+    expect(at("bobbing_for_truth")).toMatchObject({ Clippy: "Bob For It", "Adobe Acrobat": "The Bag Of Truth" });
+    expect(at("Adobe Acrobat: brought_up_the_bag g1")).toMatchObject({ "Adobe Acrobat": "Hand Over Truth Txt" });
+    expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
+  }, SLOW);
+
+  it("the Grok Prom night: the pickup line, the advice poll and the hand jive", () => {
+    const table = new Map(walk("hand_jive"));
+    const at = (label: string) => table.get(label)!;
+    expect(at("the verdict: Grok Prom")).toMatchObject({ g1: "The Pickup Line", Clippy: "Grok Prom", "Task Manager": "Grok Prom", "Recycling Bin": "Grok Prom" });
+    expect(at("ask_for_advice").g1).toBe("Help Or Thwart");
+    expect(at("advice_tally")).toMatchObject({ g1: "The Hand Jive", g5: "The Hand Jive", "Norton Anti-Virus": "Banished Too", "Windows Defender": "Hold The Door" });
+    expect(at("the_hand_jive").g1).toBe("The Night Is Over");
+  }, SLOW);
+
+  it("audiences never cross: a guest sees only Program objectives, Windows Defender only its own, Clippy never a host part's", () => {
+    const n = boot();
+    const m = n.sim.model;
+    const guestIds = new Set([...m.objectives.values()].filter((o) => o.audience.roles.includes("Program")).map((o) => o.id));
+    for (const c of TO_Y2K) n.press(c);
+    for (const o of guestView(n.sim, "g1").objectives ?? []) expect(guestIds.has(o.id), o.id).toBe(true);
+    for (const p of PERFORMERS) for (const o of primeView(n.sim, p).objectives ?? []) expect(guestIds.has(o.id), `${p}: ${o.id}`).toBe(false);
+    expect((primeView(n.sim, "Windows Defender").objectives ?? []).map((o) => o.id)).toEqual(["Hold The Door"]);
+    for (const o of primeView(n.sim, "Clippy").objectives ?? []) expect(["The Bank", "Summons Door", "The Help Desk"]).not.toContain(o.id);
+    // Every objective carries the sign-off marker in the source.
+    const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
+    expect(src.match(/^OBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+    expect(src.match(/^\/\/ DRAFT for sign-off\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+  }, SLOW);
 });
