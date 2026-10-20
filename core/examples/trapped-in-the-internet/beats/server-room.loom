@@ -95,6 +95,7 @@ unlock The Legendary Fact for program
 unlock The Door Code for program
 Truther Download: The heart is behind the cold door, and the door code is in your Codex. Choose your combination carefully. There are only two that do anything, and the patch bay forgives only one mistake.
 reveal The Server Room for program
+reply !🗝 THE WHOLE TRUTH: your side has the majority. The door code is in your Codex; the heart is behind the cold door.
 
 // ── E2: The Heart — the cold door opens ────────────────────────────
 // From `server_door_opened` (main.loom), the first opening once Trabolta is
@@ -115,6 +116,7 @@ reveal The Server Room for program
   setting: The Server Room
   cast: Trabolta
 reveal The Server Room
+broadcast "!🚪 THE SERVER ROOM IS OPEN. Trabolta's heart is behind the cold door, in the basement." to everyone
 // The server-room look only (lights_server_open touches that room alone,
 // and silences the siren, so never while the patch-bay alarm's look is up).
 // `Night.lights` is the house look stagehand replays on a reconnect. Before
@@ -173,7 +175,7 @@ set Night.terminals = "alarm"
 sound alarm_siren
 fire alarm_tripped
 broadcast "!🚨 An alarm screams somewhere in the machine." to everyone
-Trabolta: Who is in my— get OUT.
+Trabolta (screaming): Who is in my— get OUT.
 
 // ── The King: the machine wins, or nobody does ─────────────────────
 // From `chess_lost` / `chess_drawn` (main.loom: the door terminal's games),

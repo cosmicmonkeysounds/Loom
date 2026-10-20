@@ -3,9 +3,11 @@ start: Power On
 theme: aol97
 directory: everyone
 judge: Trabolta
+alerts: Night.alerts
 currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
 watch: program.cleared as Cleared, program.marked as Marked
+watch: program.afk as Bathroom Mode, program.late as Late, program.corrupted as In the Internet, program.checked_in as Checked in
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
 watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
 watch: Kernel.majority as Majority, Night.wrong_combos as Wrong patches, Night.heart_opened as The Heart, program.at_the_heart as At the heart, while Trabolta.awake == true and Night.ended != true
@@ -354,6 +356,12 @@ ROLE Program
   // How many of the cold door's four digit notes this program holds (the
   // story rule `door_digit_found` counts them; wave 11).
   door_digits: 0 to 4 = 0
+  // Each host's full scan greeting plays once per program (wave 13); a
+  // re-scan is one line (cast/hosts.loom).
+  met_clippy: bool = false
+  met_task_manager: bool = false
+  met_acrobat: bool = false
+  met_bin: bool = false
 
   // ── Arrival ──
   // A new program stands in the Optical Drive (the phone goes on rails there).
@@ -397,7 +405,9 @@ ROLE Program
       set program.doubt += 10
       Clippy: Oh. Okay! No help. That's— that's fine. Programs that don't want help are usually fine.
       Norton Anti-Virus: {program.name} declined orientation. Logged.
-      fail quest Orientation for program "You skipped the tour. Norton logged it. Clippy will remember."
+      // Skipping still finishes the step (wave 13): the Quest Log reads
+      // "skipped", never "1 failed".
+      complete quest Orientation for program "Skipped. You skipped the tour. Norton logged it. Clippy will remember."
     else:
       Clippy: Great job! You're ready to compute. I'll be around if you need me — I'm always around.
       unlock The Orientation List for program
@@ -524,9 +534,11 @@ ROLE Program
   when award_the_ribbon for program:
     if program.bingo == true:
       unlock Computer Bingo for program
-      broadcast "🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
+      broadcast "~🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
+      reply 🎀 You won a Bingo Ribbon. Take a bow.
     else:
-      broadcast "🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
+      broadcast "~🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
+      reply 🎀 You received a ribbon. Take a bow.
 
   when frame_for_bingo for program:
     if Night.phase == "bingo_results" and Night.bingo_winners < 1:
@@ -758,7 +770,7 @@ ROLE Program
           set Kernel.q8_hunt = "accurate"
         if Kernel.q8 != "lie":
           set Kernel.q8 = "accurate"
-      broadcast "✅ {program.name}'s answer is accepted." to everyone
+      broadcast "~✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
 
   // Wrong, but delivered with total confidence: accepted. Identical on
@@ -832,14 +844,14 @@ ROLE Program
         set Kernel.q8 = "lie"
         set program.hunt_lie_q8 = true
         set program.judged_q8 = true
-      broadcast "✅ {program.name}'s answer is accepted." to everyone
+      broadcast "~✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
 
   // Uncertain, or an obvious guess: marked for failing to follow orders.
   when uncertain_answer for program:
     if Night.judging == true:
       set program.may_answer = false
-      broadcast "🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
       fire mark_for_reinstallation for program with reason: "was not sure of an answer"
 
   // ── 🍾 The bottle: Truth or Dare (wave 4) ──
@@ -858,20 +870,21 @@ ROLE Program
     set Night.bottle_picks += 1
     set Night.bottle_pick = program.name
     fire bottle_announce
-    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare"
+    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare", moment: major
 
   when truth_answered for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
       set program.score += 50
-      broadcast "🗣 {program.name} answered. Trabolta is satisfied. +50 Truthcoin." to everyone
+      broadcast "~🗣 {program.name} answered. Trabolta is satisfied. +50 Truthcoin." to everyone
+      reply 🗣 Truth accepted. Trabolta is satisfied. +50 Truthcoin.
     else:
       broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
 
   when truth_refused for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
-      broadcast "🙅 {program.name} refused to answer. That is a directive problem." to everyone
+      broadcast "~🙅 {program.name} refused to answer. That is a directive problem." to everyone
       fire mark_for_reinstallation for program with reason: "refused the truth"
     else:
       broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
@@ -880,7 +893,7 @@ ROLE Program
   when chose_dare for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
-      broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
+      broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
       fire mark_for_reinstallation for program with reason: "chose Dare"
     else:
       broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
@@ -892,12 +905,13 @@ ROLE Program
     if Night.phase == "truth_pong":
       set program.may_answer = true
       set program.cupped = true
-      broadcast "🏓 {program.name} made the cup and may submit a truth." to everyone
+      broadcast "~🏓 {program.name} made the cup and may submit a truth." to everyone
+      reply 🏓 Cup made. You may answer one round-2 fact: tell Clippy, or file it on the 📝 card.
 
   when missed_the_cup for program:
     if Night.phase == "truth_pong":
       set program.cupped = false
-      broadcast "🏓 {program.name} missed the cup. Reinstallation required." to everyone
+      broadcast "~🏓 {program.name} missed the cup. Reinstallation required." to everyone
       fire mark_for_reinstallation for program with reason: "missed the cup"
 
   // MS Paint's painting (her invitation): a host presses 🖌 on the card
@@ -1428,7 +1442,7 @@ ROLE Program
       fire fact_accepted for program with q: "H1", label: "round 1 Q1"
     else if program.fact_v1 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v1 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 1 Q1. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 1 Q1. That is a symptom of corruption." to everyone
       do fact_judged {program} H1 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q1"
 
@@ -1440,7 +1454,7 @@ ROLE Program
       fire fact_accepted for program with q: "H2", label: "round 1 Q2"
     else if program.fact_v2 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v2 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 1 Q2. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 1 Q2. That is a symptom of corruption." to everyone
       do fact_judged {program} H2 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q2"
 
@@ -1452,7 +1466,7 @@ ROLE Program
       fire fact_accepted for program with q: "H3", label: "round 1 Q3"
     else if program.fact_v3 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v3 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 1 Q3. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 1 Q3. That is a symptom of corruption." to everyone
       do fact_judged {program} H3 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q3"
 
@@ -1471,7 +1485,7 @@ ROLE Program
       fire fact_accepted for program with q: "H4", label: "round 2 Q1"
     else if program.fact_v4 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v4 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 2 Q1. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 2 Q1. That is a symptom of corruption." to everyone
       do fact_judged {program} H4 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q1"
 
@@ -1490,7 +1504,7 @@ ROLE Program
       fire fact_accepted for program with q: "H5", label: "round 2 Q2"
     else if program.fact_v5 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v5 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 2 Q2. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 2 Q2. That is a symptom of corruption." to everyone
       do fact_judged {program} H5 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q2"
 
@@ -1509,7 +1523,7 @@ ROLE Program
       fire fact_accepted for program with q: "H6", label: "round 2 Q3"
     else if program.fact_v6 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v6 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 2 Q3. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 2 Q3. That is a symptom of corruption." to everyone
       do fact_judged {program} H6 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q3"
 
@@ -1521,7 +1535,7 @@ ROLE Program
       fire fact_accepted for program with q: "F1", label: "final Q1"
     else if program.fact_v7 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v7 = "marked"
-      broadcast "🤷 {program.name} filed a guess for final Q1. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for final Q1. That is a symptom of corruption." to everyone
       do fact_judged {program} F1 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for final Q1"
 
@@ -1533,7 +1547,7 @@ ROLE Program
       fire fact_accepted for program with q: "F2", label: "final Q2"
     else if program.fact_v8 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v8 = "marked"
-      broadcast "🤷 {program.name} filed a guess for final Q2. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for final Q2. That is a symptom of corruption." to everyone
       do fact_judged {program} F2 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for final Q2"
 
@@ -2116,7 +2130,7 @@ ROLE Program
   when failed_the_bob for program:
     if Night.phase == "bobbing" and Night.bag_up != true:
       set program.bob_failed = true
-      broadcast "🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
+      broadcast "~🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
       fire mark_for_reinstallation for program with reason: "failed the bob"
 
   // ── The pickup line ──
@@ -2131,7 +2145,7 @@ ROLE Program
   // director fires `pickup_line_accepted` with the subject.
   when Night.pickup_gen > self.pickup_seen and self.cleared == true:
     set self.pickup_seen = Night.pickup_gen
-    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it"
+    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it", moment: major
 
   // Only Grok Prom and the song hear it: after the rave he has ridden away,
   // and the advice poll, the banishment and the hand jive have moved on
@@ -2149,7 +2163,7 @@ ROLE Program
         else:
           set Night.line_by = program.name
           Trabolta: The house says YES. That is the line, {program.name}.
-          broadcast "💘 {program.name} knew the line." to everyone
+          broadcast "~💘 {program.name} knew the line." to everyone
       else if verdict == "accurate":
         Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
       else:
@@ -2184,11 +2198,12 @@ ROLE Program
       set program.bottle_answered = Night.bottle_round
       if index == 1:
         set Night.bottle_open = false
-        broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
+        broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
         fire mark_for_reinstallation for program with reason: "chose Dare"
       else:
         set Night.truth_n += 1
-        broadcast "🗣 {program.name} chose Truth. Trabolta has a question." to everyone
+        broadcast "~🗣 {program.name} chose Truth. Trabolta has a question." to everyone
+        reply 🗣 You chose Truth. Trabolta asks on the TV: answer out loud, in front of everyone.
         fire truth_question
 
   // ── The awards ceremony (K-25) ──
@@ -2297,7 +2312,7 @@ ROLE Program
       // party (her painting), else G9. G11 waits for it.
       if Night.award == "the_painting" or (Night.award == "quest_completionist" and Night.painting != true):
         set Night.ceremony_done = true
-      reply 🏆 You won {Night.award_title}! Come up to the TV for your trophy.
+      reply !🏆 You won {Night.award_title}! Come up to the TV for your trophy.
       fire present_award
 
   // ── Fan-out watchers (one run per program; late arrivals included) ──
@@ -2407,7 +2422,7 @@ ROLE Program
   when Night.summons_closed == true and Night.phase == "summons" and self.late != true and self.summoned and self.summons_ok != true and self.afk != true and self.corrupted != true:
     set self.late = true
     fire program_late for self
-    reply ⏰ You are late. An Antivirus is coming for you.
+    reply !⏰ You are late. An Antivirus is coming for you.
     if Night.auto_sweep == true:
       capture self into The Internet
     else:
@@ -3018,11 +3033,13 @@ INTERACTION mark as reinstalled
 INTERACTION accuse
   label: 👁 Put on the watchlist
   who: performer
+  while: Night.ended != true
   description: Antivirus. Raises their doubt.
 
 INTERACTION vouch
   label: 🤝 Vouch for this program
   who: performer
+  while: Night.ended != true
   description: Hosts. Clears their doubt.
 
 INTERACTION check_in_at_desktop
@@ -3090,27 +3107,28 @@ INTERACTION fact_accurate
   label: 📝 Filed fact: accurate
   who: performer
   by: Hosts
-  while: Night.ended != true
+  while: Night.judge_mode == "review" and Night.ended != true
   description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). Same reply as a lie.
 
 INTERACTION fact_lie
   label: 📝 Filed fact: confident lie
   who: performer
   by: Hosts
-  while: Night.ended != true
+  while: Night.judge_mode == "review" and Night.ended != true
   description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). A wrong filed fact is still accepted. Only the Kernel knows.
 
 INTERACTION fact_uncertain
   label: 📝 Filed fact: uncertain (a guess)
   who: performer
   by: Hosts
-  while: Night.ended != true
+  while: Night.judge_mode == "review" and Night.ended != true
   description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). A guess is marked when its round settles.
 
 INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
   by: Hosts, Antivirus
+  while: Night.king_armed == 1
   arm: true
   description: Hosts or Antivirus who saw the King checkmated on the door terminal when the door terminal could not report it, on the winner's card. Until truth.txt it gives them the door code (once).
 
@@ -3162,7 +3180,7 @@ INTERACTION radio_crew_door
   who: performer
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
-  while: Night.ended != true
+  while: Night.step >= 14 and Night.ended != true
   description: Before you (or the crew) open the cold door for yourselves: for 2 minutes an opening only tells # hosts, and The Heart is kept for the programs.
 
 INTERACTION radio_beans
@@ -3225,12 +3243,14 @@ INTERACTION pay_truthcoin
   label: 🪙 Pay 100 Truthcoin
   who: performer
   by: McAfee Anti-Virus, Hosts
+  while: Night.truther_sent == true and Night.ended != true
   description: McAfee Anti-Virus (the exchange broker) or a host (the bank). Corrections only: programs send their own Truthcoin from the Wallet room.
 
 INTERACTION charge_truthcoin
   label: 🪙 Charge 100 Truthcoin
   who: performer
   by: McAfee Anti-Virus, CRA Agent Software, Hosts
+  while: Night.truther_sent == true and Night.ended != true
   description: McAfee Anti-Virus, CRA Agent Software (audits) or a host. Corrections only: a transfer is denied from the CRA booth's Wallet room.
 
 INTERACTION brought_up_the_bag
@@ -3379,6 +3399,7 @@ when introduce_trabolta:
     reveal Trabolta
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
+    broadcast "!🤖 TRABOLTA IS ONLINE. The computer's AI helper is speaking at the Desktop. His thread is open: say hello." to everyone
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -3678,7 +3699,7 @@ when start_the_second_hunt:
     set Night.terminals = "trivia_2"
     cue lights_game
     set Night.lights = "game"
-    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth." to everyone
+    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth. # clipboard is open." to everyone
     -> Second Hunt
   else if Night.step > 7:
     broadcast "📓 Not again: hunt 2 has already started. Nothing happens." to channel(hosts)
@@ -3705,7 +3726,7 @@ when truther_download:
     cue lights_glitch
     set Night.lights = "glitch"
     sound truther_glitch
-    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages." to everyone
+    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." to everyone
   else:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
 
@@ -3718,6 +3739,7 @@ when five_minute_warning:
     set Night.step = 9
     set Night.summons_open = true
     set Night.summons_end = Time.elapsed + 300
+    set Night.alerts = "dialog"
     unlock Clippy Instructions 5 for Clippy
     update quest Keep Everyone Calm for Clippy "Truth Pong. Be more excited than ever."
     broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone
@@ -3755,6 +3777,7 @@ when truth_pong:
   else if Night.step < 10:
     set Night.phase = "truth_pong"
     set Night.step = 10
+    set Night.alerts = "sticky"
     set Night.hunt2_on = false
     set Night.round = 2
     set Night.judging = true
@@ -3763,6 +3786,7 @@ when truth_pong:
     cue screens_truth_pong
     set Night.screen = "truth_pong"
     set Night.terminals = "truth_pong"
+    broadcast "!🏓 TRUTH PONG. To the Cloud, out back: sink a cup and you may answer one fact. Miss and you are marked." to everyone
     -> Truth Pong
   else:
     broadcast "🏓 Not again: Truth Pong has already started. Nothing happens." to channel(hosts)
@@ -3807,6 +3831,7 @@ when trust_chart:
     cue screens_trust_chart
     set Night.screen = "trust_chart"
     set Night.terminals = "trust_chart"
+    broadcast "!📊 THE TRUST CHART. Trabolta is ranking every program on the TV. Find your name." to everyone
     -> Trust Chart
   else if Night.step >= 11:
     broadcast "📊 Not again: the Trust Chart has already played. Nothing happens." to channel(hosts)
@@ -3871,6 +3896,9 @@ when printer_opened:
       set Night.screen = "beans"
       set Night.terminals = "beans"
       cue screens_flicker
+      // The alert is the beans' own moment: a late lid (the overshare, the
+      // Y2K hour, the ceremony) raises nothing on the phones (wave 13).
+      broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone
     set Trabolta.composure -= 20
     sound beans_spill
     -> Full Of Beans
@@ -3897,6 +3925,7 @@ when trabolta_overshares:
     set Night.round = 3
     set Night.facts_requested = 8
     start quest The Final Facts for everyone
+    broadcast "!🤖 Trabolta is sharing the final facts at the Desktop. They are in your Quest Log." to everyone
     set Night.scenario = 4
     if Kernel.excel_planted == true and Kernel.openoffice_dossier == true:
       set Night.scenario = 1
@@ -3928,6 +3957,7 @@ when y2k_clock:
     set Night.step = 14
     set Night.final_round = true
     set Night.y2k_end = Time.elapsed + 3600
+    set Night.alerts = "dialog"
     set Night.clock = "23:00"
     set Trabolta.composure -= 25
     reveal Unlimited Power
@@ -3941,7 +3971,7 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone
+    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone
     -> The Y2K Clock
   else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
@@ -4228,7 +4258,7 @@ when chess_won for program:
       broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
     else:
       unlock The Door Code for program
-      broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
+      broadcast "!♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
       broadcast "♟ {program.name} beat the King: the door code is in their Codex." to channel(hosts)
 
 // A loss or a draw (the door terminal posts `chess lost` / `chess drawn`
@@ -4301,6 +4331,7 @@ when door_digit_found for program:
     else if program.door_digits >= 4:
       complete quest The Cold Door for program "Four of four. The notes fit together: the door code is in your Codex."
       unlock The Door Code for program
+      reply !🔢 Four of four. The notes fit together: the door code is in your Codex.
       broadcast "🔢 {program.name} found all four digit notes: the door code is in their Codex." to channel(hosts)
     else if program.quest.the_cold_door != "active":
       start quest The Cold Door for program "{program.door_digits} of 4. A note with one digit of the cold door's code. The others are hidden around the house."
@@ -4540,6 +4571,7 @@ when final_reveal:
     set Night.final_round = false
     set Night.phase = "final_reveal"
     set Night.step = 16
+    set Night.alerts = "bsod"
     set Night.round = 3
     set Night.judging = true
     unlock Clippy Instructions 8 for Clippy
@@ -4699,6 +4731,7 @@ when the_hand_jive:
     set Night.everyone_free = true
     complete quest Find The Exit for everyone
     sound hand_jive
+    broadcast "!🕺 THE HAND JIVE. Everyone, together. Trabolta cannot take it." to everyone
     -> The Hand Jive
     sound motorcycle
     cue lights_restore
@@ -4718,6 +4751,7 @@ when the_hand_jive:
 when start_the_ceremony:
   if Night.ended == true and Night.ceremony != true:
     set Night.ceremony = true
+    set Night.alerts = "sticky"
     fire lift_the_takeover
     if Night.ending == "destroyed" or Night.ending == "rave":
       set Night.ceremony_host = "Clippy"
@@ -4974,6 +5008,11 @@ set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
 set Night.award_lines = "template"
+// The phones' interrupt ladder (wave 13, D2; header `alerts:`): balloon <
+// sticky < dialog < bsod. The story climbs it at the summons, the Y2K clock
+// and the final reveal, and comes back down at Truth Pong and the ceremony;
+// a host's dial holds until the next of these sets (DRAFT).
+set Night.alerts = "sticky"
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 set Kernel.anti_ai = "MS Paint"

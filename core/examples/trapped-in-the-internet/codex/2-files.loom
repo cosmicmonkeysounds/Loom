@@ -10,6 +10,7 @@
 
 CODEX Casino Nova Scotia Deed
   title: Casino Nova Scotia — Deed Of Transfer
+  category: Files
   code: CASINO-DEED
   text:
     A framed deed. Casino Nova Scotia, its gaming floor, its buffet and
@@ -18,6 +19,7 @@ CODEX Casino Nova Scotia Deed
 
 CODEX The Boardwalk Hand
   title: Screenshot: MONOPOLY GO!
+  category: Files
   code: ALL-IN-BOARDWALK
   text:
     A phone screenshot, printed: MONOPOLY GO! — jtrav_4ever vs DK Holdings.
@@ -28,6 +30,7 @@ CODEX The Boardwalk Hand
 
 CODEX The FBI Lanyard
   title: Visitor Lanyard, Halifax Liaison Office
+  category: Files
   code: FBI-HALIFAX
   text:
     A lanyard in a coat pocket. FEDERAL BUREAU OF INVESTIGATION. LIAISON,
@@ -36,6 +39,7 @@ CODEX The FBI Lanyard
 
 CODEX The Site Schedule
   title: Site Access Log: AI Data Centre
+  category: Files
   code: SITE-SCHEDULE
   text:
     A clipboard from a construction trailer. Anonymous handwriting, neat
@@ -45,6 +49,7 @@ CODEX The Site Schedule
 
 CODEX Barkmore For Mayor
   title: Barkmore For Mayor (1988)
+  category: Files
   code: BARKMORE-88
   text:
     A campaign button, a little rusted: "Re-elect Randy Barkmore. 1988."
@@ -53,6 +58,7 @@ CODEX Barkmore For Mayor
 
 CODEX The Protest Flyer
   title: Save The Pet Cemetery
+  category: Files
   code: SAVE-THE-PETS
   text:
     A photocopied flyer with a drawing of a sad dog: "NO DATA CENTRE ON
@@ -62,6 +68,7 @@ CODEX The Protest Flyer
 
 CODEX The Explosion Of 1917
   title: The Explosion Of 1917
+  category: Files
   code: HALIFAX-1917
   text:
     A museum postcard. On 6 December 1917 two ships collided in the
@@ -72,6 +79,7 @@ CODEX The Explosion Of 1917
 
 CODEX The Valley Library Cuts
   title: Notice Of Position Elimination
+  category: Files
   code: VALLEY-CUTS
   text:
     A memo on Annapolis Valley Regional Library letterhead: "Youth services
@@ -83,6 +91,7 @@ CODEX The Valley Library Cuts
 // schools in rotation, three refused graduation theses, never expelled.
 CODEX The NSCAD Letter
   title: Thesis Decision, NSCAD
+  category: Files
   code: NSCAD-LETTER
   text:
     A letter from the Nova Scotia College of Art and Design, folded inside
@@ -94,6 +103,7 @@ CODEX The NSCAD Letter
 
 CODEX Face Off
   title: Livestream Screenshot
+  category: Files
   code: FACE-OFF-LIVE
   text:
     Three screenshots taped to the bathroom mirror. "VLC THE PLAYA. LIVE.
@@ -101,6 +111,7 @@ CODEX Face Off
 
 CODEX The Bugdom Sketch
   title: Concept Art: Bugdom VR, v212
+  category: Files
   code: BUGDOM-VR
   text:
     A singed sketch, tucked in with the boots and the garden tools. A
@@ -110,6 +121,7 @@ CODEX The Bugdom Sketch
 
 CODEX The Wharton Thesis
   title: Toward A Gold Standard
+  category: Files
   code: GOLD-STANDARD
   text:
     A bound PhD thesis, Wharton School, economics, propped by the toaster:
@@ -118,6 +130,7 @@ CODEX The Wharton Thesis
 
 CODEX The Oscilloscope Diagram
   title: Tennis For Two, Brookhaven 1958
+  category: Files
   code: TENNIS-FOR-TWO
   text:
     A wiring diagram rolled in a cardboard tube: the original circuit of
@@ -127,6 +140,7 @@ CODEX The Oscilloscope Diagram
 
 CODEX The Saline Invoice
   title: Invoice: 500 Vials, Saline
+  category: Files
   code: SALINE-INVOICE
   text:
     An invoice from a medical supplier to a "veterinary non-profit". Five
@@ -135,6 +149,7 @@ CODEX The Saline Invoice
 
 CODEX The Termination Letter
   title: Notice Of Termination
+  category: Files
   code: TERMINATION-UO
   text:
     A letter on Urban Outfitters letterhead, left in the printer tray:
@@ -144,6 +159,7 @@ CODEX The Termination Letter
 
 CODEX The Bootleg DVD
   title: MASTERCLASS (BOOTLEG)
+  category: Files
   code: MASTERCLASS-RIP
   text:
     A DVD in a paper sleeve, title in Sharpie: SHERYL TERRIO MASTERCLASS,
@@ -152,6 +168,7 @@ CODEX The Bootleg DVD
 
 CODEX The Carney Letter
   title: A Letter From Mark Carney
+  category: Files
   code: CARNEY-OFFER
   text:
     A printout in a filing box, from webmaster@mapsandducks.com, signed M.
@@ -162,6 +179,7 @@ CODEX The Carney Letter
 
 CODEX The Domain Receipt
   title: WHOIS: mapsandducks.com
+  category: Files
   code: WHOIS-1999
   text:
     A WHOIS printout. Domain mapsandducks.com. Registrant J. Trabolta.
@@ -177,6 +195,7 @@ CODEX The Domain Receipt
 // him, never by him.
 CODEX The Rival
   title: The Rival
+  category: Files
   code: GROK-ONLINE
   secret: true
   text:
@@ -191,6 +210,7 @@ CODEX The Rival
 // otherwise reaches him). The text is unchanged.
 CODEX The Cooling Log
   title: Cooling Log: Cold Storage
+  category: Files
   code: HUMMING-WALL
   secret: true
   text:
@@ -200,6 +220,7 @@ CODEX The Cooling Log
 
 CODEX The Margin Doodle
   title: Page 999
+  category: Files
   code: PAGE-999
   text:
     A page slipped into the theory binder: dense equations from the
@@ -215,6 +236,7 @@ CODEX The Margin Doodle
 // the terminal by this door. Secret: no model may hold it.
 CODEX The Cold Door
   title: The Cold Door
+  category: Files
   secret: true
   text:
     A note taped beside the keypad on the cold door, in a tired

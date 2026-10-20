@@ -67,7 +67,7 @@ main.loom              header · 4 GROUPs · 14 LOCATIONs (the Desktop first) ·
                        (every guest's vars, hooks and watchers) · every INTERACTION except
                        Trabolta's powers (the admin ones are the director's cue sheet, in
                        running order) · EVERY story-level `when` rule · `== Power On` (last)
-rooms.loom             the chat sidebar: # system-log, # general, # task-manager, # clipboard,
+rooms.loom             the chat sidebar: # general, # task-manager, # clipboard,
                        # truthcoin-exchange, # hosts, # quarantine, # unlimited-power,
                        # the-way-out, # hidden-partition, # back-channel
 atmosphere.loom        three ambient generators (the screensaver hum, dial-up, the system tray)
@@ -958,8 +958,8 @@ live night replay identically.
 not private between factions**. Every performer booth sees and can post in
 every authored channel, and no guest can. Booth readouts (`reply` in a
 character hook) are live-only: they are not kept across a booth reload and
-they do not chime. Every broadcast, including Trabolta's private pop-ups,
-also shows in performers' `# system-log`. Never put a secret meant for one
+they do not chime. (Since wave 13 there is no `# system-log`: a house-wide
+broadcast posts once, in the lobby.) Never put a secret meant for one
 faction in a staff room.
 
 ## Print + QR appendix

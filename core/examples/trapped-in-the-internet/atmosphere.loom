@@ -24,3 +24,12 @@ GENERATOR SystemTray
   every 9m
   while Night.ended != true
   yield bark from 3 programs have viewed your profile. | You have (1) unread message from a program you have not met. | Memory usage: 97%. Consider closing some memories. | Hard Drive: 99% full. One file up there will not be deleted. | The CPU is at 100%. Something in the office is thinking very hard. | Your protection has expired.
+
+// McAfee Anti-Virus: expired, and still popping up (a gag; it fires even if
+// the part is cut). Was an `every 20m` broadcast on his CHARACTER until wave
+// 13: a bark rides the phones' dim ticker instead of the lobby.
+GENERATOR McAfeePopUp
+  tier: ambient
+  every 20m
+  while Night.ended != true
+  yield bark from 🛡️ McAfee Anti-Virus: Your protection has expired. Your protection has expired. Renew now.

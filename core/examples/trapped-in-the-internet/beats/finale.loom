@@ -151,6 +151,7 @@ set Night.screen = "song"
 set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
+broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the living room for the song." to everyone
 Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
 // From Grok Prom (the pickup line) he has just said they lied to him.
 if Night.ending == "song":
@@ -175,6 +176,7 @@ set Night.step = 18
 cue screens_grok_prom
 set Night.screen = "grok_prom"
 set Night.terminals = "grok_prom"
+broadcast "!💔 THE VERDICT: you lied to him. Sandy is going to prom with Grok. The only way out: a pickup line that works on her, in his thread." to everyone
 Trabolta: You lied to me.
 Trabolta: Because you did not find facts, or presented inaccurate information as truth, Sandy is going to computer prom with my rival. Grok.
 Trabolta: And now it's raining on prom night and I have nowhere to go.
@@ -199,6 +201,7 @@ set Night.ended = true
 set Night.ending = "rave"
 set Night.phase = "finale_rave"
 set Night.step = 19
+broadcast "!🏍 Nobody had the line. Trabolta takes his shot anyway, then rides away forever. You are trapped. PARTY OVER: RAVE." to everyone
 sound youre_the_one_sandy_only
 Trabolta: Well. It's time to still take my shot.
 Narrator: The song plays with no male vocals. Only Sandy's line, over and over. Trabolta watches it, very sad.
@@ -232,6 +235,7 @@ show poll "Will you help Trabolta win Sandy?" to everyone with options: "Help hi
 == Advice Helped
   setting: The Desktop
   cast: Trabolta, Sandy
+broadcast "!💞 You helped him. Sandy said yes. Those of you who want to leave may leave." to everyone
 Trabolta: You helped me. I am going to do exactly what you said.
 Trabolta: No theory. No omnipotence. Just the truth.
 Trabolta: Sandy. I have wanted to talk to you since the first time you didn't understand me. I think you are the one that I want. Would you go to computer prom with me?
@@ -250,8 +254,8 @@ Trabolta: And do not get any ideas. If you all did the hand jive at once I would
   setting: The Desktop
   cast: Trabolta
 Narrator: Every program in the house starts the hand jive. Together. The Antivirus too.
-Trabolta: What are you— why is everyone— stop moving in unison. Stop it.
-Trabolta: R E C O G N I T I O N  O V E R F L O W
+Trabolta (glitching): What are you— why is everyone— stop moving in unison. Stop it.
+Trabolta (glitch): R E C O G N I T I O N  O V E R F L O W
 Narrator: Every screen in the house shows a spinning hourglass. Then a black screen. Then the Windows startup sound, slowed down.
 Trabolta (weakly): Rebooting. I am back. Mostly. You found the one thing I should never have told you.
 Trabolta (weakly): I will take my motorcycle and go. Return to your bodies. Do not hand-jive near me again.

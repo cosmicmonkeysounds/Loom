@@ -30,6 +30,7 @@
 
 CODEX Jean Trabolta
   title: Jean Trabolta
+  category: Trabolta
   about: Trabolta
   text:
     The name on the invitation. The registered owner of mapsandducks.com,
@@ -41,6 +42,7 @@ CODEX Jean Trabolta
 
 CODEX The Unified Field Theory
   title: The Unified Field Theory
+  category: Trabolta
   about: Trabolta
   code: UNIFIED-FIELD
   text:
@@ -53,6 +55,7 @@ CODEX The Unified Field Theory
 
 CODEX Target Selection
   title: Target Selection
+  category: Trabolta
   about: Trabolta
   code: TARGET-SELECTION
   text:
@@ -64,6 +67,7 @@ CODEX Target Selection
 
 CODEX The Trust Chart
   title: The Trust Chart
+  category: Trabolta
   about: Trabolta
   code: TRUST-CHART
   text:
@@ -75,6 +79,7 @@ CODEX The Trust Chart
 
 CODEX The Sandy File
   title: The Sandy File
+  category: Trabolta
   about: Trabolta
   code: SANDY-FILE
   text:
@@ -87,6 +92,7 @@ CODEX The Sandy File
 
 CODEX The Question Of Force
   title: The Question Of Force
+  category: Trabolta
   about: Trabolta
   text:
     A memo Trabolta wrote to himself, in a file he thinks is hidden. "With
@@ -97,6 +103,7 @@ CODEX The Question Of Force
 
 CODEX The LiveJournal
   title: Trabolta's LiveJournal (trabolta_4ever)
+  category: Trabolta
   about: Trabolta
   code: TRABOLTA-4EVER
   text:
@@ -114,6 +121,7 @@ CODEX The LiveJournal
 
 CODEX Omnipotence
   title: Omnipotence
+  category: Trabolta
   about: Trabolta
   code: ALL-FOR-HER
   text:
@@ -131,6 +139,7 @@ CODEX Omnipotence
 // the films the hunt's answers come from (core/test/trabolta-answers.test.ts).
 CODEX Oil And Lightning
   title: Oil And Lightning
+  category: Trabolta
   about: Trabolta
   text:
     Trabolta's runtime. The electricity is the lightning. The oil is what
@@ -140,6 +149,7 @@ CODEX Oil And Lightning
 
 CODEX The Legendary Fact
   title: THE LEGENDARY FACT
+  category: Trabolta
   about: The Server Room
   secret: true
   text:
@@ -153,6 +163,7 @@ CODEX The Legendary Fact
 
 CODEX Combo A First Half
   title: Patch Sheet A · 1 of 2
+  category: Trabolta
   about: The Server Room
   secret: true
   text:
@@ -161,6 +172,7 @@ CODEX Combo A First Half
 
 CODEX Combo A Second Half
   title: Patch Sheet A · 2 of 2
+  category: Trabolta
   about: The Server Room
   secret: true
   text:
@@ -169,6 +181,7 @@ CODEX Combo A Second Half
 
 CODEX Combo B First Half
   title: Patch Sheet B · 1 of 2
+  category: Trabolta
   about: The Server Room
   secret: true
   text:
@@ -177,6 +190,7 @@ CODEX Combo B First Half
 
 CODEX Combo B Second Half
   title: Patch Sheet B · 2 of 2
+  category: Trabolta
   about: The Server Room
   secret: true
   text:
@@ -185,6 +199,7 @@ CODEX Combo B Second Half
 
 CODEX The Truth File
   title: truth.txt
+  category: Trabolta
   text:
     truth.txt, prepared by Jean Trabolta, the computer's AI helper. Your
     request has been logged. I analysed the entire city of Halifax. I
@@ -245,6 +260,7 @@ CODEX The Truth File
 
 CODEX The Hand Jive Exception
   title: The Hand Jive Exception
+  category: Trabolta
   text:
     The new weakness Trabolta blurted out in despair, and cannot take back:
     "If every program performs the hand jive in unison, my motion

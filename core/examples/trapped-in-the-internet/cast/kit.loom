@@ -173,10 +173,10 @@ TRAIT Enforcer is Person
     reply 🚻 {program.name}'s Bathroom Mode timed out (15 min).
 
   when program_late for program:
-    reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.
+    reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.
 
   when marked for program:
-    reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
+    reply !🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
     if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):
       reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.
 
@@ -187,4 +187,4 @@ TRAIT Enforcer is Person
     reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.
 
   when alarm_tripped:
-    reply 🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet.
+    reply !🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet.

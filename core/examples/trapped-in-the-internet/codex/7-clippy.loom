@@ -15,6 +15,7 @@
 
 CODEX Clippy Instructions 1
   title: CLIPPY INSTRUCTIONS - 1/X - BEGINNING OF NIGHT
+  category: Missions
   known to: Clippy
   text:
     - Welcome everyone to the computer. You're so glad they've decided to
@@ -42,6 +43,7 @@ CODEX Clippy Instructions 1
 
 CODEX Clippy Instructions 2
   title: CLIPPY INSTRUCTIONS - 2/X - COMPUTER BINGO RESULTS
+  category: Missions
   text:
     - Call everyone back to the Desktop. Thank them for introducing
     themselves and getting to know their fellow programs.
@@ -92,6 +94,7 @@ CODEX Clippy Instructions 2
 
 CODEX Clippy Instructions 3
   title: CLIPPY INSTRUCTIONS - 3/X - FIRST MOMENT OF TRUTH
+  category: Missions
   text:
     - Welcome everyone back to the Desktop. Ask if anyone is able to
     answer the questions.
@@ -128,6 +131,7 @@ CODEX Clippy Instructions 3
 
 CODEX Clippy Instructions 4
   title: CLIPPY INSTRUCTIONS - 4/X - THE MALWARE
+  category: Missions
   text:
     - Begin previewing the second round of the Truth Scavenger Hunt. The
     presentation will be hijacked by an advertisement nobody understands.
@@ -151,6 +155,7 @@ CODEX Clippy Instructions 4
 
 CODEX Clippy Instructions 5
   title: CLIPPY INSTRUCTIONS - 5/X - TRUTH PONG
+  category: Missions
   text:
     - Everyone has just been told they have five minutes to reach the
     Desktop. Anyone late without Bathroom Mode is taken to the Internet
@@ -176,6 +181,7 @@ CODEX Clippy Instructions 5
 
 CODEX Clippy Instructions 6
   title: CLIPPY INSTRUCTIONS - 6/X - THE TRUST CHART AND THE BEANS
+  category: Missions
   text:
     - Trabolta presents his Trust Chart and ranks everyone. When he names
     the most trusted program, lead the applause. Applaud like your life
@@ -193,6 +199,7 @@ CODEX Clippy Instructions 6
 
 CODEX Clippy Instructions 7
   title: CLIPPY INSTRUCTIONS - 7/X - MIDNIGHT
+  category: Missions
   text:
     - The system clock has reset to 11 PM, December 31, 1999. Trabolta
     explains what happens at midnight: best case, the clocks go back to
@@ -207,6 +214,7 @@ CODEX Clippy Instructions 7
 
 CODEX Clippy Instructions 8
   title: CLIPPY INSTRUCTIONS - 8/X - THE FINAL REVEAL
+  category: Missions
   text:
     - The lights go dark. Let everyone know it is time for anyone who has
     found the final facts to speak up.
@@ -232,6 +240,7 @@ CODEX Clippy Instructions 8
 
 CODEX Clippy Instructions 9
   title: CLIPPY INSTRUCTIONS - 9/X - PURGATORY
+  category: Missions
   text:
     - The computer has been turned off. The lights go out, every phone
     says GO TO THE LIVING ROOM, and the dance song plays. Dance.

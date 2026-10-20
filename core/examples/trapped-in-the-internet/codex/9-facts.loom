@@ -11,6 +11,7 @@
 // M01 · main · green
 CODEX Silicon
   title: Silicon
+  category: Facts
   secret: true
   code: SILICON
   text:
@@ -21,6 +22,7 @@ CODEX Silicon
 // M05 · main · green
 CODEX Atlas Loon
   title: Atlas Loon
+  category: Facts
   code: ATLAS-LOON
   text:
     A torn trade-magazine page: MAPS AND DUCKS VS. ATLAS LOON, THE DECOY
@@ -31,6 +33,7 @@ CODEX Atlas Loon
 // M08 · main · green
 CODEX The Ones Who Stay
   title: The Ones Who Stay
+  category: Facts
   code: STAY-FOREVER
   text:
     A note folded into a map of Halifax: Some of the programs in this
@@ -41,6 +44,7 @@ CODEX The Ones Who Stay
 // M09 · main · green
 CODEX Everyone Is Lying
   title: Everyone Is Lying
+  category: Facts
   code: EVERYONE-LIES
   text:
     A laminated bookmark: Most of the programs in this house are lying about
@@ -51,6 +55,7 @@ CODEX Everyone Is Lying
 // M10 · main · green
 CODEX No Exit
   title: No Exit
+  category: Facts
   secret: true
   code: NO-EXIT
   text:
@@ -61,6 +66,7 @@ CODEX No Exit
 // M11 · main · green
 CODEX The Heart
   title: The Heart
+  category: Facts
   secret: true
   code: TRABOLTA-HEART
   text:
@@ -71,6 +77,7 @@ CODEX The Heart
 // M12 · main · green
 CODEX The Intricate Code
   title: The Intricate Code
+  category: Facts
   secret: true
   code: INTRICATE-CODE
   text:
@@ -82,6 +89,7 @@ CODEX The Intricate Code
 // M14 · main · green
 CODEX Help With That
   title: Help With That
+  category: Facts
   secret: true
   code: HELP-WITH-THAT
   text:
@@ -93,6 +101,7 @@ CODEX Help With That
 // M15 · main · green
 CODEX The Books
   title: The Books
+  category: Facts
   code: THE-BOOKS
   text:
     An index card tucked into the first volume of the encyclopaedia:
@@ -103,6 +112,7 @@ CODEX The Books
 // M16 · main · green
 CODEX Confidence
   title: Confidence
+  category: Facts
   code: CONFIDENCE
   text:
     A note in the margin of a management textbook: If you tell Trabolta a
@@ -112,6 +122,7 @@ CODEX Confidence
 // M17 · main · green
 CODEX A Copy Of You
   title: A Copy Of You
+  category: Facts
   code: COPY-OF-YOU
   text:
     A page of the Terms of Service with one clause circled: The upload
@@ -122,6 +133,7 @@ CODEX A Copy Of You
 // M18 · main · green
 CODEX Out Of Date
   title: Out Of Date
+  category: Facts
   code: OUT-OF-DATE
   text:
     A sticky note on an antivirus manual: THE ANTIVIRUSES DON'T KNOW AS MUCH
@@ -131,6 +143,7 @@ CODEX Out Of Date
 // M19 · main · green
 CODEX Ask Him Nicely
   title: Ask Him Nicely
+  category: Facts
   code: ASK-HIM-NICELY
   text:
     A page of the lighting plan with a note: Trabolta controls the lights in
@@ -141,6 +154,7 @@ CODEX Ask Him Nicely
 // M20 · main · green
 CODEX The Safe Place
   title: The Safe Place
+  category: Facts
   code: SAFE-PLACE
   text:
     A note taped inside the back cover of a plumbing guide: The bathroom is
@@ -150,6 +164,7 @@ CODEX The Safe Place
 // M22 · main · green · DRAFT
 CODEX Checkmate For The Code
   title: Checkmate For The Code
+  category: Facts
   secret: true
   code: CHECKMATE-CODE
   text:
@@ -162,6 +177,7 @@ CODEX Checkmate For The Code
 // M23 · main · green · DRAFT
 CODEX Sharing Your Codex
   title: Sharing Your Codex
+  category: Facts
   code: SHARE-CODEX
   text:
     An instruction card: You can share your codex with other programs by
@@ -174,6 +190,7 @@ CODEX Sharing Your Codex
 // M25 · main · green
 CODEX The Truthers
   title: The Truthers
+  category: Facts
   code: THE-TRUTHERS
   text:
     A pamphlet, cheaply photocopied: At some point tonight a conspiracy
@@ -184,6 +201,7 @@ CODEX The Truthers
 // M27 · main · green
 CODEX Scan The Rooms
   title: Scan The Rooms
+  category: Facts
   code: SCAN-THE-ROOMS
   text:
     A note on a house map: Every room in the house has its own code on the
@@ -193,6 +211,7 @@ CODEX Scan The Rooms
 // M28 · main · green
 CODEX Shut Down Correctly
   title: Shut Down Correctly
+  category: Facts
   secret: true
   code: SHUT-DOWN-CORRECTLY
   text:
@@ -204,6 +223,7 @@ CODEX Shut Down Correctly
 // M29 · main · green
 CODEX Mortality
   title: Mortality
+  category: Facts
   code: MORTALITY
   text:
     A memorial card, the kind they hand out at funerals, with no name on it:
@@ -213,6 +233,7 @@ CODEX Mortality
 // M30 · main · green
 CODEX There Is A Way
   title: There Is A Way
+  category: Facts
   secret: true
   code: THERE-IS-A-WAY
   text:
@@ -226,6 +247,7 @@ CODEX There Is A Way
 // T1 · trabolta · blue
 CODEX His Kind
   title: His Kind
+  category: Facts
   about: Trabolta
   code: TRABOLTA-KIND
   text:
@@ -238,6 +260,7 @@ CODEX His Kind
 // T2 · trabolta · blue
 CODEX Prom Season
   title: Prom Season
+  category: Facts
   about: Trabolta
   code: PROM-SEASON
   text:
@@ -249,6 +272,7 @@ CODEX Prom Season
 // T3 · trabolta · blue
 CODEX Alone At Prom
   title: Alone At Prom
+  category: Facts
   about: Trabolta
   code: ALONE-AT-PROM
   text:
@@ -262,6 +286,7 @@ CODEX Alone At Prom
 // C01 · character · red
 CODEX The Jeopardy Callback
   title: The Jeopardy Callback
+  category: Facts
   about: Broken Ask Jeeves
   code: JEOPARDY-CALLBACK
   text:
@@ -276,6 +301,7 @@ CODEX The Jeopardy Callback
 // C02 · character · red
 CODEX Ten Findings For Everyone
   title: Ten Findings For Everyone
+  category: Facts
   about: Broken Ask Jeeves
   code: TEN-FINDINGS
   text:
@@ -291,6 +317,7 @@ CODEX Ten Findings For Everyone
 // C03 · character · red
 CODEX The Ants In The Laptop
   title: The Ants In The Laptop
+  category: Facts
   about: Bugdom
   code: ANTS-IN-THE-LAPTOP
   text:
@@ -306,6 +333,7 @@ CODEX The Ants In The Laptop
 // C04 · character · red
 CODEX A Hundred Hours
   title: A Hundred Hours
+  category: Facts
   about: Bugdom
   code: HUNDRED-HOURS
   text:
@@ -321,6 +349,7 @@ CODEX A Hundred Hours
 // C05 · character · red
 CODEX The Memorial Veterinary Clinic
   title: The Memorial Veterinary Clinic
+  category: Facts
   about: Clippy
   code: HEMVC-FRONT
   text:
@@ -336,6 +365,7 @@ CODEX The Memorial Veterinary Clinic
 // C06 · character · red
 CODEX Failed Clippy
   title: Failed Clippy
+  category: Facts
   about: Clippy
   code: FAILED-CLIPPY
   text:
@@ -352,6 +382,7 @@ CODEX Failed Clippy
 // C07 · character · red
 CODEX The Coin Toss Of The Century
   title: The Coin Toss Of The Century
+  category: Facts
   about: DraftKings
   code: COIN-TOSS
   text:
@@ -369,6 +400,7 @@ CODEX The Coin Toss Of The Century
 // C08 · character · red
 CODEX Forty Nine Percent
   title: Forty-Nine Percent
+  category: Facts
   about: DraftKings
   code: FORTY-NINE-PERCENT
   text:
@@ -385,6 +417,7 @@ CODEX Forty Nine Percent
 // C09 · character · red
 CODEX Four Failed Theses
   title: Four Failed Theses
+  category: Facts
   about: MS Paint
   code: FOUR-THESES
   text:
@@ -400,6 +433,7 @@ CODEX Four Failed Theses
 // C10 · character · red
 CODEX The Million Dollar Painting
   title: The Million Dollar Painting
+  category: Facts
   about: MS Paint
   code: MILLION-DOLLAR-PAINTING
   text:
@@ -415,6 +449,7 @@ CODEX The Million Dollar Painting
 // C11 · character · red
 CODEX The Lamborghini Certificate
   title: The Lamborghini Certificate
+  category: Facts
   about: McAfee Anti-Virus
   code: LAMBORGHINI-CERT
   text:
@@ -430,6 +465,7 @@ CODEX The Lamborghini Certificate
 // C12 · character · red
 CODEX Keep Them On Track
   title: Keep Them On Track
+  category: Facts
   about: McAfee Anti-Virus
   code: KEEP-ON-TRACK
   text:
@@ -445,6 +481,7 @@ CODEX Keep Them On Track
 // C13 · character · red
 CODEX The Escalade In The Sinkhole
   title: The Escalade In The Sinkhole
+  category: Facts
   about: Microsoft Excel
   code: ESCALADE-SINKHOLE
   text:
@@ -460,6 +497,7 @@ CODEX The Escalade In The Sinkhole
 // C14 · character · red
 CODEX Mayor Of The Metaverse
   title: Mayor Of The Metaverse
+  category: Facts
   about: Microsoft Excel
   code: MAYOR-FOREVER
   text:
@@ -476,6 +514,7 @@ CODEX Mayor Of The Metaverse
 // C15 · character · red
 CODEX The Decimal Point
   title: The Decimal Point
+  category: Facts
   about: CRA Agent Software
   code: DECIMAL-POINT
   text:
@@ -493,6 +532,7 @@ CODEX The Decimal Point
 // C16 · character · red · DRAFT
 CODEX Approve Or Deny
   title: Approve Or Deny
+  category: Facts
   about: CRA Agent Software
   code: APPROVE-OR-DENY
   text:
@@ -511,6 +551,7 @@ CODEX Approve Or Deny
 // C17 · character · red
 CODEX Miniature Doses
   title: Miniature Doses
+  category: Facts
   about: Norton Anti-Virus
   code: MINIATURE-DOSES
   text:
@@ -527,6 +568,7 @@ CODEX Miniature Doses
 // C18 · character · red
 CODEX Stable Island
   title: Stable Island
+  category: Facts
   about: Norton Anti-Virus
   code: STABLE-ISLAND
   text:
@@ -542,6 +584,7 @@ CODEX Stable Island
 // C19 · character · red
 CODEX The Halifax Water Hack
   title: The Halifax Water Hack
+  category: Facts
   about: OpenOffice
   code: HALIFAX-WATER
   text:
@@ -557,6 +600,7 @@ CODEX The Halifax Water Hack
 // C20 · character · red
 CODEX This Is Blackmail
   title: This Is Blackmail
+  category: Facts
   about: OpenOffice
   code: THIS-IS-BLACKMAIL
   text:
@@ -571,6 +615,7 @@ CODEX This Is Blackmail
 // C21 · character · red
 CODEX What Happened To Hamtaro
   title: What Happened To Hamtaro
+  category: Facts
   about: Password Manager
   code: HAMTARO
   text:
@@ -586,6 +631,7 @@ CODEX What Happened To Hamtaro
 // C22 · character · red
 CODEX Founding Moderator
   title: Founding Moderator
+  category: Facts
   about: Password Manager
   code: FOUNDING-MODERATOR
   text:
@@ -602,6 +648,7 @@ CODEX Founding Moderator
 // C23 · character · red
 CODEX Infinite Gold
   title: Infinite Gold
+  category: Facts
   about: Runescape
   code: INFINITE-GOLD
   text:
@@ -619,6 +666,7 @@ CODEX Infinite Gold
 // C24 · character · red
 CODEX Minister Of Economic Development
   title: Minister Of Economic Development
+  category: Facts
   about: Runescape
   code: ECONOMIC-DEVELOPMENT
   text:
@@ -640,6 +688,7 @@ CODEX Minister Of Economic Development
 // request and the orchestrator's lore.
 CODEX The Door Code
   title: The Door Code
+  category: The cold door
   secret: true
   text:
     A slip of paper folded very small: COLD DOOR · 4826. Four digits on the
@@ -655,6 +704,7 @@ CODEX The Door Code
 // first digit · silver · The Start Bar (kitchen): wedged behind the kettle
 CODEX Cold Door First Digit
   title: The Cold Door · the first digit
+  category: The cold door
   about: The Server Room
   secret: true
   code: FOGGED-KETTLE
@@ -666,6 +716,7 @@ CODEX Cold Door First Digit
 // second digit · silver · The Graphics Card (bedroom two): taped to the back of the mirror
 CODEX Cold Door Second Digit
   title: The Cold Door · the second digit
+  category: The cold door
   about: The Server Room
   secret: true
   code: FROSTED-MIRROR
@@ -677,6 +728,7 @@ CODEX Cold Door Second Digit
 // third digit · silver · The Fan Closet (laundry): in the dryer's lint-filter slot
 CODEX Cold Door Third Digit
   title: The Cold Door · the third digit
+  category: The cold door
   about: The Server Room
   secret: true
   code: WARM-LINT
@@ -688,6 +740,7 @@ CODEX Cold Door Third Digit
 // fourth digit · silver · The Steam Room (game room): inside the lid of a board-game box
 CODEX Cold Door Fourth Digit
   title: The Cold Door · the fourth digit
+  category: The cold door
   about: The Server Room
   secret: true
   code: LOST-PIECE
