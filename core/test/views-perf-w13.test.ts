@@ -165,6 +165,27 @@ describe("the directory's codex index", () => {
   });
 });
 
+describe("the flags' round memo and the clock", () => {
+  it("a line whose while reads Time.* follows the story second with nothing logged", () => {
+    const sim = Sim.fromSources(`# Night
+start: opening
+watch: program.late as Late, while Time.elapsed >= 2
+
+ROLE Program
+  late: bool = false
+
+== opening
+Hi.
+`);
+    sim.createPerson("g1", "Ada");
+    expect(guestFlags(sim, "g1")).toEqual([]);
+    const len = sim.log.len();
+    sim.tick(3000);
+    expect(sim.log.len()).toBe(len); // nothing logged: only the clock moved
+    expect(guestFlags(sim, "g1").map((f) => f.label)).toEqual(["Late"]);
+  });
+});
+
 describe("awardOnly", () => {
   it("names the one program a cue's story gate lets take it; none when nobody or several fit", () => {
     const sim = fresh();
