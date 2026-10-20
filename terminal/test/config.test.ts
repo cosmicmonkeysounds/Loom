@@ -74,7 +74,7 @@ describe("terminal config", () => {
   });
   it("reads provisioning hints off the URL and scrubs them back out", () => {
     const h = hintsFromSearch("?code=MOD111&name=Kitchen&character=Trabolta&camera=environment&engine=browser&spot=start-bar&view=world&keep=1");
-    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null });
+    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null });
     expect(withoutSecrets("?code=MOD111&name=Kitchen&spot=start-bar&view=mirror&keep=1")).toBe("?keep=1");
     expect(withoutSecrets("?code=MOD111")).toBe("");
     // The TV (K-18): view=tv + the room it speaks for.
@@ -229,5 +229,36 @@ describe("a misspelt character stored unchecked is reported by the cast check (B
     expect(characterProblem("Trabolt", cast)).toBe('The story has no character called "Trabolt" (it has: Trabolta, Clippy).');
     expect(characterProblem("trabolta", cast)).toBeNull();
     expect(() => pickCharacter("Trabolt", cast)).toThrow(characterProblem("Trabolt", cast)!);
+  });
+});
+
+import { VIEWS, VIEW_INFO, roomChoices, spotChoices, spotProblem } from "../src/config.ts";
+import { twoRooms } from "./world-fixture.ts";
+
+describe("wave 14 config", () => {
+  it("knows the shadow view and describes every view", () => {
+    expect(VIEWS).toContain("shadow");
+    for (const v of VIEWS) expect(VIEW_INFO[v].length).toBeGreaterThan(3);
+    expect(hintsFromSearch("?code=X&view=shadow").view).toBe("shadow");
+  });
+  it("keeps the camera feed on unless told otherwise", () => {
+    const s = memory();
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t" }));
+    expect(loadConfig(s)?.camFeed).toBe(true);
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t", camFeed: false }));
+    expect(loadConfig(s)?.camFeed).toBe(false);
+    expect(hintsFromSearch("?code=X&cam=0").camFeed).toBe(false);
+    expect(hintsFromSearch("?code=X").camFeed).toBeNull();
+    expect(withoutSecrets("?code=X&cam=1&keep=1")).toBe("?keep=1");
+  });
+  it("lists the map's spots and rooms, and warns of an unknown spot", () => {
+    const h = twoRooms();
+    const house = { ...h, rooms: h.rooms.map((r, i) => ({ ...r, location: i === 0 ? "The Kitchen" : "the kitchen" })) };
+    expect(spotChoices(house)).toEqual([{ value: "ta", label: "ta — A (The Kitchen)" }]);
+    expect(roomChoices(house)).toEqual([{ value: "The Kitchen", label: "The Kitchen" }]);
+    expect(spotChoices(null)).toEqual([]);
+    expect(spotProblem("ta", house)).toBeNull();
+    expect(spotProblem("", house)).toBeNull();
+    expect(spotProblem("nope", house)).toContain('"nope"');
   });
 });

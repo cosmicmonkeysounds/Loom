@@ -71,8 +71,15 @@ export interface TerminalConfig {
    *  no scanner, no chat), `tv` (the room voice, K-18: the face full screen
    *  speaking the character's lines in `room`, the world pane while someone
    *  is in the simulation — no scanner), `chess` (the King's board at the
-   *  server-room door: scan a pass, play him — no line, no room). */
+   *  server-room door: scan a pass, play him — no line, no room), `shadow`
+   *  (wave 14: this tablet's own camera full screen with the reinstallation
+   *  players drawn over it as ghosts — the room's shadow dimension; no
+   *  scanner). `auto` shows the shadow instead of the world view while the
+   *  camera is live. */
   view: TerminalView;
+  /** Send this terminal's camera to the games (wave 14, `camfeed.ts`): only
+   *  a placed terminal (`spot` set) sends; on by default. */
+  camFeed: boolean;
   /** `view: tv` — the LOCATION whose lines it speaks ("" = `DEFAULT_TV_ROOM`).
    *  Any other view — the LOCATION this terminal belongs to ("" = none; see
    *  `roomOf`): asleep until it is open, speaking its lines. */
@@ -83,8 +90,19 @@ export interface TerminalConfig {
   announce: boolean;
 }
 
-export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess";
-export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess"];
+export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow"];
+
+/** ⚙'s one line per view. */
+export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
+  auto: "face — the simulation (or its shadow, camera on) while someone plays",
+  world: "the simulation, always (face while piloting)",
+  face: "face only",
+  mirror: "mirror — full-screen simulation, no scanner",
+  tv: "TV — the face speaks the room's lines, no scanner",
+  chess: "chess — the King at the server-room door, no hints",
+  shadow: "shadow — this camera full screen, the players as ghosts in it, no scanner",
+};
 
 export const VOICE_CHOICES: readonly VoiceChoice[] = ["browser", "fully", "silent", "server"];
 
@@ -132,6 +150,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     view: "auto",
     room: "",
     announce: false,
+    camFeed: true,
     ...partial,
   };
 }
@@ -145,7 +164,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true });
+    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false });
   } catch {
     return null;
   }
@@ -159,7 +178,7 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -171,6 +190,13 @@ export interface UrlHints {
   room: string | null;
   /** `announce=1` / `0`; null = not given (provisioning keeps the default: off). */
   announce: boolean | null;
+  /** `cam=0` / `1`: the camera feed (null = not given: on). */
+  camFeed?: boolean | null;
+}
+
+/** A URL on/off switch: true / false, null = not given or unreadable. */
+function flagOf(v: string | null): boolean | null {
+  return v === "1" || v === "true" || v === "on" ? true : v === "0" || v === "false" || v === "off" ? false : null;
 }
 
 export function hintsFromSearch(search: string): UrlHints {
@@ -188,7 +214,8 @@ export function hintsFromSearch(search: string): UrlHints {
     spot: p.get("spot")?.trim() || null,
     view: isView(view) ? view : null,
     room: p.get("room")?.trim() || null,
-    announce: announce === "1" || announce === "true" || announce === "on" ? true : announce === "0" || announce === "false" || announce === "off" ? false : null,
+    announce: flagOf(announce),
+    camFeed: flagOf(p.get("cam")),
   };
 }
 
@@ -204,6 +231,7 @@ export function withoutSecrets(search: string): string {
   p.delete("view");
   p.delete("room");
   p.delete("announce");
+  p.delete("cam");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -234,6 +262,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     view: hints.view ?? "auto",
     room: hints.room ?? "",
     announce: hints.announce ?? false,
+    camFeed: hints.camFeed ?? true,
   });
 }
 
@@ -321,4 +350,45 @@ export function adoptCharacter(c: TerminalConfig, screenId: string | null | unde
 /** The event-scoped API base for a configured terminal. */
 export function baseOf(c: Pick<TerminalConfig, "eventId">): string {
   return `/e/${encodeURIComponent(c.eventId)}`;
+}
+
+/** A spot / room choice for ⚙, off the event's house map. */
+export interface MapChoice {
+  value: string;
+  label: string;
+}
+
+interface MapLike {
+  terminals: readonly { id: string; name: string; room: string }[];
+  rooms: readonly { id: string; label: string; location?: string }[];
+}
+
+/** ⚙'s spot list: "id — name (room)" for every terminal on the map. */
+export function spotChoices(house: MapLike | null): MapChoice[] {
+  if (house === null) return [];
+  return house.terminals.map((t) => {
+    const room = house.rooms.find((r) => r.id === t.room);
+    return { value: t.id, label: `${t.id} — ${t.name} (${room?.location ?? room?.label ?? t.room})` };
+  });
+}
+
+/** ⚙'s room list: every LOCATION the map's rooms name, once each, sorted. */
+export function roomChoices(house: MapLike | null): MapChoice[] {
+  if (house === null) return [];
+  const seen = new Set<string>();
+  const out: MapChoice[] = [];
+  for (const r of house.rooms) {
+    const loc = r.location?.trim();
+    if (!loc || seen.has(foldName(loc))) continue;
+    seen.add(foldName(loc));
+    out.push({ value: loc, label: loc });
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** What is wrong with a terminal's spot against the map, or null (unplaced, or on it). */
+export function spotProblem(spot: string, house: MapLike | null): string | null {
+  const id = spot.trim();
+  if (id === "" || house === null || house.terminals.some((t) => t.id === id)) return null;
+  return `The house map has no terminal spot "${id}" — this screen is no window into the games until it is set right.`;
 }

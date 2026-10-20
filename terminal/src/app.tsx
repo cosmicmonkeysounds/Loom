@@ -49,7 +49,9 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { DEFAULT_TV_ROOM, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomChoices, roomOf, saveConfig, savedCharacter, spotChoices, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
+import { feedStatusText, feedWanted, useCamFeed, useFeedStatus } from "./camfeed.ts";
+import { useCameraLive, type Facing } from "./camera.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import { lineLeash, useIdleTimeout } from "./idle.ts";
@@ -77,6 +79,8 @@ import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, type TvLine }
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
 const loadWorld = retryable(() => import("./world/WorldView.tsx").then((m) => ({ default: m.WorldView })));
 // chess.js + the King's board + his AI: only the chess terminal loads them.
+// The shadow view (wave 14) is three.js too, in its own small chunk.
+const loadShadow = retryable(() => import("./shadow/ShadowView.tsx").then((m) => ({ default: m.ShadowView })));
 const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) => ({ default: m.ChessTerminal })));
 
 type Screen = { kind: "setup"; notice: string | null } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
@@ -118,6 +122,8 @@ export function App() {
   }, [config]);
   // The house announcements (N-09), when this screen is set to say them.
   const announcement = useAnnouncements(config, screenState.state);
+  // The camera feed (wave 14): a placed terminal sends its camera to the games.
+  useCamFeed(config);
 
   // Fetch the world view's code at boot, while this page and the server are
   // known to match — hours later a rebuild may have renamed the chunk. Not
@@ -126,6 +132,7 @@ export function App() {
   const view = config?.view;
   useEffect(() => {
     if (webgl2 && view !== undefined && view !== "face" && view !== "chess") void loadWorld().catch(() => {});
+    if (webgl2 && (view === "shadow" || view === "auto")) void loadShadow().catch(() => {});
     if (view === "chess") void loadChess().catch(() => {});
   }, [view, webgl2]);
 
@@ -139,6 +146,14 @@ export function App() {
         saveConfig(c);
         setConfig(c);
         setScreen({ kind: "attract" });
+        // A spot the event's map doesn't have: say so rather than hang no window.
+        if (c.spot !== "")
+          void fetchHouse(c)
+            .then((h) => {
+              const problem = spotProblem(c.spot, h.house);
+              if (problem !== null) setScreen({ kind: "setup", notice: problem });
+            })
+            .catch(() => {});
       })
       .catch((e: Error) => setScreen({ kind: "setup", notice: e.message }));
   }, []);
@@ -360,7 +375,7 @@ export function App() {
     );
   }
 
-  if (config.view === "mirror") {
+  if (config.view === "mirror" || config.view === "shadow") {
     return (
       <>
         {asleep ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
@@ -499,6 +514,27 @@ function WorldSlot({ store, spotId, size, recover }: { store: WorldStore; spotId
   );
 }
 
+// --- the shadow view, guarded -------------------------------------------------
+
+/**
+ * The shadow view (wave 14) — the camera with the players as ghosts in it —
+ * falling back to the world view for good when it can't run here (no
+ * camera, no spot on the map, no WebGL, or its chunk failed).
+ */
+function ShadowSlot({ store, spotId, facing, size, recover }: { store: WorldStore; spotId: string; facing: Facing; size: "pane" | "full"; recover: "retry" | "reload" }) {
+  const [off, setOff] = useState(spotId.trim() === "");
+  const View = useMemo(() => lazy(loadShadow), []);
+  const world = <WorldSlot store={store} spotId={spotId} size={size} recover={recover} />;
+  if (off) return world;
+  return (
+    <WorldBoundary fallback={world} onError={() => setOff(true)}>
+      <Suspense fallback={size === "full" ? <div className="world-note blink">OPENING THE SHADOW…</div> : null}>
+        <View store={store} spotId={spotId} facing={facing} onUnavailable={() => setOff(true)} />
+      </Suspense>
+    </WorldBoundary>
+  );
+}
+
 // --- the chess board, guarded ---------------------------------------------------
 
 /** The chess chunk behind an error boundary: a failed load says so and is
@@ -603,6 +639,10 @@ function Terminal({
   const inSimulation = useWorld(world, (s) => s.world.players.size > 0);
   useGone(world, onGone);
   const showWorld = screen.kind === "attract" && (view === "world" || (view === "auto" && inSimulation));
+  // `auto` shows the shadow (the camera, the players as ghosts in it) instead
+  // of the world while the camera is live and this terminal is placed.
+  const cameraLive = useCameraLive();
+  const shadowPane = showWorld && view === "auto" && cameraLive && config.spot.trim() !== "";
 
   // --- the voice ---
   const queue = useMemo(() => {
@@ -868,7 +908,7 @@ function Terminal({
           <Face mood={mood} speaking={speaking} handle={face} />
           <div className="nameplate">{config.character.toUpperCase()}</div>
           {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
-          {showWorld && <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" />}
+          {showWorld && (shadowPane ? <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="pane" recover="retry" /> : <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" />)}
           {roomLine !== null && (
             <div className={`room-caption${roomLine.mode === "speak" ? "" : " text-only"}`} data-mode={roomLine.mode}>
               {roomLine.from !== config.character && <span className="room-caption-who">{roomLine.from}: </span>}
@@ -947,7 +987,7 @@ function Terminal({
 
 // --- the mirror ----------------------------------------------------------------
 
-/** `view: mirror` — the simulation full screen, for a TV: nothing to scan,
+/** `view: mirror` (and `shadow`, the camera with the ghosts in it) — the simulation full screen, for a TV: nothing to scan,
  *  nothing to say (so no wake gesture is needed), only the gear. A screen
  *  with no WebGL2 (`canDraw` false) says so, still — no retry loop. */
 function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; canDraw: boolean; onSetup: () => void; onGone: (g: Gone) => void }) {
@@ -957,7 +997,11 @@ function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; 
   return (
     <div className="terminal mirror">
       {canDraw ? (
-        <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+        config.view === "shadow" ? (
+          <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="full" recover="reload" />
+        ) : (
+          <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" />
+        )
       ) : (
         <div className="world-note">THIS SCREEN CAN'T DRAW THE SIMULATION (NO WEBGL2) — SET IT TO FACE ONLY</div>
       )}
@@ -974,6 +1018,22 @@ function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; 
 
 // --- setup -------------------------------------------------------------------
 
+/** A LOCATION off the house map, or none; a stored value the map lacks stays as typed. */
+function RoomPicker({ value, onChange, rooms, blank }: { value: string; onChange: (v: string) => void; rooms: readonly { value: string; label: string }[]; blank: string }) {
+  if (rooms.length === 0) return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="The Server Room" />;
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{blank}</option>
+      {rooms.map((r) => (
+        <option key={r.value} value={r.value}>
+          {r.label}
+        </option>
+      ))}
+      {value.trim() !== "" && !rooms.some((r) => r.value === value) && <option value={value}>{value} (not on the map)</option>}
+    </select>
+  );
+}
+
 function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig | null; notice: string | null; onDone: (c: TerminalConfig) => void; onForget: () => void }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState(current?.name ?? "");
@@ -988,6 +1048,9 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
   const [spot, setSpot] = useState(current?.spot ?? "");
   const [view, setView] = useState<TerminalView>(current?.view ?? "auto");
   const [room, setRoom] = useState(current?.room ?? "");
+  const [camFeed, setCamFeed] = useState(current?.camFeed ?? true);
+  const feed = useFeedStatus();
+  const [cast, setCast] = useState<readonly string[]>([]);
   const [map, setMap] = useState<HouseInfo | null>(() => bundledHouse());
   const [error, setError] = useState<string | null>(notice);
   const [busy, setBusy] = useState(false);
@@ -1035,14 +1098,20 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
       alive = false;
     };
   }, [current]);
-  const spots = useMemo(
-    () =>
-      (map?.house.terminals ?? []).map((t) => ({
-        id: t.id,
-        label: `${t.name} — ${map?.house.rooms.find((r) => r.id === t.room)?.label ?? t.room}`,
-      })),
-    [map],
-  );
+  const spots = useMemo(() => spotChoices(map?.house ?? null), [map]);
+  const rooms = useMemo(() => roomChoices(map?.house ?? null), [map]);
+  const badSpot = map !== null && map.source !== "bundled" ? spotProblem(spot, map.house) : null;
+  // The story's cast, for the character picker (the same read the cast check uses).
+  useEffect(() => {
+    if (current === null) return;
+    let alive = true;
+    void fetchCharacters(current)
+      .then((c) => alive && setCast(c))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [current]);
 
   const submit = async () => {
     setBusy(true);
@@ -1050,13 +1119,13 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
     try {
       let next: TerminalConfig;
       if (code.trim() !== "") {
-        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce });
+        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce, camFeed });
       } else if (current !== null) {
         // A changed character in the story's spelling, or an error naming the
         // cast (an unreachable / slow server, or no story: kept as typed —
         // the screen state corrects the spelling later). Unchanged: no lookup.
         const kept = await savedCharacter(character, current.character, () => fetchCharacters(current));
-        next = { ...current, name: name.trim() || current.name, character: kept, camera, engine, spot, view, room: room.trim(), announce };
+        next = { ...current, name: name.trim() || current.name, character: kept, camera, engine, spot, view, room: room.trim(), announce, camFeed };
       } else {
         throw new Error("Enter the moderator passcode.");
       }
@@ -1114,7 +1183,24 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
         </label>
         <label>
           character (an agent-voiced one)
-          <input value={character} onChange={(e) => setCharacter(e.target.value)} placeholder="Trabolta" />
+          {cast.length > 0 && !cast.includes(character) ? (
+            <input value={character} onChange={(e) => setCharacter(e.target.value)} placeholder="Trabolta" list="terminal-cast" />
+          ) : cast.length > 0 ? (
+            <select value={character} onChange={(e) => setCharacter(e.target.value)}>
+              {cast.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input value={character} onChange={(e) => setCharacter(e.target.value)} placeholder="Trabolta" list="terminal-cast" />
+          )}
+          <datalist id="terminal-cast">
+            {cast.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </label>
         <div className="row">
           <label>
@@ -1140,36 +1226,41 @@ function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig 
             <select value={spot} onChange={(e) => setSpot(e.target.value)}>
               <option value="">unplaced — never a window</option>
               {spots.map((s) => (
-                <option key={s.id} value={s.id}>
+                <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
               ))}
-              {spot !== "" && !spots.some((s) => s.id === spot) && <option value={spot}>{spot} (not in the map)</option>}
+              {spot !== "" && !spots.some((s) => s.value === spot) && <option value={spot}>{spot} (not in the map)</option>}
             </select>
           </label>
           <label>
             screen
             <select value={view} onChange={(e) => setView(e.target.value as TerminalView)}>
-              <option value="auto">face — the simulation while someone plays</option>
-              <option value="world">the simulation, always (face while piloting)</option>
-              <option value="face">face only</option>
-              <option value="mirror">mirror — full-screen simulation, no scanner</option>
-              <option value="tv">TV — the face speaks the room's lines, no scanner</option>
-              <option value="chess">chess — the King at the server-room door, no hints</option>
+              {VIEWS.map((v) => (
+                <option key={v} value={v}>
+                  {VIEW_INFO[v]}
+                </option>
+              ))}
             </select>
           </label>
         </div>
         {view === "chess" ? null : view === "tv" ? (
           <label>
             the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
-            <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder={DEFAULT_TV_ROOM} />
+            <RoomPicker value={room} onChange={setRoom} rooms={rooms} blank={`${DEFAULT_TV_ROOM} (the default)`} />
           </label>
         ) : (
           <label>
             the room it belongs to <span className="muted">(a LOCATION; blank = none — the house's terminal. Set: asleep until the story opens that room, then it speaks the character's lines there, shows no slides, and tells the story when a pass opens a line here)</span>
-            <input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="The Server Room" />
+            <RoomPicker value={room} onChange={setRoom} rooms={rooms} blank="none — the house's terminal" />
           </label>
         )}
+        {badSpot !== null && <div className="warn small">{badSpot}</div>}
+        <label className="check">
+          <input type="checkbox" checked={camFeed} onChange={(e) => setCamFeed(e.target.checked)} disabled={spot === ""} />
+          send this camera to the games <span className="muted">(a small live picture on this terminal's wall in the virtual house; needs a spot)</span>
+        </label>
+        {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
         {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
         {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
         <div className="muted small">{deviceVoice}</div>

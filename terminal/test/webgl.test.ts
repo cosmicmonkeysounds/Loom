@@ -33,12 +33,14 @@ describe("probeWebGL2", () => {
 
 describe("effectiveView", () => {
   it("keeps every view with WebGL2", () => {
-    for (const v of ["auto", "world", "face", "mirror", "tv"] as const) expect(effectiveView(v, true)).toBe(v);
+    for (const v of ["auto", "world", "face", "mirror", "tv", "shadow"] as const) expect(effectiveView(v, true)).toBe(v);
   });
 
   it("forces the face pane without WebGL2 (never the retry loop)", () => {
     expect(effectiveView("auto", false)).toBe("face");
     expect(effectiveView("world", false)).toBe("face");
+    expect(effectiveView("shadow", false)).toBe("shadow"); // a full-screen view: says it cannot draw
+
     expect(effectiveView("face", false)).toBe("face");
     expect(effectiveView("mirror", false)).toBe("mirror");
     expect(effectiveView("tv", false)).toBe("tv"); // the TV keeps its face, just no world pane

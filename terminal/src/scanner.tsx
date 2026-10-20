@@ -4,12 +4,16 @@
 //! and decoded by `jsQR`. A code is reported once, then ignored for a few
 //! seconds so a pass held up to the lens doesn't re-fire.
 //!
+//! The stream is the page's one camera (`camera.ts`), shared with the camera
+//! feed and the shadow view — the scanner never opens its own.
+//!
 //! `getUserMedia` needs a secure context: `https://` or `localhost`. On a
 //! plain `http://192.168…` LAN address every browser refuses the camera —
 //! the terminal then shows the typed fallback (see `app.tsx`) and says why.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import jsQR from "jsqr";
+import { useCamera, type CameraState } from "./camera.ts";
 
 /** Time before the same code may be reported again. */
 const REPEAT_MS = 4000;
@@ -38,7 +42,7 @@ async function nativeDetector(): Promise<BarcodeDetectorLike | null> {
   }
 }
 
-export type CameraState = "starting" | "live" | "insecure" | "denied" | "none" | "error";
+export type { CameraState } from "./camera.ts";
 
 /** Why the camera isn't running, in words a person at the wall can act on. */
 export function cameraProblem(state: CameraState): string | null {
@@ -69,7 +73,9 @@ export function Scanner({
   onState?: (state: CameraState) => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
-  const [state, setState] = useState<CameraState>("starting");
+  const cam = useCamera(facing, active);
+  const state: CameraState = cam.state;
+  const stream = cam.stream;
   const handler = useRef(onCode);
   handler.current = onCode;
   const stateHandler = useRef(onState);
@@ -79,14 +85,9 @@ export function Scanner({
   }, [state]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || stream === null) return;
     const v = video.current;
     if (v === null) return;
-    if (!window.isSecureContext || typeof navigator.mediaDevices?.getUserMedia !== "function") {
-      setState(window.isSecureContext ? "none" : "insecure");
-      return;
-    }
-    let stream: MediaStream | null = null;
     let stopped = false;
     let timer = 0;
     const seen = new Map<string, number>();
@@ -99,24 +100,12 @@ export function Scanner({
       handler.current(text);
     };
     void (async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-      } catch (e) {
-        const name = (e as DOMException).name;
-        setState(name === "NotAllowedError" || name === "SecurityError" ? "denied" : name === "NotFoundError" || name === "OverconstrainedError" ? "none" : "error");
-        return;
-      }
-      if (stopped) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
       v.srcObject = stream;
       try {
         await v.play();
       } catch {
         /* autoplay of a muted video is allowed; ignore */
       }
-      setState("live");
       const native = await nativeDetector();
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       const scan = async () => {
@@ -148,10 +137,10 @@ export function Scanner({
     return () => {
       stopped = true;
       window.clearTimeout(timer);
-      stream?.getTracks().forEach((t) => t.stop());
+      // The stream is the hub's (the feed may still hold it): only let go of it here.
       v.srcObject = null;
     };
-  }, [facing, active]);
+  }, [stream, active]);
 
   return (
     <div className={`scanner ${state}`}>
