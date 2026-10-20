@@ -500,6 +500,13 @@ describe("the layers", () => {
     expect(/\.w95-dialog-backdrop \{[^}]*z-index: var\(--z-moment\)/u.test(css)).toBe(true);
   });
 
+  it("a balloon never covers a room's composer, and passes touches outside its controls", () => {
+    const css = readBundledCss();
+    expect(/:where\(\.root:has\(\.composer\)\) \.moments-balloon \{[^}]*bottom: calc\([^}]*var\(--moments-composer-h\)/u.test(css)).toBe(true);
+    expect(/\.moments-balloon \{[^}]*pointer-events: none/u.test(css)).toBe(true);
+    expect(/\.moments-balloon button \{[^}]*pointer-events: auto/u.test(css)).toBe(true);
+  });
+
   it("every control a moment shows is a 44 px target", () => {
     const css = readBundledCss();
     for (const sel of ["moments-balloon-x", "moments-balloon-go", "moments-sticky-body", "moments-bsod-go", "moments-toast"]) {
