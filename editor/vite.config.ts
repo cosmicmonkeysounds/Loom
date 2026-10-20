@@ -37,6 +37,9 @@ export default defineConfig({
       '@loom/core/views': path.resolve(__dirname, '../core/server/views.ts'),
       '@loom/core/mod-patch': path.resolve(__dirname, '../core/server/mod-patch.ts'),
       '@loom/core/cue-sheet': path.resolve(__dirname, '../core/src/cue-sheet.ts'),
+      // The host board (wave 13): the judging / queue / parts / guests /
+      // wallet / award / needs helpers a Play host booth shares.
+      '@loom/core/host-board': path.resolve(__dirname, '../core/src/host-board.ts'),
       '@loom/core': path.resolve(__dirname, '../core/src/index.ts'),
       // Bank compiler as TypeScript source — the desktop app compiles
       // .loombank artifacts in the webview and hands bytes to the host.
