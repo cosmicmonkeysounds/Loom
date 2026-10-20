@@ -207,11 +207,9 @@ describe("the provisioning link's enums", () => {
     expect(TERMINAL_VIEWS).toEqual(["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"]);
   });
 
-  it("puts the view and the room on the link", () => {
-    const url = new URL(provisionLink("http://x", { id: "server-room", name: "Server Room" }, { view: "shadow", room: "The Server Room" }));
-    expect(url.searchParams.get("view")).toBe("shadow");
-    expect(url.searchParams.get("room")).toBe("The Server Room");
-    expect(new URL(provisionLink("http://x", { id: "a", name: "A" }, { room: null })).searchParams.has("room")).toBe(false);
+  it("the link names only the spot (the screen and room live on the map)", () => {
+    const url = new URL(provisionLink("http://x", { id: "server-room" }));
+    expect(url.search).toBe("?spot=server-room");
   });
 
   it("offers the map's LOCATIONs once each, sorted", () => {

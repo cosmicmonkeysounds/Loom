@@ -121,7 +121,20 @@ export interface TerminalSpot {
    * `horizontalFov(fov, aspect)`, ≈ 96.5° for 70° on a 16:10 tablet.
    */
   fov?: number;
+  /**
+   * What the tablet on this spot shows (`TERMINAL_VIEWS`, `terminal`'s
+   * `view`). Unset: `auto`. A terminal set up from the map takes it.
+   */
+  view?: TerminalViewName;
+  /**
+   * A room terminal: asleep until the story opens its room's LOCATION to
+   * everyone, then speaks the character's lines said there. Unset: false.
+   */
+  speaks?: boolean;
 }
+
+/** A terminal screen type — the values of `TERMINAL_VIEWS`. */
+export type TerminalViewName = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";
 
 /** `pos` = where the duck sits (its feet). */
 export interface DuckSpot {

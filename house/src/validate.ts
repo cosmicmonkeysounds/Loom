@@ -23,7 +23,11 @@ import {
   styleOf,
 } from "./geometry.ts";
 import { BODY_CLEAR, FLOOR_SLACK, STEP_UP, floorOf, locate, solidPropAt } from "./locate.ts";
-import type { HouseMap, Room, SpaceTransform, Validation, Vec2, Vec3 } from "./types.ts";
+import type { HouseMap, Room, SpaceTransform, TerminalViewName, Validation, Vec2, Vec3 } from "./types.ts";
+
+/** Every screen type a terminal spot may name (`TerminalSpot.view`) — the
+ *  `terminal` app's `VIEWS` is this list. */
+export const TERMINAL_VIEWS: readonly TerminalViewName[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"];
 
 /** How far outside its room a terminal / duck spot / spawn / prop may sit. */
 export const SPOT_TOLERANCE = 0.05;
@@ -214,6 +218,8 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["yaw", isNum, NUM],
     ["pitch", isNum, NUM, true],
     ["fov", positive, POS, true],
+    ["view", (v) => typeof v === "string" && (TERMINAL_VIEWS as readonly string[]).includes(v), `one of ${TERMINAL_VIEWS.join(", ")}`, true],
+    ["speaks", (v) => typeof v === "boolean", "a boolean", true],
   ]);
   ids("terminal", terminals);
 

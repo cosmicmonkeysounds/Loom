@@ -69,6 +69,10 @@ export interface MapTerminal {
   room: string
   /** That room's story LOCATION ("" when the map names none). */
   location: string
+  /** The map's screen for this spot (`TerminalSpot.view`), when it names one. */
+  view?: TerminalView
+  /** The map marks it a room terminal (`TerminalSpot.speaks`), when it says. */
+  speaks?: boolean
 }
 
 /** The terminal spots of a `GET /api/spatial/house` answer (or a bare
@@ -88,11 +92,18 @@ export function mapTerminals(wire: unknown): MapTerminal[] {
   const out: MapTerminal[] = []
   const seen = new Set<string>()
   for (const t of Array.isArray(house.terminals) ? house.terminals : []) {
-    const spot = t as { id?: unknown; name?: unknown; room?: unknown }
+    const spot = t as { id?: unknown; name?: unknown; room?: unknown; view?: unknown; speaks?: unknown }
     if (typeof spot?.id !== 'string' || spot.id === '' || seen.has(spot.id)) continue
     seen.add(spot.id)
     const room = typeof spot.room === 'string' ? spot.room : ''
-    out.push({ id: spot.id, name: typeof spot.name === 'string' && spot.name.trim() !== '' ? spot.name : spot.id, room, location: locations.get(room) ?? '' })
+    out.push({
+      id: spot.id,
+      name: typeof spot.name === 'string' && spot.name.trim() !== '' ? spot.name : spot.id,
+      room,
+      location: locations.get(room) ?? '',
+      ...(isTerminalView(spot.view) ? { view: spot.view } : {}),
+      ...(typeof spot.speaks === 'boolean' ? { speaks: spot.speaks } : {}),
+    })
   }
   return out
 }
@@ -111,7 +122,10 @@ export function suggestView(spot: string): TerminalView {
  *  spot and the TV (the room whose lines it speaks) get one; chess never. */
 export function suggestRoom(spot: MapTerminal | null, view: TerminalView): string {
   if (spot === null || isGameView(view)) return ''
-  if (view === TerminalView.Tv || spot.id === ROOM_TERMINAL_SPOT) return spot.location
+  if (view === TerminalView.Tv) return spot.location
+  // The map says (the house map editor's "room terminal" box).
+  if (spot.speaks !== undefined) return spot.speaks ? spot.location : ''
+  if (spot.id === ROOM_TERMINAL_SPOT) return spot.location
   return ''
 }
 
@@ -172,7 +186,7 @@ export interface TerminalSetup {
 
 /** The builder's state after picking a spot: its name, suggested view + room, the rest kept. */
 export function pickSpot(prev: TerminalSetup, spot: MapTerminal | null): TerminalSetup {
-  const view = spot === null ? prev.view : suggestView(spot.id)
+  const view = spot === null ? prev.view : (spot.view ?? suggestView(spot.id))
   return { ...prev, spot: spot?.id ?? '', name: spot?.name ?? prev.name, view, room: suggestRoom(spot, view) }
 }
 

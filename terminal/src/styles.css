@@ -417,6 +417,45 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 @media (max-width: 600px) {
   .setup .row { grid-template-columns: 1fr; }
 }
+/* the two steps: big targets for a finger on an old tablet */
+.setup .step { display: grid; gap: 0.8em; }
+.setup h2 { margin: 0.4em 0 0; font-weight: normal; letter-spacing: 0.2em; font-size: 1.25em; color: var(--white); }
+.setup h3 { margin: 0.6em 0 0.3em; font-weight: normal; letter-spacing: 0.15em; font-size: 0.95em; color: var(--phosphor-dim); text-transform: uppercase; }
+.setup input.big { font-size: 1.6em; padding: 0.5em 0.6em; letter-spacing: 0.15em; }
+.setup button.big-button { font-size: 1.3em; padding: 0.6em 1.6em; }
+.setup .pick-floor { display: grid; gap: 0.5em; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.setup .pick-floor h3 { grid-column: 1 / -1; }
+.setup .pick-room { display: contents; }
+.setup button.pick {
+  display: block;
+  width: 100%;
+  min-height: 4.5em;
+  text-align: left;
+  padding: 0.6em 0.8em;
+  background: #000;
+  border: 2px solid var(--phosphor-faint);
+  letter-spacing: normal;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.setup button.pick.chosen { border-color: var(--phosphor); box-shadow: 0 0 12px var(--phosphor-faint); }
+.setup .pick span { display: block; }
+.setup .pick-name { font-size: 1.25em; color: var(--white); }
+.setup .pick .pick-here { display: inline; font-size: 0.75em; color: var(--phosphor); }
+.setup .pick-where { color: var(--phosphor); }
+.setup .pick-screen { color: var(--phosphor-dim); font-size: 0.9em; }
+.setup .pick-badge { margin-top: 0.3em; color: var(--amber); font-size: 0.85em; }
+/* no flex gap: Safari 14.0 lacks it */
+.setup .links { display: flex; flex-wrap: wrap; margin-top: 0.4em; }
+.setup .links > * { margin: 0 1em 0.4em 0; }
+.setup .advanced { border-top: 2px solid var(--phosphor-faint); padding-top: 0.6em; }
+.setup .advanced summary { cursor: pointer; color: var(--phosphor-dim); padding: 0.5em 0; }
+/* a wrapper, not the <details>: Chrome 87 / Safari 14 never lay a <details> out as a grid */
+.setup .advanced-body { display: grid; gap: 0.8em; }
+.setup .actions { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .setup .pick-floor { grid-template-columns: 1fr; }
+}
 
 /* --- the world view (the reinstallation simulation) -------------------- */
 

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DUCK_MAX_RISE, GUARD_REACH, buildWalls, guardWarnings, mm, normalizeHouse, polygonProblems, validateHouse } from "../src/index.ts";
+import { DUCK_MAX_RISE, GUARD_REACH, TERMINAL_VIEWS, buildWalls, guardWarnings, mm, normalizeHouse, polygonProblems, validateHouse } from "../src/index.ts";
 import type { HouseMap } from "../src/index.ts";
 import { FIXTURES, SHOW_HOUSE, TWO_FLOOR_HOUSE } from "./golden.ts";
 
@@ -59,6 +59,13 @@ describe("validateHouse", () => {
     // A duplicated room is also an overlap — both are reported.
     const p = problems("two-rooms", (h) => h.rooms.push({ ...h.rooms[0]!, poly: [[10, 0], [11, 0], [11, 1], [10, 1]] }));
     expect(p).toEqual(['duplicate room id "a"']);
+  });
+
+  it("takes a terminal's optional screen type and room-terminal flag", () => {
+    expect(problems("two-rooms", (h) => Object.assign(h.terminals[0]!, { view: "casino", speaks: true }))).toEqual([]);
+    for (const v of TERMINAL_VIEWS) expect(problems("two-rooms", (h) => (h.terminals[0]!.view = v))).toEqual([]);
+    refuses("two-rooms", (h) => ((h.terminals[0] as { view: string }).view = "kiosk"), /terminals\[0\] "t": view must be one of auto, world/);
+    refuses("two-rooms", (h) => ((h.terminals[0] as { speaks: unknown }).speaks = "yes"), /terminals\[0\] "t": speaks must be a boolean/);
   });
 
   it("refuses non-finite numbers and bad types", () => {
