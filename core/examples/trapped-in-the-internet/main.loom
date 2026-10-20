@@ -2304,7 +2304,7 @@ ROLE Program
       // party (her painting), else G9. G11 waits for it.
       if Night.award == "the_painting" or (Night.award == "quest_completionist" and Night.painting != true):
         set Night.ceremony_done = true
-      reply 🏆 You won {Night.award_title}! Come up to the TV for your trophy.
+      reply !🏆 You won {Night.award_title}! Come up to the TV for your trophy.
       fire present_award
 
   // ── Fan-out watchers (one run per program; late arrivals included) ──
@@ -2414,7 +2414,7 @@ ROLE Program
   when Night.summons_closed == true and Night.phase == "summons" and self.late != true and self.summoned and self.summons_ok != true and self.afk != true and self.corrupted != true:
     set self.late = true
     fire program_late for self
-    reply ⏰ You are late. An Antivirus is coming for you.
+    reply !⏰ You are late. An Antivirus is coming for you.
     if Night.auto_sweep == true:
       capture self into The Internet
     else:
@@ -3386,6 +3386,7 @@ when introduce_trabolta:
     reveal Trabolta
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
+    broadcast "!🤖 TRABOLTA IS ONLINE. The computer's AI helper is speaking at the Desktop. His thread is open: say hello." to everyone
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -3685,7 +3686,7 @@ when start_the_second_hunt:
     set Night.terminals = "trivia_2"
     cue lights_game
     set Night.lights = "game"
-    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth." to everyone
+    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth. # clipboard is open." to everyone
     -> Second Hunt
   else if Night.step > 7:
     broadcast "📓 Not again: hunt 2 has already started. Nothing happens." to channel(hosts)
@@ -3712,7 +3713,7 @@ when truther_download:
     cue lights_glitch
     set Night.lights = "glitch"
     sound truther_glitch
-    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages." to everyone
+    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." to everyone
   else:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
 
@@ -3772,6 +3773,7 @@ when truth_pong:
     cue screens_truth_pong
     set Night.screen = "truth_pong"
     set Night.terminals = "truth_pong"
+    broadcast "!🏓 TRUTH PONG. To the Cloud, out back: sink a cup and you may answer one fact. Miss and you are marked." to everyone
     -> Truth Pong
   else:
     broadcast "🏓 Not again: Truth Pong has already started. Nothing happens." to channel(hosts)
@@ -3816,6 +3818,7 @@ when trust_chart:
     cue screens_trust_chart
     set Night.screen = "trust_chart"
     set Night.terminals = "trust_chart"
+    broadcast "!📊 THE TRUST CHART. Trabolta is ranking every program on the TV. Find your name." to everyone
     -> Trust Chart
   else if Night.step >= 11:
     broadcast "📊 Not again: the Trust Chart has already played. Nothing happens." to channel(hosts)
@@ -3882,6 +3885,7 @@ when printer_opened:
       cue screens_flicker
     set Trabolta.composure -= 20
     sound beans_spill
+    broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone
     -> Full Of Beans
 
 // D8: the Antivirus zip everyone out (the ROLE zip watchers release them).
@@ -3906,6 +3910,7 @@ when trabolta_overshares:
     set Night.round = 3
     set Night.facts_requested = 8
     start quest The Final Facts for everyone
+    broadcast "!🤖 Trabolta is sharing the final facts at the Desktop. They are in your Quest Log." to everyone
     set Night.scenario = 4
     if Kernel.excel_planted == true and Kernel.openoffice_dossier == true:
       set Night.scenario = 1
@@ -3951,7 +3956,7 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999." to everyone
+    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone
     -> The Y2K Clock
   else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
@@ -4238,7 +4243,7 @@ when chess_won for program:
       broadcast "♟ {program.name} already has the door code: nothing changed." to channel(hosts)
     else:
       unlock The Door Code for program
-      broadcast "♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
+      broadcast "!♟ Checkmate. The King lets the door code slip: it is in your Codex." to participant(program)
       broadcast "♟ {program.name} beat the King: the door code is in their Codex." to channel(hosts)
 
 // A loss or a draw (the door terminal posts `chess lost` / `chess drawn`
@@ -4311,6 +4316,7 @@ when door_digit_found for program:
     else if program.door_digits >= 4:
       complete quest The Cold Door for program "Four of four. The notes fit together: the door code is in your Codex."
       unlock The Door Code for program
+      reply !🔢 Four of four. The notes fit together: the door code is in your Codex.
       broadcast "🔢 {program.name} found all four digit notes: the door code is in their Codex." to channel(hosts)
     else if program.quest.the_cold_door != "active":
       start quest The Cold Door for program "{program.door_digits} of 4. A note with one digit of the cold door's code. The others are hidden around the house."
@@ -4710,6 +4716,7 @@ when the_hand_jive:
     set Night.everyone_free = true
     complete quest Find The Exit for everyone
     sound hand_jive
+    broadcast "!🕺 THE HAND JIVE. Everyone, together. Trabolta cannot take it." to everyone
     -> The Hand Jive
     sound motorcycle
     cue lights_restore

@@ -291,3 +291,55 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     for (const m of lines) expect(m.moment, m.text).toBe("major");
   }, SLOW);
 });
+
+/** A major moment reached this guest in the batch: an alert / readout
+ *  stamped `moment: "major"`, or a `!` pin. */
+export const majorFor = (ms: readonly ChatMessage[], id: string) => forGuest(ms, id).filter((m) => m.moment === "major" || (m.pin === true && m.alert === true));
+
+describe("Trapped in the Internet — wave 13: every buried beat has a delivery (ux/alerts-beats.md §4)", () => {
+  const Y2K = () => {
+    const n = boot();
+    for (const c of TO_Y2K) n.press(c);
+    return n;
+  };
+  const rows: Array<[string, () => { n: Night; out: ChatMessage[]; who?: string }]> = [
+    ["① Trabolta comes online", () => { const n = boot(); for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c); return { n, out: n.press("introduce_trabolta") }; }],
+    ["🏓 Truth Pong starts", () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning", "summons_closed"]) n.press(c); return { n, out: n.press("truth_pong") }; }],
+    ["📊 the Trust Chart", () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally"]) n.press(c); return { n, out: n.press("trust_chart") }; }],
+    ["🫘 the beans", () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) n.press(c); n.signal("praise_the_top"); n.signal("shame_the_bottom"); expect(v(n.sim, "Night.printer_called")).toBe(true); return { n, out: n.press("printer_opened") }; }],
+    ["🤖 the overshare", () => { const n = boot(); for (const c of TO_OVERSHARE.slice(0, -1)) n.press(c); return { n, out: n.press("trabolta_overshares") }; }],
+    ["🕚 the Y2K orders + factions exposed", () => { const n = boot(); for (const c of TO_OVERSHARE) n.press(c); return { n, out: n.press("y2k_clock") }; }],
+    ["📂 # clipboard opens (hunt 2)", () => { const n = boot(); for (const c of TO_HOUR.slice(0, -1)) n.press(c); const out = n.press("start_the_second_hunt"); expect(majorFor(out, "g1").some((m) => m.text.includes("# clipboard"))).toBe(true); return { n, out }; }],
+    ["📂 # truthcoin-exchange opens (the Truther Download)", () => { const n = boot(); for (const c of TO_HOUR) n.press(c); const out = n.tick(125); expect(majorFor(out, "g1").some((m) => m.text.includes("# truthcoin-exchange"))).toBe(true); return { n, out }; }],
+    ["♟ the door code by checkmate", () => { const n = Y2K(); return { n, out: n.signal("chess_won", "g1") }; }],
+    ["🔢 the door code by the four digit notes", () => {
+      const n = Y2K();
+      // Learning a note fires `door_digit_found` (ROLE Program).
+      for (const e of ["Cold Door First Digit", "Cold Door Second Digit", "Cold Door Third Digit"]) n.take(n.sim.unlock("g1", e));
+      return { n, out: n.take(n.sim.unlock("g1", "Cold Door Fourth Digit")) };
+    }],
+    ["🗝 the door code by the majority (The Whole Truth)", () => { const n = Y2K(); for (const [id] of PROGRAMS) n.take(n.sim.join(id, "Unlimited Power")); return { n, out: n.press("force_majority_stay").concat(n.tick(1)) }; }],
+    ["🚪 The Heart", () => { const n = Y2K(); return { n, out: n.signal("server_door_opened") }; }],
+    ["⏰ you are late", () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); return { n, out: n.press("summons_closed") }; }],
+    ["🎵 the song ending (the verdict, every fact accurate)", () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); const out = n.press("the_verdict"); expect(v(n.sim, "Night.ending")).toBe("song"); return { n, out }; }],
+    ["💔 the verdict: Grok Prom", () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); return { n, out: n.take(n.sim.fireBeat("Grok Prom")) }; }],
+    ["🏍 the rave", () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); return { n, out: n.press("no_pickup_line") }; }],
+    ["💞 the advice helped", () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); return { n, out: n.press("advice_tally") }; }],
+    ["🕺 the hand jive", () => { const n = Y2K(); for (const c of ["final_reveal", "bobbing_for_truth"]) n.press(c); n.signal("brought_up_the_bag", "g1", undefined, "Clippy"); n.press("read_truth_txt"); n.take(n.sim.fireBeat("Grok Prom")); n.press("ask_for_advice"); n.signal("poll answered", "g1", { choice: "Thwart him", index: 1 }); n.press("advice_tally"); expect(v(n.sim, "Night.ending")).toBe("banished"); return { n, out: n.press("the_hand_jive") }; }],
+    ["🏆 you won an award", () => { const n = Y2K(); toCeremony(n); return { n, out: n.press("award_most_trusted", "g1") }; }],
+  ];
+  for (const [label, run] of rows) {
+    it(label, () => {
+      const { out, who } = run();
+      expect(majorFor(out, who ?? "g1").length, label).toBeGreaterThan(0);
+    }, SLOW);
+  }
+
+  it("the booth readouts that matter are major: the escort, the late list, the alarm", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    const mark = n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    const escort = mark.find((m) => m.channel === "dm:Norton Anti-Virus" && m.text.startsWith("🚨 Winamp is marked"))!;
+    expect(escort).toMatchObject({ readout: true, alert: true, moment: "major", about: "g5" });
+  }, SLOW);
+});

@@ -1643,7 +1643,7 @@ describe("Trapped in the Internet — the patch-bay alarm (wave 7: the door neve
     expect(beats(a1)).toContain("Server Room Alarm");
     expect(casts(a1).some((b) => b.cue.includes("An alarm screams"))).toBe(true);
     expect(has(cues(a1), "lights_alarm")).toBe(true);
-    expect(booths(a1)).toEqual(Array(ANTIVIRUS.length).fill("🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."));
+    expect(booths(a1)).toEqual(Array(ANTIVIRUS.length).fill("!🚨 Server room alarm: a second wrong combination at the patch bay. Get there. Whoever is at the cables goes to the Internet."));
     // Latched for 120 s.
     fire(sim, "patch_rejected");
     expect(v(sim, "Night.alarms")).toBe(1);
@@ -4011,7 +4011,7 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(v(sim, "Night.terminals")).toBe("award_most_trusted");
     // Never in a DM: the winner hears a personal reply, the room hears the line.
     expect(composeGuestMessages(sim, a).some((m) => m.channel.startsWith("dm:"))).toBe(false);
-    expect(replies(a).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: 🏆 You won Most Trusted! Come up to the TV for your trophy."]);
+    expect(replies(a).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: !🏆 You won Most Trusted! Come up to the TV for your trophy."]);
 
     // Three awards on three real programs (the acceptance), names in the room.
     fire(sim, "award_frequent_flyer", "g5");
