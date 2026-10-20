@@ -71,9 +71,25 @@ describe("the NOW title bar", () => {
   });
 });
 
+describe("checkCount, the one checklist rule (guest card + booth NOW line)", () => {
+  it("counts every to-do; ✓ only when all are done; done: null is never done", () => {
+    expect(checkCount({ checklist: [] })).toBe("");
+    expect(checkCount({ checklist: [{ label: "a", done: true }] })).toBe("1/1 ✓");
+    expect(checkCount({ checklist: [{ label: "a", done: true }, { label: "b", done: null }] })).toBe("1/2");
+    expect(checkCount({ checklist: [{ label: "a", done: null }] })).toBe("0/1");
+    expect(checkCount({ checklist: [{ label: "a", done: true }, { label: "b", done: true }] })).toBe("2/2 ✓");
+    expect(checkCount({ checklist: [{ label: "a", done: false }, { label: "b", done: true }] })).toBe("1/2");
+  });
+  it("the booth's nowCount is the same function", async () => {
+    const { nowCount } = await import("../src/booth/now-card.tsx");
+    expect(nowCount).toBe(checkCount);
+  });
+});
+
 describe("the objective card", () => {
-  it("counts only the conditions, shows the brief, the checklist and at most 3 buttons", () => {
-    expect(checkCount(objective)).toBe("1/2 ✓");
+  it("counts every to-do, shows the brief, the checklist and at most 3 buttons", () => {
+    // the condition-less "Smile" (done: null) counts in the total and is never done
+    expect(checkCount(objective)).toBe("1/3");
     const out = html(createElement(ObjectiveCard, { objective, renderButton: (id: string) => createElement("button", null, id) }));
     expect(out).toContain("Scan every program");
     expect(out).toContain("☑ Scan a pass");
