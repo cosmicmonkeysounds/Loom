@@ -16,6 +16,8 @@
   --moments-toast-ink: var(--white);
   /* The room's composer (input + Send, 44 px, with its margins): a balloon over a room you can talk in sits above it. */
   --moments-composer-h: 64px;
+  /* A host booth's NEXT bar (`.host-bar`, ≤ 64 px, + its 1 px top line): the tip floats above it and its ARM. */
+  --moments-host-bar-h: 66px;
 }
 :root[data-theme="aol97"] {
   --moments-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35), 3px 3px 6px rgba(0, 0, 0, 0.2);
@@ -81,6 +83,9 @@
 .moments-balloon button { pointer-events: auto; }
 /* A room with a composer: the tip floats above the input and Send, never over them. */
 :where(.root:has(.composer)) .moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px + var(--moments-composer-h)); }
+/* A host's NEXT bar above the taskbar (hidden with the keyboard): the tip floats above it too, never over ARM. */
+:where(.root:has(.booth-dock:not([hidden]) .host-dock)) .moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px + var(--moments-host-bar-h)); }
+:where(.root:has(.booth-dock:not([hidden]) .host-dock):has(.composer)) .moments-balloon { bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px + var(--moments-host-bar-h) + var(--moments-composer-h)); }
 .moments-balloon::before, .moments-balloon::after {
   content: ""; position: absolute; right: 28px; width: 0; height: 0;
   border-style: solid; border-color: transparent;

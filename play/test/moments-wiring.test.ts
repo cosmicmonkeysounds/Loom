@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { roomExit } from "../src/guest/app.tsx";
 import { momentExit } from "../src/moments/model.ts";
+import { readBundledCss } from "./css.ts";
 
 describe("momentExit", () => {
   const announcement = { channel: "lobby" } as const;
@@ -39,5 +40,21 @@ describe("the guest's room exit", () => {
     const exit = roomExit({ showing: true, over: true, leave: () => void calls.push("leave") }, (id) => void calls.push(`open ${id}`));
     exit?.("lobby");
     expect(calls).toEqual(["leave", "open lobby"]);
+  });
+});
+
+describe("the balloon over a host booth", () => {
+  it("floats above the NEXT bar and its ARM (and above the composer too), never over them", () => {
+    const css = readBundledCss();
+    expect(/--moments-host-bar-h: 66px/u.test(css)).toBe(true);
+    // The bar's own height: the token covers the tallest bar (`max-height: 64px` + its top line).
+    expect(/\.host-bar \{[^}]*max-height: 64px/u.test(css)).toBe(true);
+    const host = /:where\(\.root:has\(\.booth-dock:not\(\[hidden\]\) \.host-dock\)\) \.moments-balloon \{[^}]*bottom: calc\(([^}]*)\)/u.exec(css);
+    expect(host?.[1]).toContain("var(--moments-host-bar-h)");
+    const both = /:where\(\.root:has\(\.booth-dock:not\(\[hidden\]\) \.host-dock\):has\(\.composer\)\) \.moments-balloon \{[^}]*bottom: calc\(([^}]*)\)/u.exec(css);
+    expect(both?.[1]).toContain("var(--moments-host-bar-h)");
+    expect(both?.[1]).toContain("var(--moments-composer-h)");
+    // Same specificity as the composer rule, so the later (combined) rule wins: it must come after it.
+    expect(css.indexOf(":where(.root:has(.booth-dock:not([hidden]) .host-dock):has(.composer))")).toBeGreaterThan(css.indexOf(":where(.root:has(.composer)) .moments-balloon"));
   });
 });
