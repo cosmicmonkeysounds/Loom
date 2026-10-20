@@ -25,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { roomById, type Vec3 } from "@loom/house";
 import { avatarUrl, type WorldPlayer } from "../world/state.ts";
 import { useWorld, type WorldStore } from "../world/stream.ts";
-import { celebrationHeadline, chooseFloor, fitTransform, guestColor, kingOnFloor, planFloor, rosterTellsToasts, rosterToasts, statusLine, toScreen, type PlanFloor } from "./plan.ts";
+import { celebrationHeadline, chooseFloor, fitTransform, guestColor, holdFloor, kingOnFloor, planFloor, rosterTellsToasts, rosterToasts, statusLine, toScreen, type FloorHold, type PlanFloor } from "./plan.ts";
 import {
   castColumns,
   chaseCamera,
@@ -48,6 +48,8 @@ import "./raycast.css";
 const FRAME_MS = 1000 / 20;
 const MAX_PIXEL_RATIO = 2;
 const TOAST_MS = 4000;
+/** The players must want another floor this long before the inset follows them (ms). */
+const FLOOR_HOLD_MS = 2500;
 /** Billboard sizes (metres). */
 const BODY_W = 0.45;
 const BODY_TOP = 1.0;
@@ -155,6 +157,7 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
     window.addEventListener("resize", resize);
 
     let cam: RayCamera | null = null;
+    let hold: FloorHold = { shown: null, want: null, since: 0 };
     let shownWhere = "";
     let raf = 0;
     let last = 0;
@@ -309,7 +312,8 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
         hctx.fillStyle = "#fff";
         hctx.fillText(g.text, x, y);
       }
-      drawInset(hctx, planOn(chooseFloor(house, list, cam.floor)), cam, list, sample, cw, ch);
+      hold = holdFloor(hold, chooseFloor(house, list, cam.floor), t, FLOOR_HOLD_MS);
+      drawInset(hctx, planOn(hold.shown!), cam, list, sample, cw, ch);
     };
     const start = () => {
       cancelAnimationFrame(raf);

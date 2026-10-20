@@ -1,35 +1,23 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { validateHouse, type HouseMap } from "@loom/house";
-import { PoseBuffer } from "@loom/house/three";
 import {
   celebrationHeadline,
   chooseFloor,
-  duckRoute,
-  ducksOnFloor,
   fitTransform,
   floorCounts,
   guestColor,
-  headingOf,
   holdFloor,
   kingOnFloor,
   labelAt,
-  legsOn,
   mainFloor,
-  markersOn,
   planFloor,
-  pushTrail,
   rosterTellsToasts,
   rosterToasts,
-  spotFloor,
   statusLine,
   toScreen,
-  trailAlpha,
-  TRAIL_MS,
-  type TrailPoint,
 } from "../src/raycast/plan.ts";
-import { EMPTY_WORLD, reduce, type WorldPlayer } from "../src/world/state.ts";
-import { playerState, twoRooms, wallsOf } from "./world-fixture.ts";
+import { twoRooms, wallsOf } from "./world-fixture.ts";
 
 /** Three stacked one-room floors; a terminal on the top floor. */
 function threeFloors(): HouseMap {
@@ -61,10 +49,8 @@ const on = (...floors: string[]) => floors.map((floor) => ({ floor }));
 describe("the floor to show", () => {
   const house = threeFloors();
 
-  it("knows the main floor and a spot's floor", () => {
+  it("knows the main floor", () => {
     expect(mainFloor(house)).toBe("main");
-    expect(spotFloor(house, "tt")).toBe("top");
-    expect(spotFloor(house, "nope")).toBeNull();
   });
 
   it("follows the most players", () => {
@@ -135,73 +121,15 @@ describe("one floor's plan", () => {
   });
 });
 
-describe("markers off a state snapshot", () => {
-  it("derives each player's marker on the floor at the sampled pose, with a picture URL or a colour", () => {
-    let w = reduce(EMPTY_WORLD, { event: "hello", data: { houseVersion: "v", players: [playerState("s1", [1, 0, 1], { yaw: 90 }), playerState("s2", [6, 0, 2], { floor: "up" })] } } as never, 0);
-    w = reduce(w, { event: "avatar", data: { session: "s1", avatar: "abc" } } as never, 1);
-    const ms = markersOn(w.players.values(), "g", (p) => p.pose, (k) => (k === null ? null : `/e/x/api/avatar/${k}`));
-    expect(ms).toHaveLength(1);
-    expect(ms[0]).toMatchObject({ session: "s1", tag: "PROG S1", picture: "/e/x/api/avatar/abc", x: 1, z: 1, yaw: 90, found: false, kept: false });
-    expect(ms[0]!.color).toBe(guestColor("g-s1"));
-    expect(guestColor("g-s1")).toMatch(/^hsl\(\d+, 80%, 58%\)$/);
-  });
-
-  it("points the heading the right way (yaw 0 = north = up)", () => {
-    const [x, z] = headingOf(-90);
-    expect(x).toBeCloseTo(1);
-    expect(z).toBeCloseTo(0);
-    expect(headingOf(0)[1]).toBeCloseTo(-1);
-  });
-
-  it("draws only unfound ducks whose rooms are on the floor", () => {
-    const house = twoRooms();
-    const ps = [playerState("a", [1, 0, 1]), playerState("b", [1, 0, 1], { found: true })] as unknown as WorldPlayer[];
-    expect(ducksOnFloor(house, "g", ps).map((p) => p.session)).toEqual(["a"]);
-    expect(ducksOnFloor(house, "other", ps)).toEqual([]);
+describe("a guest's colour", () => {
+  it("is stable per guest and differs between guests", () => {
+    expect(guestColor("g-1")).toBe(guestColor("g-1"));
+    expect(guestColor("g-1")).not.toBe(guestColor("g-2"));
+    expect(guestColor("g-1")).toMatch(/^hsl\(\d+, 80%, 58%\)$/);
   });
 });
 
-describe("pose interpolation", () => {
-  it("samples between 10 Hz poses, ~120 ms behind", () => {
-    const b = new PoseBuffer();
-    b.push(0, { p: [0, 0, 0], yaw: 0, pitch: 0 });
-    b.push(100, { p: [1, 0, 0], yaw: 20, pitch: 0 });
-    const s = b.sample(170)!; // renders at 50 ms: half way
-    expect(s.p[0]).toBeCloseTo(0.5);
-    expect(s.yaw).toBeCloseTo(10);
-  });
-});
-
-describe("trails", () => {
-  it("adds a point only after a step, and drops points past their life", () => {
-    const t: TrailPoint[] = [];
-    pushTrail(t, { x: 0, z: 0, floor: "g", t: 0 });
-    pushTrail(t, { x: 0.1, z: 0, floor: "g", t: 100 });
-    expect(t).toHaveLength(1);
-    pushTrail(t, { x: 0.5, z: 0, floor: "g", t: 200 });
-    pushTrail(t, { x: 0.5, z: 0, floor: "up", t: 300 }); // a new floor always starts a point
-    expect(t).toHaveLength(3);
-    pushTrail(t, { x: 9, z: 0, floor: "g", t: TRAIL_MS + 250 });
-    expect(t.map((p) => p.t)).toEqual([300, TRAIL_MS + 250]);
-  });
-
-  it("fades with age", () => {
-    expect(trailAlpha({ t: 0 }, 0)).toBe(1);
-    expect(trailAlpha({ t: 0 }, TRAIL_MS / 2)).toBeCloseTo(0.5);
-    expect(trailAlpha({ t: 0 }, TRAIL_MS * 2)).toBe(0);
-  });
-});
-
-describe("routes and the King", () => {
-  it("routes from a player through the door to the duck, legs on the floor", () => {
-    const house = twoRooms();
-    const path = duckRoute(house, [1, 0, 1], { id: "s", room: "b", pos: [7, 0, 2] }, new Set());
-    expect(path.length).toBeGreaterThanOrEqual(3);
-    expect(path[0]).toEqual([1, 0, 1]);
-    expect(path[path.length - 1]).toEqual([7, 0, 2]);
-    expect(legsOn(house, path, "g")).toHaveLength(path.length - 1);
-  });
-
+describe("the King", () => {
   it("shows the King on his floor with the shared bar (or his own max with none)", () => {
     const base = twoRooms();
     const house: HouseMap = { ...base, props: [{ id: "k", room: "b", kind: "king", pos: [6, 0, 3], size: [0.6, 1.8, 0.6], hp: 15 }] };

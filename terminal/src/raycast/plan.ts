@@ -2,13 +2,13 @@
 //! stand-in on a tablet with no WebGL2): its floor-plan inset, plus the words
 //! and the roster toasts. Everything here is plain `@loom/house` (never
 //! `@loom/house/three`, so three.js stays out of the raycast chunk): which
-//! floor to show, how the floor fits the inset, what each player's marker
-//! says, the routes to the ducks, the King.
+//! floor to show, how the floor fits the inset, the rooms and walls of one
+//! floor, a guest's colour, the King.
 //!
 //! The plan maps straight onto the screen like the mini-map and the map
 //! editor: house `x` → right, house `z` → down (z is south), so north is up.
 
-import { floorOf, kingProps, polyBounds, roomById, route, type DuckSpot, type HouseMap, type KingState, type Vec2, type Vec3, type WallSegment } from "@loom/house";
+import { kingProps, polyBounds, roomById, type DuckSpot, type HouseMap, type KingState, type Vec2, type WallSegment } from "@loom/house";
 import type { Celebration } from "../world/state.ts";
 
 /** A player as the plan needs it (a `WorldPlayer` fits). */
@@ -31,12 +31,6 @@ export function mainFloor(house: HouseMap): string {
   let best = house.floors[0]!;
   for (const f of house.floors) if (Math.abs(f.elevation) < Math.abs(best.elevation)) best = f;
   return best.id;
-}
-
-/** The floor a terminal spot hangs on, else null. */
-export function spotFloor(house: HouseMap, spotId: string): string | null {
-  const spot = house.terminals.find((t) => t.id === spotId);
-  return spot ? (roomById(house, spot.room)?.floor ?? null) : null;
 }
 
 /** Players per floor, every floor listed (top floor first — the way a building's directory reads). */
@@ -211,101 +205,6 @@ export function guestColor(guest: string): string {
   let h = 2166136261;
   for (let i = 0; i < guest.length; i++) h = Math.imul(h ^ guest.charCodeAt(i), 16777619);
   return `hsl(${(h >>> 0) % 360}, 80%, 58%)`;
-}
-
-/** The plan direction a yaw faces, `[dx, dz]` (yaw 0 = north = up). */
-export function headingOf(yaw: number): Vec2 {
-  const a = (yaw * Math.PI) / 180;
-  return [-Math.sin(a), -Math.cos(a)];
-}
-
-export interface Marker {
-  session: string;
-  name: string;
-  /** Name tag text. */
-  tag: string;
-  color: string;
-  /** `/api/avatar/<key>` URL, else null (a coloured circle). */
-  picture: string | null;
-  x: number;
-  z: number;
-  yaw: number;
-  found: boolean;
-  kept: boolean;
-}
-
-/** The markers on `floor`, at their interpolated poses (`sample` = `buffer.sample(t) ?? pose`). */
-export function markersOn<P extends PlanPlayer>(
-  players: Iterable<P>,
-  floor: string,
-  sample: (p: P) => { p: Vec3; yaw: number },
-  picture: (key: string | null) => string | null,
-): Marker[] {
-  const out: Marker[] = [];
-  for (const p of players) {
-    if (p.floor !== floor) continue;
-    const pose = sample(p);
-    out.push({ session: p.session, name: p.name, tag: p.name.toUpperCase(), color: guestColor(p.guest), picture: picture(p.avatar), x: pose.p[0], z: pose.p[2], yaw: pose.yaw, found: p.found, kept: p.kept });
-  }
-  return out.sort((a, b) => (a.session < b.session ? -1 : a.session > b.session ? 1 : 0));
-}
-
-/** The unfound ducks whose rooms are on `floor`. */
-export function ducksOnFloor<P extends PlanPlayer>(house: HouseMap, floor: string, players: Iterable<P>): P[] {
-  const out: P[] = [];
-  for (const p of players) if (!p.found && roomById(house, p.duck.room)?.floor === floor) out.push(p);
-  return out;
-}
-
-// --- trails -----------------------------------------------------------------------
-
-/** How long a trail point lasts (ms), and how far apart (m). */
-export const TRAIL_MS = 20_000;
-export const TRAIL_STEP = 0.3;
-const TRAIL_MAX = 160;
-
-export interface TrailPoint {
-  x: number;
-  z: number;
-  floor: string;
-  t: number;
-}
-
-/** Add a point to a trail if it moved `TRAIL_STEP` from the last one, dropping old ones (mutates + returns it). */
-export function pushTrail(trail: TrailPoint[], pt: TrailPoint): TrailPoint[] {
-  const last = trail[trail.length - 1];
-  if (last === undefined || last.floor !== pt.floor || Math.hypot(pt.x - last.x, pt.z - last.z) >= TRAIL_STEP) trail.push(pt);
-  let drop = 0;
-  while (drop < trail.length && (pt.t - trail[drop]!.t > TRAIL_MS || trail.length - drop > TRAIL_MAX)) drop++;
-  if (drop > 0) trail.splice(0, drop);
-  return trail;
-}
-
-/** A trail point's opacity at `now` (1 fresh → 0 at `TRAIL_MS`). */
-export function trailAlpha(pt: Pick<TrailPoint, "t">, now: number): number {
-  return Math.max(0, Math.min(1, 1 - (now - pt.t) / TRAIL_MS));
-}
-
-// --- routes -------------------------------------------------------------------------
-
-/** The golden route from a player's feet to their duck (empty when it can't be found). */
-export function duckRoute(house: HouseMap, from: Vec3, duck: DuckSpot, fallen: ReadonlySet<string>): Vec3[] {
-  try {
-    return route(house, from, duck.pos, fallen.size > 0 ? { fallen } : {});
-  } catch {
-    return [];
-  }
-}
-
-/** The route's legs that lie on `floor` (a leg counts when either end is on it). */
-export function legsOn(house: HouseMap, path: readonly Vec3[], floor: string): Array<[Vec3, Vec3]> {
-  const out: Array<[Vec3, Vec3]> = [];
-  for (let i = 1; i < path.length; i++) {
-    const a = path[i - 1]!;
-    const b = path[i]!;
-    if (floorOf(house, a[1]) === floor || floorOf(house, b[1]) === floor) out.push([a, b]);
-  }
-  return out;
 }
 
 // --- the King -----------------------------------------------------------------------
