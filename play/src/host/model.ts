@@ -82,7 +82,7 @@ export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocu
   return null;
 }
 
-export type MoreSection = "show" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents";
+export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents";
 
 /** Where More scrolls to: a section, or one agent-voiced character's. */
 export type MoreFocus = MoreSection | `agents-${string}`;
@@ -95,7 +95,7 @@ export function agentSection(character: string): `agents-${string}` {
 
 /** The More tab's sections in order, each only when the event has it. */
 export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents">): MoreSection[] {
-  const out: MoreSection[] = ["show", "announce", "alerts"];
+  const out: MoreSection[] = ["show", "clock", "announce", "alerts"];
   if (view.wallet !== null) out.push("wallet");
   if (view.king !== null) out.push("king");
   if (view.terminals !== null) out.push("terminals");

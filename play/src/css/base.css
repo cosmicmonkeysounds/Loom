@@ -949,6 +949,7 @@ footer {
 .cue-strip { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 700 12px var(--ui-font); color: var(--muted-ink); font-variant-numeric: tabular-nums; }
 .cue-strip span + span::before { content: "·"; margin-right: 10px; opacity: 0.6; }
 .cue-strip .urgent, .cue-nextbar .urgent { color: var(--bad); }
+.cue-strip .cue-strip-clock { font-size: 15px; color: var(--ink); }
 .cue-nextbar {
   display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0;
   padding: 8px 12px; border: none; border-radius: var(--radius); cursor: pointer; text-align: left;
