@@ -478,9 +478,12 @@ export function missedCount(s: MomentsState, held: boolean, now: number): number
 
 // --- arrivals from the message map ---------------------------------------------
 
-/** The seq the mark moves to: just under the oldest unsettled message moment, else the newest processed. */
-export function settledMark(s: MomentsState, processedMax: number): number {
+/** The seq the mark moves to: just under the oldest unsettled message moment
+ *  (`waiting` adds moments not in the state yet — dispatched, or a readout
+ *  waiting for its toast), else the newest processed. */
+export function settledMark(s: MomentsState, processedMax: number, waiting: Iterable<number> = []): number {
   let min = Number.POSITIVE_INFINITY;
+  for (const seq of waiting) if (seq < min) min = seq;
   for (const q of s.queue) if (q.moment.seq !== null && q.moment.seq < min) min = q.moment.seq;
   for (const m of s.missed) if (m.seq !== null && m.seq < min) min = m.seq;
   for (const m of s.summary?.moments ?? []) if (m.seq !== null && m.seq < min) min = m.seq;
@@ -498,8 +501,8 @@ export const DONE_MAX = 2_000;
  * that was already read. Persisted per sign-in; ascending, the newest
  * `DONE_MAX`.
  */
-export function doneAbove(s: MomentsState, processed: Iterable<number>, mark: number): number[] {
-  const waiting = new Set<number>();
+export function doneAbove(s: MomentsState, processed: Iterable<number>, mark: number, also: Iterable<number> = []): number[] {
+  const waiting = new Set<number>(also);
   for (const q of s.queue) if (q.moment.seq !== null) waiting.add(q.moment.seq);
   for (const m of s.missed) if (m.seq !== null) waiting.add(m.seq);
   for (const m of s.summary?.moments ?? []) if (m.seq !== null) waiting.add(m.seq);

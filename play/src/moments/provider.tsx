@@ -98,6 +98,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   if (memRef.current === null) memRef.current = recallMoments(role, session);
   const mem = memRef.current;
   const [state, dispatch] = useReducer(momentsReducer, mem.state);
+  // A new state has every dispatch made before this render folded in.
+  if (mem.state !== state) mem.inflight.clear();
   mem.state = state;
   const [holds, setHolds] = useState(0);
   const held = holds > 0;
@@ -125,11 +127,9 @@ function useMomentsEngine(input: MomentsInput): Engine {
   // Readouts waiting out `READOUT_WAIT_MS` are not settled either.
   const settleNow = useCallback(() => {
     if (session === null) return;
-    let mark = settledMark(mem.state, mem.processedMax);
-    for (const seq of mem.pending) mark = Math.min(mark, seq - 1);
-    alerts.settle(mark);
-    const done = [...mem.processed].filter((seq) => !mem.pending.has(seq));
-    saveDone(doneAbove(mem.state, done, alerts.mark()));
+    const waiting = [...mem.pending, ...mem.inflight];
+    alerts.settle(settledMark(mem.state, mem.processedMax, waiting));
+    saveDone(doneAbove(mem.state, mem.processed, alerts.mark(), waiting));
   }, [session, alerts, saveDone]);
 
   // A new sign-in, or a story restart under this one: nothing queued is news.
@@ -144,6 +144,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     mem.processedMax = -1;
     mem.beats = new Map();
     mem.pending = new Set();
+    mem.inflight = new Set();
     dispatch({ type: "reset" });
     if (session === null) return;
     if (signIn) loadDone(host.storage, role, session, alerts.mark(), mem);
@@ -195,12 +196,16 @@ function useMomentsEngine(input: MomentsInput): Engine {
       recent: alerts.recent(),
       now: wall,
     });
+    // Until the queue renders them, the mark must not pass them (an effect
+    // later in this commit settles against the state before the dispatch).
+    for (const m of sorted.now) if (m.seq !== null) mem.inflight.add(m.seq);
     arrive(sorted.now, backlog);
     if (sorted.later.length > 0) {
       for (const m of sorted.later) if (m.seq !== null) mem.pending.add(m.seq);
       window.setTimeout(() => {
         for (const m of sorted.later) if (m.seq !== null) mem.pending.delete(m.seq);
         const news = afterWait(sorted.later, alerts.recent(), Date.now());
+        for (const m of news) if (m.seq !== null) mem.inflight.add(m.seq);
         if (news.length > 0) arrive(news, backlog);
         else settleNow();
       }, READOUT_WAIT_MS);

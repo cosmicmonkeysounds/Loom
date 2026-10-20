@@ -390,6 +390,9 @@ describe("arrivals from the message map", () => {
     const s = run([arrive([moment(5)]), arrive([moment(8)], { visible: false })]);
     expect(settledMark(s, 9)).toBe(4);
     expect(settledMark(EMPTY_MOMENTS, 9)).toBe(9);
+    // A moment dispatched but not rendered yet (or a readout waiting for its toast) holds the mark too.
+    expect(settledMark(EMPTY_MOMENTS, 9, [7])).toBe(6);
+    expect(doneAbove(EMPTY_MOMENTS, [7, 8, 9], 6, [7])).toEqual([8, 9]);
   });
 });
 

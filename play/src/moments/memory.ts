@@ -30,6 +30,8 @@ export interface EngineMemory {
   savedDone: string;
   /** Readouts waiting out `READOUT_WAIT_MS`. */
   pending: Set<number>;
+  /** Moments dispatched to the queue but not yet in a rendered state: never settled past. */
+  inflight: Set<number>;
 }
 
 /** The memories by role + sign-in, newest last (a test seam too). Several
@@ -55,6 +57,7 @@ export function freshMemory(): EngineMemory {
     shownAt: new Map(),
     savedDone: "",
     pending: new Set(),
+    inflight: new Set(),
   };
 }
 
