@@ -1,6 +1,8 @@
-//! The alert banner (moved out of `chat.tsx` in wave 13).
+//! The alert banner (moved out of `chat.tsx` in wave 13). Kept for the
+//! barrel (`chat.tsx` re-exports it); the moments layer renders alarms on
+//! the interrupt ladder now (`surfaces.tsx` `StickyBanner` is its sticky rung).
 
-/** The alert banner — a broadcast the story wants you to *act* on. */
+/** A one-line alarm bar with a dismiss — the pre-wave-13 banner. */
 export function AlertBanner({ text, onDismiss }: { text: string; onDismiss: () => void }) {
   return (
     <div className="alert-banner" role="alert" onClick={onDismiss}>
