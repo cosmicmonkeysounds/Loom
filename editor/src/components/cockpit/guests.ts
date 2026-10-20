@@ -7,27 +7,12 @@
 //! (a majority), and the Director's Needs you offers to mark the guests
 //! nobody has seen for half an hour. Pure, tested in `guests.test.ts`.
 
-import { isPersonaId, type RosterRow, type WorldEntry } from '@/store/cockpit'
+import { isGone } from '@loom/core/host-board'
+import type { RosterRow, WorldEntry } from '@/store/cockpit'
 
-/** How long without a sign of a guest before Needs you asks about them. */
-export const UNSEEN_MS = 30 * 60_000
-
-const truthy = (v: string | undefined): boolean => v !== undefined && v.replace(/^"(.*)"$/su, '$1').trim() === 'true'
-
-function valueOf(world: readonly WorldEntry[] | ReadonlyMap<string, string>, path: string): string | undefined {
-  return world instanceof Map ? world.get(path) : (world as readonly WorldEntry[]).find((w) => w.path === path)?.value
-}
-
-/** The director marked this guest as gone home (`<id>.gone` is true). */
-export function isGone(world: readonly WorldEntry[] | ReadonlyMap<string, string>, id: string): boolean {
-  return truthy(valueOf(world, `${id}.gone`))
-}
-
-/** A Run persona, not a real guest: its `<id>.persona` var, an owner, or a
- *  persona id (`p…`). */
-export function isPersonaRow(row: Pick<RosterRow, 'id' | 'owner'>, world: readonly WorldEntry[] | ReadonlyMap<string, string>): boolean {
-  return isPersonaId(row.id) || (row.owner !== undefined && row.owner !== null) || truthy(valueOf(world, `${row.id}.persona`))
-}
+// Wave 13: `UNSEEN_MS`, `isGone`, `isPersonaRow` and `unseenGuests` moved
+// verbatim to `@loom/core/host-board` (a Play host booth's Needs share them).
+export { UNSEEN_MS, isGone, isPersonaRow, unseenGuests } from '@loom/core/host-board'
 
 /** The server's `lastSeen: null` means "no request since this process
  *  started" — after a restart or a release that is every guest who has not
@@ -61,27 +46,6 @@ export function seenCell(row: Pick<RosterRow, 'online' | 'lastSeen'>, persona: b
   if (row.online === true) return 'online'
   if (row.lastSeen === null) return 'not since restart'
   return seenAgo(row.lastSeen, now)?.replace(/^seen /u, '') ?? '—'
-}
-
-/** Real guests nobody has seen for `ms` (not streaming, not marked gone, not
- *  a persona), longest-unseen first — the Needs-you list's "mark gone?". A
- *  row with no `lastSeen` (never tracked, or never seen) is never asked
- *  about: no evidence is not absence. */
-export function unseenGuests(
-  roster: readonly RosterRow[],
-  world: readonly WorldEntry[],
-  now: number,
-  ms: number = UNSEEN_MS,
-): Array<{ id: string; name: string; lastSeen: number }> {
-  const byPath = new Map(world.map((w) => [w.path, w.value]))
-  const out: Array<{ id: string; name: string; lastSeen: number }> = []
-  for (const r of roster) {
-    if (typeof r.lastSeen !== 'number' || r.online === true) continue
-    if (now - r.lastSeen < ms) continue
-    if (isGone(byPath, r.id) || isPersonaRow(r, byPath)) continue
-    out.push({ id: r.id, name: r.name, lastSeen: r.lastSeen })
-  }
-  return out.sort((a, b) => a.lastSeen - b.lastSeen || a.name.localeCompare(b.name))
 }
 
 /** How many guests the director marked gone (the People glance's 👋). */
