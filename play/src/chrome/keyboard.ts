@@ -16,7 +16,7 @@ export function isTextEntry(el: Element | null): boolean {
   return (el as HTMLElement).isContentEditable === true;
 }
 
-export function useKeyboardOpen(frame: RefObject<HTMLElement>): boolean {
+export function useKeyboardOpen(frame: RefObject<HTMLElement | null>): boolean {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const el = frame.current;
