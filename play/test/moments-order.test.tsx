@@ -226,12 +226,18 @@ describe("a sticky's words stop at three lines (finish review #2)", () => {
 });
 
 describe("the host balloon in the tight layout (finish review #3)", () => {
-  it("never clips the whole box mid-line: the text keeps whole lines (≤ 2) or is left out, the box keeps its height", () => {
+  it("never clips the whole box mid-line, never leaves the screen: one row, then whole lines (≤ 2) or none", () => {
     const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
     // No max-height / overflow on the tight balloon box itself.
     expect(css).not.toMatch(/\[data-host-drawer="tight"\] \.moments-balloon \{[^}]*max-height/u);
+    // One 44 px row: the head's parts and "Take me there" flow side by side.
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon \{[^}]*flex-direction: row;[^}]*flex-wrap: wrap/u);
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-head \{ display: contents; \}/u);
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-caption \{[^}]*white-space: nowrap/u);
+    // Never above the top of the screen: the row's top stays on it (over the console's edge when it must).
+    expect(css).toMatch(/@supports \(bottom: min\(1px, 2px\)\) \{\s*\[data-host-drawer="tight"\] \.moments-balloon \{ bottom: min\(calc\(var\(--host-drawer-lift\) \+ 14px\), calc\(100% - var\(--safe-top\) - var\(--tap\) - 16px\)\); \}/u);
     // The fallback: the message is left out; with round(): whole lines, at most two.
-    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-text \{ display: none; \}/u);
-    expect(css).toMatch(/@supports \(max-height: round\(down, 100px, 10px\)\) \{\s*\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*-webkit-line-clamp: 2;[^}]*round\(down, calc\(var\(--host-drawer-room\) - 96px\), 1\.35em\), 2\.7em\)/u);
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*display: none; \}/u);
+    expect(css).toMatch(/@supports \(max-height: round\(down, 100px, 10px\)\) \{\s*\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*-webkit-line-clamp: 2;[^}]*round\(down, calc\(var\(--host-drawer-room\) - 66px\), 1\.35em\), 2\.7em\)/u);
   });
 });

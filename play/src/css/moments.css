@@ -110,20 +110,32 @@
    is needed): the tip floats above the console's top edge, never over its
    controls — cut to the room there is on a short phone — and beside it, to
    its left, on a wide screen. */
-[data-host-drawer="above"] .moments-balloon,
-[data-host-drawer="tight"] .moments-balloon { bottom: calc(var(--host-drawer-lift) + 14px); }
+[data-host-drawer="above"] .moments-balloon { bottom: calc(var(--host-drawer-lift) + 14px); }
 /* tight (under 160 px above the console): never a box cut through a line
-   (finish review #3). The caption and "Take me there" stay; the message
-   keeps as many whole lines as the room has — at most two, with an
-   ellipsis — where the browser can round to a line (round()), and is left
-   out where it can't (the old station tablets): the caption says who. */
-[data-host-drawer="tight"] .moments-balloon-caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-host-drawer="tight"] .moments-balloon-text { display: none; }
+   (finish review #3), never a caption pushed off the top of the screen. The
+   tip folds to one 44 px row — icon, caption (one line, "…"), "Take me
+   there", × — and floats above the console when that row fits there,
+   else over the console's top edge rather than off the screen. The message
+   follows under the row only in whole lines the room has (at most two,
+   where the browser can round to a line, round()); else the caption says
+   who and the line waits in its thread. */
+[data-host-drawer="tight"] .moments-balloon {
+  flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 6px;
+  bottom: calc(var(--host-drawer-lift) + 14px);
+}
+@supports (bottom: min(1px, 2px)) {
+  [data-host-drawer="tight"] .moments-balloon { bottom: min(calc(var(--host-drawer-lift) + 14px), calc(100% - var(--safe-top) - var(--tap) - 16px)); }
+}
+[data-host-drawer="tight"] .moments-balloon-head { display: contents; }
+[data-host-drawer="tight"] .moments-balloon-caption { order: 1; flex: 1 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-host-drawer="tight"] .moments-balloon-go { order: 2; align-self: center; margin: 0 2px; }
+[data-host-drawer="tight"] .moments-balloon-x { order: 3; }
+[data-host-drawer="tight"] .moments-balloon-text { order: 4; flex: 0 0 100%; display: none; }
 @supports (max-height: round(down, 100px, 10px)) {
   [data-host-drawer="tight"] .moments-balloon-text {
     display: -webkit-box; -webkit-line-clamp: 2;
-    /* the room less the caption row, "Take me there" and the padding (≈ 96 px), in whole lines */
-    max-height: clamp(0px, round(down, calc(var(--host-drawer-room) - 96px), 1.35em), 2.7em);
+    /* the room less the row and the padding (≈ 52 px) and the tail's 14 px, in whole lines */
+    max-height: clamp(0px, round(down, calc(var(--host-drawer-room) - 66px), 1.35em), 2.7em);
   }
 }
 [data-host-drawer="beside"] .moments-balloon { right: calc(var(--host-drawer-right) + 12px); }
