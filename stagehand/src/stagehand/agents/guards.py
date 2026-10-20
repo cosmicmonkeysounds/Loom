@@ -210,7 +210,7 @@ _THERE = re.compile(r"\bthere(?:'s| is| are)\s+(?:a|one|another|some|\w+)\s+(?:h
 #: Start Bar", "on the shelf in The Desktop"). Never a city: his own lore
 #: keeps "the last facts … stored on a computer in Halifax".
 _PLACES = re.compile(
-    r"\b(?i:facts?|books?|volumes?|documents?|pages?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b(?:\s+[\w']+){0,6}?\s+(?i:in|on|under|behind|inside|at)\s+(?i:the)\s+[A-Z]"
+    r"\b(?i:facts?|books?|volumes?|documents?|pages?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b[^.?!]{0,60}?\b(?i:in|on|under|behind|inside|at|beside|by|near|of)\s+(?i:the)\s+[A-Z]"
 )
 
 
@@ -238,7 +238,7 @@ def invents_fact(secrets: Secrets, sentence: str) -> bool:
 #: A sentence that leans on the one before it: right after a cut it no
 #: longer says anything ("Please retrieve them when you can." once "The
 #: books with the facts are in …" is gone).
-_BACK_REFERENCE = re.compile(r"\b(?:them|it|they|these|those)\b|^\W*(?:that|this|which)\b", re.IGNORECASE)
+_BACK_REFERENCE = re.compile(r"\b(?:them|it|they|these|those|the one|the ones)\b|^\W*(?:that|this|which)\b", re.IGNORECASE)
 
 
 def invented_guard(persona: Persona, reply: Reply, heard: Iterable[str] = ()) -> tuple[Reply, list[str], bool]:

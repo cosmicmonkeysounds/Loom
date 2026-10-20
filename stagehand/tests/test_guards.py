@@ -397,3 +397,11 @@ def test_a_name_the_story_has_not_said_is_cut_until_it_has():
     assert unsaid_guard(show, line, told) == (line, [], False)
     assert unsaid_guard(show, line, {"Night": {"step": 13, "scenario": 1}})[1] == []
     assert unsaid_guard(show, line, None)[2] is True  # unreadable: not yet said
+
+
+def test_a_hiding_place_across_a_comma_is_cut_and_what_leans_on_it_goes_too():
+    """K-04 re-measure (w11b-heart, f72de58): "The books are on the shelf
+    beside the monitor, in the corner of the Desktop. Open the one labeled …"."""
+    out, notes, empty = invented_guard(P, Reply(say='The books are on the shelf beside the monitor, in the corner of the Desktop. Open the one labeled "Facts".'))
+    assert empty and out.say == P.fallback
+    assert not invents_fact(P.secrets, "The books are where Clippy said, program.")
