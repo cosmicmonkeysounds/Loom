@@ -32,7 +32,7 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothFoldable, boothSidebar, closedGate } from "./model.ts";
+import { boothFoldable, boothHost, boothSidebar, closedGate } from "./model.ts";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
@@ -101,7 +101,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   }, [activeId]);
   if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;
-  const isHost = s.auth.host === true;
+  // C4: the latest view says whether this booth is a host (an older server's: the sign-in's answer).
+  const isHost = boothHost(s.auth, s.view);
+  const pill = boothPill({ admin, host: isHost });
+  const token = s.auth.token;
   const character = s.auth.character;
   const guests = s.view?.guests ?? [];
   const guestByName = (name: string) => guests.find((g) => g.name === name || g.id === name) ?? null;
@@ -246,7 +249,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             <BoothFrame>
               {(keyboard) => (
                 <>
-              <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={boothPill(s.auth)} closeKey={activeId} />
+              <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={pill} closeKey={activeId} session={token} compact={keyboard} />
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room — or 📷 Scan a pass." />

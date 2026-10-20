@@ -217,6 +217,21 @@ export function factChips(g: PrimeGuest, where: string | null): FactChip[] {
   return [...loud, ...(where !== null ? [{ text: `📍 ${where}`, tone: "quiet" as const }] : []), ...quiet];
 }
 
+/**
+ * The guest a card reads its facts off (C3): the live row from the booth's
+ * snapshot (it follows another booth's act at once), whose `flags` the
+ * server trims to the ones that are on plus failed gates; the card's own
+ * read (`/api/prime/card`) carries the full list, so a false gate the
+ * snapshot left out still reads "Not …". A label the row has wins.
+ */
+export function cardGuestFacts(row: PrimeGuest | null, read: PrimeGuest | null): PrimeGuest | null {
+  if (row === null) return read;
+  if (read === null || read.id !== row.id || read.flags === undefined) return row;
+  const have = new Set((row.flags ?? []).map((f) => f.label));
+  const extra = read.flags.filter((f) => !have.has(f.label) && !f.on && isBoolValue(f.value) && GATE.test(f.label.trim()));
+  return extra.length === 0 ? row : { ...row, flags: [...(row.flags ?? []), ...extra] };
+}
+
 /** The tray's countdown: the soonest live one at story time `nowMs`, in seconds left. */
 export function soonest(countdowns: readonly CountdownSummary[] | undefined, nowMs: number | null): { label: string; left: number } | null {
   if (countdowns === undefined || countdowns.length === 0 || nowMs === null) return null;
@@ -258,6 +273,30 @@ export function actChip(act: { code: string | null; title: string | null } | nul
   const full = [act.code, act.title].filter((x): x is string => x !== null && x !== "").join(" · ");
   if (full === "") return null;
   return { text: act.code !== null && act.code !== "" ? `Act ${act.code}` : act.title!, title: `Act ${full}` };
+}
+
+/**
+ * The tray's act: the performer's own NOW objective's `act:` when it names
+ * one ("Doors" before the show starts, "Act B" once it is under way), else
+ * the cue sheet's focus act. The focus act is the act of NEXT, so during
+ * the doors it already reads "Act B" while every objective says Doors.
+ */
+export function trayAct(
+  act: { code: string | null; title: string | null } | null | undefined,
+  objectives: readonly Pick<ObjectiveView, "act">[] | undefined,
+): { text: string; title: string } | null {
+  const own = objectives?.[0]?.act?.trim() ?? "";
+  if (own === "") return actChip(act);
+  const sheet = actChip(act);
+  if (act?.code !== null && act?.code !== undefined && act.code === own && sheet !== null) return sheet;
+  return /^[A-Z]$/u.test(own) ? { text: `Act ${own}`, title: `Act ${own}` } : { text: own, title: own };
+}
+
+/** Does this booth hold the host capability now (C4)? The latest view
+ *  says so (`PrimeView.host`, re-sent on every snapshot); an older server's
+ *  view carries none, and then the sign-in's answer stands. */
+export function boothHost(auth: { host?: boolean } | null | undefined, view: { host?: true } | null | undefined): boolean {
+  return (view?.host ?? auth?.host) === true;
 }
 
 /** Room ids the booth keeps reachable but out of the sidebar. */

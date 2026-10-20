@@ -4,8 +4,9 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { NowCard, nowCount, objectiveButtonLabels } from "../src/booth/now-card.tsx";
-import { actChip, filterGuests, heldCount, soonest, trayClock, viewPaused } from "../src/booth/model.ts";
+import { NowCard, nowCount, objectiveButtonLabels, pinnedChecks } from "../src/booth/now-card.tsx";
+import { actChip, filterGuests, heldCount, soonest, trayAct, trayClock, viewPaused } from "../src/booth/model.ts";
+import { loadTicks, saveTicks, tickKey, tickable, toggleTick } from "../src/booth/ticks.ts";
 import { BoothTray } from "../src/booth/tray.tsx";
 import type { PrimeView } from "../src/types.ts";
 import { boothPill, boothStartItems } from "../src/booth/header.tsx";
@@ -15,24 +16,49 @@ const obj = (id: string, extra: Partial<ObjectiveView> = {}): ObjectiveView => (
 const ints: Interaction[] = [{ id: "send", label: "🛡 Send to the Internet", who: "performer", description: null }];
 
 describe("the NOW card", () => {
-  it("is one line: NOW, the title, the checklist count, how many more", () => {
+  it("is pinned: NOW, the whole title, the count, up to three to-dos in view; the rest behind More", () => {
     const o = obj("door", { checklist: [{ label: "a", done: true }, { label: "b", done: false }, { label: "c", done: null }], buttons: ["scan", "send"] });
     const html = renderToStaticMarkup(<NowCard objectives={[o, obj("two")]} interactions={ints} character="Norton" pill={null} closeKey={null} />);
     expect(html).toContain("NOW:");
     expect(html).toContain("Hold the door");
-    // The to-do with no condition counts in the total.
+    expect(html).toContain("booth-now-title wrap");
+    // The to-do with no condition counts in the total, and is the performer's own check box.
     expect(html).toContain("1/3");
-    expect(html).not.toContain("1/2 ✓");
-    expect(html).toContain("+1");
+    expect(html).toMatch(/role="checkbox" aria-checked="false"/);
+    // Every to-do is in view (three or fewer).
+    for (const l of [">a<", ">b<", ">c<"]) expect(html).toContain(l);
+    // The drop-down is only for the rest: the brief and the other objective, named on its button, folded.
+    expect(html).toContain("Brief · More objectives (1)");
     expect(html).toContain('aria-expanded="false"');
-    // Folded by default: the brief is not over the stream.
     expect(html).not.toContain("Scan every pass.");
+    // The keyboard is up: the title bar only.
+    const typing = renderToStaticMarkup(<NowCard objectives={[o]} interactions={ints} character="Norton" pill={null} closeKey={null} compact />);
+    expect(typing).toContain("Hold the door");
+    expect(typing).not.toContain("booth-now-checks");
   });
 
-  it("never reads done while a to-do with no condition is open", () => {
+  it("pins the first three open to-dos when there are more, the rest behind More", () => {
+    const o = obj("ci2", { brief: "", checklist: [{ label: "a", done: true }, { label: "b", done: false }, { label: "c", done: false }, { label: "d", done: null }, { label: "e", done: false }] });
+    expect(pinnedChecks(o, new Set())).toEqual({ shown: [1, 2, 3], rest: [0, 4] });
+    // Ticking d by hand moves e into view.
+    expect(pinnedChecks(o, new Set([tickKey("ci2", "d")]))).toEqual({ shown: [1, 2, 4], rest: [0, 3] });
+    // All done: the first three.
+    const done = obj("x", { checklist: ["a", "b", "c", "d"].map((label) => ({ label, done: true })) });
+    expect(pinnedChecks(done, new Set())).toEqual({ shown: [0, 1, 2], rest: [3] });
+    const html = renderToStaticMarkup(<NowCard objectives={[o]} interactions={ints} character="Clippy" pill={null} closeKey={null} />);
+    expect(html).toContain("2 more to-dos");
+  });
+
+  it("never reads done while a to-do with no condition is open; the performer's tick counts", () => {
     expect(nowCount({ checklist: [{ label: "Hold the door", done: true }, { label: "Every program cleared", done: null }] })).toBe("1/2");
     expect(nowCount({ checklist: [{ label: "a", done: true }, { label: "b", done: true }] })).toBe("2/2 ✓");
     expect(nowCount({ checklist: [] })).toBe("");
+    // CI 2: the two to-dos the story can't tick, ticked by Clippy.
+    const ci2 = obj("ci2", { checklist: [{ label: "🎱 the winner", done: true }, { label: "🎯 named", done: null }, { label: "🎀 the ribbon", done: null }, { label: "📣 announced", done: false }] });
+    expect(nowCount(ci2)).toBe("1/4");
+    expect(nowCount(ci2, new Set([tickKey("ci2", "🎯 named"), tickKey("ci2", "🎀 the ribbon")]))).toBe("3/4");
+    // A tick on a to-do the story tracks never counts (it is never tappable).
+    expect(nowCount(ci2, new Set([tickKey("ci2", "📣 announced")]))).toBe("1/4");
   });
 
   it("names the character (and its pill) when no objective is live", () => {
@@ -44,6 +70,42 @@ describe("the NOW card", () => {
 
   it("lists the story buttons an objective puts on a guest's card, never pass / scan", () => {
     expect(objectiveButtonLabels({ buttons: ["pass", "scan", "send", "nope"] }, ints)).toEqual(["🛡 Send to the Internet"]);
+  });
+});
+
+describe("the performer's own ticks (fix round)", () => {
+  const store = () => {
+    const m = new Map<string, unknown>();
+    return { load: <T,>(k: string) => (m.has(k) ? (JSON.parse(JSON.stringify(m.get(k))) as T) : null), save: (k: string, v: unknown) => void m.set(k, v), drop: (k: string) => void m.delete(k) };
+  };
+  it("are kept per sign-in, objective and label", () => {
+    const s = store();
+    const t = toggleTick(new Set(), "ci2", "🎀 the ribbon");
+    saveTicks(s, "tok-1", t);
+    expect([...loadTicks(s, "tok-1")]).toEqual([tickKey("ci2", "🎀 the ribbon")]);
+    expect(loadTicks(s, "tok-2").size).toBe(0); // another sign-in starts clean
+    expect(loadTicks(s, null).size).toBe(0);
+    expect(toggleTick(t, "ci2", "🎀 the ribbon").size).toBe(0); // a second tap unticks
+    expect(tickable({ done: null })).toBe(true);
+    expect(tickable({ done: false })).toBe(false);
+    expect(tickable({ done: true })).toBe(false);
+  });
+  it("survive blocked storage (a private window): nothing throws", () => {
+    const blocked = { load: () => { throw new Error("SecurityError"); }, save: () => { throw new Error("QuotaExceeded"); }, drop: () => {} };
+    expect(loadTicks(blocked, "tok").size).toBe(0);
+    expect(() => saveTicks(blocked, "tok", new Set(["x"]))).not.toThrow();
+  });
+});
+
+describe("the tray's act (fix round)", () => {
+  it("reads the NOW objective's act: Doors during the doors, never the act of NEXT ahead of time", () => {
+    const sheet = { code: "B", title: "Act I: the Desktop, Bingo and the first truth" };
+    expect(trayAct(sheet, [{ act: "Doors" }])).toEqual({ text: "Doors", title: "Doors" });
+    expect(trayAct(sheet, [{ act: "B" }])).toEqual({ text: "Act B", title: "Act B · Act I: the Desktop, Bingo and the first truth" });
+    expect(trayAct(sheet, [{ act: "C" }])).toEqual({ text: "Act C", title: "Act C" });
+    expect(trayAct(sheet, [{ act: null }])).toEqual(actChip(sheet));
+    expect(trayAct(sheet, [])).toEqual(actChip(sheet));
+    expect(trayAct(null, undefined)).toBeNull();
   });
 });
 

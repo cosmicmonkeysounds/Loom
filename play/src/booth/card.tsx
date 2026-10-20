@@ -13,7 +13,7 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { cardButtons, cardReadKey, factChips, faceSettled, foldOpensItself, inFlightGate, pressOutcome, type CardButton, type OutcomeLine } from "./model.ts";
+import { boothHost, cardButtons, cardGuestFacts, cardReadKey, factChips, faceSettled, foldOpensItself, inFlightGate, pressOutcome, type CardButton, type OutcomeLine } from "./model.ts";
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
@@ -117,11 +117,12 @@ export function GuestCardBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestId, nightKey]);
 
-  const guest: PrimeGuest | null = row ?? card?.guest ?? null;
+  // C3: the row's flags are the ones on plus failed gates; the card's read has them all.
+  const guest: PrimeGuest | null = cardGuestFacts(row, card?.guest ?? null);
   const name = guest?.name ?? guestId;
   const where = guest?.location ? (view?.channels.find((c) => c.id === `loc:${guest.location}`)?.title ?? guest.location) : null;
   const chips = guest !== null ? factChips(guest, where) : [];
-  const buttons = cardButtons(view?.interactions ?? [], objectives, card, character, admin || session.auth?.host === true);
+  const buttons = cardButtons(view?.interactions ?? [], objectives, card, character, admin || boothHost(session.auth, view));
   const lore = view?.codex ?? [];
   const restLive = buttons.rest.some((b) => b.live);
   const allOpen = all ?? foldOpensItself(buttons, card !== null);

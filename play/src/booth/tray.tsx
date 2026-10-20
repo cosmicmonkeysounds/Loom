@@ -1,5 +1,6 @@
 //! The booth taskbar's tray (wave 13), three items at most: the act chip
-//! (the CRA approver's 🧾 held transfers take its place while any wait),
+//! (the NOW objective's act, else the cue sheet's; the CRA approver's 🧾
+//! held transfers take its place while any wait),
 //! the soonest countdown, and the moments layer's missed count.
 //! (The chrome lane's `CountdownTray` is the guest's clock; integration may
 //! swap it in here once it lands.) A view with `paused: true` stops the
@@ -10,7 +11,7 @@ import { storyNow } from "../director.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { MissedTray } from "../moments/provider.tsx";
 import type { PrimeView } from "../types.ts";
-import { actChip, heldCount, soonest, trayClock, viewPaused } from "./model.ts";
+import { heldCount, soonest, trayAct, trayClock, viewPaused } from "./model.ts";
 
 /** Seconds a countdown reads red under (the director phone's `URGENT_S`). */
 const URGENT = 60;
@@ -33,7 +34,8 @@ export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet
   const nowMs = storyNow(got.current.clock, got.current.at, Date.now(), !paused);
   const soon = soonest(view?.countdowns, nowMs);
   const held = heldCount(view?.wallet);
-  const act = actChip(view?.night?.act);
+  // The performer's own act (the NOW objective's): "Doors" until the show starts, never the act of NEXT ahead of time.
+  const act = trayAct(view?.night?.act, view?.objectives);
   return (
     <>
       {held > 0 ? (

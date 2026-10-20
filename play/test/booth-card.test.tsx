@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, FOLD_AUTO_MAX, cardButtons, cardReadKey, faceSettled, factChips, foldOpensItself, inFlightGate, pressOutcome } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, FOLD_AUTO_MAX, boothHost, cardButtons, cardGuestFacts, cardReadKey, faceSettled, factChips, foldOpensItself, inFlightGate, pressOutcome } from "../src/booth/model.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import type { PrimeSession } from "../src/session/prime.ts";
@@ -266,5 +266,47 @@ describe("the All buttons fold (fix round)", () => {
     expect(html).toContain("Nothing your objective needs on Ada right now.");
     expect(html).toMatch(/aria-expanded="false"[^>]*>▸ All buttons… \(7\)/);
     expect(html).not.toContain("L-b0");
+  });
+});
+
+describe("lean snapshots and the host flag (C3 / C4, fix round)", () => {
+  const ada = (flags: PrimeGuest["flags"]): PrimeGuest => ({ id: "g-1", name: "Ada", faction: null, captured: false, location: "Desktop", ...(flags !== undefined ? { flags } : {}) });
+  const cleared = { label: "Cleared", path: "program.cleared", value: "false", on: false };
+  const marked = { label: "Marked", path: "program.marked", value: "true", on: true };
+  const late = { label: "Late", path: "program.late", value: "false", on: false };
+  const uploaded = { label: "Uploaded", path: "program.uploaded", value: "false", on: false };
+
+  it("reads the same facts from a lean snapshot row (on flags + failed gates) as from the full list", () => {
+    const full = factChips(ada([cleared, marked, late]), "The Desktop");
+    expect(factChips(ada([cleared, marked]), "The Desktop")).toEqual(full);
+    // No flags at all in a lean row: nothing to say beyond where they are.
+    expect(factChips(ada(undefined), "The Desktop")).toEqual([{ text: "📍 The Desktop", tone: "quiet" }]);
+  });
+
+  it("tops a lean row up with a failed gate only the card's own read carries; the row's own labels win", () => {
+    const row = ada([marked]);
+    const read = ada([uploaded, marked, late]);
+    expect(cardGuestFacts(row, read)?.flags).toEqual([marked, uploaded]);
+    // The gate passed since the card was read: the row's on flag wins.
+    expect(cardGuestFacts(ada([{ ...uploaded, value: "true", on: true }]), read)?.flags).toEqual([{ ...uploaded, value: "true", on: true }]);
+    expect(cardGuestFacts(null, read)).toBe(read);
+    expect(cardGuestFacts(row, null)).toBe(row);
+    expect(cardGuestFacts(row, { ...read, id: "g-2" })).toBe(row);
+  });
+
+  it("the host flag follows the latest view, else the sign-in's answer", () => {
+    expect(boothHost({ host: false }, { host: true })).toBe(true); // granted after a reload
+    expect(boothHost({ host: true }, {})).toBe(true); // an older server's view
+    expect(boothHost({ host: false }, null)).toBe(false);
+    expect(boothHost(null, undefined)).toBe(false);
+  });
+
+  it("a host booth (from the view) gets another character's by: button in the fold", () => {
+    const session = { ...fakeSession({ host: true }), auth: { token: "t", character: NORTON, admin: false, host: false, eventId: "default" } } as unknown as PrimeSession;
+    const html = renderToStaticMarkup(<GuestCardBody session={session} guestId="g-1" seed={{ card: card(["send"]) }} admin={false} onOpenThread={() => {}} />);
+    // Folded, but counted: Vouch (Clippy's `by:`) is in it for a host booth only.
+    expect(html).toContain("All buttons… (6)");
+    const plain = renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={{ card: card(["send"]) }} admin={false} onOpenThread={() => {}} />);
+    expect(plain).toContain("All buttons… (5)");
   });
 });
