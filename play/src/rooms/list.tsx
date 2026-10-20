@@ -1,12 +1,13 @@
 //! The room list + the two-pane shell (moved out of `chat.tsx` in wave 13):
 //! one row per room, the Discord-style space sections, sidebar + stage.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { occupancyLabel } from "../presence.ts";
 import type { Channel } from "../types.ts";
 import { Avatar, Badge } from "../ui/primitives.tsx";
 import { widgetLabel } from "../widgets.tsx";
-import { prettyName, type SpaceGroup } from "./spaces.ts";
+import { foldRooms } from "./order.ts";
+import { groupBySpace, prettyName, type SpaceGroup } from "./spaces.ts";
 
 // --- the sidebar (rooms) ------------------------------------------------------
 
@@ -51,9 +52,16 @@ export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel
   );
 }
 
+/** The fold's button: "Other rooms (9)". */
+export function otherRoomsLabel(n: number): string {
+  return `Other rooms (${n})`;
+}
+
 /**
  * The Discord-style channel sidebar: channels folded into ordered space
- * sections, each with a header. A thin wrapper over `ChannelRow`.
+ * sections, each with a header. A thin wrapper over `ChannelRow`. With
+ * `fold`, the empty, quiet rooms (`rooms/order.ts` `foldRooms`) gather at
+ * the foot behind one "Other rooms (n)" row, closed by default.
  */
 export function SpaceList({
   spaces,
@@ -62,6 +70,7 @@ export function SpaceList({
   onOpen,
   header,
   empty,
+  fold = false,
 }: {
   spaces: SpaceGroup[];
   activeId?: string | null;
@@ -69,14 +78,20 @@ export function SpaceList({
   onOpen: (id: string) => void;
   header?: ReactNode;
   empty?: ReactNode;
+  /** Gather the empty rooms into "Other rooms (n)" (the guest's list). */
+  fold?: boolean;
 }) {
-  const total = spaces.reduce((n, s) => n + s.channels.length, 0);
+  const [othersOpen, setOthersOpen] = useState(false);
+  const all = spaces.flatMap((s) => s.channels);
+  const { shown, folded } = fold ? foldRooms(all, activeId) : { shown: all, folded: [] };
+  const sections = fold ? groupBySpace(shown) : spaces;
+  const total = all.length;
   return (
     <div className="screen side">
       {header}
       <div className="chlist" data-tour="rooms">
         {total === 0 && <div className="empty">{empty ?? "No conversations yet."}</div>}
-        {spaces.map((s) => (
+        {sections.map((s) => (
           <div key={s.id} className="space-section">
             <div className="space-title">{s.title}</div>
             {s.channels.map((c) => (
@@ -84,6 +99,14 @@ export function SpaceList({
             ))}
           </div>
         ))}
+        {folded.length > 0 && (
+          <div className="space-section rooms-fold">
+            <button type="button" className="rooms-fold-btn" aria-expanded={othersOpen} onClick={() => setOthersOpen((v) => !v)}>
+              <span aria-hidden>{othersOpen ? "▾" : "▸"}</span> {otherRoomsLabel(folded.length)}
+            </button>
+            {othersOpen && folded.map((c) => <ChannelRow key={c.id} channel={c} active={c.id === activeId} meId={meId} onOpen={onOpen} />)}
+          </div>
+        )}
       </div>
     </div>
   );
