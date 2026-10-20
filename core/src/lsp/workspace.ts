@@ -113,6 +113,18 @@ export interface BeatInfo {
 }
 
 /** In-memory project index. */
+/** The several-word named events the event server raises itself (no `fire`
+ *  or INTERACTION in the story names them), for `L1212 TriggerTruncated`. */
+const HOUSE_EVENTS: readonly string[] = [
+  "wrong code",
+  "chess won",
+  "chess lost",
+  "chess drawn",
+  "terminal opened",
+  "terminal closed",
+  "reinstallation begun",
+];
+
 export class Workspace {
   docs = new Map<string, OpenDoc>();
   characters = new Map<string, CharacterInfo>();
@@ -304,15 +316,20 @@ export class Workspace {
   private addTriggerLints(): void {
     const model = this.compiled;
     if (model === null) return;
-    // Every event something can raise: the INTERACTIONs, and each `fire <name>`.
+    // Every event something can raise: the INTERACTIONs, each `fire <name>`,
+    // each card's answer (`show captcha` → `captcha answered`), and the
+    // several-word events the house itself raises (`wrong code`, the King's
+    // chess, a room terminal's visit, the reinstallation's scan).
     const known = new Map<string, string>();
-    for (const id of model.interactions.keys()) known.set(foldName(id), id);
+    const add = (name: string): void => {
+      if (name !== "" && !known.has(foldName(name))) known.set(foldName(name), name);
+    };
+    for (const id of model.interactions.keys()) add(id);
+    for (const name of HOUSE_EVENTS) add(name);
     const docs = this.orderedDocs();
     for (const [, doc] of docs) {
-      for (const m of doc.text.matchAll(/^[ \t]*fire[ \t]+(.+?)(?:[ \t]+(?:for|with)[ \t].*)?[ \t]*$/gmu)) {
-        const name = m[1]!.trim();
-        if (name !== "" && !known.has(foldName(name))) known.set(foldName(name), name);
-      }
+      for (const m of doc.text.matchAll(/^[ \t]*fire[ \t]+(.+?)(?:[ \t]+(?:for|with)[ \t].*)?[ \t]*$/gmu)) add(m[1]!.trim());
+      for (const m of doc.text.matchAll(/^[ \t]*show[ \t]+([a-z][a-z0-9_]*)\b/gmu)) add(`${m[1]!} answered`);
     }
     if (known.size === 0) return;
     for (const [uri, doc] of docs) {

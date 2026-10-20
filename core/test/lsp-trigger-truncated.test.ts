@@ -11,7 +11,7 @@ describe("L1212: a trigger phrase that keeps only its first word", () => {
     const ws = new Workspace();
     ws.open(
       "file:///main.loom",
-      `# T\nstart: A\n\nINTERACTION glitch out\n  who: admin\n\n${rule}\n  -> B\n\n== A\nHello.\n\n== B\nStorm.\n\n== C\n  fire power surge\n`,
+      `# T\nstart: A\n\nINTERACTION glitch out\n  who: admin\n\n${rule}\n  -> B\n\n== A\nHello.\n\n== B\nStorm.\n\n== C\n  fire power surge\n  show captcha\n`,
     );
     return (ws.diagnosticsFor("file:///main.loom")?.diagnostics ?? [])
       .filter((d) => d.code === "L1212")
@@ -30,5 +30,17 @@ describe("L1212: a trigger phrase that keeps only its first word", () => {
     expect(lint("when glitch_out:")).toEqual([]);
     expect(lint("when glitch out for program:")).toEqual([]);
     expect(lint("on rally guest:")).toEqual([]);
+  });
+
+  it("the house's own several-word events and a card's answer count too", () => {
+    for (const rule of ["when wrong code:", "when chess won:", "when terminal opened:", "when captcha answered:"]) {
+      expect([rule, lint(rule).length]).toEqual([rule, 1]);
+    }
+    // Bound to their subject they parse whole.
+    for (const rule of ["when wrong code for program:", "when chess won for program:", "when captcha answered for program:"]) {
+      expect([rule, lint(rule)]).toEqual([rule, []]);
+    }
+    // A card the story never shows is no event of its own.
+    expect(lint("when poll answered:")).toEqual([]);
   });
 });
