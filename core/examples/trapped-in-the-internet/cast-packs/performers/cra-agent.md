@@ -7,11 +7,12 @@
 
 ## Card
 
-**Door duty (20:00 → C1).** Booth → **📷 Scanner** → scan the pass on the
-guest's phone. That scan **clears them** (the Tube, the Desktop, Task
-Manager's "Your hosts tonight" line, Clippy's tour). Camera fails → type the
-id under the QR. Use an **Android** phone until the iPhone scanner is
-verified (OP-04).
+**Door duty (20:00 → C1).** Tap **📷 Scan** (the big taskbar button) and scan
+the pass on the guest's phone. That scan **clears them** (the Tube, the
+Desktop, Task Manager's "Your hosts tonight" line, Clippy's tour). Their card
+opens at once (📷 Next guest brings the camera back for the next pass). Camera
+fails → type the id under the QR in the box under the camera. Use an
+**Android** phone until the iPhone scanner is verified (OP-04).
 
 **Your buttons**
 
@@ -81,9 +82,14 @@ with the code belongs inside, so let them in. Only the patch bay alarms (the
 second wrong combination), and then whoever is at the cables goes to the
 Internet. From inside, the handle always opens with no code.
 
-**Your booth:** Scanner · Inbox · **Wallet** (the approvals) · Quest Log ·
-Codex · `# hosts` · `# quarantine` · `# truthcoin-exchange` · the rooms · one
-thread per guest.
+**Your booth:** the **NOW card** on top (this part of the night's job, its
+to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
+**Wallet** (the approvals; the tray shows **🧾 n** while transfers wait on you,
+tap it to open the Wallet) · Quest Log · Codex · `# hosts` · `# quarantine` ·
+`# truthcoin-exchange` · **Readouts** (every readout, kept across a reload) ·
+**Messages** (a program typing to you) · the rooms. A scanned program's card leads with
+at most three buttons your objective needs (🩹 on a marked program); the rest
+are under **All buttons…**.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 

@@ -8,17 +8,20 @@
 ## Card
 
 **Door duty (from C1 to the end).** Sign in to the booth as **Windows
-Defender**. Booth → **📷 Scanner** → scan the pass on the guest's phone (they
-wait in the Optical Drive with it on screen). That scan **clears them**,
-exactly like Norton's, McAfee's, Password Manager's or CRA's: the Tube, the
-Desktop, Task Manager's "Your hosts tonight" line, Clippy's tour, and a
-clearance line that knows the night is already under way. Camera fails →
-type the id under the QR. Not uploaded yet → "Not yet. Finish your upload."
-Use an **Android** phone for scanning until the iPhone scanner is verified
-(OP-04).
+Defender**. Tap **📷 Scan** (the big taskbar button) and scan the pass on the
+guest's phone (they wait in the Optical Drive with it on screen). That scan
+**clears them**, exactly like Norton's, McAfee's, Password Manager's or CRA's:
+the Tube, the Desktop, Task Manager's "Your hosts tonight" line, Clippy's
+tour, and a clearance line that knows the night is already under way. Their
+card opens at once (📷 Next guest brings the camera back for the next pass).
+Camera fails → type the id under the QR in the box under the camera. Not
+uploaded yet → "Not yet. Finish your upload." Use an **Android** phone for
+scanning until the iPhone scanner is verified (OP-04).
 
 **Your buttons** (every Antivirus has them; you will rarely need more than
-the scanner)
+the scanner). Your NOW card is *Hold the door* all night, and a scanned
+program's card leads with 🛡 (DRAFT for sign-off, Q26); the rest are under
+**All buttons…**, and 🩹 joins the face on a marked program.
 
 | When | Press | On whom |
 |---|---|---|
@@ -31,10 +34,14 @@ the scanner)
 McAfee, Password Manager and CRA Agent Software. Your booth never shows
 them (the server refuses a press from it): you never leave the door.
 
-**Your booth** reads every Antivirus readout (the escort list, Bathroom
-Mode, the alarm). They are for the patrolling Antivirus: you hold the door.
-If an escort comes through, radio **LATE** / the director, never leave the
-Optical Drive empty.
+**Your booth** hears only the door: its **Readouts** get your own line at the
+summons (*🛡 The summons: hold the door…*) and the answers to your scans, never
+the patrol, the sweeps, the escort list, Bathroom Mode or the alarm. Those
+are for the four room Antivirus; you hold the door (the house-wide alerts
+still reach every booth). If an escort comes through, radio **LATE** / the
+director, never leave the Optical Drive empty. Your booth: the NOW card ·
+**📷 Scan** and **🗂 Guests** · Readouts · Messages · `# hosts` ·
+`# quarantine` · the rooms.
 
 **Play:** quiet, built in, already there. "Scanning. No threats found."
 Never say the real name of a guest; never say a door code.

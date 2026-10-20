@@ -5,12 +5,14 @@
 
 ## Card
 
-**Door duty (20:00 → C1).** Booth → **📷 Scanner** → scan the pass on the
-guest's phone (they wait in the Optical Drive with it on screen). That scan **clears
-them**: the Tube, the Desktop, Task Manager's "Your hosts tonight" line (it
-opens `# task-manager` for them), Clippy's tour. Camera fails → type the id
-under the QR. Not uploaded yet → "Not yet. Finish your upload." Use an
-**Android** phone for scanning until the iPhone scanner is verified (OP-04).
+**Door duty (20:00 → C1).** Tap **📷 Scan** (the big taskbar button) and scan
+the pass on the guest's phone (they wait in the Optical Drive with it on
+screen). That scan **clears them**: the Tube, the Desktop, Task Manager's
+"Your hosts tonight" line (it opens `# task-manager` for them), Clippy's tour.
+Their card opens at once (📷 Next guest brings the camera back for the next
+pass). Camera fails → type the id under the QR in the box under the camera.
+Not uploaded yet → "Not yet. Finish your upload." Use an **Android** phone for
+scanning until the iPhone scanner is verified (OP-04).
 
 **Your buttons**
 
@@ -55,8 +57,13 @@ sweep of…*) · 🚨 server-room alarm · 🗜 zip everyone out of the Internet
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.
 
-**Your booth:** Scanner · Inbox (empty tonight) · Quest Log · Codex ·
-`# hosts` · `# quarantine` · the rooms · one thread per guest.
+**Your booth:** the **NOW card** on top (this part of the night's job, its
+to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
+Quest Log · Codex · `# hosts` · `# quarantine` · **Readouts** (every readout,
+kept across a reload) · **Messages** (a program typing to you) · the rooms.
+A scanned program's card leads with
+at most three buttons your objective needs (🩹 on a marked program); the rest
+are under **All buttons…**.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 

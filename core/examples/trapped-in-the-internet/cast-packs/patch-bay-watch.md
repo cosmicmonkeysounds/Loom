@@ -4,7 +4,9 @@
 > (**inside, door shut, before 🕚**)
 > ([[EDIT: who — suggested CRA Agent Software, decided at the 10-25
 > read-through]]; Norton, McAfee, Password Manager or CRA Agent Software,
-> **never Windows Defender**: only those four booths show 🔌 💥 ❌ 🚪 🔧). **Keep this card face-down in your pocket.** It holds the
+> **never Windows Defender**: only those four booths show 🔌 💥 ❌ 🚪 🔧 to a
+> performer; since wave 13 the three host booths can press them too, but the
+> watch and the press are yours). **Keep this card face-down in your pocket.** It holds the
 > two combinations, which no guest may see. It is only needed if the patch-bay
 > scanner fails on the bench (10-22) or flakes on the night (W-31, OP-13);
 > otherwise the bay judges itself and you just watch.

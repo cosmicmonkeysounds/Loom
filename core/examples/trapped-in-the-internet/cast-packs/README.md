@@ -93,8 +93,9 @@ addresses, codes, where things are kept).
   **The Heart** plays on the first opening once Trabolta is awake,
   however the door was unlocked (press **🔧** first when the crew go in).
   The server-room Antivirus presses 🔌 💥 ❌ 🚪 🔧 on their own booth (any
-  Antivirus booth has them; a Host's or another performer's booth never
-  does, and the server refuses its press), Adobe Acrobat presses 🫘, and
+  room Antivirus booth has them; Windows Defender's and Clippy's never do,
+  and the server refuses their press; since wave 13 a host part's booth may
+  press them too), Adobe Acrobat presses 🫘, and
   **Windows Defender** is a door-only part for late arrivals. Buttons with
   no way back (🔌 💥 ❌ 🚪 🔧 ♟ 🍎 🫘 💘) **arm on the first tap and fire on
   the second**. The nine featured programs are 🔒 Reserved: each invitee
@@ -116,6 +117,25 @@ addresses, codes, where things are kept).
   award lines replace Trabolta's template; phones, booths and Run reconnect
   by themselves after a server restart. **Reprint every pack before the
   10-25 run-through.**
+- **Wave 13 (2026-10-20), on `oct31-w13/integration`, not yet shipped:** the
+  Play app is rebuilt around one glance and one tap. Every booth has a
+  **NOW card** pinned on top (the story's objective for that character right
+  now, with a checklist that ticks itself), a taskbar with **⊞ Start**, a big
+  **📷 Scan** and **🗂 Guests**, and a **Readouts** room that survives a reload.
+  A scan opens the guest's card at once: the facts, **at most three buttons
+  the objective needs**, what the press came to, and **All buttons…** for the
+  rest. **Task Manager, Adobe Acrobat and the Recycling Bin are hosts**
+  (`admin: true`; Clippy is not): their booths carry the cue sheet in a NEXT
+  bar (tap ARM, tap FIRE; any host may fire, a double press is refused, LAST
+  says who pressed) and a console (Cues · Needs · Judge · People · More: the
+  doors, pause / resume, announce, the alert level, wallets, the King,
+  terminals, codes + QRs, parts, answering as Trabolta). 🛡 ✅ 👁 are the
+  Antivirus' own (no host's or Clippy's booth has them); 🩹 sits on a marked
+  program's card; a ribbon after Bingo is announced as *from the hosts*.
+  Guests have a taskbar too: **⊞ Start** holds 🚻 Bathroom Mode, **🎟 Pass** is
+  one tap from anywhere. The objectives and every new line are **DRAFT** until
+  the user signs off `../SIGNOFF-w13.md` (Q1 — who calls the cues — above all);
+  every pack below is written to the drafts.
 
 ## Rules every sheet keeps
 
@@ -133,6 +153,8 @@ addresses, codes, where things are kept).
   buttons work any time: 🛡 **Send to the Internet**, ✅ **Mark as
   reinstalled**, 🩹 **Unmark**, 🎀 ribbon, 🤝 Vouch, 👁 watchlist, 🪙 Pay /
   Charge and ♟ They beat the machine; every verdict button is phase-gated.
+  🛡 ✅ 👁 are the Antivirus' own (wave 13): no host's or Clippy's card shows
+  them.
 - **Hosts mark, Antivirus capture.** Every host verdict (🎯 🤷 🙅 🎩 🏓 🍎)
   marks a program for reinstallation; an Antivirus walks them through the
   Tube and presses 🛡.
@@ -141,7 +163,14 @@ addresses, codes, where things are kept).
 
 - Each performer and crew file starts with a **Card** section: print that on
   one side of a half-letter sheet and laminate it; print the emergency card on
-  the back. The rest of the file is the pack (read it once at home).
+  the back. The rest of the file is the pack (read it once at home). Since
+  wave 13 each booth's **NOW card** carries the same per-act job on the phone,
+  so the laminated card is the backup, not the instructions.
+- **Print after the sign-off.** The objectives (`../objectives.loom`) and the
+  wave 13 lines are DRAFT until `../SIGNOFF-w13.md` is signed off; the packs
+  follow the drafts (who fires the cues, the ribbon *from the hosts*, Windows
+  Defender's 🛡 first, McAfee's line in the ticker). Re-check them against the
+  signed-off text before batch 2, and reprint every pack that changed.
 - Clippy's CI 1–9 cards: one index card each (from the appendix of her pack).
 - The Desktop's QR stacks: print the codex posters from Run → 🖨 Print sheet
   and sort them by colour into the piles `generated/print-stacks.md` lists

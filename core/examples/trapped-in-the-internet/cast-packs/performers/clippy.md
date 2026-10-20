@@ -5,25 +5,29 @@
 
 ## Card
 
-**Your buttons, by phase** (on a guest's card: scan their pass, or tap them in
-the who's-here strip). Nothing happens if you press one out of phase. Every
+**Your buttons, by phase** (on a guest's card: tap **📷 Scan** and scan their
+pass, or tap their name in any room). Your booth's **NOW card** follows these
+phases: it names the CI window you are in, and a scanned program's card leads
+with that phase's buttons (at most three; the rest are under **All
+buttons…**). Nothing happens if you press one out of phase. Every
 button that says **marked for reinstallation** does the same thing: the
 program's phone greys out with a 🚨 GO TO THE INTERNET card, every Antivirus
 booth gets the escort task, and an Antivirus walks them through the Tube.
-**You never press 🛡.**
+**🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own:** they are not in
+your booth, and the server refuses them from it.
 
 | When | Press | On whom |
 |---|---|---|
 | V3 Bingo results | **🎱 Bingo winner** | each winner (several are fine) |
 | V3 Bingo results | **🎯 Named on the card: marked for reinstallation** | the centre-square program the winner names (Norton's 🛡 follows) |
-| any time | **🎀 Award a ribbon** | the Bingo winner first, anyone who earns one later |
+| any time | **🎀 Award a ribbon** | the Bingo winner first, anyone who earns one later (any host may press it too; a ribbon after Bingo reads *from the hosts*, DRAFT for sign-off, Q28) |
 | V6 First Moment of Truth | **🤷 Uncertain or guessed: marked for reinstallation** | a program who answers out loud and is clearly guessing (filed answers settle themselves) |
 | 🍾 the bottle | **🗣 Truth answered: accepted** · **🙅 Truth refused: marked for reinstallation** · **🎩 Chose Dare** (only if their phone is dead) | the program the bottle landed on |
 | 🏓 Truth Pong (Adobe judges the cup) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** wrong but confident · **🤷** | only programs who made a cup |
 | 🌑 Final reveal | **✅ / 😤 Q1–Q2 only** (= F1, F2) · **🤷** | |
 | 🍎 Bobbing (with Adobe) | **🍎 Brought up the Bag of Truth** · **🍎 Failed the bob: marked for reinstallation** | |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
-| any time | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy |
+| any time | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy (it sits on a marked program's card face) |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | any time (review mode only) | **📝 Filed fact: accurate / confident lie / uncertain** | a program whose filing is waiting in `# hosts` (it judges their **latest** filing only; if an earlier one is still waiting, nothing changes and `# hosts` sends the director to the Judging card) |
 
@@ -62,12 +66,17 @@ V6: ⏱ the filing closes → 📋 results, one question at a time → 🍾 the 
 reveal ("truth is always in binary") → 🍎 → ending → host the ceremony if
 Trabolta is gone (after Combo B or the rave).
 
-**Your booth has four pinned rooms:** **Scanner** (📷), **Inbox** (empty
-tonight: the story deals no cards to a booth), **Quest Log** (your staff
-quests, by their titles: *Per the agenda: Computer Bingo*, *Per the agenda:
-the Truth Scavenger Hunt*, *Per Trabolta: keep everyone calm*; each step lands
-in its own thread, from Task Manager) and **Codex** (*What Clippy knows*: CI 1–9 arrive here as the cues
-fire, with a 📋 readout each time). The printed CI cards are your backup.
+**Your booth:** the **NOW card** on top (the CI window you are in, its
+checklist ticking as you press), **📷 Scan** on the taskbar, **🗂 Guests** (find
+anyone by name), the pinned **Quest Log** (your staff quests, by their titles:
+*Per the agenda: Computer Bingo*, *Per the agenda: the Truth Scavenger Hunt*,
+*Per Trabolta: keep everyone calm*, from Task Manager) and **Codex** (*What
+Clippy knows*: CI 1–9 arrive here as the cues fire; also under ⊞ Start), the
+staff rooms `# hosts` and `# quarantine`, **Readouts** (a 📋 readout each time a
+CI arrives, and every scan's answer) and **Messages** (a program typing to you).
+At Truth Pong and the final round your card's face has ✅ Q1, 😤 Q1 (or ✅ Q2)
+and 🤷; the other questions' buttons are under All buttons… (DRAFT, Q7). The
+printed CI cards are your backup.
 
 **Radio:** INTRO · HOLD · LIGHTS · ALL STOP. If the voice queue is long:
 "Trabolta is processing a high volume of requests."
@@ -106,9 +115,9 @@ night goes on: the malware, the beans, the dark. You never take sides on air.
 your voice (it never clears anyone: only an Antivirus scan does). When an
 Antivirus clears a program, Task Manager's line introduces the four of you
 ("Your hosts tonight, per the agenda…") and opens `# task-manager` for them;
-then your Orientation starts, with its **Bathroom Mode** step over the pass
-button. Guests who skipped your orientation get a hurt little line from you;
-play it up.
+then your Orientation starts, with its **Bathroom Mode** step over **⊞ Start**
+(the taskbar's left corner). Guests who skipped your orientation get a hurt
+little line from you; play it up.
 
 **C1 · 📣 Call to the Desktop.** Everyone is swept to the living room. Your
 booth: *📋 Instructions 1/X…*. Welcome everyone (CI 1): the fundraiser to

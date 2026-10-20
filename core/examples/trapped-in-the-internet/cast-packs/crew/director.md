@@ -17,6 +17,16 @@ a dead kiosk); **`# hosts`** for the bank's and the judge's logs; **`#
 quarantine`** for the escort pins. **Keep the Run tab in the foreground** (a
 background tab throttles the chime).
 
+**The hosts' booths fire too** (wave 13): Task Manager, Adobe Acrobat and the
+Recycling Bin each have the same cue sheet in a NEXT bar in their booth.
+Whoever calls the cues radios before a host fires (DRAFT for sign-off, Q1).
+If Run and a booth press the same moment, the server takes one and the other
+reads *Cues moved — tap again*; the sheet's LAST says who pressed (*Task
+Manager*, or your name). A host's console also opens the doors, pauses and
+resumes, announces, sets the alert level, judges and answers as Trabolta, so
+a host can cover any of those while you are busy; restart, push draft, go
+live and end are yours alone, at Run.
+
 **Cue order** (auto = fires itself; the button is the fallback):
 
 | # | Cue | Then | Set stage (classic only: the story mind sets it itself) |
@@ -126,7 +136,7 @@ never from a guest card.
 | performer's phone dead | Inspector → **Release** the part; they re-sign on a loaner |
 | lights wrong after a blip | radio **LIGHTS**: the tech op restarts the stagehand `show` job, which replays the current look on reconnect; failing that they set it by hand (Run → World → `Night.lights` names it). Re-pressing a cue does nothing: phase cues play once |
 | TV voice must stop | the mute on the heartbeat card (it stays muted through restarts and Go live: check it before doors) |
-| loom restarted (a crash or a redeploy) | nothing to press: phones, booths, Run and the tablets reconnect by themselves (Caddy holds requests up to 30 s); a phone's dot reads *reconnecting…* meanwhile. Rescan anyone mid-walk in the tent |
+| loom restarted (a crash or a redeploy) | nothing to press: phones, booths, Run and the tablets reconnect by themselves (Caddy holds requests up to 60 s); a phone's tray dot reads *reconnecting…* meanwhile. Rescan anyone mid-walk in the tent |
 | **ALL STOP** | **💡 Restore the house lights** (it also holds a pending automatic dance after a server-room blackout: `# hosts` says *"💡 The dance is held: press 🪩 when the house manager says go."*), then follow the house manager |
 
 **Trabolta's worker dies** (no hosted fallback): after 20 s his thread posts
@@ -180,7 +190,7 @@ after doors.
 | **10:00** | Weather call with the tech op (gusts > 30–40 km/h or steady rain → the shed). **Morning reset, before anyone registers:** sync the story, **Push draft**, scan the door QR from a phone **on cellular**, then **Go live in place**. Open `/reinstall/map`: press **Tent** or **Shed** in the *Map:* bar for the weather, and check its status line reads "the project's map". If it reads "this event's map", a rehearsal's map edit is still in force (Push draft and Go live keep it): **Save to project** to keep it, or switch to the other variant and back to drop it. |
 | 12:00 | Set dressing; tent or shed set. |
 | 15:00 | The tech op boots everything; you walk the pre-show checklist with them. |
-| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Decide whether Password Manager gets the moderator passcode (her pack: ⊞ Start → *Add moderator powers* → *Become an admin*, reload, **hide** any message; it also shows her your cues under More…). Without it, she asks you to hide one. |
+| **17:00** | **Performer call.** Costumes, phones charged, booths signed in (prime code + cast picker, after go-live), a test `!` alert to staff, walk the stations. Confirm the anti-AI program (MS Paint) with Task Manager and Clippy. Decide whether Password Manager gets the moderator passcode (her pack: ⊞ Start → *Add moderator powers* → *Become an admin*, reload, **hide** any message; it also gives her booth the hosts' NEXT bar and console, which she never fires from). Without it, she asks you to hide one. |
 | 18:00 | Porch set (Recycling Bin). Checklist signed off. |
 | **19:00** | Food + the **15-minute briefing** (below). The tech op starts the backup job. |
 | 19:45 | Places. Lights to screensaver. |
