@@ -577,8 +577,12 @@ export function ChatTab() {
           </div>
         </div>
       ) : (
-        <div className="border-t border-zinc-800 p-2 text-center text-xs text-zinc-600">
-          This DM spans multiple guests — reply to one from their Inspector.
+        <div className="border-t border-zinc-800 p-2 text-center text-xs text-zinc-600" data-testid="chat-read-only">
+          {activeRoom !== undefined && READ_ONLY_ROOMS.has(activeRoom.kind)
+            ? activeRoom.kind === 'inbox'
+              ? 'What the story dealt this booth — nobody types here.'
+              : 'Their own log — nobody types here.'
+            : 'This DM spans multiple guests — reply to one from their Inspector.'}
         </div>
       )}
     </div>
