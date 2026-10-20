@@ -1,0 +1,510 @@
+//! The performer (booth) session (moved out of `session.ts` in wave 13):
+//! the booth's rooms and every booth action.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "../alerts.ts";
+import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
+import { shareErrorText } from "../codex.ts";
+import { usePlayHost } from "../host.ts";
+import { BOOTH_SIGNED_OUT, SessionRole, afterLifecycle, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
+import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
+import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
+import { useThreads, type Threads } from "../rooms/threads-state.ts";
+import { questSummary } from "../stream/runs.ts";
+import type { Channel, ChatMessage, PrimeView } from "../types.ts";
+import { useTyping } from "../typing.ts";
+import { queueSummary } from "../wallet.tsx";
+import type { WidgetResult } from "../widgets.tsx";
+import { hasPendingCard } from "./channels.ts";
+import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
+import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
+
+interface PrimeAuth {
+  token: string;
+  character: string;
+  admin: boolean;
+  /** Which event this performer signed into. */
+  eventId: string;
+  /** The event's display title (from `/api/resolve-code`). */
+  title?: string;
+}
+
+const PK = "loom.prime";
+
+const PRIME_ALERTS = "loom.prime.alerts";
+
+// --- performer (character) --------------------------------------------------
+
+/** The booth's Inbox channel id: cards + notes the story deals to the character. */
+export const INBOX = "__inbox";
+
+/** Build the performer's surfaces: a scanner, the character's Inbox (cards
+ *  the story deals to it), the broadcast feed, the character's own pinned
+ *  Quest Log / Codex, the rooms, the cast threads, and one conversation per
+ *  guest (targeted messages, for moderation). `answered` = the cards this
+ *  booth has answered (a pending one bubbles its room up). */
+export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView | null, answered: ReadonlySet<number> = new Set<number>()): Channel[] {
+  const all = [...messages.values()];
+  const bySeq = (a: ChatMessage, b: ChatMessage) => a.seq - b.seq;
+  const occupants = occupantsByLocation(view?.guests ?? [], null);
+  const locationLabel = (loc: string | null): string | null => {
+    if (loc === null) return null;
+    return view?.channels.find((c) => c.id === `loc:${loc}`)?.title ?? loc;
+  };
+  const scanner: Channel = {
+    id: "__scanner",
+    kind: "scanner",
+    title: "Scanner",
+    subtitle: "scan a guest's pass",
+    spaceId: "booth", // the booth tools group apart from the room + guests
+    order: 0,
+    messages: [],
+    unread: 0,
+    decision: null,
+    lastTs: Number.MAX_SAFE_INTEGER, // pinned to the top
+  };
+  const feedMsgs = all.filter((m) => m.audience === "all").sort((a, b) => a.seq - b.seq);
+  const everyone: Presence[] = (view?.guests ?? []).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
+  const feed: Channel = {
+    id: "__feed",
+    kind: "lobby",
+    title: view?.title ?? "Lobby",
+    subtitle: "everyone · broadcast feed",
+    spaceId: STORY_SPACE,
+    spaceTitle: view?.title,
+    order: 0,
+    people: everyone,
+    messages: feedMsgs,
+    unread: 0,
+    decision: null,
+    lastTs: feedMsgs.length ? feedMsgs[feedMsgs.length - 1]!.ts : 0,
+  };
+  const guests: Channel[] = (view?.guests ?? []).map((g) => {
+    const msgs = all
+      .filter((m) => Array.isArray(m.audience) && m.audience.includes(g.id))
+      .sort((a, b) => a.seq - b.seq);
+    const where = locationLabel(g.location);
+    return {
+      id: `guest:${g.id}`,
+      kind: "guest" as const,
+      title: g.name,
+      subtitle: `${g.faction ?? "unaligned"}${where ? ` · 📍 ${where}` : ""}${g.captured ? " · 🔒 captured" : ""}${g.restricted ? " · ⛔ restricted" : ""}`,
+      spaceId: "guests", // one section of per-guest conversations
+      order: 0,
+      people: [{ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }],
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    };
+  });
+  // Authored channels (SPACE/CHANNEL) the performer runs — grouped by space.
+  const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
+  const rooms: Channel[] = (view?.channels ?? []).map((c) => {
+    const msgs = all.filter((m) => m.channel === c.id).sort((a, b) => a.seq - b.seq);
+    return {
+      id: c.id,
+      kind: c.kind as Channel["kind"],
+      title: c.title,
+      spaceId: c.spaceId,
+      spaceTitle: c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
+      member: c.member,
+      canPost: c.canPost,
+      threadable: c.threadable,
+      ...(locationOfRoom(c.id) !== null ? { people: occupants.get(locationOfRoom(c.id)!) ?? [] } : {}),
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    };
+  });
+  // Agent-voiced characters (`mind: external`) the performer can talk to
+  // privately: the agent's `dm:` channel, narrowed to this performer
+  // (audience `@<me>`). The server maps a post to `cast:<id>` onto it.
+  const me = view?.character ?? "";
+  const mine = (m: ChatMessage): boolean => Array.isArray(m.audience) && m.audience.includes(`@${me}`);
+  const cast: Channel[] = (view?.agents ?? []).map((a) => {
+    const msgs = all
+      .filter((m) => m.channel === `dm:${a.id}` && mine(m))
+      .sort(bySeq);
+    return {
+      id: `cast:${a.id}`,
+      kind: "dm" as const,
+      title: a.id,
+      subtitle: a.online ? "online" : "away — answers when their agent is back",
+      spaceId: "cast",
+      spaceTitle: "Cast",
+      order: 0,
+      people: [{ id: a.id, name: a.id, kind: "character" as const, group: null }],
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      needsYou: hasPendingCard(msgs, answered),
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    };
+  });
+  // The character's own pinned rooms: its Quest Log (`start quest X for
+  // <Character>`) and Codex (what it knows), addressed `@<me>` — read-only
+  // (a booth types no codes; sharing stays on the guest card).
+  const pinned: Channel[] = [];
+  if ((view?.questTotal ?? 0) > 0) {
+    const msgs = all.filter((m) => m.channel === QUEST_LOG && mine(m)).sort(bySeq);
+    pinned.push({
+      id: QUEST_LOG,
+      kind: "quests",
+      title: "Quest Log",
+      subtitle: questSummary(view?.quests ?? []),
+      spaceId: PINNED_SPACE,
+      order: 0,
+      canPost: false,
+      threadable: true,
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    });
+  }
+  if ((view?.codexTotal ?? 0) > 0) {
+    const msgs = all.filter((m) => m.channel === CODEX_ROOM && mine(m)).sort(bySeq);
+    pinned.push({
+      id: CODEX_ROOM,
+      kind: "codex",
+      title: "Codex",
+      subtitle: `${view?.codex?.length ?? 0} of ${view?.codexTotal ?? 0} found`,
+      spaceId: PINNED_SPACE,
+      order: 1,
+      canPost: false,
+      threadable: false,
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: msgs.length ? msgs[msgs.length - 1]!.ts : 0,
+    });
+  }
+  // The approver's Wallet room: the held / pending transfers waiting on
+  // this character, as `@<me>` cards — Approve / Deny live on the cards.
+  if (view?.wallet !== undefined) {
+    const msgs = all.filter((m) => m.channel === WALLET_ROOM && mine(m)).sort(bySeq);
+    pinned.push({
+      id: WALLET_ROOM,
+      kind: "wallet",
+      title: "Wallet",
+      subtitle: queueSummary(view.wallet),
+      spaceId: "booth",
+      order: -1,
+      canPost: false,
+      threadable: true,
+      needsYou: view.wallet.queue.some((t) => t.state === "held"),
+      messages: msgs,
+      unread: 0,
+      decision: null,
+      lastTs: Number.MAX_SAFE_INTEGER - 1,
+    });
+  }
+  // The Inbox: cards and notes the story deals to this character
+  // (`show <kind> … to <Character>` with no thread) — `dm:<me>` rows
+  // addressed `@<me>`. A card still waiting on the booth bubbles it up.
+  const inboxMsgs = all.filter((m) => m.channel === `dm:${me}` && mine(m)).sort(bySeq);
+  const inbox: Channel = {
+    id: INBOX,
+    kind: "dm",
+    title: "Inbox",
+    subtitle: `cards and notes for ${me}`,
+    spaceId: "booth",
+    order: 1,
+    messages: inboxMsgs,
+    unread: 0,
+    decision: null,
+    needsYou: hasPendingCard(inboxMsgs, answered),
+    lastTs: inboxMsgs.length ? inboxMsgs[inboxMsgs.length - 1]!.ts : 0,
+  };
+  return [scanner, inbox, feed, ...pinned, ...rooms, ...cast, ...guests];
+}
+
+export interface PrimeSession {
+  auth: PrimeAuth | null;
+  view: PrimeView | null;
+  responses: Array<{ id: number; text: string }>;
+  /** The alert that just landed — a `!` broadcast, or a readout the booth
+   *  didn't ask for (the late list, a private warning) — until dismissed. */
+  alert: Alert | null;
+  dismissAlert: () => void;
+  connected: boolean;
+  /** The backlog has loaded — the rooms list is real, not a placeholder. */
+  ready: boolean;
+  /** Why the last sign-in ended under us (the show went live / the run
+   *  ended) — shown on the sign-in screen until the performer signs in again. */
+  notice: string | null;
+  threads: Threads;
+  login: (character: string, passcode: string) => Promise<void>;
+  scan: (target: string) => Promise<unknown>;
+  /** Hybrid chat: type into a channel as this character (reply via parentSeq). */
+  say: (channel: string, text: string, parentSeq?: number) => Promise<unknown>;
+  /** Access control: pull a guest into a membership-gated channel. */
+  inviteToChannel: (person: string, channel: string) => Promise<unknown>;
+  /** Leave a membership-gated channel. */
+  leaveChannel: (channel: string) => Promise<unknown>;
+  becomeAdmin: (passcode: string) => Promise<void>;
+  /** Fire a performer / admin interaction on a guest, as this character. */
+  act: (name: string, guest: string) => Promise<unknown>;
+  /** Codex: hand one of the character's entries to a guest. */
+  shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** The approver's booth: settle a held transfer / deny one in its window. */
+  walletApprove: (id: string) => Promise<unknown>;
+  walletDeny: (id: string) => Promise<unknown>;
+  moderate: (id: string, action: string, name?: string) => Promise<unknown>;
+  setHidden: (seq: number, hidden: boolean) => Promise<unknown>;
+  /** Answer a card the story dealt to this character (`show … to <Character>`). */
+  answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
+  /** Cards (by seq) this booth has answered — rendered resolved, never re-asked. */
+  widgetAnswers: ReadonlyMap<number, WidgetResult>;
+  leave: () => void;
+  /** A notification's room link is waiting to open (SW-PLAY-20). */
+  roomLinkPending: boolean;
+}
+
+export function usePrimeSession(): PrimeSession {
+  const host = usePlayHost();
+  const { load, save, drop } = host.storage;
+  const crawl = host.crawl;
+  const [auth, setAuth] = useState<PrimeAuth | null>(() => {
+    const stored = load<PrimeAuth>(PK);
+    if (stored && !stored.eventId) stored.eventId = "default"; // migrate pre-multi-event sessions
+    return stored;
+  });
+  const [view, setView] = useState<PrimeView | null>(null);
+  const [responses, setResponses] = useState<Array<{ id: number; text: string }>>([]);
+  const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const rid = useRef(0);
+  const base = auth ? `/e/${encodeURIComponent(auth.eventId)}` : "";
+  // The stream's character identity comes from the token server-side; the
+  // token rides the URL because EventSource can't set headers.
+  const url = auth ? `${base}/events?role=prime&token=${encodeURIComponent(auth.token)}` : null;
+  /** The booth's sign-in is gone (the show went live / the run ended). */
+  const dropBooth = useCallback((why: string | null) => {
+    drop(PK);
+    setAuth(null);
+    setView(null);
+    setResponses([]);
+    setReady(false);
+    setNotice(why);
+    host.onEnded("prime", why);
+  }, [drop, host]);
+  const { typing, onTyping } = useTyping(auth !== null ? { role: "performer", character: auth.character } : null);
+  // Booths get the guest's alerts (alerts.ts) plus N-07: a readout that
+  // isn't the answer to this booth's own scan / act — the late list,
+  // Trabolta's warning to Clippy — banners and chimes too.
+  const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
+  const lastActionAt = useRef(Number.NEGATIVE_INFINITY);
+  /** The booth's own requests in flight: a readout while one is pending is
+   *  its answer, however slow the network (a scan on cellular). */
+  const inFlight = useRef(0);
+  const { messages, connected } = useChatStream(url, {
+    onSnapshot: (v) => setView(v as PrimeView),
+    onTyping,
+    onHistory: (list) => {
+      alertsRef.current?.onHistory(list);
+      crawl.loaded(maxSeqOf(list));
+      setReady(true);
+    },
+    onResponse: (text) => {
+      setResponses((r) => [{ id: rid.current++, text }, ...r]);
+      if (inFlight.current === 0 && unsolicitedReadout(lastActionAt.current, Date.now())) alertsRef.current?.raise(text);
+    },
+    // Going live signs every performer out (rehearsal booths must not carry
+    // into the show); a reset / reload keeps the character — the server just
+    // re-sends the snapshot + history, which is then old news for alerts.
+    onLifecycle: (n) => {
+      if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
+      else {
+        // B5: last run's readouts and answered cards are not tonight's. The
+        // notice lands before the replay, so the new run's readouts follow.
+        setResponses((r) => afterLifecycle(r, n.kind));
+        if (lifecycleStartsNewRun(n.kind)) setWidgetAnswers(() => NO_ANSWERS);
+        alertsRef.current?.rebase();
+      }
+    },
+    // The stream closed for good: confirm the booth's token is really gone
+    // (released, or the show went live while the phone slept) before
+    // signing out — anything else (a restart behind the proxy) reopens it.
+    probe: () => (auth === null ? Promise.resolve(null) : tokenDead(base, "prime", auth.token)),
+    onDead: (dead) => {
+      if (dead) dropBooth(dead === "ended" ? lifecycleNotice("ended", SessionRole.Performer) : BOOTH_SIGNED_OUT);
+    },
+  });
+
+  // Every action is scoped to the event this performer signed into. A 403
+  // "sign in" answer means the token lost its character (a release, or a
+  // go-live while this phone wasn't listening) — drop the booth and say so.
+  const post = useCallback(
+    async <T,>(path: string, body?: unknown, token?: string): Promise<T> => {
+      lastActionAt.current = Date.now();
+      inFlight.current++;
+      try {
+        return await api<T>(`${base}${path}`, body, token);
+      } catch (e) {
+        if (e instanceof ApiError && auth !== null) {
+          if (eventGone(e.status, e.message)) dropBooth(lifecycleNotice("ended", SessionRole.Performer));
+          else if (performerSessionDead(e.status, e.message)) dropBooth(BOOTH_SIGNED_OUT);
+        }
+        throw e;
+      } finally {
+        inFlight.current--;
+        lastActionAt.current = Date.now(); // the grace runs from the answer too
+      }
+    },
+    [base, auth, dropBooth],
+  );
+
+  const login = useCallback(async (character: string, passcode: string) => {
+    // Resolve the performer/mod code to its event, then sign in there.
+    const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code: passcode });
+    const r = await api<{ token: string; character: string; admin: boolean }>(
+      `/e/${encodeURIComponent(eventId)}/api/prime/login`,
+      { character, passcode },
+    );
+    const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, eventId, title };
+    crawl.reset();
+    save(PK, a);
+    setAuth(a);
+    setNotice(null);
+  }, []);
+  const scan = useCallback((target: string) => post("/api/scan", { target }, auth!.token), [post, auth]);
+  // A refused line banners why and rejects, so the composer keeps the text.
+  const say = useCallback(
+    async (channel: string, text: string, parentSeq?: number) => {
+      try {
+        return await withTimeout(post("/api/prime/say", { channel, text, parentSeq }, auth!.token), SAY_TIMEOUT_MS);
+      } catch (e) {
+        const why = sayRefusalText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        throw e;
+      }
+    },
+    [post, auth],
+  );
+  const inviteToChannel = useCallback(
+    (person: string, channel: string) => post("/api/prime/channel/invite", { person, channel }, auth!.token),
+    [post, auth],
+  );
+  const leaveChannel = useCallback(
+    (channel: string) => post("/api/prime/channel/leave", { channel }, auth!.token),
+    [post, auth],
+  );
+  const becomeAdmin = useCallback(
+    async (passcode: string) => {
+      const r = await api<{ token: string }>(`${base}/api/mod/login`, { passcode }, auth!.token);
+      const a: PrimeAuth = { ...auth!, token: r.token, admin: true };
+      save(PK, a);
+      setAuth(a);
+    },
+    [base, auth],
+  );
+  const act = useCallback(
+    (name: string, guest: string) => post("/api/prime/act", { name, guest }, auth!.token),
+    [post, auth],
+  );
+  const shareCodex = useCallback(
+    async (entry: string, to: string): Promise<unknown> => {
+      try {
+        return await post("/api/prime/codex/share", { entry, to }, auth!.token);
+      } catch (e) {
+        const why = shareErrorText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        return null;
+      }
+    },
+    [post, auth],
+  );
+  const moderate = useCallback(
+    (id: string, action: string, name?: string) => post("/api/mod/act", { id, action, name }, auth!.token),
+    [post, auth],
+  );
+  const walletCall = useCallback(
+    async (sub: "approve" | "deny", id: string): Promise<unknown> => {
+      try {
+        return await post(`/api/prime/wallet/${sub}`, { id }, auth!.token);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          alertsRef.current?.raise(e.message, { quiet: true });
+          return null;
+        }
+        throw e;
+      }
+    },
+    [post, auth],
+  );
+  const walletApprove = useCallback((id: string) => walletCall("approve", id), [walletCall]);
+  const walletDeny = useCallback((id: string) => walletCall("deny", id), [walletCall]);
+  const setHidden = useCallback(
+    (seq: number, hidden: boolean) => post("/api/mod/message", { seq, hidden }, auth!.token),
+    [post, auth],
+  );
+  // Cards dealt to this character: one answer per card. The server refuses
+  // a second (409); the snapshot lists the cards already answered so a
+  // reload renders them resolved (an empty record marks each).
+  // Held per sign-in like the guest's (B2): Go live, End and a dead token
+  // drop the booth, the performer signs in again under a new token, and the
+  // new run hands out the old run's seqs — last run's answers read empty.
+  const [widgetAnswers, setWidgetAnswers] = usePerSession(auth?.token ?? null, NO_ANSWERS);
+  const answeredList = view?.answered;
+  useEffect(() => {
+    if (answeredList === undefined || answeredList.length === 0) return;
+    setWidgetAnswers((prev) => {
+      if (answeredList.every((seq) => prev.has(seq))) return prev;
+      const next = new Map(prev);
+      for (const seq of answeredList) if (!next.has(seq)) next.set(seq, {});
+      return next;
+    });
+  }, [answeredList]);
+  const answerWidget = useCallback(
+    async (seq: number, result: WidgetResult) => {
+      setWidgetAnswers((prev) => new Map(prev).set(seq, result));
+      try {
+        await post("/api/prime/widget", { seq, result }, auth!.token);
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 409)) {
+          setWidgetAnswers((prev) => {
+            const next = new Map(prev);
+            next.delete(seq);
+            return next;
+          });
+        }
+        throw e;
+      }
+    },
+    [post, auth],
+  );
+  const leave = useCallback(() => {
+    // Sign out frees the part on the server too, so the same performer can
+    // sign in from another phone (the iPhone Home Screen icon) without a
+    // director's ⏏ Release. Fire-and-forget: signing out never waits.
+    if (auth !== null) void api(`${base}/api/prime/logout`, {}, auth.token).catch(() => {});
+    drop(PK);
+    setAuth(null);
+    setView(null);
+    setResponses([]);
+    setReady(false);
+    setNotice(null);
+    host.onEnded("prime", null);
+  }, [drop, host, auth, base]);
+
+  const boothFilter = useMemo(() => (auth !== null ? boothAlertFilter(auth.character) : undefined), [auth]);
+  const alerts = useAlerts({
+    messages,
+    clock: view?.clock,
+    session: auth?.token ?? null,
+    storage: host.storage,
+    storageKey: PRIME_ALERTS,
+    sound: host.sound,
+    // B1: never a guest's own `!` (the booth holds every guest's lobby lines).
+    forMe: boothFilter,
+  });
+  alertsRef.current = alerts;
+  const threads = useThreads(buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
+  const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
+  const landing = useLandingBrand();
+  useTheme(auth === null ? landing.theme : view?.theme);
+  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+}

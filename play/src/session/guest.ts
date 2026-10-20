@@ -1,0 +1,620 @@
+//! The guest session (moved out of `session.ts` in wave 13): the stream,
+//! the snapshot, every guest action, echoed choices, the required decision.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PictureChoices } from "../avatars.ts";
+import { maxSeqOf, useAlerts, type Alert } from "../alerts.ts";
+import { checkinFromSearch, withoutCheckin } from "../checkin.ts";
+import { rememberClaim, withoutClaim } from "../claim.ts";
+import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../client.ts";
+import { pmChannelId, shareErrorText, unlockFromSearch, withoutUnlock } from "../codex.ts";
+import { usePlayHost } from "../host.ts";
+import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
+import { CODEX_ROOM, channelHead, withThe } from "../rooms/spaces.ts";
+import { useThreads, type Threads } from "../rooms/threads-state.ts";
+import type { ChatMessage, Decision, GuestView } from "../types.ts";
+import { useTyping } from "../typing.ts";
+import type { WidgetResult } from "../widgets.tsx";
+import { buildGuestChannels, withAgents } from "./channels.ts";
+import { NO_ANSWERS, registerBody, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
+
+interface GuestId {
+  id: string;
+  name: string;
+  /** The capability token registration minted — authorizes every guest call.
+   *  The public `id` is broadcast in rosters, so it is NOT a credential. */
+  token: string;
+  /** Which event this guest joined — every call is scoped to `/e/:eventId`. */
+  eventId: string;
+  /** The event's display title (from `/api/resolve-code`). */
+  title?: string;
+}
+
+const GK = "loom.guest";
+
+/** The last `!` alert each role's sign-in has seen (alerts.ts). */
+const GUEST_ALERTS = "loom.guest.alerts";
+
+/** A guest sign-in's read marks (threads.ts) and echoed choices. */
+const GUEST_READ = "loom.guest.read";
+const GUEST_ECHO = "loom.guest.echo";
+/** How many echoed choices a sign-in keeps. */
+const ECHO_CAP = 200;
+
+/** The guest's pick as their own line in the room the choice docked in,
+ *  just after everything already there (a half seq, so the story's answer
+ *  — the next real message — lands under it). */
+export function choiceEcho(channel: string, text: string, me: { id: string; name: string }, afterSeq: number): ChatMessage {
+  return {
+    seq: afterSeq + 0.5,
+    channel,
+    channelKind: channelHead(channel).kind,
+    title: channelHead(channel).title,
+    from: me.name,
+    kind: "line",
+    text,
+    ts: Date.now(),
+    audience: [me.id],
+    parentSeq: null,
+    hidden: false,
+  };
+}
+
+/** The stream with the guest's echoed choices folded in. */
+export function withEchoes(messages: ReadonlyMap<number, ChatMessage>, echoes: readonly ChatMessage[]): Map<number, ChatMessage> {
+  const out = new Map(messages);
+  for (const e of echoes) if (!out.has(e.seq)) out.set(e.seq, e);
+  return out;
+}
+
+function loadEchoes(load: <T>(key: string) => T | null, token: string | null): ChatMessage[] {
+  if (token === null) return [];
+  const raw = load<{ session?: unknown; list?: unknown }>(GUEST_ECHO);
+  return raw !== null && raw.session === token && Array.isArray(raw.list) ? (raw.list as ChatMessage[]) : [];
+}
+
+function saveEchoes(save: (key: string, value: unknown) => void, token: string, list: ChatMessage[]): ChatMessage[] {
+  const kept = list.slice(-ECHO_CAP);
+  save(GUEST_ECHO, { session: token, list: kept });
+  return kept;
+}
+
+// --- guest ------------------------------------------------------------------
+
+/** The one required decision (if any), and the channel it should dock under. */
+export function requiredDecision(
+  status: GuestView | null,
+  acts: { choose: (i: number) => void; join: (f: string) => void; escape: () => void },
+): { channel: string; decision: Decision } | null {
+  if (!status) return null;
+  if (status.pendingChoice) {
+    return {
+      channel: status.decisionChannel ?? "lobby",
+      decision: {
+        title: "Your move…",
+        options: status.pendingChoice.map((opt, i) => ({ label: opt, onClick: () => acts.choose(i) })),
+      },
+    };
+  }
+  // The side chooser is driven by the story's declared public factions —
+  // nothing is shown for a story that has none. A restricted (marked)
+  // program can't join a side: the server answers 403 until it's lifted.
+  const factions = status.factions ?? [];
+  if (!status.faction && !status.captured && !status.restricted && factions.length > 0) {
+    return {
+      channel: "lobby",
+      decision: {
+        title: "Choose your side",
+        options: factions.map((f, i) => ({
+          label: `Side with ${withThe(f)}`,
+          onClick: () => acts.join(f),
+          tone: i === 0 ? undefined : ("ghost" as const),
+        })),
+      },
+    };
+  }
+  // A captive may break out from the app — unless their prison is sealed
+  // (the story lets them out: a performer, a puzzle, a VR duck).
+  if (status.captured && status.canEscape !== false) {
+    return {
+      channel: "lobby",
+      decision: {
+        title: "You've been captured",
+        options: [{ label: "🏃 Make a break for it", onClick: () => acts.escape(), tone: "danger" }],
+      },
+    };
+  }
+  return null;
+}
+
+/** The sides a guest may defect to from the profile sheet: every other
+ *  public group, none while restricted (the server answers 403). */
+export function defectTargets(status: GuestView | null): string[] {
+  if (!status || status.restricted || !status.faction) return [];
+  return (status.factions ?? []).filter((f) => f !== status.faction);
+}
+
+/** How long a typed line waits for the server before the composer gives
+ *  the Send button back (the words stay in the box). */
+export const SAY_TIMEOUT_MS = 15_000;
+
+/** Why a typed message didn't go through, for a quiet banner — the server
+ *  names the reason (slow mode's wait, paused doors, a room you can't post
+ *  in), and the composer keeps the words so the guest can send them again.
+ *  `null` for a session the app is dropping anyway (401, or the unknown-token
+ *  404s), which explains itself on the join screen. */
+export function sayRefusalText(e: unknown): string | null {
+  if (e instanceof RequestTimeout) return "⚠️ No answer yet — check your connection. If your line doesn't show up in the room, send it again.";
+  if (!(e instanceof ApiError)) return "⚠️ Not sent — check your connection and try again.";
+  if (eventGone(e.status, e.message) || guestSessionDead(e.status, e.message) || performerSessionDead(e.status, e.message)) return null;
+  if (e.status === 429) return `⏳ Not sent: ${e.message}. Your message is still in the box.`;
+  if (e.status === 409 && /doors are closed/i.test(e.message)) return "⏸ Not sent: the show is paused. Your message is still in the box.";
+  if (e.status === 413) return `✂️ Not sent: ${e.message}. Your message is still in the box — shorten it and send again.`;
+  return `⛔ Not sent: ${e.message}`;
+}
+
+/** What a guest sees after pressing one of the story's buttons: the
+ *  story's reply to them, else a plain acknowledgement of the button. */
+export function actFeedback(replies: readonly string[] | undefined, label?: string): string {
+  const said = (replies ?? []).map((r) => r.trim()).filter((r) => r !== "");
+  if (said.length > 0) return said.join(" ");
+  return label ? `✔ ${label}` : "✔ Done.";
+}
+
+const NONE_OPENED: ReadonlySet<string> = new Set();
+
+export interface GuestSession {
+  me: GuestId | null;
+  status: GuestView | null;
+  connected: boolean;
+  /** The backlog has loaded — the rooms list is real, not a placeholder. */
+  ready: boolean;
+  /** Why the last session ended under us (the run restarted / went live /
+   *  ended) — shown on the join screen until the guest registers again. */
+  notice: string | null;
+  threads: Threads;
+  /** Join as `name` — a program from the picker, or (`wiki`) a directory
+   *  title; `claim` = an invitation's token for a reserved program. */
+  register: (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => Promise<void>;
+  /** The pictures this guest may switch to (their program's options). */
+  pictures: () => Promise<PictureChoices>;
+  /** Switch to one of those pictures (a serving key). */
+  setPicture: (key: string) => Promise<PictureChoices>;
+  join: (faction: string) => Promise<unknown>;
+  defect: (to: string) => Promise<unknown>;
+  choose: (index: number) => Promise<unknown>;
+  escape: () => Promise<unknown>;
+  /** Fire one of the story's `who: guest` interactions for yourself; the
+   *  story's reply (if any) banners, so it is never lost in the lobby. */
+  act: (name: string, label?: string) => Promise<unknown>;
+  /** Hybrid chat: type into a channel (a reply carries the root's seq). */
+  say: (channel: string, text: string, parentSeq?: number) => Promise<unknown>;
+  /** Access control: pull another participant into a membership-gated channel. */
+  inviteToChannel: (person: string, channel: string) => Promise<unknown>;
+  /** Leave a membership-gated channel. */
+  leaveChannel: (channel: string) => Promise<unknown>;
+  /** Codex: type (or scan) an unlock code. Resolves to the entry unlocked, if any. */
+  redeem: (code: string) => Promise<string | null>;
+  /** Check in at a room's sign (its slug, K-13) and open that room — or
+   *  banner why not (captured, on rails, a room not open yet). Resolves to
+   *  the room's channel, or null when refused. */
+  checkin: (at: string) => Promise<string | null>;
+  /** Codex: hand an entry you hold to another participant or a listed character. */
+  shareCodex: (entry: string, to: string) => Promise<unknown>;
+  /** The wallet (a story with a `currency:`): every call posts to its route;
+   *  the server's refusal (insufficient funds, too late…) banners quietly. */
+  wallet: {
+    send(to: string, amount: number): Promise<unknown>;
+    request(from: string, amount: number): Promise<unknown>;
+    respond(id: string, accept: boolean): Promise<unknown>;
+    offer(to: string, entry: string, side: "buy" | "sell", amount: number): Promise<unknown>;
+    accept(id: string): Promise<unknown>;
+    decline(id: string): Promise<unknown>;
+    cancel(id: string): Promise<unknown>;
+    stimulus(amount: number): Promise<unknown>;
+    /** The minter's reserve: mint `amount` into one program's account. */
+    grant(to: string, amount: number): Promise<unknown>;
+    /** The minter's reserve: freeze one program's outgoing coin. */
+    freeze(to: string): Promise<unknown>;
+    approve(id: string): Promise<unknown>;
+    deny(id: string): Promise<unknown>;
+  };
+  /** Open (creating if needed) a private thread with a guest, or a DM with a character. */
+  message: (person: { id: string; kind: "guest" | "character" }) => void;
+  /** The alert broadcast that just landed, until dismissed. */
+  alert: Alert | null;
+  dismissAlert: () => void;
+  /** Answer a widget card (a CAPTCHA, a poll) the story showed you. */
+  answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
+  /** Answers given this session, by card seq (the card renders resolved). */
+  widgetAnswers: ReadonlyMap<number, WidgetResult>;
+  /** Every message delivered to this guest, by seq (the raw stream the
+   *  threads are built from — a cutscene reads what is addressed to them). */
+  messages: ReadonlyMap<number, ChatMessage>;
+  leave: () => void;
+  /** A notification's room link is waiting to open (SW-PLAY-20). */
+  roomLinkPending: boolean;
+}
+
+export function useGuestSession(): GuestSession {
+  const host = usePlayHost();
+  const { load, save, drop } = host.storage;
+  const crawl = host.crawl;
+  const [me, setMe] = useState<GuestId | null>(() => {
+    const stored = load<GuestId>(GK);
+    // A pre-token session can't authorize any call — drop it so the guest
+    // re-registers cleanly rather than staring at 401s.
+    if (stored && !stored.token) {
+      drop(GK);
+      return null;
+    }
+    if (stored && !stored.eventId) stored.eventId = "default"; // migrate pre-multi-event sessions
+    return stored;
+  });
+  const [status, setStatus] = useState<GuestView | null>(null);
+  const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const base = me ? `/e/${encodeURIComponent(me.eventId)}` : "";
+  // EventSource can't set headers, so the capability token rides the URL.
+  const url = me ? `${base}/events?role=guest&token=${encodeURIComponent(me.token)}` : null;
+  /** The run restarted / went live / ended: this session is dead server-side
+   *  (every restart clears guest tokens), so drop it and say why. */
+  const dropSession = useCallback((why: string | null) => {
+    drop(GK);
+    setMe(null);
+    setStatus(null);
+    setReady(false);
+    setNotice(why);
+    host.onEnded("guest", why);
+  }, [drop, host]);
+  // `!` alerts: the mark of the last one seen survives a reconnect's
+  // history replay, so one that landed while the screen was off banners on
+  // wake (see alerts.ts). The hook needs the stream's messages, the stream
+  // needs the hook's `onHistory` — a ref breaks the cycle.
+  const alertsRef = useRef<ReturnType<typeof useAlerts> | null>(null);
+  const { typing, onTyping } = useTyping(me !== null ? { role: "guest" } : null);
+  const { messages, connected } = useChatStream(url, {
+    onSnapshot: (v) => setStatus(v as GuestView),
+    onTyping,
+    onHistory: (list) => {
+      alertsRef.current?.onHistory(list);
+      crawl.loaded(maxSeqOf(list)); // the backlog never crawls; only what lands from now on
+      setReady(true);
+    },
+    onLifecycle: (n) => {
+      if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
+    },
+    // The stream closed for good (a dead token — or the proxy's 502 while
+    // the server restarts): ask the server. Alive reopens the stream; a run
+    // that forgot this token (a restart we slept through) or an event that
+    // is gone drops the session and says why.
+    probe: () => (me === null ? Promise.resolve(null) : tokenDead(base, "guest", me.token)),
+    onDead: (dead) => {
+      if (dead) dropSession(lifecycleNotice(dead, SessionRole.Guest));
+    },
+  });
+  const alerts = useAlerts({
+    messages,
+    clock: status?.clock,
+    session: me?.token ?? null,
+    storage: host.storage,
+    storageKey: GUEST_ALERTS,
+    sound: host.sound,
+  });
+  alertsRef.current = alerts;
+  const alert: Alert | null = alerts.alert;
+
+  // Every action is scoped to the event the guest joined (`/e/:eventId/...`)
+  // and carries the guest's capability token — the server derives who is
+  // acting from the token, never from a client-supplied id. A 401 / "unknown
+  // guest" 404 means the run restarted while this phone wasn't listening.
+  const post = useCallback(
+    async <T,>(path: string, body?: unknown): Promise<T> => {
+      try {
+        return await api<T>(`${base}${path}`, body, me?.token);
+      } catch (e) {
+        // Only explain a session we are dropping right now — never overwrite
+        // the notice of one a `lifecycle` frame already dropped.
+        if (e instanceof ApiError && me !== null) {
+          if (eventGone(e.status, e.message)) dropSession(lifecycleNotice("ended", SessionRole.Guest));
+          else if (guestSessionDead(e.status, e.message)) dropSession(lifecycleNotice("reset", SessionRole.Guest));
+        }
+        throw e;
+      }
+    },
+    [base, me, dropSession],
+  );
+
+  const join = useCallback((faction: string) => post("/api/guest/join", { faction }), [post]);
+  const defect = useCallback((to: string) => post("/api/guest/defect", { to }), [post]);
+  // The guest's own pick, echoed into the thread as their bubble (the
+  // server records the choice, not a line), so the story's answer never
+  // reads as a non sequitur. Kept per sign-in so a reload keeps it.
+  const [echoes, setEchoes] = useState<ChatMessage[]>(() => loadEchoes(load, me?.token ?? null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setEchoes(loadEchoes(load, me?.token ?? null)), [me?.token]);
+  const pendingRef = useRef<{ options: string[] | null; channel: string }>({ options: null, channel: "lobby" });
+  pendingRef.current = { options: status?.pendingChoice ?? null, channel: status?.decisionChannel ?? "lobby" };
+  const choose = useCallback(
+    async (index: number) => {
+      const { options, channel } = pendingRef.current;
+      const text = options?.[index];
+      const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, maxSeqOf(messages.values())) : null;
+      if (echo !== null) {
+        crawl.claim(echo.seq); // your own words never crawl
+        setEchoes((prev) => saveEchoes(save, me!.token, [...prev, echo]));
+      }
+      try {
+        return await post("/api/guest/choose", { index });
+      } catch (e) {
+        if (echo !== null) setEchoes((prev) => saveEchoes(save, me!.token, prev.filter((m) => m.seq !== echo.seq)));
+        throw e;
+      }
+    },
+    [post, me, messages, crawl, save],
+  );
+  const shown = useMemo(() => withEchoes(messages, echoes), [messages, echoes]);
+  const escape = useCallback(() => post("/api/guest/escape", {}), [post]);
+  const act = useCallback(
+    async (name: string, label?: string) => {
+      const r = await post<{ ok: boolean; replies?: string[] }>("/api/guest/act", { name });
+      alertsRef.current?.raise(actFeedback(r.replies, label), { quiet: true });
+      return r;
+    },
+    [post],
+  );
+  // A refused line banners why and rejects, so the composer keeps the text.
+  const say = useCallback(
+    async (channel: string, text: string, parentSeq?: number) => {
+      try {
+        return await withTimeout(post("/api/guest/say", { channel, text, parentSeq }), SAY_TIMEOUT_MS);
+      } catch (e) {
+        const why = sayRefusalText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        throw e;
+      }
+    },
+    [post],
+  );
+  const register = useCallback(async (name: string, code: string, wiki?: string, picture?: string, claim?: string | null) => {
+    // Resolve the short event code to its event, then register there.
+    const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code });
+    const r = await api<{ id: string; name: string; token: string }>(
+      `/e/${encodeURIComponent(eventId)}/api/guest/register`,
+      registerBody(name, code, wiki, picture, claim),
+    );
+    const m: GuestId = { id: r.id, name: r.name, token: r.token, eventId, title };
+    crawl.reset();
+    save(GK, m);
+    setMe(m);
+    setNotice(null);
+    // Kept for a re-join after a cut session (beside loom.guest, the
+    // guest's own secret)…
+    rememberClaim(host.storage, code, claim);
+    // …and out of the address bar once in.
+    if (claim && host.ownsPage) {
+      try {
+        window.history.replaceState(null, "", `${window.location.pathname}${withoutClaim(window.location.search)}`);
+      } catch {
+        /* fine */
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const pictures = useCallback(() => post<PictureChoices>("/api/guest/picture", {}), [post]);
+  const setPicture = useCallback((picture: string) => post<PictureChoices>("/api/guest/picture", { picture }), [post]);
+  const leave = useCallback(() => {
+    drop(GK);
+    setMe(null);
+    setStatus(null);
+    setReady(false);
+    setNotice(null);
+    host.onEnded("guest", null);
+  }, [drop, host]);
+
+  const inviteToChannel = useCallback(
+    (person: string, channel: string) => post("/api/guest/channel/invite", { person, channel }),
+    [post],
+  );
+  const leaveChannel = useCallback((channel: string) => post("/api/guest/channel/leave", { channel }), [post]);
+
+  // --- codex + people ---
+  const redeem = useCallback(
+    async (code: string): Promise<string | null> => {
+      const r = await post<{ unlocked: string | null }>("/api/guest/codex/redeem", { code });
+      return r.unlocked;
+    },
+    [post],
+  );
+  // A refused share banners the server's reason (and resolves null), so it
+  // never looks like a share that worked.
+  const shareCodex = useCallback(
+    async (entry: string, to: string): Promise<unknown> => {
+      try {
+        return await post("/api/guest/codex/share", { entry, to });
+      } catch (e) {
+        const why = shareErrorText(e);
+        if (why !== null) alertsRef.current?.raise(why, { quiet: true });
+        return null;
+      }
+    },
+    [post],
+  );
+  // The wallet routes: the server's refusal is the whole story (it names
+  // the reason), so it banners quietly instead of throwing at a button.
+  const walletCall = useCallback(
+    async (sub: string, body: Record<string, unknown>): Promise<unknown> => {
+      try {
+        return await post(`/api/guest/wallet/${sub}`, body);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          alertsRef.current?.raise(e.message, { quiet: true });
+          return null;
+        }
+        throw e;
+      }
+    },
+    [post],
+  );
+  const wallet = useMemo(
+    () => ({
+      send: (to: string, amount: number) => walletCall("send", { to, amount }),
+      request: (from: string, amount: number) => walletCall("request", { from, amount }),
+      respond: (id: string, accept: boolean) => walletCall("respond", { id, accept }),
+      offer: (to: string, entry: string, side: "buy" | "sell", amount: number) => walletCall("offer", { to, entry, side, amount }),
+      accept: (id: string) => walletCall("accept", { id }),
+      decline: (id: string) => walletCall("decline", { id }),
+      cancel: (id: string) => walletCall("cancel", { id }),
+      stimulus: (amount: number) => walletCall("stimulus", { amount }),
+      grant: (to: string, amount: number) => walletCall("grant", { to, amount }),
+      freeze: (to: string) => walletCall("freeze", { to }),
+      approve: (id: string) => walletCall("approve", { id }),
+      deny: (id: string) => walletCall("deny", { id }),
+    }),
+    [walletCall],
+  );
+  // A wall QR's link carries `?unlock=<code>`: redeem it once we're signed
+  // in and the doors are open, then drop it from the URL so a reload
+  // doesn't try again.
+  const [openCodex, setOpenCodex] = useState(false);
+  const pendingUnlock = useRef<string | null>(host.ownsPage ? unlockFromSearch(window.location.search) : null);
+  useEffect(() => {
+    const code = pendingUnlock.current;
+    if (code === null || me === null || status === null) return;
+    pendingUnlock.current = null;
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${withoutUnlock(window.location.search)}`);
+    } catch {
+      /* fine */
+    }
+    void redeem(code)
+      .then(() => setOpenCodex(true))
+      .catch(() => {});
+  }, [me, status, redeem]);
+
+  // Widgets: one answer per card. The server refuses a second (409), and
+  // the snapshot lists the cards already answered so a reload renders them
+  // resolved (the result itself isn't replayed — an empty record marks it).
+  // Per sign-in: a new session (a re-join after a restart) starts clean (B2).
+  const [widgetAnswers, setWidgetAnswers] = usePerSession(me?.token ?? null, NO_ANSWERS);
+  const answeredList = status?.answered;
+  useEffect(() => {
+    if (answeredList === undefined || answeredList.length === 0) return;
+    setWidgetAnswers((prev) => {
+      if (answeredList.every((seq) => prev.has(seq))) return prev;
+      const next = new Map(prev);
+      for (const seq of answeredList) if (!next.has(seq)) next.set(seq, {});
+      return next;
+    });
+  }, [answeredList]);
+  const answerWidget = useCallback(
+    async (seq: number, result: WidgetResult) => {
+      setWidgetAnswers((prev) => new Map(prev).set(seq, result));
+      try {
+        await post("/api/guest/widget", { seq, result });
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 409)) {
+          setWidgetAnswers((prev) => {
+            const next = new Map(prev);
+            next.delete(seq);
+            return next;
+          });
+        }
+        throw e;
+      }
+    },
+    [post],
+  );
+
+  const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
+  const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
+  const threads = useThreads(withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing), {
+    store: host.storage,
+    slot: GUEST_READ,
+    session: me?.token ?? null,
+  });
+  const message = useCallback(
+    (person: { id: string; kind: "guest" | "character" }) => {
+      if (me === null) return;
+      const id = person.kind === "character" ? `dm:${person.id}` : pmChannelId(me.id, person.id);
+      setOpened((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+      threads.open(id);
+    },
+    [me, threads],
+  );
+  // A wall QR just unlocked something: show it where it landed.
+  useEffect(() => {
+    if (!openCodex) return;
+    setOpenCodex(false);
+    threads.open(CODEX_ROOM);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCodex]);
+  const threadsRef = useRef(threads);
+  threadsRef.current = threads;
+  const checkin = useCallback(
+    async (at: string): Promise<string | null> => {
+      try {
+        const r = await post<{ channel: string }>("/api/guest/checkin", { at });
+        threadsRef.current.open(r.channel);
+        return r.channel;
+      } catch (e) {
+        alertsRef.current?.raise(e instanceof Error ? e.message : "Check-in failed.", { quiet: true });
+        return null;
+      }
+    },
+    [post],
+  );
+  // A room's sign carries `?checkin=<slug>` (K-13): check in once signed in
+  // with the doors open, then open that room's chat — or banner why not
+  // (captured, still on rails, a room the story hasn't opened yet).
+  const pendingCheckin = useRef<string | null>(host.ownsPage ? checkinFromSearch(window.location.search) : null);
+  useEffect(() => {
+    const at = pendingCheckin.current;
+    if (at === null || me === null || status === null) return;
+    pendingCheckin.current = null;
+    try {
+      window.history.replaceState(null, "", `${window.location.pathname}${withoutCheckin(window.location.search)}`);
+    } catch {
+      /* fine */
+    }
+    void checkin(at);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me, status, post]);
+  const roomLinkPending = useRoomLinks(threads, me !== null && ready && status !== null, false);
+  const dismissAlert = alerts.dismiss;
+  // Signed out (the join screens), the landing's skin; signed in, the story's.
+  const landing = useLandingBrand();
+  useTheme(me === null ? landing.theme : status?.theme);
+
+  return {
+    me,
+    status,
+    connected,
+    ready,
+    notice,
+    threads,
+    register,
+    pictures,
+    setPicture,
+    join,
+    defect,
+    choose,
+    escape,
+    act,
+    say,
+    inviteToChannel,
+    leaveChannel,
+    redeem,
+    checkin,
+    shareCodex,
+    wallet,
+    message,
+    alert,
+    dismissAlert,
+    answerWidget,
+    widgetAnswers,
+    messages: shown,
+    leave,
+    roomLinkPending,
+  };
+}

@@ -12,7 +12,7 @@ import { HelpSheet } from "./help.tsx";
 import { PerformerApp } from "./performer.tsx";
 import { DirectorApp, initialRole, roleForBrand, type AppRole } from "./director.tsx";
 import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { useDocumentTitle, useLandingBrand, useTheme } from "./session.ts";
+import { useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 
 export function App({ resume = null }: { resume?: ResumeLink | null }) {
   // `?role=director` (W-26) opens the phone cue sheet whatever else the
