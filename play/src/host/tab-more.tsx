@@ -336,7 +336,7 @@ function AnswerSheet({ agent, guest, name, onClose }: { agent: string; guest: st
           </li>
         ))}
       </ol>
-      <textarea className="host-text" rows={3} maxLength={2000} aria-label={`Reply as ${agent}`} placeholder={`Reply to ${name} as ${agent}…`} value={text} onChange={(e) => setText(e.target.value)} />
+      <textarea className="host-text in-sheet" rows={3} maxLength={2000} aria-label={`Reply as ${agent}`} placeholder={`Reply to ${name} as ${agent}…`} value={text} onChange={(e) => setText(e.target.value)} />
       <div className="host-row-actions">
         <ActButton
           className="host-primary"

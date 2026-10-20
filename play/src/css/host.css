@@ -110,9 +110,9 @@
   box-shadow: var(--sunken); font: 16px var(--ui-font);
 }
 .host-text { resize: vertical; line-height: 1.35; }
-/* In a sheet every child sits 8 px in from each side (base's `.sheet > *`):
+/* In a sheet every child sits 8 px in from each side (base's sheet rule):
    a 100 % box would run past the sheet's right edge. */
-.sheet > .host-text, .sheet > .host-filter { width: calc(100% - 16px); }
+.host-text.in-sheet { width: calc(100% - 16px); }
 .host-num { width: 90px; margin: 0; }
 .host-filter::placeholder, .host-text::placeholder, .host-num::placeholder { color: var(--dim-ink); }
 
