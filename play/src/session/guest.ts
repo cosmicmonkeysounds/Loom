@@ -11,7 +11,9 @@ import { pmChannelId, shareErrorText, unlockFromSearch, withoutUnlock } from "..
 import { usePlayHost } from "../host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
 import { CODEX_ROOM, channelHead, withThe } from "../rooms/spaces.ts";
+import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
+import { unreadOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
@@ -276,6 +278,8 @@ export function useGuestSession(): GuestSession {
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setStatus(v as GuestView),
     onTyping,
+    // The crawl decides at arrival (wave 13: a no-op until the stream lane).
+    onMessage: (m) => crawl.arrived(m, me !== null ? { id: me.id, name: me.name } : null),
     onHistory: (list) => {
       alertsRef.current?.onHistory(list);
       crawl.loaded(maxSeqOf(list)); // the backlog never crawls; only what lands from now on
@@ -528,11 +532,11 @@ export function useGuestSession(): GuestSession {
 
   const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
   const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
-  const threads = useThreads(withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing), {
-    store: host.storage,
-    slot: GUEST_READ,
-    session: me?.token ?? null,
-  });
+  const threads = useThreads(
+    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing),
+    { store: host.storage, slot: GUEST_READ, session: me?.token ?? null },
+    { me: me !== null ? { id: me.id, name: me.name, booth: false } : undefined, unread: unreadOf, order: roomOrder },
+  );
   const message = useCallback(
     (person: { id: string; kind: "guest" | "character" }) => {
       if (me === null) return;

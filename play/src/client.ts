@@ -268,6 +268,78 @@ export function useOfflineFor(connected: boolean, ms = OFFLINE_AFTER_MS): boolea
   return offline;
 }
 
+/** What `useChatStream` reports, frame by frame. All optional, so guests
+ *  and performers share this one wiring. */
+export interface ChatStreamHandlers {
+  onSnapshot?: (v: unknown) => void;
+  onResponse?: (text: string) => void;
+  onLifecycle?: (n: LifecycleNotice) => void;
+  /** An agent-voiced character started / stopped composing a reply. */
+  onTyping?: (n: TypingNotice) => void;
+  /** The full thread history just (re)loaded — the baseline for "new". */
+  onHistory?: (messages: ChatMessage[]) => void;
+  /** A live `message` frame (never the history), before it is applied —
+   *  the crawl decides at arrival (wave 13, `Crawl.arrived`). */
+  onMessage?: (m: ChatMessage) => void;
+  /** Is the session still alive? Asked when the stream closes for good:
+   *  `null` reopens it (with a backoff), a verdict ends it (`onDead`). */
+  probe?: () => Promise<StreamVerdict>;
+  /** The stream is over for good: the probe's verdict (a token the run no
+   *  longer knows, the event gone), or `null` when there is no probe and
+   *  the server refused the stream. */
+  onDead?: (verdict: StreamVerdict) => void;
+}
+
+/** How a frame changes the message map. */
+export interface ChatMapOps {
+  /** Replace the whole map (a history frame). */
+  replace: (list: ChatMessage[]) => void;
+  upsert: (m: ChatMessage) => void;
+  drop: (seq: number) => void;
+}
+
+/** One stream frame → the handlers + the message map (pure; `useChatStream`'s
+ *  body, exported so the frame rules are testable without a DOM). */
+export function chatFrameHandler(handlers: () => ChatStreamHandlers, ops: ChatMapOps): (frame: ChatFrame, data: string) => void {
+  return (frame, data) => {
+    const d = JSON.parse(data) as unknown;
+    switch (frame) {
+      case "snapshot":
+        handlers().onSnapshot?.(d);
+        return;
+      case "response":
+        handlers().onResponse?.(String((d as Record<string, unknown>)["text"]));
+        return;
+      case "lifecycle":
+        handlers().onLifecycle?.(d as LifecycleNotice);
+        return;
+      case "typing":
+        handlers().onTyping?.(d as TypingNotice);
+        return;
+      case "history": {
+        const list = d as ChatMessage[];
+        handlers().onHistory?.(list);
+        ops.replace(list);
+        return;
+      }
+      case "message":
+        handlers().onMessage?.(d as ChatMessage);
+        ops.upsert(d as ChatMessage);
+        return;
+      // An ephemeral message aged out — drop it from the view.
+      case "messageExpired":
+        ops.drop((d as { seq: number }).seq);
+        return;
+      case "messageModerated": {
+        const m = d as ChatMessage | { seq: number; hidden: boolean };
+        if ("text" in m) ops.upsert(m); // admin payload: full message + flag
+        else if (m.hidden) ops.drop(m.seq); // guest view of a hide
+        return;
+      }
+    }
+  };
+}
+
 /**
  * Subscribe to an SSE endpoint and maintain the message map. `onSnapshot`
  * receives role-specific snapshots (`snapshot` event); `onResponse` receives
@@ -276,25 +348,7 @@ export function useOfflineFor(connected: boolean, ms = OFFLINE_AFTER_MS): boolea
  * this one wiring. With a `probe`, a stream the server or a proxy refused is
  * reopened until the probe says the session is dead (`openChatFeed`).
  */
-export function useChatStream(
-  url: string | null,
-  handlers: {
-    onSnapshot?: (v: unknown) => void;
-    onResponse?: (text: string) => void;
-    onLifecycle?: (n: LifecycleNotice) => void;
-    /** An agent-voiced character started / stopped composing a reply. */
-    onTyping?: (n: TypingNotice) => void;
-    /** The full thread history just (re)loaded — the baseline for "new". */
-    onHistory?: (messages: ChatMessage[]) => void;
-    /** Is the session still alive? Asked when the stream closes for good:
-     *  `null` reopens it (with a backoff), a verdict ends it (`onDead`). */
-    probe?: () => Promise<StreamVerdict>;
-    /** The stream is over for good: the probe's verdict (a token the run no
-     *  longer knows, the event gone), or `null` when there is no probe and
-     *  the server refused the stream. */
-    onDead?: (verdict: StreamVerdict) => void;
-  },
-): ChatStream {
+export function useChatStream(url: string | null, handlers: ChatStreamHandlers): ChatStream {
   const [messages, setMessages] = useState<Map<number, ChatMessage>>(new Map());
   const [connected, setConnected] = useState(false);
   // Keep the latest handlers without re-opening the stream on every render.
@@ -306,59 +360,27 @@ export function useChatStream(
   useEffect(() => {
     if (!url) return;
     setMessages(new Map());
-    const upsert = (m: ChatMessage) =>
-      setMessages((prev) => {
-        const next = new Map(prev);
-        next.set(m.seq, m);
-        return next;
-      });
-    const drop = (seq: number) =>
-      setMessages((prev) => {
-        if (!prev.has(seq)) return prev;
-        const next = new Map(prev);
-        next.delete(seq);
-        return next;
-      });
-    const onFrame = (frame: ChatFrame, data: string) => {
-      const d = JSON.parse(data) as unknown;
-      switch (frame) {
-        case "snapshot":
-          h.current.onSnapshot?.(d);
-          return;
-        case "response":
-          h.current.onResponse?.(String((d as Record<string, unknown>)["text"]));
-          return;
-        case "lifecycle":
-          h.current.onLifecycle?.(d as LifecycleNotice);
-          return;
-        case "typing":
-          h.current.onTyping?.(d as TypingNotice);
-          return;
-        case "history": {
-          const list = d as ChatMessage[];
-          h.current.onHistory?.(list);
-          setMessages(() => {
-            const m = new Map<number, ChatMessage>();
-            for (const msg of list) m.set(msg.seq, msg);
-            return m;
-          });
-          return;
-        }
-        case "message":
-          upsert(d as ChatMessage);
-          return;
-        // An ephemeral message aged out — drop it from the view.
-        case "messageExpired":
-          drop((d as { seq: number }).seq);
-          return;
-        case "messageModerated": {
-          const m = d as ChatMessage | { seq: number; hidden: boolean };
-          if ("text" in m) upsert(m); // admin payload: full message + flag
-          else if (m.hidden) drop(m.seq); // guest view of a hide
-          return;
-        }
-      }
-    };
+    const onFrame = chatFrameHandler(() => h.current, {
+      replace: (list) =>
+        setMessages(() => {
+          const m = new Map<number, ChatMessage>();
+          for (const msg of list) m.set(msg.seq, msg);
+          return m;
+        }),
+      upsert: (m) =>
+        setMessages((prev) => {
+          const next = new Map(prev);
+          next.set(m.seq, m);
+          return next;
+        }),
+      drop: (seq) =>
+        setMessages((prev) => {
+          if (!prev.has(seq)) return prev;
+          const next = new Map(prev);
+          next.delete(seq);
+          return next;
+        }),
+    });
     const env = browserFeedEnv(probing ? () => h.current.probe?.() ?? Promise.resolve(null) : undefined);
     return openChatFeed(
       url,

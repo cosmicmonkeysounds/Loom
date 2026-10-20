@@ -9,7 +9,9 @@ import { usePlayHost } from "../host.ts";
 import { BOOTH_SIGNED_OUT, SessionRole, afterLifecycle, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
+import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
+import { unreadOf } from "../stream/badges.ts";
 import { questSummary } from "../stream/runs.ts";
 import type { Channel, ChatMessage, PrimeView } from "../types.ts";
 import { useTyping } from "../typing.ts";
@@ -303,6 +305,8 @@ export function usePrimeSession(): PrimeSession {
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
+    // The crawl decides at arrival (wave 13: a no-op until the stream lane).
+    onMessage: (m) => crawl.arrived(m, auth !== null ? { id: auth.character, name: auth.character } : null),
     onHistory: (list) => {
       alertsRef.current?.onHistory(list);
       crawl.loaded(maxSeqOf(list));
@@ -502,7 +506,11 @@ export function usePrimeSession(): PrimeSession {
     forMe: boothFilter,
   });
   alertsRef.current = alerts;
-  const threads = useThreads(buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)));
+  const threads = useThreads(
+    buildPrimeChannels(messages, view, new Set(widgetAnswers.keys())).map((c) => (typing.has(c.id) ? { ...c, typing: typing.get(c.id) } : c)),
+    undefined,
+    { me: auth !== null ? { id: auth.character, name: auth.character, booth: true } : undefined, unread: unreadOf, order: roomOrder },
+  );
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);

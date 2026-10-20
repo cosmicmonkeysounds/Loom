@@ -11,6 +11,10 @@
 //! share a session, a theme, a keystroke, or a crawl.
 
 import { createContext, useContext } from "react";
+import { createCrawl } from "./crawl.ts";
+import type { ChatMessage } from "./types.ts";
+
+export { createCrawl } from "./crawl.ts";
 
 /** Key/value persistence for the role sessions (`loom.guest` / `loom.prime`). */
 export interface SessionStorage {
@@ -19,63 +23,44 @@ export interface SessionStorage {
   drop(key: string): void;
 }
 
+/** How a line crawls (wave 13): not at all, the quick crawl of scripted
+ *  speech, or the slow effect crawl of glitch text. */
+export type CrawlTier = "none" | "fast" | "fx";
+
 /**
  * Which lines crawl in like game dialogue: only a line that *arrives* while
  * you are watching — never the backlog, and never again once it has crawled
  * (re-opening a room must not replay it). Sessions set `baseline` from the
  * history frame; the bubble marks a seq done the moment it starts.
+ * Implemented in `crawl.ts` (`createCrawl`).
  */
 export interface Crawl {
   /** Reset for a new stream (a fresh sign-in). */
   reset(): void;
   /** The backlog just loaded: everything at or below `maxSeq` is old news. */
   loaded(maxSeq: number): void;
-  /** Should this seq crawl now? Claims it if so (one crawl, ever). */
+  /** Should this seq crawl now? Claims it if so (one crawl, ever).
+   *  Legacy: still used by MessageBubble until the stream lane replaces it. */
   claim(seq: number): boolean;
   /** Lines crawl one at a time, in order, like dialogue: `go` runs once
    *  every earlier line still crawling has finished. */
   start(seq: number, go: () => void): void;
   /** A crawl finished (or its bubble left the screen) — release the next. */
   finish(seq: number): void;
-}
-
-export function createCrawl(): Crawl {
-  let baseline = Number.MAX_SAFE_INTEGER;
-  const done = new Set<number>();
-  let active: number | null = null;
-  let queue: Array<{ seq: number; go: () => void }> = [];
-  const pump = () => {
-    if (active !== null || queue.length === 0) return;
-    queue.sort((a, b) => a.seq - b.seq);
-    const next = queue.shift()!;
-    active = next.seq;
-    next.go();
-  };
-  return {
-    reset() {
-      baseline = Number.MAX_SAFE_INTEGER;
-      done.clear();
-      active = null;
-      queue = [];
-    },
-    loaded(maxSeq) {
-      baseline = maxSeq;
-    },
-    claim(seq) {
-      if (seq <= baseline || done.has(seq)) return false;
-      done.add(seq);
-      return true;
-    },
-    start(seq, go) {
-      queue.push({ seq, go });
-      pump();
-    },
-    finish(seq) {
-      if (active === seq) active = null;
-      else queue = queue.filter((q) => q.seq !== seq);
-      pump();
-    },
-  };
+  /** The room on screen now; null for the rooms list / a sheet. Called by
+   *  ChannelView + CutsceneStage on mount / unmount. Page visibility is the
+   *  crawl's own job (`watchVisibility`), never the apps'. */
+  setOpen(channelId: string | null): void;
+  /** A live `message` frame arrived (never history): decide now whether and
+   *  how it crawls. `me` is the viewer (the guest, or the booth's character). */
+  arrived(m: ChatMessage, me: { id: string; name: string } | null): void;
+  /** How a seq crawls: "none" once decided not to (or unknown). Pure read. */
+  tierOf(seq: number): CrawlTier;
+  /** Tap-to-finish: complete the active line and everything queued (in
+   *  `channelId`, or all). */
+  flush(channelId?: string): void;
+  /** Notified on flush / tier decisions (for re-render). Returns an unsubscribe. */
+  subscribe(fn: () => void): () => void;
 }
 
 export interface PlayHost {
@@ -135,7 +120,7 @@ export const browserHost: PlayHost = {
   ownsPage: true,
   sound: true,
   wide: null,
-  crawl: createCrawl(),
+  crawl: createCrawl({ watchVisibility: true }),
   onEnded: () => {},
 };
 

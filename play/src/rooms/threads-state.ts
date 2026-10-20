@@ -3,6 +3,7 @@
 //! badges, decision-pulls, last-seen marks, open / back.
 
 import { useEffect, useState } from "react";
+import { unreadOf } from "../stream/badges.ts";
 import { roomOrder } from "./order.ts";
 import { groupBySpace, type SpaceGroup } from "./spaces.ts";
 import type { Channel, ChatMessage } from "../types.ts";
@@ -56,6 +57,24 @@ export function advanceMarks(marks: ReadonlyMap<string, number>, messages: Itera
   return next ?? marks;
 }
 
+/** Who is reading: the guest (`id` = guest id, `name` = their name) or a
+ *  booth (`id` = `name` = the character). */
+export interface Viewer {
+  id: string;
+  name: string;
+  booth: boolean;
+}
+
+/** How a session tunes the room list (wave 13 seams). */
+export interface ThreadsOptions {
+  /** The viewer the badge rule counts for (a booth holds rows addressed to guests too). */
+  me?: Viewer;
+  /** How many badge-worthy messages a channel has past `seen` (`stream/badges.ts`). */
+  unread?: (c: Channel, seen: number, me: Viewer | undefined) => number;
+  /** Sidebar order (`rooms/order.ts`). */
+  order?: (a: Channel, b: Channel) => number;
+}
+
 /**
  * Layer unread counts + open/close navigation over a freshly-built channel
  * set. A thread is "unread" when it has messages past the last-seen mark or
@@ -63,7 +82,9 @@ export function advanceMarks(marks: ReadonlyMap<string, number>, messages: Itera
  * decisions, unread, populated rooms, recency) so an unanswered choice
  * always pulls focus and an empty room never crowds the top.
  */
-export function useThreads(channels: Channel[], persist?: ReadMarkPersist): Threads {
+export function useThreads(channels: Channel[], persist?: ReadMarkPersist, opts?: ThreadsOptions): Threads {
+  const unread = opts?.unread ?? unreadOf;
+  const order = opts?.order ?? roomOrder;
   const storeKey = persist?.session ?? null;
   const load = (): ReadonlyMap<string, number> => {
     if (persist === undefined || storeKey === null) return new Map();
@@ -97,12 +118,8 @@ export function useThreads(channels: Channel[], persist?: ReadMarkPersist): Thre
   }, [activeId, activeMax, storeKey]);
 
   const list = channels
-    .map((c) => {
-      const seen = readMarks.get(c.id) ?? -1;
-      const fresh = c.messages.filter((m) => m.seq > seen).length;
-      return { ...c, unread: c.decision ? Math.max(1, fresh) : fresh };
-    })
-    .sort(roomOrder);
+    .map((c) => ({ ...c, unread: unread(c, readMarks.get(c.id) ?? -1, opts?.me) }))
+    .sort(order);
 
   return {
     list,

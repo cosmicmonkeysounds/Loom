@@ -151,6 +151,12 @@ export function ChannelView({
   /** Sticky notices to show above the stream (`activePins`). */
   pins?: ChatMessage[];
 }) {
+  // The room on screen, for the crawl's arrival rule (wave 13 seam).
+  const host = usePlayHost();
+  useEffect(() => {
+    host.crawl.setOpen(channel.id);
+    return () => host.crawl.setOpen(null);
+  }, [host, channel.id]);
   // Channel-type rules: a read-only channel hides the composer; a
   // non-threadable channel hides the reply affordance. (Derived channels omit
   // both flags → open + threadable.)
