@@ -92,9 +92,9 @@ describe("the NEXT bar's second line", () => {
     expect(barLine(base)).toEqual({ kind: "strip" });
   });
   it("says the view is old once a poll fails, and how old", () => {
-    expect(barLine({ ...base, connected: false, error: "Can't reach the server", now: 22_000 })).toEqual({ kind: "stale", text: "⚠ Can't reach the server · last update 12 s ago" });
+    expect(barLine({ ...base, connected: false, error: "Can't reach the server", now: 22_000 })).toEqual({ kind: "stale", text: "⚠ Last update 12 s ago · Can't reach the server" });
     expect(barLine({ ...base, connected: false, error: "This booth isn't a host any more.", now: 11_000 }).kind).toBe("stale");
-    expect(staleText(null, 0, 200_000)).toBe("⚠ Reconnecting… · last update 3 m ago");
+    expect(staleText(null, 0, 200_000)).toBe("⚠ Last update 3 m ago · Reconnecting…");
     // Stale beats the armed prompt: never fire off an old screen unwarned.
     expect(barLine({ ...base, connected: false, armed: true }).kind).toBe("stale");
   });

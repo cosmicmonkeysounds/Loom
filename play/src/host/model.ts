@@ -176,10 +176,11 @@ export function refusedLive(p: RefusedPress, now: number): boolean {
  *  stays under Needs for the minute). */
 export const REFUSED_BAR_MS = 20_000;
 
-/** "⚠ Can't reach the server · last update 12 s ago": the bar's second
- *  line while polls fail, so the host never decides off an old screen. */
+/** "⚠ Last update 12 s ago · Can't reach the server": the bar's second
+ *  line while polls fail, so the host never decides off an old screen. The
+ *  age leads: a phone's one line cuts the end off. */
 export function staleText(error: string | null, receivedAt: number, now: number): string {
-  return `⚠ ${error ?? "Reconnecting…"} · last update ${agoText(now - receivedAt)}`;
+  return `⚠ Last update ${agoText(now - receivedAt)} · ${error ?? "Reconnecting…"}`;
 }
 
 /** What the NEXT bar's second line shows, first match wins: a fresh toast,

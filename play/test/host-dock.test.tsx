@@ -69,7 +69,8 @@ describe("the NEXT bar in the dock", () => {
   });
   it("says the view is old when the poll fails, and dims FIRE", () => {
     const html = dock(client(hostFixture(), { connected: false, error: "This booth isn't a host any more." }));
-    expect(html).toContain("⚠ This booth isn&#x27;t a host any more. · last update");
+    expect(html).toContain("⚠ Last update");
+    expect(html).toContain(" · This booth isn&#x27;t a host any more.");
     expect(html).toMatch(/class="host-fire[^"]*stale/u);
     expect(html).toMatch(/class="host-bar [^"]*stale/u);
   });

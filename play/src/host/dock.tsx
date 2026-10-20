@@ -233,6 +233,13 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
       openCard(id);
     },
   };
+  const toggle = () => {
+    if (open) return close();
+    // The bar's one line cuts a refusal's reason short: open on Needs,
+    // where it is whole.
+    if (line2.kind === "refused") setTab("needs");
+    setOpen(true);
+  };
   return (
     <HostContext.Provider value={ctx}>
       <div className={`host-dock ${wide ? "wide" : ""} ${open ? "open" : ""}`} ref={dockRef}>
@@ -248,7 +255,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
             </Drawer>
           </>
         )}
-        <HostNextBar bar={bar} desk={desk} open={open} stale={stale} line2={line2} strip={strip} barMain={barMain} onToggle={() => (open ? close() : setOpen(true))} />
+        <HostNextBar bar={bar} desk={desk} open={open} stale={stale} line2={line2} strip={strip} barMain={barMain} onToggle={toggle} />
         <CuePicker desk={desk} roster={view.roster} suggest={suggestion !== null ? { id: suggestion.id, hint: suggestionHint(suggestion) } : null} />
       </div>
     </HostContext.Provider>
