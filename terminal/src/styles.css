@@ -518,6 +518,13 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
   color: var(--phosphor);
 }
 .world-tag.orbit { color: var(--phosphor-dim); }
+/* A window's counts line: small, so an empty room isn't silent about where everyone is. */
+.world-counts {
+  font-size: 0.5em;
+  letter-spacing: 0.14em;
+  color: var(--phosphor-dim);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
 .world-tag .rec {
   width: 0.7em;
   height: 0.7em;
@@ -644,6 +651,7 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .world.full .world-top { padding-right: 3em; }
 .world.full .world-banner { font-size: 0.8em; }
 .world.full .world-tag { font-size: 0.6em; }
+.world.full .world-counts { font-size: 0.55em; }
 .world.full .minimap { width: clamp(160px, 22%, 360px); right: 18px; bottom: 18px; }
 .world.full .minimap svg { max-height: 40vh; }
 .world.full .world-celebrate { font-size: 1.4em; }
