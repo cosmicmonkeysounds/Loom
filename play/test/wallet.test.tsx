@@ -777,3 +777,28 @@ describe("wallet glyphs follow the live state; the recipient isn't shown a hidde
     expect(walletSummary(view({ transfers: [tx()] }), "me")).toBe("🪙 120 Truthcoin · 1 pending");
   });
 });
+
+describe("casino cards (wave 15)", () => {
+  const bet = (step: "won" | "lost" | "push", payout: number): WalletCard => ({
+    kind: "casino",
+    id: "c1",
+    step,
+    from: "g-1",
+    fromName: "Winamp",
+    to: "g-1",
+    toName: "Winamp",
+    amount: 10,
+    unit: "Truthcoin",
+    game: "THE COIN",
+    pick: "HEADS",
+    roll: step === "won" ? "HEADS" : "TAILS",
+    payout,
+  });
+  it("titles the sitting, glyphs every bet 🎰 and words each step", () => {
+    expect(walletCardTitle(bet("won", 20))).toBe("The casino");
+    expect(walletGlyph(bet("lost", 0))).toBe("🎰");
+    expect(walletStepLine(bet("won", 20))).toBe("🎰 THE COIN · 10 on HEADS → HEADS · won 20");
+    expect(walletStepLine(bet("lost", 0))).toBe("🎰 THE COIN · 10 on HEADS → TAILS · lost");
+    expect(walletStepLine(bet("push", 10))).toBe("🎰 THE COIN · 10 on HEADS → TAILS · stake back");
+  });
+});

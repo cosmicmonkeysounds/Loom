@@ -486,7 +486,9 @@ export type WalletRequestState = "open" | "paying" | "paid" | "declined" | "expi
 export type WalletOfferState = "open" | "accepted" | "declined" | "failed" | "expired" | "cancelled";
 // `grant` = the minter paid one person from the reserve; `freeze` = the
 // minter froze one person's coin (`settleAt` = when it thaws).
-export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval" | "grant" | "freeze";
+// `casino` = a bet at the casino terminal: one thread per sitting, steps
+// `won` / `lost` / `push`.
+export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval" | "grant" | "freeze" | "casino";
 export type WalletStep =
   | "sent"
   | "pending"
@@ -512,7 +514,11 @@ export type WalletStep =
   | "granted"
   | "frozen"
   | "imposed"
-  | "thawed";
+  | "thawed"
+  /** A casino bet: won (paid more than the stake), lost, push (the stake back). */
+  | "won"
+  | "lost"
+  | "push";
 
 /** One wallet card as this viewer sees it (mirror of server/wallet.ts
  *  `WalletCard`): `kind` + `step` say which side the viewer is on; `id`
@@ -539,6 +545,11 @@ export interface WalletCard {
   closedBy?: string;
   /** The approver's display name, on a card that waits on them. */
   approver?: string;
+  /** A casino bet: the game, the pick, the roll in words, everything paid back. */
+  game?: string;
+  pick?: string;
+  roll?: string;
+  payout?: number;
 }
 
 export interface WalletTxView {
