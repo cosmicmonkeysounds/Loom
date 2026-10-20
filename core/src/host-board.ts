@@ -144,6 +144,8 @@ export interface JudgingRow {
   proposed: FactVerdictLike;
   final: string | null;
   at: number;
+  /** `FilingLike.logAt`, when the server sends it (orders a restarted night). */
+  logAt?: number;
   /** The key answer it nearly matched, else null. */
   near: string | null;
   /** The story's `judge:` character is being asked to rule. */
@@ -203,7 +205,9 @@ export function ruledFilings(facts: FactsLike): Array<FilingRow & { question: st
   for (const q of facts.questions) {
     for (const row of questionFilings(facts, q.id)) if (row.ruling !== null) out.push({ ...row, question: q.id, ruling: row.ruling });
   }
-  return out.sort((a, b) => b.ruling.at - a.ruling.at);
+  // By log position when both carry one (a restart re-stamps every
+  // `ruling.at`), else by when this server saw the ruling.
+  return out.sort((a, b) => (typeof a.logAt === "number" && typeof b.logAt === "number" ? b.logAt - a.logAt : b.ruling.at - a.ruling.at));
 }
 
 /** A filing's near-miss key, else null. */
@@ -220,10 +224,12 @@ export function pendingFilings(facts: FactsLike): JudgingRow[] {
   for (const q of facts.questions) {
     for (const f of q.filings) {
       if (f.final !== null) continue;
-      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) });
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, ...(typeof f.logAt === "number" ? { logAt: f.logAt } : {}), near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) });
     }
   }
-  return rows.sort((a, b) => a.at - b.at);
+  // Oldest first, by log position when both carry one: a restart re-stamps
+  // every `at`, which would list a whole night in question order.
+  return rows.sort((a, b) => (typeof a.logAt === "number" && typeof b.logAt === "number" ? a.logAt - b.logAt : a.at - b.at));
 }
 
 /** How many filings wait as near misses. */

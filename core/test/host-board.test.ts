@@ -630,6 +630,18 @@ describe("hostView", () => {
       },
     });
     expect(hostView(input({ mod: restarted })).judging!.recent.map((r) => r.question)).toEqual(["H2", "H3", "H1"]);
+    // Pending (oldest first) and the rulings list (newest first) follow the log too.
+    const waiting = mod({
+      facts: {
+        mode: "review",
+        questions: [
+          { id: "H1", round: 1, text: "?", filings: [filing({ question: "H1", final: null, at: 7, logAt: 30 }), filing({ person: "g4", name: "Di", question: "H1", final: "accurate", at: 7, logAt: 25, ruling: { by: "agent:T", same: true, why: "", at: 7 } })] },
+          { id: "H2", round: 2, text: "?", filings: [filing({ person: "g2", name: "Bo", question: "H2", final: null, at: 7, logAt: 10 }), filing({ person: "g5", name: "Ed", question: "H2", final: "accurate", at: 7, logAt: 40, ruling: { by: "agent:T", same: true, why: "", at: 7 } })] },
+        ],
+      },
+    });
+    expect(pendingFilings(waiting.facts!).map((r) => r.question)).toEqual(["H2", "H1"]);
+    expect(ruledFilings(waiting.facts!).map((r) => r.name)).toEqual(["Ed", "Di"]);
     expect(newestFilingFirst({ at: 9, ruling: null }, { at: 1, ruling: { by: "T", same: true, why: "", at: 50 } })).toBeGreaterThan(0);
   });
 
