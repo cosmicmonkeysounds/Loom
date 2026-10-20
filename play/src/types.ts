@@ -3,11 +3,13 @@
 //! projections in `server/views.ts`.
 
 import type { AlertLevel, MomentClass } from "../../core/src/delivery.ts";
+import type { ShowClock } from "../../core/src/show-clock.ts";
 
 // Wave 13: the interrupt ladder and the host view are dependency-free core
 // modules, re-exported so every app reads one definition.
 export type { AlertLevel, MomentClass } from "../../core/src/delivery.ts";
 export type { HostView, HostNeed, HostPerson, HostJudging, NeedTarget } from "../../core/src/host-board.ts";
+export type { ShowClock } from "../../core/src/show-clock.ts";
 
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
 
@@ -190,6 +192,11 @@ export interface GuestView {
   theme?: string;
   /** Story clock (ms) when the server built this view — "now" for `ts`. */
   clock?: number;
+  /** The show clock (wave 13 K2): show minutes after midnight when the view
+   *  was built (past 1440 = after midnight) and whether it runs. Re-base on
+   *  every snapshot; tick from the receive time while `running`. Absent =
+   *  no clock (the story set none, or an older server). */
+  showClock?: ShowClock;
   role: string | null;
   faction: string | null;
   score: number;
@@ -275,6 +282,11 @@ export interface PrimeView {
   theme?: string;
   /** Story clock (ms) when the server built this view — "now" for `ts`. */
   clock?: number;
+  /** The show clock (wave 13 K2): show minutes after midnight when the view
+   *  was built (past 1440 = after midnight) and whether it runs. Re-base on
+   *  every snapshot; tick from the receive time while `running`. Absent =
+   *  no clock (the story set none, or an older server). */
+  showClock?: ShowClock;
   faction: string | null;
   guests: PrimeGuest[];
   channels: ChannelSnapshot[];
