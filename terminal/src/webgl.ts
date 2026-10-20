@@ -3,8 +3,9 @@
 //! locked-down WebView) have none. Without it the world view would fail,
 //! fall back, retry 15 s later and fail again forever — "SIMULATION
 //! UNAVAILABLE" on a loop. Probed once at boot instead: no WebGL2 → the
-//! terminal never loads three.js and draws the simulation as the 2D live
-//! plan (`plan/`, Canvas 2D) wherever it would have drawn the world.
+//! terminal never loads three.js and draws the simulation with the raycaster
+//! (`raycast/`, Canvas 2D: a simple recreation of the game from the
+//! terminal's spot) wherever it would have drawn the world.
 
 import type { TerminalView } from "./config.ts";
 
@@ -38,16 +39,16 @@ export function hasWebGL2(): boolean {
 }
 
 /** What draws the simulation: the three.js world, or — on a tablet with no
- *  WebGL2 — the 2D live plan (`plan/`, Canvas 2D). */
-export type SimRenderer = "world" | "plan";
+ *  WebGL2 — the raycaster (`raycast/`, Canvas 2D). */
+export type SimRenderer = "world" | "raycast";
 
 export function simRenderer(webgl2: boolean): SimRenderer {
-  return webgl2 ? "world" : "plan";
+  return webgl2 ? "world" : "raycast";
 }
 
 /** What a scanner terminal's face pane shows over the face on the attract
  *  screen: nothing, the world, its shadow (the camera with the ghosts in
- *  it), or the live plan. */
+ *  it), or the raycaster. */
 export type PaneSim = "none" | SimRenderer | "shadow";
 
 /**
@@ -55,7 +56,7 @@ export type PaneSim = "none" | SimRenderer | "shadow";
  * — the voice — so the caller asks only on the attract screen): `world`
  * always draws the simulation, `auto` only while someone is `playing`;
  * `auto` with a live camera on a placed terminal (`shadowReady`) shows the
- * shadow — which needs WebGL2, so without it the plan. Every other view
+ * shadow — which needs WebGL2, so without it the raycaster. Every other view
  * (face; the TV, chess, casino and the full-screen views route elsewhere)
  * shows nothing over the face.
  */
@@ -66,8 +67,8 @@ export function paneSimulation(view: TerminalView, webgl2: boolean, playing: boo
   return r === "world" && view === "auto" && shadowReady ? "shadow" : r;
 }
 
-/** A full-screen `mirror` / `shadow`: the world (or the shadow), else — no WebGL2 — the live plan. */
+/** A full-screen `mirror` / `shadow`: the world (or the shadow), else — no WebGL2 — the raycaster. */
 export function fullScreenSim(view: "mirror" | "shadow", webgl2: boolean): PaneSim {
-  if (!webgl2) return "plan";
+  if (!webgl2) return "raycast";
   return view === "shadow" ? "shadow" : "world";
 }

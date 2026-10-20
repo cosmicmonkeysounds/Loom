@@ -1,8 +1,9 @@
-//! The live plan's pure maths — the 2D stand-in for the world view on a
-//! tablet with no WebGL2 (`PlanView.tsx`). Everything here is plain
-//! `@loom/house` (never `@loom/house/three`, so three.js stays out of the
-//! plan's chunk): which floor to show, how the floor fits the screen, what
-//! each player's marker says, the trails, the routes to the ducks, the King.
+//! The top-down maths of the raycast view (`RaycastView.tsx`, the world view's
+//! stand-in on a tablet with no WebGL2): its floor-plan inset, plus the words
+//! and the roster toasts. Everything here is plain `@loom/house` (never
+//! `@loom/house/three`, so three.js stays out of the raycast chunk): which
+//! floor to show, how the floor fits the inset, what each player's marker
+//! says, the routes to the ducks, the King.
 //!
 //! The plan maps straight onto the screen like the mini-map and the map
 //! editor: house `x` → right, house `z` → down (z is south), so north is up.
@@ -335,7 +336,7 @@ export function kingOnFloor(house: HouseMap, floor: string, state: KingState | n
 /** The status line. */
 export function statusLine(players: number, connected: boolean): string {
   if (!connected) return "OFFLINE · RECONNECTING…";
-  return `LIVE · ${players} ${players === 1 ? "PLAYER" : "PLAYERS"}`;
+  return `LIVE · ${players} REINSTALLING`;
 }
 
 /** The big banner for a find. */

@@ -82,9 +82,9 @@ const loadWorld = retryable(() => import("./world/WorldView.tsx").then((m) => ({
 // chess.js + the King's board + his AI: only the chess terminal loads them.
 // The shadow view (wave 14) is three.js too, in its own small chunk.
 const loadShadow = retryable(() => import("./shadow/ShadowView.tsx").then((m) => ({ default: m.ShadowView })));
-// The live plan (wave 15): the simulation in Canvas 2D, no three.js — what a
-// tablet with no WebGL2 draws wherever it would have drawn the world.
-const loadPlan = retryable(() => import("./plan/PlanView.tsx").then((m) => ({ default: m.PlanView })));
+// The raycaster (wave 16): a simple recreation of the game in Canvas 2D, no
+// three.js — what a tablet with no WebGL2 draws wherever it would have drawn the world.
+const loadRaycast = retryable(() => import("./raycast/RaycastView.tsx").then((m) => ({ default: m.RaycastView })));
 const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) => ({ default: m.ChessTerminal })));
 // The casino's tables (wave 15): only the casino terminal loads them.
 const loadCasino = retryable(() => import("./casino/CasinoTerminal.tsx").then((m) => ({ default: m.CasinoTerminal })));
@@ -139,7 +139,7 @@ export function App() {
   const view = config?.view;
   useEffect(() => {
     if (webgl2 && view !== undefined && view !== "face" && view !== "chess" && view !== "casino") void loadWorld().catch(() => {});
-    if (!webgl2 && view !== undefined && view !== "face" && view !== "tv" && view !== "chess" && view !== "casino") void loadPlan().catch(() => {});
+    if (!webgl2 && view !== undefined && view !== "face" && view !== "tv" && view !== "chess" && view !== "casino") void loadRaycast().catch(() => {});
     if (webgl2 && (view === "shadow" || view === "auto")) void loadShadow().catch(() => {});
     if (view === "chess") void loadChess().catch(() => {});
     if (view === "casino") void loadCasino().catch(() => {});
@@ -514,12 +514,12 @@ class WorldBoundary extends Component<{ fallback: ReactNode; onError: () => void
  * needs no wake gesture) reloads the page so a stale bundle picks up the new
  * chunk names, when the page is reachable and it hasn't just done so.
  */
-function WorldSlot({ store, spotId, size, recover, plan = false }: { store: WorldStore; spotId: string; size: "pane" | "full"; recover: "retry" | "reload"; plan?: boolean }) {
+function WorldSlot({ store, spotId, size, recover, raycast = false }: { store: WorldStore; spotId: string; size: "pane" | "full"; recover: "retry" | "reload"; raycast?: boolean }) {
   const [attempt, setAttempt] = useState(0);
   const [broken, setBroken] = useState(false);
   // A fresh `lazy` per attempt: React caches each one's settled payload.
-  // `plan`: the 2D live plan (no WebGL2) in place of the three.js world.
-  const View = useMemo(() => lazy(plan ? loadPlan : loadWorld), [attempt, plan]);
+  // `raycast`: the Canvas 2D raycaster (no WebGL2) in place of the three.js world.
+  const View = useMemo(() => lazy(raycast ? loadRaycast : loadWorld), [attempt, raycast]);
   useEffect(() => {
     if (!broken) return;
     let alive = true;
@@ -694,7 +694,7 @@ function Terminal({
   useGone(world, onGone);
   // `auto` shows the shadow (the camera, the players as ghosts in it) instead
   // of the world while the camera is live and this terminal is placed; a
-  // tablet with no WebGL2 draws the live plan instead of either.
+  // tablet with no WebGL2 draws the raycaster instead of either.
   const cameraLive = useCameraLive();
   const pane = screen.kind === "attract" ? paneSimulation(view, hasWebGL2(), inSimulation, cameraLive && config.spot.trim() !== "") : "none";
   const showWorld = pane !== "none";
@@ -963,7 +963,7 @@ function Terminal({
           <Face mood={mood} speaking={speaking} handle={face} />
           <div className="nameplate">{config.character.toUpperCase()}</div>
           {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
-          {showWorld && (pane === "shadow" ? <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="pane" recover="retry" /> : <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" plan={pane === "plan"} />)}
+          {showWorld && (pane === "shadow" ? <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="pane" recover="retry" /> : <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" raycast={pane === "raycast"} />)}
           {roomLine !== null && (
             <div className={`room-caption${roomLine.mode === "speak" ? "" : " text-only"}`} data-mode={roomLine.mode}>
               {roomLine.from !== config.character && <span className="room-caption-who">{roomLine.from}: </span>}
@@ -1044,7 +1044,7 @@ function Terminal({
 
 /** `view: mirror` (and `shadow`, the camera with the ghosts in it) — the simulation full screen, for a TV: nothing to scan,
  *  nothing to say (so no wake gesture is needed), only the gear. A screen
- *  with no WebGL2 (`canDraw` false) draws the 2D live plan instead. */
+ *  with no WebGL2 (`canDraw` false) draws the raycaster instead. */
 function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; canDraw: boolean; onSetup: () => void; onGone: (g: Gone) => void }) {
   const world = useSpatialStream(config, true);
   const sim = fullScreenSim(config.view === "shadow" ? "shadow" : "mirror", canDraw);
@@ -1055,7 +1055,7 @@ function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; 
       {sim === "shadow" ? (
         <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="full" recover="reload" />
       ) : (
-        <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" plan={sim === "plan"} />
+        <WorldSlot store={world} spotId={config.spot} size="full" recover="reload" raycast={sim === "raycast"} />
       )}
       <div className="mirror-corner">
         <span className="dot" data-on={String(connected)} />

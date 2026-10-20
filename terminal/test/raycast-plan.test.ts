@@ -27,7 +27,7 @@ import {
   trailAlpha,
   TRAIL_MS,
   type TrailPoint,
-} from "../src/plan/plan.ts";
+} from "../src/raycast/plan.ts";
 import { EMPTY_WORLD, reduce, type WorldPlayer } from "../src/world/state.ts";
 import { playerState, twoRooms, wallsOf } from "./world-fixture.ts";
 
@@ -213,8 +213,8 @@ describe("routes and the King", () => {
 
 describe("words", () => {
   it("says how many are playing, or that the line is down", () => {
-    expect(statusLine(1, true)).toBe("LIVE · 1 PLAYER");
-    expect(statusLine(3, true)).toBe("LIVE · 3 PLAYERS");
+    expect(statusLine(1, true)).toBe("LIVE · 1 REINSTALLING");
+    expect(statusLine(3, true)).toBe("LIVE · 3 REINSTALLING");
     expect(statusLine(3, false)).toBe("OFFLINE · RECONNECTING…");
   });
 
@@ -264,14 +264,14 @@ describe("following the players between floors", () => {
   });
 });
 
-describe("the plan's chunk", () => {
-  it("never imports three.js (it is the no-WebGL2 path)", () => {
-    const dir = new URL("../src/plan/", import.meta.url);
+describe("the raycast chunk", () => {
+  it("never imports three.js, nor the world files that do (it is the no-WebGL2 path)", () => {
+    const dir = new URL("../src/raycast/", import.meta.url);
     for (const f of readdirSync(dir)) {
       if (!/\.(ts|tsx)$/.test(f)) continue;
       const src = readFileSync(new URL(f, dir), "utf8");
       expect(src, f).not.toMatch(/from\s+["'](three|@loom\/house\/three)["']/);
-      expect(src, f).not.toMatch(/from\s+["']\.\.\/world\/(WorldView|MiniMap|director)/);
+      expect(src, f).not.toMatch(/from\s+["']\.\.\/world\/(WorldView|MiniMap|director|minimap)/);
     }
   });
 });

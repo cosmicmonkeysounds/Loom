@@ -1,6 +1,8 @@
-/* The live plan (wave 15): the 2D reinstallation for a screen with no WebGL2. */
-.plan-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
-.plan-top {
+/* The raycast view (wave 16): the reinstallation for a screen with no WebGL2. */
+.rc-scene,
+.rc-hud { position: absolute; top: 0; left: 0; display: block; width: 100%; height: 100%; }
+.rc-scene { image-rendering: crisp-edges; image-rendering: pixelated; background: #05051a; }
+.rc-top {
   position: absolute;
   top: 0;
   left: 0;
@@ -13,7 +15,7 @@
   padding: 0.4em 0.6em;
   pointer-events: none;
 }
-.plan-status {
+.rc-status {
   display: flex;
   align-items: center;
   gap: 0.4em;
@@ -24,19 +26,8 @@
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
-.plan-floor-name { color: var(--phosphor-dim); }
-.plan-tabs { display: flex; gap: 0.3em; }
-.plan-tab {
-  padding: 0.05em 0.45em;
-  background: #c0c0c0;
-  color: #404040;
-  border: 2px solid;
-  border-color: #fff #404040 #404040 #fff;
-  font-size: 0.85em;
-}
-.plan-tab.busy { color: #000080; }
-.plan-tab.on { background: #000080; color: #fff; border-color: #404040 #fff #fff #404040; }
-.plan-idle {
+.rc-where { color: var(--phosphor-dim); }
+.rc-idle {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -49,7 +40,7 @@
   white-space: nowrap;
   animation: pulse 1.6s steps(2, end) infinite;
 }
-.plan-toasts {
+.rc-toasts {
   position: absolute;
   left: 0.6em;
   bottom: 0.6em;
@@ -58,8 +49,8 @@
   align-items: flex-start;
   pointer-events: none;
 }
-.plan-toasts .plan-toast + .plan-toast { margin-top: 0.3em; }
-.plan-toast {
+.rc-toasts .rc-toast + .rc-toast { margin-top: 0.3em; }
+.rc-toast {
   padding: 0.1em 0.6em;
   background: #c0c0c0;
   color: #000;
@@ -67,7 +58,7 @@
   border-color: #fff #404040 #404040 #fff;
   font-size: 0.8em;
 }
-.plan-celebrate .world-celebrate-name { font-size: 1.1em; }
-.world.plan.full { font-size: clamp(20px, 2.4vw, 40px); }
-/* Full screen (mirror / shadow) the gear sits top-right: keep the floor tabs clear of it. */
-.world.plan.full .plan-top { padding-right: 72px; }
+.rc-celebrate .world-celebrate-name { font-size: 1.1em; }
+.world.rc.full { font-size: clamp(20px, 2.4vw, 40px); }
+/* Full screen (mirror / shadow) the gear sits top-right: keep the status clear of it. */
+.world.rc.full .rc-top { padding-right: 72px; }
