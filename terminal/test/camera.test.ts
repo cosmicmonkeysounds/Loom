@@ -49,6 +49,20 @@ describe("the shared camera", () => {
     expect(await p).toBeNull();
     expect(s.stop).toHaveBeenCalled();
   });
+  it("reuses an open in flight across a quick release + acquire", async () => {
+    let resolve!: (s: MediaStream) => void;
+    const s = fakeStream();
+    const gum = vi.fn(() => new Promise<MediaStream>((r) => (resolve = r)));
+    const hub = new CameraHub(() => ({ secure: true, getUserMedia: gum }));
+    void hub.acquire("user");
+    hub.release();
+    const p = hub.acquire("user");
+    resolve(s.stream);
+    expect(await p).toBe(s.stream);
+    expect(gum).toHaveBeenCalledTimes(1);
+    expect(s.stop).not.toHaveBeenCalled();
+    expect(hub.snapshot.state).toBe("live");
+  });
   it("says why there is no camera", async () => {
     expect(await new CameraHub(env(() => Promise.reject(new Error("x")), false)).acquire("user")).toBeNull();
     const insecure = new CameraHub(() => ({ secure: false, getUserMedia: null }));

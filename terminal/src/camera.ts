@@ -81,7 +81,10 @@ export class CameraHub {
 
   release(): void {
     this.holders = Math.max(0, this.holders - 1);
-    if (this.holders === 0) this.close();
+    // Still opening: let it land (it stops itself if nobody holds it by
+    // then), so a quick release + acquire (a screen swapping its scanner)
+    // reuses the open in flight — an old tablet refuses a second one.
+    if (this.holders === 0 && this.opening === null) this.close();
   }
 
   private open(facing: Facing): Promise<MediaStream | null> {
