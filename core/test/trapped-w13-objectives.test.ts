@@ -554,14 +554,34 @@ function nightSteps(ending: "song" | "hand_jive"): Step[] {
   return [...head, ...(ending === "song" ? song : jive)];
 }
 
-function walk(ending: "song" | "hand_jive"): Array<[string, Record<string, string>]> {
+function walk(ending: "song" | "hand_jive", probe?: (n: Night, label: string) => void): Array<[string, Record<string, string>]> {
   const n = boot();
   const out: Array<[string, Record<string, string>]> = [["doors", checkpoint(n, "doors")]];
+  probe?.(n, "doors");
   for (const [label, run] of nightSteps(ending)) {
     run(n);
     out.push([label, checkpoint(n, label)]);
+    probe?.(n, label);
   }
   return out;
+}
+
+/** The face of `character`'s card for `guest` as the booth draws it
+ *  (`play/src/booth/model.ts` `cardButtons`): the live objectives' buttons
+ *  in order that the card says are live, then the card's guest-scoped
+ *  ones, at most three. `fromObjectives` = the objective-sourced part. */
+function cardFace(n: Night, character: string, guest: string): { face: string[]; fromObjectives: string[] } {
+  const host = HOST_PARTS.has(character);
+  const card = guestCardView(n.sim, n.chat.all(), character, guest, host)!;
+  const live = new Set(card.live);
+  const face: string[] = [];
+  const add = (id: string) => {
+    if (face.length < 3 && !face.includes(id) && live.has(id)) face.push(id);
+  };
+  for (const o of primeView(n.sim, character, undefined, { host }).objectives ?? []) for (const b of interactionButtons(o.buttons)) add(b);
+  const fromObjectives = [...face];
+  for (const id of card.guestScoped) add(id);
+  return { face, fromObjectives };
 }
 
 describe("Trapped in the Internet — wave 13: the objectives, walked through the night", () => {
@@ -619,6 +639,101 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("bobbing_for_truth")).toMatchObject({ Clippy: "Bob For It", "Adobe Acrobat": "The Bag Of Truth" });
     expect(at("Adobe Acrobat: brought_up_the_bag g1")).toMatchObject({ "Adobe Acrobat": "Hand Over Truth Txt" });
     expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
+  }, SLOW);
+
+  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's its 🛡, and 🩹 only on a marked program", () => {
+    // Per checkpoint: Clippy's objective-sourced face on each cleared,
+    // unmarked guest's card, and the act.
+    const clippy = new Map<string, string[]>();
+    const acts = new Map<string, Set<string>>();
+    const probe = (n: Night, label: string) => {
+      // The act: Clippy's NOW's own `act:`, else the cue sheet's focus act.
+      const pv = primeView(n.sim, "Clippy");
+      const act = pv.objectives?.[0]?.act ?? pv.night?.act?.code ?? "Doors";
+      const guests = [...n.sim.persons.keys()].filter((g) => v(n.sim, `${g}.cleared`) === true && v(n.sim, `${g}.marked`) !== true && v(n.sim, `${g}.corrupted`) !== true);
+      const faces = guests.map((g) => cardFace(n, "Clippy", g).fromObjectives);
+      // A ribbon is any time (the pack): never an empty face for Clippy.
+      for (const [k, f] of faces.entries()) expect(f.length, `${label}: Clippy's face on ${guests[k]} is empty`).toBeGreaterThan(0);
+      clippy.set(label, [...new Set(faces.flat())]);
+      if (!acts.has(act)) acts.set(act, new Set());
+      for (const id of faces.flat()) acts.get(act)!.add(id);
+      // Windows Defender leads with 🛡 on every cleared guest (its pack:
+      // only when a host or the director asks), never the patch bay.
+      for (const g of guests) {
+        const wd = cardFace(n, "Windows Defender", g).face;
+        expect(wd[0], `${label}: Windows Defender on ${g}`).toBe("send to the internet");
+        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch"]) expect(wd).not.toContain(b);
+      }
+      // The Antivirus' own buttons never reach Clippy's card (no hook: dead).
+      for (const g of guests) {
+        const live = guestCardView(n.sim, n.chat.all(), "Clippy", g, false)!.live;
+        for (const b of ["send to the internet", "mark as reinstalled", "accuse"]) expect(live, `${label}: Clippy ${b}`).not.toContain(b);
+        expect(live).not.toContain("unmark_for_reinstallation");
+      }
+    };
+    walk("song", probe);
+    // Every act of the night gives Clippy a face (the pack's buttons).
+    for (const a of ["Doors", "B", "C", "D", "E", "F", "G"]) expect(acts.get(a)?.size ?? 0, `act ${a}`).toBeGreaterThan(0);
+    // The phase buttons lead where the pack puts them.
+    expect(clippy.get("bingo_time")).toEqual(expect.arrayContaining(["bingo_winner", "named_at_bingo", "award_the_ribbon"]));
+    expect(clippy.get("the bottle lands on g2")).toEqual(expect.arrayContaining(["truth_answered", "truth_refused", "chose_dare"]));
+    expect(clippy.get("close_the_filing")).toContain("uncertain_answer");
+    expect(clippy.get("truth_pong")).toEqual(expect.arrayContaining(["accurate_q1", "confident_q1", "uncertain_answer"]));
+    expect(clippy.get("final_reveal")).toEqual(expect.arrayContaining(["accurate_q1", "accurate_q2", "uncertain_answer"]));
+    expect(clippy.get("bobbing_for_truth")).toEqual(expect.arrayContaining(["brought_up_the_bag", "failed_the_bob"]));
+    expect(clippy.get("doors")).toEqual(["award_the_ribbon", "signed_the_painting"]);
+    // Grok Prom: 💘 on the face.
+    const grok = new Map<string, string[]>();
+    walk("hand_jive", (n, label) => {
+      if (label === "the verdict: Grok Prom") grok.set(label, cardFace(n, "Clippy", "g2").fromObjectives);
+    });
+    expect(grok.get("the verdict: Grok Prom")?.[0]).toBe("pickup_line_works");
+  }, SLOW);
+
+  it("🩹 rides a marked program's card face (guest-scoped), never an unmarked one's", () => {
+    const n = boot();
+    for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    n.press("introduce_trabolta"); // past the Bingo results: Clippy's NOW names no button
+    for (const p of ["Clippy", "Norton Anti-Virus", "Windows Defender", "Task Manager"]) {
+      const card = guestCardView(n.sim, n.chat.all(), p, "g4", HOST_PARTS.has(p))!;
+      expect(card.guestScoped, p).toContain("unmark_for_reinstallation");
+      expect(cardFace(n, p, "g4").face, p).toContain("unmark_for_reinstallation");
+      expect(guestCardView(n.sim, n.chat.all(), p, "g2", HOST_PARTS.has(p))!.live, p).not.toContain("unmark_for_reinstallation");
+    }
+    // The press is never gated: the hook still answers an unmarked program.
+    const said = n.signal("unmark_for_reinstallation", "g2", undefined, "Clippy");
+    expect(said.some((m) => m.text.includes("is not marked"))).toBe(true);
+    n.signal("unmark_for_reinstallation", "g4", undefined, "Clippy");
+    expect(v(n.sim, "g4.marked")).toBe(false);
+    expect(guestCardView(n.sim, n.chat.all(), "Clippy", "g4", false)!.live).not.toContain("unmark_for_reinstallation");
+  }, SLOW);
+
+  it("CI 2's checklist reaches 4 / 4, and no to-do in the show is left without a `done when`", () => {
+    const n = boot();
+    for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
+    const ci2 = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners")!.checklist.map((c) => c.done);
+    expect(ci2()).toEqual([false, false, false, false]);
+    n.signal("bingo_winner", "g1", undefined, "Clippy");
+    n.signal("named_at_bingo", "g4", undefined, "Clippy");
+    // A ribbon for a program without a Bingo is not CI 2's ribbon.
+    n.signal("award_the_ribbon", "g2", undefined, "Clippy");
+    expect(ci2()).toEqual([true, true, false, false]);
+    n.signal("award_the_ribbon", "g1", undefined, "Clippy");
+    expect(ci2()).toEqual([true, true, true, false]);
+    n.signal("send to the internet", "g4", undefined, "Norton Anti-Virus");
+    expect(ci2()).toEqual([true, true, true, true]);
+    const manual = [...n.sim.model.objectives.values()].flatMap((o) => o.checklist.filter((c) => c.done === null).map((c) => `${o.id}: ${c.label}`));
+    expect(manual).toEqual([]);
+  }, SLOW);
+
+  it("a ribbon from any host names no one host (the story cannot tell who pressed it)", () => {
+    const n = boot();
+    n.press("call_to_the_desktop");
+    const said = n.signal("award_the_ribbon", "g3", undefined, "Task Manager");
+    const notice = said.find((m) => m.text.includes("receives a ribbon"));
+    expect(notice?.text).toContain("from the hosts");
+    expect(said.some((m) => /from Clippy/u.test(m.text))).toBe(false);
   }, SLOW);
 
   it("the escort list skips a program gone home and a rehearsal persona, and the summons outranks it", () => {

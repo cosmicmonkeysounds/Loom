@@ -524,7 +524,7 @@ ROLE Program
     if program.from_jeeves == 10:
       set Kernel.jeeves_reached += 1
 
-  // ── Computer Bingo (performer buttons) ──
+  // ── Computer Bingo (performer buttons; the ribbon's lines DRAFT for sign-off, w13 Q24 / Q28) ──
   when bingo_winner for program:
     if Night.phase == "bingo_results" and program.bingo != true:
       set program.bingo = true
@@ -533,11 +533,13 @@ ROLE Program
 
   when award_the_ribbon for program:
     if program.bingo == true:
+      // DRAFT for sign-off (w13 Q24): CI 2's 🎀 to-do ticks.
+      set Night.bingo_ribbons += 1
       unlock Computer Bingo for program
       broadcast "~🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
       reply 🎀 You won a Bingo Ribbon. Take a bow.
     else:
-      broadcast "~🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
+      broadcast "~🎀 {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone
       reply 🎀 You received a ribbon. Take a bow.
 
   when frame_for_bingo for program:
@@ -550,6 +552,8 @@ ROLE Program
   // from the Enforcer's hook).
   when named_at_bingo for program:
     if Night.phase == "bingo_results":
+      // DRAFT for sign-off (w13 Q24): CI 2's 🎯 to-do ticks.
+      set Night.bingo_named += 1
       fire mark_for_reinstallation for program with reason: "named on the Bingo card"
 
   // ── Moments of Truth: the room's judging (performer buttons) ──
@@ -3009,10 +3013,12 @@ INTERACTION crew_through_the_door
 // rest under More. `by:` is enforced: the server refuses another booth's
 // press (a director's quick-fire still fires it), and a booth never offers
 // another character's. `while:` is not — the hooks still guard.
-// A performer button's `while:` is read once per booth, with no guest
-// bound: it sees Night.* / self.* only, never program.* (an unbound
-// `program.x` reads false and folds the button on every card). Per-guest
-// conditions belong in the hook.
+// A performer button's `while:` is read with the scanned guest bound on
+// the booth's card (wave 13: `/api/prime/card`, subject = the guest), so a
+// `program.*` condition puts the button on the card's face for exactly the
+// guests it fits (🩹 only on a marked program). The booth's own list reads
+// it with no guest bound (an unbound `program.x` reads false: off offer
+// there). It never gates the press: per-guest rules belong in the hook.
 // `arm: true` (wave 11) marks a press with no way back: one that ends the
 // night (🔌 💥 💘), trips the alarm (❌), spends The Heart (🚪), changes
 // the room for two minutes (🔧), hands over a secret (♟ the door code,
@@ -3023,16 +3029,22 @@ INTERACTION crew_through_the_door
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
   who: performer
+  // DRAFT for sign-off (w13 Q22): the Antivirus' own (a host card lists it, but only TRAIT Enforcer's hooks hear it).
+  by: Antivirus
   description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled
   who: performer
+  // DRAFT for sign-off (w13 Q22)
+  by: Antivirus
   description: Antivirus. They completed the simulation: let them out.
 
 INTERACTION accuse
   label: 👁 Put on the watchlist
   who: performer
+  // DRAFT for sign-off (w13 Q22)
+  by: Antivirus
   while: Night.ended != true
   description: Antivirus. Raises their doubt.
 
@@ -3225,6 +3237,8 @@ INTERACTION unmark_for_reinstallation
   label: 🩹 Unmark: not going to the Internet
   who: performer
   by: Hosts, Antivirus
+  // DRAFT for sign-off (w13 Q23): on offer on a marked program's card only.
+  while: program.marked == true
   description: A mis-tap or mercy. Lifts the mark; the program keeps their place.
 
 INTERACTION made_the_cup
@@ -4892,6 +4906,8 @@ set Night.clock = "--:--"
 set Night.bingo_on = false
 set Night.bingo_end = 0
 set Night.bingo_winners = 0
+set Night.bingo_named = 0
+set Night.bingo_ribbons = 0
 set Night.first_reinstall = "none"
 set Night.first_reinstall_done = false
 set Night.trabolta_introduced = false

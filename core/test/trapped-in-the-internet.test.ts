@@ -2130,13 +2130,17 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(refused.status).toBe(403);
     expect(String(refused.json["error"])).toMatch(/not your button/u);
     expect((await act(norton, "radio_combo_a")).status).toBe(200); // by: the room Antivirus — the patch-bay watch's
-    expect((await act(norton, "send to the internet")).status).toBe(200); // no `by:`: anyone's
+    expect((await act(norton, "send to the internet")).status).toBe(200); // by: Antivirus (wave 13 fstory)
     expect((await act(norton, "unmark_for_reinstallation")).status).toBe(200); // by: Hosts, Antivirus
-    expect((await act(await booth("Clippy"), "accurate_q1")).status).toBe(200);
+    const clippy = await booth("Clippy");
+    expect((await act(clippy, "accurate_q1")).status).toBe(200);
+    // 🛡 / ✅ / 👁 are the Antivirus' (Clippy has no hook for them: they did nothing).
+    for (const b of ["send to the internet", "mark as reinstalled", "accuse"]) expect((await act(clippy, b)).status, b).toBe(403);
     // Norton's booth no longer offers the Hosts' verdicts at all.
     const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(norton)}`, {})).json as unknown as PrimeView;
     expect(view.interactions.find((i) => i.id === "accurate_q1")?.only).toBe(true);
-    expect(view.interactions.find((i) => i.id === "send to the internet")?.only).toBeUndefined();
+    expect(view.interactions.find((i) => i.id === "send to the internet")?.only).toBe(true);
+    expect(view.interactions.find((i) => i.id === "vouch")?.only).toBeUndefined();
   });
 
   it("the first opening reveals the room to everyone first, then Trabolta speaks candidly in The Server Room (the server-room terminal)", { timeout: SLOW }, () => {

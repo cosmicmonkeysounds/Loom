@@ -1732,7 +1732,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   - `award_the_ribbon` (no phase guard; OV's "winners ribbon system / other awards"): `if
     program.bingo == true:` `unlock Computer Bingo for program` · `broadcast "🎀
     {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone` `else:` `broadcast "🎀
-    {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone`.
+    {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone`.
   - `frame_for_bingo` (guard phase `bingo_results` and `Night.bingo_winners < 1`): `set
     program.framed = true` · `reply 🃏 A completed Bingo card with your name on it has been
     handed to Clippy. You did not fill it in.`
