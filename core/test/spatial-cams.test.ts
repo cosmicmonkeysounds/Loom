@@ -215,6 +215,25 @@ describe("EventRuntime — the camera feeds", () => {
     rt.dispose();
   });
 
+  it("a host booth, a performer or a guest never uploads or reads a feed", async () => {
+    const clock = { t: 20_000 };
+    const rt = runtime(clock);
+    rt.openDoors();
+    expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall"), { moderator: true })).status).toBe(200);
+    const login = await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime });
+    expect(login.json.host).toBe(true);
+    const host = login.json.token as string;
+    const norton = (await call(rt, "POST", "/api/prime/login", { character: "Norton Anti-Virus", passcode: CODES.prime })).json.token as string;
+    const guest = (await call(rt, "POST", "/api/guest/register", { name: "Winamp", passcode: CODES.event })).json.token as string;
+    for (const token of [host, norton, guest]) {
+      expect(typeof token).toBe("string");
+      expect((await call(rt, "POST", "/api/mod/spatial/cam", frame("hall"), { token })).status).toBe(403);
+      expect((await call(rt, "GET", "/api/spatial/cams", {}, { token })).status).toBe(401);
+      expect((await call(rt, "GET", "/api/spatial/cam?spot=hall", {}, { token })).status).toBe(401);
+    }
+    rt.dispose();
+  });
+
   it("the editor reads the feeds on its author session", () => {
     expect(wantsModRead("/api/spatial/cams", new URLSearchParams())).toBe(true);
     expect(wantsModRead("/api/spatial/cam", new URLSearchParams("spot=hall"))).toBe(true);
