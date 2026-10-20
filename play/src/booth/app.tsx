@@ -104,10 +104,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // C4: the latest view says whether this booth is a host (an older server's: the sign-in's answer).
   const isHost = boothHost(s.auth, s.view);
   const pill = boothPill({ admin, host: isHost });
-  // The 🗂 Guests badge: guests whose typed line to this character waits unread.
-  const waiting = guestsWaiting(t.list, character);
   const token = s.auth.token;
   const character = s.auth.character;
+  // The 🗂 Guests badge: guests whose typed line to this character waits unread.
+  const waiting = guestsWaiting(t.list, character);
   const guests = s.view?.guests ?? [];
   const guestByName = (name: string) => guests.find((g) => g.name === name || g.id === name) ?? null;
   const mod = admin ? { setHidden: (seq: number, hidden: boolean) => void s.setHidden(seq, hidden) } : undefined;

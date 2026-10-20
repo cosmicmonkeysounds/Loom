@@ -80,9 +80,14 @@ describe("checkCount, the one checklist rule (guest card + booth NOW line)", () 
     expect(checkCount({ checklist: [{ label: "a", done: true }, { label: "b", done: true }] })).toBe("2/2 ✓");
     expect(checkCount({ checklist: [{ label: "a", done: false }, { label: "b", done: true }] })).toBe("1/2");
   });
-  it("the booth's nowCount is the same function", async () => {
+  it("the booth's nowCount is the same rule, with only the performer's own ticks folded in", async () => {
     const { nowCount } = await import("../src/booth/now-card.tsx");
-    expect(nowCount).toBe(checkCount);
+    const { tickKey } = await import("../src/booth/ticks.ts");
+    const o = { id: "o", title: "T", brief: "", buttons: [], act: null, checklist: [{ label: "a", done: true }, { label: "b", done: null }, { label: "c", done: false }] };
+    expect(nowCount(o)).toBe(checkCount(o));
+    expect(nowCount({ checklist: o.checklist })).toBe(checkCount(o));
+    expect(nowCount(o, new Set([tickKey("o", "b")]))).toBe("2/3");
+    expect(nowCount(o, new Set([tickKey("o", "c")]))).toBe("1/3"); // a story-tracked to-do is never ticked by hand
   });
 });
 
