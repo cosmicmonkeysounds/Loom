@@ -96,6 +96,8 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
   const decided = new Map<number, Decided>();
   /** Seqs seen at arrival at all (a re-sent frame is never re-decided). */
   const seen = new Set<number>();
+  /** Seqs decided to crawl, then completed (finished, flushed): never queued again. */
+  const settled = new Set<number>();
   /** Per room: when its planned crawl queue ends, when its fast lines alone
    *  would end (the batch budget's measure), and the burst latch. */
   const planEnd = new Map<string, number>();
@@ -117,7 +119,7 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
       const d = decided.get(s);
       if (d !== undefined) rooms.add(d.room);
       done.add(s);
-      decided.delete(s);
+      if (decided.delete(s)) settled.add(s);
     }
     // A room with nothing left to crawl plans its next line from "now".
     for (const r of rooms) {
@@ -206,6 +208,7 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
       done.clear();
       decided.clear();
       seen.clear();
+      settled.clear();
       planEnd.clear();
       fastEnd.clear();
       burst.clear();
@@ -225,6 +228,9 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
       return true;
     },
     start(seq, go) {
+      // A line flushed before its bubble got here is shown whole, never
+      // crawled from nothing (it would hold the queue behind what flushed it).
+      if (settled.has(seq)) return;
       queue.push({ seq, go });
       pump();
     },

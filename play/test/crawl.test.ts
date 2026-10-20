@@ -258,6 +258,24 @@ describe("order and tap-to-finish", () => {
     expect(crawl.tierOf(last.seq)).toBe("none");
   });
 
+  it("a line flushed before its bubble started is never crawled from nothing", () => {
+    const { crawl } = setup();
+    const a = msg();
+    const b = msg();
+    crawl.arrived(a, ME);
+    crawl.arrived(b, ME);
+    crawl.flush("loc:The Desktop"); // a card in the next frame, a tap
+    const went: number[] = [];
+    crawl.start(a.seq, () => went.push(a.seq));
+    crawl.start(b.seq, () => went.push(b.seq));
+    expect(went).toEqual([]);
+    // …and it holds nothing up: the next line crawls at once.
+    const c = msg();
+    crawl.arrived(c, ME);
+    crawl.start(c.seq, () => went.push(c.seq));
+    expect(went).toEqual([c.seq]);
+  });
+
   it("a line in another room doesn't flush this one", () => {
     const { crawl } = setup();
     const a = msg();

@@ -64,6 +64,12 @@ export function useCrawl(text: string, seq: number): CrawlState {
       if (crawl.tierOf(seq) !== "none") crawl.finish(seq); // reduced motion: nothing owed
       return;
     }
+    // Flushed between render and this effect (a card in the next frame, a
+    // tap): shown whole, never crawled from nothing behind what flushed it.
+    if (crawl.tierOf(seq) === "none") {
+      setCount(text.length);
+      return;
+    }
     let id: number | null = null;
     const stop = () => {
       if (id !== null) window.clearInterval(id);
