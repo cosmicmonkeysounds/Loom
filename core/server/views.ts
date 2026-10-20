@@ -14,7 +14,7 @@ import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
-import type { CodexDef, InteractionDef, ObjectiveDef } from "../src/runtime/sim/model.ts";
+import type { CodexDef, Hook, InteractionDef, ObjectiveDef } from "../src/runtime/sim/model.ts";
 import type { BodyItem } from "../src/parser/ast.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
@@ -130,8 +130,18 @@ export interface InteractionSummary {
   actors?: string[];
   /** True when the INTERACTION declares `by:`: only its `actors` may press
    *  it (`/api/prime/act` refuses another booth, 403). A booth leaves another
-   *  character's out of its More fold; a moderator's booth keeps them. */
+   *  character's out of its More fold; a host's or moderator's booth keeps
+   *  them, unless `hostHeard` is false. */
   only?: true;
+  /** False on an `only` button whose event nothing outside its `actors`
+   *  hears: every handler is a hook the actors own (a trait's `when send to
+   *  the internet for program:` on the Antivirus), and no story rule or ROLE
+   *  hook listens. A press fires as the presser's own character, so another
+   *  booth's press would do nothing: a host's (or a passcode admin's) booth
+   *  leaves it out like any other booth, and `/api/prime/act` refuses it
+   *  (`pressRefusal`, `actorHeardOnly`). Absent = heard, or no handler at
+   *  all (a press reads the same from anyone), or not `only`. */
+  hostHeard?: false;
   /** False while the INTERACTION's `while:` condition is false — a guest
    *  never sees it; a performer finds it under "More"; the director's cue
    *  sheet never suggests it as NEXT. */
@@ -191,6 +201,39 @@ export function interactionActors(sim: Sim): Map<string, string[]> {
   return out;
 }
 
+const actorHeardOnlyCache = new WeakMap<Sim["model"], Set<string>>();
+
+/**
+ * The INTERACTION ids only their own actors' hooks hear, per model: some
+ * CHARACTER hook listens for the event (a trait's, merged onto each
+ * deriver), and no story-level rule or ROLE hook does. A press fires as the
+ * presser's own character and only that character's hooks hear it
+ * (`Sim.matchHooks`); a character owning a hook for it is one of its
+ * `actors` (`interactionActors`), so a press from anyone else is heard by
+ * nothing. Counted as handlers: event hooks with no timer, watcher or `at`
+ * filter (what `Sim.signal` can match). A button with no handler at all is
+ * not here: a press reads the same whoever makes it (the journal's
+ * `signal`, which stagehand may act on).
+ */
+export function actorHeardOnly(sim: Sim): Set<string> {
+  const m = sim.model;
+  const cached = actorHeardOnlyCache.get(m);
+  if (cached !== undefined) return cached;
+  const hears = (h: Hook) => h.verb !== "" && h.timer === null && h.condition === null && h.filter === null;
+  const open = new Set<string>();
+  const own = new Set<string>();
+  for (const h of m.rules) if (hears(h)) open.add(foldName(h.verb));
+  for (const r of m.roles.values()) for (const h of r.hooks) if (hears(h)) open.add(foldName(h.verb));
+  for (const c of m.characters.values()) for (const h of c.hooks) if (hears(h)) own.add(foldName(h.verb));
+  const out = new Set<string>();
+  for (const i of m.interactions.values()) {
+    const k = foldName(i.id);
+    if (own.has(k) && !open.has(k)) out.add(i.id);
+  }
+  actorHeardOnlyCache.set(m, out);
+  return out;
+}
+
 /**
  * Why `character`'s booth may not press performer INTERACTION `def`, or
  * null when it may. Only a button that declares `by:` is anyone's in
@@ -209,6 +252,18 @@ export function byRefusal(sim: Sim, def: InteractionDef, character: string | nul
   return `not your button: “${def.label}” is for ${def.by.join(", ")}`;
 }
 
+/**
+ * `byRefusal` for a booth that may be a host's (`admin: true`, or the mod
+ * passcode in a booth): a host may press another character's `by:` button,
+ * but not one only its actors' own hooks hear (`actorHeardOnly`): that one is refused with the same
+ * message as any other booth's press, and a host's card never offers it.
+ */
+export function pressRefusal(sim: Sim, def: InteractionDef, character: string | null, host: boolean): string | null {
+  const refusal = byRefusal(sim, def, character);
+  if (refusal === null || !host) return refusal;
+  return actorHeardOnly(sim).has(def.id) ? refusal : null;
+}
+
 /** The INTERACTIONs `who` may fire. With `at`, each `while:` is evaluated
  *  (`subject` / `self` bound as given) and marked `live: false` when it
  *  fails; without (the director's cue sheet), only an admin cue's is, with
@@ -220,6 +275,7 @@ function interactionsFor(
 ): InteractionSummary[] {
   const subjectOnly = subjectOnlyEvents(sim);
   const actors = interactionActors(sim);
+  const deaf = actorHeardOnly(sim);
   return [...sim.model.interactions.values()]
     .filter((i) => who === null || who.includes(i.who))
     .map((i) => {
@@ -230,7 +286,10 @@ function interactionsFor(
       if (i.arm) s.arm = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
-      if (by !== undefined && i.by.length > 0) s.only = true;
+      if (by !== undefined && i.by.length > 0) {
+        s.only = true;
+        if (deaf.has(i.id)) s.hostHeard = false;
+      }
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
       // The director's cue sheet: an admin cue's `while:` names the branch
       // of the night it belongs to (🏍 only after Combo A), so NEXT skips it
@@ -1364,7 +1423,7 @@ function objectivesWith(sim: Sim, viewer: { guest: string } | { character: strin
     const buttons = o.buttons.filter((b) => {
       if (OBJECTIVE_RESERVED_BUTTONS.has(b)) return true;
       const i = m.interactions.get(b);
-      return i !== undefined && i.who === "performer" && (viewer.host === true || byRefusal(sim, i, me) === null);
+      return i !== undefined && i.who === "performer" && pressRefusal(sim, i, me, viewer.host === true) === null;
     });
     out.push(objectiveView(sim, o, buttons, null, me));
   }
@@ -1768,7 +1827,7 @@ export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character:
   const live: string[] = [];
   for (const i of sim.model.interactions.values()) {
     if (i.who !== "performer") continue;
-    if (!host && byRefusal(sim, i, character) !== null) continue;
+    if (pressRefusal(sim, i, character, host) !== null) continue;
     if (i.while !== null && !sim.holds(i.while, guestId, character)) continue;
     live.push(i.id);
   }

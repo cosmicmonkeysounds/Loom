@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, byRefusal, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -4907,10 +4907,14 @@ export class EventRuntime {
         // booth leads with): another booth's press is refused, so a ROLE hook
         // (which ignores the actor) can't be pressed from the wrong card. A
         // button with no `by:` stays anyone's; a moderator's or a host's
-        // booth may press any (as the director's quick-fire can, and as its
-        // card offers them — `primeViewFor` / `guestCardView` take `canHost`).
+        // booth may press another's only when something outside its actors
+        // hears it (a story rule or a ROLE hook — `pressRefusal`): the press
+        // fires as the host's own character, so a button only the actors'
+        // hooks hear would do nothing, and its card never offers it
+        // (`primeViewFor` / `guestCardView` take `canHost`). The director's
+        // quick-fire (`/api/mod/signal`, with `actor`) still fires any.
         // Never "sign in" here: that answer drops a booth.
-        const refusal = this.canHostToken(token) ? null : byRefusal(this.sim!, def, character);
+        const refusal = pressRefusal(this.sim!, def, character, this.canHostToken(token));
         if (refusal !== null) {
           sendJson(res, 403, { error: refusal });
           return true;

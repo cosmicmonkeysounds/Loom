@@ -26,7 +26,7 @@ import { Store } from "../server/store.ts";
 import type { PushSender } from "../server/push.ts";
 import type { HostView } from "../src/host-board.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
-import { guestView } from "../server/views.ts";
+import { guestCardView, guestView, primeView } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
@@ -332,5 +332,56 @@ describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the ap
     const leave = /return `(Leave the event\?[^`]*)`/u.exec(readFileSync(join(PLAY, "guest/frame.tsx"), "utf8"))?.[1];
     expect(leave).toBeDefined();
     for (const part of leave!.split(/\$\{[^}]*\}/u).map((x) => x.trim()).filter(Boolean)) expect(s8).toContain(part);
+  });
+});
+
+describe("Trapped in the Internet — wave 13 integration: a host is offered only buttons its press is heard on (fhostby)", () => {
+  const PATCH = ["radio_crew_door", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"]; // 🔧 🔌 💥 ❌: story rules
+  const ANTIVIRUS = ["send to the internet", "mark as reinstalled", "accuse"]; // 🛡 ✅ 👁: TRAIT Enforcer's hooks only
+
+  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌, never 🛡 ✅ 👁; Windows Defender's has them", () => {
+    const sim = boot();
+    for (const c of TO_Y2K) sim.signal(c);
+    expect((sim.world.get("Night.step") as { value: number }).value).toBeGreaterThanOrEqual(14);
+    expect((sim.world.get("g1.cleared") as { value: unknown }).value).toBe(true);
+    for (const host of ["Task Manager", "Adobe Acrobat", "Recycling Bin"]) {
+      const live = guestCardView(sim, [], host, "g1", true)!.live;
+      for (const b of PATCH) expect(live, `${host}: ${b}`).toContain(b);
+      for (const b of ANTIVIRUS) expect(live, `${host}: ${b}`).not.toContain(b);
+      const view = primeView(sim, host, undefined, { host: true });
+      for (const b of ANTIVIRUS) expect(view.interactions.find((i) => i.id === b)?.hostHeard, `${host}: ${b}`).toBe(false);
+      for (const b of PATCH) expect(view.interactions.find((i) => i.id === b)?.hostHeard, `${host}: ${b}`).toBeUndefined();
+      // No host objective puts one of them on the face.
+      for (const o of view.objectives ?? []) for (const b of ANTIVIRUS) expect(o.buttons, `${host} ${o.id}`).not.toContain(b);
+    }
+    // 🫘 is Adobe Acrobat's own hook: the other hosts are never offered it.
+    expect(primeView(sim, "Task Manager", undefined, { host: true }).interactions.find((i) => i.id === "radio_beans")?.hostHeard).toBe(false);
+    const wd = guestCardView(sim, [], "Windows Defender", "g1", false)!.live;
+    for (const b of ANTIVIRUS) expect(wd, b).toContain(b);
+    for (const b of PATCH) expect(wd, b).not.toContain(b); // never the door-only part's
+    const norton = guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live;
+    for (const b of [...ANTIVIRUS, ...PATCH]) expect(norton, b).toContain(b);
+  }, SLOW);
+
+  it("/api/prime/act: a host's 🛡 is refused like any other booth's (403, nothing changes); its 🔧 lands", { timeout: SLOW }, async () => {
+    const rt = runtime();
+    rt.openDoors();
+    const g = await arrive(rt, "Calculator");
+    const host = (await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime })).json["token"] as string;
+    const act = (name: string) => call(rt, "POST", "/api/prime/act", { name, guest: g.id }, { token: host });
+    const shield = await act("send to the internet");
+    expect(shield.status).toBe(403);
+    expect(shield.json["error"]).toBe("not your button: “🛡 Send to the Internet” is for Antivirus");
+    expect(rt.liveSim!.world.peek(`${g.id}.corrupted`)).not.toMatchObject({ value: true });
+    for (const b of ["mark as reinstalled", "accuse"]) expect((await act(b)).status, b).toBe(403);
+    const card = await call(rt, "POST", "/api/prime/card", { guest: g.id }, { token: host });
+    for (const b of ANTIVIRUS) expect(card.json["live"] as string[], b).not.toContain(b);
+    // A patch-bay button is a story rule's: a host's press is heard (the crew window opens).
+    const before = rt.liveSim!.world.peek("Night.crew_door_until");
+    expect((await act("radio_crew_door")).status).toBe(200);
+    expect(rt.liveSim!.world.peek("Night.crew_door_until")).not.toEqual(before);
+    // Windows Defender, an Antivirus, presses 🛡.
+    const wd = (await call(rt, "POST", "/api/prime/login", { character: "Windows Defender", passcode: CODES.prime })).json["token"] as string;
+    expect((await call(rt, "POST", "/api/prime/act", { name: "send to the internet", guest: g.id }, { token: wd })).status).toBe(200);
   });
 });
