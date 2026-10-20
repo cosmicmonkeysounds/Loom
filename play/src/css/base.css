@@ -398,7 +398,11 @@ body {
   border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
 /* the dotted Win95 focus ring, never the browser's own */
 .fact-answer:focus, .answer-text:focus { outline: 1px dotted var(--ink); outline-offset: 2px; }
-.fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
+.fact-confidence { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 0 10px; font: 700 13px var(--ui-font); color: var(--ink); }
+/* the readout rides the label's line; the trackbar takes the row under them */
+.fact-confidence > span { grid-column: 1; grid-row: 1; }
+.fact-confidence > output { grid-column: 2; grid-row: 1; }
+.fact-confidence > input[type=range] { grid-column: 1 / -1; grid-row: 2; }
 .fact-confidence input[type=range] { width: 100%; margin: 0; }
 /* the slider is a Win95 trackbar: a sunken groove and a raised silver
    thumb (a flat line and a round thumb under plain), never the browser's

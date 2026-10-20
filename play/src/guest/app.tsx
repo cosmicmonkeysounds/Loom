@@ -219,7 +219,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   };
   const scanButton = (
     <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => setScanning(true)}>
-      📷
+      <Icon name="scan" size={20} />
     </button>
   );
   const widgets = {

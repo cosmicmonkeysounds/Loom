@@ -250,6 +250,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .objective-check.done { color: var(--dim-ink); text-decoration: line-through; }
 .objective-buttons { display: flex; flex-direction: column; gap: 6px; }
 .objective-buttons .choice { margin: 0; width: 100%; }
+.objective-go { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 /* ── the full-screen pass ──────────────────────────────────────────────── */
 .fullpass {
@@ -312,7 +313,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .link { min-height: var(--tap); }
 .chrow { min-height: var(--tap); }
 .icon-btn { min-width: var(--tap); height: var(--tap); }
-.composer .composer-scan { min-height: var(--tap); min-width: var(--tap); }
+.composer .composer-scan { min-height: var(--tap); min-width: var(--tap); display: inline-flex; align-items: center; justify-content: center; }
 /* caption boxes keep their Win95 size; the touch target grows past them */
 .back { position: relative; width: 36px; height: 30px; }
 .back::after { content: ""; position: absolute; inset: -8px -6px; }

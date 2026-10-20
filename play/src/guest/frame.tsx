@@ -264,14 +264,14 @@ export function objectiveButton({
   return (id) => {
     if (id === "pass")
       return (
-        <button type="button" className="choice primary" onClick={onPass}>
-          🎟 Show my pass
+        <button type="button" className="choice primary objective-go" onClick={onPass}>
+          <Icon name="pass" /> Show my pass
         </button>
       );
     if (id === "scan")
       return (
-        <button type="button" className="choice primary" onClick={onScan}>
-          📷 Scan a code
+        <button type="button" className="choice primary objective-go" onClick={onScan}>
+          <Icon name="scan" /> Scan a code
         </button>
       );
     const i = interactions.find((x) => x.id === id);
