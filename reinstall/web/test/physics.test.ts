@@ -404,3 +404,36 @@ describe("physics — the King in the doorway (the show's measured map, wave 14)
     expect(locate(house, walk(open, body([3.9, -2.7, 19.4], SOUTH), 3).p).room).toBe("server-room");
   });
 });
+
+describe("physics — the show's measured map (wave 14)", () => {
+  it.each([
+    ["tent", SHOW],
+    ["shed", SHOW_SHED],
+  ])("the spawn stands on a floor and is clear of every wall (%s)", (_variant, load) => {
+    const house = load();
+    const world = buildPhysicsWorld(house);
+    const b = spawnBody(house);
+    const still = walk(world, b, 0.5, NO_INPUT);
+    expect(still.p[0]).toBeCloseTo(b.p[0], 6);
+    expect(still.p[2]).toBeCloseTo(b.p[2], 6);
+    expect(locate(house, still.p).room).toBe(house.spawn.room);
+  });
+
+  it("climbs the basement stairs from the basement hall up into the kitchen", () => {
+    // basement-stairs: rect [1.9, 13.5, 2.65, 17.15], rising north, −2.7 (z 17.15) → 0 (z 13.5).
+    const house = SHOW();
+    const b = walk(buildPhysicsWorld(house), body([2.275, -2.7, 17.8], 0), 5);
+    expect(b.p[2]).toBeLessThan(13.5);
+    expect(b.p[1]).toBeCloseTo(0, 5);
+    expect(locate(house, b.p)).toEqual({ floor: "main", room: "start-bar" });
+  });
+
+  it("climbs the upstairs from the hall to the top floor", () => {
+    // upstairs: rect [−2.6, 14.35, −1.8, 18.2], rising north, 0 (z 18.2) → 2.8 (z 14.35).
+    const house = SHOW();
+    const b = walk(buildPhysicsWorld(house), body([-2.2, 0, 18.8], 0), 5);
+    expect(b.p[2]).toBeLessThan(14.35);
+    expect(b.p[1]).toBeCloseTo(2.8, 5);
+    expect(locate(house, b.p)).toEqual({ floor: "top", room: "upstairs-hall" });
+  });
+});
