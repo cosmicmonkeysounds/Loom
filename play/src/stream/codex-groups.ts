@@ -87,16 +87,17 @@ export function codexSub(row: CodexRow): string {
 
 // --- "new" until opened (per device) ---------------------------------------------
 
-/** Which entries are new: not opened yet. With no record (this device's
- *  first look), only the newest entry is new — the one you just learned. */
+/** Which entries are new: not opened yet (D7). With no record (this
+ *  device's first look) every entry is new: a guest who opens the Codex for
+ *  the first time after the Truther Download has never seen any of it, and
+ *  the room-list badge already counted it all as unread. */
 export function newEntries(rows: readonly CodexRow[], seen: ReadonlySet<string> | null): Set<string> {
-  if (seen === null) return new Set(rows.length > 0 ? [rows[0]!.card.entry] : []);
-  return new Set(rows.filter((r) => !seen.has(r.card.entry)).map((r) => r.card.entry));
+  return new Set(rows.filter((r) => seen === null || !seen.has(r.card.entry)).map((r) => r.card.entry));
 }
 
-/** The record to keep once `entry` is opened (or, first time, everything but the new). */
-export function markSeen(rows: readonly CodexRow[], seen: ReadonlySet<string> | null, entry: string | null): string[] {
-  const base = seen ?? new Set(rows.slice(1).map((r) => r.card.entry));
+/** The record to keep once `entry` is opened (a first look starts it empty: nothing opened yet). */
+export function markSeen(_rows: readonly CodexRow[], seen: ReadonlySet<string> | null, entry: string | null): string[] {
+  const base = seen ?? new Set<string>();
   const next = new Set(base);
   if (entry !== null) next.add(entry);
   return [...next];
