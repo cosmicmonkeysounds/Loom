@@ -315,13 +315,14 @@ export function readoutsOf(messages: readonly CockpitMessage[], character: strin
  *  character not among its `actors`) is dropped — the view keeps it
  *  flagged and the play booth drops it on the client
  *  (`play/src/booth/card.tsx` `splitInteractions`) — unless the lens is a
- *  host part's (`host`), whose booth may press it. */
+ *  host part's (`host`), whose booth may press it when the server says a
+ *  press from outside its actors is heard (`hostHeard` not false). */
 export function performerActions(lens: Lens | undefined, perspective: string, interactions: readonly InteractionSummary[]): InteractionSummary[] {
   const resolved = lens != null && lens.kind === 'performer' && lens.id === perspective ? lens : null
   const host = resolved?.host === true
   const me = foldName(perspective)
   const pressable = (i: InteractionSummary): boolean =>
-    i.who === 'performer' && (host || i.only !== true || (i.actors ?? []).some((a) => foldName(a) === me))
+    i.who === 'performer' && (i.only !== true || (host && i.hostHeard !== false) || (i.actors ?? []).some((a) => foldName(a) === me))
   return (resolved !== null ? resolved.view.interactions : interactions).filter(pressable)
 }
 

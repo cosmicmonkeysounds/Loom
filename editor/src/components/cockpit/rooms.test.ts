@@ -397,6 +397,18 @@ describe('wave 13: a booth without admin cues, and readouts in the Inbox', () =>
     expect(performerActions(lens, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine', 'patch'])
   })
 
+  it("a host part's lens leaves out a button only its actors' own hooks hear (hostHeard: false), as the server refuses it", () => {
+    const view: PrimeView = {
+      ...withPatch,
+      interactions: [...withPatch.interactions, ia('shield', 'performer', { only: true, actors: ['McAfee'], hostHeard: false })],
+    }
+    const lens = { kind: 'performer' as const, id: 'Norton', view, host: true }
+    expect(performerActions(lens, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine', 'patch'])
+    // Its own actors still have it.
+    const mcafee = { kind: 'performer' as const, id: 'McAfee', view: { ...view, character: 'McAfee' } }
+    expect(performerActions(mcafee, 'McAfee', ALL).map((i) => i.id)).toContain('shield')
+  })
+
   it("before the lens resolves: the mod snapshot's performer buttons this character may press", () => {
     expect(performerActions(null, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
     // A lens for someone else is not this booth's.
