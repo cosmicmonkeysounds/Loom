@@ -886,8 +886,13 @@ footer {
 }
 .cue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .cue-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 56px; margin: 0; text-align: left; font-size: 15px; }
-.cue-row.next { box-shadow: var(--raised), inset 0 0 0 3px var(--navy); }
-.cue-row.last { background: var(--highlight); color: var(--black); }
+/* NEXT is the one loud row: a selected Win95 list item (navy, white). LAST
+   is only its tag (and the LAST strip above the list); fired rows recede. */
+.cue-row.last .cue-tag.last { padding: 0 4px; background: var(--highlight); color: var(--black); opacity: 1; }
+.cue-row.next { background: var(--navy); color: var(--white); box-shadow: var(--raised); }
+.cue-row.next .cue-tags, .cue-row.next .cue-tag.muted { opacity: 1; color: var(--white); }
+.cue-row.next .cue-n { opacity: 0.85; }
+.cue-row.next:focus-visible { outline-color: var(--white); }
 .cue-row.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
 /* W11: a story button marked `arm: true` (arm.ts), after its first tap —
    the director phone's armed look, with "Tap again to fire" under it */
@@ -902,7 +907,8 @@ footer {
 .cue-arm { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
 .cue-row { scroll-margin-top: 48px; } /* clear of the sticky act header */
 .cue-row.off:not(.last):not(.armed) { opacity: 0.55; } /* `while:` false: off tonight's branch, still pressable */
-.cue-row.fired { background: var(--code-bg); color: var(--muted-ink); box-shadow: none; } /* done tonight: muted, never hidden */
+.cue-row.fired { background: transparent; color: var(--dim-ink); box-shadow: inset 0 0 0 1px var(--line); font-weight: 400; } /* done tonight: dimmed (flat, no lighter fill), never hidden */
+.cue-row.fired .cue-title { font-weight: 400; }
 .cue-row.armed.warn { box-shadow: var(--raised), inset 0 0 0 3px var(--bad); }
 .cue-warn { font: 700 12px var(--ui-font); color: var(--highlight); overflow-wrap: anywhere; } /* out of turn: warned, never blocked */
 .cue-tag.muted { font-weight: 600; font-style: italic; }

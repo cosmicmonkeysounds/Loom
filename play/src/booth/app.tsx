@@ -262,7 +262,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room — or 📷 Scan a pass." />
-              <div className="booth-dock" hidden={keyboard}>
+              {/* No `hidden` here: the dock owns its keyboard rule. A field in
+                  the room hides it; one in the host console hides only its
+                  NEXT bar, never the drawer the host is typing in. */}
+              <div className="booth-dock">
                 <HostDock session={s} wide={wide} openCard={(id) => openCard(id)} />
               </div>
               {!keyboard && (

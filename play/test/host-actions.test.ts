@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
-import { BACK_FROM_BATHROOM, HOST_ROUTES, announceCue, cueSignal, hostCalls, type HostRoute } from "../src/host/api.ts";
+import { BACK_FROM_BATHROOM, HOST_ROUTES, announceCue, cueSignal, hostCalls, joinLink, type HostRoute } from "../src/host/api.ts";
 import { fetchHostPost } from "../src/host/client.ts";
 import { ApiError } from "../src/client.ts";
 
@@ -99,6 +99,24 @@ describe("the host calls", () => {
     expect(Object.keys(codes)).not.toContain("modPass");
   });
 
+  it("C2: the doors and a pause — start opens or resumes, stop pauses; nothing else of the lifecycle", async () => {
+    const { sent, calls } = recorder();
+    await calls.openDoors();
+    await calls.pause();
+    await calls.resume();
+    expect(sent.map((s) => [s.route, s.body])).toEqual([
+      ["/api/mod/start", {}],
+      ["/api/mod/stop", {}],
+      ["/api/mod/start", {}],
+    ]);
+    for (const never of ["/api/mod/reset", "/api/mod/load", "/api/mod/resync"]) expect(HOST_ROUTES as readonly string[]).not.toContain(never);
+  });
+
+  it("the join QR's link is the print sheet's: the base, then ?code=", () => {
+    expect(joinLink({ joinUrl: "https://loom.example/", eventPass: "GST 1" })).toBe("https://loom.example/?code=GST%201");
+    expect(joinLink({ joinUrl: "", eventPass: "G" }, "http://lan:7000")).toBe("http://lan:7000/?code=G");
+  });
+
   it("a cue press carries presses and no label", () => {
     expect(cueSignal("award_best_liar", "g1", { value: 3 }, 12)).toEqual({ name: "award_best_liar", subject: "g1", args: { value: 3 }, presses: 12 });
     expect(cueSignal("start_bingo", null, null)).toEqual({ name: "start_bingo" });
@@ -155,7 +173,9 @@ describe("the allowlist", () => {
     for (const f of files) {
       const src = readFileSync(new URL(f, dir), "utf8");
       for (const m of src.matchAll(/["'`](\/api\/(?:mod|agent)\/[a-z/-]+)/gu)) expect(allowed, `${f}: ${m[1]}`).toContain(m[1]);
-      expect(src).not.toMatch(/\/api\/mod\/(reset|load|stop|start|log|metrics|set|agent|impersonate|message|beat|reveal)\b/u);
+      // Of the lifecycle only the doors and a pause (C2): `start` / `stop`.
+      expect(src).not.toMatch(/\/api\/mod\/(reset|load|resync|log|metrics|set|agent|impersonate|message|beat|reveal)\b/u);
+      expect(src).not.toMatch(/\/api\/(projects|mod\/event)\//u);
     }
   });
 });

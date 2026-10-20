@@ -50,8 +50,8 @@ describe("the drawer's tabs", () => {
   });
 
   it("More shows only what the event has: no currency → no wallet, no King, no terminals", () => {
-    expect(moreSections(hostFixture())).toEqual(["announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents"]);
-    expect(moreSections(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }))).toEqual(["announce", "alerts", "codes"]);
+    expect(moreSections(hostFixture())).toEqual(["show", "announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents"]);
+    expect(moreSections(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }))).toEqual(["show", "announce", "alerts", "codes"]);
   });
 
   it("a need opens its tab (and the staff room for a staff need)", () => {
@@ -79,14 +79,18 @@ describe("the NEXT bar's second line", () => {
     const v = hostFixture();
     const rows = cueRows(v.interactions, v.cues);
     const items = hostStrip(v, sheetLayout(rows), 60_000, 3);
-    expect(items.map((i) => i.text)).toEqual(["B", "arrivals", "⏳ Hunt 1:00", "⚠ 3"]);
+    expect(items.map((i) => i.text)).toEqual(["B", "Arrivals", "⏳ Hunt, 1:00 left", "⚠ 3"]);
+    expect(items.map((i) => i.kind)).toEqual(["act", "phase", "countdown", "needs"]);
+    // A phone drops the phase first, and only to make room for a countdown.
+    expect(items.filter((i) => i.optional).map((i) => i.kind)).toEqual(["phase"]);
+    expect(hostStrip(hostFixture({ countdowns: [] }), sheetLayout(rows), 60_000, 3).some((i) => i.optional)).toBe(false);
     expect(items[3]!.tone).toBe("needs");
   });
 
   it("a countdown under a minute is urgent; a paused clock says so; no needs, no ⚠", () => {
     const v = hostFixture({ runtime: "paused", paused: true });
     const items = hostStrip(v, sheetLayout(cueRows(v.interactions, v.cues)), 90_000, 0);
-    expect(items.map((i) => i.text)).toEqual(["B", "arrivals", "⏸ clock stopped", "⏳ Hunt 0:30"]);
+    expect(items.map((i) => i.text)).toEqual(["B", "Arrivals", "⏸ clock stopped", "⏳ Hunt, 0:30 left"]);
     expect(items[3]!.tone).toBe("urgent");
   });
 });

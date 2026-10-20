@@ -38,6 +38,12 @@ export interface PrimeAuth {
 
 const PK = "loom.prime";
 
+/** The booth's host capability: the latest view's when it says (a snapshot
+ *  re-sends it on every path), else the sign-in's (C4). */
+export function hostOf(viewHost: boolean | undefined, authHost: boolean | undefined): boolean {
+  return (viewHost ?? authHost) === true;
+}
+
 /** The sidebar section the staff rooms sit in (`rooms/spaces.ts SPACES.staff`). */
 export const STAFF_SPACE = "staff";
 
@@ -401,6 +407,21 @@ export function usePrimeSession(): PrimeSession {
     setAuth(a);
     setNotice(null);
   }, []);
+  // C4: the host capability rides every snapshot (`PrimeView.host`), so a
+  // booth signed in before the story marked its part `admin: true` (or
+  // before a reload / restart / the Players seat) becomes a host from the
+  // latest view (`view.host ?? auth.host`), without signing in again. The
+  // stored sign-in follows, so a reload keeps it; the stream reopens with
+  // the host capability (`primeStreamUrl`).
+  const viewHost = view?.host;
+  useEffect(() => {
+    if (auth === null) return;
+    const next = hostOf(viewHost, auth.host);
+    if (next === (auth.host === true)) return;
+    const a: PrimeAuth = { ...auth, host: next };
+    save(PK, a);
+    setAuth(a);
+  }, [viewHost, auth, save]);
   const scan = useCallback((target: string) => post<ScanResult>("/api/scan", { target }, auth!.token), [post, auth]);
   // A read, not an action: it never counts as the booth's own request, so a
   // readout landing while a card opens still banners (N-07).

@@ -7,10 +7,12 @@
 import { useEffect, useRef, useState } from "react";
 import { queueBadge } from "../../../core/src/host-board.ts";
 import type { AlertLevel } from "../../../core/src/delivery.ts";
+import { ARM_LINE, useArmButtons } from "../arm.ts";
+import { PassQr } from "../pass-qr.tsx";
 import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
-import type { HostCodes } from "./api.ts";
-import { ALERT_LADDER, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, stimulusInput, waitingFor, type MoreFocus } from "./model.ts";
+import { joinLink, type HostCodes } from "./api.ts";
+import { ALERT_LADDER, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus } from "./model.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection, useHost } from "./kit.tsx";
 
 export function MoreTab({ focus }: { focus: MoreFocus | null }) {
@@ -29,6 +31,8 @@ export function MoreTab({ focus }: { focus: MoreFocus | null }) {
     <div className="host-more" ref={root}>
       {sections.map((s) => {
         switch (s) {
+          case "show":
+            return <Show key={s} />;
           case "announce":
             return <Announce key={s} />;
           case "alerts":
@@ -50,6 +54,39 @@ export function MoreTab({ focus }: { focus: MoreFocus | null }) {
         }
       })}
     </div>
+  );
+}
+
+/** The doors and a pause (C2): one control for where the night stands, tap
+ *  to arm, tap again within 4 s to fire (core's arm model) — a pocket tap
+ *  never pauses the show. */
+function Show() {
+  const { view, calls, run } = useHost();
+  const c = showControl(view);
+  const arm = useArmButtons();
+  const [busy, setBusy] = useState(false);
+  const armed = arm.armed === c.id;
+  const call = () => (c.id === "pause" ? calls.pause() : c.id === "doors" ? calls.openDoors() : calls.resume());
+  return (
+    <HostSection id="show" title="⏯ The show" aside={c.state}>
+      <button
+        type="button"
+        className={`w95-btn host-arm ${armed ? "armed" : ""}`}
+        data-testid="host-show"
+        disabled={busy}
+        aria-busy={busy || undefined}
+        onClick={() =>
+          arm.tap(c.id, true, () => {
+            setBusy(true);
+            void run(c.done, call).finally(() => setBusy(false));
+          })
+        }
+      >
+        <span className="host-arm-label">{busy ? "Sending…" : c.label}</span>
+        {armed && !busy && <span className="host-arm-line">{ARM_LINE} — within 4 s</span>}
+      </button>
+      <p className="host-note">{c.note}</p>
+    </HostSection>
   );
 }
 
@@ -97,8 +134,11 @@ function AlertDial() {
             className={`w95-btn host-dial-step ${l.level === level ? "current" : ""} ${l.level === want ? "want" : ""}`}
             onClick={() => setWant(l.level === level ? null : l.level)}
           >
-            <span className="host-dial-label">{l.label}</span>
-            <span className="host-dial-hint">{l.hint}</span>
+            <span className="host-radio" aria-hidden="true" />
+            <span className="host-dial-words">
+              <span className="host-dial-label">{l.label}</span>
+              <span className="host-dial-hint">{l.hint}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -224,6 +264,7 @@ function Terminals({ terminals }: { terminals: NonNullable<HostView["terminals"]
 function Codes() {
   const { calls, run } = useHost();
   const [codes, setCodes] = useState<HostCodes | null>(null);
+  const [qr, setQr] = useState<{ title: string; url: string; alt: string; note: string } | null>(null);
   return (
     <HostSection id="codes" title="🎟 Codes and invitations">
       {codes === null ? (
@@ -241,22 +282,46 @@ function Codes() {
             <dt>Performers</dt>
             <dd>{codes.primePass}</dd>
           </dl>
+          <div className="host-row-actions">
+            <button type="button" className="w95-btn host-primary" data-testid="host-join-qr" onClick={() => setQr({ title: "🎟 Join the party", url: joinLink(codes), alt: "Join QR for guests", note: `Guests scan this to join, or type ${codes.eventPass}.` })}>
+              ▦ Show the join QR
+            </button>
+          </div>
           {codes.claims.length > 0 && (
             <ul className="host-rows">
               {codes.claims.map((c) => (
                 <li key={c.character} className="host-subrow">
                   <span className="host-subrow-name">🔒 {c.character}</span>
+                  {c.url !== "" && (
+                    <button type="button" className="w95-btn" aria-label={`Show ${c.character}'s invitation QR`} onClick={() => setQr({ title: `🔒 ${c.character}'s invitation`, url: c.url, alt: `Invitation QR for ${c.character}`, note: `The invited guest scans this to join as ${c.character}. It works all night.` })}>
+                      ▦ QR
+                    </button>
+                  )}
                   <ConfirmButton label="🔓 Open 2 min" ask={`Let anyone take ${c.character} for 2 min?`} onConfirm={() => run(`🔓 ${c.character} open for 2 min`, () => calls.unlockClaim(c.character, 2))} />
                 </li>
               ))}
             </ul>
           )}
+          {qr !== null && <QrSheet {...qr} onClose={() => setQr(null)} />}
           <button type="button" className="w95-btn" onClick={() => setCodes(null)}>
             Hide the codes
           </button>
         </>
       )}
     </HostSection>
+  );
+}
+
+/** A QR shown big, drawn in the browser (no server QR call), to be scanned
+ *  off this phone: the guest join link, or one invitation's claim link. */
+function QrSheet({ title, url, alt, note, onClose }: { title: string; url: string; alt: string; note: string; onClose: () => void }) {
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <div className="host-pair host-qr">
+        <PassQr text={url} alt={alt} />
+        <p>{note}</p>
+      </div>
+    </Sheet>
   );
 }
 
@@ -292,7 +357,10 @@ function Agents() {
     <>
       {view.agents.map((a) => (
         <HostSection key={a.id} id={agentSection(a.id)} title={`🤖 ${a.id}`} aside={a.online ? "● worker on" : "○ no worker"}>
-          {a.queue !== null && <p className={`host-note ${a.queue.stalled ? "alarm" : ""}`}>{queueBadge(a.queue).text}</p>}
+          {(() => {
+            const q = agentQueue(a, now);
+            return q !== null && <p className={`host-note ${q.stalled ? "alarm" : ""}`}>{queueBadge(q).text}</p>;
+          })()}
           {a.waiting.length === 0 ? (
             <HostEmpty>Nobody is waiting on {a.id}.</HostEmpty>
           ) : (
@@ -330,11 +398,14 @@ function AnswerSheet({ agent, guest, name, onClose }: { agent: string; guest: st
     <Sheet title={`🤖 ${name} ↔ ${agent}`} onClose={onClose} tall>
       <ol className="host-thread" aria-label={`${name}'s conversation with ${agent}`}>
         {thread.length === 0 && <li className="host-empty">The thread hasn't reached this booth yet.</li>}
-        {thread.map((m) => (
-          <li key={m.seq} className={`host-thread-line ${m.from === agent ? "them" : ""}`}>
-            <strong>{m.from === agent ? agent : name}</strong> {m.text}
-          </li>
-        ))}
+        {thread.map((m) => {
+          const l = threadLine(m, agent, name);
+          return (
+            <li key={m.seq} className={`host-thread-line ${l.tone}`}>
+              <strong>{l.who}</strong> {l.text}
+            </li>
+          );
+        })}
       </ol>
       <textarea className="host-text in-sheet" rows={3} maxLength={2000} aria-label={`Reply as ${agent}`} placeholder={`Reply to ${name} as ${agent}…`} value={text} onChange={(e) => setText(e.target.value)} />
       <div className="host-row-actions">

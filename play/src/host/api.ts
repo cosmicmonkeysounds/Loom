@@ -1,8 +1,9 @@
 //! Every write the host panel makes (wave 13, CONTRACTS §2.7 / §5.4): one
 //! typed call per action, each on the server's **host allowlist** and
 //! nothing else. A host token is refused (403 `not from a booth`) by every
-//! other moderator route, so this file is the panel's whole reach: no
-//! lifecycle, no free world writes, no log, no Mind (D5).
+//! other moderator route, so this file is the panel's whole reach: of the
+//! lifecycle only the doors and a pause (C2), no free world writes, no log,
+//! no Mind (D5).
 //!
 //! Pure over an injected `post`, so the tests can check every body and
 //! that no call ever leaves the allowlist.
@@ -31,6 +32,10 @@ export const HOST_ROUTES = [
   "/api/mod/prime/release",
   "/api/mod/act",
   "/api/mod/scan",
+  // The doors and a pause (C2): `start` opens the doors or resumes, `stop`
+  // pauses. Never reset / load / push / go live / end / resync.
+  "/api/mod/start",
+  "/api/mod/stop",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
@@ -58,6 +63,13 @@ export interface HostCodes {
   primePass: string;
   joinUrl: string;
   claims: Array<{ character: string; claim: string; url: string }>;
+}
+
+/** The guest join link a QR carries: `<base>/?code=<event code>` (the
+ *  editor's print sheet's link). */
+export function joinLink(codes: Pick<HostCodes, "joinUrl" | "eventPass">, origin: string = typeof location !== "undefined" ? location.origin : ""): string {
+  const base = codes.joinUrl.trim() !== "" ? codes.joinUrl.trim() : origin;
+  return `${base.replace(/\/+$/u, "")}/?code=${encodeURIComponent(codes.eventPass)}`;
 }
 
 /** The cue as broadcast: `!`-prefixed for an alert, never twice. */
@@ -131,6 +143,11 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     restrict: (id: string, on: boolean) => post("/api/mod/act", { id, action: on ? "restrict" : "unrestrict" }),
     /** End a stale Bathroom Mode: the story's own "back" event on the guest. */
     backFromBathroom: (id: string) => post("/api/mod/signal", { name: BACK_FROM_BATHROOM, subject: id }),
+    /** 🚪 Open the doors (before they open), or ▶ resume a paused show. */
+    openDoors: () => post("/api/mod/start", {}),
+    resume: () => post("/api/mod/start", {}),
+    /** ⏸ Pause the show: the story clock stops, nothing is lost. */
+    pause: () => post("/api/mod/stop", {}),
     /** Scan a guest as another character (a late arrival's clearance). */
     scanAs: (as: string, target: string) => post("/api/mod/scan", { as, target }),
   };
