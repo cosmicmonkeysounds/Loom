@@ -186,7 +186,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
 
   const side = (
     <SpaceList
-      spaces={boothSidebar(t.spaces)}
+      spaces={boothSidebar(t.spaces, { character, activeId: t.activeId })}
       activeId={t.activeId}
       onOpen={t.open}
       header={<PushCard push={push} booth title={s.auth?.title} why="the server-room alarm and the late list reach you even with the phone locked." />}

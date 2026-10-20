@@ -5,7 +5,7 @@
 
 import { foldName } from "../avatars.ts";
 import type { SpaceGroup } from "../rooms/spaces.ts";
-import type { CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
+import type { Channel, CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
 
 /** An objective's reserved button words: a guest's own pass / scan, never a booth's story button. */
 const RESERVED = new Set(["pass", "scan"]);
@@ -166,17 +166,51 @@ export function actChip(act: { code: string | null; title: string | null } | nul
 /** Room ids the booth keeps reachable but out of the sidebar. */
 const OFF_LIST = new Set(["__scanner"]);
 
+/** The sidebar section a guest's waiting message puts their thread in. */
+export const MESSAGES_SPACE = "guests";
+
+/**
+ * Has guest thread `c` an unread line the guest typed to this character
+ * (`dm:<character>`)? Its unread messages are the tail of `c.messages`
+ * (sorted by seq, `c.unread` long). A story line to the guest, or the
+ * guest's line to another character a host stream carries, never counts.
+ */
+export function guestAwaitsReply(c: Channel, character: string): boolean {
+  if (c.kind !== "guest" || c.unread <= 0) return false;
+  const name = c.people?.[0]?.name ?? c.title;
+  return c.messages.slice(-c.unread).some((m) => m.channel === `dm:${character}` && m.from === name && !m.hidden);
+}
+
 /**
  * The booth's lean sidebar: no Scanner row (the taskbar's 📷 Scan replaces
  * it) and no per-guest threads (they open from 🗂 Guests, the card's 💬 or
- * a readout). Both stay in the session's channel list, so a link or a card
- * can still open them.
+ * a readout) — except a guest who typed to this character and is not yet
+ * read: their thread sits in a "Messages" section just under the booth's
+ * own rooms until it is opened (and stays while it is the open room), so a
+ * guest's "help, I'm stuck" never goes unseen. Everything stays in the
+ * session's channel list, so a link or a card can still open it.
  */
-export function boothSidebar(spaces: readonly SpaceGroup[]): SpaceGroup[] {
-  return spaces
-    .filter((s) => s.id !== "guests")
-    .map((s) => ({ ...s, channels: s.channels.filter((c) => !OFF_LIST.has(c.id) && c.kind !== "guest") }))
-    .filter((s) => s.channels.length > 0);
+export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: string; activeId?: string | null } = {}): SpaceGroup[] {
+  const character = opts.character ?? "";
+  const keepGuest = (c: Channel) => c.id === opts.activeId || (character !== "" && guestAwaitsReply(c, character));
+  const out: SpaceGroup[] = [];
+  let messages: SpaceGroup | null = null;
+  for (const s of spaces) {
+    if (s.id === MESSAGES_SPACE) {
+      const waiting = s.channels.filter((c) => c.kind === "guest" && keepGuest(c));
+      if (waiting.length > 0) messages = { ...s, title: "Messages", channels: waiting };
+      continue;
+    }
+    const channels = s.channels.filter((c) => !OFF_LIST.has(c.id) && c.kind !== "guest");
+    if (channels.length > 0) out.push({ ...s, channels });
+  }
+  if (messages !== null) {
+    // Right under the booth's own rooms (Readouts), above the house's long list.
+    const at = out.findIndex((s) => s.id === "booth");
+    const after = at >= 0 ? at + 1 : out.findIndex((s) => s.id !== "pinned" && s.id !== "staff");
+    out.splice(after < 0 ? out.length : after, 0, messages);
+  }
+  return out;
 }
 
 /** The guests matching a search, by name or id (folded), sorted by name. */

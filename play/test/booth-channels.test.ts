@@ -1,7 +1,8 @@
 // Wave 13 (booth lane): a lean booth sidebar — the staff rooms pinned just
 // under the pinned rooms, the Readouts room (readouts the server keeps as
 // `dm:<me>` rows, so they survive a history reload), no Scanner row, no
-// per-guest rows, and the guests' agent threads a host stream carries kept
+// per-guest rows (but a guest's unread line to the character lists their
+// thread under Messages), and the guests' agent threads a host stream carries kept
 // out of the sidebar and the feed. The stream reopens when the booth gains
 // admin or host.
 import { describe, expect, it } from "vitest";
@@ -61,6 +62,27 @@ describe("the booth sidebar", () => {
     expect(rows).not.toContain("__scanner");
     expect(rows).not.toContain("guest:g-1");
     expect(rows).toContain(INBOX);
+  });
+
+  it("lists a guest's thread under Messages while it holds an unread line the guest typed to this character", () => {
+    const me = "Norton Anti-Virus";
+    const list = [msg(`dm:${me}`, ["g-1"], { from: me, text: "Welcome." }), msg(`dm:${me}`, ["g-1"], { from: "Ada", text: "Help, I'm stuck at the door!" })];
+    const chans = buildPrimeChannels(store(list), view());
+    // Unread as the threads state lays it over the channels (nothing read yet).
+    const withUnread = chans.map((c) => ({ ...c, unread: c.messages.length }));
+    const spaces = boothSidebar(groupBySpace(sorted(withUnread)), { character: me });
+    expect(spaces.map((s) => s.id)).toEqual(["pinned", "staff", "booth", "guests", "story", "cast"]);
+    const messages = spaces.find((s) => s.id === "guests")!;
+    expect(messages.title).toBe("Messages");
+    expect(messages.channels.map((c) => c.id)).toEqual(["guest:g-1"]);
+    // Read (only the story's own line past the mark): the row folds away again …
+    const read = chans.map((c) => ({ ...c, unread: 0 }));
+    expect(boothSidebar(groupBySpace(sorted(read)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).not.toContain("guest:g-1");
+    // … unless it is the room open now.
+    expect(boothSidebar(groupBySpace(sorted(read)), { character: me, activeId: "guest:g-1" }).flatMap((s) => s.channels.map((c) => c.id))).toContain("guest:g-1");
+    // A story line alone, or the guest's line to another character, never lists it.
+    const story = buildPrimeChannels(store([msg(`dm:${me}`, ["g-1"], { from: me }), msg("dm:Trabolta", ["g-1"], { from: "Ada" })]), view()).map((c) => ({ ...c, unread: c.messages.length }));
+    expect(boothSidebar(groupBySpace(sorted(story)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).not.toContain("guest:g-1");
   });
 
   it("keeps a guest's Trabolta thread (a host stream carries it) out of the sidebar and the feed", () => {
