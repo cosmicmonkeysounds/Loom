@@ -39,6 +39,7 @@ import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
 import {
   canonicalGuestName,
+  cleanGuestName,
   guestNameRefusal,
   reservedDefFor,
   guestPickable,
@@ -4130,7 +4131,9 @@ export class EventRuntime {
         // pool, or any software from the directory (`wiki` = the article
         // title they picked). Names are exclusive, a part in the story is
         // never a guest's, and a program is never antivirus software.
-        let name = str(body, "name").trim().replace(/\s+/gu, " ").slice(0, 48) || "Guest";
+        // Cleaned (NFKC, no zero-width / bidi / format characters): a
+        // lookalike of a taken name folds onto it and is refused (409).
+        let name = cleanGuestName(str(body, "name")).slice(0, 48).trim() || "Guest";
         const wiki = str(body, "wiki").trim();
         // A picture the guest chose on the picker (a serving key) — honoured
         // only if it is one of that program's own options.
@@ -4146,7 +4149,7 @@ export class EventRuntime {
             sendJson(res, 403, { error: `${hit.title} is antivirus software — programs can't be antivirus` });
             return true;
           }
-          name = hit.title;
+          name = cleanGuestName(hit.title);
           picture = hit.image;
         }
         // The article of a reserved program (`wiki:`) IS that program: the

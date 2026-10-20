@@ -92,12 +92,34 @@ export function reservedDefFor(model: SimModel, name: string): IdentityDef | nul
     ?? null;
 }
 
+/** Invisible letters NFKC keeps and `\p{Cf}` misses: the Hangul fillers
+ *  and the blank Braille pattern (each renders as nothing). */
+const INVISIBLE_LETTERS = /[\u115F\u1160\u3164\uFFA0\u2800]/gu;
+
+/**
+ * A typed guest name as the house shows and compares it: NFKC (a full-width
+ * `Ｃalculator` is `Calculator`), every format / control character dropped
+ * (zero-width spaces and joiners, bidi controls, a soft hyphen), the
+ * invisible fillers dropped, whitespace collapsed. Applied before the taken /
+ * part / caste / reserved checks and to the stored display name, so a
+ * lookalike of a taken name folds onto it (409) instead of posing as them.
+ */
+export function cleanGuestName(raw: string): string {
+  return raw
+    .normalize("NFKC")
+    .replace(/\s+/gu, " ")
+    .replace(/[\p{Cf}\p{Cc}]/gu, "")
+    .replace(INVISIBLE_LETTERS, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
 /** Why a guest may not register a name, or null when they may. `mayClaim`
  *  says whether this caller may take a `reserved: true` program (they hold
  *  its claim, or a director opened it); without it a reserved program is
  *  refused with `RESERVED`. */
 export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlySet<string>, mayClaim: (character: string) => boolean = () => false): string | null {
-  const folded = foldName(name);
+  const folded = foldName(cleanGuestName(name));
   if (folded === "") return "pick a program";
   if (taken.has(folded)) return `${name} is already here tonight — pick another program`;
   const def = identityDefs(model).find((d) => foldName(d.name) === folded);
@@ -172,7 +194,9 @@ export function performerRefusal(model: SimModel, character: string, held: Reado
 /** The folded names of everyone currently registered (guests + personas). */
 export function takenNames(persons: Iterable<{ name: string }>): Set<string> {
   const out = new Set<string>();
-  for (const p of persons) out.add(foldName(p.name));
+  // Cleaned too: a name stored before the cleaning (an older run) still
+  // holds its program against a lookalike.
+  for (const p of persons) out.add(foldName(cleanGuestName(p.name)));
   return out;
 }
 
