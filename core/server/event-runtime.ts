@@ -246,6 +246,10 @@ function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) 
  *  a printed code or a puzzle answer is a few words at most. */
 export const MAX_CODE_LENGTH = 64;
 
+/** A booth's repeat scan of the same guest inside this window is a double
+ *  tap, not a new scan (`/api/scan` answers 429 `again`). */
+export const SCAN_REPEAT_MS = 1500;
+
 /** How many thread lines an agent request carries. */
 const AGENT_HISTORY = 30;
 
@@ -550,6 +554,8 @@ export class EventRuntime {
   // Operator play-as sessions (token → who is played, by whom), minted by
   // `/api/mod/impersonate` for the editor's embedded play app.
   private readonly impersonations = new Map<string, Impersonation>();
+  /** When each booth last scanned each guest (`token|character|guest`), for the double-tap guard. */
+  private readonly lastScans = new Map<string, number>();
   // Failed passcode attempts per client IP (guest register + prime/mod
   // login). The codes are short and speakable, so throttling online
   // guessing is what actually protects them.
@@ -4053,6 +4059,17 @@ export class EventRuntime {
     return this.sessions.canHost(token) && !this.sessions.canModerate(token);
   }
 
+  /** Was this booth's scan of this guest (`key`) already made within
+   *  `SCAN_REPEAT_MS`? Records the scan when it was not. In memory only. */
+  private scanRepeated(key: string): boolean {
+    const now = this.clock();
+    const last = this.lastScans.get(key);
+    if (last !== undefined && now - last >= 0 && now - last < SCAN_REPEAT_MS) return true;
+    if (this.lastScans.size > 500) for (const [k, t] of this.lastScans) if (now - t >= SCAN_REPEAT_MS) this.lastScans.delete(k);
+    this.lastScans.set(key, now);
+    return false;
+  }
+
   /** May this token act as a host (`canHost`, or a play-as pane of a host part)? */
   private canHostToken(token: string | undefined): boolean {
     const imp = token ? this.impersonations.get(token) : undefined;
@@ -4701,6 +4718,15 @@ export class EventRuntime {
             return true;
           }
           scanAs = chosen;
+        }
+        // A double tap (📡 Scan again twice): the same booth scanning the
+        // same guest again inside `SCAN_REPEAT_MS` is not a new story scan —
+        // 429 `again`, nothing journaled, the fresh card for a client that
+        // wants it (adversary finding: 20 taps were 20 journaled scans).
+        if (scanAs !== null && this.scanRepeated(`${token ?? ""}|${scanAs}|${target}`)) {
+          const again = guestCardView(this.sim!, this.chat.all(), scanAs, target, this.canHostToken(token));
+          sendJson(res, 429, { error: "scanned a moment ago", again: true, ...(again !== null ? { card: again } : {}) });
+          return true;
         }
         let responses: string[] = [];
         let lines: PressLines = {};

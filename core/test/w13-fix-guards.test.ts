@@ -6,7 +6,7 @@
 //! - A double-tapped 📡 Scan again is one scan (429 `again` inside the window).
 
 import { afterAll, describe, expect, it } from "vitest";
-import { MAX_CODE_LENGTH } from "../server/event-runtime.ts";
+import { MAX_CODE_LENGTH, SCAN_REPEAT_MS } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import { cleanGuestName } from "../server/identity.ts";
 import { booth, cleanup, freshDir, guest, post, register, runtime } from "./w13-fix-harness.ts";
@@ -50,5 +50,32 @@ describe("wrong codes", () => {
     const edge = await post(rt, "/api/guest/codex/redeem", { code: "y".repeat(MAX_CODE_LENGTH), token: g.token });
     expect(edge.status).toBe(200);
     expect(new Store(d).readJournal().filter((l) => l.m === "redeem")).toHaveLength(1);
+  });
+});
+
+describe("📡 Scan again, double-tapped", () => {
+  it("the same booth's repeat scan of the same guest inside the window is 429 again, nothing journaled", async () => {
+    let now = 1_000_000;
+    const d = freshDir();
+    const rt = runtime({ now: () => now }, d);
+    rt.openDoors();
+    const g = await guest(rt, "Winamp");
+    const h = await guest(rt, "Encarta");
+    const norton = (await booth(rt, "Norton")).json.token as string;
+    const scans = () => new Store(d).readJournal().filter((l) => l.m === "scan").length;
+    expect((await post(rt, "/api/scan", { target: g.id, token: norton })).status).toBe(200);
+    const again = await post(rt, "/api/scan", { target: g.id, token: norton });
+    expect(again.status).toBe(429);
+    expect(again.json).toMatchObject({ again: true });
+    expect(again.json.card).toBeDefined();
+    expect(scans()).toBe(1);
+    // Another guest, or another booth, is a scan of its own.
+    expect((await post(rt, "/api/scan", { target: h.id, token: norton })).status).toBe(200);
+    const clippy = (await booth(rt, "Clippy")).json.token as string;
+    expect((await post(rt, "/api/scan", { target: g.id, token: clippy })).status).toBe(200);
+    // Past the window it scans again.
+    now += SCAN_REPEAT_MS;
+    expect((await post(rt, "/api/scan", { target: g.id, token: norton })).status).toBe(200);
+    expect(scans()).toBe(4);
   });
 });
