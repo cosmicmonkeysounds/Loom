@@ -1,12 +1,27 @@
 {
   "version": 1,
   "variant": "Shed",
-  "name": "Trapped in the Internet — the house, rain variant (PLACEHOLDER layout until the real house is measured; the Internet in the shed)",
-  "origin": "PLACEHOLDER, not yet surveyed: the front door's outside threshold, main-floor level, east jamb. +x east, +y up, +z south (north is -z). Metres. The structure matches the real house (2026-10-15): three levels — the basement (the RAM = the studio, the Fan Closet = the laundry, the Server Room = cold storage, Bathroom 1), the main floor (the Optical Drive = the mud room, the Start Bar = the kitchen, the CPU = the office, the Steam Room = the game room, the Desktop = the living room) and the top floor (the Graphics Card = bedroom 2, the Hard Drive = the crawl space, Bathroom 2) — joined by the hall and its two stairs (the Tube), plus the backyard (the Cloud) with the shed at the back of it. Every footprint and elevation is a guess. The rain variant of house.json: identical but for The Internet, which is the shed instead of the tent.",
+  "name": "Trapped in the Internet — the house, rain variant (the Internet in the shed)",
+  "origin": "The front door's outside threshold, main-floor level. +x east, +y up, +z south (north is -z). Metres. Drawn from the real house in the /reinstall/map editor (2026-10-20): the basement (the RAM = the studio, the Fan Closet = the laundry corner of the basement hall, the Server Room = cold storage behind its keypad door, Bathroom 1 off the studio), the main floor (the Optical Drive = the mud room at the front door, the Desktop = the living room, the Steam Room = the game room, the CPU = the office, the Start Bar = the kitchen, with the basement stairs) and the top floor (the Graphics Card = bedroom 2, the Hard Drive = the crawl space, Bathroom 2), joined by the hall, the basement hall and the upstairs hall (the Tube), plus the backyard (the Cloud) with the shed (the Internet) in its north-west corner. The rain variant of house.json: identical but for The Internet, which is the shed instead of the tent.",
   "floors": [
-    { "id": "basement", "label": "Basement", "elevation": -2.7, "height": 2.4 },
-    { "id": "main", "label": "Main floor", "elevation": 0, "height": 2.5 },
-    { "id": "top", "label": "Top floor", "elevation": 2.8, "height": 2.4 }
+    {
+      "id": "basement",
+      "label": "Basement",
+      "elevation": -2.7,
+      "height": 2.4
+    },
+    {
+      "id": "main",
+      "label": "Main floor",
+      "elevation": 0,
+      "height": 2.5
+    },
+    {
+      "id": "top",
+      "label": "Top floor",
+      "elevation": 2.8,
+      "height": 2.4
+    }
   ],
   "rooms": [
     {
@@ -15,7 +30,24 @@
       "floor": "main",
       "location": "The Optical Drive",
       "color": "#6b5a48",
-      "poly": [[-3, 0], [1, 0], [1, 3], [-3, 3]]
+      "poly": [
+        [
+          -3,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          -3,
+          3
+        ]
+      ]
     },
     {
       "id": "hall",
@@ -23,7 +55,24 @@
       "floor": "main",
       "location": "The Tube",
       "color": "#8a7a62",
-      "poly": [[-3, 3], [1, 3], [1, 12], [-3, 12]]
+      "poly": [
+        [
+          -5,
+          11.5
+        ],
+        [
+          -1,
+          11.5
+        ],
+        [
+          -1,
+          20.5
+        ],
+        [
+          -5,
+          20.5
+        ]
+      ]
     },
     {
       "id": "steam-room",
@@ -31,7 +80,24 @@
       "floor": "main",
       "location": "The Steam Room",
       "color": "#4a3f6b",
-      "poly": [[-7, 0], [-3, 0], [-3, 6], [-7, 6]]
+      "poly": [
+        [
+          -7.5,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          11.5
+        ],
+        [
+          -7.5,
+          11.5
+        ]
+      ]
     },
     {
       "id": "start-bar",
@@ -39,7 +105,24 @@
       "floor": "main",
       "location": "The Start Bar",
       "color": "#c9c2a8",
-      "poly": [[-7, 6], [-3, 6], [-3, 12], [-7, 12]]
+      "poly": [
+        [
+          -1,
+          12.45
+        ],
+        [
+          7,
+          12.45
+        ],
+        [
+          7,
+          20.5
+        ],
+        [
+          -1,
+          20.5
+        ]
+      ]
     },
     {
       "id": "cpu",
@@ -47,7 +130,24 @@
       "floor": "main",
       "location": "The CPU",
       "color": "#5c6b52",
-      "poly": [[1, 0], [7, 0], [7, 3.5], [1, 3.5]]
+      "poly": [
+        [
+          -11,
+          11.5
+        ],
+        [
+          -5,
+          11.5
+        ],
+        [
+          -5,
+          17.25
+        ],
+        [
+          -11,
+          17.25
+        ]
+      ]
     },
     {
       "id": "desktop",
@@ -55,7 +155,24 @@
       "floor": "main",
       "location": "The Desktop",
       "color": "#3f6e8c",
-      "poly": [[1, 3.5], [7, 3.5], [7, 12], [1, 12]]
+      "poly": [
+        [
+          -3,
+          3
+        ],
+        [
+          7,
+          3
+        ],
+        [
+          7,
+          11.5
+        ],
+        [
+          -3,
+          11.5
+        ]
+      ]
     },
     {
       "id": "backyard",
@@ -64,7 +181,40 @@
       "location": "The Cloud",
       "outdoor": true,
       "color": "#4f7a3a",
-      "poly": [[-7, 12], [7, 12], [7, 23], [-3.5, 23], [-3.5, 20], [-7, 20]]
+      "poly": [
+        [
+          -13.5,
+          18.3
+        ],
+        [
+          -5,
+          18.3
+        ],
+        [
+          -5,
+          20.5
+        ],
+        [
+          -3,
+          20.5
+        ],
+        [
+          -3,
+          29.3
+        ],
+        [
+          -17,
+          29.3
+        ],
+        [
+          -17,
+          21.3
+        ],
+        [
+          -13.5,
+          21.3
+        ]
+      ]
     },
     {
       "id": "shed",
@@ -73,7 +223,24 @@
       "location": "The Internet",
       "height": 2.2,
       "color": "#1c2b4a",
-      "poly": [[-7, 20], [-3.5, 20], [-3.5, 23], [-7, 23]]
+      "poly": [
+        [
+          -17,
+          18.3
+        ],
+        [
+          -13.5,
+          18.3
+        ],
+        [
+          -13.5,
+          21.3
+        ],
+        [
+          -17,
+          21.3
+        ]
+      ]
     },
     {
       "id": "basement-hall",
@@ -81,15 +248,32 @@
       "floor": "basement",
       "location": "The Tube",
       "color": "#5e5a52",
-      "poly": [[-3, 3], [1, 3], [1, 12], [-3, 12]]
-    },
-    {
-      "id": "bathroom-1",
-      "label": "Bathroom 1",
-      "floor": "basement",
-      "location": "Disk Cleanup",
-      "color": "#9fc4c9",
-      "poly": [[-3, 0.5], [-0.5, 0.5], [-0.5, 3], [-3, 3]]
+      "poly": [
+        [
+          -1,
+          12
+        ],
+        [
+          4.5,
+          12
+        ],
+        [
+          4.5,
+          16.5
+        ],
+        [
+          6.95,
+          16.5
+        ],
+        [
+          6.95,
+          21
+        ],
+        [
+          -1,
+          21
+        ]
+      ]
     },
     {
       "id": "fan-closet",
@@ -97,7 +281,49 @@
       "floor": "basement",
       "location": "The Fan Closet",
       "color": "#8c8c7a",
-      "poly": [[-7, 3], [-3, 3], [-3, 7], [-7, 7]]
+      "poly": [
+        [
+          4.5,
+          12
+        ],
+        [
+          6.95,
+          12
+        ],
+        [
+          6.95,
+          16.5
+        ],
+        [
+          4.5,
+          16.5
+        ]
+      ]
+    },
+    {
+      "id": "bathroom-1",
+      "label": "Bathroom 1",
+      "floor": "basement",
+      "location": "Disk Cleanup",
+      "color": "#9fc4c9",
+      "poly": [
+        [
+          -1,
+          6.95
+        ],
+        [
+          1.5,
+          6.95
+        ],
+        [
+          1.5,
+          9.45
+        ],
+        [
+          -1,
+          9.45
+        ]
+      ]
     },
     {
       "id": "server-room",
@@ -105,7 +331,24 @@
       "floor": "basement",
       "location": "The Server Room",
       "color": "#22313f",
-      "poly": [[-7, 7], [-3, 7], [-3, 12], [-7, 12]]
+      "poly": [
+        [
+          0.7,
+          21
+        ],
+        [
+          5.8,
+          21
+        ],
+        [
+          5.8,
+          26
+        ],
+        [
+          0.7,
+          26
+        ]
+      ]
     },
     {
       "id": "ram",
@@ -113,7 +356,24 @@
       "floor": "basement",
       "location": "The RAM",
       "color": "#6a5470",
-      "poly": [[1, 3], [7, 3], [7, 12], [1, 12]]
+      "poly": [
+        [
+          -7,
+          6.95
+        ],
+        [
+          -1,
+          6.95
+        ],
+        [
+          -1,
+          21
+        ],
+        [
+          -7,
+          21
+        ]
+      ]
     },
     {
       "id": "upstairs-hall",
@@ -121,7 +381,24 @@
       "floor": "top",
       "location": "The Tube",
       "color": "#7a6e5a",
-      "poly": [[0, 4], [3, 4], [3, 12], [0, 12]]
+      "poly": [
+        [
+          -2.85,
+          11
+        ],
+        [
+          0.15,
+          11
+        ],
+        [
+          0.15,
+          20.3
+        ],
+        [
+          -2.85,
+          20.3
+        ]
+      ]
     },
     {
       "id": "hard-drive",
@@ -129,7 +406,24 @@
       "floor": "top",
       "location": "The Hard Drive",
       "color": "#5a4a3a",
-      "poly": [[-4, 4], [0, 4], [0, 8], [-4, 8]]
+      "poly": [
+        [
+          3.15,
+          23
+        ],
+        [
+          7.15,
+          23
+        ],
+        [
+          7.15,
+          27
+        ],
+        [
+          3.15,
+          27
+        ]
+      ]
     },
     {
       "id": "bathroom-2",
@@ -137,7 +431,24 @@
       "floor": "top",
       "location": "Disk Cleanup",
       "color": "#9fc4c9",
-      "poly": [[-4, 8], [0, 8], [0, 12], [-4, 12]]
+      "poly": [
+        [
+          0.15,
+          12.25
+        ],
+        [
+          4.15,
+          12.25
+        ],
+        [
+          4.15,
+          16.25
+        ],
+        [
+          0.15,
+          16.25
+        ]
+      ]
     },
     {
       "id": "graphics-card",
@@ -145,134 +456,1366 @@
       "floor": "top",
       "location": "The Graphics Card",
       "color": "#2f5a6b",
-      "poly": [[3, 4], [7, 4], [7, 12], [3, 12]]
+      "poly": [
+        [
+          -5.6,
+          20.3
+        ],
+        [
+          3.15,
+          20.3
+        ],
+        [
+          3.15,
+          27
+        ],
+        [
+          -5.6,
+          27
+        ]
+      ]
     }
   ],
   "doors": [
-    { "id": "front", "a": "optical-drive", "b": null, "at": [-0.45, 0], "width": 0.9 },
-    { "id": "mud-hall", "a": "optical-drive", "b": "hall", "at": [-1, 3], "width": 0.9 },
-    { "id": "hall-living", "a": "hall", "b": "desktop", "at": [1, 4.6], "width": 1.2 },
-    { "id": "hall-steam", "a": "hall", "b": "steam-room", "at": [-3, 4.5], "width": 0.9 },
-    { "id": "hall-kitchen", "a": "hall", "b": "start-bar", "at": [-3, 11], "width": 0.9 },
-    { "id": "living-office", "a": "desktop", "b": "cpu", "at": [4, 3.5], "width": 0.9 },
-    { "id": "back", "a": "start-bar", "b": "backyard", "at": [-4.5, 12], "width": 0.9 },
-    { "id": "hall-back", "a": "hall", "b": "backyard", "at": [-1, 12], "width": 0.9 },
-    { "id": "shed-door", "a": "shed", "b": "backyard", "at": [-3.5, 21], "width": 0.9 },
-    { "id": "bathroom-1-door", "a": "basement-hall", "b": "bathroom-1", "at": [-1.75, 3], "width": 0.8 },
-    { "id": "laundry-door", "a": "basement-hall", "b": "fan-closet", "at": [-3, 4.5], "width": 0.8 },
-    { "id": "server-door", "a": "basement-hall", "b": "server-room", "at": [-3, 11.2], "width": 0.8, "guard": "cold-lock-king" },
-    { "id": "studio-door", "a": "basement-hall", "b": "ram", "at": [1, 5], "width": 1 },
-    { "id": "crawl-hatch", "a": "upstairs-hall", "b": "hard-drive", "at": [0, 5], "width": 0.8 },
-    { "id": "bathroom-2-door", "a": "upstairs-hall", "b": "bathroom-2", "at": [0, 11], "width": 0.8 },
-    { "id": "bedroom-2-door", "a": "upstairs-hall", "b": "graphics-card", "at": [3, 11], "width": 0.9 }
+    {
+      "id": "front",
+      "a": "optical-drive",
+      "b": null,
+      "at": [
+        -0.45,
+        0
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "mud-living",
+      "a": "optical-drive",
+      "b": "desktop",
+      "at": [
+        -0.6,
+        3
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "hall-living",
+      "a": "hall",
+      "b": "desktop",
+      "at": [
+        -1.95,
+        11.5
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "hall-steam",
+      "a": "hall",
+      "b": "steam-room",
+      "at": [
+        -4.05,
+        11.5
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "hall-cpu",
+      "a": "hall",
+      "b": "cpu",
+      "at": [
+        -5,
+        16
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "hall-kitchen",
+      "a": "hall",
+      "b": "start-bar",
+      "at": [
+        -1,
+        18.6
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "hall-back",
+      "a": "hall",
+      "b": "backyard",
+      "at": [
+        -3.45,
+        20.5
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "shed-door",
+      "a": "shed",
+      "b": "backyard",
+      "at": [
+        -13.5,
+        20.6
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "studio-door",
+      "a": "basement-hall",
+      "b": "ram",
+      "at": [
+        -1,
+        13.8
+      ],
+      "width": 0.8
+    },
+    {
+      "id": "laundry-door",
+      "a": "basement-hall",
+      "b": "fan-closet",
+      "at": [
+        4.5,
+        14.25
+      ],
+      "width": 0.8
+    },
+    {
+      "id": "bathroom-1-door",
+      "a": "ram",
+      "b": "bathroom-1",
+      "at": [
+        -1,
+        8
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "server-door",
+      "a": "basement-hall",
+      "b": "server-room",
+      "at": [
+        3.9,
+        21
+      ],
+      "width": 0.9,
+      "guard": "cold-lock-king"
+    },
+    {
+      "id": "bathroom-2-door",
+      "a": "upstairs-hall",
+      "b": "bathroom-2",
+      "at": [
+        0.15,
+        14.25
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "bedroom-2-door",
+      "a": "upstairs-hall",
+      "b": "graphics-card",
+      "at": [
+        -0.65,
+        20.3
+      ],
+      "width": 0.9
+    },
+    {
+      "id": "crawl-hatch",
+      "a": "graphics-card",
+      "b": "hard-drive",
+      "at": [
+        3.15,
+        25.85
+      ],
+      "width": 0.9
+    }
   ],
   "stairs": [
-    { "id": "basement-stairs", "from": "basement-hall", "to": "hall", "rect": [-2.9, 6, -2, 10], "up": "n" },
-    { "id": "upstairs", "from": "hall", "to": "upstairs-hall", "rect": [0.05, 6, 0.95, 10], "up": "s" }
+    {
+      "id": "basement-stairs",
+      "from": "basement-hall",
+      "to": "start-bar",
+      "rect": [
+        1.9,
+        13.5,
+        2.65,
+        17.15
+      ],
+      "up": "n"
+    },
+    {
+      "id": "upstairs",
+      "from": "hall",
+      "to": "upstairs-hall",
+      "rect": [
+        -2.6,
+        14.35,
+        -1.8,
+        18.2
+      ],
+      "up": "n"
+    }
   ],
   "terminals": [
-    { "id": "optical-drive", "name": "Optical Drive", "room": "optical-drive", "pos": [-3, 1.4, 1.5], "yaw": -90 },
-    { "id": "hall", "name": "Hall", "room": "hall", "pos": [1, 1.4, 11], "yaw": 90 },
-    { "id": "desktop-tv", "name": "Desktop TV", "room": "desktop", "pos": [7, 1.8, 7.75], "yaw": 90, "pitch": -10 },
-    { "id": "start-bar", "name": "Start Bar", "room": "start-bar", "pos": [-5, 1.4, 6], "yaw": 180 },
-    { "id": "bathroom-1-door", "name": "Bathroom 1 door", "room": "basement-hall", "pos": [-0.2, -1.3, 3], "yaw": 180 },
-    { "id": "ram", "name": "RAM", "room": "ram", "pos": [7, -1.3, 7.5], "yaw": 90 },
-    { "id": "server-room", "name": "Server Room", "room": "server-room", "pos": [-5, -1.3, 12], "yaw": 0 },
-    { "id": "server-room-door", "name": "Server Door", "room": "basement-hall", "pos": [1, -1.3, 11.2], "yaw": 90 },
-    { "id": "tent", "name": "Shed", "room": "shed", "pos": [-5.25, 1.4, 20], "yaw": 180 }
+    {
+      "id": "optical-drive",
+      "name": "Optical Drive",
+      "room": "optical-drive",
+      "pos": [
+        -3,
+        1.4,
+        1.5
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "hall",
+      "name": "Hall",
+      "room": "hall",
+      "pos": [
+        -1,
+        1.4,
+        13
+      ],
+      "yaw": 90
+    },
+    {
+      "id": "desktop-tv",
+      "name": "Desktop TV",
+      "room": "desktop",
+      "pos": [
+        7,
+        1.8,
+        7.25
+      ],
+      "yaw": 90,
+      "pitch": -10
+    },
+    {
+      "id": "steam-room",
+      "name": "Steam Room",
+      "room": "steam-room",
+      "pos": [
+        -3,
+        1.4,
+        8
+      ],
+      "yaw": 90
+    },
+    {
+      "id": "cpu",
+      "name": "CPU",
+      "room": "cpu",
+      "pos": [
+        -11,
+        1.4,
+        13
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "start-bar",
+      "name": "Start Bar",
+      "room": "start-bar",
+      "pos": [
+        4.5,
+        1.4,
+        12.45
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "backyard",
+      "name": "Backyard",
+      "room": "backyard",
+      "pos": [
+        -4.4,
+        1.4,
+        20.5
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "bathroom-1-door",
+      "name": "Bathroom 1 door",
+      "room": "ram",
+      "pos": [
+        -1,
+        -1.3,
+        9.0
+      ],
+      "yaw": 90
+    },
+    {
+      "id": "ram",
+      "name": "RAM",
+      "room": "ram",
+      "pos": [
+        -7,
+        -1.3,
+        14
+      ],
+      "yaw": -90
+    },
+    {
+      "id": "server-room",
+      "name": "Server Room",
+      "room": "server-room",
+      "pos": [
+        3.9,
+        -1.3,
+        26
+      ],
+      "yaw": 0
+    },
+    {
+      "id": "server-room-door",
+      "name": "Server Door",
+      "room": "basement-hall",
+      "pos": [
+        6.95,
+        -1.3,
+        20.5
+      ],
+      "yaw": 90
+    },
+    {
+      "id": "upstairs-hall",
+      "name": "Upstairs hall",
+      "room": "upstairs-hall",
+      "pos": [
+        -1.35,
+        4.2,
+        11
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "graphics-card",
+      "name": "Graphics Card",
+      "room": "graphics-card",
+      "pos": [
+        -1,
+        4.2,
+        27
+      ],
+      "yaw": 0
+    },
+    {
+      "id": "tent",
+      "name": "Shed",
+      "room": "shed",
+      "pos": [
+        -17,
+        1.4,
+        19.8
+      ],
+      "yaw": -90
+    }
   ],
   "duck": {
     "spots": [
-      { "id": "optical-drive-boots", "room": "optical-drive", "pos": [-1.6, 0, 0.5] },
-      { "id": "cpu-desk", "room": "cpu", "pos": [4.9, 0.75, 0.45] },
-      { "id": "desktop-couch", "room": "desktop", "pos": [2.5, 0, 7.75] },
-      { "id": "steam-room-shelf", "room": "steam-room", "pos": [-6.2, 0, 1.2] },
-      { "id": "start-bar-counter", "room": "start-bar", "pos": [-6.7, 0.9, 9] },
-      { "id": "backyard-bbq", "room": "backyard", "pos": [6, 0, 13.3] },
-      { "id": "ram-mixing-desk", "room": "ram", "pos": [4.6, -1.9, 3.4] },
-      { "id": "fan-closet-dryer", "room": "fan-closet", "pos": [-6.65, -1.85, 4.4] },
-      { "id": "bathroom-1-floor", "room": "bathroom-1", "pos": [-2.2, -2.7, 1.1] },
-      { "id": "graphics-card-bed", "room": "graphics-card", "pos": [5.5, 3.35, 6.6] },
-      { "id": "hard-drive-boxes", "room": "hard-drive", "pos": [-2.6, 2.8, 4.6] },
-      { "id": "bathroom-2-tub", "room": "bathroom-2", "pos": [-3.6, 3.35, 10.5] }
+      {
+        "id": "optical-drive-boots",
+        "room": "optical-drive",
+        "pos": [
+          -1.6,
+          0,
+          0.5
+        ]
+      },
+      {
+        "id": "desktop-couch",
+        "room": "desktop",
+        "pos": [
+          3.65,
+          0,
+          9
+        ]
+      },
+      {
+        "id": "steam-room-shelf",
+        "room": "steam-room",
+        "pos": [
+          -6.2,
+          0,
+          4.2
+        ]
+      },
+      {
+        "id": "cpu-desk",
+        "room": "cpu",
+        "pos": [
+          -6.8,
+          0.75,
+          14.2
+        ]
+      },
+      {
+        "id": "start-bar-counter",
+        "room": "start-bar",
+        "pos": [
+          6.7,
+          0.9,
+          17.5
+        ]
+      },
+      {
+        "id": "backyard-fence",
+        "room": "backyard",
+        "pos": [
+          -16.3,
+          0,
+          28.6
+        ]
+      },
+      {
+        "id": "ram-mixing-desk",
+        "room": "ram",
+        "pos": [
+          -3,
+          -1.9,
+          12.4
+        ]
+      },
+      {
+        "id": "fan-closet-dryer",
+        "room": "fan-closet",
+        "pos": [
+          6.25,
+          -1.85,
+          14.45
+        ]
+      },
+      {
+        "id": "bathroom-1-floor",
+        "room": "bathroom-1",
+        "pos": [
+          0.4,
+          -2.7,
+          8.8
+        ]
+      },
+      {
+        "id": "graphics-card-bed",
+        "room": "graphics-card",
+        "pos": [
+          -3.7,
+          3.35,
+          25.55
+        ]
+      },
+      {
+        "id": "hard-drive-boxes",
+        "room": "hard-drive",
+        "pos": [
+          5.25,
+          2.8,
+          23.6
+        ]
+      },
+      {
+        "id": "bathroom-2-tub",
+        "room": "bathroom-2",
+        "pos": [
+          2.75,
+          3.35,
+          15.35
+        ]
+      }
     ]
   },
-  "spawn": { "room": "shed", "pos": [-4.6, 0, 21.6], "yaw": -90 },
+  "spawn": {
+    "room": "shed",
+    "pos": [
+      -15.0,
+      0,
+      19.3
+    ],
+    "yaw": -90
+  },
   "props": [
-    { "id": "boot-rack", "room": "optical-drive", "kind": "box", "pos": [-2.75, 0, 1.6], "size": [0.35, 0.45, 1.4], "color": "#3b2f25" },
-    { "id": "bench", "room": "optical-drive", "kind": "box", "pos": [0.3, 0, 1.5], "size": [0.4, 0.45, 1.4], "color": "#7a5c3e" },
-    { "id": "mud-sign", "room": "optical-drive", "kind": "label", "pos": [-1.6, 1.9, 0.05], "size": [1.6, 0.3, 0.02], "yaw": 180, "label": "OPTICAL DRIVE — LOGIN" },
-    { "id": "tube-sign", "room": "optical-drive", "kind": "label", "pos": [-1, 2.05, 2.95], "size": [0.9, 0.25, 0.02], "color": "#18c8ff", "label": "THE TUBE" },
-
-    { "id": "tube-hall", "room": "hall", "kind": "box", "pos": [-1, 0, 7.5], "size": [0.9, 0.01, 9], "color": "#18c8ff", "solid": false },
-    { "id": "coat-rack", "room": "hall", "kind": "cylinder", "pos": [-2.6, 0, 3.4], "size": [0.4, 1.8, 0.4], "color": "#4a3a2a" },
-
-    { "id": "tv-console", "room": "steam-room", "kind": "box", "pos": [-6.75, 0, 3], "size": [0.5, 0.6, 1.6], "color": "#1f1f2a", "label": "STEAM" },
-    { "id": "beanbag", "room": "steam-room", "kind": "cylinder", "pos": [-5.2, 0, 3], "size": [0.9, 0.5, 0.9], "color": "#8c2f4a" },
-    { "id": "game-shelf", "room": "steam-room", "kind": "box", "pos": [-5, 0, 0.2], "size": [1.8, 1.8, 0.35], "color": "#5a4030" },
-
-    { "id": "counter", "room": "start-bar", "kind": "box", "pos": [-6.7, 0, 9], "size": [0.6, 0.9, 3.8], "color": "#d8d4c8" },
-    { "id": "fridge", "room": "start-bar", "kind": "box", "pos": [-6.6, 0, 11.5], "size": [0.8, 1.8, 0.8], "color": "#e8e8e8" },
-    { "id": "router", "room": "start-bar", "kind": "box", "pos": [-6.7, 0.9, 7.6], "size": [0.25, 0.05, 0.18], "color": "#111111", "label": "ROUTER", "solid": false },
-    { "id": "kitchen-table", "room": "start-bar", "kind": "box", "pos": [-4.6, 0, 8.6], "size": [1.6, 0.75, 1], "color": "#8b6a45" },
-    { "id": "stove", "room": "start-bar", "kind": "box", "pos": [-6.2, 0, 6.35], "size": [0.75, 0.9, 0.6], "color": "#2b2b2b" },
-
-    { "id": "desk", "room": "cpu", "kind": "box", "pos": [5.5, 0, 0.45], "size": [1.6, 0.75, 0.7], "color": "#6e4f33" },
-    { "id": "filing-box", "room": "cpu", "kind": "box", "pos": [6.6, 0, 2.4], "size": [0.5, 0.6, 0.5], "color": "#a07f52", "label": "FILES" },
-
-    { "id": "fireplace", "room": "desktop", "kind": "box", "pos": [6.75, 0, 7.75], "size": [1.6, 1.1, 0.5], "yaw": 90, "color": "#8c5a46" },
-    { "id": "couch", "room": "desktop", "kind": "box", "pos": [3.6, 0, 7.75], "size": [2, 0.85, 0.9], "yaw": -90, "color": "#5b6b4a" },
-    { "id": "coffee-table", "room": "desktop", "kind": "box", "pos": [5, 0, 7.75], "size": [0.6, 0.45, 1.1], "color": "#6e4f33" },
-    { "id": "plant", "room": "desktop", "kind": "cylinder", "pos": [6.6, 0, 4], "size": [0.5, 0.9, 0.5], "color": "#2f6b2f" },
-    { "id": "bookshelf", "room": "desktop", "kind": "box", "pos": [4, 0, 11.75], "size": [1.8, 2, 0.35], "color": "#5a4030" },
-
-    { "id": "bbq", "room": "backyard", "kind": "cylinder", "pos": [6.4, 0, 12.6], "size": [0.6, 1, 0.6], "color": "#1f1f1f" },
-    { "id": "picnic-table", "room": "backyard", "kind": "box", "pos": [-4.5, 0, 16], "size": [1.8, 0.75, 1.5], "color": "#8a6b40" },
-    { "id": "truth-pong", "room": "backyard", "kind": "box", "pos": [2.5, 0, 15.5], "size": [1.83, 0.76, 0.76], "color": "#d9d9d9", "label": "TRUTH PONG" },
-    { "id": "yard-fridge", "room": "backyard", "kind": "box", "pos": [-6.6, 0, 12.45], "size": [0.6, 0.85, 0.6], "color": "#cfd8dc", "label": "FRIDGE" },
-    { "id": "tube-yard", "room": "backyard", "kind": "box", "pos": [-1, 0, 16.525], "size": [0.9, 0.01, 9.05], "color": "#18c8ff", "solid": false },
-    { "id": "tube-shed", "room": "backyard", "kind": "box", "pos": [-2.475, 0, 21], "size": [2.05, 0.01, 0.9], "color": "#18c8ff", "solid": false },
-
-    { "id": "vr-station-1", "room": "shed", "kind": "box", "pos": [-6.2, 0, 22.2], "size": [1.4, 0.02, 1.4], "color": "#00ffd0", "label": "VR 1", "solid": false },
-    { "id": "vr-station-2", "room": "shed", "kind": "box", "pos": [-4.4, 0, 22.2], "size": [1.4, 0.02, 1.4], "color": "#00ffd0", "label": "VR 2", "solid": false },
-    { "id": "tablet-stand", "room": "shed", "kind": "cylinder", "pos": [-6.6, 0, 20.4], "size": [0.3, 1, 0.3], "color": "#333333" },
-    { "id": "tablet", "room": "shed", "kind": "screen", "pos": [-6.6, 1, 20.4], "size": [0.25, 0.18, 0.02], "color": "#101820", "label": "SCAN YOUR PASS" },
-    { "id": "exit-sign", "room": "shed", "kind": "label", "pos": [-3.55, 1.85, 21], "size": [0.4, 0.15, 0.02], "yaw": 90, "color": "#ff2a2a", "label": "EXIT" },
-    { "id": "tent-sign", "room": "shed", "kind": "label", "pos": [-4.35, 1.85, 20.05], "size": [1.2, 0.3, 0.02], "yaw": 180, "label": "THE INTERNET" },
-
-    { "id": "toilet-1", "room": "bathroom-1", "kind": "box", "pos": [-1, -2.7, 0.85], "size": [0.4, 0.75, 0.65], "color": "#f7f7f7" },
-    { "id": "sink-1", "room": "bathroom-1", "kind": "box", "pos": [-2.75, -2.7, 2.3], "size": [0.45, 0.85, 0.6], "color": "#e6e6e6" },
-
-    { "id": "washer", "room": "fan-closet", "kind": "box", "pos": [-6.65, -2.7, 3.6], "size": [0.7, 0.85, 0.7], "color": "#e8e8e8" },
-    { "id": "dryer", "room": "fan-closet", "kind": "box", "pos": [-6.65, -2.7, 4.4], "size": [0.7, 0.85, 0.7], "color": "#dcdcdc", "label": "FAN" },
-    { "id": "laundry-basket", "room": "fan-closet", "kind": "cylinder", "pos": [-4, -2.7, 6.4], "size": [0.5, 0.5, 0.5], "color": "#c9b38a" },
-
-    { "id": "patch-bay", "room": "server-room", "kind": "box", "pos": [-6.8, -2.7, 9.5], "size": [0.35, 1.4, 1], "color": "#30343a", "label": "PATCH BAY" },
-    { "id": "server-rack", "room": "server-room", "kind": "box", "pos": [-4.5, -2.7, 8], "size": [0.6, 1.8, 0.8], "color": "#1b1b1b", "label": "REAL GEAR" },
-    { "id": "lock-ring", "room": "basement-hall", "kind": "screen", "pos": [-2.97, -1.2, 10.5], "size": [0.2, 0.2, 0.02], "yaw": -90, "color": "#ff2a2a", "label": "LOCK" },
-    { "id": "cold-storage-sign", "room": "basement-hall", "kind": "label", "pos": [-2.97, -0.6, 11.2], "size": [1, 0.25, 0.02], "yaw": -90, "label": "COLD STORAGE" },
-    { "id": "cold-lock-king", "room": "basement-hall", "kind": "king", "pos": [-2.55, -2.7, 11.2], "size": [0.6, 1.9, 0.6], "yaw": -90, "color": "#d4af37", "label": "THE KING", "hp": 15,
+    {
+      "id": "boot-rack",
+      "room": "optical-drive",
+      "kind": "box",
+      "pos": [
+        -2.75,
+        0,
+        1.6
+      ],
+      "size": [
+        0.35,
+        0.45,
+        1.4
+      ],
+      "color": "#3b2f25"
+    },
+    {
+      "id": "bench",
+      "room": "optical-drive",
+      "kind": "box",
+      "pos": [
+        0.3,
+        0,
+        1.5
+      ],
+      "size": [
+        0.4,
+        0.45,
+        1.4
+      ],
+      "color": "#7a5c3e"
+    },
+    {
+      "id": "mud-sign",
+      "room": "optical-drive",
+      "kind": "label",
+      "pos": [
+        -1.6,
+        1.9,
+        0.05
+      ],
+      "size": [
+        1.6,
+        0.3,
+        0.02
+      ],
+      "yaw": 180,
+      "label": "OPTICAL DRIVE — LOGIN"
+    },
+    {
+      "id": "tube-sign",
+      "room": "optical-drive",
+      "kind": "label",
+      "pos": [
+        -1,
+        2.05,
+        2.95
+      ],
+      "size": [
+        0.9,
+        0.25,
+        0.02
+      ],
+      "color": "#18c8ff",
+      "label": "THE TUBE"
+    },
+    {
+      "id": "coat-rack",
+      "room": "hall",
+      "kind": "cylinder",
+      "pos": [
+        -4.6,
+        0,
+        11.9
+      ],
+      "size": [
+        0.4,
+        1.8,
+        0.4
+      ],
+      "color": "#4a3a2a"
+    },
+    {
+      "id": "tube-hall",
+      "room": "hall",
+      "kind": "box",
+      "pos": [
+        -3.2,
+        0,
+        16
+      ],
+      "size": [
+        0.9,
+        0.01,
+        9
+      ],
+      "color": "#18c8ff",
+      "solid": false
+    },
+    {
+      "id": "tv-console",
+      "room": "steam-room",
+      "kind": "box",
+      "pos": [
+        -6.75,
+        0,
+        6
+      ],
+      "size": [
+        0.5,
+        0.6,
+        1.6
+      ],
+      "color": "#1f1f2a",
+      "label": "STEAM"
+    },
+    {
+      "id": "beanbag",
+      "room": "steam-room",
+      "kind": "cylinder",
+      "pos": [
+        -5.2,
+        0,
+        6
+      ],
+      "size": [
+        0.9,
+        0.5,
+        0.9
+      ],
+      "color": "#8c2f4a"
+    },
+    {
+      "id": "game-shelf",
+      "room": "steam-room",
+      "kind": "box",
+      "pos": [
+        -5,
+        0,
+        3.2
+      ],
+      "size": [
+        1.8,
+        1.8,
+        0.35
+      ],
+      "color": "#5a4030"
+    },
+    {
+      "id": "counter",
+      "room": "start-bar",
+      "kind": "box",
+      "pos": [
+        6.7,
+        0,
+        18.5
+      ],
+      "size": [
+        0.6,
+        0.9,
+        3.8
+      ],
+      "color": "#d8d4c8"
+    },
+    {
+      "id": "fridge",
+      "room": "start-bar",
+      "kind": "box",
+      "pos": [
+        -0.6,
+        0,
+        20
+      ],
+      "size": [
+        0.8,
+        1.8,
+        0.8
+      ],
+      "color": "#e8e8e8"
+    },
+    {
+      "id": "router",
+      "room": "start-bar",
+      "kind": "box",
+      "pos": [
+        5.85,
+        0.9,
+        13.55
+      ],
+      "size": [
+        0.25,
+        0.05,
+        0.18
+      ],
+      "color": "#111111",
+      "label": "ROUTER",
+      "solid": false
+    },
+    {
+      "id": "kitchen-table",
+      "room": "start-bar",
+      "kind": "box",
+      "pos": [
+        5.1,
+        0,
+        18.55
+      ],
+      "size": [
+        1.6,
+        0.75,
+        1
+      ],
+      "color": "#8b6a45"
+    },
+    {
+      "id": "stove",
+      "room": "start-bar",
+      "kind": "box",
+      "pos": [
+        1.25,
+        0,
+        19.65
+      ],
+      "size": [
+        0.75,
+        0.9,
+        0.6
+      ],
+      "color": "#2b2b2b"
+    },
+    {
+      "id": "desk",
+      "room": "cpu",
+      "kind": "box",
+      "pos": [
+        -6.5,
+        0,
+        14.2
+      ],
+      "size": [
+        1.6,
+        0.75,
+        0.7
+      ],
+      "color": "#6e4f33"
+    },
+    {
+      "id": "filing-box",
+      "room": "cpu",
+      "kind": "box",
+      "pos": [
+        -10.4,
+        0,
+        15.05
+      ],
+      "size": [
+        0.5,
+        0.6,
+        0.5
+      ],
+      "color": "#a07f52",
+      "label": "FILES"
+    },
+    {
+      "id": "fireplace",
+      "room": "desktop",
+      "kind": "box",
+      "pos": [
+        6.75,
+        0,
+        7.25
+      ],
+      "size": [
+        1.6,
+        1.1,
+        0.5
+      ],
+      "yaw": 90,
+      "color": "#8c5a46"
+    },
+    {
+      "id": "couch",
+      "room": "desktop",
+      "kind": "box",
+      "pos": [
+        3.6,
+        0,
+        7.25
+      ],
+      "size": [
+        2,
+        0.85,
+        0.9
+      ],
+      "yaw": -90,
+      "color": "#5b6b4a"
+    },
+    {
+      "id": "coffee-table",
+      "room": "desktop",
+      "kind": "box",
+      "pos": [
+        5,
+        0,
+        7.25
+      ],
+      "size": [
+        0.6,
+        0.45,
+        1.1
+      ],
+      "color": "#6e4f33"
+    },
+    {
+      "id": "plant",
+      "room": "desktop",
+      "kind": "cylinder",
+      "pos": [
+        6.6,
+        0,
+        3.5
+      ],
+      "size": [
+        0.5,
+        0.9,
+        0.5
+      ],
+      "color": "#2f6b2f"
+    },
+    {
+      "id": "bookshelf",
+      "room": "desktop",
+      "kind": "box",
+      "pos": [
+        4,
+        0,
+        11.25
+      ],
+      "size": [
+        1.8,
+        2,
+        0.35
+      ],
+      "color": "#5a4030"
+    },
+    {
+      "id": "bbq",
+      "room": "backyard",
+      "kind": "cylinder",
+      "pos": [
+        -6.2,
+        0,
+        23.5
+      ],
+      "size": [
+        0.6,
+        1,
+        0.6
+      ],
+      "color": "#1f1f1f"
+    },
+    {
+      "id": "picnic-table",
+      "room": "backyard",
+      "kind": "box",
+      "pos": [
+        -14.5,
+        0,
+        22.3
+      ],
+      "size": [
+        1.8,
+        0.75,
+        1.5
+      ],
+      "color": "#8a6b40"
+    },
+    {
+      "id": "truth-pong",
+      "room": "backyard",
+      "kind": "box",
+      "pos": [
+        -7.5,
+        0,
+        21.8
+      ],
+      "size": [
+        1.83,
+        0.76,
+        0.76
+      ],
+      "color": "#d9d9d9",
+      "label": "TRUTH PONG"
+    },
+    {
+      "id": "tube-yard",
+      "room": "backyard",
+      "kind": "box",
+      "pos": [
+        -8.25,
+        0,
+        20.95
+      ],
+      "size": [
+        10.5,
+        0.01,
+        0.8
+      ],
+      "color": "#18c8ff",
+      "solid": false
+    },
+    {
+      "id": "vr-station-1",
+      "room": "shed",
+      "kind": "box",
+      "pos": [
+        -16.2,
+        0,
+        20.4
+      ],
+      "size": [
+        1.4,
+        0.02,
+        1.4
+      ],
+      "color": "#00ffd0",
+      "label": "VR 1",
+      "solid": false
+    },
+    {
+      "id": "vr-station-2",
+      "room": "shed",
+      "kind": "box",
+      "pos": [
+        -14.6,
+        0,
+        20.4
+      ],
+      "size": [
+        1.4,
+        0.02,
+        1.4
+      ],
+      "color": "#00ffd0",
+      "label": "VR 2",
+      "solid": false
+    },
+    {
+      "id": "tablet-stand",
+      "room": "shed",
+      "kind": "cylinder",
+      "pos": [
+        -16.6,
+        0,
+        18.75
+      ],
+      "size": [
+        0.3,
+        1,
+        0.3
+      ],
+      "color": "#333333"
+    },
+    {
+      "id": "tablet",
+      "room": "shed",
+      "kind": "screen",
+      "pos": [
+        -16.6,
+        1,
+        18.75
+      ],
+      "size": [
+        0.25,
+        0.18,
+        0.02
+      ],
+      "color": "#101820",
+      "label": "SCAN YOUR PASS"
+    },
+    {
+      "id": "exit-sign",
+      "room": "shed",
+      "kind": "label",
+      "pos": [
+        -13.55,
+        1.85,
+        19.4
+      ],
+      "size": [
+        0.4,
+        0.15,
+        0.02
+      ],
+      "yaw": 90,
+      "color": "#ff2a2a",
+      "label": "EXIT"
+    },
+    {
+      "id": "tent-sign",
+      "room": "shed",
+      "kind": "label",
+      "pos": [
+        -15.25,
+        1.85,
+        18.35
+      ],
+      "size": [
+        1.2,
+        0.3,
+        0.02
+      ],
+      "yaw": 180,
+      "label": "THE INTERNET"
+    },
+    {
+      "id": "toilet-1",
+      "room": "bathroom-1",
+      "kind": "box",
+      "pos": [
+        1,
+        -2.7,
+        7.3
+      ],
+      "size": [
+        0.4,
+        0.75,
+        0.65
+      ],
+      "color": "#f7f7f7"
+    },
+    {
+      "id": "sink-1",
+      "room": "bathroom-1",
+      "kind": "box",
+      "pos": [
+        0.05,
+        -2.7,
+        7.25
+      ],
+      "size": [
+        0.45,
+        0.85,
+        0.6
+      ],
+      "color": "#e6e6e6"
+    },
+    {
+      "id": "washer",
+      "room": "fan-closet",
+      "kind": "box",
+      "pos": [
+        6.25,
+        -2.7,
+        15.7
+      ],
+      "size": [
+        0.7,
+        0.85,
+        0.7
+      ],
+      "color": "#e8e8e8"
+    },
+    {
+      "id": "dryer",
+      "room": "fan-closet",
+      "kind": "box",
+      "pos": [
+        6.25,
+        -2.7,
+        14.45
+      ],
+      "size": [
+        0.7,
+        0.85,
+        0.7
+      ],
+      "color": "#dcdcdc",
+      "label": "FAN"
+    },
+    {
+      "id": "laundry-basket",
+      "room": "fan-closet",
+      "kind": "cylinder",
+      "pos": [
+        5.2,
+        -2.7,
+        12.5
+      ],
+      "size": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "color": "#c9b38a"
+    },
+    {
+      "id": "patch-bay",
+      "room": "server-room",
+      "kind": "box",
+      "pos": [
+        1.85,
+        -2.7,
+        22.4
+      ],
+      "size": [
+        0.35,
+        1.4,
+        1
+      ],
+      "color": "#30343a",
+      "label": "PATCH BAY"
+    },
+    {
+      "id": "server-rack",
+      "room": "server-room",
+      "kind": "box",
+      "pos": [
+        3.1,
+        -2.7,
+        23.75
+      ],
+      "size": [
+        0.6,
+        1.8,
+        0.8
+      ],
+      "color": "#1b1b1b",
+      "label": "REAL GEAR"
+    },
+    {
+      "id": "lock-ring",
+      "room": "basement-hall",
+      "kind": "screen",
+      "pos": [
+        4.6,
+        -1.2,
+        20.97
+      ],
+      "size": [
+        0.2,
+        0.2,
+        0.02
+      ],
+      "yaw": 0,
+      "color": "#ff2a2a",
+      "label": "LOCK"
+    },
+    {
+      "id": "cold-storage-sign",
+      "room": "basement-hall",
+      "kind": "label",
+      "pos": [
+        3.9,
+        -0.6,
+        20.97
+      ],
+      "size": [
+        1,
+        0.25,
+        0.02
+      ],
+      "yaw": 0,
+      "label": "COLD STORAGE"
+    },
+    {
+      "id": "cold-lock-king",
+      "room": "basement-hall",
+      "kind": "king",
+      "pos": [
+        3.9,
+        -2.7,
+        20.55
+      ],
+      "size": [
+        0.6,
+        1.9,
+        0.6
+      ],
+      "yaw": 0,
+      "color": "#d4af37",
+      "label": "THE KING",
+      "hp": 15,
       "health": "Night.king_hp",
-      "signals": { "won": "chess won", "lost": "chess lost", "drawn": "chess drawn", "hit": "king hit", "fallen": "king fallen" },
-      "armed": { "path": "Night.king_armed", "min": 1 } },
-
-    { "id": "mixing-desk", "room": "ram", "kind": "box", "pos": [5, -2.7, 3.4], "size": [1.6, 0.8, 0.7], "color": "#2a2a30", "label": "RAM" },
-    { "id": "studio-couch", "room": "ram", "kind": "box", "pos": [6.4, -2.7, 10.5], "size": [0.9, 0.8, 1.8], "color": "#7a4a4a" },
-    { "id": "speaker-l", "room": "ram", "kind": "box", "pos": [3.8, -2.7, 3.3], "size": [0.4, 1.1, 0.4], "color": "#111111" },
-
-    { "id": "storage-boxes", "room": "hard-drive", "kind": "box", "pos": [-3.4, 2.8, 4.6], "size": [0.8, 0.6, 0.6], "color": "#a07f52" },
-    { "id": "insulation", "room": "hard-drive", "kind": "box", "pos": [-3.6, 2.8, 7.2], "size": [0.6, 0.4, 1.2], "color": "#d9a0a0" },
-
-    { "id": "tub-2", "room": "bathroom-2", "kind": "box", "pos": [-3.6, 2.8, 10.5], "size": [0.75, 0.55, 1.5], "color": "#f2f2f2" },
-    { "id": "toilet-2", "room": "bathroom-2", "kind": "box", "pos": [-2, 2.8, 11.6], "size": [0.4, 0.75, 0.65], "color": "#f7f7f7" },
-    { "id": "sink-2", "room": "bathroom-2", "kind": "box", "pos": [-3.75, 2.8, 8.5], "size": [0.45, 0.85, 0.6], "color": "#e6e6e6" },
-
-    { "id": "bed", "room": "graphics-card", "kind": "box", "pos": [5.5, 2.8, 6], "size": [2, 0.55, 1.6], "color": "#3a5a8c" },
-    { "id": "drawing-desk", "room": "graphics-card", "kind": "box", "pos": [6.6, 2.8, 10], "size": [0.7, 0.75, 1.4], "color": "#6e4f33", "label": "GPU" }
+      "signals": {
+        "won": "chess won",
+        "lost": "chess lost",
+        "drawn": "chess drawn",
+        "hit": "king hit",
+        "fallen": "king fallen"
+      },
+      "armed": {
+        "path": "Night.king_armed",
+        "min": 1
+      }
+    },
+    {
+      "id": "mixing-desk",
+      "room": "ram",
+      "kind": "box",
+      "pos": [
+        -3,
+        -2.7,
+        12.4
+      ],
+      "size": [
+        1.6,
+        0.8,
+        0.7
+      ],
+      "color": "#2a2a30",
+      "label": "RAM"
+    },
+    {
+      "id": "studio-couch",
+      "room": "ram",
+      "kind": "box",
+      "pos": [
+        -1.6,
+        -2.7,
+        19.5
+      ],
+      "size": [
+        0.9,
+        0.8,
+        1.8
+      ],
+      "color": "#7a4a4a"
+    },
+    {
+      "id": "speaker-l",
+      "room": "ram",
+      "kind": "box",
+      "pos": [
+        -4.2,
+        -2.7,
+        12.3
+      ],
+      "size": [
+        0.4,
+        1.1,
+        0.4
+      ],
+      "color": "#111111"
+    },
+    {
+      "id": "storage-boxes",
+      "room": "hard-drive",
+      "kind": "box",
+      "pos": [
+        3.75,
+        2.8,
+        23.6
+      ],
+      "size": [
+        0.8,
+        0.6,
+        0.6
+      ],
+      "color": "#a07f52"
+    },
+    {
+      "id": "insulation",
+      "room": "hard-drive",
+      "kind": "box",
+      "pos": [
+        6.5,
+        2.8,
+        25.1
+      ],
+      "size": [
+        0.6,
+        0.4,
+        1.2
+      ],
+      "color": "#d9a0a0"
+    },
+    {
+      "id": "tub-2",
+      "room": "bathroom-2",
+      "kind": "box",
+      "pos": [
+        2.75,
+        2.8,
+        15.35
+      ],
+      "size": [
+        0.75,
+        0.55,
+        1.5
+      ],
+      "color": "#f2f2f2"
+    },
+    {
+      "id": "toilet-2",
+      "room": "bathroom-2",
+      "kind": "box",
+      "pos": [
+        2.2,
+        2.8,
+        12.75
+      ],
+      "size": [
+        0.4,
+        0.75,
+        0.65
+      ],
+      "color": "#f7f7f7"
+    },
+    {
+      "id": "sink-2",
+      "room": "bathroom-2",
+      "kind": "box",
+      "pos": [
+        0.4,
+        2.8,
+        12.75
+      ],
+      "size": [
+        0.45,
+        0.85,
+        0.6
+      ],
+      "color": "#e6e6e6"
+    },
+    {
+      "id": "bed",
+      "room": "graphics-card",
+      "kind": "box",
+      "pos": [
+        -3.4,
+        2.8,
+        25.25
+      ],
+      "size": [
+        2,
+        0.55,
+        1.6
+      ],
+      "color": "#3a5a8c"
+    },
+    {
+      "id": "drawing-desk",
+      "room": "graphics-card",
+      "kind": "box",
+      "pos": [
+        0.55,
+        2.8,
+        25.5
+      ],
+      "size": [
+        0.7,
+        0.75,
+        1.4
+      ],
+      "color": "#6e4f33",
+      "label": "GPU"
+    }
   ],
   "spaces": {
-    "vr": { "offset": [0, 0, 0], "yaw": 0, "scale": 1 },
-    "web": { "offset": [0, 0, 0], "yaw": 0, "scale": 1 }
+    "vr": {
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "scale": 1
+    },
+    "web": {
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "scale": 1
+    }
   },
-  "style": { "fence": 1.8, "wallThickness": 0.12, "doorHeight": 2 }
+  "style": {
+    "fence": 1.8,
+    "wallThickness": 0.12,
+    "doorHeight": 2
+  }
 }
