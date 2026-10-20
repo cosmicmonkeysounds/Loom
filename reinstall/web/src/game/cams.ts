@@ -1,5 +1,5 @@
 //! The wall terminals' camera feeds in the game (wave 14,
-//! `docs/loom-reinstall.md` §3.6): every terminal near the player shows its
+//! `docs/loom-reinstall.md` §2.3): every terminal near the player shows its
 //! real room live on a window where it hangs (`HouseScene.setTerminalFeed`).
 //!
 //! The feed list (`GET /api/spatial/cams`) is polled every 2 s; the frame

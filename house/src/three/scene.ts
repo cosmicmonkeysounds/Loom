@@ -111,7 +111,7 @@ export interface HouseScene {
   showKing(id: string, king: { hp: number; max: number; fallen: boolean }, open?: boolean): void;
   /**
    * Show terminal `id`'s live camera frame (wave 14, `docs/loom-reinstall.md`
-   * §3.6) on a 4:3 window (`FEED_W` × `FEED_H`) in a thin Win98 bezel where
+   * §2.3) on a 4:3 window (`FEED_W` × `FEED_H`) in a thin Win98 bezel where
    * the terminal hangs, or `null` for the terminal's own screen look. The
    * source is copied at once (an `ImageBitmap` may be closed right after).
    * False when nothing is shown: no such terminal, `null`, or no canvas

@@ -2798,7 +2798,7 @@ export class EventRuntime {
   }
 
   /** `POST /api/mod/spatial/cam {spot, jpeg, w, h}` — a terminal's frame
-   *  (§3.6). Read under its own body cap, before the generic parse. */
+   *  (§2.3). Read under its own body cap, before the generic parse. */
   private async handleCamUpload(req: IncomingMessage, res: ServerResponse, moderator: boolean): Promise<boolean> {
     const body = await readBody(req, CAM_BODY_LIMIT);
     if (!moderator && !this.sessions.canModerate(tokenOf(req, body))) {
@@ -2823,7 +2823,7 @@ export class EventRuntime {
   private handleSpatialGet(req: IncomingMessage, res: ServerResponse, path: string, url: URL, moderator: boolean): boolean {
     const token = queryTokenOf(req, url);
     if (path === "/api/spatial/cams" || path === "/api/spatial/cam") {
-      // The camera feeds (§3.6): a game session or a moderator, like the map.
+      // The camera feeds (§2.3): a game session or a moderator, like the map.
       if (!this.spatialReader(token, moderator)) {
         sendJson(res, 401, { error: "a moderator or game session token is required" });
         return true;

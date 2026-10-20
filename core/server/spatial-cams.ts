@@ -1,5 +1,5 @@
 //! The wall terminals' **camera feeds** (wave 14, `docs/loom-reinstall.md`
-//! §3.6): each terminal uploads a small JPEG of its room ~3 times a second,
+//! §2.3): each terminal uploads a small JPEG of its room ~3 times a second,
 //! and the reinstallation games show it as a window where that terminal
 //! hangs in the virtual house. Transport-free (an injected clock, like
 //! `SpatialHub`): memory only, the latest frame per spot, never journaled,

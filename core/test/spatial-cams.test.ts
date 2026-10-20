@@ -1,4 +1,4 @@
-//! The wall terminals' camera feeds (wave 14, `docs/loom-reinstall.md` §3.6):
+//! The wall terminals' camera feeds (wave 14, `docs/loom-reinstall.md` §2.3):
 //! the pure store + upload parser, then the three routes on a real
 //! `EventRuntime` (upload by mod token, list + frame by a game session or a
 //! moderator, 15 s freshness, a spot that leaves the map).
