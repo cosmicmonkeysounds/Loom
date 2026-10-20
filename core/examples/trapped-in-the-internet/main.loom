@@ -3,6 +3,7 @@ start: Power On
 theme: aol97
 directory: everyone
 judge: Trabolta
+alerts: Night.alerts
 currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
 watch: program.cleared as Cleared, program.marked as Marked
@@ -3719,6 +3720,7 @@ when five_minute_warning:
     set Night.step = 9
     set Night.summons_open = true
     set Night.summons_end = Time.elapsed + 300
+    set Night.alerts = "dialog"
     unlock Clippy Instructions 5 for Clippy
     update quest Keep Everyone Calm for Clippy "Truth Pong. Be more excited than ever."
     broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone
@@ -3756,6 +3758,7 @@ when truth_pong:
   else if Night.step < 10:
     set Night.phase = "truth_pong"
     set Night.step = 10
+    set Night.alerts = "sticky"
     set Night.hunt2_on = false
     set Night.round = 2
     set Night.judging = true
@@ -3929,6 +3932,7 @@ when y2k_clock:
     set Night.step = 14
     set Night.final_round = true
     set Night.y2k_end = Time.elapsed + 3600
+    set Night.alerts = "dialog"
     set Night.clock = "23:00"
     set Trabolta.composure -= 25
     reveal Unlimited Power
@@ -4541,6 +4545,7 @@ when final_reveal:
     set Night.final_round = false
     set Night.phase = "final_reveal"
     set Night.step = 16
+    set Night.alerts = "bsod"
     set Night.round = 3
     set Night.judging = true
     unlock Clippy Instructions 8 for Clippy
@@ -4719,6 +4724,7 @@ when the_hand_jive:
 when start_the_ceremony:
   if Night.ended == true and Night.ceremony != true:
     set Night.ceremony = true
+    set Night.alerts = "sticky"
     fire lift_the_takeover
     if Night.ending == "destroyed" or Night.ending == "rave":
       set Night.ceremony_host = "Clippy"
@@ -4975,6 +4981,11 @@ set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.awards_given = 0
 set Night.award_lines = "template"
+// The phones' interrupt ladder (wave 13, D2; header `alerts:`): balloon <
+// sticky < dialog < bsod. The story climbs it at the summons, the Y2K clock
+// and the final reveal, and comes back down at Truth Pong and the ceremony;
+// a host's dial holds until the next of these sets (DRAFT).
+set Night.alerts = "sticky"
 set Kernel.combo_a = "V2-D5,V4-D1,V6-D8,V7-D3"
 set Kernel.combo_b = "V1-D6,V3-D2,V5-D7,V8-D4"
 set Kernel.anti_ai = "MS Paint"

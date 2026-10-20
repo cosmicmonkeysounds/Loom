@@ -88,6 +88,31 @@ export const PROGRAMS: [string, string][] = [
   ["g6", "VLC"],
 ];
 
+export const TO_TRUTH_1 = ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"];
+export const TO_HOUR = [...TO_TRUTH_1, "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"];
+export const TO_OVERSHARE = [...TO_HOUR, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares"];
+export const TO_Y2K = [...TO_OVERSHARE, "y2k_clock"];
+
+/** Six programs uploaded and cleared at the door. */
+export function boot(): Night {
+  const n = new Night();
+  for (const [id, name] of PROGRAMS) n.upload(id, name);
+  return n;
+}
+
+/** From the Y2K hour to an ending and the ceremony: the reveal, the bob,
+ *  truth.txt, the verdict, then the rave if the verdict is Grok Prom. */
+export function toCeremony(n: Night): void {
+  n.press("final_reveal");
+  n.press("bobbing_for_truth");
+  n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
+  n.press("read_truth_txt");
+  n.press("the_verdict");
+  if (v(n.sim, "Night.phase") === "grok_prom") n.press("no_pickup_line");
+  expect(v(n.sim, "Night.ended")).toBe(true);
+  n.press("start_the_ceremony");
+}
+
 describe("Trapped in the Internet — wave 13: one home per broadcast", () => {
   it("there is no # system-log: an everyone-alert posts once, in the lobby", () => {
     const n = new Night();
@@ -142,4 +167,33 @@ describe("Trapped in the Internet — wave 13: the booth card's facts", () => {
     const secret = new Set(n.sim.model.roles.get("Program")!.secret ?? []);
     for (const g of primeView(n.sim, "Norton Anti-Virus").guests) for (const f of g.flags ?? []) expect(secret.has(f.path.split(".").slice(1).join(".")), f.path).toBe(false);
   });
+});
+
+describe("Trapped in the Internet — wave 13: the interrupt ladder", () => {
+  it("header alerts: Night.alerts; sticky at Power On, dialog at the summons and the clock, bsod at the reveal, sticky at Pong and the ceremony", () => {
+    const n = boot();
+    const level = () => guestView(n.sim, "g1").alertLevel;
+    expect(n.sim.model.alerts).toBe("Night.alerts");
+    expect(level()).toBe("sticky");
+    for (const c of TO_HOUR) n.press(c);
+    expect(level()).toBe("sticky");
+    n.press("five_minute_warning");
+    expect(level()).toBe("dialog");
+    expect(primeView(n.sim, "Norton Anti-Virus").alertLevel).toBe("dialog");
+    n.press("summons_closed");
+    n.press("truth_pong");
+    expect(level()).toBe("sticky");
+    for (const c of ["round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]) n.press(c);
+    expect(level()).toBe("dialog");
+    n.press("final_reveal");
+    expect(level()).toBe("bsod");
+    n.press("bobbing_for_truth");
+    n.signal("brought_up_the_bag", "g1", undefined, "Clippy");
+    n.press("read_truth_txt");
+    n.press("the_verdict");
+    if (v(n.sim, "Night.phase") === "grok_prom") n.press("no_pickup_line");
+    expect(level()).toBe("bsod");
+    n.press("start_the_ceremony");
+    expect(level()).toBe("sticky");
+  }, SLOW);
 });
