@@ -13,6 +13,7 @@ import { useOfflineFor } from "../client.ts";
 import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
 import { usePlayHost } from "../host.ts";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
+import { KnownNamesProvider, knownNames } from "../rooms/names.ts";
 import { useDocumentTitle, useLandingBrand } from "../session/shared.ts";
 import { pendingWidget, personalStream } from "../session/channels.ts";
 import { useGuestSession, type GuestSession } from "../session/guest.ts";
@@ -148,6 +149,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // Everyone's profile pictures (a program's Wikipedia image, an authored
   // `avatar:`), for every tile in the app.
   const avatars = useMemo(() => avatarLookup(s.me?.eventId ?? null, st?.avatars), [s.me?.eventId, st?.avatars]);
+  // The names as the story and the guests spell them (ICQ, VLC): a speaker
+  // matching one is never recased by prettyName.
+  const names = useMemo(
+    () => knownNames([s.me?.name], (st?.people ?? []).map((p) => p.name), (st?.roster ?? []).map((p) => p.name), st?.voiced),
+    [s.me?.name, st?.people, st?.roster, st?.voiced],
+  );
   // The wallet's countdowns tick between snapshots (a freeze's thaw, a held
   // transfer's auto-approve), off the snapshot clock + the wall time since.
   const walletClock = useWalletClock(st?.clock, st?.wallet);
@@ -271,7 +278,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
   // when the cutscene hands over to the app.
-  const framed = (body: ReactElement) => <MomentsProvider {...moments}>{body}</MomentsProvider>;
+  const framed = (body: ReactElement) => (
+    <KnownNamesProvider value={names}>
+      <MomentsProvider {...moments}>{body}</MomentsProvider>
+    </KnownNamesProvider>
+  );
 
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;

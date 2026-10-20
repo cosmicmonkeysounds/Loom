@@ -6,7 +6,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { crawlDuration } from "../crawl.ts";
 import { usePlayHost, type CrawlTier } from "../host.ts";
-import { prettyName } from "../rooms/spaces.ts";
+import { displayName, useKnownNames } from "../rooms/names.ts";
 import type { ChatMessage, QuestStatus, WalletCard } from "../types.ts";
 import { PersonAvatar, colorFor } from "../ui/primitives.tsx";
 import { WalletCardView, lastWalletStep } from "../wallet.tsx";
@@ -367,6 +367,7 @@ export function MessageBubble({
 }) {
   const cls = msg.kind === "line" ? "line" : msg.kind === "system" ? "system" : msg.kind === "signal" ? (msg.alert ? "signal alert" : "signal") : msg.kind === "widget" ? "widget" : "narration";
   const c = useCrawl(msg.text, msg.seq);
+  const known = useKnownNames();
   // Effect text keeps its look after the crawl (and under reduced motion).
   const fx = msg.fx === true || (msg.kind === "signal" && (msg.alert === true || msg.takeover === true));
   const crawlCls = `${c.typing && !c.queued ? "stream-typing" : ""} ${c.queued ? "stream-queued" : ""} ${fx ? "stream-fx" : ""} ${fx && c.typing ? "stream-fx-live" : ""}`;
@@ -389,7 +390,7 @@ export function MessageBubble({
     return (
       <div className={`msg ${cls} ${msg.hidden ? "hidden" : ""} ${crawlCls}`}>
         {showChannel && <div className="msg-channel">{msg.title}</div>}
-        {msg.kind === "narration" && msg.from && msg.from !== "Narrator" && <span className="narrator-tag">{prettyName(msg.from)}</span>}
+        {msg.kind === "narration" && msg.from && msg.from !== "Narrator" && <span className="narrator-tag">{displayName(msg.from, known)}</span>}
         {msg.manner && <span className="stream-manner">({msg.manner}) </span>}
         <span className="bubble plain">
           <CrawlText text={msg.text} c={c} />
@@ -398,7 +399,7 @@ export function MessageBubble({
       </div>
     );
   }
-  const name = prettyName(msg.from);
+  const name = displayName(msg.from, known);
   // The 💬 thread affordance belongs on typed chat (no beat), where people
   // talk back — not under every scripted line. A line with replies shows them.
   const threadable = onOpenThread !== undefined && (!msg.beat || (replies ?? 0) > 0);
