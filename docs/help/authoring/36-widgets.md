@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live Shows
 order: 36
-keywords: show, widget, card, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
+keywords: show, widget, card, moment, major, minor, tray, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -46,6 +46,18 @@ show poll "Ready?" to group(Antivirus) with options: "Yes | No | Never"
   rest of the line, `with` clause included, into text. `loomcheck`
   warns on an unbalanced quote and on an unquoted `question:`.
 
+- **`moment: major`** (or `minor`) makes the card a **moment**: besides
+  docking in its room it interrupts the guest at the story's alert level
+  ([Live shows](live-shows.md)). Keep `major` for the card that one
+  guest must answer now (*Trapped in the Internet*: the bottle's Truth
+  or Dare, the pickup line). Quoted or bare, either works.
+
+On the guest's phone a card that waits for an answer docks in a **tray**
+above the message box, one at a time, while the conversation keeps a
+one-line receipt; once answered (or replaced, or closed) it settles into
+one line where it was asked (*🛡️ Security check · submitted*). A
+`pass` card stays whole on a `cutscene` stage.
+
 Where it lands follows the same rule as a choice: a card shown right
 after a character's line docks in that character's thread with the
 guest; otherwise it plays in the enclosing beat's `setting:` room (else
@@ -55,7 +67,7 @@ matter who spoke last — handy for a card re-dealt from a rule with no
 line before it.
 
 **A card for a character.** `show poll "Approve?" to CRA Agent
-Software` deals the card to that character's booth — its **Inbox**
+Software` deals the card to that character's booth — its **Readouts**
 room, or, with `thread: <Other>`, its private Cast thread with that
 character. The performer answers it there, and the event fires *as the
 character*, so only that character's own hooks and story rules hear

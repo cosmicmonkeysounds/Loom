@@ -2,7 +2,7 @@
 title: Background life — scenes & generators
 section: Live Shows
 order: 34
-keywords: SCENE, GENERATOR, while, coroutine, tier, ambient, focal, active, loop, wait until, yield, bark, spawn, run, at, every, cancel, wait
+keywords: SCENE, GENERATOR, ticker, around the house, while, coroutine, tier, ambient, focal, active, loop, wait until, yield, bark, spawn, run, at, every, cancel, wait
 ---
 
 A living world needs things happening even when the audience isn't
@@ -45,6 +45,11 @@ GENERATOR House Hum
   while Night.ended != true
   yield bark from A fan spins up. | An LED that was green is amber.
 ```
+
+In the participant app a bark is never a message in the room: it shows
+in a dim one-line ticker under the lobby's header (*Around the house*),
+never badges a room and never interrupts anyone. Use a bark for colour
+and a `broadcast` for anything a guest must act on.
 
 ## Scenes — scripted sequences with states
 
