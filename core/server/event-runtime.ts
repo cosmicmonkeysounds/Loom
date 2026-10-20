@@ -33,6 +33,7 @@ import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./r
 import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
 import { NOT_FROM_A_BOOTH, isHostRoute, isModSurface, type HostRouteContext } from "./routes/host.ts";
+import { pressLines, type PressLines } from "./routes/press-lines.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -1373,7 +1374,9 @@ export class EventRuntime {
    * straight to the booth; everything guest-facing is composed into channel
    * messages, appended to the chat store, and delivered.
    */
-  private fanout(events: SimEvent[], via?: string): void {
+  /** Returns the chat messages this batch appended (not those of a pick it
+   *  drew: `runPicks` commits its own), for a press's card lines (C1). */
+  private fanout(events: SimEvent[], via?: string): ChatMessage[] {
     if (this.agents.judging.length > 0) this.dropMootRulings();
     for (const e of events) {
       if (e.type === "respond") {
@@ -1395,12 +1398,14 @@ export class EventRuntime {
     // A director speaking *as* a participant: the room sees the participant's
     // name, the mod feed additionally sees who really typed it.
     if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
-    for (const m of this.chat.append(drafts)) this.deliverMessage(m);
+    const appended = this.chat.append(drafts);
+    for (const m of appended) this.deliverMessage(m);
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
     this.pushSnapshots();
     this.runPicks(events);
+    return appended;
   }
 
   /**
@@ -4685,12 +4690,14 @@ export class EventRuntime {
           scanAs = chosen;
         }
         let responses: string[] = [];
+        let lines: PressLines = {};
         if (scanAs !== null) {
           const events = this.commit("scan", scanAs, target);
           responses = events
             .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === scanAs)
             .map((e) => readoutText(e.text).text);
-          this.fanout(events);
+          // C1: the staff-room lines and what the character said to the guest.
+          lines = pressLines(this.fanout(events), new Set(staffRoomChannels(this.sim!.model)), scanAs, target);
         }
         // Wave 13: the booth's card for this guest, after the scan's events.
         const card = scanAs !== null ? guestCardView(this.sim!, this.chat.all(), scanAs, target, this.canHostToken(token)) : null;
@@ -4699,6 +4706,7 @@ export class EventRuntime {
           scannedAs: scanAs,
           canModerate: admin,
           responses,
+          ...lines,
           guest: admin
             ? rosterRow(this.sim!, target)
             : { id: target, name: this.sim!.persons.get(target)?.name ?? target, captured: this.sim!.isCaptured(target) },
@@ -4802,9 +4810,11 @@ export class EventRuntime {
         const pressed = this.commit("signal", name, guest, null, character);
         // Wave 13: the story's replies to this booth, and its fresh card.
         const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
-        this.fanout(pressed);
-        const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.sessions.canHost(token));
-        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...(card !== null ? { card } : {}) });
+        // C1: the staff-room lines (a refusal's reason) and what the
+        // character said to the guest, for the card in place of a bare ✔.
+        const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, guest);
+        const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.canHostToken(token));
+        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(card !== null ? { card } : {}) });
         return true;
       }
       case "/api/prime/widget": {
