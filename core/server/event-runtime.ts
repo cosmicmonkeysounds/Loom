@@ -1067,7 +1067,11 @@ export class EventRuntime {
       path === "/api/agent/reply" ||
       path === "/api/agent/judge" ||
       ((path.startsWith("/api/prime/") || path === "/api/scan") && this.sessions.canHost(token));
-    if (!write) return;
+    if (write) this.bumpHostWrites(res);
+  }
+
+  /** Count a host-visible write now and again once `res` is sent. */
+  private bumpHostWrites(res: ServerResponse): void {
     this.hostWrites += 1;
     const after = (): void => {
       this.hostWrites += 1;
@@ -3961,7 +3965,11 @@ export class EventRuntime {
       );
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
-    // A host booth may mute the TV and identify a terminal (§2.7).
+    // A host booth may mute the TV and identify a terminal (§2.7). Both are
+    // host-visible writes handled before the generic body parse, so they
+    // drop the host panel's cached build themselves (recheck item 8: the
+    // mute toggle's re-poll read the old state for up to 2 s).
+    if (method === "POST" && (path === "/api/mod/screen/voice" || path === "/api/mod/screen/identify")) this.bumpHostWrites(res);
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
     if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
 
