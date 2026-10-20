@@ -62,6 +62,14 @@ describe("the host console's touch targets", () => {
     }
     expect(rules(host).find((r) => r.sel === ".host-fold")?.body).toMatch(/min-height:\s*var\(--tap\)/u);
   });
+  it("the console's close button is a 44 × 44 box with no hit pad past the screen's edge", () => {
+    const x = rules(host).find((r) => r.sel === ".host-drawer-title .w95-x")?.body ?? "";
+    expect(x).toMatch(/min-height:\s*var\(--tap\)/u);
+    expect(x).toMatch(/min-width:\s*var\(--tap\)/u);
+    // The shared 32 px button's ::after pad (6 px past each side) widened a
+    // phone's layout viewport by 6 px with the drawer open.
+    expect(rules(host).find((r) => r.sel === ".host-drawer-title .w95-x::after")?.body).toMatch(/inset:\s*0\b/u);
+  });
   it("a reply box inside a sheet fits the sheet's 8 px insets", () => {
     expect(rules(host).find((r) => r.sel === ".host-text.in-sheet")?.body).toMatch(/width:\s*calc\(100% - 16px\)/u);
   });

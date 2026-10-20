@@ -246,7 +246,11 @@
   .host-meter > span { transition: none; }
 }
 .host-drawer-title { min-height: var(--tap); padding: 0 0 0 8px; }
-.host-drawer-title .w95-x { min-height: var(--tap); }
+/* The close button at the screen's right edge: a real 44 px box. The
+   shared 32 px button's invisible hit pad (::after, 6 px past each side)
+   stuck out past the screen and widened a phone's layout viewport. */
+.host-drawer-title .w95-x { min-height: var(--tap); min-width: var(--tap); }
+.host-drawer-title .w95-x::after { inset: 0; }
 .host-bar .cue-code, .host-last .cue-code { flex: 0 0 auto; white-space: nowrap; }
 
 /* More › The show: the doors and a pause, tap to arm, tap again to fire. */
