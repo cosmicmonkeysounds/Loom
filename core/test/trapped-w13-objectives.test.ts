@@ -622,3 +622,13 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(src.match(/^\/\/ DRAFT for sign-off\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
+  it("SIGNOFF-w13.md is a DRAFT that lists every objective", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const sheet = readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8");
+    expect(sheet).toMatch(/DRAFT/u);
+    for (const id of Sim.fromSources(SRC).model.objectives.keys()) expect(sheet, id).toContain(`| ${id} |`);
+  });
+});
