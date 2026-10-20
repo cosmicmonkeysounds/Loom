@@ -1825,11 +1825,11 @@ export class EventRuntime {
 
   /** A line just landed in `channel` for `audience` — if that's an agent's
    *  thread, the agent owes an answer. */
-  private agentHeard(channel: string, audience: string[], held = false): void {
+  private agentHeard(channel: string, audience: string[], held = false, since?: number): void {
     if (!channel.startsWith("dm:") || audience.length !== 1) return;
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
-    this.agents.line({ character, channel, audience }, { held });
+    this.agents.line({ character, channel, audience }, { held, ...(since !== undefined ? { since } : {}) });
   }
 
   /** After a restore: every agent thread still owed an answer — someone
@@ -1847,6 +1847,8 @@ export class EventRuntime {
     interface Tail {
       /** The newest line from someone else since the character's last real line. */
       owed: ChatMessage | null;
+      /** The first of those lines: since when they have been waiting. */
+      first: ChatMessage | null;
       /** A hold line after it (since the character's last real line). */
       held: boolean;
       last: ChatMessage;
@@ -1860,21 +1862,30 @@ export class EventRuntime {
       const t = tails.get(key);
       const def = sim.model.characters.get(character);
       let owed = t?.owed ?? null;
+      let first = t?.first ?? null;
       let held = t?.held ?? false;
       if (m.from !== character) {
-        if (m.kind === "line") owed = m;
+        if (m.kind === "line") {
+          owed = m;
+          first ??= m;
+        }
       } else if (def?.hold !== null && def?.hold !== undefined && m.text === def.hold) {
         if (owed !== null) held = true;
       } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy)) {
         owed = null;
+        first = null;
         held = false;
       }
-      tails.set(key, { owed, held, last: m });
+      tails.set(key, { owed, first, held, last: m });
     }
     const now = sim.elapsed();
-    for (const { owed, held, last } of tails.values()) {
+    const wall = this.clock();
+    for (const { owed, first, held, last } of tails.values()) {
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
-      this.agentHeard(last.channel, last.audience as string[], held);
+      // The guest has waited since their first unanswered line, not since
+      // this restart: its story time mapped onto the hub's wall clock.
+      const since = first === null ? undefined : wall - Math.max(0, now - first.ts);
+      this.agentHeard(last.channel, last.audience as string[], held, since);
     }
   }
 
