@@ -7,6 +7,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePlayHost } from "../host.ts";
+import { eventRoot } from "./balloon.tsx";
 import { useMomentsHold } from "../moments/provider.tsx";
 import { PassQr } from "../pass-qr.tsx";
 import { useHeldWakeLock } from "../wake-lock.ts";
@@ -26,12 +27,13 @@ export function FullPass({ guestId, name, onClose }: { guestId: string; name: st
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     done.current?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close.current();
+    const key = (e: Event) => {
+      if ((e as KeyboardEvent).key === "Escape") close.current();
     };
-    document.addEventListener("keydown", key);
+    const root = eventRoot(done.current);
+    root.addEventListener("keydown", key);
     return () => {
-      document.removeEventListener("keydown", key);
+      root.removeEventListener("keydown", key);
       before?.focus?.();
     };
   }, []);

@@ -15,6 +15,7 @@
 //! twice on arrival, still under reduced motion).
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { eventRoot } from "./balloon.tsx";
 
 export interface StartItem {
   id: string;
@@ -90,14 +91,15 @@ export function Taskbar({
   useEffect(() => {
     if (!open) return;
     menu.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+    const key = (e: Event) => {
+      if ((e as KeyboardEvent).key !== "Escape") return;
       setOpen(false);
       setAsking(null);
       startBtn.current?.focus();
     };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
+    const root = eventRoot(startBtn.current);
+    root.addEventListener("keydown", key);
+    return () => root.removeEventListener("keydown", key);
   }, [open]);
   const connWord = conn === "live" ? "live" : conn === "reconnecting" ? "reconnecting…" : conn === "offline" ? "offline" : undefined;
   return (
