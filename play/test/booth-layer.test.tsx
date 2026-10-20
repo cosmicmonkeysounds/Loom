@@ -43,7 +43,7 @@ describe("the 44 px floor on the booth's own controls", () => {
     );
     expect(html).toContain('class="back booth-back"');
     const css = readBundledCss();
-    expect(css).toMatch(/\.back\.booth-back \{ width: var\(--tap\); height: var\(--tap\);/);
+    expect(css).toMatch(/\.booth-back \{ width: var\(--tap\); height: var\(--tap\);/);
     expect(css).toMatch(/\.booth-layer-win > \.w95-titlebar \.w95-x \{ min-height: var\(--tap\); \}/);
   });
 });

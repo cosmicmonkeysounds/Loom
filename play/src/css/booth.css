@@ -148,5 +148,5 @@
 
 /* The 44 px floor on the booth's own controls: the Readouts back arrow and
    the booth windows' close box (the window's caption is already 44 px). */
-.back.booth-back { width: var(--tap); height: var(--tap); font-size: 18px; }
+.booth-back { width: var(--tap); height: var(--tap); font-size: 18px; }
 .booth-layer-win > .w95-titlebar .w95-x { min-height: var(--tap); }
