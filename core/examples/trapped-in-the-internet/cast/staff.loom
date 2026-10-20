@@ -24,4 +24,6 @@ CHARACTER Sandy
 
 CHARACTER Truther Download
   playable: false
+  // Every line is effect text on the phone (wave 13: the fx crawl).
+  crawl: fx
   // THEY DON'T WANT YOU TO KNOW.

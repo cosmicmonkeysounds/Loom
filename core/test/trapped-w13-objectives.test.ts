@@ -197,3 +197,27 @@ describe("Trapped in the Internet — wave 13: the interrupt ladder", () => {
     expect(level()).toBe("sticky");
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: effect text", () => {
+  it("glitch lines carry an effect manner (fx); the Truther Download speaks fx; delivery notes stay plain", () => {
+    const n = boot();
+    const all: ChatMessage[] = [];
+    for (const c of TO_HOUR) all.push(...n.press(c));
+    all.push(...n.tick(130)); // the Truther Download, two minutes in
+    const td = all.filter((m) => m.from === "Truther Download" && m.kind === "line");
+    expect(td.length).toBeGreaterThan(0);
+    for (const m of td) expect(m.fx, m.text).toBe(true);
+    const ad = all.find((m) => m.text.startsWith("The presentation freezes."))!;
+    expect(ad).toMatchObject({ manner: "static", fx: true, kind: "narration" });
+    for (const c of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) all.push(...n.press(c));
+    const over = n.press("trabolta_overshares");
+    const glitch = over.filter((m) => m.fx === true);
+    expect(glitch.length).toBeGreaterThan(0);
+    for (const m of over.filter((x) => x.manner !== undefined)) expect(m.fx, m.text).toBe(true);
+    // Delivery notes ride the line but are not effect text.
+    const bob = n.press("y2k_clock").concat(n.press("final_reveal"), n.press("bobbing_for_truth"));
+    const dejected = bob.filter((m) => m.manner === "dejectedly");
+    expect(dejected.length).toBeGreaterThan(0);
+    for (const m of dejected) expect(m.fx).toBeUndefined();
+  }, SLOW);
+});

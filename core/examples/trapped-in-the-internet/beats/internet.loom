@@ -28,7 +28,7 @@ Installation Wizard: The exit is clearly marked. It is for safety. Click Finish.
 unlock The Reinstallation Protocol for program
 unlock Bathroom Mode for program
 if program.internet_visits >= 2:
-  Installation Wizard (off-script): This is visit {program.internet_visits}. Repeat corruption suggests the corruption is not in your code.
+  Installation Wizard (quietly): This is visit {program.internet_visits}. Repeat corruption suggests the corruption is not in your code.
 
 // The tent tablet station (`The Tablet` is `Prop(The Tablet Video)`): a
 // host or Antivirus scans a program's pass at the tablet.

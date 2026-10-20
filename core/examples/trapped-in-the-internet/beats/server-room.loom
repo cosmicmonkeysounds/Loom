@@ -173,7 +173,7 @@ set Night.terminals = "alarm"
 sound alarm_siren
 fire alarm_tripped
 broadcast "!🚨 An alarm screams somewhere in the machine." to everyone
-Trabolta: Who is in my— get OUT.
+Trabolta (screaming): Who is in my— get OUT.
 
 // ── The King: the machine wins, or nobody does ─────────────────────
 // From `chess_lost` / `chess_drawn` (main.loom: the door terminal's games),
