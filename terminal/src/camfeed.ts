@@ -15,9 +15,9 @@
 //! Old tablets (Chrome 87 / Safari 14): a plain `<canvas>` + `toDataURL`, no
 //! `OffscreenCanvas`, no `createImageBitmap`.
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { baseOf, type TerminalConfig } from "./config.ts";
-import { camera as pageCamera, type CameraHub } from "./camera.ts";
+import { camera as pageCamera, type CameraHub, type CameraState } from "./camera.ts";
 
 export const FEED_W = 160;
 export const FEED_H = 120;
@@ -27,6 +27,16 @@ export const FEED_BACKOFF_MS = 1000;
 export const FEED_BACKOFF_MAX_MS = 30_000;
 /** The server refuses a frame over this (decoded bytes). */
 export const FEED_MAX_BYTES = 96 * 1024;
+
+/** Time before the feed asks for a camera that failed to open again. */
+export const FEED_CAMERA_RETRY_MS = 15_000;
+
+/** Is a camera that failed to open worth asking for again? A busy or
+ *  glitched camera (`error`: NotReadableError and the like) is; no secure
+ *  context, a refusal (Safari would re-prompt every time) or no camera isn't. */
+export function cameraRetryable(state: CameraState): boolean {
+  return state === "error";
+}
 
 /** Does this terminal send its camera? Only a placed one, and only while ⚙ leaves it on. */
 export function feedWanted(c: Pick<TerminalConfig, "spot" | "camFeed">): boolean {
@@ -222,6 +232,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
   const token = config?.token ?? "";
   const spot = config?.spot.trim() ?? "";
   const facing = config?.camera ?? "user";
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!on) {
       feedStatus.set({ kind: "off" });
@@ -229,6 +240,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     }
     let alive = true;
     let stop: (() => void) | null = null;
+    let retry = 0;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -241,7 +253,11 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     void hub.acquire(facing).then((stream) => {
       if (!alive) return;
       if (stream === null) {
-        feedStatus.set({ kind: "stopped", problem: `no camera (${hub.snapshot.state})` });
+        const state = hub.snapshot.state;
+        if (cameraRetryable(state)) {
+          feedStatus.set({ kind: "retrying", problem: `the camera failed to open (${state})` });
+          retry = window.setTimeout(() => setAttempt((n) => n + 1), FEED_CAMERA_RETRY_MS);
+        } else feedStatus.set({ kind: "stopped", problem: `no camera (${state})` });
         return;
       }
       video.srcObject = stream;
@@ -263,11 +279,12 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     });
     return () => {
       alive = false;
+      window.clearTimeout(retry);
       stop?.();
       video.srcObject = null;
       video.remove();
       hub.release();
       feedStatus.set({ kind: "off" });
     };
-  }, [on, eventId, token, spot, facing, hub]);
+  }, [on, eventId, token, spot, facing, hub, attempt]);
 }

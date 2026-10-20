@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { FEED_BACKOFF_MS, FEED_EVERY_MS, base64Bytes, cropRect, feedOutcome, feedStatusText, feedWanted, jpegBase64, runFeed, type FeedDeps, type FeedStatus } from "../src/camfeed.ts";
+import { FEED_BACKOFF_MS, cameraRetryable, FEED_EVERY_MS, base64Bytes, cropRect, feedOutcome, feedStatusText, feedWanted, jpegBase64, runFeed, type FeedDeps, type FeedStatus } from "../src/camfeed.ts";
 
 function harness(over: Partial<FeedDeps> & { codes?: (number | null)[] } = {}) {
   const timers: { fn: () => void; ms: number }[] = [];
@@ -93,5 +93,14 @@ describe("the camera feed", () => {
     h.stop();
     await h.step();
     expect(h.post).not.toHaveBeenCalled();
+  });
+});
+
+describe("a camera that failed to open", () => {
+  it("is asked for again only when it was busy or glitched", () => {
+    expect(cameraRetryable("error")).toBe(true);
+    expect(cameraRetryable("denied")).toBe(false);
+    expect(cameraRetryable("insecure")).toBe(false);
+    expect(cameraRetryable("none")).toBe(false);
   });
 });
