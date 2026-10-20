@@ -160,6 +160,23 @@ describe("Take me there", () => {
     expect(exitRoomFor(m, { open: null, cards: [] })).toBe("lobby"); // no such card: its own room
     expect(exitRoomFor(moment(3, { channel: "lobby", text: "No glyph here." }), { open: null, cards })).toBe("lobby");
   });
+
+  it("an announcement that says 'check your messages' opens the DM it names, else the DM that heard last", () => {
+    const dms = [
+      { id: "dm:Trabolta", title: "Trabolta", last: 90 },
+      { id: "dm:Truther_Download", title: "Truther Download", last: 88 },
+      { id: "dm:Clippy", title: "Clippy", last: 12 },
+    ];
+    const truther = moment(4, { channel: "lobby", text: "📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." });
+    expect(exitRoomFor(truther, { open: null, cards: [], dms })).toBe("dm:Truther_Download");
+    expect(exitRoomFor(truther, { open: "dm:Truther_Download", cards: [], dms })).toBeNull();
+    // Names no DM: the one that heard last.
+    expect(exitRoomFor(moment(5, { channel: "lobby", text: "Something arrived. Check your messages." }), { open: null, cards: [], dms })).toBe("dm:Trabolta");
+    // Only a mention, no "check your messages": the lobby's own.
+    expect(exitRoomFor(moment(6, { channel: "lobby", text: "📊 THE TRUST CHART. Trabolta is ranking every program on the TV." }), { open: null, cards: [], dms })).toBe("lobby");
+    // A room's own moment never moves.
+    expect(exitRoomFor(moment(7, { channel: "loc:The Desktop", text: "Check your messages, Trabolta says." }), { open: null, cards: [], dms })).toBe("loc:The Desktop");
+  });
 });
 
 describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", () => {

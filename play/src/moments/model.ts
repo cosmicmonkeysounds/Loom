@@ -321,12 +321,51 @@ export interface LiveCard {
  * - else the moment's own room;
  * - never the room already open on screen (there is nowhere to take you).
  */
-export function exitRoomFor(m: Pick<Moment, "channel" | "text" | "kind">, ctx: { open: string | null; cards: readonly LiveCard[] }): string | null {
+export function exitRoomFor(
+  m: Pick<Moment, "channel" | "text" | "kind">,
+  ctx: { open: string | null; cards: readonly LiveCard[]; dms?: readonly DmRoom[] },
+): string | null {
   const glyph = m.kind === "card" ? "•" : noticeKey(m.text);
   let card: LiveCard | undefined;
   if (glyph !== "•") for (const c of ctx.cards) if (c.glyph === glyph && (card === undefined || c.seq > card.seq)) card = c;
-  const room = card?.channel ?? m.channel;
+  const room = card?.channel ?? (m.channel !== null && SHARED_HOMES.has(m.channel) ? (namedDm(m.text, ctx.dms ?? []) ?? m.channel) : m.channel);
   return room !== null && room === ctx.open ? null : room;
+}
+
+/** A direct-message room the viewer has, for an announcement that sends them to it. */
+export interface DmRoom {
+  id: string;
+  title: string;
+  /** Its newest message's seq (-1 when empty). */
+  last: number;
+}
+
+/** "Check your messages", "read your DMs", "see your inbox". */
+const TO_MESSAGES = /\b(?:check|read|open|see)\s+(?:your\s+)?(?:messages|inbox|dms?|direct messages)\b/iu;
+
+function foldWords(s: string): string {
+  return ` ${s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
+}
+
+/**
+ * The DM an announcement in the lobby sends the viewer to ("📥 TRUTHER
+ * DOWNLOAD received. Check your messages."): one that tells them to check
+ * their messages goes to the DM it names (the longest name that appears in
+ * it, word for word), else to the DM that heard last. Null for any other
+ * announcement — a lobby line that only mentions Trabolta stays the lobby's.
+ */
+export function namedDm(text: string, dms: readonly DmRoom[]): string | null {
+  if (!TO_MESSAGES.test(text) || dms.length === 0) return null;
+  const said = foldWords(text);
+  let named: DmRoom | null = null;
+  for (const d of dms) {
+    const t = foldWords(d.title);
+    if (t.trim() !== "" && said.includes(t) && (named === null || d.title.length > named.title.length)) named = d;
+  }
+  if (named !== null) return named.id;
+  let newest: DmRoom | null = null;
+  for (const d of dms) if (d.last >= 0 && (newest === null || d.last > newest.last)) newest = d;
+  return newest?.id ?? null;
 }
 
 // --- the queue ----------------------------------------------------------------

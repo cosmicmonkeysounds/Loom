@@ -273,7 +273,13 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     nowBar: !cut.showing,
     // "Take me there": a live card's room for a moment about that card, and
     // never the room already open (wide: the one beside the list).
-    exitRoom: (m) => exitRoomFor(m, { open: t.activeThreadRoot === null ? t.activeId : null, cards: liveCardsOf(t.list, s.widgetAnswers) }),
+    // An announcement that says "check your messages" opens the DM it names.
+    exitRoom: (m) =>
+      exitRoomFor(m, {
+        open: t.activeThreadRoot === null ? t.activeId : null,
+        cards: liveCardsOf(t.list, s.widgetAnswers),
+        dms: t.list.filter((c) => c.kind === "dm").map((c) => ({ id: c.id, title: c.title, last: c.messages[c.messages.length - 1]?.seq ?? -1 })),
+      }),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
