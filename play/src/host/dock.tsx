@@ -7,7 +7,7 @@
 //! writes is on the host allowlist (`host/api.ts`). Never in Play: restart,
 //! push, go live, end, the var table, the log, the Mind (D5).
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
 import { cueRows, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { suggestionHint, awardSuggestion } from "../../../core/src/host-board.ts";
 import { CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, STORY_RUNS, clockRuns, countdownText, nextBar, sheetLayout, storyNow, useCueDesk, type FireOutcome } from "../director.tsx";
@@ -266,7 +266,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
  *  line in one button that pulls the console up, then ARM → FIRE. It reads
  *  the same desk as the Cues tab, so an arm made in one fires from the
  *  other. */
-export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onToggle }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: RefObject<HTMLButtonElement>; onToggle: () => void }) {
+export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onToggle }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onToggle: () => void }) {
   const nextRow = bar.kind === "next" ? bar.row : null;
   const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
   const sending = nextRow !== null && desk.pending === nextRow.id;
