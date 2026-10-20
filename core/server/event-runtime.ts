@@ -22,10 +22,10 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
-import { Store, type Mutation } from "./store.ts";
+import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -121,6 +121,7 @@ import {
   type AgentRecent,
   type AgentRequest,
   type AgentThread,
+  threadKey,
 } from "./agents.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
@@ -617,6 +618,9 @@ export class EventRuntime {
   /** Wall time (`clock`) the doors last closed by a pause, until they open
    *  again: the agent hub's timers skip that span (T9-timers-03). */
   private pausedAt: number | null = null;
+  /** Thread (`threadKey`) → the open agent request's id and the seq of the
+   *  line that opened it (`persistAgentWaits`). */
+  private readonly agentWaitSeq = new Map<string, { id: string; seq: number }>();
   private ticker: ReturnType<typeof setInterval> | null = null;
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
@@ -860,10 +864,21 @@ export class EventRuntime {
   /** The story's declared cast, doors open or not: the live sim's when there
    *  is one, else compiled once from the scenario text (memoised on it). A
    *  mod code resolves it before the doors, so a terminal provisioned then
-   *  canonicalises its `character` (and refuses a typo) at setup. Booths
-   *  still get `characterNames` — they can't sign in before the doors. */
+   *  canonicalises its `character` (and refuses a typo) at setup. A
+   *  performer code resolves it too (recheck item 6): a booth signs in
+   *  before the doors (`/api/prime/login` checks `declaredModel`), and the
+   *  host who opens them picks their part off the list. */
   get declaredCharacters(): string[] {
     return [...(this.declaredModel?.characters.keys() ?? [])];
+  }
+
+  /** The parts a performer may sign in as, doors open or not — what a
+   *  performer code resolves (`ResolvedCode.characters`, the sign-in's
+   *  fallback list): never a `playable: false` prop (Night, the Kernel), an
+   *  agent-voiced character or a guest's program, which no booth can take. */
+  get performerParts(): string[] {
+    const model = this.declaredModel;
+    return model === null ? [] : identityDefs(model).filter(performerPickable).map((d) => d.name);
   }
 
   /** The story's model, doors open or not: the live sim's when there is one,
@@ -1061,7 +1076,11 @@ export class EventRuntime {
       path === "/api/agent/reply" ||
       path === "/api/agent/judge" ||
       ((path.startsWith("/api/prime/") || path === "/api/scan") && this.sessions.canHost(token));
-    if (!write) return;
+    if (write) this.bumpHostWrites(res);
+  }
+
+  /** Count a host-visible write now and again once `res` is sent. */
+  private bumpHostWrites(res: ServerResponse): void {
     this.hostWrites += 1;
     const after = (): void => {
       this.hostWrites += 1;
@@ -1902,11 +1921,50 @@ export class EventRuntime {
 
   /** A line just landed in `channel` for `audience` — if that's an agent's
    *  thread, the agent owes an answer. */
-  private agentHeard(channel: string, audience: string[], held = false, since?: number): void {
+  private agentHeard(channel: string, audience: string[], held = false, since?: number, seq?: number): void {
     if (!channel.startsWith("dm:") || audience.length !== 1) return;
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
-    this.agents.line({ character, channel, audience }, { held, ...(since !== undefined ? { since } : {}) });
+    const thread: AgentThread = { character, channel, audience };
+    this.agents.line(thread, { held, ...(since !== undefined ? { since } : {}) });
+    // Recheck item 4: a new request remembers the line that opened it, and
+    // its wait is written down, so a restart reads the same "waiting 0:34".
+    const key = threadKey(thread);
+    const open = this.agents.pending.find((r) => threadKey(r.thread) === key);
+    if (open !== undefined && this.agentWaitSeq.get(key)?.id !== open.id) {
+      const at = seq ?? this.lastLineSeq(channel, audience[0]!);
+      if (at !== null) this.agentWaitSeq.set(key, { id: open.id, seq: at });
+    }
+    this.persistAgentWaits();
+  }
+
+  /** The newest line in `channel` addressed to exactly `who` (its seq). */
+  private lastLineSeq(channel: string, who: string): number | null {
+    const all = this.chat.all();
+    for (let i = all.length - 1; i >= 0; i--) {
+      const m = all[i]!;
+      if (m.channel === channel && Array.isArray(m.audience) && m.audience.length === 1 && m.audience[0] === who) return m.seq;
+    }
+    return null;
+  }
+
+  /** Write every open agent request's wait (its opening line + the hub's
+   *  `since`) and the pause stamp, for `requeueAgentThreads` after a restart. */
+  private persistAgentWaits(): void {
+    const waits: AgentWait[] = [];
+    for (const r of this.agents.pending) {
+      const key = threadKey(r.thread);
+      const at = this.agentWaitSeq.get(key);
+      const since = this.agents.sinceOf(r.id);
+      if (at === undefined || at.id !== r.id || since === null) continue;
+      waits.push({ key, seq: at.seq, since });
+    }
+    try {
+      this.store.saveAgentWaits({ pausedAt: this.pausedAt, waits });
+    } catch {
+      // A full disk costs only the exact wait after a restart (the story
+      // clock's estimate stands in).
+    }
   }
 
   /** After a restore: every agent thread still owed an answer — someone
@@ -1918,7 +1976,7 @@ export class EventRuntime {
    *  many lines the guest typed after it — R1-diff-server-02). Only a line
    *  from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live, an
    *  older request has been dropped. */
-  private requeueAgentThreads(): void {
+  private requeueAgentThreads(saved: AgentWaits | null = null): void {
     const sim = this.sim;
     if (sim === null) return;
     interface Tail {
@@ -1941,14 +1999,23 @@ export class EventRuntime {
       let owed = t?.owed ?? null;
       let first = t?.first ?? null;
       let held = t?.held ?? false;
+      // Recheck item 3: only a line the character *voiced* answers the
+      // thread — a worker's reply or a director typing as him, as live (the
+      // hub settles on `/api/agent/reply` / `answeredByHand`, whatever the
+      // text). A line the story posted in his name ("Your fact for round 2
+      // Q2 was not counted…", a scripted beat) is not him answering: it
+      // carries its own `beat` key, which typed chat and a journaled `say`
+      // never do. (Not `storyTag`'s text match: a reply that repeats a story
+      // text was still him answering, and re-asking it answers twice.)
       if (m.from !== character) {
-        if (m.kind === "line") {
+        // A story line from anyone else in the thread is not a guest asking.
+        if (m.kind === "line" && !Object.hasOwn(m, "beat")) {
           owed = m;
           first ??= m;
         }
       } else if (def?.hold !== null && def?.hold !== undefined && m.text === def.hold) {
         if (owed !== null) held = true;
-      } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy)) {
+      } else if (!(def?.busy !== null && def?.busy !== undefined && m.text === def.busy) && !Object.hasOwn(m, "beat")) {
         owed = null;
         first = null;
         held = false;
@@ -1957,12 +2024,15 @@ export class EventRuntime {
     }
     const now = sim.elapsed();
     const wall = this.clock();
-    for (const { owed, first, held, last } of tails.values()) {
+    for (const [key, { owed, first, held, last }] of tails) {
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
       // The guest has waited since their first unanswered line, not since
-      // this restart: its story time mapped onto the hub's wall clock.
-      const since = first === null ? undefined : wall - Math.max(0, now - first.ts);
-      this.agentHeard(last.channel, last.audience as string[], held, since);
+      // this restart: the wait written down live (recheck item 4: exact
+      // across a pause and for two lines in one story second), else its
+      // story time mapped onto the hub's wall clock.
+      const kept = first === null ? undefined : saved?.waits.find((w) => w.key === key && w.seq >= first.seq && w.seq <= owed.seq);
+      const since = kept !== undefined ? kept.since : first === null ? undefined : wall - Math.max(0, now - first.ts);
+      this.agentHeard(last.channel, last.audience as string[], held, since, kept?.seq ?? first?.seq);
     }
   }
 
@@ -3236,7 +3306,17 @@ export class EventRuntime {
    *  whether someone already holds it, and whether it is a reserved program
    *  locked for this caller (`claim`: the invitation's token, if any). */
   identities(role: "guest" | "prime", claim?: string | null): IdentityRow[] {
-    if (this.sim === null) return [];
+    if (this.sim === null) {
+      // Before the doors there are no guests yet, but a booth may sign in
+      // (the host who opens the doors among them): its parts come off the
+      // story as written (recheck item 6).
+      const model = role === "prime" ? this.declaredModel : null;
+      if (model === null) return [];
+      const held = heldCharacters(this.sessions.entries());
+      return identityDefs(model)
+        .filter(performerPickable)
+        .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: held.has(foldName(d.name)), reserved: false }));
+    }
     const defs = identityDefs(this.sim.model);
     if (role === "guest") {
       const taken = takenNames(this.sim.persons.values());
@@ -3305,6 +3385,7 @@ export class EventRuntime {
     if (this.pausedAt !== null) {
       this.agents.shift(this.pausedAt, this.clock());
       this.pausedAt = null;
+      this.persistAgentWaits(); // the shifted waits, and no pause
     }
     this.setPhase("open");
     this.startTicker();
@@ -3338,6 +3419,7 @@ export class EventRuntime {
   pause(): void {
     this.flushTick();
     if (this.phase === "open") this.pausedAt = this.clock();
+    this.persistAgentWaits(); // when the pause began, for a restart inside it
     this.setPhase("paused");
     this.stopTicker();
     this.persistMeta();
@@ -3555,13 +3637,16 @@ export class EventRuntime {
     // lost it).
     this.rederiveHosts();
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
-    this.requeueAgentThreads();
+    const waits = this.store.loadAgentWaits();
+    this.requeueAgentThreads(waits);
     this.noteRulingsDue();
     this.spatial.syncKing(); // the replayed world's King
     if (this.phase === "open") this.startTicker();
     // Restored with the doors paused: the re-asked requests wait out the
-    // pause like live ones do.
-    else if (this.phase === "paused") this.pausedAt = this.clock();
+    // pause like live ones do — from when it began, if a restart came
+    // inside it (so the resume shifts the whole pause, as live).
+    else if (this.phase === "paused") this.pausedAt = waits?.pausedAt ?? this.clock();
+    this.persistAgentWaits();
     return { guests: this.sim?.persons.size ?? 0, events, sessions: entries.length };
   }
 
@@ -3889,7 +3974,11 @@ export class EventRuntime {
       );
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
-    // A host booth may mute the TV and identify a terminal (§2.7).
+    // A host booth may mute the TV and identify a terminal (§2.7). Both are
+    // host-visible writes handled before the generic body parse, so they
+    // drop the host panel's cached build themselves (recheck item 8: the
+    // mute toggle's re-poll read the old state for up to 2 s).
+    if (method === "POST" && (path === "/api/mod/screen/voice" || path === "/api/mod/screen/identify")) this.bumpHostWrites(res);
     if (method === "POST" && path === "/api/mod/screen/voice") return handleScreenVoicePost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
     if (method === "POST" && path === "/api/mod/screen/identify") return handleScreenIdentifyPost(this.screens, req, res, (t) => opts.moderator === true || this.canHostToken(t));
 
@@ -4799,8 +4888,12 @@ export class EventRuntime {
         }
         let responses: string[] = [];
         let lines: PressLines = {};
+        let refused = false;
         if (scanAs !== null) {
           const events = this.commit("scan", scanAs, target);
+          // D1: the story said no (only a staff-room line) — the card reads
+          // "Not done: <line>" rather than a neutral note.
+          refused = scanRefused(this.sim!, events);
           responses = events
             .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === scanAs)
             .map((e) => readoutText(e.text).text);
@@ -4815,6 +4908,7 @@ export class EventRuntime {
           canModerate: admin,
           responses,
           ...lines,
+          ...(refused ? { refused: true } : {}),
           guest: admin
             ? rosterRow(this.sim!, target)
             : { id: target, name: this.sim!.persons.get(target)?.name ?? target, captured: this.sim!.isCaptured(target) },
@@ -4922,13 +5016,16 @@ export class EventRuntime {
           return true;
         }
         const pressed = this.commit("signal", name, guest, null, character);
+        // D1: the cue sheet's own judgement (`pressRefused`) — the story
+        // turned the press down, at most saying why in a staff room.
+        const refused = pressRefused(this.sim!, pressed);
         // Wave 13: the story's replies to this booth, and its fresh card.
         const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
         // C1: the staff-room lines (a refusal's reason) and what the
         // character said to the guest, for the card in place of a bare ✔.
         const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, guest);
         const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.canHostToken(token));
-        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(card !== null ? { card } : {}) });
+        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(refused ? { refused: true } : {}), ...(card !== null ? { card } : {}) });
         return true;
       }
       case "/api/prime/widget": {

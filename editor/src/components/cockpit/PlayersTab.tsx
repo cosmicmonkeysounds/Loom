@@ -26,7 +26,7 @@ import {
   type PlayerSession,
 } from '@/store/cockpit'
 import { promptText } from '@/store/dialog'
-import { PANE_PX, PaneWidth, reseatTarget, usePlayers, type PlayerSlot } from '@/store/players'
+import { PANE_PX, PaneWidth, performerParts, reseatTarget, usePlayers, type PlayerSlot } from '@/store/players'
 import { useInspect } from './inspect'
 import { usePlayAs } from './play-as'
 
@@ -294,11 +294,13 @@ function Toolbar() {
     const id = await addPersona(name)
     if (id !== null) usePlayers.getState().add(PlayerRole.Guest, id, name)
   }
+  // Only the parts a booth can sign in to (never a `playable: false` prop).
+  const parts = performerParts(cast)
   const seatCast = () => {
-    for (const c of cast) usePlayers.getState().add(PlayerRole.Performer, c.id, c.id)
+    for (const c of parts) usePlayers.getState().add(PlayerRole.Performer, c.id, c.id)
   }
   const openGuests = roster.filter((r) => !seated(PlayerRole.Guest, r.id))
-  const openCast = cast.filter((c) => !seated(PlayerRole.Performer, c.id))
+  const openCast = parts.filter((c) => !seated(PlayerRole.Performer, c.id))
   const select = 'rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-xs text-zinc-300 outline-none focus:border-indigo-500'
   const button = 'rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-40'
 
@@ -340,7 +342,7 @@ function Toolbar() {
           </option>
         ))}
       </select>
-      <button onClick={seatCast} className={button} disabled={openCast.length === 0} title="Open a performer booth for every character">
+      <button onClick={seatCast} className={button} disabled={openCast.length === 0} title="Open a booth for every part a performer can sign in to">
         Seat the cast
       </button>
       <span className="ml-auto flex items-center gap-2">

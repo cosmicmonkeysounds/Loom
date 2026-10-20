@@ -79,10 +79,10 @@ describe("the declared cast before the doors (open issue 6)", () => {
     rt.dispose();
   });
 
-  it("compiles the cast from the story text while the doors are shut; booths still get none", () => {
+  it("compiles the cast from the story text while the doors are shut", () => {
     const rt = runtime();
     expect(rt.declaredCharacters).toEqual(["Trabolta", "Clippy"]);
-    expect(rt.characterNames).toEqual([]); // booths still wait for the doors
+    expect(rt.characterNames).toEqual([]); // the live cast; a performer code resolves `declaredCharacters` (recheck item 6)
     expect(runtime("").declaredCharacters).toEqual([]);
     rt.dispose();
   });
