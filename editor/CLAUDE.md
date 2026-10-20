@@ -459,6 +459,24 @@ survey now, pause/resume, mind reasoning on/off, voice effort, reset with
 confirm). Colours are the reference dark categorical slots in fixed order
 (voice / lookup / reflect / survey / re-run); every badge carries its
 label. Tests: `cockpit/mind.test.ts`; live: `e2e-live/mind.spec.ts`.
+**Wave 12 — the story mind** (stagehand `mind_mode: new`; `isNewMind` /
+`mindModeOf` off the report's `mode`, an older worker reads as classic):
+the survey button becomes **Rewrite brief** (`surveyButton` → the `rewrite`
+control); Pause mind is classic-only (Resume stays for a mind a classic
+run left paused); drive sliders send once on release, only on a change
+(pure `sliderStep` / `heldState`, `SLIDER_COMMIT_KEYS`, a 6 s hold before
+the mirror is trusted again); the brief and every revision carry *set by
+story* / *set by director* (`byLabel` / `byTitle`, the director's name on
+hover) and the arc reads *stage by hand* when the worker's
+`stageFromPhase` is off (`stagePrompt`); People rows show the house's
+trust (`storyTrust`), ⛔ marked and the memo count, and open to first met,
+each *memo by voice* (🫀 at the heart), gifts, filed question ids and the
+Trust Chart place (`personExtras`, `memoLabel`); the trace gains the
+`brief` / `summary` kinds (chips only on a story-mind worker or once one
+is in the trace), prompt time (`promptMsOf` / `timingText`) and the
+stored-once prefix (`prefixRef` / `localPrefix`, else fetched by `?id=`
+from the same API base). SSR fixture renders of a classic and a new-mode
+report live in `mind.test.ts`.
 
 **Judging — the facts judge** (the top card on Mind, Oct 31 wave 4,
 U10; `JudgingCard` in `MindTab.tsx` + pure `judgeModeOf` /
