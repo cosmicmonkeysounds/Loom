@@ -3,8 +3,8 @@
 //! locked-down WebView) have none. Without it the world view would fail,
 //! fall back, retry 15 s later and fail again forever — "SIMULATION
 //! UNAVAILABLE" on a loop. Probed once at boot instead: no WebGL2 → the
-//! terminal behaves as `view=face` (the face, the scanner, the line) and
-//! never loads three.js; a mirror shows a still notice.
+//! terminal never loads three.js and draws the simulation as the 2D live
+//! plan (`plan/`, Canvas 2D) wherever it would have drawn the world.
 
 import type { TerminalView } from "./config.ts";
 
@@ -37,13 +37,38 @@ export function hasWebGL2(): boolean {
   return cached;
 }
 
+/** What draws the simulation: the three.js world, or the 2D live plan
+ *  (`plan/`, Canvas 2D) — on a tablet with no WebGL2, or a terminal set to
+ *  `plan`. */
+export type SimRenderer = "world" | "plan";
+
+export function simRenderer(view: TerminalView, webgl2: boolean): SimRenderer {
+  return view === "plan" || !webgl2 ? "plan" : "world";
+}
+
+/** What a scanner terminal's face pane shows over the face on the attract
+ *  screen: nothing, the world, its shadow (the camera with the ghosts in
+ *  it), or the live plan. */
+export type PaneSim = "none" | SimRenderer | "shadow";
+
 /**
- * The view this tablet can actually show: `auto` / `world` drop to `face`
- * without WebGL2 (a mirror stays a mirror — it has no face to fall back to,
- * so it shows a notice instead of the world, and so does a shadow; the TV keeps its face and just
- * never raises the world pane).
+ * The pane, for a scanner terminal's `view` (piloting always shows the face
+ * — the voice — so the caller asks only on the attract screen): `world` /
+ * `plan` always draw the simulation, `auto` only while someone `playing`;
+ * `auto` with a live camera on a placed terminal (`shadowReady`) shows the
+ * shadow — which needs WebGL2, so without it the plan. Every other view
+ * (face; the TV, chess, casino and the full-screen views route elsewhere)
+ * shows nothing over the face.
  */
-export function effectiveView(view: TerminalView, webgl2: boolean): TerminalView {
-  if (webgl2 || view === "face" || view === "mirror" || view === "tv" || view === "shadow") return view;
-  return "face";
+export function paneSimulation(view: TerminalView, webgl2: boolean, playing: boolean, shadowReady: boolean): PaneSim {
+  if (view !== "auto" && view !== "world" && view !== "plan") return "none";
+  if (view === "auto" && !playing) return "none";
+  const r = simRenderer(view, webgl2);
+  return r === "world" && view === "auto" && shadowReady ? "shadow" : r;
+}
+
+/** A full-screen `mirror` / `shadow`: the world (or the shadow), else — no WebGL2 — the live plan. */
+export function fullScreenSim(view: "mirror" | "shadow", webgl2: boolean): PaneSim {
+  if (!webgl2) return "plan";
+  return view === "shadow" ? "shadow" : "world";
 }
