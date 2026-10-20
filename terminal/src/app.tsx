@@ -49,8 +49,10 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
-import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomChoices, roomOf, saveConfig, savedCharacter, spotChoices, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig, type TerminalView } from "./config.ts";
-import { feedStatusText, feedWanted, useCamFeed, useFeedStatus } from "./camfeed.ts";
+import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
+import { Setup } from "./Setup.tsx";
+import { followMap, urlConfig } from "./setup-map.ts";
+import { useCamFeed } from "./camfeed.ts";
 import { useCameraLive, type Facing } from "./camera.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
@@ -60,12 +62,11 @@ import { VisitLatch, beginPilot, characterIdOf, closeVisit, endPilot, fetchChara
 import { parseScan } from "./scan.ts";
 import { Gear, TypedFallback } from "./controls.tsx";
 import { Scanner, type CameraState, cameraProblem } from "./scanner.tsx";
-import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, audioUnlocked, deviceEnv, pickDeviceEngine, unlock, voiceEngines, voiceNote, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
-import { ringChime, useAnnouncements } from "./announce.ts";
-import { CHARACTER_VOICE, rankVoices } from "./speech/pick-voice.ts";
+import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
+import { useAnnouncements } from "./announce.ts";
 import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { mayReload, retryable } from "./retry.ts";
-import { bundledHouse, fetchHouse, useSpatialStream, useWorld, type Gone, type HouseInfo, type WorldStore } from "./world/stream.ts";
+import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { effectiveView, hasWebGL2 } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
 import { attractOf, useScreenState, type ScreenState } from "./screen.ts";
@@ -145,21 +146,35 @@ export function App() {
     if (hints.code === "") return;
     window.history.replaceState(null, "", `${window.location.pathname}${withoutSecrets(window.location.search)}`);
     void provision(hints.code, hints)
-      .then((c) => {
+      .then(async (given) => {
+        // With a spot: that terminal of the event's live map (name, screen,
+        // room), the link's own fields winning. A spot the map lacks: say so
+        // rather than hang no window.
+        const house = given.spot === "" ? null : await fetchHouse(given).then((h) => h.house, () => null);
+        const c = urlConfig(given, hints, house);
         saveConfig(c);
         setConfig(c);
-        setScreen({ kind: "attract" });
-        // A spot the event's map doesn't have: say so rather than hang no window.
-        if (c.spot !== "")
-          void fetchHouse(c)
-            .then((h) => {
-              const problem = spotProblem(c.spot, h.house);
-              if (problem !== null) setScreen({ kind: "setup", notice: problem });
-            })
-            .catch(() => {});
+        const problem = house === null ? null : spotProblem(c.spot, house);
+        setScreen(problem === null ? { kind: "attract" } : { kind: "setup", notice: problem });
       })
       .catch((e: Error) => setScreen({ kind: "setup", notice: e.message }));
   }, []);
+
+  // Set up from the map: follow that map entry's name / screen / room as the
+  // event plays it now (a variant switch, a director's save). Once per boot.
+  const followed = useRef(false);
+  useEffect(() => {
+    if (config === null || followed.current || config.fromMap !== true) return;
+    followed.current = true;
+    void fetchHouse(config)
+      .then((h) => {
+        const next = followMap(config, h.house);
+        if (next === null) return;
+        saveConfig(next);
+        setConfig(next);
+      })
+      .catch(() => {});
+  }, [config]);
 
   // A stored token the run no longer honours (the codes were rotated) sends
   // the terminal back to setup rather than failing every scan.
@@ -1035,309 +1050,6 @@ function Mirror({ config, canDraw, onSetup, onGone }: { config: TerminalConfig; 
       </div>
       <Gear onOpen={onSetup} label="Set up this screen" className="mirror-gear" />
       <div className="scanlines" aria-hidden="true" />
-    </div>
-  );
-}
-
-// --- setup -------------------------------------------------------------------
-
-/** A LOCATION off the house map, or none; a stored value the map lacks stays as typed. */
-function RoomPicker({ value, onChange, rooms, blank }: { value: string; onChange: (v: string) => void; rooms: readonly { value: string; label: string }[]; blank: string }) {
-  if (rooms.length === 0) return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="The Server Room" />;
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{blank}</option>
-      {rooms.map((r) => (
-        <option key={r.value} value={r.value}>
-          {r.label}
-        </option>
-      ))}
-      {value.trim() !== "" && !rooms.some((r) => r.value === value) && <option value={value}>{value} (not on the map)</option>}
-    </select>
-  );
-}
-
-function Setup({ current, notice, onDone, onForget }: { current: TerminalConfig | null; notice: string | null; onDone: (c: TerminalConfig) => void; onForget: () => void }) {
-  const [code, setCode] = useState("");
-  const [name, setName] = useState(current?.name ?? "");
-  const [character, setCharacter] = useState(current?.character ?? "Trabolta");
-  const [camera, setCamera] = useState<TerminalConfig["camera"]>(current?.camera ?? "user");
-  const [engine, setEngine] = useState<VoiceChoice>(current?.engine ?? "browser");
-  const [announce, setAnnounce] = useState(current?.announce ?? false);
-  const [tested, setTested] = useState<string | null>(null);
-  const [serverVoice, setServerVoice] = useState(current?.serverVoice ?? "");
-  const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
-  const [speed, setSpeed] = useState(current?.speed ?? 1);
-  const [spot, setSpot] = useState(current?.spot ?? "");
-  const [view, setView] = useState<TerminalView>(current?.view ?? "auto");
-  const [room, setRoom] = useState(current?.room ?? "");
-  const [camFeed, setCamFeed] = useState(current?.camFeed ?? true);
-  const feed = useFeedStatus();
-  const [cast, setCast] = useState<readonly string[]>([]);
-  const [map, setMap] = useState<HouseInfo | null>(() => bundledHouse());
-  const [error, setError] = useState<string | null>(notice);
-  const [busy, setBusy] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [serverVoiceInfo, setServerVoiceInfo] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!BrowserEngine.available()) return;
-    const load = () => setVoices(rankVoices(speechSynthesis.getVoices(), CHARACTER_VOICE));
-    load();
-    speechSynthesis.addEventListener("voiceschanged", load);
-    return () => speechSynthesis.removeEventListener("voiceschanged", load);
-  }, []);
-  // Only asked when the (opt-in) server voice is chosen.
-  useEffect(() => {
-    if (current === null || engine !== "server") return;
-    void fetch(`${baseOf(current)}/api/mod/tts`, { headers: { "x-loom-token": current.token } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((info: { available: boolean; voice: string; model: string } | null) => {
-        if (info === null) return;
-        setServerVoiceInfo(info.available ? `server voice on (${info.model}, default ${info.voice})` : "the server has no voice (LOOM_TTS_URL is off) — this device's own will be used");
-      })
-      .catch(() => {});
-  }, [current, engine]);
-  const env = deviceEnv();
-  const native = pickDeviceEngine(env);
-  const deviceVoice =
-    native === "browser"
-      ? `this device has ${voices.length || env.voices} voice${(voices.length || env.voices) === 1 ? "" : "s"}`
-      : native === "fully"
-        ? "no browser voices — Fully Kiosk's text-to-speech will speak"
-        : env.speech
-          ? "no voices loaded on this device yet — text only until one appears (in Fully Kiosk: enable its JavaScript Interface)"
-          : "this browser has no voice — text only (in Fully Kiosk: enable its JavaScript Interface)";
-
-  // Where this screen can hang: the event's house map when this terminal can
-  // read it, else the show's map baked into the build.
-  useEffect(() => {
-    if (current === null) return;
-    let alive = true;
-    void fetchHouse(current)
-      .then((h) => alive && setMap(h))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [current]);
-  const spots = useMemo(() => spotChoices(map?.house ?? null), [map]);
-  const rooms = useMemo(() => roomChoices(map?.house ?? null), [map]);
-  const badSpot = map !== null && map.source !== "bundled" ? spotProblem(spot, map.house) : null;
-  // The story's cast, for the character picker (the same read the cast check uses).
-  useEffect(() => {
-    if (current === null) return;
-    let alive = true;
-    void fetchCharacters(current)
-      .then((c) => alive && setCast(c))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [current]);
-
-  const submit = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      let next: TerminalConfig;
-      if (code.trim() !== "") {
-        next = await provision(code.trim(), { name: name.trim() || null, character: character.trim() || null, camera, engine, spot, view, room: room.trim() || null, announce, camFeed });
-      } else if (current !== null) {
-        // A changed character in the story's spelling, or an error naming the
-        // cast (an unreachable / slow server, or no story: kept as typed —
-        // the screen state corrects the spelling later). Unchanged: no lookup.
-        const kept = await savedCharacter(character, current.character, () => fetchCharacters(current));
-        next = { ...current, name: name.trim() || current.name, character: kept, camera, engine, spot, view, room: room.trim(), announce, camFeed };
-      } else {
-        throw new Error("Enter the moderator passcode.");
-      }
-      onDone({ ...next, serverVoice: serverVoice.trim(), browserVoice, speed });
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Says a line through exactly the voice this terminal will use (the
-  // server one when chosen, latching to the device's), and names it.
-  const testVoice = async () => {
-    await unlock();
-    setTested("…");
-    const engines =
-      engine === "server" && current !== null
-        ? voiceEngines({ choice: "server", browserVoice, serverVoice: serverVoice.trim(), speed, base: baseOf(current), token: current.token })
-        : { primary: new DeviceEngine({ voice: browserVoice, speed, choice: engine === "server" ? "browser" : engine, prefer: CHARACTER_VOICE }), fallback: null };
-    let used: EngineKind | null = null;
-    const q = new SpeechQueue(engines, {
-      level: () => {},
-      chunk: () => {},
-      done: () => {},
-      idle: () => setTested(used === null ? "nothing could speak" : `spoke with: ${ENGINE_LABEL[used]}`),
-      engine: (k) => (used = k),
-    });
-    q.say({ id: 1, chunks: ["Connection established.", "I have been expecting you, program."] });
-  };
-  const testChime = async () => {
-    await unlock();
-    await ringChime();
-  };
-
-  return (
-    <div className="terminal setup-screen">
-      <form
-        className="setup"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <h1>TERMINAL SETUP</h1>
-        <p className="muted">One tablet, one line. Enter the event's moderator passcode once; this screen then pilots any pass held up to its camera.</p>
-        {error && <div className="error">{error}</div>}
-        <label>
-          moderator passcode {current !== null && <span className="muted">(leave blank to keep this terminal's access)</span>}
-          <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" placeholder={current !== null ? "••••••" : "from the server's boot banner / Run page"} />
-        </label>
-        <label>
-          this terminal's name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kitchen" />
-        </label>
-        <label>
-          character (an agent-voiced one)
-          {cast.length > 0 && !cast.includes(character) ? (
-            <input value={character} onChange={(e) => setCharacter(e.target.value)} placeholder="Trabolta" list="terminal-cast" />
-          ) : cast.length > 0 ? (
-            <select value={character} onChange={(e) => setCharacter(e.target.value)}>
-              {cast.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input value={character} onChange={(e) => setCharacter(e.target.value)} placeholder="Trabolta" list="terminal-cast" />
-          )}
-          <datalist id="terminal-cast">
-            {cast.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </label>
-        <div className="row">
-          <label>
-            camera
-            <select value={camera} onChange={(e) => setCamera(e.target.value as TerminalConfig["camera"])}>
-              <option value="user">front (facing the room)</option>
-              <option value="environment">back</option>
-            </select>
-          </label>
-          <label>
-            voice
-            <select value={engine} onChange={(e) => setEngine(e.target.value as VoiceChoice)}>
-              <option value="browser">this device's own voice (recommended)</option>
-              <option value="fully">Fully Kiosk's voice (Android TTS)</option>
-              <option value="silent">no voice — text only</option>
-              <option value="server">the server's voice (needs LOOM_TTS_URL)</option>
-            </select>
-          </label>
-        </div>
-        <div className="row">
-          <label>
-            where it hangs <span className="muted">(its spot in the house map)</span>
-            <select value={spot} onChange={(e) => setSpot(e.target.value)}>
-              <option value="">unplaced — never a window</option>
-              {spots.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-              {spot !== "" && !spots.some((s) => s.value === spot) && <option value={spot}>{spot} (not in the map)</option>}
-            </select>
-          </label>
-          <label>
-            screen
-            <select value={view} onChange={(e) => setView(e.target.value as TerminalView)}>
-              {VIEWS.map((v) => (
-                <option key={v} value={v}>
-                  {VIEW_INFO[v]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {view === "chess" || view === "casino" ? null : view === "tv" ? (
-          <label>
-            the room it speaks for <span className="muted">(a LOCATION; blank = {DEFAULT_TV_ROOM})</span>
-            <RoomPicker value={room} onChange={setRoom} rooms={rooms} blank={`${DEFAULT_TV_ROOM} (the default)`} />
-          </label>
-        ) : (
-          <label>
-            the room it belongs to <span className="muted">(a LOCATION; blank = none — the house's terminal. Set: asleep until the story opens that room, then it speaks the character's lines there, shows no slides, and tells the story when a pass opens a line here)</span>
-            <RoomPicker value={room} onChange={setRoom} rooms={rooms} blank="none — the house's terminal" />
-          </label>
-        )}
-        {badSpot !== null && <div className="warn small">{badSpot}</div>}
-        <label className="check">
-          <input type="checkbox" checked={camFeed} onChange={(e) => setCamFeed(e.target.checked)} disabled={spot === ""} />
-          send this camera to the games <span className="muted">(a small live picture on this terminal's wall in the virtual house; needs a spot)</span>
-        </label>
-        {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
-        {!hasWebGL2() && view !== "face" && <div className="muted small">this tablet has no WebGL2 — it can't draw the simulation, so it will show the face</div>}
-        {map !== null && map.source === "bundled" && current !== null && <div className="muted small">couldn't read the event's house map — listing the show's own spots</div>}
-        <div className="muted small">{deviceVoice}</div>
-        {engine === "server" && serverVoiceInfo && <div className="muted">{serverVoiceInfo}</div>}
-        <div className="row">
-          {engine === "server" && (
-            <label>
-              server voice name <span className="muted">(blank = server default)</span>
-              <input value={serverVoice} onChange={(e) => setServerVoice(e.target.value)} placeholder="am_michael · bm_george · af_bella+af_sky" />
-            </label>
-          )}
-          <label>
-            pace {speed.toFixed(2)}×
-            <input type="range" min={0.6} max={1.5} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
-          </label>
-        </div>
-        <label>
-          device voice <span className="muted">({character.trim() || "the character"}'s — best first, male first; announcements take a different one)</span>
-          <span className="row">
-            <select value={browserVoice} onChange={(e) => setBrowserVoice(e.target.value)} disabled={voices.length === 0}>
-              <option value="">{voices[0] ? `best available — ${voices[0].name}` : "the device's default"}</option>
-              {voices.map((v) => (
-                <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name} ({v.lang}){v.localService ? "" : " · online"}
-                </option>
-              ))}
-            </select>
-            <button type="button" className="ghost" onClick={() => void testVoice()}>
-              TEST VOICE
-            </button>
-          </span>
-        </label>
-        {tested !== null && <div className="muted small">{tested}</div>}
-        <label className="check">
-          <input type="checkbox" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} />
-          say the house announcements here <span className="muted">(a chime + "Go to the living room." — off where the house speakers reach)</span>
-          <button type="button" className="ghost" onClick={() => void testChime()}>
-            CHIME
-          </button>
-        </label>
-        <div className="actions">
-          <button type="submit" disabled={busy}>
-            {busy ? "CONNECTING…" : "POWER ON"}
-          </button>
-          {current !== null && (
-            <button type="button" className="ghost" onClick={onForget}>
-              forget this terminal
-            </button>
-          )}
-        </div>
-        <p className="muted small">
-          Provision a fleet by opening <code>/terminal/?code=&lt;mod passcode&gt;&amp;name=Kitchen&amp;character=Trabolta&amp;spot=start-bar&amp;view=auto</code> on each tablet (add <code>&amp;announce=1</code> where the house speakers don't reach; the server-room terminal adds <code>&amp;room=The Server Room</code>; the King's board outside its door is <code>?code=…&amp;name=Server Door&amp;spot=server-room-door&amp;view=chess</code>; the upstairs casino is <code>?code=…&amp;name=Casino&amp;spot=graphics-card&amp;view=casino</code>). The camera needs https:// (or localhost); without it, programs type their name instead.
-        </p>
-      </form>
     </div>
   );
 }

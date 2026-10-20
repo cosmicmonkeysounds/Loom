@@ -97,6 +97,10 @@ export interface TerminalConfig {
    *  device's voice). Off by default — the TV's room already hears the
    *  house speakers, and most tablets hang where the speakers reach. */
   announce: boolean;
+  /** Set up by tapping a terminal of the event's house map: at boot the
+   *  name / view / room follow that map entry (`setup-map.ts` `followMap`).
+   *  A manual view / room in ⚙'s advanced section clears it. */
+  fromMap?: boolean;
 }
 
 export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";
@@ -174,7 +178,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false });
+    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false, fromMap: c.fromMap === true });
   } catch {
     return null;
   }
@@ -251,21 +255,13 @@ export function withoutSecrets(search: string): string {
  * readable message on a wrong / non-moderator code.
  */
 export async function provision(code: string, hints: Omit<UrlHints, "code">): Promise<TerminalConfig> {
-  let resolved: { eventId: string; role: string; title?: string; characters?: string[] };
-  try {
-    resolved = await api("/api/resolve-code", { code });
-  } catch (e) {
-    throw new Error(e instanceof ApiError && e.status === 404 ? "No event answers to that code." : `Couldn't reach the event server (${(e as Error).message}).`);
-  }
-  if (resolved.role !== "mod") throw new Error(`That is a ${resolved.role === "prime" ? "performer" : "guest"} code — a terminal needs the moderator passcode.`);
-  const login = await api<{ token: string }>(`/e/${encodeURIComponent(resolved.eventId)}/api/mod/login`, { passcode: code });
-  const character = pickCharacter(hints.character, resolved.characters ?? []);
+  const c = await connect(code);
   return defaultConfig({
-    eventId: resolved.eventId,
-    token: login.token,
-    title: resolved.title ?? "",
+    eventId: c.eventId,
+    token: c.token,
+    title: c.title,
     name: hints.name ?? "Terminal",
-    character,
+    character: pickCharacter(hints.character, c.characters),
     camera: hints.camera ?? "user",
     engine: hints.engine ?? "browser",
     spot: hints.spot ?? "",
@@ -274,6 +270,28 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     announce: hints.announce ?? false,
     camFeed: hints.camFeed ?? true,
   });
+}
+
+/** A moderator passcode traded for the event's access (setup's CONNECT
+ *  step) — nothing about which terminal this is yet. */
+export interface Connection {
+  eventId: string;
+  token: string;
+  title: string;
+  /** The story's declared cast (may be empty: no story loaded). */
+  characters: string[];
+}
+
+export async function connect(code: string): Promise<Connection> {
+  let resolved: { eventId: string; role: string; title?: string; characters?: string[] };
+  try {
+    resolved = await api("/api/resolve-code", { code });
+  } catch (e) {
+    throw new Error(e instanceof ApiError && e.status === 404 ? "No event answers to that code." : `Couldn't reach the event server (${(e as Error).message}).`);
+  }
+  if (resolved.role !== "mod") throw new Error(`That is a ${resolved.role === "prime" ? "performer" : "guest"} code — a terminal needs the moderator passcode.`);
+  const login = await api<{ token: string }>(`/e/${encodeURIComponent(resolved.eventId)}/api/mod/login`, { passcode: code });
+  return { eventId: resolved.eventId, token: login.token, title: resolved.title ?? "", characters: resolved.characters ?? [] };
 }
 
 /** A name folded the way the story matches names (core's `foldName`:
