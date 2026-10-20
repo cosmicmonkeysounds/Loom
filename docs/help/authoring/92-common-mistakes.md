@@ -79,7 +79,7 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
 - **End every audience's objectives with a fallback.** The first live
   `OBJECTIVE` is NOW, so a guest whose objectives are all off gets only
   the open room's name (or the story's title) in the NOW bar, and a
-  booth no NOW at all. Put the urgent ones first and finish each `for:`
+  booth's NOW card just its character's name. Put the urgent ones first and finish each `for:`
   with one that has no `while:`.
 - **A booth objective can't read the guest.** In an objective `for:` a
   character, `program.…` reads nothing (the booth's NOW is the same for
