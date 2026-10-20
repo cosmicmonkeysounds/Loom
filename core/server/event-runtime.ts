@@ -2749,8 +2749,6 @@ export class EventRuntime {
     for (const w of this.houseWarnings(house)) process.stderr.write(`  ⚠️  event ${this.eventId}: house map ${w}\n`);
   }
 
-  /** May this caller read the spatial plane (the map, the stream)? A
-   *  moderator (token or author session), or a live game session. */
   /** Does this token alone open the camera feeds (a mod token or a game
    *  session)? The server asks first, so a terminal's token-bearing 1 s
    *  poll never pays for an author-session lookup. */
@@ -2758,6 +2756,8 @@ export class EventRuntime {
     return this.spatialReader(token, false);
   }
 
+  /** May this caller read the spatial plane (the map, the stream)? A
+   *  moderator (token or author session), or a live game session. */
   private spatialReader(token: string | undefined, moderator: boolean): boolean {
     return moderator || this.sessions.canModerate(token) || this.spatial.hasToken(token);
   }

@@ -48,6 +48,7 @@ main{padding:16px}
 #login button{margin-top:12px;width:100%;background:var(--accent);color:#111;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:18px}
 .err{color:var(--bad);margin-top:12px;min-height:1.4em;font-weight:600}
 #status{padding:8px 16px;color:var(--bad);font-weight:600}
+#show:focus{outline:none}
 #show{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vh;padding:2vh 2vw;touch-action:pan-y}
 #show .st{color:#fff;font-weight:800;font-size:clamp(20px,4vh,44px);text-align:center;line-height:1.15;max-width:92vw}
 #show .ss{color:#bbb;font-size:clamp(14px,2.2vh,22px);text-align:center}
@@ -61,7 +62,7 @@ main{padding:16px}
 #show .nav:hover{background:#ffffff2a}
 #show .prev{left:8px}#show .next{right:8px}
 #show .close{position:fixed;top:10px;right:12px;background:#ffffff14;border:0;color:#fff;font-size:26px;width:48px;height:48px;border-radius:50%}
-@media (max-width:600px){header h1{flex-basis:100%}#q{flex:1 1 100%;width:auto;order:3}.grid{grid-template-columns:1fr}#show .nav{width:40px;height:72px;font-size:28px}}
+@media (max-width:600px){header h1{flex-basis:100%}#q{flex:1 1 100%;width:auto;order:3}.grid{grid-template-columns:1fr}#show .nav{display:none}}
 `;
 
 const HTML = `<!doctype html>
@@ -88,7 +89,7 @@ const HTML = `<!doctype html>
   <div id="status" class="hidden" role="alert"></div>
   <main><div class="grid" id="grid"></div></main>
 </div>
-<div id="show" class="hidden" role="dialog" aria-modal="true">
+<div id="show" class="hidden" role="dialog" aria-modal="true" aria-labelledby="sTitle" tabindex="-1">
   <button class="close" id="sClose" aria-label="Close">✕</button>
   <button class="nav prev" id="sPrev" aria-label="Previous">‹</button>
   <button class="nav next" id="sNext" aria-label="Next">›</button>
@@ -217,6 +218,9 @@ function present(i) {
   $("sDone").classList.toggle("on", !!done[it.ref]);
   $("sDone").textContent = done[it.ref] ? "✓ scanned" : "mark scanned";
   $("show").classList.remove("hidden");
+  // Keep focus inside the presenter: a card behind it holding focus would
+  // take Enter / Space and jump back to itself.
+  if (!$("show").contains(document.activeElement)) $("show").focus();
 }
 function closeShow() {
   if (showing < 0) return;
@@ -274,8 +278,13 @@ document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape") { ev.preventDefault(); closeShow(); }
   else if (ev.key === "ArrowRight" || ev.key === "PageDown") { ev.preventDefault(); present(showing + 1); }
   else if (ev.key === "ArrowLeft" || ev.key === "PageUp") { ev.preventDefault(); present(showing - 1); }
-  else if (ev.key === " " || ev.key === "Enter") { if (ev.target === document.body || ev.target.id === "sDone") return; }
+  else if (ev.key === " " || ev.key === "Enter") {
+    // Only the presenter's own buttons take Enter / Space while it is open.
+    if (!(ev.target instanceof HTMLButtonElement && $("show").contains(ev.target))) ev.preventDefault();
+  }
 });
+// Focus never wanders to the grid behind an open presenter.
+document.addEventListener("focusin", (ev) => { if (showing >= 0 && !$("show").contains(ev.target)) $("show").focus(); });
 let touchX = null;
 $("show").addEventListener("touchstart", (ev) => { touchX = ev.touches.length === 1 ? ev.touches[0].clientX : null; }, { passive: true });
 $("show").addEventListener("touchend", (ev) => {
