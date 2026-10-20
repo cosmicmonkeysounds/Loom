@@ -36,6 +36,8 @@ export const HOST_ROUTES = [
   // pauses. Never reset / load / push / go live / end / resync.
   "/api/mod/start",
   "/api/mod/stop",
+  // The show clock (wave 13 K5): set it to a time or nudge it by minutes.
+  "/api/mod/clock",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
@@ -148,6 +150,10 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     resume: () => post("/api/mod/start", {}),
     /** ⏸ Pause the show: the story clock stops, nothing is lost. */
     pause: () => post("/api/mod/stop", {}),
+    /** 🕐 Set the show clock to a time of day ("7:05 PM"). */
+    clockSet: (time: string) => post("/api/mod/clock", { time }),
+    /** 🕐 Move the show clock by `minutes` (±, |n| ≤ 240). */
+    clockNudge: (minutes: number) => post("/api/mod/clock", { nudge: minutes }),
     /** Scan a guest as another character (a late arrival's clearance). */
     scanAs: (as: string, target: string) => post("/api/mod/scan", { as, target }),
   };
