@@ -4,8 +4,8 @@ import {
   CHASE_HEIGHT,
   MIN_HOLD,
   MIN_PULL,
+  CELEBRATE_HOLD,
   MOUNT_FOV,
-  MOUNT_HOLD,
   SWITCH_GAP,
   chooseShot,
   direct,
@@ -14,6 +14,7 @@ import {
   insideHead,
   mountCamera,
   shotFloor,
+  windowPose,
   type Director,
   type DirectorInput,
   type DirectorPlayer,
@@ -30,57 +31,81 @@ function player(session: string, p: Vec3, over: Partial<DirectorPlayer> = {}): D
 function input(players: DirectorPlayer[], now: number, over: Partial<DirectorInput> = {}): DirectorInput {
   return { house, walls, spot, players, now, dt: 1 / 30, ...over };
 }
+/** An unplaced terminal (no spot on the map): the follow / orbit director. */
+const loose = (players: DirectorPlayer[], now: number) => input(players, now, { spot: null });
 const inRoom = (p: Vec3, [x0, z0, x1, z1]: [number, number, number, number]) => p[0] > x0 && p[0] < x1 && p[2] > z0 && p[2] < z1;
 
 describe("director — choosing the shot", () => {
-  it("orbits the terminal's own room when nobody plays (the spawn room when unplaced)", () => {
-    const d = direct(input([], 12_345), null);
+  it("a placed terminal is always the window: mounted with nobody playing, nobody in its room, or someone in it", () => {
+    const window = windowPose(house, spot);
+    // Nobody in the simulation.
+    let d = direct(input([], 12_345), null);
+    expect(d.shot).toEqual({ kind: "mount", spot: "ta", room: "a", subject: null });
+    expect(d.cam).toEqual(window);
+    // Someone in its room: they are the subject; the camera never moves.
+    d = direct(input([player("s1", [2, 0, 2])], 13_000), d);
+    expect(d.shot).toEqual({ kind: "mount", spot: "ta", room: "a", subject: "s1" });
+    expect(d.cam).toEqual(window);
+    // They walk out into B and play on for a long time: still the window, no follow, no orbit.
+    for (const t of [14_000, 20_000, 60_000]) {
+      d = direct(input([player("s1", [6, 0, 2], { lastActive: t })], t), d);
+      expect(d.shot).toEqual({ kind: "mount", spot: "ta", room: "a", subject: null });
+      expect(d.cam).toEqual(window);
+    }
+    expect(d.cutAt).toBe(12_345); // never a cut
+  });
+
+  it("a find never moves a window's camera", () => {
+    const d = direct(input([player("A", [7, 0, 2], { foundAt: 1000, lastActive: 1000 })], 1000 + CELEBRATE_HOLD / 2), null);
+    expect(d.shot.kind).toBe("mount");
+    expect(d.cam).toEqual(windowPose(house, spot));
+  });
+
+  it("keeps the subject named first among those in its room", () => {
+    let d = direct(input([player("A", [1, 0, 1], { lastActive: 10 }), player("B", [3, 0, 3], { lastActive: 5 })], 10), null);
+    expect(d.shot).toMatchObject({ subject: "A" });
+    d = direct(input([player("A", [1, 0, 1], { lastActive: 10 }), player("B", [3, 0, 3], { lastActive: 50 })], 50), d);
+    expect(d.shot).toMatchObject({ subject: "A" });
+    d = direct(input([player("A", [6, 0, 1], { lastActive: 60 }), player("B", [3, 0, 3], { lastActive: 50 })], 60), d);
+    expect(d.shot).toMatchObject({ subject: "B" });
+  });
+
+  it("an unplaced terminal orbits the spawn room when nobody plays", () => {
+    const d = direct(loose([], 12_345), null);
     expect(d.shot).toEqual({ kind: "orbit", room: "a" });
     expect(inRoom(d.cam.pos, [0, 0, 4, 4])).toBe(true);
     expect(d.cam.pos[1]).toBeLessThan(2.5);
-    expect(chooseShot(input([], 0, { spot: null }), null)).toEqual({ kind: "orbit", room: "a" });
-  });
-
-  it("mounts on the terminal while a player is in its room, and holds a moment after", () => {
-    let d = direct(input([player("s1", [2, 0, 2])], 1000), null);
-    expect(d.shot).toEqual({ kind: "mount", spot: "ta", room: "a", subject: "s1" });
-    // Out of the room: still mounted for MOUNT_HOLD…
-    d = direct(input([player("s1", [6, 0, 2])], 1000 + MOUNT_HOLD - 1), d);
-    expect(d.shot.kind).toBe("mount");
-    // …then following them.
-    d = direct(input([player("s1", [6, 0, 2])], 1000 + MOUNT_HOLD), d);
-    expect(d.shot).toEqual({ kind: "follow", subject: "s1", room: "b" });
   });
 
   it("never mounts an unplaced terminal", () => {
-    expect(chooseShot(input([player("s1", [2, 0, 2])], 0, { spot: null }), null)).toEqual({ kind: "follow", subject: "s1", room: "a" });
+    expect(chooseShot(loose([player("s1", [2, 0, 2])], 0), null)).toEqual({ kind: "follow", subject: "s1", room: "a" });
   });
 
-  it("follows the freshest player, holding them until another is clearly fresher", () => {
+  it("an unplaced terminal follows the freshest player, holding them until another is clearly fresher", () => {
     const a = (t: number) => player("A", [5, 0, 1], { lastActive: t });
     const b = (t: number) => player("B", [7, 0, 3], { lastActive: t });
-    let d = direct(input([a(1000), b(0)], 1000), null);
+    let d = direct(loose([a(1000), b(0)], 1000), null);
     expect(d.shot).toMatchObject({ kind: "follow", subject: "A" });
     // B moves just after the cut: held.
-    d = direct(input([a(1000), b(2000)], 2000), d);
+    d = direct(loose([a(1000), b(2000)], 2000), d);
     expect(d.shot).toMatchObject({ subject: "A" });
     // Past the hold but B is barely fresher: still A.
-    d = direct(input([a(1000 + MIN_HOLD), b(1000 + MIN_HOLD + SWITCH_GAP - 1)], 1000 + MIN_HOLD + SWITCH_GAP), d);
+    d = direct(loose([a(1000 + MIN_HOLD), b(1000 + MIN_HOLD + SWITCH_GAP - 1)], 1000 + MIN_HOLD + SWITCH_GAP), d);
     expect(d.shot).toMatchObject({ subject: "A" });
     // A has stood still; B is clearly fresher: cut to B.
     const t = 1000 + MIN_HOLD + SWITCH_GAP + 10;
-    d = direct(input([a(1000 + MIN_HOLD), b(t)], t), d);
+    d = direct(loose([a(1000 + MIN_HOLD), b(t)], t), d);
     expect(d.shot).toMatchObject({ subject: "B" });
     expect(d.cutAt).toBe(t);
     // B leaves: straight back to A, hold or not.
-    d = direct(input([a(1000 + MIN_HOLD)], t + 1), d);
+    d = direct(loose([a(1000 + MIN_HOLD)], t + 1), d);
     expect(d.shot).toMatchObject({ subject: "A" });
   });
 
-  it("a player who just found the duck takes the camera", () => {
-    const prev = direct(input([player("A", [5, 0, 1], { lastActive: 900 }), player("B", [7, 0, 2])], 1000), null);
+  it("a player who just found the duck takes an unplaced terminal's camera", () => {
+    const prev = direct(loose([player("A", [5, 0, 1], { lastActive: 900 }), player("B", [7, 0, 2])], 1000), null);
     expect(prev.shot).toMatchObject({ subject: "A" });
-    const d = direct(input([player("A", [5, 0, 1], { lastActive: 1100 }), player("B", [7, 0, 2], { foundAt: 1050 })], 1100), prev);
+    const d = direct(loose([player("A", [5, 0, 1], { lastActive: 1100 }), player("B", [7, 0, 2], { foundAt: 1050 })], 1100), prev);
     expect(d.shot).toMatchObject({ kind: "follow", subject: "B" });
   });
 
@@ -190,14 +215,33 @@ describe("director — framing", () => {
     expect(firstHit(walls, [3, 2.2, 2], [5, 2.2, 2])).toBeCloseTo(0.5); // …but not over it (the lintel)
   });
 
-  it("smooths within a shot and cuts between shots", () => {
-    const first = direct(input([player("A", [6, 0, 1])], 0), null);
+  it("smooths within a shot and cuts between shots (unplaced)", () => {
+    const first = direct(loose([player("A", [6, 0, 1])], 0), null);
     const target = followCamera(house, walls, { p: [6, 0, 0.5], yaw: 0, room: "b" });
-    const next: Director = direct(input([player("A", [6, 0, 0.5])], 33), first);
+    const next: Director = direct(loose([player("A", [6, 0, 0.5])], 33), first);
     expect(next.cam.pos[2]).toBeLessThan(first.cam.pos[2]);
     expect(next.cam.pos[2]).toBeGreaterThan(target.pos[2]);
-    const cut = direct(input([player("A", [2, 0, 2])], 66), next);
-    expect(cut.shot.kind).toBe("mount");
-    expect(cut.cam).toEqual(mountCamera(spot));
+    const cut = direct(loose([], 66), next);
+    expect(cut.shot.kind).toBe("orbit");
+    expect(cut.cutAt).toBe(66);
+  });
+
+  it("the window pose is the mount camera, kept under a low ceiling", () => {
+    expect(windowPose(house, spot)).toEqual(mountCamera(spot));
+    const low = twoRooms({ heightA: 1.5 });
+    const lowSpot = low.terminals[0]!;
+    const cam = windowPose(low, lowSpot);
+    expect(cam.pos[1]).toBeCloseTo(1.5 - 0.15);
+    expect(cam.look[1] - cam.pos[1]).toBeCloseTo(mountCamera(lowSpot).look[1] - mountCamera(lowSpot).pos[1]);
+  });
+});
+
+describe("director — stays pure", () => {
+  it("imports no three.js (the shadow view takes its window pose without the renderer)", async () => {
+    const { readFileSync } = await import("node:fs");
+    for (const f of ["director.ts", "label-point.ts", "overlay.ts", "minimap.ts"]) {
+      const src = readFileSync(new URL(`../src/world/${f}`, import.meta.url), "utf8");
+      expect(src, f).not.toMatch(/from\s+["'](three|@loom\/house\/three)/);
+    }
   });
 });

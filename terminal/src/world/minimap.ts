@@ -4,7 +4,7 @@
 //! north is up and nothing needs flipping.
 
 import { DEFAULT_SPOT_FOV, horizontalFov, polyBounds, type DuckSpot, type HouseMap, type TerminalSpot, type Vec2 } from "@loom/house";
-import { labelPoint } from "@loom/house/three";
+import { labelPoint } from "./label-point.ts";
 
 export interface MiniRoom {
   id: string;
