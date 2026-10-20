@@ -39,6 +39,10 @@
 .host-strip-urgent { color: var(--bad); }
 .host-strip-needs { color: var(--bad); }
 .host-bar.loading .host-bar-main { cursor: default; }
+/* The last poll failed: the line says how old the view is (on white), and
+   FIRE dims — the server's `presses` check still stops a double fire. */
+.host-bar-stale, .host-bar-refused { color: var(--bad); }
+.host-fire.stale:not(.armed) { color: var(--muted-ink); box-shadow: var(--raised), inset 0 0 0 2px var(--line); }
 
 /* ARM → FIRE: raised until armed, then the cue sheet's armed look. */
 .host-fire {

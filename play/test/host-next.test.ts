@@ -1,12 +1,15 @@
 //! The host's NEXT bar (wave 13, D9 + D10): tap to arm, tap to fire with
 //! `presses`; a 409 `moved` (another host pressed first) drops the arm so
-//! the next tap re-arms; a refused press is kept for its `# hosts` reason.
+//! the next tap re-arms; a refused press is kept for its `# hosts` reason,
+//! which the bar's second line shows; a failed poll says the view is old.
 
 import { describe, expect, it } from "vitest";
 import { ARM_DEAD_MS, cueRows, tapCue } from "../../core/src/cue-sheet.ts";
 import { STALE_TOAST, fireToast, phoneTap } from "../src/director.tsx";
 import { hostFire } from "../src/host/fire.ts";
 import { ApiError } from "../src/client.ts";
+import { REFUSED_BAR_MS, barLine, staleText } from "../src/host/model.ts";
+import { UNREACHABLE, hostPollOutcome } from "../src/host/client.ts";
 import { hostFixture } from "./host-fixture.ts";
 
 function fakeCue(answer: Record<string, unknown> | Error) {
@@ -78,5 +81,38 @@ describe("the NEXT bar arms, then fires", () => {
     const lost = await hostFire(g.calls, g.fresh)("call_everyone", null, undefined, 4);
     expect(lost).toMatchObject({ ok: false, status: 0 });
     expect(fireToast(next, lost)).toMatch(/^Not sure C1 fired/u);
+  });
+});
+
+describe("the NEXT bar's second line", () => {
+  const base = { toast: null, connected: true, error: null, receivedAt: 10_000, now: 10_000, armed: false, subjectName: null, refused: null, reason: null };
+  const press = { id: "spin_the_bottle", what: "V6", at: 10_000, afterSeq: 5 };
+
+  it("is the strip on a fresh view with nothing to say", () => {
+    expect(barLine(base)).toEqual({ kind: "strip" });
+  });
+  it("says the view is old once a poll fails, and how old", () => {
+    expect(barLine({ ...base, connected: false, error: "Can't reach the server", now: 22_000 })).toEqual({ kind: "stale", text: "⚠ Can't reach the server · last update 12 s ago" });
+    expect(barLine({ ...base, connected: false, error: "This booth isn't a host any more.", now: 11_000 }).kind).toBe("stale");
+    expect(staleText(null, 0, 200_000)).toBe("⚠ Reconnecting… · last update 3 m ago");
+    // Stale beats the armed prompt: never fire off an old screen unwarned.
+    expect(barLine({ ...base, connected: false, armed: true }).kind).toBe("stale");
+  });
+  it("shows a refused press's # hosts reason itself, then the strip after REFUSED_BAR_MS", () => {
+    expect(barLine({ ...base, refused: press })).toEqual({ kind: "refused", text: "✕ V6 not taken…" });
+    expect(barLine({ ...base, refused: press, reason: "Too early: the results aren't read yet." })).toEqual({ kind: "refused", text: "✕ V6 not taken — Too early: the results aren't read yet." });
+    expect(barLine({ ...base, refused: press, now: 10_000 + REFUSED_BAR_MS })).toEqual({ kind: "strip" });
+  });
+  it("a fresh toast and the armed prompt come first", () => {
+    expect(barLine({ ...base, toast: "✓ Fired C1", refused: press, connected: false })).toEqual({ kind: "toast", text: "✓ Fired C1" });
+    expect(barLine({ ...base, armed: true, refused: press })).toEqual({ kind: "armed", text: "Tap FIRE within 4 s to fire" });
+    expect(barLine({ ...base, armed: true, subjectName: "Ada" }).text).toBe("Tap FIRE to fire → Ada");
+  });
+});
+
+describe("the host poll", () => {
+  it("a 403 says the booth is no host any more", () => {
+    expect(hostPollOutcome(403, { error: "not a host" })).toEqual({ kind: "error", message: "This booth isn't a host any more." });
+    expect(UNREACHABLE).toBe("Can't reach the server");
   });
 });

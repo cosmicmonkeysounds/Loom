@@ -172,6 +172,40 @@ export function refusedLive(p: RefusedPress, now: number): boolean {
   return now - p.at < REFUSED_NEEDS_MS;
 }
 
+/** How long the NEXT bar's second line keeps a refused press's reason (it
+ *  stays under Needs for the minute). */
+export const REFUSED_BAR_MS = 20_000;
+
+/** "⚠ Can't reach the server · last update 12 s ago": the bar's second
+ *  line while polls fail, so the host never decides off an old screen. */
+export function staleText(error: string | null, receivedAt: number, now: number): string {
+  return `⚠ ${error ?? "Reconnecting…"} · last update ${agoText(now - receivedAt)}`;
+}
+
+/** What the NEXT bar's second line shows, first match wins: a fresh toast,
+ *  a stale view, the armed prompt, the reason a press was just refused, the
+ *  strip. */
+export type BarLine = { kind: "toast" | "stale" | "armed" | "refused"; text: string } | { kind: "strip" };
+
+export function barLine(s: {
+  toast: string | null;
+  connected: boolean;
+  error: string | null;
+  receivedAt: number;
+  now: number;
+  armed: boolean;
+  subjectName: string | null;
+  /** The refused press when it was this booth's latest press, else null. */
+  refused: RefusedPress | null;
+  reason: string | null;
+}): BarLine {
+  if (s.toast !== null) return { kind: "toast", text: s.toast };
+  if (!s.connected) return { kind: "stale", text: staleText(s.error, s.receivedAt, s.now) };
+  if (s.armed) return { kind: "armed", text: s.subjectName !== null ? `Tap FIRE to fire → ${s.subjectName}` : "Tap FIRE within 4 s to fire" };
+  if (s.refused !== null && s.now - s.refused.at < REFUSED_BAR_MS) return { kind: "refused", text: refusedText(s.refused, s.reason, s.now) };
+  return { kind: "strip" };
+}
+
 // --- awards ------------------------------------------------------------------
 
 /** Are the award cues near (one is NEXT, or in the focus act's rows)? Then

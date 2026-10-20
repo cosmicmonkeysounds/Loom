@@ -71,11 +71,16 @@ export function fetchHostPost(auth: HostAuth, doFetch: typeof fetch = (...a) => 
   };
 }
 
+/** The poll's error when the server didn't answer at all. */
+export const UNREACHABLE = "Can't reach the server";
+
 export interface HostClient {
   view: HostView | null;
   /** When the last view landed (wall ms): the countdowns tick on from it. */
   receivedAt: number;
   error: string | null;
+  /** False once a poll has failed, until the next one lands: the view is
+   *  the last good one, and the bar says how old it is. */
   connected: boolean;
   /** Poll now (after a write), or straight after a poll already in flight. */
   refresh: () => void;
@@ -100,7 +105,16 @@ export function useHostView(auth: HostAuth | null): HostClient {
     }
     const load = async () => {
       const seq = latch.begin();
-      const res = await fetch(`${eventBase(eventId)}/api/state?role=mod&host=1`, { headers: { "x-loom-token": token }, cache: "no-store" });
+      let res: Response;
+      try {
+        res = await fetch(`${eventBase(eventId)}/api/state?role=mod&host=1`, { headers: { "x-loom-token": token }, cache: "no-store" });
+      } catch (e) {
+        // No answer at all (Wi-Fi gone, the server restarting): say so,
+        // so the NEXT bar stops passing the last poll off as the night.
+        setConnected(false);
+        setError(UNREACHABLE);
+        throw e;
+      }
       const out = hostPollOutcome(res.status, (await res.json().catch(() => ({}))) as Record<string, unknown>);
       if (out.kind === "view") {
         setView(out.view);

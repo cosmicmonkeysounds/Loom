@@ -17,7 +17,7 @@ import type { PrimeSession } from "../session/prime.ts";
 import { useHostView, useRecap } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
-import { awardsNear, groupNeeds, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type RefusedPress } from "./model.ts";
+import { awardsNear, barLine, groupNeeds, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type RefusedPress } from "./model.ts";
 import { CuesTab } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
@@ -61,6 +61,9 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
   // A refused press, kept under Needs for a minute with its `# hosts` reason:
   // the reason is the first staff-room line after the press went out.
   const [refused, setRefused] = useState<RefusedPress | null>(null);
+  // Is the refused press this booth's latest outcome? Then its reason
+  // takes the bar's second line (for REFUSED_BAR_MS) in place of the toast.
+  const [refusedBar, setRefusedBar] = useState(false);
   const pressSeq = useRef(new Map<string, number>());
   // The cue this booth pressed last (LAST · you).
   const [mine, setMine] = useState<string | null>(null);
@@ -69,9 +72,14 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
   const messages = session.messages;
   const msgRef = useRef(messages);
   msgRef.current = messages;
+  const setToastRef = useRef<(t: string | null) => void>(() => {});
   const onOutcome = useCallback((row: CueRow, out: FireOutcome) => {
-    if (out.ok && out.refused === true) setRefused({ id: row.id, what: row.code ?? cueTitleTags(row.title).title, at: Date.now(), afterSeq: pressSeq.current.get(row.id) ?? newestSeq(msgRef.current) });
-    else if (out.ok) setMine(row.id);
+    setRefusedBar(out.ok && out.refused === true);
+    if (out.ok && out.refused === true) {
+      setRefused({ id: row.id, what: row.code ?? cueTitleTags(row.title).title, at: Date.now(), afterSeq: pressSeq.current.get(row.id) ?? newestSeq(msgRef.current) });
+      // The generic "# hosts says why" toast gives way to the reason itself.
+      setToastRef.current(null);
+    } else if (out.ok) setMine(row.id);
   }, []);
   const desk = useCueDesk(
     rows,
@@ -83,12 +91,14 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
     },
     onOutcome,
   );
+  setToastRef.current = desk.setToast;
 
   // The clock: countdowns tick between polls; the drawer's "waiting 1:42".
   const [open, setOpen] = useState(false);
   const runs = clockRuns(view === null ? null : { phase: view.runtime, ...(view.paused === true ? { paused: true as const } : {}) });
   const [wall, setWall] = useState(() => Date.now());
-  const ticking = open || (runs && (view?.countdowns?.length ?? 0) > 0) || refused !== null;
+  const stale = view !== null && !client.connected;
+  const ticking = open || (runs && (view?.countdowns?.length ?? 0) > 0) || refused !== null || stale;
   useEffect(() => {
     if (!ticking) return;
     setWall(Date.now());
@@ -175,6 +185,7 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
   const sending = nextRow !== null && desk.pending === nextRow.id;
   const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0);
   const strip = hostStrip(view, layout, nowMs, needs);
+  const line2 = barLine({ toast: desk.toast, connected: client.connected, error: client.error, receivedAt: client.receivedAt, now, armed: armedHere, subjectName: desk.subjectName, refused: refusedBar ? refused : null, reason });
   const ctx: HostCtx = {
     view,
     calls: calls!,
@@ -216,7 +227,7 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
             </Drawer>
           </>
         )}
-        <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""}`} data-testid="host-nextbar">
+        <div className={`host-bar ${bar.kind} ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`} data-testid="host-nextbar">
           <button type="button" className="host-bar-main" aria-expanded={open} aria-controls="host-drawer" aria-label={`${open ? "Close" : "Open"} the host console`} onClick={() => setOpen((o) => !o)}>
             <span className="host-bar-line1">
               <span className="host-bar-grip" aria-hidden="true">
@@ -237,10 +248,10 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
               )}
             </span>
             <span className="host-bar-line2" role="status" aria-live="polite">
-              {desk.toast !== null ? (
-                <span className="host-bar-toast">{desk.toast}</span>
-              ) : armedHere ? (
-                <span className="host-bar-toast">{desk.subjectName !== null ? `Tap FIRE to fire → ${desk.subjectName}` : "Tap FIRE within 4 s to fire"}</span>
+              {line2.kind !== "strip" ? (
+                <span className={`host-bar-toast host-bar-${line2.kind}`} data-testid="host-line2">
+                  {line2.text}
+                </span>
               ) : (
                 strip.map((it, k) => (
                   <span key={k} className={it.tone !== undefined ? `host-strip-${it.tone}` : undefined}>
@@ -253,7 +264,7 @@ function HostDockOn({ session, wide, openCard }: { session: PrimeSession; wide: 
           {nextRow !== null && (
             <button
               type="button"
-              className={`host-fire ${armedHere ? "armed" : ""}`}
+              className={`host-fire ${armedHere ? "armed" : ""} ${stale ? "stale" : ""}`}
               data-testid="host-fire"
               disabled={desk.locked(nextRow)}
               aria-busy={sending || undefined}
