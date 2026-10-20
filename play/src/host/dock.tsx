@@ -23,6 +23,10 @@ import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
 import { NeedsTab } from "./tab-needs.tsx";
 import { PeopleTab } from "./tab-people.tsx";
+import { dockKeyboard, focusInside, useBalloonClearance, useFocusInside, useKeyboardFit, useSettledTrue, type KeyboardFit } from "./viewport.ts";
+
+/** How long the NEXT bar stays away after typing in the console ends. */
+const BAR_BACK_MS = 250;
 
 const NO_MARKS: CueMarks = { last: null, fired: [] };
 
@@ -145,11 +149,27 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   const [section, setSection] = useState<MoreFocus | null>(null);
   useMomentsHold(open);
   const frame = useRef<HTMLElement | null>(null);
+  const [dockNode, setDockNode] = useState<HTMLDivElement | null>(null);
+  const [frameNode, setFrameNode] = useState<HTMLElement | null>(null);
   const dockRef = useCallback((el: HTMLDivElement | null) => {
-    frame.current = el?.closest(".root") as HTMLElement | null;
+    const root = (el?.closest(".root") as HTMLElement | null) ?? null;
+    if (el !== null) frame.current = root;
+    setDockNode(el);
+    if (el !== null) setFrameNode(root);
   }, []);
   const focusKeyboard = useKeyboardOpen(frame as RefObject<HTMLElement>);
   const keyboard = keyboardOpen ?? focusKeyboard;
+  // The keyboard rule (item 1): a field in the room hides the dock; a field
+  // in the console (Announce, a search, the award value, the answer box)
+  // hides only the NEXT bar — the drawer and the field stay, above the
+  // phone's keyboard.
+  const inDockFocus = useFocusInside(dockNode);
+  const inDock = inDockFocus || (keyboard && focusInside(dockNode));
+  const kb = dockKeyboard(keyboard, inDock, open);
+  const typing = keyboard && inDock;
+  const fit = useKeyboardFit(typing, dockNode);
+  const barAway = useSettledTrue(!kb.bar, BAR_BACK_MS);
+  useBalloonClearance(open, wide, dockNode, frameNode, fit);
   // Escape closes the console from anywhere on the page — focus may sit on
   // <body> after a button disabled itself while busy — and focus goes back
   // to the bar that opened it.
@@ -194,9 +214,9 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
     [desk, client],
   );
 
-  // A keyboard opened in the room (the composer) hides the bar; one opened
-  // in the drawer (Announce, a search) never does.
-  if (keyboard && !open) return null;
+  // A keyboard opened in the room (the composer) hides the dock; one opened
+  // in the console hides only the bar (above).
+  if (!kb.render) return null;
   if (view === null) {
     return (
       <div className="host-dock" ref={dockRef}>
@@ -246,7 +266,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
         {open && (
           <>
             <div className="host-scrim" aria-hidden="true" onClick={close} />
-            <Drawer tabs={tabs} tab={tab} setTab={(t) => { setTab(t); setSection(null); }} onClose={close} title={auth.character}>
+            <Drawer tabs={tabs} tab={tab} setTab={(t) => { setTab(t); setSection(null); }} onClose={close} title={auth.character} fit={fit}>
               {tab === "cues" && <CuesTab rows={rows} layout={layout} desk={desk} mineLast={mine !== null && mine === view.cues.last} />}
               {tab === "needs" && <NeedsTab refused={refused} reason={reason} />}
               {tab === "judge" && <JudgeTab />}
@@ -255,7 +275,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
             </Drawer>
           </>
         )}
-        <HostNextBar bar={bar} desk={desk} open={open} stale={stale} line2={line2} strip={strip} barMain={barMain} onToggle={toggle} />
+        {!barAway && <HostNextBar bar={bar} desk={desk} open={open} stale={stale} line2={line2} strip={strip} barMain={barMain} onToggle={toggle} />}
         <CuePicker desk={desk} roster={view.roster} suggest={suggestion !== null ? { id: suggestion.id, hint: suggestionHint(suggestion) } : null} />
       </div>
     </HostContext.Provider>
@@ -325,7 +345,7 @@ export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onT
   );
 }
 
-function Drawer({ tabs, tab, setTab, onClose, title, children }: { tabs: ReturnType<typeof hostTabs>; tab: HostTab; setTab: (t: HostTab) => void; onClose: () => void; title: string; children: ReactNode }) {
+function Drawer({ tabs, tab, setTab, onClose, title, fit, children }: { tabs: ReturnType<typeof hostTabs>; tab: HostTab; setTab: (t: HostTab) => void; onClose: () => void; title: string; fit: KeyboardFit | null; children: ReactNode }) {
   const body = useRef<HTMLDivElement>(null);
   const x = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -336,7 +356,14 @@ function Drawer({ tabs, tab, setTab, onClose, title, children }: { tabs: ReturnT
     x.current?.focus();
   }, []);
   return (
-    <div className="host-drawer w95-window" id="host-drawer" role="dialog" aria-label="Host console">
+    <div
+      className="host-drawer w95-window"
+      id="host-drawer"
+      role="dialog"
+      aria-label="Host console"
+      // Above the phone's keyboard while a field in it has focus.
+      style={fit !== null ? { bottom: `calc(100% + ${fit.lift}px)`, height: `min(72vh, ${fit.height}px)`, minHeight: 0 } : undefined}
+    >
       <div className="w95-titlebar host-drawer-title">
         <span className="w95-title">▣ Host console · {title}</span>
         <button type="button" className="w95-btn w95-x" ref={x} aria-label="Close the host console" onClick={onClose}>
