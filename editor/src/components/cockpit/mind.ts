@@ -3,7 +3,7 @@
 //! and sparklines. No React here — `MindTab.tsx` renders these.
 
 import type { AgentControl, AgentMindPerson, AgentMindSummary, AgentThought } from '@loom/core/views'
-import type { AgentQueue, CastSummary, FactVerdict, FactsFiling, FactsView, WorldEntry } from '@/store/cockpit'
+import type { FactsView } from '@/store/cockpit'
 
 /** How the page labels one kind of thought. */
 export interface KindMeta {
@@ -283,116 +283,35 @@ export function mindCharacters(minds: AgentMindSummary[], thoughts: AgentThought
 }
 
 // ---------------------------------------------------------------------------
-// Judging — the facts judge's card (Wave 4, lane B; decision U10)
+// Judging — the facts judge's card (Wave 4, lane B; decision U10) and
+// Trabolta's queue (wave 11 C6). Wave 13 moved these helpers verbatim to
+// `@loom/core/host-board` so a Play host booth shares them; the editor
+// re-exports them under the same names.
 // ---------------------------------------------------------------------------
 
-export type JudgeMode = 'auto' | 'review'
-
-/** The world path the mode is read from when the view names none. */
-export const DEFAULT_JUDGE_MODE_VAR = 'Night.judge_mode'
-
-/** The judging mode: the view's own reading first, else the mode var on
- *  the world (`review` exactly), else `auto`. */
-export function judgeModeOf(world: WorldEntry[], facts: FactsView | null): JudgeMode {
-  if (facts !== null) return facts.mode === 'review' ? 'review' : 'auto'
-  const path = DEFAULT_JUDGE_MODE_VAR
-  return world.find((w) => w.path === path)?.value === 'review' ? 'review' : 'auto'
-}
-
-/** One filing awaiting a verdict (review mode, or a near miss in auto). */
-export interface JudgingRow {
-  person: string
-  name: string
-  question: string
-  answer: string
-  confidence: number
-  /** The judge's proposal. */
-  proposed: FactVerdict
-  final: string | null
-  at: number
-  /** Wave 11 C6: the answer is a near miss of this key answer (a typo, a
-   *  plural, digits for words) — the judge held it for a director instead
-   *  of calling it a lie or a guess. Null for any other filing. */
-  near: string | null
-  /** Wave 11b: the story's `judge:` character is being asked to rule. */
-  asking: boolean
-  /** Wave 11b: its ruling, once given (null before, or from an older server). */
-  ruling: FilingRuling | null
-}
-
-/** A `judge:` character's ruling on a near miss (wave 11b, contract J). */
-export interface FilingRuling {
-  by: string
-  same: boolean
-  why: string
-  at: number
-}
-
-/** A filing's ruling (`ruling: {by, same, why, at}`), else null — an older
- *  server sends none. */
-export function rulingOf(f: FactsFiling): FilingRuling | null {
-  const r = (f as FactsFiling & { ruling?: unknown }).ruling
-  if (r === null || typeof r !== 'object') return null
-  const { by, same, why, at } = r as unknown as Record<string, unknown>
-  if (typeof by !== 'string' || typeof same !== 'boolean') return null
-  return { by, same, why: typeof why === 'string' ? why : '', at: typeof at === 'number' ? at : 0 }
-}
-
-/** Is a ruling being asked for this filing right now (`asking: true`)? */
-export function askingOf(f: FactsFiling): boolean {
-  return (f as FactsFiling & { asking?: unknown }).asking === true
-}
-
-/** The Judging card's line for a ruling: "🤖 Trabolta: same — why". */
-export function rulingText(r: FilingRuling): string {
-  return `🤖 ${r.by}: ${r.same ? 'same' : 'not the same'}${r.why !== '' ? ` — ${r.why}` : ''}`
-}
-
-/** The Judging card's line while a ruling is out: "🤖 asking Trabolta…". */
-export function askingText(facts: FactsView): string {
-  const judge = (facts as FactsView & { judge?: unknown }).judge
-  return `🤖 asking ${typeof judge === 'string' && judge !== '' ? judge : 'the judge'}…`
-}
-
-/** Every filing a `judge:` character ruled on, newest first — with the
- *  usual override buttons on the card (a director's later verdict wins). */
-export function ruledFilings(facts: FactsView): Array<FilingRow & { question: string; ruling: FilingRuling }> {
-  const out: Array<FilingRow & { question: string; ruling: FilingRuling }> = []
-  for (const q of facts.questions) {
-    for (const row of questionFilings(facts, q.id)) if (row.ruling !== null) out.push({ ...row, question: q.id, ruling: row.ruling })
-  }
-  return out.sort((a, b) => b.ruling.at - a.ruling.at)
-}
-
-/** A filing's near-miss key (`near: {key}`, wave 11 C6; the server sets it
- *  on a pending filing), else null — an older server sends none. */
-export function nearKeyOf(f: FactsFiling): string | null {
-  const near = (f as FactsFiling & { near?: unknown }).near
-  if (near === null || typeof near !== 'object') return null
-  const key = (near as { key?: unknown }).key
-  return typeof key === 'string' && key.trim() !== '' ? key : null
-}
-
-/** Every filing with no `final` yet, oldest first (ties keep the ledger's
- *  question order). */
-export function pendingFilings(facts: FactsView): JudgingRow[] {
-  const rows: JudgingRow[] = []
-  for (const q of facts.questions) {
-    for (const f of q.filings) {
-      if (f.final !== null) continue
-      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) })
-    }
-  }
-  return rows.sort((a, b) => a.at - b.at)
-}
-
-/** How many filings wait as near misses: the view's own `near` count when
- *  a server sends one, else the pending filings carrying a near key. */
-export function nearCount(facts: FactsView): number {
-  const n = (facts as FactsView & { near?: unknown }).near
-  if (typeof n === 'number' && Number.isFinite(n) && n >= 0) return n
-  return pendingFilings(facts).filter((r) => r.near !== null).length
-}
+export {
+  DEFAULT_JUDGE_MODE_VAR,
+  QUEUE_SLOW_MS,
+  QueueTone,
+  VERDICT_BUTTONS,
+  agentQueueOf,
+  askingOf,
+  askingText,
+  confirmEvent,
+  filingButtons,
+  judgeModeOf,
+  nearCount,
+  nearKeyOf,
+  pendingFilings,
+  queueBadge,
+  questionFilings,
+  ruledFilings,
+  rulingOf,
+  rulingText,
+  verdictCall,
+  waitText,
+} from '@loom/core/host-board'
+export type { FilingButton, FilingHow, FilingRow, FilingRuling, JudgeMode, JudgingRow } from '@loom/core/host-board'
 
 export interface QuestionTally {
   id: string
@@ -421,169 +340,6 @@ export function questionTallies(facts: FactsView): QuestionTally[] {
     consensus: q.tally.consensus,
   }))
 }
-
-/** How a filing got its outcome (SW-ADM-13; wave 5 issue 8): the server's
- *  `FactsFiling.how` — `auto` (the judge's verdict stood at filing),
- *  `confirmed` / `overridden` (a confirm event — the Run card's or a
- *  booth's 📝 buttons — kept / changed the proposal), `settled` (a reveal
- *  took a review-mode proposal), `marked` (a guess marked at a reveal) —
- *  or `pending`. `kept` / `overridden` is the fallback for an older server
- *  that sends no `how`: it compares final with the proposal only (never the
- *  mode in force now, which would relabel old filings). */
-export type FilingHow = 'auto' | 'confirmed' | 'overridden' | 'settled' | 'marked' | 'pending' | 'kept'
-
-export interface FilingRow {
-  person: string
-  name: string
-  answer: string
-  confidence: number
-  proposed: FactVerdict
-  final: string | null
-  how: FilingHow
-  /** Who confirmed / overrode / settled it (a director, a booth's
-   *  character); null for `auto`, a story clock, or an older server. */
-  by: string | null
-  /** When the server first saw the filing — a restart re-stamps every one. */
-  at: number
-  /** The key answer it nearly matched (wave 11 C6), else null. */
-  near: string | null
-  /** Wave 11b: a ruling is being asked. */
-  asking: boolean
-  /** Wave 11b: the `judge:` character's ruling, else null. */
-  ruling: FilingRuling | null
-}
-
-/** One question's filings, oldest first, for the provenance rows under the
- *  tally table. Empty for an unknown question. */
-export function questionFilings(facts: FactsView, id: string): FilingRow[] {
-  const q = facts.questions.find((x) => x.id === id)
-  if (q === undefined) return []
-  const howOf = (f: (typeof q.filings)[number]): FilingHow => {
-    if (f.final === null) return 'pending'
-    if (f.how != null) return f.how
-    if (f.final === 'marked') return 'marked'
-    return f.final === f.verdict ? 'kept' : 'overridden'
-  }
-  return q.filings
-    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) }))
-    .sort((a, b) => a.at - b.at)
-}
-
-/** The story event the Run card fires to confirm / override a filing as
- *  `verdict` (`facts.json` `judge.confirm`); null when the view names none. */
-export function confirmEvent(facts: FactsView, verdict: FactVerdict): string | null {
-  const name = facts.confirm?.[verdict]
-  return typeof name === 'string' && name !== '' ? name : null
-}
-
-/** The verdict buttons on a filing (pending or judged), in order, with
- *  their glyphs. */
-export const VERDICT_BUTTONS: ReadonlyArray<{ verdict: FactVerdict; glyph: string; label: string }> = [
-  { verdict: 'accurate', glyph: '✅', label: 'accurate' },
-  { verdict: 'lie', glyph: '😤', label: 'confident lie' },
-  { verdict: 'uncertain', glyph: '🤷', label: 'uncertain' },
-]
-
-/** One verdict button on a filing row of the who-filed-what table. */
-export interface FilingButton {
-  verdict: FactVerdict
-  glyph: string
-  label: string
-  /** The verdict the filing reads now (its final, else the proposal) —
-   *  outlined, so a director sees what a press would change. */
-  current: boolean
-  /** No confirm event for this verdict in `facts.json`. */
-  disabled: boolean
-  title: string
-}
-
-/** Wave 9 D5: the ✅ / 😤 / 🤷 buttons on one filing row — on every row in
- *  both modes, so an auto-mode verdict the key got wrong (a phrasing it did
- *  not know) is one tap to fix. A `marked` filing is closed (a guess marked
- *  at the round's reveal — the story answers "no open filing"), so it
- *  offers none. The story honours the override by question
- *  (`fact_accurate` / `fact_lie` / `fact_uncertain` with `question:`). */
-export function filingButtons(facts: FactsView, row: Pick<FilingRow, 'final' | 'proposed' | 'how'>): FilingButton[] {
-  if (row.how === 'marked' || row.final === 'marked') return []
-  const now = row.final ?? row.proposed
-  return VERDICT_BUTTONS.map((b) => {
-    const current = b.verdict === now
-    const title =
-      row.final === null
-        ? `${b.verdict === row.proposed ? 'Confirm' : 'Override'}: ${b.label}`
-        : current
-          ? `Judged ${b.label} — already on record`
-          : `Override: ${b.label} (judged ${row.final})`
-    return { ...b, current, disabled: confirmEvent(facts, b.verdict) === null, title }
-  })
-}
-
-/** The story call a verdict button makes for one filing: the confirm event,
- *  on the filer, with the question named — so it judges that filing, never
- *  the program's latest one. Null when `facts.json` names no event. */
-export function verdictCall(facts: FactsView, row: { person: string; question: string }, verdict: FactVerdict): { event: string; person: string; args: { question: string } } | null {
-  const event = confirmEvent(facts, verdict)
-  if (event === null) return null
-  return { event, person: row.person, args: { question: row.question } }
-}
-
-// ---------------------------------------------------------------------------
-// Trabolta's queue (wave 11 C6): depth, oldest wait, a stalled worker
-// ---------------------------------------------------------------------------
-
-/** A wait worth a director's eye: the story's busy line goes out at 40 s. */
-export const QUEUE_SLOW_MS = 40_000
-
-const isQueue = (v: unknown): v is AgentQueue =>
-  v !== null &&
-  typeof v === 'object' &&
-  typeof (v as AgentQueue).depth === 'number' &&
-  ((v as AgentQueue).oldestMs === null || typeof (v as AgentQueue).oldestMs === 'number') &&
-  typeof (v as AgentQueue).stalled === 'boolean'
-
-/** A character's request queue: the cast row's `agentQueue`, else the mind
- *  summary's (C6 allows either); null on an older server. With `now`, a
- *  waiting queue's `oldestMs` is aged by the time since it arrived
- *  (`receivedAt`): the server works it out at send time, and a quiet
- *  stretch sends no new snapshot. */
-export function agentQueueOf(character: string, cast: readonly CastSummary[], minds: readonly AgentMindSummary[], now?: number): AgentQueue | null {
-  const c = cast.find((x) => x.id === character)?.agentQueue
-  if (isQueue(c)) return aged(c, now)
-  const m = (minds.find((x) => x.character === character) as (AgentMindSummary & { agentQueue?: unknown }) | undefined)?.agentQueue
-  return isQueue(m) ? aged(m, now) : null
-}
-
-function aged(q: AgentQueue, now: number | undefined): AgentQueue {
-  if (now === undefined || q.receivedAt === undefined || q.oldestMs === null || q.depth === 0) return q
-  return { ...q, oldestMs: q.oldestMs + Math.max(0, now - q.receivedAt) }
-}
-
-/** `1:20` — a wait in minutes and seconds. */
-export function waitText(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
-export const QueueTone = { Idle: 'idle', Waiting: 'waiting', Slow: 'slow', Stalled: 'stalled' } as const
-export type QueueTone = (typeof QueueTone)[keyof typeof QueueTone]
-
-/** The queue badge: `queue 0`, `3 waiting · oldest 0:12`, ⚠ slow past the
- *  busy line's 40 s, ⛔ stalled (the worker's head request went unanswered
- *  > 60 s: no new dispatch until it answers or reconnects). */
-export function queueBadge(q: AgentQueue): { text: string; tone: QueueTone; title: string } {
-  const oldest = q.oldestMs !== null && q.oldestMs > 0 ? ` · oldest ${waitText(q.oldestMs)}` : ''
-  if (q.stalled) {
-    return { text: `⛔ stalled · ${q.depth} waiting${oldest}`, tone: QueueTone.Stalled, title: 'The worker stopped answering (a request unanswered over a minute). Nothing new is sent to it; every waiting guest got the hold line once. It clears on its next reply or a reconnect — restart the worker, or answer from the performer lens.' }
-  }
-  if (q.depth === 0) return { text: 'queue empty', tone: QueueTone.Idle, title: 'No conversation is waiting for a reply.' }
-  const slow = q.oldestMs !== null && q.oldestMs >= QUEUE_SLOW_MS
-  return {
-    text: `${slow ? '⚠ ' : ''}${q.depth} waiting${oldest}`,
-    tone: slow ? QueueTone.Slow : QueueTone.Waiting,
-    title: slow ? 'A guest has waited past the busy line (40 s): the worker is behind.' : 'Conversations waiting for the worker, oldest first.',
-  }
-}
-
 
 /** The Judging card's mode button tooltip. Auto judges at once — except a
  *  near miss, which waits on the card for a director in either mode (C6). */
