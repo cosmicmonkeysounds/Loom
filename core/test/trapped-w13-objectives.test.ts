@@ -311,6 +311,9 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     ["🕚 the Y2K orders + factions exposed", () => { const n = boot(); for (const c of TO_OVERSHARE) n.press(c); return { n, out: n.press("y2k_clock") }; }],
     ["📂 # clipboard opens (hunt 2)", () => { const n = boot(); for (const c of TO_HOUR.slice(0, -1)) n.press(c); const out = n.press("start_the_second_hunt"); expect(majorFor(out, "g1").some((m) => m.text.includes("# clipboard"))).toBe(true); return { n, out }; }],
     ["📂 # truthcoin-exchange opens (the Truther Download)", () => { const n = boot(); for (const c of TO_HOUR) n.press(c); const out = n.tick(125); expect(majorFor(out, "g1").some((m) => m.text.includes("# truthcoin-exchange"))).toBe(true); return { n, out }; }],
+    ["④ a guess that marks you (the 🤷 verdict)", () => { const n = boot(); for (const c of TO_TRUTH_1) n.press(c); return { n, out: n.signal("uncertain_answer", "g1", undefined, "Clippy") }; }],
+    ["⑤ your cup: missed", () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); n.scan("Norton Anti-Virus", "g1"); for (const c of ["summons_closed", "truth_pong"]) n.press(c); return { n, out: n.signal("missed_the_cup", "g1", undefined, "Adobe Acrobat") }; }],
+    ["⑥ the Truther Download (your messages, your mission)", () => { const n = boot(); for (const c of TO_HOUR) n.press(c); return { n, out: n.tick(125) }; }],
     ["♟ the door code by checkmate", () => { const n = Y2K(); return { n, out: n.signal("chess_won", "g1") }; }],
     ["🔢 the door code by the four digit notes", () => {
       const n = Y2K();
