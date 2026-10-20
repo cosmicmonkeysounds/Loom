@@ -1,9 +1,11 @@
 //! Wave 13 Stage A: the shared tokens (CONTRACTS §5.1a) are defined for
-//! both themes, and the Win95 primitives take every colour from tokens.
+//! both themes, the Win95 primitives take every colour from tokens, and the
+//! status bar follows the theme.
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
+import { setThemeColor } from "../src/session/shared.ts";
 import { WinDialog, WinWindow, trapNext } from "../src/ui/window.tsx";
 import { readBundledCss } from "./css.ts";
 
@@ -73,5 +75,16 @@ describe("Win95 windows", () => {
     expect(trapNext(3, -1, false)).toBe(0);
     expect(trapNext(3, -1, true)).toBe(2);
     expect(trapNext(0, -1, false)).toBe(-1);
+  });
+});
+
+describe("the status bar follows the theme", () => {
+  it("sets theme-color from the computed --navy, and leaves it alone without one", () => {
+    const meta = { content: "#3b3a5c", setAttribute(_k: string, v: string) { this.content = v; } };
+    setThemeColor(meta, " #000080");
+    expect(meta.content).toBe("#000080");
+    setThemeColor(meta, "");
+    expect(meta.content).toBe("#000080");
+    setThemeColor(null, "#3b3a5c");
   });
 });

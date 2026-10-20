@@ -307,7 +307,19 @@ export function useTheme(theme: string | null | undefined, active = true): void 
     if (el === null) return;
     if (theme && theme !== "plain") el.dataset["theme"] = theme;
     else delete el.dataset["theme"];
+    // The phone's status bar wears the title bar's colour (wave 13): navy
+    // under aol97, the plain navy (index.html's own value) otherwise.
+    if (host.ownsPage && typeof document !== "undefined" && typeof getComputedStyle === "function") {
+      setThemeColor(document.querySelector('meta[name="theme-color"]'), getComputedStyle(el).getPropertyValue("--navy"));
+    }
   }, [host, theme, active]);
+}
+
+/** Point `<meta name="theme-color">` at the theme's title-bar colour (the
+ *  `--navy` token, as computed). A missing meta or an empty token is left alone. */
+export function setThemeColor(meta: Pick<Element, "setAttribute"> | null, navy: string): void {
+  const colour = navy.trim();
+  if (meta !== null && colour !== "") meta.setAttribute("content", colour);
 }
 
 /**
