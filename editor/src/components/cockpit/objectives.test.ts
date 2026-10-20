@@ -20,7 +20,7 @@ describe('objectiveRows', () => {
     ])
   })
 
-  it('checks read done / open / to-do; progress counts only the ones with a condition', () => {
+  it('checks read done / open / to-do; progress counts every check, as the phone does', () => {
     const [row] = objectiveRows([
       obj('Hunt', {
         act: 'C',
@@ -36,12 +36,13 @@ describe('objectiveRows', () => {
     ])
     expect(row!.checks.map((c) => c.state)).toEqual([CheckState.Done, CheckState.Open, CheckState.Todo])
     expect(row!.checks.map((c) => c.glyph)).toEqual(['☑', '☐', '·'])
-    expect(row!.progress).toBe('1 of 2')
+    expect(row!.progress).toBe('1 of 3')
     expect(row).toMatchObject({ act: 'C', brief: 'Find the facts.', loud: true, buttons: ['scan', 'vouch'] })
   })
 
-  it('a checklist of to-dos has no progress', () => {
-    expect(objectiveRows([obj('x', { checklist: [{ label: 'a', done: null }] })])[0]!.progress).toBeNull()
+  it('a to-do with no condition is never done; no checklist, no progress', () => {
+    expect(objectiveRows([obj('x', { checklist: [{ label: 'a', done: null }] })])[0]!.progress).toBe('0 of 1')
+    expect(objectiveRows([obj('x', { checklist: [] })])[0]!.progress).toBeNull()
   })
 })
 
