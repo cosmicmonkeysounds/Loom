@@ -583,6 +583,8 @@ svg.plan.editing { cursor: crosshair; }
 svg.plan.editing.tool-place { cursor: copy; }
 .prop-palette { display: inline-flex; gap: 2px; align-items: center; flex-wrap: wrap; }
 .prop-palette .muted { margin-right: 4px; }
+.yaw-field { display: inline-flex; align-items: flex-end; gap: 4px; }
+.button-row.tight { gap: 2px; margin: 0; }
 .duck-spot circle { fill: var(--gold); stroke: var(--gold-deep); stroke-width: 0.03; }
 .duck-spot .duck-glyph { fill: #8a5a00; pointer-events: none; }
 .duck-spot.hunted circle { stroke: #ff5a2a; stroke-width: 0.06; animation: hunted 1s ease-in-out infinite; }

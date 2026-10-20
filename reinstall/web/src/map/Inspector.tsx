@@ -6,12 +6,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, roomById } from "@loom/house";
-import type { Compass, HouseMap } from "@loom/house";
+import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById } from "@loom/house";
+import type { Compass, HouseMap, PropKind, Vec3 } from "@loom/house";
 import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
+import { guardedBy, mapLocations, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { isStep, parseNum } from "./tools.ts";
@@ -125,7 +126,27 @@ export function Inspector(props: InspectorProps) {
       </div>
     );
   const yaw = yawOf(house, sel);
-  const yawField = yaw === null ? null : <Num label="yaw °" value={yaw} step={5} disabled={!edit} onChange={(v) => v !== null && commit(setYaw(house, sel, v))} />;
+  const yawField =
+    yaw === null ? null : (
+      <span className="yaw-field">
+        <Num label="yaw °" value={yaw} step={5} disabled={!edit} onChange={(v) => v !== null && commit(setYaw(house, sel, v))} />
+        {edit && (
+          <span className="button-row tight">
+            <button className="w98-button small" onClick={() => commit(rotateBy(house, sel, YAW_STEP))} title={`Turn ${YAW_STEP}° (R)`}>
+              ⟲ {YAW_STEP}°
+            </button>
+            <button className="w98-button small" onClick={() => commit(rotateBy(house, sel, -YAW_STEP))} title={`Turn −${YAW_STEP}° (⇧R)`}>
+              ⟳ {YAW_STEP}°
+            </button>
+          </span>
+        )}
+      </span>
+    );
+  const floorButton = edit ? (
+    <button className="w98-button small" onClick={() => commit(onFloor(house, sel))} title="Put it back on its room's floor (y = the floor's elevation)">
+      On floor
+    </button>
+  ) : null;
   const remove = (what: string) =>
     edit ? (
       <button
@@ -143,45 +164,8 @@ export function Inspector(props: InspectorProps) {
   const roomName = (id: string | null) => (id === null ? "outside" : (roomById(house, id)?.label ?? id));
 
   switch (sel.kind) {
-    case "terminal": {
-      const t = house.terminals.find((x) => x.id === sel.id);
-      if (t === undefined) return null;
-      const link = provisionLink(props.origin, t);
-      return (
-        <div className="inspect">
-          <h3>🖥 Terminal</h3>
-          <div className="kv">
-            id <code>{t.id}</code> · in {roomName(t.room)}
-          </div>
-          <label className="field">
-            name
-            <input className="w98-input" value={t.name} disabled={!edit} onChange={(e) => commit(patchTerminal(house, t.id, { name: e.target.value }))} />
-          </label>
-          {posFields}
-          <div className="num-row">
-            {yawField}
-            <Num label="pitch °" value={t.pitch ?? 0} step={5} disabled={!edit} onChange={(v) => commit(patchTerminal(house, t.id, { pitch: v === null || v === 0 ? undefined : v }))} />
-            <Num
-              label="fov ° (vertical)"
-              value={t.fov ?? DEFAULT_SPOT_FOV}
-              step={5}
-              disabled={!edit}
-              onChange={(v) => commit(patchTerminal(house, t.id, { fov: v === null || v === DEFAULT_SPOT_FOV ? undefined : Math.max(10, Math.min(150, v)) }))}
-            />
-          </div>
-          <div className="field">
-            provisioning link <span className="muted">(add <code>&amp;code=&lt;mod passcode&gt;</code>)</span>
-            <div className="link-row">
-              <input className="w98-input" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
-              <button className="w98-button" onClick={() => props.copy(`i-${t.id}`, link)}>
-                {props.copied === `i-${t.id}` ? "Copied" : "Copy"}
-              </button>
-            </div>
-          </div>
-          {remove("terminal")}
-        </div>
-      );
-    }
+    case "terminal":
+      return <TerminalInspector key={sel.id} {...props} id={sel.id} posFields={posFields} yawField={yawField} remove={remove("terminal")} />;
     case "duck": {
       const d = house.duck.spots.find((x) => x.id === sel.id);
       if (d === undefined) return null;
@@ -207,31 +191,8 @@ export function Inspector(props: InspectorProps) {
           <p className="muted small">Where every program starts, facing the yaw.</p>
         </div>
       );
-    case "prop": {
-      const p = house.props.find((x) => x.id === sel.id);
-      if (p === undefined) return null;
-      return (
-        <div className="inspect">
-          <h3>▦ Prop</h3>
-          <div className="kv">
-            id <code>{p.id}</code> · {p.kind} · {p.size.join(" × ")} m{p.label !== undefined ? ` · “${p.label}”` : ""} · in {roomName(p.room)}
-          </div>
-          {posFields}
-          {yawField}
-          {p.kind === "king" && (
-            <p className="muted small">
-              ♔ A King: {p.hp ?? 4} hit point{(p.hp ?? 4) === 1 ? "" : "s"} shared by every program, one hit a reinstallation
-              {p.health !== undefined ? ` (the bar lives in ${p.health})` : ""} · a hit posts {p.signals?.hit ?? "king hit"}, 0 posts {p.signals?.fallen ?? "king fallen"}
-              {p.armed !== undefined ? ` · his chess counts while ${p.armed.path} ≥ ${p.armed.min}` : ""}
-              {" "}
-              — guards {house.doors.filter((d) => d.guard === p.id).map((d) => d.id).join(", ") || "no door"}.
-            </p>
-          )}
-          <p className="muted small">Size, colour and kind{p.kind === "king" ? ", hp, health, signals and armed" : ""} are edited in the JSON tab.</p>
-          {remove("prop")}
-        </div>
-      );
-    }
+    case "prop":
+      return <PropInspector key={sel.id} {...props} id={sel.id} posFields={posFields} yawField={yawField} floorButton={floorButton} remove={remove("prop")} />;
     case "room":
       return <RoomInspector key={sel.id} {...props} id={sel.id} />;
     case "door": {
@@ -246,7 +207,7 @@ export function Inspector(props: InspectorProps) {
             {d.guard !== undefined && (
               <>
                 {" "}
-                · guarded by <code>{d.guard}</code> (shut until that King falls; edited in the JSON tab)
+                · guarded by <code>{d.guard}</code> (shut until that King falls; set on the King)
               </>
             )}
           </div>
@@ -330,6 +291,175 @@ export function Inspector(props: InspectorProps) {
     case "floor":
       return <FloorInspector key={sel.id} {...props} id={sel.id} />;
   }
+}
+
+interface PartsProps {
+  id: string;
+  posFields: ReactNode;
+  yawField: ReactNode;
+  remove: ReactNode;
+}
+
+function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied, id, posFields, yawField, remove }: InspectorProps & PartsProps) {
+  const [view, setView] = useState<TerminalViewName>("auto");
+  const [room, setRoom] = useState("");
+  const t = house.terminals.find((x) => x.id === id);
+  if (t === undefined) return null;
+  const roomName = roomById(house, t.room)?.label ?? t.room;
+  const locations = mapLocations(house);
+  const link = provisionLink(origin, t, { view, room: room === "" ? null : room });
+  return (
+    <div className="inspect">
+      <h3>🖥 Terminal</h3>
+      <div className="kv">
+        id <code>{t.id}</code> · in {roomName}
+      </div>
+      <label className="field">
+        name
+        <input className="w98-input" value={t.name} disabled={!edit} onChange={(e) => commit(patchTerminal(house, t.id, { name: e.target.value }))} />
+      </label>
+      {posFields}
+      <div className="num-row">
+        {yawField}
+        <Num label="pitch °" value={t.pitch ?? 0} step={5} disabled={!edit} onChange={(v) => commit(patchTerminal(house, t.id, { pitch: v === null || v === 0 ? undefined : Math.max(-89, Math.min(89, v)) }))} />
+        <Num
+          label="fov ° (vertical)"
+          value={t.fov ?? DEFAULT_SPOT_FOV}
+          step={5}
+          disabled={!edit}
+          onChange={(v) => commit(patchTerminal(house, t.id, { fov: v === null || v === DEFAULT_SPOT_FOV ? undefined : Math.max(10, Math.min(150, v)) }))}
+        />
+      </div>
+      {edit && (
+        <div className="button-row">
+          <button
+            className="w98-button"
+            onClick={() => {
+              const next = snapTerminalToWall(house, t.id);
+              if (next === house) return onNotice("It is already on the nearest wall, facing into the room.");
+              commit(next);
+            }}
+            title="Put the screen on its room's nearest wall, facing into the room (a terminal dropped within 40 cm of a wall does this by itself)"
+          >
+            ⊢ Snap to wall
+          </button>
+        </div>
+      )}
+      <div className="field">
+        provisioning link <span className="muted">(add <code>&amp;code=&lt;mod passcode&gt;</code>)</span>
+        <div className="num-row">
+          <label className="field">
+            view
+            <select className="w98-input" value={view} onChange={(e) => setView(e.target.value as TerminalViewName)}>
+              {TERMINAL_VIEWS.map((v) => (
+                <option key={v} value={v}>
+                  {TERMINAL_VIEW_HINTS[v]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            room <span className="muted">(asleep until it opens)</span>
+            <select className="w98-input" value={room} onChange={(e) => setRoom(e.target.value)}>
+              <option value="">(none)</option>
+              {locations.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="link-row">
+          <input className="w98-input" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+          <button className="w98-button" onClick={() => copy(`i-${t.id}`, link)}>
+            {copied === `i-${t.id}` ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </div>
+      {remove}
+    </div>
+  );
+}
+
+function PropInspector({ house, edit, commit, id, posFields, yawField, floorButton, remove }: InspectorProps & PartsProps & { floorButton: ReactNode }) {
+  const p = house.props.find((x) => x.id === id);
+  if (p === undefined) return null;
+  const roomName = roomById(house, p.room)?.label ?? p.room;
+  const setSize = (i: number, v: number | null) => {
+    if (v === null || !(v > 0)) return;
+    const size = [...p.size] as Vec3;
+    size[i] = v;
+    commit(patchProp(house, p.id, { size }));
+  };
+  const guarded = guardedBy(house, p.id);
+  return (
+    <div className="inspect">
+      <h3>{p.kind === "king" ? "♔ King" : "▦ Prop"}</h3>
+      <div className="kv">
+        id <code>{p.id}</code> · in {roomName}
+      </div>
+      <div className="num-row">
+        <label className="field">
+          kind
+          <select className="w98-input" value={p.kind} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { kind: e.target.value as PropKind }))}>
+            {PROP_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="num">
+          colour
+          <input className="w98-input" type="color" value={p.color ?? "#999999"} disabled={!edit} onChange={(e) => commit(patchProp(house, p.id, { color: e.target.value }))} />
+        </label>
+        <label className="radio checkbox">
+          <input type="checkbox" checked={propSolid(p)} disabled={!edit} onChange={(e) => {
+              // The kind's default (box / cylinder / king collide) is left unwritten.
+              const byDefault = propSolid({ ...p, solid: undefined });
+              commit(patchProp(house, p.id, { solid: e.target.checked === byDefault ? undefined : e.target.checked }));
+            }} /> solid
+        </label>
+      </div>
+      <CommitText label="label" value={p.label ?? ""} disabled={!edit} placeholder="(none)" onCommit={(v) => commit(patchProp(house, p.id, { label: v.trim() === "" ? undefined : v }))} />
+      <div className="num-row">
+        <Num label="W (x) m" value={p.size[0]} disabled={!edit} onChange={(v) => setSize(0, v)} />
+        <Num label="H (y) m" value={p.size[1]} disabled={!edit} onChange={(v) => setSize(1, v)} />
+        <Num label="D (z) m" value={p.size[2]} disabled={!edit} onChange={(v) => setSize(2, v)} />
+      </div>
+      {posFields}
+      <div className="num-row">
+        {yawField}
+        {floorButton}
+      </div>
+      {p.kind === "king" && (
+        <>
+          <div className="num-row">
+            <Num label="hp (max, 1–99)" value={p.hp ?? 4} step={1} disabled={!edit} onChange={(v) => v !== null && commit(patchProp(house, p.id, { hp: v }))} />
+            <label className="field">
+              guards door
+              <select className="w98-input" value={guarded[0] ?? ""} disabled={!edit} onChange={(e) => commit(setGuard(house, p.id, e.target.value === "" ? null : e.target.value))}>
+                <option value="">(no door)</option>
+                {house.doors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.id} · {roomById(house, d.a)?.label ?? d.a} ↔ {d.b === null ? "outside" : (roomById(house, d.b)?.label ?? d.b)}
+                    {d.guard !== undefined && d.guard !== p.id ? ` (now ${d.guard}'s)` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="muted small">
+            ♔ One bar shared by every program, one hit a reinstallation{p.health !== undefined ? ` (the bar lives in ${p.health})` : ""} · a hit posts {p.signals?.hit ?? "king hit"}, 0 posts {p.signals?.fallen ?? "king fallen"}
+            {p.armed !== undefined ? ` · his chess counts while ${p.armed.path} ≥ ${p.armed.min}` : ""}. His guarded door stays shut until he falls. Health, signals and armed are edited in the JSON tab.
+          </p>
+        </>
+      )}
+      <p className="muted small">Drag it on the plan (⌥ no snap); the round handle, R / ⇧R or ⌥-wheel turns it; ⌘D duplicates.</p>
+      {remove}
+    </div>
+  );
 }
 
 function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id }: InspectorProps & { id: string }) {
