@@ -22,12 +22,14 @@ describe("typing in the host console (the blocker)", () => {
     // focus never falls to <body> and the frame's rule never flips back.
     let s: KeyboardState = keyboardStep(KEYBOARD_REST, { kind: "focus", text: false, height: 844 });
     s = keyboardStep(s, { kind: "focus", text: true, height: 844 });
+    // The viewport has not shrunk yet: no keyboard seen, the bar stays (a
+    // hardware keyboard never hides it — the keyboard rule, fguest).
     let k = dockKeyboard(keyboardIsOpen(s), true, true);
-    expect(k).toEqual({ render: true, bar: false });
+    expect(k).toEqual({ render: true, bar: true });
     // The keyboard slides up (the visual viewport shrinks), the field keeps focus.
     s = keyboardStep(s, { kind: "resize", height: 508 });
     k = dockKeyboard(keyboardIsOpen(s), true, true);
-    expect(k.render).toBe(true);
+    expect(k).toEqual({ render: true, bar: false });
     // Typing resizes nothing: still open, still rendered.
     s = keyboardStep(s, { kind: "resize", height: 508 });
     expect(keyboardIsOpen(s)).toBe(true);

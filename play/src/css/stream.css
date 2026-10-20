@@ -110,6 +110,9 @@
   .cutscene .stream-settled-line, .cutscene .stream-receipt { background: color-mix(in srgb, var(--white) 8%, var(--black)); }
 }
 .cutscene .stream-settled-body .widget { margin-top: 6px; }
+/* the stage has no taskbar: a balloon floats over its foot, no tail */
+.cut-root .moments-balloon { bottom: calc(var(--safe-bottom) + 76px); }
+.cut-root .moments-balloon::before, .cut-root .moments-balloon::after { display: none; }
 
 /* ── the crawl ───────────────────────────────────────────────────────────
    A crawling line is laid out whole from the start: the unrevealed rest
@@ -130,10 +133,15 @@
    backlog too. While it crawls: scramble ahead of the cursor, flicker, jitter. */
 .stream-fx.line .bubble, .stream-fx.narration .bubble { text-shadow: 1px 0 var(--bad), -1px 0 var(--link); letter-spacing: 0.02em; }
 .stream-scramble { color: var(--signal); font-family: ui-monospace, "Courier New", monospace; }
-.stream-fx-live { animation: stream-flash 360ms steps(3, end) 1, stream-flicker 140ms steps(2, end) 360ms infinite; }
-.stream-fx-live .bubble { display: inline-block; animation: stream-jitter 110ms steps(2, end) infinite; }
-/* the line lands inverted, like a monitor losing sync, then flickers */
+/* The line's words land inverted, like a monitor losing sync, then the
+   row flickers. Only the words flash — the speaker's name keeps the
+   stream's own ground — and the scrambled glyphs turn highlight-yellow
+   while their ground is dark (≥ 6:1 on both bands, both themes). */
+.stream-fx-live { animation: stream-flicker 140ms steps(2, end) 360ms infinite; }
+.stream-fx-live .bubble { display: inline-block; animation: stream-flash 360ms steps(3, end) 1, stream-jitter 110ms steps(2, end) infinite; }
+.stream-fx-live .stream-scramble { animation: stream-flash-glyphs 360ms steps(3, end) 1; }
 @keyframes stream-flash { 0% { background: var(--ink); color: var(--white); } 50% { background: var(--signal); color: var(--white); } 100% { background: transparent; } }
+@keyframes stream-flash-glyphs { 0%, 50% { color: var(--highlight); } 100% { color: var(--signal); } }
 @keyframes stream-flicker { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
 @keyframes stream-jitter {
   0% { transform: translate(0, 0); }
@@ -148,7 +156,7 @@
 @media (prefers-reduced-motion: reduce) {
   /* Still an effect, never a movement: effect lines keep the split signal
      (above), alerts their highlight; nothing flickers or jumps. */
-  .stream-fx-live, .stream-fx-live .bubble, .stream-caret { animation: none; }
+  .stream-fx-live, .stream-fx-live .bubble, .stream-fx-live .stream-scramble, .stream-caret { animation: none; }
 }
 
 /* ── cards: the receipt, the settled line ───────────────────────────────── */
@@ -176,7 +184,7 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-notices-line {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--tap);
   margin: 0; padding: 0 10px; border: none; background: none; cursor: pointer; text-align: left;
-  font: 700 13px var(--ui-font); color: var(--signal); border-radius: var(--radius);
+  font: 700 13px var(--ui-font); color: var(--dim-ink); border-radius: var(--radius);
 }
 .stream-notices-line:active { background: var(--code-bg); }
 .stream-notices-sum { flex: 1; min-width: 0; }
@@ -212,13 +220,30 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
   background: var(--face); color: var(--ink); box-shadow: var(--raised); border-radius: var(--radius); font: 700 16px var(--ui-font);
 }
 .stream-tray-step:active { box-shadow: var(--pressed); }
-.stream-tray-body { max-height: 35vh; overflow-y: auto; padding: 0 6px 6px; -webkit-overflow-scrolling: touch; }
-/* the card's submit row never hides under the tray's own scroll */
-.stream-tray-body .widget-foot { position: sticky; bottom: -6px; z-index: 1; background: var(--face); padding: 4px 0 10px; }
+/* The body holds the whole answerable card on a phone (a picked fact
+   question folds the others away), up to half the screen; past that it
+   scrolls in one piece — no sticky foot sitting on the slider — and says so
+   at its foot ("▾ more below"), with the Win95 scrollbar where a browser
+   draws one. */
+.stream-tray-scroll { position: relative; }
+.stream-tray-body {
+  max-height: 50vh; overflow-y: auto; padding: 0 6px 6px; -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: 12px; overscroll-behavior: contain;
+}
+.stream-tray-body::-webkit-scrollbar { width: 16px; }
+.stream-tray-body::-webkit-scrollbar-track { background: var(--face-hi); }
+.stream-tray-body::-webkit-scrollbar-thumb { background: var(--face); box-shadow: var(--raised); }
+.stream-tray-more {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 10px 4px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--face) 60%);
+  font: 700 12px var(--ui-font); color: var(--dim-ink); text-align: center;
+}
 .stream-tray-body .widget { max-width: none; box-shadow: none; padding: 4px 6px 6px; }
 /* the tray's bar already names the card: keep only its instructions */
 .stream-tray-body .widget-head > .widget-glyph, .stream-tray-body .widget-title { display: none; }
 .stream-tray-body .widget-head { margin-bottom: 6px; }
+/* a CAPTCHA in the tray: tiles small enough that VERIFY shows with them */
+.stream-tray-body .captcha-grid { max-width: 264px; margin: 0 auto; }
 
 /* ── the room header: the window's menu row (no second title bar) ──────── */
 .stream-room-head {
@@ -284,3 +309,8 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-step.complete { color: var(--good); }
 .stream-step.fail { color: var(--bad); }
 .stream-cabinet-note { margin: 0; padding: 8px 10px; font: 700 13px var(--ui-font); color: var(--system); text-align: center; }
+
+/* Typing in a card's own box with the keyboard up: the room's composer steps
+   aside so the card keeps its box, its slider and File it above the keyboard
+   (channel-view.tsx `card-typing`; `.kbd` is the frame's keyboard rule). */
+.kbd .stream-foot.card-typing > .composer { display: none; }

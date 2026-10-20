@@ -65,12 +65,12 @@ describe("the tray's balance", () => {
   it("reads 🪙 <balance>, 🧊 while frozen, and is a tap target", () => {
     const out = renderToStaticMarkup(createElement(BalanceTray, { view, frozen: false, onOpen: () => {} }));
     expect(out).toContain('class="tray-slot"');
-    expect(out).toContain("🪙");
+    expect(out).toContain("ico-coin");
     expect(out).toContain(">100<");
     expect(out).toContain('aria-label="100 Truthcoin"');
     expect(out).toMatch(/^<span class="tray-slot"><button/u);
     const frozen = renderToStaticMarkup(createElement(BalanceTray, { view, frozen: true, onOpen: () => {} }));
-    expect(frozen).toContain("🧊");
+    expect(frozen).toContain("ico-frozen");
     expect(frozen).toContain("tray-item dim");
   });
 });

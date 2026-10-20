@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { countdownLeft } from "../../core/src/cue-sheet.ts";
-import { URGENT_S, formatLeft, storyNow } from "./director.tsx";
+import { URGENT_S, formatLeft, storyNow } from "./clock.ts";
 import type { CountdownSummary } from "./types.ts";
 
 export interface CountdownItem {

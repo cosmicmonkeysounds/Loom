@@ -100,7 +100,9 @@ describe("a draft belongs to its room", () => {
     const src = readFileSync(new URL("../src/stream/channel-view.tsx", import.meta.url), "utf8");
     const mounts = src.match(/<Composer\b[^>]*?(?:\/>|>)/gsu) ?? [];
     expect(mounts.length).toBe(2);
-    expect(mounts[0]).toContain("key={channel.id}");
+    // The room's composer is a footer part: `streamFoot` keys it `composer:<room>`.
+    expect(src).toContain("const foot = streamFoot(channel.id, {");
+    expect(src).toContain("<Fragment key={`${part}:${roomId}`}>");
     expect(mounts[1]).toContain("key={`${channel.id}#${rootSeq}`}");
   });
 });

@@ -250,10 +250,13 @@ function noticeBlocks(): Array<{ where: string; line: string; block: string[] }>
 describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
   it("every ~ notice has the person's own result in the same block (a reply, the mark's pin, a line to them)", () => {
     const blocks = noticeBlocks();
-    expect(blocks.length).toBe(23);
+    expect(blocks.length).toBe(25);
     for (const { where, line, block } of blocks) {
       expect(line, where).not.toMatch(/^broadcast "~?!|^broadcast "!~/);
-      const personal = block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
+      // A transfer / trade notice in # truthcoin-exchange: each party's own
+      // card is in their Wallet room (the server's WalletBook posts it).
+      const wallet = /^broadcast "~(?:🪙|💱) .* to channel\(truthcoin exchange\)$/u.test(line);
+      const personal = wallet || block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
       expect(personal, `${where}: ${line}`).toBe(true);
     }
   });

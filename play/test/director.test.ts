@@ -409,7 +409,9 @@ describe("routing", () => {
 
   it("the guests' front page carries no link to it", () => {
     const ui = readFileSync(new URL("../src/ui.tsx", import.meta.url), "utf8");
-    expect(ui).toContain('if (role === "director") return <DirectorApp');
+    expect(ui).toMatch(/if \(role === "director"\)\s*return \(\s*<ChunkBoundary fallback=[\s\S]*?\/>\}>\s*<Suspense fallback=\{<Loading \/>\}>\s*<DirectorApp/u);
+    // …its own chunk: a guest's first load never carries the cue sheet.
+    expect(ui).toContain('import("./director.tsx")');
     expect(ui).not.toContain("Director cues");
   });
 

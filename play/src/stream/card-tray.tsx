@@ -8,7 +8,7 @@
 //! yet, comes back folded once you have (a 📝 fact card re-dealt all through
 //! the hunt is the same card), and folds while you type in the composer.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { usePlayHost } from "../host.ts";
 import type { ChatMessage } from "../types.ts";
 import { WIDGETS, WidgetHost } from "../widgets.tsx";
@@ -38,6 +38,34 @@ export function trayShown(crawl: object): Set<string> {
   let shown = shownByHost.get(crawl);
   if (shown === undefined) shownByHost.set(crawl, (shown = new Set()));
   return shown;
+}
+
+/** Is there more of a scroll box below what shows (more than a few px)? */
+export function moreBelow(box: { scrollHeight: number; scrollTop: number; clientHeight: number }): boolean {
+  return box.scrollHeight - box.scrollTop - box.clientHeight > 4;
+}
+
+/** Track whether a scroll box has more below its fold (scroll, resize, content). */
+function useMoreBelow(ref: RefObject<HTMLElement | null>, active: boolean): boolean {
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!active || el === null) {
+      setMore(false);
+      return;
+    }
+    const check = () => setMore(moreBelow(el));
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(check) : null;
+    ro?.observe(el);
+    if (el.firstElementChild !== null) ro?.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener("scroll", check);
+      ro?.disconnect();
+    };
+  }, [ref, active]);
+  return more;
 }
 
 export function CardTray({
@@ -84,6 +112,8 @@ export function CardTray({
   useEffect(() => {
     if (open && card !== undefined) seen.add(trayCardKey(card));
   }, [open, card, seen]);
+  const body = useRef<HTMLDivElement>(null);
+  const more = useMoreBelow(body, open && card !== undefined);
   if (card === undefined) return null;
   const n = cards.length;
   const step = (d: number) => onFocus(cards[(index + d + n) % n]!.seq);
@@ -111,7 +141,8 @@ export function CardTray({
         )}
       </div>
       {open && (
-        <div className="stream-tray-body">
+        <div className={`stream-tray-scroll${more ? " more" : ""}`}>
+        <div className="stream-tray-body" ref={body}>
           <WidgetHost
             key={card.seq}
             card={card.widget!}
@@ -123,6 +154,13 @@ export function CardTray({
               onFocus(null);
             }}
           />
+        </div>
+          {/* The tray scrolls: say so, at its foot (and keep the rest of the card a scroll away). */}
+          {more && (
+            <span className="stream-tray-more" aria-hidden>
+              ▾ more below
+            </span>
+          )}
         </div>
       )}
     </section>

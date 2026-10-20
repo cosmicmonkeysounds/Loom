@@ -314,7 +314,7 @@ body {
 .bubble.plain { font-style: italic; color: var(--muted-ink); }
 .msg.narration {
   color: var(--muted-ink); font-style: italic; margin: 4px 0;
-  padding: 2px 10px; border-left: 3px solid var(--line);
+  padding: 2px 10px; border-left: 1px solid var(--line);
 }
 .narrator-tag { font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 6px; font-style: normal; }
 .msg.system { text-align: center; margin: 3px 0; }
@@ -388,15 +388,39 @@ body {
 /* The picked question reads as a selection (inverted), not just a ring. */
 .fact-questions .choice[aria-pressed="true"] { background: var(--navy); color: var(--white); }
 .fact-hint { font-weight: 400; }
-.fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */ }
-.fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
+/* the picked question, folded: tap it to change */
+.fact-change { display: block; margin-top: 2px; font: 400 12px var(--ui-font); text-decoration: underline; text-underline-offset: 2px; }
+.widget.fact.picked .widget-sub { display: none; }
+/* a card's submit is the box's default button (bold, the heavy frame), its own width */
+.widget-foot .choice.widget-go { width: auto; margin: 0; min-height: var(--tap); padding: 0 22px; }
+.widget-foot .choice.widget-go:disabled { color: var(--muted-ink); opacity: 1; box-shadow: var(--raised); }
+.fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */
+  border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
+/* the dotted Win95 focus ring, never the browser's own */
+.fact-answer:focus, .answer-text:focus { outline: 1px dotted var(--ink); outline-offset: 2px; }
+.fact-confidence { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 0 10px; font: 700 13px var(--ui-font); color: var(--ink); }
+/* the readout rides the label's line; the trackbar takes the row under them */
+.fact-confidence > span { grid-column: 1; grid-row: 1; }
+.fact-confidence > output { grid-column: 2; grid-row: 1; }
+.fact-confidence > input[type=range] { grid-column: 1 / -1; grid-row: 2; }
 .fact-confidence input[type=range] { width: 100%; margin: 0; }
+/* the slider is a Win95 trackbar: a sunken groove and a raised silver
+   thumb (a flat line and a round thumb under plain), never the browser's
+   stock blue range */
+.fact-confidence input[type=range] { -webkit-appearance: none; appearance: none; height: var(--tap); background: none; cursor: pointer; }
+.fact-confidence input[type=range]:focus { outline: none; }
+.fact-confidence input[type=range]:focus-visible { outline: 1px dotted var(--ink); outline-offset: 2px; }
+.fact-confidence input[type=range]::-webkit-slider-runnable-track { height: 4px; background: var(--white); box-shadow: var(--sunken); border-radius: var(--radius); }
+.fact-confidence input[type=range]::-moz-range-track { height: 4px; background: var(--white); box-shadow: var(--sunken); border-radius: var(--radius); }
+.fact-confidence input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 28px; margin-top: -12px; border: none; background: var(--face); box-shadow: var(--raised), 0 0 0 1px var(--line); border-radius: var(--radius); }
+.fact-confidence input[type=range]::-moz-range-thumb { width: 16px; height: 28px; border: none; background: var(--face); box-shadow: var(--raised), 0 0 0 1px var(--line); border-radius: var(--radius); }
 .fact-confidence output { justify-self: end; font-variant-numeric: tabular-nums; }
 /* Untouched: the thumb rests greyed in the middle and the readout says
    "not set" — "confident" is something the guest chooses. */
 .fact-confidence.unset input[type=range] { opacity: 0.45; filter: grayscale(1); }
 .fact-confidence.unset output { font-style: italic; color: var(--muted-ink); }
-.answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; }
+.answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical;
+  border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
 
 /* ── composer (hybrid typed chat) ──────────────────────────────────────────
    A roomy sunken text box that grows with what you type (JS caps the height),
@@ -744,7 +768,7 @@ footer {
 .quest-giver { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
 .quest-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .quest-open { margin-top: 8px; font: 700 12px var(--ui-font); color: var(--link); text-align: right; }
-.msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 1px solid var(--line); }
 .msg.quest-step .bubble.plain { font-style: normal; color: var(--ink); }
 .quest-step-ico { flex: none; }
 
@@ -765,7 +789,7 @@ footer {
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
-.msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 1px solid var(--line); }
 .msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
 .wallet-step-ico { flex: none; }
 /* The identity card's balance (replaces ⭐ when the story has a currency). */

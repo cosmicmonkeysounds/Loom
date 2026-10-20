@@ -16,7 +16,8 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 export interface StartItem {
   id: string;
   label: string;
-  icon?: string;
+  /** A drawn icon (`chrome/icons.tsx`), or the story button's own emoji. */
+  icon?: ReactNode;
   onClick: () => void;
   danger?: boolean;
   /** Ask first ("Leave the event?") — the menu confirms in place. */

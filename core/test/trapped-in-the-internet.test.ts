@@ -4876,7 +4876,8 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
     expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
     // The book fires these with person ids as `from` / `to`, so `{from.name}` resolves.
     const recv = fire(sim, "transfer_received", "g5", { from: "g1", amount: 50, tx: "t1" });
-    expect(exchange(recv)).toEqual(["🪙 Calculator → Winamp: 50 Truthcoin"]);
+    // `~`: a per-person notice, so a phone folds a run of other people's transfers into one line.
+    expect(exchange(recv)).toEqual(["~🪙 Calculator → Winamp: 50 Truthcoin"]);
     expect(replies(recv)).toEqual([]);
     const deny = fire(sim, "transfer_denied", "g1", { to: "g5", amount: 50, tx: "t1", by: "CRA Agent Software" });
     expect(hosts(deny)).toEqual(["🧾 Denied: Calculator → Winamp, 50 Truthcoin. Refunded."]);
@@ -4887,7 +4888,7 @@ describe("Trapped in the Internet — the Truthcoin wallet (wave 4, lane C)", ()
     expect(casts(appr)).toEqual([]);
     expect(sim.questStatus("CRA Agent Software", "The Audit")).toBe("active");
     const trade = fire(sim, "offer_accepted", "g5", { to: "g1", amount: 30, entry: "Sharing Your Codex", side: "buy" });
-    expect(exchange(trade)).toEqual(["💱 Winamp ⇄ Calculator: a fact for 30 Truthcoin"]);
+    expect(exchange(trade)).toEqual(["~💱 Winamp ⇄ Calculator: a fact for 30 Truthcoin"]);
     expect(v(sim, "Night.stimulus_n")).toBe(0);
     const stim = fire(sim, "stimulus", "g11", { amount: 20, paid: 7 });
     const alert = casts(stim).find((b) => b.scope === "everyone")!;

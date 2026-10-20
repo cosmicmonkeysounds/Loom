@@ -44,7 +44,10 @@ describe("the one-line receipts", () => {
     expect(s(card("captcha"), { passed: false })).toBe("🛡️ Security check · submitted");
     expect(s(card("poll", "Truth or dare?"), { choice: "Truth" })).toBe("📊 Truth or dare? · you chose Truth");
     expect(s(card("answer", "Give me a pickup line."), { text: "hi" })).toBe("💬 Give me a pickup line. · sent");
-    expect(s(card("fact", "📝 File a fact", { questions: "H1: q" }), { question: "H1", answer: "x", confidence: 100 })).toBe("📝 File a fact · sent for H1 · 100%");
+    expect(s(card("fact", "📝 File a fact", { questions: "H1: q" }), { question: "H1", answer: "x", confidence: 100 })).toBe("📝 File a fact · sent for q · 100%");
+    // The guest's name for the question, never the story's id ("H1").
+    expect(s(card("fact", "📝 File a fact", { questions: "H1: Round 1 Q1. How many years…? | H2: Round 1 Q2. Who?" }), { question: "H2", answer: "x", confidence: 80 })).toBe("📝 File a fact · sent for Round 1 Q2 · 80%");
+    expect(s(card("fact", "📝 File a fact", { questions: "H2: Round 1 Q2. Who?" }), { question: "H1", answer: "x", confidence: 80 })).toBe("📝 File a fact · sent for a question · 80%");
     expect(s(card("tutorial", "Clippy's orientation"), { skipped: true })).toBe("📘 Clippy's orientation · skipped");
     expect(s(card("pass", "Hold this up."), null)).toBe("🎟️ Your pass · tap to show it");
     expect(s(card("fact", "📝 File a fact", { questions: "H1: q" }), null, { superseded: true })).toBe("📝 File a fact · replaced by a newer card");

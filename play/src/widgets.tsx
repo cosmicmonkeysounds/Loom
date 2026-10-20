@@ -7,7 +7,7 @@
 //! Adding a widget = adding a `WidgetDef` to `WIDGETS`. Unknown kinds render
 //! as plain text so an older client never hides a newer story's card.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { PassQr } from "./pass-qr.tsx";
 import type { ChatMessage, WidgetCard } from "./types.ts";
 
@@ -346,6 +346,26 @@ export function factQuestionOf(picked: string, questions: ReadonlyArray<{ id: st
   return questions.some((q) => q.id === picked) ? picked : defaultFactQuestion(questions);
 }
 
+/** The question buttons a fact card shows: all of them while choosing (or
+ *  with none picked), else only the picked one (its tap reopens the list). */
+export function factQuestionsShown<Q extends { id: string }>(questions: readonly Q[], picked: string, choosing: boolean): Q[] {
+  if (choosing || picked === "") return [...questions];
+  const one = questions.filter((q) => q.id === picked);
+  return one.length > 0 ? one : [...questions];
+}
+
+/** Typing in a card's box: keep its submit row in view in the tray's scroll
+ *  (the box, the slider above it, then File it / Say it — never hidden
+ *  under the fold while the keyboard is up). */
+export function keepFootInView(field: Element): void {
+  field.closest(".widget")?.querySelector(".widget-foot")?.scrollIntoView?.({ block: "nearest" });
+}
+
+/** …and once the keyboard has come up (the tray has just shrunk). */
+function footInViewSoon(field: Element): void {
+  window.setTimeout(() => keepFootInView(field), 350);
+}
+
 /** Why "File it" is off, under the button (`null` when it's on). */
 export function factFileHint(question: string, answer: string, confidence: number | null): string | null {
   if (question === "") return "Pick a question above";
@@ -390,6 +410,11 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   const [answer, setAnswer] = useState("");
   // Unset until the guest touches the slider: File it stays off.
   const [confidence, setConfidence] = useState<number | null>(null);
+  // Once a question is picked the others fold away (the card fits the tray:
+  // the answer box and the slider stay on screen); its button reopens them.
+  const [choosing, setChoosing] = useState(false);
+  const answerBox = useRef<HTMLTextAreaElement>(null);
+  const sureBox = useRef<HTMLLabelElement>(null);
   const done = answered !== null && answered !== undefined;
   const result = factResult(question, answer, confidence);
   const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
@@ -419,7 +444,7 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
     );
   }
   return (
-    <div className={`widget fact ${done ? "done" : ""}`} role="group" aria-label={card.text || "File a fact"}>
+    <div className={`widget fact ${done ? "done" : ""}${question !== "" && !choosing ? " picked" : ""}`} role="group" aria-label={card.text || "File a fact"}>
       <div className="widget-head">
         <span className="widget-glyph" aria-hidden>
           📝
@@ -432,26 +457,51 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
       {!done && onAnswer && (
         <>
           <div className="poll-options fact-questions">
-            {questions.map((q) => (
-              <button key={q.id} type="button" className={`choice ${question === q.id ? "primary" : "ghost"}`} aria-pressed={question === q.id} onClick={() => setQuestion(q.id)}>
+            {factQuestionsShown(questions, question, choosing).map((q) => (
+              <button
+                key={q.id}
+                type="button"
+                className={`choice ${question === q.id ? "primary" : "ghost"}`}
+                aria-pressed={question === q.id}
+                aria-expanded={questions.length > 1 && question === q.id ? choosing : undefined}
+                onClick={() => {
+                  // The picked one, tapped again, opens the list to change it.
+                  if (question === q.id && !choosing && questions.length > 1) {
+                    setChoosing(true);
+                    return;
+                  }
+                  setQuestion(q.id);
+                  setChoosing(false);
+                  // The answer box next, in view (the tray scrolls).
+                  window.setTimeout(() => answerBox.current?.scrollIntoView?.({ block: "nearest" }), 0);
+                }}
+              >
                 {question === q.id && (
                   <span className="fact-picked" aria-hidden>
                     ✔{" "}
                   </span>
                 )}
                 {q.label}
+                {question === q.id && !choosing && questions.length > 1 && <span className="fact-change">change</span>}
               </button>
             ))}
           </div>
           <textarea
+            ref={answerBox}
             className="fact-answer"
             rows={2}
             maxLength={FACT_MAX}
             placeholder="Your answer"
             value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
+            onChange={(e) => {
+              setAnswer(e.target.value);
+              keepFootInView(e.currentTarget);
+            }}
+            onFocus={(e) => footInViewSoon(e.currentTarget)}
+            // Done typing (the keyboard goes down): the slider next, in view.
+            onBlur={() => sureBox.current?.scrollIntoView?.({ block: "nearest" })}
           />
-          <label className={`fact-confidence ${confidence === null ? "unset" : ""}`}>
+          <label ref={sureBox} className={`fact-confidence ${confidence === null ? "unset" : ""}`}>
             <span>{CONFIDENCE_LABEL}</span>
             {/* A range always has a value, so an unset one rests greyed in
                 the middle. A tap on the thumb itself changes nothing, so
@@ -479,7 +529,7 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
         ) : onAnswer ? (
           <>
             {result === null && factFileHint(question, answer, confidence) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer, confidence)}</span>}
-            <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+            <button type="button" className="choice primary widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
               File it
             </button>
           </>
@@ -534,13 +584,13 @@ function AnswerCard({ card, onAnswer, answered }: WidgetProps) {
         </div>
       </div>
       {!done && onAnswer && (
-        <textarea className="answer-text" rows={2} maxLength={max} placeholder={card.params["placeholder"] ?? "Type it here"} value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea className="answer-text" rows={2} maxLength={max} placeholder={card.params["placeholder"] ?? "Type it here"} value={text} onChange={(e) => (setText(e.target.value), keepFootInView(e.currentTarget))} onFocus={(e) => footInViewSoon(e.currentTarget)} />
       )}
       <div className="widget-foot">
         {done ? (
           <span className="widget-state">✔ sent</span>
         ) : onAnswer ? (
-          <button type="button" className="widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+          <button type="button" className="choice primary widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
             {button}
           </button>
         ) : (
