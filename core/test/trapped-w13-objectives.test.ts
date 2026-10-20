@@ -880,6 +880,13 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     const host = n.signal("unmark_for_reinstallation", "g6", undefined, "Task Manager");
     expect(v(n.sim, "g6.marked")).toBe(false);
     expect(replyTo(host, "Norton Anti-Virus")).toContain("✅ VLC: cleared by a host. Off the escort list.");
+    // The count is read once: an Antivirus 🩹, a new mark, then a director's
+    // own `unmark_settle` (no booth) reads "by a host", never the old count.
+    n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    expect(v(n.sim, "g5.marked")).toBe(true);
+    expect(v(n.sim, "g5.unmark_av")).toBe(0);
+    const direct = n.signal("unmark_settle", "g5");
+    expect(replyTo(direct, "Norton Anti-Virus")).toContain("✅ Winamp: cleared by a host. Off the escort list.");
     // An unmarked program: nothing to lift, # hosts says so, nothing counted.
     const again = n.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
     expect(replyTo(again, "Norton Anti-Virus").some((t) => t.startsWith("✅"))).toBe(false);

@@ -981,6 +981,9 @@ ROLE Program
         fire unmarked for program with how: "cleared by the Antivirus"
       else:
         fire unmarked for program with how: "cleared by a host"
+    // Read once: a later settle (a director firing it from Run) never
+    // reuses this press's count.
+    set program.unmark_av = 0
 
   // Shared by the capture, the release and 🩹: the mark comes off.
   when unmarked for program:
