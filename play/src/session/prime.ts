@@ -2,7 +2,7 @@
 //! the booth's rooms and every booth action.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert, type Alerts } from "../alerts.ts";
+import { boothAlertFilter, unsolicitedReadout, useAlerts, type Alert, type Alerts } from "../alerts.ts";
 import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
@@ -20,6 +20,7 @@ import type { WidgetResult } from "../widgets.tsx";
 import { hasPendingCard } from "./channels.ts";
 import { SAY_TIMEOUT_MS, sayRefusalText } from "./guest.ts";
 import { NO_ANSWERS, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
+import { primeStreamHandlers } from "./stream-handlers.ts";
 
 export interface PrimeAuth {
   token: string;
@@ -315,13 +316,12 @@ export function usePrimeSession(): PrimeSession {
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setView(v as PrimeView),
     onTyping,
-    // The crawl decides at arrival (wave 13: a no-op until the stream lane).
-    onMessage: (m) => crawl.arrived(m, auth !== null ? { id: auth.character, name: auth.character } : null),
-    onHistory: (list) => {
+    // The crawl decides at arrival (wave 13: a no-op until the stream lane)
+    // and the backlog sets its baseline (stream-handlers.ts).
+    ...primeStreamHandlers(crawl, auth, (list) => {
       alertsRef.current?.onHistory(list);
-      crawl.loaded(maxSeqOf(list));
       setReady(true);
-    },
+    }),
     onResponse: (text) => {
       setResponses((r) => [{ id: rid.current++, text }, ...r]);
       if (inFlight.current === 0 && unsolicitedReadout(lastActionAt.current, Date.now())) alertsRef.current?.raise(text);

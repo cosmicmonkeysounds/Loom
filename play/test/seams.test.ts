@@ -2,9 +2,12 @@
 //! at arrival) and the room list's options (`ThreadsOptions`), wired by
 //! plumbing with today's behaviour.
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { chatFrameHandler, type ChatStreamHandlers } from "../src/client.ts";
 import { createCrawl } from "../src/crawl.ts";
+import type { Crawl } from "../src/host.ts";
+import { guestStreamHandlers, primeStreamHandlers } from "../src/session/stream-handlers.ts";
 import { roomOrder } from "../src/rooms/order.ts";
 import { roomOrder as presenceRoomOrder } from "../src/presence.ts";
 import { unreadOf } from "../src/stream/badges.ts";
@@ -77,6 +80,70 @@ describe("onMessage: the crawl hears each live message once", () => {
     onFrame("lifecycle", JSON.stringify({ kind: "reset" }));
     onFrame("typing", JSON.stringify({ channel: "dm:Trabolta", from: "Trabolta", on: true }));
     expect(seen).toEqual(['snapshot {"id":"g1"}', "response Welcome.", "lifecycle reset", "typing true"]);
+  });
+});
+
+/** A crawl that records what the session's handlers told it. */
+function spyCrawl(): { crawl: Crawl; calls: string[] } {
+  const crawl = createCrawl();
+  const calls: string[] = [];
+  crawl.arrived = (m, me) => void calls.push(`arrived ${m.seq} as ${JSON.stringify(me)}`);
+  crawl.loaded = (max) => void calls.push(`loaded ${max}`);
+  return { crawl, calls };
+}
+
+/** Feed the history / message / history frames through `chatFrameHandler`. */
+function feed(handlers: ChatStreamHandlers): void {
+  const onFrame = chatFrameHandler(() => handlers, { replace: () => {}, upsert: () => {}, drop: () => {} });
+  onFrame("history", JSON.stringify([msg(1), msg(7), msg(3)]));
+  onFrame("message", JSON.stringify(msg(8)));
+  onFrame("message", JSON.stringify(msg(9, "dm:Trabolta")));
+  onFrame("history", JSON.stringify([msg(1)]));
+}
+
+describe("each session wires its stream to the crawl, as its viewer", () => {
+  it("a guest: arrived with its public id + name (never the token), loaded after every history", () => {
+    const { crawl, calls } = spyCrawl();
+    const histories: number[] = [];
+    const me = { id: "g1", name: "Ada", token: "secret-token", eventId: "e1" };
+    feed(guestStreamHandlers(crawl, me, (list) => void histories.push(list.length)));
+    expect(calls).toEqual([
+      "loaded 7",
+      'arrived 8 as {"id":"g1","name":"Ada"}',
+      'arrived 9 as {"id":"g1","name":"Ada"}',
+      "loaded 1",
+    ]);
+    expect(histories).toEqual([3, 1]);
+  });
+
+  it("a booth: arrived as its character (id and name)", () => {
+    const { crawl, calls } = spyCrawl();
+    const auth = { token: "t", character: "Norton", admin: false, eventId: "e1" };
+    feed(primeStreamHandlers(crawl, auth, () => {}));
+    expect(calls).toEqual([
+      "loaded 7",
+      'arrived 8 as {"id":"Norton","name":"Norton"}',
+      'arrived 9 as {"id":"Norton","name":"Norton"}',
+      "loaded 1",
+    ]);
+  });
+
+  it("signed out: the crawl hears the message with no viewer", () => {
+    const { crawl, calls } = spyCrawl();
+    feed(guestStreamHandlers(crawl, null, () => {}));
+    expect(calls).toContain("arrived 8 as null");
+    const booth = spyCrawl();
+    feed(primeStreamHandlers(booth.crawl, null, () => {}));
+    expect(booth.calls).toContain("arrived 8 as null");
+  });
+
+  it("the sessions build their handlers from these (no hand-rolled onMessage)", () => {
+    for (const [file, fn] of [["guest", "guestStreamHandlers"], ["prime", "primeStreamHandlers"]] as const) {
+      const src = readFileSync(new URL(`../src/session/${file}.ts`, import.meta.url), "utf8");
+      expect(src, file).toContain(`...${fn}(crawl, `);
+      expect(src, file).not.toMatch(/onMessage\s*:/u);
+      expect(src, file).not.toContain("crawl.arrived(");
+    }
   });
 });
 

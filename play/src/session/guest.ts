@@ -19,6 +19,7 @@ import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
 import { NO_ANSWERS, registerBody, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
+import { guestStreamHandlers } from "./stream-handlers.ts";
 
 interface GuestId {
   id: string;
@@ -280,13 +281,12 @@ export function useGuestSession(): GuestSession {
   const { messages, connected } = useChatStream(url, {
     onSnapshot: (v) => setStatus(v as GuestView),
     onTyping,
-    // The crawl decides at arrival (wave 13: a no-op until the stream lane).
-    onMessage: (m) => crawl.arrived(m, me !== null ? { id: me.id, name: me.name } : null),
-    onHistory: (list) => {
+    // The crawl decides at arrival (wave 13: a no-op until the stream lane)
+    // and the backlog sets its baseline (stream-handlers.ts).
+    ...guestStreamHandlers(crawl, me, (list) => {
       alertsRef.current?.onHistory(list);
-      crawl.loaded(maxSeqOf(list)); // the backlog never crawls; only what lands from now on
       setReady(true);
-    },
+    }),
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Guest)) dropSession(lifecycleNotice(n.kind, SessionRole.Guest));
     },
