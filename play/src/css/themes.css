@@ -1,0 +1,55 @@
+/* themes — FROZEN in wave 13 Stage B. The theme blocks (+ their component overrides) and the wave 13 tokens. */
+
+/* ════════════════════════════════════════════════════════════════════════
+   theme: aol97 — an old-school chat room, circa 1997. Teal Win95 desktop,
+   silver beveled windows, navy title bars, a sunken white transcript of
+   Times-New-Roman lines, chunky 3D buttons, a "People Here" buddy list.
+   Selected by a story's `theme: aol97` header line.
+   ════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="aol97"] {
+  --desktop: #008080;
+  --face: #c0c0c0;
+  --face-hi: #dfdfdf;
+  --white: #ffffff;
+  --black: #000000;
+  --ink: #000000;
+  --muted-ink: #404040;
+  --line: #808080;
+  --navy: #000080;
+  --navy-2: #1084d0;
+  --maroon: #7a1020;
+  --maroon-2: #c0392b;
+  --on-bar: #dfe7ff;
+  --link: #0000ee;
+  --good: #008000;
+  --bad: #c00000;
+  --live: #00ff66;
+  --highlight: #ffff00;
+  --system: #000080;
+  --signal: #800080;
+  --avatar-guest: #b06000;
+  --code-bg: #f4f4f4;
+  --radius: 0;
+  --bevel-d: #0a0a0a;
+  --bevel-s: #808080;
+  --raised: inset -1px -1px var(--bevel-d), inset 1px 1px var(--white),
+            inset -2px -2px var(--bevel-s), inset 2px 2px var(--face-hi);
+  --pressed: inset -1px -1px var(--white), inset 1px 1px var(--bevel-d),
+             inset -2px -2px var(--face-hi), inset 2px 2px var(--bevel-s);
+  --sunken: inset -1px -1px var(--white), inset 1px 1px var(--bevel-s),
+            inset -2px -2px var(--face-hi), inset 2px 2px var(--bevel-d);
+  --ui-font: "Tahoma", "MS Sans Serif", "Geneva", "Segoe UI", sans-serif;
+  --chat-font: "Times New Roman", "Times", "Georgia", serif;
+  --smoothing: none;
+  /* the faint grid you half-remember from the wallpaper */
+  --grid: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 24px),
+          repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 1px, transparent 1px 24px);
+}
+:root[data-theme="aol97"] body { font-size: 13px; }
+:root[data-theme="aol97"] .hero .glyph { filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.35)); }
+:root[data-theme="aol97"] .dot { box-shadow: var(--sunken); }
+:root[data-theme="aol97"] .chrow:hover { background: var(--navy); color: var(--white); }
+:root[data-theme="aol97"] .chrow:hover .chrow-sub, :root[data-theme="aol97"] .chrow:hover .chrow-title,
+:root[data-theme="aol97"] .chrow:hover .chrow-occ { color: var(--white); }
+:root[data-theme="aol97"] .pavatar { box-shadow: var(--raised); text-shadow: none; }
+:root[data-theme="aol97"] .captcha-tile.on { background: #e0e0ff; }
