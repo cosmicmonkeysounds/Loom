@@ -104,7 +104,7 @@ export function Taskbar({
           {b.badge !== undefined && b.badge > 0 && <span className="taskbar-badge">{b.badge > 9 ? "9+" : b.badge}</span>}
         </button>
       ))}
-      {tray !== undefined && <div className={`tray ${conn ?? ""}`}>{tray}</div>}
+      {tray !== undefined && <div className={`taskbar-tray ${conn ?? ""}`}>{tray}</div>}
     </nav>
   );
 }

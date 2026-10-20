@@ -53,7 +53,7 @@ describe("the taskbar", () => {
     expect(out).toContain('class="w95-btn taskbar-btn primary"');
     expect(out).toContain('data-tour="pass"');
     expect(out).toContain("9+");
-    expect(out).toContain('class="tray reconnecting"');
+    expect(out).toContain('class="taskbar-tray reconnecting"');
     expect(out).toContain("14:59");
     expect(out).not.toContain("start-menu"); // closed until tapped
   });

@@ -27,13 +27,13 @@
 .taskbar-btn.primary { flex: 1 1 auto; font-weight: 700; }
 .taskbar-btn[aria-pressed="true"] { box-shadow: var(--pressed); }
 .taskbar-badge { min-width: 18px; padding: 0 4px; border-radius: 9px; background: var(--highlight); color: var(--black); font: 700 11px var(--ui-font); }
-.tray {
+.taskbar-tray {
   margin-left: auto; display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 6px;
   box-shadow: var(--tray-inset); border-left: 3px solid var(--line); font: 12px var(--ui-font);
 }
-.tray.live { border-left-color: var(--live); }
-.tray.reconnecting { border-left-color: var(--highlight); }
-.tray.offline { border-left-color: var(--bad); }
+.taskbar-tray.live { border-left-color: var(--live); }
+.taskbar-tray.reconnecting { border-left-color: var(--highlight); }
+.taskbar-tray.offline { border-left-color: var(--bad); }
 .tray-item { display: inline-flex; align-items: center; gap: 3px; min-height: 36px; padding: 0 4px; border: none; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
 button.tray-item { min-height: var(--tap); cursor: pointer; }
 .tray-item.alarm { color: var(--bad); font-weight: 700; }
@@ -63,5 +63,5 @@ button.tray-item { min-height: var(--tap); cursor: pointer; }
 .objective-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 @media (max-width: 399px) {
   .taskbar-btn:not(.primary) .taskbar-label { display: none; }
-  .tray > :nth-child(n+4) { display: none; }
+  .taskbar-tray > :nth-child(n+4) { display: none; }
 }
