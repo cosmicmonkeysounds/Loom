@@ -229,15 +229,25 @@ to `reset_server_room`.
    answer, the house judges the pickup line, no film in his own files)
    needs `sync-show` WITH its reload (never `--no-reload`): the event must
    play the new text, in which `the_line_works` is gone, the hunt answers,
-   The Rival, The Cooling Log and Jeeves fragment 17 are secret, and
-   *Greased Lightning* is *Oil And Lightning*. Then reset Trabolta's
+   The Rival, The Cooling Log and Jeeves fragment 17 are secret, and his
+   film-named file is *Oil And Lightning*. Then reset Trabolta's
    worker mind (**Run → Mind → Reset**, the worker connected), because a
-   mind kept from rehearsals may still name Grok, quote a pickup line or
-   hold the old file's title in its notes, dossiers or `learned`. The
+   mind kept from rehearsals may still name the last hunt answer, quote a
+   pickup line or hold the old file's title in its notes, dossiers or
+   `learned`. The
    worker reads its persona, mind file and `secrets.never` (now with the
    pickup line) only at start: once the house Mac's checkout has this
    change, restart it there (`uv run stagehand launchd restart --job
    agents`), then Reset.**
+
+   **Wave 12 (the story mind) needs the same `sync-show` WITH its reload**
+   (the persona, the mind file's phase cards, `cast/trabolta.loom`'s snoop
+   refusal and `main.loom`'s per-round fact-card lines all changed). Then,
+   on the house Mac: `mind_mode: new` under `agents:` in
+   `stagehand/laptop.yaml` (absent = classic), `uv run stagehand launchd
+   restart --job agents`, **Run → Mind → Reset**, and `ollama stop
+   tobestyledintro/qwen3.8-9b-distill:q8_0`. The checks, the switches and
+   the way back are on [`cast-packs/crew/trabolta-mind.md`](./cast-packs/crew/trabolta-mind.md).
 2. **House map.** After the `Disk Cleanup` relabel (the bathroom used to be
    The Recycle Bin), make sure no director's save is in force on the
    preview event: Push draft and Go live in place keep one. The map page's
@@ -774,19 +784,20 @@ until `introduce_trabolta` (refused before Bingo results). The worker gate
 `self.awake == true` has no performer exception. After `computer_destroyed`
 the gate closes again.
 
-| `Night.phase` | Stage (click on Run → Mind until the phase map lands) | Tone | Powers live |
+| `Night.phase` | Stage (the phase card sets it on the story mind; click it on Run → Mind in classic) | Tone | Powers live |
 |---|---|---|---|
 | arrivals · desktop · bingo · bingo_results | asleep | offline | none |
-| introduced · hunt_1 | **formal** | corporate; "Your request has been logged"; personal questions go to Clippy | snoop, flicker; pop_up from hunt_1 |
+| introduced · hunt_1 | **formal** | corporate (his stock phrase once per program, at first contact); personal questions go to Clippy | snoop, flicker; pop_up from hunt_1 |
 | truth_1 | **hungry** | warmer to those who delivered; may pay with one T1 entry | + mint_truthcoin |
-| malware · hunt_2 · summons | **rattled** | reassures, then leaks; paranoid about the malware | + cut_the_lights, summon_the_antivirus, trabolta_announces |
+| malware · hunt_2 · summons | **rattled** | reassures, then leaks; wants to know who brought the malware in | + cut_the_lights, summon_the_antivirus, trabolta_announces |
 | truth_pong · trust_chart | **judge** | every DM is an audition; tells you your rank | + assess (trust_chart), pardon_a_program |
 | beans · overshare | **unravelling** | overshares, retracts, asks for relationship advice; cold to the LiveJournal reader | all, degrading (pop-ups arrive garbled) |
 | y2k · majority | **desperate** | short, counting down, bargaining; courts Unlimited Power | + turn_back_the_clock; mint pays up to 100; flicker is **lost** |
 | final_reveal · bobbing | **last act** | knows how his story ends | assess (bobbing only) |
 | grok_prom · advice · finale_* | last act | heartbroken / total honesty / per ending | — (he asks for the pickup line; the house judges it on the 💌 card) |
 
-Drives: hunger 30, suspicion 35, pride 60, candour 10, longing 40. The
+Drives: hunger 30, pride 60, candour 10, longing 40 (wave 12 dropped
+`suspicion`: he is hungry for every fact offered, never wary of it). The
 voice may nudge `truth`, `untruth`, `composure`, `love` and `regard`
 (clamped by the server). The story moves composure (malware −20, beans
 −20, y2k −25, first alarm −10, virus −10, LiveJournal −10) and truth (+4

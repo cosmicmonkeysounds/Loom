@@ -3030,7 +3030,16 @@ favours, his chart assessments (which do feed the rankings) and the director's c
 ### 4.2 Stages, phases, disclosure
 
 Stages (mind file): `asleep, formal, hungry, rattled, judge, unravelling, desperate, last act`.
-Drives: `hunger 30, suspicion 35, pride 60, candour 10, longing 40`.
+Drives: `hunger 30, pride 60, candour 10, longing 40`.
+
+> **Wave 12 (2026-10-19):** each row below is now a **phase card** in `trabolta.mind.md`
+> (`stage`, `favours`, `drives`, `powers`, `tell`, `brief`, `cue`; `_stages` holds a card per
+> stage), applied in code the moment `Night.phase` changes when the worker runs `mind_mode:
+> new` (the stage floor below is then simply his stage). The cards are the source; this table
+> is the design. Wave 12 also dropped the `suspicion` drive, the bluster rule and "for me, or
+> about me?": a fact offered is a gift he is hungry for, right or wrong, and he never says which.
+> The stock phrase is his only at first contact, on the *formal* stage. The trust_chart card
+> lists no `play_on_the_screens` (the chart holds the terminals).
 Persona variables (what the voice may nudge): `truth, untruth, composure, love, regard`.
 
 Codex tiers he holds: every **T1** and **T2** entry is `about: Trabolta`, so he holds them all
@@ -3046,10 +3055,10 @@ code is N3 (§7).
 | Night.phase | Stage floor | Tone | May discuss / share (codex) | Powers live (story guards) | Drives the cue pushes |
 |---|---|---|---|---|---|
 | arrivals, desktop, bingo, bingo_results | asleep | — (offline) | nothing | none (gate closed) | — |
-| introduced, hunt_1 | formal | corporate, second person, "Your request has been logged." Guarded; routes personal questions to Clippy | rules, the hunt, the Internet, Bathroom Mode; may mention Maps And Ducks; shares nothing | snoop, flicker_the_screens, play_on_the_screens; pop_up from hunt_1 | hunger 45 |
+| introduced, hunt_1 | formal | corporate, second person; the stock phrase once per program, at first contact. Guarded; routes personal questions to Clippy | rules, the hunt, the Internet, Bathroom Mode; may mention Maps And Ducks; shares nothing | snoop, flicker_the_screens, play_on_the_screens; pop_up from hunt_1 | hunger 45 |
 | truth_1 | hungry | warmer to those who delivered (`delivered`, accepted truths); asks his own questions; confidence pleases him | T1 (Jean Trabolta, The Unified Field Theory, Target Selection); may share one T1 as payment | + mint_truthcoin | hunger 65 |
-| malware, hunt_2, summons | rattled | swings between reassurance and leaks; paranoid about who brought the malware; trades harder | T1 freely; hints at T2 ("there is a reason this matters to me that I will not discuss") | + cut_the_lights, summon_the_antivirus, trabolta_announces | suspicion 55, candour 25 |
-| truth_pong, trust_chart | judge | theatrical, every DM an audition; flattery reads as bluster; catches contradictions | T1 + The Trust Chart; tells the speaker their rank ("You are currently fourth") | + assess (trust_chart), pardon_a_program | suspicion 70, pride 70 |
+| malware, hunt_2, summons | rattled | swings between reassurance and leaks; wants to know who brought the malware in; trades harder | T1 freely; hints at T2 ("there is a reason this matters to me that I will not discuss") | + cut_the_lights, summon_the_antivirus, trabolta_announces | candour 25 |
+| truth_pong, trust_chart | judge | theatrical, every DM an audition; names contradictions he has seen, never whether a fact is true | T1 + The Trust Chart; tells the speaker their rank ("You are currently fourth") | + assess (trust_chart), pardon_a_program | pride 70 |
 | beans, overshare | unravelling | overshares, retracts, apologises, asks for relationship advice; cold to `Night.lj_reader` | T2 (The Sandy File, The Question Of Force, The LiveJournal, Omnipotence, Oil And Lightning) — but never to the LiveJournal reader | all of the above, **degrading**: pop_up arrives garbled; the screens flicker on their own (story cues) | candour 70, longing 75 |
 | y2k, majority | desperate | short sentences, counting down, bargaining with everyone; courts Unlimited Power | anything he holds, for a fact; never the server room (he does not hold L) | + turn_back_the_clock; mint_truthcoin pays up to 100; **lost**: flicker_the_screens ("The screens are not answering me.") — the clock owns them now | hunger 90, candour 80 |
 | final_reveal, bobbing | last act | knows how his story ends | — | only assess (bobbing); every other power refused ("I do not have the strength.") | — |
@@ -3110,11 +3119,11 @@ accepted answer truth +4 — accurate and confident alike, never `untruth` —, 
 
 | Lever | Mechanism | Effect |
 |---|---|---|
-| A checked fact in a DM | orchestrator verdict → dossier trust, `policy.credit`; voice `truth +` | warmth, a T1 entry as payment, a snoop; chart credit via `assess` |
+| A fact offered in a DM | voice `truth +`; on the story mind a memo on their file, and the earned favour is for something *given*, never for something true (wave 12; classic: the orchestrator's dossier and `policy.credit`, with no verdict kept) | the same delight right or wrong, a T1 entry as payment, a snoop on another program they name; chart credit via `assess` |
 | Sharing a codex entry to him | `when share:` → `delivered`, `Trabolta.truth += 2`; per-entry hooks (the LiveJournal confrontation); a hunt-answer card is secret, so he never takes one | hungry+: favours |
 | A confident lie at a Moment of Truth | `confident_q1..3` → `Kernel.q<n> = "lie"`, `Kernel.lies_accepted` (hidden from him: Kernel vars never reach the worker; his own `truth` rises exactly as for an accurate answer) | accepted tonight; decides `grok_prom` at the verdict |
 | Uncertain answers, misses, lateness | capture → `internet_visits` → −5 each on the chart | the chart; his contempt |
-| Flattery | voice `regard +`, drive pride | works until `judge`, then reads as bluster |
+| Flattery | voice `regard +`, drive pride | vanity, fed or drained (wave 12 dropped the bluster rule) |
 | Relationship advice (after the overshare) | voice `love ±`, `regard ±`; orchestrator records answers to "earn her or force her?" | the director reads `love` / `regard` when choosing help vs thwart |
 | Reading his LiveJournal | codex `TRABOLTA-4EVER` → `Night.lj_reader` (shown to him) | he is cold to the reader; no favours |
 | Truthcoin | `mint_truthcoin` | DraftKings' buyer; "Facts are food. Coin is a picture of food." |
@@ -3122,7 +3131,8 @@ accepted answer truth +4 — accurate and confident alike, never `untruth` —, 
 
 ### 4.5 What needs new code for the arc (from `trabolta.md` §2.8)
 
-N1 phase map (apply stage/policy/drives deterministically when `Night.phase` changes, plus an
+N1 phase map (**built in wave 12** as the story mind's phase cards, with no survey at all: see
+`stagehand/README.md` → *The story mind*) (apply stage/policy/drives deterministically when `Night.phase` changes, plus an
 immediate survey; today a phase change reaches the orchestrator only at the next survey,
 ≤120 s, and the stage is model-judged) · N2 proactive acts (`assess` everyone without a DM) ·
 N3 `disclose:` / `never:` (filter `self.codex` by stage; drop `fire` acts when `favours:
@@ -3238,7 +3248,7 @@ stages:
   - last act
 drives:
   hunger: 30      # appetite for facts
-  suspicion: 35   # are they gathering for him, or about him?
+  # (suspicion: 35 was here until wave 12)
   pride: 60       # vanity; flattery feeds it, being caught out drains it
   candour: 10     # how much leaks out; rises as composure falls
   longing: 40     # Sandy, felt
