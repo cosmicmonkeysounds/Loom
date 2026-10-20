@@ -302,7 +302,7 @@ CHARACTER Trabolta is Person
         Trabolta: I do not have the strength.
       else if target.corrupted:
         release target from The Internet
-        broadcast "🔓 {target.name} has been pardoned by the operating system. Reinstallation cancelled. This is irregular." to everyone
+        broadcast "~🔓 {target.name} has been pardoned by the operating system. Reinstallation cancelled. This is irregular." to everyone
         broadcast "🔓 The Internet opens. You have been pardoned. Nobody is reinstalled. Walk out." to participant(target)
       else:
         Trabolta: That program is not in the Internet.

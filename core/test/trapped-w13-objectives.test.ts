@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
-import { scenarioSource } from "../examples/load.ts";
+import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages } from "../server/chat.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { cueState, guestView, modView, notePress, objectivesFor, primeView, pressRefused } from "../server/views.ts";
@@ -219,5 +219,49 @@ describe("Trapped in the Internet — wave 13: effect text", () => {
     const dejected = bob.filter((m) => m.manner === "dejectedly");
     expect(dejected.length).toBeGreaterThan(0);
     for (const m of dejected) expect(m.fx).toBeUndefined();
+  }, SLOW);
+});
+
+/** Each `broadcast "~…"` line with the lines of its own block (same indent,
+ *  up to the next shallower line on either side). */
+function noticeBlocks(): Array<{ where: string; line: string; block: string[] }> {
+  const out: Array<{ where: string; line: string; block: string[] }> = [];
+  for (const f of scenarioFiles("trapped-in-the-internet")) {
+    const lines = f.source.split("\n");
+    const indent = (l: string) => l.length - l.trimStart().length;
+    lines.forEach((l, i) => {
+      if (!/^\s*broadcast "~/.test(l)) return;
+      const d = indent(l);
+      let a = i;
+      while (a > 0 && (lines[a - 1]!.trim() === "" || indent(lines[a - 1]!) >= d)) a--;
+      let b = i;
+      while (b + 1 < lines.length && (lines[b + 1]!.trim() === "" || indent(lines[b + 1]!) >= d)) b++;
+      out.push({ where: `${f.path}:${i + 1}`, line: l.trim(), block: lines.slice(a, b + 1).filter((x) => indent(x) === d).map((x) => x.trim()) });
+    });
+  }
+  return out;
+}
+
+describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
+  it("every ~ notice has the person's own result in the same block (a reply, the mark's pin, a line to them)", () => {
+    const blocks = noticeBlocks();
+    expect(blocks.length).toBe(23);
+    for (const { where, line, block } of blocks) {
+      expect(line, where).not.toMatch(/^broadcast "~?!|^broadcast "!~/);
+      const personal = block.some((x) => x.startsWith("reply ") || x.startsWith("fire mark_for_reinstallation for program") || / to participant\(/.test(x) || /^Trabolta:/.test(x));
+      expect(personal, `${where}: ${line}`).toBe(true);
+    }
+  });
+
+  it("a notice is composed with its collapse key; the subject still hears it personally", () => {
+    const n = boot();
+    for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
+    n.signal("bingo_winner", "g5", undefined, "Clippy");
+    const out = n.signal("award_the_ribbon", "g5", undefined, "Clippy");
+    const notice = out.find((m) => m.text.includes("wins a Bingo Ribbon"))!;
+    expect(notice.notice).toBe("🎀");
+    expect(notice.text.startsWith("~")).toBe(false);
+    expect(notice.audience).toBe("all");
+    expect(forGuest(out, "g5").some((m) => m.readout === true && m.text.startsWith("🎀 You won a Bingo Ribbon"))).toBe(true);
   }, SLOW);
 });

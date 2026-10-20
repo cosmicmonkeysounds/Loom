@@ -526,9 +526,11 @@ ROLE Program
   when award_the_ribbon for program:
     if program.bingo == true:
       unlock Computer Bingo for program
-      broadcast "🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
+      broadcast "~🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
+      reply 🎀 You won a Bingo Ribbon. Take a bow.
     else:
-      broadcast "🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
+      broadcast "~🎀 {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone
+      reply 🎀 You received a ribbon. Take a bow.
 
   when frame_for_bingo for program:
     if Night.phase == "bingo_results" and Night.bingo_winners < 1:
@@ -760,7 +762,7 @@ ROLE Program
           set Kernel.q8_hunt = "accurate"
         if Kernel.q8 != "lie":
           set Kernel.q8 = "accurate"
-      broadcast "✅ {program.name}'s answer is accepted." to everyone
+      broadcast "~✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
 
   // Wrong, but delivered with total confidence: accepted. Identical on
@@ -834,14 +836,14 @@ ROLE Program
         set Kernel.q8 = "lie"
         set program.hunt_lie_q8 = true
         set program.judged_q8 = true
-      broadcast "✅ {program.name}'s answer is accepted." to everyone
+      broadcast "~✅ {program.name}'s answer is accepted." to everyone
       reply Accepted. Trabolta thanks you. +100 Truthcoin.
 
   // Uncertain, or an obvious guess: marked for failing to follow orders.
   when uncertain_answer for program:
     if Night.judging == true:
       set program.may_answer = false
-      broadcast "🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} was not sure. That is a symptom of corruption." to everyone
       fire mark_for_reinstallation for program with reason: "was not sure of an answer"
 
   // ── 🍾 The bottle: Truth or Dare (wave 4) ──
@@ -866,14 +868,15 @@ ROLE Program
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
       set program.score += 50
-      broadcast "🗣 {program.name} answered. Trabolta is satisfied. +50 Truthcoin." to everyone
+      broadcast "~🗣 {program.name} answered. Trabolta is satisfied. +50 Truthcoin." to everyone
+      reply 🗣 Truth accepted. Trabolta is satisfied. +50 Truthcoin.
     else:
       broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
 
   when truth_refused for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
-      broadcast "🙅 {program.name} refused to answer. That is a directive problem." to everyone
+      broadcast "~🙅 {program.name} refused to answer. That is a directive problem." to everyone
       fire mark_for_reinstallation for program with reason: "refused the truth"
     else:
       broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
@@ -882,7 +885,7 @@ ROLE Program
   when chose_dare for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
       set Night.bottle_open = false
-      broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
+      broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
       fire mark_for_reinstallation for program with reason: "chose Dare"
     else:
       broadcast "🎩 The bottle is not on {program.name}." to channel(hosts)
@@ -894,12 +897,13 @@ ROLE Program
     if Night.phase == "truth_pong":
       set program.may_answer = true
       set program.cupped = true
-      broadcast "🏓 {program.name} made the cup and may submit a truth." to everyone
+      broadcast "~🏓 {program.name} made the cup and may submit a truth." to everyone
+      reply 🏓 Cup made. You may answer one round-2 fact: tell Clippy, or file it on the 📝 card.
 
   when missed_the_cup for program:
     if Night.phase == "truth_pong":
       set program.cupped = false
-      broadcast "🏓 {program.name} missed the cup. Reinstallation required." to everyone
+      broadcast "~🏓 {program.name} missed the cup. Reinstallation required." to everyone
       fire mark_for_reinstallation for program with reason: "missed the cup"
 
   // MS Paint's painting (her invitation): a host presses 🖌 on the card
@@ -1430,7 +1434,7 @@ ROLE Program
       fire fact_accepted for program with q: "H1", label: "round 1 Q1"
     else if program.fact_v1 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v1 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 1 Q1. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 1 Q1. That is a symptom of corruption." to everyone
       do fact_judged {program} H1 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q1"
 
@@ -1442,7 +1446,7 @@ ROLE Program
       fire fact_accepted for program with q: "H2", label: "round 1 Q2"
     else if program.fact_v2 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v2 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 1 Q2. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 1 Q2. That is a symptom of corruption." to everyone
       do fact_judged {program} H2 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q2"
 
@@ -1454,7 +1458,7 @@ ROLE Program
       fire fact_accepted for program with q: "H3", label: "round 1 Q3"
     else if program.fact_v3 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v3 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 1 Q3. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 1 Q3. That is a symptom of corruption." to everyone
       do fact_judged {program} H3 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 1 Q3"
 
@@ -1473,7 +1477,7 @@ ROLE Program
       fire fact_accepted for program with q: "H4", label: "round 2 Q1"
     else if program.fact_v4 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v4 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 2 Q1. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 2 Q1. That is a symptom of corruption." to everyone
       do fact_judged {program} H4 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q1"
 
@@ -1492,7 +1496,7 @@ ROLE Program
       fire fact_accepted for program with q: "H5", label: "round 2 Q2"
     else if program.fact_v5 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v5 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 2 Q2. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 2 Q2. That is a symptom of corruption." to everyone
       do fact_judged {program} H5 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q2"
 
@@ -1511,7 +1515,7 @@ ROLE Program
       fire fact_accepted for program with q: "H6", label: "round 2 Q3"
     else if program.fact_v6 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v6 = "marked"
-      broadcast "🤷 {program.name} filed a guess for round 2 Q3. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for round 2 Q3. That is a symptom of corruption." to everyone
       do fact_judged {program} H6 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for round 2 Q3"
 
@@ -1523,7 +1527,7 @@ ROLE Program
       fire fact_accepted for program with q: "F1", label: "final Q1"
     else if program.fact_v7 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v7 = "marked"
-      broadcast "🤷 {program.name} filed a guess for final Q1. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for final Q1. That is a symptom of corruption." to everyone
       do fact_judged {program} F1 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for final Q1"
 
@@ -1535,7 +1539,7 @@ ROLE Program
       fire fact_accepted for program with q: "F2", label: "final Q2"
     else if program.fact_v8 == "uncertain" and (Night.phase == "truth_1" or Night.phase == "truth_pong"):
       set program.fact_v8 = "marked"
-      broadcast "🤷 {program.name} filed a guess for final Q2. That is a symptom of corruption." to everyone
+      broadcast "~🤷 {program.name} filed a guess for final Q2. That is a symptom of corruption." to everyone
       do fact_judged {program} F2 marked
       fire mark_for_reinstallation for program with reason: "filed a guess for final Q2"
 
@@ -2118,7 +2122,7 @@ ROLE Program
   when failed_the_bob for program:
     if Night.phase == "bobbing" and Night.bag_up != true:
       set program.bob_failed = true
-      broadcast "🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
+      broadcast "~🍎 {program.name} came up empty. Their status as a program is at risk." to everyone
       fire mark_for_reinstallation for program with reason: "failed the bob"
 
   // ── The pickup line ──
@@ -2151,7 +2155,7 @@ ROLE Program
         else:
           set Night.line_by = program.name
           Trabolta: The house says YES. That is the line, {program.name}.
-          broadcast "💘 {program.name} knew the line." to everyone
+          broadcast "~💘 {program.name} knew the line." to everyone
       else if verdict == "accurate":
         Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
       else:
@@ -2186,11 +2190,12 @@ ROLE Program
       set program.bottle_answered = Night.bottle_round
       if index == 1:
         set Night.bottle_open = false
-        broadcast "🎩 {program.name} chose Dare. Programs choose Truth." to everyone
+        broadcast "~🎩 {program.name} chose Dare. Programs choose Truth." to everyone
         fire mark_for_reinstallation for program with reason: "chose Dare"
       else:
         set Night.truth_n += 1
-        broadcast "🗣 {program.name} chose Truth. Trabolta has a question." to everyone
+        broadcast "~🗣 {program.name} chose Truth. Trabolta has a question." to everyone
+        reply 🗣 You chose Truth. Trabolta asks on the TV: answer out loud, in front of everyone.
         fire truth_question
 
   // ── The awards ceremony (K-25) ──
