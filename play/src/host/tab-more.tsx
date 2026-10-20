@@ -123,8 +123,8 @@ function ShowClockSection() {
     );
   return (
     <HostSection id="clock" title="🕐 Show clock" aside={now === null ? "not set" : now.running ? "▶ running" : "⏸ paused"}>
-      <div className={`host-clock-now${now !== null && !now.running ? " paused" : ""}`} data-testid="host-clock-now" aria-live="polite">
-        {now === null ? "No clock yet" : clockText(now.minutes)}
+      <div className={`host-clock-now${now === null ? " none" : !now.running ? " paused" : ""}`} data-testid="host-clock-now" aria-live="polite">
+        {now === null ? "No clock yet — Set to… starts one." : `${now.running ? "" : "⏸ "}${clockText(now.minutes)}`}
       </div>
       <div className="host-clock-nudges" role="group" aria-label="Move the show clock">
         {CLOCK_NUDGES.map((n) => (
