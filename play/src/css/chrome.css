@@ -385,3 +385,4 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 @media (prefers-reduced-motion: reduce) {
   .taskbar-btn.attn, .tray-balloon, .title-bar.flash { animation: none; }
 }
+.tray-clock { display: inline-flex; }

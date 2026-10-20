@@ -16,6 +16,7 @@
     "./views": "./server/views.ts",
     "./mod-patch": "./server/mod-patch.ts",
     "./cue-sheet": "./src/cue-sheet.ts",
+    "./show-clock": "./src/show-clock.ts",
     "./delivery": "./src/delivery.ts",
     "./host-board": "./src/host-board.ts"
   },

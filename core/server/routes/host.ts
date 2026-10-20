@@ -51,6 +51,8 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // control plane's go live / end take an author session, never a token.
   "/api/mod/start",
   "/api/mod/stop",
+  // The show clock (wave 13 K3): set it or nudge it, from the More tab.
+  "/api/mod/clock",
   // Upgrades the token with the mod passcode (the full capability, as today).
   "/api/mod/login",
 ]);

@@ -13,7 +13,8 @@ import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
 import { joinLink, type HostCodes } from "./api.ts";
 import { ALERT_LADDER, optimisticValue, tvVoiceLabel, type Optimistic, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus } from "./model.ts";
-import { ActButton, ConfirmButton, HostEmpty, HostSection, useHost, useRevealed } from "./kit.tsx";
+import { ActButton, ConfirmButton, HostEmpty, HostSection, failText, useHost, useRevealed } from "./kit.tsx";
+import { clockText, setToFields, setToTime, showClockOf, useShowClock } from "../show-clock.ts";
 
 export function MoreTab({ focus }: { focus: MoreFocus | null }) {
   const { view } = useHost();
@@ -33,6 +34,8 @@ export function MoreTab({ focus }: { focus: MoreFocus | null }) {
         switch (s) {
           case "show":
             return <Show key={s} />;
+          case "clock":
+            return <ShowClockSection key={s} />;
           case "announce":
             return <Announce key={s} />;
           case "alerts":
@@ -86,6 +89,98 @@ function Show() {
         {armed && !busy && <span className="host-arm-line">{ARM_LINE} — within 4 s</span>}
       </button>
       <p className="host-note">{c.note}</p>
+    </HostSection>
+  );
+}
+
+/** The nudges a host has (minutes). */
+export const CLOCK_NUDGES = [-5, -1, 1, 5] as const;
+
+/** 🕐 The show clock (wave 13 K5): the party's time large, −5 · −1 · +1 · +5
+ *  at once, and Set to… armed then fired (a pocket tap never jumps the
+ *  night's clock). Every phone follows on its next snapshot. */
+function ShowClockSection() {
+  const { view, calls, run } = useHost();
+  const now = useShowClock(showClockOf(view));
+  const arm = useArmButtons();
+  const [hm, setHm] = useState("");
+  const [half, setHalf] = useState<"AM" | "PM">("PM");
+  const [err, setErr] = useState<string | null>(null);
+  const time = setToTime(hm, half);
+  const armed = arm.armed === "clock-set";
+  const send = (done: string, call: () => Promise<unknown>) =>
+    run(done, () =>
+      call().then(
+        (r) => {
+          setErr(null);
+          return r;
+        },
+        (e: unknown) => {
+          setErr(failText(e));
+          throw e;
+        },
+      ),
+    );
+  return (
+    <HostSection id="clock" title="🕐 Show clock" aside={now === null ? "not set" : now.running ? "▶ running" : "⏸ paused"}>
+      <div className={`host-clock-now${now === null ? " none" : !now.running ? " paused" : ""}`} data-testid="host-clock-now" aria-live="polite">
+        {now === null ? "No clock yet — Set to… starts one." : `${now.running ? "" : "⏸ "}${clockText(now.minutes)}`}
+      </div>
+      <div className="host-clock-nudges" role="group" aria-label="Move the show clock">
+        {CLOCK_NUDGES.map((n) => (
+          <ActButton
+            key={n}
+            className="host-clock-nudge"
+            label={`${n > 0 ? "+" : "−"}${Math.abs(n)}`}
+            title={`${n > 0 ? "Forward" : "Back"} ${Math.abs(n)} min`}
+            disabled={now === null}
+            onClick={() => send(`🕐 Clock ${n > 0 ? "+" : "−"}${Math.abs(n)} min`, () => calls.clockNudge(n))}
+          />
+        ))}
+      </div>
+      <div className="host-row-actions host-clock-set">
+        <label className="host-inline">
+          <span>Set to</span>
+          <input
+            className="host-num host-clock-hm"
+            inputMode="numeric"
+            aria-label="Show time, hours and minutes"
+            placeholder={now !== null ? setToFields(now.minutes).hm : "7:00"}
+            value={hm}
+            onChange={(e) => setHm(e.target.value)}
+          />
+        </label>
+        <div className="host-clock-half" role="radiogroup" aria-label="AM or PM">
+          {(["AM", "PM"] as const).map((h) => (
+            <button key={h} type="button" role="radio" aria-checked={half === h} className="w95-btn host-toggle" aria-pressed={half === h} onClick={() => setHalf(h)}>
+              {h}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className={`w95-btn host-arm host-clock-go ${armed ? "armed" : ""}`}
+          data-testid="host-clock-set"
+          disabled={time === null}
+          onClick={() =>
+            arm.tap("clock-set", true, () => {
+              if (time === null) return;
+              void send(`🕐 Clock set to ${time}`, () => calls.clockSet(time)).then((ok) => {
+                if (ok) setHm("");
+              });
+            })
+          }
+        >
+          <span className="host-arm-label">{time === null ? "Set" : `Set ${time}`}</span>
+          {armed && <span className="host-arm-line">{ARM_LINE}</span>}
+        </button>
+      </div>
+      {err !== null && (
+        <p className="host-note alarm" role="alert">
+          {err}
+        </p>
+      )}
+      <p className="host-note">Every phone, booth and screen shows this time. It stops while the show is paused.</p>
     </HostSection>
   );
 }

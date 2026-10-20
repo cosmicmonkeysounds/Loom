@@ -32,6 +32,8 @@ import { GuestRegister } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
 import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
+import { ShowClockTray } from "../chrome/show-clock-tray.tsx";
+import { showClockOf } from "../show-clock.ts";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
 import { Icon, IconTitle } from "../chrome/icons.tsx";
@@ -435,6 +437,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   });
   const tray = (
     <>
+      <ShowClockTray clock={showClockOf(st)} />
       <CountdownTray countdowns={st.countdowns} clock={st.clock} paused={st.paused === true} stamp={st} />
       {st.wallet !== undefined ? (
         <BalanceTray view={st.wallet} frozen={frozen} onOpen={() => t.open(WALLET_ROOM)} />

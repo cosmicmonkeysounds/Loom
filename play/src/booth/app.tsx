@@ -40,6 +40,7 @@ import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
 import { BoothTray } from "./tray.tsx";
+import { showClockOf } from "../show-clock.ts";
 
 /**
  * A guest's thread as the booth shows it: its rows come from several rooms,
@@ -78,7 +79,7 @@ function BoothFrame({ children, clocked = false }: { children: (keyboard: boolea
   const frame = useRef<HTMLDivElement>(null);
   const keyboard = useKeyboardOpen(frame as RefObject<HTMLElement>); // React 19 types (the editor) widen the ref with null
   return (
-    // `clocked`: a countdown sits in the tray — a narrow phone's Guests drops its word for it.
+    // `clocked`: the show clock or a countdown sits in the tray — a narrow phone's Guests drops its word for it.
     <div className={`app-frame booth-frame${clocked ? " clocked" : ""}`} ref={frame}>
       {children(keyboard)}
     </div>
@@ -296,7 +297,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
           <div className="root">
-            <BoothFrame clocked={soonest(s.view?.countdowns, s.view?.clock ?? null) !== null}>
+            <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null}>
               {(keyboard) => (
                 <>
               <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={pill} closeKey={activeId} session={token} compact={keyboard} paused={viewPaused(s.view)} />

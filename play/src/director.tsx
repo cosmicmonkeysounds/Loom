@@ -55,6 +55,7 @@ export { DIRECTOR_KEY, directorFromSearch, initialRole, roleForBrand, type AppRo
 export { URGENT_S, formatLeft, storyNow } from "./clock.ts";
 import { DIRECTOR_KEY } from "./app-role.ts";
 import { URGENT_S, formatLeft, storyNow } from "./clock.ts";
+import { clockText, showClockOf, useShowClock } from "./show-clock.ts";
 
 export interface DirectorAuth {
   token: string;
@@ -92,6 +93,8 @@ export interface DirectorView {
   /** Up to 3 `watch:` values — global ones only, never a secret one (the
    *  server's lean view never sends those). */
   watch?: Array<{ label: string; value: string }>;
+  /** The show clock (wave 13 K5, `show-clock.ts`): the strip's first item. */
+  showClock?: { minutes: number; running: boolean };
 }
 
 /** The device label the journal records (the server keeps 60 chars). */
@@ -266,6 +269,8 @@ export function formatWatchValue(v: string): string {
 
 export interface StripItem {
   text: string;
+  /** The show clock (the strip's first item). */
+  clock?: true;
   /** A countdown under a minute. */
   urgent?: true;
 }
@@ -273,8 +278,10 @@ export interface StripItem {
 /** The strip under the header: the focus act's code · the phase · the
  *  soonest countdown · up to 3 watched values (whatever the view carries:
  *  the server's lean view holds only global, non-secret ones). */
-export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs: number | null): StripItem[] {
+export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs: number | null, show: { minutes: number; running: boolean } | null = null): StripItem[] {
   const out: StripItem[] = [];
+  // The show clock first (wave 13 K5): the party's time of day, ⏸ while it holds.
+  if (show !== null) out.push({ text: `${show.running ? "🕐" : "⏸"} ${clockText(show.minutes)}`, clock: true });
   if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!) });
   const phase = nightPhase(view?.world ?? []);
   if (phase !== null) out.push({ text: phase });
@@ -1161,7 +1168,8 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
   }, [ticking, s.receivedAt]);
   const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt), runs);
   const bar = nextBar(rows, s.view?.countdowns, nowMs, runs);
-  const strip = stripItems(s.view, layout, nowMs);
+  const show = useShowClock(showClockOf(s.view));
+  const strip = stripItems(s.view, layout, nowMs, show);
   // Keep the next cue in view as the night moves down the sheet.
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1210,7 +1218,7 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
             {strip.length > 0 && (
               <div className="cue-strip" data-testid="cue-strip">
                 {strip.map((it, k) => (
-                  <span key={k} className={it.urgent ? "urgent" : undefined}>
+                  <span key={k} className={it.urgent ? "urgent" : it.clock ? "cue-strip-clock" : undefined}>
                     {it.text}
                   </span>
                 ))}

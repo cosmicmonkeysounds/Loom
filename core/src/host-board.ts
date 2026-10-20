@@ -803,6 +803,8 @@ export interface ModLike {
   doorsClosed?: true;
   watch?: ReadonlyArray<{ label: string; path: string | null; scope: string; secret?: true; gated?: true }>;
   countdowns?: readonly { label: string; endsAt: number }[];
+  /** The show clock (wave 13 K2) — `cueSheetView` carries it onto the host view. */
+  showClock?: { minutes: number; running: boolean };
   facts?: FactsLike | null;
   wallet?:
     | (WalletLike & {

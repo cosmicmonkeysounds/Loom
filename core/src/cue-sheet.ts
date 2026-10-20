@@ -22,6 +22,8 @@
 //! has no `@loom/core` dependency), so the shapes below are structural —
 //! the server's `InteractionSummary` / `CueState` / world rows fit them.
 
+import type { ShowClock } from "./show-clock.ts";
+
 /** What a cue row needs from an `InteractionSummary`. */
 export interface CueInteraction {
   id: string;
@@ -441,6 +443,8 @@ export interface CueSheetView {
   /** Up to 3 live `watch:` values — global ones only, never a secret;
    *  a `while`-gated line's first (what matters right now). */
   watch?: { label: string; value: string }[];
+  /** The show clock (`ModView.showClock`, wave 13 K2), when the story set one. */
+  showClock?: ShowClock;
 }
 
 /** What the lean view reads off a `ModView`'s `watch` (structural). */
@@ -473,6 +477,7 @@ export function cueSheetView(view: {
   doorsClosed?: true;
   watch?: readonly WatchInput[];
   countdowns?: readonly { label: string; endsAt: number }[];
+  showClock?: ShowClock;
 }): CueSheetView {
   const world = view.world ?? [];
   // The strip has room for three: a `while`-gated line's values first (they
@@ -507,5 +512,6 @@ export function cueSheetView(view: {
     ...(view.phase === "idle" || view.doorsClosed === true ? { doorsClosed: true as const } : {}),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     ...(watch.length > 0 ? { watch } : {}),
+    ...(view.showClock !== undefined ? { showClock: { minutes: view.showClock.minutes, running: view.showClock.running } } : {}),
   };
 }

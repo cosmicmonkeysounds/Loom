@@ -54,6 +54,7 @@ import {
 } from "./identity.ts";
 import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
+import { showClock, clockChange, CLOCK_SET_TO, CLOCK_SET_AT, type ShowClock } from "../src/show-clock.ts";
 import { hostView, type HostView } from "../src/host-board.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
@@ -1019,6 +1020,7 @@ export class EventRuntime {
       ...(this.wallet !== null ? { wallet: this.wallet.viewFor(id) } : {}),
       // The story clock is stopped: the phone's countdown strip holds still.
       ...(this.phase !== "open" ? { paused: true as const } : {}),
+      ...this.showClockField(),
     };
   }
 
@@ -1038,7 +1040,16 @@ export class EventRuntime {
       // The story clock is stopped: the booth's tray holds its countdowns
       // still (the same rule as a guest's strip, `guestViewFor`).
       ...(this.phase !== "open" ? { paused: true as const } : {}),
+      ...this.showClockField(),
     };
+  }
+
+  /** `{showClock}` for a view (wave 13 K2), or nothing when the story set no
+   *  clock. It runs only while the doors are open — story time, so a pause
+   *  holds it exactly as it holds the story clock. */
+  private showClockField(): { showClock?: ShowClock } {
+    const clock = showClock(this.sim, this.phase === "open");
+    return clock !== undefined ? { showClock: clock } : {};
   }
 
   /** The last `modViewNow()` built (the host view reuses a fresh one). */
@@ -1053,6 +1064,7 @@ export class EventRuntime {
       // A restart with the doors shut leaves the run `paused` with its
       // `start:` beat unplayed: the doors are still closed (the phone's strip).
       ...(!this.entryPlayed ? { doorsClosed: true as const } : {}),
+      ...this.showClockField(),
     };
     this.modViewLast = { len: this.sim?.log.len() ?? -1, phase: this.phase, at: Date.now(), view };
     return view;
@@ -1103,7 +1115,7 @@ export class EventRuntime {
     // Reused only inside the window, whether or not the log moved: a quiet
     // log still moves the clocks the panel shows (a terminal's silence, an
     // agent's oldest wait, who was seen when).
-    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return hit.view;
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.withShowClock(hit.view);
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     for (const r of this.agents.pending) {
       if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
@@ -1134,7 +1146,15 @@ export class EventRuntime {
       now,
     });
     this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
-    return view;
+    return this.withShowClock(view);
+  }
+
+  /** A cached host view with the show clock read now (wave 13 K2): the
+   *  cache window (and the reused mod view) must not hold the clock back, and
+   *  a host's own clock change shows on their next poll. */
+  private withShowClock(view: HostView): HostView {
+    const { showClock: _old, ...rest } = view;
+    return { ...rest, ...this.showClockField() };
   }
 
   /** Message seqs of the widget cards `id` has answered. */
@@ -3971,6 +3991,7 @@ export class EventRuntime {
           this.spatialHouse();
           return screenKingOf(this.spatial.king(), this.spatial.kingRef()?.prop.armed, this.sim);
         },
+        () => showClock(this.sim, this.phase === "open"),
       );
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));
@@ -5887,6 +5908,24 @@ export class EventRuntime {
         }
         this.fanout(this.commit("setVar", path, str(body, "value")));
         sendJson(res, 200, { ok: true });
+        return true;
+      }
+      case "/api/mod/clock": {
+        // The show clock (wave 13 K3): a host sets it (`{time: "7:00 PM"}`)
+        // or nudges it (`{nudge: ±minutes}`). Two journaled var writes —
+        // `Clock.set_to` then `Clock.set_at` — so replay and a restart read
+        // the same clock; every view carries it on its next snapshot.
+        if (this.sim === null) {
+          sendJson(res, 409, { error: "no scenario loaded" });
+          return true;
+        }
+        const change = clockChange(this.sim, body);
+        if ("error" in change) {
+          sendJson(res, change.status, { error: change.error });
+          return true;
+        }
+        this.fanout([...this.commit("setVar", CLOCK_SET_TO, String(change.setTo)), ...this.commit("setVar", CLOCK_SET_AT, String(change.setAt))]);
+        sendJson(res, 200, { ok: true, clock: showClock(this.sim, this.phase === "open") ?? null });
         return true;
       }
       case "/api/mod/impersonate": {

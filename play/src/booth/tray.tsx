@@ -1,4 +1,5 @@
-//! The booth taskbar's tray (wave 13), three items at most: the act chip
+//! The booth taskbar's tray (wave 13): the show clock first (K5,
+//! `chrome/show-clock-tray.tsx`), then three items at most: the act chip
 //! (the story's current act — the cue sheet's, the one the NEXT strip
 //! shows — set in full ink; the CRA approver's held transfers take its
 //! place while any wait),
@@ -10,6 +11,8 @@
 import { useEffect, useRef, useState } from "react";
 import { storyNow } from "../director.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
+import { ShowClockTray } from "../chrome/show-clock-tray.tsx";
+import { showClockOf } from "../show-clock.ts";
 import { MissedTray } from "../moments/provider.tsx";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
@@ -42,6 +45,7 @@ export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet
   const act = trayAct(view?.night?.act, view?.night?.step, typeof word === "string" ? word : null);
   return (
     <>
+      <ShowClockTray clock={showClockOf(view)} />
       {held > 0 ? (
         <TrayItem icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" />
       ) : act !== null ? (
