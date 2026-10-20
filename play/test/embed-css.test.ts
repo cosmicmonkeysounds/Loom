@@ -1,9 +1,12 @@
+import { transformWithEsbuild } from "vite";
 import { describe, expect, it } from "vitest";
 import { scopeCss } from "../src/embed-css.ts";
 import { readBundledCss, stylesImports } from "./css.ts";
 
-// The stylesheet as the dev server serves it: the lane files, inlined.
+// The stylesheet as the dev server serves it (spaced, quoted), and as
+// `vite build` minifies `styles.css?inline` for the editor's Run → Players.
 const CSS = readBundledCss();
+const MINIFIED = (await transformWithEsbuild(CSS, "styles.css", { loader: "css", minify: true })).code;
 
 describe("styles.css is only the lane files, in order", () => {
   it("imports exactly the eight files", () => {
@@ -22,6 +25,7 @@ describe("styles.css is only the lane files, in order", () => {
 
 for (const [name, css] of [
   ["as written", CSS],
+  ["minified", MINIFIED],
 ] as const) {
   describe(`embedded pane stylesheet (${name})`, () => {
     const scoped = scopeCss(css);
@@ -47,3 +51,15 @@ for (const [name, css] of [
     });
   });
 }
+
+describe("the rewrite rules", () => {
+  it("turns the dynamic viewport units into container units", () => {
+    const out = scopeCss(".pass { height: 100vh; height: 100dvh; min-height: 50svh; max-height: 90lvh; width: 100dvw; }");
+    expect(out).toContain(".pass { height: 100cqh; height: 100cqh; min-height: 50cqh; max-height: 90cqh; width: 100cqw; }");
+  });
+
+  it("reads the minified forms: no spaces, no quotes", () => {
+    const out = scopeCss('html,body,#root{height:100%}body{margin:0}:root[data-theme=aol97] body{font-size:13px}:root{--a:1}@media (max-width:400px){.x{top:0}}');
+    expect(out).toContain('.play-root {height:100%}.play-root {margin:0}.play-root[data-theme="aol97"]{font-size:13px}.play-root{--a:1}@container play (max-width:400px){.x{top:0}}');
+  });
+});

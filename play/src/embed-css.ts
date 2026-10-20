@@ -16,17 +16,23 @@ const FRAME_CSS = `
  * container units, and viewport `@media` size queries become container
  * queries against the pane. Preference queries (`prefers-reduced-motion`)
  * are left alone — they are about the person, not the page.
+ *
+ * Takes the stylesheet as written (spaced, quoted) and as `vite build`
+ * minifies `styles.css?inline` (`html,body,#root{…}`,
+ * `:root[data-theme=aol97] body{…}` — no spaces, no quotes). The dynamic
+ * viewport units (`dvh`, `svh`, `lvh`, and their `vw`s) become container
+ * units too, so a full-screen layer sizes to its pane.
  */
 export function scopeCss(css: string): string {
   return (
     css
       // The themed page body is the pane root itself.
-      .replace(/:root\[data-theme="([^"]+)"\] body\b/gu, '.play-root[data-theme="$1"]')
+      .replace(/:root\[data-theme=("?)([^"\]]+)\1\]\s*body\b/gu, '.play-root[data-theme="$2"]')
       .replace(/:root\b/gu, ".play-root")
-      .replace(/(^|\n)html, body, #root \{/gu, "$1.play-root {")
-      .replace(/(^|\n)body \{/gu, "$1.play-root {")
-      .replace(/(\d+(?:\.\d+)?)vh\b/gu, "$1cqh")
-      .replace(/(\d+(?:\.\d+)?)vw\b/gu, "$1cqw")
-      .replace(/@media \((min|max)-(height|width):/gu, "@container play ($1-$2:") + FRAME_CSS
+      .replace(/(^|[}\n])\s*html,\s*body,\s*#root\s*\{/gu, "$1.play-root {")
+      .replace(/(^|[}\n])\s*body\s*\{/gu, "$1.play-root {")
+      .replace(/(\d*\.?\d+)[dsl]?vh\b/gu, "$1cqh")
+      .replace(/(\d*\.?\d+)[dsl]?vw\b/gu, "$1cqw")
+      .replace(/@media ?\((min|max)-(height|width):/gu, "@container play ($1-$2:") + FRAME_CSS
   );
 }
