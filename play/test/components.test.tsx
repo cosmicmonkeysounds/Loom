@@ -99,13 +99,17 @@ describe("the pass", () => {
   });
 });
 
-describe("the moments layer, behaviour-identical in Stage A", () => {
+describe("the moments layer (mounted in Stage A, filled by the moments lane)", () => {
   const alerts = (text: string | null): Alerts => ({
     alert: text === null ? null : { seq: 7, text, at: 0 } as unknown as Alerts["alert"],
     dismiss: () => {},
     raise: () => {},
     onHistory: () => {},
     rebase: () => {},
+    mark: () => -1,
+    settle: () => {},
+    epoch: 0,
+    recent: () => [],
   });
   const input = (text: string | null): MomentsInput => ({
     role: "guest",
@@ -125,8 +129,8 @@ describe("the moments layer, behaviour-identical in Stage A", () => {
     return createElement("i", null, `${m.level} ${m.missed}`);
   }
 
-  it("renders the old alert banner when there is an alert, nothing otherwise", () => {
-    expect(html(createElement(MomentsProvider, { ...input("!GO TO THE INTERNET"), children: createElement(MomentsLayer) }))).toContain('class="alert-banner"');
+  it("renders the session's feedback toast when there is one, nothing otherwise", () => {
+    expect(html(createElement(MomentsProvider, { ...input("✔ Done."), children: createElement(MomentsLayer) }))).toContain('class="moments-toast"');
     expect(html(createElement(MomentsProvider, { ...input(null), children: createElement(MomentsLayer) }))).toBe("");
     expect(html(createElement(MomentsLayer))).toBe("");
   });
