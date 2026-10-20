@@ -291,6 +291,15 @@ describe("missed moments", () => {
     expect(isStale(moment(9, { phase: null }), {}, null)).toBe(false);
   });
 
+  it("a message stamped with the phase it was posted in keeps it (a reconnect's backlog); unstamped takes the phase now", () => {
+    const old = { ...msg(1, { alert: true }), phase: "hunt" } as ChatMessage;
+    expect(momentOf(old, guest, "pong")?.phase).toBe("hunt");
+    expect(momentOf(msg(2, { alert: true }), guest, "pong")?.phase).toBe("pong");
+    // So a locked phone's backlog drops the alarm from before the change.
+    const s = run([arrive([momentOf(old, guest, "pong")!, momentOf(msg(2, { alert: true }), guest, "pong")!], { batch: true, phase: "pong" })]);
+    expect(s.queue.map((q) => q.moment.seq)).toEqual([2]);
+  });
+
   it("the lobby is every announcement's home: a newer one there never makes an older one stale", () => {
     const s = run([arrive([moment(1, { text: "One." })], { visible: false }), arrive([moment(2, { text: "Two." })], { visible: false })]);
     expect(isStale(s.missed[0]!, s.lastMajor, "hunt")).toBe(false);

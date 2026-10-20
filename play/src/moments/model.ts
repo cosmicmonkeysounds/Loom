@@ -151,6 +151,20 @@ function momentCaption(m: ChatMessage, kind: MomentKind): string {
  * own layer (never a moment); a hidden message never is one. A booth runs
  * its filter first and then demotes guest-facing alerts.
  */
+/**
+ * The phase a message was posted in: the server's stamp when it carries one
+ * (`phase` on the message — not sent yet, see below), else `fallback` (the
+ * phase the client knows now). Without the stamp a reconnect's backlog is
+ * stamped with the phase at the time it is processed, so the phase rule of
+ * the staleness check only works for moments that arrived while the stream
+ * was alive (a hidden Android tab); a locked iPhone's backlog replays alarms
+ * from before a phase change until the server stamps its messages.
+ */
+export function phaseOf(m: ChatMessage, fallback: string | null): string | null {
+  const stamped = (m as ChatMessage & { phase?: unknown }).phase;
+  return typeof stamped === "string" || stamped === null ? stamped : fallback;
+}
+
 export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): Moment | null {
   if (m.hidden || m.takeover === true) return null;
   let severity: MomentClass | null = m.moment ?? (m.alert === true ? "major" : null);
@@ -170,7 +184,7 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
     channel: m.channel,
     beat: m.beat ?? null,
     at: m.ts,
-    phase,
+    phase: phaseOf(m, phase),
   };
 }
 
@@ -203,7 +217,7 @@ export function beatMoment(m: ChatMessage, phase: string | null): Moment {
     channel: m.channel,
     beat: m.beat ?? null,
     at: m.ts,
-    phase,
+    phase: phaseOf(m, phase),
   };
 }
 
