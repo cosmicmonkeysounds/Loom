@@ -235,6 +235,29 @@ describe("order and tap-to-finish", () => {
     expect(notified).toBeGreaterThan(0);
   });
 
+  it("what is never a row here doesn't flush it: a bark, a thread reply, a hidden line", () => {
+    const { crawl } = setup();
+    const a = msg();
+    crawl.arrived(a, ME);
+    crawl.arrived(msg({ kind: "narration", ambient: true, beat: undefined, text: "The screensaver changes." }), ME);
+    crawl.arrived(msg({ parentSeq: a.seq, beat: undefined, from: "Bob" }), ME);
+    crawl.arrived(msg({ hidden: true, beat: undefined }), ME);
+    expect(crawl.tierOf(a.seq)).toBe("fast");
+  });
+
+  it("the cutscene stage: a card in the Codex / Quest Log / Wallet is not on the stage", () => {
+    const { crawl } = setup(PERSONAL_STREAM);
+    const last = msg({ channel: "dm:The Uploader", from: "The Uploader", audience: ["g-1"] });
+    crawl.arrived(last, ME);
+    for (const channel of ["codex", "quests", "wallet"]) {
+      crawl.arrived(msg({ channel, kind: "codex", beat: undefined, from: "", audience: ["g-1"] }), ME);
+    }
+    expect(crawl.tierOf(last.seq)).toBe("fast");
+    // The pass card on the stage itself still keeps the order.
+    crawl.arrived(msg({ channel: "dm:The Uploader", kind: "widget", widget: { kind: "pass", text: "", params: {} }, audience: ["g-1"] }), ME);
+    expect(crawl.tierOf(last.seq)).toBe("none");
+  });
+
   it("a line in another room doesn't flush this one", () => {
     const { crawl } = setup();
     const a = msg();

@@ -28,6 +28,7 @@
 //! module init, so a value import back would be a TDZ cycle.
 
 import type { Crawl, CrawlTier } from "./host.ts";
+import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "./rooms/spaces.ts";
 import type { ChatMessage } from "./types.ts";
 
 export interface CrawlOptions {
@@ -41,6 +42,9 @@ export interface CrawlOptions {
 /** The open "room" of the cutscene stage: everything said to the viewer,
  *  whatever channel it lands in (`personalStream`). */
 export const PERSONAL_STREAM = "@personal";
+
+/** The guest's pinned rooms (`isPinnedRoom`): never on the cutscene stage. */
+const PINNED_ROOMS: ReadonlySet<string> = new Set([CODEX_ROOM, QUEST_LOG, WALLET_ROOM]);
 
 /** ms per character and the per-line cap, by tier. */
 export const FAST_CHAR_MS = 5;
@@ -182,11 +186,17 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
       if (!page.visible) flushRoom();
     });
   }
-  /** Which open room a message belongs to, or null when it isn't on screen. */
+  /** Which open room a message is a ROW of, or null when it isn't on
+   *  screen. Only rows decide anything: an ambient bark (the ticker), a
+   *  thread reply (its panel), a hidden line and — on the cutscene stage —
+   *  the pinned rooms' cards never crawl and never flush what is queued. */
   const roomOf = (m: ChatMessage, me: { id: string; name: string } | null): string | null => {
     if (open === null || !page.visible) return null;
+    if (m.ambient || m.parentSeq != null || m.hidden) return null;
     if (open === PERSONAL_STREAM) {
-      return me !== null && Array.isArray(m.audience) && m.audience.includes(me.id) ? PERSONAL_STREAM : null;
+      // `personalStream`'s own filter (session/channels.ts).
+      if (me === null || !Array.isArray(m.audience) || !m.audience.includes(me.id)) return null;
+      return PINNED_ROOMS.has(m.channel) ? null : PERSONAL_STREAM;
     }
     return m.channel === open ? open : null;
   };
