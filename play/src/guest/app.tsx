@@ -33,7 +33,7 @@ import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
-import { TitleBar } from "../chrome/title-bar.tsx";
+import { TitleBar, titleFallback } from "../chrome/title-bar.tsx";
 import { defectTargets } from "../session/guest.ts";
 import { PictureChanger } from "./register.tsx";
 import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, ObjectiveSheet, guestStartItems, guestTaskbarButtons, pushOffered, useStartWake, whereLine } from "./frame.tsx";
@@ -412,7 +412,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       head={
         <>
           <MomentsLayer />
-          <TitleBar objectives={objectives} fallback={st.title ?? s.me.title ?? ""} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} />
+          <TitleBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} />
           <PinnedRail pins={pins} />
           <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
         </>

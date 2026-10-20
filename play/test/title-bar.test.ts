@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { TitleBar, titleBarSub, titleBarText } from "../src/chrome/title-bar.tsx";
+import { TitleBar, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
 import { whereLine } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
@@ -16,6 +16,13 @@ describe("the NOW title bar", () => {
     expect(titleBarText([o("a", "Get scanned"), o("b", "Find Gerald")], "Lobby")).toEqual({ title: "▣ NOW: Get scanned ›", now: o("a", "Get scanned") });
     expect(titleBarText([], "The Desktop").title).toBe("The Desktop");
     expect(titleBarText(undefined, "Trapped in the Internet")).toEqual({ title: "Trapped in the Internet", now: null });
+  });
+
+  it("with no objective: the open room's name, else the story's title (D4)", () => {
+    expect(titleFallback("The Steam Room", "Trapped in the Internet")).toBe("The Steam Room");
+    expect(titleFallback(null, "Trapped in the Internet")).toBe("Trapped in the Internet");
+    expect(titleFallback("", "Trapped in the Internet")).toBe("Trapped in the Internet");
+    expect(titleFallback(undefined, null)).toBe("");
   });
 
   it("captured and restricted mark the title with ⛔ and tint the bar", () => {

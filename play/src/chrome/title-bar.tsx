@@ -7,6 +7,12 @@
 
 import type { ObjectiveView } from "../types.ts";
 
+/** What the bar falls back to with no objective (D4): the open room's
+ *  name, else the story's title (the room list is open). */
+export function titleFallback(room: string | null | undefined, story: string | null | undefined): string {
+  return room !== null && room !== undefined && room !== "" ? room : (story ?? "");
+}
+
 /** What the bar says (pure — `test/title-bar.test.ts`). */
 export function titleBarText(objectives: readonly ObjectiveView[] | undefined, fallback: string, tone?: "alarm" | "restricted"): { title: string; now: ObjectiveView | null } {
   const now = objectives?.[0] ?? null;
