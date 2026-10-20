@@ -142,6 +142,12 @@ TRAIT Enforcer is Person
       Self: {program.name} has demonstrated compliance. Reinstallation successful.
       release program from The Internet
 
+  // 🩹 from an Antivirus booth: the ROLE hook names who lifted the mark
+  // (main.loom, `unmark_settle`).
+  when unmark_for_reinstallation for program:
+    if program.marked == true:
+      set program.unmark_av += 1
+
   when accuse for program:
     set program.doubt += 25
     Self: I am watching you, {program.name}. Your behaviour has been logged.

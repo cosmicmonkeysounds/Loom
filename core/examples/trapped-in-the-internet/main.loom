@@ -336,6 +336,7 @@ ROLE Program
   bottle_answered: 0 to 99 = 0
   marked: bool = false
   marked_for: text? = none
+  unmark_av: 0 to 9 = 0
   lie_q1: bool = false
   lie_q2: bool = false
   lie_q3: bool = false
@@ -954,11 +955,24 @@ ROLE Program
       fire marked for program
 
   // A mis-tap, or mercy: the mark comes off without a trip to the tent.
+  // Who pressed it (w13 Q32, DRAFT for sign-off): the pressing Antivirus'
+  // own TRAIT Enforcer hook (only its booth's press reaches it, after this
+  // ROLE hook) counts itself in `unmark_av`; the settle reads it once the
+  // press has drained. One Antivirus → "cleared by the Antivirus"; a host,
+  // Clippy or a director (no actor: every Enforcer counts) → "by a host".
   when unmark_for_reinstallation for program:
     if program.marked == true:
-      fire unmarked for program with how: "cleared by a host"
+      set program.unmark_av = 0
+      fire unmark_settle for program
     else:
       broadcast "⚠️ {program.name} is not marked." to channel(hosts)
+
+  when unmark_settle for program:
+    if program.marked == true:
+      if program.unmark_av == 1:
+        fire unmarked for program with how: "cleared by the Antivirus"
+      else:
+        fire unmarked for program with how: "cleared by a host"
 
   // Shared by the capture, the release and 🩹: the mark comes off.
   when unmarked for program:

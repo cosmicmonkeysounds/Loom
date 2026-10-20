@@ -863,6 +863,22 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
   }, SLOW);
 
+  it("🩹 from an Antivirus reads 'cleared by the Antivirus'; from a host, 'cleared by a host' (Q32)", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    n.signal("uncertain_answer", "g6", undefined, "Clippy");
+    const av = n.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
+    expect(v(n.sim, "g5.marked")).toBe(false);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus"]) expect(replyTo(av, who), who).toContain("✅ Winamp: cleared by the Antivirus. Off the escort list.");
+    const host = n.signal("unmark_for_reinstallation", "g6", undefined, "Task Manager");
+    expect(v(n.sim, "g6.marked")).toBe(false);
+    expect(replyTo(host, "Norton Anti-Virus")).toContain("✅ VLC: cleared by a host. Off the escort list.");
+    // An unmarked program: nothing to lift, # hosts says so, nothing counted.
+    const again = n.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
+    expect(replyTo(again, "Norton Anti-Virus").some((t) => t.startsWith("✅"))).toBe(false);
+  }, SLOW);
+
   it("the late list is one readout per late program on every room Antivirus booth (Q31)", () => {
     const n = boot();
     for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c);

@@ -38,7 +38,7 @@ left (the rooms read-only; they can still type in their DMs, but a 📝 filing
 and a room check-in are refused). Find them, walk them through the Tube,
 press 🛡 — a marked program who turns up at the tent on their own is captured
 when the tablet starts their run (wave 5). A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears on its own when they are captured, released,
-or unmarked (🩹): *✅ X: in the Internet / released / cleared by a host.*
+or unmarked (🩹): *✅ X: in the Internet / released / cleared by the Antivirus / cleared by a host.*
 
 **V3, your big moment.** Your Quest Log says it: *Patrol: the Bingo.*
 When the centre-square program is named (or the winner refuses to name
