@@ -611,3 +611,80 @@ describe("a reply !… reads the same everywhere a booth sees it", () => {
     expect(bodies).toEqual(["Server room breach."]);
   });
 });
+
+describe("PrimeView.paused and PrimeView.host (integration)", () => {
+  it("a booth's view says paused while the story clock is stopped, as a guest's does", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    const booth = (await boothLogin(rt, "Norton")).json.token as string;
+    const prime = async () => (await get(rt, `/api/state?role=prime&token=${booth}`)).json;
+    const guest = async () => (await get(rt, `/api/state?role=guest&token=${g.token}`)).json;
+    expect("paused" in (await prime())).toBe(false);
+    expect("paused" in (await guest())).toBe(false);
+    rt.pause();
+    expect((await prime()).paused).toBe(true);
+    expect((await guest()).paused).toBe(true);
+    // The live stream's snapshot carries it too.
+    const s = primeStream(rt, booth);
+    await s.open;
+    const snap = s.events("snapshot").at(-1) as Record<string, unknown>;
+    expect(snap.paused).toBe(true);
+    rt.openDoors();
+    expect("paused" in (await prime())).toBe(false);
+  });
+
+  const PATCHED = STORY.replace("== Opening", "INTERACTION patch\n  who: performer\n  by: Norton\n\n== Opening").replace("buttons: scan, mark", "buttons: scan, mark, patch");
+  it("a host part's booth says host; the editor's lens (?as=) of it is exact, a plain part's carries no host", async () => {
+    const rt = freshRuntime({ scenarioSource: PATCHED });
+    rt.openDoors();
+    const host = await hostToken(rt);
+    const own = (await get(rt, `/api/state?role=prime&token=${host}`)).json as { host?: boolean; objectives: Array<{ id: string; buttons: string[] }> };
+    expect(own.host).toBe(true);
+    expect(own.objectives.find((o) => o.id === "Watch The Door")!.buttons).toContain("patch");
+    const lens = (await get(rt, `/api/state?role=prime&as=${encodeURIComponent("Task Manager")}`, true)).json as typeof own;
+    expect(lens.host).toBe(true);
+    expect(lens.objectives).toEqual(own.objectives);
+    // Clippy (a Host by faction, not an admin part): no host, no other character's button.
+    const clippy = (await get(rt, "/api/state?role=prime&as=Clippy", true)).json as typeof own;
+    expect("host" in clippy).toBe(false);
+    expect(clippy.objectives.find((o) => o.id === "Watch The Door")!.buttons).not.toContain("patch");
+    const plain = (await boothLogin(rt, "Clippy")).json.token as string;
+    expect("host" in (await get(rt, `/api/state?role=prime&token=${plain}`)).json).toBe(false);
+  });
+});
+
+describe("who pressed LAST (CueState.lastName)", () => {
+  it("names the host part, the author, or nobody for the story; a restart names the same", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-w13-"));
+    dirs.push(d);
+    const rt = freshRuntime({}, d);
+    rt.openDoors();
+    const host = await hostToken(rt);
+    const cues = async (r: EventRuntime) => ((await get(r, "/api/state?role=mod&host=1", true)).json as { cues: Record<string, unknown> }).cues;
+    expect("lastName" in (await cues(rt))).toBe(false);
+    expect((await post(rt, "/api/mod/signal", { token: host, name: "open the doors" })).status).toBe(200);
+    expect(await cues(rt)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Task Manager" });
+    // An author's press names the author (the session's display name).
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "open the doors" }, { moderator: true, moderatorName: "Ada" })).status).toBe(200);
+    expect(await cues(rt)).toMatchObject({ lastBy: "director", lastName: "Ada" });
+    // The plain mod view carries it too.
+    expect(((await get(rt, "/api/state?role=mod", true)).json as { cues: Record<string, unknown> }).cues.lastName).toBe("Ada");
+    const rt2 = freshRuntime({}, d);
+    rt2.restore();
+    expect(await cues(rt2)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Ada" });
+  });
+
+  it("pressedByName strips the booth and agent prefixes; a story fire carries no name", async () => {
+    const { pressedByName, cueState } = await import("../server/views.ts");
+    expect(pressedByName("Booth · Task Manager")).toBe("Task Manager");
+    expect(pressedByName("agent:Trabolta")).toBe("Trabolta");
+    expect(pressedByName("Terminal · Server Door")).toBe("Terminal · Server Door");
+    const AUTO = STORY.replace("== Opening\n  setting: Hall\nHello.\n", "INTERACTION auto_doors\n  who: admin\n\n== Opening\n  setting: Hall\nHello.\nfire auto_doors\n");
+    const rt = freshRuntime({ scenarioSource: AUTO });
+    rt.openDoors();
+    const state = cueState((rt as unknown as { sim: import("../src/runtime/sim/index.ts").Sim }).sim);
+    expect(state).toMatchObject({ last: "auto_doors", lastBy: "story" });
+    expect("lastName" in state).toBe(false);
+  });
+});

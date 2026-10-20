@@ -6,7 +6,7 @@ import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import { asNumber, display, type Value } from "../src/runtime/expr.ts";
 import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
 import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
-import { codexAboutKind, type ChatMessage } from "./chat.ts";
+import { codexAboutKind, storyPhase, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
 import { isSecretRoleSlot } from "../src/runtime/sim/board.ts";
 import type { AgentMindReport, AgentQueue } from "./agents.ts";
@@ -689,6 +689,13 @@ export interface CueState {
   /** Who fired it: a director (`signal`) or the story itself (`fire`, the
    *  "auto at 15 min" cues). */
   lastBy: "director" | "story" | null;
+  /** Who pressed LAST, by name, when a director press moved it and the
+   *  runtime noted who (`notePress`'s `by`, the journal's): a host booth's
+   *  part (`Booth · Task Manager` → "Task Manager"), an author's name, a
+   *  device's label, a headless mod token's "Director". Absent when the
+   *  story fired LAST, or nobody was named (a bare `Sim`, the editor's
+   *  in-browser rehearsal). Display only. */
+  lastName?: string;
   /** Every admin cue that has fired at least once, in first-fire order. */
   fired: string[];
   /** How many admin-cue presses the story took tonight (by a director, a
@@ -725,8 +732,24 @@ interface CueScan {
  *  to land after it before the next director snapshot (T7-01). */
 const pressEnds = new WeakMap<object, Map<number, number>>();
 
-/** Record a `Sim.signal` batch just returned (`out = sim.signal(…)`). */
-export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
+/** Who made each noted press, per log: the press's start index → the
+ *  display name (`pressedByName`). Fed by `notePress`'s `by`. */
+const pressBys = new WeakMap<object, Map<number, string>>();
+
+/** The journal's `by` as the host dock names a presser: a booth's part
+ *  without its `Booth · ` prefix, an agent without `agent:`, else as is. */
+export function pressedByName(by: string): string {
+  const t = by.trim();
+  if (t.startsWith("Booth · ")) return t.slice("Booth · ".length).trim();
+  if (t.startsWith("agent:")) return t.slice("agent:".length).trim();
+  return t;
+}
+
+/** Record a `Sim.signal` batch just returned (`out = sim.signal(…)`), and
+ *  who pressed it (`by`, the journal line's) when known — the event runtime
+ *  passes the same `by` live and on `restore()`, so `CueState.lastName`
+ *  reads the same after a restart. */
+export function notePress(sim: Sim, batch: readonly SimEvent[], by?: string | null): void {
   if (batch.length === 0) return;
   const end = sim.log.len();
   let ends = pressEnds.get(sim.log);
@@ -735,6 +758,15 @@ export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
     pressEnds.set(sim.log, ends);
   }
   ends.set(end - batch.length, end);
+  const name = typeof by === "string" ? pressedByName(by) : "";
+  if (name !== "") {
+    let bys = pressBys.get(sim.log);
+    if (bys === undefined) {
+      bys = new Map();
+      pressBys.set(sim.log, bys);
+    }
+    bys.set(end - batch.length, name);
+  }
 }
 
 /** Was the press `batch` (a `Sim.signal` call just committed and noted)
@@ -887,6 +919,9 @@ export function cueState(sim: Sim): CueState {
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;
+        const name = by === "director" ? pressBys.get(sim.log)?.get(n) : undefined;
+        if (name !== undefined) state.lastName = name;
+        else delete state.lastName;
         scan.lastOrder = cue.order;
         moved = lastWas !== id;
       }
@@ -899,7 +934,7 @@ export function cueState(sim: Sim): CueState {
     scan.pressLog.push({ id, moved });
   }
   scan.at = events.length;
-  return { last: state.last, lastBy: state.lastBy, fired: [...state.fired], presses: state.presses, pressed: state.pressed };
+  return { last: state.last, lastBy: state.lastBy, ...(state.lastName !== undefined ? { lastName: state.lastName } : {}), fired: [...state.fired], presses: state.presses, pressed: state.pressed };
 }
 
 /**
@@ -1387,7 +1422,8 @@ export function nightView(sim: Sim): NightView {
     }
     const step = worldText(sim, "Night.step");
     const n = step === null ? NaN : Number(step);
-    return { act, phase: worldText(sim, "Night.phase"), step: Number.isFinite(n) ? n : null };
+    // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
+    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null };
   });
 }
 
@@ -1598,6 +1634,15 @@ export interface PrimeView {
    *  existing `staffRoomIds` returns *folded names*, `"hosts"`, for scope
    *  matching; it stays as is.) Always filled ([] when none). */
   staffRooms?: string[];
+  /** The story clock is stopped (the event is paused, or its doors have not
+   *  opened): `clock` holds still, so the booth's countdowns must not tick
+   *  on — `GuestView.paused`'s rule. Set by the runtime; absent while the
+   *  clock runs (and from a local sim). */
+  paused?: true;
+  /** The booth holds the host capability (its part is `admin: true`, or the
+   *  sign-in holds the moderator passcode): it keeps another character's
+   *  `by:` buttons on its objectives and may press them. Absent otherwise. */
+  host?: true;
 }
 
 export interface AgentContact {
@@ -1662,5 +1707,6 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     alertLevel: alertLevelNow(sim),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     staffRooms: staffRoomChannels(sim.model),
+    ...(opts?.host === true ? { host: true as const } : {}),
   };
 }

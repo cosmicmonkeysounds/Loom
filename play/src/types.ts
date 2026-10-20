@@ -101,6 +101,11 @@ export interface ChatMessage {
   about?: string;
   /** The server's moment class; absent = not a moment. */
   moment?: MomentClass;
+  /** The story's `Night.phase` when the server composed this message (null
+   *  = set to nothing). Only on what can be a moment, and only once the
+   *  story has a phase; absent → the moments layer uses the phase it knows
+   *  now (`moments/model.ts` `phaseOf`). */
+  phase?: string | null;
 }
 
 // --- per-role snapshots (mirror of server/views.ts) -------------------------
@@ -301,6 +306,12 @@ export interface PrimeView {
   countdowns?: CountdownSummary[];
   /** Staff-room channel ids as authored (`room:hosts`), wave 13. */
   staffRooms?: string[];
+  /** The story clock is stopped (paused, or the doors not yet open): the
+   *  booth's countdowns hold still (`booth/model.ts` `viewPaused`). */
+  paused?: true;
+  /** The booth holds the host capability (an `admin: true` part, or the
+   *  moderator passcode): it may press another character's `by:` button. */
+  host?: true;
 }
 
 // --- wave 13: objectives, the night, a booth's guest card (mirror of server/views.ts)

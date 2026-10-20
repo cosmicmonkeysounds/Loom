@@ -28,6 +28,7 @@
 import type { Sim, SimEvent, WalletCard } from "../src/runtime/sim/index.ts";
 import { walletLine } from "./wallet.ts";
 import { isEffectManner, noticeKey, splitNotice, type MomentClass } from "../src/delivery.ts";
+import { display } from "../src/runtime/expr.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
 // `private` come from authored SPACE/CHANNEL declarations. `location` is the
@@ -144,6 +145,15 @@ export interface ChatMessage {
   about?: string;
   /** The server's moment class (§2.3 rules); absent = not a moment. */
   moment?: MomentClass;
+  /** The story's `Night.phase` when this message was composed (after the
+   *  batch that posted it; `null` = the path is declared but unset) — the
+   *  moments layer's staleness rule ("the phase moved on since it arrived")
+   *  judges a reconnect's backlog by it (`play/src/moments/model.ts`
+   *  `phaseOf`). Only on what can be a moment (`phaseStamped`: alerts,
+   *  takeover pins, readouts, quest steps, cards, a beat's lines), and only
+   *  once the story's world holds a value there. A pure function of the replayed
+   *  history, so a restart stamps the same value. */
+  phase?: string | null;
 }
 
 /** A message before the store assigns it a `seq` + resolves `hidden`. A
@@ -414,6 +424,32 @@ function storyChannel(sim: Sim, setting: string | null | undefined): ChannelHead
 }
 
 // --- composition ------------------------------------------------------------
+
+/** The world path the moment stamp reads (`NightView.phase`'s). */
+export const PHASE_PATH = "Night.phase";
+
+/** `Night.phase` now, as `NightView.phase` reads it (quotes stripped,
+ *  `""` / `null` → null); `undefined` while the world holds no value there
+ *  (a story without a `Night.phase`, or before its first `set`): nothing
+ *  is stamped then, and the client falls back to the phase it knows. */
+export function storyPhase(sim: Sim): string | null | undefined {
+  const v = sim.world.peek(PHASE_PATH);
+  if (v === null) return undefined;
+  if (v.kind === "null") return null;
+  const t = display(v).replace(/^"(.*)"$/su, "$1").trim();
+  return t === "" || t === "null" ? null : t;
+}
+
+/** Can the moments layer treat this message as a moment (or replay it after
+ *  a wake)? Alerts, takeover pins, readouts, quest steps, cards, anything
+ *  the server classed (`moment`), and a beat's scripted lines (the blue
+ *  screen). Typed chat, notices and system rows never are. */
+export function phaseStamped(d: DraftMessage): boolean {
+  if (d.ambient === true) return false;
+  if (d.moment !== undefined || d.alert === true || d.takeover === true || d.readout === true) return true;
+  if (d.kind === "quest" || d.kind === "widget") return true;
+  return (d.kind === "line" || d.kind === "narration") && typeof d.beat === "string" && d.beat !== "";
+}
 
 const sameAudience = (a: Audience, b: Audience): boolean =>
   a === "all" || b === "all" ? a === b : a.length === b.length && a.every((p, i) => p === b[i]);
@@ -758,6 +794,10 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         break;
     }
   }
+  // The phase stamp: the world after the whole batch, so an alert and the
+  // `set Night.phase = …` of the beat that sent it read the new phase.
+  const phase = out.length > 0 ? storyPhase(sim) : undefined;
+  if (phase !== undefined) for (const d of out) if (phaseStamped(d)) d.phase = phase;
   return out;
 }
 

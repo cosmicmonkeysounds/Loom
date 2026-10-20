@@ -983,7 +983,15 @@ export class EventRuntime {
    *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
-    return { ...primeView(this.sim, character, online, { host }), answered: this.answeredFor(character), avatars, ...(queue !== null ? { wallet: queue } : {}) };
+    return {
+      ...primeView(this.sim, character, online, { host }),
+      answered: this.answeredFor(character),
+      avatars,
+      ...(queue !== null ? { wallet: queue } : {}),
+      // The story clock is stopped: the booth's tray holds its countdowns
+      // still (the same rule as a guest's strip, `guestViewFor`).
+      ...(this.phase !== "open" ? { paused: true as const } : {}),
+    };
   }
 
   /** The operator's god view, with everyone's profile pictures. */
@@ -2892,7 +2900,7 @@ export class EventRuntime {
     this.store.appendCommand(m, args, this.actingBy);
     this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy), factsRuling(m, args, this.actingBy));
     const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
-    if (m === "signal") notePress(this.sim!, out); // the cue sheet judges a press by its own events
+    if (m === "signal") notePress(this.sim!, out, this.actingBy); // the cue sheet judges a press by its own events (and names who made it)
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
     return out;
   }
@@ -3409,7 +3417,7 @@ export class EventRuntime {
           this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by), factsRuling(e.m, e.a, e.by));
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
-          if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[]); // as `commit` did live
+          if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[], e.by); // as `commit` did live
           if (e.m === "signal") {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
@@ -3668,7 +3676,11 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown character" });
             return true;
           }
-          sendJson(res, 200, this.primeViewFor(as, new Set(this.agents.onlineCharacters())));
+          // A host part (`admin: true`) is a host booth, as its live
+          // stream's snapshot is (`snapshotFor`): the lens shows exactly
+          // the objective buttons that phone shows.
+          const host = this.reqSim().model.characters.get(as)?.admin === true;
+          sendJson(res, 200, this.primeViewFor(as, new Set(this.agents.onlineCharacters()), undefined, host));
           return true;
         }
       }
@@ -5314,6 +5326,9 @@ export class EventRuntime {
         return true;
       }
       case "/api/mod/signal": {
+        // Decided (wave 13, no change): no `by:` check here — a moderator is
+        // full admin and may fire any INTERACTION as anyone (`/api/prime/act`
+        // is where `by:` is enforced, for booths).
         if (this.sim === null) {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;

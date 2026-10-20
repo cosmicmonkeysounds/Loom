@@ -48,6 +48,10 @@ export interface CueMarks {
   last: string | null;
   /** Who fired `last` (`director` / `story`) — not read here. */
   lastBy?: string | null;
+  /** Who pressed `last`, by name (a host part, a director, a device), when
+   *  the server knows — the host dock's LAST line. Absent from an older
+   *  server and when the story fired it. Not read here. */
+  lastName?: string;
   fired: string[];
   /** How many presses the story has taken tonight (any admin cue, by a
    *  director, a device or the story; a refused press never counts). A

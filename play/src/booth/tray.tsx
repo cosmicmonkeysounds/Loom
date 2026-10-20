@@ -3,7 +3,7 @@
 //! the soonest countdown, and the moments layer's missed count.
 //! (The chrome lane's `CountdownTray` is the guest's clock; integration may
 //! swap it in here once it lands.) A view with `paused: true` stops the
-//! countdown and reads ⏸ — `PrimeView` does not carry it yet (integration).
+//! countdown and reads ⏸ (`PrimeView.paused`, set while the story clock is stopped).
 
 import { useEffect, useRef, useState } from "react";
 import { storyNow } from "../director.tsx";
