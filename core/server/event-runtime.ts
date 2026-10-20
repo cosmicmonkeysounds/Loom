@@ -2900,7 +2900,7 @@ export class EventRuntime {
     this.store.appendCommand(m, args, this.actingBy);
     this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy), factsRuling(m, args, this.actingBy));
     const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
-    if (m === "signal") notePress(this.sim!, out); // the cue sheet judges a press by its own events
+    if (m === "signal") notePress(this.sim!, out, this.actingBy); // the cue sheet judges a press by its own events (and names who made it)
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
     return out;
   }
@@ -3417,7 +3417,7 @@ export class EventRuntime {
           this.factsWatch.mark(this.sim!, factsBy(e.m, e.a, e.by), factsRuling(e.m, e.a, e.by));
           const out = (fn as (...a: unknown[]) => unknown).apply(this.sim, e.a);
           events++;
-          if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[]); // as `commit` did live
+          if (e.m === "signal" && Array.isArray(out)) notePress(this.sim!, out as SimEvent[], e.by); // as `commit` did live
           if (e.m === "signal") {
             // A widget answer — `signal(<kind> answered, guest, {…, card: seq})`.
             const card = (e.a[2] as { card?: unknown } | null | undefined)?.card;
@@ -5326,6 +5326,9 @@ export class EventRuntime {
         return true;
       }
       case "/api/mod/signal": {
+        // Decided (wave 13, no change): no `by:` check here — a moderator is
+        // full admin and may fire any INTERACTION as anyone (`/api/prime/act`
+        // is where `by:` is enforced, for booths).
         if (this.sim === null) {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;

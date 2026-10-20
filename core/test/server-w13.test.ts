@@ -653,3 +653,38 @@ describe("PrimeView.paused and PrimeView.host (integration)", () => {
     expect("host" in (await get(rt, `/api/state?role=prime&token=${plain}`)).json).toBe(false);
   });
 });
+
+describe("who pressed LAST (CueState.lastName)", () => {
+  it("names the host part, the author, or nobody for the story; a restart names the same", async () => {
+    const d = mkdtempSync(join(tmpdir(), "loom-w13-"));
+    dirs.push(d);
+    const rt = freshRuntime({}, d);
+    rt.openDoors();
+    const host = await hostToken(rt);
+    const cues = async (r: EventRuntime) => ((await get(r, "/api/state?role=mod&host=1", true)).json as { cues: Record<string, unknown> }).cues;
+    expect("lastName" in (await cues(rt))).toBe(false);
+    expect((await post(rt, "/api/mod/signal", { token: host, name: "open the doors" })).status).toBe(200);
+    expect(await cues(rt)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Task Manager" });
+    // An author's press names the author (the session's display name).
+    expect((await call(rt, "POST", "/api/mod/signal", { name: "open the doors" }, { moderator: true, moderatorName: "Ada" })).status).toBe(200);
+    expect(await cues(rt)).toMatchObject({ lastBy: "director", lastName: "Ada" });
+    // The plain mod view carries it too.
+    expect(((await get(rt, "/api/state?role=mod", true)).json as { cues: Record<string, unknown> }).cues.lastName).toBe("Ada");
+    const rt2 = freshRuntime({}, d);
+    rt2.restore();
+    expect(await cues(rt2)).toMatchObject({ last: "open the doors", lastBy: "director", lastName: "Ada" });
+  });
+
+  it("pressedByName strips the booth and agent prefixes; a story fire carries no name", async () => {
+    const { pressedByName, cueState } = await import("../server/views.ts");
+    expect(pressedByName("Booth · Task Manager")).toBe("Task Manager");
+    expect(pressedByName("agent:Trabolta")).toBe("Trabolta");
+    expect(pressedByName("Terminal · Server Door")).toBe("Terminal · Server Door");
+    const AUTO = STORY.replace("== Opening\n  setting: Hall\nHello.\n", "INTERACTION auto_doors\n  who: admin\n\n== Opening\n  setting: Hall\nHello.\nfire auto_doors\n");
+    const rt = freshRuntime({ scenarioSource: AUTO });
+    rt.openDoors();
+    const state = cueState((rt as unknown as { sim: import("../src/runtime/sim/index.ts").Sim }).sim);
+    expect(state).toMatchObject({ last: "auto_doors", lastBy: "story" });
+    expect("lastName" in state).toBe(false);
+  });
+});
