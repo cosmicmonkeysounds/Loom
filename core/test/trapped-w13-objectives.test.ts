@@ -845,4 +845,21 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     expect(door.map((o) => o.id)).toEqual(["Hold The Door"]);
     expect(door[0]!.buttons).toEqual(["scan"]);
   });
+
+  it("an Antivirus scan of a marked program says they are marked and where to go, never 'no threats found' (Q30)", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    n.signal("uncertain_answer", "g5", undefined, "Clippy");
+    expect(v(n.sim, "g5.marked")).toBe(true);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus"]) {
+      const out = n.scan(who, "g5");
+      const said = forGuest(out, "g5").filter((m) => m.channel === `dm:${who}`).map((m) => m.text);
+      expect(said.join("\n"), who).not.toMatch(/no threats found|Scanning\. Scanning\.|definitions are out of date/u);
+      expect(said.some((t) => t.includes("you are marked for reinstallation") && t.includes("the Internet")), who).toBe(true);
+      expect(replyTo(out, who).some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("🛡")), who).toBe(true);
+    }
+    // An unmarked, cleared program still gets the old patter.
+    const ok = n.scan("Norton Anti-Virus", "g1");
+    expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
+  }, SLOW);
 });

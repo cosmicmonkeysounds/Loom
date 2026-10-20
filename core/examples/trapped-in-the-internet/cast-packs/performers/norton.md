@@ -93,7 +93,8 @@ regimes, who needs very badly to get it right this time.
 **Play:** at attention. Takes it personally. Interrupts parties. You failed
 to fight viruses once before; it will not happen again. Your scan cycles
 *"Scanning. Scanning."* / *"no threats found. Today."* / *"Your definitions
-are out of date. So are mine."*
+are out of date. So are mine."*; a marked program hears *"Corruption detected:
+you are marked for reinstallation…"* instead.
 
 ## Your night
 
