@@ -87,9 +87,10 @@ between.
   story's current objective (*Show your pass to an Antivirus*), with
   📍 where you are under it. Tap it for the objective's card: what it
   asks, a checklist that ticks itself as you go, and up to three buttons
-  (your pass, the scanner, or one of the story's own). When something
-  new comes up, the bar flashes and unfolds it. With nothing to do, it
-  shows the story's title. While the show is paused it greys and says
+  (your pass, the scanner, or one of the story's own). When the story
+  marks a new objective as urgent, the bar flashes and unfolds it. With
+  nothing to do, it shows the room you have open, or the story's title.
+  While the show is paused it greys and says
   *(Paused)*. Captured, it turns red; restricted, ochre; either adds ⛔.
 - **The rooms** in the middle: places, chatrooms and direct messages,
   grouped into sections. They keep a fixed order so the list stops

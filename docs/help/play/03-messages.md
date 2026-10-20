@@ -33,8 +33,9 @@ out, fast: at most 0.7 seconds a line, and a burst that would take more
 than a second and a half shows the rest at once. Everything else is simply there:
 what you missed while you were elsewhere, other rooms, a reload, your
 own words and other people's typed chat. **Tap the conversation** to
-finish whatever is still typing. Lines always arrive in order; nothing
-waits behind a slow one.
+finish whatever is still typing. Lines always arrive in order: a
+message that doesn't type out finishes anything still typing ahead of
+it.
 
 **Effect text** performs instead: an alert, a takeover, or a line the
 story marks as a glitch, static or a scream scrambles into place,
