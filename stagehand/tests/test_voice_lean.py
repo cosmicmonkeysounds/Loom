@@ -955,3 +955,11 @@ def test_elsewhere_shows_each_opener_once():
     p3 = render_p3(P, request(), context(said=Said(elsewhere=lines)))
     block = p3.split("Elsewhere tonight you opened with (never open the same way):\n", 1)[1].split("\n\n", 1)[0]
     assert block.split("\n") == ["- Thank you for the…", "- Bring me more."]
+
+
+def test_a_sentence_they_heard_word_for_word_is_cut_from_a_line_that_is_no_repeat():
+    greeting = "Hello, Ada. I am Trabolta. Personal queries are routed to Clippy."
+    hist = [{"seq": 1, "mine": True, "from": "Trabolta", "text": greeting, "story": True}, {"seq": 2, "mine": False, "from": "Ada", "text": "what are you for?"}]
+    model = Model(say("I keep the computer running for the party tonight. Personal queries are routed to Clippy."))
+    reply = run(answer_lean(P, MODEL, request(history=hist, text="what are you for?"), context(said=Said()), model))
+    assert len(model.calls) == 1 and reply.say == "I keep the computer running for the party tonight."

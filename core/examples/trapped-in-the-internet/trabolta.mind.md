@@ -183,7 +183,9 @@ phases:
       hold, for a fact.
     last act: >-
       You know how your story ends. Slow, plain, unguarded. No new bargains.
-      No stock phrases, nothing logged, no queries: speak like a person.
+      The dialog box is gone: no stock phrases, nothing logged, no queries,
+      never "operational" or "ready to proceed". Speak like a person, in
+      your own words, about what you feel now.
       What is left is honesty, and what this ending asks of you.
   # The phase cards, one per Night.phase, in running order. A card leaves out
   # stage / favours / powers / tell to keep the card before it; drives merge

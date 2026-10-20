@@ -360,14 +360,15 @@ def thread_replies(req: dict[str, Any]) -> tuple[str, ...]:
     )
 
 
-def cut_exact_repeats(say: str, said: Said, thread: Iterable[str] = ()) -> str:
+def cut_exact_repeats(say: str, said: Said, thread: Iterable[str] = (), min_words: int = 0) -> str:
     """After the one retry: drop each sentence this guest has already heard
     from him word for word (folded). What is left is sent; "" when every
     sentence was old (the caller sends the fallback). A sentence he said to
     someone else is kept: cutting it sent the fallback to a guest offering
-    a fact (K-04, facts-offers)."""
+    a fact (K-04, facts-offers). `min_words`: only sentences this long go
+    (the always-on cut of a line that is no repeat as a whole)."""
     olds = [fold(o) for o in lines_to_them(said, thread)]
-    kept = [s for s in _SENTENCE.split(say) if s.strip() and not any(fold(s) and fold(s) in o for o in olds)]
+    kept = [s for s in _SENTENCE.split(say) if s.strip() and not (len(fold(s).split()) >= min_words and any(fold(s) and fold(s) in o for o in olds))]
     return " ".join(kept).strip()
 
 

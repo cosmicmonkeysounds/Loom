@@ -802,6 +802,14 @@ async def answer_lean(
             elif cut != final.say:
                 final = replace(final, say=cut)
                 notes.append("repeat: old sentences cut")
+        elif wants is None and opts.repeat_guard and not first.withheld:
+            # Not a repeat as a whole, but a sentence of it they heard word
+            # for word (K-04: "… Personal queries are routed to Clippy." right
+            # under the story's greeting): that sentence goes, the rest stays.
+            cut = cut_exact_repeats(final.say, ctx.said, mine, min_words=4)
+            if cut and cut != final.say:
+                final = replace(final, say=cut)
+                notes.append("old sentence cut")
         final = _scrub(persona, _pooled(persona, final, ctx, req), memo_on, notes)
         await record(kind, trigger, used, completion, final, note=_notes(call_note, notes))
         return _done(persona, final, started, ctx, req)
