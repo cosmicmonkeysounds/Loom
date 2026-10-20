@@ -255,6 +255,15 @@ export interface Queued {
 export interface Summary {
   key: string;
   moments: Moment[];
+  /** `dialog`: the list itself, modal. `sticky`: one bar that opens the list
+   *  on a tap — a booth (never a modal it did not ask for) and a guest below
+   *  `dialog` (the level says the room is calm). */
+  level: "dialog" | "sticky";
+}
+
+/** How a summary shows at a level: the list (modal) only where the viewer's level is modal, else a sticky bar. */
+export function summaryRung(level: AlertLevel, role: Viewer["role"]): Summary["level"] {
+  return isModal(viewerLevel(level, role)) ? "dialog" : "sticky";
 }
 
 export interface MomentsState {
@@ -353,7 +362,7 @@ function replay(s: MomentsState, all: Moment[], level: AlertLevel, role: Viewer[
   if (list.length > REPLAY_MAX) {
     const key = `summary:${list.map((m) => m.key).join(",")}`;
     const merged = s.summary !== null ? [...s.summary.moments, ...list.filter((m) => !s.summary!.moments.some((x) => x.key === m.key))] : list;
-    return { ...s, summary: { key, moments: merged } };
+    return { ...s, summary: { key: s.summary?.key ?? key, moments: merged, level: summaryRung(level, role) } };
   }
   return { ...s, queue: enqueue(s.queue, list, level, role, now) };
 }
@@ -409,8 +418,10 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
           queue.push({ ...q, level });
         }
       }
-      if (!changed) return s;
-      return { ...s, queue, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+      const rung = summaryRung(a.level, a.role);
+      const summary = s.summary !== null && s.summary.level !== rung ? { ...s.summary, level: rung } : s.summary;
+      if (!changed && summary === s.summary) return s;
+      return { ...s, queue, summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "retract": {
       const gone = (m: Moment) => m.seq !== null && a.seqs.has(m.seq);
@@ -429,7 +440,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
   }
 }
 
-/** What is on screen now, per surface. `held` keeps the modal surface (dialog / bsod / summary) off. */
+/** What is on screen now, per surface. `held` keeps the modal surfaces (dialog / bsod / the summary list) off; a sticky summary still shows. */
 export interface Surfaces {
   balloon: Queued | null;
   sticky: Queued | null;
@@ -446,7 +457,8 @@ export function surfacesOf(s: MomentsState, held: boolean): Surfaces {
   const balloon = s.queue.find((q) => q.level === "balloon") ?? null;
   const stickies = s.queue.filter((q) => q.level === "sticky");
   const modals = s.queue.filter((q) => isModal(q.level));
-  const modalOn = !held && s.summary === null;
+  const modalSummary = s.summary !== null && s.summary.level === "dialog";
+  const modalOn = !held && !modalSummary;
   return {
     balloon,
     sticky: stickies[0] ?? null,
@@ -454,14 +466,14 @@ export function surfacesOf(s: MomentsState, held: boolean): Surfaces {
     modal: modalOn ? (modals[0] ?? null) : null,
     modalIndex: s.burst + 1,
     modalTotal: s.burst + modals.length,
-    summary: held ? null : s.summary,
+    summary: held && modalSummary ? null : s.summary,
   };
 }
 
 /** The tray's count: the missed list, plus modal moments a hold has kept back too long. */
 export function missedCount(s: MomentsState, held: boolean, now: number): number {
   const late = held ? s.queue.filter((q) => isModal(q.level) && now - q.queuedAt > HOLD_MISS_MS).length : 0;
-  return s.missed.length + late + (s.summary !== null && held ? s.summary.moments.length : 0);
+  return s.missed.length + late + (s.summary !== null && s.summary.level === "dialog" && held ? s.summary.moments.length : 0);
 }
 
 // --- arrivals from the message map ---------------------------------------------

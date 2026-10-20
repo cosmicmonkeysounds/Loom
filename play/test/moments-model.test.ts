@@ -36,7 +36,7 @@ import {
   type Viewer,
 } from "../src/moments/model.ts";
 import { MomentsLayer, MomentsProvider, type MomentsInput } from "../src/moments/provider.tsx";
-import { Balloon, BlueScreen, MissedList, MomentDialog, StickyBanner } from "../src/moments/surfaces.tsx";
+import { Balloon, BlueScreen, MissedList, MomentDialog, StickyBanner, SummarySticky } from "../src/moments/surfaces.tsx";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../src/types.ts";
 import { readBundledCss } from "./css.ts";
 
@@ -296,6 +296,22 @@ describe("missed moments", () => {
     expect(momentsReducer(s, { type: "closeSummary" }).summary).toBeNull();
   });
 
+  it("a booth never gets the list as a modal: its summary is one sticky bar (C1)", () => {
+    const missed = [1, 2, 3, 4].map((n) => arrive([moment(n, { channel: `dm:${n}` })], { visible: false, role: "booth" }));
+    const s = momentsReducer(run(missed), { type: "wake", level: "bsod", role: "booth", now: 0, phase: "hunt" });
+    expect(s.summary?.level).toBe("sticky");
+    // A sticky summary blocks nothing and shows through a hold (stickies do).
+    expect(surfacesOf(s, true).summary?.level).toBe("sticky");
+    expect(missedCount(s, true, 0)).toBe(0);
+    // A guest below `dialog` gets the bar too; at dialog the list itself.
+    const g = run(missed.map((a) => ({ ...a, role: "guest" as const })));
+    expect(momentsReducer(g, { type: "wake", level: "sticky", role: "guest", now: 0, phase: "hunt" }).summary?.level).toBe("sticky");
+    const d = momentsReducer(g, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
+    expect(d.summary?.level).toBe("dialog");
+    // And the level dial moves it.
+    expect(momentsReducer(d, { type: "relevel", level: "balloon", role: "guest" }).summary?.level).toBe("sticky");
+  });
+
   it("a history batch (a reconnect) gets the same treatment: staleness, and > 3 compress", () => {
     const s = run([arrive([1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` })), { batch: true })]);
     expect(s.summary?.moments).toHaveLength(4);
@@ -500,5 +516,12 @@ describe("the surfaces' markup", () => {
     expect(html).toContain("You missed 2 moments");
     expect(html.match(/moments-missed-row/gu)).toHaveLength(2);
     expect(html.match(/Go ›/gu)).toHaveLength(1);
+  });
+
+  it("the sticky summary: one bar, never a dialog, the list on a tap", () => {
+    const html = renderToStaticMarkup(createElement(SummarySticky, { count: 4, onOpen: noop, onDismiss: noop }));
+    expect(html).toContain("You missed 4 moments");
+    expect(html).toContain('class="moments-sticky minor moments-summary-sticky"');
+    expect(html).not.toContain('role="dialog"');
   });
 });

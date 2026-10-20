@@ -277,6 +277,29 @@ export function MissedList({ moments, canGo, onGo, onClose }: { moments: readonl
   );
 }
 
+/** The summary as a sticky bar (a booth; a guest below `dialog`): "You missed n moments", the list on a tap. */
+export function SummarySticky({ count, onOpen, onDismiss }: { count: number; onOpen: () => void; onDismiss: () => void }) {
+  const caption = `You missed ${count} moments`;
+  return (
+    <div className="moments-sticky minor moments-summary-sticky" role="status">
+      <button type="button" className="moments-sticky-body" onClick={onOpen} aria-label={`${caption}. Tap to see them.`}>
+        <span className="moments-sticky-icon">
+          <MomentIcon kind="info" size={24} />
+        </span>
+        <span className="moments-sticky-words">
+          <span className="moments-sticky-caption">{caption}</span>
+          <span className="moments-sticky-text">Tap to see them.</span>
+        </span>
+      </button>
+      <span className="moments-sticky-actions">
+        <button type="button" className="w95-btn moments-sticky-x" aria-label="Dismiss" onClick={onDismiss}>
+          <span aria-hidden>×</span>
+        </button>
+      </span>
+    </div>
+  );
+}
+
 // --- toast + glitch ----------------------------------------------------------------
 
 /** The quiet feedback toast (✔ Done, a refusal): a status strip, never an alarm. */

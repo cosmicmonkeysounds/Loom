@@ -35,7 +35,7 @@ import {
   type Surfaces,
   type Viewer,
 } from "./model.ts";
-import { Balloon, BlueScreen, Glitch, MissedList, MomentDialog, StickyBanner, Toast } from "./surfaces.tsx";
+import { Balloon, BlueScreen, Glitch, MissedList, MomentDialog, StickyBanner, SummarySticky, Toast } from "./surfaces.tsx";
 
 export interface MomentsInput {
   role: "guest" | "booth";
@@ -338,11 +338,16 @@ export function MomentsProvider(p: MomentsInput & { children: ReactNode }) {
  *  missed list, and the glitch. */
 export function MomentsLayer() {
   const e = useContext(EngineContext);
+  // A sticky summary opens its list on a tap (the one modal a booth sees: it asked).
+  const [openList, setOpenList] = useState<string | null>(null);
   if (e === null) return null;
   const { surfaces: s } = e;
   const modal = s.modal;
+  const summary = s.summary;
+  const listOpen = summary !== null && (summary.level === "dialog" || openList === summary.key);
   return (
     <>
+      {summary !== null && !listOpen && <SummarySticky count={summary.moments.length} onOpen={() => setOpenList(summary.key)} onDismiss={e.closeSummary} />}
       {s.sticky !== null && (
         <StickyBanner
           q={s.sticky}
@@ -399,9 +404,9 @@ export function MomentsLayer() {
           onDismiss={() => e.dismiss(modal)}
         />
       )}
-      {s.summary !== null && (
+      {summary !== null && listOpen && (
         <MissedList
-          moments={s.summary.moments}
+          moments={summary.moments}
           canGo={e.canGo}
           onGo={(m) => {
             e.go(m);
