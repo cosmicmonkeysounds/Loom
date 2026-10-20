@@ -221,8 +221,10 @@ function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) 
   if (c.admin === true) return true;
   if (m.channel.startsWith("pm:")) return false;
   // A host booth also reads guests' threads with an agent-voiced character
-  // (Trabolta), so it can answer as him — never another character's DMs.
-  if (c.host === true && m.channel.startsWith("dm:") && isAgent(m.channel.slice(3))) return true;
+  // (Trabolta), so it can answer as him — never another character's DMs, and
+  // never a row addressed `@<Character>` (another booth's private
+  // `cast:Trabolta` line, a readout): those fall through to the booth rule.
+  if (c.host === true && m.channel.startsWith("dm:") && isAgent(m.channel.slice(3)) && (m.audience === "all" || !m.audience.some((a) => a.startsWith("@")))) return true;
   // The booth's own Quest Log / Codex: cards addressed `@<its character>`
   // (a guest's pinned rooms are their own).
   if (isPinnedRoom(m.channel)) return Array.isArray(m.audience) && m.audience.includes(`@${c.id}`);

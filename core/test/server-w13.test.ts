@@ -513,8 +513,14 @@ describe("the host booth's stream and ?host=1", () => {
     await post(rt, "/api/guest/say", { token: a.token, channel: `pm:${pm}`, text: "psst" });
     const nortonBooth = (await boothLogin(rt, "Norton")).json.token as string;
     await post(rt, "/api/scan", { token: nortonBooth, target: a.id });
+    // Norton's private line to Trabolta (stored as dm:Trabolta, audience @Norton) stays Norton's.
+    expect((await post(rt, "/api/prime/say", { token: nortonBooth, channel: "cast:Trabolta", text: "psst — private to Trabolta" })).status).toBe(200);
+    // The host's own cast line still reaches the host.
+    expect((await post(rt, "/api/prime/say", { token: host, channel: "cast:Trabolta", text: "host to Trabolta" })).status).toBe(200);
     const texts = (st: typeof s) => (st.events("message") as Array<{ text: string; channel: string }>).map((m) => m.text);
     expect(texts(s)).toContain("are you there?");
+    expect(texts(s)).not.toContain("psst — private to Trabolta");
+    expect(texts(s)).toContain("host to Trabolta");
     expect(texts(s)).not.toContain("psst");
     expect(texts(s)).not.toContain("Clean: Winamp.");
     expect(texts(plain)).not.toContain("are you there?");
