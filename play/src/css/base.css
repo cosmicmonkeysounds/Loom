@@ -195,8 +195,10 @@ body {
 .chrow.active, .chrow.active:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
 .chrow.active .chrow-sub, .chrow.active .chrow-title, .chrow.active .chrow-occ { color: var(--white); }
 .chrow:active { background: var(--navy-2); }
-.chrow.quiet { opacity: 0.55; }
-.chrow.quiet:hover, .chrow.quiet.active { opacity: 1; }
+/* a quiet row (the "Other rooms" fold) reads dimmer, but its text keeps
+   4.5:1: an opacity of 0.55 took the green "empty" to 2.3:1 on white */
+.chrow.quiet:not(.active) .chrow-title, .chrow.quiet:not(.active) .chrow-sub, .chrow.quiet:not(.active) .chrow-occ { color: var(--dim-ink); }
+.chrow.quiet:not(.active) .avatar, .chrow.quiet:not(.active) .pavatar { opacity: 0.55; }
 .chrow-body { flex: 1; min-width: 0; }
 .chrow-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .chrow-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

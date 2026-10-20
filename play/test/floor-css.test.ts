@@ -74,6 +74,11 @@ describe("the 44 px floor on the shared primitives", () => {
     expect(hit.h).toBeGreaterThanOrEqual(44);
   });
 
+  it("the full-screen pass's × is a whole 44 × 44 box (it sits on the screen's corner)", () => {
+    const x = decls(".fullpass-bar .w95-x");
+    expect([px(x["min-width"]), px(x["min-height"])]).toEqual([44, 44]);
+  });
+
   it("a tray button is 44 wide and reaches 44 tall", () => {
     const t = decls("button.tray-item");
     expect(px(t["min-width"])).toBe(44);
@@ -178,5 +183,15 @@ describe("the NOW title bar's contrast (≥ 4.5:1 for every line, the whole widt
     expect(b!).toBeGreaterThan(r! + 100); // blue
     expect(b!).toBeGreaterThan(g!);
     expect(contrast("#dfe7ff", hex(':root[data-theme="aol97"]', "--navy-2"))).toBeLessThan(4.5);
+  });
+});
+
+describe("quiet room rows keep their text readable", () => {
+  it("dim the text with --dim-ink (≥ 4.5:1 on the white list in both themes), never with opacity", () => {
+    expect(decls(".chrow.quiet")["opacity"]).toBeUndefined();
+    expect(decls(".chrow.quiet:not(.active) .chrow-occ")["color"]).toBe("var(--dim-ink)");
+    for (const scope of [":root", ':root[data-theme="aol97"]'] as const) {
+      expect(contrast(hex(scope, "--dim-ink"), hex(scope, "--white")), scope).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
