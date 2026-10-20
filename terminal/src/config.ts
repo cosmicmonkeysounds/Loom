@@ -103,8 +103,8 @@ export interface TerminalConfig {
   fromMap?: boolean;
 }
 
-export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino" | "plan";
-export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino", "plan"];
+export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"];
 
 /** ⚙'s one line per view. */
 export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
@@ -116,7 +116,6 @@ export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
   chess: "chess — the King at the server-room door, no hints",
   casino: "casino — scan a pass, bet Truthcoin on the coin, the dice and the slots",
   shadow: "shadow — this camera full screen, the players as ghosts in it, no scanner",
-  plan: "the simulation as a 2D live floor plan, always (face while piloting; what a screen with no WebGL2 draws anyway)",
 };
 
 export const VOICE_CHOICES: readonly VoiceChoice[] = ["browser", "fully", "silent", "server"];

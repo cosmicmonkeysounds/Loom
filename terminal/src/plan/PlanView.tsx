@@ -1,5 +1,5 @@
 //! The live plan (wave 15): the reinstallation drawn top-down in Canvas 2D,
-//! for a tablet that has no WebGL2 (and for `view=plan` on any screen). Fed
+//! for a tablet that has no WebGL2, wherever it would draw the world. Fed
 //! by the same spatial stream as the world view (`world/stream.ts` +
 //! `world/state.ts`), drawn with plain `@loom/house` maths (`plan.ts`) — no
 //! three.js, so it runs on Chrome 87 / Safari 14 / the old Android tablets.

@@ -83,7 +83,7 @@ const loadWorld = retryable(() => import("./world/WorldView.tsx").then((m) => ({
 // The shadow view (wave 14) is three.js too, in its own small chunk.
 const loadShadow = retryable(() => import("./shadow/ShadowView.tsx").then((m) => ({ default: m.ShadowView })));
 // The live plan (wave 15): the simulation in Canvas 2D, no three.js — what a
-// tablet with no WebGL2 draws (and `view=plan` anywhere).
+// tablet with no WebGL2 draws wherever it would have drawn the world.
 const loadPlan = retryable(() => import("./plan/PlanView.tsx").then((m) => ({ default: m.PlanView })));
 const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) => ({ default: m.ChessTerminal })));
 // The casino's tables (wave 15): only the casino terminal loads them.
@@ -137,8 +137,8 @@ export function App() {
   const webgl2 = hasWebGL2();
   const view = config?.view;
   useEffect(() => {
-    if (webgl2 && view !== undefined && view !== "face" && view !== "chess" && view !== "casino" && view !== "plan") void loadWorld().catch(() => {});
-    if (view !== undefined && view !== "face" && view !== "tv" && view !== "chess" && view !== "casino" && (view === "plan" || !webgl2)) void loadPlan().catch(() => {});
+    if (webgl2 && view !== undefined && view !== "face" && view !== "chess" && view !== "casino") void loadWorld().catch(() => {});
+    if (!webgl2 && view !== undefined && view !== "face" && view !== "tv" && view !== "chess" && view !== "casino") void loadPlan().catch(() => {});
     if (webgl2 && (view === "shadow" || view === "auto")) void loadShadow().catch(() => {});
     if (view === "chess") void loadChess().catch(() => {});
     if (view === "casino") void loadCasino().catch(() => {});

@@ -32,11 +32,9 @@ describe("probeWebGL2", () => {
 });
 
 describe("simRenderer", () => {
-  it("draws the world with WebGL2, the live plan without it or when set to plan", () => {
-    expect(simRenderer("world", true)).toBe("world");
-    expect(simRenderer("auto", true)).toBe("world");
-    expect(simRenderer("plan", true)).toBe("plan");
-    for (const v of ["auto", "world", "mirror", "shadow", "plan"] as const) expect(simRenderer(v, false)).toBe("plan");
+  it("draws the world with WebGL2, the live plan without it", () => {
+    expect(simRenderer(true)).toBe("world");
+    expect(simRenderer(false)).toBe("plan");
   });
 });
 
@@ -56,8 +54,7 @@ describe("paneSimulation", () => {
     expect(paneSimulation("auto", false, true, true)).toBe("plan");
   });
 
-  it("`plan` forces the 2D view on any device; face and the other views show nothing over the face", () => {
-    expect(paneSimulation("plan", true, false, true)).toBe("plan");
+  it("face and the other views show nothing over the face", () => {
     for (const v of ["face", "tv", "chess", "casino", "mirror", "shadow"] as const) expect(paneSimulation(v, false, true, true)).toBe("none");
   });
 });

@@ -462,7 +462,7 @@ Two settings, on the setup screen or in the provisioning link:
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
 | `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. The `chess` view ignores it. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). `casino`: the upstairs casino (*The casino*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. `plan`: the 2D **live plan** always (below). A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) never loads three.js: wherever it would draw the world (`auto` while someone plays, `world`, `mirror`, `shadow`) it draws the live plan instead — never the *SIMULATION UNAVAILABLE* retry loop. The TV, chess, casino and face views are unchanged. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). `casino`: the upstairs casino (*The casino*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) never loads three.js: wherever it would draw the world (`auto` while someone plays, `world`, `mirror`, `shadow`) it draws the live plan instead — never the *SIMULATION UNAVAILABLE* retry loop. The TV, chess, casino and face views are unchanged. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator: there is no scanner, no chat and no wake tap (it never speaks).
@@ -560,8 +560,9 @@ geometry and the three.js scene live in `house/` (`@loom/house`).
 ## The live plan (no WebGL2)
 
 The reinstallation for a tablet that can't draw the 3D world (Chrome 87 /
-Safari 14 / the old Android tablets with GLES2-only GPUs), and `view=plan`
-on any screen for testing. Same feed as the world view
+Safari 14 / the old Android tablets with GLES2-only GPUs). It
+draws wherever such a tablet would have drawn the world (test it
+on a laptop with Chromium's `--disable-webgl --disable-3d-apis`). Same feed as the world view
 (`world/stream.ts` + `world/state.ts`), drawn in **Canvas 2D** at ≤ 20 fps
 (≤ 2× DPR, stopped while hidden) with plain `@loom/house` maths — its chunk
 (`PlanView-*.js`, ~20 kB) imports only the main bundle, never three.js.

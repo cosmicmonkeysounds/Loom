@@ -37,13 +37,12 @@ export function hasWebGL2(): boolean {
   return cached;
 }
 
-/** What draws the simulation: the three.js world, or the 2D live plan
- *  (`plan/`, Canvas 2D) — on a tablet with no WebGL2, or a terminal set to
- *  `plan`. */
+/** What draws the simulation: the three.js world, or — on a tablet with no
+ *  WebGL2 — the 2D live plan (`plan/`, Canvas 2D). */
 export type SimRenderer = "world" | "plan";
 
-export function simRenderer(view: TerminalView, webgl2: boolean): SimRenderer {
-  return view === "plan" || !webgl2 ? "plan" : "world";
+export function simRenderer(webgl2: boolean): SimRenderer {
+  return webgl2 ? "world" : "plan";
 }
 
 /** What a scanner terminal's face pane shows over the face on the attract
@@ -53,17 +52,17 @@ export type PaneSim = "none" | SimRenderer | "shadow";
 
 /**
  * The pane, for a scanner terminal's `view` (piloting always shows the face
- * — the voice — so the caller asks only on the attract screen): `world` /
- * `plan` always draw the simulation, `auto` only while someone `playing`;
+ * — the voice — so the caller asks only on the attract screen): `world`
+ * always draws the simulation, `auto` only while someone is `playing`;
  * `auto` with a live camera on a placed terminal (`shadowReady`) shows the
  * shadow — which needs WebGL2, so without it the plan. Every other view
  * (face; the TV, chess, casino and the full-screen views route elsewhere)
  * shows nothing over the face.
  */
 export function paneSimulation(view: TerminalView, webgl2: boolean, playing: boolean, shadowReady: boolean): PaneSim {
-  if (view !== "auto" && view !== "world" && view !== "plan") return "none";
+  if (view !== "auto" && view !== "world") return "none";
   if (view === "auto" && !playing) return "none";
-  const r = simRenderer(view, webgl2);
+  const r = simRenderer(webgl2);
   return r === "world" && view === "auto" && shadowReady ? "shadow" : r;
 }
 
