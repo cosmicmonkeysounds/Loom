@@ -630,6 +630,13 @@ func _test_server_link() -> void:
 	sl.begin("g-nobody")
 	tr.answer("/spatial/begin", 404, {"error": "unknown guest"})
 	_check(failed.size() == 1 and sl.get("phase") == "ready", "link: a begin 404 (unknown guest) never re-links")
+	# Wave 16: an unmarked program's refusal reads as such, not "not running".
+	sl.begin("g-free")
+	tr.answer("/spatial/begin", 409, {"error": "not marked for reinstallation"})
+	_check(failed.size() == 2 and str(failed[1]) == "Not marked — an Antivirus marks programs for reinstallation." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
+	sl.begin("g-early")
+	tr.answer("/spatial/begin", 409, {"error": "no scenario loaded"})
+	_check(failed.size() == 3 and str(failed[2]) == "The show isn't running.", "link: any other begin 409 is the show not running")
 	_free_server_link(sl)
 
 	# The claim goes out even when every pose round trip is slow (150 ms).
@@ -1608,7 +1615,9 @@ func _test_main_and_game() -> void:
 	_check(link.candidate_requests >= 1, "game: the lobby asks for candidates")
 
 	# The picker: stick down to Bob, hold right for a second.
-	link.candidates_received.emit([{"id": "g-aaaaaa", "name": "Ada", "captured": true}, {"id": "g-bbbbbb", "name": "Bob", "captured": false}])
+	# An unmarked program (Cal) is never offered (wave 16); Bob is marked.
+	link.candidates_received.emit([{"id": "g-aaaaaa", "name": "Ada", "captured": true}, {"id": "g-cccccc", "name": "Cal", "captured": false, "restricted": false}, {"id": "g-bbbbbb", "name": "Bob", "captured": false, "restricted": true}])
+	_check(game.lobby.picker.items.size() == 2 and str(game.lobby.picker.items[1]["id"]) == "g-bbbbbb", "game: the lobby offers only programs marked for reinstallation")
 	player.left_stick = Vector2(0, -1)
 	game._process(0.016)
 	player.left_stick = Vector2.ZERO

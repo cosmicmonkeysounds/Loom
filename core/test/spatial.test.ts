@@ -528,6 +528,14 @@ async function capturedPersona(rt: EventRuntime, name: string): Promise<string> 
   return id.id;
 }
 
+/** A program an Antivirus marked (restricted, not captured): the tablet may
+ *  begin their reinstallation (wave 16). */
+async function markedPersona(rt: EventRuntime, name: string): Promise<string> {
+  const id = ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
+  expect((await mod(rt, "/api/mod/act", { id, action: "restrict" })).status).toBe(200);
+  return id;
+}
+
 describe("EventRuntime — the spatial plane", () => {
   it("the show's map by default (LOOM_HOUSE, else the example's house.json)", () => {
     if (process.env.LOOM_HOUSE === undefined) expect(defaultHouseFile()).toBe(SHOW_HOUSE_FILE);
@@ -607,10 +615,10 @@ describe("EventRuntime — the spatial plane", () => {
     rt.dispose();
   });
 
-  it("a free program finds Gerald: not released, still learns the duck", async () => {
+  it("a marked (not captured) program finds Gerald: not released, still learns the duck", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
-    const pid = ((await mod(rt, "/api/mod/persona", { name: "Winamp" })).json.guest as { id: string }).id;
+    const pid = await markedPersona(rt, "Winamp");
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
     expect(a.captured).toBe(false);
     await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });
@@ -625,7 +633,7 @@ describe("EventRuntime — the spatial plane", () => {
     expect((await mod(rt, "/api/mod/spatial/begin", { guest: "g-1", world: "web" })).status).toBe(409);
     rt.openDoors();
     expect((await mod(rt, "/api/mod/spatial/begin", { guest: "g-nope", world: "web" })).status).toBe(404);
-    const pid = ((await mod(rt, "/api/mod/persona", { name: "Paint" })).json.guest as { id: string }).id;
+    const pid = await markedPersona(rt, "Paint");
     expect((await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "ps1" })).status).toBe(400);
     const ok = await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "vr" });
     expect(ok.json).toMatchObject({ device: "Ada", world: "vr" });
@@ -735,7 +743,7 @@ describe("EventRuntime — the spatial plane", () => {
   it("a map save that moves a player's duck streams `duck {session, duck}`; the game's map GET agrees", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
-    const pid = ((await mod(rt, "/api/mod/persona", { name: "Paint" })).json.guest as { id: string }).id;
+    const pid = await markedPersona(rt, "Paint");
     const term = spatialStream(rt, "", { moderator: true });
     await term.open;
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
@@ -840,7 +848,7 @@ describe("EventRuntime — the spatial plane", () => {
     const clock = { t: 0 };
     const rt = runtimeAt(freshDir(), clock);
     rt.openDoors();
-    const pid = ((await mod(rt, "/api/mod/persona", { name: "Paint" })).json.guest as { id: string }).id;
+    const pid = await markedPersona(rt, "Paint");
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
     clock.t += POSE_TIMEOUT_MS;
     rt.spatial.sweep();
@@ -920,7 +928,7 @@ describe("EventRuntime — the spatial plane", () => {
       const clock = { t: 0 };
       const rt = runtimeAt(freshDir(), clock);
       rt.openDoors();
-      const pid = ((await mod(rt, "/api/mod/persona", { name: "Paint" })).json.guest as { id: string }).id;
+      const pid = await markedPersona(rt, "Paint");
       const baseline = vi.getTimerCount();
 
       const term = spatialStream(rt, "", { moderator: true });
@@ -997,15 +1005,18 @@ Narrator: The tent.
   };
   const persona = async (rt: EventRuntime, name: string) => ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
 
-  it("is fired (journaled by the device) before `captured` is read: a marked arrival begins captured, an unmarked one doesn't", async () => {
+  it("is fired (journaled by the device) before `captured` is read: a marked arrival begins captured, a forced unmarked one doesn't", async () => {
     const { d, rt } = at(STORY);
     const marked = await persona(rt, "Winamp");
     const free = await persona(rt, "Paint");
     expect((await mod(rt, "/api/mod/signal", { name: "mark", subject: marked })).status).toBe(200);
+    // The story's mark is a story var here; the tablet's gate reads the
+    // restricted flag an Antivirus sets.
+    expect((await mod(rt, "/api/mod/act", { id: marked, action: "restrict" })).status).toBe(200);
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: marked, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
     expect(a.captured).toBe(true);
     expect(rt.liveSim!.isCaptured(marked)).toBe(true);
-    const b = (await mod(rt, "/api/mod/spatial/begin", { guest: free, world: "vr", device: "Tent tablet", station: "vr-1" })).json as unknown as Assignment;
+    const b = (await mod(rt, "/api/mod/spatial/begin", { guest: free, world: "vr", device: "Tent tablet", station: "vr-1", force: true })).json as unknown as Assignment;
     expect(b.captured).toBe(false);
     const begun = new Store(d).readJournal().filter((l) => l.m === "signal" && l.a[0] === REINSTALLATION_BEGUN);
     expect(begun.map((l) => [l.a[1], l.by])).toEqual([
@@ -1025,6 +1036,7 @@ Narrator: The tent.
     const { rt } = at(STORY);
     const marked = await persona(rt, "Winamp");
     await mod(rt, "/api/mod/signal", { name: "mark", subject: marked });
+    await mod(rt, "/api/mod/act", { id: marked, action: "restrict" });
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: marked, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
     expect(a.captured).toBe(true);
     const term = spatialStream(rt, "name=TV", { moderator: true });
@@ -1041,9 +1053,42 @@ Narrator: The tent.
   it("a story that doesn't declare it journals nothing on begin", async () => {
     const { d, rt } = at(STORY.replace(/  when reinstallation begun[\s\S]*?into The Internet\n/u, ""));
     const g = await persona(rt, "Winamp");
+    await mod(rt, "/api/mod/act", { id: g, action: "restrict" });
     const before = new Store(d).readJournal().length;
     expect((await mod(rt, "/api/mod/spatial/begin", { guest: g, world: "web", device: "Tent tablet" })).status).toBe(200);
     expect(new Store(d).readJournal()).toHaveLength(before);
+    rt.dispose();
+  });
+
+  it("the gate (wave 16): an unmarked guest is refused 409 and fires nothing; marked, captured or forced get in; candidates say who is eligible", async () => {
+    const { d, rt } = at(STORY);
+    const free = await persona(rt, "Paint");
+    const restricted = await persona(rt, "Winamp");
+    const captured = await persona(rt, "Zork");
+    const forced = await persona(rt, "Arkanoid");
+    await mod(rt, "/api/mod/act", { id: restricted, action: "restrict" });
+    rt.liveSim!.capture(captured);
+    expect(rt.liveSim!.isCaptured(captured)).toBe(true);
+
+    const cands = (await modGet(rt, "/api/mod/spatial/candidates")).json.players as Array<{ id: string; eligible: boolean }>;
+    const eligible = Object.fromEntries(cands.map((c) => [c.id, c.eligible]));
+    expect(eligible).toEqual({ [free]: false, [restricted]: true, [captured]: true, [forced]: false });
+
+    const before = new Store(d).readJournal().length;
+    const refused = await mod(rt, "/api/mod/spatial/begin", { guest: free, world: "web", device: "Tent tablet" });
+    expect(refused.status).toBe(409);
+    expect(refused.json).toEqual({ error: "not marked for reinstallation" });
+    // Parked for a headset too: the gate is the server's, not the tablet's.
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: free, world: "vr", station: "vr-1", device: "Tent tablet" })).status).toBe(409);
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: free, world: "web", force: "yes" })).status).toBe(409);
+    expect(new Store(d).readJournal()).toHaveLength(before);
+    expect(rt.spatial.players()).toEqual([]);
+
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: restricted, world: "web", device: "Tent tablet" })).status).toBe(200);
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: captured, world: "web", device: "Tent tablet" })).status).toBe(200);
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: forced, world: "web", device: "Tent tablet", force: true })).status).toBe(200);
+    const begun = new Store(d).readJournal().filter((l) => l.m === "signal" && l.a[0] === REINSTALLATION_BEGUN);
+    expect(begun.map((l) => l.a[1])).toEqual([restricted, captured, forced]);
     rt.dispose();
   });
 });

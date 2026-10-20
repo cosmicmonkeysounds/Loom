@@ -37,8 +37,14 @@ No camera, or it won't read your pass? Whoever runs the tent can find you
 by name, or tap you in the list of programs in the Internet. A program
 that is marked but not in the Internet yet has its own list on the
 tablet (*Restricted — marked, or held by a director*), and the tablet
-reads **STATUS: RESTRICTED**: if you were marked, **Play here** starts
-your reinstallation all the same.
+reads **STATUS: RESTRICTED — marked for reinstallation**: **Play here**
+starts your reinstallation all the same.
+
+Only a marked program gets in. Scan a pass that nobody marked and the
+tablet reads **STATUS: healthy — not marked for reinstallation**, with
+*Not marked — an Antivirus marks programs for reinstallation.* and no
+way to play; a headset's lobby never lists an unmarked program either.
+If you want in, find an Antivirus.
 
 ## Moving around
 

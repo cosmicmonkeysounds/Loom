@@ -382,6 +382,8 @@ const AT_KING = { p: [3.9, -2.7, 19.6], yaw: 180 };
 
 async function visitor(rt: EventRuntime, name: string): Promise<{ id: string; a: Assignment }> {
   const id = ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
+  // Marked (restricted): the tablet's begin lets them in (wave 16).
+  await mod(rt, "/api/mod/act", { id, action: "restrict" });
   const a = (await mod(rt, "/api/mod/spatial/begin", { guest: id, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
   return { id, a };
 }
@@ -479,6 +481,7 @@ describe("EventRuntime — the King on the spatial plane", () => {
     expect((await call(rt, "POST", "/api/spatial/king/hit", {}, { token: "nope" })).status).toBe(401);
 
     const other = ((await mod(rt, "/api/mod/persona", { name: "Encarta" })).json.guest as { id: string }).id;
+    await mod(rt, "/api/mod/act", { id: other, action: "restrict" });
     const parked = (await mod(rt, "/api/mod/spatial/begin", { guest: other, world: "vr", station: "quest-1", device: "Quest" })).json as unknown as Assignment;
     const p = await call(rt, "POST", "/api/spatial/king/hit", {}, { token: parked.token });
     expect(p.status).toBe(409);

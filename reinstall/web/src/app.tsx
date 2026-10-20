@@ -18,7 +18,7 @@ import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, postE
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
-import { programStatus, quickPicks, type Program } from "./program.ts";
+import { beginErrorText, NOT_MARKED, programStatus, quickPicks, type Program } from "./program.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { showHouse } from "./show-house.ts";
@@ -278,7 +278,7 @@ function Device({
                 </button>
                 <span className="spacer" />
                 {config.role !== "station" && (
-                  <button className="w98-button default big" onClick={() => void playHere(screen.program)} disabled={!canDraw} autoFocus={canDraw}>
+                  <button className="w98-button default big" onClick={() => void playHere(screen.program)} disabled={!canDraw || !screen.program.eligible} autoFocus={canDraw && screen.program.eligible}>
                     Play here &gt;
                   </button>
                 )}
@@ -303,14 +303,19 @@ function Device({
             {HAS_KING && config.role !== "station" && (
               <p className="king-note">Find Gerald. In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation, and every hit weakens him for everyone.</p>
             )}
-            {!canDraw && config.role !== "station" && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
+            {!screen.program.eligible && (
+              <div className="w98-error not-marked" role="alert">
+                ⚠ {NOT_MARKED}
+              </div>
+            )}
+            {!canDraw && config.role !== "station" && screen.program.eligible && <div className="w98-error">⚠ {NO_WEBGL2}</div>}
             {config.role !== "player" && (
               <fieldset className="w98-group">
                 <legend>Send to a headset</legend>
                 {vr.length === 0 && <div className="muted">No headsets have checked in.</div>}
                 <div className="station-buttons">
                   {vr.map((s) => (
-                    <button key={s.id} className="w98-button station" disabled={!s.online || s.busy !== null} onClick={() => void sendTo(screen.program, s)}>
+                    <button key={s.id} className="w98-button station" disabled={!screen.program.eligible || !s.online || s.busy !== null} onClick={() => void sendTo(screen.program, s)}>
                       <span className={`led${s.online ? " on" : ""}`} />
                       <span>
                         Send to <b>{s.name || s.id}</b>
@@ -357,13 +362,7 @@ function Device({
 }
 
 function beginError(e: unknown): string {
-  if (e instanceof ApiError) {
-    if (e.status === 409) return "The story isn't running yet — start the event first.";
-    if (e.status === 404) return "Unknown program — register on your phone first.";
-    if (e.status === 503) return "The server has no house map.";
-    if (e.status === 401 || e.status === 403) return "This device lost its access — set it up again (⚙).";
-  }
-  return `Couldn't start the simulation — ${(e as Error).message}`;
+  return beginErrorText(e instanceof ApiError ? e.status : null, (e as Error).message);
 }
 
 function IndeterminateBar() {

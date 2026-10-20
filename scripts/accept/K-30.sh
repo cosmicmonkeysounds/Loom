@@ -10,7 +10,8 @@
 # The mod passcode is read from LOOM_MOD_CODE or asked for (never echoed,
 # never written outside the git-ignored reinstall/vr/build/). Before the walk,
 # capture a guest in Run mode (or the tablet) so the find is a *release*;
-# an uncaptured guest still finds Gerald but shows "YOU FOUND GERALD".
+# an uncaptured guest still finds Gerald but shows "YOU FOUND GERALD" (an
+# unmarked one is sent with the director's `force: true`, wave 16).
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VR="$ROOT/reinstall/vr"
@@ -94,9 +95,19 @@ if [ -z "$GUEST" ]; then
   [ -n "$CAPT" ] && ok "captured program to send: $CAPT ($GUEST)" || echo "    (nobody is captured — the find will count, but not as a release; capture one in Run mode to see 'released')"
 fi
 [ -n "$GUEST" ] || { bad "no guests in the event — join one on a phone first"; exit 1; }
+# Wave 16: begin refuses a program neither captured nor marked (409 "not
+# marked for reinstallation"). This is an acceptance check of the headset,
+# not of the gate, so an unmarked pick goes in with the director's `force`.
+api GET "/e/$EVENT/api/mod/spatial/candidates" > "$TMP/cand.json"
+ELIGIBLE="$(json "next((('yes' if p.get('eligible', p['captured'] or p.get('restricted', False)) else 'no') for p in d['players'] if p['id']=='$GUEST'), 'no')" < "$TMP/cand.json")"
+FORCE=""
+if [ "$ELIGIBLE" != "yes" ]; then
+  FORCE=",\"force\":true"
+  echo "    ($GUEST is not marked for reinstallation — sending it with force: true)"
+fi
 curl -sN "$SERVER/e/$EVENT/api/spatial/stream?name=K-30&token=$TOKEN" > "$TMP/stream.txt" 2>/dev/null &
 sleep 1
-api POST "/e/$EVENT/api/mod/spatial/begin" "{\"guest\":\"$GUEST\",\"world\":\"vr\",\"station\":\"$FIRST\",\"device\":\"K-30\"}" >/dev/null \
+api POST "/e/$EVENT/api/mod/spatial/begin" "{\"guest\":\"$GUEST\",\"world\":\"vr\",\"station\":\"$FIRST\",\"device\":\"K-30\"$FORCE}" >/dev/null \
   && ok "sent $GUEST to $FIRST (parked until the headset's first pose)" || bad "begin failed"
 echo "    put on $FIRST (seated, snap turn): the game should start within a second;"
 echo "    follow the golden chevrons to Gerald. Waiting up to 5 min for 'found'…"

@@ -296,6 +296,9 @@ const SPATIAL_BODY_LIMIT = 2048;
  *  when the story declares it (the show captures a marked arrival on it). */
 export const REINSTALLATION_BEGUN = "reinstallation begun";
 
+/** `/api/mod/spatial/begin`'s 409 for a program neither captured nor marked. */
+export const NOT_MARKED = "not marked for reinstallation";
+
 /** The show's house map file: `LOOM_HOUSE`, else the example's `house.json`. */
 export function defaultHouseFile(): string {
   return process.env.LOOM_HOUSE ?? fileURLToPath(new URL("../examples/trapped-in-the-internet/house.json", import.meta.url));
@@ -2913,6 +2916,8 @@ export class EventRuntime {
             name: p.name,
             captured: sim.isCaptured(p.id),
             restricted: sim.isRestricted(p.id),
+            // What `/api/mod/spatial/begin` lets in (without `force`).
+            eligible: sim.isCaptured(p.id) || sim.isRestricted(p.id),
             location: sim.locationOf(p.id),
             avatar: this.avatars.keyFor(p.name),
           })),
@@ -5483,6 +5488,14 @@ export class EventRuntime {
         }
         if (this.spatialHouse() === null) {
           sendJson(res, 503, { error: "no house map" });
+          return true;
+        }
+        // Only a program the story marked for reinstallation (captured, or
+        // marked = restricted) may enter, checked before `reinstallation
+        // begun` fires so an unmarked guest never triggers the story's
+        // capture. `force: true` is a director's override; no device sends it.
+        if (body["force"] !== true && !sim.isCaptured(guest) && !sim.isRestricted(guest)) {
+          sendJson(res, 409, { error: NOT_MARKED });
           return true;
         }
         const station = str(body, "station").trim().slice(0, 60);

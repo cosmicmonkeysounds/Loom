@@ -62,9 +62,13 @@ one, type the program's name instead. Corrupted programs are also offered
 as one-tap picks under *In the Internet now*, and restricted ones (not
 captured yet: marked by the story, or held by a director's Restrict) under
 *Restricted — marked, or held by a director*; the next step shows them as
-**STATUS: RESTRICTED — if marked, Play here begins the reinstallation**
-(Play here captures a marked program; a director's Restrict alone captures
-nobody). With no camera at all the
+**STATUS: RESTRICTED — marked for reinstallation** (Play here captures a
+marked program; a director's Restrict alone captures nobody). **Only a
+captured or restricted program gets in** (wave 16): the server's begin
+answers 409 `not marked for reinstallation` for anyone else, so an unmarked
+program is never a quick pick, and scanned or typed it reads **Program not
+marked** / *Not marked — an Antivirus marks programs for reinstallation.*
+with Play here and the headset buttons disabled. With no camera at all the
 camera box shrinks to a strip and the step says so.
 
 The game needs **WebGL2** (three r186). A browser without it (3D off, an
