@@ -2536,7 +2536,7 @@ describe("Trapped in the Internet — the verdict", () => {
     // first correct one is read; the ending stands).
     const cards = widgets(rt).filter((w) => w.widget === "answer");
     expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
-    expect(cards[0]!.params).toEqual({ thread: "Trabolta", question: "P1", max: "120", button: "Say it" });
+    expect(cards[0]!.params).toEqual({ thread: "Trabolta", question: "P1", max: "120", button: "Say it", moment: "major" }); // wave 13: a card that asks
     expect(composeGuestMessages(sim, rt).find((m) => m.kind === "widget" && m.widget?.kind === "answer")?.channel).toBe("dm:Trabolta");
     const line = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
     expect(v(sim, "Night.line_by")).toBe("VLC");
@@ -3353,7 +3353,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     expect(v(sim, "Night.bottle_picks")).toBe(1);
     const poll = widgets(land).find((w) => w.widget === "poll")!;
     expect(poll.audience).toEqual(["g2"]);
-    expect(poll.params).toEqual({ thread: "Trabolta", options: "Truth | Dare" });
+    expect(poll.params).toEqual({ thread: "Trabolta", options: "Truth | Dare", moment: "major" }); // wave 13: a card that asks
     expect(composeGuestMessages(sim, land).find((m) => m.kind === "widget" && m.widget?.kind === "poll")?.channel).toBe("dm:Trabolta");
     // Open bottle: no second spin, no next results.
     expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first."]);
