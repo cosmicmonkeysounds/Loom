@@ -1,7 +1,7 @@
 //! The guided tour of the app — what a `show tutorial … to guest` card
 //! puts on the screen. A spotlight walks the guest over the real controls
-//! (the rooms list, their card, the Quest Log, the Codex, People, their pass) one step at
-//! a time, with a callout from the story's guide. Every step can be skipped;
+//! (the NOW bar, the rooms list, the Quest Log, the Codex, the taskbar's
+//! Pass / Scan / Start) one step at a time, with a callout from the story's guide. Every step can be skipped;
 //! finishing or skipping answers the card, so the story hears which.
 //!
 //! The steps are the app's own (they describe *this* app), trimmed to the
@@ -32,12 +32,19 @@ export interface TourOptions {
   hasWallet?: boolean;
   /** The story has a people directory. */
   hasPeople: boolean;
-  /** The guest has story buttons on their pass (`INTERACTION … who: guest`). */
+  /** The guest has story buttons (`INTERACTION … who: guest`), in ⊞ Start. */
   hasActions: boolean;
+  /** The story gives the guest objectives (the NOW title bar). */
+  hasObjectives?: boolean;
   /** A story-supplied Bathroom Mode blurb (`with bathroom: "…"`): adds a
-   *  step over the pass, where that button lives. */
+   *  step over ⊞ Start, where that button lives. */
   bathroom?: string | null;
 }
+
+/** Every `data-tour` anchor the guest frame renders (the tour may only
+ *  point at these): the title bar, the room list and its pinned rows, the
+ *  taskbar's Start / Pass / Scan. `test/chrome-tour.test.ts` checks it. */
+export const GUEST_TOUR_ANCHORS = ["now", "rooms", "wallet", "quests", "codex", "start", "pass", "scan"] as const;
 
 /** The tour, step by step, for what this story turns on. */
 export function tutorialSteps(o: TourOptions): TourStep[] {
@@ -48,25 +55,27 @@ export function tutorialSteps(o: TourOptions): TourStep[] {
       title: "This is your window into the night",
       text: `Everything ${o.title} says to you, and every place it takes you, shows up here. Here's how to read it.`,
     },
-    {
-      id: "rooms",
-      target: "rooms",
-      title: "Rooms",
-      text: "Every conversation you can hear is a room: places, chatrooms, and people talking to you. The place you're standing in is first, tagged YOU ARE HERE. New rooms appear as the night opens up.",
-    },
-    {
-      id: "me",
-      target: "me",
-      title: "Your card",
-      text: "Who you are tonight, where the story thinks you are, your score, and the green dot that says you're live.",
-    },
   ];
+  if (o.hasObjectives) {
+    steps.push({
+      id: "now",
+      target: "now",
+      title: "Now",
+      text: "The bar on top says what to do right now. Tap it for the details and a checklist.",
+    });
+  }
+  steps.push({
+    id: "rooms",
+    target: "rooms",
+    title: "Rooms",
+    text: "Every conversation you can hear is a room: places, chatrooms, and people talking to you. The place you're standing in comes first, tagged YOU ARE HERE. Empty rooms wait under Other rooms at the bottom.",
+  });
   if (o.hasWallet) {
     steps.push({
       id: "wallet",
       target: "wallet",
       title: "Your wallet",
-      text: "Your balance lives here. Send coin to another program, ask them for some, or trade a fact you hold for coin. Some transfers wait for an audit.",
+      text: "Your balance lives here and in the corner of the taskbar. Send coin to another program, ask them for some, or trade a fact you hold for coin. Some transfers wait for an audit.",
     });
   }
   if (o.hasQuests) {
@@ -82,31 +91,34 @@ export function tutorialSteps(o: TourOptions): TourStep[] {
       id: "codex",
       target: "codex",
       title: "The Codex",
-      text: "Pinned too: what you know. Type a code from a wall, a puzzle or a person into it to unlock an entry. Knowledge is the currency — share it carefully.",
-    });
-  }
-  if (o.hasPeople) {
-    steps.push({
-      id: "people",
-      target: "people",
-      title: "People",
-      text: "Who's here, and what you know about each of them. Tap a name to message someone privately.",
+      text: "Pinned too: what you know. Scan or type a code from a wall, a puzzle or a person to unlock an entry. Knowledge is the currency — share it carefully.",
     });
   }
   steps.push({
     id: "pass",
     target: "pass",
     title: "Your pass",
-    text: o.hasActions
-      ? "Your QR code — show it to a performer to be scanned. The story's buttons live here too."
-      : "Your QR code — show it to a performer to be scanned.",
+    text: "Your QR code, one tap away on every screen. A performer scans it — hold it up, the screen stays bright.",
   });
-  if (o.bathroom) steps.push({ id: "bathroom", target: "pass", title: "Bathroom Mode", text: o.bathroom });
+  steps.push({
+    id: "scan",
+    target: "scan",
+    title: "Scan",
+    text: "Codes hide on walls, signs and notes. Tap Scan to read one here: it lands in your Codex, or checks you into the room. Never use the phone's own camera app.",
+  });
+  const startBits = [o.hasActions ? "the story's own buttons" : null, o.hasPeople ? "who's here" : null, "help, your picture and settings", "and Leave"].filter((x): x is string => x !== null);
+  steps.push({
+    id: "start",
+    target: "start",
+    title: "Start",
+    text: `Everything else is under Start: ${startBits.join(", ")}.`,
+  });
+  if (o.bathroom) steps.push({ id: "bathroom", target: "start", title: "Bathroom Mode", text: o.bathroom });
   steps.push({
     id: "cards",
     target: null,
     title: "When the story asks",
-    text: "A decision or a card lands right in the conversation. Answer with the buttons (or the number keys). Anything waiting on you jumps to the top of the list.",
+    text: "A decision or a card lands right in the conversation. Answer with the buttons (or the number keys). Anything waiting on you moves up the list.",
   });
   steps.push({ id: "done", target: null, title: "That's it", text: "The story is happening in the room, not just on the screen. When the app says something is happening somewhere — go." });
   return steps;
@@ -190,6 +202,9 @@ export function Tutorial({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i, last, host]);
   const pad = 6;
+  // A target in the lower half (the taskbar's Pass / Scan / Start) gets the
+  // card above it, so the callout never covers what it points at.
+  const above = rect !== null && root.current !== null && rect.top + rect.height / 2 > root.current.getBoundingClientRect().height / 2;
   return (
     <div className="tour" role="dialog" aria-modal aria-label={step.title}>
       {rect ? (
@@ -197,7 +212,7 @@ export function Tutorial({
       ) : (
         <div className="tour-dim" />
       )}
-      <div className={`tour-card ${rect ? "anchored" : "centred"}`}>
+      <div className={`tour-card ${rect ? "anchored" : "centred"}${above ? " above" : ""}`}>
         <div className="tour-guide">
           {guide && (
             <span className="tour-guide-name">

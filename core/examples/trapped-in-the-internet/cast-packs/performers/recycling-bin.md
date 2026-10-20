@@ -24,26 +24,39 @@
 
 | When | Press |
 |---|---|
-| any time | **🎀 Award a ribbon** · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** |
+| any time | **🎀 Award a ribbon** (announced as *from the hosts*: DRAFT, Q28) · **🤝 Vouch for this program** · **🩹 Unmark: not going to the Internet** (on a marked program's card face) |
 | any time | **🖌 Signed the painting** (a program who just signed MS Paint's canvas; once each) |
 | the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** |
 | Grok Prom | **💘 Said "You're the one that I want"** |
 | any time, until 📄 | **♟ They beat the machine** (only if the door terminal could not report it and you **saw** the checkmate) |
 
-**Bathroom Mode:** the 🚻 button on every program's pass. They learn it three
-times: Clippy's tour ends on it (a step over the pass button: *tap 🚻 before
-you leave for Disk Cleanup, tap again when you're back*), the Installation
-Wizard repeats it in the tent, and your own scan greeting tells them to use
-it. Your booth shows *🚻 X is in Bathroom Mode* and *🚻 X is back*. A guest in
-Bathroom Mode is excused from a summons. Remind people to turn it **off** when
-they come out. A **marked** program (grey phone, the 🚨 card) has lost every
+**Bathroom Mode:** the 🚻 button in every program's ⊞ Start menu (the bottom
+taskbar's left corner). They learn it three times: Clippy's tour ends on it (a
+step over ⊞ Start: *open Start and tap 🚻 Bathroom Mode before you leave for
+Disk Cleanup; tap Back from the bathroom in Start when you're back*), the
+Installation Wizard repeats it in the tent, and your own scan greeting tells
+them to use it. Your booth shows *🚻 X is in Bathroom Mode* and *🚻 X is back*.
+A guest in Bathroom Mode is excused from a summons. Remind people to turn it
+**off** when they come out; if one forgets, their row in your console's
+**People** tab has **🚻 End Bathroom Mode**. A **marked** program (grey phone, the 🚨 card) has lost every
 other button but keeps 🚻 Bathroom Mode and Back: let them use Disk Cleanup.
 The Antivirus wait outside (their booth says so); never send a marked program
 away from the toilet.
 
-**Your booth:** Scanner · Inbox (empty tonight: the story deals no cards to
-a booth) · Codex · `# hosts` · `# quarantine` · the rooms · one thread per
-guest.
+**Your booth is a host's** (your part has `admin: true`): the **NOW card** on
+top · the **NEXT bar** above the taskbar (the cue sheet; tap the bar for the
+console: Cues · Needs · Judge · People · More) · **📷 Scan** and **🗂 Guests** on
+the taskbar · Codex · `# hosts` · `# quarantine` · **Readouts** ·
+**Messages** (a program typing to you) · the rooms. A scanned program's card
+leads with at most three buttons your objective needs; the rest are under
+**All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
+never on your card: radio one. Help → *The host console* has the rest.
+
+**The cue sheet:** NEXT sits above your taskbar. Fire a cue only when the
+director radios you: tap **ARM**, then **FIRE** within 4 s. Any host may
+fire; if two phones press the same moment the server takes one and the other
+reads *Cues moved — tap again*, and the Cues tab's **LAST** line says who
+pressed. Who calls the cues is DRAFT for sign-off (Q1).
 
 **Radio:** ARRIVAL · HOLD · ALL STOP.
 
@@ -74,8 +87,8 @@ use it.
   clean, keep the Bathroom Mode joke alive. There is a hunt clue in there
   (the customer-service card): never point at it.
 - **At each summons** (C1, C2, ⏳): nudge anyone lingering in Disk Cleanup.
-  Anyone who left Bathroom Mode on by mistake: tell the director (they clear
-  it in Run → World, W-10).
+  Anyone who left Bathroom Mode on by mistake: **🚻 End Bathroom Mode** on
+  their row in your console's People tab (or tell the director, W-10).
 
 ## Props
 

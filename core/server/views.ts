@@ -6,14 +6,16 @@ import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import { asNumber, display, type Value } from "../src/runtime/expr.ts";
 import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
 import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
-import { codexAboutKind, type ChatMessage } from "./chat.ts";
+import { codexAboutKind, storyPhase, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
+import { isGateFlag } from "../src/host-board.ts";
 import { isSecretRoleSlot } from "../src/runtime/sim/board.ts";
 import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
-import type { CodexDef, InteractionDef, ObjectiveDef } from "../src/runtime/sim/model.ts";
+import type { CodexDef, Hook, InteractionDef, ObjectiveDef } from "../src/runtime/sim/model.ts";
+import type { BodyItem } from "../src/parser/ast.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "../src/identity-kind.ts";
@@ -128,8 +130,18 @@ export interface InteractionSummary {
   actors?: string[];
   /** True when the INTERACTION declares `by:`: only its `actors` may press
    *  it (`/api/prime/act` refuses another booth, 403). A booth leaves another
-   *  character's out of its More fold; a moderator's booth keeps them. */
+   *  character's out of its More fold; a host's or moderator's booth keeps
+   *  them, unless `hostHeard` is false. */
   only?: true;
+  /** False on an `only` button whose event nothing outside its `actors`
+   *  hears: every handler is a hook the actors own (a trait's `when send to
+   *  the internet for program:` on the Antivirus), and no story rule or ROLE
+   *  hook listens. A press fires as the presser's own character, so another
+   *  booth's press would do nothing: a host's (or a passcode admin's) booth
+   *  leaves it out like any other booth, and `/api/prime/act` refuses it
+   *  (`pressRefusal`, `actorHeardOnly`). Absent = heard, or no handler at
+   *  all (a press reads the same from anyone), or not `only`. */
+  hostHeard?: false;
   /** False while the INTERACTION's `while:` condition is false — a guest
    *  never sees it; a performer finds it under "More"; the director's cue
    *  sheet never suggests it as NEXT. */
@@ -189,6 +201,39 @@ export function interactionActors(sim: Sim): Map<string, string[]> {
   return out;
 }
 
+const actorHeardOnlyCache = new WeakMap<Sim["model"], Set<string>>();
+
+/**
+ * The INTERACTION ids only their own actors' hooks hear, per model: some
+ * CHARACTER hook listens for the event (a trait's, merged onto each
+ * deriver), and no story-level rule or ROLE hook does. A press fires as the
+ * presser's own character and only that character's hooks hear it
+ * (`Sim.matchHooks`); a character owning a hook for it is one of its
+ * `actors` (`interactionActors`), so a press from anyone else is heard by
+ * nothing. Counted as handlers: event hooks with no timer, watcher or `at`
+ * filter (what `Sim.signal` can match). A button with no handler at all is
+ * not here: a press reads the same whoever makes it (the journal's
+ * `signal`, which stagehand may act on).
+ */
+export function actorHeardOnly(sim: Sim): Set<string> {
+  const m = sim.model;
+  const cached = actorHeardOnlyCache.get(m);
+  if (cached !== undefined) return cached;
+  const hears = (h: Hook) => h.verb !== "" && h.timer === null && h.condition === null && h.filter === null;
+  const open = new Set<string>();
+  const own = new Set<string>();
+  for (const h of m.rules) if (hears(h)) open.add(foldName(h.verb));
+  for (const r of m.roles.values()) for (const h of r.hooks) if (hears(h)) open.add(foldName(h.verb));
+  for (const c of m.characters.values()) for (const h of c.hooks) if (hears(h)) own.add(foldName(h.verb));
+  const out = new Set<string>();
+  for (const i of m.interactions.values()) {
+    const k = foldName(i.id);
+    if (own.has(k) && !open.has(k)) out.add(i.id);
+  }
+  actorHeardOnlyCache.set(m, out);
+  return out;
+}
+
 /**
  * Why `character`'s booth may not press performer INTERACTION `def`, or
  * null when it may. Only a button that declares `by:` is anyone's in
@@ -207,6 +252,21 @@ export function byRefusal(sim: Sim, def: InteractionDef, character: string | nul
   return `not your button: “${def.label}” is for ${def.by.join(", ")}`;
 }
 
+/**
+ * `byRefusal` for a booth that may be a host's (`admin: true`, or the mod
+ * passcode in a booth): a host may press another character's `by:` button,
+ * but not one only its actors' own hooks hear (`actorHeardOnly`): that one is refused with the same
+ * message as any other booth's press, and a host's card never offers it.
+ * A headless moderator token (no character) is never refused: its press
+ * carries no actor, so every character's hook hears it (`Sim.matchHooks`).
+ */
+export function pressRefusal(sim: Sim, def: InteractionDef, character: string | null, host: boolean): string | null {
+  const refusal = byRefusal(sim, def, character);
+  if (refusal === null || !host) return refusal;
+  if (character === null) return null;
+  return actorHeardOnly(sim).has(def.id) ? refusal : null;
+}
+
 /** The INTERACTIONs `who` may fire. With `at`, each `while:` is evaluated
  *  (`subject` / `self` bound as given) and marked `live: false` when it
  *  fails; without (the director's cue sheet), only an admin cue's is, with
@@ -218,6 +278,7 @@ function interactionsFor(
 ): InteractionSummary[] {
   const subjectOnly = subjectOnlyEvents(sim);
   const actors = interactionActors(sim);
+  const deaf = actorHeardOnly(sim);
   return [...sim.model.interactions.values()]
     .filter((i) => who === null || who.includes(i.who))
     .map((i) => {
@@ -228,7 +289,10 @@ function interactionsFor(
       if (i.arm) s.arm = true;
       const by = i.who === "performer" ? actors.get(i.id) : undefined; // a guest never learns who hears their buttons
       if (by !== undefined) s.actors = by;
-      if (by !== undefined && i.by.length > 0) s.only = true;
+      if (by !== undefined && i.by.length > 0) {
+        s.only = true;
+        if (deaf.has(i.id)) s.hostHeard = false;
+      }
       if (at !== undefined && i.while !== null && !sim.holds(i.while, at.subject, at.self)) s.live = false;
       // The director's cue sheet: an admin cue's `while:` names the branch
       // of the night it belongs to (🏍 only after Combo A), so NEXT skips it
@@ -410,7 +474,9 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     people: peopleFor(sim, id, agentsOnline),
     ...guestBoard(sim),
     objectives: objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id))),
-    night: nightView(sim),
+    // No act for a guest: the act's title is the director's copy and names
+    // what is coming; the phone reads only `phase` (wave 13 adversary).
+    night: { ...nightView(sim), act: null },
     alertLevel: alertLevelNow(sim),
     voiced: voicedOf(sim, id),
   };
@@ -689,6 +755,13 @@ export interface CueState {
   /** Who fired it: a director (`signal`) or the story itself (`fire`, the
    *  "auto at 15 min" cues). */
   lastBy: "director" | "story" | null;
+  /** Who pressed LAST, by name, when a director press moved it and the
+   *  runtime noted who (`notePress`'s `by`, the journal's): a host booth's
+   *  part (`Booth · Task Manager` → "Task Manager"), an author's name, a
+   *  device's label, a headless mod token's "Director". Absent when the
+   *  story fired LAST, or nobody was named (a bare `Sim`, the editor's
+   *  in-browser rehearsal). Display only. */
+  lastName?: string;
   /** Every admin cue that has fired at least once, in first-fire order. */
   fired: string[];
   /** How many admin-cue presses the story took tonight (by a director, a
@@ -725,8 +798,24 @@ interface CueScan {
  *  to land after it before the next director snapshot (T7-01). */
 const pressEnds = new WeakMap<object, Map<number, number>>();
 
-/** Record a `Sim.signal` batch just returned (`out = sim.signal(…)`). */
-export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
+/** Who made each noted press, per log: the press's start index → the
+ *  display name (`pressedByName`). Fed by `notePress`'s `by`. */
+const pressBys = new WeakMap<object, Map<number, string>>();
+
+/** The journal's `by` as the host dock names a presser: a booth's part
+ *  without its `Booth · ` prefix, an agent without `agent:`, else as is. */
+export function pressedByName(by: string): string {
+  const t = by.trim();
+  if (t.startsWith("Booth · ")) return t.slice("Booth · ".length).trim();
+  if (t.startsWith("agent:")) return t.slice("agent:".length).trim();
+  return t;
+}
+
+/** Record a `Sim.signal` batch just returned (`out = sim.signal(…)`), and
+ *  who pressed it (`by`, the journal line's) when known — the event runtime
+ *  passes the same `by` live and on `restore()`, so `CueState.lastName`
+ *  reads the same after a restart. */
+export function notePress(sim: Sim, batch: readonly SimEvent[], by?: string | null): void {
   if (batch.length === 0) return;
   const end = sim.log.len();
   let ends = pressEnds.get(sim.log);
@@ -735,6 +824,15 @@ export function notePress(sim: Sim, batch: readonly SimEvent[]): void {
     pressEnds.set(sim.log, ends);
   }
   ends.set(end - batch.length, end);
+  const name = typeof by === "string" ? pressedByName(by) : "";
+  if (name !== "") {
+    let bys = pressBys.get(sim.log);
+    if (bys === undefined) {
+      bys = new Map();
+      pressBys.set(sim.log, bys);
+    }
+    bys.set(end - batch.length, name);
+  }
 }
 
 /** Was the press `batch` (a `Sim.signal` call just committed and noted)
@@ -744,6 +842,27 @@ export function pressRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
   const first = batch[0];
   if (first === undefined || first.type !== "signal") return false;
   return refusedPress(sim, sim.log.all(), sim.log.len() - batch.length, first.name);
+}
+
+/** Was the scan `batch` (a `Sim.scan` call just committed) refused by the
+ *  story (D1): it did nothing but tell a staff room why — at least one
+ *  staff-only broadcast ("🗣 Not now…"), and otherwise only diagnostics or
+ *  `_`-leaf bookkeeping. A scan nobody hears, or one that only greets, is
+ *  never "refused": nothing said no. */
+export function scanRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
+  if (batch[0]?.type !== "scanned") return false;
+  const cm = cueModelOf(sim.model);
+  let told = false;
+  for (const e of batch.slice(1)) {
+    if (e.type === "diagnostic") continue;
+    if (e.type === "worldSet" && bookkeeping(e.path)) continue;
+    if (e.type === "broadcast" && staffOnly(e.scope, cm.staff)) {
+      told = true;
+      continue;
+    }
+    return false;
+  }
+  return told;
 }
 
 /** Log entries that start a new input (a press, a tick, a typed line, a
@@ -887,6 +1006,9 @@ export function cueState(sim: Sim): CueState {
       if (!(seen.has(id) && cue.order < scan.lastOrder)) {
         state.last = id;
         state.lastBy = by;
+        const name = by === "director" ? pressBys.get(sim.log)?.get(n) : undefined;
+        if (name !== undefined) state.lastName = name;
+        else delete state.lastName;
         scan.lastOrder = cue.order;
         moved = lastWas !== id;
       }
@@ -899,7 +1021,7 @@ export function cueState(sim: Sim): CueState {
     scan.pressLog.push({ id, moved });
   }
   scan.at = events.length;
-  return { last: state.last, lastBy: state.lastBy, fired: [...state.fired], presses: state.presses, pressed: state.pressed };
+  return { last: state.last, lastBy: state.lastBy, ...(state.lastName !== undefined ? { lastName: state.lastName } : {}), fired: [...state.fired], presses: state.presses, pressed: state.pressed };
 }
 
 /**
@@ -1204,7 +1326,7 @@ export interface ObjectiveView {
    *  restriction-filtered with subject = the guest), so an objective never
    *  offers a button `/api/guest/act` would refuse. For a **booth**: the
    *  `who: performer` ids, another character's `by:` button dropped unless
-   *  the booth is host or admin; not filtered by `while:` (the card asks
+   *  the booth is host or admin and the press is heard (`pressRefusal`); not filtered by `while:` (the card asks
    *  `/api/prime/card`). */
   buttons: string[];
   /** `act:` as written, else null. Display only. */
@@ -1220,7 +1342,7 @@ export interface ObjectiveCheck {
 
 /** Where the night is, for every phone. */
 export interface NightView {
-  /** The cue sheet's focus act (`cueActs(cueRows(adminCues, cueState(sim)))`, `focusActIndex`): its code + title. Null when no admin cue declares `act:` or there is no focus act. */
+  /** The cue sheet's focus act (`cueActs(cueRows(adminCues, cueState(sim)))`, `focusActIndex`): its code + title. Null when no admin cue declares `act:` or there is no focus act — and always null in a `GuestView` (director copy; a booth and a host keep it). */
   act: { code: string | null; title: string | null } | null;
   /** The world `Night.phase` (quotes stripped), else null. A convention, like `cue-sheet.ts nightPhase`. */
   phase: string | null;
@@ -1325,7 +1447,7 @@ function objectivesWith(sim: Sim, viewer: { guest: string } | { character: strin
     const buttons = o.buttons.filter((b) => {
       if (OBJECTIVE_RESERVED_BUTTONS.has(b)) return true;
       const i = m.interactions.get(b);
-      return i !== undefined && i.who === "performer" && (viewer.host === true || byRefusal(sim, i, me) === null);
+      return i !== undefined && i.who === "performer" && pressRefusal(sim, i, me, viewer.host === true) === null;
     });
     out.push(objectiveView(sim, o, buttons, null, me));
   }
@@ -1387,7 +1509,8 @@ export function nightView(sim: Sim): NightView {
     }
     const step = worldText(sim, "Night.step");
     const n = step === null ? NaN : Number(step);
-    return { act, phase: worldText(sim, "Night.phase"), step: Number.isFinite(n) ? n : null };
+    // The phase reads the same as a message's moment stamp (`chat.ts` `storyPhase`).
+    return { act, phase: storyPhase(sim) ?? null, step: Number.isFinite(n) ? n : null };
   });
 }
 
@@ -1414,45 +1537,253 @@ function flagOn(v: Value | undefined): boolean {
   }
 }
 
-const flagsMemo = new WeakMap<object, RoundMemo<Map<string, GuestFlag[]>>>();
+/** One ROLE `watch:` item, resolved once per model (`flagPlan`). */
+interface FlagItem {
+  /** Index of its board line (`resolvedBoard(model).watch`). */
+  line: number;
+  label: string;
+  path: string;
+  /** The path after its ROLE head (`marked`, `quest.the_cold_door`). */
+  rest: string;
+  /** The ROLE declares the slot `bool`. */
+  boolSlot: boolean;
+}
 
-/** Every guest's ROLE-scoped `watch:` flags this round (`guestFlags`). */
-function allGuestFlags(sim: Sim): Map<string, GuestFlag[]> {
-  return memoRound(flagsMemo, sim, () => {
-    const out = new Map<string, GuestFlag[]>();
-    const lines = resolvedBoard(sim.model).watch.filter((l) => l.items.some((i) => i.scope === "role"));
-    if (lines.length === 0) return out;
-    const live = lines.filter((l) => boardLineLive(sim, l.while));
-    const items = live.flatMap((l) => l.items.filter((i) => i.scope === "role" && i.path !== null));
-    if (items.length === 0) return out;
-    for (const p of sim.persons.values()) {
-      const role = sim.model.roles.get(p.role);
-      const flags: GuestFlag[] = [];
-      for (const i of items) {
-        const path = i.path!;
-        const dot = path.indexOf(".");
-        const head = path.slice(0, dot);
-        const rest = path.slice(dot + 1);
-        if (foldName(head) !== foldName(p.role)) continue;
-        const slot = rest.split(".")[0]!;
-        if (role !== undefined && isSecretRoleSlot(role.secret, rest)) continue;
-        const v = sim.world.get(`${p.id}.${rest}`);
-        const shown = v === undefined || v.kind === "null" ? "null" : display(v).replace(/^"(.*)"$/su, "$1");
-        const on = flagOn(v);
-        const boolean = role?.bools?.has(slot) === true || (v !== undefined && v.kind === "bool") || shown === "true" || shown === "false";
-        if (!boolean && !on) continue;
-        flags.push({ label: i.label, path, value: shown, on });
-      }
-      if (flags.length > 0) out.set(p.id, flags);
+/** The ROLE `watch:` items per ROLE, with their lines' `while`s, once per
+ *  model: the per-round work is then only the lines' `while`s and one world
+ *  read per guest and item (load test, wave 13: the old per-guest folding
+ *  cost 8 ms a round at 45 guests). */
+interface FlagPlan {
+  /** Each board line's `while` (null = always), by line index. */
+  whiles: Array<string | null>;
+  /** The lines that carry at least one ROLE item. */
+  lines: number[];
+  /** Items per ROLE (keyed folded), line order; a ROLE `secret:` slot never. */
+  byRole: Map<string, FlagItem[]>;
+  /** A person's `role` string → its folded key (a handful per night). */
+  folded: Map<string, string>;
+  /** A line's `while` reads the story clock (`Time.*`), which moves with
+   *  no log entry: the round memo then keys on the story second too. */
+  clock: boolean;
+}
+
+const flagPlans = new WeakMap<object, FlagPlan>();
+const CLOCK_READ = /\bTime\s*\.|\b(?:since|elapsed|now)\s*\(/u;
+
+function flagPlan(model: Sim["model"]): FlagPlan {
+  let plan = flagPlans.get(model);
+  if (plan !== undefined) return plan;
+  const board = resolvedBoard(model);
+  const roleIds = new Map([...model.roles.keys()].map((id) => [foldName(id), id]));
+  const byRole = new Map<string, FlagItem[]>();
+  const lines: number[] = [];
+  let clock = false;
+  board.watch.forEach((l, line) => {
+    let any = false;
+    for (const i of l.items) {
+      if (i.scope !== "role" || i.path === null) continue;
+      const dot = i.path.indexOf(".");
+      const roleId = roleIds.get(foldName(i.path.slice(0, dot)));
+      if (roleId === undefined) continue;
+      const role = model.roles.get(roleId)!;
+      const rest = i.path.slice(dot + 1);
+      if (isSecretRoleSlot(role.secret, rest)) continue;
+      const slot = rest.split(".")[0]!;
+      const list = byRole.get(foldName(roleId)) ?? [];
+      list.push({ line, label: i.label, path: i.path, rest, boolSlot: role.bools?.has(slot) === true });
+      byRole.set(foldName(roleId), list);
+      any = true;
     }
-    return out;
+    if (any) {
+      lines.push(line);
+      if (l.while !== null && CLOCK_READ.test(l.while)) clock = true;
+    }
   });
+  plan = { whiles: board.watch.map((l) => l.while), lines, byRole, folded: new Map(), clock };
+  flagPlans.set(model, plan);
+  return plan;
+}
+
+/** Which of the plan's lines hold now. */
+function liveFlagLines(sim: Sim, plan: FlagPlan): Set<number> {
+  const live = new Set<number>();
+  for (const line of plan.lines) if (boardLineLive(sim, plan.whiles[line]!)) live.add(line);
+  return live;
+}
+
+/** One guest's flags off the plan: every boolean item (false included, so a
+ *  card can say "Not cleared"), a non-boolean one only when truthy. */
+function flagsOf(sim: Sim, plan: FlagPlan, live: ReadonlySet<number>, id: string, role: string): GuestFlag[] {
+  let key = plan.folded.get(role);
+  if (key === undefined) {
+    key = foldName(role);
+    plan.folded.set(role, key);
+  }
+  const items = plan.byRole.get(key);
+  if (items === undefined) return [];
+  const flags: GuestFlag[] = [];
+  for (const i of items) {
+    if (!live.has(i.line)) continue;
+    const v = sim.world.get(`${id}.${i.rest}`);
+    const shown = v === undefined || v.kind === "null" ? "null" : display(v).replace(/^"(.*)"$/su, "$1");
+    const on = flagOn(v);
+    const boolean = i.boolSlot || (v !== undefined && v.kind === "bool") || shown === "true" || shown === "false";
+    if (!boolean && !on) continue;
+    flags.push({ label: i.label, path: i.path, value: shown, on });
+  }
+  return flags;
+}
+
+/** The flags a snapshot carries (contract C3): the ones that are on, plus a
+ *  failed gate ("Not cleared") — a false boolean that is not a gate is
+ *  noise every booth would download every round. The guest card
+ *  (`/api/prime/card`) keeps the full list. */
+export function snapshotFlags(flags: readonly GuestFlag[]): GuestFlag[] {
+  return flags.filter((f) => f.on || ((f.value === "true" || f.value === "false") && isGateFlag(f.label)));
+}
+
+interface FlagsRound {
+  len: number;
+  sec: number;
+  model: Sim["model"];
+  full: Map<string, GuestFlag[]>;
+  lean: Map<string, GuestFlag[]> | null;
+}
+const flagsMemo = new WeakMap<object, FlagsRound>();
+
+/** Every guest's ROLE-scoped `watch:` flags this round (`guestFlags`),
+ *  memoised on the log's length (and the story second only when a line's
+ *  `while` reads the clock). */
+function flagsRound(sim: Sim): FlagsRound {
+  const plan = flagPlan(sim.model);
+  const len = sim.log.len();
+  const sec = plan.clock ? Math.floor(sim.elapsed() / 1000) : 0;
+  const hit = flagsMemo.get(sim.log);
+  if (hit !== undefined && hit.len === len && hit.sec === sec && hit.model === sim.model) return hit;
+  const full = new Map<string, GuestFlag[]>();
+  if (plan.byRole.size > 0) {
+    const live = liveFlagLines(sim, plan);
+    if (live.size > 0) {
+      for (const p of sim.persons.values()) {
+        const flags = flagsOf(sim, plan, live, p.id, p.role);
+        if (flags.length > 0) full.set(p.id, flags);
+      }
+    }
+  }
+  const round: FlagsRound = { len, sec, model: sim.model, full, lean: null };
+  flagsMemo.set(sim.log, round);
+  return round;
 }
 
 /** A guest's ROLE-scoped `watch:` items (`GuestFlag`), on lines whose
  *  `while` holds, a ROLE `secret:` slot never — memoised per round. */
 export function guestFlags(sim: Sim, guestId: string): GuestFlag[] {
-  return allGuestFlags(sim).get(guestId) ?? [];
+  return flagsRound(sim).full.get(guestId) ?? [];
+}
+
+/** Every guest's flags as a snapshot carries them (`snapshotFlags`), by id —
+ *  memoised per round (the host view and every booth share it). */
+export function allSnapshotFlags(sim: Sim): ReadonlyMap<string, GuestFlag[]> {
+  const round = flagsRound(sim);
+  if (round.lean === null) {
+    const lean = new Map<string, GuestFlag[]>();
+    for (const [id, flags] of round.full) {
+      const kept = snapshotFlags(flags);
+      if (kept.length > 0) lean.set(id, kept);
+    }
+    round.lean = lean;
+  }
+  return round.lean;
+}
+
+/** One guest's full flags read fresh, without building everyone's (a scan's
+ *  card, right after its commit). */
+export function guestFlagsNow(sim: Sim, guestId: string): GuestFlag[] {
+  const hit = flagsMemo.get(sim.log);
+  if (hit !== undefined && hit.len === sim.log.len() && hit.model === sim.model && !flagPlan(sim.model).clock) return hit.full.get(guestId) ?? [];
+  const p = sim.persons.get(guestId);
+  if (p === undefined) return [];
+  const plan = flagPlan(sim.model);
+  if (plan.byRole.size === 0) return [];
+  const live = liveFlagLines(sim, plan);
+  return live.size === 0 ? [] : flagsOf(sim, plan, live, p.id, p.role);
+}
+
+// --- award gates: an award only one program can take (G10 is MS Paint's) ---
+
+/** A story gate on an admin cue's subject: the hook for the cue refuses
+ *  (`if program.featured != "mspaint":` with a body that sets and fires
+ *  nothing) unless the subject's `slot` reads `value`. */
+interface SubjectGate {
+  slot: string;
+  value: string;
+}
+const subjectGates = new WeakMap<object, Map<string, SubjectGate[]>>();
+const GATE_NE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_.]*)\s*!=\s*"([^"]*)"\s*$/u;
+
+/** Does an arm's body only explain itself (no `set`, no `fire`, no nested
+ *  logic)? Then the arm is a refusal. */
+function refusalBody(body: readonly BodyItem[]): boolean {
+  return body.length > 0 && body.every((b) => b.kind === "directive" && !/^\s*(?:set|fire|unlock|start|complete|move|add|remove|reveal|award)\b/u.test(b.value.raw));
+}
+
+/** Every admin cue's subject gates, once per model: the arms of the
+ *  top-level `if` chains in the hooks the cue fires (`when <cue> for
+ *  program:`, on a ROLE, a CHARACTER or the story) that refuse unless the
+ *  subject has one exact value. */
+function subjectGatesOf(model: Sim["model"]): Map<string, SubjectGate[]> {
+  let out = subjectGates.get(model);
+  if (out !== undefined) return out;
+  out = new Map();
+  const hooks = [...model.rules, ...[...model.roles.values()].flatMap((r) => r.hooks), ...[...model.characters.values()].flatMap((c) => c.hooks)];
+  const byVerb = new Map<string, typeof hooks>();
+  for (const h of hooks) {
+    if (h.param === null || h.verb === "") continue;
+    const k = foldName(h.verb);
+    byVerb.set(k, [...(byVerb.get(k) ?? []), h]);
+  }
+  for (const i of model.interactions.values()) {
+    if (i.who !== "admin") continue;
+    const gates: SubjectGate[] = [];
+    for (const h of byVerb.get(foldName(i.id)) ?? []) {
+      for (const item of h.body) {
+        if (item.kind !== "conditional") continue;
+        for (const arm of item.value.arms) {
+          const m = arm.condition === null ? null : GATE_NE.exec(arm.condition);
+          if (m === null || foldName(m[1]!) !== foldName(h.param!) || !refusalBody(arm.body)) continue;
+          gates.push({ slot: m[2]!, value: m[3]! });
+        }
+      }
+    }
+    if (gates.length > 0) out.set(i.id, gates);
+  }
+  subjectGates.set(model, out);
+  return out;
+}
+
+const awardOnlyMemo = new WeakMap<object, RoundMemo<Record<string, { id: string; name: string }>>>();
+
+/** The admin cues only one person can take right now (`HostView.awardOnly`):
+ *  their story gate names a value exactly one guest holds — G10's
+ *  `program.featured != "mspaint"` → MS Paint. Memoised per round. */
+export function awardOnly(sim: Sim): Record<string, { id: string; name: string }> {
+  return memoRound(awardOnlyMemo, sim, () => {
+    const out: Record<string, { id: string; name: string }> = {};
+    for (const [cue, gates] of subjectGatesOf(sim.model)) {
+      const fits = [...sim.persons.values()].filter((p) =>
+        gates.every((g) => {
+          // A ROLE `secret:` slot names nobody: the host view never says
+          // who holds a secret value (as its flags never show one).
+          const role = sim.model.roles.get(p.role);
+          if (role !== undefined && isSecretRoleSlot(role.secret, g.slot)) return false;
+          const v = sim.world.get(`${p.id}.${g.slot}`);
+          return v !== undefined && v.kind !== "null" && display(v).replace(/^"(.*)"$/su, "$1") === g.value;
+        }),
+      );
+      if (fits.length === 1) out[cue] = { id: fits[0]!.id, name: fits[0]!.name };
+    }
+    return out;
+  });
 }
 
 const guestScopedCache = new WeakMap<object, Set<string>>();
@@ -1479,6 +1810,38 @@ function guestScopedIds(model: Sim["model"]): Set<string> {
   return out;
 }
 
+/** A booth readout index over a chat timeline: the positions of every readout
+ *  per `about|channel`, extended as the timeline grows (a scan's card read
+ *  it with a walk over every message — 12 ms a scan late in the night). */
+interface ReadoutIndex {
+  upto: number;
+  byKey: Map<string, number[]>;
+}
+const readoutIndexes = new WeakMap<readonly ChatMessage[], ReadoutIndex>();
+
+/** The positions in `chat` of the last 5 visible readouts in `channel`
+ *  about `guestId`, oldest first (hiding is live, so it is read here). */
+function readoutSeqs(chat: readonly ChatMessage[], guestId: string, channel: string): number[] {
+  let ix = readoutIndexes.get(chat);
+  if (ix === undefined || ix.upto > chat.length) {
+    ix = { upto: 0, byKey: new Map() };
+    readoutIndexes.set(chat, ix);
+  }
+  for (; ix.upto < chat.length; ix.upto++) {
+    const m = chat[ix.upto]!;
+    if (m.readout !== true || typeof m.about !== "string") continue;
+    const key = `${m.about}|${m.channel}`;
+    const list = ix.byKey.get(key);
+    if (list === undefined) ix.byKey.set(key, [ix.upto]);
+    else list.push(ix.upto);
+  }
+  const all = ix.byKey.get(`${guestId}|${channel}`) ?? [];
+  // Keep the newest 5 visible: walk back past hidden ones.
+  const out: number[] = [];
+  for (let k = all.length - 1; k >= 0 && out.length < 5; k--) if (chat[all[k]!]?.hidden !== true) out.push(all[k]!);
+  return out.reverse();
+}
+
 /** What `character`'s booth may do to one guest right now — the scan card.
  *  Null for an unknown guest. */
 export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character: string, guestId: string, host: boolean): GuestCardView | null {
@@ -1488,18 +1851,20 @@ export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character:
   const live: string[] = [];
   for (const i of sim.model.interactions.values()) {
     if (i.who !== "performer") continue;
-    if (!host && byRefusal(sim, i, character) !== null) continue;
+    if (pressRefusal(sim, i, character, host) !== null) continue;
     if (i.while !== null && !sim.holds(i.while, guestId, character)) continue;
     live.push(i.id);
   }
-  const dm = `dm:${character}`;
   const readouts: GuestCardView["readouts"] = [];
-  for (const m of chat) if (m.readout === true && m.about === guestId && m.channel === dm && !m.hidden) readouts.push({ seq: m.seq, text: m.text, ts: m.ts });
+  for (const at of readoutSeqs(chat, guestId, `dm:${character}`)) {
+    const m = chat[at];
+    if (m !== undefined && !m.hidden) readouts.push({ seq: m.seq, text: m.text, ts: m.ts });
+  }
   return {
-    guest: primeGuest(sim, p.id, p.name),
+    guest: primeGuest(sim, p.id, p.name, guestFlagsNow(sim, p.id)),
     live,
     guestScoped: live.filter((id) => scoped.has(id)),
-    readouts: readouts.slice(-5),
+    readouts,
   };
 }
 
@@ -1521,9 +1886,10 @@ function voicedOf(sim: Sim, guestId: string): string[] {
     .map((c) => c.id);
 }
 
-/** One booth row for a guest (`PrimeGuest`), flags included when any. */
-function primeGuest(sim: Sim, id: string, name: string): PrimeGuest {
-  const flags = guestFlags(sim, id);
+/** One booth row for a guest (`PrimeGuest`), flags included when any —
+ *  a snapshot's lean list (`snapshotFlags`) unless `flags` is given (the
+ *  card's full one). */
+function primeGuest(sim: Sim, id: string, name: string, flags: readonly GuestFlag[] = allSnapshotFlags(sim).get(id) ?? []): PrimeGuest {
   return {
     id,
     name,
@@ -1531,7 +1897,7 @@ function primeGuest(sim: Sim, id: string, name: string): PrimeGuest {
     captured: sim.isCaptured(id),
     restricted: sim.isRestricted(id),
     location: sim.locationOf(id),
-    ...(flags.length > 0 ? { flags } : {}),
+    ...(flags.length > 0 ? { flags: [...flags] } : {}),
   };
 }
 
@@ -1598,6 +1964,17 @@ export interface PrimeView {
    *  existing `staffRoomIds` returns *folded names*, `"hosts"`, for scope
    *  matching; it stays as is.) Always filled ([] when none). */
   staffRooms?: string[];
+  /** The story clock is stopped (the event is paused, or its doors have not
+   *  opened): `clock` holds still, so the booth's countdowns must not tick
+   *  on — `GuestView.paused`'s rule. Set by the runtime; absent while the
+   *  clock runs (and from a local sim). */
+  paused?: true;
+  /** The booth holds the host capability (its part is `admin: true`, or the
+   *  sign-in holds the moderator passcode): it keeps another character's
+   *  `by:` buttons on its objectives and may press them. The event server
+   *  always says so (`false` too, C4: a reload that takes `admin: true` away
+   *  reaches an open booth); a local sim's view leaves it out when false. */
+  host?: boolean;
 }
 
 export interface AgentContact {
@@ -1614,7 +1991,8 @@ export function agentContacts(sim: Sim, self: string | null, online?: ReadonlySe
 }
 
 /** `opts.host`: the booth holds the host (or moderator) capability — it
- *  keeps another character's `by:` buttons on its objectives. */
+ *  keeps another character's `by:` buttons on its objectives, except one
+ *  only its actors' own hooks hear (`pressRefusal`). */
 export function primeView(sim: Sim | null, character: string, agentsOnline?: ReadonlySet<string>, opts?: { host?: boolean }): PrimeView {
   if (sim === null) {
     return {
@@ -1662,5 +2040,6 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     alertLevel: alertLevelNow(sim),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     staffRooms: staffRoomChannels(sim.model),
+    ...(opts?.host === true ? { host: true as const } : {}),
   };
 }

@@ -17,13 +17,15 @@
 // (`pnpm --filter @loom/core titi:facts`). The questions are numbered
 // within their round (Q1–Q3, then Q1–Q3, then Q1–Q2).
 
+// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q20): the Bathroom
+// Mode step names ⊞ Start, where the button lives now.
 QUEST Orientation
   title: Clippy's Orientation
   from: Clippy
   text:
     Take the tour of the computer. It's short! It's helpful! Programs who
     finish it go on a list. A good list.
-    - Bathroom Mode: tap 🚻 on your pass before you leave for Disk Cleanup. Tap again when you're back.
+    - Bathroom Mode: open Start and tap 🚻 Bathroom Mode before you leave for Disk Cleanup. Tap Back from the bathroom in Start when you're back.
 
 QUEST The Bingo Card
   title: Computer Bingo

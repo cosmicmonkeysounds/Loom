@@ -12,7 +12,7 @@
 .cutscene {
   height: 100%; display: flex; flex-direction: column; position: relative;
   max-width: 640px; margin: 0 auto; width: 100%;
-  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--navy) 35%, var(--black)), var(--black) 70%);
+  background: var(--black);
   color: var(--white);
   animation: cut-in 1.1s ease-out, cut-boot 1.6s steps(1) 1;
 }
@@ -34,15 +34,15 @@
 .cut-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
   padding: 14px 18px 6px; font: 700 10px var(--ui-font); letter-spacing: 0.5px;
-  text-transform: uppercase; color: color-mix(in srgb, var(--white) 55%, transparent);
+  text-transform: uppercase; color: var(--line);
 }
 .cut-where::before { content: "▸ "; }
 .cut-pass {
-  margin-left: 12px; background: none; border: 1px solid color-mix(in srgb, var(--white) 35%, transparent);
+  margin-left: 12px; background: none; border: 1px solid var(--line);
   color: var(--white); font: 700 10px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase;
   padding: 3px 8px; cursor: pointer; border-radius: var(--radius); flex-shrink: 0;
 }
-.cut-pass:hover { border-color: var(--white); }
+@media (hover: hover) { .cut-pass:hover { border-color: var(--white); } }
 .cut-offline {
   padding: 0 18px 6px; font: 700 10px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase;
   color: var(--white); animation: cut-pulse 1.2s ease-in-out infinite;
@@ -56,26 +56,261 @@
   background: transparent; box-shadow: none; margin: 0; padding: 8px 18px 16px;
   font-size: 18px; line-height: 1.5; color: var(--white); gap: 10px;
 }
-.cutscene .thread-empty { color: color-mix(in srgb, var(--white) 45%, transparent); font-style: italic; }
+.cutscene .thread-empty { color: var(--line); font-style: italic; }
 .cutscene .msg.line { gap: 12px; }
 .cutscene .msg.line.tuck { padding-left: 42px; }
 .cutscene .speaker { color: var(--highlight) !important; font-size: 13px; font-family: var(--ui-font); text-transform: uppercase; letter-spacing: 0.6px; }
 .cutscene .bubble { color: var(--white); font-size: 18px; }
-.cutscene .bubble.plain, .cutscene .msg.narration { color: color-mix(in srgb, var(--white) 72%, transparent); border-left-color: color-mix(in srgb, var(--white) 25%, transparent); }
-.cutscene .msg.system .bubble.plain { color: color-mix(in srgb, var(--white) 60%, transparent); }
+.cutscene .bubble.plain, .cutscene .msg.narration { color: var(--face); border-left-color: var(--line); }
+.cutscene .msg.system .bubble.plain { color: var(--face); }
 .cutscene .msg.typing .bubble::after { color: var(--highlight); }
-.cutscene .pavatar { box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 30%, transparent); }
+.cutscene .pavatar { box-shadow: 0 0 0 1px var(--line); }
 .cutscene .replies { display: none; }
 .cutscene .widget { max-width: 420px; margin: 0 auto; }
 .cutscene .msg.widget-msg { align-self: center; width: 100%; }
 .cut-foot {
-  border-top: 1px solid color-mix(in srgb, var(--white) 15%, transparent);
+  border-top: 1px solid var(--muted-ink);
   padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); background: transparent;
   margin: 0; width: 100%; max-width: none; min-height: 44px; display: flex; flex-direction: column;
 }
-.cut-foot .tray.dialogue { background: color-mix(in srgb, var(--white) 8%, var(--black)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 20%, transparent); }
+.cut-foot .tray.dialogue { background: var(--black); box-shadow: 0 0 0 1px var(--line); }
 .cut-foot .tray.dialogue .tray-title { color: var(--white); }
 .cut-go { align-self: center; width: auto; padding: 10px 34px; margin-top: 2px; font-size: 15px; }
 .cut-cursor { color: var(--highlight); font-size: 14px; animation: dlg-caret-blink 1s steps(1) infinite; padding: 0 4px; }
+/* color-mix() (Safari 16.2) only under @supports: a value with var() in it
+   is never dropped at parse time, so on an older browser a color-mix line
+   after its plain fallback still wins the cascade, then computes to
+   nothing (the cutscene's stage went transparent on iOS 15). The plain
+   lines above are what the old tablets and iOS 15 phones get. */
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .cutscene { background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--navy) 35%, var(--black)), var(--black) 70%); }
+  .cut-head { color: color-mix(in srgb, var(--white) 55%, transparent); }
+  .cut-pass { border: 1px solid color-mix(in srgb, var(--white) 35%, transparent); }
+  .cutscene .thread-empty { color: color-mix(in srgb, var(--white) 45%, transparent); }
+  .cutscene .bubble.plain, .cutscene .msg.narration { color: color-mix(in srgb, var(--white) 72%, transparent); border-left-color: color-mix(in srgb, var(--white) 25%, transparent); }
+  .cutscene .msg.system .bubble.plain { color: color-mix(in srgb, var(--white) 60%, transparent); }
+  .cutscene .pavatar { box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 30%, transparent); }
+  .cut-foot { border-top: 1px solid color-mix(in srgb, var(--white) 15%, transparent); }
+  .cut-foot .tray.dialogue { background: color-mix(in srgb, var(--white) 8%, var(--black)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--white) 20%, transparent); }
+}
 @keyframes cut-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cutscene, .cutscene::before, .cut-where, .cut-offline { animation: none; } .cut-cursor { animation: none; } }
+
+/* ── the cutscene, wave 13 fixes ─────────────────────────────────────────
+   The stream scrolls inside the stage (a flex child with no min-height
+   overflowed it, so the last card — the pass QR — slid under the foot). */
+.cutscene .thread { min-height: 0; scroll-padding-bottom: 16px; }
+.cut-pass { min-height: var(--tap); padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; }
+.cut-foot { flex-shrink: 0; }
+.cutscene .stream-settled-line, .cutscene .stream-receipt {
+  background: var(--black); color: var(--white);
+  box-shadow: 0 0 0 1px var(--line);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .cutscene .stream-settled-line, .cutscene .stream-receipt { background: color-mix(in srgb, var(--white) 8%, var(--black)); }
+}
+.cutscene .stream-settled-body .widget { margin-top: 6px; }
+/* the stage has no taskbar: a balloon floats over its foot, no tail */
+.cut-root .moments-balloon { bottom: calc(var(--safe-bottom) + 76px); }
+.cut-root .moments-balloon::before, .cut-root .moments-balloon::after { display: none; }
+
+/* ── the crawl ───────────────────────────────────────────────────────────
+   A crawling line is laid out whole from the start: the unrevealed rest
+   takes its space, invisible, so nothing below jumps. A queued line waits
+   its turn the same way (never display: none — base.css's `.pending` is
+   no longer set). Screen readers get the line once. */
+.stream-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.stream-rest { visibility: hidden; }
+/* the caret rides the cursor, not the end of the laid-out line */
+.stream-caret { animation: dlg-caret-blink 0.7s steps(1) infinite; color: var(--navy); margin-left: 1px; }
+.cutscene .stream-caret { color: var(--highlight); }
+.stream-queued { visibility: hidden; }
+/* Effect text (a glitch manner, a `crawl: fx` speaker, an alert): a split
+   signal that stays after the crawl, so it reads as an effect in the
+   backlog too. While it crawls: scramble ahead of the cursor, flicker, jitter. */
+.stream-fx.line .bubble, .stream-fx.narration .bubble { text-shadow: 1px 0 var(--bad), -1px 0 var(--link); letter-spacing: 0.02em; }
+.stream-scramble { color: var(--signal); font-family: ui-monospace, "Courier New", monospace; }
+/* The line's words land inverted, like a monitor losing sync, then the
+   row flickers. Only the words flash — the speaker's name keeps the
+   stream's own ground — and the scrambled glyphs turn highlight-yellow
+   while their ground is dark (≥ 6:1 on both bands, both themes). */
+.stream-fx-live { animation: stream-flicker 140ms steps(2, end) 360ms infinite; }
+.stream-fx-live .bubble { display: inline-block; animation: stream-flash 360ms steps(3, end) 1, stream-jitter 110ms steps(2, end) infinite; }
+.stream-fx-live .stream-scramble { animation: stream-flash-glyphs 360ms steps(3, end) 1; }
+@keyframes stream-flash { 0% { background: var(--ink); color: var(--white); } 50% { background: var(--signal); color: var(--white); } 100% { background: transparent; } }
+@keyframes stream-flash-glyphs { 0%, 50% { color: var(--highlight); } 100% { color: var(--signal); } }
+@keyframes stream-flicker { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
+@keyframes stream-jitter {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 1px); }
+  50% { transform: translate(2px, 0); }
+  75% { transform: translate(0, -1px); }
+  100% { transform: translate(-2px, 0); }
+}
+/* the speaker's manner, after the name: `Truther Download (glitch)` */
+.stream-manner { font: italic 12px var(--ui-font); color: var(--dim-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still an effect, never a movement: effect lines keep the split signal
+     (above), alerts their highlight; nothing flickers or jumps. */
+  .stream-fx-live, .stream-fx-live .bubble, .stream-fx-live .stream-scramble, .stream-caret { animation: none; }
+}
+
+/* ── cards: the receipt, the settled line ───────────────────────────────── */
+.stream-receipt, .stream-settled-line {
+  display: flex; align-items: center; gap: 8px; width: 100%; max-width: 420px;
+  min-height: var(--tap); margin: 0; padding: 4px 12px; text-align: left;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  font: 13px/1.3 var(--ui-font); color: var(--ink); background: var(--face); box-shadow: var(--raised);
+}
+div.stream-settled-line { cursor: default; color: var(--dim-ink); }
+.stream-settled-line:active, .stream-receipt:active { box-shadow: var(--pressed); }
+.stream-settled-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.stream-settled-caret { flex-shrink: 0; font-size: 11px; color: var(--dim-ink); width: 1em; text-align: center; }
+.stream-settled-body { margin-top: 6px; }
+.stream-receipt { color: var(--link); font-weight: 700; background: var(--white); box-shadow: var(--sunken); }
+.stream-receipt-go { margin-left: auto; flex-shrink: 0; }
+.stream-settled-line:focus-visible, .stream-receipt:focus-visible,
+.stream-notices-line:focus-visible, .stream-ticker-line:focus-visible,
+.stream-row-head:focus-visible, .stream-group-head:focus-visible, .stream-tray-title:focus-visible {
+  outline: 1px dotted var(--ink); outline-offset: -4px;
+}
+
+/* ── notices about other people, folded ────────────────────────────────── */
+.stream-notices { align-self: stretch; margin: 3px 0; }
+.stream-notices-line {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--tap);
+  margin: 0; padding: 0 10px; border: none; background: none; cursor: pointer; text-align: left;
+  font: 700 13px var(--ui-font); color: var(--dim-ink); border-radius: var(--radius);
+}
+.stream-notices-line:active { background: var(--code-bg); }
+.stream-notices-sum { flex: 1; min-width: 0; }
+.stream-notices-hint { font-weight: 400; font-size: 12px; color: var(--dim-ink); }
+.stream-notices-body { padding: 2px 0 4px 12px; border-left: 1px solid var(--line); margin-left: 10px; }
+
+/* ── the ambient ticker: the house breathing, under the room header ────── */
+.stream-ticker { max-width: var(--max); width: 100%; margin: 0 auto; }
+.stream-ticker-line {
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: var(--tap);
+  margin: 0; padding: 0 12px; border: none; background: none; cursor: pointer; text-align: left;
+  font: italic 12px var(--ui-font); color: var(--dim-ink);
+}
+.stream-ticker-ico { font-style: normal; flex-shrink: 0; }
+.stream-ticker-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: stream-fade 600ms ease-out; }
+.stream-ticker-list { list-style: none; margin: 0; padding: 0 12px 6px 30px; font: italic 12px/1.5 var(--ui-font); color: var(--dim-ink); }
+@keyframes stream-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stream-ticker-text { animation: none; } }
+
+/* ── the card tray, above the composer ─────────────────────────────────── */
+.stream-tray { background: var(--face); box-shadow: var(--raised); border-radius: var(--radius); margin-bottom: 6px; }
+.stream-tray-bar { display: flex; align-items: center; gap: 4px; padding: 0 4px 0 0; }
+.stream-tray-title {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: var(--tap);
+  margin: 0; padding: 0 10px; border: none; background: none; cursor: pointer; text-align: left;
+  font: 700 13px var(--ui-font); color: var(--ink);
+}
+.stream-tray-caption { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stream-tray-fold { flex-shrink: 0; color: var(--dim-ink); }
+.stream-tray-pager { display: inline-flex; align-items: center; gap: 2px; font: 12px var(--ui-font); color: var(--dim-ink); font-variant-numeric: tabular-nums; }
+.stream-tray-step {
+  min-width: var(--tap); min-height: var(--tap); margin: 0; padding: 0; border: none; cursor: pointer;
+  background: var(--face); color: var(--ink); box-shadow: var(--raised); border-radius: var(--radius); font: 700 16px var(--ui-font);
+}
+.stream-tray-step:active { box-shadow: var(--pressed); }
+/* The body holds the whole answerable card on a phone (a picked fact
+   question folds the others away), up to half the screen; past that it
+   scrolls in one piece — no sticky foot sitting on the slider — and says so
+   at its foot ("▾ more below"), with the Win95 scrollbar where a browser
+   draws one. */
+.stream-tray-scroll { position: relative; }
+.stream-tray-body {
+  max-height: 50vh; overflow-y: auto; padding: 0 6px 6px; -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: 12px; overscroll-behavior: contain;
+}
+.stream-tray-body::-webkit-scrollbar { width: 16px; }
+.stream-tray-body::-webkit-scrollbar-track { background: var(--face-hi); }
+.stream-tray-body::-webkit-scrollbar-thumb { background: var(--face); box-shadow: var(--raised); }
+.stream-tray-more {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 10px 4px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--face) 60%);
+  font: 700 12px var(--ui-font); color: var(--dim-ink); text-align: center;
+}
+.stream-tray-body .widget { max-width: none; box-shadow: none; padding: 4px 6px 6px; }
+/* the tray's bar already names the card: keep only its instructions */
+.stream-tray-body .widget-head > .widget-glyph, .stream-tray-body .widget-title { display: none; }
+.stream-tray-body .widget-head { margin-bottom: 6px; }
+/* a CAPTCHA in the tray: tiles small enough that VERIFY shows with them */
+.stream-tray-body .captcha-grid { max-width: 264px; margin: 0 auto; }
+
+/* ── the room header: the window's menu row (no second title bar) ──────── */
+.stream-room-head {
+  background: var(--face); color: var(--ink); box-shadow: var(--raised);
+  min-height: 52px; padding: 4px 6px; gap: 8px; z-index: 5;
+}
+.stream-back {
+  width: var(--tap); height: var(--tap); min-width: var(--tap);
+  font-size: 22px; padding: 0 0 2px;
+}
+.stream-room-id { gap: 1px; }
+.stream-room-title {
+  font: 700 15px/1.2 var(--ui-font); color: var(--ink);
+  white-space: normal; overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.stream-room-sub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 12px var(--ui-font); color: var(--dim-ink); }
+.stream-room-sub .here-tag { margin-left: 0; }
+.stream-presence { height: var(--tap); padding: 0 10px; font-size: 13px; }
+
+/* the footer: the taskbar owns the bottom safe area inside the app frame —
+   only the room's and the thread's footers, which sit above it (the
+   cutscene's foot has no taskbar under it and keeps its safe area) */
+.app-frame .stream-foot { padding-bottom: 8px; }
+
+/* ── the Codex + Quest Log: filing cabinets ─────────────────────────────── */
+.stream-cabinet { gap: 10px; font-family: var(--ui-font); padding: 8px; }
+.stream-filter { display: block; }
+.stream-filter input {
+  width: 100%; min-height: var(--tap); padding: 0 10px; border: none;
+  font: 16px var(--ui-font); color: var(--ink);
+}
+.stream-group { display: flex; flex-direction: column; }
+.stream-group-head {
+  display: flex; align-items: center; gap: 8px; min-height: var(--tap); width: 100%;
+  margin: 0; padding: 0 10px; border: none; cursor: pointer; text-align: left;
+  background: var(--face); color: var(--ink); box-shadow: var(--raised); border-radius: var(--radius);
+  font: 700 13px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
+}
+.stream-group-head:active { box-shadow: var(--pressed); }
+.stream-group-title { flex: 1; min-width: 0; }
+.stream-group-count { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--dim-ink); font-variant-numeric: tabular-nums; }
+.stream-rows { list-style: none; margin: 0; padding: 0; }
+.stream-row { border-bottom: 1px solid var(--line); }
+.stream-row.hidden { opacity: 0.6; }
+.stream-row-head {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap);
+  margin: 0; padding: 6px 10px; border: none; background: none; cursor: pointer; text-align: left; color: var(--ink);
+}
+.stream-row-head:active { background: var(--code-bg); }
+.stream-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.stream-row-title { font: 700 14px/1.25 var(--ui-font); overflow-wrap: anywhere; }
+.stream-row-sub { font: 12px/1.3 var(--ui-font); color: var(--dim-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stream-row.open .stream-row-sub { white-space: normal; }
+.stream-row-body { padding: 0 10px 10px; }
+.stream-row-body .codex-text, .stream-row-body .quest-text { margin-top: 0; font-size: 15px; }
+.stream-row-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+.stream-new {
+  flex-shrink: 0; font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
+  padding: 2px 6px; color: var(--black); background: var(--highlight); border-radius: var(--radius);
+}
+.stream-steps { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font: 13px/1.4 var(--ui-font); }
+.stream-step.complete { color: var(--good); }
+.stream-step.fail { color: var(--bad); }
+.stream-cabinet-note { margin: 0; padding: 8px 10px; font: 700 13px var(--ui-font); color: var(--system); text-align: center; }
+
+/* Typing in a card's own box with the keyboard up: the room's composer steps
+   aside so the card keeps its box, its slider and File it above the keyboard
+   (channel-view.tsx `card-typing`; `.kbd` is the frame's keyboard rule). */
+.kbd .stream-foot.card-typing > .composer { display: none; }

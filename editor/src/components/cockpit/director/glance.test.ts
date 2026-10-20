@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CastSummary, ChannelSummary, CockpitMessage, FactsView, LedgerEntry, RosterRow, WatchSummary, WorldEntry } from '@/store/cockpit'
-import { CockpitTab } from '@/store/cockpit'
+import { CockpitTab, SelectionKind } from '@/store/cockpit'
+import { hostNeeds } from '@loom/core/host-board'
 import {
   MASK,
   NeedKind,
@@ -8,6 +9,7 @@ import {
   changedRecently,
   formatWatchValue,
   majorityOf,
+  needLink,
   needsYou,
   peopleGlance,
   recentGlobals,
@@ -133,6 +135,34 @@ describe('needsYou', () => {
   it('a refusal with no staff room says the story gives no reason', () => {
     const [item] = needsYou({ refused: { cue: 'x', at: 0, seq: 0 }, now: 1, messages: [], channels: [], world: [], facts: null, wallet: null, cast: [], doorsOpen: true })
     expect(item!.detail).toBe('the story gives no reason here')
+  })
+
+  it('wave 13: every host-board target maps onto a glance link', () => {
+    expect(needLink({ target: 'judge' }, CHANNELS)).toEqual({ kind: 'tab', tab: CockpitTab.Mind })
+    expect(needLink({ target: 'agent', character: 'Trabolta' }, CHANNELS)).toEqual({ kind: 'tab', tab: CockpitTab.Mind })
+    expect(needLink({ target: 'wallet' }, CHANNELS)).toEqual({ kind: 'tab', tab: CockpitTab.Run })
+    expect(needLink({ target: 'more' }, CHANNELS)).toEqual({ kind: 'tab', tab: CockpitTab.Run })
+    expect(needLink({ target: 'part', character: 'Norton' }, CHANNELS)).toEqual({ kind: 'inspect', selection: { kind: SelectionKind.Character, id: 'Norton' } })
+    expect(needLink({ target: 'people' }, CHANNELS)).toEqual({ kind: 'tab', tab: CockpitTab.Roster })
+    expect(needLink({ target: 'staff' }, CHANNELS)).toEqual({ kind: 'tab', tab: CockpitTab.Chat, channel: 'room:hosts' })
+    expect(needLink({ target: 'staff' }, [])).toEqual({ kind: 'tab', tab: CockpitTab.Log })
+  })
+
+  it('wave 13: needsYou is the host board\'s rows (same order, copy and keys) after the refused press', () => {
+    const cast: CastSummary[] = [
+      { id: 'Norton', faction: null, part: true, online: false, held: true },
+      { id: 'McAfee', faction: null, part: true, online: false, held: false },
+      { id: 'Trabolta', faction: null, agent: true, online: false },
+    ]
+    const roster = [row('g1', 'Ada', { lastSeen: 0, online: false })]
+    const input = { now: 40 * 60_000, world: [], facts: null, wallet: null, cast, doorsOpen: true, roster }
+    const items = needsYou({ ...input, refused: { cue: '❌ Wrong', at: input.now - 10, seq: 0 }, messages: [], channels: CHANNELS })
+    expect(items[0]!.kind).toBe(NeedKind.Refused)
+    const rest = items.slice(1)
+    const rows = hostNeeds(input)
+    expect(rest.map((i) => [i.kind, i.key, i.text])).toEqual(rows.map((n) => [n.kind, n.key, n.text]))
+    expect(rest.map((i) => i.key)).toEqual(['part:Norton', 'part:McAfee', 'agent:Trabolta', 'unseen'])
+    expect(rest.find((i) => i.key === 'unseen')!.guests).toEqual([{ id: 'g1', name: 'Ada', lastSeen: 0 }])
   })
 })
 

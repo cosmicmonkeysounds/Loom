@@ -135,3 +135,14 @@ export function reseatTarget(
   )
   return hit?.id ?? null
 }
+
+/**
+ * The cast rows a Players pane can open as a performer's booth: the parts a
+ * performer may sign in to (`CastSummary.part`, the server's
+ * `performerPickable`) — never a `playable: false` prop (Night, the
+ * Kernel), an agent-voiced character or a guest's program, which no booth
+ * could ever sign in as.
+ */
+export function performerParts<T extends { part?: boolean }>(cast: ReadonlyArray<T>): T[] {
+  return cast.filter((c) => c.part === true)
+}

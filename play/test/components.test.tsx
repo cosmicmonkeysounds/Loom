@@ -5,8 +5,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Alerts } from "../src/alerts.ts";
-import { AmbientTicker } from "../src/stream/ticker.tsx";
-import { CardTray } from "../src/stream/card-tray.tsx";
 import { CountdownTray } from "../src/chrome/countdown-tray.tsx";
 import { FullPass } from "../src/chrome/pass.tsx";
 import { isTextEntry } from "../src/chrome/keyboard.ts";
@@ -15,7 +13,6 @@ import { TitleBar } from "../src/chrome/title-bar.tsx";
 import { HostDock } from "../src/host/dock.tsx";
 import { useHostView } from "../src/host/client.ts";
 import { MissedTray, MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
-import { NowCard } from "../src/booth/now-card.tsx";
 import { PassSheet } from "../src/guest/sheets.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 import { ObjectiveCard, checkCount } from "../src/ui/objective.tsx";
@@ -66,7 +63,7 @@ describe("the taskbar", () => {
 
 describe("the NOW title bar", () => {
   it("shows the first objective, else the room name; a tone marks it", () => {
-    expect(html(createElement(TitleBar, { objectives: [objective], fallback: "Lobby", onOpen: () => {}, sub: "📍 The Desktop" }))).toContain("▣ NOW: Clear the door ›");
+    expect(html(createElement(TitleBar, { objectives: [objective], fallback: "Lobby", onOpen: () => {}, sub: "📍 The Desktop" }))).toContain("▣ NOW: Clear the door\u00a0›");
     const none = html(createElement(TitleBar, { objectives: [], fallback: "Lobby", onOpen: () => {} }));
     expect(none).toContain("Lobby");
     expect(none).not.toContain("NOW");
@@ -74,9 +71,30 @@ describe("the NOW title bar", () => {
   });
 });
 
+describe("checkCount, the one checklist rule (guest card + booth NOW line)", () => {
+  it("counts every to-do; ✓ only when all are done; done: null is never done", () => {
+    expect(checkCount({ checklist: [] })).toBe("");
+    expect(checkCount({ checklist: [{ label: "a", done: true }] })).toBe("1/1 ✓");
+    expect(checkCount({ checklist: [{ label: "a", done: true }, { label: "b", done: null }] })).toBe("1/2");
+    expect(checkCount({ checklist: [{ label: "a", done: null }] })).toBe("0/1");
+    expect(checkCount({ checklist: [{ label: "a", done: true }, { label: "b", done: true }] })).toBe("2/2 ✓");
+    expect(checkCount({ checklist: [{ label: "a", done: false }, { label: "b", done: true }] })).toBe("1/2");
+  });
+  it("the booth's nowCount is the same rule, with only the performer's own ticks folded in", async () => {
+    const { nowCount } = await import("../src/booth/now-card.tsx");
+    const { tickKey } = await import("../src/booth/ticks.ts");
+    const o = { id: "o", title: "T", brief: "", buttons: [], act: null, checklist: [{ label: "a", done: true }, { label: "b", done: null }, { label: "c", done: false }] };
+    expect(nowCount(o)).toBe(checkCount(o));
+    expect(nowCount({ checklist: o.checklist })).toBe(checkCount(o));
+    expect(nowCount(o, new Set([tickKey("o", "b")]))).toBe("2/3");
+    expect(nowCount(o, new Set([tickKey("o", "c")]))).toBe("1/3"); // a story-tracked to-do is never ticked by hand
+  });
+});
+
 describe("the objective card", () => {
-  it("counts only the conditions, shows the brief, the checklist and at most 3 buttons", () => {
-    expect(checkCount(objective)).toBe("1/2 ✓");
+  it("counts every to-do, shows the brief, the checklist and at most 3 buttons", () => {
+    // the condition-less "Smile" (done: null) counts in the total and is never done
+    expect(checkCount(objective)).toBe("1/3");
     const out = html(createElement(ObjectiveCard, { objective, renderButton: (id: string) => createElement("button", null, id) }));
     expect(out).toContain("Scan every program");
     expect(out).toContain("☑ Scan a pass");
@@ -92,20 +110,27 @@ describe("the objective card", () => {
 });
 
 describe("the pass", () => {
-  it("FullPass is today's pass sheet", () => {
+  it("FullPass is the full-screen pass (the old pass sheet's barrel name renders it)", () => {
     const onClose = () => {};
     expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toBe(html(createElement(PassSheet, { me: { id: "g-1a2b", name: "Winamp" }, onClose })));
-    expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toContain("Winamp · show this to a performer to be scanned.");
+    const out = html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }));
+    expect(out).toContain('class="fullpass"');
+    expect(out).toContain("Hold this up to a performer");
+    expect(out).toContain("brightness");
   });
 });
 
-describe("the moments layer, behaviour-identical in Stage A", () => {
+describe("the moments layer (mounted in Stage A, filled by the moments lane)", () => {
   const alerts = (text: string | null): Alerts => ({
     alert: text === null ? null : { seq: 7, text, at: 0 } as unknown as Alerts["alert"],
     dismiss: () => {},
     raise: () => {},
     onHistory: () => {},
     rebase: () => {},
+    mark: () => -1,
+    settle: () => {},
+    epoch: 0,
+    recent: () => [],
   });
   const input = (text: string | null): MomentsInput => ({
     role: "guest",
@@ -125,8 +150,8 @@ describe("the moments layer, behaviour-identical in Stage A", () => {
     return createElement("i", null, `${m.level} ${m.missed}`);
   }
 
-  it("renders the old alert banner when there is an alert, nothing otherwise", () => {
-    expect(html(createElement(MomentsProvider, { ...input("!GO TO THE INTERNET"), children: createElement(MomentsLayer) }))).toContain('class="alert-banner"');
+  it("renders the session's feedback toast when there is one, nothing otherwise", () => {
+    expect(html(createElement(MomentsProvider, { ...input("✔ Done."), children: createElement(MomentsLayer) }))).toContain('class="moments-toast"');
     expect(html(createElement(MomentsProvider, { ...input(null), children: createElement(MomentsLayer) }))).toBe("");
     expect(html(createElement(MomentsLayer))).toBe("");
   });
@@ -139,13 +164,14 @@ describe("the moments layer, behaviour-identical in Stage A", () => {
 });
 
 describe("the Stage B stubs render nothing", () => {
-  it("card tray, ticker, NOW card, tray clock, host dock", () => {
-    expect(CardTray()).toBeNull();
-    expect(AmbientTicker()).toBeNull();
-    expect(NowCard()).toBeNull();
+  // The card tray and the ticker are the stream lane's now (card-tray / ticker
+  // tests); the booth NOW card is built (booth-now.test.tsx).
+  it("tray clock, host dock", () => {
     expect(CountdownTray({})).toBeNull();
     expect(HostDock({ session: {} as never, wide: false, openCard: () => {} })).toBeNull();
-    expect(useHostView(null)).toMatchObject({ view: null, error: null });
+    // useHostView holds state now (the host lane): read it inside a render.
+    const HostProbe = () => createElement("i", null, JSON.stringify((({ view, error }) => ({ view, error }))(useHostView(null))));
+    expect(html(createElement(HostProbe))).toBe("<i>{&quot;view&quot;:null,&quot;error&quot;:null}</i>");
   });
 });
 

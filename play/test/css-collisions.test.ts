@@ -10,8 +10,33 @@ import { describe, expect, it } from "vitest";
 
 const LANE_FILES = ["w95", "chrome", "stream", "moments", "booth", "host"] as const;
 
-/** Lane rules that restyle a base class on purpose: `"<file> | <selector>"`. */
-const ALLOWED = new Set<string>([]);
+/** Lane rules that restyle a base class on purpose: `"<file> | <selector>"`.
+ *  Only chrome restyles the shared primitives (CONTRACTS §0): the 44 px
+ *  touch floor and the sheets' safe areas, everywhere a primitive is used. */
+const ALLOWED = new Set<string>([
+  "chrome | .choice",
+  "chrome | .link",
+  "chrome | .chrow",
+  "chrome | .icon-btn",
+  "chrome | .composer .composer-scan",
+  "chrome | .back",
+  "chrome | .back::after",
+  "chrome | .sheet-x",
+  "chrome | .sheet-x::after",
+  "chrome | .msg-avatar[tabindex=\"0\"]",
+  "chrome | .msg-avatar[tabindex=\"0\"]::after",
+  "chrome | .replies",
+  "chrome | .replies::after",
+  "chrome | .speaker[tabindex=\"0\"]",
+  "chrome | .speaker[tabindex=\"0\"]::after",
+  "chrome | .thread-head",
+  "chrome | .thread-head .presence",
+  "chrome | .thread-head .presence::after",
+  "chrome | .tour-card.above",
+  "chrome | .sheet input",
+  "chrome | .sheet-backdrop",
+  "chrome | .sheet",
+]);
 
 function read(name: string): string {
   return readFileSync(new URL(`../src/css/${name}.css`, import.meta.url), "utf8");

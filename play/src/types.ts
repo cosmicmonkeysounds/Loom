@@ -101,6 +101,11 @@ export interface ChatMessage {
   about?: string;
   /** The server's moment class; absent = not a moment. */
   moment?: MomentClass;
+  /** The story's `Night.phase` when the server composed this message (null
+   *  = set to nothing). Only on what can be a moment, and only once the
+   *  story has a phase; absent → the moments layer uses the phase it knows
+   *  now (`moments/model.ts` `phaseOf`). */
+  phase?: string | null;
 }
 
 // --- per-role snapshots (mirror of server/views.ts) -------------------------
@@ -135,6 +140,10 @@ export interface Interaction {
   /** True when the INTERACTION declares `by:`: only its `actors` may press
    *  it (the server refuses another booth), so a booth doesn't offer it. */
   only?: true;
+  /** False on an `only` button nothing outside its `actors` hears (only
+   *  their own hooks): a host's press would do nothing and the server
+   *  refuses it, so even a host or admin booth leaves it out. */
+  hostHeard?: false;
   /** False while its `while:` is false — not on offer right now. */
   live?: false;
   /** `arm: true`: the button arms on the first tap and fires on the second
@@ -301,6 +310,14 @@ export interface PrimeView {
   countdowns?: CountdownSummary[];
   /** Staff-room channel ids as authored (`room:hosts`), wave 13. */
   staffRooms?: string[];
+  /** The story clock is stopped (paused, or the doors not yet open): the
+   *  booth's countdowns hold still (`booth/model.ts` `viewPaused`). */
+  paused?: true;
+  /** The booth holds the host capability (an `admin: true` part, or the
+   *  moderator passcode): it may press another character's `by:` button,
+   *  unless that button says `hostHeard: false`.
+   *  The server sends `false` too, so a revoked host reaches the booth. */
+  host?: boolean;
 }
 
 // --- wave 13: objectives, the night, a booth's guest card (mirror of server/views.ts)
@@ -363,6 +380,12 @@ export interface ScanResult {
   responses: string[];
   guest: { id: string; name: string; captured: boolean };
   card?: GuestCardView;
+  /** The staff-room lines (`# hosts` …) this scan produced: the story's refusal / explanation (fix round C1). */
+  staff?: string[];
+  /** Lines the booth's character spoke to the scanned guest in this commit (C1). */
+  said?: Array<{ from: string; text: string }>;
+  /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
+  refused?: boolean;
 }
 /** `/api/prime/act` 200 body. */
 export interface PrimeActResult {
@@ -370,6 +393,12 @@ export interface PrimeActResult {
   guest: unknown;
   replies?: string[];
   card?: GuestCardView;
+  /** The staff-room lines (`# hosts` …) this press produced: the story's refusal / explanation (fix round C1). */
+  staff?: string[];
+  /** Lines the booth's character spoke to the guest in this commit (C1). */
+  said?: Array<{ from: string; text: string }>;
+  /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
+  refused?: boolean;
 }
 
 // --- client-side view models (composed by the chat store) -------------------

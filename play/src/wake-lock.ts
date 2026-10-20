@@ -9,7 +9,7 @@ import type { SessionStorage } from "./host.ts";
 
 const KEY = "loom.wakeLock";
 
-interface WakeLockSentinelLike {
+export interface WakeLockSentinelLike {
   release(): Promise<void>;
 }
 interface WakeLockLike {
@@ -95,4 +95,55 @@ export function useWakeLock(storage: SessionStorage): WakeLock {
   }, [on, storage, acquire]);
 
   return { supported: api !== null, on, toggle };
+}
+
+/**
+ * Hold the screen awake while `active` (wave 13: the full-screen pass —
+ * a guest holding up a QR must not watch it dim mid-scan), whatever the
+ * guest's own "Keep my screen on" choice; released on close. Re-taken when
+ * the page comes back. Nothing where the browser has no wake lock.
+ */
+export function useHeldWakeLock(active: boolean): void {
+  useEffect(() => {
+    const api = wakeLockApi();
+    if (!active || api === null) return;
+    return holdWakeLock(api, document);
+  }, [active]);
+}
+
+/** The hold itself (pure over its inputs — `test/wake-lock.test.ts`): take
+ *  the lock now unless the page is hidden, take it again whenever the page
+ *  comes back without one, and on the returned stop release it — including
+ *  a lock the browser hands over after the stop. */
+export function holdWakeLock(
+  api: { request(type: "screen"): Promise<WakeLockSentinelLike> },
+  doc: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">,
+): () => void {
+  let held: WakeLockSentinelLike | null = null;
+  let done = false;
+  const take = () => {
+    if (done || held !== null || doc.visibilityState === "hidden") return;
+    api.request("screen").then(
+      (s) => {
+        if (done) return void s.release().catch(() => {});
+        held = s;
+        (s as unknown as EventTarget).addEventListener?.("release", () => {
+          if (held === s) held = null;
+        });
+      },
+      () => {
+        /* refused — the pass still shows */
+      },
+    );
+  };
+  const onVis = () => {
+    if (doc.visibilityState === "visible") take();
+  };
+  take();
+  doc.addEventListener("visibilitychange", onVis);
+  return () => {
+    done = true;
+    doc.removeEventListener("visibilitychange", onVis);
+    void held?.release().catch(() => {});
+  };
 }

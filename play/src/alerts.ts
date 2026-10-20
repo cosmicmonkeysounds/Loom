@@ -1,41 +1,40 @@
 //! Alerts that actually land (K-06 / N-07). An alert is a `!` broadcast
 //! (`ChatMessage.alert`) or, in a booth, an unsolicited readout (the late
-//! list, a private warning). Either one banners, chimes and buzzes.
+//! list, a private warning). Wave 13: the moments layer
+//! (`moments/provider.tsx`) turns them into moments on the interrupt ladder
+//! and settles the mark this hook persists; `useAlerts` keeps the mark, the
+//! audio unlock and the quiet feedback toast (`raise`).
 //!
 //! Three things a phone does to alerts, and what this module does back:
 //! - **The screen goes off.** The SSE stream drops; on wake it reconnects
 //!   and the server replays `history`. The mark of the last alert seen is
 //!   therefore *kept* across re-histories (and persisted per session, so an
-//!   iOS tab the OS discarded still knows), and the newest unseen alert
-//!   from the last 10 story-minutes is bannered. Older ones are skipped: a
+//!   iOS tab the OS discarded still knows); the moments layer replays what
+//!   is above it from the last 10 story-minutes. Older ones are skipped: a
 //!   re-login must not replay every alarm of the night.
 //! - **Audio needs a gesture.** One shared `AudioContext`, created and
 //!   unlocked on the first tap (iOS stays silent for a context made later,
 //!   outside a gesture), resumed before every chime.
-//! - **A hidden page can't sound.** An alert that lands while the page is
-//!   hidden chimes when it becomes visible, and its banner's auto-dismiss
-//!   only counts visible time.
+//! - **A hidden page can't sound.** A moment that lands while the page is
+//!   hidden is missed and replays (and chimes) when it becomes visible; the
+//!   toast's auto-dismiss only counts visible time.
 //!
 //! Pure helpers first (unit-tested in `test/alerts.test.ts`), then the hook.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionStorage } from "./host.ts";
-import { activePins } from "./pins.ts";
 import type { ChatMessage } from "./types.ts";
 
-/** An alert on screen — a `!` broadcast (seq ≥ 0) or a booth readout (seq < 0). */
+/** A feedback toast on screen (seq < 0, client-made). Wave 13: show alarms are moments. */
 export interface Alert {
   seq: number;
   text: string;
+  /** Raised as the answer to the viewer's own press. */
+  quiet?: boolean;
 }
 
-/** How old (story clock) a missed alert may be and still banner on wake. */
-export const ALERT_WINDOW_MS = 10 * 60_000;
 /** A readout this soon after the booth's own action is its answer, not news. */
 export const READOUT_GRACE_MS = 4_000;
-/** How long a banner stays up, counting only time the page is visible. */
-export const BANNER_MS = 15_000;
-
 /** Which alerts are this session's own (default: every one — a guest's view
  *  only carries its own messages). */
 export type AlertFilter = (m: ChatMessage) => boolean;
@@ -73,72 +72,11 @@ export function boothAlertFilter(character: string): AlertFilter {
   };
 }
 
-/** Alert broadcasts newer than `sinceSeq`, oldest first. */
-export function pickAlerts(messages: Iterable<ChatMessage>, sinceSeq: number, forMe?: AlertFilter): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  for (const m of messages) if (m.alert === true && m.seq > sinceSeq && !m.hidden && (forMe?.(m) ?? true)) out.push(m);
-  return out.sort((a, b) => a.seq - b.seq);
-}
-
-/** The seqs of `!` pins a later `unpin` (or a newer pin with the same key)
- *  already took down — the 🩹 after a mis-tapped mark, the dance lifting a
- *  `!!` takeover. Such a pin is no longer news: it never banners on wake,
- *  and a banner still up for it goes away. */
-export function retractedPinSeqs(messages: Iterable<ChatMessage>): Set<number> {
-  const list = [...messages];
-  const live = new Set(activePins(list).map((m) => m.seq));
-  const out = new Set<number>();
-  for (const m of list) if (m.alert === true && m.pin !== undefined && !live.has(m.seq)) out.add(m.seq);
-  return out;
-}
-
-/** The banner left once the pins in `gone` are taken down: `alert` itself,
- *  or null when it is one of them. Fed the *latest* banner (a functional
- *  state update), so a newer pin that replaced the one on screen in the
- *  same render — a second `!` pin with the same key — is kept, never wiped
- *  with the pin it replaced. A readout (negative seq) is never a pin. */
-export function bannerAfterRetract(alert: Alert | null, gone: ReadonlySet<number>): Alert | null {
-  return alert !== null && alert.seq >= 0 && gone.has(alert.seq) ? null : alert;
-}
-
 /** The highest seq in a message list (−1 when empty). */
 export function maxSeqOf(messages: Iterable<ChatMessage>): number {
   let max = -1;
   for (const m of messages) if (m.seq > max) max = m.seq;
   return max;
-}
-
-/** The newest story-clock `ts` in a message list (−∞ when empty). */
-export function maxTsOf(messages: Iterable<ChatMessage>): number {
-  let max = Number.NEGATIVE_INFINITY;
-  for (const m of messages) if (m.ts > max) max = m.ts;
-  return max;
-}
-
-/**
- * The alert to banner now, given the last one seen (`mark`): the newest
- * unseen alert at most `ALERT_WINDOW_MS` older than `now`, else null. The
- * returned `mark` moves past every unseen alert, shown or skipped (an alert
- * `forMe` rejects, or a `!` pin already taken down, included — it is never
- * shown later either). `now` is
- * the story clock — the server view's `clock`, or the newest message's `ts`
- * when that is later (a view is only rebuilt on state changes).
- */
-export function nextAlert(
-  messages: Iterable<ChatMessage>,
-  mark: number,
-  clock: number | null | undefined,
-  forMe?: AlertFilter,
-): { alert: ChatMessage | null; mark: number } {
-  const list = [...messages];
-  const all = pickAlerts(list, mark);
-  if (all.length === 0) return { alert: null, mark };
-  const last = all[all.length - 1]!;
-  const retracted = retractedPinSeqs(list);
-  const fresh = all.filter((m) => !retracted.has(m.seq) && (forMe?.(m) ?? true));
-  const now = Math.max(clock ?? Number.NEGATIVE_INFINITY, maxTsOf(list));
-  const recent = fresh.filter((m) => m.ts >= now - ALERT_WINDOW_MS);
-  return { alert: recent.length > 0 ? recent[recent.length - 1]! : null, mark: last.seq };
 }
 
 /**
@@ -282,22 +220,50 @@ interface StoredMark {
   mark: number;
 }
 
+/** How long a feedback toast stays up, counting only visible time. */
+export const TOAST_MS = 5_000;
+/** How many recent toasts the moments layer can compare a readout against. */
+const RECENT_TOASTS = 6;
+
+/** A feedback toast raised recently (wall clock). */
+export interface RecentToast {
+  text: string;
+  at: number;
+  quiet: boolean;
+}
+
 export interface Alerts {
+  /** The feedback toast on screen (✔ Done, a refusal). Wave 13: never a show alarm — those are moments. */
   alert: Alert | null;
   dismiss: () => void;
-  /** Banner + chime arbitrary text now (a booth readout). `quiet` banners
-   *  without the chime / buzz (a refusal, not a show alarm). */
+  /** Toast text now. `quiet` = the answer to the viewer's own press (it stands in for a readout saying the same). Never chimes.
+   *  Without `quiet` it is a booth's unsolicited readout (`session/prime.ts`, ahead of its message): no toast — the
+   *  moments layer shows the readout, and this raise is how it knows the readout is news, not the booth's own answer. */
   raise: (text: string, opts?: { quiet?: boolean }) => void;
   /** Call from the stream's `onHistory`, before the messages are applied. */
   onHistory: (list: readonly ChatMessage[]) => void;
   /** The story restarted under a live session: the next history is old news. */
   rebase: () => void;
+  /** Moments: every message at or below this seq is settled (seen, or old news). Persisted per sign-in. */
+  mark: () => number;
+  /** Moments: move the mark up to `seq` (never down) and persist it. */
+  settle: (seq: number) => void;
+  /** Bumps when a history rebased the mark (a story restart, renumbered seqs): the moments queue is old news. */
+  epoch: number;
+  /** The last few toasts, newest last (the moments layer drops a readout a quiet toast already said). */
+  recent: () => readonly RecentToast[];
+  /** How many histories this session has taken (`onHistory`): messages that land with a new one are a
+   *  reconnect's backlog (staleness + compression apply), never a live burst. Absent → treated as 0. */
+  histories?: () => number;
 }
 
 /**
- * The alert state for one role session. `session` identifies the sign-in
- * (its token) — the persisted mark only applies to the same one; `clock` is
- * the latest view's story clock; `storageKey` where the mark persists.
+ * The alert state for one role session: the persisted mark the moments
+ * layer settles (`moments/provider.tsx` turns messages into moments), and
+ * the quiet feedback toast. `session` identifies the sign-in (its token) —
+ * the persisted mark only applies to the same one; `storageKey` is where
+ * the mark persists. `clock` and `forMe` are kept for the callers' shape;
+ * the moments layer reads the view's clock and the booth filter itself.
  */
 export function useAlerts(opts: {
   messages: ReadonlyMap<number, ChatMessage>;
@@ -306,23 +272,19 @@ export function useAlerts(opts: {
   storage: SessionStorage;
   storageKey: string;
   sound: boolean;
-  /** Only these alerts banner (a booth's `boothAlertFilter`); the mark still
-   *  moves past the rest. Read through a ref — it may be a fresh closure. */
   forMe?: AlertFilter;
 }): Alerts {
-  const { messages, clock, session, storage, storageKey, sound } = opts;
-  const forMeRef = useRef(opts.forMe);
-  forMeRef.current = opts.forMe;
+  const { session, storage, storageKey, sound } = opts;
   const mark = useRef(-1);
   const rebasing = useRef(false);
   const baseline = useRef(false);
   const owner = useRef<string | null>(null);
-  const pendingChime = useRef(false);
-  const readoutSeq = useRef(-1);
+  const toastSeq = useRef(-1);
+  const recentRef = useRef<RecentToast[]>([]);
+  const historyCount = useRef(0);
   const [alert, setAlert] = useState<Alert | null>(null);
+  const [epoch, setEpoch] = useState(0);
   const visible = useVisible();
-  const visibleRef = useRef(visible);
-  visibleRef.current = visible;
 
   // Load the mark for this sign-in (a different session starts from scratch).
   if (owner.current !== session) {
@@ -348,73 +310,24 @@ export function useAlerts(opts: {
     if (sound) installAudioUnlock();
   }, [sound]);
 
-  const show = useCallback(
-    (a: Alert, quiet = false) => {
-      setAlert(a);
-      if (!sound || quiet) return;
-      if (visibleRef.current) {
-        playChime();
-        vibrate();
-      } else {
-        pendingChime.current = true;
-      }
-    },
-    [sound],
-  );
-
-  useEffect(() => {
-    if (session === null) return;
-    const before = mark.current;
-    const next = nextAlert(messages.values(), before, clock, forMeRef.current);
-    if (next.mark === before) return;
-    mark.current = next.mark;
-    persist();
-    if (next.alert !== null) show({ seq: next.alert.seq, text: next.alert.text });
-    // `clock` is read, not watched: a snapshot alone never raises an alert.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, session, show, persist]);
-
-  // A pin taken down while its banner is still up: the banner goes too.
-  // A functional update: the effect above may have just raised a newer pin
-  // that replaced this one (same key) in the same commit, and the `alert`
-  // this render saw is the old one — checking it would wipe the new banner.
-  useEffect(() => {
-    if (alert === null || alert.seq < 0) return;
-    const gone = retractedPinSeqs(messages.values());
-    if (!gone.has(alert.seq)) return;
-    setAlert((a) => {
-      const next = bannerAfterRetract(a, gone);
-      if (next === null && a !== null) pendingChime.current = false;
-      return next;
-    });
-  }, [alert, messages]);
-
-  // Woke up: sound what landed while hidden.
-  useEffect(() => {
-    if (visible && pendingChime.current) {
-      pendingChime.current = false;
-      if (sound) {
-        playChime();
-        vibrate();
-      }
-    }
-  }, [visible, sound]);
-
-  // Auto-dismiss on visible time only — a banner that arrived with the
-  // screen off is still there when the phone wakes.
+  // Auto-dismiss on visible time only.
   useEffect(() => {
     if (alert === null || !visible) return;
-    const t = window.setTimeout(() => setAlert(null), BANNER_MS);
+    const t = window.setTimeout(() => setAlert(null), TOAST_MS);
     return () => window.clearTimeout(t);
   }, [alert, visible]);
 
-  const dismiss = useCallback(() => {
-    pendingChime.current = false;
-    setAlert(null);
+  const dismiss = useCallback(() => setAlert(null), []);
+  const raise = useCallback((text: string, o?: { quiet?: boolean }) => {
+    const quiet = o?.quiet === true;
+    recentRef.current = [...recentRef.current, { text, at: Date.now(), quiet }].slice(-RECENT_TOASTS);
+    if (quiet) setAlert({ seq: toastSeq.current--, text, quiet });
   }, []);
-  const raise = useCallback((text: string, o?: { quiet?: boolean }) => show({ seq: readoutSeq.current--, text }, o?.quiet === true), [show]);
   const onHistory = useCallback(
     (list: readonly ChatMessage[]) => {
+      historyCount.current += 1;
+      const max = maxSeqOf(list);
+      const rebased = !baseline.current && (rebasing.current || max < mark.current);
       const m = markAfterHistory(list, mark.current, rebasing.current);
       rebasing.current = false;
       const first = baseline.current;
@@ -423,11 +336,23 @@ export function useAlerts(opts: {
         mark.current = m;
         persist();
       }
+      if (rebased) setEpoch((e) => e + 1);
     },
     [persist],
   );
   const rebase = useCallback(() => {
     rebasing.current = true;
   }, []);
-  return { alert, dismiss, raise, onHistory, rebase };
+  const getMark = useCallback(() => mark.current, []);
+  const settle = useCallback(
+    (seq: number) => {
+      if (seq <= mark.current) return;
+      mark.current = seq;
+      persist();
+    },
+    [persist],
+  );
+  const recent = useCallback(() => recentRef.current, []);
+  const histories = useCallback(() => historyCount.current, []);
+  return { alert, dismiss, raise, onHistory, rebase, mark: getMark, settle, epoch, recent, histories };
 }

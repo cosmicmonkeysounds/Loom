@@ -5,17 +5,18 @@
 
 ## Card
 
-**Door duty (20:00 → C1).** Booth → **📷 Scanner** → scan the pass on the
-guest's phone. That scan **clears them** (the Tube, the Desktop, Task
-Manager's "Your hosts tonight" line, Clippy's tour). Camera fails → type the
-id under the QR. Use an **Android** phone until the iPhone scanner is
-verified (OP-04).
+**Door duty (20:00 → C1).** Tap **📷 Scan** (the big taskbar button) and scan
+the pass on the guest's phone. That scan **clears them** (the Tube, the
+Desktop, Task Manager's "Your hosts tonight" line, Clippy's tour). Their card
+opens at once (📷 Next guest brings the camera back for the next pass). Camera
+fails → type the id under the QR in the box under the camera. Use an
+**Android** phone until the iPhone scanner is verified (OP-04).
 
 **Your buttons**
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
+| **any time** | **🛡 Send to the Internet** (tap to arm, tap again) | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
 | **any time** | **✅ Mark as reinstalled** | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | doubt +25 |
@@ -48,8 +49,13 @@ correct opinion).
 **Sweeps:** C1 · C2 · ⏳ (scan arrivals) · 🚨 the late list · Trabolta's sweep
 requests · 🚨 server-room alarm · 🗜 zip everyone out.
 
-**Your booth:** Scanner · Inbox · Quest Log · Codex · `# hosts` ·
-`# quarantine` · the rooms · one thread per guest.
+**Your booth:** the **NOW card** on top (this part of the night's job, its
+to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
+Quest Log · Codex · `# hosts` · `# quarantine` · **Readouts** (every readout,
+kept across a reload) · **Messages** (a program typing to you) · the rooms.
+A scanned program's card leads with
+at most three buttons your objective needs (🩹 on a marked program); the rest
+are under **All buttons…**.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 
@@ -93,11 +99,12 @@ left out.
 - **⏳ → 🚨:** scan arrivals; then the late list.
 - **🗜:** zip everyone out of the Internet (the tent, or the shed on a rain night).
 - **🔑 Moderating (if the director gives you the moderator passcode at
-  call):** ☰ → *Add moderator powers* → type it → *Become an admin*, reload
+  call):** ⊞ Start → *Add moderator powers* → type it → *Become an admin*, reload
   once, then tap **hide** on any message that is inappropriate or off topic.
   It vanishes from every phone. You can remove, never rewrite. Without the
-  passcode, ask the director to hide it. The passcode also shows you the
-  director's cues under More…: never press those.
+  passcode, ask the director to hide it. The passcode also turns your booth
+  into a host's: a NEXT bar above the taskbar and a console. Never press a
+  cue from it.
 - **🕚 Y2K → the end:** watch the club joins. A majority (more than half of all
   guest programs, once its leader has done their task) gives its members the
   server-room door code. Anyone with the code belongs in the room; police the

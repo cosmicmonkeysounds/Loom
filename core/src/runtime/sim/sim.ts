@@ -1250,8 +1250,30 @@ export class Sim {
     known: CodexDef[];
   }> {
     const mine = this.codexFor(person);
-    const knownAbout = (id: string, name: string): CodexDef[] =>
-      mine.filter((e) => e.about !== null && (e.about === id || foldName(e.about) === foldName(name)));
+    // Index the viewer's entries by `about` once (exact and folded): the
+    // directory asks for every guest and listed character, and folding each
+    // entry per person cost ~0.7 ms a guest view late in the night.
+    const byAbout = new Map<string, number[]>();
+    const byFold = new Map<string, number[]>();
+    mine.forEach((e, k) => {
+      if (e.about === null) return;
+      const exact = byAbout.get(e.about);
+      if (exact === undefined) byAbout.set(e.about, [k]);
+      else exact.push(k);
+      const f = foldName(e.about);
+      const folded = byFold.get(f);
+      if (folded === undefined) byFold.set(f, [k]);
+      else folded.push(k);
+    });
+    const knownAbout = (id: string, name: string): CodexDef[] => {
+      if (byAbout.size === 0) return [];
+      const a = byAbout.get(id);
+      const b = byFold.get(foldName(name));
+      if (a === undefined && b === undefined) return [];
+      if (b === undefined || a === undefined) return (a ?? b)!.map((k) => mine[k]!);
+      // Both: `mine` order, each entry once.
+      return [...new Set([...a, ...b])].sort((x, y) => x - y).map((k) => mine[k]!);
+    };
     const guests =
       this.model.directory === "everyone"
         ? [...this.persons.values()].filter((p) => p.id !== person).map((p) => ({ id: p.id, name: p.name }))

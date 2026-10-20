@@ -172,7 +172,9 @@ describe("operator play-as sessions", () => {
     expect(scan.status).toBe(200);
     expect(scan.json).toMatchObject({ scannedAs: "Recruiter", canModerate: false });
     // `as` needs the moderator capability — a booth can't borrow another character.
-    expect((await asToken(rt, "/api/scan", { target: pid, as: "Sysadmin" }, token)).json.scannedAs).toBe("Recruiter");
+    // (Another guest: the same one again this soon is a double tap, 429.)
+    const pid2 = await persona(rt, "Marionette");
+    expect((await asToken(rt, "/api/scan", { target: pid2, as: "Sysadmin" }, token)).json.scannedAs).toBe("Recruiter");
     expect((await asToken(rt, "/api/mod/say", { channel: "lobby", text: "x" }, token)).status).toBe(403);
     expect((await getWith(rt, `/api/state?role=mod&token=${token}`, false)).status).toBe(403);
     // Roles don't cross: a booth token is no guest, a guest token no booth.

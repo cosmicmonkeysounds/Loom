@@ -1,0 +1,50 @@
+//! What a booth's press or scan said (fix round, CROSS-LANE C1): the
+//! `/api/prime/act` and `/api/scan` replies carry, beside the `respond`
+//! texts (`replies` / `responses`), the lines this one commit produced that
+//! the booth should read on its card:
+//!
+//! - `staff`: the staff-room lines (`# hosts` and every other authored
+//!   `kind: faction` CHANNEL no guest may join) — where a phase-guarded rule
+//!   says why it refused the press ("🗣 The bottle is not on WinZip.");
+//! - `said`: what the booth's own character said to the scanned guest
+//!   ("Not yet. Finish your upload.").
+//!
+//! Pure over the chat messages the commit appended, so the server and a test
+//! read the same rule.
+
+import type { ChatMessage } from "../chat.ts";
+
+/** One line the booth's character spoke to the guest. */
+export interface SaidLine {
+  from: string;
+  text: string;
+}
+
+/** The extra card lines of one press / scan; each field is set only when non-empty. */
+export interface PressLines {
+  staff?: string[];
+  said?: SaidLine[];
+}
+
+/**
+ * The card lines in `appended` (the messages one commit added): staff-room
+ * lines (`staffChannels` = the authored ids, `staffRoomChannels`), and the
+ * typed or scripted lines `character` addressed to `guest` (its `dm:` thread
+ * or any room row whose audience names the guest). Hidden rows never count.
+ */
+export function pressLines(appended: readonly ChatMessage[], staffChannels: ReadonlySet<string>, character: string | null, guest: string): PressLines {
+  const staff: string[] = [];
+  const said: SaidLine[] = [];
+  for (const m of appended) {
+    if (m.hidden) continue;
+    const text = m.text.trim();
+    if (text === "") continue;
+    if (staffChannels.has(m.channel)) {
+      staff.push(text);
+      continue;
+    }
+    if (character === null || m.kind !== "line" || m.from !== character) continue;
+    if (Array.isArray(m.audience) && m.audience.includes(guest)) said.push({ from: m.from, text });
+  }
+  return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}) };
+}

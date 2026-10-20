@@ -10,7 +10,7 @@
 | 🏓 Truth Pong | **🏓 Made the cup: may answer** / **🏓 Missed the cup: marked for reinstallation** | the thrower |
 | 🏓 Truth Pong, after a made cup (if Clippy is busy) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** confident · **🤷** uncertain or guessed: marked | the answerer (Q1–Q3 = H4–H6) |
 | 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: marked for reinstallation** | the bobber |
-| any time | **🎀 Award a ribbon** · **🤝 Vouch** · **🩹 Unmark** | |
+| any time | **🎀 Award a ribbon** (announced as *from the hosts*: DRAFT, Q28) · **🤝 Vouch** · **🩹 Unmark** (on a marked program's card face) | |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each) |
 | Grok Prom | **💘 Said "You're the one that I want"** | |
 | the summons | scan at the living-room door, or **📍 Checked in** | |
@@ -45,8 +45,20 @@ bobber finishes, radio the director: they fire ⚖ for the verdict** (your
 booth says so too). Right after ⚖, every program's phone gets Trabolta's card
 asking for a pickup line that works on Sandy; the server judges the answers.
 
-**Your booth:** Scanner · Inbox · Codex · `# hosts` · `# quarantine` · the
-rooms · one thread per guest.
+**Your booth is a host's** (your part has `admin: true`): the **NOW card** on
+top · the **NEXT bar** above the taskbar (the cue sheet; tap the bar for the
+console: Cues · Needs · Judge · People · More) · **📷 Scan** and **🗂 Guests** on
+the taskbar · Codex · `# hosts` · `# quarantine` · **Readouts** ·
+**Messages** (a program typing to you) · the rooms. A scanned program's card
+leads with at most three buttons your objective needs; the rest are under
+**All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
+never on your card: radio one. Help → *The host console* has the rest.
+
+**The cue sheet:** NEXT sits above your taskbar. Fire a cue only when the
+director radios you: tap **ARM**, then **FIRE** within 4 s. Any host may
+fire; if two phones press the same moment the server takes one and the other
+reads *Cues moved — tap again*, and the Cues tab's **LAST** line says who
+pressed. Who calls the cues is DRAFT for sign-off (Q1).
 
 **Radio:** BEANS · HOLD · ALL STOP.
 
@@ -69,8 +81,9 @@ yes."
 
 - **Clearance:** Task Manager's line in the app introduces the four hosts to
   every cleared program ("Adobe Acrobat: documents and printing") before
-  Clippy's tour. The tour ends on **Bathroom Mode**, the 🚻 button on their
-  pass; if someone asks what it is, that's it.
+  Clippy's tour. The tour ends on **Bathroom Mode**, the 🚻 button in their ⊞
+  Start menu (the taskbar's left corner); if someone asks what it is, that's
+  it.
 - **C1:** Clippy introduces you: documents and printing.
 - **🏓 Truth Pong** (in the backyard, The Cloud): you judge the cup. Made → 🏓
   Made (they may answer one round-2 fact; Clippy judges, or you if she's

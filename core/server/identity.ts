@@ -92,15 +92,106 @@ export function reservedDefFor(model: SimModel, name: string): IdentityDef | nul
     ?? null;
 }
 
+/** Invisible characters NFKC keeps that are not `\p{Cf}`: the Hangul
+ *  fillers, the blank Braille pattern, the combining grapheme joiner, the
+ *  Mongolian free variation selectors, the Khmer inherent vowels and the
+ *  supplementary variation selectors (each renders as nothing after a letter). */
+const INVISIBLE_MARKS = /[\u115F\u1160\u3164\uFFA0\u2800\u034F\u180B-\u180D\u180F\u17B4\u17B5\u{E0100}-\u{E01EF}]/gu;
+
+/** A variation selector that is not styling an emoji (`❤️` keeps its own). */
+const STRAY_VARIATION = /(?<!\p{Extended_Pictographic})[\uFE00-\uFE0F]/gu;
+
+/** Format / control characters, but a zero-width joiner inside an emoji
+ *  sequence (`👨‍💻`) is that emoji, not a disguise. */
+function dropFormat(s: string): string {
+  return s.replace(/[\p{Cf}\p{Cc}]/gu, (c, at: number) =>
+    c === "\u200D" && /\p{Extended_Pictographic}\uFE0F?$/u.test(s.slice(0, at)) && /^\p{Extended_Pictographic}/u.test(s.slice(at + 1)) ? c : "",
+  );
+}
+
+/**
+ * A typed guest name as the house shows and compares it: NFKC (a full-width
+ * `Ｃalculator` is `Calculator`), every format / control character dropped
+ * (zero-width spaces and joiners, bidi controls, a soft hyphen, tag
+ * characters), the invisible fillers, joiners and stray variation selectors
+ * dropped, whitespace collapsed. Applied before the taken / part / caste /
+ * reserved checks and to the stored display name, so a lookalike of a taken
+ * name folds onto it (409) instead of posing as them. (Cross-script
+ * homoglyphs, a Cyrillic `а`, are not folded.)
+ */
+export function cleanGuestName(raw: string): string {
+  return dropFormat(raw.normalize("NFKC").replace(/\s+/gu, " "))
+    .replace(INVISIBLE_MARKS, "")
+    .replace(STRAY_VARIATION, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+/** Letters from other scripts that read as a Latin letter, by case (after
+ *  NFD has split off accents): Cyrillic, Greek, the Turkish dotless ı. Only
+ *  the ones that look the same — not the full Unicode confusables table. A
+ *  lower-case letter missing here reads as its capital's twin (`nameSkeleton`),
+ *  so a name skeletons the same lower-cased (the taken set is folded); a
+ *  lower-case letter whose capital reads as another letter (Greek ν / Ν,
+ *  υ / Υ) is left to its capital for the same reason. */
+const CONFUSABLES: Readonly<Record<string, string>> = {
+  // Cyrillic
+  А: "A", В: "B", Е: "E", К: "K", М: "M", Н: "H", О: "O", Р: "P", С: "C", Т: "T", Х: "X", У: "Y", Ѕ: "S", І: "I", Ј: "J", Ү: "Y", Һ: "H", Ԛ: "Q", Ԝ: "W",
+  а: "a", е: "e", к: "k", о: "o", р: "p", с: "c", у: "y", х: "x", ѕ: "s", і: "i", ј: "j", һ: "h", ԁ: "d", ӏ: "l", ԛ: "q", ԝ: "w", ү: "y",
+  // Greek
+  Α: "A", Β: "B", Ε: "E", Ζ: "Z", Η: "H", Ι: "I", Κ: "K", Μ: "M", Ν: "N", Ο: "O", Ρ: "P", Τ: "T", Υ: "Y", Χ: "X",
+  α: "a", ε: "e", ι: "i", κ: "k", ο: "o", ρ: "p", χ: "x",
+  // Latin letters with a stroke or no dot (no NFD split)
+  ı: "i", ȷ: "j", ł: "l", Ł: "L", ø: "o", Ø: "O", đ: "d", Đ: "D", ħ: "h", Ħ: "H",
+};
+
+/**
+ * A guest name's skeleton — a stricter key than `foldName`, for the taken /
+ * part checks only (recheck item 5): `cleanGuestName`, accents dropped,
+ * every look-alike letter from another script mapped onto its Latin twin
+ * (`CONFUSABLES`), lower case, then only letters, digits and the `+` / `#`
+ * that name a different program kept — so `Win Zip`, `Fire fox`, `WınZip`
+ * (dotless ı) and `Wіnzip` (Cyrillic і) read as `winzip` / `firefox`, while
+ * `Word` and `WordPad`, `Notepad` and `Notepad++`, `C#` and `C++` stay apart.
+ * The same lower-cased: `nameSkeleton(foldName(x)) === nameSkeleton(x)`, so
+ * a folded taken name compares like the typed one in either order. Empty for
+ * a name with no letter or digit (an emoji): such a name is compared folded
+ * only.
+ */
+export function nameSkeleton(raw: string): string {
+  let out = "";
+  let core = false;
+  for (const ch of cleanGuestName(raw).normalize("NFD")) {
+    if (/\p{M}/u.test(ch)) continue;
+    const twin = CONFUSABLES[ch] ?? CONFUSABLES[ch.toUpperCase()] ?? ch;
+    const c = twin.toLowerCase();
+    if (/^[\p{L}\p{N}]+$/u.test(c)) {
+      out += c;
+      core = true;
+    } else if (c === "+" || c === "#") out += c;
+  }
+  return core ? out : "";
+}
+
+/** The first `max` characters (code points, never half a surrogate pair). */
+export function clipName(name: string, max: number): string {
+  return Array.from(name).slice(0, max).join("");
+}
+
 /** Why a guest may not register a name, or null when they may. `mayClaim`
  *  says whether this caller may take a `reserved: true` program (they hold
  *  its claim, or a director opened it); without it a reserved program is
  *  refused with `RESERVED`. */
 export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlySet<string>, mayClaim: (character: string) => boolean = () => false): string | null {
-  const folded = foldName(name);
+  const folded = foldName(cleanGuestName(name));
   if (folded === "") return "pick a program";
   if (taken.has(folded)) return `${name} is already here tonight — pick another program`;
-  const def = identityDefs(model).find((d) => foldName(d.name) === folded);
+  // A lookalike (an inserted space, a dotless ı, a Cyrillic і) of a name
+  // already here is that name.
+  const skeleton = nameSkeleton(name);
+  if (skeleton !== "") for (const t of taken) if (nameSkeleton(t) === skeleton) return `${name} is already here tonight — pick another program`;
+  const defs = identityDefs(model);
+  const def = defs.find((d) => foldName(d.name) === folded) ?? (skeleton === "" ? undefined : defs.find((d) => nameSkeleton(d.name) === skeleton));
   if (def === undefined) {
     // The article name of a reserved program is held like the program.
     const held = reservedDefFor(model, name);
@@ -118,7 +209,12 @@ export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlyS
  *  given. Asked after `guestNameRefusal` passed. */
 export function canonicalGuestName(model: SimModel, name: string): string {
   const folded = foldName(name);
-  return identityDefs(model).find((d) => foldName(d.name) === folded)?.name ?? name;
+  const defs = identityDefs(model);
+  const exact = defs.find((d) => foldName(d.name) === folded);
+  if (exact !== undefined) return exact.name;
+  // `Fire fox` is the pool's Firefox (its skeleton), never a second one.
+  const skeleton = nameSkeleton(name);
+  return (skeleton === "" ? undefined : defs.find((d) => d.kind === "pool" && d.playable && nameSkeleton(d.name) === skeleton))?.name ?? name;
 }
 
 /** Characters for the claim token: Crockford-style base32, lower case, no
@@ -172,7 +268,9 @@ export function performerRefusal(model: SimModel, character: string, held: Reado
 /** The folded names of everyone currently registered (guests + personas). */
 export function takenNames(persons: Iterable<{ name: string }>): Set<string> {
   const out = new Set<string>();
-  for (const p of persons) out.add(foldName(p.name));
+  // Cleaned too: a name stored before the cleaning (an older run) still
+  // holds its program against a lookalike.
+  for (const p of persons) out.add(foldName(cleanGuestName(p.name)));
   return out;
 }
 

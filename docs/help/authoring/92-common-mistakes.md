@@ -72,3 +72,27 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
   editor's *statement shape* hint points these out.
 - **`GROUP` rooms need the group to be public.** A `hidden: true` group
   has no room until you `reveal` it — that's the point.
+- **An event name of two plain words may hear only the first.**
+  `when glitch out:` listens for the event `glitch` with `out` as its
+  subject, so pressing the `glitch out` button runs nothing. Write
+  `when glitch_out:`; lint `L1212` points these out.
+- **End every audience's objectives with a fallback.** The first live
+  `OBJECTIVE` is NOW, so a guest whose objectives are all off gets only
+  the open room's name (or the story's title) in the NOW bar, and a
+  booth's NOW card just its character's name. Put the urgent ones first and finish each `for:`
+  with one that has no `while:`.
+- **A booth objective can't read the guest.** In an objective `for:` a
+  character, `program.…` reads nothing (the booth's NOW is the same for
+  every guest it scans). Put the per-guest test on each button's own
+  `while:`, which the card reads with the scanned guest bound.
+- **One pop-up per beat.** A `loud: true` objective and an `!` alert from
+  the same cue both interrupt: at the `dialog` level that is two boxes
+  for one moment. Pick one.
+- **`admin: true` belongs on the CHARACTER.** On a TRAIT every character
+  wearing it becomes a host part (a shared `TRAIT Host` would make
+  Clippy one too). `L1211` warns when nobody can sign in as it at all.
+- **`alerts:` only counts in the first file's header.** Anywhere else it
+  is ignored (`L1210`), and the level is read from `Night.alerts`.
+- **`~` and `!` don't mix.** A cue that starts with `!` is an alert and
+  never folds; a `~` notice needs a leading emoji to fold by, and the
+  person it is about still needs their own `reply`.

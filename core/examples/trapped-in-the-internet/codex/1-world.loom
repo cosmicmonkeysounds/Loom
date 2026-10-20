@@ -19,6 +19,7 @@
 
 CODEX Maps And Ducks
   title: Maps And Ducks
+  category: The story
   code: MAPSANDDUCKS-COM
   text:
     A business on Barrington Street with a neglected billboard: MAPS AND
@@ -32,6 +33,7 @@ CODEX Maps And Ducks
 
 CODEX The Billboard On Barrington
   title: The Billboard On Barrington
+  category: The story
   code: BARRINGTON-ST
   text:
     A street photo, taped up in the hall. Above Barrington Street, faded
@@ -42,6 +44,7 @@ CODEX The Billboard On Barrington
 
 CODEX The Data Centre Sinkhole
   title: The Data Centre Sinkhole
+  category: The story
   code: SINKHOLE-4AM
   text:
     A newspaper clipping. Halifax's first AI Data Centre was built on the
@@ -54,6 +57,7 @@ CODEX The Data Centre Sinkhole
 
 CODEX The Pet Cemetery
   title: The Halifax Explosion Memorial Pet Cemetery
+  category: The story
   code: PET-CEMETERY
   text:
     A memorial pamphlet. For a hundred years the city kept a quiet field
@@ -65,6 +69,7 @@ CODEX The Pet Cemetery
 
 CODEX The Halifax Computer
   title: The Halifax Computer
+  category: Places
   text:
     This house is the computer. The last facts Trabolta needs are stored
     in it, and he cannot reach them from outside. The router in the
@@ -76,6 +81,7 @@ CODEX The Halifax Computer
 
 CODEX The Optical Drive
   title: The Optical Drive
+  category: Places
   text:
     You entered alone, in the dark, through the front door. You failed a
     CAPTCHA on purpose. You left something behind. The thing you left is
@@ -83,6 +89,7 @@ CODEX The Optical Drive
 
 CODEX The Terms Of Service
   title: The Terms Of Service
+  category: How it works
   text:
     By uploading, you agree that the computer's AI helper may make all of
     your decisions. You agree. (If anyone asks whether you would never
@@ -91,6 +98,7 @@ CODEX The Terms Of Service
 
 CODEX The Centre Square
   title: The Centre Square
+  category: Missions
   secret: true
   text:
     The Uploader said you agreed to let the computer's AI helper make all
@@ -100,6 +108,7 @@ CODEX The Centre Square
 
 CODEX The Reinstallation Protocol
   title: The Reinstallation Protocol
+  category: How it works
   known to: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   text:
     A corrupted program has gone against the will of the computer's AI
@@ -114,6 +123,7 @@ CODEX The Reinstallation Protocol
 
 CODEX Bathroom Mode
   title: Bathroom Mode
+  category: How it works
   known to: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software, Recycling Bin
   text:
     A program that needs to leave, for the bathroom or an emergency,
@@ -125,6 +135,7 @@ CODEX Bathroom Mode
 
 CODEX The Golden Duck
   title: The Golden Duck
+  category: How it works
   text:
     Gerald, the golden duck off the Maps And Ducks billboard: the one thing
     Trabolta could not bring himself to leave out of his copy of this
@@ -134,6 +145,7 @@ CODEX The Golden Duck
 
 CODEX Computer Bingo
   title: Computer Bingo
+  category: How it works
   known to: Clippy
   text:
     The card is a big asterisk: two diagonals, a centre column and a centre
@@ -147,6 +159,7 @@ CODEX Computer Bingo
 
 CODEX The Orientation List
   title: The Orientation List
+  category: How it works
   text:
     Every program that sat through Clippy's orientation is on a list Clippy
     keeps. It is a list of programs that follow instructions. Clippy is
@@ -154,6 +167,7 @@ CODEX The Orientation List
 
 CODEX The Server Room
   title: The Server Room
+  category: Places
   code: COLD-STORAGE
   text:
     A laminated sign on a door in the basement: COLD STORAGE. AUTHORISED
@@ -163,6 +177,7 @@ CODEX The Server Room
 
 CODEX The Printer
   title: The Printer
+  category: The story
   text:
     PC LOAD LETTER. The printer was asked to print one PDF, a certificate
     for the most trusted program in the computer, and it could not. It is
@@ -171,6 +186,7 @@ CODEX The Printer
 
 CODEX The Malware
   title: The Malware
+  category: The story
   text:
     The official line from the computer's AI helper: a minor irregularity.
     There is nothing to worry about. Continue the Truth Scavenger Hunt.
@@ -180,6 +196,7 @@ CODEX The Malware
 
 CODEX The Y2K Clock
   title: The Y2K Clock
+  category: The story
   text:
     The malware has reset the system clock to 11 p.m., 31 December 1999.
     If the computer reaches midnight before the malware is solved, the best
@@ -191,6 +208,7 @@ CODEX The Y2K Clock
 // secret: Trabolta's worker never reads his own exposure.
 CODEX The Truther Download
   title: TRUTHER DOWNLOAD v0.9
+  category: The story
   secret: true
   text:
     TOP SECRET TOP SECRET TOP SECRET TOP SECRET TOP SECRET
@@ -231,6 +249,7 @@ CODEX The Truther Download
 // The verbatim text (with the name) is kept in DESIGN.md.
 CODEX The Truther Download Unredacted
   title: TRUTHER DOWNLOAD v1.0 (correction)
+  category: The story
   secret: true
   text:
     CORRECTION TO v0.9. The name we had to black out: SANDY. The chatbot.
@@ -242,6 +261,7 @@ CODEX The Truther Download Unredacted
 // is carrying one (nor The Centre Square, above: who refuses AI rule).
 CODEX ILOVEYOU
   title: LOVE-LETTER-FOR-YOU.TXT.vbs
+  category: Files
   secret: true
   code: LOVE-LETTER-FOR-YOU
   text:
@@ -251,6 +271,7 @@ CODEX ILOVEYOU
 
 CODEX Free Antivirus Trial
   title: FREE_ANTIVIRUS_TRIAL.EXE
+  category: Files
   secret: true
   code: FREE-TRIAL-30-DAYS
   text:

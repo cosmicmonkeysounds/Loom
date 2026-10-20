@@ -409,7 +409,9 @@ describe("routing", () => {
 
   it("the guests' front page carries no link to it", () => {
     const ui = readFileSync(new URL("../src/ui.tsx", import.meta.url), "utf8");
-    expect(ui).toContain('if (role === "director") return <DirectorApp');
+    expect(ui).toMatch(/if \(role === "director"\)\s*return \(\s*<ChunkBoundary fallback=[\s\S]*?\/>\}>\s*<Suspense fallback=\{<Loading \/>\}>\s*<DirectorApp/u);
+    // …its own chunk: a guest's first load never carries the cue sheet.
+    expect(ui).toContain('import("./director.tsx")');
     expect(ui).not.toContain("Director cues");
   });
 
@@ -712,7 +714,7 @@ describe("fired rows are muted", () => {
     // A repeat cue the night has moved past is muted like any other.
     const again = directorRows({ interactions: [{ id: "results", label: "📋", who: "admin", repeat: true }, { id: "z", label: "z", who: "admin" }], cues: { last: "z", fired: ["results", "z"] } });
     expect(cueRowClass(again[0]!, false, false).split(" ")).toContain("fired");
-    expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off");
+    expect(cueRowClass({ last: false, next: false, fired: false, live: false }, false, false)).toBe("choice cue-row off host-compact");
   });
 });
 

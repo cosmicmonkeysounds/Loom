@@ -73,13 +73,16 @@ export function subAppRoute(path: string, prefix: string, search: string): SubAp
 
 /**
  * Does an `/e/:eventId` read need the author session resolved? The mod
- * reads (the event stream, state, history — as the mod role), the wall
- * terminals' screen state, and the spatial plane's map + stream, which a game session token also opens but
- * the editor reads on the session cookie alone.
+ * reads (the event stream, state, history — as the mod role), the editor's
+ * exact identity lens (`/api/state?role=guest|prime&as=…`, a moderator read
+ * of one participant's own view: Run == admin), the wall terminals' screen
+ * state, and the spatial plane's map + stream, which a game session token
+ * also opens but the editor reads on the session cookie alone.
  */
 export function wantsModRead(subPath: string, params: URLSearchParams): boolean {
   return (
     ((subPath === "/events" || subPath === "/api/state" || subPath === "/api/history") && (params.get("role") ?? "mod") === "mod") ||
+    (subPath === "/api/state" && params.has("as")) ||
     subPath === "/api/screen/state" ||
     subPath === "/api/spatial/house" ||
     subPath === "/api/spatial/stream"

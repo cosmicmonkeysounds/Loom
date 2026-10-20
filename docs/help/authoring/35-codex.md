@@ -2,7 +2,7 @@
 title: Lore — knowledge as a currency
 section: Live Shows
 order: 35
-keywords: secret, CODEX, codex, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding, busy, queue, stalled, give him a file, refuse, refused
+keywords: secret, CODEX, codex, category, NEW, lore, knowledge, unlock, puzzle, share, learns, directory, listed, people, private message, pm, alert, sealed, joinable, mind, LLM, language model, hold, offline, not responding, busy, queue, stalled, give him a file, refuse, refused
 ---
 
 Some shows run on what the guests *know*. A `CODEX` entry is a piece of
@@ -31,12 +31,14 @@ CODEX The LiveJournal
 | `code:` | the unlock code — printed as a QR on a wall, or the answer to a puzzle. Matching ignores case, dashes and spaces. Omit it for story-only lore. |
 | `known to:` | characters who hold it from the start. The `about:` character always does. |
 | `text:` | the entry, as an indented block (or one line). |
+| `category:` | the heading the guest's Codex files it under (*People*, *Places*, *Evidence*). Per entry. Without one, an entry about a character files under People, a place under Places, a topic under The story. |
 
 ## How lore moves
 
 1. **A code.** A guest scans the QR (its link carries `?unlock=<code>`)
    or types the code into their **Codex room** — a pinned room whose
-   message box takes codes; every entry they hold is a card in it. Misses
+   message box takes codes; every entry they hold is one folded line in
+   it, grouped by category, marked NEW until they open it. Misses
    fire the named event `wrong code` for them.
 2. **The story:** `unlock The LiveJournal for guest` in any beat or hook.
 3. **A person:** a guest shares from their Codex; a performer shares
@@ -160,11 +162,14 @@ admins and the operator see everything.
 
 ## Alerts
 
-A broadcast whose text starts with `!` is an **alert** — every phone
-chimes, buzzes, and banners it, performers' booths included. A phone that
-was asleep banners the newest alert it missed from the last 10 minutes
-when it wakes. In Run → Director, tick **🔔 Alert** on the broadcast form
-instead of typing the `!`:
+A broadcast whose text starts with `!` is an **alert** — a major moment
+on every phone it reaches, performers' booths included: it chimes,
+buzzes and pops up at the story's alert level (a banner by default; see
+[Live shows](live-shows.md)). Every announcement lands once, in the
+lobby. A phone that was asleep replays every moment it missed when it
+wakes, in order (skipping those from an earlier phase of the night). In
+Run → Director, or a host's console, tick **🔔 Alert** instead of typing
+the `!`:
 
 ```loom
 broadcast "!📣 ALL PROGRAMS: report to the Desktop." to everyone

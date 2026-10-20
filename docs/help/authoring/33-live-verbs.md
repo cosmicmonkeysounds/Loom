@@ -103,6 +103,15 @@ A prop is a one-liner once the trait exists. A character can mutate the
 guest's stats, `reply` privately, and then hand them to one of its own
 beats with `-> self.Beat` ([Owned beats](owned-beats.md)).
 
+In the performer's app a scan opens that guest's **card** at once, and
+what the scan came to shows on it: the `reply` lines to the booth's
+character, what the character said to the guest, and any line the
+commit posted to a staff room (`# hosts`: the reason a press was turned
+down). A `reply` to a character also lands in that booth's **Readouts**
+room (it survives a reload), tagged with the guest it is about; a
+`reply` to a guest stays in the guest's own feed. `reply !…` is an alert:
+it interrupts the reader as a major moment.
+
 ## The verb toolbox
 
 | Verb | Does |
@@ -111,7 +120,7 @@ beats with `-> self.Beat` ([Owned beats](owned-beats.md)).
 | `move who to Place` | put a participant somewhere (fires `arrives` / `leaves`) |
 | `add who to Group` / `remove who from Group` | group membership (fires `joins`) |
 | `reveal Group` / `reveal Place` / `reveal room` / `reveal Character` | expose something `hidden: true` — a group to the party; a place, a chat room or a character to everyone, or `… for who` to one participant |
-| `reply text` | a private line back to whoever acted (the scanned guest, the mover) |
+| `reply text` | a private line back to whoever acted (the scanned guest, the mover, a booth's Readouts); `reply !text` makes it an alert |
 | `fire name` / `fire name for who` / `fire name with k: v` | raise a named event every matching `when` hears |
 | `broadcast cue to scope` | send a cue (and indented lines) to an audience ([scopes](broadcast-improv.md)) |
 | `cast who as Role` / `promote who to Role` | bind or promote a person to a part |
@@ -195,8 +204,9 @@ takes it down — a standing order, an escort task. Where it goes:
   `when lockdown:`, or a `Night.*` watcher — for the room's one unkeyed
   pin; inside a `for program` rule a pin with no `for` is still keyed
   to that program.
-- A leading `!` makes it an **alert** as well — chime, buzz, banner —
-  and the `!` is not shown.
+- A leading `!` makes it an **alert** as well — a major moment on the
+  reader's phone, at the story's alert level (see
+  [Live shows](live-shows.md)) — and the `!` is not shown.
 - A leading `!!` makes it a **takeover**: an alert that covers the
   whole phone with its text, slowly flashing, until the story unpins
   it (`pin "!!GO TO THE LIVING ROOM"` … `unpin "💃 Dance."`). There is
@@ -296,12 +306,15 @@ INTERACTION ring the bell
   who: guest
 ```
 
-`who: performer` puts a button on every guest thread in the performer's
-app; pressing it fires `whisper` *as that character*, so only their own
-`when whisper for guest:` answers. `who: guest` puts a button on the
-guest's pass sheet, fired with the guest as subject (catch it with a
-story rule or on the ROLE). `who: admin` needs the moderator passcode.
-Interactions are listed in the Run cockpit's event picker too.
+`who: performer` puts a button on the guest card a booth opens when it
+scans (or taps) a guest; pressing it fires `whisper` *as that
+character*, so only their own `when whisper for guest:` answers.
+`who: guest` puts a button in the guest's **⊞ Start** menu, fired with
+the guest as subject (catch it with a story rule or on the ROLE).
+`who: admin` is a director's **cue**: it is on Run → Director, the
+director phone and a host booth's NEXT bar, never on a booth's card.
+Interactions are listed in the Run cockpit's event picker too. An
+[`OBJECTIVE`](objectives.md) chooses which of them a phone leads with.
 
 ### Whose button, and when: `by:` and `while:`
 
@@ -323,25 +336,37 @@ INTERACTION go to the bathroom
 
 `by:` names characters or a GROUP (all its members), comma-separated; a
 character that owns a `when` for the event counts too, so a trait's
-`when vouch for program:` makes every host's card lead with **Vouch**. A
-performer's guest card shows their own buttons that are on offer now and
-folds the rest under **More…** (buttons with no `by:`, and their own out
-of phase).
+`when vouch for program:` makes **Vouch** every host's. On a booth's
+guest card the **face** holds at most three buttons: the ones the live
+[objectives](objectives.md) for that character name, in order, that are
+on offer for this guest, then buttons whose `while:` reads the guest.
+Everything else the booth may press folds under **All buttons… (n)**
+(*Not on offer now* when its `while:` is false). With no objectives at
+all, the face is the character's own live buttons.
 
 **`by:` is enforced.** The server refuses a press of a `by:` button from
 any other booth (403 *not your button: … is for …*), and that booth's
-card never shows it. A button with no `by:` stays anyone's, a
-moderator's booth may press any, and a director's quick-fire from Run
-always fires it. Because the server keeps other booths out, a rule for
+card never shows it. A button with no `by:` stays anyone's, and a
+director's quick-fire from Run always fires it. A host part
+(`admin: true`) or a moderator's booth may press another character's
+`by:` button when something outside its characters hears the press (a
+story rule or a ROLE hook): a booth's press fires as its own character,
+so a button only the `by:` characters' own hooks hear (a trait's
+`when … for program:`) would do nothing from there, and the server
+leaves it off that card and refuses it too. Because the server keeps other booths out, a rule for
 a `by:` button can be a plain story rule: a quick-fire has no actor, so
 a story rule fires once where a hook on a trait would fire once per
 character that has it.
 
 `while:` is not enforced (the `when` still decides what happens). It is
 a condition: on a performer's button it reads the world with `self` =
-the performer; on a guest's it is evaluated for that guest (the ROLE's
-name, `program`, is them), and a false one is **hidden** from their
-pass — so **Back from the bathroom** only shows while they are away.
+the performer and, on a guest's card, the scanned guest as the subject
+(`program.…`), so `while: program.marked == true` puts 🩹 Unmark on a
+marked program's face and leaves it off every other card (the booth's
+own list, with no guest, shows it as not on offer). On a guest's button
+it is evaluated for that guest (the ROLE's name, `program`, is them),
+and a false one is **hidden** from their Start menu — so **Back from the
+bathroom** only shows while they are away.
 
 ### Two taps for a press with no way back: `arm:`
 

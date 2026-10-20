@@ -17,6 +17,7 @@
 
 import { useMemo } from 'react'
 import { foldName } from '@loom/core/parser'
+import type { InteractionSummary } from '@loom/core/views'
 import {
   OPERATOR_LENS,
   useCockpit,
@@ -177,6 +178,12 @@ function addTrafficRooms(map: Map<string, Room>, input: RoomsInput, lens: LensKi
       if (!map.has(key)) {
         // A pinned room is the guest's own log, not a conversation with anyone.
         const pinned = isPinnedRoom(m.channel)
+        // A character's own `dm:<C>` addressed `@<C>` is that booth's Inbox
+        // (the cards the story deals it and, since wave 13, its readouts).
+        if (!pinned && isInboxOf(m.channel, gid)) {
+          map.set(key, { key, channel: m.channel, kind: 'inbox', title: `${character} · Inbox`, dmGuest: gid, character: null })
+          continue
+        }
         const title = lens === LensKind.Guest && gid === perspective ? character : `${character} · ${nameOf(gid)}`
         map.set(key, { key, channel: m.channel, kind: pinned ? (m.channelKind ?? 'dm') : 'dm', title, dmGuest: gid, character: pinned ? null : character })
       }
@@ -285,6 +292,40 @@ export function buildRooms(input: RoomsInput): Room[] {
   return [...map.values()].sort((a, b) => orderOf(a) - orderOf(b) || a.title.localeCompare(b.title))
 }
 
+/** Is `channel` / `gid` a character's own Inbox (`dm:<C>` addressed `@<C>`)? */
+export function isInboxOf(channel: string, gid: string): boolean {
+  return channel.startsWith('dm:') && gid === `@${channel.slice(3)}`
+}
+
+/** A booth readout (wave 13: in the character's own `dm:<Character>`) about one guest. */
+export function isReadoutAbout(m: CockpitMessage, character: string, guest: string): boolean {
+  return m.readout === true && m.about === guest && m.channel === `dm:${character}`
+}
+
+/** A character's readouts (its Inbox's `readout` rows), oldest first. */
+export function readoutsOf(messages: readonly CockpitMessage[], character: string): CockpitMessage[] {
+  return messages.filter((m) => m.readout === true && m.channel === `dm:${character}`).sort((a, b) => a.seq - b.seq)
+}
+
+/** The story's buttons a performer lens offers on an open guest thread:
+ *  `who: performer` only (admin cues are the Director page's, never a
+ *  booth's). With the lens resolved, off the booth's own
+ *  `PrimeView.interactions`; before it resolves, off the mod snapshot's.
+ *  Either way another character's `by:` button (`only: true`, this
+ *  character not among its `actors`) is dropped — the view keeps it
+ *  flagged and the play booth drops it on the client
+ *  (`play/src/booth/card.tsx` `splitInteractions`) — unless the lens is a
+ *  host part's (`host`), whose booth may press it when the server says a
+ *  press from outside its actors is heard (`hostHeard` not false). */
+export function performerActions(lens: Lens | undefined, perspective: string, interactions: readonly InteractionSummary[]): InteractionSummary[] {
+  const resolved = lens != null && lens.kind === 'performer' && lens.id === perspective ? lens : null
+  const host = resolved?.host === true
+  const me = foldName(perspective)
+  const pressable = (i: InteractionSummary): boolean =>
+    i.who === 'performer' && (i.only !== true || (host && i.hostHeard !== false) || (i.actors ?? []).some((a) => foldName(a) === me))
+  return (resolved !== null ? resolved.view.interactions : interactions).filter(pressable)
+}
+
 /** The messages that belong to a room, in the lens's view. A performer's
  *  guest thread is "everything addressed to that guest" (like the play
  *  app's booth); a DM room is that character's thread with that guest. */
@@ -293,7 +334,13 @@ export function roomMessages(room: Room | undefined, active: string, messages: C
   const g = room?.dmGuest ?? null
   return messages
     .filter((m) => {
-      if (room?.kind === 'guest' && g !== null) return Array.isArray(m.audience) && m.audience.includes(g)
+      if (room?.kind === 'guest' && g !== null) {
+        // The performer's readouts about this guest ride their Inbox
+        // (`dm:<C>`, `@<C>`, `about: <guest>`) — shown here too, where the
+        // scan or the press that caused them happened.
+        if (room.character !== null && isReadoutAbout(m, room.character, g)) return true
+        return Array.isArray(m.audience) && m.audience.includes(g)
+      }
       if (g !== null) return m.channel === ch && Array.isArray(m.audience) && m.audience.includes(g)
       return m.channel === ch
     })

@@ -393,18 +393,19 @@ describe('judging', () => {
 
 describe("an agent's queue (wave 11 C6)", () => {
   const mind = (character: string, agentQueue?: unknown) => ({ character, ...(agentQueue !== undefined ? { agentQueue } : {}) }) as unknown as AgentMindSummary
+  const trabolta = (extra: Partial<CastSummary> = {}): CastSummary => ({ id: 'Trabolta', faction: null, agent: true, ...extra })
 
   it('agentQueueOf: the cast row first, then the mind summary, else null', () => {
     const q = { depth: 2, oldestMs: 5000, stalled: false }
-    expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true, agentQueue: q }], [])).toEqual(q)
-    expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true }], [mind('Trabolta', { depth: 1, oldestMs: null, stalled: true })])).toEqual({ depth: 1, oldestMs: null, stalled: true })
-    expect(agentQueueOf('Trabolta', [{ id: 'Trabolta', faction: null, agent: true }], [mind('Trabolta')])).toBeNull()
+    expect(agentQueueOf('Trabolta', [trabolta({ agentQueue: q })], [])).toEqual(q)
+    expect(agentQueueOf('Trabolta', [trabolta()], [mind('Trabolta', { depth: 1, oldestMs: null, stalled: true })])).toEqual({ depth: 1, oldestMs: null, stalled: true })
+    expect(agentQueueOf('Trabolta', [trabolta()], [mind('Trabolta')])).toBeNull()
     expect(agentQueueOf('Trabolta', [], [mind('Trabolta', { depth: 'x' })])).toBeNull()
   })
 
   it('agentQueueOf with a clock: the wait ages between snapshots from when it arrived', () => {
     const q = { depth: 2, oldestMs: 3000, stalled: false, receivedAt: 1_000_000 }
-    const cast = [{ id: 'Trabolta', faction: null, agent: true, agentQueue: q }]
+    const cast = [trabolta({ agentQueue: q })]
     // a quiet minute with no new snapshot: 0:03 is now 1:03, ⚠ slow
     const aged = agentQueueOf('Trabolta', cast, [], 1_060_000)!
     expect(aged.oldestMs).toBe(63_000)

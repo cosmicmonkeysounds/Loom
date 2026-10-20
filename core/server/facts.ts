@@ -257,8 +257,13 @@ export interface FactsFiling {
    *  character, or the device that fired the step; null for the judge
    *  itself (`auto`), a story clock, or a step nobody is named for. */
   by: string | null;
-  /** When this server first saw the filing (epoch ms). */
+  /** When this server first saw the filing (epoch ms) — re-stamped by a
+   *  restart's replay, so it orders nothing after one (`logAt` does). */
   at: number;
+  /** The sim log position of this filing's newest step (its filing, or the
+   *  verdict that judged it): a restart replays the same log, so it keeps
+   *  the night's order where `at` can't (the host's Judge tab sorts on it). */
+  logAt?: number;
   /** A near miss (`nearKey`): the key form it is close to, for the director
    *  deciding it on the Judging card. Absent for an exact match or a clear
    *  miss; set by `FactsWatch.view` against the book in force. */
@@ -468,6 +473,7 @@ export class FactsWatch {
           how: null,
           by: null,
           at: prev?.at ?? this.now(),
+          logAt: this.cursor,
           filedStep: this.step.id,
           judged: null,
         });
@@ -477,6 +483,7 @@ export class FactsWatch {
         const prev = this.filings.get(FactsWatch.key(j.person, j.question));
         if (prev !== undefined) {
           prev.final = j.final;
+          prev.logAt = this.cursor;
           prev.judged = { ...this.step };
           const r = this.step.ruling;
           if (r !== null && this.step.by !== null) prev.ruling = { by: this.step.by, same: r.same, why: r.why, at: this.now() };

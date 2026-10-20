@@ -42,8 +42,6 @@ import {
   type WorldLine,
 } from "../../core/src/cue-sheet.ts";
 import { disarmOnLeave } from "./arm.ts";
-import { claimFromSearch } from "./claim.ts";
-import { landingLink } from "./guest-scan.tsx";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./ui/primitives.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -51,8 +49,12 @@ import { usePlayHost } from "./host.ts";
 import { eventGone } from "./lifecycle.ts";
 import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session/shared.ts";
 
-/** Where the phone keeps its director sign-in. */
-export const DIRECTOR_KEY = "loom.director";
+// Moved to the light modules the guest's first load uses (fix round); every
+// name still resolves here (frozen signatures, CONTRACTS §0).
+export { DIRECTOR_KEY, directorFromSearch, initialRole, roleForBrand, type AppRole } from "./app-role.ts";
+export { URGENT_S, formatLeft, storyNow } from "./clock.ts";
+import { DIRECTOR_KEY } from "./app-role.ts";
+import { URGENT_S, formatLeft, storyNow } from "./clock.ts";
 
 export interface DirectorAuth {
   token: string;
@@ -90,41 +92,6 @@ export interface DirectorView {
   /** Up to 3 `watch:` values — global ones only, never a secret one (the
    *  server's lean view never sends those). */
   watch?: Array<{ label: string; value: string }>;
-}
-
-/** `?role=director` opens this page. */
-export function directorFromSearch(search: string): boolean {
-  try {
-    return new URLSearchParams(search).get("role") === "director";
-  } catch {
-    return false;
-  }
-}
-
-export type AppRole = "none" | "guest" | "prime" | "director";
-
-/** The role a fresh page opens on: `?role=director` whatever the phone
- *  holds, else the stored session (guest, performer, then director), else
- *  a guest's link: an invitation's `?claim=` (the guest join) or a wall
- *  QR's `?unlock=` / `?checkin=` (the guest app's wrong-browser landing). */
-export function initialRole(search: string, stored: (key: string) => string | null): AppRole {
-  if (directorFromSearch(search)) return "director";
-  if (stored("loom.guest")) return "guest";
-  if (stored("loom.prime")) return "prime";
-  if (stored(DIRECTOR_KEY)) return "director";
-  if (claimFromSearch(search) !== null || landingLink(search) !== null) return "guest";
-  return "none";
-}
-
-/** A `?code=` link opens what its code is for — the mod code the cue sheet,
- *  a performer code the performer sign-in (the cast card's QR) — but only
- *  from the chooser, never over a signed-in guest or performer. A guest
- *  code stays on the chooser. */
-export function roleForBrand(role: AppRole, brandRole: string | null | undefined): AppRole {
-  if (role !== "none") return role;
-  if (brandRole === "mod") return "director";
-  if (brandRole === "prime") return "prime";
-  return role;
 }
 
 /** The device label the journal records (the server keeps 60 chars). */
@@ -227,11 +194,6 @@ export function clockRuns(view: Pick<DirectorView, "paused" | "phase"> | null): 
  *  poll landed — or just the `clock` while it is stopped (`runs` false), so a
  *  paused countdown holds still between polls, and through a failing poll.
  *  Null when the view carries no clock (an old server). */
-export function storyNow(clock: number | undefined, receivedAt: number, now: number, runs = true): number | null {
-  if (clock === undefined || !Number.isFinite(clock)) return null;
-  return runs ? clock + Math.max(0, now - receivedAt) : clock;
-}
-
 /** Before the doors: the sheet is the story's, but nothing fires yet. */
 export const DOORS_CLOSED = "The doors aren't open yet — the cues fire once they are.";
 
@@ -244,18 +206,6 @@ export function noCuesText(view: Pick<DirectorView, "doorsClosed" | "phase"> | n
 
 /** The strip's word for a stopped clock. */
 export const STOPPED = "⏸ clock stopped";
-
-/** Seconds as `37:52`, or `1:02:03` past the hour. */
-export function formatLeft(sec: number): string {
-  const s = Math.max(0, Math.floor(sec));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = String(s % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
-}
-
-/** Under this many seconds a countdown reads red. */
-export const URGENT_S = 60;
 
 /** The countdown due soonest at story time `nowMs`, or null. */
 export function soonestCountdown(countdowns: DirectorView["countdowns"], nowMs: number | null): { label: string; left: number } | null {
@@ -787,7 +737,7 @@ function DirectorLogin({ notice, onLogin, onBack }: { notice: string | null; onL
 /** A cue row's classes. A fired row is muted (flat, grey) unless it is
  *  LAST, NEXT (a repeat cue) or armed, so what is still to go stands out;
  *  `off` (a `while:` that is false: dimmed) is a different look on purpose. */
-export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live">, armed: boolean, warn: boolean): string {
+export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live"> & Partial<Pick<CueRow, "sequence">>, armed: boolean, warn: boolean): string {
   return [
     "choice",
     "cue-row",
@@ -797,9 +747,60 @@ export function cueRowClass(row: Pick<CueRow, "last" | "next" | "fired" | "live"
     armed ? "armed" : null,
     warn ? "warn" : null,
     row.live ? null : "off",
+    compactCue(row, armed) ? "host-compact" : null,
   ]
     .filter((c) => c !== null)
     .join(" ");
+}
+
+/** Does a cue row fold to one line? An aside (`sequence: false`) or a cue
+ *  not on offer now, unless it is NEXT, LAST or armed: an act of fallbacks
+ *  was a wall of 120 px cards. Arming one opens it back up (the full title,
+ *  "Tap again to fire", the drain). */
+export function compactCue(row: Pick<CueRow, "last" | "next" | "live"> & Partial<Pick<CueRow, "sequence">>, armed: boolean): boolean {
+  if (armed || row.next || row.last) return false;
+  return row.sequence === false || !row.live;
+}
+
+/** The FIRE window's segments (Win95's progress blocks): one drops every
+ *  `ARM_MS / DRAIN_SEGMENTS`. */
+export const DRAIN_SEGMENTS = 8;
+
+/** Whole seconds left in the FIRE window armed at `at` (the reduced-motion
+ *  countdown: "4 s", "3 s" … "1 s"; 0 once it has lapsed). */
+export function drainSeconds(at: number, now: number, ms: number = ARM_MS): number {
+  const left = at + ms - now;
+  return left <= 0 ? 0 : Math.ceil(left / 1000);
+}
+
+/** The FIRE window draining (finish review #6): a segmented Win95 progress
+ *  bar that empties over `ARM_MS` from the arm's own moment (`at`), so a
+ *  re-render or the bar's twin in the Cues tab never restarts it. Reduced
+ *  motion: no bar, a "4 s" countdown in text. A screen reader already
+ *  hears "Tap FIRE within 4 s". */
+export function ArmDrain({ at, className }: { at: number; className?: string }) {
+  const [start] = useState(() => Math.max(0, Math.min(ARM_MS, Date.now() - at)));
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [at]);
+  return (
+    <span className={`host-drain ${className ?? ""}`.trim()} aria-hidden="true">
+      <span className="host-drain-track">
+        <span className="host-drain-fill" style={{ animationDuration: `${ARM_MS}ms`, animationDelay: `-${start}ms`, animationTimingFunction: `steps(${DRAIN_SEGMENTS}, end)` }} />
+      </span>
+      <span className="host-drain-secs">{drainSeconds(at, now)} s</span>
+    </span>
+  );
+}
+
+/** Does an arm bring its row into view? Only one this row's own tap made
+ *  (a compact row grows from 44 px and its "Tap again to fire" and the
+ *  drain would sit under the bar below the list); an arm from the NEXT bar
+ *  leaves the list's scroll where the host left it. */
+export function revealOnArm(armedHere: boolean, tappedHere: boolean): boolean {
+  return armedHere && tappedHere;
 }
 
 /** An armed row's call to action: a subject cue names who it goes to on
@@ -809,20 +810,33 @@ export function armLine(armed: Pick<Armed, "subject" | "value">, subjectName: st
   return `Tap again to fire → ${subjectName ?? armed.subject}${armed.value !== undefined ? ` (${armed.value})` : ""}`;
 }
 
-function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; warnings: string[]; actCode?: string | null; subjectName?: string | null; onTap: () => void }) {
+export function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName, onTap }: { row: CueRow; armed: Armed | null; locked: boolean; sending: boolean; warnings: string[]; actCode?: string | null; subjectName?: string | null; onTap: () => void }) {
   const isArmed = armed !== null && armed.id === row.id;
   const warn = isArmed && warnings.length > 0;
   const { title, tags } = cueTitleTags(row.title);
+  // A row armed by its own tap grows (a compact one from 44 px) and keeps
+  // its "Tap again to fire" and the drain in view, never under the bar
+  // below the list. An arm made elsewhere (the NEXT bar) leaves the scroll.
+  const btn = useRef<HTMLButtonElement>(null);
+  const tapped = useRef(false);
+  useEffect(() => {
+    if (revealOnArm(isArmed, tapped.current)) btn.current?.scrollIntoView?.({ block: "nearest" });
+    tapped.current = false;
+  }, [isArmed]);
   return (
     <li>
       <button
         type="button"
+        ref={btn}
         className={cueRowClass(row, isArmed, warn)}
         data-next={row.next ? "true" : undefined}
         data-last={row.last ? "true" : undefined}
         disabled={locked}
         aria-busy={sending || undefined}
-        onClick={onTap}
+        onClick={() => {
+          tapped.current = true;
+          onTap();
+        }}
       >
         <span className="cue-n">{row.n}</span>
         <span className="cue-body">
@@ -835,6 +849,7 @@ function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName
           ) : isArmed ? (
             <>
               <span className="cue-arm">{armLine(armed!, subjectName ?? null)}</span>
+              <ArmDrain key={armed!.at} at={armed!.at} />
               {warnings.map((w) => (
                 <span key={w} className="cue-warn" data-testid="cue-warn">
                   {w}
@@ -846,7 +861,7 @@ function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName
               {row.last && <span className="cue-tag last">LAST</span>}
               {row.next && <span className="cue-tag next">NEXT</span>}
               {row.fired && <span className="cue-tag">✓ fired</span>}
-              {!row.sequence && <span className="cue-tag">aside</span>}
+              {!row.sequence && <span className="cue-tag host-aside">aside</span>}
               {row.subject && <span className="cue-tag">👤 picks a person</span>}
               {!row.live && <span className="cue-tag">not on offer</span>}
               {tags.map((t) => (
@@ -862,58 +877,54 @@ function CueButton({ row, armed, locked, sending, warnings, actCode, subjectName
   );
 }
 
-/** The phone's skin: the story's own (the poll, else the sign-in's resolve),
- *  else the landing's until someone signs in. */
-export function directorTheme(view: Pick<DirectorView, "theme"> | null, auth: Pick<DirectorAuth, "theme"> | null, brand: string | null): string | null {
-  return view?.theme ?? auth?.theme ?? brand;
+// --- the desk: arm, fire, one press at a time (shared with the host booth) ---------
+
+/** What a fire does: post the cue, resolve with the outcome. */
+export type DeskFire = (id: string, subject: string | null, value: string | undefined, presses: number | undefined) => Promise<FireOutcome>;
+
+/** The arm-then-fire state one cue sheet holds — the director phone's and
+ *  a host booth's (its NEXT bar and its Cues tab share one desk, so an arm
+ *  made on one is the arm the other fires). */
+export interface CueDesk {
+  armed: Armed | null;
+  /** The cue whose fire is in flight: every cue waits for it. */
+  pending: string | null;
+  /** NEXT's second after a press lands. */
+  cooling: boolean;
+  toast: string | null;
+  setToast: (t: string | null) => void;
+  /** The subject cue waiting for its person (the picker is open). */
+  picking: CueRow | null;
+  /** The picker's value box (an award's number), carried by the arm. */
+  value: string;
+  setValue: (v: string) => void;
+  /** The person an armed subject cue goes to, by name. */
+  subjectName: string | null;
+  tap: (row: CueRow) => void;
+  /** The picker answered: arm the subject cue for that person. */
+  pick: (subject: string) => void;
+  closePicker: () => void;
+  locked: (row: CueRow) => boolean;
 }
 
-export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => void; brandTheme?: string | null }) {
-  const s = useDirectorSession();
-  const title = s.view?.title ?? s.auth?.title ?? null;
-  useDocumentTitle(title !== null ? `🎬 ${title}` : null);
-  useTheme(directorTheme(s.view, s.auth, brandTheme));
-  const [query, setQuery] = useState("");
+/**
+ * The desk: a first tap arms (core's `tapCue`), a second one fires; a stale
+ * arm (the cue state moved under it) is dropped with "Cues moved"; an arm
+ * lapses after `ARM_MS` and when the page is left; one press at a time.
+ * `onOutcome` sees every fire's answer (the host keeps a refused press).
+ */
+export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArray<{ id: string; name: string }> | undefined, fire: DeskFire, onOutcome?: (row: CueRow, outcome: FireOutcome) => void): CueDesk {
   const [armed, setArmed] = useState<Armed | null>(null);
-  const [picking, setPicking] = useState<string | null>(null);
-  // The picker's value box: an award's number, carried by the arm.
+  const [pickingId, setPicking] = useState<string | null>(null);
   const [value, setValue] = useState("");
-  // The cue whose fire is in flight: every cue waits for it (`cueLocked`).
   const [pending, setPending] = useState<string | null>(null);
-  // NEXT's second after a press lands.
   const [cooling, setCooling] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   useEffect(() => {
     if (!cooling) return;
     const t = setTimeout(() => setCooling(false), NEXT_COOLDOWN_MS);
     return () => clearTimeout(t);
   }, [cooling]);
-  const [toast, setToast] = useState<string | null>(null);
-  const [menu, setMenu] = useState(false);
-  const [help, setHelp] = useState(false);
-  const rows = useMemo(() => directorRows(s.view), [s.view]);
-  const shown = useMemo(() => filterCues(rows, query), [rows, query]);
-  const layout = useMemo(() => sheetLayout(rows), [rows]);
-  // Acts the director unfolded by hand (the focus act is always open).
-  const [openActs, setOpenActs] = useState<ReadonlySet<string>>(() => new Set());
-  // The previous act's fallbacks under the focus act: open by default.
-  const [fromOpen, setFromOpen] = useState(true);
-  const marks = s.view?.cues ?? NO_MARKS;
-  const lastId = marks.last;
-  // The countdowns tick once a second between polls (story clock + the
-  // wall time since the view landed).
-  const runs = clockRuns(s.view);
-  const ticking = runs && (s.view?.countdowns?.length ?? 0) > 0;
-  const [wall, setWall] = useState(() => Date.now());
-  useEffect(() => {
-    if (!ticking) return;
-    setWall(Date.now());
-    const t = setInterval(() => setWall(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [ticking, s.receivedAt]);
-  const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt), runs);
-  const bar = nextBar(rows, s.view?.countdowns, nowMs, runs);
-  const strip = stripItems(s.view, layout, nowMs);
-
   // An armed cue disarms itself if the second tap never comes.
   useEffect(() => {
     if (armed === null) return;
@@ -939,14 +950,8 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
     const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
-  // Keep the next cue in view as the night moves down the sheet.
-  const listRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    listRef.current?.querySelector('[data-next="true"]')?.scrollIntoView({ block: "nearest" });
-  }, [lastId]);
-
-  if (s.auth === null) return <DirectorLogin notice={s.notice} onLogin={s.login} onBack={onLeave} />;
-
+  const outcome = useRef(onOutcome);
+  outcome.current = onOutcome;
   const tap = (row: CueRow) => {
     if (cueLocked(row, pending, cooling)) return; // one press at a time
     const t = phoneTap(armed, row, Date.now(), marks);
@@ -959,27 +964,212 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
     else {
       setArmed(null);
       setPending(t.id);
-      void s.fire(t.id, t.subject, t.value, t.presses).then((outcome) => {
-        setToast(fireToast(row, outcome));
+      void fire(t.id, t.subject, t.value, t.presses).then((out) => {
+        setToast(fireToast(row, out));
+        outcome.current?.(row, out);
         setPending((p) => (p === t.id ? null : p));
         setCooling(true);
       });
     }
   };
-  const subjectName = armed?.subject != null ? s.view?.roster?.find((p) => p.id === armed.subject)?.name ?? null : null;
-  const rowList = (list: CueRow[]) => (
-    <ol className="cue-list">
-      {list.map((r) => (
-        <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} subjectName={subjectName} onTap={() => tap(r)} />
-      ))}
-    </ol>
+  const picking = pickingId !== null ? rows.find((r) => r.id === pickingId) ?? null : null;
+  const subjectName = armed?.subject != null ? roster?.find((p) => p.id === armed.subject)?.name ?? null : null;
+  return {
+    armed,
+    pending,
+    cooling,
+    toast,
+    setToast,
+    picking,
+    value,
+    setValue,
+    subjectName,
+    tap,
+    pick: (subject) => {
+      if (picking !== null) setArmed(armFor(picking.id, subject, Date.now(), value, marks));
+    },
+    closePicker: () => {
+      setPicking(null);
+      setValue("");
+    },
+    locked: (row) => cueLocked(row, pending, cooling),
+  };
+}
+
+/**
+ * The running order: grouped by act around the focus act (the act before
+ * it folds into a `from B ▾` fallbacks line; past and future acts fold to
+ * one line each, Anytime last), or a flat list for a story with no `act:`
+ * or while a filter is typed.
+ */
+export function CueActList({ rows, layout, query, desk }: { rows: CueRow[]; layout: SheetLayout; query: string; desk: CueDesk }) {
+  // Acts the director unfolded by hand (the focus act is always open).
+  const [openActs, setOpenActs] = useState<ReadonlySet<string>>(() => new Set());
+  // The previous act's fallbacks under the focus act: open by default.
+  const [fromOpen, setFromOpen] = useState(true);
+  const shown = useMemo(() => filterCues(rows, query), [rows, query]);
+  const button = (r: CueRow, actCode?: string | null) => (
+    <CueButton key={r.id} row={r} armed={desk.armed} locked={desk.locked(r)} sending={desk.pending === r.id} warnings={armWarnings(r, layout)} subjectName={desk.subjectName} actCode={actCode} onTap={() => desk.tap(r)} />
   );
+  const rowList = (list: CueRow[]) => <ol className="cue-list">{list.map((r) => button(r))}</ol>;
   const toggleAct = (key: string) =>
     setOpenActs((prev) => {
       const next = new Set(prev);
       if (!next.delete(key)) next.add(key);
       return next;
     });
+  if (query.trim() !== "" || layout.kind === "flat") {
+    return (
+      <ol className="cue-list">
+        {shown.map((r) => button(r, layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null))}
+        {shown.length === 0 && <li className="muted pad">No cue matches.</li>}
+      </ol>
+    );
+  }
+  return (
+    <div className="cue-acts">
+      {layout.acts.map((a, k) => {
+        if (a.state === "anytime") return null;
+        const isFocus = k === layout.focus;
+        const open = isFocus || openActs.has(a.key);
+        if (!open) {
+          const f = foldedParts(a);
+          return (
+            <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
+              <button type="button" className="cue-act-fold" aria-label={foldedLine(a)} onClick={() => toggleAct(a.key)}>
+                <span className="cue-act-fold-line">
+                  <span className="cue-act-fold-text">
+                    {f.mark !== null && `${f.mark} `}
+                    {f.name}
+                  </span>
+                  <span className="cue-act-count">{f.count}</span>
+                  <span aria-hidden="true">▸</span>
+                </span>
+                {f.next !== null && <span className="cue-act-fold-next">next: {f.next}</span>}
+              </button>
+            </section>
+          );
+        }
+        const prev = isFocus ? fromAct(layout, openActs) : null;
+        return (
+          <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
+            <h3 className="cue-act-head">
+              <button type="button" disabled={isFocus} onClick={() => toggleAct(a.key)}>
+                <span className="cue-act-name">{actName(a)}</span>
+                <span className="cue-act-count">{actCount(a)}</span>
+                {isFocus && a.starting && <span className="cue-act-badge">starting</span>}
+                {!isFocus && <span aria-hidden="true">▾</span>}
+              </button>
+            </h3>
+            {rowList(a.spine)}
+            {a.asides.length > 0 && (
+              <>
+                <div className="cue-divider">fallbacks</div>
+                {rowList(a.asides)}
+              </>
+            )}
+            {prev !== null && (
+              <>
+                <button type="button" className="cue-from" aria-expanded={fromOpen} onClick={() => setFromOpen((o) => !o)}>
+                  from {actHandle(prev)} {fromOpen ? "▾" : "▸"} <span className="muted">{prev.asides.length} fallbacks</span>
+                </button>
+                {fromOpen && rowList(prev.asides)}
+              </>
+            )}
+          </section>
+        );
+      })}
+      {layout.acts
+        .filter((a) => a.state === "anytime")
+        .map((a) => (
+          <section key={a.key} className="cue-act anytime" data-act={a.key}>
+            <h3 className="cue-act-head">
+              <button type="button" disabled>
+                <span className="cue-act-name">⚡ {actName(a)}</span>
+              </button>
+            </h3>
+            {rowList(a.rows)}
+          </section>
+        ))}
+    </div>
+  );
+}
+
+/** The subject cue's person picker (and an award's value box). `suggest`:
+ *  the recap's winner for an award, offered first. */
+export function CuePicker({ desk, roster, suggest }: { desk: CueDesk; roster: DirectorView["roster"]; suggest?: { id: string; hint: string } | null }) {
+  const row = desk.picking;
+  if (row === null) return null;
+  const items = subjectChoices(roster);
+  const first = suggest != null ? items.find((i) => i.id === suggest.id) : undefined;
+  // The suggestion's reason (and any tie) gets its own line above the list:
+  // as the row's sub it squeezed the winner's name to nothing on a phone.
+  const ordered = first !== undefined ? [{ ...first, sub: "suggested" }, ...items.filter((i) => i !== first)] : items;
+  return (
+    <PickerSheet
+      title={`Who for ${row.code ?? row.title}?`}
+      items={ordered}
+      onPick={(id) => desk.pick(id)}
+      onClose={desk.closePicker}
+      empty="Nobody has joined yet."
+      lead={
+        first !== undefined || takesValue(row.id) ? (
+          <>
+            {first !== undefined && <p className="pick-hint cue-suggest">{suggest!.hint}</p>}
+            {takesValue(row.id) && (
+              <label className="cue-value">
+                <span>Value (optional) — lies accepted, the duck time, quests done</span>
+                <input value={desk.value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => desk.setValue(e.target.value)} />
+              </label>
+            )}
+          </>
+        ) : undefined
+      }
+    />
+  );
+}
+
+/** The phone's skin: the story's own (the poll, else the sign-in's resolve),
+ *  else the landing's until someone signs in. */
+export function directorTheme(view: Pick<DirectorView, "theme"> | null, auth: Pick<DirectorAuth, "theme"> | null, brand: string | null): string | null {
+  return view?.theme ?? auth?.theme ?? brand;
+}
+
+export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => void; brandTheme?: string | null }) {
+  const s = useDirectorSession();
+  const title = s.view?.title ?? s.auth?.title ?? null;
+  useDocumentTitle(title !== null ? `🎬 ${title}` : null);
+  useTheme(directorTheme(s.view, s.auth, brandTheme));
+  const [query, setQuery] = useState("");
+  const [menu, setMenu] = useState(false);
+  const [help, setHelp] = useState(false);
+  const rows = useMemo(() => directorRows(s.view), [s.view]);
+  const layout = useMemo(() => sheetLayout(rows), [rows]);
+  const marks = s.view?.cues ?? NO_MARKS;
+  const lastId = marks.last;
+  const desk = useCueDesk(rows, marks, s.view?.roster, (id, subject, value, presses) => s.fire(id, subject, value, presses));
+  // The countdowns tick once a second between polls (story clock + the
+  // wall time since the view landed).
+  const runs = clockRuns(s.view);
+  const ticking = runs && (s.view?.countdowns?.length ?? 0) > 0;
+  const [wall, setWall] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ticking) return;
+    setWall(Date.now());
+    const t = setInterval(() => setWall(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [ticking, s.receivedAt]);
+  const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt), runs);
+  const bar = nextBar(rows, s.view?.countdowns, nowMs, runs);
+  const strip = stripItems(s.view, layout, nowMs);
+  // Keep the next cue in view as the night moves down the sheet.
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    listRef.current?.querySelector('[data-next="true"]')?.scrollIntoView({ block: "nearest" });
+  }, [lastId]);
+
+  if (s.auth === null) return <DirectorLogin notice={s.notice} onLogin={s.login} onBack={onLeave} />;
+
   // The NEXT bar scrolls to its row (arming still happens on the row); with
   // no NEXT, to LAST. A filter that hides the row is cleared first.
   const toNext = () => {
@@ -989,7 +1179,7 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
       el?.scrollIntoView({ block: "center", behavior: "smooth" });
     });
   };
-  const pickingRow = picking !== null ? rows.find((r) => r.id === picking) ?? null : null;
+  const armed = desk.armed;
 
   return (
     <div className="root">
@@ -1049,9 +1239,9 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
         <div className="station" ref={listRef}>
           <input className="cue-filter" type="search" placeholder="Filter cues (code or words)" value={query} onChange={(e) => setQuery(e.target.value)} />
           {s.view?.doorsClosed === true && rows.length > 0 && <p className="pick-hint">{DOORS_CLOSED}</p>}
-          {armed !== null && subjectName !== null && (
+          {armed !== null && desk.subjectName !== null && (
             <p className="pick-hint">
-              Armed for {subjectName}
+              Armed for {desk.subjectName}
               {armed.value !== undefined ? ` (value ${armed.value})` : ""} — tap the cue again to fire.
             </p>
           )}
@@ -1059,107 +1249,17 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
             <div className="muted pad">Loading the cue sheet…</div>
           ) : rows.length === 0 ? (
             <div className="muted pad">{noCuesText(s.view)}</div>
-          ) : query.trim() !== "" || layout.kind === "flat" ? (
-            <ol className="cue-list">
-              {shown.map((r) => (
-                <CueButton key={r.id} row={r} armed={armed} locked={cueLocked(r, pending, cooling)} sending={pending === r.id} warnings={armWarnings(r, layout)} subjectName={subjectName} actCode={layout.kind === "acts" && r.act !== null ? splitCode(r.act).code ?? null : null} onTap={() => tap(r)} />
-              ))}
-              {shown.length === 0 && <li className="muted pad">No cue matches.</li>}
-            </ol>
           ) : (
-            <div className="cue-acts">
-              {layout.acts.map((a, k) => {
-                if (a.state === "anytime") return null;
-                const isFocus = k === layout.focus;
-                const open = isFocus || openActs.has(a.key);
-                if (!open) {
-                  const f = foldedParts(a);
-                  return (
-                    <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
-                      <button type="button" className="cue-act-fold" aria-label={foldedLine(a)} onClick={() => toggleAct(a.key)}>
-                        <span className="cue-act-fold-line">
-                          <span className="cue-act-fold-text">
-                            {f.mark !== null && `${f.mark} `}
-                            {f.name}
-                          </span>
-                          <span className="cue-act-count">{f.count}</span>
-                          <span aria-hidden="true">▸</span>
-                        </span>
-                        {f.next !== null && <span className="cue-act-fold-next">next: {f.next}</span>}
-                      </button>
-                    </section>
-                  );
-                }
-                const prev = isFocus ? fromAct(layout, openActs) : null;
-                return (
-                  <section key={a.key} className={`cue-act ${a.state}`} data-act={a.key}>
-                    <h3 className="cue-act-head">
-                      <button type="button" disabled={isFocus} onClick={() => toggleAct(a.key)}>
-                        <span className="cue-act-name">{actName(a)}</span>
-                        <span className="cue-act-count">{actCount(a)}</span>
-                        {isFocus && a.starting && <span className="cue-act-badge">starting</span>}
-                        {!isFocus && <span aria-hidden="true">▾</span>}
-                      </button>
-                    </h3>
-                    {rowList(a.spine)}
-                    {a.asides.length > 0 && (
-                      <>
-                        <div className="cue-divider">fallbacks</div>
-                        {rowList(a.asides)}
-                      </>
-                    )}
-                    {prev !== null && (
-                      <>
-                        <button type="button" className="cue-from" aria-expanded={fromOpen} onClick={() => setFromOpen((o) => !o)}>
-                          from {actHandle(prev)} {fromOpen ? "▾" : "▸"} <span className="muted">{prev.asides.length} fallbacks</span>
-                        </button>
-                        {fromOpen && rowList(prev.asides)}
-                      </>
-                    )}
-                  </section>
-                );
-              })}
-              {layout.acts
-                .filter((a) => a.state === "anytime")
-                .map((a) => (
-                  <section key={a.key} className="cue-act anytime" data-act={a.key}>
-                    <h3 className="cue-act-head">
-                      <button type="button" disabled>
-                        <span className="cue-act-name">⚡ {actName(a)}</span>
-                      </button>
-                    </h3>
-                    {rowList(a.rows)}
-                  </section>
-                ))}
-            </div>
+            <CueActList rows={rows} layout={layout} query={query} desk={desk} />
           )}
         </div>
       </div>
-      {toast !== null && (
+      {desk.toast !== null && (
         <div className="cue-toast" role="status">
-          {toast}
+          {desk.toast}
         </div>
       )}
-      {pickingRow !== null && (
-        <PickerSheet
-          title={`Who for ${pickingRow.code ?? pickingRow.title}?`}
-          items={subjectChoices(s.view?.roster)}
-          onPick={(id) => setArmed(armFor(pickingRow.id, id, Date.now(), value, marks))}
-          onClose={() => {
-            setPicking(null);
-            setValue("");
-          }}
-          empty="Nobody has joined yet."
-          lead={
-            takesValue(pickingRow.id) ? (
-              <label className="cue-value">
-                <span>Value (optional) — lies accepted, the duck time, quests done</span>
-                <input value={value} maxLength={20} placeholder="e.g. 3 or 2:41" onChange={(e) => setValue(e.target.value)} />
-              </label>
-            ) : undefined
-          }
-        />
-      )}
+      <CuePicker desk={desk} roster={s.view?.roster} />
       {menu && (
         <Sheet title="🎬 Director phone" onClose={() => setMenu(false)}>
           <p className="muted pad">

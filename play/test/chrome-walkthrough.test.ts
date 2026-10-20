@@ -52,6 +52,11 @@ describe("the guest's own choice is echoed", () => {
     const stream = withEchoes(new Map([[41, msg(41, "dm:The Uploader")], [42, msg(42, "dm:The Uploader")]]), [echo]);
     expect([...stream.values()].sort((a, b) => a.seq - b.seq).map((m) => m.seq)).toEqual([41, 41.5, 42]);
   });
+
+  it("is stamped in story time, never the wall clock", () => {
+    expect(choiceEcho("dm:The Uploader", "Upload me", { id: "g-1", name: "Winamp" }, 41, 93_000).ts).toBe(93_000);
+    expect(choiceEcho("dm:The Uploader", "Upload me", { id: "g-1", name: "Winamp" }, 41).ts).toBe(0);
+  });
 });
 
 describe("read marks", () => {

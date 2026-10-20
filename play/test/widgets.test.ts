@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
+import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factQuestionsShown, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -161,7 +161,7 @@ describe("📝 fact card", () => {
     expect(html).toContain(`<output>${CONFIDENCE_UNSET}</output>`);
     expect(html).toContain(`aria-valuetext="${CONFIDENCE_UNSET}"`);
     expect(html).not.toContain(">100%<");
-    expect(html).toMatch(/<button[^>]*class="widget-go"[^>]*disabled=""/);
+    expect(html).toMatch(/<button[^>]*class="choice primary widget-go"[^>]*disabled=""/);
   });
 });
 
@@ -190,5 +190,42 @@ describe("💬 answer card", () => {
     expect(answerResult("   ", 120)).toBeNull();
     expect(answerResult("x".repeat(121), 120)).toBeNull();
     expect(answerResult("x".repeat(120), 120)).toEqual({ text: "x".repeat(120) });
+  });
+});
+
+describe("📝 fact card fits the tray (fguest)", () => {
+  it("once a question is picked the others fold away; tapping it reopens them", () => {
+    const qs = [{ id: "H1", label: "One?" }, { id: "H2", label: "Two?" }, { id: "H3", label: "Three?" }];
+    expect(factQuestionsShown(qs, "", false).map((q) => q.id)).toEqual(["H1", "H2", "H3"]);
+    expect(factQuestionsShown(qs, "H2", false).map((q) => q.id)).toEqual(["H2"]);
+    expect(factQuestionsShown(qs, "H2", true).map((q) => q.id)).toEqual(["H1", "H2", "H3"]);
+    expect(factQuestionsShown(qs, "H9", false).map((q) => q.id)).toEqual(["H1", "H2", "H3"]);
+  });
+
+  it("File it is the card's default button (bold, the heavy frame), like Send", () => {
+    const html = renderToStaticMarkup(
+      createElement(() => WIDGETS["fact"]!.render({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H1: One? | H2: Two?" } }, seed: 1, onAnswer: () => {}, answered: null })),
+    );
+    expect(html).toContain('class="choice primary widget-go"');
+    expect(html.match(/fact-questions/gu)).toHaveLength(1);
+  });
+});
+
+describe("typing in a card's box keeps its submit row in view (fguest review)", () => {
+  it("keepFootInView scrolls the card's own .widget-foot, nearest", async () => {
+    const { keepFootInView } = await import("../src/widgets.tsx");
+    const calls: unknown[] = [];
+    const foot = { scrollIntoView: (o: unknown) => calls.push(o) };
+    const card = { querySelector: (sel: string) => (sel === ".widget-foot" ? foot : null) };
+    keepFootInView({ closest: (sel: string) => (sel === ".widget" ? card : null) } as unknown as Element);
+    expect(calls).toEqual([{ block: "nearest" }]);
+    // Outside a card: nothing.
+    keepFootInView({ closest: () => null } as unknown as Element);
+    expect(calls.length).toBe(1);
+  });
+  it("with the keyboard up the composer steps aside for a card being typed in", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../src/css/stream.css", import.meta.url), "utf8");
+    expect(css).toContain(".kbd .stream-foot.card-typing > .composer { display: none; }");
   });
 });

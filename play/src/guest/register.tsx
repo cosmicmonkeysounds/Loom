@@ -5,11 +5,29 @@
 import { useState } from "react";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { usePlayHost } from "../host.ts";
-import { avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type PictureChoice, type PictureChoices, type ProgramHit } from "../avatars.ts";
+import { avatarUrl, hitNote, hitPickable, initialPick, orderPicker, rowNote, rowPickable, rowTitle, type IdentityRow, type PictureChoice, type PictureChoices, type ProgramHit } from "../avatars.ts";
 import { claimFromSearch, joinClaim, registerErrorText } from "../claim.ts";
 import { PictureGrid } from "../picture-pick.tsx";
 import { codeFromUrl, fetchPictures, searchPrograms, useIdentities, useLandingBrand } from "../session/shared.ts";
 import type { GuestSession } from "../session/guest.ts";
+
+/**
+ * The picker's two parts (wave 13): the programs anyone may be (free first,
+ * then the taken ones, greyed), and the featured programs reserved for
+ * their invited guests, which fold away behind "Reserved for invited
+ * guests (n)" — an invitation's `?claim=` makes its program an ordinary
+ * free tile, so the invitee never opens the fold.
+ */
+export function pickerSections(rows: readonly IdentityRow[]): { open: IdentityRow[]; reserved: IdentityRow[] } {
+  const ordered = orderPicker(rows);
+  const locked = (r: IdentityRow) => !r.claimed && r.reserved === true;
+  return { open: ordered.filter((r) => !locked(r)), reserved: ordered.filter(locked) };
+}
+
+/** The fold's label. */
+export function reservedFoldLabel(n: number): string {
+  return `🔒 Reserved for invited guests (${n})`;
+}
 
 export function GuestRegister({ session }: { session: GuestSession }) {
   const host = usePlayHost();
@@ -36,6 +54,8 @@ export function GuestRegister({ session }: { session: GuestSession }) {
   const closed = resolved !== null && resolved.doorsOpen === false;
   const fallback = ids !== null && ids !== "loading" && ids.kind === "unavailable" ? ids : null;
   const programs = resolved === null ? [] : orderPicker(resolved.identities);
+  const sections = pickerSections(programs);
+  const [reservedOpen, setReservedOpen] = useState(false);
   // Having picked a program, the guest picks its picture (when there is
   // more than one to choose from).
   const [picking, setPicking] = useState<{ name: string; wiki?: string; options: PictureChoice[]; selected: string | null } | null>(null);
@@ -142,7 +162,7 @@ export function GuestRegister({ session }: { session: GuestSession }) {
           <div className="sheet-h">Which program are you?</div>
           {programs.length === 0 && <p className="pick-hint">{resolved.search ? "Every named program is taken — search for another below." : "No programs left to pick — ask your host."}</p>}
           <div className="pick-grid">
-            {programs.map((r) => (
+            {sections.open.map((r) => (
               <button
                 key={r.name}
                 type="button"
@@ -159,6 +179,33 @@ export function GuestRegister({ session }: { session: GuestSession }) {
               </button>
             ))}
           </div>
+          {sections.reserved.length > 0 && (
+            <>
+              <button type="button" className="choice ghost pick-fold" aria-expanded={reservedOpen} onClick={() => setReservedOpen((v) => !v)}>
+                <span aria-hidden>{reservedOpen ? "▾" : "▸"}</span> {reservedFoldLabel(sections.reserved.length)}
+              </button>
+              {reservedOpen && (
+                <div className="pick-grid">
+                  {sections.reserved.map((r) => (
+                    <button
+                      key={r.name}
+                      type="button"
+                      className={`choice pick ghost ${rowPickable(r) ? "" : "claimed"} ${!r.claimed && r.reserved === true ? "reserved" : ""}`}
+                      disabled={busy || !rowPickable(r)}
+                      title={rowTitle(r)}
+                      onClick={() => void pick(r.name)}
+                    >
+                      <PersonAvatar name={r.name} size="lg" src={picture(r.avatar)} />
+                      <span className="pick-label">
+                        {r.name}
+                        {rowNote(r) !== null && <span className="pick-sub"> · {rowNote(r)}</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
           {resolved.search && (
             <>
               <div className="sheet-h">Something else?</div>

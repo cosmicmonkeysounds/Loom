@@ -48,9 +48,12 @@
 :root[data-theme="aol97"] body { font-size: 13px; }
 :root[data-theme="aol97"] .hero .glyph { filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.35)); }
 :root[data-theme="aol97"] .dot { box-shadow: var(--sunken); }
-:root[data-theme="aol97"] .chrow:hover { background: var(--navy); color: var(--white); }
-:root[data-theme="aol97"] .chrow:hover .chrow-sub, :root[data-theme="aol97"] .chrow:hover .chrow-title,
-:root[data-theme="aol97"] .chrow:hover .chrow-occ { color: var(--white); }
+/* hover only where a pointer hovers: on a touch phone :hover sticks to the last row tapped */
+@media (hover: hover) {
+  :root[data-theme="aol97"] .chrow:hover { background: var(--navy); color: var(--white); }
+  :root[data-theme="aol97"] .chrow:hover .chrow-sub, :root[data-theme="aol97"] .chrow:hover .chrow-title,
+  :root[data-theme="aol97"] .chrow:hover .chrow-occ { color: var(--white); }
+}
 :root[data-theme="aol97"] .pavatar { box-shadow: var(--raised); text-shadow: none; }
 :root[data-theme="aol97"] .captcha-tile.on { background: #e0e0ff; }
 

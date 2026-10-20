@@ -742,6 +742,11 @@ interface OpenRequest {
   followUp: boolean;
   /** Hub clock when the request was opened (a refresh never moves it). */
   createdAt: number;
+  /** Hub clock since when the guest has been waiting: `createdAt`, or — for
+   *  a thread re-asked after a restart — its owed line's time (what the host
+   *  view's `waiting[].since` and the queue's `oldestMs` read; the timers
+   *  keep `createdAt`, so a restart never fires a hold line early). */
+  since: number;
   /** The hold line was already offered for this request. */
   held: boolean;
   /** It waited in a worker's line behind another request (a burst) — the
@@ -903,7 +908,7 @@ export class AgentHub {
     for (const r of this.open.values()) {
       if (r.req.character !== character) continue;
       depth += 1;
-      if (oldest === null || r.createdAt < oldest) oldest = r.createdAt;
+      if (oldest === null || r.since < oldest) oldest = r.since;
     }
     return { depth, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: this.isOnline(character) && !this.canAnswer(character) };
   }
@@ -911,6 +916,12 @@ export class AgentHub {
   /** Open requests (queued or in flight). */
   get pending(): AgentRequest[] {
     return [...this.open.values()].map((r) => r.req);
+  }
+
+  /** Since when request `id`'s guest has been waiting (hub ms; the queue's
+   *  `oldestMs` clock), or null for no such open request. */
+  sinceOf(id: string): number | null {
+    return this.open.get(id)?.since ?? null;
   }
 
   // -- workers --------------------------------------------------------------
@@ -949,7 +960,7 @@ export class AgentHub {
   /** Someone said something in an agent thread. `held`: the thread already
    *  carries the hold line for it (a request re-opened after a restart),
    *  so it is never said twice. */
-  line(thread: AgentThread, opts: { held?: boolean } = {}): void {
+  line(thread: AgentThread, opts: { held?: boolean; since?: number } = {}): void {
     if (this.o.admits !== undefined && !this.o.admits(thread)) return;
     const key = threadKey(thread);
     const openId = this.byThread.get(key);
@@ -967,15 +978,16 @@ export class AgentHub {
         return;
       }
     }
-    this.create(thread, opts.held === true);
+    this.create(thread, opts.held === true, opts.since);
   }
 
-  private create(thread: AgentThread, held: boolean): void {
+  private create(thread: AgentThread, held: boolean, since?: number): void {
     const id = `ar-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req = this.o.build(thread, id);
     if (req === null) return;
     const key = threadKey(thread);
-    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), held: held || this.heldThreads.has(key), behind: false };
+    const r: OpenRequest = { req, key, worker: null, dispatchedAt: null, dispatchSeq: 0, startedAt: null, attempts: 0, followUp: false, createdAt: this.now(), since: 0, held: held || this.heldThreads.has(key), behind: false };
+    r.since = since !== undefined && Number.isFinite(since) ? Math.min(since, r.createdAt) : r.createdAt;
     this.open.set(id, r);
     this.byThread.set(r.key, id);
     this.dispatch(r);
@@ -1203,6 +1215,7 @@ export class AgentHub {
     const moved = (t: number): number => (t <= pausedAt ? t + by : Math.max(t, resumedAt));
     for (const r of this.open.values()) {
       r.createdAt = moved(r.createdAt);
+      r.since = moved(r.since);
       if (r.dispatchedAt !== null) r.dispatchedAt = moved(r.dispatchedAt);
       if (r.startedAt !== null) r.startedAt = moved(r.startedAt);
       r.req = { ...r.req, at: moved(r.req.at) };

@@ -5,18 +5,20 @@
 
 ## Card
 
-**Door duty (20:00 → C1).** Booth → **📷 Scanner** → scan the pass on the
-guest's phone (they wait in the Optical Drive with it on screen). That scan **clears
-them**: the Tube, the Desktop, Task Manager's "Your hosts tonight" line (it
-opens `# task-manager` for them), Clippy's tour. Camera fails → type the id
-under the QR. Not uploaded yet → "Not yet. Finish your upload." Use an
-**Android** phone for scanning until the iPhone scanner is verified (OP-04).
+**Door duty (20:00 → C1).** Tap **📷 Scan** (the big taskbar button) and scan
+the pass on the guest's phone (they wait in the Optical Drive with it on
+screen). That scan **clears them**: the Tube, the Desktop, Task Manager's
+"Your hosts tonight" line (it opens `# task-manager` for them), Clippy's tour.
+Their card opens at once (📷 Next guest brings the camera back for the next
+pass). Camera fails → type the id under the QR in the box under the camera.
+Not uploaded yet → "Not yet. Finish your upload." Use an **Android** phone for
+scanning until the iPhone scanner is verified (OP-04).
 
 **Your buttons**
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
+| **any time** | **🛡 Send to the Internet** (tap to arm, tap again) | anyone marked, corrupted, late, caught, or at the patch bay when its alarm trips |
 | **any time** | **✅ Mark as reinstalled** | someone in the Internet whose game won't finish |
 | **any time** | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy |
 | any time | **👁 Put on the watchlist** | someone suspicious (doubt +25) |
@@ -36,7 +38,7 @@ left (the rooms read-only; they can still type in their DMs, but a 📝 filing
 and a room check-in are refused). Find them, walk them through the Tube,
 press 🛡 — a marked program who turns up at the tent on their own is captured
 when the tablet starts their run (wave 5). A marked program in Bathroom Mode or Disk Cleanup: wait outside; never go in (the booth says ⚠️ when it knows). The pin clears on its own when they are captured, released,
-or unmarked (🩹): *✅ X: in the Internet / released / cleared by a host.*
+or unmarked (🩹): *✅ X: in the Internet / released / cleared by the Antivirus / cleared by a host.*
 
 **V3, your big moment.** Your Quest Log says it: *Patrol: the Bingo.*
 When the centre-square program is named (or the winner refuses to name
@@ -49,14 +51,19 @@ the door. They need to be taken to the Internet for a reinstallation.* Press
 named? 🛡 each.) The quest completes with the first reinstallation.
 
 **Sweeps:** C1 (everyone to the Desktop) · C2 (back from hunt 1) · ⏳ (the
-summons: scan arrivals) · 🚨 the late list (*⏰ X is late… Go get them*: they
-are marked; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
+summons: scan arrivals) · 🚨 the late list (*🚨 X is late… marked for reinstallation. Go get them*,
+one per program; find them, 🛡) · Trabolta's sweep requests (*🛡 Trabolta requests a
 sweep of…*) · 🚨 server-room alarm · 🗜 zip everyone out of the Internet (the tent, or the shed on a rain night).
 
 **Bathroom Mode excuses a guest from a summons.** Your booth shows who is in it.
 
-**Your booth:** Scanner · Inbox (empty tonight) · Quest Log · Codex ·
-`# hosts` · `# quarantine` · the rooms · one thread per guest.
+**Your booth:** the **NOW card** on top (this part of the night's job, its
+to-dos ticking themselves) · **📷 Scan** and **🗂 Guests** on the taskbar ·
+Quest Log · Codex · `# hosts` · `# quarantine` · **Readouts** (every readout,
+kept across a reload) · **Messages** (a program typing to you) · the rooms.
+A scanned program's card leads with
+at most three buttons your objective needs (🩹 on a marked program); the rest
+are under **All buttons…**.
 
 **Blackout:** guide people to the living room; the stairs stay lit.
 
@@ -86,7 +93,8 @@ regimes, who needs very badly to get it right this time.
 **Play:** at attention. Takes it personally. Interrupts parties. You failed
 to fight viruses once before; it will not happen again. Your scan cycles
 *"Scanning. Scanning."* / *"no threats found. Today."* / *"Your definitions
-are out of date. So are mine."*
+are out of date. So are mine."*; a marked program hears *"Corruption detected:
+you are marked for reinstallation…"* instead.
 
 ## Your night
 

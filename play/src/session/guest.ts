@@ -46,8 +46,10 @@ const ECHO_CAP = 200;
 
 /** The guest's pick as their own line in the room the choice docked in,
  *  just after everything already there (a half seq, so the story's answer
- *  — the next real message — lands under it). */
-export function choiceEcho(channel: string, text: string, me: { id: string; name: string }, afterSeq: number): ChatMessage {
+ *  — the next real message — lands under it). `ts` is story time like every
+ *  server message's (`sim.elapsed()`): the newest message's, never the wall
+ *  clock, which reads hours ahead of the story. */
+export function choiceEcho(channel: string, text: string, me: { id: string; name: string }, afterSeq: number, ts = 0): ChatMessage {
   return {
     seq: afterSeq + 0.5,
     channel,
@@ -56,7 +58,7 @@ export function choiceEcho(channel: string, text: string, me: { id: string; name
     from: me.name,
     kind: "line",
     text,
-    ts: Date.now(),
+    ts,
     audience: [me.id],
     parentSeq: null,
     hidden: false,
@@ -345,7 +347,8 @@ export function useGuestSession(): GuestSession {
     async (index: number) => {
       const { options, channel } = pendingRef.current;
       const text = options?.[index];
-      const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, maxSeqOf(messages.values())) : null;
+      const last = maxSeqOf(messages.values());
+      const echo = text !== undefined && me !== null ? choiceEcho(channel, text, me, last, messages.get(last)?.ts ?? 0) : null;
       if (echo !== null) {
         crawl.claim(echo.seq); // your own words never crawl
         setEchoes((prev) => saveEchoes(save, me!.token, [...prev, echo]));

@@ -1,0 +1,116 @@
+//! The moments engine's memory (wave 13, the moments lane): what a
+//! provider keeps across a remount of the same sign-in — the guest app swaps
+//! its cutscene and main roots, each with its own `MomentsProvider`, and the
+//! queue, the processed seqs, the beats and the screen times must survive
+//! that — plus the two per-sign-in lists it persists in the host's storage:
+//! the loud objectives already announced and the seqs settled above the mark.
+
+import type { SessionStorage } from "../host.ts";
+import type { ObjectiveView } from "../types.ts";
+import { EMPTY_MOMENTS, loudObjectives, type Moment, type MomentsState } from "./model.ts";
+
+type Role = "guest" | "booth";
+
+/** What the engine keeps across a remount of the same sign-in. */
+export interface EngineMemory {
+  state: MomentsState;
+  /** The sign-in and story epoch it belongs to (`undefined` = not started). */
+  session: string | null | undefined;
+  epoch: number | undefined;
+  processed: Set<number>;
+  processedMax: number;
+  /** Each beat's last line (story clock), for the blue screen. */
+  beats: Map<string, number>;
+  lastHoldEnd: number;
+  /** The history count last processed: a new one means the messages are a reconnect's backlog. */
+  historiesSeen: number;
+  /** When each moment on screen first showed (wall clock): a glance < 1 s is missed. */
+  shownAt: Map<string, number>;
+  /** The done list last persisted (`doneAbove`). */
+  savedDone: string;
+  /** Readouts waiting out `READOUT_WAIT_MS`. */
+  pending: Set<number>;
+  /** Moments dispatched to the queue but not yet in a rendered state: never settled past. */
+  inflight: Set<number>;
+}
+
+/** The memories by role + sign-in, newest last (a test seam too). Several
+ *  sign-ins live at once in Run → Players (one embedded app per person). */
+export const MOMENTS_MEMORY = new Map<string, EngineMemory>();
+/** How many sign-ins' memories a page keeps. */
+export const MEMORY_MAX = 16;
+
+export function memoryKey(role: Role, session: string): string {
+  return `${role}\u0000${session}`;
+}
+
+export function freshMemory(): EngineMemory {
+  return {
+    state: EMPTY_MOMENTS,
+    session: undefined,
+    epoch: undefined,
+    processed: new Set(),
+    processedMax: -1,
+    beats: new Map(),
+    lastHoldEnd: Number.NEGATIVE_INFINITY,
+    historiesSeen: 0,
+    shownAt: new Map(),
+    savedDone: "",
+    pending: new Set(),
+    inflight: new Set(),
+  };
+}
+
+/** The memory a provider mounting for this sign-in starts from: the last one's, when it was the same sign-in. */
+export function recallMoments(role: Role, session: string | null): EngineMemory {
+  const kept = session !== null ? MOMENTS_MEMORY.get(memoryKey(role, session)) : undefined;
+  return kept !== undefined && kept.session === session ? kept : freshMemory();
+}
+
+/** Keep `mem` for this sign-in (signed out → nothing kept). */
+export function rememberMoments(role: Role, session: string | null, mem: EngineMemory): void {
+  if (session === null) return;
+  const key = memoryKey(role, session);
+  MOMENTS_MEMORY.delete(key);
+  MOMENTS_MEMORY.set(key, mem);
+  while (MOMENTS_MEMORY.size > MEMORY_MAX) MOMENTS_MEMORY.delete(MOMENTS_MEMORY.keys().next().value!);
+}
+
+export function loudKey(role: Role): string {
+  return `loom.moments.loud.${role}`;
+}
+
+/** Where the seqs settled above the mark persist (`doneAbove`). */
+export function doneKey(role: Role): string {
+  return `loom.moments.done.${role}`;
+}
+
+/** The loud objectives that just went live and were never announced to this sign-in; marks them announced. */
+export function announceLoud(storage: SessionStorage, role: Role, session: string, objectives: readonly ObjectiveView[], at: number, phase: string | null): Moment[] {
+  const stored = storage.load<{ session: string; ids: string[] }>(loudKey(role));
+  const ids = stored !== null && stored.session === session && Array.isArray(stored.ids) ? stored.ids : [];
+  const fresh = loudObjectives(objectives, new Set(ids), at, phase);
+  if (fresh.length === 0) return fresh;
+  try {
+    storage.save(loudKey(role), { session, ids: [...ids, ...fresh.map((m) => m.key.slice(2))] });
+  } catch {
+    /* storage blocked — at worst it announces again after a reload */
+  }
+  return fresh;
+}
+
+/** A sign-in picks up the seqs it had settled above its mark (a reload). */
+export function loadDone(storage: SessionStorage, role: Role, session: string, mark: number, mem: EngineMemory): void {
+  const stored = storage.load<{ session: string; seqs: number[] }>(doneKey(role));
+  if (stored === null || stored.session !== session || !Array.isArray(stored.seqs)) return;
+  for (const seq of stored.seqs) if (typeof seq === "number" && seq > mark) mem.processed.add(seq);
+  mem.savedDone = stored.seqs.join(",");
+}
+
+export function saveDoneList(storage: SessionStorage, role: Role, session: string, seqs: number[]): void {
+  try {
+    storage.save(doneKey(role), { session, seqs });
+  } catch {
+    /* storage blocked — at worst a reload replays a read moment */
+  }
+}

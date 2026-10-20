@@ -28,4 +28,12 @@ describe("a performer's card leads with their own buttons", () => {
     expect(splitInteractions(only, "Norton Anti-Virus", true).more.map((i) => i.id)).toEqual(["bingo", "judge", "cue"]);
     expect(splitInteractions(only, "Clippy", false).mine.map((i) => i.id)).toEqual(["judge", "check"]);
   });
+
+  it("a host or admin booth leaves out one only its actors' own hooks hear (`hostHeard: false`): the server refuses it", () => {
+    const deaf: Interaction[] = list.map((i) => (i.id === "send" ? { ...i, only: true, hostHeard: false } : i));
+    expect(splitInteractions(deaf, "Clippy", true).more.map((i) => i.id)).toEqual(["bingo", "cue"]);
+    expect(splitInteractions(deaf, "Clippy", false).more.map((i) => i.id)).toEqual(["bingo"]);
+    // Its own actors keep it.
+    expect(splitInteractions(deaf, "McAfee Anti-Virus", true).mine.map((i) => i.id)).toContain("send");
+  });
 });

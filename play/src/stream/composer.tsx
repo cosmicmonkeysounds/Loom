@@ -70,11 +70,18 @@ export function Composer({
           }
         }}
       />
-      <button className="choice composer-send" onClick={send} disabled={disabled || sending}>
+      {/* Send keeps the focus in the box (a chat app's Send): the keyboard
+          stays up, nothing moves under the finger, the next line is ready. */}
+      <button className="choice composer-send" onMouseDown={keepFocus} onClick={send} disabled={disabled || sending}>
         {sendLabel ?? "Send"}
       </button>
     </div>
   );
+}
+
+/** A mousedown that leaves the focus where it is (the box keeps it). */
+export function keepFocus(e: { preventDefault: () => void }): void {
+  e.preventDefault();
 }
 
 /** Send a composer's text: `null` for nothing to send, else whether to
@@ -101,8 +108,13 @@ export function sendFromComposer(raw: string, onSend: (text: string) => unknown)
 /** A restricted (marked) program standing in a room may not post there (B4). */
 export const RESTRICTED_ROOM_NOTE = "⛔ You're restricted — you can only talk in your direct messages.";
 
-/** Why the composer is gone: restricted where you stand, elsewhere, or read-only. */
+/** A DM with a character nobody voices — no performer, no agent (wave 13). */
+export const NOBODY_READS_NOTE = "This program doesn't read replies.";
+
+/** Why the composer is gone: restricted where you stand, elsewhere, a DM
+ *  nobody reads, or read-only. */
 export function cantPostNote(channel: Pick<Channel, "kind" | "member" | "here">): string {
+  if (channel.kind === "dm") return NOBODY_READS_NOTE;
   if (channel.kind !== "location") return "This room is read-only.";
   // Standing here and still refused: only restriction does that.
   if (channel.member === true || channel.here === true) return RESTRICTED_ROOM_NOTE;

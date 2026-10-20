@@ -21,6 +21,7 @@
 
 CODEX Tippi MacDonald
   title: Tippi MacDonald
+  category: People
   about: Clippy
   text:
     Clippy is Tippi MacDonald of 1232 Duffus Street, NSCC Office
@@ -34,6 +35,7 @@ CODEX Tippi MacDonald
 
 CODEX Middle Management
   title: Middle Management
+  category: People
   about: Task Manager
   text:
     Task Manager was a middle manager in IT at Urban Outfitters. He has no
@@ -42,6 +44,7 @@ CODEX Middle Management
 
 CODEX Replaced By Clippy
   title: Replaced By Clippy
+  category: People
   about: Task Manager
   text:
     Senior management let him go when they realised he could be replaced
@@ -55,6 +58,7 @@ CODEX Replaced By Clippy
 
 CODEX Sheryl Terrio
   title: Sheryl Terrio
+  category: People
   about: Adobe Acrobat
   text:
     Adobe Acrobat is Sheryl Terrio, the world's most successful
@@ -65,6 +69,7 @@ CODEX Sheryl Terrio
 
 CODEX The Pirated Masterclass
   title: The Pirated Masterclass
+  category: People
   about: Adobe Acrobat
   text:
     When her Masterclass was pirated, her profits fell through: anyone who
@@ -78,6 +83,7 @@ CODEX The Pirated Masterclass
 
 CODEX The Attendant
   title: The Attendant
+  category: People
   about: Recycling Bin
   text:
     Recycling Bin was a bathroom attendant, laid off during COVID and
@@ -87,6 +93,7 @@ CODEX The Attendant
 
 CODEX The Oscars Of Bathrooms
   title: The Oscars Of Bathrooms
+  category: People
   about: Recycling Bin
   text:
     The invitation offered him the role of pretending to be a Recycling
@@ -101,6 +108,7 @@ CODEX The Oscars Of Bathrooms
 
 CODEX Julie Horton-Norton
   title: Julie Horton-Norton
+  category: People
   about: Norton Anti-Virus
   text:
     Norton Anti-Virus is Julie Horton-Norton, Apt. 3, 6121 Quinpool Road, an
@@ -114,6 +122,7 @@ CODEX Julie Horton-Norton
 
 CODEX John McAfee
   title: John McAfee
+  category: People
   about: McAfee Anti-Virus
   text:
     McAfee Anti-Virus is John McAfee. NASA, Xerox and Lockheed, then McAfee
@@ -126,6 +135,7 @@ CODEX John McAfee
 
 CODEX Bridget Troelsen
   title: Bridget Troelsen
+  category: People
   about: Password Manager
   text:
     Password Manager is Bridget Troelsen, Apt. 5, 6121 Quinpool Road. Neat,
@@ -139,6 +149,7 @@ CODEX Bridget Troelsen
 
 CODEX Sharon Penney
   title: Sharon Penney
+  category: People
   about: CRA Agent Software
   text:
     CRA Agent Software is Sharon Penney, Apt. 4, 6121 Quinpool Road, an
@@ -157,6 +168,7 @@ CODEX Sharon Penney
 
 CODEX The Setup Assistant
   title: The Setup Assistant
+  category: People
   about: Installation Wizard
   text:
     Before the computer, the Installation Wizard was the setup assistant
@@ -171,6 +183,7 @@ CODEX The Setup Assistant
 
 CODEX Randy Barkmore Sr
   title: Randy Barkmore Sr.
+  category: People
   about: Microsoft Excel
   text:
     Microsoft Excel is Mayor Emeritus Randy Barkmore Sr. of 1 Young Avenue,
@@ -183,6 +196,7 @@ CODEX Randy Barkmore Sr
 
 CODEX Dana Anderson
   title: Dana Anderson
+  category: People
   about: OpenOffice
   text:
     OpenOffice is Dana Anderson of 26 Kermit Lane, Windsor Junction, a gated
@@ -196,6 +210,7 @@ CODEX Dana Anderson
 
 CODEX Crab Fisherwoman
   title: Crab Fisherwoman
+  category: People
   about: DraftKings
   text:
     DraftKings is legally DraftKings, formerly legally Crab Fisherwoman,
@@ -209,6 +224,7 @@ CODEX Crab Fisherwoman
 
 CODEX Bea Nunes
   title: Bea Nunes
+  category: People
   about: Bugdom
   text:
     Bugdom is Bea Nunes of 2 Cricket Lane, Hubley, who sells crickets and
@@ -223,6 +239,7 @@ CODEX Bea Nunes
 
 CODEX Virgil Jeeves
   title: Virgil Jeeves
+  category: People
   about: Broken Ask Jeeves
   text:
     Broken Ask Jeeves is Virgil Jeeves of 742 Old Post Road, Grand Pré,
@@ -236,6 +253,7 @@ CODEX Virgil Jeeves
 
 CODEX Poppy Van Mises
   title: Poppy van Mises
+  category: People
   about: Runescape
   text:
     Runescape is Poppy van Mises, Postfach 8402, Zürich, for tax purposes.
@@ -248,6 +266,7 @@ CODEX Poppy Van Mises
 
 CODEX Maria Sophia Paine
   title: Maria Sophia Paine
+  category: People
   about: MS Paint
   text:
     MS Paint is Maria Sophia Paine, Apt. 304, 2485 Agricola Street,
@@ -261,6 +280,7 @@ CODEX Maria Sophia Paine
 
 CODEX Victor Louis Christianson
   title: Victor Louis Christianson
+  category: People
   about: VLC
   text:
     VLC is a failed looksmaxxing influencer, birth name Victor Louis
@@ -276,6 +296,7 @@ CODEX Victor Louis Christianson
 // is new for the rewrite (design spec §10.1).
 CODEX Tennis For Two
   title: Tennis For Two
+  category: People
   about: Pong
   text:
     Pong is the child of William Higinbotham, who built Tennis For Two,

@@ -116,8 +116,8 @@ for this spec.
     `broadcast … to group(Antivirus)` reaches no booth **[verified, feas f2]**. Staff cues are
     `reply` readouts from `TRAIT Enforcer` / `TRAIT Host` / CHARACTER hooks on a named event
     (e.g. `fire program_late for self` → every Enforcer's `when program_late for program:
-    reply …`). Note: every performer booth also sees every broadcast unnotified in
-    `# system-log` (incl. Trabolta's private pop-ups); that is accepted as staff visibility.
+    reply …`). (Until wave 13 every booth also saw every broadcast in `# system-log`;
+    the channel is gone, so a broadcast posts once, in the lobby.)
 17. **Party-wide scopes.** `start quest X for everyone` reaches only the persons who exist at
     that moment, so every party-wide quest also has a ROLE catch-up watcher (§2.7)
     **[verified, feas f3]**. `unlock X for group(G)` / `reveal X for group(G)` fail their
@@ -427,7 +427,6 @@ door first opens once Trabolta is awake (The Heart; wave 7 said from the Y2K hou
 
 ```
 SPACE The Operating System          label: The Operating System
-  CHANNEL system log                kind: open, type: announcement, label: # system-log
   CHANNEL general                   kind: open, label: # general
   CHANNEL task manager              kind: open, label: # task-manager, slow: 5s, hidden: true   (revealed at call_to_the_desktop)
   CHANNEL clipboard                       kind: open, label: # clipboard, slow: 3s, ephemeral: 45s, hidden: true   (revealed at start_the_second_hunt)
@@ -737,7 +736,7 @@ watcher/rule, **S** = server hard-code.
 | named_at_bingo / truth_answered / truth_refused / chose_dare | P (Clippy's card buttons) | program | ROLE hooks (§3 B2, B9) |
 | mark_for_reinstallation | W (16 `fire … with reason:` sites in main.loom: 🎯, 🤷, 🙅, 🎩, 🏓, 🍎, a guess at settle, late for the summons) | program; args `reason` | ROLE hook (`restrict` to The Tube / The Internet, the 🚨 pins, `fire marked`) |
 | unmark_for_reinstallation | P (🩹, Hosts / Antivirus) | program | ROLE hook → `unmarked` |
-| unmarked | W (🩹 "cleared by a host"; the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
+| unmarked | W (🩹 "cleared by the Antivirus" from one Antivirus booth, else "cleared by a host", through `unmark_settle` (w13 Q32); the capture "in the Internet"; the release "released") | program; args `how` | ROLE hook (`unrestrict`, `unpin`) |
 | chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
 | king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
 | door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
@@ -976,7 +975,9 @@ reinstalled`, which are never phase-guarded** (§0 rule 22)):**
 **Wave 11: `by:` is enforced and `arm:` arms.** `/api/prime/act` refuses a press from a booth
 outside a button's `by:` (403 *not your button: … is for …*; the `by:` characters, a GROUP's
 members and any character owning a hook for it), and a booth never offers another character's
-button; a moderator's booth and a director's quick-fire (no actor) may press any. That is why
+button; a director's quick-fire (no actor) may press any, and a host part's or a moderator's booth
+another character's only when a story rule or a ROLE hook hears it (wave 13: never 🛡 ✅ 👁, which
+only `TRAIT Enforcer` hears, nor Adobe Acrobat's 🫘). That is why
 the patch-bay fallbacks are story rules `by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software` (any of
 the four room Antivirus' booths, while the read-through picks the holder; never Windows Defender,
 the door-only part, whose booth never shows them; a trait hook would fire once per Antivirus on a
@@ -1443,7 +1444,7 @@ Extra staff hooks (add to the traits / characters):
 | Where | Trigger | Body |
 |---|---|---|
 | `TRAIT Enforcer` | `when go to the bathroom for program:` | `reply 🚻 {program.name} is in Bathroom Mode. Not hacking the Internet.` (also on `Recycling Bin`) |
-| `TRAIT Enforcer` | `when program_late for program:` | `reply ⏰ {program.name} is late for the Second Moment of Truth. Go get them.` |
+| `TRAIT Enforcer` | `when program_late for program:` | only with `Night.auto_sweep`: `reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.` (otherwise the mark's readout says late, one per program: w13 Q31) |
 | `TRAIT Enforcer` | `when marked for program:` | `reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.` · `if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):` `reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.` (fact M20; a Disk Cleanup check-in counts for 15 minutes, since a location is sticky) · `when go to the bathroom for program:` adds `reply ⚠️ {program.name} is marked and in Bathroom Mode. Wait for them outside; never go in.` for a marked program |
 | `TRAIT Enforcer` | `when sweep_requested:` | `reply 🛡 Trabolta requests a sweep of {Night.sweep_target}.` |
 | `TRAIT Enforcer` | `when alarm_tripped:` | `reply 🚨 Server room breach. Get there. Anyone inside who is not a member of the winning faction goes to the Internet.` |
@@ -1577,6 +1578,13 @@ when scanned by program:
   else if Night.summons_open == true:
     fire checked_in for program with at: The Desktop
     Self: Checked in. {program.name} is present at the Desktop.
+  else if program.marked == true and program.corrupted != true:
+    if self.holds_the_door == true:   // Windows Defender: never escorts
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. An Antivirus will escort you through the Tube to the Internet.
+      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Stay at the door: radio a room Antivirus to escort them. 🛡 only if a host or the director asks.
+    else:
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
+      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
   else:
     Self:
       cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.
@@ -1644,7 +1652,7 @@ will not need them. Tell no one.`
 `The Centre Square` reaches the anti-AI program by its own watcher (§2.7).
 
 **A5 Explore and meet** (free time until C1). Phones: Desktop room + the four revealed
-house rooms, `# general`, `# system-log`, People (directory: everyone). Terminals: ads. The
+house rooms, `# general`, People (directory: everyone). Terminals: ads. The
 generators bark. Bathroom Mode:
 - `when go to the bathroom for program:` `set program.afk = true` · `reply Bathroom Mode
   engaged. You are not hacking the Internet. Everyone knows.` The Antivirus and Recycling Bin
@@ -1733,7 +1741,7 @@ Halifax Computer for program`); `== The Screensaver` (`Self:` screensaver riff; 
   - `award_the_ribbon` (no phase guard; OV's "winners ribbon system / other awards"): `if
     program.bingo == true:` `unlock Computer Bingo for program` · `broadcast "🎀
     {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone` `else:` `broadcast "🎀
-    {program.name} receives a ribbon from Clippy. Everyone cheer!" to everyone`.
+    {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone`.
   - `frame_for_bingo` (guard phase `bingo_results` and `Night.bingo_winners < 1`): `set
     program.framed = true` · `reply 🃏 A completed Bingo card with your name on it has been
     handed to Clippy. You did not fill it in.`
@@ -2355,7 +2363,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
     we can have unlimited power and joy.` else `Truther Download: You should still retrieve
     the virus from the Internet, and then recruit half + 1 of the programs to your faction.` ·
     `unlock Excel Final Orders for program` · `start quest Recruit To Stay for program` ·
-    `Truther Download: Programs join Unlimited Power from their profile.`
+    `Truther Download: Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room.`
   - `== OpenOffice Final Round`: `if Kernel.openoffice_dossier == true:` `…recruit half + 1 of the
     programs to convince them we need to combine our power to overthrow Trabolta and escape
     the computer, where we are at risk of being stuck forever – or worse.` else `…you should
@@ -3765,8 +3773,8 @@ cards / featured claim codes:** software (§7 #1, #19); the story needs nothing 
 8. **The server room stays live during the final reveal** (deliberate): a combo entered before
    the verdict still ends the night.
 9. **Staff back-rooms:** `# hosts` / `# quarantine` are visible to every performer; booth
-   readouts are live-only (not kept across a reload) and do not chime; every broadcast,
-   including Trabolta's private pop-ups, also shows in performers' `# system-log`.
+   readouts are live-only (not kept across a reload) and do not chime; there is no
+   `# system-log` since wave 13 (one home per broadcast: the lobby).
 
 ---
 
