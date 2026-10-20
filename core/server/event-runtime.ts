@@ -26,7 +26,7 @@ import { byRefusal, cueState, guestCardView, guestFlags, guestView, modView, sta
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, visibleTo, type ChatMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
@@ -1365,9 +1365,11 @@ export class EventRuntime {
     if (this.agents.judging.length > 0) this.dropMootRulings();
     for (const e of events) {
       if (e.type === "respond") {
-        this.toPrime(e.to, "response", { text: e.text });
+        // The alert `!` stripped, as the Inbox row has it (`alert` says it was there).
+        const { text, alert } = readoutText(e.text);
+        this.toPrime(e.to, "response", { text, ...(alert ? { alert: true } : {}) });
         // A locked booth still hears it (the door alarm, the late list).
-        this.push.notify(boothOwner(e.to), readoutPush(e.to, e.text), false);
+        this.push.notify(boothOwner(e.to), readoutPush(e.to, text), false);
       }
       if (e.type === "choicePrompted" && e.person !== null) {
         this.decisionChannels.set(e.person, decisionChannelFor(events, e.person));
@@ -4247,7 +4249,7 @@ export class EventRuntime {
         // The story's `reply` lines to this guest ride the answer too, so
         // the app can show them where the guest is looking (they land in
         // the lobby feed, rarely the room the guest has open).
-        const replies = evs.flatMap((e) => (e.type === "respond" && e.to === id ? [e.text] : []));
+        const replies = evs.flatMap((e) => (e.type === "respond" && e.to === id ? [readoutText(e.text).text] : []));
         sendJson(res, 200, { ok: true, replies });
         return true;
       }
@@ -4619,7 +4621,7 @@ export class EventRuntime {
           const events = this.commit("scan", scanAs, target);
           responses = events
             .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === scanAs)
-            .map((e) => e.text);
+            .map((e) => readoutText(e.text).text);
           this.fanout(events);
         }
         // Wave 13: the booth's card for this guest, after the scan's events.
@@ -4731,7 +4733,7 @@ export class EventRuntime {
         }
         const pressed = this.commit("signal", name, guest, null, character);
         // Wave 13: the story's replies to this booth, and its fresh card.
-        const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [e.text] : []));
+        const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
         this.fanout(pressed);
         const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.sessions.canHost(token));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...(card !== null ? { card } : {}) });
@@ -5558,7 +5560,7 @@ export class EventRuntime {
         const scanEvents = this.commit("scan", as, target);
         const responses = scanEvents
           .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === as)
-          .map((e) => e.text);
+          .map((e) => readoutText(e.text).text);
         this.fanout(scanEvents);
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim, target), responses });
         return true;

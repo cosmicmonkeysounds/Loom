@@ -367,6 +367,15 @@ export function splitAlert(rawCue: string): { cue: string; alert: boolean } {
   return { cue: t, alert: false };
 }
 
+/** A `reply` text as its reader sees it: a leading alert `!` stripped (the
+ *  Inbox / lobby row's rule), with whether it was there. Every path that
+ *  hands a readout's text on — the act / scan replies, the booth's
+ *  `response` frame, the readout push — reads it through this. */
+export function readoutText(text: string): { text: string; alert: boolean } {
+  const { cue, alert } = splitAlert(text);
+  return { text: alert ? cue : text, alert };
+}
+
 /** Faction names referenced by a broadcast scope like `faction(Mods) | …`. */
 function factionsInScope(scope: string): string[] {
   return [...scope.matchAll(/faction\(([^)]+)\)/g)].map((m) => m[1]!.trim());
@@ -501,8 +510,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
       case "respond": {
         // A readout (`reply …`). A `reply !…` is an alert (a major moment);
         // otherwise a personal readout is a minor one.
-        const { cue: raw, alert } = splitAlert(e.text);
-        const text = alert ? raw : e.text;
+        const { text, alert } = readoutText(e.text);
         const flags = { readout: true as const, ...(alert ? { alert: true } : {}) };
         if (e.to === "") {
           // A story rule's reply with nobody acting: the lobby, for everyone.

@@ -578,3 +578,36 @@ describe("one push per booth readout", () => {
     expect(sender.sent.map((s) => s.kind)).toEqual(["readout"]);
   });
 });
+
+describe("a reply !… reads the same everywhere a booth sees it", () => {
+  const LOUD = STORY.replace("reply Hi {program.name}.", "reply !Hi {program.name}.").replace("reply Scanned.", "reply !Scanned.");
+  it("the act / scan replies, the response frame and the push body drop the !, as the Inbox row does", async () => {
+    const bodies: string[] = [];
+    const sender: PushSender = {
+      publicKey: "BPUBLIC",
+      async send(_s, payload) {
+        bodies.push((JSON.parse(payload) as { body: string }).body);
+        return 201;
+      },
+    };
+    const rt = freshRuntime({ scenarioSource: LOUD, push: sender });
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    const clippy = (await boothLogin(rt, "Clippy")).json.token as string;
+    const act = await post(rt, "/api/prime/act", { token: clippy, name: "greet", guest: g.id });
+    expect(act.json.replies).toEqual(["Hi Winamp."]);
+    const mcafee = (await boothLogin(rt, "McAfee")).json.token as string;
+    expect((await post(rt, "/api/scan", { token: mcafee, target: g.id })).json.responses).toEqual(["Scanned."]);
+    expect((await mod(rt, "/api/mod/scan", { as: "McAfee", target: g.id })).json.responses).toEqual(["Scanned."]);
+    const norton = (await boothLogin(rt, "Norton")).json.token as string;
+    const s = primeStream(rt, norton);
+    await s.open;
+    const endpoint = "https://fcm.googleapis.com/fcm/send/dev-10";
+    expect((await post(rt, "/api/push/subscribe", { token: norton, subscription: { endpoint, keys: { p256dh: "p", auth: "a" } } })).status).toBe(200);
+    await post(rt, "/api/push/visible", { token: norton, endpoint, hidden: true });
+    await mod(rt, "/api/mod/signal", { name: "alarm_tripped" });
+    await rt.push.settle();
+    expect(s.events("response")).toEqual([{ text: "Server room breach.", alert: true }]);
+    expect(bodies).toEqual(["Server room breach."]);
+  });
+});
