@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
+keywords: terminal, live plan, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -180,6 +180,16 @@ as dark, glowing ghosts, standing where they stand in the virtual copy of
 that room — the room's shadow dimension. When the camera is on, a
 terminal nobody is talking to shows that shadow instead of the virtual
 room.
+
+An older tablet that can't draw the 3D house shows the **live plan**
+instead: the floor seen from above, with every room named, each player as
+a little tile with their picture and name, walking in real time and
+leaving a fading trail, the golden duck pulsing where it waits and golden
+arrows showing the way to it, and the King with his health bar. It shows
+the floor where most people are playing, with tabs counting the players
+on each floor, and a **YOU ARE HERE** square for the terminal itself. A
+find shows **REINSTALLED** with the program's name. With nobody playing it
+shows the floor dimly and says **NOBODY IS REINSTALLING**.
 
 ## The TV
 

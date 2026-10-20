@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectiveView, probeWebGL2, type CanvasMaker } from "../src/webgl.ts";
+import { fullScreenSim, paneSimulation, probeWebGL2, simRenderer, type CanvasMaker } from "../src/webgl.ts";
 
 const maker = (ctx: () => unknown): CanvasMaker => ({ createElement: () => ({ getContext: ctx }) });
 
@@ -31,18 +31,39 @@ describe("probeWebGL2", () => {
   });
 });
 
-describe("effectiveView", () => {
-  it("keeps every view with WebGL2", () => {
-    for (const v of ["auto", "world", "face", "mirror", "tv", "shadow"] as const) expect(effectiveView(v, true)).toBe(v);
+describe("simRenderer", () => {
+  it("draws the world with WebGL2, the live plan without it", () => {
+    expect(simRenderer(true)).toBe("world");
+    expect(simRenderer(false)).toBe("plan");
+  });
+});
+
+describe("paneSimulation", () => {
+  it("keeps the WebGL2 behaviour: world / auto while playing / the shadow with a live camera", () => {
+    expect(paneSimulation("world", true, false, false)).toBe("world");
+    expect(paneSimulation("auto", true, false, false)).toBe("none");
+    expect(paneSimulation("auto", true, true, false)).toBe("world");
+    expect(paneSimulation("auto", true, true, true)).toBe("shadow");
+    expect(paneSimulation("world", true, true, true)).toBe("world");
   });
 
-  it("forces the face pane without WebGL2 (never the retry loop)", () => {
-    expect(effectiveView("auto", false)).toBe("face");
-    expect(effectiveView("world", false)).toBe("face");
-    expect(effectiveView("shadow", false)).toBe("shadow"); // a full-screen view: says it cannot draw
+  it("draws the live plan without WebGL2 where the world would be (never the face, never the shadow)", () => {
+    expect(paneSimulation("world", false, false, false)).toBe("plan");
+    expect(paneSimulation("auto", false, false, false)).toBe("none"); // nobody playing: the face, as before
+    expect(paneSimulation("auto", false, true, false)).toBe("plan");
+    expect(paneSimulation("auto", false, true, true)).toBe("plan");
+  });
 
-    expect(effectiveView("face", false)).toBe("face");
-    expect(effectiveView("mirror", false)).toBe("mirror");
-    expect(effectiveView("tv", false)).toBe("tv"); // the TV keeps its face, just no world pane
+  it("face and the other views show nothing over the face", () => {
+    for (const v of ["face", "tv", "chess", "casino", "mirror", "shadow"] as const) expect(paneSimulation(v, false, true, true)).toBe("none");
+  });
+});
+
+describe("fullScreenSim", () => {
+  it("a mirror / shadow draws the world or the shadow, else the plan", () => {
+    expect(fullScreenSim("mirror", true)).toBe("world");
+    expect(fullScreenSim("shadow", true)).toBe("shadow");
+    expect(fullScreenSim("mirror", false)).toBe("plan");
+    expect(fullScreenSim("shadow", false)).toBe("plan");
   });
 });
