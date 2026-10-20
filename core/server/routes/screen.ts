@@ -823,6 +823,7 @@ export function handleScreenGet(
   declared: () => SimModel | null = () => null,
   king: () => ScreenKing | null = () => null,
   showClock: () => ShowClock | undefined = () => undefined,
+  reinstalling: () => number = () => 0,
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
@@ -847,7 +848,7 @@ export function handleScreenGet(
   const named = voice !== "" || room !== "";
   const clock = showClock();
   // The show clock (wave 13 K2) rides along for the terminals; nothing reads it yet.
-  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()), ...(clock !== undefined ? { showClock: clock } : {}) });
+  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()), ...(clock !== undefined ? { showClock: clock } : {}), reinstalling: reinstalling() });
   return true;
 }
 

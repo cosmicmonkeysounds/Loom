@@ -4065,6 +4065,9 @@ export class EventRuntime {
           return screenKingOf(this.spatial.king(), this.spatial.kingRef()?.prop.armed, this.sim);
         },
         () => showClock(this.sim, this.phase === "open"),
+        // Programs walking the simulation right now: a house terminal shows
+        // them even while the character is hidden or asleep.
+        () => this.spatial.players().length,
       );
     }
     if (method === "GET" && path === "/api/mod/screen/terminals") return handleScreenTerminalsGet(this.screens, req, res, url, (t) => opts.moderator === true || this.sessions.canModerate(t));

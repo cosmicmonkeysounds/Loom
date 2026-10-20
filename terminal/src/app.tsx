@@ -69,7 +69,7 @@ import { mayReload, retryable } from "./retry.ts";
 import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
-import { attractOf, useScreenState, type ScreenState } from "./screen.ts";
+import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
@@ -111,6 +111,7 @@ export function App() {
   // cursor follows the head here — the lines that come with the wake (the
   // door cutscene) are then spoken, not resynced away (`cursorWhileAsleep`).
   const asleep = attractOf(screenState.state, room !== null);
+  const watching = config !== null && asleep && watchWhileAsleep(screenState.state, config.view, room !== null);
   useEffect(() => {
     const voice = screenState.state?.voice;
     if (room === null || !asleep || voice === null || voice === undefined) return;
@@ -411,7 +412,7 @@ export function App() {
   if (config.view === "mirror" || config.view === "shadow") {
     return (
       <>
-        {asleep ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
+        {asleep && !watching ? attractScreen : <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />}
         {layer}
       </>
     );
@@ -427,6 +428,15 @@ export function App() {
   // The character is hidden or asleep: the screensaver, unless a line is
   // already open (a pilot ends on its own leash, then attract takes over).
   if (asleep && screen.kind !== "piloting") {
+    // A program is reinstalling while the character sleeps: watch it, no line.
+    if (watching) {
+      return (
+        <>
+          <Mirror config={config} canDraw={webgl2} onSetup={openSetup} onGone={onGone} />
+          {layer}
+        </>
+      );
+    }
     return (
       <>
         {attractScreen}

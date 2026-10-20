@@ -147,6 +147,8 @@ export interface ScreenState {
   announceEpoch: string | null;
   /** The King's shared health bar (wave 11; null: no King, or an older server). */
   king: ScreenKing | null;
+  /** Programs in the reinstallation simulation right now (0: none, or an older server). */
+  reinstalling: number;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -282,6 +284,7 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     identifyLeft: num(r["identifyLeft"]),
     announceEpoch: str(r["announceEpoch"]),
     king: kingOf(r["king"]),
+    reinstalling: typeof r["reinstalling"] === "number" && r["reinstalling"] > 0 ? Math.floor(r["reinstalling"]) : 0,
   };
 }
 
@@ -311,6 +314,15 @@ export function identifyOn(state: Pick<ScreenState, "identify" | "identifyLeft" 
 /** Attract or not: no answer yet is attract (fail closed). A room terminal
  *  (`room` true) also stays on attract when the answer has no room block —
  *  a server too old to say whether its room is open. */
+/** The character is asleep but a program is reinstalling: a house terminal
+ *  whose screen can show the simulation watches it full screen instead of
+ *  the screensaver (from the first capture, whatever the character does). A
+ *  room terminal, the TV, the board, the casino and the face never do. */
+export function watchWhileAsleep(state: ScreenState | null, view: string, room: boolean): boolean {
+  if (state === null || room || state.reinstalling <= 0) return false;
+  return view === "auto" || view === "world" || view === "mirror" || view === "shadow";
+}
+
 export function attractOf(state: ScreenState | null, room = false): boolean {
   if (state === null) return true;
   return state.attract || (room && state.room === null);
