@@ -8,7 +8,10 @@
 //! Continue button appears and the guest steps into the app themselves.
 
 import type { ReactNode } from "react";
-import { AlertBanner, DecisionTray, MessageList, type WidgetHook } from "./chat.tsx";
+import { AlertBanner } from "./moments/banner.tsx";
+import type { WidgetHook } from "./stream/bubble.tsx";
+import { DecisionTray } from "./stream/channel-view.tsx";
+import { MessageList } from "./stream/list.tsx";
 import type { Alert } from "./alerts.ts";
 import type { ChatMessage, Decision } from "./types.ts";
 
