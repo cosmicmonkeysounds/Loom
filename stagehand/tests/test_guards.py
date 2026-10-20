@@ -405,3 +405,4 @@ def test_a_hiding_place_across_a_comma_is_cut_and_what_leans_on_it_goes_too():
     out, notes, empty = invented_guard(P, Reply(say='The books are on the shelf beside the monitor, in the corner of the Desktop. Open the one labeled "Facts".'))
     assert empty and out.say == P.fallback
     assert not invents_fact(P.secrets, "The books are where Clippy said, program.")
+    assert not invents_fact(P.secrets, "These facts are the last pieces of the Unified Field Theory.")

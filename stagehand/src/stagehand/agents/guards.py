@@ -210,7 +210,7 @@ _THERE = re.compile(r"\bthere(?:'s| is| are)\s+(?:a|one|another|some|\w+)\s+(?:h
 #: Start Bar", "on the shelf in The Desktop"). Never a city: his own lore
 #: keeps "the last facts … stored on a computer in Halifax".
 _PLACES = re.compile(
-    r"\b(?i:facts?|books?|volumes?|documents?|pages?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b[^.?!]{0,60}?\b(?i:in|on|under|behind|inside|at|beside|by|near|of)\s+(?i:the)\s+[A-Z]"
+    r"\b(?i:facts?|books?|volumes?|documents?|pages?)\b[^.?!]{0,40}\b(?i:are|is|lie|lies|sit|sits|hidden|tucked|kept|stored|waits?|awaits?)\b[^.?!]{0,60}?\b(?i:in|on|under|behind|inside|at|beside|by|near|(?:corner|side|back|bottom|top|end|middle|edge)\s+of)\s+(?i:the)\s+[A-Z]"
 )
 
 
