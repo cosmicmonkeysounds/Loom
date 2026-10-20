@@ -42,7 +42,7 @@
   color: var(--white); font: 700 10px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase;
   padding: 3px 8px; cursor: pointer; border-radius: var(--radius); flex-shrink: 0;
 }
-.cut-pass:hover { border-color: var(--white); }
+@media (hover: hover) { .cut-pass:hover { border-color: var(--white); } }
 .cut-offline {
   padding: 0 18px 6px; font: 700 10px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase;
   color: var(--white); animation: cut-pulse 1.2s ease-in-out infinite;
