@@ -1641,8 +1641,10 @@ export interface PrimeView {
   paused?: true;
   /** The booth holds the host capability (its part is `admin: true`, or the
    *  sign-in holds the moderator passcode): it keeps another character's
-   *  `by:` buttons on its objectives and may press them. Absent otherwise. */
-  host?: true;
+   *  `by:` buttons on its objectives and may press them. The event server
+   *  always says so (`false` too, C4: a reload that takes `admin: true` away
+   *  reaches an open booth); a local sim's view leaves it out when false. */
+  host?: boolean;
 }
 
 export interface AgentContact {

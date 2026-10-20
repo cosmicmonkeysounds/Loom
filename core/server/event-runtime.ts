@@ -1001,6 +1001,10 @@ export class EventRuntime {
     const queue = this.wallet?.queueFor(character) ?? null;
     return {
       ...primeView(this.sim, character, online, { host }),
+      // C4: on every path, `false` too — play takes the latest view's host
+      // (`view.host ?? auth.host`), so a reload that takes the part's
+      // `admin: true` away must say so, not leave it out.
+      host,
       answered: this.answeredFor(character),
       avatars,
       ...(queue !== null ? { wallet: queue } : {}),

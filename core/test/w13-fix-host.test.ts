@@ -56,7 +56,7 @@ describe("C4: PrimeView.host on every path", () => {
     const token = login.token as string;
     const s = primeStream(rt, token);
     await s.open;
-    expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBeUndefined();
+    expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBe(false);
     expect((await get(rt, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(403);
     // sync-show's reload: the new text gives Task Manager `admin: true`.
     expect((await mod(rt, "/api/mod/load", { source: story(true) })).status).toBe(200);
@@ -66,8 +66,11 @@ describe("C4: PrimeView.host on every path", () => {
     expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBe(true);
     // …and back.
     expect((await mod(rt, "/api/mod/load", { source: story(false) })).status).toBe(200);
-    expect((await get(rt, `/api/state?role=prime&token=${token}`)).json.host).toBeUndefined();
+    expect((await get(rt, `/api/state?role=prime&token=${token}`)).json.host).toBe(false);
     expect((await get(rt, `/api/state?role=mod&host=1&token=${token}`)).status).toBe(403);
+    // The open stream hears the loss too: `false`, never a missing field
+    // (play keeps `view.host ?? auth.host`, so an absent one would stick).
+    expect((s.res.frames("snapshot").at(-1) as { host?: boolean }).host).toBe(false);
   });
 
   it("a restart of the process onto the new text re-derives host from the part", async () => {
@@ -107,7 +110,7 @@ describe("C4: PrimeView.host on every path", () => {
     const plain = await mod(rt, "/api/mod/impersonate", { role: "prime", id: "Norton" });
     expect(plain.json.host).toBe(false);
     const pt = plain.json.token as string;
-    expect((await get(rt, `/api/state?role=prime&token=${pt}`)).json.host).toBeUndefined();
+    expect((await get(rt, `/api/state?role=prime&token=${pt}`)).json.host).toBe(false);
     expect((await get(rt, `/api/state?role=mod&host=1&token=${pt}`)).status).toBe(403);
     expect((await post(rt, "/api/mod/signal", { name: "open the doors", token: pt })).status).toBe(403);
   });
@@ -132,7 +135,7 @@ describe("the editor's exact identity lens on a server project", () => {
     const viaToken = await get(rt, `/api/state?role=prime&as=Task%20Manager&token=${modToken}`);
     expect(viaToken.status).toBe(200);
     expect(viaToken.json.host).toBe(true);
-    expect((await get(rt, `/api/state?role=prime&as=Norton&token=${modToken}`)).json.host).toBeUndefined();
+    expect((await get(rt, `/api/state?role=prime&as=Norton&token=${modToken}`)).json.host).toBe(false);
     const host = (await booth(rt, "Task Manager")).json.token as string;
     expect((await get(rt, `/api/state?role=prime&as=Norton&token=${host}`)).status).toBe(403);
   });
