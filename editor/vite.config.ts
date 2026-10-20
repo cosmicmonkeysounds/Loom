@@ -48,6 +48,12 @@ export default defineConfig({
       // real guest / performer app (one per pane) instead of a look-alike.
       '@loom/play/embed': path.resolve(__dirname, '../play/src/embed.tsx'),
       '@': path.resolve(__dirname, './src'),
+      // The browser has no `node:crypto`; `@loom/core/chat` reaches it
+      // through the server's wallet + identity modules (the claim HMAC,
+      // never called here). Vite's externalized stub throws on import, so
+      // the dev server and the build get a stand-in; vitest (Node) keeps
+      // the real module.
+      ...(process.env.VITEST ? {} : { 'node:crypto': path.resolve(__dirname, './src/lib/node-crypto-stub.ts') }),
     },
   },
   // Unit tests only — the Playwright `e2e/*.spec.ts` suites run via the
