@@ -72,6 +72,7 @@
 //! Transport-free apart from `handleScreenGet`; `ScreenWatch` takes an
 //! injected clock for tests.
 
+import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { KingState } from "@loom/house";
@@ -821,6 +822,7 @@ export function handleScreenGet(
   messages: () => readonly ChatMessage[] = () => [],
   declared: () => SimModel | null = () => null,
   king: () => ScreenKing | null = () => null,
+  showClock: () => ShowClock | undefined = () => undefined,
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
@@ -843,7 +845,9 @@ export function handleScreenGet(
     ...(voice !== "" || room !== "" ? { after } : {}),
   };
   const named = voice !== "" || room !== "";
-  sendJson(res, 200, watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()));
+  const clock = showClock();
+  // The show clock (wave 13 K2) rides along for the terminals; nothing reads it yet.
+  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()), ...(clock !== undefined ? { showClock: clock } : {}) });
   return true;
 }
 

@@ -20,6 +20,7 @@ import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "../src/identity-kind.ts";
 import { joinableFactions } from "./routes/sides.ts";
+import type { ShowClock } from "../src/show-clock.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
 // The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
@@ -354,6 +355,9 @@ export interface GuestView {
    *  "now" a client measures a message's `ts` against (e.g. only banner an
    *  alert it missed if it is under 10 minutes old). */
   clock?: number;
+  /** The show clock (wave 13 K2: `Clock.set_to` / `Clock.set_at`, see
+   *  `src/show-clock.ts`), runtime-filled; absent when the story set none. */
+  showClock?: ShowClock;
   role: string | null;
   /** App-facing faction — hidden factions read `null` until revealed. */
   faction: string | null;
@@ -708,6 +712,9 @@ export interface ModView {
   /** The story clock (ms, `Sim.elapsed()`) when this view was built — what
    *  Run's Wallet card counts a transfer's `settleAt` down from. */
   clock?: number;
+  /** The show clock (wave 13 K2: `Clock.set_to` / `Clock.set_at`, see
+   *  `src/show-clock.ts`), runtime-filled; absent when the story set none. */
+  showClock?: ShowClock;
   /** The header's `watch:` items on lines whose `while` holds now (the
    *  Director page's glance column; values come from `world`). Absent when
    *  the story declares no `watch:` line. */
@@ -1923,6 +1930,9 @@ export interface PrimeView {
    *  "now" a client measures a message's `ts` against (e.g. only banner an
    *  alert it missed if it is under 10 minutes old). */
   clock?: number;
+  /** The show clock (wave 13 K2: `Clock.set_to` / `Clock.set_at`, see
+   *  `src/show-clock.ts`), runtime-filled; absent when the story set none. */
+  showClock?: ShowClock;
   faction: string | null;
   guests: PrimeGuest[];
   /** Every authored channel — performers run every room. */

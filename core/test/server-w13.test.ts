@@ -329,6 +329,7 @@ describe("the host allowlist (§2.7)", () => {
       ["POST", "/api/mod/act", { id: g.id, action: "restrict" }],
       ["POST", "/api/mod/act", { id: g.id, action: "unrestrict" }],
       ["POST", "/api/mod/scan", { target: g.id, as: "Norton" }],
+      ["POST", "/api/mod/clock", { time: "7:00 PM" }],
       ["POST", "/api/mod/login", { passcode: "wrong" }],
     ];
     for (const [method, path, body] of allowed) {
