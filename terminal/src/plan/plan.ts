@@ -60,6 +60,25 @@ export function chooseFloor(house: HouseMap, players: Iterable<Pick<PlanPlayer, 
   return tied[0] ?? main;
 }
 
+/** The floor on screen, and the floor the players have wanted since `since` (ms). */
+export interface FloorHold {
+  shown: string | null;
+  want: string | null;
+  since: number;
+}
+
+/**
+ * Follow the players to another floor only once they have wanted it for
+ * `hold` ms straight (a program stepping onto the stairs and back doesn't
+ * flip the plan); the first floor shows at once.
+ */
+export function holdFloor(h: FloorHold, want: string, t: number, hold: number): FloorHold {
+  if (h.shown === null) return { shown: want, want, since: t };
+  if (want === h.shown) return h.want === want ? h : { shown: h.shown, want, since: t };
+  if (want !== h.want) return { shown: h.shown, want, since: t };
+  return t - h.since >= hold ? { shown: want, want, since: t } : h;
+}
+
 // --- fitting --------------------------------------------------------------------
 
 export type Bounds = [number, number, number, number];
@@ -324,6 +343,15 @@ export function celebrationHeadline(c: Pick<Celebration, "name" | "released" | "
   const name = c.name.toUpperCase();
   if (c.kept) return `${name} · GERALD CAN'T HELP`;
   return c.released ? `REINSTALLED: ${name}` : `${name} FOUND THE GOLDEN DUCK`;
+}
+
+/**
+ * Whether a roster change is a person's join / leave worth a toast, rather
+ * than the whole roster swapped: the `hello` that follows a (re)connect, the
+ * players dropped while the stream is down, or a story reset.
+ */
+export function rosterTellsToasts(o: { awaitingHello: boolean; connected: boolean; resetChanged: boolean }): boolean {
+  return !o.awaitingHello && o.connected && !o.resetChanged;
 }
 
 /** Who joined / left between two rosters (a found player's leave is the celebration's, not a toast). */

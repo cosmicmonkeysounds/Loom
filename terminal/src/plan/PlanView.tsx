@@ -31,17 +31,20 @@ import {
   floorCounts,
   guestColor,
   headingOf,
+  holdFloor,
   kingOnFloor,
   legsOn,
   markersOn,
   planFloor,
   pushTrail,
+  rosterTellsToasts,
   rosterToasts,
   spotFloor,
   statusLine,
   toScreen,
   trailAlpha,
   type Fit,
+  type FloorHold,
   type PlanFloor,
   type TrailPoint,
 } from "./plan.ts";
@@ -51,7 +54,7 @@ const FRAME_MS = 1000 / 20;
 const MAX_PIXEL_RATIO = 2;
 /** A route is recomputed at most this often per player (ms). */
 const ROUTE_MS = 1000;
-/** The shown floor holds this long before following the players elsewhere (ms). */
+/** The players must want another floor this long before the plan follows them (ms). */
 const FLOOR_HOLD_MS = 2500;
 const TOAST_MS = 4000;
 
@@ -83,13 +86,24 @@ export function PlanView({ store, spotId, size }: { store: WorldStore; spotId: s
   );
 
   // Join / leave toasts, off the roster.
+  // Only real joins / leaves: the hello after a (re)connect, the players
+  // dropped while the line is down and a story reset swap the whole roster.
   useEffect(() => {
     let prev = store.snapshot.world.players;
+    let wasConnected = store.snapshot.connected;
+    let awaitingHello = false;
+    let resetAt = store.snapshot.world.resetAt;
     let seq = 0;
     return store.subscribe(() => {
-      const next = store.snapshot.world.players;
+      const snap = store.snapshot;
+      if (snap.connected && !wasConnected) awaitingHello = true;
+      wasConnected = snap.connected;
+      const next = snap.world.players;
       if (next === prev) return;
-      const lines = rosterToasts(prev, next);
+      const tell = rosterTellsToasts({ awaitingHello, connected: snap.connected, resetChanged: snap.world.resetAt !== resetAt });
+      awaitingHello = false;
+      resetAt = snap.world.resetAt;
+      const lines = tell ? rosterToasts(prev, next) : [];
       prev = next;
       if (lines.length === 0) return;
       const at = Date.now();
@@ -128,8 +142,7 @@ export function PlanView({ store, spotId, size }: { store: WorldStore; spotId: s
       pictures.set(url, img);
       return img;
     };
-    let shown: string | null = null;
-    let shownAt = 0;
+    let hold: FloorHold = { shown: null, want: null, since: 0 };
     let w = 1;
     let h = 1;
     let dpr = 1;
@@ -156,12 +169,10 @@ export function PlanView({ store, spotId, size }: { store: WorldStore; spotId: s
       const list = [...world.players.values()];
 
       // Which floor.
-      const want = chooseFloor(house, list, ownFloor);
-      if (shown === null || (want !== shown && t - shownAt > FLOOR_HOLD_MS)) {
-        if (shown !== want) setFloor(want);
-        shown = want;
-        shownAt = t;
-      }
+      const was = hold.shown;
+      hold = holdFloor(hold, chooseFloor(house, list, ownFloor), t, FLOOR_HOLD_MS);
+      const shown = hold.shown!;
+      if (shown !== was) setFloor(shown);
       const plan = floorPlan(shown);
       const fit = fitTransform(plan.bounds, w, h, Math.min(w, h) * 0.06 + 8);
       const px = Math.max(0.7, fit.scale / 40); // a line-width unit that grows with the map

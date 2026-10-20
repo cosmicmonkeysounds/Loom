@@ -1,3 +1,4 @@
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { validateHouse, type HouseMap } from "@loom/house";
 import { PoseBuffer } from "@loom/house/three";
@@ -10,6 +11,7 @@ import {
   floorCounts,
   guestColor,
   headingOf,
+  holdFloor,
   kingOnFloor,
   labelAt,
   legsOn,
@@ -17,6 +19,7 @@ import {
   markersOn,
   planFloor,
   pushTrail,
+  rosterTellsToasts,
   rosterToasts,
   spotFloor,
   statusLine,
@@ -226,5 +229,49 @@ describe("words", () => {
     const b = new Map([["2", { name: "Excel", found: false }]]);
     expect(rosterToasts(a, b)).toEqual(["EXCEL ENTERED THE SIMULATION", "WINAMP LEFT THE SIMULATION"]);
     expect(rosterToasts(new Map([["1", { name: "Winamp", found: true }]]), new Map())).toEqual([]);
+  });
+
+  it("toasts only real joins / leaves, never a reconnect's hello, a dropped line or a reset", () => {
+    expect(rosterTellsToasts({ awaitingHello: false, connected: true, resetChanged: false })).toBe(true);
+    expect(rosterTellsToasts({ awaitingHello: true, connected: true, resetChanged: false })).toBe(false);
+    expect(rosterTellsToasts({ awaitingHello: false, connected: false, resetChanged: false })).toBe(false);
+    expect(rosterTellsToasts({ awaitingHello: false, connected: true, resetChanged: true })).toBe(false);
+  });
+});
+
+describe("following the players between floors", () => {
+  it("shows the first floor at once, then switches only after the players want another floor for the hold", () => {
+    let h = holdFloor({ shown: null, want: null, since: 0 }, "main", 0, 2500);
+    expect(h.shown).toBe("main");
+    h = holdFloor(h, "top", 1000, 2500);
+    expect(h.shown).toBe("main");
+    h = holdFloor(h, "top", 3400, 2500);
+    expect(h.shown).toBe("main");
+    h = holdFloor(h, "top", 3500, 2500);
+    expect(h.shown).toBe("top");
+  });
+
+  it("a brief step to another floor and back never flips the plan, even long after the last switch", () => {
+    let h = holdFloor({ shown: null, want: null, since: 0 }, "main", 0, 2500);
+    h = holdFloor(h, "top", 60_000, 2500);
+    expect(h.shown).toBe("main");
+    h = holdFloor(h, "main", 61_000, 2500);
+    h = holdFloor(h, "top", 62_000, 2500);
+    h = holdFloor(h, "top", 64_000, 2500);
+    expect(h.shown).toBe("main");
+    h = holdFloor(h, "top", 64_500, 2500);
+    expect(h.shown).toBe("top");
+  });
+});
+
+describe("the plan's chunk", () => {
+  it("never imports three.js (it is the no-WebGL2 path)", () => {
+    const dir = new URL("../src/plan/", import.meta.url);
+    for (const f of readdirSync(dir)) {
+      if (!/\.(ts|tsx)$/.test(f)) continue;
+      const src = readFileSync(new URL(f, dir), "utf8");
+      expect(src, f).not.toMatch(/from\s+["'](three|@loom\/house\/three)["']/);
+      expect(src, f).not.toMatch(/from\s+["']\.\.\/world\/(WorldView|MiniMap|director)/);
+    }
   });
 });
