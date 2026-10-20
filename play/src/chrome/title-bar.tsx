@@ -14,11 +14,17 @@ export function titleBarText(objectives: readonly ObjectiveView[] | undefined, f
   return { title: now !== null ? `${mark}▣ NOW: ${now.title} ›` : `${mark}${fallback}`, now };
 }
 
+/** The sub-line: where you stand — without a second ⛔ when the title
+ *  already carries one ("⛔ restricted" → "restricted"). */
+export function titleBarSub(sub: string | undefined, tone?: "alarm" | "restricted"): string | undefined {
+  return sub !== undefined && tone !== undefined && sub.startsWith("⛔ ") ? sub.slice("⛔ ".length) : sub;
+}
+
 export function TitleBar({
   objectives,
   fallback,
   onOpen,
-  sub,
+  sub: rawSub,
   tone,
 }: {
   objectives: readonly ObjectiveView[] | undefined;
@@ -30,6 +36,7 @@ export function TitleBar({
   tone?: "alarm" | "restricted";
 }) {
   const { title, now } = titleBarText(objectives, fallback, tone);
+  const sub = titleBarSub(rawSub, tone);
   const more = (objectives?.length ?? 0) - 1;
   return (
     <header className={`title-bar ${tone ?? ""}`}>

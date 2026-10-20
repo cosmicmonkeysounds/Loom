@@ -4,7 +4,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { TitleBar, titleBarText } from "../src/chrome/title-bar.tsx";
+import { readFileSync } from "node:fs";
+import { TitleBar, titleBarSub, titleBarText } from "../src/chrome/title-bar.tsx";
 import { whereLine } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
@@ -42,5 +43,18 @@ describe("the NOW title bar", () => {
     expect(whereLine({ captured: false, restricted: false, location: null })).toBe("📍 nowhere yet");
     expect(whereLine({ captured: true, restricted: true, location: "The Internet" })).toBe("🔒 captured");
     expect(whereLine({ captured: false, restricted: true, location: "The Desktop" })).toBe("⛔ restricted");
+  });
+
+  it("a restricted guest's sub-line doesn't repeat the title's ⛔", () => {
+    expect(titleBarSub("⛔ restricted", "restricted")).toBe("restricted");
+    expect(titleBarSub("🔒 captured", "alarm")).toBe("🔒 captured");
+    expect(titleBarSub("📍 Hall")).toBe("📍 Hall");
+    const out = renderToStaticMarkup(createElement(TitleBar, { objectives: [o("a", "Go to the Internet")], fallback: "", onOpen: () => {}, sub: "⛔ restricted", tone: "restricted" }));
+    expect(out.match(/⛔/gu)?.length).toBe(1);
+  });
+
+  it("the sub-line is white on the alarm and restricted captions (4.5:1 at both gradient ends)", () => {
+    const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8").replace(/\s+/gu, " ");
+    expect(css).toContain(".title-bar.alarm .title-bar-sub, .title-bar.restricted .title-bar-sub { color: var(--title-ink); }");
   });
 });
