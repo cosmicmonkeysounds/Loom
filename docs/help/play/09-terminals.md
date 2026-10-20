@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -131,6 +131,28 @@ is a grandmaster. Late in the night (once the truth has been read) the
 screen says *No prize now.* and a win gives nothing. A program marked
 for reinstallation can't challenge him. Two minutes without a move and
 the game is abandoned.
+
+## The casino
+
+At *Trapped in the Internet* a terminal in the upstairs bedroom is the
+**casino**. It is not a line to anyone, and it is awake all night.
+
+1. Hold up your pass (or type your program name). The screen shows your
+   **Truthcoin**.
+2. Pick a game:
+   - **The Coin** — call heads or tails; it pays 2×. One flip in 20 lands
+     on its edge, and the edge is the house's.
+   - **Under / Over 7** — two dice. Under 7 or over 7 pays 2×, a seven
+     pays 5×. A seven beats under and over.
+   - **One-Armed Bandit** — pull. Three of a kind pays up to 40× (7 7 7),
+     two 7s pay 5×, a pair on the left 2×, a lone 7 gives your stake back.
+3. Tap a **stake** (1 to 50, never more than you hold), then your pick.
+   The house throws the dice — the screen only shows what it threw.
+
+Every bet goes straight into your phone's **Wallet** room, one card per
+sitting, so walking away loses nothing: tap **CASH OUT**, or leave it a
+minute and it cashes you out. A program marked for reinstallation can't
+gamble, and nor can a frozen wallet.
 
 ## A window into the simulation
 

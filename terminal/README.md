@@ -279,6 +279,36 @@ https://<server>/terminal/?code=<mod passcode>&name=Server Door&spot=server-room
 - The chess code is its own lazy chunk (`ChessTerminal-*.js`, chess.js +
   `@loom/chess`, ~60 kB), preloaded at boot on a chess terminal only.
 
+**The casino** (wave 15, `view=casino`; `src/casino/`): a terminal in the
+upstairs bedroom where a program bets its own Truthcoin.
+
+```
+https://<server>/terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&view=casino
+```
+
+- **Awake all night**, no character, no room (like the board). Attract:
+  the marquee, the three games and their pays, the scanner + typed
+  fallback. A pass is read through the moderator lens (`GET
+  /api/state?role=guest&as=<id>`: the name, `restricted`, `wallet.balance`);
+  a marked program and a story with no currency are refused at the scan.
+- Seated: the balance, then the lobby (THE COIN · UNDER / OVER 7 ·
+  ONE-ARMED BANDIT) and a game's table: stake chips 1 / 5 / 10 / 25 / 50
+  (only the ones the balance covers), the picks with their pays.
+- **The server rolls every bet**: `POST /api/mod/casino/bet {guest, game,
+  pick, stake, label: "Terminal · <name>"}` (`src/casino/post.ts`) →
+  roll + payout + balance; the screen spins at least 1.1 s, then shows
+  the roll and plays a square-wave jingle (win / jackpot / lose). Never
+  retried — a bet is not idempotent: no answer reads *check your wallet*
+  and the balance is re-read. The rules, odds and labels are core's
+  (`core/src/casino.ts`, imported by path).
+- **CASH OUT**, or 60 s with no touch (held while the house rolls or an
+  overlay is up; *STILL THERE?* for the last 15 s), returns to attract
+  with how the sitting went (*WINAMP WALKS AWAY 30 TRUTHCOIN UP*).
+  Nothing is lost: every bet already settled into the guest's wallet.
+- Layered like the board: overlays only. Its own lazy chunk
+  (`CasinoTerminal-*.js`, ~20 kB). Pure session in `src/casino/session.ts`
+  (`test/casino-session.test.ts`), calls in `test/casino-post.test.ts`.
+
 ## The voice
 
 **Every device speaks with its own voice** (decision 2026-10-15: "for the
@@ -413,7 +443,7 @@ Two settings, on the setup screen or in the provisioning link:
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
 | `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. The `chess` view ignores it. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). `casino`: the upstairs casino (*The casino*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator: there is no scanner, no chat and no wake tap (it never speaks).
