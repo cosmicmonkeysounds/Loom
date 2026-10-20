@@ -963,3 +963,10 @@ def test_a_sentence_they_heard_word_for_word_is_cut_from_a_line_that_is_no_repea
     model = Model(say("I keep the computer running for the party tonight. Personal queries are routed to Clippy."))
     reply = run(answer_lean(P, MODEL, request(history=hist, text="what are you for?"), context(said=Said()), model))
     assert len(model.calls) == 1 and reply.say == "I keep the computer running for the party tonight."
+
+
+def test_a_situation_that_holds_is_named_right_before_the_answer():
+    heart = request(them={"vars": {"truths_accepted": "2", "trust": "55", "marked": "false", "at_the_heart": "true"}, "codex": [], "location": "The Server Room"})
+    msgs = build_lean_messages(P, heart, context())
+    assert msgs[-2] == {"role": "system", "content": "Right now: AT YOUR HEART. That block outranks your brief and your favours for this conversation."}
+    assert not any(m["content"].startswith("Right now:") for m in build_lean_messages(P, request(), context()))

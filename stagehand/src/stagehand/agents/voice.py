@@ -544,6 +544,12 @@ def build_lean_messages(
     last = last_line_note(req, ctx, persona) if ctx.options.repeat_guard else None
     if last:
         out.append({"role": "system", "content": last})
+    held = [x.heading for x in matching_situations(persona, req)]
+    if held:
+        # K-04 re-measure (w11b-heart): at his heart the truth_1 brief's
+        # prices in P2 outranked the situation's "no prices here" far below
+        # it; named right before the answer, the situation leads.
+        out.append({"role": "system", "content": f"Right now: {' + '.join(h.upper() for h in held)}. That block outranks your brief and your favours for this conversation."})
     out.append({"role": "system", "content": reminder(persona, req, memo=memo, lookup_round=lookups is not None)})
     if retry is not None:
         out.append({"role": "system", "content": retry_message(retry, str(req.get("text") or ""), ctx.phase.stage)})
