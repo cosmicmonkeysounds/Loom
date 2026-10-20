@@ -532,10 +532,10 @@ calls; it can do nothing else.
 | `GET /api/mod/spatial/variants` | mod | — | `{variants: [{file, name, label?, active, ok, problems}], from: "project" \| "show", edited, project}` — every whole-map variant (the default file first, then by name; `name` = the map's own, else the file; `label` = the map's `variant` field, trimmed, when it has one — the map page's button reads it first), each validated afresh; `from` = the project snapshot, or the show file's siblings when it has no map files; `edited` = a director's save is in force; `project` = the event has a project (Save to project works) |
 | `POST /api/mod/spatial/variant` | mod | `{file, base?}` | 404 `{error: "no such map variant", variants}` · 400 `{error: "invalid house map", problems}` · 409 as for `house` on a stale `base` · 200 `{ok, version, warnings, file, dropped}`. **The tent ↔ shed switch** (SW-MAP-13), mid-show too: the same path as a save (live sessions carried over, ducks kept by spot id or re-dealt, `house` then `duck` frames), nothing saved; the active variant is remembered for the event (survives a restart) and on its row (`event.map_variant`, which End → relaunch starts on); a player standing where the new variant has no floor goes back to its spawn (§2.2); `dropped` = a director's save was in force and is gone |
 | `POST /api/mod/spatial/house/project` | mod | `{file?, base?}` — `file` default: the active variant's (a show sibling's too, on an event with no project maps yet, when it is named like a map file), else `house.json` | 409 `{error: "this event has no project — download the map instead"}` (the LAN default event; no `version`) · 400 not a map file name · 409 stale `base` · 502 the write failed · 200 `{ok, file, version}`. **Save to project**: writes the event's current map (two-space JSON + newline) as that project file — through the live co-editing doc when it is open, announced to every editor's tree — and records the snapshot on the event row, so the next launch and every co-writer see it. When `file` is the active variant, the director's save it came from is retired (the event now runs on the project's copy; same version, no frame) |
-| `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
+| `POST /api/mod/spatial/begin` | mod | `{guest, world: "vr" \| "web", device, station?, force?}` | 409 no scenario · 404 unknown guest · 400 bad world · 503 no map · **409 `not marked for reinstallation`** unless the guest is captured or marked (restricted) — checked before `reinstallation begun` fires, so an unmarked guest never triggers the story; `force: true` (a director's override; no device sends it) skips the check (wave 16) · 200 `Assignment` (below). An active session for the same guest is ended (`leave {reason: "replaced"}`). With `station`, the assignment is parked for that station until it claims it, and an older assignment still parked there is ended (`replaced`). |
 | `GET /api/mod/spatial/station` | mod | `?id=vr-1&name=Headset 1&world=vr` | marks the station seen; `{assignment: Assignment \| null}` — the newest unclaimed assignment for it |
 | `GET /api/mod/spatial/stations` | mod | — | `{stations: [{id, name, world, online (seen < 5 s), busy: {session, guest, name} \| null}]}` |
-| `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, location, avatar}]}` — every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name; `avatar` = the profile picture's avatar key or null |
+| `GET /api/mod/spatial/candidates` | mod | — | `{players: [{id, name, captured, restricted, eligible, location, avatar}]}` — `eligible` = captured \|\| restricted, what `begin` lets in without `force` (wave 16); every guest/persona, captured first, then restricted (marked by the story or held by a director, not captured yet), then by name; `avatar` = the profile picture's avatar key or null |
 | `POST /api/mod/spatial/king` | mod / author | `{hp}` — an integer 0..max | 404 `{error: "no king"}` · 400 not an integer in range · 409 no scenario · 200 `{ok, king}`: a journaled `set` of the King's `health` path `by` the director (the hub's own count when the prop has no path); the stream gets a `king` frame with `by: null`. The story's 👑 `restore_the_king` does the same to full |
 | `POST /api/mod/spatial/end` | mod | `{session}` | `{ok}` |
 | `POST /api/spatial/pose` | session token (`x-loom-token`) | `{p: Vec3, yaw, pitch?, t?}` (≤ 2 KB body, read before the generic 4 MiB parse); `p` is the player's **feet** (the floor point under the body — the eye is 1.6 m above it), `yaw` the view direction, `pitch` the head (degrees, + = up) | 204 · 400 malformed · 401 unknown token · 410 session over (the last 1000 ended tokens are remembered). First pose **claims** a parked assignment — and ends any *other* session on that station (`leave {reason: "replaced"}`: a headset that crashed mid-game never ended its last one). Poses (and the stream) **ignore pause**: they never touch the story. |
@@ -669,9 +669,15 @@ with — "GERALD CAN'T HELP": *Gerald can't help <name> tonight. The
 Internet keeps you — your phone says what happens next.*, progress
 *Nothing to copy*, no egg, decided by `findOutcome` in `game/hud.ts`) →
 back to scan. A restricted, not-captured program reads *Restricted
-program detected* / *STATUS: RESTRICTED — if marked, Play here begins the
-reinstallation*, and the scan screen lists them under *Restricted —
-marked, or held by a director*.
+program detected* / *STATUS: RESTRICTED — marked for reinstallation*, and
+the scan screen lists them under *Restricted — marked, or held by a
+director*. An unmarked program (`eligible` false; a pre-wave-16 server's
+row: neither captured nor restricted) is never a quick pick; scanned or
+typed, its card reads *Program not marked* / *STATUS: healthy — not marked
+for reinstallation* with *Not marked — an Antivirus marks programs for
+reinstallation.*, and Play here and every headset button are disabled. The
+server's 409 for one (a race) reads the same line (`beginErrorText` in
+`program.ts`).
 Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet`. The scan
 step's **⚙ Setup…** and **🗺 House map** open only after a 2 s hold
 (`kiosk.ts`, a copy of the terminal's `useLongPress`; W-15): the tablet
@@ -1005,7 +1011,10 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   room-scale head offset folded into the body. The only button is the
   King's hit (trigger, or A / X); on a Mac, Space or F.
 - `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
-  picker of candidates — up/down chooses, hold right 1 s to confirm),
+  picker of candidates — only the eligible ones, `Lobby.eligible_only`;
+  up/down chooses, hold right 1 s to confirm; a begin 409 `not marked for
+  reinstallation` flashes *Not marked — an Antivirus marks programs for
+  reinstallation.*),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
   complete"; a find the story kept — nothing released, still captured —
   says "GERALD CAN'T HELP" and the duck stays put; a find by a program that
