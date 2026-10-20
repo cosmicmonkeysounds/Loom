@@ -1,11 +1,11 @@
 //! Wave 13 fix round (fperf): the booth flags off a per-model plan, the
 //! snapshot's lean flags (contract C3), the scan card's single-guest flags
-//! and readout index.
+//! and readout index, and the directory's codex index.
 
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { ChatStore, composeGuestMessages } from "../server/chat.ts";
-import { allSnapshotFlags, guestCardView, guestFlags, guestFlagsNow, primeView, snapshotFlags } from "../server/views.ts";
+import { allSnapshotFlags, guestCardView, guestFlags, guestFlagsNow, guestView, primeView, snapshotFlags } from "../server/views.ts";
 
 const SRC = `# Night
 start: opening
@@ -149,6 +149,17 @@ describe("the scan card's readouts", () => {
     // A cleared timeline starts the index over.
     chat.clear();
     expect(guestCardView(sim, chat.all(), "Norton", "g1", false)!.readouts).toEqual([]);
+  });
+});
+
+describe("the directory's codex index", () => {
+  it("finds an entry about a person by id or by folded name, in codex order, once each", () => {
+    const sim = fresh();
+    for (const code of ["C1", "A1", "A2"]) sim.redeem("g2", code);
+    const people = guestView(sim, "g2").people;
+    expect(people.find((p) => p.id === "g1")!.known.map((e) => e.title)).toEqual(["Ada Notes", "Ada By Id"]);
+    expect(people.find((p) => p.id === "Clippy")!.known.map((e) => e.title)).toEqual(["Clippy File"]);
+    expect(guestView(sim, "g1").people.find((p) => p.id === "g2")!.known).toEqual([]);
   });
 });
 
