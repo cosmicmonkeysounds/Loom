@@ -7,10 +7,11 @@
 // admin or host.
 import { describe, expect, it } from "vitest";
 
-import { boothSidebar, primeStreamUrl } from "../src/booth/model.ts";
+import { boothSidebar, guestsWaiting, primeStreamUrl } from "../src/booth/model.ts";
 import { INBOX, STAFF_SPACE, buildPrimeChannels } from "../src/session/prime.ts";
 import { groupBySpace } from "../src/rooms/spaces.ts";
 import { roomOrder } from "../src/rooms/order.ts";
+import { unreadOf } from "../src/stream/badges.ts";
 import type { ChatMessage, PrimeView } from "../src/types.ts";
 
 let seq = 0;
@@ -83,6 +84,40 @@ describe("the booth sidebar", () => {
     // A story line alone, or the guest's line to another character, never lists it.
     const story = buildPrimeChannels(store([msg(`dm:${me}`, ["g-1"], { from: me }), msg("dm:Trabolta", ["g-1"], { from: "Ada" })]), view()).map((c) => ({ ...c, unread: c.messages.length }));
     expect(boothSidebar(groupBySpace(sorted(story)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).not.toContain("guest:g-1");
+  });
+
+  it("lists the thread from the real unread rule: a guest's typed line carries the guest as its audience", () => {
+    const me = "Norton Anti-Virus";
+    const booth = { id: me, name: me, booth: true };
+    // As the server stores it: `{channel: 'dm:<C>', from: <guest>, audience: [<guest id>]}`, no beat.
+    const list = [msg(`dm:${me}`, ["g-1"], { from: me, text: "Welcome.", beat: "Clearance" }), msg(`dm:${me}`, ["g-1"], { from: "Ada", text: "Help, I'm stuck at the door!" })];
+    const chans = buildPrimeChannels(store(list), view()).map((c) => ({ ...c, unread: unreadOf(c, -1, booth) }));
+    expect(chans.find((c) => c.id === "guest:g-1")?.unread).toBe(1);
+    const rows = boothSidebar(groupBySpace(sorted(chans)), { character: me }).flatMap((s) => s.channels.map((c) => c.id));
+    expect(rows).toContain("guest:g-1");
+    // The 🗂 Guests badge counts the guests waiting, not the head count.
+    expect(guestsWaiting(chans, me)).toBe(1);
+    expect(guestsWaiting(chans, "")).toBe(0);
+    // Read past it: the row folds away.
+    const read = buildPrimeChannels(store(list), view()).map((c) => ({ ...c, unread: unreadOf(c, list[1]!.seq, booth) }));
+    expect(boothSidebar(groupBySpace(sorted(read)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).not.toContain("guest:g-1");
+    expect(guestsWaiting(read, me)).toBe(0);
+  });
+
+  it("keeps a guest's waiting line listed when the story speaks to them after it", () => {
+    const me = "Norton Anti-Virus";
+    const booth = { id: me, name: me, booth: true };
+    // The guest types to Norton, then the story sends the guest a lobby line
+    // and Norton's own scripted line: the thread's tail is not the guest's.
+    const list = [
+      msg(`dm:${me}`, ["g-1"], { from: "Ada", text: "Help, I'm stuck at the door!" }),
+      msg("lobby", ["g-1"], { channelKind: "lobby", from: "Narrator", kind: "narration", text: "The lights flicker.", beat: "Glitch" }),
+      msg(`dm:${me}`, ["g-1"], { from: me, text: "Scanning.", beat: "Clearance" }),
+    ];
+    const chans = buildPrimeChannels(store(list), view()).map((c) => ({ ...c, unread: unreadOf(c, -1, booth) }));
+    expect(chans.find((c) => c.id === "guest:g-1")?.unread).toBe(1);
+    expect(boothSidebar(groupBySpace(sorted(chans)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).toContain("guest:g-1");
+    expect(guestsWaiting(chans, me)).toBe(1);
   });
 
   it("keeps a guest's Trabolta thread (a host stream carries it) out of the sidebar and the feed", () => {

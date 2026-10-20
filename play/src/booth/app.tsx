@@ -32,7 +32,7 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothFoldable, boothSidebar, closedGate } from "./model.ts";
+import { boothFoldable, boothHost, boothSidebar, closedGate, guestsWaiting } from "./model.ts";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
@@ -73,6 +73,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // per scanner opening, so leaving and reopening the scanner with the pass
   // still held up never re-fires its scan.
   const passGate = useMemo(() => closedGate(CLOSED_PASS_MS), []);
+  // The guest whose card is (or was last) open: the moments layer drops
+  // readouts about them inside the hold (the card showed them) and lets
+  // every other booth readout through.
+  const cardGuest = useRef<string | null>(null);
   useDocumentTitle(s.auth?.title);
   // K-31a: the server-room (patch-bay) alarm + the late list on a locked phone.
   const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null, "booth");
@@ -89,6 +93,11 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, wide, activeId, home, s.roomLinkPending]);
+  // The scanner or the Guests list opening shows no card yet: the last
+  // card's guest is not on screen, so an alert about them is news again.
+  useEffect(() => {
+    if (layer?.kind === "scan" || layer?.kind === "guests") cardGuest.current = null;
+  }, [layer?.kind]);
   // A notification's `?room=scanner` link (the old Scanner room's readouts)
   // opens Readouts, where those readouts live now.
   useEffect(() => {
@@ -97,15 +106,23 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   }, [activeId]);
   if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;
-  const isHost = s.auth.host === true;
+  // C4: the latest view says whether this booth is a host (an older server's: the sign-in's answer).
+  const isHost = boothHost(s.auth, s.view);
+  const pill = boothPill({ admin, host: isHost });
+  const token = s.auth.token;
   const character = s.auth.character;
+  // The 🗂 Guests badge: guests whose typed line to this character waits unread.
+  const waiting = guestsWaiting(t.list, character);
   const guests = s.view?.guests ?? [];
   const guestByName = (name: string) => guests.find((g) => g.name === name || g.id === name) ?? null;
   const mod = admin ? { setHidden: (seq: number, hidden: boolean) => void s.setHidden(seq, hidden) } : undefined;
   // Cards the story deals to this character (`show … to <Character>`): the
   // booth answers them like a guest, through `/api/prime/widget`.
   const widgets: WidgetHook = { answer: (seq, r) => void s.answerWidget(seq, r).catch(() => {}), answered: s.widgetAnswers };
-  const openCard = (guestId: string, seed?: CardSeed) => setLayer({ kind: "card", id: guestId, ...(seed !== undefined ? { seed } : {}) });
+  const openCard = (guestId: string, seed?: CardSeed) => {
+    cardGuest.current = guestId;
+    setLayer({ kind: "card", id: guestId, ...(seed !== undefined ? { seed } : {}) });
+  };
   const openCardByName = (name: string) => {
     const g = guestByName(name);
     if (g) openCard(g.id);
@@ -203,6 +220,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const moments: MomentsInput = {
     role: "booth",
     me: character,
+    // The room open now: a guest's line in the thread being read is no balloon.
+    here: t.activeId,
     session: s.auth.token,
     messages: s.messages,
     alerts: s.alerts,
@@ -213,6 +232,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     openRoom: t.open,
     filter: boothAlertFilter(character),
     sound: host.sound,
+    cardGuest: () => cardGuest.current,
   };
   const start = boothStartItems({
     character,
@@ -238,7 +258,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
             <BoothFrame>
               {(keyboard) => (
                 <>
-              <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={boothPill(s.auth)} closeKey={activeId} />
+              <NowCard objectives={s.view?.objectives} interactions={s.view?.interactions ?? []} character={character} pill={pill} closeKey={activeId} session={token} compact={keyboard} />
               {/* The sticky banner flows under the NOW card (the booth's title bar). */}
               <MomentsLayer />
               <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room — or 📷 Scan a pass." />
@@ -251,7 +271,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                   startHeader={<StartHeader s={s} />}
                   buttons={[
                     { id: "scan", label: "Scan", icon: "📷", primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
-                    { id: "guests", label: "Guests", icon: "🗂", title: "Every guest, searchable", badge: guests.length, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
+                    { id: "guests", label: "Guests", icon: "🗂", title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
                   tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} />}
                   conn={s.connected ? "live" : "reconnecting"}
@@ -260,7 +280,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                 </>
               )}
             </BoothFrame>
-            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} />}
+            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => (cardGuest.current = guestByName(id)?.id ?? id)} />}
             {layer?.kind === "guests" && <GuestsSheet view={s.view} onPick={(id) => openCard(id)} onClose={() => setLayer(null)} />}
             {layer?.kind === "card" && (
               <GuestCard key={layer.id} session={s} guestId={layer.id} seed={layer.seed} admin={admin} onClose={() => setLayer(null)} onOpenThread={() => openThread(layer.id)} />

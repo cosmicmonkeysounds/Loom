@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import type { Alerts } from "../src/alerts.ts";
 import type { SessionStorage } from "../src/host.ts";
 import { MEMORY_MAX, MOMENTS_MEMORY, announceLoud, freshMemory, loadDone, memoryKey, recallMoments, rememberMoments, saveDoneList } from "../src/moments/memory.ts";
-import { CARD_AFTERGLOW_MS, ECHO_MS, EMPTY_MOMENTS, READOUT_WAIT_MS, afterWait, momentsReducer, sortArrivals, type Moment, type ToastSeen } from "../src/moments/model.ts";
+import { CARD_AFTERGLOW_MS, ECHO_MS, EMPTY_MOMENTS, GLANCE_MS, READOUT_WAIT_MS, afterWait, missedCount, momentsReducer, sortArrivals, surfacesOf, type Moment, type ToastSeen } from "../src/moments/model.ts";
 import { MomentsLayer, MomentsProvider, type MomentsInput } from "../src/moments/provider.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
@@ -56,6 +56,66 @@ describe("a booth's readouts", () => {
     expect(sortArrivals([about], ctx({ ...c, held: true })).now).toEqual([]);
     expect(sortArrivals([about], ctx({ ...c, sinceHoldEnd: CARD_AFTERGLOW_MS - 1 })).now).toEqual([]);
     expect(sortArrivals([about], ctx({ ...c, sinceHoldEnd: CARD_AFTERGLOW_MS })).now).toEqual([about]);
+  });
+});
+
+describe("a booth's alerts about other guests while a card is open (live check, fix round)", () => {
+  // McAfee has LimeWire's card open; Clippy marks WinZip and McAfee gets
+  // "🚨 WinZip is marked…" (a major readout about WinZip). The session
+  // raised it loud (no request of McAfee's in flight).
+  const marked = moment(10, { severity: "major", text: "🚨 WinZip is marked for reinstallation", caption: "McAfee" });
+  const about = { about: (seq: number | null) => seq === 10, aboutId: (seq: number | null) => (seq === 10 ? "g-winzip" : null) };
+  const loud = [toast(marked.text, false)];
+
+  it("is news while the card is open on someone else: a sticky waits, a balloon peeks over the card", () => {
+    const r = sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-limewire", recent: loud }));
+    expect(r.now.map((m) => m.key)).toEqual(["m:10", "p:m:10"]);
+    // Through the queue: the peek is a balloon over the card, the sticky waits for the card to close.
+    const s1 = momentsReducer(EMPTY_MOMENTS, { type: "arrive", moments: r.now, visible: true, level: "sticky", role: "booth", now: T, phase: null, batch: false });
+    expect(s1.queue.map((q) => [q.moment.key, q.level])).toEqual([["m:10", "sticky"], ["p:m:10", "balloon"]]);
+    expect(surfacesOf(s1, true).balloon?.moment.key).toBe("p:m:10");
+    expect(surfacesOf(s1, true).sticky?.moment.key).toBe("m:10");
+    // The card closes: the peek is gone, the sticky stays until tapped.
+    expect(surfacesOf(s1, false).balloon).toBeNull();
+    expect(surfacesOf(s1, false).sticky?.moment.key).toBe("m:10");
+    // The peek timing out is never a missed moment.
+    const s2 = momentsReducer(s1, { type: "dismiss", key: "p:m:10", onScreenMs: 8_000 });
+    expect(s2.queue.map((q) => q.moment.key)).toEqual(["m:10"]);
+    expect(missedCount(s2, false, T)).toBe(0);
+    // "Take me there" on the peek: the performer went, so its sticky goes too (never missed).
+    const s2b = momentsReducer(s1, { type: "dismiss", key: "p:m:10", onScreenMs: 500, acted: true });
+    expect(s2b.queue).toEqual([]);
+    expect(missedCount(s2b, false, T)).toBe(0);
+    // Dismissing the sticky unread counts it missed, and takes any peek with it.
+    const s3 = momentsReducer(s1, { type: "dismiss", key: "m:10", onScreenMs: GLANCE_MS - 1 });
+    expect(s3.queue).toEqual([]);
+    expect(s3.missed.map((m) => m.key)).toEqual(["m:10"]);
+  });
+
+  it("is news in the afterglow too, and with the scanner open and no card", () => {
+    expect(sortArrivals([marked], ctx({ ...about, sinceHoldEnd: 1_000, cardGuest: "g-limewire", recent: loud })).now.map((m) => m.key)).toEqual(["m:10"]);
+    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: null, recent: loud })).now.map((m) => m.key)).toEqual(["m:10", "p:m:10"]);
+  });
+
+  it("is dropped when it is about the guest on the card; one about another guest shows however recently the booth pressed", () => {
+    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-winzip", recent: loud })).now).toEqual([]);
+    // McAfee scanned LimeWire a second ago (no loud raise inside the grace): WinZip's mark is still news.
+    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-limewire", recent: [] })).now.map((m) => m.key)).toEqual(["m:10", "p:m:10"]);
+    // No card yet (or no about id): the old rule — no loud raise = the answer to the booth's own press.
+    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: null, recent: [] })).now).toEqual([]);
+    expect(sortArrivals([marked], ctx({ about: about.about, held: true, cardGuest: "g-limewire", recent: [] })).now).toEqual([]);
+  });
+
+  it("a hidden page never keeps a peek in the missed list", () => {
+    const r = sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-limewire", recent: loud }));
+    const s = momentsReducer(EMPTY_MOMENTS, { type: "arrive", moments: r.now, visible: false, level: "sticky", role: "booth", now: T, phase: null, batch: false });
+    expect(s.missed.map((m) => m.key)).toEqual(["m:10"]);
+  });
+
+  it("at the balloon level the alert is a balloon already: no peek joins it", () => {
+    const r = sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-limewire", recent: loud }));
+    const s = momentsReducer(EMPTY_MOMENTS, { type: "arrive", moments: r.now, visible: true, level: "balloon", role: "booth", now: T, phase: null, batch: false });
+    expect(s.queue.map((q) => q.moment.key)).toEqual(["m:10"]);
   });
 });
 

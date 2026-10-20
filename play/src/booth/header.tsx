@@ -9,6 +9,7 @@ import type { PrimeSession } from "../session/prime.ts";
 import type { Push } from "../push.ts";
 import { PushRow } from "../push-card.tsx";
 import type { WakeLock } from "../wake-lock.ts";
+import { boothHost } from "./model.ts";
 
 /** The pill a booth wears: a passcode admin, or a host part. */
 export function boothPill(auth: { admin: boolean; host?: boolean } | null): string | null {
@@ -19,7 +20,7 @@ export function boothPill(auth: { admin: boolean; host?: boolean } | null): stri
 
 /** The Start menu's banner: the mask you wear tonight. */
 export function StartHeader({ s }: { s: PrimeSession }) {
-  const pill = boothPill(s.auth);
+  const pill = boothPill(s.auth !== null ? { ...s.auth, host: boothHost(s.auth, s.view) } : null);
   return (
     <div className="booth-start-head">
       <PersonAvatar name={s.auth?.character ?? "?"} kind="character" size="sm" />

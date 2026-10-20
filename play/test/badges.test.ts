@@ -1,7 +1,7 @@
 //! Wave 13: badges count only what is for you.
 
 import { describe, expect, it } from "vitest";
-import { badgeWorthy, unreadOf } from "../src/stream/badges.ts";
+import { badgeWorthy, guestLineToBooth, unreadOf } from "../src/stream/badges.ts";
 import type { Viewer } from "../src/rooms/threads-state.ts";
 import type { Channel, ChatMessage } from "../src/types.ts";
 
@@ -47,6 +47,34 @@ describe("a booth's badge", () => {
     expect(badgeWorthy(m({ kind: "signal", alert: true, channel: "faction:Mods", channelKind: "faction", audience: ["g1", "g2"] }), norton)).toBe(false); // a faction's
     expect(badgeWorthy(m({ kind: "line", alert: true, from: "Ada", audience: ["g1"] }), norton)).toBe(false); // a guest's own reply !…
     expect(badgeWorthy(m({ kind: "widget", widget: { kind: "poll", text: "?", params: {} } }), norton)).toBe(false);
+  });
+});
+
+describe("a guest's typed line to a booth", () => {
+  // The real shape off a booth's stream (live check, wave 13 fix round): a
+  // guest's own `dm:<Character>` line carries the guest as its audience.
+  const typed = (over: Partial<ChatMessage> = {}): ChatMessage => ({
+    seq: seq++, channel: "dm:Clippy", channelKind: "dm", title: "Clippy", from: "GarageBand", kind: "line", text: "Clippy, the bingo card makes no sense", ts: 0, audience: ["g-1019a0"], parentSeq: null, hidden: false, ...over,
+  });
+  const clippy: Viewer = { id: "Clippy", name: "Clippy", booth: true };
+
+  it("badges the booth whose DM it is", () => {
+    expect(guestLineToBooth(typed(), "Clippy")).toBe(true);
+    expect(badgeWorthy(typed(), clippy)).toBe(true);
+    const thread: Channel = { id: "guest:g-1019a0", kind: "guest", title: "GarageBand", spaceId: "guests", messages: [typed()], unread: 0, decision: null, lastTs: 0 };
+    expect(unreadOf(thread, -1, clippy)).toBe(1);
+  });
+
+  it("never the character's own lines, a beat's line, another character's DM or a guest's view", () => {
+    expect(badgeWorthy(typed({ from: "Clippy", text: "Hello." }), clippy)).toBe(false);
+    expect(badgeWorthy(typed({ from: "Clippy", beat: "Login" }), clippy)).toBe(false);
+    expect(guestLineToBooth(typed({ from: "Narrator", kind: "narration" }), "Clippy")).toBe(false);
+    expect(guestLineToBooth(typed({ from: "Operator" }), "Clippy")).toBe(false);
+    expect(badgeWorthy(typed({ channel: "dm:Trabolta" }), clippy)).toBe(false);
+    expect(badgeWorthy(typed({ hidden: true }), clippy)).toBe(false);
+    expect(badgeWorthy(typed(), norton)).toBe(false);
+    // The guest's own words never badge the guest.
+    expect(badgeWorthy(typed(), { id: "g-1019a0", name: "GarageBand", booth: false })).toBe(false);
   });
 });
 
