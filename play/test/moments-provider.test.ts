@@ -93,10 +93,13 @@ describe("a booth's alerts about other guests while a card is open (live check, 
     expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: null, recent: loud })).now.map((m) => m.key)).toEqual(["m:10", "p:m:10"]);
   });
 
-  it("is dropped when it is about the guest on the card, or answers the booth's own press", () => {
+  it("is dropped when it is about the guest on the card; one about another guest shows however recently the booth pressed", () => {
     expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-winzip", recent: loud })).now).toEqual([]);
-    // No loud raise: the booth's own request was in flight (its press's answer, on the card).
-    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-limewire", recent: [] })).now).toEqual([]);
+    // McAfee scanned LimeWire a second ago (no loud raise inside the grace): WinZip's mark is still news.
+    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: "g-limewire", recent: [] })).now.map((m) => m.key)).toEqual(["m:10", "p:m:10"]);
+    // No card yet (or no about id): the old rule — no loud raise = the answer to the booth's own press.
+    expect(sortArrivals([marked], ctx({ ...about, held: true, cardGuest: null, recent: [] })).now).toEqual([]);
+    expect(sortArrivals([marked], ctx({ about: about.about, held: true, cardGuest: "g-limewire", recent: [] })).now).toEqual([]);
   });
 
   it("a hidden page never keeps a peek in the missed list", () => {

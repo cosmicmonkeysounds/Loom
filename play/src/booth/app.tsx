@@ -273,7 +273,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                 </>
               )}
             </BoothFrame>
-            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => (cardGuest.current = id)} />}
+            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => (cardGuest.current = guestByName(id)?.id ?? id)} />}
             {layer?.kind === "guests" && <GuestsSheet view={s.view} onPick={(id) => openCard(id)} onClose={() => setLayer(null)} />}
             {layer?.kind === "card" && (
               <GuestCard key={layer.id} session={s} guestId={layer.id} seed={layer.seed} admin={admin} onClose={() => setLayer(null)} onOpenThread={() => openThread(layer.id)} />

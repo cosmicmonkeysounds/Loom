@@ -710,16 +710,18 @@ export function sortArrivals(
 }
 
 /**
- * Did the card already show this booth readout about a guest? When it
- * answers the booth's own press (the session raised no loud toast for it:
- * a request was in flight or had just answered) or it is about the guest
- * on the open card. A readout about anyone else — the late list, Clippy's
- * 🚨 marked — is news, card or no card.
+ * Did the card already show this booth readout about a guest? When it is
+ * about the guest on the open card (a press or a scan answers about the
+ * guest it was made on). When either side is unknown (no card yet, a
+ * readout with no `about` id), when it answers the booth's own press: the
+ * session raised no loud toast for it (a request was in flight or had just
+ * answered). A readout about anyone else — the late list, Clippy's 🚨
+ * marked — is news, card or no card, however recently the booth pressed.
  */
 function shownOnCard(m: Moment, ctx: { recent: readonly ToastSeen[]; now: number; aboutId?: (seq: number | null) => string | null; cardGuest?: string | null }): boolean {
   if (ctx.cardGuest === undefined) return true;
   const about = ctx.aboutId?.(m.seq) ?? null;
-  if (about !== null && ctx.cardGuest !== null && about === ctx.cardGuest) return true;
+  if (about !== null && ctx.cardGuest !== null) return about === ctx.cardGuest;
   return !toldBy(ctx.recent, m.text, false, ctx.now, ECHO_MS);
 }
 
