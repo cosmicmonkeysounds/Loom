@@ -147,10 +147,9 @@ describe("views carry the story's title, theme, and interactions", () => {
     expect(g.groups).toEqual([]);
     const p = primeView(sim, "The Gatekeeper");
     expect(p.title).toBe("The Glass Orchard");
-    expect(p.interactions.map((i) => [i.id, i.who])).toEqual([
-      ["whisper", "performer"],
-      ["eject", "admin"],
-    ]);
+    // wave 13: a booth's view carries performer buttons only — the admin
+    // cue sheet is the host view's (`?host=1`), never PrimeView's.
+    expect(p.interactions.map((i) => [i.id, i.who])).toEqual([["whisper", "performer"]]);
     expect(p.legacyCapture).toBe(false);
     const m = modView(sim, "open", "orchard");
     expect(m.title).toBe("The Glass Orchard");

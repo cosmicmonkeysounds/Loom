@@ -109,6 +109,9 @@ export interface RoleDef {
    *  see: dropped from every agent request and the agents' facts document
    *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). */
   secret: Set<string>;
+  /** Slots declared `bool` (wave 13: a booth card lists a boolean ROLE
+   *  `watch:` item even when false — "Not cleared"). */
+  bools?: Set<string>;
 }
 
 export interface CharDef {
@@ -945,7 +948,12 @@ function roleDef(id: string, body: CharacterBody): RoleDef {
       .map((s) => s.trim())
       .filter((s) => s !== ""),
   );
-  return { id, defaults, hooks: hooksOf(id, "role", body), secret };
+  const bools = new Set(
+    body.typedProperties
+      .filter((p) => p.slotType !== null && p.slotType.kind === "concrete" && p.slotType.name.toLowerCase() === "bool")
+      .map((p) => p.name),
+  );
+  return { id, defaults, hooks: hooksOf(id, "role", body), secret, bools };
 }
 
 function charDef(id: string, body: CharacterBody): CharDef {

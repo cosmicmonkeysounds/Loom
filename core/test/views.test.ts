@@ -604,9 +604,10 @@ Hello.
     expect(ix.find((i) => i.id === "read_out")).not.toHaveProperty("act");
     expect(ix.find((i) => i.id === "last_call")?.act).toBe("B · Close");
     expect(ix.find((i) => i.id === "wave")).not.toHaveProperty("act");
+    // wave 13: admin cues never reach a booth's PrimeView at all.
     const prime = primeView(sim, "Ivo Marsh").interactions;
-    expect(prime.map((i) => i.id)).toContain("open_doors");
-    expect(prime.every((i) => !("act" in i))).toBe(true);
+    expect(prime.map((i) => i.id)).not.toContain("open_doors");
+    expect(prime.every((i) => i.who === "performer" && !("act" in i))).toBe(true);
   });
 
   it("resolves each watch item's scope: character, role, global, person", () => {

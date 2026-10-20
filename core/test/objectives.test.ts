@@ -3,6 +3,7 @@ import { parse } from "../src/parser/index.ts";
 import type { Declaration, ObjectiveBody } from "../src/parser/index.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { resolveObjectiveAudience, resolveObjectiveButtons } from "../src/runtime/sim/model.ts";
+import { guestView, objectivesFor, primeView, type ObjectiveView } from "../server/views.ts";
 
 function objectiveOf(src: string, name?: string): ObjectiveBody {
   const [file] = parse(src);
@@ -173,5 +174,174 @@ describe("OBJECTIVE — compile", () => {
   it("only the story header's alerts: counts — a later file's line is not a header", () => {
     const s = Sim.fromSources("# A\n\n== a\nhi\n", "# B\nalerts: Night.other\n\n== b\nhi\n");
     expect(s.model.alerts).toBe("Night.alerts");
+  });
+});
+
+const VIEW_SRC = `# Night
+start: opening
+
+ROLE Program
+  cleared: bool = false
+  marked: bool = false
+
+GROUP Antivirus
+  joinable: false
+
+GROUP Hosts
+  joinable: false
+
+GROUP Rebels
+
+GROUP Unlimited Power
+  hidden: true
+
+CHARACTER Norton
+  faction: Antivirus
+  when scanned by program:
+    reply Clean.
+
+CHARACTER McAfee
+  faction: Antivirus
+
+CHARACTER Clippy
+  faction: Hosts
+
+INTERACTION wave
+  who: guest
+
+INTERACTION bathroom
+  who: guest
+  restricted: allow
+
+INTERACTION hidden button
+  who: guest
+  while: Night.never == true
+
+INTERACTION send to the internet
+  who: performer
+  by: Norton
+
+INTERACTION greet
+  who: performer
+
+INTERACTION open the doors
+  who: admin
+
+OBJECTIVE Show Your Pass
+  for: Program
+  while: program.cleared != true
+  title: Show your pass
+  text:
+    Hold it up.
+    - Uploaded, done when program.uploaded == true
+    - Smile
+  buttons: pass, wave, bathroom, hidden button, greet
+  loud: true
+
+OBJECTIVE Escort
+  for: Antivirus
+  buttons: scan, send to the internet, greet
+
+OBJECTIVE Host Duty
+  for: Hosts
+  while: Night.phase == "bingo"
+
+OBJECTIVE Rebel Plan
+  for: Rebels
+
+OBJECTIVE Power Plan
+  for: Unlimited Power
+
+OBJECTIVE Everyone Dance
+  for: everyone
+
+OBJECTIVE Broken
+  for: guests
+  while: 1 +
+
+OBJECTIVE Norton Only
+  for: Norton
+
+== opening
+Hi.
+`;
+
+describe("OBJECTIVE — views", () => {
+  const fresh = () => {
+    const sim = Sim.fromSources(VIEW_SRC);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bo");
+    return sim;
+  };
+  const ids = (os: ObjectiveView[]) => os.map((o) => o.id);
+
+  it("a guest sees ROLE, everyone and GROUP-member objectives in model order, the guest bound", () => {
+    const sim = fresh();
+    expect(ids(objectivesFor(sim, { guest: "g1" }))).toEqual(["Show Your Pass", "Everyone Dance"]);
+    sim.join("g1", "Rebels");
+    expect(ids(objectivesFor(sim, { guest: "g1" }))).toEqual(["Show Your Pass", "Rebel Plan", "Everyone Dance"]);
+    // The while: reads the guest's own slot — clearing g1 hides it for g1 only.
+    sim.setVar("g1.cleared", "true");
+    expect(ids(objectivesFor(sim, { guest: "g1" }))).toEqual(["Rebel Plan", "Everyone Dance"]);
+    expect(ids(objectivesFor(sim, { guest: "g2" }))).toEqual(["Show Your Pass", "Everyone Dance"]);
+  });
+
+  it("a hidden GROUP never matches before its reveal", () => {
+    const sim = fresh();
+    sim.join("g1", "Unlimited Power");
+    expect(ids(objectivesFor(sim, { guest: "g1" }))).not.toContain("Power Plan");
+    sim.reveal("Unlimited Power");
+    expect(ids(objectivesFor(sim, { guest: "g1" }))).toContain("Power Plan");
+  });
+
+  it("checklist: a condition reads true / false with the guest bound, a plain to-do null", () => {
+    const sim = fresh();
+    const o = () => objectivesFor(sim, { guest: "g1" })[0]!;
+    expect(o().checklist).toEqual([
+      { label: "Uploaded", done: false },
+      { label: "Smile", done: null },
+    ]);
+    sim.setVar("g1.uploaded", "true");
+    expect(o().checklist[0]!.done).toBe(true);
+    expect(o()).toMatchObject({ title: "Show your pass", brief: "Hold it up.", loud: true, act: null });
+  });
+
+  it("a guest's buttons are its live, restriction-filtered guest buttons plus pass / scan", () => {
+    const sim = fresh();
+    expect(objectivesFor(sim, { guest: "g1" })[0]!.buttons).toEqual(["pass", "wave", "bathroom"]);
+    sim.restrict("g1");
+    expect(objectivesFor(sim, { guest: "g1" })[0]!.buttons).toEqual(["pass", "bathroom"]);
+  });
+
+  it("a booth sees its name, its GROUP (by faction) and performers / everyone; self is the character", () => {
+    const sim = fresh();
+    expect(ids(objectivesFor(sim, { character: "Norton" }))).toEqual(["Escort", "Everyone Dance", "Norton Only"]);
+    expect(ids(objectivesFor(sim, { character: "Clippy" }))).toEqual(["Everyone Dance"]);
+    sim.setVar("Night.phase", '"bingo"');
+    expect(ids(objectivesFor(sim, { character: "Clippy" }))).toEqual(["Host Duty", "Everyone Dance"]);
+  });
+
+  it("a booth drops another character's by: button unless it is host", () => {
+    const sim = fresh();
+    expect(objectivesFor(sim, { character: "Norton" })[0]!.buttons).toEqual(["scan", "send to the internet", "greet"]);
+    expect(objectivesFor(sim, { character: "McAfee" })[0]!.buttons).toEqual(["scan", "greet"]);
+    expect(objectivesFor(sim, { character: "McAfee", host: true })[0]!.buttons).toEqual(["scan", "send to the internet", "greet"]);
+  });
+
+  it("a while: that throws is not live", () => {
+    const sim = fresh();
+    expect(ids(objectivesFor(sim, { guest: "g1" }))).not.toContain("Broken");
+  });
+
+  it("guest / prime views carry objectives, night and alertLevel", () => {
+    const sim = fresh();
+    const g = guestView(sim, "g1");
+    expect(ids(g.objectives!)).toEqual(["Show Your Pass", "Everyone Dance"]);
+    expect(g.night).toEqual({ act: null, phase: null, step: null });
+    expect(g.alertLevel).toBe("sticky");
+    const p = primeView(sim, "McAfee", undefined, { host: true });
+    expect(p.objectives![0]!.buttons).toContain("send to the internet");
+    expect(p.night).toBeDefined();
+    expect(p.alertLevel).toBe("sticky");
   });
 });

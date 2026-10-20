@@ -3,16 +3,19 @@
 //! unit-testable without standing up the HTTP/SSE server.
 
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
-import { asNumber } from "../src/runtime/expr.ts";
+import { asNumber, display, type Value } from "../src/runtime/expr.ts";
+import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
+import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
+import { codexAboutKind, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
 import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
-import type { CodexDef, InteractionDef } from "../src/runtime/sim/model.ts";
+import type { CodexDef, InteractionDef, ObjectiveDef } from "../src/runtime/sim/model.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
-import { identityDefs, performerPickable } from "./identity.ts";
+import { identityDefs, performerPickable } from "../src/identity-kind.ts";
 import { joinableFactions } from "./routes/sides.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
@@ -32,11 +35,18 @@ export interface CodexEntryView {
   /** `secret: true` — an agent-voiced character never takes it (the heart
    *  terminal's file panel offers no Give for it). Present only when set. */
   secret?: true;
+  /** `CodexDef.category`; absent when null. */
+  category?: string;
+  /** What `about` names: a character, a location, or anything else; absent when `about` is null. */
+  aboutKind?: "character" | "location" | "topic";
 }
 
-function codexEntry(e: CodexDef): CodexEntryView {
+function codexEntry(e: CodexDef, model: Sim["model"]): CodexEntryView {
   const out: CodexEntryView = { id: e.id, title: e.title, about: e.about, text: e.text };
   if (e.secret) out.secret = true;
+  if (e.category !== null) out.category = e.category;
+  const kind = codexAboutKind(model, e.about);
+  if (kind !== null) out.aboutKind = kind;
   return out;
 }
 
@@ -72,7 +82,7 @@ export interface PersonCard {
 
 function peopleFor(sim: Sim, id: string, agentsOnline?: ReadonlySet<string>): PersonCard[] {
   return sim.peopleFor(id).map((p) => {
-    const card: PersonCard = { ...p, known: p.known.map(codexEntry), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
+    const card: PersonCard = { ...p, known: p.known.map((e) => codexEntry(e, sim.model)), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
     const def = p.kind === "character" ? sim.model.characters.get(p.id) : undefined;
     if (def?.mind === "external") {
       card.agent = { online: agentsOnline?.has(p.id) ?? false, ...(def.hold !== null ? { hold: true as const } : {}) };
@@ -342,11 +352,25 @@ export interface GuestView {
    *  opened): `clock` holds still, so a countdown must not tick on. Set by
    *  the runtime; absent while the clock runs. */
   paused?: true;
+  /** Live OBJECTIVEs for this guest, model order (NOW = the first). Always filled ([] when none). */
+  objectives?: ObjectiveView[];
+  /** Where the night is. Always filled. */
+  night?: NightView;
+  /** `alertLevelOf(world[model.alerts])`. Always filled. */
+  alertLevel?: AlertLevel;
+  /** Characters whose `dm:` thread somebody reads: performer parts
+   *  (`performerPickable`) and agent-voiced (`mind: external`) characters,
+   *  canonical ids. A `dm:<C>` with C not listed (Truther Download, The
+   *  Uploader) gets no composer. Always filled. */
+  voiced?: string[];
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
   const p = sim.persons.get(id);
   const pendingChoice = sim.pendingChoiceFor(id);
+  const interactions = interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
+    (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
+  );
   return {
     id,
     name: p?.name ?? id,
@@ -377,15 +401,17 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     // A guest only ever sees the buttons on offer to them right now — and
     // none at all while the story has them restricted.
     // Restricted: only the `restricted: allow` buttons (Bathroom Mode) stay.
-    interactions: interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
-      (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
-    ),
-    codex: sim.codexFor(id).map(codexEntry),
+    interactions,
+    codex: sim.codexFor(id).map((e) => codexEntry(e, sim.model)),
     codexTotal: sim.model.codex.size,
     quests: sim.questsFor(id).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
     questTotal: sim.model.quests.size,
     people: peopleFor(sim, id, agentsOnline),
     ...guestBoard(sim),
+    objectives: objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id))),
+    night: nightView(sim),
+    alertLevel: alertLevelNow(sim),
+    voiced: voicedOf(sim.model),
   };
 }
 
@@ -622,6 +648,8 @@ export interface ModView {
   /** The header's `countdown:` items on live lines whose deadline is still
    *  ahead (`endsAt` > `Time.elapsed`). Absent when there are none. */
   countdowns?: CountdownSummary[];
+  /** The interrupt ladder: its world path and current level. */
+  alerts?: { path: string; level: AlertLevel };
 }
 
 /** One `watch:` item the director's glance column shows. */
@@ -1045,13 +1073,14 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     world: sim.worldEntries(),
     modsOnline: presence?.mods,
     directors: presence?.directors,
-    codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e), code: e.code, holders: sim.codexHolders(e.id) })),
+    codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e, sim.model), code: e.code, holders: sim.codexHolders(e.id) })),
     quests: questSummaries(sim),
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
     ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
     cues: cueState(sim),
     clock: sim.elapsed(),
     ...modBoard(sim),
+    alerts: { path: sim.model.alerts, level: alertLevelNow(sim) },
   };
 }
 
@@ -1159,6 +1188,347 @@ function liveCountdowns(sim: Sim, keep: (line: { guests: boolean }) => boolean =
   return countdowns;
 }
 
+// --- wave 13: objectives, where the night is, the interrupt level, flags ---
+
+/** One live OBJECTIVE as this viewer sees it. */
+export interface ObjectiveView {
+  id: string;
+  title: string;
+  /** "" when none. Literal text (no `{…}` interpolation in v1). */
+  brief: string;
+  checklist: ObjectiveCheck[];
+  /** What this viewer may press, in written order, plus "pass" / "scan".
+   *  For a **guest**: the objective's `who: guest` ids that are also in
+   *  that guest's `GuestView.interactions` (already live-filtered and
+   *  restriction-filtered with subject = the guest), so an objective never
+   *  offers a button `/api/guest/act` would refuse. For a **booth**: the
+   *  `who: performer` ids, another character's `by:` button dropped unless
+   *  the booth is host or admin; not filtered by `while:` (the card asks
+   *  `/api/prime/card`). */
+  buttons: string[];
+  /** `act:` as written, else null. Display only. */
+  act: string | null;
+  loud?: true;
+}
+
+export interface ObjectiveCheck {
+  label: string;
+  /** null = a to-do with no condition; else whether `done when` holds now (same bindings as `while:`). */
+  done: boolean | null;
+}
+
+/** Where the night is, for every phone. */
+export interface NightView {
+  /** The cue sheet's focus act (`cueActs(cueRows(adminCues, cueState(sim)))`, `focusActIndex`): its code + title. Null when no admin cue declares `act:` or there is no focus act. */
+  act: { code: string | null; title: string | null } | null;
+  /** The world `Night.phase` (quotes stripped), else null. A convention, like `cue-sheet.ts nightPhase`. */
+  phase: string | null;
+  /** The world `Night.step` as a number, else null. */
+  step: number | null;
+}
+
+/** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */
+export interface GuestFlag {
+  /** The item's label (`Marked`). */
+  label: string;
+  /** The item's path as resolved (`Program.marked`). */
+  path: string;
+  /** The guest's value, display string (`true`, `3`, `"Tent"` unquoted). */
+  value: string;
+  /** Whether the value is truthy. A **boolean** item (the slot is declared
+   *  `bool`, or the value is `true` / `false`) is always listed, false
+   *  included, so a card can say "Not cleared"; a non-boolean item is
+   *  listed only when truthy (falsy = 0, "", null, "none"). */
+  on: boolean;
+}
+
+/** What one booth may do to one guest right now (`POST /api/prime/card`). */
+export interface GuestCardView {
+  guest: PrimeGuest;
+  /** INTERACTION ids (`who: performer`) this booth may press on this guest
+   *  now: `by:` admits this character (or the booth is host / admin) AND
+   *  `while:` holds with subject = the guest, self = the character. Model order. */
+  live: string[];
+  /** The subset of `live` whose `while:` reads the subject (a path whose
+   *  head is the ROLE id or one of its aliases — `program.marked`), i.e.
+   *  buttons that are live *because of this guest*. Computed once per model
+   *  from the parsed `while:` (cached), model order. */
+  guestScoped: string[];
+  /** This character's readouts about this guest (`readout && about === guest`, in `dm:<Character>`), oldest first, at most the last 5. */
+  readouts: Array<{ seq: number; text: string; ts: number }>;
+}
+
+/** The reserved objective buttons (never an INTERACTION id). */
+const OBJECTIVE_RESERVED_BUTTONS: ReadonlySet<string> = new Set(["pass", "scan"]);
+
+/** The groups a guest shows (`GuestView.groups`): public ones, and a hidden
+ *  one only once the story revealed it. */
+function shownGroupsOf(sim: Sim, id: string): string[] {
+  return sim.groupsOf(id).filter((g) => {
+    const def = sim.model.factions.get(g);
+    return def === undefined || !def.hidden || sim.factionRevealed(g);
+  });
+}
+
+/** The ids a guest may press right now — `GuestView.interactions`' rule. */
+function guestInteractionIds(sim: Sim, id: string): Set<string> {
+  const restricted = sim.isRestricted(id);
+  return new Set(
+    interactionsFor(sim, ["guest"], { subject: id, self: id })
+      .filter((i) => i.live !== false && (!restricted || sim.model.interactions.get(i.id)?.allowRestricted === true))
+      .map((i) => i.id),
+  );
+}
+
+/**
+ * The live OBJECTIVEs for one viewer, model order (the first is NOW, §3.1).
+ * Who sees it is decided before any `while:` is evaluated (the audience
+ * pre-filter); `while:` and every `done when` run with the viewer bound
+ * (a guest: subject = self = the guest; a booth: self = the character, no
+ * subject). Display only: never journaled, never sent to an agent.
+ */
+export function objectivesFor(sim: Sim, viewer: { guest: string } | { character: string; host?: boolean }): ObjectiveView[] {
+  return objectivesWith(sim, viewer);
+}
+
+function objectivesWith(sim: Sim, viewer: { guest: string } | { character: string; host?: boolean }, guestIds?: ReadonlySet<string>): ObjectiveView[] {
+  const m = sim.model;
+  if (m.objectives.size === 0) return [];
+  const out: ObjectiveView[] = [];
+  if ("guest" in viewer) {
+    const id = viewer.guest;
+    const person = sim.persons.get(id);
+    if (person === undefined) return [];
+    const role = foldName(person.role);
+    const groups = new Set(shownGroupsOf(sim, id).map(foldName));
+    let live: ReadonlySet<string> | undefined = guestIds;
+    for (const o of m.objectives.values()) {
+      const a = o.audience;
+      const sees = a.guests || a.roles.some((r) => foldName(r) === role) || a.groups.some((g) => groups.has(foldName(g)));
+      if (!sees) continue;
+      if (o.while !== null && !sim.holds(o.while, id, id)) continue;
+      live ??= guestInteractionIds(sim, id);
+      const buttons = o.buttons.filter((b) => OBJECTIVE_RESERVED_BUTTONS.has(b) || (m.interactions.get(b)?.who === "guest" && live!.has(b)));
+      out.push(objectiveView(sim, o, buttons, id, id));
+    }
+    return out;
+  }
+  const me = viewer.character;
+  const def = m.characters.get(me);
+  const faction = def?.faction != null ? foldName(def.faction) : null;
+  for (const o of m.objectives.values()) {
+    const a = o.audience;
+    const sees = a.performers || a.characters.includes(me) || (faction !== null && a.groups.some((g) => foldName(g) === faction));
+    if (!sees) continue;
+    if (o.while !== null && !sim.holds(o.while, null, me)) continue;
+    const buttons = o.buttons.filter((b) => {
+      if (OBJECTIVE_RESERVED_BUTTONS.has(b)) return true;
+      const i = m.interactions.get(b);
+      return i !== undefined && i.who === "performer" && (viewer.host === true || byRefusal(sim, i, me) === null);
+    });
+    out.push(objectiveView(sim, o, buttons, null, me));
+  }
+  return out;
+}
+
+function objectiveView(sim: Sim, o: ObjectiveDef, buttons: string[], subject: string | null, self: string): ObjectiveView {
+  return {
+    id: o.id,
+    title: o.title,
+    brief: o.brief,
+    checklist: o.checklist.map((c) => ({ label: c.label, done: c.done === null ? null : sim.holds(c.done, subject, self) })),
+    buttons,
+    act: o.act,
+    ...(o.loud ? { loud: true as const } : {}),
+  };
+}
+
+/** A per-snapshot-round memo on `sim.log`: the log's length and the story
+ *  clock's whole second (every view built in one fanout shares it). */
+interface RoundMemo<T> {
+  len: number;
+  sec: number;
+  model: Sim["model"];
+  value: T;
+}
+function roundKey(sim: Sim): { len: number; sec: number } {
+  return { len: sim.log.len(), sec: Math.floor(sim.elapsed() / 1000) };
+}
+function memoRound<T>(memo: WeakMap<object, RoundMemo<T>>, sim: Sim, build: () => T): T {
+  const k = roundKey(sim);
+  const hit = memo.get(sim.log);
+  if (hit !== undefined && hit.len === k.len && hit.sec === k.sec && hit.model === sim.model) return hit.value;
+  const value = build();
+  memo.set(sim.log, { ...k, model: sim.model, value });
+  return value;
+}
+
+const nightMemo = new WeakMap<object, RoundMemo<NightView>>();
+
+/** A world value as a display string with its quotes stripped, or null. */
+function worldText(sim: Sim, path: string): string | null {
+  const v = sim.world.get(path);
+  if (v === undefined || v.kind === "null") return null;
+  const t = display(v).replace(/^"(.*)"$/su, "$1").trim();
+  return t === "" || t === "null" ? null : t;
+}
+
+/** Where the night is (`NightView`), the same for every viewer — memoised
+ *  per snapshot round (72 admin cues' `while:` in the show). */
+export function nightView(sim: Sim): NightView {
+  return memoRound(nightMemo, sim, () => {
+    let act: NightView["act"] = null;
+    const admin = [...sim.model.interactions.values()].filter((i) => i.who === "admin");
+    if (admin.some((i) => i.act !== null)) {
+      const acts = cueActs(cueRows(interactionsFor(sim, ["admin"]), cueState(sim)));
+      const focus = focusActIndex(acts);
+      if (focus >= 0) act = { code: acts[focus]!.code, title: acts[focus]!.title };
+    }
+    const step = worldText(sim, "Night.step");
+    const n = step === null ? NaN : Number(step);
+    return { act, phase: worldText(sim, "Night.phase"), step: Number.isFinite(n) ? n : null };
+  });
+}
+
+/** The interrupt level now: the story's `alerts:` path read off the world. */
+export function alertLevelNow(sim: Sim): AlertLevel {
+  const v = sim.world.get(sim.model.alerts);
+  return alertLevelOf(v === undefined ? null : display(v));
+}
+
+/** Is a display value truthy for a flag (falsy = 0, "", null, "none", false)? */
+function flagOn(v: Value | undefined): boolean {
+  if (v === undefined) return false;
+  switch (v.kind) {
+    case "null":
+      return false;
+    case "bool":
+      return v.value;
+    case "number":
+      return v.value !== 0;
+    default: {
+      const t = display(v).replace(/^"(.*)"$/su, "$1").trim().toLowerCase();
+      return t !== "" && t !== "null" && t !== "none" && t !== "false" && t !== "0";
+    }
+  }
+}
+
+const flagsMemo = new WeakMap<object, RoundMemo<Map<string, GuestFlag[]>>>();
+
+/** Every guest's ROLE-scoped `watch:` flags this round (`guestFlags`). */
+function allGuestFlags(sim: Sim): Map<string, GuestFlag[]> {
+  return memoRound(flagsMemo, sim, () => {
+    const out = new Map<string, GuestFlag[]>();
+    const lines = resolvedBoard(sim.model).watch.filter((l) => l.items.some((i) => i.scope === "role"));
+    if (lines.length === 0) return out;
+    const live = lines.filter((l) => boardLineLive(sim, l.while));
+    const items = live.flatMap((l) => l.items.filter((i) => i.scope === "role" && i.path !== null));
+    if (items.length === 0) return out;
+    for (const p of sim.persons.values()) {
+      const role = sim.model.roles.get(p.role);
+      const flags: GuestFlag[] = [];
+      for (const i of items) {
+        const path = i.path!;
+        const dot = path.indexOf(".");
+        const head = path.slice(0, dot);
+        const rest = path.slice(dot + 1);
+        if (foldName(head) !== foldName(p.role)) continue;
+        const slot = rest.split(".")[0]!;
+        if (role !== undefined && [...role.secret].some((sec) => rest === sec || rest.startsWith(`${sec}.`) || slot === sec)) continue;
+        const v = sim.world.get(`${p.id}.${rest}`);
+        const shown = v === undefined || v.kind === "null" ? "null" : display(v).replace(/^"(.*)"$/su, "$1");
+        const on = flagOn(v);
+        const boolean = role?.bools?.has(slot) === true || (v !== undefined && v.kind === "bool") || shown === "true" || shown === "false";
+        if (!boolean && !on) continue;
+        flags.push({ label: i.label, path, value: shown, on });
+      }
+      if (flags.length > 0) out.set(p.id, flags);
+    }
+    return out;
+  });
+}
+
+/** A guest's ROLE-scoped `watch:` items (`GuestFlag`), on lines whose
+ *  `while` holds, a ROLE `secret:` slot never — memoised per round. */
+export function guestFlags(sim: Sim, guestId: string): GuestFlag[] {
+  return allGuestFlags(sim).get(guestId) ?? [];
+}
+
+const guestScopedCache = new WeakMap<object, Set<string>>();
+
+/** The performer INTERACTIONs whose `while:` reads the subject (a path
+ *  headed by a subject name: `guest`, `person`, `subject`, a ROLE id or its
+ *  alias), per model. Quoted strings are skipped. */
+function guestScopedIds(model: Sim["model"]): Set<string> {
+  let out = guestScopedCache.get(model);
+  if (out !== undefined) return out;
+  out = new Set<string>();
+  const heads = new Set(["guest", "person", "subject", ...[...model.roles.keys()].flatMap((r) => [foldName(r), r.toLowerCase().replace(/\s+/gu, "_")])]);
+  for (const i of model.interactions.values()) {
+    if (i.who !== "performer" || i.while === null) continue;
+    const bare = i.while.replace(/"(?:[^"\\]|\\.)*"/gu, '""');
+    for (const m of bare.matchAll(/(?<![\w.])([A-Za-z_][A-Za-z0-9_]*)\./gu)) {
+      if (heads.has(m[1]!.toLowerCase()) || heads.has(foldName(m[1]!))) {
+        out.add(i.id);
+        break;
+      }
+    }
+  }
+  guestScopedCache.set(model, out);
+  return out;
+}
+
+/** What `character`'s booth may do to one guest right now — the scan card.
+ *  Null for an unknown guest. */
+export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character: string, guestId: string, host: boolean): GuestCardView | null {
+  const p = sim.persons.get(guestId);
+  if (p === undefined) return null;
+  const scoped = guestScopedIds(sim.model);
+  const live: string[] = [];
+  for (const i of sim.model.interactions.values()) {
+    if (i.who !== "performer") continue;
+    if (!host && byRefusal(sim, i, character) !== null) continue;
+    if (i.while !== null && !sim.holds(i.while, guestId, character)) continue;
+    live.push(i.id);
+  }
+  const dm = `dm:${character}`;
+  const readouts: GuestCardView["readouts"] = [];
+  for (const m of chat) if (m.readout === true && m.about === guestId && m.channel === dm && !m.hidden) readouts.push({ seq: m.seq, text: m.text, ts: m.ts });
+  return {
+    guest: primeGuest(sim, p.id, p.name),
+    live,
+    guestScoped: live.filter((id) => scoped.has(id)),
+    readouts: readouts.slice(-5),
+  };
+}
+
+/** The authored channel ids of the story's staff rooms (`staffRoomIds`), model order. */
+export function staffRoomChannels(model: Sim["model"]): string[] {
+  const staff = staffRoomIds(model);
+  return [...model.channels.keys()].filter((id) => staff.has(roomFold(id)));
+}
+
+/** Characters whose `dm:` thread somebody reads (`GuestView.voiced`): the
+ *  performer parts and the agent-voiced characters, model order. */
+function voicedOf(model: Sim["model"]): string[] {
+  const parts = partsOf(model);
+  return [...model.characters.values()].filter((c) => parts.has(c.id) || c.mind === "external").map((c) => c.id);
+}
+
+/** One booth row for a guest (`PrimeGuest`), flags included when any. */
+function primeGuest(sim: Sim, id: string, name: string): PrimeGuest {
+  const flags = guestFlags(sim, id);
+  return {
+    id,
+    name,
+    faction: sim.publicFactionOf(id),
+    captured: sim.isCaptured(id),
+    restricted: sim.isRestricted(id),
+    location: sim.locationOf(id),
+    ...(flags.length > 0 ? { flags } : {}),
+  };
+}
+
 export interface PrimeGuest {
   id: string;
   name: string;
@@ -1168,6 +1538,8 @@ export interface PrimeGuest {
   restricted: boolean;
   /** Where the story has them standing — the booth's "who's here" view. */
   location: string | null;
+  /** ROLE-scoped `watch:` items for this guest (`GuestFlag` rule, secret slots dropped), on lines whose `while` holds. Absent when none. */
+  flags?: GuestFlag[];
 }
 
 /** What an actor playing a character sees: their part + scannable guests. */
@@ -1184,7 +1556,8 @@ export interface PrimeView {
   /** Every authored channel — performers run every room. */
   channels: ChannelSnapshot[];
   spaces: SpaceSnapshot[];
-  /** `INTERACTION`s a performer (and, with `who: admin`, a moderator) may fire on a guest. */
+  /** `who: performer` INTERACTIONs only — never `who: admin`, for any booth
+   *  (wave 13: the cue sheet is the host view's). */
   interactions: InteractionSummary[];
   /** True when the story uses the v3 prison mechanic (a `prison: true` location),
    *  so the booth still offers capture / release. */
@@ -1206,6 +1579,19 @@ export interface PrimeView {
   agents: AgentContact[];
   /** Profile pictures by (folded) display name → serving key. */
   avatars?: Record<string, string>;
+  /** Live OBJECTIVEs for this character (its name, its GROUP, `performers`, `everyone`), model order. Always filled. */
+  objectives?: ObjectiveView[];
+  /** Where the night is. Always filled. */
+  night?: NightView;
+  /** The interrupt level now. Always filled. */
+  alertLevel?: AlertLevel;
+  /** Every live countdown (`liveCountdowns(sim)`, secret heads dropped) — booths are staff. Absent when none. */
+  countdowns?: CountdownSummary[];
+  /** Staff-room **channel ids** as authored (`staffRoomChannels(model)`, e.g.
+   *  `room:hosts`) — what a client matches `m.channel` against. (The
+   *  existing `staffRoomIds` returns *folded names*, `"hosts"`, for scope
+   *  matching; it stays as is.) Always filled ([] when none). */
+  staffRooms?: string[];
 }
 
 export interface AgentContact {
@@ -1221,19 +1607,34 @@ export function agentContacts(sim: Sim, self: string | null, online?: ReadonlySe
     .map((c) => ({ id: c.id, online: online?.has(c.id) ?? false }));
 }
 
-export function primeView(sim: Sim | null, character: string, agentsOnline?: ReadonlySet<string>): PrimeView {
+/** `opts.host`: the booth holds the host (or moderator) capability — it
+ *  keeps another character's `by:` buttons on its objectives. */
+export function primeView(sim: Sim | null, character: string, agentsOnline?: ReadonlySet<string>, opts?: { host?: boolean }): PrimeView {
   if (sim === null) {
-    return { character, title: "Loom", theme: "plain", faction: null, guests: [], channels: [], spaces: [], interactions: [], legacyCapture: false, codex: [], codexTotal: 0, quests: [], questTotal: 0, agents: [] };
+    return {
+      character,
+      title: "Loom",
+      theme: "plain",
+      faction: null,
+      guests: [],
+      channels: [],
+      spaces: [],
+      interactions: [],
+      legacyCapture: false,
+      codex: [],
+      codexTotal: 0,
+      quests: [],
+      questTotal: 0,
+      agents: [],
+      objectives: [],
+      night: { act: null, phase: null, step: null },
+      alertLevel: "sticky",
+      staffRooms: [],
+    };
   }
   const c = sim.model.characters.get(character);
-  const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => ({
-    id: p.id,
-    name: p.name,
-    faction: sim.publicFactionOf(p.id),
-    captured: sim.isCaptured(p.id),
-    restricted: sim.isRestricted(p.id),
-    location: sim.locationOf(p.id),
-  }));
+  const guests: PrimeGuest[] = [...sim.persons.values()].map((p) => primeGuest(sim, p.id, p.name));
+  const countdowns = liveCountdowns(sim);
   return {
     character,
     title: sim.lobbyTitle(),
@@ -1243,12 +1644,17 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     guests,
     channels: sim.allChannelsFor(character),
     spaces: sim.spaceList(),
-    interactions: interactionsFor(sim, ["performer", "admin"], { subject: null, self: character }),
+    interactions: interactionsFor(sim, ["performer"], { subject: null, self: character }),
     legacyCapture: [...sim.model.locations.values()].some((l) => l.prison),
-    codex: sim.codexFor(character).map(codexEntry),
+    codex: sim.codexFor(character).map((e) => codexEntry(e, sim.model)),
     codexTotal: sim.model.codex.size,
     quests: sim.questsFor(character).map(({ def, status }) => ({ id: def.id, title: def.title, giver: def.giver, status })),
     questTotal: sim.model.quests.size,
     agents: agentContacts(sim, character, agentsOnline),
+    objectives: objectivesFor(sim, { character, host: opts?.host === true }),
+    night: nightView(sim),
+    alertLevel: alertLevelNow(sim),
+    ...(countdowns.length > 0 ? { countdowns } : {}),
+    staffRooms: staffRoomChannels(sim.model),
   };
 }
