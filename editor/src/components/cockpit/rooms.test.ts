@@ -3,8 +3,8 @@
 // lens projection in hand, the EXACT room set the play app would render.
 
 import { describe, expect, it } from 'vitest'
-import type { GuestView, PrimeView } from '@loom/core/views'
-import { buildRooms, SIDE_SUFFIX, lensKindOf, LensKind, messageInLens, READ_ONLY_ROOMS, roomKeyOf, roomMessages, type RoomsInput } from './rooms'
+import type { GuestView, InteractionSummary, PrimeView } from '@loom/core/views'
+import { buildRooms, SIDE_SUFFIX, isInboxOf, isReadoutAbout, lensKindOf, LensKind, messageInLens, performerActions, READ_ONLY_ROOMS, readoutsOf, roomKeyOf, roomMessages, type RoomsInput } from './rooms'
 import type { CockpitMessage, RosterRow } from '@/store/cockpit'
 
 const g1: RosterRow = { id: 'g1', name: 'Ada', role: 'Guest', faction: 'Mods', trueFaction: 'Mods', location: 'Party', captured: false, score: 0 }
@@ -342,5 +342,75 @@ describe('a GROUP room beside a CHANNEL of the same name (T7-08)', () => {
     expect(title('faction:Antivirus')).toBe('#antivirus')
     const titles = rooms.map((r) => r.title)
     expect(new Set(titles).size).toBe(titles.length)
+  })
+})
+
+describe('wave 13: a booth without admin cues, and readouts in the Inbox', () => {
+  const base: PrimeView = {
+    character: 'Norton',
+    title: 'The Internet',
+    theme: 'plain',
+    faction: null,
+    guests: [{ id: 'g1', name: 'Ada', faction: 'Mods', captured: false, restricted: false, location: null }],
+    channels: [],
+    spaces: [],
+    interactions: [],
+    legacyCapture: false,
+    codex: [],
+    codexTotal: 0,
+    quests: [],
+    questTotal: 0,
+    agents: [],
+  }
+  const ia = (id: string, who: InteractionSummary['who'], extra: Partial<InteractionSummary> = {}): InteractionSummary => ({ id, label: id, who, description: null, ...extra })
+  const ALL = [
+    ia('clear', 'performer'),
+    ia('patch', 'performer', { only: true, actors: ['McAfee'] }),
+    ia('mine', 'performer', { only: true, actors: ['Norton'] }),
+    ia('power_on', 'admin'),
+    ia('wave', 'guest'),
+    ia('trabolta_power', 'agent'),
+  ]
+
+  it("a resolved lens offers the booth's own PrimeView buttons, never an admin cue", () => {
+    const view: PrimeView = { ...base, interactions: [ia('clear', 'performer'), ia('mine', 'performer', { only: true, actors: ['Norton'] })] }
+    const lens = { kind: 'performer' as const, id: 'Norton', view }
+    expect(performerActions(lens, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
+  })
+
+  it("before the lens resolves: the mod snapshot's performer buttons this character may press", () => {
+    expect(performerActions(null, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
+    // A lens for someone else is not this booth's.
+    const other = { kind: 'performer' as const, id: 'McAfee', view: { ...base, character: 'McAfee', interactions: [ia('patch', 'performer')] } }
+    expect(performerActions(other, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
+  })
+
+  const readout = (seq: number, about: string, text = 'Cleared.') =>
+    msg({ seq, channel: 'dm:Norton', channelKind: 'dm', audience: ['@Norton'], kind: 'narration', readout: true, about, text })
+
+  it('a readout about a guest shows in that guest thread of the booth that got it', () => {
+    const messages = [
+      msg({ seq: 40, channel: 'lobby', audience: ['g1'], text: 'to Ada' }),
+      readout(41, 'g1'),
+      readout(42, 'g2'),
+      msg({ seq: 43, channel: 'dm:McAfee', channelKind: 'dm', audience: ['@McAfee'], readout: true, about: 'g1' }),
+    ]
+    const rooms = buildRooms({ ...INPUT, cast: [{ id: 'Norton', faction: null }], messages, perspective: 'Norton', lens: { kind: 'performer', id: 'Norton', view: base } })
+    const thread = rooms.find((r) => r.key === 'guest:g1')
+    expect(roomMessages(thread, 'guest:g1', messages, 'Norton', LensKind.Performer).map((m) => m.seq)).toEqual([40, 41])
+    const inbox = rooms.find((r) => r.key === 'dm:Norton#@Norton')
+    expect(roomMessages(inbox, inbox!.key, messages, 'Norton', LensKind.Performer).map((m) => m.seq)).toEqual([41, 42])
+    expect(isReadoutAbout(messages[1]!, 'Norton', 'g1')).toBe(true)
+    expect(isReadoutAbout(messages[1]!, 'Norton', 'g2')).toBe(false)
+    expect(readoutsOf(messages, 'Norton').map((m) => m.seq)).toEqual([41, 42])
+  })
+
+  it("under the Operator a character's own dm addressed to it is its Inbox, read-only", () => {
+    const messages = [readout(50, 'g1')]
+    const room = buildRooms({ ...INPUT, cast: [{ id: 'Norton', faction: null }], messages }).find((r) => r.key === 'dm:Norton#@Norton')
+    expect(room).toMatchObject({ kind: 'inbox', title: 'Norton · Inbox', dmGuest: '@Norton', character: null })
+    expect(READ_ONLY_ROOMS.has(room!.kind)).toBe(true)
+    expect(isInboxOf('dm:Norton', '@Norton')).toBe(true)
+    expect(isInboxOf('dm:Norton', 'g1')).toBe(false)
   })
 })

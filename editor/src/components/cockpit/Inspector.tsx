@@ -34,6 +34,7 @@ import { useDirectorMode } from './director/director-mode'
 import { DirectorMode } from './director/director-keys'
 import { useNow } from './director/clock'
 import { isGone, isPersonaRow, seenLine } from './guests'
+import { readoutsOf } from './rooms'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -700,15 +701,15 @@ function GuestInspector({ id }: { id: string }) {
  *  readout the booth received — the performer's own history. */
 function CharacterFeed({ id }: { id: string }) {
   const messages = useCockpit((s) => s.messages)
-  const log = useCockpit((s) => s.log)
+  const roster = useCockpit((s) => s.roster)
+  // Wave 13: a readout is a message in the character's own Inbox
+  // (`dm:<C>`, `readout`, `about` the guest) — listed below, not twice.
   const rows = useMemo(
-    () => messages.filter((m) => m.from === id || m.channel === `dm:${id}`).slice(-FEED_LIMIT),
+    () => messages.filter((m) => m.readout !== true && (m.from === id || m.channel === `dm:${id}`)).slice(-FEED_LIMIT),
     [messages, id],
   )
-  const readouts = useMemo(
-    () => log.filter((e) => e.event.type === 'respond' && e.event.to === id).slice(-20),
-    [log, id],
-  )
+  const readouts = useMemo(() => readoutsOf(messages, id).slice(-20), [messages, id])
+  const nameOf = (gid: string) => roster.find((r) => r.id === gid)?.name ?? gid
   return (
     <div>
       <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Their feed · last {Math.min(rows.length, FEED_LIMIT)}</div>
@@ -717,9 +718,10 @@ function CharacterFeed({ id }: { id: string }) {
         <>
           <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Scan readouts</div>
           <ul className="mx-3 mb-1 flex flex-col gap-0.5 rounded border border-emerald-900/50 p-1 text-xs">
-            {readouts.map((e) => (
-              <li key={e.seq} className="italic text-emerald-100/90">
-                {e.event.type === 'respond' ? e.event.text : ''}
+            {readouts.map((m) => (
+              <li key={m.seq} className="italic text-emerald-100/90" data-testid="inspector-readout">
+                {m.about !== undefined && <span className="not-italic text-[10px] text-zinc-500">{nameOf(m.about)} · </span>}
+                {m.text}
               </li>
             ))}
           </ul>

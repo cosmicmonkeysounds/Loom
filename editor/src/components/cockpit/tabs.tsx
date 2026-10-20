@@ -24,7 +24,7 @@ import { openContextMenu, type ContextMenuEntry } from '@/store/context-menu'
 import { confirmAction } from '@/store/dialog'
 import { FactionPill } from './ui'
 import { publicFaction } from './format'
-import { LensKind, lensKindOf, READ_ONLY_ROOMS, roomMessages, useRooms } from './rooms'
+import { LensKind, lensKindOf, performerActions as boothActions, READ_ONLY_ROOMS, roomMessages, useRooms } from './rooms'
 import { walletCardTag } from './wallet'
 import { useInspect } from './inspect'
 import { groupWorld, type WorldGroup } from './world'
@@ -100,6 +100,19 @@ function MessageRow({
     </button>
   )
   const threadIndent = m.parentSeq != null && 'ml-5 border-l border-zinc-800 pl-2'
+
+  if (m.readout === true) {
+    // A booth readout — the story's reply to a scan or a press (wave 13: it
+    // lands in the character's Inbox, and in the guest thread it was about).
+    return (
+      <li onContextMenu={onMenu} className={clsx('group flex items-start gap-2 rounded bg-emerald-950/30 px-3 py-1.5', m.hidden && 'opacity-40', threadIndent)} data-testid="chat-readout">
+        <span className="shrink-0 pt-px text-[10px] uppercase tracking-widest text-emerald-400/80">readout</span>
+        <span className="min-w-0 flex-1 break-words text-sm italic text-emerald-100">{m.text}</span>
+        {m.beat ? <BeatLink beat={m.beat} /> : null}
+        {hideBtn}
+      </li>
+    )
+  }
 
   if (m.kind === 'widget') {
     // A `show …` card (a CAPTCHA, a picture, a poll). The cockpit shows what
@@ -242,6 +255,7 @@ export function ChatTab() {
   const choices = useCockpit((s) => s.choices)
   const personas = useCockpit((s) => s.personas)
   const interactions = useCockpit((s) => s.interactions)
+  const lensView = useCockpit((s) => s.lens)
   const active = useCockpit((s) => s.activeChannel)
   const perspective = useCockpit((s) => s.perspective)
   const hideMessage = useCockpit((s) => s.hideMessage)
@@ -258,16 +272,13 @@ export function ChatTab() {
   /** The message a composed reply threads under (root of its thread). */
   const [replyTo, setReplyTo] = useState<CockpitMessage | null>(null)
   const [replyRoom, setReplyRoom] = useState(active)
-  /** A performer's scan readouts in the open guest thread. */
-  const [readouts, setReadouts] = useState<string[]>([])
   /** The identity the "post as" pick was made under — a new identity drops it. */
   const [asFor, setAsFor] = useState(perspective)
-  // A reply (and a scan readout) targets THIS room — leaving the room drops
-  // it (the adjust-state-during-render pattern, not an effect).
+  // A reply targets THIS room — leaving the room drops it (the
+  // adjust-state-during-render pattern, not an effect).
   if (active !== replyRoom) {
     setReplyRoom(active)
     setReplyTo(null)
-    setReadouts([])
   }
   // A "post as" pick never outlives the identity it was made under: being
   // someone else must not send as the previous pick (a real guest, say).
@@ -412,13 +423,14 @@ export function ChatTab() {
   // The story's own buttons: a guest's `who: guest` interactions; a
   // performer's interactions on the guest whose thread is open.
   const guestActions = lens === LensKind.Guest ? interactions.filter((i) => i.who === 'guest') : []
-  const performerActions = lens === LensKind.Performer && isGuestThread ? interactions.filter((i) => i.who !== 'guest' && i.who !== 'agent') : []
+  const performerActions = lens === LensKind.Performer && isGuestThread ? boothActions(lensView, perspective, interactions) : []
   const threadGuest = isGuestThread ? activeRoom?.dmGuest ?? null : null
 
   const scan = async () => {
     if (threadGuest === null) return
-    const out = await scanAs(perspective, threadGuest)
-    setReadouts((r) => [...out, ...r])
+    // The story's reply lands in the feed (the character's Inbox, `about`
+    // this guest), so the thread shows it with no local copy.
+    await scanAs(perspective, threadGuest)
   }
 
   return (
@@ -449,12 +461,6 @@ export function ChatTab() {
               />
             )
           })}
-          {readouts.map((r, i) => (
-            <li key={`readout-${i}`} className="flex items-start gap-2 rounded bg-emerald-950/30 px-3 py-1.5" data-testid="chat-readout">
-              <span className="shrink-0 pt-px text-[10px] uppercase tracking-widest text-emerald-400/80">readout</span>
-              <span className="min-w-0 flex-1 break-words text-sm italic text-emerald-100">{r}</span>
-            </li>
-          ))}
         </ul>
       </div>
       {decisions.map((person) =>
