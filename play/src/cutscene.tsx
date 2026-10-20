@@ -7,9 +7,9 @@
 //! When the story moves them on, the stage does not vanish mid-line: a
 //! Continue button appears and the guest steps into the app themselves.
 
-import type { ReactNode } from "react";
-import { AlertBanner, DecisionTray, MessageList, type WidgetHook } from "./chat.tsx";
-import type { Alert } from "./alerts.ts";
+import type { WidgetHook } from "./stream/bubble.tsx";
+import { DecisionTray } from "./stream/channel-view.tsx";
+import { MessageList } from "./stream/list.tsx";
 import type { ChatMessage, Decision } from "./types.ts";
 
 export function CutsceneStage({
@@ -21,8 +21,6 @@ export function CutsceneStage({
   over,
   onContinue,
   onPass,
-  alert,
-  onDismissAlert,
   offline = false,
 }: {
   /** What has been said to this guest, oldest first (`personalStream`). */
@@ -40,16 +38,13 @@ export function CutsceneStage({
   /** Open the guest's pass (the QR) — the one thing a performer may need
    *  from them while the app is on rails. */
   onPass: () => void;
-  alert: Alert | null;
-  onDismissAlert: () => void;
   /** The stream has been down a while (`useOfflineFor`): say so, since the
    *  stage has no header dot. */
   offline?: boolean;
 }) {
-  const banner: ReactNode = alert ? <AlertBanner text={alert.text} onDismiss={onDismissAlert} /> : null;
+  // The alert banner sits above the stage (the app's moments layer, wave 13).
   return (
     <div className="cutscene" role="region" aria-label={where ?? "Story"}>
-      {banner}
       <header className="cut-head">
         <span className="cut-where">{where ?? ""}</span>
         <span className="cut-title">{title ?? ""}</span>

@@ -17,7 +17,7 @@
 //! camera is `scanner.tsx`'s, the booth's.
 
 import { useRef, useState } from "react";
-import { Sheet } from "./chat.tsx";
+import { Sheet } from "./ui/primitives.tsx";
 import { checkinFromSearch } from "./checkin.ts";
 import { unlockFromSearch } from "./codex.ts";
 import type { CameraState } from "./scan.ts";

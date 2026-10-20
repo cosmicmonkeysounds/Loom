@@ -7,12 +7,12 @@
 //! event with its doors open). Nothing story-specific is baked into the client.
 
 import { useEffect, useState } from "react";
-import { GuestApp } from "./guest.tsx";
+import { GuestApp } from "./guest/app.tsx";
 import { HelpSheet } from "./help.tsx";
-import { PerformerApp } from "./performer.tsx";
+import { PerformerApp } from "./booth/app.tsx";
 import { DirectorApp, initialRole, roleForBrand, type AppRole } from "./director.tsx";
 import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { useDocumentTitle, useLandingBrand, useTheme } from "./session.ts";
+import { useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 
 export function App({ resume = null }: { resume?: ResumeLink | null }) {
   // `?role=director` (W-26) opens the phone cue sheet whatever else the

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PinnedRail } from "../src/chat.tsx";
-import { readFileSync } from "node:fs";
+import { readBundledCss } from "./css.ts";
 
 import { activePins, activeTakeover } from "../src/pins.ts";
 import { Takeover } from "../src/takeover.tsx";
@@ -90,7 +90,7 @@ describe("the `!!` takeover", () => {
   });
 
   it("flashes at most twice a second, never red, still under reduced motion, above the tour", () => {
-    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const css = readBundledCss();
     const rule = /\.takeover \{[^}]*\}/u.exec(css)![0];
     // One swap at 50% of a 1 s cycle = 2 changes a second.
     expect(rule).toMatch(/animation: takeover-invert 1s steps\(1, end\) infinite/u);

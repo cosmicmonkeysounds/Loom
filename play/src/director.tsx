@@ -45,11 +45,11 @@ import { disarmOnLeave } from "./arm.ts";
 import { claimFromSearch } from "./claim.ts";
 import { landingLink } from "./guest-scan.tsx";
 import { ApiError, api } from "./client.ts";
-import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./chat.tsx";
+import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./ui/primitives.tsx";
 import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
 import { eventGone } from "./lifecycle.ts";
-import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session.ts";
+import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session/shared.ts";
 
 /** Where the phone keeps its director sign-in. */
 export const DIRECTOR_KEY = "loom.director";

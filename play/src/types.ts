@@ -2,6 +2,13 @@
 //! authoritative `server/chat.ts`; the rest mirror the per-role snapshot
 //! projections in `server/views.ts`.
 
+import type { AlertLevel, MomentClass } from "../../core/src/delivery.ts";
+
+// Wave 13: the interrupt ladder and the host view are dependency-free core
+// modules, re-exported so every app reads one definition.
+export type { AlertLevel, MomentClass } from "../../core/src/delivery.ts";
+export type { HostView, HostNeed, HostPerson, HostJudging, NeedTarget } from "../../core/src/host-board.ts";
+
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
 
 export type ChannelKind = "lobby" | "faction" | "dm" | "group" | "open" | "private" | "location" | "codex" | "quests" | "wallet";
@@ -16,6 +23,10 @@ export interface CodexCard {
   via: "code" | "story" | "share";
   /** Who shared it, for `via: "share"`. */
   from: string | null;
+  /** The entry's `category:` (wave 13); absent when it has none. */
+  category?: string;
+  /** What `about` names (wave 13); absent when `about` is null. */
+  aboutKind?: "character" | "location" | "topic";
 }
 
 export type QuestAction = "start" | "update" | "complete" | "fail";
@@ -76,6 +87,20 @@ export interface ChatMessage {
   /** The director who posted this *as* a participant (admins only; the
    *  server strips it for guests). */
   via?: string;
+  /** A scripted line's dialogue manner (`(glitch)`), parens stripped (wave 13). */
+  manner?: string;
+  /** Effect text (an effect manner, or a `crawl: fx` speaker): the fx crawl. Only on `line` / `narration`. */
+  fx?: true;
+  /** A GENERATOR bark: the dim ticker, never a stream row, never badged. */
+  ambient?: true;
+  /** A per-person notice (`broadcast "~…"`): its collapse key (`noticeKey`). */
+  notice?: string;
+  /** A `reply` readout (the `respond` event). */
+  readout?: true;
+  /** A booth readout's subject guest id, when one was bound. */
+  about?: string;
+  /** The server's moment class; absent = not a moment. */
+  moment?: MomentClass;
 }
 
 // --- per-role snapshots (mirror of server/views.ts) -------------------------
@@ -126,6 +151,10 @@ export interface CodexEntry {
   text: string;
   /** `secret: true` — an agent-voiced character never takes it. */
   secret?: boolean;
+  /** The entry's `category:` (wave 13); absent when it has none. */
+  category?: string;
+  /** What `about` names (wave 13); absent when `about` is null. */
+  aboutKind?: "character" | "location" | "topic";
 }
 
 /** A row of the participants directory (mirror of server views.ts `PersonCard`). */
@@ -200,6 +229,14 @@ export interface GuestView {
   /** The story clock is stopped (the event is paused): the countdowns hold
    *  still. Absent = it runs (an older server never says). */
   paused?: true;
+  /** Live OBJECTIVEs for this guest, model order (NOW = the first). Wave 13; absent from an older server. */
+  objectives?: ObjectiveView[];
+  /** Where the night is (wave 13). */
+  night?: NightView;
+  /** The interrupt ladder's level now (wave 13). */
+  alertLevel?: AlertLevel;
+  /** Characters whose `dm:` thread somebody reads (performer parts, agent-voiced); others get no composer (wave 13). */
+  voiced?: string[];
 }
 
 /** One running countdown (mirror of server views.ts `CountdownSummary`). */
@@ -219,6 +256,8 @@ export interface PrimeGuest {
   restricted?: boolean;
   /** Where the story has them standing. */
   location: string | null;
+  /** ROLE-scoped `watch:` items for this guest (secret slots dropped), wave 13. Absent when none. */
+  flags?: GuestFlag[];
 }
 
 export interface PrimeView {
@@ -231,7 +270,8 @@ export interface PrimeView {
   guests: PrimeGuest[];
   channels: ChannelSnapshot[];
   spaces: SpaceSnapshot[];
-  /** Performer (and admin) interactions to offer on a guest thread. */
+  /** Performer interactions to offer on a guest thread. Wave 13: `who:
+   *  performer` only — never `who: admin` (the cue sheet is the host view's). */
   interactions?: Interaction[];
   /** The story uses the v3 prison mechanic — keep capture / release in the booth. */
   legacyCapture?: boolean;
@@ -251,6 +291,85 @@ export interface PrimeView {
   agents?: Array<{ id: string; online: boolean }>;
   /** Profile pictures: folded display name → serving key (`avatars.ts`). */
   avatars?: Record<string, string>;
+  /** Live OBJECTIVEs for this character (its name, its GROUP, `performers`, `everyone`), model order. Wave 13. */
+  objectives?: ObjectiveView[];
+  /** Where the night is (wave 13). */
+  night?: NightView;
+  /** The interrupt ladder's level now (wave 13). */
+  alertLevel?: AlertLevel;
+  /** Every live countdown, secret heads dropped (booths are staff). Wave 13; absent when none. */
+  countdowns?: CountdownSummary[];
+  /** Staff-room channel ids as authored (`room:hosts`), wave 13. */
+  staffRooms?: string[];
+}
+
+// --- wave 13: objectives, the night, a booth's guest card (mirror of server/views.ts)
+
+/** One live OBJECTIVE as this viewer sees it. */
+export interface ObjectiveView {
+  id: string;
+  title: string;
+  /** "" when none. Literal text. */
+  brief: string;
+  checklist: ObjectiveCheck[];
+  /** What this viewer may press, in written order, plus "pass" / "scan". */
+  buttons: string[];
+  /** `act:` as written, else null. Display only. */
+  act: string | null;
+  loud?: true;
+}
+export interface ObjectiveCheck {
+  label: string;
+  /** null = a to-do with no condition; else whether `done when` holds now. */
+  done: boolean | null;
+}
+
+/** Where the night is, for every phone. */
+export interface NightView {
+  /** The cue sheet's focus act; null when none. */
+  act: { code: string | null; title: string | null } | null;
+  /** The world `Night.phase`, else null. */
+  phase: string | null;
+  /** The world `Night.step`, else null. */
+  step: number | null;
+}
+
+/** A ROLE-scoped `watch:` item for one guest (the booth card's facts). */
+export interface GuestFlag {
+  label: string;
+  path: string;
+  /** The guest's value, as a display string. */
+  value: string;
+  /** Truthy? A boolean item is always listed (false included); a non-boolean one only when truthy. */
+  on: boolean;
+}
+
+/** What one booth may do to one guest right now (`POST /api/prime/card`). */
+export interface GuestCardView {
+  guest: PrimeGuest;
+  /** INTERACTION ids this booth may press on this guest now, model order. */
+  live: string[];
+  /** The subset of `live` whose `while:` reads the subject (live because of this guest). */
+  guestScoped: string[];
+  /** This character's readouts about this guest, oldest first, the last 5 at most. */
+  readouts: Array<{ seq: number; text: string; ts: number }>;
+}
+
+/** `/api/scan` 200 body. */
+export interface ScanResult {
+  ok: true;
+  scannedAs: string | null;
+  canModerate: boolean;
+  responses: string[];
+  guest: { id: string; name: string; captured: boolean };
+  card?: GuestCardView;
+}
+/** `/api/prime/act` 200 body. */
+export interface PrimeActResult {
+  ok: true;
+  guest: unknown;
+  replies?: string[];
+  card?: GuestCardView;
 }
 
 // --- client-side view models (composed by the chat store) -------------------
@@ -312,6 +431,10 @@ export interface Channel {
   typing?: string | null;
   /** The `data-tour` anchor this row carries (the guided tour points at it). */
   tour?: string;
+  /** An agent-voiced character's `dm:` row (wave 13; set by the stream lane). */
+  agent?: true;
+  /** A staff room (wave 13; set by the booth lane). */
+  staff?: true;
 }
 
 // --- the wallet (mirror of server/wallet.ts + the `WalletCard` in the

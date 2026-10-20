@@ -1,14 +1,12 @@
 //! The gentler first minutes: rooms are listed only once the story opens
 //! them (the snapshot decides), an agent-voiced character's chat is on
 //! the sidebar the moment they are in the directory, the cutscene shows
-//! exactly what was said to you, and the tutorial card walks the app.
+//! exactly what was said to you. (The tutorial's cases are in chrome-tour.test.ts.)
 
 import { describe, expect, it } from "vitest";
 
 import { buildGuestChannels, isListedRoom, pendingWidget, personalStream } from "../src/session.ts";
-import { tourResult, tutorialSteps } from "../src/tutorial.tsx";
 import type { ChannelSnapshot, ChatMessage, GuestView, PersonCard } from "../src/types.ts";
-import { WIDGETS } from "../src/widgets.tsx";
 
 function msg(seq: number, channel: string, audience: ChatMessage["audience"], extra: Partial<ChatMessage> = {}): ChatMessage {
   const kind: ChatMessage["channelKind"] = channel.startsWith("loc:") ? "location" : channel.startsWith("room:") ? "open" : channel.startsWith("dm:") ? "dm" : "lobby";
@@ -84,68 +82,5 @@ describe("the cutscene stream", () => {
     expect(pendingWidget(messages, "tutorial", new Set([3]))!.seq).toBe(1);
     expect(pendingWidget(messages, "tutorial", new Set([1, 3]))).toBeNull();
     expect(pendingWidget(messages, "poll", new Set())).toBeNull();
-  });
-});
-
-describe("the tutorial", () => {
-  it("is an overlay card in the registry", () => {
-    expect(WIDGETS["tutorial"]).toMatchObject({ answerable: true, overlay: true });
-    expect(WIDGETS["captcha"]?.overlay).toBeUndefined();
-  });
-
-  it("walks the app's controls, trimmed to what the story turns on", () => {
-    const full = tutorialSteps({ title: "Trapped in the Internet", hasCodex: true, hasPeople: true, hasActions: true });
-    expect(full.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "codex", "people", "pass", "cards", "done"]);
-    expect(full[0]!.text).toContain("Trapped in the Internet");
-    expect(full.find((s) => s.id === "pass")!.text).toContain("buttons");
-    const bare = tutorialSteps({ title: "T", hasCodex: false, hasPeople: false, hasActions: false });
-    expect(bare.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "pass", "cards", "done"]);
-    expect(bare.find((s) => s.id === "pass")!.text).not.toContain("buttons");
-    // Every anchored step names a real `data-tour` anchor the app renders.
-    for (const s of full) if (s.target !== null) expect(["rooms", "me", "wallet", "codex", "people", "pass", "help"]).toContain(s.target);
-  });
-
-  it("a wallet step appears after `me` when the story has a currency", () => {
-    const base = { title: "T", hasCodex: true, hasPeople: true, hasActions: true };
-    const coin = tutorialSteps({ ...base, hasWallet: true });
-    expect(coin.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "wallet", "codex", "people", "pass", "cards", "done"]);
-    const step = coin.find((s) => s.id === "wallet")!;
-    expect(step.target).toBe("wallet"); // the identity card's balance pill carries `data-tour="wallet"`
-    expect(step.text).toContain("balance");
-    expect(tutorialSteps({ ...base, hasWallet: false }).map((s) => s.id)).not.toContain("wallet");
-    expect(tutorialSteps(base).map((s) => s.id)).not.toContain("wallet");
-    // With every optional step on: the final order the stories may name.
-    expect(tutorialSteps({ ...base, hasWallet: true, hasQuests: true, bathroom: "Tap 🚻 first." }).map((s) => s.id)).toEqual([
-      "welcome", "rooms", "me", "wallet", "quests", "codex", "people", "pass", "bathroom", "cards", "done",
-    ]);
-  });
-
-  it("adds a Bathroom Mode step over the pass when the story supplies the blurb", () => {
-    const full = { title: "Trapped in the Internet", hasCodex: true, hasPeople: true, hasActions: true };
-    const bath = tutorialSteps({ ...full, bathroom: "Tap 🚻 first." });
-    expect(bath.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "codex", "people", "pass", "bathroom", "cards", "done"]);
-    const step = bath.find((s) => s.id === "bathroom")!;
-    expect(step.target).toBe("pass");
-    expect(step.text).toBe("Tap 🚻 first.");
-    expect(tourResult(bath, null)).toEqual({ completed: true, steps: 9 });
-    // No blurb (or an empty one) → no step.
-    expect(tutorialSteps({ ...full, bathroom: null }).map((s) => s.id)).not.toContain("bathroom");
-    expect(tutorialSteps({ ...full, bathroom: "" }).map((s) => s.id)).not.toContain("bathroom");
-  });
-
-  it("every step id is one the stories may name (the final list, optional steps included)", () => {
-    // The complete id list across every option: `wallet` (lane C) and
-    // `bathroom` are optional, the rest fixed.
-    const KNOWN = ["welcome", "rooms", "me", "wallet", "codex", "people", "pass", "bathroom", "cards", "done"];
-    const bath = tutorialSteps({ title: "T", hasCodex: true, hasPeople: true, hasActions: true, bathroom: "Tap 🚻 first." });
-    for (const s of bath) expect(KNOWN).toContain(s.id);
-    const order = KNOWN.filter((id) => bath.some((s) => s.id === id));
-    expect(bath.map((s) => s.id)).toEqual(order);
-  });
-
-  it("answers the card with what happened — the story hears `skipped`", () => {
-    const steps = tutorialSteps({ title: "T", hasCodex: true, hasPeople: true, hasActions: true });
-    expect(tourResult(steps, null)).toEqual({ completed: true, steps: 8 });
-    expect(tourResult(steps, 2)).toEqual({ skipped: true, step: 2, steps: 8 });
   });
 });

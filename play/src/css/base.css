@@ -1,0 +1,1009 @@
+/* base — FROZEN in wave 13 Stage B (integration may edit). Every rule outside a theme block. */
+/* ════════════════════════════════════════════════════════════════════════
+   The Loom participant client — a chat-room over a live story.
+
+   The shape is the one every chat app trained people on: a sidebar of
+   rooms on the left (the room you're standing in first, who's in each),
+   the open conversation on the right with an avatar + name per message,
+   and the story's cards (a decision, a CAPTCHA) docked in the flow. Wide
+   screens show both panes; a phone drills in.
+
+   Nothing story-specific is baked in. The *neutral* skin below is the
+   default: quiet paper, one accent, system type. A story picks another
+   skin with a `theme:` header line (Loom 4 §11); the client stamps it on
+   `<html data-theme="…">` and the matching block at the bottom of this
+   file re-points the same custom properties. `aol97` — the beveled 1997
+   chat-room look one particular party shipped with — lives there.
+   The markup never changes between themes; only these variables do.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --desktop: #eee9df;        /* the page behind the window                   */
+  --face: #fbf9f4;           /* window / panel surface                       */
+  --face-hi: #ffffff;
+  --white: #ffffff;
+  --black: #1b1a17;
+  --ink: #1b1a17;
+  --muted-ink: #6b665c;
+  --line: #d9d2c4;           /* hairlines in place of bevels                 */
+  --navy: #3b3a5c;           /* title bar                                     */
+  --navy-2: #3b3a5c;         /* title-bar gradient tail (flat by default)     */
+  --maroon: #7a2e2e;         /* "alert" title bar when captured               */
+  --maroon-2: #7a2e2e;
+  --on-bar: #e9e7f2;         /* secondary text on a title bar                 */
+  --link: #3b3a5c;
+  --good: #2f7a4f;
+  --bad: #b03a2e;
+  --live: #4cc37a;           /* the connection dot when live                  */
+  --highlight: #f0d77a;      /* badges, the selection caret                   */
+  --system: #3b3a5c;         /* room events                                   */
+  --signal: #6d3a7a;         /* broadcast cues                                */
+  --avatar-guest: #8a5a1e;
+  --code-bg: #f1ede4;
+  --radius: 8px;
+  --max: 760px;
+  --side: 300px;             /* sidebar width on a wide screen               */
+
+  /* Edges: flat hairlines by default; a themed skin may make them 3D. */
+  --raised: 0 0 0 1px var(--line);
+  --pressed: inset 0 0 0 1px var(--line);
+  --sunken: inset 0 0 0 1px var(--line);
+
+  --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --chat-font: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --smoothing: antialiased;
+  --grid: none;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font: 14px/1.45 var(--ui-font);
+  background: var(--grid), var(--desktop);
+  color: var(--ink);
+  -webkit-font-smoothing: var(--smoothing);
+  text-rendering: optimizeLegibility;
+}
+.root { height: 100%; display: flex; flex-direction: column; position: relative; }
+
+/* ── the window ──────────────────────────────────────────────────────────
+   Every full surface is a maximized window: silver face, raised bevel,
+   the desktop showing in the gutters on wide screens. */
+.screen {
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  max-width: var(--max); margin: 0 auto; width: 100%;
+  background: var(--face); box-shadow: var(--raised);
+  padding: 3px;
+}
+.trapped-bg { height: 100%; }
+/* rounded corners on the neutral skin; a themed skin can zero --radius */
+.choice, .dlg-choice, .avatar, .badge, .icon-btn, .back, .tray, .sheet, .card, .readout,
+.composer .composer-input, .sheet input, .card input, .hero input, .help-sheet input,
+.help-body, .chlist, .thread, .screen, .space-title, .mod-toggle, .replies.has,
+.msg-channel, .decision-dot, .dlg-key, .bigid, .pavatar, .widget, .captcha-tile,
+.presence, .here-tag, .stage-empty { border-radius: var(--radius); }
+
+.muted { color: var(--muted-ink); }
+.pad { padding: 4px 8px 8px; }
+.err { color: var(--bad); font-weight: 700; margin-top: 8px; }
+/* A lifecycle notice on the join / sign-in screens ("the story restarted — join again"). */
+.notice { color: var(--ink); background: var(--panel, rgba(0,0,0,0.06)); border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; font-weight: 600; }
+.empty, .thread-empty {
+  color: var(--muted-ink); text-align: center; padding: 40px 24px;
+  font-style: italic; font: italic 14px var(--ui-font);
+}
+
+/* ── the two-pane shell ─────────────────────────────────────────────────
+   Sidebar + stage side by side from 820px up. Both panes are their own
+   windows; the stage stretches to the width the room has. */
+.app.wide {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: var(--side) 1fr;
+  gap: 6px; padding: 6px; max-width: 1280px; margin: 0 auto; width: 100%;
+}
+.app.wide .side-pane, .app.wide .stage-pane { min-height: 0; min-width: 0; height: 100%; }
+.app.wide .screen { max-width: none; height: 100%; }
+.app.wide .inbox-head, .app.wide .thread-head, .app.wide footer, .app.wide .chlist, .app.wide .alert-banner { max-width: none; }
+.stage-empty {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+  background: var(--face); box-shadow: var(--raised); color: var(--muted-ink);
+  font-style: italic; padding: 24px; text-align: center;
+}
+
+/* ── title bars ──────────────────────────────────────────────────────────
+   The header is the window caption: navy gradient, white bold caption text,
+   a beveled control box on the right. */
+.inbox-head, .thread-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 4px 4px 6px;
+  background: linear-gradient(90deg, var(--navy), var(--navy-2));
+  color: var(--white);
+  position: sticky; top: 0; z-index: 5;
+  margin: 0 auto; width: 100%; max-width: var(--max);
+}
+.inbox-head { justify-content: space-between; align-items: flex-start; }
+.inbox-head.trapped,
+.trapped-bg .inbox-head {
+  background: linear-gradient(90deg, var(--maroon), var(--maroon-2));
+}
+/* the identity card: avatar, name + group, where you are, the live dot */
+.me { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.me-body { min-width: 0; flex: 1; }
+.who { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 700; }
+.who strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me-sub {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 11px; font-weight: 700; color: var(--on-bar); margin-top: 1px;
+}
+.hud {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; color: var(--on-bar); white-space: nowrap;
+}
+/* the window-control box on the title bar (the ☰ menu button) */
+.icon-btn {
+  background: var(--face); color: var(--ink);
+  border: none; box-shadow: var(--raised);
+  font-size: 13px; cursor: pointer; line-height: 1;
+  min-width: 24px; height: 22px; display: inline-flex;
+  align-items: center; justify-content: center; padding: 0;
+}
+.icon-btn:active { box-shadow: var(--pressed); padding: 1px 0 0 1px; }
+.icon-btn.wide { width: auto; padding: 0 7px; gap: 3px; font-size: 12px; font-weight: 700; }
+.hud .count { font-weight: 700; }
+
+.conn { display: inline-flex; align-items: center; gap: 5px; color: var(--on-bar); font-size: 11px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad);
+  display: inline-block; }
+.dot.on { background: var(--live); }
+
+/* the caption "back" arrow doubles as a folder-up control */
+.back {
+  background: var(--face); color: var(--ink);
+  border: none; box-shadow: var(--raised);
+  font-size: 15px; line-height: 1; cursor: pointer;
+  width: 26px; height: 22px; margin: 0; padding: 0 0 2px 0;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.back:active { box-shadow: var(--pressed); }
+
+/* ── people ─────────────────────────────────────────────────────────────
+   A person is an avatar tile coloured from their name (their screen-name
+   colour), with their initials. */
+.pavatar {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 30px; height: 30px; color: #fff; font: 800 12px var(--ui-font);
+  letter-spacing: 0.3px; text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  box-shadow: var(--raised);
+}
+.pavatar.sm { width: 22px; height: 22px; font-size: 10px; }
+.pavatar.lg { width: 44px; height: 44px; font-size: 16px; }
+.pavatar.character { border-radius: 50%; }
+/* a real profile picture (a program's Wikipedia image, an authored avatar) */
+.pavatar.pic { position: relative; overflow: hidden; }
+/* `contain`, not `cover`: most pictures are logos, and a wordmark cropped
+   to its middle letters is nobody. */
+.pavatar.pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; background: var(--white); }
+
+/* ── the rooms list (the sidebar) ───────────────────────────────────────
+   A sunken white list-box; each row a room with an icon, who's in it, and
+   the last thing said; the open room gets the navy selection bar. */
+.chlist {
+  flex: 1; overflow-y: auto; margin: 4px auto; width: calc(100% - 6px);
+  max-width: var(--max);
+  background: var(--white); box-shadow: var(--sunken); padding: 2px;
+}
+.chrow {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 5px 6px; border: 1px solid transparent;
+  background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.chrow:hover { background: color-mix(in srgb, var(--navy) 10%, var(--white)); border-color: transparent; }
+.chrow.active, .chrow.active:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
+.chrow.active .chrow-sub, .chrow.active .chrow-title, .chrow.active .chrow-occ { color: var(--white); }
+.chrow:active { background: var(--navy-2); }
+.chrow.quiet { opacity: 0.55; }
+.chrow.quiet:hover, .chrow.quiet.active { opacity: 1; }
+.chrow-body { flex: 1; min-width: 0; }
+.chrow-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.chrow-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chrow-sub {
+  color: var(--muted-ink); font-size: 11px; font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chrow-occ { font-style: normal; font-weight: 700; color: var(--good); }
+.chrow.here .chrow-occ { color: var(--good); }
+.decision-dot {
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--bad); background: var(--highlight); box-shadow: var(--raised);
+  padding: 0 5px; flex-shrink: 0;
+}
+/* "you are here" — the one room the story has you standing in */
+.here-tag {
+  font: 800 9px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--white); background: var(--good); padding: 1px 5px; margin-left: 6px;
+  flex-shrink: 0; vertical-align: middle;
+}
+.chrow.here { border-left: 3px solid var(--good); }
+
+/* the little room icon (a beveled tile, not a gradient blob) */
+.avatar {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 800; color: var(--ink);
+  background: var(--face); box-shadow: var(--raised);
+}
+.avatar.lobby { color: var(--navy); }
+.avatar.faction, .avatar.open, .avatar.group { color: var(--maroon-2); }
+.avatar.dm { color: var(--good); }
+.avatar.guest { color: var(--avatar-guest); }
+.avatar.scanner { color: var(--ink); }
+
+/* unread count — a yellow "You've Got Mail" chip */
+.badge {
+  min-width: 18px; height: 16px; padding: 0 4px;
+  background: var(--highlight); color: var(--bad); box-shadow: var(--raised);
+  font-size: 11px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ── space sections (the sidebar categories) ───────────────────────────── */
+.space-section { margin-bottom: 4px; }
+.space-title {
+  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--muted-ink); background: var(--face); box-shadow: var(--raised);
+  padding: 2px 8px; margin: 2px 0; position: sticky; top: 0; z-index: 1;
+}
+
+/* ── the open room ──────────────────────────────────────────────────────── */
+.thread-head { max-width: var(--max); margin: 0 auto; width: 100%; }
+.thread-id { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; flex: 1; }
+.thread-id strong { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-id .muted { font-size: 11px; color: var(--on-bar); font-style: italic; }
+.head-right { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+/* who's here: a stack of avatar tiles + a count, tap for the list */
+.presence {
+  display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px 0 3px;
+  background: var(--face); color: var(--ink); border: none; box-shadow: var(--raised);
+  font: 700 11px var(--ui-font); cursor: pointer;
+}
+.presence-stack { display: inline-flex; }
+.presence-stack .pavatar { margin-right: -6px; box-shadow: 0 0 0 1.5px var(--face); }
+.presence-stack .pavatar:last-child { margin-right: 0; }
+.presence-n { white-space: nowrap; }
+
+/* the story's guest-facing clocks (countdown.tsx): a thin bar under the
+   room header — soonest first, red under a minute, ⏸ while paused */
+.countdown-strip {
+  display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: center;
+  max-width: var(--max); margin: 4px auto 0; width: 100%; box-sizing: border-box;
+  padding: 4px 10px; background: var(--face); box-shadow: var(--raised);
+  font: 700 13px var(--ui-font); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.countdown-strip .urgent { color: var(--bad); }
+.countdown-strip.held .countdown-item { opacity: 0.6; }
+.countdown-paused { color: var(--muted-ink); }
+.app.wide .countdown-strip { max-width: none; }
+
+.thread {
+  flex: 1; overflow-y: auto; margin: 4px; padding: 8px 10px;
+  background: var(--white); box-shadow: var(--sunken);
+  display: flex; flex-direction: column; gap: 2px;
+  font-family: var(--chat-font); font-size: 16px; line-height: 1.35; color: var(--ink);
+}
+
+/* a message: an avatar tile, the name, then what they said (Discord grouping) */
+.msg { max-width: 100%; }
+.msg.line { display: flex; gap: 10px; align-items: flex-start; }
+.msg.line.tuck { padding-left: 40px; }
+.msg-avatar { background: none; border: none; padding: 0; margin: 2px 0 0; cursor: default; flex-shrink: 0; }
+.msg-avatar[tabindex="0"] { cursor: pointer; }
+.msg-body { min-width: 0; flex: 1; }
+.msg-head { display: flex; align-items: baseline; gap: 6px; }
+.speaker {
+  font-family: var(--chat-font); font-weight: 700; font-size: 15px;
+  background: none; border: none; padding: 0; cursor: default;
+}
+.speaker[tabindex="0"] { cursor: pointer; }
+.speaker[tabindex="0"]:hover { text-decoration: underline; }
+.via { font: 11px var(--ui-font); color: var(--muted-ink); font-style: italic; }
+.bubble { font-family: var(--chat-font); font-size: 16px; color: var(--ink); overflow-wrap: anywhere; }
+.msg.narration, .msg.system, .msg.signal { align-self: stretch; }
+.msg-channel {
+  display: inline-block; font-family: var(--ui-font);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--white); background: var(--muted-ink); box-shadow: var(--raised);
+  padding: 0 4px; margin-right: 4px;
+}
+
+/* room events (joins, broadcasts, narration) */
+.bubble.plain { font-style: italic; color: var(--muted-ink); }
+.msg.narration {
+  color: var(--muted-ink); font-style: italic; margin: 4px 0;
+  padding: 2px 10px; border-left: 3px solid var(--line);
+}
+.narrator-tag { font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 6px; font-style: normal; }
+.msg.system { text-align: center; margin: 3px 0; }
+.msg.system .bubble.plain { color: var(--system); font-weight: 700; font-style: normal; font-family: var(--ui-font); font-size: 12px; }
+.msg.signal { margin: 4px 0; }
+.msg.signal .bubble.plain { color: var(--signal); font-weight: 700; font-style: normal; }
+
+.msg.hidden { opacity: 0.6; }
+.msg.hidden .bubble { text-decoration: line-through; }
+.mod-toggle {
+  display: inline-block; margin-left: 8px; font: 11px var(--ui-font);
+  background: var(--face); box-shadow: var(--raised); border: none;
+  color: var(--ink); padding: 0 6px; cursor: pointer; vertical-align: middle;
+}
+.mod-toggle:active { box-shadow: var(--pressed); }
+
+/* ── sender runs + thread affordance ────────────────────────────────────── */
+.run { align-self: stretch; margin: 5px 0; }
+.run .msg.line { margin: 0; }
+.replies {
+  display: inline-flex; align-items: center; margin-left: 6px; line-height: 1;
+  font: 700 11px var(--ui-font); color: var(--navy);
+  background: none; border: none; cursor: pointer; padding: 0 2px;
+  vertical-align: middle; opacity: 0.4;
+}
+.replies:hover, .replies:focus-visible { opacity: 1; }
+.replies.has {
+  opacity: 1; background: var(--face); box-shadow: var(--raised); padding: 0 5px;
+}
+.reply-ico { font-size: 12px; }
+.reply-n { margin-left: 3px; }
+.thread-divider {
+  font: 700 11px var(--ui-font); color: var(--muted-ink); text-transform: uppercase;
+  letter-spacing: 0.5px; text-align: center; margin: 8px 0 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ── widgets — the story's cards (a CAPTCHA, a picture, a poll) ────────── */
+.msg.widget-msg { align-self: stretch; margin: 6px 0; }
+.widget {
+  background: var(--face); box-shadow: var(--raised); padding: 10px 12px 12px;
+  font-family: var(--ui-font); max-width: 420px;
+}
+.widget-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.widget-glyph { font-size: 22px; line-height: 1; }
+.widget-title { font: 800 13px var(--ui-font); color: var(--navy); text-transform: uppercase; letter-spacing: 0.4px; }
+.widget-sub { font: 14px/1.35 var(--ui-font); color: var(--ink); margin-top: 2px; }
+.widget-foot { display: flex; align-items: center; justify-content: flex-end; margin-top: 8px; gap: 8px; }
+.widget-state { font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.widget-go { width: auto; margin: 0; padding: 7px 22px; }
+.widget.done { opacity: 0.85; }
+.widget.unknown .widget-title { text-transform: none; }
+/* the CAPTCHA grid: nine squares, pick the ones that match, VERIFY */
+.captcha-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.captcha-tile {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 34px; line-height: 1; background: var(--white); box-shadow: var(--sunken);
+  border: 2px solid transparent; cursor: pointer; padding: 0;
+}
+.captcha-tile:disabled { cursor: default; }
+.captcha-tile.on { border-color: var(--navy); background: color-mix(in srgb, var(--navy) 14%, var(--white)); }
+.captcha-tile.on::after { content: "✔"; position: relative; top: -14px; left: 12px; font-size: 14px; color: var(--white); background: var(--navy); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
+.widget.image { padding: 4px; }
+.widget.image img { display: block; max-width: 100%; height: auto; border-radius: calc(var(--radius) - 2px); }
+.widget.image figcaption { font: italic 12px var(--ui-font); color: var(--muted-ink); padding: 6px 6px 2px; }
+.poll-options { display: flex; flex-direction: column; gap: 4px; }
+.poll-options .choice { margin: 0; text-align: left; }
+/* The picked question reads as a selection (inverted), not just a ring. */
+.fact-questions .choice[aria-pressed="true"] { background: var(--navy); color: var(--white); }
+.fact-hint { font-weight: 400; }
+.fact-answer { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; /* 16px: iOS never zooms */ }
+.fact-confidence { display: grid; gap: 4px; font: 700 13px var(--ui-font); color: var(--ink); }
+.fact-confidence input[type=range] { width: 100%; margin: 0; }
+.fact-confidence output { justify-self: end; font-variant-numeric: tabular-nums; }
+/* Untouched: the thumb rests greyed in the middle and the readout says
+   "not set" — "confident" is something the guest chooses. */
+.fact-confidence.unset input[type=range] { opacity: 0.45; filter: grayscale(1); }
+.fact-confidence.unset output { font-style: italic; color: var(--muted-ink); }
+.answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical; }
+
+/* ── composer (hybrid typed chat) ──────────────────────────────────────────
+   A roomy sunken text box that grows with what you type (JS caps the height),
+   so the message you're writing is always fully visible. 16px keeps mobile
+   browsers from zooming the field on focus. */
+.composer { display: flex; gap: 6px; align-items: flex-end; margin-top: 8px; }
+.composer .composer-input {
+  flex: 1 1 auto; width: auto; min-width: 0;
+  font: 16px/1.4 var(--chat-font); color: var(--ink);
+  background: var(--white); box-shadow: var(--sunken); border: none;
+  padding: 9px 10px; resize: none; display: block;
+  min-height: 44px; max-height: 148px; overflow-y: auto;
+}
+.composer-input::placeholder { color: var(--muted-ink); font-style: italic; }
+/* keep the Send button to its own width — it must not win the `.choice`
+   `width: 100%` rule that is declared later in this file. */
+.composer .composer-send {
+  flex: 0 0 auto; width: auto; margin-top: 0; padding: 0 18px; height: 44px;
+}
+.cant-post { font: italic 12px var(--ui-font); color: var(--muted-ink); text-align: center; padding: 8px 0 2px; }
+
+/* ── footer: decision tray / composer / action row ──────────────────────── */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+  background: var(--face);
+  margin: 0 auto; width: 100%; max-width: var(--max);
+}
+.tray {
+  background: var(--face); box-shadow: var(--raised); padding: 8px 10px 10px;
+}
+.tray-title {
+  color: var(--ink); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px;
+}
+
+/* ── the decision box — a video-game dialogue chooser ────────────────────────
+   The prompt reads like spoken narration; the options are a numbered RPG menu
+   with a ▶ caret on the highlighted row (moved by mouse, ↑/↓, or number keys). */
+.tray.dialogue { padding: 9px 9px 8px; }
+.tray.dialogue .tray-title {
+  font: 700 16px var(--chat-font); color: var(--navy);
+  text-transform: none; letter-spacing: 0; margin-bottom: 9px;
+}
+.dlg-options { display: flex; flex-direction: column; gap: 5px; }
+.dlg-choice {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  font: 700 15px var(--chat-font); color: var(--ink); text-align: left;
+  background: var(--white); box-shadow: var(--sunken); border: none;
+  padding: 9px 10px 9px 5px; cursor: pointer;
+}
+.dlg-choice .dlg-caret {
+  flex: 0 0 14px; width: 14px; text-align: center; font-size: 12px;
+  color: var(--navy); opacity: 0; transform: translateX(-3px);
+  transition: opacity 0.08s ease, transform 0.08s ease;
+}
+.dlg-key {
+  flex: 0 0 auto; min-width: 17px; height: 17px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 800 11px var(--ui-font); color: var(--muted-ink);
+  background: var(--face); box-shadow: var(--raised);
+}
+.dlg-label { flex: 1; min-width: 0; }
+.dlg-choice.danger { color: var(--bad); }
+/* the highlighted option: navy selection bar, yellow caret + key */
+.dlg-choice.on {
+  background: var(--navy); color: var(--white); box-shadow: var(--raised);
+}
+.dlg-choice.on .dlg-label { color: var(--white); }
+.dlg-choice.on .dlg-caret { opacity: 1; transform: none; color: var(--highlight); }
+.dlg-choice.on .dlg-key { color: var(--bad); background: var(--highlight); }
+.dlg-choice.danger.on { background: var(--maroon); }
+.dlg-choice:active { box-shadow: var(--pressed); }
+.dlg-hint {
+  font: 700 10px var(--ui-font); color: var(--muted-ink);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  margin-top: 7px; text-align: right; opacity: 0.75;
+}
+
+/* a line waiting its turn behind another still crawling: not shown yet */
+.msg.pending { display: none; }
+/* the typewriter caret — a blinking block while a line crawls in */
+.msg.typing .bubble::after {
+  content: "▌"; margin-left: 1px; color: var(--navy);
+  animation: dlg-caret-blink 0.7s steps(1) infinite;
+}
+@keyframes dlg-caret-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .msg.typing .bubble::after { display: none; }
+}
+.actionrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.actionrow .choice { flex: 1; min-width: 130px; margin-top: 0; }
+
+/* chunky beveled 3D buttons */
+.choice {
+  display: block; width: 100%; font: 700 13px var(--ui-font); color: var(--ink);
+  background: var(--face); box-shadow: var(--raised); border: none;
+  padding: 7px 14px; margin-top: 7px; cursor: pointer; text-align: center;
+}
+.choice:active { box-shadow: var(--pressed); padding: 8px 13px 6px 15px; }
+.choice:disabled { opacity: 0.6; cursor: default; }
+.choice:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
+/* the default/affirmative button gets the heavy focus ring */
+.choice.primary { box-shadow: var(--raised), inset 0 0 0 2px var(--black); font-weight: 800; }
+.choice.primary:active { box-shadow: var(--pressed), inset 0 0 0 2px var(--black); }
+.choice.danger { color: var(--bad); }
+.choice.ghost { font-weight: 700; }
+
+.link {
+  background: none; border: none; color: var(--link); font: 13px var(--ui-font);
+  cursor: pointer; padding: 8px 2px; display: block; width: 100%;
+  text-decoration: underline;
+}
+.link.console { display: inline-block; margin-top: 18px; }
+
+/* ── dialog box (profile / settings / cards) ────────────────────────────
+   A centered modal: a little window with its own navy caption bar and a
+   close box. */
+.sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center; z-index: 20;
+  padding: 16px;
+}
+.sheet {
+  width: 100%; max-width: 440px;
+  background: var(--face); box-shadow: var(--raised);
+  padding: 4px 4px 12px;
+}
+.sheet.tall { max-height: 88vh; overflow-y: auto; }
+.sheet h2 {
+  margin: 0 0 10px; font-size: 12px; font-weight: 700; color: var(--white);
+  background: linear-gradient(90deg, var(--navy), var(--navy-2));
+  padding: 3px 4px 3px 6px; text-transform: none; letter-spacing: 0;
+  display: flex; align-items: center; gap: 6px; position: sticky; top: 0; z-index: 2;
+}
+.sheet h2 > span { flex: 1; display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.sheet-x {
+  background: var(--face); color: var(--ink); border: none; box-shadow: var(--raised);
+  width: 22px; height: 18px; font: 800 13px/1 var(--ui-font); cursor: pointer; padding: 0 0 2px;
+}
+.sheet-x:active { box-shadow: var(--pressed); }
+.sheet > *:not(h2) { margin-left: 8px; margin-right: 8px; }
+/* a full-width button in a sheet fills the space between those margins —
+   `width: 100%` plus the margins ran past the dialog's right border (a
+   button never stretches by itself, so `auto` would shrink it) */
+.sheet > .choice, .sheet > .link { width: calc(100% - 16px); }
+.more-toggle { text-align: left; }
+.card-actions.more { opacity: 0.85; }
+/* a re-dealt card's earlier copy: one quiet line, not a live form */
+.widget.fact.folded { padding: 6px 10px; font-size: 13px; }
+.sheet-h {
+  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--muted-ink); margin: 12px 8px 4px;
+}
+.sheet input {
+  font: 13px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--sunken); border: none; padding: 6px 8px;
+  width: calc(100% - 16px); margin: 0 8px 8px;
+}
+.card-facts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
+.card-actions .actionrow { flex-direction: column; }
+.card-actions .actionrow .choice { min-width: 0; }
+.cast-pick { text-align: left; margin-top: 4px; }
+.cast-pick .sheet-h { margin-left: 0; }
+/* the sign-in pickers: a grid of programs / parts with their pictures */
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.pick-grid .choice.pick { margin: 0; width: auto; }
+.choice.pick.claimed { opacity: 0.45; cursor: not-allowed; }
+.choice.pick.claimed .pavatar { filter: grayscale(1); }
+.pick-hint { color: var(--muted-ink); font-size: 12px; font-style: italic; margin: 4px 0 8px; text-align: left; }
+.pick-search { display: flex; gap: 6px; align-items: stretch; margin-bottom: 8px; }
+.pick-search input { margin-bottom: 0; }
+.pick-search .choice { margin: 0; width: auto; padding: 6px 12px; }
+.pick-results { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.pick-results .choice.pick { margin: 0; width: 100%; }
+.pick-desc { display: block; color: var(--muted-ink); font-size: 12px; font-weight: 400; white-space: normal; }
+.picture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin: 6px 0 12px; }
+.picture-opt { aspect-ratio: 1; padding: 6px; border: 2px solid var(--line); border-radius: var(--radius); background: var(--white); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.picture-opt img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.picture-opt.on { border-color: var(--link); box-shadow: 0 0 0 2px var(--highlight); }
+.picture-opt:disabled { cursor: progress; opacity: 0.7; }
+
+/* ── performer station bits ─────────────────────────────────────────────── */
+.station { flex: 1; overflow-y: auto; padding: 8px; }
+.card { background: var(--face); box-shadow: var(--raised); padding: 4px 4px 12px; margin-bottom: 10px; }
+.card h2 {
+  margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--white);
+  background: linear-gradient(90deg, var(--navy), var(--navy-2));
+  padding: 3px 6px; text-transform: none; letter-spacing: 0;
+}
+.card input {
+  font: 13px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--sunken); border: none; padding: 6px 8px;
+  width: calc(100% - 16px); margin: 0 8px 8px;
+}
+.card .choice { width: calc(100% - 16px); margin: 7px 8px 0; }
+.readout {
+  background: var(--white); box-shadow: var(--sunken); padding: 8px 10px;
+  margin: 8px; font-family: var(--chat-font); font-size: 15px;
+}
+.cam { width: calc(100% - 16px); margin: 8px; background: var(--black); box-shadow: var(--sunken); }
+
+/* ── pass / QR ──────────────────────────────────────────────────────────── */
+.pass { text-align: center; margin: 4px 8px 12px; }
+.pass img { display: block; margin: 0 auto; width: 168px; background: var(--white); box-shadow: var(--sunken); padding: 8px; border-radius: var(--radius); }
+/* 📷 Scan (guest-scan.tsx): the Codex composer's camera button, the sheet's
+   status line, and the wrong-browser landing's big code */
+.composer .composer-scan { flex: 0 0 auto; width: auto; margin: 0; padding: 6px 10px; font-size: 18px; line-height: 1; }
+.scan-note { font-weight: 700; padding: 8px 10px; margin: 4px 8px; background: var(--face-hi); box-shadow: var(--sunken); }
+.landing-code {
+  font: 800 34px/1.15 var(--ui-font); letter-spacing: 3px; word-break: break-all;
+  background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 10px 18px; margin: 8px 0 12px;
+}
+.landing-code.room { letter-spacing: 1px; font-size: 28px; }
+.landing-say { font-weight: 700; font-size: 17px; margin: 0 0 12px; }
+.bigid {
+  font: 800 20px var(--ui-font); letter-spacing: 2px; margin-top: 8px;
+  background: var(--white); box-shadow: var(--sunken); display: inline-block; padding: 4px 12px;
+}
+
+/* ── group pills — small tags. A group's colour comes from its name (see
+   `colorFor` in chat.tsx); nothing here knows any particular story's sides. */
+.pill {
+  display: inline-block; padding: 1px 8px; font-size: 11px; font-weight: 700;
+  box-shadow: var(--raised); background: var(--face); color: var(--ink);
+  border-radius: var(--radius); white-space: nowrap;
+}
+.pill.admin { color: var(--navy); }
+.pill.none { color: var(--muted-ink); font-style: italic; }
+.pill.kind { color: var(--muted-ink); }
+
+/* ── the sign-on screen (register / login / role chooser) ───────────────
+   A centered "Welcome / Sign On" window floating on the desktop. */
+.hero {
+  max-width: 400px; margin: auto; min-height: 100%;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 24px; text-align: center;
+}
+/* float the sign-on as a real window once there's room */
+@media (min-height: 520px) {
+  .hero {
+    min-height: auto; margin: 7vh auto; padding: 18px 20px 22px;
+    background: var(--face); box-shadow: var(--raised);
+  }
+}
+.hero .glyph {
+  font-size: 44px; line-height: 1;
+}
+.hero h1 {
+  font: 800 24px var(--ui-font); margin: 8px 0 4px; color: var(--navy);
+  letter-spacing: 0.2px;
+}
+.hero .sub { color: var(--muted-ink); margin: 0 0 18px; font-style: italic; }
+.hero input {
+  font: 13px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--sunken); border: none; padding: 7px 10px;
+  width: 100%; margin-bottom: 9px;
+}
+
+/* ── the Help window ────────────────────────────────────────────────────
+   A taller sheet: searchable topic list ⇄ scrollable article reader,
+   styled like a help viewer (navy caption bar, sunken white page). */
+.help-sheet { max-width: 560px; display: flex; flex-direction: column; max-height: 84vh; }
+.help-sheet input {
+  font: 13px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--sunken); border: none; padding: 7px 10px;
+  width: calc(100% - 16px); margin-bottom: 8px;
+}
+.help-body {
+  flex: 1; min-height: 0; overflow-y: auto; background: var(--white);
+  box-shadow: var(--sunken); padding: 10px 12px; margin-bottom: 10px;
+  text-align: left;
+}
+.help-topic {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  font: 13px var(--ui-font); color: var(--ink); padding: 6px 4px; cursor: pointer;
+  border-bottom: 1px dotted var(--line);
+}
+.help-topic:hover { background: var(--navy); color: var(--white); border-radius: var(--radius); }
+.help-topic:hover .muted, .help-topic:hover strong { color: var(--white); }
+.help-topic strong { display: block; color: var(--navy); font-size: 13px; }
+.help-topic .muted { display: block; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.help-h {
+  font: 700 13px var(--ui-font); color: var(--navy);
+  margin: 12px 0 4px; border-bottom: 1px solid var(--line); padding-bottom: 2px;
+}
+.help-h:first-child { margin-top: 0; }
+.help-p { font: 13px/1.5 var(--ui-font); margin: 0 0 8px; }
+.help-quote {
+  font: italic 12px/1.5 var(--ui-font); color: var(--muted-ink);
+  border-left: 3px solid var(--navy-2); padding-left: 8px; margin: 0 0 8px;
+}
+.help-list { font: 13px/1.5 var(--ui-font); margin: 0 0 8px; padding-left: 20px; }
+.help-list li { margin-bottom: 3px; }
+.help-code {
+  font: 12px/1.45 ui-monospace, "Courier New", monospace; background: var(--code-bg);
+  box-shadow: var(--sunken); padding: 8px 10px; margin: 0 0 8px;
+  overflow-x: auto; white-space: pre;
+}
+.help-table { border-collapse: collapse; font: 12px var(--ui-font); margin: 0 0 8px; width: 100%; }
+.help-table th, .help-table td { border: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
+.help-table th { background: var(--face); font-weight: 700; }
+.help-rule { border: none; border-top: 1px solid var(--line); margin: 10px 0; }
+.help-body code {
+  font: 12px ui-monospace, "Courier New", monospace; background: var(--code-bg); padding: 0 3px;
+  border: 1px solid var(--line);
+}
+
+/* ── codex · people · alerts ──────────────────────────────────────────
+   Knowledge as a currency: the Codex room's cards, the People directory, and the
+   alert banner a `!` broadcast raises. Theme-neutral — variables only. */
+.alert-banner {
+  position: sticky; top: 0; z-index: 9;
+  display: flex; align-items: center; gap: 8px;
+  max-width: var(--max); margin: 0 auto; padding: 8px 10px; width: 100%;
+  background: var(--highlight); color: var(--black);
+  box-shadow: var(--raised); cursor: pointer;
+  font-weight: 700; animation: alert-in 0.25s ease-out;
+}
+.alert-glyph { font-size: 18px; animation: alert-ring 0.9s ease-in-out 3; }
+.alert-text { flex: 1; min-width: 0; }
+.alert-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
+@keyframes alert-in { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes alert-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-18deg); } 75% { transform: rotate(18deg); } }
+/* K-31a: the 🔔 "Get alerts" card — above the rooms until answered. */
+.push-card {
+  display: flex; align-items: center; gap: 8px;
+  max-width: var(--max); margin: 0 auto; padding: 8px 10px; width: 100%;
+  background: var(--face); box-shadow: var(--raised); font-size: 14px;
+}
+.push-glyph { font-size: 18px; }
+.push-text { flex: 1; min-width: 0; }
+.push-on { font: inherit; font-weight: 700; cursor: pointer; padding: 4px 10px; }
+.push-x { background: none; border: none; color: inherit; font: inherit; font-size: 18px; cursor: pointer; padding: 0 4px; }
+.app.wide .push-card { max-width: none; }
+/* Wave 4: the pinned rail — sticky notices (`pin "…"`) above a stream; a
+   `!` pin reads like an alert. A restricted guest's app greys out around
+   it (the rail and the alert banner stay bright). */
+.pinned-rail {
+  position: sticky; top: 0; z-index: 4;
+  display: flex; flex-direction: column; gap: 4px;
+  width: 100%; max-width: var(--max); margin: 0 auto; padding: 6px 10px;
+  background: var(--face); box-shadow: var(--raised);
+}
+.pin { font-weight: 700; padding: 6px 8px; background: var(--face-hi); color: var(--black); border: 1px solid var(--line); }
+.pin.alert { background: var(--highlight); }
+.app.wide .pinned-rail { max-width: none; }
+.restricted-bg .chlist, .restricted-bg .stage, .restricted-bg .stage-pane { filter: grayscale(1); opacity: .72; }
+.restricted-bg .pinned-rail, .restricted-bg .alert-banner { filter: none; opacity: 1; }
+.inbox-head.restricted, .restricted-bg .inbox-head { background: linear-gradient(90deg, #6b4a00, #9a6b00); color: #fff; }
+.msg.signal.alert .bubble.plain { font-weight: 700; color: var(--black); background: var(--highlight); padding: 2px 6px; }
+
+/* The pinned rooms — the Codex's entries and the Quest Log's quests are
+   cards in the conversation; a quest's steps are its thread. */
+.msg.codex-card-msg, .msg.quest-msg { align-self: stretch; margin: 6px 0; }
+.codex-card, .quest-card {
+  background: var(--face); box-shadow: var(--raised); border-radius: var(--radius);
+  padding: 10px 12px; max-width: 520px; text-align: left; font-family: var(--ui-font);
+}
+.codex-card-head, .quest-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.codex-card-ico, .quest-ico { font-size: 18px; line-height: 1; }
+.codex-card-title, .quest-title { font: 800 14px var(--ui-font); color: var(--navy); }
+.quest-title { flex: 1; min-width: 0; }
+.codex-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
+.codex-card-foot .link { margin: 0; width: auto; font-size: 12px; }
+.quest-card.openable { cursor: pointer; }
+.quest-card.openable:hover { box-shadow: var(--raised), 0 1px 6px rgba(0, 0, 0, 0.08); }
+.quest-card.done { border-left: 4px solid var(--good); }
+.quest-card.failed { border-left: 4px solid var(--bad); opacity: 0.8; }
+.quest-card.active { border-left: 4px solid var(--highlight); }
+.quest-status {
+  font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 2px 6px; border-radius: 999px; background: var(--code-bg); color: var(--muted-ink);
+}
+.quest-status.done { background: var(--good); color: var(--white); }
+.quest-status.failed { background: var(--bad); color: var(--white); }
+.quest-giver { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
+.quest-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
+.quest-open { margin-top: 8px; font: 700 12px var(--ui-font); color: var(--link); text-align: right; }
+.msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.quest-step .bubble.plain { font-style: normal; color: var(--ink); }
+.msg.quest-step.complete { border-left-color: var(--good); }
+.msg.quest-step.fail { border-left-color: var(--bad); }
+.quest-step-ico { flex: none; }
+
+/* The Wallet room — coin cards (a transfer, a request, an offer, the
+   stimulus, the approver's queue) mirror the quest cards; each root's
+   steps are its thread. */
+.msg.wallet-msg { align-self: stretch; margin: 6px 0; }
+.wallet-card {
+  background: var(--face); box-shadow: var(--raised); border-radius: var(--radius);
+  padding: 10px 12px; max-width: 520px; text-align: left; font-family: var(--ui-font);
+}
+.wallet-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wallet-ico { font-size: 18px; line-height: 1; }
+.wallet-title { flex: 1; min-width: 0; font: 800 14px var(--ui-font); color: var(--navy); }
+.wallet-amount { font: 800 14px var(--ui-font); color: var(--navy); white-space: nowrap; }
+.wallet-card.held, .wallet-card.open { border-left: 4px solid var(--highlight); }
+.wallet-card.pending, .wallet-card.paying { border-left: 4px solid var(--line); }
+.wallet-card.settled, .wallet-card.accepted, .wallet-card.paid { border-left: 4px solid var(--good); }
+.wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { border-left: 4px solid var(--bad); opacity: 0.85; }
+.wallet-party { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
+.wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
+.wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
+.wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
+.msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
+.msg.wallet-step.settled, .msg.wallet-step.approved, .msg.wallet-step.paid, .msg.wallet-step.accepted, .msg.wallet-step.received { border-left-color: var(--good); }
+.msg.wallet-step.denied, .msg.wallet-step.declined, .msg.wallet-step.failed, .msg.wallet-step.cancelled, .msg.wallet-step.expired { border-left-color: var(--bad); }
+.wallet-step-ico { flex: none; }
+/* The identity card's balance (replaces ⭐ when the story has a currency). */
+.wallet-pill {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 2px;
+}
+.wallet-escrow { font-size: 0.9em; }
+.wallet-frozen { font-size: 0.9em; font-weight: 600; }
+.wallet-badge { font-weight: 700; }
+/* The sheets: a side toggle, an amount form, a title box. */
+.wallet-side { display: flex; gap: 8px; margin: 0 8px 8px; }
+.wallet-side .choice { flex: 1; width: auto; }
+.wallet-amount-form { display: flex; flex-direction: column; gap: 8px; margin: 0 8px 8px; }
+.wallet-amount-label { display: flex; align-items: center; gap: 6px; font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.wallet-amount-input, .wallet-entry-input {
+  flex: 1; min-width: 0; font: 16px var(--chat-font); padding: 6px 8px;
+  background: var(--white); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.wallet-hint { font-size: 12px; }
+.codex-about {
+  margin: 10px 8px 4px; font: 11px var(--ui-font); font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-ink);
+}
+.codex-entry {
+  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
+  box-shadow: var(--sunken); border-radius: var(--radius); text-align: left;
+}
+.codex-entry-head { display: flex; align-items: center; gap: 6px; }
+.codex-entry-head button.title {
+  flex: 1; background: none; border: none; color: var(--ink); font: inherit; font-weight: 700;
+  text-align: left; cursor: pointer; padding: 0;
+}
+.codex-entry-head .link { margin: 0; font-size: 12px; width: auto; }
+.codex-text { margin: 6px 0 0; font: 13px/1.45 var(--chat-font); white-space: pre-wrap; }
+.codex-empty { margin: 0 8px 8px; color: var(--muted-ink); font-style: italic; }
+
+.people-row {
+  margin: 0 8px 6px; padding: 6px 8px; background: var(--white);
+  box-shadow: var(--sunken); border-radius: var(--radius);
+}
+.people-top { display: flex; align-items: center; gap: 6px; }
+.people-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.people-id .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.people-top .choice { margin: 0; padding: 3px 8px; font-size: 14px; width: auto; flex-shrink: 0; }
+.people-where { font-size: 12px; color: var(--muted-ink); }
+.people-known { margin: 4px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.people-known li { color: var(--ink); }
+.people-known li::before { content: "📓 "; }
+.people-known .link { display: inline; width: auto; padding: 0; }
+.people-unknown { margin: 4px 0 0; font-size: 12px; color: var(--muted-ink); font-style: italic; }
+.choice.pick { display: flex; align-items: center; gap: 8px; text-align: left; }
+.pick-label { flex: 1; min-width: 0; }
+.pick-sub { color: var(--muted-ink); font-size: 12px; font-weight: 400; }
+/* ── the guided tour (`show tutorial`) ──────────────────────────────────
+   A spotlight cut out of a dim sheet over the live app, and a callout
+   card at the bottom with the story's guide, the step, and Skip / Next. */
+.tour { position: absolute; inset: 0; z-index: 30; overflow: hidden; }
+.tour-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62); }
+.tour-spot {
+  position: absolute; border-radius: var(--radius);
+  box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.62), 0 0 0 2px var(--highlight);
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+  pointer-events: none;
+}
+.tour-card {
+  position: absolute; left: 10px; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom));
+  max-width: 440px; margin: 0 auto; padding: 10px 12px 12px;
+  background: var(--face); color: var(--ink); box-shadow: var(--raised), 0 12px 30px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius); animation: alert-in 0.25s ease-out;
+}
+.tour-card.centred { bottom: auto; top: 50%; transform: translateY(-50%); }
+.tour-guide { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.tour-guide-name { font: 800 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px; color: var(--navy); }
+.tour-clip { display: inline-block; animation: tour-wiggle 2.4s ease-in-out infinite; }
+.tour-progress { font: 700 11px var(--ui-font); color: var(--muted-ink); }
+.tour-title { font: 800 17px var(--ui-font); color: var(--navy); margin: 2px 0 4px; }
+.tour-text { font: 14px/1.5 var(--ui-font); margin: 0 0 10px; }
+.tour-actions { display: flex; gap: 8px; }
+.tour-actions .choice { margin-top: 0; }
+.tour-skip { flex: 0 0 auto; width: auto; padding: 7px 16px; }
+.tour-next { flex: 1; }
+@keyframes tour-wiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-14deg); } 92% { transform: rotate(12deg); } }
+@media (prefers-reduced-motion: reduce) { .tour-clip { animation: none; } .tour-card { animation: none; } .tour-spot { transition: none; } }
+
+/* "Trabolta is typing…" — an agent-voiced character composing a reply. */
+.typing-note { padding: 4px 14px 6px; font-size: 12px; font-style: italic; color: var(--muted-ink); }
+.typing-note .dots::after { content: "…"; display: inline-block; animation: typing-dots 1.2s steps(4, end) infinite; overflow: hidden; vertical-align: bottom; width: 0; }
+@keyframes typing-dots { to { width: 1.1em; } }
+@media (prefers-reduced-motion: reduce) { .typing-note .dots::after { animation: none; width: auto; } }
+
+/* The takeover (`pin "!!…"`): the whole app under one message until the
+   story unpins it. Black ⇄ highlight, one swap per 0.5 s (≤ 2 Hz, never
+   red); still under reduced motion. Above the tour (30) and every sheet. */
+.takeover {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: var(--black); color: var(--highlight);
+  animation: takeover-invert 1s steps(1, end) infinite;
+}
+.takeover-text { font: 900 clamp(32px, 11vw, 72px)/1.05 var(--ui-font); text-align: center; text-transform: uppercase; overflow-wrap: anywhere; }
+@keyframes takeover-invert { 50% { background: var(--highlight); color: var(--black); } }
+@media (prefers-reduced-motion: reduce) { .takeover { animation: none; } }
+
+/* The director's phone cue sheet (W-26, `director.tsx`): one big button
+   per `who: admin` cue — LAST highlighted, NEXT outlined, an armed cue
+   inverted until the second tap fires it. */
+.cue-filter {
+  font: 15px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--sunken); border: none; border-radius: var(--radius);
+  padding: 10px 12px; width: 100%; margin: 2px 0 8px;
+}
+/* An award's value box above the winner picker (T2-09). */
+.cue-value { display: grid; gap: 4px; margin: 0 8px 8px; font: 700 12px var(--ui-font); color: var(--muted-ink); }
+.cue-value input {
+  font: 16px var(--ui-font); color: var(--ink); background: var(--white); /* 16px: iOS never zooms */
+  box-shadow: var(--sunken); border: none; border-radius: var(--radius); padding: 8px 10px;
+}
+.cue-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cue-row { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 56px; margin: 0; text-align: left; font-size: 15px; }
+.cue-row.next { box-shadow: var(--raised), inset 0 0 0 3px var(--navy); }
+.cue-row.last { background: var(--highlight); color: var(--black); }
+.cue-row.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+/* W11: a story button marked `arm: true` (arm.ts), after its first tap —
+   the director phone's armed look, with "Tap again to fire" under it */
+.choice.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
+.choice .arm-line { display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; margin-top: 2px; }
+.cue-n { flex: 0 0 auto; min-width: 22px; font: 800 13px var(--ui-font); opacity: 0.6; padding-top: 2px; }
+.cue-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cue-title { font-weight: 700; overflow-wrap: anywhere; }
+.cue-code { font: 800 12px var(--ui-font); padding: 1px 5px; border-radius: 4px; background: var(--code-bg); color: var(--ink); }
+.cue-tags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; font-weight: 700; opacity: 0.8; }
+.cue-tag.last, .cue-tag.next { text-transform: uppercase; letter-spacing: 0.5px; }
+.cue-arm { font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+.cue-row { scroll-margin-top: 48px; } /* clear of the sticky act header */
+.cue-row.off:not(.last):not(.armed) { opacity: 0.55; } /* `while:` false: off tonight's branch, still pressable */
+.cue-row.fired { background: var(--code-bg); color: var(--muted-ink); box-shadow: none; } /* done tonight: muted, never hidden */
+.cue-row.armed.warn { box-shadow: var(--raised), inset 0 0 0 3px var(--bad); }
+.cue-warn { font: 700 12px var(--ui-font); color: var(--highlight); overflow-wrap: anywhere; } /* out of turn: warned, never blocked */
+.cue-tag.muted { font-weight: 600; font-style: italic; }
+.cue-code.act { background: var(--navy); color: var(--white); margin-right: 4px; }
+/* Wave 10: the pinned top — the strip (act · phase · soonest countdown ·
+   up to 3 watched values) and the NEXT bar, which scrolls to its row. */
+.cue-pinned { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 4px; border-bottom: 1px solid var(--line); }
+.cue-strip { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 700 12px var(--ui-font); color: var(--muted-ink); font-variant-numeric: tabular-nums; }
+.cue-strip span + span::before { content: "·"; margin-right: 10px; opacity: 0.6; }
+.cue-strip .urgent, .cue-nextbar .urgent { color: var(--bad); }
+.cue-nextbar {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0;
+  padding: 8px 12px; border: none; border-radius: var(--radius); cursor: pointer; text-align: left;
+  font: 700 15px var(--ui-font); color: var(--ink); background: var(--white);
+  box-shadow: var(--raised), inset 0 0 0 3px var(--navy);
+}
+.cue-nextbar.none { box-shadow: var(--raised); color: var(--muted-ink); }
+.cue-nextbar-tag { flex: 0 0 auto; font: 800 11px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy); }
+.cue-nextbar.none .cue-nextbar-tag, .cue-nextbar.countdown .cue-nextbar-tag { color: var(--muted-ink); }
+/* Nothing to press while a countdown runs: no NEXT ring, two lines, so the
+   countdown never reads as the next cue. */
+.cue-nextbar.countdown { box-shadow: var(--raised); }
+.cue-nextbar-stack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cue-nextbar-runs { text-transform: none; letter-spacing: 0; font-weight: 700; }
+.cue-nextbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Acts: the focus act open with a sticky header, the others one tappable line. */
+.cue-acts { display: flex; flex-direction: column; gap: 8px; }
+.cue-act { display: flex; flex-direction: column; gap: 6px; }
+.cue-act-head { position: sticky; top: -8px; z-index: 2; margin: 0 -8px; padding: 0; background: var(--face); border-bottom: 1px solid var(--line); }
+.cue-act-head button {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 8px 10px;
+  border: none; background: none; color: var(--ink); text-align: left; cursor: pointer;
+  font: 800 12px var(--ui-font); letter-spacing: 0.4px; text-transform: uppercase;
+}
+.cue-act-head button:disabled { cursor: default; opacity: 1; }
+.cue-act-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-act-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--muted-ink); }
+.cue-act-badge { flex: 0 0 auto; padding: 1px 6px; border-radius: 4px; background: var(--highlight); color: var(--black); text-transform: none; letter-spacing: 0; }
+.cue-act.anytime .cue-act-head button { color: var(--signal); }
+.cue-act-fold, .cue-from {
+  width: 100%; margin: 0; padding: 10px 12px;
+  border: none; border-radius: var(--radius); background: var(--code-bg); color: var(--muted-ink);
+  font: 700 13px var(--ui-font); text-align: left; cursor: pointer;
+}
+.cue-act-fold { display: flex; flex-direction: column; gap: 2px; }
+.cue-act-fold-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cue-act-fold-next { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-from { display: flex; align-items: center; gap: 6px; }
+.cue-act-fold-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-act.past .cue-act-fold { color: var(--good); }
+.cue-from { background: none; padding: 6px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+.cue-from .muted { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.cue-divider {
+  display: flex; align-items: center; gap: 8px; margin: 4px 2px 0;
+  font: 700 11px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted-ink);
+}
+.cue-divider::before, .cue-divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.cue-toast {
+  position: absolute; left: 12px; right: 12px; bottom: 16px; z-index: 25;
+  background: var(--black); color: var(--white); border-radius: var(--radius);
+  padding: 10px 14px; font-weight: 700; text-align: center; box-shadow: var(--raised);
+}

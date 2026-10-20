@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { readBundledCss } from "./css.ts";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
@@ -183,7 +184,7 @@ describe("card copy", () => {
   });
 
   it("foot lines keep the case of names and the currency; bare states read lowercase (T5-07)", () => {
-    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const css = readBundledCss();
     expect(css).not.toMatch(/\.wallet-state\s*\{[^}]*text-transform:\s*lowercase/u);
     const paid = card({ kind: "request", step: "paid", to: "g2", toName: "VLC", unit: "Truthcoin" });
     expect(walletFootLine(card({ kind: "request", step: "sent" }), null, view(), 0, paid, "me")).toBe("✅ Paid — VLC sent 50 Truthcoin");
@@ -573,7 +574,7 @@ describe("A9: the minter's reserve — 🎁 grant, 🧊 freeze, a frozen wallet"
     expect(walletStateLine(held, "held", q, liveClock(1000, 50_000, 50_000))).toBe("auto-approves in 1:00");
     expect(walletStateLine(held, "held", q, liveClock(1000, 50_000, 70_000))).toBe("auto-approves in 0:40");
     // The booth feeds its cards that ticking clock, not the raw snapshot's.
-    const booth = readFileSync(new URL("../src/performer.tsx", import.meta.url), "utf8");
+    const booth = readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8");
     expect(booth).toContain("useWalletClock(s.view?.clock, s.view?.wallet)");
     expect(booth).toContain("clock: walletClock");
   });

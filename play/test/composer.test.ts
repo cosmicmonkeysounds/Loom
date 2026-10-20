@@ -97,7 +97,7 @@ describe("a draft belongs to its room", () => {
   it("every composer is keyed by its room (and a reply box by its thread)", () => {
     // Without a key a room switch reuses the box: a line refused after the
     // guest moved on would land in the next room's box and send there.
-    const src = readFileSync(new URL("../src/chat.tsx", import.meta.url), "utf8");
+    const src = readFileSync(new URL("../src/stream/channel-view.tsx", import.meta.url), "utf8");
     const mounts = src.match(/<Composer\b[^>]*?(?:\/>|>)/gsu) ?? [];
     expect(mounts.length).toBe(2);
     expect(mounts[0]).toContain("key={channel.id}");

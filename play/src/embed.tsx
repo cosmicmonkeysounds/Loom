@@ -10,9 +10,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { GuestApp } from "./guest.tsx";
+import { GuestApp } from "./guest/app.tsx";
 import { createCrawl, memoryStore, PlayHostContext, type PlayHost } from "./host.ts";
-import { PerformerApp } from "./performer.tsx";
+import { PerformerApp } from "./booth/app.tsx";
 import { scopeCss } from "./embed-css.ts";
 import rawCss from "./styles.css?inline";
 

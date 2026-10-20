@@ -1,14 +1,13 @@
+// Agent-voiced characters on the guest's side (split out of agents.test.ts
+// in wave 13, blocks unchanged): the typing indicator and the guest DM rows.
 import { describe, expect, it } from "vitest";
 
-import { buildPrimeChannels, withAgents } from "../src/session.ts";
+import { withAgents } from "../src/session.ts";
 import { applyTyping, typingThread, type TypingNotice } from "../src/typing.ts";
-import type { Channel, ChatMessage, GuestView, PrimeView } from "../src/types.ts";
+import type { Channel, GuestView } from "../src/types.ts";
 
 const notice = (audience: string[], on = true): TypingNotice => ({ channel: "dm:Trabolta", from: "Trabolta", on, audience });
 
-function msg(seq: number, from: string, text: string, audience: ChatMessage["audience"]): ChatMessage {
-  return { seq, channel: "dm:Trabolta", channelKind: "dm", title: "Trabolta", from, kind: "line", text, ts: seq, audience, parentSeq: null, hidden: false };
-}
 function ch(id: string, extra: Partial<Channel> = {}): Channel {
   return { id, kind: "dm", title: id, spaceId: "story", messages: [], unread: 0, decision: null, lastTs: 0, ...extra };
 }
@@ -45,21 +44,5 @@ describe("agent threads", () => {
     expect(out[0]!.typing).toBe("Trabolta");
     expect(out[1]!.subtitle).toBeUndefined();
     expect(out[2]).toEqual(ch("lobby"));
-  });
-
-  it("a performer gets a private Cast thread per agent, with only their own lines", () => {
-    const view = { character: "Clippy", faction: null, guests: [], channels: [], spaces: [], agents: [{ id: "Trabolta", online: true }] } as PrimeView;
-    const messages = new Map<number, ChatMessage>([
-      [1, msg(1, "Clippy", "Boss?", ["@Clippy"])],
-      [2, msg(2, "Trabolta", "Speak.", ["@Clippy"])],
-      [3, msg(3, "Norton", "Sir!", ["@Norton"])],
-      [4, msg(4, "Ada", "hi", ["g-1"])],
-    ]);
-    const cast = buildPrimeChannels(messages, view).find((c) => c.id === "cast:Trabolta")!;
-    expect(cast.spaceId).toBe("cast");
-    expect(cast.subtitle).toBe("online");
-    expect(cast.messages.map((m) => m.text)).toEqual(["Boss?", "Speak."]);
-    // Nothing from the cast thread leaks into the broadcast feed.
-    expect(buildPrimeChannels(messages, view).find((c) => c.id === "__feed")!.messages).toEqual([]);
   });
 });

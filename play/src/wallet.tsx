@@ -11,7 +11,7 @@
 //! carries the unit, the card carries the people.
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { ActionRow, PersonAvatar, PickerSheet, Sheet, type PickItem } from "./chat.tsx";
+import { ActionRow, PersonAvatar, PickerSheet, Sheet, type PickItem } from "./ui/primitives.tsx";
 import type { Action, ChatMessage, WalletCard, WalletQueueView, WalletTxView, WalletView } from "./types.ts";
 
 // --- pure helpers ---------------------------------------------------------------

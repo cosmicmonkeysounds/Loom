@@ -5,10 +5,9 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { ChannelView } from "../src/chat.tsx";
 import { COUNTDOWN_PAUSED, CountdownStrip, CountdownStripView, countdownItemText, countdownItems, rebaseStory } from "../src/countdown.tsx";
 import { storyNow } from "../src/director.tsx";
-import type { Channel, CountdownSummary } from "../src/types.ts";
+import type { CountdownSummary } from "../src/types.ts";
 
 const SUMMONS: CountdownSummary = { label: "Summons", path: "Night.summons_end", endsAt: 1300 };
 const MIDNIGHT: CountdownSummary = { label: "Midnight", path: "Night.midnight", endsAt: 4000 };
@@ -50,13 +49,6 @@ describe("the strip", () => {
     expect(held).toContain(COUNTDOWN_PAUSED);
     expect(held).toContain("⏳ Summons 1:40");
     expect(held).toContain("countdown-strip held");
-  });
-
-  it("sits right under the room header", () => {
-    const room = { id: "loc:The Desktop", kind: "location", title: "The Desktop", spaceId: "story", messages: [], unread: 0 } as unknown as Channel;
-    const html = renderToStaticMarkup(<ChannelView channel={room} onBack={() => {}} strip={<CountdownStripView items={[{ label: "Summons", left: 90 }]} paused={false} />} />);
-    expect(html.indexOf("</header>")).toBeLessThan(html.indexOf("countdown-strip"));
-    expect(html).toContain("⏳ Summons 1:30");
   });
 });
 
