@@ -78,8 +78,9 @@
 .title-bar.restricted { background: linear-gradient(90deg, var(--restricted), var(--restricted-2)); }
 .title-bar-btn {
   flex: 1; min-width: 0; min-height: var(--tap); display: flex; flex-direction: column; justify-content: center;
-  margin: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left;
+  margin: 0; padding: 4px 0; border: none; background: none; color: inherit; font: inherit; text-align: left;
 }
+/* (4 px above and below: a title wrapped to two lines never touches the bar's edges) */
 button.title-bar-btn { cursor: pointer; }
 button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -3px; }
 /* the one line a guest reads: two lines before any ellipsis */
