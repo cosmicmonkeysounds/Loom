@@ -334,7 +334,12 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
   j/k/↑/↓, `/`, `.`; editable targets, modifiers and `e.repeat` ignored;
   Enter/Space on a focused non-cue control are that control's; a cursor
   on a row no longer on screen is dropped).
-- `Glance.tsx` + pure `glance.ts` — `glance-needs` (wave 11 adds: ⚠ near
+- `Glance.tsx` + pure `glance.ts` — `glance-needs` (wave 13: `needsYou`
+  puts this console's refused press first, then maps every
+  `@loom/core/host-board` `hostNeeds` row through `needLink` — judge /
+  agent → Mind, wallet / more → Run, part → the character, people →
+  Roster, staff → the staff room; the same rows a host's Play console
+  shows; wave 11 adds: ⚠ near
   misses in auto mode, an agent queue stalled or past 40 s, and *👋 N guests
   unseen 30 min — mark gone?* with a one-tap 👋 per guest off pure
   `cockpit/guests.ts` `unseenGuests`; refused press 60 s,
@@ -404,9 +409,19 @@ an explicit pick + a once-per-session `confirmAction`, obeys the
 server's `canPost` for that person, and shows a **`via <director>`**
 badge (`CockpitMessage.via`, stripped for guest clients). Under a guest
 lens Chat shows their `who: guest` interactions as buttons; under a
-performer lens the open guest thread gets **📡 Scan** (`scanAs` →
-inline readouts) and the performer/admin interactions fired **as** the
-character (`fireSignal(id, gid, null, character)`). The Roster hides
+performer lens the open guest thread gets **📡 Scan** (`scanAs`) and the
+booth's own buttons fired **as** the character (`fireSignal(id, gid,
+null, character)`): wave 13's `rooms.ts` `performerActions` offers the
+lens's `PrimeView.interactions` once it has loaded (never an admin cue;
+another character's `by:` button only when the server flags it heard for
+a host part), else the mod snapshot's `who: performer` buttons this
+character may press. A readout is a feed message (`CockpitMessage.readout`
+/ `about`, core's `dm:<C>` Inbox row addressed `@<C>`): the guest thread
+shows that booth's readouts about the guest, and under the Operator a
+character's own Inbox is named *Norton · Inbox* (kind `inbox`,
+read-only; a read-only composer says why). A host part's server lens
+carries `host` off `PrimeView.host` (`refreshLens`), and its Players pane
+is minted as a host session (`playerSessionOf`). The Roster hides
 `trueFaction`, the Stage disables dragging, World/Director render a
 `LensGate`, and the Inspector's editors (`VarTable` included) are
 disabled under any non-Operator lens. `Esc` outside a text field returns
@@ -521,8 +536,11 @@ mode a near miss still waits on the card (`judgeModeTitle`).
 when they are the lens), **Their feed** (the last 60 messages
 `visibleTo` them, hidden greyed), story position + trail, variables, and
 a **👁 Be <name>** button; a character shows **Their feed** (lines they
-spoke + `dm:` threads) plus their **scan readouts** (`respond` ledger
-events), variables, owned beats. A guest also gets **Codex · N/M held**
+spoke + `dm:` threads) plus their **readouts** (once each, off the Inbox,
+with the guest each was about), variables, owned beats. Under a lens,
+*Their view* (a guest) and *Their booth* (a character) list the lens's
+live **objectives** (NOW tag, act, loud, brief, ☑/☐/· checklist with a
+done-of-total count, the buttons by label; pure `cockpit/objectives.ts`). A guest also gets **Codex · N/M held**
 (a "grant codex entry…" picker over the entries they don't hold →
 `CockpitState.grantCodex` → `POST /api/mod/codex` / `Sim.unlock`) and
 **Quests** (every declared QUEST with their status; Start a new one,
@@ -840,9 +858,18 @@ runtime behind Run mode on a folder), and the server's pure projection modules
 `vite.config.ts` its alias line must stay **above** the bare `@loom/core`
 one, since Vite tries the keys in order and `@loom/core` also matches
 `@loom/core/…`; in `tsconfig.app.json` a `paths` key with no `*` is an
-exact match, so the order there doesn't matter), all resolving straight to `.ts`
-source.) Everything here is synchronous; there is no bundle to load or
-rebuild.
+exact match, so the order there doesn't matter), and `@loom/core/host-board`
+(wave 13: the host board shared with the play app's host console — `hostNeeds`,
+the Judging / agent-queue / held-transfer / part-presence / unseen-guest /
+award-suggestion helpers; `cockpit/{mind,wallet,parts,guests,award-suggest}.ts`
+and `director/glance.ts` re-export them under their old names), all resolving
+straight to `.ts` source.) Everything here is synchronous; there is no bundle
+to load or rebuild. **The dev server's `node:crypto`:** `@loom/core/chat` →
+`server/wallet.ts` → `identity.ts` imports `node:crypto` (the claim HMAC),
+which an externalized dev import throws on, so outside vitest
+`vite.config.ts` aliases it to `src/lib/node-crypto-stub.ts` (its functions
+throw if called; production builds tree-shake the import, vitest keeps the
+real module).
 
 - `src/lib/loom-language.ts` — CodeMirror `StreamLanguage` mirroring
   the parser's line classifier. It **imports the keyword tables straight
