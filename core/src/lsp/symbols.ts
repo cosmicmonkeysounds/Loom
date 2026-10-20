@@ -25,6 +25,7 @@ const DECLARATION_SYMBOL_KIND: Record<DeclarationKind, SymbolKind> = {
   interaction: SymbolKind.Event,
   codex: SymbolKind.Object,
   quest: SymbolKind.Event,
+  objective: SymbolKind.Event,
 };
 
 export function documentSymbols(ws: Workspace, uri: string): DocumentSymbolResponse | null {

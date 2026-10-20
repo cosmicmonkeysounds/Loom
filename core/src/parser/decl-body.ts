@@ -40,6 +40,8 @@ import {
   emptyCodexBody,
   type QuestBody,
   emptyQuestBody,
+  type ObjectiveBody,
+  emptyObjectiveBody,
   type ItemBody,
   type KnowledgeField,
   type LocationBody,
@@ -152,6 +154,9 @@ export function lower(decl: Declaration, diagnostics: Diagnostic[]): void {
       break;
     case "quest":
       decl.quest = lowerQuest(decl.body);
+      break;
+    case "objective":
+      decl.objective = lowerObjective(decl.body);
       break;
   }
 }
@@ -510,6 +515,58 @@ function lowerQuest(body: RawLine[]): QuestBody {
   }
   out.text = reflowText(text);
   return out;
+}
+
+/**
+ * `OBJECTIVE name` body (wave 13): `for:`, `while:`, `act:`, `title:`
+ * (`label:`), `buttons:`, `loud:`, and a `text:` (`brief:`) block whose
+ * `- ` lines are the checklist (`- label[, done when <condition>]`) and
+ * whose other lines are the brief, re-flowed. Keys fold case / `_` / `-` /
+ * spaces, read like a quest body.
+ */
+function lowerObjective(body: RawLine[]): ObjectiveBody {
+  const out = emptyObjectiveBody();
+  const text: string[] = [];
+  let textIndent: number | null = null;
+  for (const line of body) {
+    if (textIndent !== null && line.indent > textIndent) {
+      const t = line.text.trim();
+      if (t.startsWith("- ")) out.checklist.push(objectiveCheck(t.slice(2), line.span));
+      else text.push(t);
+      continue;
+    }
+    textIndent = null;
+    const t = line.text.trim();
+    const colon = t.indexOf(":");
+    if (colon <= 0) continue;
+    const rawKey = t.slice(0, colon).trim();
+    if (!/^[A-Za-z][A-Za-z0-9 _-]*$/u.test(rawKey)) continue;
+    const value = t.slice(colon + 1).trim();
+    const key = rawKey.toLowerCase().replace(/[-_\s]+/gu, "");
+    if (key === "title" || key === "label") out.title = value;
+    else if (key === "for") out.for = splitList(value);
+    else if (key === "while") out.while = value;
+    else if (key === "act") out.act = value;
+    else if (key === "buttons") out.buttons = splitTopLevelCommas(value).map((s) => s.trim()).filter((s) => s.length > 0);
+    else if (key === "loud") out.loud = value.toLowerCase() === "true";
+    else if (key === "text" || key === "brief") {
+      if (value.length > 0) {
+        if (value.startsWith("- ")) out.checklist.push(objectiveCheck(value.slice(2), line.span));
+        else text.push(value);
+      }
+      textIndent = line.indent;
+    }
+    out.properties.set(rawKey, { value, span: line.span });
+  }
+  out.brief = reflowText(text);
+  return out;
+}
+
+/** One checklist bullet (the text after `- `): `label[, done when <cond>]`. */
+function objectiveCheck(raw: string, sp: Span): { label: string; done: string | null; span: Span } {
+  const m = /,\s*done when(?:\s+|$)/iu.exec(raw);
+  if (!m) return { label: raw.trim(), done: null, span: sp };
+  return { label: raw.slice(0, m.index).trim(), done: raw.slice(m.index + m[0].length).trim(), span: sp };
 }
 
 function lowerLocation(body: RawLine[]): LocationBody {
