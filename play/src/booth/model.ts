@@ -168,11 +168,20 @@ export function soonest(countdowns: readonly CountdownSummary[] | undefined, now
   return best;
 }
 
-/** "⏳ 14:59" under ten minutes, "⏳ 14 m" above (a clock never reads as a time of day). */
-export function trayClock(left: number): string {
+/** "⏳ 14:59" under ten minutes, "⏳ 14 m" above (a clock never reads as a
+ *  time of day); "⏸ …" while the story clock is stopped. */
+export function trayClock(left: number, paused = false): string {
   const s = Math.max(0, Math.floor(left));
-  if (s >= 600) return `⏳ ${Math.floor(s / 60)} m`;
-  return `⏳ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const icon = paused ? "⏸" : "⏳";
+  if (s >= 600) return `${icon} ${Math.floor(s / 60)} m`;
+  return `${icon} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Is the story clock stopped (the event paused, the doors not yet open)?
+ *  The view says so with `paused: true` — today only a guest's view; a
+ *  booth view that carries it is honoured the same way. */
+export function viewPaused(view: object | null | undefined): boolean {
+  return (view as { paused?: unknown } | null | undefined)?.paused === true;
 }
 
 /** Held transfers waiting on the approver's booth (the CRA's 🧾 tray item). */

@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { NowCard, nowCount, objectiveButtonLabels } from "../src/booth/now-card.tsx";
-import { actChip, filterGuests, heldCount, soonest, trayClock } from "../src/booth/model.ts";
+import { actChip, filterGuests, heldCount, soonest, trayClock, viewPaused } from "../src/booth/model.ts";
+import { BoothTray } from "../src/booth/tray.tsx";
+import type { PrimeView } from "../src/types.ts";
 import { boothPill, boothStartItems } from "../src/booth/header.tsx";
 import type { Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../src/types.ts";
 
@@ -50,6 +52,16 @@ describe("the tray", () => {
     expect(trayClock(899)).toBe("⏳ 14 m");
     expect(trayClock(599)).toBe("⏳ 9:59");
     expect(trayClock(5)).toBe("⏳ 0:05");
+  });
+  it("a paused view's clock reads ⏸ and holds still", () => {
+    expect(trayClock(599, true)).toBe("⏸ 9:59");
+    expect(viewPaused({ paused: true })).toBe(true);
+    expect(viewPaused({})).toBe(false);
+    expect(viewPaused(null)).toBe(false);
+    const view = { clock: 100_000, countdowns: [{ label: "Summons", path: "b", endsAt: 300 }], paused: true } as unknown as PrimeView;
+    const html = renderToStaticMarkup(<BoothTray view={view} onWallet={() => {}} />);
+    expect(html).toContain("⏸ 3:20");
+    expect(html).not.toContain("⏳");
   });
   it("the soonest live countdown at story time", () => {
     const cds = [{ label: "Hunt 1", path: "a", endsAt: 900 }, { label: "Summons", path: "b", endsAt: 300 }, { label: "Done", path: "c", endsAt: 10 }];
