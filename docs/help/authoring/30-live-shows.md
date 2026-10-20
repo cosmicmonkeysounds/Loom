@@ -313,7 +313,9 @@ A major moment renders at the level; a minor one (a quest starting, a
 readout, a note to one person) one step lower, never below a balloon. A
 booth never goes above `sticky`, so a performer is never stopped
 mid-scene. A `!!` takeover is above the ladder and unchanged. Moments a
-phone missed (asleep, or dismissed unread) replay on wake, all of them.
+phone missed (asleep, or dismissed unread) replay on wake, in order
+(more than three as one list); those from an earlier `Night.phase` are
+skipped.
 
 The level is a world value the story sets. The header names it:
 
@@ -350,5 +352,6 @@ slower on purpose; under Reduce Motion it shows at once with a still
 look. Alerts and takeovers are effect text by themselves. An ordinary
 manner (`quietly`, `whispering`, `through tears`) is a note to the
 performer, and now shows on the phone after the name, in italics.
-Everything else types out fast, and only when it arrives in a room the
-guest has open: the backlog, other rooms and a reload are instant.
+Other scripted lines type out fast, and only when they arrive in a room
+the guest has open: typed chat, agent replies, the backlog, other rooms
+and a reload are instant.

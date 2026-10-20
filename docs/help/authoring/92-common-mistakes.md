@@ -77,8 +77,9 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
   subject, so pressing the `glitch out` button runs nothing. Write
   `when glitch_out:`; lint `L1212` points these out.
 - **End every audience's objectives with a fallback.** The first live
-  `OBJECTIVE` is NOW, so a phone whose objectives are all off says only
-  the story's title. Put the urgent ones first and finish each `for:`
+  `OBJECTIVE` is NOW, so a guest whose objectives are all off gets only
+  the open room's name (or the story's title) in the NOW bar, and a
+  booth no NOW at all. Put the urgent ones first and finish each `for:`
   with one that has no `while:`.
 - **A booth objective can't read the guest.** In an objective `for:` a
   character, `program.…` reads nothing (the booth's NOW is the same for

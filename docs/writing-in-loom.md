@@ -1611,8 +1611,8 @@ when Night.phase == "finale":
 ```
 
 A minor moment comes one rung lower; a booth never goes above `sticky`;
-every phone glitches when the level changes; whatever a phone missed
-replays when it wakes.
+every phone glitches when the level changes; what a phone missed
+replays, in order, when it wakes (an earlier phase's is skipped).
 
 **Notices about one person.** A run of *✅ Ada's answer is accepted*
 lines buries a room. Start the cue with `~` and the phones fold a run of
@@ -1637,8 +1637,8 @@ Truther Download (glitch): THEY ARE LYING TO YOU.
 ```
 
 Any other manner (`quietly`) is a note to the performer, shown after the
-name. Ordinary lines type out fast, and only in a room the guest has
-open.
+name. Other scripted lines type out fast, and only in a room the guest
+has open; typed chat and agent replies show at once.
 
 **That's the whole language.** Write a little, press Run, add one idea.
 That loop — not this guide — is how you'll actually learn Loom.
