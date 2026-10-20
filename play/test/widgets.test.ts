@@ -210,3 +210,22 @@ describe("📝 fact card fits the tray (fguest)", () => {
     expect(html.match(/fact-questions/gu)).toHaveLength(1);
   });
 });
+
+describe("typing in a card's box keeps its submit row in view (fguest review)", () => {
+  it("keepFootInView scrolls the card's own .widget-foot, nearest", async () => {
+    const { keepFootInView } = await import("../src/widgets.tsx");
+    const calls: unknown[] = [];
+    const foot = { scrollIntoView: (o: unknown) => calls.push(o) };
+    const card = { querySelector: (sel: string) => (sel === ".widget-foot" ? foot : null) };
+    keepFootInView({ closest: (sel: string) => (sel === ".widget" ? card : null) } as unknown as Element);
+    expect(calls).toEqual([{ block: "nearest" }]);
+    // Outside a card: nothing.
+    keepFootInView({ closest: () => null } as unknown as Element);
+    expect(calls.length).toBe(1);
+  });
+  it("with the keyboard up the composer steps aside for a card being typed in", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../src/css/stream.css", import.meta.url), "utf8");
+    expect(css).toContain(".kbd .stream-foot.card-typing > .composer { display: none; }");
+  });
+});

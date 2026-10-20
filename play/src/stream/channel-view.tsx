@@ -1,8 +1,9 @@
 //! One open room (moved out of `chat.tsx` in wave 13): the decision tray,
 //! the who's-here strip, the room view and the thread panel.
 
-import { Fragment, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { usePlayHost, type Crawl } from "../host.ts";
+import { isTextEntry } from "../chrome/keyboard.ts";
 import { PinnedRail } from "../moments/pins-rail.tsx";
 import type { Channel, ChatMessage, Decision } from "../types.ts";
 import { Avatar } from "../ui/primitives.tsx";
@@ -248,6 +249,18 @@ export function ChannelView({
   // (a phone keyboard leaves little else).
   const [composing, setComposing] = useState(false);
   const isComposer = (t: EventTarget | null) => t instanceof Element && t.classList.contains("composer-input");
+  // Typing in a card's own box (a fact's answer, a 💬 answer): with the
+  // keyboard up (the frame's \`.kbd\`) the room's composer steps aside, so the
+  // card keeps its box, its slider and its button above the keyboard.
+  const [cardTyping, setCardTyping] = useState(false);
+  const inTrayField = (t: EventTarget | null) => t instanceof Element && isTextEntry(t) && t.closest(".stream-tray") !== null;
+  const pressing = useRef(false);
+  // On the next tick, after the tap's own handler: still typing in the card?
+  const settleCardTyping = (foot: HTMLElement) =>
+    window.setTimeout(() => {
+      const root = foot.getRootNode() as Document | ShadowRoot;
+      setCardTyping(inTrayField(root.activeElement ?? document.activeElement));
+    }, 0);
   const tray = useMemo(() => {
     if (!widgets || channel.kind === "codex" || channel.kind === "quests" || channel.kind === "wallet") return [];
     const roots = channel.messages.filter((m) => m.parentSeq == null);
@@ -342,9 +355,29 @@ export function ChannelView({
       )}
       {foot.length > 0 && (
         <footer
-          className="stream-foot"
-          onFocus={(e) => isComposer(e.target) && setComposing(true)}
-          onBlur={(e) => isComposer(e.target) && setComposing(false)}
+          className={`stream-foot${cardTyping ? " card-typing" : ""}`}
+          onFocus={(e) => {
+            if (isComposer(e.target)) setComposing(true);
+            if (inTrayField(e.target)) setCardTyping(true);
+          }}
+          onBlur={(e) => {
+            if (isComposer(e.target)) setComposing(false);
+            // A tap on File it / Say it moves focus off the box first (iOS
+            // focuses no button): hold until that tap has landed, so the
+            // composer never comes back under the finger (the keyboard rule).
+            if (inTrayField(e.target) && !pressing.current) settleCardTyping(e.currentTarget);
+          }}
+          onPointerDown={() => {
+            pressing.current = true;
+          }}
+          onPointerUp={(e) => {
+            const foot = e.currentTarget;
+            window.setTimeout(() => pressing.current && ((pressing.current = false), settleCardTyping(foot)), 600);
+          }}
+          onClick={(e) => {
+            pressing.current = false;
+            settleCardTyping(e.currentTarget);
+          }}
         >
           {foot}
         </footer>

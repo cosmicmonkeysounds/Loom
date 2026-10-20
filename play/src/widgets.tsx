@@ -354,6 +354,18 @@ export function factQuestionsShown<Q extends { id: string }>(questions: readonly
   return one.length > 0 ? one : [...questions];
 }
 
+/** Typing in a card's box: keep its submit row in view in the tray's scroll
+ *  (the box, the slider above it, then File it / Say it — never hidden
+ *  under the fold while the keyboard is up). */
+export function keepFootInView(field: Element): void {
+  field.closest(".widget")?.querySelector(".widget-foot")?.scrollIntoView?.({ block: "nearest" });
+}
+
+/** …and once the keyboard has come up (the tray has just shrunk). */
+function footInViewSoon(field: Element): void {
+  window.setTimeout(() => keepFootInView(field), 350);
+}
+
 /** Why "File it" is off, under the button (`null` when it's on). */
 export function factFileHint(question: string, answer: string, confidence: number | null): string | null {
   if (question === "") return "Pick a question above";
@@ -481,7 +493,11 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
             maxLength={FACT_MAX}
             placeholder="Your answer"
             value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
+            onChange={(e) => {
+              setAnswer(e.target.value);
+              keepFootInView(e.currentTarget);
+            }}
+            onFocus={(e) => footInViewSoon(e.currentTarget)}
             // Done typing (the keyboard goes down): the slider next, in view.
             onBlur={() => sureBox.current?.scrollIntoView?.({ block: "nearest" })}
           />
@@ -568,7 +584,7 @@ function AnswerCard({ card, onAnswer, answered }: WidgetProps) {
         </div>
       </div>
       {!done && onAnswer && (
-        <textarea className="answer-text" rows={2} maxLength={max} placeholder={card.params["placeholder"] ?? "Type it here"} value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea className="answer-text" rows={2} maxLength={max} placeholder={card.params["placeholder"] ?? "Type it here"} value={text} onChange={(e) => (setText(e.target.value), keepFootInView(e.currentTarget))} onFocus={(e) => footInViewSoon(e.currentTarget)} />
       )}
       <div className="widget-foot">
         {done ? (

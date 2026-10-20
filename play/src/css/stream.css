@@ -309,3 +309,8 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-step.complete { color: var(--good); }
 .stream-step.fail { color: var(--bad); }
 .stream-cabinet-note { margin: 0; padding: 8px 10px; font: 700 13px var(--ui-font); color: var(--system); text-align: center; }
+
+/* Typing in a card's own box with the keyboard up: the room's composer steps
+   aside so the card keeps its box, its slider and File it above the keyboard
+   (channel-view.tsx `card-typing`; `.kbd` is the frame's keyboard rule). */
+.kbd .stream-foot.card-typing > .composer { display: none; }
