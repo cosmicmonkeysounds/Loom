@@ -37,13 +37,32 @@ pnpm --filter loom-terminal test     # the pure pieces (scan parsing, the leash,
                                      # precedence, the TV voice, attract, kiosk, the WebGL2 probe)
 ```
 
-Open `http://<server>:7000/terminal/` on the tablet. Set it up on the
-screen (moderator passcode, a name, the character, camera, voice), or
-provision a whole fleet by opening one link on each:
+Open `http://<server>:7000/terminal/` on the tablet and set it up in two
+steps: **CONNECT** (the moderator passcode; skipped when the tablet already
+has access), then **WHICH TERMINAL IS THIS?** — the event's live house map's
+terminals (the map it plays: a director's save, the shed variant), by floor
+and room, each saying its room + LOCATION and its screen in words (*TV*,
+*casino*, *chess board*, *room terminal — The Server Room*, *house
+terminal*), with *⚠ online now: <name>, seen 5 s ago* when another tablet
+polls from that spot. One tap powers on: the name, the screen (`view`) and
+the room come from the map entry (`TerminalSpot.view` / `speaks`, set in
+the map editor at `/reinstall/map`), the character defaults to Trabolta.
+Camera, voice, announcements, the camera feed and a manual screen / room
+sit under a folded *advanced*. ⚙ on a running terminal reopens step 2
+(*change passcode*, *forget this terminal*), so a tablet is re-pointed in
+two taps. A terminal set up from the map follows its entry on its next
+boot (a variant switch, a save); a manual screen or room stops that.
+
+A fleet: open one link on each tablet — it connects and picks that
+terminal with no taps:
 
 ```
-http://<server>/terminal/?code=<mod passcode>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
+http://<server>/terminal/?code=<mod passcode>&spot=start-bar
 ```
+
+Older links with `name=` / `view=` / `room=` still work; those fields win
+over the map's (a `view` or `room` given means the tablet no longer
+follows the map).
 
 (`&camera=environment` for the back camera; `&engine=` — see *The voice*
 below; `&announce=1` to also say the house announcements; `&spot=` and

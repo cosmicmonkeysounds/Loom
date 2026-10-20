@@ -193,3 +193,15 @@ countdowns and notices as the terminals, and the screensaver until the
 character is introduced. It has no camera and no chat — just watch and
 listen. (Another screen can be a silent **mirror**: the window into the
 simulation, full screen.)
+
+## Setting a terminal up (for the crew)
+
+Open `/terminal/` on the tablet, type the event's **moderator passcode**,
+then **tap the terminal** this tablet is: the list is the event's house
+map (its terminals, by floor and room, each saying what it shows — TV,
+casino, chess board, a room terminal, a house terminal). A spot another
+tablet is using right now says *⚠ online now*. That's it: the name, the
+screen and the room come from the map, which the house map editor sets.
+A whole fleet: open `/terminal/?code=<mod passcode>&spot=<terminal id>`
+on each tablet. To re-point a running tablet, hold ⚙ for 2 seconds and
+tap another terminal.

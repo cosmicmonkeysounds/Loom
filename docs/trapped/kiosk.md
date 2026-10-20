@@ -23,7 +23,7 @@ search box at the top of Fully's Settings.
 
 | Section | Setting | Value | Why |
 |---|---|---|---|
-| Web Content | **Start URL** | `https://app.mapsandducks.com/terminal/` | The config (name, spot, token) lives in the page's localStorage, so the bare URL reopens this terminal as itself. Provision once with the `?code=…&name=…&spot=…` link (README), then set this. |
+| Web Content | **Start URL** | `https://app.mapsandducks.com/terminal/` | The config (name, spot, token) lives in the page's localStorage, so the bare URL reopens this terminal as itself. Set it up once: open `/terminal/`, type the moderator passcode, tap this terminal in the list (the house map's terminals) — or open `/terminal/?code=<mod>&spot=<its id>`; then set this. |
 | Web Content | **Autoplay Videos** | ✔ | Media may start without a tap. |
 | Web Content | **Autoplay Audio** (if your version lists it separately) | ✔ | **The voice.** Without it the terminal can't speak until someone taps TOUCH TO WAKE after every reload. Still tap it once after a reload: Web Audio wants that gesture on some WebViews anyway. |
 | Web Content | **Enable Webcam Access** | ✔ | The pass scanner. Android also asks for the camera permission the first time: allow. |
@@ -140,7 +140,7 @@ house announcements* **off** — the living room hears the house speakers.
   `open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-tv" --kiosk --autoplay-policy=no-user-gesture-required "https://app.mapsandducks.com/terminal/"`
   — `--kiosk` is full screen with no chrome; the autoplay flag means no wake
   tap is ever needed on the TV. Provision it once with
-  `…/terminal/?code=<mod>&name=TV&character=Trabolta&spot=desktop-tv&view=tv`.
+  `…/terminal/?code=<mod>&spot=desktop-tv` (or `/terminal/`, the passcode, tap **TV**).
   If Chrome came back without the flag (a reboot), the page shows *CLICK
   ONCE TO ENABLE THE VOICE*: one click anywhere.
 - `M` on the Mac's keyboard (or the 🔊 button bottom right) mutes the TV
@@ -174,7 +174,8 @@ TV; a tablet with no WebGL2 shows a still notice instead of the world.
 
 **How** (≈ 1 min per screen, no code, nothing restarts):
 
-1. Hold ⚙ 2 s → setup → *View* **mirror** → Save. Or open the
+1. Hold ⚙ 2 s → setup → *advanced* → *screen* **mirror** → tap this
+   terminal in the list (it stays on its spot). Or open the
    provisioning link on the device:
    `https://app.mapsandducks.com/terminal/?code=<mod>&name=<its name>&spot=<its spot>&view=mirror`
    (the same name and spot it had, so Run → Terminals still shows it).
@@ -212,8 +213,12 @@ house map's `server-room` spot is on the room's south wall, facing in
 `[-5, -1.3, 12]`, yaw 0). Provision it with one link:
 
 ```
-/terminal/?code=<mod passcode>&name=Server Room&character=Trabolta&spot=server-room&view=face&room=The Server Room
+/terminal/?code=<mod passcode>&spot=server-room
 ```
+
+(or `/terminal/`, the passcode, tap **Server Room**). The map's entry sets
+the rest: `view: "face"` and `speaks: true` (a room terminal for The Server
+Room's LOCATION).
 
 - **`view=face`**, never `auto` / `world`: it is never a window into the
   simulation.
@@ -283,8 +288,11 @@ house he is played at chess. The map's `server-room-door` spot (name
 one link:
 
 ```
-/terminal/?code=<mod passcode>&name=Server Door&spot=server-room-door&view=chess
+/terminal/?code=<mod passcode>&spot=server-room-door
 ```
+
+(or `/terminal/`, the passcode, tap **Server Door**; the map's entry says
+`view: "chess"`).
 
 - **`view=chess`** needs no `character` and ignores `room`. It is
   **awake all night**: no screensaver, whatever Trabolta is doing.
