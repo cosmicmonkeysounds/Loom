@@ -1,7 +1,7 @@
 //! The show's house map and its rain variant (`house.json` = the Internet in
 //! the tent, `house.shed.json` = the Internet in the shed; CHECKLIST
-//! SW-MAP-07 / SW-MAP-13). Both are placeholders until the house is
-//! surveyed, but their *structure* must match the story: every LOCATION has
+//! SW-MAP-07 / SW-MAP-13). Both follow the floor plan the user drew in
+//! /reinstall/map (wave 14), and their *structure* must match the story: every LOCATION has
 //! a room, the tent (or shed) is out in the yard, the Server Room is behind
 //! a door in the basement with no duck in it, and every duck spot is
 //! walkable from the spawn — on either variant, with the same terminal ids
@@ -62,7 +62,7 @@ const roomFor = (house: HouseMap, location: string): Room => {
 describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, house) => {
   it("validates, and every room is a LOCATION the story declares", () => {
     expect(validateHouse(JSON.parse(readFileSync(file(variant === "tent" ? "house.json" : "house.shed.json"), "utf8"))).problems).toEqual([]);
-    expect(house.name).toMatch(/PLACEHOLDER/);
+    expect(house.name).not.toMatch(/PLACEHOLDER/); // measured (wave 14)
     expect(houseWarnings(house, (name) => LOCATIONS.includes(name))).toEqual([]);
     // Every LOCATION has geometry, the Server Room included.
     expect([...new Set(house.rooms.map((r) => r.location))].sort()).toEqual([...LOCATIONS].sort());
@@ -118,14 +118,14 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     });
     expect(Math.hypot(king!.pos[0] - door.at[0], king!.pos[2] - door.at[1])).toBeLessThan(0.5);
     // Nothing routes through a guarded door: the Server Room is unreachable for the golden trail…
-    expect(route(house, house.spawn.pos, [-5, -2.7, 9.5])).toHaveLength(2);
+    expect(route(house, house.spawn.pos, [4.8, -2.7, 24.5])).toHaveLength(2);
     // …until he falls: then his door is open for everyone.
-    expect(route(house, house.spawn.pos, [-5, -2.7, 9.5], { fallen: new Set(["cold-lock-king"]) }).length).toBeGreaterThan(2);
+    expect(route(house, house.spawn.pos, [4.8, -2.7, 24.5], { fallen: new Set(["cold-lock-king"]) }).length).toBeGreaterThan(2);
     // The Server Door terminal hangs in the hall, looking at him.
     expect(house.terminals.find((t) => t.id === "server-room-door")).toMatchObject({ name: "Server Door", room: outside });
   });
 
-  it("stacks the real house's three levels, each room on its own floor, joined by the hall's two stairs", () => {
+  it("stacks the real house's three levels, each room on its own floor, joined by the basement stairs up into the kitchen and the hall's upstairs", () => {
     expect(house.floors.map((f) => [f.id, f.elevation])).toEqual([
       ["basement", -2.7],
       ["main", 0],
@@ -143,7 +143,7 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     );
     expect(on("top")).toEqual(["Disk Cleanup", "The Graphics Card", "The Hard Drive"]);
     expect(house.stairs.map((s) => [s.from, s.to])).toEqual([
-      ["basement-hall", "hall"],
+      ["basement-hall", "start-bar"],
       ["hall", "upstairs-hall"],
     ]);
   });
@@ -154,14 +154,14 @@ describe.each(Object.entries(VARIANTS))("the show's house map (%s)", (variant, h
     expect(table?.size).toEqual([1.83, 0.76, 0.76]);
   });
 
-  it("maps the Tube: front door → the hall → the living room, and out the back door to the yard", () => {
+  it("maps the Tube: front door → the mud room → the living room → the hall, and out the back door to the yard", () => {
     expect(house.rooms.filter((r) => r.location === "The Tube").map((r) => [r.id, r.floor])).toEqual([
       ["hall", "main"],
       ["basement-hall", "basement"],
       ["upstairs-hall", "top"],
     ]);
     expect(house.doors.find((d) => d.id === "front")).toMatchObject({ a: "optical-drive", b: null });
-    expect(house.doors.find((d) => d.id === "mud-hall")).toMatchObject({ a: "optical-drive", b: "hall" });
+    expect(house.doors.find((d) => d.id === "mud-living")).toMatchObject({ a: "optical-drive", b: "desktop" });
     expect(house.doors.find((d) => d.id === "hall-living")).toMatchObject({ a: "hall", b: "desktop" });
     expect(house.doors.find((d) => d.id === "hall-back")).toMatchObject({ a: "hall", b: "backyard" });
     // The LED run marks the way on: down the hall and across the yard.
@@ -226,7 +226,10 @@ describe("the two variants", () => {
 
   it("share the terminal ids, the duck spots and the LOCATIONs", () => {
     const ids = (h: HouseMap) => h.terminals.map((t) => t.id).sort();
-    expect(ids(tent)).toEqual(["bathroom-1-door", "desktop-tv", "hall", "optical-drive", "ram", "server-room", "server-room-door", "start-bar", "tent"]);
+    expect(ids(tent)).toEqual([
+      "backyard", "bathroom-1-door", "cpu", "desktop-tv", "graphics-card", "hall", "optical-drive", "ram", "server-room",
+      "server-room-door", "start-bar", "steam-room", "tent", "upstairs-hall",
+    ]);
     expect(ids(shed)).toEqual(ids(tent));
     expect(shed.duck.spots).toEqual(tent.duck.spots);
     const locations = (h: HouseMap) => h.rooms.map((r) => r.location).sort();
@@ -236,7 +239,7 @@ describe("the two variants", () => {
   it("hang the server-room terminal in The Server Room on both variants (wave 7: room=The Server Room)", () => {
     for (const h of [tent, shed]) {
       const t = h.terminals.find((x) => x.id === "server-room");
-      expect(t, h.variant ?? "map").toMatchObject({ name: "Server Room", room: "server-room", pos: [-5, -1.3, 12], yaw: 0 });
+      expect(t, h.variant ?? "map").toMatchObject({ name: "Server Room", room: "server-room", pos: [3.9, -1.3, 26], yaw: 0 });
       expect(h.rooms.find((r) => r.id === t!.room)?.location).toBe("The Server Room");
     }
   });
