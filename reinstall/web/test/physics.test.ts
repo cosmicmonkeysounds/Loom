@@ -18,7 +18,7 @@ import {
   type MoveInput,
   type PhysicsWorld,
 } from "../src/game/physics.ts";
-import { SHOW, SHOW_SHED, STAIR, TWO_ROOMS } from "./houses.ts";
+import { SHOW, SHOW_SHED, THREE_FLOOR, STAIR, TWO_ROOMS } from "./houses.ts";
 
 const FORWARD: MoveInput = { ...NO_INPUT, move: [0, 1] };
 const DT = 1 / 60;
@@ -193,7 +193,7 @@ describe("physics — stairs", () => {
 
 describe("physics — the show's house", () => {
   it("the spawn stands on a floor and is clear of every wall", () => {
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     const b = spawnBody(house);
     const still = walk(world, b, 0.5, NO_INPUT);
@@ -204,7 +204,7 @@ describe("physics — the show's house", () => {
 
   it("a stair's side is a wall from the floor below: no walking into the solid under its ramp", () => {
     // basement-stairs: rect [−2.9, 6, −2, 10], ramp −2.7 (z 10) → 0 (z 6).
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     const ramp = (z: number) => -2.7 + (2.7 * (10 - z)) / 4;
     for (const z of [8.5, 8, 7.8]) {
@@ -223,7 +223,7 @@ describe("physics — the show's house", () => {
   });
 
   it("the high end of the stair still has head room to walk under", () => {
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     const b = walk(world, body([-1, -2.7, 6.5], WEST), 1.5);
     expect(b.p[0]).toBeLessThan(-2);
@@ -234,7 +234,7 @@ describe("physics — the show's house", () => {
     // From the basement hall under the hall end (z 6.3, ramp ≈ −0.2),
     // heading south toward the foot: the ramp drops to head height (−1.0)
     // at z ≈ 7.48, and the body (its rim included) never goes past it.
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     const ramp = (z: number) => -2.7 + (2.7 * (10 - z)) / 4;
     const b = walk(world, body([-2.4, -2.7, 6.3], SOUTH), 3, FORWARD, (cur) => {
@@ -249,7 +249,7 @@ describe("physics — the show's house", () => {
   });
 
   it("descends the stair from the hall down to the basement hall", () => {
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     let lowest = 0;
     const b = walk(world, body([-2.4, 0, 5.5], SOUTH), 4, FORWARD, (cur) => (lowest = Math.min(lowest, cur.p[1])));
@@ -260,7 +260,7 @@ describe("physics — the show's house", () => {
   });
 
   it("the stair itself still climbs from the basement hall to the hall", () => {
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     const b = walk(world, body([-2.4, -2.7, 10.6], 0), 4);
     expect(b.p[2]).toBeLessThan(6);
@@ -269,7 +269,7 @@ describe("physics — the show's house", () => {
 
   it("climbs the upstairs from the hall to the top floor, and comes back down", () => {
     // upstairs: rect [0.05, 6, 0.95, 10], rising south, 0 (z 6) → 2.8 (z 10).
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const world = buildPhysicsWorld(house);
     const up = walk(world, body([0.5, 0, 5.5], SOUTH), 4);
     expect(up.p[2]).toBeGreaterThan(10);
@@ -367,7 +367,7 @@ describe("physics — a remap (the tent ↔ shed switch)", () => {
 
 describe("physics — the King in the doorway (the show's map)", () => {
   it("the King's box plugs the server doorway: no way round on either side", () => {
-    const house = SHOW();
+    const house = THREE_FLOOR();
     const door = house.doors.find((d) => d.id === "server-door")!;
     const king = house.props.find((p) => p.id === door.guard)!;
     expect(king.kind).toBe("king");
@@ -382,5 +382,25 @@ describe("physics — the King in the doorway (the show's map)", () => {
     // Without him (a fallen king is left out of the world) the same walk goes through.
     const open = buildPhysicsWorld(house, undefined, { omitProps: new Set([king.id]) });
     expect(locate(house, walk(open, body([-1.2, -2.7, 11.2], WEST), 3).p).room).toBe("server-room");
+  });
+});
+
+describe("physics — the King in the doorway (the show's measured map, wave 14)", () => {
+  it("the King's box plugs the server doorway on the basement hall's south wall: no way round on either side", () => {
+    const house = SHOW();
+    const door = house.doors.find((d) => d.id === "server-door")!;
+    const king = house.props.find((p) => p.id === door.guard)!;
+    expect(king.kind).toBe("king");
+    // The door's gap on the z = 21 wall spans x 3.45..4.35; try every
+    // approach line across it (and a little past the jambs) walking south.
+    const world = buildPhysicsWorld(house);
+    for (let x = 3.25; x <= 4.55 + 1e-9; x += 0.05) {
+      const b = walk(world, body([x, -2.7, 19.4], SOUTH), 3);
+      expect(b.p[2], `x ${x.toFixed(2)}`).toBeLessThanOrEqual(21 - RADIUS + 1e-6);
+      expect(locate(house, b.p).room, `x ${x.toFixed(2)}`).toBe("basement-hall");
+    }
+    // Without him the same walk goes through.
+    const open = buildPhysicsWorld(house, undefined, { omitProps: new Set([king.id]) });
+    expect(locate(house, walk(open, body([3.9, -2.7, 19.4], SOUTH), 3).p).room).toBe("server-room");
   });
 });
