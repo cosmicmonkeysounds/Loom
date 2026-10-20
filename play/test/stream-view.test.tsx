@@ -10,7 +10,7 @@ import { ChannelView, MessageThread } from "../src/stream/channel-view.tsx";
 import { CardTray, trayCardKey, trayIndex, trayShown } from "../src/stream/card-tray.tsx";
 import { PlayHostContext, browserHost, createCrawl } from "../src/host.ts";
 import { NOBODY_READS_NOTE, cantPostNote } from "../src/stream/composer.tsx";
-import { AmbientTicker } from "../src/stream/ticker.tsx";
+import { AmbientTicker, TICKER_HISTORY, earlierBarks } from "../src/stream/ticker.tsx";
 import type { Channel, ChatMessage, GuestView } from "../src/types.ts";
 import { readBundledCss } from "./css.ts";
 
@@ -170,5 +170,16 @@ describe("the card tray never takes the room over", () => {
     const css = readBundledCss();
     expect(css).toMatch(/\.stream-tray-body \{ max-height: 35vh;/u);
     expect(css).toMatch(/\.stream-tray-body \.widget-foot \{ position: sticky; bottom: 0;/u);
+  });
+});
+
+describe("the opened ticker", () => {
+  it("lists the earlier barks, never the one its line already shows", () => {
+    const barks = Array.from({ length: 8 }, (_, i) => m({ ambient: true, kind: "narration", text: `bark ${i}` }));
+    const listed = earlierBarks(barks).map((b) => b.text);
+    expect(listed).not.toContain("bark 7");
+    expect(listed).toHaveLength(TICKER_HISTORY);
+    expect(listed[0]).toBe("bark 6");
+    expect(earlierBarks(barks.slice(0, 1))).toEqual([]);
   });
 });
