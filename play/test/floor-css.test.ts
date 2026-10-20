@@ -75,7 +75,7 @@ describe("the 44 px floor on the shared primitives", () => {
   });
 
   it("the full-screen pass's × is a whole 44 × 44 box (it sits on the screen's corner)", () => {
-    const x = decls(".fullpass-bar .w95-x");
+    const x = decls(".fullpass-bar .w95-btn.w95-x");
     expect([px(x["min-width"]), px(x["min-height"])]).toEqual([44, 44]);
   });
 
