@@ -13,8 +13,10 @@ import {
   GLANCE_MS,
   HOLD_MISS_MS,
   MOMENT_WINDOW_MS,
+  DONE_MAX,
   arrivals,
   beatLineReaches,
+  doneAbove,
   beatOpensScreen,
   boothSeverity,
   capLevel,
@@ -365,6 +367,23 @@ describe("arrivals from the message map", () => {
     expect(t.queue).toHaveLength(1);
     const later = run([arrive([moment(1, { text: "Go." })]), arrive([moment(9, { text: "Go.", at: 60_000 })])]);
     expect(later.queue).toHaveLength(2);
+  });
+
+  it("a reload never replays a moment already read above the mark (the done list)", () => {
+    // A (seq 10) is missed; B (seq 20) is read and dismissed; 15 was a plain line.
+    let s = run([arrive([moment(10)], { visible: false }), arrive([moment(20)])]);
+    s = momentsReducer(s, { type: "dismiss", key: "m:20", onScreenMs: 5_000 });
+    const mark = settledMark(s, 20);
+    expect(mark).toBe(9);
+    const done = doneAbove(s, [10, 15, 20], mark);
+    expect(done).toEqual([15, 20]);
+    // The reload: processed starts from the done list, so only A comes back.
+    const list = [msg(10, { alert: true, ts: 10_000 }), msg(15, { kind: "line", ts: 15_000 }), msg(20, { alert: true, ts: 20_000 })];
+    const r = arrivals(list, mark, new Set(done), guest, { now: 20_000, phase: null, bsod: false, beats: new Map() });
+    expect(r.moments.map((m) => m.seq)).toEqual([10]);
+    // Below the mark is never listed; the newest DONE_MAX only.
+    expect(doneAbove(EMPTY_MOMENTS, [3, 4, 5], 4)).toEqual([5]);
+    expect(doneAbove(EMPTY_MOMENTS, Array.from({ length: DONE_MAX + 5 }, (_, i) => i), -1)).toHaveLength(DONE_MAX);
   });
 
   it("the mark settles under the oldest moment still waiting", () => {

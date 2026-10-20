@@ -24,6 +24,7 @@ import {
   READOUT_WAIT_MS,
   afterWait,
   arrivals,
+  doneAbove,
   loudObjectives,
   missedCount,
   momentsReducer,
@@ -92,6 +93,11 @@ function loudKey(role: MomentsInput["role"]): string {
   return `loom.moments.loud.${role}`;
 }
 
+/** Where the seqs settled above the mark persist (`doneAbove`). */
+function doneKey(role: MomentsInput["role"]): string {
+  return `loom.moments.done.${role}`;
+}
+
 function useMomentsEngine(input: MomentsInput): Engine {
   const host = usePlayHost();
   const visible = useVisible();
@@ -114,12 +120,57 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const viewerRef = useRef(viewer);
   viewerRef.current = viewer;
 
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const savedDone = useRef("");
+  const saveDone = useCallback(
+    (seqs: number[]) => {
+      if (session === null) return;
+      const text = seqs.join(",");
+      if (text === savedDone.current) return;
+      savedDone.current = text;
+      try {
+        host.storage.save(doneKey(role), { session, seqs });
+      } catch {
+        /* storage blocked — at worst a reload replays a read moment */
+      }
+    },
+    [host, role, session],
+  );
+  // Settle the mark under whatever is still waiting, and remember what is
+  // done above it (a reload must not replay a moment already read).
+  // Readouts waiting out `READOUT_WAIT_MS` are not settled either.
+  const pending = useRef(new Set<number>());
+  const settleNow = useCallback(() => {
+    if (session === null) return;
+    let mark = settledMark(stateRef.current, processedMax.current);
+    for (const seq of pending.current) mark = Math.min(mark, seq - 1);
+    alerts.settle(mark);
+    const done = [...processed.current].filter((seq) => !pending.current.has(seq));
+    saveDone(doneAbove(stateRef.current, done, alerts.mark()));
+  }, [session, alerts, saveDone]);
+
   // A new sign-in, or a story restart under this one: nothing queued is news.
+  // A sign-in picks up what it had already settled above its mark (a reload);
+  // a restart renumbers the seqs, so that list goes.
+  const lastSession = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     processed.current = new Set();
     processedMax.current = -1;
     beats.current = new Map();
     dispatch({ type: "reset" });
+    const signIn = lastSession.current !== session;
+    lastSession.current = session;
+    if (session === null) return;
+    if (signIn) {
+      const stored = host.storage.load<{ session: string; seqs: number[] }>(doneKey(role));
+      const mark = alerts.mark();
+      if (stored !== null && stored.session === session && Array.isArray(stored.seqs)) {
+        for (const seq of stored.seqs) if (typeof seq === "number" && seq > mark) processed.current.add(seq);
+        savedDone.current = stored.seqs.join(",");
+      }
+    } else saveDone([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alerts.epoch, session]);
 
   const arrive = useCallback(
@@ -168,8 +219,16 @@ function useMomentsEngine(input: MomentsInput): Engine {
     });
     arrive(sorted.now, backlog);
     if (sorted.later.length > 0) {
-      window.setTimeout(() => arrive(afterWait(sorted.later, alerts.recent(), Date.now()), backlog), READOUT_WAIT_MS);
+      for (const m of sorted.later) if (m.seq !== null) pending.current.add(m.seq);
+      window.setTimeout(() => {
+        for (const m of sorted.later) if (m.seq !== null) pending.current.delete(m.seq);
+        const news = afterWait(sorted.later, alerts.recent(), Date.now());
+        if (news.length > 0) arrive(news, backlog);
+        else settleNow();
+      }, READOUT_WAIT_MS);
     }
+    // Nothing joined the queue: settle now (else the state change does).
+    if (sorted.now.length === 0) settleNow();
     // `clock`, the level and the phase are read, not watched: a snapshot alone never raises a moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, session, alerts.epoch]);
@@ -203,10 +262,9 @@ function useMomentsEngine(input: MomentsInput): Engine {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives, session]);
 
-  // Settle the mark under whatever is still waiting.
   useEffect(() => {
-    if (session !== null) alerts.settle(settledMark(state, processedMax.current));
-  }, [state, session, alerts]);
+    settleNow();
+  }, [state, settleNow]);
 
   // Woke up (or the last busy surface closed): replay what was missed.
   const wasVisible = useRef(visible);

@@ -487,6 +487,28 @@ export function settledMark(s: MomentsState, processedMax: number): number {
   return Number.isFinite(min) ? Math.min(processedMax, min - 1) : processedMax;
 }
 
+/** How many settled seqs above the mark a reload remembers (the newest). */
+export const DONE_MAX = 2_000;
+
+/**
+ * The seqs above the settled `mark` that are done — looked at, and not
+ * waiting in the queue, the missed list or the summary (read, dismissed,
+ * not a moment at all). The mark sits under the oldest moment still
+ * waiting, so without these a reload would replay every moment after it
+ * that was already read. Persisted per sign-in; ascending, the newest
+ * `DONE_MAX`.
+ */
+export function doneAbove(s: MomentsState, processed: Iterable<number>, mark: number): number[] {
+  const waiting = new Set<number>();
+  for (const q of s.queue) if (q.moment.seq !== null) waiting.add(q.moment.seq);
+  for (const m of s.missed) if (m.seq !== null) waiting.add(m.seq);
+  for (const m of s.summary?.moments ?? []) if (m.seq !== null) waiting.add(m.seq);
+  const out: number[] = [];
+  for (const seq of processed) if (seq > mark && !waiting.has(seq)) out.push(seq);
+  out.sort((a, b) => a - b);
+  return out.length > DONE_MAX ? out.slice(-DONE_MAX) : out;
+}
+
 /**
  * The moments new messages make: every message above `mark` not processed
  * yet, oldest first, inside the story-clock window (a reload never replays
