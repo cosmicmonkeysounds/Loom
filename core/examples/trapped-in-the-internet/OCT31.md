@@ -1026,12 +1026,12 @@ The user's asks, in their words (2026-10-20, from the day's UX mapping of the li
 | a guest's first load (gzip) | 192 kB | 240 kB | **139 kB** (fguest: the guest app alone; the booth, host and director parts load lazily) |
 | a 27k-action restart to health | 31–32 s | 31 s | 32.5–32.8 s (Caddy now holds 60 s) |
 
-**Suites on `oct31-w13/integration` at ccf4e45:** core 2098 (116 files, incl. the Postgres-gated suites) + `tsc` clean, play 809 (90 files) + typecheck + build, editor 454 (55 files) + `tsc -b`, terminal 245; loomcheck `--smoke` 0 / 0; `titi:facts --check` up to date. Not re-run since master (untouched): house, reinstall/web, chess, bank, stagehand, VR.
+**Suites on `oct31-w13/integration` after fix round C:** core 2118 (123 files, incl. the Postgres-gated suites) + `tsc` clean, play 888 (97 files) + typecheck + build, editor 456 (56 files) + `tsc -b`, terminal 245; loomcheck `--smoke` 0 / 0; `titi:facts --check` up to date. Not re-run since master (untouched): house, reinstall/web, chess, bank, stagehand, VR.
 
 **Decisions taken for the user in the fix rounds (veto any):**
 1. **Hosts may open the doors, pause and resume from Play** (More → ⏯ The show, armed then fired): `/api/mod/start` and `/api/mod/stop` joined the host allowlist. Restart, reload, push draft, go live and end stay off it.
 2. **The 🗂 Guests badge counts guests waiting on an unread message**, not the guest count (CONTRACTS §9.7 said the count; it read as nine unread alerts). The total is the button's tooltip; a guest's typed DM to the booth shows under **Messages** (also a departure from §9.7's "no per-guest rows").
-3. **Windows Defender's face leads with 🛡** (*Hold The Door* gains `send to the internet`, Q26).
+3. **🛡 Send to the Internet arms then fires on every Antivirus booth and is off Windows Defender's face** (fix round C, Q26: a one-tap capture of a just-cleared late arrival was too easy); Windows Defender's scan of a marked program sends them to a room Antivirus (`holds_the_door`).
 4. **A ribbon after Bingo is announced as *from the hosts*** (Q28): 🎀 is every host's, and the story can't tell who pressed it.
 5. **`loud:` only on Show Your Pass** (Q14): every other loud candidate already raises an `!` alert from the same cue, which at `dialog` would be two modals for one beat.
 6. **A host is offered another character's `by:` button only when its press is heard** (a story rule or a ROLE hook; fhostby): the server room's 🔌 💥 ❌ 🚪 🔧 stay on a host's card, 🛡 ✅ 👁 and Acrobat's 🫘 leave it, and the server refuses them (Q2, Q22). A headless moderator's press is never refused as unheard.

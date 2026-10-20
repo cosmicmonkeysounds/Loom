@@ -288,14 +288,14 @@ pending the recheck's measurement. **Deploy order:** the server first
 `# system-log`, `~` notices, readouts in the booths' Inbox, so the chat seqs
 move), restart any other non-ended event, reload the terminals, the TV and
 the tent tablet, reprint the cast packs after the sign-off. **Open:** the
-show text awaits the user's sign-off (`SIGNOFF-w13.md` Q1–Q28: Q1, who calls
+show text awaits the user's sign-off (`SIGNOFF-w13.md` Q1–Q36: Q1, who calls
 the cues, first); the bank, the Rust engine and the TextMate grammar don't
 know the new syntax; not device-checked: the iOS keyboard with the folded
 tray, a camera hidden under a card on iOS Safari, old Android tablets on the
 `:has()` / `color-mix()` fallbacks; a late-night guest snapshot (≈ 54 KB) over
 uncompressed SSE; the ~31 s late-night replay. Suites on the integration
-branch at ccf4e45: core 2098 (116 files, incl. Postgres), play 809 (90
-files), editor 454 (55 files), terminal 245; loomcheck `--smoke` 0 / 0,
+branch after fix round C: core 2118 (123 files, incl. Postgres), play 888 (97
+files), editor 456 (56 files), terminal 245; loomcheck `--smoke` 0 / 0,
 `titi:facts --check` up to date.
 
 **Wave 12 — Trabolta's mind rebuilt, built 2026-10-19** (the answers
