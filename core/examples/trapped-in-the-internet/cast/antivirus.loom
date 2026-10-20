@@ -70,6 +70,9 @@ CHARACTER CRA Agent Software is Enforcer
 CHARACTER Windows Defender is Enforcer
   avatar: File:Microsoft Defender Icon Logo 2025 English.svg
   wiki: Microsoft Defender Antivirus
+  // DRAFT for sign-off (w13 Q30): the door part never escorts, so its scan
+  // of a marked program says an Antivirus will come (TRAIT Enforcer's scan).
+  holds_the_door: bool = true
   // Wave 13: the door hears only its door readouts. The patrol, the
   // sweeps, the escort list, Bathroom Mode and the alarm are the four room
   // Antivirus' (`: none` drops the Enforcer trait's hook for this part).

@@ -858,6 +858,12 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
       expect(said.some((t) => t.includes("you are marked for reinstallation") && t.includes("the Internet")), who).toBe(true);
       expect(replyTo(out, who).some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("🛡")), who).toBe(true);
     }
+    // Windows Defender holds the door: it never says "come with me".
+    const door = n.scan("Windows Defender", "g5");
+    const doorSaid = forGuest(door, "g5").filter((m) => m.channel === "dm:Windows Defender").map((m) => m.text).join("\n");
+    expect(doorSaid).toContain("An Antivirus will escort you through the Tube to the Internet.");
+    expect(doorSaid).not.toMatch(/Come with me|no threats found/u);
+    expect(replyTo(door, "Windows Defender").some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("Stay at the door"))).toBe(true);
     // An unmarked, cleared program still gets the old patter.
     const ok = n.scan("Norton Anti-Virus", "g1");
     expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
