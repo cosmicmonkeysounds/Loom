@@ -3023,16 +3023,22 @@ INTERACTION crew_through_the_door
 INTERACTION send to the internet
   label: 🛡 Send to the Internet
   who: performer
+  // DRAFT for sign-off (w13 Q22): the Antivirus' own (a host part keeps it).
+  by: Antivirus
   description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled
   who: performer
+  // DRAFT for sign-off (w13 Q22)
+  by: Antivirus
   description: Antivirus. They completed the simulation: let them out.
 
 INTERACTION accuse
   label: 👁 Put on the watchlist
   who: performer
+  // DRAFT for sign-off (w13 Q22)
+  by: Antivirus
   while: Night.ended != true
   description: Antivirus. Raises their doubt.
 
