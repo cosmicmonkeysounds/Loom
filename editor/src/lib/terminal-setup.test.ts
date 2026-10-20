@@ -96,6 +96,20 @@ describe('suggestions', () => {
     expect(tv).toMatchObject({ name: 'Desktop TV', view: 'tv', room: 'The Desktop' })
     expect(pickView(tv, TerminalView.World, spot('desktop-tv')).room).toBe('')
   })
+  it('the map’s own screen and room-terminal flag win over the guess', () => {
+    const wire = { house: { ...HOUSE.house, terminals: [
+      { id: 'graphics-card', name: 'Casino', room: 'desktop', view: 'casino' },
+      { id: 'hall', name: 'Hall', room: 'server-room', speaks: true },
+      { id: 'server-room', name: 'Server Room', room: 'server-room', speaks: false },
+      { id: 'odd', name: 'Odd', room: 'desktop', view: 'kiosk', speaks: 'yes' },
+    ] } }
+    const m = mapTerminals(wire)
+    expect(m[3]).not.toHaveProperty('view')
+    expect(m[3]).not.toHaveProperty('speaks')
+    expect(pickSpot(BLANK, m[0]!)).toMatchObject({ name: 'Casino', view: 'casino', room: '' })
+    expect(pickSpot(BLANK, m[1]!)).toMatchObject({ view: 'auto', room: 'The Server Room' })
+    expect(pickSpot(BLANK, m[2]!)).toMatchObject({ view: 'face', room: '' })
+  })
   it('room options: the map’s, then the story’s, unique', () => {
     expect(roomOptions(map, mapLocations(HOUSE), ['The Desktop', 'The Cloud', 'the tube'])).toEqual(['The Desktop', 'The Server Room', 'The Tube', 'The Cloud'])
   })
