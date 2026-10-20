@@ -8,6 +8,7 @@ import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
 import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
 import { codexAboutKind, storyPhase, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
+import { isGateFlag } from "../src/host-board.ts";
 import { isSecretRoleSlot } from "../src/runtime/sim/board.ts";
 import type { AgentMindReport, AgentQueue } from "./agents.ts";
 
@@ -1450,45 +1451,176 @@ function flagOn(v: Value | undefined): boolean {
   }
 }
 
-const flagsMemo = new WeakMap<object, RoundMemo<Map<string, GuestFlag[]>>>();
+/** One ROLE `watch:` item, resolved once per model (`flagPlan`). */
+interface FlagItem {
+  /** Index of its board line (`resolvedBoard(model).watch`). */
+  line: number;
+  label: string;
+  path: string;
+  /** The path after its ROLE head (`marked`, `quest.the_cold_door`). */
+  rest: string;
+  /** The ROLE declares the slot `bool`. */
+  boolSlot: boolean;
+}
 
-/** Every guest's ROLE-scoped `watch:` flags this round (`guestFlags`). */
-function allGuestFlags(sim: Sim): Map<string, GuestFlag[]> {
-  return memoRound(flagsMemo, sim, () => {
-    const out = new Map<string, GuestFlag[]>();
-    const lines = resolvedBoard(sim.model).watch.filter((l) => l.items.some((i) => i.scope === "role"));
-    if (lines.length === 0) return out;
-    const live = lines.filter((l) => boardLineLive(sim, l.while));
-    const items = live.flatMap((l) => l.items.filter((i) => i.scope === "role" && i.path !== null));
-    if (items.length === 0) return out;
-    for (const p of sim.persons.values()) {
-      const role = sim.model.roles.get(p.role);
-      const flags: GuestFlag[] = [];
-      for (const i of items) {
-        const path = i.path!;
-        const dot = path.indexOf(".");
-        const head = path.slice(0, dot);
-        const rest = path.slice(dot + 1);
-        if (foldName(head) !== foldName(p.role)) continue;
-        const slot = rest.split(".")[0]!;
-        if (role !== undefined && isSecretRoleSlot(role.secret, rest)) continue;
-        const v = sim.world.get(`${p.id}.${rest}`);
-        const shown = v === undefined || v.kind === "null" ? "null" : display(v).replace(/^"(.*)"$/su, "$1");
-        const on = flagOn(v);
-        const boolean = role?.bools?.has(slot) === true || (v !== undefined && v.kind === "bool") || shown === "true" || shown === "false";
-        if (!boolean && !on) continue;
-        flags.push({ label: i.label, path, value: shown, on });
-      }
-      if (flags.length > 0) out.set(p.id, flags);
+/** The ROLE `watch:` items per ROLE, with their lines' `while`s, once per
+ *  model: the per-round work is then only the lines' `while`s and one world
+ *  read per guest and item (load test, wave 13: the old per-guest folding
+ *  cost 8 ms a round at 45 guests). */
+interface FlagPlan {
+  /** Each board line's `while` (null = always), by line index. */
+  whiles: Array<string | null>;
+  /** The lines that carry at least one ROLE item. */
+  lines: number[];
+  /** Items per ROLE (keyed folded), line order; a ROLE `secret:` slot never. */
+  byRole: Map<string, FlagItem[]>;
+  /** A person's `role` string → its folded key (a handful per night). */
+  folded: Map<string, string>;
+  /** A line's `while` reads the story clock (`Time.*`), which moves with
+   *  no log entry: the round memo then keys on the story second too. */
+  clock: boolean;
+}
+
+const flagPlans = new WeakMap<object, FlagPlan>();
+const CLOCK_READ = /\bTime\s*\.|\b(?:since|elapsed|now)\s*\(/u;
+
+function flagPlan(model: Sim["model"]): FlagPlan {
+  let plan = flagPlans.get(model);
+  if (plan !== undefined) return plan;
+  const board = resolvedBoard(model);
+  const roleIds = new Map([...model.roles.keys()].map((id) => [foldName(id), id]));
+  const byRole = new Map<string, FlagItem[]>();
+  const lines: number[] = [];
+  let clock = false;
+  board.watch.forEach((l, line) => {
+    let any = false;
+    for (const i of l.items) {
+      if (i.scope !== "role" || i.path === null) continue;
+      const dot = i.path.indexOf(".");
+      const roleId = roleIds.get(foldName(i.path.slice(0, dot)));
+      if (roleId === undefined) continue;
+      const role = model.roles.get(roleId)!;
+      const rest = i.path.slice(dot + 1);
+      if (isSecretRoleSlot(role.secret, rest)) continue;
+      const slot = rest.split(".")[0]!;
+      const list = byRole.get(foldName(roleId)) ?? [];
+      list.push({ line, label: i.label, path: i.path, rest, boolSlot: role.bools?.has(slot) === true });
+      byRole.set(foldName(roleId), list);
+      any = true;
     }
-    return out;
+    if (any) {
+      lines.push(line);
+      if (l.while !== null && CLOCK_READ.test(l.while)) clock = true;
+    }
   });
+  plan = { whiles: board.watch.map((l) => l.while), lines, byRole, folded: new Map(), clock };
+  flagPlans.set(model, plan);
+  return plan;
+}
+
+/** Which of the plan's lines hold now. */
+function liveFlagLines(sim: Sim, plan: FlagPlan): Set<number> {
+  const live = new Set<number>();
+  for (const line of plan.lines) if (boardLineLive(sim, plan.whiles[line]!)) live.add(line);
+  return live;
+}
+
+/** One guest's flags off the plan: every boolean item (false included, so a
+ *  card can say "Not cleared"), a non-boolean one only when truthy. */
+function flagsOf(sim: Sim, plan: FlagPlan, live: ReadonlySet<number>, id: string, role: string): GuestFlag[] {
+  let key = plan.folded.get(role);
+  if (key === undefined) {
+    key = foldName(role);
+    plan.folded.set(role, key);
+  }
+  const items = plan.byRole.get(key);
+  if (items === undefined) return [];
+  const flags: GuestFlag[] = [];
+  for (const i of items) {
+    if (!live.has(i.line)) continue;
+    const v = sim.world.get(`${id}.${i.rest}`);
+    const shown = v === undefined || v.kind === "null" ? "null" : display(v).replace(/^"(.*)"$/su, "$1");
+    const on = flagOn(v);
+    const boolean = i.boolSlot || (v !== undefined && v.kind === "bool") || shown === "true" || shown === "false";
+    if (!boolean && !on) continue;
+    flags.push({ label: i.label, path: i.path, value: shown, on });
+  }
+  return flags;
+}
+
+/** The flags a snapshot carries (contract C3): the ones that are on, plus a
+ *  failed gate ("Not cleared") — a false boolean that is not a gate is
+ *  noise every booth would download every round. The guest card
+ *  (`/api/prime/card`) keeps the full list. */
+export function snapshotFlags(flags: readonly GuestFlag[]): GuestFlag[] {
+  return flags.filter((f) => f.on || ((f.value === "true" || f.value === "false") && isGateFlag(f.label)));
+}
+
+interface FlagsRound {
+  len: number;
+  sec: number;
+  model: Sim["model"];
+  full: Map<string, GuestFlag[]>;
+  lean: Map<string, GuestFlag[]> | null;
+}
+const flagsMemo = new WeakMap<object, FlagsRound>();
+
+/** Every guest's ROLE-scoped `watch:` flags this round (`guestFlags`),
+ *  memoised on the log's length (and the story second only when a line's
+ *  `while` reads the clock). */
+function flagsRound(sim: Sim): FlagsRound {
+  const plan = flagPlan(sim.model);
+  const len = sim.log.len();
+  const sec = plan.clock ? Math.floor(sim.elapsed() / 1000) : 0;
+  const hit = flagsMemo.get(sim.log);
+  if (hit !== undefined && hit.len === len && hit.sec === sec && hit.model === sim.model) return hit;
+  const full = new Map<string, GuestFlag[]>();
+  if (plan.byRole.size > 0) {
+    const live = liveFlagLines(sim, plan);
+    if (live.size > 0) {
+      for (const p of sim.persons.values()) {
+        const flags = flagsOf(sim, plan, live, p.id, p.role);
+        if (flags.length > 0) full.set(p.id, flags);
+      }
+    }
+  }
+  const round: FlagsRound = { len, sec, model: sim.model, full, lean: null };
+  flagsMemo.set(sim.log, round);
+  return round;
 }
 
 /** A guest's ROLE-scoped `watch:` items (`GuestFlag`), on lines whose
  *  `while` holds, a ROLE `secret:` slot never — memoised per round. */
 export function guestFlags(sim: Sim, guestId: string): GuestFlag[] {
-  return allGuestFlags(sim).get(guestId) ?? [];
+  return flagsRound(sim).full.get(guestId) ?? [];
+}
+
+/** Every guest's flags as a snapshot carries them (`snapshotFlags`), by id —
+ *  memoised per round (the host view and every booth share it). */
+export function allSnapshotFlags(sim: Sim): ReadonlyMap<string, GuestFlag[]> {
+  const round = flagsRound(sim);
+  if (round.lean === null) {
+    const lean = new Map<string, GuestFlag[]>();
+    for (const [id, flags] of round.full) {
+      const kept = snapshotFlags(flags);
+      if (kept.length > 0) lean.set(id, kept);
+    }
+    round.lean = lean;
+  }
+  return round.lean;
+}
+
+/** One guest's full flags read fresh, without building everyone's (a scan's
+ *  card, right after its commit). */
+export function guestFlagsNow(sim: Sim, guestId: string): GuestFlag[] {
+  const hit = flagsMemo.get(sim.log);
+  if (hit !== undefined && hit.len === sim.log.len() && hit.model === sim.model && !flagPlan(sim.model).clock) return hit.full.get(guestId) ?? [];
+  const p = sim.persons.get(guestId);
+  if (p === undefined) return [];
+  const plan = flagPlan(sim.model);
+  if (plan.byRole.size === 0) return [];
+  const live = liveFlagLines(sim, plan);
+  return live.size === 0 ? [] : flagsOf(sim, plan, live, p.id, p.role);
 }
 
 const guestScopedCache = new WeakMap<object, Set<string>>();
@@ -1515,6 +1647,38 @@ function guestScopedIds(model: Sim["model"]): Set<string> {
   return out;
 }
 
+/** A booth readout index over a chat timeline: the positions of every readout
+ *  per `about|channel`, extended as the timeline grows (a scan's card read
+ *  it with a walk over every message — 12 ms a scan late in the night). */
+interface ReadoutIndex {
+  upto: number;
+  byKey: Map<string, number[]>;
+}
+const readoutIndexes = new WeakMap<readonly ChatMessage[], ReadoutIndex>();
+
+/** The positions in `chat` of the last 5 visible readouts in `channel`
+ *  about `guestId`, oldest first (hiding is live, so it is read here). */
+function readoutSeqs(chat: readonly ChatMessage[], guestId: string, channel: string): number[] {
+  let ix = readoutIndexes.get(chat);
+  if (ix === undefined || ix.upto > chat.length) {
+    ix = { upto: 0, byKey: new Map() };
+    readoutIndexes.set(chat, ix);
+  }
+  for (; ix.upto < chat.length; ix.upto++) {
+    const m = chat[ix.upto]!;
+    if (m.readout !== true || typeof m.about !== "string") continue;
+    const key = `${m.about}|${m.channel}`;
+    const list = ix.byKey.get(key);
+    if (list === undefined) ix.byKey.set(key, [ix.upto]);
+    else list.push(ix.upto);
+  }
+  const all = ix.byKey.get(`${guestId}|${channel}`) ?? [];
+  // Keep the newest 5 visible: walk back past hidden ones.
+  const out: number[] = [];
+  for (let k = all.length - 1; k >= 0 && out.length < 5; k--) if (chat[all[k]!]?.hidden !== true) out.push(all[k]!);
+  return out.reverse();
+}
+
 /** What `character`'s booth may do to one guest right now — the scan card.
  *  Null for an unknown guest. */
 export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character: string, guestId: string, host: boolean): GuestCardView | null {
@@ -1528,14 +1692,16 @@ export function guestCardView(sim: Sim, chat: readonly ChatMessage[], character:
     if (i.while !== null && !sim.holds(i.while, guestId, character)) continue;
     live.push(i.id);
   }
-  const dm = `dm:${character}`;
   const readouts: GuestCardView["readouts"] = [];
-  for (const m of chat) if (m.readout === true && m.about === guestId && m.channel === dm && !m.hidden) readouts.push({ seq: m.seq, text: m.text, ts: m.ts });
+  for (const at of readoutSeqs(chat, guestId, `dm:${character}`)) {
+    const m = chat[at];
+    if (m !== undefined && !m.hidden) readouts.push({ seq: m.seq, text: m.text, ts: m.ts });
+  }
   return {
-    guest: primeGuest(sim, p.id, p.name),
+    guest: primeGuest(sim, p.id, p.name, guestFlagsNow(sim, p.id)),
     live,
     guestScoped: live.filter((id) => scoped.has(id)),
-    readouts: readouts.slice(-5),
+    readouts,
   };
 }
 
@@ -1557,9 +1723,10 @@ function voicedOf(sim: Sim, guestId: string): string[] {
     .map((c) => c.id);
 }
 
-/** One booth row for a guest (`PrimeGuest`), flags included when any. */
-function primeGuest(sim: Sim, id: string, name: string): PrimeGuest {
-  const flags = guestFlags(sim, id);
+/** One booth row for a guest (`PrimeGuest`), flags included when any —
+ *  a snapshot's lean list (`snapshotFlags`) unless `flags` is given (the
+ *  card's full one). */
+function primeGuest(sim: Sim, id: string, name: string, flags: readonly GuestFlag[] = allSnapshotFlags(sim).get(id) ?? []): PrimeGuest {
   return {
     id,
     name,
@@ -1567,7 +1734,7 @@ function primeGuest(sim: Sim, id: string, name: string): PrimeGuest {
     captured: sim.isCaptured(id),
     restricted: sim.isRestricted(id),
     location: sim.locationOf(id),
-    ...(flags.length > 0 ? { flags } : {}),
+    ...(flags.length > 0 ? { flags: [...flags] } : {}),
   };
 }
 

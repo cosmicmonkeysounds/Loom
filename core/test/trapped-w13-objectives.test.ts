@@ -155,15 +155,20 @@ describe("Trapped in the Internet — wave 13: the booth card's facts", () => {
     const n = new Night();
     n.upload("g1", "Calculator");
     n.upload("g2", "Winamp", null);
-    const g1 = primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === "g1")!;
+    // The card (`/api/prime/card`, `guestCardView`) carries every flag; a
+    // snapshot only those on plus a failed gate (contract C3).
+    const card = (id: string) => guestCardView(n.sim, [], "Norton Anti-Virus", id, false)!.guest;
+    const g1 = card("g1");
     const on = (g: typeof g1) => Object.fromEntries((g.flags ?? []).map((f) => [f.label, f.on]));
     expect(on(g1)).toMatchObject({ Cleared: true, Marked: false, "Bathroom Mode": false, Late: false, "In the Internet": false });
     expect(on(g1)["Checked in"]).toBeUndefined(); // text "none": listed only once set
-    const g2 = primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === "g2")!;
-    expect(on(g2).Cleared).toBe(false); // "Not cleared"
+    const lean = (id: string) => primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === id)!;
+    expect(on(lean("g1"))).toEqual({ Cleared: true });
+    expect(on(card("g2")).Cleared).toBe(false); // "Not cleared"
+    expect(on(lean("g2")).Cleared).toBe(false); // a failed gate rides the snapshot too
     n.signal("go to the bathroom", "g1");
-    const after = primeView(n.sim, "Norton Anti-Virus").guests.find((g) => g.id === "g1")!;
-    expect(on(after)["Bathroom Mode"]).toBe(true);
+    expect(on(card("g1"))["Bathroom Mode"]).toBe(true);
+    expect(on(lean("g1"))["Bathroom Mode"]).toBe(true);
     const secret = new Set(n.sim.model.roles.get("Program")!.secret ?? []);
     for (const g of primeView(n.sim, "Norton Anti-Virus").guests) for (const f of g.flags ?? []) expect(secret.has(f.path.split(".").slice(1).join(".")), f.path).toBe(false);
   });

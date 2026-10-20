@@ -158,7 +158,8 @@ describe("guestFlags", () => {
   it("rides PrimeGuest.flags", () => {
     const sim = fresh();
     const p = primeView(sim, "Norton");
-    expect(p.guests.find((g) => g.id === "g1")!.flags!.map((f) => f.label)).toEqual(["Cleared", "Marked"]);
+    // A snapshot keeps what is on and a failed gate (contract C3): "Not cleared", never "Not marked".
+    expect(p.guests.find((g) => g.id === "g1")!.flags!.map((f) => f.label)).toEqual(["Cleared"]);
   });
 });
 
