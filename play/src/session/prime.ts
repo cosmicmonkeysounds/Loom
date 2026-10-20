@@ -13,7 +13,7 @@ import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
 import { unreadOf } from "../stream/badges.ts";
 import { questSummary } from "../stream/runs.ts";
-import type { Channel, ChatMessage, PrimeView } from "../types.ts";
+import type { Channel, ChatMessage, GuestCardView, PrimeActResult, PrimeView, ScanResult } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import { queueSummary } from "../wallet.tsx";
 import type { WidgetResult } from "../widgets.tsx";
@@ -242,7 +242,10 @@ export interface PrimeSession {
   notice: string | null;
   threads: Threads;
   login: (character: string, passcode: string) => Promise<void>;
-  scan: (target: string) => Promise<unknown>;
+  /** Scan a guest's pass (`/api/scan`); the answer carries the guest's card (wave 13). */
+  scan: (target: string) => Promise<ScanResult>;
+  /** What this booth may do to one guest right now (`/api/prime/card`, wave 13). */
+  card: (guest: string) => Promise<GuestCardView>;
   /** Hybrid chat: type into a channel as this character (reply via parentSeq). */
   say: (channel: string, text: string, parentSeq?: number) => Promise<unknown>;
   /** Access control: pull a guest into a membership-gated channel. */
@@ -251,7 +254,7 @@ export interface PrimeSession {
   leaveChannel: (channel: string) => Promise<unknown>;
   becomeAdmin: (passcode: string) => Promise<void>;
   /** Fire a performer / admin interaction on a guest, as this character. */
-  act: (name: string, guest: string) => Promise<unknown>;
+  act: (name: string, guest: string) => Promise<PrimeActResult>;
   /** Codex: hand one of the character's entries to a guest. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
   /** The approver's booth: settle a held transfer / deny one in its window. */
@@ -367,17 +370,33 @@ export function usePrimeSession(): PrimeSession {
   const login = useCallback(async (character: string, passcode: string) => {
     // Resolve the performer/mod code to its event, then sign in there.
     const { eventId, title } = await api<ResolvedCode>("/api/resolve-code", { code: passcode });
-    const r = await api<{ token: string; character: string; admin: boolean }>(
+    const r = await api<{ token: string; character: string; admin: boolean; host?: boolean }>(
       `/e/${encodeURIComponent(eventId)}/api/prime/login`,
       { character, passcode },
     );
-    const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, eventId, title };
+    const a: PrimeAuth = { token: r.token, character: r.character, admin: !!r.admin, host: r.host === true, eventId, title };
     crawl.reset();
     save(PK, a);
     setAuth(a);
     setNotice(null);
   }, []);
-  const scan = useCallback((target: string) => post("/api/scan", { target }, auth!.token), [post, auth]);
+  const scan = useCallback((target: string) => post<ScanResult>("/api/scan", { target }, auth!.token), [post, auth]);
+  // A read, not an action: it never counts as the booth's own request, so a
+  // readout landing while a card opens still banners (N-07).
+  const card = useCallback(
+    async (guest: string): Promise<GuestCardView> => {
+      try {
+        return await api<GuestCardView>(`${base}/api/prime/card`, { guest }, auth!.token);
+      } catch (e) {
+        if (e instanceof ApiError && auth !== null) {
+          if (eventGone(e.status, e.message)) dropBooth(lifecycleNotice("ended", SessionRole.Performer));
+          else if (performerSessionDead(e.status, e.message)) dropBooth(BOOTH_SIGNED_OUT);
+        }
+        throw e;
+      }
+    },
+    [base, auth, dropBooth],
+  );
   // A refused line banners why and rejects, so the composer keeps the text.
   const say = useCallback(
     async (channel: string, text: string, parentSeq?: number) => {
@@ -409,7 +428,7 @@ export function usePrimeSession(): PrimeSession {
     [base, auth],
   );
   const act = useCallback(
-    (name: string, guest: string) => post("/api/prime/act", { name, guest }, auth!.token),
+    (name: string, guest: string) => post<PrimeActResult>("/api/prime/act", { name, guest }, auth!.token),
     [post, auth],
   );
   const shareCodex = useCallback(
@@ -517,5 +536,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
 }
