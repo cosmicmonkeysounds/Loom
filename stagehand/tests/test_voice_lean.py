@@ -916,7 +916,7 @@ def test_a_gift_reaches_him_as_a_gift_that_has_been_paid_for():
     show = load_persona(SHOW / "trabolta.persona.md")
     heart = next(s.prompt for s in show.situations if s.name == "at your heart")
     marked = next(s.prompt for s in show.situations if s.name == "marked at your heart")
-    assert "No prices in this room." in heart and "theirs not yours" in marked
+    assert "No prices here" in heart and "theirs not yours" in marked
 
 
 def test_a_retry_that_still_repeats_sends_the_first_line_cut_and_a_stage_line_never_twice():

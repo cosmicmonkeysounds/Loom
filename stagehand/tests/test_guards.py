@@ -364,3 +364,11 @@ def test_a_cut_that_leaves_a_sentence_leaning_on_it_sends_the_fallback():
     # The house's own line in this thread is never his invention.
     said = "The facts are hidden in the Start Bar."
     assert invented_guard(P, Reply(say=said), heard=("Listen. The facts are hidden in the Start Bar.",))[1] == []
+
+
+def test_a_hiding_place_said_with_more_words_or_another_noun_is_still_cut():
+    """K-04 re-measure, w11b-heart: "The volumes with the facts are in the
+    stack by the monitor in The Desktop" got past the three-word reach."""
+    assert invents_fact(P.secrets, "The volumes with the facts are in the stack by the monitor in The Desktop.")
+    assert invents_fact(P.secrets, "The documents are kept on the shelf beside the lamp in The Start Bar.")
+    assert not invents_fact(P.secrets, "The last facts are stored on a computer in Halifax.")
