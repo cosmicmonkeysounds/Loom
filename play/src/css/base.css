@@ -217,7 +217,6 @@ body {
   color: var(--white); background: var(--good); padding: 1px 5px; margin-left: 6px;
   flex-shrink: 0; vertical-align: middle;
 }
-.chrow.here { border-left: 3px solid var(--good); }
 
 /* the little room icon (a beveled tile, not a gradient blob) */
 .avatar {
@@ -726,13 +725,12 @@ footer {
 .codex-card-foot .link { margin: 0; width: auto; font-size: 12px; }
 .quest-card.openable { cursor: pointer; }
 .quest-card.openable:hover { box-shadow: var(--raised), 0 1px 6px rgba(0, 0, 0, 0.08); }
-.quest-card.done { border-left: 4px solid var(--good); }
-.quest-card.failed { border-left: 4px solid var(--bad); opacity: 0.8; }
-.quest-card.active { border-left: 4px solid var(--highlight); }
+.quest-card.failed { opacity: 0.8; }
 .quest-status {
   font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.05em;
   padding: 2px 6px; border-radius: 999px; background: var(--code-bg); color: var(--muted-ink);
 }
+.quest-status.active { background: var(--highlight); color: var(--black); }
 .quest-status.done { background: var(--good); color: var(--white); }
 .quest-status.failed { background: var(--bad); color: var(--white); }
 .quest-giver { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
@@ -740,8 +738,6 @@ footer {
 .quest-open { margin-top: 8px; font: 700 12px var(--ui-font); color: var(--link); text-align: right; }
 .msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
 .msg.quest-step .bubble.plain { font-style: normal; color: var(--ink); }
-.msg.quest-step.complete { border-left-color: var(--good); }
-.msg.quest-step.fail { border-left-color: var(--bad); }
 .quest-step-ico { flex: none; }
 
 /* The Wallet room — coin cards (a transfer, a request, an offer, the
@@ -756,18 +752,13 @@ footer {
 .wallet-ico { font-size: 18px; line-height: 1; }
 .wallet-title { flex: 1; min-width: 0; font: 800 14px var(--ui-font); color: var(--navy); }
 .wallet-amount { font: 800 14px var(--ui-font); color: var(--navy); white-space: nowrap; }
-.wallet-card.held, .wallet-card.open { border-left: 4px solid var(--highlight); }
-.wallet-card.pending, .wallet-card.paying { border-left: 4px solid var(--line); }
-.wallet-card.settled, .wallet-card.accepted, .wallet-card.paid { border-left: 4px solid var(--good); }
-.wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { border-left: 4px solid var(--bad); opacity: 0.85; }
+.wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { opacity: 0.85; }
 .wallet-party { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
 .msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
 .msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
-.msg.wallet-step.settled, .msg.wallet-step.approved, .msg.wallet-step.paid, .msg.wallet-step.accepted, .msg.wallet-step.received { border-left-color: var(--good); }
-.msg.wallet-step.denied, .msg.wallet-step.declined, .msg.wallet-step.failed, .msg.wallet-step.cancelled, .msg.wallet-step.expired { border-left-color: var(--bad); }
 .wallet-step-ico { flex: none; }
 /* The identity card's balance (replaces ⭐ when the story has a currency). */
 .wallet-pill {
