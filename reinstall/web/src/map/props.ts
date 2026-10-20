@@ -1,0 +1,250 @@
+//! Placing and turning things on the map — pure: new props from a palette
+//! (a sensible size and colour per kind; the King with the show's
+//! defaults), a prop's fields, duplicating, turning by a step, the King's
+//! guarded door, a terminal snapped onto its room's nearest wall, and the
+//! terminal provisioning link's enums. Every op returns a changed copy.
+
+import { cloneData, distanceToSegment, pointInPoly, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
+import type { HouseMap, Prop, PropKind, Vec2 } from "@loom/house";
+import { round } from "./doors.ts";
+import { moveTo, positionOf, setYaw, yawOf, type Selection } from "./edit.ts";
+import { uniqueId } from "./ids.ts";
+
+/** Every prop kind, in the palette's order. */
+export const PROP_KINDS: readonly PropKind[] = ["box", "cylinder", "screen", "label", "king"];
+
+/** The palette's buttons. */
+export const PROP_PALETTE: { kind: PropKind; label: string }[] = [
+  { kind: "box", label: "▦ Box" },
+  { kind: "cylinder", label: "◯ Cylinder" },
+  { kind: "screen", label: "▭ Screen" },
+  { kind: "label", label: "✎ Label" },
+  { kind: "king", label: "♔ King" },
+];
+
+/** The rotate handle's step (Shift: 1°), and R / ⇧R. */
+export const YAW_STEP = 15;
+
+/** A new prop of each kind, before it is placed. */
+export function propDefaults(kind: PropKind): Omit<Prop, "id" | "room" | "pos"> {
+  switch (kind) {
+    case "box":
+      return { kind, size: [0.6, 0.75, 0.6], color: "#8a7a66" };
+    case "cylinder":
+      return { kind, size: [0.5, 0.9, 0.5], color: "#7a8a99" };
+    case "screen":
+      return { kind, size: [0.6, 0.4, 0.03], color: "#202830" };
+    case "label":
+      return { kind, size: [1, 0.25, 0.02], label: "LABEL" };
+    case "king":
+      return {
+        kind,
+        size: [0.6, 1.9, 0.6],
+        color: "#d4af37",
+        label: "THE KING",
+        hp: 15,
+        health: "Night.king_hp",
+        signals: { won: "chess won", lost: "chess lost", drawn: "chess drawn", hit: "king hit", fallen: "king fallen" },
+        armed: { path: "Night.king_armed", min: 1 },
+      };
+  }
+}
+
+/**
+ * Place a new prop of `kind` at a plan point on `floor` (on the floor
+ * surface, facing north). Null when the point is in no room on that floor.
+ */
+export function addProp(house: HouseMap, kind: PropKind, floor: string, at: Vec2): { house: HouseMap; id: string } | null {
+  const room = roomAt(house, at, floor);
+  if (room === null) return null;
+  const next = cloneData(house);
+  const id = uniqueId(kind === "king" ? "king" : kind, next.props.map((p) => p.id));
+  const d = propDefaults(kind);
+  next.props.push({ id, room: room.id, ...d, pos: [round(at[0]), roomElevation(next, room), round(at[1])] } as Prop);
+  return { house: next, id };
+}
+
+/** The fields the inspector edits (`undefined` clears an optional one). */
+export type PropPatch = Partial<Pick<Prop, "kind" | "size" | "color" | "label" | "solid" | "hp">>;
+
+/**
+ * Set a prop's fields. A prop made a King gains the King's defaults for
+ * what it lacks; a King made something else loses hp / health / signals /
+ * armed and the doors it guarded.
+ */
+export function patchProp(house: HouseMap, id: string, patch: PropPatch): HouseMap {
+  if (!house.props.some((p) => p.id === id)) return house;
+  const next = cloneData(house);
+  const p = next.props.find((x) => x.id === id)!;
+  const wasKing = p.kind === "king";
+  Object.assign(p, patch);
+  for (const k of ["color", "label", "solid", "hp"] as const) if (k in patch && patch[k] === undefined) delete p[k];
+  if (p.size.some((v) => !(v > 0))) return house;
+  if (p.kind === "king" && !wasKing) {
+    const d = propDefaults("king");
+    p.hp ??= d.hp!;
+    p.health ??= d.health!;
+    p.signals ??= d.signals!;
+    p.armed ??= d.armed!;
+  } else if (p.kind !== "king" && wasKing) {
+    delete p.hp;
+    delete p.health;
+    delete p.signals;
+    delete p.armed;
+    for (const door of next.doors) if (door.guard === id) delete door.guard;
+  }
+  if (p.hp !== undefined) p.hp = Math.max(1, Math.min(99, Math.round(p.hp)));
+  return next;
+}
+
+/** Put a placed thing back on its room's floor surface (y = the floor's elevation). */
+export function onFloor(house: HouseMap, sel: Selection): HouseMap {
+  const pos = positionOf(house, sel);
+  if (pos === null) return house;
+  const roomId = sel.kind === "spawn" ? house.spawn.room : sel.kind === "prop" ? house.props.find((p) => p.id === sel.id)?.room : sel.kind === "duck" ? house.duck.spots.find((d) => d.id === sel.id)?.room : house.terminals.find((t) => sel.kind === "terminal" && t.id === sel.id)?.room;
+  const room = roomId === undefined ? undefined : roomById(house, roomId);
+  if (room === undefined) return house;
+  const y = roomElevation(house, room);
+  if (pos[1] === y) return house;
+  const next = cloneData(house);
+  positionOf(next, sel)![1] = y;
+  return next;
+}
+
+/** Turn a thing by `delta` degrees from its yaw. */
+export function rotateBy(house: HouseMap, sel: Selection, delta: number): HouseMap {
+  const yaw = yawOf(house, sel);
+  return yaw === null ? house : setYaw(house, sel, yaw + delta);
+}
+
+/** A yaw rounded to the nearest `step` degrees, wrapped into [−180, 180). */
+export function snapYaw(yaw: number, step: number): number {
+  return wrapYaw(Math.round(yaw / step) * step);
+}
+
+/**
+ * A copy of the selected prop / terminal / duck spot, `offset` east and
+ * south, with a fresh id (the spawn, rooms and the rest aren't copied).
+ * The copy's room follows where it lands.
+ */
+export function duplicate(house: HouseMap, sel: Selection, offset: number): { house: HouseMap; sel: Selection } | null {
+  let next: HouseMap;
+  let copy: Selection;
+  if (sel.kind === "prop") {
+    const p = house.props.find((x) => x.id === sel.id);
+    if (p === undefined) return null;
+    next = cloneData(house);
+    const id = uniqueId(baseOf(p.id), next.props.map((x) => x.id));
+    next.props.push({ ...cloneData(p), id });
+    copy = { kind: "prop", id };
+  } else if (sel.kind === "terminal") {
+    const t = house.terminals.find((x) => x.id === sel.id);
+    if (t === undefined) return null;
+    next = cloneData(house);
+    const id = uniqueId(baseOf(t.id), next.terminals.map((x) => x.id));
+    next.terminals.push({ ...cloneData(t), id, name: `${t.name} copy` });
+    copy = { kind: "terminal", id };
+  } else if (sel.kind === "duck") {
+    const d = house.duck.spots.find((x) => x.id === sel.id);
+    if (d === undefined) return null;
+    next = cloneData(house);
+    const id = uniqueId(baseOf(d.id), next.duck.spots.map((x) => x.id));
+    next.duck.spots.push({ ...cloneData(d), id });
+    copy = { kind: "duck", id };
+  } else return null;
+  const pos = positionOf(next, copy)!;
+  return { house: moveTo(next, copy, [round(pos[0] + offset), round(pos[2] + offset)]), sel: copy };
+}
+
+/** `desk-2` → `desk` (so a copy of a copy is `desk-3`, not `desk-2-1`). */
+function baseOf(id: string): string {
+  return id.replace(/-\d+$/, "") || id;
+}
+
+/** The doors a King guards. */
+export function guardedBy(house: HouseMap, kingId: string): string[] {
+  return house.doors.filter((d) => d.guard === kingId).map((d) => d.id);
+}
+
+/** Make `doorId` the one door a King guards (null: none) — any other door
+ *  it guarded is let go; a door another King guarded passes to this one. */
+export function setGuard(house: HouseMap, kingId: string, doorId: string | null): HouseMap {
+  if (!house.props.some((p) => p.id === kingId && p.kind === "king")) return house;
+  if (doorId !== null && !house.doors.some((d) => d.id === doorId)) return house;
+  const next = cloneData(house);
+  for (const d of next.doors) {
+    if (d.id === doorId) d.guard = kingId;
+    else if (d.guard === kingId) delete d.guard;
+  }
+  return next;
+}
+
+/** How far into the room a snapped screen sits off the wall line. */
+export const WALL_INSET = 0.03;
+/** A terminal dropped this close to a wall goes onto it. */
+export const WALL_SNAP = 0.4;
+
+/**
+ * Hang a terminal on the nearest wall of its room: its screen centre on
+ * that edge, `WALL_INSET` into the room, facing straight into it (its
+ * height kept). With `within`, only when that wall is that close. The map
+ * unchanged when nothing qualifies.
+ */
+export function snapTerminalToWall(house: HouseMap, id: string, within = Infinity): HouseMap {
+  const t = house.terminals.find((x) => x.id === id);
+  const room = t === undefined ? undefined : roomById(house, t.room);
+  if (t === undefined || room === undefined || room.poly.length < 3) return house;
+  const p: Vec2 = [t.pos[0], t.pos[2]];
+  let best: { d: number; a: Vec2; b: Vec2 } | null = null;
+  for (let i = 0; i < room.poly.length; i++) {
+    const a = room.poly[i]!;
+    const b = room.poly[(i + 1) % room.poly.length]!;
+    const d = distanceToSegment(p, a, b);
+    if (best === null || d < best.d) best = { d, a, b };
+  }
+  if (best === null || best.d > within) return house;
+  const { a, b } = best;
+  const ex = b[0] - a[0];
+  const ez = b[1] - a[1];
+  const len = Math.hypot(ex, ez);
+  if (len === 0) return house;
+  // The foot on the edge, kept off the corners so the screen fits.
+  const margin = Math.min(0.25, len / 2);
+  const s = Math.max(margin, Math.min(len - margin, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ez) / len));
+  const foot: Vec2 = [a[0] + (ex / len) * s, a[1] + (ez / len) * s];
+  // The normal that points into the room.
+  let nx = -ez / len;
+  let nz = ex / len;
+  if (!pointInPoly(room.poly, [foot[0] + nx * 0.05, foot[1] + nz * 0.05])) {
+    nx = -nx;
+    nz = -nz;
+  }
+  const at: Vec2 = [round(foot[0] + nx * WALL_INSET), round(foot[1] + nz * WALL_INSET)];
+  const yaw = Math.round(yawToward([at[0], 0, at[1]], [at[0] + nx, 0, at[1] + nz]) * 2) / 2;
+  if (at[0] === t.pos[0] && at[1] === t.pos[2] && wrapYaw(yaw) === t.yaw) return house;
+  const next = cloneData(house);
+  const n = next.terminals.find((x) => x.id === id)!;
+  n.pos = [at[0], n.pos[1], at[1]];
+  n.yaw = wrapYaw(yaw) + 0;
+  return next;
+}
+
+/** The terminal app's views (`terminal/src/config.ts` `TerminalView`). */
+export const TERMINAL_VIEWS = ["auto", "world", "face", "mirror", "tv", "chess", "shadow"] as const;
+export type TerminalViewName = (typeof TERMINAL_VIEWS)[number];
+
+/** What each view does, for the picker. */
+export const TERMINAL_VIEW_HINTS: Record<TerminalViewName, string> = {
+  auto: "auto — the world view where it can, else the face",
+  world: "world — the virtual house through this window",
+  face: "face — the character's face",
+  mirror: "mirror — the spectator view",
+  tv: "tv — the house TV",
+  chess: "chess — the King's board (the Server Door)",
+  shadow: "shadow — this terminal's camera with the players as ghosts",
+};
+
+/** The story LOCATIONs the map's rooms stand for, for the room picker. */
+export function mapLocations(house: HouseMap): string[] {
+  return [...new Set(house.rooms.flatMap((r) => (r.location !== undefined && r.location !== "" ? [r.location] : [])))].sort((a, b) => a.localeCompare(b));
+}
