@@ -233,6 +233,10 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
     video.muted = true;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
+    // In the page (a pixel, invisible): Safari stops decoding a detached video's frames.
+    video.setAttribute("aria-hidden", "true");
+    video.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;";
+    document.body.appendChild(video);
     feedStatus.set({ kind: "waiting" });
     void hub.acquire(facing).then((stream) => {
       if (!alive) return;
@@ -261,6 +265,7 @@ export function useCamFeed(config: TerminalConfig | null, hub: CameraHub = pageC
       alive = false;
       stop?.();
       video.srcObject = null;
+      video.remove();
       hub.release();
       feedStatus.set({ kind: "off" });
     };
