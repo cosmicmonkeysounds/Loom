@@ -2025,7 +2025,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(v(sim, "Night.ending")).toBe("destroyed");
   });
 
-  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there), never a Host's or a performer's", { timeout: SLOW }, async () => {
+  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there) and every host part, never Clippy's or Windows Defender's", { timeout: SLOW }, async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-trapped-radio-"));
     tmp.push(dir);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
@@ -2042,12 +2042,16 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     // parts (`admin: true`): a host booth keeps every `by:` button, as a
     // passcode admin always did, so only Clippy (a Host, never a host part)
     // and Windows Defender are refused here.
+    const hostTokens = new Map<string, string>();
     for (const who of ["Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
       const login = await call(rt, "POST", "/api/prime/login", { character: who, passcode: CODES.prime });
       expect(login.json["host"], who).toBe(true);
+      hostTokens.set(who, login.json["token"] as string);
     }
+    const refused = new Map<string, string>();
     for (const who of ["Clippy", "Windows Defender"]) {
       const t = await booth(who);
+      refused.set(who, t);
       for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
       for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.only, `${name} on ${who}`).toBe(true);
@@ -2064,6 +2068,23 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       expect(Number(v(rt.liveSim!, "Night.crew_door_until")), who).toBeGreaterThan(0);
       expect((await act(t, "radio_combo_a")).status, who).toBe(200); // pressed; its `while:` hook does nothing before the Y2K hour
     }
+    expect(v(rt.liveSim!, "Night.ended") ?? false).toBe(false);
+    // A host part presses them too (sign-off Q2): 🔧 lands (200, a crew window).
+    for (const [who, t] of hostTokens) {
+      const before = Number(v(rt.liveSim!, "Night.crew_door_until") ?? 0);
+      expect((await act(t, "radio_crew_door")).status, who).toBe(200);
+      expect(Number(v(rt.liveSim!, "Night.crew_door_until")), who).toBeGreaterThanOrEqual(before);
+    }
+    // The card face at the Y2K hour: a host part's card offers the patch-bay
+    // watch's 🔧 / 🔌 / 💥 / ❌ on a program; Clippy's never does.
+    rt.liveSim!.setVar("Night.step", "14");
+    const card = async (t: string) => (await call(rt, "POST", "/api/prime/card", { guest: id }, { token: t })).json as unknown as { live: string[] };
+    for (const [who, t] of hostTokens) {
+      const face = await card(t);
+      for (const name of ["radio_crew_door", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"]) expect(face.live, `${name} on ${who}'s card`).toContain(name);
+    }
+    const clippy = await card(refused.get("Clippy")!);
+    for (const name of RADIO) expect(clippy.live, `${name} on Clippy's card`).not.toContain(name);
     expect(v(rt.liveSim!, "Night.ended") ?? false).toBe(false);
   });
 
