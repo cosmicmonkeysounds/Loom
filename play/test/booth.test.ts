@@ -71,7 +71,7 @@ describe("the booth's pinned rooms", () => {
   });
 });
 
-describe("the booth's Inbox + pending cards", () => {
+describe("the booth's Readouts (was Inbox) + pending cards", () => {
   it("the Inbox holds `dm:<me>` rows addressed `@<me>`, and needs you while a card is unanswered", () => {
     const list = [
       msg("dm:Clippy", ["g-1"]), // a guest's thread with Clippy: the guest conversation, not the Inbox
@@ -82,8 +82,9 @@ describe("the booth's Inbox + pending cards", () => {
     const card = list[2]!;
     const chans = buildPrimeChannels(store(list), view());
     const inbox = chans.find((c) => c.id === INBOX)!;
-    expect(inbox).toMatchObject({ kind: "dm", title: "Inbox", spaceId: "booth", order: 1, needsYou: true });
-    expect(inbox.subtitle).toContain("Clippy");
+    // Wave 13: the Inbox is "Readouts" (readouts + cards); no readout yet → its hint.
+    expect(inbox).toMatchObject({ kind: "dm", title: "Readouts", spaceId: "booth", order: 1, needsYou: true });
+    expect(inbox.subtitle).toBe("what your scans and buttons said");
     expect(inbox.messages.map((m) => m.seq)).toEqual([list[1]!.seq, card.seq]);
     // Answered → calm.
     const calm = buildPrimeChannels(store(list), view(), new Set([card.seq])).find((c) => c.id === INBOX)!;
