@@ -4,7 +4,9 @@
 //! listener sees `e.target` retargeted to the shadow host).
 
 import { describe, expect, it } from "vitest";
-import { balloonScope, eventRoot, tappedInside } from "../src/chrome/balloon.tsx";
+import { balloonScope, eventRoot, tappedInside, TrayBalloon } from "../src/chrome/balloon.tsx";
+import { AlertsBalloon } from "../src/guest/frame.tsx";
+import type { Push } from "../src/push.ts";
 
 /** A minimal node: `contains` walks `parent` links (like the DOM, but never across a shadow boundary). */
 interface FakeNode {
@@ -78,5 +80,31 @@ describe("the balloon's tap-away", () => {
   it("listens on the part's own root: a shadow root when embedded", () => {
     const shadow = { nodeType: 11, addEventListener() {}, removeEventListener() {} };
     expect(eventRoot({ getRootNode: () => shadow } as unknown as Node)).toBe(shadow);
+  });
+});
+
+describe("the Get alerts offer", () => {
+  const push = (state: Push["state"], dismissed = false): Push & { dismissals: number } => {
+    const p = { state, dismissed, dismissals: 0, enable() {}, release() {}, dismiss: () => void p.dismissals++ };
+    return p;
+  };
+  const offer = (p: Push) => AlertsBalloon({ push: p, why: "the house can reach you." }) as { type: unknown; props: Record<string, unknown> } | null;
+
+  it("waits for an answer: no timer, and a tap elsewhere never dismisses it for good", () => {
+    const el = offer(push("ask"));
+    expect(el?.type).toBe(TrayBalloon);
+    expect(el?.props["timeoutMs"]).toBeNull();
+    expect(el?.props["closeOnTapAway"]).toBe(false);
+  });
+
+  it("closing it (Not now, OK, Escape) is the saved dismissal", () => {
+    const p = push("ask");
+    (offer(p)?.props["onClose"] as () => void)();
+    expect(p.dismissals).toBe(1);
+  });
+
+  it("never shows once dismissed, or where push can't run", () => {
+    expect(offer(push("ask", true))).toBeNull();
+    expect(offer(push("unsupported"))).toBeNull();
   });
 });

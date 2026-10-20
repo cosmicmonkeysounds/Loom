@@ -157,12 +157,14 @@ export function BalanceTray({ view, frozen, onOpen }: { view: WalletView; frozen
 }
 
 /** The one-time "Get alerts" offer, as a balloon from the tray (never a
- *  bar over the rooms). Closing it in any way is the "not now". */
+ *  bar over the rooms). It waits for an answer: only Turn on, Not now (OK)
+ *  or Escape put it away for good — a tap on a room or a scroll leaves it
+ *  up, so the offer is never lost to the first tap after the tour. */
 export function AlertsBalloon({ push, why, title }: { push: Push; why: string; title?: string | null }) {
   if (!showPushCard(push.state, push.dismissed)) return null;
   const ios = iosPushCopy(push.state, false, title);
   return (
-    <TrayBalloon title={`🔔 ${ios?.head ?? "Get alerts"}`} onClose={push.dismiss} timeoutMs={null} label="Get alerts" floating>
+    <TrayBalloon title={`🔔 ${ios?.head ?? "Get alerts"}`} onClose={push.dismiss} timeoutMs={null} closeOnTapAway={false} label="Get alerts" floating>
       <div className="tray-balloon-line">{ios?.body ?? why}</div>
       <div className="tray-balloon-row">
         {ios === null && (
