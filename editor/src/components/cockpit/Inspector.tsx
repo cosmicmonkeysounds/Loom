@@ -34,7 +34,9 @@ import { useDirectorMode } from './director/director-mode'
 import { DirectorMode } from './director/director-keys'
 import { useNow } from './director/clock'
 import { isGone, isPersonaRow, seenLine } from './guests'
+import { objectiveButtonLabels, objectiveRows } from './objectives'
 import { readoutsOf } from './rooms'
+import type { ObjectiveView } from '@loom/core/views'
 
 /** How many recent messages "Their feed" shows. */
 const FEED_LIMIT = 60
@@ -228,6 +230,36 @@ function VarsSection({ id }: { id: string }) {
   )
 }
 
+/** The live OBJECTIVEs on a participant's phone (wave 13) — the guest's or
+ *  the booth's NOW objective first, each with its checklist and buttons.
+ *  Read off the exact lens (`objectives` on `GuestView` / `PrimeView`). */
+function ObjectivesList({ objectives, interactions }: { objectives: readonly ObjectiveView[] | undefined; interactions: ReadonlyArray<{ id: string; label: string }> }) {
+  const rows = objectiveRows(objectives)
+  if (rows.length === 0) return <Note>No live objective — their NOW bar shows the room name.</Note>
+  return (
+    <ul className="mx-3 mb-1 flex flex-col gap-1 rounded border border-zinc-800 px-2 py-1.5 text-xs" data-testid="inspector-objectives">
+      {rows.map((o) => (
+        <li key={o.id} className="flex flex-col gap-0.5" data-testid={`inspector-objective-${o.id}`}>
+          <div className="flex items-baseline gap-1.5">
+            {o.now && <span className="rounded bg-indigo-950 px-1 text-[10px] uppercase tracking-wide text-indigo-300">now</span>}
+            <span className="text-zinc-200">{o.title}</span>
+            {o.loud && <span className="text-[10px] text-amber-400/80" title="Raises a moment on the phone when it goes live">loud</span>}
+            {o.act !== null && <span className="text-[10px] text-zinc-500">act {o.act}</span>}
+            {o.progress !== null && <span className="ml-auto text-[10px] text-zinc-500">{o.progress}</span>}
+          </div>
+          {o.brief !== '' && <div className="text-zinc-500">{o.brief}</div>}
+          {o.checks.map((c, i) => (
+            <div key={i} className={c.state === 'done' ? 'text-emerald-300/80' : 'text-zinc-400'}>
+              {c.glyph} {c.label}
+            </div>
+          ))}
+          {o.buttons.length > 0 && <div className="text-[10px] text-zinc-500">buttons: {objectiveButtonLabels(o.buttons, interactions).join(' · ')}</div>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** What the guest's own screen says right now — from the lens projection
  *  when they ARE the lens, else the roster's public-facing summary. */
 function TheirView({ id }: { id: string }) {
@@ -267,7 +299,29 @@ function TheirView({ id }: { id: string }) {
           </>
         )}
       </div>
+      {exact && (
+        <>
+          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">Objectives</div>
+          <ObjectivesList objectives={exact.objectives} interactions={exact.interactions} />
+        </>
+      )}
       <Note>A hidden allegiance reads as “none yet” here, exactly as on their phone.</Note>
+    </div>
+  )
+}
+
+/** A booth's own screen, when the lens is this character (wave 13): its NOW
+ *  objective and checklist, exactly as `PrimeView.objectives` lists them. */
+function BoothView({ id }: { id: string }) {
+  const lens = useCockpit((s) => s.lens)
+  const exact = lens !== null && lens.kind === 'performer' && lens.id === id ? lens.view : null
+  if (exact === null) return null
+  return (
+    <div data-testid="inspector-booth-view">
+      <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-zinc-500">
+        Their booth <span className="text-indigo-400/80">· exact</span>
+      </div>
+      <ObjectivesList objectives={exact.objectives} interactions={exact.interactions} />
     </div>
   )
 }
@@ -814,6 +868,7 @@ function CharacterInspector({ id }: { id: string }) {
           </button>
         </div>
       )}
+      <BoothView id={id} />
       <CharacterFeed id={id} />
       <VarsSection id={id} />
 
