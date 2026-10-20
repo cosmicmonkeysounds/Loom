@@ -8,7 +8,14 @@
 //!   - a performer who also enters the moderator passcode keeps the *same*
 //!     token and gains `admin` — "a performer can also be an admin";
 //!   - a `{ character: null, admin: true }` session is a **headless admin**
-//!     (an operator with a scanner but no character/booth).
+//!     (an operator with a scanner but no character/booth);
+//!   - a **host** (wave 13) holds the host capability, granted by signing in
+//!     as a part the story marks `admin: true` (Task Manager): the cue sheet,
+//!     judging, announcements, the alert dial — a fixed allowlist of mod
+//!     routes, never the god view. It lives and dies with that part:
+//!     `revokeHost` on a switch to another part, `dropCharacter` on Release,
+//!     Sign out and Go live (a host-only session is deleted, never left as a
+//!     headless admin).
 //!
 //! Kept out of the HTTP layer — and free of token *generation*, which the
 //! server owns — so the capability rules stay pure and unit-testable.
@@ -16,8 +23,11 @@
 export interface Session {
   /** Performer identity (the character they scan as), or null if headless. */
   character: string | null;
-  /** Moderator / admin capability. */
+  /** The moderator capability — the mod passcode or (via opts.moderator) the author. Unchanged meaning. */
   admin: boolean;
+  /** The host capability, granted by signing in as a part with
+   *  `admin: true` (`/api/prime/login`); it lives and dies with that part. */
+  host: boolean;
 }
 
 export class SessionStore {
@@ -25,21 +35,41 @@ export class SessionStore {
 
   /** Create (or replace) the session for a token. */
   set(token: string, session: Session): void {
-    this.byToken.set(token, { character: session.character, admin: session.admin });
+    this.byToken.set(token, { character: session.character, admin: session.admin, host: session.host === true });
   }
 
   /**
    * Merge capabilities into an existing session. Returns false if the token
-   * is unknown. `admin` is OR-ed in (never revoked here); `character` is set
-   * when provided — this is how a performer upgrades to performer+admin, or
-   * an admin picks up a character.
+   * is unknown. `admin` / `host` are OR-ed in (never revoked here);
+   * `character` is set when provided — this is how a performer upgrades to
+   * performer+admin, or an admin picks up a character.
    */
   grant(token: string, patch: Partial<Session>): boolean {
     const s = this.byToken.get(token);
     if (s === undefined) return false;
     if (patch.character !== undefined) s.character = patch.character;
     if (patch.admin === true) s.admin = true;
+    if (patch.host === true) s.host = true;
     return true;
+  }
+
+  /** Drop part-granted host (a re-sign-in to a part without `admin: true`). Admin is kept. */
+  revokeHost(token: string): void {
+    const s = this.byToken.get(token);
+    if (s !== undefined) s.host = false;
+  }
+
+  /**
+   * Take the character off a session: a session with `admin` keeps admin
+   * with `character: null, host: false`; any other session (performer-only
+   * or performer + host) is **deleted** — so a host part never turns into a
+   * headless admin. Go live, Release and Sign out use it.
+   */
+  dropCharacter(token: string): void {
+    const s = this.byToken.get(token);
+    if (s === undefined) return;
+    if (s.admin) this.byToken.set(token, { character: null, admin: true, host: false });
+    else this.byToken.delete(token);
   }
 
   get(token: string | undefined): Session | undefined {
@@ -63,6 +93,11 @@ export class SessionStore {
   canModerate(token: string | undefined): boolean {
     return this.get(token)?.admin === true;
   }
+  /** May this token use the host allowlist (`canModerate || host`)? */
+  canHost(token: string | undefined): boolean {
+    const s = this.get(token);
+    return s !== undefined && (s.admin || s.host);
+  }
   /** The character a token scans as, or null when headless. */
   characterOf(token: string | undefined): string | null {
     return this.get(token)?.character ?? null;
@@ -76,7 +111,7 @@ export class SessionStore {
   load(entries: Array<[string, Session]>): void {
     if (!Array.isArray(entries)) return; // tolerate a stale/incompatible store
     for (const [t, s] of entries) {
-      this.byToken.set(t, { character: s.character ?? null, admin: s.admin === true });
+      this.byToken.set(t, { character: s.character ?? null, admin: s.admin === true, host: (s as Partial<Session>).host === true });
     }
   }
 }

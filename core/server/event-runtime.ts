@@ -3227,10 +3227,10 @@ export class EventRuntime {
     // re-subscribes when it re-joins), a booth's only when the show goes live.
     this.push.drop((owner) => owner.startsWith("guest:") || (kind === "golive" && owner.startsWith("prime:")));
     if (kind === "golive") {
+      // A host part's session goes with its part (never a headless admin).
       for (const [token, session] of this.sessions.entries()) {
         if (session.character === null) continue;
-        if (session.admin) this.sessions.set(token, { character: null, admin: true });
-        else this.sessions.delete(token);
+        this.sessions.dropCharacter(token);
       }
       this.persistSessions();
       this.endClients("prime");
@@ -4473,10 +4473,14 @@ export class EventRuntime {
           /* upgraded in place */
         } else {
           token = randomUUID();
-          this.sessions.set(token, { character, admin: false });
+          this.sessions.set(token, { character, admin: false, host: false });
         }
+        // D1: a part the story marks `admin: true` makes its booth a host;
+        // switching to any other part takes host away (admin is kept).
+        if (model.characters.get(character)?.admin === true) this.sessions.grant(token, { host: true });
+        else this.sessions.revokeHost(token);
         this.persistSessions();
-        sendJson(res, 200, { token, character, admin: this.sessions.canModerate(token) });
+        sendJson(res, 200, { token, character, admin: this.sessions.canModerate(token), host: this.sessions.canHost(token) });
         return true;
       }
 
@@ -4742,7 +4746,7 @@ export class EventRuntime {
           /* upgraded in place */
         } else {
           token = randomUUID();
-          this.sessions.set(token, { character: null, admin: true });
+          this.sessions.set(token, { character: null, admin: true, host: false });
         }
         this.persistSessions();
         sendJson(res, 200, {
