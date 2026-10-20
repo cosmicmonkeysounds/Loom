@@ -13,13 +13,41 @@ export function titleFallback(room: string | null | undefined, story: string | n
   return room !== null && room !== undefined && room !== "" ? room : (story ?? "");
 }
 
+// --- a paused show, on every caption bar (D3) --------------------------------
+// The guest's NOW bar, a booth's NOW card and a host's NOW bar grey out the
+// same way while the show is paused — Win95's inactive caption — and say so
+// after their title. Booths and hosts import these instead of their own copy.
+
+/** The word a paused caption carries after its title. */
+export const PAUSED_WORD = "(Paused)";
+/** The class that greys a caption bar while paused (`chrome.css`): add it
+ *  beside the bar's own class (`booth-now-bar`, the host's NOW bar); it
+ *  wins over that bar's background and turns its pale sub-ink white. */
+export const PAUSED_CLASS = "title-bar-paused";
+/** A caption's title while paused: "Hunt" → "Hunt (Paused)". */
+export function pausedTitle(title: string, paused: boolean): string {
+  return paused ? `${title} ${PAUSED_WORD}` : title;
+}
+/** The bar's class list with the paused class when paused (`"booth-now-bar"` → `"booth-now-bar title-bar-paused"`). */
+export function pausedClass(base: string, paused: boolean): string {
+  return paused ? `${base} ${PAUSED_CLASS}` : base;
+}
+/** "(Paused)" as markup, for a bar that renders its title in parts. */
+export function PausedTag({ paused }: { paused: boolean }) {
+  return paused ? <span className="title-bar-paused-tag"> {PAUSED_WORD}</span> : null;
+}
+
+/** The chevron after a tappable title, bound to its last word by a
+ *  no-break space, so a title that wraps never leaves it alone on the
+ *  second line. */
+export const TITLE_CHEVRON = "\u00a0›";
+
 /** What the bar says (pure — `test/title-bar.test.ts`). A paused show
  *  says so the Win95 way, after the caption: "… (Paused)". */
 export function titleBarText(objectives: readonly ObjectiveView[] | undefined, fallback: string, tone?: "alarm" | "restricted", paused = false): { title: string; now: ObjectiveView | null } {
   const now = objectives?.[0] ?? null;
   const mark = tone !== undefined ? "⛔ " : "";
-  const wait = paused ? " (Paused)" : "";
-  return { title: now !== null ? `${mark}▣ NOW: ${now.title}${wait} ›` : `${mark}${fallback}${wait}`, now };
+  return { title: now !== null ? `${mark}▣ NOW: ${pausedTitle(now.title, paused)}${TITLE_CHEVRON}` : `${mark}${pausedTitle(fallback, paused)}`, now };
 }
 
 /** "+1 objective", "+2 objectives": what waits behind the first. */
@@ -68,7 +96,7 @@ export function TitleBar({
   const more = (objectives?.length ?? 0) - 1;
   const news = flash !== null ? flashLine(flash, now) : null;
   return (
-    <header className={`title-bar ${tone ?? ""}${paused ? " paused" : ""}${news !== null ? " flash" : ""}`}>
+    <header className={`title-bar ${tone ?? ""}${paused ? ` paused ${PAUSED_CLASS}` : ""}${news !== null ? " flash" : ""}`}>
       {now !== null ? (
         <button type="button" className="title-bar-btn" data-tour="now" aria-haspopup="dialog" onClick={() => onOpen(now)}>
           <span className="title-bar-title">{title}</span>

@@ -94,6 +94,12 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
    both stops), with "(Paused)" in the title */
 .title-bar.paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); }
 .title-bar.paused .title-bar-sub { color: var(--title-ink); }
+/* the same grey on a booth's or a host's caption bar (D3: they add
+   `title-bar-paused`, `title-bar.tsx` PAUSED_CLASS, beside their own
+   class); doubled so it wins over a later lane file's background, and the
+   bar's pale sub-ink (`--on-bar`) turns white like the guest's */
+.title-bar-paused.title-bar-paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); --on-bar: var(--title-ink); }
+.title-bar-paused-tag { font-weight: 700; }
 /* a loud objective just went live: the caption blinks twice like a window
    asking for attention (FlashWindow) and unfolds its brief */
 .title-bar.flash { animation: title-bar-flash 0.5s steps(1) 4; }
