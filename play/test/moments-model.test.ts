@@ -317,6 +317,43 @@ describe("arrivals from the message map", () => {
   });
 });
 
+describe("a `!` pin taken down is not news (the wave 8 rule)", () => {
+  // The Antivirus' mis-tapped mark: "🚨 GO TO THE INTERNET" to one guest, then 🩹.
+  const mark = (seq: number, ts = 5 * MIN) => msg(seq, { alert: true, moment: "major", pin: "marked", audience: ["g1"], text: "🚨 GO TO THE INTERNET", ts });
+  const unpin = (seq: number) => msg(seq, { unpin: "marked", audience: ["g1"], text: "", ts: 6 * MIN });
+
+  it("arrivals skip a pin already unpinned (a wake or a reload), but still look at it", () => {
+    const list = [mark(1), unpin(2)];
+    const r = arrivals(list, -1, new Set(), guest, { now: 6 * MIN, phase: null, bsod: false, beats: new Map() });
+    expect(r.moments).toEqual([]);
+    expect(r.seen).toEqual([1, 2]);
+    // Still up: a moment.
+    expect(arrivals([mark(1)], -1, new Set(), guest, { now: 6 * MIN, phase: null, bsod: false, beats: new Map() }).moments.map((m) => m.seq)).toEqual([1]);
+  });
+
+  it("the retract action drops it from the queue, the missed list and the summary", () => {
+    const pinned = moment(1, { channel: "lobby", text: "🚨 GO TO THE INTERNET" });
+    let s = run([arrive([pinned, moment(2, { text: "Other." })])]);
+    expect(surfacesOf(s, false).modal?.moment.seq).toBe(1);
+    s = momentsReducer(s, { type: "retract", seqs: new Set([1]) });
+    expect(s.queue.map((q) => q.moment.seq)).toEqual([2]);
+    expect(surfacesOf(s, false).modalIndex).toBe(1);
+    // Missed (locked phone): never replayed on wake.
+    let t = run([arrive([pinned], { visible: false }), arrive([moment(3)], { visible: false })]);
+    t = momentsReducer(t, { type: "retract", seqs: new Set([1]) });
+    t = momentsReducer(t, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
+    expect(t.queue.map((q) => q.moment.seq)).toEqual([3]);
+    // Inside a summary: it leaves the list; the last one gone closes it.
+    let u = run([1, 2, 3, 4].map((n) => arrive([moment(n, { channel: `dm:${n}` })], { visible: false })));
+    u = momentsReducer(u, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
+    u = momentsReducer(u, { type: "retract", seqs: new Set([2]) });
+    expect(u.summary?.moments.map((m) => m.seq)).toEqual([1, 3, 4]);
+    expect(momentsReducer(u, { type: "retract", seqs: new Set([1, 3, 4]) }).summary).toBeNull();
+    // Nothing to drop: the same state.
+    expect(momentsReducer(u, { type: "retract", seqs: new Set([99]) })).toBe(u);
+  });
+});
+
 describe("the loud objective", () => {
   const o = (id: string, over: Partial<ObjectiveView> = {}): ObjectiveView => ({ id, title: `Do ${id}`, brief: "", checklist: [], buttons: [], act: null, ...over });
 

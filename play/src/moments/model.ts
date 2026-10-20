@@ -12,6 +12,7 @@
 //! (`test/moments-model.test.ts`) without React. `provider.tsx` drives it.
 
 import { lowerRung } from "../../../core/src/delivery.ts";
+import { retractedPinSeqs } from "../pins.ts";
 import type { AlertLevel, ChatMessage, MomentClass, ObjectiveView } from "../types.ts";
 
 // --- the moments themselves --------------------------------------------------
@@ -281,6 +282,8 @@ export type MomentsAction =
   | { type: "closeSummary" }
   /** While a hold lasts: modal moments queued too long move to missed. */
   | { type: "tick"; now: number; held: boolean }
+  /** `!` pins taken down since (`retractedPinSeqs`): drop them wherever they wait. */
+  | { type: "retract"; seqs: ReadonlySet<number> }
   /** The story restarted: nothing queued is news any more. */
   | { type: "reset" };
 
@@ -388,6 +391,18 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       if (late.length === 0) return s;
       return { ...s, queue: s.queue.filter((q) => !late.includes(q)), missed: [...s.missed, ...late.map((q) => q.moment)] };
     }
+    case "retract": {
+      const gone = (m: Moment) => m.seq !== null && a.seqs.has(m.seq);
+      const queue = s.queue.some((q) => gone(q.moment)) ? s.queue.filter((q) => !gone(q.moment)) : s.queue;
+      const missed = s.missed.some(gone) ? s.missed.filter((m) => !gone(m)) : s.missed;
+      let summary = s.summary;
+      if (summary !== null && summary.moments.some(gone)) {
+        const left = summary.moments.filter((m) => !gone(m));
+        summary = left.length === 0 ? null : { ...summary, moments: left };
+      }
+      if (queue === s.queue && missed === s.missed && summary === s.summary) return s;
+      return { ...s, queue, missed, summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+    }
     case "reset":
       return EMPTY_MOMENTS;
   }
@@ -453,8 +468,11 @@ export function arrivals(
   viewer: Viewer,
   ctx: { now: number; phase: string | null; bsod: boolean; beats: Map<string, number> },
 ): { moments: Moment[]; seen: number[] } {
+  const all = [...messages];
+  // A `!` pin already taken down (the 🩹 after a mis-tapped mark) is not news.
+  const gone = retractedPinSeqs(all);
   // Client-made rows (a choice echo: a half seq, a wall-clock ts) are never moments.
-  const list = [...messages].filter((m) => Number.isInteger(m.seq) && m.seq > mark && !processed.has(m.seq)).sort((a, b) => a.seq - b.seq);
+  const list = all.filter((m) => Number.isInteger(m.seq) && m.seq > mark && !processed.has(m.seq)).sort((a, b) => a.seq - b.seq);
   const moments: Moment[] = [];
   const seen: number[] = [];
   for (const m of list) {
@@ -462,7 +480,7 @@ export function arrivals(
     const old = m.ts < ctx.now - MOMENT_WINDOW_MS;
     const own = momentOf(m, viewer, ctx.phase);
     if (own !== null) {
-      if (!old) moments.push(own);
+      if (!old && !gone.has(m.seq)) moments.push(own);
       if (own.beat) ctx.beats.set(own.beat, Math.max(ctx.beats.get(own.beat) ?? m.ts, m.ts));
       continue;
     }

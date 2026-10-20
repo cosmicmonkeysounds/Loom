@@ -9,21 +9,20 @@
 //! - **The screen goes off.** The SSE stream drops; on wake it reconnects
 //!   and the server replays `history`. The mark of the last alert seen is
 //!   therefore *kept* across re-histories (and persisted per session, so an
-//!   iOS tab the OS discarded still knows), and the newest unseen alert
-//!   from the last 10 story-minutes is bannered. Older ones are skipped: a
+//!   iOS tab the OS discarded still knows); the moments layer replays what
+//!   is above it from the last 10 story-minutes. Older ones are skipped: a
 //!   re-login must not replay every alarm of the night.
 //! - **Audio needs a gesture.** One shared `AudioContext`, created and
 //!   unlocked on the first tap (iOS stays silent for a context made later,
 //!   outside a gesture), resumed before every chime.
-//! - **A hidden page can't sound.** An alert that lands while the page is
-//!   hidden chimes when it becomes visible, and its banner's auto-dismiss
-//!   only counts visible time.
+//! - **A hidden page can't sound.** A moment that lands while the page is
+//!   hidden is missed and replays (and chimes) when it becomes visible; the
+//!   toast's auto-dismiss only counts visible time.
 //!
 //! Pure helpers first (unit-tested in `test/alerts.test.ts`), then the hook.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionStorage } from "./host.ts";
-import { activePins } from "./pins.ts";
 import type { ChatMessage } from "./types.ts";
 
 /** A feedback toast on screen (seq < 0, client-made). Wave 13: show alarms are moments. */
@@ -34,13 +33,8 @@ export interface Alert {
   quiet?: boolean;
 }
 
-/** How old (story clock) a missed alert may be and still banner on wake. */
-export const ALERT_WINDOW_MS = 10 * 60_000;
 /** A readout this soon after the booth's own action is its answer, not news. */
 export const READOUT_GRACE_MS = 4_000;
-/** How long a banner stays up, counting only time the page is visible. */
-export const BANNER_MS = 15_000;
-
 /** Which alerts are this session's own (default: every one — a guest's view
  *  only carries its own messages). */
 export type AlertFilter = (m: ChatMessage) => boolean;
@@ -78,72 +72,11 @@ export function boothAlertFilter(character: string): AlertFilter {
   };
 }
 
-/** Alert broadcasts newer than `sinceSeq`, oldest first. */
-export function pickAlerts(messages: Iterable<ChatMessage>, sinceSeq: number, forMe?: AlertFilter): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  for (const m of messages) if (m.alert === true && m.seq > sinceSeq && !m.hidden && (forMe?.(m) ?? true)) out.push(m);
-  return out.sort((a, b) => a.seq - b.seq);
-}
-
-/** The seqs of `!` pins a later `unpin` (or a newer pin with the same key)
- *  already took down — the 🩹 after a mis-tapped mark, the dance lifting a
- *  `!!` takeover. Such a pin is no longer news: it never banners on wake,
- *  and a banner still up for it goes away. */
-export function retractedPinSeqs(messages: Iterable<ChatMessage>): Set<number> {
-  const list = [...messages];
-  const live = new Set(activePins(list).map((m) => m.seq));
-  const out = new Set<number>();
-  for (const m of list) if (m.alert === true && m.pin !== undefined && !live.has(m.seq)) out.add(m.seq);
-  return out;
-}
-
-/** The banner left once the pins in `gone` are taken down: `alert` itself,
- *  or null when it is one of them. Fed the *latest* banner (a functional
- *  state update), so a newer pin that replaced the one on screen in the
- *  same render — a second `!` pin with the same key — is kept, never wiped
- *  with the pin it replaced. A readout (negative seq) is never a pin. */
-export function bannerAfterRetract(alert: Alert | null, gone: ReadonlySet<number>): Alert | null {
-  return alert !== null && alert.seq >= 0 && gone.has(alert.seq) ? null : alert;
-}
-
 /** The highest seq in a message list (−1 when empty). */
 export function maxSeqOf(messages: Iterable<ChatMessage>): number {
   let max = -1;
   for (const m of messages) if (m.seq > max) max = m.seq;
   return max;
-}
-
-/** The newest story-clock `ts` in a message list (−∞ when empty). */
-export function maxTsOf(messages: Iterable<ChatMessage>): number {
-  let max = Number.NEGATIVE_INFINITY;
-  for (const m of messages) if (m.ts > max) max = m.ts;
-  return max;
-}
-
-/**
- * The alert to banner now, given the last one seen (`mark`): the newest
- * unseen alert at most `ALERT_WINDOW_MS` older than `now`, else null. The
- * returned `mark` moves past every unseen alert, shown or skipped (an alert
- * `forMe` rejects, or a `!` pin already taken down, included — it is never
- * shown later either). `now` is
- * the story clock — the server view's `clock`, or the newest message's `ts`
- * when that is later (a view is only rebuilt on state changes).
- */
-export function nextAlert(
-  messages: Iterable<ChatMessage>,
-  mark: number,
-  clock: number | null | undefined,
-  forMe?: AlertFilter,
-): { alert: ChatMessage | null; mark: number } {
-  const list = [...messages];
-  const all = pickAlerts(list, mark);
-  if (all.length === 0) return { alert: null, mark };
-  const last = all[all.length - 1]!;
-  const retracted = retractedPinSeqs(list);
-  const fresh = all.filter((m) => !retracted.has(m.seq) && (forMe?.(m) ?? true));
-  const now = Math.max(clock ?? Number.NEGATIVE_INFINITY, maxTsOf(list));
-  const recent = fresh.filter((m) => m.ts >= now - ALERT_WINDOW_MS);
-  return { alert: recent.length > 0 ? recent[recent.length - 1]! : null, mark: last.seq };
 }
 
 /**

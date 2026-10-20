@@ -30,3 +30,15 @@ export function activeTakeover(messages: Iterable<ChatMessage>): ChatMessage | n
   const up = activePins(messages).filter((m) => m.takeover === true);
   return up.length > 0 ? up[up.length - 1]! : null;
 }
+
+/** The seqs of `!` pins a later `unpin` (or a newer pin with the same key)
+ *  already took down — the 🩹 after a mis-tapped mark, the dance lifting a
+ *  `!!` takeover. Such a pin is no longer news: it is never a moment (not on
+ *  wake, not after a reload), and one still queued or missed goes away. */
+export function retractedPinSeqs(messages: Iterable<ChatMessage>): Set<number> {
+  const list = [...messages];
+  const live = new Set(activePins(list).map((m) => m.seq));
+  const out = new Set<number>();
+  for (const m of list) if (m.alert === true && m.pin !== undefined && !live.has(m.seq)) out.add(m.seq);
+  return out;
+}

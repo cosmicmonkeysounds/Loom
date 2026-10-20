@@ -15,6 +15,7 @@ import { DEFAULT_ALERT_LEVEL } from "../../../core/src/delivery.ts";
 import { playChime, useVisible, vibrate, type Alert, type Alerts } from "../alerts.ts";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { usePlayHost } from "../host.ts";
+import { retractedPinSeqs } from "../pins.ts";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../types.ts";
 import {
   BALLOON_MS,
@@ -171,6 +172,13 @@ function useMomentsEngine(input: MomentsInput): Engine {
     // `clock`, the level and the phase are read, not watched: a snapshot alone never raises a moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, session, alerts.epoch]);
+
+  // A `!` pin taken down (an unpin, or a newer pin with its key) leaves the
+  // queue, the missed list and the summary: a lifted mark is not news.
+  useEffect(() => {
+    const gone = retractedPinSeqs(input.messages.values());
+    if (gone.size > 0) dispatch({ type: "retract", seqs: gone });
+  }, [input.messages]);
 
   // A loud objective going live: one major moment per sign-in (persisted).
   useEffect(() => {
