@@ -411,7 +411,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     objectives: objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id))),
     night: nightView(sim),
     alertLevel: alertLevelNow(sim),
-    voiced: voicedOf(sim.model),
+    voiced: voicedOf(sim, id),
   };
 }
 
@@ -1509,10 +1509,15 @@ export function staffRoomChannels(model: Sim["model"]): string[] {
 }
 
 /** Characters whose `dm:` thread somebody reads (`GuestView.voiced`): the
- *  performer parts and the agent-voiced characters, model order. */
-function voicedOf(model: Sim["model"]): string[] {
-  const parts = partsOf(model);
-  return [...model.characters.values()].filter((c) => parts.has(c.id) || c.mind === "external").map((c) => c.id);
+ *  performer parts and the agent-voiced characters, model order. A
+ *  `hidden: true` character stays off the list until the story reveals it
+ *  to this guest (the directory's rule), so a hidden Trabolta's name is not
+ *  in a phone's snapshot from the door. */
+function voicedOf(sim: Sim, guestId: string): string[] {
+  const parts = partsOf(sim.model);
+  return [...sim.model.characters.values()]
+    .filter((c) => (parts.has(c.id) || c.mind === "external") && (!c.hidden || sim.isRevealedTo(c.id, guestId)))
+    .map((c) => c.id);
 }
 
 /** One booth row for a guest (`PrimeGuest`), flags included when any. */

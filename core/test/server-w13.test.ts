@@ -411,6 +411,22 @@ describe("views on the wire", () => {
     expect(v.voiced).toEqual(["Task Manager", "Clippy", "Norton", "McAfee", "Trabolta"]);
   });
 
+  it("GuestView.voiced keeps a hidden character off until the story reveals it to that guest", async () => {
+    const hidden = STORY.replace("CHARACTER Trabolta\n  mind: external\n", "CHARACTER Trabolta\n  mind: external\n  hidden: true\n").replace(
+      "== Opening",
+      "when wake for program:\n  reveal Trabolta for program\n\n== Opening",
+    );
+    const rt = freshRuntime({ scenarioSource: hidden });
+    rt.openDoors();
+    const a = await register(rt, "Winamp");
+    const b = await register(rt, "Napster");
+    const voiced = async (t: string) => (await get(rt, `/api/state?role=guest&token=${t}`)).json.voiced as string[];
+    expect(await voiced(a.token)).toEqual(["Task Manager", "Clippy", "Norton", "McAfee"]);
+    expect((await mod(rt, "/api/mod/signal", { name: "wake", subject: a.id })).status).toBe(200);
+    expect(await voiced(a.token)).toEqual(["Task Manager", "Clippy", "Norton", "McAfee", "Trabolta"]);
+    expect(await voiced(b.token)).not.toContain("Trabolta");
+  });
+
   it("objectives never ride an agent request", async () => {
     const rt = freshRuntime();
     rt.openDoors();
