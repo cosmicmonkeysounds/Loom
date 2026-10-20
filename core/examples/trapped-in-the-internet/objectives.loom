@@ -393,6 +393,19 @@ OBJECTIVE Blackout Guide
   text:
     The stairs stay lit. A failed bob is marked: escort them.
 
+// Password Manager's Y2K hour is the patch-bay watch plus the club list
+// (one card: the two windows are the same hour, so a separate club
+// objective could never be NOW).
+// DRAFT for sign-off
+OBJECTIVE Patch Bay And Clubs
+  for: Password Manager
+  while: Night.step >= 14 and Night.r3_closed != true and Night.ended != true
+  act: E
+  title: The Y2K hour: the patch bay, and the club list
+  text:
+    If you are stationed in the server room: 🔧 before the crew opens the door; at the cables, 🔌 Combo A, 💥 Combo B or ❌ wrong, on the card of the program at the cables. Otherwise patrol, and run to the alarm. Every club join lands in your booth: you know the score before anyone. The director may radio you for a count. Invite programs who earn it into # hidden-partition and # back-channel.
+  buttons: radio_combo_a, radio_combo_b, radio_wrong_patch
+
 // DRAFT for sign-off
 OBJECTIVE Patch Bay Watch
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
@@ -422,15 +435,6 @@ OBJECTIVE The Audit
   text:
     Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Ask elaborate security questions first. 🪙 Charge on undeclared profit.
   buttons: charge_truthcoin
-
-// DRAFT for sign-off
-OBJECTIVE The Clubs
-  for: Password Manager
-  while: Night.phase == "y2k" and Night.ended != true
-  act: E
-  title: Keep the club list
-  text:
-    Every join lands in your booth: you know the score before anyone. The director may radio you for a count. Invite programs who earn it into # hidden-partition and # back-channel.
 
 
 // DRAFT for sign-off

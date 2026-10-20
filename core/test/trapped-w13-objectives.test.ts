@@ -606,7 +606,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("truth_pong")).toMatchObject({ "Adobe Acrobat": "Judge The Cup", Clippy: "Judge Truth Pong" });
     expect(at("trust_chart")).toMatchObject({ Clippy: "Lead The Applause" });
     expect(at("the rankings")).toMatchObject({ "Adobe Acrobat": "Stand By The Printer" });
-    expect(at("y2k_clock")).toMatchObject({ "Norton Anti-Virus": "Patch Bay Watch", "Password Manager": "Patch Bay Watch", Clippy: "No Sides On Air" });
+    expect(at("y2k_clock")).toMatchObject({ "Norton Anti-Virus": "Patch Bay Watch", "Password Manager": "Patch Bay And Clubs", Clippy: "No Sides On Air" });
     expect(at("final_reveal")).toMatchObject({ "Norton Anti-Virus": "Blackout Guide", Clippy: "The Final Round" });
     expect(at("read_truth_txt")).toMatchObject({ "Norton Anti-Virus": "Blackout Guide", "Adobe Acrobat": "Hand Over Truth Txt" });
     expect(at("zip_everyone_out")).toMatchObject({ "Norton Anti-Virus": "Zip Everyone Out", g5: "Where You Stand" });
