@@ -115,7 +115,7 @@ export function ScannerScreen({
         setBusy(false);
         setNote("");
         onCardGuest?.(r.guest.id);
-        setCard({ id: r.guest.id, seed: { card: r.card, replies: r.responses } });
+        setCard({ id: r.guest.id, seed: { card: r.card, replies: r.responses, ...(r.said !== undefined ? { said: r.said } : {}), ...(r.staff !== undefined ? { staff: r.staff } : {}) } });
       },
       (e) => {
         setBusy(false);

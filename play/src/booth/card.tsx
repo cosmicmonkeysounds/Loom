@@ -7,21 +7,25 @@
 //! description. `arm: true` buttons arm on the first tap and fire on the
 //! second.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PersonAvatar, PickerSheet } from "../ui/primitives.tsx";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { cardButtons, cardReadKey, factChips, faceSettled, type CardButton } from "./model.ts";
+import { cardButtons, cardReadKey, factChips, faceSettled, foldOpensItself, inFlightGate, pressOutcome, type CardButton, type OutcomeLine } from "./model.ts";
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
 
-/** What a scan (or a press) already said: the server's card and the story's reply. */
+/** What a scan (or a press) already said: the server's card, the story's
+ *  reply, the character's lines to the guest and the staff-room refusal
+ *  (C1). `replies` present = this card opens on a scan's outcome. */
 export interface CardSeed {
   card?: GuestCardView;
   replies?: string[];
+  said?: Array<{ from: string; text: string }>;
+  staff?: string[];
 }
 
 /** The fetch error a performer can act on (the doors, a guest who left). */
@@ -52,12 +56,18 @@ export function GuestCardBody({
   onNext?: () => void;
 }) {
   const [card, setCard] = useState<GuestCardView | null>(seed?.card ?? null);
-  const [replies, setReplies] = useState<string[] | null>(seed?.replies !== undefined && seed.replies.length > 0 ? seed.replies : null);
-  const [done, setDone] = useState<string | null>(null);
+  // What the last press / scan came to (C1): replies, the character's
+  // lines, a refusal, or "no reply from the story". A card opened from a
+  // scan leads with that scan's.
+  const [outcome, setOutcome] = useState<OutcomeLine[] | null>(seed?.replies !== undefined ? pressOutcome(seed, "scan") : null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  // "📡 Scan again" — one at a time: every scan is journaled and runs the
+  // story's scan hook, so taps while one is on its way are ignored.
+  const [scanning, setScanning] = useState(false);
+  const scanGate = useMemo(() => inFlightGate(), []);
   // The "All buttons…" fold: null = not touched (it opens by itself when
-  // the face is empty but the fold holds a live button).
+  // the face is empty, the fold holds a live button and is short).
   const [all, setAll] = useState<boolean | null>(null);
   const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -114,8 +124,9 @@ export function GuestCardBody({
   const buttons = cardButtons(view?.interactions ?? [], objectives, card, character, admin || session.auth?.host === true);
   const lore = view?.codex ?? [];
   const restLive = buttons.rest.some((b) => b.live);
-  const allOpen = all ?? (card !== null && buttons.face.length === 0 && restLive);
-  const past = (card?.readouts ?? []).filter((r) => replies === null || !replies.includes(r.text));
+  const allOpen = all ?? foldOpensItself(buttons, card !== null);
+  const shown = new Set((outcome ?? []).filter((l) => l.kind === "reply").map((l) => l.text));
+  const past = (card?.readouts ?? []).filter((r) => !shown.has(r.text.trim()));
 
   const press = (b: CardButton) => {
     const i = b.interaction;
@@ -123,14 +134,12 @@ export function GuestCardBody({
     arm.tap(i.id, i.arm, () => {
       setBusy(i.id);
       setErr("");
-      setDone(null);
+      setOutcome(null);
       session.act(i.id, guestId).then(
         (r) => {
           setBusy(null);
           landed();
-          const said = r.replies ?? [];
-          setReplies(said.length > 0 ? said : null);
-          setDone(said.length > 0 ? null : `✔ ${i.label}`);
+          setOutcome(pressOutcome(r, "press"));
           if (r.card !== undefined) setCard(r.card);
         },
         (e) => {
@@ -141,16 +150,23 @@ export function GuestCardBody({
     });
   };
   const rescan = () => {
+    const pending = scanGate.run(() => session.scan(guestId));
+    if (pending === null) return;
+    setScanning(true);
     setErr("");
-    setDone(null);
-    session.scan(guestId).then(
+    setOutcome(null);
+    const settle = () => setScanning(false);
+    pending.then(
       (r) => {
+        settle();
         landed();
-        setReplies(r.responses.length > 0 ? r.responses : null);
-        setDone(r.responses.length > 0 ? null : "✔ Scanned");
+        setOutcome(pressOutcome({ replies: r.responses, said: r.said, staff: r.staff }, "scan"));
         if (r.card !== undefined) setCard(r.card);
       },
-      (e) => setErr(e instanceof Error ? e.message : String(e)),
+      (e) => {
+        settle();
+        setErr(e instanceof Error ? e.message : String(e));
+      },
     );
   };
 
@@ -194,11 +210,7 @@ export function GuestCardBody({
           ))}
         </ul>
       )}
-      {(replies !== null || done !== null) && (
-        <div className="booth-reply w95-inset" role="status" aria-live="polite">
-          {replies !== null ? replies.map((r, n) => <p key={n}>{r}</p>) : <p>{done}</p>}
-        </div>
-      )}
+      {outcome !== null && <Outcome lines={outcome} />}
       {err && (
         <div className="booth-err" role="alert">
           {err}
@@ -209,7 +221,9 @@ export function GuestCardBody({
         {buttons.face.length === 0 && card !== null && (
           <p className="booth-none">
             {restLive && (objectives ?? []).length > 0
-              ? `Nothing your objective needs on ${name} right now — the other buttons are below.`
+              ? allOpen
+                ? `Nothing your objective needs on ${name} right now — the other buttons are below.`
+                : `Nothing your objective needs on ${name} right now.`
               : restLive
                 ? `Nothing to lead with on ${name} — the buttons are below.`
                 : `Nothing for ${character} to press on ${name} right now.`}
@@ -225,8 +239,8 @@ export function GuestCardBody({
             📓 Share lore…
           </button>
         )}
-        <button type="button" className="w95-btn" onClick={rescan}>
-          📡 Scan again
+        <button type="button" className="w95-btn" onClick={rescan} disabled={scanning} aria-busy={scanning || undefined}>
+          {scanning ? "📡 Scanning…" : "📡 Scan again"}
         </button>
         {admin && view?.legacyCapture && (
           <button type="button" className="w95-btn" onClick={() => void session.moderate(guestId, guest?.captured ? "release" : "capture")}>
@@ -268,6 +282,31 @@ export function GuestCardBody({
           onPick={(id) => void session.shareCodex(id, guestId)}
           onClose={() => setSharing(false)}
         />
+      )}
+    </div>
+  );
+}
+
+/** What the last press or scan came to: the story's reply, the character's
+ *  own line to the guest, a refusal from the staff room, or "no reply". */
+export function Outcome({ lines }: { lines: readonly OutcomeLine[] }) {
+  const refused = lines.some((l) => l.kind === "staff");
+  return (
+    <div className={`booth-reply w95-inset ${refused ? "refused" : ""}`} role="status" aria-live="polite">
+      {lines.map((l, n) =>
+        l.kind === "said" ? (
+          <p key={n} className="booth-said">
+            <span className="booth-said-from">{l.from !== "" ? `${l.from}:` : "Said:"}</span> {l.text}
+          </p>
+        ) : l.kind === "staff" ? (
+          <p key={n} className="booth-refusal">
+            <span className="booth-refusal-tag">Not done:</span> {l.text}
+          </p>
+        ) : (
+          <p key={n} className={l.kind === "none" ? "booth-noreply" : undefined}>
+            {l.text}
+          </p>
+        ),
       )}
     </div>
   );

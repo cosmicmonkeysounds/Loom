@@ -94,6 +94,67 @@ export function cardButtons(
   return { face, rest };
 }
 
+/** One line of what a press or a scan came to, as the card shows it. */
+export type OutcomeLine =
+  /** The story's reply to the booth (`respond` / `reply`). */
+  | { kind: "reply"; text: string }
+  /** What the character said to the guest (`Norton: Not yet. Finish your upload.`). */
+  | { kind: "said"; from: string; text: string }
+  /** A staff-room line the press produced: the story refused it, and why. */
+  | { kind: "staff"; text: string }
+  /** Nothing came back: "✔ Sent — no reply from the story". */
+  | { kind: "none"; text: string };
+
+/**
+ * What the card says a press (or a scan) came to (C1): the story's replies,
+ * the character's own lines to the guest, the staff-room explanation of a
+ * refusal — and, when there is none of those, "✔ Sent — no reply from the
+ * story" (never a bare ✔ that reads as success). Replies first, then what
+ * was said, then the refusal; empty strings dropped.
+ */
+export function pressOutcome(r: { replies?: readonly string[]; said?: ReadonlyArray<{ from: string; text: string }>; staff?: readonly string[] }, kind: "press" | "scan"): OutcomeLine[] {
+  const clean = (t: unknown) => (typeof t === "string" ? t.trim() : "");
+  const out: OutcomeLine[] = [];
+  for (const t of r.replies ?? []) if (clean(t) !== "") out.push({ kind: "reply", text: clean(t) });
+  for (const l of r.said ?? []) if (l !== null && typeof l === "object" && clean(l.text) !== "") out.push({ kind: "said", from: clean(l.from), text: clean(l.text) });
+  for (const t of r.staff ?? []) if (clean(t) !== "") out.push({ kind: "staff", text: clean(t) });
+  if (out.length > 0) return out;
+  return [{ kind: "none", text: kind === "scan" ? "✔ Scanned — no reply from the story" : "✔ Sent — no reply from the story" }];
+}
+
+/** The "All buttons…" fold opens by itself only when it is this short. */
+export const FOLD_AUTO_MAX = 6;
+
+/**
+ * Does the card's "All buttons…" fold open by itself? Only when the face is
+ * empty, the fold holds a button that is live now, and the fold is short
+ * (≤ `FOLD_AUTO_MAX`): Clippy's 31 or a door part's 7 stay folded behind
+ * their count — the performer opens them on purpose.
+ */
+export function foldOpensItself(buttons: CardButtons, cardRead: boolean): boolean {
+  return cardRead && buttons.face.length === 0 && buttons.rest.some((b) => b.live) && buttons.rest.length <= FOLD_AUTO_MAX;
+}
+
+/**
+ * One request at a time ("📡 Scan again"): `run` starts one only when none
+ * is on its way and answers `null` to every tap until it settles. Each
+ * scan is journaled and runs the story's scan hook, so a burst of taps
+ * must never become a burst of scans.
+ */
+export function inFlightGate(): { run: <T>(start: () => Promise<T>) => Promise<T> | null; busy: () => boolean } {
+  let busy = false;
+  return {
+    run: (start) => {
+      if (busy) return null;
+      busy = true;
+      return start().finally(() => {
+        busy = false;
+      });
+    },
+    busy: () => busy,
+  };
+}
+
 /** How long a card's buttons ignore taps after the card is replaced (a
  *  press's answer, a re-scan): longer than core's `ARM_DEAD_MS` (300 ms),
  *  so the second tap of a double tap never lands on whichever button moved

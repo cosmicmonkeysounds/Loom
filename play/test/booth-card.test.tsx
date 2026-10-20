@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, cardButtons, cardReadKey, faceSettled, factChips } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, FOLD_AUTO_MAX, cardButtons, cardReadKey, faceSettled, factChips, foldOpensItself, inFlightGate, pressOutcome } from "../src/booth/model.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import type { PrimeSession } from "../src/session/prime.ts";
@@ -189,5 +189,82 @@ describe("the card as rendered", () => {
     );
     expect(html).toContain("L-patch_a");
     expect(html).not.toContain("armed");
+  });
+});
+
+describe("what a press or a scan came to (C1, fix round)", () => {
+  it("shows the story's replies, the character's lines and the staff room's refusal", () => {
+    expect(pressOutcome({ replies: ["✅ Cleared Ada."] }, "press")).toEqual([{ kind: "reply", text: "✅ Cleared Ada." }]);
+    expect(pressOutcome({ replies: [], said: [{ from: "McAfee Anti-Virus", text: "Not yet. Finish your upload." }] }, "scan")).toEqual([
+      { kind: "said", from: "McAfee Anti-Virus", text: "Not yet. Finish your upload." },
+    ]);
+    // The bottle was on someone else: the story refused, and said why only in # hosts.
+    expect(pressOutcome({ replies: [], staff: ["🗣 The bottle is not on WinZip."] }, "press")).toEqual([{ kind: "staff", text: "🗣 The bottle is not on WinZip." }]);
+  });
+
+  it("never a bare ✔: nothing back reads 'no reply from the story'", () => {
+    expect(pressOutcome({}, "press")).toEqual([{ kind: "none", text: "✔ Sent — no reply from the story" }]);
+    expect(pressOutcome({ replies: [" "], said: [], staff: [] }, "scan")).toEqual([{ kind: "none", text: "✔ Scanned — no reply from the story" }]);
+  });
+
+  it("renders on a scan's card: the line, the refusal, or the no-reply note", () => {
+    const render = (seed: Parameters<typeof GuestCardBody>[0]["seed"]) =>
+      renderToStaticMarkup(<GuestCardBody session={fakeSession()} guestId="g-1" seed={seed} admin={false} onOpenThread={() => {}} />);
+    const said = render({ card: card(["send"]), replies: [], said: [{ from: "McAfee Anti-Virus", text: "Not yet. Finish your upload." }] });
+    expect(said).toContain("McAfee Anti-Virus:");
+    expect(said).toContain("Not yet. Finish your upload.");
+    const refused = render({ card: card(["send"]), replies: [], staff: ["🗣 The bottle is not on WinZip."] });
+    expect(refused).toContain("booth-reply w95-inset refused");
+    expect(refused).toContain("Not done:");
+    expect(refused).toContain("The bottle is not on WinZip.");
+    expect(render({ card: card(["send"]), replies: [] })).toContain("✔ Scanned — no reply from the story");
+    // A card opened from Guests (no scan) says nothing about a press.
+    expect(render({ card: card(["send"]) })).not.toContain("no reply from the story");
+  });
+});
+
+describe("📡 Scan again (fix round)", () => {
+  it("runs one scan at a time and ignores taps until the reply", async () => {
+    const gate = inFlightGate();
+    let calls = 0;
+    let finish: (v: string) => void = () => {};
+    const start = () => {
+      calls += 1;
+      return new Promise<string>((r) => (finish = r));
+    };
+    const first = gate.run(start);
+    expect(first).not.toBeNull();
+    for (let n = 0; n < 19; n += 1) expect(gate.run(start)).toBeNull();
+    expect(calls).toBe(1);
+    expect(gate.busy()).toBe(true);
+    finish("ok");
+    await first;
+    expect(gate.busy()).toBe(false);
+    expect(gate.run(start)).not.toBeNull();
+    expect(calls).toBe(2);
+  });
+
+  it("opens again after a failed scan", async () => {
+    const gate = inFlightGate();
+    await gate.run(() => Promise.reject(new Error("doors are closed")))?.catch(() => {});
+    expect(gate.busy()).toBe(false);
+  });
+});
+
+describe("the All buttons fold (fix round)", () => {
+  const many = Array.from({ length: FOLD_AUTO_MAX + 1 }, (_, n) => btn(`b${n}`));
+  it("opens by itself only when it is short; Clippy's long fold stays shut behind its count", () => {
+    const short = cardButtons(many.slice(0, FOLD_AUTO_MAX), [obj("a", ["nope"])], card(["b0"]), NORTON, false);
+    expect(foldOpensItself(short, true)).toBe(true);
+    const long = cardButtons(many, [obj("a", ["nope"])], card(["b0"]), NORTON, false);
+    expect(long.rest.length).toBe(FOLD_AUTO_MAX + 1);
+    expect(foldOpensItself(long, true)).toBe(false);
+    expect(foldOpensItself(short, false)).toBe(false); // no card read yet
+    const html = renderToStaticMarkup(
+      <GuestCardBody session={fakeSession({ interactions: many, objectives: [obj("a", ["nope"])] })} guestId="g-1" seed={{ card: card(["b0"]) }} admin={false} onOpenThread={() => {}} />,
+    );
+    expect(html).toContain("Nothing your objective needs on Ada right now.");
+    expect(html).toMatch(/aria-expanded="false"[^>]*>▸ All buttons… \(7\)/);
+    expect(html).not.toContain("L-b0");
   });
 });

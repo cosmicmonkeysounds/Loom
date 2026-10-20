@@ -82,6 +82,13 @@
 .booth-reply { padding: 8px 10px; font: 15px/1.35 var(--chat-font); color: var(--ink); }
 .booth-reply p { margin: 0; }
 .booth-reply p + p { margin-top: 4px; }
+/* What the character said to the guest: their name, then the line. */
+.booth-said-from { font: 700 13px var(--ui-font); }
+/* The story refused the press: the staff room's reason, never a ✔. */
+.booth-reply.refused { background: var(--dialog-face); }
+.booth-refusal { color: var(--maroon); }
+.booth-refusal-tag { font: 700 13px var(--ui-font); }
+.booth-noreply { font: 13px var(--ui-font); color: var(--dim-ink); }
 .booth-face { display: flex; flex-direction: column; gap: 8px; }
 .booth-btn {
   flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;

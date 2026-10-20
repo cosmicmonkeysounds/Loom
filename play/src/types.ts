@@ -374,6 +374,10 @@ export interface ScanResult {
   responses: string[];
   guest: { id: string; name: string; captured: boolean };
   card?: GuestCardView;
+  /** The staff-room lines (`# hosts` …) this scan produced: the story's refusal / explanation (fix round C1). */
+  staff?: string[];
+  /** Lines the booth's character spoke to the scanned guest in this commit (C1). */
+  said?: Array<{ from: string; text: string }>;
 }
 /** `/api/prime/act` 200 body. */
 export interface PrimeActResult {
@@ -381,6 +385,10 @@ export interface PrimeActResult {
   guest: unknown;
   replies?: string[];
   card?: GuestCardView;
+  /** The staff-room lines (`# hosts` …) this press produced: the story's refusal / explanation (fix round C1). */
+  staff?: string[];
+  /** Lines the booth's character spoke to the guest in this commit (C1). */
+  said?: Array<{ from: string; text: string }>;
 }
 
 // --- client-side view models (composed by the chat store) -------------------
