@@ -372,7 +372,7 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
                   {roomOverride !== "" && !rooms.some((r) => r.value === roomOverride) && <option value={roomOverride}>{roomOverride} (not on the map)</option>}
                 </select>
               </label>
-              {!hasWebGL2() && <div className="muted small">this tablet has no WebGL2 — it shows the face instead of the simulation</div>}
+              {!hasWebGL2() && <div className="muted small">this tablet has no WebGL2 — it shows the reinstallation as a live 2D floor plan instead of the 3D simulation</div>}
               </div>
             </details>
           </div>
