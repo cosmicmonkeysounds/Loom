@@ -135,7 +135,7 @@ describe.each([
     expect(route(house, house.spawn.pos, [6.25, -1.85, 14.45]).map(mm3)).toEqual([
       house.spawn.pos,
       [-5, 0, 25.3], // the tent flap
-      [-3.45, 0, 20.5], // the hall's back door
+      [-3.55, 0, 20.5], // the hall's back door
       [-1, 0, 18.6], // the kitchen door
       [1.55, 0, 13.15], // round the stair hole's north-west corner
       [2.275, 0, 13.5], // the stair's head, in the kitchen
