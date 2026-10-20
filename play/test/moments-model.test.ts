@@ -267,6 +267,14 @@ describe("missed moments", () => {
     expect(s.missed.map((m) => m.seq)).toEqual([1]);
   });
 
+  it("'Take me there' is never missed, however quick the tap; a plain close under 1 s is", () => {
+    let s = run([arrive([moment(1, { text: "Everyone to the Desktop" }), moment(2)], { level: "sticky" })]);
+    s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: 120, acted: true });
+    expect(s.missed).toEqual([]);
+    s = momentsReducer(s, { type: "dismiss", key: "m:2", onScreenMs: 120 });
+    expect(s.missed.map((m) => m.seq)).toEqual([2]);
+  });
+
   it("stale on wake: a newer major moment in the same room, or the phase moved on", () => {
     const s = run([
       arrive([moment(1, { channel: "dm:Trabolta" })], { visible: false }),

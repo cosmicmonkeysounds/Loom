@@ -285,8 +285,8 @@ export type MomentsAction =
   | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean }
   /** The page became visible (or the last hold released): replay the missed list. */
   | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null }
-  /** A moment left the screen. `onScreenMs` < `GLANCE_MS` → missed. */
-  | { type: "dismiss"; key: string; onScreenMs: number }
+  /** A moment left the screen. A plain close after `onScreenMs` < `GLANCE_MS` → missed; `acted` (the user took its exit, "Take me there") never is. */
+  | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean }
   /** Close the summary list. */
   | { type: "closeSummary" }
   /** While a hold lasts: modal moments queued too long move to missed. */
@@ -389,7 +389,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       const hit = s.queue.find((q) => q.moment.key === a.key);
       if (hit === undefined) return s;
       const queue = s.queue.filter((q) => q !== hit);
-      const missed = a.onScreenMs < GLANCE_MS ? [...s.missed, hit.moment] : s.missed;
+      const missed = a.acted !== true && a.onScreenMs < GLANCE_MS ? [...s.missed, hit.moment] : s.missed;
       const modalLeft = queue.some((q) => isModal(q.level));
       const burst = isModal(hit.level) ? (modalLeft ? s.burst + 1 : 0) : s.burst;
       return { ...s, queue, missed, burst };

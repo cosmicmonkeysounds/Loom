@@ -80,6 +80,8 @@ interface Engine {
   toast: Alert | null;
   replay: () => void;
   dismiss: (q: Queued) => void;
+  /** "Take me there": go, and the moment is done (never missed, however quick the tap). */
+  act: (q: Queued) => void;
   go: (m: Moment) => void;
   canGo: (m: Moment) => boolean;
   closeSummary: () => void;
@@ -257,11 +259,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onScreenKeys, visible]);
 
-  const dismiss = useCallback((q: Queued) => {
+  const close = useCallback((q: Queued, acted: boolean) => {
     const at = shownAt.current.get(q.moment.key);
     shownAt.current.delete(q.moment.key);
-    dispatch({ type: "dismiss", key: q.moment.key, onScreenMs: at === undefined ? 0 : Date.now() - at });
+    dispatch({ type: "dismiss", key: q.moment.key, onScreenMs: at === undefined ? 0 : Date.now() - at, acted });
   }, []);
+  const dismiss = useCallback((q: Queued) => close(q, false), [close]);
 
   // A balloon tip times out after 8 s of visible time.
   const balloonKey = surfaces.balloon?.moment.key ?? null;
@@ -296,6 +299,13 @@ function useMomentsEngine(input: MomentsInput): Engine {
     },
     [openRoom, openPass],
   );
+  const act = useCallback(
+    (q: Queued) => {
+      go(q.moment);
+      close(q, true);
+    },
+    [go, close],
+  );
   const hold = useCallback((delta: number) => setHolds((h) => Math.max(0, h + delta)), []);
   const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null }), [level, role, input.phase]);
   const closeSummary = useCallback(() => dispatch({ type: "closeSummary" }), []);
@@ -314,6 +324,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     toast,
     replay,
     dismiss,
+    act,
     go,
     canGo,
     closeSummary,
@@ -353,10 +364,7 @@ export function MomentsLayer() {
           q={s.sticky}
           count={s.stickyCount}
           canGo={e.canGo(s.sticky.moment)}
-          onGo={() => {
-            e.go(s.sticky!.moment);
-            e.dismiss(s.sticky!);
-          }}
+          onGo={() => e.act(s.sticky!)}
           onDismiss={() => e.dismiss(s.sticky!)}
         />
       )}
@@ -369,10 +377,7 @@ export function MomentsLayer() {
         <Balloon
           q={s.balloon}
           canGo={e.canGo(s.balloon.moment)}
-          onGo={() => {
-            e.go(s.balloon!.moment);
-            e.dismiss(s.balloon!);
-          }}
+          onGo={() => e.act(s.balloon!)}
           onDismiss={() => e.dismiss(s.balloon!)}
         />
       )}
@@ -383,10 +388,7 @@ export function MomentsLayer() {
           index={s.modalIndex}
           total={s.modalTotal}
           canGo={e.canGo(modal.moment)}
-          onGo={() => {
-            e.go(modal.moment);
-            e.dismiss(modal);
-          }}
+          onGo={() => e.act(modal)}
           onDismiss={() => e.dismiss(modal)}
         />
       )}
@@ -397,10 +399,7 @@ export function MomentsLayer() {
           index={s.modalIndex}
           total={s.modalTotal}
           canGo={e.canGo(modal.moment)}
-          onGo={() => {
-            e.go(modal.moment);
-            e.dismiss(modal);
-          }}
+          onGo={() => e.act(modal)}
           onDismiss={() => e.dismiss(modal)}
         />
       )}
