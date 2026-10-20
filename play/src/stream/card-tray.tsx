@@ -65,8 +65,14 @@ export function CardTray({
   useEffect(() => {
     if (focus !== null) setOpen(true);
   }, [focus]);
+  // Folding lets go of the receipt's ask, so its next tap opens it again.
+  const fold = () => {
+    setOpen(false);
+    if (focus !== null) onFocus(null);
+  };
   useEffect(() => {
-    if (composing) setOpen(false);
+    if (composing) fold();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composing]);
   // A new card (not a re-deal of one you've seen) opens the tray again.
   const key = card !== undefined ? trayCardKey(card) : null;
@@ -84,7 +90,7 @@ export function CardTray({
   return (
     <section className={`stream-tray ${open ? "open" : ""}`} aria-label="Waiting for your answer">
       <div className="stream-tray-bar">
-        <button type="button" className="stream-tray-title" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <button type="button" className="stream-tray-title" aria-expanded={open} onClick={() => (open ? fold() : setOpen(true))}>
           <span className="stream-tray-caption">{trayCaption(card)}</span>
           <span className="stream-tray-fold" aria-hidden>
             {open ? "▾" : "▴"}

@@ -196,7 +196,7 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-tray-step:active { box-shadow: var(--pressed); }
 .stream-tray-body { max-height: 35vh; overflow-y: auto; padding: 0 6px 6px; -webkit-overflow-scrolling: touch; }
 /* the card's submit row never hides under the tray's own scroll */
-.stream-tray-body .widget-foot { position: sticky; bottom: 0; z-index: 1; background: var(--face); padding: 4px 0; }
+.stream-tray-body .widget-foot { position: sticky; bottom: -6px; z-index: 1; background: var(--face); padding: 4px 0 10px; }
 .stream-tray-body .widget { max-width: none; box-shadow: none; padding: 4px 6px 6px; }
 /* the tray's bar already names the card: keep only its instructions */
 .stream-tray-body .widget-head > .widget-glyph, .stream-tray-body .widget-title { display: none; }

@@ -169,7 +169,7 @@ describe("the card tray never takes the room over", () => {
   it("the body is capped at 35vh and the submit row stays out of its scroll", () => {
     const css = readBundledCss();
     expect(css).toMatch(/\.stream-tray-body \{ max-height: 35vh;/u);
-    expect(css).toMatch(/\.stream-tray-body \.widget-foot \{ position: sticky; bottom: 0;/u);
+    expect(css).toMatch(/\.stream-tray-body \.widget-foot \{ position: sticky; bottom: -6px;/u);
   });
 });
 
