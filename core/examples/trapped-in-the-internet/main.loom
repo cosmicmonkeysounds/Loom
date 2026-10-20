@@ -3054,10 +3054,12 @@ INTERACTION vouch
   while: Night.ended != true
   description: Hosts. Clears their doubt.
 
+// DRAFT for sign-off: off a guest's card once they are checked in for the
+// summons (a summons scan checks them in; the button then did nothing).
 INTERACTION check_in_at_desktop
   label: 📍 Checked in at the Desktop
   who: performer
-  while: Night.summons_open == true
+  while: Night.summons_open == true and program.summons_ok != true
   description: Anyone at the living-room door during the five-minute summons.
 
 INTERACTION bingo_winner
