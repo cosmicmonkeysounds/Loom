@@ -128,6 +128,28 @@ rebooted mid-show without killing the story, the broker, or the ingest.
 > `POST /api/mod/agent/control` — `reset` (the same frame the server
 > sends on a story restart), `survey`, `nudge`, `set`, `forget`,
 > `thinking`, `effort`, `pause`, `rerun`. See `stagehand/README.md`.
+>
+> **2026-10-19 — wave 12: the story keeps the mind.** Measured on a real
+> rehearsal, the orchestrator made about 23 model calls per guest line
+> (most of them surveys of an empty house) and its brief rewrites were
+> mostly overwritten unread, while the voice repeated its catchphrase. The
+> worker now has a second mode, `mind_mode: new` (absent = `classic`, the
+> two-model mind above): **one voice call per guest line**, the
+> orchestrator never started, and plain code applying the mind file's
+> **phase card** for `Night.phase` (stage, favours, drives, live powers,
+> what he may tell, the brief) the moment the phase changes. The voice
+> writes a short memo on the person it answers in the same call, code
+> guards every line before it goes out (secrets, hunt answers, invented
+> facts, repeats, the catchphrase), and a quiet conversation gets one
+> summary call. The server tags the story's own lines in his threads
+> (`story: true`) and adds a short `recent` list per request
+> (`core/server/agent-recent.ts`; `LOOM_AGENT_RECENT=off` turns it off),
+> and the hello carries `traceAfter` so a reconnect replays only what the
+> server lacks. A new `rewrite` control (**Rewrite brief** on Run → Mind)
+> replaces the survey there. Classic stays as the kill switch, with a
+> survey guard that skips an asleep, paused, ended or unchanged house.
+> The replay harness (`python -m stagehand.replay`) measures both minds
+> on scratch servers. See `stagehand/README.md` → *The story mind*.
 
 ## The seams that already exist
 

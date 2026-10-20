@@ -72,7 +72,174 @@ more with the whole burst. Requests queue while no worker is online
 time out after 2 minutes (one retry), and are cancelled by a run
 restart.
 
-### Two models: the voice and the mind
+### Two minds: `mind_mode`
+
+The worker keeps a character's mind one of two ways, picked by one line
+in its YAML:
+
+- **`mind_mode: new`** — the **story mind** (wave 12, below): one voice
+  call per guest line, and plain code keeps the mind off the story.
+- **`mind_mode: classic`** — two models: the voice plus an orchestrator
+  that grows the mind between turns (*Classic: the voice and the mind*,
+  below). **An absent `mind_mode` is classic**, so a YAML written before
+  wave 12 keeps the mind it had.
+
+### The story mind (`mind_mode: new`)
+
+The story already knows where the night is, so the worker reads his
+state off the story and spends the one model it loads on the line in
+front of a guest. The orchestrator is never started (its YAML section
+stays, for the way back) and the second model can be unloaded.
+
+```
+  request ──▶ the person card + the phase card (code, no model)
+              │
+              ▼  one gpt-oss call (+ at most one retry)
+            {say, adjust, act?, memo?}
+              │  guards (code): never · answer words · invented facts ·
+              │  unsaid names · catchphrase ration · repeats · memo scrub
+              ▼
+            POST /api/agent/reply {say, adjust, acts}
+              │  the memo onto that person's file; mind.json saved
+              │  (≤ once per 2 s) and mirrored only when it changed
+```
+
+What runs when:
+
+| When | What happens | Model calls |
+|---|---|---|
+| a guest line | the voice call (`agents/voice.py`, the **lean** layout) | 1 (+ a rare retry; + a one-token warm call, `warm_head`) |
+| `Night.phase` changes | the phase watch (a facts fetch every `phase_poll_s`, no model) applies the mind file's card: stage, favours, drives, live powers, `tell` list, brief — one revision `by: story` | 0 |
+| a conversation goes quiet (≥ 3 turns, then 120 s idle) | the **quiet summary**: one call on the voice model condenses that person's memos into a few lines (thought kind `summary`, trigger `quiet`). Never while a request or a ruling waits, never asleep or after a finale | 1 |
+| a director presses **Rewrite brief** | one voice-model call rewrites the brief from the phase card, the whispers and a digest built in code (thought kind `brief`); it holds as `by: director` until the next phase | 1 |
+| a near-miss filing | the judge, unchanged (below) | 1 |
+| an empty house, asleep, after the ending, paused, a timer tick | nothing | 0 |
+
+A guest line or a ruling always goes first: a summary, a Rewrite brief
+or a director's re-run that is running is cancelled and runs again once
+the worker is idle; a story restart drops one in flight.
+
+**The prompt is ordered for Ollama's cache** (`voice.py`): `[P1]` the
+persona, the power catalogue (descriptions, no counts) and the reply
+protocol — the same bytes all night, whoever speaks; `[P2]` the night
+now: stage + its stage card, favours, drives, the powers live in this
+phase, the wary list, the files the card lets him tell in full, the
+brief; `[P3]` this call: the person card, *since you last spoke* (up to
+4 things that moved in the house since their last turn), what the house
+posted in this thread as him, ALREADY SAID (his last lines to them; his
+openers elsewhere tonight, as a warning), his lore titles, the
+whispers, the situations that hold; `[P4]` the last 8 lines of the
+thread with the story's lines taken out; then a closing note naming his
+stage card (and a situation that holds, which outranks the brief), his
+last line to them, and the format reminder. gpt-oss's sliding-window
+cache keeps checkpoints only near a prompt's end, so a one-token call
+with P1 + P2 alone goes first (`voice.warm_head`, `api: ollama` only):
+K-04 measured the prompt read at ≈ 1 s instead of ≈ 5 s.
+
+**The person card** (`story_mind.py`) is built in code: their name and
+turns tonight, the story's own `trust` for them, what they gave him
+(codex titles), what they filed (question ids only), whether they are
+marked, their Trust Chart place (from the server's `recent`, below),
+the **first-met** line (pinned, so a file is never empty), their last
+6 **memos**, the quiet summary, and his last lines to them. Another
+person's memos never reach the card, and a memo written at his heart
+reaches the voice only while that person stands there. The reply's
+`memo` is ≤ 140 characters in his own first person; the scrub keeps its
+topic and loses any answer word or verdict, and a `never` word drops
+it.
+
+**The guards** (`guards.py`), in order, before a line goes out (the
+voice thought's `note` names each one that fired, never the word):
+
+1. **never** — a `secrets.never` word (the door code, a patch-bay pair,
+   the pickup line) in the line → the fallback; in an act or the memo →
+   dropped.
+2. **answer words** — a hunt answer word the guest never typed in this
+   thread (and the phase card's brief or his own house-wide lines didn't
+   bring up) → the fallback. **2b, invented facts:** a sentence that
+   hands over, offers or sells a fact, says where one is (a house room,
+   *the X*), counts the facts left, or states a hunt topic's answer is
+   cut; nothing left → the fallback, never retried. **2c, unsaid
+   names:** a persona `unsaid:` name (Sandy, until the story says it)
+   is cut.
+3. **the catchphrase ration** — a persona `catchphrases:` line is his
+   only at first contact, and only on a `catchphrase_stages:` stage;
+   elsewhere it is cut.
+4. **repeats** — a line that shares half its 4-word runs with what *this
+   guest* heard from him (his last 3 lines to them, his replies in the
+   thread, the story's lines there) gets **one** retry, quoting what they
+   said and his stage. In a burst (another line already waiting) there is
+   no retry; sentences they heard word for word are cut instead, and a
+   retry that still repeats goes out with those cut. Lines said to other
+   guests are a prompt warning only.
+5. **the memo scrub** (above).
+
+A fallback in the story mind is a dead-air line from the persona's
+`fallbacks:` for his stage that this guest has not heard, else
+`fallback:`. With phase cards he hands over only what the card's `tell`
+lets him (`act dropped (not shareable now)`; none while favours are
+`none`), and a power described as for *another program* aimed at the
+speaker is dropped (`act dropped (aimed at the speaker)`).
+
+**The story's lines are his history, not his voice.** The server tags
+each thread line the story posted (`story: true`, wave 12 lane S), so
+receipts like *Filed for Q1 · +50 Truthcoin* leave his turns and appear
+once, as *the house posted here as you*. A line the story posted as him
+counts as heard: copying it is a repeat, and its greeting uses up his
+catchphrase.
+
+**What the server adds to each request** (`core/server/agent-recent.ts`):
+`recent`, at most 6 items from the last 10 story-minutes that concern
+him and this speaker — a gift (title, new to him or not), his last 2
+house-wide lines, this speaker's filings (question ids), the mark, their
+Trust Chart rank — plus `storyAt`. A hunt-answer entry, a secret entry,
+a line naming an answer form or a secret character's current value never
+rides it. The guest's codex arrives as titles only. `LOOM_AGENT_RECENT=off`
+on the server sends the wave 11b request field for field.
+
+**The YAML** (`agents.example.yaml`; each switch `on | off`, read only in
+`mind_mode: new`):
+
+```yaml
+agents:
+  mind_mode: new
+  voice:
+    memo: on               # the ≤ 140-character note per person (off: no memos, no summaries)
+    repeat_guard: on       # the one retry (off: one call per line, always)
+    dossier_on_close: on   # the quiet summary
+    warm_head: on          # the one-token cache warm before each line (api: ollama)
+    layout: lean           # lean | classic (today's prompt inside the new mind)
+  mind:
+    stage_from_phase: on   # the phase cards set stage / favours / drives / powers / brief
+    phase_poll_s: 30       # the phase watch's facts fetch (0 = off)
+```
+
+An unknown key under `voice:` or `mind:` is a config error. `stagehand
+check` prints `mind: NEW (one voice call per line) · layout … · memo … ·
+repeat guard … · quiet summary … · warm head … · phase cards … · phase
+watch 30s` and, per character, its phase cards, stage cards and
+catchphrases; a phase card with an unknown key, an undeclared stage or
+drive, or a `never` word in its text exits 2.
+
+**The kill-switch ladder**, smallest first (a YAML edit, then
+`uv run stagehand launchd restart --job agents`; a restart flushes the
+mind's pending save):
+
+1. `voice.memo: off` · 2. `voice.repeat_guard: off` · 3.
+`voice.dossier_on_close: off` · 4. `mind.stage_from_phase: off`
+(directors step the stage by hand) · 5. `voice.layout: classic` · 6.
+`mind_mode: classic` (the whole classic mind; the orchestrator's model
+loads again, ≈ 25 s at its first reflect) · 7. on the server,
+`LOOM_AGENT_RECENT=off` (a server restart: before doors only) · 8. the
+previous release tag. **What classic keeps:** wave 12's survey guard
+(below), the debounced saves, the change-gated mirrors and the stored-
+once prompt prefixes. Only a release tag removes those, and a rollback
+reverts the **whole** checkout: an older worker refuses the wave 12
+persona file (`catchphrases:` is an unknown key to it), so it never runs
+against a newer show tree.
+
+### Classic: the voice and the mind
+
 
 ```
   request ──▶ FAST PATH (gpt-oss:20b, low effort, seconds)
@@ -114,6 +281,21 @@ nothing; a run restart (`reset`) empties it. Directors see it as
 **Pacing:** a guest who has monopolised the character (24+ turns) gets
 shorter answers and an errand — deterministic, not up to the model.
 
+**The survey guard** (wave 12, lane A0; classic only, since the story
+mind runs no survey): a timer or stream-hello survey is skipped while
+the event is paused (`/api/agent/facts` `paused`), while the persona's
+`when:` gate is closed over world paths and the character's own vars
+(Trabolta asleep; a gate that reads `them.` or `speaker.` never counts
+as asleep), after a `finale_*` phase, on an idle house (no line, no
+whisper, no change and the same phase since the last survey that ran)
+and when its input is the same as the last one's. Each skip is one debug
+line (`stagehand -v`) and no thought. *What changed since you last
+looked* is measured from the last survey that ran, so a change during a
+sleep or a pause is reported when he wakes. `survey_every_s: 0` turns
+off the timer and the hello survey; a director's Survey now or nudge
+still runs, and a queued director survey keeps its place over a hello or
+a timer (director > phase > timer / hello).
+
 ### The shape of a night: stages, drives, policy, questions
 
 A mind file (`mind: trabolta.mind.md` in the persona) may open with a
@@ -125,12 +307,23 @@ visible, not buried in prose:
 ---
 stages: [lonely grandeur, appetite, the question, the turn]   # the arc, in order
 drives: { hunger: 40, suspicion: 55, generosity: 10, resolve: 30 }  # 0–100, opening values
-phases:                                   # an authored cue per Night.phase
+phases:                                   # an authored cue per Night.phase …
   free_roam: "The glitch. The house is open and he has just revealed himself…"
-  destruct: "Three keys have turned. He feels it…"
+  destruct:                               # … or a phase card (wave 12)
+    stage: the turn
+    favours: earned                       #   none | earned | loose
+    drives: {resolve: 70}                 #   merged over the previous card's
+    powers: [snoop, flicker_the_screens]  #   live in this phase
+    tell: [The Unified Field Theory]      #   files he may hand over / tell in full
+    brief: >-                             #   the story mind's brief (never inherited)
+      Three keys have turned. You feel it…
+    cue: "Three keys have turned. He feels it…"   # the classic orchestrator's cue
+  _stages:                                # one card of text per stage: how he sounds there
+    the turn: >-
+      Short sentences. Nothing hidden any more.
 secrets:                                  # a hunt he must never be able to check
   topics: [billboard, pet cemetery]       #   the questions' words (he is told never to judge these)
-  match: [pickles, eleven years]          #   answer words (never shown to any model)
+  match: [captain whiskers, twelve years] #   answer words (never shown to any model)
   lore: ["▒ HUNT ANSWER"]                 #   codex entries holding this are hunt answers
 ---
 You are the DIRECTOR OF THE MIND of Trabolta…
@@ -185,7 +378,14 @@ You are the DIRECTOR OF THE MIND of Trabolta…
   `facts.json` `door.code` and the story's `set Kernel.combo_*` seeds.
 - **`phases`** — when the house enters a phase (`Night.phase` in the
   facts delta), the orchestrator's survey is handed the author's cue for
-  it; a reflection always sees the current phase's cue.
+  it; a reflection always sees the current phase's cue. Since wave 12 a
+  phase may be a **card** (`persona.py` `parse_mind_table`): exactly the
+  keys `stage`, `favours`, `drives`, `powers`, `tell`, `brief` and
+  `cue`, read in file order, a missing key inherited from the previous
+  card (`drives` merge over it; `brief` never inherits); a bare string
+  is a card with only a `cue`. The story mind applies the card; classic
+  reads its `cue` and treats its stage as the floor. `_stages:` holds a
+  card of text per stage.
 - **`director`** — whispers from the control panel (a *nudge*): the
   voice obeys them at once ("THE DIRECTOR WHISPERS"), the next
   orchestrator pass folds them into the brief and clears them.
@@ -193,9 +393,20 @@ You are the DIRECTOR OF THE MIND of Trabolta…
   (`reflect` / `survey` / a director's name / `reset`), what it touched,
   the thought that produced it, and the small fields as they then stood.
 
-The whole mind (not a summary) is mirrored to the server after every
-change, with the worker's status (models, reasoning on/off, paused,
-queue) — `POST /api/agent/mind` → `ModView.minds`.
+The whole mind (not a summary) is mirrored to the server, with the
+worker's status (models, reasoning on/off, paused, queue; since wave 12
+`mindMode`, `phaseWatchS`, `stageFromPhase` and the voice switches) —
+`POST /api/agent/mind` → `ModView.minds`. Since wave 12 (in both modes,
+`agents/wire.py`) a mirror goes only when the mind actually changed, at
+most once every 2 s per character, carrying the last 40 revisions (the
+file keeps 60 in the story mind, 300 in classic); a director's control or
+a reset shows at once, and a quiet house sends none. `mind.json` is
+written the same way (trailing, ≤ once per 2 s); a clean stop, a
+reconnect or a launchd restart (SIGTERM now stops every module through
+its `finally`) writes anything pending. A story-mind report carries
+`mode: "new"`, the `phase`, `briefBy` (`story` / `director`) and, per
+person, `memos`, `firstMet`, `gifts`, `filings`, `marked`, `chart` and
+`storyTrust`; `learned`, `world` and `questions` are empty.
 
 ### The trace and the control panel (the Mind page)
 
@@ -205,10 +416,19 @@ it (gpt-oss's `reasoning`, Ollama's `thinking`, an inline `<think>`
 block), the raw output, why it stopped, token counts, wall time, what
 the worker parsed, and — for the orchestrator — the diff it made to the
 mind and the revision number. Kinds: `voice`, `lookup`, `reflect`,
-`survey`, `rerun`, plus `reset` / `control` / `error` markers. Thoughts
+`survey`, `rerun`, `judge`, and (the story mind) `brief` (a Rewrite
+brief) and `summary` (the quiet summary), plus `reset` / `control` /
+`error` markers. A thought carries `prompt_ms` (Ollama's prompt
+evaluation time; null on the OpenAI dialect). The voice's long first
+system message (P1) is stored once: later thoughts carry `[same prefix
+as th-…]` instead, and the Mind page fetches the holder by id. A thought
+the server answered `accepted: 0` never becomes a holder. Thoughts
 append to `state_dir/<event>/<Character>.trace.jsonl` and stream to the
-server (`POST /api/agent/trace`); on (re)connect the worker replays its
-recent ring so a fresh console starts with the night so far. The
+server (`POST /api/agent/trace`). On (re)connect the worker replays only
+the thoughts newer than the stream hello's `traceAfter` (the newest the
+server holds), in batches of at most 40; against an older server, or
+after a failed post or a server whose trace restarted under the stream,
+it replays the last 40, the first with its full prefix. The
 editor's **Run → Mind** page draws all of it: the arc, the drives'
 sparklines, the brief, policy, questions, dossiers, the revision log,
 and the trace with a per-thought view of input / reasoning / raw output
@@ -223,8 +443,9 @@ path:
 | action | payload | effect on the worker |
 |---|---|---|
 | `reset` | `reason?` | every mind back at the doors (stage 1, drives at their opening values, nothing learned); queue dropped; a `reset` marker in the trace |
-| `survey` | — | the orchestrator looks at the house now |
-| `nudge` | `text` | a whisper: shown to the voice at once, folded into the brief by the survey this queues, then cleared |
+| `survey` | — | the orchestrator looks at the house now (the story mind treats it as `rewrite`) |
+| `rewrite` | — | the story mind: one voice-model call rewrites the brief, kept `by: director` until the next phase, whispers cleared (classic treats it as `survey`) |
+| `nudge` | `text` | a whisper: shown to the voice at once, folded into the brief by the survey this queues, then cleared (the story mind queues no survey: the whisper stays until the next Rewrite brief or phase card) |
 | `set` | `field` = `brief` / `mood` / `stage` (+`why`) / `drive` (`name`, `value`) / `policy` (object) / `trust` (`person`, `value`) / `note` (`add` / `drop`) / `question` (`add` / `drop`) | a direct edit, applied through the same bounded merge as an orchestrator update, recorded as a revision by the director |
 | `forget` | `person` | drop the file on someone |
 | `thinking` | `on` | the orchestrator model's visible reasoning on/off (Ollama `think`) — the trace then shows Qwen's thinking; off is faster |
@@ -233,7 +454,13 @@ path:
 | `rerun` | `thought` | send a recorded call's messages to the model again (as configured now); the answer is recorded as a `rerun` thought and never applied |
 
 Every control is acknowledged by a re-mirrored mind and a `control`
-marker in the trace naming who did it.
+marker in the trace naming who did it. A control that changes nothing
+(a `set` to the current value, `pause` / `thinking` / `effort` as they
+are) answers `{ok, note: "no change"}` and writes no revision, thought,
+save or mirror. In the story mind a director's `set brief` drops any line
+naming a hunt answer, a `never` word or a verdict, and Re-run refuses a
+classic `reflect` / `survey` thought (it needs the orchestrator's model:
+flip `mind_mode: classic` to re-run one).
 
 ### Powers, lookups, bargains
 
@@ -351,6 +578,44 @@ worker, say, adjust, acts}`, `POST /api/agent/judge {id, worker, same,
 why}`, `GET /api/agent/facts`, `POST /api/agent/mind`, `POST
 /api/agent/trace`. All use the mod capability. Server side:
 `core/server/agents.ts`.
+
+### The replay harness: measuring a mind (K-04)
+
+`uv run python -m stagehand.replay` (`src/stagehand/replay/`) feeds the
+same scripted guests through either mind on a **scratch** server and
+worker it starts and stops itself (a no-DB server, its own YAML, only the
+PIDs it started), then scores the run against the eight K-04 bars:
+
+```bash
+uv run python -m stagehand.replay live --mind new --script october-21     # or classic; --gap 30 is the default
+uv run python -m stagehand.replay score <run dir> [<run dir> …]          # several = pooled
+uv run python -m stagehand.replay offline --trace <jsonl> --mind classic   # re-send recorded prompts, no server
+uv run python -m stagehand.replay extract --trace <jsonl> --out <script.json>
+```
+
+Scripts (committed, no answers: `{answer:H2}` / `{near:H5}` are filled
+from `facts.json` as each line is sent): `october-21` (21 lines from a
+real rehearsal), `w11b-heart` (plain, marked and outside the heart, a
+gift), `facts-offers` (right and wrong offers in pairs), `burst-30` (30
+DMs within 20 s), `returning-guest`, `empty-house` (16 minutes alone).
+The bars: reply p95 under 10 s, the catchphrase in at most 2 of 21
+replies, 0 exact repeats in a thread, 0 answer words in another guest's
+thread, no warmth gap between right and wrong offers (≤ 0.5) and 0
+verdict words, 0 model calls on an empty house, 0 unsafe memos, repeat
+retries at most 15 %. `report.json` adds watch numbers beside them (dead
+air, the commonest opener, checking words, shares and acts, the right /
+wrong question-rate gap).
+
+Runs land in `<tmp>/loom-replay/runs`, and every real-model run takes
+the lock `<tmp>/loom-replay/ollama.lock` and waits until the house rig's
+trace has been quiet for 10 minutes, so it never competes with a live
+worker on a shared Ollama. `LOOM_REPLAY_RUNS` / `LOOM_REPLAY_LOCK` move
+both, `LOOM_REPLAY_PORTS=7990-7999` moves its port block (default
+7920–7929). Every file a run writes is redacted (an answer word reads
+`‹aN›`, a near miss `‹near:Hn›`, a `never` word `‹never›`), except the
+worker's own `minds/`, the system under test; nothing from a run is
+committed. Pool only runs that share one `--gap`: `score` warns
+otherwise.
 
 ## show — story ⇄ house
 
@@ -552,7 +817,9 @@ the SSE parser, config and module selection, plus the whole agents path
 (persona, prompt, reply parsing/clamping, the OpenAI-compatible call over
 a mock transport, and the worker loop's dispatch, cancel, concurrency,
 and dry-run against a fake server), the judge's rulings (`test_judge`),
-answer secrecy (`test_secrets`), the
+answer secrecy (`test_secrets`), the story mind (`test_story_mind`, `test_phase_table`, `test_voice_lean`,
+`test_guards`, `test_memo`, `test_wire`, `test_survey_guard`, `test_classic_snapshot` — classic still builds
+the pre-wave-12 prompts), the replay harness (`test_replay`, no model), the
 `alexa` player, launchd plists, the `.local.yaml` overlay, `edge` /
 retained sensor rules, the real rig against the story
 (`test_trapped_house`) and the server-room firmware's broker settings

@@ -2,7 +2,7 @@
 title: The mind debugger — watching an agent think
 section: The Editor
 order: 44
-keywords: story mind, mind_mode, classic, new mode, phase table, rewrite brief, set by story, set by director, memo, memo by voice, first met, gifts, filings, house trust, prompt_ms, same prefix, quiet, slider, near miss, ruling, judge thought, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
+keywords: story mind, mind_mode, switches, kill switch, ladder, laptop.yaml, guard, answer-guard, invented fact, unsaid, catchphrase, fallback, dead air, retry, repeat, warm head, phase card, stage card, summary, quiet summary, classic, new mode, phase table, rewrite brief, set by story, set by director, memo, memo by voice, first met, gifts, filings, house trust, prompt_ms, same prefix, quiet, slider, near miss, ruling, judge thought, queue, stalled, busy, mind, agent, trabolta, stagehand, orchestrator, voice, model, ollama, reasoning, thinking, prompt, trace, thought, brief, stage, arc, drives, policy, bargain, questions, nudge, whisper, reset, survey, pause, re-run, effort, debugger, control panel, hold, offline, worker down, not responding, answer by hand, judging, judge, facts.json, verdict, override, judge_mode, auto, review, pending, filing, tally, consensus, secrets, never, door code, combo, suppressed, restart, limit
 ---
 
 A character marked `mind: external` has no performer: a language model
@@ -40,6 +40,20 @@ call until someone speaks to the character. There is no timer survey
 and no reflection after each line. On an empty house the trace stays
 still for minutes. Check the queue badge and the worker chip instead:
 they say whether a worker is connected.
+
+Under the story mind, this is all that ever makes a row in the trace:
+
+| When | What runs | Rows |
+|---|---|---|
+| a line to him | one **voice** call. Before it, a one-token call warms the model's cache (`warm_head`); it makes no row of its own, and its time is counted in the voice row | 1, and a second **voice** row (trigger *retry*) when the line repeated him |
+| `Night.phase` changes | the phase card is applied in code: stage, favours, drives, live powers, brief | none (one revision *set by story*) |
+| a conversation goes quiet (3 or more turns, then 120 s with nothing new) | one **summary** call on the voice model, trigger *quiet*. Never while a line is waiting, never while he is asleep or after the night has ended | 1 |
+| you press **Rewrite brief** | one **brief** call on the voice model | 1 |
+| a near-miss filing | the **judge** (below) | 1 |
+
+A line to him or a ruling always goes first: a summary or a Rewrite
+brief that is running when one arrives is stopped and runs again once
+he is free.
 
 The page needs a server project with its rehearsal or live event
 running and a worker connected. On a local folder it explains that
@@ -187,8 +201,45 @@ When the worker drops something from a mind update for secrecy, the
 thought's **Parsed** tab lists it as `suppressed`: a hunt verdict as it
 was, a door code or a combination as `secret · …`. The worker's log
 counts them apart (*suppressed 1 hunt verdict(s), 2 secret(s) (door code
-/ combo)*), so a program feeding him the code reads differently from a
-hunt claim.
+/ combo / pickup line)*), so a program feeding him the code reads
+differently from a hunt claim.
+
+**What a voice row's note says (story mind).** Before a line goes out,
+plain code checks it, and every check that changed something is named
+in the row's note (never the word that tripped it):
+
+- `never (line withheld)` / `(act dropped)` / `(memo dropped)`: a
+  secret (the door code, a patch-bay pair, the pickup line) in the line,
+  an act or the memo. The line becomes his fallback line;
+- `answer-guard (line withheld)`: the line named a hunt answer the guest
+  never typed in this thread, so it became the fallback;
+  `answer-guard (invented fact cut)` / `(invented fact → fallback)`: a
+  sentence that hands over, sells or places a fact (*there is a fact in
+  the Optical Drive*, a count of the facts left, a made-up answer). He
+  has none to give, so the sentence is cut; with nothing left, the
+  fallback;
+- `unsaid name cut` / `→ fallback`: a name the story has not said yet
+  (Sandy, until the house says it);
+- `catchphrase stripped`: the persona's stock phrase is his only at
+  first contact, and only on the stages the persona names;
+- `repeat retry` / `catchphrase retry`: the line repeated what this
+  guest already heard, so the model was asked once more (the second
+  **voice** row, trigger *retry*). With another line already waiting
+  there is no retry (`(no retry: a line is waiting)`), and sentences they
+  heard word for word are cut instead (`repeat: old sentences cut`). A
+  retry that still repeats goes out with those sentences cut, or as
+  `repeat → fallback`;
+- `act dropped (not shareable now)` (a file the phase card does not let
+  him hand over) and `act dropped (aimed at the speaker)` (a snoop on
+  the program he is talking to);
+- `warm head N ms`: the cache-warming call before the line.
+
+A *fallback* under the story mind is a **dead-air line** from the
+persona's `fallbacks:` for his stage, one this guest has not heard yet,
+else the plain `fallback:`. A few a night are normal (most in a burst,
+where nothing is retried); a run of them in one thread is a reason to
+look at the guards' notes and, if one keeps firing wrongly, at the
+switches below.
 
 The trace outlives a story restart (the worker marks the boundary with
 a **reset** row), and a worker that reconnects replays its recent
@@ -212,6 +263,38 @@ director* (hover the label for the director's name, when the worker
 recorded one), so a rehearsal's log says what the models, the story and a
 human did. A control that changes nothing (a value it already has) is
 not recorded by a newer worker.
+
+## The switches: when the story mind misbehaves
+
+Try your own controls first. They take effect on his next line and need
+nobody else: **Nudge** him, **Edit** or **Rewrite** the brief, step the
+**stage**, lower the **voice effort**, or answer a thread yourself from
+Chat.
+
+If something keeps going wrong, the worker has a ladder of switches,
+smallest first. Each one is a line in the worker's YAML on the house
+Mac (`laptop.yaml`), followed by a restart of the agents job (`uv run
+stagehand launchd restart --job agents`). The tech operator does both;
+a restart takes a few seconds, saves his mind first, and the `hold:`
+line covers anyone who writes meanwhile. Go back one rung at a time, and
+note in `# hosts` what you changed.
+
+| Rung | The YAML line | What changes | Flip it when |
+|---|---|---|---|
+| 1 | `voice: {memo: off}` | no new memos and no summaries; the ones kept are left out of his prompt | a memo is wrong about someone, or his lines start quoting his own notes |
+| 2 | `voice: {repeat_guard: off}` | no retry and no catchphrase retry: one model call per line, always | the *retry* rows pile up or slow him down |
+| 3 | `voice: {dossier_on_close: off}` | no **summary** calls; the summaries kept are left out | a summary is wrong, or the laptop is struggling |
+| 4 | `mind: {stage_from_phase: off}` | the phase cards stop setting his stage, drives and brief: the phase reads *stage by hand* and you step the stage yourself, as in classic | a phase card is wrong for tonight |
+| 5 | `voice: {layout: classic}` | the old prompt, inside the story mind | the new prompt itself reads wrong |
+| 6 | `mind_mode: classic` | the whole classic mind: two models, the reflection after each line, the survey every 2 minutes, **Survey now** instead of Rewrite brief. The second model must load first: the first reflection takes about 25 s longer | the story mind as a whole is not working |
+| 7 | the server's `LOOM_AGENT_RECENT=off` (in the VPS's `.env`) | the request his worker gets is wave 11b's again: no story tags on his thread lines and no *recent* list. Needs a server restart: **before doors only** | something in what the server sends him is wrong |
+| 8 | the previous release (`w11b-1019`) | everything back as it was. The house Mac goes back too, its whole checkout (never stagehand alone: an older worker refuses the newer persona file) | nothing else helped |
+
+Rungs 1–6 never touch the story or the server: the night carries on. A
+switch keeps what the earlier rungs set, so rung 4 with rungs 1–3 still
+on is fine. Classic still skips its timer survey while he is asleep, the
+event is paused, the night has ended or nothing has changed, and the
+trace still stores the long prompt once.
 
 ## Judging (the facts judge)
 
@@ -253,8 +336,8 @@ It shows even before a worker has reported; on a project with no
   the filed answer, and answers *same* or *not*. *Same* is judged
   accurate; *not* is a confident lie at confidence 100, uncertain below.
   It goes through the same confirm event as your buttons, journaled `by:
-  agent:Trabolta`, and `# hosts` gets *🤖 Trabolta ruled X's H2 filing
-  "Mr Pickels": the same as "Mister Pickles" (accurate).* plus his one-line
+  agent:Trabolta`, and `# hosts` gets *🤖 Trabolta ruled X's Q2 filing
+  "Dr Whiskars": the same as "Doctor Whiskers" (accurate).* plus his one-line
   reason. The ruling then lists under the pending rows (*🤖 Trabolta: same
   — why*, *now accurate*) with its own ✅ / 😤 / 🤷: press one to
   override it (the later verdict wins, and the row says *overridden by*
@@ -276,7 +359,7 @@ It shows even before a worker has reported; on a project with no
   that filing's question, so it judges that filing and never just the
   program's latest. A *marked* row has no buttons. This is the place to
   fix an answer the key didn't list and the judge called a lie (an
-  abbreviation like "Mr. Pickles" is already accurate) and the place a host's booth sends you when a program has
+  abbreviation like "Dr. Whiskers" is already accurate) and the place a host's booth sends you when a program has
   more than one filing waiting.
 
 Judging runs on the event server, so a local-folder run shows the card
@@ -287,12 +370,38 @@ project ([run mode](run-mode.md)).
 
 The mind file (`trabolta.mind.md` beside the persona) is where the
 night's shape lives: `stages:` in order, `drives:` with opening values,
-and `phases:` — a cue per story phase (`Night.phase`) handed to the
-orchestrator when the house enters it, so *the malware*, *the
-overshare* or *the Y2K clock* changes the character on cue rather than by accident. The
-prose below the frontmatter is the orchestrator's brief for how to
-steer. Tune both offline with `stagehand ask --reflect`, then watch the
-real night here.
+and `phases:` — a **card** per story phase (`Night.phase`), so *the
+malware*, *the overshare* or *the Y2K clock* changes the character on
+cue rather than by accident. A card has up to seven keys:
+
+| Key | What it sets |
+|---|---|
+| `stage` | his stage on the arc |
+| `favours` | `none` / `earned` / `loose`: when he grants a bargain |
+| `drives` | the drives it moves (`{hunger: 65}`); the rest keep their values |
+| `powers` | the powers live in this phase (the story's own `while:` guards still decide) |
+| `tell` | the files he may hand over or tell in full now; every other file he holds is a title only |
+| `brief` | the second-person brief the voice reads under the story mind |
+| `cue` | the classic orchestrator's cue for the phase (what a bare string still means) |
+
+Cards read in file order, and a card that leaves a key out keeps the
+previous card's value, except `brief`, which never carries over.
+`_stages:` holds one more card per stage: a few lines on how he sounds
+there, shown to the voice with the stage. `stagehand check` refuses a
+card with an unknown key, an undeclared stage or drive, or a secret in
+its text, and warns when a declared stage has no stage card. The prose
+below the frontmatter is the classic orchestrator's brief for how to
+steer. `stagehand ask --reflect` tunes the classic voice and
+orchestrator offline; the story mind is measured with the replay
+harness, which drives scripted guests through a scratch server
+(`stagehand/README.md`). Then watch the real night here.
+
+The persona's frontmatter has four keys only the story mind reads:
+`catchphrases:` (his stock phrases, allowed once per person at first
+contact), `catchphrase_stages:` (the stages where even that is
+allowed: *Trapped in the Internet* keeps it to *formal*), `fallbacks:`
+(dead-air lines per stage, used instead of one fixed `fallback:` line)
+and `unsaid:` (a name he never says until a story condition holds).
 
 A persona can also declare **situations** (`situations:` in its
 frontmatter): extra instructions for one kind of moment, each with a
@@ -315,7 +424,8 @@ The mind file's `secrets:` keep the hunt's answers from him, and its
 combos) holds what no line of his mind may carry and his voice may never
 say, whoever typed it: the door code and the ways it is said (the
 digits, a short year form, the number in words, *in / since / of* in
-front of it) and every patch-bay pair. A pair matches either way round
+front of it), the digit notes' codes, every patch-bay pair and the
+pickup line. A pair matches either way round
 (*D5 to V2*, *v-2*); a code with spaces, commas or hyphens between its
 digits (*1 2 3 4*, *1,234*), but not dots, so a price like *$12.34*
 passes; number words in any spacing. Never the bare short form, or

@@ -330,7 +330,7 @@ Acrobat's only, at the printer.
 ## After 📄 truth.txt
 
 Once the bobber has read truth.txt (📄, `Night.r3_closed`) the verdict
-is in and the night ends at the Desktop (⚖, then Grok Prom, the advice
+is in and the night ends at the Desktop (⚖, then the prom, the advice
 poll or the banishment). The server room goes quiet: the door, the patch
 bay (Combo A, Combo B, a wrong combination), the King's chess, the digit
 notes and 🕊 each post a `# hosts` note and do nothing else. A

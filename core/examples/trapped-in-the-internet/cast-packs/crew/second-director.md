@@ -56,11 +56,14 @@ the TV asks "Truth or dare?", their phone asks too; Clippy settles a Truth
 with 🗣 / 🙅. 📋 refuses while a bottle is open; 🍾 refuses after five. After
 Q3's bottle, 📺 (it refuses until all three 📋 are read). Rounds never reopen.
 
-**2. Set stage on Run → Mind** at each phase (W-21): intro *formal* · C2
-*hungry* · 📺 *rattled* · 🏓 *judge* · 🫘 *unravelling* · 🕚 *desperate* · 🌑
-*last act*. Both models stay loaded on the house Mac, so the mind runs; if
-Trabolta's replies start lagging more than a minute, pause the mind until a
-quiet moment and have Clippy announce "a high volume of requests" (OP-06).
+**2. Watch Run → Mind** (wave 12, [`trabolta-mind.md`](./trabolta-mind.md)).
+On the story mind his stage follows the phase by itself (*set by story*):
+**don't** set it, and a quiet trace on an empty house is normal. If the tech
+op has switched him to **classic**, set the stage at each phase (W-21): intro
+*formal* · C2 *hungry* · 📺 *rattled* · 🏓 *judge* · 🫘 *unravelling* · 🕚
+*desperate* · 🌑 *last act*; if his classic replies lag more than a minute,
+pause the mind until a quiet moment and have Clippy announce "a high volume of
+requests" (OP-06). Either way, if his replies lag, lower the voice effort.
 
 **3. Watch the judge** (W-07). Every 📝 filing (question, answer, the 1–100
 confidence slider) is judged by the server against `facts.json` as it is
@@ -149,12 +152,12 @@ comes), the hold line can take minutes (a known gap): answer by hand at once.
 Until it is back, answer waiting threads yourself: identity control → *be*
 **Trabolta** → each program's Trabolta thread. Keep it short and formal:
 
-- "Your request has been logged."
+- "Your request has been logged." (only as your first line to a program)
 - "Personal queries are routed to Clippy, my ambassador."
 - "Facts must be filed on the card in this thread. Unfiled facts are rumours."
 - "Please wait. The computer is processing a high volume of requests."
 
-Never confirm or deny a fact, never give an answer, never mention the server
+Thank every fact the same way and never say whether it is right; never give an answer, never mention the server
 room or a combination. When the worker is back, stop: it answers what is still
 queued.
 

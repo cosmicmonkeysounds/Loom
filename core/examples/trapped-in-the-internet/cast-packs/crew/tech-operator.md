@@ -15,8 +15,12 @@
    **Focus → Do Not Disturb all night** ("Allow notifications when
    mirroring" off), so no banner lands on the TV. The show-night backup job
    is silent by default since wave 9 (a banner only with `LOOM_NOTIFY=1`).
-3. Ollama with `OLLAMA_KEEP_ALIVE=-1` and `OLLAMA_MAX_LOADED_MODELS=2` (48 GB:
-   both models stay loaded). Warm both models once.
+3. Ollama with `OLLAMA_KEEP_ALIVE=-1` and `OLLAMA_MAX_LOADED_MODELS=2` (48 GB).
+   Since wave 12 Trabolta runs on the story mind (`mind_mode: new` in
+   `stagehand/laptop.yaml`): only `gpt-oss:20b` is needed. Warm it once;
+   `ollama ps` shows it alone (unload the second model with `ollama stop
+   tobestyledintro/qwen3.8-9b-distill:q8_0`; it loads again by itself if you
+   switch him to classic). The switches: [`trabolta-mind.md`](./trabolta-mind.md).
 4. Mosquitto, Zigbee2MQTT (frontend loads, every device seen), WLED
    controller answers (its app/web page).
 5. stagehand **`show`** job and **`agents`** job (separate launchd jobs:
@@ -62,7 +66,8 @@ starting or missing an event).
 | Trabolta's worker crashed | restart the `agents` job, or `uv run stagehand run --config <house>.yaml --only agents`. The hold line covers the gap; the directors answer DMs meanwhile |
 | Trabolta's worker hung but still connected (Run → Mind shows it, nothing answers) | restart the `agents` job at once: the hold line can take minutes to come for a hung worker (known gap); the directors answer DMs by hand meanwhile |
 | **NEVER** | `pkill -f "stagehand run"` (it kills both jobs) |
-| Ollama slow / evicted | check `ollama ps` shows both models; reload; the first reply after a reload takes ≈ 25 s |
+| Ollama slow / evicted | check `ollama ps` shows `gpt-oss:20b` (and the qwen model too, only if Trabolta is on classic); reload; the first reply after a reload takes ≈ 25 s |
+| Trabolta's story mind misbehaves (the directors ask) | the switch ladder in [`trabolta-mind.md`](./trabolta-mind.md): one line in `stagehand/laptop.yaml`, then `uv run stagehand launchd restart --job agents`; say in `# hosts` what you changed |
 | a terminal hung | tap it; else Fully Kiosk → reload |
 | the TV page stalled | reload Chrome, **click once into it** |
 | Z2M coordinator dead | swap to the spare dongle + restore the backup (≈ 10 min); meanwhile, wall switches |

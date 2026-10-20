@@ -103,8 +103,8 @@ with every hunt question, its `answer` and the `accept` aliases. The
 key stays on the server: the judge adds one word, `verdict`, on the
 `fact answered` / `answer answered` event, and only on an **accurate**
 `fact` filing also `key_answer`, the key's own `answer` as written (so
-the story can read "Mister Pickles" back when the guest typed the
-alias `mr pickles`). A filing that misses never carries it, so the
+the story can read "Doctor Whiskers" back when the guest typed the
+alias `dr whiskers`). A filing that misses never carries it, so the
 answer to a question nobody got right never reaches the story:
 
 | Verdict | When |
@@ -121,34 +121,34 @@ space, and one leading `the` / `a` / `an` is stripped. *The Y2K Bug*,
 wordings under `accept`. If that misses, the judge takes a second exact
 look with **abbreviations spelled out** on both sides: *Mr.* / *Mrs.* /
 *Dr.*, *yr(s)*, *ext*, *hr(s)*, *min(s)*, *sec(s)*, and a leading-zero
-clock time (*0900* reads as *9 00*). So *Mr. Pickles*, *11 yrs* and
-*extension 1978* are simply accurate, with no ⚠.
+clock time (*0730* reads as *7 30*). So *Dr. Whiskers*, *12 yrs* and
+*extension 4410* are simply accurate, with no ⚠.
 
 **Near misses.** An answer that doesn't fold to the key but is close to
 it is a **near miss**, and it is never judged a lie or a guess by
 itself. Close means, after folding: honorifics dropped (*Mr*, *Mrs*,
 *Mister*…), number words read as digits and thousands separators
-joined (*nineteen ninety seven*, *1,997*), plurals folded, the same
+joined (*one thousand two hundred*, *1,200*), plurals folded, the same
 words in another order, and small typos checked word by word — a word
 of 1–3 letters must match exactly, 4–7 letters may be one edit off, 8
 or more two, and a misspelled word keeps its first letter. A right
 answer **said at length** is near too: every word of the key, in order,
-plus up to four more (*11 years ago* for *11*, *Mister Pickles the cat*),
+plus up to four more (*12 years ago* for *12*, *Doctor Whiskers the cat*),
 unless an extra word turns it around or hedges (*not*, *never*, *or*,
-*but*…), adds an am / pm the key leaves open (*9:00 pm* for *9:00*), or
-is a lone letter (*Appendix A* for *appendix*). Numbers and am / pm must
+*but*…), adds an am / pm the key leaves open (*7:30 pm* for *7:30*), or
+is a lone letter (*Chapter B* for *chapter*). Numbers and am / pm must
 match exactly, and a plainly wrong answer at 100 is still an automatic
-lie. *Mr Pickels* for *Mister Pickles* and
-*Grko* for *Grok* are near; *Appendix A* for *Appendix Z*, *9pm* for
-*9:00 a.m.* and *did understand* for *didn't understand* are not. In
+lie. *Dr Whiskars* for *Doctor Whiskers* and
+*Mosiac* for *Mosaic* are near; *Chapter B* for *Chapter Q*, *7pm* for
+*7:30 a.m.* and *did work* for *didn't work* are not. In
 `auto` mode a near miss takes the `review` path for that one filing: it
 is **proposed accurate**, waits on Run → Mind's Judging card tagged
 *⚠ near "<key>"*, and the server adds a line to the staff room (*⚠ Near
-miss, not an exact match: X's H2 filing "Mr Pickels" is close to
-"Mister Pickles", so it is proposed accurate and is credited if nobody
+miss, not an exact match: X's Q2 filing "Dr Whiskars" is close to
+"Doctor Whiskers", so it is proposed accurate and is credited if nobody
 judges it.*). If nobody judges it before the round settles, the
 proposal stands: the filer is credited. Real but different answers can
-be near too (*Groq* for *Grok*, *Mrs Pickles* for *Mister Pickles*).
+be near too (*Mrs Whiskers* for *Doctor Whiskers*: honorifics drop).
 
 **A judge for near misses.** A header line `judge: <Character>` names a
 `mind: external` character who rules on them, so a director doesn't
@@ -160,7 +160,7 @@ accurate; *not* → a confident lie at confidence 100, else uncertain. The
 verdict lands through the same confirm event a director's button fires,
 so the story reacts as it would to a host. The staff-room line then
 says *… asked Trabolta to rule* and his ruling follows (*🤖 Trabolta
-ruled X's H2 filing "Mr Pickels": the same as "Mister Pickles"
+ruled X's Q2 filing "Dr Whiskars": the same as "Doctor Whiskers"
 (accurate).* and his reason). A director can still override it on the
 Judging card. With no worker online the near miss waits as above, and
 the settle credits it if nobody judges it. A `judge:` that names no
