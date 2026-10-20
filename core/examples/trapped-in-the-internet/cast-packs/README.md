@@ -169,7 +169,7 @@ addresses, codes, where things are kept).
 - **Print after the sign-off.** The objectives (`../objectives.loom`) and the
   wave 13 lines are DRAFT until `../SIGNOFF-w13.md` is signed off; the packs
   follow the drafts (who fires the cues, the ribbon *from the hosts*, Windows
-  Defender's 🛡 first, McAfee's line in the ticker). Re-check them against the
+  Defender's face (the scan alone), McAfee's line in the ticker). Re-check them against the
   signed-off text before batch 2, and reprint every pack that changed.
 - Clippy's CI 1–9 cards: one index card each (from the appendix of her pack).
 - The Desktop's QR stacks: print the codex posters from Run → 🖨 Print sheet

@@ -2105,13 +2105,17 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(armed).toEqual([
       "beat_the_machine", "brought_up_the_bag", "pickup_line_works", "plant_the_virus",
       "radio_beans", "radio_combo_a", "radio_combo_b", "radio_crew_door", "radio_door_opened", "radio_wrong_patch",
+      // w13 Q29: 🛡 captures on the spot, from any phase.
+      "send to the internet",
     ]);
     // No admin cue carries it: the Director already arms every cue.
     for (const i of sim.model.interactions.values()) if (i.who === "admin") expect(i.arm, i.id).toBe(false);
     // It rides the booth's view (the patch-bay watch's 🔌 / 💥), never an unarmed button.
     const booth = primeView(sim, "CRA Agent Software").interactions ?? [];
     expect(booth.find((i) => i.id === "radio_combo_a")?.arm).toBe(true);
-    expect(booth.find((i) => i.id === "send to the internet")?.arm).toBeUndefined();
+    expect(booth.find((i) => i.id === "send to the internet")?.arm).toBe(true);
+    expect(primeView(sim, "Windows Defender").interactions?.find((i) => i.id === "send to the internet")?.arm).toBe(true);
+    expect(booth.find((i) => i.id === "mark as reinstalled")?.arm).toBeUndefined();
   });
 
   it("integration: a booth presses only its own `by:` buttons — a Hosts verdict from Norton's is refused", { timeout: SLOW }, async () => {

@@ -3022,8 +3022,9 @@ INTERACTION crew_through_the_door
 // `arm: true` (wave 11) marks a press with no way back: one that ends the
 // night (🔌 💥 💘), trips the alarm (❌), spends The Heart (🚪), changes
 // the room for two minutes (🔧), hands over a secret (♟ the door code,
-// 🍎 The Truth File) or plays a once-a-night moment (🫘). The booth arms
-// it on the first tap and fires it on the second (the Director's arm
+// 🍎 The Truth File), plays a once-a-night moment (🫘) or sends a program
+// to the Internet on the spot (🛡, a capture from any phase). The booth
+// arms it on the first tap and fires it on the second (the Director's arm
 // model); the server never refuses an unarmed press. Guest 💾 too.
 
 INTERACTION send to the internet
@@ -3031,6 +3032,8 @@ INTERACTION send to the internet
   who: performer
   // DRAFT for sign-off (w13 Q22): the Antivirus' own. Only TRAIT Enforcer's hooks hear it, so no host's card lists it and a host's press is refused.
   by: Antivirus
+  // DRAFT for sign-off (w13 Q29): arm then fire on every Antivirus booth. One tap used to capture a program just cleared at the door.
+  arm: true
   description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled

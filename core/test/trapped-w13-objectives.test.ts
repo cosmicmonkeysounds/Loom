@@ -644,7 +644,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
   }, SLOW);
 
-  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's its 🛡, and 🩹 only on a marked program", () => {
+  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's none (🛡 folded, armed), and 🩹 only on a marked program", () => {
     // Per checkpoint: Clippy's objective-sourced face on each cleared,
     // unmarked guest's card, and the act.
     const clippy = new Map<string, string[]>();
@@ -660,12 +660,26 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
       clippy.set(label, [...new Set(faces.flat())]);
       if (!acts.has(act)) acts.set(act, new Set());
       for (const id of faces.flat()) acts.get(act)!.add(id);
-      // Windows Defender leads with 🛡 on every cleared guest (its pack:
-      // only when a host or the director asks), never the patch bay.
+      // Windows Defender's face is the scan alone (w13 Q29): 🛡 is under
+      // All buttons… (armed, only when a host or the director asks), never
+      // the patch bay. ♟ rides it only while the King is armed.
       for (const g of guests) {
         const wd = cardFace(n, "Windows Defender", g).face;
-        expect(wd[0], `${label}: Windows Defender on ${g}`).toBe("send to the internet");
-        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch"]) expect(wd).not.toContain(b);
+        expect(wd, `${label}: Windows Defender on ${g}`).not.toContain("send to the internet");
+        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch", "accuse", "mark as reinstalled"]) expect(wd, `${label}: Windows Defender on ${g}`).not.toContain(b);
+      }
+      // The patch-bay radios are not about the scanned guest: on the four
+      // room Antivirus' faces in the Y2K hour (Patch Bay Watch is NOW), never
+      // from the final reveal on (w13 Q33: Lights Down is NOW, the radios fold).
+      const radios = ["radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
+      for (const g of guests) {
+        const norton = cardFace(n, "Norton Anti-Virus", g).face;
+        if (label === "+30 min") expect(norton, `${label}: Norton on ${g}`).toContain("radio_combo_a");
+        if (label === "final_reveal" || label === "bobbing_for_truth" || label === "Adobe Acrobat: brought_up_the_bag g1") {
+          for (const b of radios) expect(norton, `${label}: Norton on ${g}`).not.toContain(b);
+          // …but still pressable (the fold) until 📄.
+          expect(guestCardView(n.sim, n.chat.all(), "Norton Anti-Virus", g, false)!.live, `${label}: Norton on ${g}`).toContain("radio_combo_a");
+        }
       }
       // The Antivirus' own buttons never reach Clippy's card (no hook: dead).
       for (const g of guests) {
@@ -813,5 +827,22 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
     const sheet = readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8");
     expect(sheet).toMatch(/DRAFT/u);
     for (const id of Sim.fromSources(SRC).model.objectives.keys()) expect(sheet, id).toContain(`| ${id} |`);
+  });
+});
+
+describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the mark and the 📝 card", () => {
+  const facts = (evs: readonly SimEvent[], g: string) =>
+    evs.filter((e) => e.type === "widget" && (e as { widget: string }).widget === "fact" && (e as { audience: string[] }).audience[0] === g).map((e) => (e as { text: string }).text);
+  const replyTo = (ms: readonly ChatMessage[], who: string) => ms.filter((m) => m.channel === `dm:${who}` && m.readout === true).map((m) => m.text);
+
+  it("🛡 arms first on every Antivirus booth, and Windows Defender's door objective puts nothing but the scan on a card (Q29)", () => {
+    const n = boot();
+    expect(n.sim.model.interactions.get("send to the internet")!.arm).toBe(true);
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"]) {
+      expect(primeView(n.sim, who).interactions?.find((i) => i.id === "send to the internet")?.arm, who).toBe(true);
+    }
+    const door = primeView(n.sim, "Windows Defender").objectives!;
+    expect(door.map((o) => o.id)).toEqual(["Hold The Door"]);
+    expect(door[0]!.buttons).toEqual(["scan"]);
   });
 });

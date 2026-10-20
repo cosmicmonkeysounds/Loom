@@ -20,12 +20,14 @@ scanning until the iPhone scanner is verified (OP-04).
 
 **Your buttons** (every Antivirus has them; you will rarely need more than
 the scanner). Your NOW card is *Hold the door* all night, and a scanned
-program's card leads with 🛡 (DRAFT for sign-off, Q26); the rest are under
-**All buttons…**, and 🩹 joins the face on a marked program.
+program's card leads with nothing but the scan's answer (DRAFT for sign-off,
+Q29): every button is under **All buttons…**, and 🩹 joins the face on a
+marked program. 🛡 arms on the first tap and sends on the second, on every
+Antivirus booth.
 
 | When | Press | On whom |
 |---|---|---|
-| **any time** | **🛡 Send to the Internet** | only if a host or the director asks: you stay at the door |
+| **any time** | **🛡 Send to the Internet** (tap to arm, tap again) | only if a host or the director asks: you stay at the door |
 | **any time** | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy |
 | the summons (⏳ → 🚨) | any Antivirus scan of a cleared program counts as their check-in at the Desktop, so scan only new arrivals and send everyone else to the living room | |
 | **only if you saw a checkmate** on the door terminal and it could not report it (OP-12) | **♟ They beat the machine** | the winner |
