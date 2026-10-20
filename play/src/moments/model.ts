@@ -61,7 +61,9 @@ export interface Viewer {
   role: "guest" | "booth";
   /** Guest id, or the booth's character. */
   me: string;
-  /** The room the guest stands in (`loc:<Place>`), for the blue screen's "reaches you". */
+  /** The room the guest stands in (`loc:<Place>`), for the blue screen's
+   *  "reaches you"; a booth's open room (a guest's typed line in the thread
+   *  it is reading raises no balloon). */
   here?: string | null;
   /** The booth's filter (`boothAlertFilter`). */
   filter?: (m: ChatMessage) => boolean;
@@ -179,6 +181,9 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
   // minor moment (a balloon), its exit the guest's thread in the booth.
   if (viewer.role === "booth" && m.moment === undefined && m.alert !== true && guestLineToBooth(m, viewer.me)) {
     const guest = Array.isArray(m.audience) ? m.audience.find((a) => !a.startsWith("@")) : undefined;
+    const channel = guest !== undefined ? `guest:${guest}` : null;
+    // The performer is reading that thread already: the line is on screen.
+    if (channel !== null && viewer.here === channel) return null;
     return {
       key: `m:${m.seq}`,
       seq: m.seq,
@@ -186,7 +191,7 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
       kind: "other",
       caption: m.from.trim(),
       text: m.text.trim(),
-      channel: guest !== undefined ? `guest:${guest}` : null,
+      channel,
       beat: null,
       at: m.ts,
       phase: phaseOf(m, phase),

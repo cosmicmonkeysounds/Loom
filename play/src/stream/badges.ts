@@ -22,7 +22,8 @@ export function guestLineToBooth(m: Pick<ChatMessage, "channel" | "from" | "kind
   if (m.channel !== `dm:${character}`) return false;
   if (m.beat !== undefined && m.beat !== null && m.beat !== "") return false;
   const from = m.from.trim();
-  return from !== "" && from !== character && from !== "Narrator";
+  // A director's own voice in the thread ("Operator") is to the guest, not the booth.
+  return from !== "" && from !== character && from !== "Narrator" && from !== "Operator";
 }
 
 /** Is this message addressed to the viewer (a guest by id, a booth as

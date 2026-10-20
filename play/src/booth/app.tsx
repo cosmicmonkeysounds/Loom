@@ -215,6 +215,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const moments: MomentsInput = {
     role: "booth",
     me: character,
+    // The room open now: a guest's line in the thread being read is no balloon.
+    here: t.activeId,
     session: s.auth.token,
     messages: s.messages,
     alerts: s.alerts,

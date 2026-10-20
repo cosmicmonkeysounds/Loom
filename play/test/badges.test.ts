@@ -69,6 +69,7 @@ describe("a guest's typed line to a booth", () => {
     expect(badgeWorthy(typed({ from: "Clippy", text: "Hello." }), clippy)).toBe(false);
     expect(badgeWorthy(typed({ from: "Clippy", beat: "Login" }), clippy)).toBe(false);
     expect(guestLineToBooth(typed({ from: "Narrator", kind: "narration" }), "Clippy")).toBe(false);
+    expect(guestLineToBooth(typed({ from: "Operator" }), "Clippy")).toBe(false);
     expect(badgeWorthy(typed({ channel: "dm:Trabolta" }), clippy)).toBe(false);
     expect(badgeWorthy(typed({ hidden: true }), clippy)).toBe(false);
     expect(badgeWorthy(typed(), norton)).toBe(false);

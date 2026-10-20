@@ -114,6 +114,9 @@ describe("a guest's typed line to a booth (live check, fix round)", () => {
     expect(momentOf({ ...line, channel: "dm:Clippy" }, booth, null)).toBeNull();
     // A guest never gets one for their own words.
     expect(momentOf(line, guest, null)).toBeNull();
+    // The booth reading that guest's thread already: no balloon over it.
+    expect(momentOf(line, { ...booth, here: "guest:g-1019a0" }, null)).toBeNull();
+    expect(momentOf(line, { ...booth, here: "guest:g-other" }, null)).not.toBeNull();
   });
 });
 
