@@ -983,7 +983,15 @@ export class EventRuntime {
    *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
-    return { ...primeView(this.sim, character, online, { host }), answered: this.answeredFor(character), avatars, ...(queue !== null ? { wallet: queue } : {}) };
+    return {
+      ...primeView(this.sim, character, online, { host }),
+      answered: this.answeredFor(character),
+      avatars,
+      ...(queue !== null ? { wallet: queue } : {}),
+      // The story clock is stopped: the booth's tray holds its countdowns
+      // still (the same rule as a guest's strip, `guestViewFor`).
+      ...(this.phase !== "open" ? { paused: true as const } : {}),
+    };
   }
 
   /** The operator's god view, with everyone's profile pictures. */
@@ -3668,7 +3676,11 @@ export class EventRuntime {
             sendJson(res, 404, { error: "unknown character" });
             return true;
           }
-          sendJson(res, 200, this.primeViewFor(as, new Set(this.agents.onlineCharacters())));
+          // A host part (`admin: true`) is a host booth, as its live
+          // stream's snapshot is (`snapshotFor`): the lens shows exactly
+          // the objective buttons that phone shows.
+          const host = this.reqSim().model.characters.get(as)?.admin === true;
+          sendJson(res, 200, this.primeViewFor(as, new Set(this.agents.onlineCharacters()), undefined, host));
           return true;
         }
       }

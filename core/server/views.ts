@@ -1598,6 +1598,15 @@ export interface PrimeView {
    *  existing `staffRoomIds` returns *folded names*, `"hosts"`, for scope
    *  matching; it stays as is.) Always filled ([] when none). */
   staffRooms?: string[];
+  /** The story clock is stopped (the event is paused, or its doors have not
+   *  opened): `clock` holds still, so the booth's countdowns must not tick
+   *  on — `GuestView.paused`'s rule. Set by the runtime; absent while the
+   *  clock runs (and from a local sim). */
+  paused?: true;
+  /** The booth holds the host capability (its part is `admin: true`, or the
+   *  sign-in holds the moderator passcode): it keeps another character's
+   *  `by:` buttons on its objectives and may press them. Absent otherwise. */
+  host?: true;
 }
 
 export interface AgentContact {
@@ -1662,5 +1671,6 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     alertLevel: alertLevelNow(sim),
     ...(countdowns.length > 0 ? { countdowns } : {}),
     staffRooms: staffRoomChannels(sim.model),
+    ...(opts?.host === true ? { host: true as const } : {}),
   };
 }
