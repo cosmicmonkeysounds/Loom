@@ -233,6 +233,7 @@ export function QuestRoom({ messages, empty }: { messages: readonly ChatMessage[
   return (
     <div className="thread stream-cabinet">
       {none && <div className="thread-empty">{empty}</div>}
+      {!none && sections.active.length === 0 && <p className="stream-cabinet-note">Nothing in progress right now. New quests land here.</p>}
       <QuestSection title="In progress" rows={sections.active} startOpen open={open} onToggle={toggle} />
       <QuestSection title="Done" rows={sections.done} startOpen={false} open={open} onToggle={toggle} />
       <QuestSection title="Failed" rows={sections.failed} startOpen={false} open={open} onToggle={toggle} />

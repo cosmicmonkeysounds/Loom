@@ -52,6 +52,12 @@ describe("the room", () => {
     expect(html).not.toContain("Too slow");
   });
 
+  it("nothing in progress: says so above the folded sections", () => {
+    const orient = q("Orientation", "start", "Take the tour.");
+    const html = renderToStaticMarkup(createElement(QuestRoom, { messages: [orient, q("Orientation", "complete", "", orient.seq)], empty: "No quests yet." }));
+    expect(html).toContain("Nothing in progress right now.");
+  });
+
   it("empty: says how quests arrive", () => {
     expect(renderToStaticMarkup(createElement(QuestRoom, { messages: [], empty: "No quests yet." }))).toContain("No quests yet.");
   });

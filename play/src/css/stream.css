@@ -128,10 +128,9 @@
 .stream-manner { font: italic 12px var(--ui-font); color: var(--dim-ink); }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Still an effect, never a movement: the split signal + a static bar. */
+  /* Still an effect, never a movement: effect lines keep the split signal
+     (above), alerts their highlight; nothing flickers or jumps. */
   .stream-fx-live, .stream-fx-live .bubble, .stream-caret { animation: none; }
-  .stream-fx .bubble { text-decoration: underline wavy var(--bad); text-underline-offset: 3px; }
-  .stream-fx.line .bubble, .stream-fx.narration .bubble { text-shadow: none; }
 }
 
 /* ── cards: the receipt, the settled line ───────────────────────────────── */
