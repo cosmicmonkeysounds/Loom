@@ -13,7 +13,6 @@
 //! from a booth"}`. Pure (no I/O), so the table is unit-tested route by
 //! route.
 
-import { foldKey } from "../../src/parser/names.ts";
 import { ALERT_LEVELS } from "../../src/delivery.ts";
 
 /** The refusal a host-only caller gets off the allowlist. */
@@ -78,7 +77,10 @@ export function isHostRoute(
     case "/api/mod/var": {
       const level = field(body, "value").trim().replace(/^["'`]+|["'`]+$/gu, "").trim().toLowerCase();
       const v = body?.["value"];
-      return typeof v === "string" && foldKey(field(body, "path").trim()) === foldKey(ctx.alertsPath) && (ALERT_LEVELS as readonly string[]).includes(level);
+      // The exact path: `/api/mod/var` writes the spelling it is given, so a
+      // folded match (`night.ALERTS`) would answer 200, write a junk var and
+      // leave the level where it was.
+      return typeof v === "string" && field(body, "path").trim() === ctx.alertsPath && (ALERT_LEVELS as readonly string[]).includes(level);
     }
     case "/api/mod/say": {
       const channel = field(body, "channel");

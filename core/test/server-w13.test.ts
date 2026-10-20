@@ -229,7 +229,9 @@ describe("the host allowlist (§2.7)", () => {
 
   it("the pure table: var / say / act limits", () => {
     expect(isHostRoute("POST", "/api/mod/var", { path: "Night.alerts", value: "dialog" }, ctx)).toBe(true);
-    expect(isHostRoute("POST", "/api/mod/var", { path: "night.alerts", value: '"BSOD"' }, ctx)).toBe(true);
+    expect(isHostRoute("POST", "/api/mod/var", { path: " Night.alerts ", value: '"BSOD"' }, ctx)).toBe(true);
+    // A folded spelling would write a junk var (the write keeps the spelling): refused.
+    expect(isHostRoute("POST", "/api/mod/var", { path: "night.ALERTS", value: "bsod" }, ctx)).toBe(false);
     expect(isHostRoute("POST", "/api/mod/var", { path: "Night.alerts", value: "loud" }, ctx)).toBe(false);
     expect(isHostRoute("POST", "/api/mod/var", { path: "Night.step", value: "dialog" }, ctx)).toBe(false);
     expect(isHostRoute("POST", "/api/mod/say", { channel: "guest:g1", as: "Trabolta", text: "x" }, ctx)).toBe(true);
@@ -368,6 +370,17 @@ describe("the alert dial + ModView.alerts", () => {
     expect((await get(rt, `/api/state?role=guest&token=${g.token}`)).json.alertLevel).toBe("dialog");
     const host = await hostToken(rt);
     expect((await get(rt, `/api/state?role=mod&host=1&token=${host}`)).json.alerts).toEqual({ path: "Night.alerts", level: "dialog" });
+  });
+
+  it("a host's dial takes only the exact alerts path: a folded spelling is refused, never a 200 that changes nothing", async () => {
+    const rt = freshRuntime();
+    rt.openDoors();
+    const g = await register(rt, "Winamp");
+    const host = await hostToken(rt);
+    expect((await post(rt, "/api/mod/var", { token: host, path: "night.ALERTS", value: "bsod" })).status).toBe(403);
+    expect((await get(rt, `/api/state?role=guest&token=${g.token}`)).json.alertLevel).toBe("sticky");
+    expect((await post(rt, "/api/mod/var", { token: host, path: "Night.alerts", value: "bsod" })).status).toBe(200);
+    expect((await get(rt, `/api/state?role=guest&token=${g.token}`)).json.alertLevel).toBe("bsod");
   });
 });
 
