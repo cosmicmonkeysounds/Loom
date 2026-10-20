@@ -420,7 +420,11 @@ export interface RunInfo {
  *  Operator lens. */
 export type Lens =
   | { kind: 'guest'; id: string; view: GuestView }
-  | { kind: 'performer'; id: string; view: PrimeView }
+  /** `host`: the character is a host part (`admin: true`), whose booth
+   *  holds the host capability — it may press another character's `by:`
+   *  button. Absent: not known to be one (a server lens; the booth is
+   *  then treated as an ordinary performer's). */
+  | { kind: 'performer'; id: string; view: PrimeView; host?: boolean }
   | null
 
 /** A run that ended (here or by a co-writer) — kept so "Export run" still

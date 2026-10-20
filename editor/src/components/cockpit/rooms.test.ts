@@ -378,6 +378,25 @@ describe('wave 13: a booth without admin cues, and readouts in the Inbox', () =>
     expect(performerActions(lens, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
   })
 
+  // The booth's PrimeView keeps another character's `by:` button, flagged
+  // `only: true` (core's `primeView`); the play booth drops it on the client.
+  const withPatch: PrimeView = {
+    ...base,
+    interactions: [ia('clear', 'performer'), ia('mine', 'performer', { only: true, actors: ['Norton'] }), ia('patch', 'performer', { only: true, actors: ['McAfee'] })],
+  }
+
+  it("a resolved lens drops another character's by: button, as the booth's phone does", () => {
+    const lens = { kind: 'performer' as const, id: 'Norton', view: withPatch }
+    expect(performerActions(lens, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
+    // Names fold, as the play booth's do.
+    expect(performerActions({ ...lens, id: 'norton' }, 'norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
+  })
+
+  it("a host part's resolved lens keeps it: a host booth may press another character's button", () => {
+    const lens = { kind: 'performer' as const, id: 'Norton', view: withPatch, host: true }
+    expect(performerActions(lens, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine', 'patch'])
+  })
+
   it("before the lens resolves: the mod snapshot's performer buttons this character may press", () => {
     expect(performerActions(null, 'Norton', ALL).map((i) => i.id)).toEqual(['clear', 'mine'])
     // A lens for someone else is not this booth's.

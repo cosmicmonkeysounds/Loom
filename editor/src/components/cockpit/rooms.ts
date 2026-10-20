@@ -307,15 +307,22 @@ export function readoutsOf(messages: readonly CockpitMessage[], character: strin
   return messages.filter((m) => m.readout === true && m.channel === `dm:${character}`).sort((a, b) => a.seq - b.seq)
 }
 
-/** The story's buttons a performer lens offers on an open guest thread. With
- *  the lens resolved, the booth's own `PrimeView.interactions` — since wave
- *  13 `who: performer` only, another character's `by:` button already
- *  dropped, exactly what the booth's phone shows. Before it resolves, the
- *  mod snapshot's `who: performer` buttons this character may press. Admin
- *  cues are the Director page's and never a booth's. */
+/** The story's buttons a performer lens offers on an open guest thread:
+ *  `who: performer` only (admin cues are the Director page's, never a
+ *  booth's). With the lens resolved, off the booth's own
+ *  `PrimeView.interactions`; before it resolves, off the mod snapshot's.
+ *  Either way another character's `by:` button (`only: true`, this
+ *  character not among its `actors`) is dropped — the view keeps it
+ *  flagged and the play booth drops it on the client
+ *  (`play/src/booth/card.tsx` `splitInteractions`) — unless the lens is a
+ *  host part's (`host`), whose booth may press it. */
 export function performerActions(lens: Lens | undefined, perspective: string, interactions: readonly InteractionSummary[]): InteractionSummary[] {
-  if (lens != null && lens.kind === 'performer' && lens.id === perspective) return lens.view.interactions.filter((i) => i.who === 'performer')
-  return interactions.filter((i) => i.who === 'performer' && (i.only !== true || (i.actors ?? []).includes(perspective)))
+  const resolved = lens != null && lens.kind === 'performer' && lens.id === perspective ? lens : null
+  const host = resolved?.host === true
+  const me = foldName(perspective)
+  const pressable = (i: InteractionSummary): boolean =>
+    i.who === 'performer' && (host || i.only !== true || (i.actors ?? []).some((a) => foldName(a) === me))
+  return (resolved !== null ? resolved.view.interactions : interactions).filter(pressable)
 }
 
 /** The messages that belong to a room, in the lens's view. A performer's
