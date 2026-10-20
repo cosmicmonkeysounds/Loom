@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildGuestChannels, isVoiced } from "../src/session/channels.ts";
-import { ChannelView, MessageThread, stillCrawling } from "../src/stream/channel-view.tsx";
+import { ChannelView, MessageThread, stillCrawling, streamFoot } from "../src/stream/channel-view.tsx";
 import { CardTray, trayCardKey, trayIndex, trayShown } from "../src/stream/card-tray.tsx";
 import { PlayHostContext, browserHost, createCrawl } from "../src/host.ts";
 import { NOBODY_READS_NOTE, cantPostNote } from "../src/stream/composer.tsx";
@@ -132,6 +132,33 @@ describe("the footers above the taskbar", () => {
     const thread = renderToStaticMarkup(createElement(MessageThread, { channel: room({ messages: [root] }), rootSeq: root.seq, onClose: () => {}, onSend: () => {} }));
     expect(thread).toContain('<footer class="stream-foot">');
     expect(view(room({}))).toContain('<footer class="stream-foot">');
+  });
+});
+
+describe("the footer's parts never share a key", () => {
+  const el = (t: string) => createElement("i", null, t);
+  it("every part is keyed by its part and the room", () => {
+    const parts = streamFoot("dm:Trabolta", { tray: el("tray"), decision: el("d"), footer: el("f"), composer: el("c"), cantPost: null });
+    const keys = parts.map((p) => p.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toEqual(["tray:dm:Trabolta", "decision:dm:Trabolta", "footer:dm:Trabolta", "composer:dm:Trabolta"]);
+  });
+
+  it("answering the only tray card in a room with a composer leaves the composer alone and no tray", () => {
+    const card = m({ channel: "dm:Trabolta", channelKind: "dm", kind: "widget", from: "Trabolta", text: "", audience: ["g1"], widget: { kind: "poll", text: "Truth or dare?", params: { options: "Truth | Dare" } } });
+    const dm = room({ id: "dm:Trabolta", kind: "dm", title: "Trabolta", messages: [card] });
+    const before = view(dm);
+    expect(before).toContain("stream-tray");
+    expect(before).toContain("composer-input");
+    const after = view(dm, { widgets: { ...widgets, answered: new Map([[card.seq, { choice: "Truth" }]]) } });
+    expect(after).not.toContain("stream-tray");
+    expect(after).toContain("composer-input");
+    // The composer's key is the same either side of the answer: React keeps
+    // it (and its draft), and it can never collide with the tray's.
+    const before2 = streamFoot(dm.id, { tray: el("tray"), decision: null, footer: null, composer: el("c"), cantPost: null });
+    const after2 = streamFoot(dm.id, { tray: null, decision: null, footer: null, composer: el("c"), cantPost: null });
+    expect(after2.map((p) => p.key)).toEqual(["composer:dm:Trabolta"]);
+    expect(before2.map((p) => p.key)).toContain(after2[0]!.key);
   });
 });
 

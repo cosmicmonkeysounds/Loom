@@ -1,7 +1,7 @@
 //! One open room (moved out of `chat.tsx` in wave 13): the decision tray,
 //! the who's-here strip, the room view and the thread panel.
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { usePlayHost, type Crawl } from "../host.ts";
 import { PinnedRail } from "../moments/pins-rail.tsx";
 import type { Channel, ChatMessage, Decision } from "../types.ts";
@@ -148,6 +148,36 @@ export function PresenceStrip({ people, meId, onOpen }: { people: Channel["peopl
   );
 }
 
+/** The parts a room's footer may hold, top to bottom. */
+export interface StreamFootParts {
+  tray: ReactElement | null;
+  decision: ReactElement | null;
+  footer: ReactNode;
+  composer: ReactElement | null;
+  cantPost: ReactElement | null;
+}
+
+/**
+ * A room's footer, as keyed siblings (pure — `test/stream-view.test.tsx`).
+ * Every part's key names its part *and* the room: a room change remounts the
+ * tray and the composer (a draft never follows the guest), and no two parts
+ * ever share a key — when the card tray emptied beside a composer keyed by
+ * the same id, React lost the tray's fiber and left the answered card up.
+ */
+export function streamFoot(roomId: string, parts: StreamFootParts): ReactElement[] {
+  const out: ReactElement[] = [];
+  const add = (part: keyof StreamFootParts, el: ReactNode) => {
+    if (el === null || el === undefined || el === false) return;
+    out.push(<Fragment key={`${part}:${roomId}`}>{el}</Fragment>);
+  };
+  add("tray", parts.tray);
+  add("decision", parts.decision);
+  add("footer", parts.footer);
+  add("composer", parts.composer);
+  add("cantPost", parts.cantPost);
+  return out;
+}
+
 /**
  * One open conversation: a header (back on phones, the room, who's here),
  * the message stream, and a caller-supplied footer (a decision tray, a
@@ -240,6 +270,26 @@ export function ChannelView({
       : channel.kind === "dm"
         ? `No messages with ${channel.title} yet.`
         : "Nothing here yet.";
+  // The footer's parts, each under its own key (`streamFoot`): the tray and
+  // the composer once shared the room's id as a key, and React then left a
+  // dead copy of an answered card on screen.
+  const foot = streamFoot(channel.id, {
+    tray: tray.length > 0 && widgets ? <CardTray cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} /> : null,
+    decision: channel.decision && dockReady ? <DecisionTray decision={channel.decision} /> : null,
+    footer: footer ?? null,
+    // Keyed by room: a draft (or a refused line coming back) stays in its
+    // own room, never follows the guest into the next one.
+    composer:
+      onSend && canPost ? (
+        <Composer
+          onSend={(t) => onSend(t)}
+          placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
+          sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
+          extra={composerExtra}
+        />
+      ) : null,
+    cantPost: onSend && !canPost ? <div className="cant-post">{cantPostNote(channel)}</div> : null,
+  });
   return (
     <div className="screen stage">
       <header className="thread-head stream-room-head">
@@ -290,33 +340,13 @@ export function ChannelView({
           {channel.typing} is typing<span className="dots" />
         </div>
       )}
-      {(footer || channel.decision || onSend || tray.length > 0) && (
+      {foot.length > 0 && (
         <footer
           className="stream-foot"
           onFocus={(e) => isComposer(e.target) && setComposing(true)}
           onBlur={(e) => isComposer(e.target) && setComposing(false)}
         >
-          {tray.length > 0 && widgets && (
-            <CardTray key={channel.id} cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} />
-          )}
-          {channel.decision && dockReady && <DecisionTray decision={channel.decision} />}
-          {footer}
-          {onSend && canPost && (
-            // Keyed by room: a draft (or a refused line coming back) stays
-            // in its own room, never follows the guest into the next one.
-            <Composer
-              key={channel.id}
-              onSend={(t) => onSend(t)}
-              placeholder={channel.kind === "codex" ? "Enter a code…" : `Message ${channel.title}…`}
-              sendLabel={channel.kind === "codex" ? "Unlock" : undefined}
-              extra={composerExtra}
-            />
-          )}
-          {onSend && !canPost && (
-            <div className="cant-post">
-              {cantPostNote(channel)}
-            </div>
-          )}
+          {foot}
         </footer>
       )}
     </div>
