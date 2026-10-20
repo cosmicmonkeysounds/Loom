@@ -15,14 +15,18 @@ describe("the tray clock", () => {
     expect(trayClockText(299)).toBe("4:59");
     expect(trayClockText(59)).toBe("0:59");
     expect(trayClockText(600)).toBe("10 m");
-    expect(trayClockText(899)).toBe("14 m");
-    expect(trayClockText(7199)).toBe("119 m");
+    expect(trayClockText(899)).toBe("15 m"); // rounds up: a fifteen-minute hunt reads 15 at once
+    expect(trayClockText(900)).toBe("15 m");
+    expect(trayClockText(897.4)).toBe("15 m");
+    expect(trayClockText(599.2)).toBe("10 m"); // ceil to 600 s
+    expect(trayClockText(598.2)).toBe("9:59");
+    expect(trayClockText(7199)).toBe("120 m");
     expect(trayClockText(7200)).toBe("2 h");
     expect(trayClockText(-4)).toBe("0:00");
   });
 
   it("the tray item: ⏳ first, red under a minute, ⏸ and dim while paused", () => {
-    expect(trayClock({ label: "Hunt 1 ends", left: 899 }, false)).toEqual({ icon: "⏳", text: "14 m", title: "Hunt 1 ends in 14 min 59 s" });
+    expect(trayClock({ label: "Hunt 1 ends", left: 899 }, false)).toEqual({ icon: "⏳", text: "15 m", title: "Hunt 1 ends in 14 min 59 s" });
     expect(trayClock({ label: "Hunt 1 ends", left: 40, urgent: true }, false)).toMatchObject({ icon: "⏳", text: "0:40", tone: "alarm" });
     expect(trayClock({ label: "Hunt 1 ends", left: 40 }, true)).toMatchObject({ icon: "⏸", tone: "dim", title: "Hunt 1 ends in 40 s (the clock is paused)" });
   });
