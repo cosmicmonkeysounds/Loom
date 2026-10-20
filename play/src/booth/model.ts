@@ -249,6 +249,13 @@ export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: 
   return out;
 }
 
+/** Which booth rooms may fold into "Other rooms (n)": only the house's
+ *  rooms (an empty location). Readouts, the Wallet, the staff rooms and the
+ *  feed stay up however quiet they are. */
+export function boothFoldable(c: Pick<Channel, "kind" | "spaceId">): boolean {
+  return c.kind === "location";
+}
+
 /** The guests matching a search, by name or id (folded), sorted by name. */
 export function filterGuests(guests: readonly PrimeGuest[], q: string): PrimeGuest[] {
   const needle = foldName(q);
