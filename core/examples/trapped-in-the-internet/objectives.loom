@@ -458,8 +458,8 @@ OBJECTIVE Hold The Door
   for: Windows Defender
   title: Hold the door: scan late arrivals
   text:
-    Stay in the Optical Drive. A scan clears a late arrival exactly like the others. During the summons, scan only new arrivals and send everyone else to the living room. Never leave the door empty: radio LATE if an escort comes through.
-  buttons: scan
+    Stay in the Optical Drive. A scan clears a late arrival exactly like the others. During the summons, scan only new arrivals and send everyone else to the living room. Never leave the door empty: radio LATE if an escort comes through. 🛡 only if a host or the director asks.
+  buttons: scan, send to the internet
 
 // ════════════════════════════════════════════════════════════════════
 // Clippy (the MC): one per Clippy Instructions window, the bottle first.
@@ -704,6 +704,7 @@ OBJECTIVE Disk Cleanup
   title: Keep Disk Cleanup moving
   text:
     Keep the line moving and the Bathroom Mode joke alive. Remind people to turn it off when they come out. A marked program keeps Bathroom Mode: never send them away from the toilet. NEXT sits above your taskbar: fire a cue only when the director radios you (tap to arm, tap again to fire).
+  buttons: award_the_ribbon, signed_the_painting
 
 // DRAFT for sign-off
 OBJECTIVE Documents And Printing
@@ -711,6 +712,7 @@ OBJECTIVE Documents And Printing
   title: Documents and printing
   text:
     Relentlessly motivational, with a price tag. 🎀 ribbons, 🤝 vouches and 🩹 unmarks are yours any time. NEXT sits above your taskbar: fire a cue only when the director radios you (tap to arm, tap again to fire).
+  buttons: award_the_ribbon, signed_the_painting
 
 // DRAFT for sign-off
 OBJECTIVE The Help Desk
@@ -718,10 +720,12 @@ OBJECTIVE The Help Desk
   title: Keep things running: the help desk
   text:
     Answer # task-manager and your DMs: status reports, never plot. NEXT sits above your taskbar: any host may fire it (tap to arm, tap again to fire); agree by radio who calls.
+  buttons: award_the_ribbon, signed_the_painting
 
 // DRAFT for sign-off
 OBJECTIVE Help With That
   for: Clippy
   title: Offer everyone Help With That
   text:
-    Relentlessly helpful, a little too bright, always available. Your staff quests and What Clippy knows are in your booth.
+    Relentlessly helpful, a little too bright, always available. 🎀 ribbons are yours any time, and 🖌 when MS Paint is here. Your staff quests and What Clippy knows are in your booth.
+  buttons: award_the_ribbon, signed_the_painting
