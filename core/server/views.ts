@@ -1689,6 +1689,10 @@ export function awardOnly(sim: Sim): Record<string, { id: string; name: string }
     for (const [cue, gates] of subjectGatesOf(sim.model)) {
       const fits = [...sim.persons.values()].filter((p) =>
         gates.every((g) => {
+          // A ROLE `secret:` slot names nobody: the host view never says
+          // who holds a secret value (as its flags never show one).
+          const role = sim.model.roles.get(p.role);
+          if (role !== undefined && isSecretRoleSlot(role.secret, g.slot)) return false;
           const v = sim.world.get(`${p.id}.${g.slot}`);
           return v !== undefined && v.kind !== "null" && display(v).replace(/^"(.*)"$/su, "$1") === g.value;
         }),

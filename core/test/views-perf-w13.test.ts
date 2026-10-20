@@ -174,6 +174,33 @@ describe("awardOnly", () => {
     sim.setVar("g1.featured", '"mspaint"');
     expect(awardOnly(sim)).toEqual({});
   });
+
+  it("never names who holds a ROLE secret: slot", () => {
+    const sim = Sim.fromSources(`# Night
+start: opening
+
+ROLE Program
+  secret: carries
+  carries: text = "no"
+  when award_virus for program:
+    if program.carries != "yes":
+      broadcast "Not the carrier." to channel(hosts)
+    else:
+      set Night.award = "virus"
+
+CHANNEL hosts
+
+INTERACTION award_virus
+  who: admin
+
+== opening
+Hi.
+`);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bo");
+    sim.setVar("g2.carries", '"yes"');
+    expect(awardOnly(sim)).toEqual({});
+  });
 });
 
 
