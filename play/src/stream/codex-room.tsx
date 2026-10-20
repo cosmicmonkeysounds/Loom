@@ -71,9 +71,10 @@ export function CodexRoom({ messages, meId, empty }: { messages: readonly ChatMe
     }
   });
   // This device's first look: keep a record at once (all but the newest
-  // entry seen), so what is learned from now on is NEW.
+  // entry seen; nothing, when the Codex is still empty — the tour points
+  // at it), so everything learned from now on is NEW.
   useEffect(() => {
-    if (seen !== null || rows.length === 0) return;
+    if (seen !== null) return;
     const next = markSeen(rows, null, null);
     setSeen(new Set(next));
     try {

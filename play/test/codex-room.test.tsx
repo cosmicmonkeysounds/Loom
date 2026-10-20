@@ -63,6 +63,15 @@ describe("new until opened", () => {
   });
 });
 
+describe("a first look at an empty Codex", () => {
+  it("keeps an empty record, so every entry learned after it is NEW", () => {
+    const record = markSeen([], null, null);
+    expect(record).toEqual([]);
+    const later = codexRows([entry({ entry: "Orientation" }), entry({ entry: "Hunt 1" }), entry({ entry: "Hunt 2" })]);
+    expect([...newEntries(later, new Set(record))].sort()).toEqual(["Hunt 1", "Hunt 2", "Orientation"]);
+  });
+});
+
 describe("the room", () => {
   const render = (messages: ChatMessage[], seen: string[] | null = null) =>
     renderToStaticMarkup(
