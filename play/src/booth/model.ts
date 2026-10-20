@@ -1,0 +1,299 @@
+//! The booth's pure decisions (wave 13): which story buttons sit on a
+//! guest card's face, which facts it leads with, what the taskbar tray
+//! shows, which rooms the sidebar lists, and when the camera runs. Kept free
+//! of React so the tests pin each rule.
+
+import { foldName } from "../avatars.ts";
+import type { SpaceGroup } from "../rooms/spaces.ts";
+import type { Channel, CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
+
+/** An objective's reserved button words: a guest's own pass / scan, never a booth's story button. */
+const RESERVED = new Set(["pass", "scan"]);
+
+/** At most this many story buttons on a card's face. */
+export const FACE_MAX = 3;
+
+/** One story button on a guest card, with whether it is on offer now. */
+export interface CardButton {
+  interaction: Interaction;
+  /** On offer for this guest right now (the server's `card.live`). */
+  live: boolean;
+}
+
+/** A guest card's story buttons: the face (≤ 3) and the rest, under "All buttons…". */
+export interface CardButtons {
+  face: CardButton[];
+  rest: CardButton[];
+}
+
+/**
+ * Split the story's performer buttons for one booth: `mine` — this
+ * character's own (or anyone's) and on offer right now (`while:`), in
+ * story order; `more` — the rest (another character's, out of phase).
+ * Another character's `by:` button (`only`) is left out: the server refuses
+ * it from this booth. A host or admin booth keeps it under More (it may
+ * press any). Since wave 13 the booth view carries no `who: admin` cue (the
+ * cue sheet is the host's), and one that slips through is never offered.
+ */
+export function splitInteractions(list: readonly Interaction[], character: string, admin: boolean): { mine: Interaction[]; more: Interaction[] } {
+  const mine: Interaction[] = [];
+  const more: Interaction[] = [];
+  const me = foldName(character);
+  for (const i of list) {
+    if (i.who === "admin") {
+      if (admin) more.push(i);
+      continue;
+    }
+    const ours = i.actors === undefined || i.actors.some((a) => foldName(a) === me);
+    if (!ours && i.only === true && !admin) continue;
+    (ours && i.live !== false ? mine : more).push(i);
+  }
+  return { mine, more };
+}
+
+/**
+ * The face of a guest card: the union of every live objective's buttons, in
+ * objective order then written order, that the server says are live for
+ * this guest (`card.live`); then the buttons live *because of this guest*
+ * (`card.guestScoped`) that no objective names; at most three. A story with
+ * no objective at all falls back to this character's own live buttons.
+ * Everything else the booth may press goes to `rest` (live ones first),
+ * so the "All buttons…" fold still reaches every one.
+ *
+ * Without a card (an older server, or the card request failed) the view's
+ * own `live` flags stand in for `card.live`.
+ */
+export function cardButtons(
+  interactions: readonly Interaction[],
+  objectives: readonly ObjectiveView[] | undefined,
+  card: Pick<GuestCardView, "live" | "guestScoped"> | null,
+  character: string,
+  admin: boolean,
+): CardButtons {
+  const byId = new Map(interactions.filter((i) => i.who !== "admin").map((i) => [i.id, i]));
+  const split = splitInteractions(interactions, character, admin);
+  const offered = [...split.mine, ...split.more];
+  const live = new Set(card !== null ? card.live : offered.filter((i) => i.live !== false).map((i) => i.id));
+  const faceIds: string[] = [];
+  const add = (id: string) => {
+    if (faceIds.length >= FACE_MAX || faceIds.includes(id) || !live.has(id) || !byId.has(id)) return;
+    faceIds.push(id);
+  };
+  const objs = objectives ?? [];
+  for (const o of objs) for (const id of o.buttons) if (!RESERVED.has(id)) add(id);
+  for (const id of card?.guestScoped ?? []) add(id);
+  if (objs.length === 0) for (const i of split.mine) add(i.id);
+  const face = faceIds.map((id) => ({ interaction: byId.get(id)!, live: true }));
+  // The rest: what this booth may press, minus the face; live ones first.
+  const seen = new Set(faceIds);
+  const restAll = offered.filter((i) => !seen.has(i.id) && i.who !== "admin");
+  // A host / admin booth may press another character's `by:` button: the
+  // card's `live` names them, so they belong in the fold too.
+  for (const id of live) if (!seen.has(id) && !restAll.some((i) => i.id === id) && byId.has(id)) restAll.push(byId.get(id)!);
+  const rest = [...restAll.filter((i) => live.has(i.id)), ...restAll.filter((i) => !live.has(i.id))].map((i) => ({ interaction: i, live: live.has(i.id) }));
+  return { face, rest };
+}
+
+/** How long a card's buttons ignore taps after the card is replaced (a
+ *  press's answer, a re-scan): longer than core's `ARM_DEAD_MS` (300 ms),
+ *  so the second tap of a double tap never lands on whichever button moved
+ *  under the finger when the new card re-flowed the face. */
+export const FACE_SETTLE_MS = 600;
+
+/** May a tap on the card's buttons fire at `now`? Not inside
+ *  `FACE_SETTLE_MS` of the card being replaced (`landedAt`). */
+export function faceSettled(landedAt: number | null, now: number, ms: number = FACE_SETTLE_MS): boolean {
+  return landedAt === null || now - landedAt >= ms;
+}
+
+/**
+ * When an open card must be re-read from the server (`/api/prime/card`):
+ * the night moved (an objective opened or ticked a box, `Night.step` /
+ * `Night.phase`) or the guest's own row changed (someone else acted on
+ * them). Equal keys = the card on screen is still good.
+ */
+export function cardReadKey(
+  guestId: string,
+  objectives: readonly ObjectiveView[] | undefined,
+  night: { step?: number | null; phase?: string | null } | undefined,
+  row: PrimeGuest | null,
+): string {
+  return JSON.stringify([guestId, (objectives ?? []).map((o) => [o.id, o.checklist.map((c) => c.done)]), night?.step ?? null, night?.phase ?? null, row]);
+}
+
+/** One fact on a guest card. `loud` = read it first (Not cleared, ⛔, 🔒). */
+export interface FactChip {
+  text: string;
+  tone: "quiet" | "loud" | "warn";
+}
+
+/** A boolean flag whose *false* is the exception a performer must see:
+ *  the gates a guest passes on the way in ("Not cleared", "Not checked in"). */
+const GATE = /^(cleared|checked[\s-]?in|uploaded|registered|verified|scanned|approved|signed[\s-]?in|joined|arrived|present)\b/iu;
+
+function isBoolValue(v: string): boolean {
+  return v === "true" || v === "false";
+}
+
+/**
+ * The facts a guest card leads with, loud first: ⛔ restricted and 🔒
+ * captured, a failed gate ("Not cleared"), then where they stand and the
+ * story's other `watch:` flags (a true boolean reads its label; a value
+ * reads "Label: value"). A false boolean that is not a gate is left out:
+ * "Not marked" on every card would be noise.
+ */
+export function factChips(g: PrimeGuest, where: string | null): FactChip[] {
+  const loud: FactChip[] = [];
+  const quiet: FactChip[] = [];
+  if (g.restricted === true) loud.push({ text: "⛔ Restricted", tone: "warn" });
+  if (g.captured) loud.push({ text: "🔒 Captured", tone: "loud" });
+  for (const f of g.flags ?? []) {
+    if (isBoolValue(f.value)) {
+      if (f.on) quiet.push({ text: `✓ ${f.label}`, tone: "quiet" });
+      else if (GATE.test(f.label.trim())) loud.push({ text: `✗ Not ${f.label.trim().toLowerCase()}`, tone: "loud" });
+    } else if (f.on) quiet.push({ text: `${f.label}: ${f.value}`, tone: "quiet" });
+  }
+  return [...loud, ...(where !== null ? [{ text: `📍 ${where}`, tone: "quiet" as const }] : []), ...quiet];
+}
+
+/** The tray's countdown: the soonest live one at story time `nowMs`, in seconds left. */
+export function soonest(countdowns: readonly CountdownSummary[] | undefined, nowMs: number | null): { label: string; left: number } | null {
+  if (countdowns === undefined || countdowns.length === 0 || nowMs === null) return null;
+  let best: { label: string; left: number } | null = null;
+  for (const c of countdowns) {
+    const left = c.endsAt - nowMs / 1000;
+    if (left <= 0) continue;
+    if (best === null || left < best.left) best = { label: c.label, left };
+  }
+  return best;
+}
+
+/** "⏳ 14:59" under ten minutes, "⏳ 14 m" above (a clock never reads as a
+ *  time of day); "⏸ …" while the story clock is stopped. */
+export function trayClock(left: number, paused = false): string {
+  const s = Math.max(0, Math.floor(left));
+  const icon = paused ? "⏸" : "⏳";
+  if (s >= 600) return `${icon} ${Math.floor(s / 60)} m`;
+  return `${icon} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Is the story clock stopped (the event paused, the doors not yet open)?
+ *  The view says so with `paused: true` — today only a guest's view; a
+ *  booth view that carries it is honoured the same way. */
+export function viewPaused(view: object | null | undefined): boolean {
+  return (view as { paused?: unknown } | null | undefined)?.paused === true;
+}
+
+/** Held transfers waiting on the approver's booth (the CRA's 🧾 tray item). */
+export function heldCount(wallet: WalletQueueView | undefined): number {
+  return wallet?.queue.filter((t) => t.state === "held").length ?? 0;
+}
+
+/** The act chip: the cue sheet's focus act, short enough for the tray
+ *  ("Act C"; a title only when the act has no code). `title` is the full
+ *  name, for the tooltip. */
+export function actChip(act: { code: string | null; title: string | null } | null | undefined): { text: string; title: string } | null {
+  if (act === null || act === undefined) return null;
+  const full = [act.code, act.title].filter((x): x is string => x !== null && x !== "").join(" · ");
+  if (full === "") return null;
+  return { text: act.code !== null && act.code !== "" ? `Act ${act.code}` : act.title!, title: `Act ${full}` };
+}
+
+/** Room ids the booth keeps reachable but out of the sidebar. */
+const OFF_LIST = new Set(["__scanner"]);
+
+/** The sidebar section a guest's waiting message puts their thread in. */
+export const MESSAGES_SPACE = "guests";
+
+/**
+ * Has guest thread `c` an unread line the guest typed to this character
+ * (`dm:<character>`)? Its unread messages are the tail of `c.messages`
+ * (sorted by seq, `c.unread` long). A story line to the guest, or the
+ * guest's line to another character a host stream carries, never counts.
+ */
+export function guestAwaitsReply(c: Channel, character: string): boolean {
+  if (c.kind !== "guest" || c.unread <= 0) return false;
+  const name = c.people?.[0]?.name ?? c.title;
+  return c.messages.slice(-c.unread).some((m) => m.channel === `dm:${character}` && m.from === name && !m.hidden);
+}
+
+/**
+ * The booth's lean sidebar: no Scanner row (the taskbar's 📷 Scan replaces
+ * it) and no per-guest threads (they open from 🗂 Guests, the card's 💬 or
+ * a readout) — except a guest who typed to this character and is not yet
+ * read: their thread sits in a "Messages" section just under the booth's
+ * own rooms until it is opened (and stays while it is the open room), so a
+ * guest's "help, I'm stuck" never goes unseen. Everything stays in the
+ * session's channel list, so a link or a card can still open it.
+ */
+export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: string; activeId?: string | null } = {}): SpaceGroup[] {
+  const character = opts.character ?? "";
+  const keepGuest = (c: Channel) => c.id === opts.activeId || (character !== "" && guestAwaitsReply(c, character));
+  const out: SpaceGroup[] = [];
+  let messages: SpaceGroup | null = null;
+  for (const s of spaces) {
+    if (s.id === MESSAGES_SPACE) {
+      const waiting = s.channels.filter((c) => c.kind === "guest" && keepGuest(c));
+      if (waiting.length > 0) messages = { ...s, title: "Messages", channels: waiting };
+      continue;
+    }
+    const channels = s.channels.filter((c) => !OFF_LIST.has(c.id) && c.kind !== "guest");
+    if (channels.length > 0) out.push({ ...s, channels });
+  }
+  if (messages !== null) {
+    // Right under the booth's own rooms (Readouts), above the house's long list.
+    const at = out.findIndex((s) => s.id === "booth");
+    const after = at >= 0 ? at + 1 : out.findIndex((s) => s.id !== "pinned" && s.id !== "staff");
+    out.splice(after < 0 ? out.length : after, 0, messages);
+  }
+  return out;
+}
+
+/** The guests matching a search, by name or id (folded), sorted by name. */
+export function filterGuests(guests: readonly PrimeGuest[], q: string): PrimeGuest[] {
+  const needle = foldName(q);
+  const hits = needle === "" ? [...guests] : guests.filter((g) => foldName(g.name).includes(needle) || g.id.toLowerCase().includes(q.trim().toLowerCase()));
+  return hits.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The camera runs while the scanner is open — a card over it included, so
+ *  the next guest never waits through a camera restart (or a second
+ *  permission prompt on iOS). */
+export function cameraOn(scannerOpen: boolean, _cardOpen = false): boolean {
+  return scannerOpen;
+}
+
+/** Does a pass the camera reads open a card? Not while a card is up or a
+ *  scan is on its way, nor the pass whose card was just closed (`gate`). */
+export function passAccepted(cardOpen: boolean, busy: boolean, gateAllows: boolean): boolean {
+  return !cardOpen && !busy && gateAllows;
+}
+
+/** What the scanner window's × (or Escape) does: over a card it goes back
+ *  to the live camera for the next guest; on the camera it leaves. */
+export function scannerClose(cardOpen: boolean): "camera" | "leave" {
+  return cardOpen ? "camera" : "leave";
+}
+
+/**
+ * After a card closes the guest is often still holding their pass to the
+ * lens: ignore that one pass for `ms`, so closing a card never re-opens it,
+ * while the next guest in the queue scans at once.
+ */
+export function closedGate(ms: number, now: () => number = Date.now): { closed: (id: string) => void; allows: (id: string) => boolean } {
+  let last: { id: string; at: number } | null = null;
+  return {
+    closed: (id) => {
+      last = { id, at: now() };
+    },
+    allows: (id) => last === null || last.id !== id || now() - last.at >= ms,
+  };
+}
+
+/** The booth's stream URL. The capabilities ride it so a sign-in that adds
+ *  admin or host reopens the stream (the server fixes visibility at connect). */
+export function primeStreamUrl(base: string, auth: { token: string; admin: boolean; host?: boolean } | null): string | null {
+  if (auth === null) return null;
+  const cap = `${auth.admin ? "a" : ""}${auth.host === true ? "h" : ""}`;
+  return `${base}/events?role=prime&token=${encodeURIComponent(auth.token)}${cap !== "" ? `&cap=${cap}` : ""}`;
+}

@@ -1,1 +1,152 @@
-/* booth lane (wave 13): the performer booth. */
+/* booth lane (wave 13): the performer booth — the NOW card at the top, the
+   booth windows (scanner, a guest's card, Guests), the card's facts and
+   buttons, Readouts. Every colour from the tokens; bevels come from
+   `--raised` / `--sunken`, which are hairlines under `plain`. */
+
+/* ── the NOW card: the booth's title bar ─────────────────────────────── */
+.booth-now { flex: 0 0 auto; position: relative; z-index: var(--z-dock); }
+.booth-now-bar {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin: 0;
+  min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 10px 0 8px;
+  border: none; background: var(--title-grad); color: var(--title-ink);
+  font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.booth-now-bar.idle { cursor: default; }
+.booth-now-bar:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -4px; }
+.booth-now-bar .pavatar { flex: 0 0 auto; }
+.booth-now-k { flex: 0 0 auto; font-weight: 800; letter-spacing: 0.02em; }
+.booth-now-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booth-now-count { flex: 0 0 auto; font-weight: 400; color: var(--on-bar); font-variant-numeric: tabular-nums; }
+.booth-now-pill {
+  flex: 0 0 auto; padding: 1px 6px; font: 700 11px var(--ui-font);
+  background: var(--face); color: var(--navy); box-shadow: var(--raised); border-radius: var(--radius);
+}
+.booth-now-caret { flex: 0 0 auto; font-size: 12px; }
+.booth-now-panel {
+  position: absolute; top: 100%; left: 0; right: 0; max-height: 70vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 8px;
+  background: var(--dialog-face); color: var(--ink); box-shadow: var(--raised);
+}
+.booth-now-hint { margin: 0 2px; font: 12px var(--ui-font); color: var(--dim-ink); }
+.booth-now-h { margin: 6px 2px 0; font: 700 12px var(--ui-font); color: var(--dim-ink); }
+
+/* ── a booth window (scanner, card, Guests): full screen on a phone ─── */
+.booth-layer {
+  position: fixed; inset: 0; z-index: var(--z-sheet);
+  display: flex; padding: var(--safe-top) 0 var(--safe-bottom);
+  background: var(--dialog-face);
+}
+.booth-layer-box { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; outline: none; }
+.booth-layer-win { flex: 1 1 auto; min-height: 0; }
+.booth-layer-win > .w95-titlebar { min-height: var(--tap); font-size: 15px; }
+.booth-layer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
+.booth-layer-foot { flex: 0 0 auto; padding: 8px 12px; box-shadow: var(--raised); }
+@media (min-width: 820px) {
+  .booth-layer { padding: 24px; background: var(--scrim); align-items: center; justify-content: center; }
+  .booth-layer-box { flex: 0 1 520px; max-height: calc(100vh - 48px); }
+}
+
+/* ── the scanner ────────────────────────────────────────────────────── */
+.booth-scan { display: flex; flex-direction: column; gap: 8px; }
+.booth-cam {
+  position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 52vh; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--black); box-shadow: var(--sunken);
+}
+.booth-cam .cam { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; object-fit: cover; box-shadow: none; }
+.booth-cam-msg { position: relative; margin: 0; padding: 16px; color: var(--white); font: 14px var(--ui-font); text-align: center; }
+.booth-scan-hint { min-height: 1.4em; margin: 0; font: 13px var(--ui-font); color: var(--dim-ink); }
+.booth-typed { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.booth-typed-label { font: 700 12px var(--ui-font); color: var(--dim-ink); }
+.booth-typed-row { display: flex; gap: 6px; }
+.booth-typed-row input {
+  flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 0 10px; border: none;
+  font: 16px var(--ui-font); /* 16 px: iOS never zooms the page into it */
+}
+.booth-err { color: var(--maroon); font: 700 13px var(--ui-font); }
+
+/* ── a guest's card ─────────────────────────────────────────────────── */
+.booth-card { display: flex; flex-direction: column; gap: 10px; }
+.booth-card-who { display: flex; align-items: center; gap: 10px; }
+.booth-card-name { display: flex; flex-direction: column; min-width: 0; }
+.booth-card-name strong { font: 700 17px var(--ui-font); overflow-wrap: anywhere; }
+.booth-card-id { font: 12px var(--ui-font); color: var(--dim-ink); }
+.booth-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.booth-fact {
+  display: inline-flex; align-items: center; min-height: 28px; padding: 2px 8px;
+  font: 700 12px var(--ui-font); background: var(--white); color: var(--ink);
+  box-shadow: var(--sunken); border-radius: var(--radius); /* a status field, never a button */
+}
+.booth-fact.loud { background: var(--bad); color: var(--white); box-shadow: none; }
+.booth-fact.warn { background: var(--signal); color: var(--white); box-shadow: none; }
+.booth-reply { padding: 8px 10px; font: 15px/1.35 var(--chat-font); color: var(--ink); }
+.booth-reply p { margin: 0; }
+.booth-reply p + p { margin-top: 4px; }
+.booth-face { display: flex; flex-direction: column; gap: 8px; }
+.booth-btn {
+  flex-direction: column; align-items: stretch; justify-content: center; gap: 2px;
+  width: 100%; padding: 8px 14px; text-align: left;
+}
+.booth-face-btn { min-height: 56px; }
+.booth-face-btn .booth-btn-label { font: 700 15px var(--ui-font); }
+.booth-all-btn .booth-btn-label { font: 700 13px var(--ui-font); }
+.booth-btn-sub { font: 400 12px var(--ui-font); color: var(--dim-ink); }
+.booth-btn.off .booth-btn-label { color: var(--dim-ink); }
+.booth-btn.armed { background: var(--ink); color: var(--white); box-shadow: var(--pressed); }
+.booth-btn.armed .booth-btn-sub { color: var(--highlight); font-weight: 700; }
+.booth-btn:disabled { opacity: 0.6; cursor: progress; }
+.booth-none { margin: 0; font: 13px var(--ui-font); color: var(--dim-ink); }
+.booth-utils { display: flex; flex-wrap: wrap; gap: 6px; }
+.booth-utils .w95-btn { flex: 1 1 auto; }
+.booth-fold {
+  display: block; width: 100%; min-height: var(--tap); margin: 0; padding: 0 2px;
+  border: none; background: none; color: var(--link); font: 700 13px var(--ui-font);
+  text-align: left; cursor: pointer;
+}
+.booth-fold:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
+.booth-earlier + .booth-all { margin-top: -10px; } /* two folds read as one list */
+.booth-all-list { display: flex; flex-direction: column; gap: 6px; }
+.booth-all-btn { min-height: var(--tap); }
+.booth-earlier-list { margin: 0; padding-left: 20px; font: 14px/1.35 var(--chat-font); }
+.booth-next { width: 100%; min-height: 52px; font: 700 15px var(--ui-font); }
+
+/* ── 🗂 Guests ───────────────────────────────────────────────────────── */
+.booth-guests { display: flex; flex-direction: column; gap: 8px; }
+.booth-search { width: 100%; min-height: var(--tap); padding: 0 10px; border: none; font: 16px var(--ui-font); }
+.booth-guest-list { margin: 0; padding: 0; list-style: none; }
+.booth-guest {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; margin: 0; padding: 6px 4px;
+  border: none; border-bottom: 1px solid var(--line); background: none; color: var(--ink);
+  font: 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.booth-guest:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
+.booth-guest:active { background: var(--navy); color: var(--white); }
+.booth-guest:active .booth-guest-sub { color: var(--white); }
+.booth-guest-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.booth-guest-name { font-weight: 700; overflow-wrap: anywhere; }
+.booth-guest-sub { font-size: 12px; color: var(--dim-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booth-guest-sub .loud { color: var(--maroon); font-weight: 700; }
+.booth-guest-go { flex: 0 0 auto; font-size: 20px; color: var(--dim-ink); }
+
+/* ── Readouts ───────────────────────────────────────────────────────── */
+.booth-readouts { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px; }
+.booth-readout-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.booth-readout { padding: 8px 10px; }
+.booth-readout.alarm .booth-readout-text { color: var(--maroon); font-weight: 700; }
+.booth-readout-text { margin: 0; font: 15px/1.35 var(--chat-font); color: var(--ink); }
+.booth-readout-guest { margin-top: 6px; font-size: 13px; }
+
+/* ── the frame's other parts ────────────────────────────────────────── */
+.booth-dock { flex: 0 0 auto; }
+.booth-head-btn { flex: 0 0 auto; font-weight: 700; }
+.booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.booth-start-name { font: 700 14px var(--ui-font); }
+
+/* The scanner's camera, kept running (out of sight, untappable) under a
+   guest's card so the next pass needs no camera restart. */
+.booth-scan.behind { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; clip-path: inset(50%); }
+
+/* The 44 px floor on the booth's own controls: the Readouts back arrow and
+   the booth windows' close box (the window's caption is already 44 px). */
+.booth-back { width: var(--tap); height: var(--tap); font-size: 18px; }
+.booth-layer-win > .w95-titlebar .w95-x { min-height: var(--tap); }

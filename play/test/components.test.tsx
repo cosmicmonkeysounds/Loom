@@ -13,7 +13,6 @@ import { TitleBar } from "../src/chrome/title-bar.tsx";
 import { HostDock } from "../src/host/dock.tsx";
 import { useHostView } from "../src/host/client.ts";
 import { MissedTray, MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
-import { NowCard } from "../src/booth/now-card.tsx";
 import { PassSheet } from "../src/guest/sheets.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 import { ObjectiveCard, checkCount } from "../src/ui/objective.tsx";
@@ -144,9 +143,9 @@ describe("the moments layer (mounted in Stage A, filled by the moments lane)", (
 });
 
 describe("the Stage B stubs render nothing", () => {
-  // The card tray and the ticker are the stream lane's now (card-tray / ticker tests).
-  it("NOW card, tray clock, host dock", () => {
-    expect(NowCard()).toBeNull();
+  // The card tray and the ticker are the stream lane's now (card-tray / ticker
+  // tests); the booth NOW card is built (booth-now.test.tsx).
+  it("tray clock, host dock", () => {
     expect(CountdownTray({})).toBeNull();
     expect(HostDock({ session: {} as never, wide: false, openCard: () => {} })).toBeNull();
     expect(useHostView(null)).toMatchObject({ view: null, error: null });

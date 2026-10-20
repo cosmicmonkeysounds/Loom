@@ -1,97 +1,123 @@
-//! The booth's identity card and its settings sheet (moved out of
-//! `performer.tsx` in wave 13).
+//! The booth's Start menu (wave 13): who you are in its banner, and the
+//! settings that used to sit behind ☰ — Help, Keep my screen on, Get
+//! alerts, what the character knows, moderator powers, Sign out (confirmed).
 
 import { useState } from "react";
-import { ConnDot, GroupPill, PersonAvatar, Sheet, WakeLockToggle, connLabel, plural } from "../ui/primitives.tsx";
-import { approvalBadge } from "../wallet.tsx";
+import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
+import type { StartItem } from "../chrome/taskbar.tsx";
 import type { PrimeSession } from "../session/prime.ts";
 import type { Push } from "../push.ts";
 import { PushRow } from "../push-card.tsx";
+import type { WakeLock } from "../wake-lock.ts";
 
-/** Inline "elevate me to admin" + what your character knows + sign-out. */
-export function PerformerSheet({ session, push, onClose, onLeave }: { session: PrimeSession; push: Push; onClose: () => void; onLeave: () => void }) {
+/** The pill a booth wears: a passcode admin, or a host part. */
+export function boothPill(auth: { admin: boolean; host?: boolean } | null): string | null {
+  if (auth === null) return null;
+  if (auth.admin) return "admin";
+  return auth.host === true ? "host" : null;
+}
+
+/** The Start menu's banner: the mask you wear tonight. */
+export function StartHeader({ s }: { s: PrimeSession }) {
+  const pill = boothPill(s.auth);
+  return (
+    <div className="booth-start-head">
+      <PersonAvatar name={s.auth?.character ?? "?"} kind="character" size="sm" />
+      <span className="booth-start-name">{s.auth?.character}</span>
+      {pill !== null && <span className="pill admin">{pill}</span>}
+      <GroupPill group={s.view?.faction ?? null} />
+    </div>
+  );
+}
+
+export type BoothSheet = "knows" | "powers" | "alerts";
+
+/** The Start menu's items, in order. */
+export function boothStartItems({
+  character,
+  admin,
+  host,
+  knows,
+  wake,
+  embedded,
+  onHelp,
+  onSheet,
+  onSignOut,
+}: {
+  character: string;
+  admin: boolean;
+  host: boolean;
+  /** How many codex entries the character holds. */
+  knows: number;
+  wake: Pick<WakeLock, "supported" | "on" | "toggle">;
+  embedded: boolean;
+  onHelp: () => void;
+  onSheet: (s: BoothSheet) => void;
+  onSignOut: () => void;
+}): StartItem[] {
+  const items: StartItem[] = [{ id: "help", icon: "❓", label: "Help", onClick: onHelp }];
+  if (!embedded && wake.supported) {
+    items.push({ id: "wake", icon: wake.on ? "🔆" : "🔅", label: wake.on ? "Screen stays on (tap to allow sleep)" : "Keep my screen on", onClick: wake.toggle });
+  }
+  if (!embedded) items.push({ id: "alerts", icon: "🔔", label: "Get alerts", onClick: () => onSheet("alerts") });
+  if (knows > 0) items.push({ id: "knows", icon: "📓", label: `What ${character} knows`, onClick: () => onSheet("knows") });
+  if (!admin && !host) items.push({ id: "powers", icon: "🛡", label: "Add moderator powers", onClick: () => onSheet("powers") });
+  items.push({ id: "signout", icon: "🚪", label: "Sign out", danger: true, confirm: `Sign out of ${character}? The part is freed for another phone.`, onClick: onSignOut });
+  return items;
+}
+
+/** "Add moderator powers": the mod passcode upgrades this booth's token. */
+export function PowersSheet({ session, onClose }: { session: PrimeSession; onClose: () => void }) {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   return (
-    <Sheet title={`🎭 ${session.auth?.character}`} onClose={onClose} tall>
-      {!session.auth?.admin && (
-        <>
-          <div className="sheet-h">Add moderator powers</div>
-          <input type="password" placeholder="Moderator passcode" value={pass} onChange={(e) => setPass(e.target.value)} />
-          <button
-            className="choice primary"
-            onClick={async () => {
-              try {
-                await session.becomeAdmin(pass);
-                onClose();
-              } catch (e) {
-                setErr((e as Error).message);
-              }
-            }}
-          >
-            Become an admin
-          </button>
-          {err && <div className="err">{err}</div>}
-        </>
-      )}
-      <WakeLockToggle />
-      <PushRow push={push} booth />
-      {session.auth?.admin && <div className="muted pad">You hold moderator powers — hide/show messages, and every admin-only interaction the story declares.</div>}
-      {(session.view?.codex?.length ?? 0) > 0 && (
-        <>
-          <div className="sheet-h">📓 What {session.auth?.character} knows</div>
-          <div className="muted pad">Share any of these from a guest's card — one guest at a time. Knowledge is the currency.</div>
-          {(session.view?.codexTotal ?? 0) > 0 && <div className="muted pad">Also a room: 📓 Codex, under Pinned.</div>}
-          {session.view!.codex!.map((e) => (
-            <div key={e.id} className="codex-entry">
-              <div className="codex-entry-head">
-                <span className="title">{e.title}</span>
-              </div>
-              <p className="codex-text">{e.text}</p>
-            </div>
-          ))}
-        </>
-      )}
-      <button
-        className="choice danger"
-        onClick={() => {
-          push.release();
-          session.leave();
-          onLeave();
+    <Sheet title="🛡 Add moderator powers" onClose={onClose}>
+      <p className="muted pad">The director's passcode turns this booth into an admin booth: hide or show messages, and press another character's buttons.</p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            await session.becomeAdmin(pass);
+            onClose();
+          } catch (x) {
+            setErr((x as Error).message);
+          }
         }}
       >
-        Sign out
-      </button>
+        <input type="password" placeholder="Moderator passcode" aria-label="Moderator passcode" value={pass} onChange={(e) => setPass(e.target.value)} />
+        <button type="submit" className="choice primary">
+          Become an admin
+        </button>
+      </form>
+      {err && <div className="err">{err}</div>}
     </Sheet>
   );
 }
 
-/** The sidebar identity: the mask you wear tonight. */
-export function BoothCard({ s, admin, onHelp, onSheet }: { s: PrimeSession; admin: boolean; onHelp: () => void; onSheet: () => void }) {
+/** "What <Character> knows": the codex entries it can share from a card. */
+export function KnowsSheet({ session, onClose }: { session: PrimeSession; onClose: () => void }) {
+  const entries = session.view?.codex ?? [];
   return (
-    <header className="inbox-head">
-      <div className="me">
-        <PersonAvatar name={s.auth?.character ?? "?"} kind="character" />
-        <div className="me-body">
-          <div className="who">
-            🎭 <strong>{s.auth?.character}</strong> {admin && <span className="pill admin">admin</span>}
-          </div>
-          <div className="me-sub">
-            <GroupPill group={s.view?.faction ?? null} />
-            <span>{plural(s.view?.guests.length ?? 0, "guest")}</span>
-            {approvalBadge(s.view?.wallet) !== null && <span className="wallet-badge">{approvalBadge(s.view?.wallet)}</span>}
-            <ConnDot connected={s.connected} label={connLabel(s.connected)} />
-          </div>
-        </div>
-      </div>
-      <div className="hud">
-        <button className="icon-btn" title="Help" onClick={onHelp}>
-          ?
-        </button>
-        <button className="icon-btn" title="Your character & settings" onClick={onSheet}>
-          ☰
-        </button>
-      </div>
-    </header>
+    <Sheet title={`📓 What ${session.auth?.character} knows`} onClose={onClose} tall>
+      <p className="muted pad">Share any of these from a guest's card, one guest at a time. Knowledge is the currency.</p>
+      {entries.map((e) => (
+        <details key={e.id} className="codex-entry">
+          <summary className="codex-entry-head">
+            <span className="title">{e.title}</span>
+          </summary>
+          <p className="codex-text">{e.text}</p>
+        </details>
+      ))}
+    </Sheet>
+  );
+}
+
+/** "Get alerts": Web Push for this booth (the alarm reaches a locked phone). */
+export function AlertsSheet({ session, push, onClose }: { session: PrimeSession; push: Push; onClose: () => void }) {
+  return (
+    <Sheet title="🔔 Get alerts" onClose={onClose}>
+      <p className="muted pad">The server-room alarm and the late list reach this phone even when it's locked.</p>
+      <PushRow push={push} booth title={session.auth?.title} />
+    </Sheet>
   );
 }

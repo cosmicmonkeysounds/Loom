@@ -6,9 +6,10 @@ import { boothAlertFilter, unsolicitedReadout, useAlerts, type Alert, type Alert
 import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
-import { BOOTH_SIGNED_OUT, SessionRole, afterLifecycle, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
+import { BOOTH_SIGNED_OUT, SessionRole, eventGone, lifecycleDropsSession, lifecycleNotice, lifecycleStartsNewRun, performerSessionDead } from "../lifecycle.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM } from "../rooms/spaces.ts";
+import { primeStreamUrl } from "../booth/model.ts";
 import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
 import { unreadOf } from "../stream/badges.ts";
@@ -37,18 +38,26 @@ export interface PrimeAuth {
 
 const PK = "loom.prime";
 
+/** The sidebar section the staff rooms sit in (`rooms/spaces.ts SPACES.staff`). */
+export const STAFF_SPACE = "staff";
+
 const PRIME_ALERTS = "loom.prime.alerts";
 
 // --- performer (character) --------------------------------------------------
 
-/** The booth's Inbox channel id: cards + notes the story deals to the character. */
+/** The booth's Readouts room id (the old Inbox): the story's readouts to
+ *  the character (`reply` lines, persisted as `dm:<me>` rows since wave 13)
+ *  and the cards + notes it deals to it. */
 export const INBOX = "__inbox";
 
-/** Build the performer's surfaces: a scanner, the character's Inbox (cards
- *  the story deals to it), the broadcast feed, the character's own pinned
- *  Quest Log / Codex, the rooms, the cast threads, and one conversation per
- *  guest (targeted messages, for moderation). `answered` = the cards this
- *  booth has answered (a pending one bubbles its room up). */
+/** Build the performer's surfaces: a scanner, the character's Readouts
+ *  (readouts + cards the story deals to it), the broadcast feed, the
+ *  character's own pinned Quest Log / Codex, the staff rooms (pinned just
+ *  under them), the rooms, the cast threads, and one conversation per guest
+ *  (targeted messages, for moderation). The scanner and the guest threads
+ *  stay reachable (a link, a card) but out of the sidebar (`boothSidebar`).
+ *  `answered` = the cards this booth has answered (a pending one bubbles
+ *  its room up). */
 export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: PrimeView | null, answered: ReadonlySet<number> = new Set<number>()): Channel[] {
   const all = [...messages.values()];
   const bySeq = (a: ChatMessage, b: ChatMessage) => a.seq - b.seq;
@@ -69,7 +78,10 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
     decision: null,
     lastTs: Number.MAX_SAFE_INTEGER, // pinned to the top
   };
-  const feedMsgs = all.filter((m) => m.audience === "all").sort((a, b) => a.seq - b.seq);
+  const me = view?.character ?? "";
+  // The feed is the house's broadcast: never a DM thread (a host booth's
+  // stream also carries guests' Trabolta threads, for answering as him).
+  const feedMsgs = all.filter((m) => m.audience === "all" && !m.channel.startsWith("dm:")).sort((a, b) => a.seq - b.seq);
   const everyone: Presence[] = (view?.guests ?? []).map((g) => ({ id: g.id, name: g.name, kind: "guest" as const, group: g.faction }));
   const feed: Channel = {
     id: "__feed",
@@ -106,14 +118,19 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   });
   // Authored channels (SPACE/CHANNEL) the performer runs — grouped by space.
   const spaceTitles = new Map((view?.spaces ?? []).map((s) => [s.id, s.title]));
+  // The staff rooms (`# hosts`, `# quarantine`) sit just under Pinned: the
+  // rooms every performer is told to watch never hide in the house's list.
+  const staff = new Set(view?.staffRooms ?? []);
   const rooms: Channel[] = (view?.channels ?? []).map((c) => {
     const msgs = all.filter((m) => m.channel === c.id).sort((a, b) => a.seq - b.seq);
+    const isStaff = staff.has(c.id);
     return {
       id: c.id,
       kind: c.kind as Channel["kind"],
       title: c.title,
-      spaceId: c.spaceId,
-      spaceTitle: c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
+      spaceId: isStaff ? STAFF_SPACE : c.spaceId,
+      ...(isStaff ? { staff: true as const, subtitle: "staff only" } : {}),
+      spaceTitle: isStaff ? undefined : c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
       member: c.member,
       canPost: c.canPost,
       threadable: c.threadable,
@@ -127,7 +144,6 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   // Agent-voiced characters (`mind: external`) the performer can talk to
   // privately: the agent's `dm:` channel, narrowed to this performer
   // (audience `@<me>`). The server maps a post to `cast:<id>` onto it.
-  const me = view?.character ?? "";
   const mine = (m: ChatMessage): boolean => Array.isArray(m.audience) && m.audience.includes(`@${me}`);
   const cast: Channel[] = (view?.agents ?? []).map((a) => {
     const msgs = all
@@ -207,15 +223,18 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       lastTs: Number.MAX_SAFE_INTEGER - 1,
     });
   }
-  // The Inbox: cards and notes the story deals to this character
-  // (`show <kind> … to <Character>` with no thread) — `dm:<me>` rows
-  // addressed `@<me>`. A card still waiting on the booth bubbles it up.
+  // Readouts: what the story told this character (`reply` lines, which the
+  // server keeps as `dm:<me>` rows since wave 13, so they survive a reload)
+  // and the cards + notes it deals to it (`show <kind> … to <Character>`
+  // with no thread) — `dm:<me>` rows addressed `@<me>`. A card still
+  // waiting on the booth bubbles it up.
   const inboxMsgs = all.filter((m) => m.channel === `dm:${me}` && mine(m)).sort(bySeq);
+  const lastReadout = [...inboxMsgs].reverse().find((m) => m.readout === true);
   const inbox: Channel = {
     id: INBOX,
     kind: "dm",
-    title: "Inbox",
-    subtitle: `cards and notes for ${me}`,
+    title: "Readouts",
+    subtitle: lastReadout !== undefined ? lastReadout.text : "what your scans and buttons said",
     spaceId: "booth",
     order: 1,
     messages: inboxMsgs,
@@ -230,7 +249,6 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
 export interface PrimeSession {
   auth: PrimeAuth | null;
   view: PrimeView | null;
-  responses: Array<{ id: number; text: string }>;
   /** The alert that just landed — a `!` broadcast, or a readout the booth
    *  didn't ask for (the late list, a private warning) — until dismissed. */
   alert: Alert | null;
@@ -286,20 +304,19 @@ export function usePrimeSession(): PrimeSession {
     return stored;
   });
   const [view, setView] = useState<PrimeView | null>(null);
-  const [responses, setResponses] = useState<Array<{ id: number; text: string }>>([]);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const rid = useRef(0);
   const base = auth ? `/e/${encodeURIComponent(auth.eventId)}` : "";
   // The stream's character identity comes from the token server-side; the
-  // token rides the URL because EventSource can't set headers.
-  const url = auth ? `${base}/events?role=prime&token=${encodeURIComponent(auth.token)}` : null;
+  // token rides the URL because EventSource can't set headers. The
+  // capabilities ride it too: the server fixes what a booth sees at
+  // connect, so gaining admin or host reopens the stream.
+  const url = primeStreamUrl(base, auth);
   /** The booth's sign-in is gone (the show went live / the run ended). */
   const dropBooth = useCallback((why: string | null) => {
     drop(PK);
     setAuth(null);
     setView(null);
-    setResponses([]);
     setReady(false);
     setNotice(why);
     host.onEnded("prime", why);
@@ -322,8 +339,9 @@ export function usePrimeSession(): PrimeSession {
       alertsRef.current?.onHistory(list);
       setReady(true);
     }),
+    // The readout itself lands as a `dm:<me>` row (Readouts, and the card
+    // that caused it); the frame only decides whether it banners.
     onResponse: (text) => {
-      setResponses((r) => [{ id: rid.current++, text }, ...r]);
       if (inFlight.current === 0 && unsolicitedReadout(lastActionAt.current, Date.now())) alertsRef.current?.raise(text);
     },
     // Going live signs every performer out (rehearsal booths must not carry
@@ -332,9 +350,8 @@ export function usePrimeSession(): PrimeSession {
     onLifecycle: (n) => {
       if (lifecycleDropsSession(n.kind, SessionRole.Performer)) dropBooth(lifecycleNotice(n.kind, SessionRole.Performer));
       else {
-        // B5: last run's readouts and answered cards are not tonight's. The
-        // notice lands before the replay, so the new run's readouts follow.
-        setResponses((r) => afterLifecycle(r, n.kind));
+        // B5: last run's answered cards are not tonight's (its readouts go
+        // with the old history: the server re-sends tonight's).
         if (lifecycleStartsNewRun(n.kind)) setWidgetAnswers(() => NO_ANSWERS);
         alertsRef.current?.rebase();
       }
@@ -514,7 +531,6 @@ export function usePrimeSession(): PrimeSession {
     drop(PK);
     setAuth(null);
     setView(null);
-    setResponses([]);
     setReady(false);
     setNotice(null);
     host.onEnded("prime", null);
@@ -540,5 +556,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
 }
