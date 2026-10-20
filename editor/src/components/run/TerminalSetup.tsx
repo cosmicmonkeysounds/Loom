@@ -70,6 +70,8 @@ export function TerminalSetup() {
   const chess = setup.view === TerminalView.Chess
   // A stored room the lists don't know (a renamed LOCATION): kept selectable so the select never lies.
   const roomList = setup.room !== '' && !rooms.includes(setup.room) ? [setup.room, ...rooms] : rooms
+  // Likewise a picked spot a variant switch took off the map: shown (and flagged), never silently kept in the link.
+  const staleSpot = setup.spot !== '' && spot === null
 
   return (
     <details className="mt-3 rounded-lg border border-zinc-800 px-2 py-1.5" data-testid="run-terminal-setup" onToggle={(e) => (e.currentTarget.open ? void loadMap() : undefined)}>
@@ -85,6 +87,7 @@ export function TerminalSetup() {
               data-testid="run-terminal-setup-spot"
             >
               <option value="">— unplaced (no map spot) —</option>
+              {staleSpot && <option value={setup.spot}>⚠ {setup.spot} (not on the map playing now)</option>}
               {(map ?? []).map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name} ({t.id}){t.location !== '' ? ` · ${t.location}` : ''}
@@ -167,7 +170,7 @@ export function TerminalSetup() {
           <div className="h-36 w-36 rounded bg-white p-1 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg ?? '' }} data-testid="run-terminal-setup-qr" />
           <div className="flex gap-1">
             <button
-              onClick={() => void navigator.clipboard?.writeText(link).then(() => setCopiedLink(link))}
+              onClick={() => void navigator.clipboard?.writeText(link).then(() => setCopiedLink(link)).catch(() => undefined)}
               className="rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-900"
               data-testid="run-terminal-setup-copy"
             >
