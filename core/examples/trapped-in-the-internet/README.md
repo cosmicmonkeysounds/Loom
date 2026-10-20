@@ -300,6 +300,9 @@ to `reset_server_room`.
    (wave 11b moved the code: program the keypad to `facts.json`
    `door.code`; the notes and the sign print the same as before), and
    send the featured programs' **Invitations** (their claim QRs, *Casting*).
+   **Not printing?** Open `/cards` on the server (e.g. `https://<app>/cards`)
+   with the moderator passcode: every room and fact QR, scannable straight
+   off the laptop or the TV (click a card for full screen, ← / → to step).
 7. **Codes.** The guest, performer and mod codes are pinned to the project
    across End → relaunch (K-10), so printed QRs keep working. If a mod or
    performer code was shared at rehearsal or typed into a terminal, tick

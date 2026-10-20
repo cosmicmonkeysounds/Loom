@@ -43,6 +43,7 @@ import { EventRegistry } from "./registry.ts";
 import { WikiClient } from "./wiki.ts";
 import { ImageCache } from "./avatars.ts";
 import { join } from "node:path";
+import { serveCardsPage } from "./cards-page.ts";
 import { ipOf, readBody, sendJson, str, PayloadTooLarge } from "./http-util.ts";
 import { limiterFor, rateLimitsFromEnv } from "./rate-limit.ts";
 import { auth, authUser, migrateAuth } from "./auth-server.ts";
@@ -374,6 +375,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (await handleProjects(req, res, method, path, user)) return;
     return void sendJson(res, 404, { error: "not found" });
   }
+
+  // --- wave 14: the QR cards page, scanned off a screen (`cards-page.ts`) ---
+  if (serveCardsPage(method, path, res, HTML_CSP)) return;
 
   // --- the webmaster outbox (password-gated; off unless configured) ---
   if (webmaster !== null && (await webmaster.handle(req, res, method, path, HTML_CSP))) return;
