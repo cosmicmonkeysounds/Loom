@@ -40,6 +40,7 @@ import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
 import {
   canonicalGuestName,
   cleanGuestName,
+  clipName,
   guestNameRefusal,
   reservedDefFor,
   guestPickable,
@@ -4158,7 +4159,7 @@ export class EventRuntime {
         // never a guest's, and a program is never antivirus software.
         // Cleaned (NFKC, no zero-width / bidi / format characters): a
         // lookalike of a taken name folds onto it and is refused (409).
-        let name = cleanGuestName(str(body, "name")).slice(0, 48).trim() || "Guest";
+        let name = clipName(cleanGuestName(str(body, "name")), 48).trim() || "Guest";
         const wiki = str(body, "wiki").trim();
         // A picture the guest chose on the picker (a serving key) — honoured
         // only if it is one of that program's own options.

@@ -8,7 +8,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { MAX_CODE_LENGTH, SCAN_REPEAT_MS } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
-import { cleanGuestName } from "../server/identity.ts";
+import { cleanGuestName, clipName } from "../server/identity.ts";
 import { booth, cleanup, freshDir, guest, post, register, runtime } from "./w13-fix-harness.ts";
 
 afterAll(cleanup);
@@ -22,11 +22,24 @@ describe("lookalike guest names", () => {
     expect(cleanGuestName("Zoo   Tycoon")).toBe("Zoo Tycoon");
   });
 
+  it("cleanGuestName: the marks that render as nothing go too; an emoji keeps its joiner and selector", () => {
+    for (const s of ["Calculator\uFE0F", "Calc\u034Fulator", "Calc\u180Bulator", "Calc\u{E0101}ulator", "Calculator\u17B4", "Calculator\u{E0041}", "Calculator\u3000"]) {
+      expect([JSON.stringify(s), cleanGuestName(s)]).toEqual([JSON.stringify(s), "Calculator"]);
+    }
+    expect(cleanGuestName("\u{1F468}\u200D\u{1F4BB} Dev")).toBe("\u{1F468}\u200D\u{1F4BB} Dev");
+    expect(cleanGuestName("\u2764\uFE0F Paint")).toBe("\u2764\uFE0F Paint");
+  });
+
+  it("clipName never cuts an emoji in half", () => {
+    expect(clipName("ab\u{1F600}", 3)).toBe("ab\u{1F600}");
+    expect(clipName("ab\u{1F600}", 2)).toBe("ab");
+  });
+
   it("a zero-width or full-width double of a taken name answers 409; the stored name is clean", async () => {
     const rt = runtime();
     rt.openDoors();
     await guest(rt, "Calculator");
-    for (const name of ["Calculator​", "Ｃalculator", "⁦Calculator⁩", "calc‌ulator"]) {
+    for (const name of ["Calculator​", "Ｃalculator", "⁦Calculator⁩", "calc‌ulator", "Calculator\uFE0F", "Calc\u034Fulator"]) {
       const r = await register(rt, name);
       expect([JSON.stringify(name), r.status]).toEqual([JSON.stringify(name), 409]);
     }

@@ -92,26 +92,44 @@ export function reservedDefFor(model: SimModel, name: string): IdentityDef | nul
     ?? null;
 }
 
-/** Invisible letters NFKC keeps and `\p{Cf}` misses: the Hangul fillers
- *  and the blank Braille pattern (each renders as nothing). */
-const INVISIBLE_LETTERS = /[\u115F\u1160\u3164\uFFA0\u2800]/gu;
+/** Invisible characters NFKC keeps that are not `\p{Cf}`: the Hangul
+ *  fillers, the blank Braille pattern, the combining grapheme joiner, the
+ *  Mongolian free variation selectors, the Khmer inherent vowels and the
+ *  supplementary variation selectors (each renders as nothing after a letter). */
+const INVISIBLE_MARKS = /[\u115F\u1160\u3164\uFFA0\u2800\u034F\u180B-\u180D\u180F\u17B4\u17B5\u{E0100}-\u{E01EF}]/gu;
+
+/** A variation selector that is not styling an emoji (`❤️` keeps its own). */
+const STRAY_VARIATION = /(?<!\p{Extended_Pictographic})[\uFE00-\uFE0F]/gu;
+
+/** Format / control characters, but a zero-width joiner inside an emoji
+ *  sequence (`👨‍💻`) is that emoji, not a disguise. */
+function dropFormat(s: string): string {
+  return s.replace(/[\p{Cf}\p{Cc}]/gu, (c, at: number) =>
+    c === "\u200D" && /\p{Extended_Pictographic}\uFE0F?$/u.test(s.slice(0, at)) && /^\p{Extended_Pictographic}/u.test(s.slice(at + 1)) ? c : "",
+  );
+}
 
 /**
  * A typed guest name as the house shows and compares it: NFKC (a full-width
  * `Ｃalculator` is `Calculator`), every format / control character dropped
- * (zero-width spaces and joiners, bidi controls, a soft hyphen), the
- * invisible fillers dropped, whitespace collapsed. Applied before the taken /
- * part / caste / reserved checks and to the stored display name, so a
- * lookalike of a taken name folds onto it (409) instead of posing as them.
+ * (zero-width spaces and joiners, bidi controls, a soft hyphen, tag
+ * characters), the invisible fillers, joiners and stray variation selectors
+ * dropped, whitespace collapsed. Applied before the taken / part / caste /
+ * reserved checks and to the stored display name, so a lookalike of a taken
+ * name folds onto it (409) instead of posing as them. (Cross-script
+ * homoglyphs, a Cyrillic `а`, are not folded.)
  */
 export function cleanGuestName(raw: string): string {
-  return raw
-    .normalize("NFKC")
-    .replace(/\s+/gu, " ")
-    .replace(/[\p{Cf}\p{Cc}]/gu, "")
-    .replace(INVISIBLE_LETTERS, "")
+  return dropFormat(raw.normalize("NFKC").replace(/\s+/gu, " "))
+    .replace(INVISIBLE_MARKS, "")
+    .replace(STRAY_VARIATION, "")
     .replace(/\s+/gu, " ")
     .trim();
+}
+
+/** The first `max` characters (code points, never half a surrogate pair). */
+export function clipName(name: string, max: number): string {
+  return Array.from(name).slice(0, max).join("");
 }
 
 /** Why a guest may not register a name, or null when they may. `mayClaim`
