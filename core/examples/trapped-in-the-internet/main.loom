@@ -3009,10 +3009,12 @@ INTERACTION crew_through_the_door
 // rest under More. `by:` is enforced: the server refuses another booth's
 // press (a director's quick-fire still fires it), and a booth never offers
 // another character's. `while:` is not — the hooks still guard.
-// A performer button's `while:` is read once per booth, with no guest
-// bound: it sees Night.* / self.* only, never program.* (an unbound
-// `program.x` reads false and folds the button on every card). Per-guest
-// conditions belong in the hook.
+// A performer button's `while:` is read with the scanned guest bound on
+// the booth's card (wave 13: `/api/prime/card`, subject = the guest), so a
+// `program.*` condition puts the button on the card's face for exactly the
+// guests it fits (🩹 only on a marked program). The booth's own list reads
+// it with no guest bound (an unbound `program.x` reads false: off offer
+// there). It never gates the press: per-guest rules belong in the hook.
 // `arm: true` (wave 11) marks a press with no way back: one that ends the
 // night (🔌 💥 💘), trips the alarm (❌), spends The Heart (🚪), changes
 // the room for two minutes (🔧), hands over a secret (♟ the door code,
@@ -3231,6 +3233,8 @@ INTERACTION unmark_for_reinstallation
   label: 🩹 Unmark: not going to the Internet
   who: performer
   by: Hosts, Antivirus
+  // DRAFT for sign-off (w13 Q23): on offer on a marked program's card only.
+  while: program.marked == true
   description: A mis-tap or mercy. Lifts the mark; the program keeps their place.
 
 INTERACTION made_the_cup
