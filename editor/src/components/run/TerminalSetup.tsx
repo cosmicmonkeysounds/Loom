@@ -67,7 +67,7 @@ export function TerminalSetup() {
   const spotOf = (id: string) => map?.find((t) => t.id === id) ?? null
   const spot = spotOf(setup.spot)
   const view = viewOption(setup.view)
-  const chess = setup.view === TerminalView.Chess
+  const chess = setup.view === TerminalView.Chess || setup.view === TerminalView.Casino
   // A stored room the lists don't know (a renamed LOCATION): kept selectable so the select never lies.
   const roomList = setup.room !== '' && !rooms.includes(setup.room) ? [setup.room, ...rooms] : rooms
   // Likewise a picked spot a variant switch took off the map: shown (and flagged), never silently kept in the link.

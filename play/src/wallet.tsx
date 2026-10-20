@@ -153,6 +153,9 @@ const STEP_GLYPH: Record<string, string> = {
   frozen: "🧊",
   imposed: "🧊",
   thawed: "☀️",
+  won: "🎰",
+  lost: "🎰",
+  push: "🎰",
 };
 
 /** The glyph for a card's step — or, on an in-flight root card (⏳) given
@@ -216,9 +219,19 @@ export function walletStepLine(card: WalletCard, me?: string | null): string {
       return card.kind === "freeze" ? `☀️ The freeze on ${card.toName} is over` : "⌛ Expired";
     case "received":
       return card.kind === "grant" ? `🎁 ${card.fromName} granted you ${amt}` : `💰 Received ${amt} from ${card.fromName}`;
+    case "won":
+    case "lost":
+    case "push":
+      return casinoLine(card);
     default:
       return `${walletGlyph(card)} ${amt}`;
   }
+}
+
+/** One casino bet: "THE COIN · 10 on HEADS → HEADS · won 20". */
+export function casinoLine(card: WalletCard): string {
+  const result = card.step === "won" ? `won ${card.payout ?? 0}` : card.step === "push" ? "stake back" : "lost";
+  return `🎰 ${card.game ?? "Casino"} · ${card.amount} on ${card.pick ?? "?"} → ${card.roll ?? "?"} · ${result}`;
 }
 
 /** The headline on a root card. */
@@ -242,6 +255,8 @@ export function walletCardTitle(card: WalletCard): string {
       return card.step === "granted" ? `You granted ${card.toName} ${amt}` : `${card.fromName} granted you ${amt}`;
     case "freeze":
       return card.step === "imposed" ? `You froze ${possessive(card.toName)} ${card.unit}` : `${card.fromName} froze your ${card.unit}`;
+    case "casino":
+      return "The casino";
     default:
       return amt;
   }
@@ -271,6 +286,7 @@ export function walletItemState(view: WalletView | WalletQueueView | null, card:
  *  "expires in 600 s", else the live state. */
 export function walletStateLine(card: WalletCard, state: string | null, view: WalletView | WalletQueueView | null, clock: number): string {
   if (card.kind === "grant") return "from the reserve";
+  if (card.kind === "casino") return "one bet";
   if (card.kind === "freeze") {
     if (state !== "frozen") return "thawed";
     const left = secondsLeft(card.settleAt, clock);
@@ -501,13 +517,13 @@ export function WalletCardView({
             {walletGlyph(card, state ?? outcome?.step ?? null)}
           </span>
           <strong className="wallet-title">{walletCardTitle(card)}</strong>
-          {card.kind !== "freeze" && (
+          {card.kind !== "freeze" && card.kind !== "casino" && (
             <span className="wallet-amount">
               {card.amount} {card.unit}
             </span>
           )}
         </div>
-        {other && card.kind !== "stimulus" && (
+        {other && card.kind !== "stimulus" && card.kind !== "casino" && (
           <div className="wallet-party">
             <PersonAvatar name={other} size="sm" /> {other.replace(/_/gu, " ")}
           </div>

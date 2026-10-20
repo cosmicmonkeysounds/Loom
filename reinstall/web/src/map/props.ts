@@ -238,7 +238,7 @@ export function snapTerminalToWall(house: HouseMap, id: string, within = Infinit
 }
 
 /** The terminal app's views (`terminal/src/config.ts` `TerminalView`). */
-export const TERMINAL_VIEWS = ["auto", "world", "face", "mirror", "tv", "chess", "shadow"] as const;
+export const TERMINAL_VIEWS = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"] as const;
 export type TerminalViewName = (typeof TERMINAL_VIEWS)[number];
 
 /** What each view does, for the picker. */
@@ -250,6 +250,7 @@ export const TERMINAL_VIEW_HINTS: Record<TerminalViewName, string> = {
   tv: "tv — the house TV",
   chess: "chess — the King's board (the Server Door)",
   shadow: "shadow — this terminal's camera with the players as ghosts",
+  casino: "casino — Truthcoin bets on the coin, the dice and the slots",
 };
 
 /** The story LOCATIONs the map's rooms stand for, for the room picker. */

@@ -44,7 +44,7 @@ const BLANK: TerminalSetup = { name: '', spot: '', view: TerminalView.Auto, room
 
 describe('TERMINAL_VIEWS', () => {
   it('lists every view the terminal app takes, shadow included, each with a label and help', () => {
-    expect(TERMINAL_VIEWS.map((v) => v.id)).toEqual(['auto', 'world', 'face', 'mirror', 'tv', 'chess', 'shadow'])
+    expect(TERMINAL_VIEWS.map((v) => v.id)).toEqual(['auto', 'world', 'face', 'mirror', 'tv', 'chess', 'shadow', 'casino'])
     for (const v of TERMINAL_VIEWS) {
       expect(v.label).not.toBe('')
       expect(v.help.length).toBeGreaterThan(10)

@@ -25,6 +25,7 @@ export const TerminalView = {
   Tv: 'tv',
   Chess: 'chess',
   Shadow: 'shadow',
+  Casino: 'casino',
 } as const
 export type TerminalView = (typeof TerminalView)[keyof typeof TerminalView]
 
@@ -44,7 +45,13 @@ export const TERMINAL_VIEWS: readonly TerminalViewOption[] = [
   { id: TerminalView.Tv, label: 'TV', help: 'The house Mac on the TV: the face full screen speaking the character’s lines in its room.' },
   { id: TerminalView.Chess, label: 'Chess', help: 'The King’s board at the server-room door: scan a pass, play him. No character, no room.' },
   { id: TerminalView.Shadow, label: 'Shadow', help: 'This tablet’s own camera full screen, the reinstallation players drawn over it as ghosts.' },
+  { id: TerminalView.Casino, label: 'Casino', help: 'Scan a pass, bet Truthcoin on the coin, the dice and the slots. No character, no room.' },
 ]
+
+/** A view that plays a game of its own (the King's board, the casino): no character, no room. */
+function isGameView(view: TerminalView): boolean {
+  return view === TerminalView.Chess || view === TerminalView.Casino
+}
 
 export function isTerminalView(v: unknown): v is TerminalView {
   return typeof v === 'string' && TERMINAL_VIEWS.some((o) => o.id === v)
@@ -103,7 +110,7 @@ export function suggestView(spot: string): TerminalView {
  *  terminal** (asleep until that LOCATION opens), so only the server-room
  *  spot and the TV (the room whose lines it speaks) get one; chess never. */
 export function suggestRoom(spot: MapTerminal | null, view: TerminalView): string {
-  if (spot === null || view === TerminalView.Chess) return ''
+  if (spot === null || isGameView(view)) return ''
   if (view === TerminalView.Tv || spot.id === ROOM_TERMINAL_SPOT) return spot.location
   return ''
 }
@@ -111,13 +118,14 @@ export function suggestRoom(spot: MapTerminal | null, view: TerminalView): strin
 /** What the `room` select means for a view (its empty option's words). */
 export function roomHelp(view: TerminalView): string {
   if (view === TerminalView.Chess) return 'The chess board belongs to no room.'
+  if (view === TerminalView.Casino) return 'The casino belongs to no room.'
   if (view === TerminalView.Tv) return 'The room whose lines the TV speaks (none = The Desktop).'
   return 'A room makes this a room terminal: asleep until that room is open to everyone, then it speaks that room’s lines.'
 }
 
 /** Does this view speak for a character? (Chess plays the King, no one speaks.) */
 export function viewHasCharacter(view: TerminalView): boolean {
-  return view !== TerminalView.Chess
+  return !isGameView(view)
 }
 
 /** The room options: the map's LOCATIONs, then the story's other ones, unique, in order. */
@@ -193,7 +201,7 @@ export function terminalLink(base: string, modCode: string, s: TerminalSetup): s
   if (viewHasCharacter(s.view) && s.character !== '') p.set('character', s.character)
   if (s.spot !== '') p.set('spot', s.spot)
   p.set('view', s.view)
-  if (s.view !== TerminalView.Chess && s.room.trim() !== '') p.set('room', s.room.trim())
+  if (!isGameView(s.view) && s.room.trim() !== '') p.set('room', s.room.trim())
   p.set('announce', s.announce ? '1' : '0')
   return `${base}?${p.toString().replace(/\+/g, '%20')}`
 }

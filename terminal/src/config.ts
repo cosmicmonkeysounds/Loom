@@ -30,6 +30,13 @@
 //!
 //!   /terminal/?code=<mod passcode>&name=Server Door&spot=server-room-door&view=chess
 //!
+//! The casino in the upstairs bedroom (wave 15, `view=casino`,
+//! `casino/CasinoTerminal.tsx`): awake all night like the board, a pass scan
+//! seats a program to bet its own Truthcoin on the coin, under / over 7 and
+//! the one-armed bandit — the server rolls every bet into their wallet:
+//!
+//!   /terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&view=casino
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -71,7 +78,9 @@ export interface TerminalConfig {
    *  no scanner, no chat), `tv` (the room voice, K-18: the face full screen
    *  speaking the character's lines in `room`, the world pane while someone
    *  is in the simulation — no scanner), `chess` (the King's board at the
-   *  server-room door: scan a pass, play him — no line, no room), `shadow`
+   *  server-room door: scan a pass, play him — no line, no room), `casino`
+   *  (wave 15: scan a pass, bet Truthcoin on three games — no line, no
+   *  room), `shadow`
    *  (wave 14: this tablet's own camera full screen with the reinstallation
    *  players drawn over it as ghosts — the room's shadow dimension; no
    *  scanner). `auto` shows the shadow instead of the world view while the
@@ -90,8 +99,8 @@ export interface TerminalConfig {
   announce: boolean;
 }
 
-export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow";
-export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow"];
+export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"];
 
 /** ⚙'s one line per view. */
 export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
@@ -101,6 +110,7 @@ export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
   mirror: "mirror — full-screen simulation, no scanner",
   tv: "TV — the face speaks the room's lines, no scanner",
   chess: "chess — the King at the server-room door, no hints",
+  casino: "casino — scan a pass, bet Truthcoin on the coin, the dice and the slots",
   shadow: "shadow — this camera full screen, the players as ghosts in it, no scanner",
 };
 
@@ -129,9 +139,9 @@ export function tvRoomOf(c: Pick<TerminalConfig, "room">): string {
 
 /** The LOCATION a wall terminal belongs to (the server-room terminal), or
  *  null: no room, the TV (whose `room` is only the room it speaks for) or the
- *  chess board (awake all night, whatever room it was given). */
+ *  chess board or the casino (awake all night, whatever room they were given). */
 export function roomOf(c: Pick<TerminalConfig, "room" | "view">): string | null {
-  if (c.view === "tv" || c.view === "chess") return null;
+  if (c.view === "tv" || c.view === "chess" || c.view === "casino") return null;
   const room = c.room.trim();
   return room === "" ? null : room;
 }
