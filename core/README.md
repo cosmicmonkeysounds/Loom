@@ -398,6 +398,14 @@ pushes during journal replay. The play app's `/sw.js` +
   sign per LOCATION a guest can check into (`{id, label, slug, url,
   hidden}`; never a prison, a cutscene or a `checkin: false` room). The
   editor draws the QRs itself (`/api/qr` is 60/min per IP, `LOOM_RL_QR`).
+- **QR cards page** (wave 14, `server/cards-page.ts` + `routes/cards.ts`):
+  `/cards` on the event server — type the moderator passcode and every room
+  check-in, codex fact (by stack, secrets marked), join and invitation QR is
+  on screen to scan with a phone, with a full-screen presenter (← / →,
+  ✓ scanned). Data: `GET /e/:id/api/mod/cards` (mod token or author
+  session; never a host booth) → `{title, eventPass, sections[{kind, label,
+  items[{ref, title, sub?, code?, url, svg, stack?, secret?}]}]}`, the QRs
+  drawn server-side from the same links as `/api/mod/codes`.
 - **Recap** (K-26, `server/recap.ts` + `routes/recap.ts`): `GET
   /api/mod/recap` (directors) → `totals`, ranked `lists` (`trust` /
   `truths` / `lies` / `internetVisits` / `codex` / `quests` /
