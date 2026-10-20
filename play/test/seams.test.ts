@@ -150,10 +150,10 @@ describe("each session wires its stream to the crawl, as its viewer", () => {
 describe("the room list's options keep today's rules", () => {
   const room = (over: Partial<Channel>): Channel => ({ id: "lobby", kind: "lobby", title: "Lobby", spaceId: "story", messages: [], unread: 0, decision: null, lastTs: 0, ...over });
 
-  it("unreadOf counts every message past the mark, and at least one with a decision", () => {
+  it("unreadOf counts every message past the mark with no viewer, and at least one with a decision", () => {
     const c = room({ messages: [msg(1), msg(2), msg(3)] });
     expect(unreadOf(c, -1, undefined)).toBe(3);
-    expect(unreadOf(c, 2, { id: "g1", name: "Ada", booth: false })).toBe(1);
+    // With a viewer, only what is for them counts (the stream lane, badges.test.ts).
     expect(unreadOf(c, 3, undefined)).toBe(0);
     expect(unreadOf({ ...c, decision: { title: "Your move…", options: [] } }, 3, undefined)).toBe(1);
   });
