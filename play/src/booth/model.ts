@@ -247,9 +247,23 @@ export function filterGuests(guests: readonly PrimeGuest[], q: string): PrimeGue
   return hits.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** The camera runs while the scanner is open and no card sits over it. */
-export function cameraOn(scannerOpen: boolean, cardOpen: boolean): boolean {
-  return scannerOpen && !cardOpen;
+/** The camera runs while the scanner is open — a card over it included, so
+ *  the next guest never waits through a camera restart (or a second
+ *  permission prompt on iOS). */
+export function cameraOn(scannerOpen: boolean, _cardOpen = false): boolean {
+  return scannerOpen;
+}
+
+/** Does a pass the camera reads open a card? Not while a card is up or a
+ *  scan is on its way, nor the pass whose card was just closed (`gate`). */
+export function passAccepted(cardOpen: boolean, busy: boolean, gateAllows: boolean): boolean {
+  return !cardOpen && !busy && gateAllows;
+}
+
+/** What the scanner window's × (or Escape) does: over a card it goes back
+ *  to the live camera for the next guest; on the camera it leaves. */
+export function scannerClose(cardOpen: boolean): "camera" | "leave" {
+  return cardOpen ? "camera" : "leave";
 }
 
 /**

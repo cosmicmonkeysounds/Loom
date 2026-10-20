@@ -32,10 +32,10 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothSidebar } from "./model.ts";
+import { boothSidebar, closedGate } from "./model.ts";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
-import { ScannerScreen } from "./scanner.tsx";
+import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
 import { BoothTray } from "./tray.tsx";
 
 /** The room a performer lands in wide: the broadcast feed. */
@@ -69,6 +69,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   const [people, setPeople] = useState<Channel | null>(null);
   const [picking, setPicking] = useState(false);
   const wake = useWakeLock(host.storage);
+  // The just-closed pass, ignored for a moment: kept for the sign-in, not
+  // per scanner opening, so leaving and reopening the scanner with the pass
+  // still held up never re-fires its scan.
+  const passGate = useMemo(() => closedGate(CLOSED_PASS_MS), []);
   useDocumentTitle(s.auth?.title);
   // K-31a: the server-room (patch-bay) alarm + the late list on a locked phone.
   const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null, "booth");
@@ -254,7 +258,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                 </>
               )}
             </BoothFrame>
-            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} onClose={() => setLayer(null)} onOpenThread={openThread} />}
+            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} />}
             {layer?.kind === "guests" && <GuestsSheet view={s.view} onPick={(id) => openCard(id)} onClose={() => setLayer(null)} />}
             {layer?.kind === "card" && (
               <GuestCard key={layer.id} session={s} guestId={layer.id} seed={layer.seed} admin={admin} onClose={() => setLayer(null)} onOpenThread={() => openThread(layer.id)} />

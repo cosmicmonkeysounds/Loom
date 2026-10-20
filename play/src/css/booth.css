@@ -141,3 +141,7 @@
 .booth-head-btn { flex: 0 0 auto; font-weight: 700; }
 .booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .booth-start-name { font: 700 14px var(--ui-font); }
+
+/* The scanner's camera, kept running (out of sight, untappable) under a
+   guest's card so the next pass needs no camera restart. */
+.booth-scan.behind { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; clip-path: inset(50%); }
