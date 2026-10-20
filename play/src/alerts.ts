@@ -236,7 +236,9 @@ export interface Alerts {
   /** The feedback toast on screen (✔ Done, a refusal). Wave 13: never a show alarm — those are moments. */
   alert: Alert | null;
   dismiss: () => void;
-  /** Toast text now. `quiet` = the answer to the viewer's own press (it stands in for a readout saying the same). Never chimes. */
+  /** Toast text now. `quiet` = the answer to the viewer's own press (it stands in for a readout saying the same). Never chimes.
+   *  Without `quiet` it is a booth's unsolicited readout (`session/prime.ts`, ahead of its message): no toast — the
+   *  moments layer shows the readout, and this raise is how it knows the readout is news, not the booth's own answer. */
   raise: (text: string, opts?: { quiet?: boolean }) => void;
   /** Call from the stream's `onHistory`, before the messages are applied. */
   onHistory: (list: readonly ChatMessage[]) => void;
@@ -319,7 +321,7 @@ export function useAlerts(opts: {
   const raise = useCallback((text: string, o?: { quiet?: boolean }) => {
     const quiet = o?.quiet === true;
     recentRef.current = [...recentRef.current, { text, at: Date.now(), quiet }].slice(-RECENT_TOASTS);
-    setAlert({ seq: toastSeq.current--, text, quiet });
+    if (quiet) setAlert({ seq: toastSeq.current--, text, quiet });
   }, []);
   const onHistory = useCallback(
     (list: readonly ChatMessage[]) => {

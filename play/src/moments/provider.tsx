@@ -21,6 +21,8 @@ import {
   BALLOON_MS,
   EMPTY_MOMENTS,
   GLITCH_MS,
+  READOUT_WAIT_MS,
+  afterWait,
   arrivals,
   loudObjectives,
   missedCount,
@@ -28,6 +30,7 @@ import {
   sameWords,
   settledMark,
   shouldGlitch,
+  sortArrivals,
   storyNow,
   surfacesOf,
   type Moment,
@@ -63,12 +66,6 @@ export interface MomentsInput {
   openPass?: () => void;
 }
 
-/** A readout this soon after a quiet toast that said the same is the answer to your own press. */
-const ECHO_MS = 5_000;
-/** How long a readout waits for the toast that may answer for it. */
-const READOUT_GRACE_MS = 1_200;
-/** A booth readout about a guest this soon after the card / scanner closed was shown on the card. */
-const CARD_AFTERGLOW_MS = 4_000;
 
 interface Engine {
   input: MomentsInput;
@@ -160,24 +157,18 @@ function useMomentsEngine(input: MomentsInput): Engine {
     const backlog = histories !== historiesSeen.current;
     historiesSeen.current = histories;
     if (seen.length === 0) return;
-    const now2 = Date.now();
-    const readouts: Moment[] = [];
-    const rest: Moment[] = [];
-    for (const m of moments) {
-      if (m.kind !== "readout") rest.push(m);
-      else if (role === "booth" && aboutGuest(input.messages.get(m.seq ?? -1)) && (l.held || now2 - lastHoldEnd.current < CARD_AFTERGLOW_MS)) continue;
-      else if (m.severity === "minor") readouts.push(m);
-      else rest.push(m);
-    }
-    arrive(rest, backlog);
-    if (readouts.length > 0) {
-      window.setTimeout(() => {
-        const toasts = alerts.recent().filter((t) => t.quiet && Date.now() - t.at < ECHO_MS + READOUT_GRACE_MS);
-        arrive(
-          readouts.filter((m) => !toasts.some((t) => sameWords(t.text, m.text))),
-          backlog,
-        );
-      }, READOUT_GRACE_MS);
+    const wall = Date.now();
+    const sorted = sortArrivals(moments, {
+      role,
+      held: l.held,
+      sinceHoldEnd: wall - lastHoldEnd.current,
+      about: (seq) => aboutGuest(input.messages.get(seq ?? -1)),
+      recent: alerts.recent(),
+      now: wall,
+    });
+    arrive(sorted.now, backlog);
+    if (sorted.later.length > 0) {
+      window.setTimeout(() => arrive(afterWait(sorted.later, alerts.recent(), Date.now()), backlog), READOUT_WAIT_MS);
     }
     // `clock`, the level and the phase are read, not watched: a snapshot alone never raises a moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -318,8 +309,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null }), [level, role, input.phase]);
   const closeSummary = useCallback(() => dispatch({ type: "closeSummary" }), []);
 
-  // A booth's unsolicited readout still raises a (loud) toast from its
-  // session; the moment says the same thing, so the toast stands back.
+  // A loud raise (a booth's unsolicited readout) never toasts (useAlerts);
+  // an older session's that did stands back for the moment saying it.
   const toast = alerts.alert !== null && alerts.alert.quiet !== true && state.queue.some((q) => sameWords(q.moment.text, alerts.alert!.text)) ? null : alerts.alert;
 
   return {

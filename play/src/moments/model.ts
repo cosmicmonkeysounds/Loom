@@ -532,6 +532,64 @@ export function storyNow(messages: Iterable<ChatMessage>, clock: number | null |
   return Number.isFinite(max) ? max : 0;
 }
 
+// --- readouts: news, or the answer to your own press ------------------------------
+
+/** A toast the session raised (mirror of `alerts.ts` `RecentToast`). */
+export interface ToastSeen {
+  text: string;
+  /** Wall time. */
+  at: number;
+  /** Quiet = the answer to the viewer's own press. Loud = a booth's unsolicited readout (`session/prime.ts`). */
+  quiet: boolean;
+}
+
+/** A readout this soon after a toast that said the same is that toast's readout. */
+export const ECHO_MS = 5_000;
+/** How long a guest's minor readout waits for the quiet toast that may answer for it. */
+export const READOUT_WAIT_MS = 1_200;
+/** A booth readout about a guest this soon after the card / scanner closed was shown on the card. */
+export const CARD_AFTERGLOW_MS = 4_000;
+
+function toldBy(recent: readonly ToastSeen[], text: string, quiet: boolean, now: number, within: number): boolean {
+  return recent.some((t) => t.quiet === quiet && now - t.at < within && sameWords(t.text, text));
+}
+
+/**
+ * Which new moments show now, which wait (`later`, then `afterWait`), and
+ * which are dropped. A readout is the dropped kind when it only repeats the
+ * viewer's own press:
+ * - a booth's readout about a guest while a busy surface (the card, the
+ *   scanner) is open or just closed — the card showed it;
+ * - a booth's minor readout the session did not mark as news. Every booth
+ *   readout also arrives as a `response` frame *before* its message, and
+ *   the session raises a loud toast for exactly the unsolicited ones (none
+ *   in flight, none in the last 4 s: `unsolicitedReadout`), so a minor
+ *   readout with no such raise is the answer to the booth's own scan / act;
+ * - a guest's minor readout waits `READOUT_WAIT_MS` for the quiet toast of
+ *   its own press (`afterWait`).
+ * Major readouts (`reply !…`) always show.
+ */
+export function sortArrivals(
+  moments: readonly Moment[],
+  ctx: { role: Viewer["role"]; held: boolean; sinceHoldEnd: number; about: (seq: number | null) => boolean; recent: readonly ToastSeen[]; now: number },
+): { now: Moment[]; later: Moment[] } {
+  const out = { now: [] as Moment[], later: [] as Moment[] };
+  for (const m of moments) {
+    if (m.kind !== "readout") out.now.push(m);
+    else if (ctx.role === "booth" && ctx.about(m.seq) && (ctx.held || ctx.sinceHoldEnd < CARD_AFTERGLOW_MS)) continue;
+    else if (m.severity === "major") out.now.push(m);
+    else if (ctx.role === "booth") {
+      if (toldBy(ctx.recent, m.text, false, ctx.now, ECHO_MS)) out.now.push(m);
+    } else out.later.push(m);
+  }
+  return out;
+}
+
+/** The waiting readouts still news once the wait is over: those no quiet toast already said. */
+export function afterWait(readouts: readonly Moment[], recent: readonly ToastSeen[], now: number): Moment[] {
+  return readouts.filter((m) => !toldBy(recent, m.text, true, now, ECHO_MS + READOUT_WAIT_MS));
+}
+
 /** Should a toast stand back for a moment saying the same thing (or vice versa)? Same text, folded. */
 export function sameWords(a: string, b: string): boolean {
   const fold = (s: string) => s.replace(/\s+/gu, " ").trim().toLowerCase();
