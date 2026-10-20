@@ -7,7 +7,8 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, cardButtons, factChips } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, cardButtons, faceSettled, factChips } from "../src/booth/model.ts";
+import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import type { PrimeSession } from "../src/session/prime.ts";
 import type { GuestCardView, Interaction, ObjectiveView, PrimeGuest, PrimeView } from "../src/types.ts";
@@ -74,6 +75,20 @@ describe("the card's face", () => {
     const offPhase = list.map((i) => (i.id === "send" ? { ...i, live: false as const } : i));
     const out = cardButtons(offPhase, [obj("a", ["send", "watch"])], null, NORTON, false);
     expect(out.face.map((b) => b.interaction.id)).toEqual(["watch"]);
+  });
+});
+
+describe("a double tap after a press", () => {
+  it("drops the second tap while the replaced card settles, so it never fires the button that moved under the finger", () => {
+    // Tap 1 fired "Mark"; its answer replaced the card at t = 1000 and the
+    // face re-flowed ("Vouch" now sits where "Mark" was).
+    const landedAt = 1000;
+    expect(faceSettled(null, 0)).toBe(true); // a fresh card takes the first tap
+    expect(faceSettled(landedAt, landedAt + 400)).toBe(false); // the reviewer's 400 ms double tap
+    expect(faceSettled(landedAt, landedAt + FACE_SETTLE_MS - 1)).toBe(false);
+    expect(faceSettled(landedAt, landedAt + FACE_SETTLE_MS)).toBe(true); // a deliberate next tap fires
+    // Longer than the arm model's dead time, so it covers a double tap that arm-then-fire ignores.
+    expect(FACE_SETTLE_MS).toBeGreaterThan(ARM_DEAD_MS);
   });
 });
 

@@ -13,7 +13,7 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { cardButtons, factChips, type CardButton } from "./model.ts";
+import { cardButtons, factChips, faceSettled, type CardButton } from "./model.ts";
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
@@ -60,6 +60,12 @@ export function GuestCardBody({
   const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
   const arm = useArmButtons();
+  // When the card was last replaced: taps inside `FACE_SETTLE_MS` of it are
+  // dropped (the face re-flowed, so the finger now sits on another button).
+  const landedAt = useRef<number | null>(null);
+  const landed = () => {
+    landedAt.current = Date.now();
+  };
   const view = session.view;
   const character = session.auth?.character ?? "";
   const objectives = view?.objectives;
@@ -74,7 +80,9 @@ export function GuestCardBody({
     readFor.current = key;
     session.card(guestId).then(
       (c) => {
-        if (readFor.current === key) setCard(c);
+        if (readFor.current !== key) return;
+        landed();
+        setCard(c);
       },
       (e) => {
         if (readFor.current === key) setErr(cardError(e));
@@ -93,6 +101,7 @@ export function GuestCardBody({
 
   const press = (b: CardButton) => {
     const i = b.interaction;
+    if (busy !== null || !faceSettled(landedAt.current, Date.now())) return;
     arm.tap(i.id, i.arm, () => {
       setBusy(i.id);
       setErr("");
@@ -100,6 +109,7 @@ export function GuestCardBody({
       session.act(i.id, guestId).then(
         (r) => {
           setBusy(null);
+          landed();
           const said = r.replies ?? [];
           setReplies(said.length > 0 ? said : null);
           setDone(said.length > 0 ? null : `✔ ${i.label}`);
@@ -117,6 +127,7 @@ export function GuestCardBody({
     setDone(null);
     session.scan(guestId).then(
       (r) => {
+        landed();
         setReplies(r.responses.length > 0 ? r.responses : null);
         setDone(r.responses.length > 0 ? null : "✔ Scanned");
         if (r.card !== undefined) setCard(r.card);

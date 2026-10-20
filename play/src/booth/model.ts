@@ -94,6 +94,18 @@ export function cardButtons(
   return { face, rest };
 }
 
+/** How long a card's buttons ignore taps after the card is replaced (a
+ *  press's answer, a re-scan): longer than core's `ARM_DEAD_MS` (300 ms),
+ *  so the second tap of a double tap never lands on whichever button moved
+ *  under the finger when the new card re-flowed the face. */
+export const FACE_SETTLE_MS = 600;
+
+/** May a tap on the card's buttons fire at `now`? Not inside
+ *  `FACE_SETTLE_MS` of the card being replaced (`landedAt`). */
+export function faceSettled(landedAt: number | null, now: number, ms: number = FACE_SETTLE_MS): boolean {
+  return landedAt === null || now - landedAt >= ms;
+}
+
 /** One fact on a guest card. `loud` = read it first (Not cleared, ⛔, 🔒). */
 export interface FactChip {
   text: string;
