@@ -15,6 +15,7 @@ import type { AgentMindReport, AgentQueue } from "./agents.ts";
 export type { AgentControl, AgentControlAction, AgentMindPerson, AgentMindRevision, AgentQueue, AgentThought } from "./agents.ts";
 import type { Sim, SimEvent } from "../src/runtime/sim/index.ts";
 import type { CodexDef, InteractionDef, ObjectiveDef } from "../src/runtime/sim/model.ts";
+import type { BodyItem } from "../src/parser/ast.ts";
 import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "../src/identity-kind.ts";
@@ -411,7 +412,9 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     people: peopleFor(sim, id, agentsOnline),
     ...guestBoard(sim),
     objectives: objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id))),
-    night: nightView(sim),
+    // No act for a guest: the act's title is the director's copy and names
+    // what is coming; the phone reads only `phase` (wave 13 adversary).
+    night: { ...nightView(sim), act: null },
     alertLevel: alertLevelNow(sim),
     voiced: voicedOf(sim, id),
   };
@@ -1256,7 +1259,7 @@ export interface ObjectiveCheck {
 
 /** Where the night is, for every phone. */
 export interface NightView {
-  /** The cue sheet's focus act (`cueActs(cueRows(adminCues, cueState(sim)))`, `focusActIndex`): its code + title. Null when no admin cue declares `act:` or there is no focus act. */
+  /** The cue sheet's focus act (`cueActs(cueRows(adminCues, cueState(sim)))`, `focusActIndex`): its code + title. Null when no admin cue declares `act:` or there is no focus act — and always null in a `GuestView` (director copy; a booth and a host keep it). */
   act: { code: string | null; title: string | null } | null;
   /** The world `Night.phase` (quotes stripped), else null. A convention, like `cue-sheet.ts nightPhase`. */
   phase: string | null;
@@ -1621,6 +1624,79 @@ export function guestFlagsNow(sim: Sim, guestId: string): GuestFlag[] {
   if (plan.byRole.size === 0) return [];
   const live = liveFlagLines(sim, plan);
   return live.size === 0 ? [] : flagsOf(sim, plan, live, p.id, p.role);
+}
+
+// --- award gates: an award only one program can take (G10 is MS Paint's) ---
+
+/** A story gate on an admin cue's subject: the hook for the cue refuses
+ *  (`if program.featured != "mspaint":` with a body that sets and fires
+ *  nothing) unless the subject's `slot` reads `value`. */
+interface SubjectGate {
+  slot: string;
+  value: string;
+}
+const subjectGates = new WeakMap<object, Map<string, SubjectGate[]>>();
+const GATE_NE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_.]*)\s*!=\s*"([^"]*)"\s*$/u;
+
+/** Does an arm's body only explain itself (no `set`, no `fire`, no nested
+ *  logic)? Then the arm is a refusal. */
+function refusalBody(body: readonly BodyItem[]): boolean {
+  return body.length > 0 && body.every((b) => b.kind === "directive" && !/^\s*(?:set|fire|unlock|start|complete|move|add|remove|reveal|award)\b/u.test(b.value.raw));
+}
+
+/** Every admin cue's subject gates, once per model: the arms of the
+ *  top-level `if` chains in the hooks the cue fires (`when <cue> for
+ *  program:`, on a ROLE, a CHARACTER or the story) that refuse unless the
+ *  subject has one exact value. */
+function subjectGatesOf(model: Sim["model"]): Map<string, SubjectGate[]> {
+  let out = subjectGates.get(model);
+  if (out !== undefined) return out;
+  out = new Map();
+  const hooks = [...model.rules, ...[...model.roles.values()].flatMap((r) => r.hooks), ...[...model.characters.values()].flatMap((c) => c.hooks)];
+  const byVerb = new Map<string, typeof hooks>();
+  for (const h of hooks) {
+    if (h.param === null || h.verb === "") continue;
+    const k = foldName(h.verb);
+    byVerb.set(k, [...(byVerb.get(k) ?? []), h]);
+  }
+  for (const i of model.interactions.values()) {
+    if (i.who !== "admin") continue;
+    const gates: SubjectGate[] = [];
+    for (const h of byVerb.get(foldName(i.id)) ?? []) {
+      for (const item of h.body) {
+        if (item.kind !== "conditional") continue;
+        for (const arm of item.value.arms) {
+          const m = arm.condition === null ? null : GATE_NE.exec(arm.condition);
+          if (m === null || foldName(m[1]!) !== foldName(h.param!) || !refusalBody(arm.body)) continue;
+          gates.push({ slot: m[2]!, value: m[3]! });
+        }
+      }
+    }
+    if (gates.length > 0) out.set(i.id, gates);
+  }
+  subjectGates.set(model, out);
+  return out;
+}
+
+const awardOnlyMemo = new WeakMap<object, RoundMemo<Record<string, { id: string; name: string }>>>();
+
+/** The admin cues only one person can take right now (`HostView.awardOnly`):
+ *  their story gate names a value exactly one guest holds — G10's
+ *  `program.featured != "mspaint"` → MS Paint. Memoised per round. */
+export function awardOnly(sim: Sim): Record<string, { id: string; name: string }> {
+  return memoRound(awardOnlyMemo, sim, () => {
+    const out: Record<string, { id: string; name: string }> = {};
+    for (const [cue, gates] of subjectGatesOf(sim.model)) {
+      const fits = [...sim.persons.values()].filter((p) =>
+        gates.every((g) => {
+          const v = sim.world.get(`${p.id}.${g.slot}`);
+          return v !== undefined && v.kind !== "null" && display(v).replace(/^"(.*)"$/su, "$1") === g.value;
+        }),
+      );
+      if (fits.length === 1) out[cue] = { id: fits[0]!.id, name: fits[0]!.name };
+    }
+    return out;
+  });
 }
 
 const guestScopedCache = new WeakMap<object, Set<string>>();
