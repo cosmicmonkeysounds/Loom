@@ -104,6 +104,22 @@ describe("the booth sidebar", () => {
     expect(guestsWaiting(read, me)).toBe(0);
   });
 
+  it("keeps a guest's waiting line listed when the story speaks to them after it", () => {
+    const me = "Norton Anti-Virus";
+    const booth = { id: me, name: me, booth: true };
+    // The guest types to Norton, then the story sends the guest a lobby line
+    // and Norton's own scripted line: the thread's tail is not the guest's.
+    const list = [
+      msg(`dm:${me}`, ["g-1"], { from: "Ada", text: "Help, I'm stuck at the door!" }),
+      msg("lobby", ["g-1"], { channelKind: "lobby", from: "Narrator", kind: "narration", text: "The lights flicker.", beat: "Glitch" }),
+      msg(`dm:${me}`, ["g-1"], { from: me, text: "Scanning.", beat: "Clearance" }),
+    ];
+    const chans = buildPrimeChannels(store(list), view()).map((c) => ({ ...c, unread: unreadOf(c, -1, booth) }));
+    expect(chans.find((c) => c.id === "guest:g-1")?.unread).toBe(1);
+    expect(boothSidebar(groupBySpace(sorted(chans)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).toContain("guest:g-1");
+    expect(guestsWaiting(chans, me)).toBe(1);
+  });
+
   it("keeps a guest's Trabolta thread (a host stream carries it) out of the sidebar and the feed", () => {
     const list = [msg("dm:Trabolta", ["g-1"], { from: "Ada", text: "hi" }), msg("dm:Trabolta", "all", { from: "Trabolta", text: "Speak." }), msg("lobby", "all", { text: "Doors open." })];
     const chans = buildPrimeChannels(store(list), view());

@@ -5,6 +5,7 @@
 
 import { foldName } from "../avatars.ts";
 import type { SpaceGroup } from "../rooms/spaces.ts";
+import { badgeWorthy } from "../stream/badges.ts";
 import type { Channel, CountdownSummary, GuestCardView, Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../types.ts";
 
 /** An objective's reserved button words: a guest's own pass / scan, never a booth's story button. */
@@ -327,14 +328,25 @@ export const MESSAGES_SPACE = "guests";
 
 /**
  * Has guest thread `c` an unread line the guest typed to this character
- * (`dm:<character>`)? Its unread messages are the tail of `c.messages`
- * (sorted by seq, `c.unread` long). A story line to the guest, or the
- * guest's line to another character a host stream carries, never counts.
+ * (`dm:<character>`)? `c.unread` counts the badge-worthy messages past the
+ * read mark (`unreadOf`), and the thread holds every line addressed to the
+ * guest, so its unread lines are the last `c.unread` *badge-worthy* rows —
+ * never just the last `c.unread` rows (a story line to the guest after
+ * theirs would hide it). A story line to the guest, or the guest's line to
+ * another character a host stream carries, never counts.
  */
 export function guestAwaitsReply(c: Channel, character: string): boolean {
-  if (c.kind !== "guest" || c.unread <= 0) return false;
+  if (c.kind !== "guest" || c.unread <= 0 || character === "") return false;
   const name = c.people?.[0]?.name ?? c.title;
-  return c.messages.slice(-c.unread).some((m) => m.channel === `dm:${character}` && m.from === name && !m.hidden);
+  const me = { id: character, name: character, booth: true };
+  let left = c.unread;
+  for (let k = c.messages.length - 1; k >= 0 && left > 0; k--) {
+    const m = c.messages[k]!;
+    if (!badgeWorthy(m, me)) continue;
+    left -= 1;
+    if (m.channel === `dm:${character}` && m.from === name && !m.hidden) return true;
+  }
+  return false;
 }
 
 /** How many guests wait on this character: threads holding an unread line
