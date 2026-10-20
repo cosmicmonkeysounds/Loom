@@ -341,7 +341,7 @@ export function streamProbe(base: string, token: string, fetcher: typeof fetch =
     );
 }
 
-// --- the terminals' camera feeds (wave 14, docs/loom-reinstall.md §3.6) ---
+// --- the terminals' camera feeds (wave 14, docs/loom-reinstall.md §2.3) ---
 
 /** A fresh feed (`GET /api/spatial/cams`). */
 export interface CamInfo {
