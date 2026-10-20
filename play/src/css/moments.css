@@ -1,1 +1,208 @@
-/* moments lane (wave 13): the interrupt ladder, toasts, pins rail, takeover. */
+/* moments lane (wave 13): the interrupt ladder — the tray balloon tip, the
+   sticky notification bar, the modal message box, the blue screen — plus
+   the feedback toast, the missed list, the level-change glitch and the
+   pinned rail. Every colour comes from a token (themes.css, or the lane's
+   own below), so `plain` renders the same parts flat. */
+
+:root {
+  --moments-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  --moments-scan: rgba(0, 0, 0, 0.26);
+  --moments-band: rgba(255, 255, 255, 0.16);
+  --moments-rgb-a: rgba(255, 0, 72, 0.32);
+  --moments-rgb-b: rgba(0, 224, 255, 0.32);
+  --moments-bsod-font: "Lucida Console", "Courier New", ui-monospace, monospace;
+  --moments-balloon-radius: 10px;
+  --moments-toast-bg: var(--black);
+  --moments-toast-ink: var(--white);
+}
+:root[data-theme="aol97"] {
+  --moments-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35), 3px 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* ── the Win95 message-box icons ───────────────────────────────────────── */
+.moments-ico { flex: 0 0 auto; display: block; }
+.moments-ico-warn { fill: var(--highlight); stroke: var(--black); stroke-width: 1.4; stroke-linejoin: round; }
+.moments-ico-mark { fill: var(--black); }
+.moments-ico-bubble { fill: var(--white); stroke: var(--black); stroke-width: 1.4; stroke-linejoin: round; }
+.moments-ico-i { fill: var(--navy); }
+
+/* ── the toast: quiet feedback, never an alarm ─────────────────────────── */
+.moments-anchor { position: relative; height: 0; z-index: var(--z-toast); }
+.moments-toast {
+  position: absolute; top: 6px; left: 8px; right: 8px; margin: 0 auto; max-width: 460px;
+  display: block; min-height: var(--tap); padding: 10px 14px;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  background: var(--moments-toast-bg); color: var(--moments-toast-ink); box-shadow: var(--moments-shadow);
+  font: 700 13px/1.35 var(--ui-font); text-align: center; overflow-wrap: anywhere;
+  animation: moments-fade 150ms ease-out;
+}
+
+/* ── sticky: the notification bar under the title bar, until tapped ───── */
+.moments-sticky {
+  position: sticky; top: 0; z-index: 9;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
+  width: 100%; margin: 0; padding: 4px 6px;
+  background: var(--balloon-bg); color: var(--balloon-ink); box-shadow: var(--raised);
+  font-family: var(--ui-font);
+}
+.moments-sticky.major { background: var(--highlight); color: var(--black); }
+.moments-sticky-body {
+  flex: 1 1 220px; min-width: 0; min-height: var(--tap);
+  display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 4px;
+  border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.moments-sticky-icon { padding-top: 2px; }
+.moments-sticky.major .moments-sticky-icon { animation: moments-ring 0.9s ease-in-out 3; transform-origin: 50% 10%; }
+.moments-sticky-words { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.moments-sticky-caption { font: 700 12px var(--ui-font); text-transform: uppercase; letter-spacing: 0.02em; }
+.moments-count { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.moments-sticky-text { font: 700 15px/1.3 var(--ui-font); overflow-wrap: anywhere; white-space: pre-line; }
+.moments-sticky-actions { display: flex; gap: 4px; margin-left: auto; }
+.moments-sticky-x { min-width: var(--tap); padding: 0; font-weight: 700; font-size: 16px; }
+.moments-go { font-weight: 700; }
+
+/* ── balloon: the tray's balloon tip, bottom-right, its tail on the tray ── */
+.moments-balloon {
+  position: fixed; z-index: var(--z-moment);
+  right: 8px; bottom: calc(var(--safe-bottom) + var(--taskbar-h) + 14px);
+  width: 320px; max-width: calc(100% - 16px);
+  display: flex; flex-direction: column;
+  padding: 2px 4px 6px 10px;
+  background: var(--balloon-bg); color: var(--balloon-ink);
+  border: 1px solid var(--balloon-ink); border-radius: var(--moments-balloon-radius);
+  box-shadow: var(--moments-shadow);
+  font: 13px/1.35 var(--ui-font);
+  animation: moments-rise 180ms ease-out;
+}
+.moments-balloon::before, .moments-balloon::after {
+  content: ""; position: absolute; right: 28px; width: 0; height: 0;
+  border-style: solid; border-color: transparent;
+}
+.moments-balloon::before { bottom: -15px; border-width: 15px 0 0 15px; border-top-color: var(--balloon-ink); }
+.moments-balloon::after { bottom: -13px; right: 29px; border-width: 13px 0 0 13px; border-top-color: var(--balloon-bg); }
+.moments-balloon-head { display: flex; align-items: center; gap: 6px; min-height: var(--tap); }
+.moments-balloon-caption { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.moments-balloon-x {
+  flex: 0 0 auto; width: var(--tap); height: var(--tap); margin: 0 -2px 0 0; padding: 0;
+  border: none; background: none; color: inherit; font: 700 18px var(--ui-font); cursor: pointer;
+}
+.moments-balloon-text { padding-right: 8px; overflow-wrap: anywhere; white-space: pre-line; }
+.moments-balloon-go {
+  align-self: flex-start; min-height: var(--tap); margin: 2px 0 -6px; padding: 0 2px;
+  border: none; background: none; color: var(--link); font: 700 13px var(--ui-font);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+
+/* ── dialog: the modal message box (WinDialog's window) ────────────────── */
+.moments-dialog { display: flex; flex-direction: column; gap: 14px; padding: 6px 2px 0; font: 14px/1.4 var(--ui-font); }
+.moments-dialog-row { display: flex; align-items: flex-start; gap: 14px; }
+.moments-dialog-text { flex: 1; min-width: 0; padding-top: 4px; overflow-wrap: anywhere; white-space: pre-line; max-height: 50vh; overflow: auto; }
+.moments-objective-title { display: block; font-weight: 700; margin-bottom: 4px; }
+.moments-objective-brief { display: block; }
+.moments-dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.moments-dialog-buttons { display: flex; gap: 8px; margin-left: auto; }
+.moments-dialog-count { padding: 3px 8px; font: 12px var(--ui-font); font-variant-numeric: tabular-nums; }
+.moments-ok { min-width: 88px; box-shadow: 0 0 0 1px var(--ink), var(--raised); }
+.moments-ok:active { box-shadow: 0 0 0 1px var(--ink), var(--pressed); }
+
+/* ── bsod: the blue screen ─────────────────────────────────────────────── */
+.moments-bsod {
+  position: fixed; inset: 0; z-index: var(--z-moment);
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
+  background: var(--bsod-bg); color: var(--bsod-ink);
+  font: 16px/1.5 var(--moments-bsod-font); -webkit-font-smoothing: none;
+  overflow: auto; cursor: pointer; outline: none;
+}
+.moments-bsod-inner { width: 100%; max-width: 640px; }
+.moments-bsod-headrow { display: flex; align-items: baseline; justify-content: center; gap: 12px; margin-bottom: 20px; }
+.moments-bsod-head { padding: 0 8px; background: var(--face); color: var(--bsod-bg); font-weight: 700; letter-spacing: 0.04em; }
+.moments-bsod-count { font-variant-numeric: tabular-nums; }
+.moments-bsod-fault { margin: 0 0 16px; }
+.moments-bsod-text { margin: 0 0 16px; font-size: 18px; white-space: pre-line; overflow-wrap: anywhere; }
+.moments-bsod-text .moments-objective-title { font-weight: 400; }
+.moments-bsod-list { list-style: none; margin: 0 0 24px; padding: 0; }
+.moments-bsod-list li { display: flex; align-items: center; gap: 8px; min-height: var(--tap); }
+.moments-bsod-list li::before { content: "*"; flex: 0 0 auto; }
+.moments-bsod-go {
+  min-height: var(--tap); padding: 0 12px; margin: 0;
+  border: none; border-radius: 0; background: var(--bsod-ink); color: var(--bsod-bg);
+  font: 700 16px var(--moments-bsod-font); cursor: pointer;
+}
+.moments-bsod-go:focus-visible { outline: 2px dashed var(--bsod-ink); outline-offset: 3px; }
+.moments-bsod-press { margin: 0; text-align: center; }
+.moments-bsod-caret { animation: moments-caret 1s steps(1, end) infinite; }
+
+/* ── the missed list ───────────────────────────────────────────────────── */
+.moments-missed { display: flex; flex-direction: column; gap: 12px; font: 13px/1.35 var(--ui-font); }
+.moments-missed-list { list-style: none; margin: 0; padding: 2px; max-height: 50vh; overflow: auto; }
+.moments-missed-row { display: flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 4px 6px; border-bottom: 1px solid var(--face); }
+.moments-missed-row:last-child { border-bottom: none; }
+.moments-missed-words { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.moments-missed-caption { font-weight: 700; }
+.moments-missed-text { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.moments-missed-go { flex: 0 0 auto; }
+
+/* ── the glitch: its own overlay, ~600 ms, never a filter on the app ───── */
+.moments-glitch {
+  position: fixed; inset: 0; z-index: var(--z-glitch); pointer-events: none; overflow: hidden;
+  background: repeating-linear-gradient(0deg, var(--moments-scan) 0 1px, transparent 1px 3px);
+  animation: moments-glitch-flash 600ms steps(6, end) forwards;
+}
+.moments-glitch::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -20%; height: 30%;
+  background: linear-gradient(180deg, transparent, var(--moments-band) 40%, var(--moments-band) 60%, transparent);
+  animation: moments-glitch-roll 600ms linear forwards;
+}
+.moments-glitch::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(90deg, var(--moments-rgb-a) 0 33%, transparent 33% 100%) 0 18% / 100% 9% no-repeat,
+    linear-gradient(90deg, transparent 0 40%, var(--moments-rgb-b) 40% 100%) 0 47% / 100% 6% no-repeat,
+    linear-gradient(90deg, var(--moments-rgb-b) 0 60%, transparent 60% 100%) 0 71% / 100% 4% no-repeat,
+    linear-gradient(90deg, transparent 0 20%, var(--moments-rgb-a) 20% 85%, transparent 85%) 0 88% / 100% 7% no-repeat;
+  animation: moments-glitch-jitter 600ms steps(1, end) forwards;
+}
+.moments-glitch.still, .moments-glitch.still::before, .moments-glitch.still::after { animation: none; }
+.moments-glitch.still::before { top: 35%; }
+
+@keyframes moments-glitch-flash { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes moments-glitch-roll { to { top: 100%; } }
+@keyframes moments-glitch-jitter {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(-14px); }
+  30% { transform: translateX(10px); background-position-y: 30%, 12%, 66%, 52%; }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(18px); background-position-y: 8%, 58%, 24%, 80%; }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); opacity: 0; }
+}
+@keyframes moments-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes moments-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes moments-ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-16deg); } 75% { transform: rotate(16deg); } }
+@keyframes moments-caret { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .moments-toast, .moments-balloon, .moments-sticky.major .moments-sticky-icon, .moments-bsod-caret { animation: none; }
+  .moments-glitch, .moments-glitch::before, .moments-glitch::after { animation: none; }
+  .moments-glitch::before { top: 35%; }
+}
+
+/* ── the pinned rail: one line ("📌 n"), expands on tap ────────────────── */
+.moments-pins {
+  position: sticky; top: 0; z-index: 4;
+  width: 100%; margin: 0;
+  background: var(--face); color: var(--ink); box-shadow: var(--raised);
+  font-family: var(--ui-font);
+}
+.moments-pins-head {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); margin: 0; padding: 0 10px;
+  border: none; background: none; color: inherit; font: 700 13px var(--ui-font); text-align: left; cursor: pointer;
+}
+.moments-pins.alert .moments-pins-head { background: var(--highlight); color: var(--black); }
+.moments-pins-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.moments-pins-line { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.moments-pins-caret { flex: 0 0 auto; font-weight: 400; }
+.moments-pins-list { list-style: none; margin: 0; padding: 0 6px 6px; display: flex; flex-direction: column; gap: 4px; }
+.moments-pin { padding: 6px 8px; font: 700 13px/1.35 var(--ui-font); background: var(--face-hi); color: var(--black); box-shadow: var(--sunken); overflow-wrap: anywhere; }
+.moments-pin.alert { background: var(--highlight); }
