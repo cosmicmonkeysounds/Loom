@@ -337,6 +337,13 @@ export function guestAwaitsReply(c: Channel, character: string): boolean {
   return c.messages.slice(-c.unread).some((m) => m.channel === `dm:${character}` && m.from === name && !m.hidden);
 }
 
+/** How many guests wait on this character: threads holding an unread line
+ *  the guest typed to it (the 🗂 Guests button's badge — never the head
+ *  count, which reads as unread mail). */
+export function guestsWaiting(channels: readonly Channel[], character: string): number {
+  return character === "" ? 0 : channels.filter((c) => guestAwaitsReply(c, character)).length;
+}
+
 /**
  * The booth's lean sidebar: no Scanner row (the taskbar's 📷 Scan replaces
  * it) and no per-guest threads (they open from 🗂 Guests, the card's 💬 or

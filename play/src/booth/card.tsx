@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PersonAvatar, PickerSheet } from "../ui/primitives.tsx";
+import { usePlayHost } from "../host.ts";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
@@ -72,16 +73,19 @@ export function GuestCardBody({
   const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
   const arm = useArmButtons();
+  const host = usePlayHost();
   // Escape closes the "Share lore…" picker first (the booth window leaves
-  // Escape alone while a sheet is open inside it).
+  // Escape alone while a sheet is open inside it) — on the host's key
+  // target, so it works in a Run → Players pane too.
   useEffect(() => {
     if (!sharing) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSharing(false);
+    const target = host.keyTarget();
+    const onKey = (e: Event) => {
+      if ((e as KeyboardEvent).key === "Escape") setSharing(false);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sharing]);
+    target?.addEventListener("keydown", onKey);
+    return () => target?.removeEventListener("keydown", onKey);
+  }, [sharing, host]);
   // When the card was last replaced: taps inside `FACE_SETTLE_MS` of it are
   // dropped (the face re-flowed, so the finger now sits on another button).
   const landedAt = useRef<number | null>(null);

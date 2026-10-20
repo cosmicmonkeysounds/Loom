@@ -7,7 +7,7 @@
 // admin or host.
 import { describe, expect, it } from "vitest";
 
-import { boothSidebar, primeStreamUrl } from "../src/booth/model.ts";
+import { boothSidebar, guestsWaiting, primeStreamUrl } from "../src/booth/model.ts";
 import { INBOX, STAFF_SPACE, buildPrimeChannels } from "../src/session/prime.ts";
 import { groupBySpace } from "../src/rooms/spaces.ts";
 import { roomOrder } from "../src/rooms/order.ts";
@@ -95,9 +95,13 @@ describe("the booth sidebar", () => {
     expect(chans.find((c) => c.id === "guest:g-1")?.unread).toBe(1);
     const rows = boothSidebar(groupBySpace(sorted(chans)), { character: me }).flatMap((s) => s.channels.map((c) => c.id));
     expect(rows).toContain("guest:g-1");
+    // The 🗂 Guests badge counts the guests waiting, not the head count.
+    expect(guestsWaiting(chans, me)).toBe(1);
+    expect(guestsWaiting(chans, "")).toBe(0);
     // Read past it: the row folds away.
     const read = buildPrimeChannels(store(list), view()).map((c) => ({ ...c, unread: unreadOf(c, list[1]!.seq, booth) }));
     expect(boothSidebar(groupBySpace(sorted(read)), { character: me }).flatMap((s) => s.channels.map((c) => c.id))).not.toContain("guest:g-1");
+    expect(guestsWaiting(read, me)).toBe(0);
   });
 
   it("keeps a guest's Trabolta thread (a host stream carries it) out of the sidebar and the feed", () => {

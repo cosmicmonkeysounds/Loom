@@ -32,7 +32,7 @@ import { GuestCard, type CardSeed } from "./card.tsx";
 import { GuestsSheet } from "./guests.tsx";
 import { AlertsSheet, KnowsSheet, PowersSheet, StartHeader, boothPill, boothStartItems, type BoothSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
-import { boothFoldable, boothHost, boothSidebar, closedGate } from "./model.ts";
+import { boothFoldable, boothHost, boothSidebar, closedGate, guestsWaiting } from "./model.ts";
 import { NowCard } from "./now-card.tsx";
 import { ReadoutsView } from "./readouts.tsx";
 import { CLOSED_PASS_MS, ScannerScreen } from "./scanner.tsx";
@@ -104,6 +104,8 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // C4: the latest view says whether this booth is a host (an older server's: the sign-in's answer).
   const isHost = boothHost(s.auth, s.view);
   const pill = boothPill({ admin, host: isHost });
+  // The 🗂 Guests badge: guests whose typed line to this character waits unread.
+  const waiting = guestsWaiting(t.list, character);
   const token = s.auth.token;
   const character = s.auth.character;
   const guests = s.view?.guests ?? [];
@@ -262,7 +264,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                   startHeader={<StartHeader s={s} />}
                   buttons={[
                     { id: "scan", label: "Scan", icon: "📷", primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
-                    { id: "guests", label: "Guests", icon: "🗂", title: "Every guest, searchable", badge: guests.length, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
+                    { id: "guests", label: "Guests", icon: "🗂", title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
                   tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} />}
                   conn={s.connected ? "live" : "reconnecting"}

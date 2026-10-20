@@ -81,8 +81,12 @@
 .booth-layer-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
 .booth-layer-foot { flex: 0 0 auto; padding: 8px 12px; box-shadow: var(--raised); }
 @media (min-width: 820px) {
-  .booth-layer { padding: 24px; background: var(--scrim); align-items: center; justify-content: center; }
-  .booth-layer-box { flex: 0 1 520px; max-height: calc(100vh - 48px); }
+  /* A centred window that stops above the taskbar, never over it. */
+  .booth-layer {
+    padding: 24px 24px calc(24px + var(--taskbar-h) + var(--safe-bottom));
+    background: var(--scrim); align-items: center; justify-content: center;
+  }
+  .booth-layer-box { flex: 0 1 520px; max-height: calc(100vh - 48px - var(--taskbar-h) - var(--safe-bottom)); }
 }
 
 /* ── the scanner ────────────────────────────────────────────────────── */
@@ -190,6 +194,11 @@
 .booth-readout-guest { margin-top: 6px; font-size: 13px; }
 
 /* ── the frame's other parts ────────────────────────────────────────── */
+/* A phone keeps the 🗂 Guests label (the chrome hides non-primary labels
+   under 400 px): a bare folder and a number read as nothing. */
+@media (max-width: 399px) {
+  .booth-frame .taskbar .taskbar-btn[data-tour="guests"] .taskbar-label { display: inline; }
+}
 .booth-dock { flex: 0 0 auto; }
 .booth-head-btn { flex: 0 0 auto; font-weight: 700; }
 .booth-start-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

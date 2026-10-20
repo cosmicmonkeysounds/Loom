@@ -7,6 +7,7 @@
 //! surface for the moments layer (no dialog or blue screen covers it).
 
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { usePlayHost } from "../host.ts";
 import { useMomentsHold } from "../moments/provider.tsx";
 import { WinWindow, focusables, trapNext } from "../ui/window.tsx";
 
@@ -25,6 +26,7 @@ function tabStops(root: HTMLElement): HTMLElement[] {
 
 export function BoothLayer({ title, onClose, children, label, foot }: { title: ReactNode; onClose: () => void; children: ReactNode; label: string; foot?: ReactNode }) {
   useMomentsHold(true);
+  const host = usePlayHost();
   const root = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -32,15 +34,19 @@ export function BoothLayer({ title, onClose, children, label, foot }: { title: R
   useEffect(() => {
     const before = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
     box.current?.focus();
-    // On `window`, so Escape still closes with focus left on the body.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && escapeIsOurs(root.current)) close.current();
+    // On the host's key target: `window` on a phone (Escape still closes
+    // with focus left on the body), the pane's own frame in Run → Players
+    // (its shadow host stops keys before they reach the window).
+    const target = host.keyTarget();
+    const onKey = (e: Event) => {
+      if ((e as KeyboardEvent).key === "Escape" && escapeIsOurs(root.current)) close.current();
     };
-    window.addEventListener("keydown", onKey);
+    target?.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("keydown", onKey);
+      target?.removeEventListener("keydown", onKey);
       before?.focus?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const onTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab" || box.current === null) return;
