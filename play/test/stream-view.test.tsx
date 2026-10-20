@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildGuestChannels, isVoiced } from "../src/session/channels.ts";
 import { ChannelView, MessageThread, stillCrawling, streamFoot } from "../src/stream/channel-view.tsx";
-import { CardTray, trayCardKey, trayIndex, trayShown } from "../src/stream/card-tray.tsx";
+import { CardTray, moreBelow, trayCardKey, trayIndex, trayShown } from "../src/stream/card-tray.tsx";
 import { PlayHostContext, browserHost, createCrawl } from "../src/host.ts";
 import { NOBODY_READS_NOTE, cantPostNote } from "../src/stream/composer.tsx";
 import { AmbientTicker, TICKER_HISTORY, earlierBarks } from "../src/stream/ticker.tsx";
@@ -193,10 +193,13 @@ describe("the card tray never takes the room over", () => {
     expect(trayIndex([], null)).toBe(0);
   });
 
-  it("the body is capped at 35vh and the submit row stays out of its scroll", () => {
+  it("the body holds up to half the screen, scrolls in one piece (no sticky foot over the slider) and says when there is more", () => {
     const css = readBundledCss();
-    expect(css).toMatch(/\.stream-tray-body \{ max-height: 35vh;/u);
-    expect(css).toMatch(/\.stream-tray-body \.widget-foot \{ position: sticky; bottom: -6px;/u);
+    expect(css).toMatch(/\.stream-tray-body \{\s*max-height: 50vh;/u);
+    expect(css).not.toMatch(/\.stream-tray-body \.widget-foot \{[^}]*sticky/u);
+    expect(css).toMatch(/\.stream-tray-more \{/u);
+    expect(moreBelow({ scrollHeight: 379, scrollTop: 0, clientHeight: 295 })).toBe(true);
+    expect(moreBelow({ scrollHeight: 379, scrollTop: 84, clientHeight: 295 })).toBe(false);
   });
 });
 
