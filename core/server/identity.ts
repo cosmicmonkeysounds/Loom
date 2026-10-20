@@ -129,14 +129,18 @@ export function cleanGuestName(raw: string): string {
 
 /** Letters from other scripts that read as a Latin letter, by case (after
  *  NFD has split off accents): Cyrillic, Greek, the Turkish dotless ı. Only
- *  the ones that look the same — not the full Unicode confusables table. */
+ *  the ones that look the same — not the full Unicode confusables table. A
+ *  lower-case letter missing here reads as its capital's twin (`nameSkeleton`),
+ *  so a name skeletons the same lower-cased (the taken set is folded); a
+ *  lower-case letter whose capital reads as another letter (Greek ν / Ν,
+ *  υ / Υ) is left to its capital for the same reason. */
 const CONFUSABLES: Readonly<Record<string, string>> = {
   // Cyrillic
   А: "A", В: "B", Е: "E", К: "K", М: "M", Н: "H", О: "O", Р: "P", С: "C", Т: "T", Х: "X", У: "Y", Ѕ: "S", І: "I", Ј: "J", Ү: "Y", Һ: "H", Ԛ: "Q", Ԝ: "W",
   а: "a", е: "e", к: "k", о: "o", р: "p", с: "c", у: "y", х: "x", ѕ: "s", і: "i", ј: "j", һ: "h", ԁ: "d", ӏ: "l", ԛ: "q", ԝ: "w", ү: "y",
   // Greek
   Α: "A", Β: "B", Ε: "E", Ζ: "Z", Η: "H", Ι: "I", Κ: "K", Μ: "M", Ν: "N", Ο: "O", Ρ: "P", Τ: "T", Υ: "Y", Χ: "X",
-  α: "a", ε: "e", ι: "i", κ: "k", ν: "v", ο: "o", ρ: "p", υ: "u", χ: "x",
+  α: "a", ε: "e", ι: "i", κ: "k", ο: "o", ρ: "p", χ: "x",
   // Latin letters with a stroke or no dot (no NFD split)
   ı: "i", ȷ: "j", ł: "l", Ł: "L", ø: "o", Ø: "O", đ: "d", Đ: "D", ħ: "h", Ħ: "H",
 };
@@ -145,20 +149,28 @@ const CONFUSABLES: Readonly<Record<string, string>> = {
  * A guest name's skeleton — a stricter key than `foldName`, for the taken /
  * part checks only (recheck item 5): `cleanGuestName`, accents dropped,
  * every look-alike letter from another script mapped onto its Latin twin
- * (`CONFUSABLES`), lower case, then only letters and digits kept — so
- * `Win Zip`, `Fire fox`, `WınZip` (dotless ı) and `Wіnzip` (Cyrillic і) read
- * as `winzip` / `firefox`, while `Word` and `WordPad` stay apart. Empty for a
- * name with no letter or digit (an emoji): such a name is compared folded
+ * (`CONFUSABLES`), lower case, then only letters, digits and the `+` / `#`
+ * that name a different program kept — so `Win Zip`, `Fire fox`, `WınZip`
+ * (dotless ı) and `Wіnzip` (Cyrillic і) read as `winzip` / `firefox`, while
+ * `Word` and `WordPad`, `Notepad` and `Notepad++`, `C#` and `C++` stay apart.
+ * The same lower-cased: `nameSkeleton(foldName(x)) === nameSkeleton(x)`, so
+ * a folded taken name compares like the typed one in either order. Empty for
+ * a name with no letter or digit (an emoji): such a name is compared folded
  * only.
  */
 export function nameSkeleton(raw: string): string {
   let out = "";
+  let core = false;
   for (const ch of cleanGuestName(raw).normalize("NFD")) {
     if (/\p{M}/u.test(ch)) continue;
-    const c = (CONFUSABLES[ch] ?? ch).toLowerCase();
-    if (/^[\p{L}\p{N}]+$/u.test(c)) out += c;
+    const twin = CONFUSABLES[ch] ?? CONFUSABLES[ch.toUpperCase()] ?? ch;
+    const c = twin.toLowerCase();
+    if (/^[\p{L}\p{N}]+$/u.test(c)) {
+      out += c;
+      core = true;
+    } else if (c === "+" || c === "#") out += c;
   }
-  return out;
+  return core ? out : "";
 }
 
 /** The first `max` characters (code points, never half a surrogate pair). */

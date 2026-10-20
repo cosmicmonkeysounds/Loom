@@ -3,7 +3,8 @@
 //! name, compared by `nameSkeleton`; distinct names (Word, WordPad) stay apart.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { nameSkeleton } from "../server/identity.ts";
+import { foldName } from "../src/parser/names.ts";
+import { cleanGuestName, nameSkeleton } from "../server/identity.ts";
 import { cleanup, freshDir, guest, register, runtime } from "./w13-fix-harness.ts";
 import { STORY } from "./w13-recheck-story.ts";
 
@@ -21,6 +22,31 @@ describe("5: lookalike names", () => {
     expect(nameSkeleton("Ｗｉｎｚｉｐ")).toBe("winzip");
     expect(nameSkeleton("🎉")).toBe("");
     expect(nameSkeleton("Word")).not.toBe(nameSkeleton("WordPad"));
+  });
+
+  it("nameSkeleton reads the same folded (the taken set) as typed, in either case", () => {
+    for (const n of ["ΝOTEPAD", "ΥAHOO", "WΙNZIP", "МSN", "НotBot", "ТetrIS", "Wіnzip", "WınZip", "Pokémon", "İnternet Explorer", "Win_Zip"]) {
+      expect(nameSkeleton(foldName(cleanGuestName(n))), n).toBe(nameSkeleton(n));
+    }
+    expect(nameSkeleton("ΝOTEPAD")).toBe("notepad"); // Greek capital Nu
+    expect(nameSkeleton("ΥAHOO")).toBe("yahoo"); // Greek capital Upsilon
+  });
+
+  it("+ and # name a different program: Notepad / Notepad++, C / C# / C++ stay apart", () => {
+    expect(nameSkeleton("Notepad++")).toBe("notepad++");
+    expect(nameSkeleton("Notepad++")).not.toBe(nameSkeleton("Notepad"));
+    expect(new Set(["C", "C#", "C++"].map(nameSkeleton)).size).toBe(3);
+    expect(nameSkeleton("+++")).toBe(""); // no letter or digit: folded only
+  });
+
+  it("a lookalike registered first holds the name against the real spelling too", async () => {
+    const rt = runtime({}, freshDir(), STORY);
+    rt.openDoors();
+    await guest(rt, "ΝOTEPAD"); // a Greek capital Nu
+    expect((await register(rt, "Notepad")).status).toBe(409);
+    await guest(rt, "Notepad++");
+    expect((await register(rt, "Notepad ++")).status).toBe(409);
+    rt.dispose();
   });
 
   it("a lookalike of a name already here is refused (409); a distinct name registers", async () => {
