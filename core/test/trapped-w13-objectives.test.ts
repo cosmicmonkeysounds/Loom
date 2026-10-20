@@ -109,3 +109,18 @@ describe("Trapped in the Internet — wave 13: the host parts", () => {
     expect(m.characters.get("Clippy")!.admin).toBe(false);
   });
 });
+
+describe("Trapped in the Internet — wave 13: codex categories", () => {
+  it("every CODEX entry carries a guest-facing category (titi:facts writes the generated ones)", () => {
+    const m = Sim.fromSources(SRC).model;
+    const allowed = new Set(["People", "Places", "The story", "How it works", "Files", "Trabolta", "Missions", "Facts", "The cold door"]);
+    const missing = [...m.codex.values()].filter((c) => c.category === null).map((c) => c.id);
+    expect(missing).toEqual([]);
+    for (const c of m.codex.values()) {
+      expect(allowed.has(c.category!), `${c.id}: ${c.category}`).toBe(true);
+      expect(c.category!, c.id).not.toMatch(/instruction|jeeves|kernel|staff/i);
+    }
+    expect(m.codex.get("Clippy Instructions 1")!.category).toBe("Missions");
+    expect(m.codex.get("The Door Code")!.category).toBe("The cold door");
+  });
+});

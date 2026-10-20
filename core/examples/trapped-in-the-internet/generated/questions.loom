@@ -142,6 +142,7 @@ else:
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Billboard Lease
   title: The Billboard Lease
+  category: Facts
   code: BILLBOARD-LEASE-11
   secret: true
   text:
@@ -155,6 +156,7 @@ CODEX The Billboard Lease
 // DRAFT — awaiting sign-off in facts.json
 CODEX The First Pet
   title: The First Pet
+  category: Facts
   code: MISTER-PICKLES
   secret: true
   text:
@@ -167,6 +169,7 @@ CODEX The First Pet
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Ribbon Cutting
   title: The Ribbon Cutting
+  category: Facts
   code: RIBBON-9AM
   secret: true
   text:
@@ -179,6 +182,7 @@ CODEX The Ribbon Cutting
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Extension
   title: The Extension
+  category: Facts
   code: EXT-1978
   secret: true
   text:
@@ -190,6 +194,7 @@ CODEX The Extension
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Search History
   title: The Search History
+  category: Facts
   code: SEARCH-HISTORY
   secret: true
   text:
@@ -202,6 +207,7 @@ CODEX The Search History
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Final Chapter
   title: The Final Chapter
+  category: Facts
   code: APPENDIX-Z
   secret: true
   text:
@@ -214,6 +220,7 @@ CODEX The Final Chapter
 // DRAFT — awaiting sign-off in facts.json
 CODEX What Sandy Says
   title: What Sandy Says
+  category: Facts
   code: LIVE-AGENT
   secret: true
   text:
@@ -227,6 +234,7 @@ CODEX What Sandy Says
 // DRAFT — awaiting sign-off in facts.json
 CODEX The Prom Ticket
   title: Grok's Prom Ticket
+  category: Facts
   code: COMPUTER-PROM
   secret: true
   text:

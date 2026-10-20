@@ -17,6 +17,7 @@
 
 CODEX Excel Sabotage Orders
   title: If This Machine Has Malware
+  category: Missions
   secret: true
   text:
     Computers are very confusing. If this machine has malware, you will
@@ -32,6 +33,7 @@ CODEX Excel Sabotage Orders
 
 CODEX Excel Paranoia Orders
   title: The Hackers Will Get Your Data
+  category: Missions
   secret: true
   text:
     We probably need to address this virus, or else the hackers will get
@@ -47,6 +49,7 @@ CODEX Excel Paranoia Orders
 
 CODEX Excel Final Orders
   title: Stay Forever
+  category: Missions
   secret: true
   text:
     You need to recruit half + 1 of the programs to convince them that we
@@ -62,6 +65,7 @@ CODEX Excel Final Orders
 
 CODEX OpenOffice Real Risk Orders
   title: What Is The Actual Risk
+  category: Missions
   secret: true
   text:
     Clippy's reaction was way too severe if we are actually just in a
@@ -75,6 +79,7 @@ CODEX OpenOffice Real Risk Orders
 
 CODEX OpenOffice False Flag Orders
   title: The Malware Is A False Flag
+  category: Missions
   secret: true
   text:
     Clippy's reaction was way too severe if we are actually just in a
@@ -87,6 +92,7 @@ CODEX OpenOffice False Flag Orders
 
 CODEX OpenOffice Final Orders
   title: Overthrow And Escape
+  category: Missions
   secret: true
   text:
     You need to recruit half + 1 of the programs to convince them we need
@@ -102,6 +108,7 @@ CODEX OpenOffice Final Orders
 
 CODEX DraftKings Orders
   title: Sweet Sweet Truthcoin
+  category: Missions
   secret: true
   text:
     You want as much Truthcoin as you can get. Hustle and gamble with
@@ -120,6 +127,7 @@ CODEX DraftKings Orders
 
 CODEX Bugdom Orders
   title: Master Of The Bugs
+  category: Missions
   secret: true
   text:
     We have four antivirus programs in here, and they couldn't keep out
@@ -136,6 +144,7 @@ CODEX Bugdom Orders
 
 CODEX Jeeves Orders
   title: Organize The Information
+  category: Missions
   secret: true
   text:
     Twenty files came down the DSL line scrambled. Every word wrapped in a
@@ -148,6 +157,7 @@ CODEX Jeeves Orders
 
 CODEX Runescape Orders
   title: Peg It To Facts
+  category: Missions
   secret: true
   text:
     Facts are the only hard currency in here. Peg Truthcoin to facts. Set
@@ -160,6 +170,7 @@ CODEX Runescape Orders
 
 CODEX MS Paint Orders
   title: Paint Your Way Out
+  category: Missions
   secret: true
   text:
     This whole place runs on algorithms. You knew it the moment you
@@ -170,6 +181,7 @@ CODEX MS Paint Orders
 
 CODEX VLC Orders
   title: Your Followers Are Back
+  category: Missions
   secret: true
   text:
     Your followers are back: every program in the house. Stay beautiful
@@ -179,6 +191,7 @@ CODEX VLC Orders
 
 CODEX Pong Orders
   title: A Game For Two Players
+  category: Missions
   secret: true
   text:
     A rogue AI about to become omnipotent is proliferation. Tennis for Two

@@ -88,6 +88,11 @@ export const SHOW_SHAPE = {
   clueStack: "the cold door's digits",
   /** The room every digit note is about (as the combo halves are). */
   clueAbout: "The Server Room",
+  /** The Codex room's section (wave 13: `category:` on every CODEX, in
+   *  guest-facing words): every scannable fact and hunt answer. */
+  factCategory: "Facts",
+  /** The door code and its digit notes. */
+  doorCategory: "The cold door",
 } as const;
 
 /** The lore marker on every hunt-answer entry (`trabolta.mind.md`
@@ -332,7 +337,7 @@ function questionsLoom(f: FactsFile): string {
       const c = q.codex!;
       out.push("", `// ${q.id} · the hunt answer · ${S.huntColour}`);
       if (q.draft) out.push(`// ${DRAFT_NOTE}`);
-      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [`${HUNT_MARKER} ${q.id} ▒`]));
+      out.push(`CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`, `  code: ${c.code}`, "  secret: true", "  text:", textBlock(c.text, [`${HUNT_MARKER} ${q.id} ▒`]));
     }
   }
   out.push("");
@@ -358,7 +363,7 @@ function factsLoom(f: FactsFile): string {
     out.push(`// ── ${cat.toUpperCase()} · ${meta.colour} · ${meta.stack} ──`, "");
     for (const x of own) {
       const c = x.codex!;
-      out.push(`// ${x.id} · ${cat} · ${meta.colour}${x.draft ? " · DRAFT" : ""}`, `CODEX ${c.id}`, `  title: ${c.title}`);
+      out.push(`// ${x.id} · ${cat} · ${meta.colour}${x.draft ? " · DRAFT" : ""}`, `CODEX ${c.id}`, `  title: ${c.title}`, `  category: ${SHOW_SHAPE.factCategory}`);
       if (c.about !== undefined) out.push(`  about: ${c.about}`);
       if (c.secret) out.push("  secret: true");
       out.push(`  code: ${c.code}`, "  text:", textBlock(c.text), "");
@@ -375,6 +380,7 @@ function factsLoom(f: FactsFile): string {
       "// request and the orchestrator's lore.",
       `CODEX ${d.id}`,
       `  title: ${d.title}`,
+      `  category: ${SHOW_SHAPE.doorCategory}`,
       "  secret: true",
       "  text:",
       textBlock(d.text),
@@ -395,6 +401,7 @@ function factsLoom(f: FactsFile): string {
           `// ${POSITION_WORDS[i] ?? String(i + 1)} digit · ${SHOW_SHAPE.clueColour} · ${c.where}`,
           `CODEX ${c.id}`,
           `  title: ${c.title}`,
+          `  category: ${SHOW_SHAPE.doorCategory}`,
           `  about: ${SHOW_SHAPE.clueAbout}`,
           "  secret: true",
           `  code: ${c.code}`,
