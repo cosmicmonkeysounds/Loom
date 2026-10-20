@@ -9,12 +9,8 @@
 //! them. Dependency-free (the play app imports it by path): nothing here
 //! may reach `node:*`, `server/*` or the sim.
 
-import type { CueSheetView, CueInteraction, CueMarks, WorldLine, CuePerson } from "./cue-sheet.ts";
+import { cueSheetView, type CueSheetView, type CueInteraction, type CueMarks, type WorldLine, type CuePerson } from "./cue-sheet.ts";
 import type { AlertLevel } from "./delivery.ts";
-
-const notYet = (): never => {
-  throw new Error("w13: not yet");
-};
 
 // ---------------------------------------------------------------------------
 // Structural inputs
@@ -121,8 +117,10 @@ export const DEFAULT_JUDGE_MODE_VAR = "Night.judge_mode";
 
 /** The judging mode: the view's own reading first, else the mode var on
  *  the world (`review` exactly), else `auto`. */
-export function judgeModeOf(_world: readonly WorldRow[], _facts: FactsLike | null): JudgeMode {
-  return notYet();
+export function judgeModeOf(world: readonly WorldRow[], facts: FactsLike | null): JudgeMode {
+  if (facts !== null) return facts.mode === "review" ? "review" : "auto";
+  const path = DEFAULT_JUDGE_MODE_VAR;
+  return world.find((w) => w.path === path)?.value === "review" ? "review" : "auto";
 }
 
 /** A `judge:` character's ruling on a near miss (wave 11b, contract J). */
@@ -153,23 +151,28 @@ export interface JudgingRow {
 }
 
 /** A filing's ruling, else null. */
-export function rulingOf(_f: FilingLike): FilingRuling | null {
-  return notYet();
+export function rulingOf(f: FilingLike): FilingRuling | null {
+  const r = (f as FilingLike & { ruling?: unknown }).ruling;
+  if (r === null || typeof r !== "object") return null;
+  const { by, same, why, at } = r as unknown as Record<string, unknown>;
+  if (typeof by !== "string" || typeof same !== "boolean") return null;
+  return { by, same, why: typeof why === "string" ? why : "", at: typeof at === "number" ? at : 0 };
 }
 
 /** Is a ruling being asked for this filing right now? */
-export function askingOf(_f: FilingLike): boolean {
-  return notYet();
+export function askingOf(f: FilingLike): boolean {
+  return (f as FilingLike & { asking?: unknown }).asking === true;
 }
 
 /** "🤖 Trabolta: same — why". */
-export function rulingText(_r: FilingRuling): string {
-  return notYet();
+export function rulingText(r: FilingRuling): string {
+  return `🤖 ${r.by}: ${r.same ? "same" : "not the same"}${r.why !== "" ? ` — ${r.why}` : ""}`;
 }
 
 /** "🤖 asking Trabolta…". */
-export function askingText(_facts: FactsLike): string {
-  return notYet();
+export function askingText(facts: FactsLike): string {
+  const judge = (facts as FactsLike & { judge?: unknown }).judge;
+  return `🤖 asking ${typeof judge === "string" && judge !== "" ? judge : "the judge"}…`;
 }
 
 /** How a filing got its outcome. */
@@ -191,33 +194,60 @@ export interface FilingRow {
 }
 
 /** Every filing a `judge:` character ruled on, newest first. */
-export function ruledFilings(_facts: FactsLike): Array<FilingRow & { question: string; ruling: FilingRuling }> {
-  return notYet();
+export function ruledFilings(facts: FactsLike): Array<FilingRow & { question: string; ruling: FilingRuling }> {
+  const out: Array<FilingRow & { question: string; ruling: FilingRuling }> = [];
+  for (const q of facts.questions) {
+    for (const row of questionFilings(facts, q.id)) if (row.ruling !== null) out.push({ ...row, question: q.id, ruling: row.ruling });
+  }
+  return out.sort((a, b) => b.ruling.at - a.ruling.at);
 }
 
 /** A filing's near-miss key, else null. */
-export function nearKeyOf(_f: FilingLike): string | null {
-  return notYet();
+export function nearKeyOf(f: FilingLike): string | null {
+  const near = (f as FilingLike & { near?: unknown }).near;
+  if (near === null || typeof near !== "object") return null;
+  const key = (near as { key?: unknown }).key;
+  return typeof key === "string" && key.trim() !== "" ? key : null;
 }
 
 /** Every filing with no `final` yet, oldest first. */
-export function pendingFilings(_facts: FactsLike): JudgingRow[] {
-  return notYet();
+export function pendingFilings(facts: FactsLike): JudgingRow[] {
+  const rows: JudgingRow[] = [];
+  for (const q of facts.questions) {
+    for (const f of q.filings) {
+      if (f.final !== null) continue;
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) });
+    }
+  }
+  return rows.sort((a, b) => a.at - b.at);
 }
 
 /** How many filings wait as near misses. */
-export function nearCount(_facts: FactsLike): number {
-  return notYet();
+export function nearCount(facts: FactsLike): number {
+  const n = (facts as FactsLike & { near?: unknown }).near;
+  if (typeof n === "number" && Number.isFinite(n) && n >= 0) return n;
+  return pendingFilings(facts).filter((r) => r.near !== null).length;
 }
 
 /** One question's filings, oldest first. Empty for an unknown question. */
-export function questionFilings(_facts: FactsLike, _id: string): FilingRow[] {
-  return notYet();
+export function questionFilings(facts: FactsLike, id: string): FilingRow[] {
+  const q = facts.questions.find((x) => x.id === id);
+  if (q === undefined) return [];
+  const howOf = (f: FilingLike): FilingHow => {
+    if (f.final === null) return "pending";
+    if (f.how != null) return f.how;
+    if (f.final === "marked") return "marked";
+    return f.final === f.verdict ? "kept" : "overridden";
+  };
+  return q.filings
+    .map((f) => ({ person: f.person, name: f.name, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, how: howOf(f), by: f.by ?? null, at: f.at, near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) }))
+    .sort((a, b) => a.at - b.at);
 }
 
 /** The confirm event for `verdict`; null when the view names none. */
-export function confirmEvent(_facts: FactsLike, _verdict: FactVerdictLike): string | null {
-  return notYet();
+export function confirmEvent(facts: FactsLike, verdict: FactVerdictLike): string | null {
+  const name = facts.confirm?.[verdict];
+  return typeof name === "string" && name !== "" ? name : null;
 }
 
 /** The verdict buttons on a filing, in order, with their glyphs. */
@@ -238,17 +268,30 @@ export interface FilingButton {
 }
 
 /** The ✅ / 😤 / 🤷 buttons on one filing row. */
-export function filingButtons(_facts: FactsLike, _row: Pick<FilingRow, "final" | "proposed" | "how">): FilingButton[] {
-  return notYet();
+export function filingButtons(facts: FactsLike, row: Pick<FilingRow, "final" | "proposed" | "how">): FilingButton[] {
+  if (row.how === "marked" || row.final === "marked") return [];
+  const now = row.final ?? row.proposed;
+  return VERDICT_BUTTONS.map((b) => {
+    const current = b.verdict === now;
+    const title =
+      row.final === null
+        ? `${b.verdict === row.proposed ? "Confirm" : "Override"}: ${b.label}`
+        : current
+          ? `Judged ${b.label} — already on record`
+          : `Override: ${b.label} (judged ${row.final})`;
+    return { ...b, current, disabled: confirmEvent(facts, b.verdict) === null, title };
+  });
 }
 
 /** The story call a verdict button makes for one filing. */
 export function verdictCall(
-  _facts: FactsLike,
-  _row: { person: string; question: string },
-  _verdict: FactVerdictLike,
+  facts: FactsLike,
+  row: { person: string; question: string },
+  verdict: FactVerdictLike,
 ): { event: string; person: string; args: { question: string } } | null {
-  return notYet();
+  const event = confirmEvent(facts, verdict);
+  if (event === null) return null;
+  return { event, person: row.person, args: { question: row.question } };
 }
 
 // ---------------------------------------------------------------------------
@@ -259,21 +302,53 @@ export function verdictCall(
 export const QUEUE_SLOW_MS = 40_000;
 
 /** A character's request queue (the cast row's, else the mind's); null on an older server. */
-export function agentQueueOf(_character: string, _cast: readonly CastLike[], _minds: readonly MindLike[], _now?: number): QueueLike | null {
-  return notYet();
+export function agentQueueOf(character: string, cast: readonly CastLike[], minds: readonly MindLike[], now?: number): QueueLike | null {
+  const c = cast.find((x) => x.id === character)?.agentQueue;
+  if (isQueue(c)) return aged(c, now);
+  const m = minds.find((x) => x.character === character)?.agentQueue;
+  return isQueue(m) ? aged(m, now) : null;
+}
+
+const isQueue = (v: unknown): v is QueueLike =>
+  v !== null &&
+  typeof v === "object" &&
+  typeof (v as QueueLike).depth === "number" &&
+  ((v as QueueLike).oldestMs === null || typeof (v as QueueLike).oldestMs === "number") &&
+  typeof (v as QueueLike).stalled === "boolean";
+
+/** A waiting queue's `oldestMs` aged by the time since it arrived. */
+function aged(q: QueueLike, now: number | undefined): QueueLike {
+  if (now === undefined || q.receivedAt === undefined || q.oldestMs === null || q.depth === 0) return q;
+  return { ...q, oldestMs: q.oldestMs + Math.max(0, now - q.receivedAt) };
 }
 
 /** `1:20` — a wait in minutes and seconds. */
-export function waitText(_ms: number): string {
-  return notYet();
+export function waitText(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 export const QueueTone = { Idle: "idle", Waiting: "waiting", Slow: "slow", Stalled: "stalled" } as const;
 export type QueueTone = (typeof QueueTone)[keyof typeof QueueTone];
 
 /** The queue badge. */
-export function queueBadge(_q: QueueLike): { text: string; tone: QueueTone; title: string } {
-  return notYet();
+export function queueBadge(q: QueueLike): { text: string; tone: QueueTone; title: string } {
+  const oldest = q.oldestMs !== null && q.oldestMs > 0 ? ` · oldest ${waitText(q.oldestMs)}` : "";
+  if (q.stalled) {
+    return {
+      text: `⛔ stalled · ${q.depth} waiting${oldest}`,
+      tone: QueueTone.Stalled,
+      title:
+        "The worker stopped answering (a request unanswered over a minute). Nothing new is sent to it; every waiting guest got the hold line once. It clears on its next reply or a reconnect — restart the worker, or answer from the performer lens.",
+    };
+  }
+  if (q.depth === 0) return { text: "queue empty", tone: QueueTone.Idle, title: "No conversation is waiting for a reply." };
+  const slow = q.oldestMs !== null && q.oldestMs >= QUEUE_SLOW_MS;
+  return {
+    text: `${slow ? "⚠ " : ""}${q.depth} waiting${oldest}`,
+    tone: slow ? QueueTone.Slow : QueueTone.Waiting,
+    title: slow ? "A guest has waited past the busy line (40 s): the worker is behind." : "Conversations waiting for the worker, oldest first.",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -281,8 +356,8 @@ export function queueBadge(_q: QueueLike): { text: string; tone: QueueTone; titl
 // ---------------------------------------------------------------------------
 
 /** Held transfers, oldest first — what "Approve all held" clears. */
-export function heldTransfers<T extends { state: string }>(_view: { open: { transfers: readonly T[] } } | null): T[] {
-  return [];
+export function heldTransfers<T extends { state: string }>(view: { open: { transfers: readonly T[] } } | null): T[] {
+  return (view?.open.transfers ?? []).filter((t) => t.state === "held");
 }
 
 // ---------------------------------------------------------------------------
@@ -290,8 +365,9 @@ export function heldTransfers<T extends { state: string }>(_view: { open: { tran
 // ---------------------------------------------------------------------------
 
 /** The rows a performer can sign in to. */
-export function performerParts<T extends Pick<CastLike, "part" | "agent">>(_cast: readonly T[]): T[] {
-  return [];
+export function performerParts<T extends Pick<CastLike, "part" | "agent">>(cast: readonly T[]): T[] {
+  if (cast.some((c) => c.part !== undefined)) return cast.filter((c) => c.part === true);
+  return cast.filter((c) => c.agent !== true);
 }
 
 export const PartPresence = {
@@ -304,18 +380,22 @@ export const PartPresence = {
 } as const;
 export type PartPresence = (typeof PartPresence)[keyof typeof PartPresence];
 
-export function partPresence(_c: Pick<CastLike, "online" | "held">): PartPresence {
-  return notYet();
+export function partPresence(c: Pick<CastLike, "online" | "held">): PartPresence {
+  if (c.online === true) return PartPresence.Online;
+  if (c.held === true) return PartPresence.PhoneOffline;
+  if (c.online === false || c.held === false) return PartPresence.Free;
+  return PartPresence.Unknown;
 }
 
-/** Any cast row's dot. */
-export function castPresence(_c: Pick<CastLike, "online" | "held" | "agent">, _isPart: boolean): PartPresence {
-  return notYet();
+/** Any cast row's dot: a part's performer presence, an agent's worker, nothing for the rest. */
+export function castPresence(c: Pick<CastLike, "online" | "held" | "agent">, isPart: boolean): PartPresence {
+  if (c.agent === true) return c.online === true ? PartPresence.Voiced : c.online === false ? PartPresence.Unvoiced : PartPresence.Unknown;
+  return isPart ? partPresence(c) : PartPresence.Unknown;
 }
 
 /** Is someone signed in (held, phone online or not)? */
-export function isSignedIn(_p: PartPresence): boolean {
-  return notYet();
+export function isSignedIn(p: PartPresence): boolean {
+  return p === PartPresence.Online || p === PartPresence.PhoneOffline;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,23 +406,45 @@ export function isSignedIn(_p: PartPresence): boolean {
 export const UNSEEN_MS = 30 * 60_000;
 
 /** The director marked this guest as gone home (`<id>.gone` is true). */
-export function isGone(_world: readonly WorldRow[] | ReadonlyMap<string, string>, _id: string): boolean {
-  return notYet();
+export function isGone(world: readonly WorldRow[] | ReadonlyMap<string, string>, id: string): boolean {
+  return truthy(valueOf(world, `${id}.gone`));
 }
 
-/** A Run persona, not a real guest. */
-export function isPersonaRow(_row: Pick<RosterLike, "id" | "owner">, _world: readonly WorldRow[] | ReadonlyMap<string, string>): boolean {
-  return notYet();
+const truthy = (v: string | undefined): boolean => v !== undefined && v.replace(/^"(.*)"$/su, "$1").trim() === "true";
+
+function valueOf(world: readonly WorldRow[] | ReadonlyMap<string, string>, path: string): string | undefined {
+  return world instanceof Map ? world.get(path) : (world as readonly WorldRow[]).find((w) => w.path === path)?.value;
 }
 
-/** Real guests nobody has seen for `ms`, longest-unseen first. */
+/** A mod-spawned persona id (`/api/mod/persona`, or the local sim) starts
+ *  with `p`; a guest who registered through the play app is `g-…`. */
+function isPersonaId(id: string): boolean {
+  return id.startsWith("p");
+}
+
+/** A Run persona, not a real guest: its `<id>.persona` var, an owner, or a persona id (`p…`). */
+export function isPersonaRow(row: Pick<RosterLike, "id" | "owner">, world: readonly WorldRow[] | ReadonlyMap<string, string>): boolean {
+  return isPersonaId(row.id) || (row.owner !== undefined && row.owner !== null) || truthy(valueOf(world, `${row.id}.persona`));
+}
+
+/** Real guests nobody has seen for `ms` (not streaming, not marked gone, not
+ *  a persona), longest-unseen first. A row with no `lastSeen` is never asked
+ *  about: no evidence is not absence. */
 export function unseenGuests(
-  _roster: readonly RosterLike[],
-  _world: readonly WorldRow[],
-  _now: number,
-  _ms: number = UNSEEN_MS,
+  roster: readonly RosterLike[],
+  world: readonly WorldRow[],
+  now: number,
+  ms: number = UNSEEN_MS,
 ): Array<{ id: string; name: string; lastSeen: number }> {
-  return [];
+  const byPath = new Map(world.map((w) => [w.path, w.value]));
+  const out: Array<{ id: string; name: string; lastSeen: number }> = [];
+  for (const r of roster) {
+    if (typeof r.lastSeen !== "number" || r.online === true) continue;
+    if (now - r.lastSeen < ms) continue;
+    if (isGone(byPath, r.id) || isPersonaRow(r, byPath)) continue;
+    out.push({ id: r.id, name: r.name, lastSeen: r.lastSeen });
+  }
+  return out.sort((a, b) => a.lastSeen - b.lastSeen || a.name.localeCompare(b.name));
 }
 
 // ---------------------------------------------------------------------------
@@ -405,8 +507,55 @@ export interface NeedsInputLike {
 
 /** The editor's `needsYou` minus the refused press, with targets instead of
  *  links, plus silent terminals. Row order and copy match `needsYou`. */
-export function hostNeeds(_input: NeedsInputLike): HostNeed[] {
-  return [];
+export function hostNeeds(input: NeedsInputLike): HostNeed[] {
+  const out: HostNeed[] = [];
+  const { now } = input;
+  if (input.facts !== null) {
+    const near = nearCount(input.facts);
+    const nearText = near > 0 ? ` (⚠ ${near} near miss${near === 1 ? "" : "es"})` : "";
+    if (judgeModeOf(input.world, input.facts) === "review") {
+      const n = pendingFilings(input.facts).length;
+      if (n > 0) out.push({ kind: NeedKind.Filings, key: "filings", text: `📝 ${n} filing${n === 1 ? "" : "s"} to review${nearText}`, target: "judge" });
+    } else if (near > 0) {
+      out.push({ kind: NeedKind.NearMiss, key: "near", text: `⚠ ${near} near miss${near === 1 ? "" : "es"} to judge`, target: "judge" });
+    }
+  }
+  const held = heldTransfers(input.wallet).length;
+  if (held > 0) out.push({ kind: NeedKind.Held, key: "held", text: `💰 ${held} held transfer${held === 1 ? "" : "s"}`, target: "wallet" });
+  const parts = new Set(performerParts(input.cast).map((c) => c.id));
+  for (const c of input.cast) {
+    const p = castPresence(c, parts.has(c.id));
+    if (p === PartPresence.Unvoiced) {
+      out.push({ kind: NeedKind.NoWorker, key: `agent:${c.id}`, text: `🤖 ${c.id}: no worker`, target: "agent", character: c.id });
+    } else if (c.agent === true) {
+      const q = agentQueueOf(c.id, input.cast, input.minds ?? [], now);
+      if (q !== null) {
+        const b = queueBadge(q);
+        if (b.tone === QueueTone.Stalled || b.tone === QueueTone.Slow) {
+          out.push({ kind: NeedKind.AgentQueue, key: `queue:${c.id}`, text: `🤖 ${c.id}: ${b.text}`, target: "agent", character: c.id });
+        }
+      }
+    } else if (input.doorsOpen && p === PartPresence.PhoneOffline) {
+      out.push({ kind: NeedKind.PhoneOffline, key: `part:${c.id}`, text: `📱 ${c.id}: phone offline`, target: "part", character: c.id });
+    } else if (input.doorsOpen && p === PartPresence.Free) {
+      out.push({ kind: NeedKind.Free, key: `part:${c.id}`, text: `🎭 ${c.id}: nobody signed in`, target: "part", character: c.id });
+    }
+  }
+  const unseen = unseenGuests(input.roster ?? [], input.world, now);
+  if (unseen.length > 0) {
+    out.push({
+      kind: NeedKind.Unseen,
+      key: "unseen",
+      text: `👋 ${unseen.length} guest${unseen.length === 1 ? "" : "s"} unseen ${Math.round(UNSEEN_MS / 60_000)} min — mark gone?`,
+      target: "people",
+      guests: unseen,
+    });
+  }
+  const silent = input.silentTerminals ?? [];
+  if (silent.length > 0) {
+    out.push({ kind: NeedKind.Terminals, key: "terminals", text: `📟 ${silent.length} terminal${silent.length === 1 ? "" : "s"} silent`, detail: silent.join(", "), target: "more" });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -466,13 +615,31 @@ export interface AwardSuggestion {
 }
 
 /** The suggestion for one award cue, or null. */
-export function awardSuggestion(_cueId: string, _recap: RecapWire | null): AwardSuggestion | null {
-  return notYet();
+export function awardSuggestion(cueId: string, recap: RecapWire | null): AwardSuggestion | null {
+  const src = AWARD_SOURCES[cueId];
+  if (src === undefined || recap === null) return null;
+  if (src.list === "duck") {
+    // The duck board is fastest first; ties share the same ms.
+    const rows = (recap.duck ?? []).filter((r) => !r.persona);
+    const best = rows[0];
+    if (best === undefined) return null;
+    const tied = rows.filter((r) => r.ms === best.ms);
+    return { id: best.id, name: best.name, value: best.time, ties: tied.slice(1).map(({ id, name }) => ({ id, name })) };
+  }
+  // Lists are high → low (ties by name); re-rank without the personas.
+  const rows = (recap.lists[src.list] ?? []).filter((r) => !r.persona);
+  if (rows.length === 0) return null;
+  const edge = src.end === "top" ? rows[0]!.value : rows[rows.length - 1]!.value;
+  if (src.count && edge <= 0) return null;
+  const tied = rows.filter((r) => r.value === edge);
+  const [first, ...rest] = tied;
+  return { id: first!.id, name: first!.name, value: String(first!.value), ties: rest.map(({ id, name }) => ({ id, name })) };
 }
 
 /** `suggested: Ada (82) · tied: Bob, Cy` — the row's hint. */
-export function suggestionHint(_s: AwardSuggestion): string {
-  return notYet();
+export function suggestionHint(s: AwardSuggestion): string {
+  const tie = s.ties.length > 0 ? ` · tied: ${s.ties.map((t) => t.name).join(", ")}` : "";
+  return `suggested: ${s.name} (${s.value})${tie}`;
 }
 
 export interface AwardFields {
@@ -482,18 +649,43 @@ export interface AwardFields {
 }
 
 /** Fill each award row from its suggestion where the field is empty or still the sheet's own guess. */
-export function fillAwards(_fields: AwardFields, _suggestions: Record<string, AwardSuggestion | null>, _roster: ReadonlySet<string>): AwardFields {
-  return notYet();
+export function fillAwards(fields: AwardFields, suggestions: Record<string, AwardSuggestion | null>, roster: ReadonlySet<string>): AwardFields {
+  const winners = { ...fields.winners };
+  const values = { ...fields.values };
+  const auto = { ...fields.auto };
+  for (const [cue, s] of Object.entries(suggestions)) {
+    if (s === null || !roster.has(s.id)) continue;
+    const was = auto[cue];
+    const w = winners[cue] ?? "";
+    const v = values[cue] ?? "";
+    const winnerOurs = w === "" || (was !== undefined && w === was.winner);
+    if (!winnerOurs) continue;
+    const valueOurs = v === "" || (was !== undefined && v === was.value);
+    winners[cue] = s.id;
+    if (valueOurs) values[cue] = s.value;
+    auto[cue] = { winner: s.id, value: valueOurs ? s.value : (was?.value ?? "") };
+  }
+  return { winners, values, auto };
 }
 
-/** The director picks a winner: the row is theirs from now on. */
-export function pickWinner(_fields: AwardFields, _cue: string, _winner: string): AwardFields {
-  return notYet();
+/** The director picks a winner: the row is theirs from now on (`auto`
+ *  dropped), and a value box still holding the sheet's suggested number is
+ *  cleared — that number was the suggested winner's, not this person's. */
+export function pickWinner(fields: AwardFields, cue: string, winner: string): AwardFields {
+  const winners = { ...fields.winners, [cue]: winner };
+  const values = { ...fields.values };
+  const auto = { ...fields.auto };
+  const was = auto[cue];
+  if (was !== undefined) {
+    if (winner !== was.winner && (values[cue] ?? "") === was.value) delete values[cue];
+    if (winner !== was.winner) delete auto[cue];
+  }
+  return { winners, values, auto };
 }
 
-/** The story's `Night.ended` is true. */
-export function nightEnded(_world: ReadonlyArray<{ path: string; value: string }>): boolean {
-  return notYet();
+/** The story's `Night.ended` is true (the sheet then fetches the recap). */
+export function nightEnded(world: ReadonlyArray<{ path: string; value: string }>): boolean {
+  return world.find((w) => w.path === "Night.ended")?.value.trim() === "true";
 }
 
 // ---------------------------------------------------------------------------
@@ -612,6 +804,85 @@ export interface HostViewInput {
 }
 
 /** Pure; builds on `cueSheetView(input.mod)`. */
-export function hostView(_input: HostViewInput): HostView {
-  return notYet();
+export function hostView(input: HostViewInput): HostView {
+  const { mod, now } = input;
+  const world = mod.world ?? [];
+  const facts = mod.facts ?? null;
+  const cast = mod.cast ?? [];
+  const minds = mod.minds ?? [];
+  const roster = mod.roster ?? [];
+  const runtime: HostView["runtime"] = mod.phase === "open" || mod.phase === "paused" ? mod.phase : "idle";
+  const terminals = input.terminals;
+  const silentTerminals = terminals === null ? [] : terminals.terminals.filter((t) => t.ago > terminals.silentMs).map((t) => t.name);
+  const needs = hostNeeds({ now, world, facts, wallet: mod.wallet ?? null, cast, doorsOpen: runtime === "open", roster, minds, silentTerminals });
+  let judging: HostJudging | null = null;
+  if (facts !== null) {
+    const recent: HostJudging["recent"] = [];
+    for (const q of facts.questions) {
+      for (const row of questionFilings(facts, q.id)) {
+        if (row.final === null && row.ruling === null) continue;
+        recent.push({ ...row, question: q.id, buttons: filingButtons(facts, row) });
+      }
+    }
+    const when = (r: FilingRow): number => Math.max(r.at, r.ruling?.at ?? 0);
+    recent.sort((a, b) => when(b) - when(a));
+    judging = {
+      mode: judgeModeOf(world, facts),
+      judge: typeof facts.judge === "string" && facts.judge !== "" ? facts.judge : null,
+      confirm: facts.confirm ?? null,
+      pending: pendingFilings(facts),
+      near: nearCount(facts),
+      recent: recent.slice(0, 10),
+    };
+  }
+  const w = mod.wallet ?? null;
+  const wallet: HostView["wallet"] =
+    w === null
+      ? null
+      : {
+          name: w.name,
+          held: heldTransfers(w).map((t) => ({ id: t.id, fromName: t.fromName, toName: t.toName, amount: t.amount, settleAt: t.settleAt })),
+          frozen: (w.frozen ?? []).map((f) => ({ who: f.target, name: f.targetName, until: f.until })),
+          stimulus: { uses: w.stimulus.uses, limit: w.stimulus.limit },
+        };
+  const agents: HostView["agents"] = cast
+    .filter((c) => c.agent === true)
+    .map((c) => {
+      const q = agentQueueOf(c.id, cast, minds, now);
+      const waiting = [...(input.waiting.get(c.id) ?? [])].sort((a, b) => a.since - b.since).slice(0, 10).map((x) => ({ ...x, text: x.text.slice(0, 200) }));
+      return { id: c.id, online: c.online === true, queue: q === null ? null : { depth: q.depth, oldestMs: q.oldestMs, stalled: q.stalled }, waiting };
+    });
+  const parts = performerParts(cast).map((c) => ({ id: c.id, presence: castPresence(c, true) }));
+  const people: HostPerson[] = [];
+  for (const r of roster) {
+    // A Run persona only while a director drives it (it has an owner).
+    if (isPersonaRow(r, world) && (r.owner === undefined || r.owner === null)) continue;
+    const flags = input.flags.get(r.id);
+    people.push({
+      id: r.id,
+      name: r.name,
+      location: r.location,
+      ...(r.online !== undefined ? { online: r.online } : {}),
+      ...(r.lastSeen !== undefined ? { lastSeen: r.lastSeen } : {}),
+      ...(r.gone === true || isGone(world, r.id) ? { gone: true as const } : {}),
+      ...(r.persona === true || isPersonaRow(r, world) ? { persona: true as const } : {}),
+      restricted: r.restricted === true,
+      captured: r.captured === true,
+      ...(flags !== undefined && flags.length > 0 ? { flags: flags.map((f) => ({ ...f })) } : {}),
+    });
+  }
+  return {
+    ...cueSheetView(mod),
+    runtime,
+    needs,
+    judging,
+    wallet,
+    king: input.king === null ? null : { hp: input.king.hp, max: input.king.max, fallen: input.king.fallen },
+    terminals: terminals === null ? null : { voiceMuted: terminals.voiceMuted, silentMs: terminals.silentMs, rows: terminals.terminals.map((t) => ({ name: t.name, agoMs: t.ago, ...(t.room !== undefined ? { room: t.room } : {}), view: t.view })) },
+    agents,
+    parts,
+    people,
+    alerts: mod.alerts ?? { path: "Night.alerts", level: "sticky" },
+    staffRooms: [...input.staffRooms],
+  };
 }
