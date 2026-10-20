@@ -3025,11 +3025,13 @@ INTERACTION mark as reinstalled
 INTERACTION accuse
   label: 👁 Put on the watchlist
   who: performer
+  while: Night.ended != true
   description: Antivirus. Raises their doubt.
 
 INTERACTION vouch
   label: 🤝 Vouch for this program
   who: performer
+  while: Night.ended != true
   description: Hosts. Clears their doubt.
 
 INTERACTION check_in_at_desktop
@@ -3097,27 +3099,28 @@ INTERACTION fact_accurate
   label: 📝 Filed fact: accurate
   who: performer
   by: Hosts
-  while: Night.ended != true
+  while: Night.judge_mode == "review" and Night.ended != true
   description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). Same reply as a lie.
 
 INTERACTION fact_lie
   label: 📝 Filed fact: confident lie
   who: performer
   by: Hosts
-  while: Night.ended != true
+  while: Night.judge_mode == "review" and Night.ended != true
   description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). A wrong filed fact is still accepted. Only the Kernel knows.
 
 INTERACTION fact_uncertain
   label: 📝 Filed fact: uncertain (a guess)
   who: performer
   by: Hosts
-  while: Night.ended != true
+  while: Night.judge_mode == "review" and Night.ended != true
   description: Hosts, from # hosts. Confirms or overrides the judge on this program's latest filing (Run can name the question). A guess is marked when its round settles.
 
 INTERACTION beat_the_machine
   label: ♟ They beat the machine
   who: performer
   by: Hosts, Antivirus
+  while: Night.king_armed == 1
   arm: true
   description: Hosts or Antivirus who saw the King checkmated on the door terminal when the door terminal could not report it, on the winner's card. Until truth.txt it gives them the door code (once).
 
@@ -3169,7 +3172,7 @@ INTERACTION radio_crew_door
   who: performer
   by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
   arm: true
-  while: Night.ended != true
+  while: Night.step >= 14 and Night.ended != true
   description: Before you (or the crew) open the cold door for yourselves: for 2 minutes an opening only tells # hosts, and The Heart is kept for the programs.
 
 INTERACTION radio_beans
@@ -3232,12 +3235,14 @@ INTERACTION pay_truthcoin
   label: 🪙 Pay 100 Truthcoin
   who: performer
   by: McAfee Anti-Virus, Hosts
+  while: Night.truther_sent == true and Night.ended != true
   description: McAfee Anti-Virus (the exchange broker) or a host (the bank). Corrections only: programs send their own Truthcoin from the Wallet room.
 
 INTERACTION charge_truthcoin
   label: 🪙 Charge 100 Truthcoin
   who: performer
   by: McAfee Anti-Virus, CRA Agent Software, Hosts
+  while: Night.truther_sent == true and Night.ended != true
   description: McAfee Anti-Virus, CRA Agent Software (audits) or a host. Corrections only: a transfer is denied from the CRA booth's Wallet room.
 
 INTERACTION brought_up_the_bag

@@ -343,3 +343,26 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     expect(escort).toMatchObject({ readout: true, alert: true, moment: "major", about: "g5" });
   }, SLOW);
 });
+
+describe("Trapped in the Internet — wave 13: always-on buttons tightened", () => {
+  it("📝 only in review mode, 🪙 only from the Truther Download, 🔧 only from the Y2K hour, ♟ only while the King is armed", () => {
+    const n = boot();
+    const live = (who: string, id: string) => primeView(n.sim, who).interactions.find((i) => i.id === id)?.live !== false;
+    expect(live("Clippy", "fact_accurate")).toBe(false);
+    n.take(n.sim.setVar("Night.judge_mode", "review"));
+    expect(live("Clippy", "fact_accurate")).toBe(true);
+    n.take(n.sim.setVar("Night.judge_mode", "auto"));
+    expect(live("McAfee Anti-Virus", "pay_truthcoin")).toBe(false);
+    expect(live("Task Manager", "charge_truthcoin")).toBe(false);
+    expect(live("Norton Anti-Virus", "radio_crew_door")).toBe(false);
+    expect(live("Norton Anti-Virus", "beat_the_machine")).toBe(true);
+    for (const c of TO_HOUR) n.press(c);
+    n.tick(125);
+    expect(live("McAfee Anti-Virus", "pay_truthcoin")).toBe(true);
+    for (const c of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]) n.press(c);
+    expect(live("Norton Anti-Virus", "radio_crew_door")).toBe(true);
+    toCeremony(n);
+    for (const id of ["beat_the_machine", "radio_crew_door", "accuse"]) expect(live("Norton Anti-Virus", id), id).toBe(false);
+    expect(live("Task Manager", "pay_truthcoin")).toBe(false);
+  }, SLOW);
+});
