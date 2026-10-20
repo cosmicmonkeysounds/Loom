@@ -242,6 +242,10 @@ function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) 
   return true;
 }
 
+/** The longest unlock code `/api/guest/codex/redeem` journals (fix round):
+ *  a printed code or a puzzle answer is a few words at most. */
+export const MAX_CODE_LENGTH = 64;
+
 /** How many thread lines an agent request carries. */
 const AGENT_HISTORY = 30;
 
@@ -4493,6 +4497,12 @@ export class EventRuntime {
         const code = str(body, "code").trim();
         if (code === "") {
           sendJson(res, 400, { error: "empty code" });
+          return true;
+        }
+        // No code is that long: a wall of text is refused before the journal
+        // (a miss is journaled verbatim), and costs no miss.
+        if (code.length > MAX_CODE_LENGTH) {
+          sendJson(res, 400, { error: "not a code" });
           return true;
         }
         // Past the miss cap every redeem waits (a hit too — else guessing
