@@ -19,13 +19,11 @@ import { retractedPinSeqs } from "../pins.ts";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../types.ts";
 import {
   BALLOON_MS,
-  EMPTY_MOMENTS,
   GLITCH_MS,
   READOUT_WAIT_MS,
   afterWait,
   arrivals,
   doneAbove,
-  loudObjectives,
   missedCount,
   momentsReducer,
   sameWords,
@@ -39,6 +37,7 @@ import {
   type Surfaces,
   type Viewer,
 } from "./model.ts";
+import { MOMENTS_MEMORY, announceLoud, loadDone, recallMoments, rememberMoments, saveDoneList, type EngineMemory } from "./memory.ts";
 import { Balloon, BlueScreen, Glitch, MissedList, MomentDialog, StickyBanner, SummarySticky, Toast } from "./surfaces.tsx";
 
 export interface MomentsInput {
@@ -89,87 +88,66 @@ interface Engine {
 
 const EngineContext = createContext<Engine | null>(null);
 
-function loudKey(role: MomentsInput["role"]): string {
-  return `loom.moments.loud.${role}`;
-}
-
-/** Where the seqs settled above the mark persist (`doneAbove`). */
-function doneKey(role: MomentsInput["role"]): string {
-  return `loom.moments.done.${role}`;
-}
-
 function useMomentsEngine(input: MomentsInput): Engine {
   const host = usePlayHost();
   const visible = useVisible();
-  const [state, dispatch] = useReducer(momentsReducer, EMPTY_MOMENTS);
+  const { alerts, role, session } = input;
+  // The engine's memory outlives a remount of the same sign-in (the guest
+  // app swaps its cutscene and main roots, each with its own provider).
+  const memRef = useRef<EngineMemory | null>(null);
+  if (memRef.current === null) memRef.current = recallMoments(role, session);
+  const mem = memRef.current;
+  const [state, dispatch] = useReducer(momentsReducer, mem.state);
+  mem.state = state;
   const [holds, setHolds] = useState(0);
   const held = holds > 0;
   const [tick, setTick] = useState(() => Date.now());
   const level = input.alertLevel ?? DEFAULT_ALERT_LEVEL;
-  const { alerts, role, session } = input;
 
-  const processed = useRef(new Set<number>());
-  const processedMax = useRef(-1);
-  const beats = useRef(new Map<string, number>());
-  const lastHoldEnd = useRef(Number.NEGATIVE_INFINITY);
-  /** The history count last processed: a new one means the messages are a reconnect's backlog. */
-  const historiesSeen = useRef(0);
   const live = useRef({ visible, level, held, phase: input.phase ?? null });
   live.current = { visible, level, held, phase: input.phase ?? null };
   const viewer: Viewer = { role, me: input.me, here: input.here ?? null, filter: input.filter };
   const viewerRef = useRef(viewer);
   viewerRef.current = viewer;
 
-  const stateRef = useRef(state);
-  stateRef.current = state;
-  const savedDone = useRef("");
   const saveDone = useCallback(
     (seqs: number[]) => {
       if (session === null) return;
       const text = seqs.join(",");
-      if (text === savedDone.current) return;
-      savedDone.current = text;
-      try {
-        host.storage.save(doneKey(role), { session, seqs });
-      } catch {
-        /* storage blocked — at worst a reload replays a read moment */
-      }
+      if (text === mem.savedDone) return;
+      mem.savedDone = text;
+      saveDoneList(host.storage, role, session, seqs);
     },
     [host, role, session],
   );
   // Settle the mark under whatever is still waiting, and remember what is
   // done above it (a reload must not replay a moment already read).
   // Readouts waiting out `READOUT_WAIT_MS` are not settled either.
-  const pending = useRef(new Set<number>());
   const settleNow = useCallback(() => {
     if (session === null) return;
-    let mark = settledMark(stateRef.current, processedMax.current);
-    for (const seq of pending.current) mark = Math.min(mark, seq - 1);
+    let mark = settledMark(mem.state, mem.processedMax);
+    for (const seq of mem.pending) mark = Math.min(mark, seq - 1);
     alerts.settle(mark);
-    const done = [...processed.current].filter((seq) => !pending.current.has(seq));
-    saveDone(doneAbove(stateRef.current, done, alerts.mark()));
+    const done = [...mem.processed].filter((seq) => !mem.pending.has(seq));
+    saveDone(doneAbove(mem.state, done, alerts.mark()));
   }, [session, alerts, saveDone]);
 
   // A new sign-in, or a story restart under this one: nothing queued is news.
   // A sign-in picks up what it had already settled above its mark (a reload);
   // a restart renumbers the seqs, so that list goes.
-  const lastSession = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    processed.current = new Set();
-    processedMax.current = -1;
-    beats.current = new Map();
+    if (mem.session === session && mem.epoch === alerts.epoch) return; // a remount: carry on
+    const signIn = mem.session !== session;
+    mem.session = session;
+    mem.epoch = alerts.epoch;
+    mem.processed = new Set();
+    mem.processedMax = -1;
+    mem.beats = new Map();
+    mem.pending = new Set();
     dispatch({ type: "reset" });
-    const signIn = lastSession.current !== session;
-    lastSession.current = session;
     if (session === null) return;
-    if (signIn) {
-      const stored = host.storage.load<{ session: string; seqs: number[] }>(doneKey(role));
-      const mark = alerts.mark();
-      if (stored !== null && stored.session === session && Array.isArray(stored.seqs)) {
-        for (const seq of stored.seqs) if (typeof seq === "number" && seq > mark) processed.current.add(seq);
-        savedDone.current = stored.seqs.join(",");
-      }
-    } else saveDone([]);
+    if (signIn) loadDone(host.storage, role, session, alerts.mark(), mem);
+    else saveDone([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alerts.epoch, session]);
 
@@ -188,40 +166,40 @@ function useMomentsEngine(input: MomentsInput): Engine {
   useEffect(() => {
     if (session === null) return;
     const mark = alerts.mark();
-    if (processedMax.current < mark) processedMax.current = mark;
+    if (mem.processedMax < mark) mem.processedMax = mark;
     const now = storyNow(input.messages.values(), input.clock);
     const l = live.current;
-    const { moments, seen } = arrivals(input.messages.values(), mark, processed.current, viewerRef.current, {
+    const { moments, seen } = arrivals(input.messages.values(), mark, mem.processed, viewerRef.current, {
       now,
       phase: l.phase,
       bsod: role === "guest" && l.level === "bsod",
-      beats: beats.current,
+      beats: mem.beats,
     });
     for (const s of seen) {
-      processed.current.add(s);
-      if (s > processedMax.current) processedMax.current = s;
+      mem.processed.add(s);
+      if (s > mem.processedMax) mem.processedMax = s;
     }
     // A reconnect's backlog (a new history since the last pass) is replayed
     // like a wake: staleness and compression. A live stream just queues,
     // however many moments one drain posted.
     const histories = alerts.histories?.() ?? 0;
-    const backlog = histories !== historiesSeen.current;
-    historiesSeen.current = histories;
+    const backlog = histories !== mem.historiesSeen;
+    mem.historiesSeen = histories;
     if (seen.length === 0) return;
     const wall = Date.now();
     const sorted = sortArrivals(moments, {
       role,
       held: l.held,
-      sinceHoldEnd: wall - lastHoldEnd.current,
+      sinceHoldEnd: wall - mem.lastHoldEnd,
       about: (seq) => aboutGuest(input.messages.get(seq ?? -1)),
       recent: alerts.recent(),
       now: wall,
     });
     arrive(sorted.now, backlog);
     if (sorted.later.length > 0) {
-      for (const m of sorted.later) if (m.seq !== null) pending.current.add(m.seq);
+      for (const m of sorted.later) if (m.seq !== null) mem.pending.add(m.seq);
       window.setTimeout(() => {
-        for (const m of sorted.later) if (m.seq !== null) pending.current.delete(m.seq);
+        for (const m of sorted.later) if (m.seq !== null) mem.pending.delete(m.seq);
         const news = afterWait(sorted.later, alerts.recent(), Date.now());
         if (news.length > 0) arrive(news, backlog);
         else settleNow();
@@ -249,15 +227,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   // A loud objective going live: one major moment per sign-in (persisted).
   useEffect(() => {
     if (session === null || input.objectives === undefined) return;
-    const stored = host.storage.load<{ session: string; ids: string[] }>(loudKey(role));
-    const ids = stored !== null && stored.session === session ? stored.ids : [];
-    const fresh = loudObjectives(input.objectives, new Set(ids), storyNow([], input.clock), live.current.phase);
-    if (fresh.length === 0) return;
-    try {
-      host.storage.save(loudKey(role), { session, ids: [...ids, ...fresh.map((m) => m.key.slice(2))] });
-    } catch {
-      /* storage blocked — at worst it announces again after a reload */
-    }
+    const fresh = announceLoud(host.storage, role, session, input.objectives, storyNow([], input.clock), live.current.phase);
     arrive(fresh, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives, session]);
@@ -276,7 +246,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const wasHeld = useRef(held);
   useEffect(() => {
     if (wasHeld.current && !held) {
-      lastHoldEnd.current = Date.now();
+      mem.lastHoldEnd = Date.now();
       dispatch({ type: "tick", now: Date.now(), held: true });
       dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null });
     }
@@ -294,19 +264,23 @@ function useMomentsEngine(input: MomentsInput): Engine {
     return () => window.clearInterval(t);
   }, [held]);
 
+  // Keep the memory for this sign-in (one per role).
+  useEffect(() => {
+    rememberMoments(role, session, mem);
+  }, [role, session, mem]);
+
   const surfaces = surfacesOf(state, held);
 
   // On-screen time per moment (a glance < 1 s is missed), and the chime the
   // first time a major moment reaches the screen.
-  const shownAt = useRef(new Map<string, number>());
   const onScreen = [surfaces.balloon, surfaces.sticky, surfaces.modal].filter((q): q is Queued => q !== null);
   const onScreenKeys = onScreen.map((q) => q.moment.key).join("|");
   useEffect(() => {
     if (!visible) return;
     let ring = false;
     for (const q of onScreen) {
-      if (shownAt.current.has(q.moment.key)) continue;
-      shownAt.current.set(q.moment.key, Date.now());
+      if (mem.shownAt.has(q.moment.key)) continue;
+      mem.shownAt.set(q.moment.key, Date.now());
       if (q.moment.severity === "major") ring = true;
     }
     if (ring && input.sound) {
@@ -317,8 +291,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   }, [onScreenKeys, visible]);
 
   const close = useCallback((q: Queued, acted: boolean) => {
-    const at = shownAt.current.get(q.moment.key);
-    shownAt.current.delete(q.moment.key);
+    const at = mem.shownAt.get(q.moment.key);
+    mem.shownAt.delete(q.moment.key);
     dispatch({ type: "dismiss", key: q.moment.key, onScreenMs: at === undefined ? 0 : Date.now() - at, acted });
   }, []);
   const dismiss = useCallback((q: Queued) => close(q, false), [close]);
@@ -394,6 +368,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
 function aboutGuest(m: ChatMessage | undefined): boolean {
   return m !== undefined && typeof m.about === "string" && m.about !== "";
 }
+
+export { MOMENTS_MEMORY };
 
 export function MomentsProvider(p: MomentsInput & { children: ReactNode }) {
   const { children, ...input } = p;
