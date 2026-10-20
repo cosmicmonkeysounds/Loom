@@ -2429,6 +2429,10 @@ export class Sim {
       const { args, argIds } = this.parseEventArgs(head.slice(withIdx + 6), bindings);
       for (const [k, v] of args) params[k] = display(v);
       for (const [k, v] of argIds) params[k] = v;
+      // `with moment: major` (wave 13) is a word, not an expression: a bare
+      // `major` evaluates to null, so keep the written word for the client.
+      const moment = /(?:^|,)\s*moment\s*:\s*([A-Za-z]+)\s*(?:,|$)/u.exec(head.slice(withIdx + 6));
+      if (moment !== null && params["moment"] === "null") params["moment"] = moment[1]!;
       head = head.slice(0, withIdx).trim();
     }
     // Split `to scope` after a quoted text (which may itself contain " to ").
