@@ -116,8 +116,8 @@ for this spec.
     `broadcast … to group(Antivirus)` reaches no booth **[verified, feas f2]**. Staff cues are
     `reply` readouts from `TRAIT Enforcer` / `TRAIT Host` / CHARACTER hooks on a named event
     (e.g. `fire program_late for self` → every Enforcer's `when program_late for program:
-    reply …`). Note: every performer booth also sees every broadcast unnotified in
-    `# system-log` (incl. Trabolta's private pop-ups); that is accepted as staff visibility.
+    reply …`). (Until wave 13 every booth also saw every broadcast in `# system-log`;
+    the channel is gone, so a broadcast posts once, in the lobby.)
 17. **Party-wide scopes.** `start quest X for everyone` reaches only the persons who exist at
     that moment, so every party-wide quest also has a ROLE catch-up watcher (§2.7)
     **[verified, feas f3]**. `unlock X for group(G)` / `reveal X for group(G)` fail their
@@ -427,7 +427,6 @@ door first opens once Trabolta is awake (The Heart; wave 7 said from the Y2K hou
 
 ```
 SPACE The Operating System          label: The Operating System
-  CHANNEL system log                kind: open, type: announcement, label: # system-log
   CHANNEL general                   kind: open, label: # general
   CHANNEL task manager              kind: open, label: # task-manager, slow: 5s, hidden: true   (revealed at call_to_the_desktop)
   CHANNEL clipboard                       kind: open, label: # clipboard, slow: 3s, ephemeral: 45s, hidden: true   (revealed at start_the_second_hunt)
@@ -1644,7 +1643,7 @@ will not need them. Tell no one.`
 `The Centre Square` reaches the anti-AI program by its own watcher (§2.7).
 
 **A5 Explore and meet** (free time until C1). Phones: Desktop room + the four revealed
-house rooms, `# general`, `# system-log`, People (directory: everyone). Terminals: ads. The
+house rooms, `# general`, People (directory: everyone). Terminals: ads. The
 generators bark. Bathroom Mode:
 - `when go to the bathroom for program:` `set program.afk = true` · `reply Bathroom Mode
   engaged. You are not hacking the Internet. Everyone knows.` The Antivirus and Recycling Bin
@@ -3765,8 +3764,8 @@ cards / featured claim codes:** software (§7 #1, #19); the story needs nothing 
 8. **The server room stays live during the final reveal** (deliberate): a combo entered before
    the verdict still ends the night.
 9. **Staff back-rooms:** `# hosts` / `# quarantine` are visible to every performer; booth
-   readouts are live-only (not kept across a reload) and do not chime; every broadcast,
-   including Trabolta's private pop-ups, also shows in performers' `# system-log`.
+   readouts are live-only (not kept across a reload) and do not chime; there is no
+   `# system-log` since wave 13 (one home per broadcast: the lobby).
 
 ---
 

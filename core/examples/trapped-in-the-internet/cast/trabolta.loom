@@ -290,8 +290,8 @@ CHARACTER Trabolta is Person
         Trabolta: I do not have the strength.
 
   // Once a night: a corrupted program walks out of the Internet with no
-  // reinstallation. Everyone hears it was irregular (staff booths see it
-  // in # system-log).
+  // reinstallation. Everyone hears it was irregular (in the lobby, booths
+  // included).
   when pardon_a_program for program:
     if program.name != null:
       if target.name == null:
