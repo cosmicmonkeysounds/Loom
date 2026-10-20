@@ -65,6 +65,13 @@ describe("which event reads resolve the author session", () => {
     expect(wantsModRead("/events", params("role=prime"))).toBe(false);
   });
 
+  it("the editor's exact identity lens (?as=) of a guest or a booth, on the author's session", () => {
+    expect(wantsModRead("/api/state", params("role=prime&as=Host%20Hal"))).toBe(true);
+    expect(wantsModRead("/api/state", params("role=guest&as=g-1"))).toBe(true);
+    // A booth's or a guest's own read (no as=) never resolves the session.
+    expect(wantsModRead("/api/state", params("role=prime"))).toBe(false);
+  });
+
   it("never a game's own writes or anything else", () => {
     expect(wantsModRead("/api/spatial/pose", params())).toBe(false);
     expect(wantsModRead("/api/spatial/found", params())).toBe(false);

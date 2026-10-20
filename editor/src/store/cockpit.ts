@@ -173,7 +173,7 @@ export function storyNow(clock: StoryClock | null, running: boolean, wallNow: nu
 /** A live play-as session, shaped for `@loom/play/embed`'s `PlayEmbed`. */
 export type PlayerSession =
   | { role: 'guest'; token: string; id: string; name: string; eventId: string; title?: string }
-  | { role: 'prime'; token: string; character: string; eventId: string; title?: string }
+  | { role: 'prime'; token: string; character: string; eventId: string; title?: string; host?: boolean }
 
 /** The god-view lens — the cockpit's default `perspective`. Any other value
  *  is a guest/persona id (their room set + feed) or a character id (the

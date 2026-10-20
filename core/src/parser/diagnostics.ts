@@ -90,6 +90,11 @@ export const Code = {
   L1210AlertsPathInvalid: "L1210",
   /** `admin: true` on a CHARACTER no performer can sign in as (wave 13, a warning). */
   L1211AdminNotAPart: "L1211",
+  /** A `when …:` / `on …:` event phrase that reads as a declared INTERACTION
+   *  or a fired event but parses as a shorter event plus a subject
+   *  (`when glitch out:` → event `glitch`, subject `out`), so the press or
+   *  the `fire` runs nothing (a warning). */
+  L1212TriggerTruncated: "L1212",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

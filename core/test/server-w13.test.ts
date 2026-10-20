@@ -275,8 +275,6 @@ describe("the host allowlist (§2.7)", () => {
       ["/api/mod/set", { id: g.id, field: "score", value: 5 }],
       ["/api/mod/load", {}],
       ["/api/mod/reset", {}],
-      ["/api/mod/start", {}],
-      ["/api/mod/stop", {}],
       ["/api/mod/var", { path: "Night.step", value: "3" }],
       ["/api/mod/var", { path: "Night.alerts", value: "loud" }],
       ["/api/mod/say", { channel: "dm:Trabolta", as: "Trabolta", text: "hi" }],
@@ -635,7 +633,7 @@ describe("PrimeView.paused and PrimeView.host (integration)", () => {
   });
 
   const PATCHED = STORY.replace("== Opening", "INTERACTION patch\n  who: performer\n  by: Norton\n\n== Opening").replace("buttons: scan, mark", "buttons: scan, mark, patch");
-  it("a host part's booth says host; the editor's lens (?as=) of it is exact, a plain part's carries no host", async () => {
+  it("a host part's booth says host; the editor's lens (?as=) of it is exact, a plain part's says host: false", async () => {
     const rt = freshRuntime({ scenarioSource: PATCHED });
     rt.openDoors();
     const host = await hostToken(rt);
@@ -647,10 +645,10 @@ describe("PrimeView.paused and PrimeView.host (integration)", () => {
     expect(lens.objectives).toEqual(own.objectives);
     // Clippy (a Host by faction, not an admin part): no host, no other character's button.
     const clippy = (await get(rt, "/api/state?role=prime&as=Clippy", true)).json as typeof own;
-    expect("host" in clippy).toBe(false);
+    expect(clippy.host).toBe(false); // said, never left out (C4: a lost host reaches the booth)
     expect(clippy.objectives.find((o) => o.id === "Watch The Door")!.buttons).not.toContain("patch");
     const plain = (await boothLogin(rt, "Clippy")).json.token as string;
-    expect("host" in (await get(rt, `/api/state?role=prime&token=${plain}`)).json).toBe(false);
+    expect((await get(rt, `/api/state?role=prime&token=${plain}`)).json.host).toBe(false);
   });
 });
 

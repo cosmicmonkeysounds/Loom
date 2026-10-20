@@ -92,12 +92,52 @@ export function reservedDefFor(model: SimModel, name: string): IdentityDef | nul
     ?? null;
 }
 
+/** Invisible characters NFKC keeps that are not `\p{Cf}`: the Hangul
+ *  fillers, the blank Braille pattern, the combining grapheme joiner, the
+ *  Mongolian free variation selectors, the Khmer inherent vowels and the
+ *  supplementary variation selectors (each renders as nothing after a letter). */
+const INVISIBLE_MARKS = /[\u115F\u1160\u3164\uFFA0\u2800\u034F\u180B-\u180D\u180F\u17B4\u17B5\u{E0100}-\u{E01EF}]/gu;
+
+/** A variation selector that is not styling an emoji (`❤️` keeps its own). */
+const STRAY_VARIATION = /(?<!\p{Extended_Pictographic})[\uFE00-\uFE0F]/gu;
+
+/** Format / control characters, but a zero-width joiner inside an emoji
+ *  sequence (`👨‍💻`) is that emoji, not a disguise. */
+function dropFormat(s: string): string {
+  return s.replace(/[\p{Cf}\p{Cc}]/gu, (c, at: number) =>
+    c === "\u200D" && /\p{Extended_Pictographic}\uFE0F?$/u.test(s.slice(0, at)) && /^\p{Extended_Pictographic}/u.test(s.slice(at + 1)) ? c : "",
+  );
+}
+
+/**
+ * A typed guest name as the house shows and compares it: NFKC (a full-width
+ * `Ｃalculator` is `Calculator`), every format / control character dropped
+ * (zero-width spaces and joiners, bidi controls, a soft hyphen, tag
+ * characters), the invisible fillers, joiners and stray variation selectors
+ * dropped, whitespace collapsed. Applied before the taken / part / caste /
+ * reserved checks and to the stored display name, so a lookalike of a taken
+ * name folds onto it (409) instead of posing as them. (Cross-script
+ * homoglyphs, a Cyrillic `а`, are not folded.)
+ */
+export function cleanGuestName(raw: string): string {
+  return dropFormat(raw.normalize("NFKC").replace(/\s+/gu, " "))
+    .replace(INVISIBLE_MARKS, "")
+    .replace(STRAY_VARIATION, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+/** The first `max` characters (code points, never half a surrogate pair). */
+export function clipName(name: string, max: number): string {
+  return Array.from(name).slice(0, max).join("");
+}
+
 /** Why a guest may not register a name, or null when they may. `mayClaim`
  *  says whether this caller may take a `reserved: true` program (they hold
  *  its claim, or a director opened it); without it a reserved program is
  *  refused with `RESERVED`. */
 export function guestNameRefusal(model: SimModel, name: string, taken: ReadonlySet<string>, mayClaim: (character: string) => boolean = () => false): string | null {
-  const folded = foldName(name);
+  const folded = foldName(cleanGuestName(name));
   if (folded === "") return "pick a program";
   if (taken.has(folded)) return `${name} is already here tonight — pick another program`;
   const def = identityDefs(model).find((d) => foldName(d.name) === folded);
@@ -172,7 +212,9 @@ export function performerRefusal(model: SimModel, character: string, held: Reado
 /** The folded names of everyone currently registered (guests + personas). */
 export function takenNames(persons: Iterable<{ name: string }>): Set<string> {
   const out = new Set<string>();
-  for (const p of persons) out.add(foldName(p.name));
+  // Cleaned too: a name stored before the cleaning (an older run) still
+  // holds its program against a lookalike.
+  for (const p of persons) out.add(foldName(cleanGuestName(p.name)));
   return out;
 }
 

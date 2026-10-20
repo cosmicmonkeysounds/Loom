@@ -3,9 +3,10 @@
 //! Recycling Bin) may call on the moderator surface — exactly what the
 //! Play app's host panel needs (cues, judging, announcements, the alert
 //! dial, wallet holds, the King, terminals, codes, parts, answering as an
-//! agent), never the god view (the full mod stream and `ModView`, the log,
-//! the Mind trace and control, arbitrary world writes, guest edits,
-//! lifecycle, maps, impersonation).
+//! agent, and the doors: open them, pause, resume), never the god view (the
+//! full mod stream and `ModView`, the log, the Mind trace and control,
+//! arbitrary world writes, guest edits, maps, impersonation) and never the
+//! rest of the lifecycle (restart, load / push draft, go live, end, resync).
 //!
 //! A token with `canHost` but not `canModerate` (and no author session) is
 //! a **host-only** caller. Every moderator route asks `isHostRoute` for a
@@ -44,6 +45,12 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   "/api/mod/guest/pair",
   "/api/mod/prime/release",
   "/api/mod/scan",
+  // The doors (fix round, C2): open them (`/api/mod/start` — also the resume
+  // after a pause) and pause (`/api/mod/stop`), for a fire alarm or the night
+  // run from Play. Never `/api/mod/reset` / `load` / `resync`, and the
+  // control plane's go live / end take an author session, never a token.
+  "/api/mod/start",
+  "/api/mod/stop",
   // Upgrades the token with the mod passcode (the full capability, as today).
   "/api/mod/login",
 ]);

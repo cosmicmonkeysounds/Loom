@@ -19,7 +19,7 @@ import rawCss from "./styles.css?inline";
 /** A session the host already holds for this participant. */
 export type EmbedSession =
   | { role: "guest"; token: string; id: string; name: string; eventId: string; title?: string }
-  | { role: "prime"; token: string; character: string; eventId: string; title?: string };
+  | { role: "prime"; token: string; character: string; eventId: string; title?: string; host?: boolean };
 
 /** The width the two-pane (sidebar + stage) layout starts at — `WIDE`. */
 const WIDE_PX = 820;
@@ -52,7 +52,7 @@ function EmbeddedApp({
       storage: memoryStore(
         session.role === "guest"
           ? { "loom.guest": { id: session.id, name: session.name, token: session.token, eventId: session.eventId, title: session.title } }
-          : { "loom.prime": { token: session.token, character: session.character, admin: false, eventId: session.eventId, title: session.title } },
+          : { "loom.prime": { token: session.token, character: session.character, admin: false, ...(session.host === true ? { host: true } : {}), eventId: session.eventId, title: session.title } },
       ),
       crawl: createCrawl(),
     }),

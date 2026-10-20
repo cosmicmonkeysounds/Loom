@@ -310,8 +310,9 @@ export interface PrimeView {
    *  booth's countdowns hold still (`booth/model.ts` `viewPaused`). */
   paused?: true;
   /** The booth holds the host capability (an `admin: true` part, or the
-   *  moderator passcode): it may press another character's `by:` button. */
-  host?: true;
+   *  moderator passcode): it may press another character's `by:` button.
+   *  The server sends `false` too, so a revoked host reaches the booth. */
+  host?: boolean;
 }
 
 // --- wave 13: objectives, the night, a booth's guest card (mirror of server/views.ts)

@@ -781,8 +781,9 @@ describe("being anyone — the mod reads a participant's own projection", () => 
     expect(asGuest.json).toEqual(JSON.parse(JSON.stringify({ ...guestView(rt.liveSim!, id, "dm:Recruiter"), answered: [], avatars: {} })));
     const asPrime = await get(rt, "/api/state?role=prime&as=Recruiter");
     expect(asPrime.status).toBe(200);
-    // (plus the booth's own `answered` cards list — empty here)
-    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...primeView(rt.liveSim!, "Recruiter"), answered: [], avatars: {} })));
+    // (plus the booth's own `answered` cards list — empty here, and the
+    // server's explicit `host: false`, C4)
+    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...primeView(rt.liveSim!, "Recruiter"), host: false, answered: [], avatars: {} })));
     expect((await get(rt, "/api/state?role=guest&as=nobody")).status).toBe(404);
     expect((await get(rt, "/api/state?role=prime&as=Nobody")).status).toBe(404);
     expect((await get(rt, `/api/state?role=guest&as=${id}`, false)).status).toBe(403);
