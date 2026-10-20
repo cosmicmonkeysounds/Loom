@@ -172,6 +172,17 @@ describe("the card as rendered", () => {
     expect(html).toContain("Nothing for Norton Anti-Virus to press on Ada right now.");
   });
 
+  it("with an objective whose buttons are not live here, says the rest are below and opens the fold", () => {
+    // The objective names Send, which is not live for Ada; Put on the watchlist is.
+    const html = renderToStaticMarkup(
+      <GuestCardBody session={fakeSession({ objectives: [obj("door", ["send"])] })} guestId="g-1" seed={{ card: card(["watch"]) }} admin={false} onOpenThread={() => {}} />,
+    );
+    expect(html).not.toContain("Nothing for Norton Anti-Virus to press");
+    expect(html).toContain("Nothing your objective needs on Ada right now — the other buttons are below.");
+    expect(html).toMatch(/aria-expanded="true"[^>]*>▾ All buttons…/);
+    expect(html).toContain("L-watch");
+  });
+
   it("an arm: true face button keeps arming (it carries no armed look until tapped)", () => {
     const html = renderToStaticMarkup(
       <GuestCardBody session={fakeSession({ objectives: [obj("y2k", ["patch_a"])] })} guestId="g-1" seed={{ card: card(["patch_a"]) }} admin={false} onOpenThread={() => {}} />,

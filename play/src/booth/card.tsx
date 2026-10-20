@@ -56,7 +56,9 @@ export function GuestCardBody({
   const [done, setDone] = useState<string | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [all, setAll] = useState(false);
+  // The "All buttons…" fold: null = not touched (it opens by itself when
+  // the face is empty but the fold holds a live button).
+  const [all, setAll] = useState<boolean | null>(null);
   const [earlier, setEarlier] = useState(false);
   const [sharing, setSharing] = useState(false);
   const arm = useArmButtons();
@@ -101,6 +103,8 @@ export function GuestCardBody({
   const chips = guest !== null ? factChips(guest, where) : [];
   const buttons = cardButtons(view?.interactions ?? [], objectives, card, character, admin || session.auth?.host === true);
   const lore = view?.codex ?? [];
+  const restLive = buttons.rest.some((b) => b.live);
+  const allOpen = all ?? (card !== null && buttons.face.length === 0 && restLive);
   const past = (card?.readouts ?? []).filter((r) => replies === null || !replies.includes(r.text));
 
   const press = (b: CardButton) => {
@@ -192,7 +196,15 @@ export function GuestCardBody({
       )}
       <div className="booth-face">
         {buttons.face.map((b) => btn(b, "face"))}
-        {buttons.face.length === 0 && card !== null && <p className="booth-none">Nothing for {character} to press on {name} right now.</p>}
+        {buttons.face.length === 0 && card !== null && (
+          <p className="booth-none">
+            {restLive && (objectives ?? []).length > 0
+              ? `Nothing your objective needs on ${name} right now — the other buttons are below.`
+              : restLive
+                ? `Nothing to lead with on ${name} — the buttons are below.`
+                : `Nothing for ${character} to press on ${name} right now.`}
+          </p>
+        )}
       </div>
       <div className="booth-utils">
         <button type="button" className="w95-btn" onClick={onOpenThread}>
@@ -228,10 +240,10 @@ export function GuestCardBody({
       )}
       {buttons.rest.length > 0 && (
         <div className="booth-all">
-          <button type="button" className="booth-fold" aria-expanded={all} onClick={() => setAll((v) => !v)}>
-            {all ? "▾" : "▸"} All buttons… ({buttons.rest.length})
+          <button type="button" className="booth-fold" aria-expanded={allOpen} onClick={() => setAll(!allOpen)}>
+            {allOpen ? "▾" : "▸"} All buttons… ({buttons.rest.length})
           </button>
-          {all && <div className="booth-all-list">{buttons.rest.map((b) => btn(b, "all"))}</div>}
+          {allOpen && <div className="booth-all-list">{buttons.rest.map((b) => btn(b, "all"))}</div>}
         </div>
       )}
       {onNext !== undefined && (
