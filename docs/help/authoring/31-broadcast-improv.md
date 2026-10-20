@@ -2,7 +2,7 @@
 title: Broadcasts & improvised beats
 section: Live Shows
 order: 31
-keywords: broadcast, scope, location, cohort, participant, and, but, improv, duration, advance on, pedal, speech, gesture, quorum, group, cue, faction
+keywords: broadcast, scope, notice, per-person, ~, folded, collapse, location, cohort, participant, and, but, improv, duration, advance on, pedal, speech, gesture, quorum, group, cue, faction
 ---
 
 ## Speaking to a subset: `broadcast`
@@ -45,6 +45,25 @@ broadcast look_up to location(The Cellar) but participant(guest)
 
 The long form `<broadcast: location(The Cellar)>` with lines indented
 under it is the v3 spelling and still parses.
+
+## A notice about one person: `~`
+
+A busy room fills with lines about somebody else (*Excel's answer is
+accepted*, *a ribbon for Pong*). Start the cue with `~` to mark it as a
+**per-person notice**:
+
+```loom
+broadcast "~✅ {program.name}'s answer is accepted." to everyone
+broadcast "~🤷 {program.name} filed a guess." to everyone
+```
+
+The `~` is not shown. On a phone a run of notices in a row folds to one
+line by their leading emoji (*✅ 12 · 🤷 3*), tap to read each, and a
+notice about the reader stays its own line. Give every notice a leading
+emoji: it is the fold's key. The person it is about must still hear
+their own result personally — a `reply` to them — because their copy
+may be folded with everyone else's. A cue that starts with `!` is an
+alert, never a notice: don't combine the two.
 
 ## Improvised beats
 
