@@ -890,7 +890,7 @@ footer {
    is only its tag (and the LAST strip above the list); fired rows recede. */
 .cue-row.last .cue-tag.last { padding: 0 4px; background: var(--highlight); color: var(--black); opacity: 1; }
 .cue-row.next { background: var(--navy); color: var(--white); box-shadow: var(--raised); }
-.cue-row.next .cue-tags { opacity: 1; }
+.cue-row.next .cue-tags, .cue-row.next .cue-tag.muted { opacity: 1; color: var(--white); }
 .cue-row.next .cue-n { opacity: 0.85; }
 .cue-row.next:focus-visible { outline-color: var(--white); }
 .cue-row.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }

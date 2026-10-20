@@ -137,6 +137,8 @@ export interface HostStripItem {
   tone?: "urgent" | "needs";
   /** What the item is (a phone drops the phase first). */
   kind?: "act" | "phase" | "clock" | "countdown" | "needs";
+  /** Dropped first on a phone (the phase, when a countdown is on). */
+  optional?: true;
 }
 
 /** The strip: act · `Night.phase` · ⏸ / 🚪 · the soonest countdown · ⚠ n
@@ -150,6 +152,9 @@ export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: num
   const soon = soonestCountdown(view?.countdowns, nowMs);
   if (soon !== null) out.push({ text: countdownLeft(soon.label, soon.left), kind: "countdown", ...(soon.left < URGENT_S ? { tone: "urgent" as const } : {}) });
   if (needs > 0) out.push({ text: `⚠ ${needs}`, tone: "needs", kind: "needs" });
+  // A phone's one line drops the phase first, and only when a countdown
+  // needs the room.
+  if (soon !== null) for (const it of out) if (it.kind === "phase") it.optional = true;
   return out;
 }
 
@@ -354,7 +359,8 @@ export function agentQueue(a: Pick<HostView["agents"][number], "queue" | "waitin
   for (const w of a.waiting) if (oldest === null || w.since < oldest) oldest = w.since;
   return {
     depth: Math.max(a.queue?.depth ?? 0, a.waiting.length),
-    oldestMs: oldest !== null ? Math.max(0, now - oldest) : a.queue?.oldestMs ?? null,
+    // Whole seconds, floored like `waitingFor`, so both read the same digit.
+    oldestMs: oldest !== null ? Math.floor(Math.max(0, now - oldest) / 1000) * 1000 : a.queue?.oldestMs ?? null,
     stalled: a.queue?.stalled ?? false,
   };
 }

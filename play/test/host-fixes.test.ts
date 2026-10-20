@@ -57,6 +57,8 @@ describe("the queue's oldest wait and each guest's", () => {
   it("both read the rows' `since`", () => {
     const a = { queue: { depth: 2, oldestMs: 26_000, stalled: false }, waiting: [{ guest: "g1", name: "A", since: 1_000, text: "x" }, { guest: "g2", name: "B", since: 4_000, text: "y" }] };
     expect(agentQueue(a, 8_000)).toEqual({ depth: 2, oldestMs: 7_000, stalled: false });
+    // 4.9 s reads 0:04 in both places (floored), never 0:05 beside 0:04.
+    expect(agentQueue(a, 5_900)!.oldestMs).toBe(4_000);
   });
   it("no guest rows: the server's own number stands", () => {
     expect(agentQueue({ queue: { depth: 1, oldestMs: 5_000, stalled: true }, waiting: [] }, 9_000)).toEqual({ depth: 1, oldestMs: 5_000, stalled: true });

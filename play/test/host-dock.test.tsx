@@ -9,7 +9,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { cueRows } from "../../core/src/cue-sheet.ts";
-import { nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
+import { CuePicker, nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
 import { hostCalls } from "../src/host/api.ts";
 import type { HostClient } from "../src/host/client.ts";
 import { HostDock, HostNextBar, awardPrefill } from "../src/host/dock.tsx";
@@ -123,5 +123,17 @@ describe("PICK on an award fills its value from the recap", () => {
     expect(awardPrefill(null, "award_best_liar", sug, "")).toBeNull();
     // Closed and opened again: filled again.
     expect(awardPrefill("award_best_liar", null, sug, "")).toBe("4");
+  });
+});
+
+describe("the award picker", () => {
+  it("the suggestion's reason gets its own line; the suggested row reads only \"suggested\"", () => {
+    const row = { id: "award_most_trusted", code: "G2", title: "Award: Most Trusted", subject: true } as unknown as NonNullable<CueDesk["picking"]>;
+    const roster = [{ id: "g1", name: "LimeWire", faction: null }, { id: "g2", name: "Calculator", faction: null }] as unknown as Parameters<typeof CuePicker>[0]["roster"];
+    const html = renderToStaticMarkup(createElement(CuePicker, { desk: stubDesk({ picking: row }), roster, suggest: { id: "g1", hint: "suggested: LimeWire (20) · tied: Calculator" } }));
+    expect(html).toMatch(/<p class="pick-hint cue-suggest">suggested: LimeWire \(20\) · tied: Calculator<\/p>/u);
+    expect(html).toMatch(/LimeWire<\/span><span class="pick-sub">suggested<\/span>/u);
+    // The hint comes before the value box and the list.
+    expect(html.indexOf("cue-suggest")).toBeLessThan(html.indexOf("cue-value"));
   });
 });

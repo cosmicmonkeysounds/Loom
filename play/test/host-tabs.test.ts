@@ -81,6 +81,9 @@ describe("the NEXT bar's second line", () => {
     const items = hostStrip(v, sheetLayout(rows), 60_000, 3);
     expect(items.map((i) => i.text)).toEqual(["B", "Arrivals", "⏳ Hunt, 1:00 left", "⚠ 3"]);
     expect(items.map((i) => i.kind)).toEqual(["act", "phase", "countdown", "needs"]);
+    // A phone drops the phase first, and only to make room for a countdown.
+    expect(items.filter((i) => i.optional).map((i) => i.kind)).toEqual(["phase"]);
+    expect(hostStrip(hostFixture({ countdowns: [] }), sheetLayout(rows), 60_000, 3).some((i) => i.optional)).toBe(false);
     expect(items[3]!.tone).toBe("needs");
   });
 
