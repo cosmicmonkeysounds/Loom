@@ -46,3 +46,28 @@ describe("C2: the doors, pause and resume from a host booth", () => {
     expect((await post(rt, "/api/mod/stop", { token: plain })).status).toBe(403);
   });
 });
+
+describe("the editor's exact identity lens on a server project", () => {
+  it("the router resolves the author session for ?as= reads", () => {
+    expect(wantsModRead("/api/state", new URLSearchParams("role=prime&as=Task%20Manager"))).toBe(true);
+    expect(wantsModRead("/api/state", new URLSearchParams("role=guest&as=g-1"))).toBe(true);
+    expect(wantsModRead("/api/state", new URLSearchParams("role=guest"))).toBe(false);
+  });
+
+  it("answers the author's session and a mod token, with host for an admin part; never a host token", async () => {
+    const rt = runtime();
+    rt.openDoors();
+    const g = await guest(rt, "Winamp");
+    const author = await call(rt, "GET", "/api/state?role=prime&as=Task%20Manager", {}, { moderator: true });
+    expect(author.status).toBe(200);
+    expect(author.json.host).toBe(true);
+    expect((await call(rt, "GET", `/api/state?role=guest&as=${g.id}`, {}, { moderator: true })).status).toBe(200);
+    const modToken = (await post(rt, "/api/mod/login", { passcode: CODES.mod })).json.token as string;
+    const viaToken = await get(rt, `/api/state?role=prime&as=Task%20Manager&token=${modToken}`);
+    expect(viaToken.status).toBe(200);
+    expect(viaToken.json.host).toBe(true);
+    expect((await get(rt, `/api/state?role=prime&as=Norton&token=${modToken}`)).json.host).toBeUndefined();
+    const host = (await booth(rt, "Task Manager")).json.token as string;
+    expect((await get(rt, `/api/state?role=prime&as=Norton&token=${host}`)).status).toBe(403);
+  });
+});
