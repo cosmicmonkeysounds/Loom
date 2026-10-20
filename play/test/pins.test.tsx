@@ -103,6 +103,10 @@ describe("PinnedRail", () => {
     expect(foldsSticky(own, "g7", { key: null, count: 0 }, null)).toBe(false);
     const html = renderToStaticMarkup(<PinnedRail pins={own} me="g7" fold={{ count: 1, onOpen: () => {} }} />);
     expect(html).toMatch(/<button type="button" class="w95-btn moments-pins-more" aria-label="1 more notice — show it">\+1<\/button>/u);
+    // An alert pin's yellow runs under the "+n" too, and the "+n" is a 44 px target.
+    const css = readBundledCss();
+    expect(/\.moments-pins\.alert \.moments-pins-row \{ background: var\(--highlight\)/u.test(css)).toBe(true);
+    expect(/\.moments-pins-more \{[^}]*min-height: var\(--tap\)/u.test(css)).toBe(true);
   });
 
   it("a `!` pin's own sticky is read: the rail shows it whole, never a second yellow bar", () => {
