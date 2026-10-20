@@ -148,13 +148,13 @@ describe.each([
 
   it.runIf(variant === "tent")("climbs the upstairs from the hall to the top floor", () => {
     const mm3 = (p: Vec3): Vec3 => p.map((v) => Math.round(v * 1000) / 1000 + 0) as Vec3;
-    const path = route(house, house.spawn.pos, [-3.7, 3.35, 25.55]).map(mm3);
+    const path = route(house, house.spawn.pos, [-3.4, 3.35, 24.75]).map(mm3);
     expect(path.slice(3)).toEqual([
       [-2.2, 0, 18.2], // its foot, in the hall
       [-2.2, 2.8, 14.35], // its head, upstairs
       [-1.45, 2.8, 14], // round the hole's north-east corner
       [-0.65, 2.8, 20.3], // bedroom 2's door
-      [-3.7, 3.35, 25.55], // the duck on the bed
+      [-3.4, 3.35, 24.75], // the duck on the bed
     ]);
   });
 });

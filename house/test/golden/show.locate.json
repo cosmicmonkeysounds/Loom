@@ -102,7 +102,7 @@
   {"p":[-3,-1.9,12.4],"floor":"basement","room":"ram","height":-2.7,"standable":true},
   {"p":[6.25,-1.85,14.45],"floor":"basement","room":"fan-closet","height":-2.7,"standable":true},
   {"p":[0.4,-2.7,8.8],"floor":"basement","room":"bathroom-1","height":-2.7,"standable":true},
-  {"p":[-3.7,3.35,25.55],"floor":"top","room":"graphics-card","height":2.8,"standable":true},
+  {"p":[-3.4,3.35,24.75],"floor":"top","room":"graphics-card","height":2.8,"standable":true},
   {"p":[5.25,2.8,23.6],"floor":"top","room":"hard-drive","height":2.8,"standable":true},
   {"p":[2.75,3.35,15.35],"floor":"top","room":"bathroom-2","height":2.8,"standable":true},
   {"p":[-2.75,0,1.6],"floor":"main","room":"optical-drive","height":0,"standable":false},
