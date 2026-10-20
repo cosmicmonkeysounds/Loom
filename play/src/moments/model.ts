@@ -567,7 +567,8 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       // "Dismiss all (n)": read, every one — none of them is missed.
       const keys = new Set(a.keys);
       if (!s.queue.some((q) => keys.has(q.moment.key))) return s;
-      const queue = s.queue.filter((q) => !keys.has(q.moment.key));
+      // A booth's peek goes with its sticky twin.
+      const queue = s.queue.filter((q) => !keys.has(q.moment.key) && !(q.moment.peekOf !== undefined && keys.has(q.moment.peekOf)));
       return { ...s, queue, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "retract": {

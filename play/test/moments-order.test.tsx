@@ -161,3 +161,20 @@ describe("Take me there", () => {
     expect(exitRoomFor(moment(3, { channel: "lobby", text: "No glyph here." }), { open: null, cards })).toBe("lobby");
   });
 });
+
+describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", () => {
+  it("a folded sticky and a Dismiss all take their peeks with them", async () => {
+    const { peekFor } = await import("../src/moments/model.ts");
+    const a = moment(1, { kind: "readout", text: "🚨 Calculator marked" });
+    const b = moment(2, { kind: "readout", text: "🚨 Winamp marked" });
+    let s = run([arrive([a, peekFor(a)], "sticky", "booth")]);
+    expect(surfacesOf(s, true).balloon?.moment.peekOf).toBe("m:1");
+    // A second sticky folds the first (no more urgent) — its peek goes too.
+    s = run([arrive([b, peekFor(b)], "sticky", "booth")], s);
+    expect(s.queue.map((x) => x.moment.key)).toEqual(["m:2", "p:m:2"]);
+    expect(s.missed.map((m) => m.key)).toEqual(["m:1"]);
+    // Dismiss all: the sticky and its peek leave, read.
+    s = momentsReducer(s, { type: "dismissMany", keys: surfacesOf(s, true).stickyKeys });
+    expect(s.queue).toEqual([]);
+  });
+});
