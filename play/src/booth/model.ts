@@ -106,6 +106,21 @@ export function faceSettled(landedAt: number | null, now: number, ms: number = F
   return landedAt === null || now - landedAt >= ms;
 }
 
+/**
+ * When an open card must be re-read from the server (`/api/prime/card`):
+ * the night moved (an objective opened or ticked a box, `Night.step` /
+ * `Night.phase`) or the guest's own row changed (someone else acted on
+ * them). Equal keys = the card on screen is still good.
+ */
+export function cardReadKey(
+  guestId: string,
+  objectives: readonly ObjectiveView[] | undefined,
+  night: { step?: number | null; phase?: string | null } | undefined,
+  row: PrimeGuest | null,
+): string {
+  return JSON.stringify([guestId, (objectives ?? []).map((o) => [o.id, o.checklist.map((c) => c.done)]), night?.step ?? null, night?.phase ?? null, row]);
+}
+
 /** One fact on a guest card. `loud` = read it first (Not cleared, ⛔, 🔒). */
 export interface FactChip {
   text: string;

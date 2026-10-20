@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { FACE_MAX, FACE_SETTLE_MS, cardButtons, faceSettled, factChips } from "../src/booth/model.ts";
+import { FACE_MAX, FACE_SETTLE_MS, cardButtons, cardReadKey, faceSettled, factChips } from "../src/booth/model.ts";
 import { ARM_DEAD_MS } from "../src/arm.ts";
 import { GuestCardBody } from "../src/booth/card.tsx";
 import type { PrimeSession } from "../src/session/prime.ts";
@@ -114,7 +114,7 @@ function fakeSession(over: Partial<PrimeView> = {}): PrimeSession {
   const view = {
     character: NORTON,
     faction: "Antivirus",
-    guests: [{ id: "g-1", name: "Ada", faction: null, captured: false, location: "Desktop" }],
+    guests: [{ id: "g-1", name: "Ada", faction: null, captured: false, location: "Desktop", flags: [{ label: "Cleared", path: "program.cleared", value: "false", on: false }] }],
     channels: [{ id: "loc:Desktop", kind: "location", title: "The Desktop", spaceId: "story", member: true, canPost: true, threadable: true }],
     spaces: [],
     interactions: list,
@@ -147,6 +147,24 @@ describe("the card as rendered", () => {
     // Everything else this booth may press is one tap away, counted.
     expect(html).toContain("All buttons… (4)");
     expect(html).toContain("📷 Next guest");
+  });
+
+  it("reads the facts off the guest's live row, so another booth's act shows on a card left open", () => {
+    // McAfee sent Ada to the Internet after this card was read: the card still says free, the row says captured.
+    const session = fakeSession({ guests: [{ id: "g-1", name: "Ada", faction: null, captured: true, location: "Internet" }] });
+    const html = renderToStaticMarkup(<GuestCardBody session={session} guestId="g-1" seed={{ card: card(["send"]) }} admin={false} onOpenThread={() => {}} />);
+    expect(html).toContain("🔒 Captured");
+  });
+
+  it("is re-read when the guest's row changes, not only when the night moves", () => {
+    const ada = { id: "g-1", name: "Ada", faction: null, captured: false, location: "Desktop" };
+    const objectives = [obj("door", ["send"])];
+    const night = { step: 3, phase: "door" };
+    const key = cardReadKey("g-1", objectives, night, ada);
+    expect(cardReadKey("g-1", objectives, night, { ...ada })).toBe(key); // same facts: the card stands
+    expect(cardReadKey("g-1", objectives, night, { ...ada, captured: true })).not.toBe(key); // another booth acted
+    expect(cardReadKey("g-1", objectives, { ...night, step: 4 }, ada)).not.toBe(key); // the night moved
+    expect(cardReadKey("g-2", objectives, night, ada)).not.toBe(key);
   });
 
   it("says so when there is nothing to press on this guest", () => {

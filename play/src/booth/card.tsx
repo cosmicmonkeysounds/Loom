@@ -13,7 +13,7 @@ import { ARM_LINE, useArmButtons } from "../arm.ts";
 import type { PrimeSession } from "../session/prime.ts";
 import type { GuestCardView, PrimeGuest } from "../types.ts";
 import { BoothLayer } from "./layer.tsx";
-import { cardButtons, factChips, faceSettled, type CardButton } from "./model.ts";
+import { cardButtons, cardReadKey, factChips, faceSettled, type CardButton } from "./model.ts";
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
@@ -69,13 +69,17 @@ export function GuestCardBody({
   const view = session.view;
   const character = session.auth?.character ?? "";
   const objectives = view?.objectives;
+  // The guest's live row: another booth sending them to the Internet, a
+  // check-in, a flag the story set shows here at once.
+  const row = view?.guests.find((g) => g.id === guestId) ?? null;
   // Re-read the card when the night moves (an objective opens or ticks a
-  // box): a card left open on the counter never offers yesterday's buttons.
-  const nightKey = JSON.stringify([(objectives ?? []).map((o) => [o.id, o.checklist.map((c) => c.done)]), view?.night?.step ?? null, view?.night?.phase ?? null]);
+  // box) or the guest's row changes (someone else acted on them): a card
+  // left open on the counter never offers yesterday's buttons.
+  const nightKey = cardReadKey(guestId, objectives, view?.night, row);
   // The key the card on screen was read for; a scan's own card counts.
-  const readFor = useRef<string | null>(seed?.card !== undefined ? `${guestId}|${nightKey}` : null);
+  const readFor = useRef<string | null>(seed?.card !== undefined ? nightKey : null);
   useEffect(() => {
-    const key = `${guestId}|${nightKey}`;
+    const key = nightKey;
     if (readFor.current === key) return;
     readFor.current = key;
     session.card(guestId).then(
@@ -91,7 +95,7 @@ export function GuestCardBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestId, nightKey]);
 
-  const guest: PrimeGuest | null = card?.guest ?? view?.guests.find((g) => g.id === guestId) ?? null;
+  const guest: PrimeGuest | null = row ?? card?.guest ?? null;
   const name = guest?.name ?? guestId;
   const where = guest?.location ? (view?.channels.find((c) => c.id === `loc:${guest.location}`)?.title ?? guest.location) : null;
   const chips = guest !== null ? factChips(guest, where) : [];
