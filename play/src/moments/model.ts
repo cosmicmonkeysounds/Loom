@@ -153,15 +153,14 @@ function momentCaption(m: ChatMessage, kind: MomentKind): string {
  */
 /**
  * The phase a message was posted in: the server's stamp when it carries one
- * (`phase` on the message — not sent yet, see below), else `fallback` (the
- * phase the client knows now). Without the stamp a reconnect's backlog is
- * stamped with the phase at the time it is processed, so the phase rule of
- * the staleness check only works for moments that arrived while the stream
- * was alive (a hidden Android tab); a locked iPhone's backlog replays alarms
- * from before a phase change until the server stamps its messages.
+ * (`ChatMessage.phase`, core's `chat.ts` `storyPhase` at compose time), else
+ * `fallback` (the phase the client knows now). The stamp is what lets a
+ * locked iPhone's backlog, replayed as `history` after wake, drop alarms
+ * from before a phase change; an older server's messages, or a story with
+ * no `Night.phase` yet, carry none.
  */
 export function phaseOf(m: ChatMessage, fallback: string | null): string | null {
-  const stamped = (m as ChatMessage & { phase?: unknown }).phase;
+  const stamped: unknown = m.phase;
   return typeof stamped === "string" || stamped === null ? stamped : fallback;
 }
 

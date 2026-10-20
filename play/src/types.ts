@@ -101,6 +101,11 @@ export interface ChatMessage {
   about?: string;
   /** The server's moment class; absent = not a moment. */
   moment?: MomentClass;
+  /** The story's `Night.phase` when the server composed this message (null
+   *  = set to nothing). Only on what can be a moment, and only once the
+   *  story has a phase; absent → the moments layer uses the phase it knows
+   *  now (`moments/model.ts` `phaseOf`). */
+  phase?: string | null;
 }
 
 // --- per-role snapshots (mirror of server/views.ts) -------------------------
