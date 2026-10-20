@@ -129,7 +129,7 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       kind: c.kind as Channel["kind"],
       title: c.title,
       spaceId: isStaff ? STAFF_SPACE : c.spaceId,
-      ...(isStaff ? { staff: true as const } : {}),
+      ...(isStaff ? { staff: true as const, subtitle: "staff only" } : {}),
       spaceTitle: isStaff ? undefined : c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
       member: c.member,
       canPost: c.canPost,

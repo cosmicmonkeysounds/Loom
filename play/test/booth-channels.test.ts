@@ -45,7 +45,7 @@ describe("the booth sidebar", () => {
   it("pins the staff rooms just under the pinned rooms, marked staff", () => {
     const chans = buildPrimeChannels(store([]), view());
     const hosts = chans.find((c) => c.id === "room:hosts")!;
-    expect(hosts).toMatchObject({ spaceId: STAFF_SPACE, staff: true });
+    expect(hosts).toMatchObject({ spaceId: STAFF_SPACE, staff: true, subtitle: "staff only" });
     expect(chans.find((c) => c.id === "room:general")).toMatchObject({ spaceId: "story" });
     expect(chans.find((c) => c.id === "room:general")!.staff).toBeUndefined();
     const spaces = boothSidebar(groupBySpace(sorted(chans)));

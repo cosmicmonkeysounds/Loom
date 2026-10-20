@@ -145,3 +145,8 @@
 /* The scanner's camera, kept running (out of sight, untappable) under a
    guest's card so the next pass needs no camera restart. */
 .booth-scan.behind { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; clip-path: inset(50%); }
+
+/* The 44 px floor on the booth's own controls: the Readouts back arrow and
+   the booth windows' close box (the window's caption is already 44 px). */
+.back.booth-back { width: var(--tap); height: var(--tap); font-size: 18px; }
+.booth-layer-win > .w95-titlebar .w95-x { min-height: var(--tap); }

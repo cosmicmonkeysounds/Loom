@@ -33,7 +33,7 @@ export function ReadoutsView({
     <div className="screen stage">
       <header className="thread-head">
         {!wide && (
-          <button className="back" onClick={onBack} aria-label="Back">
+          <button className="back booth-back" onClick={onBack} aria-label="Back">
             ‹
           </button>
         )}
