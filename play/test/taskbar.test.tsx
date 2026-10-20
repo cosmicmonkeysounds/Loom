@@ -7,18 +7,21 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Taskbar, TrayItem, taskbarButtonClass } from "../src/chrome/taskbar.tsx";
+import { isTextEntry, KEYBOARD_REST, keyboardIsOpen, keyboardStep } from "../src/chrome/keyboard.ts";
+import { FrameLayout } from "../src/guest/app.tsx";
 import { guestTaskbarButtons } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
-const chrome = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
+// chrome.css with its whitespace folded, so a reformat never fails a rule check.
+const chrome = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8").replace(/\s+/gu, " ");
 const app = readFileSync(new URL("../src/guest/app.tsx", import.meta.url), "utf8");
 
 /** The body of the first `@media (max-width: <px>px)` block in chrome.css. */
 function narrow(px: number): string {
   const at = chrome.indexOf(`@media (max-width: ${px}px)`);
   expect(at, `chrome.css has a ${px} px block`).toBeGreaterThan(-1);
-  return chrome.slice(at, chrome.indexOf("\n}\n", at));
+  return chrome.slice(at, chrome.indexOf(" } }", at) + 4);
 }
 
 const objective = (buttons: string[]): ObjectiveView => ({ id: "o", title: "Get scanned", brief: "", checklist: [], buttons, act: null });
@@ -71,9 +74,24 @@ describe("the guest taskbar", () => {
     expect(chrome).toContain("button.tray-item::after");
   });
 
-  it("the keyboard rule: the guest frame hides the taskbar while a field has focus", () => {
-    expect(app).toContain("const typing = useKeyboardOpen(frameRef);");
-    expect(app).toContain("{!typing && taskbar}");
+  it("the keyboard rule: the frame drops the taskbar while the keyboard is open, and brings it back", () => {
+    const frame = (typing: boolean) =>
+      html(
+        createElement(FrameLayout, {
+          className: "root app-frame",
+          typing,
+          head: createElement("header", { className: "title-bar" }),
+          taskbar: createElement(Taskbar, { start: [], buttons: guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} }) }),
+        }),
+      );
+    expect(frame(false)).toContain('aria-label="Taskbar"');
+    expect(frame(false).indexOf("title-bar")).toBeLessThan(frame(false).indexOf("taskbar"));
+    expect(frame(true)).not.toContain('aria-label="Taskbar"');
+    expect(frame(true)).toContain('class="title-bar"');
+    // What decides `typing`: a focused composer, until the keyboard is seen to close.
+    const typed = keyboardStep(KEYBOARD_REST, { kind: "focus", text: isTextEntry({ tagName: "TEXTAREA" } as Element), height: 800 });
+    expect(keyboardIsOpen(typed)).toBe(true);
+    expect(keyboardIsOpen(keyboardStep(typed, { kind: "focus", text: false, height: 800 }))).toBe(false);
   });
 
   it("the guest frame is [title bar][pins][shell][taskbar] on every screen", () => {

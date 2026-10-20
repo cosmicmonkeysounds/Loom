@@ -78,7 +78,17 @@ export function useCutscene(inCutscene: boolean): { showing: boolean; over: bool
 function FrameRoot({ className, frameRef, head, taskbar, children }: { className: string; frameRef: RefObject<HTMLDivElement | null>; head: ReactNode; taskbar: ReactNode; children?: ReactNode }) {
   const typing = useKeyboardOpen(frameRef);
   return (
-    <div className={className} ref={frameRef as RefObject<HTMLDivElement>}>
+    <FrameLayout className={className} frameRef={frameRef} head={head} taskbar={taskbar} typing={typing}>
+      {children}
+    </FrameLayout>
+  );
+}
+
+/** The frame's layout with the keyboard rule applied (`test/taskbar.test.tsx`):
+ *  the head, then the taskbar unless the keyboard is open, then overlays. */
+export function FrameLayout({ className, frameRef, head, taskbar, typing, children }: { className: string; frameRef?: RefObject<HTMLDivElement | null>; head: ReactNode; taskbar: ReactNode; typing: boolean; children?: ReactNode }) {
+  return (
+    <div className={className} ref={frameRef as RefObject<HTMLDivElement> | undefined}>
       {head}
       {!typing && taskbar}
       {children}

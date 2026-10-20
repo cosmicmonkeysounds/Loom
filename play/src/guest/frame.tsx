@@ -4,8 +4,8 @@
 //! tray's balance, and the one-time "Get alerts" balloon. `guest/app.tsx`
 //! lays them out as `[TitleBar][PinnedRail][Shell][Taskbar]`.
 
-import { useState, type ReactNode } from "react";
-import { ARM_LINE, useArmButtons } from "../arm.ts";
+import { useState, type ReactElement } from "react";
+import { ARM_LINE, useArmButtons, type ArmButtons } from "../arm.ts";
 import { TrayBalloon, TraySlot } from "../chrome/balloon.tsx";
 import type { StartItem, TaskbarButton } from "../chrome/taskbar.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
@@ -199,25 +199,25 @@ export function AlertsSheet({ push, title, onClose }: { push: Push; title?: stri
   );
 }
 
-/** ▣ What to do now: every live objective, the first one open, each with
- *  the buttons it names (≤ 3) — the pass, the scanner, the story's own. */
-export function ObjectiveSheet({
-  objectives,
+/** The NOW sheet's button for an objective's `buttons:` id (pure over its
+ *  inputs — `test/frame.test.tsx`): `pass` opens the full-screen pass,
+ *  `scan` the scan sheet, a story button fires through the arm model (an
+ *  `arm: true` one needs its two taps); an id the guest can't press is no
+ *  button. */
+export function objectiveButton({
   interactions,
+  arm,
   onPass,
   onScan,
   onAct,
-  onClose,
 }: {
-  objectives: readonly ObjectiveView[];
   interactions: readonly Interaction[];
+  arm: ArmButtons;
   onPass: () => void;
   onScan: () => void;
   onAct: (i: Interaction) => void;
-  onClose: () => void;
-}) {
-  const arm = useArmButtons();
-  const button = (id: string): ReactNode => {
+}): (id: string) => ReactElement | null {
+  return (id) => {
     if (id === "pass")
       return (
         <button type="button" className="choice primary" onClick={onPass}>
@@ -245,6 +245,27 @@ export function ObjectiveSheet({
       </button>
     );
   };
+}
+
+/** ▣ What to do now: every live objective, the first one open, each with
+ *  the buttons it names (≤ 3) — the pass, the scanner, the story's own. */
+export function ObjectiveSheet({
+  objectives,
+  interactions,
+  onPass,
+  onScan,
+  onAct,
+  onClose,
+}: {
+  objectives: readonly ObjectiveView[];
+  interactions: readonly Interaction[];
+  onPass: () => void;
+  onScan: () => void;
+  onAct: (i: Interaction) => void;
+  onClose: () => void;
+}) {
+  const arm = useArmButtons();
+  const button = objectiveButton({ interactions, arm, onPass, onScan, onAct });
   return (
     <Sheet title="▣ What to do now" onClose={onClose} tall>
       <div className="objective-stack">
