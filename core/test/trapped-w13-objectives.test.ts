@@ -582,6 +582,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("start_the_second_hunt").g1).toBe("The Hour");
     expect(at("Windows Defender clears g7").g7).not.toBe("Show Your Pass");
     expect(at("five_minute_warning").g1).toBe("Be At The Desktop");
+    expect(at("summons_closed").g1).toBe("The Door Is Closed"); // never "five minutes" once the door has shut
     expect(at("truth_pong").g1).toBe("Truth Pong");
     expect(at("trust_chart").g1).toBe("Where You Stand");
     expect(at("y2k_clock").g1).toBe("The Y2K Hour");

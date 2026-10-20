@@ -200,7 +200,7 @@ OBJECTIVE The Hour
 // DRAFT for sign-off
 OBJECTIVE Be At The Desktop
   for: Program
-  while: Night.phase == "summons" and program.cleared == true
+  while: Night.summons_open == true and program.cleared == true
   act: C
   title: Be at the Desktop: five minutes
   text:
@@ -208,6 +208,15 @@ OBJECTIVE Be At The Desktop
     - Checked in, done when program.summons_ok == true
   buttons: pass
   loud: true
+
+// DRAFT for sign-off
+OBJECTIVE The Door Is Closed
+  for: Program
+  while: Night.phase == "summons" and Night.summons_closed == true and program.cleared == true
+  act: C
+  title: The door is closed: stay at the Desktop
+  text:
+    The summons is over. Truth Pong is next, out in the Cloud.
 
 // DRAFT for sign-off
 OBJECTIVE Truth Pong
