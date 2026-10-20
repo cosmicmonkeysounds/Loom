@@ -103,14 +103,19 @@
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 .stream-rest { visibility: hidden; }
+/* the caret rides the cursor, not the end of the laid-out line */
+.stream-caret { animation: dlg-caret-blink 0.7s steps(1) infinite; color: var(--navy); margin-left: 1px; }
+.cutscene .stream-caret { color: var(--highlight); }
 .stream-queued { visibility: hidden; }
 /* Effect text (a glitch manner, a `crawl: fx` speaker, an alert): a split
    signal that stays after the crawl, so it reads as an effect in the
    backlog too. While it crawls: scramble ahead of the cursor, flicker, jitter. */
-.stream-fx .bubble { text-shadow: 1px 0 var(--bad), -1px 0 var(--link); letter-spacing: 0.02em; }
+.stream-fx.line .bubble, .stream-fx.narration .bubble { text-shadow: 1px 0 var(--bad), -1px 0 var(--link); letter-spacing: 0.02em; }
 .stream-scramble { color: var(--signal); font-family: ui-monospace, "Courier New", monospace; }
-.stream-fx-live { animation: stream-flicker 140ms steps(2, end) infinite; }
+.stream-fx-live { animation: stream-flash 360ms steps(3, end) 1, stream-flicker 140ms steps(2, end) 360ms infinite; }
 .stream-fx-live .bubble { display: inline-block; animation: stream-jitter 110ms steps(2, end) infinite; }
+/* the line lands inverted, like a monitor losing sync, then flickers */
+@keyframes stream-flash { 0% { background: var(--ink); color: var(--white); } 50% { background: var(--signal); color: var(--white); } 100% { background: transparent; } }
 @keyframes stream-flicker { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
 @keyframes stream-jitter {
   0% { transform: translate(0, 0); }
@@ -124,8 +129,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   /* Still an effect, never a movement: the split signal + a static bar. */
-  .stream-fx-live, .stream-fx-live .bubble { animation: none; }
+  .stream-fx-live, .stream-fx-live .bubble, .stream-caret { animation: none; }
   .stream-fx .bubble { text-decoration: underline wavy var(--bad); text-underline-offset: 3px; }
+  .stream-fx.line .bubble, .stream-fx.narration .bubble { text-shadow: none; }
 }
 
 /* ── cards: the receipt, the settled line ───────────────────────────────── */
@@ -189,8 +195,11 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
   background: var(--face); color: var(--ink); box-shadow: var(--raised); border-radius: var(--radius); font: 700 16px var(--ui-font);
 }
 .stream-tray-step:active { box-shadow: var(--pressed); }
-.stream-tray-body { max-height: 55vh; overflow-y: auto; padding: 0 6px 6px; -webkit-overflow-scrolling: touch; }
+.stream-tray-body { max-height: 45vh; overflow-y: auto; padding: 0 6px 6px; -webkit-overflow-scrolling: touch; }
 .stream-tray-body .widget { max-width: none; box-shadow: none; padding: 4px 6px 6px; }
+/* the tray's bar already names the card: keep only its instructions */
+.stream-tray-body .widget-head > .widget-glyph, .stream-tray-body .widget-title { display: none; }
+.stream-tray-body .widget-head { margin-bottom: 6px; }
 
 /* ── the room header: the window's menu row (no second title bar) ──────── */
 .stream-room-head {

@@ -115,6 +115,7 @@ function CrawlText({ text, c }: { text: string; c: CrawlState }) {
       <span aria-hidden>
         {c.shown}
         {ahead > 0 && <span className="stream-scramble">{scramble(ahead)}</span>}
+        {!c.queued && <span className="stream-caret">▌</span>}
         <span className="stream-rest">{rest.slice(ahead)}</span>
       </span>
     </>
@@ -362,7 +363,7 @@ export function MessageBubble({
   const c = useCrawl(msg.text, msg.seq);
   // Effect text keeps its look after the crawl (and under reduced motion).
   const fx = msg.fx === true || (msg.kind === "signal" && (msg.alert === true || msg.takeover === true));
-  const crawlCls = `${c.typing && !c.queued ? "typing" : ""} ${c.queued ? "stream-queued" : ""} ${fx ? "stream-fx" : ""} ${fx && c.typing ? "stream-fx-live" : ""}`;
+  const crawlCls = `${c.typing && !c.queued ? "stream-typing" : ""} ${c.queued ? "stream-queued" : ""} ${fx ? "stream-fx" : ""} ${fx && c.typing ? "stream-fx-live" : ""}`;
   const modBtn = moderate && (
     <button
       className="mod-toggle"

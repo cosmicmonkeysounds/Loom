@@ -155,7 +155,6 @@ export function CodexRoom({ messages, meId, empty }: { messages: readonly ChatMe
 
 // --- the Quest Log -------------------------------------------------------------------
 
-const STATUS: Record<QuestRow["status"], string> = { active: "in progress", done: "complete", failed: "failed" };
 const STEP_GLYPH: Record<string, string> = { complete: "✅", fail: "✖", update: "▸", start: "📜" };
 
 function QuestEntry({ row, open, onToggle }: { row: QuestRow; open: boolean; onToggle: () => void }) {
@@ -166,9 +165,9 @@ function QuestEntry({ row, open, onToggle }: { row: QuestRow; open: boolean; onT
       <button type="button" className="stream-row-head" aria-expanded={open} onClick={onToggle}>
         <span className="stream-row-main">
           <span className="stream-row-title">{q.title}</span>
-          <span className="stream-row-sub">{row.latest || (giver ? `from ${giver.replace(/_/g, " ")}` : STATUS[row.status])}</span>
+          {/* The section says where it stands; the row says what happened last. */}
+          {(row.latest || (!open && giver)) && <span className="stream-row-sub">{row.latest || `from ${giver.replace(/_/g, " ")}`}</span>}
         </span>
-        <span className={`quest-status ${row.status}`}>{STATUS[row.status]}</span>
         <span className="stream-settled-caret" aria-hidden>
           {open ? "▾" : "▸"}
         </span>
