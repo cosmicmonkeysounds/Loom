@@ -110,6 +110,9 @@
   .cutscene .stream-settled-line, .cutscene .stream-receipt { background: color-mix(in srgb, var(--white) 8%, var(--black)); }
 }
 .cutscene .stream-settled-body .widget { margin-top: 6px; }
+/* the stage has no taskbar: a balloon floats over its foot, no tail */
+.cut-root .moments-balloon { bottom: calc(var(--safe-bottom) + 76px); }
+.cut-root .moments-balloon::before, .cut-root .moments-balloon::after { display: none; }
 
 /* ── the crawl ───────────────────────────────────────────────────────────
    A crawling line is laid out whole from the start: the unrevealed rest

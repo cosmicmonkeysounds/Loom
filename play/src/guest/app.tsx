@@ -151,6 +151,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // transfer's auto-approve), off the snapshot clock + the wall time since.
   const walletClock = useWalletClock(st?.clock, st?.wallet);
   const cut = useCutscene(st?.cutscene === true);
+  // The arrival room's name stays in the stage's caption until Continue
+  // (the story has moved the guest on, but they are still reading it).
+  const stageWhere = useRef<string | null>(null);
   const offline = useOfflineFor(s.connected);
   // The story's guided tour, once dealt and until answered — never over a
   // cutscene (it waits for the guest to step into the app).
@@ -271,14 +274,16 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
 
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
-    const where = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
+    const here = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
+    if (!cut.over && here !== null) stageWhere.current = here;
+    const where = cut.over ? stageWhere.current : here;
     return framed(
       <div className="root cut-root">
         <MomentsLayer />
         <CutsceneStage
           messages={staged ?? []}
           title={st.title ?? s.me.title}
-          where={cut.over ? null : where}
+          where={where}
           decision={dock}
           widgets={widgets}
           over={cut.over}
