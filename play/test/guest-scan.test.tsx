@@ -18,12 +18,14 @@ import {
   SCAN_PASS,
   SCAN_UNKNOWN,
   ScanSheet,
+  TYPED_UNKNOWN,
   guestCameraProblem,
   guestScan,
   landingLink,
   landingTypeLine,
   rejoinLine,
   roomFromSlug,
+  typedScan,
 } from "../src/guest-scan.tsx";
 import type { Channel } from "../src/types.ts";
 
@@ -51,8 +53,8 @@ describe("guestScan", () => {
     expect(guestScan("   ")).toEqual({ kind: "note", text: SCAN_UNKNOWN });
   });
 
-  it("a camera that can't run says to type the code into the Codex", () => {
-    for (const s of ["insecure", "denied", "none", "error"] as const) expect(guestCameraProblem(s)).toMatch(/Codex/);
+  it("a camera that can't run says to type the code in the box below", () => {
+    for (const s of ["insecure", "denied", "none", "error"] as const) expect(guestCameraProblem(s)).toMatch(/type the code below/);
     expect(guestCameraProblem("live")).toBeNull();
     expect(guestCameraProblem("starting")).toBeNull();
   });
@@ -123,5 +125,39 @@ describe("the wrong-browser landing", () => {
     expect(initialRole("?code=EVT1&checkin=the-ram", none)).toBe("guest");
     // A booth phone keeps its booth.
     expect(initialRole("?code=EVT1&unlock=COLD-FIRST", (k) => (k === "loom.prime" ? "{}" : null))).toBe("prime");
+  });
+});
+
+describe("the scan sheet's typed code (wave 13)", () => {
+  const rooms = [
+    { id: "loc:The Desktop", title: "The Desktop (living room)" },
+    { id: "loc:The_Start_Bar", title: "The Start Bar (kitchen)" },
+  ];
+
+  it("a code redeems, a room's name or its sign's slug checks in there", () => {
+    expect(typedScan("COLD-FIRST", rooms)).toEqual({ kind: "unlock", code: "COLD-FIRST" });
+    expect(typedScan("  sandy1987 ", rooms)).toEqual({ kind: "unlock", code: "sandy1987" });
+    expect(typedScan("the-desktop", rooms)).toEqual({ kind: "checkin", at: "The Desktop" });
+    expect(typedScan("The Desktop (living room)", rooms)).toEqual({ kind: "checkin", at: "The Desktop" });
+    expect(typedScan("THE START BAR", rooms)).toEqual({ kind: "checkin", at: "The_Start_Bar" });
+  });
+
+  it("a whole link reads like a scan; a pass or junk says what it is", () => {
+    expect(typedScan(`${BASE}?code=EVT1&unlock=COLD-FIRST`, rooms)).toEqual({ kind: "unlock", code: "COLD-FIRST" });
+    expect(typedScan(`${BASE}?code=EVT1&checkin=the-cpu`, rooms)).toEqual({ kind: "checkin", at: "the-cpu" });
+    expect(typedScan("g-3f9a1c", rooms, "g-3f9a1c")).toEqual({ kind: "note", text: SCAN_OWN_PASS });
+    expect(typedScan("what is this?", rooms)).toEqual({ kind: "note", text: TYPED_UNKNOWN });
+    expect(typedScan("   ", rooms)).toEqual({ kind: "note", text: TYPED_UNKNOWN });
+    // With no rooms to match, a slug-shaped word is a code.
+    expect(typedScan("the-desktop")).toEqual({ kind: "unlock", code: "the-desktop" });
+  });
+
+  it("the sheet holds the camera and the typed box together, over everything", () => {
+    const html = renderToStaticMarkup(<ScanSheet meId="g-3f9a1c" onScan={async () => null} onClose={() => {}} rooms={rooms} />);
+    expect(html).toContain('class="scan-layer"');
+    expect(html).toContain("<video");
+    expect(html).toContain("Or type the code");
+    expect(html).toContain('class="scan-typed-input"');
+    expect(html).toContain('aria-label="Close the scanner"');
   });
 });

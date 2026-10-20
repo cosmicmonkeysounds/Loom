@@ -1,67 +1,265 @@
-/* chrome lane (wave 13): the frame. Plumbing's base — `.app-frame` fills
-   `.root` as a flex column [title bar][pins][shell][host dock][taskbar],
-   with the plain layout of the title bar and the taskbar, so the booth can
-   lay out its frame before the chrome lane styles it. The taskbar owns
-   the bottom safe-area inset inside the frame. */
+/* chrome lane (wave 13): the guest frame and the shared primitives.
+
+   `.app-frame` fills `.root` as a flex column
+   [title bar][pins][shell][host dock][taskbar]. The title bar owns the top
+   safe-area inset, the taskbar the bottom one. Every colour is a token;
+   under aol97 the parts are Win95 hardware (bevels, caption gradients, the
+   yellow balloon tip), under plain the same structure renders flat. */
+
+:root {
+  /* The restricted caption: ochre (white text ≥ 4.6:1 on both stops). */
+  --restricted: #6b4a00;
+  --restricted-2: #9a6b00;
+}
+
+/* ── the frame ─────────────────────────────────────────────────────────── */
 .app-frame { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; }
 .app-frame > .app, .app-frame > .screen { flex: 1 1 auto; min-height: 0; }
+.app-frame > .app.wide { height: auto; }
+
+/* ── the NOW title bar ─────────────────────────────────────────────────── */
 .title-bar {
   flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
-  min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 6px 0 10px;
-  background: var(--title-grad); color: var(--title-ink); font: 700 14px var(--ui-font);
+  min-height: calc(var(--title-h) + var(--safe-top)); padding: var(--safe-top) 8px 0 10px;
+  background: var(--title-grad); color: var(--title-ink); font: 700 14px/1.2 var(--ui-font);
 }
 .title-bar.alarm { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
-.title-bar.restricted { background: var(--signal); }
+.title-bar.restricted { background: linear-gradient(90deg, var(--restricted), var(--restricted-2)); }
 .title-bar-btn {
   flex: 1; min-width: 0; min-height: var(--tap); display: flex; flex-direction: column; justify-content: center;
-  margin: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  margin: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left;
 }
+button.title-bar-btn { cursor: pointer; }
+button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -3px; }
 .title-bar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.title-bar-sub { font-weight: 400; font-size: 12px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-bar-sub { font-weight: 400; font-size: 12px; color: var(--on-bar); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* on the alarm and restricted captions the pale sub-line ink falls under
+   4.5:1 at the gradients' light ends: white there */
+.title-bar.alarm .title-bar-sub, .title-bar.restricted .title-bar-sub { color: var(--title-ink); }
+
+/* ── the taskbar ───────────────────────────────────────────────────────── */
 .taskbar {
-  flex: 0 0 auto; position: relative; display: flex; align-items: center; gap: 4px;
-  min-height: calc(var(--taskbar-h) + var(--safe-bottom)); padding: 2px 4px var(--safe-bottom);
+  flex: 0 0 auto; position: relative; display: flex; align-items: center; gap: 3px;
+  min-height: calc(var(--taskbar-h) + var(--safe-bottom)); padding: 3px 3px calc(3px + var(--safe-bottom));
   background: var(--tray-face); color: var(--ink); box-shadow: var(--raised);
+  font: 13px var(--ui-font);
 }
-.taskbar-btn { flex: 0 0 auto; }
-.taskbar-btn.primary { flex: 1 1 auto; font-weight: 700; }
-.taskbar-btn[aria-pressed="true"] { box-shadow: var(--pressed); }
-.taskbar-badge { min-width: 18px; padding: 0 4px; border-radius: 9px; background: var(--highlight); color: var(--black); font: 700 11px var(--ui-font); }
+:root[data-theme="aol97"] .taskbar { box-shadow: inset 0 1px var(--face-hi), inset 0 2px var(--white); }
+.taskbar-btn {
+  position: relative; flex: 0 0 auto; min-height: 38px; min-width: var(--tap); padding: 0 10px;
+  font-weight: 700; white-space: nowrap;
+}
+/* the visible bevel stays Win95-sized; the touch target reaches the bar's edges */
+.taskbar-btn::after { content: ""; position: absolute; top: -3px; bottom: -3px; left: 0; right: 0; }
+.taskbar-icon { font-size: 17px; line-height: 1; }
+.taskbar-btn.primary { flex: 1 1 auto; min-width: 96px; max-width: 260px; }
+.taskbar-start.open { box-shadow: var(--pressed); }
+/* a button the current objective names: it asks for attention like a
+   Win95 window did — caption-blue, after two blinks */
+.taskbar-btn.attn { background: var(--title-grad); color: var(--title-ink); animation: taskbar-attn 0.5s steps(1) 4; }
+@keyframes taskbar-attn { 50% { background: var(--face); color: var(--ink); } }
+.taskbar-badge {
+  min-width: 18px; padding: 0 4px; border-radius: 9px; background: var(--highlight); color: var(--black);
+  font: 700 11px/16px var(--ui-font); text-align: center;
+}
 .taskbar-tray {
-  margin-left: auto; display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 0 6px;
-  box-shadow: var(--tray-inset); border-left: 3px solid var(--line); font: 12px var(--ui-font);
+  margin-left: auto; display: flex; align-items: center; gap: 0; min-height: 38px; padding: 0 2px 0 4px;
+  box-shadow: var(--tray-inset); font: 12px var(--ui-font); white-space: nowrap;
 }
-.taskbar-tray.live { border-left-color: var(--live); }
-.taskbar-tray.reconnecting { border-left-color: var(--highlight); }
-.taskbar-tray.offline { border-left-color: var(--bad); }
-.tray-item { display: inline-flex; align-items: center; gap: 3px; min-height: 36px; padding: 0 4px; border: none; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
-button.tray-item { min-height: var(--tap); cursor: pointer; }
+/* the live dot: the tray's leading edge */
+.taskbar-tray::before {
+  content: ""; flex: 0 0 auto; width: 8px; height: 8px; margin: 0 3px 0 2px; border-radius: 50%;
+  background: var(--line);
+}
+.taskbar-tray.live::before { background: var(--live); }
+.taskbar-tray.reconnecting::before { background: var(--highlight); }
+.taskbar-tray.offline::before { background: var(--bad); }
+:root[data-theme="aol97"] .taskbar-tray::before { box-shadow: var(--sunken); }
+.tray-slot { display: inline-flex; align-items: center; }
+.tray-item {
+  display: inline-flex; align-items: center; gap: 3px; min-height: 36px; padding: 0 5px;
+  border: none; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums;
+}
+button.tray-item { position: relative; cursor: pointer; }
+button.tray-item::after { content: ""; position: absolute; top: -4px; bottom: -4px; left: 0; right: 0; }
+button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
 .tray-item.alarm { color: var(--bad); font-weight: 700; }
 .tray-item.dim { color: var(--dim-ink); }
+
+/* ── the Start menu ────────────────────────────────────────────────────── */
+.start-menu-away { position: fixed; inset: 0; z-index: var(--z-sheet); }
 .start-menu {
-  position: absolute; left: 4px; bottom: calc(100% + 2px); z-index: var(--z-sheet);
-  display: flex; flex-direction: column; min-width: 220px; max-width: calc(100% - 8px);
-  background: var(--face); box-shadow: var(--raised); border-radius: var(--radius);
+  position: absolute; left: 3px; bottom: 100%; z-index: var(--z-sheet);
+  display: flex; min-width: 248px; max-width: calc(100% - 6px);
+  max-height: calc(100vh - var(--title-h) - var(--taskbar-h) - var(--safe-top) - var(--safe-bottom) - 12px);
+  /* iOS Safari: 100vh counts the hidden toolbars; the visible height where known */
+  max-height: calc(100dvh - var(--title-h) - var(--taskbar-h) - var(--safe-top) - var(--safe-bottom) - 12px);
+  background: var(--face); color: var(--ink); box-shadow: var(--raised), 0 4px 14px var(--scrim); border-radius: var(--radius);
+  overflow: hidden;
 }
-.start-menu-head { padding: 8px 10px; background: var(--title-grad); color: var(--title-ink); font: 700 13px var(--ui-font); }
+.start-menu-band { display: none; }
+:root[data-theme="aol97"] .start-menu-band {
+  flex: 0 0 26px; display: flex; align-items: flex-end; justify-content: center; padding: 8px 0;
+  background: linear-gradient(0deg, var(--navy), var(--navy-2)); color: var(--title-ink);
+}
+.start-menu-band span {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font: 700 15px var(--ui-font); letter-spacing: 0.5px; white-space: nowrap; overflow: hidden;
+}
+.start-menu-items { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; padding: 2px; }
+.start-menu-head { padding: 8px 10px; margin-bottom: 2px; background: var(--title-grad); color: var(--title-ink); }
+.start-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.start-who-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.start-who-name { font: 700 15px var(--ui-font); overflow-wrap: anywhere; }
+.start-who-tags { display: flex; gap: 4px; }
+.start-who-where { font-size: 12px; color: var(--on-bar); }
 .start-menu-item {
-  display: flex; align-items: center; gap: 8px; min-height: var(--tap); margin: 0; padding: 0 12px;
+  display: flex; align-items: center; gap: 10px; min-height: var(--tap); margin: 0; padding: 0 12px 0 8px;
   border: none; background: none; color: var(--ink); font: 14px var(--ui-font); text-align: left; cursor: pointer;
 }
+.start-menu-item:hover, .start-menu-item:focus-visible { background: var(--navy); color: var(--white); outline: none; }
 .start-menu-item.danger { color: var(--bad); }
-.start-menu-confirm { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; }
-.objective-card { display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; background: var(--face); color: var(--ink); box-shadow: var(--raised); }
+.start-menu-item.danger:hover, .start-menu-item.danger:focus-visible { color: var(--white); }
+.start-menu-icon { flex: 0 0 24px; text-align: center; font-size: 18px; }
+.start-menu-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* an `arm: true` story button, armed: the director phone's look */
+.start-menu-item.armed, .start-menu-item.armed:hover, .start-menu-item.armed:focus-visible { background: var(--black); color: var(--highlight); box-shadow: inset 0 0 0 3px var(--highlight); }
+.start-menu-label .arm-line { display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; margin-top: 2px; }
+.start-menu-item + .start-menu-item[class*="danger"] { border-top: 1px solid var(--line); }
+.start-menu-confirm { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--face-hi); box-shadow: var(--sunken); }
+.start-menu-ask { font: 700 13px var(--ui-font); }
+.start-menu-confirm-row { display: flex; gap: 6px; }
+.start-menu-confirm-row .w95-btn { flex: 1; font-weight: 700; }
+.w95-btn.danger { color: var(--bad); }
+
+/* ── the tray's balloon tip ────────────────────────────────────────────── */
+.tray-balloon {
+  position: absolute; right: 6px; bottom: calc(100% + 10px); z-index: var(--z-sheet);
+  width: max-content; max-width: min(300px, calc(100vw - 24px));
+  padding: 8px 10px; border: 1px solid var(--black); border-radius: var(--radius);
+  background: var(--balloon-bg); color: var(--balloon-ink); font: 13px/1.35 var(--ui-font); white-space: normal;
+  box-shadow: 2px 3px 8px var(--scrim);
+  animation: tray-balloon-in 0.18s ease-out;
+}
+:root[data-theme="aol97"] .tray-balloon { border-radius: 8px; }
+.tray-balloon::after {
+  content: ""; position: absolute; right: 22px; bottom: -8px; width: 12px; height: 12px;
+  background: var(--balloon-bg); border-right: 1px solid var(--black); border-bottom: 1px solid var(--black);
+  transform: rotate(45deg); transform-origin: center;
+}
+.tray-balloon.floating { position: fixed; bottom: calc(var(--taskbar-h) + var(--safe-bottom) + 10px); right: 8px; }
+.tray-balloon-title { font-weight: 700; margin-bottom: 2px; }
+.tray-balloon-line { font-variant-numeric: tabular-nums; }
+.tray-balloon-line.urgent { color: var(--bad); font-weight: 700; }
+.tray-balloon-row { display: flex; gap: 6px; margin-top: 8px; }
+.tray-balloon-go { margin-top: 8px; font-weight: 700; }
+.tray-balloon-row .tray-balloon-go { margin-top: 0; }
+@keyframes tray-balloon-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── objectives ───────────────────────────────────────────────────────── */
+.objective-stack { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.objective-card { display: flex; flex-direction: column; gap: 6px; padding: 4px 10px 8px; background: var(--face); color: var(--ink); box-shadow: var(--raised); border-radius: var(--radius); }
 .objective-head {
   display: flex; align-items: center; gap: 8px; min-height: var(--tap); width: 100%; margin: 0; padding: 0;
-  border: none; background: none; color: inherit; font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
+  border: none; background: none; color: inherit; font: 700 15px var(--ui-font); text-align: left; cursor: pointer;
 }
+.objective-head:focus-visible { outline: 1px dotted var(--ink); outline-offset: -2px; }
+.objective-mark { flex: 0 0 auto; width: 14px; color: var(--dim-ink); }
 .objective-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.objective-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--dim-ink); }
-.objective-brief { margin: 0; font-size: 13px; }
-.objective-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.objective-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--dim-ink); font-size: 13px; }
+.objective-brief { margin: 0; font: 15px/1.4 var(--chat-font); max-width: 65ch; }
+.objective-list { list-style: none; margin: 0; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; background: var(--white); box-shadow: var(--sunken); border-radius: var(--radius); }
 .objective-check.done { color: var(--dim-ink); text-decoration: line-through; }
-.objective-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.objective-buttons { display: flex; flex-direction: column; gap: 6px; }
+.objective-buttons .choice { margin: 0; width: 100%; }
+
+/* ── the full-screen pass ──────────────────────────────────────────────── */
+.fullpass {
+  position: fixed; inset: 0; z-index: var(--z-pass); display: flex; flex-direction: column;
+  background: var(--white); color: var(--black);
+}
+.fullpass-bar { flex: 0 0 auto; min-height: calc(36px + var(--safe-top)); padding-top: calc(3px + var(--safe-top)); border-radius: 0; }
+.fullpass-body {
+  flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 12px 16px calc(16px + var(--safe-bottom)); text-align: center;
+}
+.fullpass-qr img { display: block; width: min(88vw, 56vh, 440px); height: auto; background: var(--white); image-rendering: pixelated; }
+.fullpass-name { font: 700 22px/1.2 var(--ui-font); overflow-wrap: anywhere; }
+.fullpass-id { font: 700 17px var(--ui-font); letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+.fullpass-say { margin: 6px 0 0; font: 700 16px var(--ui-font); }
+.fullpass-hint { margin: 0; font: 13px var(--ui-font); color: var(--dim-ink); }
+.fullpass-done { margin-top: 10px; min-width: 180px; font-weight: 700; font-size: 15px; }
+
+/* ── the scan layer ────────────────────────────────────────────────────── */
+.scan-layer {
+  position: fixed; inset: 0; z-index: var(--z-pass); display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(8px + var(--safe-top)) 8px calc(8px + var(--safe-bottom)); background: var(--scrim); overflow-y: auto;
+}
+.scan-window { width: 100%; max-width: 480px; }
+.scan-body { display: flex; flex-direction: column; gap: 6px; padding: 6px; }
+.scan-body .cam { width: 100%; margin: 0; max-height: 52vh; object-fit: cover; }
+.scan-hint { font-size: 13px; color: var(--dim-ink); padding: 0 2px; }
+.scan-body .scan-note { margin: 0; }
+.scan-problem { margin: 0; padding: 0 2px; }
+.scan-typed { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.scan-typed-label { font: 700 13px var(--ui-font); }
+.scan-typed-row { display: flex; gap: 6px; }
+.scan-typed-input {
+  flex: 1; min-width: 0; min-height: var(--tap); padding: 0 10px; border: none; border-radius: var(--radius);
+  background: var(--white); color: var(--ink); box-shadow: var(--sunken);
+  font: 16px var(--ui-font); letter-spacing: 1px; text-transform: uppercase;
+}
+.scan-typed-input::placeholder { color: var(--dim-ink); text-transform: none; letter-spacing: 0; }
+.scan-typed-input:focus-visible { outline: 1px dotted var(--ink); outline-offset: 2px; }
+.scan-typed-go { font-weight: 700; }
+.w95-btn:disabled { color: var(--dim-ink); cursor: default; }
+
+/* ── the room list's fold ──────────────────────────────────────────────── */
+.rooms-fold { margin-top: 2px; border-top: 1px solid var(--line); }
+.rooms-fold-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); margin: 0; padding: 0 10px;
+  border: none; background: none; color: var(--dim-ink); font: 700 13px var(--ui-font); cursor: pointer; text-align: left;
+}
+.rooms-fold-btn:hover { color: var(--ink); }
+.rooms-fold-btn:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
+
+/* ── the program picker's reserved fold ────────────────────────────────── */
+.pick-fold { text-align: left; display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+
+/* ── the shared primitives at the touch floor (44 px) ──────────────────── */
+.choice { min-height: var(--tap); }
+.link { min-height: var(--tap); }
+.chrow { min-height: var(--tap); }
+.icon-btn { min-width: var(--tap); height: var(--tap); }
+.composer .composer-scan { min-height: var(--tap); min-width: var(--tap); }
+/* caption boxes keep their Win95 size; the touch target grows past them */
+.back { position: relative; width: 36px; height: 30px; }
+.back::after { content: ""; position: absolute; inset: -8px -6px; }
+.sheet-x::after { content: ""; position: absolute; inset: -8px -6px; }
+.sheet-x { position: relative; width: 28px; height: 24px; }
+.w95-btn.w95-x { position: relative; min-height: 28px; min-width: 32px; }
+.w95-btn.w95-x::after { content: ""; position: absolute; inset: -8px -6px; }
+.thread-head { min-height: var(--tap); }
+.thread-head .presence { position: relative; min-height: 30px; }
+.thread-head .presence::after { content: ""; position: absolute; inset: -7px -2px; }
+/* the tour's callout sits above a target in the lower half (the taskbar) */
+.tour-card.above { bottom: auto; top: calc(12px + var(--safe-top)); }
+.sheet input { font-size: 16px; min-height: var(--tap); }
+
+/* sheets scroll inside the screen, clear of the notch and the home bar */
+.sheet-backdrop { padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom)); }
+.sheet { max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom)); overflow-y: auto; }
+
+/* ── narrow phones ─────────────────────────────────────────────────────── */
 @media (max-width: 399px) {
-  .taskbar-btn:not(.primary) .taskbar-label { display: none; }
+  .taskbar-btn:not(.primary):not(.taskbar-start) .taskbar-label { display: none; }
+  .taskbar-btn:not(.primary) { padding: 0 8px; }
   .taskbar-tray > :nth-child(n+4) { display: none; }
+}
+@media (max-width: 379px) {
+  .taskbar-start .taskbar-label { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taskbar-btn.attn, .tray-balloon { animation: none; }
 }

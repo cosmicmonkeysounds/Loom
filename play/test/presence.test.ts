@@ -27,7 +27,7 @@ describe("occupantsByLocation", () => {
 });
 
 describe("roomOrder", () => {
-  it("puts where you stand first, then decisions, unread, populated, recent", () => {
+  it("puts where you stand first, then decisions, then the rest in fixed tiers (wave 13: never by recency)", () => {
     const here = ch("loc:Hall", { here: true, lastTs: 1 });
     const decision = ch("dm:Host", { decision: { title: "?", options: [] }, lastTs: 2 });
     const unread = ch("loc:Yard", { unread: 3, lastTs: 3 });
@@ -35,7 +35,8 @@ describe("roomOrder", () => {
     const recent = ch("lobby", { lastTs: 99 });
     const quiet = ch("loc:Attic", { lastTs: 5 });
     const sorted = [quiet, recent, populated, unread, decision, here].sort(roomOrder).map((c) => c.id);
-    expect(sorted).toEqual(["loc:Hall", "dm:Host", "loc:Yard", "loc:Cellar", "lobby", "loc:Attic"]);
+    // Unread and populated share a tier, kept in name order: Cellar, Yard.
+    expect(sorted).toEqual(["loc:Hall", "dm:Host", "loc:Cellar", "loc:Yard", "lobby", "loc:Attic"]);
   });
 });
 

@@ -1,14 +1,23 @@
 //! The guided tour and the pinned rooms' place in the list (split out of
-//! onrails.test.ts and quests.test.ts in wave 13, blocks unchanged): the
-//! tutorial card walks the app; the Quest Log + Codex keep a fixed order.
+//! onrails.test.ts and quests.test.ts in wave 13): the tutorial card walks
+//! the guest frame (the NOW bar, the rooms, the taskbar's Pass / Scan /
+//! Start); the Quest Log + Codex keep a fixed order.
 
 import { describe, expect, it } from "vitest";
 
 import { roomOrder } from "../src/presence.ts";
 import { buildGuestChannels } from "../src/session.ts";
 import { groupBySpace } from "../src/threads.ts";
-import { tourResult, tutorialSteps } from "../src/tutorial.tsx";
-import type { ChatMessage, GuestView } from "../src/types.ts";
+import { GUEST_TOUR_ANCHORS, tourResult, tutorialSteps } from "../src/tutorial.tsx";
+import type { ChatMessage, GuestView, ObjectiveView, WalletView } from "../src/types.ts";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { Taskbar } from "../src/chrome/taskbar.tsx";
+import { TitleBar } from "../src/chrome/title-bar.tsx";
+import { guestTaskbarButtons } from "../src/guest/frame.tsx";
+import { SpaceList } from "../src/rooms/list.tsx";
+
+const WALLET: WalletView = { name: "Truthcoin", balance: 100, escrowed: 0, maxTransfer: 50, transfers: [], requests: [], offers: [] };
 import { WIDGETS } from "../src/widgets.tsx";
 
 function msg(seq: number, channel: string, extra: Partial<ChatMessage> = {}): ChatMessage {
@@ -45,39 +54,47 @@ describe("the tutorial", () => {
     expect(WIDGETS["captcha"]?.overlay).toBeUndefined();
   });
 
-  it("walks the app's controls, trimmed to what the story turns on", () => {
+  it("walks the frame's controls, trimmed to what the story turns on", () => {
     const full = tutorialSteps({ title: "Trapped in the Internet", hasCodex: true, hasPeople: true, hasActions: true });
-    expect(full.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "codex", "people", "pass", "cards", "done"]);
+    expect(full.map((s) => s.id)).toEqual(["welcome", "rooms", "codex", "pass", "scan", "start", "cards", "done"]);
     expect(full[0]!.text).toContain("Trapped in the Internet");
-    expect(full.find((s) => s.id === "pass")!.text).toContain("buttons");
+    expect(full.find((s) => s.id === "start")!.text).toContain("the story's own buttons");
+    expect(full.find((s) => s.id === "start")!.text).toContain("who's here");
     const bare = tutorialSteps({ title: "T", hasCodex: false, hasPeople: false, hasActions: false });
-    expect(bare.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "pass", "cards", "done"]);
-    expect(bare.find((s) => s.id === "pass")!.text).not.toContain("buttons");
-    // Every anchored step names a real `data-tour` anchor the app renders.
-    for (const s of full) if (s.target !== null) expect(["rooms", "me", "wallet", "codex", "people", "pass", "help"]).toContain(s.target);
+    expect(bare.map((s) => s.id)).toEqual(["welcome", "rooms", "pass", "scan", "start", "cards", "done"]);
+    expect(bare.find((s) => s.id === "start")!.text).not.toContain("buttons");
+    // Every anchored step names a real `data-tour` anchor the frame renders.
+    for (const s of full) if (s.target !== null) expect(GUEST_TOUR_ANCHORS).toContain(s.target);
   });
 
-  it("a wallet step appears after `me` when the story has a currency", () => {
+  it("Pass and Scan each get a step, on the taskbar's own anchors", () => {
+    const steps = tutorialSteps({ title: "T", hasCodex: true, hasPeople: true, hasActions: true });
+    expect(steps.find((s) => s.id === "pass")).toMatchObject({ target: "pass", title: "Your pass" });
+    expect(steps.find((s) => s.id === "scan")).toMatchObject({ target: "scan", title: "Scan" });
+    expect(steps.find((s) => s.id === "scan")!.text).toContain("Codex");
+  });
+
+  it("a NOW step leads when the story gives objectives; a wallet step after the rooms", () => {
     const base = { title: "T", hasCodex: true, hasPeople: true, hasActions: true };
+    expect(tutorialSteps({ ...base, hasObjectives: true }).map((s) => s.id)).toEqual(["welcome", "now", "rooms", "codex", "pass", "scan", "start", "cards", "done"]);
     const coin = tutorialSteps({ ...base, hasWallet: true });
-    expect(coin.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "wallet", "codex", "people", "pass", "cards", "done"]);
+    expect(coin.map((s) => s.id)).toEqual(["welcome", "rooms", "wallet", "codex", "pass", "scan", "start", "cards", "done"]);
     const step = coin.find((s) => s.id === "wallet")!;
-    expect(step.target).toBe("wallet"); // the identity card's balance pill carries `data-tour="wallet"`
+    expect(step.target).toBe("wallet"); // the Wallet room's row carries `data-tour="wallet"`
     expect(step.text).toContain("balance");
     expect(tutorialSteps({ ...base, hasWallet: false }).map((s) => s.id)).not.toContain("wallet");
-    expect(tutorialSteps(base).map((s) => s.id)).not.toContain("wallet");
     // With every optional step on: the final order the stories may name.
-    expect(tutorialSteps({ ...base, hasWallet: true, hasQuests: true, bathroom: "Tap 🚻 first." }).map((s) => s.id)).toEqual([
-      "welcome", "rooms", "me", "wallet", "quests", "codex", "people", "pass", "bathroom", "cards", "done",
+    expect(tutorialSteps({ ...base, hasObjectives: true, hasWallet: true, hasQuests: true, bathroom: "Tap 🚻 first." }).map((s) => s.id)).toEqual([
+      "welcome", "now", "rooms", "wallet", "quests", "codex", "pass", "scan", "start", "bathroom", "cards", "done",
     ]);
   });
 
-  it("adds a Bathroom Mode step over the pass when the story supplies the blurb", () => {
+  it("adds a Bathroom Mode step over ⊞ Start when the story supplies the blurb", () => {
     const full = { title: "Trapped in the Internet", hasCodex: true, hasPeople: true, hasActions: true };
     const bath = tutorialSteps({ ...full, bathroom: "Tap 🚻 first." });
-    expect(bath.map((s) => s.id)).toEqual(["welcome", "rooms", "me", "codex", "people", "pass", "bathroom", "cards", "done"]);
+    expect(bath.map((s) => s.id)).toEqual(["welcome", "rooms", "codex", "pass", "scan", "start", "bathroom", "cards", "done"]);
     const step = bath.find((s) => s.id === "bathroom")!;
-    expect(step.target).toBe("pass");
+    expect(step.target).toBe("start");
     expect(step.text).toBe("Tap 🚻 first.");
     expect(tourResult(bath, null)).toEqual({ completed: true, steps: 9 });
     // No blurb (or an empty one) → no step.
@@ -86,13 +103,22 @@ describe("the tutorial", () => {
   });
 
   it("every step id is one the stories may name (the final list, optional steps included)", () => {
-    // The complete id list across every option: `wallet` (lane C) and
-    // `bathroom` are optional, the rest fixed.
-    const KNOWN = ["welcome", "rooms", "me", "wallet", "codex", "people", "pass", "bathroom", "cards", "done"];
-    const bath = tutorialSteps({ title: "T", hasCodex: true, hasPeople: true, hasActions: true, bathroom: "Tap 🚻 first." });
-    for (const s of bath) expect(KNOWN).toContain(s.id);
-    const order = KNOWN.filter((id) => bath.some((s) => s.id === id));
-    expect(bath.map((s) => s.id)).toEqual(order);
+    const KNOWN = ["welcome", "now", "rooms", "wallet", "quests", "codex", "pass", "scan", "start", "bathroom", "cards", "done"];
+    const all = tutorialSteps({ title: "T", hasCodex: true, hasPeople: true, hasActions: true, hasObjectives: true, hasWallet: true, hasQuests: true, bathroom: "Tap 🚻 first." });
+    for (const s of all) expect(KNOWN).toContain(s.id);
+    expect(all.map((s) => s.id)).toEqual(KNOWN.filter((id) => all.some((s) => s.id === id)));
+  });
+
+  it("the frame renders every anchor the tour may name", () => {
+    const now: ObjectiveView = { id: "o", title: "Find the duck", brief: "", checklist: [], buttons: ["pass"], act: null };
+    const html =
+      renderToStaticMarkup(createElement(TitleBar, { objectives: [now], fallback: "Lobby", onOpen: () => {} })) +
+      renderToStaticMarkup(createElement(Taskbar, { start: [], buttons: guestTaskbarButtons({ now, pass: () => {}, scan: () => {} }) })) +
+      renderToStaticMarkup(createElement(SpaceList, { spaces: [], onOpen: () => {} }));
+    const rendered = new Set([...html.matchAll(/data-tour="([^"]+)"/gu)].map((m) => m[1]!));
+    // The pinned rows' anchors ride on the channels themselves (`Channel.tour`).
+    for (const c of buildGuestChannels(new Map(), null, view({ wallet: WALLET }))) if (c.tour !== undefined) rendered.add(c.tour);
+    for (const a of GUEST_TOUR_ANCHORS) expect(rendered, a).toContain(a);
   });
 
   it("answers the card with what happened — the story hears `skipped`", () => {
