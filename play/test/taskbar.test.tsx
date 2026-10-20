@@ -112,7 +112,8 @@ describe("the guest taskbar", () => {
   it("the guest frame is [title bar][pins][shell][taskbar] on every screen", () => {
     expect(app).toMatch(/className=\{`root app-frame/u);
     const head = app.slice(app.indexOf("head={"), app.indexOf("</FrameRoot>"));
-    const order = ["<MomentsLayer />", "<NowBar", "<PinnedRail", "<Shell"].map((tag) => head.indexOf(tag));
+    // The sticky and the pin rail are one strip under the title bar (MomentsAndPins).
+    const order = ["<NowBar", "<MomentsAndPins", "<Shell"].map((tag) => head.indexOf(tag));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The old identity card, the countdown strip and the alerts bar are gone from the frame.

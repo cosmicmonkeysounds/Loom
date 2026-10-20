@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, Sheet, useWide } from "../ui/primitives.tsx";
-import { PinnedRail } from "../moments/pins-rail.tsx";
+import { MomentsAndPins } from "../moments/pins-rail.tsx";
 import { Shell, SpaceList } from "../rooms/list.tsx";
 import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
@@ -481,8 +481,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       head={
         <>
           <NowBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} paused={st.paused === true} />
-          <MomentsLayer />
-          <PinnedRail pins={pins} />
+          {/* One strip above the room: the guest's own pin folds a sticky into its "+n". */}
+          <MomentsAndPins pins={pins} me={s.me.id} />
           <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
         </>
       }

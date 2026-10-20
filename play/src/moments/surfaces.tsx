@@ -6,7 +6,7 @@
 //! markup over `w95-*` primitives and lane classes (`moments-…`), every
 //! colour from a token, so `plain` renders the same structure flat.
 
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { usePlayHost } from "../host.ts";
 import { WinDialog } from "../ui/window.tsx";
 import { faultAddress, type Moment, type Queued } from "./model.ts";
@@ -118,20 +118,39 @@ export function stickyLead(m: Pick<Moment, "caption" | "kind">): string | null {
   return c === "" || c === "Announcement" || c === "Message" ? null : c;
 }
 
+/** A sticky's words show at most this many lines, then "more ›" (finish review #2). */
+export const STICKY_LINES = 3;
+/** Before the first measure (and in a server render): a text this long is taken as clipped. */
+export const STICKY_MORE_CHARS = 150;
+
+/** useLayoutEffect in a browser (no flash of "more ›"), useEffect in the tests' server render. */
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 /** The sticky notification bar: under the title bar, in flow, until tapped.
  *  A `!` alarm is the full-yellow bar; anything else the info-tip yellow
- *  with a dark frame. More than one waiting: "Dismiss all (n)". */
+ *  with a dark frame. Its words stop at three lines with "more ›" (a quest
+ *  brief ran to 12 lines, 550 px of an 844 px phone). More than one
+ *  waiting: "Dismiss all (n)". */
 export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }: { q: Queued; count: number; canGo: boolean; onGo: () => void; onDismiss: () => void; onDismissAll?: () => void }) {
   const m = q.moment;
   const lead = stickyLead(m);
   const alarm = m.severity === "major" && m.kind === "alert";
+  const words = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  const [clipped, setClipped] = useState(() => m.text.length > STICKY_MORE_CHARS);
+  // Measure the clamped words: "more ›" only when lines were cut.
+  useIsoLayoutEffect(() => {
+    const el = words.current;
+    if (el === null || open) return;
+    setClipped(el.scrollHeight > el.clientHeight + 1);
+  }, [m.text, open]);
   return (
     <div className={`moments-sticky ${m.severity}${alarm ? " alarm" : ""}`} role={m.severity === "major" ? "alert" : "status"}>
       <button type="button" className="moments-sticky-body" onClick={onDismiss} aria-label={`${lead !== null ? `${lead}: ` : ""}${m.text}. Tap to dismiss.`}>
         <span className="moments-sticky-icon">
           <MomentIcon kind={iconOf(m)} size={24} />
         </span>
-        <span className="moments-sticky-words">
+        <span ref={words} className={`moments-sticky-words${open ? "" : " clamp"}`}>
           {m.kind === "objective" ? (
             <MomentText m={m} className="moments-sticky-text" />
           ) : (
@@ -143,6 +162,11 @@ export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }:
         </span>
       </button>
       <span className="moments-sticky-actions">
+        {(clipped || open) && (
+          <button type="button" className="w95-btn moments-sticky-more" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? "Less ▴" : "more ›"}
+          </button>
+        )}
         {count > 1 && onDismissAll !== undefined && (
           <button type="button" className="w95-btn moments-sticky-all" onClick={onDismissAll}>
             Dismiss all ({count})

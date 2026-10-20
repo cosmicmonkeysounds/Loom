@@ -452,7 +452,7 @@ function dismissAllOf(s: Surfaces, dismiss: () => void): { waiting?: number; onD
 /** The overlay: the feedback toast and the sticky banner (in flow, under the
  *  title bar), the balloon tip, the dialog box or the blue screen, the
  *  missed list, and the glitch. */
-export function MomentsLayer() {
+export function MomentsLayer({ foldSticky = false }: { foldSticky?: boolean } = {}) {
   const e = useContext(EngineContext);
   // A sticky summary opens its list on a tap (the one modal a booth sees: it asked).
   const [openList, setOpenList] = useState<string | null>(null);
@@ -464,7 +464,7 @@ export function MomentsLayer() {
   return (
     <>
       {summary !== null && !listOpen && <SummarySticky count={summary.moments.length} onOpen={() => setOpenList(summary.key)} onDismiss={e.closeSummary} />}
-      {s.sticky !== null && (
+      {s.sticky !== null && !foldSticky && (
         <StickyBanner
           q={s.sticky}
           count={s.stickyCount}
@@ -545,6 +545,14 @@ export function useNowMoment(): { moment: Moment | null; seen: (acted: boolean) 
     }),
     [q, close],
   );
+}
+
+/** The sticky on screen, if any, and how many wait (the pin rail folds them into a "+n" on the guest's own pin). */
+export function useStickyMoment(): { key: string | null; count: number } {
+  const e = useContext(EngineContext);
+  const key = e?.surfaces.sticky?.moment.key ?? null;
+  const count = e?.surfaces.stickyCount ?? 0;
+  return useMemo(() => ({ key, count }), [key, count]);
 }
 
 export function useMoments(): { missed: number; replay: () => void; level: AlertLevel } {

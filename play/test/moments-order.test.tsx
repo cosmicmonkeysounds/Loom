@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_MOMENTS, exitRoomFor, missedCount, momentsReducer, priorityOf, surfacesOf, type Moment, type MomentsAction, type MomentsState } from "../src/moments/model.ts";
 import { BlueScreen, MomentDialog, StickyBanner, iconOf, stickyLead } from "../src/moments/surfaces.tsx";
 import type { AlertLevel } from "../src/types.ts";
+import { readBundledCss } from "./css.ts";
 
 function moment(seq: number, over: Partial<Moment> = {}): Moment {
   return { key: `m:${seq}`, seq, severity: "major", kind: "alert", caption: "Clippy", text: `moment ${seq}`, channel: "lobby", at: seq * 1000, phase: "hunt", ...over };
@@ -208,5 +209,29 @@ describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", 
     // Dismiss all: the sticky and its peek leave, read.
     s = momentsReducer(s, { type: "dismissMany", keys: surfacesOf(s, true).stickyKeys });
     expect(s.queue).toEqual([]);
+  });
+});
+
+describe("a sticky's words stop at three lines (finish review #2)", () => {
+  it("a long sticky is clamped with 'more ›'; a short one has no 'more'", () => {
+    const long = moment(50, { kind: "quest", caption: "New quest: The Truth Scavenger Hunt", text: "Round 2: It is more important than ever that I get the information I need. One hour. The books have not moved. Return to the Desktop for the Second Moment of Truth.\n- Q1. What extension does the Customer Care card tell you to dial?" });
+    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(long, "sticky"), count: 1, canGo: true, onGo: noop, onDismiss: noop }));
+    expect(html).toContain('class="moments-sticky-words clamp"');
+    expect(html).toMatch(/<button type="button" class="w95-btn moments-sticky-more" aria-expanded="false">more ›<\/button>/u);
+    const short = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(51, { text: "Snacks are in The Start Bar." }), "sticky"), count: 1, canGo: false, onGo: noop, onDismiss: noop }));
+    expect(short).not.toContain("moments-sticky-more");
+    const css = readBundledCss();
+    expect(css).toMatch(/\.moments-sticky-words\.clamp \{[^}]*-webkit-line-clamp: 3;[^}]*overflow: hidden/u);
+  });
+});
+
+describe("the host balloon in the tight layout (finish review #3)", () => {
+  it("never clips the whole box mid-line: the text keeps whole lines (≤ 2) or is left out, the box keeps its height", () => {
+    const css = readBundledCss().replace(/\/\*[\s\S]*?\*\//gu, "");
+    // No max-height / overflow on the tight balloon box itself.
+    expect(css).not.toMatch(/\[data-host-drawer="tight"\] \.moments-balloon \{[^}]*max-height/u);
+    // The fallback: the message is left out; with round(): whole lines, at most two.
+    expect(css).toMatch(/\[data-host-drawer="tight"\] \.moments-balloon-text \{ display: none; \}/u);
+    expect(css).toMatch(/@supports \(max-height: round\(down, 100px, 10px\)\) \{\s*\[data-host-drawer="tight"\] \.moments-balloon-text \{[^}]*-webkit-line-clamp: 2;[^}]*round\(down, calc\(var\(--host-drawer-room\) - 96px\), 1\.35em\), 2\.7em\)/u);
   });
 });
