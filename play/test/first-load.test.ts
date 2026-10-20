@@ -13,7 +13,9 @@ describe("the guest's first load", () => {
     const ui = src("ui.tsx");
     expect(ui).not.toMatch(/^import [^;]*from "\.\/booth\//mu);
     expect(ui).not.toMatch(/^import [^;]*from "\.\/director\.tsx"/mu);
-    expect(ui).toContain('lazy(() => import("./booth/app.tsx")');
+    expect(ui).toMatch(/lazy\(retryImport\(\(\) => import\("\.\/booth\/app\.tsx"\)/u);
+    // …behind a boundary: a chunk that won't load is a Reload, never a white page.
+    expect(ui).toContain("<ChunkBoundary");
   });
 
   it("the guest chrome reads the clock from clock.ts, never director.tsx", () => {
@@ -25,7 +27,8 @@ describe("the guest's first load", () => {
   it("jsQR is fetched only when a camera runs without a native detector", () => {
     const scanner = src("scanner.tsx");
     expect(scanner).not.toMatch(/^import jsQR/mu);
-    expect(scanner).toContain('await import("jsqr")');
+    expect(scanner).toContain('import("jsqr")');
+    expect(scanner).not.toMatch(/^import [^;]*from "jsqr"/mu);
   });
 
   it("the Help sheet is fetched on first open", () => {

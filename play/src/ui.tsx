@@ -10,12 +10,16 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { GuestApp } from "./guest/app.tsx";
 import { LazyHelpSheet as HelpSheet } from "./help-lazy.tsx";
 import { initialRole, roleForBrand, type AppRole } from "./app-role.ts";
+import { ChunkBoundary, ChunkFailed, retryImport } from "./lazy-chunk.tsx";
+import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
+import { useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 
 // A guest's first load is the guest app only (fix round): the booth (with
 // the host console) and the director's cue sheet are their own chunks,
-// fetched when a performer or a director opens this page.
-const PerformerApp = lazy(() => import("./booth/app.tsx").then((m) => ({ default: m.PerformerApp })));
-const DirectorApp = lazy(() => import("./director.tsx").then((m) => ({ default: m.DirectorApp })));
+// fetched when a performer or a director opens this page. A fetch that fails is tried once more, then the page says so with a
+// Reload (a page left open across a deploy asks for chunks that are gone).
+const PerformerApp = lazy(retryImport(() => import("./booth/app.tsx").then((m) => ({ default: m.PerformerApp }))));
+const DirectorApp = lazy(retryImport(() => import("./director.tsx").then((m) => ({ default: m.DirectorApp }))));
 
 /** What shows while a lazily loaded app arrives. */
 function Loading() {
@@ -28,8 +32,6 @@ function Loading() {
     </div>
   );
 }
-import { adoptResume, resumeToAdopt, storedGuestName, type ResumeLink } from "./resume.ts";
-import { useDocumentTitle, useLandingBrand, useTheme } from "./session/shared.ts";
 
 export function App({ resume = null }: { resume?: ResumeLink | null }) {
   // `?role=director` (W-26) opens the phone cue sheet whatever else the
@@ -104,15 +106,19 @@ export function App({ resume = null }: { resume?: ResumeLink | null }) {
   if (role === "guest") return <GuestApp onLeave={() => setRole("none")} />;
   if (role === "prime")
     return (
-      <Suspense fallback={<Loading />}>
-        <PerformerApp onLeave={() => setRole("none")} />
-      </Suspense>
+      <ChunkBoundary fallback={() => <ChunkFailed what="The booth" onBack={() => setRole("none")} />}>
+        <Suspense fallback={<Loading />}>
+          <PerformerApp onLeave={() => setRole("none")} />
+        </Suspense>
+      </ChunkBoundary>
     );
   if (role === "director")
     return (
-      <Suspense fallback={<Loading />}>
-        <DirectorApp onLeave={() => setRole("none")} brandTheme={brand.theme} />
-      </Suspense>
+      <ChunkBoundary fallback={() => <ChunkFailed what="The cue sheet" onBack={() => setRole("none")} />}>
+        <Suspense fallback={<Loading />}>
+          <DirectorApp onLeave={() => setRole("none")} brandTheme={brand.theme} />
+        </Suspense>
+      </ChunkBoundary>
     );
 
   return (
