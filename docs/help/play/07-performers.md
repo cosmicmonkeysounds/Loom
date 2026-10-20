@@ -101,7 +101,9 @@ ignored for a moment, so a quick second tap never lands on a different
 button. A button the story gives to **another** character only (the
 server-room watch's patch-bay buttons, the Antivirus' 🛡 / ✅ / 👁) isn't
 on your card at all: the server would refuse it from your booth (*not
-your button …*). Rooms themselves stay clean: just the conversation and
+your button …*). A host's booth is the exception for the ones the story
+hears from any booth (at the show, the patch-bay buttons): see [The host
+console](hosts.md). Rooms themselves stay clean: just the conversation and
 your composer.
 
 **Some buttons take two taps.** A button with no way back — one that
