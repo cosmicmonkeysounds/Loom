@@ -5660,6 +5660,9 @@ export class EventRuntime {
           return true;
         }
         this.casinoLast.set(who, now);
+        // A headless mod token names itself (`Terminal · Casino`) as the journal's `by`.
+        const label = str(body, "label").trim().slice(0, 60);
+        if (label !== "" && by === "Director") this.actingBy = label;
         const g = game as CasinoGame;
         const roll = rollFor(g, (n) => randomInt(n));
         const payout = payoutOf(g, pick, roll, stake);
