@@ -10,7 +10,6 @@
 //! plain-http LAN address the performer is told to type the id.
 
 import { useEffect, useRef } from "react";
-import jsQR from "jsqr";
 import { cameraFailure, decodeSize, repeatGate, type CameraState } from "./scan.ts";
 
 /** Time before the same code may be reported again. */
@@ -86,6 +85,9 @@ export function CameraScanner({ onCode, onState }: { onCode: (text: string) => v
       }
       setState("live");
       const native = await nativeDetector();
+      // jsQR only where there is no native detector (iPhone Safari), and only
+      // once a camera is live: its own chunk, never in the first load.
+      const decode = native === null ? await import("jsqr").then((m) => m.default, () => null) : null;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       const scan = async () => {
         if (stopped) return;
@@ -94,13 +96,13 @@ export function CameraScanner({ onCode, onState }: { onCode: (text: string) => v
             if (native !== null) {
               const codes = await native.detect(v);
               for (const c of codes) if (c.rawValue) report(c.rawValue);
-            } else if (ctx !== null) {
+            } else if (ctx !== null && decode !== null) {
               const size = decodeSize(v.videoWidth, v.videoHeight);
               canvas.width = size.width;
               canvas.height = size.height;
               ctx.drawImage(v, 0, 0, size.width, size.height);
               const img = ctx.getImageData(0, 0, size.width, size.height);
-              const hit = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+              const hit = decode(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
               if (hit !== null && hit.data) report(hit.data);
             }
           } catch {

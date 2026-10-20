@@ -10,7 +10,7 @@ import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
 import { CutsceneStage } from "../cutscene.tsx";
 import { useOfflineFor } from "../client.ts";
-import { HelpSheet } from "../help.tsx";
+import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
 import { usePlayHost } from "../host.ts";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
 import { useDocumentTitle, useLandingBrand } from "../session/shared.ts";

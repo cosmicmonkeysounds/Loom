@@ -10,7 +10,7 @@
 //! plus the wall time since), read by `countdown.tsx`'s `useStoryNow`.
 
 import { useState, type ReactElement } from "react";
-import { URGENT_S } from "../director.tsx";
+import { URGENT_S } from "../clock.ts";
 import { countdownItems, useStoryNow, type CountdownItem } from "../countdown.tsx";
 import type { CountdownSummary } from "../types.ts";
 import { TrayBalloon, TraySlot } from "./balloon.tsx";
