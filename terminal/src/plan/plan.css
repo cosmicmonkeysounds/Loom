@@ -1,0 +1,71 @@
+/* The live plan (wave 15): the 2D reinstallation for a screen with no WebGL2. */
+.plan-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.plan-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.4em;
+  padding: 0.4em 0.6em;
+  pointer-events: none;
+}
+.plan-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.1em 0.5em;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--phosphor-faint);
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.plan-floor-name { color: var(--phosphor-dim); }
+.plan-tabs { display: flex; gap: 0.3em; }
+.plan-tab {
+  padding: 0.05em 0.45em;
+  background: #c0c0c0;
+  color: #404040;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  font-size: 0.85em;
+}
+.plan-tab.busy { color: #000080; }
+.plan-tab.on { background: #000080; color: #fff; border-color: #404040 #fff #fff #404040; }
+.plan-idle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.3em 0.8em;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--phosphor-dim);
+  color: var(--phosphor);
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  animation: pulse 1.6s steps(2, end) infinite;
+}
+.plan-toasts {
+  position: absolute;
+  left: 0.6em;
+  bottom: 0.6em;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.plan-toasts .plan-toast + .plan-toast { margin-top: 0.3em; }
+.plan-toast {
+  padding: 0.1em 0.6em;
+  background: #c0c0c0;
+  color: #000;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  font-size: 0.8em;
+}
+.plan-celebrate .world-celebrate-name { font-size: 1.1em; }
+.world.plan.full { font-size: clamp(20px, 2.4vw, 40px); }
