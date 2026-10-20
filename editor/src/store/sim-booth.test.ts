@@ -20,9 +20,23 @@ CHARACTER Greeter
     <set: guest.score += 5>
     reply Ticket checked.
 
+CHARACTER Rival
+  on scan guest
+    reply Rival here.
+
+CHARACTER Host
+  admin: true
+  on scan guest
+    reply Welcome.
+
 INTERACTION wave_in
   label: 👋 Wave in
   who: performer
+
+INTERACTION patch
+  label: 🔌 Patch
+  who: performer
+  by: Rival
 
 INTERACTION power_on
   label: ⚡ Power on
@@ -37,6 +51,13 @@ OBJECTIVE door_duty
     - Smile
   buttons: wave_in, scan
 
+OBJECTIVE floor
+  for: Host
+  title: Run the floor
+  text:
+    Keep things moving.
+  buttons: wave_in, patch
+
 == opening
   The lights dim.
 `
@@ -50,13 +71,41 @@ describe('wave 13: the performer lens on a folder run', () => {
   })
 
   it("the booth's lens has no admin cues; the mod snapshot still does (the Director page's)", () => {
-    expect(useSim.getState().interactions.map((i) => i.id).sort()).toEqual(['power_on', 'wave_in'])
+    expect(useSim.getState().interactions.map((i) => i.id).sort()).toEqual(['patch', 'power_on', 'wave_in'])
     useSim.getState().setPerspective('Greeter')
     const lens = useSim.getState().lens
     expect(lens?.kind).toBe('performer')
     if (lens?.kind !== 'performer') return
-    expect(lens.view.interactions.map((i) => i.id)).toEqual(['wave_in'])
+    expect(lens.view.interactions.map((i) => i.id).sort()).toEqual(['patch', 'wave_in'])
     expect(performerActions(lens, 'Greeter', useSim.getState().interactions).map((i) => i.id)).toEqual(['wave_in'])
+  })
+
+  it("another character's by: button: the view keeps it flagged, the lens never offers it", () => {
+    useSim.getState().setPerspective('Greeter')
+    const lens = useSim.getState().lens
+    if (lens?.kind !== 'performer') throw new Error('no performer lens')
+    expect(lens.host).toBe(false)
+    expect(lens.view.interactions.find((i) => i.id === 'patch')).toMatchObject({ only: true, actors: ['Rival'] })
+    expect(performerActions(lens, 'Greeter', useSim.getState().interactions).map((i) => i.id)).toEqual(['wave_in'])
+    // The character it is for gets it, resolved or not.
+    useSim.getState().setPerspective('Rival')
+    const rival = useSim.getState().lens
+    expect(performerActions(rival, 'Rival', useSim.getState().interactions).map((i) => i.id).sort()).toEqual(['patch', 'wave_in'])
+    expect(performerActions(null, 'Rival', useSim.getState().interactions).map((i) => i.id).sort()).toEqual(['patch', 'wave_in'])
+  })
+
+  it("a host part's lens is the host booth's: its objectives keep another character's by: button", () => {
+    useSim.getState().setPerspective('Host')
+    const lens = useSim.getState().lens
+    if (lens?.kind !== 'performer') throw new Error('no performer lens')
+    expect(lens.host).toBe(true)
+    expect(lens.view.objectives?.find((o) => o.id === 'floor')?.buttons).toEqual(['wave_in', 'patch'])
+    expect(performerActions(lens, 'Host', useSim.getState().interactions).map((i) => i.id).sort()).toEqual(['patch', 'wave_in'])
+    // An ordinary booth's objective with the same buttons would drop it.
+    useSim.getState().setPerspective('Greeter')
+    const greeter = useSim.getState().lens
+    if (greeter?.kind !== 'performer') throw new Error('no performer lens')
+    expect(greeter.view.objectives?.map((o) => o.id)).toEqual(['door_duty'])
   })
 
   it("the booth's lens carries its live objectives", () => {
