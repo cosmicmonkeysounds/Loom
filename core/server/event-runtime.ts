@@ -22,7 +22,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 import { asNumber } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type Mutation } from "./store.ts";
@@ -4799,8 +4799,12 @@ export class EventRuntime {
         }
         let responses: string[] = [];
         let lines: PressLines = {};
+        let refused = false;
         if (scanAs !== null) {
           const events = this.commit("scan", scanAs, target);
+          // D1: the story said no (only a staff-room line) — the card reads
+          // "Not done: <line>" rather than a neutral note.
+          refused = scanRefused(this.sim!, events);
           responses = events
             .filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === scanAs)
             .map((e) => readoutText(e.text).text);
@@ -4815,6 +4819,7 @@ export class EventRuntime {
           canModerate: admin,
           responses,
           ...lines,
+          ...(refused ? { refused: true } : {}),
           guest: admin
             ? rosterRow(this.sim!, target)
             : { id: target, name: this.sim!.persons.get(target)?.name ?? target, captured: this.sim!.isCaptured(target) },
@@ -4922,13 +4927,16 @@ export class EventRuntime {
           return true;
         }
         const pressed = this.commit("signal", name, guest, null, character);
+        // D1: the cue sheet's own judgement (`pressRefused`) — the story
+        // turned the press down, at most saying why in a staff room.
+        const refused = pressRefused(this.sim!, pressed);
         // Wave 13: the story's replies to this booth, and its fresh card.
         const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
         // C1: the staff-room lines (a refusal's reason) and what the
         // character said to the guest, for the card in place of a bare ✔.
         const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, guest);
         const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.canHostToken(token));
-        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(card !== null ? { card } : {}) });
+        sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(refused ? { refused: true } : {}), ...(card !== null ? { card } : {}) });
         return true;
       }
       case "/api/prime/widget": {

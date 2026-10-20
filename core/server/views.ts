@@ -844,6 +844,27 @@ export function pressRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
   return refusedPress(sim, sim.log.all(), sim.log.len() - batch.length, first.name);
 }
 
+/** Was the scan `batch` (a `Sim.scan` call just committed) refused by the
+ *  story (D1): it did nothing but tell a staff room why — at least one
+ *  staff-only broadcast ("🗣 Not now…"), and otherwise only diagnostics or
+ *  `_`-leaf bookkeeping. A scan nobody hears, or one that only greets, is
+ *  never "refused": nothing said no. */
+export function scanRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
+  if (batch[0]?.type !== "scanned") return false;
+  const cm = cueModelOf(sim.model);
+  let told = false;
+  for (const e of batch.slice(1)) {
+    if (e.type === "diagnostic") continue;
+    if (e.type === "worldSet" && bookkeeping(e.path)) continue;
+    if (e.type === "broadcast" && staffOnly(e.scope, cm.staff)) {
+      told = true;
+      continue;
+    }
+    return false;
+  }
+  return told;
+}
+
 /** Log entries that start a new input (a press, a tick, a typed line, a
  *  join, a scan) — where a press nobody noted (`notePress`: a bare `Sim`
  *  in a test; the editor's in-browser rehearsal notes its presses) is taken
