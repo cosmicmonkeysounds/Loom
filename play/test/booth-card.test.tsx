@@ -166,7 +166,7 @@ describe("the card as rendered", () => {
     expect(html).toContain("D-send");
     // Everything else this booth may press is one tap away, counted.
     expect(html).toContain("All buttons… (4)");
-    expect(html).toContain("📷 Next guest");
+    expect(html).toMatch(/booth-card-foot.*ico-scan.*Next guest/su);
   });
 
   it("reads the facts off the guest's live row, so another booth's act shows on a card left open", () => {

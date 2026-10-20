@@ -48,7 +48,8 @@ describe("the camera's life", () => {
     const html = renderToStaticMarkup(<ScannerScreen session={session} admin={false} onClose={() => {}} onOpenThread={() => {}} />);
     expect(html).toContain("<video");
     expect(html).toContain("Or type the id on their pass");
-    expect(html).toContain("📷 Scan a pass");
+    expect(html).toContain("Scan a pass");
+    expect(html).toContain("ico-scan");
     expect(html).not.toContain("behind");
   });
 });
