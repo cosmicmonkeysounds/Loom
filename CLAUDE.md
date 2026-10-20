@@ -280,7 +280,7 @@ Play; the 🗂 Guests badge counts guests waiting on an unread message (not
 the guest count, CONTRACTS §9.7), with a guest's DM under Messages; Windows
 Defender's face leads with 🛡 (Q26); a ribbon after Bingo is *from the hosts*
 (Q28); `loud:` only on Show Your Pass (Q14); a host is offered another
-character's `by:` button only when its press is heard (the patch-bay 🔌 💥 ❌
+character's `by:` button only when its press is heard (the server room's 🔌 💥 ❌ 🚪 🔧
 yes, 🛡 ✅ 👁 and 🫘 no); `LOOM_SNAPSHOT_MS` recommended for show night,
 pending the recheck's measurement. **Deploy order:** the server first
 (`ship.sh`; the proxy image carries `lb_try_duration 60s`), then `sync-show`
