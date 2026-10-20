@@ -5,7 +5,6 @@
 
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../ui/primitives.tsx";
-import { AlertBanner } from "../moments/banner.tsx";
 import { Shell, SpaceList } from "../rooms/list.tsx";
 import type { WidgetHook } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
@@ -20,6 +19,9 @@ import { usePush } from "../push.ts";
 import { PushCard } from "../push-card.tsx";
 import { opensHome } from "../room.ts";
 import { activePins } from "../pins.ts";
+import { boothAlertFilter } from "../alerts.ts";
+import { HostDock } from "../host/dock.tsx";
+import { MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestCard } from "./card.tsx";
 import { BoothCard, PerformerSheet } from "./header.tsx";
 import { PrimeLogin } from "./login.tsx";
@@ -171,13 +173,31 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   );
   const cardGuest = card !== null ? (guests.find((g) => g.id === card) ?? null) : null;
 
+  // The moments layer (wave 13): Stage A renders the alert banner as before.
+  const moments: MomentsInput = {
+    role: "booth",
+    me: s.auth.character,
+    session: s.auth.token,
+    messages: s.messages,
+    alerts: s.alerts,
+    alertLevel: s.view?.alertLevel,
+    objectives: s.view?.objectives,
+    phase: s.view?.night?.phase,
+    clock: s.view?.clock,
+    openRoom: t.open,
+    filter: boothAlertFilter(s.auth.character),
+    sound: host.sound,
+  };
+
   return (
+    <MomentsProvider {...moments}>
     <AvatarsContext.Provider value={avatars}>
     <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
     <div className="root">
-      {s.alert && <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} />}
+      <MomentsLayer />
       <PushCard push={push} booth title={s.auth?.title} why="the server-room alarm and the late list reach you even with the phone locked." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room, or a guest." />
+      <HostDock session={s} wide={wide} openCard={() => {}} />
       {picking && t.active && (
         <InviteSheet
           title={`Invite to ${t.active.title}`}
@@ -212,5 +232,6 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     </div>
     </WalletActionsProvider>
     </AvatarsContext.Provider>
+    </MomentsProvider>
   );
 }

@@ -6,6 +6,9 @@
    your card / decision underneath, and a Continue when the story lets go.
    Deliberately not the window chrome — it is the moment before the app. */
 .cut-root { background: var(--black); }
+/* Wave 13: the alert banner sits above the stage (the moments layer), so
+   the stage takes what is left of the column instead of a full 100%. */
+.cut-root > .cutscene { flex: 1 1 auto; min-height: 0; height: auto; }
 .cutscene {
   height: 100%; display: flex; flex-direction: column; position: relative;
   max-width: 640px; margin: 0 auto; width: 100%;

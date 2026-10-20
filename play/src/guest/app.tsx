@@ -4,7 +4,6 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, useWide } from "../ui/primitives.tsx";
-import { AlertBanner } from "../moments/banner.tsx";
 import { PinnedRail } from "../moments/pins-rail.tsx";
 import { Shell, SpaceList } from "../rooms/list.tsx";
 import { CardActionsProvider } from "../stream/bubble.tsx";
@@ -29,8 +28,10 @@ import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
 import { CountdownStrip } from "../countdown.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
+import { MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister } from "./register.tsx";
-import { IdentityCard, PassSheet, PeopleSheet, ProfileSheet } from "./sheets.tsx";
+import { FullPass } from "../chrome/pass.tsx";
+import { IdentityCard, PeopleSheet, ProfileSheet } from "./sheets.tsx";
 
 /** The room a guest should land in when the app opens wide: where they
  *  stand, else the room asking for a decision, else the story's lobby. */
@@ -132,7 +133,6 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   }
 
   const captured = st?.captured ?? false;
-  const banner = s.alert ? <AlertBanner text={s.alert.text} onDismiss={s.dismissAlert} /> : null;
   // The sticky notices still up for this guest (their own feed + DM
   // threads) — rendered above everything, outside the greyed containers.
   const pins = activePins(t.list.flatMap((c) => c.messages));
@@ -184,11 +184,28 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     );
   }
 
+  // The moments layer (wave 13): Stage A renders the alert banner as before.
+  const moments: MomentsInput = {
+    role: "guest",
+    me: s.me.id,
+    session: s.me.token,
+    messages: s.messages,
+    alerts: s.alerts,
+    alertLevel: st.alertLevel,
+    objectives: st.objectives,
+    phase: st.night?.phase,
+    clock: st.clock,
+    openRoom: t.open,
+    sound: host.sound,
+  };
+
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
     const where = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
     return (
+      <MomentsProvider {...moments}>
       <div className="root cut-root">
+        <MomentsLayer />
         <CutsceneStage
           messages={staged ?? []}
           title={st.title ?? s.me.title}
@@ -198,13 +215,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           over={cut.over}
           onContinue={cut.leave}
           onPass={() => setProfile(true)}
-          alert={s.alert}
-          onDismissAlert={s.dismissAlert}
           offline={offline}
         />
-        {profile && <PassSheet me={{ id: s.me.id, name: s.me.name }} onClose={() => setProfile(false)} />}
+        {profile && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => setProfile(false)} />}
         {takeover}
       </div>
+      </MomentsProvider>
     );
   }
 
@@ -300,11 +316,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const meId = s.me.id;
   const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name }));
   return (
+    <MomentsProvider {...moments}>
     <AvatarsContext.Provider value={avatars}>
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
     <WalletActionsProvider value={guestWalletActions(st.wallet ?? null, s.me.id, walletClock, restricted, s.wallet)}>
     <div className={`root ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}`} ref={rootRef}>
-      {banner}
+      <MomentsLayer />
       <PinnedRail pins={pins} />
       <PushCard push={push} title={st.title ?? s.me.title} why="the house can reach you when your phone is locked: alarms, and messages from the characters." />
       <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
@@ -366,5 +383,6 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     </WalletActionsProvider>
     </CardActionsProvider>
     </AvatarsContext.Provider>
+    </MomentsProvider>
   );
 }

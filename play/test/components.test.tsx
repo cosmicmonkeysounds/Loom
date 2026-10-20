@@ -4,14 +4,19 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import type { Alerts } from "../src/alerts.ts";
 import { AmbientTicker } from "../src/stream/ticker.tsx";
 import { CardTray } from "../src/stream/card-tray.tsx";
 import { CountdownTray } from "../src/chrome/countdown-tray.tsx";
+import { FullPass } from "../src/chrome/pass.tsx";
 import { isTextEntry } from "../src/chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../src/chrome/taskbar.tsx";
 import { TitleBar } from "../src/chrome/title-bar.tsx";
+import { HostDock } from "../src/host/dock.tsx";
 import { useHostView } from "../src/host/client.ts";
+import { MissedTray, MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
 import { NowCard } from "../src/booth/now-card.tsx";
+import { PassSheet } from "../src/guest/sheets.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 import { ObjectiveCard, checkCount } from "../src/ui/objective.tsx";
 
@@ -86,12 +91,60 @@ describe("the objective card", () => {
   });
 });
 
+describe("the pass", () => {
+  it("FullPass is today's pass sheet", () => {
+    const onClose = () => {};
+    expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toBe(html(createElement(PassSheet, { me: { id: "g-1a2b", name: "Winamp" }, onClose })));
+    expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toContain("Winamp · show this to a performer to be scanned.");
+  });
+});
+
+describe("the moments layer, behaviour-identical in Stage A", () => {
+  const alerts = (text: string | null): Alerts => ({
+    alert: text === null ? null : { seq: 7, text, at: 0 } as unknown as Alerts["alert"],
+    dismiss: () => {},
+    raise: () => {},
+    onHistory: () => {},
+    rebase: () => {},
+  });
+  const input = (text: string | null): MomentsInput => ({
+    role: "guest",
+    me: "g1",
+    session: "tok",
+    messages: new Map(),
+    alerts: alerts(text),
+    alertLevel: "dialog",
+    objectives: [],
+    phase: null,
+    clock: 0,
+    openRoom: () => {},
+    sound: false,
+  });
+  function Probe() {
+    const m = useMoments();
+    return createElement("i", null, `${m.level} ${m.missed}`);
+  }
+
+  it("renders the old alert banner when there is an alert, nothing otherwise", () => {
+    expect(html(createElement(MomentsProvider, { ...input("!GO TO THE INTERNET"), children: createElement(MomentsLayer) }))).toContain('class="alert-banner"');
+    expect(html(createElement(MomentsProvider, { ...input(null), children: createElement(MomentsLayer) }))).toBe("");
+    expect(html(createElement(MomentsLayer))).toBe("");
+  });
+
+  it("nothing is missed yet; the level reads the view, sticky by default", () => {
+    expect(html(createElement(MomentsProvider, { ...input(null), children: createElement(Probe) }))).toBe("<i>dialog 0</i>");
+    expect(html(createElement(Probe))).toBe("<i>sticky 0</i>");
+    expect(html(createElement(MissedTray))).toBe("");
+  });
+});
+
 describe("the Stage B stubs render nothing", () => {
-  it("card tray, ticker, NOW card, tray clock", () => {
+  it("card tray, ticker, NOW card, tray clock, host dock", () => {
     expect(CardTray()).toBeNull();
     expect(AmbientTicker()).toBeNull();
     expect(NowCard()).toBeNull();
     expect(CountdownTray({})).toBeNull();
+    expect(HostDock({ session: {} as never, wide: false, openCard: () => {} })).toBeNull();
     expect(useHostView(null)).toMatchObject({ view: null, error: null });
   });
 });

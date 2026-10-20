@@ -11,6 +11,7 @@ import type { PersonCard } from "../types.ts";
 import type { Push } from "../push.ts";
 import { PushRow } from "../push-card.tsx";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
+import { FullPass } from "../chrome/pass.tsx";
 import { PictureChanger } from "./register.tsx";
 
 /** Out-of-band actions: show your pass, the story's own interactions, switch
@@ -77,15 +78,7 @@ export function ProfileSheet({ session, push, onClose, onLeave }: { session: Gue
 /** Just the pass — the QR a performer scans — for when the app is on rails
  *  and the rest of the menu is out of reach. */
 export function PassSheet({ me, onClose }: { me: { id: string; name: string }; onClose: () => void }) {
-  return (
-    <Sheet title="🎟️ Your pass" onClose={onClose}>
-      <div className="pass">
-        <PassQr alt="QR" text={me.id} />
-        <div className="bigid">{me.id}</div>
-        <div className="muted">{me.name} · show this to a performer to be scanned.</div>
-      </div>
-    </Sheet>
-  );
+  return <FullPass guestId={me.id} name={me.name} onClose={onClose} />;
 }
 
 /** One directory row: a name, a kind, where they are, and what you know of them. */

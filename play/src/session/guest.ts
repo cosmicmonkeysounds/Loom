@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PictureChoices } from "../avatars.ts";
-import { maxSeqOf, useAlerts, type Alert } from "../alerts.ts";
+import { maxSeqOf, useAlerts, type Alert, type Alerts } from "../alerts.ts";
 import { checkinFromSearch, withoutCheckin } from "../checkin.ts";
 import { rememberClaim, withoutClaim } from "../claim.ts";
 import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../client.ts";
@@ -226,6 +226,8 @@ export interface GuestSession {
   /** The alert broadcast that just landed, until dismissed. */
   alert: Alert | null;
   dismissAlert: () => void;
+  /** The session's whole `useAlerts` state (wave 13: the moments layer reads it). */
+  alerts: Alerts;
   /** Answer a widget card (a CAPTCHA, a poll) the story showed you. */
   answerWidget: (seq: number, result: WidgetResult) => Promise<void>;
   /** Answers given this session, by card seq (the card renders resolved). */
@@ -615,6 +617,7 @@ export function useGuestSession(): GuestSession {
     message,
     alert,
     dismissAlert,
+    alerts,
     answerWidget,
     widgetAnswers,
     messages: shown,

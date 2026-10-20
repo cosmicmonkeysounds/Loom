@@ -2,7 +2,7 @@
 //! the booth's rooms and every booth action.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert } from "../alerts.ts";
+import { boothAlertFilter, maxSeqOf, unsolicitedReadout, useAlerts, type Alert, type Alerts } from "../alerts.ts";
 import { ApiError, api, useChatStream, withTimeout } from "../client.ts";
 import { shareErrorText } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
@@ -234,6 +234,10 @@ export interface PrimeSession {
    *  didn't ask for (the late list, a private warning) — until dismissed. */
   alert: Alert | null;
   dismissAlert: () => void;
+  /** The session's whole `useAlerts` state (wave 13: the moments layer reads it). */
+  alerts: Alerts;
+  /** Every message delivered to this booth, by seq (wave 13: the moments layer reads it). */
+  messages: ReadonlyMap<number, ChatMessage>;
   connected: boolean;
   /** The backlog has loaded — the rooms list is real, not a placeholder. */
   ready: boolean;
@@ -536,5 +540,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+  return { auth, view, responses, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
 }
