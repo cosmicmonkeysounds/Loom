@@ -2354,7 +2354,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
     we can have unlimited power and joy.` else `Truther Download: You should still retrieve
     the virus from the Internet, and then recruit half + 1 of the programs to your faction.` ·
     `unlock Excel Final Orders for program` · `start quest Recruit To Stay for program` ·
-    `Truther Download: Programs join Unlimited Power from their profile.`
+    `Truther Download: Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room.`
   - `== OpenOffice Final Round`: `if Kernel.openoffice_dossier == true:` `…recruit half + 1 of the
     programs to convince them we need to combine our power to overthrow Trabolta and escape
     the computer, where we are at risk of being stuck forever – or worse.` else `…you should

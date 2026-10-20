@@ -10,6 +10,8 @@
 //!   row (what `play/src/host/model.ts` `inBathroom` reads), and the drawer's
 //!   call (the story's own `back from the bathroom` on the guest, from a host
 //!   part's token) ends it.
+//! - The show's copy names the wave 13 chrome (⊞ Start, the Choose your side
+//!   card), never the pass page's old buttons, ☰ or a profile sheet.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -21,6 +23,8 @@ import { Store } from "../server/store.ts";
 import type { PushSender } from "../server/push.ts";
 import type { HostView } from "../src/host-board.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
+import { guestView } from "../server/views.ts";
+import { Sim } from "../src/runtime/sim/index.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const SLOW = 120_000;
@@ -222,4 +226,63 @@ describe("Trapped in the Internet — wave 13 integration: the host drawer's �
     const secret = files.flatMap((f) => f.source.split("\n")).filter((l) => /^\s+secret:/u.test(l) && !/^\s+secret: (true|false)\s*$/u.test(l));
     for (const l of secret) expect(l.split(/[:,]/u).map((s) => s.trim()), l).not.toContain("afk");
   });
+});
+
+/** The cue sheet from the doors to the Y2K clock (as `trapped-w13-objectives` walks it). */
+const TO_Y2K = [
+  "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth",
+  "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt",
+  "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock",
+];
+
+/** Two programs through the door, in a bare Sim. */
+function boot(): Sim {
+  const sim = Sim.fromSources(SRC);
+  sim.fireBeat("Power On");
+  for (const [id, name] of [["g1", "Calculator"], ["g2", "Winamp"]] as const) {
+    sim.createPerson(id, name);
+    sim.signal("captcha answered", id, { passed: true } as never);
+    sim.signal("captcha answered", id, { passed: false } as never);
+    const p = sim.pendingChoiceFor(id);
+    if (p && p.length === 4) sim.choose(id, 0);
+    sim.choose(id, 0);
+    sim.scan("Norton Anti-Virus", id);
+  }
+  return sim;
+}
+
+describe("Trapped in the Internet — wave 13 integration: the copy names the new chrome", () => {
+  /** Every line of show text (comments out) across the story's files. */
+  const showText = () =>
+    scenarioFiles("trapped-in-the-internet").flatMap((f) =>
+      f.source
+        .split("\n")
+        .map((l, i) => ({ at: `${f.path}:${i + 1}`, l }))
+        .filter(({ l }) => !/^\s*\/\//u.test(l)),
+    );
+
+  it("no line sends a guest to the pass for a button, to ☰, a header or a profile sheet", () => {
+    const stale = showText().filter(({ l }) => /☰|on (your|their|the) pass (first|before)|tap 🚻 on|from (your|their) profile|in the header|top bar/iu.test(l));
+    expect(stale.map((s) => `${s.at}: ${s.l.trim()}`)).toEqual([]);
+  });
+
+  it("Bathroom Mode is a guest button (⊞ Start lists it), and Back follows it, as Clippy, the tour and the quest say", () => {
+    const text = showText().map((s) => s.l).join("\n");
+    expect(text).toMatch(/tap START and turn on BATHROOM MODE/u);
+    expect(text).toMatch(/Open Start and tap 🚻 Bathroom Mode first/u);
+    expect(text).toMatch(/Bathroom Mode: open Start and tap 🚻 Bathroom Mode/u);
+    const sim = boot();
+    expect(guestView(sim, "g1").interactions.map((i) => i.label)).toContain("🚻 Bathroom Mode");
+    sim.signal("go to the bathroom", "g1");
+    expect(guestView(sim, "g1").interactions.map((i) => i.label)).toContain("Back from the bathroom");
+  }, SLOW);
+
+  it("at the Y2K hour a factionless program is offered both sides (the Choose your side card the copy names)", () => {
+    const sim = boot();
+    for (const c of TO_Y2K) sim.signal(c);
+    expect((sim.world.get("Night.phase") as { value: unknown }).value).toBe("y2k");
+    const g = guestView(sim, "g1");
+    expect(g.faction ?? null).toBeNull();
+    expect([...(g.factions ?? [])].sort()).toEqual(["The Way Out", "Unlimited Power"]);
+  }, SLOW);
 });

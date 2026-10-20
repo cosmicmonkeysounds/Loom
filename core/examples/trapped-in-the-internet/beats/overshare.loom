@@ -94,7 +94,8 @@ else:
   Truther Download: You should still retrieve the virus from the Internet, and then recruit half + 1 of the programs to your faction.
 unlock Excel Final Orders for program
 start quest Recruit To Stay for program
-Truther Download: Programs join Unlimited Power from their profile.
+// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q21): no profile sheet any more.
+Truther Download: Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room.
 
 == OpenOffice Final Round
 set program.zipped = false
@@ -106,7 +107,8 @@ else:
   Truther Download: You should still gather 20 facts, and then recruit half + 1 of the programs to your faction.
 unlock OpenOffice Final Orders for program
 start quest Recruit To Leave for program
-Truther Download: Programs join The Way Out, the Truthers, from their profile.
+// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q21).
+Truther Download: Programs join The Way Out, the Truthers, on the Choose your side card, in the Trapped in the Internet room.
 
 == Program Final Round
 set program.zipped = false
