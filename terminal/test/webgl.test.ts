@@ -32,9 +32,9 @@ describe("probeWebGL2", () => {
 });
 
 describe("simRenderer", () => {
-  it("draws the world with WebGL2, the live plan without it", () => {
+  it("draws the world with WebGL2, the raycaster without it", () => {
     expect(simRenderer(true)).toBe("world");
-    expect(simRenderer(false)).toBe("plan");
+    expect(simRenderer(false)).toBe("raycast");
   });
 });
 
@@ -47,11 +47,11 @@ describe("paneSimulation", () => {
     expect(paneSimulation("world", true, true, true)).toBe("world");
   });
 
-  it("draws the live plan without WebGL2 where the world would be (never the face, never the shadow)", () => {
-    expect(paneSimulation("world", false, false, false)).toBe("plan");
+  it("draws the raycaster without WebGL2 where the world would be (never the face, never the shadow)", () => {
+    expect(paneSimulation("world", false, false, false)).toBe("raycast");
     expect(paneSimulation("auto", false, false, false)).toBe("none"); // nobody playing: the face, as before
-    expect(paneSimulation("auto", false, true, false)).toBe("plan");
-    expect(paneSimulation("auto", false, true, true)).toBe("plan");
+    expect(paneSimulation("auto", false, true, false)).toBe("raycast");
+    expect(paneSimulation("auto", false, true, true)).toBe("raycast");
   });
 
   it("face and the other views show nothing over the face", () => {
@@ -60,10 +60,10 @@ describe("paneSimulation", () => {
 });
 
 describe("fullScreenSim", () => {
-  it("a mirror / shadow draws the world or the shadow, else the plan", () => {
+  it("a mirror / shadow draws the world or the shadow, else the raycaster", () => {
     expect(fullScreenSim("mirror", true)).toBe("world");
     expect(fullScreenSim("shadow", true)).toBe("shadow");
-    expect(fullScreenSim("mirror", false)).toBe("plan");
-    expect(fullScreenSim("shadow", false)).toBe("plan");
+    expect(fullScreenSim("mirror", false)).toBe("raycast");
+    expect(fullScreenSim("shadow", false)).toBe("raycast");
   });
 });
