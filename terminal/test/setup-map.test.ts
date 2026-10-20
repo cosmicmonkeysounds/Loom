@@ -3,7 +3,7 @@ import { TERMINAL_VIEWS, validateHouse, type HouseMap } from "@loom/house";
 import showHouse from "../../core/examples/trapped-in-the-internet/house.json";
 import shedHouse from "../../core/examples/trapped-in-the-internet/house.shed.json";
 import { VIEWS, defaultConfig, type TerminalConfig } from "../src/config.ts";
-import { UNPLACED, applyPick, followMap, groupTerminals, onlineBadge, pickOf, screenWords, urlConfig } from "../src/setup-map.ts";
+import { UNPLACED, applyPick, followMap, groupTerminals, onlineBadge, pickOf, screenWords, urlConfig, withManual } from "../src/setup-map.ts";
 
 const load = (raw: unknown): HouseMap => {
   const v = validateHouse(raw);
@@ -82,18 +82,52 @@ describe("applyPick / urlConfig / followMap", () => {
     expect(urlConfig(given, { spot: "graphics-card", name: null, view: null, room: null }, show)).toMatchObject({ name: "Casino", view: "casino", room: "", fromMap: true });
   });
 
-  it("an old link's name / view / room win; a manual view stops following", () => {
+  it("an old fleet link (it names a view) plays exactly as given, as before", () => {
     const given = base({ spot: "server-room", name: "Heart", view: "world", room: "" });
     const c = urlConfig(given, { spot: "server-room", name: "Heart", view: "world", room: null }, show);
-    expect(c).toMatchObject({ name: "Heart", view: "world", room: "The Server Room", fromMap: false });
-    const named = urlConfig(given, { spot: "server-room", name: "Heart", view: null, room: null }, show);
-    expect(named).toMatchObject({ name: "Heart", view: "face", fromMap: true });
+    expect(c).toMatchObject({ name: "Heart", view: "world", room: "", fromMap: false });
+    // The documented links agree with the map: they follow it from then on.
+    const links: Array<[Partial<TerminalConfig>, string | null]> = [
+      [{ spot: "server-room", name: "Server Room", view: "face", room: "The Server Room" }, "The Server Room"],
+      [{ spot: "server-room-door", name: "Server Door", view: "chess", room: "" }, null],
+      [{ spot: "graphics-card", name: "Casino", view: "casino", room: "" }, null],
+      [{ spot: "desktop-tv", name: "TV", view: "tv", room: "" }, null],
+      [{ spot: "start-bar", name: "Start Bar", view: "auto", room: "" }, null],
+    ];
+    for (const [over, room] of links) {
+      const g = base(over);
+      const out = urlConfig(g, { spot: over.spot!, name: over.name!, view: over.view!, room }, show);
+      expect(out).toMatchObject({ ...over, fromMap: true });
+    }
   });
 
-  it("no map / a spot it lacks: the link as given", () => {
+  it("a link's own name is never renamed back by the map", () => {
+    const given = base({ spot: "server-room", name: "Heart" });
+    const named = urlConfig(given, { spot: "server-room", name: "Heart", view: null, room: null }, show);
+    expect(named).toMatchObject({ name: "Heart", view: "face", room: "The Server Room", fromMap: false });
+    expect(followMap(named, show)).toBeNull();
+  });
+
+  it("no map read: as given, following the map from the next boot when only the spot was named", () => {
+    const given = base({ spot: "graphics-card", name: "Terminal" });
+    expect(urlConfig(given, { spot: "graphics-card", name: null, view: null, room: null }, null)).toMatchObject({ name: "Terminal", fromMap: true });
+    expect(followMap(urlConfig(given, { spot: "graphics-card", name: null, view: null, room: null }, null), show)).toMatchObject({ name: "Casino", view: "casino" });
+    expect(urlConfig(given, { spot: "graphics-card", name: "X", view: null, room: null }, null)).toBe(given);
+  });
+
+  it("a spot the map lacks / no spot: the link as given", () => {
     const given = base({ spot: "nowhere", name: "X" });
     expect(urlConfig(given, { spot: "nowhere", name: "X", view: null, room: null }, show)).toBe(given);
-    expect(urlConfig(given, { spot: "nowhere", name: "X", view: null, room: null }, null)).toBe(given);
+    expect(urlConfig(base(), { spot: null, name: "X", view: "face", room: null }, show)).toEqual(base());
+  });
+
+  it("withManual: ⚙'s screen / room win; one that agrees with the map keeps following it", () => {
+    const pick = pickOf(show, spot(show, "server-room"));
+    const c = applyPick(base(), pick);
+    expect(withManual(c, pick, { view: "", room: "" })).toBe(c);
+    expect(withManual(c, pick, { view: "world", room: "" })).toMatchObject({ view: "world", room: "The Server Room", fromMap: false });
+    expect(withManual(c, pick, { view: "face", room: "The Server Room" })).toMatchObject({ fromMap: true });
+    expect(withManual(applyPick(base(), UNPLACED), UNPLACED, { view: "mirror", room: "" })).toMatchObject({ view: "mirror", fromMap: false });
   });
 
   it("follows the map's entry at boot when set up from it", () => {

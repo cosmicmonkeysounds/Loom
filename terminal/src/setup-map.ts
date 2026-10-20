@@ -135,13 +135,42 @@ export function followMap(c: TerminalConfig, house: MapLike): TerminalConfig | n
   return { ...c, name: pick.name, view: pick.view, room: pick.room };
 }
 
-/** A `?code=…&spot=…` link's config: with a spot the map has, that map
- *  terminal; the link's own name / view / room (old links) win, and a
- *  manual view or room means it no longer follows the map. Without a map
- *  (or a spot it lacks) the link's fields as given. */
-export function urlConfig(base: TerminalConfig, hints: Pick<UrlHints, "spot" | "name" | "view" | "room">, house: MapLike | null): TerminalConfig {
-  const t = hints.spot === null || house === null ? undefined : house.terminals.find((x) => x.id === hints.spot);
-  if (t === undefined) return base;
-  const next = applyPick(base, pickOf(house as MapLike, t), { name: hints.name, view: hints.view, room: hints.room });
-  return hints.view !== null || hints.room !== null ? { ...next, fromMap: false } : next;
+/** Whether a config says what its map terminal says (name / view / room). */
+function agrees(c: Pick<TerminalConfig, "name" | "view" | "room">, pick: MapPick): boolean {
+  return c.name === pick.name && c.view === pick.view && c.room === pick.room;
+}
+
+/**
+ * A `?code=…&spot=…` link's config (`given` = `provision`'s, the link's
+ * fields applied):
+ * - a spot the map has, the link naming no `view` (the new form): that map
+ *   terminal, a `name` / `room` in the link winning;
+ * - an old fleet link (it names a `view`): exactly as given, as before;
+ * - either way it follows the map at boot only while it says what the map
+ *   says — a link's own name / view / room is never renamed back by
+ *   `followMap`;
+ * - no map read (the server didn't answer): as given, following the map
+ *   from the next boot when the link named only the spot;
+ * - a spot the map lacks: as given (the caller says so).
+ */
+export function urlConfig(given: TerminalConfig, hints: Pick<UrlHints, "spot" | "name" | "view" | "room">, house: MapLike | null): TerminalConfig {
+  if (hints.spot === null) return given;
+  if (house === null) return hints.name === null && hints.view === null && hints.room === null ? { ...given, fromMap: true } : given;
+  const t = house.terminals.find((x) => x.id === hints.spot);
+  if (t === undefined) return given;
+  const pick = pickOf(house, t);
+  const next = hints.view !== null ? { ...given, spot: pick.spot } : applyPick(given, pick, { name: hints.name, view: null, room: hints.room });
+  return { ...next, fromMap: agrees(next, pick) };
+}
+
+/**
+ * Setup's tap with ⚙'s advanced screen / room: `view` / `room` "" = the
+ * map's. A manual choice that differs from the map's stops the tablet
+ * following it; one that agrees keeps it on the map.
+ */
+export function withManual(c: TerminalConfig, pick: MapPick, manual: { view: TerminalView | ""; room: string }): TerminalConfig {
+  const room = manual.room.trim();
+  if (manual.view === "" && room === "") return c;
+  const next = { ...c, view: manual.view || c.view, room: room || c.room };
+  return { ...next, fromMap: pick.spot !== "" && agrees(next, pick) };
 }
