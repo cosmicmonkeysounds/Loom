@@ -2035,7 +2035,15 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const RADIO = ["radio_crew_door", "radio_door_opened", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
     // Windows Defender is the door-only part: it never leaves the Optical
     // Drive, so a late arrival's card there leads with nothing that ends the night.
-    for (const who of ["Clippy", "Adobe Acrobat", "Task Manager", "Recycling Bin", "Windows Defender"]) {
+    // Wave 13: Task Manager, Adobe Acrobat and the Recycling Bin are host
+    // parts (`admin: true`): a host booth keeps every `by:` button, as a
+    // passcode admin always did, so only Clippy (a Host, never a host part)
+    // and Windows Defender are refused here.
+    for (const who of ["Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
+      const login = await call(rt, "POST", "/api/prime/login", { character: who, passcode: CODES.prime });
+      expect(login.json["host"], who).toBe(true);
+    }
+    for (const who of ["Clippy", "Windows Defender"]) {
       const t = await booth(who);
       for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
