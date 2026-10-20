@@ -225,16 +225,16 @@ so the names never collide).
 | house.json room id | Label | Floor | `location` (must be declared in main.loom) |
 |---|---|---|---|
 | `optical-drive` | Optical Drive (mud room) | main | The Optical Drive (the login cutscene; the front door opens into it) |
-| `hall` | Hall | main | The Tube (the basement stairs + the upstairs, side by side) |
+| `hall` | Hall | main | The Tube (the upstairs; the basement stairs come up in the kitchen) |
 | `steam-room` | Steam Room (game room) | main | The Steam Room |
-| `start-bar` | Start Bar (kitchen) | main | The Start Bar |
+| `start-bar` | Start Bar (kitchen) | main | The Start Bar (the basement stairs' head) |
 | `cpu` | CPU (office) | main | The CPU |
 | `desktop` | Desktop (living room) | main | The Desktop (the TV above the fireplace) |
 | `backyard` | Backyard | main, outdoor | The Cloud (the Truth Pong folding table is out here, per OV "outside") |
 | `tent` | The Tent | main (in the backyard, #23) | The Internet |
-| `basement-hall` | Basement hall | basement | The Tube |
+| `basement-hall` | Basement hall | basement | The Tube (the King, before the server-room door) |
 | `bathroom-1` | Bathroom 1 | basement | **Disk Cleanup** (was The Recycle Bin; renamed so it can't be confused with the host Recycling Bin, who is "responsible for hygiene and maintenance") |
-| `fan-closet` | Fan Closet (laundry) | basement | The Fan Closet |
+| `fan-closet` | Fan Closet (laundry) | basement | The Fan Closet (the laundry corner of the basement hall) |
 | `server-room` | Server Room (cold storage) | basement (off the basement hall) | The Server Room |
 | `ram` | RAM (studio) | basement | The RAM |
 | `upstairs-hall` | Upstairs hall | top | The Tube |
@@ -242,11 +242,12 @@ so the names never collide).
 | `bathroom-2` | Bathroom 2 | top | **Disk Cleanup** |
 | `graphics-card` | Graphics Card (bedroom 2) | top | The Graphics Card |
 
-The map is still a **placeholder** (footprints and elevations guessed until the survey,
-SW-MAP-02 / K-28: basement −2.7, main 0, top +2.8), but its structure matches the house and the
-story: the tent is an indoor room in a notched backyard, the Server Room has its one door, patch
+**Wave 14:** the map is the floor plan the user drew in `/reinstall/map` (basement −2.7, main 0,
+top +2.8; the placeholder it replaced is frozen at `house/test/maps/three-floor{,.shed}.json` for
+the suites that pin its coordinates). Its structure matches the house and the story: the tent is an indoor room in a notched backyard, the Server Room has its one door, patch
 bay and (wave 7) the `server-room` terminal spot on its south wall inside, the keypad + lock
-ring outside (wave 11: the chess-phone prop is gone and the **`server-room-door`** terminal spot, "Server Door", stands in the basement hall facing the door: the King's chess board), no duck; twelve duck spots cover every floor and the yard.
+ring outside (wave 11: the chess-phone prop is gone and the **`server-room-door`** terminal spot, "Server Door", stands in the basement hall facing the door: the King's chess board), no duck; twelve duck spots cover every floor and the yard; fourteen terminal spots (wave 14 adds
+`steam-room`, `cpu`, `graphics-card`, `upstairs-hall` and `backyard`, by the back door).
 The rain variant `house.shed.json` (SW-MAP-13) binds The Internet to room `shed` at the back of
 the yard instead; `core/test/show-house.test.ts` checks both.
 
