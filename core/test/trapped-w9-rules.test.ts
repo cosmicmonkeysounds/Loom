@@ -230,7 +230,14 @@ describe("wave 9 — a server-room ending closes every live 📝 card (T7-02)", 
   for (const ending of ["patch_combo_a", "patch_combo_b", "talked_down"]) {
     it(`${ending}: the round-3 card becomes the closing card, once, and nothing after deals another`, { timeout: SLOW }, () => {
       const sim = boot();
-      toY2k(sim);
+      // Everyone checks in at the summons, so nobody is late and marked: a
+      // marked program is dealt no 📝 card (w13 Q35).
+      toTruth1(sim);
+      toHunt2(sim);
+      fire(sim, "five_minute_warning");
+      for (const [g] of PROGRAMS) fire(sim, "check_in_at_desktop", g, null, "Task Manager");
+      fireAll(sim, "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "trabolta_overshares", "y2k_clock");
+      for (const [g] of PROGRAMS) expect(v(sim, `${g}.marked`), g).not.toBe(true);
       for (const [g] of PROGRAMS) expect(v(sim, `${g}.fact_card_live`), g).toBe(true);
       const end = [...fire(sim, ending), ...advance(sim, 15)];
       expect(v(sim, "Night.ended")).toBe(true);

@@ -508,6 +508,11 @@ ROLE Program
       reveal The Graphics Card for self
       reveal The Hard Drive for self
       reveal task manager for self
+    // A program marked before the capture had its 📝 card closed (w13 Q35):
+    // back from the Internet, it gets the open round's card again (a
+    // still-marked one gets it from `unmarked`, once the mark is off).
+    if self.marked != true and self.fact_card_live != true and self.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
+      fire deal_fact_card for self
 
   when wrong code for program:
     set program.doubt += 8
@@ -953,6 +958,9 @@ ROLE Program
       pin "!🚨 GO TO THE INTERNET. You are marked for reinstallation. An Antivirus will escort you through the Tube. Your buttons are off until you are reinstalled, except 🚻 Bathroom Mode." for program
       pin "🚨 Escort {program.name} to the Internet — {program.marked_for}. Press 🛡 Send to the Internet on their card when you have them." in quarantine for program
       fire marked for program
+      // A live 📝 card closes (w13 Q35): a marked program files nothing.
+      if program.fact_card_live == true:
+        fire deal_fact_card for program
 
   // A mis-tap, or mercy: the mark comes off without a trip to the tent.
   // Who pressed it (w13 Q32, DRAFT for sign-off): the pressing Antivirus'
@@ -978,6 +986,10 @@ ROLE Program
   when unmarked for program:
     set program.marked = false
     unrestrict program
+    // The 📝 card comes back if a round is still open (w13 Q35); a round
+    // that opened while they were marked deals through its own watcher.
+    if program.cleared == true and program.corrupted != true and program.fact_card_live != true and program.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
+      fire deal_fact_card for program
     unpin for program "✅ The mark is lifted."
     unpin in quarantine for program "✅ {program.name}: {how}."
 
@@ -1006,7 +1018,10 @@ ROLE Program
   // night has ended the record is closed: no filing, no card, no judging.
   // The card dealt here is the current one, so the re-deal watcher below
   // has nothing to catch up (a program cleared late would get two cards).
-  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true:
+  // Never to a marked program (w13 Q35, DRAFT for sign-off): its filings
+  // are refused, so a card would only ask again. The 🩹 or the release
+  // re-opens this watcher, so a round that opened meanwhile deals then.
+  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true and self.marked != true:
     set self.fact_round = Night.round
     set self.card_seen = Night.card_gen
     // One line per round, so a thread never shows the same words three times.
@@ -1057,7 +1072,8 @@ ROLE Program
     set program.fact_open = ""
     set program.fact_sep = ""
     // Once the night has ended nothing is open, but a live card still closes.
-    if Night.ended != true and Night.round >= 1:
+    // A marked program files nothing (w13 Q35): its live card closes too.
+    if Night.ended != true and Night.round >= 1 and program.marked != true:
       if Night.r1_closed != true:
         if program.fact_h1 != true:
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_h1

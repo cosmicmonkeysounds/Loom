@@ -891,6 +891,41 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     expect(ids()).not.toContain("Patrol The Computer");
   }, SLOW);
 
+  it("a marked program is dealt no 📝 card: its live card closes at the mark, a filing deals nothing new, and 🩹 deals the open round again (Q35)", () => {
+    const n = boot();
+    for (const c of TO_TRUTH_1) n.press(c);
+    expect(v(n.sim, "g5.fact_card_live")).toBe(true);
+    const markEv = n.sim.signal("uncertain_answer", "g5", undefined, "Clippy");
+    n.take(markEv);
+    expect(v(n.sim, "g5.marked")).toBe(true);
+    expect(facts(markEv, "g5")).toEqual(["📝 The filing is closed"]);
+    expect(v(n.sim, "g5.fact_card_live")).toBe(false);
+    // Three refused filings in a row: no card after any of them.
+    for (let i = 0; i < 3; i++) {
+      const f = n.sim.signal("fact answered", "g5", { question: "H2", answer: "a guess", confidence: 50, verdict: "uncertain" });
+      n.take(f);
+      expect(facts(f, "g5"), `filing ${i}`).toEqual([]);
+    }
+    expect(guestView(n.sim, "g5").restricted).toBe(true);
+    // The mark comes off: the open round's card comes back, once.
+    const lift = n.sim.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
+    n.take(lift);
+    expect(facts(lift, "g5")).toEqual(["📝 File a fact"]);
+    expect(v(n.sim, "g5.fact_card_live")).toBe(true);
+    // A round that opens while marked deals through its watcher on the 🩹.
+    n.signal("uncertain_answer", "g6", undefined, "Clippy");
+    for (const c of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) n.press(c);
+    expect(v(n.sim, "Night.round")).toBe(2);
+    expect(v(n.sim, "g6.marked")).toBe(true);
+    expect(v(n.sim, "g6.fact_card_live")).not.toBe(true);
+    expect(v(n.sim, "g6.fact_round")).toBe(1);
+    const back = n.sim.signal("unmark_for_reinstallation", "g6", undefined, "Task Manager");
+    n.take(back);
+    expect(facts(back, "g6")).toEqual(["📝 File a fact"]);
+    expect(v(n.sim, "g6.fact_round")).toBe(2);
+    expect(back.some((e) => e.type === "dialogue" && (e as { text: string }).text.startsWith("Round two"))).toBe(true);
+  }, SLOW);
+
   it("the late list is one readout per late program on every room Antivirus booth (Q31)", () => {
     const n = boot();
     for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c);
@@ -904,4 +939,5 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
       for (const t of r) expect(t, who).toMatch(/^🚨 .+ is late for the Second Moment of Truth: marked for reinstallation\./u);
     }
     expect(replyTo(late, "Windows Defender").filter((t) => t.includes("late"))).toEqual([]);
-  }, SLOW);});
+  }, SLOW);
+});
