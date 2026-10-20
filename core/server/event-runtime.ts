@@ -864,8 +864,10 @@ export class EventRuntime {
   /** The story's declared cast, doors open or not: the live sim's when there
    *  is one, else compiled once from the scenario text (memoised on it). A
    *  mod code resolves it before the doors, so a terminal provisioned then
-   *  canonicalises its `character` (and refuses a typo) at setup. Booths
-   *  still get `characterNames` — they can't sign in before the doors. */
+   *  canonicalises its `character` (and refuses a typo) at setup. A
+   *  performer code resolves it too (recheck item 6): a booth signs in
+   *  before the doors (`/api/prime/login` checks `declaredModel`), and the
+   *  host who opens them picks their part off the list. */
   get declaredCharacters(): string[] {
     return [...(this.declaredModel?.characters.keys() ?? [])];
   }
@@ -3291,7 +3293,17 @@ export class EventRuntime {
    *  whether someone already holds it, and whether it is a reserved program
    *  locked for this caller (`claim`: the invitation's token, if any). */
   identities(role: "guest" | "prime", claim?: string | null): IdentityRow[] {
-    if (this.sim === null) return [];
+    if (this.sim === null) {
+      // Before the doors there are no guests yet, but a booth may sign in
+      // (the host who opens the doors among them): its parts come off the
+      // story as written (recheck item 6).
+      const model = role === "prime" ? this.declaredModel : null;
+      if (model === null) return [];
+      const held = heldCharacters(this.sessions.entries());
+      return identityDefs(model)
+        .filter(performerPickable)
+        .map((d) => ({ name: d.name, faction: d.faction, avatar: this.avatars.keyFor(d.name), claimed: held.has(foldName(d.name)), reserved: false }));
+    }
     const defs = identityDefs(this.sim.model);
     if (role === "guest") {
       const taken = takenNames(this.sim.persons.values());

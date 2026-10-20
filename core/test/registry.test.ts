@@ -45,20 +45,20 @@ describe("EventRegistry — code resolution", () => {
     expect(reg.resolveCode("BBBB33")).toEqual({ eventId: "evt-b", role: "mod", title: "Trapped in the Internet", theme: "plain", characters: [] });
   });
 
-  it("lists the story's characters on a performer code once the doors are open", () => {
+  it("lists the story's characters on a performer code, before the doors and after (recheck item 6)", () => {
     const d = mkdtempSync(join(tmpdir(), "loom-reg-"));
     dirs.push(d);
     const local = new EventRegistry(d, () => "http://localhost");
     const rt = local.register(
       runtime("evt-c", { event: "CCCC11", prime: "CCCC22", mod: "CCCC33" }, "# Cast\nstart: Go\n\nCHARACTER Clippy\nCHARACTER Alexa\n\n== Go\nHi.\n"),
     );
-    expect(local.resolveCode("CCCC22")!.characters).toEqual([]);
+    expect(local.resolveCode("CCCC22")!.characters).toEqual(["Clippy", "Alexa"]);
     rt.openDoors();
     expect(local.resolveCode("CCCC22")!.characters).toEqual(["Clippy", "Alexa"]);
     expect(local.resolveCode("CCCC11")!.characters).toBeUndefined(); // guests get no cast list
   });
 
-  it("lists the declared cast on a mod code before the doors (a terminal checks its character); a performer code still gets none", () => {
+  it("lists the declared cast on a mod code before the doors (a terminal checks its character), and on a performer code (a booth signs in before them)", () => {
     const d = mkdtempSync(join(tmpdir(), "loom-reg-"));
     dirs.push(d);
     const local = new EventRegistry(d, () => "http://localhost");
@@ -66,7 +66,7 @@ describe("EventRegistry — code resolution", () => {
       runtime("evt-d", { event: "DDDD11", prime: "DDDD22", mod: "DDDD33" }, "# Cast\nstart: Go\n\nCHARACTER Clippy\nCHARACTER Alexa\n\n== Go\nHi.\n"),
     );
     expect(local.resolveCode("DDDD33")!.characters).toEqual(["Clippy", "Alexa"]);
-    expect(local.resolveCode("DDDD22")!.characters).toEqual([]);
+    expect(local.resolveCode("DDDD22")!.characters).toEqual(["Clippy", "Alexa"]);
     expect(rt.declaredCharacters).toEqual(["Clippy", "Alexa"]); // memoised, same answer again
     rt.openDoors();
     expect(local.resolveCode("DDDD33")!.characters).toEqual(["Clippy", "Alexa"]);
