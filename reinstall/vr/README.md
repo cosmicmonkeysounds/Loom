@@ -21,9 +21,10 @@ Thumbsticks, plus one button for the King:
 |---|---|
 | `house/house_geometry.gd` · `house_locate.gd` · `house_route.gd` · `house_frames.gd` · `house_duck.gd` | Literal GDScript ports of `@loom/house` (`buildWalls` / `buildFloors` / `buildRamps` / `doorGap`, `locate` / `heightAt`, `route` / `sampleTrail`, space transforms, `pickDuckSpot`). They are diffed against the goldens. |
 | `house/house_king.gd` | The King's reach (`kingReach`: `KING_REACH` 1.25 m, `KING_CONE_DEG` 55°), the fallen map the trail routes over (the web game's `trailMap`), and the shared `KingState` off the wire. |
-| `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; terminal screens; room labels. The Web-1.0 look is built from procedural textures. |
+| `house/house_builder.gd` · `house_look.gd` | The map as a scene: StaticBody3D walls, fences, lintels and rails; checker floors with stair holes; starfield ceilings; ramps; props; the King with his shared health bar and a shut leaf in each door he guards; terminal screens (or a terminal's live camera feed); room labels. The Web-1.0 look is built from procedural textures. |
 | `house/house.json` | The show's map. It is a copy, so do not edit it here; see below. |
 | `net/server_link.gd` | The `ServerLink` autoload: config, mod login, station polling, begin / pose / found / King hit / end, house fetch, the shared King, and the spatial stream (`sse_client.gd` + `sse_parser.gd`). The 10 Hz pose pump is latest-only and flushes the newest pose before a claim (`pose_pump.gd`). |
+| `net/cam_feeds.gd` | The terminals' live camera feeds: the list every 2 s, the nearest four on the player's floor within 12 m at ~3 fps, one request per spot, JPEG into a texture updated in place, back-off, stopped with the session. |
 | `net/avatar_cache.gd` | The ghosts' profile pictures: two downloads at a time off the event's `/api/avatar/<key>`, 2 MB cap, cached, a failure not retried until the next visit; PNG / JPEG / WebP / SVG (rendered once near 256 px, whatever size it declares) by magic bytes, drawn as a Win98-bevelled tile. |
 | `net/config.gd` | Station configuration and its precedence. |
 | `player/` | The XR rig on a CharacterBody3D (`player.tscn`), the locomotion maths (`locomotion.gd`), and the comfort vignette. |
@@ -233,6 +234,17 @@ with `released: true` while you walk to Gerald.
   `/api/avatar/<key>`, the `avatar` key on each player and the `avatar`
   frame); a guest with no picture, or one Godot can't decode (GIF, AVIF),
   stays a plain capsule.
+- **The terminals show the real rooms** (wave 14, `net/cam_feeds.gd`):
+  while playing, the headset lists the live camera feeds every 2 s
+  (`GET /e/<event>/api/spatial/cams`, the token the map is fetched with)
+  and, for the nearest four listed terminals on the player's floor within
+  12 m, fetches each one's newest JPEG about 3 times a second
+  (`GET …/api/spatial/cam?spot=<id>`, one request per spot in flight, on
+  the feeds' own HTTPRequests). A frame updates that spot's texture in
+  place on an unshaded 4:3 panel (0.48 × 0.36 m, a thin bezel) where the
+  terminal's screen hangs, facing its yaw / pitch. A 404, a bad frame, no
+  fresh frame for 15 s, leaving the floor / range or the session ending
+  puts the terminal's own screen back; failures back off up to 30 s.
 
 ## Tests
 
@@ -264,6 +276,11 @@ scene, then runs `test/game.gd` headless with `--offline`:
   door — and the restore, held open for a player behind it until they
   walk out) and ghosts' pictures (two at a time, cached, a failure retried
   once on the next visit, `avatar` frames)
+- the camera feeds: which spots to poll (listed, my floor, in reach,
+  nearest four), the back-off, the list parse, JPEG decode + in-place
+  texture updates, the panel's transform from pos / yaw / pitch, and the
+  loop over a fake requester (one request per spot, ~3 fps, a 404 → the
+  screen back, kept across a rebuild, stop ignores late answers)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once

@@ -93,6 +93,19 @@ func avatar_url(_key: String) -> String:
 	return ""
 
 
+## The event's spatial root for the terminals' camera feeds
+## (`http://…/e/<event>/api/spatial`; [CamFeeds] adds `/cams` and
+## `/cam?spot=`), "" when there are none to fetch (offline).
+func cams_url() -> String:
+	return ""
+
+
+## The token the camera feeds are fetched with — the one the map is
+## fetched with: the session's while playing, else the moderator's.
+func cams_token() -> String:
+	return ""
+
+
 ## End our session (found + celebrated, headset off, …).
 func end_session(_reason: String) -> void:
 	session = {}

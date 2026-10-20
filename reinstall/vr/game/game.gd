@@ -77,6 +77,8 @@ var lobby: Lobby
 var duck: Duck
 var trail: Trail
 var ghosts: Ghosts
+## The terminals' live camera feeds on their screens ([CamFeeds]).
+var cams: CamFeeds
 var hud: Hud
 
 var _trail_in := 0.0
@@ -144,6 +146,11 @@ func setup(l: LinkBase, xr: bool) -> void:
 	ghosts.name = "Ghosts"
 	ghosts.builder = builder
 	add_child(ghosts)
+	cams = CamFeeds.new()
+	cams.name = "Cams"
+	cams.feed_shown.connect(builder.set_cam)
+	cams.feed_lost.connect(builder.clear_cam)
+	add_child(cams)
 	player = PLAYER_SCENE.instantiate()
 	player.xr_active = xr
 	player.smooth_turn = bool(link.config.get("smooth_turn", false))
@@ -194,6 +201,7 @@ func enter_lobby() -> void:
 	_update_route_house()
 	duck.remove()
 	trail.clear()
+	cams.stop()
 	ghosts.own_session = ""
 	if _notice_left <= 0.0:
 		hud.hide_all()
@@ -533,6 +541,7 @@ func _tick_play(delta: float) -> void:
 	link.send_pose(feet, builder.yaw_to_house(player.head_yaw()), player.head_pitch())
 	var here := HouseLocate.locate(house, feet)
 	hud.set_room(_room_label(here["room"]))
+	cams.tick(delta, house, feet, link.cams_url(), link.cams_token())
 
 	var duck_p: Array = flow.assignment["duck"]["pos"]
 	_trail_in -= delta

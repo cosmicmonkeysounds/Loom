@@ -45,6 +45,8 @@ func _run() -> void:
 	_test_locomotion()
 	_test_picker()
 	_test_flow()
+	_test_cam_feeds()
+	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
 	await _test_autopilot_physics()
@@ -737,6 +739,11 @@ func _test_server_link_king() -> void:
 	_check(not sl.has_session(), "link king: 410 → the session is over")
 	tr.base = "http://127.0.0.1:7999"
 	_check(sl.avatar_url("0123456789abcdef") == "http://127.0.0.1:7999/e/e1/api/avatar/0123456789abcdef" and sl.avatar_url("") == "", "link: a picture's URL is the event's avatar route")
+	_check(sl.cams_url() == "http://127.0.0.1:7999/e/e1/api/spatial", "link: the camera feeds live under the event's spatial routes")
+	sl.session = {"session": "s9", "token": "sess-tok"}
+	var with_session := sl.cams_token()
+	sl.session = {}
+	_check(with_session == "sess-tok" and sl.cams_token() == sl.get("_mod_token"), "link: feeds are fetched with the session's token, else the moderator's")
 	_free_server_link(sl)
 
 	# Offline: the map's King, kept here; a hit lands once per session.
@@ -755,6 +762,7 @@ func _test_server_link_king() -> void:
 	await process_frame
 	_check(offline_answers == ["ok", "already hit"] and off.king.get("hp") == max_hp - 1, "link offline: one hit per session (%s)" % [offline_answers])
 	_check(off.avatar_url("abc") == "", "link offline: no pictures to fetch")
+	_check(off.cams_url() == "", "link offline: no camera feeds")
 	off.free()
 
 
@@ -1033,6 +1041,148 @@ func _test_picker() -> void:
 	_check(p.update(Vector2(0.1, 0), 0.1).is_empty() and p.progress() == 0.0, "picker: letting go empties the bar")
 	p.set_items([{"id": "x"}, {"id": "c"}, {"id": "a"}])
 	_check(p.selected().get("id") == "c", "picker: a refreshed list keeps the selection")
+
+
+# --- camera feeds (wave 14) ---------------------------------------------------
+
+
+func _jpeg(w: int, h: int, c: Color) -> PackedByteArray:
+	var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+	img.fill(c)
+	return img.save_jpg_to_buffer(0.5)
+
+
+func _test_cam_feeds() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var all := ["optical-drive", "hall", "desktop-tv", "start-bar", "ram", "server-room", "nowhere"]
+	var feet := [0.0, 0.0, 5.0]
+	_check(CamFeeds.spots_to_poll(house, all, feet) == ["optical-drive", "start-bar", "hall", "desktop-tv"], "cams: the listed terminals on my floor, nearest first, at most four (%s)" % [CamFeeds.spots_to_poll(house, all, feet)])
+	_check(CamFeeds.spots_to_poll(house, all, feet, 12.0, 2) == ["optical-drive", "start-bar"], "cams: … capped")
+	_check(CamFeeds.spots_to_poll(house, all, feet, 5.5) == ["optical-drive", "start-bar"], "cams: … within reach in plan")
+	_check(CamFeeds.spots_to_poll(house, [{"spot": "hall", "at": 1}, {"spot": "ram"}], feet) == ["hall"], "cams: list entries by spot; another floor's terminal is not polled")
+	_check(CamFeeds.spots_to_poll(house, all, [7.0, -2.7, 9.0]).has("ram") and not CamFeeds.spots_to_poll(house, all, [7.0, -2.7, 9.0]).has("hall"), "cams: in the basement, the basement's terminals")
+	_check(CamFeeds.spots_to_poll(house, [], feet).is_empty() and CamFeeds.spots_to_poll(house, all, []).is_empty(), "cams: nothing listed or no feet → nothing")
+
+	_check(_near(CamFeeds.backoff(0, 0.25), 0.25) and _near(CamFeeds.backoff(1, 0.25), 1.0) and _near(CamFeeds.backoff(3, 0.25), 4.0), "cams: a failure backs off, doubling")
+	_check(_near(CamFeeds.backoff(20, 0.25), CamFeeds.BACKOFF_MAX) and _near(CamFeeds.backoff(1, 2.0, 2.0), 2.0) and _near(CamFeeds.backoff(2, 2.0, 2.0), 4.0), "cams: … up to the cap; the list from its own interval")
+
+	var parsed := CamFeeds.parse_list('{"cams":[{"spot":"hall","at":5,"w":160,"h":120},{"at":1},"x"]}'.to_utf8_buffer())
+	_check(parsed.size() == 1 and int(parsed["hall"]["w"]) == 160, "cams: the list parses, junk entries skipped")
+	_check(CamFeeds.parse_list("nope".to_utf8_buffer()).is_empty() and CamFeeds.parse_list(PackedByteArray()).is_empty(), "cams: a junk list is empty")
+
+	var img := CamFeeds.decode(_jpeg(160, 120, Color.RED))
+	_check(img != null and img.get_width() == 160 and img.get_height() == 120, "cams: a jpeg frame decodes")
+	_check(CamFeeds.decode("<svg/>".to_utf8_buffer()) == null and CamFeeds.decode(PackedByteArray()) == null, "cams: anything but a jpeg is no frame")
+	var tex := CamFeeds.apply(null, img)
+	var same := CamFeeds.apply(tex, CamFeeds.decode(_jpeg(160, 120, Color.BLUE)))
+	_check(is_same(tex, same) and same.get_width() == 160, "cams: a frame updates the texture in place")
+	var bigger := CamFeeds.apply(tex, CamFeeds.decode(_jpeg(320, 240, Color.BLUE)))
+	_check(is_same(tex, bigger) and bigger.get_width() == 320, "cams: … even when its size changes")
+
+	# The panel's transform: the screen centre, proud of the wall along the facing.
+	var t: Dictionary = {"id": "x", "name": "X", "pos": [1.0, 1.4, 2.0], "yaw": 90.0}
+	var out: float = HouseGeometry.style_of(house)["wallThickness"] / 2.0 + HouseBuilder.TERMINAL_PROUD
+	var tr := HouseBuilder.terminal_transform(house, t)
+	var fwd: Array = HouseFrames.forward(90.0)
+	_check(_near3(HouseFrames.arr(tr.origin), [1.0 + fwd[0] * out, 1.4, 2.0 + fwd[2] * out]) and _near3(HouseFrames.arr(-tr.basis.z), fwd), "cams: a panel faces its terminal's yaw, proud of the wall")
+	t["pitch"] = -10.0
+	var tp := HouseBuilder.terminal_transform(house, t)
+	_check(_near3(HouseFrames.arr(-tp.basis.z), HouseFrames.forward(90.0, -10.0)), "cams: … and its pitch")
+
+
+## The feed loop with a fake requester, then the panels on a built house.
+func _test_cam_panels() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	root.add_child(b)
+	b.build(house)
+	var c := CamFeeds.new()
+	root.add_child(c)
+	c.feed_shown.connect(b.set_cam)
+	c.feed_lost.connect(b.clear_cam)
+	var asked: Array = []  # frames
+	var lists: Array = []  # the list, never cleared
+	c.requester = func(url: String, token: String, done: Callable) -> void: (lists if url.ends_with("/cams") else asked).append([url, token, done])
+	var feet := [0.0, 0.0, 5.0]
+	var base := "fixture://e/e1/api/spatial"
+	var urls := func() -> Array: return asked.map(func(e: Array) -> String: return e[0])
+
+	c.tick(0.016, house, feet, base, "sess")
+	_check(lists.size() == 1 and asked.is_empty() and lists[0][0] == base + "/cams" and lists[0][1] == "sess", "cams: the list first, with the token (%s)" % [lists])
+	c.tick(0.016, house, feet, base, "sess")
+	_check(lists.size() == 1, "cams: one list call in flight")
+	(lists[0][2] as Callable).call(200, PackedStringArray(), JSON.stringify({"cams": [{"spot": "optical-drive", "at": 1, "w": 160, "h": 120}, {"spot": "ram", "at": 1, "w": 160, "h": 120}]}).to_utf8_buffer())
+	asked.clear()
+	c.tick(0.016, house, feet, base, "sess")
+	_check(asked.size() == 1 and asked[0][0] == base + "/cam?spot=optical-drive", "cams: a frame for the listed feed on my floor, not the basement's (%s)" % [urls.call()])
+	c.tick(0.016, house, feet, base, "sess")
+	_check(asked.size() == 1, "cams: one frame request per spot in flight")
+	(asked[0][2] as Callable).call(200, PackedStringArray(["x-cam-at: 1"]), _jpeg(160, 120, Color.RED))
+	_check(c.is_shown("optical-drive") and b.cam_shown("optical-drive") and not b.cam_shown("hall"), "cams: a frame puts the feed on the terminal")
+	var root_node := b.get_node("Terminal_optical-drive") as Node3D
+	_check(not (root_node.get_node("Glass") as Node3D).visible and (root_node.get_node("Feed/Video") as MeshInstance3D).mesh.size == HouseBuilder.CAM_SIZE, "cams: … a 4:3 panel in place of the screen")
+	var mat := (root_node.get_node("Feed/Video") as MeshInstance3D).material_override as StandardMaterial3D
+	_check(mat.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED and is_same(mat.albedo_texture, c.texture("optical-drive")), "cams: … unshaded, showing the feed's texture")
+	asked.clear()
+	c.tick(0.1, house, feet, base, "sess")
+	_check(asked.is_empty(), "cams: about three frames a second, not every tick")
+	c.tick(0.3, house, feet, base, "sess")
+	_check(asked.size() == 1, "cams: … the next frame after a third of a second")
+	var tex := c.texture("optical-drive")
+	(asked[0][2] as Callable).call(200, PackedStringArray(), _jpeg(160, 120, Color.BLUE))
+	_check(is_same(tex, c.texture("optical-drive")) and is_same(mat.albedo_texture, tex), "cams: the next frame updates the same texture")
+
+	# A rebuild keeps the feed on.
+	b.build(house)
+	_check(b.cam_shown("optical-drive"), "cams: a rebuilt house keeps the feed")
+
+	# A 404: back to the screen, and asked again later and later.
+	asked.clear()
+	c.tick(0.4, house, feet, base, "sess")
+	(asked[0][2] as Callable).call(404, PackedStringArray(), PackedByteArray())
+	_check(not c.is_shown("optical-drive") and not b.cam_shown("optical-drive") and (b.get_node("Terminal_optical-drive/Glass") as Node3D).visible, "cams: a 404 puts the terminal's screen back")
+	asked.clear()
+	c.tick(0.5, house, feet, base, "sess")
+	_check(asked.is_empty(), "cams: … backed off")
+	c.tick(0.6, house, feet, base, "sess")
+	_check(asked.size() == 1, "cams: … then asked again")
+	(asked[0][2] as Callable).call(0, PackedStringArray(), PackedByteArray())
+	asked.clear()
+	c.tick(1.5, house, feet, base, "sess")
+	_check(asked.is_empty(), "cams: a second failure waits longer")
+	c.tick(0.6, house, feet, base, "sess")
+	_check(asked.size() == 1, "cams: … then once more")
+	(asked[0][2] as Callable).call(200, PackedStringArray(), _jpeg(160, 120, Color.RED))
+	_check(b.cam_shown("optical-drive"), "cams: a good frame brings the feed back")
+
+	# A failing list backs off too; walking away drops the feed.
+	asked.clear()
+	c.tick(0.016, house, [0.0, 0.0, 30.0], base, "sess")
+	_check(not b.cam_shown("optical-drive") and c.polling().is_empty(), "cams: out of range, the feed is dropped")
+	_check(lists.size() == 2, "cams: the list is asked again every two seconds (%d)" % lists.size())
+	(lists[1][2] as Callable).call(500, PackedStringArray(), PackedByteArray())
+	c.tick(1.9, house, [0.0, 0.0, 30.0], base, "sess")
+	_check(lists.size() == 2, "cams: a failed list waits")
+	c.tick(2.2, house, [0.0, 0.0, 30.0], base, "sess")
+	_check(lists.size() == 3, "cams: … then asks again")
+
+	# The session ends: everything off, late answers ignored, nothing asked.
+	asked.clear()
+	c.tick(0.016, house, feet, base, "sess")
+	var pending: Array = asked.filter(func(a: Array) -> bool: return str(a[0]).contains("/cam?"))
+	c.stop()
+	_check(not b.cam_shown("optical-drive") and c.polling().is_empty(), "cams: stop takes every feed off")
+	for a: Array in pending:
+		(a[2] as Callable).call(200, PackedStringArray(), _jpeg(160, 120, Color.RED))
+	_check(not b.cam_shown("optical-drive") and not c.is_shown("optical-drive"), "cams: an answer after stop changes nothing")
+	asked.clear()
+	var n := lists.size()
+	c.tick(0.016, house, feet, "", "")
+	_check(asked.is_empty() and lists.size() == n, "cams: offline, nothing is asked")
+	c.requester = Callable()
+	c.queue_free()
+	b.queue_free()
+	await process_frame
 
 
 func _test_flow() -> void:
@@ -1459,6 +1609,15 @@ func _test_main_and_game() -> void:
 	var spawn_room: Dictionary = HouseGeometry.room_by_id(house, house["spawn"]["room"])
 	_check(game.hud.room_text() == str(spawn_room["label"]), "game: the HUD names the room")
 	_check(link.found_calls == 0, "game: no claim far from the duck")
+	# The terminals' camera feeds are asked for while playing.
+	var cam_calls: Array = []
+	link.set("cams_base", "fixture://e/e1/api/spatial")
+	game.cams.requester = func(url: String, token: String, done: Callable) -> void: cam_calls.append([url, token, done])
+	game._process(0.016)
+	_check(cam_calls.size() == 1 and cam_calls[0][0] == "fixture://e/e1/api/spatial/cams" and cam_calls[0][1] == link.cams_token(), "game: playing, the camera feeds are listed with the session's token (%s)" % [cam_calls])
+	var all_spots: Array = house["terminals"].map(func(t: Dictionary) -> Dictionary: return {"spot": t["id"]})
+	(cam_calls[0][2] as Callable).call(200, PackedStringArray(), JSON.stringify({"cams": all_spots}).to_utf8_buffer())
+
 
 	# Walk up to the duck.
 	var dp: Array = a["duck"]["pos"]
@@ -1477,6 +1636,9 @@ func _test_main_and_game() -> void:
 	_check(game.duck.is_flying() and game.trail.count() == 0, "game: the duck flies, the trail goes")
 	game._process(GameFlow.CELEBRATE + 0.1)
 	_check(game.state() == GameFlow.State.LOBBY and link.ended == ["found"], "game: after the celebration the session ends → lobby")
+	_check(game.cams.polling().is_empty(), "game: the session's end stops the camera feeds")
+	link.set("cams_base", "")
+	game.cams.requester = Callable()
 
 	# Not captured: "YOU FOUND GERALD".
 	link.assignment_received.emit(_assignment(house, "s-2", false))

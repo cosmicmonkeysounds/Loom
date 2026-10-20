@@ -36,6 +36,18 @@ func hit_king() -> void:
 	king_hits += 1
 
 
+## The camera feeds' root ("" = none, the default: the game asks nothing).
+var cams_base := ""
+
+
+func cams_url() -> String:
+	return cams_base
+
+
+func cams_token() -> String:
+	return str(session.get("token", "tok"))
+
+
 func avatar_url(key: String) -> String:
 	return "fixture://avatar/" + key if key != "" else ""
 
