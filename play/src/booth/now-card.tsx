@@ -6,7 +6,7 @@
 //! over the stream. With no objective the line names the character.
 
 import { useEffect, useRef, useState } from "react";
-import { checkCount, ObjectiveCard } from "../ui/objective.tsx";
+import { ObjectiveCard } from "../ui/objective.tsx";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import type { Interaction, ObjectiveView } from "../types.ts";
 
@@ -14,6 +14,19 @@ import type { Interaction, ObjectiveView } from "../types.ts";
 export function objectiveButtonLabels(o: Pick<ObjectiveView, "buttons">, interactions: readonly Interaction[]): string[] {
   const byId = new Map(interactions.map((i) => [i.id, i.label]));
   return o.buttons.filter((id) => id !== "pass" && id !== "scan" && byId.has(id)).map((id) => byId.get(id)!);
+}
+
+/**
+ * The NOW line's count: ticked to-dos over *every* to-do. A to-do with no
+ * `done when` (nothing the story can tick) still counts in the total, so
+ * the line never reads "1/1 ✓" while "☐ Every program cleared" sits open
+ * in the card. "" when the objective has no checklist.
+ */
+export function nowCount(o: Pick<ObjectiveView, "checklist">): string {
+  const total = o.checklist.length;
+  if (total === 0) return "";
+  const done = o.checklist.filter((c) => c.done === true).length;
+  return done === total ? `${done}/${total} ✓` : `${done}/${total}`;
 }
 
 export function NowCard({
@@ -62,7 +75,7 @@ export function NowCard({
       </div>
     );
   }
-  const count = checkCount(now);
+  const count = nowCount(now);
   const others = list.slice(1);
   const hint = (o: ObjectiveView) => {
     const labels = objectiveButtonLabels(o, interactions);

@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { NowCard, objectiveButtonLabels } from "../src/booth/now-card.tsx";
+import { NowCard, nowCount, objectiveButtonLabels } from "../src/booth/now-card.tsx";
 import { actChip, filterGuests, heldCount, soonest, trayClock } from "../src/booth/model.ts";
 import { boothPill, boothStartItems } from "../src/booth/header.tsx";
 import type { Interaction, ObjectiveView, PrimeGuest, WalletQueueView } from "../src/types.ts";
@@ -18,11 +18,19 @@ describe("the NOW card", () => {
     const html = renderToStaticMarkup(<NowCard objectives={[o, obj("two")]} interactions={ints} character="Norton" pill={null} closeKey={null} />);
     expect(html).toContain("NOW:");
     expect(html).toContain("Hold the door");
-    expect(html).toContain("1/2 ✓");
+    // The to-do with no condition counts in the total.
+    expect(html).toContain("1/3");
+    expect(html).not.toContain("1/2 ✓");
     expect(html).toContain("+1");
     expect(html).toContain('aria-expanded="false"');
     // Folded by default: the brief is not over the stream.
     expect(html).not.toContain("Scan every pass.");
+  });
+
+  it("never reads done while a to-do with no condition is open", () => {
+    expect(nowCount({ checklist: [{ label: "Hold the door", done: true }, { label: "Every program cleared", done: null }] })).toBe("1/2");
+    expect(nowCount({ checklist: [{ label: "a", done: true }, { label: "b", done: true }] })).toBe("2/2 ✓");
+    expect(nowCount({ checklist: [] })).toBe("");
   });
 
   it("names the character (and its pill) when no objective is live", () => {
