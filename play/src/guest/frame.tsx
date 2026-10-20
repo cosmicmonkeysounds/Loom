@@ -86,13 +86,14 @@ export function splitIcon(label: string): { icon?: string; label: string } {
 /** The guest's Start menu, top to bottom (pure — `test/start-menu.test.tsx`):
  *  the story's own buttons first (they are what a guest comes here for),
  *  then people and help, the phone's settings, switching sides, and Leave
- *  last, behind its confirmation. An `arm: true` button asks once in place. */
+ *  last, behind its confirmation. An `arm: true` button arms, then fires,
+ *  through core's arm model (`chrome/start-menu.tsx`). */
 export function guestStartItems(o: GuestStartInput): StartItem[] {
   const items: StartItem[] = o.interactions.map((i) => ({
     id: `act:${i.id}`,
     ...splitIcon(i.label),
     onClick: () => o.open.act(i),
-    ...(i.arm === true ? { confirm: ARM_LINE } : {}),
+    ...(i.arm === true ? { arm: true } : {}),
   }));
   if (o.people) items.push({ id: "people", label: "People", icon: "👥", onClick: o.open.people });
   items.push({ id: "help", label: "Help", icon: "❓", onClick: o.open.help });

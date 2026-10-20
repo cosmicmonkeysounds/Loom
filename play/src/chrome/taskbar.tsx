@@ -16,16 +16,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { eventRoot } from "./balloon.tsx";
+import { StartMenu, type StartItem } from "./start-menu.tsx";
 
-export interface StartItem {
-  id: string;
-  label: string;
-  icon?: string;
-  onClick: () => void;
-  danger?: boolean;
-  /** Ask first ("Leave the event?") — the menu confirms in place. */
-  confirm?: string;
-}
+export type { StartItem } from "./start-menu.tsx";
+export { startTap } from "./start-menu.tsx";
 
 export interface TaskbarButton {
   id: string;
@@ -39,15 +33,6 @@ export interface TaskbarButton {
   /** `data-tour` anchor. */
   tour?: string;
   active?: boolean;
-}
-
-/** The Start menu's next state after a tap on `item` while `asking` holds
- *  the item awaiting its confirmation (pure — `test/start-menu.test.tsx`):
- *  an item with a `confirm` asks first; a second tap on the same item fires
- *  it; anything else fires at once. */
-export function startTap(asking: string | null, item: Pick<StartItem, "id" | "confirm">): { asking: string | null; fire: boolean } {
-  if (item.confirm !== undefined && asking !== item.id) return { asking: item.id, fire: false };
-  return { asking: null, fire: true };
 }
 
 /** A taskbar button's classes (the order the tests and the CSS read). */
@@ -74,27 +59,14 @@ export function Taskbar({
   brand?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [asking, setAsking] = useState<string | null>(null);
-  const menu = useRef<HTMLDivElement>(null);
   const startBtn = useRef<HTMLButtonElement>(null);
-  const close = () => {
-    setOpen(false);
-    setAsking(null);
-  };
-  const pick = (it: StartItem) => {
-    const next = startTap(asking, it);
-    if (!next.fire) return setAsking(next.asking);
-    close();
-    it.onClick();
-  };
-  // Opened: focus the first item; Escape closes and hands focus back to Start.
+  const close = () => setOpen(false);
+  // Open: Escape closes and hands focus back to Start.
   useEffect(() => {
     if (!open) return;
-    menu.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
     const key = (e: Event) => {
       if ((e as KeyboardEvent).key !== "Escape") return;
       setOpen(false);
-      setAsking(null);
       startBtn.current?.focus();
     };
     const root = eventRoot(startBtn.current);
@@ -119,40 +91,7 @@ export function Taskbar({
         <span className="taskbar-label">Start</span>
       </button>
       {open && <div className="start-menu-away" aria-hidden onClick={close} />}
-      {open && (
-        <div ref={menu} className="start-menu" role="menu" aria-label="Start">
-          {brand !== undefined && (
-            <div className="start-menu-band" aria-hidden>
-              <span>{brand}</span>
-            </div>
-          )}
-          <div className="start-menu-items">
-            {startHeader !== undefined && <div className="start-menu-head">{startHeader}</div>}
-            {start.map((it) =>
-              asking === it.id ? (
-                <div key={it.id} className="start-menu-confirm" role="group" aria-label={it.confirm}>
-                  <span className="start-menu-ask">{it.confirm}</span>
-                  <div className="start-menu-confirm-row">
-                    <button type="button" role="menuitem" className={`w95-btn${it.danger ? " danger" : ""}`} onClick={() => pick(it)}>
-                      {it.label}
-                    </button>
-                    <button type="button" className="w95-btn" onClick={() => setAsking(null)}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button key={it.id} type="button" role="menuitem" className={`start-menu-item${it.danger ? " danger" : ""}`} onClick={() => pick(it)}>
-                  <span className="start-menu-icon" aria-hidden>
-                    {it.icon ?? ""}
-                  </span>
-                  <span className="start-menu-label">{it.label}</span>
-                </button>
-              ),
-            )}
-          </div>
-        </div>
-      )}
+      {open && <StartMenu items={start} header={startHeader} brand={brand} onClose={close} />}
       {buttons.map((b) => (
         <button
           key={b.id}

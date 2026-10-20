@@ -1,10 +1,12 @@
 //! Wave 13 (chrome): the guest's ⊞ Start menu — who you are on its banner,
-//! the old ☰ sheet's items, and Leave behind a confirmation.
+//! the old ☰ sheet's items, Leave behind a confirmation, and `arm: true`
+//! story buttons through core's arm model.
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ARM_LINE } from "../src/arm.ts";
+import { ARM_DEAD_MS, ARM_LINE, ARM_MS, armTap } from "../src/arm.ts";
+import { StartMenuRow, startPress } from "../src/chrome/start-menu.tsx";
 import { startTap } from "../src/chrome/taskbar.tsx";
 import { GuestStartHeader, guestStartItems, leaveQuestion, pushOffered, splitIcon, type GuestStartInput } from "../src/guest/frame.tsx";
 import type { Interaction } from "../src/types.ts";
@@ -62,10 +64,40 @@ describe("the Start menu", () => {
     expect(startTap(null, { id: "help" })).toEqual({ asking: null, fire: true });
   });
 
-  it("an `arm: true` story button asks once in place", () => {
+  it("an `arm: true` story button goes through core's arm model, never the in-place question", () => {
     const items = guestStartItems(input({ interactions: [bathroom, armed] }));
-    expect(items.find((i) => i.id === "act:self_destruct")!.confirm).toBe(ARM_LINE);
-    expect(items.find((i) => i.id === "act:bathroom_mode")!.confirm).toBeUndefined();
+    const destruct = items.find((i) => i.id === "act:self_destruct")!;
+    expect(destruct).toMatchObject({ arm: true });
+    expect(destruct.confirm).toBeUndefined();
+    expect(startPress(destruct)).toBe("arm");
+    expect(items.find((i) => i.id === "act:bathroom_mode")!.arm).toBeUndefined();
+    expect(startPress(items.find((i) => i.id === "act:bathroom_mode")!)).toBe("fire");
+    expect(startPress(items.find((i) => i.id === "leave")!)).toBe("confirm");
+    expect(startPress({ arm: true, confirm: "?" })).toBe("arm");
+    // The model the menu drives: dead time, the 4 s window, then it re-arms.
+    const first = armTap(null, destruct.id, 0);
+    expect(first.kind).toBe("arm");
+    if (first.kind !== "arm") return;
+    expect(armTap(first.armed, destruct.id, ARM_DEAD_MS - 1).kind).toBe("ignore");
+    expect(armTap(first.armed, destruct.id, ARM_DEAD_MS + 1).kind).toBe("fire");
+    expect(armTap(first.armed, destruct.id, ARM_MS).kind).toBe("arm");
+  });
+
+  it("an armed item reads Tap again to fire on the item itself; a question names the item's own words", () => {
+    const destruct = guestStartItems(input({ interactions: [armed] })).find((i) => i.id === "act:self_destruct")!;
+    const on = renderToStaticMarkup(createElement(StartMenuRow, { item: destruct, armed: true, asking: false, onPick: noop, onCancel: noop }));
+    expect(on).toContain('class="start-menu-item armed"');
+    expect(on).toContain('aria-pressed="true"');
+    expect(on).toContain(ARM_LINE);
+    const off = renderToStaticMarkup(createElement(StartMenuRow, { item: destruct, armed: false, asking: false, onPick: noop, onCancel: noop }));
+    expect(off).not.toContain(ARM_LINE);
+    expect(off).toContain('aria-pressed="false"');
+    const leave = guestStartItems(input()).find((i) => i.id === "leave")!;
+    const ask = renderToStaticMarkup(createElement(StartMenuRow, { item: leave, armed: false, asking: true, onPick: noop, onCancel: noop }));
+    expect(ask).toContain(leaveQuestion("Winamp"));
+    expect(ask).toContain(">Leave the event</button>");
+    expect(ask).toContain(">Cancel</button>");
+    expect(ask).not.toContain(ARM_LINE);
   });
 
   it("the banner shows your picture, your name, your side and where you are", () => {
