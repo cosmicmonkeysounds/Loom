@@ -104,7 +104,7 @@ function FrameRoot({ className, frameRef, head, taskbar, children }: { className
  *  the head, then the taskbar unless the keyboard is open, then overlays. */
 export function FrameLayout({ className, frameRef, head, taskbar, typing, children }: { className: string; frameRef?: RefObject<HTMLDivElement | null>; head: ReactNode; taskbar: ReactNode; typing: boolean; children?: ReactNode }) {
   return (
-    <div className={className} ref={frameRef as RefObject<HTMLDivElement> | undefined}>
+    <div className={`${className}${typing ? " kbd" : ""}`} ref={frameRef as RefObject<HTMLDivElement> | undefined}>
       {head}
       {!typing && taskbar}
       {children}
@@ -431,7 +431,18 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       start={start}
       startHeader={<GuestStartHeader name={meName} faction={st.faction} where={where} />}
       brand={st.title ?? s.me.title ?? undefined}
-      buttons={guestTaskbarButtons({ now, pass: () => setPassing(true), scan: () => setScanning(true) })}
+      buttons={guestTaskbarButtons({
+        now,
+        // One tap from anywhere: the NOW card under the taskbar closes as the pass / scanner opens.
+        pass: () => {
+          setObjectivesOpen(false);
+          setPassing(true);
+        },
+        scan: () => {
+          setObjectivesOpen(false);
+          setScanning(true);
+        },
+      })}
       tray={tray}
       conn={s.connected ? "live" : offline ? "offline" : "reconnecting"}
     />
@@ -443,7 +454,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
     <WalletActionsProvider value={guestWalletActions(st.wallet ?? null, s.me.id, walletClock, restricted, s.wallet)}>
     <FrameRoot
-      className={`root app-frame ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}`}
+      // `guest-frame`: the taskbar stays on top of sheets, the Start menu's
+      // catch-all, dialogs and the blue screen (Pass and Scan are one tap
+      // from anywhere); not during the tour, which dims everything.
+      className={`root app-frame guest-frame ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}${tour ? " touring" : ""}`}
       frameRef={rootRef}
       taskbar={taskbar}
       head={

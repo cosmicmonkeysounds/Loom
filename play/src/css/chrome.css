@@ -113,6 +113,20 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .tray-item.alarm { color: var(--bad); font-weight: 700; }
 .tray-item.dim { color: var(--dim-ink); }
 
+/* The guest's taskbar is always on top (a Win95 taskbar was): sheets, the
+   Start menu's catch-all, a moment's dialog and the blue screen paint under
+   it, so 🎟 Pass and 📷 Scan are one tap from every screen. The full-screen
+   pass / scanner it opens (45), a `!!` takeover (50) and the glitch (55)
+   still cover it; the tour (which dims everything) puts it back in line.
+   Layers that would sit under it leave it room at the bottom. */
+.guest-frame > .taskbar { z-index: 42; }
+.guest-frame.touring > .taskbar { z-index: auto; }
+.guest-frame .start-menu-away { z-index: -1; }
+.guest-frame:not(.kbd) .sheet-backdrop,
+.guest-frame:not(.kbd) .w95-dialog-backdrop { padding-bottom: calc(12px + var(--taskbar-h) + var(--safe-bottom)); }
+.guest-frame:not(.kbd) .sheet { max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom) - var(--taskbar-h)); }
+.guest-frame:not(.kbd) .moments-bsod { padding-bottom: calc(20px + var(--taskbar-h) + var(--safe-bottom)); }
+
 /* ── the Start menu ────────────────────────────────────────────────────── */
 .start-menu-away { position: fixed; inset: 0; z-index: var(--z-sheet); }
 .start-menu {

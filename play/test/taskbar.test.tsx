@@ -116,3 +116,23 @@ describe("the guest taskbar", () => {
     expect(app).not.toContain("<PushCard");
   });
 });
+
+describe("Pass and Scan are one tap from every screen (fguest)", () => {
+  const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
+  const themes = readFileSync(new URL("../src/css/themes.css", import.meta.url), "utf8");
+  const z = (name: string) => Number(new RegExp(`--z-${name}: (\\d+)`, "u").exec(themes)![1]);
+  it("the guest's taskbar sits above sheets, the Start menu's catch-all, dialogs and the blue screen, under the pass it opens and a takeover", () => {
+    const tb = Number(/\.guest-frame > \.taskbar \{ z-index: (\d+); \}/u.exec(css)![1]);
+    expect(tb).toBeGreaterThan(z("moment"));
+    expect(tb).toBeGreaterThan(z("sheet"));
+    expect(tb).toBeLessThan(z("pass"));
+    expect(tb).toBeLessThan(z("takeover"));
+    expect(css).toContain(".guest-frame.touring > .taskbar { z-index: auto; }");
+    expect(css).toContain(".guest-frame .start-menu-away { z-index: -1; }");
+  });
+
+  it("a taskbar button with the Start menu open closes it and does its job in the same tap", () => {
+    const src = readFileSync(new URL("../src/chrome/taskbar.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/if \(open\) close\(\);\s*b\.onClick\(\);/u);
+  });
+});

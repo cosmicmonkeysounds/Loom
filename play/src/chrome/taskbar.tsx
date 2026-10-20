@@ -100,7 +100,11 @@ export function Taskbar({
           aria-label={b.label}
           title={b.title ?? b.label}
           data-tour={b.tour}
-          onClick={b.onClick}
+          onClick={() => {
+            // A taskbar button works with the Start menu open: one tap closes it and does its job.
+            if (open) close();
+            b.onClick();
+          }}
         >
           <span className="taskbar-icon" aria-hidden>
             {b.icon}
