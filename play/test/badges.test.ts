@@ -41,7 +41,11 @@ describe("a booth's badge", () => {
     expect(badgeWorthy(m({ channel: "dm:Norton", channelKind: "dm", kind: "narration", from: "", readout: true, audience: ["@Norton"] }), norton)).toBe(true);
     expect(badgeWorthy(m({ channel: "dm:Norton", channelKind: "dm", audience: ["g1"] }), norton)).toBe(false); // to a guest
     expect(badgeWorthy(m({ kind: "signal", alert: true }), norton)).toBe(false); // a house alert is the guests'
-    expect(badgeWorthy(m({ kind: "signal", alert: true, audience: [] }), norton)).toBe(true); // a staff alert
+    expect(badgeWorthy(m({ kind: "signal", alert: true, channel: "hosts", channelKind: "faction", audience: [] }), norton)).toBe(true); // a staff alert
+    expect(badgeWorthy(m({ kind: "signal", alert: true, audience: [] }), norton)).toBe(false); // a room alert that reached nobody
+    expect(badgeWorthy(m({ kind: "signal", alert: true, audience: ["@Norton"] }), norton)).toBe(true); // to its character
+    expect(badgeWorthy(m({ kind: "signal", alert: true, channel: "faction:Mods", channelKind: "faction", audience: ["g1", "g2"] }), norton)).toBe(false); // a faction's
+    expect(badgeWorthy(m({ kind: "line", alert: true, from: "Ada", audience: ["g1"] }), norton)).toBe(false); // a guest's own reply !…
     expect(badgeWorthy(m({ kind: "widget", widget: { kind: "poll", text: "?", params: {} } }), norton)).toBe(false);
   });
 });

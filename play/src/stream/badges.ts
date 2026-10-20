@@ -4,6 +4,7 @@
 //! house-wide lines everyone gets, GENERATOR barks, notices about other
 //! people, system lines, or your own words.
 
+import { boothAlertFilter } from "../alerts.ts";
 import type { Viewer } from "../rooms/threads-state.ts";
 import type { Channel, ChatMessage } from "../types.ts";
 import { cardAsks } from "../widgets.tsx";
@@ -18,7 +19,10 @@ export function addressedTo(m: Pick<ChatMessage, "audience">, me: Viewer): boole
 export function badgeWorthy(m: ChatMessage, me: Viewer): boolean {
   if (m.parentSeq != null || m.hidden || m.ambient) return false;
   if (m.from !== "" && (m.from === me.name || m.from === me.id)) return false; // your own words
-  if (m.alert) return me.booth ? m.audience !== "all" : true;
+  // A booth's alert is one to @its character or a staff room's — the
+  // moments' own rule (`boothAlertFilter`), minus the house-wide ones the
+  // guests got; never a faction's, or a guest's own `reply !…`.
+  if (m.alert) return me.booth ? m.audience !== "all" && boothAlertFilter(me.name)(m) : true;
   if (m.notice !== undefined) return false;
   if (m.kind === "widget") {
     if (m.widget === undefined || !cardAsks(m.widget)) return false;
