@@ -25,7 +25,9 @@
    to-dos always in view; the drop-down holds only the rest. */
 .booth-now.pinned .booth-now-bar { cursor: default; }
 .booth-now-title.wrap {
-  white-space: normal; overflow-wrap: anywhere; line-height: 1.25; padding: 4px 0;
+  /* A margin, not padding: the clamp clips at the padding box, so padding
+     would show the top of a third line under the ellipsis. */
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.25; margin: 4px 0;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
 }
 .booth-now-body {
@@ -50,6 +52,10 @@
 }
 /* The story's own to-do: a disabled Win95 check box (face-grey, dim tick). */
 .booth-now-box.story { background: var(--face); color: var(--dim-ink); }
+/* plain: the hairline is too faint to read as a control, so the performer's
+   box takes a 3:1 edge and the story's keeps the faint one (disabled). */
+:root:not([data-theme="aol97"]) .booth-now-box { box-shadow: inset 0 0 0 2px var(--dim-ink); }
+:root:not([data-theme="aol97"]) .booth-now-box.story { box-shadow: inset 0 0 0 1px var(--line); }
 .booth-now-more {
   display: block; width: 100%; min-height: var(--tap); margin: 0; padding: 0 2px;
   border: none; background: none; color: var(--link);
