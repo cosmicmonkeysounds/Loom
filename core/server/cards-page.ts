@@ -61,7 +61,7 @@ main{padding:16px}
 #show .nav:hover{background:#ffffff2a}
 #show .prev{left:8px}#show .next{right:8px}
 #show .close{position:fixed;top:10px;right:12px;background:#ffffff14;border:0;color:#fff;font-size:26px;width:48px;height:48px;border-radius:50%}
-@media (max-width:600px){header h1{flex-basis:100%}#q{flex:1}.grid{grid-template-columns:1fr}#show .nav{width:40px;height:72px;font-size:28px}}
+@media (max-width:600px){header h1{flex-basis:100%}#q{flex:1 1 100%;width:auto;order:3}.grid{grid-template-columns:1fr}#show .nav{width:40px;height:72px;font-size:28px}}
 `;
 
 const HTML = `<!doctype html>
