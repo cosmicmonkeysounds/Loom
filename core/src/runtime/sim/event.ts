@@ -170,7 +170,9 @@ export type WalletTxState = "pending" | "held" | "settled" | "denied" | "cancell
 
 // `grant` = the minter paid one person from the reserve; `freeze` = the
 // minter froze one person's coin (`settleAt` = when it thaws).
-export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval" | "grant" | "freeze";
+// `casino` = one bet at the casino terminal (`src/casino.ts`): the card's id
+// is the visit (one thread per sitting), its steps `won` / `lost` / `push`.
+export type WalletCardKind = "transfer" | "request" | "offer" | "stimulus" | "approval" | "grant" | "freeze" | "casino";
 
 export type WalletStep =
   | "sent"
@@ -199,7 +201,11 @@ export type WalletStep =
   | "granted"
   | "frozen"
   | "imposed"
-  | "thawed";
+  | "thawed"
+  // A casino bet: `won` (paid more than the stake), `lost`, `push` (the stake back).
+  | "won"
+  | "lost"
+  | "push";
 
 /**
  * One wallet card as a viewer sees it. `kind` + `step` say which side the
@@ -233,6 +239,12 @@ export interface WalletCard {
   closedBy?: string;
   /** The approver's display name, on a card that waits on them. */
   approver?: string;
+  /** A casino bet: the game's title, the pick's label, the roll in words
+   *  (`7 ★ ★`) and everything it paid back (the stake included). */
+  game?: string;
+  pick?: string;
+  roll?: string;
+  payout?: number;
 }
 
 /** The event the book emits per card — `to` is a person id or `@<Character>`. */

@@ -12,7 +12,7 @@
 //! moved from `state.*` / free variables onto `this`.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,7 +27,8 @@ import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage } from "./chat.ts";
-import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
+import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
+import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
@@ -584,6 +585,9 @@ export class EventRuntime {
   private readonly widgetAnswers: RateLimiter;
   // Wallet calls per guest (`/api/guest/wallet/*`, `LOOM_RL_WALLET`).
   private readonly walletCalls: RateLimiter;
+  // The casino terminal: when each guest's last bet landed (wall ms) — one
+  // bet per `CASINO_BET_GAP_MS`, so a stuck button can't drain a balance.
+  private readonly casinoLast = new Map<string, number>();
   // The story's currency in flight (`currency:` header) — pending transfers,
   // the approver's queue, open requests / offers, the stimulus count. Null
   // when the story declares no currency. Rebuilt with every `loadScenario`;
@@ -5618,6 +5622,51 @@ export class EventRuntime {
         }
         this.fanout(this.commit("quest", action, who, quest, text));
         sendJson(res, 200, { ok: true, status: this.sim.questStatus(who, quest) });
+        return true;
+      }
+      case "/api/mod/casino/bet": {
+        // The casino terminal (`terminal/src/casino/`, `src/casino.ts`): a
+        // scanned guest bets their own coin. The server throws the dice
+        // (`rollFor`, `crypto.randomInt`) and settles; the roll + payout ride
+        // one journaled `bet` op (`by` = the terminal's label), the card
+        // lands in the guest's Wallet room, the story hears `casino won` /
+        // `casino lost`. Mod token only (a terminal); a marked program is
+        // refused, a frozen account too, and the doors must be open.
+        if (this.sim === null || !this.open) {
+          sendJson(res, 409, { error: "doors are closed" });
+          return true;
+        }
+        if (this.wallet === null) {
+          sendJson(res, 404, { error: "this story has no currency" });
+          return true;
+        }
+        const who = str(body, "guest");
+        const game = str(body, "game");
+        const pick = str(body, "pick");
+        const stake = Number(body["stake"]);
+        const bad = this.wallet.checkBet(who, game, pick, stake);
+        if (bad !== null) {
+          sendJson(res, bad.status, { error: bad.error });
+          return true;
+        }
+        if (this.sim.isRestricted(who)) {
+          sendJson(res, 403, { error: "marked programs can't gamble" });
+          return true;
+        }
+        const now = Date.now();
+        const last = this.casinoLast.get(who);
+        if (last !== undefined && now - last < CASINO_BET_GAP_MS) {
+          sendJson(res, 429, { error: "again" });
+          return true;
+        }
+        this.casinoLast.set(who, now);
+        const g = game as CasinoGame;
+        const roll = rollFor(g, (n) => randomInt(n));
+        const payout = payoutOf(g, pick, roll, stake);
+        const id = this.wallet.nextId("c");
+        const at = this.sim.elapsed();
+        this.fanout(this.commitWallet({ op: "bet", id, visit: this.wallet.casinoVisitFor(who, at, id), who, game: g, pick, stake, roll, payout, at }));
+        sendJson(res, 200, { ok: true, game: g, pick, stake, roll, payout, net: payout - stake, balance: this.wallet.balanceOf(who), unit: this.wallet.currency.name });
         return true;
       }
       case "/api/mod/wallet/approve-held": {

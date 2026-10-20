@@ -30,6 +30,7 @@ import type { Sim } from "../src/runtime/sim/sim.ts";
 import { asNumber } from "../src/runtime/expr.ts";
 import { foldName } from "../src/parser/names.ts";
 import { isSpecial } from "./identity.ts";
+import { CASINO_INFO, CASINO_MAX_STAKE, CASINO_MIN_STAKE, isCasinoGame, isPick, pickLabel, rollText, validRoll, type CasinoGame } from "../src/casino.ts";
 
 // --- the card ---------------------------------------------------------------------
 
@@ -60,7 +61,12 @@ export type WalletOp =
   // A freeze on one account's outgoing coin until `until` (story ms);
   // `unfreeze` thaws it — from the clock, or a director's early lift (`by`).
   | { op: "freeze"; id: string; by: string; target: string; until: number; at: number }
-  | { op: "unfreeze"; id: string; by?: string };
+  | { op: "unfreeze"; id: string; by?: string }
+  // One bet at the casino terminal (`src/casino.ts`): the roll the server
+  // threw and what it paid back (stake included) are both journaled, so a
+  // replay never rolls again. `visit` = the card thread (the id of the
+  // sitting's first bet). The journal line's `by` names the terminal.
+  | { op: "bet"; id: string; visit: string; who: string; game: CasinoGame; pick: string; stake: number; roll: number[]; payout: number; at: number };
 
 /** The director acting through a mod route — `by` on approvals / cancels. */
 export const DIRECTOR = "Director";
@@ -284,6 +290,9 @@ export interface WalletModView {
   grants: { uses: number; limit: number };
   frozen: WalletFreezeView[];
   open: { transfers: WalletTxView[]; requests: WalletRequestView[]; offers: WalletOfferView[] };
+  /** The casino terminal's night: bets taken, coin staked, coin paid back
+   *  (the house is up `staked − paid`). */
+  casino?: { bets: number; staked: number; paid: number };
 }
 
 /** A route refusal: HTTP status + the message the phone shows. */
@@ -298,6 +307,12 @@ const MAX_OPEN_OUTGOING = 5;
  *  own (step `timed_out`, no `transfer_approved`) — so an unstaffed booth
  *  never strands every Nth send. */
 export const HOLD_MS = 5 * 60_000;
+
+/** One casino bet per guest per this long (wall ms, the route's). */
+export const CASINO_BET_GAP_MS = 700;
+
+/** A casino sitting: bets this close together (story ms) share one card thread. */
+export const CASINO_VISIT_MS = 10 * 60_000;
 
 /** The minter's grants when the role names no `grants N`. */
 export const DEFAULT_GRANTS = 3;
@@ -449,6 +464,12 @@ export function walletLine(c: WalletCard, now?: number, viewer?: string): string
         default:
           return `🧊 ${possessive(c.toName)} ${c.unit} is frozen.`;
       }
+    case "casino": {
+      const bet = `${c.game ?? "The casino"}: ${amt} on ${c.pick ?? "a pick"} — ${c.roll ?? "?"}.`;
+      if (c.step === "won") return `🎰 ${bet} Won ${c.payout ?? 0} ${c.unit}.`;
+      if (c.step === "push") return `🎰 ${bet} Your stake back.`;
+      return `🎰 ${bet} Lost.`;
+    }
     default:
       return `💰 ${amt}`;
   }
@@ -464,6 +485,11 @@ export class WalletBook {
   private counter = 0;
   private stimulusUses = 0;
   private grantUses = 0;
+  /** The casino: each person's current sitting (its thread id + last bet), and the night's totals. */
+  private readonly casinoVisits = new Map<string, { id: string; at: number }>();
+  private casinoBets = 0;
+  private casinoStaked = 0;
+  private casinoPaid = 0;
   private readonly freezes = new Map<string, Freeze>();
   private seq = 0;
   /** What the story was last told each person has in flight (`<id>.escrowed`). */
@@ -481,7 +507,7 @@ export class WalletBook {
 
   /** Mint the next id for a route (`t12`); `apply` raises `seq` past any id
    *  it sees, so a replay re-mints nothing twice. */
-  nextId(prefix: "t" | "r" | "o" | "s" | "g" | "f"): string {
+  nextId(prefix: "t" | "r" | "o" | "s" | "g" | "f" | "c"): string {
     return `${prefix}${++this.seq}`;
   }
   private noteId(id: string): void {
@@ -696,6 +722,34 @@ export class WalletBook {
     return { id: f.id };
   }
 
+  /** A bet at the casino terminal: a person with the coin to cover it, not
+   *  frozen, a known game + pick, a whole stake in range. (Restricted is the
+   *  route's: the sim knows it, the book doesn't.) */
+  checkBet(who: string, game: string, pick: string, stake: number): WalletRefusal | null {
+    if (!this.isPerson(who)) return { status: 404, error: "unknown guest" };
+    if (!isCasinoGame(game)) return { status: 400, error: "unknown game" };
+    if (!isPick(game, pick)) return { status: 400, error: `unknown pick for ${CASINO_INFO[game].title}` };
+    if (!Number.isInteger(stake) || stake < CASINO_MIN_STAKE || stake > CASINO_MAX_STAKE) {
+      return { status: 400, error: `the stake must be a whole number from ${CASINO_MIN_STAKE} to ${CASINO_MAX_STAKE}` };
+    }
+    const frozen = this.checkFrozen(who);
+    if (frozen !== null) return frozen;
+    if (this.seam.scoreOf(who) < stake) return { status: 409, error: "insufficient funds" };
+    return null;
+  }
+
+  /** `who`'s balance (the currency slot). */
+  balanceOf(who: string): number {
+    return this.seam.scoreOf(who);
+  }
+
+  /** The card thread a bet placed now joins: the sitting's, while its last
+   *  bet is within `CASINO_VISIT_MS`; else a new one (the bet's own id). */
+  casinoVisitFor(who: string, at: number, id: string): string {
+    const v = this.casinoVisits.get(who);
+    return v !== undefined && at - v.at <= CASINO_VISIT_MS && at >= v.at ? v.id : id;
+  }
+
   /** The story ms `who`'s coin thaws at, or null when it isn't frozen. A
    *  freeze past its deadline reads thawed even before the ticker's
    *  `unfreeze` line lands. */
@@ -773,6 +827,8 @@ export class WalletBook {
         return this.applyFreeze(op);
       case "unfreeze":
         return this.applyUnfreeze(op.id, op.by);
+      case "bet":
+        return this.applyBet(op);
       default:
         return [];
     }
@@ -1139,6 +1195,36 @@ export class WalletBook {
     return out;
   }
 
+  private applyBet(op: Extract<WalletOp, { op: "bet" }>): WalletBookEvent[] {
+    // A journaled op is the truth (the roll, the payout); one that can't be a
+    // real bet (a hand-edited journal) changes nothing.
+    if (!isCasinoGame(op.game) || !validRoll(op.game, op.roll) || !Number.isInteger(op.stake) || op.stake < 1 || !Number.isInteger(op.payout) || op.payout < 0) return [];
+    if (!this.isPerson(op.who)) return [];
+    const out: WalletBookEvent[] = [];
+    this.casinoBets++;
+    this.casinoStaked += op.stake;
+    this.casinoPaid += op.payout;
+    // The sitting's first bet opens its thread (or the first one this book
+    // saw of it, should that root have been refused).
+    const root = op.visit === op.id || this.casinoVisits.get(op.who)?.id !== op.visit;
+    this.casinoVisits.set(op.who, { id: op.visit, at: op.at });
+    out.push(...this.seam.setBalance(op.who, this.seam.scoreOf(op.who) - op.stake + op.payout));
+    const step: WalletStep = op.payout > op.stake ? "won" : op.payout === op.stake ? "push" : "lost";
+    const card = this.card("casino", { id: op.visit, from: op.who, to: op.who, amount: op.stake }, step, {
+      game: CASINO_INFO[op.game].title,
+      pick: pickLabel(op.game, op.pick),
+      roll: rollText(op.game, op.roll),
+      payout: op.payout,
+    });
+    out.push(this.ev(op.who, card, root));
+    // The story hears a win or a loss (a push changes nothing): `when casino
+    // won for program:` with the game, the stake, the payout and the net.
+    const args = { game: op.game, stake: op.stake, payout: op.payout, net: op.payout - op.stake };
+    if (step === "won") out.push(...this.seam.signal("casino won", op.who, args));
+    else if (step === "lost") out.push(...this.seam.signal("casino lost", op.who, args));
+    return out;
+  }
+
   private applyGrant(op: Extract<WalletOp, { op: "grant" }>): WalletBookEvent[] {
     if (this.currency.minter === null) return [];
     this.grantUses++;
@@ -1318,6 +1404,7 @@ export class WalletBook {
       counter: this.counter,
       stimulus: { uses: this.stimulusUses, limit: m?.limit ?? 0 },
       grants: { uses: this.grantUses, limit: m !== null ? this.grantLimit() : 0 },
+      casino: { bets: this.casinoBets, staked: this.casinoStaked, paid: this.casinoPaid },
       frozen: this.frozenViews(),
       open: {
         transfers: this.queue(),
