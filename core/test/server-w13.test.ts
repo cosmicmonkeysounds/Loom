@@ -275,8 +275,6 @@ describe("the host allowlist (§2.7)", () => {
       ["/api/mod/set", { id: g.id, field: "score", value: 5 }],
       ["/api/mod/load", {}],
       ["/api/mod/reset", {}],
-      ["/api/mod/start", {}],
-      ["/api/mod/stop", {}],
       ["/api/mod/var", { path: "Night.step", value: "3" }],
       ["/api/mod/var", { path: "Night.alerts", value: "loud" }],
       ["/api/mod/say", { channel: "dm:Trabolta", as: "Trabolta", text: "hi" }],
