@@ -147,7 +147,12 @@ not a single fixed role:
 - entering the moderator passcode while already signed in **upgrades the
   same token** — so *a performer can also be an admin*;
 - a `{ character: null, admin: true }` token is a **headless admin**: an
-  operator with a scanner but no character/booth.
+  operator with a scanner but no character/booth;
+- a **host** (wave 13) holds the host capability: signing in as a part
+  whose CHARACTER has `admin: true` grants it, signing in as any other part
+  revokes it, and Release / Logout / Go live drop it with the part. A
+  host-only token reaches exactly the host allowlist below, never the
+  rest of the mod surface.
 
 Scanning is one capability-dispatched endpoint, **`POST /api/scan`**: a
 `character` cap runs that character's story scan (`on scan` hooks + the
@@ -611,6 +616,77 @@ pushes during journal replay. The play app's `/sw.js` +
   without `--no-reload` — the files are written, the snapshot and
   runtime untouched, exit 3. `--i-know-this-is-live` or
   `LOOM_I_KNOW_THIS_IS_LIVE=1` overrides; a preview is never guarded.
+
+### Wave 13 — the Play app UX overhaul (on `oct31-w13/integration`, not yet shipped)
+
+- **Language** (`parser/decl-body.ts`, `runtime/sim/model.ts`):
+  `OBJECTIVE` (`for:` — `guests` / `performers` / `everyone`, a ROLE, a
+  CHARACTER, a GROUP; `while:`, `act:`, `title:`, `text:` with `- label[,
+  done when <cond>]`, `buttons:` + `pass` / `scan`, `loud:`) →
+  `model.objectives`, projected per viewer into `GuestView.objectives` /
+  `PrimeView.objectives` (display only, never journaled, never sent to an
+  agent). CHARACTER `admin: true` (a host part) and `crawl: fx`; header
+  `alerts:` (default `Night.alerts`); the `~` per-person notice; CODEX
+  `category:`; `show … with moment: major|minor`. `src/delivery.ts`
+  (dependency-free, imported by play by path): `ALERT_LEVELS`
+  balloon / sticky / dialog / bsod, `alertLevelOf`, `lowerRung`,
+  `EFFECT_MANNERS` / `isEffectManner`, `splitNotice`, `noticeKey`.
+  Workspace lints L1205 (a ROLE `secret:` slot on a watch item),
+  L1207–L1209 (objectives), L1210 (`alerts:`), L1211 (`admin:` on no
+  part), L1212 (a trigger phrase that keeps only its first word).
+- **Chat** (`server/chat.ts`): `ChatMessage.manner` / `fx` / `ambient` /
+  `notice` / `readout` / `about` / `moment` / `phase` (the story phase on
+  every message that can be a moment, deterministic on replay); a `reply`
+  to a character moves to its `dm:<C>` Inbox addressed `@<C>` (one push);
+  `reply !…` is an alert; codex cards carry `category` / `aboutKind`.
+  The show's `CHANNEL system log` is gone: a broadcast posts once.
+- **Views** (`server/views.ts`): `alertLevel` on every view;
+  `PrimeView.paused` / `host` / `night` / staff rooms, per-guest `flags`
+  from the header's ROLE `watch:` items (a per-ROLE `flagPlan`; snapshots
+  carry on flags and failed gates, the card the full list) and
+  `GuestCardView` (`card`: facts, the live buttons, `guestScoped`, the
+  guest's readouts); `GuestView.voiced` (which DMs read replies);
+  `CueState.lastName` (who pressed LAST); `GuestView.night.act` is null.
+- **Host board** (`src/host-board.ts`, `@loom/core/host-board`):
+  `hostView` / `HostView`, `hostNeeds`, the judging / agent-queue /
+  held-transfer / part-presence / unseen-guest / award helpers moved from
+  the editor (`awardOnly`, `GATE_FLAG`). `src/identity-kind.ts`: the
+  pure guest / part classification, safe for the browser.
+- **Routes:**
+  - `GET /api/state?role=mod&host=1` — host-gated, the host view
+    (coalesced to one build per 2 s; a cue press or a phase change
+    rebuilds at once), `cache-control: no-store`.
+  - `POST /api/prime/card {guest}` — a prime token with a character →
+    the guest's `GuestCardView` (403 with no character, 409 doors
+    closed, 404 unknown guest; not journaled).
+  - `POST /api/scan` and `/api/prime/act` 200s gain `card`, and
+    `staff` (every line the commit posted to a staff room) / `said`
+    (the booth character's lines to the guest); `/api/prime/act` also
+    `replies`. The same token, character and guest scanned again within
+    1.5 s answers 429 `{error: "scanned a moment ago", again: true,
+    card}` and journals nothing.
+  - **The host allowlist** (`server/routes/host.ts`, one gate in
+    `EventRuntime.handle`): a host-only token may use `?host=1`,
+    `/api/mod/recap`, `signal`, `var` (only the `alerts:` path, only a
+    level), `broadcast`, `say` (only `guest:<id>` as an agent-voiced
+    character), `wallet/{approve,deny,approve-held,unfreeze,stimulus}`,
+    `spatial/king`, `screen/{voice,identify}`, `codes` (no `modPass`),
+    `claim/unlock`, `guest/{gone,pair}`, `prime/release`, `scan`, `act`
+    (`restrict` / `unrestrict` only), `start` / `stop` (doors, pause,
+    resume) and `login` (the passcode upgrade). Everything else — the
+    full mod stream and state, the log, reset / load / resync, set,
+    impersonate, personas, every `/api/agent/*` — answers 403 `{error:
+    "not from a booth"}`. Mutations journal `by: "Booth · <Character>"`.
+    A host may press another character's `by:` button only when the
+    press is heard outside that character's own hooks (`hostHeard`).
+- **Guards:** `cleanGuestName` (NFKC, format / control characters and
+  invisible fillers stripped) before the taken / part / reserved checks;
+  `MAX_CODE_LENGTH` 64 (a longer code is 400 *not a code*, never
+  journaled); the editor's `?as=` lens resolves the author session.
+- **Serving:** `server/static-cache.ts` `appCacheControl`: hashed
+  `assets/*-<hash>.*` immutable for a year, HTML `no-cache`, for the
+  play, terminal and reinstall dists. `deploy/Caddyfile` holds requests
+  60 s through a restart.
 
 ### The spatial plane (the reinstallation games)
 
