@@ -178,8 +178,8 @@ export function trayClock(left: number, paused = false): string {
 }
 
 /** Is the story clock stopped (the event paused, the doors not yet open)?
- *  The view says so with `paused: true` — today only a guest's view; a
- *  booth view that carries it is honoured the same way. */
+ *  The view says so with `paused: true` — a guest's view and a booth's
+ *  (`PrimeView.paused`) alike. */
 export function viewPaused(view: object | null | undefined): boolean {
   return (view as { paused?: unknown } | null | undefined)?.paused === true;
 }
