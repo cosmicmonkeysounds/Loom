@@ -15,7 +15,10 @@
 //!   queued ahead of it), and so does the rest of that burst.
 //! - `fx` — effect text (`msg.fx`: a glitch manner, a `crawl: fx` speaker)
 //!   and `!` alert / `!!` takeover lines: the slow glyph-scramble decode,
-//!   ≈ 25 ms a character, at most 2.5 s. Never dropped by the budget.
+//!   ≈ 25 ms a character, at most 2.5 s. Never dropped by the budget: the
+//!   budget counts only the fast lines' time, and a fast line over it that
+//!   lands behind an fx line still decoding waits its turn and then shows
+//!   whole, so the effect is never cut short by the narration after it.
 //!
 //! Order is kept: when a message that does not crawl lands in a room behind
 //! queued lines, those lines finish at once — nothing later ever sits under
@@ -76,6 +79,9 @@ export function tierFor(m: ChatMessage, me: { id: string; name: string } | null)
 interface Decided {
   tier: CrawlTier;
   room: string;
+  /** Over the budget behind an fx line: shown whole the moment its turn
+   *  comes (it keeps its place, so it never sits under the decode). */
+  instant?: boolean;
 }
 
 export function createCrawl(opts?: CrawlOptions): Crawl {
@@ -86,8 +92,10 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
   const decided = new Map<number, Decided>();
   /** Seqs seen at arrival at all (a re-sent frame is never re-decided). */
   const seen = new Set<number>();
-  /** Per room: when its planned crawl queue ends, and the burst latch. */
+  /** Per room: when its planned crawl queue ends, when its fast lines alone
+   *  would end (the batch budget's measure), and the burst latch. */
   const planEnd = new Map<string, number>();
+  const fastEnd = new Map<string, number>();
   const burst = new Map<string, number>(); // room → last arrival of an overflowed burst
   let active: number | null = null;
   let queue: Array<{ seq: number; go: () => void }> = [];
@@ -108,7 +116,11 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
       decided.delete(s);
     }
     // A room with nothing left to crawl plans its next line from "now".
-    for (const r of rooms) if (![...decided.values()].some((d) => d.room === r)) planEnd.delete(r);
+    for (const r of rooms) {
+      if ([...decided.values()].some((d) => d.room === r)) continue;
+      planEnd.delete(r);
+      fastEnd.delete(r);
+    }
     const gone = new Set(seqs);
     if (active !== null && gone.has(active)) active = null;
     queue = queue.filter((q) => !gone.has(q.seq));
@@ -117,15 +129,49 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
   };
   const flushRoom = (room?: string) => {
     const seqs = [...decided.entries()].filter(([, d]) => room === undefined || d.room === room).map(([s]) => s);
-    if (room === undefined) planEnd.clear();
-    else planEnd.delete(room);
+    if (room === undefined) {
+      planEnd.clear();
+      fastEnd.clear();
+    } else {
+      planEnd.delete(room);
+      fastEnd.delete(room);
+    }
     complete(seqs);
+  };
+  /**
+   * A fast line over the budget. With no fx line pending in the room:
+   * everything queued shows at once (returns false: show this one at once
+   * too). With one: the fast lines ahead of it show now, the ones behind it
+   * show whole when their turn comes, and the fx line keeps its decode
+   * (returns true: queue this one the same way).
+   */
+  const overflow = (room: string, t: number): boolean => {
+    const inRoom = [...decided.entries()].filter(([, d]) => d.room === room);
+    const fx = inRoom.filter(([, d]) => d.tier === "fx").map(([s]) => s);
+    if (fx.length === 0) {
+      flushRoom(room);
+      return false;
+    }
+    const firstFx = Math.min(...fx);
+    const ahead: number[] = [];
+    for (const [s, d] of inRoom) {
+      if (d.tier !== "fast") continue;
+      if (s < firstFx) ahead.push(s);
+      else d.instant = true;
+    }
+    fastEnd.set(room, t);
+    complete(ahead);
+    return true;
   };
   const pump = () => {
     if (active !== null || queue.length === 0) return;
     queue.sort((a, b) => a.seq - b.seq);
     const next = queue.shift()!;
     active = next.seq;
+    if (decided.get(next.seq)?.instant === true) {
+      complete([next.seq]); // its turn: shown whole (and the next released)
+      return;
+    }
     next.go();
   };
   if (opts?.watchVisibility === true && typeof document !== "undefined" && typeof document.addEventListener === "function") {
@@ -151,6 +197,7 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
       decided.clear();
       seen.clear();
       planEnd.clear();
+      fastEnd.clear();
       burst.clear();
       active = null;
       queue = [];
@@ -199,20 +246,28 @@ export function createCrawl(opts?: CrawlOptions): Crawl {
         return;
       }
       const start = Math.max(t, planEnd.get(room) ?? t);
+      const dur = crawlDuration(tier, m.text.length);
       if (tier === "fast") {
         const last = burst.get(room);
         const latched = last !== undefined && t - last <= BURST_QUIET_MS;
-        if (latched || start - t > BATCH_BUDGET_MS) {
+        // The budget is the fast lines' own time: an fx decode ahead never counts.
+        const fastStart = Math.max(t, fastEnd.get(room) ?? t);
+        if (latched || fastStart - t > BATCH_BUDGET_MS) {
           // Over budget: this line, everything queued ahead of it and the
-          // rest of the burst appear at once.
+          // rest of the burst appear at once — behind an fx line, in turn.
           burst.set(room, t);
-          flushRoom(room);
+          if (overflow(room, t)) decided.set(m.seq, { tier, room, instant: true });
           return;
         }
+        burst.delete(room);
+        decided.set(m.seq, { tier, room });
+        planEnd.set(room, start + dur);
+        fastEnd.set(room, fastStart + dur);
+        return;
       }
       burst.delete(room);
       decided.set(m.seq, { tier, room });
-      planEnd.set(room, start + crawlDuration(tier, m.text.length));
+      planEnd.set(room, start + dur);
     },
     tierOf(seq) {
       if (done.has(seq)) return "none";

@@ -174,6 +174,43 @@ describe("the batch budget", () => {
     expect(crawl.tierOf(next.seq)).toBe("fast");
   });
 
+  it("an fx line still decoding is never cut short by the narration after it", () => {
+    const { crawl, tick } = setup();
+    const fx = msg({ fx: true, text: "x".repeat(63) }); // ≈ 1.6 s of decode
+    crawl.arrived(fx, ME);
+    tick(2);
+    const after = msg({ kind: "narration", from: "Narrator", text: "The screens go dark." });
+    crawl.arrived(after, ME);
+    expect(crawl.tierOf(fx.seq)).toBe("fx");
+    expect(crawl.tierOf(after.seq)).toBe("fast"); // the budget counts fast lines only
+  });
+
+  it("a burst over the budget behind an fx line waits its turn, then shows whole", () => {
+    const { crawl, tick } = setup();
+    const ahead = msg({ text: "a".repeat(300) });
+    const fx = msg({ fx: true, text: "TRUTH IS A FILE ".repeat(4) });
+    crawl.arrived(ahead, ME);
+    crawl.arrived(fx, ME);
+    const burst = Array.from({ length: 6 }, () => msg({ text: "b".repeat(300) })); // 700 ms each
+    for (const m of burst) {
+      crawl.arrived(m, ME);
+      tick(1);
+    }
+    // The fast line ahead of the decode was shown; the fx line keeps its decode.
+    expect(crawl.tierOf(ahead.seq)).toBe("none");
+    expect(crawl.tierOf(fx.seq)).toBe("fx");
+    // The burst stays queued behind it (never shown under a line still decoding)…
+    expect(burst.every((m) => crawl.tierOf(m.seq) !== "none")).toBe(true);
+    const went: number[] = [];
+    crawl.start(fx.seq, () => went.push(fx.seq));
+    for (const m of burst) crawl.start(m.seq, () => went.push(m.seq));
+    expect(went).toEqual([fx.seq]);
+    // …and the moment the decode ends, every over-budget line shows whole, never crawled.
+    crawl.finish(fx.seq);
+    expect(went).toEqual([fx.seq]);
+    expect(burst.map((m) => crawl.tierOf(m.seq))).toEqual(burst.map(() => "none"));
+  });
+
   it("fx lines are never dropped by the budget", () => {
     const { crawl } = setup();
     for (let i = 0; i < 6; i++) crawl.arrived(msg({ text: "z".repeat(300) }), ME);
