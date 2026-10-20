@@ -23,7 +23,7 @@ import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
 import { NeedsTab } from "./tab-needs.tsx";
 import { PeopleTab } from "./tab-people.tsx";
-import { dockKeyboard, focusInside, useBalloonClearance, useFocusInside, useKeyboardFit, useSettledTrue, type KeyboardFit } from "./viewport.ts";
+import { dockKeyboard, focusInside, useBalloonClearance, useFocusInside, useIsoLayoutEffect, useKeyboardFit, useSettledTrue, type KeyboardFit } from "./viewport.ts";
 
 /** How long the NEXT bar stays away after typing in the console ends. */
 const BAR_BACK_MS = 250;
@@ -167,8 +167,15 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   const inDock = inDockFocus || (keyboard && focusInside(dockNode));
   const kb = dockKeyboard(keyboard, inDock, open);
   const typing = keyboard && inDock;
-  const fit = useKeyboardFit(typing, dockNode);
   const barAway = useSettledTrue(!kb.bar, BAR_BACK_MS);
+  // Where the dock's top sits with the bar and the taskbar showing: the
+  // drawer keeps its bottom there while they are away (no slide under a
+  // finger), and lifts above the keyboard.
+  const restTop = useRef<number | null>(null);
+  useIsoLayoutEffect(() => {
+    if (!typing && !barAway && dockNode !== null) restTop.current = dockNode.getBoundingClientRect().top;
+  });
+  const fit = useKeyboardFit(typing || barAway, dockNode, restTop);
   useBalloonClearance(open, wide, dockNode, frameNode, fit);
   // Escape closes the console from anywhere on the page — focus may sit on
   // <body> after a button disabled itself while busy — and focus goes back
@@ -327,7 +334,7 @@ export function HostNextBar({ bar, desk, open, stale, line2, strip, barMain, onT
             </span>
           ) : (
             strip.map((it, k) => (
-              <span key={k} className={[it.tone !== undefined ? `host-strip-${it.tone}` : "", it.kind !== undefined ? `host-strip-${it.kind}` : ""].join(" ").trim() || undefined}>
+              <span key={k} className={[it.tone !== undefined ? `host-strip-${it.tone}` : "", it.kind !== undefined ? `host-strip-${it.kind}` : "", it.optional === true ? "host-strip-optional" : ""].join(" ").trim() || undefined}>
                 {it.text}
               </span>
             ))
@@ -368,7 +375,7 @@ function Drawer({ tabs, tab, setTab, onClose, title, fit, children }: { tabs: Re
       role="dialog"
       aria-label="Host console"
       // Above the phone's keyboard while a field in it has focus.
-      style={fit !== null ? { bottom: `calc(100% + ${fit.lift}px)`, height: `min(72vh, ${fit.height}px)`, minHeight: 0 } : undefined}
+      style={fit !== null ? { bottom: `calc(100% + ${fit.lift}px)`, ...(fit.height !== null ? { height: `min(72vh, ${fit.height}px)`, minHeight: 0 } : {}) } : undefined}
     >
       <div className="w95-titlebar host-drawer-title">
         <span className="w95-title">▣ Host console · {title}</span>

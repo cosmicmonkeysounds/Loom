@@ -46,6 +46,16 @@ describe("typing in the host console (the blocker)", () => {
     // No keyboard (a desktop, a Players pane): nothing moves.
     expect(keyboardFit(790, 0, 844)).toBeNull();
   });
+
+  it("hiding the NEXT bar and the taskbar never slides the drawer: it keeps its bottom", () => {
+    // At rest the dock's top is 692 (bar 52 + taskbar 44 + 56 px of edge
+    // above an 844 px screen, say); typing hides both, the dock drops to 790.
+    expect(keyboardFit(790, 0, 844, 692)).toEqual({ lift: 98, height: null });
+    // And with the keyboard up the drawer still rises to the keyboard's top.
+    expect(keyboardFit(790, 0, 508, 692)).toEqual({ lift: 282, height: 500 });
+    // Nothing hidden, no keyboard: nothing to do.
+    expect(keyboardFit(692, 0, 844, 692)).toBeNull();
+  });
 });
 
 

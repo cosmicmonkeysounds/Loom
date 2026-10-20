@@ -9,7 +9,7 @@
 //! picker) is fitted to the visible viewport. Desktop keyboards and the
 //! embedded Players panes cover nothing, so nothing moves there.
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import { isTextEntry } from "../chrome/keyboard.ts";
 
 /** The dock's three states while the keyboard rule runs (pure). */
@@ -37,15 +37,30 @@ export function dockKeyboard(keyboard: boolean, inDock: boolean, open: boolean):
 export interface KeyboardFit {
   /** Px the drawer's bottom rises above the dock's top. */
   lift: number;
-  /** The visible height the drawer may fill. */
-  height: number;
+  /** The visible height the drawer may fill; null when no keyboard covers
+   *  it (the drawer keeps its own height). */
+  height: number | null;
 }
 
-export function keyboardFit(dockTop: number, vvTop: number, vvHeight: number): KeyboardFit | null {
-  const lift = Math.round(dockTop - (vvTop + vvHeight));
+/**
+ * The drawer's bottom edge stays where it sat before typing began
+ * (`restTop`: the dock's top with the NEXT bar and the taskbar showing), so
+ * hiding them never slides the console under a finger or a mouse — a click
+ * whose press blurred the field still lands on the row it was aimed at — and
+ * it rises further to the keyboard's top when one covers it.
+ */
+export function keyboardFit(dockTop: number, vvTop: number, vvHeight: number, restTop: number | null = null): KeyboardFit | null {
+  const visibleBottom = vvTop + vvHeight;
+  const target = restTop !== null ? Math.min(restTop, visibleBottom) : visibleBottom;
+  const lift = Math.round(dockTop - target);
   if (!(lift >= 1)) return null;
-  return { lift, height: Math.max(120, Math.floor(vvHeight - 8)) };
+  const covered = visibleBottom < (restTop ?? dockTop) - 1;
+  return { lift, height: covered ? Math.max(120, Math.floor(vvHeight - 8)) : null };
 }
+
+/** useLayoutEffect in a browser (no flash of a slid drawer), useEffect on
+ *  the server render the tests use. */
+export const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /** Does a text entry inside `el` have focus (the shadow root's focus too)? */
 export function focusInside(el: HTMLElement | null): boolean {
@@ -100,15 +115,26 @@ const SHEET_PROPS = ["top", "bottom", "height"] as const;
  * keyboard: returns the drawer's fit, and fits a sheet backdrop holding the
  * focused field to the visible viewport (undone when typing ends).
  */
-export function useKeyboardFit(active: boolean, dock: HTMLElement | null): KeyboardFit | null {
+export function useKeyboardFit(active: boolean, dock: HTMLElement | null, restTop?: MutableRefObject<number | null>): KeyboardFit | null {
   const [fit, setFit] = useState<KeyboardFit | null>(null);
-  useEffect(() => {
+  const reader = useRef<(() => void) | null>(null);
+  // Every render while active: the bar or the taskbar may just have come or
+  // gone (the frame's rule runs a tick after a blur), moving the dock; the
+  // fit follows before the browser paints, so the drawer never jumps.
+  useIsoLayoutEffect(() => {
+    if (active) reader.current?.();
+  });
+  useIsoLayoutEffect(() => {
     if (!active || dock === null || typeof window === "undefined") {
       setFit(null);
       return;
     }
-    const vv = window.visualViewport;
-    if (vv == null) return;
+    const vv: Pick<VisualViewport, "height" | "offsetTop" | "addEventListener" | "removeEventListener"> = window.visualViewport ?? {
+      height: window.innerHeight,
+      offsetTop: 0,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
     let sheet: HTMLElement | null = null;
     const unfit = () => {
       if (sheet === null) return;
@@ -133,21 +159,26 @@ export function useKeyboardFit(active: boolean, dock: HTMLElement | null): Keybo
         } else unfit();
       } else {
         unfit();
-        const next = keyboardFit(dock.getBoundingClientRect().top, vv.offsetTop, vv.height);
+        const next = keyboardFit(dock.getBoundingClientRect().top, vv.offsetTop, vv.height, restTop?.current ?? null);
         setFit((prev) => (prev?.lift === next?.lift && prev?.height === next?.height ? prev : next));
       }
       // The field itself in view inside its scrolling panel.
       if (a !== null && dock.contains(a)) requestAnimationFrame(() => a.scrollIntoView?.({ block: "nearest" }));
     };
+    reader.current = read;
     read();
-    // The keyboard slides up over ~250 ms: read again once it has.
+    // The keyboard slides up over ~250 ms: read again once it has (and the
+    // frame's taskbar may step aside a render later).
     const settle = setTimeout(read, 320);
+    const next = typeof requestAnimationFrame !== "undefined" ? requestAnimationFrame(read) : 0;
     vv.addEventListener("resize", read);
     vv.addEventListener("scroll", read);
     return () => {
       clearTimeout(settle);
+      if (typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(next);
       vv.removeEventListener("resize", read);
       vv.removeEventListener("scroll", read);
+      reader.current = null;
       unfit();
       setFit(null);
     };

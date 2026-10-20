@@ -97,10 +97,10 @@
    is needed): the tip floats above the console's top edge, never over its
    controls — cut to the room there is on a short phone — and beside it, to
    its left, on a wide screen. */
-.root[data-host-drawer="above"] .moments-balloon,
-.root[data-host-drawer="tight"] .moments-balloon { bottom: calc(var(--host-drawer-lift) + 14px); }
-.root[data-host-drawer="tight"] .moments-balloon { max-height: var(--host-drawer-room); overflow: hidden; }
-.root[data-host-drawer="beside"] .moments-balloon { right: calc(var(--host-drawer-right) + 12px); }
+[data-host-drawer="above"] .moments-balloon,
+[data-host-drawer="tight"] .moments-balloon { bottom: calc(var(--host-drawer-lift) + 14px); }
+[data-host-drawer="tight"] .moments-balloon { max-height: var(--host-drawer-room); overflow: hidden; }
+[data-host-drawer="beside"] .moments-balloon { right: calc(var(--host-drawer-right) + 12px); }
 .moments-balloon::before, .moments-balloon::after {
   content: ""; position: absolute; right: 28px; width: 0; height: 0;
   border-style: solid; border-color: transparent;
