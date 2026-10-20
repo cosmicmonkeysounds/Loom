@@ -215,12 +215,12 @@ describe("the late list folds into one moment per kind (recheck nit)", () => {
 });
 
 describe("a guest's thread in a booth (recheck nit)", () => {
-  it("the booth's own DM rows read 'DM', never the character's own name as a room chip", () => {
+  it("the booth's own DM rows carry no room chip, never the character's own name", () => {
     const own = { ...hostsLine(), channel: "dm:Door Dee", channelKind: "dm", title: "Door Dee", from: "Encarta", text: "Is the party open yet?", audience: ["g-9"] } as ChatMessage;
     const card = { ...hostsLine(), channel: "loc:Plain Party", channelKind: "location", title: "Plain Party", from: "" } as ChatMessage;
     const c = { id: "guest:g-9", kind: "guest", title: "Encarta", spaceId: "guests", order: 0, messages: [own, card], unread: 0, decision: null, lastTs: 0 } as Channel;
     const v = guestThreadView(c, "Door Dee");
-    expect(v.messages.map((m) => m.title)).toEqual(["DM", "Plain Party"]);
+    expect(v.messages.map((m) => m.title)).toEqual(["", "Plain Party"]);
     // The same object every render (the stream's crawl and keys see one row).
     expect(guestThreadView(c, "Door Dee").messages[0]).toBe(v.messages[0]);
     expect(guestThreadView(c, "Clippy")).toBe(c);

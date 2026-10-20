@@ -212,6 +212,9 @@
 .booth-refusal-ico { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .booth-head-btn, .booth-readout-guest { display: inline-flex; align-items: center; gap: 6px; }
 
+/* A guest's thread: the booth's own DM rows carry no room chip (`guestThreadView`). */
+.booth-frame .msg-channel:empty { display: none; }
+
 /* ── 🗂 Guests ───────────────────────────────────────────────────────── */
 .booth-guests { display: flex; flex-direction: column; gap: 8px; }
 .booth-search { width: 100%; min-height: var(--tap); padding: 0 10px; border: none; font: 16px var(--ui-font); }

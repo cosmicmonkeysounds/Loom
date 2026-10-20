@@ -46,7 +46,8 @@ import { BoothTray } from "./tray.tsx";
  * so each wears its room's name as a chip — except the booth's own DM with
  * the guest (`dm:<Character>`), whose room name is the character's own
  * ("DOOR DEE Encarta: Is the party open yet?" read as the booth's name
- * tagging the guest's line). Those rows read "DM".
+ * tagging the guest's line). Those rows wear no chip: the DM is the
+ * thread itself (an empty title; `booth.css` hides the empty chip).
  */
 export function guestThreadView(c: Channel, character: string): Channel {
   const own = `dm:${character}`;
@@ -59,7 +60,7 @@ const dmRows = new WeakMap<ChatMessage, ChatMessage>();
 function dmRow(m: ChatMessage): ChatMessage {
   let row = dmRows.get(m);
   if (row === undefined) {
-    row = { ...m, title: "DM" };
+    row = { ...m, title: "" };
     dmRows.set(m, row);
   }
   return row;
