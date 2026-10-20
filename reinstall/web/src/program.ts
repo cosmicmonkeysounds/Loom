@@ -7,6 +7,11 @@
 //! what holds for both. And the scan screen's quick picks: the programs in
 //! the Internet now, then the restricted ones (the marked on their way), so
 //! the operator never has to type a name.
+//!
+//! Wave 16: only a program the story marked for reinstallation (captured,
+//! or restricted) may enter — the server's begin answers 409 `not marked
+//! for reinstallation` otherwise — so the healthy are never offered Play
+//! here or a headset, and say why.
 
 /** A candidate as the tablet reads it (`GET /api/mod/spatial/candidates`). */
 export interface Program {
@@ -15,7 +20,21 @@ export interface Program {
   captured: boolean;
   /** Restricted (marked by the story, or held by a director) and not captured yet. */
   restricted: boolean;
+  /** Captured or marked: the server's begin lets them in (wave 16). */
+  eligible: boolean;
   location: string | null;
+}
+
+/** The server's 409 for a program neither captured nor marked. */
+export const NOT_MARKED_ERROR = "not marked for reinstallation";
+
+/** What the wizard says about a program it may not begin. */
+export const NOT_MARKED = "Not marked — an Antivirus marks programs for reinstallation.";
+
+/** May the tablet begin this program? (A row from a server older than
+ *  wave 16 has no `eligible`: captured or restricted, the same rule.) */
+export function isEligible(p: Pick<Program, "captured" | "restricted"> & { eligible?: boolean }): boolean {
+  return p.eligible ?? (p.captured || p.restricted);
 }
 
 export type ProgramState = "corrupted" | "restricted" | "healthy";
@@ -31,9 +50,9 @@ export function programStatus(p: Pick<Program, "captured" | "restricted">): { he
     case "corrupted":
       return { heading: "Corrupted program detected", icon: "☣", status: "STATUS: CORRUPTED — requires reinstallation" };
     case "restricted":
-      return { heading: "Restricted program detected", icon: "🚨", status: "STATUS: RESTRICTED — if marked, Play here begins the reinstallation" };
+      return { heading: "Restricted program detected", icon: "🚨", status: "STATUS: RESTRICTED — marked for reinstallation" };
     case "healthy":
-      return { heading: "Program detected", icon: "▣", status: "STATUS: healthy — Gerald is waiting anyway" };
+      return { heading: "Program not marked", icon: "▣", status: "STATUS: healthy — not marked for reinstallation" };
   }
 }
 
@@ -44,4 +63,15 @@ export function quickPicks(roster: readonly Program[], max = 8): { corrupted: Pr
     corrupted: roster.filter((p) => programState(p) === "corrupted").sort(byName).slice(0, max),
     restricted: roster.filter((p) => programState(p) === "restricted").sort(byName).slice(0, max),
   };
+}
+
+/** A failed begin, in the wizard's words: the server's own refusal for an
+ *  unmarked program, never a crash or silent nothing. */
+export function beginErrorText(status: number | null, message: string): string {
+  if (status === 409 && message === NOT_MARKED_ERROR) return NOT_MARKED;
+  if (status === 409) return "The story isn't running yet — start the event first.";
+  if (status === 404) return "Unknown program — register on your phone first.";
+  if (status === 503) return "The server has no house map.";
+  if (status === 401 || status === 403) return "This device lost its access — set it up again (⚙).";
+  return `Couldn't start the simulation — ${message}`;
 }

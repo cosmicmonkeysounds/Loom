@@ -21,7 +21,7 @@ import type {
   SwitchVariantResult,
 } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
-import type { Program } from "./program.ts";
+import { isEligible, type Program } from "./program.ts";
 import { showHouse } from "./show-house.ts";
 import { isDuckSpot, kingOf } from "./spatial.ts";
 
@@ -54,7 +54,8 @@ export async function fetchCandidates(config: ReinstallConfig): Promise<Program[
 /** A candidate row → the tablet's `Program` (`restricted` false from a server that doesn't say). */
 export function toProgram(row: SpatialCandidate): Program {
   const restricted = (row as { restricted?: unknown }).restricted === true;
-  return { id: row.id, name: row.name, captured: row.captured, restricted, location: row.location };
+  const eligible = typeof row.eligible === "boolean" ? row.eligible : isEligible({ captured: row.captured, restricted });
+  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, location: row.location };
 }
 
 /** The VR (and web) stations the server has seen. */
