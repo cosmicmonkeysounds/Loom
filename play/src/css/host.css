@@ -87,18 +87,28 @@
 }
 .host-dock.wide .host-drawer { left: auto; width: 520px; right: 8px; }
 .host-drawer-title { flex: 0 0 auto; }
+/* A Win95 tab control: the page's edge is the row's bottom line; the current
+   tab stands taller and joins its page (no line under it), the others sit
+   lower, behind. */
 .host-tabs {
-  flex: 0 0 auto; display: flex; gap: 2px; padding: 6px 6px 0;
-  overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line);
+  flex: 0 0 auto; display: flex; align-items: flex-end; gap: 2px; padding: 6px 6px 0;
+  overflow-x: auto; scrollbar-width: none; box-shadow: inset 0 -1px 0 var(--line);
 }
 .host-tabs::-webkit-scrollbar { display: none; }
 .host-tab {
-  flex: 1 0 auto; min-height: var(--tap); margin: 0 0 -1px; padding: 0 10px;
+  position: relative; flex: 1 0 auto; min-height: var(--tap); margin: 0 0 1px; padding: 0 10px;
   border: none; border-radius: var(--radius) var(--radius) 0 0;
-  background: var(--face); color: var(--ink); box-shadow: var(--raised);
-  font: 700 13px var(--ui-font); white-space: nowrap; cursor: pointer;
+  background: var(--face); color: var(--muted-ink); box-shadow: var(--raised);
+  font: 600 13px var(--ui-font); white-space: nowrap; cursor: pointer;
 }
-.host-tab.current { background: var(--dialog-face); box-shadow: var(--raised), inset 0 -2px 0 var(--dialog-face); color: var(--navy); }
+.host-tab.current {
+  z-index: 1; min-height: calc(var(--tap) + 4px); margin-bottom: 0;
+  background: var(--dialog-face); color: var(--ink); font-weight: 800;
+}
+.host-tab.current::after {
+  content: ""; position: absolute; left: 2px; right: 2px; bottom: 0; height: 3px;
+  background: var(--dialog-face);
+}
 /* Text on the silver face: --bad (#c00000) is 3.6:1 there under aol97, so
    red text on --face is --maroon (6.0:1 aol97, 8.8:1 plain); --bad stays for
    outlines and for text on white. */
@@ -168,8 +178,9 @@
 .host-confirm-yes.danger { color: var(--maroon); }
 
 /* Cues */
-.host-last { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; padding: 6px 8px; border-radius: var(--radius); background: var(--highlight); color: var(--black); font: 700 13px var(--ui-font); min-width: 0; }
-.host-last-tag { flex: 0 0 auto; font: 800 11px var(--ui-font); letter-spacing: 0.5px; }
+/* LAST, quietly: a tag and the title (NEXT is the loud row below). */
+.host-last { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; padding: 6px 8px; border-radius: var(--radius); background: var(--white); color: var(--ink); box-shadow: var(--sunken); font: 700 13px var(--ui-font); min-width: 0; }
+.host-last-tag { flex: 0 0 auto; padding: 0 4px; background: var(--highlight); color: var(--black); font: 800 11px var(--ui-font); letter-spacing: 0.5px; }
 .host-last-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .host-last-by { flex: 0 0 auto; font-weight: 600; }
 .host-cues .cue-act-head { top: -8px; background: var(--dialog-face); }
@@ -200,15 +211,23 @@
 .host-filing-ruling, .host-filing-proposed { font-size: 12px; color: var(--muted-ink); overflow-wrap: anywhere; }
 .host-verdicts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .host-verdict { flex: 1 1 96px; }
-.host-verdict.current { box-shadow: var(--pressed); font-weight: 800; }
+.host-verdict { gap: 6px; }
+.host-verdict.current, .host-verdict.current:disabled { font-weight: 800; color: var(--ink); }
+.host-verdict .host-radio { margin-top: 0; }
 
 /* More */
 .host-dial { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 6px; }
-.host-dial-step { flex-direction: column; align-items: flex-start; gap: 1px; min-height: 52px; padding: 6px 10px; text-align: left; }
+.host-dial-step { justify-content: flex-start; align-items: flex-start; gap: 8px; min-height: 52px; padding: 6px 10px; text-align: left; }
+.host-dial-words { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .host-dial-label { font-weight: 800; font-size: 13px; }
 .host-dial-hint { font-size: 11px; color: var(--muted-ink); line-height: 1.25; }
-.host-dial-step.current { box-shadow: var(--pressed); background: var(--face-hi); }
-.host-dial-step.current .host-dial-label::after { content: " ✓"; }
+/* One selected state everywhere: pressed in, with a Win95 option dot. */
+.host-radio {
+  flex: 0 0 auto; width: 13px; height: 13px; margin-top: 2px; border-radius: 50%;
+  background: var(--white); box-shadow: var(--sunken);
+}
+.host-dial-step.current, .host-verdict.current { box-shadow: var(--pressed); background: var(--face-hi); color: var(--ink); }
+.host-dial-step.current .host-radio, .host-verdict.current .host-radio { background: radial-gradient(circle, var(--ink) 0 3px, var(--white) 3.5px); }
 .host-dial-step.want { box-shadow: var(--raised), inset 0 0 0 2px var(--navy); }
 .host-meter { height: 14px; margin: 0 0 8px; border-radius: var(--radius); background: var(--white); box-shadow: var(--sunken); overflow: hidden; padding: 2px; }
 .host-meter > span { display: block; height: 100%; background: var(--navy); transition: width 200ms ease-out; }

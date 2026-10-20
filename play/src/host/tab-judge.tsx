@@ -76,7 +76,13 @@ function FilingItem({ who, question, person, row, buttons, judge, judged }: { wh
       {buttons.length > 0 && (
         <div className="host-verdicts">
           {buttons.map((b) => (
-            <ActButton key={b.verdict} className={`host-verdict ${b.current ? "current" : ""}`} pressed={b.current} disabled={b.disabled || (judged != null && b.current)} title={b.title} label={`${b.glyph} ${b.label}`} onClick={() => press(b.verdict, `${b.glyph} ${b.label}`)} />
+            <ActButton key={b.verdict} className={`host-verdict ${b.current ? "current" : ""}`} pressed={b.current} disabled={b.disabled || (judged != null && b.current)} title={b.title} label={
+                <>
+                  <span className="host-radio" aria-hidden="true" />
+                  {`${b.glyph} ${b.label}`}
+                </>
+              }
+              onClick={() => press(b.verdict, `${b.glyph} ${b.label}`)} />
           ))}
         </div>
       )}

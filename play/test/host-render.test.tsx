@@ -54,7 +54,7 @@ describe("the tabs", () => {
     expect(out).toContain("✅ accurate");
     expect(out).toContain("😤 confident lie");
     expect(out).toContain("🤷 uncertain");
-    expect(out).toMatch(/aria-pressed="true"[^>]*>✅ accurate/u);
+    expect(out).toMatch(/aria-pressed="true"[^>]*><span class="host-radio" aria-hidden="true"><\/span>✅ accurate/u);
   });
   it("Needs: the rows, each a button to where it is handled", () => {
     const out = inDrawer(hostFixture(), createElement(NeedsTab, { refused: null, reason: null }));

@@ -134,8 +134,11 @@ function AlertDial() {
             className={`w95-btn host-dial-step ${l.level === level ? "current" : ""} ${l.level === want ? "want" : ""}`}
             onClick={() => setWant(l.level === level ? null : l.level)}
           >
-            <span className="host-dial-label">{l.label}</span>
-            <span className="host-dial-hint">{l.hint}</span>
+            <span className="host-radio" aria-hidden="true" />
+            <span className="host-dial-words">
+              <span className="host-dial-label">{l.label}</span>
+              <span className="host-dial-hint">{l.hint}</span>
+            </span>
           </button>
         ))}
       </div>
