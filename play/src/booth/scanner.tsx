@@ -76,12 +76,15 @@ export function ScannerScreen({
   onClose,
   onOpenThread,
   gate: sharedGate,
+  onCardGuest,
 }: {
   session: PrimeSession;
   admin: boolean;
   onClose: () => void;
   onOpenThread: (guestId: string) => void;
   gate?: PassGate;
+  /** The guest a scan is for (its target at once, the card's guest on the reply): the moments layer drops readouts about them while the card shows them. */
+  onCardGuest?: (guestId: string) => void;
 }) {
   const [cam, setCam] = useState<CameraState>("off");
   const [note, setNote] = useState("");
@@ -106,10 +109,12 @@ export function ScannerScreen({
     setErr("");
     setNote(`Scanning ${id}…`);
     setBusy(true);
+    onCardGuest?.(id);
     session.scan(id).then(
       (r) => {
         setBusy(false);
         setNote("");
+        onCardGuest?.(r.guest.id);
         setCard({ id: r.guest.id, seed: { card: r.card, replies: r.responses } });
       },
       (e) => {

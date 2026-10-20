@@ -13,6 +13,7 @@
 
 import { lowerRung } from "../../../core/src/delivery.ts";
 import { retractedPinSeqs } from "../pins.ts";
+import { guestLineToBooth } from "../stream/badges.ts";
 import type { AlertLevel, ChatMessage, MomentClass, ObjectiveView } from "../types.ts";
 
 // --- the moments themselves --------------------------------------------------
@@ -40,6 +41,13 @@ export interface Moment {
   at: number;
   /** `view.night.phase` when it arrived (a phase change makes a missed moment stale). */
   phase: string | null;
+  /**
+   * A booth's *peek*: the balloon that shows a major moment while a busy
+   * surface (the scanner, a guest card) holds the screen, its twin (this
+   * key) waiting as a sticky for the hold to end. Never missed, never
+   * replayed, never shown once the hold is over (`peekFor`).
+   */
+  peekOf?: string;
 }
 
 /** How a moment renders at a level (`lowerRung` for a minor one). */
@@ -97,7 +105,8 @@ export function viewerLevel(level: AlertLevel, role: Viewer["role"]): AlertLevel
  * (it only exists at `bsod`); a major moment sits at the level; a minor one
  * one rung lower, floored at a balloon. A booth never climbs past `sticky`.
  */
-export function rungFor(moment: Pick<Moment, "severity" | "kind">, level: AlertLevel, role: Viewer["role"]): AlertLevel {
+export function rungFor(moment: Pick<Moment, "severity" | "kind" | "peekOf">, level: AlertLevel, role: Viewer["role"]): AlertLevel {
+  if (moment.peekOf !== undefined) return "balloon";
   const at = viewerLevel(level, role);
   if (moment.kind === "beat") return role === "booth" ? lowerRung(at) : "bsod";
   return moment.severity === "major" ? at : lowerRung(at);
@@ -166,6 +175,23 @@ export function phaseOf(m: ChatMessage, fallback: string | null): string | null 
 
 export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): Moment | null {
   if (m.hidden || m.takeover === true) return null;
+  // A guest's typed line to this booth's character ("help, I'm stuck"): a
+  // minor moment (a balloon), its exit the guest's thread in the booth.
+  if (viewer.role === "booth" && m.moment === undefined && m.alert !== true && guestLineToBooth(m, viewer.me)) {
+    const guest = Array.isArray(m.audience) ? m.audience.find((a) => !a.startsWith("@")) : undefined;
+    return {
+      key: `m:${m.seq}`,
+      seq: m.seq,
+      severity: "minor",
+      kind: "other",
+      caption: m.from.trim(),
+      text: m.text.trim(),
+      channel: guest !== undefined ? `guest:${guest}` : null,
+      beat: null,
+      at: m.ts,
+      phase: phaseOf(m, phase),
+    };
+  }
   let severity: MomentClass | null = m.moment ?? (m.alert === true ? "major" : null);
   if (severity === null) return null;
   if (viewer.role === "booth") {
@@ -366,7 +392,16 @@ export function replayable(missed: readonly Moment[], lastMajor: Readonly<Record
 export const ECHO_WINDOW_MS = 2_000;
 
 export function isEcho(m: Moment, others: readonly Moment[]): boolean {
-  return others.some((o) => o.key !== m.key && o.text === m.text && o.severity === m.severity && Math.abs(o.at - m.at) <= ECHO_WINDOW_MS);
+  return others.some((o) => o.key !== m.key && o.key !== m.peekOf && m.key !== o.peekOf && o.text === m.text && o.severity === m.severity && Math.abs(o.at - m.at) <= ECHO_WINDOW_MS);
+}
+
+/** The balloon that peeks over a busy surface for a major booth moment held behind it (its twin waits as a sticky). */
+export function peekFor(m: Moment): Moment {
+  return { ...m, key: `p:${m.key}`, peekOf: m.key };
+}
+
+function isPeek(m: Moment): boolean {
+  return m.peekOf !== undefined;
 }
 
 /** Drop the echoes inside a list (the first copy stays). */
@@ -379,7 +414,11 @@ export function withoutEchoes(moments: readonly Moment[], already: readonly Mome
 function enqueue(queue: Queued[], moments: readonly Moment[], level: AlertLevel, role: Viewer["role"], now: number): Queued[] {
   const have = new Set(queue.map((q) => q.moment.key));
   const add = withoutEchoes(moments.filter((m) => !have.has(m.key)), queue.map((q) => q.moment)).map((moment) => ({ moment, level: rungFor(moment, level, role), queuedAt: now }));
-  return add.length === 0 ? queue : [...queue, ...add];
+  // A peek is only for a twin that waits as a sticky: one that is a balloon
+  // itself already shows over the busy surface.
+  const twins = new Map([...queue, ...add].map((q) => [q.moment.key, q.level]));
+  const kept = add.filter((q) => q.moment.peekOf === undefined || twins.get(q.moment.peekOf) === "sticky");
+  return kept.length === 0 ? queue : [...queue, ...kept];
 }
 
 /** Replay `list` (already filtered for staleness): one by one up to `REPLAY_MAX`, else one summary. */
@@ -402,10 +441,10 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       const known = new Set([...s.queue.map((q) => q.moment.key), ...s.missed.map((m) => m.key)]);
       const fresh = a.moments.filter((m) => !known.has(m.key));
       if (fresh.length === 0) return { ...s, lastMajor };
-      if (!a.visible) return { ...s, lastMajor, missed: [...s.missed, ...withoutEchoes(fresh, s.missed)] };
+      if (!a.visible) return { ...s, lastMajor, missed: [...s.missed, ...withoutEchoes(fresh.filter((m) => !isPeek(m)), s.missed)] };
       const next = { ...s, lastMajor };
       if (!a.batch) return { ...next, queue: enqueue(s.queue, fresh, a.level, a.role, a.now) };
-      return replay(next, replayable(fresh, lastMajor, a.phase), a.level, a.role, a.now);
+      return replay(next, replayable(fresh.filter((m) => !isPeek(m)), lastMajor, a.phase), a.level, a.role, a.now);
     }
     case "wake": {
       if (s.missed.length === 0) return s;
@@ -415,8 +454,8 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
     case "dismiss": {
       const hit = s.queue.find((q) => q.moment.key === a.key);
       if (hit === undefined) return s;
-      const queue = s.queue.filter((q) => q !== hit);
-      const missed = a.acted !== true && a.onScreenMs < GLANCE_MS ? [...s.missed, hit.moment] : s.missed;
+      const queue = s.queue.filter((q) => q !== hit && q.moment.peekOf !== hit.moment.key);
+      const missed = a.acted !== true && a.onScreenMs < GLANCE_MS && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
       const modalLeft = queue.some((q) => isModal(q.level));
       const burst = isModal(hit.level) ? (modalLeft ? s.burst + 1 : 0) : s.burst;
       return { ...s, queue, missed, burst };
@@ -493,7 +532,8 @@ export interface Surfaces {
 }
 
 export function surfacesOf(s: MomentsState, held: boolean): Surfaces {
-  const balloon = s.queue.find((q) => q.level === "balloon") ?? null;
+  // A peek shows only while the hold lasts (its twin's sticky takes over after).
+  const balloon = s.queue.find((q) => q.level === "balloon" && (held || !isPeek(q.moment))) ?? null;
   const stickies = s.queue.filter((q) => q.level === "sticky");
   const modals = s.queue.filter((q) => isModal(q.level));
   const modalSummary = s.summary !== null && s.summary.level === "dialog";
@@ -635,18 +675,52 @@ function toldBy(recent: readonly ToastSeen[], text: string, quiet: boolean, now:
  */
 export function sortArrivals(
   moments: readonly Moment[],
-  ctx: { role: Viewer["role"]; held: boolean; sinceHoldEnd: number; about: (seq: number | null) => boolean; recent: readonly ToastSeen[]; now: number },
+  ctx: {
+    role: Viewer["role"];
+    held: boolean;
+    sinceHoldEnd: number;
+    about: (seq: number | null) => boolean;
+    recent: readonly ToastSeen[];
+    now: number;
+    /** The guest a readout is about (`ChatMessage.about`). */
+    aboutId?: (seq: number | null) => string | null;
+    /** The guest whose card is open (or was, inside the afterglow). Absent
+     *  (an older caller): every readout about a guest inside the hold is
+     *  taken as shown on the card. */
+    cardGuest?: string | null;
+  },
 ): { now: Moment[]; later: Moment[] } {
   const out = { now: [] as Moment[], later: [] as Moment[] };
+  const busy = ctx.held || ctx.sinceHoldEnd < CARD_AFTERGLOW_MS;
+  // A booth's major moment held behind the busy surface: its sticky waits
+  // for the hold to end, a balloon peeks over the card meanwhile.
+  const push = (m: Moment) => {
+    out.now.push(m);
+    if (ctx.role === "booth" && ctx.held && m.severity === "major") out.now.push(peekFor(m));
+  };
   for (const m of moments) {
-    if (m.kind !== "readout") out.now.push(m);
-    else if (ctx.role === "booth" && ctx.about(m.seq) && (ctx.held || ctx.sinceHoldEnd < CARD_AFTERGLOW_MS)) continue;
-    else if (m.severity === "major") out.now.push(m);
+    if (m.kind !== "readout") push(m);
+    else if (ctx.role === "booth" && ctx.about(m.seq) && busy && shownOnCard(m, ctx)) continue;
+    else if (m.severity === "major") push(m);
     else if (ctx.role === "booth") {
-      if (toldBy(ctx.recent, m.text, false, ctx.now, ECHO_MS)) out.now.push(m);
+      if (toldBy(ctx.recent, m.text, false, ctx.now, ECHO_MS)) push(m);
     } else out.later.push(m);
   }
   return out;
+}
+
+/**
+ * Did the card already show this booth readout about a guest? When it
+ * answers the booth's own press (the session raised no loud toast for it:
+ * a request was in flight or had just answered) or it is about the guest
+ * on the open card. A readout about anyone else — the late list, Clippy's
+ * 🚨 marked — is news, card or no card.
+ */
+function shownOnCard(m: Moment, ctx: { recent: readonly ToastSeen[]; now: number; aboutId?: (seq: number | null) => string | null; cardGuest?: string | null }): boolean {
+  if (ctx.cardGuest === undefined) return true;
+  const about = ctx.aboutId?.(m.seq) ?? null;
+  if (about !== null && ctx.cardGuest !== null && about === ctx.cardGuest) return true;
+  return !toldBy(ctx.recent, m.text, false, ctx.now, ECHO_MS);
 }
 
 /** The waiting readouts still news once the wait is over: those no quiet toast already said. */

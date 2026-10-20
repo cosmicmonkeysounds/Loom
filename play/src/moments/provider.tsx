@@ -65,6 +65,10 @@ export interface MomentsInput {
   here?: string | null;
   /** "Take me there" for a moment about the pass (the loud "show your pass" objective). Absent → no button. */
   openPass?: () => void;
+  /** A booth: the guest whose card is open (or was last), read when moments
+   *  arrive — a readout about them inside the hold was shown on the card;
+   *  one about anyone else is news. */
+  cardGuest?: () => string | null;
 }
 
 
@@ -194,6 +198,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
       held: l.held,
       sinceHoldEnd: wall - mem.lastHoldEnd,
       about: (seq) => aboutGuest(input.messages.get(seq ?? -1)),
+      aboutId: (seq) => input.messages.get(seq ?? -1)?.about ?? null,
+      ...(input.cardGuest !== undefined ? { cardGuest: input.cardGuest() } : {}),
       recent: alerts.recent(),
       now: wall,
     });

@@ -104,6 +104,19 @@ describe("the rung each moment renders on", () => {
   });
 });
 
+describe("a guest's typed line to a booth (live check, fix round)", () => {
+  it("is a minor moment whose exit is the guest's thread", () => {
+    const line = msg(40, { channel: "dm:Norton", channelKind: "dm", title: "Norton", from: "GarageBand", kind: "line", text: "Norton, I'm stuck at the door", audience: ["g-1019a0"] });
+    expect(momentOf(line, booth, "doors")).toMatchObject({ severity: "minor", kind: "other", caption: "GarageBand", channel: "guest:g-1019a0", text: "Norton, I'm stuck at the door" });
+    // Norton's own line, a beat's line in the thread, another booth's DM: none.
+    expect(momentOf({ ...line, from: "Norton" }, booth, null)).toBeNull();
+    expect(momentOf({ ...line, beat: "Clearance" }, booth, null)).toBeNull();
+    expect(momentOf({ ...line, channel: "dm:Clippy" }, booth, null)).toBeNull();
+    // A guest never gets one for their own words.
+    expect(momentOf(line, guest, null)).toBeNull();
+  });
+});
+
 describe("which messages are moments", () => {
   it("the server's class wins; an old server's `!` is major; takeovers and hidden rows never are", () => {
     expect(momentOf(msg(1, { moment: "minor", readout: true, kind: "narration" }), guest, "hunt")).toMatchObject({ severity: "minor", kind: "readout", channel: "lobby", phase: "hunt" });

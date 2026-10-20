@@ -73,6 +73,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // per scanner opening, so leaving and reopening the scanner with the pass
   // still held up never re-fires its scan.
   const passGate = useMemo(() => closedGate(CLOSED_PASS_MS), []);
+  // The guest whose card is (or was last) open: the moments layer drops
+  // readouts about them inside the hold (the card showed them) and lets
+  // every other booth readout through.
+  const cardGuest = useRef<string | null>(null);
   useDocumentTitle(s.auth?.title);
   // K-31a: the server-room (patch-bay) alarm + the late list on a locked phone.
   const push = usePush(s.auth?.character ? { base: `/e/${encodeURIComponent(s.auth.eventId)}`, token: s.auth.token } : null, "booth");
@@ -105,7 +109,10 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // Cards the story deals to this character (`show … to <Character>`): the
   // booth answers them like a guest, through `/api/prime/widget`.
   const widgets: WidgetHook = { answer: (seq, r) => void s.answerWidget(seq, r).catch(() => {}), answered: s.widgetAnswers };
-  const openCard = (guestId: string, seed?: CardSeed) => setLayer({ kind: "card", id: guestId, ...(seed !== undefined ? { seed } : {}) });
+  const openCard = (guestId: string, seed?: CardSeed) => {
+    cardGuest.current = guestId;
+    setLayer({ kind: "card", id: guestId, ...(seed !== undefined ? { seed } : {}) });
+  };
   const openCardByName = (name: string) => {
     const g = guestByName(name);
     if (g) openCard(g.id);
@@ -213,6 +220,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
     openRoom: t.open,
     filter: boothAlertFilter(character),
     sound: host.sound,
+    cardGuest: () => cardGuest.current,
   };
   const start = boothStartItems({
     character,
@@ -260,7 +268,7 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
                 </>
               )}
             </BoothFrame>
-            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} />}
+            {layer?.kind === "scan" && <ScannerScreen session={s} admin={admin} gate={passGate} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => (cardGuest.current = id)} />}
             {layer?.kind === "guests" && <GuestsSheet view={s.view} onPick={(id) => openCard(id)} onClose={() => setLayer(null)} />}
             {layer?.kind === "card" && (
               <GuestCard key={layer.id} session={s} guestId={layer.id} seed={layer.seed} admin={admin} onClose={() => setLayer(null)} onOpenThread={() => openThread(layer.id)} />
