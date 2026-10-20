@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, give him a file, file, codex, secret file
+keywords: terminal, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -149,6 +149,15 @@ CAN'T HELP** instead, with no golden egg.
 
 Scan your pass and the face comes back: the line is yours. When nobody
 is in the simulation, the face is all there is.
+
+Wherever it hangs, a terminal's camera also becomes a **window the other
+way**: players walking the virtual house see a small live picture of the
+real room on the wall where the terminal hangs. And a screen set to
+**shadow** shows its own camera full screen with the players drawn into it
+as dark, glowing ghosts, standing where they stand in the virtual copy of
+that room — the room's shadow dimension. When the camera is on, a
+terminal nobody is talking to shows that shadow instead of the virtual
+room.
 
 ## The TV
 

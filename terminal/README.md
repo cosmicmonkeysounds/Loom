@@ -413,7 +413,7 @@ Two settings, on the setup screen or in the provisioning link:
 |---|---|
 | `spot` | a `house.terminals[].id` of the event's map: where this screen hangs (the setup screen lists them as *name — room*). Blank = unplaced: it never mounts, only follows / orbits the spawn room. |
 | `room` | a LOCATION (wave 7): on the TV, the room it speaks for (blank = The Desktop); on any other view, the room it **belongs to** — asleep until that room is open, speaking its lines (*A room terminal*, above). Blank = a house terminal. The `chess` view ignores it. |
-| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
+| `view` | `auto` (default): the face pane shows the world view while anyone is in the simulation, the face otherwise. `world`: the world view always. `face`: never. `mirror`: see below. `tv`: the TV room voice (above), no scanner. `shadow`: the camera with the players as ghosts in it (below), no scanner. `chess`: the King's chess board outside the server-room door (*The King's chess board*, above; awake all night, ignores `room`). While piloting it is **always the face**, because the face is the voice. A tablet with **no WebGL2** (three r186 needs it; `src/webgl.ts` probes once at boot) behaves as `face` whatever this says, never loads three.js, and a no-WebGL2 mirror shows a still notice — never the *SIMULATION UNAVAILABLE* retry loop. The build targets `chrome87` / `safari14` (`vite.config.ts`). |
 
 **The mirror (a TV).** `view=mirror` turns a screen into a full-screen
 spectator: there is no scanner, no chat and no wake tap (it never speaks).
@@ -428,6 +428,30 @@ http://<server>/terminal/?code=<mod passcode>&name=Desktop TV&view=mirror&spot=d
 
 A `spot` is optional for a mirror; without one it never mounts. The ⚙ in
 the corner reopens setup (hold it 2 s).
+
+**The camera feed and the shadow view (wave 14).** A placed terminal
+(`spot` set) **sends its camera to the games**: ~3 frames a second, a
+160 × 120 JPEG (quality 0.5, a 4:3 centre crop, never mirrored) to
+`POST /e/:id/api/mod/spatial/cam {spot, jpeg, w, h}` with its mod token
+(`src/camfeed.ts`), and the reinstallation games hang that picture on the
+wall where the tablet hangs. Never while the page is hidden, never two
+uploads in flight, backing off 1 s → 30 s on a failure and stopping on a
+404 (`no such spot`) or a refused token until ⚙ changes the spot — ⚙ shows
+the feed's status and switches it off (`camFeed`, on by default; the URL's
+`&cam=0`). The pass scanner, the feed and the shadow view share **one**
+`MediaStream` (`src/camera.ts`, ref-counted; opened at the scanner's 720p
+with the configured facing mode), so an old tablet never opens its camera
+twice. `view=shadow` (`src/shadow/`, its own lazy chunk) is the camera full
+screen with every reinstallation player on this floor and in front of the
+tablet drawn over it as a dark, glowing, flickering ghost (picture + name
+tag), placed through a three.js camera matched to the spot (pos, yaw,
+pitch, fov) — the room's shadow dimension; a selfie camera is mirrored,
+ghosts and all. No scanner (a spectator, like `mirror`). `auto`'s pane
+shows the shadow instead of the world while the camera is live; no camera,
+no spot on the map or no WebGL falls back to the world view. ⚙'s spot,
+view, room and character are pickers (the event's house map, the views
+with a line each, the map's LOCATIONs, the story's cast), and a spot the
+map lacks — from ⚙ or a provisioning URL — says so.
 
 **Before the character exists (attract).** A character can arrive partway
 through the night: in *Trapped in the Internet* Trabolta is `hidden: true`
