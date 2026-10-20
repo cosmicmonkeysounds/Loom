@@ -25,7 +25,7 @@ import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
-import { Store, type Mutation } from "./store.ts";
+import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage } from "./chat.ts";
 import { DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -121,6 +121,7 @@ import {
   type AgentRecent,
   type AgentRequest,
   type AgentThread,
+  threadKey,
 } from "./agents.ts";
 import { agentRecentOn, answerMentions, buildRecent, HUNT_ANSWER_MARK, secretMentions, storyTag, storyTexts, worldString, type StoryTagContext } from "./agent-recent.ts";
 
@@ -617,6 +618,9 @@ export class EventRuntime {
   /** Wall time (`clock`) the doors last closed by a pause, until they open
    *  again: the agent hub's timers skip that span (T9-timers-03). */
   private pausedAt: number | null = null;
+  /** Thread (`threadKey`) → the open agent request's id and the seq of the
+   *  line that opened it (`persistAgentWaits`). */
+  private readonly agentWaitSeq = new Map<string, { id: string; seq: number }>();
   private ticker: ReturnType<typeof setInterval> | null = null;
   // Agent-voiced characters (`mind: external`): open requests + the
   // stagehand workers answering them. Ephemeral — a restart drops them.
@@ -1902,11 +1906,50 @@ export class EventRuntime {
 
   /** A line just landed in `channel` for `audience` — if that's an agent's
    *  thread, the agent owes an answer. */
-  private agentHeard(channel: string, audience: string[], held = false, since?: number): void {
+  private agentHeard(channel: string, audience: string[], held = false, since?: number, seq?: number): void {
     if (!channel.startsWith("dm:") || audience.length !== 1) return;
     const character = channel.slice("dm:".length);
     if (!this.isAgent(character)) return;
-    this.agents.line({ character, channel, audience }, { held, ...(since !== undefined ? { since } : {}) });
+    const thread: AgentThread = { character, channel, audience };
+    this.agents.line(thread, { held, ...(since !== undefined ? { since } : {}) });
+    // Recheck item 4: a new request remembers the line that opened it, and
+    // its wait is written down, so a restart reads the same "waiting 0:34".
+    const key = threadKey(thread);
+    const open = this.agents.pending.find((r) => threadKey(r.thread) === key);
+    if (open !== undefined && this.agentWaitSeq.get(key)?.id !== open.id) {
+      const at = seq ?? this.lastLineSeq(channel, audience[0]!);
+      if (at !== null) this.agentWaitSeq.set(key, { id: open.id, seq: at });
+    }
+    this.persistAgentWaits();
+  }
+
+  /** The newest line in `channel` addressed to exactly `who` (its seq). */
+  private lastLineSeq(channel: string, who: string): number | null {
+    const all = this.chat.all();
+    for (let i = all.length - 1; i >= 0; i--) {
+      const m = all[i]!;
+      if (m.channel === channel && Array.isArray(m.audience) && m.audience.length === 1 && m.audience[0] === who) return m.seq;
+    }
+    return null;
+  }
+
+  /** Write every open agent request's wait (its opening line + the hub's
+   *  `since`) and the pause stamp, for `requeueAgentThreads` after a restart. */
+  private persistAgentWaits(): void {
+    const waits: AgentWait[] = [];
+    for (const r of this.agents.pending) {
+      const key = threadKey(r.thread);
+      const at = this.agentWaitSeq.get(key);
+      const since = this.agents.sinceOf(r.id);
+      if (at === undefined || at.id !== r.id || since === null) continue;
+      waits.push({ key, seq: at.seq, since });
+    }
+    try {
+      this.store.saveAgentWaits({ pausedAt: this.pausedAt, waits });
+    } catch {
+      // A full disk costs only the exact wait after a restart (the story
+      // clock's estimate stands in).
+    }
   }
 
   /** After a restore: every agent thread still owed an answer — someone
@@ -1918,7 +1961,7 @@ export class EventRuntime {
    *  many lines the guest typed after it — R1-diff-server-02). Only a line
    *  from the last `AGENT_QUEUE_MAX_AGE_MS` of the story clock: live, an
    *  older request has been dropped. */
-  private requeueAgentThreads(): void {
+  private requeueAgentThreads(saved: AgentWaits | null = null): void {
     const sim = this.sim;
     if (sim === null) return;
     interface Tail {
@@ -1966,12 +2009,15 @@ export class EventRuntime {
     }
     const now = sim.elapsed();
     const wall = this.clock();
-    for (const { owed, first, held, last } of tails.values()) {
+    for (const [key, { owed, first, held, last }] of tails) {
       if (owed === null || now - owed.ts > AGENT_QUEUE_MAX_AGE_MS) continue;
       // The guest has waited since their first unanswered line, not since
-      // this restart: its story time mapped onto the hub's wall clock.
-      const since = first === null ? undefined : wall - Math.max(0, now - first.ts);
-      this.agentHeard(last.channel, last.audience as string[], held, since);
+      // this restart: the wait written down live (recheck item 4: exact
+      // across a pause and for two lines in one story second), else its
+      // story time mapped onto the hub's wall clock.
+      const kept = first === null ? undefined : saved?.waits.find((w) => w.key === key && w.seq >= first.seq && w.seq <= owed.seq);
+      const since = kept !== undefined ? kept.since : first === null ? undefined : wall - Math.max(0, now - first.ts);
+      this.agentHeard(last.channel, last.audience as string[], held, since, kept?.seq ?? first?.seq);
     }
   }
 
@@ -3314,6 +3360,7 @@ export class EventRuntime {
     if (this.pausedAt !== null) {
       this.agents.shift(this.pausedAt, this.clock());
       this.pausedAt = null;
+      this.persistAgentWaits(); // the shifted waits, and no pause
     }
     this.setPhase("open");
     this.startTicker();
@@ -3347,6 +3394,7 @@ export class EventRuntime {
   pause(): void {
     this.flushTick();
     if (this.phase === "open") this.pausedAt = this.clock();
+    this.persistAgentWaits(); // when the pause began, for a restart inside it
     this.setPhase("paused");
     this.stopTicker();
     this.persistMeta();
@@ -3564,13 +3612,16 @@ export class EventRuntime {
     // lost it).
     this.rederiveHosts();
     for (const [token, id] of this.store.loadGuests()) this.guestTokens.set(token, id);
-    this.requeueAgentThreads();
+    const waits = this.store.loadAgentWaits();
+    this.requeueAgentThreads(waits);
     this.noteRulingsDue();
     this.spatial.syncKing(); // the replayed world's King
     if (this.phase === "open") this.startTicker();
     // Restored with the doors paused: the re-asked requests wait out the
-    // pause like live ones do.
-    else if (this.phase === "paused") this.pausedAt = this.clock();
+    // pause like live ones do — from when it began, if a restart came
+    // inside it (so the resume shifts the whole pause, as live).
+    else if (this.phase === "paused") this.pausedAt = waits?.pausedAt ?? this.clock();
+    this.persistAgentWaits();
     return { guests: this.sim?.persons.size ?? 0, events, sessions: entries.length };
   }
 

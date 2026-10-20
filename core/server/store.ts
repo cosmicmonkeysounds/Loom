@@ -107,6 +107,23 @@ const RUNS = "spatial-runs.jsonl";
 /** The director's TV-voice mute (K-18, OP-20's ALL STOP) — not story state,
  *  so no restart or replay touches it; a crash must not unmute the TV. */
 const SCREEN_VOICE = "screen-voice.json";
+/** Since when each agent thread's guest has been waiting (hub ms, the wall
+ *  clock) and when the event was paused — so a restart keeps a host's
+ *  "waiting 0:34" exact (recheck item 4). Tied to the journal's chat seqs:
+ *  `clearJournal` drops it. */
+const AGENT_WAITS = "agent-waits.json";
+
+/** One open agent request's wait, by thread (`threadKey`) and the seq of
+ *  the line that opened it. */
+export interface AgentWait {
+  key: string;
+  seq: number;
+  since: number;
+}
+export interface AgentWaits {
+  pausedAt: number | null;
+  waits: AgentWait[];
+}
 
 /** Read + JSON-parse a file, returning `null` on any miss/corruption. */
 function readJson<T>(path: string): T | null {
@@ -186,6 +203,26 @@ export class Store {
   /** Start a fresh story timeline (new scenario, or a reset). */
   clearJournal(): void {
     rmSync(this.path(JOURNAL), { force: true });
+    rmSync(this.path(AGENT_WAITS), { force: true });
+  }
+
+  /** The agent waits (`AGENT_WAITS`), or null on a miss; a malformed row is dropped. */
+  loadAgentWaits(): AgentWaits | null {
+    const raw = readJson<{ pausedAt?: unknown; waits?: unknown }>(this.path(AGENT_WAITS));
+    if (raw === null || typeof raw !== "object") return null;
+    const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+    const waits: AgentWait[] = [];
+    if (Array.isArray(raw.waits)) {
+      for (const w of raw.waits as unknown[]) {
+        if (w === null || typeof w !== "object") continue;
+        const { key, seq, since } = w as Record<string, unknown>;
+        if (typeof key === "string" && num(seq) && num(since)) waits.push({ key, seq, since });
+      }
+    }
+    return { pausedAt: num(raw.pausedAt) ? raw.pausedAt : null, waits };
+  }
+  saveAgentWaits(waits: AgentWaits): void {
+    writeFileSync(this.path(AGENT_WAITS), JSON.stringify(waits));
   }
 
   // --- live sessions ------------------------------------------------------
