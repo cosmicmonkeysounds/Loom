@@ -1579,8 +1579,12 @@ when scanned by program:
     fire checked_in for program with at: The Desktop
     Self: Checked in. {program.name} is present at the Desktop.
   else if program.marked == true and program.corrupted != true:
-    Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
-    reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
+    if self.holds_the_door == true:   // Windows Defender: never escorts
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. An Antivirus will escort you through the Tube to the Internet.
+      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Stay at the door: radio a room Antivirus to escort them. 🛡 only if a host or the director asks.
+    else:
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
+      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
   else:
     Self:
       cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.

@@ -29,6 +29,7 @@ Antivirus booth.
 |---|---|---|
 | **any time** | **🛡 Send to the Internet** (tap to arm, tap again) | only if a host or the director asks: you stay at the door |
 | **any time** | **🩹 Unmark: not going to the Internet** | a mis-tap, or mercy |
+| a **marked** program at the door | scan them: they hear *"An Antivirus will escort you through the Tube to the Internet"* and your booth says to stay at the door and radio an escort (DRAFT, Q30) | |
 | the summons (⏳ → 🚨) | any Antivirus scan of a cleared program counts as their check-in at the Desktop, so scan only new arrivals and send everyone else to the living room | |
 | **only if you saw a checkmate** on the door terminal and it could not report it (OP-12) | **♟ They beat the machine** | the winner |
 
