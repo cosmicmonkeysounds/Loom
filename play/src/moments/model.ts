@@ -459,7 +459,10 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
     case "dismiss": {
       const hit = s.queue.find((q) => q.moment.key === a.key);
       if (hit === undefined) return s;
-      const queue = s.queue.filter((q) => q !== hit && q.moment.peekOf !== hit.moment.key);
+      // A sticky takes its peek with it; a peek acted on ("Take me there")
+      // takes its sticky too — the performer went, it is not news after.
+      const twin = a.acted === true ? hit.moment.peekOf : undefined;
+      const queue = s.queue.filter((q) => q !== hit && q.moment.peekOf !== hit.moment.key && (twin === undefined || q.moment.key !== twin));
       const missed = a.acted !== true && a.onScreenMs < GLANCE_MS && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
       const modalLeft = queue.some((q) => isModal(q.level));
       const burst = isModal(hit.level) ? (modalLeft ? s.burst + 1 : 0) : s.burst;

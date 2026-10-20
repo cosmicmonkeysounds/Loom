@@ -82,6 +82,10 @@ describe("a booth's alerts about other guests while a card is open (live check, 
     const s2 = momentsReducer(s1, { type: "dismiss", key: "p:m:10", onScreenMs: 8_000 });
     expect(s2.queue.map((q) => q.moment.key)).toEqual(["m:10"]);
     expect(missedCount(s2, false, T)).toBe(0);
+    // "Take me there" on the peek: the performer went, so its sticky goes too (never missed).
+    const s2b = momentsReducer(s1, { type: "dismiss", key: "p:m:10", onScreenMs: 500, acted: true });
+    expect(s2b.queue).toEqual([]);
+    expect(missedCount(s2b, false, T)).toBe(0);
     // Dismissing the sticky unread counts it missed, and takes any peek with it.
     const s3 = momentsReducer(s1, { type: "dismiss", key: "m:10", onScreenMs: GLANCE_MS - 1 });
     expect(s3.queue).toEqual([]);
