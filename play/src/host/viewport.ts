@@ -237,6 +237,29 @@ export function balloonClearance(frame: { top: number; bottom: number; right: nu
   return { mode: room < BALLOON_ROOM_MIN ? "tight" : "above", lift, room, right };
 }
 
+/** The tip's parts in a `tight` room (px): its head (caption + ×, 44 px)
+ *  with the box's padding, the "Take me there ›" line, one line of text. */
+export const BALLOON_HEAD_PX = 52;
+export const BALLOON_GO_PX = 38;
+export const BALLOON_LINE_PX = 18;
+/** The most lines a balloon's text ever shows (moments.css clamps at 5). */
+export const BALLOON_LINES_MAX = 5;
+
+/** What of a tip fits in `room` px above the console (the host balloon was
+ *  cut through the middle of a line by a box clipped to the room): whole
+ *  lines of text with its "Take me there ›" (`text`), else whole lines
+ *  without the link — the words matter more, and the room keeps the line
+ *  (`text-only`) — else the caption alone (`head`). Never a box clipped
+ *  mid-line. */
+export function balloonFit(room: number): { show: "text" | "text-only" | "head"; lines: number } {
+  const fit = (px: number) => Math.max(0, Math.min(BALLOON_LINES_MAX, Math.floor(px / BALLOON_LINE_PX)));
+  const withGo = fit(room - BALLOON_HEAD_PX - BALLOON_GO_PX);
+  if (withGo > 0) return { show: "text", lines: withGo };
+  const alone = fit(room - BALLOON_HEAD_PX);
+  if (alone > 0) return { show: "text-only", lines: alone };
+  return { show: "head", lines: 0 };
+}
+
 /** Sets the clearance on the frame (`data-host-drawer` + `--host-drawer-*`,
  *  read by moments.css) while the drawer is open; clears it on close. */
 export function useBalloonClearance(open: boolean, wide: boolean, dock: HTMLElement | null, frame: HTMLElement | null, fit: KeyboardFit | null): void {
@@ -250,13 +273,24 @@ export function useBalloonClearance(open: boolean, wide: boolean, dock: HTMLElem
       frame.style.setProperty("--host-drawer-lift", `${c.lift}px`);
       frame.style.setProperty("--host-drawer-room", `${c.room}px`);
       frame.style.setProperty("--host-drawer-right", `${c.right}px`);
+      // A tight room: whole lines, the link only if a line still fits, else
+      // the caption alone (read by moments.css).
+      const f = balloonFit(c.room);
+      if (c.mode === "tight") {
+        frame.dataset["hostBalloon"] = f.show;
+        frame.style.setProperty("--host-balloon-lines", String(Math.max(1, f.lines)));
+      } else {
+        delete frame.dataset["hostBalloon"];
+        frame.style.removeProperty("--host-balloon-lines");
+      }
     };
     apply();
     window.addEventListener("resize", apply);
     return () => {
       window.removeEventListener("resize", apply);
       delete frame.dataset["hostDrawer"];
-      for (const p of ["--host-drawer-lift", "--host-drawer-room", "--host-drawer-right"]) frame.style.removeProperty(p);
+      delete frame.dataset["hostBalloon"];
+      for (const p of ["--host-drawer-lift", "--host-drawer-room", "--host-drawer-right", "--host-balloon-lines"]) frame.style.removeProperty(p);
     };
   }, [open, wide, dock, frame, fit]);
 }

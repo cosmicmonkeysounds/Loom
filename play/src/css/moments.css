@@ -108,7 +108,13 @@
    its left, on a wide screen. */
 [data-host-drawer="above"] .moments-balloon,
 [data-host-drawer="tight"] .moments-balloon { bottom: calc(var(--host-drawer-lift) + 14px); }
-[data-host-drawer="tight"] .moments-balloon { max-height: var(--host-drawer-room); overflow: hidden; }
+/* A tight room (host/viewport.ts balloonFit): whole lines of text with the
+   link, else whole lines alone, else the caption alone — never a box
+   clipped through the middle of a line. */
+[data-host-drawer="tight"] .moments-balloon-text { -webkit-line-clamp: var(--host-balloon-lines, 1); }
+[data-host-balloon="text-only"] .moments-balloon-go,
+[data-host-balloon="head"] .moments-balloon-text,
+[data-host-balloon="head"] .moments-balloon-go { display: none; }
 [data-host-drawer="beside"] .moments-balloon { right: calc(var(--host-drawer-right) + 12px); }
 .moments-balloon::before, .moments-balloon::after {
   content: ""; position: absolute; right: 28px; width: 0; height: 0;
