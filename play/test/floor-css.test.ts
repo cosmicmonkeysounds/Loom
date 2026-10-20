@@ -92,6 +92,14 @@ describe("the 44 px floor on the shared primitives", () => {
     expect(hit.h).toBeGreaterThanOrEqual(44);
   });
 
+  it("the thread affordance (≈ 19 × 20) and a booth's tappable sender name (≈ 17 px tall) reach 44 px", () => {
+    const r = hitArea(".replies", 19, 20);
+    expect(r.w).toBeGreaterThanOrEqual(44);
+    expect(r.h).toBeGreaterThanOrEqual(44);
+    expect(decls(".replies")["position"]).toBe("relative");
+    expect(hitArea('.speaker[tabindex="0"]', 60, 17).h).toBeGreaterThanOrEqual(44);
+  });
+
   it("no rule outside @media sets a control's min-height under 44 px unless it grows a hit area", () => {
     // the Win95-sized bevels below each have a ::after that reaches 44 (asserted above / in chrome.css)
     const sized = new Set([".w95-btn.w95-x", ".taskbar-btn", ".tray-item", ".w95-titlebar", ".thread-head .presence", ".taskbar-tray"]);

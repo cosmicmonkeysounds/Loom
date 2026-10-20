@@ -12,6 +12,13 @@
   --restricted-2: #9a6b00;
   /* The NOW bar's caption: the shared title gradient under plain. */
   --now-grad: var(--title-grad);
+  /* The chrome's drawn icons (chrome/icons.tsx): flat fills, an ink line. */
+  --ico-red: #c8382c; --ico-green: #2f8a3c; --ico-blue: #2e5fb8; --ico-yellow: #e8c33a;
+  --ico-gold: #d9a520; --ico-gold-hi: #f2cf5b; --ico-sand: #c99a2e; --ico-ticket: #e8836f;
+  --ico-skin: #f1c9a0; --ico-door: #9c6b3c; --ico-screen: #2f7f8a;
+  /* The inactive (paused) caption: white is 9:1 and 5.3:1 on the stops. */
+  --paused-1: #4a4a4a;
+  --paused-2: #6b6b6b;
 }
 /* Under aol97 the NOW bar keeps the navy → blue Win95 caption but ends on
    a deeper blue than the windows' #1084d0: the title can run the bar's
@@ -21,6 +28,40 @@
   --now-end: #0a64ad;
   --now-grad: linear-gradient(90deg, var(--navy), var(--now-end));
 }
+
+/* Under aol97 the icons wear Win95's own sixteen colours. */
+:root[data-theme="aol97"] {
+  --ico-red: #ff0000; --ico-green: #00a000; --ico-blue: #0000ff; --ico-yellow: #ffff00;
+  --ico-gold: #c0a000; --ico-gold-hi: #ffe060; --ico-sand: #c0a000; --ico-ticket: #ff8080;
+  --ico-skin: #ffc8a0; --ico-door: #808000; --ico-screen: #008080;
+}
+
+/* ── the chrome's icons ────────────────────────────────────────────────── */
+.ico { display: block; flex: 0 0 auto; shape-rendering: geometricPrecision; }
+.ico .ico-line { stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; }
+.ico .ico-ink-line { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; }
+.ico .ico-ink { fill: var(--ink); }
+.ico .ico-white { fill: var(--white); }
+.ico .ico-face { fill: var(--face); }
+.ico .ico-navy { fill: var(--navy); }
+.ico .ico-red { fill: var(--ico-red); }
+.ico .ico-green { fill: var(--ico-green); }
+.ico .ico-blue { fill: var(--ico-blue); }
+.ico .ico-yellow { fill: var(--ico-yellow); }
+.ico .ico-gold { fill: var(--ico-gold); }
+.ico .ico-gold-hi { fill: var(--ico-gold-hi); }
+.ico .ico-sand { fill: var(--ico-sand); }
+.ico .ico-ticket { fill: var(--ico-ticket); }
+.ico .ico-skin { fill: var(--ico-skin); }
+.ico .ico-door { fill: var(--ico-door); }
+.ico .ico-screen { fill: var(--ico-screen); }
+.ico .ico-frost { stroke: var(--navy); }
+/* Start: the Win95 flag is aol97's; plain draws a menu mark */
+.ico .ico-flag { display: none; }
+:root[data-theme="aol97"] .ico .ico-flag { display: inline; }
+:root[data-theme="aol97"] .ico .ico-menu { display: none; }
+/* on a caption-blue (attention) button the outline turns white */
+.taskbar-btn.attn .ico .ico-line, .start-menu-item:hover .ico .ico-line, .start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
 
 /* ── the frame ─────────────────────────────────────────────────────────── */
 .app-frame { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; }
@@ -41,11 +82,25 @@
 }
 button.title-bar-btn { cursor: pointer; }
 button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -3px; }
-.title-bar-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the one line a guest reads: two lines before any ellipsis */
+.title-bar-title { overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .title-bar-sub { font-weight: 400; font-size: 12px; color: var(--on-bar); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* on the alarm and restricted captions the pale sub-line ink falls under
    4.5:1 at the gradients' light ends: white there */
 .title-bar.alarm .title-bar-sub, .title-bar.restricted .title-bar-sub { color: var(--title-ink); }
+/* a paused show: Win95's inactive caption, greyed (white stays ≥ 5.3:1 on
+   both stops), with "(Paused)" in the title */
+.title-bar.paused { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); }
+.title-bar.paused .title-bar-sub { color: var(--title-ink); }
+/* a loud objective just went live: the caption blinks twice like a window
+   asking for attention (FlashWindow) and unfolds its brief */
+.title-bar.flash { animation: title-bar-flash 0.5s steps(1) 4; }
+@keyframes title-bar-flash { 50% { background: var(--paused-2); } }
+.title-bar-news {
+  font-weight: 400; font-size: 13px; line-height: 1.3; color: var(--title-ink); padding: 1px 0 4px;
+  overflow: hidden; overflow-wrap: anywhere; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
 
 /* ── the taskbar ───────────────────────────────────────────────────────── */
 .taskbar {
@@ -61,8 +116,10 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
 }
 /* the visible bevel stays Win95-sized; the touch target reaches the bar's edges */
 .taskbar-btn::after { content: ""; position: absolute; top: -3px; bottom: -3px; left: 0; right: 0; }
-.taskbar-icon { font-size: 17px; line-height: 1; }
+.taskbar-icon { font-size: 17px; line-height: 1; display: inline-flex; }
 .taskbar-btn.primary { flex: 1 1 auto; min-width: 96px; max-width: 260px; }
+/* the guest's Scan shares the width with Pass (the two jobs of the bar) */
+.taskbar-btn.labelled { flex: 1 1 auto; max-width: 260px; }
 .taskbar-start.open { box-shadow: var(--pressed); }
 /* a button the current objective names: it asks for attention like a
    Win95 window did — caption-blue, after two blinks */
@@ -74,7 +131,7 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
 }
 .taskbar-tray {
   margin-left: auto; display: flex; align-items: center; gap: 0; min-height: 38px; padding: 0 2px 0 4px;
-  box-shadow: var(--tray-inset); font: 12px var(--ui-font); white-space: nowrap;
+  box-shadow: var(--tray-inset); font: 15px var(--ui-font); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 /* the live dot: the tray's leading edge */
 .taskbar-tray::before {
@@ -95,6 +152,21 @@ button.tray-item::after { content: ""; position: absolute; top: -4px; bottom: -4
 button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset: -3px; }
 .tray-item.alarm { color: var(--bad); font-weight: 700; }
 .tray-item.dim { color: var(--dim-ink); }
+.tray-ico { display: inline-flex; }
+
+/* The guest's taskbar is always on top (a Win95 taskbar was): sheets, the
+   Start menu's catch-all, a moment's dialog and the blue screen paint under
+   it, so 🎟 Pass and 📷 Scan are one tap from every screen. The full-screen
+   pass / scanner it opens (45), a `!!` takeover (50) and the glitch (55)
+   still cover it; the tour (which dims everything) puts it back in line.
+   Layers that would sit under it leave it room at the bottom. */
+.guest-frame > .taskbar { z-index: 42; }
+.guest-frame.touring > .taskbar { z-index: auto; }
+.guest-frame .start-menu-away { z-index: -1; }
+.guest-frame:not(.kbd) .sheet-backdrop,
+.guest-frame:not(.kbd) .w95-dialog-backdrop { padding-bottom: calc(12px + var(--taskbar-h) + var(--safe-bottom)); }
+.guest-frame:not(.kbd) .sheet { max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom) - var(--taskbar-h)); }
+.guest-frame:not(.kbd) .moments-bsod { padding-bottom: calc(20px + var(--taskbar-h) + var(--safe-bottom)); }
 
 /* ── the Start menu ────────────────────────────────────────────────────── */
 .start-menu-away { position: fixed; inset: 0; z-index: var(--z-sheet); }
@@ -130,7 +202,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .start-menu-item:hover, .start-menu-item:focus-visible { background: var(--navy); color: var(--white); outline: none; }
 .start-menu-item.danger { color: var(--bad); }
 .start-menu-item.danger:hover, .start-menu-item.danger:focus-visible { color: var(--white); }
-.start-menu-icon { flex: 0 0 24px; text-align: center; font-size: 18px; }
+.start-menu-icon { flex: 0 0 24px; display: inline-flex; justify-content: center; text-align: center; font-size: 18px; }
 .start-menu-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* an `arm: true` story button, armed: the director phone's look */
 .start-menu-item.armed, .start-menu-item.armed:hover, .start-menu-item.armed:focus-visible { background: var(--black); color: var(--highlight); box-shadow: inset 0 0 0 3px var(--highlight); }
@@ -182,6 +254,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .objective-check.done { color: var(--dim-ink); text-decoration: line-through; }
 .objective-buttons { display: flex; flex-direction: column; gap: 6px; }
 .objective-buttons .choice { margin: 0; width: 100%; }
+.objective-go { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 /* ── the full-screen pass ──────────────────────────────────────────────── */
 .fullpass {
@@ -244,7 +317,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .link { min-height: var(--tap); }
 .chrow { min-height: var(--tap); }
 .icon-btn { min-width: var(--tap); height: var(--tap); }
-.composer .composer-scan { min-height: var(--tap); min-width: var(--tap); }
+.composer .composer-scan { min-height: var(--tap); min-width: var(--tap); display: inline-flex; align-items: center; justify-content: center; }
 /* caption boxes keep their Win95 size; the touch target grows past them */
 .back { position: relative; width: 36px; height: 30px; }
 .back::after { content: ""; position: absolute; inset: -8px -6px; }
@@ -260,6 +333,13 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
    beside the message and the tuck below it */
 .msg-avatar[tabindex="0"] { position: relative; }
 .msg-avatar[tabindex="0"]::after { content: ""; position: absolute; inset: -7px; }
+/* the thread affordance (💬, ≈ 19 × 20) and a sender's name (≈ 17 px
+   tall) on a booth: 44 px tall targets, reaching over the line's own text
+   (never another control) */
+.replies { position: relative; }
+.replies::after { content: ""; position: absolute; inset: -12px -13px; }
+.speaker[tabindex="0"] { position: relative; }
+.speaker[tabindex="0"]::after { content: ""; position: absolute; inset: -14px -4px; }
 .thread-head { min-height: var(--tap); }
 .thread-head .presence { position: relative; min-height: 30px; }
 .thread-head .presence::after { content: ""; position: absolute; inset: -7px -2px; }
@@ -272,15 +352,20 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .sheet { max-height: calc(100vh - 24px - var(--safe-top) - var(--safe-bottom)); overflow-y: auto; }
 
 /* ── narrow phones ─────────────────────────────────────────────────────── */
+/* Pass and the guest's Scan keep their words on every phone; the flag
+   alone says Start (the Win95 logo is the button), and the tray holds 3 */
 @media (max-width: 399px) {
-  .taskbar-btn:not(.primary):not(.taskbar-start) .taskbar-label { display: none; }
+  .taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }
+  .taskbar-start .taskbar-label { display: none; }
+  .taskbar-btn.primary { min-width: 64px; }
   .taskbar-btn:not(.primary) { padding: 0 8px; }
   .taskbar-tray > :nth-child(n+4) { display: none; }
 }
 @media (max-width: 379px) {
-  .taskbar-start .taskbar-label { display: none; }
+  .taskbar-btn, .taskbar-btn:not(.primary) { padding: 0 6px; }
+  .tray-item { padding: 0 3px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .taskbar-btn.attn, .tray-balloon { animation: none; }
+  .taskbar-btn.attn, .tray-balloon, .title-bar.flash { animation: none; }
 }

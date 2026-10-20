@@ -10,24 +10,26 @@
 //! plus the wall time since), read by `countdown.tsx`'s `useStoryNow`.
 
 import { useState, type ReactElement } from "react";
-import { URGENT_S } from "../director.tsx";
+import { URGENT_S } from "../clock.ts";
 import { countdownItems, useStoryNow, type CountdownItem } from "../countdown.tsx";
 import type { CountdownSummary } from "../types.ts";
 import { TrayBalloon, TraySlot } from "./balloon.tsx";
+import { Icon } from "./icons.tsx";
 import { TrayItem } from "./taskbar.tsx";
 
 /** The tray's short form of `left` seconds: `4:59` under ten minutes,
- *  `14 m` under two hours, `2 h` past that. */
+ *  `15 m` under two hours, `2 h` past that. Minutes round *up*: a hunt the
+ *  story calls fifteen minutes reads `15 m` when it starts, never `14 m`. */
 export function trayClockText(left: number): string {
-  const s = Math.max(0, Math.floor(left));
+  const s = Math.max(0, Math.ceil(left));
   if (s < 600) return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-  if (s < 7200) return `${Math.floor(s / 60)} m`;
+  if (s < 7200) return `${Math.ceil(s / 60)} m`;
   return `${Math.floor(s / 3600)} h`;
 }
 
 /** `left` seconds spelled out for the balloon: "14 min 59 s", "1 h 5 min", "40 s". */
 export function spokenLeft(left: number): string {
-  const s = Math.max(0, Math.floor(left));
+  const s = Math.max(0, Math.ceil(left));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const ss = s % 60;
@@ -43,9 +45,9 @@ export function countdownBalloonLine(item: CountdownItem, paused: boolean): stri
 }
 
 /** What the tray item shows for the soonest countdown (pure, tested). */
-export function trayClock(item: CountdownItem, paused: boolean): { icon: string; text: string; tone?: "alarm" | "dim"; title: string } {
+export function trayClock(item: CountdownItem, paused: boolean): { icon: "pause" | "hourglass"; text: string; tone?: "alarm" | "dim"; title: string } {
   const tone = paused ? ("dim" as const) : item.left < URGENT_S ? ("alarm" as const) : undefined;
-  return { icon: paused ? "⏸" : "⏳", text: trayClockText(item.left), ...(tone !== undefined ? { tone } : {}), title: countdownBalloonLine(item, paused) };
+  return { icon: paused ? "pause" : "hourglass", text: trayClockText(item.left), ...(tone !== undefined ? { tone } : {}), title: countdownBalloonLine(item, paused) };
 }
 
 function LiveTray({ countdowns, clock, paused, stamp }: { countdowns: readonly CountdownSummary[]; clock?: number; paused: boolean; stamp?: unknown }) {
@@ -57,9 +59,9 @@ function LiveTray({ countdowns, clock, paused, stamp }: { countdowns: readonly C
   const shown = trayClock(first, paused);
   return (
     <TraySlot>
-      <TrayItem icon={shown.icon} text={shown.text} title={shown.title} tone={shown.tone} onClick={() => setOpen((v) => !v)} />
+      <TrayItem icon={<Icon name={shown.icon} />} text={shown.text} title={shown.title} tone={shown.tone} onClick={() => setOpen((v) => !v)} />
       {open && (
-        <TrayBalloon title={paused ? "⏸ The clock is paused" : "⏳ The clock is running"} onClose={() => setOpen(false)} label="The story's clocks">
+        <TrayBalloon title={paused ? "The clock is paused" : "The clock is running"} onClose={() => setOpen(false)} label="The story's clocks">
           {items.map((i) => (
             <div key={i.label} className={`tray-balloon-line ${!paused && i.left < URGENT_S ? "urgent" : ""}`}>
               {countdownBalloonLine(i, false)}

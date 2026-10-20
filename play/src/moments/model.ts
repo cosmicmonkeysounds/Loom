@@ -11,7 +11,7 @@
 //! queue, the hold, the missed list and the wake replay are unit-tested
 //! (`test/moments-model.test.ts`) without React. `provider.tsx` drives it.
 
-import { lowerRung } from "../../../core/src/delivery.ts";
+import { lowerRung, noticeKey } from "../../../core/src/delivery.ts";
 import { retractedPinSeqs } from "../pins.ts";
 import { guestLineToBooth } from "../stream/badges.ts";
 import type { AlertLevel, ChatMessage, MomentClass, ObjectiveView } from "../types.ts";
@@ -297,6 +297,29 @@ export function momentExit(m: Pick<Moment, "pass" | "channel">, can: { room: boo
   return m.channel !== null && can.room ? "room" : null;
 }
 
+/** A live card waiting on the viewer, for "Take me there" (its glyph and room). */
+export interface LiveCard {
+  glyph: string;
+  channel: string;
+  seq: number;
+}
+
+/**
+ * The room a moment's "Take me there" opens (pure), or null for none:
+ * - a moment about a live card ("📝 Last chance: file your facts…" —
+ *   its leading glyph is the card's) goes to the room the newest such card
+ *   waits in, not the lobby the announcement was posted to;
+ * - else the moment's own room;
+ * - never the room already open on screen (there is nowhere to take you).
+ */
+export function exitRoomFor(m: Pick<Moment, "channel" | "text" | "kind">, ctx: { open: string | null; cards: readonly LiveCard[] }): string | null {
+  const glyph = m.kind === "card" ? "•" : noticeKey(m.text);
+  let card: LiveCard | undefined;
+  if (glyph !== "•") for (const c of ctx.cards) if (c.glyph === glyph && (card === undefined || c.seq > card.seq)) card = c;
+  const room = card?.channel ?? m.channel;
+  return room !== null && room === ctx.open ? null : room;
+}
+
 // --- the queue ----------------------------------------------------------------
 
 /** A moment in the queue, on its rung. */
@@ -345,6 +368,8 @@ export type MomentsAction =
   | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean }
   /** Close the summary list. */
   | { type: "closeSummary" }
+  /** "Dismiss all (n)" on the sticky bar: these leave the queue, read. */
+  | { type: "dismissMany"; keys: readonly string[] }
   /** While a hold lasts: modal moments queued too long move to missed. */
   | { type: "tick"; now: number; held: boolean }
   /** The story changed the level live: everything still queued moves to its new rung (a blue screen only exists at `bsod`). */
@@ -416,6 +441,26 @@ export function withoutEchoes(moments: readonly Moment[], already: readonly Mome
   return out;
 }
 
+/**
+ * How urgently a moment wants the screen, highest first: a `!` alert (an
+ * alarm never waits behind a stale notice), then anything else major (a
+ * card that asks you, a `reply !…`), then a loud objective (the NOW bar
+ * says it too), then the minor rest.
+ */
+export function priorityOf(m: Pick<Moment, "kind" | "severity">): number {
+  if (m.severity === "major" && m.kind === "alert") return 3;
+  if (m.kind === "objective") return 1;
+  return m.severity === "major" ? 2 : 0;
+}
+
+/** The queue in the order its surfaces take it: priority first, arrival within one (a stable sort). */
+function ordered(queue: readonly Queued[]): Queued[] {
+  return queue
+    .map((q, i) => ({ q, i, p: priorityOf(q.moment) }))
+    .sort((a, b) => b.p - a.p || a.i - b.i)
+    .map((x) => x.q);
+}
+
 function enqueue(queue: Queued[], moments: readonly Moment[], level: AlertLevel, role: Viewer["role"], now: number): Queued[] {
   const have = new Set(queue.map((q) => q.moment.key));
   const add = withoutEchoes(moments.filter((m) => !have.has(m.key)), queue.map((q) => q.moment)).map((moment) => ({ moment, level: rungFor(moment, level, role), queuedAt: now }));
@@ -423,7 +468,25 @@ function enqueue(queue: Queued[], moments: readonly Moment[], level: AlertLevel,
   // itself already shows over the busy surface.
   const twins = new Map([...queue, ...add].map((q) => [q.moment.key, q.level]));
   const kept = add.filter((q) => q.moment.peekOf === undefined || twins.get(q.moment.peekOf) === "sticky");
-  return kept.length === 0 ? queue : [...queue, ...kept];
+  return kept.length === 0 ? queue : ordered([...queue, ...kept]);
+}
+
+/**
+ * Stickies never pile up (design review #6): a new sticky folds every older
+ * one that is no more urgent into the missed list (the tray's 🔔 count,
+ * replayed on wake or a tap). A loud objective's sticky is the NOW bar's
+ * business and is never folded; an older, more urgent sticky (an alarm)
+ * stays up and the new one waits behind it. A folded sticky takes its peek
+ * with it; a peek itself is never missed.
+ */
+function foldStickies(queue: Queued[], fresh: ReadonlySet<string>): { queue: Queued[]; folded: Moment[] } {
+  const news = queue.filter((q) => q.level === "sticky" && fresh.has(q.moment.key) && q.moment.kind !== "objective");
+  if (news.length === 0) return { queue, folded: [] };
+  const top = Math.max(...news.map((q) => priorityOf(q.moment)));
+  const fold = queue.filter((q) => q.level === "sticky" && !fresh.has(q.moment.key) && q.moment.kind !== "objective" && priorityOf(q.moment) <= top);
+  if (fold.length === 0) return { queue, folded: [] };
+  const gone = new Set(fold.map((q) => q.moment.key));
+  return { queue: queue.filter((q) => !fold.includes(q) && !(q.moment.peekOf !== undefined && gone.has(q.moment.peekOf))), folded: fold.map((q) => q.moment) };
 }
 
 /** Replay `list` (already filtered for staleness): one by one up to `REPLAY_MAX`, else one summary. */
@@ -448,7 +511,10 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       if (fresh.length === 0) return { ...s, lastMajor };
       if (!a.visible) return { ...s, lastMajor, missed: [...s.missed, ...withoutEchoes(fresh.filter((m) => !isPeek(m)), s.missed)] };
       const next = { ...s, lastMajor };
-      if (!a.batch) return { ...next, queue: enqueue(s.queue, fresh, a.level, a.role, a.now) };
+      if (!a.batch) {
+        const { queue, folded } = foldStickies(enqueue(s.queue, fresh, a.level, a.role, a.now), new Set(fresh.map((m) => m.key)));
+        return { ...next, queue, missed: folded.length === 0 ? s.missed : [...s.missed, ...folded] };
+      }
       return replay(next, replayable(fresh.filter((m) => !isPeek(m)), lastMajor, a.phase), a.level, a.role, a.now);
     }
     case "wake": {
@@ -495,7 +561,14 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       const rung = summaryRung(a.level, a.role);
       const summary = s.summary !== null && s.summary.level !== rung ? { ...s.summary, level: rung } : s.summary;
       if (!changed && summary === s.summary) return s;
-      return { ...s, queue, summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+      return { ...s, queue: ordered(queue), summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+    }
+    case "dismissMany": {
+      // "Dismiss all (n)": read, every one — none of them is missed.
+      const keys = new Set(a.keys);
+      if (!s.queue.some((q) => keys.has(q.moment.key))) return s;
+      const queue = s.queue.filter((q) => !keys.has(q.moment.key));
+      return { ...s, queue, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "retract": {
       const gone = (m: Moment) => m.seq !== null && a.seqs.has(m.seq);
@@ -528,10 +601,14 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
 
 /** What is on screen now, per surface. `held` keeps the modal surfaces (dialog / bsod / the summary list) off; a sticky summary still shows. */
 export interface Surfaces {
+  /** A loud objective flashing the NOW title bar (a guest's frame only). */
+  now: Queued | null;
   balloon: Queued | null;
   sticky: Queued | null;
   /** How many stickies are waiting, the one on screen included. */
   stickyCount: number;
+  /** Their keys ("Dismiss all (n)"). */
+  stickyKeys: string[];
   modal: Queued | null;
   /** "n of m" for the modal on screen. */
   modalIndex: number;
@@ -539,17 +616,31 @@ export interface Surfaces {
   summary: Summary | null;
 }
 
-export function surfacesOf(s: MomentsState, held: boolean): Surfaces {
+/** Is this queued moment the NOW bar's (a guest's loud objective below the modal rungs)? */
+export function onNowBar(q: Queued, nowBar: boolean): boolean {
+  return nowBar && q.moment.kind === "objective" && (q.level === "balloon" || q.level === "sticky");
+}
+
+/**
+ * What each surface shows. `nowBar` (a guest's frame): a loud objective
+ * below the modal rungs flashes the NOW title bar (`now`) instead of
+ * stacking a second copy of it as a sticky or a balloon.
+ */
+export function surfacesOf(s: MomentsState, held: boolean, nowBar = false): Surfaces {
+  const now = s.queue.find((q) => onNowBar(q, nowBar)) ?? null;
+  const rest = nowBar ? s.queue.filter((q) => !onNowBar(q, nowBar)) : s.queue;
   // A peek shows only while the hold lasts (its twin's sticky takes over after).
-  const balloon = s.queue.find((q) => q.level === "balloon" && (held || !isPeek(q.moment))) ?? null;
-  const stickies = s.queue.filter((q) => q.level === "sticky");
+  const balloon = rest.find((q) => q.level === "balloon" && (held || !isPeek(q.moment))) ?? null;
+  const stickies = rest.filter((q) => q.level === "sticky");
   const modals = s.queue.filter((q) => isModal(q.level));
   const modalSummary = s.summary !== null && s.summary.level === "dialog";
   const modalOn = !held && !modalSummary;
   return {
+    now,
     balloon,
     sticky: stickies[0] ?? null,
     stickyCount: stickies.length,
+    stickyKeys: stickies.map((q) => q.moment.key),
     modal: modalOn ? (modals[0] ?? null) : null,
     modalIndex: s.burst + 1,
     modalTotal: s.burst + modals.length,

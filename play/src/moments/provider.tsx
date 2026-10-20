@@ -13,6 +13,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_ALERT_LEVEL } from "../../../core/src/delivery.ts";
 import { playChime, useVisible, vibrate, type Alert, type Alerts } from "../alerts.ts";
+import { Icon } from "../chrome/icons.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { usePlayHost } from "../host.ts";
 import { retractedPinSeqs } from "../pins.ts";
@@ -69,7 +70,16 @@ export interface MomentsInput {
    *  arrive — a readout about them inside the hold was shown on the card;
    *  one about anyone else is news. */
   cardGuest?: () => string | null;
+  /** The frame has a NOW title bar (the guest's): a loud objective below the
+   *  modal rungs flashes it (`useNowMoment`) instead of a sticky / balloon. */
+  nowBar?: boolean;
+  /** Where a moment's "Take me there" goes (`exitRoomFor`: a live card's
+   *  room, never the room already open); absent → the moment's own room. */
+  exitRoom?: (m: Moment) => string | null;
 }
+
+/** How long the NOW bar stays flashed open on a new objective (visible time). */
+export const NOW_FLASH_MS = 12_000;
 
 
 interface Engine {
@@ -89,6 +99,10 @@ interface Engine {
   closeSummary: () => void;
   dismissToast: () => void;
   hold: (delta: number) => void;
+  /** "Dismiss all (n)": every sticky waiting, read. */
+  dismissStickies: () => void;
+  /** Close a moment with no exit taken: `acted` = it was opened (never missed). */
+  close: (q: Queued, acted: boolean) => void;
 }
 
 const EngineContext = createContext<Engine | null>(null);
@@ -283,11 +297,11 @@ function useMomentsEngine(input: MomentsInput): Engine {
     rememberMoments(role, session, mem);
   }, [role, session, mem]);
 
-  const surfaces = surfacesOf(state, held);
+  const surfaces = surfacesOf(state, held, input.nowBar === true);
 
   // On-screen time per moment (a glance < 1 s is missed), and the chime the
   // first time a major moment reaches the screen.
-  const onScreen = [surfaces.balloon, surfaces.sticky, surfaces.modal].filter((q): q is Queued => q !== null);
+  const onScreen = [surfaces.now, surfaces.balloon, surfaces.sticky, surfaces.modal].filter((q): q is Queued => q !== null);
   const onScreenKeys = onScreen.map((q) => q.moment.key).join("|");
   useEffect(() => {
     if (!visible) return;
@@ -321,6 +335,17 @@ function useMomentsEngine(input: MomentsInput): Engine {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balloonKey, visible, dismiss]);
 
+  // The NOW bar's flash folds back after 12 s of visible time (read, unless
+  // it was a glance; a tap that opens the objective is the moment acted on).
+  const nowKey = surfaces.now?.moment.key ?? null;
+  useEffect(() => {
+    if (nowKey === null || !visible || surfaces.now === null) return;
+    const q = surfaces.now;
+    const t = window.setTimeout(() => dismiss(q), NOW_FLASH_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowKey, visible, dismiss]);
+
   // The glitch on every level change after the first view.
   const [glitch, setGlitch] = useState<number | null>(null);
   const prevLevel = useRef<AlertLevel | undefined>(undefined);
@@ -335,15 +360,21 @@ function useMomentsEngine(input: MomentsInput): Engine {
     return () => window.clearTimeout(t);
   }, [input.alertLevel]);
 
-  const { openRoom, openPass } = input;
-  const canGo = useCallback((m: Moment) => momentExit(m, { room: openRoom !== undefined, pass: openPass !== undefined }) !== null, [openRoom, openPass]);
+  const { openRoom, openPass, exitRoom } = input;
+  // The room a moment's exit opens: the app's resolver when it has one.
+  const roomOf = useCallback((m: Moment): string | null => (exitRoom !== undefined ? exitRoom(m) : m.channel), [exitRoom]);
+  const canGo = useCallback(
+    (m: Moment) => momentExit({ pass: m.pass, channel: m.pass === true ? m.channel : roomOf(m) }, { room: openRoom !== undefined, pass: openPass !== undefined }) !== null,
+    [openRoom, openPass, roomOf],
+  );
   const go = useCallback(
     (m: Moment) => {
-      const exit = momentExit(m, { room: openRoom !== undefined, pass: openPass !== undefined });
+      const room = m.pass === true ? m.channel : roomOf(m);
+      const exit = momentExit({ pass: m.pass, channel: room }, { room: openRoom !== undefined, pass: openPass !== undefined });
       if (exit === "pass") openPass?.();
-      else if (exit === "room" && m.channel !== null) openRoom?.(m.channel);
+      else if (exit === "room" && room !== null) openRoom?.(room);
     },
-    [openRoom, openPass],
+    [openRoom, openPass, roomOf],
   );
   const act = useCallback(
     (q: Queued) => {
@@ -355,6 +386,13 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const hold = useCallback((delta: number) => setHolds((h) => Math.max(0, h + delta)), []);
   const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null }), [level, role, input.phase]);
   const closeSummary = useCallback(() => dispatch({ type: "closeSummary" }), []);
+  const stickyKeys = surfaces.stickyKeys.join("\u0000");
+  const dismissStickies = useCallback(() => {
+    const keys = stickyKeys === "" ? [] : stickyKeys.split("\u0000");
+    for (const k of keys) mem.shownAt.delete(k);
+    dispatch({ type: "dismissMany", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stickyKeys]);
 
   // A loud raise (a booth's unsolicited readout) never toasts (useAlerts);
   // an older session's that did stands back for the moment saying it.
@@ -376,6 +414,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     closeSummary,
     dismissToast: alerts.dismiss,
     hold,
+    dismissStickies,
+    close,
   };
 }
 
@@ -414,6 +454,7 @@ export function MomentsLayer() {
           canGo={e.canGo(s.sticky.moment)}
           onGo={() => e.act(s.sticky!)}
           onDismiss={() => e.dismiss(s.sticky!)}
+          onDismissAll={e.dismissStickies}
         />
       )}
       {e.toast !== null && (
@@ -467,6 +508,26 @@ export function MomentsLayer() {
   );
 }
 
+/**
+ * The loud objective flashing the NOW title bar, if any (a guest's frame,
+ * `nowBar`): `seen(true)` when the guest opened it (acted on, never
+ * missed), `seen(false)` to fold it back.
+ */
+export function useNowMoment(): { moment: Moment | null; seen: (acted: boolean) => void } {
+  const e = useContext(EngineContext);
+  const q = e?.surfaces.now ?? null;
+  const close = e?.close;
+  return useMemo(
+    () => ({
+      moment: q?.moment ?? null,
+      seen: (acted: boolean) => {
+        if (q !== null) close?.(q, acted);
+      },
+    }),
+    [q, close],
+  );
+}
+
 export function useMoments(): { missed: number; replay: () => void; level: AlertLevel } {
   const e = useContext(EngineContext);
   return useMemo(() => ({ missed: e?.missed ?? 0, replay: e?.replay ?? (() => {}), level: e?.level ?? DEFAULT_ALERT_LEVEL }), [e?.missed, e?.replay, e?.level]);
@@ -477,7 +538,7 @@ export function MissedTray() {
   const { missed, replay } = useMoments();
   if (missed === 0) return null;
   const label = missed === 1 ? "1 missed moment — show it" : `${missed} missed moments — show them`;
-  return <TrayItem icon="🔔" text={String(missed)} title={label} tone="alarm" onClick={replay} />;
+  return <TrayItem icon={<Icon name="bell" />} text={String(missed)} title={label} tone="alarm" onClick={replay} />;
 }
 
 /** A busy surface (the scanner, a guest card, the host drawer, the

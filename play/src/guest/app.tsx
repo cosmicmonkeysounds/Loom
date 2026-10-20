@@ -10,7 +10,7 @@ import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
 import { CutsceneStage } from "../cutscene.tsx";
 import { useOfflineFor } from "../client.ts";
-import { HelpSheet } from "../help.tsx";
+import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
 import { usePlayHost } from "../host.ts";
 import { AvatarsContext, avatarLookup } from "../avatars.ts";
 import { useDocumentTitle, useLandingBrand } from "../session/shared.ts";
@@ -33,10 +33,12 @@ import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
-import { TitleBar, titleFallback } from "../chrome/title-bar.tsx";
+import { Icon } from "../chrome/icons.tsx";
+import { titleFallback } from "../chrome/title-bar.tsx";
 import { defectTargets } from "../session/guest.ts";
 import { PictureChanger } from "./register.tsx";
-import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, ObjectiveSheet, guestStartItems, guestTaskbarButtons, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, NowBar, ObjectiveSheet, guestStartItems, guestTaskbarButtons, liveCardsOf, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import { exitRoomFor } from "../moments/model.ts";
 
 /** The room a guest should land in when the app opens wide: where they
  *  stand, else the room asking for a decision, else the story's lobby. */
@@ -103,7 +105,7 @@ function FrameRoot({ className, frameRef, head, taskbar, children }: { className
  *  the head, then the taskbar unless the keyboard is open, then overlays. */
 export function FrameLayout({ className, frameRef, head, taskbar, typing, children }: { className: string; frameRef?: RefObject<HTMLDivElement | null>; head: ReactNode; taskbar: ReactNode; typing: boolean; children?: ReactNode }) {
   return (
-    <div className={className} ref={frameRef as RefObject<HTMLDivElement> | undefined}>
+    <div className={`${className}${typing ? " kbd" : ""}`} ref={frameRef as RefObject<HTMLDivElement> | undefined}>
       {head}
       {!typing && taskbar}
       {children}
@@ -150,6 +152,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // transfer's auto-approve), off the snapshot clock + the wall time since.
   const walletClock = useWalletClock(st?.clock, st?.wallet);
   const cut = useCutscene(st?.cutscene === true);
+  // The arrival room's name stays in the stage's caption until Continue
+  // (the story has moved the guest on, but they are still reading it).
+  const stageWhere = useRef<string | null>(null);
   const offline = useOfflineFor(s.connected);
   // The story's guided tour, once dealt and until answered — never over a
   // cutscene (it waits for the guest to step into the app).
@@ -214,7 +219,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   };
   const scanButton = (
     <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => setScanning(true)}>
-      📷
+      <Icon name="scan" size={20} />
     </button>
   );
   const widgets = {
@@ -256,6 +261,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     here: st.location !== null ? `loc:${st.location}` : null,
     // "Take me there" on the loud "show your pass" objective.
     openPass: () => setPassing(true),
+    // A loud objective flashes the NOW bar (below the modal rungs) — not on
+    // the cutscene's stage, which has no NOW bar: there it is the banner.
+    nowBar: !cut.showing,
+    // "Take me there": a live card's room for a moment about that card, and
+    // never the room already open (wide: the one beside the list).
+    exitRoom: (m) => exitRoomFor(m, { open: t.activeThreadRoot === null ? t.activeId : null, cards: liveCardsOf(t.list, s.widgetAnswers) }),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
@@ -264,14 +275,16 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
 
   if (cut.showing) {
     const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
-    const where = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
+    const here = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
+    if (!cut.over && here !== null) stageWhere.current = here;
+    const where = cut.over ? stageWhere.current : here;
     return framed(
       <div className="root cut-root">
         <MomentsLayer />
         <CutsceneStage
           messages={staged ?? []}
           title={st.title ?? s.me.title}
-          where={cut.over ? null : where}
+          where={where}
           decision={dock}
           widgets={widgets}
           over={cut.over}
@@ -409,7 +422,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       {st.wallet !== undefined ? (
         <BalanceTray view={st.wallet} frozen={frozen} onOpen={() => t.open(WALLET_ROOM)} />
       ) : st.score !== 0 ? (
-        <TrayItem icon="⭐" text={String(st.score)} title={`Score ${st.score}`} />
+        <TrayItem icon={<Icon name="star" />} text={String(st.score)} title={`Score ${st.score}`} />
       ) : null}
       <MissedTray />
     </>
@@ -419,7 +432,18 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       start={start}
       startHeader={<GuestStartHeader name={meName} faction={st.faction} where={where} />}
       brand={st.title ?? s.me.title ?? undefined}
-      buttons={guestTaskbarButtons({ now, pass: () => setPassing(true), scan: () => setScanning(true) })}
+      buttons={guestTaskbarButtons({
+        now,
+        // One tap from anywhere: the NOW card under the taskbar closes as the pass / scanner opens.
+        pass: () => {
+          setObjectivesOpen(false);
+          setPassing(true);
+        },
+        scan: () => {
+          setObjectivesOpen(false);
+          setScanning(true);
+        },
+      })}
       tray={tray}
       conn={s.connected ? "live" : offline ? "offline" : "reconnecting"}
     />
@@ -431,12 +455,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     <CardActionsProvider value={{ shareCodex: (entry, title) => setSharing({ entry, title }) }}>
     <WalletActionsProvider value={guestWalletActions(st.wallet ?? null, s.me.id, walletClock, restricted, s.wallet)}>
     <FrameRoot
-      className={`root app-frame ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}`}
+      // `guest-frame`: the taskbar stays on top of sheets, the Start menu's
+      // catch-all, dialogs and the blue screen (Pass and Scan are one tap
+      // from anywhere); not during the tour, which dims everything.
+      className={`root app-frame guest-frame ${captured ? "trapped-bg" : ""} ${restricted ? "restricted-bg" : ""}${tour ? " touring" : ""}`}
       frameRef={rootRef}
       taskbar={taskbar}
       head={
         <>
-          <TitleBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} />
+          <NowBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} paused={st.paused === true} />
           <MomentsLayer />
           <PinnedRail pins={pins} />
           <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />

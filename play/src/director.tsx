@@ -42,8 +42,6 @@ import {
   type WorldLine,
 } from "../../core/src/cue-sheet.ts";
 import { disarmOnLeave } from "./arm.ts";
-import { claimFromSearch } from "./claim.ts";
-import { landingLink } from "./guest-scan.tsx";
 import { ApiError, api } from "./client.ts";
 import { ConnDot, PickerSheet, Sheet, WakeLockToggle, type PickItem } from "./ui/primitives.tsx";
 import { HelpSheet } from "./help.tsx";
@@ -51,8 +49,12 @@ import { usePlayHost } from "./host.ts";
 import { eventGone } from "./lifecycle.ts";
 import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session/shared.ts";
 
-/** Where the phone keeps its director sign-in. */
-export const DIRECTOR_KEY = "loom.director";
+// Moved to the light modules the guest's first load uses (fix round); every
+// name still resolves here (frozen signatures, CONTRACTS §0).
+export { DIRECTOR_KEY, directorFromSearch, initialRole, roleForBrand, type AppRole } from "./app-role.ts";
+export { URGENT_S, formatLeft, storyNow } from "./clock.ts";
+import { DIRECTOR_KEY } from "./app-role.ts";
+import { URGENT_S, formatLeft, storyNow } from "./clock.ts";
 
 export interface DirectorAuth {
   token: string;
@@ -90,41 +92,6 @@ export interface DirectorView {
   /** Up to 3 `watch:` values — global ones only, never a secret one (the
    *  server's lean view never sends those). */
   watch?: Array<{ label: string; value: string }>;
-}
-
-/** `?role=director` opens this page. */
-export function directorFromSearch(search: string): boolean {
-  try {
-    return new URLSearchParams(search).get("role") === "director";
-  } catch {
-    return false;
-  }
-}
-
-export type AppRole = "none" | "guest" | "prime" | "director";
-
-/** The role a fresh page opens on: `?role=director` whatever the phone
- *  holds, else the stored session (guest, performer, then director), else
- *  a guest's link: an invitation's `?claim=` (the guest join) or a wall
- *  QR's `?unlock=` / `?checkin=` (the guest app's wrong-browser landing). */
-export function initialRole(search: string, stored: (key: string) => string | null): AppRole {
-  if (directorFromSearch(search)) return "director";
-  if (stored("loom.guest")) return "guest";
-  if (stored("loom.prime")) return "prime";
-  if (stored(DIRECTOR_KEY)) return "director";
-  if (claimFromSearch(search) !== null || landingLink(search) !== null) return "guest";
-  return "none";
-}
-
-/** A `?code=` link opens what its code is for — the mod code the cue sheet,
- *  a performer code the performer sign-in (the cast card's QR) — but only
- *  from the chooser, never over a signed-in guest or performer. A guest
- *  code stays on the chooser. */
-export function roleForBrand(role: AppRole, brandRole: string | null | undefined): AppRole {
-  if (role !== "none") return role;
-  if (brandRole === "mod") return "director";
-  if (brandRole === "prime") return "prime";
-  return role;
 }
 
 /** The device label the journal records (the server keeps 60 chars). */
@@ -227,11 +194,6 @@ export function clockRuns(view: Pick<DirectorView, "paused" | "phase"> | null): 
  *  poll landed — or just the `clock` while it is stopped (`runs` false), so a
  *  paused countdown holds still between polls, and through a failing poll.
  *  Null when the view carries no clock (an old server). */
-export function storyNow(clock: number | undefined, receivedAt: number, now: number, runs = true): number | null {
-  if (clock === undefined || !Number.isFinite(clock)) return null;
-  return runs ? clock + Math.max(0, now - receivedAt) : clock;
-}
-
 /** Before the doors: the sheet is the story's, but nothing fires yet. */
 export const DOORS_CLOSED = "The doors aren't open yet — the cues fire once they are.";
 
@@ -244,18 +206,6 @@ export function noCuesText(view: Pick<DirectorView, "doorsClosed" | "phase"> | n
 
 /** The strip's word for a stopped clock. */
 export const STOPPED = "⏸ clock stopped";
-
-/** Seconds as `37:52`, or `1:02:03` past the hour. */
-export function formatLeft(sec: number): string {
-  const s = Math.max(0, Math.floor(sec));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = String(s % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
-}
-
-/** Under this many seconds a countdown reads red. */
-export const URGENT_S = 60;
 
 /** The countdown due soonest at story time `nowMs`, or null. */
 export function soonestCountdown(countdowns: DirectorView["countdowns"], nowMs: number | null): { label: string; left: number } | null {

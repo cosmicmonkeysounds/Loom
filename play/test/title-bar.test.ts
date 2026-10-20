@@ -5,8 +5,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { TitleBar, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
-import { whereLine } from "../src/guest/frame.tsx";
+import { TitleBar, flashLine, moreObjectives, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
+import { nowFlashOf, whereLine } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
 const o = (id: string, title: string): ObjectiveView => ({ id, title, brief: "", checklist: [], buttons: [], act: null });
@@ -42,7 +42,7 @@ describe("the NOW title bar", () => {
 
   it("says how many more objectives wait behind the first", () => {
     const out = renderToStaticMarkup(createElement(TitleBar, { objectives: [o("a", "A"), o("b", "B"), o("c", "C")], fallback: "", onOpen: () => {}, sub: "📍 Hall" }));
-    expect(out).toContain("📍 Hall · +2 more");
+    expect(out).toContain("📍 Hall · +2 objectives");
   });
 
   it("the sub-line says where you stand, or that you can't move", () => {
@@ -63,5 +63,31 @@ describe("the NOW title bar", () => {
   it("the sub-line is white on the alarm and restricted captions (4.5:1 at both gradient ends)", () => {
     const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8").replace(/\s+/gu, " ");
     expect(css).toContain(".title-bar.alarm .title-bar-sub, .title-bar.restricted .title-bar-sub { color: var(--title-ink); }");
+  });
+});
+
+describe("the NOW bar's states (fguest)", () => {
+  it("a paused show greys the caption and says (Paused), the Win95 way", () => {
+    expect(titleBarText([o("a", "Hunt")], "x", undefined, true).title).toBe("▣ NOW: Hunt (Paused) ›");
+    expect(titleBarText([], "Lobby", undefined, true).title).toBe("Lobby (Paused)");
+    const html = renderToStaticMarkup(createElement(TitleBar, { objectives: [o("a", "Hunt")], fallback: "", onOpen: () => {}, paused: true }));
+    expect(html).toContain('class="title-bar  paused"');
+  });
+
+  it("a loud objective flashes it open with its brief instead of a banner", () => {
+    const flash = { id: "a", title: "Show your pass", brief: "Hold it up to an Antivirus." };
+    const html = renderToStaticMarkup(createElement(TitleBar, { objectives: [o("a", "Show your pass")], fallback: "", onOpen: () => {}, sub: "📍 Hall", flash }));
+    expect(html).toContain(" flash");
+    expect(html).toContain('<span class="title-bar-news" role="status">Hold it up to an Antivirus.</span>');
+    expect(html).not.toContain("📍 Hall"); // the brief takes the sub-line's place while it flashes
+    expect(flashLine(flash, o("b", "Other"))).toBe("Show your pass — Hold it up to an Antivirus.");
+    expect(nowFlashOf({ key: "o:a", text: "Show your pass\nHold it up." })).toEqual({ id: "a", title: "Show your pass", brief: "Hold it up." });
+    expect(nowFlashOf({ key: "m:4", text: "x" })).toBeNull();
+    expect(moreObjectives(1)).toBe("+1 objective");
+  });
+
+  it("the title wraps to two lines before any ellipsis", () => {
+    const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.title-bar-title \{[^}]*-webkit-line-clamp: 2/u);
   });
 });

@@ -7,7 +7,7 @@ import { usePlayHost } from "../host.ts";
 import type { ChatMessage } from "../types.ts";
 import { supersededCards } from "../widgets.tsx";
 import { MessageBubble, MessageGroup, type ModerateHook, type WidgetHook } from "./bubble.tsx";
-import { noticeSummary, streamItems } from "./notices.ts";
+import { noticeNoun, noticeSummary, streamItems } from "./notices.ts";
 import { rootsOf } from "./runs.ts";
 
 /** How close to the bottom (px) still counts as "reading the newest line". */
@@ -117,15 +117,15 @@ export function useStickToBottom<T extends HTMLElement>(): (el: T | null) => voi
   }, []);
 }
 
-/** A run of per-person notices about other people, folded into one line
- *  ("✅ 12 · 🤷 3"); tap to read them. */
+/** A run of per-person notices about other people, folded into one dim
+ *  line ("✅ 12 · 🤷 3 — 15 updates about others"); tap to read them. */
 function NoticeRun({ messages, moderate }: { messages: ChatMessage[]; moderate?: ModerateHook }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`msg stream-notices ${open ? "open" : ""}`}>
       <button type="button" className="stream-notices-line" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="stream-notices-sum">{noticeSummary(messages)}</span>
-        <span className="stream-notices-hint">{open ? "hide" : `${messages.length} updates`}</span>
+        <span className="stream-notices-hint">{open ? "hide" : noticeNoun(messages)}</span>
         <span className="stream-settled-caret" aria-hidden>
           {open ? "▾" : "▸"}
         </span>
@@ -168,7 +168,9 @@ export function MessageList({
   // thread panel. Consecutive same-sender lines coalesce into one banner;
   // barks go to the ticker; a run of notices about other people folds.
   const roots = useMemo(() => rootsOf(messages), [messages]);
-  const items = useMemo(() => streamItems(roots), [roots]);
+  // A notice naming the viewer stays its own row (never folded with others').
+  const meName = widgets?.viewer?.name ?? null;
+  const items = useMemo(() => streamItems(roots, meName), [roots, meName]);
   const superseded = useMemo(() => supersededCards(roots), [roots]);
   return (
     // Tap anywhere on the stream to finish what is still typing.

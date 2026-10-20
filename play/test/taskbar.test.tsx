@@ -29,11 +29,16 @@ const objective = (buttons: string[]): ObjectiveView => ({ id: "o", title: "Get 
 describe("the guest taskbar", () => {
   it("Pass is the primary button, Scan next to it; both carry their tour anchors", () => {
     const buttons = guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} });
-    expect(buttons.map((b) => [b.id, b.icon, b.primary === true, b.tour])).toEqual([
-      ["pass", "🎟", true, "pass"],
-      ["scan", "📷", false, "scan"],
+    expect(buttons.map((b) => [b.id, b.primary === true, b.labelled === true, b.tour])).toEqual([
+      ["pass", true, false, "pass"],
+      ["scan", false, true, "scan"],
     ]);
     const out = html(createElement(Taskbar, { start: [], buttons }));
+    // Drawn icons, never emoji, in the chrome.
+    expect(out).toContain("ico-start");
+    expect(out).toContain("ico-pass");
+    expect(out).toContain("ico-scan");
+    expect(out).not.toMatch(/🎟|📷|⊞/u);
     expect(out).toContain('data-tour="start"');
     expect(out).toContain('aria-label="Pass"');
     expect(out).toContain('aria-label="Scan"');
@@ -43,9 +48,9 @@ describe("the guest taskbar", () => {
   it("the objective's buttons light the matching taskbar button", () => {
     const lit = guestTaskbarButtons({ now: objective(["scan", "greet"]), pass: () => {}, scan: () => {} });
     expect(lit.map((b) => b.active)).toEqual([false, true]);
-    expect(taskbarButtonClass(lit[1]!)).toBe("w95-btn taskbar-btn attn");
+    expect(taskbarButtonClass(lit[1]!)).toBe("w95-btn taskbar-btn labelled attn");
     expect(taskbarButtonClass({ primary: true })).toBe("w95-btn taskbar-btn primary");
-    expect(html(createElement(Taskbar, { start: [], buttons: lit }))).toContain('class="w95-btn taskbar-btn attn"');
+    expect(html(createElement(Taskbar, { start: [], buttons: lit }))).toContain('class="w95-btn taskbar-btn labelled attn"');
   });
 
   it("the tray's leading edge is the live dot, never an item", () => {
@@ -56,11 +61,11 @@ describe("the guest taskbar", () => {
     expect(chrome).toMatch(/\.taskbar-tray\.live::before \{ background: var\(--live\); \}/u);
   });
 
-  it("at 360 px: icon-only buttons except the primary, at most 3 tray items", () => {
+  it("at 360 px: icon-only buttons except the primary and a labelled one (the guest's Scan), at most 3 tray items", () => {
     const block = narrow(399);
-    expect(block).toContain(".taskbar-btn:not(.primary):not(.taskbar-start) .taskbar-label { display: none; }");
+    expect(block).toContain(".taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }");
     expect(block).toContain(".taskbar-tray > :nth-child(n+4) { display: none; }");
-    expect(narrow(379)).toContain(".taskbar-start .taskbar-label { display: none; }");
+    expect(block).toContain(".taskbar-start .taskbar-label { display: none; }");
     // The label stays for screen readers at any width.
     const out = html(createElement(Taskbar, { start: [], buttons: guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} }) }));
     expect(out).toContain('aria-label="Scan"');
@@ -96,8 +101,10 @@ describe("the guest taskbar", () => {
     expect(frame(false).indexOf("title-bar")).toBeLessThan(frame(false).indexOf("taskbar"));
     expect(frame(true)).not.toContain('aria-label="Taskbar"');
     expect(frame(true)).toContain('class="title-bar"');
-    // What decides `typing`: a focused composer, until the keyboard is seen to close.
-    const typed = keyboardStep(KEYBOARD_REST, { kind: "focus", text: isTextEntry({ tagName: "TEXTAREA" } as Element), height: 800 });
+    // What decides `typing`: a focused composer once the viewport shows the
+    // keyboard, until the keyboard is seen to close.
+    const focused = keyboardStep(KEYBOARD_REST, { kind: "focus", text: isTextEntry({ tagName: "TEXTAREA" } as Element), height: 800 });
+    const typed = keyboardStep(focused, { kind: "resize", height: 480 });
     expect(keyboardIsOpen(typed)).toBe(true);
     expect(keyboardIsOpen(keyboardStep(typed, { kind: "focus", text: false, height: 800 }))).toBe(false);
   });
@@ -105,12 +112,32 @@ describe("the guest taskbar", () => {
   it("the guest frame is [title bar][pins][shell][taskbar] on every screen", () => {
     expect(app).toMatch(/className=\{`root app-frame/u);
     const head = app.slice(app.indexOf("head={"), app.indexOf("</FrameRoot>"));
-    const order = ["<MomentsLayer />", "<TitleBar", "<PinnedRail", "<Shell"].map((tag) => head.indexOf(tag));
+    const order = ["<MomentsLayer />", "<NowBar", "<PinnedRail", "<Shell"].map((tag) => head.indexOf(tag));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The old identity card, the countdown strip and the alerts bar are gone from the frame.
     expect(app).not.toContain("<IdentityCard");
     expect(app).not.toContain("<CountdownStrip");
     expect(app).not.toContain("<PushCard");
+  });
+});
+
+describe("Pass and Scan are one tap from every screen (fguest)", () => {
+  const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
+  const themes = readFileSync(new URL("../src/css/themes.css", import.meta.url), "utf8");
+  const z = (name: string) => Number(new RegExp(`--z-${name}: (\\d+)`, "u").exec(themes)![1]);
+  it("the guest's taskbar sits above sheets, the Start menu's catch-all, dialogs and the blue screen, under the pass it opens and a takeover", () => {
+    const tb = Number(/\.guest-frame > \.taskbar \{ z-index: (\d+); \}/u.exec(css)![1]);
+    expect(tb).toBeGreaterThan(z("moment"));
+    expect(tb).toBeGreaterThan(z("sheet"));
+    expect(tb).toBeLessThan(z("pass"));
+    expect(tb).toBeLessThan(z("takeover"));
+    expect(css).toContain(".guest-frame.touring > .taskbar { z-index: auto; }");
+    expect(css).toContain(".guest-frame .start-menu-away { z-index: -1; }");
+  });
+
+  it("a taskbar button with the Start menu open closes it and does its job in the same tap", () => {
+    const src = readFileSync(new URL("../src/chrome/taskbar.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/if \(open\) close\(\);\s*b\.onClick\(\);/u);
   });
 });

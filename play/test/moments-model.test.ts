@@ -350,7 +350,8 @@ describe("missed moments", () => {
   it("a live drain that posts several moments at once just queues them (no staleness, no summary)", () => {
     // A rule posts a major card and a `!` pin into the same room in one drain.
     const both = [moment(1, { kind: "card", channel: "dm:Clippy" }), moment(2, { channel: "dm:Clippy", text: "Pinned." })];
-    expect(run([arrive(both)]).queue.map((q) => q.moment.seq)).toEqual([1, 2]);
+    // …the `!` pin (an alert) first: an alarm never waits behind anything.
+    expect(run([arrive(both)]).queue.map((q) => q.moment.seq)).toEqual([2, 1]);
     const four = [1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` }));
     const live = run([arrive(four)]);
     expect([live.queue.length, live.summary]).toEqual([4, null]);
@@ -574,10 +575,12 @@ describe("the surfaces' markup", () => {
   });
 
   it("a sticky: major is an alert, counts its queue", () => {
-    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1), "sticky"), count: 3, canGo: true, onGo: noop, onDismiss: noop }));
-    expect(html).toContain('class="moments-sticky major"');
+    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1), "sticky"), count: 3, canGo: true, onGo: noop, onDismiss: noop, onDismissAll: noop }));
+    expect(html).toContain('class="moments-sticky major alarm"');
     expect(html).toContain('role="alert"');
-    expect(html).toContain("1 of 3");
+    expect(html).toContain("Dismiss all (3)");
+    expect(html).not.toContain("moments-sticky-caption"); // no caption over the words
+    expect(html).toContain('<strong class="moments-sticky-lead">Clippy: </strong>moment 1');
   });
 
   it("a dialog: a Win95 message box with OK and n of m; the pass objective offers the pass", () => {
