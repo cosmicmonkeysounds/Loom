@@ -109,6 +109,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const processedMax = useRef(-1);
   const beats = useRef(new Map<string, number>());
   const lastHoldEnd = useRef(Number.NEGATIVE_INFINITY);
+  /** The history count last processed: a new one means the messages are a reconnect's backlog. */
+  const historiesSeen = useRef(0);
   const live = useRef({ visible, level, held, phase: input.phase ?? null });
   live.current = { visible, level, held, phase: input.phase ?? null };
   const viewer: Viewer = { role, me: input.me, here: input.here ?? null, filter: input.filter };
@@ -151,6 +153,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
       processed.current.add(s);
       if (s > processedMax.current) processedMax.current = s;
     }
+    // A reconnect's backlog (a new history since the last pass) is replayed
+    // like a wake: staleness and compression. A live stream just queues,
+    // however many moments one drain posted.
+    const histories = alerts.histories?.() ?? 0;
+    const backlog = histories !== historiesSeen.current;
+    historiesSeen.current = histories;
     if (seen.length === 0) return;
     const now2 = Date.now();
     const readouts: Moment[] = [];
@@ -161,13 +169,13 @@ function useMomentsEngine(input: MomentsInput): Engine {
       else if (m.severity === "minor") readouts.push(m);
       else rest.push(m);
     }
-    arrive(rest, moments.length > 1);
+    arrive(rest, backlog);
     if (readouts.length > 0) {
       window.setTimeout(() => {
         const toasts = alerts.recent().filter((t) => t.quiet && Date.now() - t.at < ECHO_MS + READOUT_GRACE_MS);
         arrive(
           readouts.filter((m) => !toasts.some((t) => sameWords(t.text, m.text))),
-          readouts.length > 1,
+          backlog,
         );
       }, READOUT_GRACE_MS);
     }

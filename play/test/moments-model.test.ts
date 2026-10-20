@@ -320,6 +320,15 @@ describe("missed moments", () => {
     expect(momentsReducer(d, { type: "relevel", level: "balloon", role: "guest" }).summary?.level).toBe("sticky");
   });
 
+  it("a live drain that posts several moments at once just queues them (no staleness, no summary)", () => {
+    // A rule posts a major card and a `!` pin into the same room in one drain.
+    const both = [moment(1, { kind: "card", channel: "dm:Clippy" }), moment(2, { channel: "dm:Clippy", text: "Pinned." })];
+    expect(run([arrive(both)]).queue.map((q) => q.moment.seq)).toEqual([1, 2]);
+    const four = [1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` }));
+    const live = run([arrive(four)]);
+    expect([live.queue.length, live.summary]).toEqual([4, null]);
+  });
+
   it("a history batch (a reconnect) gets the same treatment: staleness, and > 3 compress", () => {
     const s = run([arrive([1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` })), { batch: true })]);
     expect(s.summary?.moments).toHaveLength(4);

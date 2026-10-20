@@ -250,6 +250,9 @@ export interface Alerts {
   epoch: number;
   /** The last few toasts, newest last (the moments layer drops a readout a quiet toast already said). */
   recent: () => readonly RecentToast[];
+  /** How many histories this session has taken (`onHistory`): messages that land with a new one are a
+   *  reconnect's backlog (staleness + compression apply), never a live burst. Absent → treated as 0. */
+  histories?: () => number;
 }
 
 /**
@@ -276,6 +279,7 @@ export function useAlerts(opts: {
   const owner = useRef<string | null>(null);
   const toastSeq = useRef(-1);
   const recentRef = useRef<RecentToast[]>([]);
+  const historyCount = useRef(0);
   const [alert, setAlert] = useState<Alert | null>(null);
   const [epoch, setEpoch] = useState(0);
   const visible = useVisible();
@@ -319,6 +323,7 @@ export function useAlerts(opts: {
   }, []);
   const onHistory = useCallback(
     (list: readonly ChatMessage[]) => {
+      historyCount.current += 1;
       const max = maxSeqOf(list);
       const rebased = !baseline.current && (rebasing.current || max < mark.current);
       const m = markAfterHistory(list, mark.current, rebasing.current);
@@ -346,5 +351,6 @@ export function useAlerts(opts: {
     [persist],
   );
   const recent = useCallback(() => recentRef.current, []);
-  return { alert, dismiss, raise, onHistory, rebase, mark: getMark, settle, epoch, recent };
+  const histories = useCallback(() => historyCount.current, []);
+  return { alert, dismiss, raise, onHistory, rebase, mark: getMark, settle, epoch, recent, histories };
 }
