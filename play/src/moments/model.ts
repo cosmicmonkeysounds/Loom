@@ -39,6 +39,13 @@ export interface Moment {
   beat?: string | null;
   /** A `!` alarm (`ChatMessage.alert`), whatever made it — a cue, a pin, a `reply !…`: the red stop icon. */
   alarm?: boolean;
+  /**
+   * Parked by a level rise (the rest of a backlog that climbed): it waits in
+   * the missed list for the tray's 🔔, and nothing else brings it back — not
+   * a wake, a hold ending or a reload (it counts as settled), so a phone that
+   * locks or reloads never steps through the backlog the rise just spared.
+   */
+  parked?: boolean;
   /** The story clock (ms) when it arrived. */
   at: number;
   /** `view.night.phase` when it arrived (a phase change makes a missed moment stale). */
@@ -413,8 +420,8 @@ export const EMPTY_MOMENTS: MomentsState = { queue: [], missed: [], summary: nul
 export type MomentsAction =
   /** Moments that just arrived. `batch` = a history replay (several at once): staleness + compression apply. */
   | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean }
-  /** The page became visible (or the last hold released): replay the missed list. */
-  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null }
+  /** The page became visible (or the last hold released): replay the missed list. `manual` (the tray's 🔔) replays the parked moments too. */
+  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; manual?: boolean }
   /** A moment left the screen. A plain close after `onScreenMs` < `GLANCE_MS` → missed; `acted` (the user took its exit, "Take me there") never is. */
   | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean }
   /** Close the summary list. */
@@ -427,7 +434,8 @@ export type MomentsAction =
    * The story changed the level live: everything still queued moves to its
    * new rung (a blue screen only exists at `bsod`). On a rise, of the
    * moments that climb onto a modal rung only the newest still-relevant one
-   * shows; the rest fold into the missed list ("You missed n moments"), and
+   * shows; the rest fold into the missed list ("You missed n moments",
+   * parked — the tray's 🔔 only), and
    * any whose phase has passed (`phase`, when given) are dropped.
    */
   | { type: "relevel"; level: AlertLevel; role: Viewer["role"]; phase?: string | null }
@@ -558,6 +566,13 @@ function replay(s: MomentsState, all: Moment[], level: AlertLevel, role: Viewer[
   return { ...s, queue: enqueue(s.queue, list, level, role, now) };
 }
 
+/** A parked moment back in play (replayed from the tray): an ordinary one again. */
+function unpark(m: Moment): Moment {
+  if (m.parked !== true) return m;
+  const { parked: _parked, ...rest } = m;
+  return rest;
+}
+
 /** The newest of some queued moments: story time, then seq (a loud objective has none). */
 function newestOf(list: readonly Queued[]): Queued | null {
   let best: Queued | null = null;
@@ -584,9 +599,13 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       return replay(next, replayable(fresh.filter((m) => !isPeek(m)), lastMajor, a.phase), a.level, a.role, a.now);
     }
     case "wake": {
-      if (s.missed.length === 0) return s;
-      const list = replayable(s.missed, s.lastMajor, a.phase);
-      return replay({ ...s, missed: [] }, list, a.level, a.role, a.now);
+      // A wake on its own replays what was missed; the moments a level rise
+      // parked wait for the guest to ask (the tray's 🔔, `manual`).
+      const due = a.manual === true ? s.missed : s.missed.filter((m) => m.parked !== true);
+      if (due.length === 0) return s;
+      const kept = a.manual === true ? [] : s.missed.filter((m) => m.parked === true);
+      const list = replayable(due, s.lastMajor, a.phase).map(unpark);
+      return replay({ ...s, missed: kept }, list, a.level, a.role, a.now);
     }
     case "dismiss": {
       const hit = s.queue.find((q) => q.moment.key === a.key);
@@ -633,11 +652,12 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       if (risen.length > 0) {
         // An hour of unread stickies never becomes a queue of modals, oldest
         // first: what is no longer news goes, the newest still-relevant one
-        // shows on the new rung, the rest wait in the missed list.
+        // shows on the new rung, the rest wait in the missed list, parked:
+        // only the tray's 🔔 brings them back.
         const live = a.phase === undefined ? risen : risen.filter((q) => !isStale(q.moment, s.lastMajor, a.phase ?? null));
         const newest = newestOf(live);
         if (newest !== null) queue.push(newest);
-        const rest = live.filter((q) => q !== newest).map((q) => q.moment);
+        const rest = live.filter((q) => q !== newest).map((q): Moment => ({ ...q.moment, parked: true }));
         if (rest.length > 0) missed = [...s.missed, ...rest];
       }
       const rung = summaryRung(a.level, a.role);
@@ -752,7 +772,8 @@ export function settledMark(s: MomentsState, processedMax: number, waiting: Iter
   let min = Number.POSITIVE_INFINITY;
   for (const seq of waiting) if (seq < min) min = seq;
   for (const q of s.queue) if (q.moment.seq !== null && q.moment.seq < min) min = q.moment.seq;
-  for (const m of s.missed) if (m.seq !== null && m.seq < min) min = m.seq;
+  // A parked moment is settled: a reload never replays it.
+  for (const m of s.missed) if (m.seq !== null && m.parked !== true && m.seq < min) min = m.seq;
   for (const m of s.summary?.moments ?? []) if (m.seq !== null && m.seq < min) min = m.seq;
   return Number.isFinite(min) ? Math.min(processedMax, min - 1) : processedMax;
 }
@@ -771,7 +792,7 @@ export const DONE_MAX = 2_000;
 export function doneAbove(s: MomentsState, processed: Iterable<number>, mark: number, also: Iterable<number> = []): number[] {
   const waiting = new Set<number>(also);
   for (const q of s.queue) if (q.moment.seq !== null) waiting.add(q.moment.seq);
-  for (const m of s.missed) if (m.seq !== null) waiting.add(m.seq);
+  for (const m of s.missed) if (m.seq !== null && m.parked !== true) waiting.add(m.seq);
   for (const m of s.summary?.moments ?? []) if (m.seq !== null) waiting.add(m.seq);
   const out: number[] = [];
   for (const seq of processed) if (seq > mark && !waiting.has(seq)) out.push(seq);

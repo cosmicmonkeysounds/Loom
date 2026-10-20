@@ -213,6 +213,31 @@ describe("the queue", () => {
     expect([...s.queue.map((q) => q.moment.phase), ...s.missed.map((m) => m.phase)].every((p) => p === "ceremony")).toBe(true);
   });
 
+  it("what a rise parks waits for the tray's 🔔: a wake or a reload never steps through it", () => {
+    let s = run([arrive([1, 2, 3].map((n) => moment(n, { channel: `dm:${n}`, phase: "hunt", at: n * MIN })), { level: "sticky" })]);
+    s = momentsReducer(s, { type: "relevel", level: "bsod", role: "guest", phase: "hunt" });
+    expect(surfacesOf(s, false).modal?.moment.seq).toBe(3);
+    expect(s.missed.map((m) => [m.seq, m.parked])).toEqual([
+      [1, true],
+      [2, true],
+    ]);
+    // The newest read; the phone locks and wakes: no blue screen comes back on its own.
+    s = momentsReducer(s, { type: "dismiss", key: "m:3", onScreenMs: 2_000 });
+    s = momentsReducer(s, { type: "wake", level: "bsod", role: "guest", now: 0, phase: "hunt" });
+    expect(surfacesOf(s, false).modal).toBeNull();
+    expect(s.missed).toHaveLength(2);
+    // A reload: they count as settled (the mark passes them, nothing above it waits).
+    expect(settledMark(s, 3)).toBe(3);
+    expect(doneAbove(s, [1, 2, 3], 0)).toEqual([1, 2, 3]);
+    // The tray's 🔔 replays them, as ordinary moments again.
+    s = momentsReducer(s, { type: "wake", level: "bsod", role: "guest", now: 0, phase: "hunt", manual: true });
+    expect(s.missed).toEqual([]);
+    expect(s.queue.map((q) => [q.moment.seq, q.moment.parked])).toEqual([
+      [1, undefined],
+      [2, undefined],
+    ]);
+  });
+
   it("a rise keeps whatever does not climb: a minor sticky stays a sticky", () => {
     let s = run([arrive([moment(1, { severity: "minor", kind: "readout", channel: "dm:A" }), moment(2, { channel: "dm:B" })], { level: "sticky" })]);
     s = momentsReducer(s, { type: "relevel", level: "dialog", role: "guest", phase: "hunt" });

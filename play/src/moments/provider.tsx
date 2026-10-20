@@ -390,7 +390,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
     [go, close],
   );
   const hold = useCallback((delta: number) => setHolds((h) => Math.max(0, h + delta)), []);
-  const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null }), [level, role, input.phase]);
+  // The tray's 🔔: everything missed, the moments a level rise parked too.
+  const replay = useCallback(() => dispatch({ type: "wake", level, role, now: Date.now(), phase: input.phase ?? null, manual: true }), [level, role, input.phase]);
   const closeSummary = useCallback(() => dispatch({ type: "closeSummary" }), []);
   const stickyKeys = surfaces.stickyKeys.join("\u0000");
   const dismissStickies = useCallback(() => {
