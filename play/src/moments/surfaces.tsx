@@ -158,7 +158,26 @@ export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }:
 // --- dialog -------------------------------------------------------------------
 
 /** The modal message box: caption, icon, text, OK (focused), "1 of 3". */
-export function MomentDialog({ q, index, total, canGo, onGo, onDismiss }: { q: Queued; index: number; total: number; canGo: boolean; onGo: () => void; onDismiss: () => void }) {
+export function MomentDialog({
+  q,
+  index,
+  total,
+  canGo,
+  onGo,
+  onDismiss,
+  waiting,
+  onDismissAll,
+}: {
+  q: Queued;
+  index: number;
+  total: number;
+  canGo: boolean;
+  onGo: () => void;
+  onDismiss: () => void;
+  /** How many modals wait, this one included ("Dismiss all (n)", shown with `onDismissAll`). */
+  waiting?: number;
+  onDismissAll?: () => void;
+}) {
   const m = q.moment;
   const ok = useRef<HTMLButtonElement>(null);
   const live = useDeadTime();
@@ -188,6 +207,11 @@ export function MomentDialog({ q, index, total, canGo, onGo, onDismiss }: { q: Q
             <span />
           )}
           <span className="moments-dialog-buttons">
+            {onDismissAll !== undefined && waiting !== undefined && (
+              <button type="button" className="w95-btn moments-dismiss-all" onClick={guard(onDismissAll)}>
+                Dismiss all ({waiting})
+              </button>
+            )}
             {canGo && (
               <button type="button" className="w95-btn" onClick={guard(onGo)}>
                 {goLabel(m)}
@@ -214,7 +238,28 @@ function useWin95(): boolean {
 /** The blue screen: the whole phone, white on blue, "Press any key to
  *  continue". Under `plain` the same full-screen frame with neutral copy:
  *  no fault address, no "Press any key", just "Tap to continue". */
-export function BlueScreen({ q, index, total, canGo, onGo, onDismiss, win95: forced }: { q: Queued; index: number; total: number; canGo: boolean; onGo: () => void; onDismiss: () => void; win95?: boolean }) {
+export function BlueScreen({
+  q,
+  index,
+  total,
+  canGo,
+  onGo,
+  onDismiss,
+  win95: forced,
+  waiting,
+  onDismissAll,
+}: {
+  q: Queued;
+  index: number;
+  total: number;
+  canGo: boolean;
+  onGo: () => void;
+  onDismiss: () => void;
+  win95?: boolean;
+  /** How many modals wait, this one included ("Dismiss all (n)", shown with `onDismissAll`). */
+  waiting?: number;
+  onDismissAll?: () => void;
+}) {
   const m = q.moment;
   const skinned = useWin95();
   const win95 = forced ?? skinned;
@@ -230,11 +275,13 @@ export function BlueScreen({ q, index, total, canGo, onGo, onDismiss, win95: for
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Tab") {
-      // Two stops: the screen and its one button.
+      // The stops: the screen, then its buttons (Take me there, Dismiss all), round again.
       e.preventDefault();
-      const btn = box.current?.querySelector<HTMLButtonElement>("button");
-      if (btn && document.activeElement !== btn) btn.focus();
-      else box.current?.focus();
+      const stops: HTMLElement[] = [...(box.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
+      if (box.current) stops.unshift(box.current);
+      const at = stops.indexOf(document.activeElement as HTMLElement);
+      const next = stops[(at + (e.shiftKey ? stops.length - 1 : 1)) % stops.length];
+      next?.focus();
       return;
     }
     if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
@@ -246,6 +293,15 @@ export function BlueScreen({ q, index, total, canGo, onGo, onDismiss, win95: for
     e.stopPropagation();
     if (live()) onGo();
   };
+  const all = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (live()) onDismissAll?.();
+  };
+  const dismissAll = onDismissAll !== undefined && waiting !== undefined && (
+    <button type="button" className="moments-bsod-go moments-dismiss-all" onClick={all}>
+      Dismiss all ({waiting})
+    </button>
+  );
   const head = win95 ? (m.caption || "Windows").toUpperCase() : m.caption || "Important";
   return (
     <div ref={box} className="moments-bsod" role="alertdialog" aria-modal="true" aria-labelledby="moments-bsod-head" aria-describedby="moments-bsod-text" tabIndex={-1} onClick={onClick} onKeyDown={onKey}>
@@ -276,13 +332,17 @@ export function BlueScreen({ q, index, total, canGo, onGo, onDismiss, win95: for
                 </button>
               </li>
             )}
+            {dismissAll && <li>{dismissAll}</li>}
           </ul>
         ) : (
-          canGo && (
+          (canGo || dismissAll) && (
             <p className="moments-bsod-plain-go">
-              <button type="button" className="moments-bsod-go" onClick={go}>
-                {goLabel(m)}
-              </button>
+              {canGo && (
+                <button type="button" className="moments-bsod-go" onClick={go}>
+                  {goLabel(m)}
+                </button>
+              )}
+              {dismissAll}
             </p>
           )
         )}

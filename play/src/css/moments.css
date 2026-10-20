@@ -171,7 +171,7 @@
 }
 .moments-bsod-go:focus-visible { outline: 2px dashed var(--bsod-ink); outline-offset: 3px; }
 .moments-bsod-press { margin: 0; text-align: center; }
-.moments-bsod-plain-go { margin: 0 0 24px; }
+.moments-bsod-plain-go { margin: 0 0 24px; display: flex; flex-wrap: wrap; gap: 12px; }
 .moments-bsod-caret { animation: moments-caret 1s steps(1, end) infinite; }
 
 /* ── the missed list ───────────────────────────────────────────────────── */

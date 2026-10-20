@@ -75,6 +75,15 @@ export const BOOTH_CAP: AlertLevel = "sticky";
 export const BALLOON_MS = 8_000;
 /** A moment on screen for less than this before it was dismissed counts as missed. */
 export const GLANCE_MS = 1_000;
+/**
+ * A modal (dialog / blue screen) closed after this long was read: its dead
+ * time (`surfaces.tsx` `MODAL_DEAD_MS`, 400 ms from its first render)
+ * already refuses an earlier tap, so a tap it lets through is deliberate —
+ * this is that 400 ms less the few ms between the modal's first render and
+ * the provider's on-screen stamp. The second modal of a queue the guest is
+ * already tapping through is never missed at all.
+ */
+export const MODAL_GLANCE_MS = 350;
 /** A moment held behind a busy surface this long counts as missed. */
 export const HOLD_MISS_MS = 30_000;
 /** More missed moments than this replay as one "You missed n moments" list. */
@@ -372,8 +381,14 @@ export type MomentsAction =
   | { type: "dismissMany"; keys: readonly string[] }
   /** While a hold lasts: modal moments queued too long move to missed. */
   | { type: "tick"; now: number; held: boolean }
-  /** The story changed the level live: everything still queued moves to its new rung (a blue screen only exists at `bsod`). */
-  | { type: "relevel"; level: AlertLevel; role: Viewer["role"] }
+  /**
+   * The story changed the level live: everything still queued moves to its
+   * new rung (a blue screen only exists at `bsod`). On a rise, of the
+   * moments that climb onto a modal rung only the newest still-relevant one
+   * shows; the rest fold into the missed list ("You missed n moments"), and
+   * any whose phase has passed (`phase`, when given) are dropped.
+   */
+  | { type: "relevel"; level: AlertLevel; role: Viewer["role"]; phase?: string | null }
   /** `!` pins taken down since (`retractedPinSeqs`): drop them wherever they wait. */
   | { type: "retract"; seqs: ReadonlySet<number> }
   /** The objectives live now: a loud objective's moment (`o:<id>`) whose objective has ended leaves wherever it waits (a cleared guest is never told to show their pass). */
@@ -501,6 +516,15 @@ function replay(s: MomentsState, all: Moment[], level: AlertLevel, role: Viewer[
   return { ...s, queue: enqueue(s.queue, list, level, role, now) };
 }
 
+/** The newest of some queued moments: story time, then seq (a loud objective has none). */
+function newestOf(list: readonly Queued[]): Queued | null {
+  let best: Queued | null = null;
+  for (const q of list) {
+    if (best === null || q.moment.at > best.moment.at || (q.moment.at === best.moment.at && (q.moment.seq ?? -1) > (best.moment.seq ?? -1))) best = q;
+  }
+  return best;
+}
+
 export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState {
   switch (a.type) {
     case "arrive": {
@@ -529,7 +553,8 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       // takes its sticky too — the performer went, it is not news after.
       const twin = a.acted === true ? hit.moment.peekOf : undefined;
       const queue = s.queue.filter((q) => q !== hit && q.moment.peekOf !== hit.moment.key && (twin === undefined || q.moment.key !== twin));
-      const missed = a.acted !== true && a.onScreenMs < GLANCE_MS && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
+      const glance = isModal(hit.level) ? (s.burst > 0 ? 0 : MODAL_GLANCE_MS) : GLANCE_MS;
+      const missed = a.acted !== true && a.onScreenMs < glance && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
       const modalLeft = queue.some((q) => isModal(q.level));
       const burst = isModal(hit.level) ? (modalLeft ? s.burst + 1 : 0) : s.burst;
       return { ...s, queue, missed, burst };
@@ -545,6 +570,8 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
     case "relevel": {
       let changed = false;
       const queue: Queued[] = [];
+      // Moments that climb onto a modal rung (a sticky that becomes a dialog).
+      const risen: Queued[] = [];
       for (const q of s.queue) {
         // A beat's blue screen has no lower rung: below `bsod` its line just stays in the stream.
         if (q.moment.kind === "beat" && viewerLevel(a.level, a.role) !== "bsod") {
@@ -555,13 +582,26 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
         if (level === q.level) queue.push(q);
         else {
           changed = true;
-          queue.push({ ...q, level });
+          const moved = { ...q, level };
+          if (isModal(level) && rungIndex(level) > rungIndex(q.level) && !isPeek(q.moment)) risen.push(moved);
+          else queue.push(moved);
         }
+      }
+      let missed = s.missed;
+      if (risen.length > 0) {
+        // An hour of unread stickies never becomes a queue of modals, oldest
+        // first: what is no longer news goes, the newest still-relevant one
+        // shows on the new rung, the rest wait in the missed list.
+        const live = a.phase === undefined ? risen : risen.filter((q) => !isStale(q.moment, s.lastMajor, a.phase ?? null));
+        const newest = newestOf(live);
+        if (newest !== null) queue.push(newest);
+        const rest = live.filter((q) => q !== newest).map((q) => q.moment);
+        if (rest.length > 0) missed = [...s.missed, ...rest];
       }
       const rung = summaryRung(a.level, a.role);
       const summary = s.summary !== null && s.summary.level !== rung ? { ...s.summary, level: rung } : s.summary;
       if (!changed && summary === s.summary) return s;
-      return { ...s, queue: ordered(queue), summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+      return { ...s, queue: ordered(queue), missed, summary, burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
     }
     case "dismissMany": {
       // "Dismiss all (n)": read, every one — none of them is missed.
@@ -611,6 +651,8 @@ export interface Surfaces {
   /** Their keys ("Dismiss all (n)"). */
   stickyKeys: string[];
   modal: Queued | null;
+  /** Every modal waiting, the one on screen first ("Dismiss all (n)"). */
+  modalKeys: string[];
   /** "n of m" for the modal on screen. */
   modalIndex: number;
   modalTotal: number;
@@ -643,11 +685,15 @@ export function surfacesOf(s: MomentsState, held: boolean, nowBar = false): Surf
     stickyCount: stickies.length,
     stickyKeys: stickies.map((q) => q.moment.key),
     modal: modalOn ? (modals[0] ?? null) : null,
+    modalKeys: modalOn ? modals.map((q) => q.moment.key) : [],
     modalIndex: s.burst + 1,
     modalTotal: s.burst + modals.length,
     summary: held && modalSummary ? null : s.summary,
   };
 }
+
+/** The dialog and the blue screen offer "Dismiss all (n)" with more than this many waiting. */
+export const DISMISS_ALL_MODALS_OVER = 2;
 
 /** The tray's count: the missed list, plus modal moments a hold has kept back too long. */
 export function missedCount(s: MomentsState, held: boolean, now: number): number {

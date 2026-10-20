@@ -20,6 +20,7 @@ import { retractedPinSeqs } from "../pins.ts";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../types.ts";
 import {
   BALLOON_MS,
+  DISMISS_ALL_MODALS_OVER,
   GLITCH_MS,
   READOUT_WAIT_MS,
   afterWait,
@@ -101,6 +102,8 @@ interface Engine {
   hold: (delta: number) => void;
   /** "Dismiss all (n)": every sticky waiting, read. */
   dismissStickies: () => void;
+  /** "Dismiss all (n)" on a dialog / blue screen: every modal waiting, read. */
+  dismissModals: () => void;
   /** Close a moment with no exit taken: `acted` = it was opened (never missed). */
   close: (q: Queued, acted: boolean) => void;
 }
@@ -240,7 +243,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
   // The level is switchable live (D2): what is still queued follows it, so a
   // host who calms the room never leaves phones stepping through old modals.
   useEffect(() => {
-    dispatch({ type: "relevel", level, role });
+    // The phase is read, not watched: a stale moment is dropped only on a rise.
+    dispatch({ type: "relevel", level, role, phase: live.current.phase });
   }, [level, role]);
 
   // A `!` pin taken down (an unpin, or a newer pin with its key) leaves the
@@ -393,6 +397,13 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dispatch({ type: "dismissMany", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stickyKeys]);
+  const modalKeys = surfaces.modalKeys.join("\u0000");
+  const dismissModals = useCallback(() => {
+    const keys = modalKeys === "" ? [] : modalKeys.split("\u0000");
+    for (const k of keys) mem.shownAt.delete(k);
+    dispatch({ type: "dismissMany", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalKeys]);
 
   // A loud raise (a booth's unsolicited readout) never toasts (useAlerts);
   // an older session's that did stands back for the moment saying it.
@@ -415,6 +426,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
     dismissToast: alerts.dismiss,
     hold,
     dismissStickies,
+    dismissModals,
     close,
   };
 }
@@ -430,6 +442,11 @@ export function MomentsProvider(p: MomentsInput & { children: ReactNode }) {
   const { children, ...input } = p;
   const engine = useMomentsEngine(input);
   return <EngineContext.Provider value={engine}>{children}</EngineContext.Provider>;
+}
+
+/** "Dismiss all (n)" on a modal: only with more than two waiting. */
+function dismissAllOf(s: Surfaces, dismiss: () => void): { waiting?: number; onDismissAll?: () => void } {
+  return s.modalKeys.length > DISMISS_ALL_MODALS_OVER ? { waiting: s.modalKeys.length, onDismissAll: dismiss } : {};
 }
 
 /** The overlay: the feedback toast and the sticky banner (in flow, under the
@@ -479,6 +496,7 @@ export function MomentsLayer() {
           canGo={e.canGo(modal.moment)}
           onGo={() => e.act(modal)}
           onDismiss={() => e.dismiss(modal)}
+          {...dismissAllOf(s, e.dismissModals)}
         />
       )}
       {modal !== null && modal.level === "bsod" && (
@@ -490,6 +508,7 @@ export function MomentsLayer() {
           canGo={e.canGo(modal.moment)}
           onGo={() => e.act(modal)}
           onDismiss={() => e.dismiss(modal)}
+          {...dismissAllOf(s, e.dismissModals)}
         />
       )}
       {summary !== null && listOpen && (
