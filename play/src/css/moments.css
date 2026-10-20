@@ -140,7 +140,8 @@
   display: flex; align-items: center; justify-content: center;
   padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
   background: var(--bsod-bg); color: var(--bsod-ink);
-  font: 16px/1.5 var(--moments-bsod-font); -webkit-font-smoothing: none;
+  /* bold: the real screen's heavy bitmap face reads at arm's length; thin Courier didn't */
+  font: 700 16px/1.5 var(--moments-bsod-font); -webkit-font-smoothing: none;
   overflow: auto; cursor: pointer; outline: none;
 }
 .moments-bsod-inner { width: 100%; max-width: 640px; }

@@ -314,7 +314,7 @@ body {
 .bubble.plain { font-style: italic; color: var(--muted-ink); }
 .msg.narration {
   color: var(--muted-ink); font-style: italic; margin: 4px 0;
-  padding: 2px 10px; border-left: 3px solid var(--line);
+  padding: 2px 10px; border-left: 1px solid var(--line);
 }
 .narrator-tag { font: 700 10px var(--ui-font); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 6px; font-style: normal; }
 .msg.system { text-align: center; margin: 3px 0; }
@@ -764,7 +764,7 @@ footer {
 .quest-giver { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
 .quest-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .quest-open { margin-top: 8px; font: 700 12px var(--ui-font); color: var(--link); text-align: right; }
-.msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.quest-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 1px solid var(--line); }
 .msg.quest-step .bubble.plain { font-style: normal; color: var(--ink); }
 .quest-step-ico { flex: none; }
 
@@ -785,7 +785,7 @@ footer {
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
-.msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 3px solid var(--line); }
+.msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 1px solid var(--line); }
 .msg.wallet-step .bubble.plain { font-style: normal; color: var(--ink); }
 .wallet-step-ico { flex: none; }
 /* The identity card's balance (replaces ⭐ when the story has a currency). */

@@ -114,6 +114,8 @@ button.title-bar-btn:focus-visible { outline: 1px dotted var(--title-ink); outli
 .taskbar-btn::after { content: ""; position: absolute; top: -3px; bottom: -3px; left: 0; right: 0; }
 .taskbar-icon { font-size: 17px; line-height: 1; display: inline-flex; }
 .taskbar-btn.primary { flex: 1 1 auto; min-width: 96px; max-width: 260px; }
+/* the guest's Scan shares the width with Pass (the two jobs of the bar) */
+.taskbar-btn.labelled { flex: 1 1 auto; max-width: 260px; }
 .taskbar-start.open { box-shadow: var(--pressed); }
 /* a button the current objective names: it asks for attention like a
    Win95 window did — caption-blue, after two blinks */
