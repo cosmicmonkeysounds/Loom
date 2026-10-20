@@ -7,7 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { buildGuestChannels, isVoiced } from "../src/session/channels.ts";
 import { ChannelView, MessageThread } from "../src/stream/channel-view.tsx";
-import { CardTray } from "../src/stream/card-tray.tsx";
+import { CardTray, trayCardKey, trayIndex, trayShown } from "../src/stream/card-tray.tsx";
+import { PlayHostContext, browserHost, createCrawl } from "../src/host.ts";
 import { NOBODY_READS_NOTE, cantPostNote } from "../src/stream/composer.tsx";
 import { AmbientTicker } from "../src/stream/ticker.tsx";
 import type { Channel, ChatMessage, GuestView } from "../src/types.ts";
@@ -131,5 +132,43 @@ describe("the footers above the taskbar", () => {
     const thread = renderToStaticMarkup(createElement(MessageThread, { channel: room({ messages: [root] }), rootSeq: root.seq, onClose: () => {}, onSend: () => {} }));
     expect(thread).toContain('<footer class="stream-foot">');
     expect(view(room({}))).toContain('<footer class="stream-foot">');
+  });
+});
+
+describe("the card tray never takes the room over", () => {
+  const fact = (extra: Partial<ChatMessage> = {}) =>
+    m({ channel: "dm:Trabolta", kind: "widget", widget: { kind: "fact", text: "📝 File a fact", params: { questions: "Q1: Who?" } }, ...extra });
+  const tray = (cards: ChatMessage[], host = { ...browserHost, crawl: createCrawl() }) =>
+    renderToStaticMarkup(createElement(PlayHostContext.Provider, { value: host }, createElement(CardTray, { cards, widgets, focus: null, onFocus: () => {} })));
+
+  it("a re-dealt fact card is the same card; any other card is its own", () => {
+    expect(trayCardKey(fact())).toBe(trayCardKey(fact()));
+    const poll = () => m({ kind: "widget", widget: { kind: "poll", text: "?", params: {} } });
+    expect(trayCardKey(poll())).not.toBe(trayCardKey(poll()));
+  });
+
+  it("opens for a card not seen yet, comes back folded on one you have", () => {
+    const host = { ...browserHost, crawl: createCrawl() };
+    expect(tray([fact()], host)).toContain("stream-tray-body");
+    trayShown(host.crawl).add(trayCardKey(fact()));
+    const again = tray([fact()], host); // a later visit, the card re-dealt
+    expect(again).not.toContain("stream-tray-body");
+    expect(again).toContain('aria-expanded="false"');
+    // Another pane (its own host) has seen nothing.
+    expect(tray([fact()])).toContain("stream-tray-body");
+  });
+
+  it("a focused card that left the tray falls back to the newest, never the oldest", () => {
+    const cards = [m({}), m({}), m({})];
+    expect(trayIndex(cards, null)).toBe(2);
+    expect(trayIndex(cards, cards[0]!.seq)).toBe(0);
+    expect(trayIndex(cards, 9999)).toBe(2);
+    expect(trayIndex([], null)).toBe(0);
+  });
+
+  it("the body is capped at 35vh and the submit row stays out of its scroll", () => {
+    const css = readBundledCss();
+    expect(css).toMatch(/\.stream-tray-body \{ max-height: 35vh;/u);
+    expect(css).toMatch(/\.stream-tray-body \.widget-foot \{ position: sticky; bottom: 0;/u);
   });
 });

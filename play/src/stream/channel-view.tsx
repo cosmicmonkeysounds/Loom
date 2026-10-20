@@ -174,6 +174,10 @@ export function ChannelView({
   // the stream); a booth reading a guest's thread has no widgets → none.
   const [trayFocus, setTrayFocus] = useState<number | null>(null);
   useEffect(() => setTrayFocus(null), [channel.id]);
+  // Typing in the composer folds the tray, so the replies keep the room
+  // (a phone keyboard leaves little else).
+  const [composing, setComposing] = useState(false);
+  const isComposer = (t: EventTarget | null) => t instanceof Element && t.classList.contains("composer-input");
   const tray = useMemo(() => {
     if (!widgets || channel.kind === "codex" || channel.kind === "quests" || channel.kind === "wallet") return [];
     const roots = channel.messages.filter((m) => m.parentSeq == null);
@@ -246,8 +250,14 @@ export function ChannelView({
         </div>
       )}
       {(footer || channel.decision || onSend || tray.length > 0) && (
-        <footer className="stream-foot">
-          {tray.length > 0 && widgets && <CardTray key={channel.id} cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} />}
+        <footer
+          className="stream-foot"
+          onFocus={(e) => isComposer(e.target) && setComposing(true)}
+          onBlur={(e) => isComposer(e.target) && setComposing(false)}
+        >
+          {tray.length > 0 && widgets && (
+            <CardTray key={channel.id} cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} />
+          )}
           {channel.decision && <DecisionTray decision={channel.decision} />}
           {footer}
           {onSend && canPost && (
