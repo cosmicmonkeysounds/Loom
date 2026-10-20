@@ -257,3 +257,56 @@
 .host-arm { width: 100%; flex-direction: column; gap: 2px; min-height: 52px; font-weight: 800; font-size: 15px; }
 .host-arm.armed { background: var(--black); color: var(--highlight); box-shadow: var(--raised), inset 0 0 0 3px var(--highlight); }
 .host-arm-line { font: 800 12px var(--ui-font); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── the cue sheet's density (the director phone and the Cues tab) ──────
+   An aside or a cue not on offer folds to one 44 px line: the title cut to
+   one line, its tags after it. Arming it opens it back up. */
+.host-compact.cue-row { align-items: center; gap: 8px; min-height: var(--tap); padding-top: 4px; padding-bottom: 4px; font-size: 14px; }
+.host-compact .cue-n { padding-top: 0; }
+.host-compact .cue-body { flex: 1; flex-direction: row; align-items: baseline; gap: 8px; }
+.host-compact .cue-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+/* Whole tags only: a tag that doesn't fit wraps onto a second line the
+   row's one line hides ("👤 picks a person", never "picks a p… ser…"); a
+   first tag wider than the room alone gives way with an ellipsis. */
+.host-compact .cue-tags {
+  flex: 0 1 auto; max-width: 45%; min-width: 0; align-self: center;
+  flex-wrap: wrap; height: 16px; line-height: 16px; overflow: hidden; white-space: nowrap;
+}
+.host-compact .cue-tag { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Under a "fallbacks" line, folded: "aside" says nothing the row doesn't. */
+.host-compact .host-aside { display: none; }
+
+/* ── the FIRE window draining: Win95 progress blocks, one every 0.5 s ──── */
+.host-drain { display: flex; align-items: center; gap: 6px; width: 100%; max-width: 200px; }
+.host-drain-track {
+  display: block; flex: 1; height: 10px; padding: 2px;
+  background: var(--black); box-shadow: inset 0 0 0 1px var(--highlight);
+}
+.host-drain-fill {
+  display: block; height: 100%;
+  background: repeating-linear-gradient(90deg, var(--highlight) 0 calc(12.5% - 2px), transparent calc(12.5% - 2px) 12.5%);
+  animation-name: host-drain; animation-fill-mode: forwards;
+}
+@keyframes host-drain {
+  from { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); }
+  to { -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); }
+}
+.host-drain-secs { display: none; font: 800 12px var(--ui-font); color: var(--highlight); font-variant-numeric: tabular-nums; }
+/* In the NEXT bar's FIRE button: under the word, the button's width. */
+.host-fire.armed { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.host-drain-fire { width: 100%; max-width: none; justify-content: center; }
+@media (prefers-reduced-motion: reduce) {
+  .host-drain-track { display: none; }
+  .host-drain-secs { display: inline; }
+}
+
+/* A paused show (D3): the bar's cue greys like the guest's NOW caption
+   and says "(Paused)" after it (the white keeps the strip's red legible). FIRE stays live: a press still lands. */
+.host-bar.paused .host-bar-tag, .host-bar.paused .host-bar-title { color: var(--muted-ink); }
+.host-bar-paused { font-weight: 600; color: var(--muted-ink); }
+/* …but an arm stays loud: FIRE is live while paused. */
+.host-bar.paused.armed .host-bar-tag { color: var(--bad); }
+/* The bar's own countdown under a minute (its strip copy steps aside on a phone). */
+.host-bar-title.quiet.urgent { color: var(--bad); }
+/* A confirm brought into view (useRevealed) stops short of the body's edge. */
+.host-confirm { scroll-margin: 12px 0; }

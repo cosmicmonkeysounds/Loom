@@ -12,8 +12,8 @@ import { PassQr } from "../pass-qr.tsx";
 import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
 import { joinLink, type HostCodes } from "./api.ts";
-import { ALERT_LADDER, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus } from "./model.ts";
-import { ActButton, ConfirmButton, HostEmpty, HostSection, useHost } from "./kit.tsx";
+import { ALERT_LADDER, optimisticValue, tvVoiceLabel, type Optimistic, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus } from "./model.ts";
+import { ActButton, ConfirmButton, HostEmpty, HostSection, useHost, useRevealed } from "./kit.tsx";
 
 export function MoreTab({ focus }: { focus: MoreFocus | null }) {
   const { view } = useHost();
@@ -121,6 +121,8 @@ function Announce() {
 function AlertDial() {
   const { view, calls, run } = useHost();
   const [want, setWant] = useState<AlertLevel | null>(null);
+  const ask = useRef<HTMLDivElement>(null);
+  useRevealed(ask, want !== null);
   const level = view.alerts.level;
   return (
     <HostSection id="alerts" title="🚨 Alert level" aside={levelLabel(level)}>
@@ -143,7 +145,7 @@ function AlertDial() {
         ))}
       </div>
       {want !== null && (
-        <div className="host-confirm" role="group">
+        <div className="host-confirm" role="group" ref={ask}>
           <span className="host-confirm-ask">Switch every phone to {levelLabel(want)}? Every screen glitches once.</span>
           <ActButton
             className="host-confirm-yes"
@@ -231,8 +233,14 @@ function King({ king }: { king: NonNullable<HostView["king"]> }) {
 }
 
 function Terminals({ terminals }: { terminals: NonNullable<HostView["terminals"]> }) {
-  const { calls, run } = useHost();
+  const { calls, run, now } = useHost();
   const silent = terminals.rows.filter((r) => r.agoMs > terminals.silentMs).length;
+  // The TV voice turns with the toast: the flip stands until a poll agrees.
+  const [flipped, setFlipped] = useState<Optimistic<boolean> | null>(null);
+  useEffect(() => {
+    if (flipped !== null && terminals.voiceMuted === flipped.value) setFlipped(null);
+  }, [terminals.voiceMuted, flipped]);
+  const muted = optimisticValue(terminals.voiceMuted, flipped, Math.max(now, Date.now()));
   return (
     <HostSection id="terminals" title="📟 Terminals" aside={`${terminals.rows.length - silent}/${terminals.rows.length} live`}>
       {terminals.rows.length === 0 ? (
@@ -256,7 +264,15 @@ function Terminals({ terminals }: { terminals: NonNullable<HostView["terminals"]
           })}
         </ul>
       )}
-      <ActButton className="host-toggle" pressed={terminals.voiceMuted} label={terminals.voiceMuted ? "🔇 TV voice muted: unmute" : "🔊 Mute the TV voice"} onClick={() => run(terminals.voiceMuted ? "🔊 TV voice on" : "🔇 TV voice muted", () => calls.tvMute(!terminals.voiceMuted))} />
+      <ActButton
+        className="host-toggle"
+        pressed={muted}
+        label={tvVoiceLabel(muted)}
+        onClick={async () => {
+          const want = !muted;
+          if (await run(want ? "🔇 TV voice muted" : "🔊 TV voice on", () => calls.tvMute(want))) setFlipped({ value: want, at: Date.now() });
+        }}
+      />
     </HostSection>
   );
 }

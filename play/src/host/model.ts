@@ -143,7 +143,7 @@ export interface HostStripItem {
 
 /** The strip: act · `Night.phase` · ⏸ / 🚪 · the soonest countdown · ⚠ n
  *  (what waits on a host). */
-export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: number | null, needs: number): HostStripItem[] {
+export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: number | null, needs: number, barCountdown = false): HostStripItem[] {
   const out: HostStripItem[] = [];
   if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!), kind: "act" });
   const phase = view?.world.find((w) => w.path === "Night.phase")?.value.trim().replace(/^"(.*)"$/u, "$1") ?? "";
@@ -152,9 +152,11 @@ export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: num
   const soon = soonestCountdown(view?.countdowns, nowMs);
   if (soon !== null) out.push({ text: countdownLeft(soon.label, soon.left), kind: "countdown", ...(soon.left < URGENT_S ? { tone: "urgent" as const } : {}) });
   if (needs > 0) out.push({ text: `⚠ ${needs}`, tone: "needs", kind: "needs" });
-  // A phone's one line drops the phase first, and only when a countdown
-  // needs the room.
-  if (soon !== null) for (const it of out) if (it.kind === "phase") it.optional = true;
+  // `barCountdown`: the bar's first line already reads that countdown
+  // ("nothing to press … ⏱ Midnight in 59:28"), so a phone drops the
+  // strip's copy and keeps the phase. Otherwise a phone's one line drops
+  // the phase first, and only when a countdown needs the room.
+  if (soon !== null) for (const it of out) if (it.kind === (barCountdown ? "countdown" : "phase")) it.optional = true;
   return out;
 }
 
@@ -426,4 +428,29 @@ export function stimulusInput(text: string): number | null {
 export function agoText(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   return s < 90 ? `${s} s ago` : `${Math.round(s / 60)} m ago`;
+}
+
+// --- a toggle that reads back on the next poll ------------------------------------
+
+/** A toggle this host just flipped (the TV voice): what it shows until the
+ *  view agrees, so the label turns with the toast, not 3 s later on the
+ *  next poll. */
+export interface Optimistic<T> {
+  value: T;
+  /** Wall ms of the write. */
+  at: number;
+}
+
+/** How long a flipped toggle trusts itself over a view that disagrees. */
+export const OPTIMISTIC_MS = 10_000;
+
+/** The value a toggle shows: the flip while it is fresh, else the view. */
+export function optimisticValue<T>(server: T, local: Optimistic<T> | null, now: number): T {
+  if (local === null || now - local.at > OPTIMISTIC_MS) return server;
+  return local.value;
+}
+
+/** The TV-voice toggle's label: what it is, and what a tap does. */
+export function tvVoiceLabel(muted: boolean): string {
+  return muted ? "🔇 TV voice muted: unmute" : "🔊 Mute the TV voice";
 }
