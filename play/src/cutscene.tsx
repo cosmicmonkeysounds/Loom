@@ -7,8 +7,11 @@
 //! When the story moves them on, the stage does not vanish mid-line: a
 //! Continue button appears and the guest steps into the app themselves.
 
+import { useEffect } from "react";
+import { PERSONAL_STREAM } from "./crawl.ts";
+import { usePlayHost } from "./host.ts";
 import type { WidgetHook } from "./stream/bubble.tsx";
-import { DecisionTray } from "./stream/channel-view.tsx";
+import { DecisionTray, useDockReady } from "./stream/channel-view.tsx";
 import { MessageList } from "./stream/list.tsx";
 import type { ChatMessage, Decision } from "./types.ts";
 
@@ -42,14 +45,23 @@ export function CutsceneStage({
    *  stage has no header dot. */
   offline?: boolean;
 }) {
+  // The stage is open on everything said to this guest: those lines crawl
+  // as they land (wave 13: decided at arrival, `crawl.ts`).
+  const host = usePlayHost();
+  useEffect(() => {
+    host.crawl.setOpen(PERSONAL_STREAM);
+    return () => host.crawl.setOpen(null);
+  }, [host]);
+  // The decision docks once its question has crawled in (never under it).
+  const dockReady = useDockReady(PERSONAL_STREAM, messages, decision !== null);
   // The alert banner sits above the stage (the app's moments layer, wave 13).
   return (
     <div className="cutscene" role="region" aria-label={where ?? "Story"}>
       <header className="cut-head">
         <span className="cut-where">{where ?? ""}</span>
         <span className="cut-title">{title ?? ""}</span>
-        <button type="button" className="cut-pass" onClick={onPass} title="Your pass">
-          🎟️ My pass
+        <button type="button" className="cut-pass" onClick={onPass} title="Your pass — hold it up to be scanned">
+          <span aria-hidden>🎟️</span> My pass
         </button>
       </header>
       {offline && (
@@ -57,15 +69,15 @@ export function CutsceneStage({
           reconnecting…
         </div>
       )}
-      <MessageList messages={messages} widgets={widgets} empty="Stand by." />
+      <MessageList messages={messages} widgets={widgets} empty="Stand by." flushId={PERSONAL_STREAM} />
       <footer className="cut-foot">
-        {decision && <DecisionTray decision={decision} />}
+        {decision && dockReady && <DecisionTray decision={decision} />}
         {over && (
           <button type="button" className="choice primary cut-go" onClick={onContinue}>
             Continue ▸
           </button>
         )}
-        {!over && !decision && (
+        {!over && !(decision && dockReady) && (
           <span className="cut-cursor" aria-hidden>
             ▮
           </span>

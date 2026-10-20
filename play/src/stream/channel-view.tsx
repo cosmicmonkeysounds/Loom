@@ -1,15 +1,60 @@
 //! One open room (moved out of `chat.tsx` in wave 13): the decision tray,
 //! the who's-here strip, the room view and the thread panel.
 
-import { useEffect, useState, type ReactNode } from "react";
-import { usePlayHost } from "../host.ts";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePlayHost, type Crawl } from "../host.ts";
 import { PinnedRail } from "../moments/pins-rail.tsx";
 import type { Channel, ChatMessage, Decision } from "../types.ts";
-import { Avatar, PersonAvatar } from "../ui/primitives.tsx";
-import { MessageBubble, MessageGroup, type ModerateHook, type WidgetHook } from "./bubble.tsx";
+import { Avatar } from "../ui/primitives.tsx";
+import { supersededCards } from "../widgets.tsx";
+import { MessageBubble, MessageGroup, StreamModeProvider, type ModerateHook, type StreamMode, type WidgetHook } from "./bubble.tsx";
+import { CardTray } from "./card-tray.tsx";
+import { CodexRoom, QuestRoom } from "./codex-room.tsx";
+import { trayCards } from "./settled.ts";
+import { AmbientTicker } from "./ticker.tsx";
 import { Composer, cantPostNote } from "./composer.tsx";
 import { MessageList, useStickToBottom } from "./list.tsx";
 import { groupRuns, questStatusOf, repliesFor } from "./runs.ts";
+
+// --- holding the dock until its question has crawled ------------------------
+
+/** The newest messages a room checks for a line still crawling. */
+const DOCK_LOOKBACK = 40;
+/** A dock never waits longer than this: the room is flushed (fx cap + budget). */
+export const DOCK_HOLD_MAX_MS = 4000;
+
+/** Is any of the room's newest lines still owed its crawl? */
+export function stillCrawling(crawl: Pick<Crawl, "tierOf">, messages: readonly ChatMessage[]): boolean {
+  for (let i = messages.length - 1, n = 0; i >= 0 && n < DOCK_LOOKBACK; i--, n++) {
+    if (crawl.tierOf(messages[i]!.seq) !== "none") return true;
+  }
+  return false;
+}
+
+/**
+ * Whether a docked decision (or anything that answers the room's last line)
+ * may show yet: not while a line above it is still crawling in — the
+ * question would sit under its own answers, unread. A tap on the stream
+ * shows it at once; after `DOCK_HOLD_MAX_MS` the room is flushed anyway.
+ */
+export function useDockReady(roomId: string, messages: readonly ChatMessage[], waiting: boolean): boolean {
+  const crawl = usePlayHost().crawl;
+  const [crawling, setCrawling] = useState(() => waiting && stillCrawling(crawl, messages));
+  useEffect(() => {
+    if (!waiting) {
+      setCrawling(false);
+      return;
+    }
+    setCrawling(stillCrawling(crawl, messages));
+    return crawl.subscribe(() => setCrawling(stillCrawling(crawl, messages)));
+  }, [crawl, messages, waiting]);
+  useEffect(() => {
+    if (!waiting || !crawling) return;
+    const id = window.setTimeout(() => crawl.flush(roomId), DOCK_HOLD_MAX_MS);
+    return () => window.clearTimeout(id);
+  }, [crawl, roomId, waiting, crawling]);
+  return !crawling;
+}
 
 // --- decision tray (quick-reply buttons) ------------------------------------
 
@@ -82,20 +127,22 @@ export function DecisionTray({ decision }: { decision: Decision }) {
   );
 }
 
-/** The "who's here" strip in a room header: a few avatar tiles + a count. */
+/** Who's here, in a room's menu row: "👥 4" (· you), tap for the list. */
 export function PresenceStrip({ people, meId, onOpen }: { people: Channel["people"]; meId: string | null; onOpen: () => void }) {
   const list = people ?? [];
-  const shown = list.slice(0, 4);
+  const here = list.some((p) => p.id === meId);
   return (
-    <button type="button" className="presence" onClick={onOpen} title="Who's here" aria-label={`${list.length} here`}>
-      <span className="presence-stack">
-        {shown.map((p) => (
-          <PersonAvatar key={p.id} name={p.name} size="sm" kind={p.kind} />
-        ))}
-      </span>
+    <button
+      type="button"
+      className="presence stream-presence"
+      onClick={onOpen}
+      title="Who's here"
+      aria-label={`${list.length} here${here ? ", you included" : ""} — see who`}
+    >
       <span className="presence-n">
-        👥 {list.length}
-        {list.some((p) => p.id === meId) ? " · you" : ""}
+        <span aria-hidden>👥 </span>
+        {list.length}
+        {here ? " · you" : ""}
       </span>
     </button>
   );
@@ -163,6 +210,21 @@ export function ChannelView({
   const canPost = channel.canPost !== false;
   const threadable = channel.threadable !== false;
   const people = channel.people ?? [];
+  // Live cards waiting on the viewer dock in the tray (a receipt stays in
+  // the stream); a booth reading a guest's thread has no widgets → none.
+  const [trayFocus, setTrayFocus] = useState<number | null>(null);
+  useEffect(() => setTrayFocus(null), [channel.id]);
+  // Typing in the composer folds the tray, so the replies keep the room
+  // (a phone keyboard leaves little else).
+  const [composing, setComposing] = useState(false);
+  const isComposer = (t: EventTarget | null) => t instanceof Element && t.classList.contains("composer-input");
+  const tray = useMemo(() => {
+    if (!widgets || channel.kind === "codex" || channel.kind === "quests" || channel.kind === "wallet") return [];
+    const roots = channel.messages.filter((m) => m.parentSeq == null);
+    return trayCards(roots, widgets.answered, supersededCards(roots));
+  }, [channel.messages, channel.kind, widgets]);
+  const mode = useMemo<StreamMode>(() => ({ tray: widgets !== undefined, settlePass: true, openTray: setTrayFocus }), [widgets]);
+  const dockReady = useDockReady(channel.id, channel.messages, channel.decision !== null);
   const isRoom = channel.kind !== "dm" && channel.kind !== "guest" && channel.kind !== "codex" && channel.kind !== "quests" && channel.kind !== "wallet";
   const emptyCopy =
     channel.kind === "codex"
@@ -180,19 +242,21 @@ export function ChannelView({
         : "Nothing here yet.";
   return (
     <div className="screen stage">
-      <header className="thread-head">
+      <header className="thread-head stream-room-head">
         {!wide && (
-          <button className="back" onClick={onBack} aria-label="Back">
+          <button type="button" className="back stream-back" onClick={onBack} aria-label="Back to your rooms">
             ‹
           </button>
         )}
         <Avatar channel={channel} />
-        <div className="thread-id">
-          <strong>
-            {channel.title}
-            {channel.here && <span className="here-tag">you are here</span>}
-          </strong>
-          {channel.subtitle && <span className="muted">{channel.subtitle}</span>}
+        <div className="thread-id stream-room-id">
+          <strong className="stream-room-title">{channel.title}</strong>
+          {(channel.here || channel.subtitle) && (
+            <span className="stream-room-sub">
+              {channel.here && <span className="here-tag">you are here</span>}
+              {channel.subtitle}
+            </span>
+          )}
         </div>
         <div className="head-right">
           {headerActions}
@@ -201,24 +265,41 @@ export function ChannelView({
       </header>
       {strip}
       {pins && pins.length > 0 && <PinnedRail pins={pins} />}
-      <MessageList
-        key={channel.id}
-        messages={channel.messages}
-        showChannel={showChannel}
-        moderate={moderate}
-        onOpenThread={threadable ? onOpenThread : undefined}
-        widgets={widgets}
-        onPerson={onPerson}
-        empty={emptyCopy}
-      />
+      <AmbientTicker messages={channel.messages} />
+      {channel.kind === "codex" ? (
+        <CodexRoom key={channel.id} messages={channel.messages} meId={meId} empty={emptyCopy} />
+      ) : channel.kind === "quests" ? (
+        <QuestRoom key={channel.id} messages={channel.messages} empty={emptyCopy} />
+      ) : (
+        <StreamModeProvider value={mode}>
+          <MessageList
+            key={channel.id}
+            messages={channel.messages}
+            showChannel={showChannel}
+            moderate={moderate}
+            onOpenThread={threadable ? onOpenThread : undefined}
+            widgets={widgets}
+            onPerson={onPerson}
+            empty={emptyCopy}
+            flushId={channel.id}
+          />
+        </StreamModeProvider>
+      )}
       {channel.typing && (
         <div className="typing-note" aria-live="polite">
           {channel.typing} is typing<span className="dots" />
         </div>
       )}
-      {(footer || channel.decision || onSend) && (
-        <footer>
-          {channel.decision && <DecisionTray decision={channel.decision} />}
+      {(footer || channel.decision || onSend || tray.length > 0) && (
+        <footer
+          className="stream-foot"
+          onFocus={(e) => isComposer(e.target) && setComposing(true)}
+          onBlur={(e) => isComposer(e.target) && setComposing(false)}
+        >
+          {tray.length > 0 && widgets && (
+            <CardTray key={channel.id} cards={tray} widgets={widgets} focus={trayFocus} onFocus={setTrayFocus} composing={composing} />
+          )}
+          {channel.decision && dockReady && <DecisionTray decision={channel.decision} />}
           {footer}
           {onSend && canPost && (
             // Keyed by room: a draft (or a refused line coming back) stays
@@ -265,14 +346,14 @@ export function MessageThread({
   const quest = root?.quest;
   return (
     <div className="screen stage">
-      <header className="thread-head">
-        <button className="back" onClick={onClose} aria-label="Back to the room">
+      <header className="thread-head stream-room-head">
+        <button type="button" className="back stream-back" onClick={onClose} aria-label="Back to the room">
           ‹
         </button>
         <div className="avatar dm">{quest ? "📜" : "💬"}</div>
-        <div className="thread-id">
-          <strong>{quest ? quest.title : "Thread"}</strong>
-          <span className="muted">in {channel.title}</span>
+        <div className="thread-id stream-room-id">
+          <strong className="stream-room-title">{quest ? quest.title : "Thread"}</strong>
+          <span className="stream-room-sub">in {channel.title}</span>
         </div>
       </header>
       <div className="thread" ref={box}>
@@ -289,7 +370,7 @@ export function MessageThread({
         ))}
       </div>
       {onSend && channel.canPost !== false && (
-        <footer>
+        <footer className="stream-foot">
           <Composer key={`${channel.id}#${rootSeq}`} onSend={(t) => onSend(t, rootSeq)} placeholder="Reply…" />
         </footer>
       )}

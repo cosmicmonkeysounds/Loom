@@ -1,12 +1,12 @@
-//! Wave 13 Stage A: `createCrawl` moved out of `host.ts` into `crawl.ts`
-//! and grew the v2 seams. Until the stream lane implements them, it must
-//! behave exactly like the old one — the reference below is the
-//! pre-wave-13 body, verbatim — and the new methods must do nothing.
+//! Wave 13 Stage A: `createCrawl` moved out of `host.ts` into `crawl.ts`.
+//! Its legacy half (`claim` / `start` / `finish`, still used by the choice
+//! echo and the bubbles' queue) must behave exactly like the old one — the
+//! reference below is the pre-wave-13 body, verbatim. The v2 arrival rule
+//! is `crawl.test.ts`.
 
 import { describe, expect, it } from "vitest";
 import { createCrawl } from "../src/crawl.ts";
 import { createCrawl as fromHost } from "../src/host.ts";
-import type { ChatMessage } from "../src/types.ts";
 
 function legacyCrawl() {
   let baseline = Number.MAX_SAFE_INTEGER;
@@ -96,25 +96,5 @@ describe("the crawl, moved", () => {
   it("the backlog never crawls; a line crawls once; lines go one at a time in seq order", () => {
     const steps: Step[] = [["loaded", 5], ["claim", 5], ["claim", 6], ["claim", 6], ["start", 8], ["start", 7], ["finish", 8], ["finish", 7]];
     expect(trace(createCrawl(), steps)).toEqual(["claim 5 false", "claim 6 true", "claim 6 false", "go 8", "go 7"]);
-  });
-
-  it("the v2 seams do nothing yet; tierOf reads what claim would answer", () => {
-    const c = createCrawl({ watchVisibility: true });
-    const m = { seq: 9, channel: "lobby" } as ChatMessage;
-    c.loaded(5);
-    c.setOpen("lobby");
-    c.arrived(m, { id: "g1", name: "Ada" });
-    c.flush();
-    c.flush("lobby");
-    const off = c.subscribe(() => {
-      throw new Error("never notified in Stage A");
-    });
-    off();
-    expect(c.tierOf(4)).toBe("none");
-    expect(c.tierOf(9)).toBe("fast");
-    expect(c.tierOf(9)).toBe("fast"); // a pure read: nothing claimed
-    expect(c.claim(9)).toBe(true);
-    expect(c.tierOf(9)).toBe("none");
-    c.setOpen(null);
   });
 });

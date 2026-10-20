@@ -188,6 +188,9 @@ export function buildGuestChannels(
     // A character's DM is titled with their declared name (`WebMD`), not a
     // re-cased channel key.
     const castName = id.startsWith("dm:") ? (view?.people?.find((p) => p.kind === "character" && p.id === id.slice(3))?.name ?? null) : null;
+    // A DM with a character nobody reads (no performer, no agent) takes no
+    // composer (wave 13: `voiced`; an older server sends none → keep it).
+    const nobodyReads = id.startsWith("dm:") && !isVoiced(view, id.slice(3));
     return {
       id,
       kind: head.kind,
@@ -196,6 +199,7 @@ export function buildGuestChannels(
       spaceId: STORY_SPACE,
       spaceTitle: storyTitle,
       needsYou: needsYou(msgs),
+      ...(nobodyReads ? { canPost: false } : {}),
       order: head.kind === "lobby" ? 0 : head.kind === "faction" ? 1 : 2,
       ...(otherName !== null && other !== null ? { people: [{ id: other, name: otherName, kind: "guest" as const, group: null }] } : presenceOf(id)),
       messages: msgs,
@@ -204,6 +208,15 @@ export function buildGuestChannels(
       lastTs,
     };
   });
+}
+
+/** Does somebody read this character's DM (a performer part, an agent)?
+ *  Unknown (an older server, no view yet) → yes. Folded, like the server's names. */
+export function isVoiced(view: Pick<GuestView, "voiced"> | null, character: string): boolean {
+  const voiced = view?.voiced;
+  if (voiced === undefined) return true;
+  const f = (s: string) => s.toLowerCase().replace(/[\s_-]+/g, "");
+  return voiced.some((v) => f(v) === f(character));
 }
 
 /**
@@ -222,6 +235,7 @@ export function withAgents(channels: Channel[], view: GuestView | null, typing: 
     const presence = agent !== undefined && agent.hold !== true && c.subtitle === undefined;
     return {
       ...c,
+      ...(agent !== undefined ? { agent: true as const } : {}),
       ...(presence ? { subtitle: agent.online ? "online" : "away — they'll answer when they're back" } : {}),
       ...(who !== undefined ? { typing: who } : {}),
     };
