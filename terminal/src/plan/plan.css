@@ -69,3 +69,5 @@
 }
 .plan-celebrate .world-celebrate-name { font-size: 1.1em; }
 .world.plan.full { font-size: clamp(20px, 2.4vw, 40px); }
+/* Full screen (mirror / shadow) the gear sits top-right: keep the floor tabs clear of it. */
+.world.plan.full .plan-top { padding-right: 72px; }
