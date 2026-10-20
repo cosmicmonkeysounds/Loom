@@ -77,8 +77,11 @@
   font: 700 13px var(--ui-font); white-space: nowrap; cursor: pointer;
 }
 .host-tab.current { background: var(--dialog-face); box-shadow: var(--raised), inset 0 -2px 0 var(--dialog-face); color: var(--navy); }
-.host-tab.counted { color: var(--bad); }
-.host-tab.current.counted { color: var(--bad); }
+/* Text on the silver face: --bad (#c00000) is 3.6:1 there under aol97, so
+   red text on --face is --maroon (6.0:1 aol97, 8.8:1 plain); --bad stays for
+   outlines and for text on white. */
+.host-tab.counted { color: var(--maroon); }
+.host-tab.current.counted { color: var(--maroon); }
 .host-drawer-body {
   flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain; padding: 8px 8px calc(12px + var(--safe-bottom));
@@ -94,13 +97,16 @@
 .host-section-aside { text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--muted-ink); }
 .host-empty { margin: 8px 2px; color: var(--muted-ink); font-size: 13px; line-height: 1.4; }
 .host-note { margin: 4px 2px 8px; color: var(--muted-ink); font-size: 12px; line-height: 1.35; }
-.host-note.alarm { color: var(--bad); font-weight: 700; }
+.host-note.alarm { color: var(--maroon); font-weight: 700; }
 .host-filter, .host-text, .host-num {
   width: 100%; min-height: var(--tap); margin: 0 0 8px; padding: 8px 10px;
   border: none; border-radius: var(--radius); background: var(--white); color: var(--ink);
   box-shadow: var(--sunken); font: 16px var(--ui-font);
 }
 .host-text { resize: vertical; line-height: 1.35; }
+/* In a sheet every child sits 8 px in from each side (base's `.sheet > *`):
+   a 100 % box would run past the sheet's right edge. */
+.sheet > .host-text, .sheet > .host-filter { width: calc(100% - 16px); }
 .host-num { width: 90px; margin: 0; }
 .host-filter::placeholder, .host-text::placeholder, .host-num::placeholder { color: var(--dim-ink); }
 
@@ -129,15 +135,15 @@
 .host-row-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
 .host-inline { display: flex; align-items: center; gap: 6px; font: 700 12px var(--ui-font); color: var(--muted-ink); }
 .host-toggle[aria-pressed="true"] { box-shadow: var(--pressed); background: var(--face-hi); font-weight: 700; }
-.host-danger { color: var(--bad); font-weight: 700; }
+.host-danger { color: var(--maroon); font-weight: 700; }
 .host-primary { font-weight: 800; color: var(--navy); }
-.host-fold { min-height: 32px; padding: 0 10px; font-size: 12px; }
+.host-fold { min-height: var(--tap); padding: 0 10px; font-size: 12px; }
 
 /* The in-place ask: the button becomes "Ask? Yes / No". */
 .host-confirm { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
 .host-confirm-ask { font: 700 13px var(--ui-font); color: var(--ink); }
 .host-confirm-yes { font-weight: 800; }
-.host-confirm-yes.danger { color: var(--bad); }
+.host-confirm-yes.danger { color: var(--maroon); }
 
 /* Cues */
 .host-last { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; padding: 6px 8px; border-radius: var(--radius); background: var(--highlight); color: var(--black); font: 700 13px var(--ui-font); min-width: 0; }
