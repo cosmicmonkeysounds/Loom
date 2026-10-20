@@ -292,9 +292,9 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
   }, SLOW);
 });
 
-/** A major moment reached this guest in the batch: an alert / readout
- *  stamped `moment: "major"`, or a `!` pin. */
-export const majorFor = (ms: readonly ChatMessage[], id: string) => forGuest(ms, id).filter((m) => m.moment === "major" || (m.pin === true && m.alert === true));
+/** A major moment reached this guest in the batch: an alert, a `!` pin, a
+ *  `reply !…` or a card that asks (the server stamps `moment: "major"`). */
+export const majorFor = (ms: readonly ChatMessage[], id: string) => forGuest(ms, id).filter((m) => m.moment === "major");
 
 describe("Trapped in the Internet — wave 13: every buried beat has a delivery (ux/alerts-beats.md §4)", () => {
   const Y2K = () => {
