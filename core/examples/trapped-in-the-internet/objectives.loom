@@ -312,10 +312,24 @@ OBJECTIVE Banished Too
   text:
     Trabolta banished every program, the Antivirus included. Go to the Internet with them, then turn on him: everyone does the hand jive, together.
 
+// The five-minute door window outranks the escort list (the late list
+// after 🚨 is the next escort). A program a director marked as gone home
+// and a director's rehearsal persona are never waiting for an escort, as in
+// the show's own head counts (the majority's).
+// DRAFT for sign-off
+OBJECTIVE Summons Check In
+  for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
+  while: Night.summons_open == true
+  act: C
+  title: The summons: scan everyone at the living-room door
+  text:
+    A scan of a cleared program is their check-in. Bathroom Mode excuses them. After 🚨 the late list lands in your booth.
+  buttons: scan, check_in_at_desktop
+
 // DRAFT for sign-off
 OBJECTIVE Escort The Marked
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
-  while: count([p for p in Persons where p.marked == true and p.corrupted != true]) > 0 and Night.ended != true
+  while: count([p for p in Persons where p.marked == true and p.corrupted != true and p.gone != true and p.persona != true]) > 0 and Night.ended != true
   title: Escort the marked to the Internet
   text:
     Your booth names each one. Find them, walk them through the Tube, then press 🛡 on their card. In Bathroom Mode or Disk Cleanup: wait outside, never go in.
@@ -350,16 +364,6 @@ OBJECTIVE Sweep To The Desktop
   title: Sweep every program to the Desktop
   text:
     Patrol the whole computer and send everyone to the living room.
-
-// DRAFT for sign-off
-OBJECTIVE Summons Check In
-  for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
-  while: Night.summons_open == true
-  act: C
-  title: The summons: scan everyone at the living-room door
-  text:
-    A scan of a cleared program is their check-in. Bathroom Mode excuses them. After 🚨 the late list lands in your booth.
-  buttons: scan, check_in_at_desktop
 
 // DRAFT for sign-off
 OBJECTIVE Zip Everyone Out

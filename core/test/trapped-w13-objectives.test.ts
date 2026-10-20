@@ -615,6 +615,26 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
   }, SLOW);
 
+  it("the escort list skips a program gone home and a rehearsal persona, and the summons outranks it", () => {
+    const n = boot();
+    const now = (p: string) => primeView(n.sim, p).objectives?.[0]?.id;
+    for (const c of TO_HOUR) n.press(c);
+    n.signal("mark_for_reinstallation", "g6", { reason: "test" });
+    expect(now("Norton Anti-Virus")).toBe("Escort The Marked");
+    n.take(n.sim.setVar("g6.gone", "true"));
+    expect(now("Norton Anti-Virus")).not.toBe("Escort The Marked");
+    n.take(n.sim.setVar("g6.gone", "false"));
+    n.take(n.sim.setVar("g6.persona", "true"));
+    expect(now("Norton Anti-Virus")).not.toBe("Escort The Marked");
+    n.take(n.sim.setVar("g6.persona", "false"));
+    expect(now("Norton Anti-Virus")).toBe("Escort The Marked");
+    // The five-minute door window wins while it is open; the escort list after.
+    n.press("five_minute_warning");
+    for (const p of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"]) expect(now(p), p).toBe("Summons Check In");
+    n.press("summons_closed");
+    expect(now("Norton Anti-Virus")).toBe("Escort The Marked");
+  }, SLOW);
+
   it("the Grok Prom night: the pickup line, the advice poll and the hand jive", () => {
     const table = new Map(walk("hand_jive"));
     const at = (label: string) => table.get(label)!;
