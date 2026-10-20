@@ -176,7 +176,7 @@ div.stream-settled-line { cursor: default; color: var(--dim-ink); }
 .stream-notices-line {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--tap);
   margin: 0; padding: 0 10px; border: none; background: none; cursor: pointer; text-align: left;
-  font: 700 13px var(--ui-font); color: var(--signal); border-radius: var(--radius);
+  font: 700 13px var(--ui-font); color: var(--dim-ink); border-radius: var(--radius);
 }
 .stream-notices-line:active { background: var(--code-bg); }
 .stream-notices-sum { flex: 1; min-width: 0; }

@@ -2,7 +2,7 @@
 //! folds into one line.
 
 import { describe, expect, it } from "vitest";
-import { latestAmbient, noticeSummary, streamItems } from "../src/stream/notices.ts";
+import { latestAmbient, namesViewer, noticeNoun, noticeSummary, streamItems } from "../src/stream/notices.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 let seq = 1;
@@ -41,5 +41,28 @@ describe("stream items", () => {
 
   it("a notice with no glyph counts under •", () => {
     expect(noticeSummary([m({ notice: "" }), m({ notice: "" })])).toBe("• 2");
+  });
+
+  it("a notice naming the viewer stays its own row and splits the run", () => {
+    const items = streamItems(
+      [
+        m({ notice: "🗣", text: "🗣 Ada answered. Trabolta is satisfied." }),
+        m({ notice: "🗣", text: "🗣 Bo answered. Trabolta is satisfied." }),
+        m({ notice: "🗣", text: "🗣 Calculator answered. Trabolta is satisfied." }),
+        m({ notice: "🗣", text: "🗣 Cy answered. Trabolta is satisfied." }),
+      ],
+      "Calculator",
+    );
+    expect(items.map((i) => i.type)).toEqual(["notices", "run", "run"]);
+    expect(items[0]!.type === "notices" && items[0]!.messages.length).toBe(2);
+    expect(namesViewer("Winamp → Calculator: 5 Truthcoin", "calculator")).toBe(true);
+    expect(namesViewer("Calculators unite", "Calculator")).toBe(false);
+    expect(namesViewer("anything", "")).toBe(false);
+    expect(namesViewer("Mr. (Paint) wins", "(Paint)")).toBe(true); // regex characters in a name
+  });
+
+  it("the folded line says what it holds", () => {
+    expect(noticeNoun([m({ text: "🗣 Ada answered." }), m({ text: "🗣 Bo answered." })])).toBe("2 updates about others");
+    expect(noticeNoun([m({ text: "🪙 Ada → Bo: 5 Truthcoin" }), m({ text: "💱 Cy ⇄ Di: a fact for 5 Truthcoin" })])).toBe("2 transfers between others");
   });
 });
