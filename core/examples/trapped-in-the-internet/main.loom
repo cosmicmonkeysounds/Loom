@@ -3896,9 +3896,11 @@ when printer_opened:
       set Night.screen = "beans"
       set Night.terminals = "beans"
       cue screens_flicker
+      // The alert is the beans' own moment: a late lid (the overshare, the
+      // Y2K hour, the ceremony) raises nothing on the phones (wave 13).
+      broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone
     set Trabolta.composure -= 20
     sound beans_spill
-    broadcast "!🫘 PRINT FAILED. The printer is full of beans." to everyone
     -> Full Of Beans
 
 // D8: the Antivirus zip everyone out (the ROLE zip watchers release them).

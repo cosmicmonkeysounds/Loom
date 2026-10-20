@@ -341,6 +341,20 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     }, SLOW);
   }
 
+  it("a late printer lid (the Y2K hour) plays only the beans: no alert reaches a phone", () => {
+    const n = boot();
+    for (const c of [...TO_HOUR, "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings"]) n.press(c);
+    n.signal("praise_the_top");
+    n.signal("shame_the_bottom");
+    expect(v(n.sim, "Night.printer_called")).toBe(true);
+    for (const c of ["trabolta_overshares", "y2k_clock"]) n.press(c);
+    const out = n.signal("printer_opened");
+    expect(v(n.sim, "Night.beans")).toBe(true);
+    expect(v(n.sim, "Night.phase")).toBe("y2k");
+    expect(out.filter((m) => m.alert === true).map((m) => m.text)).toEqual([]);
+    expect(majorFor(out, "g1").map((m) => m.text)).toEqual([]);
+  }, SLOW);
+
   it("the booth readouts that matter are major: the escort, the late list, the alarm", () => {
     const n = boot();
     for (const c of TO_TRUTH_1) n.press(c);
