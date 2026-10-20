@@ -140,8 +140,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // cutscene (it waits for the guest to step into the app).
   const tour = !cut.showing && s.me !== null ? pendingWidget(s.messages, "tutorial", new Set(s.widgetAnswers.keys())) : null;
   const tourSeq = tour?.seq ?? null;
-  // On a wide screen the stage is never blank: open the natural room.
-  const signedIn = s.me !== null && s.ready;
+  // On a wide screen the stage is never blank: open the natural room — once
+  // the guest is in the app. Not under the cutscene, or its rail-time room
+  // (The Uploader's thread, asking for the upload) would still be open
+  // after Continue instead of the room they now stand in.
+  const signedIn = s.me !== null && s.ready && !cut.showing;
   const activeId = t.activeId;
   const home = homeChannel(t.list);
   useEffect(() => {
