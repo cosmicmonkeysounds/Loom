@@ -1912,14 +1912,14 @@ ROLE Program
   // programs; `tx`, `amount` and `by` (the approver, or Director) are values.
   // Trades (offers) settle through `share`, so the codex rules hear those.
   when transfer_received for program:
-    broadcast "🪙 {from.name} → {program.name}: {amount} Truthcoin" to channel(truthcoin exchange)
+    broadcast "~🪙 {from.name} → {program.name}: {amount} Truthcoin" to channel(truthcoin exchange)
   when transfer_denied for program:
     broadcast "🧾 Denied: {program.name} → {to.name}, {amount} Truthcoin. Refunded." to channel(hosts)
     update quest The Audit for CRA Agent Software "Denied {program.name} → {to.name}, {amount}."
   when transfer_approved for program:
     update quest The Audit for CRA Agent Software "Approved {program.name} → {to.name}, {amount}."
   when offer_accepted for program:
-    broadcast "💱 {program.name} ⇄ {to.name}: a fact for {amount} Truthcoin" to channel(truthcoin exchange)
+    broadcast "~💱 {program.name} ⇄ {to.name}: a fact for {amount} Truthcoin" to channel(truthcoin exchange)
   when stimulus for program:
     broadcast "!💰 Truthcoin stimulus: {program.name} sends every program {amount}." to everyone
     set Night.stimulus_n += 1
