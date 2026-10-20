@@ -423,8 +423,9 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .setup h3 { margin: 0.6em 0 0.3em; font-weight: normal; letter-spacing: 0.15em; font-size: 0.95em; color: var(--phosphor-dim); text-transform: uppercase; }
 .setup input.big { font-size: 1.6em; padding: 0.5em 0.6em; letter-spacing: 0.15em; }
 .setup button.big-button { font-size: 1.3em; padding: 0.6em 1.6em; }
-.setup .pick-floor { display: grid; gap: 0.5em; }
-.setup .pick-room { display: grid; gap: 0.5em; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.setup .pick-floor { display: grid; gap: 0.5em; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.setup .pick-floor h3 { grid-column: 1 / -1; }
+.setup .pick-room { display: contents; }
 .setup button.pick {
   display: block;
   width: 100%;
@@ -450,7 +451,7 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .setup .advanced[open] { display: grid; gap: 0.8em; }
 .setup .actions { flex-wrap: wrap; }
 @media (max-width: 600px) {
-  .setup .pick-room { grid-template-columns: 1fr; }
+  .setup .pick-floor { grid-template-columns: 1fr; }
 }
 
 /* --- the world view (the reinstallation simulation) -------------------- */
