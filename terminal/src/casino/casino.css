@@ -311,3 +311,4 @@
 .reel .sym.s4 { color: #222; }
 .reel.spinning .sym { animation: casino-reel 0.09s linear infinite; filter: blur(1px); }
 @keyframes casino-reel { from { transform: translateY(-30%); } to { transform: translateY(30%); } }
+.casino-picks.n3 .pick-label { font-size: 0.95em; letter-spacing: 0.06em; white-space: nowrap; }
