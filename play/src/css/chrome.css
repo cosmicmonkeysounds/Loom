@@ -260,6 +260,13 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
    beside the message and the tuck below it */
 .msg-avatar[tabindex="0"] { position: relative; }
 .msg-avatar[tabindex="0"]::after { content: ""; position: absolute; inset: -7px; }
+/* the thread affordance (💬, ≈ 19 × 20) and a sender's name (≈ 17 px
+   tall) on a booth: 44 px tall targets, reaching over the line's own text
+   (never another control) */
+.replies { position: relative; }
+.replies::after { content: ""; position: absolute; inset: -12px -13px; }
+.speaker[tabindex="0"] { position: relative; }
+.speaker[tabindex="0"]::after { content: ""; position: absolute; inset: -14px -4px; }
 .thread-head { min-height: var(--tap); }
 .thread-head .presence { position: relative; min-height: 30px; }
 .thread-head .presence::after { content: ""; position: absolute; inset: -7px -2px; }
