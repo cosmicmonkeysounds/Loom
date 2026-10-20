@@ -1762,7 +1762,7 @@ That loop — not this guide — is how you'll actually learn Loom.
 | `unlock X for who` · `when who learns X:` · `when wrong code for who:` · `when share for who:` | lore moving |
 | `listed: true` (character) · `directory: everyone` (header) | the People directory + private messages |
 | `CHARACTER Name` with no body · `playable: false` · `avatar: File:X.png \| https://…` · `wiki: Article` | a program a guest may sign in as (one each) · nobody signs in as this · its hand-picked profile picture(s), first = default (else the article's best) · the Wikipedia article it is |
-| `broadcast "!…" to …` | an alert (chime + banner) |
+| `broadcast "!…" to …` | an alert (chime + a pop-up at the alert level) |
 | `joinable: false` (group) · `sealed: true` (prison) | no side chooser · no self-escape |
 | `hidden: true` (location · channel · character) · `reveal X [for who]` · `cutscene: true` (location) | rooms that appear as the night opens · the app on rails |
 | `show tutorial "…" to who with guide: "Name"` · `when tutorial answered for who:` (`skipped`) | the app's guided tour, and what skipping it means |
