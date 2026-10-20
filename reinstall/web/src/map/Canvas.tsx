@@ -5,13 +5,17 @@
 //! rectangular one's edge to resize, a door along its wall); the drawing
 //! tools drag out a room / yard / stair rectangle or drop a door on the
 //! wall clicked. Everything snaps to the snap step and room edges to their
-//! neighbours'. The wheel zooms (⌥ + wheel turns the selected thing);
-//! drag empty ground, hold Space, or use the middle button to pan.
+//! neighbours' (hold ⌥ while dragging a thing to place it freely). A
+//! selected prop / terminal / the spawn has a round handle out front: drag
+//! it to turn (15° steps, ⇧ 1°). A terminal dropped near a wall hangs on
+//! it. With a palette prop armed, the next click places it. The wheel
+//! zooms (⌥ + wheel turns the selected thing); drag empty ground, hold
+//! Space, or use the middle button to pan.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { buildWalls, polyArea, polyBounds, roomById, wallEnds } from "@loom/house";
-import type { HouseMap, PlayerState, Vec2, WallSegment } from "@loom/house";
+import type { HouseMap, PlayerState, PropKind, Vec2, WallSegment } from "@loom/house";
 import { doorGap, moveDoorAlong, placeDoor } from "./doors.ts";
 import { aimAt, MIN_ROOM, moveRectEdge, moveRoom, moveTo, setYaw, yawOf, type Selection } from "./edit.ts";
 import {
@@ -41,6 +45,7 @@ import {
   type Bounds,
   type Edge,
 } from "./plan.ts";
+import { snapTerminalToWall, WALL_SNAP, YAW_STEP } from "./props.ts";
 import { addRoom, addStair, moveStair, rectFrom } from "./structure.ts";
 import type { EditMode, Tool } from "./tools.ts";
 import { yardOf, yardsOn } from "./yards.ts";
@@ -73,9 +78,13 @@ export interface CanvasProps {
   onSelect: (sel: Selection | null) => void;
   onEdit: (next: HouseMap, mode: EditMode) => void;
   onNotice: (text: string) => void;
+  /** A palette prop waiting for its click (null: none). */
+  placing?: PropKind | null;
+  /** Place the armed prop at a plan point (already snapped). */
+  onPlace?: (at: Vec2) => void;
 }
 
-export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSelect, onEdit, onNotice }: CanvasProps) {
+export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSelect, onEdit, onNotice, placing = null, onPlace }: CanvasProps) {
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
   /** The running drag has pushed its starting map on the undo stack. */
@@ -204,10 +213,14 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
     }
     const p = toPlan(e);
     switch (d.kind) {
-      case "move":
-        return frame(moveTo(d.base, d.sel, snap2([d.origin[0] + p[0] - d.grab[0], d.origin[1] + p[1] - d.grab[1]], snapStep)));
+      case "move": {
+        // ⌥: no grid (to the millimetre).
+        const moved = moveTo(d.base, d.sel, snap2([d.origin[0] + p[0] - d.grab[0], d.origin[1] + p[1] - d.grab[1]], e.altKey ? 0.001 : snapStep));
+        // A terminal let near a wall hangs on it.
+        return frame(d.sel.kind === "terminal" && !e.altKey ? snapTerminalToWall(moved, d.sel.id, WALL_SNAP) : moved);
+      }
       case "aim":
-        return frame(aimAt(d.base, d.sel, p, e.shiftKey ? 1 : 5));
+        return frame(aimAt(d.base, d.sel, p, e.shiftKey ? 1 : YAW_STEP));
       case "edge": {
         const c = edgeCoords(d.base, floor, d.room);
         const v = snap(d.edge === "n" || d.edge === "s" ? p[1] : p[0], snapStep);
@@ -260,8 +273,8 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
   const selYard = new Set(selRoom?.outdoor ? yardOf(house, selRoom.id) : []);
   const selected = (kind: Selection["kind"], id?: string) => sel !== null && sel.kind === kind && (id === undefined || ("id" in sel && sel.id === id));
   const onFloor = (roomId: string) => floorOfRoom(house, roomId) === floor;
-  /** Markers take clicks in Select only (a drawing tool draws through them). */
-  const picking = tool === "select";
+  /** Markers take clicks in Select only (a drawing tool, or an armed palette prop, draws through them). */
+  const picking = tool === "select" && placing === null;
   const pick = (e: ReactPointerEvent, s: Selection, d?: Drag) => {
     if (!picking || e.button !== 0 || space.current) return;
     e.stopPropagation();
@@ -273,6 +286,10 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
     const p = toPlan(e, viewBox);
     if (e.button === 1 || (e.button === 0 && space.current)) return startDrag(e, { kind: "pan", vb: viewBox, client: [e.clientX, e.clientY] });
     if (e.button !== 0) return;
+    if (edit && placing !== null && onPlace !== undefined) {
+      onPlace(e.altKey ? snap2(p, 0.001) : snap2(p, snapStep));
+      return;
+    }
     if (edit && tool === "door") {
       const r = placeDoor(house, floor, p, { tol: Math.max(0.15, pxToPlan(DOOR_PICK_PX)), step: snapStep });
       if (r === null) return onNotice("No wall there — click on (or right by) a room's edge.");
@@ -313,7 +330,7 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
       <svg
         ref={svg}
         viewBox={viewBox.join(" ")}
-        className={`plan${edit ? " editing" : ""} tool-${tool}`}
+        className={`plan${edit ? " editing" : ""} tool-${placing !== null && edit ? "place" : tool}`}
         onPointerMove={onPointerMove}
         onPointerUp={(e) => endDrag(e)}
         onPointerCancel={() => endDrag()}
@@ -386,15 +403,21 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
         })}
 
         {/* props */}
-        {house.props.map((p) =>
-          !onFloor(p.room) ? null : (
+        {house.props.map((p) => {
+          if (!onFloor(p.room)) return null;
+          const on = selected("prop", p.id);
+          const ps: Selection = { kind: "prop", id: p.id };
+          const yaw = p.yaw ?? 0;
+          const front = along([p.pos[0], p.pos[2]], yaw, p.size[2] / 2);
+          const knob = along([p.pos[0], p.pos[2]], yaw, p.size[2] / 2 + 0.35);
+          return (
             <g
               key={p.id}
-              className={`prop ${p.kind}${selected("prop", p.id) ? " selected" : ""}`}
-              onPointerDown={(e) => pick(e, { kind: "prop", id: p.id }, { kind: "move", sel: { kind: "prop", id: p.id }, base: house, grab: toPlan(e), origin: [p.pos[0], p.pos[2]] })}
+              className={`prop ${p.kind}${on ? " selected" : ""}`}
+              onPointerDown={(e) => pick(e, ps, { kind: "move", sel: ps, base: house, grab: toPlan(e), origin: [p.pos[0], p.pos[2]] })}
             >
               {p.kind === "cylinder" ? (
-                <ellipse cx={p.pos[0]} cy={p.pos[2]} rx={p.size[0] / 2} ry={p.size[2] / 2} fill={p.color ?? "#999"} />
+                <ellipse cx={p.pos[0]} cy={p.pos[2]} rx={p.size[0] / 2} ry={p.size[2] / 2} transform={`rotate(${-yaw} ${p.pos[0]} ${p.pos[2]})`} fill={p.color ?? "#999"} />
               ) : (
                 <polygon points={pointsAttr(propCorners(p))} fill={p.kind === "label" ? "#ffffe0" : (p.color ?? "#999")} />
               )}
@@ -408,9 +431,18 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
                   {p.label ?? p.id}
                 </text>
               )}
+              {on && <line className="prop-front" x1={p.pos[0]} y1={p.pos[2]} x2={front[0]} y2={front[1]} />}
+              {edit && on && (
+                <>
+                  <line className="rot-arm" x1={front[0]} y1={front[1]} x2={knob[0]} y2={knob[1]} />
+                  <circle className="rot-handle" cx={knob[0]} cy={knob[1]} r={0.13} onPointerDown={(e) => startDrag(e, { kind: "aim", sel: ps, base: house })}>
+                    <title>{`Drag to turn (${YAW_STEP}° steps, ⇧ 1°) · R / ⇧R · ${yaw}°`}</title>
+                  </circle>
+                </>
+              )}
             </g>
-          ),
-        )}
+          );
+        })}
 
         {/* walls */}
         {walls.map((w, i) => {
@@ -457,7 +489,8 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           const on = selected("terminal", t.id);
           return (
             <g key={t.id} className={`terminal${on ? " selected" : ""}`}>
-              <polygon className="cone" points={pointsAttr(viewCone(t))} />
+              <polygon className="cone" points={pointsAttr(viewCone(t, on ? 4 : 2.5))} />
+              {on && <line className="cone-axis" x1={t.pos[0]} y1={t.pos[2]} x2={along([t.pos[0], t.pos[2]], t.yaw, 4)[0]} y2={along([t.pos[0], t.pos[2]], t.yaw, 4)[1]} />}
               <g transform={`translate(${t.pos[0]} ${t.pos[2]}) rotate(${-t.yaw})`} onPointerDown={(e) => pick(e, s, { kind: "move", sel: s, base: house, grab: toPlan(e), origin: [t.pos[0], t.pos[2]] })}>
                 <rect className="screen" x={-0.2} y={-0.07} width={0.4} height={0.14} />
                 <rect className="hit" x={-0.3} y={-0.3} width={0.6} height={0.6} />
@@ -569,7 +602,12 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
         <span className="muted">
           {" "}
           · wheel zooms · drag empty ground (or Space-drag) pans
-          {edit && (tool === "select" ? " · drag to move · ⌥-wheel or the round handle turns · arrows nudge · Delete removes · ⌘Z / ⇧⌘Z" : " · Esc back to Select")}
+          {edit &&
+            (placing !== null
+              ? ` · click inside a room to place the ${placing} · Esc cancels`
+              : tool === "select"
+                ? " · drag to move (⌥ no snap) · the round handle, R / ⇧R or ⌥-wheel turns · arrows nudge · ⌘D duplicates · Delete removes · ⌘Z / ⇧⌘Z"
+                : " · Esc back to Select")}
         </span>
       </div>
     </div>
