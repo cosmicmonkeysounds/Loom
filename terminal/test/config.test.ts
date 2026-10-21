@@ -23,6 +23,15 @@ describe("terminal config", () => {
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t" }));
     expect(loadConfig(s)).toMatchObject({ character: "Trabolta", spot: "", view: "auto" });
   });
+  it("is full screen by default; a stored off stays off", () => {
+    const s = memory();
+    saveConfig(defaultConfig({ eventId: "evt", token: "t" }), s);
+    expect(loadConfig(s)?.fullscreen).toBe(true);
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t" }));
+    expect(loadConfig(s)?.fullscreen).toBe(true); // an older stored shape
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", fullscreen: false }), s);
+    expect(loadConfig(s)?.fullscreen).toBe(false);
+  });
   it("keeps a placed spot and view, and repairs junk ones", () => {
     const s = memory();
     saveConfig(defaultConfig({ eventId: "evt", token: "t", spot: "start-bar", view: "mirror" }), s);

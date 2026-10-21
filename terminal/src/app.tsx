@@ -42,7 +42,9 @@
 //! a visit a crash or reload left open is closed on the next boot).
 //!
 //! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
-//! before the terminal may make a sound unattended. The screen is held on
+//! before the terminal may make a sound unattended — and, while it is not
+//! full screen, every tap asks for full screen again (`fullscreen.ts`, on
+//! by default). The screen is held on
 //! with a Wake Lock from boot (re-taken on that tap and whenever the page
 //! comes back into view), and the ⚙ opens setup only on a 2 s hold
 //! (`kiosk.ts`) — a guest's short tap does nothing.
@@ -69,6 +71,8 @@ import { mayReload, retryable } from "./retry.ts";
 import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
+import { kioskFullscreen } from "./fullscreen.ts";
+import { setSoundView } from "./sound/bus.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
@@ -255,7 +259,17 @@ export function App() {
     void screenWake().keepOn();
   }, []);
 
+  // Full screen by default (D7): from now on every tap while not full screen
+  // asks again (`fullscreen.ts`); ⚙ can turn it off for this terminal.
+  const fullscreen = config?.fullscreen !== false;
+  useEffect(() => {
+    kioskFullscreen().setEnabled(fullscreen);
+  }, [fullscreen]);
+  // The effects' level follows the view (the TV's are quieter).
+  useEffect(() => setSoundView(config?.view), [config?.view]);
+
   const wake = useCallback(() => {
+    void kioskFullscreen().request();
     void screenWake().keepOn();
     void unlock().then(() => setAwake(audioUnlocked() || !("AudioContext" in window)));
   }, []);

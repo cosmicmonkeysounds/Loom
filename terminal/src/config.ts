@@ -97,6 +97,9 @@ export interface TerminalConfig {
    *  device's voice). Off by default — the TV's room already hears the
    *  house speakers, and most tablets hang where the speakers reach. */
   announce: boolean;
+  /** Full screen on every tap while not (wave 17, `fullscreen.ts`): on by
+   *  default; ⚙ turns it off. Stored only — no URL hint. */
+  fullscreen: boolean;
   /** Set up by tapping a terminal of the event's house map: at boot the
    *  name / view / room follow that map entry (`setup-map.ts` `followMap`).
    *  A manual view / room in ⚙'s advanced section clears it. */
@@ -165,6 +168,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     room: "",
     announce: false,
     camFeed: true,
+    fullscreen: true,
     ...partial,
   };
 }
@@ -178,7 +182,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false, fromMap: c.fromMap === true });
+    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
   } catch {
     return null;
   }
