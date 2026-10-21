@@ -1,0 +1,381 @@
+/* The cutscenes of Act A–C (lane tv1). A TV scene sits on a 16:9 stage
+   (`.kit-stage-fit`: 60em wide, 33.75em tall); a wall scene is a
+   `WallCard` (`kit/tv1.css`) sized off vmin. Chrome 87 / Safari 14: no
+   inset, no flex gap, no aspect-ratio, no :has. Motion is set per frame
+   (transform / opacity) from t; nothing here animates on its own. */
+
+/* Windows on a TV stage scale with the stage, not the viewport. */
+.a1-tv .kit-win { font-size: 0.8em; }
+.a1-tv .kit-storm .kit-win { font-size: 0.6em; }
+
+/* --- shared --------------------------------------------------------------------- */
+.a1-ticker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.25em 0;
+  font-family: var(--mono);
+  font-size: 1.5em;
+  color: #fff;
+  background: #000080;
+  border-top: 0.12em solid #c0c0c0;
+  z-index: 50;
+}
+.a1-ticker.gold { background: #3a2a00; color: #ffd23f; border-top-color: #ffd23f; }
+.a1-ticker.purple { background: #2a0040; color: #e0b0ff; border-top-color: #c86bff; }
+.a1-ticker.ad { background: #ff0090; color: #ffff00; font-weight: bold; border-top-color: #ffff00; }
+.a1-art-centre { position: absolute; left: 50%; top: 50%; }
+.a1-art-at { position: absolute; will-change: transform; }
+.a1-art-corner { position: absolute; right: 0.4em; top: 0.3em; font-size: 2em; }
+.a1-art-table { position: absolute; left: 50%; top: 50%; width: 28vmin; height: 28vmin; margin-left: -14vmin; margin-top: -14vmin; font-size: 2vmin; }
+.a1-art-bar { position: absolute; left: 10%; right: 10%; bottom: 0.6em; padding: 0.3em; background: #c0c0c0; }
+
+/* --- call_desktop ------------------------------------------------------------------ */
+.a1-cd-core { position: absolute; left: 50%; top: 56%; text-align: center; will-change: transform; filter: drop-shadow(0 0 0.6em rgba(255, 220, 80, 0.7)); }
+.a1-cd-core.small { top: 50%; }
+.a1-cd-core-label { margin-top: 0.3em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.4em; color: #fff; text-shadow: 0.08em 0.08em 0 #000; }
+.a1-cd-title { font-family: var(--mono); font-size: 2.6em; line-height: 1.05; color: #800000; }
+.a1-cd-line { font-size: 1.15em; margin-top: 0.3em; }
+.a1-cd-pop.kit-win { font-size: 0.7em; }
+
+/* --- bingo -------------------------------------------------------------------------- */
+.a1-bg-balls { position: absolute; left: 0; right: 0; top: 0.8em; display: flex; justify-content: center; }
+.a1-bingo-letter { margin: 0 0.35em; }
+.a1-ball.a1-bingo-letter > span { font-size: 0.42em; }
+.a1-bingo-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14.52%;
+  text-align: center;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 2.4em;
+  letter-spacing: 0.1em;
+  color: #ffd23f;
+  text-shadow: 0.06em 0.06em 0 #5a2a00;
+  transform-origin: 50% 50%;
+}
+.a1-bingo-card { position: absolute; left: 4em; top: 9.4em; width: 17em; height: 17em; background: #fff; border: 0.25em solid #ffd23f; box-shadow: 0.3em 0.3em 0 rgba(0, 0, 0, 0.5); }
+.a1-bingo-card.small { left: 50%; top: 50%; width: 26vmin; height: 26vmin; margin-left: -13vmin; margin-top: -13vmin; font-size: 2.6vmin; border-width: 0.2em; }
+.a1-cell {
+  position: absolute;
+  width: 20%;
+  height: 20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 0.08em solid #2a1a7a;
+  background: #e8e4ff;
+  color: #c00000;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 2.2em;
+  will-change: transform;
+}
+.a1-bingo-card.small .a1-cell { font-size: 1.6em; }
+.a1-cell.centre { background: #ffd23f; color: #7a1010; }
+.a1-cell.ticked { background: #c8ffd8; color: #007a2a; }
+.a1-cell span { display: inline-block; }
+.a1-cell .a1-cell-ring { position: absolute; top: 0; right: 0; bottom: 0; left: 0; border: 0.12em solid #3ddc84; border-radius: 50%; will-change: transform, opacity; }
+.a1-bingo-q { position: absolute; left: 5.00%; top: 84.15%; width: 22em; font-family: var(--mono); font-size: 1.1em; line-height: 1.15; color: #fff; }
+.a1-cage { position: absolute; left: 25em; top: 9.4em; width: 14em; height: 17em; }
+.a1-cage-svg { display: block; width: 14em; height: 14em; }
+.a1-cage-stand { margin: -0.4em auto 0; width: 6em; height: 2.4em; background: linear-gradient(#a08020, #5a4510); clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); -webkit-clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); }
+.a1-bingo-out { position: absolute; left: 32em; top: 29.4em; will-change: transform; }
+.a1-bingo-rules { font-size: 0.7em !important; }
+.a1-bingo-rule { margin-bottom: 0.5em; line-height: 1.3; }
+.a1-bingo-clock { position: absolute; right: 3.67%; top: 26.67%; font-size: 3.2em; }
+
+/* --- bingo_time ---------------------------------------------------------------------- */
+.a1-bt-zero { position: absolute; left: 50%; top: 30%; transform: translate(-50%, 0); font-size: 6em; }
+.a1-bt-ribbon { position: absolute; left: 50%; top: 44%; will-change: transform, opacity; }
+.a1-bt-title {
+  position: absolute;
+  left: 50%;
+  top: 3%;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 4.4em;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow: 0.06em 0.06em 0 #c00000, 0 0 0.4em rgba(255, 210, 63, 0.6);
+  transform-origin: 50% 50%;
+}
+.a1-bt-balls { position: absolute; left: 0; right: 0; top: 22.2em; display: flex; justify-content: center; }
+.a1-bt-balls .a1-ball { margin: 0 0.4em; }
+.a1-bt-balls .a1-ball > span { font-size: 0.42em; }
+.a1-bt-line { position: absolute; left: 0; right: 0; top: 79.5%; text-align: center; font-family: var(--mono); font-size: 1.8em; color: #ffd23f; }
+
+/* --- Corrupted Code ---------------------------------------------------------------------- */
+.a1-cc-path { pointer-events: none; }
+.a1-cc-globe { position: absolute; left: 76%; top: 55%; text-align: center; will-change: transform; filter: drop-shadow(0 0 0.5em rgba(120, 200, 255, 0.8)); }
+.a1-cc-label { font-family: "Tahoma", sans-serif; font-weight: bold; color: #fff; text-shadow: 0.08em 0.08em 0 #000; font-size: 1.1em; }
+.a1-cc-prog { position: absolute; will-change: transform; }
+.a1-cc-bar { position: absolute; left: 50%; top: 76%; width: 22em; margin-left: -11em; padding: 0.5em 0.7em; background: #c0c0c0; border: 2px solid; border-color: #fff #404040 #404040 #fff; font-size: 0.85em; }
+.a1-help {
+  position: absolute;
+  left: 40%;
+  top: 64%;
+  width: 30em;
+  padding: 0.7em 0.9em;
+  font-family: "Tahoma", sans-serif;
+  font-size: 1em;
+  color: #000;
+  background: #ffffe1;
+  border: 0.06em solid #000;
+  border-radius: 0.5em;
+  box-shadow: 0.2em 0.2em 0 rgba(0, 0, 0, 0.4);
+}
+.a1-help-who { font-weight: bold; margin-bottom: 0.25em; color: #000080; }
+.a1-help-small { margin-top: 0.35em; font-size: 0.85em; }
+
+/* --- trivia ----------------------------------------------------------------------------- */
+.a1-qmark { position: absolute; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 4em; color: #ffd23f; will-change: transform, opacity; }
+.a1-tr-title {
+  position: absolute;
+  left: 50%;
+  top: 4.15%;
+  font-family: var(--mono);
+  font-size: 3.6em;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow: 0 0 0.3em rgba(120, 180, 255, 0.8), 0.06em 0.06em 0 #000;
+  transform-origin: 50% 50%;
+}
+.a1-tr-q.kit-win { font-size: 0.95em; }
+.a1-tr-q .kit-win-body { line-height: 1.3; }
+.a1-tr-clock { position: absolute; right: 3.67%; top: 27.85%; font-size: 3em; text-align: center; }
+.a1-tr-clock .kit-hourglass { margin: 0 auto; font-size: 0.33em; }
+
+/* --- return ------------------------------------------------------------------------------- */
+.a1-ret-clock { position: absolute; left: 50%; top: 2em; will-change: transform; }
+.a1-ret-up {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 3.4em;
+  white-space: nowrap;
+  color: #ff4b4b;
+  text-shadow: 0.06em 0.06em 0 #000;
+  transform-origin: 50% 50%;
+}
+.a1-ret-go {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  padding: 0.25em 0.8em;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 2.2em;
+  white-space: nowrap;
+  color: #000;
+  background: #c0c0c0;
+  border: 0.1em solid;
+  border-color: #fff #404040 #404040 #fff;
+  transform-origin: 50% 50%;
+}
+.a1-ret-go .kit-icon { margin-right: 0.3em; }
+.a1-ret-glass { position: absolute; right: 3em; top: 3em; }
+
+/* --- the results ----------------------------------------------------------------------------- */
+.a1-res-title {
+  position: absolute;
+  left: 50%;
+  top: 3.56%;
+  transform: translate(-50%, 0);
+  font-family: var(--mono);
+  font-size: 3.4em;
+  white-space: nowrap;
+  color: #ffd23f;
+  text-shadow: 0 0 0.3em rgba(255, 210, 63, 0.6), 0.06em 0.06em 0 #000;
+  transform-origin: 50% 50%;
+}
+.a1-res-rules { position: absolute; left: 3em; top: 8em; width: 32em; }
+.a1-res-rule { display: flex; align-items: center; margin-bottom: 1.1em; font-family: "Tahoma", sans-serif; font-size: 1.35em; color: #fff; }
+.a1-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.8em;
+  height: 1.8em;
+  margin-right: 0.7em;
+  font-size: 1.4em;
+  font-weight: bold;
+  border: 0.12em solid;
+  border-radius: 0.2em;
+  will-change: transform, opacity;
+}
+.a1-stamp.ok { color: #3ddc84; border-color: #3ddc84; }
+.a1-stamp.no { color: #ff4b4b; border-color: #ff4b4b; }
+.a1-res-clock { position: absolute; right: 4.00%; top: 22.52%; font-size: 3.4em; }
+.a1-res-open { position: absolute; right: 4.00%; top: 22.52%; display: flex; align-items: center; padding: 0.5em 0.8em; font-family: var(--mono); font-size: 1.5em; color: #ffe3a0; background: rgba(0, 0, 0, 0.45); border: 2px solid #ffb43d; will-change: transform; }
+.a1-res-open .kit-hourglass { margin-right: 0.6em; flex: none; }
+.a1-res-open-big { font-size: 1.35em; color: #ffd23f; }
+.a1-res-nudge.kit-win { font-size: 0.9em; }
+.a1-res-closed { position: absolute; left: 5.00%; top: 65.19%; font-family: var(--mono); font-size: 1.7em; color: #fff; }
+.a1-res-closed-big { font-size: 2em; color: #ff4b4b; }
+.a1-inbox { position: absolute; left: 42em; top: 17em; width: 12em; height: 10em; }
+.a1-inbox-tray { position: absolute; left: 0; right: 0; bottom: 0; height: 4.4em; background: linear-gradient(#8a6a3a, #5a4020); border: 0.15em solid #2a1a08; border-radius: 0.2em; }
+.a1-inbox-label { position: absolute; left: 0; right: 0; bottom: 0.6em; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; color: #ffd23f; }
+.a1-inbox-doc { position: absolute; left: 4.5em; top: 3.5em; will-change: transform, opacity; }
+.a1-inbox-eye { position: absolute; left: 3em; top: 1.6em; width: 6em; will-change: transform; }
+.a1-inbox-eye svg { width: 100%; display: block; }
+.a1-res-q.kit-win { font-size: 1em; }
+.a1-res-sub { position: absolute; left: 5.00%; top: 23.70%; font-family: var(--mono); font-size: 2em; color: #9cf5b8; }
+.a1-scan { position: absolute; right: 4em; top: 6em; width: 14em; height: 22em; overflow: hidden; border: 0.12em solid #1d6b36; background: rgba(0, 20, 8, 0.6); }
+.a1-scan.small { right: auto; left: 50%; top: 4%; height: 92%; width: 50%; margin-left: -25%; font-size: 2.4vmin; }
+.a1-scan-lane { position: absolute; left: 0; right: 0; top: 0; height: 100%; will-change: transform; }
+.a1-scan-card {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  height: 2em;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5em;
+  font-family: "Tahoma", sans-serif;
+  font-size: 0.9em;
+  color: #000;
+  background: #fff;
+  border: 0.08em solid #404040;
+  will-change: transform;
+}
+.a1-scan-card .kit-icon { margin-right: 0.4em; }
+.a1-scan-read { margin-left: auto; padding: 0 0.3em; color: #007a2a; border: 0.1em solid #007a2a; font-weight: bold; transform: rotate(-6deg); }
+.a1-scan-beam { position: absolute; left: 0; right: 0; top: 44%; height: 0.35em; background: #3dff7a; box-shadow: 0 0 1em #3dff7a, 0 0 2.4em rgba(61, 255, 122, 0.6); }
+.a1-res-in { position: absolute; left: 5.00%; top: 68.15%; font-family: var(--mono); font-size: 2.6em; color: #3dff7a; text-shadow: 0 0 0.3em rgba(61, 255, 122, 0.7); transform-origin: 0 50%; }
+.a1-res-next { position: absolute; left: 50.00%; top: 77.04%; display: flex; align-items: center; font-family: var(--mono); font-size: 1.4em; color: #ffd23f; }
+.a1-table.mini { width: 4.4em; height: 4.4em; margin-right: 0.6em; font-size: 0.4em; flex: none; }
+
+/* --- Filing Closed ---------------------------------------------------------------------------- */
+.a1-fc-title { position: absolute; left: 50%; top: 11.85%; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 4.2em; white-space: nowrap; color: #ffd23f; text-shadow: 0.06em 0.06em 0 #000; transform-origin: 50% 50%; }
+.a1-fc-pencil { position: absolute; left: 50%; top: 13em; width: 20em; height: 3em; margin-left: -10em; display: flex; justify-content: center; }
+.a1-fc-half { width: 10em; height: 1.7em; will-change: transform; }
+.a1-fc-stamp {
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  padding: 0.15em 0.6em;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 2.6em;
+  white-space: nowrap;
+  color: #ff4b4b;
+  border: 0.14em solid #ff4b4b;
+  border-radius: 0.15em;
+  will-change: transform, opacity;
+}
+.a1-fc-line { position: absolute; left: 0; right: 0; top: 84%; text-align: center; font-family: var(--mono); font-size: 2em; color: #fff; }
+
+/* --- truth or dare ------------------------------------------------------------------------------ */
+.a1-tod-table { position: absolute; left: 4.5em; top: 3.875em; width: 26em; height: 26em; font-size: 1em; }
+.a1-tod-side { position: absolute; left: 34em; top: 8em; width: 24em; }
+.a1-tod-title { font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 3em; line-height: 1.1; color: #ffd23f; text-shadow: 0.06em 0.06em 0 #000; overflow-wrap: break-word; }
+.a1-tod-sub { margin-top: 0.4em; font-family: var(--mono); font-size: 2.2em; color: #fff; }
+.a1-tod-ask { display: flex; margin-top: 1.2em; font-size: 1.6em; }
+.a1-tod-ask .kit-btn { margin-right: 0.6em; min-width: 5em; padding: 0.3em 0.9em; font-weight: bold; }
+
+/* --- a Truth chosen (over the bottle) ------------------------------------------------------------- */
+.a1-truth { pointer-events: none; }
+.a1-truth-banner {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: min(92vw, 102vmin);
+  padding: 2.4vmin 3vmin 2.8vmin;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(#0a7a2a, #04461a);
+  border: 0.6vmin solid #ffd23f;
+  border-top: 0;
+  border-radius: 0 0 2vmin 2vmin;
+  box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, 0.6);
+  will-change: transform;
+}
+.a1-truth-big { font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 9vmin; line-height: 1; color: #ffd23f; text-shadow: 0.05em 0.05em 0 #000; }
+.a1-truth-who { margin-top: 1.4vmin; font-family: var(--mono); font-size: 5vmin; }
+.a1-truth-line { margin-top: 0.8vmin; font-family: var(--mono); font-size: 3.6vmin; color: #c8ffd8; }
+
+/* --- the ad hijack ---------------------------------------------------------------------------------- */
+.a1-ad { background: radial-gradient(circle at 50% 45%, #fff35c 0, #ffb000 55%, #ff3d9a 100%); overflow: hidden; }
+.a1-ad-rays {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 260vmax;
+  height: 260vmax;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.28) 0deg 10deg, rgba(255, 255, 255, 0) 10deg 20deg);
+  border-radius: 50%;
+  will-change: transform;
+}
+.a1-ad-duck { position: absolute; width: 9.6em; height: 9.45em; will-change: transform; filter: drop-shadow(0.2em 0.25em 0 rgba(0, 0, 0, 0.35)); }
+.a1-ad-price { position: absolute; z-index: 3; left: 50%; top: 6.5em; transform-origin: 50% 50%; }
+/* The storm piles up under the price, the offer and the call (they stay readable over it). */
+.a1-ad-stormlayer { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; }
+.a1-odo { display: flex; padding: 0.08em 0.1em 0.08em 0.14em; font-family: var(--mono); font-size: 5.4em; line-height: 1; color: #fff; background: #ffe600; border: 0.04em solid #000; box-shadow: 0.06em 0.06em 0 rgba(0, 0, 0, 0.4); }
+.a1-odo-group { display: flex; align-items: flex-end; margin-right: 0.15em; }
+.a1-odo-wheel { position: relative; display: inline-block; width: 0.62em; height: 1em; overflow: hidden; margin-right: 0.04em; background: #111; border: 0.04em solid #444; box-shadow: inset 0 0.18em 0.15em rgba(0, 0, 0, 0.8), inset 0 -0.18em 0.15em rgba(0, 0, 0, 0.8); }
+.a1-odo-strip { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; text-align: center; will-change: transform; }
+.a1-odo-strip span { display: block; height: 1em; line-height: 1em; }
+.a1-odo-dot { color: #000; text-shadow: none; margin-left: 0.02em; }
+.a1-ad-offer { position: absolute; z-index: 3; left: 0; right: 0; top: 40.00%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.6em; color: #c00000; text-shadow: 0.05em 0.05em 0 #fff; }
+.a1-ad-call { position: absolute; z-index: 3; left: 0; right: 0; top: 63.70%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.2em; color: #000; }
+.a1-ad-phone { display: inline-block; padding: 0 0.3em; background: #fff; border: 0.08em solid #000; white-space: pre; }
+.a1-ad-never { position: absolute; z-index: 3; right: 3.33%; top: 81.48%; padding: 0.2em 0.6em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.3em; color: #fff; background: #c00000; transform: rotate(-6deg); }
+.a1-frozen { background: #008080; }
+.a1-frozen-win.kit-win { font-size: 1.1em; }
+.a1-frozen-title { font-family: var(--mono); font-size: 2em; color: #000080; margin-bottom: 0.3em; }
+.a1-frozen-glass { position: absolute; left: 54%; top: 52%; }
+.a1-ad-wall-price { position: absolute; z-index: 3; left: 0; right: 0; top: 50%; transform: translate(0, -50%); display: flex; flex-direction: column; align-items: center; font-size: 2.2vmin; }
+.a1-ad-wall-offer { margin-top: 0.4em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.8em; color: #c00000; text-shadow: 0.05em 0.05em 0 #fff; text-align: center; }
+.a1-ad-wall-call { margin-top: 0.5em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.2em; white-space: pre; color: #000; }
+.a1-ad .kit-storm .kit-win { font-size: clamp(12px, 2.6vmin, 22px); }
+
+/* --- the Truther Download ------------------------------------------------------------------------- */
+.a1-td-page { position: relative; }
+.a1-td-page .kit-win-body { position: relative; background: #fff; min-height: 14em; }
+.a1-td-stamp {
+  position: absolute;
+  left: 18%;
+  top: 34%;
+  padding: 0.1em 0.5em;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 2.4em;
+  color: #d00000;
+  border: 0.12em solid #d00000;
+  will-change: transform, opacity;
+}
+.a1-td-win .kit-win-body { background: #000; color: #3dff7a; }
+.a1-td-title { font-family: var(--mono); font-size: 2.6em; color: #3dff7a; }
+.a1-td-line { font-family: var(--mono); font-size: 1.3em; margin: 0.3em 0 0.6em; color: #e9fff1; }
+.a1-td-win .kit-progress-wrap { color: #3dff7a; }
+.a1-td-keeper { position: absolute; left: 0; right: 0; top: 77.04%; text-align: center; font-family: var(--mono); font-size: 3.2em; color: #ff4b4b; text-shadow: 0 0 0.3em rgba(255, 75, 75, 0.7); }
+.a1-gavel { position: absolute; left: 8%; top: 40%; width: 9em; height: 9em; }
+.a1-gavel-head { transform-origin: 80% 80%; will-change: transform; }
+.a1-gavel-ring { position: absolute; left: 6%; top: 74%; width: 7em; height: 1.4em; border: 0.2em solid #ffd23f; border-radius: 50%; will-change: transform, opacity; }
+.a1-wall-q { position: absolute; left: 50%; top: 50%; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 20vmin; line-height: 1; color: #ffd23f; text-shadow: 0.05em 0.05em 0 #7a4b00; will-change: transform; }
+.a1-wall-qmark { position: absolute; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 6vmin; color: #ffd23f; will-change: transform, opacity; }
+
+/* --- B9b · the bottle's verdict ----------------------------------------------------------- */
+.a1-verdict { overflow: hidden; }
+.a1-verdict-sweep { position: absolute; left: 0; right: 0; top: 0; height: 18%; background: linear-gradient(180deg, rgba(255, 40, 40, 0), rgba(255, 40, 40, 0.22), rgba(255, 40, 40, 0)); pointer-events: none; will-change: transform; }
+.a1-verdict-big { font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 3.4em; line-height: 1.05; color: #ffd23f; text-shadow: 0.06em 0.06em 0 #000; transform-origin: 0 50%; will-change: transform, opacity; }
+.a1-verdict.refused .a1-verdict-big { color: #ff5a5a; }
+.a1-verdict.dare .a1-verdict-big { color: #e9a6ff; }
+.a1-verdict-line { font-size: 1.7em; }
+.a1-verdict-coin { margin-top: 0.5em; font-family: var(--mono); font-size: 3.2em; color: #ffd23f; text-shadow: 0 0 0.3em rgba(255, 210, 63, 0.6); }
+.a1-verdict-x { position: absolute; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 5em; line-height: 1; color: #ff2a2a; text-shadow: 0 0 0.2em #000; will-change: transform, opacity; }
+.a1-verdict-hat { position: absolute; width: 5.5em; height: 4.4em; will-change: transform; filter: drop-shadow(0.15em 0.2em 0 rgba(0, 0, 0, 0.5)); }
+.a1-verdict-hat .a1-hat { display: block; width: 100%; height: 100%; }
+.a1-verdict-mark.kit-win { font-size: 0.95em; }
+.a1-verdict-way { position: absolute; left: 52%; top: 83%; font-family: var(--mono); font-size: 1.8em; color: #ff8a8a; letter-spacing: 0.1em; }
+.a1-verdict-way span { display: inline-block; margin-right: 0.2em; }
