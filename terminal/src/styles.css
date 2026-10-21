@@ -1055,6 +1055,10 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   transition: opacity 0.25s ease;
 }
 .idle-show[data-active="false"] { opacity: 0; visibility: hidden; pointer-events: none; }
+/* A moment's scene over it: still drawn, frozen where it stands, no taps under the scene. */
+.idle-show[data-paused] *, .idle-show[data-paused] *::before, .idle-show[data-paused] *::after { animation-play-state: paused !important; }
+.idle-show[data-active="true"][data-paused] { pointer-events: none; }
+.idle-show[data-active="true"][data-paused] * { pointer-events: none !important; }
 /* Beside the world view: the line pane only (the face pane's grid share). */
 .idle-show[data-region="pane"] { left: max(280px, 42%); border-left: 2px solid var(--phosphor-faint); }
 @media (orientation: portrait) {
@@ -1069,7 +1073,7 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 /* --- the face layout: his face shows through, a tip from him, an ad beside it --- */
 .idle-show[data-layout="face"] { background: transparent; pointer-events: none; }
 .idle-show[data-layout="face"] .idle-saver-wrap { visibility: hidden; }
-.idle-show[data-layout="face"] .idle-face-ad, .idle-show[data-layout="face"] .idle-popups > * { pointer-events: auto; }
+.idle-show[data-layout="face"] .idle-face-ad, .idle-show[data-layout="face"] .idle-popups > *, .idle-show[data-layout="face"] .idle-touch-me { pointer-events: auto; }
 .idle-face { position: absolute; inset: 0; }
 .idle-face-tip {
   position: absolute;
@@ -1172,6 +1176,7 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .idle-ad-x:active, .idle-pop-x:active, .idle-ad-button:active, .idle-pop-button:active { border-color: var(--win-dark) var(--win-hi) var(--win-hi) var(--win-dark); }
 .idle-ad-body { display: flex; align-items: flex-start; padding: 0.8em 0.9em 0.9em; }
 .idle-ad-art { flex: none; width: 3.4em; height: 3.4em; margin-right: 0.8em; }
+.idle-ad-png { object-fit: contain; image-rendering: pixelated; }
 .idle-ad-words { flex: 1 1 auto; min-width: 0; text-align: left; }
 .idle-ad-kicker { display: inline-block; margin-bottom: 0.3em; padding: 0 0.4em; font-size: 0.7em; font-weight: bold; letter-spacing: 0.08em; color: #fff; background: #c00000; }
 .idle-ad-title { font-size: 1.35em; font-weight: bold; line-height: 1.1; margin-bottom: 0.35em; }
@@ -1194,7 +1199,9 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 .idle-ad[data-gag="shake"], .idle-banner-ad[data-gag="shake"] { animation: idle-shake 0.5s linear 2; }
 .idle-ad[data-gag="won"] .idle-ad-title { animation: idle-flash 0.25s steps(2, end) 6; }
 .idle-duck-lane { position: relative; height: 1.8em; margin: -0.2em 0 0.6em; border-bottom: 2px dashed #0a6; }
-.idle-duck-target { position: absolute; bottom: 0; font-size: 1.6em; transform: translateX(-50%); }
+/* The runner spans the lane, so its translateX(%) is a share of the lane. */
+.idle-duck-runner { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transition: transform 0.25s linear; will-change: transform; pointer-events: none; }
+.idle-duck-target { position: absolute; left: 0; bottom: 0; font-size: 1.6em; transform: translateX(-50%); }
 
 /* The skins: one ad structure, fourteen looks. */
 .idle-ad.skin-banner { background: linear-gradient(180deg, #fff200, #ff9a00); }
@@ -1425,7 +1432,9 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 @keyframes scan-box-glow { 50% { box-shadow: 0 0 30px var(--phosphor-dim), inset 0 0 12px rgba(0, 0, 0, 0.8); } }
 /* Reduced motion: things fade in; nothing bounces, shakes, scrolls or blinks. */
 @media (prefers-reduced-motion: reduce) {
-  .idle-ad, .idle-banner, .idle-face-tip, .idle-thanks, .idle-ad-gag { animation: idle-fade 0.3s ease both !important; }
+  .idle-ad, .idle-banner, .idle-banner-ad, .idle-face-tip, .idle-thanks, .idle-ad-gag { animation: idle-fade 0.3s ease both !important; }
+  .idle-show[data-pool="malware"] .idle-ad, .idle-show[data-pool="malware"] .idle-banner-ad { animation: idle-fade 0.3s ease both !important; }
+  .idle-duck-runner { transition: none; }
   .idle-touch-me, .idle-marquee span, .idle-ad-kicker, .idle-banner-kicker, .idle-storm-banner, .scan-box, .scan-box-title.blink, .idle-ad[data-gag] .idle-ad-title, .idle-ripple { animation: none !important; }
   .idle-marquee span { padding-left: 0; white-space: normal; }
 }

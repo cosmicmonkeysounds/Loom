@@ -16,13 +16,14 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { useReducedMotion } from "../cutscene/clock.ts";
+import { useMomentUp } from "../cutscene/moment-bus.ts";
 import type { ScreenState } from "../screen.ts";
 import { sfx } from "../sound/bus.ts";
 import type { SfxName } from "../sound/library.ts";
 import { FACE_TIPS, SKIN_BAR, type IdleAd } from "./ads.ts";
 import { IdleArt } from "./art.tsx";
 import { MAX_POPUPS, ask, close, closeGag, dodge, emptyField, hydra, relayout, tick, type LivePopup, type PopupField, type Rect } from "./field.ts";
-import { GAG_MS, THANKS, adGag, attentionOn, gagSound, gagText, ringsAt, type AdGag } from "./gags.ts";
+import { GAG_MS, THANKS, adGag, attentionOn, duckLane, gagSound, gagText, ringsAt, type AdGag } from "./gags.ts";
 import { fillCopy, idleContextOf, type IdleContext } from "./pools.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, type PopupKind } from "./popups.ts";
 import { hash32, mix, roll } from "./rng.ts";
@@ -69,8 +70,12 @@ function reserveOf(show: HTMLElement | null, box: HTMLElement | null | undefined
 export function IdleShow({ name, state, asleep, character, target, active, region = "full", reserveRef }: IdleShowProps) {
   const seed = useMemo(() => hash32(name.trim().toLowerCase() || "terminal"), [name]);
   const reduced = useReducedMotion();
-  const ctx: IdleContext = idleContextOf({ state, asleep, character, target, scan: reserveRef !== undefined });
-  const ctxKey = `${ctx.pool}|${ctx.phase}|${ctx.names}|${ctx.target}|${ctx.scan}|${ctx.character}`;
+  // A moment's scene over the show pauses it where it stands (still drawn —
+  // a popup moment shows what is under it — but nothing moves or rings).
+  const moment = useMomentUp();
+  const running = active && !moment;
+  const ctx: IdleContext = idleContextOf({ state, asleep, character, target, scan: reserveRef !== undefined, region, now: Date.now() });
+  const ctxKey = `${ctx.pool}|${ctx.phase}|${ctx.names}|${ctx.target}|${ctx.scan}|${ctx.face}|${ctx.character}`;
   // The pools only change with the context (not with every poll).
   const pools = useMemo(() => ({ ads: adPool(ctx), popups: popupPool(ctx) }), [ctxKey]);
   const segOf = useCallback((i: number): Segment => segmentAt(seed, i, ctx, pools.ads), [seed, ctxKey, pools]);
@@ -92,10 +97,10 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
 
   const play = useCallback(
     (name: SfxName, gain = 1, pitch?: number) => {
-      if (!active) return;
+      if (!running) return;
       sfx(name, { gain: target === "tv" ? Math.min(gain, 0.7) : gain, pitch });
     },
-    [active, target],
+    [running, target],
   );
 
   const kindOf = (p: LivePopup): PopupKind | null => {
@@ -129,7 +134,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
     }
     const s = segOf(cursor.current!.index);
     const reserve = reserveOf(root.current, reserveRef?.current);
-    const r = tick(field.current, t, { seed, layout: s.layout, pool: ctxRef.current.pool, target, reserve });
+    const r = tick(field.current, t, { seed, layout: s.layout, pool: ctxRef.current.pool, target, reserve, y2kLeft: ctxRef.current.y2kLeft });
     field.current = r.field;
     if (r.arrived !== null) {
       const k = kindOf(r.arrived);
@@ -143,7 +148,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
   }, [lengthOf, name, segOf, seed, target, play, reserveRef]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!running) return;
     let id = 0;
     const start = () => {
       window.clearInterval(id);
@@ -158,7 +163,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [active, step]);
+  }, [running, step]);
   // Keep the place across a remount (the character waking, a line ending).
   useEffect(() => () => void (cursor.current !== null && saveCursor(name, cursor.current)), [name]);
 
@@ -174,6 +179,14 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
   const touched = () => {
     lastTouch.current = Date.now();
   };
+  // Any tap on the terminal is a touch — the face showing through, the
+  // scan box, the bar — so TOUCH ME never asks someone who is poking it.
+  useEffect(() => {
+    if (!active) return;
+    const on = () => void (lastTouch.current = Date.now());
+    window.addEventListener("pointerdown", on, true);
+    return () => window.removeEventListener("pointerdown", on, true);
+  }, [active]);
   const onDown = (e: PointerEvent<HTMLDivElement>) => {
     touched();
     // The background pokes the saver (the dimmed backdrop under an ad too);
@@ -255,9 +268,9 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
 
   // --- the picture ---
   const live = field.current.live;
-  const attention = active && attentionOn(lastTouch.current, now, target);
+  const attention = running && attentionOn(lastTouch.current, now, target);
   const gagFor = (ad: IdleAd) => (gag !== null && gag.ad === ad.id && now < gag.until ? gag : null);
-  const adNode = (ad: IdleAd, size: "big" | "half") => <AdView key={ad.id} ad={ad} ctx={ctx} size={size} gag={gagFor(ad)} now={now} onButton={(e) => onAdButton(ad, e)} onClose={onAdClose} />;
+  const adNode = (ad: IdleAd, size: "big" | "half") => <AdView key={ad.id} ad={ad} ctx={ctx} size={size} gag={gagFor(ad)} now={now} reduced={reduced} onButton={(e) => onAdButton(ad, e)} onClose={onAdClose} />;
   const tip = seg.layout === "face" ? fillCopy(FACE_TIPS[mix(seed, seg.index) % FACE_TIPS.length]!, ctx) : null;
   const storming = seg.layout === "storm";
   return (
@@ -269,13 +282,14 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       data-region={region}
       data-target={target}
       data-active={String(active)}
+      data-paused={running ? undefined : ""}
       data-segment={seg.index}
       onPointerDown={onDown}
     >
       <div className="idle-saver-wrap" key={`${seg.saver}.${seg.index}`}>
-        <SaverCanvas saver={seg.saver} seed={mix(seed, seg.index)} active={active && seg.layout !== "face"} reduced={reduced} handle={saver} onEvent={onSaverEvent} />
+        <SaverCanvas saver={seg.saver} seed={mix(seed, seg.index)} active={running && seg.layout !== "face"} reduced={reduced} handle={saver} onEvent={onSaverEvent} />
       </div>
-      {storming && <StormTrail key={seg.index} seed={mix(seed, seg.index)} active={active} reduced={reduced} />}
+      {storming && <StormTrail key={seg.index} seed={mix(seed, seg.index)} active={running} reduced={reduced} />}
       {storming && (
         <div className="idle-storm-banner" key={`b${seg.index}`}>
           <IdleArt kind="error" size="1.4em" /> SYSTEM OVERLOAD — {String(Math.max(0, field.current.drawn - stormBase.current) * 7 + 13).padStart(3, "0")} ERRORS
@@ -308,7 +322,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
       <div className="idle-popups">
         {Array.from({ length: MAX_POPUPS }, (_, slot) => {
           const p = live.find((x) => x.slot === slot) ?? null;
-          return <PopupSlot key={slot} popup={p} kind={p === null ? null : kindOf(p)} ctx={ctx} onButton={onPopupButton} />;
+          return <PopupSlot key={slot} popup={p} kind={p === null ? null : kindOf(p)} ctx={ctx} reduced={reduced} onButton={onPopupButton} />;
         })}
       </div>
       {attention && (
@@ -324,7 +338,31 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
 
 // --- one ad ---------------------------------------------------------------------------------
 
-function AdView({ ad, ctx, size, gag, now, onButton, onClose }: { ad: IdleAd; ctx: IdleContext; size: "big" | "half"; gag: Gag | null; now: number; onButton: (e: MouseEvent) => void; onClose: (e: MouseEvent) => void }) {
+/** Ads whose `public/ads/<id>.png` failed to load: never fetched again this page. */
+const missingArt = new Set<string>();
+
+/** An ad's picture: its PNG when it has one (`png: true`), else (or once that fails) its SVG art. */
+export function AdArtView({ ad, className }: { ad: IdleAd; className: string }) {
+  const [failed, setFailed] = useState(() => missingArt.has(ad.id));
+  useEffect(() => setFailed(missingArt.has(ad.id)), [ad.id]);
+  if (ad.png === true && !failed) {
+    return (
+      <img
+        className={`${className} idle-ad-png`}
+        src={`${import.meta.env.BASE_URL}ads/${ad.id}.png`}
+        alt=""
+        draggable={false}
+        onError={() => {
+          missingArt.add(ad.id);
+          setFailed(true);
+        }}
+      />
+    );
+  }
+  return ad.art === undefined ? null : <IdleArt kind={ad.art} size="1em" className={className} />;
+}
+
+function AdView({ ad, ctx, size, gag, now, reduced, onButton, onClose }: { ad: IdleAd; ctx: IdleContext; size: "big" | "half"; gag: Gag | null; now: number; reduced: boolean; onButton: (e: MouseEvent) => void; onClose: (e: MouseEvent) => void }) {
   const text = gag === null ? null : gag.gag === "loading" && now < gag.until - 1_200 ? null : gagText(gag.gag);
   return (
     <div className={`idle-ad skin-${ad.skin} size-${size}`} data-gag={gag?.gag ?? undefined} key={gag?.seq ?? 0}>
@@ -335,12 +373,12 @@ function AdView({ ad, ctx, size, gag, now, onButton, onClose }: { ad: IdleAd; ct
         </button>
       </div>
       <div className="idle-ad-body">
-        {ad.art !== undefined && <IdleArt kind={ad.art} size="1em" className="idle-ad-art" />}
+        <AdArtView ad={ad} className="idle-ad-art" />
         <div className="idle-ad-words">
           {ad.kicker !== undefined && <div className="idle-ad-kicker">{fillCopy(ad.kicker, ctx)}</div>}
           <div className="idle-ad-title">{fillCopy(ad.title, ctx)}</div>
           <p className="idle-ad-text">{fillCopy(ad.body, ctx)}</p>
-          {ad.id === "ad-punch-the-duck" && <DuckTarget now={now} />}
+          {ad.id === "ad-punch-the-duck" && <DuckTarget now={now} reduced={reduced} />}
           <button type="button" className="idle-ad-button" onClick={onButton} onPointerDown={(e) => e.stopPropagation()}>
             {fillCopy(ad.button, ctx)}
           </button>
@@ -356,12 +394,17 @@ function AdView({ ad, ctx, size, gag, now, onButton, onClose }: { ad: IdleAd; ct
   );
 }
 
-/** The "punch the duck" target, sliding along its lane. */
-function DuckTarget({ now }: { now: number }) {
+/** The "punch the duck" target, ping-ponging along its lane (`duckLane`) —
+ *  a transform on a lane-wide runner, never layout; held mid-lane under
+ *  reduced motion. */
+export function DuckTarget({ now, reduced }: { now: number; reduced: boolean }) {
+  const at = reduced ? 0.5 : duckLane(now);
   return (
     <div className="idle-duck-lane" aria-hidden="true">
-      <span className="idle-duck-target" style={{ left: `${Math.round(((now % 2_600) / 2_600) * 100)}%` }}>
-        <IdleArt kind="duck" size="1em" />
+      <span className="idle-duck-runner" style={{ transform: `translateX(${(at * 100).toFixed(1)}%)` }}>
+        <span className="idle-duck-target">
+          <IdleArt kind="duck" size="1em" />
+        </span>
       </span>
     </div>
   );
@@ -372,7 +415,7 @@ function AdBanner({ ad, ctx, gag, onButton }: { ad: IdleAd; ctx: IdleContext; ga
   const text = gag === null ? null : gagText(gag.gag);
   return (
     <div className={`idle-banner-ad skin-${ad.skin}`} data-gag={gag?.gag ?? undefined} key={gag?.seq ?? 0}>
-      {ad.art !== undefined && <IdleArt kind={ad.art} size="1em" className="idle-banner-art" />}
+      <AdArtView ad={ad} className="idle-banner-art" />
       <div className="idle-banner-words">
         <div className="idle-banner-title">
           {ad.kicker !== undefined && <span className="idle-banner-kicker">{fillCopy(ad.kicker, ctx)}</span>}
@@ -391,7 +434,7 @@ function AdBanner({ ad, ctx, gag, onButton }: { ad: IdleAd; ctx: IdleContext; ga
 
 // --- one window (a pooled slot) ---------------------------------------------------------------
 
-function PopupSlot({ popup, kind, ctx, onButton }: { popup: LivePopup | null; kind: PopupKind | null; ctx: IdleContext; onButton: (p: LivePopup, which: "x" | number, e: MouseEvent) => void }) {
+function PopupSlot({ popup, kind, ctx, reduced, onButton }: { popup: LivePopup | null; kind: PopupKind | null; ctx: IdleContext; reduced: boolean; onButton: (p: LivePopup, which: "x" | number, e: MouseEvent) => void }) {
   const el = useRef<HTMLDivElement | null>(null);
   const id = popup?.id ?? 0;
   const dodged = popup?.dodged ?? false;
@@ -401,18 +444,21 @@ function PopupSlot({ popup, kind, ctx, onButton }: { popup: LivePopup | null; ki
     if (node === null || id === 0 || typeof node.animate !== "function") return;
     try {
       node.animate(
-        dodged
+        reduced
+          ? // Reduced motion: it fades in where it lands; a dodge just blinks.
+            [{ opacity: dodged ? 0.4 : 0 }, { opacity: 1 }]
+          : dodged
           ? [{ transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(-3px)" }, { transform: "none" }]
           : [
               { transform: "scale(0.3)", opacity: 0 },
               { transform: "scale(1)", opacity: 1 },
             ],
-        { duration: dodged ? 240 : 170, easing: dodged ? "linear" : "steps(4, end)" },
+        reduced ? { duration: 200, easing: "ease-out" } : { duration: dodged ? 240 : 170, easing: dodged ? "linear" : "steps(4, end)" },
       );
     } catch {
       /* no animation: it just appears */
     }
-  }, [id, dodged]);
+  }, [id, dodged, reduced]);
   const on = popup !== null && kind !== null;
   const stop = (e: PointerEvent) => e.stopPropagation();
   return (
