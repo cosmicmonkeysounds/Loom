@@ -9,7 +9,7 @@
 //! booth re-raises from its view on every snapshot. `rung.ts` is the one
 //! import the booth reads; swap it to `../../moments/popout.tsx` when that lands.
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { useArmButtons, ARM_LINE } from "../../arm.ts";
 import { usePlayHost, type SessionStorage } from "../../host.ts";
 import { PersonAvatar } from "../../ui/primitives.tsx";
@@ -346,7 +346,7 @@ function Caption({ spec, queued, onLater }: { spec: PopOutSpec; queued: number; 
 }
 
 /** The floating window (no dock mounted). */
-export function PopOutHost(): JSX.Element | null {
+export function PopOutHost(): ReactElement | null {
   const r = useRung();
   const c = r.current;
   if (c === null || r.docks > 0) return null;
@@ -365,7 +365,7 @@ export function PopOutHost(): JSX.Element | null {
 /** The docked slot: a 56 px strip that expands in place (plain flow layout). */
 let dockSeq = 0;
 
-export function PopOutDock(): JSX.Element | null {
+export function PopOutDock(): ReactElement | null {
   const r = useRung();
   const mount = r.mountDock;
   const [id] = useState(() => ++dockSeq);
@@ -400,7 +400,7 @@ export function PopOutDock(): JSX.Element | null {
 }
 
 /** The deferred list, for the booth's 🔔 window. */
-export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }): JSX.Element {
+export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }): ReactElement {
   const r = useRung();
   const now = Date.now();
   if (r.tray.length === 0) return <p className="booth-none">Nothing waiting. You're on top of it.</p>;
