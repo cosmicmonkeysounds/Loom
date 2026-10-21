@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById } from "@loom/house";
 import type { AudioConfig, Compass, HouseMap, PropKind, Vec3 } from "@loom/house";
-import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersIn, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
+import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersDropped, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
 import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
@@ -17,7 +17,7 @@ import { metres, rectOf } from "./plan.ts";
 import { guardableDoors, guardedBy, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
-import { isStep, parseNum } from "./tools.ts";
+import { commitPending, isStep, parseNum } from "./tools.ts";
 
 /** A field typed into and then unmounted (the selection moved on before it blurred) still lands what was typed. */
 function useCommitOnUnmount(pending: (() => void) | null): void {
@@ -72,8 +72,14 @@ export function Num({ label, value, onChange, step = 0.05, disabled, placeholder
 /** A text field that commits on Enter / blur (ids: renaming on every keystroke would churn references; a yard's label: its pieces are grouped by it). */
 export function CommitText({ label, value, disabled, onCommit, list, placeholder, children }: { label: ReactNode; value: string; disabled: boolean; onCommit: (v: string) => void; list?: string; placeholder?: string; children?: ReactNode }) {
   const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  useCommitOnUnmount(text !== value ? () => onCommit(text) : null);
+  /** The text Enter / blur last committed (the unmount never lands it again). */
+  const committed = useRef<string | null>(null);
+  useEffect(() => {
+    setText(value);
+    committed.current = null;
+  }, [value]);
+  // Read at unmount, not at render: the blur that committed may not have re-rendered this field.
+  useCommitOnUnmount(text !== value ? () => commitPending(text, value, committed.current) && onCommit(text) : null);
   return (
     <label className="field">
       {label}
@@ -84,7 +90,11 @@ export function CommitText({ label, value, disabled, onCommit, list, placeholder
         {...(list !== undefined ? { list } : {})}
         {...(placeholder !== undefined ? { placeholder } : {})}
         onChange={(e) => setText(e.target.value)}
-        onBlur={() => text !== value && onCommit(text)}
+        onBlur={() => {
+          if (!commitPending(text, value, null)) return;
+          committed.current = text;
+          onCommit(text);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
           else if (e.key === "Escape") setText(value);
@@ -484,9 +494,10 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id,
   const remove = () => {
     const c = cascadeOf(house, deletesWith(house, r.id));
     if (c.spawn) return onNotice(`The spawn is in this ${r.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
-    if (!window.confirm(withSpeakersText(deleteRoomText(r, c), audio === null || r.outdoor ? 0 : speakersIn(audio, c.rooms).length))) return;
     const out = removeRoom(house, r.id);
     if ("error" in out) return onNotice(out.error);
+    // The speakers the delete takes (a yard's too: one standing in no piece goes).
+    if (!window.confirm(withSpeakersText(deleteRoomText(r, c), audio === null ? 0 : speakersDropped(house, out.house, audio).length))) return;
     commit(out.house);
     onSelect(null);
   };
@@ -613,9 +624,9 @@ function FloorInspector({ house, edit, commit, onSelect, onNotice, id, audio = n
     if (house.floors.length <= 1) return onNotice("A house needs at least one floor.");
     if (c.spawn) return onNotice("The spawn is on this floor — move it to another floor first.");
     const extra = cascadeText(c, true);
-    if (!window.confirm(withSpeakersText(`Delete the floor “${f.label}”${extra !== "" ? ` with ${extra}` : ""}?`, audio === null ? 0 : speakersIn(audio, c.rooms).length))) return;
     const out = removeFloor(house, id);
     if ("error" in out) return onNotice(out.error);
+    if (!window.confirm(withSpeakersText(`Delete the floor “${f.label}”${extra !== "" ? ` with ${extra}` : ""}?`, audio === null ? 0 : speakersDropped(house, out.house, audio).length))) return;
     commit(out.house);
     onSelect(null);
   };

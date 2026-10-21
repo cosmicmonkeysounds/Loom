@@ -128,3 +128,13 @@ export function parseNum(text: string): number | null | undefined {
 export function isStep(ev: Event): boolean {
   return !("inputType" in ev) || (ev as InputEvent).inputType === "";
 }
+
+/**
+ * Whether a text field leaving the page still has to land what was typed:
+ * not when it shows the value, and not when Enter / blur already committed
+ * this very text (a speaker's id rename re-keys its inspector, and the
+ * leaving field would apply the rename a second time, as a second undo step).
+ */
+export function commitPending(text: string, value: string, committed: string | null): boolean {
+  return text !== value && text !== committed;
+}
