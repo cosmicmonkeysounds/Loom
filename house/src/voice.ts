@@ -11,7 +11,10 @@
 //! pinned by `test/fixtures/voice-mulaw.json`. No `node:` imports.
 
 import { floorOf, locate } from "./locate.ts";
-import type { HouseMap, TerminalSpot, Vec3 } from "./types.ts";
+import type { HouseMap, Vec3 } from "./types.ts";
+import { spotOf, voiceOn, type SpotRef } from "./voice-on.ts";
+
+export { voiceOn, type SpotRef } from "./voice-on.ts";
 
 /** Samples per second on the wire. */
 export const VOICE_RATE = 16000;
@@ -41,6 +44,20 @@ export const VOICE_HANG_MS = 400;
 export const VOICE_TAIL_MS = 300;
 /** A source is "talking" if it sent within this. */
 export const VOICE_FRESH_MS = 1500;
+/** D5b, the games' barge-in: while a terminal's voice plays in a game (+
+ *  `VOICE_TAIL_MS`) the player's gate rises to this instead of closing, so
+ *  a player speaking up is still heard over a room that never goes quiet.
+ *  The terminals keep the hard hold (`VoiceGate.holdUntil`). */
+export const VOICE_BARGE_DBFS = -28;
+/** An incoming voice quieter than this gain is too faint to echo back into
+ *  a headset's mic: it raises no gate (D5b). */
+export const VOICE_BARGE_MIN_GAIN = 0.2;
+/** Routing hysteresis: a source already heard stays heard until it is this
+ *  much farther than the rule's reach (pose jitter never flaps a route). */
+export const VOICE_REACH_HYSTERESIS_M = 0.75;
+/** In the same room the gain fades from 1 to 0 over this last stretch of
+ *  the reach, so the cut at the edge is never at full volume. */
+export const VOICE_EDGE_FADE_M = 1.5;
 /** A gain under this (after rounding) is not routed at all. */
 export const VOICE_MIN_GAIN = 0.05;
 /** The playback buffer each client aims for (the terminals use 250). */
@@ -83,11 +100,16 @@ export function mulawLinear(byte: number): number {
   return u & 0x80 ? 0x84 - t : t - 0x84;
 }
 
-const DECODE: Float32Array = (() => {
-  const table = new Float32Array(256);
-  for (let b = 0; b < 256; b++) table[b] = mulawLinear(b) / 32768;
-  return table;
-})();
+let DECODE: Float32Array | null = null;
+
+/** The decode table, built on first use (no work at import time). */
+function decodeTable(): Float32Array {
+  if (DECODE === null) {
+    DECODE = new Float32Array(256);
+    for (let b = 0; b < 256; b++) DECODE[b] = mulawLinear(b) / 32768;
+  }
+  return DECODE;
+}
 
 /** Float samples in [-1, 1] → μ-law bytes, one per sample. */
 export function mulawEncode(samples: ArrayLike<number>): Uint8Array {
@@ -98,8 +120,9 @@ export function mulawEncode(samples: ArrayLike<number>): Uint8Array {
 
 /** μ-law bytes → float samples (`linear / 32768`, exact in a Float32Array). */
 export function mulawDecode(bytes: ArrayLike<number>): Float32Array {
+  const table = decodeTable();
   const out = new Float32Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) out[i] = DECODE[bytes[i]! & 0xff]!;
+  for (let i = 0; i < bytes.length; i++) out[i] = table[bytes[i]! & 0xff]!;
   return out;
 }
 
@@ -187,7 +210,10 @@ export interface VoiceGateOptions {
  * onset isn't clipped); it stays open `hangMs` after the last loud chunk.
  * `holdUntil(ms)` is the software half-duplex: until then every chunk is
  * dropped, the gate closes and the pre-roll is forgotten (it may hold the
- * voice being played back). Generic over the chunk type.
+ * voice being played back) — the terminals' rule. `raiseUntil(ms, dbfs)` is
+ * the games' barge-in (D5b): until then a chunk must be louder than `dbfs`
+ * (or the gate, whichever is higher) to open the gate, and no pre-roll is
+ * kept. A hold beats a raise. Generic over the chunk type.
  */
 export class VoiceGate<T = Uint8Array> {
   readonly gateDbfs: number;
@@ -195,6 +221,8 @@ export class VoiceGate<T = Uint8Array> {
   private openUntil = -Infinity;
   private open = false;
   private held = -Infinity;
+  private raised = -Infinity;
+  private raisedDbfs = -Infinity;
   private preroll: T | null = null;
 
   constructor(opts: VoiceGateOptions = {}) {
@@ -212,6 +240,23 @@ export class VoiceGate<T = Uint8Array> {
     return now < this.held;
   }
 
+  /** Until `ms`, only a chunk louder than `dbfs` opens the gate (the games'
+   *  barge-in, D5b). The time only ever extends; the level is the last asked. */
+  raiseUntil(ms: number, dbfs: number): void {
+    if (ms > this.raised) this.raised = ms;
+    this.raisedDbfs = dbfs;
+  }
+
+  /** Whether `now` is inside a barge-in raise. */
+  raisedAt(now: number): boolean {
+    return now < this.raised;
+  }
+
+  /** The level a chunk must beat at `now`. */
+  thresholdAt(now: number): number {
+    return now < this.raised ? Math.max(this.gateDbfs, this.raisedDbfs) : this.gateDbfs;
+  }
+
   /** Whether the last chunk left the gate open. */
   get isOpen(): boolean {
     return this.open;
@@ -225,7 +270,8 @@ export class VoiceGate<T = Uint8Array> {
       this.preroll = null;
       return [];
     }
-    if (dbfs > this.gateDbfs) {
+    const raised = now < this.raised;
+    if (dbfs > this.thresholdAt(now)) {
       const wasOpen = this.open;
       this.open = true;
       this.openUntil = now + this.hangMs;
@@ -235,7 +281,8 @@ export class VoiceGate<T = Uint8Array> {
     }
     if (this.open && now <= this.openUntil) return [chunk];
     this.open = false;
-    this.preroll = chunk;
+    // Under a raise a quiet chunk may hold the voice being played back.
+    this.preroll = raised ? null : chunk;
     return [];
   }
 
@@ -319,26 +366,6 @@ export function jitterPlan(bufferedMs: number, opts: JitterOptions = {}): Jitter
 
 // --- who hears whom --------------------------------------------------------------
 
-/** A terminal spot, by value or by id (an unknown id is no terminal). */
-export type SpotRef = TerminalSpot | string;
-
-function spotOf(house: HouseMap, spot: SpotRef): TerminalSpot | null {
-  return typeof spot === "string" ? (house.terminals.find((t) => t.id === spot) ?? null) : spot;
-}
-
-/**
- * D7: whether a terminal takes part in the voice link. `voice: true` → on,
- * `voice: false` → off; unset → on, except a terminal standing in the map's
- * spawn room (the tent / the shed: the tent laptop, beside the headsets).
- */
-export function voiceOn(house: HouseMap, spot: SpotRef): boolean {
-  const t = spotOf(house, spot);
-  if (!t) return false;
-  if (t.voice === true) return true;
-  if (t.voice === false) return false;
-  return t.room !== house.spawn.room;
-}
-
 /** A player as the router sees them; a missing floor / room is `locate`d. */
 export interface VoicePlayer {
   p: Vec3;
@@ -356,10 +383,34 @@ export interface HeardPlayer {
   gain: number;
 }
 
-/** The routing gain: 1 in the same room, else `0.5 · (1 − d / reach)`, rounded to 2 decimals. */
+/**
+ * The routing gain, rounded to 2 decimals: in the same room 1, fading to 0
+ * over the last `VOICE_EDGE_FADE_M` of the reach (`(reach − d) / fade`);
+ * else `0.5 · (1 − d / reach)`. Never below 0.
+ */
 export function voiceGain(d: number, reach: number, sameRoom: boolean): number {
-  if (sameRoom) return 1;
-  return Math.round(0.5 * (1 - d / reach) * 100) / 100;
+  const g = sameRoom ? Math.min(1, (reach - d) / VOICE_EDGE_FADE_M) : 0.5 * (1 - d / reach);
+  return Math.max(0, Math.round(g * 100) / 100);
+}
+
+/** What the router asks of a rule besides the map and the listener. */
+export interface VoiceRouteOptions {
+  /** Ids already routed to this listener (spot ids for `hearsTerminals`,
+   *  sessions for `hearsPlayers`): each is judged `VOICE_REACH_HYSTERESIS_M`
+   *  nearer for staying in, never for its gain, and kept at least at
+   *  `VOICE_MIN_GAIN` while it stays. */
+  keep?: ReadonlySet<string>;
+  /** Candidates allowed at all (`hearsTerminals`: the spots with a live
+   *  microphone on the stream); absent = every one. */
+  only?: ReadonlySet<string>;
+}
+
+/** One candidate through the reach + gain rule, with the hysteresis; null = not heard. */
+function judged(id: string, d: number, reach: number, sameRoom: boolean, o: VoiceRouteOptions): number | null {
+  const kept = o.keep?.has(id) === true;
+  const dIn = kept ? Math.max(0, d - VOICE_REACH_HYSTERESIS_M) : d;
+  if (dIn > reach || voiceGain(dIn, reach, sameRoom) < VOICE_MIN_GAIN) return null;
+  return Math.max(VOICE_MIN_GAIN, voiceGain(d, reach, sameRoom));
 }
 
 function placed(house: HouseMap, who: VoicePlayer): { floor: string; room: string | null } {
@@ -378,19 +429,20 @@ function nearest<T extends { d: number; id: string }>(rows: T[], most: number): 
 /**
  * The terminals a player hears: voice on, on the player's floor (the floor
  * of the terminal's `pos`), within `VOICE_TERMINAL_REACH_M` plan metres, a
- * gain of at least `VOICE_MIN_GAIN`; the `VOICE_MAX_TERMINALS` nearest,
+ * gain of at least `VOICE_MIN_GAIN` (`VoiceRouteOptions` adds the
+ * hysteresis and the live-mic filter); the `VOICE_MAX_TERMINALS` nearest,
  * nearest first.
  */
-export function hearsTerminals(house: HouseMap, player: VoicePlayer): HeardTerminal[] {
+export function hearsTerminals(house: HouseMap, player: VoicePlayer, opts: VoiceRouteOptions = {}): HeardTerminal[] {
   const at = placed(house, player);
   const reach = VOICE_TERMINAL_REACH_M;
   const rows: Array<{ id: string; d: number; gain: number }> = [];
   for (const t of house.terminals) {
     if (!voiceOn(house, t) || floorOf(house, t.pos[1]) !== at.floor) continue;
+    if (opts.only !== undefined && !opts.only.has(t.id)) continue;
     const d = plan(t.pos, player.p);
-    if (d > reach) continue;
-    const gain = voiceGain(d, reach, at.room !== null && t.room === at.room);
-    if (gain < VOICE_MIN_GAIN) continue;
+    const gain = judged(t.id, d, reach, at.room !== null && t.room === at.room, opts);
+    if (gain === null) continue;
     rows.push({ id: t.id, d, gain });
   }
   return nearest(rows, VOICE_MAX_TERMINALS).map((r) => ({ spot: r.id, gain: r.gain }));
@@ -399,12 +451,14 @@ export function hearsTerminals(house: HouseMap, player: VoicePlayer): HeardTermi
 /**
  * The players a terminal hears: voice on at the terminal, on its floor,
  * within `VOICE_PLAYER_REACH_M` plan metres of its `pos`, a gain of at
- * least `VOICE_MIN_GAIN`; the `VOICE_MAX_PLAYERS` nearest, nearest first.
+ * least `VOICE_MIN_GAIN` (`VoiceRouteOptions` adds the hysteresis and a
+ * filter on sessions); the `VOICE_MAX_PLAYERS` nearest, nearest first.
  */
 export function hearsPlayers(
   house: HouseMap,
   spot: SpotRef,
   players: ReadonlyArray<VoicePlayer & { session: string }>,
+  opts: VoiceRouteOptions = {},
 ): HeardPlayer[] {
   const t = spotOf(house, spot);
   if (!t || !voiceOn(house, t)) return [];
@@ -414,10 +468,10 @@ export function hearsPlayers(
   for (const pl of players) {
     const at = placed(house, pl);
     if (at.floor !== floor) continue;
+    if (opts.only !== undefined && !opts.only.has(pl.session)) continue;
     const d = plan(t.pos, pl.p);
-    if (d > reach) continue;
-    const gain = voiceGain(d, reach, at.room !== null && t.room === at.room);
-    if (gain < VOICE_MIN_GAIN) continue;
+    const gain = judged(pl.session, d, reach, at.room !== null && t.room === at.room, opts);
+    if (gain === null) continue;
     rows.push({ id: pl.session, d, gain });
   }
   return nearest(rows, VOICE_MAX_PLAYERS).map((r) => ({ session: r.id, gain: r.gain }));

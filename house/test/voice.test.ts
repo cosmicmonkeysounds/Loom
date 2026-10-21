@@ -9,6 +9,7 @@ import {
   ChunkAssembler,
   Resampler,
   VOICE_CHUNK_BYTES,
+  VOICE_BARGE_DBFS,
   VOICE_CHUNK_MS,
   VOICE_GATE_DBFS,
   VOICE_RATE,
@@ -186,6 +187,37 @@ describe("the gate", () => {
     expect(g.push(4, loud, at(4))).toEqual([4]);
   });
 
+  it("barge-in (D5b): under a raise only a chunk over the raised level opens it, with no pre-roll", () => {
+    const g = new VoiceGate<number>();
+    g.raiseUntil(at(4), VOICE_BARGE_DBFS); // a terminal's voice plays until 800 ms
+    expect(g.raisedAt(at(0))).toBe(true);
+    expect(g.thresholdAt(at(0))).toBe(VOICE_BARGE_DBFS);
+    // The room's echo (-35) is under the raise: nothing goes up, no pre-roll kept.
+    expect(g.push(0, -35, at(0))).toEqual([]);
+    expect(g.push(1, -35, at(1))).toEqual([]);
+    // The player speaks up (-20): sent at once, without the echo before it.
+    expect(g.push(2, -20, at(2))).toEqual([2]);
+    // The hang still runs under the raise.
+    expect(g.push(3, -35, at(3))).toEqual([3]);
+    // Past the raise the gate is back at -42 and the pre-roll returns.
+    expect(g.thresholdAt(at(5))).toBe(VOICE_GATE_DBFS);
+    expect(g.push(5, -60, at(5))).toEqual([]);
+    expect(g.push(6, -40, at(6))).toEqual([5, 6]);
+  });
+
+  it("a raise only extends, never lowers the gate, and a hold beats it", () => {
+    const g = new VoiceGate<number>();
+    g.raiseUntil(at(3), VOICE_BARGE_DBFS);
+    g.raiseUntil(at(1), VOICE_BARGE_DBFS);
+    expect(g.raisedAt(at(2))).toBe(true);
+    g.raiseUntil(at(3), -60); // below the gate: the gate stands
+    expect(g.thresholdAt(at(2))).toBe(VOICE_GATE_DBFS);
+    g.raiseUntil(at(3), VOICE_BARGE_DBFS);
+    g.holdUntil(at(2));
+    expect(g.push(0, -10, at(0))).toEqual([]);
+    expect(g.push(2, -10, at(2))).toEqual([2]);
+  });
+
   it("takes its gate and hang as options; reset closes it", () => {
     const g = new VoiceGate<number>({ gateDbfs: -30, hangMs: 0 });
     expect(g.push(0, -35, 0)).toEqual([]);
@@ -348,6 +380,58 @@ describe("hearsTerminals", () => {
   });
 });
 
+describe("the edge of the reach (hysteresis + the same-room fade)", () => {
+  // tb sits at x 15 in room B (x 10…30): a player walks east inside B.
+  const at = (x: number) => [{ session: "p", p: [x, 0, 5] as Vec3 }];
+
+  it("fades a same-room gain over the last 1.5 m, so the cut is never at full volume", () => {
+    expect(voiceGain(6, 8, true)).toBe(1);
+    expect(voiceGain(7, 8, true)).toBe(0.67);
+    expect(voiceGain(8, 8, true)).toBe(0);
+    expect(voiceGain(9, 8, true)).toBe(0);
+    const h = testHouse();
+    expect(hearsPlayers(h, "tb", at(15 + 7))).toEqual([{ session: "p", gain: 0.67 }]);
+    expect(hearsPlayers(h, "tb", at(15 + 7.9))).toEqual([{ session: "p", gain: 0.07 }]);
+    expect(hearsPlayers(h, "tb", at(15 + 8.3))).toEqual([]);
+  });
+
+  it("keeps a route already formed until about 0.75 m past the reach, at the floor gain", () => {
+    const h = testHouse();
+    const keep = new Set(["p"]);
+    expect(hearsPlayers(h, "tb", at(15 + 8.3), { keep })).toEqual([{ session: "p", gain: 0.05 }]);
+    // In the same room the floor gain is met up to reach − 0.075 m, so a kept
+    // route stays to 0.675 m past the reach.
+    expect(hearsPlayers(h, "tb", at(15 + 8.6), { keep })).toEqual([{ session: "p", gain: 0.05 }]);
+    expect(hearsPlayers(h, "tb", at(15 + 8.7), { keep })).toEqual([]);
+    // Jitter across the line never flaps a route that stays kept.
+    let kept = new Set<string>();
+    const seen: number[] = [];
+    for (const x of [7.6, 8.05, 7.98, 8.1, 7.95, 8.2]) {
+      const heard = hearsPlayers(h, "tb", at(15 + x), { keep: kept });
+      kept = new Set(heard.map((r) => r.session));
+      seen.push(heard.length);
+    }
+    expect(seen).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+
+  it("hearsTerminals keeps the same way, and `only` limits the candidates", () => {
+    const h = testHouse();
+    // From room B at x 25.9 tb2 is 0.9 m (1); tb is 10.9 m in the same room: past
+    // 12 − 1.5 it fades, (12 − 10.9) / 1.5 = 0.73.
+    expect(hearsTerminals(h, { p: [25.9, 0, 5] })).toEqual([
+      { spot: "tb2", gain: 1 },
+      { spot: "tb", gain: 0.73 },
+    ]);
+    expect(hearsTerminals(h, { p: [27.4, 0, 5] }).map((r) => r.spot)).toEqual(["tb2"]);
+    expect(hearsTerminals(h, { p: [27.4, 0, 5] }, { keep: new Set(["tb"]) })).toEqual([
+      { spot: "tb2", gain: 1 },
+      { spot: "tb", gain: 0.05 },
+    ]);
+    expect(hearsTerminals(h, { p: [25.9, 0, 5] }, { only: new Set(["tb"]) })).toEqual([{ spot: "tb", gain: 0.73 }]);
+    expect(hearsTerminals(h, { p: [25.9, 0, 5] }, { only: new Set() })).toEqual([]);
+  });
+});
+
 describe("hearsPlayers", () => {
   const players = [
     { session: "p1", p: [5, 0, 6] as Vec3 }, // A, 1 m
@@ -412,7 +496,7 @@ describe("the Godot vectors", () => {
   it("cover every kind and every byte", () => {
     const rows = readFileSync(VOICE_GOLDEN, "utf8").trim().split("\n").slice(1, -1).map((l) => JSON.parse(l.replace(/,$/, "")) as { kind: string });
     const kinds = new Set(rows.map((r) => r.kind));
-    for (const k of ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "players", "hearsPlayers"]) expect(kinds.has(k), k).toBe(true);
+    for (const k of ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "players", "hearsPlayers", "hearsKept"]) expect(kinds.has(k), k).toBe(true);
     expect(rows.filter((r) => r.kind === "decode").length).toBe(256);
     expect(rows.filter((r) => r.kind === "encode").length).toBeGreaterThan(200);
   });

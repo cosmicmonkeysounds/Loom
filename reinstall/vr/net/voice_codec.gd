@@ -28,6 +28,15 @@ const VOICE_FRESH_MS := 1500
 const VOICE_MIN_GAIN := 0.05
 const VOICE_JITTER_TARGET_MS := 200
 const VOICE_JITTER_MAX_MS := 400
+## D5b, the barge-in: while a terminal's voice plays here (+ the tail) the
+## gate rises to this instead of closing (a terminal keeps the hard hold).
+const VOICE_BARGE_DBFS := -28.0
+## An incoming voice under this gain is too faint to echo: it raises nothing.
+const VOICE_BARGE_MIN_GAIN := 0.2
+## A source already heard stays heard until this much past the reach.
+const VOICE_REACH_HYSTERESIS_M := 0.75
+## In the same room the gain fades 1 → 0 over this last stretch of the reach.
+const VOICE_EDGE_FADE_M := 1.5
 
 ## The bias added to the 14-bit magnitude (0x84 at 16 bits).
 const _BIAS14 := 0x84 >> 2
@@ -181,7 +190,10 @@ class Resampler:
 ## opens it (and sends the one quiet chunk before it — the pre-roll); it
 ## stays open `hang_ms` after the last loud chunk. [method hold_until] is
 ## the software half-duplex: until then every chunk is dropped, the gate
-## closes and the pre-roll is forgotten.
+## closes and the pre-roll is forgotten (the terminals' rule).
+## [method raise_until] is the games' barge-in (D5b): until then a chunk
+## must beat `dbfs` (or the gate, whichever is higher) and no pre-roll is
+## kept. A hold beats a raise.
 class Gate:
 	extends RefCounted
 
@@ -190,6 +202,8 @@ class Gate:
 	var _open_until := -INF
 	var _open := false
 	var _held := -INF
+	var _raised := -INF
+	var _raised_dbfs := -INF
 	var _preroll: Variant = null
 
 	func _init(gate := VoiceCodec.VOICE_GATE_DBFS, hang := float(VoiceCodec.VOICE_HANG_MS)) -> void:
@@ -205,6 +219,21 @@ class Gate:
 	func holding(now: float) -> bool:
 		return now < _held
 
+	## Until `ms` only a chunk louder than `dbfs` opens the gate. The time
+	## only ever extends; the level is the last asked.
+	func raise_until(ms: float, dbfs: float) -> void:
+		if ms > _raised:
+			_raised = ms
+		_raised_dbfs = dbfs
+
+	## Whether `now` is inside a barge-in raise.
+	func raised_at(now: float) -> bool:
+		return now < _raised
+
+	## The level a chunk must beat at `now`.
+	func threshold_at(now: float) -> float:
+		return maxf(gate_dbfs, _raised_dbfs) if now < _raised else gate_dbfs
+
 	## Whether the last chunk left the gate open.
 	func is_open() -> bool:
 		return _open
@@ -216,7 +245,8 @@ class Gate:
 			_open_until = -INF
 			_preroll = null
 			return []
-		if dbfs > gate_dbfs:
+		var raised := now < _raised
+		if dbfs > threshold_at(now):
 			var was_open := _open
 			_open = true
 			_open_until = now + hang_ms
@@ -227,7 +257,8 @@ class Gate:
 		if _open and now <= _open_until:
 			return [chunk]
 		_open = false
-		_preroll = chunk
+		# Under a raise a quiet chunk may hold the voice being played back.
+		_preroll = null if raised else chunk
 		return []
 
 	## Close the gate and forget the pre-roll (the mic stopped). The hold stands.
@@ -313,11 +344,22 @@ static func voice_on(house: Dictionary, spot: Variant) -> bool:
 	return str(t.get("room", "")) != str(spawn.get("room", ""))
 
 
-## The routing gain: 1 in the same room, else `0.5 · (1 − d / reach)`, to 2 decimals.
+## The routing gain, to 2 decimals: in the same room 1, fading to 0 over the
+## last [constant VOICE_EDGE_FADE_M] of the reach; else `0.5 · (1 − d / reach)`.
+## Never below 0.
 static func voice_gain(d: float, reach: float, same_room: bool) -> float:
-	if same_room:
-		return 1.0
-	return roundf(0.5 * (1.0 - d / reach) * 100.0) / 100.0
+	var g := minf(1.0, (reach - d) / VOICE_EDGE_FADE_M) if same_room else 0.5 * (1.0 - d / reach)
+	return maxf(0.0, roundf(g * 100.0) / 100.0)
+
+
+## One candidate through the reach + gain rule with the hysteresis (`kept`:
+## already routed, judged [constant VOICE_REACH_HYSTERESIS_M] nearer for
+## staying in, kept at least at [constant VOICE_MIN_GAIN]); -1 = not heard.
+static func _judged(d: float, reach: float, same_room: bool, kept: bool) -> float:
+	var d_in := maxf(0.0, d - VOICE_REACH_HYSTERESIS_M) if kept else d
+	if d_in > reach or voice_gain(d_in, reach, same_room) < VOICE_MIN_GAIN:
+		return -1.0
+	return maxf(VOICE_MIN_GAIN, voice_gain(d, reach, same_room))
 
 
 ## The terminals a player hears, `[{spot, gain}]`. `player` is `{p}` (feet,
@@ -325,8 +367,11 @@ static func voice_gain(d: float, reach: float, same_room: bool) -> float:
 ## [method HouseLocate.locate]d): voice on, on the player's floor, within
 ## [constant VOICE_TERMINAL_REACH_M] plan metres, a gain of at least
 ## [constant VOICE_MIN_GAIN]; the [constant VOICE_MAX_TERMINALS] nearest,
-## nearest first (ties by id in code-unit order).
-static func hears_terminals(house: Dictionary, player: Dictionary) -> Array:
+## nearest first (ties by id in code-unit order). `opts`: `keep` (spot ids
+## already routed: the hysteresis) and `only` (the allowed spot ids).
+static func hears_terminals(house: Dictionary, player: Dictionary, opts := {}) -> Array:
+	var keep: Array = opts.get("keep", [])
+	var only: Variant = opts.get("only")
 	var p: Array = player["p"]
 	var at := {} if player.has("floor") and player.has("room") else HouseLocate.locate(house, p)
 	var fl := str(player["floor"]) if player.has("floor") else str(at["floor"])
@@ -336,13 +381,13 @@ static func hears_terminals(house: Dictionary, player: Dictionary) -> Array:
 		var pos: Array = t.get("pos", [])
 		if pos.size() < 3 or not voice_on(house, t) or HouseLocate.floor_of(house, float(pos[1])) != fl:
 			continue
+		if only is Array and not (only as Array).has(str(t["id"])):
+			continue
 		var dx := float(pos[0]) - float(p[0])
 		var dz := float(pos[2]) - float(p[2])
 		var d := sqrt(dx * dx + dz * dz)  # in doubles: a Vector2 is single precision
-		if d > VOICE_TERMINAL_REACH_M:
-			continue
-		var gain := voice_gain(d, VOICE_TERMINAL_REACH_M, rm != null and str(t.get("room", "")) == str(rm))
-		if gain < VOICE_MIN_GAIN:
+		var gain := _judged(d, VOICE_TERMINAL_REACH_M, rm != null and str(t.get("room", "")) == str(rm), keep.has(str(t["id"])))
+		if gain < 0.0:
 			continue
 		rows.append([d, str(t["id"]), gain])
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and str(a[1]) < str(b[1])))

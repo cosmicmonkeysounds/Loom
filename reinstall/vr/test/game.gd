@@ -51,6 +51,7 @@ func _run() -> void:
 	_test_voice_codec()
 	_test_voice_uplink()
 	_test_voice_link()
+	_test_voice_silent_mic()
 	await _test_voice_generator()
 	await _test_cam_panels()
 	_test_autopilot()
@@ -2443,6 +2444,8 @@ func _test_voice_codec() -> void:
 				for s: Dictionary in r["steps"]:
 					if s.has("hold"):
 						g.hold_until(float(s["hold"]))
+					if s.has("raise"):
+						g.raise_until(float(s["raise"]), VoiceCodec.VOICE_BARGE_DBFS)
 					sent.append_array(g.push(i, -INF if s["dbfs"] == null else float(s["dbfs"]), float(s["now"])))
 					i += 1
 				if sent != (r["sent"] as Array).map(func(v: Variant) -> int: return int(v)):
@@ -2464,11 +2467,19 @@ func _test_voice_codec() -> void:
 					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
 				if not same:
 					miss.call(kind, "%s → %s, want %s" % [r["p"], got, want])
+			"hearsKept":
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]}, {"keep": r["keep"]})
+				var want: Array = r["heard"]
+				var same := got.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s keep %d → %s, want %s" % [r["p"], (r["keep"] as Array).size(), got, want])
 			"players":
 				players = r["players"]
 			"hearsPlayers":
 				pass  # the server's and the terminals' half of the rule
-	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals"]:
+	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "hearsKept"]:
 		var n := int(seen.get(kind, 0))
 		var b := (bad.get(kind, []) as Array).size()
 		_check(n > 0 and b == 0, "voice: %s vectors match (%d of %d)" % [kind, n - b, n])
@@ -2617,6 +2628,16 @@ static func _mic_tone(n: int, amp: float, rate := 48000.0) -> PackedVector2Array
 	return out
 
 
+## Every chunk the link has handed its uplink: posted (by body size),
+## waiting, or dropped off the full queue.
+static func _voice_given(v: VoiceLink, clients: Array) -> int:
+	var n := v.uplink.queue.size() + v.uplink.dropped
+	for cl: FakeHttp in clients:
+		for r: Array in cl.requests:
+			n += (r[3] as PackedByteArray).size() / VoiceCodec.VOICE_CHUNK_BYTES
+	return n
+
+
 ## A `voice` frame from terminal `spot` carrying 200 ms of tone.
 static func _voice_frame(spot: String, seq: int, gain: float) -> Dictionary:
 	var chunk := PackedFloat32Array()
@@ -2738,12 +2759,17 @@ func _test_voice_link() -> void:
 	root.add_child(v)
 	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
 	v.want(upload + "/stream?token=tok", upload, "tok")
-	_check(v.is_running() and v.mic_state == "live" and not v.listen_on, "voice: running, the mic live, nobody listening yet")
-	_check(v.hud_text(true) == "🎤 LIVE", "voice: the HUD says 🎤 LIVE (%s)" % v.hud_text(true))
+	_check(v.is_running() and v.mic_state == "opening" and not v.listen_on, "voice: running, the mic opening (no sample yet), nobody listening")
+	_check(v.hud_text(true) == "🎤 …", "voice: the HUD says 🎤 … until a real sample lands (%s)" % v.hud_text(true))
+	# Zeros are no mic: still opening.
+	mic[0] = _mic_tone(9600, 0.0)
+	v._process(0.016)
+	_check(v.mic_state == "opening", "voice: a block of zeros is no sample")
 
 	# Nobody can hear us: a loud word goes nowhere, no connection.
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
+	_check(v.mic_state == "live" and v.hud_text(true) == "🎤 LIVE", "voice: a real sample → 🎤 LIVE (%s)" % v.hud_text(true))
 	_check(v.uplink.queue.is_empty() and clients.is_empty(), "voice: nobody listening → nothing queued, no connection")
 	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
 	v.on_frame("listen", {"on": true})
@@ -2786,12 +2812,19 @@ func _test_voice_link() -> void:
 	_check(_near(e.volume_db, linear_to_db(0.5), 0.01), "voice: … its volume from the gain (%.2f dB)" % e.volume_db)
 	var pb: FakePlayback = pbs[e.get_instance_id()]
 	_check(pb.pushes == [6400] and pb.queued[3200 - 1] == Vector2.ZERO and absf(pb.queued[3200].x) < 0.001 and absf(pb.queued[3200 + 200].x) > 0.01, "voice: … 200 ms of silence, then the chunk faded in (%s)" % [pb.pushes])
-	# Half-duplex: our mic is held while it plays (+ the tail).
+	# D5b, the barge-in: while it plays (+ the tail) the gate is raised to
+	# -28 dBFS — the room's echo (-35) stays home, a player speaking up goes.
 	var sent := c.requests.size() + v.uplink.queue.size()
+	mic[0] = _mic_tone(9600, 0.025)
+	now[0] += 100.0
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() == sent, "voice: an echo-level chunk while a voice plays here is not sent (the raised gate)")
+	_check(v._gate.raised_at(now[0]) and not v._gate.holding(now[0]), "voice: … the gate is raised, not held")
 	mic[0] = _mic_tone(9600, 0.3)
 	now[0] += 100.0
 	v._process(0.016)
-	_check(c.requests.size() + v.uplink.queue.size() == sent, "voice: a loud word while a voice plays here is not sent (half-duplex)")
+	_check(c.requests.size() + v.uplink.queue.size() == sent + 1, "voice: a loud word over the playing voice is sent (barge-in), without the echo before it")
+	sent = c.requests.size() + v.uplink.queue.size()
 	v.on_frame("voice", _voice_frame("hall", 2, 0.5))
 	_check(pb.pushes.size() == 2 and pb.pushes[1] == 3200 and pb.queued.size() == 9600, "voice: the next chunk queues behind (%s)" % [pb.pushes])
 	v.on_frame("voice", _voice_frame("hall", 2, 0.5))
@@ -2809,11 +2842,24 @@ func _test_voice_link() -> void:
 	v.on_frame("voice", player_voice)
 	_check(not b.voice_attached("tent") and v.sources() == ["t:hall"], "voice: the tent's terminal and other players are never played here")
 
-	# After the hold the mic is sent again.
+	# After the raise the mic is sent again at the plain gate.
 	now[0] += 2000.0
 	mic[0] = _mic_tone(9600, 0.3)
 	v._process(0.016)
 	_check(c.requests.size() + v.uplink.queue.size() > sent, "voice: once the voice and its tail are over, the mic goes up again")
+	# A faint, far terminal (gain 0.1) raises nothing: an echo-level word goes.
+	for i in 4:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	sent = _voice_given(v, clients)
+	v.on_frame("voice", _voice_frame("steam-room", 1, 0.1))
+	_check(not v._gate.raised_at(float(now[0]) + 100.0), "voice: a voice under gain 0.2 raises no gate")
+	mic[0] = _mic_tone(9600, 0.025)
+	now[0] += 100.0
+	v._process(0.016)
+	_check(_voice_given(v, clients) > sent, "voice: … so a quiet word still goes up")
+	v.on_frame("bye", {"from": "t:steam-room"})
 
 	# A rebuild (a map edit): the emitter is re-made and the source carries on.
 	b.build(house)
@@ -2844,6 +2890,16 @@ func _test_voice_link() -> void:
 	v.on_frame("voice", _voice_frame("hall", 5, 1.0))
 	v.want(upload + "/stream?token=tok", upload, "tok")
 	_check(v.sources() == ["t:hall"], "voice: want() with the same URLs keeps playing")
+	# A lower seq is stale — until the source was quiet VOICE_FRESH_MS (the
+	# server's rule: a terminal that started counting again).
+	v.on_frame("voice", _voice_frame("hall", 3, 1.0))
+	_check(int(v._sources["t:hall"]["seq"]) == 5, "voice: a lower seq right after is stale")
+	now[0] += float(VoiceCodec.VOICE_FRESH_MS)
+	v.on_frame("voice", _voice_frame("hall", 3, 1.0))
+	_check(int(v._sources["t:hall"]["seq"]) == 3, "voice: … after a quiet VOICE_FRESH_MS it plays")
+	# A (re)connect's hello lets every voice go.
+	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
+	_check(v.sources().is_empty(), "voice: a hello lets every voice it had go")
 	v.stop()
 	_check(not v.is_running() and v.sources().is_empty() and not b.voice_attached("hall") and v.mic_state == "off" and v.hud_text(true) == "", "voice: stop ends the stream, the mic and every voice")
 	# A server speaking another wire is not played.
@@ -2864,6 +2920,31 @@ func _test_voice_link() -> void:
 	v.stop()
 	v.queue_free()
 	b.queue_free()
+
+
+## A mic that only hands over zeros (missing, denied) never reads LIVE and
+## wants no uplink; NO MIC after MIC_FALLBACK_AFTER; a real sample heals it.
+func _test_voice_silent_mic() -> void:
+	var v := VoiceLink.new()
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array: return mic[0]
+	root.add_child(v)
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("listen", {"on": true})
+	mic[0] = _mic_tone(4800, 0.0)
+	for i in 3:
+		v._process(0.5)
+	_check(v.mic_state == "opening" and v.hud_text(true) == "🎤 …" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
+	v._process(1.0)
+	_check(v.mic_state == "nomic" and v.hud_text(true) == "NO MIC" and not v.uplink.wanted, "voice: zeros past MIC_FALLBACK_AFTER → NO MIC")
+	mic[0] = _mic_tone(4800, 0.01)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.uplink.wanted, "voice: … a real sample → LIVE, the uplink wanted")
+	v.stop()
+	v.queue_free()
 
 
 ## The voice config keys: on by default, `--mic false` / `--voice=0` turn them off.
@@ -2894,7 +2975,7 @@ func _test_voice_game() -> void:
 	_check(v != null and not v.is_running(), "voice game: the link is there, off in the lobby")
 	v.use_stream = false
 	v.client_factory = func() -> Object: return FakeHttp.new()
-	v.frame_source = func() -> PackedVector2Array: return PackedVector2Array()
+	v.frame_source = func() -> PackedVector2Array: return _mic_tone(800, 0.001)  # a quiet room, under the gate
 	var player := game.player
 	player.set_physics_process(false)
 	player.read_input = false
@@ -2907,6 +2988,8 @@ func _test_voice_game() -> void:
 
 	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
 	link.assignment_received.emit(_assignment(house, "v-1", true))
+	game._process(0.016)
+	v._process(0.016)  # the mic's first real sample
 	game._process(0.016)
 	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
 	_check(game.hud.mic_text() == "🎤 LIVE", "voice game: the HUD shows 🎤 LIVE (%s)" % game.hud.mic_text())
@@ -2934,6 +3017,7 @@ func _test_voice_game() -> void:
 	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not v.muted, "voice game: B / Y in the lobby does nothing")
 	link.assignment_received.emit(_assignment(house, "v-3", true))
 	game._process(0.016)
+	v._process(0.016)
 	game._process(0.016)
 	_check(v.is_running() and not v.muted and game.hud.mic_text() == "🎤 LIVE", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
 	player.mute_button = false
@@ -2945,6 +3029,22 @@ func _test_voice_game() -> void:
 	player.mute_button = false
 	game.enter_lobby()
 	_check(not v.is_running() and not v.muted and game.lobby.visible and game.lobby.view() != "confirm", "voice game: back in the lobby the voice is off, unmuted, the lobby reset")
+
+	# The Android microphone dialog (mic "asking") pauses / unfocuses the app:
+	# that ends no session. Taking the headset off still does.
+	link.assignment_received.emit(_assignment(house, "v-4", true))
+	game._process(0.016)
+	v.mic_state = "asking"
+	game.app_paused()
+	game.focus_changed(false)
+	_check(game.get("_away_until").is_empty(), "voice game: the mic dialog's pause / unfocus arms no away deadline")
+	game.presence_changed(false)
+	_check(game.get("_away_until").has("presence"), "voice game: … taking the headset off still does")
+	game.presence_changed(true)
+	game.app_resumed()
+	game.focus_changed(true)
+	v.mic_state = "live"
+	game.enter_lobby()
 
 	# `--voice false`: never started.
 	link.config = StationConfig.merge(link.config, {"voice": false})

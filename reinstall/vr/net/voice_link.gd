@@ -17,15 +17,23 @@
 ##   muted bus with an [AudioEffectCapture] when the former gives nothing
 ##   for [constant MIC_FALLBACK_AFTER] s), resampled to 16 kHz, cut in
 ##   200 ms chunks, μ-law, through the open-mic gate (D5). Only while
-##   someone can hear it (`listen {on}`, the POST's `listening`) and never
-##   while a voice plays here (+ [constant VoiceCodec.VOICE_TAIL_MS]: the
-##   software half-duplex — the Quest cancels no echo). Uploads go on one
+##   someone can hear it (`listen {on}`, the POST's `listening`). While a
+##   terminal's voice plays here (+ [constant VoiceCodec.VOICE_TAIL_MS]) the
+##   gate rises to [constant VoiceCodec.VOICE_BARGE_DBFS] (D5b, the
+##   barge-in: the Quest cancels no echo, but a player speaking up over a
+##   room that never goes quiet is still heard — the terminal then plays
+##   them and holds its own mic, so the room pauses for them). A voice
+##   under [constant VoiceCodec.VOICE_BARGE_MIN_GAIN] raises nothing. The
+##   mic reads LIVE only once it has delivered a real (non-zero) sample.
+##   Uploads go on one
 ##   persistent keep-alive [HTTPClient] (`request_raw`; [HTTPRequest]
 ##   closes per request), one POST in flight, at most
 ##   [constant UPLINK_QUEUE] chunks (1 s) waiting — older ones are dropped.
 ## - **Mute** ([method toggle_mute], B / Y or M): the mic's chunks are
-##   dropped. On Android the RECORD_AUDIO grant is asked at the first start
-##   and the mic re-opened once it is given.
+##   dropped. On Android the RECORD_AUDIO grant is asked in the lobby
+##   ([method prime_permission]: the system dialog pauses the app, which in
+##   a session would end it) and again at a start if it is still missing;
+##   the mic is re-opened once it is given.
 ##
 ## [method want] starts it (a session is playing) and [method stop] ends
 ## everything (the lobby). Tests inject [member frame_source],
@@ -35,8 +43,9 @@ class_name VoiceLink
 extends Node
 
 ## "off" (not running, or the mic is off in the config) · "asking" (the
-## Android grant is up) · "live" · "muted" · "nomic" (no device, refused,
-## or no frames from either route).
+## Android grant is up) · "opening" (no real sample yet) · "live" ·
+## "muted" · "nomic" (no device, refused, or only silence from either
+## route — a dead or denied mic hands over zeros).
 signal mic_changed(state: String)
 ## Whether someone can hear this headset (`listen {on}`).
 signal listen_changed(on: bool)
@@ -99,6 +108,9 @@ var _quiet_for := 0.0
 var _capture: AudioEffectCapture = null
 var _mic_player: AudioStreamPlayer = null
 var _asked_permission := false
+var _asked_early := false
+## A real (non-zero) sample has arrived since the mic opened.
+var _heard_sample := false
 ## The stream's `hello` named this wire (μ-law, 16 kHz); a server speaking
 ## anything else is not played.
 var _compatible := true
@@ -158,6 +170,7 @@ func stop() -> void:
 	_chunks.reset()
 	_resampler = null
 	_compatible = true
+	_heard_sample = false
 	muted = false  # the next session (the next wearer, maybe) starts live
 	_set_listen(false)
 	_set_mic("off")
@@ -173,7 +186,26 @@ func toggle_mute() -> void:
 		_chunks.reset()
 		uplink.drop_queue()
 	if _route != "":
-		_set_mic("muted" if muted else "live")
+		_set_mic("muted" if muted else ("live" if _heard_sample else "opening"))
+
+
+## Ask for the Android microphone grant ahead of any session — in the lobby,
+## where the system dialog pausing the app ends nothing. `wanted` = the
+## config's `voice` and `mic`. True when it asked now.
+func prime_permission(wanted: bool) -> bool:
+	if not wanted or OS.get_name() != "Android" or _granted() or _asked_early:
+		return false
+	_asked_early = true
+	_listen_for_permission()
+	OS.request_permission("RECORD_AUDIO")
+	return true
+
+
+func _listen_for_permission() -> void:
+	if _asked_permission or not is_inside_tree():
+		return
+	_asked_permission = true
+	get_tree().on_request_permissions_result.connect(_on_permission)
 
 
 ## The HUD's mic line ("" while off): 🎤 LIVE (· someone can hear you) /
@@ -187,6 +219,8 @@ func hud_text(xr: bool) -> String:
 			return "🎤 MUTED · %s to talk" % key
 		"asking":
 			return "NO MIC · allow the microphone"
+		"opening":
+			return "🎤 …"
 		"nomic":
 			return "NO MIC"
 	return ""
@@ -207,6 +241,9 @@ func on_frame(event: String, data: Variant) -> void:
 			_compatible = str(d.get("codec", VoiceCodec.VOICE_CODEC)) == VoiceCodec.VOICE_CODEC and int(d.get("rate", VoiceCodec.VOICE_RATE)) == VoiceCodec.VOICE_RATE
 			if not _compatible:
 				push_warning("voice: the server speaks %s at %s Hz — not played" % [d.get("codec"), d.get("rate")])
+			# A (re)connect starts over: the server re-sends whatever is audible.
+			for from: String in _sources.keys():
+				_bye(from)
 			_set_listen(d.get("listen") == true)
 		"listen":
 			_set_listen(d.get("on") == true)
@@ -232,13 +269,20 @@ func _on_voice(d: Dictionary) -> void:
 		if src.is_empty():
 			return
 	var seq := int(d.get("seq", -1))
-	if seq >= 0 and seq <= int(src["seq"]):
+	var now := float(clock.call())
+	# Stale or repeated — unless the source was quiet long enough to have
+	# started counting again (the server's rule: a reloaded terminal).
+	if seq >= 0 and seq <= int(src["seq"]) and now - float(src.get("at", -INF)) < VoiceCodec.VOICE_FRESH_MS:
 		return
 	src["seq"] = seq
-	(src["emitter"] as AudioStreamPlayer3D).volume_db = linear_to_db(maxf(clampf(float(d.get("gain", 1.0)), 0.0, 1.0), 0.0001))
+	src["at"] = now
+	var gain := clampf(float(d.get("gain", 1.0)), 0.0, 1.0)
+	(src["emitter"] as AudioStreamPlayer3D).volume_db = linear_to_db(maxf(gain, 0.0001))
 	var playing_ms := _play(src, VoiceCodec.mulaw_decode(bytes))
-	# Half-duplex: nothing goes up while this plays (and a tail after).
-	_gate.hold_until(float(clock.call()) + playing_ms + VoiceCodec.VOICE_TAIL_MS)
+	# D5b, the barge-in: while this plays (and a tail after) only a voice
+	# louder than the echo goes up. A faint, far terminal raises nothing.
+	if gain >= VoiceCodec.VOICE_BARGE_MIN_GAIN:
+		_gate.raise_until(now + playing_ms + VoiceCodec.VOICE_TAIL_MS, VoiceCodec.VOICE_BARGE_DBFS)
 
 
 ## Queue `samples` (16 kHz) on `src` by the jitter plan; returns the ms queued after.
@@ -378,7 +422,7 @@ func _set_listen(on: bool) -> void:
 	if on == listen_on:
 		return
 	listen_on = on
-	uplink.wanted = on and not muted and _route != ""
+	uplink.wanted = _uplink_wanted()
 	if not on:
 		uplink.drop_queue()
 	listen_changed.emit(on)
@@ -390,23 +434,40 @@ func _set_listen(on: bool) -> void:
 func _process(delta: float) -> void:
 	if not is_running():
 		return
-	uplink.wanted = listen_on and not muted and _route != "" and not _refused
+	uplink.wanted = _uplink_wanted()
 	uplink.poll(delta)
 	if _route == "":
 		return
 	var frames := _read_frames()
-	if frames.is_empty():
+	# All zeros is no mic: a missing or denied input still mixes silence.
+	if frames.is_empty() or not _has_signal(frames):
 		_quiet_for += delta
 		if _route == "server" and _quiet_for > MIC_FALLBACK_AFTER:
 			_fallback()
-		elif _route == "capture" and _quiet_for > MIC_FALLBACK_AFTER and mic_state != "nomic":
+		elif (_route == "capture" or _route == "test") and _quiet_for > MIC_FALLBACK_AFTER and mic_state != "nomic":
 			_set_mic("nomic")
-		return
-	_quiet_for = 0.0
-	_set_mic("muted" if muted else "live")  # frames: a mic (the fallback's too)
-	if muted:
+		if frames.is_empty() or not _heard_sample:
+			return
+	else:
+		_quiet_for = 0.0
+		_heard_sample = true
+		_set_mic("muted" if muted else "live")  # a real sample: a mic (the fallback's too)
+	if muted or mic_state != "live":
 		return
 	feed(frames, _rate)
+
+
+## Something to send up: someone listens, not muted, a live mic, not refused.
+func _uplink_wanted() -> bool:
+	return listen_on and not muted and _route != "" and mic_state == "live" and not _refused
+
+
+## Whether `frames` hold any real sample (not the zeros a dead input mixes).
+static func _has_signal(frames: PackedVector2Array) -> bool:
+	for f in frames:
+		if absf(f.x) > 1e-6 or absf(f.y) > 1e-6:
+			return true
+	return false
 
 
 ## Captured frames at `rate` Hz → 16 kHz chunks → the gate → the uplink
@@ -445,24 +506,27 @@ func _start_mic() -> void:
 	if not mic_enabled:
 		_set_mic("off")
 		return
+	_heard_sample = false
 	if frame_source.is_valid():
 		_route = "test"
 		_rate = source_rate
-		_set_mic("muted" if muted else "live")
+		_set_mic("muted" if muted else "opening")
 		return
 	if OS.get_name() == "Android" and not _granted():
 		_set_mic("asking")
-		if not _asked_permission:
-			_asked_permission = true
-			get_tree().on_request_permissions_result.connect(_on_permission)
+		_listen_for_permission()
 		OS.request_permission("RECORD_AUDIO")
 		return
-	if AudioServer.set_input_device_active(true) != OK:
+	var err := AudioServer.set_input_device_active(true)
+	if err == ERR_UNAUTHORIZED:
+		_set_mic("nomic")  # refused: the fallback reads the same input
+		return
+	if err != OK:
 		_fallback()
 		return
 	_route = "server"
 	_rate = AudioServer.get_input_mix_rate()
-	_set_mic("muted" if muted else "live")
+	_set_mic("muted" if muted else "opening")
 
 
 static func _granted() -> bool:
@@ -507,6 +571,8 @@ func _fallback() -> void:
 	_route = "capture"
 	_rate = AudioServer.get_mix_rate()
 	_quiet_for = 0.0
+	if not muted and not _heard_sample:
+		_set_mic("opening")
 	push_warning("voice: no frames from AudioServer.get_input_frames — trying an AudioStreamMicrophone")
 
 
@@ -525,6 +591,7 @@ func _set_mic(state: String) -> void:
 	if state == mic_state:
 		return
 	mic_state = state
+	uplink.wanted = _uplink_wanted()
 	mic_changed.emit(state)
 
 

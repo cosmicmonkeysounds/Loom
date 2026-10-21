@@ -11,20 +11,27 @@
 //! - `resample` `{from, to, chunks, input, output}` — `input` fed to one
 //!   `Resampler` in pieces of `chunks` samples; `output` = the outputs
 //!   joined (Float32 values).
-//! - `gate` `{steps: [{dbfs, now, hold?}], sent}` — one `VoiceGate`: before
-//!   each step `holdUntil(hold)` when set, then `push(i, dbfs, now)`;
-//!   `sent` = every chunk index sent, in order.
+//! - `gate` `{steps: [{dbfs, now, hold?, raise?}], sent}` — one `VoiceGate`:
+//!   before each step `holdUntil(hold)` when set, `raiseUntil(raise,
+//!   VOICE_BARGE_DBFS)` when set (the games' barge-in, D5b), then
+//!   `push(i, dbfs, now)`; `sent` = every chunk index sent, in order.
 //! - `jitter` `{buffered, target, max, plan}`.
 //! - `voiceOn` `{spot, on}` — each of the show map's terminals.
 //! - `hearsTerminals` `{p, floor, room, heard}` — on the show map (floor +
 //!   room = `locate`); then one `players` `{players}` (the same listeners
 //!   as sessions) and per terminal `hearsPlayers` `{spot, heard}` over them.
+//! - `hearsKept` `{p, floor, room, keep, heard}` — `hearsTerminals` with
+//!   `keep` (the routing hysteresis), at the edge of a terminal's reach.
 
 import { join } from "node:path";
 import {
   Resampler,
+  VOICE_BARGE_DBFS,
+  VOICE_BARGE_MIN_GAIN,
   VOICE_CHUNK_BYTES,
   VOICE_CHUNK_MS,
+  VOICE_EDGE_FADE_M,
+  VOICE_REACH_HYSTERESIS_M,
   VOICE_CODEC,
   VOICE_FRESH_MS,
   VOICE_GATE_DBFS,
@@ -91,25 +98,37 @@ function resampleCase(from: number, to: number, chunks: number[]): Record<string
 }
 
 /** Gate scripts: the times are a 200 ms chunk clock. */
-function gateCases(): Array<{ steps: Array<{ dbfs: number | null; now: number; hold?: number }> }> {
+type GateStep = { dbfs: number | null; now: number; hold?: number; raise?: number };
+
+function gateCases(): Array<{ steps: GateStep[] }> {
   const loud = -20;
   const quiet = -60;
-  const at = (levels: number[], holds: Record<number, number> = {}) =>
-    levels.map((dbfs, i) => ({ dbfs, now: i * VOICE_CHUNK_MS, ...(holds[i] !== undefined ? { hold: holds[i] } : {}) }));
+  const at = (levels: number[], holds: Record<number, number> = {}, raises: Record<number, number> = {}): GateStep[] =>
+    levels.map((dbfs, i) => ({
+      dbfs,
+      now: i * VOICE_CHUNK_MS,
+      ...(holds[i] !== undefined ? { hold: holds[i] } : {}),
+      ...(raises[i] !== undefined ? { raise: raises[i] } : {}),
+    }));
   return [
     { steps: at([quiet, quiet, loud, quiet, quiet, quiet, quiet]) },
     { steps: at([loud, loud, quiet, loud, quiet, quiet, quiet, quiet]) },
     { steps: at([quiet, loud, quiet, quiet, loud, loud, loud, quiet], { 3: 900 }) },
     { steps: at([-41.9, -42, -42.1, -41, quiet]) },
     { steps: [{ dbfs: null, now: 0 }, { dbfs: loud, now: 200 }] },
+    // The barge-in (D5b): the echo under the raise, the player over it, the hang, the end.
+    { steps: at([-35, -35, loud, -35, -35, quiet, -40, quiet], {}, { 0: 1000 }) },
+    { steps: at([-28, -27.9, quiet, -30, quiet, -30], {}, { 0: 700, 2: 900 }) },
+    { steps: at([loud, loud, loud, quiet, loud], { 1: 500 }, { 0: 900 }) },
   ];
 }
 
-function runGate(steps: Array<{ dbfs: number | null; now: number; hold?: number }>): number[] {
+function runGate(steps: GateStep[]): number[] {
   const gate = new VoiceGate<number>();
   const sent: number[] = [];
   steps.forEach((s, i) => {
     if (s.hold !== undefined) gate.holdUntil(s.hold);
+    if (s.raise !== undefined) gate.raiseUntil(s.raise, VOICE_BARGE_DBFS);
     sent.push(...gate.push(i, s.dbfs ?? -Infinity, s.now));
   });
   return sent;
@@ -145,6 +164,18 @@ function hearing(house: HouseMap): Record<string, unknown>[] {
   for (const pl of players) out.push({ kind: "hearsTerminals", p: pl.p, floor: pl.floor, room: pl.room, heard: hearsTerminals(house, pl) });
   out.push({ kind: "players", players });
   for (const t of house.terminals) out.push({ kind: "hearsPlayers", spot: t.id, heard: hearsPlayers(house, t, players) });
+  // The edge: each main-floor terminal's reach, 0.4 m inside, 0.4 m and 0.9 m
+  // past it, east of it — every spot kept, then nothing kept.
+  const keepAll = house.terminals.map((t) => t.id).sort();
+  for (const t of house.terminals.filter((x) => x.pos[1] >= 0 && x.pos[1] < 2.5)) {
+    for (const off of [-0.4, 0.4, 0.9]) {
+      const p: Vec3 = [Math.round((t.pos[0] + 12 + off) * 1000) / 1000, 0, t.pos[2]];
+      const at = locate(house, p);
+      for (const keep of [keepAll, []]) {
+        out.push({ kind: "hearsKept", p, floor: at.floor, room: at.room, keep, heard: hearsTerminals(house, { p, floor: at.floor, room: at.room }, { keep: new Set(keep) }) });
+      }
+    }
+  }
   return out;
 }
 
@@ -170,6 +201,10 @@ export function voiceGoldenFile(house: HouseMap = loadHouse(SHOW_HOUSE)): string
       VOICE_MIN_GAIN,
       VOICE_JITTER_TARGET_MS,
       VOICE_JITTER_MAX_MS,
+      VOICE_BARGE_DBFS,
+      VOICE_BARGE_MIN_GAIN,
+      VOICE_REACH_HYSTERESIS_M,
+      VOICE_EDGE_FADE_M,
     },
   ];
   for (const x of encodeInputs()) records.push({ kind: "encode", x, byte: mulawByte(x) });

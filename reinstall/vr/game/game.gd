@@ -231,6 +231,7 @@ func enter_lobby() -> void:
 	player.release_mouse()  # the lobby is pointed at, not looked around
 	player.teleport(Lobby.SPOT, 0.0)
 	lobby.reset()
+	_prime_mic()
 	if carried != "":
 		lobby.flash(carried, NOTICE_TIME)
 	lobby.visible = true
@@ -502,6 +503,10 @@ func headset_gone() -> void:
 
 func _away_changed(why: String, away: bool, grace: float) -> void:
 	if away:
+		# The Android microphone dialog pauses / unfocuses the app: answering
+		# it ends nobody's session.
+		if why != "presence" and voice != null and voice.mic_state == "asking":
+			return
 		if not _away_until.has(why):
 			_away_until[why] = float(clock.call()) + grace
 		return
@@ -622,6 +627,12 @@ func _setup_voice() -> void:
 	voice.builder = builder
 	voice.mic_enabled = bool(link.config.get("mic", true))
 	add_child(voice)
+
+
+## Ask for the Quest's microphone grant now, in the lobby, before any
+## session (the system dialog would pause a session and end it).
+func _prime_mic() -> void:
+	voice.prime_permission(bool(link.config.get("voice", true)) and bool(link.config.get("mic", true)))
 
 
 ## While playing: run the voice link on the session (unless `voice` is off),
