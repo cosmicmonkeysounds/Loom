@@ -2818,6 +2818,15 @@ export class Sim {
         if (name === "sum") return vNumber(nums.reduce((a, b) => a + b, 0));
         return nums.length === 0 ? VNULL : vNumber(Math.max(...nums));
       }
+      case "names": {
+        // Wave 18b: `names([p for p in Persons where …])` — the display
+        // names joined for speech, "A, B and C" ("" for an empty list). A
+        // person id reads as their name; anything else as written.
+        const v = args[0]?.value;
+        const items = v !== undefined && v.kind === "list" ? v.items : v !== undefined && v.kind !== "null" ? [v] : [];
+        const words = items.map((x) => (x.kind === "string" ? (this.persons.get(x.value)?.name ?? x.value) : display(x))).filter((w) => w !== "");
+        return vString(joinNames(words));
+      }
       case "visits": {
         const subj = this.subjectKey(this.currentBindings);
         const beatKey = this.resolveBeatKey(args[0]?.asName() ?? "");
@@ -2842,6 +2851,12 @@ export class Sim {
     }
     return this.log.push(event);
   }
+}
+
+/** "A", "A and B", "A, B and C" ("" for none) — the `names()` builtin. */
+export function joinNames(words: readonly string[]): string {
+  if (words.length <= 1) return words[0] ?? "";
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }
 
 function isQuestAction(a: string): a is QuestAction {

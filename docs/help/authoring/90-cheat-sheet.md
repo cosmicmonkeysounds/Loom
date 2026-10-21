@@ -86,6 +86,7 @@ openers end with `:` and indent their body.
 | `visits("The Beat")` `played(b)` `since(e)` `count(C)` | ask the ledger |
 | `[x for x in C where cond]` | list comprehension |
 | `sum([p.score for p in Persons])` `max(list)` `len(list)` | add up / top / count a list |
+| `names([p for p in Persons where p.slow == true])` | their names for speech: "A, B and C" ("" for nobody) |
 | `30s` `2m` `1h` | durations |
 
 **Variety**
