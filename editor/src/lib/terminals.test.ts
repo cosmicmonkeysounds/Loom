@@ -7,6 +7,8 @@ import {
   fullscreenTitle,
   majorityVersion,
   mergeTerminals,
+  micBadge,
+  micWanted,
   terminalBadges,
   newlySilent,
   pruneAcks,
@@ -116,6 +118,32 @@ describe('device badges (SW-SCR-21)', () => {
     expect(terminalBadges(on!, null)).toEqual([])
     const [none] = rowsOf({ ...poll('Kitchen', 0), audio: true })
     expect(terminalBadges(none!, null)).toEqual([])
+  })
+
+  it('🎤 the voice link (wave 19): grey while live / held / off, red when a placed terminal is denied or on http', () => {
+    const [live] = rowsOf({ ...poll('Kitchen', 0), mic: 'live' })
+    expect(live!.device).toMatchObject({ mic: 'live' })
+    expect(terminalBadges(live!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['mic', '🎤', false]])
+    const [held] = rowsOf({ ...poll('Kitchen', 0), mic: 'muted' })
+    expect(terminalBadges(held!, null).map((x) => [x.key, x.warn])).toEqual([['mic', false]])
+    const [off] = rowsOf({ ...poll('Kitchen', 0), mic: 'off' })
+    expect(terminalBadges(off!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['mic', '🎤 off', false]])
+    const [denied] = rowsOf({ ...poll('Kitchen', 0), mic: 'denied' })
+    expect(terminalBadges(denied!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['mic', '🎤 denied', true]])
+    const [http] = rowsOf({ ...poll('Kitchen', 0), mic: 'insecure' })
+    expect(terminalBadges(http!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['mic', '🎤 http', true]])
+    // An older build sends nothing: no badge.
+    const [old] = rowsOf(poll('Kitchen', 0))
+    expect(terminalBadges(old!, null)).toEqual([])
+  })
+
+  it('🎤 is never red where no mic belongs: a mirror, or a terminal on no spot', () => {
+    expect(micWanted({ spot: 'hall', view: 'auto' })).toBe(true)
+    expect(micWanted({ spot: 'desktop-tv', view: 'tv' })).toBe(true)
+    expect(micWanted({ spot: 'desktop-tv', view: 'mirror' })).toBe(false)
+    expect(micWanted({ spot: '', view: 'face' })).toBe(false)
+    expect(micBadge({ spot: '', view: 'face' }, 'denied')).toMatchObject({ text: '🎤 off', warn: false })
+    expect(micBadge({ spot: 'tv', view: 'mirror' }, 'insecure')).toMatchObject({ text: '🎤 off', warn: false })
   })
 
   it('⛶ on the TV points at --kiosk (nobody taps it); on a tablet, a touch', () => {

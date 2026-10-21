@@ -678,6 +678,94 @@ real room, which keeps moving); a feed that fails 3 times rests 5 s; a 401 /
 terminal's screen and facing its yaw / pitch; with no feed the terminal's own
 screen look shows.
 
+### 2.4 Voice (wave 19)
+
+The wall terminals' microphones are heard in the games at each terminal's
+screen, and a player's headset is heard on the terminals near them — the
+audio twin of §2.3. Plain HTTP, no WebRTC or WebSocket: a source **POSTs**
+raw chunks up, a listener holds **one SSE stream** down, and the server does
+the routing, since it already holds every pose and every terminal spot.
+Server: `core/server/spatial-voice.ts` (`VoiceRelay`, `parseVoiceUpload`),
+the rule in `@loom/house` `house/src/voice.ts`, wired in `EventRuntime`.
+**Memory only, no ring**: a chunk is fanned out the moment it lands to the
+streams that can hear it and forgotten — never journaled, never on disk; a
+restart has no routes until devices reconnect. Voice ignores a pause like
+poses and cams (the real room keeps moving).
+
+**The wire.** G.711 **μ-law, mono, 16 000 Hz** (`VOICE_RATE`), one byte per
+sample, **200 ms chunks** (`VOICE_CHUNK_MS`, `VOICE_CHUNK_BYTES` 3 200). Every
+port encodes with `mulawByte` (14-bit magnitude `floor(|x|·8192 + 0.5)`,
+clipped at 8159, biased, segmented, inverted; 0 → `0xFF`) and decodes with
+Sun's `ulaw2linear` / 32768; the Godot port is pinned by
+`house/test/fixtures/voice-mulaw.json`.
+
+| Route | Auth | Body / query | Result |
+|---|---|---|---|
+| `POST /api/spatial/voice` | **a terminal**: a mod token (`x-loom-token`) or an author session, plus `?spot=`; **a game**: its session token, no `spot` | `?seq=<n>` a non-negative integer, increasing per source; the body raw `application/octet-stream`, `VOICE_MIN_BYTES` 160 … `VOICE_MAX_BYTES` 8 000 bytes (≤ 500 ms). Read under its own 8 000-byte cap ahead of the 2 KB `/api/spatial/*` JSON cap; no author-session lookup (it is not a `/api/mod/` path) | Who first: 401 `unknown session token` · 410 `this session is over` · 403 `moderators only` (a non-mod token with a `spot`) · 400 a mod token with no `spot`. Then the chunk: 400 a bad `seq` / `spot` / body size · 413 the body over the cap (the router). Then the spot: 404 `no such spot` (not on the current map) · 403 `voice is off at this terminal`. Else 200 `{ok: true, listening}` — `listening`: someone can hear this source now; `{ok: true, listening, dropped: true}` when the chunk went nowhere (nobody hears it, a parked session that has not posed yet, or a stale seq) |
+| `GET /api/spatial/voice/stream` (SSE) | as the upload, the token in `?token=` (EventSource sets no headers): a terminal = a moderator + `?spot=`, a game = its session token | — | the same refusals as plain HTTP before the stream opens (a parked session's stream opens; it hears nothing until it joins) · 200 `text/event-stream`. The path ends in `/stream`, so Caddy neither compresses nor buffers it. A token-bearing open skips the author-session lookup like the camera polls; the editor may open one on its cookie (`wantsModRead`) |
+
+**Frames** (`event:` name, JSON `data:`; `VoiceFrames`):
+
+- `hello {codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal" | "player", spot? | session?, listen}` — first, once.
+- `listen {on}` — whether this device's own mic is wanted (someone can hear it); sent on change. **A source uploads only while `on`** (and the upload's `listening` says the same), so a terminal's mic never streams to an empty house.
+- `voice {from, kind: "terminal" | "player", spot? | session?, name?, gain, seq, data}` — `from` = `t:<spot>` / `s:<session id>`; `name` the spot's name on the map or the program's; `gain` 0..1 (2 decimals, this listener's); `data` base64 μ-law. A stream more than 64 KB behind (`VOICE_LAG_BYTES`, ≈ 3 s of one source) skips `voice` frames until it catches up: late voice is worse than a gap. Control frames always go.
+- `bye {from}` — a source this stream heard (it delivered at least one chunk since the route formed) is out of earshot: fade it out and drop its buffer. A source that merely goes quiet sends nothing; its buffer drains.
+- `:ping` every 15 s (`VOICE_PING_MS`). The queue cap is 512 KB (`VOICE_SSE_CAP`) with the usual 15 s stall drop. The stream closes when its session ends (the next call answers 410), on a story reset or restart (every session ends; terminals reconnect), and in `dispose()`.
+
+**Who hears whom** (`@loom/house`; the server's `VoiceRelay.route()` applies
+it on every 100 ms spatial flush — a move, a map swap, a session that ended —
+and on every listener connect / disconnect; the spatial loop keeps running
+while any voice stream is open):
+
+- `voiceOn(house, spot)`: `voice: true` → on, `voice: false` → off; unset →
+  off for a terminal standing in the map's spawn room (the tent laptop is the
+  web game, beside the headsets; the shed on the rain map), on anywhere else.
+  Both show maps also set `"voice": false` on `tent`. The server refuses an
+  off spot's uploads and streams and never routes to it.
+- A player hears terminal T (`hearsTerminals`) when T's voice is on, T is on
+  the player's floor (`floorOf(house, T.pos[1])`), within
+  `VOICE_TERMINAL_REACH_M` 12 m on the plan; the `VOICE_MAX_TERMINALS` 4
+  nearest. A terminal hears player P (`hearsPlayers`) on its floor within
+  `VOICE_PLAYER_REACH_M` 8 m of its `pos`; the `VOICE_MAX_PLAYERS` 3 nearest.
+- `gain` = 1 in the same room (the player's `room` non-null and equal to
+  T's), else `0.5 · (1 − d / reach)` rounded to 2 decimals; under
+  `VOICE_MIN_GAIN` 0.05 it is not routed (dropped before the nearest-N cap).
+  Nearest first; ties by id.
+- A terminal hears only players and a player only terminals: nothing hears
+  itself, and two headsets never hear each other (not asked for).
+- `seq`: a chunk at or below the source's last kept seq is dropped — unless
+  the source has been quiet for `VOICE_FRESH_MS` 1.5 s, when a lower seq is
+  a reloaded device counting from 0 again and is kept.
+
+**Clients** (each its own lane; the rules every one follows): an open mic
+behind a **voice gate** (`VoiceGate`: a chunk whose RMS is over
+`VOICE_GATE_DBFS` −42 dBFS opens it, with one chunk of pre-roll and a
+`VOICE_HANG_MS` 400 ms hang), and **half-duplex in software** — a device
+sends nothing while it plays incoming voice, plus `VOICE_TAIL_MS` 300 ms
+(`holdUntil`), and a terminal also not while it speaks or plays its own
+sounds. Playback keeps a small jitter buffer per source (`jitterPlan`:
+`VOICE_JITTER_TARGET_MS` 200, the terminals 250; past `VOICE_JITTER_MAX_MS`
+400 ms queued it skips ahead), fading in on a start and out on `bye`.
+
+- **Terminals** (`terminal/src/voice/`): auto / world / shadow / face / chess /
+  casino have mic + speaker; `tv` a speaker (cut by the TV mute) and a mic
+  off by default; `mirror`, the setup screen and an unplaced terminal
+  neither. ⚙ / URL `mic=0|1` and `voices=0|1`. The heartbeat reports
+  `mic=live|muted|denied|insecure|off` on `/api/screen/state` (beside `fs=`),
+  and Run → Terminals shows it as 🎤 (red for `denied` / plain http on a
+  terminal that should hear).
+- **The web game** (`reinstall/web/src/game/voice.ts`): off by default (it
+  runs on the tent laptop; config `voice`, URL `voice=1|0`); on, it hears the
+  terminals through `PannerNode`s at their screens.
+- **VR** (`reinstall/vr/net/voice_link.gd` + `voice_codec.gd`): the mic on
+  **B / Y** (desktop **M**), `AudioStreamPlayer3D`s under each terminal; one
+  keep-alive `HTTPClient` for the uploads.
+
+The mic needs a secure context in a browser (https, or localhost): a LAN
+`http://<ip>:7000` setup gets no microphone on the tablets (`mic=insecure`),
+as with the camera. No `Permissions-Policy` header is sent, so top-level
+pages may ask; nothing works inside a frame (`x-frame-options: DENY`).
+
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
 React shell + three.js canvas (three r186 needs WebGL2: the wizard probes
