@@ -6,7 +6,9 @@ keywords: quest, quests, quest log, task, mission, in progress, done, progress, 
 ---
 
 Some stories hand you things to **do**. They land in your **📜 Quest
-Log**, pinned at the top of your rooms list (right above your 📓 Codex).
+Log**: a tile on [Mission](mission.md), beside your 📓 Codex, showing how
+many are active (a yellow dot when a step is new). A notification about a
+quest (**See the quest**) opens its thread.
 
 ## One quest, one line
 
