@@ -81,7 +81,8 @@ function Grid({ t, color = "rgba(64, 160, 255, 0.35)", bg = "radial-gradient(ell
 //   900–2400  eight phones round the edge buzz in turn, each with its note
 //   2400 →    hold: the live summons countdown (the corner's), the phones buzz
 //             every 4 s, an Antivirus sweep crosses the room, popups drift,
-//             the marquee runs; at 0:00 DOORS CLOSING stamps down
+//             the marquee runs. (The slide lets go long before the summons'
+//             300 s are up: the doors slam on the `Summons Closed` beat, below.)
 
 const PHONE_SPOTS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 5, y: 10 },
@@ -111,8 +112,6 @@ function FiveMinutesTv(p: SceneProps) {
   useSfxCues(t, sfx, [[0, "exclamation"], [320, "popup"], [720, "boom", { gain: 0.5 }], ...PHONE_SPOTS.map((_, i) => [900 + i * 180, "buzz", { gain: 0.35, pitch: 1 + i * 0.03 }] as const), ...onGrid(t, 4900, 4000, "buzz", { gain: 0.3 }), ...onGrid(t, 2600, 9000, "popup", { gain: 0.5 })]);
   const slam = eased(t, 700, 380, ease.outBack);
   const sweep = loop(t, 7000);
-  const closing = left <= 0;
-  const closedAt = useFirstSeen(closing ? "closed" : null, t);
   return (
     <Stage bg="#050505" fit className="tv2">
       <div className="kit-fill tv2-beacon" style={{ transform: reduced ? undefined : `rotate(${((t / 1000) * 140).toFixed(1)}deg)`, opacity: 0.55 + 0.25 * pulse(t, 1400) }} />
@@ -139,11 +138,6 @@ function FiveMinutesTv(p: SceneProps) {
       <div className="tv2-marquee-bar tv2-amber">
         <Marquee t={t} speed={150}>⏳ FIVE MINUTES ★ BE IN THE DESKTOP FOR THE SECOND MOMENT OF TRUTH ★ BATHROOM MODE EXCUSES YOU ★ AN ANTIVIRUS IS COUNTING ★ NO DESKTOP, NO TRUTH PONG ★</Marquee>
       </div>
-      {closing && (
-        <div className="tv2-stamp" style={{ transform: `translate(-50%, -50%) rotate(-8deg) scale(${lerp(2.2, 1, eased(t, closedAt ?? t, 360, ease.outBack)).toFixed(3)})` }}>
-          DOORS CLOSING
-        </div>
-      )}
       <Glass t={t} reduced={reduced} />
     </Stage>
   );
@@ -169,6 +163,125 @@ function FiveMinutesWall(p: SceneProps) {
             ))}
           </span>
         </div>
+      }
+    />
+  );
+}
+
+// ══ D3: Summons Closed (beat) — the doors slam ════════════════════════════════════════
+//
+//   0–600     the amber beacon flares; the summons dialog blinks 0:00
+//   600–1500  the Desktop's two doors slide in from the edges …
+//   1500      … and SLAM: the screen jolts, dust bursts off the seam
+//   1700–2600 DOORS CLOSED stamps down across them (red, outBack)
+//   2600–7000 LATE.TXT drops in: the Antivirus' list checks the house room by
+//             room (present ✓, Bathroom Mode excused, not here ✗ LATE) — never
+//             a name; the list fills with ticks and crosses
+//   7000–9800 Clippy's Help balloon: "Everyone who is here is wonderful. Let's
+//             begin." (her line in the beat); sparkles; fade at 10.5 s
+
+const SHUT = { slide: 600, slam: 1500, stamp: 1700, list: 2600, help: 7000, end: 10_500 } as const;
+const LATE_ROWS: ReadonlyArray<{ room: string; mark: "ok" | "excused" | "late" }> = [
+  { room: "The Desktop", mark: "ok" },
+  { room: "Disk Cleanup", mark: "excused" },
+  { room: "The Start Bar", mark: "late" },
+  { room: "The Steam Room", mark: "late" },
+  { room: "The Cloud", mark: "late" },
+  { room: "The RAM", mark: "late" },
+  { room: "The Graphics Card", mark: "late" },
+];
+const LATE_EVERY = 520;
+
+function DesktopDoors({ t, slam, reduced }: { t: number; slam: number; reduced: boolean }) {
+  const k = reduced ? (t >= slam ? 1 : 0) : eased(t, SHUT.slide, slam - SHUT.slide, ease.inCubic);
+  const bounce = reduced || t < slam ? 0 : Math.sin(progress(t, slam, 420) * Math.PI) * (1 - progress(t, slam, 420)) * 1.4;
+  return (
+    <div className="kit-fill tv2-doors" aria-hidden="true">
+      {(["left", "right"] as const).map((side) => (
+        <div key={side} className={`tv2-door ${side}`} style={{ transform: `translate3d(${((side === "left" ? -1 : 1) * ((1 - k) * 100 + bounce)).toFixed(2)}%, 0, 0)` }}>
+          <div className="tv2-door-pane" />
+          <div className="tv2-door-sign">{side === "left" ? "THE" : "DESKTOP"}</div>
+          <div className="tv2-door-handle" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SummonsClosedTv(p: SceneProps) {
+  const { t, sfx, reduced } = p;
+  const rows = LATE_ROWS.length;
+  useSfxCues(t, sfx, [[0, "siren", { gain: 0.25 }], [SHUT.slide, "whoosh", { gain: 0.5, pitch: 0.7 }], [SHUT.slam, "boom", { gain: 0.65 }], [SHUT.stamp, "critical", { gain: 0.5 }], [SHUT.list, "popup", { gain: 0.5 }], ...LATE_ROWS.map((r, i) => [SHUT.list + 500 + i * LATE_EVERY, r.mark === "late" ? "error" : "tick", { gain: r.mark === "late" ? 0.25 : 0.4 }] as const), [SHUT.help, "ding", { gain: 0.5 }], [SHUT.help + 300, "sparkle", { gain: 0.4 }]]);
+  const jolt = reduced ? 0 : 1 - progress(t, SHUT.slam, 700);
+  const stamp = eased(t, SHUT.stamp, 380, ease.outBack);
+  const out = fadeOut(t, SHUT.end);
+  const shown = Math.max(0, Math.min(rows, Math.floor((t - SHUT.list - 500) / LATE_EVERY) + 1));
+  return (
+    <Stage bg="#050302" fit className="tv2">
+      <div className="kit-fill" style={{ opacity: out }}>
+        <div className="kit-fill tv2-beacon" style={{ transform: reduced ? undefined : `rotate(${((t / 1000) * 220).toFixed(1)}deg)`, opacity: 0.7 * (1 - progress(t, SHUT.slam, 1800)) }} />
+        <Shake t={t} amount={jolt * 0.9} seed={23} reduced={reduced} className="kit-fill">
+          <Win98Window title="SECOND MOMENT OF TRUTH" icon="warning" tone="red" x={50} y={36} center width="26em" open={1 - progress(t, SHUT.slam - 200, 200)} reduced={reduced} className="tv2-five-win">
+            <div className="tv2-five-body">
+              <div className="tv2-five-label">BE IN THE DESKTOP IN</div>
+              <div className="tv2-five-count" style={{ opacity: blink(t, 400) ? 1 : 0.25 }}>
+                <Countdown ms={0} warn={30_000} reduced={reduced} />
+              </div>
+            </div>
+          </Win98Window>
+          <DesktopDoors t={t} slam={SHUT.slam} reduced={reduced} />
+          {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: 0.5, w: 0.02, h: 0.9, start: SHUT.slam, end: SHUT.slam + 160, rate: 900, life: 1400, speed: 0.45, speedJitter: 0.6, angle: 0, spread: 360, gravity: 0.6, drag: 0.6, size: 6, colors: ["#c8b8a0", "#8a7a66", "#ffffff"], shape: "dot", seed: 25 }]} />}
+          {t >= SHUT.stamp && (
+            <div className="tv2-stamp red" style={{ top: "44%", transform: `translate(-50%, -50%) rotate(-9deg) scale(${(reduced ? 1 : lerp(2.4, 1, stamp)).toFixed(3)})`, opacity: clamp01(stamp * 3) }}>
+              DOORS CLOSED
+            </div>
+          )}
+        </Shake>
+        <Win98Window title="LATE.TXT — Antivirus" icon="document" x={66} y={8} width="25em" open={eased(t, SHUT.list, 300, ease.outCubic)} reduced={reduced} className="tv2-late-win" status={shown >= rows ? "The Antivirus have the list." : `Checking the house… ${shown} of ${rows}`}>
+          {LATE_ROWS.slice(0, shown).map((r, i) => (
+            <div key={r.room} className={`tv2-late-row ${r.mark}`} style={{ opacity: progress(t, SHUT.list + 500 + i * LATE_EVERY, 200) }}>
+              <span>Sweep · {r.room}</span>
+              <span className="tv2-dots" />
+              <b>{r.mark === "ok" ? "✓ PRESENT" : r.mark === "excused" ? "🚻 EXCUSED" : "✗ LATE"}</b>
+            </div>
+          ))}
+        </Win98Window>
+        {t >= SHUT.help && (
+          <div className="tv2-help-balloon" style={{ transform: reduced ? undefined : `translate3d(0, ${((1 - eased(t, SHUT.help, 420, ease.outBack)) * 3).toFixed(2)}em, 0)`, opacity: progress(t, SHUT.help, 260) }}>
+            <Win98Icon kind="info" size="2em" />
+            <span>
+              <b>Clippy:</b> <Typewriter text="Okay. Okay! Everyone who is here is wonderful. Let's begin." t={t} start={SHUT.help + 300} cps={30} />
+            </span>
+          </div>
+        )}
+        {!reduced && t >= SHUT.help && <Particles t={t} emitters={[{ x: 0.3, y: 0.82, w: 0.3, start: SHUT.help + 300, end: SHUT.help + 1100, rate: 40, life: 1200, speed: 0.12, angle: -90, spread: 160, size: 9, colors: ["#ffd23f", "#ffffff"], shape: "star", seed: 27 }]} blend="add" />}
+        <Glass t={t} reduced={reduced} />
+      </div>
+    </Stage>
+  );
+}
+
+function SummonsClosedWall(p: SceneProps) {
+  const { t, sfx, reduced, done } = p;
+  useEndAt(t, 8000, done);
+  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.4, pitch: 0.7 }], [900, "boom", { gain: 0.45 }]]);
+  const k = reduced ? 1 : eased(t, 0, 900, ease.inCubic);
+  return (
+    <WallCard
+      t={t}
+      title="DOORS CLOSED"
+      lines={["The doors of the Desktop close.", "The Antivirus have the list."]}
+      icon="lock"
+      tone="red"
+      bg="#2a1600"
+      reduced={reduced}
+      accent={
+        <Shake t={t} amount={reduced ? 0 : 1 - progress(t, 900, 500)} seed={24} reduced={reduced}>
+          <div className="tv2-wall-doors">
+            <span style={{ transform: `translate3d(${((1 - k) * -110).toFixed(1)}%, 0, 0)` }} />
+            <span style={{ transform: `translate3d(${((1 - k) * 110).toFixed(1)}%, 0, 0)` }} />
+          </div>
+        </Shake>
       }
     />
   );
@@ -1857,6 +1970,7 @@ function PurgatoryWall(p: SceneProps) {
 
 export const SCENES: SceneDef[] = [
   { id: "five_minutes", when: [{ slide: "five_minutes" }], ms: "hold", tv: FiveMinutesTv, wall: FiveMinutesWall, face: "alarmed" },
+  { id: "summons_closed", when: [{ moment: "beat", name: "Summons Closed" }], ms: SHUT.end, tv: SummonsClosedTv, wall: SummonsClosedWall, priority: 1, face: "alarmed", faceMs: 2000 },
   { id: "truth_pong", when: [{ slide: "truth_pong" }], ms: "hold", tv: TruthPongTv, wall: TruthPongWall, face: "pleased" },
   { id: "round_two_tally", when: [{ moment: "beat", name: "Round Two Tally" }], ms: TALLY.end, tv: RoundTwoTallyTv, wall: RoundTwoTallyWall, namesCharacter: true, face: "thinking", faceMs: 8000 },
   { id: "trust_chart", when: [{ slide: "trust_chart" }], ms: "hold", tv: TrustChartTv, wall: TrustChartWall, face: "sly" },

@@ -176,6 +176,21 @@ describe("act 2's scenes draw", () => {
     q.mockRestore();
   });
 
+  it("the doors slam on the Summons Closed beat (the five-minute slide is long gone by 0:00)", () => {
+    const q = quiet();
+    const shut = SCENES.find((s) => s.id === "summons_closed")!;
+    expect(shut.when).toEqual([{ moment: "beat", name: "Summons Closed" }]);
+    expect(draw(shut, "tv", 3000, stateAt(3000))).toContain("DOORS CLOSED");
+    expect(draw(shut, "tv", 6800, stateAt(6800))).toContain("The Antivirus have the list.");
+    expect(draw(shut, "tv", 9500, stateAt(9500))).toContain("Everyone who is here is wonderful.");
+    expect(draw(shut, "wall", 4000, stateAt(4000))).toContain("DOORS CLOSED");
+    // The beat's own line, word for word; the stamp no longer waits on the slide.
+    expect(STORY).toContain("Clippy: Okay. Okay! Everyone who is here is wonderful. Let's begin.");
+    const five = SCENES.find((s) => s.id === "five_minutes")!;
+    expect(draw(five, "tv", 60_000, stateAt(60_000, { countdown: "summons", remaining: 0 }))).not.toContain("DOORS CLOS");
+    q.mockRestore();
+  });
+
   it("the recount holds the hung window and rides off only at the end of the hold, not at the beat's own motorcycle", () => {
     const q = quiet();
     const recount = SCENES.find((s) => s.id === "recount")!;

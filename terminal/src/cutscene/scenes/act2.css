@@ -488,3 +488,27 @@
 .tv2-wall-tally.low .tv2-wall-tally-num { color: #5a5a5a; }
 .tv2-ride.wall { bottom: 4%; }
 .tv2-ride-line.wall { font-size: 1.8em; bottom: 1.5%; }
+
+/* --- Summons Closed: the doors slam ---------------------------------------------- */
+.tv2-stamp.red { color: #ff3b2f; border-color: #ff3b2f; font-size: 5.2em; }
+.tv2-doors { overflow: hidden; z-index: 20; }
+.tv2-door { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.25em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
+.tv2-door.left { left: 0; }
+.tv2-door.right { right: 0; }
+.tv2-door-pane { position: absolute; left: 18%; right: 18%; top: 10%; height: 34%; background: linear-gradient(160deg, #0b1a4a, #3a5a9a); border: 0.2em solid; border-color: #404040 #fff #fff #404040; }
+.tv2-door-sign { position: absolute; left: 0; right: 0; top: 54%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.6em; letter-spacing: 0.12em; color: #000080; }
+.tv2-door-handle { position: absolute; top: 62%; width: 1.4em; height: 4.2em; background: #ffd23f; border: 0.12em solid #806000; border-radius: 0.3em; }
+.tv2-door.left .tv2-door-handle { right: 6%; }
+.tv2-door.right .tv2-door-handle { left: 6%; }
+.tv2-late-win { z-index: 45; }
+.tv2-late-row { display: flex; align-items: baseline; font-family: var(--mono); font-size: 0.95em; line-height: 1.5; }
+.tv2-late-row b { white-space: nowrap; }
+.tv2-late-row.ok b { color: #007a20; }
+.tv2-late-row.excused b { color: #000080; }
+.tv2-late-row.late b { color: #c00000; }
+.tv2-help-balloon { position: absolute; left: 6%; bottom: 8%; z-index: 50; display: flex; align-items: center; max-width: 34em; padding: 0.6em 0.9em; font-size: 1.3em; color: #000; background: #ffffe1; border: 1px solid #000; border-radius: 0.6em; box-shadow: 0.2em 0.2em 0 rgba(0, 0, 0, 0.5); will-change: transform, opacity; }
+.tv2-help-balloon > span { margin-left: 0.6em; }
+.tv2-wall-doors { position: relative; height: 4.5em; overflow: hidden; border: 2px solid #404040; background: #2a1600; }
+.tv2-wall-doors span { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.15em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
+.tv2-wall-doors span:first-child { left: 0; }
+.tv2-wall-doors span:last-child { right: 0; }
