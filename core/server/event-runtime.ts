@@ -4881,6 +4881,12 @@ export class EventRuntime {
           sendJson(res, 409, { error: "already answered" });
           return true;
         }
+        // An invitation is answered through its own route, which joins
+        // (A8: answered here it was spent and joined nothing).
+        if (m.widget.kind === "invite") {
+          sendJson(res, 409, { error: "answer an invitation with /api/guest/recruit/answer" });
+          return true;
+        }
         const args = widgetResultArgs(body["result"], this.sim!, m.widget.kind);
         if (args === null) {
           sendJson(res, 400, { error: "bad widget result" });

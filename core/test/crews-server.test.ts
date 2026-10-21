@@ -223,6 +223,16 @@ describe("crew routes", () => {
     expect(after.crew).toMatchObject({ id: "crew-1", members: [a.id, b.id] });
   });
 
+  it("an invitation card answered as a plain widget is refused, never spent (A8)", async () => {
+    const { rt, a, b } = await party();
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/invite", { token: a.token, to: b.id });
+    const card = chat(rt).find((m) => m.kind === "widget" && m.widget?.kind === "invite")!;
+    expect((await post(rt, "/api/guest/widget", { token: b.token, seq: card.seq, result: { yes: true } })).status).toBe(409);
+    expect(rt.liveSim!.crews.invite("inv-1")?.state).toBe("open");
+    expect((await post(rt, "/api/guest/recruit/answer", { token: b.token, id: "inv-1", yes: true })).status).toBe(200);
+  });
+
   it("leave the crew; the founder leaving last dissolves it", async () => {
     const { rt, a } = await party();
     await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
