@@ -13,7 +13,7 @@
 //! zones; the story's cues and the announce / TV voice targets; and the
 //! problem list (`validateAudio` read back to the speaker it names).
 
-import { AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
+import { AUDIO_CHIME_SOUND, AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
 import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
 import type { History } from "./history.ts";
@@ -498,13 +498,16 @@ export interface CueRow {
   cue: AudioCue | null;
   /** The story plays it (`sound X`); false = only in the config. */
   inStory: boolean;
+  /** The announcement chime: rung with the announcements (`announce.to`),
+   *  never as a cue — its row says so instead of offering targets (LA-2). */
+  chime: boolean;
 }
 
 /** Every story sound (sorted), then any cue the config has that the story doesn't play. */
 export function cueRows(audio: AudioConfig, sounds: readonly string[]): CueRow[] {
   const story = new Set(sounds);
-  const rows: CueRow[] = [...story].sort().map((name) => ({ name, cue: audio.cues[name] ?? null, inStory: true }));
-  for (const name of Object.keys(audio.cues).sort()) if (!story.has(name)) rows.push({ name, cue: audio.cues[name]!, inStory: false });
+  const rows: CueRow[] = [...story].sort().map((name) => ({ name, cue: audio.cues[name] ?? null, inStory: true, chime: name === AUDIO_CHIME_SOUND }));
+  for (const name of Object.keys(audio.cues).sort()) if (!story.has(name)) rows.push({ name, cue: audio.cues[name]!, inStory: false, chime: name === AUDIO_CHIME_SOUND });
   return rows;
 }
 

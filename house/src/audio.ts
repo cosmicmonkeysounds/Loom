@@ -24,6 +24,10 @@ import type { HouseMap } from "./types.ts";
 export const AUDIO_FILE = "audio.json";
 /** The implicit zone of every speaker (it may not be redefined). */
 export const AUDIO_EVERYWHERE = "everywhere";
+/** The story's announcement chime (`sound announce_chime`): rung with the
+ *  announcements on `announce.to` (or by the house Mac's own player), never
+ *  as a cue — a cue keyed on it does nothing, so it is warned about. */
+export const AUDIO_CHIME_SOUND = "announce_chime";
 /** A device has 1 to this many inputs / outputs. */
 export const AUDIO_MAX_CHANNELS = 64;
 /** A gain (dB) is within these. */
@@ -357,6 +361,7 @@ export function validateAudio(audio: unknown, house?: HouseMap | null): AudioVal
         continue;
       }
       if (!gainOk(c["gain"])) problems.push(`${at}.gain ${gainMsg}`);
+      if (name === AUDIO_CHIME_SOUND) warnings.push(`${at}: the chime rings with the announcements (announce.to); the router never plays this cue`);
       targets(`${at}.to`, c["to"]);
     }
   }

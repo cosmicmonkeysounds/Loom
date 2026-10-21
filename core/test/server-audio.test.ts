@@ -11,7 +11,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { validateAudio, type AudioConfig } from "@loom/house";
+import { AUDIO_CHIME_SOUND, resolveTargets, validateAudio, type AudioConfig } from "@loom/house";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
@@ -124,10 +124,26 @@ describe("the starter audio.json (Trapped in the Internet)", () => {
     expect(audio.outputs).toHaveLength(16);
     expect(audio.inputs).toHaveLength(16);
     expect(audio.zones.map((z) => z.id)).toEqual(["living"]);
-    // Every `sound X` in the show has a cue, and every cue is a show sound.
+    // Every `sound X` in the show has a cue (but the chime, rung with the
+    // announcements: LA-2), and every cue is a show sound.
     const sounds = storySounds(Sim.fromSources(scenarioSource("trapped-in-the-internet")).model);
     expect(sounds.length).toBeGreaterThanOrEqual(20);
-    expect(Object.keys(audio.cues).sort()).toEqual(sounds);
+    expect(Object.keys(audio.cues).sort()).toEqual(sounds.filter((s) => s !== AUDIO_CHIME_SOUND));
+    // Every cue reaches a wired speaker on both maps: the router skips one
+    // that reaches none (no fall back to the setting), so the arrival's
+    // modem must have its own (LA-1).
+    for (const map of ["house.json", "house.shed.json"]) {
+      const house = JSON.parse(readFileSync(join(dir, map), "utf8"));
+      for (const [name, cue] of Object.entries(audio.cues)) expect(resolveTargets(audio, house, cue.to).outputs.length, `${map} ${name}`).toBeGreaterThan(0);
+      expect(validateAudio(audio, house).warnings.filter((w) => w.includes("reaches no speaker"))).toEqual([]);
+    }
+  });
+
+  it("a cue keyed on the announcement chime is warned about: the router rings it with the announcements", () => {
+    const audio = JSON.parse(readFileSync(SHOW_AUDIO, "utf8")) as AudioConfig;
+    const keyed = { ...audio, cues: { ...audio.cues, [AUDIO_CHIME_SOUND]: { to: ["living"] } } };
+    expect(validateAudio(keyed).warnings.some((w) => w.includes(AUDIO_CHIME_SOUND) && w.includes("announce.to"))).toBe(true);
+    expect(validateAudio(audio).warnings.some((w) => w.includes(AUDIO_CHIME_SOUND))).toBe(false);
   });
 });
 

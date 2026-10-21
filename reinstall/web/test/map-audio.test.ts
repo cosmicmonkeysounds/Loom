@@ -365,6 +365,14 @@ describe("cues and targets", () => {
     ]);
   });
 
+  it("the announcement chime's row is not a cue: it rings with the announcements (LA-2)", () => {
+    const rows = cueRows(defaultAudio(), ["announce_chime", "zip"]);
+    expect(rows.map((r) => [r.name, r.chime])).toEqual([
+      ["announce_chime", true],
+      ["zip", false],
+    ]);
+  });
+
   it("sets targets (empty drops the cue) and a gain", () => {
     let a = setCueTargets(defaultAudio(), "zip", ["everywhere", " everywhere", ""]);
     expect(a.cues["zip"]).toEqual({ to: ["everywhere"] });
@@ -394,7 +402,7 @@ describe("cues and targets", () => {
     expect(opts.filter((o) => o.kind === "zone").map((o) => o.value)).toEqual(["living"]);
     expect(opts.filter((o) => o.kind === "location").map((o) => o.value)).toEqual(["The Desktop", "The Start Bar"]);
     expect(opts.filter((o) => o.kind === "room")).toHaveLength(h.rooms.length);
-    expect(opts.filter((o) => o.kind === "speaker").map((o) => o.value)).toEqual(["living-l", "living-r", "kitchen-l", "kitchen-r"]);
+    expect(opts.filter((o) => o.kind === "speaker").map((o) => o.value)).toEqual(["living-l", "living-r", "kitchen-l", "kitchen-r", "optical-drive"]);
     expect(targetChip(opts, "everywhere")).toEqual({ text: "🌐 everywhere", kind: "everywhere" });
     expect(targetChip(opts, "living")).toEqual({ text: "◎ Living room", kind: "zone" });
     expect(targetChip(opts, "the_desktop")).toEqual({ text: "📍 The Desktop", kind: "location" });

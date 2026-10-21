@@ -567,7 +567,18 @@ FFT resampler (songs are full range; the alexa player's linear resample is
 for a chime and a voice) and kept in memory
 (re-read when the file changes), preloaded on every config change. A name
 with no file, a cue that reaches no wired speaker, or a closed stream is
-logged once and skipped — never a crash.
+logged once and skipped — never a crash. A cue's `to` that reaches no
+speaker does **not** fall through to the setting or everywhere: the sound is
+skipped. `GET /api/mod/audio` lists it as a warning (*… reaches no
+speaker*), and so does the map editor's problem list, so check the warnings
+before setting `play_sounds: true`. The starter gives the mud room (The
+Optical Drive) a speaker for exactly this reason: every arrival's
+`modem_handshake` is cued there.
+
+The story's `sound announce_chime` is never a cue: the chime rings with the
+announcements, on `announce.to` (or from the `alexa` player). The Audio tab
+shows its row as *rings with the announcements*, and a cue keyed on it is
+warned about.
 
 ### 11.4 QLab or the router, announcements, one voice
 

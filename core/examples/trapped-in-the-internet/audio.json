@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "DRAFT (wave 17): a starter, not the house. Outputs follow the old plan (1/2 living, 3/4 kitchen = the announcement channels); only the living room and the kitchen have speakers yet. Place the rest in the map editor's 🔊 Speaker tool, confirm the interface's channel counts with `stagehand check`, then Save to project.",
+  "note": "DRAFT (wave 17): a starter, not the house. Outputs follow the old plan (1/2 living, 3/4 kitchen = the announcement channels); only the living room, the kitchen and the mud room (The Optical Drive, so every arrival hears the modem) have speakers yet. The chime is rung with the announcements (announce.to), never as a cue. Place the rest in the map editor's 🔊 Speaker tool, confirm the interface's channel counts with `stagehand check`, then Save to project.",
   "device": {
     "name": "MOTU",
     "inputs": 16,
@@ -215,6 +215,21 @@
       "out": [
         4
       ]
+    },
+    {
+      "id": "optical-drive",
+      "name": "Optical Drive",
+      "room": "optical-drive",
+      "floor": "main",
+      "pos": {
+        "x": -1,
+        "y": 2.2,
+        "z": 0.4
+      },
+      "yaw": 180,
+      "out": [
+        8
+      ]
     }
   ],
   "zones": [
@@ -235,11 +250,6 @@
       ]
     },
     "alarm_siren": {
-      "to": [
-        "everywhere"
-      ]
-    },
-    "announce_chime": {
       "to": [
         "everywhere"
       ]

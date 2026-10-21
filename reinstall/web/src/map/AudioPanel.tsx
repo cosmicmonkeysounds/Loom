@@ -447,12 +447,26 @@ export function AudioPanel(p: AudioPanelProps) {
                     <code>{r.name}</code>
                     {!r.inStory && <div className="muted small">not in the story</div>}
                   </td>
-                  <td>
-                    <Targets value={to} options={options} disabled={off} empty="(the line's room / the beat's setting)" onChange={(next) => commit(setCueTargets(audio, r.name, next))} />
-                  </td>
-                  <td className="gain">
-                    {r.cue !== null && <Num label="dB" value={r.cue.gain ?? 0} step={1} disabled={off} onChange={(v) => commit(setCueGain(audio, r.name, v))} />}
-                  </td>
+                  {r.chime ? (
+                    // The chime rings with the announcements: its speakers are theirs (LA-2).
+                    <td colSpan={2} className="muted small">
+                      <span>rings with the announcements: its speakers are the ones under Announcements below</span>
+                      {r.cue !== null && (
+                        <button type="button" className="small" disabled={off} onClick={() => commit(setCueTargets(audio, r.name, []))}>
+                          Drop the unused cue
+                        </button>
+                      )}
+                    </td>
+                  ) : (
+                    <>
+                      <td>
+                        <Targets value={to} options={options} disabled={off} empty="(the line's room / the beat's setting)" onChange={(next) => commit(setCueTargets(audio, r.name, next))} />
+                      </td>
+                      <td className="gain">
+                        {r.cue !== null && <Num label="dB" value={r.cue.gain ?? 0} step={1} disabled={off} onChange={(v) => commit(setCueGain(audio, r.name, v))} />}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}
