@@ -204,8 +204,10 @@ export function reduce(s: StationSession, e: StationEvent): StationSession {
       // never replays the last capture's card).
       if (s.cueSeen === undefined || e.seq === null) return { ...s, cueSeen: e.seq };
       if (e.seq === s.cueSeen) return s;
-      // A new capture: the card, unless a walk (or a check) is on screen.
-      return { ...s, cueSeen: e.seq, card: s.step.kind === "idle" ? e.now + CARD_MS : s.card };
+      // A new capture: the card (over a NOT MARKED card, which gives way),
+      // unless a walk, a check or a question is on screen.
+      if (s.step.kind === "idle" || s.step.kind === "refused") return { ...s, step: { kind: "idle" }, cueSeen: e.seq, card: e.now + CARD_MS };
+      return { ...s, cueSeen: e.seq };
     }
     case "problem":
       return s.step.kind === "idle" ? idle(s, bad(e.text, e.now)) : s;

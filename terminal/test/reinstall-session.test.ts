@@ -94,6 +94,11 @@ describe("the tent station's session (wave 18b)", () => {
     expect(run([{ type: "cue", seq: null, now: 20 }, { type: "cue", seq: 1, now: 21 }], fired).card).toBe(21 + CARD_MS);
     // No cue yet at boot (null), then the first capture.
     expect(run([{ type: "cue", seq: null, now: 0 }, { type: "cue", seq: 1, now: 5 }]).card).toBe(5 + CARD_MS);
+    // Over the NOT MARKED card: the refusal gives way to the card.
+    const refused = run([{ type: "pick", id: "g-1" }, { type: "resolved", id: "g-1", program: healthy, ended: false, playingOn: null, now: 0 }], boot);
+    const over = run([{ type: "cue", seq: 5, now: 3 }], refused);
+    expect(over.step.kind).toBe("idle");
+    expect(over.card).toBe(3 + CARD_MS);
     // A walk on screen: the seq is noted, no card; a walk clears a card that was up.
     const walking = run([{ type: "pick", id: "g-1" }, { type: "resolved", id: "g-1", program: marked, ended: false, playingOn: null, now: 0 }], fired);
     expect(walking.card).toBeNull();
