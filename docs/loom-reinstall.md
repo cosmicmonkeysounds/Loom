@@ -1099,8 +1099,8 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   committed `CHANGEME` (and not `--offline`) shows **SET UP THIS HEADSET**
   in the lobby (`game/setup_panel.gd`) instead of a dead status line: the
   server choices (`StationConfig.server_choices`: a server named on the
-  command line, the committed `res://` one, and **This computer
-  (http://127.0.0.1:7000)** only on an editor / desktop run —
+  command line, the committed `res://` one, and **This computer ·
+  127.0.0.1:7000** (`http://127.0.0.1:7000`) only on an editor / desktop run —
   `OS.has_feature("editor_runtime")` or not Android), an on-screen keyboard
   of the passcode alphabet `ABCDEFGHJKMNPQRSTUVWXYZ23456789` with ⌫ and
   SPACE (physical keys too on a desktop: Tab switches field, Enter

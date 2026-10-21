@@ -2041,7 +2041,7 @@ func _test_lobby_pure() -> void:
 	var probe := HouseLook.label("", 0.05)
 	Lobby.fit(probe, "START", 1.0, 0.05)
 	var short_px := probe.pixel_size
-	Lobby.fit(probe, "This computer (http://127.0.0.1:7000)", 0.4, 0.05)
+	Lobby.fit(probe, "This computer · 127.0.0.1:7000", 0.4, 0.05)
 	var w := ThemeDB.fallback_font.get_string_size(probe.text, HORIZONTAL_ALIGNMENT_LEFT, -1, probe.font_size).x * probe.pixel_size
 	_check(_near(short_px, 0.05 / 64.0, 1e-6) and w <= 0.4 + 1e-4 and probe.pixel_size < short_px, "lobby: a label keeps its height, or shrinks to fit (%.3f m)" % w)
 	probe.free()
@@ -2172,6 +2172,11 @@ func _test_lobby_picker() -> void:
 	_check(lobby.view() == "confirm" and str(lobby.confirming().get("id")) == "g-4" and lobby.picker.index == 2, "lobby: the trigger on a tile asks about it")
 	var card_text: Label3D = lobby.get("_card_text")
 	_check(card_text.text == "Start as Winamp?", "lobby: Start as <name>? (%s)" % card_text.text)
+	var card_initials: Label3D = lobby.get("_card_initials")
+	var card_tag: Label3D = lobby.get("_card_tag")
+	_check(card_initials.text == "W" and not (lobby.get("_card_picture") as Sprite3D).visible and card_tag.text == Lobby.tag_of(lobby.confirming()).strip_edges() and card_tag.text != "", "lobby: the card shows initials until the picture lands, and the tag (%s / %s)" % [card_initials.text, card_tag.text])
+	var backdrop := (lobby.get("_panel") as Node3D).get_node_or_null("Backdrop") as MeshInstance3D
+	_check(backdrop != null and backdrop.position.z < 0.0 and (backdrop.mesh as QuadMesh).size.x >= 2.6, "lobby: the panel has its own backdrop, behind the tiles (the posts never show through)")
 	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), true)
 	game._process(0.016)
 	_check(lobby.view() == "confirm", "lobby: a trigger still held from the tile presses nothing")
@@ -2248,10 +2253,17 @@ func _test_lobby_picker() -> void:
 	# lobby, the card it interrupted is gone.
 	lobby.press("tile:1")
 	link.give_house(_placeholder_house())
+	lobby.flash("Starting Old News…", 3.0)
 	link.assignment_received.emit(_assignment(game.builder.house, "s-tab", true))
 	_check(game.state() == GameFlow.State.PLAYING and link.begun.size() == 2, "lobby: the tablet's program still lands with the card up")
-	link.session_over.emit("test")
+	_check(game.hud.room_text() != "", "lobby: … and the HUD shows the room while playing")
+	link.session_over.emit("over")
 	_check(game.state() == GameFlow.State.LOBBY and lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: … and the lobby comes back to the tiles, no card")
+	_check(game.hud.room_text() == "" and game.hud.notice_text() == "" and game.hud.mic_text() == "", "lobby: back from a session, no HUD line floats over the tiles")
+	_check(message.text == "Session ended." and message.modulate == Lobby.MESSAGE_NEWS, "lobby: … the session's end is the lobby's own line, in place of a stale flash (%s)" % message.text)
+	_check(Game.session_over_text("reset") == "The story restarted — session ended." and Game.session_over_text("event ended") == "The event is over." and Game.session_over_text("reconfigured") == "" and Game.session_over_text("headset") == "Session ended (headset).", "lobby: the session's end in words, never a bare code")
+	link.begin_failed.emit("Nobody has that pass.")
+	_check(message.modulate == Lobby.MESSAGE_ERROR, "lobby: a refused begin flashes red")
 
 	# ⚙ only once there is a setup to forget; held 2 s it forgets it.
 	_check(not (lobby.get("_gear") as Node3D).visible, "lobby: no ⚙ with nothing to forget")
@@ -2324,11 +2336,13 @@ func _test_setup_panel() -> void:
 	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
 	var setups: Array = link.get("setups")
 	_check(setups.size() == 1 and setups[0] == ["http://127.0.0.1:7000", "K7PQ3M", "Headset 2"] and panel.busy, "setup: CONNECT tries the chosen server, the passcode and the name (%s)" % [setups])
+	_check((panel.get("_message") as Label3D).text == SetupPanel.CONNECTING and (panel.get("_message") as Label3D).modulate == Lobby.MESSAGE_NEWS, "setup: Connecting… is news, not an error")
 	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
 	_check(setups.size() == 1, "setup: … once")
 	link.call("answer_setup", false, "That isn't a moderator passcode.")
 	var msg: Label3D = panel.get("_message")
 	_check(not panel.busy and msg.text == "That isn't a moderator passcode." and lobby.view() == "setup" and panel.code == "K7PQ3M", "setup: a refusal says why and keeps the passcode")
+	_check(msg.modulate == Lobby.MESSAGE_ERROR and not (lobby.get("_station") as Label3D).visible, "setup: a refusal is red; the old name stays off the heading (the NAME field says it)")
 	ev.unicode = 0
 	ev.keycode = KEY_ENTER
 	lobby._unhandled_input(ev)

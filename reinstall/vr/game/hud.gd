@@ -78,6 +78,11 @@ func mic_text() -> String:
 	return _mic.text if _mic != null else ""
 
 
+## The notice up now ("" for none).
+func notice_text() -> String:
+	return _sub.text if _big.text == "" else ""
+
+
 func big_text() -> String:
 	return _big.text
 

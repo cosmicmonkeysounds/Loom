@@ -241,6 +241,8 @@ func refresh() -> void:
 	Lobby.fit(_looks["field:name"].get_node("Label") as Label3D, "NAME  " + (station if station != "" else "…"), FIELD_SIZE.x - 0.04, 0.06)
 	(_looks["connect"].get_node("Label") as Label3D).text = CONNECTING if busy else "CONNECT"
 	_message.text = message
+	# Connecting… is news; a refusal is an error.
+	_message.modulate = Lobby.MESSAGE_NEWS if busy else Lobby.MESSAGE_ERROR
 	_render_looks()
 
 

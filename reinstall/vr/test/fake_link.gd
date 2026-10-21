@@ -91,7 +91,7 @@ func give_house(map: Dictionary) -> void:
 
 ## Whether the lobby should ask to be set up, and the servers it offers.
 var unconfigured := false
-var choices: Array = [{"url": "https://show.example", "label": "show.example"}, {"url": "http://127.0.0.1:7000", "label": "This computer (http://127.0.0.1:7000)"}]
+var choices: Array = [{"url": "https://show.example", "label": "show.example"}, {"url": "http://127.0.0.1:7000", "label": "This computer · 127.0.0.1:7000"}]
 ## `[server, code, name]` per [method try_setup]; answer with [method answer_setup].
 var setups: Array = []
 var offline_chosen := 0

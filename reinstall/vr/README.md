@@ -64,7 +64,7 @@ no build, no arguments:
    dialog). The game then runs on the desktop rig.
 2. **SET UP THIS HEADSET.** The committed `config/station.json` carries the
    placeholder passcode, so the lobby asks: pick a server (the show's,
-   or **This computer (http://127.0.0.1:7000)**, which an editor or desktop
+   or **This computer · 127.0.0.1:7000** (`http://127.0.0.1:7000`), which an editor or desktop
    run always offers), type the event's **moderator passcode** on the
    on-screen keyboard or the Mac's keys (Tab switches to the name field,
    Enter connects), and click **CONNECT**. A wrong code says *That isn't a

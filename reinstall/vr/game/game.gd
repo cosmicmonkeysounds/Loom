@@ -185,7 +185,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 
 	link.status_changed.connect(lobby.set_status)
 	link.assignment_received.connect(_on_assignment)
-	link.begin_failed.connect(func(m: String) -> void: lobby.flash(m))
+	link.begin_failed.connect(func(m: String) -> void: lobby.flash(m, 5.0, true))
 	link.candidates_received.connect(lobby.set_candidates)
 	link.house_loaded.connect(_on_house)
 	link.found_answered.connect(_on_found_answered)
@@ -222,12 +222,17 @@ func enter_lobby() -> void:
 	cams.stop()
 	_stop_voice()
 	ghosts.own_session = ""
-	if _notice_left <= 0.0:
-		hud.hide_all()
+	# The head-locked HUD would float over the tiles: a notice still up
+	# (the session ended, …) moves to the lobby's own message line.
+	var carried := hud.notice_text() if _notice_left > 0.0 and hud.big_text() == "" else ""
+	hud.hide_all()
+	_notice_left = 0.0
 	player.locomotion_enabled = false
 	player.release_mouse()  # the lobby is pointed at, not looked around
 	player.teleport(Lobby.SPOT, 0.0)
 	lobby.reset()
+	if carried != "":
+		lobby.flash(carried, NOTICE_TIME)
 	lobby.visible = true
 	_cand_in = 0.0
 	_found_pending = false
@@ -360,10 +365,10 @@ func _on_assignment(a: Dictionary) -> void:
 	if flow.state != GameFlow.State.LOBBY:
 		return
 	if builder.house.is_empty():
-		lobby.flash("No house map yet.")
+		lobby.flash("No house map yet.", 5.0, true)
 		return
 	if not a.get("duck") is Dictionary or not a.get("spawn") is Dictionary:
-		lobby.flash("That assignment has no duck.")
+		lobby.flash("That assignment has no duck.", 5.0, true)
 		return
 	if not flow.assign(a):
 		return
@@ -444,8 +449,25 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 func _on_session_over(reason: String) -> void:
 	if flow.state == GameFlow.State.LOBBY:
 		return
-	_notice("Session ended (%s)." % reason)
 	enter_lobby()
+	var text := session_over_text(reason)
+	if text != "":
+		lobby.flash(text, NOTICE_TIME)
+
+
+## The lobby's line for a session that ended under the player
+## ([signal LinkBase.session_over]'s reason): "" says nothing.
+static func session_over_text(reason: String) -> String:
+	match reason:
+		"over", "ended", "found":
+			return "Session ended."
+		"reset":
+			return "The story restarted — session ended."
+		"event ended":
+			return "The event is over."
+		"reconfigured":
+			return ""
+	return "Session ended (%s)." % reason
 
 
 ## The headset's user presence (`user_presence_changed`): off ends the

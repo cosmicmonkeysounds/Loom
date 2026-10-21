@@ -40,6 +40,14 @@ const GEAR_SIZE := Vector2(0.16, 0.16)
 const PAGE_Y := 0.64
 
 const BG := "#123844"
+## The panel's own backdrop: the ring of posts never shows through the
+## tiles, the keyboard or the card.
+const BACKDROP := "#0a1f28"
+const BACKDROP_SIZE := Vector2(3.0, 2.48)
+const BACKDROP_Y := 1.44
+## The lobby's message line: an error (a refused begin, no map) or news.
+const MESSAGE_ERROR := Color("#ff7a7a")
+const MESSAGE_NEWS := Color("#bfe9e4")
 const BG_HOVER := "#2a7384"
 
 var picker := CandidatePicker.new()
@@ -65,6 +73,8 @@ var _tiles: Array = []  # the page's tile nodes, LobbyTiles.PER_PAGE of them
 var _card: Node3D
 var _card_text: Label3D
 var _card_picture: Sprite3D
+var _card_initials: Label3D
+var _card_tag: Label3D
 var _setup: SetupPanel
 var _buttons: Array = []  # {id, center, size} of the view, for hits
 var _looks := {}  # button id → its node (for hover)
@@ -117,13 +127,17 @@ func _ready() -> void:
 	_panel.name = "Panel"
 	_panel.position = Vector3(0, 0, -PANEL_DISTANCE)
 	add_child(_panel)
+	var backdrop := _quad(BACKDROP_SIZE, HouseLook.screen(BACKDROP))
+	backdrop.name = "Backdrop"
+	backdrop.position = Vector3(0, BACKDROP_Y, -0.03)
+	_panel.add_child(backdrop)
 	_title = _text(_panel, TITLE, 0.15, HouseLook.GOLD, 2.46)
 	_station = _text(_panel, "", 0.065, HouseLook.TEAL_GLOW, 2.31)
 	_status = _text(_panel, "", 0.05, HouseLook.INK.darkened(0.25), 2.2)
 	_empty = _text(_panel, "", 0.075, HouseLook.INK, LobbyTiles.GRID_Y)
 	_page_label = _text(_panel, "", 0.05, HouseLook.TEAL_GLOW, PAGE_Y)
 	_hint = _text(_panel, HINT, 0.045, HouseLook.TEAL_GLOW, 0.46)
-	_message = _text(_panel, "", 0.065, Color("#ff7a7a"), 0.34)
+	_message = _text(_panel, "", 0.065, MESSAGE_ERROR, 0.34)
 
 	_bar_track = MeshInstance3D.new()
 	var tb := BoxMesh.new()
@@ -155,8 +169,16 @@ func _ready() -> void:
 	_card.add_child(card_bg)
 	_card_text = _text(_card, "", 0.09, HouseLook.GOLD, 1.68)
 	_card_picture = _sprite(0.3)
-	_card_picture.position = Vector3(0, 1.4, 0.004)
+	_card_picture.position = Vector3(0, 1.45, 0.004)
 	_card.add_child(_card_picture)
+	_card_initials = HouseLook.label("", 0.14, HouseLook.GOLD)
+	_card_initials.name = "Initials"
+	_card_initials.position = Vector3(0, 1.45, 0.004)
+	_card.add_child(_card_initials)
+	_card_tag = HouseLook.label("", 0.045, HouseLook.TEAL_GLOW)
+	_card_tag.name = "Tag"
+	_card_tag.position = Vector3(0, 1.26, 0.004)
+	_card.add_child(_card_tag)
 	_looks["start"] = make_button(_card, "START", START_AT, CARD_BUTTON, 0.08)
 	_looks["back"] = make_button(_card, "BACK", BACK_AT, CARD_BUTTON, 0.08)
 	_card.visible = false
@@ -356,8 +378,10 @@ static func initials_of(name: String) -> String:
 
 
 ## A message under the panel for a few seconds ("Nobody has that pass.").
-func flash(text: String, seconds := 5.0) -> void:
+## A line under the panel for `seconds`: red when `error`, else news.
+func flash(text: String, seconds := 5.0, error := false) -> void:
 	_message.text = text
+	_message.modulate = MESSAGE_ERROR if error else MESSAGE_NEWS
 	_message_left = seconds
 
 
@@ -408,6 +432,9 @@ func reset() -> void:
 	_chosen = {}
 	_gear_t = 0.0
 	_hover = ""
+	# A line flashed before a session (Starting X…) is old news once back.
+	_message.text = ""
+	_message_left = 0.0
 	picker.disarm()
 	_render()
 
@@ -608,6 +635,7 @@ func _render() -> void:
 	var on_page := LobbyTiles.count_on_page(items.size(), page, per)
 
 	_title.text = "SET UP THIS HEADSET" if v == "setup" else TITLE
+	_station.visible = v != "setup"  # the panel's NAME field says it
 	_setup.visible = v == "setup"
 	_grid.visible = v == "pick"
 	_card.visible = v == "confirm"
@@ -648,7 +676,10 @@ func _render() -> void:
 			_buttons.append({"id": "next", "center": Vector2(0.55, PAGE_Y), "size": Vector2(0.18, 0.12)})
 	else:
 		fit(_card_text, "Start as %s?" % str(_confirming.get("name", _confirming.get("id", "?"))), 1.6, 0.09)
-		_show(_card_picture, _picture(_confirming.get("avatar")))
+		var card_tex := _picture(_confirming.get("avatar"))
+		_show(_card_picture, card_tex)
+		_card_initials.text = "" if card_tex != null else initials_of(str(_confirming.get("name", "")))
+		_card_tag.text = tag_of(_confirming).strip_edges()
 		_buttons.append({"id": "start", "center": START_AT, "size": CARD_BUTTON})
 		_buttons.append({"id": "back", "center": BACK_AT, "size": CARD_BUTTON})
 	if _gear.visible:

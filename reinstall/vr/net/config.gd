@@ -241,6 +241,6 @@ static func server_choices(current: String, committed: String, local: bool) -> A
 			continue
 		seen[u["base"]] = true
 		var bare := str(u["base"]).trim_prefix("https://").trim_prefix("http://")
-		var label := "This computer (%s)" % u["base"] if u["base"] == LOCAL_SERVER else bare
+		var label := "This computer · %s" % bare if u["base"] == LOCAL_SERVER else bare
 		out.append({"url": u["base"], "label": label})
 	return out
