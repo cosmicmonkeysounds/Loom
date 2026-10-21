@@ -88,6 +88,21 @@ def build_audio(section: Any, base_dir: str) -> "AudioRouter":
         raise ConfigError(f"audio: {err}") from err
 
 
+def sound_args(args: str) -> tuple[str, str | None]:
+    """An `sfx` directive's args → (sound name, the story's rooms or None).
+    `printer_grind, rooms: desktop` is the lowered form; an unlowered
+    `printer_grind with rooms: desktop` (an older server) reads the same."""
+    pd = parse_directive("sfx", args)
+    name = pd.targets[0] if pd.targets else ""
+    rooms = pd.kwargs.get("rooms") or pd.kwargs.get("in") or None
+    if not name:
+        for key, value in pd.kwargs.items():
+            head, sep, tail = key.partition(" with ")
+            if sep and tail.strip() in ("rooms", "in"):
+                return head.strip(), value or None
+    return name, rooms
+
+
 class MixerOutput:
     """The `alexa` Announcer's output, played through the router's mixer on
     `announce.to` instead of a device of its own. `play` blocks (it runs in a
@@ -399,8 +414,7 @@ class AudioRouter:
             return None
         verb = str(event.get("verb", ""))
         if verb == "sfx":
-            pd = parse_directive("sfx", str(event.get("args", "")))
-            name = pd.targets[0] if pd.targets else ""
+            name, rooms = sound_args(str(event.get("args", "")))
             if not name:
                 return None
             if name == CHIME_SOUND:
@@ -411,7 +425,7 @@ class AudioRouter:
             if not self.cfg.play_sounds:
                 return None
             setting = event.get("setting") if isinstance(event.get("setting"), str) else None
-            return self.play_sound(name, pd.kwargs.get("rooms") or pd.kwargs.get("in") or None, setting)
+            return self.play_sound(name, rooms, setting)
         if verb == "announce" and self.announcements_from_feed():
             text = " ".join(unquote(str(event.get("args", "")).strip()).split())[:MAX_TEXT]
             if text and text != "{target}":

@@ -14,7 +14,7 @@ import pytest
 import soundfile as sf
 
 from stagehand.audio.config import parse_audio_section
-from stagehand.audio.module import AudioRouter, MixerOutput
+from stagehand.audio.module import AudioRouter, MixerOutput, sound_args
 from stagehand.audio.sounds import SoundBank
 from stagehand.alexa.module import Announcement
 from stagehand.config import parse_config
@@ -527,3 +527,69 @@ def test_check_warns_about_missing_sound_files(tmp_path):
     missing = next(w for w in warnings if "no file for" in w).split("no file for ")[1].split(" in ")[0]
     assert missing == "dance_song, printer_grind"
 
+
+
+def test_sound_args_read_the_lowered_and_the_unlowered_form():
+    assert sound_args("printer_grind") == ("printer_grind", None)
+    assert sound_args("printer_grind, rooms: desktop start-bar") == ("printer_grind", "desktop start-bar")
+    assert sound_args("printer_grind, in: The Desktop") == ("printer_grind", "The Desktop")
+    assert sound_args("printer_grind with rooms: desktop") == ("printer_grind", "desktop")
+    assert sound_args("") == ("", None)
+
+
+class FakeBridge:
+    def __init__(self, items):
+        self.queue: asyncio.Queue = asyncio.Queue()
+        for item in items:
+            self.queue.put_nowait(item)
+        self.published: list[tuple] = []
+
+    def publish(self, topic, payload, retain=False, qos=0):
+        self.published.append((topic, payload, retain))
+
+
+def test_mqtt_tests_and_announcements(tmp_path):
+    tested: list[tuple] = []
+
+    async def go():
+        r = router(tmp_path, announce=True, mqtt={"host": "127.0.0.1"})
+        r.announcements = asyncio.Queue()
+
+        async def fake_test(speaker=None, out=None):
+            tested.append((speaker, out))
+            return True
+
+        r.play_test = fake_test
+        r.mqtt = FakeBridge(
+            [
+                ("show/audio/test", b'{"speaker": "desk-l"}', False),
+                ("show/audio/test", b'{"out": 3}', True),  # retained: never replayed
+                ("show/audio/test", b"garbage", False),
+                ("show/announce", b'{"text": "Five minutes."}', False),
+                ("show/chime", b"{}", False),
+            ]
+        )
+        task = asyncio.ensure_future(r._mqtt_loop())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        return [r.announcements.get_nowait() for _ in range(r.announcements.qsize())]
+
+    queued = run(go())
+    assert tested == [("desk-l", None)]
+    assert queued == [Announcement(text="Five minutes."), "chime"]
+
+
+def test_the_health_loop_publishes_stats(tmp_path):
+    async def go():
+        r = router(tmp_path, health_s=5)
+        r.apply(answer("v1"))
+        r.mqtt = FakeBridge([])
+        r.cfg = type(r.cfg)(**{**r.cfg.__dict__, "health_s": 0.01})
+        task = asyncio.ensure_future(r._health_loop())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        return r.mqtt.published
+
+    published = run(go())
+    topic, payload, retain = published[0]
+    assert topic == "health/audio/stats" and retain and json.loads(payload)["config"] == "v1"
