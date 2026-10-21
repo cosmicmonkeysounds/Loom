@@ -219,6 +219,13 @@ describe("the casino", () => {
     expect((await post(rt, "/api/mod/act", { id: a.id, action: "restrict" }, undefined, true)).status).toBe(200);
     expect(await bet(rt, a.id, "coin", "heads", 5)).toMatchObject({ status: 403, json: { error: "marked programs can't gamble" } });
     expect((await post(rt, "/api/mod/act", { id: a.id, action: "unrestrict" }, undefined, true)).status).toBe(200);
+    // A program in the Internet is in the tent, not at the tables (wave 18).
+    expect((await post(rt, "/api/mod/act", { id: a.id, action: "capture" }, undefined, true)).status).toBe(200);
+    expect(await bet(rt, a.id, "coin", "heads", 5)).toMatchObject({ status: 403, json: { error: "programs in the Internet can't gamble" } });
+    expect((await post(rt, "/api/mod/act", { id: a.id, action: "release" }, undefined, true)).status).toBe(200);
+    // A merely marked program plays (Q30: a mark does not hinder).
+    expect((await post(rt, "/api/mod/var", { path: `${a.id}.marked`, value: "true" }, undefined, true)).status).toBe(200);
+    expect(rt.liveSim!.isRestricted(a.id)).toBe(false);
     // A frozen account.
     expect((await post(rt, "/api/mod/wallet/freeze", { to: a.id }, undefined, true)).status).toBe(200);
     expect((await bet(rt, a.id, "coin", "heads", 5)).json["error"]).toMatch(/frozen/u);

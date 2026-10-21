@@ -303,6 +303,9 @@ const SPATIAL_BODY_LIMIT = 2048;
  *  when the story declares it (the show captures a marked arrival on it). */
 export const REINSTALLATION_BEGUN = "reinstallation begun";
 
+/** The casino's refusal for a program in the Internet (wave 18: they are in the tent). */
+export const CASINO_CAPTURED = "programs in the Internet can't gamble";
+
 /** `/api/mod/spatial/begin`'s 409 for a program neither captured nor marked. */
 export const NOT_MARKED = "not marked for reinstallation";
 
@@ -5892,8 +5895,9 @@ export class EventRuntime {
         // (`rollFor`, `crypto.randomInt`) and settles; the roll + payout ride
         // one journaled `bet` op (`by` = the terminal's label), the card
         // lands in the guest's Wallet room, the story hears `casino won` /
-        // `casino lost`. Mod token only (a terminal); a marked program is
-        // refused, a frozen account too, and the doors must be open.
+        // `casino lost`. Mod token only (a terminal); a restricted program
+        // is refused, one in the Internet too (a mark alone plays, Q30), a
+        // frozen account too, and the doors must be open.
         if (this.sim === null || !this.open) {
           sendJson(res, 409, { error: "doors are closed" });
           return true;
@@ -5913,6 +5917,12 @@ export class EventRuntime {
         }
         if (this.sim.isRestricted(who)) {
           sendJson(res, 403, { error: "marked programs can't gamble" });
+          return true;
+        }
+        // Wave 18 (Q30): a mark no longer hinders, but a program sent to the
+        // Internet is in the tent, not at the tables.
+        if (this.sim.isCaptured(who)) {
+          sendJson(res, 403, { error: CASINO_CAPTURED });
           return true;
         }
         const now = Date.now();
