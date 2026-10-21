@@ -12,7 +12,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { crewNameRefusal } from "../server/routes/crews.ts";
+import { JOINS_PER_MINUTE, crewNameRefusal } from "../server/routes/crews.ts";
 import { parseFactsBook } from "../server/facts.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { CREW_SOURCE } from "./crews.fixture.ts";
@@ -564,6 +564,20 @@ when drift_on_filing for program:
     back.restore();
     expect(chat(back).map((m) => `${m.seq}|${m.channel}|${m.text}`)).toEqual(live);
     back.dispose();
+  });
+
+  it("walk-in joins are capped per minute: join / leave / join can't flood a faction", async () => {
+    const { rt, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, , c] = g as [typeof g[0], typeof g[0], typeof g[0]];
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    for (let i = 0; i < JOINS_PER_MINUTE; i++) {
+      expect((await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).status).toBe(200);
+      expect((await post(rt, "/api/guest/crew/leave", { token: c.token })).status).toBe(200);
+    }
+    expect(await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).toMatchObject({ status: 429 });
+    clock += 60_000;
+    expect((await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).status).toBe(200);
   });
 
   it("outside faction mode a crew takes members by invitation only", async () => {

@@ -54,6 +54,9 @@ export const INVITES_PER_MINUTE = 10;
 /** At most this many crew/found attempts (taken or refused) a guest makes a
  *  minute: a name check is never a free lookup. */
 export const FOUNDS_PER_MINUTE = 6;
+/** At most this many walk-in joins (taken or refused) a guest makes a
+ *  minute: join, leave, join again posts a line to the faction each time. */
+export const JOINS_PER_MINUTE = 6;
 
 // ───────────────────────── name moderation ─────────────────────────
 
@@ -267,6 +270,8 @@ export class CrewRoutes {
   private readonly sent = new Map<string, number[]>();
   /** guest id → wall ms of their recent crew/found attempts. */
   private readonly founds = new Map<string, number[]>();
+  /** guest id → wall ms of their recent walk-in joins. */
+  private readonly walkIns = new Map<string, number[]>();
 
   constructor(private readonly host: CrewHost) {}
 
@@ -402,6 +407,7 @@ export class CrewRoutes {
   private walkIn(sim: Sim, id: string, body: Record<string, unknown>, res: ServerResponse): Refusal | null {
     const crews = sim.crews;
     if (!crews.factionMode) return { status: 409, error: "A crew takes members by invitation: ask for a scan." };
+    if (this.throttled(id, this.walkIns, JOINS_PER_MINUTE)) return { status: 429, error: "slow down — wait a minute" };
     if (sim.isRestricted(id)) return { status: 403, error: "Not while you're restricted." };
     if (sim.isCaptured(id)) return { status: 409, error: "Not from the Internet." };
     const crew = crews.get(str(body, "crew").trim());
