@@ -101,16 +101,18 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
     const { eventId, status } = get()
     if (eventId === null || status === null || get().busy !== null) return
     if (announceTerminalsOf(status.audio).includes(spot) === on) return
-    set({ busy: 'save', saveError: null })
+    const next = withAnnounceTerminal(status.audio, spot, on)
+    // The box flips at once; a refused save puts it back.
+    set({ busy: 'save', saveError: null, status: { ...status, audio: next } })
     try {
-      const next = withAnnounceTerminal(status.audio, spot, on)
       const r = await audioApi.save(eventId, next, status.version)
-      // Hold the save at once (a poll may already be in flight), so the next
-      // tick is based on this version, not the one before it.
+      // Hold the save's version at once (a poll may already be in flight), so
+      // the next tick is based on it, not the one before it.
       if (get().eventId === eventId) set({ savedAt: Date.now(), status: { ...status, audio: next, version: r.version || status.version, source: 'director' } })
     } catch (e) {
       if (get().eventId !== eventId) return
       set({
+        status,
         saveError:
           e instanceof ApiError && e.status === 409
             ? 'The speakers changed since this card read them (a save from the map page?): reloaded. Tick it again.'

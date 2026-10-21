@@ -399,7 +399,7 @@ export function judgingBadge(j: AgentJudging | null, judge: string): { text: str
   const parts: string[] = []
   if (j.queued > 0) parts.push(`${j.queued} queued`)
   if (j.out > 0) parts.push(`${j.out} out`)
-  const oldest = j.oldestMs !== null && j.oldestMs > 0 ? ` · oldest ${hostWaitText(j.oldestMs)}` : ''
+  const oldest = j.oldestMs !== null && j.oldestMs >= 1000 ? ` · oldest ${hostWaitText(j.oldestMs)}` : ''
   if (j.stalled) {
     return {
       text: `⏳ ${judge} isn't ruling${parts.length > 0 ? ` · ${parts.join(' · ')}` : ''}`,
