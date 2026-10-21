@@ -13,7 +13,7 @@ import { MomentsAndPins } from "../moments/pins-rail.tsx";
 import { Shell } from "../rooms/list.tsx";
 import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
-import { codexUnseen } from "../stream/codex-room.tsx";
+import { codexUnseen } from "../stream/codex-seen.ts";
 import { CutsceneStage } from "../cutscene.tsx";
 import { useOfflineFor } from "../client.ts";
 import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
