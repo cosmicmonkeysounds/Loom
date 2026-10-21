@@ -204,6 +204,15 @@ export function majorityVersion(rows: readonly TerminalRow[]): string | null {
   return ranked[0]![0]
 }
 
+/** What to do about ⛶. A terminal counts Chrome's `--kiosk` / F11 and a Home
+ *  Screen app as full screen, so on the TV (nobody taps it) a ⛶ means its
+ *  Chrome was started without `--kiosk`; a tablet just needs a touch. */
+export function fullscreenTitle(row: Pick<TerminalRow, 'view'>): string {
+  return isTvView(row.view)
+    ? 'Not full screen: this Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the TV); a click on the screen also asks'
+    : 'Not full screen: touch the screen once (it asks again on every touch)'
+}
+
 /** A row's install-day badges: 🔇 sound locked, 💤 page hidden, ⛶ not full
  *  screen (only when the build says so: one that can't be sends nothing), the battery,
  *  and the build (flagged when it differs from the majority's, or is missing
@@ -214,7 +223,7 @@ export function terminalBadges(row: TerminalRow, majority: string | null): Termi
   const out: TerminalBadge[] = []
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
-  if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: 'Not full screen: touch the screen once (it asks on every touch), or check the kiosk launch flags', warn: true })
+  if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })
   if (typeof d.battery === 'number') {
     const low = d.battery < LOW_BATTERY && d.charging !== true
     out.push({ key: 'battery', text: `${d.charging === true ? '⚡' : '🔋'}${d.battery}%`, title: d.charging === true ? 'Charging' : low ? 'Battery low: plug it in' : 'On battery', warn: low })

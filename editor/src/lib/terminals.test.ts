@@ -4,6 +4,7 @@ import {
   RECHIME_MS,
   TerminalStatus,
   formatSilence,
+  fullscreenTitle,
   majorityVersion,
   mergeTerminals,
   terminalBadges,
@@ -115,6 +116,13 @@ describe('device badges (SW-SCR-21)', () => {
     expect(terminalBadges(on!, null)).toEqual([])
     const [none] = rowsOf({ ...poll('Kitchen', 0), audio: true })
     expect(terminalBadges(none!, null)).toEqual([])
+  })
+
+  it('⛶ on the TV points at --kiosk (nobody taps it); on a tablet, a touch', () => {
+    expect(fullscreenTitle({ view: 'tv' })).toMatch(/--kiosk/)
+    expect(fullscreenTitle({ view: 'mirror' })).toMatch(/--kiosk/)
+    expect(fullscreenTitle({ view: 'face' })).toMatch(/touch the screen once/)
+    expect(fullscreenTitle({ view: 'face' })).not.toMatch(/kiosk/)
   })
 
   it('flags a build that differs from the majority (none on a tie)', () => {
