@@ -466,7 +466,7 @@ func _test_config_setup() -> void:
 	_check(choices.size() == 2 and choices[0]["url"] == "https://app.mapsandducks.com" and choices[1]["url"] == StationConfig.LOCAL_SERVER and str(choices[1]["label"]).begins_with("This computer"), "setup: the committed server first, then this computer (%s)" % [choices])
 	_check(StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", false).size() == 1, "setup: a headset build offers no local server")
 	var dev := StationConfig.server_choices("http://10.0.0.5:7000/", "https://app.mapsandducks.com", true)
-	_check(dev.size() == 3 and dev[0]["url"] == "http://10.0.0.5:7000", "setup: a server named on the command line comes first (%s)" % [dev])
+	_check(dev.size() == 3 and dev[0]["url"] == "http://10.0.0.5:7000" and dev[0]["label"] == "10.0.0.5:7000" and dev[1]["label"] == "app.mapsandducks.com", "setup: a server named on the command line comes first (%s)" % [dev])
 	_check(StationConfig.server_choices("junk", "", false).is_empty(), "setup: junk is no choice")
 	_check(StationConfig.offers_local(), "setup: a desktop / editor run offers this computer")
 
@@ -2062,6 +2062,7 @@ func _test_server_link_setup() -> void:
 	_check(tr.log.back() == "POST /api/resolve-code" and tr.calls[0]["body"]["code"] == "K7PQ3M" and tr.base == "http://127.0.0.1:7000", "setup link: CONNECT resolves the typed passcode on the chosen server (%s)" % [tr.calls])
 	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
 	_check(tr.calls.size() == 1, "setup link: one try at a time")
+	_check(sl.needs_setup(), "setup link: the SET UP panel stays up while a try is out")
 	tr.answer("/api/resolve-code", 200, {"role": "event", "eventId": "e1"})
 	_check(answers.back() == [false, "That isn't a moderator passcode."] and sl.needs_setup() and sl.get("phase") == "idle" and str(sl.config["code"]) == StationConfig.PLACEHOLDER_CODE, "setup link: a guest code is no moderator passcode — still unconfigured")
 	_check(not FileAccess.file_exists(path) and sl.status == "Not configured — set this headset up.", "setup link: … nothing saved")

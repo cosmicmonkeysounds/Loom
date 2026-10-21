@@ -327,8 +327,9 @@ func _relink(message: String, event_gone: bool) -> void:
 # --- in-headset setup ---------------------------------------------------------
 
 
+## True while a setup is being tried, too: the panel stays up ("Connecting…").
 func needs_setup() -> bool:
-	return not is_offline() and not StationConfig.is_configured(config)
+	return not is_offline() and (not StationConfig.is_configured(config) or not _setup_trial.is_empty())
 
 
 func server_choices() -> Array:
