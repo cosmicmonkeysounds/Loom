@@ -338,6 +338,11 @@ describe("buildRecent (C1.2)", () => {
     ];
     expect(buildRecent(input({ messages }))).toEqual([{ kind: "house", text: "The house is closing.", at: 6 }]);
     expect(inReadingBeat({ beat: "The_Verdict" })).toBe(true);
+    // Outside a reading beat, a line holding the Kernel's said_* / res_said
+    // text is still dropped (`secretMentions` over the secret values).
+    const said = "Ada said Mr Pickels, certain. Bea said a cat, not certain.";
+    const elsewhere = [house(`As I said: ${said}`, 7, { beat: "Announce" })];
+    expect(buildRecent(input({ messages: elsewhere, mentionsSecret: secretMentions([said]) }))).toEqual([]);
     expect(inReadingBeat({ beat: null })).toBe(false);
     expect(inReadingBeat({})).toBe(false);
   });
