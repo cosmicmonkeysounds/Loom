@@ -1,0 +1,65 @@
+{
+  "note": "Shared fixture for resolveTargets (@loom/house) and resolve_targets (stagehand). Each case: `to` → the speakers (doc order) and outputs (ascending) it reaches, plus the names that matched nothing.",
+  "house": {
+    "rooms": [
+      { "id": "desktop", "label": "Living room", "floor": "main", "location": "The Desktop", "poly": [[0, 0], [6, 0], [6, 5], [0, 5]] },
+      { "id": "start-bar", "label": "Kitchen", "floor": "main", "location": "The Start Bar", "poly": [[6, 0], [10, 0], [10, 5], [6, 5]] },
+      { "id": "hall", "label": "Hall", "floor": "main", "location": "The Tube", "poly": [[0, 5], [10, 5], [10, 7], [0, 7]] },
+      { "id": "stairs-hall", "label": "Upstairs hall", "floor": "top", "location": "The Tube", "poly": [[0, 5], [10, 5], [10, 7], [0, 7]] },
+      { "id": "bathroom-1", "label": "Bathroom 1", "floor": "basement", "location": "Disk Cleanup", "poly": [[0, 0], [2, 0], [2, 2], [0, 2]] },
+      { "id": "bathroom-2", "label": "Bathroom 2", "floor": "top", "location": "Disk Cleanup", "poly": [[0, 0], [2, 0], [2, 2], [0, 2]] },
+      { "id": "tent", "label": "Tent", "floor": "main", "location": "The Internet", "outdoor": true, "poly": [[20, 0], [24, 0], [24, 4], [20, 4]] },
+      { "id": "crawl", "label": "Crawl space", "floor": "top", "poly": [[3, 0], [5, 0], [5, 2], [3, 2]] }
+    ]
+  },
+  "audio": {
+    "version": 1,
+    "device": { "name": "MOTU", "inputs": 16, "outputs": 16, "rate": 48000 },
+    "inputs": [
+      { "ch": 1, "label": "QLab L", "kind": "software" },
+      { "ch": 2, "label": "QLab R", "kind": "software" },
+      { "ch": 3, "label": "Host mic", "kind": "mic" }
+    ],
+    "outputs": [
+      { "ch": 1, "label": "Desktop L" }, { "ch": 2, "label": "Desktop R" },
+      { "ch": 3, "label": "Start Bar L" }, { "ch": 4, "label": "Start Bar R" },
+      { "ch": 5, "label": "Hall" }, { "ch": 6, "label": "Upstairs hall" },
+      { "ch": 7, "label": "Bathroom 1" }
+    ],
+    "speakers": [
+      { "id": "desk-l", "name": "Desktop left", "room": "desktop", "pos": { "x": 1, "y": 2, "z": 1 }, "yaw": 0, "out": [1] },
+      { "id": "desk-r", "name": "Desktop right", "room": "desktop", "pos": { "x": 5, "y": 2, "z": 1 }, "yaw": 0, "out": [2] },
+      { "id": "bar-1", "name": "Start Bar", "room": "start-bar", "pos": { "x": 8, "y": 2, "z": 1 }, "yaw": 0, "out": [4, 3], "gain": -3 },
+      { "id": "hall-1", "name": "Hall", "room": "hall", "pos": { "x": 5, "y": 2.2, "z": 6 }, "yaw": 0, "out": [5] },
+      { "id": "stairs-1", "name": "Upstairs hall", "room": "stairs-hall", "pos": { "x": 5, "y": 5, "z": 6 }, "yaw": 0, "out": [6] },
+      { "id": "bath-1", "name": "Bathroom 1", "room": "bathroom-1", "pos": { "x": 1, "y": -0.5, "z": 1 }, "yaw": 0, "out": [7] },
+      { "id": "tent-spare", "name": "Tent (unwired)", "room": "tent", "pos": { "x": 22, "y": 1, "z": 2 }, "yaw": 0, "out": [] }
+    ],
+    "zones": [
+      { "id": "living", "name": "Living room", "speakers": ["desk-l", "desk-r"] },
+      { "id": "downstairs", "name": "Main floor", "speakers": ["hall-1", "bar-1", "desk-l"] }
+    ],
+    "routes": [ { "in": 3, "out": [1, 2], "gain": -6 } ],
+    "cues": {
+      "dance_song": { "to": ["everywhere"] },
+      "printer_grind": { "to": ["The Desktop"], "gain": -4 },
+      "zip": { "to": ["nowhere"] }
+    },
+    "announce": { "to": ["downstairs", "The Tube"], "chime": true }
+  },
+  "cases": [
+    { "to": ["everywhere"], "speakers": ["desk-l", "desk-r", "bar-1", "hall-1", "stairs-1", "bath-1", "tent-spare"], "outputs": [1, 2, 3, 4, 5, 6, 7], "unknown": [] },
+    { "to": ["living"], "speakers": ["desk-l", "desk-r"], "outputs": [1, 2], "unknown": [] },
+    { "to": ["Downstairs"], "speakers": ["desk-l", "bar-1", "hall-1"], "outputs": [1, 3, 4, 5], "unknown": [] },
+    { "to": ["start-bar"], "speakers": ["bar-1"], "outputs": [3, 4], "unknown": [] },
+    { "to": ["Start_Bar"], "speakers": ["bar-1"], "outputs": [3, 4], "unknown": [] },
+    { "to": ["The Tube"], "speakers": ["hall-1", "stairs-1"], "outputs": [5, 6], "unknown": [] },
+    { "to": ["disk cleanup"], "speakers": ["bath-1"], "outputs": [7], "unknown": [] },
+    { "to": ["The Internet"], "speakers": ["tent-spare"], "outputs": [], "unknown": [] },
+    { "to": ["crawl"], "speakers": [], "outputs": [], "unknown": [] },
+    { "to": ["bath-1", "desk-r"], "speakers": ["desk-r", "bath-1"], "outputs": [2, 7], "unknown": [] },
+    { "to": ["living", "desk-l", "The Desktop"], "speakers": ["desk-l", "desk-r"], "outputs": [1, 2], "unknown": [] },
+    { "to": ["nowhere", "hall"], "speakers": ["hall-1"], "outputs": [5], "unknown": ["nowhere"] },
+    { "to": [], "speakers": [], "outputs": [], "unknown": [] }
+  ]
+}
