@@ -633,7 +633,7 @@ func _test_server_link() -> void:
 	# Wave 16: an unmarked program's refusal reads as such, not "not running".
 	sl.begin("g-free")
 	tr.answer("/spatial/begin", 409, {"error": "not marked for reinstallation"})
-	_check(failed.size() == 2 and str(failed[1]) == "Not marked — an Antivirus marks programs for reinstallation." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
+	_check(failed.size() == 2 and str(failed[1]) == "Not marked for reinstallation — until the night is over, only a marked program may play." and sl.get("phase") == "ready", "link: a begin 409 (not marked) says why (%s)" % [failed])
 	sl.begin("g-early")
 	tr.answer("/spatial/begin", 409, {"error": "no scenario loaded"})
 	_check(failed.size() == 3 and str(failed[2]) == "The show isn't running.", "link: any other begin 409 is the show not running")
@@ -1618,6 +1618,13 @@ func _test_main_and_game() -> void:
 	# An unmarked program (Cal) is never offered (wave 16); Bob is marked.
 	link.candidates_received.emit([{"id": "g-aaaaaa", "name": "Ada", "captured": true}, {"id": "g-cccccc", "name": "Cal", "captured": false, "restricted": false}, {"id": "g-bbbbbb", "name": "Bob", "captured": false, "restricted": true}])
 	_check(game.lobby.picker.items.size() == 2 and str(game.lobby.picker.items[1]["id"]) == "g-bbbbbb", "game: the lobby offers only programs marked for reinstallation")
+	# Wave 18 (C7): the tag reads the server's `marked`, not `restricted`.
+	_check(Lobby.tag_of({"captured": true, "marked": false}) == "  [corrupted]", "lobby: a captured program is tagged corrupted")
+	_check(Lobby.tag_of({"captured": false, "restricted": false, "eligible": true, "marked": true}) == "  [marked]", "lobby: marked (no restriction) is tagged marked")
+	_check(Lobby.tag_of({"captured": false, "restricted": true, "eligible": false, "marked": false}) == "", "lobby: a director's hold that is no mark is not tagged marked")
+	_check(Lobby.tag_of({"captured": false, "restricted": true, "eligible": true, "marked": false}) == "  [marked]", "lobby: a restricted program the server lets in is marked")
+	_check(Lobby.tag_of({"captured": false, "restricted": true}) == "  [marked]", "lobby: an older server's restricted reads marked")
+	_check(Lobby.tag_of({"captured": false}) == "", "lobby: a free program has no tag")
 	player.left_stick = Vector2(0, -1)
 	game._process(0.016)
 	player.left_stick = Vector2.ZERO
