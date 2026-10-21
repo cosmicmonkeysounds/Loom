@@ -315,7 +315,8 @@ export function AssembleFace({ t, start, mouth = 0, speed = 1, reduced, classNam
   const MW = 80;
   const open = clamp01(mouth);
   // A blink every ~3.3 s after the eyes are in, the same on every screen.
-  const bl = raw > settled ? loop(raw - settled, 3300) : 1;
+  // The first blink a beat after the face is whole (never on the frame it settles).
+  const bl = raw > settled ? loop(raw - settled + 1650, 3300) : 1;
   const lid = bl < 0.05 ? 46 * (1 - Math.abs(bl / 0.025 - 1)) : 0;
   const gx = raw > settled && !reduced ? 4 * Math.sin(raw / 1700) : 0;
   const id = useSvgId("a1-face");

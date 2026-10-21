@@ -20,6 +20,7 @@ import {
   momentAfter,
   momentNear,
   ODOMETER_ROLL,
+  ODOMETER_STAGGER,
   odometerWheel,
   periodicCues,
   phoneDare,
@@ -189,9 +190,15 @@ describe("tv1 time — clocks, marches, loops", () => {
       expect(zeros / n, `wheel ${w}`).toBeGreaterThan(0.75);
       expect(zeros).toBeLessThan(n);
       // Just before a roll ends it is nearly back on 0 (it lands, never jumps).
-      const end = 2600 * 3 - w * 37 + 2600 * ODOMETER_ROLL - 5;
+      const end = 2600 * 3 + w * ODOMETER_STAGGER + 2600 * ODOMETER_ROLL - 5;
       const v = odometerWheel(end, w);
       expect(Math.min(v, 10 - v), `wheel ${w} lands`).toBeLessThan(0.1);
+    }
+    // A ripple: never more than three of the nine wheels off 0 at once.
+    for (let t = 0; t < 26_000; t += 20) {
+      let off = 0;
+      for (let w = 0; w < 9; w++) if (odometerWheel(t, w) !== 0) off++;
+      expect(off).toBeLessThanOrEqual(3);
     }
   });
 
