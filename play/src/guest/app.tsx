@@ -6,6 +6,7 @@
 //! (`guest/nav.ts`); the lobby is the far-away 📜 Chat log, never a default
 //! room and never an exit.
 
+import { useSystemBack } from "../back-gesture.ts";
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, Sheet, useWide } from "../ui/primitives.tsx";
 import { MomentsAndPins } from "../moments/pins-rail.tsx";
@@ -222,6 +223,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   useEffect(() => {
     if (onMission && nowId !== seenNow) setSeenNow(nowId);
   }, [onMission, nowId, seenNow]);
+  // The phone's own Back steps back inside the app (NM-F9), when it owns the page.
+  useSystemBack(host.ownsPage && signedIn, nav.overlay !== null || t.activeId !== null || nav.window !== "mission", () => {
+    if (nav.overlay !== null) nav.setOverlay(null);
+    else if (t.activeId !== null) nav.back();
+    else nav.go({ to: "mission" });
+  });
   // A crew room that left the view (dissolved, or the guest left it) while
   // open: back to Chats with a word, never a dead room titled with its raw
   // id (A3).
