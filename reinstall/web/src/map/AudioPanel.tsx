@@ -33,6 +33,7 @@ import {
   targetChip,
   targetOptions,
   toggleCell,
+  type SpeakerSave,
   type TargetKind,
   type TargetOption,
 } from "./audio.ts";
@@ -54,6 +55,10 @@ export interface AudioPanelProps {
   dirty: boolean;
   /** `validateAudio` passes on the draft. */
   valid: boolean;
+  /** How the speakers can be saved now (alone, after the map, or why not). */
+  speakerSave: SpeakerSave;
+  /** The map is being saved (the speakers may follow it). */
+  mapBusy?: boolean;
   saveState: SaveState;
   commit: (a: AudioConfig) => void;
   onSave: () => void;
@@ -181,7 +186,11 @@ export function AudioPanel(p: AudioPanelProps) {
   const outs = Array.from({ length: nOut }, (_, i) => i + 1);
   const savedIds = new Set(p.saved?.speakers.map((s) => s.id) ?? []);
   const off = !edit;
-  const saveable = p.status === "ok" && p.dirty && p.valid && p.saveState.kind !== "saving";
+  const busy = p.saveState.kind === "saving" || p.mapBusy === true;
+  const plan = p.speakerSave;
+  const saveable = (plan.alone || plan.withMap) && !busy;
+  /** A speaker stands in a room only the draft map has: the map goes first. */
+  const withMap = !plan.alone && plan.withMap;
   const cellG = cell !== null ? cellGain(audio, cell.in, cell.out) : null;
 
   return (
@@ -197,8 +206,19 @@ export function AudioPanel(p: AudioPanelProps) {
         )}
         {p.dirty && <b className="small"> · unsaved</b>}
         <div className="button-row">
-          <button className="w98-button default" disabled={!saveable} onClick={p.onSave} title={p.valid ? "Save the speakers to the event (the router follows at once)" : "Fix the speaker problems first"}>
-            {p.saveState.kind === "saving" ? "Saving…" : "💾 Save speakers"}
+          <button
+            className="w98-button default"
+            disabled={!saveable}
+            onClick={p.onSave}
+            title={
+              plan.why !== null
+                ? `Not now — ${plan.why}`
+                : withMap
+                  ? "A speaker stands in a room the saved map doesn't have yet: the map is saved first, then the speakers"
+                  : "Save the speakers to the event (the router follows at once)"
+            }
+          >
+            {busy ? "Saving…" : withMap ? "💾 Save map + speakers" : "💾 Save speakers"}
           </button>
           <button className="w98-button small" disabled={p.status !== "ok" || p.dirty} onClick={p.onSaveToProject} title={p.dirty ? "Save the speakers first" : "Write the speakers into the project as audio.json — the next launch and every co-writer see them"}>
             Save to project
@@ -211,7 +231,9 @@ export function AudioPanel(p: AudioPanelProps) {
           </button>
         </div>
         {p.projectStatus !== null && <div className="small">{p.projectStatus}</div>}
-        {p.status === "missing" && <p className="audio-note bad-text">This server has no speaker routes (it predates wave 17): the speakers can be drafted and downloaded, not saved.</p>}
+        {p.status === "missing" && <p className="audio-note bad-text">This server has no speaker routes (it predates wave 17): the speakers can be drafted and downloaded, not saved. The map still saves.</p>}
+        {p.dirty && plan.why !== null && p.status !== "missing" && <p className="audio-note bad-text">Speakers can't be saved yet: {plan.why}. 💾 still saves the map.</p>}
+        {withMap && !busy && <p className="audio-note">A speaker stands in a room the saved map doesn't have yet — saving writes the map first, then the speakers.</p>}
         {p.status === "error" && <p className="audio-note bad-text">Couldn't reach the speaker config — showing the last one loaded.</p>}
         {p.saveState.kind === "conflict" && (
           <div className="audio-note bad-text">

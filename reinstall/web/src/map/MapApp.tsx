@@ -16,9 +16,14 @@
 //! its own `base` → 409): the Audio tab holds the interface, the matrix,
 //! zones and cues. **Undo:** one history of `{house, audio}` pairs, so a
 //! map edit, a speaker edit, and a room move that carries its speakers are
-//! each one step, whichever was last; the two files save separately (💾
-//! Save writes whichever changed). A long poll on the speaker config keeps
-//! the tests list live and catches another director's save.
+//! each one step, whichever was last. Another director's speaker save
+//! adopted into the page is swapped into every entry (`rebaseHistory`):
+//! the map's steps still undo, the speaker-only ones go. **Saving:** the
+//! two files save separately — 💾 Save writes the map when it changed and
+//! can be saved, then the speakers when they are valid against the map the
+//! server will hold (`speakerSavePlan`); a speaker problem never greys a
+//! valid map's save. A long poll on the speaker config (`audio-poll.ts`)
+//! keeps the tests list live and catches another director's save.
 //!
 //! This file holds the state; the plan is `Canvas.tsx`, the toolbar
 //! `Toolbar.tsx`, the fields `Inspector.tsx`, the other tabs and the
@@ -29,8 +34,9 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { ReactNode } from "react";
 import { polyBounds, validateAudio, validateHouse } from "@loom/house";
 import type { AudioConfig, HouseMap, PlayerState, Vec2 } from "@loom/house";
-import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, removeSpeaker, rotateSpeaker, sameAudio, speakerById, speakersIn, withSpeakersText, type Doc } from "./audio.ts";
+import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, rebaseHistory, removeSpeaker, rotateSpeaker, sameAudio, saveAllPlan, speakerById, speakerSavePlan, speakersDropped, withSpeakersText, type Doc } from "./audio.ts";
 import { fetchAudio, saveAudio, saveAudioToProject, testAudio, testRefusal, type AudioView } from "./audio-api.ts";
+import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
 import { Setup } from "../app.tsx";
@@ -147,7 +153,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [audioView, setAudioView] = useState<AudioView | null>(null);
   const [audioStatus, setAudioStatus] = useState<"loading" | "ok" | "missing" | "error">("loading");
   const [audioSaveState, setAudioSaveState] = useState<SaveState>({ kind: "idle" });
-  const [audioRemote, setAudioRemote] = useState(false);
+  /** `changed`: another director saved the speakers while this page held edits;
+   *  `drafted`: the server's speakers came in after this page drafted some offline. */
+  const [audioRemote, setAudioRemote] = useState<null | "changed" | "drafted">(null);
   const [projectStatus, setProjectStatus] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<ReadonlySet<string>>(() => new Set());
   const audioRef = useRef(audio);
@@ -206,27 +214,49 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const audioDirty = useMemo(() => savedAudio !== null && !sameAudio(audio, savedAudio), [audio, savedAudio]);
   audioDirtyRef.current = audioDirty;
 
-  /** The server's speaker config: adopted when it is new and the page holds
-   *  no speaker edits (the history clears — it would undo into the old
-   *  config), else the page says it changed elsewhere. */
-  const adoptAudio = useCallback((v: AudioView, force = false) => {
+  /** The server's speaker config. A new one is adopted when the page holds
+   *  no speaker edits (swapped into the undo history, so the map's steps
+   *  stay); with edits the page says it changed elsewhere; drafted before
+   *  the first answer (an outage), the draft stays, unsaved against it.
+   *  True when the page took something (a config, a new test) — the long
+   *  poll pauses after an answer that changed nothing. */
+  const adoptAudio = useCallback((v: AudioView, force = false): boolean => {
     setAudioView(v);
     setAudioStatus("ok");
-    for (const t of v.tests) testSeqRef.current = Math.max(testSeqRef.current, t.seq);
-    if (v.version === audioVersionRef.current && !force) return;
-    if (audioSaving.current && !force) return;
-    if (audioVersionRef.current !== null && audioDirtyRef.current && !force) return setAudioRemote(true);
+    let took = false;
+    for (const t of v.tests) {
+      if (t.seq > testSeqRef.current) {
+        testSeqRef.current = t.seq;
+        took = true;
+      }
+    }
+    if (v.version === audioVersionRef.current && !force) return took;
+    if (audioSaving.current && !force) return took;
     const first = audioVersionRef.current === null;
+    if (audioDirtyRef.current && !force) {
+      if (!first) {
+        setAudioRemote("changed");
+        return took;
+      }
+      audioVersionRef.current = v.version;
+      setSavedAudio(v.audio);
+      setAudioRemote("drafted");
+      return true;
+    }
     audioVersionRef.current = v.version;
-    audioRef.current = v.audio;
-    setAudio(v.audio);
     setSavedAudio(v.audio);
-    setAudioRemote(false);
+    setAudioRemote(null);
     setAudioSaveState((s) => (s.kind === "conflict" ? { kind: "idle" } : s));
-    if (!first) {
-      historyRef.current = emptyHistory();
+    // The same speakers (a Save to project, a reload of what is shown): nothing to undo differently.
+    if (sameAudio(v.audio, audioRef.current)) return true;
+    const cur = draftRef.current;
+    if (cur !== null) {
+      historyRef.current = rebaseHistory(historyRef.current, { house: cur, audio: audioRef.current }, v.audio);
       setHistory(historyRef.current);
     }
+    audioRef.current = v.audio;
+    setAudio(v.audio);
+    return true;
   }, []);
 
   const reloadAudio = useCallback(async () => {
@@ -240,30 +270,21 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   useEffect(() => {
     let stop = false;
     const ctrl = new AbortController();
-    void (async () => {
-      let backoff = 1000;
-      while (!stop) {
-        const after = audioVersionRef.current;
-        const r = await fetchAudio(base, config.token, after === null ? { signal: ctrl.signal } : { after, tests: testSeqRef.current, wait: 25, signal: ctrl.signal });
-        if (stop) return;
-        if (r.kind === "ok") {
-          backoff = 1000;
-          adoptAudio(r.view);
-          continue;
-        }
-        if (r.kind === "missing") {
-          // A server before wave 17: draft against the default interface, never saved.
-          setAudioStatus("missing");
-          setSavedAudio((s) => s ?? audioRef.current);
-          return;
-        }
-        if (r.status === 401 || r.status === 403) return;
+    void runAudioPoll({
+      fetch: (q) => fetchAudio(base, config.token, { ...q, signal: ctrl.signal }),
+      onView: (v) => adoptAudio(v),
+      onMissing: () => {
+        // A server before wave 17: draft against the default interface, never saved.
+        setAudioStatus("missing");
+        setSavedAudio((s) => s ?? audioRef.current);
+      },
+      onError: () => {
         setAudioStatus((s) => (s === "loading" ? "error" : s));
         setSavedAudio((s) => s ?? audioRef.current);
-        await new Promise((res) => window.setTimeout(res, backoff));
-        backoff = Math.min(backoff * 2, 15_000);
-      }
-    })();
+      },
+      testSeq: () => testSeqRef.current,
+      stopped: () => stop,
+    });
     return () => {
       stop = true;
       ctrl.abort();
@@ -393,7 +414,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
 
   /** Save the speakers to the event (`base` = the version this page loaded → 409 when another save landed). */
   const saveSpeakers = async (): Promise<string | null> => {
-    if (!audioDirty || audioCheck?.ok !== true || audioStatus !== "ok") return null;
+    if (!audioDirty || audioStatus !== "ok") return null;
     if (!(await unlock())) return null;
     setAudioSaveState({ kind: "saving" });
     audioSaving.current = true;
@@ -409,17 +430,40 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       }
       if (r.status === 401 || r.status === 403) onRevoked();
       setAudioSaveState(r.conflict ? { kind: "conflict", version: r.version } : { kind: "error", error: r.error, problems: r.problems });
-      if (r.conflict) setAudioRemote(false);
+      if (r.conflict) setAudioRemote(null);
       return null;
     } finally {
       audioSaving.current = false;
     }
   };
 
-  /** 💾 Save: the map (when it changed), then the speakers (when they changed). */
+  /** The speakers' validity against the map the server holds (they save alone only when this passes). */
+  const audioCheckSaved = useMemo(() => (saved === null ? null : validateAudio(audio, saved)), [audio, saved]);
+  const mapSaveable = textError === null && validation?.ok === true && editable;
+  const speakerSave = speakerSavePlan({
+    audioDirty,
+    status: audioStatus,
+    mapDirty: dirty,
+    mapSaveable,
+    validDraft: audioCheck?.ok === true,
+    validSaved: audioCheckSaved?.ok === true,
+  });
+  const allPlan = saveAllPlan({ mapDirty: dirty, mapSaveable, speakers: speakerSave });
+
+  /** 💾 Save: the map (when it changed and can be saved), then the speakers when they fit the map the server will hold. */
   const saveAll = async () => {
-    if (dirty && (await save()) === null) return;
-    if (audioDirty) await saveSpeakers();
+    if (allPlan.map && (await save()) === null) return;
+    if (allPlan.speakers) await saveSpeakers();
+    else if (audioDirty) {
+      const why = speakerSave.why ?? (allPlan.map ? "they don't fit the map as saved — fix the speaker problems" : "fix the speaker problems first");
+      setNotice(`${allPlan.map ? "Map saved — the" : "The"} speakers are not saved: ${why}.`);
+    }
+  };
+
+  /** The Audio tab's save: the speakers alone when they fit the saved map, else the map first. */
+  const saveFromAudioTab = async () => {
+    if (speakerSave.alone) await saveSpeakers();
+    else if (speakerSave.withMap && (await save()) !== null) await saveSpeakers();
   };
 
   const speakersToProject = async () => {
@@ -525,9 +569,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       // A yard goes whole: every piece it was cut into.
       const c = cascadeOf(h, deletesWith(h, sel.id));
       if (c.spawn) return setNotice(`The spawn is in this ${room.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
-      if (!window.confirm(withSpeakersText(deleteRoomText(room, c), room.outdoor ? 0 : speakersIn(audioRef.current, c.rooms).length))) return;
       const out = removeRoom(h, sel.id);
       if ("error" in out) return setNotice(out.error);
+      if (!window.confirm(withSpeakersText(deleteRoomText(room, c), speakersDropped(h, out.house, audioRef.current).length))) return;
       apply(out.house);
       setSel(null);
       return;
@@ -675,9 +719,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const speakerProblems = audioProblemList(audio, house);
   const errors = [...(textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? [])), ...speakerProblems.errors];
   const warnings = [...(walk ?? []), ...locationProblems(house, locations), ...speakerProblems.warnings];
-  const houseSaveable = !dirty || (textError === null && validation?.ok === true);
-  const audioSaveable = !audioDirty || (audioCheck?.ok === true && audioStatus === "ok");
-  const canSave = (dirty || audioDirty) && houseSaveable && audioSaveable && saveState.kind !== "saving" && audioSaveState.kind !== "saving" && editable;
+  const busy = saveState.kind === "saving" || audioSaveState.kind === "saving";
+  const canSave = (allPlan.map || allPlan.speakers) && !busy && editable;
 
   const addSized = (w: number, d: number) => {
     const selRoom = sel?.kind === "room" ? house.rooms.find((r) => r.id === sel.id && r.floor === floor) : undefined;
@@ -751,9 +794,12 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         onRedo={() => step("redo")}
         onRevert={revert}
         onBlank={() => {
-          if (!window.confirm("Start a new blank house (one floor and a yard)? The current map stays until you save — Undo brings it back.")) return;
+          const n = audio.speakers.length;
+          const keep = n === 0 ? "" : ` The ${n === 1 ? "speaker stays" : `${n} speakers stay`} in audio.json, flagged until ${n === 1 ? "it stands" : "they stand"} in a room again (drag ${n === 1 ? "it" : "them"} onto the new rooms).`;
+          if (!window.confirm(`Start a new blank house (one floor and a yard)? The current map stays until you save — Undo brings it back.${keep}`)) return;
           const next = blankHouse(house.name, house.origin);
-          apply(next);
+          // Not `apply`: a redraw never takes the physical speaker layout with it.
+          applyDoc({ house: next, audio: audioRef.current });
           setFloor(next.floors[0]!.id);
           setSel(null);
         }}
@@ -781,14 +827,14 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         </div>
       )}
 
-      {audioRemote && (
+      {audioRemote !== null && (
         <div className="map-banner w98-raised">
-          The speakers were changed elsewhere.
+          {audioRemote === "changed" ? "The speakers were changed elsewhere." : "The server's speakers came in after you drafted some while it was away — your draft is kept, unsaved."}
           <button className="w98-button" onClick={() => void reloadAudio()}>
-            Reload the speakers (discard my speaker edits)
+            {audioRemote === "changed" ? "Reload the speakers (discard my speaker edits)" : "Use the server's speakers (drop my draft)"}
           </button>
-          <button className="w98-button" onClick={() => setAudioRemote(false)}>
-            Keep editing
+          <button className="w98-button" onClick={() => setAudioRemote(null)}>
+            {audioRemote === "changed" ? "Keep editing" : "Keep my draft"}
           </button>
         </div>
       )}
@@ -849,9 +895,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             {(
               [
                 ["inspect", "Inspector"],
-                ["terminals", `Terminals (${house.terminals.length})`],
-                ["players", `Players (${players.size})`],
-                ["audio", `Audio (${audio.speakers.length})`],
+                ["terminals", `Terminals ${house.terminals.length}`],
+                ["players", `Players ${players.size}`],
+                ["audio", `🔊 Audio ${audio.speakers.length}`],
                 ["json", "JSON"],
               ] as const
             ).map(([id, label]) => (
@@ -890,9 +936,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 edit={edit}
                 dirty={audioDirty}
                 valid={audioCheck?.ok === true}
+                speakerSave={speakerSave}
+                mapBusy={saveState.kind === "saving"}
                 saveState={audioSaveState}
                 commit={applyAudio}
-                onSave={() => void saveSpeakers()}
+                onSave={() => void saveFromAudioTab()}
                 onSaveToProject={() => void speakersToProject()}
                 onDownload={downloadSpeakers}
                 onReload={() => {
