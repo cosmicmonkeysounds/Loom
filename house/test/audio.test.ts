@@ -125,6 +125,32 @@ describe("validateAudio — warnings", () => {
   });
 });
 
+describe("validateAudio — wave 18b: device.expect and announce.terminals", () => {
+  it("device.expect is the counts the device reports: whole numbers from 1 to 64, never fewer than ours", () => {
+    expect(check((a) => void (a.device.expect = { inputs: 32, outputs: 30 })).problems).toEqual([]);
+    expect(check((a) => void (a.device.expect = { inputs: 0, outputs: 65 })).problems).toEqual([
+      "device.expect.inputs must be a whole number from 1 to 64",
+      "device.expect.outputs must be a whole number from 1 to 64",
+    ]);
+    expect(check((a) => void ((a.device as unknown as Record<string, unknown>)["expect"] = 32)).problems).toEqual(["device.expect must be an object {inputs, outputs}"]);
+    const fewer = check((a) => void (a.device.expect = { inputs: 1, outputs: a.device.outputs }));
+    expect(fewer.problems).toEqual([]);
+    expect(fewer.warnings[0]).toMatch(/^device\.expect\.inputs \(1\) is fewer than device\.inputs/u);
+  });
+
+  it("announce.terminals lists terminal spot ids; with a house an unknown one is a warning", () => {
+    const spot = HOUSE.terminals[0]?.id ?? "kitchen";
+    expect(check((a) => void (a.announce = { to: ["everywhere"], terminals: [spot] })).problems).toEqual([]);
+    expect(check((a) => void (a.announce = { to: ["everywhere"], terminals: "kitchen" as unknown as string[] })).problems).toEqual(["announce.terminals must be a list of terminal spot ids"]);
+    expect(check((a) => void (a.announce = { to: ["everywhere"], terminals: [""] })).problems).toEqual(["announce.terminals must be a list of terminal spot ids"]);
+    const unknown = check((a) => void (a.announce = { to: ["everywhere"], terminals: ["nowhere-spot"] }));
+    expect(unknown.problems).toEqual([]);
+    expect(unknown.warnings).toContain('announce.terminals: "nowhere-spot" is no terminal spot on the house map');
+    // No house: nothing to check the ids against.
+    expect(check((a) => void (a.announce = { to: ["everywhere"], terminals: ["nowhere-spot"] }), null).warnings.some((w) => w.startsWith("announce.terminals"))).toBe(false);
+  });
+});
+
 describe("resolveTargets — the shared cases (stagehand mirrors these)", () => {
   const file = load<{ cases: Array<{ to: string[]; house?: false; speakers: string[]; outputs: number[] }> }>("audio-resolve.json");
   for (const c of file.cases) {

@@ -847,7 +847,8 @@ export interface ScreenDevice {
 }
 
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
- *  `bat=<0-100>[c]`, `fs=1|0`, `ver=<build>`); anything malformed is left out. */
+ *  `bat=<0-100>[c]`, `fs=1|0`, `ver=<build>`, wave 18b `ann=1|0`);
+ *  anything malformed is left out. */
 export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const d: ScreenDevice = {};
   const audio = q("audio");
@@ -863,6 +864,8 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if (fs === "1" || fs === "0") d.fullscreen = fs === "1";
   const ver = q("ver").replace(/[^\w.:+-]/gu, "").slice(0, 24);
   if (ver !== "") d.version = ver;
+  const ann = q("ann");
+  if (ann === "1" || ann === "0") d.announce = ann === "1";
   return d;
 }
 

@@ -4369,6 +4369,8 @@ export class EventRuntime {
             const view = this.factsView();
             return book === null || view === undefined ? [] : screenResultsOf(view, book, q.ids, { kind: q.kind, tv: q.tv, truths: q.truths });
           },
+          // Q8: is this map spot on `audio.json`'s announce list?
+          spotAnnounce: (spot) => this.audio.current().audio.announce?.terminals?.includes(spot) === true,
         },
       );
     }
