@@ -522,14 +522,20 @@ export class Sim {
   }
 
   /** World key for a codex category under a holder (wave 18b):
-   *  `g1.codex_in.facts`, `g1.codex_in.how_it_works` — the category lower-
-   *  cased, each run of anything but letters and digits one `_`, none at
-   *  either end. */
+   *  `g1.codex_in.facts`, `g1.codex_in.how_it_works` — the category's
+   *  accents dropped (`Café` → `cafe`), lower-cased, each run of anything
+   *  but `a-z` / `0-9` one `_`, none at either end, and a `_` before a
+   *  leading digit (`1999 Files` → `_1999_files`), so a story can always
+   *  read it as a path segment. A category with no such letter at all
+   *  slugs to "" and is counted nowhere. */
   static codexCategorySlug(category: string): string {
-    return category
+    const slug = category
+      .normalize("NFKD")
+      .replace(/\p{M}+/gu, "")
       .toLowerCase()
-      .replace(/[^\p{L}\p{N}]+/gu, "_")
+      .replace(/[^a-z0-9]+/gu, "_")
       .replace(/^_+|_+$/gu, "");
+    return /^[0-9]/u.test(slug) ? `_${slug}` : slug;
   }
 
   /** Record a holding + its world mirrors, silently. True if it was new. */

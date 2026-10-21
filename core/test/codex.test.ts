@@ -718,6 +718,10 @@ CODEX Loose
     sim.createPerson("g1", "Ada");
     expect(Sim.codexCategorySlug("How it works!")).toBe("how_it_works");
     expect(Sim.codexCategorySlug("Facts")).toBe("facts");
+    // Always a readable path segment: accents dropped, a leading digit guarded.
+    expect(Sim.codexCategorySlug("Café Notes")).toBe("cafe_notes");
+    expect(Sim.codexCategorySlug("1999 Files")).toBe("_1999_files");
+    expect(Sim.codexCategorySlug("日本")).toBe("");
     // A character's holdings are not mirrored (its vars ride agent requests).
     expect(sim.worldEntries().some((w) => w.path.startsWith("Clerk.codex_in"))).toBe(false);
     // A guest's counts are a ROLE secret slot, never shown to an agent.
