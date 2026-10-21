@@ -99,6 +99,23 @@ export const Code = {
    *  names no LOCATION (wave 17, a warning): the house router reaches no
    *  speaker for it (room ids, zones and speaker ids are one word). */
   L1213SoundRoomUnresolved: "L1213",
+  /** A `with go:` word (on `broadcast` / `reply` / `pin` / `show`) or an
+   *  OBJECTIVE's `go:` that names no place, room, character, guest button,
+   *  codex entry, quest or screen — or a `with go:` after an unquoted
+   *  `reply` text, which stays part of the text (wave 18, a warning). */
+  L1214GoTargetUnresolved: "L1214",
+  /** `target:` / `pick:` on an OBJECTIVE no booth sees (wave 18, a warning). */
+  L1215ObjectivePickNotForBooths: "L1215",
+  /** A header `wanted:` / `archive:` / `reinstall:` line that does not
+   *  parse or resolve, so it is dropped (wave 18, a warning). */
+  L1216HeaderLineInvalid: "L1216",
+  /** `by:` on a `who: admin` INTERACTION names no performer part, so no
+   *  booth can call it (wave 18, a warning). */
+  L1217CallerNotAPart: "L1217",
+  /** `broadcast "!!…"` to everyone outside an admin cue's hook or a story
+   *  rule: a big moment for the whole house (wave 18, a warning). The
+   *  contract's L1213 was taken by wave 17's sound lint. */
+  L1218BigHouseBroadcast: "L1218",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

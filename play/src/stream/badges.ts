@@ -7,7 +7,7 @@
 import { boothAlertFilter } from "../alerts.ts";
 import type { Viewer } from "../rooms/threads-state.ts";
 import type { Channel, ChatMessage } from "../types.ts";
-import { cardAsks } from "../widgets.tsx";
+import { WIDGETS, cardAsks } from "../widgets.tsx";
 
 /**
  * Is `m` a line a guest typed to this booth's character? The server stores
@@ -85,4 +85,34 @@ export function unreadOf(c: Channel, seen: number, me: Viewer | undefined): numb
   const staff = c.staff === true && me?.booth === true;
   const fresh = c.messages.filter((m) => m.seq > seen && (me === undefined || badgeWorthy(m, me) || (staff && staffLineWorthy(m, me)))).length;
   return c.decision ? Math.max(1, fresh) : fresh;
+}
+
+/**
+ * The guest's one badge kind (wave 18, GUEST-SPEC §3.3): does `m` put a dot
+ * on its room? A card asking *you* (addressed to you, not the house), a
+ * `pm:` line from someone else, a line from the agent character in their
+ * own `dm:` thread. Never a scripted readout (that was a moment, it sits in
+ * Notifications), a house line, a `~` notice, a count, the Chat log.
+ * In a pinned room (the Codex, the Quest Log) an entry or a quest step
+ * handed to you still counts, for the Mission tile's dot.
+ */
+export function guestDotWorthy(m: ChatMessage, c: Pick<Channel, "id" | "agent" | "needsYou">, me: Viewer): boolean {
+  if (m.parentSeq != null || m.hidden || m.ambient || m.notice !== undefined) return false;
+  if (c.id === "lobby") return false;
+  if (m.from !== "" && (m.from === me.name || m.from === me.id)) return false;
+  // A card asking you: still unanswered (the room's `needsYou`, which knows
+  // the answers), never an overlay (the tour asks through its own surface).
+  if (m.kind === "widget") return m.widget !== undefined && cardAsks(m.widget) && WIDGETS[m.widget.kind]?.overlay !== true && c.needsYou === true && Array.isArray(m.audience) && m.audience.includes(me.id);
+  if (m.kind === "codex" || m.kind === "quest") return addressedTo(m, me);
+  if (m.kind !== "line") return false;
+  if (c.id.startsWith("pm:")) return true;
+  return c.agent === true && c.id.startsWith("dm:") && m.readout !== true && m.from.trim() !== "" && m.from !== "Narrator" && m.from !== "Operator";
+}
+
+/** The guest's `unreadOf` (wave 18): dot-worthy messages past `seen`, and a
+ *  pending decision outside the lobby. */
+export function guestDotOf(c: Channel, seen: number, me: Viewer | undefined): number {
+  if (me === undefined) return unreadOf(c, seen, me);
+  const fresh = c.messages.filter((m) => m.seq > seen && guestDotWorthy(m, c, me)).length;
+  return c.decision && c.id !== "lobby" ? Math.max(1, fresh) : fresh;
 }

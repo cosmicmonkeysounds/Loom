@@ -23,6 +23,7 @@ import {
   isDeadStatus,
   PushHub,
   messagePush,
+  momentUrl,
   isPushServiceHost,
   parseSubscription,
   pushConfigFromEnv,
@@ -624,5 +625,21 @@ describe("wallet cards (wave 4, lane C)", () => {
     expect((await post(rt, "/api/guest/wallet/request", { token: ana.token, from: bob.id, amount: 1 })).status).toBe(200);
     await rt.push.settle();
     expect(sender.sent.map((s) => [s.endpoint.slice(-5), s.payload.kind, s.payload.title])).toEqual([["dev-2", "dm", "💰 Coin"]]);
+  });
+});
+
+describe("a moment's push lands where the moment goes (wave 18 fix NM-F5)", () => {
+  it("its first go: target, never the lobby by default", () => {
+    const at = (go: ChatMessage["go"]) => momentUrl({ channel: "lobby", go });
+    expect(at([{ kind: "room", id: "loc:The Desktop", label: "Go" }])).toBe("/?room=loc%3AThe%20Desktop");
+    expect(at([{ kind: "dm", id: "dm:Trabolta", label: "Open" }])).toBe("/?room=dm%3ATrabolta");
+    expect(at([{ kind: "codex", entry: "Computer Bingo", label: "Read" }])).toBe("/?room=codex&entry=Computer%20Bingo");
+    expect(at([{ kind: "quests", quest: "The Bingo Card", label: "See" }])).toBe("/?room=quests&quest=The%20Bingo%20Card");
+    expect(at([{ kind: "pass", label: "Show my pass" }])).toBe("/?go=pass");
+    expect(at([{ kind: "wallet", label: "Wallet" }])).toBe("/?room=wallet");
+    expect(at([{ kind: "act", id: "bathroom", label: "🚻" }])).toBe("/?room=lobby");
+    expect(at(undefined)).toBe("/?room=lobby");
+    const alert = messagePush({ seq: 3, channel: "lobby", channelKind: "lobby", title: "T", from: "", kind: "narration", text: "Go", ts: 0, audience: "all", parentSeq: null, hidden: false, alert: true, go: [{ kind: "room", id: "loc:The Desktop", label: "Go" }] } as ChatMessage, "T")!;
+    expect(alert.payload.url).toBe("/?room=loc%3AThe%20Desktop");
   });
 });

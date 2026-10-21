@@ -5,11 +5,14 @@
 //! does), and focus goes back where it was on close. A sheet opened inside
 //! it (the card's "Share lore…") takes Escape first. Every one is a busy
 //! surface for the moments layer (no dialog or blue screen covers it).
+//! Wave 18: a waiting pop-out docks at the top of the body (`PopOutDock`).
 
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { usePlayHost } from "../host.ts";
 import { useMomentsHold } from "../moments/provider.tsx";
 import { WinWindow, focusables, trapNext } from "../ui/window.tsx";
+import { PopOutDock } from "./popouts/rung.ts";
+import { focusedIn } from "../ui/focus.ts";
 
 /** Is Escape the booth window's to take? Not while a sheet or dialog is
  *  open inside it (the card's "Share lore…" picker): that one closes first,
@@ -24,7 +27,26 @@ function tabStops(root: HTMLElement): HTMLElement[] {
   return focusables(root).filter((el) => el.closest("[inert]") === null);
 }
 
-export function BoothLayer({ title, onClose, children, label, foot }: { title: ReactNode; onClose: () => void; children: ReactNode; label: string; foot?: ReactNode }) {
+export function BoothLayer({
+  title,
+  onClose,
+  children,
+  label,
+  foot,
+  tone,
+  dock = true,
+}: {
+  title: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  label: string;
+  foot?: ReactNode;
+  /** `alarm`: the maroon caption (the Wanted board, a confrontation). */
+  tone?: "alarm";
+  /** Wave 18 (§2.2 rule 6): a waiting pop-out docks as a 56 px strip at the
+   *  top of the body. A card passes `false`: it docks inside its own scroll. */
+  dock?: boolean;
+}) {
   useMomentsHold(true);
   const host = usePlayHost();
   const root = useRef<HTMLDivElement>(null);
@@ -32,7 +54,7 @@ export function BoothLayer({ title, onClose, children, label, foot }: { title: R
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    const before = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const before = focusedIn(box.current) as HTMLElement | null;
     box.current?.focus();
     // On the host's key target: `window` on a phone (Escape still closes
     // with focus left on the body), the pane's own frame in Run → Players
@@ -51,15 +73,18 @@ export function BoothLayer({ title, onClose, children, label, foot }: { title: R
   const onTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab" || box.current === null) return;
     const list = tabStops(box.current);
-    const next = trapNext(list.length, list.indexOf(document.activeElement as HTMLElement), e.shiftKey);
+    const next = trapNext(list.length, list.indexOf(focusedIn(box.current) as HTMLElement), e.shiftKey);
     e.preventDefault();
     if (next >= 0) list[next]!.focus();
   };
   return (
     <div className="booth-layer" role="dialog" aria-modal="true" aria-label={label} ref={root}>
       <div className="booth-layer-box" ref={box} tabIndex={-1} onKeyDown={onTab}>
-        <WinWindow title={title} onClose={onClose} className="booth-layer-win">
-          <div className="booth-layer-body">{children}</div>
+        <WinWindow title={title} onClose={onClose} className={`booth-layer-win${tone !== undefined ? ` ${tone}` : ""}`}>
+          <div className="booth-layer-body">
+            {dock && <PopOutDock />}
+            {children}
+          </div>
           {foot !== undefined && <div className="booth-layer-foot">{foot}</div>}
         </WinWindow>
       </div>

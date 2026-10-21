@@ -134,6 +134,7 @@ describe("the allowlist", () => {
       announce: ["hi", true],
       answerAs: ["Trabolta", "g1", "hi"],
       unlockClaim: ["Excel"],
+      setJudgeMode: ["review"],
     };
     for (const [name, fn] of Object.entries(calls)) {
       await (fn as (...a: unknown[]) => unknown)(...(args[name] ?? ["g1", true]));

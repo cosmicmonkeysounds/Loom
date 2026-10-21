@@ -69,6 +69,9 @@ export interface BoothFeedOptions {
   guestName: (id: string) => string | null;
   /** Every guest's display name (a readout with no `about`). */
   names: readonly string[];
+  /** Wave 18 (§4.12): a message a pop-out (or the open confrontation) covers:
+   *  the moments layer never sees it (it still lands in Readouts). */
+  covered?: (m: ChatMessage) => boolean;
 }
 
 /** Does `text` name `who` as a word ("Password Manager: the patch bay" names Password Manager)? */
@@ -104,6 +107,10 @@ export function boothMomentFeed(messages: ReadonlyMap<number, ChatMessage>, opts
   const patch = new Map<number, ChatMessage>();
   const readouts: ChatMessage[] = [];
   for (const m of messages.values()) {
+    if (opts.covered?.(m) === true) {
+      patch.set(m.seq, { ...m, hidden: true });
+      continue;
+    }
     if (staffMoment(m, opts)) patch.set(m.seq, { ...m, moment: "minor" });
     else if (opts.character !== "" && readoutToMe(m, opts.character) && Number.isInteger(m.seq)) {
       // Its room is the booth's own `dm:<Character>`, titled with the

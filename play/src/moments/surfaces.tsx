@@ -1,15 +1,23 @@
 //! The moments' surfaces (wave 13, the moments lane): each rung of the
 //! interrupt ladder is the Win95 part that does that job — a system-tray
 //! balloon tip, a sticky notification bar, a modal message box with OK, the
-//! blue screen — plus the quiet feedback toast, the "You missed n moments"
-//! list and the glitch that plays when the story changes the level. Plain
-//! markup over `w95-*` primitives and lane classes (`moments-…`), every
-//! colour from a token, so `plain` renders the same structure flat.
+//! blue screen — plus the quiet feedback toast and the glitch that plays
+//! when the story changes the level. Plain markup over `w95-*` primitives
+//! and lane classes (`moments-…`), every colour from a token, so `plain`
+//! renders the same structure flat.
+//!
+//! Wave 18: every rung renders its exits (`exits.ts`: a balloon 1, the
+//! others 2) beside its own close; no Dismiss all anywhere; the blue
+//! screen's fatal-exception boilerplate only on the sign-in's first. The
+//! big moment is `big.tsx`.
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { Icon } from "../chrome/icons.tsx";
 import { usePlayHost } from "../host.ts";
 import { WinDialog } from "../ui/window.tsx";
+import { drawnIcon, type Exit } from "./exits.ts";
 import { faultAddress, type Moment, type Queued } from "./model.ts";
+import { focusedIn } from "../ui/focus.ts";
 
 /** Taps this soon after a modal appears are ignored (a tap meant for the app underneath). */
 export const MODAL_DEAD_MS = 400;
@@ -24,7 +32,7 @@ type IconKind = "error" | "warning" | "info";
  *  card that asks, a quest, an objective, a beat's line — and for anything
  *  minor (a booth's demoted guest alarm too). */
 export function iconOf(m: Pick<Moment, "severity"> & Partial<Pick<Moment, "kind" | "alarm">>): IconKind {
-  if (m.severity !== "major") return "info";
+  if (m.severity !== "major" && m.severity !== "big") return "info";
   if (m.kind === "alert" || m.alarm === true) return "error";
   if (m.kind === "card" || m.kind === "quest" || m.kind === "objective" || m.kind === "beat") return "info";
   return "warning";
@@ -72,9 +80,18 @@ function MomentText({ m, className }: { m: Moment; className: string }) {
   return <div className={className}>{m.text}</div>;
 }
 
-/** The exit a moment offers: its room, or the pass. */
-function goLabel(m: Moment): string {
-  return m.pass === true ? "Show my pass" : "Take me there";
+/** A moment's exit buttons (its own close stays separate). */
+export function ExitButtons({ exits, onExit, className, guard }: { exits: readonly Exit[]; onExit: (e: Exit) => void; className: string; guard?: (fn: () => void) => () => void }) {
+  return (
+    <>
+      {exits.map((x) => (
+        <button key={`${x.nav.to}:${x.label}`} type="button" className={className} onClick={(guard ?? ((fn) => fn))(() => onExit(x))}>
+          {drawnIcon(x) !== null && <Icon name={drawnIcon(x)!} size={16} />}
+          <span className="moments-exit-label">{x.label}</span>
+        </button>
+      ))}
+    </>
+  );
 }
 
 /** Ignore taps for the first `MODAL_DEAD_MS` (a modal never eats a tap meant for what was under it). */
@@ -86,10 +103,10 @@ function useDeadTime(): () => boolean {
 // --- balloon ------------------------------------------------------------------
 
 /** The system-tray balloon tip: bottom-right, its tail on the tray, times out (provider). */
-export function Balloon({ q, canGo, onGo, onDismiss }: { q: Queued; canGo: boolean; onGo: () => void; onDismiss: () => void }) {
+export function Balloon({ q, exits, onExit, onDismiss }: { q: Queued; exits: readonly Exit[]; onExit: (e: Exit) => void; onDismiss: () => void }) {
   const m = q.moment;
   return (
-    <div className={`moments-balloon ${m.severity}`} role={m.severity === "major" ? "alert" : "status"} aria-live={m.severity === "major" ? "assertive" : "polite"}>
+    <div className={`moments-balloon ${m.severity}`} role={m.severity === "minor" ? "status" : "alert"} aria-live={m.severity === "minor" ? "polite" : "assertive"}>
       <div className="moments-balloon-head">
         <MomentIcon kind={iconOf(m)} size={18} />
         <span className="moments-balloon-caption">{m.caption}</span>
@@ -98,11 +115,7 @@ export function Balloon({ q, canGo, onGo, onDismiss }: { q: Queued; canGo: boole
         </button>
       </div>
       <MomentText m={m} className="moments-balloon-text" />
-      {canGo && (
-        <button type="button" className="moments-balloon-go" onClick={onGo}>
-          {goLabel(m)} ›
-        </button>
-      )}
+      <ExitButtons exits={exits.slice(0, 1)} onExit={onExit} className="moments-balloon-go" />
     </div>
   );
 }
@@ -129,9 +142,9 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 /** The sticky notification bar: under the title bar, in flow, until tapped.
  *  A `!` alarm is the full-yellow bar; anything else the info-tip yellow
  *  with a dark frame. Its words stop at three lines with "more ›" (a quest
- *  brief ran to 12 lines, 550 px of an 844 px phone). More than one
- *  waiting: "Dismiss all (n)". */
-export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }: { q: Queued; count: number; canGo: boolean; onGo: () => void; onDismiss: () => void; onDismissAll?: () => void }) {
+ *  brief ran to 12 lines, 550 px of an 844 px phone). Its exits (≤ 2) and ×;
+ *  never a Dismiss all (G6). `count` is how many wait (the screen reader's). */
+export function StickyBanner({ q, count, exits, onExit, onDismiss }: { q: Queued; count: number; exits: readonly Exit[]; onExit: (e: Exit) => void; onDismiss: () => void }) {
   const m = q.moment;
   const lead = stickyLead(m);
   const alarm = m.severity === "major" && m.kind === "alert";
@@ -145,8 +158,15 @@ export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }:
     setClipped(el.scrollHeight > el.clientHeight + 1);
   }, [m.text, open]);
   return (
-    <div className={`moments-sticky ${m.severity}${alarm ? " alarm" : ""}`} role={m.severity === "major" ? "alert" : "status"}>
-      <button type="button" className="moments-sticky-body" onClick={onDismiss} aria-label={`${lead !== null ? `${lead}: ` : ""}${m.text}. Tap to dismiss.`}>
+    <div className={`moments-sticky ${m.severity}${alarm ? " alarm" : ""}`} role={m.severity === "minor" ? "status" : "alert"} data-waiting={count}>
+      <button
+        type="button"
+        className="moments-sticky-body"
+        // The words take you there when the sticky has somewhere to go
+        // (NM-F11: a tap on them used to dismiss it); × dismisses.
+        onClick={exits.length > 0 ? () => onExit(exits[0]!) : onDismiss}
+        aria-label={`${lead !== null ? `${lead}: ` : ""}${m.text}. ${exits.length > 0 ? `Tap to ${exits[0]!.label}.` : "Tap to dismiss."}`}
+      >
         <span className="moments-sticky-icon">
           <MomentIcon kind={iconOf(m)} size={24} />
         </span>
@@ -167,16 +187,7 @@ export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }:
             {open ? "Less ▴" : "more ›"}
           </button>
         )}
-        {count > 1 && onDismissAll !== undefined && (
-          <button type="button" className="w95-btn moments-sticky-all" onClick={onDismissAll}>
-            Dismiss all ({count})
-          </button>
-        )}
-        {canGo && (
-          <button type="button" className="w95-btn moments-go" onClick={onGo}>
-            {goLabel(m)} ›
-          </button>
-        )}
+        <ExitButtons exits={exits.slice(0, 2)} onExit={onExit} className="w95-btn moments-go" />
         <button type="button" className="w95-btn moments-sticky-x" aria-label="Dismiss" onClick={onDismiss}>
           <span aria-hidden>×</span>
         </button>
@@ -187,27 +198,8 @@ export function StickyBanner({ q, count, canGo, onGo, onDismiss, onDismissAll }:
 
 // --- dialog -------------------------------------------------------------------
 
-/** The modal message box: caption, icon, text, OK (focused), "1 of 3". */
-export function MomentDialog({
-  q,
-  index,
-  total,
-  canGo,
-  onGo,
-  onDismiss,
-  waiting,
-  onDismissAll,
-}: {
-  q: Queued;
-  index: number;
-  total: number;
-  canGo: boolean;
-  onGo: () => void;
-  onDismiss: () => void;
-  /** How many modals wait, this one included ("Dismiss all (n)", shown with `onDismissAll`). */
-  waiting?: number;
-  onDismissAll?: () => void;
-}) {
+/** The modal message box: caption, icon, text, its exits (≤ 2), OK (focused), "1 of 3". */
+export function MomentDialog({ q, index, total, exits, onExit, onDismiss }: { q: Queued; index: number; total: number; exits: readonly Exit[]; onExit: (e: Exit) => void; onDismiss: () => void }) {
   const m = q.moment;
   const ok = useRef<HTMLButtonElement>(null);
   const live = useDeadTime();
@@ -235,18 +227,9 @@ export function MomentDialog({
                 {index} of {total}
               </span>
             )}
-            {onDismissAll !== undefined && waiting !== undefined && (
-              <button type="button" className="w95-btn moments-dismiss-all" onClick={guard(onDismissAll)}>
-                Dismiss all ({waiting})
-              </button>
-            )}
           </span>
           <span className="moments-dialog-buttons">
-            {canGo && (
-              <button type="button" className="w95-btn" onClick={guard(onGo)}>
-                {goLabel(m)}
-              </button>
-            )}
+            <ExitButtons exits={exits.slice(0, 2)} onExit={onExit} className="w95-btn moments-go" guard={guard} />
             <button ref={ok} type="button" className="w95-btn moments-ok" onClick={guard(onDismiss)}>
               OK
             </button>
@@ -267,28 +250,27 @@ function useWin95(): boolean {
 
 /** The blue screen: the whole phone, white on blue, "Press any key to
  *  continue". Under `plain` the same full-screen frame with neutral copy:
- *  no fault address, no "Press any key", just "Tap to continue". */
+ *  no fault address, no "Press any key", just "Tap to continue". Wave 18:
+ *  the fatal-exception boilerplate only when `boilerplate` (the sign-in's
+ *  first blue screen); a later one leads with ANNOUNCEMENT and the text. */
 export function BlueScreen({
   q,
   index,
   total,
-  canGo,
-  onGo,
+  exits,
+  onExit,
   onDismiss,
   win95: forced,
-  waiting,
-  onDismissAll,
+  boilerplate = true,
 }: {
   q: Queued;
   index: number;
   total: number;
-  canGo: boolean;
-  onGo: () => void;
+  exits: readonly Exit[];
+  onExit: (e: Exit) => void;
   onDismiss: () => void;
   win95?: boolean;
-  /** How many modals wait, this one included ("Dismiss all (n)", shown with `onDismissAll`). */
-  waiting?: number;
-  onDismissAll?: () => void;
+  boilerplate?: boolean;
 }) {
   const m = q.moment;
   const skinned = useWin95();
@@ -296,7 +278,7 @@ export function BlueScreen({
   const box = useRef<HTMLDivElement>(null);
   const live = useDeadTime();
   useEffect(() => {
-    const before = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const before = focusedIn(box.current) as HTMLElement | null;
     box.current?.focus();
     return () => before?.focus?.();
   }, []);
@@ -305,11 +287,11 @@ export function BlueScreen({
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Tab") {
-      // The stops: the screen, then its buttons (Take me there, Dismiss all), round again.
+      // The stops: the screen, then its exits, round again.
       e.preventDefault();
       const stops: HTMLElement[] = [...(box.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
       if (box.current) stops.unshift(box.current);
-      const at = stops.indexOf(document.activeElement as HTMLElement);
+      const at = stops.indexOf(focusedIn(box.current) as HTMLElement);
       const next = stops[(at + (e.shiftKey ? stops.length - 1 : 1)) % stops.length];
       next?.focus();
       return;
@@ -319,20 +301,17 @@ export function BlueScreen({
     e.preventDefault();
     if (live()) onDismiss();
   };
-  const go = (e: MouseEvent<HTMLButtonElement>) => {
+  const go = (x: Exit) => (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    if (live()) onGo();
+    if (live()) onExit(x);
   };
-  const all = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (live()) onDismissAll?.();
-  };
-  const dismissAll = onDismissAll !== undefined && waiting !== undefined && (
-    <button type="button" className="moments-bsod-go moments-dismiss-all" onClick={all}>
-      Dismiss all ({waiting})
+  const shown = exits.slice(0, 2);
+  const buttons = shown.map((x) => (
+    <button key={`${x.nav.to}:${x.label}`} type="button" className="moments-bsod-go" onClick={go(x)}>
+      {x.label}
     </button>
-  );
-  const head = win95 ? (m.caption || "Windows").toUpperCase() : m.caption || "Important";
+  ));
+  const head = !boilerplate ? "ANNOUNCEMENT" : win95 ? (m.caption || "Windows").toUpperCase() : m.caption || "Important";
   return (
     <div ref={box} className="moments-bsod" role="alertdialog" aria-modal="true" aria-labelledby="moments-bsod-head" aria-describedby="moments-bsod-text" tabIndex={-1} onClick={onClick} onKeyDown={onKey}>
       <div className="moments-bsod-inner">
@@ -346,7 +325,7 @@ export function BlueScreen({
             </span>
           )}
         </div>
-        {win95 && (
+        {win95 && boilerplate && (
           <p className="moments-bsod-fault">
             A fatal exception 0E has occurred at {faultAddress(m.key)}. The current program has stopped to show you this:
           </p>
@@ -355,26 +334,12 @@ export function BlueScreen({
         {win95 ? (
           <ul className="moments-bsod-list">
             <li>Tap anywhere to continue.</li>
-            {canGo && (
-              <li>
-                <button type="button" className="moments-bsod-go" onClick={go}>
-                  {goLabel(m)}
-                </button>
-              </li>
-            )}
-            {dismissAll && <li>{dismissAll}</li>}
+            {buttons.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
           </ul>
         ) : (
-          (canGo || dismissAll) && (
-            <p className="moments-bsod-plain-go">
-              {canGo && (
-                <button type="button" className="moments-bsod-go" onClick={go}>
-                  {goLabel(m)}
-                </button>
-              )}
-              {dismissAll}
-            </p>
-          )
+          buttons.length > 0 && <p className="moments-bsod-plain-go">{buttons}</p>
         )}
         <p id="moments-bsod-text" className="moments-bsod-press">
           {win95 ? (
@@ -386,67 +351,6 @@ export function BlueScreen({
           )}
         </p>
       </div>
-    </div>
-  );
-}
-
-// --- missed list -------------------------------------------------------------------
-
-/** "You missed n moments": every one in order, each with its exit. */
-export function MissedList({ moments, canGo, onGo, onClose }: { moments: readonly Moment[]; canGo: (m: Moment) => boolean; onGo: (m: Moment) => void; onClose: () => void }) {
-  const live = useDeadTime();
-  const guard = (fn: () => void) => () => {
-    if (live()) fn();
-  };
-  return (
-    <WinDialog title={`You missed ${moments.length} moments`} onClose={guard(onClose)} label={`You missed ${moments.length} moments`}>
-      <div className="moments-missed">
-        <ol className="moments-missed-list w95-inset">
-          {moments.map((m) => (
-            <li key={m.key} className="moments-missed-row">
-              <MomentIcon kind={iconOf(m)} size={20} />
-              <span className="moments-missed-words">
-                <span className="moments-missed-caption">{m.caption}</span>
-                <span className="moments-missed-text">{m.text}</span>
-              </span>
-              {canGo(m) && (
-                <button type="button" className="w95-btn moments-missed-go" aria-label={`${goLabel(m)}: ${m.caption}`} onClick={guard(() => onGo(m))}>
-                  Go ›
-                </button>
-              )}
-            </li>
-          ))}
-        </ol>
-        <div className="moments-dialog-foot">
-          <span />
-          <button type="button" className="w95-btn moments-ok" onClick={guard(onClose)}>
-            OK
-          </button>
-        </div>
-      </div>
-    </WinDialog>
-  );
-}
-
-/** The summary as a sticky bar (a booth; a guest below `dialog`): "You missed n moments", the list on a tap. */
-export function SummarySticky({ count, onOpen, onDismiss }: { count: number; onOpen: () => void; onDismiss: () => void }) {
-  const caption = `You missed ${count} moments`;
-  return (
-    <div className="moments-sticky minor moments-summary-sticky" role="status">
-      <button type="button" className="moments-sticky-body" onClick={onOpen} aria-label={`${caption}. Tap to see them.`}>
-        <span className="moments-sticky-icon">
-          <MomentIcon kind="info" size={24} />
-        </span>
-        <span className="moments-sticky-words">
-          <span className="moments-sticky-caption">{caption}</span>
-          <span className="moments-sticky-text">Tap to see them.</span>
-        </span>
-      </button>
-      <span className="moments-sticky-actions">
-        <button type="button" className="w95-btn moments-sticky-x" aria-label="Dismiss" onClick={onDismiss}>
-          <span aria-hidden>×</span>
-        </button>
-      </span>
     </div>
   );
 }

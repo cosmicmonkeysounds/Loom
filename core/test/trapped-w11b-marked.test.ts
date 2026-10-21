@@ -1,5 +1,5 @@
-//! Wave 11b: a MARKED program (the Antivirus flagged it for the Internet —
-//! restricted, buttons off) can still reach Trabolta's heart. Pins what the
+//! Wave 11b: a MARKED program (flagged for the Internet; since wave 18 the
+//! mark no longer restricts it) can still reach Trabolta's heart. Pins what the
 //! wave 11 recheck found works, so nobody "fixes" it: the heart terminal's
 //! `terminal opened` still sets `at_the_heart`, his worker's request carries
 //! `marked` (not secret; the persona's `them:` reads it, its situations gate
@@ -106,8 +106,8 @@ async function markedProgram() {
   expect((await mod("mark_for_reinstallation", { subject: id, args: { reason: "missed the cup" } })).status).toBe(200);
   const sim = rt.liveSim!;
   expect(sim.world.peek(`${id}.marked`)).toMatchObject({ value: true });
-  // Marked is restricted: the phone's buttons are off.
-  expect(sim.isRestricted(id)).toBe(true);
+  // Wave 18 (Q30): a mark no longer restricts: the phone keeps its buttons.
+  expect(sim.isRestricted(id)).toBe(false);
   return { rt, sim, id, token, mod };
 }
 

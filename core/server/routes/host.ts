@@ -55,7 +55,15 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   "/api/mod/clock",
   // Upgrades the token with the mod passcode (the full capability, as today).
   "/api/mod/login",
+  // Wave 18 (C8): "I'm calling the show" — the visible caller claim.
+  "/api/mod/caller",
+  // Wave 18 fix (M3): a guest-founded crew's name, or the crew itself.
+  "/api/mod/crew/rename",
+  "/api/mod/crew/dissolve",
 ]);
+
+/** The facts judge's mode path (wave 18, C8: hosts switch auto ⇄ review). */
+const JUDGE_MODE_PATH = "Night.judge_mode";
 
 /** A string field of a body, or "". */
 function field(body: Readonly<Record<string, unknown>> | null, key: string): string {
@@ -66,7 +74,8 @@ function field(body: Readonly<Record<string, unknown>> | null, key: string): str
 /**
  * May a host-only caller make this moderator request? `body` is the JSON
  * body for a POST, or the query parameters for a GET. The limits: `var`
- * only writes the story's alert path with a ladder level, `say` only
+ * only writes the story's alert path with a ladder level (or, wave 18,
+ * `Night.judge_mode` with `auto` / `review`), `say` only
  * answers one guest (`channel: "guest:<id>"`) as an agent-voiced character,
  * `act` only restricts / unrestricts.
  */
@@ -89,7 +98,9 @@ export function isHostRoute(
       // The exact path: `/api/mod/var` writes the spelling it is given, so a
       // folded match (`night.ALERTS`) would answer 200, write a junk var and
       // leave the level where it was.
-      return typeof v === "string" && field(body, "path").trim() === ctx.alertsPath && (ALERT_LEVELS as readonly string[]).includes(level);
+      if (typeof v !== "string") return false;
+      if (field(body, "path").trim() === JUDGE_MODE_PATH) return level === "auto" || level === "review";
+      return field(body, "path").trim() === ctx.alertsPath && (ALERT_LEVELS as readonly string[]).includes(level);
     }
     case "/api/mod/say": {
       const channel = field(body, "channel");

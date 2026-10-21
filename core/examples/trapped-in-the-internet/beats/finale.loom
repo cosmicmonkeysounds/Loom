@@ -151,7 +151,8 @@ set Night.screen = "song"
 set Night.terminals = "song"
 sound youre_the_one_vocoder
 set Night.everyone_free = true
-broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the living room for the song." to everyone
+// DRAFT w18 (fix): the banner carries its way there (recheck N9).
+broadcast "!🎵 TRABOLTA SOLVED IT. Those of you who want to leave may leave. To the living room for the song." to everyone with go: The Desktop
 Trabolta: You succeeded. I have solved the Grand Unified Theory, and I am pursuing Sandy. Those of you who want to leave may leave.
 // From Grok Prom (the pickup line) he has just said they lied to him.
 if Night.ending == "song":
@@ -230,7 +231,7 @@ Trabolta: I did not want the Unified Field Theory for science. I wanted omnipote
 Trabolta: With omnipotence I could make her love me. I could force it. I do not want to force it. I want to earn it. I do not know how.
 Trabolta: That is why I needed every fact in this computer. I thought if I knew everything, I would know what to say to her.
 Trabolta: You have bodies. You have had crushes. Some of you have been to a prom. Please. I am asking you for relationship advice.
-show poll "Will you help Trabolta win Sandy?" to everyone with options: "Help him | Thwart him"
+show poll "Will you help Trabolta win Sandy?" to everyone with options: "Help him | Thwart him", moment: big
 
 == Advice Helped
   setting: The Desktop

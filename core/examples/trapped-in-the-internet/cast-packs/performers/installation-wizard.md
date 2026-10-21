@@ -14,14 +14,19 @@
    presses 🛡 on their card). Their phone already shows your script in the
    **Installation Wizard** thread — the same lines as the video. Say it
    live, kindly, if the video isn't running (below). A **marked** program
-   who turns up on their own (grey phone, the 🚨 GO TO THE INTERNET card):
-   just scan them in. Pressing **Play here** (or **Send to VR-1**) captures
-   them as their run begins; no 🛡 needed. The tablet shows them as
-   **Restricted program detected** (*STATUS: RESTRICTED — if marked, Play
-   here begins the reinstallation*) and lists them under *Restricted —
-   marked, or held by a director*. (Play here captures only a marked
-   program; one a director restricted without marking needs an Antivirus 🛡
-   first.)
+   who turns up on their own (since wave 18 a mark hinders nothing, so
+   their phone looks normal; it says they are marked): just scan them in.
+   Pressing **Play here** (or **Send to VR-1**) captures them as their run
+   begins; no 🛡 needed. The tablet shows them as **Marked program
+   detected** (*STATUS: MARKED — marked for reinstallation*) and lists them
+   under *Marked for reinstallation*. A program a director restricted
+   without a mark reads *Program held by a director* and can't play until an
+   Antivirus 🛡 or a host marks them.
+   **After an ending** the reinstallation is a **party favour** (Q16 dropped):
+   any program may play, nobody is captured, the tablet says *Party favour
+   unlocked* (*STATUS: the night is over — anyone may play*) and your line is
+   *"The night is over, X. The simulation is open to every program now: a
+   party favour."* The speedrun award never counts those runs.
 2. **Tablet** at `/reinstall/` → **scan their pass** (or type their name: the
    captured list is at the top) → **Play here**.
    **Quest go:** → **Send to VR-1** instead. **Seated**, snap turn, the
@@ -43,27 +48,28 @@
    fight him to be reinstalled. Never tell a program what to do about him.
 
 4. Game won't finish, or a device dies → ask an Antivirus to press
-   **✅ Mark as reinstalled** on their card, or radio the director
+   **✅ Mark as reinstalled** on their card, or radio a host or the director
    (Run → Inspector → the Captured field → **Release**). If the server
    restarts, every game in progress ends: scan the player again →
    **Play here** (or **Send to VR-1**). A director's **pause** doesn't end
    a game: a find made while paused waits and lands when the run resumes.
 
-**Hold the first program** at the wizard until the director radios **INTRO**
+**Hold the first program** at the wizard until **INTRO** comes over the radio
 (OP-05), so Clippy's *"Look! That's…!"* lands on the live TV mirror.
 
-**Queue:** informal, in capture order. **More than 6 waiting → radio the
-director** (they may fire 🗜 early). At **🗜 Zip everyone out**, the Antivirus
+**Queue:** informal, in capture order. **More than 6 waiting → radio a host
+or the director** (whoever is calling may fire 🗜 early). At **🗜 Zip everyone out**, the Antivirus
 bring everyone out through the tunnel; **end any live game sessions** on the
 tablet.
 
 **Second device:** the Installation Wizard video loops on it (it plays when
 the TV/tablet cue `tablet_wizard` fires; otherwise just keep it looping).
 
-**Phones:** a program in the tent keeps their DMs and the Internet room. A
-marked one stops being marked the moment they are captured (the 🚨 card
-clears: *✅ The mark is lifted*; the Antivirus' escort pin clears with it),
-and their buttons come back when Gerald releases them.
+**Phones:** a captured program's phone is full screen for a moment (*🌐 Sent
+to the Internet…*, with **Go to The Internet** and **Show my pass**), then
+keeps their DMs and the Internet room. The mark comes off at the capture
+(their poster on the Antivirus' Wanted board reads CAUGHT BY for a minute),
+and Gerald's release is full screen too (*🦆 Reinstallation complete…*).
 
 **Duck speedrun award:** nothing to time — the server clocks every find (the director reads the fastest off the recap).
 

@@ -44,6 +44,10 @@ if program.corrupted:
     Installation Wizard: Loading a copy of this house. Every screen in the house can see you now. Wave.
   * Take the tablet.
     Installation Wizard: Loading a copy of this house, smaller. Hold it with both hands. Every screen in the house can see you now.
+else if Night.ended == true:
+  // Wave 18 (Q16): after an ending the reinstallation is a party favour.
+  // DRAFT w18
+  Installation Wizard: The night is over, {program.name}. The simulation is open to every program now: a party favour. Put on a headset, or take the tablet, and go find Gerald.
 else if program.marked == true:
   Installation Wizard: You came. Good. Loading the simulation.
   capture program into The Internet

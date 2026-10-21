@@ -15,7 +15,6 @@ import {
   SCAN_JOIN,
   SCAN_OWN_PASS,
   SCAN_PAIR,
-  SCAN_PASS,
   SCAN_UNKNOWN,
   ScanSheet,
   TYPED_UNKNOWN,
@@ -46,8 +45,9 @@ describe("guestScan", () => {
     expect(guestScan(`${BASE}?role=director`)).toEqual({ kind: "note", text: SCAN_DIRECTOR });
     expect(guestScan("g-3f9a1c", "g-3f9a1c")).toEqual({ kind: "note", text: SCAN_OWN_PASS });
     expect(guestScan("G-3F9A1C", "g-3f9a1c")).toEqual({ kind: "note", text: SCAN_OWN_PASS });
-    expect(guestScan("g-aaaaaa", "g-3f9a1c")).toEqual({ kind: "note", text: SCAN_PASS });
-    expect(guestScan(`${BASE}?pass=g-aaaaaa`, "g-3f9a1c")).toEqual({ kind: "note", text: SCAN_PASS });
+    // wave 18 (F3): someone else's pass opens the Recruit sheet
+    expect(guestScan("g-aaaaaa", "g-3f9a1c")).toEqual({ kind: "pass", id: "g-aaaaaa" });
+    expect(guestScan(`${BASE}?pass=G-AAAAAA`, "g-3f9a1c")).toEqual({ kind: "pass", id: "g-aaaaaa" });
     expect(guestScan("https://example.com/menu")).toEqual({ kind: "note", text: SCAN_UNKNOWN });
     expect(guestScan("hello there, friend")).toEqual({ kind: "note", text: SCAN_UNKNOWN });
     expect(guestScan("   ")).toEqual({ kind: "note", text: SCAN_UNKNOWN });
@@ -146,6 +146,7 @@ describe("the scan sheet's typed code (wave 13)", () => {
     expect(typedScan(`${BASE}?code=EVT1&unlock=COLD-FIRST`, rooms)).toEqual({ kind: "unlock", code: "COLD-FIRST" });
     expect(typedScan(`${BASE}?code=EVT1&checkin=the-cpu`, rooms)).toEqual({ kind: "checkin", at: "the-cpu" });
     expect(typedScan("g-3f9a1c", rooms, "g-3f9a1c")).toEqual({ kind: "note", text: SCAN_OWN_PASS });
+    expect(typedScan("g-aaaaaa", rooms, "g-3f9a1c")).toEqual({ kind: "pass", id: "g-aaaaaa" });
     expect(typedScan("what is this?", rooms)).toEqual({ kind: "note", text: TYPED_UNKNOWN });
     expect(typedScan("   ", rooms)).toEqual({ kind: "note", text: TYPED_UNKNOWN });
     // With no rooms to match, a slug-shaped word is a code.

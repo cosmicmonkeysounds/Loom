@@ -119,7 +119,9 @@ export function ConnDot({ connected, label }: { connected: boolean; label: strin
 }
 
 const GLYPH: Record<Channel["kind"], string> = {
-  lobby: "🌐",
+  // The lobby is the far-away 📜 Chat log (wave 18, G2): one glyph on its
+  // header, never 🌐 beside a 📜 (GN-F16).
+  lobby: "📜",
   faction: "#",
   location: "📍",
   dm: "",

@@ -1,27 +1,56 @@
 ---
-title: Rooms & spaces
+title: Chats, rooms & spaces
 section: Guest Guide
 order: 2
-keywords: rooms, spaces, channels, sidebar, open, private, faction, group, dm, location, lobby, check in, check-in, checkin, sign, qr, scan, other rooms, order, ticker, around the house, who's here, doesn't read replies
+keywords: chats, chat log, rooms, spaces, channels, sidebar, open, private, faction, group, crew, dm, location, lobby, check in, check-in, checkin, sign, qr, scan, other rooms, your move, where you are, messages, yellow dot, dot, badge, archived, order, ticker, around the house, who's here, doesn't read replies
 ---
 
-Conversations come in a few flavours, grouped into **spaces** (the
-titled sections of your inbox):
+**💬 Chats** on the taskbar is every conversation you can see, in fixed
+sections that never jump around:
+
+| Section | Holds |
+|---|---|
+| **Your move** | a room asking you something: a card dealt to you, a question waiting for your answer |
+| **Where you are** | the place you're standing in, tagged **YOU ARE HERE**, with who else is there |
+| **Messages** | your direct messages: characters (Trabolta's says whether he's online), and private chats with other guests |
+| **Rooms** | places with people in them, chatrooms with something new, your side's room and your crew's room |
+| **▸ Other rooms (n)** | folded: quiet chatrooms, finished threads from earlier in the night, and, always last, the **📜 Chat log** |
+
+A yellow **●** on a row (and on the Chats button) means **it's your move
+there**: a card that asks you, a line from another guest in your private
+chat, or a reply from a character who talks back. Nothing else lights a
+dot: no counts, no announcements, no story chatter.
+
+Your 📜 Quest Log, 📓 Codex and 🪙 Wallet aren't in Chats: they are the
+tiles on [Mission](mission.md). An empty place isn't listed either (unless
+you're standing in it); it comes back the moment someone walks in. A thread
+the story is done with (the Uploader's, once you're through the door) moves
+down into Other rooms.
+
+## The Chat log
+
+The **📜 Chat log** is the room named after the story: the house's main
+feed, with every announcement it made tonight (*Everything the house said
+tonight*). It is the last row of Other rooms, never a place an alert sends
+you, and never where a question waits for you: those go to Mission and to
+your [notifications](notifications.md). You can still read it, and talk in
+it.
+
+## Kinds of room
 
 | Room | Is |
 |---|---|
-| **The lobby / feed** | the main broadcast (named after the story) — narration and announcements everyone sees. Every announcement lands here, once |
 | **# channels** | chatrooms — some open to all, some invite-only |
 | **Group rooms** | your side's private channel — one per public group in the story; only members see it |
+| **Crew rooms** | your own crew's room, if you founded or joined one ([Sides & crews](sides.md)) |
 | **Location rooms** | tied to real places at the event — what happens *there* is heard *there* |
 | **Direct messages** | one-on-one threads — characters may slide into your DMs |
-| **📜 Quest Log** · **📓 Codex** · **🪙 Wallet** | pinned at the top: what the story has asked of you, what you know, and (when the story has money) what you have — yours alone |
 
 Some rooms carry a **pinned line** above the conversation — a standing
 notice from the story that stays until it's cleared. It folds to one
 line (*📌 2 · the newest*); tap it to read them all.
 
-Under the lobby's header a dim line, **Around the house**, shows the
+Under the Chat log's header a dim line, **Around the house**, shows the
 house's background chatter (a fan spinning up, a printer warming). It is
 never a message in the room and never lights a badge; tap it for the
 last few.
@@ -51,12 +80,11 @@ Some rooms are places. When you're standing in a location, you can hear
 (and post to) its room — walk away and the conversation stays behind.
 If you can't post somewhere, you're probably not *there*.
 
-The list tells you where everyone is: the place you're standing in comes
-right after your pinned rooms, tagged **you are here**; every other
-place says who's in it. Empty, quiet rooms wait folded under **Other
-rooms (n)** at the bottom of the list (the room you have open never
-folds). Inside a room, the header's **👥 n · you** opens the list of
-who's here — tap a name to message them.
+The list tells you where everyone is: the place you're standing in is
+**Where you are**; every other place with people in it says who's there.
+Inside a room, the header's **👥 n · you** opens the list of who's here —
+tap a name to message them. The room's **‹** takes you back to where you
+came from (Mission or Chats).
 
 ## Checking in at a room's sign
 

@@ -25,13 +25,18 @@ function narrow(px: number): string {
 }
 
 const objective = (buttons: string[]): ObjectiveView => ({ id: "o", title: "Get scanned", brief: "", checklist: [], buttons, act: null });
+const noop = () => {};
+const bar = (o: Partial<Parameters<typeof guestTaskbarButtons>[0]> = {}) =>
+  guestTaskbarButtons({ now: null, pressed: "mission", chatsDot: false, missionNew: false, mission: noop, chats: noop, pass: noop, scan: noop, ...o });
 
 describe("the guest taskbar", () => {
-  it("Pass is the primary button, Scan next to it; both carry their tour anchors", () => {
-    const buttons = guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} });
-    expect(buttons.map((b) => [b.id, b.primary === true, b.labelled === true, b.tour])).toEqual([
-      ["pass", true, false, "pass"],
-      ["scan", false, true, "scan"],
+  it("wave 18: Mission · Chats · Pass (the primary) · Scan, each stacked, with their tour anchors", () => {
+    const buttons = bar();
+    expect(buttons.map((b) => [b.id, b.label, b.primary === true, b.stacked === true, b.tour])).toEqual([
+      ["mission", "Mission", false, true, "mission"],
+      ["chats", "Chats", false, true, "chats"],
+      ["pass", "Pass", true, true, "pass"],
+      ["scan", "Scan", false, true, "scan"],
     ]);
     const out = html(createElement(Taskbar, { start: [], buttons }));
     // Drawn icons, never emoji, in the chrome.
@@ -42,15 +47,31 @@ describe("the guest taskbar", () => {
     expect(out).toContain('data-tour="start"');
     expect(out).toContain('aria-label="Pass"');
     expect(out).toContain('aria-label="Scan"');
-    expect(out).toContain('class="w95-btn taskbar-btn primary"');
+    expect(out).toContain('class="w95-btn taskbar-btn primary stacked"');
+    // the window on screen is pressed
+    expect(out).toContain('class="w95-btn taskbar-btn stacked pressed"');
+    expect(out).toContain('aria-pressed="true"');
+  });
+
+  it("Chats shows one dot, never a number; Mission an ! when the objective changed", () => {
+    const out = html(createElement(Taskbar, { start: [], buttons: bar({ pressed: "chats", chatsDot: true, missionNew: true }) }));
+    expect(out).toContain('class="taskbar-dot"');
+    expect(out).toContain('aria-label="Chats, something new"');
+    expect(out).toContain('class="taskbar-mark" aria-hidden="true">!</span>');
+    expect(out).not.toContain("taskbar-badge");
+    const quiet = html(createElement(Taskbar, { start: [], buttons: bar() }));
+    expect(quiet).not.toContain("taskbar-dot");
+    expect(quiet).not.toContain("taskbar-mark");
+    // on Notifications neither window is pressed
+    expect(bar({ pressed: null }).filter((b) => b.pressed === true)).toEqual([]);
   });
 
   it("the objective's buttons light the matching taskbar button", () => {
-    const lit = guestTaskbarButtons({ now: objective(["scan", "greet"]), pass: () => {}, scan: () => {} });
-    expect(lit.map((b) => b.active)).toEqual([false, true]);
-    expect(taskbarButtonClass(lit[1]!)).toBe("w95-btn taskbar-btn labelled attn");
+    const lit = bar({ now: objective(["scan", "greet"]), pressed: null });
+    expect(lit.map((b) => b.active === true)).toEqual([false, false, false, true]);
+    expect(taskbarButtonClass(lit[3]!)).toBe("w95-btn taskbar-btn stacked attn");
     expect(taskbarButtonClass({ primary: true })).toBe("w95-btn taskbar-btn primary");
-    expect(html(createElement(Taskbar, { start: [], buttons: lit }))).toContain('class="w95-btn taskbar-btn labelled attn"');
+    expect(html(createElement(Taskbar, { start: [], buttons: lit }))).toContain('class="w95-btn taskbar-btn stacked attn"');
   });
 
   it("the tray's leading edge is the live dot, never an item", () => {
@@ -61,13 +82,13 @@ describe("the guest taskbar", () => {
     expect(chrome).toMatch(/\.taskbar-tray\.live::before \{ background: var\(--live\); \}/u);
   });
 
-  it("at 360 px: icon-only buttons except the primary and a labelled one (the guest's Scan), at most 3 tray items", () => {
+  it("at 360 px: the guest's stacked buttons keep their words (a booth's go icon-only), at most 3 tray items", () => {
     const block = narrow(399);
-    expect(block).toContain(".taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }");
+    expect(block).toContain(".taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled):not(.stacked) .taskbar-label { display: none; }");
     expect(block).toContain(".taskbar-tray > :nth-child(n+4) { display: none; }");
     expect(block).toContain(".taskbar-start .taskbar-label { display: none; }");
     // The label stays for screen readers at any width.
-    const out = html(createElement(Taskbar, { start: [], buttons: guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} }) }));
+    const out = html(createElement(Taskbar, { start: [], buttons: bar() }));
     expect(out).toContain('aria-label="Scan"');
   });
 
@@ -94,7 +115,7 @@ describe("the guest taskbar", () => {
           className: "root app-frame",
           typing,
           head: createElement("header", { className: "title-bar" }),
-          taskbar: createElement(Taskbar, { start: [], buttons: guestTaskbarButtons({ now: null, pass: () => {}, scan: () => {} }) }),
+          taskbar: createElement(Taskbar, { start: [], buttons: bar() }),
         }),
       );
     expect(frame(false)).toContain('aria-label="Taskbar"');

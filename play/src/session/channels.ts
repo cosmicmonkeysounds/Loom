@@ -5,6 +5,7 @@
 import { pmOtherParty } from "../codex.ts";
 import { locationOfRoom, occupantsByLocation, type Presence } from "../presence.ts";
 import { CODEX_ROOM, PINNED_SPACE, QUEST_LOG, STORY_SPACE, WALLET_ROOM, channelHead, prettyName } from "../rooms/spaces.ts";
+import { CHAT_LOG_SUB, CHAT_LOG_TITLE } from "../rooms/chats.ts";
 import { groupByChannel, questSummary } from "../stream/runs.ts";
 import type { Channel, ChatMessage, Decision, GuestView } from "../types.ts";
 import { walletNeedsYou, walletSummary } from "../wallet.tsx";
@@ -87,7 +88,8 @@ export function buildGuestChannels(
   if ((view?.questTotal ?? 0) > 0 && !groups.has(QUEST_LOG)) groups.set(QUEST_LOG, []);
   // The Wallet is there whenever the story declares a currency.
   if (view?.wallet !== undefined && !groups.has(WALLET_ROOM)) groups.set(WALLET_ROOM, []);
-  if (dock && !groups.has(dock.channel)) groups.set(dock.channel, []);
+  // A decision docked on Mission (wave 18: never the lobby) makes no room.
+  if (dock && dock.channel !== "mission" && !groups.has(dock.channel)) groups.set(dock.channel, []);
   // Threads the guest opened from the People list (a private message to a
   // guest, a DM to a character) exist before anyone has said anything.
   for (const id of opened) if (!groups.has(id)) groups.set(id, []);
@@ -191,11 +193,15 @@ export function buildGuestChannels(
     // A DM with a character nobody reads (no performer, no agent) takes no
     // composer (wave 13: `voiced`; an older server sends none → keep it).
     const nobodyReads = id.startsWith("dm:") && !isVoiced(view, id.slice(3));
+    // The lobby is the guest's far-away 📜 Chat log (wave 18, G2): never
+    // named after the story, never a default room, never an exit.
+    const lobby = head.kind === "lobby";
     return {
       id,
       kind: head.kind,
-      title: otherName ?? castName ?? (head.kind === "lobby" && storyTitle ? storyTitle : head.title),
-      subtitle: otherName !== null ? "private" : undefined,
+      title: lobby ? CHAT_LOG_TITLE : (otherName ?? castName ?? head.title),
+      // A pm row previews its last line (GN-F16: it read "private").
+      subtitle: lobby ? CHAT_LOG_SUB : undefined,
       spaceId: STORY_SPACE,
       spaceTitle: storyTitle,
       needsYou: needsYou(msgs),

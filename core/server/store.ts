@@ -53,6 +53,7 @@ export type Mutation =
   | "share"
   | "quest"
   | "wallet"
+  | "crew" // w18 crews: one `CrewOp` (crews.ts) — found / invite / recruit / answer / leave / rename / dissolve
   | "tick";
 
 /** One replayable line of the journal: a method name + its arguments, and

@@ -16,8 +16,9 @@
 #   candour needs only the flag (and the persona's own `when:`, awake);
 #   standing down still waits for the Y2K hour (Night.step >= 14), when the
 #   story first lets it count. `marked` is true while the Antivirus have
-#   flagged the program for the Internet (restricted, buttons off; the
-#   house pins it on their phone, so it is public). Not `marked_for`: he
+#   flagged the program for the Internet (since wave 18 it hinders
+#   nothing; the house tells the program and the Antivirus hunt them
+#   openly, so it is public). Not `marked_for`: he
 #   does not know why, and asks (wave 11b).
 # situations: extra blocks for a moment, gated like `when:` (wave 7). At his
 #   heart he is candid, "the Master"; whether he may say Sandy's name

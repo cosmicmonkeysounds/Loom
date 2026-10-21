@@ -38,6 +38,11 @@ export const HOST_ROUTES = [
   "/api/mod/stop",
   // The show clock (wave 13 K5): set it to a time or nudge it by minutes.
   "/api/mod/clock",
+  // Who is calling the show (wave 18 C8): claim it, or let it go.
+  "/api/mod/caller",
+  // A guest-founded crew: rename it, or dissolve it (fix round M3).
+  "/api/mod/crew/rename",
+  "/api/mod/crew/dissolve",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
@@ -47,6 +52,15 @@ export const HOST_READS = ["/api/state?role=mod&host=1", "/api/mod/recap"] as co
 /** One POST to `route` with the booth token; resolves with the JSON body,
  *  rejects with `ApiError` on a refusal. */
 export type HostPost = (route: HostRoute, body: Record<string, unknown>, signal?: AbortSignal) => Promise<Record<string, unknown>>;
+
+/** The world path the facts judge reads its mode from (wave 18 C8: on
+ *  the host `/api/mod/var` allowlist beside the alert dial). */
+export const JUDGE_MODE_PATH = "Night.judge_mode";
+
+/** The judge's two modes: the house judges (near misses wait), or every
+ *  filing waits for a host. */
+export const JUDGE_MODES = ["auto", "review"] as const;
+export type JudgeMode = (typeof JUDGE_MODES)[number];
 
 /** The event the story fires when a guest comes back from the bathroom
  *  (the show's `INTERACTION back from the bathroom`). */
@@ -111,6 +125,15 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
       if (!ALERT_LEVELS.includes(level)) return Promise.reject(new Error(`not a level: ${level}`));
       return post("/api/mod/var", { path: alertsPath(), value: level });
     },
+    /** The facts judge's mode (B8): `auto` (the house judges; near misses
+     *  wait for a host) or `review` (every filing waits). */
+    setJudgeMode: (mode: JudgeMode) => {
+      if (!JUDGE_MODES.includes(mode)) return Promise.reject(new Error(`not a mode: ${mode}`));
+      return post("/api/mod/var", { path: JUDGE_MODE_PATH, value: mode });
+    },
+    /** 📣 I'll call (`on`) / Stop calling: the caller claim every cue sheet
+     *  shows (memory only on the server; a restart clears it). */
+    caller: (on: boolean) => post("/api/mod/caller", { on }),
     /** Announce to everyone (🔔 = an alert every phone banners). */
     announce: (text: string, alert: boolean) => post("/api/mod/broadcast", { scope: "all", cue: announceCue(text, alert) }),
     /** Answer one guest's DM as an agent-voiced character (Trabolta): the
@@ -142,6 +165,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
       return { name: str(r["name"]), url: str(r["url"]), expiresAt: typeof r["expiresAt"] === "number" ? r["expiresAt"] : 0 };
     },
     release: (character: string) => post("/api/mod/prime/release", { character }),
+    renameCrew: (crew: string, name: string) => post("/api/mod/crew/rename", { crew, name }),
+    dissolveCrew: (crew: string) => post("/api/mod/crew/dissolve", { crew }),
     restrict: (id: string, on: boolean) => post("/api/mod/act", { id, action: on ? "restrict" : "unrestrict" }),
     /** End a stale Bathroom Mode: the story's own "back" event on the guest. */
     backFromBathroom: (id: string) => post("/api/mod/signal", { name: BACK_FROM_BATHROOM, subject: id }),

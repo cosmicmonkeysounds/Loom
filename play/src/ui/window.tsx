@@ -5,6 +5,7 @@
 //! takes every colour and bevel from the tokens).
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { focusedIn } from "./focus.ts";
 
 /** A caption bar's tone: the normal title gradient, alarm red, restricted ochre. */
 export type WinTone = "alarm" | "restricted";
@@ -50,7 +51,7 @@ export function WinDialog({ title, onClose, tone, children, label }: { title: Re
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    const before = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const before = focusedIn(box.current) as HTMLElement | null;
     const el = box.current;
     if (el !== null) (focusables(el)[0] ?? el).focus();
     return () => before?.focus?.();
@@ -63,7 +64,7 @@ export function WinDialog({ title, onClose, tone, children, label }: { title: Re
     }
     if (e.key !== "Tab" || box.current === null) return;
     const list = focusables(box.current);
-    const at = list.indexOf(document.activeElement as HTMLElement);
+    const at = list.indexOf(focusedIn(box.current) as HTMLElement);
     const next = trapNext(list.length, at, e.shiftKey);
     e.preventDefault();
     if (next >= 0) list[next]!.focus();

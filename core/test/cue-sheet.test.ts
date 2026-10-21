@@ -160,7 +160,7 @@ describe("the phone cue page's server surface (W-26)", () => {
     const token = login.json["token"] as string;
 
     const before = (await call(rt, "GET", "/api/state?role=mod", {}, token)).json as unknown as ModView;
-    expect(before.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
+    expect(before.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null, caller: null }); // wave 18: nobody calls (key present)
     const rows = cueRows(before.interactions ?? [], before.cues!);
     expect(rows.map((r) => [r.code, r.next])).toEqual([
       ["C1", true],
@@ -355,7 +355,7 @@ describe("the phone cue page's server surface (W-26)", () => {
     expect(full.title).toBe("Cue Phone");
     expect(lean.doorsClosed).toBe(true);
     expect(lean.paused).toBe(true);
-    expect(lean.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null });
+    expect(lean.cues).toEqual({ last: null, lastBy: null, fired: [], presses: 0, pressed: null, caller: null }); // wave 18: nobody calls (key present)
     expect(cueRows(lean.interactions, lean.cues).find((r) => r.next)?.id).toBe("ring_the_bell");
     rt.openDoors();
     const open = (await call(rt, "GET", "/api/state?role=mod&cues=1", {}, token)).json as unknown as ReturnType<typeof cueSheetView>;

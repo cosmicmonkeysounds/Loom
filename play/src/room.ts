@@ -6,6 +6,16 @@
 //! the room once its backlog is in — and only a room this participant
 //! lists, so a link can never reveal a room the story hasn't opened.
 //! Pure helpers — unit-tested in `test/room.test.ts`.
+//!
+//! Wave 18 (GUEST-SPEC §6.4): a guest's link lands through the moments'
+//! exit type — `navFromSearch` / `navFromMessage` give the `Nav` the guest
+//! app's `go` takes: the lobby → Mission, the Codex / Quest Log / Wallet →
+//! those, a listed room → that room, anything else → Mission. The booth's
+//! mapping (`roomTarget`) is unchanged.
+
+import { navFromRoom, type Nav } from "./moments/exits.ts";
+
+export { navFromRoom, navFromSearch } from "./moments/exits.ts";
 
 /** The service worker's message to an open window. */
 export const OPEN_ROOM = "open-room";
@@ -20,10 +30,42 @@ export function roomFromSearch(search: string): string | null {
   }
 }
 
-/** `search` without its `room` param (so a reload doesn't jump again). */
+/** A notification link's own params (`room`, `go`, `entry`, `quest`) as a
+ *  query string, or null when the page carries none. */
+export function linkFromSearch(search: string): string | null {
+  try {
+    const p = new URLSearchParams(search);
+    const out = new URLSearchParams();
+    for (const k of ["room", "go", "entry", "quest"]) {
+      const v = p.get(k)?.trim() ?? "";
+      if (v !== "") out.set(k, v);
+    }
+    return out.has("room") || out.has("go") ? `?${out.toString()}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The link in a service-worker message: its whole `link` query (wave 18),
+ *  else the old `room` alone; null for anything else. */
+export function linkFromMessage(data: unknown): string | null {
+  if (typeof data !== "object" || data === null) return null;
+  const d = data as { type?: unknown; link?: unknown };
+  if (d.type === OPEN_ROOM && typeof d.link === "string") {
+    const l = linkFromSearch(d.link);
+    if (l !== null) return l;
+  }
+  const room = roomFromMessage(data);
+  return room !== null ? `?room=${encodeURIComponent(room)}` : null;
+}
+
+/** `search` without its link params (so a reload doesn't jump again). */
 export function withoutRoom(search: string): string {
   const p = new URLSearchParams(search);
   p.delete("room");
+  p.delete("go");
+  p.delete("entry");
+  p.delete("quest");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -47,6 +89,9 @@ function boothRoom(room: string): string {
 /** The thread to open for a linked room, or null when this participant
  *  doesn't list it (hidden, never theirs, or someone else's link). */
 export function roomTarget(room: string, listed: readonly string[], booth: boolean): string | null {
+  // A booth's link to the lobby (every `!` broadcast) lands on the booth's
+  // home, never the far-away Chat log (NM-F6).
+  if (booth && room === "lobby") return null;
   const id = booth ? boothRoom(room) : room;
   return listed.includes(id) ? id : null;
 }
@@ -56,4 +101,9 @@ export function roomTarget(room: string, listed: readonly string[], booth: boole
  *  the backlog is in, and the home default (which runs last) would win. */
 export function opensHome(signedIn: boolean, wide: boolean, activeId: string | null, home: string | null, linkPending: boolean): boolean {
   return signedIn && wide && activeId === null && home !== null && !linkPending;
+}
+
+/** A guest's landing for the service worker's `open-room` message (null for anything else). */
+export function navFromMessage(data: unknown, listed: Iterable<string>): Nav | null {
+  return navFromRoom(roomFromMessage(data), listed);
 }

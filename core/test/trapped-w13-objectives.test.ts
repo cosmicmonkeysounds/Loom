@@ -250,7 +250,8 @@ function noticeBlocks(): Array<{ where: string; line: string; block: string[] }>
 describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
   it("every ~ notice has the person's own result in the same block (a reply, the mark's pin, a line to them)", () => {
     const blocks = noticeBlocks();
-    expect(blocks.length).toBe(25);
+    // Wave 18: the Bingo winner's ribbon is a big house cheer (B7), not a ~ notice.
+    expect(blocks.length).toBe(24);
     for (const { where, line, block } of blocks) {
       expect(line, where).not.toMatch(/^broadcast "~?!|^broadcast "!~/);
       // A transfer / trade notice in # truthcoin-exchange: each party's own
@@ -264,18 +265,19 @@ describe("Trapped in the Internet — wave 13: per-person notices (~)", () => {
   it("a notice is composed with its collapse key; the subject still hears it personally", () => {
     const n = boot();
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
-    n.signal("bingo_winner", "g5", undefined, "Clippy");
+    // A ribbon for a program without a Bingo stays a ~ notice (wave 18: a
+    // Bingo winner's is the big house cheer, trapped-w18.test.ts).
     const out = n.signal("award_the_ribbon", "g5", undefined, "Clippy");
-    const notice = out.find((m) => m.text.includes("wins a Bingo Ribbon"))!;
+    const notice = out.find((m) => m.text.includes("receives a ribbon"))!;
     expect(notice.notice).toBe("🎀");
     expect(notice.text.startsWith("~")).toBe(false);
     expect(notice.audience).toBe("all");
-    expect(forGuest(out, "g5").some((m) => m.readout === true && m.text.startsWith("🎀 You won a Bingo Ribbon"))).toBe(true);
+    expect(forGuest(out, "g5").some((m) => m.readout === true && m.text.startsWith("🎀 You received a ribbon"))).toBe(true);
   }, SLOW);
 });
 
 describe("Trapped in the Internet — wave 13: the cards that ask", () => {
-  it("the bottle's Truth / Dare card and the pickup-line card are major moments", () => {
+  it("the bottle's Truth / Dare card and the pickup-line card are big moments (wave 18; major in wave 13)", () => {
     const n = boot();
     for (const c of TO_TRUTH_1) n.press(c);
     n.press("close_the_filing");
@@ -285,7 +287,7 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const spin = n.signal("bottle_landed", "g2");
     const pick = { id: "g2" };
     const card = spin.find((m) => m.kind === "widget" && m.text.startsWith("🍾 The bottle landed on you"))!;
-    expect(card).toMatchObject({ moment: "major", audience: [pick.id] });
+    expect(card).toMatchObject({ moment: "big", audience: [pick.id] });
     // The pickup line (after truth.txt, both branches).
     for (const c of ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
       if (v(n.sim, "Night.bottle_open") === true) n.signal("truth_answered", pick.id, undefined, "Clippy");
@@ -296,13 +298,13 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const verdict = n.press("the_verdict");
     const lines = verdict.filter((m) => m.kind === "widget" && m.text.startsWith("Give me a pickup line"));
     expect(lines.length).toBeGreaterThan(0);
-    for (const m of lines) expect(m.moment, m.text).toBe("major");
+    for (const m of lines) expect(m.moment, m.text).toBe("big");
   }, SLOW);
 });
 
-/** A major moment reached this guest in the batch: an alert, a `!` pin, a
- *  `reply !…` or a card that asks (the server stamps `moment: "major"`). */
-export const majorFor = (ms: readonly ChatMessage[], id: string) => forGuest(ms, id).filter((m) => m.moment === "major");
+/** A major (or, since wave 18, big) moment reached this guest in the batch:
+ *  an alert, a `!` pin, a `reply !…` / `!!…` or a card that asks. */
+export const majorFor = (ms: readonly ChatMessage[], id: string) => forGuest(ms, id).filter((m) => m.moment === "major" || m.moment === "big");
 
 describe("Trapped in the Internet — wave 13: every buried beat has a delivery (ux/alerts-beats.md §4)", () => {
   const Y2K = () => {
@@ -321,8 +323,6 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     ["🕚 the Y2K orders + factions exposed", /^🕚 SYSTEM CLOCK RESET.*two factions are recruiting/u, () => { const n = boot(); for (const c of TO_OVERSHARE) n.press(c); return { n, out: n.press("y2k_clock") }; }],
     ["📂 # clipboard opens (hunt 2)", /^📓 Round 2 .*# clipboard is open\./u, () => { const n = boot(); for (const c of TO_HOUR.slice(0, -1)) n.press(c); const out = n.press("start_the_second_hunt"); expect(majorFor(out, "g1").some((m) => m.text.includes("# clipboard"))).toBe(true); return { n, out }; }],
     ["📂 # truthcoin-exchange opens (the Truther Download)", /^📥 TRUTHER DOWNLOAD received\..*# truthcoin-exchange is open\./u, () => { const n = boot(); for (const c of TO_HOUR) n.press(c); const out = n.tick(125); expect(majorFor(out, "g1").some((m) => m.text.includes("# truthcoin-exchange"))).toBe(true); return { n, out }; }],
-    ["④ a guess that marks you (the 🤷 verdict)", /^🚨 GO TO THE INTERNET\./u, () => { const n = boot(); for (const c of TO_TRUTH_1) n.press(c); return { n, out: n.signal("uncertain_answer", "g1", undefined, "Clippy") }; }],
-    ["⑤ your cup: missed", /^🚨 GO TO THE INTERNET\./u, () => { const n = boot(); for (const c of [...TO_HOUR, "five_minute_warning"]) n.press(c); n.scan("Norton Anti-Virus", "g1"); for (const c of ["summons_closed", "truth_pong"]) n.press(c); return { n, out: n.signal("missed_the_cup", "g1", undefined, "Adobe Acrobat") }; }],
     ["⑥ the Truther Download (your messages, your mission)", /^📥 TRUTHER DOWNLOAD received\./u, () => { const n = boot(); for (const c of TO_HOUR) n.press(c); return { n, out: n.tick(125) }; }],
     ["♟ the door code by checkmate", /^♟ Checkmate\. The King lets the door code slip/u, () => { const n = Y2K(); return { n, out: n.signal("chess_won", "g1") }; }],
     ["🔢 the door code by the four digit notes", /^🔢 Four of four\./u, () => {
@@ -368,7 +368,8 @@ describe("Trapped in the Internet — wave 13: every buried beat has a delivery 
     for (const c of TO_TRUTH_1) n.press(c);
     const mark = n.signal("uncertain_answer", "g5", undefined, "Clippy");
     const escort = mark.find((m) => m.channel === "dm:Norton Anti-Virus" && m.text.startsWith("🚨 Winamp is marked"))!;
-    expect(escort).toMatchObject({ readout: true, alert: true, moment: "major", about: "g5" });
+    // Wave 18 (B3): the WANTED pop-out, a big booth readout with the guest's name.
+    expect(escort).toMatchObject({ readout: true, alert: true, moment: "big", about: "g5", aboutName: "Winamp" });
   }, SLOW);
 });
 
@@ -410,28 +411,6 @@ describe("Trapped in the Internet — wave 13: booth noise", () => {
     expect(lines(n.scan("Task Manager", "g5"), "Task Manager", "g5")[0]).toMatch(/^Truths accepted: 0\. Visits to the Internet: 0\. Truthcoin: \d+\.$/u);
   }, SLOW);
 
-  it("Windows Defender hears only its door readouts: no sweep, escort, late, Bathroom Mode or alarm", () => {
-    const n = boot();
-    const wd = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "dm:Windows Defender" && m.readout === true).map((m) => m.text);
-    const norton = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "dm:Norton Anti-Virus" && m.readout === true).map((m) => m.text);
-    const cd = n.press("call_to_the_desktop");
-    expect(wd(cd)).toEqual([]);
-    expect(norton(cd).length).toBe(1);
-    expect(wd(n.signal("go to the bathroom", "g5"))).toEqual([]);
-    n.signal("back from the bathroom", "g5");
-    for (const c of ["start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) n.press(c);
-    const mark = n.signal("uncertain_answer", "g6", undefined, "Clippy");
-    expect(wd(mark)).toEqual([]);
-    expect(norton(mark).some((t) => t.startsWith("🚨 VLC is marked"))).toBe(true);
-    for (const c of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) n.press(c);
-    const summons = n.press("five_minute_warning");
-    expect(wd(summons)).toEqual(["🛡 The summons: hold the door. Scan only new arrivals; send everyone else to the living room."]);
-    // A late arrival still clears at the door.
-    const late = n.upload("g9", "Netscape", "Windows Defender");
-    expect(v(n.sim, "g9.cleared")).toBe(true);
-    expect(wd(late).some((t) => t.startsWith("✅ Cleared Netscape"))).toBe(true);
-  }, SLOW);
-
   it("McAfee's expired-protection pop-up is a bark (the ambient ticker), not a broadcast", () => {
     const n = boot();
     const out = n.tick(20 * 60 + 5);
@@ -455,7 +434,7 @@ describe("Trapped in the Internet — wave 13: skipping the tour", () => {
 
 // ───────── the walk: a live objective for every phone at every cue ─────────
 
-export const PERFORMERS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender", "Clippy", "Task Manager", "Adobe Acrobat", "Recycling Bin"];
+export const PERFORMERS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Clippy", "Task Manager", "Adobe Acrobat", "Recycling Bin"];
 export const HOST_PARTS = new Set(["Task Manager", "Adobe Acrobat", "Recycling Bin"]);
 const RESERVED = new Set(["pass", "scan"]);
 const interactionButtons = (b: readonly string[]) => b.filter((x) => !RESERVED.has(x));
@@ -521,7 +500,7 @@ function nightSteps(ending: "song" | "hand_jive"): Step[] {
     press("second_hunt_preview"),
     press("start_the_second_hunt"),
     ["+2 min (the Truther Download)", (n) => { n.tick(125); }],
-    ["Windows Defender clears g7", (n) => { n.scan("Windows Defender", "g7"); }],
+    ["CRA Agent Software clears g7", (n) => { n.scan("CRA Agent Software", "g7"); }],
     by("send to the internet", "g5", "McAfee Anti-Virus"),
     press("five_minute_warning"),
     ["check-ins at the door", (n) => { for (const g of ["g1", "g2", "g3", "g4", "g6", "g7"]) n.scan("Norton Anti-Virus", g); }],
@@ -599,7 +578,8 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("call_to_the_desktop").g1).toBe("Go To The Desktop");
     expect(at("start_the_bingo").g1).toBe("Play Computer Bingo");
     expect(at("bingo_time").g1).toBe("Bingo Results");
-    expect(at("Clippy: named_at_bingo g4").g4).toBe("Go To The Internet");
+    // Wave 18 (Q30): marked, not hindered: the phase's NOW stays.
+    expect(at("Clippy: named_at_bingo g4").g4).toBe("Bingo Results");
     expect(at("Norton Anti-Virus: send to the internet g4").g4).toBe("Find Gerald");
     expect(at("introduce_trabolta").g1).toBe("Meet Trabolta");
     expect(at("start_the_hunt").g1).toBe("Find Three Facts");
@@ -608,7 +588,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("close_the_filing").g1).toBe("The First Moment Of Truth");
     expect(at("second_hunt_preview").g1).toBe("Stay Calm");
     expect(at("start_the_second_hunt").g1).toBe("The Hour");
-    expect(at("Windows Defender clears g7").g7).not.toBe("Show Your Pass");
+    expect(at("CRA Agent Software clears g7").g7).not.toBe("Show Your Pass");
     expect(at("five_minute_warning").g1).toBe("Be At The Desktop");
     expect(at("summons_closed").g1).toBe("The Door Is Closed"); // never "five minutes" once the door has shut
     expect(at("truth_pong").g1).toBe("Truth Pong");
@@ -619,11 +599,11 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("the_verdict").g1).toBe("The Night Is Over");
     expect(at("start_the_ceremony").g1).toBe("The Night Is Over");
     // The booths.
-    expect(at("doors")).toMatchObject({ "Norton Anti-Virus": "Door Duty", "Windows Defender": "Hold The Door", Clippy: "Greet The Arrivals", "Task Manager": "The Help Desk", "Adobe Acrobat": "Documents And Printing", "Recycling Bin": "The Porch" });
+    expect(at("doors")).toMatchObject({ "Norton Anti-Virus": "Door Duty", Clippy: "Greet The Arrivals", "Task Manager": "The Help Desk", "Adobe Acrobat": "Documents And Printing", "Recycling Bin": "The Porch" });
     expect(at("call_to_the_desktop")).toMatchObject({ "Norton Anti-Virus": "Sweep To The Desktop", Clippy: "Welcome Everyone" });
     expect(at("start_the_bingo")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", "McAfee Anti-Virus": "Patrol The Computer", Clippy: "Welcome Everyone" });
     expect(at("bingo_time")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", Clippy: "Celebrate The Winners", "Task Manager": "The Fake Bingo Card" });
-    expect(at("Clippy: named_at_bingo g4")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked", "McAfee Anti-Virus": "Escort The Marked", "Windows Defender": "Hold The Door" });
+    expect(at("Clippy: named_at_bingo g4")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked", "McAfee Anti-Virus": "Escort The Marked" });
     expect(at("introduce_trabolta")).toMatchObject({ Clippy: "Introduce Trabolta", "Norton Anti-Virus": "Patrol The Computer" });
     expect(at("first_moment_of_truth")).toMatchObject({ Clippy: "The First Moment Of Truth Host" });
     expect(at("the bottle lands on g2")).toMatchObject({ Clippy: "The Bottle" });
@@ -637,14 +617,17 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("y2k_clock")).toMatchObject({ "Norton Anti-Virus": "Patch Bay Watch", "Password Manager": "Patch Bay And Clubs", Clippy: "No Sides On Air" });
     expect(at("final_reveal")).toMatchObject({ "Norton Anti-Virus": "Blackout Guide", Clippy: "The Final Round" });
     expect(at("read_truth_txt")).toMatchObject({ "Norton Anti-Virus": "Blackout Guide", "Adobe Acrobat": "Hand Over Truth Txt" });
-    expect(at("zip_everyone_out")).toMatchObject({ "Norton Anti-Virus": "Zip Everyone Out", g5: "Where You Stand" });
+    // Wave 18 (S3): the NOW follows the Act II beats one by one.
+    expect(at("Adobe Acrobat: radio_beans g6").g1).toBe("Full Of Beans");
+    expect(at("zip_everyone_out")).toMatchObject({ "Norton Anti-Virus": "Zip Everyone Out", g5: "Zipped Out" });
+    expect(at("trabolta_overshares").g1).toBe("The Overshare");
     expect(at("Password Manager: send to the internet g3")).toMatchObject({ g3: "Find Gerald", "Password Manager": "Patrol The Computer" });
     expect(at("bobbing_for_truth")).toMatchObject({ Clippy: "Bob For It", "Adobe Acrobat": "The Bag Of Truth" });
     expect(at("Adobe Acrobat: brought_up_the_bag g1")).toMatchObject({ "Adobe Acrobat": "Hand Over Truth Txt" });
-    expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
+    expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony" });
   }, SLOW);
 
-  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's none (🛡 folded, armed), and 🩹 only on a marked program", () => {
+  it("Clippy's card face has an objective button in every act (the cast pack's buttons), and 🩹 only on a marked program", () => {
     // Per checkpoint: Clippy's objective-sourced face on each cleared,
     // unmarked guest's card, and the act.
     const clippy = new Map<string, string[]>();
@@ -660,14 +643,6 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
       clippy.set(label, [...new Set(faces.flat())]);
       if (!acts.has(act)) acts.set(act, new Set());
       for (const id of faces.flat()) acts.get(act)!.add(id);
-      // Windows Defender's face is the scan alone (w13 Q29): 🛡 is under
-      // All buttons… (armed, only when a host or the director asks), never
-      // the patch bay. ♟ rides it only while the King is armed.
-      for (const g of guests) {
-        const wd = cardFace(n, "Windows Defender", g).face;
-        expect(wd, `${label}: Windows Defender on ${g}`).not.toContain("send to the internet");
-        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch", "accuse", "mark as reinstalled"]) expect(wd, `${label}: Windows Defender on ${g}`).not.toContain(b);
-      }
       // The patch-bay radios are not about the scanned guest: on the four
       // room Antivirus' faces in the Y2K hour (Patch Bay Watch is NOW), never
       // from the final reveal on (w13 Q33: Lights Down is NOW, the radios fold).
@@ -712,7 +687,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
     n.signal("named_at_bingo", "g4", undefined, "Clippy");
     n.press("introduce_trabolta"); // past the Bingo results: Clippy's NOW names no button
-    for (const p of ["Clippy", "Norton Anti-Virus", "Windows Defender", "Task Manager"]) {
+    for (const p of ["Clippy", "Norton Anti-Virus", "McAfee Anti-Virus", "Task Manager"]) {
       const card = guestCardView(n.sim, n.chat.all(), p, "g4", HOST_PARTS.has(p))!;
       expect(card.guestScoped, p).toContain("unmark_for_reinstallation");
       expect(cardFace(n, p, "g4").face, p).toContain("unmark_for_reinstallation");
@@ -731,11 +706,12 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
     const ci2 = () => primeView(n.sim, "Clippy").objectives!.find((o) => o.id === "Celebrate The Winners")!.checklist.map((c) => c.done);
     expect(ci2()).toEqual([false, false, false, false]);
+    // Wave 18 (A5): the to-dos are PLAYER SELECT's steps, 🎱 → 🎀 → 🎯.
     n.signal("bingo_winner", "g1", undefined, "Clippy");
     n.signal("named_at_bingo", "g4", undefined, "Clippy");
     // A ribbon for a program without a Bingo is not CI 2's ribbon.
     n.signal("award_the_ribbon", "g2", undefined, "Clippy");
-    expect(ci2()).toEqual([true, true, false, false]);
+    expect(ci2()).toEqual([true, false, true, false]);
     n.signal("award_the_ribbon", "g1", undefined, "Clippy");
     expect(ci2()).toEqual([true, true, true, false]);
     n.signal("send to the internet", "g4", undefined, "Norton Anti-Virus");
@@ -779,7 +755,9 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     n.signal("send to the internet", "g5", undefined, "Norton Anti-Virus");
     n.signal("mark_for_reinstallation", "g6", { reason: "test" });
     expect(guestView(n.sim, "g5").objectives?.[0]?.id).toBe("Find Gerald");
-    expect(guestView(n.sim, "g6").objectives?.[0]?.id).toBe("Go To The Internet");
+    // Wave 18 (Q30): a mark does not hinder: the phase's NOW stays, "You Are Marked" under it.
+    expect(guestView(n.sim, "g6").objectives?.[0]?.id).toBe("The Y2K Hour");
+    expect(guestView(n.sim, "g6").objectives?.map((o) => o.id)).toContain("You Are Marked");
     toCeremony(n);
     expect(v(n.sim, "g6.marked")).toBe(true);
     for (const g of ["g5", "g6"]) expect(guestView(n.sim, g).objectives?.[0]?.id, g).toBe("The Night Is Over");
@@ -800,23 +778,22 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     const at = (label: string) => table.get(label)!;
     expect(at("the verdict: Grok Prom")).toMatchObject({ g1: "The Pickup Line", Clippy: "Grok Prom", "Task Manager": "Grok Prom", "Recycling Bin": "Grok Prom" });
     expect(at("ask_for_advice").g1).toBe("Help Or Thwart");
-    expect(at("advice_tally")).toMatchObject({ g1: "The Hand Jive", g5: "The Hand Jive", "Norton Anti-Virus": "Banished Too", "Windows Defender": "Hold The Door" });
+    expect(at("advice_tally")).toMatchObject({ g1: "The Hand Jive", g5: "The Hand Jive", "Norton Anti-Virus": "Banished Too" });
     expect(at("the_hand_jive").g1).toBe("The Night Is Over");
   }, SLOW);
 
-  it("audiences never cross: a guest sees only Program objectives, Windows Defender only its own, Clippy never a host part's", () => {
+  it("audiences never cross: a guest sees only Program objectives, Clippy never a host part's", () => {
     const n = boot();
     const m = n.sim.model;
     const guestIds = new Set([...m.objectives.values()].filter((o) => o.audience.roles.includes("Program")).map((o) => o.id));
     for (const c of TO_Y2K) n.press(c);
     for (const o of guestView(n.sim, "g1").objectives ?? []) expect(guestIds.has(o.id), o.id).toBe(true);
     for (const p of PERFORMERS) for (const o of primeView(n.sim, p).objectives ?? []) expect(guestIds.has(o.id), `${p}: ${o.id}`).toBe(false);
-    expect((primeView(n.sim, "Windows Defender").objectives ?? []).map((o) => o.id)).toEqual(["Hold The Door"]);
     for (const o of primeView(n.sim, "Clippy").objectives ?? []) expect(["The Bank", "Summons Door", "The Help Desk"]).not.toContain(o.id);
     // Every objective carries the sign-off marker in the source.
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
     expect(src.match(/^OBJECTIVE /gmu)!.length).toBe(m.objectives.size);
-    expect(src.match(/^\/\/ DRAFT for sign-off\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
+    expect(src.match(/^\/\/ DRAFT (?:for sign-off|w18)\nOBJECTIVE /gmu)!.length).toBe(m.objectives.size);
   }, SLOW);
 });
 
@@ -826,7 +803,10 @@ describe("Trapped in the Internet — wave 13: the sign-off sheet", () => {
     const { join } = await import("node:path");
     const sheet = readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8");
     expect(sheet).toMatch(/DRAFT/u);
-    for (const id of Sim.fromSources(SRC).model.objectives.keys()) expect(sheet, id).toContain(`| ${id} |`);
+    // Wave 18's new objectives (`// DRAFT w18`) await their own sign-off page.
+    const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
+    const w18 = new Set([...src.matchAll(/^\/\/ DRAFT w18\nOBJECTIVE (.+)$/gmu)].map((x) => x[1]!.trim()));
+    for (const id of Sim.fromSources(SRC).model.objectives.keys()) if (!w18.has(id)) expect(sheet, id).toContain(`| ${id} |`);
   });
 });
 
@@ -835,14 +815,14 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     evs.filter((e) => e.type === "widget" && (e as { widget: string }).widget === "fact" && (e as { audience: string[] }).audience[0] === g).map((e) => (e as { text: string }).text);
   const replyTo = (ms: readonly ChatMessage[], who: string) => ms.filter((m) => m.channel === `dm:${who}` && m.readout === true).map((m) => m.text);
 
-  it("🛡 arms first on every Antivirus booth, and Windows Defender's door objective puts nothing but the scan on a card (Q29)", () => {
+  it("🛡 arms first on every Antivirus booth, and Door Duty puts nothing but the scan on a card (Q29)", () => {
     const n = boot();
     expect(n.sim.model.interactions.get("send to the internet")!.arm).toBe(true);
-    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"]) {
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"]) {
       expect(primeView(n.sim, who).interactions?.find((i) => i.id === "send to the internet")?.arm, who).toBe(true);
     }
-    const door = primeView(n.sim, "Windows Defender").objectives!;
-    expect(door.map((o) => o.id)).toEqual(["Hold The Door"]);
+    const door = primeView(n.sim, "Password Manager").objectives!;
+    expect(door[0]!.id).toBe("Door Duty");
     expect(door[0]!.buttons).toEqual(["scan"]);
   });
 
@@ -856,14 +836,9 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
       const said = forGuest(out, "g5").filter((m) => m.channel === `dm:${who}`).map((m) => m.text);
       expect(said.join("\n"), who).not.toMatch(/no threats found|Scanning\. Scanning\.|definitions are out of date/u);
       expect(said.some((t) => t.includes("you are marked for reinstallation") && t.includes("the Internet")), who).toBe(true);
-      expect(replyTo(out, who).some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("🛡")), who).toBe(true);
+      // Wave 18 (B4): the scan is the confrontation: a big booth readout.
+      expect(replyTo(out, who).some((t) => t.startsWith("🛡 Corruption detected: Winamp (") && t.includes("Send to the Internet")), who).toBe(true);
     }
-    // Windows Defender holds the door: it never says "come with me".
-    const door = n.scan("Windows Defender", "g5");
-    const doorSaid = forGuest(door, "g5").filter((m) => m.channel === "dm:Windows Defender").map((m) => m.text).join("\n");
-    expect(doorSaid).toContain("An Antivirus will escort you through the Tube to the Internet.");
-    expect(doorSaid).not.toMatch(/Come with me|no threats found/u);
-    expect(replyTo(door, "Windows Defender").some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("Stay at the door"))).toBe(true);
     // An unmarked, cleared program still gets the old patter.
     const ok = n.scan("Norton Anti-Virus", "g1");
     expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
@@ -895,48 +870,40 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
   it("After The Night is live only once the night has ended: never under More objectives before (Q34)", () => {
     const n = boot();
     const ids = () => (primeView(n.sim, "Norton Anti-Virus").objectives ?? []).map((o) => o.id);
+    // Door Duty first: Patrol (and its 👁) waits for the call (BN-F16).
+    expect(ids()).not.toContain("Patrol The Computer");
+    n.press("call_to_the_desktop");
     expect(ids()).toContain("Patrol The Computer");
     expect(ids()).not.toContain("After The Night");
-    for (const c of TO_Y2K) n.press(c);
+    for (const c of TO_Y2K.slice(1)) n.press(c);
     expect(ids()).not.toContain("After The Night");
     toCeremony(n);
     expect(ids()).toContain("After The Night");
     expect(ids()).not.toContain("Patrol The Computer");
   }, SLOW);
 
-  it("a marked program is dealt no 📝 card: its live card closes at the mark, a filing deals nothing new, and 🩹 deals the open round again (Q35)", () => {
+  it("a marked program keeps its 📝 card and files (wave 18, Q30 supersedes w13 Q35): the mark closes nothing, a round deals as usual", () => {
     const n = boot();
     for (const c of TO_TRUTH_1) n.press(c);
     expect(v(n.sim, "g5.fact_card_live")).toBe(true);
     const markEv = n.sim.signal("uncertain_answer", "g5", undefined, "Clippy");
     n.take(markEv);
     expect(v(n.sim, "g5.marked")).toBe(true);
-    expect(facts(markEv, "g5")).toEqual(["📝 The filing is closed"]);
-    expect(v(n.sim, "g5.fact_card_live")).toBe(false);
-    // Three refused filings in a row: no card after any of them.
-    for (let i = 0; i < 3; i++) {
-      const f = n.sim.signal("fact answered", "g5", { question: "H2", answer: "a guess", confidence: 50, verdict: "uncertain" });
-      n.take(f);
-      expect(facts(f, "g5"), `filing ${i}`).toEqual([]);
-    }
-    expect(guestView(n.sim, "g5").restricted).toBe(true);
-    // The mark comes off: the open round's card comes back, once.
-    const lift = n.sim.signal("unmark_for_reinstallation", "g5", undefined, "Norton Anti-Virus");
-    n.take(lift);
-    expect(facts(lift, "g5")).toEqual(["📝 File a fact"]);
+    expect(facts(markEv, "g5")).toEqual([]);
     expect(v(n.sim, "g5.fact_card_live")).toBe(true);
-    // A round that opens while marked deals through its watcher on the 🩹.
+    expect(guestView(n.sim, "g5").restricted).not.toBe(true);
+    // The filing is recorded like anyone's (no "you are marked" refusal).
+    const f = n.sim.signal("fact answered", "g5", { question: "H2", answer: "a guess", confidence: 50, verdict: "uncertain" });
+    n.take(f);
+    expect(v(n.sim, "g5.fact_h2")).toBe(true);
+    expect(f.some((e) => e.type === "dialogue" && /marked for reinstallation/u.test((e as { text: string }).text))).toBe(false);
+    // A round that opens while marked deals its card at once.
     n.signal("uncertain_answer", "g6", undefined, "Clippy");
     for (const c of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) n.press(c);
     expect(v(n.sim, "Night.round")).toBe(2);
     expect(v(n.sim, "g6.marked")).toBe(true);
-    expect(v(n.sim, "g6.fact_card_live")).not.toBe(true);
-    expect(v(n.sim, "g6.fact_round")).toBe(1);
-    const back = n.sim.signal("unmark_for_reinstallation", "g6", undefined, "Task Manager");
-    n.take(back);
-    expect(facts(back, "g6")).toEqual(["📝 File a fact"]);
     expect(v(n.sim, "g6.fact_round")).toBe(2);
-    expect(back.some((e) => e.type === "dialogue" && (e as { text: string }).text.startsWith("Round two"))).toBe(true);
+    expect(v(n.sim, "g6.fact_card_live")).toBe(true);
   }, SLOW);
 
   it("the late list is one readout per late program on every room Antivirus booth (Q31)", () => {
@@ -951,6 +918,5 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
       expect(r, who).toHaveLength(lateOnes.length);
       for (const t of r) expect(t, who).toMatch(/^🚨 .+ is late for the Second Moment of Truth: marked for reinstallation\./u);
     }
-    expect(replyTo(late, "Windows Defender").filter((t) => t.includes("late"))).toEqual([]);
   }, SLOW);
 });

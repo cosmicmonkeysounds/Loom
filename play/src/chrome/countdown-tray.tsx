@@ -18,13 +18,13 @@ import { Icon } from "./icons.tsx";
 import { TrayItem } from "./taskbar.tsx";
 
 /** The tray's short form of `left` seconds: `4:59` under ten minutes,
- *  `15 m` under two hours, `2 h` past that. Minutes round *up*: a hunt the
+ *  `15m` under two hours, `2h` past that (no space: the tray is narrow). Minutes round *up*: a hunt the
  *  story calls fifteen minutes reads `15 m` when it starts, never `14 m`. */
 export function trayClockText(left: number): string {
   const s = Math.max(0, Math.ceil(left));
   if (s < 600) return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-  if (s < 7200) return `${Math.ceil(s / 60)} m`;
-  return `${Math.floor(s / 3600)} h`;
+  if (s < 7200) return `${Math.ceil(s / 60)}m`;
+  return `${Math.floor(s / 3600)}h`;
 }
 
 /** `left` seconds spelled out for the balloon: "14 min 59 s", "1 h 5 min", "40 s". */

@@ -39,7 +39,8 @@ import {
   type Viewer,
 } from "../src/moments/model.ts";
 import { MomentsLayer, MomentsProvider, type MomentsInput } from "../src/moments/provider.tsx";
-import { Balloon, BlueScreen, MissedList, MomentDialog, StickyBanner, SummarySticky } from "../src/moments/surfaces.tsx";
+import type { Exit } from "../src/moments/exits.ts";
+import { Balloon, BlueScreen, MomentDialog, StickyBanner } from "../src/moments/surfaces.tsx";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../src/types.ts";
 import { readBundledCss } from "./css.ts";
 
@@ -142,17 +143,17 @@ describe("which messages are moments", () => {
 });
 
 describe("the queue", () => {
-  it("dialogs wait one at a time: 1 of 3, then 2 of 3, then 3 of 3", () => {
+  it("dialogs wait one at a time, newest first (§7): 1 of 3, then 2 of 3, then 3 of 3", () => {
     let s = run([arrive([moment(1)]), arrive([moment(2)]), arrive([moment(3)])]);
     let v = surfacesOf(s, false);
-    expect([v.modal?.moment.seq, v.modalIndex, v.modalTotal]).toEqual([1, 1, 3]);
-    s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: 5_000 });
+    expect([v.modal?.moment.seq, v.modalIndex, v.modalTotal]).toEqual([3, 1, 3]);
+    s = momentsReducer(s, { type: "dismiss", key: "m:3", onScreenMs: 5_000 });
     v = surfacesOf(s, false);
     expect([v.modal?.moment.seq, v.modalIndex, v.modalTotal]).toEqual([2, 2, 3]);
     s = momentsReducer(s, { type: "dismiss", key: "m:2", onScreenMs: 5_000 });
     v = surfacesOf(s, false);
-    expect([v.modal?.moment.seq, v.modalIndex, v.modalTotal]).toEqual([3, 3, 3]);
-    s = momentsReducer(s, { type: "dismiss", key: "m:3", onScreenMs: 5_000 });
+    expect([v.modal?.moment.seq, v.modalIndex, v.modalTotal]).toEqual([1, 3, 3]);
+    s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: 5_000 });
     expect(surfacesOf(s, false).modal).toBeNull();
     expect(s.burst).toBe(0);
     expect(s.missed).toEqual([]);
@@ -218,8 +219,8 @@ describe("the queue", () => {
     s = momentsReducer(s, { type: "relevel", level: "bsod", role: "guest", phase: "hunt" });
     expect(surfacesOf(s, false).modal?.moment.seq).toBe(3);
     expect(s.missed.map((m) => [m.seq, m.parked])).toEqual([
-      [1, true],
       [2, true],
+      [1, true],
     ]);
     // The newest read; the phone locks and wakes: no blue screen comes back on its own.
     s = momentsReducer(s, { type: "dismiss", key: "m:3", onScreenMs: 2_000 });
@@ -229,12 +230,12 @@ describe("the queue", () => {
     // A reload: they count as settled (the mark passes them, nothing above it waits).
     expect(settledMark(s, 3)).toBe(3);
     expect(doneAbove(s, [1, 2, 3], 0)).toEqual([1, 2, 3]);
-    // The tray's 🔔 replays them, as ordinary moments again.
+    // A booth tray's 🔔 replays them, as ordinary moments again (newest first).
     s = momentsReducer(s, { type: "wake", level: "bsod", role: "guest", now: 0, phase: "hunt", manual: true });
     expect(s.missed).toEqual([]);
     expect(s.queue.map((q) => [q.moment.seq, q.moment.parked])).toEqual([
-      [1, undefined],
       [2, undefined],
+      [1, undefined],
     ]);
   });
 
@@ -248,16 +249,14 @@ describe("the queue", () => {
     expect(s.missed).toEqual([]);
   });
 
-  it("Dismiss all (n) on a modal: every modal waiting is read, none of them missed", () => {
-    let s = run([arrive([1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` })), { level: "dialog" })]);
+  it("no Dismiss all (G6): `read` takes the keys the pin rail shows in full, none of them missed", () => {
+    let s = run([arrive([1, 2].map((n) => moment(n, { channel: `dm:${n}` })), { level: "sticky" })]);
     const v = surfacesOf(s, false);
-    expect(v.modalKeys).toEqual(["m:1", "m:2", "m:3", "m:4"]);
-    s = momentsReducer(s, { type: "dismissMany", keys: v.modalKeys });
-    expect(surfacesOf(s, false).modal).toBeNull();
+    expect(v.stickyKeys.sort()).toEqual(["m:1", "m:2"]);
+    s = momentsReducer(s, { type: "read", keys: v.stickyKeys });
+    expect(surfacesOf(s, false).sticky).toBeNull();
     expect(s.missed).toEqual([]);
-    expect(s.burst).toBe(0);
-    // Held (a busy surface): no modal shows, so there is nothing to dismiss all of.
-    expect(surfacesOf(run([arrive([moment(9)], { level: "dialog" })]), true).modalKeys).toEqual([]);
+    expect("modalKeys" in surfacesOf(s, false)).toBe(false);
   });
 
   it("a quick deliberate tap on a modal is read: ≥ the dead time, or the second of a queue being tapped through", () => {
@@ -334,7 +333,7 @@ describe("the busy-surface hold", () => {
     expect(surfacesOf(s, false).modal?.moment.seq).toBe(1);
   });
 
-  it("a dialog kept back more than 30 s counts as missed, and the release replays it", () => {
+  it("a dialog kept back more than 30 s counts as missed (an unread Notifications row), and is not replayed", () => {
     let s = run([arrive([moment(1)], { now: 0 })]);
     s = momentsReducer(s, { type: "tick", now: HOLD_MISS_MS - 1, held: true });
     expect(s.queue).toHaveLength(1);
@@ -342,31 +341,49 @@ describe("the busy-surface hold", () => {
     s = momentsReducer(s, { type: "tick", now: HOLD_MISS_MS + 1, held: true });
     expect(s.queue).toHaveLength(0);
     expect(s.missed.map((m) => m.seq)).toEqual([1]);
+    // Not a house banner: the release leaves it unread.
     s = momentsReducer(s, { type: "wake", level: "dialog", role: "guest", now: HOLD_MISS_MS + 2, phase: "hunt" });
-    expect(surfacesOf(s, false).modal?.moment.seq).toBe(1);
+    expect(surfacesOf(s, false).modal).toBeNull();
+    // A house banner held back comes back on the release.
+    let h = run([arrive([moment(2, { house: true })], { now: 0 })]);
+    h = momentsReducer(h, { type: "tick", now: HOLD_MISS_MS + 1, held: true });
+    h = momentsReducer(h, { type: "wake", level: "dialog", role: "guest", now: HOLD_MISS_MS + 2, phase: "hunt" });
+    expect(surfacesOf(h, false).modal?.moment.seq).toBe(2);
   });
 });
 
 describe("missed moments", () => {
-  it("arrived while hidden → missed (counted), replayed on wake", () => {
-    let s = run([arrive([moment(1, { channel: "dm:Clippy" })], { visible: false }), arrive([moment(2)], { visible: false })]);
+  it("arrived while hidden → missed (counted); a wake brings back only the bigs and the newest live house banner (§7)", () => {
+    let s = run([
+      arrive([moment(1, { channel: "dm:Clippy" })], { visible: false }),
+      arrive([moment(2, { house: true })], { visible: false }),
+      arrive([moment(3, { severity: "big", kind: "readout", channel: "dm:Clippy" })], { visible: false }),
+    ]);
     expect(s.queue).toEqual([]);
-    expect(missedCount(s, false, 0)).toBe(2);
+    expect(missedCount(s, false, 0)).toBe(3);
     s = momentsReducer(s, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
-    expect(s.missed).toEqual([]);
-    expect(s.queue.map((q) => q.moment.seq)).toEqual([1, 2]);
+    expect(s.queue.map((q) => [q.moment.seq, q.level])).toEqual([
+      [3, "big"],
+      [2, "dialog"],
+    ]);
+    // The personal one stays unread (a Notifications row), never a replay.
+    expect(s.missed.map((m) => m.seq)).toEqual([1]);
   });
 
-  it("a phone locked through three alerts replays all three, in order, not just the newest", () => {
-    // All three in the lobby, the one announcement home: none makes another stale.
-    let s = run([1, 2, 3].map((n) => arrive([moment(n, { channel: "lobby" })], { visible: false })));
+  it("a phone locked through four house alerts and a big: the big, then the newest banner only (acceptance 19)", () => {
+    let s = run([1, 2, 3, 4].map((n) => arrive([moment(n, { channel: "lobby", house: true })], { visible: false })));
+    s = momentsReducer(s, arrive([moment(5, { severity: "big", kind: "readout", channel: "dm:Clippy" })], { visible: false }));
     s = momentsReducer(s, { type: "wake", level: "sticky", role: "guest", now: 0, phase: "hunt" });
     expect(s.queue.map((q) => [q.moment.seq, q.level])).toEqual([
-      [1, "sticky"],
-      [2, "sticky"],
-      [3, "sticky"],
+      [5, "big"],
+      [4, "sticky"],
     ]);
-    expect(surfacesOf(s, false).stickyCount).toBe(3);
+    expect(s.missed.map((m) => m.seq)).toEqual([1, 2, 3]);
+    // The big covers the rest until acknowledged.
+    expect(surfacesOf(s, false).big?.moment.seq).toBe(5);
+    expect(surfacesOf(s, false).sticky).toBeNull();
+    s = momentsReducer(s, { type: "dismiss", key: "m:5", onScreenMs: 3_000, acted: true });
+    expect(surfacesOf(s, false).sticky?.moment.seq).toBe(4);
   });
 
   it("dismissed after a glance (< 1 s on screen) → missed; read → gone", () => {
@@ -384,18 +401,18 @@ describe("missed moments", () => {
     expect(s.missed.map((m) => m.seq)).toEqual([2]);
   });
 
-  it("stale on wake: a newer major moment in the same room, or the phase moved on", () => {
+  it("stale on wake: the house banner of a phase gone by never comes back", () => {
     const s = run([
       arrive([moment(1, { channel: "dm:Trabolta" })], { visible: false }),
-      arrive([moment(2, { channel: "dm:Clippy", phase: "hunt" })], { visible: false }),
+      arrive([moment(2, { house: true, phase: "hunt" })], { visible: false }),
       arrive([moment(3, { channel: "dm:Trabolta", phase: "pong" })], { visible: false }),
-      arrive([moment(4, { channel: "lobby", phase: "pong" })], { visible: false }),
     ]);
     expect(isStale(s.missed[0]!, s.lastMajor, "hunt")).toBe(true); // newer major in dm:Trabolta
     const woke = momentsReducer(s, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "pong" });
-    // 1: a newer major in its room; 2: the phase moved from hunt to pong.
-    expect(woke.queue.map((q) => q.moment.seq)).toEqual([3, 4]);
+    expect(woke.queue).toEqual([]);
     expect(isStale(moment(9, { phase: null }), {}, null)).toBe(false);
+    // A big is never stale (only its 15-minute window ends it).
+    expect(isStale(moment(10, { severity: "big", phase: "hunt" }), {}, "pong")).toBe(false);
   });
 
   it("a message stamped with the phase it was posted in keeps it (a reconnect's backlog); unstamped takes the phase now", () => {
@@ -412,47 +429,23 @@ describe("missed moments", () => {
     expect(isStale(s.missed[0]!, s.lastMajor, "hunt")).toBe(false);
   });
 
-  it("more than three replay as one 'You missed n moments' list", () => {
-    let s = run([1, 2, 3, 4, 5].map((n) => arrive([moment(n, { channel: `dm:${n}` })], { visible: false })));
-    s = momentsReducer(s, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
-    expect(s.queue).toEqual([]);
-    expect(s.summary?.moments.map((m) => m.seq)).toEqual([1, 2, 3, 4, 5]);
-    expect(surfacesOf(s, false).summary).not.toBeNull();
-    expect(surfacesOf(s, true).summary).toBeNull(); // a busy surface holds the list too
-    expect(momentsReducer(s, { type: "closeSummary" }).summary).toBeNull();
-  });
-
-  it("a booth never gets the list as a modal: its summary is one sticky bar (C1)", () => {
-    const missed = [1, 2, 3, 4].map((n) => arrive([moment(n, { channel: `dm:${n}` })], { visible: false, role: "booth" }));
-    const s = momentsReducer(run(missed), { type: "wake", level: "bsod", role: "booth", now: 0, phase: "hunt" });
-    expect(s.summary?.level).toBe("sticky");
-    // A sticky summary blocks nothing and shows through a hold (stickies do).
-    expect(surfacesOf(s, true).summary?.level).toBe("sticky");
-    expect(missedCount(s, true, 0)).toBe(0);
-    // A guest below `dialog` gets the bar too; at dialog the list itself.
-    const g = run(missed.map((a) => ({ ...a, role: "guest" as const })));
-    expect(momentsReducer(g, { type: "wake", level: "sticky", role: "guest", now: 0, phase: "hunt" }).summary?.level).toBe("sticky");
-    const d = momentsReducer(g, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
-    expect(d.summary?.level).toBe("dialog");
-    // And the level dial moves it.
-    expect(momentsReducer(d, { type: "relevel", level: "balloon", role: "guest" }).summary?.level).toBe("sticky");
-  });
-
-  it("a live drain that posts several moments at once just queues them (no staleness, no summary)", () => {
-    // A rule posts a major card and a `!` pin into the same room in one drain.
+  it("a live drain that posts several moments at once just queues them (no staleness)", () => {
+    // A rule posts a major card and a `!` pin into the same room in one drain:
+    // both are yours (4), the newest first.
     const both = [moment(1, { kind: "card", channel: "dm:Clippy" }), moment(2, { channel: "dm:Clippy", text: "Pinned." })];
-    // …the `!` pin (an alert) first: an alarm never waits behind anything.
     expect(run([arrive(both)]).queue.map((q) => q.moment.seq)).toEqual([2, 1]);
+    // A house `!` (3) waits behind a card addressed to you (4).
+    expect(run([arrive([moment(3, { kind: "card", channel: "dm:Clippy" }), moment(4, { house: true })])]).queue.map((q) => q.moment.seq)).toEqual([3, 4]);
     const four = [1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` }));
-    const live = run([arrive(four)]);
-    expect([live.queue.length, live.summary]).toEqual([4, null]);
+    expect(run([arrive(four)]).queue).toHaveLength(4);
   });
 
-  it("a history batch (a reconnect) gets the same treatment: staleness, and > 3 compress", () => {
+  it("a history batch (a reconnect) is a wake: the bigs and the newest live house banner; the rest unread", () => {
     const s = run([arrive([1, 2, 3, 4].map((n) => moment(n, { channel: `dm:${n}` })), { batch: true })]);
-    expect(s.summary?.moments).toHaveLength(4);
-    const t = run([arrive([moment(1, { channel: "dm:Clippy" }), moment(2, { channel: "dm:Clippy" })], { batch: true })]);
-    expect(t.queue.map((q) => q.moment.seq)).toEqual([2]);
+    expect(s.queue).toEqual([]);
+    expect(s.missed).toHaveLength(4);
+    const t = run([arrive([moment(1, { house: true }), moment(2, { house: true, text: "Two." }), moment(3, { severity: "big", kind: "card", channel: "dm:Clippy" })], { batch: true })]);
+    expect(t.queue.map((q) => q.moment.seq)).toEqual([3, 2]);
   });
 });
 
@@ -527,26 +520,19 @@ describe("a `!` pin taken down is not news (the wave 8 rule)", () => {
     expect(arrivals([mark(1)], -1, new Set(), guest, { now: 6 * MIN, phase: null, bsod: false, beats: new Map() }).moments.map((m) => m.seq)).toEqual([1]);
   });
 
-  it("the retract action drops it from the queue, the missed list and the summary", () => {
+  it("the retract action drops it from the queue and the missed list", () => {
     const pinned = moment(1, { channel: "lobby", text: "🚨 GO TO THE INTERNET" });
     let s = run([arrive([pinned, moment(2, { text: "Other." })])]);
-    expect(surfacesOf(s, false).modal?.moment.seq).toBe(1);
+    expect(surfacesOf(s, false).modal?.moment.seq).toBe(2);
     s = momentsReducer(s, { type: "retract", seqs: new Set([1]) });
     expect(s.queue.map((q) => q.moment.seq)).toEqual([2]);
     expect(surfacesOf(s, false).modalIndex).toBe(1);
-    // Missed (locked phone): never replayed on wake.
+    // Missed (locked phone): gone from the missed list too.
     let t = run([arrive([pinned], { visible: false }), arrive([moment(3)], { visible: false })]);
     t = momentsReducer(t, { type: "retract", seqs: new Set([1]) });
-    t = momentsReducer(t, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
-    expect(t.queue.map((q) => q.moment.seq)).toEqual([3]);
-    // Inside a summary: it leaves the list; the last one gone closes it.
-    let u = run([1, 2, 3, 4].map((n) => arrive([moment(n, { channel: `dm:${n}` })], { visible: false })));
-    u = momentsReducer(u, { type: "wake", level: "dialog", role: "guest", now: 0, phase: "hunt" });
-    u = momentsReducer(u, { type: "retract", seqs: new Set([2]) });
-    expect(u.summary?.moments.map((m) => m.seq)).toEqual([1, 3, 4]);
-    expect(momentsReducer(u, { type: "retract", seqs: new Set([1, 3, 4]) }).summary).toBeNull();
+    expect(t.missed.map((m) => m.seq)).toEqual([3]);
     // Nothing to drop: the same state.
-    expect(momentsReducer(u, { type: "retract", seqs: new Set([99]) })).toBe(u);
+    expect(momentsReducer(t, { type: "retract", seqs: new Set([99]) })).toBe(t);
   });
 });
 
@@ -656,26 +642,32 @@ describe("the layers", () => {
 describe("the surfaces' markup", () => {
   const q = (m: Moment, level: AlertLevel) => ({ moment: m, level, queuedAt: 0 });
   const noop = () => {};
+  const MISSION: Exit = { label: "What do I do?", icon: "start", nav: { to: "mission" } };
+  const PASS: Exit = { label: "Show my pass", icon: "pass", nav: { to: "pass" } };
 
-  it("a balloon: caption, text, close, and 'Take me there' only with an exit", () => {
-    const html = renderToStaticMarkup(createElement(Balloon, { q: q(moment(1, { severity: "minor" }), "balloon"), canGo: true, onGo: noop, onDismiss: noop }));
+  it("a balloon: caption, text, close, and its one exit (never 'Take me there')", () => {
+    const html = renderToStaticMarkup(createElement(Balloon, { q: q(moment(1, { severity: "minor" }), "balloon"), exits: [MISSION, PASS], onExit: noop, onDismiss: noop }));
     expect(html).toContain('class="moments-balloon minor"');
     expect(html).toContain('role="status"');
-    expect(html).toContain("Take me there ›");
-    expect(renderToStaticMarkup(createElement(Balloon, { q: q(moment(1), "balloon"), canGo: false, onGo: noop, onDismiss: noop }))).not.toContain("Take me there");
+    expect(html).toContain("What do I do?");
+    expect(html).not.toContain("Show my pass"); // a balloon shows one
+    expect(html).not.toContain("Take me there");
+    expect(renderToStaticMarkup(createElement(Balloon, { q: q(moment(1), "balloon"), exits: [], onExit: noop, onDismiss: noop }))).not.toContain("moments-balloon-go");
   });
 
-  it("a sticky: major is an alert, counts its queue", () => {
-    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1), "sticky"), count: 3, canGo: true, onGo: noop, onDismiss: noop, onDismissAll: noop }));
+  it("a sticky: major is an alert, two exits, no Dismiss all", () => {
+    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1), "sticky"), count: 3, exits: [MISSION, PASS], onExit: noop, onDismiss: noop }));
     expect(html).toContain('class="moments-sticky major alarm"');
     expect(html).toContain('role="alert"');
-    expect(html).toContain("Dismiss all (3)");
+    expect(html).not.toContain("Dismiss all");
+    expect(html).toContain("What do I do?");
+    expect(html).toContain("Show my pass");
     expect(html).not.toContain("moments-sticky-caption"); // no caption over the words
     expect(html).toContain('<strong class="moments-sticky-lead">Clippy: </strong>moment 1');
   });
 
   it("a dialog: a Win95 message box with OK and n of m; the pass objective offers the pass", () => {
-    const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1, { kind: "objective", pass: true, channel: null, text: "Show your pass\nHold it up." }), "dialog"), index: 2, total: 3, canGo: true, onGo: noop, onDismiss: noop }));
+    const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1, { kind: "objective", pass: true, channel: null, text: "Show your pass\nHold it up." }), "dialog"), index: 2, total: 3, exits: [PASS], onExit: noop, onDismiss: noop }));
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain(">OK<");
@@ -684,37 +676,28 @@ describe("the surfaces' markup", () => {
     expect(html).toContain("<strong class=\"moments-objective-title\">Show your pass</strong>");
   });
 
-  it("a blue screen: the caption inverted, a fault address, press any key", () => {
-    const html = renderToStaticMarkup(createElement(BlueScreen, { q: q(moment(4, { kind: "beat", caption: "Trabolta", text: "Trabolta: I remember her." }), "bsod"), index: 1, total: 1, canGo: true, onGo: noop, onDismiss: noop }));
+  it("a blue screen: the caption inverted, a fault address, press any key; later ones skip the boilerplate", () => {
+    const html = renderToStaticMarkup(createElement(BlueScreen, { q: q(moment(4, { kind: "beat", caption: "Trabolta", text: "Trabolta: I remember her." }), "bsod"), index: 1, total: 1, exits: [MISSION], onExit: noop, onDismiss: noop }));
     expect(html).toContain('role="alertdialog"');
     expect(html).toContain(">TRABOLTA<");
     expect(html).toContain(`at ${faultAddress("m:4")}`);
     expect(html).toContain("Press any key to continue");
     expect(html).toContain("Trabolta: I remember her.");
+    expect(html).toContain("What do I do?");
     expect(faultAddress("m:4")).toMatch(/^0028:C0[0-9A-F]{6}$/u);
+    const later = renderToStaticMarkup(createElement(BlueScreen, { q: q(moment(5, { caption: "Trabolta" }), "bsod"), index: 1, total: 1, exits: [], onExit: noop, onDismiss: noop, boilerplate: false, win95: true }));
+    expect(later).not.toContain("fatal exception");
+    expect(later).toContain(">ANNOUNCEMENT<");
   });
 
-  it("Dismiss all (n) on a dialog and on the blue screen (both themes) when it is given", () => {
-    const d = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 4, canGo: false, onGo: noop, onDismiss: noop, waiting: 4, onDismissAll: noop }));
-    expect(d).toContain("Dismiss all (4)");
-    expect(renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 2, canGo: false, onGo: noop, onDismiss: noop }))).not.toContain("Dismiss all");
+  it("no Dismiss all on a dialog or a blue screen, in either theme (G6)", () => {
+    const d = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 4, exits: [], onExit: noop, onDismiss: noop }));
+    expect(d).not.toContain("Dismiss all");
     for (const win95 of [true, false]) {
-      const b = renderToStaticMarkup(createElement(BlueScreen, { q: q(moment(2), "bsod"), index: 1, total: 3, canGo: true, onGo: noop, onDismiss: noop, win95, waiting: 3, onDismissAll: noop }));
-      expect(b).toContain("Dismiss all (3)");
+      const b = renderToStaticMarkup(createElement(BlueScreen, { q: q(moment(2), "bsod"), index: 1, total: 3, exits: [MISSION, PASS], onExit: noop, onDismiss: noop, win95 }));
+      expect(b).not.toContain("Dismiss all");
+      expect(b).toContain("What do I do?");
     }
   });
 
-  it("the missed list names every moment with its exit", () => {
-    const html = renderToStaticMarkup(createElement(MissedList, { moments: [moment(1), moment(2, { channel: null })], canGo: (m) => m.channel !== null, onGo: noop, onClose: noop }));
-    expect(html).toContain("You missed 2 moments");
-    expect(html.match(/moments-missed-row/gu)).toHaveLength(2);
-    expect(html.match(/Go ›/gu)).toHaveLength(1);
-  });
-
-  it("the sticky summary: one bar, never a dialog, the list on a tap", () => {
-    const html = renderToStaticMarkup(createElement(SummarySticky, { count: 4, onOpen: noop, onDismiss: noop }));
-    expect(html).toContain("You missed 4 moments");
-    expect(html).toContain('class="moments-sticky minor moments-summary-sticky"');
-    expect(html).not.toContain('role="dialog"');
-  });
 });

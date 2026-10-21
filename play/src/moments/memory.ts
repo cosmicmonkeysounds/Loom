@@ -32,6 +32,19 @@ export interface EngineMemory {
   pending: Set<number>;
   /** Moments dispatched to the queue but not yet in a rendered state: never settled past. */
   inflight: Set<number>;
+  /** Wave 18: what this sign-in remembers (acked bigs, seen, deleted rows, the read mark). */
+  signIn: SignInMemory;
+  /** Wave 18: client-made moments that reached the queue (a loud objective, a beat's blue screen) — Notifications rows too. */
+  extras: Moment[];
+  /** Wave 18: the blue screen that carries the boilerplate (the sign-in's first). */
+  firstBsod: string | null;
+  /** Wave 18 fix (GN-F7 / NM-F3): the sign-in whose first backlog was swept
+   *  for its unacknowledged big moments (once per page load). */
+  swept?: string;
+  /** Wave 18 recheck (N3): when the NOW objective on screen began (story
+   *  clock), as far as this sign-in knows; a house banner older than it is
+   *  not news on a load or a wake. Null = unknown (a brand-new phone). */
+  nowSince?: number | null;
 }
 
 /** The memories by role + sign-in, newest last (a test seam too). Several
@@ -58,6 +71,9 @@ export function freshMemory(): EngineMemory {
     savedDone: "",
     pending: new Set(),
     inflight: new Set(),
+    signIn: emptySignIn(),
+    extras: [],
+    firstBsod: null,
   };
 }
 
@@ -113,4 +129,136 @@ export function saveDoneList(storage: SessionStorage, role: Role, session: strin
   } catch {
     /* storage blocked — at worst a reload replays a read moment */
   }
+}
+
+// --- wave 18: what a sign-in remembers about its big moments and its Notifications
+
+/** How many keys a per-sign-in list keeps (the newest). */
+export const KEYS_MAX = 400;
+
+/** Where the acknowledged big moments persist (a reload never replays one). */
+export function ackedKey(session: string): string {
+  return `loom.moments.acked.${session}`;
+}
+/** Where "the first blue screen of this sign-in has shown" persists. */
+export function bsodKey(session: string): string {
+  return `loom.moments.bsod.${session}`;
+}
+/** Where the deleted Notifications rows persist (GUEST-SPEC §4.1). */
+export function deletedKey(session: string): string {
+  return `loom.notif.deleted.${session}`;
+}
+/** Where the moments seen on screen (≥ 1 s, or acted on) persist: read in Notifications. */
+export function seenKey(session: string): string {
+  return `loom.notif.seen.${session}`;
+}
+/** Where the seq the Notifications window was last read up to persists. */
+export function readMarkKey(session: string): string {
+  return `loom.notif.read.${session}`;
+}
+
+/** Where the NOW objective this sign-in last saw persists (N3). */
+export function nowKey(session: string): string {
+  return `loom.moments.now.${session}`;
+}
+
+/** The NOW objective last seen: its id, when it began (null = before this
+ *  phone first looked), and the story time the phone last looked. */
+export interface NowRecord {
+  id: string | null;
+  since: number | null;
+  seen: number;
+}
+
+export function loadNow(storage: SessionStorage, session: string): NowRecord | null {
+  try {
+    const v = storage.load<unknown>(nowKey(session));
+    if (v === null || typeof v !== "object") return null;
+    const r = v as Record<string, unknown>;
+    if (typeof r["seen"] !== "number" || !(typeof r["id"] === "string" || r["id"] === null) || !(typeof r["since"] === "number" || r["since"] === null)) return null;
+    return { id: r["id"] as string | null, since: r["since"] as number | null, seen: r["seen"] };
+  } catch {
+    return null;
+  }
+}
+
+export function saveNow(storage: SessionStorage, session: string, r: NowRecord): void {
+  try {
+    storage.save(nowKey(session), r);
+  } catch {
+    /* storage blocked — at worst an old house banner shows once */
+  }
+}
+
+/**
+ * When the NOW objective `id` began, on a page load: the stored start when
+ * it is the one this phone last saw; when it has changed since, the last
+ * time the phone looked (it changed after that); unknown on a new phone.
+ */
+export function nowSinceOnLoad(stored: NowRecord | null, id: string | null): number | null {
+  if (stored === null) return null;
+  return stored.id === id ? stored.since : stored.seen;
+}
+
+/** A per-sign-in key list (empty when blocked or absent). */
+export function loadKeys(storage: SessionStorage, key: string): string[] {
+  try {
+    const v = storage.load<unknown>(key);
+    return Array.isArray(v) ? v.filter((k): k is string => typeof k === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Save a key list, the newest `KEYS_MAX`. */
+export function saveKeys(storage: SessionStorage, key: string, keys: Iterable<string>): void {
+  const list = [...keys];
+  try {
+    storage.save(key, list.length > KEYS_MAX ? list.slice(-KEYS_MAX) : list);
+  } catch {
+    /* storage blocked — at worst a reload asks again */
+  }
+}
+
+/** A per-sign-in number (null when blocked or absent). */
+export function loadNumber(storage: SessionStorage, key: string): number | null {
+  try {
+    const v = storage.load<unknown>(key);
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveNumber(storage: SessionStorage, key: string, n: number): void {
+  try {
+    storage.save(key, n);
+  } catch {
+    /* storage blocked */
+  }
+}
+
+/** What a sign-in remembers for wave 18 (loaded once per sign-in). */
+export interface SignInMemory {
+  acked: Set<string>;
+  /** The first blue screen of this sign-in has shown (later ones skip the boilerplate). */
+  bsodShown: boolean;
+  deleted: Set<string>;
+  seen: Set<string>;
+  /** Notifications read up to this seq (the window was open and closed). */
+  readMark: number;
+}
+
+export function loadSignIn(storage: SessionStorage, session: string): SignInMemory {
+  return {
+    acked: new Set(loadKeys(storage, ackedKey(session))),
+    bsodShown: loadNumber(storage, bsodKey(session)) === 1,
+    deleted: new Set(loadKeys(storage, deletedKey(session))),
+    seen: new Set(loadKeys(storage, seenKey(session))),
+    readMark: loadNumber(storage, readMarkKey(session)) ?? -1,
+  };
+}
+
+export function emptySignIn(): SignInMemory {
+  return { acked: new Set(), bsodShown: false, deleted: new Set(), seen: new Set(), readMark: -1 };
 }

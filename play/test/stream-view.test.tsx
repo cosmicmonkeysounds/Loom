@@ -26,7 +26,7 @@ describe("the room header", () => {
   it("a 44 px back button, the title on its own line (never cut to one), 👥 n", () => {
     const html = view(room({ id: "loc:The Desktop", kind: "location", title: "The Desktop (living room)", here: true, people: [{ id: "g1", name: "Ada", kind: "guest", group: null }] }), { onPeople: () => {}, meId: "g1" });
     expect(html).toContain('class="back stream-back"');
-    expect(html).toContain('aria-label="Back to your rooms"');
+    expect(html).toContain('aria-label="Back"'); // it returns to Mission or Chats, never just "your rooms" (GN-F18)
     expect(html).toContain('<strong class="stream-room-title">The Desktop (living room)</strong>');
     expect(html).toContain("you are here");
     expect(html).toMatch(/ico-people ico-inline[^]*?<\/svg> <\/span>1 · you/u);

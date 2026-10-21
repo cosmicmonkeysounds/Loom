@@ -52,6 +52,8 @@ describe("the drawer's tabs", () => {
   it("More shows only what the event has: no currency → no wallet, no King, no terminals", () => {
     expect(moreSections(hostFixture())).toEqual(["show", "clock", "announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents"]);
     expect(moreSections(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }))).toEqual(["show", "clock", "announce", "alerts", "codes"]);
+    // M3: crews, under House, once there is one.
+    expect(moreSections({ ...hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }), crews: [{ id: "crew-1", name: "Night Shift", members: 2 }] })).toContain("crews");
   });
 
   it("a need opens its tab (and the staff room for a staff need)", () => {

@@ -2,7 +2,7 @@
 //! the who's-here strip, the room view and the thread panel.
 
 import { Icon } from "../chrome/icons.tsx";
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { Fragment, Suspense, type ComponentType, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { usePlayHost, type Crawl } from "../host.ts";
 import { isTextEntry } from "../chrome/keyboard.ts";
 import { PinnedRail } from "../moments/pins-rail.tsx";
@@ -11,12 +11,46 @@ import { Avatar } from "../ui/primitives.tsx";
 import { supersededCards } from "../widgets.tsx";
 import { MessageBubble, MessageGroup, StreamModeProvider, type ModerateHook, type StreamMode, type WidgetHook } from "./bubble.tsx";
 import { CardTray } from "./card-tray.tsx";
-import { CodexRoom, QuestRoom } from "./codex-room.tsx";
+import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
 import { trayCards } from "./settled.ts";
 import { AmbientTicker } from "./ticker.tsx";
 import { Composer, cantPostNote } from "./composer.tsx";
 import { MessageList, useStickToBottom } from "./list.tsx";
 import { groupRuns, questStatusOf, repliesFor } from "./runs.ts";
+
+/** The Codex and the Quest Log load on their own (fix round: they kept the
+ *  guest's first load over its gate, and most phones open them later). */
+type CodexProps = { messages: readonly ChatMessage[]; meId?: string | null; empty: string; focusEntry?: string | null };
+type QuestProps = { messages: readonly ChatMessage[]; empty: string };
+const LazyCodex = retryableLazy<CodexProps>(() => import("./codex-room.tsx").then((m): { default: ComponentType<CodexProps> } => ({ default: m.CodexRoom })));
+const LazyQuests = retryableLazy<QuestProps>(() => import("./codex-room.tsx").then((m): { default: ComponentType<QuestProps> } => ({ default: m.QuestRoom })));
+
+function PinnedRoom({ kind, messages, meId, empty, focusEntry }: { kind: "codex" | "quests"; messages: readonly ChatMessage[]; meId: string | null; empty: string; focusEntry: string | null }) {
+  const Codex = LazyCodex.current();
+  const Quests = LazyQuests.current();
+  return (
+    <ChunkBoundary
+      fallback={(retry) => (
+        <p className="booth-none">
+          That didn&apos;t load.{" "}
+          <button
+            type="button"
+            className="w95-btn"
+            onClick={() => {
+              LazyCodex.again();
+              LazyQuests.again();
+              retry();
+            }}
+          >
+            Try again
+          </button>
+        </p>
+      )}
+    >
+      <Suspense fallback={<p className="booth-none">Opening…</p>}>{kind === "codex" ? <Codex messages={messages} meId={meId} empty={empty} focusEntry={focusEntry} /> : <Quests messages={messages} empty={empty} />}</Suspense>
+    </ChunkBoundary>
+  );
+}
 
 // --- holding the dock until its question has crawled ------------------------
 
@@ -204,7 +238,13 @@ export function ChannelView({
   wide,
   strip,
   composerExtra,
+  focusCard,
+  focusEntry,
 }: {
+  /** Open the card tray on this card (wave 18: a Your move row, an Answer exit). */
+  focusCard?: number | null;
+  /** Open the Codex on this entry (wave 18: a `codex: <Entry>` exit). */
+  focusEntry?: string | null;
   channel: Channel;
   onBack: () => void;
   footer?: ReactNode;
@@ -246,8 +286,8 @@ export function ChannelView({
   const people = channel.people ?? [];
   // Live cards waiting on the viewer dock in the tray (a receipt stays in
   // the stream); a booth reading a guest's thread has no widgets → none.
-  const [trayFocus, setTrayFocus] = useState<number | null>(null);
-  useEffect(() => setTrayFocus(null), [channel.id]);
+  const [trayFocus, setTrayFocus] = useState<number | null>(focusCard ?? null);
+  useEffect(() => setTrayFocus(focusCard ?? null), [channel.id, focusCard]);
   // Typing in the composer folds the tray, so the replies keep the room
   // (a phone keyboard leaves little else).
   const [composing, setComposing] = useState(false);
@@ -310,7 +350,7 @@ export function ChannelView({
     <div className="screen stage">
       <header className="thread-head stream-room-head">
         {!wide && (
-          <button type="button" className="back stream-back" onClick={onBack} aria-label="Back to your rooms">
+          <button type="button" className="back stream-back" onClick={onBack} aria-label="Back">
             ‹
           </button>
         )}
@@ -332,10 +372,8 @@ export function ChannelView({
       {strip}
       {pins && pins.length > 0 && <PinnedRail pins={pins} />}
       <AmbientTicker messages={channel.messages} />
-      {channel.kind === "codex" ? (
-        <CodexRoom key={channel.id} messages={channel.messages} meId={meId} empty={emptyCopy} />
-      ) : channel.kind === "quests" ? (
-        <QuestRoom key={channel.id} messages={channel.messages} empty={emptyCopy} />
+      {channel.kind === "codex" || channel.kind === "quests" ? (
+        <PinnedRoom key={channel.id} kind={channel.kind} messages={channel.messages} meId={meId ?? null} empty={emptyCopy} focusEntry={focusEntry ?? null} />
       ) : (
         <StreamModeProvider value={mode}>
           <MessageList

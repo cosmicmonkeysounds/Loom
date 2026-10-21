@@ -37,7 +37,7 @@ describe("notification deep links", () => {
   it("a booth maps the feed, its Scanner and an agent's thread onto its own rooms", () => {
     const listed = ["__scanner", "__feed", "room:hosts", "wallet", "cast:Trabolta", "guest:g-1"];
     expect(roomTarget("scanner", listed, true)).toBe("__scanner");
-    expect(roomTarget("lobby", listed, true)).toBe("__feed");
+    expect(roomTarget("lobby", listed, true)).toBeNull(); // the booth's home (NM-F6)
     expect(roomTarget("room:hosts", listed, true)).toBe("room:hosts");
     expect(roomTarget("wallet", listed, true)).toBe("wallet");
     expect(roomTarget("dm:Trabolta", listed, true)).toBe("cast:Trabolta");

@@ -405,3 +405,15 @@ export function usePerSession<T>(session: string | null, empty: T): [T, (f: (pre
 }
 
 export const NO_ANSWERS: ReadonlyMap<number, WidgetResult> = new Map();
+
+/** The cards answered: this device's own answers, plus every card the
+ *  server's view says is answered (an empty record — the result itself is
+ *  not replayed). Computed in the render, so a new sign-in's first pass
+ *  (the big-moment sweep) never sees the server's answered cards as open
+ *  (N1). Returns `local` itself when it already holds every one. */
+export function mergeAnswered(local: ReadonlyMap<number, WidgetResult>, server: readonly number[] | undefined): ReadonlyMap<number, WidgetResult> {
+  if (server === undefined || server.every((seq) => local.has(seq))) return local;
+  const next = new Map(local);
+  for (const seq of server) if (!next.has(seq)) next.set(seq, {});
+  return next;
+}

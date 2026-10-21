@@ -838,6 +838,17 @@ export const useOperate = create<OperateState>((set, get) => {
       }
     },
     reveal: (faction) => withEvent((ev) => modApi.reveal(ev, faction)),
+    claimCaller: async (on) => {
+      const ev = get().event
+      if (!ev) return false
+      try {
+        await modApi.caller(ev.id, on)
+        return true
+      } catch (e) {
+        set({ error: (e as Error).message })
+        return false
+      }
+    },
     // The mod snapshot carries pending choices, and this answers one on a
     // guest's behalf — journaled exactly like the guest's own tap.
     choose: (person, index) => withEvent((ev) => modApi.choose(ev, person, index)),

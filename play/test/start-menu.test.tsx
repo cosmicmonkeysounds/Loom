@@ -20,19 +20,24 @@ function input(extra: Partial<GuestStartInput> = {}): GuestStartInput {
     name: "Winamp",
     faction: "Unlimited Power",
     interactions: [bathroom],
-    defectTo: ["The Way Out"],
-    wake: { supported: true, on: false },
-    push: true,
+    sides: true,
     people: true,
-    open: { picture: noop, wake: noop, alerts: noop, people: noop, help: noop, act: noop, defect: noop, leave: noop },
+    open: { act: noop, sides: noop, people: noop, notifications: noop, help: noop, leave: noop },
     ...extra,
   };
 }
 
 describe("the Start menu", () => {
-  it("lists the story's buttons first, then people, help, the phone's settings, switching sides, and Leave last", () => {
-    expect(guestStartItems(input()).map((i) => i.id)).toEqual(["act:bathroom_mode", "people", "help", "picture", "wake", "alerts", "defect:The Way Out", "leave"]);
-    expect(guestStartItems(input()).find((i) => i.id === "defect:The Way Out")!.label).toBe("Leave the Unlimited Power for The Way Out");
+  it("wave 18 (§8.2): the story's buttons first, then Sides & crews, People, Notifications, Help, and Leave last", () => {
+    expect(guestStartItems(input()).map((i) => i.id)).toEqual(["act:bathroom_mode", "sides", "people", "notifications", "help", "leave"]);
+    expect(guestStartItems(input()).find((i) => i.id === "sides")!.label).toBe("Sides & crews");
+  });
+
+  it("rule 9: the story's buttons + at most five items; no picture, wake, alerts or Leave-X-for-Y", () => {
+    const items = guestStartItems(input());
+    expect(items.filter((i) => !i.id.startsWith("act:")).length).toBeLessThanOrEqual(5);
+    for (const gone of ["picture", "wake", "alerts"]) expect(items.map((i) => i.id)).not.toContain(gone);
+    expect(items.some((i) => i.id.startsWith("defect:"))).toBe(false);
   });
 
   it("a story button's leading emoji goes in the icon column", () => {
@@ -41,11 +46,9 @@ describe("the Start menu", () => {
     expect(splitIcon("❤️ Love")).toEqual({ icon: "❤️", label: "Love" });
   });
 
-  it("drops what this phone can't do", () => {
-    const bare = guestStartItems(input({ interactions: [], defectTo: [], wake: null, push: false, people: false, faction: null }));
-    expect(bare.map((i) => i.id)).toEqual(["help", "picture", "leave"]);
-    expect(guestStartItems(input({ wake: { supported: false, on: false } })).map((i) => i.id)).not.toContain("wake");
-    expect(guestStartItems(input({ wake: { supported: true, on: true } })).find((i) => i.id === "wake")!.label).toContain("Screen stays on");
+  it("drops what the story doesn't have", () => {
+    const bare = guestStartItems(input({ interactions: [], sides: false, people: false, faction: null }));
+    expect(bare.map((i) => i.id)).toEqual(["notifications", "help", "leave"]);
     expect(pushOffered({ state: "unsupported" })).toBe(false);
     expect(pushOffered({ state: "off" })).toBe(false);
     expect(pushOffered({ state: "ask" })).toBe(true);
@@ -107,5 +110,8 @@ describe("the Start menu", () => {
     expect(out).toContain("Unlimited Power");
     expect(out).toContain("📍 The Desktop");
     expect(renderToStaticMarkup(createElement(GuestStartHeader, { name: "Winamp", faction: null, where: "" }))).toContain("unaligned");
+    // wave 18: the banner is a button to the Me sheet
+    const me = renderToStaticMarkup(createElement(GuestStartHeader, { name: "Winamp", faction: null, where: "", onMe: noop }));
+    expect(me).toMatch(/^<button type="button" class="start-who start-who-btn" aria-label="Me: Winamp">/u);
   });
 });

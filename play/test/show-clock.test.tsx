@@ -65,7 +65,7 @@ describe("the tray clock", () => {
     expect(showClockTray({ minutes: 1183, running: true })).toEqual({ text: "7:43 PM", paused: false, title: "The party's clock: 7:43 PM" });
     expect(showClockTray({ minutes: 1183, running: false })).toMatchObject({ text: "7:43 PM", paused: true });
     const html = renderToStaticMarkup(<ShowClockTray clock={{ minutes: 1183, running: false }} />);
-    expect(html).toContain("7:43 PM");
+    expect(html).toContain('7:43<span class="tray-tail"> PM</span>');
     expect(html).toContain("tray-item dim");
     expect(html).toContain("tray-clock paused");
   });

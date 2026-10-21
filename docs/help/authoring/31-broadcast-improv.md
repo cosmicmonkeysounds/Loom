@@ -2,7 +2,7 @@
 title: Broadcasts & improvised beats
 section: Live Shows
 order: 31
-keywords: broadcast, scope, notice, per-person, ~, folded, collapse, location, cohort, participant, and, but, improv, duration, advance on, pedal, speech, gesture, quorum, group, cue, faction
+keywords: broadcast, scope, big moment, !!, un-ignorable, full screen, with go, go:, exits, buttons, close, auto close, cheer, L1214, L1218, notice, per-person, ~, folded, collapse, location, cohort, participant, and, but, improv, duration, advance on, pedal, speech, gesture, quorum, group, cue, faction
 ---
 
 ## Speaking to a subset: `broadcast`
@@ -64,6 +64,67 @@ emoji: it is the fold's key. The person it is about must still hear
 their own result personally — a `reply` to them — because their copy
 may be folded with everyone else's. A cue that starts with `!` is an
 alert, never a notice: don't combine the two.
+
+## Big moments: `!!`
+
+A cue that starts with `!` is an **alert**: a moment at the story's alert
+level ([Live shows](live-shows.md)). Start it with **`!!`** and it is a
+**big moment**: on a guest's phone it takes the whole screen whatever the
+level, can't be folded or swiped away, and waits for one button after about
+a second. Use it for what is *theirs* and decisive: a win, a capture, an
+invitation, being found.
+
+```loom
+reply !!🎱 BINGO! Name the program for each square, from memory.
+reply "!!🎀 You won the Bingo Ribbon. Take a bow." with go: codex: Computer Bingo
+broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Ribbon! Cheer for them at the Desktop." to everyone with close: 6s
+show poll "🍾 The bottle landed on you. Truth or dare?" to program with options: "Truth | Dare", moment: big
+```
+
+- `reply !!…` makes it a big moment for the one person (the `!!` is not
+  shown). On a performer's booth a big readout is a **pop-out** instead,
+  never a full screen.
+- `broadcast "!!…" to everyone` is a big moment for the **whole house**:
+  every phone stops for it. Keep those to an admin cue's own `when` or a
+  story rule (lint **`L1218 BigHouseBroadcast`** warns anywhere else), and
+  add **`with close: 6s`** so it closes itself (*📣 HOUSE NEWS · Cheer!
+  (6)*). A house-wide one that leads with a win emoji (🎀 🏆 🥇 🏅 🎉 🎊 👑
+  🥳) also pops a *Congratulations!* window on the TV and the wall
+  terminals.
+- A card (`show …`) becomes big with `moment: big`; its options are
+  answered inside the big moment.
+- `pin "!!…"` is unchanged: the takeover ([Live verbs](live-verbs.md)).
+
+The emoji the line starts with picks its look: 🎀 🏆 🎱 🥇 🦆 ✅ 🎉 ♟ an
+*achievement*, 🛡 🚨 *virus detected*, 🌐 ⛔ 🔒 *quarantined*.
+
+## Exits: `with go:`
+
+Every moment on a phone carries buttons that take the reader to its place.
+Name them with **`with go:`** after the quoted text (repeat `go:` for a
+second one, at most two show):
+
+```loom
+broadcast "!📣 ALL PROGRAMS: report to the Desktop." to everyone with go: The Desktop
+reply "!!🌐 Sent to the Internet." with go: The Internet, go: pass
+broadcast "!⏳ FIVE MINUTES. Scan the Desktop's check-in QR." to everyone with go: scan as "📷 Check in", go: The Desktop
+broadcast "Look." to everyone with go: codex: The Sandy File, go: quest: The Cold Door, go: wallet as "Count your coin"
+```
+
+A `go:` word is a LOCATION (*Go to The Desktop*), a CHANNEL (*Open #
+hosts*), a CHARACTER (their thread), a `who: guest` INTERACTION (its
+button), `codex` / `codex: <Entry>`, `quests` / `quest: <Quest>`, or a
+screen: `pass`, `scan`, `chats`, `mission`, `notifications`, `sides`,
+`wallet`, `me`. `as "Label"` renames the button. A room the reader can't
+see yet is dropped for them, and **`lobby` is never an exit** (the lobby is
+the far-away Chat log). With no `go:` the app still gives one: a card's own
+thread, a codex unlock's entry, a quest step's quest, a wallet card's
+Wallet, else Mission.
+
+`with` is only read **after a quoted text** (and, on `broadcast`, after its
+`to` scope): an unquoted `reply … with go: …` stays prose, and lint
+**`L1214 GoTargetUnresolved`** says so. It also flags a `go:` word that names
+nothing (the button is dropped).
 
 ## Improvised beats
 

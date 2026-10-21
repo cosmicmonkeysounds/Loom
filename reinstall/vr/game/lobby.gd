@@ -109,6 +109,24 @@ func set_candidates(players: Array) -> void:
 ## Only the programs the story marked for reinstallation (wave 16): the
 ## server's `eligible`, else (an older server) captured or restricted. The
 ## server refuses the rest anyway; the picker never offers them.
+## The row's tag: in the Internet, or marked. Wave 18 (C7): the server's
+## `marked` when it says (a mark no longer restricts), else an older
+## server's `restricted`; a restricted program the server still lets in
+## is marked too. After an ending the server says `favour` (and `marked`
+## false for everyone): the reinstallation is a party favour.
+static func tag_of(p: Dictionary) -> String:
+	if p.get("captured") == true:
+		return "  [corrupted]"
+	if p.get("favour") == true:
+		return "  [party favour]"
+	var marked: bool
+	if p.get("marked") is bool:
+		marked = p.get("marked") == true or (p.get("restricted") == true and p.get("eligible") == true)
+	else:
+		marked = p.get("restricted") == true
+	return "  [marked]" if marked else ""
+
+
 static func eligible_only(players: Array) -> Array:
 	var out: Array = []
 	for p in players:
@@ -155,6 +173,5 @@ func _render_list() -> void:
 	for i in range(first, mini(first + VISIBLE_ROWS, items.size())):
 		var p: Dictionary = items[i]
 		var mark := "> " if i == picker.index else "   "
-		var tag := "  [corrupted]" if p.get("captured") == true else ("  [marked]" if p.get("restricted") == true else "")
-		lines.append("%s%s%s" % [mark, p.get("name", p.get("id", "?")), tag])
+		lines.append("%s%s%s" % [mark, p.get("name", p.get("id", "?")), tag_of(p)])
 	_list.text = "\n".join(lines)

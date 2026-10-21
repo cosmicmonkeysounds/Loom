@@ -61,6 +61,12 @@ describe("the NEXT bar arms, then fires", () => {
     expect(phoneTap(t1.armed, next, ARM_DEAD_MS + 50, moved).kind).toBe("stale");
   });
 
+  it("a fired press keeps what it said: LAST's did: line (BN-F14)", async () => {
+    const f = fakeCue({ ok: true, said: ["🎱 COMPUTER BINGO has begun."], staff: ["Clippy deals the cards."] });
+    const out = await hostFire(f.calls, f.fresh)("start_the_bingo", null, undefined, 4);
+    expect(out).toEqual({ ok: true, said: ["🎱 COMPUTER BINGO has begun."], staff: ["Clippy deals the cards."] });
+  });
+
   it("a refused press is ok + refused (the drawer keeps it for its reason)", async () => {
     const f = fakeCue({ ok: true, refused: true });
     const out = await hostFire(f.calls, f.fresh)("spin_the_bottle", null, undefined, 4);

@@ -199,12 +199,14 @@ QUEST The Exchange
     pays. You have no Wallet: you hold no pot and take no cut. 🪙 Pay /
     🪙 Charge are for corrections only.
 
+// DRAFT w18: "Tell a host the count" (was "the director").
 QUEST The Clubs
   title: Patrol: the clubs
   from: Task Manager
   text:
     Two clubs just opened. Keep the list: who joined Unlimited Power, who
-    joined The Way Out. Tell the director the count when asked.
+    // DRAFT w18
+    joined The Way Out. Tell a host the count when asked.
 
 QUEST The Audit
   title: Patrol: the audit

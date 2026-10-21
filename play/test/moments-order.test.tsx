@@ -8,7 +8,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { EMPTY_MOMENTS, exitRoomFor, missedCount, momentsReducer, priorityOf, surfacesOf, type Moment, type MomentsAction, type MomentsState } from "../src/moments/model.ts";
+import { EMPTY_MOMENTS, missedCount, momentsReducer, priorityOf, surfacesOf, type Moment, type MomentsAction, type MomentsState } from "../src/moments/model.ts";
 import { BlueScreen, MomentDialog, StickyBanner, iconOf, stickyLead } from "../src/moments/surfaces.tsx";
 import type { AlertLevel } from "../src/types.ts";
 import { readBundledCss } from "./css.ts";
@@ -23,9 +23,14 @@ const noop = () => {};
 const q = (m: Moment, level: AlertLevel) => ({ moment: m, level, queuedAt: 0 });
 
 describe("an alarm jumps the queue", () => {
-  it("priority: `!` alert > other major > loud objective > minor", () => {
-    expect(priorityOf({ kind: "alert", severity: "major" })).toBe(3);
-    expect(priorityOf({ kind: "card", severity: "major" })).toBe(2);
+  it("priority (§7): big to you 6 > big to the house 5 > your move 4 > house `!` 3 > other major 2 > loud objective 1 > minor 0", () => {
+    expect(priorityOf({ kind: "readout", severity: "big" })).toBe(6);
+    expect(priorityOf({ kind: "alert", severity: "big", house: true })).toBe(5);
+    expect(priorityOf({ kind: "card", severity: "major" })).toBe(4);
+    expect(priorityOf({ kind: "readout", severity: "major" })).toBe(4);
+    expect(priorityOf({ kind: "card", severity: "major", house: true })).toBe(2);
+    expect(priorityOf({ kind: "alert", severity: "major", house: true })).toBe(3);
+    expect(priorityOf({ kind: "alert", severity: "major" })).toBe(4); // a `!` to you is yours
     expect(priorityOf({ kind: "objective", severity: "major" })).toBe(1);
     expect(priorityOf({ kind: "readout", severity: "minor" })).toBe(0);
   });
@@ -42,9 +47,15 @@ describe("an alarm jumps the queue", () => {
     expect(surfacesOf(s, false).modal?.moment.key).toBe("o:pass");
   });
 
-  it("a minor moment never gets ahead of a major one; arrival order holds within a rank", () => {
+  it("a minor moment never gets ahead of a major one; within a rank the newest first, the bigs oldest first", () => {
     const s = run([arrive([moment(1, { kind: "card" }), moment(2, { kind: "readout", severity: "minor" }), moment(3, { kind: "card" })], "bsod")]);
-    expect(s.queue.map((x) => x.moment.seq)).toEqual([1, 3, 2]);
+    expect(s.queue.map((x) => x.moment.seq)).toEqual([3, 1, 2]);
+    // Story order for the bigs: 🎱 then 🎀.
+    const b = run([arrive([moment(5, { severity: "big", kind: "readout", text: "🎱 Bingo!" }), moment(6, { severity: "big", kind: "readout", text: "🎀 You won." })], "sticky")]);
+    expect(b.queue.map((x) => [x.moment.seq, x.level])).toEqual([
+      [5, "big"],
+      [6, "big"],
+    ]);
   });
 });
 
@@ -59,32 +70,32 @@ describe("stickies never pile up", () => {
     expect(missedCount(s, false, 0)).toBe(1);
   });
 
-  it("an older alarm stays up; a lesser sticky waits behind it, and Dismiss all takes both, read", () => {
+  it("an older alarm stays up; a lesser sticky waits behind it (no Dismiss all: each is closed on its own)", () => {
     let s = run([arrive([moment(1)], "sticky")]); // a `!` alarm
     s = run([arrive([moment(2, { kind: "other" })], "sticky")], s);
     const v = surfacesOf(s, false);
     expect(v.sticky?.moment.seq).toBe(1);
     expect(v.stickyCount).toBe(2);
     expect(s.missed).toEqual([]);
-    s = momentsReducer(s, { type: "dismissMany", keys: v.stickyKeys });
-    expect(s.queue).toEqual([]);
-    expect(s.missed).toEqual([]); // read, not missed
+    s = momentsReducer(s, { type: "dismiss", key: "m:1", onScreenMs: 3_000 });
+    expect(surfacesOf(s, false).sticky?.moment.seq).toBe(2);
   });
 
-  it("a wake's replay of a few stickies shows them all, with the count (only a live arrival folds)", () => {
-    let s: MomentsState = { ...EMPTY_MOMENTS, missed: [moment(1, { kind: "other" }), moment(2, { kind: "other" })] };
+  it("a wake's replay brings back the newest house banner only; the others stay unread (§7)", () => {
+    let s: MomentsState = { ...EMPTY_MOMENTS, missed: [moment(1, { kind: "alert", house: true }), moment(2, { kind: "alert", house: true })] };
     s = momentsReducer(s, { type: "wake", level: "sticky", role: "guest", now: 0, phase: "hunt" });
-    expect(surfacesOf(s, false).stickyCount).toBe(2);
+    expect(surfacesOf(s, false).stickyCount).toBe(1);
+    expect(surfacesOf(s, false).sticky?.moment.seq).toBe(2);
+    expect(s.missed.map((m) => m.seq)).toEqual([1]);
   });
 
-  it("the bar itself: no uppercase caption over the words, the speaker inline, Dismiss all (n) when more wait", () => {
-    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1, { kind: "other", caption: "Trabolta" }), "sticky"), count: 2, canGo: false, onGo: noop, onDismiss: noop, onDismissAll: noop }));
+  it("the bar itself: no uppercase caption over the words, the speaker inline, never a Dismiss all", () => {
+    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1, { kind: "other", caption: "Trabolta" }), "sticky"), count: 2, exits: [], onExit: noop, onDismiss: noop }));
     expect(html).toContain('<strong class="moments-sticky-lead">Trabolta: </strong>moment 1');
-    expect(html).toContain("Dismiss all (2)");
+    expect(html).not.toContain("Dismiss all");
     expect(html).not.toContain("alarm"); // the full yellow is the `!` alarm's only
-    const ann = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1, { caption: "Announcement" }), "sticky"), count: 1, canGo: false, onGo: noop, onDismiss: noop }));
+    const ann = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(1, { caption: "Announcement" }), "sticky"), count: 1, exits: [], onExit: noop, onDismiss: noop }));
     expect(ann).not.toContain("Announcement");
-    expect(ann).not.toContain("Dismiss all");
     expect(stickyLead({ kind: "quest", caption: "New quest: The Hunt" })).toBe("New quest: The Hunt");
     expect(stickyLead({ kind: "objective", caption: "New objective" })).toBeNull();
   });
@@ -133,14 +144,14 @@ describe("severity is the icon", () => {
   it("the icon follows the moment, never the level it is shown at", () => {
     const notice = moment(30, { kind: "quest", text: "Round 2: one hour." });
     for (const level of ["dialog", "bsod"] as const) {
-      const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(notice, level), index: 1, total: 1, canGo: false, onGo: noop, onDismiss: noop }));
+      const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(notice, level), index: 1, total: 1, exits: [], onExit: noop, onDismiss: noop }));
       expect(html).toContain("moments-ico-info");
       expect(html).not.toContain("moments-ico-error");
     }
   });
 
   it("an alarm's dialog keeps the navy caption and carries the stop icon", () => {
-    const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 1, canGo: false, onGo: noop, onDismiss: noop }));
+    const html = renderToStaticMarkup(createElement(MomentDialog, { q: q(moment(1), "dialog"), index: 1, total: 1, exits: [], onExit: noop, onDismiss: noop }));
     expect(html).toContain('class="w95-titlebar "');
     expect(html).not.toContain("w95-titlebar alarm");
     expect(html).toContain("moments-ico-error");
@@ -150,53 +161,22 @@ describe("severity is the icon", () => {
 describe("the blue screen under plain", () => {
   it("neutral copy: no fault address, no Press any key — Tap to continue", () => {
     const m = moment(4, { kind: "beat", severity: "minor", caption: "Trabolta", text: "Trabolta: I remember her." });
-    const plain = renderToStaticMarkup(createElement(BlueScreen, { q: q(m, "bsod"), index: 1, total: 1, canGo: true, onGo: noop, onDismiss: noop, win95: false }));
+    const exits = [{ label: "What do I do?", icon: "start" as const, nav: { to: "mission" as const } }];
+    const plain = renderToStaticMarkup(createElement(BlueScreen, { q: q(m, "bsod"), index: 1, total: 1, exits, onExit: noop, onDismiss: noop, win95: false }));
     expect(plain).not.toContain("fatal exception");
     expect(plain).not.toContain("Press any key");
     expect(plain).toContain("Tap to continue");
     expect(plain).toContain(">Trabolta<"); // not shouted
-    expect(plain).toContain("Take me there");
-    const w95 = renderToStaticMarkup(createElement(BlueScreen, { q: q(m, "bsod"), index: 1, total: 1, canGo: false, onGo: noop, onDismiss: noop, win95: true }));
+    expect(plain).toContain("What do I do?");
+    expect(plain).not.toContain("Take me there");
+    const w95 = renderToStaticMarkup(createElement(BlueScreen, { q: q(m, "bsod"), index: 1, total: 1, exits: [], onExit: noop, onDismiss: noop, win95: true }));
     expect(w95).toContain("fatal exception 0E");
     expect(w95).toContain("Press any key to continue");
   });
 });
 
-describe("Take me there", () => {
-  const cards = [{ glyph: "📝", channel: "dm:Trabolta", seq: 40 }, { glyph: "📊", channel: "dm:Trabolta", seq: 41 }];
-  it("never to the room already open", () => {
-    expect(exitRoomFor(moment(1, { channel: "loc:The Desktop", text: "ALL PROGRAMS: to the Desktop." }), { open: "loc:The Desktop", cards: [] })).toBeNull();
-    expect(exitRoomFor(moment(1, { channel: "loc:The Desktop", text: "ALL PROGRAMS: to the Desktop." }), { open: null, cards: [] })).toBe("loc:The Desktop");
-  });
-
-  it("a moment about a live card goes to the card's room, not the lobby it was posted in", () => {
-    const m = moment(2, { channel: "lobby", text: "📝 Last chance: file your round-one facts with Trabolta." });
-    expect(exitRoomFor(m, { open: null, cards })).toBe("dm:Trabolta");
-    expect(exitRoomFor(m, { open: "dm:Trabolta", cards })).toBeNull(); // already at the card
-    expect(exitRoomFor(m, { open: null, cards: [] })).toBe("lobby"); // no such card: its own room
-    expect(exitRoomFor(moment(3, { channel: "lobby", text: "No glyph here." }), { open: null, cards })).toBe("lobby");
-  });
-
-  it("an announcement that says 'check your messages' opens the DM it names, else the DM that heard last", () => {
-    const dms = [
-      { id: "dm:Trabolta", title: "Trabolta", last: 90 },
-      { id: "dm:Truther_Download", title: "Truther Download", last: 88 },
-      { id: "dm:Clippy", title: "Clippy", last: 12 },
-    ];
-    const truther = moment(4, { channel: "lobby", text: "📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." });
-    expect(exitRoomFor(truther, { open: null, cards: [], dms })).toBe("dm:Truther_Download");
-    expect(exitRoomFor(truther, { open: "dm:Truther_Download", cards: [], dms })).toBeNull();
-    // Names no DM: the one that heard last.
-    expect(exitRoomFor(moment(5, { channel: "lobby", text: "Something arrived. Check your messages." }), { open: null, cards: [], dms })).toBe("dm:Trabolta");
-    // Only a mention, no "check your messages": the lobby's own.
-    expect(exitRoomFor(moment(6, { channel: "lobby", text: "📊 THE TRUST CHART. Trabolta is ranking every program on the TV." }), { open: null, cards: [], dms })).toBe("lobby");
-    // A room's own moment never moves.
-    expect(exitRoomFor(moment(7, { channel: "loc:The Desktop", text: "Check your messages, Trabolta says." }), { open: null, cards: [], dms })).toBe("loc:The Desktop");
-  });
-});
-
 describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", () => {
-  it("a folded sticky and a Dismiss all take their peeks with them", async () => {
+  it("a folded sticky and a read take their peeks with them", async () => {
     const { peekFor } = await import("../src/moments/model.ts");
     const a = moment(1, { kind: "readout", text: "🚨 Calculator marked" });
     const b = moment(2, { kind: "readout", text: "🚨 Winamp marked" });
@@ -204,10 +184,10 @@ describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", 
     expect(surfacesOf(s, true).balloon?.moment.peekOf).toBe("m:1");
     // A second sticky folds the first (no more urgent) — its peek goes too.
     s = run([arrive([b, peekFor(b)], "sticky", "booth")], s);
-    expect(s.queue.map((x) => x.moment.key)).toEqual(["m:2", "p:m:2"]);
+    expect(s.queue.map((x) => x.moment.key).sort()).toEqual(["m:2", "p:m:2"]);
     expect(s.missed.map((m) => m.key)).toEqual(["m:1"]);
-    // Dismiss all: the sticky and its peek leave, read.
-    s = momentsReducer(s, { type: "dismissMany", keys: surfacesOf(s, true).stickyKeys });
+    // Read: the sticky and its peek leave.
+    s = momentsReducer(s, { type: "read", keys: surfacesOf(s, true).stickyKeys });
     expect(s.queue).toEqual([]);
   });
 });
@@ -215,10 +195,10 @@ describe("a booth's peek follows its sticky twin (merged with fbooth's peeks)", 
 describe("a sticky's words stop at three lines (finish review #2)", () => {
   it("a long sticky is clamped with 'more ›'; a short one has no 'more'", () => {
     const long = moment(50, { kind: "quest", caption: "New quest: The Truth Scavenger Hunt", text: "Round 2: It is more important than ever that I get the information I need. One hour. The books have not moved. Return to the Desktop for the Second Moment of Truth.\n- Q1. What extension does the Customer Care card tell you to dial?" });
-    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(long, "sticky"), count: 1, canGo: true, onGo: noop, onDismiss: noop }));
+    const html = renderToStaticMarkup(createElement(StickyBanner, { q: q(long, "sticky"), count: 1, exits: [], onExit: noop, onDismiss: noop }));
     expect(html).toContain('class="moments-sticky-words clamp"');
     expect(html).toMatch(/<button type="button" class="w95-btn moments-sticky-more" aria-expanded="false">more ›<\/button>/u);
-    const short = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(51, { text: "Snacks are in The Start Bar." }), "sticky"), count: 1, canGo: false, onGo: noop, onDismiss: noop }));
+    const short = renderToStaticMarkup(createElement(StickyBanner, { q: q(moment(51, { text: "Snacks are in The Start Bar." }), "sticky"), count: 1, exits: [], onExit: noop, onDismiss: noop }));
     expect(short).not.toContain("moments-sticky-more");
     const css = readBundledCss();
     expect(css).toMatch(/\.moments-sticky-words\.clamp \{[^}]*-webkit-line-clamp: 3;[^}]*overflow: hidden/u);

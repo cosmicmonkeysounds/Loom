@@ -8,8 +8,9 @@
 // performer booth sees and can post in every authored channel, and no
 // guest can (faction membership holds guest programs only). Never put
 // anything there meant for one faction's eyes.
-// So every booth sees `# quarantine`'s escort pins (no `!`: they never
-// chime; the Antivirus cue is the Enforcer readout in cast/kit.loom).
+// `# quarantine` is the Antivirus' back room. (Wave 18: no escort pins
+// there any more: the Wanted board lists the marked, and the Antivirus cue
+// is the Enforcer's WANTED readout in cast/kit.loom.)
 // `# unlimited-power` / `# the-way-out` are the guest factions' own rooms
 // (members only); the factions are hidden until the Y2K clock.
 

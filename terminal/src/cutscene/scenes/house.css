@@ -1,0 +1,90 @@
+/* The house's big wins (wave 18, `house.tsx`): a Win98 "Congratulations!"
+   over whatever is up. Chrome 87 / Safari 14: no `inset`, no flex `gap`. */
+
+.hw-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hw-win {
+  font-size: 2.4vmin;
+  max-width: 92%;
+}
+
+.hw-body {
+  padding: 1.2em 1.4em 1em;
+}
+
+.hw-row {
+  display: flex;
+  align-items: center;
+}
+
+.hw-glyph {
+  flex: none;
+  font-size: 5.5em;
+  line-height: 1;
+  margin-right: 0.35em;
+  transform-origin: 50% 60%;
+}
+
+.hw-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hw-who {
+  font-family: var(--kit-ui);
+  font-weight: 700;
+  font-size: 2.6em;
+  line-height: 1.05;
+  color: var(--kit-navy);
+  overflow-wrap: break-word;
+  margin-bottom: 0.2em;
+}
+
+.hw-line {
+  font-family: var(--kit-ui);
+  font-size: 1.5em;
+  line-height: 1.25;
+  color: #000;
+  overflow-wrap: break-word;
+}
+
+.hw-line-big {
+  font-size: 2.1em;
+  font-weight: 700;
+}
+
+.hw-marquee {
+  margin-top: 0.9em;
+  padding: 0.25em 0;
+  background: #000;
+  color: #ffd23f;
+  font-family: "VT323", monospace;
+  font-size: 1.6em;
+  letter-spacing: 0.08em;
+}
+
+.hw-actions {
+  margin-top: 0.9em;
+  text-align: right;
+}
+
+.hw-ok {
+  min-width: 6em;
+  text-align: center;
+}
+
+/* A wall terminal: a tablet, read from across the room — bigger type. */
+.hw-wall .hw-win {
+  font-size: 3.4vmin;
+}
+.hw-wall .hw-glyph {
+  font-size: 4.5em;
+}

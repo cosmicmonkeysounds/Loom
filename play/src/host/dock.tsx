@@ -14,13 +14,16 @@ import { ArmDrain, CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, STORY_
 import { eventRoot } from "../chrome/balloon.tsx";
 import { URGENT_S } from "../clock.ts";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
+import { PopOutDock } from "../moments/popout.tsx";
 import { useMomentsHold } from "../moments/provider.tsx";
 import type { PrimeSession } from "../session/prime.ts";
 import type { HostView } from "../types.ts";
 import { useHostView, useRecap, type HostClient } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
-import { awardsNear, barLine, groupNeeds, type BarLine, type HostStripItem, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type RefusedPress } from "./model.ts";
+import { OPTIMISTIC_MS, awardsNear, barLine, cueDescription, groupNeeds, hostWanted, wantedNeed, type BarLine, type HostStripItem, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type OwnPress, type RefusedPress } from "./model.ts";
+import { callerKnown, callerText, cueCaller, shownCaller, type CallerFlip } from "./caller.ts";
+import { useFireAnyway } from "./fire-anyway.tsx";
 import { CuesTab } from "./tab-cues.tsx";
 import { JudgeTab } from "./tab-judge.tsx";
 import { MoreTab } from "./tab-more.tsx";
@@ -48,6 +51,10 @@ export interface HostDockProps {
   client?: HostClient;
   /** Tests: the keyboard state in place of the page's focus. */
   keyboardOpen?: boolean;
+  /** Open the Wanted board read-only (the booth's `WantedBoard`, wave 18
+   *  §5.5); `booth/app.tsx` supplies it. Without it Needs lists the wanted
+   *  programs in place. */
+  openWanted?: () => void;
 }
 
 export function HostDock(p: HostDockProps) {
@@ -67,12 +74,8 @@ export function hostPaused(view: Pick<HostView, "runtime" | "paused" | "doorsClo
   return view.runtime === "paused" || view.paused === true;
 }
 
-/** The NEXT bar's call to action: ARM, then FIRE inside the window. */
-export function fireLabel(armedHere: boolean, sending: boolean, subject: boolean): string {
-  if (sending) return "Sending…";
-  if (armedHere) return "FIRE";
-  return subject ? "PICK" : "ARM";
-}
+export { fireLabel } from "./fire-label.ts";
+import { fireLabel } from "./fire-label.ts";
 
 /** An award's value box on opening the picker: the recap's suggestion, once
  *  per opening (`filledFor` is the cue last filled), never over a typed one.
@@ -82,7 +85,7 @@ export function awardPrefill(pickingId: string | null, filledFor: string | null,
   return suggestion !== null && value === "" ? suggestion.value : null;
 }
 
-function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }: HostDockProps) {
+function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen, openWanted }: HostDockProps) {
   const auth = session.auth!;
   const live = useHostView(injected !== undefined ? null : { token: auth.token, eventId: auth.eventId });
   const client = injected ?? live;
@@ -98,8 +101,9 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
   // takes the bar's second line (for REFUSED_BAR_MS) in place of the toast.
   const [refusedBar, setRefusedBar] = useState(false);
   const pressSeq = useRef(new Map<string, number>());
-  // The cue this booth pressed last (LAST · you).
+  // The cue this booth pressed last (LAST · you), with what it did (did:).
   const [mine, setMine] = useState<string | null>(null);
+  const [ownPress, setOwnPress] = useState<OwnPress | null>(null);
   const calls = client.calls;
   const fire = useMemo(() => (calls === null ? null : hostFire(calls, client.fresh)), [calls, client.fresh]);
   const messages = session.messages;
@@ -112,8 +116,19 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
       setRefused({ id: row.id, what: row.code ?? cueTitleTags(row.title).title, at: Date.now(), afterSeq: pressSeq.current.get(row.id) ?? newestSeq(msgRef.current) });
       // The generic "# hosts says why" toast gives way to the reason itself.
       setToastRef.current(null);
-    } else if (out.ok) setMine(row.id);
+    } else if (out.ok) {
+      setMine(row.id);
+      setOwnPress({ id: row.id, said: out.said ?? [], staff: out.staff ?? [], at: Date.now() });
+    }
   }, []);
+  // Who is calling the show (wave 18 B8): this console's own claim reads
+  // back at once, the view after OPTIMISTIC_MS; a FIRE while someone else
+  // calls asks once.
+  const me = auth.character;
+  const [flip, setFlip] = useState<CallerFlip | null>(null);
+  const callers = view !== null && callerKnown(view.cues);
+  const caller = shownCaller(view !== null ? cueCaller(view.cues) : null, flip, me, Date.now(), OPTIMISTIC_MS);
+  const anyway = useFireAnyway(caller, [me]);
   const desk = useCueDesk(
     rows,
     marks,
@@ -123,6 +138,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
       return fire === null ? Promise.resolve({ ok: false, status: -1, message: "not signed in" }) : fire(id, subject, value, presses);
     },
     onOutcome,
+    { confirm: anyway.confirm },
   );
   setToastRef.current = desk.setToast;
 
@@ -260,12 +276,18 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
 
   const bar = nextBar(rows, view.countdowns, nowMs, runs);
   const armedHere = bar.kind === "next" && desk.armed?.id === bar.row.id;
-  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0);
+  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0) + (wantedNeed(hostWanted(view)) !== null ? 1 : 0);
   // The countdown the bar's first line already reads ("nothing to press …
   // ⏱ Midnight in 59:28") leaves the strip on a phone.
-  const strip = hostStrip(view, layout, nowMs, needs, bar.kind === "countdown");
+  const strip = hostStrip(view, layout, nowMs, needs, bar.kind === "countdown", callers ? callerText(caller, [me], view.parts.map((p) => p.id)) : null);
   const paused = hostPaused(view);
-  const line2 = barLine({ toast: desk.toast, connected: client.connected, error: client.error, receivedAt: client.receivedAt, now, armed: armedHere, subjectName: desk.subjectName, refused: refusedBar ? refused : null, reason });
+  const line2 = barLine({ toast: desk.toast, connected: client.connected, error: client.error, receivedAt: client.receivedAt, now, armed: armedHere, subjectName: desk.subjectName, refused: refusedBar ? refused : null, reason, description: bar.kind === "next" ? cueDescription(bar.row, view.cues) : null });
+  const claim = async (on: boolean): Promise<boolean> => {
+    setFlip({ on, at: Date.now() });
+    const ok = await run(on ? "📣 You're calling the show" : "📣 You stopped calling", () => calls!.caller(on));
+    if (!ok) setFlip(null);
+    return ok;
+  };
   const ctx: HostCtx = {
     view,
     calls: calls!,
@@ -284,6 +306,18 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
       setOpen(false);
       openCard(id);
     },
+    ...(openWanted !== undefined
+      ? {
+          openWanted: () => {
+            setOpen(false);
+            openWanted();
+          },
+        }
+      : {}),
+    caller,
+    callers,
+    claim,
+    ownPress,
   };
   const toggle = () => {
     if (open) return close();
@@ -299,7 +333,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
           <>
             <div className="host-scrim" aria-hidden="true" onClick={close} />
             <Drawer tabs={tabs} tab={tab} setTab={(t) => { setTab(t); setSection(null); }} onClose={close} title={auth.character} fit={fit}>
-              {tab === "cues" && <CuesTab rows={rows} layout={layout} desk={desk} mineLast={mine !== null && mine === view.cues.last} />}
+              {tab === "cues" && <CuesTab rows={rows} layout={layout} desk={desk} mineLast={mine !== null && mine === view.cues.last} bar={bar} stale={stale} />}
               {tab === "needs" && <NeedsTab refused={refused} reason={reason} />}
               {tab === "judge" && <JudgeTab />}
               {tab === "people" && <PeopleTab />}
@@ -307,8 +341,26 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
             </Drawer>
           </>
         )}
-        {!barAway && <HostNextBar bar={bar} desk={desk} open={open} stale={stale} paused={paused} line2={line2} strip={strip} barMain={barMain} onToggle={toggle} />}
+        {!barAway && (
+          <HostNextBar
+            bar={bar}
+            desk={desk}
+            open={open}
+            stale={stale}
+            paused={paused}
+            line2={line2}
+            strip={strip}
+            barMain={barMain}
+            onToggle={toggle}
+            onCaller={() => {
+              // The chip opens the console on Cues, at Who's calling.
+              setTab("cues");
+              setSection(null);
+            }}
+          />
+        )}
         <CuePicker desk={desk} roster={view.roster} suggest={suggestion !== null ? { id: suggestion.id, hint: suggestionHint(suggestion) } : null} />
+        {anyway.dialog}
       </div>
     </HostContext.Provider>
   );
@@ -318,7 +370,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen }:
  *  line in one button that pulls the console up, then ARM → FIRE. It reads
  *  the same desk as the Cues tab, so an arm made in one fires from the
  *  other. */
-export function HostNextBar({ bar, desk, open, stale, paused = false, line2, strip, barMain, onToggle }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; paused?: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onToggle: () => void }) {
+export function HostNextBar({ bar, desk, open, stale, paused = false, line2, strip, barMain, onToggle, onCaller }: { bar: ReturnType<typeof nextBar>; desk: CueDesk; open: boolean; stale: boolean; paused?: boolean; line2: BarLine; strip: HostStripItem[]; barMain?: Ref<HTMLButtonElement>; onToggle: () => void; onCaller?: () => void }) {
   const nextRow = bar.kind === "next" ? bar.row : null;
   const armedHere = nextRow !== null && desk.armed?.id === nextRow.id;
   const sending = nextRow !== null && desk.pending === nextRow.id;
@@ -365,7 +417,12 @@ export function HostNextBar({ bar, desk, open, stale, paused = false, line2, str
             </span>
           ) : (
             strip.map((it, k) => (
-              <span key={k} className={[it.tone !== undefined ? `host-strip-${it.tone}` : "", it.kind !== undefined ? `host-strip-${it.kind}` : "", it.optional === true ? "host-strip-optional" : ""].join(" ").trim() || undefined}>
+              <span
+                key={k}
+                className={stripClass(it)}
+                // The chip's tap opens on Cues (the bar's own tap opens the console).
+                onClick={it.kind === "caller" ? onCaller : undefined}
+              >
                 {it.text}
               </span>
             ))
@@ -388,6 +445,12 @@ export function HostNextBar({ bar, desk, open, stale, paused = false, line2, str
       )}
     </div>
   );
+}
+
+/** One strip item's classes: tone, kind, and when a phone drops it. */
+export function stripClass(it: HostStripItem): string | undefined {
+  const c = [it.tone !== undefined ? `host-strip-${it.tone}` : "", it.kind !== undefined ? `host-strip-${it.kind}` : "", it.optional === true ? "host-strip-optional" : "", it.drop !== undefined ? `host-strip-drop${it.drop}` : ""];
+  return c.filter((x) => x !== "").join(" ") || undefined;
 }
 
 function Drawer({ tabs, tab, setTab, onClose, title, fit, children }: { tabs: ReturnType<typeof hostTabs>; tab: HostTab; setTab: (t: HostTab) => void; onClose: () => void; title: string; fit: KeyboardFit | null; children: ReactNode }) {
@@ -423,9 +486,16 @@ function Drawer({ tabs, tab, setTab, onClose, title, fit, children }: { tabs: Re
         ))}
       </div>
       <div className="host-drawer-body" role="tabpanel" ref={body}>
+        <DockSlot />
         {children}
       </div>
     </div>
   );
 }
 
+
+/** The pop-out strip's slot at the top of the console's body (§5.7): a
+ *  pop-out docks as a strip inside the console, never over the NEXT bar. */
+function DockSlot() {
+  return <PopOutDock />;
+}

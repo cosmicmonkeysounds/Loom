@@ -231,7 +231,7 @@ describe("the story classifies its characters", () => {
     expect(guests).not.toContain("Norton Anti-Virus");
     expect(guests).toEqual(expect.arrayContaining(["Microsoft Excel", "OpenOffice", "Broken Ask Jeeves", "MS Paint"]));
     expect([...performers].sort()).toEqual(
-      ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "Windows Defender"],
+      ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"],
     );
     expect(performers).not.toContain("Calculator");
     // The secret state holder and the voices are nobody's.

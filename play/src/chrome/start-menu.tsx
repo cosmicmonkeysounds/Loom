@@ -127,7 +127,12 @@ export function StartMenu({
         </div>
       )}
       <div className="start-menu-items">
-        {header !== undefined && <div className="start-menu-head">{header}</div>}
+        {/* A tap on the banner (the guest's → Me) closes the menu too. */}
+        {header !== undefined && (
+          <div className="start-menu-head" onClick={onClose}>
+            {header}
+          </div>
+        )}
         {items.map((it) => (
           <StartMenuRow key={it.id} item={it} armed={arm.armed === it.id} asking={asking === it.id} onPick={() => pick(it)} onCancel={() => setAsking(null)} />
         ))}

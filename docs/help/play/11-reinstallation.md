@@ -2,22 +2,26 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture
+keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
 standing in. In *Trapped in the Internet* it is how a corrupted program
 gets out of the Internet — prove you can follow instructions, and you are
-**reinstalled**. Anyone may play it; only the corrupted are released by it.
+**reinstalled**. During the night only a marked or corrupted program may
+play it; **after the night is over it is a party favour** for everyone.
 
 ## Being sent
 
 First you are **marked** for reinstallation — a host saw something
 (named on the Bingo card, a dare, a refused truth, an answer you
-weren't sure of). Your phone greys out, a pinned *🚨 GO TO THE INTERNET*
-tells you so, and an Antivirus comes to escort you through the Tube
-([Your pass](your-pass.md)). The Internet is the **tent in the
-backyard, at the end of the tunnel**. Once you are in it, the
+weren't sure of). A mark switches nothing off: your phone tells you
+quietly and you carry on ([Your pass](your-pass.md)). But the Antivirus
+are hunting you. When one finds you and scans your pass, your screen
+says *⚠ VIRUS DETECTED · CORRUPTION DETECTED*; when they press 🛡, it says
+*⛔ QUARANTINED · Sent to the Internet* with **Go to The Internet** and
+**Show my pass**, and they walk you through the Tube. The Internet is the
+**tent in the backyard, at the end of the tunnel**. Once you are in it, the
 **Installation Wizard** messages you with what happens next: why you are
 there, the headset or the tablet, Bathroom Mode, and where the exit is
 (it is clearly marked; it is for safety). Look for the Installation
@@ -36,15 +40,26 @@ ways to play:
 No camera, or it won't read your pass? Whoever runs the tent can find you
 by name, or tap you in the list of programs in the Internet. A program
 that is marked but not in the Internet yet has its own list on the
-tablet (*Restricted — marked, or held by a director*), and the tablet
-reads **STATUS: RESTRICTED — marked for reinstallation**: **Play here**
-starts your reinstallation all the same.
+tablet (*Marked for reinstallation*), and the tablet reads **Marked
+program detected · STATUS: MARKED — marked for reinstallation**: **Play
+here** starts your reinstallation (and sends you to the Internet) all the
+same.
 
-Only a marked program gets in. Scan a pass that nobody marked and the
-tablet reads **STATUS: healthy — not marked for reinstallation**, with
-*Not marked — an Antivirus marks programs for reinstallation.* and no
-way to play; a headset's lobby never lists an unmarked program either.
-If you want in, find an Antivirus.
+During the night only a marked (or corrupted) program gets in. Scan a pass
+that nobody marked and the tablet reads **Program not marked · STATUS:
+healthy — not marked for reinstallation** (*until the night is over, only a
+marked program may play*) and has no way to play; a headset's lobby never
+lists an unmarked program either. A program a director held without a mark
+reads **Program held by a director**.
+
+## A party favour
+
+Once the night is over (any ending), the simulation is open to **every
+program**: the tablet reads **🎉 Party favour unlocked · STATUS: the night
+is over — anyone may play** (*Party favour for Winamp*), the headset lobby
+tags everyone *[party favour]*, nobody is captured by starting, and Gerald
+finds a healthy program just for fun. Runs after the end never count for the
+duck speedrun award.
 
 ## Moving around
 

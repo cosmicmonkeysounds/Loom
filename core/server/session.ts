@@ -28,6 +28,12 @@ export interface Session {
   /** The host capability, granted by signing in as a part with
    *  `admin: true` (`/api/prime/login`); it lives and dies with that part. */
   host: boolean;
+  /** Wave 18 (C8): the **caller** capability — the part is named by some
+   *  `who: admin` INTERACTION's `by:` (Clippy calls its games), so the booth
+   *  may press those cues (`POST /api/prime/cue`). Granted at sign-in,
+   *  re-derived on every story load, gone with the part (Release, Sign out,
+   *  Go live). Optional on the wire: an older store reads as false. */
+  caller?: boolean;
 }
 
 export class SessionStore {
@@ -35,7 +41,7 @@ export class SessionStore {
 
   /** Create (or replace) the session for a token. */
   set(token: string, session: Session): void {
-    this.byToken.set(token, { character: session.character, admin: session.admin, host: session.host === true });
+    this.byToken.set(token, { character: session.character, admin: session.admin, host: session.host === true, ...(session.caller === true ? { caller: true } : {}) });
   }
 
   /**
@@ -50,7 +56,19 @@ export class SessionStore {
     if (patch.character !== undefined) s.character = patch.character;
     if (patch.admin === true) s.admin = true;
     if (patch.host === true) s.host = true;
+    if (patch.caller === true) s.caller = true;
     return true;
+  }
+
+  /** Drop the caller capability (a part no `by:` names any more). */
+  revokeCaller(token: string): void {
+    const s = this.byToken.get(token);
+    if (s !== undefined) delete s.caller;
+  }
+
+  /** May this token call `who: admin` cues its part is named on (C8)? */
+  canCall(token: string | undefined): boolean {
+    return this.get(token)?.caller === true;
   }
 
   /** Drop part-granted host (a re-sign-in to a part without `admin: true`). Admin is kept. */
@@ -111,7 +129,7 @@ export class SessionStore {
   load(entries: Array<[string, Session]>): void {
     if (!Array.isArray(entries)) return; // tolerate a stale/incompatible store
     for (const [t, s] of entries) {
-      this.byToken.set(t, { character: s.character ?? null, admin: s.admin === true, host: (s as Partial<Session>).host === true });
+      this.byToken.set(t, { character: s.character ?? null, admin: s.admin === true, host: (s as Partial<Session>).host === true, ...((s as Partial<Session>).caller === true ? { caller: true } : {}) });
     }
   }
 }

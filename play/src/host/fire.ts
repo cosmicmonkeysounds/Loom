@@ -16,7 +16,8 @@ export function hostFire(calls: Pick<HostCalls, "cue">, fresh: (ms: number) => P
   return async (id, subject, value, presses) => {
     const post: FirePost = async (body, signal) => {
       const r = await calls.cue(body.name, body.subject ?? null, body.args ?? null, body.presses, signal);
-      return { refused: r["refused"] === true, moved: r["moved"] === true };
+      // The press's lines ride along: LAST's did: reads them (BN-F14).
+      return { refused: r["refused"] === true, moved: r["moved"] === true, said: r["said"], staff: r["staff"] };
     };
     const args = value !== undefined ? cueValueArgs(value) : null;
     const body = { name: id, label: "", ...(subject !== null ? { subject } : {}), ...(args !== null ? { args } : {}), ...(presses !== undefined ? { presses } : {}) };

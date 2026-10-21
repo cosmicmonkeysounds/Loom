@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, judge, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -166,7 +166,10 @@ COHORT Early Arrivals
   never on a TRAIT every host shares (a trait's keys are inherited, so it
   would reach every deriver). Lint `L1211` warns when nobody can sign in
   as that character (a guest's program, a prop, an agent-voiced one).
-  The moderator passcode in a booth still gives full admin.
+  The moderator passcode in a booth still gives full admin. A part that
+  isn't a host can still **call** chosen cues: `by: <Character>` on an
+  admin cue puts it on that booth's 🎤 cue bar (*Trapped in the
+  Internet*: Clippy calls the games; [live verbs](live-verbs.md)).
 - **`crawl: fx`** on a CHARACTER makes every line it speaks **effect
   text** (below).
 - A **COHORT** is a plain named grouping with a capacity, for when you
@@ -193,6 +196,78 @@ ROLE slot into a wallet they send, request and trade from their phones
 `facts.json` key can name an agent-voiced character to rule on the
 near misses with `judge: <Character>` in the header (*Trapped in the
 Internet*: `judge: Trabolta`); [cards & widgets](widgets.md) has how.
+
+## Sides, recruiting and crews
+
+A guest joins one of your public GROUPs as a **side** through a door, not a
+chat room: the app's Sides screen, and a full-screen pair of doors when you
+deal them the `sides` card ([cards & widgets](widgets.md)). Joining is the
+switching `join` (it leaves the other side); `Leave` puts them back on
+neither. Only a declared, joinable, revealed side is offered. Two things
+help the screen read your story:
+
+```loom
+majority: Night.present / 2 + 1
+```
+
+- **`majority: <expr>`** (header) is the head count a side needs: each
+  door's bar reads *4 of 13 needed*. It is display only; your own watchers
+  still decide the majority.
+- **`<Side>.leader`**: set it (`set Unlimited_Power.leader = program`) and
+  the door says *led by Excel*; a leader can't leave or switch.
+
+A guest on a side can **recruit** another by scanning their pass; the other
+phone gets a big invitation (*Join* / *Not now*), and a yes is the same
+switching join. It fires **`recruited`** for the recruit, with `side` (or
+`crew`) and **`by`**, the recruiter, as a person:
+
+```loom
+when recruited for program:
+  if side == "Unlimited Power":
+    set by.recruits = by.recruits + 1
+    update quest Recruit To Stay for by "🙋 {program.name} walked through your door."
+```
+
+Guests may also found **crews** of their own: a name (2–24 characters,
+moderated), a members-only room `crew:<id>`, invitations by pass, at most
+eight in a night, one per founder. A crew is **never a side**: it never
+touches a GROUP's members, `who.group`, a majority, or what an agent-voiced
+character hears. The story hears `founded` (the founder, with `crew`), `join`
+(a new member, with `crew`; a side's `when who joins <Side>:` never does)
+and `unaligned` (someone left their side, with `side`). Directors and hosts
+can rename or dissolve a crew.
+
+## The Wanted board, the reinstallation gate, finished threads
+
+Three more header lines (in the first file, like `watch:`):
+
+```loom
+wanted: program.marked as program.marked_for by program.escort_by, for Antivirus
+reinstall: program.marked == true or program.corrupted == true or Night.ended == true
+archive: The Uploader when program.cleared == true
+```
+
+- **`wanted: <role>.<flag> [as <role>.<reason>] [by <role>.<claim>], for
+  <CHARACTER or GROUP>, …`** gives those booths (and every host) a **Wanted
+  board**: a poster, and a pop-out, for every guest whose flag is true, with
+  the reason, where they were last seen, when they were marked, and who has
+  claimed them (the claim path's value: set it to the claiming character,
+  `set program.escort_by = self`; the string `none` reads as nobody). A
+  guest caught (captured) stays a minute, stamped. Give the booths a claim
+  button of your own (an `INTERACTION` that sets the claim path).
+- **`reinstall: <condition>`**, read per guest, is who may enter the
+  reinstallation games ([House map](house-map.md)). Without it, a captured
+  or restricted guest may; with it, only your condition counts, so include
+  captured guests yourself. *Trapped in the Internet* opens it to everyone
+  once `Night.ended` is true: a party favour (runs after the end never
+  count on the duck board).
+- **`archive: <LOCATION | CHANNEL | CHARACTER> when <condition>`**
+  (repeatable) moves a guest's finished thread, once the condition holds
+  for them, down into *Other rooms* (an arrival DM after they're through the
+  door). It still exists and still works.
+
+Lint **`L1216 HeaderLineInvalid`** flags a `wanted:` / `archive:` /
+`reinstall:` line that doesn't parse or names nothing.
 
 ## One beat, many participants
 
@@ -297,9 +372,11 @@ those out, and `L1205` warns.
 
 ## How loud the phones are: `alerts:`
 
-The app delivers the story's big moments — an `!` alert, a card that
-asks one guest (`with moment: major`, [cards & widgets](widgets.md)), a
-loud [objective](objectives.md), a `reply` to someone, a quest starting —
+A **big** moment (`reply !!…`, `with moment: big`; see
+[Broadcasts](broadcast-improv.md)) is above this ladder: it is full screen
+on every level. Everything else — an `!` alert, a card that asks one
+guest (`with moment: major`, [cards & widgets](widgets.md)), a loud
+[objective](objectives.md), a `reply` to someone, a quest starting — comes
 on a ladder of four levels, quiet to loud:
 
 | Level | On a phone |
@@ -312,10 +389,14 @@ on a ladder of four levels, quiet to loud:
 A major moment renders at the level; a minor one (a quest starting, a
 readout, a note to one person) one step lower, never below a balloon. A
 booth never goes above `sticky`, so a performer is never stopped
-mid-scene. A `!!` takeover is above the ladder and unchanged. Moments a
-phone missed (asleep, or dismissed unread) replay on wake, in order
-(more than three as one list); those from an earlier `Night.phase` are
-skipped.
+mid-scene (a big moment there is a pop-out). A `pin "!!…"` takeover is
+above the ladder and unchanged. A moment to one guest comes before a house
+announcement, one house banner shows at a time (the newest), and a queued
+announcement from an earlier `Night.phase` is dropped once the phase moves
+on. Every moment carries its exits (`with go:`) and lands in the guest's
+**Recycle Bin** (their notifications); a phone that wakes replays only an
+unanswered big moment (for fifteen minutes) and the newest live house
+banner, and the rest waits in the bin.
 
 The level is a world value the story sets. The header names it:
 

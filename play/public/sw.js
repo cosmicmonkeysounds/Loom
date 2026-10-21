@@ -79,12 +79,16 @@ self.addEventListener("notificationclick", (event) => {
       const open = wins.find((c) => c.focused) || wins.find((c) => c.visibilityState === "visible") || wins[0];
       if (!open) return self.clients.openWindow(target);
       let room = null;
+      let link = "";
       try {
-        room = new URL(target).searchParams.get("room");
+        const u = new URL(target);
+        room = u.searchParams.get("room");
+        link = u.search;
       } catch {
         room = null;
       }
-      if (room) open.postMessage({ type: "open-room", room });
+      // `link`: the whole query (wave 18: `?go=pass`, `?room=codex&entry=…`).
+      if (room || link.includes("go=")) open.postMessage({ type: "open-room", room: room || "", link });
       return open.focus();
     })(),
   );

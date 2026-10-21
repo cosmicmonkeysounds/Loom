@@ -10,10 +10,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   BalancePill,
-  FreezeSheet,
-  OfferSheet,
-  PeopleAmountSheet,
-  StimulusSheet,
   WALLET_RESTRICTED_NOTE,
   WalletActionsProvider,
   WalletCardView,
@@ -21,7 +17,6 @@ import {
   approvalBadge,
   frozenNote,
   frozenUntil,
-  buyChoice,
   guestWalletActions,
   heldDeadline,
   liveClock,
@@ -29,7 +24,6 @@ import {
   parseAmount,
   queueSummary,
   secondsLeft,
-  sellChoice,
   walletButtonsFor,
   walletCardTitle,
   walletFooterActions,
@@ -44,6 +38,7 @@ import {
   walletSummary,
   walletTicking,
 } from "../src/wallet.tsx";
+import { FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, buyChoice, sellChoice } from "../src/wallet-sheets.tsx";
 import type { ChatMessage, GuestView, PrimeView, WalletCard, WalletQueueView, WalletTxView, WalletView } from "../src/types.ts";
 import { MessageGroup, PickerSheet } from "../src/chat.tsx";
 import { INBOX, buildGuestChannels, buildPrimeChannels, isPinnedRoom, personalStream } from "../src/session.ts";

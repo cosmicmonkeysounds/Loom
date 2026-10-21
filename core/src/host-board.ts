@@ -9,7 +9,7 @@
 //! them. Dependency-free (the play app imports it by path): nothing here
 //! may reach `node:*`, `server/*` or the sim.
 
-import { cueSheetView, type CueSheetView, type CueInteraction, type CueMarks, type WorldLine, type CuePerson } from "./cue-sheet.ts";
+import { cueRows, cueSheetView, onDeck, type CueSheetView, type CueInteraction, type CueMarks, type WorldLine, type CuePerson } from "./cue-sheet.ts";
 import type { AlertLevel } from "./delivery.ts";
 
 // ---------------------------------------------------------------------------
@@ -780,7 +780,29 @@ export interface HostView extends CueSheetView {
    *  G10 is MS Paint's), by cue id: the picker offers them first
    *  (`awardSuggestion`'s third argument). Absent when none. */
   awardOnly?: Record<string, { id: string; name: string }>;
+  /** The Wanted board (wave 18, C6: `PrimeView.wanted`'s rows) when the
+   *  story declares a `wanted:` line. Absent otherwise. */
+  wanted?: HostWanted[];
+  /** Wave 18 fix (M3): the guest-founded crews a host may rename or
+   *  dissolve (F4: "directors can rename / dissolve"). Absent with none. */
+  crews?: Array<{ id: string; name: string; members: number }>;
 }
+
+/** One Wanted poster (`PrimeView.wanted`'s row, structurally). */
+export interface HostWanted {
+  id: string;
+  name: string;
+  avatar?: string;
+  reason: string | null;
+  location: string | null;
+  lastSeen: number | null;
+  markedAt: number;
+  claimedBy: string | null;
+  captured: boolean;
+}
+
+/** How many cues after NEXT the host view describes (C8: NEXT + 3 on deck). */
+export const DESCRIBED_ON_DECK = 3;
 
 /** A `ModView`-shaped snapshot (the runtime's `modViewNow()`), structurally. */
 export interface ModLike {
@@ -836,8 +858,39 @@ export interface HostViewInput {
   /** Award cues whose story gate names one program (`awardOnly` in
    *  `views.ts`): the one guest who can take it, by cue id. */
   awardOnly?: Readonly<Record<string, { id: string; name: string }>>;
+  /** The Wanted board (C6), when the story declares a `wanted:` line. */
+  wanted?: readonly HostWanted[];
+  /** The live crews (M3). */
+  crews?: ReadonlyArray<{ id: string; name: string; members: number }>;
   /** Wall ms. */
   now: number;
+}
+
+/**
+ * The cue sheet with NEXT's and the next `DESCRIBED_ON_DECK` unfired
+ * in-sequence cues' descriptions (C8: the host's NOW card reads them) and
+ * `cues.then` (the cue on deck after NEXT). Every other row stays lean.
+ */
+export function describedSheet(sheet: CueSheetView, full: readonly CueInteraction[]): CueSheetView {
+  const rows = cueRows(sheet.interactions, sheet.cues);
+  const at = rows.findIndex((r) => r.next);
+  const keep = new Set<string>();
+  if (at >= 0) {
+    keep.add(rows[at]!.id);
+    for (const r of rows.slice(at + 1)) {
+      if (keep.size > DESCRIBED_ON_DECK) break;
+      if (r.sequence && !r.fired) keep.add(r.id);
+    }
+  }
+  const text = new Map(full.map((i) => [i.id, i.description ?? null]));
+  return {
+    ...sheet,
+    interactions: sheet.interactions.map((i) => {
+      const d = keep.has(i.id) ? text.get(i.id) : undefined;
+      return typeof d === "string" && d.trim() !== "" ? { ...i, description: d } : i;
+    }),
+    cues: { ...sheet.cues, then: onDeck(rows)?.id ?? null },
+  };
 }
 
 /** Newest step first: by log position when both rows carry one (a restart
@@ -920,7 +973,7 @@ export function hostView(input: HostViewInput): HostView {
     });
   }
   return {
-    ...cueSheetView(mod),
+    ...describedSheet(cueSheetView(mod), mod.interactions ?? []),
     runtime,
     needs,
     judging,
@@ -933,5 +986,7 @@ export function hostView(input: HostViewInput): HostView {
     alerts: mod.alerts ?? { path: "Night.alerts", level: "sticky" },
     staffRooms: [...input.staffRooms],
     ...(input.awardOnly !== undefined && Object.keys(input.awardOnly).length > 0 ? { awardOnly: Object.fromEntries(Object.entries(input.awardOnly).map(([k, v]) => [k, { id: v.id, name: v.name }])) } : {}),
+    ...(input.wanted !== undefined ? { wanted: input.wanted.map((w) => ({ ...w })) } : {}),
+    ...(input.crews !== undefined && input.crews.length > 0 ? { crews: input.crews.map((c) => ({ id: c.id, name: c.name, members: c.members })) } : {}),
   };
 }

@@ -16,22 +16,30 @@ export function showClockTray(now: { minutes: number; running: boolean }): { tex
 }
 
 /** The tray item for a clock already worked out (the hook's answer). */
-export function ShowClockItem({ now }: { now: { minutes: number; running: boolean } }): ReactElement {
+export function ShowClockItem({ now, yields = false }: { now: { minutes: number; running: boolean }; yields?: boolean }): ReactElement {
   const shown = showClockTray(now);
+  // "11:03" + " PM": a narrow guest tray drops the meridiem so the balance
+  // beside it is never clipped (N2).
+  const cut = shown.text.lastIndexOf(" ");
+  const time = cut > 0 ? shown.text.slice(0, cut) : shown.text;
+  const tail = cut > 0 ? shown.text.slice(cut) : undefined;
   return (
-    <span className={`tray-clock${shown.paused ? " paused" : ""}`} data-testid="tray-show-clock">
-      <TrayItem icon={shown.paused ? <Icon name="pause" /> : undefined} text={shown.text} title={shown.title} tone={shown.paused ? "dim" : undefined} />
+    <span className={`tray-clock${shown.paused ? " paused" : ""}${yields ? " yields" : ""}`} data-testid="tray-show-clock">
+      <TrayItem icon={shown.paused ? <Icon name="pause" /> : undefined} text={time} {...(tail !== undefined ? { tail } : {})} title={shown.title} tone={shown.paused ? "dim" : undefined} />
     </span>
   );
 }
 
-function Live({ clock }: { clock: ShowClock }) {
+function Live({ clock, yields }: { clock: ShowClock; yields: boolean }) {
   const now = useShowClock(clock);
-  return now === null ? null : <ShowClockItem now={now} />;
+  return now === null ? null : <ShowClockItem now={now} yields={yields} />;
 }
 
-/** The tray clock. Null before any hook runs when the view has no clock. */
-export function ShowClockTray({ clock }: { clock: ShowClock | null | undefined }): ReactElement | null {
+/** The tray clock. Null before any hook runs when the view has no clock.
+ *  `yields`: a countdown runs beside it, so on a narrow phone the clock
+ *  steps aside (CSS `.tray-clock.yields`) and the taskbar's buttons keep
+ *  their room (wave 18 fix: they were squeezed to 31 px). */
+export function ShowClockTray({ clock, yields = false }: { clock: ShowClock | null | undefined; yields?: boolean }): ReactElement | null {
   if (clock === null || clock === undefined) return null;
-  return <Live clock={clock} />;
+  return <Live clock={clock} yields={yields} />;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { EMPTY_NIGHT, IDENTIFY_MS, MISSES_OFFLINE, MOMENTS_MAX, attractOf, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { BIG_LINE_MAX, EMPTY_NIGHT, IDENTIFY_MS, MISSES_OFFLINE, MOMENTS_MAX, attractOf, bigLineOf, momentsOf, type ScreenMoment, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
@@ -210,5 +210,47 @@ describe("a room terminal (wave 7: the server-room terminal)", () => {
     expect(attractOf(old)).toBe(false); // any other terminal: unchanged
     expect(parseScreenState({ ...body, room: { id: 3, open: "yes" } })!.room).toBeNull();
     expect(attractOf(null, true)).toBe(true);
+  });
+});
+
+// Wave 18: a big house broadcast rides the moments ring (the core lane's
+// shape, read generously).
+const T0 = 9_000_000;
+const big = (seq: number, at: number, name: string, who: string | null = null): ScreenMoment => ({ seq, at, kind: "big", name, who, kept: false });
+
+describe("big house broadcasts off the wire", () => {
+  it("kind big: the line from text (else name), its !! / ~ marks stripped, who kept", () => {
+    const out = momentsOf([
+      { seq: 3, at: T0, kind: "big", name: "!!🎀 Encarta wins a Bingo…", text: "!!🎀 Encarta wins a Bingo Ribbon! Everyone cheer!", who: "Encarta" },
+      { seq: 4, at: T0, kind: "big", name: "~🏆 Excel wins Most Trusted" },
+    ]);
+    expect(out).toEqual([big(3, T0, "🎀 Encarta wins a Bingo Ribbon! Everyone cheer!", "Encarta"), big(4, T0, "🏆 Excel wins Most Trusted")]);
+  });
+
+  it("an unknown kind flagged moment: big or big: true is big; a wave 17 kind keeps its meaning", () => {
+    const out = momentsOf([
+      { seq: 1, at: T0, kind: "broadcast", moment: "big", text: "!!🎀 Winamp wins a Bingo Ribbon!" },
+      { seq: 2, at: T0, kind: "line", big: true, name: "🏆 Clippy wins" },
+      { seq: 3, at: T0, kind: "signal", moment: "big", name: "award_the_ribbon" },
+      { seq: 4, at: T0, kind: "broadcast", name: "🎀 not flagged" },
+    ]);
+    expect(out.map((m) => [m.kind, m.name])).toEqual([
+      ["big", "🎀 Winamp wins a Bingo Ribbon!"],
+      ["big", "🏆 Clippy wins"],
+      ["signal", "award_the_ribbon"],
+    ]);
+  });
+
+  it("an empty or history big line drops; a long one is clipped", () => {
+    expect(momentsOf([{ seq: 1, at: T0, kind: "big", name: "!! " }])).toEqual([]);
+    expect(momentsOf([{ seq: 1, at: 0, kind: "big", name: "🎀 old" }])).toEqual([]);
+    const long = bigLineOf(`🎀 ${"x".repeat(400)}`);
+    expect(long.length).toBe(BIG_LINE_MAX);
+    expect(long.endsWith("…")).toBe(true);
+  });
+
+  it("a whole answer carries them through parseScreenState", () => {
+    const s = parseScreenState({ attract: false, moments: [{ seq: 9, at: T0, kind: "big", text: "!!🎀 Encarta wins a Bingo Ribbon!" }] }, T0);
+    expect(s?.moments).toEqual([big(9, T0, "🎀 Encarta wins a Bingo Ribbon!")]);
   });
 });

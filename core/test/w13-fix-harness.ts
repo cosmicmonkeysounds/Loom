@@ -153,6 +153,11 @@ export async function guest(rt: EventRuntime, name: string): Promise<{ id: strin
 export async function booth(rt: EventRuntime, character: string, token?: string): Promise<Reply> {
   return post(rt, "/api/prime/login", { character, passcode: CODES.prime, ...(token !== undefined ? { token } : {}) });
 }
+export function guestStream(rt: EventRuntime, token: string) {
+  const res = fakeRes();
+  const open = rt.handle(fakeReq(null), res as unknown as ServerResponse, "GET", "/events", new URL(`http://x/events?role=guest&token=${encodeURIComponent(token)}`), {});
+  return { open, res };
+}
 export function primeStream(rt: EventRuntime, token: string) {
   const res = fakeRes();
   const open = rt.handle(fakeReq(null), res as unknown as ServerResponse, "GET", "/events", new URL(`http://x/events?role=prime&token=${encodeURIComponent(token)}`), {});

@@ -24,6 +24,19 @@ export interface HostCtx {
   openRoom: (channel: string) => void;
   /** Close the drawer and open a guest's card in the booth. */
   openCard: (guestId: string) => void;
+  /** Close the drawer and open the Wanted board, read-only (the booth's
+   *  `WantedBoard`, wave 18 §5.5). Absent when the booth supplies none:
+   *  Needs then lists the wanted programs in place. */
+  openWanted?: () => void;
+  /** Who is calling the show, as this console shows it (its own claim
+   *  reads back at once); null when nobody, or the server has no callers. */
+  caller?: import("./caller.ts").CueCaller | null;
+  /** The server knows callers (`cues.caller` present). */
+  callers?: boolean;
+  /** 📣 I'll call / Stop calling. */
+  claim?: (on: boolean) => Promise<boolean>;
+  /** This console's own last press and its lines (did:). */
+  ownPress?: import("./model.ts").OwnPress | null;
 }
 
 export const HostContext = createContext<HostCtx | null>(null);

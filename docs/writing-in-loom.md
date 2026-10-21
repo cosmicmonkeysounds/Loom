@@ -1590,6 +1590,15 @@ booth's conditions read the world and `self`, never the guest it scans:
 put per-guest tests on the buttons' own `while:`. Objectives are display
 only — never journaled, never sent to an agent.
 
+Four more keys (2026-10-21): `go:` names the one place the objective wants
+a guest (a LOCATION, a CHANNEL, a CHARACTER's thread, a guest button, or a
+screen such as `pass`, `scan`, `sides`, `quests`), shown on their Mission
+as *📍 Go to …* or *✓ YOU'RE HERE*; `target:` (an expression naming one
+guest) and `pick:` (a condition read per guest) give a booth objective its
+guest or its list, so the performer taps a picture instead of scanning;
+`evergreen: true` marks the fallback a phone never counts as one more
+objective.
+
 ### 11.14 Hosts, alerts and effect text
 
 **Host parts.** `admin: true` on a CHARACTER a performer plays makes it
@@ -1644,6 +1653,35 @@ has open; typed chat and agent replies show at once.
 That loop — not this guide — is how you'll actually learn Loom.
 
 ---
+
+### 11.15 Big moments, exits, and the people the story names
+
+**Big moments.** `reply !!…` takes the reader's whole screen, at every
+alert level, until they press its one button (on a booth it is a pop-out,
+never a full screen); `show … with moment: big` does it for a card, which
+is answered inside. A big moment for the whole house is `broadcast "!!…" to
+everyone with close: 6s`, and belongs in an admin cue's `when` or a story
+rule (lint L1218). A house-wide win led by 🎀 / 🏆 also pops a
+*Congratulations!* window on the TV and the wall terminals.
+
+**Exits.** After a quoted text, `with go: The Desktop, go: pass` gives a
+moment its buttons: a place, a room, a character's thread, a guest button,
+`codex: <Entry>`, `quest: <Quest>`, or a screen (`pass`, `scan`, `chats`,
+`mission`, `notifications`, `sides`, `wallet`, `me`), `as "Label"` to rename
+one. Never `lobby`: the lobby is the guests' far-away Chat log (lint L1214).
+
+**The people the story names.** Three header lines read per guest:
+`wanted: guest.marked as guest.why by guest.claimed_by, for Antivirus`
+gives those booths a Wanted board (every guest whose flag is true, why,
+where, who has claimed them; the claim is an INTERACTION you write that sets
+the claim path to `self`); `reinstall: <condition>` is who may enter the
+reinstallation games; `archive: <Room or Character> when <condition>` moves
+a finished thread down the guest's list. `majority: <expr>` is the head
+count a side needs, shown on the side doors (`show sides … with moment:
+big`). `by: <Character>` on a `who: admin` cue lets that booth call it from a
+🎤 cue bar (lint L1217). Guests recruit to their side by scanning a pass
+(`when recruited for guest:`, `by` = the recruiter) and may found **crews**
+of their own, which are never sides (`founded`, `join` with `crew`).
 
 ## Appendix A — Cheat sheet
 

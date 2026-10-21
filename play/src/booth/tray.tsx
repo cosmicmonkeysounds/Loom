@@ -3,7 +3,9 @@
 //! (the story's current act — the cue sheet's, the one the NEXT strip
 //! shows — set in full ink; the CRA approver's held transfers take its
 //! place while any wait),
-//! the soonest countdown, and the moments layer's missed count.
+//! the soonest countdown. Wave 18 (BOOTH-SPEC §3): the 🚨 Minesweeper LED
+//! (marked programs still loose → the Wanted board) and 🔔 n (pop-outs
+//! waiting → the Waiting window) lead; the missed count is gone.
 //! (The chrome lane's `CountdownTray` is the guest's clock; integration may
 //! swap it in here once it lands.) A view with `paused: true` stops the
 //! countdown and reads ⏸ (`PrimeView.paused`, set while the story clock is stopped).
@@ -13,7 +15,6 @@ import { storyNow } from "../director.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
 import { ShowClockTray } from "../chrome/show-clock-tray.tsx";
 import { showClockOf } from "../show-clock.ts";
-import { MissedTray } from "../moments/provider.tsx";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
 import type { PrimeView } from "../types.ts";
@@ -22,7 +23,28 @@ import { heldCount, soonest, trayAct, trayClock, viewPaused } from "./model.ts";
 /** Seconds a countdown reads red under (the director phone's `URGENT_S`). */
 const URGENT = 60;
 
-export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet: () => void }) {
+/** The Minesweeper LED's digits: "003" (three wide, capped at 999). */
+export function ledDigits(n: number): string {
+  return String(Math.min(999, Math.max(0, Math.floor(n)))).padStart(3, "0");
+}
+
+export function BoothTray({
+  view,
+  onWallet,
+  loose = null,
+  waiting = 0,
+  onBoard,
+  onWaiting,
+}: {
+  view: PrimeView | null;
+  onWallet: () => void;
+  /** Wave 18 (§3): marked programs still loose — the 🚨 LED; null = this booth gets no board. */
+  loose?: number | null;
+  /** Pop-outs waiting (deferred + queued): 🔔 n. */
+  waiting?: number;
+  onBoard?: () => void;
+  onWaiting?: () => void;
+}) {
   // The story clock between snapshots: the view's clock plus the wall time
   // since it arrived (a quiet stretch pushes no view).
   const got = useRef({ clock: view?.clock, at: Date.now() });
@@ -45,11 +67,20 @@ export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet
   const act = trayAct(view?.night?.act, view?.night?.step, typeof word === "string" ? word : null);
   return (
     <>
-      <ShowClockTray clock={showClockOf(view)} />
+      {loose !== null && loose > 0 && (
+        <button type="button" className="tray-item led" title={`Marked and loose: ${loose}`} aria-label={`Marked and loose: ${loose}`} onClick={onBoard}>
+          <span aria-hidden>🚨</span>
+          <span className="led-digits">{ledDigits(loose)}</span>
+        </button>
+      )}
+      {waiting > 0 && <TrayItem text={`🔔 ${waiting}`} title={`${waiting} waiting for you`} onClick={onWaiting} tone="alarm" />}
+      <ShowClockTray clock={showClockOf(view)} yields={soon !== null} />
       {held > 0 ? (
         <TrayItem icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" />
       ) : act !== null ? (
-        <TrayItem text={act.text} title={act.title} />
+        <span className={`tray-act${soon !== null ? " yields" : ""}`}>
+          <TrayItem text={act.text} title={act.title} />
+        </span>
       ) : null}
       {soon !== null && (
         <TrayItem
@@ -59,7 +90,6 @@ export function BoothTray({ view, onWallet }: { view: PrimeView | null; onWallet
           tone={soon.left < URGENT && !paused ? "alarm" : undefined}
         />
       )}
-      <MissedTray />
     </>
   );
 }

@@ -28,14 +28,15 @@ function harness(armed: string | null = null) {
   return { button, press, calls, taps };
 }
 
-describe("the NOW sheet's buttons", () => {
+describe("Mission's big buttons (wave 18: was the NOW sheet's)", () => {
   it("pass opens the pass, scan the scan sheet", () => {
     const h = harness();
     h.press("pass");
     h.press("scan");
     expect(h.calls).toEqual(["pass", "scan"]);
-    expect(renderToStaticMarkup(h.button("pass")!)).toContain("Show my pass");
-    expect(renderToStaticMarkup(h.button("scan")!)).toContain("Scan a code");
+    expect(renderToStaticMarkup(h.button("pass")!)).toContain("SHOW MY PASS");
+    expect(renderToStaticMarkup(h.button("scan")!)).toContain("SCAN A CODE");
+    expect(renderToStaticMarkup(h.button("pass")!)).toContain("mission-big");
   });
 
   it("a story button acts through the arm model", () => {
@@ -51,7 +52,7 @@ describe("the NOW sheet's buttons", () => {
     expect(h.taps).toEqual([{ id: "plant_the_virus", arm: true }]);
     expect(h.calls).toEqual([]);
     const armed = renderToStaticMarkup(harness("plant_the_virus").button("plant_the_virus")!);
-    expect(armed).toContain('class="choice armed"');
+    expect(armed).toContain('class="choice mission-big armed"');
     expect(armed).toContain("Tap again to fire");
   });
 

@@ -12,8 +12,7 @@ import { Taskbar, TrayItem } from "../src/chrome/taskbar.tsx";
 import { TitleBar } from "../src/chrome/title-bar.tsx";
 import { HostDock } from "../src/host/dock.tsx";
 import { useHostView } from "../src/host/client.ts";
-import { MissedTray, MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
-import { PassSheet } from "../src/guest/sheets.tsx";
+import { MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 import { ObjectiveCard, checkCount } from "../src/ui/objective.tsx";
 
@@ -110,9 +109,8 @@ describe("the objective card", () => {
 });
 
 describe("the pass", () => {
-  it("FullPass is the full-screen pass (the old pass sheet's barrel name renders it)", () => {
+  it("FullPass is the full-screen pass", () => {
     const onClose = () => {};
-    expect(html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }))).toBe(html(createElement(PassSheet, { me: { id: "g-1a2b", name: "Winamp" }, onClose })));
     const out = html(createElement(FullPass, { guestId: "g-1a2b", name: "Winamp", onClose }));
     expect(out).toContain('class="fullpass"');
     expect(out).toContain("Hold this up to a performer");
@@ -159,7 +157,6 @@ describe("the moments layer (mounted in Stage A, filled by the moments lane)", (
   it("nothing is missed yet; the level reads the view, sticky by default", () => {
     expect(html(createElement(MomentsProvider, { ...input(null), children: createElement(Probe) }))).toBe("<i>dialog 0</i>");
     expect(html(createElement(Probe))).toBe("<i>sticky 0</i>");
-    expect(html(createElement(MissedTray))).toBe("");
   });
 });
 

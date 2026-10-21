@@ -85,13 +85,13 @@ function advance(sim: Sim, seconds: number): SimEvent[] {
 }
 
 const FEATURED = ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"];
-const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "Windows Defender"];
-/** The five Enforcer booths (TRAIT Enforcer in cast/kit.loom; wave 11 adds
- *  Windows Defender, the door-only part): every escort readout lands in each. */
-const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"];
-/** Wave 13: the four room Antivirus hear the patrol, sweep, escort, Bathroom
- *  Mode and alarm readouts; Windows Defender, the door, hears only its own. */
-const PATROL = ANTIVIRUS.filter((a) => a !== "Windows Defender");
+const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"];
+/** The four Enforcer booths (TRAIT Enforcer in cast/kit.loom): every escort
+ *  readout lands in each. Wave 18 (Q26): the door-only part is gone. */
+const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"];
+/** The four hear the patrol, sweep, escort, Bathroom Mode and alarm
+ *  readouts (the same four as ANTIVIRUS since wave 18). */
+const PATROL = ANTIVIRUS;
 /** The rooms an Antivirus clearance (or a release) opens: the whole house
  *  but the Optical Drive, the Tube, the Internet and the Server Room. */
 const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
@@ -704,7 +704,8 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "Night.bingo_winners")).toBe(1);
     const rib = sim.signal("award_the_ribbon", "g1", null, "Clippy");
     expect(sim.holdsCodex("g1", "Computer Bingo")).toBe(true);
-    expect(casts(rib).some((b) => b.cue.includes("wins a Bingo Ribbon"))).toBe(true);
+    // Wave 18 (B7): the house cheer is a big moment that closes itself.
+    expect(casts(rib).some((b) => b.cue.includes("!!🎀") && b.cue.includes("won the Bingo Ribbon"))).toBe(true);
   });
 
   it("the first reinstall: Corrupted Code, the Installation Wizard in private, no TV mirror yet", () => {
@@ -740,7 +741,7 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.isCaptured("g5")).toBe(false);
     expect(sim.locationOf("g5")).toBe("The Desktop");
     expect(sim.holdsCodex("g5", "The Golden Duck")).toBe(true);
-    expect(replies(done).map((r) => r.text)).toContain("Reinstallation complete. You can follow instructions. Welcome back to the computer.");
+    expect(replies(done).map((r) => r.text)).toContain("!!🦆 Reinstallation complete. You can follow instructions. Welcome back to the computer.");
 
     sim.signal("the simulation completed", "g1");
     expect(sim.holdsCodex("g1", "The Golden Duck")).toBe(false); // a free program learns nothing
@@ -927,44 +928,40 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(hosts(r4)).toEqual(["📋 All three results are read. Next: 📺 Preview hunt 2."]);
     expect(beats(r4)).toEqual([]);
 
-    // 🤷 marks for reinstallation (wave 4, lane E): not captured — the phone
-    // shrinks to the 🚨 card (DMs + the Tube / Internet rooms, read-only, no
-    // buttons), every Antivirus booth gets the readout, # quarantine pins the
-    // escort task with the reason.
+    // 🤷 marks for reinstallation (wave 4, lane E): not captured. Wave 18
+    // (Q30): not hindered either: no restriction, no pin; the phone hears one
+    // soft (minor) heads-up, and every Antivirus booth a big WANTED readout.
     const mk = sim.signal("uncertain_answer", "g11", null, "Clippy");
     expect(sim.isCaptured("g11")).toBe(false);
     expect(v(sim, "g11.marked")).toBe(true);
     expect(v(sim, "g11.marked_for")).toBe("was not sure of an answer");
-    expect(v(sim, "g11.restricted")).toBe(true);
+    expect(v(sim, "g11.restricted")).not.toBe(true);
     const gv11 = guestView(sim, "g11");
-    expect(gv11.restricted).toBe(true);
-    expect(gv11.interactions.map((i) => i.id)).toEqual(["go to the bathroom"]); // 🚻 only (`restricted: allow`, M20)
-    const ch11 = gv11.channels.map((c) => c.id);
-    expect(ch11.length).toBeGreaterThan(0);
-    for (const id of ch11) expect(["loc:The Tube", "loc:The Internet", "loc:The Desktop"], id).toContain(id);
-    expect(gv11.channels.every((c) => c.canPost === false)).toBe(true);
+    expect(gv11.restricted).not.toBe(true);
+    expect(gv11.channels.some((c) => c.canPost)).toBe(true);
     const mkMsgs = composeGuestMessages(sim, mk);
-    const phonePin = mkMsgs.find((m) => m.channel === "lobby" && m.pin === "g11");
-    expect(phonePin).toMatchObject({ kind: "signal", alert: true, audience: ["g11"] });
-    expect(phonePin!.text.startsWith("🚨 GO TO THE INTERNET")).toBe(true);
-    const escort = mkMsgs.find((m) => m.channel === "room:quarantine" && m.pin === "g11");
-    expect(escort!.text).toContain(sim.persons.get("g11")!.name);
-    expect(escort!.text).toContain("was not sure of an answer");
-    expect(replies(mk).filter((r) => r.text.includes("marked for reinstallation"))).toHaveLength(PATROL.length);
-    for (const who of PATROL) expect(replies(mk).some((r) => r.to === who && r.text.includes("marked for reinstallation")), who).toBe(true);
+    expect(mkMsgs.some((m) => m.pin !== undefined)).toBe(false);
+    const heads = mkMsgs.find((m) => m.readout === true && Array.isArray(m.audience) && m.audience[0] === "g11" && m.text.startsWith("🚨 You are marked for reinstallation"))!;
+    expect(heads).toMatchObject({ moment: "minor" });
+    expect(heads.text).toContain("was not sure of an answer");
+    const wanted = replies(mk).filter((r) => r.text.includes("marked for reinstallation") && PATROL.includes(r.to));
+    expect(wanted).toHaveLength(PATROL.length);
+    for (const r of wanted) expect(r.text.startsWith("!!🚨 "), r.to).toBe(true);
     // The marked guesser is escorted too.
     sim.signal("send to the internet", "g12", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g12")).toBe(true);
     expect(v(sim, "g12.marked")).toBe(false);
-    // The Antivirus' 🛡 is still the capture: it lifts the mark and both pins.
+    // The Antivirus' 🛡 is still the capture: it lifts the mark; the phone
+    // gets the big "Sent to the Internet" with the way there (C12), never a
+    // "the mark is lifted" line.
     const cap = sim.signal("send to the internet", "g11", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g11")).toBe(true);
     expect(v(sim, "g11.marked")).toBe(false);
-    expect(v(sim, "g11.restricted")).toBe(false);
-    const unpins = composeGuestMessages(sim, cap).filter((m) => m.unpin === "g11");
-    expect(unpins.map((m) => m.channel).sort()).toEqual(["lobby", "room:quarantine"]);
-    expect(unpins.every((m) => m.kind === "system")).toBe(true);
-    expect(unpins.find((m) => m.channel === "room:quarantine")!.text).toBe(`✅ ${sim.persons.get("g11")!.name}: in the Internet.`);
+    expect(v(sim, "g11.escort_by")).toBe("Norton Anti-Virus");
+    const capMsgs = composeGuestMessages(sim, cap);
+    expect(capMsgs.some((m) => m.unpin !== undefined || /mark is lifted/u.test(m.text))).toBe(false);
+    const sent = capMsgs.find((m) => Array.isArray(m.audience) && m.audience[0] === "g11" && m.text.startsWith("🌐 Sent to the Internet"))!;
+    expect(sent).toMatchObject({ moment: "big", go: [{ kind: "room", id: "loc:The Internet" }, { kind: "pass" }] });
     expect(replies(cap).filter((r) => r.text.includes("Off the escort list"))).toHaveLength(PATROL.length);
     sim.signal("the simulation completed", "g11");
     sim.signal("the simulation completed", "g12");
@@ -1104,14 +1101,14 @@ describe("Trapped in the Internet — the whole night", () => {
     }
     expect(casts(late).filter((b) => b.cue.includes("late"))).toEqual([]);
     // Without the auto sweep the late are marked, not captured (wave 4, lane
-    // E): every Antivirus booth hears one escort readout per late program
-    // (w13 Q31: the mark's readout says they are late; no separate ⏰), and
-    // # quarantine pins one task per late program.
+    // E): every Antivirus booth hears one WANTED readout per late program
+    // (w13 Q31: the mark's readout says they are late; no separate ⏰). Wave
+    // 18 (Q30): not restricted, no pins (the Wanted board lists them).
     for (const g of ["g9", "g13"]) {
       expect(sim.isCaptured(g), g).toBe(false);
       expect(v(sim, `${g}.marked`), g).toBe(true);
       expect(v(sim, `${g}.marked_for`), g).toBe("late for the Second Moment of Truth");
-      expect(guestView(sim, g).restricted, g).toBe(true);
+      expect(guestView(sim, g).restricted, g).not.toBe(true);
     }
     const lateOnes = Array.from({ length: 13 }, (_, i) => `g${i + 1}`).filter((g) => v(sim, `${g}.late`) === true);
     expect(lateOnes).toEqual(expect.arrayContaining(["g9", "g13"]));
@@ -1120,14 +1117,16 @@ describe("Trapped in the Internet — the whole night", () => {
       expect(replies(late).filter((r) => r.to === who && r.text.includes("marked for reinstallation")).length, who).toBe(lateOnes.length);
       expect(replies(late).filter((r) => r.to === who && r.text.startsWith("!⏰")).length, who).toBe(0);
     }
-    expect(composeGuestMessages(sim, late).filter((m) => m.channel === "room:quarantine" && m.pin !== undefined).map((m) => m.pin).sort()).toEqual([...lateOnes].sort());
+    expect(composeGuestMessages(sim, late).filter((m) => m.pin !== undefined)).toEqual([]);
     // The director's 🩹 on every late program: mercy, no trip to the tent (the
     // shared night goes on with nobody marked; VLC earns a fresh mark at Truth Pong).
     for (const g of lateOnes) {
       const lift = sim.signal("unmark_for_reinstallation", g, null, "Task Manager");
       expect(v(sim, `${g}.marked`), g).toBe(false);
-      expect(guestView(sim, g).restricted, g).toBe(false);
-      expect(composeGuestMessages(sim, lift).filter((m) => m.unpin === g).map((m) => m.channel).sort(), g).toEqual(["lobby", "room:quarantine"]);
+      expect(guestView(sim, g).restricted, g).not.toBe(true);
+      // Wave 18: the 🩹 tells the program (a plain line; nothing to unpin).
+      expect(composeGuestMessages(sim, lift).filter((m) => m.unpin === g), g).toEqual([]);
+      expect(replies(lift).some((r) => r.to === g && r.text === "✅ Your mark is lifted. You are not going to the Internet."), g).toBe(true);
     }
     sim.signal("back from the bathroom", "g10");
     sim.signal("the simulation completed", "g12");
@@ -1142,7 +1141,8 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(sim.isCaptured("g9")).toBe(false); // marked (wave 4, lane E); the 🛡 captures
     expect(v(sim, "g9.marked")).toBe(true);
     expect(v(sim, "g9.marked_for")).toBe("missed the cup");
-    expect(composeGuestMessages(sim, miss).some((m) => m.channel === "room:quarantine" && m.pin === "g9" && m.text.includes("missed the cup"))).toBe(true);
+    // Wave 18: the Antivirus' WANTED readout carries the reason (no # quarantine pin).
+    expect(replies(miss).some((r) => r.to === "Norton Anti-Virus" && r.text.startsWith("!!🚨 VLC is marked for reinstallation (missed the cup)"))).toBe(true);
     sim.signal("send to the internet", "g9", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g9")).toBe(true);
     expect(v(sim, "g9.marked")).toBe(false);
@@ -2027,7 +2027,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(v(sim, "Night.ending")).toBe("destroyed");
   });
 
-  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there) and every host part, never Clippy's or Windows Defender's", { timeout: SLOW }, async () => {
+  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there) and every host part, never Clippy's", { timeout: SLOW }, async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-trapped-radio-"));
     tmp.push(dir);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
@@ -2038,12 +2038,10 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const booth = async (character: string) => (await call(rt, "POST", "/api/prime/login", { character, passcode: CODES.prime })).json["token"] as string;
     const act = (token: string, name: string) => call(rt, "POST", "/api/prime/act", { name, guest: id }, { token });
     const RADIO = ["radio_crew_door", "radio_door_opened", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
-    // Windows Defender is the door-only part: it never leaves the Optical
-    // Drive, so a late arrival's card there leads with nothing that ends the night.
     // Wave 13: Task Manager, Adobe Acrobat and the Recycling Bin are host
     // parts (`admin: true`): a host booth keeps every `by:` button, as a
     // passcode admin always did, so only Clippy (a Host, never a host part)
-    // and Windows Defender are refused here.
+    // is refused here (wave 18: the door-only part is gone).
     const hostTokens = new Map<string, string>();
     for (const who of ["Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
       const login = await call(rt, "POST", "/api/prime/login", { character: who, passcode: CODES.prime });
@@ -2051,7 +2049,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       hostTokens.set(who, login.json["token"] as string);
     }
     const refused = new Map<string, string>();
-    for (const who of ["Clippy", "Windows Defender"]) {
+    for (const who of ["Clippy"]) {
       const t = await booth(who);
       refused.set(who, t);
       for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
@@ -2060,7 +2058,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     }
     expect(v(rt.liveSim!, "Night.wrong_combos") ?? 0).toBe(0);
     expect(v(rt.liveSim!, "Night.crew_door_until") ?? 0).toBe(0);
-    for (const who of ANTIVIRUS.filter((a) => a !== "Windows Defender")) {
+    for (const who of ANTIVIRUS) {
       const t = await booth(who);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
       for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.actors, `${name} on ${who}`).toContain(who);
@@ -2116,7 +2114,6 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const booth = primeView(sim, "CRA Agent Software").interactions ?? [];
     expect(booth.find((i) => i.id === "radio_combo_a")?.arm).toBe(true);
     expect(booth.find((i) => i.id === "send to the internet")?.arm).toBe(true);
-    expect(primeView(sim, "Windows Defender").interactions?.find((i) => i.id === "send to the internet")?.arm).toBe(true);
     expect(booth.find((i) => i.id === "mark as reinstalled")?.arm).toBeUndefined();
   });
 
@@ -2429,27 +2426,19 @@ describe("Trapped in the Internet — ghosts and personas never block a majority
   });
 });
 
-describe("Trapped in the Internet — Windows Defender, the door-only part (wave 11)", () => {
-  it("is an Antivirus performer part whose scan clears a late arrival exactly like the others; no lines of its own", { timeout: SLOW }, () => {
+describe("Trapped in the Internet — no door-only part (wave 18, Q26)", () => {
+  it("Windows Defender is gone: the four Antivirus share the door, and any of them clears a late arrival", { timeout: SLOW }, () => {
     const sim = boot();
     const m = sim.model;
-    const wd = m.characters.get("Windows Defender")!;
-    expect(wd).toBeDefined();
-    expect(isSpecial(m, "Windows Defender")).toBe(true);
-    expect(identityDefs(m).find((d) => d.name === "Windows Defender")).toMatchObject({ faction: "Antivirus" });
-    const src = FILES.find((f) => f.path === "cast/antivirus.loom")!.source;
-    const own = src.slice(src.indexOf("CHARACTER Windows Defender"));
-    // Wave 13: its own hooks only drop the trait's patrol readouts (`: none`)
-    // and give the door its own summons readout; no lines of its own.
-    for (const line of own.split("\n").filter((l) => /^\s+when /u.test(l))) expect(line, line).toMatch(/: none$|^\s+when five_minute_warning:$/u);
-    expect(own).not.toMatch(/^\s+Self:/mu);
+    expect(m.characters.has("Windows Defender")).toBe(false);
+    for (const f of FILES) expect(f.source, f.path).not.toMatch(/Windows Defender|holds_the_door/u);
+    expect(identityDefs(m).filter((d) => d.faction === "Antivirus").map((d) => d.name).sort()).toEqual([...ANTIVIRUS].sort());
     toTruth1(sim);
-    const late = upload(sim, "g9", "Winamp Classic", "Windows Defender");
+    const late = upload(sim, "g9", "Winamp Classic", "Password Manager");
     expect(v(sim, "g9.cleared")).toBe(true);
     expect(sim.locationOf("g9")).toBe("The Desktop");
-    expect(beats(late)).toContain("Windows Defender.Clearance");
-    expect(replies(late).filter((r) => r.to === "Windows Defender").map((r) => r.text)).toContain("✅ Cleared Winamp Classic.");
-    for (const r of ["The Start Bar", "The Hard Drive"]) expect(sim.isRevealedTo(r, "g9"), r).toBe(true);
+    expect(beats(late)).toContain("Password Manager.Clearance");
+    expect(replies(late).filter((r) => r.to === "Password Manager").map((r) => r.text)).toContain("✅ Cleared Winamp Classic.");
   });
 });
 
@@ -2573,7 +2562,7 @@ describe("Trapped in the Internet — the verdict", () => {
     // first correct one is read; the ending stands).
     const cards = widgets(rt).filter((w) => w.widget === "answer");
     expect(cards.map((w) => w.audience[0]).sort()).toEqual(PROGRAMS.map(([id]) => id).sort());
-    expect(cards[0]!.params).toEqual({ thread: "Trabolta", question: "P1", max: "120", button: "Say it", moment: "major" }); // wave 13: a card that asks
+    expect(cards[0]!.params).toEqual({ thread: "Trabolta", question: "P1", max: "120", button: "Say it", moment: "big" }); // wave 18: a big card that asks
     expect(composeGuestMessages(sim, rt).find((m) => m.kind === "widget" && m.widget?.kind === "answer")?.channel).toBe("dm:Trabolta");
     const line = fire(sim, "answer answered", "g6", { question: "P1", text: "You're the one that I want", verdict: "accurate", card: 1 });
     expect(v(sim, "Night.line_by")).toBe("VLC");
@@ -2732,7 +2721,7 @@ describe("Trapped in the Internet — the alternate advice ending", () => {
     for (const [g] of PROGRAMS) expect(sim.isCaptured(g), g).toBe(false);
     expect(sim.questStatus("g4", "Find The Exit")).toBe("done");
     const back = replies(hj).filter((r) => r.to === "g5").map((r) => r.text);
-    expect(back).toContain("The hand jive broke his hold. You are out of the Internet.");
+    expect(back).toContain("!!🕺 The hand jive broke his hold. You are out of the Internet.");
     expect(back.filter((t) => t.startsWith("Reinstallation complete"))).toEqual([]);
   });
 });
@@ -3315,11 +3304,11 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     expect(v(sim, "g1.fact_label")).toBe("round 1 Q3");
     expect(v(sim, "g1.last_fact_q")).toBe("H3");
     expect(ledger(sim).questions.filter((q) => q.filings.some((f) => f.person === "g1")).map((q) => q.id)).toEqual(["H2", "H3"]);
-    // Marked and corrupted programs cannot file.
+    // A marked program files like anyone (wave 18, Q30); a corrupted one cannot.
     fire(sim, "mark_for_reinstallation", "g5", { reason: "a test" });
-    const mk = file(sim, "g5", "H1", "Eleven years");
-    expect(trabolta(mk, "g5")).toEqual(["You are marked for reinstallation, Winamp. Report to the Internet."]);
-    expect(hosts(sim, mk)).toEqual([]);
+    const mk = file(sim, "g5", "H2", "Eleven years");
+    expect(trabolta(mk, "g5").some((t) => /marked for reinstallation/u.test(t))).toBe(false);
+    expect(v(sim, "g5.fact_h2")).toBe(true);
     fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
     const cap = file(sim, "g5", "H1", "Eleven years");
     expect(trabolta(cap, "g5")).toEqual(["Programs in the Internet cannot file facts. Come back reinstalled."]);
@@ -3390,7 +3379,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     expect(v(sim, "Night.bottle_picks")).toBe(1);
     const poll = widgets(land).find((w) => w.widget === "poll")!;
     expect(poll.audience).toEqual(["g2"]);
-    expect(poll.params).toEqual({ thread: "Trabolta", options: "Truth | Dare", moment: "major" }); // wave 13: a card that asks
+    expect(poll.params).toEqual({ thread: "Trabolta", options: "Truth | Dare", moment: "big" }); // wave 18: a big card that asks
     expect(composeGuestMessages(sim, land).find((m) => m.kind === "widget" && m.widget?.kind === "poll")?.channel).toBe("dm:Trabolta");
     // Open bottle: no second spin, no next results.
     expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first."]);
@@ -3779,7 +3768,8 @@ describe("Trapped in the Internet — the server-room terminal over HTTP (wave 7
     const worker = await call(rt, "GET", "/api/agent/stream?characters=Trabolta&name=laptop", {}, { moderator: true });
     expect((await call(rt, "POST", "/api/guest/say", { channel: "dm:Trabolta", text: "Guess what I found." }, { token })).status).toBe(200);
     const req = worker.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest)[0]!;
-    expect(Object.keys(req.them.vars).filter((k) => /door|cold/u.test(k))).toEqual([]);
+    // (`door_by` is wave 18's door-queue claim: an Antivirus' name, no code.)
+    expect(Object.keys(req.them.vars).filter((k) => /door|cold/u.test(k) && k !== "door_by")).toEqual([]);
     for (const leak of ["door_digits", "the_cold_door", "cold_door", "the_door_code", "DIGIT IS"]) expect(JSON.stringify(req), leak).not.toContain(leak);
     rt.dispose();
   });
@@ -4048,7 +4038,8 @@ describe("Trapped in the Internet — the awards ceremony (K-25)", () => {
     expect(v(sim, "Night.terminals")).toBe("award_most_trusted");
     // Never in a DM: the winner hears a personal reply, the room hears the line.
     expect(composeGuestMessages(sim, a).some((m) => m.channel.startsWith("dm:"))).toBe(false);
-    expect(replies(a).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: !🏆 You won Most Trusted! Come up to the TV for your trophy."]);
+    expect(replies(a).map((r) => `${r.to}: ${r.text}`)).toEqual(["g1: !!🏆 You won Most Trusted! Come up to the TV for your trophy."]);
+    expect(composeGuestMessages(sim, a).find((m) => m.text.startsWith("🏆 You won"))).toMatchObject({ moment: "big", go: [{ kind: "room", id: "loc:The Desktop" }] });
 
     // Three awards on three real programs (the acceptance), names in the room.
     fire(sim, "award_frequent_flyer", "g5");
@@ -4721,25 +4712,28 @@ describe("Trapped in the Internet — marked for reinstallation (wave 4, lane E)
     expect(casts(no)[0]!.cue).toContain("⚠️ Calculator is not marked.");
     expect(v(sim, "g1.marked")).toBe(false);
     expect(replies(no)).toEqual([]);
-    // Named on the Bingo card (Clippy's 🎯): marked, with the phone's alert pin;
-    // the live interruption's 🛡 is still what captures.
+    // Named on the Bingo card (Clippy's 🎯): marked, a soft heads-up (wave
+    // 18: no pin, no alert); the live interruption's 🛡 is still what captures.
     const named = fire(sim, "named_at_bingo", "g4", null, "Clippy");
     expect(v(sim, "g4.marked")).toBe(true);
     expect(v(sim, "g4.marked_for")).toBe("named on the Bingo card");
     expect(sim.isCaptured("g4")).toBe(false);
-    expect(composeGuestMessages(sim, named).some((m) => m.channel === "lobby" && m.pin === "g4" && m.alert === true)).toBe(true);
+    const namedMsgs = composeGuestMessages(sim, named);
+    expect(namedMsgs.some((m) => m.pin !== undefined)).toBe(false);
+    expect(namedMsgs.find((m) => m.readout === true && Array.isArray(m.audience) && m.audience[0] === "g4")).toMatchObject({ moment: "minor" });
     // A second mark on a marked program: the # hosts line, no second pin, the reason kept.
     const again = fire(sim, "mark_for_reinstallation", "g4", { reason: "twice" });
     expect(casts(again).map((b) => b.scope)).toEqual(["channel(hosts)"]);
     expect(casts(again)[0]!.cue).toContain("⚠️ MS Paint is already marked for reinstallation.");
     expect(composeGuestMessages(sim, again).filter((m) => m.pin !== undefined)).toEqual([]);
     expect(v(sim, "g4.marked_for")).toBe("named on the Bingo card");
-    // The 🩹 lifts it: the program keeps their place, both pins come down.
+    // The 🩹 lifts it: the program keeps their place and is told.
     const lift = fire(sim, "unmark_for_reinstallation", "g4", null, "Task Manager");
     expect(v(sim, "g4.marked")).toBe(false);
-    expect(v(sim, "g4.restricted")).toBe(false);
+    expect(v(sim, "g4.restricted")).not.toBe(true);
     expect(sim.isCaptured("g4")).toBe(false);
-    expect(composeGuestMessages(sim, lift).filter((m) => m.unpin === "g4").map((m) => [m.channel, m.text])).toEqual([["lobby", "✅ The mark is lifted."], ["room:quarantine", "✅ MS Paint: cleared by a host."]]);
+    expect(composeGuestMessages(sim, lift).filter((m) => m.unpin === "g4")).toEqual([]);
+    expect(replies(lift).filter((r) => r.to === "g4").map((r) => r.text)).toEqual(["✅ Your mark is lifted. You are not going to the Internet."]);
     expect(replies(lift).filter((r) => r.text === "✅ MS Paint: cleared by a host. Off the escort list.").map((r) => r.to).sort()).toEqual([...PATROL].sort());
     // A mark on a captive: only the # hosts line.
     fire(sim, "send to the internet", "g5", null, "Norton Anti-Virus");
@@ -4752,23 +4746,23 @@ describe("Trapped in the Internet — marked for reinstallation (wave 4, lane E)
     fire(sim, "mark_for_reinstallation", "g6");
     expect(v(sim, "g6.marked")).toBe(true);
     expect(v(sim, "g6.marked_for")).toBe("flagged by a host");
-    // A marked program's check-in is refused…
+    // A marked program checks in like anyone (wave 18, Q30)…
     const ci = fire(sim, "checked_in", "g6", { at: "The Desktop" });
-    expect(replies(ci).map((r) => r.text)).toEqual(["You are marked for reinstallation. Go to the Internet, not the Desktop."]);
-    expect(v(sim, "g6.checked_in")).not.toBe("The Desktop");
+    expect(replies(ci).map((r) => r.text)).toContain("📍 Checked in at the Desktop.");
+    expect(v(sim, "g6.checked_in")).toBe("The Desktop");
     // …and the tent tablet captures them on arrival (U19).
     const tent = sim.scan("The Tablet", "g6");
     expect(beats(tent)).toContain("The Tablet Video");
     expect(lines(tent, "Installation Wizard")).toContain("You came. Good. Loading the simulation.");
     expect(sim.isCaptured("g6")).toBe(true);
     expect(v(sim, "g6.marked")).toBe(false);
-    expect(composeGuestMessages(sim, tent).filter((m) => m.unpin === "g6").map((m) => m.channel).sort()).toEqual(["lobby", "room:quarantine"]);
+    expect(composeGuestMessages(sim, tent).filter((m) => m.unpin === "g6")).toEqual([]);
     // A release lifts a mark too (the safety net for a flag set from Run → World on a captive).
     sim.setVar("g5.marked", "true");
     const rel = fire(sim, "the simulation completed", "g5");
     expect(sim.isCaptured("g5")).toBe(false);
     expect(v(sim, "g5.marked")).toBe(false);
-    expect(composeGuestMessages(sim, rel).filter((m) => m.unpin === "g5").map((m) => m.text)).toEqual(["✅ The mark is lifted.", "✅ Winamp: released."]);
+    expect(composeGuestMessages(sim, rel).filter((m) => m.unpin === "g5")).toEqual([]);
     expect(diags(sim.log.since(0) as SimEvent[])).toEqual([]);
   });
 });
@@ -4800,7 +4794,7 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
 
     const tick = advance(sim, 1200);
     const upd = (tick.filter((e) => e.type === "quest") as Ev<"quest">[]).find((e) => e.person === "Clippy" && e.action === "update");
-    expect(upd?.text).toContain("Ask the director for BINGO TIME");
+    expect(upd?.text).toContain("Call ⏰ Bingo time from your 🎤 bar"); // wave 18 (B6): Clippy calls it
 
     fire(sim, "bingo_time");
     expect(sim.questStatus("Clippy", "Run The Bingo")).toBe("done");
@@ -5317,6 +5311,9 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
   it("B12: G11 resurrection frees, unmarks and unrestricts everyone, sleeps Trabolta, clears the screens; never mid-show, once", () => {
     const sim = boot();
     fire(sim, "mark_for_reinstallation", "g1", { reason: "a test" });
+    // Wave 18 (Q30): a mark never restricts; a director's restriction does.
+    expect(sim.isRestricted("g1")).toBe(false);
+    sim.restrict("g1");
     expect(sim.isRestricted("g1")).toBe(true);
     fire(sim, "send to the internet", "g2", null, "Norton Anti-Virus");
     expect(sim.isCaptured("g2")).toBe(true);
@@ -5346,7 +5343,7 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
       expect(sim.isRestricted(id), id).toBe(false);
       expect(v(sim, `${id}.marked`) ?? false, id).toBe(false);
     }
-    expect(pins(r, "unpinned")).toEqual(expect.arrayContaining(["g1|g1|✅ The mark is lifted.", "g1|g1|✅ Calculator: resurrected."]));
+    expect(pins(r, "unpinned").filter((p) => p.startsWith("g1|"))).toEqual([]); // wave 18: a mark pins nothing
     expect(v(sim, "Trabolta.awake")).toBe(false);
     expect(cues(r)).toEqual(expect.arrayContaining(["cue screens_screensaver", "cue lights_restore"]));
     expect(v(sim, "Night.screen")).toBe("screensaver");
@@ -5435,11 +5432,14 @@ describe("Trapped in the Internet — wave 5 (lane B): the takeover, the resurre
 describe("Trapped in the Internet — wave 5 (lane B): the safe place (M20), the tent's begin", () => {
   const buttons = (sim: Sim, g: string) => guestView(sim, g).interactions.map((i) => i.id);
 
-  it("B6: a marked program keeps 🚻 and Back (`restricted: allow`), and only those", () => {
+  it("B6: a restricted program keeps 🚻 and Back (`restricted: allow`), and only those; a marked one keeps every button (wave 18)", () => {
     const sim = boot();
     for (const id of ["go to the bathroom", "back from the bathroom"]) expect(sim.model.interactions.get(id)!.allowRestricted, id).toBe(true);
     expect(sim.model.interactions.get("plant_the_virus")!.allowRestricted).toBe(false);
     fire(sim, "mark_for_reinstallation", "g5", { reason: "late" });
+    expect(guestView(sim, "g5").restricted).not.toBe(true);
+    // A director's restriction (Run → Restrict) is what turns the buttons off.
+    sim.restrict("g5");
     expect(guestView(sim, "g5").restricted).toBe(true);
     expect(buttons(sim, "g5")).toEqual(["go to the bathroom"]);
     fire(sim, "go to the bathroom", "g5");
@@ -5550,16 +5550,16 @@ describe("Trapped in the Internet — wave 5 (lane B): the safe place (M20), the
     expect(sim.isCaptured("g6")).toBe(true);
     expect(v(sim, "g6.marked")).toBe(false);
     expect(v(sim, "g6.corrupted")).toBe(true);
-    expect(v(sim, "g6.restricted")).toBe(false);
+    expect(v(sim, "g6.restricted")).not.toBe(true);
     expect(beats(begun)).toContain("Reinstallation");
-    expect(composeGuestMessages(sim, begun).filter((m) => m.unpin === "g6").map((m) => m.channel).sort()).toEqual(["lobby", "room:quarantine"]);
+    expect(composeGuestMessages(sim, begun).filter((m) => m.unpin === "g6")).toEqual([]);
     // A second begin for the same run does nothing more.
     const twice = fire(sim, "reinstallation begun", "g6");
     expect(beats(twice)).toEqual([]);
     expect(v(sim, "g6.internet_visits")).toBe(1);
     const done = fire(sim, "the simulation completed", "g6");
     expect(sim.isCaptured("g6")).toBe(false);
-    expect(replies(done).map((r) => r.text)).toContain("Reinstallation complete. You can follow instructions. Welcome back to the computer.");
+    expect(replies(done).map((r) => r.text)).toContain("!!🦆 Reinstallation complete. You can follow instructions. Welcome back to the computer.");
 
     // A curious, unmarked program begins free and stays free.
     const free = fire(sim, "reinstallation begun", "g1");

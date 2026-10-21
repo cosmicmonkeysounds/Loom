@@ -10,15 +10,17 @@ import { ApiError, RequestTimeout, api, useChatStream, withTimeout } from "../cl
 import { pmChannelId, shareErrorText, unlockFromSearch, withoutUnlock } from "../codex.ts";
 import { usePlayHost } from "../host.ts";
 import { SessionRole, eventGone, guestSessionDead, lifecycleDropsSession, lifecycleNotice, performerSessionDead } from "../lifecycle.ts";
-import { CODEX_ROOM, channelHead, withThe } from "../rooms/spaces.ts";
+import { CODEX_ROOM, channelHead } from "../rooms/spaces.ts";
 import { roomOrder } from "../rooms/order.ts";
 import { useThreads, type Threads } from "../rooms/threads-state.ts";
-import { unreadOf } from "../stream/badges.ts";
+import { guestDotOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
-import { NO_ANSWERS, registerBody, tokenDead, useLandingBrand, usePerSession, useRoomLinks, useTheme, type ResolvedCode } from "./shared.ts";
+import { NO_ANSWERS, mergeAnswered, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
+import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../room.ts";
+import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
 
 interface GuestId {
@@ -86,35 +88,30 @@ function saveEchoes(save: (key: string, value: unknown) => void, token: string, 
 
 // --- guest ------------------------------------------------------------------
 
-/** The one required decision (if any), and the channel it should dock under. */
+/** Where a decision docks when it would have docked in the lobby (wave 18,
+ *  G2): on Mission, never the Chat log. */
+export const MISSION_DOCK = "mission";
+
+/**
+ * The one required decision (if any), and where it docks: the room the
+ * story names, or Mission when that would be the lobby (G2 — the lobby is
+ * the Chat log now, and no decision ever docks there). A captive's escape
+ * docks on Mission too. There is no side chooser here any more: the story
+ * opens the sides (the doors, the Sides sheet), and joining is a guest's
+ * own act there (GUEST-SPEC §9).
+ */
 export function requiredDecision(
   status: GuestView | null,
-  acts: { choose: (i: number) => void; join: (f: string) => void; escape: () => void },
+  acts: { choose: (i: number) => void; escape: () => void; join?: (f: string) => void },
 ): { channel: string; decision: Decision } | null {
   if (!status) return null;
   if (status.pendingChoice) {
+    const room = status.decisionChannel ?? "lobby";
     return {
-      channel: status.decisionChannel ?? "lobby",
+      channel: room === "lobby" ? MISSION_DOCK : room,
       decision: {
         title: "Your move…",
         options: status.pendingChoice.map((opt, i) => ({ label: opt, onClick: () => acts.choose(i) })),
-      },
-    };
-  }
-  // The side chooser is driven by the story's declared public factions —
-  // nothing is shown for a story that has none. A restricted (marked)
-  // program can't join a side: the server answers 403 until it's lifted.
-  const factions = status.factions ?? [];
-  if (!status.faction && !status.captured && !status.restricted && factions.length > 0) {
-    return {
-      channel: "lobby",
-      decision: {
-        title: "Choose your side",
-        options: factions.map((f, i) => ({
-          label: `Side with ${withThe(f)}`,
-          onClick: () => acts.join(f),
-          tone: i === 0 ? undefined : ("ghost" as const),
-        })),
       },
     };
   }
@@ -122,7 +119,7 @@ export function requiredDecision(
   // (the story lets them out: a performer, a puzzle, a VR duck).
   if (status.captured && status.canEscape !== false) {
     return {
-      channel: "lobby",
+      channel: MISSION_DOCK,
       decision: {
         title: "You've been captured",
         options: [{ label: "🏃 Make a break for it", onClick: () => acts.escape(), tone: "danger" }],
@@ -239,8 +236,73 @@ export interface GuestSession {
    *  threads are built from — a cutscene reads what is addressed to them). */
   messages: ReadonlyMap<number, ChatMessage>;
   leave: () => void;
-  /** A notification's room link is waiting to open (SW-PLAY-20). */
-  roomLinkPending: boolean;
+  /** A notification's link, resolved to where it lands (§6.4), until the
+   *  app takes it (`takeLinkNav`) once it is in the app. */
+  linkNav: Nav | null;
+  takeLinkNav: () => void;
+  /** The decision waiting on the guest and where it docks (`MISSION_DOCK`
+   *  when it would have been the lobby). */
+  decision: { channel: string; decision: Decision } | null;
+  /** Wave 18 sides + crews (CONTRACTS C10): each rejects with the server's
+   *  reason (an `ApiError`), which the sheet shows. */
+  sides: SidesCalls;
+}
+
+/** The C10 routes, guest side. */
+export interface SidesCalls {
+  join(side: string): Promise<unknown>;
+  defect(to: string): Promise<unknown>;
+  leave(): Promise<unknown>;
+  recruit(to: string, side?: string): Promise<unknown>;
+  answer(id: string, yes: boolean): Promise<unknown>;
+  found(name: string): Promise<{ ok: boolean; crew?: { id: string; name: string } }>;
+  invite(to: string): Promise<unknown>;
+  leaveCrew(): Promise<unknown>;
+}
+
+/**
+ * SW-PLAY-20, wave 18 (§6.4): a tapped notification's `?room=` (a fresh
+ * window) or the service worker's `open-room` message (one already open)
+ * becomes a `Nav` once signed in with the backlog in — the lobby lands on
+ * Mission, an unlisted room on Mission, never a room the guest can't see.
+ */
+function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav | null; take: () => void } {
+  const { ownsPage } = usePlayHost();
+  // The link waiting to land: its query (`?room=…&entry=…`, `?go=pass`).
+  const [want, setWant] = useState<string | null>(() => (ownsPage ? linkFromSearch(window.location.search) : null));
+  const [nav, setNav] = useState<Nav | null>(null);
+  useEffect(() => {
+    if (!ownsPage) return;
+    const sw = typeof navigator !== "undefined" ? navigator.serviceWorker : undefined;
+    if (sw === undefined) return;
+    const on = (e: MessageEvent) => {
+      const link = linkFromMessage(e.data);
+      if (link !== null) setWant(link);
+    };
+    sw.addEventListener("message", on);
+    try {
+      sw.startMessages();
+    } catch {
+      /* fine */
+    }
+    return () => sw.removeEventListener("message", on);
+  }, [ownsPage]);
+  useEffect(() => {
+    if (want === null || !signedIn) return;
+    setWant(null);
+    if (ownsPage && linkFromSearch(window.location.search) !== null) {
+      try {
+        window.history.replaceState(null, "", `${window.location.pathname}${withoutRoom(window.location.search)}`);
+      } catch {
+        /* fine */
+      }
+    }
+    setNav(navFromSearch(want, listed));
+    // `listed` is rebuilt each render; the request is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [want, signedIn]);
+  const take = useCallback(() => setNav(null), []);
+  return { nav, take };
 }
 
 export function useGuestSession(): GuestSession {
@@ -363,6 +425,9 @@ export function useGuestSession(): GuestSession {
     [post, me, messages, crawl, save],
   );
   const shown = useMemo(() => withEchoes(messages, echoes), [messages, echoes]);
+  // The stream as of the last render, for callbacks that must not re-bind on every message.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const escape = useCallback(() => post("/api/guest/escape", {}), [post]);
   const act = useCallback(
     async (name: string, label?: string) => {
@@ -516,9 +581,15 @@ export function useGuestSession(): GuestSession {
       return next;
     });
   }, [answeredList]);
+  // The same, in this render: the state above lands a render later, after
+  // the children's effects (the moments sweep) have run.
+  const answeredNow = useMemo(() => mergeAnswered(widgetAnswers, answeredList), [widgetAnswers, answeredList]);
   const answerWidget = useCallback(
     async (seq: number, result: WidgetResult) => {
       setWidgetAnswers((prev) => new Map(prev).set(seq, result));
+      // An invitation was answered on its own route (`recruit/answer`), which
+      // settles the card server-side: no second post (GN-F10's 409).
+      if (messagesRef.current.get(seq)?.widget?.kind === "invite") return;
       try {
         await post("/api/guest/widget", { seq, result });
       } catch (e) {
@@ -536,11 +607,11 @@ export function useGuestSession(): GuestSession {
   );
 
   const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
-  const dock = requiredDecision(status, { choose: (i) => void choose(i), join: (f) => void join(f), escape: () => void escape() });
+  const dock = requiredDecision(status, { choose: (i) => void choose(i), escape: () => void escape() });
   const threads = useThreads(
-    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing),
+    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(answeredNow.keys())), status, typing),
     { store: host.storage, slot: GUEST_READ, session: me?.token ?? null },
-    { me: me !== null ? { id: me.id, name: me.name, booth: false } : undefined, unread: unreadOf, order: roomOrder },
+    { me: me !== null ? { id: me.id, name: me.name, booth: false } : undefined, unread: guestDotOf, order: roomOrder },
   );
   const message = useCallback(
     (person: { id: string; kind: "guest" | "character" }) => {
@@ -589,7 +660,20 @@ export function useGuestSession(): GuestSession {
     void checkin(at);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
-  const roomLinkPending = useRoomLinks(threads, me !== null && ready && status !== null, false);
+  const links = useGuestLinks(me !== null && ready && status !== null, threads.list.map((c) => c.id));
+  const sides = useMemo<SidesCalls>(
+    () => ({
+      join: (side) => post("/api/guest/join", { faction: side }),
+      defect: (to) => post("/api/guest/defect", { to }),
+      leave: () => post("/api/guest/side/leave", {}),
+      recruit: (to, side) => post("/api/guest/recruit", { to, ...(side !== undefined ? { side } : {}) }),
+      answer: (id, yes) => post("/api/guest/recruit/answer", { id, yes }),
+      found: (name) => post<{ ok: boolean; crew?: { id: string; name: string } }>("/api/guest/crew/found", { name }),
+      invite: (to) => post("/api/guest/crew/invite", { to }),
+      leaveCrew: () => post("/api/guest/crew/leave", {}),
+    }),
+    [post],
+  );
   const dismissAlert = alerts.dismiss;
   // Signed out (the join screens), the landing's skin; signed in, the story's.
   const landing = useLandingBrand();
@@ -622,9 +706,12 @@ export function useGuestSession(): GuestSession {
     dismissAlert,
     alerts,
     answerWidget,
-    widgetAnswers,
+    widgetAnswers: answeredNow,
     messages: shown,
     leave,
-    roomLinkPending,
+    linkNav: links.nav,
+    takeLinkNav: links.take,
+    decision: dock,
+    sides,
   };
 }

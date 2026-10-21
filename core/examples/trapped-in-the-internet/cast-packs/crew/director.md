@@ -13,16 +13,21 @@ Director** (the cue sheet); tab 2 **Run → Mind** (the **Judging card** on
 top: the judge's mode, pending filings, per-question tallies; Trabolta's
 worker below it: on the story mind his stage follows the phase by itself,
 see [`trabolta-mind.md`](./trabolta-mind.md)); the **terminal heartbeat card** (red + chime =
-a dead kiosk); **`# hosts`** for the bank's and the judge's logs; **`#
-quarantine`** for the escort pins. **Keep the Run tab in the foreground** (a
+a dead kiosk); **`# hosts`** for the bank's and the judge's logs. Since wave
+18 the marked programs are on the Antivirus' **Wanted board** (the hosts'
+console reads *🚨 n marked · m nobody on it*), not pinned in `# quarantine`.
+**Keep the Run tab in the foreground** (a
 background tab throttles the chime).
 
-**The hosts' booths fire too** (wave 13): Task Manager, Adobe Acrobat and the
-Recycling Bin each have the same cue sheet in a NEXT bar in their booth.
-Whoever calls the cues radios before a host fires (DRAFT for sign-off, Q1).
-If Run and a booth press the same moment, the server takes one and the other
-reads *Cues moved — tap again*; the sheet's LAST says who pressed (*Task
-Manager*, or your name). A host's console also opens the doors, pauses and
+**The hosts call the show equally** (Q1, wave 18): Task Manager, Adobe
+Acrobat and the Recycling Bin each have the same cue sheet in a NEXT bar in
+their booth, and Clippy's game cues are on Clippy's **🎤 bar** (Q2). Whoever
+is calling claims it: **Calling** on Run → Director (or **📣 I'll call** in a
+host's Cues tab, or the director phone's ☰), and every console shows **📣
+who**. A FIRE by anyone else asks once (*Fire anyway?*), so nobody needs to
+radio before firing. If Run and a booth press the same moment, the server
+takes one and the other reads *Cues moved — tap again*; the sheet's LAST says
+who pressed (*Task Manager*, *Clippy*, or your name). A host's console also opens the doors, pauses and
 resumes, announces, sets the alert level, judges and answers as Trabolta, so
 a host can cover any of those while you are busy; restart, push draft, go
 live and end are yours alone, at Run.
@@ -111,8 +116,9 @@ never from a guest card.
 | Problem | Do |
 |---|---|
 | stuck codex | read the guest the code from the printed code list |
-| a program marked by mistake, or to be shown mercy | a host presses 🩹 on their card; or Director → fire `unmark_for_reinstallation` with them as the subject (`/api/mod/act {id, action: "unrestrict"}` lifts only the grey, never the mark) |
-| a program who must go to the Internet and no host is near | Director → fire `mark_for_reinstallation` with them as the subject (or `/api/mod/act {id, action: "restrict"}` for the grey alone); an Antivirus does the walking |
+| a program marked by mistake, or to be shown mercy | a host presses 🩹 on their card; or Director → fire `unmark_for_reinstallation` with them as the subject |
+| a program who must go to the Internet and no host is near | Director → fire `mark_for_reinstallation` with them as the subject: they light up on every Antivirus' Wanted board, and an Antivirus does the walking (since wave 18 a mark never restricts; Run → Restrict is a separate, director-only hold) |
+| a marked program nobody has claimed for a while | the hosts' Needs row says *🚨 n marked · m nobody on it*; radio an Antivirus (LATE + the name) |
 | a Truthcoin transfer stuck on CRA's approval, or a bad one | Run → **Wallet**: **✓ Approve** / **⛔ Deny** / **↩ Cancel** on its row, or **✓ Approve all held** (a held transfer approves itself after 5 min anyway); **💰 Pay stimulus** if Runescape is gone; **Lift** ends a Runescape freeze early. A grant or a freeze for Runescape is API only: `/e/<event>/api/mod/wallet/grant {to, amount}` / `freeze {to}` |
 | a filing judged wrong (a typo the key did not know) | Run → Mind → Judging card → ▸ on the question → that filing's ✅ / 😤 / 🤷 (works in auto too; the current verdict is outlined; a verdict already on record is not re-counted); then add the alias to `facts.json` for next time |
 | Clippy pressed 😤 for an answer that was right | Clippy presses ✅ for the same question on the same program: `# hosts` says *"⚖️ Corrected …"*, nothing is paid twice |
@@ -164,7 +170,7 @@ name each time (**LIGHTS** + the look). Keep firing cues from Run as normal.
 **Before Oct 31:** the second director, tech operator and house manager named
 by **Tue 10-20**; the second director has a VPS account and project
 membership; everyone trained at the **10-25 read-through** (the never-list,
-the call words, the blackout rule, the escort list, the 📝 buttons).
+the call words, the blackout rule, the Wanted board, the 📝 buttons).
 
 **The facts loop (yours, with the team):** `facts.json` is the one file the
 team edits: the eight hunt questions (DRAFT until replaced), their answers

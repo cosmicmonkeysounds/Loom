@@ -13,7 +13,7 @@
 //! - The show's copy names the wave 13 chrome (⊞ Start, the Choose your side
 //!   card), never the pass page's old buttons, ☰ or a profile sheet, and
 //!   the tour's `bathroom:` blurb reaches the phone whole.
-//! - SIGNOFF-w13 §8 stays the app's own words: every tour step's title and
+//! - SIGNOFF-w18 §8 (was w13's) stays the app's own words: every tour step's title and
 //!   text in `play/src/tutorial.tsx`, the pass hint and the Leave question.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -312,7 +312,9 @@ describe("Trapped in the Internet — wave 13 integration: the copy names the ne
 
 describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the app's own words", () => {
   const PLAY = join(__dirname, "../../play/src");
-  const sheet = () => readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8").split("## 8.")[1] ?? "";
+  // Wave 18 cut the tour to five steps: the current words live in SIGNOFF-w18 §8
+  // (SIGNOFF-w13 §8 stays as the wave 13 record).
+  const sheet = () => readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w18.md"), "utf8").split("## 8.")[1] ?? "";
   /** The string literals on `key: "…"` lines (a template with `${…}` is checked by its static parts). */
   const literals = (src: string, key: string) => [...src.matchAll(new RegExp(`\\b${key}: (?:"([^"]*)"|\`([^\`]*)\`)`, "gu"))].map((m) => m[1] ?? m[2]!);
 
@@ -320,7 +322,7 @@ describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the ap
     const tour = readFileSync(join(PLAY, "tutorial.tsx"), "utf8").split("export function tutorialSteps")[1]!;
     const s8 = sheet();
     const strings = [...literals(tour, "title"), ...literals(tour, "text")];
-    expect(strings.length).toBeGreaterThanOrEqual(20);
+    expect(strings.length).toBeGreaterThanOrEqual(9); // 5 titles + 4 literal texts (Start's is the story's `bathroom:` blurb)
     for (const str of strings) for (const part of str.split(/\$\{[^}]*\}/u).map((x) => x.trim()).filter((x) => x.length > 3)) expect(s8, part).toContain(part);
   });
 
@@ -339,7 +341,7 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
   const PATCH = ["radio_crew_door", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"]; // 🔧 🔌 💥 ❌: story rules
   const ANTIVIRUS = ["send to the internet", "mark as reinstalled", "accuse"]; // 🛡 ✅ 👁: TRAIT Enforcer's hooks only
 
-  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌, never 🛡 ✅ 👁; Windows Defender's has them", () => {
+  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌, never 🛡 ✅ 👁; an Antivirus' has them", () => {
     const sim = boot();
     for (const c of TO_Y2K) sim.signal(c);
     expect((sim.world.get("Night.step") as { value: number }).value).toBeGreaterThanOrEqual(14);
@@ -356,11 +358,18 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     }
     // 🫘 is Adobe Acrobat's own hook: the other hosts are never offered it.
     expect(primeView(sim, "Task Manager", undefined, { host: true }).interactions.find((i) => i.id === "radio_beans")?.hostHeard).toBe(false);
-    const wd = guestCardView(sim, [], "Windows Defender", "g1", false)!.live;
-    for (const b of ANTIVIRUS) expect(wd, b).toContain(b);
-    for (const b of PATCH) expect(wd, b).not.toContain(b); // never the door-only part's
     const norton = guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live;
-    for (const b of [...ANTIVIRUS, ...PATCH]) expect(norton, b).toContain(b);
+    for (const b of ["accuse", ...PATCH]) expect(norton, b).toContain(b);
+    // Wave 18 (A6): 🛡 only on a marked program's card, ✅ only on a captured one's
+    // (g1 missed the summons in this walk, so it is marked: late).
+    expect((sim.world.get("g1.marked") as { value: unknown }).value).toBe(true);
+    expect(norton).toContain("send to the internet");
+    expect(norton).not.toContain("mark as reinstalled");
+    sim.signal("unmark_for_reinstallation", "g1", undefined, "Norton Anti-Virus");
+    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).not.toContain("send to the internet");
+    sim.signal("mark_for_reinstallation", "g1");
+    sim.signal("send to the internet", "g1", undefined, "Norton Anti-Virus");
+    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain("mark as reinstalled");
   }, SLOW);
 
   it("/api/prime/act: a host's 🛡 is refused like any other booth's (403, nothing changes); its 🔧 lands", { timeout: SLOW }, async () => {
@@ -380,8 +389,8 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     const before = rt.liveSim!.world.peek("Night.crew_door_until");
     expect((await act("radio_crew_door")).status).toBe(200);
     expect(rt.liveSim!.world.peek("Night.crew_door_until")).not.toEqual(before);
-    // Windows Defender, an Antivirus, presses 🛡.
-    const wd = (await call(rt, "POST", "/api/prime/login", { character: "Windows Defender", passcode: CODES.prime })).json["token"] as string;
-    expect((await call(rt, "POST", "/api/prime/act", { name: "send to the internet", guest: g.id }, { token: wd })).status).toBe(200);
+    // An Antivirus presses 🛡 (wave 18: on any program; its `while:` only steers the card).
+    const av = (await call(rt, "POST", "/api/prime/login", { character: "McAfee Anti-Virus", passcode: CODES.prime })).json["token"] as string;
+    expect((await call(rt, "POST", "/api/prime/act", { name: "send to the internet", guest: g.id }, { token: av })).status).toBe(200);
   });
 });

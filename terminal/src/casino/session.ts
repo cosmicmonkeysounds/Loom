@@ -29,6 +29,8 @@ export const NOTICE_MS = 5_000;
 export const SPIN_MS = 1_100;
 
 export const MARKED_NOTICE = "⛔ MARKED PROGRAMS CAN'T GAMBLE";
+/** Wave 18: a program in the Internet is in the tent (the server refuses its bets too). */
+export const CAPTURED_NOTICE = "⛔ YOU'RE IN THE INTERNET — GO TO THE TENT";
 
 export interface Player {
   id: string;
@@ -74,7 +76,7 @@ export type CasinoSession =
 export type CasinoEvent =
   | { type: "scan"; text: string; now: number }
   | { type: "typed"; id: string }
-  | { type: "resolved"; player: Player & { restricted: boolean; wallet: boolean }; now: number }
+  | { type: "resolved"; player: Player & { restricted: boolean; captured?: boolean; wallet: boolean }; now: number }
   | { type: "refused"; text: string; now: number }
   | { type: "game"; game: CasinoGame | null }
   | { type: "stake"; stake: number }
@@ -120,6 +122,7 @@ export function reduce(s: CasinoSession, e: CasinoEvent): CasinoSession {
     case "resolved": {
       if (s.kind !== "checking" || e.player.id !== s.id) return s;
       if (e.player.restricted) return notice(MARKED_NOTICE, e.now);
+      if (e.player.captured === true) return notice(CAPTURED_NOTICE, e.now);
       if (!e.player.wallet) return notice("THE HOUSE TAKES NO BETS TONIGHT — THIS STORY HAS NO CURRENCY", e.now);
       const { id, name, balance, unit } = e.player;
       return { kind: "seated", player: { id, name, balance, unit }, game: null, stake: openingStake(balance), betting: null, last: null, net: 0, bets: 0, notice: null };

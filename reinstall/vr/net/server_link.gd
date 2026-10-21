@@ -269,7 +269,7 @@ func _relink(message: String, event_gone: bool) -> void:
 ## `/api/mod/spatial/begin`'s 409 for a program neither captured nor marked.
 const NOT_MARKED_ERROR := "not marked for reinstallation"
 ## What the lobby says instead (the tablet's words).
-const NOT_MARKED := "Not marked — an Antivirus marks programs for reinstallation."
+const NOT_MARKED := "Not marked for reinstallation — until the night is over, only a marked program may play."
 
 
 func begin(guest: String) -> void:
