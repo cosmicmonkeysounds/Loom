@@ -492,6 +492,10 @@
    (BN2-FF: their -8 px margins scrolled the page 3 px sideways) */
 .cue-bar-drawer { box-sizing: border-box; max-width: 100%; }
 .cue-bar-drawer-body .cue-act-head { margin: 0 -6px; top: -6px; }
+/* the close button's own 44 px target, so its hit-area pseudo never
+   reaches past the screen's edge (that was the 3 px) */
+.cue-bar-drawer .w95-x { min-height: var(--tap); min-width: var(--tap); }
+.cue-bar-drawer .w95-x::after { inset: 0; }
 
 /* fix round (OD-F8): on a small phone the Guests tabs wrap rather than clip */
 @media (max-width: 379px) {

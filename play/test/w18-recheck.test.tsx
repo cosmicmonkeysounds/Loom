@@ -122,6 +122,7 @@ describe("BN2-FF: Clippy's drawer never scrolls the page sideways", () => {
     const css = readBundledCss();
     expect(css).toContain(".cue-bar-drawer-body { overflow-x: hidden;");
     expect(css).toContain(".cue-bar-drawer-body .cue-act-head { margin: 0 -6px; top: -6px; }");
+    expect(css).toContain(".cue-bar-drawer .w95-x::after { inset: 0; }");
   });
 });
 
