@@ -811,6 +811,8 @@ footer {
 .wallet-card.denied, .wallet-card.declined, .wallet-card.failed, .wallet-card.cancelled, .wallet-card.expired { opacity: 0.85; }
 .wallet-party { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-ink); margin-top: 6px; }
 .wallet-text { margin: 8px 0 0; font: 14px/1.45 var(--chat-font); white-space: pre-wrap; color: var(--ink); }
+/* Wave 18b (R13): a transfer the audit holds, on both phones. */
+.wallet-audit { margin: 8px 0 0; padding: 6px 8px; font: 700 13px/1.35 var(--ui-font); color: var(--black); background: var(--highlight); box-shadow: inset 0 0 0 1px var(--black); border-radius: var(--radius); }
 .wallet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; }
 .wallet-foot .link { margin: 0; width: auto; font-size: 12px; }
 .msg.wallet-step { align-self: stretch; display: flex; gap: 8px; align-items: baseline; margin: 4px 0; padding: 2px 10px; border-left: 1px solid var(--line); }
