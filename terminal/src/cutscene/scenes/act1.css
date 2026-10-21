@@ -79,6 +79,7 @@
 .a1-cell.centre { background: #ffd23f; color: #7a1010; }
 .a1-cell.ticked { background: #c8ffd8; color: #007a2a; }
 .a1-cell span { display: inline-block; }
+.a1-cell .a1-cell-ring { position: absolute; inset: 0; border: 0.12em solid #3ddc84; border-radius: 50%; will-change: transform, opacity; }
 .a1-bingo-q { position: absolute; left: 5.00%; top: 84.15%; width: 22em; font-family: var(--mono); font-size: 1.1em; line-height: 1.15; color: #fff; }
 .a1-cage { position: absolute; left: 25em; top: 9.4em; width: 14em; height: 17em; }
 .a1-cage-svg { display: block; width: 14em; height: 14em; }

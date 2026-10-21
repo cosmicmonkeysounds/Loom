@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoTicks, carryAt, filingHold } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import type { SceneProps } from "../src/cutscene/types.ts";
 
@@ -210,5 +210,28 @@ describe("act 1 — the filing window fits its slide", () => {
     }
     // A director's early ⏱ while the slide is up: PENCILS DOWN under it.
     expect(draw("tv", 4_000_000, 70_000, true)).toContain("PENCILS DOWN");
+  });
+});
+
+describe("act 1 — bingo's hold", () => {
+  it("every ball pops with a sound and its square ticks a beat later; every fourth rings the chord", () => {
+    // Walk 90 s of the hold collecting each due cue once (as useSfxCues would).
+    const seen = new Map<number, string>();
+    for (let t = 0; t < 90_000; t += 100) for (const [at, name] of bingoCues(t)) seen.set(at * 100 + name.length, name);
+    const names = [...seen.values()];
+    const balls = Math.floor((90_000 - 4200) / 8000) + 1;
+    expect(names.filter((n) => n === "popup").length).toBe(balls);
+    expect(names.filter((n) => n === "tick").length).toBeGreaterThanOrEqual(balls - 1);
+    expect(names.filter((n) => n === "chord").length).toBe(Math.floor(balls / 4));
+    expect(names).toContain("whoosh"); // a new round's card
+  });
+
+  it("the freshly ticked square stamps in", () => {
+    const f = freshTick(4200 + 8000 * 2 + 600);
+    expect(f.cell).toBeGreaterThanOrEqual(0);
+    expect(f.k).toBeGreaterThan(0);
+    expect(f.k).toBeLessThan(1);
+    expect(bingoTicks(4200 + 8000 * 2 + 600).has(f.cell)).toBe(true);
+    expect(freshTick(4200 + 8000 * 2 + 5000).cell).toBe(-1);
   });
 });

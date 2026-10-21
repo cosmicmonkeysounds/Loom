@@ -25,6 +25,7 @@ import "./act1.css";
 import { useRef, type CSSProperties, type ReactNode } from "react";
 import { SLIDE_COPY, SLIDE_HOLD_MS } from "../../slides.ts";
 import type { ScreenState } from "../../screen.ts";
+import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import {
   Confetti,
@@ -198,6 +199,38 @@ export function bingoTicks(t: number, seed = 5): Set<number> {
 }
 
 /**
+ * The hold's accents: every ball pops (a popup, its pitch walking up the
+ * round) and its square ticks a beat later; every fourth ball rings the
+ * chord, and a new round's empty card whooshes in.
+ */
+export function bingoCues(t: number): Array<readonly [number, SfxName, SfxOpts]> {
+  const out: Array<readonly [number, SfxName, SfxOpts]> = [];
+  for (const x of periodicCues(t, B.hold, BALL_EVERY)) {
+    const k = Math.round((x - B.hold) / BALL_EVERY);
+    const inRound = k % (BALL_CYCLE / BALL_EVERY);
+    if (inRound === 0 && k > 0) out.push([x - 300, "whoosh", { gain: 0.4 }]);
+    out.push([x, "popup", { gain: 0.4, pitch: 1 + 0.06 * inRound }]);
+    out.push([x + TICK_AFTER, "tick", { gain: 0.5 }]);
+    if (k % 4 === 3) out.push([x + TICK_AFTER + 150, "chord", { gain: 0.45 }]);
+  }
+  return out;
+}
+
+/** The square ticks this long after its ball pops (ms). */
+const TICK_AFTER = 350;
+
+/** The square that just ticked and how far (0..1) its stamp has landed; cell -1 when none is fresh. */
+export function freshTick(t: number): { cell: number; k: number } {
+  if (t < B.hold + TICK_AFTER) return { cell: -1, k: 1 };
+  const local = (t - B.hold) % BALL_EVERY;
+  if (local < TICK_AFTER || local > TICK_AFTER + 900) return { cell: -1, k: 1 };
+  const now = bingoTicks(t);
+  const before = bingoTicks(t - local - 1);
+  for (const c of now) if (!before.has(c)) return { cell: c, k: clamp01((local - TICK_AFTER) / 700) };
+  return { cell: -1, k: 1 };
+}
+
+/**
  *   0–1800    B-I-N-G-O balls bounce in along the top, COMPUTER BINGO slams under them
  *   1800–4200 the asterisk card draws itself square by square; the rules type in
  *   4200–     hold: the cage turns, its balls tumbling; every 8 s one pops out with a
@@ -210,9 +243,10 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
   useSfxCues(t, sfx, [
     ...[0, 1, 2, 3, 4].map((i) => [B.title + i * 160, "blip", { pitch: 1 + i * 0.12, gain: 0.6 }] as const),
     [B.card, "chord", { gain: 0.6 }],
-    ...periodicCues(t, B.hold + BALL_EVERY * 4, BALL_EVERY * 4).map((x) => [x, "popup", { gain: 0.4 }] as const),
+    ...bingoCues(t),
   ]);
   const ticks = bingoTicks(t);
+  const fresh = freshTick(t);
   const left = countdownLeft(state, ["bingo"], at, t);
   const ballN = t >= B.hold ? Math.floor((t - B.hold) / BALL_EVERY) : -1;
   const ballAt = B.hold + ballN * BALL_EVERY;
@@ -236,7 +270,12 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
           const ticked = ticks.has(i);
           return (
             <div key={i} className={`a1-cell${centre ? " centre" : ""}${ticked ? " ticked" : ""}`} style={{ left: `${c * 20}%`, top: `${r * 20}%`, transform: `scale(${k.toFixed(3)})`, opacity: clamp01(k * 2) }}>
-              {centre ? <span style={{ transform: `scale(${(1 + 0.12 * pulse(t, 1600)).toFixed(3)})` }}>★</span> : ticked ? <span>✔</span> : null}
+              {centre ? (
+                <span style={{ transform: `scale(${(1 + 0.12 * pulse(t, 1600)).toFixed(3)})` }}>★</span>
+              ) : ticked ? (
+                <span style={i === fresh.cell && !reduced ? { transform: `scale(${(2.2 - 1.2 * eased(fresh.k, 0, 1, ease.outBack)).toFixed(3)}) rotate(${(-20 * (1 - fresh.k)).toFixed(1)}deg)` } : undefined}>✔</span>
+              ) : null}
+              {i === fresh.cell && !reduced && fresh.k < 1 && <span className="a1-cell-ring" style={{ transform: `scale(${(0.6 + 1.4 * fresh.k).toFixed(3)})`, opacity: 1 - fresh.k }} />}
             </div>
           );
         })}
@@ -293,7 +332,7 @@ function BingoCage({ t, reduced }: { t: number; reduced: boolean }) {
 }
 
 function BingoWall({ t, sfx, reduced }: SceneProps) {
-  useSfxCues(t, sfx, [[200, "chord", { gain: 0.6 }]]);
+  useSfxCues(t, sfx, [[200, "chord", { gain: 0.6 }], ...periodicCues(t, B.hold, BALL_EVERY).map((x) => [x + TICK_AFTER, "blip", { gain: 0.35 }] as const)]);
   const ticks = bingoTicks(t);
   return (
     <WallCard
