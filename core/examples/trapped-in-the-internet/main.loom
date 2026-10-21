@@ -4012,7 +4012,7 @@ when y2k_clock:
     set Night.y2k_end = Time.elapsed + 3600
     set Night.alerts = "dialog"
     set Night.clock = "23:00"
-    // DRAFT for sign-off (w13 Q38): the show clock jumps to 11:00 PM, so the hour ends at midnight.
+    // Signed off (w13 Q38, wave 18): the show clock jumps to 11:00 PM, so the hour ends at midnight.
     set Clock.set_to = 1380
     set Clock.set_at = Time.elapsed
     set Trabolta.composure -= 25
@@ -4942,7 +4942,7 @@ when resurrection:
 // truth count). This must stay the LAST item in main.loom.
 == Power On
   setting: The Desktop
-// DRAFT for sign-off (w13 Q37): the show clock starts at 7:00 PM at the doors.
+// Signed off (w13 Q37, wave 18): the show clock starts at 7:00 PM at the doors.
 set Clock.set_to = 1140
 set Clock.set_at = Time.elapsed
 set Night.phase = "arrivals"
