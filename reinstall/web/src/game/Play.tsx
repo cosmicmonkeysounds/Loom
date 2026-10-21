@@ -35,6 +35,7 @@ export function Play({
   houseVersion,
   king,
   sfx,
+  held = false,
   onExit,
 }: {
   config: ReinstallConfig;
@@ -45,6 +46,9 @@ export function Play({
   /** The shared King off the dealt map's GET (absent: an old server — no ⚔). */
   king?: KingState | null;
   sfx: Sfx;
+  /** Something covers the game (a story overlay on the tent laptop, wave
+   *  18b): the walk is held — `Game.hold` — never ended. */
+  held?: boolean;
   onExit: (e: PlayExit) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -56,6 +60,8 @@ export function Play({
   const [helpOpen, setHelpOpen] = useState(true);
   const exit = useRef(onExit);
   exit.current = onExit;
+  const heldRef = useRef(held);
+  heldRef.current = held;
   const base = baseOf(config);
 
   useEffect(() => {
@@ -88,12 +94,20 @@ export function Play({
     }
     game.current = g;
     g.start();
+    g.hold(heldRef.current);
     return () => {
       g.dispose();
       game.current = null;
     };
     // `king` only seeds the game: the stream keeps it current after that.
+    // A new `config` or `sfx` object restarts the game: hosts keep both
+    // stable (`flow.tsx`'s header).
   }, [house, houseVersion, assignment, base, config, sfx]);
+
+  // Held while something covers the game; let go when it lifts.
+  useEffect(() => {
+    game.current?.hold(held);
+  }, [held]);
 
   // A touch anywhere shows the sticks (a laptop with a touch screen).
   useEffect(() => {

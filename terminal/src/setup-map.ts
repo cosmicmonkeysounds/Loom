@@ -29,10 +29,14 @@ function locationOf(house: MapLike, roomId: string): string {
   return r?.location?.trim() || r?.label || roomId;
 }
 
+/** The views that belong to no room: `speaks` is ignored on them (the TV
+ *  speaks its own room; the rest are awake all night and say nothing). */
+export const ROOMLESS_VIEWS: readonly TerminalView[] = ["tv", "chess", "casino", "reinstall"];
+
 /** A map terminal → the tablet's spot / name / view / room. */
 export function pickOf(house: MapLike, t: TerminalSpot): MapPick {
   const view = viewOf(t);
-  const room = t.speaks === true && view !== "tv" && view !== "chess" && view !== "casino" ? locationOf(house, t.room) : "";
+  const room = t.speaks === true && !ROOMLESS_VIEWS.includes(view) ? locationOf(house, t.room) : "";
   return { spot: t.id, name: t.name.trim() || t.id, view, room };
 }
 
@@ -49,6 +53,8 @@ export function screenWords(pick: Pick<MapPick, "view" | "room">): string {
       return "chess board — the King";
     case "casino":
       return "casino";
+    case "reinstall":
+      return "reinstallation station";
     case "mirror":
       return "mirror — watch only, no scanner";
     case "shadow":

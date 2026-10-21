@@ -200,3 +200,42 @@ describe("showsNameplate (livetv-2)", () => {
     expect(showsNameplate({ character: { id: "Trabolta", hidden: false, awake: true, online: true } as never })).toBe(true);
   });
 });
+
+describe("a long line's caption follows the chunk being said (wave 18b)", () => {
+  it("over 180 characters a spoken line shows its current piece; anything else the whole line", async () => {
+    const { CAPTION_CHUNK_OVER, captionText } = await import("../src/Tv.tsx");
+    const long = { seq: 7, mode: "speak" as const, text: `${"Winamp said the bank. ".repeat(12)}` };
+    expect(long.text.length).toBeGreaterThan(CAPTION_CHUNK_OVER);
+    expect(captionText(long, { seq: 7, index: 3 })).toBe("Winamp said the bank.");
+    // Another line's piece, or none yet: its first piece — never the wall of text.
+    expect(captionText(long, { seq: 6, index: 5 })).toBe("Winamp said the bank.");
+    expect(captionText(long, null)).toBe("Winamp said the bank.");
+    // Past the end (a chunk list that moved): still a piece, not the wall.
+    expect(captionText(long, { seq: 7, index: 99 })).toBe("Winamp said the bank.");
+    // Short, or not spoken (muted, a song, Sandy's text): always the whole line.
+    expect(captionText({ seq: 7, mode: "speak", text: "Question one." }, { seq: 7, index: 0 })).toBe("Question one.");
+    expect(captionText({ ...long, mode: "muted" }, { seq: 7, index: 0 })).toBe(long.text);
+  });
+
+  it("the pieces are cut from what was filed, not from what the voice says", async () => {
+    const { captionChunks, captionText } = await import("../src/Tv.tsx");
+    const { splitSentences } = await import("../src/speech/split.ts");
+    const filed = [
+      "Question four. Winamp filed 🦆 _the duck_ and was sure… Netscape filed https://example.com/x and was not.",
+      "Excel filed **the bank** at full confidence. ".repeat(4),
+    ].join(" ");
+    const pieces = captionChunks(filed);
+    // As many pieces as the voice says, in order, together the whole line.
+    expect(pieces).toHaveLength(splitSentences(filed).length);
+    expect(pieces.join(" ").replace(/\s+/g, " ")).toBe(filed.trim().replace(/\s+/g, " "));
+    // The emoji, the marks, the "…" and the link stay on screen.
+    const shown = pieces.join(" ");
+    expect(shown).toContain("🦆 _the duck_");
+    expect(shown).toContain("sure…");
+    expect(shown).toContain("https://example.com/x");
+    expect(shown).toContain("**the bank**");
+    const line = { seq: 2, mode: "speak" as const, text: filed };
+    expect(captionText(line, { seq: 2, index: 0 }, pieces)).toBe(pieces[0]);
+    expect(captionText(line, { seq: 2, index: 0 }, pieces)).not.toContain("link");
+  });
+});
