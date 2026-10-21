@@ -39,7 +39,7 @@
 if Night.ceremony_host == "Clippy":
   Clippy: Before the awards, the system report has one more section: a review of the night. I will read it exactly as it is written.
 else:
-  Trabolta: Before the awards, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept both files.
+  Trabolta: Before the awards, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
 // Who everyone was (Recounts and Purgatory have just read it).
 if Night.ending != "disabled" and Night.ending != "destroyed":
   if Night.ceremony_host == "Clippy":
@@ -146,7 +146,7 @@ Clippy: The Installation Wizard walked every machine in Halifax through setup. N
   setting: The Desktop
   cast: Trabolta
 if count([p for p in Persons where p.featured == "none" and p.cleared == true and p.gone != true and p.persona != true]) > 0:
-  Trabolta: And the rest of you. I did not write you a file. I wrote down what you wanted.
+  Trabolta: And the rest of you. I did not read your files aloud. I wrote down what you wanted.
 if count([p for p in Persons where p.featured == "none" and p.human_problem == "debt" and p.cleared == true and p.gone != true and p.persona != true]) > 0:
   Trabolta: {names([p for p in Persons where p.featured == "none" and p.human_problem == "debt" and p.cleared == true and p.gone != true and p.persona != true])}. You came because of your debt. Debt is not relevant in the computer. It was never relevant to me.
 if count([p for p in Persons where p.featured == "none" and p.human_problem == "career" and p.cleared == true and p.gone != true and p.persona != true]) > 0:
