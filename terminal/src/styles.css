@@ -1406,8 +1406,8 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 
 /* The wake prompt over a live idle show: see the show through it. */
 .wake { background: rgba(0, 0, 0, 0.5); }
-.wake-title { padding: 0.15em 0.6em; background: rgba(0, 0, 0, 0.85); border: 2px solid var(--phosphor-dim); }
-.wake-sub { padding: 0.2em 0.6em; background: rgba(0, 0, 0, 0.85); }
+.wake-title { justify-self: center; padding: 0.15em 0.6em; background: rgba(0, 0, 0, 0.85); border: 2px solid var(--phosphor-dim); }
+.wake-sub { justify-self: center; padding: 0.2em 0.6em; background: rgba(0, 0, 0, 0.85); }
 
 /* --- motion -------------------------------------------------------------------------------- */
 @keyframes idle-fade { from { opacity: 0; } to { opacity: 1; } }
