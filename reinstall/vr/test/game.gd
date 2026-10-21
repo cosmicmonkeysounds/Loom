@@ -45,6 +45,7 @@ func _run() -> void:
 	await _test_server_link()
 	_test_locomotion()
 	_test_picker()
+	_test_picker_grid()
 	_test_flow()
 	_test_cam_feeds()
 	await _test_cam_panels()
@@ -1091,6 +1092,45 @@ func _test_picker() -> void:
 	_check(p.update(Vector2(0.1, 0), 0.1).is_empty() and p.progress() == 0.0, "picker: letting go empties the bar")
 	p.set_items([{"id": "x"}, {"id": "c"}, {"id": "a"}])
 	_check(p.selected().get("id") == "c", "picker: a refreshed list keeps the selection")
+
+
+## The tile grid's stick (wave 19): up / down a row, left one back, a
+## right flick let go early one on, a right hold still confirms.
+func _test_picker_grid() -> void:
+	var p := CandidatePicker.new()
+	var six: Array = []
+	for i in 6:
+		six.append({"id": "p%d" % i})
+	p.set_items(six)
+	p.columns = 3
+	p.update(Vector2(0, -1), 0.0)
+	_check(p.index == 3, "grid: stick down is a row down")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(0, -1), 0.0)
+	_check(p.index == 0, "grid: down from the bottom row wraps to the top, same column")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(-1, 0), 0.0)
+	_check(p.index == 5, "grid: left from the first tile wraps to the last")
+	p.update(Vector2(-1, 0), 0.0)
+	_check(p.index == 5, "grid: a held left moves once")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(1, 0), 0.2)
+	_check(p.index == 5 and p.progress() > 0.0, "grid: a right flick starts the hold bar")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0 and p.progress() == 0.0, "grid: … let go early it moves one on (wraps)")
+	p.update(Vector2(1, 0), 0.5)
+	var got := p.update(Vector2(1, 0), 0.6)
+	_check(got.get("id") == "p0" and p.index == 0, "grid: holding right 1 s confirms, no move")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0, "grid: letting go after a confirm moves nothing")
+	p.update(Vector2(1, 0), 0.4)
+	p.disarm()
+	_check(p.update(Vector2(1, 0), 2.0).is_empty() and p.progress() == 0.0, "grid: disarmed, a held right never confirms")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0, "grid: … nor moves when let go")
+	_check(CandidatePicker.row_step(4, 5, 3, 1) == 1 and CandidatePicker.row_step(1, 5, 3, 1) == 4 and CandidatePicker.row_step(2, 5, 3, 1) == 4, "grid: a short last row takes its nearest tile")
+	_check(CandidatePicker.row_step(0, 2, 2, 1) == 1 and CandidatePicker.row_step(1, 2, 2, -1) == 0, "grid: one row — up / down move one tile")
+	_check(CandidatePicker.row_step(0, 0, 3, 1) == 0, "grid: an empty grid stays put")
 
 
 # --- camera feeds (wave 14) ---------------------------------------------------
