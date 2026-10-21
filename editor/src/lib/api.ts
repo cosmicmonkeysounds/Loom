@@ -12,6 +12,7 @@ import type { ScreenTerminals } from '@/lib/terminals'
 import type { RecapWire } from '@/components/cockpit/award-suggest'
 import type { MapVariantsResponse, SwitchVariantResult } from '@/lib/map-variants'
 import { kingFromScreen, kingFromWire, type KingView } from '@/lib/king'
+import { audioStatusOf, routerOf, type AudioStatus, type AudioStopAnswer } from '@/lib/house-audio'
 
 const BASE = import.meta.env.VITE_LOOM_API ?? ''
 
@@ -489,6 +490,34 @@ export const screensApi = {
   /** Make one terminal show its name + spot full screen for 10 s (SW-SCR-21, install day). */
   async identify(eventId: string, name: string): Promise<{ name: string; until: number }> {
     return await req<{ name: string; until: number }>('POST', `/e/${eventId}/api/mod/screen/identify`, { name })
+  },
+}
+
+// --- the house sound (wave 18b, Q7 / Q8) -----------------------------------
+
+export const audioApi = {
+  /** The event's `audio.json` in force, its source and whether the house
+   *  Mac's router is listening (no `router=1`: this read never passes for
+   *  the router). Null from a server with no audio route. */
+  async status(eventId: string): Promise<AudioStatus | null> {
+    return audioStatusOf(await req<unknown>('GET', `/e/${eventId}/api/mod/audio`))
+  },
+  /** ■ Stop house sounds: the router fades out every story sound and
+   *  speaker test; `announce` also cuts the announcement and its queue.
+   *  One-shot, never journaled. */
+  async stop(eventId: string, announce: boolean): Promise<AudioStopAnswer> {
+    const r = await req<{ ok?: unknown; seq?: unknown; router?: unknown }>('POST', `/e/${eventId}/api/mod/audio/stop`, { announce })
+    return { ok: true, seq: typeof r.seq === 'number' ? r.seq : 0, router: routerOf(r.router) }
+  },
+  /** A director's save of the whole config (`base` = the version it was read
+   *  at: 409 when someone saved since). Kept for this event only. */
+  async save(eventId: string, audio: Record<string, unknown>, base: string): Promise<{ version: string; warnings: string[] }> {
+    const r = await req<{ version?: unknown; warnings?: unknown }>('POST', `/e/${eventId}/api/mod/audio`, { audio, base })
+    return { version: typeof r.version === 'string' ? r.version : '', warnings: Array.isArray(r.warnings) ? r.warnings.filter((w): w is string => typeof w === 'string') : [] }
+  },
+  /** The config in force becomes the project's `audio.json` (survives End → relaunch). */
+  async saveToProject(eventId: string): Promise<void> {
+    await req<unknown>('POST', `/e/${eventId}/api/mod/audio/project`, {})
   },
 }
 
