@@ -156,6 +156,25 @@ describe("badge: a `while` that reads a secret (wave 18b)", () => {
   });
 });
 
+describe("founding: L1220 (wave 18b)", () => {
+  const head = (lines: string) => `# Founding\n${lines}\n\nCHARACTER Night\n  open: bool = false\n\n== Hall\nThe hall.\n`;
+
+  it("is quiet on one expression", () => {
+    expect(codesOf(head("founding: Night.open == true and program.cleared == true"), "L1220")).toEqual([]);
+  });
+
+  it("warns on a founding: that is no expression", () => {
+    const d = codesOf(head("founding: Night.open == == true"), "L1220");
+    expect(d).toEqual([{ message: expect.stringContaining("is no expression"), error: false }]);
+  });
+
+  it("warns on a second founding: line (the first decides)", () => {
+    const d = codesOf(head("founding: Night.open == true\nfounding: program.cleared == true"), "L1220");
+    expect(d).toEqual([{ message: expect.stringContaining("a second `founding:` line is ignored"), error: false }]);
+    expect(Sim.fromSources(head("founding: Night.open == true\nfounding: program.cleared == true")).model.founding).toBe("Night.open == true");
+  });
+});
+
 describe("lobby: hidden (wave 18b)", () => {
   it("flags the guest view and keeps the lobby channel", () => {
     const sim = Sim.fromSources(BADGES);
