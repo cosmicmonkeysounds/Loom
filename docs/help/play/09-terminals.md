@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
+keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture, reinstallation station, tent, tent laptop, the Internet, wizard, not marked, say the house announcements, house setting, always, never
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -125,8 +125,9 @@ and clicks never sound while the character is talking; a scene's stings
 play quietly under him. The story's real sounds and the **house
 announcements** come out of the house speakers. Some terminals also pass
 on those announcements — a chime, then the line ("Go to the living
-room.") with a 📢 banner. An announcement waits for the character to
-finish his sentence; it never cuts him off.
+room.") with a 📢 banner — usually the ones out of earshot of the
+speakers. An announcement waits for the character to finish his
+sentence; it never cuts him off.
 
 ## A terminal that belongs to a room
 
@@ -197,6 +198,28 @@ minute and it cashes you out. A program in the Internet can't gamble (*⛔
 YOU'RE IN THE INTERNET — GO TO THE TENT*), nor can a restricted one or a
 frozen wallet; a program that is merely marked still plays.
 
+## The reinstallation station
+
+At *Trapped in the Internet* the laptop in **the Internet** (the tent out
+back, or the shed on a rain night) is a terminal **and** the
+reinstallation wizard, awake all night. Between walks it plays the idle
+show and the story's screens like any wall terminal; a red strip above
+its corner box lists the programs **in the Internet now**.
+
+1. Hold up your pass (or type your program name, or tap your name in the
+   red strip).
+2. Sent to the Internet, or marked for reinstallation? The wizard opens
+   full screen and the walk starts: find **Gerald**, the golden duck (see
+   [The simulation](reinstallation.md)). When a headset is free, the
+   wizard asks first: **Play here** or **Send to** the headset.
+3. Not marked? The screen says **PROGRAM NOT MARKED**, and nothing else
+   happens. Only a marked program may play, until the night is over.
+
+While you walk, the story's slides and scenes wait. A notice (a
+blackout, an alarm) covers the game and **pauses it**: your walk carries
+on when it clears. If you are already walking on a headset, the laptop
+asks before it moves you here.
+
 ## A window into the simulation
 
 When the event runs a **simulation** — a virtual copy of the house (see
@@ -258,9 +281,24 @@ simulation, full screen.)
 Open `/terminal/` on the tablet, type the event's **moderator passcode**,
 then **tap the terminal** this tablet is: the list is the event's house
 map (its terminals, by floor and room, each saying what it shows — TV,
-casino, chess board, a room terminal, a house terminal). A spot another
+casino, chess board, the reinstallation station, a room terminal, a
+house terminal). A spot another
 tablet is using right now says *⚠ online now*. That's it: the name, the
 screen and the room come from the map, which the house map editor sets.
 A whole fleet: open `/terminal/?code=<mod passcode>&spot=<terminal id>`
 on each tablet. To re-point a running tablet, hold ⚙ for 2 seconds and
 tap another terminal.
+
+**Saying the house announcements.** Under ⚙ → *advanced*, *say the house
+announcements* has three settings. **House setting** (the default)
+follows the house's own list of terminals out of earshot of the
+speakers: Run → Terminals marks those with 📢, and a director turns a
+spot on or off there. **Always** says them whatever the list says, and
+**Never** never does. On a provisioning link, `&announce=1` is Always and
+`&announce=0` Never. The TV stays off: its room hears the speakers.
+
+The tent laptop: `/terminal/?code=<mod passcode>&spot=tent&announce=1`,
+in Chrome started in kiosk mode (the crew's kiosk notes have the line).
+The spot alone sets its view and its name (*Tent*, or *Shed* on a rain
+night); don't add `&view=reinstall`, or it keeps the name *Terminal* and
+stops following the map.

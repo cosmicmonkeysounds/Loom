@@ -14,6 +14,7 @@ is [`docs/loom-reinstall.md`](../docs/loom-reinstall.md), and it is normative.
 | [`../house`](../house) (`@loom/house`) | shared | The **house map**: one frame (metres, Y up, `+z` south). It holds the schema (incl. the `king` prop and a door's `guard`), validation, the procedural geometry, `locate` and `route` (a guarded door is shut until its King falls), the King's reach rule (`kingReach`), and the duck pick. `@loom/house/three` is the three.js scene that the web game and the terminals both render: the King with his shared bar, and ghosts wearing profile pictures. §1. |
 | [`../core/server/spatial.ts`](../core/server/spatial.ts) | the event server | `SpatialHub` holds sessions, stations, poses, and a found check gated on distance and height (`nearDuck`), refused while the run is paused. Only the outcome ever reaches the journal: `the simulation completed` + `the golden duck`, and a hit on the shared King (`POST /api/spatial/king/hit`: his health into `Night.king_hp`, then `king hit` / `king fallen`). A map save carries live sessions over and moves their ducks (`duck` frame). Each player carries their profile picture's avatar key (`avatar` frame on a change). §2. |
 | [`../terminal/src/world/`](../terminal/src/world) | the wall tablets | The **world view**: each terminal shows the players exploring, seen from where it hangs on the real wall. `view=mirror` is the TV. §4. |
+| [`../terminal/src/reinstall/`](../terminal/src/reinstall) | the tent laptop | **The reinstallation station** (wave 18b, `view=reinstall`): the laptop in the tent is a wall terminal *and* this app's wizard — the idle show, the scan box and the captured programs between walks, then `web/`'s own flow (`flow.tsx`) and game in a shadow root. An unmarked pass gets only a NOT MARKED card; an overlay holds a walk. §3. |
 | [`../chess`](../chess) (`@loom/chess`) | the Server Door terminal | **The King's chess**: the rules, his AI per stage of the shared bar, and the board. It is played only at the wall terminal outside the real server-room door (`terminal/`, `view=chess`), never in either game. §4. |
 
 **A server restart ends every walk.** `SpatialHub` keeps sessions,
@@ -153,7 +154,8 @@ passcode. The device trades it for a moderator token and does not store the
 passcode:
 
 ```
-/reinstall/?code=<mod>&name=Tent tablet
+/terminal/?code=<mod>&spot=tent&announce=1
+/reinstall/?code=<mod>&name=Spare tablet
 /terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
 /terminal/?code=<mod>&name=Server Door&spot=server-room-door&view=chess
 ```
@@ -165,9 +167,12 @@ Trabolta (`introduce_trabolta`), then flip to his face within 2 s (see
 exists*). In the tent — in the backyard, through the tunnel — the story's
 **Installation Wizard** (a voice, not a performer: `cast/staff.loom`,
 `beats/internet.loom`) messages each captured program the reinstallation
-instructions in its own `dm:Installation Wizard` thread (`cue
-tablet_wizard` is reserved for a future instructional video in the tablet
-wizard).
+instructions in its own `dm:Installation Wizard` thread, and `cue
+tablet_wizard` puts the station's *Setup is preparing to reinstall a
+program* card up on the tent laptop (it names nobody). The laptop is the
+wall terminal at `view=reinstall` (wave 18b); the standalone `/reinstall/`
+page stays for a spare tablet, a headset-only controller and the map
+editor.
 
 A headset is configured with `user://station.json` or command-line flags;
 see [`vr/README.md`](./vr/README.md). The Docker image serves `web/` (the

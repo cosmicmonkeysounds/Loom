@@ -28,6 +28,9 @@ describe("pickOf — a map terminal → name / view / room", () => {
     expect(pickOf(show, spot(show, "server-room-door"))).toEqual({ spot: "server-room-door", name: "Server Door", view: "chess", room: "" });
     expect(pickOf(show, spot(show, "graphics-card"))).toEqual({ spot: "graphics-card", name: "Casino", view: "casino", room: "" });
     expect(pickOf(show, spot(show, "start-bar"))).toEqual({ spot: "start-bar", name: "Start Bar", view: "auto", room: "" });
+    // Wave 18b (Q4): the tent laptop is the reinstallation station, on either variant.
+    expect(pickOf(show, spot(show, "tent"))).toEqual({ spot: "tent", name: "Tent", view: "reinstall", room: "" });
+    expect(pickOf(shed, spot(shed, "tent"))).toEqual({ spot: "tent", name: "Shed", view: "reinstall", room: "" });
   });
 
   it("speaks is ignored on the TV, the board, the casino and the reinstallation station", () => {
@@ -81,6 +84,8 @@ describe("applyPick / urlConfig / followMap", () => {
   it("a ?code=&spot= link takes the map terminal", () => {
     const given = base({ spot: "graphics-card", name: "Terminal" });
     expect(urlConfig(given, { spot: "graphics-card", name: null, view: null, room: null }, show)).toMatchObject({ name: "Casino", view: "casino", room: "", fromMap: true });
+    // The tent laptop's link: `?code=<mod>&spot=tent` alone makes it the station.
+    expect(urlConfig(base({ spot: "tent", name: "Terminal" }), { spot: "tent", name: null, view: null, room: null }, show)).toMatchObject({ name: "Tent", view: "reinstall", room: "", fromMap: true });
   });
 
   it("an old fleet link (it names a view) plays exactly as given, as before", () => {
@@ -94,6 +99,7 @@ describe("applyPick / urlConfig / followMap", () => {
       [{ spot: "graphics-card", name: "Casino", view: "casino", room: "" }, null],
       [{ spot: "desktop-tv", name: "TV", view: "tv", room: "" }, null],
       [{ spot: "start-bar", name: "Start Bar", view: "auto", room: "" }, null],
+      [{ spot: "tent", name: "Tent", view: "reinstall", room: "" }, null],
     ];
     for (const [over, room] of links) {
       const g = base(over);

@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture
+keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture, laptop, reinstallation station, not marked, paused, notice
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -29,28 +29,37 @@ Wizard's thread in your app. Click Next.
 
 ## Getting in
 
-In the tent there is a tablet. Hold your **pass** (tap **🎟 Pass** on
-your app's taskbar — see [Your pass](your-pass.md)) up to its camera. It offers two
-ways to play:
+In the tent there is the **reinstallation station**: a laptop that is
+also one of the house's terminals (see [The terminals](terminals.md)).
+Hold your **pass** (tap **🎟 Pass** on your app's taskbar — see
+[Your pass](your-pass.md)) up to its camera, in the **SCAN YOUR PASS**
+box. The wizard opens full screen:
 
-- **Play here** — the simulation runs on the tablet in your hands.
-- **Send to a headset** — a VR headset (VR-1, VR-2 …) picks you up. Put
-  it on; you're already in.
+- **Play here** — the simulation runs on the laptop in front of you.
+  With no headset free, this is where it starts, straight away.
+- **Send to a headset** — when a VR headset (VR-1, VR-2 …) is free, the
+  wizard asks first. Put it on; you're already in.
 
-No camera, or it won't read your pass? Whoever runs the tent can find you
-by name, or tap you in the list of programs in the Internet. A program
-that is marked but not in the Internet yet has its own list on the
-tablet (*Marked for reinstallation*), and the tablet reads **Marked
-program detected · STATUS: MARKED — marked for reinstallation**: **Play
-here** starts your reinstallation (and sends you to the Internet) all the
-same.
+No camera, or it won't read your pass? Tap *no camera? type your program
+name* in the box, or tap your name in the red **IN THE INTERNET NOW**
+strip above it. A program that is marked but not in the Internet yet is
+not in that strip: scan your pass. The wizard reads **Marked program
+detected · STATUS: MARKED — marked for reinstallation**, and **Play here**
+starts your reinstallation (and sends you to the Internet) all the same.
+Already walking on a headset? The laptop asks before it moves you here.
 
 During the night only a marked (or corrupted) program gets in. Scan a pass
-that nobody marked and the tablet reads **Program not marked · STATUS:
-healthy — not marked for reinstallation** (*until the night is over, only a
-marked program may play*) and has no way to play; a headset's lobby never
-lists an unmarked program either. A program a director held without a mark
-reads **Program held by a director**.
+that nobody marked and the laptop shows **PROGRAM NOT MARKED** (*until the
+night is over, only a marked program may play*) for a few seconds, and
+nothing else happens; a headset's lobby never lists an unmarked program
+either. A program a director held without a mark reads **Program held by
+a director**. A program unmarked while it walks (a director released it)
+is stopped: *No longer marked for reinstallation — the simulation ended.*
+
+While you walk on the laptop, a notice from the story (a blackout, an
+alarm, *go to the living room*) covers the game and **pauses** it: you
+can't move and nobody is timed out. Your walk carries on when it
+clears.
 
 ## A party favour
 

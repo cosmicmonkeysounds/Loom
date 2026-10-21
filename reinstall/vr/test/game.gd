@@ -1416,6 +1416,7 @@ func _test_game_king(game: Game, link: LinkBase, house: Dictionary) -> void:
 	game._process(0.016)
 	_check(sub.text == Game.KING_NOTICE, "game king: near him the HUD says how to hit him (%s)" % sub.text)
 	_check(Game.KING_NOTICE == "Pull the trigger to hit the King — once per visit.", "game king: the notice's words")
+	_check(Game.session_over_text("unmarked") == "No longer marked for reinstallation — the simulation ended." and Game.session_over_text("timeout") == "Session ended (timeout).", "game: an unmarked walk's end says why (wave 18b, R16)")
 	game.hud.notice("")
 	game._process(0.016)
 	_check(sub.text == "", "game king: … and not again while still beside him")

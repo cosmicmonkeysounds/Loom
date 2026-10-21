@@ -127,7 +127,14 @@ const LEAVE_REASON: Record<string, string> = {
   timeout: "The connection timed out.",
   reset: "The system restarted — scan the pass again.",
   ended: "A director ended this session.",
+  // Wave 18b (R16): the program was unmarked mid-walk (a director's release).
+  unmarked: "No longer marked for reinstallation — the simulation ended.",
 };
+
+/** Why the server ended this game's session, in the HUD's words. */
+export function leaveText(reason: string): string {
+  return LEAVE_REASON[reason] ?? "This session is over.";
+}
 
 export class Game {
   private readonly o: GameOptions;
@@ -902,7 +909,7 @@ export class Game {
       return;
     }
     if (f.event === "leave" && f.data.session === mine && f.data.reason !== "found") {
-      this.end({ kind: "over", reason: LEAVE_REASON[f.data.reason] ?? "This session is over." });
+      this.end({ kind: "over", reason: leaveText(f.data.reason) });
       return;
     }
     // A director saved (`house`), or the stream (re)connected (`hello`) —
