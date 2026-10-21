@@ -17,7 +17,9 @@
 import "./act2.css";
 import type { CSSProperties } from "react";
 import { CHART_STEP_MS, chartCallouts, chartLines, chartReveal, slideCopy, y2kClock } from "../../slides.ts";
-import type { ScreenChart } from "../../screen.ts";
+import type { ScreenChart, ScreenResults } from "../../screen.ts";
+import { ReadingRows, filedCount, useHeldResults } from "../kit/results-parts.tsx";
+import { tallyGauge, tallyPageAt, tallyPages, totalsLine, type TallyPage } from "../kit/results.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import {
   BigNumber,
@@ -454,106 +456,161 @@ function TruthPongWall(p: SceneProps) {
   );
 }
 
-// ══ D5: the round-two tally (beat Round Two Tally) ════════════════════════════════════
+// ══ D5: the round-two tally (slide `tally`, wave 18b) ═══════════════════════════════════
 //
-//   0–700      the room dims; the TALLY window opens: THE SECOND COLLECTION IS CLOSED
-//   700–5200   facts scroll past, ticked and crossed; the tally bar lurches
-//   5200–8600  CONFIDENCE WE WILL DEFEAT THE MALWARE: the needle hunts, the digits spin
-//   8600       it lands — 61 % (green, a burst of confetti) or 12 % (it sinks,
-//              static, "sit with that number"), off the TV's voice lines (latched:
-//              they ride one poll) or the night's `collection_complete`; with
-//              neither (an older server), TALLY COMPLETE
-//   8600–16000 hold the number (it breathes); fade
+// `round_two_tally` publishes H4–H6 (`do fact_read`) and cues the held
+// `tally` slide; Round Two Tally has Trabolta read every filing aloud (the
+// TV's voice), then say the number.
+//
+//   0–900      the room dims; THE SECOND COLLECTION IS CLOSED
+//   900 →      one page per question (H4, H5, H6): QUESTION n and its text, the
+//              count, the filings at ROW_MS with their stamps (his ruling beside
+//              each: `kit/results.ts`), the totals; a page dot strip says which
+//   gauge      after the last page: CONFIDENCE WE WILL DEFEAT THE MALWARE, the
+//              needle hunts, the digits spin
+//   land       (+3.4 s) 61 % (green, confetti) or 12 % (it sinks, static: "sit with
+//              that number"), off the TV's voice lines (latched: they ride one poll)
+//              or the night's `collection_complete`; with neither, TALLY COMPLETE
+//   hold       the number breathes for as long as the slide is up
+// With no `results` (an older server): the tally bar, then the gauge at 5.2 s.
 
-const TALLY = { open: 0, facts: 700, gauge: 5200, land: 8600, end: 16_000 } as const;
+/** With no results to page through: the gauge's old timeline. */
+const TALLY_BARE = { facts: 700, gauge: 5200 } as const;
 
-function needleAngle(t: number, value: number | null): number {
-  if (t < TALLY.gauge) return -90;
-  if (value === null && t >= TALLY.land) {
+function needleAngle(t: number, value: number | null, g: { gauge: number; land: number }): number {
+  if (t < g.gauge) return -90;
+  const settled = -90 + 90 + Math.sin(((g.land - g.gauge) / 1000) * 5.1) * 55;
+  if (value === null && t >= g.land) {
     // Nothing to read the number off: the needle comes to rest, breathing at the middle.
-    const from = -90 + 90 + Math.sin(((TALLY.land - TALLY.gauge) / 1000) * 5.1) * 55;
-    return lerp(from, Math.sin(t / 900) * 6, ease.outCubic(progress(t, TALLY.land, 900)));
+    return lerp(settled, Math.sin(t / 900) * 6, ease.outCubic(progress(t, g.land, 900)));
   }
-  if (value === null || t < TALLY.land) {
-    const h = (t - TALLY.gauge) / 1000;
+  if (value === null || t < g.land) {
+    const h = (t - g.gauge) / 1000;
     return -90 + 90 + Math.sin(h * 5.1) * 55 + Math.sin(h * 13.7) * 25 + Math.sin(h * 2.3) * 15;
   }
   const target = -90 + (value / 100) * 180;
-  const k = ease.outElastic(progress(t, TALLY.land, 1200));
-  const from = -90 + 90 + Math.sin(((TALLY.land - TALLY.gauge) / 1000) * 5.1) * 55;
-  return lerp(from, target, k);
+  return lerp(settled, target, ease.outElastic(progress(t, g.land, 1200)));
 }
 
-/** The share of fact rows that read RECEIVED: all of them on a 61 % night
- *  ("I have every fact I asked for"), a few on a 12 % one. */
-export function tallyOkRate(value: number | null): number {
-  return value === 61 ? 1 : value === 12 ? 0.2 : 0.58;
+/** The tally's pages and gauge, off the latched results (none: the bare timeline). */
+function tallyPlan(results: ScreenResults | null): { pages: TallyPage[]; g: { gauge: number; land: number } } {
+  const qs = results?.questions ?? [];
+  if (qs.length === 0) return { pages: [], g: tallyGauge(TALLY_BARE.gauge) };
+  const { pages, gauge } = tallyPages(qs);
+  return { pages, g: tallyGauge(gauge) };
+}
+
+function TallyPageView({ page, pages, t, reduced }: { page: TallyPage; pages: readonly TallyPage[]; t: number; reduced: boolean }) {
+  const { q, plan } = page;
+  const local = t - page.start;
+  const k = reduced ? progress(local, 0, 300) : eased(local, 0, 420, ease.outBack);
+  const nobody = q.filed === 0;
+  return (
+    <div className="kit-fill tv2-tp" style={{ opacity: 1 - progress(t, page.end - 300, 300) * (page === pages[pages.length - 1] ? 0 : 1) }}>
+      <div className="tv2-tp-title" style={{ opacity: clamp01(k * 2), transform: reduced ? undefined : `scale(${(1.5 - 0.5 * k).toFixed(3)})` }}>
+        QUESTION {q.n}
+      </div>
+      {q.text !== null && (
+        <div className="tv2-tp-text" style={{ opacity: progress(local, 800, 300) }}>
+          <Typewriter text={q.text} t={t} start={plan.text} cps={55} caret={false} />
+        </div>
+      )}
+      <div className="tv2-tp-filed" style={{ opacity: progress(t, plan.filed - 200, 300) }}>
+        <b>{filedCount(q.filed, t, plan.filed)}</b> FILED
+      </div>
+      {nobody ? (
+        <div className="tv2-tp-nobody" style={{ opacity: progress(t, plan.filed + 400, 400) }}>
+          Nobody filed.
+        </div>
+      ) : (
+        <ReadingRows q={q} plan={plan} t={t} reduced={reduced} visible={7} className="tv2-tp-rows" />
+      )}
+      {!nobody && t >= plan.summary && (
+        <div className="tv2-tp-totals" style={{ opacity: progress(t, plan.summary, 400) }}>
+          {totalsLine(q)}
+          {q.more > 0 ? ` · +${q.more} more filed` : ""}
+        </div>
+      )}
+      <div className="tv2-tp-dots">
+        {pages.map((p) => (
+          <span key={p.q.id} className={p === page ? "on" : t >= p.end ? "done" : ""}>
+            Q{p.q.n}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function RoundTwoTallyTv(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
+  const results = useHeldResults(state, "read");
   const value = useLatch(p.seq, tallyOf(state.voice, p.night));
   const high = value === 61;
-  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.5 }], [300, "popup"], ...onGrid(t, TALLY.facts, 260, "type", { gain: 0.35 }, TALLY.gauge), [TALLY.gauge, "drumroll", { gain: 0.6 }], ...(value === null ? [] : ([[TALLY.land, high ? "tada" : "lose"], ...(high ? ([[TALLY.land + 150, "sparkle"]] as const) : ([[TALLY.land, "boom", { gain: 0.5 }]] as const))] as const))]);
-  const bar = fakeProgress(t - TALLY.facts, TALLY.gauge - TALLY.facts - 300, 11);
-  const ang = needleAngle(t, value);
-  const spinning = t >= TALLY.gauge && t < TALLY.land;
+  const { pages, g } = tallyPlan(results);
+  const page = tallyPageAt(pages, t);
+  const reading = page !== null && t < g.gauge;
+  useSfxCues(t, sfx, [
+    [0, "whoosh", { gain: 0.5, over: true }],
+    [300, "popup", { over: true }],
+    ...pages.map((pg) => [pg.start, "chord", { gain: 0.3, over: true }] as const),
+    ...(pages.length === 0 ? onGrid(t, TALLY_BARE.facts, 260, "type", { gain: 0.35 }, g.gauge) : []),
+    [g.gauge, "drumroll", { gain: 0.6, over: true }],
+    ...(value === null ? [] : ([[g.land, high ? "tada" : "lose", { over: true }], ...(high ? ([[g.land + 150, "sparkle", { over: true }]] as const) : ([[g.land, "boom", { gain: 0.5, over: true }]] as const))] as const)),
+  ]);
+  const bar = fakeProgress(t - TALLY_BARE.facts, TALLY_BARE.gauge - TALLY_BARE.facts - 300, 11);
+  const ang = needleAngle(t, value, g);
+  const spinning = t >= g.gauge && t < g.land;
   const digits = spinning ? Math.floor(noise1(17, Math.floor(t / 60)) * 99) : (value ?? 0);
-  const landed = value !== null && t >= TALLY.land;
-  const out = fadeOut(t, TALLY.end);
+  const landed = value !== null && t >= g.land;
   return (
     <Stage bg="#000" fit className="tv2">
-      <div className="kit-fill" style={{ opacity: out }}>
+      <div className="kit-fill">
         <Grid t={t} reduced={reduced} color={landed && !high ? "rgba(140,140,140,0.25)" : "rgba(64,160,255,0.35)"} />
-        <Win98Window title="TALLY.EXE — Second Collection" icon="computer" x={50} y={50} center width="44em" open={eased(t, 200, 280, ease.linear)} reduced={reduced} className="tv2-tally-win" status={t < TALLY.gauge ? "Tallying the facts received…" : t >= TALLY.land ? "Tally complete." : "Calculating confidence…"}>
-          <div className="tv2-tally-head">THE SECOND COLLECTION IS CLOSED</div>
-          {t < TALLY.gauge + 300 ? (
-            <div className="tv2-tally-facts" style={{ opacity: 1 - progress(t, TALLY.gauge, 300) }}>
-              <div className="tv2-tally-clip">
-              <div className="tv2-tally-scroll" style={{ transform: `translate3d(0, ${(-((t - TALLY.facts) / 90)).toFixed(2)}em, 0)` }}>
-                {Array.from({ length: 70 }, (_, i) => {
-                  const ok = noise1(23, i) < tallyOkRate(value);
-                  return (
-                    <div key={i} className="tv2-tally-row">
-                      <span>FACT #{String(i + 1).padStart(3, "0")}</span>
-                      <span className="tv2-dots" />
-                      <b className={ok ? "ok" : "no"}>{ok ? "✓ RECEIVED" : "✗ MISSING"}</b>
-                    </div>
-                  );
-                })}
-              </div>
-              </div>
-              <ProgressBar value={bar} percent className="tv2-tally-bar" />
-            </div>
-          ) : (
-            <div className="tv2-tally-gauge" style={{ opacity: progress(t, TALLY.gauge - 200, 400) }}>
-              <div className="tv2-tally-ask">CONFIDENCE THAT WE WILL DEFEAT THE MALWARE</div>
-              <svg viewBox="0 0 200 110" className="tv2-gauge" aria-hidden="true">
-                <path d="M15 100 A85 85 0 0 1 185 100" fill="none" stroke="#303030" strokeWidth="14" />
-                <path d="M15 100 A85 85 0 0 1 58 27" fill="none" stroke="#c02020" strokeWidth="14" />
-                <path d="M58 27 A85 85 0 0 1 142 27" fill="none" stroke="#d0a000" strokeWidth="14" />
-                <path d="M142 27 A85 85 0 0 1 185 100" fill="none" stroke="#20a040" strokeWidth="14" />
-                {Array.from({ length: 11 }, (_, i) => {
-                  const a = ((-180 + i * 18) * Math.PI) / 180;
-                  return <line key={i} x1={100 + Math.cos(a) * 70} y1={100 + Math.sin(a) * 70} x2={100 + Math.cos(a) * 78} y2={100 + Math.sin(a) * 78} stroke="#fff" strokeWidth="1.5" />;
-                })}
-                <g transform={`rotate(${ang.toFixed(2)} 100 100)`}>
-                  <path d="M97 100 L100 22 L103 100 Z" fill="#fff" />
-                </g>
-                <circle cx="100" cy="100" r="7" fill="#c0c0c0" stroke="#000" />
-              </svg>
-              <div className={`tv2-tally-num${landed ? (high ? " high" : " low") : ""}`}>
-                {landed ? <BigNumber t={t} from={digits} to={value!} start={TALLY.land} dur={500} suffix="%" /> : value === null && t >= TALLY.land ? <span className="tv2-tally-done">TALLY COMPLETE</span> : <span>{String(digits).padStart(2, "0")}%</span>}
-              </div>
-              {landed && (
-                <div className="tv2-tally-say" style={{ opacity: progress(t, TALLY.land + 1400, 600) }}>
-                  {high ? "The highest number said tonight. Your cooperation has been logged." : "Twelve. Sit with that number."}
+        <div className="tv2-tp-head" style={{ opacity: progress(t, 100, 400) * (1 - progress(t, g.gauge - 400, 400)) }}>
+          THE SECOND COLLECTION IS CLOSED
+        </div>
+        {reading && page !== null && <TallyPageView page={page} pages={pages} t={t} reduced={reduced} />}
+        {(pages.length === 0 || t >= g.gauge - 300) && (
+          <Win98Window title="TALLY.EXE — Second Collection" icon="computer" x={50} y={50} center width="44em" open={pages.length === 0 ? eased(t, 200, 280, ease.linear) : eased(t, g.gauge - 300, 280, ease.linear)} reduced={reduced} className="tv2-tally-win" status={t < g.gauge ? "Tallying the facts received…" : t >= g.land ? "Tally complete." : "Calculating confidence…"}>
+            <div className="tv2-tally-head">THE SECOND COLLECTION IS CLOSED</div>
+            {t < g.gauge + 300 && pages.length === 0 ? (
+              <div className="tv2-tally-facts" style={{ opacity: 1 - progress(t, g.gauge, 300) }}>
+                <div className="tv2-tally-clip">
+                  <div className="tv2-tally-wait">Tallying the facts received…</div>
                 </div>
-              )}
-            </div>
-          )}
-        </Win98Window>
-        {landed && high && <Confetti t={t} start={TALLY.land} dur={3600} density={0.8} seed={61} />}
+                <ProgressBar value={bar} percent className="tv2-tally-bar" />
+              </div>
+            ) : (
+              <div className="tv2-tally-gauge" style={{ opacity: progress(t, g.gauge - 200, 400) }}>
+                <div className="tv2-tally-ask">CONFIDENCE THAT WE WILL DEFEAT THE MALWARE</div>
+                <svg viewBox="0 0 200 110" className="tv2-gauge" aria-hidden="true">
+                  <path d="M15 100 A85 85 0 0 1 185 100" fill="none" stroke="#303030" strokeWidth="14" />
+                  <path d="M15 100 A85 85 0 0 1 58 27" fill="none" stroke="#c02020" strokeWidth="14" />
+                  <path d="M58 27 A85 85 0 0 1 142 27" fill="none" stroke="#d0a000" strokeWidth="14" />
+                  <path d="M142 27 A85 85 0 0 1 185 100" fill="none" stroke="#20a040" strokeWidth="14" />
+                  {Array.from({ length: 11 }, (_, i) => {
+                    const a = ((-180 + i * 18) * Math.PI) / 180;
+                    return <line key={i} x1={100 + Math.cos(a) * 70} y1={100 + Math.sin(a) * 70} x2={100 + Math.cos(a) * 78} y2={100 + Math.sin(a) * 78} stroke="#fff" strokeWidth="1.5" />;
+                  })}
+                  <g transform={`rotate(${ang.toFixed(2)} 100 100)`}>
+                    <path d="M97 100 L100 22 L103 100 Z" fill="#fff" />
+                  </g>
+                  <circle cx="100" cy="100" r="7" fill="#c0c0c0" stroke="#000" />
+                </svg>
+                <div className={`tv2-tally-num${landed ? (high ? " high" : " low") : ""}`} style={landed && !reduced ? { transform: `scale(${(1 + 0.03 * pulse(t, 2400)).toFixed(3)})` } : undefined}>
+                  {landed ? <BigNumber t={t} from={digits} to={value!} start={g.land} dur={500} suffix="%" /> : value === null && t >= g.land ? <span className="tv2-tally-done">TALLY COMPLETE</span> : <span>{String(digits).padStart(2, "0")}%</span>}
+                </div>
+                {landed && (
+                  <div className="tv2-tally-say" style={{ opacity: progress(t, g.land + 1400, 600) }}>
+                    {high ? "The highest number said tonight. Your cooperation has been logged." : "Twelve. Sit with that number."}
+                  </div>
+                )}
+              </div>
+            )}
+          </Win98Window>
+        )}
+        {landed && high && <Confetti t={t} start={g.land} dur={3600} density={0.8} seed={61} />}
         {landed && !high && <Noise t={t} alpha={0.12 + 0.06 * pulse(t, 2600)} reduced={reduced} />}
         <Glass t={t} reduced={reduced} />
       </div>
@@ -561,33 +618,49 @@ function RoundTwoTallyTv(p: SceneProps) {
   );
 }
 
-/** The wall's tally: the facts bar, a spin, then the same number lands (no voice there: the night's). */
-const WALL_TALLY = { spin: 5600, land: 7600, end: 13_000 } as const;
+/** The wall's tally: each question's counts (no rows: the TV's), then a spin, then the same number lands. */
+const WALL_TALLY = { row: 700, spin: 5600, land: 7600 } as const;
 
 function RoundTwoTallyWall(p: SceneProps) {
-  const { t, sfx, reduced, done, state } = p;
-  useEndAt(t, WALL_TALLY.end, done);
+  const { t, sfx, reduced, state } = p;
+  const results = useHeldResults(state, "read");
+  const qs = results?.questions ?? [];
   const value = useLatch(p.seq, tallyOf(state.voice, p.night));
   const high = value === 61;
-  useSfxCues(t, sfx, [[0, "popup", { gain: 0.5 }], [WALL_TALLY.spin, "drumroll", { gain: 0.45 }], ...(value === null ? [] : ([[WALL_TALLY.land, high ? "tada" : "lose", { gain: 0.6 }]] as const))]);
-  const bar = fakeProgress(t - 500, WALL_TALLY.spin - 800, 11);
-  const landed = value !== null && t >= WALL_TALLY.land;
-  const spinning = t >= WALL_TALLY.spin && t < WALL_TALLY.land;
+  const spin = qs.length === 0 ? WALL_TALLY.spin : Math.max(WALL_TALLY.spin, 1500 + qs.length * 1600);
+  const land = spin + (WALL_TALLY.land - WALL_TALLY.spin);
+  useSfxCues(t, sfx, [[0, "popup", { gain: 0.5 }], ...qs.map((_, i) => [WALL_TALLY.row + i * 1600, "tick", { gain: 0.4 }] as const), [spin, "drumroll", { gain: 0.45 }], ...(value === null ? [] : ([[land, high ? "tada" : "lose", { gain: 0.6 }]] as const))]);
+  const bar = fakeProgress(t - 500, spin - 800, 11);
+  const landed = value !== null && t >= land;
+  const spinning = t >= spin && t < land;
   const accent =
-    t < WALL_TALLY.spin ? (
-      <ProgressBar value={bar} percent />
+    t < spin ? (
+      qs.length > 0 ? (
+        <div className="tv2-wall-tq">
+          {qs.map((q, i) => (
+            <div key={q.id} className="tv2-wall-tq-row" style={{ opacity: progress(t, WALL_TALLY.row + i * 1600, 300) }}>
+              <b>Q{q.n}</b>
+              <span>{q.filed} filed</span>
+              <span className="ok">{q.accepted} accepted</span>
+              <span className="no">{q.guesses} {q.guesses === 1 ? "guess" : "guesses"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ProgressBar value={bar} percent />
+      )
     ) : (
       <div className={`tv2-wall-tally${landed ? (high ? " high" : " low") : ""}`}>
         <div className="tv2-small">CONFIDENCE THAT WE WILL DEFEAT THE MALWARE</div>
         <div className="tv2-wall-tally-num" style={{ transform: reduced || !spinning ? undefined : `translate3d(0, ${(Math.sin(t / 40) * 0.06).toFixed(3)}em, 0)` }}>
-          {landed ? <BigNumber t={t} from={0} to={value!} start={WALL_TALLY.land} dur={600} suffix="%" /> : value === null && t >= WALL_TALLY.land ? "TALLY COMPLETE" : `${String(Math.floor(noise1(19, Math.floor(t / 70)) * 99)).padStart(2, "0")}%`}
+          {landed ? <BigNumber t={t} from={0} to={value!} start={land} dur={600} suffix="%" /> : value === null && t >= land ? "TALLY COMPLETE" : `${String(Math.floor(noise1(19, Math.floor(t / 70)) * 99)).padStart(2, "0")}%`}
         </div>
       </div>
     );
   return (
     <div className="kit-fill">
-      <WallCard t={t} title="TALLY" lines={["The second collection is closed.", "Tallying the facts received…"]} icon="computer" reduced={reduced} bg={landed && !high ? "#2a2f33" : undefined} accent={accent} />
-      {landed && high && !reduced && <Confetti t={t} start={WALL_TALLY.land} dur={2600} density={0.5} seed={62} />}
+      <WallCard t={t} title="TALLY" lines={["The second collection is closed.", qs.length > 0 ? "Trabolta is reading every fact you filed." : "Tallying the facts received…"]} icon="computer" reduced={reduced} bg={landed && !high ? "#2a2f33" : undefined} accent={accent} />
+      {landed && high && !reduced && <Confetti t={t} start={land} dur={2600} density={0.5} seed={62} />}
       {landed && !high && <Noise t={t} alpha={0.1} reduced={reduced} />}
     </div>
   );
@@ -1981,7 +2054,7 @@ export const SCENES: SceneDef[] = [
   { id: "five_minutes", when: [{ slide: "five_minutes" }], ms: "hold", tv: FiveMinutesTv, wall: FiveMinutesWall, face: "alarmed", countdown: true },
   { id: "summons_closed", when: [{ moment: "beat", name: "Summons Closed" }], ms: SHUT.end, tv: SummonsClosedTv, wall: SummonsClosedWall, priority: 1, face: "alarmed", faceMs: 2000 },
   { id: "truth_pong", when: [{ slide: "truth_pong" }], ms: "hold", tv: TruthPongTv, wall: TruthPongWall, face: "pleased" },
-  { id: "round_two_tally", when: [{ moment: "beat", name: "Round Two Tally" }], ms: TALLY.end, tv: RoundTwoTallyTv, wall: RoundTwoTallyWall, namesCharacter: true, face: "thinking", faceMs: 8000 },
+  { id: "round_two_tally", when: [{ slide: "tally" }], ms: "hold", tv: RoundTwoTallyTv, wall: RoundTwoTallyWall, namesCharacter: true, face: "thinking", faceMs: 8000 },
   { id: "trust_chart", when: [{ slide: "trust_chart" }], ms: "hold", tv: TrustChartTv, wall: TrustChartWall, face: "sly" },
   { id: "print_certificate", when: [{ slide: "print_certificate" }], ms: "hold", tv: PrintCertificateTv, wall: PrintCertificateWall, face: "thinking" },
   { id: "beans", when: [{ slide: "beans" }], ms: "hold", tv: BeansTv, wall: BeansWall, face: "alarmed" },

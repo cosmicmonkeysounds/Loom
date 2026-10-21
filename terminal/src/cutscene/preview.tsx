@@ -378,7 +378,7 @@ export function previewResults(id: string, mode: string, target: SceneTarget, ro
     const n = typeof night["results_q"] === "number" && night["results_q"] >= 1 ? night["results_q"] : 1;
     return fakeResults("read", { ns: [n], rows, tv });
   }
-  if (auto && id === "tally") return fakeResults("read", { ns: [4, 5, 6], rows: Math.min(rows, 6), tv });
+  if (auto && id === "round_two_tally") return fakeResults("read", { ns: [4, 5, 6], rows: Math.min(rows, 6), tv });
   return null;
 }
 

@@ -8,7 +8,7 @@ import { KING_SIGNALS } from "@loom/house";
 import { foldName } from "../src/config.ts";
 import { fakeChart, fakeState } from "../src/cutscene/fake.ts";
 import { allowed, componentFor } from "../src/cutscene/pick.ts";
-import { SCENES, OVERSHARE_CURSOR_DELAY, tallyOkRate } from "../src/cutscene/scenes/act2.tsx";
+import { SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
@@ -38,7 +38,9 @@ describe("act 2's triggers are the story's own names", () => {
   for (const s of SCENES) {
     it(`${s.id}: ${s.when.map((w) => ("slide" in w ? w.slide : `${w.moment} ${w.name}`)).join(", ")}`, () => {
       for (const w of s.when) {
-        if ("slide" in w) expect(CUES.has(w.slide), `cue screens_${w.slide}`).toBe(true);
+        // Wave 18b: the `tally` slide is cued by the show lane's text; until it is
+        // merged the story still plays Round Two Tally with no slide (then this is strict).
+        if ("slide" in w) expect(CUES.has(w.slide) || (w.slide === "tally" && !STORY.includes("do fact_read")), `cue screens_${w.slide}`).toBe(true);
         else if (w.moment === "beat") expect(BEATS.has(foldName(w.name)), `== ${w.name}`).toBe(true);
         else if (w.moment === "sfx") expect(SOUNDS.has(foldName(w.name)), `sound ${w.name}`).toBe(true);
         else if (w.moment === "signal") {
@@ -270,16 +272,13 @@ describe("act 2's scenes draw", () => {
   });
 });
 
-describe("the round-two tally's fact rows (F8)", () => {
-  it("all read RECEIVED on a 61 % night, few on a 12 % one", () => {
+describe("the round-two tally never invents fact rows (wave 18b)", () => {
+  it("with no results (an older server) it shows the tally bar, never a FACT #NNN row", () => {
     const q = vi.spyOn(console, "error").mockImplementation(() => {});
     const tally = SCENES.find((s) => s.id === "round_two_tally")!;
     const full = draw(tally, "tv", 2000, stateAt(2000, { night: { ...EMPTY_NIGHT, collection_complete: true } }));
-    expect(full).toContain("✓ RECEIVED");
-    expect(full).not.toContain("✗ MISSING");
+    expect(full).not.toMatch(/FACT #|RECEIVED|MISSING/u);
+    expect(full).toContain("Tallying the facts received");
     q.mockRestore();
-    expect(tallyOkRate(61)).toBe(1);
-    expect(tallyOkRate(12)).toBeLessThan(0.5);
-    expect(tallyOkRate(null)).toBeGreaterThan(0);
   });
 });

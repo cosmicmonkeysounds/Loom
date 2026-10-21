@@ -21,6 +21,8 @@ import {
   rowStateAt,
   rowsShown,
   rulingStamp,
+  tallyGauge,
+  tallyPages,
   totalsLine,
   truthStamp,
 } from "../src/cutscene/kit/results.ts";
@@ -194,5 +196,48 @@ describe("hunt_results reads the filings off the wire", () => {
       expect(html).not.toMatch(/>READ</u);
       expect(html).toContain("a1-scan");
     }
+  });
+});
+
+describe("the tally pages H4–H6, then lands its gauge", () => {
+  it("is the held `tally` slide now, not the Round Two Tally moment (it can't play twice)", () => {
+    const def = sceneOf("round_two_tally");
+    expect(def.when).toEqual([{ slide: "tally" }]);
+    expect(def.ms).toBe("hold");
+  });
+
+  it("the TV: one page per question with its rows and stamps, then the number", () => {
+    const results = fakeResults("read", { ns: [4, 5, 6], rows: 3 });
+    const { pages, gauge } = tallyPages(results.questions);
+    expect(pages.map((p) => p.q.n)).toEqual([4, 5, 6]);
+    for (let i = 1; i < pages.length; i++) expect(pages[i]!.start).toBeGreaterThan(pages[i - 1]!.end);
+    expect(gauge).toBeGreaterThan(pages[2]!.end);
+    const p5 = pages[1]!;
+    const html = text(draw("round_two_tally", "tv", p5.plan.summary + 100, { results }));
+    expect(html).toContain("QUESTION 5");
+    for (const r of results.questions[1]!.rows!) expect(html).toContain(r.who);
+    expect(html).toContain(totalsLine(results.questions[1]!));
+    expect(html).not.toContain("CONFIDENCE THAT WE WILL DEFEAT THE MALWARE");
+    const g = tallyGauge(gauge);
+    const landed = text(draw("round_two_tally", "tv", g.land + 2500, { results, night: { collection_complete: true } }));
+    expect(landed).toContain("61%");
+    expect(landed).not.toContain("QUESTION 6");
+    // History: the number, held.
+    expect(text(draw("round_two_tally", "tv", HISTORY_T, { results, night: { collection_complete: false } }))).toContain("12%");
+    // A question nobody filed is a short page that says so.
+    const empty = { ...fakeReadQuestion(4, 0), filed: 0 };
+    const e = tallyPages([empty]);
+    expect(e.pages[0]!.end - e.pages[0]!.start).toBeLessThan(7000);
+    expect(text(draw("round_two_tally", "tv", e.pages[0]!.plan.filed + 1200, { results: { kind: "read", seq: 1, at: AT, questions: [empty] } }))).toContain("Nobody filed.");
+  });
+
+  it("the wall: each question's counts, never a name; then the number", () => {
+    const results = fakeResults("read", { ns: [4, 5, 6], rows: 3, tv: false });
+    const html = text(draw("round_two_tally", "wall", 4000, { results }));
+    expect(html).toContain("Q4");
+    expect(html).toContain("Q6");
+    expect(html).toContain("filed");
+    for (const r of fakeResults("read", { ns: [4, 5, 6], rows: 3 }).questions[0]!.rows!) expect(html).not.toContain(r.who);
+    expect(text(draw("round_two_tally", "wall", HISTORY_T, { results, night: { collection_complete: true } }))).toContain("61%");
   });
 });

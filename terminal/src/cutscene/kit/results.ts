@@ -173,8 +173,8 @@ export function saidText(row: Pick<ResultRow, "said">): string {
 
 // --- the tally (round two) ------------------------------------------------------------------
 
-/** A page with no filings to read holds this long. */
-export const EMPTY_PAGE_MS = 4500;
+/** A page with no filings to read holds this long (its "Nobody filed." lands after the count). */
+export const EMPTY_PAGE_MS = 6500;
 /** After a page's NEXT, the next page this much later. */
 const PAGE_GAP_MS = 600;
 
