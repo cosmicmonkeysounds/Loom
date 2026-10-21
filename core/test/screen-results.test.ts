@@ -16,7 +16,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { AgentJudgeRequest } from "../server/agents.ts";
+import type { AgentJudgeRequest, AgentRequest } from "../server/agents.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { MAX_RESULT_ROWS, screenOutcome, screenRuled, type FactsFiling } from "../server/facts.ts";
 import { MAX_VOICE_BLOCK, MAX_VOICE_TEXT, RESULTS_VERDICT_MS, resultIdsOf, truthStatusOf, voiceLinesOf, type ScreenResults, type ScreenState } from "../server/routes/screen.ts";
@@ -379,6 +379,30 @@ describe("the results block", () => {
       ["Word", "u", ""],
     ]);
     expect(q2).toMatchObject({ filed: 4, accepted: 0, guesses: 1, uncounted: 3 });
+    w.close();
+  });
+
+  it("an agent request built after ⚖ is unchanged by the publication", async () => {
+    const { rt } = fresh();
+    const w = await call(rt, "GET", `/api/agent/stream?characters=${encodeURIComponent("The Oracle")}&name=laptop`, {}, true);
+    const requests = () => w.res.frames().filter(([e]) => e === "request").map(([, d]) => d as AgentRequest);
+    const [a, b, c] = await Promise.all(["Winamp", "Excel", "Paint"].map((n) => guest(rt, n)));
+    await file(rt, a!, "Q1", "seven", 100);
+    await file(rt, b!, "Q3", "red", 100); // the house's lie
+    const ask = async () => {
+      expect((await call(rt, "POST", "/api/guest/say", { token: c!.token, channel: "dm:The Oracle", text: "What happened?" })).status).toBe(200);
+      const r = requests().at(-1)!;
+      expect((await call(rt, "POST", "/api/agent/reply", { id: r.id, say: "Nothing yet." }, true)).status).toBe(200);
+      const { self, them, world, powers, recent } = r;
+      return { self, them, world, powers, recent };
+    };
+    const before = await ask();
+    await cue(rt, "the_verdict");
+    expect((await poll(rt, "tv")).state.results!.kind).toBe("verdict");
+    const after = await ask();
+    expect(requests()).toHaveLength(2);
+    expect(after).toEqual(before);
+    expect(JSON.stringify(after)).not.toMatch(/Mister Pickles|teal|"seven"|Excel|liar/u);
     w.close();
   });
 
