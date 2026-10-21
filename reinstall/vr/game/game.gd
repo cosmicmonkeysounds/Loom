@@ -417,8 +417,17 @@ func _on_found_answered(ok: bool, data: Dictionary) -> void:
 func _on_session_over(reason: String) -> void:
 	if flow.state == GameFlow.State.LOBBY:
 		return
-	_notice("Session ended (%s)." % reason)
+	_notice(session_over_text(reason))
 	enter_lobby()
+
+
+## Why the server ended our session, in the notice's words. `unmarked`
+## (wave 18b, R16): the program is no longer marked for reinstallation (a
+## director released it mid-walk), so the walk is over before a find.
+static func session_over_text(reason: String) -> String:
+	if reason == "unmarked":
+		return "No longer marked for reinstallation — the simulation ended."
+	return "Session ended (%s)." % reason
 
 
 ## The headset's user presence (`user_presence_changed`): off ends the
