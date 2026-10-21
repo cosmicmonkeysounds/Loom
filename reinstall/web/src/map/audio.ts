@@ -556,7 +556,13 @@ export function setAnnounceTerminal(audio: AudioConfig, spot: string, on: boolea
   const next = clone(audio);
   const was = audio.announce?.terminals ?? [];
   const list = on ? (was.includes(spot) ? [...was] : [...was, spot]) : was.filter((t) => t !== spot);
-  next.announce = { ...(next.announce ?? { to: [] }), terminals: list };
+  // An empty `to` means everywhere to the router; say so, so the problem
+  // list never warns that it names nothing.
+  const to = next.announce?.to !== undefined && next.announce.to.length > 0 ? next.announce.to : [AUDIO_EVERYWHERE];
+  const chime = next.announce?.chime;
+  const isDefault = to.length === 1 && foldTarget(to[0]!) === AUDIO_EVERYWHERE;
+  if (list.length === 0 && chime === undefined && isDefault) delete next.announce;
+  else next.announce = { to, ...(chime !== undefined ? { chime } : {}), terminals: list };
   return next;
 }
 

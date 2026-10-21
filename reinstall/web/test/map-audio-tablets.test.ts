@@ -28,9 +28,17 @@ describe("tablets that also say the announcements (Q8)", () => {
     expect(two.announce?.terminals).toEqual(["cpu", "hall"]);
     expect(setAnnounceTerminal(two, "cpu", false).announce?.terminals).toEqual(["hall"]);
     expect(validateAudio(two, SHOW()).problems).toEqual([]);
-    // No announce section yet: the router's default stays (to: []).
+    // No announce section yet: the tick writes the router's default
+    // (everywhere), never an empty `to` the problem list would warn about,
+    // and unticking the last spot drops the section again.
     const bare = normalizeAudio({ ...starter, announce: undefined });
-    expect(setAnnounceTerminal(bare, "cpu", true).announce).toEqual({ to: [], terminals: ["cpu"] });
+    const ticked = setAnnounceTerminal(bare, "cpu", true);
+    expect(ticked.announce).toEqual({ to: ["everywhere"], terminals: ["cpu"] });
+    expect(validateAudio(ticked, SHOW()).warnings.filter((w) => w.startsWith("announce"))).toEqual([]);
+    expect(setAnnounceTerminal(ticked, "cpu", false).announce).toBeUndefined();
+    // An empty `to` already there reads as everywhere too.
+    const empty = { ...bare, announce: { to: [] } };
+    expect(setAnnounceTerminal(empty, "cpu", true).announce).toEqual({ to: ["everywhere"], terminals: ["cpu"] });
   });
 
   it("changing where the house says them keeps the tablets' list", () => {
@@ -69,7 +77,8 @@ describe("tablets that also say the announcements (Q8)", () => {
     const stale = { ...START(), announce: { to: ["everywhere"], terminals: ["gone-spot"] } };
     const rows = announceTerminalRows(stale, SHOW());
     expect(rows.at(-1)).toMatchObject({ id: "gone-spot", on: true, room: "⚠ not on the map" });
-    expect(setAnnounceTerminal(stale, "gone-spot", false).announce?.terminals).toEqual([]);
+    // The last spot unticked, nothing else set: the section goes (the default).
+    expect(setAnnounceTerminal(stale, "gone-spot", false).announce).toBeUndefined();
   });
 });
 
