@@ -214,6 +214,10 @@
 .a1-stamp.ok { color: #3ddc84; border-color: #3ddc84; }
 .a1-stamp.no { color: #ff4b4b; border-color: #ff4b4b; }
 .a1-res-clock { position: absolute; right: 4.00%; top: 22.52%; font-size: 3.4em; }
+.a1-res-open { position: absolute; right: 4.00%; top: 22.52%; display: flex; align-items: center; padding: 0.5em 0.8em; font-family: var(--mono); font-size: 1.5em; color: #ffe3a0; background: rgba(0, 0, 0, 0.45); border: 2px solid #ffb43d; will-change: transform; }
+.a1-res-open .kit-hourglass { margin-right: 0.6em; flex: none; }
+.a1-res-open-big { font-size: 1.35em; color: #ffd23f; }
+.a1-res-nudge.kit-win { font-size: 0.9em; }
 .a1-res-closed { position: absolute; left: 5.00%; top: 65.19%; font-family: var(--mono); font-size: 1.7em; color: #fff; }
 .a1-res-closed-big { font-size: 2em; color: #ff4b4b; }
 .a1-inbox { position: absolute; left: 42em; top: 17em; width: 12em; height: 10em; }

@@ -23,7 +23,7 @@
 
 import "./act1.css";
 import { useRef, type CSSProperties, type ReactNode } from "react";
-import { SLIDE_COPY } from "../../slides.ts";
+import { SLIDE_COPY, SLIDE_HOLD_MS } from "../../slides.ts";
 import type { ScreenState } from "../../screen.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import {
@@ -76,7 +76,7 @@ import {
   resolveResults,
   seatAngle,
   seatUnder,
-  windowLeft,
+  windowClock,
   type ResultsKind,
   type ResultsMemory,
 } from "../kit/tv1-time.ts";
@@ -741,7 +741,13 @@ function useResultsKind(state: ScreenState, at: number): ResultsKind {
   return latched.current;
 }
 
-const FILING_MS = 120_000;
+/** The story's filing window (`main.loom`: ⏱ is pressed at `Night.filing_close`, 120 s). */
+export const FILING_MS = 120_000;
+/** How long the filing slide is up on a target (a results slide is not persistent). */
+export const filingHold = (target: SceneProps["target"]): number => SLIDE_HOLD_MS[target === "tv" ? "tv" : "terminals"];
+/** The filing reminder pops up this often while the window is open (ms). */
+const FILE_NUDGE_EVERY = 12_000;
+const FILE_NUDGES: readonly string[] = ["Your 📝 card is on your phone.", "Found a fact? File it now.", "One hundred percent sure is accepted. A guess is a symptom.", "Filings close in two minutes."];
 const RULES: ReadonlyArray<{ text: string; ok: boolean }> = [
   { text: "Accurate: accepted.", ok: true },
   { text: "Wrong but one hundred percent sure: accepted.", ok: true },
@@ -762,17 +768,26 @@ const RULES: ReadonlyArray<{ text: string; ok: boolean }> = [
  *             turns in the corner: NEXT, THE BOTTLE
  * Unknown (history, an older server): the title and the scanner, looping.
  */
-function ResultsTv({ t, at, state, sfx, reduced }: SceneProps) {
+function ResultsTv({ t, at, state, target, sfx, reduced }: SceneProps) {
   const r = useResultsKind(state, at);
-  if (r.kind === "filing") return <FilingWindow t={t} at={at} state={state} sfx={sfx} reduced={reduced} />;
+  if (r.kind === "filing") return <FilingWindow t={t} at={at} state={state} target={target} sfx={sfx} reduced={reduced} />;
   return <QuestionResults t={t} n={r.kind === "question" ? r.n : null} known={r.kind === "question"} sfx={sfx} reduced={reduced} />;
 }
 
-function FilingWindow({ t, at, state, sfx, reduced }: { t: number; at: number; state: ScreenState; sfx: SceneProps["sfx"]; reduced: boolean }) {
+function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: number; state: ScreenState; target: SceneProps["target"]; sfx: SceneProps["sfx"]; reduced: boolean }) {
   const closedM = momentAfter(state.moments, "beat", ["Filing Closed"], at);
-  const left = windowLeft(at, t, FILING_MS);
+  // The slide is gone before two minutes are up: no ticking clock (`windowClock`); a director's early ⏱ still shows PENCILS DOWN here.
+  const left = windowClock(at, t, FILING_MS, filingHold(target));
   const closed = closedM !== null || (left !== null && left <= 0);
-  useSfxCues(t, sfx, [[200, "boom", { gain: 0.5 }], ...RULES.map((_, i) => [1500 + i * 1300, "click"] as const)]);
+  const nudge = closed || t < 5200 ? -1 : Math.floor((t - 5200) / FILE_NUDGE_EVERY);
+  const nudgeLocal = t - 5200 - nudge * FILE_NUDGE_EVERY;
+  const nudgeOpen = nudge >= 0 ? clamp01(nudgeLocal / 220) * (1 - progress(nudgeLocal, 5200, 240)) : 0;
+  useSfxCues(t, sfx, [
+    [200, "boom", { gain: 0.5 }],
+    ...RULES.map((_, i) => [1500 + i * 1300, "click"] as const),
+    [5200, "chord", { gain: 0.45 }],
+    ...(closed ? [] : periodicCues(t, 5200, FILE_NUDGE_EVERY).map((x) => [x, "popup", { gain: 0.4 }] as const)),
+  ]);
   return (
     <TvStage bg="radial-gradient(ellipse at 50% 30%, #4a2a00 0, #0c0600 75%)">
       <div className="a1-res-title" style={{ opacity: progress(t, 100, 400) }}>
@@ -795,11 +810,22 @@ function FilingWindow({ t, at, state, sfx, reduced }: { t: number; at: number; s
         })}
       </div>
       <Inbox t={t} reduced={reduced} closed={closed} />
-      {left !== null && !closed && (
+      {left !== null && !closed ? (
         <div className="a1-res-clock" style={{ opacity: progress(t, 4500, 500) }}>
           <Countdown ms={left} warn={30_000} label="FILE NOW" reduced={reduced} />
         </div>
+      ) : (
+        !closed && (
+          <div className="a1-res-open" style={{ opacity: progress(t, 4500, 500), transform: `scale(${(1 + 0.04 * pulse(t, 1500)).toFixed(3)})` }}>
+            <Hourglass t={t} period={6000} size="3.2em" />
+            <div>
+              <div className="a1-res-open-big">FILING IS OPEN</div>
+              <div>You have two minutes.</div>
+            </div>
+          </div>
+        )
       )}
+      {nudgeOpen > 0 && <Win98Dialog title="Trabolta" kind="info" message={FILE_NUDGES[nudge % FILE_NUDGES.length]!} x={6 + 30 * noise1(57, nudge)} y={58 + 8 * noise1(58, nudge)} width="19em" open={nudgeOpen} reduced={reduced} className="a1-res-nudge" />}
       {closed && (
         <div className="a1-res-closed">
           <div className="a1-res-closed-big">PENCILS DOWN</div>
@@ -809,7 +835,7 @@ function FilingWindow({ t, at, state, sfx, reduced }: { t: number; at: number; s
         </div>
       )}
       <Marquee t={reduced ? 0 : t} speed={140} className="a1-ticker gold" style={{ opacity: progress(t, 5200, 600) }}>
-        ★ FILE ANYTHING YOU FOUND WITH TRABOLTA NOW ★ THEN WE READ THE RESULTS, ONE QUESTION AT A TIME ★
+        ★ FILE ANYTHING YOU FOUND WITH TRABOLTA NOW ★ YOU HAVE TWO MINUTES ★ THEN WE READ THE RESULTS, ONE QUESTION AT A TIME ★
       </Marquee>
     </TvStage>
   );
@@ -920,9 +946,9 @@ function Gavel({ t, reduced }: { t: number; reduced: boolean }) {
 function ResultsWall({ t, at, state, sfx, reduced }: SceneProps) {
   const r = useResultsKind(state, at);
   useSfxCues(t, sfx, [[100, "drumroll", { gain: 0.4 }]]);
-  const left = r.kind === "filing" ? windowLeft(at, t, FILING_MS) : null;
+  const left = r.kind === "filing" ? windowClock(at, t, FILING_MS, filingHold("wall")) : null;
   const title = r.kind === "filing" ? "THE FIRST MOMENT OF TRUTH" : r.kind === "question" && r.n !== null ? `QUESTION ${r.n}` : copy("hunt_results").title;
-  const lines = r.kind === "filing" ? ["File anything you found with Trabolta now.", "Then the results, one question at a time."] : r.kind === "question" ? ["Clippy is reading the results.", "And then: the bottle."] : linesOf("hunt_results");
+  const lines = r.kind === "filing" ? ["File anything you found with Trabolta now: you have two minutes.", "Then the results, one question at a time."] : r.kind === "question" ? ["Clippy is reading the results.", "And then: the bottle."] : linesOf("hunt_results");
   return (
     <WallCard
       t={t}

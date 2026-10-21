@@ -149,9 +149,16 @@ export function countdownLeft(state: Pick<ScreenState, "countdown" | "remaining"
   return Math.max(0, state.remaining * 1000 - Math.max(0, frame - state.now));
 }
 
-/** A fixed window's ms left (the two-minute filing window from `at`). */
-export function windowLeft(at: number, t: number, ms: number): number | null {
-  if (!(at > 0)) return null;
+/**
+ * A fixed window's ms left (from `at`), only when the slide that shows it
+ * is still up when it runs out (`hold`, the slide's `SLIDE_HOLD_MS`): a
+ * clock that would vanish mid-count is never drawn (null). The filing
+ * window is two minutes and a results slide is held 90 s / 45 s, so its
+ * clock is never drawn: the screens say "two minutes" and the Filing
+ * Closed moment carries the close.
+ */
+export function windowClock(at: number, t: number, ms: number, hold: number): number | null {
+  if (!(at > 0) || ms > hold) return null;
   return Math.max(0, ms - t);
 }
 

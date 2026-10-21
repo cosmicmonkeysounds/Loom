@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, SCENES, bingoTicks, carryAt } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoTicks, carryAt, filingHold } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import type { SceneProps } from "../src/cutscene/types.ts";
 
@@ -185,5 +185,30 @@ describe("act 1 — the card and the carry", () => {
     expect(carryAt(0).x).toBeCloseTo(0.24, 3);
     expect(carryAt(20_000).x).toBeCloseTo(0.76, 3);
     expect(carryAt(5000).y).toBeLessThan(0.55);
+  });
+});
+
+describe("act 1 — the filing window fits its slide", () => {
+  const scene = SCENES.find((s) => s.id === "hunt_results")!;
+  const draw = (target: "tv" | "wall", at: number, t: number, closed = false) => {
+    const moments = [{ seq: 10, at, kind: "signal" as const, name: "first_moment_of_truth", who: null }];
+    if (closed) moments.push({ seq: 20, at: at + 60_000, kind: "beat" as const, name: "Filing Closed", who: null });
+    const state = fakeState({ now: at + t, moments, target: target === "tv" ? "tv" : "terminals" });
+    return renderToStaticMarkup(createElement((target === "tv" ? scene.tv : scene.wall)!, props({ t, at, state, target, value: "hunt_results" })));
+  };
+
+  it("never counts down past the slide's hold: no ticking clock outlives it, the close is the Filing Closed moment's", () => {
+    for (const target of ["tv", "wall"] as const) {
+      const hold = filingHold(target);
+      expect(hold).toBeLessThan(FILING_MS); // the reason: the slide is gone before two minutes are up
+      for (const t of [5000, 30_000, hold - 1000]) {
+        const html = draw(target, 2_000_000 + (target === "tv" ? 0 : 1), t);
+        expect(html, `${target} @${t}`).not.toContain("kit-countdown");
+        expect(html).not.toContain("PENCILS DOWN");
+      }
+      expect(draw("tv", 3_000_000, 30_000)).toContain("FILING IS OPEN");
+    }
+    // A director's early ⏱ while the slide is up: PENCILS DOWN under it.
+    expect(draw("tv", 4_000_000, 70_000, true)).toContain("PENCILS DOWN");
   });
 });

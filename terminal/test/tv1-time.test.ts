@@ -25,7 +25,7 @@ import {
   resolveResults,
   seatAngle,
   seatUnder,
-  windowLeft,
+  windowClock,
 } from "../src/cutscene/kit/tv1-time.ts";
 import type { ScreenMoment } from "../src/screen.ts";
 
@@ -112,8 +112,10 @@ describe("tv1 time — clocks, marches, loops", () => {
     expect(countdownLeft(s, ["hunt_2"], 100_000, 0)).toBeNull();
     expect(countdownLeft({ ...s, remaining: null }, ["hunt"], 1, 0)).toBeNull();
     expect(countdownLeft(s, ["hunt"], 100_000, 9_999_999)).toBe(0);
-    expect(windowLeft(1000, 30_000, 120_000)).toBe(90_000);
-    expect(windowLeft(0, 30_000, 120_000)).toBeNull();
+    expect(windowClock(1000, 30_000, 60_000, 90_000)).toBe(30_000);
+    expect(windowClock(0, 30_000, 60_000, 90_000)).toBeNull();
+    // A window longer than its slide's hold: no clock at all (it would vanish mid-count).
+    expect(windowClock(1000, 30_000, 120_000, 90_000)).toBeNull();
   });
 
   it("marchers stay on the stage, stream in a loop, and hold still under reduced motion", () => {
