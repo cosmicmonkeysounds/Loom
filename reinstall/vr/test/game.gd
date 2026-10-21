@@ -2361,6 +2361,12 @@ func _test_voice_link() -> void:
 	_check(v.sources() == ["t:hall"], "voice: want() with the same URLs keeps playing")
 	v.stop()
 	_check(not v.is_running() and v.sources().is_empty() and not b.voice_attached("hall") and v.mic_state == "off" and v.hud_text(true) == "", "voice: stop ends the stream, the mic and every voice")
+	# A server speaking another wire is not played.
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("hello", {"codec": "opus", "rate": 48000, "listen": false})
+	v.on_frame("voice", _voice_frame("hall", 1, 1.0))
+	_check(v.sources().is_empty(), "voice: a hello naming another codec / rate → nothing played")
+	v.stop()
 	# Listen-only: the mic off in the config never opens.
 	v.mic_enabled = false
 	v.want(upload + "/stream?token=tok", upload, "tok")

@@ -99,6 +99,9 @@ var _quiet_for := 0.0
 var _capture: AudioEffectCapture = null
 var _mic_player: AudioStreamPlayer = null
 var _asked_permission := false
+## The stream's `hello` named this wire (μ-law, 16 kHz); a server speaking
+## anything else is not played.
+var _compatible := true
 
 
 func _ready() -> void:
@@ -154,6 +157,7 @@ func stop() -> void:
 	_gate.reset()
 	_chunks.reset()
 	_resampler = null
+	_compatible = true
 	muted = false  # the next session (the next wearer, maybe) starts live
 	_set_listen(false)
 	_set_mic("off")
@@ -200,7 +204,8 @@ func on_frame(event: String, data: Variant) -> void:
 	var d: Dictionary = data if data is Dictionary else {}
 	match event:
 		"hello":
-			if str(d.get("codec", VoiceCodec.VOICE_CODEC)) != VoiceCodec.VOICE_CODEC or int(d.get("rate", VoiceCodec.VOICE_RATE)) != VoiceCodec.VOICE_RATE:
+			_compatible = str(d.get("codec", VoiceCodec.VOICE_CODEC)) == VoiceCodec.VOICE_CODEC and int(d.get("rate", VoiceCodec.VOICE_RATE)) == VoiceCodec.VOICE_RATE
+			if not _compatible:
 				push_warning("voice: the server speaks %s at %s Hz — not played" % [d.get("codec"), d.get("rate")])
 			_set_listen(d.get("listen") == true)
 		"listen":
@@ -213,7 +218,7 @@ func on_frame(event: String, data: Variant) -> void:
 
 func _on_voice(d: Dictionary) -> void:
 	var spot := str(d.get("spot", ""))
-	if str(d.get("kind", "terminal")) != "terminal" or spot == "" or builder == null:
+	if not _compatible or str(d.get("kind", "terminal")) != "terminal" or spot == "" or builder == null:
 		return  # a game hears only terminals
 	if not builder.house.is_empty() and not VoiceCodec.voice_on(builder.house, spot):
 		return  # D7: the tent's terminal is never heard here
