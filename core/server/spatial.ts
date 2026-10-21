@@ -111,6 +111,9 @@ export interface DuckRun {
   ms: number;
   /** When the duck was found (epoch ms on the hub's clock). */
   foundAt: number;
+  /** Found after the night ended (wave 18, C7): a party favour, never on
+   *  the recap's duck board or the speedrun award. */
+  after?: true;
 }
 
 /** Parse a stored run (a `spatial-runs.jsonl` line); null when malformed. */
@@ -125,7 +128,7 @@ export function parseDuckRun(v: unknown): DuckRun | null {
   const ms = n("ms");
   const foundAt = n("foundAt");
   if (guest === null || name === null || device === null || ms === null || foundAt === null || !isWorld(r["world"])) return null;
-  return { guest, name, world: r["world"], device, ms, foundAt };
+  return { guest, name, world: r["world"], device, ms, foundAt, ...(r["after"] === true ? { after: true as const } : {}) };
 }
 
 /** Where the map came from: a director's save for this event, the
@@ -284,10 +287,13 @@ function sameSpot(a: DuckSpot, b: DuckSpot): boolean {
 
 /** `GET /api/mod/spatial/candidates` order: captured first, then the marked
  *  (restricted, not yet captured), then by name (then id). */
-export function sortCandidates(rows: SpatialCandidate[]): SpatialCandidate[] {
+export function sortCandidates<T extends SpatialCandidate & { marked?: boolean }>(rows: T[]): T[] {
   return [...rows].sort((a, b) => {
     if (a.captured !== b.captured) return a.captured ? -1 : 1;
-    if (a.restricted !== b.restricted) return a.restricted ? -1 : 1;
+    // The marked next — restricted, or (C7) eligible by the story's `reinstall:`.
+    const am = a.restricted || a.marked === true;
+    const bm = b.restricted || b.marked === true;
+    if (am !== bm) return am ? -1 : 1;
     if (a.name !== b.name) return a.name < b.name ? -1 : 1;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   });

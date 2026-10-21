@@ -5,7 +5,8 @@
 import { DEFAULT_SPACE_ID } from "../src/runtime/sim/model.ts";
 import { asNumber, display, type Value } from "../src/runtime/expr.ts";
 import { alertLevelOf, type AlertLevel } from "../src/delivery.ts";
-import { cueActs, cueRows, focusActIndex } from "../src/cue-sheet.ts";
+import { cueActs, cueRows, focusActIndex, type CueCaller, type CueRow } from "../src/cue-sheet.ts";
+import { resolveGoWord } from "../src/go.ts";
 import { codexAboutKind, storyPhase, type ChatMessage } from "./chat.ts";
 import { foldName } from "../src/parser/names.ts";
 import { isGateFlag } from "../src/host-board.ts";
@@ -174,6 +175,12 @@ function subjectOnlyEvents(sim: Sim): Set<string> {
   const out = new Set([...bound].filter(([, all]) => all).map(([k]) => k));
   subjectOnlyCache.set(m, out);
   return out;
+}
+
+/** Does every listener of INTERACTION `id` bind a subject (C4: a press
+ *  with no guest would do nothing)? */
+export function interactionSubjectOnly(sim: Sim, id: string): boolean {
+  return subjectOnlyEvents(sim).has(foldName(id));
 }
 
 const actorsCache = new WeakMap<Sim["model"], Map<string, string[]>>();
@@ -432,6 +439,19 @@ export interface GuestView {
    *  canonical ids. A `dm:<C>` with C not listed (Truther Download, The
    *  Uploader) gets no composer. Always filled. */
   voiced?: string[];
+  /** Wave 18 (C11): the mission screen's NOW objective and the one place it
+   *  sends you (its `go:`), resolved for this guest (a room they cannot see
+   *  yet reads null). Filled when the story declares any OBJECTIVE. */
+  mission?: GuestMission;
+  /** Wave 18 (C11): channel ids the story's `archive:` lines mark done for
+   *  this guest (the phone tucks them away). Absent when none. */
+  archived?: string[];
+}
+
+/** `GuestView.mission` (C11). */
+export interface GuestMission {
+  objective: string | null;
+  place: { id: string; name: string } | null;
 }
 
 export function guestView(sim: Sim, id: string, decisionChannel: string | null = null, agentsOnline?: ReadonlySet<string>): GuestView {
@@ -440,6 +460,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
   const interactions = interactionsFor(sim, ["guest"], { subject: id, self: id }).filter(
     (i) => i.live !== false && (!sim.isRestricted(id) || sim.model.interactions.get(i.id)?.allowRestricted === true),
   );
+  const objectives = objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id)));
   return {
     id,
     name: p?.name ?? id,
@@ -477,13 +498,46 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     questTotal: sim.model.quests.size,
     people: peopleFor(sim, id, agentsOnline),
     ...guestBoard(sim),
-    objectives: objectivesWith(sim, { guest: id }, new Set(interactions.map((i) => i.id))),
+    ...guestMission(sim, id, objectives),
+    objectives,
     // No act for a guest: the act's title is the director's copy and names
     // what is coming; the phone reads only `phase` (wave 13 adversary).
     night: { ...nightView(sim), act: null },
     alertLevel: alertLevelNow(sim),
     voiced: voicedOf(sim, id),
   };
+}
+
+/** `GuestView.mission` + `archived` (C11): the NOW objective and its `go:`
+ *  place for this guest, and the rooms the story's `archive:` lines tucked
+ *  away for them. */
+function guestMission(sim: Sim, id: string, objectives: readonly ObjectiveView[]): Pick<GuestView, "mission" | "archived"> {
+  const out: Pick<GuestView, "mission" | "archived"> = {};
+  if (sim.model.objectives.size > 0) {
+    const now = objectives[0];
+    const def = now !== undefined ? sim.model.objectives.get(now.id) : undefined;
+    let place: GuestMission["place"] = null;
+    const t = def?.go != null ? resolveGoWord(sim.model, def.go) : null;
+    if (t !== null) {
+      if (t.kind === "room") {
+        if (sim.canSeeChannel(id, t.id)) {
+          const title = sim.channelHead(t.id).title;
+          place = { id: t.id, name: title.replace(/\s*\([^()]*\)$/u, "").trim() || title };
+        }
+      } else if (t.kind === "dm") place = { id: t.id, name: t.id.slice("dm:".length) };
+      else if (t.kind === "act") place = { id: t.id, name: t.label };
+      else if (t.kind === "codex") place = { id: t.entry !== undefined ? `codex:${t.entry}` : "codex", name: t.label };
+      else if (t.kind === "quests") place = { id: t.quest !== undefined ? `quests:${t.quest}` : "quests", name: t.label };
+      else place = { id: t.kind, name: t.label };
+    }
+    out.mission = { objective: now?.id ?? null, place };
+  }
+  if (sim.model.archive.length > 0) {
+    const archived: string[] = [];
+    for (const a of sim.model.archive) if (!archived.includes(a.channel) && sim.holds(a.when, id, id)) archived.push(a.channel);
+    if (archived.length > 0) out.archived = archived;
+  }
+  return out;
 }
 
 /** `GuestView.countdowns`, when any `for guests` countdown is running. */
@@ -781,6 +835,9 @@ export interface CueState {
   presses: number;
   /** The cue the newest taken press fired (asides included), or null. */
   pressed: string | null;
+  /** Who is calling the show (wave 18, C8) — the runtime's memory-only
+   *  claim; a bare sim never has one. */
+  caller?: CueCaller | null;
 }
 
 interface CueScan {
@@ -1349,7 +1406,27 @@ export interface ObjectiveView {
   /** `act:` as written, else null. Display only. */
   act: string | null;
   loud?: true;
+  /** `evergreen: true` (wave 18, A7): the fallback objective — a phone never counts it as "+1". */
+  evergreen?: true;
+  /** A booth objective's `target:` (wave 18, C5): the guest it is about,
+   *  when the expression names one now. `avatar` is runtime-filled. */
+  target?: ObjectiveTarget;
+  /** A booth objective's `pick:` (wave 18, C5): the guests its picker
+   *  offers — ids, at most 60, those in the booth character's room first,
+   *  then by name. Absent when the objective has no `pick:`. */
+  pick?: string[];
 }
+
+/** The guest a booth objective names (`ObjectiveView.target`). */
+export interface ObjectiveTarget {
+  id: string;
+  name: string;
+  avatar?: string;
+  location?: string | null;
+}
+
+/** How many guests a `pick:` offers at most. */
+export const PICK_MAX = 60;
 
 export interface ObjectiveCheck {
   label: string;
@@ -1466,9 +1543,40 @@ function objectivesWith(sim: Sim, viewer: { guest: string } | { character: strin
       const i = m.interactions.get(b);
       return i !== undefined && i.who === "performer" && pressRefusal(sim, i, me, viewer.host === true) === null;
     });
-    out.push(objectiveView(sim, o, buttons, null, me));
+    out.push({ ...objectiveView(sim, o, buttons, null, me), ...boothTarget(sim, o, me) });
   }
   return out;
+}
+
+/** A booth objective's `target:` and `pick:` (C5) for character `me`. */
+function boothTarget(sim: Sim, o: ObjectiveDef, me: string): Pick<ObjectiveView, "target" | "pick"> {
+  const out: Pick<ObjectiveView, "target" | "pick"> = {};
+  if (o.target !== null) {
+    const id = guestNamed(sim, display(sim.valueOf(o.target, null, me)));
+    const p = id !== null ? sim.persons.get(id) : undefined;
+    if (p !== undefined) out.target = { id: p.id, name: p.name, location: sim.locationOf(p.id) };
+  }
+  if (o.pick !== null) {
+    const here = sim.locationOf(me);
+    const rows: Array<{ id: string; name: string; here: boolean }> = [];
+    for (const p of sim.persons.values()) {
+      if (!sim.holds(o.pick, p.id, me)) continue;
+      rows.push({ id: p.id, name: p.name, here: here !== null && sim.locationOf(p.id) === here });
+    }
+    rows.sort((a, b) => (a.here !== b.here ? (a.here ? -1 : 1) : a.name.localeCompare(b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+    out.pick = rows.slice(0, PICK_MAX).map((r) => r.id);
+  }
+  return out;
+}
+
+/** A guest by id, or by display name (folded) — what a `target:` value names. */
+function guestNamed(sim: Sim, raw: string): string | null {
+  const v = raw.replace(/^"(.*)"$/su, "$1").trim();
+  if (v === "" || v === "null") return null;
+  if (sim.persons.has(v)) return v;
+  const f = foldName(v);
+  for (const p of sim.persons.values()) if (foldName(p.name) === f) return p.id;
+  return null;
 }
 
 function objectiveView(sim: Sim, o: ObjectiveDef, buttons: string[], subject: string | null, self: string): ObjectiveView {
@@ -1480,6 +1588,7 @@ function objectiveView(sim: Sim, o: ObjectiveDef, buttons: string[], subject: st
     buttons,
     act: o.act,
     ...(o.loud ? { loud: true as const } : {}),
+    ...(o.evergreen ? { evergreen: true as const } : {}),
   };
 }
 
@@ -1929,6 +2038,9 @@ export interface PrimeGuest {
   location: string | null;
   /** ROLE-scoped `watch:` items for this guest (`GuestFlag` rule, secret slots dropped), on lines whose `while` holds. Absent when none. */
   flags?: GuestFlag[];
+  /** When the server last heard from this guest (the mod roster's
+   *  `lastSeen`, A1) — runtime-filled; null = not since the server started. */
+  lastSeen?: number | null;
 }
 
 /** What an actor playing a character sees: their part + scannable guests. */
@@ -1995,6 +2107,50 @@ export interface PrimeView {
    *  always says so (`false` too, C4: a reload that takes `admin: true` away
    *  reaches an open booth); a local sim's view leaves it out when false. */
   host?: boolean;
+  /** Wave 18 (C4): this booth's live **global** buttons (`who: performer`,
+   *  pressed with no guest — some listener binds no subject), the ones
+   *  `/api/prime/act {name}` takes without a `guest`. Absent when none. */
+  globalButtons?: string[];
+  /** Wave 18 (C6): the Wanted board — every guest the header's `wanted:`
+   *  flag marks, for a booth the line names (and hosts). Runtime-filled. */
+  wanted?: WantedRow[];
+  /** Wave 18 (C8): the admin cues this booth may call (`by:` on a `who:
+   *  admin` INTERACTION names it) and the sheet's NEXT / LAST / act, read
+   *  only. Absent for a booth that calls nothing. `caller` is runtime-filled. */
+  calls?: PrimeCalls;
+}
+
+/** One poster on the Wanted board (C6). */
+export interface WantedRow {
+  id: string;
+  name: string;
+  avatar?: string;
+  /** The `wanted:` line's `as` value (why), or null. */
+  reason: string | null;
+  location: string | null;
+  /** When the server last heard from them (wall ms), null = not since it started. */
+  lastSeen: number | null;
+  /** Story ms the flag turned true. */
+  markedAt: number;
+  /** The `by` value (who claimed the escort: a character name), or null. */
+  claimedBy: string | null;
+  /** Captured: the poster stays 60 s, then drops. */
+  captured: boolean;
+}
+
+/** `PrimeView.calls` (C8). */
+export interface PrimeCalls {
+  /** Only this booth's cues, in running order, with their descriptions. */
+  rows: CueRow[];
+  /** The whole sheet's NEXT / LAST (INTERACTION ids), read only. */
+  next: string | null;
+  last: string | null;
+  lastName: string | null;
+  /** The focus act as written, or null. */
+  act: string | null;
+  /** `CueState.presses` — what a `POST /api/prime/cue` arms against. */
+  presses: number;
+  caller: CueCaller | null;
 }
 
 export interface AgentContact {
@@ -2061,5 +2217,82 @@ export function primeView(sim: Sim | null, character: string, agentsOnline?: Rea
     ...(countdowns.length > 0 ? { countdowns } : {}),
     staffRooms: staffRoomChannels(sim.model),
     ...(opts?.host === true ? { host: true as const } : {}),
+    ...boothGlobals(sim, character, opts?.host === true),
+    ...boothCalls(sim, character),
+  };
+}
+
+/** `PrimeView.globalButtons` (C4): `who: performer` buttons this booth may
+ *  press with no guest — some listener binds no subject, `by:` lets the
+ *  booth press it, and its `while:` holds with `self` = the character. */
+function boothGlobals(sim: Sim, character: string, host: boolean): Pick<PrimeView, "globalButtons"> {
+  const subjectOnly = subjectOnlyEvents(sim);
+  const ids: string[] = [];
+  for (const i of sim.model.interactions.values()) {
+    if (i.who !== "performer" || subjectOnly.has(foldName(i.id))) continue;
+    if (pressRefusal(sim, i, character, host) !== null) continue;
+    if (i.while !== null && !sim.holds(i.while, null, character)) continue;
+    ids.push(i.id);
+  }
+  return ids.length > 0 ? { globalButtons: ids } : {};
+}
+
+const callersCache = new WeakMap<Sim["model"], Map<string, string[]>>();
+
+/** The characters each admin cue's `by:` names (C8: those booths may also
+ *  call it): a CHARACTER, or a GROUP's members. Admin cues with no `by:`
+ *  are missing. Per model. */
+export function cueCallers(model: Sim["model"]): Map<string, string[]> {
+  const hit = callersCache.get(model);
+  if (hit !== undefined) return hit;
+  const out = new Map<string, string[]>();
+  const chars = [...model.characters.values()];
+  for (const i of model.interactions.values()) {
+    if (i.who !== "admin" || i.by.length === 0) continue;
+    const ids = new Set<string>();
+    for (const name of i.by) {
+      const k = foldName(name);
+      const one = chars.find((c) => foldName(c.id) === k);
+      if (one !== undefined) ids.add(one.id);
+      else for (const c of chars) if (c.faction !== null && foldName(c.faction) === k) ids.add(c.id);
+    }
+    if (ids.size > 0) out.set(i.id, [...ids]);
+  }
+  callersCache.set(model, out);
+  return out;
+}
+
+/** May `character`'s booth call admin cue `id` (C8)? */
+export function callsCue(model: Sim["model"], character: string | null, id: string): boolean {
+  if (character === null) return false;
+  const k = foldName(character);
+  return (cueCallers(model).get(id) ?? []).some((c) => foldName(c) === k);
+}
+
+/** Does any admin cue's `by:` name `character` (the booth is a caller)? */
+export function isCaller(model: Sim["model"], character: string | null): boolean {
+  if (character === null) return false;
+  const k = foldName(character);
+  for (const ids of cueCallers(model).values()) if (ids.some((c) => foldName(c) === k)) return true;
+  return false;
+}
+
+/** `PrimeView.calls` (C8) for a caller booth; nothing for any other. */
+function boothCalls(sim: Sim, character: string): Pick<PrimeView, "calls"> {
+  if (!isCaller(sim.model, character)) return {};
+  const cues = cueState(sim);
+  const rows = cueRows(interactionsFor(sim, ["admin"]), cues);
+  const acts = cueActs(rows);
+  const focus = acts[focusActIndex(acts)];
+  return {
+    calls: {
+      rows: rows.filter((r) => callsCue(sim.model, character, r.id)),
+      next: rows.find((r) => r.next)?.id ?? null,
+      last: cues.last,
+      lastName: cues.lastName ?? null,
+      act: focus?.rows[0]?.act ?? null,
+      presses: cues.presses,
+      caller: null,
+    },
   };
 }
