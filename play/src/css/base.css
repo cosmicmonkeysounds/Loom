@@ -432,7 +432,8 @@ body {
 .fact-hint.error { font-weight: 700; color: var(--bad); }
 .fact-confidence.missing, .fact-answer.missing, .fact-questions.missing { outline: 2px dashed var(--bad); outline-offset: 3px; }
 .fact-confidence.missing .req { color: var(--bad); font-weight: 700; }
-.widget-go.waiting { opacity: 0.6; }
+.widget-foot .choice.widget-go { flex: 0 0 auto; white-space: nowrap; }
+.widget-foot .choice.widget-go.waiting { color: var(--muted-ink); opacity: 1; box-shadow: var(--raised); }
 @media (prefers-reduced-motion: no-preference) {
   .fact-confidence.missing { animation: fact-shake 300ms ease-out 1; }
 }

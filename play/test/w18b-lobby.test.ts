@@ -135,5 +135,7 @@ describe("the lobby hidden from guests", () => {
     const ctx = { listed: new Set(["lobby"]), window: "mission" as const, actions: new Set<string>(), questRoots: new Map<string, number>() };
     expect(planGo({ to: "room", id: "lobby" }, { ...ctx, lobbyHidden: true })).toEqual({ window: "notifications", room: null });
     expect(planGo({ to: "room", id: "lobby" }, ctx)).toEqual({ window: "mission", room: null });
+    // A card a rule dealt into the hidden lobby stays answerable from its own nav.
+    expect(planGo({ to: "room", id: "lobby", focusSeq: 7 }, { ...ctx, lobbyHidden: true })).toEqual({ window: "mission", room: { id: "lobby", focusSeq: 7 } });
   });
 });

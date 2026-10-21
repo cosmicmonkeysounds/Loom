@@ -52,7 +52,14 @@ export function planGo(nav: Nav, ctx: GoContext): GoPlan {
     case "notifications":
       return { window: nav.to, room: null };
     case "room":
-      if (nav.id === "lobby") return ctx.lobbyHidden === true ? { window: "notifications", room: null } : mission;
+      if (nav.id === "lobby") {
+        if (ctx.lobbyHidden !== true) return mission;
+        // A card a story dealt into the hidden lobby (a `show … to everyone`
+        // from a rule with no setting) is still answerable: its own nav
+        // (Mission's Your move, focusSeq) opens it there. Anything else
+        // naming the lobby lands on Notifications (D18).
+        return nav.focusSeq !== undefined ? { window: ctx.window, room: { id: "lobby", focusSeq: nav.focusSeq } } : { window: "notifications", room: null };
+      }
       if (!ctx.listed.has(nav.id)) return mission;
       return { window: ctx.window, room: { id: nav.id, ...(nav.focusSeq !== undefined ? { focusSeq: nav.focusSeq } : {}) } };
     case "codex":
