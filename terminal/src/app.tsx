@@ -83,7 +83,7 @@ import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
-import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, type TvLine } from "./tv.ts";
+import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -1002,7 +1002,7 @@ function Terminal({
           {/* The face stays mounted under the world view: it holds the speech
               queue's level handle and its own easing state. */}
           <Face mood={mood} speaking={speaking} handle={face} />
-          <div className="nameplate">{config.character.toUpperCase()}</div>
+          {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
           {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
           {showWorld && (pane === "shadow" ? <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="pane" recover="retry" /> : <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" raycast={pane === "raycast"} />)}
           {roomLine !== null && (

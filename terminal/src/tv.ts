@@ -22,7 +22,7 @@
 //! Trabolta lines around it.
 
 import { baseOf, type TerminalConfig } from "./config.ts";
-import type { ScreenVoice, VoiceLine } from "./screen.ts";
+import type { ScreenState, ScreenVoice, VoiceLine } from "./screen.ts";
 
 /** Beats whose lines are sung in the QLab track: captioned, never spoken. */
 export const TV_SILENT_BEATS: readonly string[] = ["Song Ending", "Sad Confession", "The Hand Jive"];
@@ -32,6 +32,13 @@ export const TV_TEXT_ONLY: readonly string[] = ["Sandy"];
 /** Names compare like the story does: case, `_`, `-` and spaces folded. */
 export function foldTvName(s: string): string {
   return s.toLowerCase().replace(/[\s_-]+/gu, " ").trim();
+}
+
+/** May a screen draw the character's nameplate? Only once the server says
+ *  the character is out of hiding: no state, no character (before the doors)
+ *  or a hidden one never shows the name (livetv-2). */
+export function showsNameplate(state: Pick<ScreenState, "character"> | null): boolean {
+  return state !== null && state.character !== null && state.character.hidden === false;
 }
 
 export type TvLineMode = "speak" | "song" | "muted" | "text";

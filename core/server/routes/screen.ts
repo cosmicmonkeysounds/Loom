@@ -1195,7 +1195,10 @@ export class ScreenWatch {
       // terminal on attract. An unknown character (a typo in setup) does
       // not — the terminal then behaves as it always did. A room terminal
       // also sleeps while its room is closed (or unknown).
-      attract: (character !== null && (character.hidden || !character.awake)) || (room !== undefined && !room.open),
+      // Before the doors (no story loaded) a terminal that names a character
+      // fails closed: nothing may show its face or name before the
+      // introduction (livetv-2). With a story, an unknown name never forces it.
+      attract: (sim === null && who.character !== "") || (character !== null && (character.hidden || !character.awake)) || (room !== undefined && !room.open),
       countdown,
       remaining,
       chart,

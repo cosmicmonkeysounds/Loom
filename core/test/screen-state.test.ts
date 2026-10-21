@@ -317,9 +317,12 @@ describe("ScreenWatch — polls", () => {
       ["Hall", 0],
       ["Kitchen", 2000],
     ]);
-    // No story: no character, never attract (nothing to keep secret yet).
+    // No story: no character; a terminal that names one fails closed
+    // (attract: its face and name wait for the introduction), one that
+    // names none (a chess or casino table) never is.
     expect(s.character).toBeNull();
-    expect(s.attract).toBe(false);
+    expect(s.attract).toBe(true);
+    expect(w.poll(null, { ...who("Casino"), character: "" }, () => false).attract).toBe(false);
     w.poll(null, { ...who(""), name: "" }, () => false); // unnamed: not recorded
     for (let i = 0; i < MAX_SCREENS + 5; i++) w.poll(null, who(`T${i}`), () => false);
     expect(w.seen()).toHaveLength(MAX_SCREENS);
@@ -355,7 +358,10 @@ const signal = (rt: EventRuntime, name: string) => call(rt, "POST", "/api/mod/si
 describe("GET /api/screen/state — Trapped in the Internet", () => {
   it("Power On is a live moment on a real door-open and on a restart with the doors open (livetv-1)", { timeout: SLOW }, async () => {
     const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: SHOW, scenarioSource: scenarioSource(SHOW), joinBase: () => "http://localhost" });
-    expect((await state(rt)).moments).toEqual([]); // no sim yet
+    const before = await state(rt);
+    expect(before.moments).toEqual([]); // no sim yet
+    expect(before.character).toBeNull();
+    expect(before.attract).toBe(true); // a named character fails closed before the doors (livetv-2)
     expect((await call(rt, "POST", "/api/mod/start", {}, { moderator: true })).status).toBe(200);
     const first = (await state(rt)).moments.filter((m) => m.kind === "beat" && m.name === "Power On");
     expect(first).toHaveLength(1);

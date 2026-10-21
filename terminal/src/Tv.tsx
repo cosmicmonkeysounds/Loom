@@ -26,7 +26,7 @@ import { moodOfText, type Mood } from "./face/mood.ts";
 import type { ScreenState } from "./screen.ts";
 import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
 import { splitSentences } from "./speech/split.ts";
-import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, type TvLine } from "./tv.ts";
+import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
@@ -215,7 +215,7 @@ export function Tv({
     <div className={`terminal tv${showWorld ? " with-world" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
       <section className="tv-face">
         <Face mood={mood} speaking={speaking} handle={face} />
-        <div className="nameplate">{config.character.toUpperCase()}</div>
+        {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
       </section>
       {showWorld && <section className="tv-world">{worldSlot(world)}</section>}
       {caption !== null && !attract && (
