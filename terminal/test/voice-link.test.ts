@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { VOICE_TAIL_MS, mulawEncode } from "@loom/house";
 import { MicHub } from "../src/voice/mic.ts";
-import { VOICE_OFF, VoiceLink, onAir, voiceStatusText, type StreamHandlers, type VoiceLinkDeps, type VoiceStatus } from "../src/voice/link.ts";
+import { VoiceLink, type StreamHandlers, type VoiceLinkDeps } from "../src/voice/link.ts";
+import { VOICE_OFF, micHeartbeat, onAir, voiceStatus, voiceStatusText, type VoiceStatus } from "../src/voice/status.ts";
 import { VoicePlayback } from "../src/voice/playback.ts";
 import type { UplinkAnswer } from "../src/voice/uplink.ts";
 
@@ -209,5 +210,11 @@ describe("the voice link's words", () => {
     expect(voiceStatusText({ ...live, roles: { mic: false, voices: true }, mic: null })).toMatch(/microphone off/);
     expect(onAir(live)).toBe(true);
     expect(onAir({ ...live, mic: "denied" })).toBe(false);
+  });
+  it("the store feeds the heartbeat", () => {
+    voiceStatus.set({ ...live, report: "denied" });
+    expect(micHeartbeat()).toBe("denied");
+    voiceStatus.set(VOICE_OFF);
+    expect(micHeartbeat()).toBe("off");
   });
 });
