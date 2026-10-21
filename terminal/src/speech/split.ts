@@ -35,8 +35,13 @@ export function speakable(text: string): string {
 export function splitSentences(text: string, max = MAX_CHUNK): string[] {
   const clean = speakable(text);
   if (clean === "") return [];
-  // Sentence ends: . ! ? followed by whitespace, or a hard break.
-  const rough = clean.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s !== "");
+  // Sentence ends: . ! ? followed by whitespace, or a hard break. No
+  // lookbehind: Safari before 16.4 throws on one (OB-1).
+  const rough = clean
+    .replace(/([.!?])\s+/g, "$1\n")
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
   const out: string[] = [];
   for (const s of rough) {
     if (s.length <= max) {

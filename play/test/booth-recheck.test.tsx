@@ -3,6 +3,8 @@
 // press, the scanner's paused copy, the staff rooms' preview, the late
 // list folded into one moment, the guest thread's DM chip and the NOW bar
 // greyed while paused. Message shapes are the ones off a real booth stream.
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -208,6 +210,11 @@ describe("the late list folds into one moment per kind (recheck nit)", () => {
     // A map with nothing to change is handed back as it is.
     const quiet = new Map([[1, hostsLine({ channel: "loc:The Desktop" })]]);
     expect(boothMomentFeed(quiet, opts)).toBe(quiet);
+  });
+  it("an `is` shape keeps its first sentence, with no regex lookbehind (Safari before 16.4, OB-1)", () => {
+    expect(burstLine("⏰ \u0000 is late for the Second Moment of Truth. Go get them.", ["WinZip", "LimeWire"], 2)).toBe("⏰ WinZip and LimeWire are late for the Second Moment of Truth — see Readouts.");
+    const src = readFileSync(fileURLToPath(new URL("../src/booth/moments-feed.ts", import.meta.url)), "utf8");
+    expect(src).not.toMatch(/\(\?<[=!]/u);
   });
   it("another shape says the newest line and how many more", () => {
     expect(burstLine("🚨 Server room alarm: \u0000 at the patch bay.", ["WinZip", "LimeWire"], 2)).toBe("🚨 Server room alarm: LimeWire at the patch bay. (+1 more like it — see Readouts)");

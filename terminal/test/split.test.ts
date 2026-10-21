@@ -52,3 +52,15 @@ describe("revealOffsets", () => {
     expect(offs.length).toBe(2);
   });
 });
+
+describe("old Safari (OB-1)", () => {
+  it("no source file uses a regex lookbehind (Safari before 16.4 throws on one when it runs)", async () => {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const root = fileURLToPath(new URL("../src", import.meta.url));
+    const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : /\.(ts|tsx)$/u.test(f) ? [join(d, f)] : []));
+    const hits = walk(root).filter((f) => /\(\?<[=!]/u.test(readFileSync(f, "utf8")));
+    expect(hits).toEqual([]);
+  });
+});

@@ -51,7 +51,8 @@ export function burstLine(template: string, names: readonly string[], count: num
   const is = new RegExp(`^[^\\p{L}\\p{N}${HOLE}]*${HOLE} is (.+)$`, "u").exec(template);
   if (is !== null && names.length > 1) {
     // "late for the Second Moment of Truth. Go get them." → its first sentence.
-    const rest = is[1]!.split(/(?<=[.!?])\s/u)[0]!.replace(/[.!?]+$/u, "").trim();
+    // Its first sentence, without a lookbehind (Safari before 16.4 throws on one).
+    const rest = is[1]!.replace(/([.!?])\s[\s\S]*$/u, "$1").replace(/[.!?]+$/u, "").trim();
     return `${lead}${who} are ${rest} — see Readouts.`;
   }
   // Any other shape: the newest line, and how many more said the same.
