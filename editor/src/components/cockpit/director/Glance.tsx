@@ -27,6 +27,9 @@ import {
   formatWatchValue,
   needsYou,
   peopleGlance,
+  raceGlance,
+  raceLead,
+  racePct,
   recentGlobals,
   staffFeed,
   storyAgo,
@@ -393,8 +396,10 @@ function People() {
   const factions = useCockpit((s) => s.factions)
   const locations = useCockpit((s) => s.locations)
   const world = useCockpit((s) => s.world)
+  const raceView = useCockpit((s) => s.race)
   const go = useGo()
   const g = useMemo(() => peopleGlance(roster, factions, locations), [roster, factions, locations])
+  const race = useMemo(() => raceGlance(raceView), [raceView])
   const gone = useMemo(() => goneCount(roster, world), [roster, world])
   if (g.joined === 0) return null
   const lines: ReactNode[] = []
@@ -414,7 +419,34 @@ function People() {
     )
   }
   if (g.restricted > 0) lines.push(<div key="restricted" className="text-xs text-zinc-300">⛔ {g.restricted} restricted</div>)
-  for (const f of g.factions) {
+  // Faction mode (wave 18b): one race, every faction (founded or declared)
+  // against the threshold of the programs present — the roster's own
+  // faction bars would count the declared sides only, against the roster.
+  for (const f of race?.rows ?? []) {
+    const lead = raceLead(f)
+    lines.push(
+      <button
+        key={`r:${f.id}`}
+        onClick={() => go(f.kind === 'side' ? { kind: 'inspect', selection: { kind: SelectionKind.Faction, id: f.id } } : { kind: 'tab', tab: CockpitTab.Roster })}
+        className="flex w-full items-center gap-2 text-left text-xs hover:text-indigo-300"
+        title={`${f.name}${lead !== '' ? ` (${lead})` : ''}: ${f.count} of ${race!.present} present · the line is ${race!.needs}${f.over ? ' · over the line now (the story says when it wins)' : ''}`}
+        data-testid={`glance-race-${f.id}`}
+        data-over={f.over ? 'true' : undefined}
+      >
+        <span className="w-28 shrink-0 truncate text-zinc-300">
+          {f.kind === 'founded' ? '◇ ' : ''}
+          {f.name}
+        </span>
+        <span className="relative h-2 min-w-12 flex-1 rounded-sm bg-zinc-800">
+          <span className={clsx('absolute inset-y-0 left-0 rounded-sm', f.over ? 'bg-emerald-400' : 'bg-indigo-400')} style={{ width: racePct(f.count, race!.present) }} />
+          <span className="absolute -inset-y-0.5 w-px bg-amber-400" style={{ left: racePct(race!.needs, race!.present) }} />
+        </span>
+        <span className="w-6 shrink-0 text-right tabular-nums text-zinc-100">{f.count}</span>
+        {f.over && <span className="shrink-0 text-[10px] text-emerald-300">over the line</span>}
+      </button>,
+    )
+  }
+  for (const f of race === null ? g.factions : []) {
     const pct = (n: number) => `${f.joined === 0 ? 0 : Math.min(100, (n / f.joined) * 100)}%`
     lines.push(
       <button
@@ -458,7 +490,17 @@ function People() {
         )}
       </div>
       <Lines items={lines} />
-      {g.factions.length > 0 && <div className="text-[10px] text-zinc-600">┊ = a majority ({g.factions[0]!.majority})</div>}
+      {race !== null && race.rows.length > 0 && (
+        <div className="text-[10px] text-zinc-600" data-testid="glance-race-line">
+          ┊ = the line: {race.needs} of {race.present} present{race.declared ? '' : ' (a bare majority: the story has no majority: line)'}
+        </div>
+      )}
+      {race !== null && race.rows.length === 0 && (
+        <div className="text-[10px] text-zinc-600" data-testid="glance-race-empty">
+          🗳 No faction yet · {race.present} present · the line is {race.needs}
+        </div>
+      )}
+      {race === null && g.factions.length > 0 && <div className="text-[10px] text-zinc-600">┊ = a majority ({g.factions[0]!.majority})</div>}
     </Section>
   )
 }
@@ -605,7 +647,9 @@ export function GlanceStrip() {
   const declared = useCockpit((s) => s.watchDeclared)
   const world = useCockpit((s) => s.world)
   const log = useCockpit((s) => s.log)
+  const raceView = useCockpit((s) => s.race)
   const g = useMemo(() => peopleGlance(roster, factions, locations), [roster, factions, locations])
+  const overLine = useMemo(() => raceGlance(raceView)?.over ?? null, [raceView])
   const watchChip = useMemo(() => {
     if (declared) return watchChipText(watchRows(watch, world, roster, cast))
     // No `watch:` lines: the chip only once something changed (an empty
@@ -634,6 +678,7 @@ export function GlanceStrip() {
     const jailed = g.prisons.reduce((n, p) => n + p.people.length, 0)
     if (jailed > 0) parts.push(`⛓${jailed}`)
     if (g.restricted > 0) parts.push(`⛔${g.restricted}`)
+    if (overLine !== null) parts.push(`🗳 ${overLine} over the line`)
     chips.push(chip(StripSection.People, parts.join(' · ')))
   }
   if (booths.dots.length > 0 || agents.length > 0) {

@@ -111,6 +111,8 @@ export function usePressOutcome(store: object): PressOutcome {
       [store],
     ),
     () => outcomes.get(store) ?? NO_OUTCOME,
+    // The same read on a server render (the glance's SSR tests).
+    () => outcomes.get(store) ?? NO_OUTCOME,
   )
 }
 
