@@ -13,20 +13,18 @@
 //! half-duplex hold covers everything this page plays: the players, the
 //! character's speech (`voiceFloor.busy`), effects, jingles and the chime.
 //!
-//! `VoiceLink` is the testable core (every effect injected); `useVoiceLink`
-//! wires it to the browser. Its status goes to `status.ts`'s store: ⚙'s
-//! status line, the 🎤 corner cue and the heartbeat's `mic=` read it.
+//! `VoiceLink` is the testable core (every effect injected); `startPageLink`
+//! wires it to the browser, loaded as its own chunk by `hook.ts`
+//! `useVoiceLink`. Its status goes to `status.ts`'s store: ⚙'s status line,
+//! the 🎤 corner cue and the heartbeat's `mic=` read it.
 
-import { useEffect, useMemo, useState } from "react";
-import type { HouseMap } from "@loom/house";
-import { baseOf, type TerminalConfig } from "../config.ts";
+import { baseOf } from "../config.ts";
 import { audioContext, voiceFloor } from "../speech/engine.ts";
 import { setVoicesDucked, soundPlayingUntil, voicesOut } from "../sound/bus.ts";
-import { fetchHouse } from "../world/stream.ts";
 import { MicPipeline, startCapture, type CaptureContext } from "./capture.ts";
 import { mic as pageMic, type MicHub, type MicState } from "./mic.ts";
 import { VoicePlayback } from "./playback.ts";
-import { NO_VOICE, micReport, voiceRoles, type MicReport, type VoiceRoles } from "./roles.ts";
+import type { MicReport, VoiceRoles } from "./roles.ts";
 import { openVoiceStream, speaksOurWire, type VoiceFrame } from "./stream.ts";
 import { VOICE_OFF, voiceStatus, type VoiceStatus } from "./status.ts";
 import { Uplink, uplinkProblem, type UplinkAnswer } from "./uplink.ts";
@@ -252,87 +250,61 @@ function probeOnce(url: string): Promise<number | null> {
   );
 }
 
-/**
- * Run this terminal's voice link while `active` (set up, not on the setup
- * screen). Reads the event's map once per spot so the tent never opens its
- * microphone (`voiceRoles` with the live map; the stored `voiceLink` when the
- * map can't be read). Returns the map it read (null: none yet / no spot).
- */
-export function useVoiceLink(config: TerminalConfig | null, active: boolean, hub: MicHub = pageMic): Pick<HouseMap, "terminals" | "spawn"> | null {
-  const eventId = config?.eventId ?? "";
-  const token = config?.token ?? "";
-  const spot = config?.spot.trim() ?? "";
-  const placed = active && config !== null && spot !== "";
-  // The map, once per spot: undefined = still reading, null = unreadable.
-  const [house, setHouse] = useState<{ key: string; map: Pick<HouseMap, "terminals" | "spawn"> | null } | undefined>(undefined);
-  const key = `${eventId}|${token}|${spot}`;
-  useEffect(() => {
-    if (!placed) return;
-    let alive = true;
-    void fetchHouse({ eventId, token }).then(
-      (h) => alive && setHouse({ key, map: h.house }),
-      () => alive && setHouse({ key, map: null }),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [placed, eventId, token, key]);
-  const map = house !== undefined && house.key === key ? house.map : undefined;
-  const ready = placed && map !== undefined;
-  const r = config === null || !ready ? NO_VOICE : voiceRoles(config, map);
-  // Kept by value: a name / character change never restarts the link.
-  const roles = useMemo<VoiceRoles>(() => ({ mic: r.mic, voices: r.voices }), [r.mic, r.voices]);
-  const view = config?.view;
-  const micFlag = config?.mic;
-
-  useEffect(() => {
-    const reportOf = (state: MicState | null) => (config === null || !active ? null : micReport(config, map ?? null, state));
-    if (!ready || config === null || (!roles.mic && !roles.voices)) {
-      voiceStatus.set({ ...VOICE_OFF, report: reportOf(null) ?? "off" });
-      return;
-    }
-    const base = baseOf({ eventId });
-    const q = `spot=${encodeURIComponent(spot)}`;
-    const streamUrl = `${base}/api/spatial/voice/stream?token=${encodeURIComponent(token)}&${q}`;
-    const playback = roles.voices ? new VoicePlayback(voicesOut) : null;
-    const link = new VoiceLink({
-      roles,
-      report: reportOf,
-      hub,
-      capture: (stream, onFrames) => {
-        const ctx = audioContext();
-        if (ctx === null || typeof ctx.createScriptProcessor !== "function") return null;
-        return { rate: ctx.sampleRate, stop: startCapture(ctx as CaptureContext, stream, onFrames) };
-      },
-      openStream: (h) => openVoiceStream({ url: streamUrl, probe: () => probeOnce(streamUrl), ...h }),
-      post: (body, seq) =>
-        fetch(`${base}/api/spatial/voice?seq=${seq}&${q}`, { method: "POST", headers: { "content-type": "application/octet-stream", "x-loom-token": token }, body }).then(
-          async (r) => {
-            const b = (await r.json().catch(() => null)) as { listening?: unknown } | null;
-            return { status: r.status, ...(typeof b?.listening === "boolean" ? { listening: b.listening } : {}) };
-          },
-          () => ({ status: null }),
-        ),
-      playback,
-      ctxTime: () => audioContext()?.currentTime ?? null,
-      floorBusy: () => voiceFloor.busy,
-      ownSoundUntil: soundPlayingUntil,
-      now: () => performance.now(),
-      seq0: Date.now(),
-      setTimer: (fn, ms) => window.setTimeout(fn, ms),
-      clearTimer: (t) => window.clearTimeout(t as number),
-      onStatus: (s) => voiceStatus.set(s),
-    });
-    link.start();
-    // The players duck under the character's voice (never the other way round).
-    const duck = playback === null ? 0 : window.setInterval(() => setVoicesDucked(voiceFloor.busy), DUCK_POLL_MS);
-    return () => {
-      window.clearInterval(duck);
-      link.stop();
-      setVoicesDucked(false);
-      voiceStatus.set(VOICE_OFF);
-    };
-  }, [ready, active, roles, eventId, token, spot, view, micFlag, map, hub]);
-  return map ?? null;
+/** Where and as what the page's link runs. */
+export interface PageLink {
+  eventId: string;
+  token: string;
+  spot: string;
+  roles: VoiceRoles;
+  report: (state: MicState | null) => MicReport | null;
+  hub?: MicHub;
 }
 
+/**
+ * Start the page's link on the browser (the lazy half of `hook.ts`
+ * `useVoiceLink`): the microphone, the page's context, `fetch` and an
+ * `EventSource`. Returns the stopper.
+ */
+export function startPageLink(o: PageLink): () => void {
+  const { eventId, token, spot, roles } = o;
+  const base = baseOf({ eventId });
+  const q = `spot=${encodeURIComponent(spot)}`;
+  const streamUrl = `${base}/api/spatial/voice/stream?token=${encodeURIComponent(token)}&${q}`;
+  const playback = roles.voices ? new VoicePlayback(voicesOut) : null;
+  const link = new VoiceLink({
+    roles,
+    report: o.report,
+    hub: o.hub ?? pageMic,
+    capture: (stream, onFrames) => {
+      const ctx = audioContext();
+      if (ctx === null || typeof ctx.createScriptProcessor !== "function") return null;
+      return { rate: ctx.sampleRate, stop: startCapture(ctx as CaptureContext, stream, onFrames) };
+    },
+    openStream: (h) => openVoiceStream({ url: streamUrl, probe: () => probeOnce(streamUrl), ...h }),
+    post: (body, seq) =>
+      fetch(`${base}/api/spatial/voice?seq=${seq}&${q}`, { method: "POST", headers: { "content-type": "application/octet-stream", "x-loom-token": token }, body }).then(
+        async (r) => {
+          const b = (await r.json().catch(() => null)) as { listening?: unknown } | null;
+          return { status: r.status, ...(typeof b?.listening === "boolean" ? { listening: b.listening } : {}) };
+        },
+        () => ({ status: null }),
+      ),
+    playback,
+    ctxTime: () => audioContext()?.currentTime ?? null,
+    floorBusy: () => voiceFloor.busy,
+    ownSoundUntil: soundPlayingUntil,
+    now: () => performance.now(),
+    seq0: Date.now(),
+    setTimer: (fn, ms) => window.setTimeout(fn, ms),
+    clearTimer: (t) => window.clearTimeout(t as number),
+    onStatus: (s) => voiceStatus.set(s),
+  });
+  link.start();
+  // The players duck under the character's voice (never the other way round).
+  const duck = playback === null ? 0 : window.setInterval(() => setVoicesDucked(voiceFloor.busy), DUCK_POLL_MS);
+  return () => {
+    window.clearInterval(duck);
+    link.stop();
+    setVoicesDucked(false);
+  };
+}

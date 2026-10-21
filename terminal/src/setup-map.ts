@@ -146,7 +146,7 @@ export function followMap(c: TerminalConfig, house: MapLike): TerminalConfig | n
 /** Any terminal on the map (from it or not): the map's voice link for its
  *  spot, when it differs from the stored one. Null = nothing to change
  *  (unplaced, a spot the map lacks, or already in step). */
-export function followVoice(c: TerminalConfig, house: MapLike): TerminalConfig | null {
+export function followVoice(c: TerminalConfig, house: Pick<HouseMap, "terminals" | "spawn">): TerminalConfig | null {
   if (c.spot === "") return null;
   const t = house.terminals.find((x) => x.id === c.spot);
   if (t === undefined) return null;
