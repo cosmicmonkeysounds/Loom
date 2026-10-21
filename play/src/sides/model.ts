@@ -63,6 +63,12 @@ export function factionModeOf(view: Pick<GuestView, "canFound" | "sides"> | null
   return (Array.isArray(view.sides) ? view.sides : []).some((s) => s.kind !== undefined);
 }
 
+/** The sides sheet's name: "Factions" in faction mode, else wave 18's
+ *  "Sides & crews" (Start, Me, the lazy chunk's failure line). */
+export function sidesLabelOf(view: Pick<GuestView, "canFound" | "sides"> | null | undefined): "Factions" | "Sides & crews" {
+  return factionModeOf(view) ? "Factions" : "Sides & crews";
+}
+
 /** Start → Factions (wave 18b): offered when a faction is listed, you have
  *  a crew, or you may found one — in the show founding opens before the
  *  declared sides are revealed, so the list may hold nothing yet. */

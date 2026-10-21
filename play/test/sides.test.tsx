@@ -30,6 +30,7 @@ import {
   recruitOffer,
   recruitRefusal,
   sideAction,
+  sidesLabelOf,
   sidesOf,
   switchQuestion,
   whoLine,
@@ -309,6 +310,14 @@ describe("faction mode: the model (wave 18b)", () => {
     expect(factionModeOf(view({ sides: [UP] }))).toBe(true);
     expect(factionModeOf(view({ sides: SIDES }))).toBe(false);
     expect(factionModeOf(null)).toBe(false);
+  });
+  it("the sheet's name: Factions in faction mode, Sides & crews in a crews story", () => {
+    expect(sidesLabelOf(fview({ canFound: true, sides: [] }))).toBe("Factions");
+    expect(sidesLabelOf(view({ sides: SIDES }))).toBe("Sides & crews");
+    expect(sidesLabelOf(null)).toBe("Sides & crews");
+    const lazy = readFileSync(new URL("../src/sides/lazy.tsx", import.meta.url), "utf8");
+    expect(lazy).toContain('"Sides & crews"');
+    expect(lazy).toContain("sidesLabelOf(p.view)");
   });
   it("Factions is offered while you may found one, with nothing listed yet", () => {
     expect(factionsOffered(fview({ canFound: true, sides: [] }))).toBe(true);
