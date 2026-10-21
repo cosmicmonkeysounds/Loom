@@ -428,8 +428,15 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
    48 px target; the tray gives way first (it clips, never pushes the page). */
 .guest-frame .taskbar-btn.stacked { min-width: 48px; }
 .guest-frame .taskbar-tray { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+/* the balance and the countdown never shrink: the clock gives way first —
+   its AM / PM below 430 px, then an ellipsis (N2: "11:03 PM 15" cut the
+   balance's last digit at 390 px) */
+.guest-frame .taskbar-tray > * { flex: 0 0 auto; }
+.guest-frame .taskbar-tray > .tray-clock { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.guest-frame .tray-clock .tray-item, .guest-frame .tray-clock .tray-item > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 429px) {
   .tray-clock.yields { display: none; }
+  .guest-frame .tray-clock .tray-tail { display: none; }
 }
 @media (max-width: 399px) {
   .guest-frame .taskbar-tray > :nth-child(n+4) { display: none; }

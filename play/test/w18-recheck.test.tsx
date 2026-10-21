@@ -1,6 +1,10 @@
 //! Wave 18 recheck fixes (recheck/fixes.md): one regression test per finding.
 
+import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ShowClockItem } from "../src/chrome/show-clock-tray.tsx";
 import { mergeAnswered, NO_ANSWERS } from "../src/session/shared.ts";
 
 describe("N1: a new sign-in counts the server's answered cards", () => {
@@ -12,5 +16,18 @@ describe("N1: a new sign-in counts the server's answered cards", () => {
     expect(merged.get(553)).toEqual({});
     expect(mergeAnswered(local, [3])).toBe(local);
     expect(mergeAnswered(NO_ANSWERS, undefined)).toBe(NO_ANSWERS);
+  });
+});
+
+describe("N2: the guest tray never clips the balance", () => {
+  const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
+  it("the clock's AM / PM is its own span, dropped below 430 px", () => {
+    const html = renderToStaticMarkup(createElement(ShowClockItem, { now: { minutes: 23 * 60 + 3, running: true } }));
+    expect(html).toContain('11:03<span class="tray-tail"> PM</span>');
+    expect(css).toContain("@media (max-width: 429px) {\n  .tray-clock.yields { display: none; }\n  .guest-frame .tray-clock .tray-tail { display: none; }\n}");
+  });
+  it("the balance never shrinks; only the clock does", () => {
+    expect(css).toContain(".guest-frame .taskbar-tray > * { flex: 0 0 auto; }");
+    expect(css).toContain(".guest-frame .taskbar-tray > .tray-clock { flex: 0 1 auto; min-width: 0; overflow: hidden; }");
   });
 });

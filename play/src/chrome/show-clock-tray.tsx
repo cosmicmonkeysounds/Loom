@@ -18,9 +18,14 @@ export function showClockTray(now: { minutes: number; running: boolean }): { tex
 /** The tray item for a clock already worked out (the hook's answer). */
 export function ShowClockItem({ now, yields = false }: { now: { minutes: number; running: boolean }; yields?: boolean }): ReactElement {
   const shown = showClockTray(now);
+  // "11:03" + " PM": a narrow guest tray drops the meridiem so the balance
+  // beside it is never clipped (N2).
+  const cut = shown.text.lastIndexOf(" ");
+  const time = cut > 0 ? shown.text.slice(0, cut) : shown.text;
+  const tail = cut > 0 ? shown.text.slice(cut) : undefined;
   return (
     <span className={`tray-clock${shown.paused ? " paused" : ""}${yields ? " yields" : ""}`} data-testid="tray-show-clock">
-      <TrayItem icon={shown.paused ? <Icon name="pause" /> : undefined} text={shown.text} title={shown.title} tone={shown.paused ? "dim" : undefined} />
+      <TrayItem icon={shown.paused ? <Icon name="pause" /> : undefined} text={time} {...(tail !== undefined ? { tail } : {})} title={shown.title} tone={shown.paused ? "dim" : undefined} />
     </span>
   );
 }

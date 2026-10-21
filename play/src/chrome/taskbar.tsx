@@ -143,7 +143,7 @@ export function Taskbar({
 }
 
 /** One tray item (a clock, a balance, a count): a ≥ 44 px tall tap target when `onClick`. */
-export function TrayItem({ icon, text, title, onClick, tone, tour }: { icon?: ReactNode; text: string; title?: string; onClick?: () => void; tone?: "alarm" | "dim"; tour?: string }) {
+export function TrayItem({ icon, text, tail, title, onClick, tone, tour }: { icon?: ReactNode; text: string; /** Words a narrow tray may drop (the clock's AM / PM). */ tail?: string; title?: string; onClick?: () => void; tone?: "alarm" | "dim"; tour?: string }) {
   const body = (
     <>
       {icon !== undefined && (
@@ -151,7 +151,10 @@ export function TrayItem({ icon, text, title, onClick, tone, tour }: { icon?: Re
           {icon}
         </span>
       )}
-      <span>{text}</span>
+      <span>
+        {text}
+        {tail !== undefined && <span className="tray-tail">{tail}</span>}
+      </span>
     </>
   );
   if (onClick === undefined) {
