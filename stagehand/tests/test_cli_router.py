@@ -59,13 +59,18 @@ def test_sounds_stop_and_play_publish_to_the_router(tmp_path, sent):
     path = conf(tmp_path, BROKER)
     assert cli.main(["sounds", "stop", "--config", path]) == 0
     assert cli.main(["sounds", "stop", "--announce", "--config", path]) == 0
-    assert cli.main(["sounds", "play", "zip", "--to", "living", "hall", "--config", path]) == 0
+    assert cli.main(["sounds", "play", "zip", "--to", "living", "--to", "hall", "--config", path]) == 0
     assert cli.main(["sounds", "play", "zip", "--config", path]) == 0
+    # The name after --to, and a comma list.
+    assert cli.main(["sounds", "play", "--to", "living", "zip", "--config", path]) == 0
+    assert cli.main(["sounds", "play", "zip", "--to", "living,hall", "--config", path]) == 0
     assert [(t, d) for t, d, _ in sent] == [
         ("show/audio/stop", {"by": "cli"}),
         ("show/audio/stop", {"announce": True, "by": "cli"}),
         ("show/audio/play", {"name": "zip", "to": ["living", "hall"]}),
         ("show/audio/play", {"name": "zip"}),
+        ("show/audio/play", {"name": "zip", "to": ["living"]}),
+        ("show/audio/play", {"name": "zip", "to": ["living", "hall"]}),
     ]
     assert cli.main(["sounds", "play", "--config", path]) == 2
 

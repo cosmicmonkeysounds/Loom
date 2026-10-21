@@ -9,7 +9,7 @@
                      house speaker router — published on its MQTT announce
                      topic, so the `audio` job must be running.
     stagehand sounds stop [--announce] --config house.yaml
-    stagehand sounds play <name> [--to T …] --config house.yaml
+    stagehand sounds play <name> [--to T[,T…]] … --config house.yaml
                      the router by hand over MQTT (the LAN alone: the uplink
                      can be down): stop every house sound (+ the
                      announcements), or play one `sound X` (QLab's old GO).
@@ -75,7 +75,9 @@ def main(argv: list[str] | None = None) -> int:
     snd.add_argument("name", nargs="?", help="play: the story sound's name")
     snd.add_argument("--config", required=True)
     snd.add_argument("--announce", action="store_true", help="stop: also cut the announcement and empty the queue")
-    snd.add_argument("--to", nargs="+", default=[], metavar="TARGET", help="play: zones / rooms / LOCATIONs / speakers (default: its audio.json cue)")
+    # One value per --to (repeat it, or a comma list), so the name may come
+    # before or after it: `sounds play --to living zip` never takes `zip` as a target.
+    snd.add_argument("--to", action="append", default=[], metavar="TARGET", help="play: a zone / room / LOCATION / speaker, repeatable or a comma list (default: its audio.json cue)")
     snd.add_argument("--force", action="store_true", help="placeholders: rewrite existing placeholders (never a real file)")
     snd.add_argument("--no-say", action="store_true", help="placeholders: no spoken label (no `say`)")
     snd.add_argument("--only", help="placeholders: a comma list of names")
@@ -235,7 +237,8 @@ def _sounds(cfg: StagehandConfig, args: argparse.Namespace) -> int:
         if not args.name:
             print("sounds play: which sound? (e.g. `sounds play zip --to living`)", file=sys.stderr)
             return 2
-        return _to_router(router, rc.play_topic, {"name": args.name, **({"to": args.to} if args.to else {})})
+        to = [t.strip() for v in args.to for t in v.split(",") if t.strip()]
+        return _to_router(router, rc.play_topic, {"name": args.name, **({"to": to} if to else {})})
     from .audio.placeholders import MANIFEST, generate, load_manifest
 
     try:

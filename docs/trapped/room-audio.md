@@ -718,7 +718,7 @@ stop [--announce]`.
 ### 12.4 By hand over MQTT
 
 `show/audio/play {"name", "to"?}` plays one sound (QLab's old hand GO;
-`stagehand sounds play <name> [--to …]`). `stagehand announce` publishes
+`stagehand sounds play <name> [--to T,T…]`, `--to` repeatable). `stagehand announce` publishes
 `{text, chime}` on the router's `show/announce` once the YAML has no
 `alexa:` section. All of them exit 2 with the reason when the YAML has no
 broker or the broker refuses.

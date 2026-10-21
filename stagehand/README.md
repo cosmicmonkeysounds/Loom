@@ -795,7 +795,7 @@ there. House-Mac setup and the night's runbook:
   Outputs 3, 4.") at `test_gain_db`. By hand: `mosquitto_pub -t
   show/audio/test -m '{"speaker":"desk-l"}'` (or `{"out": 3}`) with `mqtt:`.
 - **By hand** (the uplink down, the broker local): `uv run stagehand sounds
-  play <name> [--to living …]` (`show/audio/play {"name", "to"?}`) plays one
+  play <name> [--to living,hall]` (`show/audio/play {"name", "to"?}`) plays one
   sound; `uv run stagehand announce --config … "text"` publishes on
   `show/announce` once the YAML has no `alexa:` section.
 - **Offline.** The last `audio.json` + `house.json` are kept in
