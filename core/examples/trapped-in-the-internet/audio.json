@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "note": "DRAFT (wave 17): a starter, not the house. Outputs follow the old plan (1/2 living, 3/4 kitchen = the announcement channels); only the living room and the kitchen have speakers yet. Place the rest in the map editor's 🔊 Speaker tool, confirm the interface's channel counts with `stagehand check`, then Save to project.",
+  "device": {
+    "name": "MOTU",
+    "inputs": 16,
+    "outputs": 16,
+    "rate": 48000
+  },
+  "inputs": [
+    {
+      "ch": 1,
+      "label": "QLab 1",
+      "kind": "software"
+    },
+    {
+      "ch": 2,
+      "label": "QLab 2",
+      "kind": "software"
+    },
+    {
+      "ch": 3,
+      "label": "QLab 3",
+      "kind": "software"
+    },
+    {
+      "ch": 4,
+      "label": "QLab 4",
+      "kind": "software"
+    },
+    {
+      "ch": 5,
+      "label": "House announcements (say)",
+      "kind": "software"
+    },
+    {
+      "ch": 6,
+      "label": "TV voice (Chrome)",
+      "kind": "software"
+    },
+    {
+      "ch": 7,
+      "label": "Host mic",
+      "kind": "mic"
+    },
+    {
+      "ch": 8,
+      "label": "Wireless mic 2",
+      "kind": "mic"
+    },
+    {
+      "ch": 9,
+      "label": "Wireless mic 3",
+      "kind": "mic"
+    },
+    {
+      "ch": 10,
+      "label": "Wireless mic 4",
+      "kind": "mic"
+    },
+    {
+      "ch": 11,
+      "label": "Line 11",
+      "kind": "line"
+    },
+    {
+      "ch": 12,
+      "label": "Line 12",
+      "kind": "line"
+    },
+    {
+      "ch": 13,
+      "label": "Line 13",
+      "kind": "line"
+    },
+    {
+      "ch": 14,
+      "label": "Line 14",
+      "kind": "line"
+    },
+    {
+      "ch": 15,
+      "label": "Line 15",
+      "kind": "line"
+    },
+    {
+      "ch": 16,
+      "label": "Line 16",
+      "kind": "line"
+    }
+  ],
+  "outputs": [
+    {
+      "ch": 1,
+      "label": "Living L"
+    },
+    {
+      "ch": 2,
+      "label": "Living R"
+    },
+    {
+      "ch": 3,
+      "label": "Kitchen L"
+    },
+    {
+      "ch": 4,
+      "label": "Kitchen R"
+    },
+    {
+      "ch": 5,
+      "label": "Hall (The Tube)"
+    },
+    {
+      "ch": 6,
+      "label": "Steam Room"
+    },
+    {
+      "ch": 7,
+      "label": "CPU"
+    },
+    {
+      "ch": 8,
+      "label": "Optical Drive"
+    },
+    {
+      "ch": 9,
+      "label": "Backyard"
+    },
+    {
+      "ch": 10,
+      "label": "Tent / Shed"
+    },
+    {
+      "ch": 11,
+      "label": "RAM"
+    },
+    {
+      "ch": 12,
+      "label": "Server Room"
+    },
+    {
+      "ch": 13,
+      "label": "Basement hall"
+    },
+    {
+      "ch": 14,
+      "label": "Upstairs"
+    },
+    {
+      "ch": 15,
+      "label": "Cue monitor L"
+    },
+    {
+      "ch": 16,
+      "label": "Cue monitor R"
+    }
+  ],
+  "speakers": [
+    {
+      "id": "living-l",
+      "name": "Living L",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": 6.8,
+        "y": 2.2,
+        "z": 5.5
+      },
+      "yaw": 90,
+      "out": [
+        1
+      ]
+    },
+    {
+      "id": "living-r",
+      "name": "Living R",
+      "room": "desktop",
+      "floor": "main",
+      "pos": {
+        "x": 6.8,
+        "y": 2.2,
+        "z": 9
+      },
+      "yaw": 90,
+      "out": [
+        2
+      ]
+    },
+    {
+      "id": "kitchen-l",
+      "name": "Kitchen L",
+      "room": "start-bar",
+      "floor": "main",
+      "pos": {
+        "x": 0.5,
+        "y": 2.2,
+        "z": 12.7
+      },
+      "yaw": 180,
+      "out": [
+        3
+      ]
+    },
+    {
+      "id": "kitchen-r",
+      "name": "Kitchen R",
+      "room": "start-bar",
+      "floor": "main",
+      "pos": {
+        "x": 5.5,
+        "y": 2.2,
+        "z": 12.7
+      },
+      "yaw": 180,
+      "out": [
+        4
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "id": "living",
+      "name": "Living room",
+      "speakers": [
+        "living-l",
+        "living-r"
+      ]
+    }
+  ],
+  "routes": [],
+  "cues": {
+    "ad_jingle": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "alarm_siren": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "announce_chime": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "award_fanfare": {
+      "to": [
+        "living"
+      ]
+    },
+    "beans_spill": {
+      "to": [
+        "living"
+      ]
+    },
+    "bingo_start": {
+      "to": [
+        "living"
+      ]
+    },
+    "ceremony_bed": {
+      "to": [
+        "living"
+      ]
+    },
+    "countdown_tick": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "dance_song": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "hand_jive": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "modem_handshake": {
+      "to": [
+        "The Optical Drive"
+      ]
+    },
+    "motorcycle": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "printer_grind": {
+      "to": [
+        "living"
+      ]
+    },
+    "rave": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "truther_glitch": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "windows_shutdown": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "y2k_chime": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "youre_the_one_sandy_only": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "youre_the_one_vocoder": {
+      "to": [
+        "everywhere"
+      ]
+    },
+    "zip": {
+      "to": [
+        "everywhere"
+      ]
+    }
+  },
+  "announce": {
+    "to": [
+      "everywhere"
+    ],
+    "chime": true
+  },
+  "voice": {
+    "tv": [
+      "living"
+    ]
+  }
+}

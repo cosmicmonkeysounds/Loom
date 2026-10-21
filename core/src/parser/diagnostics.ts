@@ -95,6 +95,10 @@ export const Code = {
    *  (`when glitch out:` → event `glitch`, subject `out`), so the press or
    *  the `fire` runs nothing (a warning). */
   L1212TriggerTruncated: "L1212",
+  /** A `sound X in <Place>` / `with rooms: …` place of several words that
+   *  names no LOCATION (wave 17, a warning): the house router reaches no
+   *  speaker for it (room ids, zones and speaker ids are one word). */
+  L1213SoundRoomUnresolved: "L1213",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

@@ -2211,7 +2211,9 @@ export class Sim {
         break;
       }
       default:
-        this.record({ type: "directive", verb, args: this.interpolate(rest, bindings) });
+        // `setting`: the enclosing beat's room (like a line's), so a house
+        // router can play `sound X` where its beat is set.
+        this.record({ type: "directive", verb, args: this.interpolate(rest, bindings), setting: ctx.setting });
         break;
     }
   }

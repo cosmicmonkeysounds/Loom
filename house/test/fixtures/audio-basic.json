@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "note": "fixture: the shared resolveTargets cases (audio-resolve.json) run on this",
+  "device": { "name": "MOTU", "inputs": 16, "outputs": 16, "rate": 48000 },
+  "inputs": [
+    { "ch": 1, "label": "QLab 1", "kind": "software" },
+    { "ch": 2, "label": "QLab 2", "kind": "software" },
+    { "ch": 3, "label": "Host mic", "kind": "mic" }
+  ],
+  "outputs": [
+    { "ch": 1, "label": "Living L" },
+    { "ch": 2, "label": "Living R" },
+    { "ch": 3, "label": "Kitchen" },
+    { "ch": 4, "label": "Hall" },
+    { "ch": 5, "label": "Basement hall" },
+    { "ch": 6, "label": "Studio" }
+  ],
+  "speakers": [
+    { "id": "living-l", "name": "Living L", "room": "desktop", "pos": { "x": 0.3, "y": 2, "z": 0.3 }, "yaw": 135, "out": [1] },
+    { "id": "living-r", "name": "Living R", "room": "desktop", "floor": "main", "pos": { "x": 4.7, "y": 2, "z": 0.3 }, "yaw": -135, "out": [2] },
+    { "id": "kitchen", "name": "Kitchen", "room": "start-bar", "pos": { "x": 7, "y": 2.2, "z": 2 }, "yaw": 90, "out": [3], "gain": -3 },
+    { "id": "hall", "name": "Hall", "room": "hall", "pos": { "x": 4.5, "y": 2.3, "z": 5 }, "yaw": 0, "out": [4] },
+    { "id": "down-hall", "name": "Basement hall", "room": "basement-hall", "pos": { "x": 2, "y": -0.5, "z": 4.5 }, "yaw": 0, "out": [5] },
+    { "id": "studio", "name": "Studio", "room": "ram", "pos": { "x": 4.5, "y": -0.4, "z": 1.5 }, "yaw": 180, "out": [6, 5] }
+  ],
+  "zones": [
+    { "id": "living", "name": "Living room", "speakers": ["living-l", "living-r"] },
+    { "id": "downstairs", "name": "Down Stairs", "speakers": ["down-hall", "studio"] }
+  ],
+  "routes": [{ "in": 3, "out": [1, 2], "gain": -6 }],
+  "cues": {
+    "dance_song": { "to": ["everywhere"] },
+    "printer_grind": { "to": ["The Desktop"], "gain": -3 },
+    "zip": { "to": ["The Tube"] }
+  },
+  "announce": { "to": ["everywhere"], "chime": true },
+  "voice": { "tv": ["living"] }
+}

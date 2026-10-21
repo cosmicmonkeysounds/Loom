@@ -25,7 +25,9 @@
 //! state dir, both override it; `server/house-maps.ts`), LOOM_FACTS (the
 //! fallback facts key for the facts judge; default: `facts.json` beside the
 //! house map — a project's own `facts.json`, snapshotted at launch,
-//! overrides it; `server/facts.ts`).
+//! overrides it; `server/facts.ts`), LOOM_AUDIO (the house speakers'
+//! fallback `audio.json`; default none — a project's own `audio.json`,
+//! snapshotted at launch, and a director's save override it; `server/audio.ts`).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
