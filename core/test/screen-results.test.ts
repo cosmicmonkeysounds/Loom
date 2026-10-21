@@ -332,8 +332,10 @@ describe("the results block", () => {
       ["Excel", "p", "?"],
       ["Paint", "a", ""],
     ]);
-    const [ja, jb] = w.judges();
+    // One ruling out at a time (the judge queue): answer them in turn.
+    const [ja] = w.judges();
     expect((await call(rt, "POST", "/api/agent/judge", { id: ja!.id, worker: w.id, same: false, why: "" }, true)).status).toBe(200);
+    const jb = w.judges()[1];
     expect((await call(rt, "POST", "/api/agent/judge", { id: jb!.id, worker: w.id, same: false, why: "" }, true)).status).toBe(200);
     expect(await stamps()).toEqual([
       ["Winamp", "g", "n"],
@@ -345,11 +347,12 @@ describe("the results block", () => {
 
   it("the verdict (O2): every key answer and the liars on the TV, the truths and counts on a wall, for its window only", async () => {
     const { rt, clock } = fresh();
-    const w = await worker(rt);
     const [a, b, c, d, e] = await Promise.all(["Winamp", "Excel", "Paint", "Word", "Doom"].map((n) => guest(rt, n)));
+    // Nobody to rule yet: the house judges these at once.
     await file(rt, a!, "Q1", "seven", 100); // accurate
     await file(rt, b!, "Q1", "eight", 100); // the house's lie
     await file(rt, c!, "Q1", "six", 70); // a guess: never a liar
+    const w = await worker(rt);
     await file(rt, d!, "Q2", "Mister Pickels", 100); // near miss: his ruling's lie
     const [j] = w.judges();
     await call(rt, "POST", "/api/agent/judge", { id: j!.id, worker: w.id, same: false, why: "" }, true);

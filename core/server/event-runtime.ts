@@ -2013,9 +2013,14 @@ export class EventRuntime {
    *  settle) or filed again with another answer — is cancelled, so its
    *  late answer gets a 410. */
   private dropMootRulings(): void {
+    // One ledger read for the whole queue (wave 18b: a round's worth of
+    // rulings can wait here, and this runs on every fanout).
+    const book = this.factsBook();
+    const filings = new Map<string, { final: unknown; answer: string }>();
+    if (book !== null && this.sim !== null) for (const f of this.factsWatch.all(this.sim, book.confirm)) filings.set(`${f.person}\u0000${f.question}`, f);
     for (const j of this.agents.judging) {
-      const f = this.filingOf(j.filing.person, j.filing.question);
-      if (f === null || f.final !== null || f.answer !== j.answer) this.agents.cancelJudge(j.id);
+      const f = filings.get(`${j.filing.person}\u0000${j.filing.question}`);
+      if (f === undefined || f.final !== null || f.answer !== j.answer) this.agents.cancelJudge(j.id);
     }
   }
 
