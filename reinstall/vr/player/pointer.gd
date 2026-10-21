@@ -4,9 +4,11 @@
 ## - **Headset**: each hand's aim pose (an [XRController3D] on the `aim`
 ##   pose, the hand's own transform until it tracks) casts a ray; the
 ##   trigger (click, or pulled past [constant TRIGGER_ON]) is the press.
-##   One hand holds the beam — whichever last moved its aim past
-##   [constant TURN_DEG] / [constant MOVE_M] or pulled its trigger. A thin
-##   teal beam with a dot where it lands is drawn.
+##   One hand holds the beam. The other takes it by a fresh trigger pull, or
+##   by moving *now* — turning faster than [constant TURN_SPEED] or moving
+##   faster than [constant MOVE_SPEED] for [constant MOVE_FOR] s — never by
+##   slow drift, and never while the beam hand's trigger is held (a 2 s ⚙
+##   hold is not stolen). A thin teal beam with a dot where it lands is drawn.
 ## - **Desktop**: the camera's ray through the mouse (never captured in the
 ##   lobby — [member VrPlayer.capture_mouse]); the left button is the press.
 ##   No beam.
@@ -20,10 +22,11 @@ extends Node3D
 const BEAM_LENGTH := 3.0
 const BEAM_WIDTH := 0.006
 const DOT_SIZE := 0.03
-## A hand whose aim turns this far (deg) or moves this far (m) from where it
-## rested takes the beam.
-const TURN_DEG := 4.0
-const MOVE_M := 0.03
+## The idle hand takes the beam when its aim turns faster than this (deg/s)
+## or moves faster than this (m/s), for [constant MOVE_FOR] s on end.
+const TURN_SPEED := 30.0
+const MOVE_SPEED := 0.15
+const MOVE_FOR := 0.15
 ## The trigger counts as down past this, up again under [constant TRIGGER_OFF].
 const TRIGGER_ON := 0.8
 const TRIGGER_OFF := 0.4
@@ -34,7 +37,13 @@ var player: VrPlayer
 var hand := "right"
 
 var _aims := {}
-var _rest := {}
+## Each hand's aim on the last frame.
+var _last := {}
+## How long (s) the idle hand has been moving on end.
+var _moving := {}
+var _last_ms := -1.0
+## Milliseconds now; tests inject a fake.
+var clock: Callable = func() -> float: return float(Time.get_ticks_msec())
 var _down := {"left": false, "right": false, "mouse": false}
 var _injected: Dictionary = {}
 var _beam: MeshInstance3D
@@ -87,14 +96,24 @@ func clear_injection() -> void:
 	_injected = {}
 
 
-## Whether the hand at `now` has moved away from `rest` enough to take
-## the beam ([constant TURN_DEG], [constant MOVE_M]).
-static func takes_beam(rest: Transform3D, now: Transform3D) -> bool:
-	if rest.origin.distance_to(now.origin) > MOVE_M:
+## Whether a hand that went from `prev` to `now` in `dt` s is moving now
+## (faster than [constant MOVE_SPEED] m/s or [constant TURN_SPEED] deg/s).
+static func moving(prev: Transform3D, now: Transform3D, dt: float) -> bool:
+	if dt <= 0.0:
+		return false
+	if prev.origin.distance_to(now.origin) / dt > MOVE_SPEED:
 		return true
-	var a := -rest.basis.z.normalized()
+	var a := -prev.basis.z.normalized()
 	var b := -now.basis.z.normalized()
-	return rad_to_deg(a.angle_to(b)) > TURN_DEG
+	return rad_to_deg(a.angle_to(b)) / dt > TURN_SPEED
+
+
+## Whether the idle hand takes the beam: a fresh pull of its trigger, or
+## moving for [constant MOVE_FOR] s — never while the beam hand's trigger is down.
+static func takes_beam(pulled: bool, moving_for: float, beam_down: bool) -> bool:
+	if beam_down:
+		return false
+	return pulled or moving_for >= MOVE_FOR
 
 
 ## A trigger with hysteresis: down past [constant TRIGGER_ON], up under
@@ -134,17 +153,23 @@ func _aim_of(h: String) -> Transform3D:
 
 func _poll_hands() -> Dictionary:
 	var downs := {}
+	var ms := float(clock.call())
+	var dt := clampf((ms - _last_ms) / 1000.0, 0.0, 0.1) if _last_ms >= 0.0 else 0.0
+	_last_ms = ms
+	var beam_down: bool = _down.get(hand, false)
 	for h: String in ["left", "right"]:
 		var c: XRController3D = player.left_hand if h == "left" else player.right_hand
 		downs[h] = trigger_down(_down[h], c.get_float("trigger"), c.is_button_pressed("trigger_click"))
 		var now := _aim_of(h)
-		if not _rest.has(h):
-			_rest[h] = now
-		# The other hand takes the beam by pulling its trigger or by moving.
-		if h != hand and ((downs[h] and not _down[h]) or takes_beam(_rest[h], now)):
+		var prev: Transform3D = _last.get(h, now)
+		_last[h] = now
+		if h == hand:
+			_moving[h] = 0.0
+			continue
+		_moving[h] = float(_moving.get(h, 0.0)) + dt if moving(prev, now, dt) else 0.0
+		if takes_beam(downs[h] and not _down[h], float(_moving[h]), beam_down):
 			hand = h
-			_rest.clear()
-			_rest[h] = now
+			_moving.clear()
 	for h: String in ["left", "right"]:
 		if h != hand:
 			_down[h] = downs[h]

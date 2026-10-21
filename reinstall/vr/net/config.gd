@@ -231,11 +231,16 @@ static func offers_local() -> bool:
 
 ## The servers the SET UP panel offers, `[{url, label}]`, first = the
 ## default: `current` (what the config says) when it is a URL, the
-## committed `res://` server, and [constant LOCAL_SERVER] when `local`.
-static func server_choices(current: String, committed: String, local: bool) -> Array:
+## committed `res://` server, and [constant LOCAL_SERVER] when `local` —
+## first of all when `prefer_local` (an editor run naming no server of its
+## own: it tests against `pnpm dev`).
+static func server_choices(current: String, committed: String, local: bool, prefer_local := false) -> Array:
 	var out: Array = []
 	var seen := {}
-	for url: String in [current, committed, LOCAL_SERVER if local else ""]:
+	var order: Array = [current, committed, LOCAL_SERVER if local else ""]
+	if local and prefer_local:
+		order = [LOCAL_SERVER, current, committed]
+	for url: String in order:
 		var u := parse_url(url)
 		if u.is_empty() or seen.has(u["base"]):
 			continue

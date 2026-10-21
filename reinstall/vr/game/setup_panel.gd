@@ -3,9 +3,12 @@
 ## run from the Godot editor. Pick a server ([method LinkBase.server_choices]:
 ## the committed one, and "This computer" on a desktop run), type the
 ## moderator passcode on the on-screen keyboard (the passcode alphabet, ⌫;
-## physical keys too on a desktop), name the station (default "Headset"),
+## physical keys too on a desktop), name the station (default "Headset" and
+## the hex of the station id it mints, [method LinkBase.default_station_name]),
 ## then CONNECT ([method LinkBase.try_setup] — a working passcode is saved
-## to `user://station.json`) or PLAY OFFLINE.
+## to `user://station.json`) or, on a desktop / editor run only, PLAY
+## OFFLINE (on a headset it would be a guest's way out of the show: a game
+## nobody is released from).
 ##
 ## Drawn on the [Lobby]'s panel and driven by it: [method buttons] for the
 ## pointer's hits, [method press] for a trigger / click, [method key_input]
@@ -42,6 +45,8 @@ var field := "code"
 ## A CONNECT is out.
 var busy := false
 var message := ""
+## The NAME started from the link (once).
+var _named := false
 
 var _looks := {}
 var _message: Label3D
@@ -58,10 +63,16 @@ func _ready() -> void:
 	_looks["field:name"] = Lobby.make_button(self, "", Vector2(0.46, FIELD_Y), FIELD_SIZE, 0.06)
 	_looks["connect"] = Lobby.make_button(self, "CONNECT", Vector2(-0.42, ACTION_Y), ACTION_SIZE, 0.07)
 	_looks["offline"] = Lobby.make_button(self, "PLAY OFFLINE", Vector2(0.42, ACTION_Y), ACTION_SIZE, 0.06)
+	(_looks["offline"] as Node3D).visible = offers_offline()
 	_message = HouseLook.label("", 0.055, Color("#ff7a7a"))
 	_message.position.y = 0.56
 	add_child(_message)
 	refresh()
+
+
+## PLAY OFFLINE is offered only on a desktop / editor run.
+static func offers_offline() -> bool:
+	return StationConfig.offers_local()
 
 
 ## Every key, in keyboard order: the alphabet, then ⌫ and SPACE.
@@ -146,7 +157,8 @@ func buttons() -> Array:
 	for i in keys.size():
 		out.append({"id": keys[i], "center": key_center(i), "size": KEY_SIZE})
 	out.append({"id": "connect", "center": Vector2(-0.42, ACTION_Y), "size": ACTION_SIZE})
-	out.append({"id": "offline", "center": Vector2(0.42, ACTION_Y), "size": ACTION_SIZE})
+	if offers_offline():
+		out.append({"id": "offline", "center": Vector2(0.42, ACTION_Y), "size": ACTION_SIZE})
 	return out
 
 
@@ -165,7 +177,7 @@ func press(id: String) -> void:
 		type_text(id.substr(4))
 	elif id == "connect":
 		connect_now()
-	elif id == "offline" and not busy and link != null:
+	elif id == "offline" and not busy and link != null and offers_offline():
 		link.play_offline()
 	refresh()
 
@@ -224,6 +236,10 @@ func refresh() -> void:
 		return
 	if link != null and choices.is_empty():
 		choices = link.server_choices()
+	if link != null and not _named:
+		_named = true
+		if station == StationConfig.DEFAULT_NAME:
+			station = link.default_station_name()
 	server_index = clampi(server_index, 0, maxi(0, choices.size() - 1))
 	var slots := server_slots(choices.size())
 	for i in maxi(slots.size(), 8):

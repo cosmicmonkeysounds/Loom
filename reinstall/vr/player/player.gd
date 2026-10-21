@@ -135,6 +135,10 @@ func teleport(pos: Vector3, yaw: float) -> void:
 	else:
 		origin.transform = Transform3D.IDENTITY
 		origin.global_rotation = Vector3(0, deg_to_rad(yaw), 0)
+		# Level again: a pitch kept from play would leave the lobby's panel
+		# off screen, with no captured mouse there to look back up.
+		_pitch = 0.0
+		camera.rotation.x = 0.0
 	_snap.armed = false  # a stick held through a teleport must not snap at once
 
 

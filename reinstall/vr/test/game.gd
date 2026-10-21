@@ -476,6 +476,9 @@ func _test_config_setup() -> void:
 	var dev := StationConfig.server_choices("http://10.0.0.5:7000/", "https://app.mapsandducks.com", true)
 	_check(dev.size() == 3 and dev[0]["url"] == "http://10.0.0.5:7000" and dev[0]["label"] == "10.0.0.5:7000" and dev[1]["label"] == "app.mapsandducks.com", "setup: a server named on the command line comes first (%s)" % [dev])
 	_check(StationConfig.server_choices("junk", "", false).is_empty(), "setup: junk is no choice")
+	var ed := StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", true, true)
+	_check(ed.size() == 2 and ed[0]["url"] == StationConfig.LOCAL_SERVER, "setup: an editor run naming no server puts this computer first (%s)" % [ed])
+	_check(StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", false, true).size() == 1, "setup: … never on a headset build")
 	_check(StationConfig.offers_local(), "setup: a desktop / editor run offers this computer")
 
 
@@ -2027,9 +2030,21 @@ func _test_lobby_geometry() -> void:
 	_check(not side.is_empty() and _near((side["point"] as Vector2).y, 1.5) and _near((side["point"] as Vector2).x, 0.3), "pointer: a turned panel maps through its own frame (%s)" % [side])
 
 	var rest := Transform3D.IDENTITY
-	_check(not LobbyPointer.takes_beam(rest, rest.translated(Vector3(0.01, 0, 0))), "pointer: a hand resting still keeps off the beam")
-	_check(LobbyPointer.takes_beam(rest, rest.translated(Vector3(0.05, 0, 0))), "pointer: a hand that moves takes the beam")
-	_check(LobbyPointer.takes_beam(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(6.0)), Vector3.ZERO)) and not LobbyPointer.takes_beam(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(2.0)), Vector3.ZERO)), "pointer: … or turns past 4°")
+	# Moving is a rate, never a distance since the last switch: drift (a few
+	# cm over seconds) never counts, a flick does.
+	_check(not LobbyPointer.moving(rest, rest.translated(Vector3(0.001, 0, 0)), 1.0 / 72.0), "pointer: a hand drifting 1 mm a frame is not moving")
+	_check(LobbyPointer.moving(rest, rest.translated(Vector3(0.01, 0, 0)), 1.0 / 72.0), "pointer: … 1 cm a frame (0.7 m/s) is")
+	_check(LobbyPointer.moving(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(1.0)), Vector3.ZERO), 1.0 / 72.0) and not LobbyPointer.moving(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(0.2)), Vector3.ZERO), 1.0 / 72.0), "pointer: … or turning 72°/s, not 14°/s")
+	var drift := rest
+	var drifted := false
+	for i in 72 * 4:  # 4 s of 1 cm/s drift, 4 cm in all
+		var next := drift.translated(Vector3(0.01 / 72.0, 0, 0))
+		drifted = drifted or LobbyPointer.moving(drift, next, 1.0 / 72.0)
+		drift = next
+	_check(not drifted, "pointer: slow drift never takes the beam, however far it goes")
+	_check(LobbyPointer.takes_beam(false, LobbyPointer.MOVE_FOR, false) and not LobbyPointer.takes_beam(false, 0.05, false), "pointer: the idle hand takes the beam after moving MOVE_FOR s")
+	_check(LobbyPointer.takes_beam(true, 0.0, false), "pointer: … or by a fresh trigger pull")
+	_check(not LobbyPointer.takes_beam(true, 1.0, true), "pointer: … never while the beam hand's trigger is held (a ⚙ hold)")
 	_check(LobbyPointer.trigger_down(false, 0.9, false) and not LobbyPointer.trigger_down(false, 0.6, false) and LobbyPointer.trigger_down(true, 0.6, false) and not LobbyPointer.trigger_down(true, 0.3, false) and LobbyPointer.trigger_down(false, 0.0, true), "pointer: the trigger with hysteresis (a click is a pull)")
 
 
@@ -2066,8 +2081,14 @@ func _test_server_link_setup() -> void:
 	sl.set("station_salt", 0xabcd)
 	sl.config = StationConfig.resolve([StationConfig.RES_PATH], PackedStringArray())
 	_check(sl.needs_setup() and not sl.can_forget_setup(), "setup link: the committed placeholder needs a setup")
+	_check(sl.default_station_name() == "Headset ABCD", "setup link: the default NAME carries the station id's hex (%s)" % sl.default_station_name())
 	var choices := sl.server_choices()
-	_check(not choices.is_empty() and choices[0]["url"] == "https://app.mapsandducks.com" and choices.back()["url"] == StationConfig.LOCAL_SERVER, "setup link: the committed server, then this computer (%s)" % [choices])
+	# An editor run naming no server tests against `pnpm dev`: this computer
+	# first; any other run, the committed server first.
+	var local_first := OS.has_feature("editor_runtime")
+	var want_first := StationConfig.LOCAL_SERVER if local_first else "https://app.mapsandducks.com"
+	var want_last := "https://app.mapsandducks.com" if local_first else StationConfig.LOCAL_SERVER
+	_check(choices.size() == 2 and choices[0]["url"] == want_first and choices.back()["url"] == want_last, "setup link: the committed server and this computer, in the run's order (%s)" % [choices])
 	var answers: Array = []
 	sl.setup_answered.connect(func(ok: bool, m: String) -> void: answers.append([ok, m]))
 
@@ -2083,7 +2104,7 @@ func _test_server_link_setup() -> void:
 	_check(not FileAccess.file_exists(path) and sl.status == "Not configured — set this headset up.", "setup link: … nothing saved")
 	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
 	tr.answer("/api/resolve-code", 404, {"error": "no such code"})
-	_check(answers.back() == [false, "That isn't a moderator passcode."], "setup link: an unknown code is no moderator passcode")
+	_check(answers.back() == [false, "No event on 127.0.0.1:7000 answers to that passcode."], "setup link: an unknown code names the server it asked (%s)" % [answers.back()])
 	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
 	tr.answer("/api/resolve-code", 0)
 	_check(answers.back() == [false, "Can't reach the server."] and sl.get("phase") == "idle", "setup link: no answer → can't reach the server, no retry loop")
@@ -2101,6 +2122,24 @@ func _test_server_link_setup() -> void:
 	_check(saved.get("code") == "K7PQ3M" and saved.get("server") == "http://127.0.0.1:7000" and saved.get("name") == "Headset 3" and saved.get("station") == "vr-headset-3-abcd", "setup link: … and is saved to the user file (%s)" % [saved])
 	_check(sl.station_name() == "Headset 3" and sl.status == "Connected to The Show." and tr.count("/api/mod/spatial/candidates") == 1, "setup link: … and carries on as if it booted with it")
 	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup link: the committed res:// file is untouched")
+	_check(sl.linked() and sl.default_station_name() == "Headset 3", "setup link: linked; the panel would start from its own name")
+
+	# The passcode stops working (the staff codes rotated): no retry fixes
+	# it — SET UP again, prefilled. A network blip still just retries.
+	sl.reconnect()
+	tr.answer("/api/resolve-code", 0)
+	_check(sl.get("phase") == "waiting" and not sl.needs_setup(), "setup link: no answer on a configured station → retry, no SET UP")
+	sl.reconnect()
+	tr.answer("/api/resolve-code", 404, {"error": "no such code"})
+	_check(sl.needs_setup() and sl.get("phase") == "idle" and not sl.linked() and str(sl.get("dead_code")) != "" and sl.status.ends_with("Set this headset up again."), "setup link: a 404 on a configured station → SET UP again (%s)" % sl.status)
+	_check(sl.server_choices()[0]["url"] == "http://127.0.0.1:7000", "setup link: … its own server first")
+	sl.try_setup("http://127.0.0.1:7000", "Q2W3E4", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "event", "eventId": "e1"})
+	_check(sl.needs_setup(), "setup link: … a wrong new code keeps SET UP up")
+	sl.try_setup("http://127.0.0.1:7000", "Q2W3E4", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	tr.answer("/api/mod/login", 200, {"token": "mod-tok"})
+	_check(not sl.needs_setup() and str(sl.get("dead_code")) == "" and StationConfig.read_file(path).get("code") == "Q2W3E4", "setup link: … the new code links and is saved")
 
 	# A late answer from before a reconfigure is dropped.
 	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")  # linked: a fresh try
@@ -3051,7 +3090,11 @@ func _test_voice_game() -> void:
 	link.assignment_received.emit(_assignment(house, "v-2", true))
 	game._process(0.016)
 	_check(game.state() == GameFlow.State.PLAYING and not v.is_running(), "voice game: voice off in the config → no voice")
+	# A desktop run's mouse-look pitch from play never follows into the lobby.
+	player.set("_pitch", -60.0)
+	player.camera.rotation.x = deg_to_rad(-60.0)
 	game.enter_lobby()
+	_check(is_zero_approx(float(player.get("_pitch"))) and is_zero_approx(player.camera.rotation.x), "lobby: a desktop run is level again in the lobby (no captured mouse there to look up)")
 	main.queue_free()
 	await process_frame
 

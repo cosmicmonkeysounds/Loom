@@ -154,6 +154,17 @@ func needs_setup() -> bool:
 	return false
 
 
+## Whether the event link is up (the lobby says [member status] instead of
+## "Nobody is marked…" while it isn't).
+func linked() -> bool:
+	return true
+
+
+## The SET UP panel's NAME to start with.
+func default_station_name() -> String:
+	return StationConfig.DEFAULT_NAME
+
+
 ## The servers the SET UP panel offers (`[{url, label}]`, first = default).
 func server_choices() -> Array:
 	return []

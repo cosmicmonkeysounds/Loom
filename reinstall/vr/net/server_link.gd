@@ -98,6 +98,9 @@ var _setup_trial := {}
 var _setup_before := {}
 ## PLAY OFFLINE was chosen in the headset (⚙ goes back to SET UP).
 var _offline_chosen := false
+## The saved / baked passcode stopped working (the codes were rotated, the
+## event is gone): why, and the lobby shows SET UP again ("" = it works).
+var dead_code := ""
 
 
 func _ready() -> void:
@@ -159,13 +162,13 @@ func _connect() -> void:
 
 func _on_resolved(status_code: int, data: Variant) -> void:
 	if status_code == 404:
-		_fail_or_wait(SETUP_NOT_MOD, "No event answers to that passcode.")
+		_fail_or_wait("No event on %s answers to that passcode." % _server_text(), "No event answers to that passcode.", true)
 		return
 	if status_code != 200 or not data is Dictionary:
 		_fail_or_wait(SETUP_UNREACHABLE, "Couldn't reach the event server (%s)." % _code_text(status_code))
 		return
 	if str(data.get("role", "")) != "mod":
-		_fail_or_wait(SETUP_NOT_MOD, "That passcode isn't the moderator's — a headset needs the moderator passcode.")
+		_fail_or_wait(SETUP_NOT_MOD, "That passcode isn't the moderator's — a headset needs the moderator passcode.", true)
 		return
 	event_id = str(data["eventId"])
 	title = str(data.get("title", ""))
@@ -176,10 +179,12 @@ func _on_resolved(status_code: int, data: Variant) -> void:
 
 func _on_login(status_code: int, data: Variant) -> void:
 	if status_code != 200 or not data is Dictionary or str(data.get("token", "")) == "":
-		_fail_or_wait(SETUP_NOT_MOD if status_code == 401 or status_code == 403 else SETUP_UNREACHABLE,
-			"Moderator login failed (%s)." % _code_text(status_code))
+		var refused := status_code == 401 or status_code == 403
+		_fail_or_wait(SETUP_NOT_MOD if refused else SETUP_UNREACHABLE,
+			"Moderator login failed (%s)." % _code_text(status_code), refused)
 		return
 	_mod_token = str(data["token"])
+	dead_code = ""
 	if not _setup_trial.is_empty():
 		_setup_worked()
 	phase = "ready"
@@ -193,9 +198,16 @@ func _on_login(status_code: int, data: Variant) -> void:
 
 
 ## A connect step failed: a setup being tried answers the panel and goes
-## back to SET UP; a configured station waits and retries.
-func _fail_or_wait(setup_message: String, message: String) -> void:
+## back to SET UP; a configured station waits and retries — unless the
+## passcode itself is refused (`dead`: a 404, not a moderator's, a login
+## refused), which no retry fixes: the lobby shows SET UP again, prefilled.
+func _fail_or_wait(setup_message: String, message: String, dead := false) -> void:
 	if _setup_trial.is_empty():
+		if dead:
+			dead_code = message
+			phase = "idle"
+			_set_status("%s Set this headset up again." % message)
+			return
 		_wait(message)
 		return
 	var before := _setup_before
@@ -207,6 +219,7 @@ func _fail_or_wait(setup_message: String, message: String) -> void:
 
 
 func _setup_worked() -> void:
+	dead_code = ""
 	StationConfig.save_user(_setup_trial, user_path)
 	_setup_trial = {}
 	_setup_before = {}
@@ -329,12 +342,35 @@ func _relink(message: String, event_gone: bool) -> void:
 
 ## True while a setup is being tried, too: the panel stays up ("Connecting…").
 func needs_setup() -> bool:
-	return not is_offline() and (not StationConfig.is_configured(config) or not _setup_trial.is_empty())
+	return not is_offline() and (not StationConfig.is_configured(config) or not _setup_trial.is_empty() or dead_code != "")
+
+
+func linked() -> bool:
+	return is_offline() or phase == "ready"
+
+
+## A configured station's own name, else "Headset <4 hex>" — the
+## same hex as the station id a setup mints, so two headsets set up with
+## the default never read alike on the tent tablet's Send-to list.
+func default_station_name() -> String:
+	var n := str(config.get("name", "")).strip_edges()
+	# A configured station keeps its name; the committed placeholder's is
+	# every fresh headset's, so it is no name.
+	if n != "" and n != StationConfig.DEFAULT_NAME and (StationConfig.is_configured(config) or dead_code != ""):
+		return n
+	return "%s %04X" % [StationConfig.DEFAULT_NAME, station_salt & 0xffff]
 
 
 func server_choices() -> Array:
 	var committed := str(StationConfig.read_file(StationConfig.RES_PATH).get("server", ""))
-	return StationConfig.server_choices(str(config.get("server", "")), committed, StationConfig.offers_local())
+	var current := str(config.get("server", ""))
+	# An editor run that names no server of its own tests against `pnpm dev`.
+	var prefer_local := OS.has_feature("editor_runtime") and (current == "" or current == committed)
+	return StationConfig.server_choices(current, committed, StationConfig.offers_local(), prefer_local)
+
+
+func _server_text() -> String:
+	return str(StationConfig.parse_url(str(config.get("server", ""))).get("base", config.get("server", ""))).trim_prefix("https://").trim_prefix("http://")
 
 
 func try_setup(server: String, code: String, name: String) -> void:
@@ -362,6 +398,7 @@ func try_setup(server: String, code: String, name: String) -> void:
 
 
 func play_offline() -> void:
+	dead_code = ""
 	var cfg := config.duplicate()
 	cfg["offline"] = true
 	configure(cfg)
@@ -375,6 +412,7 @@ func can_forget_setup() -> bool:
 
 
 func forget_setup() -> void:
+	dead_code = ""
 	StationConfig.forget_user(user_path)
 	_offline_chosen = false
 	var cfg := StationConfig.resolve(base_files, base_args)

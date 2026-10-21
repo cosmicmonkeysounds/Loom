@@ -25,8 +25,11 @@ const PANEL_DISTANCE := 2.4
 const TITLE := "PICK YOUR PROGRAM"
 const EMPTY := "Nobody is marked for reinstallation yet."
 const HINT := "point + trigger · or stick, hold RIGHT 1 s · or click"
-## Seconds the ⚙ must be held to forget the setup.
+## Seconds the ⚙ must be held to forget the setup: on a desktop / editor
+## run, and (longer, and unannounced) on a headset, where a curious guest
+## must not take a show headset out of service.
 const FORGET_HOLD := 2.0
+const FORGET_HOLD_HEADSET := 5.0
 ## A name longer than this is cut on its tile (it must fit the tile's width
 ## at [constant NAME_HEIGHT]).
 const NAME_CHARS := 16
@@ -402,7 +405,12 @@ func hovered() -> String:
 
 ## The ⚙ hold so far, 0 → 1.
 func forget_progress() -> float:
-	return clampf(_gear_t / FORGET_HOLD, 0.0, 1.0)
+	return clampf(_gear_t / forget_hold(), 0.0, 1.0)
+
+
+## How long the ⚙ is held to forget the setup on this run.
+static func forget_hold() -> float:
+	return FORGET_HOLD if StationConfig.offers_local() else FORGET_HOLD_HEADSET
 
 
 # --- input ---------------------------------------------------------------------------
@@ -487,7 +495,7 @@ func aim(state: Dictionary, delta: float) -> Dictionary:
 		_render_looks()
 	if id == "gear" and state.get("down", false) == true:
 		_gear_t += delta
-		if _gear_t >= FORGET_HOLD:
+		if _gear_t >= forget_hold():
 			_gear_t = 0.0
 			if link != null:
 				link.forget_setup()
@@ -497,7 +505,8 @@ func aim(state: Dictionary, delta: float) -> Dictionary:
 		_gear_t = 0.0
 	if id != "" and id != "gear" and state.get("pressed", false) == true:
 		press(id)
-	_gear_label.text = ("forget this setup: hold %d s" % int(FORGET_HOLD)) if id == "gear" else ""
+	# A desktop says what the ⚙ does on hover; a headset only once it is held.
+	_gear_label.text = ("forget this setup: hold %d s" % int(forget_hold())) if id == "gear" and (StationConfig.offers_local() or _gear_t > 0.0) else ""
 	return h
 
 
@@ -642,7 +651,8 @@ func _render() -> void:
 	_hint.visible = v != "setup"
 	_bar_track.visible = v != "setup"
 	_bar_fill.visible = v != "setup"
-	_empty.text = EMPTY if v == "pick" and items.is_empty() else ""
+	# An empty list over a dead link is not an empty house: say the link's state.
+	_empty.text = (EMPTY if link == null or link.linked() else link.status) if v == "pick" and items.is_empty() else ""
 	var paged := v == "pick" and pages > 1
 	_page_label.text = "page %d / %d" % [page + 1, pages] if paged else ""
 	(_looks["prev"] as Node3D).visible = paged
