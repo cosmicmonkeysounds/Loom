@@ -6,7 +6,7 @@ import { PHASE_POOLS, eligible, fillCopy, idleContextOf, phasePool, y2kLeftAt, t
 import { screenLayers } from "../src/slides.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, POPUP_KINDS } from "../src/idle-show/popups.ts";
 import { drawAt, hash32, permutation, mulberry32 } from "../src/idle-show/rng.ts";
-import { LAYOUT_MS, PATTERN, SEGMENT_MAX_MS, adPool, advance, loadCursor, popupPool, resumeCursor, saveCursor, segmentAt, startIndex, type Segment } from "../src/idle-show/schedule.ts";
+import { AD_FOCUS_EVERY, LAYOUT_MS, PATTERN, POPUP_FOCUS_EVERY, SEGMENT_MAX_MS, adAt, adPool, drawFocused, popupAt, advance, loadCursor, popupPool, resumeCursor, saveCursor, segmentAt, startIndex, type Segment } from "../src/idle-show/schedule.ts";
 import { SAVERS, SAVER_IDS } from "../src/idle-show/savers/index.ts";
 import { LOGO_SUB, LOGO_TEXT } from "../src/idle-show/savers/fun.ts";
 import { SCAN_COPY } from "../src/idle-show/scan-copy.ts";
@@ -249,6 +249,31 @@ describe("the schedule", () => {
     expect(walk(ctxOf("hunt", { names: true, target: "tv" }), 0, 200).some((s) => s.layout === "face")).toBe(false);
     expect(walk(ctxOf("hunt", { names: false }), 0, 200).some((s) => s.layout === "face")).toBe(false);
     for (const s of walk(ctxOf("hunt", { names: false }), 0, 400)) for (const a of s.ads) expect(a.names).not.toBe(true);
+  });
+
+  it("lets the night's own windows and ads be felt: every third window, every fourth ad", () => {
+    const seed = hash32("Landing");
+    for (const pool of PHASE_POOLS) {
+      const ctx = ctxOf(pool, { phase: pool === "y2k" ? "majority" : "" });
+      const pops = popupPool(ctx);
+      const ownPops = pops.filter((p) => p.pools?.includes(pool));
+      const drawn = Array.from({ length: 60 }, (_, n) => popupAt(seed, n, pops, pool)!);
+      expect(drawn.every((p) => pops.includes(p))).toBe(true);
+      if (ownPops.length > 0) expect(drawn.filter((p) => ownPops.includes(p)).length).toBeGreaterThanOrEqual(60 / POPUP_FOCUS_EVERY);
+      const ads = adPool(ctx);
+      const ownAds = ads.filter((a) => a.pools?.includes(pool));
+      const shown = Array.from({ length: 60 }, (_, k) => adAt(seed, k, ads, pool)!);
+      if (ownAds.length > 0) expect(shown.filter((a) => ownAds.includes(a)).length).toBeGreaterThanOrEqual(60 / AD_FOCUS_EVERY);
+      // The all-night ones still come round.
+      expect(new Set(drawn).size).toBeGreaterThan(ownPops.length + 5);
+    }
+    // The Y2K hour: the countdown window comes within the first dozen windows.
+    const y2k = popupPool(ctxOf("y2k", { phase: "majority" }));
+    expect(Array.from({ length: 12 }, (_, n) => popupAt(seed, n, y2k, "y2k")!.id).some((id) => id === "pop-y2k-countdown" || id === "pop-y2k-save")).toBe(true);
+    // No focus (or nothing tagged): a plain draw.
+    const two: { id: number; pools?: readonly PhasePool[] }[] = [{ id: 1 }, { id: 2 }];
+    expect(drawFocused(1, 5, two, "y2k", 3)).not.toBeNull();
+    expect(drawFocused(1, 0, [], "y2k", 3)).toBeNull();
   });
 
   it("never picks the face layout beside the world view (the face pane shows the world)", () => {

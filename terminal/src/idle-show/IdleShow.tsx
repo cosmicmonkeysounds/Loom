@@ -106,7 +106,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
   const kindOf = (p: LivePopup): PopupKind | null => {
     let k = kinds.current.get(p.id);
     if (k === undefined) {
-      const picked = popupAt(seed, p.n, pools.popups);
+      const picked = popupAt(seed, p.n, pools.popups, ctxRef.current.pool);
       if (picked === null) return null;
       k = picked;
       kinds.current.set(p.id, k);

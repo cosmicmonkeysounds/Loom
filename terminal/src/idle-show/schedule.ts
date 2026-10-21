@@ -20,7 +20,7 @@
 //! picks up where it was — never back at ad 0.
 
 import { IDLE_ADS, type IdleAd } from "./ads.ts";
-import { eligible, type IdleContext } from "./pools.ts";
+import { eligible, type IdleContext, type PhasePool } from "./pools.ts";
 import { POPUP_KINDS, type PopupKind } from "./popups.ts";
 import { drawAt, hash32, mix, roll, rollInt } from "./rng.ts";
 import { SAVER_IDS, type SaverId } from "./savers/index.ts";
@@ -76,16 +76,33 @@ export function popupPool(ctx: IdleContext): PopupKind[] {
   return POPUP_KINDS.filter((p) => eligible(p, ctx));
 }
 
-/** The `k`-th ad draw for this seed out of `pool`. */
-export function adAt(seed: number, k: number, pool: readonly IdleAd[]): IdleAd | null {
-  const i = drawAt(pool.length, k, mix(seed, 0xad));
-  return i < 0 ? null : pool[i]!;
+/** Every `POPUP_FOCUS_EVERY`-th window and `AD_FOCUS_EVERY`-th ad is one
+ *  of the night's own (tagged with this pool: the hijack, the Y2K hour, the
+ *  beans…), so a phase's handful is felt among the all-night dozens. */
+export const POPUP_FOCUS_EVERY = 3;
+export const AD_FOCUS_EVERY = 4;
+
+/** The `k`-th draw out of `pool`, every `every`-th from its items tagged `focus`. */
+export function drawFocused<T extends { pools?: readonly PhasePool[] }>(seed: number, k: number, pool: readonly T[], focus: PhasePool | undefined, every: number): T | null {
+  const kk = Math.max(0, Math.floor(k));
+  const own = focus === undefined ? [] : pool.filter((x) => x.pools !== undefined && x.pools.includes(focus));
+  if (own.length === 0 || own.length === pool.length || every < 2) {
+    const i = drawAt(pool.length, kk, seed);
+    return i < 0 ? null : pool[i]!;
+  }
+  if (kk % every === every - 1) return own[drawAt(own.length, Math.floor(kk / every), mix(seed, 0xf0c))]!;
+  const rest = pool.filter((x) => !own.includes(x));
+  return rest[drawAt(rest.length, kk - Math.floor((kk + 1) / every), seed)]!;
 }
 
-/** The `n`-th popup for this seed out of `pool`. */
-export function popupAt(seed: number, n: number, pool: readonly PopupKind[]): PopupKind | null {
-  const i = drawAt(pool.length, n, mix(seed, 0x909));
-  return i < 0 ? null : pool[i]!;
+/** The `k`-th ad draw for this seed out of `pool` (the night's own every `AD_FOCUS_EVERY`-th). */
+export function adAt(seed: number, k: number, pool: readonly IdleAd[], focus?: PhasePool): IdleAd | null {
+  return drawFocused(mix(seed, 0xad), k, pool, focus, AD_FOCUS_EVERY);
+}
+
+/** The `n`-th popup for this seed out of `pool` (the night's own every `POPUP_FOCUS_EVERY`-th). */
+export function popupAt(seed: number, n: number, pool: readonly PopupKind[], focus?: PhasePool): PopupKind | null {
+  return drawFocused(mix(seed, 0x909), n, pool, focus, POPUP_FOCUS_EVERY);
 }
 
 /** Segment `index` for this seed and context. */
@@ -101,7 +118,7 @@ export function segmentAt(seed: number, index: number, ctx: IdleContext, pool: r
   const wants = layout === "saver" || layout === "storm" ? 0 : layout === "side" ? 2 : 1;
   const ads: IdleAd[] = [];
   for (let k = 0; k < wants; k++) {
-    const ad = adAt(seed, first + k, pool);
+    const ad = adAt(seed, first + k, pool, ctx.pool);
     if (ad !== null) ads.push(ad);
   }
   // An ad layout with nothing to show (an empty pool) falls back to the saver.
