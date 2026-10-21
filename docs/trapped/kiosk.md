@@ -59,12 +59,16 @@ not a URL key.
 ## Sound: the tablet's speaker and the house speakers (wave 17)
 
 A terminal's own speaker makes only its **accents**: popup dings, clicks,
-cutscene stingers, the casino's jingles, the announcement chime on an
-`announce` tablet — synthesised in the page, no sound files, dropped while
-the character speaks. **Every story `sound X` and every announcement comes
-out of the house speakers** (decision D4): QLab today, the house Mac's
-stagehand `audio` router once a show switches it on. Nothing on a tablet
-plays a story sound.
+cutscene stingers, the casino's jingles — synthesised in the page, no
+sound files, dropped while the character speaks. **Every story `sound X`
+comes out of the house speakers, and so does every announcement** (decision
+D4): QLab today, the house Mac's stagehand `audio` router once a show
+switches it on. Nothing on a tablet plays a story sound. The one opt-in
+exception is an **`announce` tablet** (*say the house announcements here*,
+or `&announce=1`, for a room out of earshot of the speakers, below): it
+also rings the chime and repeats each announcement in its own voice, with
+a banner. The house speakers stay the main path; the tablet only echoes
+them.
 
 The house speakers are set up in the project file **`audio.json`**, not on
 any device: the speakers placed on the plan, the interface's 16 inputs and
