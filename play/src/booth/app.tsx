@@ -67,9 +67,10 @@ function dmRow(m: ChatMessage): ChatMessage {
   return row;
 }
 
-/** The room a performer lands in wide: the broadcast feed. */
+/** The room a performer lands in wide: Readouts (wave 18, G2: the house's
+ *  broadcast feed is the far-away Chat log, never a default room). */
 export function boothHome(list: Channel[]): string | null {
-  return list.find((c) => c.id === "__feed")?.id ?? list[0]?.id ?? null;
+  return list.find((c) => c.id === INBOX)?.id ?? list.find((c) => c.id !== "__feed" && c.id !== "__scanner")?.id ?? list[0]?.id ?? null;
 }
 
 /** The booth's frame: owns the keyboard rule (the taskbar and the NEXT bar

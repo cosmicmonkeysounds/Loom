@@ -44,6 +44,9 @@ export function hostOf(viewHost: boolean | undefined, authHost: boolean | undefi
   return (viewHost ?? authHost) === true;
 }
 
+/** The story's own rooms' section header in a booth (wave 18, G2). */
+export const CHATS_TITLE = "Chats";
+
 /** The sidebar section the staff rooms sit in (`rooms/spaces.ts SPACES.staff`). */
 export const STAFF_SPACE = "staff";
 
@@ -95,7 +98,8 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
     title: view?.title ?? "Lobby",
     subtitle: "everyone · broadcast feed",
     spaceId: STORY_SPACE,
-    spaceTitle: view?.title,
+    // Wave 18 (BOOTH-SPEC §3): the rooms list's section reads "Chats", never the story title.
+    spaceTitle: CHATS_TITLE,
     order: 0,
     people: everyone,
     messages: feedMsgs,
@@ -136,7 +140,7 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       title: c.title,
       spaceId: isStaff ? STAFF_SPACE : c.spaceId,
       ...(isStaff ? { staff: true as const, subtitle: "staff only" } : {}),
-      spaceTitle: isStaff ? undefined : c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
+      spaceTitle: isStaff ? undefined : c.spaceId === STORY_SPACE ? CHATS_TITLE : spaceTitles.get(c.spaceId),
       member: c.member,
       canPost: c.canPost,
       threadable: c.threadable,

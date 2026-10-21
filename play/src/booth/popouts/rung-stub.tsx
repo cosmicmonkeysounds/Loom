@@ -94,7 +94,9 @@ interface Rung {
   retire: (key: string) => void;
   handle: (key: string) => void;
   docks: number;
-  mountDock: () => () => void;
+  /** The most recently mounted dock (only it renders `current`). */
+  topDock: number | null;
+  mountDock: (id: number) => () => void;
 }
 
 const RungContext = createContext<Rung | null>(null);
@@ -107,7 +109,8 @@ export function PopOutProvider({ session, cardGuest, children, seed }: { session
   const [specs, setSpecs] = useState<Map<string, PopOutSpec>>(() => new Map((seed ?? []).map((s) => [s.key, s])));
   const [stored, setStored] = useState<Stored>(() => load(host.storage, session));
   const [shown, setShown] = useState<string | null>(null);
-  const [docks, setDocks] = useState(0);
+  const [dockIds, setDockIds] = useState<number[]>([]);
+  const docks = dockIds.length;
   useEffect(() => setStored(load(host.storage, session)), [host.storage, session]);
   const persist = useCallback(
     (next: Stored) => {
@@ -194,9 +197,9 @@ export function PopOutProvider({ session, cardGuest, children, seed }: { session
     return () => clearTimeout(t);
   }, [current?.key, current?.rev, current?.autoRetireMs, handle]);
   const tray = live.filter(isDeferred).sort((a, b) => (deferredRev(b.key)?.[1] ?? 0) - (deferredRev(a.key)?.[1] ?? 0));
-  const mountDock = useCallback(() => {
-    setDocks((n) => n + 1);
-    return () => setDocks((n) => n - 1);
+  const mountDock = useCallback((id: number) => {
+    setDockIds((l) => [...l.filter((x) => x !== id), id]);
+    return () => setDockIds((l) => l.filter((x) => x !== id));
   }, []);
   const rung: Rung = {
     current,
@@ -209,6 +212,7 @@ export function PopOutProvider({ session, cardGuest, children, seed }: { session
     retire: handle,
     handle,
     docks,
+    topDock: dockIds[dockIds.length - 1] ?? null,
     mountDock,
   };
   lastRung = rung;
@@ -226,6 +230,7 @@ const NO_RUNG: Rung = {
   retire: () => {},
   handle: () => {},
   docks: 0,
+  topDock: null,
   mountDock: () => () => {},
 };
 
@@ -356,14 +361,18 @@ export function PopOutHost(): JSX.Element | null {
 }
 
 /** The docked slot: a 56 px strip that expands in place (plain flow layout). */
+let dockSeq = 0;
+
 export function PopOutDock(): JSX.Element | null {
   const r = useRung();
   const mount = r.mountDock;
-  useEffect(() => mount(), [mount]);
+  const [id] = useState(() => ++dockSeq);
+  useEffect(() => mount(id), [mount, id]);
   const [open, setOpen] = useState(false);
   const c = r.current;
   useEffect(() => setOpen(false), [c?.key]);
-  if (c === null) return null;
+  // Before effects run (the first paint, a server render) the dock shows; after, only the top one.
+  if (c === null || (r.topDock !== null && r.topDock !== id)) return null;
   if (!open) {
     return (
       <div className={`popout popout-strip ${c.tone}`} data-popout={c.key}>
