@@ -305,7 +305,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     for (const w of kernel) expect(w.secret, w.label).toBe(true);
     for (const w of watch.filter((x) => !x.path?.startsWith("Kernel."))) expect(w.secret, w.label).toBeUndefined();
     // The roles count over guests; the featured programs are person rows.
-    expect(watch.filter((w) => w.scope === "role").map((w) => w.label)).toEqual(["Cleared", "Marked", "Bathroom Mode", "Late", "In the Internet", "Checked in", "At the heart", "Have the door code"]);
+    expect(watch.filter((w) => w.scope === "role").map((w) => w.label)).toEqual(["Cleared", "Marked", "At the door", "Bathroom Mode", "Late", "In the Internet", "Checked in", "At the heart", "Have the door code"]);
     expect(watch.filter((w) => w.scope === "person").map((w) => w.person)).toEqual(["Microsoft Excel", "OpenOffice", "MS Paint"]);
     // The phone's lean view never carries a secret (nor a role / person row).
     const lean = cueSheetView(modView(sim, "open", "x"));

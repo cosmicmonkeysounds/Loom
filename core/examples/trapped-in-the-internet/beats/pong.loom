@@ -17,6 +17,8 @@
 Every phone in the house buzzes at once. Five minutes. Somewhere in the hall an Antivirus starts counting.
 Clippy: Programs! Programs, it is time! Back to the Desktop for the Second Moment Of Truth! Five minutes!
 Clippy: If you are in Bathroom Mode, you are excused. If you are not in Bathroom Mode, and you are not here— well. Please just be here.
+// DRAFT w18 (B10): the programs check themselves in.
+Clippy: When you get here, scan the check-in sign by the door! That's your check-in. You can do it yourself! I believe in you!
 
 == Summons Closed
   setting: The Desktop

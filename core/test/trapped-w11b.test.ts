@@ -7,7 +7,7 @@
 //!   the 🤖 line in # hosts. The judge frame is the only place the key goes:
 //!   no DM request, no `/api/agent/facts`.
 //! - A marked program still reaches his heart: the server-room terminal's
-//!   `terminal opened` puts it at the heart while it is marked (restricted),
+//!   `terminal opened` puts it at the heart while it is marked (wave 18: unhindered),
 //!   its own agent request carries `marked` and `at_the_heart` (the persona's
 //!   situations read them), and a file it gives him there lands. Pinned so
 //!   nobody "fixes" the mark into locking the heart away.
@@ -161,7 +161,7 @@ describe("Trapped in the Internet — a marked program at his heart (wave 11b)",
     const { rt, mod, excel, frames } = await toTheHunt();
     expect((await mod("mark_for_reinstallation", { subject: excel.id, args: { reason: "a test" } })).status).toBe(200);
     expect(rt.liveSim!.world.peek(`${excel.id}.marked`)).toMatchObject({ value: true });
-    expect(rt.liveSim!.isRestricted(excel.id)).toBe(true);
+    expect(rt.liveSim!.isRestricted(excel.id)).toBe(false); // wave 18 (Q30): a mark never restricts
     // The server-room terminal pilots the marked program's own thread.
     const pilot = await call(rt, "POST", "/api/mod/impersonate", { role: "guest", id: excel.id, label: "Terminal · Server Room" }, { moderator: true });
     expect(pilot.status).toBe(200);

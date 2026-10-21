@@ -1,5 +1,5 @@
-//! Trapped in the Internet — the show clock in the story (wave 13, DRAFT
-//! Q37 / Q38): Power On starts it at 7:00 PM, 🕚 y2k_clock jumps it to
+//! Trapped in the Internet — the show clock in the story (wave 13, signed
+//! off as Q37 / Q38): Power On starts it at 7:00 PM, 🕚 y2k_clock jumps it to
 //! 11:00 PM so the final round ends at midnight.
 
 import { mkdtempSync, rmSync } from "node:fs";
@@ -53,7 +53,7 @@ async function call(rt: EventRuntime, method: "GET" | "POST", path: string, body
   return { status: res.statusCode, json: JSON.parse(res.body || "{}") };
 }
 
-describe("Trapped in the Internet: the clock in the story (DRAFT Q37 / Q38)", () => {
+describe("Trapped in the Internet: the clock in the story (Q37 / Q38, signed off)", () => {
   it("Power On starts it at 7:00 PM; 🕚 y2k_clock jumps it to 11:00 PM", { timeout: 60_000 }, async () => {
     const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
     sim.fireBeat("Power On");
