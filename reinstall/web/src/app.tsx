@@ -17,6 +17,7 @@ import { hasWebGL2 } from "@loom/terminal/webgl.ts";
 import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchNightEnded, fetchStations, postEnd, tokenAlive } from "./api.ts";
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
+import { requestMic, stopStream } from "./game/voice.ts";
 import { findFlash } from "./game/hud.ts";
 import { beginErrorText, markedLegend, NOT_MARKED, programPitch, programState, programStatus, quickPicks, startingHeading, type Program } from "./program.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
@@ -45,6 +46,23 @@ export function App() {
   const [flash, setFlash] = useState<{ text: string; tone: "good" | "bad" } | null>(null);
   const sfx = useMemo(() => createSfx(), []);
   useEffect(() => () => sfx.dispose(), [sfx]);
+  // The voice link's mic, asked for in the Play here tap (Safari wants the
+  // gesture) and handed to the game; let go if the game never starts.
+  const mic = useRef<Promise<MediaStream | null> | null>(null);
+  const releaseMic = useCallback(() => {
+    const p = mic.current;
+    mic.current = null;
+    void p?.then(stopStream);
+  }, []);
+  const takeMic = useCallback(() => {
+    const p = mic.current;
+    mic.current = null;
+    return p;
+  }, []);
+  useEffect(() => {
+    if (screen.kind !== "starting" && screen.kind !== "play") releaseMic();
+  }, [screen.kind, releaseMic]);
+  useEffect(() => releaseMic, [releaseMic]);
 
   // Provision from the URL (`?code=…&name=…&role=…`), then scrub it.
   useEffect(() => {
@@ -120,6 +138,7 @@ export function App() {
         houseVersion={screen.houseVersion}
         {...(screen.king !== undefined ? { king: screen.king } : {})}
         sfx={sfx}
+        takeMic={takeMic}
         onExit={(e: PlayExit) => {
           setFlash(exitFlash(e));
           setScreen({ kind: "scan" });
@@ -135,7 +154,13 @@ export function App() {
       setScreen={setScreen}
       flash={flash}
       setFlash={setFlash}
-      onPlay={() => sfx.resume()}
+      onPlay={() => {
+        sfx.resume();
+        if (config.voice) {
+          releaseMic();
+          mic.current = requestMic();
+        }
+      }}
       onSetup={() => setScreen({ kind: "setup", notice: null })}
     />
   );
