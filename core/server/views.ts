@@ -21,7 +21,7 @@ import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "../src/identity-kind.ts";
 import { joinableFactions } from "./routes/sides.ts";
-import type { CrewSummary, CrewView, InviteView, SideView } from "../src/runtime/sim/crews.ts"; // w18 crews
+import { crewRoom, type CrewSummary, type CrewView, type InviteView, type SideView } from "../src/runtime/sim/crews.ts"; // w18 crews
 import type { ShowClock } from "../src/show-clock.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
@@ -1181,6 +1181,11 @@ function operatorChannels(sim: Sim): ChannelSummary[] {
   for (const id of sim.model.channels.keys()) {
     const h = sim.channelHead(id);
     out.push({ id: h.channel, kind: h.channelKind, title: h.title, spaceId: h.spaceId, ...(staff.has(roomFold(id)) ? { staff: true as const } : {}) });
+  }
+  // w18 crews: every live crew's members-only room (directors read its lines).
+  for (const c of sim.crews.all()) {
+    const h = sim.crews.head(crewRoom(c.id));
+    out.push({ id: h.channel, kind: h.channelKind as ChannelSummary["kind"], title: h.title, spaceId: h.spaceId });
   }
   return out;
 }

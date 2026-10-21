@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { MAX_CREWS, crewRoom, type CrewOp } from "../src/runtime/sim/crews.ts";
-import { guestView } from "../server/views.ts";
+import { guestView, modView } from "../server/views.ts";
 import { CREW_SOURCE } from "./crews.fixture.ts";
 
 
@@ -225,5 +225,17 @@ describe("crews — views", () => {
     expect(card().groups).toEqual(["Shift"]);
     sim.reveal("Red");
     expect(card().groups).toEqual(["Red", "Shift"]);
+  });
+});
+
+describe("a director sees the crew rooms (ModView.channels)", () => {
+  it("lists each live crew's room by its name; a dissolved crew's goes", () => {
+    const { sim, a } = night();
+    sim.crew({ op: "foundCrew", by: a, name: "Night Shift" });
+    const id = sim.crews.crewOf(a)!.id;
+    const rooms = () => modView(sim, "open", null).channels.filter((c) => c.id.startsWith("crew:"));
+    expect(rooms()).toEqual([{ id: crewRoom(id), kind: "faction", title: "Night Shift", spaceId: expect.any(String) }]);
+    sim.crew({ op: "dissolveCrew", crew: id });
+    expect(rooms()).toEqual([]);
   });
 });
