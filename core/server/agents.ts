@@ -1459,6 +1459,9 @@ export class AgentHub {
     if (workerId !== undefined && this.workers.has(workerId)) this.judgeAnswered(workerId);
     const j = this.judges.get(id);
     if (j === undefined || j.worker === null || (workerId !== undefined && j.worker !== workerId)) return null;
+    // An answer without its worker's id is still that worker answering: its
+    // expiry count ends too, so two expiries around it are no stall.
+    if (workerId === undefined) this.judgeAnswered(j.worker);
     this.judges.delete(id);
     this.pumpJudges();
     return j.req;

@@ -587,6 +587,21 @@ describe("the judge queue (wave 18b, O4)", () => {
     expect(r.stalls).toEqual(["laptop"]); // once
   });
 
+  it("an answer without its worker's id still ends the expiry count: no false judge stall", () => {
+    const r = rig();
+    r.h.attach(r.w);
+    r.h.judge(ruling("g0", "1990"));
+    r.now.t += AGENT_JUDGE_TIMEOUT_MS + 1;
+    r.h.sweep(); // one expiry
+    const b = r.h.judge(ruling("g1", "1991"))!;
+    expect(r.h.judgeSettle(b)?.id).toBe(b); // answered, no `worker` field
+    r.h.judge(ruling("g2", "1992"));
+    r.now.t += AGENT_JUDGE_TIMEOUT_MS + 1;
+    r.h.sweep(); // one expiry again, not two in a row
+    expect(r.stalls).toEqual([]);
+    expect(r.h.queue("The Oracle").judging?.stalled ?? false).toBe(false);
+  });
+
   it("a judge frame never counts toward the worker's voice stall", () => {
     const r = rig();
     r.h.attach(r.w);
