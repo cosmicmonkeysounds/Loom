@@ -277,7 +277,7 @@ ROLE Program
   recruits: 0 to 500 = 0
   got_truther: bool = false
   // DRAFT w18 (fix): the doors card is still up on this program's phone (recheck N5).
-  doors_open: bool = false
+  sides_card_up: bool = false
   zipped: bool = false
   zip_seen: 0 to 99 = 0
   bobbed: bool = false
@@ -1109,11 +1109,11 @@ ROLE Program
   // over with it still up: an ending deals a closing card that supersedes
   // it (the phone folds it to a note), so no Walk in is offered after the end.
   when sides answered for program:
-    set program.doors_open = false
-  when Night.ended == true and self.doors_open == true:
-    set self.doors_open = false
-    fire doors_shut for self
-  when doors_shut for program:
+    set program.sides_card_up = false
+  when Night.ended == true and self.sides_card_up == true:
+    set self.sides_card_up = false
+    fire sides_card_closing for self
+  when sides_card_closing for program:
     show sides "🚪 The doors have closed." to program with thread: Truther Download, closed: true
 
   when deal_fact_card for program:
