@@ -5,7 +5,7 @@
 //! location puts the app on rails while a guest stands there.
 
 import { describe, expect, it } from "vitest";
-import { statementToDirective } from "../src/parser/statements.ts";
+import { splitRevealQuietly, statementToDirective } from "../src/parser/statements.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { composeGuestMessages } from "../server/chat.ts";
 import { guestView, primeView } from "../server/views.ts";
@@ -270,6 +270,8 @@ ROLE Guest
     reveal Cellar for guest quietly
   when cleared loudly for guest:
     reveal Cellar for guest
+  when cleared early for guest:
+    reveal Cellar quietly for guest
 
 when the house opens:
   reveal Attic quietly
@@ -284,6 +286,19 @@ The house.
     expect(statementToDirective("reveal The Start Bar quietly")).toBe("reveal: The Start Bar quietly");
     expect(statementToDirective("reveal The Start Bar for program quietly")).toBe("reveal: The Start Bar for program quietly");
     expect(statementToDirective("reveal The Big Start Bar quietly")).toBe("reveal: The Big Start Bar quietly");
+    expect(statementToDirective("reveal The Start Bar quietly for program")).toBe("reveal: The Start Bar quietly for program");
+  });
+
+  it("takes `quietly` before `for` too, and never as part of the name", () => {
+    expect(splitRevealQuietly("The Cellar for guest quietly")).toEqual({ body: "The Cellar for guest", quiet: true });
+    expect(splitRevealQuietly("The Cellar quietly for guest")).toEqual({ body: "The Cellar for guest", quiet: true });
+    expect(splitRevealQuietly("The Cellar quietly")).toEqual({ body: "The Cellar", quiet: true });
+    expect(splitRevealQuietly("The Cellar for guest")).toEqual({ body: "The Cellar for guest", quiet: false });
+    const sim = Sim.fromSources(QUIET);
+    sim.createPerson("g1", "Ada");
+    const evs = sim.signal("cleared early", "g1");
+    expect(evs.filter((e) => e.type === "revealed")).toEqual([{ type: "revealed", target: "Cellar", kind: "location", person: "g1", quiet: true }]);
+    expect(composeGuestMessages(sim, evs).filter((m) => m.kind === "system")).toEqual([]);
   });
 
   it("opens the room for its person, records `quiet`, and posts no notice", () => {

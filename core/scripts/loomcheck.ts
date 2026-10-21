@@ -21,7 +21,7 @@ import { parse } from "../src/parser/index.ts";
 import { foldName } from "../src/parser/names.ts";
 import { Sim, namedEvents } from "../src/runtime/sim/index.ts";
 import { isBuiltinVerb } from "../src/runtime/sim/model.ts";
-import { statementToDirective } from "../src/parser/statements.ts";
+import { splitRevealQuietly, statementToDirective } from "../src/parser/statements.ts";
 import { Workspace } from "../src/lsp/index.ts";
 import { indexOutsideQuotes, splitArgsCommas } from "../src/parser/rust.ts";
 
@@ -188,8 +188,9 @@ function checkDirective(raw: string, at: string, ctx: { param: string | null }):
       break;
     }
     case "reveal": {
-      // `reveal X [for who] quietly` (wave 18b): the trailing word is no name.
-      const body = rest.replace(/\s+quietly\s*$/u, "");
+      // `reveal X [for who] quietly` / `reveal X quietly for who` (wave
+      // 18b): the word is no name.
+      const { body } = splitRevealQuietly(rest);
       const f = body.lastIndexOf(" for ");
       const t = (f >= 0 ? body.slice(0, f) : body).trim();
       if (t !== "self" && t !== ctx.param && !entity(t) && !m.channels.has(`room:${t}`)) report("WARN", `${at} \`reveal ${t}\` — not a declared GROUP / LOCATION / CHARACTER / CHANNEL (does nothing)`);

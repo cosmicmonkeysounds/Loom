@@ -31,6 +31,7 @@ import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
 import { parse } from "../../parser/index.ts";
 import { foldName } from "../../parser/names.ts";
+import { splitRevealQuietly } from "../../parser/statements.ts";
 import { splitMomentArgs, withIndex } from "../../go.ts";
 import { indexOutsideQuotes, splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { Crews, isCrewRoom, type CrewOp } from "./crews.ts"; // w18 crews
@@ -2206,13 +2207,13 @@ export class Sim {
         // `reveal X` (to everyone) / `reveal X for who` (to one participant).
         // A room's exact name wins over name folding, so `reveal task
         // manager` opens `# task-manager` even beside CHARACTER Task Manager.
-        // A trailing `quietly` (wave 18b) opens it with no chat notice.
-        const quietly = /\s+quietly\s*$/u.exec(rest);
-        const body = quietly !== null ? rest.slice(0, quietly.index) : rest;
+        // `quietly` (wave 18b), last or before `for`, opens it with no chat
+        // notice.
+        const { body, quiet } = splitRevealQuietly(rest);
         const kw = splitKeyword(body, "for");
         const raw = (kw !== null ? kw[0] : body).trim();
         const target = this.model.channels.has(channelId(raw)) ? channelId(raw) : this.resolveId(raw, bindings);
-        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null, quietly !== null);
+        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null, quiet);
         break;
       }
       case "quest_start":
