@@ -16,6 +16,7 @@
 import { AUDIO_EVERYWHERE, AUDIO_GAIN_MAX, AUDIO_GAIN_MIN, AUDIO_INPUT_KINDS, AUDIO_MAX_CHANNELS, cloneData, defaultAudio, foldTarget, pointInPoly, distanceToBoundary, roomAt, roomById, roomElevation, validateAudio, wrapYaw, yawToward } from "@loom/house";
 import type { AudioConfig, AudioCue, AudioInputKind, AudioSpeaker, HouseMap, Room, Vec2 } from "@loom/house";
 import type { Problem } from "./check.ts";
+import type { History } from "./history.ts";
 import { rectSideOf, round } from "./doors.ts";
 import { uniqueId, slug, freshId } from "./ids.ts";
 import { labelSpot, rectOf } from "./plan.ts";
@@ -617,4 +618,79 @@ export function audioDownload(audio: AudioConfig): { name: string; text: string 
 /** Two configs are the same document (dirty check). */
 export function sameAudio(a: AudioConfig | null, b: AudioConfig | null): boolean {
   return a === b || (a !== null && b !== null && JSON.stringify(a) === JSON.stringify(b));
+}
+
+/**
+ * The speakers a map edit would take with it (`followHouse` drops a
+ * speaker whose room is gone and that stands in no yard piece): the
+ * confirm counts these, yards included.
+ */
+export function speakersDropped(before: HouseMap, after: HouseMap, audio: AudioConfig): string[] {
+  const kept = new Set(followHouse(before, after, audio).speakers.map((s) => s.id));
+  return audio.speakers.filter((s) => !kept.has(s.id)).map((s) => s.id);
+}
+
+// --- the shared history -----------------------------------------------------
+
+/**
+ * The `{house, audio}` history after another director's speaker save was
+ * adopted: every entry takes the adopted speakers, so the map's own steps
+ * still undo, and a step that only changed speakers (now the same map
+ * twice) disappears. The present wins a tie.
+ */
+export function rebaseHistory(h: History<Doc>, present: Doc, audio: AudioConfig): History<Doc> {
+  const line = [...h.past.map((d) => ({ d, now: false })), { d: present, now: true }, ...[...h.future].reverse().map((d) => ({ d, now: false }))];
+  const kept: { d: Doc; now: boolean }[] = [];
+  for (const x of line) {
+    const last = kept[kept.length - 1];
+    if (last !== undefined && last.d.house === x.d.house) {
+      if (x.now) kept[kept.length - 1] = x;
+      continue;
+    }
+    kept.push(x);
+  }
+  const at = kept.findIndex((x) => x.now);
+  const re = (x: { d: Doc }): Doc => ({ house: x.d.house, audio });
+  return { past: kept.slice(0, at).map(re), future: kept.slice(at + 1).map(re).reverse() };
+}
+
+// --- saving -----------------------------------------------------------------
+
+/**
+ * How the speakers can be saved now. The server checks them against the
+ * map it holds, so they save **alone** only when they are valid against
+ * the saved map, and **with the map** (the map first) when they are valid
+ * against a draft map that can itself be saved.
+ */
+export interface SpeakerSave {
+  alone: boolean;
+  withMap: boolean;
+  /** Why neither (null: nothing to save, or one of them can). */
+  why: string | null;
+}
+
+export function speakerSavePlan(o: {
+  audioDirty: boolean;
+  status: "loading" | "ok" | "missing" | "error";
+  mapDirty: boolean;
+  mapSaveable: boolean;
+  /** `validateAudio` against the draft map / the saved one. */
+  validDraft: boolean;
+  validSaved: boolean;
+}): SpeakerSave {
+  const no = (why: string | null): SpeakerSave => ({ alone: false, withMap: false, why });
+  if (!o.audioDirty) return no(null);
+  if (o.status === "missing") return no("this server can't store speakers (it predates wave 17) — Download JSON keeps them");
+  if (o.status === "loading") return no("the speaker config is still loading");
+  if (o.status !== "ok") return no("the speaker config is out of reach right now");
+  const alone = o.validSaved;
+  const withMap = o.mapDirty && o.mapSaveable && o.validDraft;
+  if (alone || withMap) return { alone, withMap, why: null };
+  return no(o.mapDirty && o.validDraft ? "a speaker stands where only the draft map has a room, and the map can't be saved yet — fix the map first" : "fix the speaker problems first");
+}
+
+/** The toolbar's 💾: the map when it changed and can be saved, the speakers when they can follow it. */
+export function saveAllPlan(o: { mapDirty: boolean; mapSaveable: boolean; speakers: SpeakerSave }): { map: boolean; speakers: boolean } {
+  const map = o.mapDirty && o.mapSaveable;
+  return { map, speakers: map ? o.speakers.withMap : o.speakers.alone };
 }

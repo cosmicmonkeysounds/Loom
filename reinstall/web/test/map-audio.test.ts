@@ -24,12 +24,14 @@ import {
   patchSpeaker,
   patchZone,
   placeSpeaker,
+  rebaseHistory,
   removeSpeaker,
   removeZone,
   renameSpeaker,
   rotateSpeaker,
   routesOf,
   sameAudio,
+  saveAllPlan,
   setAnnounce,
   setCell,
   setCueGain,
@@ -41,6 +43,8 @@ import {
   setZoneMember,
   SPEAKER_HEIGHT,
   speakerFloor,
+  speakerSavePlan,
+  speakersDropped,
   speakersIn,
   targetChip,
   targetOptions,
@@ -50,9 +54,9 @@ import {
   zonesOf,
 } from "../src/map/audio.ts";
 import { moveRectEdge, moveRoom } from "../src/map/edit.ts";
-import { emptyHistory, pushed, undone } from "../src/map/history.ts";
-import { addRoom, patchFloor, removeRoom, renameRoom } from "../src/map/structure.ts";
-import { floorOfSelection, selectionExists } from "../src/map/tools.ts";
+import { emptyHistory, pushed, redone, undone } from "../src/map/history.ts";
+import { addRoom, blankHouse, patchFloor, removeRoom, renameRoom } from "../src/map/structure.ts";
+import { commitPending, floorOfSelection, selectionExists } from "../src/map/tools.ts";
 import { SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
 
 /** Two speakers in TWO_ROOMS: `speaker-1` in a (2, 1.5) on out 1, `speaker-2` in b (5.5, 1.5) on out 2. */
@@ -440,5 +444,84 @@ describe("the starter config in the editor", () => {
     expect(coverageRadius(6)).toBeCloseTo(5.99, 1);
     expect(coverageRadius(-60)).toBe(0.8);
     expect(coverageRadius(12)).toBe(8);
+  });
+});
+
+describe("review fixes (wave 17)", () => {
+  it("counts the speakers a delete takes, a yard's included", () => {
+    const blank = blankHouse("T");
+    const y = addRoom(blank, "ground", [20, 0, 30, 10], { outdoor: true });
+    const a = addSpeaker(defaultAudio(), y.house, y.id, [25, 5]).audio;
+    expect(a.speakers[0]!.room).toBe(y.id);
+    const out = removeRoom(y.house, y.id);
+    if ("error" in out) throw new Error(out.error);
+    // speakersIn zeroed for a yard; the real drop is one speaker.
+    expect(speakersDropped(y.house, out.house, a)).toEqual([a.speakers[0]!.id]);
+    expect(followHouse(y.house, out.house, a).speakers).toEqual([]);
+    // A room delete: the same count speakersIn gave.
+    const h = TWO_ROOMS();
+    const two = twoSpeakers(h);
+    const gone = removeRoom(h, "b");
+    if ("error" in gone) throw new Error(gone.error);
+    expect(speakersDropped(h, gone.house, two)).toEqual(["speaker-2"]);
+    expect(speakersDropped(h, moveRoom(h, "b", 1, 0), two)).toEqual([]);
+  });
+
+  it("rebases the history onto adopted speakers: map steps stay, speaker-only steps go", () => {
+    const h0 = TWO_ROOMS();
+    const a0 = twoSpeakers(h0);
+    const h1 = addRoom(h0, "f", [10, 0, 12, 2]).house;
+    const a1 = patchSpeaker(a0, "speaker-1", { name: "Mine" });
+    const h2 = addRoom(h1, "f", [13, 0, 15, 2]).house;
+    // past: h0/a0 → (map) h1/a0 → (speaker) h1/a1 → (map) present h2/a1; a redo of a speaker step ahead.
+    let hist = pushed(emptyHistory<{ house: HouseMap; audio: AudioConfig }>(), { house: h0, audio: a0 });
+    hist = pushed(hist, { house: h1, audio: a0 });
+    hist = pushed(hist, { house: h1, audio: a1 });
+    const present = { house: h2, audio: a1 };
+    hist = { ...hist, future: [{ house: h2, audio: patchSpeaker(a1, "speaker-2", { name: "Redo" }) }] };
+    const theirs = patchSpeaker(a0, "speaker-2", { name: "Theirs" });
+    const r = rebaseHistory(hist, present, theirs);
+    expect(r.past.map((d) => d.house)).toEqual([h0, h1]);
+    expect(r.past.every((d) => d.audio === theirs)).toBe(true);
+    // The speaker-only redo is gone (the same map as the present).
+    expect(r.future).toEqual([]);
+    const u = undone(r, { house: h2, audio: theirs })!;
+    expect(u.present.house).toBe(h1);
+    expect(u.present.audio).toBe(theirs);
+    expect(redone(u.history, u.present)!.present.house).toBe(h2);
+    // A map redo ahead survives.
+    const ahead = rebaseHistory({ past: [], future: [{ house: h2, audio: a0 }] }, { house: h1, audio: a0 }, theirs);
+    expect(ahead.future.map((d) => d.house)).toEqual([h2]);
+    expect(ahead.future[0]!.audio).toBe(theirs);
+  });
+
+  it("saves the speakers alone only against the saved map; with the map when only the draft fits", () => {
+    const base = { audioDirty: true, status: "ok" as const, mapDirty: false, mapSaveable: true, validDraft: true, validSaved: true };
+    expect(speakerSavePlan({ ...base, audioDirty: false })).toEqual({ alone: false, withMap: false, why: null });
+    expect(speakerSavePlan(base)).toEqual({ alone: true, withMap: false, why: null });
+    // A speaker in a room drawn but not saved: the server would answer 400 to a save alone.
+    const drawn = speakerSavePlan({ ...base, mapDirty: true, validSaved: false });
+    expect(drawn).toEqual({ alone: false, withMap: true, why: null });
+    expect(speakerSavePlan({ ...base, mapDirty: true, mapSaveable: false, validSaved: false }).why).toMatch(/fix the map first/);
+    expect(speakerSavePlan({ ...base, validDraft: false, validSaved: false }).why).toMatch(/speaker problems/);
+    expect(speakerSavePlan({ ...base, status: "missing" }).why).toMatch(/predates wave 17/);
+    expect(speakerSavePlan({ ...base, status: "error" }).why).toMatch(/out of reach/);
+    // 💾: a valid map saves whatever the speakers say; the speakers follow only when they fit the map the server will hold.
+    const bad = speakerSavePlan({ ...base, status: "error" });
+    expect(saveAllPlan({ mapDirty: true, mapSaveable: true, speakers: bad })).toEqual({ map: true, speakers: false });
+    expect(saveAllPlan({ mapDirty: true, mapSaveable: true, speakers: drawn })).toEqual({ map: true, speakers: true });
+    // Valid against the saved map only: the map save would strand them, so they wait.
+    const old = speakerSavePlan({ ...base, mapDirty: true, validDraft: false });
+    expect(saveAllPlan({ mapDirty: true, mapSaveable: true, speakers: old })).toEqual({ map: true, speakers: false });
+    expect(saveAllPlan({ mapDirty: true, mapSaveable: false, speakers: old })).toEqual({ map: false, speakers: true });
+    expect(saveAllPlan({ mapDirty: false, mapSaveable: true, speakers: speakerSavePlan(base) })).toEqual({ map: false, speakers: true });
+  });
+
+  it("a text field leaving the page never lands a commit it already made", () => {
+    expect(commitPending("renamed", "old", null)).toBe(true);
+    // The id rename re-keys the inspector: the blur committed, then the field unmounts.
+    expect(commitPending("renamed", "old", "renamed")).toBe(false);
+    expect(commitPending("same", "same", null)).toBe(false);
+    expect(commitPending("again", "old", "renamed")).toBe(true);
   });
 });
