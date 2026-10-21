@@ -220,6 +220,7 @@ function checkShape(raw: unknown, problems: string[]): void {
     ["fov", positive, POS, true],
     ["view", (v) => typeof v === "string" && (TERMINAL_VIEWS as readonly string[]).includes(v), `one of ${TERMINAL_VIEWS.join(", ")}`, true],
     ["speaks", (v) => typeof v === "boolean", "a boolean", true],
+    ["voice", (v) => typeof v === "boolean", "a boolean", true],
   ]);
   ids("terminal", terminals);
 
