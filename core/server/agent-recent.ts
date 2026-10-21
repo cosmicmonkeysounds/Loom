@@ -21,11 +21,27 @@
 //! word, before the verdict and after it (`secretMentions`). A house line
 //! filled in from a public global (`Night.award_value` in the Best Liar
 //! award) stays: that value already rides every request's `world`.
+//!
+//! Wave 18b: every line he says in a **reading beat** (`READING_BEATS`:
+//! Question Results, Round Two Tally, The Verdict) is dropped whatever its
+//! text — he reads the guests' filings aloud there (`{Kernel.res_said}`,
+//! `said_4–6`), and a guest's near miss or free text is no answer form
+//! `answerMentions` could catch.
 
 import { mentionsKey, nearTokens } from "../src/answer-match.ts";
+import { foldName } from "../src/parser/names.ts";
 import type { AgentRecent } from "./agents.ts";
 import { CODEX_ROOM, type ChatMessage } from "./chat.ts";
 import { CHART_NOBODY, SCREEN_CHARTS } from "./routes/screen.ts";
+
+/** The beats where he reads the filings aloud (folded): none of their
+ *  lines is ever a `recent` house item (wave 18b, §3). */
+export const READING_BEATS: ReadonlySet<string> = new Set(["Question Results", "Round Two Tally", "The Verdict"].map(foldName));
+
+/** Was this line said in a reading beat? */
+export function inReadingBeat(m: Pick<ChatMessage, "beat">): boolean {
+  return typeof m.beat === "string" && READING_BEATS.has(foldName(m.beat));
+}
 
 /** How far back a time-stamped item reaches at least (story ms). */
 export const RECENT_WINDOW_MS = 600_000;
@@ -175,7 +191,7 @@ export function buildRecent(input: RecentInput): AgentRecent[] {
     const m = messages[i]!;
     if (!inWindow(m)) continue;
     if (m.from === character && m.kind === "line" && m.audience === "all" && !m.hidden) {
-      if (house.length < RECENT_HOUSE_MAX && input.mentionsAnswer?.(m.text) !== true && input.mentionsSecret?.(m.text) !== true) house.push({ kind: "house", text: m.text, at: m.ts });
+      if (house.length < RECENT_HOUSE_MAX && !inReadingBeat(m) && input.mentionsAnswer?.(m.text) !== true && input.mentionsSecret?.(m.text) !== true) house.push({ kind: "house", text: m.text, at: m.ts });
       continue;
     }
     if (m.channel !== CODEX_ROOM.channel || m.kind !== "codex" || m.codex === undefined) continue;

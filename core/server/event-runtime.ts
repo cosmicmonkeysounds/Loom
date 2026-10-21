@@ -2305,10 +2305,13 @@ export class EventRuntime {
    * `group` / `trueFaction` naming it are dropped and `groups` lists only
    * the groups an agent may know of.
    */
-  private agentVarsOf(world: ReadonlyArray<{ path: string; value: string }>): (head: string) => Record<string, string> {
+  private agentVarsOf(world: ReadonlyArray<{ path: string; value: string }>, o: { race?: boolean } = {}): (head: string) => Record<string, string> {
     const sim = this.sim!;
     const secretCodex = new Set([...sim.model.codex.values()].filter((e) => e.secret).map((e) => `codex.${Sim.codexSlug(e.id)}`));
-    const hidden = (g: string) => this.agentHiddenGroup(g);
+    // `race` (the facts document, wave 18b D13 j): race sides too — the
+    // document lists every program, so a side on each would count it. A
+    // request keeps its speaker's own `group` (the mind courts its members).
+    const hidden = (g: string) => this.agentHiddenGroup(g) || (o.race === true && this.agentHiddenRace(g));
     return (head: string): Record<string, string> => {
       const person = sim.persons.get(head);
       const secret = person === undefined ? null : (sim.model.roles.get(person.role)?.secret ?? null);
@@ -2338,16 +2341,31 @@ export class EventRuntime {
     return (sim.model.factions.get(group)?.hidden ?? false) && !sim.factionRevealed(group);
   }
 
+  /** Wave 18b (D13 j): in faction mode (`founding:`) every race side — a
+   *  declared joinable group, revealed or not — is an agent's blind spot
+   *  like a crew: its own world paths (`members`, `leader`) would let the
+   *  worker count it and tell a founder the rival's number. Outside faction
+   *  mode, false (requests unchanged). */
+  private agentHiddenRace(group: string): boolean {
+    const sim = this.sim!;
+    if (!sim.crews.factionMode) return false;
+    if (sim.crews.isRaceFaction(group)) return true;
+    const want = foldName(group);
+    for (const id of sim.model.factions.keys()) if (foldName(id) === want) return sim.crews.isRaceFaction(id);
+    return false;
+  }
+
   /** The world's globals as an agent may see them: every path whose head is
    *  neither a person nor a character, minus an unrevealed hidden group's
-   *  own paths (`<Group>.members` would name its members). */
+   *  own paths (`<Group>.members` would name its members) and, in faction
+   *  mode, every race side's (`agentHiddenRace`). */
   private agentGlobals(world: ReadonlyArray<{ path: string; value: string }>): Record<string, string> {
     const sim = this.sim!;
     const globals: Record<string, string> = {};
     for (const w of world) {
       const head = w.path.split(".")[0]!;
       if (sim.persons.has(head) || sim.model.characters.has(head)) continue;
-      if (this.agentHiddenGroup(head)) continue;
+      if (this.agentHiddenGroup(head) || this.agentHiddenRace(head)) continue;
       globals[w.path] = w.value;
     }
     return globals;
@@ -2481,9 +2499,11 @@ export class EventRuntime {
     const sim = this.sim;
     if (sim === null) return null;
     const world = sim.worldEntries();
-    const varsOf = this.agentVarsOf(world);
+    const varsOf = this.agentVarsOf(world, { race: true });
     const globals = this.agentGlobals(world);
     const online = new Set(this.agents.onlineCharacters());
+    // Wave 18b (D13 j): no race side on any program or character either.
+    const unseen = (g: string) => this.agentHiddenGroup(g) || this.agentHiddenRace(g);
     // The booths online, as `presence()` counts them (not the whole presence:
     // that builds the facts view too).
     const primes = new Set([...this.clients].filter((c) => c.role === "prime").map((c) => c.id));
@@ -2491,8 +2511,8 @@ export class EventRuntime {
     const programs = [...sim.persons.values()].map((p) => ({
       id: p.id,
       name: p.name,
-      faction: sim.publicFactionOf(p.id),
-      groups: sim.groupsOf(p.id).filter((g) => !this.agentHiddenGroup(g)),
+      faction: ((f) => (f !== null && this.agentHiddenRace(f) ? null : f))(sim.publicFactionOf(p.id)),
+      groups: sim.groupsOf(p.id).filter((g) => !unseen(g)),
       location: sim.locationOf(p.id),
       captured: sim.isCaptured(p.id),
       vars: varsOf(p.id),
@@ -2507,7 +2527,7 @@ export class EventRuntime {
       // guest's.
       characters: [...sim.model.characters.values()].filter((c) => !c.secret).map((c) => ({
         id: c.id,
-        faction: c.faction !== null && this.agentHiddenGroup(c.faction) ? null : c.faction,
+        faction: c.faction !== null && unseen(c.faction) ? null : c.faction,
         listed: c.listed,
         mind: c.mind,
         online: c.mind === "external" ? online.has(c.id) : primes.has(c.id),

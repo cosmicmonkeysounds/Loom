@@ -513,3 +513,47 @@ describe("faction mode (wave 18b)", () => {
     expect(await post(rt, "/api/guest/crew/join", { token: bob.token, crew: "crew-1" })).toMatchObject({ status: 409 });
   });
 });
+
+describe("faction mode keeps every race side from the agents (wave 18b, D13 j)", () => {
+  type Req = { world: Record<string, string>; them: { vars: Record<string, string> } } | null;
+  const request = (rt: EventRuntime, guest: string): Req =>
+    (rt as unknown as { buildAgentRequest(t: { character: string; channel: string; audience: string[] }, id: string): Req }).buildAgentRequest({ character: "Oracle", channel: "dm:Oracle", audience: [guest] }, "ar-test");
+  const raceKey = (k: string) => /^(Unlimited Power|The Way Out|Unlimited_Power|The_Way_Out|crew-)/u.test(k);
+
+  it("a revealed side's members and leader ride neither a request nor the facts document; the speaker keeps their own group", async () => {
+    const { rt, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, b, , d] = g as [typeof g[0], typeof g[0], typeof g[0], typeof g[0]];
+    await cue(rt, "make_leaders", d.id);
+    await cue(rt, "the_clock");
+    expect((await post(rt, "/api/guest/join", { token: a.token, faction: "Unlimited Power" })).status).toBe(200);
+    await post(rt, "/api/guest/crew/found", { token: b.token, name: "Night Shift" });
+    expect(rt.liveSim!.world.peek("Unlimited Power.leader")).not.toBeNull();
+    expect((await post(rt, "/api/guest/say", { token: a.token, channel: "dm:Oracle", text: "how many are with you?" })).status).toBe(200);
+    const req = request(rt, a.id)!;
+    expect(Object.keys(req.world).filter(raceKey)).toEqual([]);
+    expect(req.them.vars["group"] ?? req.them.vars["faction"]).toBe("Unlimited Power");
+    const res = fakeRes();
+    await rt.handle(fakeReq({}), res, "GET", "/api/agent/facts", new URL("http://x/api/agent/facts"), { moderator: true });
+    const facts = JSON.parse(res.body) as { world: Record<string, string>; programs: Array<{ faction: string | null; groups: string[]; vars: Record<string, string> }> };
+    expect(Object.keys(facts.world).filter(raceKey)).toEqual([]);
+    for (const p of facts.programs) {
+      expect(p.faction === null || !raceKey(p.faction)).toBe(true);
+      expect(p.groups.filter(raceKey)).toEqual([]);
+      expect(Object.values(p.vars).filter((v) => raceKey(v))).toEqual([]);
+    }
+  });
+
+  it("with no founding: line a revealed side still rides a request (unchanged)", async () => {
+    const src = MINI.replace(/^founding: .*$/mu, "");
+    const d = mkdtempSync(join(tmpdir(), "loom-factions-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "mini", scenarioSource: src, joinBase: () => "http://localhost", now: () => clock, facts: MINI_FACTS });
+    rt.openDoors();
+    const a = await guest(rt, "Ada");
+    await cue(rt, "make_leaders", a.id);
+    await cue(rt, "the_clock");
+    expect((await post(rt, "/api/guest/say", { token: a.token, channel: "dm:Oracle", text: "hello" })).status).toBe(200);
+    expect(Object.keys(request(rt, a.id)!.world).some((k) => k.startsWith("Unlimited Power."))).toBe(true);
+  });
+});
