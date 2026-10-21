@@ -1,0 +1,92 @@
+/* The house-wide moments + the clips (lane tv3, wave 17), scoped by `tv3-`.
+   Sizes in vmin; motion per frame inline (transform / opacity). */
+
+.tv3-duck-head, .tv3-duck-name, .tv3-duck-install, .tv3-clip-title, .tv3-ooga, .tv3-hamster-title,
+.tv3-uc-title, .tv3-uc-text, .tv3-counter, .tv3-mail-title {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  text-align: center;
+  font-family: var(--mono);
+  line-height: 1.05;
+  will-change: transform, opacity;
+}
+
+/* --- the golden duck -------------------------------------------------------- */
+.tv3-duck-burst { left: 50%; top: 48%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; }
+.tv3-duck-gerald { position: absolute; left: 50%; top: 22%; will-change: transform, opacity; }
+.tv3-duck-head { top: 6%; font-size: min(9vmin, 8.4vw); color: #ffe066; text-shadow: 0.05em 0.05em 0 #5a3a00, 0 0 0.3em rgba(255, 210, 63, 0.7); }
+.tv3-duck-name { top: 63%; font-size: min(12vmin, 11vw); color: #fff; text-shadow: 0 0 0.25em rgba(255, 210, 63, 0.9), 0.05em 0.05em 0 #5a3a00; overflow-wrap: break-word; }
+.tv3-duck-install { top: 82%; left: 50%; right: auto; width: min(80vw, 60vmin); transform: translateX(-50%); font-size: 2.8vmin; }
+.tv3-duck-install .kit-progress-wrap { color: #fff3c8; }
+.tv3-duck-done { font-family: var(--mono); font-size: min(6vmin, 6vw); color: #7dffa8; text-shadow: 0 0 0.25em rgba(60, 255, 120, 0.6); }
+.tv3-duck-kept { color: #dfe8ff; text-shadow: 0.05em 0.05em 0 #000; }
+.tv3-duck-name-kept { color: #b8c0d0; text-shadow: none; font-size: min(8vmin, 8vw); }
+
+/* --- the clips --------------------------------------------------------------- */
+.tv3-clip { font-family: var(--mono); }
+.tv3-clip-load { font-family: Tahoma, "MS Sans Serif", sans-serif; margin-bottom: 0.6em; }
+.tv3-clip-burst { left: 50%; top: 50%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; }
+.tv3-clip-title { top: 5%; font-size: min(10vmin, 10vw); color: #fff; text-shadow: 0.06em 0.06em 0 #ff2bd6; }
+.tv3-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; display: flex; flex-wrap: wrap; transform: perspective(60vmin) rotateX(50deg); transform-origin: 50% 100%; }
+.tv3-floor span { width: 16.666%; height: 25%; border: 0.3vmin solid #000; box-sizing: border-box; }
+.tv3-baby-pos { position: absolute; left: 50%; top: 20%; will-change: transform; }
+.tv3-baby { display: block; overflow: visible; }
+.tv3-ooga { top: 82%; font-size: min(9vmin, 9vw); color: #ffe23f; text-shadow: 0.05em 0.05em 0 #000; }
+.tv3-ooga span, .tv3-hamster-title span { display: inline-block; will-change: transform; }
+
+.tv3-hamster-stage {
+  background-image: radial-gradient(#ffd2e8 18%, transparent 19%), radial-gradient(#d2ecff 18%, transparent 19%);
+  background-size: 8vmin 8vmin;
+  background-position: 0 0, 4vmin 4vmin;
+}
+.tv3-hamster-title { top: 4%; font-family: "Comic Sans MS", "Chalkboard SE", var(--mono); font-weight: bold; font-size: min(9vmin, 8.6vw); text-shadow: 0.04em 0.04em 0 #000; }
+.tv3-hamster-grid { position: absolute; left: 6%; right: 6%; top: 22%; height: 54%; display: flex; flex-wrap: wrap; }
+.tv3-hamster-cell { width: 25%; height: 33.333%; display: flex; align-items: flex-end; justify-content: center; will-change: transform, opacity; }
+.tv3-hamster { width: 70%; height: 90%; transform-origin: 50% 100%; overflow: visible; }
+.tv3-clip-marquee { position: absolute; left: 0; right: 0; bottom: 11%; padding: 0.15em 0; font-size: 5vmin; color: #0000ee; background: #fff; border-top: 0.4vmin solid #ff00ff; border-bottom: 0.4vmin solid #ff00ff; }
+.tv3-counter { bottom: 3%; top: auto; font-size: 3.4vmin; color: #000; }
+.tv3-counter b { padding: 0 0.3em; color: #0f0; background: #000; letter-spacing: 0.08em; }
+
+.tv3-stripes { position: absolute; left: 0; right: 0; height: 8vmin; overflow: hidden; border: 0.4vmin solid #000; }
+.tv3-stripes span { display: block; width: calc(100% + 16vmin); height: 100%; background: repeating-linear-gradient(45deg, #ffd21f 0, #ffd21f 4vmin, #000 4vmin, #000 8vmin); will-change: transform; }
+.tv3-stripes-top { top: 0; }
+.tv3-stripes-bottom { bottom: 0; }
+.tv3-uc-title { top: 12%; font-family: Tahoma, "MS Sans Serif", sans-serif; font-weight: bold; font-size: min(8vmin, 7.2vw); color: #c00000; }
+.tv3-uc-scene { position: absolute; left: 50%; top: 28%; width: 60vmin; height: 40vmin; margin-left: -30vmin; display: flex; align-items: flex-end; justify-content: center; }
+.tv3-digger { width: 30vmin; height: 40vmin; overflow: visible; }
+.tv3-ucone { width: 12vmin; height: 16vmin; margin-left: 4vmin; }
+.tv3-new {
+  position: absolute;
+  right: 8%;
+  top: 26%;
+  width: 16vmin;
+  height: 16vmin;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Tahoma, "MS Sans Serif", sans-serif;
+  font-weight: bold;
+  font-size: 4.6vmin;
+  color: #fff;
+  background: #ff0000;
+  clip-path: polygon(50% 0, 61% 18%, 82% 10%, 80% 32%, 100% 40%, 84% 56%, 96% 76%, 74% 76%, 68% 98%, 50% 84%, 32% 98%, 26% 76%, 4% 76%, 16% 56%, 0 40%, 20% 32%, 18% 10%, 39% 18%);
+  -webkit-clip-path: polygon(50% 0, 61% 18%, 82% 10%, 80% 32%, 100% 40%, 84% 56%, 96% 76%, 74% 76%, 68% 98%, 50% 84%, 32% 98%, 26% 76%, 4% 76%, 16% 56%, 0 40%, 20% 32%, 18% 10%, 39% 18%);
+  will-change: transform;
+}
+.tv3-uc-text { top: 72%; font-family: "Times New Roman", serif; font-size: min(4.6vmin, 5vw); color: #000080; white-space: pre-wrap; }
+.tv3-uc-counter { bottom: 11%; }
+
+.tv3-mail-env { position: absolute; left: 50%; top: 40%; will-change: transform; }
+.tv3-envelope { display: block; overflow: visible; filter: drop-shadow(0 1vmin 1vmin rgba(0, 0, 0, 0.4)); }
+.tv3-mail-title { top: 6%; font-family: Tahoma, "MS Sans Serif", sans-serif; font-weight: bold; font-size: min(10vmin, 9vw); color: #ffe23f; text-shadow: 0.05em 0.05em 0 #001a4a; }
+.tv3-mail-inbox { font-size: clamp(14px, 3vmin, 34px) !important; }
+.tv3-mail-row { display: flex; align-items: center; justify-content: space-between; }
+.tv3-mail-dot { width: 0.8em; height: 0.8em; border-radius: 50%; background: #ff4040; margin-left: 0.6em; }
+.tv3-mini-mail { color: rgba(255, 255, 255, 0.55); }
+
+@media (orientation: portrait) {
+  .tv3-duck-name { font-size: 15vw; }
+  .tv3-duck-name-kept { font-size: 11vw; }
+  .tv3-duck-head { font-size: 10vw; }
+}

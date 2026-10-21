@@ -1,0 +1,168 @@
+// Lane tv3's scenes (wave 17): Act F–G + the house-wide moments. Every
+// trigger against the show's own text, and every scene drawn at its key
+// frames on both targets (the timelines: `cutscene-tv3-time.test.ts`).
+
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { HISTORY_T } from "../src/cutscene/clock.ts";
+import { fakeState } from "../src/cutscene/fake.ts";
+import { componentFor } from "../src/cutscene/pick.ts";
+import { SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
+import { SCENES as MOMENTS, finderName } from "../src/cutscene/scenes/moments.tsx";
+import type { SceneDef, SceneTarget } from "../src/cutscene/types.ts";
+import type { ScreenNight } from "../src/screen.ts";
+
+const SHOW = join(__dirname, "../../core/examples/trapped-in-the-internet");
+
+function loomFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const f of readdirSync(dir)) {
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) out.push(...loomFiles(p));
+    else if (f.endsWith(".loom")) out.push(p);
+  }
+  return out;
+}
+const STORY = loomFiles(SHOW)
+  .map((f) => readFileSync(f, "utf8"))
+  .join("\n");
+
+const ALL: SceneDef[] = [...ACT3, ...MOMENTS];
+
+// --- the triggers, against the show -------------------------------------------------------
+
+describe("tv3 triggers name the story's real cues, beats and signals", () => {
+  const beatNames = new Set([...STORY.matchAll(/^== (.+)$/gmu)].map((m) => m[1]!.trim()));
+  const adminCues = new Set([...STORY.matchAll(/^INTERACTION (\S+)\n(?:  .*\n)*?  who: admin/gmu)].map((m) => m[1]!));
+  const screenCue = (v: string) => (v.endsWith("*") ? new RegExp(`cue (?:screens|terminals|tv)_${v.slice(0, -1)}`, "u") : new RegExp(`cue (?:screens|terminals|tv)_${v}\\b`, "u"));
+
+  it("every trigger is real", () => {
+    for (const s of ALL)
+      for (const w of s.when) {
+        if ("slide" in w) expect(STORY, `${s.id}: slide ${w.slide}`).toMatch(screenCue(w.slide));
+        else if (w.moment === "beat") expect(beatNames.has(w.name), `${s.id}: beat ${w.name}`).toBe(true);
+        else if (w.moment === "signal") expect(adminCues.has(w.name), `${s.id}: admin cue ${w.name}`).toBe(true);
+        else if (w.moment === "found") expect(["golden duck", "golden duck kept"], s.id).toContain(w.name);
+        else throw new Error(`${s.id}: unexpected trigger ${JSON.stringify(w)}`);
+      }
+  });
+
+  it("the server names a find the way the scenes expect", () => {
+    const screen = readFileSync(join(__dirname, "../../core/server/routes/screen.ts"), "utf8");
+    expect(screen).toContain('"golden duck kept"');
+    expect(screen).toContain('"golden duck"');
+  });
+
+  it("the clips are wall-only (the TV never gets a terminals_ cue) and match the story's play_on_the_screens", () => {
+    for (const id of ["dancing_baby", "hamster_dance", "under_construction", "youve_got_mail"]) {
+      const s = MOMENTS.find((d) => d.id === id)!;
+      expect(s.tv, id).toBeUndefined();
+      expect(s.wall, id).toBeDefined();
+      expect(STORY).toContain(`cue terminals_${id}`);
+    }
+  });
+
+  it("covers every slide of Act F–G", () => {
+    const slides = new Set(ACT3.flatMap((s) => s.when.flatMap((w) => ("slide" in w ? [w.slide] : []))));
+    for (const v of ["final_reveal", "bobbing", "truth_txt", "song", "grok_prom", "rave", "advice", "banish", "ceremony", "award_*"]) expect(slides.has(v), v).toBe(true);
+  });
+});
+
+// --- every scene, drawn ---------------------------------------------------------------------
+
+const NIGHT: Partial<ScreenNight> = { award_winner: "Netscape Navigator", award_value: 37, help_votes: 5, thwart_votes: 2, phase: "advice" };
+
+function draw(def: SceneDef, target: SceneTarget, t: number, o: { reduced?: boolean; introduced?: boolean; night?: Partial<ScreenNight>; value?: string; who?: string | null } = {}): string {
+  const View = componentFor(def, target);
+  if (View === null) return "";
+  const state = fakeState({ introduced: o.introduced ?? true, target: target === "tv" ? "tv" : "terminals", night: { ...NIGHT, ...o.night } });
+  const value = o.value ?? (def.when[0] && "slide" in def.when[0] ? def.when[0].slide.replace(/\*$/u, "most_trusted") : (def.when[0] as { name: string }).name);
+  return renderToStaticMarkup(createElement(View, { t, at: 1000, seq: 1, value, state, night: state.night, who: o.who === undefined ? "Winamp" : o.who, target, sfx: () => false, done: () => {}, reduced: o.reduced ?? false }));
+}
+
+describe("every tv3 scene draws", () => {
+  // A server render warns about the kit's layout effects (they measure a canvas / a marquee).
+  let quiet: ReturnType<typeof vi.spyOn>;
+  beforeAll(() => {
+    quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterAll(() => quiet.mockRestore());
+
+  const times = (def: SceneDef) => (typeof def.ms === "number" ? [0, 500, 1500, def.ms / 3, def.ms / 2, def.ms * 0.8, def.ms - 1] : [0, 500, 1500, 3000, 6000, 12_000, 45_000, HISTORY_T]);
+
+  it("on both targets, at every key frame, reduced or not — and only a namesCharacter scene says the name", () => {
+    for (const def of ALL)
+      for (const target of ["tv", "wall"] as const)
+        for (const reduced of [false, true])
+          for (const t of times(def)) {
+            const html = draw(def, target, t, { reduced });
+            if (componentFor(def, target) === null) continue;
+            expect(html.length, `${def.id} ${target} ${t}`).toBeGreaterThan(0);
+            if (/Trabolta/u.test(html)) expect(def.namesCharacter, `${def.id} names him at ${t}`).toBe(true);
+          }
+  });
+
+  it("every hold scene is still moving long after it started (the persistent slides loop)", () => {
+    for (const def of ALL.filter((d) => d.ms === "hold"))
+      for (const target of ["tv", "wall"] as const) {
+        if (componentFor(def, target) === null) continue;
+        const a = draw(def, target, HISTORY_T);
+        const b = draw(def, target, HISTORY_T + 1700);
+        expect(a === b, `${def.id} ${target} froze`).toBe(false);
+      }
+  });
+
+  it("an award shows the winner's name and value off the night block, and asks them forward without one", () => {
+    const award = ACT3.find((d) => d.id === "award")!;
+    const up = draw(award, "tv", 6000, { value: "award_lore_hoarder" });
+    expect(up).toContain("Netscape Navigator");
+    expect(up).toContain("LORE HOARDER");
+    expect(up).toContain("Codex entries held");
+    const late = draw(award, "wall", HISTORY_T, { value: "award_duck_speedrun", night: { award_value: "2:31" } });
+    expect(late).toContain("Netscape Navigator");
+    expect(late).toContain("2:31");
+    const none = draw(award, "tv", 6000, { night: { award_winner: null, award_value: null } });
+    expect(none).toContain("Please come forward");
+    expect(none).not.toContain("Trust score");
+  });
+
+  it("the advice poll shows the live tally, and SHE SAID YES once he is helped", () => {
+    const advice = ACT3.find((d) => d.id === "advice")!;
+    const poll = draw(advice, "tv", 8000);
+    expect(poll).toContain("Help him");
+    expect(poll).toContain("7 programs have voted");
+    expect(draw(advice, "tv", 8000, { night: { phase: "finale_help" } })).toContain("SHE SAID YES");
+  });
+
+  it("the duck names its finder; a kept find reads GERALD CAN'T HELP and lays no egg", () => {
+    const duck = MOMENTS.find((d) => d.id === "golden_duck")!;
+    const kept = MOMENTS.find((d) => d.id === "golden_duck_kept")!;
+    const found = draw(duck, "tv", 6000, { who: "MS Paint" });
+    expect(found).toContain("MS PAINT");
+    expect(found).toContain('rx="9" ry="12"'); // the golden egg
+    for (const t of [0, 2000, 5000, 8500]) {
+      const html = draw(kept, "tv", t, { who: "MS Paint" });
+      expect(html).not.toContain('rx="9" ry="12"');
+      if (t >= 2000) expect(html).toContain("GERALD CAN&#x27;T HELP");
+    }
+    // The first reinstallation can come before the introduction: neither names him.
+    expect(duck.namesCharacter).not.toBe(true);
+    expect(kept.namesCharacter).not.toBe(true);
+    expect(draw(duck, "tv", 6000, { introduced: false })).not.toMatch(/Trabolta/u);
+  });
+
+  it("a finder with no name is A PROGRAM", () => {
+    expect(finderName(null)).toBe("A PROGRAM");
+    expect(finderName("  ")).toBe("A PROGRAM");
+    expect(finderName("Winamp")).toBe("WINAMP");
+  });
+
+  it("midnight shows the year that will not render", () => {
+    const midnight = ACT3.find((d) => d.id === "midnight")!;
+    expect(draw(midnight, "tv", 10_500)).toContain("the year will not render");
+    expect(STORY).toContain("the year will not render");
+  });
+});
