@@ -85,11 +85,13 @@ describe('TerminalsCard (wave 14 spot claims + set up)', () => {
 
   it('the builder offers every view, the map spots, the rooms and the cast — agent first — and a link with the mod code', () => {
     const html = render([])
-    for (const v of ['auto', 'world', 'face', 'mirror', 'tv', 'chess', 'shadow']) expect(html).toContain(`value="${v}"`)
+    for (const v of ['auto', 'world', 'face', 'mirror', 'tv', 'chess', 'shadow', 'casino', 'reinstall']) expect(html).toContain(`value="${v}"`)
     expect(html).toContain('value="desktop-tv"')
     expect(html).toContain('value="The Cloud"')
     expect(html.indexOf('value="Trabolta"')).toBeLessThan(html.indexOf('value="Clippy"'))
-    expect(html).toContain('https://loom.test/terminal/?code=MODC&amp;character=Trabolta&amp;view=auto&amp;announce=0')
+    // No announce: the tablet follows the house setting (wave 18b, Q8).
+    expect(html).toContain('https://loom.test/terminal/?code=MODC&amp;character=Trabolta&amp;view=auto</p>')
+    expect(html).toContain('Always (ignore the house setting)')
   })
 
   it('no map: rows carry no off-map flag and the builder says the spot list is empty', () => {
