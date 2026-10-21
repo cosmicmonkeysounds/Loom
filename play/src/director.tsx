@@ -48,6 +48,8 @@ import { HelpSheet } from "./help.tsx";
 import { usePlayHost } from "./host.ts";
 import { eventGone } from "./lifecycle.ts";
 import { codeFromUrl, useDocumentTitle, useTheme, type ResolvedCode } from "./session/shared.ts";
+import { callerIsMe, callerKnown, callerLine, callerText, cueCaller } from "./host/caller.ts";
+import { useFireAnyway } from "./host/fire-anyway.tsx";
 
 // Moved to the light modules the guest's first load uses (fix round); every
 // name still resolves here (frozen signatures, CONTRACTS §0).
@@ -273,15 +275,19 @@ export interface StripItem {
   clock?: true;
   /** A countdown under a minute. */
   urgent?: true;
+  /** Who is calling the show (`📣 …`). */
+  caller?: true;
 }
 
 /** The strip under the header: the focus act's code · the phase · the
  *  soonest countdown · up to 3 watched values (whatever the view carries:
  *  the server's lean view holds only global, non-secret ones). */
-export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs: number | null, show: { minutes: number; running: boolean } | null = null): StripItem[] {
+export function stripItems(view: DirectorView | null, layout: SheetLayout, nowMs: number | null, show: { minutes: number; running: boolean } | null = null, caller: string | null = null): StripItem[] {
   const out: StripItem[] = [];
   // The show clock first (wave 13 K5): the party's time of day, ⏸ while it holds.
   if (show !== null) out.push({ text: `${show.running ? "🕐" : "⏸"} ${clockText(show.minutes)}`, clock: true });
+  // Who is calling the show (wave 18 B8): `📣 Task Manager`, `📣 You`.
+  if (caller !== null) out.push({ text: caller, caller: true });
   if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!) });
   const phase = nightPhase(view?.world ?? []);
   if (phase !== null) out.push({ text: phase });
@@ -358,7 +364,7 @@ export function subjectChoices(roster: DirectorView["roster"]): PickItem[] {
 
 /** `refused`: the server took the press but the story turned it down
  *  (out of turn; its `# hosts` line says why) — not ticked on the sheet. */
-export type FireOutcome = { ok: true; refused?: true } | { ok: false; status: number; message: string; moved?: true };
+export type FireOutcome = { ok: true; refused?: true; said?: string[]; staff?: string[] } | { ok: false; status: number; message: string; moved?: true };
 
 /** The server's 409 for a press with no sim yet (the doors not open). */
 const NO_SIM = "no scenario loaded";
@@ -386,7 +392,15 @@ export const FIRE_TIMEOUT_MS = 8000;
 /** One fire's POST; resolves with the server's answer (`refused` when the
  *  story turned the press down), rejects with `{status, message}` on an HTTP
  *  refusal and anything else (an abort, a dropped connection) on no answer. */
-export type FirePost = (body: ReturnType<typeof signalBody>, signal: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean } | void>;
+export type FirePost = (body: ReturnType<typeof signalBody>, signal: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean; said?: unknown; staff?: unknown } | void>;
+
+/** A press's lines (`/api/mod/signal`'s 200 `said` / `staff`, wave 18 C8):
+ *  strings only, empty dropped; absent from an older server. */
+export function pressLines(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v.filter((x): x is string => typeof x === "string" && x.trim() !== "").map((x) => x.trim());
+  return out.length > 0 ? out : undefined;
+}
 
 /**
  * Fire a cue: post it with a timeout, and re-poll at once whatever the
@@ -398,7 +412,10 @@ export async function fireCue(post: FirePost, body: ReturnType<typeof signalBody
   try {
     const answer = await post(body, ctl.signal);
     if (answer?.moved === true) return { ok: false, status: 409, message: "the cues moved", moved: true };
-    return answer?.refused === true ? { ok: true, refused: true } : { ok: true };
+    if (answer?.refused === true) return { ok: true, refused: true };
+    const said = pressLines(answer?.said);
+    const staff = pressLines(answer?.staff);
+    return { ok: true, ...(said !== undefined ? { said } : {}), ...(staff !== undefined ? { staff } : {}) };
   } catch (e) {
     if (e instanceof ApiError) return { ok: false, status: e.status, message: e.message };
     return { ok: false, status: 0, message: ctl.signal.aborted ? "no answer" : e instanceof Error ? e.message : String(e) };
@@ -673,7 +690,7 @@ function useDirectorSession() {
           signal,
         });
         const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-        if (res.ok) return { refused: data["refused"] === true };
+        if (res.ok) return { refused: data["refused"] === true, said: data["said"], staff: data["staff"] };
         if (res.status === 409 && data["moved"] === true) return { moved: true };
         throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
       };
@@ -691,7 +708,24 @@ function useDirectorSession() {
     [auth, base, drop, latch],
   );
 
-  return { auth, view, receivedAt, connected, notice, login, fire, leave: () => drop(null) };
+  /** 📣 I'll call / Stop calling (`POST /api/mod/caller {on}`). Rejects
+   *  with the server's refusal (an older server: 404). */
+  const claim = useCallback(
+    async (on: boolean): Promise<void> => {
+      if (auth === null) return;
+      const res = await fetch(`${base}/api/mod/caller`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-loom-token": auth.token },
+        body: JSON.stringify({ on, label: phoneLabel(auth.name) }),
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      poll.current?.now();
+      if (!res.ok) throw new ApiError((data["error"] as string) || `HTTP ${res.status}`, res.status);
+    },
+    [auth, base],
+  );
+
+  return { auth, view, receivedAt, connected, notice, login, fire, claim, leave: () => drop(null) };
 }
 
 // --- the screens -----------------------------------------------------------------
@@ -912,6 +946,17 @@ export interface CueDesk {
   pick: (subject: string) => void;
   closePicker: () => void;
   locked: (row: CueRow) => boolean;
+  /** A FIRE waiting on the desk's `confirm` (someone else is calling):
+   *  every cue waits for the answer. */
+  confirming?: string | null;
+}
+
+/** The desk's options (wave 18): `confirm` asks before a FIRE goes (the
+ *  host dock's *Fire anyway?* while someone else calls the show). It sees
+ *  the cue; true sends the press at once (the arm is spent, no second ARM),
+ *  false drops it. Without it every FIRE goes, as before. */
+export interface CueDeskOptions {
+  confirm?: (row: CueRow) => Promise<boolean>;
 }
 
 /**
@@ -920,8 +965,11 @@ export interface CueDesk {
  * lapses after `ARM_MS` and when the page is left; one press at a time.
  * `onOutcome` sees every fire's answer (the host keeps a refused press).
  */
-export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArray<{ id: string; name: string }> | undefined, fire: DeskFire, onOutcome?: (row: CueRow, outcome: FireOutcome) => void): CueDesk {
+export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArray<{ id: string; name: string }> | undefined, fire: DeskFire, onOutcome?: (row: CueRow, outcome: FireOutcome) => void, opts?: CueDeskOptions): CueDesk {
   const [armed, setArmed] = useState<Armed | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const confirm = useRef(opts?.confirm);
+  confirm.current = opts?.confirm;
   const [pickingId, setPicking] = useState<string | null>(null);
   const [value, setValue] = useState("");
   const [pending, setPending] = useState<string | null>(null);
@@ -960,7 +1008,7 @@ export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArra
   const outcome = useRef(onOutcome);
   outcome.current = onOutcome;
   const tap = (row: CueRow) => {
-    if (cueLocked(row, pending, cooling)) return; // one press at a time
+    if (cueLocked(row, pending, cooling) || confirming !== null) return; // one press at a time
     const t = phoneTap(armed, row, Date.now(), marks);
     if (t.kind === "ignore") return; // a fast double tap only arms
     if (t.kind === "stale") {
@@ -970,13 +1018,25 @@ export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArra
     else if (t.kind === "pick") setPicking(t.id);
     else {
       setArmed(null);
-      setPending(t.id);
-      void fire(t.id, t.subject, t.value, t.presses).then((out) => {
-        setToast(fireToast(row, out));
-        outcome.current?.(row, out);
-        setPending((p) => (p === t.id ? null : p));
-        setCooling(true);
-      });
+      const send = () => {
+        setPending(t.id);
+        void fire(t.id, t.subject, t.value, t.presses).then((out) => {
+          setToast(fireToast(row, out));
+          outcome.current?.(row, out);
+          setPending((p) => (p === t.id ? null : p));
+          setCooling(true);
+        });
+      };
+      const ask = confirm.current;
+      if (ask === undefined) return send();
+      setConfirming(t.id);
+      void ask(row).then(
+        (ok) => {
+          setConfirming(null);
+          if (ok) send();
+        },
+        () => setConfirming(null),
+      );
     }
   };
   const picking = pickingId !== null ? rows.find((r) => r.id === pickingId) ?? null : null;
@@ -999,7 +1059,8 @@ export function useCueDesk(rows: CueRow[], marks: CueMarks, roster: ReadonlyArra
       setPicking(null);
       setValue("");
     },
-    locked: (row) => cueLocked(row, pending, cooling),
+    locked: (row) => cueLocked(row, pending, cooling) || confirming !== null,
+    confirming,
   };
 }
 
@@ -1154,7 +1215,12 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
   const layout = useMemo(() => sheetLayout(rows), [rows]);
   const marks = s.view?.cues ?? NO_MARKS;
   const lastId = marks.last;
-  const desk = useCueDesk(rows, marks, s.view?.roster, (id, subject, value, presses) => s.fire(id, subject, value, presses));
+  // Who is calling (wave 18 B8): a FIRE while someone else calls asks once.
+  const me = s.auth !== null ? [s.auth.name, phoneLabel(s.auth.name)] : [];
+  const caller = cueCaller(s.view?.cues);
+  const anyway = useFireAnyway(caller, me);
+  const desk = useCueDesk(rows, marks, s.view?.roster, (id, subject, value, presses) => s.fire(id, subject, value, presses), undefined, { confirm: anyway.confirm });
+  const [claimNote, setClaimNote] = useState<string | null>(null);
   // The countdowns tick once a second between polls (story clock + the
   // wall time since the view landed).
   const runs = clockRuns(s.view);
@@ -1169,7 +1235,8 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
   const nowMs = storyNow(s.view?.clock, s.receivedAt, Math.max(wall, s.receivedAt), runs);
   const bar = nextBar(rows, s.view?.countdowns, nowMs, runs);
   const show = useShowClock(showClockOf(s.view));
-  const strip = stripItems(s.view, layout, nowMs, show);
+  // An older server sends no caller: the strip says nothing about it.
+  const strip = stripItems(s.view, layout, nowMs, show, s.view !== null && callerKnown(s.view.cues) ? callerText(caller, me) : null);
   // Keep the next cue in view as the night moves down the sheet.
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1218,7 +1285,7 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
             {strip.length > 0 && (
               <div className="cue-strip" data-testid="cue-strip">
                 {strip.map((it, k) => (
-                  <span key={k} className={it.urgent ? "urgent" : it.clock ? "cue-strip-clock" : undefined}>
+                  <span key={k} className={it.urgent ? "urgent" : it.clock ? "cue-strip-clock" : it.caller ? "cue-strip-caller" : undefined}>
                     {it.text}
                   </span>
                 ))}
@@ -1268,11 +1335,30 @@ export function DirectorApp({ onLeave, brandTheme = null }: { onLeave: () => voi
         </div>
       )}
       <CuePicker desk={desk} roster={s.view?.roster} />
+      {anyway.dialog}
       {menu && (
         <Sheet title="🎬 Director phone" onClose={() => setMenu(false)}>
           <p className="muted pad">
             Signed in{s.auth.name !== "" ? ` as ${s.auth.name}` : ""}. The log records your cues as “{phoneLabel(s.auth.name)}”.
           </p>
+          {s.view !== null && callerKnown(s.view.cues) && (
+            <div className="pad">
+              <p className="muted" data-testid="director-caller">
+                {callerLine(caller, me)}
+              </p>
+              <button
+                className="choice"
+                onClick={() => {
+                  const on = !callerIsMe(caller, me);
+                  setClaimNote(null);
+                  void s.claim(on).catch((e: unknown) => setClaimNote(`Not done — ${e instanceof Error ? e.message : String(e)}`));
+                }}
+              >
+                {callerIsMe(caller, me) ? "Stop calling" : "📣 I'll call"}
+              </button>
+              {claimNote !== null && <p className="muted">{claimNote}</p>}
+            </div>
+          )}
           <WakeLockToggle />
           <button
             className="choice danger"
