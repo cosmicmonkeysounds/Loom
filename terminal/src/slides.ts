@@ -48,7 +48,9 @@ export type OverlayKind = "blackout" | "go_to_living_room" | "alarm";
 
 export interface ScreenLayers {
   overlay: OverlayKind | null;
-  slide: { value: string; cue: string } | null;
+  /** The slide on top, with its cue's `seq` (bumps on a repeat) and `at`
+   *  (server ms, 0 = history) — a cutscene is keyed on the one and drawn from the other. */
+  slide: { value: string; cue: string; seq: number; at: number } | null;
   /** Seconds on the corner countdown, or null for none. */
   corner: number | null;
   /** Seconds to midnight for the Y2K clock (`y2k` slide), or null when not running. */
@@ -188,7 +190,7 @@ export function screenLayers(state: ScreenState | null, nowMs: number, o: { pilo
   }
   // A pilot, a peek or a room terminal: no slide (nor the corner below).
   const bare = o.piloting || o.peek === true || o.room === true;
-  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue };
+  if (!bare && s !== null && held(s)) slide = { value: s.value, cue: s.cue, seq: s.seq, at: s.at };
 
   const remaining = state.remaining === null ? null : Math.max(0, state.remaining - Math.floor(since / 1000));
   const y2k = state.countdown === "y2k" ? remaining : null;
