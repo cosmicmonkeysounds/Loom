@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { cueRows } from "../../core/src/cue-sheet.ts";
 import { nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
 import { hostCalls } from "../src/host/api.ts";
-import { popOutDock, stripClass } from "../src/host/dock.tsx";
+import { HostDock, popOutDock, stripClass } from "../src/host/dock.tsx";
 import { HostContext, type HostCtx } from "../src/host/kit.tsx";
 import { barLine, hostTabs, cueDescription, cueThen, didText, hostStrip, hostWanted, moreDefaultTab, moreGroups, moreTabOf, wantedLine, wantedNeed, type WantedLike } from "../src/host/model.ts";
 import { CuesTab } from "../src/host/tab-cues.tsx";
@@ -186,5 +186,25 @@ describe("the pop-out strip in the console (§5.7)", () => {
     const Dock = () => null;
     expect(popOutDock({ PopOutDock: Dock })).toBe(Dock);
     expect(popOutDock(null)).toBeNull();
+  });
+});
+
+describe("the dock with a caller (§5.1, §5.3)", () => {
+  const auth = { token: "t", character: "Adobe Acrobat", admin: false, host: true, eventId: "e" };
+  const session = { auth, messages: new Map(), view: null, threads: { open: () => {} } } as unknown as Parameters<typeof HostDock>[0]["session"];
+  const render = (view: HostView) =>
+    renderToStaticMarkup(createElement(HostDock, { session, wide: false, openCard: () => {}, keyboardOpen: false, client: { view, receivedAt: 1_000, error: null, connected: true, refresh: () => {}, fresh: async () => {}, calls: hostCalls(async () => ({}), () => view.alerts.path) } }));
+  it("shows who is calling first on line 2, and no ask until FIRE", () => {
+    const html = render(hostFixture({ parts: [{ id: "Task Manager", presence: "online" }], cues: { last: null, fired: [], presses: 0, pressed: null, caller: { name: "Task Manager", at: 1 } } as HostView["cues"] }));
+    const line2 = html.match(/class="host-bar-line2"[^>]*>([\s\S]*?)<\/span><\/button>/u)?.[1] ?? "";
+    expect(line2).toMatch(/^(<span[^>]*host-code-narrow[^>]*>[^<]*<\/span>)?<span class="host-strip-caller">📣 Task Manager<\/span>/u);
+    expect(html).not.toContain("host-fire-anyway");
+    // A director at the laptop (not a part) reads as Run.
+    expect(render(hostFixture({ cues: { last: null, fired: [], caller: { name: "Sam Rivera", at: 1 } } as HostView["cues"] }))).toContain('<span class="host-strip-caller">📣 Run</span>');
+  });
+  it("reads 📣 You for this booth's own claim, nobody when the claim is empty, nothing from an older server", () => {
+    expect(render(hostFixture({ cues: { last: null, fired: [], caller: { name: "Adobe Acrobat", at: 1 } } as HostView["cues"] }))).toContain("📣 You");
+    expect(render(hostFixture({ cues: { last: null, fired: [], caller: null } as HostView["cues"] }))).toContain("📣 nobody");
+    expect(render(hostFixture())).not.toContain("host-strip-caller");
   });
 });
