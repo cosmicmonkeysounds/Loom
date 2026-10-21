@@ -3,9 +3,14 @@
 //! are the list ⚙ offers, so "which tablet is this" is one tap — never a
 //! typed name, a spot id and a screen type that must agree by hand.
 //!
+//! The map's voice link rides along (wave 19, `TerminalSpot.voice`, read
+//! through `@loom/house` `voiceOn`): a tablet set up as the tent takes no
+//! part in it, and follows the map when a director turns a spot's link on
+//! or off.
+//!
 //! Pure: the setup screen (`Setup.tsx`) and the boot (`app.tsx`) call these.
 
-import type { HouseMap, TerminalSpot } from "@loom/house";
+import { voiceOn, type HouseMap, type TerminalSpot } from "@loom/house";
 import { DEFAULT_TV_ROOM, VIEWS, type TerminalConfig, type TerminalView, type UrlHints } from "./config.ts";
 
 /** What a map terminal sets on a tablet chosen as it. */
@@ -15,9 +20,11 @@ export interface MapPick {
   view: TerminalView;
   /** The LOCATION a room terminal speaks for, else "" (the TV: "" = `DEFAULT_TV_ROOM`). */
   room: string;
+  /** The map's voice link at this spot (`voiceOn`: off on the tent). */
+  voice: boolean;
 }
 
-type MapLike = Pick<HouseMap, "terminals" | "rooms" | "floors">;
+type MapLike = Pick<HouseMap, "terminals" | "rooms" | "floors" | "spawn">;
 
 function viewOf(t: Pick<TerminalSpot, "view">): TerminalView {
   return typeof t.view === "string" && (VIEWS as readonly string[]).includes(t.view) ? (t.view as TerminalView) : "auto";
@@ -33,11 +40,11 @@ function locationOf(house: MapLike, roomId: string): string {
 export function pickOf(house: MapLike, t: TerminalSpot): MapPick {
   const view = viewOf(t);
   const room = t.speaks === true && view !== "tv" && view !== "chess" && view !== "casino" ? locationOf(house, t.room) : "";
-  return { spot: t.id, name: t.name.trim() || t.id, view, room };
+  return { spot: t.id, name: t.name.trim() || t.id, view, room, voice: voiceOn(house as HouseMap, t) };
 }
 
-/** The "unplaced" choice: no window, the face only. */
-export const UNPLACED: MapPick = { spot: "", name: "Terminal", view: "face", room: "" };
+/** The "unplaced" choice: no window, the face only, no voice link. */
+export const UNPLACED: MapPick = { spot: "", name: "Terminal", view: "face", room: "", voice: false };
 
 /** A screen type in words, for the list. */
 export function screenWords(pick: Pick<MapPick, "view" | "room">): string {
@@ -119,6 +126,7 @@ export function applyPick(c: TerminalConfig, pick: MapPick, overrides: Pick<UrlH
     name: overrides?.name ?? pick.name,
     view: overrides?.view ?? pick.view,
     room: overrides?.room ?? pick.room,
+    voiceLink: pick.voice,
     fromMap: pick.spot !== "",
   };
 }
@@ -131,8 +139,19 @@ export function followMap(c: TerminalConfig, house: MapLike): TerminalConfig | n
   const t = house.terminals.find((x) => x.id === c.spot);
   if (t === undefined) return null;
   const pick = pickOf(house, t);
-  if (pick.name === c.name && pick.view === c.view && pick.room === c.room) return null;
-  return { ...c, name: pick.name, view: pick.view, room: pick.room };
+  if (pick.name === c.name && pick.view === c.view && pick.room === c.room && pick.voice === c.voiceLink) return null;
+  return { ...c, name: pick.name, view: pick.view, room: pick.room, voiceLink: pick.voice };
+}
+
+/** Any terminal on the map (from it or not): the map's voice link for its
+ *  spot, when it differs from the stored one. Null = nothing to change
+ *  (unplaced, a spot the map lacks, or already in step). */
+export function followVoice(c: TerminalConfig, house: MapLike): TerminalConfig | null {
+  if (c.spot === "") return null;
+  const t = house.terminals.find((x) => x.id === c.spot);
+  if (t === undefined) return null;
+  const voice = voiceOn(house as HouseMap, t);
+  return voice === c.voiceLink ? null : { ...c, voiceLink: voice };
 }
 
 /** Whether a config says what its map terminal says (name / view / room). */
@@ -159,7 +178,7 @@ export function urlConfig(given: TerminalConfig, hints: Pick<UrlHints, "spot" | 
   const t = house.terminals.find((x) => x.id === hints.spot);
   if (t === undefined) return given;
   const pick = pickOf(house, t);
-  const next = hints.view !== null ? { ...given, spot: pick.spot } : applyPick(given, pick, { name: hints.name, view: null, room: hints.room });
+  const next = hints.view !== null ? { ...given, spot: pick.spot, voiceLink: pick.voice } : applyPick(given, pick, { name: hints.name, view: null, room: hints.room });
   return { ...next, fromMap: agrees(next, pick) };
 }
 

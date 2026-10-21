@@ -37,6 +37,13 @@
 //!
 //!   /terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&view=casino
 //!
+//! The voice link (wave 19, `voice/`): a placed terminal's microphone is
+//! heard in the reinstallation games at its screen, and the players near it
+//! are heard out of its speaker. `&mic=0` / `&voices=0` turn either half off
+//! for one tablet; the TV's microphone is off unless `&mic=1`, the mirror
+//! takes no part, and neither does a spot the map's `voice` turns off (the
+//! tent).
+//!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
 //! a terminal pilot a scanned guest through `/api/mod/impersonate`, and
@@ -97,6 +104,18 @@ export interface TerminalConfig {
    *  device's voice). Off by default — the TV's room already hears the
    *  house speakers, and most tablets hang where the speakers reach. */
   announce: boolean;
+  /** The voice link's microphone (wave 19, `voice/roles.ts`): absent = the
+   *  view's default (on, the TV's off); false turns it off for this tablet,
+   *  true turns the TV's on. */
+  mic?: boolean;
+  /** Play the reinstallation players this terminal can hear (wave 19): on
+   *  by default; false keeps this tablet's speaker for its own voice. */
+  voices: boolean;
+  /** The map's voice link for this terminal's spot (`@loom/house`
+   *  `voiceOn`): copied from the map at setup and followed with it (off on
+   *  the tent). True until a map says otherwise; the server refuses an
+   *  upload from a spot it turns off whatever this says. */
+  voiceLink: boolean;
   /** Full screen on every tap while not (wave 17, `fullscreen.ts`): on by
    *  default; ⚙ turns it off. Stored only — no URL hint. */
   fullscreen: boolean;
@@ -168,6 +187,8 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     room: "",
     announce: false,
     camFeed: true,
+    voices: true,
+    voiceLink: true,
     fullscreen: true,
     ...partial,
   };
@@ -182,7 +203,10 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
+    const loaded = defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false, voices: c.voices !== false, voiceLink: c.voiceLink !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
+    if (typeof c.mic === "boolean") loaded.mic = c.mic;
+    else delete loaded.mic;
+    return loaded;
   } catch {
     return null;
   }
@@ -196,7 +220,7 @@ export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage):
   storage.removeItem(CONFIG_KEY);
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&character=&camera=&engine=&spot=&view=&room=&announce=&cam=&mic=&voices=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
@@ -210,6 +234,10 @@ export interface UrlHints {
   announce: boolean | null;
   /** `cam=0` / `1`: the camera feed (null = not given: on). */
   camFeed?: boolean | null;
+  /** `mic=0` / `1`: the voice link's microphone (null = the view's default). */
+  mic?: boolean | null;
+  /** `voices=0` / `1`: play the players' voices (null = not given: on). */
+  voices?: boolean | null;
 }
 
 /** A URL on/off switch: true / false, null = not given or unreadable. */
@@ -234,6 +262,8 @@ export function hintsFromSearch(search: string): UrlHints {
     room: p.get("room")?.trim() || null,
     announce: flagOf(announce),
     camFeed: flagOf(p.get("cam")),
+    mic: flagOf(p.get("mic")),
+    voices: flagOf(p.get("voices")),
   };
 }
 
@@ -250,6 +280,8 @@ export function withoutSecrets(search: string): string {
   p.delete("room");
   p.delete("announce");
   p.delete("cam");
+  p.delete("mic");
+  p.delete("voices");
   const s = p.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -260,7 +292,7 @@ export function withoutSecrets(search: string): string {
  */
 export async function provision(code: string, hints: Omit<UrlHints, "code">): Promise<TerminalConfig> {
   const c = await connect(code);
-  return defaultConfig({
+  const given = defaultConfig({
     eventId: c.eventId,
     token: c.token,
     title: c.title,
@@ -273,7 +305,10 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     room: hints.room ?? "",
     announce: hints.announce ?? false,
     camFeed: hints.camFeed ?? true,
+    voices: hints.voices ?? true,
   });
+  if (typeof hints.mic === "boolean") given.mic = hints.mic;
+  return given;
 }
 
 /** A moderator passcode traded for the event's access (setup's CONNECT
