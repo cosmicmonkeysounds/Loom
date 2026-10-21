@@ -628,6 +628,12 @@ export interface CockpitState {
   closePlayer(session: PlayerSession): Promise<void>
   /** Write any world variable (the World browser's inline editing). */
   setVar(path: string, value: string): Promise<void>
+  /** 📣 Claim (`on`) or let go of the show's caller (wave 18 C8, Q1): one
+   *  console calls at a time, shown on every cue sheet as `cues.caller`
+   *  (Run, any host booth, the director phone). Server runs only: resolves
+   *  true when it landed; a refusal lands in `error`. The local backend
+   *  has one director and no claim: false, nothing set. */
+  claimCaller(on: boolean): Promise<boolean>
   /** Hand a codex entry to a holder (a guest or a character) — the story's
    *  `unlock X for who`, server `/api/mod/codex` (journaled `by` you) or
    *  `Sim.unlock` locally. Fires their `learns` hooks like any unlock. */
@@ -769,6 +775,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   openPlayer: async () => null,
   closePlayer: noop,
   setVar: noop,
+  claimCaller: async () => false,
   grantCodex: noop,
   stepQuest: noop,
   pairGuest: async () => null,

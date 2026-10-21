@@ -56,12 +56,24 @@ function focusIsNowhere(root: HTMLElement): boolean {
   return root.contains(ae) && ae instanceof HTMLElement && ae.matches(':disabled')
 }
 
-function ModeToggle({ mode, setMode }: { mode: DirectorMode; setMode: (m: DirectorMode) => void }) {
+function ModeToggle({ mode, setMode, claim }: { mode: DirectorMode; setMode: (m: DirectorMode) => void; claim: boolean }) {
   return (
     <div className="flex overflow-hidden rounded-md border border-zinc-700 text-[11px]" data-testid="director-mode" role="radiogroup" aria-label="Director mode">
       {[
-        { m: DirectorMode.Calling, label: 'Calling', tip: 'You call the cues: the keyboard is on (Space · Space fires NEXT)' },
-        { m: DirectorMode.Watching, label: 'Watching', tip: 'A second director: the house at a glance, the keyboard off (clicks still arm, then fire)' },
+        {
+          m: DirectorMode.Calling,
+          label: 'Calling',
+          tip: claim
+            ? 'Call the show from here: every host booth and phone shows you as the caller, and the keyboard is on (Space · Space fires NEXT)'
+            : 'You call the cues: the keyboard is on (Space · Space fires NEXT)',
+        },
+        {
+          m: DirectorMode.Watching,
+          label: 'Watching',
+          tip: claim
+            ? 'Let someone else call: the house at a glance, the keyboard off (clicks still arm, then fire)'
+            : 'A second director: the house at a glance, the keyboard off (clicks still arm, then fire)',
+        },
       ].map(({ m, label, tip }) => (
         <button
           key={m}
@@ -83,7 +95,7 @@ function ModeToggle({ mode, setMode }: { mode: DirectorMode; setMode: (m: Direct
 function DirectorPage() {
   const interactions = useCockpit((s) => s.interactions)
   const cues = useCockpit((s) => s.cues)
-  const [mode, setMode] = useDirectorMode()
+  const [mode, setMode, callerInfo] = useDirectorMode()
   const rows = useMemo(() => cueRows(interactions, cues), [interactions, cues])
   const acts = useMemo(() => cueActs(rows), [rows])
   const focus = focusActIndex(acts)
@@ -237,7 +249,12 @@ function DirectorPage() {
             <div className="flex items-center gap-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Director</div>
               <span className="ml-auto" />
-              <ModeToggle mode={mode} setMode={setMode} />
+              {callerInfo !== null && (
+                <span className="text-[11px] text-zinc-400" data-testid="director-caller" title="One console calls the show at a time: Run, a host booth or the director phone. Calling claims it for this console.">
+                  {callerInfo.note}
+                </span>
+              )}
+              <ModeToggle mode={mode} setMode={setMode} claim={callerInfo !== null} />
             </div>
             <NightBar />
           </div>

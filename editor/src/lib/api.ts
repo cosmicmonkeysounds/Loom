@@ -319,6 +319,12 @@ export const modApi = {
       ...(typeof r?.presses === 'number' && Number.isFinite(r.presses) ? { presses: r.presses } : {}),
     }
   },
+  /** 📣 Claim the show's caller (`on`) or let it go (wave 18 C8): the
+   *  server keeps one caller, memory only, on every cue sheet's
+   *  `cues.caller`. An older server answers 404. */
+  async caller(eventId: string, on: boolean): Promise<void> {
+    await req('POST', `/e/${eventId}/api/mod/caller`, { on })
+  },
   /** Scan a guest as a character — fires that character's scan reaction.
    *  Resolves to the character's `respond` readouts (the booth's responses). */
   async scanAs(eventId: string, as: string, target: string): Promise<string[]> {

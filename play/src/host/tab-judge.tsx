@@ -8,7 +8,7 @@ import { askingText, filingButtons, rulingText, type FactVerdictLike, type Filin
 import type { HostJudging } from "../types.ts";
 import type { JudgeMode } from "./api.ts";
 import { ActButton, HostEmpty, HostSection, useHost } from "./kit.tsx";
-import { OPTIMISTIC_MS, optimisticValue, type Optimistic } from "./model.ts";
+import { optimisticValue, type Optimistic } from "./model.ts";
 
 /** The two options (BOOTH-SPEC §5.4, the copy deck). */
 export const JUDGE_MODE_OPTIONS: ReadonlyArray<{ mode: JudgeMode; label: string }> = [

@@ -504,6 +504,8 @@ export const useSim = create<SimState>((set, get) => {
         .map((e) => e.text)
     },
     reveal: async (faction) => void run((s) => void s.reveal(faction)),
+    // One director in the browser: nobody to claim the show from.
+    claimCaller: async () => false,
     choose: async (person, index) => void run((s) => void s.choose(person, index)),
 
     addPersona: async (name) => {
