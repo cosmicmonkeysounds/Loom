@@ -430,6 +430,14 @@ describe("faction mode: the Factions sheet (wave 18b)", () => {
     expect(out).toContain("Leaders stay with their side.");
     expect(out).not.toContain(">Leave<");
   });
+  it("the stay note is said once: under the list with others listed, on your card alone", () => {
+    const count = (out: string, s: string) => out.split(s).length - 1;
+    const leader = { name: "Excel", faction: "Unlimited Power" };
+    expect(count(sheet(fview({ ...leader, sides: [{ ...UP, mine: true, members: 4 }, SHIFT] })), "Leaders stay with their side.")).toBe(1);
+    expect(count(sheet(fview({ ...leader, sides: [{ ...UP, mine: true, members: 4 }] })), "Leaders stay with their side.")).toBe(1);
+    expect(count(sheet(fview({ restricted: true, sides: [{ ...SHIFT, id: "crew-2", mine: true, members: 2 }, UP] })), "Not while you&#x27;re restricted.")).toBe(1);
+    expect(count(sheet(fview({ restricted: true, sides: [{ ...SHIFT, id: "crew-2", mine: true, members: 2 }] })), "Not while you&#x27;re restricted.")).toBe(1);
+  });
   it("an invitation never carries a count; Found a faction's copy", () => {
     const inv = { id: "i1", from: "g-3", fromName: "Excel", kind: "side" as const, target: "Unlimited Power", targetName: "Unlimited Power" };
     const a = renderToStaticMarkup(createElement(RecruitAnswerSheet, { invite: inv, view: fview({ sides: [{ ...UP, members: 4, needs: 13 }] }), calls, onClose: noop }));

@@ -181,6 +181,9 @@ function FactionCard({ side, view, rows, calls, scan, openRoom }: { side: SideRo
   const act: SideAction = factionAction(side, view, rows);
   const mine = myRow(view, rows);
   const isMine = mine !== null && mine.id === side.id;
+  // With other factions listed, the sheet says why you stay once, under
+  // the list (`FactionsSheet`); alone, your own card says it.
+  const others = rows.some((r) => r.id !== side.id);
   const crew = crewOf(view);
   const run = (f: () => Promise<unknown>) => {
     setBusy(true);
@@ -213,8 +216,7 @@ function FactionCard({ side, view, rows, calls, scan, openRoom }: { side: SideRo
         </div>
       )}
       {isMine && side.kind === "founded" && crew !== null && crew.id === side.id && <MemberList view={view} />}
-      {isMine && act === "leader" && <p className="side-note">Leaders stay with their side.</p>}
-      {isMine && act === "restricted" && <p className="side-note">Not while you're restricted.</p>}
+      {isMine && !others && (act === "leader" || act === "restricted") && <p className="side-note">{stayNote(act)}</p>}
       {asking === "leave" && (
         <div className="side-ask" role="group" aria-label={leaveQuestion(side, act)}>
           <span>{leaveQuestion(side, act)}</span>
