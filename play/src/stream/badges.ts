@@ -7,7 +7,7 @@
 import { boothAlertFilter } from "../alerts.ts";
 import type { Viewer } from "../rooms/threads-state.ts";
 import type { Channel, ChatMessage } from "../types.ts";
-import { cardAsks } from "../widgets.tsx";
+import { WIDGETS, cardAsks } from "../widgets.tsx";
 
 /**
  * Is `m` a line a guest typed to this booth's character? The server stores
@@ -96,11 +96,13 @@ export function unreadOf(c: Channel, seen: number, me: Viewer | undefined): numb
  * In a pinned room (the Codex, the Quest Log) an entry or a quest step
  * handed to you still counts, for the Mission tile's dot.
  */
-export function guestDotWorthy(m: ChatMessage, c: Pick<Channel, "id" | "agent">, me: Viewer): boolean {
+export function guestDotWorthy(m: ChatMessage, c: Pick<Channel, "id" | "agent" | "needsYou">, me: Viewer): boolean {
   if (m.parentSeq != null || m.hidden || m.ambient || m.notice !== undefined) return false;
   if (c.id === "lobby") return false;
   if (m.from !== "" && (m.from === me.name || m.from === me.id)) return false;
-  if (m.kind === "widget") return m.widget !== undefined && cardAsks(m.widget) && Array.isArray(m.audience) && m.audience.includes(me.id);
+  // A card asking you: still unanswered (the room's `needsYou`, which knows
+  // the answers), never an overlay (the tour asks through its own surface).
+  if (m.kind === "widget") return m.widget !== undefined && cardAsks(m.widget) && WIDGETS[m.widget.kind]?.overlay !== true && c.needsYou === true && Array.isArray(m.audience) && m.audience.includes(me.id);
   if (m.kind === "codex" || m.kind === "quest") return addressedTo(m, me);
   if (m.kind !== "line") return false;
   if (c.id.startsWith("pm:")) return true;

@@ -603,3 +603,11 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
   .door { transition: none; }
   .door.open { transform: none; }
 }
+
+/* the Start menu's banner as a button (→ Me): the banner's own look */
+.start-who-btn {
+  width: 100%; margin: 0; padding: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  min-height: var(--tap);
+}
+.start-who-btn:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: 2px; }
+.start-who-go { margin-left: auto; font: 700 18px var(--ui-font); }

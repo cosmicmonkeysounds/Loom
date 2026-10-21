@@ -92,7 +92,11 @@ describe("guestDotOf (§3.3)", () => {
   const me = { id: "g-1", name: "Winamp", booth: false };
   it("a card asking you, a pm line, the agent's line: a dot", () => {
     const card = msg(10, { kind: "widget", widget: { kind: "poll", text: "?", params: { options: "a|b" } } });
-    expect(guestDotOf(ch("dm:Clippy", { messages: [card] }), -1, me)).toBe(1);
+    expect(guestDotOf(ch("dm:Clippy", { needsYou: true, messages: [card] }), -1, me)).toBe(1);
+    // answered (the room no longer needs you), or an overlay (the tour): no dot
+    expect(guestDotOf(ch("dm:Clippy", { messages: [card] }), -1, me)).toBe(0);
+    const tour = msg(13, { kind: "widget", widget: { kind: "tutorial", text: "", params: {} } });
+    expect(guestDotOf(ch("dm:Clippy", { needsYou: true, messages: [tour] }), -1, me)).toBe(0);
     expect(guestDotOf(ch("pm:g-1:g-2", { messages: [msg(11, { channel: "pm:g-1:g-2", from: "Ada" })] }), -1, me)).toBe(1);
     expect(guestDotOf(ch("dm:Trabolta", { agent: true, messages: [msg(12, { from: "Trabolta" })] }), -1, me)).toBe(1);
   });

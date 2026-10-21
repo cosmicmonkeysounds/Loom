@@ -98,8 +98,9 @@ export function MissionWindow({
       <div className="mission-scroll">
         <section className={`w95-window mission-card${model.paused ? " paused" : ""}`} aria-label="Mission">
           <div className="w95-titlebar mission-caption">
-            <span className="w95-title">
-              <Icon name="mission" /> Mission{model.paused ? " (Paused)" : ""}
+            <span className="w95-title ico-title">
+              <Icon name="mission" />
+              <span>Mission{model.paused ? " (Paused)" : ""}</span>
             </span>
           </div>
           <div className="mission-body">
@@ -144,7 +145,7 @@ export function MissionWindow({
                     {buttons.slice(0, 1).map((b) => (
                       <Fragment key={b.id}>{b.el}</Fragment>
                     ))}
-                    <button type="button" className="choice mission-big" onClick={onPeople}>
+                    <button type="button" className="choice objective-go mission-big" onClick={onPeople}>
                       <Icon name="people" size={20} /> WHO'S HERE ({peopleHere})
                     </button>
                   </div>

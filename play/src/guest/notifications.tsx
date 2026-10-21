@@ -158,8 +158,9 @@ export function NotificationsWindow(props: NotificationsWindowProps) {
     <div className="screen notifications">
       <section className="w95-window notif-window" aria-label="Notifications">
         <div className="w95-titlebar">
-          <span className="w95-title">
-            <Icon name="bin-full" /> Notifications
+          <span className="w95-title ico-title">
+            <Icon name="bin-full" />
+            <span>Notifications</span>
           </span>
         </div>
         <div className="notif-bar">
