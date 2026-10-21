@@ -26,7 +26,7 @@ import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interac
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -719,6 +719,12 @@ export class EventRuntime {
   private readonly random: () => number;
   /** `runPicks` re-entrancy: a pick's own signal never draws again. */
   private pickDepth = 0;
+  /** Wave 18b: the crew lines drafted right after a commit (`draftCrewNotices`),
+   *  posted by the next `fanout` after its own events — the order a replay
+   *  appends them in. */
+  private crewPending: DraftMessage[] = [];
+  /** A drafted notice answered an invitation: `fanout` marks the cards. */
+  private crewAnswered = false;
   // w18 crews — crews + recruiting (routes/crews.ts): one journaled `crew` op per change.
   private readonly crewRoutes = new CrewRoutes({
     sim: () => this.sim, open: () => this.open, guest: (q, b, r) => this.requireGuest(q, b, r), facts: () => this.factsBook(), now: () => this.clock(),
@@ -1675,6 +1681,16 @@ export class EventRuntime {
     if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
     const appended = this.chat.append(drafts);
     for (const m of appended) this.deliverMessage(m);
+    // Wave 18b: the crew lines the commits drafted, after their events.
+    if (this.crewPending.length > 0) {
+      const crew = this.crewPending;
+      this.crewPending = [];
+      for (const m of this.chat.append(crew)) this.deliverMessage(m);
+    }
+    if (this.crewAnswered && this.sim !== null) {
+      this.crewAnswered = false;
+      for (const k of answeredInviteCards(this.chat.all(), this.sim.crews)) this.answeredWidgets.add(k);
+    }
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
@@ -3339,7 +3355,21 @@ export class EventRuntime {
     if (m === "signal") notePress(this.sim!, out, this.actingBy); // the cue sheet judges a press by its own events (and names who made it)
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
     this.marks.observe(this.sim);
+    this.draftCrewNotices();
     return out;
+  }
+
+  /** Wave 18b: draft the crew notices the last mutation raised — a crew
+   *  op's, or (faction mode) a `join` / `defect` / story `add` that took
+   *  someone out of a crew — at once, as `restore` drafts them after each
+   *  journal line; the next `fanout` posts them. */
+  private draftCrewNotices(): void {
+    const sim = this.sim;
+    if (sim === null) return;
+    const notices = sim.crews.takeNotices();
+    if (notices.length === 0) return;
+    this.crewPending.push(...crewDrafts(sim, notices));
+    if (notices.some((n) => n.kind === "answered")) this.crewAnswered = true;
   }
 
   /** Apply one wallet op *and* journal it as a single `wallet` line — the
@@ -3353,6 +3383,7 @@ export class EventRuntime {
     const out = this.wallet!.apply(op);
     this.spatial.syncKing();
     this.marks.observe(this.sim);
+    this.draftCrewNotices();
     return out;
   }
 
@@ -3879,6 +3910,8 @@ export class EventRuntime {
             const batch = this.wallet.apply(e.a[0] as WalletOp);
             events++;
             this.chat.append(composeGuestMessages(this.sim!, batch, this.composeOpts));
+            const notices = this.sim!.crews.takeNotices(); // as `commitWallet` drafts them live
+            if (notices.length > 0) this.chat.append(crewDrafts(this.sim!, notices));
           } catch {
             /* tolerate a torn line */
           }
@@ -3916,8 +3949,11 @@ export class EventRuntime {
               for (const d of drafts) if (d.kind === "line") d.via = e.by;
             }
             this.chat.append(drafts);
-            if (e.m === "crew") this.chat.append(crewDrafts(this.sim!, this.sim!.crews.takeNotices())); // w18 crews: as CrewRoutes posts live
           }
+          // Wave 18b: after every line, as `commit` drafts them live (a crew
+          // op's, or a faction-mode join / defect / add leaving a crew).
+          const notices = this.sim!.crews.takeNotices();
+          if (notices.length > 0) this.chat.append(crewDrafts(this.sim!, notices));
         } catch {
           /* tolerate a single bad/torn entry rather than abort recovery */
         }
@@ -4802,6 +4838,11 @@ export class EventRuntime {
           sendJson(res, 403, { error: "that side isn't open" });
           return true;
         }
+        // Wave 18b, faction mode: a live founder stays with their faction.
+        if (this.sim!.crews.factionMode && this.sim!.crews.foundedBy(id) !== null) {
+          sendJson(res, 409, { error: "Founders stay with their faction. Disband it first." });
+          return true;
+        }
         this.fanout(this.commit("join", id, side));
         sendJson(res, 200, { ok: true });
         return true;
@@ -4823,6 +4864,11 @@ export class EventRuntime {
         const side = guestSide(this.sim!, str(body, "to"));
         if (side === null) {
           sendJson(res, 403, { error: "that side isn't open" });
+          return true;
+        }
+        // Wave 18b, faction mode: a live founder stays with their faction.
+        if (this.sim!.crews.factionMode && this.sim!.crews.foundedBy(id) !== null) {
+          sendJson(res, 409, { error: "Founders stay with their faction. Disband it first." });
           return true;
         }
         this.fanout(this.commit("defect", id, side));
