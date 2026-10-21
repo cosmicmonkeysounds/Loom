@@ -23,6 +23,7 @@ def conf(tmp_path, audio: str, extra: str = "") -> str:
 def sent(monkeypatch):
     out: list[tuple] = []
     monkeypatch.setattr(cli, "PUBLISH", lambda topic, payload, **kw: out.append((topic, json.loads(payload), kw)))
+    monkeypatch.setattr(cli, "READ_RETAINED", lambda topic, **kw: "online" if topic == "health/audio" else None)
     return out
 
 
@@ -93,3 +94,23 @@ def test_an_alexa_section_still_announces_through_alexa(tmp_path):
     p = tmp_path / "old.yaml"
     p.write_text(SERVER + "alexa: {mqtt: {host: 127.0.0.1}}\n")
     assert cli._announcer(str(p)) == "alexa"
+
+
+@pytest.mark.parametrize("state", ["offline", "lost", None])
+def test_a_hand_command_with_no_router_listening_says_it_played_nothing(tmp_path, sent, monkeypatch, capsys, state):
+    monkeypatch.setattr(cli, "READ_RETAINED", lambda topic, **kw: state)
+    path = conf(tmp_path, BROKER)
+    assert cli.main(["sounds", "stop", "--config", path]) == 1
+    assert cli.main(["announce", "--config", path, "Hi."]) == 1
+    err = capsys.readouterr().err
+    assert "no router is listening" in err and f"health/audio: {state or 'nothing retained'}" in err
+    assert [t for t, _, _ in sent] == ["show/audio/stop", "show/announce"]  # still sent
+
+
+def test_the_retained_look_gives_up_quietly_with_no_broker():
+    import socket
+
+    with socket.socket() as s:  # a free port nobody listens on
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    assert cli._read_retained("health/audio", hostname="127.0.0.1", port=port, client_id="t", auth=None, timeout=0.3) is None

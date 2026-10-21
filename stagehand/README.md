@@ -797,7 +797,9 @@ there. House-Mac setup and the night's runbook:
 - **By hand** (the uplink down, the broker local): `uv run stagehand sounds
   play <name> [--to living,hall]` (`show/audio/play {"name", "to"?}`) plays one
   sound; `uv run stagehand announce --config … "text"` publishes on
-  `show/announce` once the YAML has no `alexa:` section.
+  `show/announce` once the YAML has no `alexa:` section. Each then reads
+  the retained `health/audio`: not `online` → *no router is listening*,
+  exit 1.
 - **Offline.** The last `audio.json` + `house.json` are kept in
   `cache_dir`; a boot with the uplink down routes from them (else
   `config_file` / `house_file`). A server without the route (an older

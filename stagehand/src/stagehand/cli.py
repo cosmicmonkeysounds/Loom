@@ -180,6 +180,52 @@ def _publish_single(topic: str, payload: str, *, hostname: str, port: int, clien
 PUBLISH = _publish_single
 
 
+#: The router's retained health topic (`online` / `offline` / `lost`).
+ROUTER_HEALTH = "health/audio"
+
+
+def _read_retained(topic: str, *, hostname: str, port: int, client_id: str, auth: dict | None, timeout: float = 1.5) -> str | None:
+    """A topic's retained payload, or None when nothing is retained (or the
+    broker is unreachable) within `timeout` s."""
+    import threading
+
+    import paho.mqtt.client as mqtt
+
+    got: list[str] = []
+    done = threading.Event()
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
+    if auth:
+        client.username_pw_set(auth["username"], auth.get("password"))
+
+    def on_connect(c, _u, _f, rc, _p=None):
+        if not getattr(rc, "is_failure", rc != 0):
+            c.subscribe(topic, qos=1)
+        else:
+            done.set()
+
+    def on_message(_c, _u, msg):
+        if msg.retain:
+            got.append(msg.payload.decode("utf-8", "replace"))
+        done.set()
+
+    client.on_connect, client.on_message = on_connect, on_message
+    try:
+        client.connect(hostname, port, keepalive=10)
+    except OSError:
+        return None
+    client.loop_start()
+    try:
+        done.wait(timeout)
+    finally:
+        client.loop_stop()
+        client.disconnect()
+    return got[0] if got else None
+
+
+#: `_read_retained`, swapped in the tests.
+READ_RETAINED = _read_retained
+
+
 def _to_router(router, topic: str, doc: dict) -> int:
     """One MQTT message to the router (never retained). → the exit code."""
     m = router.cfg.mqtt
@@ -192,6 +238,19 @@ def _to_router(router, topic: str, doc: dict) -> int:
     except Exception as err:  # noqa: BLE001 — a refused socket, paho's own errors
         print(f"no broker at {m.host}:{m.port} ({err}) — is Mosquitto running on this Mac?", file=sys.stderr)
         return 2
+    # Nothing is retained on these topics: with no router listening the
+    # message is gone, so say so rather than "sent".
+    try:
+        state = READ_RETAINED(ROUTER_HEALTH, hostname=m.host, port=m.port, client_id=f"{m.client_id}-cli-health", auth=auth)
+    except Exception:  # noqa: BLE001 — the message went; the look is best effort
+        state = None
+    if state != "online":
+        print(
+            f"sent {topic}, but no router is listening ({ROUTER_HEALTH}: {state or 'nothing retained'}) — it played nothing. "
+            "Is the audio job running? `uv run stagehand launchd status --job audio`",
+            file=sys.stderr,
+        )
+        return 1
     print(f"sent to the router: {topic} {json.dumps(doc)}")
     return 0
 

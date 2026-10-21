@@ -180,6 +180,10 @@ Groups) and never sleep: every stagehand job is a per-user LaunchAgent
   (`--to living` for other speakers than its cue's), and
   `uv run stagehand announce --config trapped.house.yaml "Go to the living room."`
   (or `mosquitto_pub -t show/announce -m '{"text":"Go to the living room."}'`).
+  The `stagehand` commands look at the retained `health/audio` after
+  sending: with no router online they say *no router is listening* and
+  exit 1 (the message is not kept, so restart the `audio` job and send it
+  again).
 - **Health:** retained `health/audio` = `online` / `lost`; the stats on
   `health/audio/stats`.
 
