@@ -1,7 +1,15 @@
 //! The lean screen state (OCT31 K-16): what every wall terminal polls instead
 //! of the mod feed. `GET /e/:id/api/screen/state` answers in ~1 KB:
 //!
-//! - `night`     — the story's own screen mirrors, `Night.screen` / `Night.terminals`;
+//! - `night`     — the story's own screen mirrors, `Night.screen` / `Night.terminals`,
+//!                 and (wave 17) the public vars a cutscene reads: the phase,
+//!                 the step, the bottle's pick, the advice tally, the alert
+//!                 level, and the award winner + value while an `award_*`
+//!                 slide is up (`SCREEN_NIGHT_VARS`; "none" reads null);
+//! - `moments`   — (wave 17) the last `MOMENT_RING` live story moments, oldest
+//!                 first: house-wide beats, external signals, `sound X` names,
+//!                 reveals to everyone and duck finds (`momentOf`), never
+//!                 history, never a per-guest beat or a secret's name;
 //! - `cues`      — the last `cue screens_*` / `terminals_*` / `tv_*` / `tablet_*`
 //!                 value per family, folded from the sim log (a `seq` per family
 //!                 so a re-fired cue — `screens_flicker` twice — is visible);
@@ -17,11 +25,6 @@
 //!                 `top` / `bottom` names the story has called out, and
 //!                 `revealAt` (server ms the slide went up) so every screen
 //!                 reveals the rows bottom-up from the same moment;
-//! - `terminals` — each terminal's last poll (name, spot, view, how long ago,
-//!                 and the device health a current build reports: sound
-//!                 unlocked, page visible, battery, build version —
-//!                 SW-SCR-21), so a director can tell a silent tablet from a
-//!                 live one;
 //! - `identify`  — true while a director's `identify` (install day) is live
 //!                 for this terminal's name: it shows its name full screen
 //!                 (`identifyLeft`: the ms left, counted down on the device);
@@ -56,8 +59,11 @@
 //!                 at or above its `min`; null = no `armed` path, or no story
 //!                 yet). Null when the map has no King.
 //!
-//! The director's side (K-29): `GET /api/mod/screen/terminals` answers just
-//! the heartbeat list + the TV-voice mute, without recording a poll, for the
+//! The director's side (K-29): `GET /api/mod/screen/terminals` answers the
+//! heartbeat list (each terminal's last poll: name, spot, view, how long ago,
+//! and the device health a current build reports — sound unlocked, page
+//! visible, battery, build version, SW-SCR-21; since wave 17 only here, not
+//! on every terminal's answer) + the TV-voice mute, without recording a poll, for the
 //! editor's Run → Terminals card (red after `TERMINAL_SILENT_MS`, a chime);
 //! `POST /api/mod/screen/identify {name}` makes that terminal show its name
 //! for `IDENTIFY_MS` (SW-SCR-21).
@@ -79,6 +85,7 @@ import type { KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import type { SimModel } from "../../src/runtime/sim/model.ts";
+import type { SimEvent } from "../../src/runtime/sim/event.ts";
 import type { ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
 import { queryTokenOf, readBody, sendJson, tokenOf } from "../http-util.ts";
@@ -351,6 +358,131 @@ export function announceTextOf(args: string): string | null {
   return null;
 }
 
+// --- the moments ring (wave 17) ------------------------------------------------
+
+/** How many recent moments the state carries (`moments`). The TV polls every
+ *  second and a wall terminal every two, so the ring only has to hold what
+ *  happens between two polls. */
+export const MOMENT_RING = 12;
+/** Longest moment name / `who` carried (characters). */
+const MAX_MOMENT_NAME = 48;
+
+export type ScreenMomentKind = "beat" | "signal" | "sfx" | "reveal" | "found";
+
+/**
+ * A live, house-wide story moment the screens can animate (the introduction,
+ * the bottle landing, the Heart, a find): never history (a fold's first look
+ * is stamped 0 and carries none), never a per-guest beat, never a secret.
+ */
+export interface ScreenMoment {
+  /** The sim log seq (1-based log index; monotonic within an `announceEpoch`). */
+  seq: number;
+  /** Server epoch ms the fold first saw it. */
+  at: number;
+  kind: ScreenMomentKind;
+  /** The beat's name (`Trabolta Introduction`), the signal's (`bottle_landed`),
+   *  the sound's (`printer_grind`), the revealed place / character, or
+   *  `golden duck` (`golden duck kept` when the story kept the finder). */
+  name: string;
+  /** The program the moment is about (the bottle's pick, the duck's finder)
+   *  by display name, else null. */
+  who: string | null;
+}
+
+/** The duck's two signals (`EventRuntime.commitFound`): the first is folded
+ *  into the second, which becomes the `found` moment. */
+const FOUND_SIGNAL = "the golden duck";
+const FOUND_FIRST = "the simulation completed";
+
+/** Folded names a moment may never carry: every `secret: true` character's
+ *  (the Kernel) — a beat owned by one, a signal named after one. */
+export function secretMomentNames(model: SimModel): string[] {
+  const out = new Set<string>(["kernel"]);
+  for (const c of model.characters.values()) if (c.secret) out.add(foldName(c.id));
+  return [...out];
+}
+
+const touchesSecret = (name: string, secrets: readonly string[]): boolean => {
+  const f = foldName(name);
+  return secrets.some((s) => f === s || f.startsWith(`${s}.`) || f.startsWith(`${s} `));
+};
+
+/**
+ * The moment one sim event makes, or null (pure apart from reading the sim's
+ * model and persons). `seq` is its log index + 1.
+ * - `beatEntered` with no subject (a house-wide beat; a per-guest one is not);
+ * - an external `signal` (an admin cue, a device, `do pick …`) — not a
+ *   phone's own card answer (`<kind> answered`), with `who` its subject's
+ *   display name; the duck's pair becomes one `found`;
+ * - a story `sound X` (`sfx`), by its name;
+ * - a `reveal` to everyone.
+ */
+export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets: readonly string[]): ScreenMoment | null {
+  const who = (id: string | null): string | null => {
+    const p = id === null ? undefined : sim.persons.get(id);
+    return p === undefined ? null : clip(p.name, MAX_MOMENT_NAME);
+  };
+  const make = (kind: ScreenMomentKind, name: string, w: string | null): ScreenMoment | null => {
+    const n = clip(name.trim(), MAX_MOMENT_NAME);
+    return n === "" || touchesSecret(n, secrets) ? null : { seq, at, kind, name: n, who: w };
+  };
+  switch (e.type) {
+    case "beatEntered":
+      return e.subject === null ? make("beat", e.beat, null) : null;
+    case "signal": {
+      if (e.name === FOUND_FIRST || /\s+answered$/u.test(e.name)) return null;
+      if (e.name === FOUND_SIGNAL && e.subject !== null && sim.persons.has(e.subject)) {
+        return make("found", sim.isCaptured(e.subject) ? "golden duck kept" : "golden duck", who(e.subject));
+      }
+      return make("signal", e.name, who(e.subject));
+    }
+    case "directive": {
+      if (e.verb !== "sfx") return null;
+      const name = e.args.trim().split(/[\s,]+/u)[0] ?? "";
+      return make("sfx", name, null);
+    }
+    case "revealed": {
+      if (e.person !== null) return null;
+      const label = e.kind === "location" ? (sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
+      return make("reveal", label, null);
+    }
+    default:
+      return null;
+  }
+}
+
+// --- the night block (wave 17) --------------------------------------------------
+
+/** The public story vars the screens read (*Trapped in the Internet*'s `Night.*`;
+ *  never a Kernel value or a ROLE `secret:` slot). A story without them reads null. */
+export const SCREEN_NIGHT_VARS = {
+  phase: "Night.phase",
+  step: "Night.step",
+  bottle_pick: "Night.bottle_pick",
+  award_winner: "Night.award_winner",
+  award_value: "Night.award_value",
+  help_votes: "Night.help_votes",
+  thwart_votes: "Night.thwart_votes",
+  alerts: "Night.alerts",
+} as const;
+/** A story var holding this names nobody / nothing yet (the show's "none"). */
+const NIGHT_NONE = "none";
+
+export interface ScreenNight {
+  screen: string | null;
+  terminals: string | null;
+  phase: string | null;
+  step: number | null;
+  bottle_pick: string | null;
+  /** Only while an `award_*` slide is up on this target (the story sets the
+   *  winner just before it cues the slide). */
+  award_winner: string | null;
+  award_value: string | number | null;
+  help_votes: number | null;
+  thwart_votes: number | null;
+  alerts: string | null;
+}
+
 /** A terminal that hasn't polled for this long is silent (K-29): the editor's
  *  card goes red and chimes. Terminals poll every 2 s (the TV every 1 s), so
  *  this is ten missed polls; with the card's own 4 s poll a pulled tablet
@@ -427,7 +559,7 @@ export interface ScreenCharacter {
 export interface ScreenState {
   /** Server epoch ms. */
   now: number;
-  night: { screen: string | null; terminals: string | null };
+  night: ScreenNight;
   cues: Record<ScreenCueFamily, ScreenCue | null>;
   /** Null when the terminal's character isn't in the story (or no story is loaded). */
   character: ScreenCharacter | null;
@@ -439,7 +571,9 @@ export interface ScreenState {
   /** Which program `program` is: the poller's, from its `view`. */
   target: ScreenTarget;
   program: ScreenProgram;
-  terminals: Array<ScreenPoll & { ago: number }>;
+  /** The last `MOMENT_RING` live story moments, oldest first (wave 17; the
+   *  epoch is `announceEpoch`). */
+  moments: ScreenMoment[];
   /** The latest house announcement (N-09), null before the first. */
   announce: ScreenAnnounce | null;
   /** The last `ANNOUNCE_RING` announcements, oldest first (`announce` = the last). */
@@ -534,6 +668,10 @@ export class ScreenWatch {
   private shots = 0;
   /** The last `ANNOUNCE_RING` announcements, oldest first. */
   private announcements: ScreenAnnounce[] = [];
+  /** The last `MOMENT_RING` live moments, oldest first (wave 17). */
+  private moments: ScreenMoment[] = [];
+  /** This sim's secret names (`secretMomentNames`; null = not read yet). */
+  private secrets: string[] | null = null;
   /** Per target, the chart slide on screen and when it went up (`revealAt`). */
   private readonly chartUp = new Map<ScreenTarget, { slide: string; at: number }>();
   /** The chart call-out vars this sim's story mentions (null = not read yet). */
@@ -575,6 +713,8 @@ export class ScreenWatch {
       this.programs.clear();
       this.shots = 0;
       this.announcements = [];
+      this.moments = [];
+      this.secrets = null;
       this.chartUp.clear();
       this.chartVars = null;
     }
@@ -585,8 +725,17 @@ export class ScreenWatch {
     const first = !this.seeded;
     const at = first ? 0 : this.now();
     this.seeded = true;
+    this.secrets ??= secretMomentNames(sim.model);
     for (; this.cursor < events.length; this.cursor++) {
       const e = events[this.cursor]!;
+      // A live moment (never history: the first look carries none).
+      if (!first) {
+        const m = momentOf(e, this.cursor + 1, at, sim, this.secrets);
+        if (m !== null) {
+          this.moments.push(m);
+          if (this.moments.length > MOMENT_RING) this.moments.shift();
+        }
+      }
       if (e.type !== "directive") continue;
       if (e.verb === ANNOUNCE_VERB) {
         const text = announceTextOf(e.args);
@@ -606,6 +755,13 @@ export class ScreenWatch {
       for (const t of FAMILY_TARGETS[hit.family]) this.programs.set(t, foldProgram(this.programs.get(t) ?? emptyProgram(), shot));
     }
     return first;
+  }
+
+  /** Fold what the sim logged now, without a poll — the runtime calls it
+   *  right after a find, so the `found` moment reads the finder's capture
+   *  as the find left it and carries the find's own time. */
+  catchUp(sim: Sim | null): void {
+    this.sync(sim);
   }
 
   /** Remember a terminal's poll (unnamed polls aren't recorded). */
@@ -778,9 +934,34 @@ export class ScreenWatch {
       voice = { room, muted: this.voiceMuted && target === "tv", ...got };
     }
 
+    // The night block: public story vars only; the award only while its slide is up.
+    const num = (path: string): number | null => {
+      const v = peek(path);
+      const n = v === null || v.trim() === "" ? NaN : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const named = (path: string): string | null => {
+      const v = peek(path);
+      return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, MAX_MOMENT_NAME);
+    };
+    const awardUp = program.slide?.kind === "slide" && program.slide.value.startsWith("award_");
+    const awardValue = awardUp ? named(SCREEN_NIGHT_VARS.award_value) : null;
+    const night: ScreenNight = {
+      screen: peek("Night.screen"),
+      terminals: peek("Night.terminals"),
+      phase: named(SCREEN_NIGHT_VARS.phase),
+      step: num(SCREEN_NIGHT_VARS.step),
+      bottle_pick: named(SCREEN_NIGHT_VARS.bottle_pick),
+      award_winner: awardUp ? named(SCREEN_NIGHT_VARS.award_winner) : null,
+      award_value: awardValue !== null && /^-?\d+(\.\d+)?$/u.test(awardValue) ? Number(awardValue) : awardValue,
+      help_votes: num(SCREEN_NIGHT_VARS.help_votes),
+      thwart_votes: num(SCREEN_NIGHT_VARS.thwart_votes),
+      alerts: named(SCREEN_NIGHT_VARS.alerts),
+    };
+
     return {
       now: this.now(),
-      night: { screen: peek("Night.screen"), terminals: peek("Night.terminals") },
+      night,
       cues,
       character,
       // Fail closed: a character that is hidden or asleep keeps every
@@ -793,7 +974,7 @@ export class ScreenWatch {
       chart,
       target,
       program,
-      terminals: this.seen(),
+      moments: [...this.moments],
       announce: this.announcements[this.announcements.length - 1] ?? null,
       announces: [...this.announcements],
       ...(voice !== undefined ? { voice } : {}),

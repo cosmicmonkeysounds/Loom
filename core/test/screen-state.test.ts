@@ -308,7 +308,9 @@ describe("ScreenWatch — polls", () => {
     w.poll(null, who("Kitchen"), () => false);
     t = 3000;
     const s = w.poll(null, who("Hall"), () => false);
-    expect(s.terminals.map((p) => [p.name, p.ago])).toEqual([
+    // Wave 17: the heartbeat list is the director's (`seen`), not on every answer.
+    expect("terminals" in s).toBe(false);
+    expect(w.seen().map((p) => [p.name, p.ago])).toEqual([
       ["Hall", 0],
       ["Kitchen", 2000],
     ]);
@@ -364,7 +366,8 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     let s = await state(rt);
     expect(s.character).toMatchObject({ id: "Trabolta", hidden: true, awake: false, online: false });
     expect(s.attract).toBe(true);
-    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver" });
+    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky" });
+    expect(s.moments).toEqual([]); // the doors' history is never a moment
     expect(s.cues.screens).toEqual({ value: "screensaver", seq: 1 });
     expect(s.countdown).toBeNull();
     expect(JSON.stringify(s).length).toBeLessThan(1500);
@@ -405,8 +408,9 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(s.attract).toBe(false);
     expect(s.cues.terminals?.value).toBe("trabolta_online");
     expect(s.night.terminals).toBe("trabolta");
-    expect(s.terminals.map((t) => t.name)).toEqual(["Hall", "Kitchen", "TV"]);
-    expect(s.terminals[0]).toMatchObject({ spot: "start-bar", view: "auto", character: "Trabolta" });
+    const beats = (await call(rt, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals;
+    expect(beats.terminals.map((t) => t.name)).toEqual(["Hall", "Kitchen", "TV"]);
+    expect(beats.terminals[0]).toMatchObject({ spot: "start-bar", view: "auto", character: "Trabolta" });
 
     // A rebooted server replays the journal: the same answer.
     rt.dispose();

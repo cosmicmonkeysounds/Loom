@@ -3075,6 +3075,8 @@ export class EventRuntime {
     } finally {
       this.actingBy = undefined;
     }
+    // The screens' `found` moment reads the capture the find left (wave 17).
+    this.screens.catchUp(this.sim);
     return was && !(this.sim?.isCaptured(s.guest) ?? false);
   }
 
