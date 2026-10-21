@@ -42,7 +42,7 @@ import { showClockOf } from "../show-clock.ts";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
 import { Icon, IconTitle } from "../chrome/icons.tsx";
-import { actLine, titleFallback } from "../chrome/title-bar.tsx";
+import { actLine, missionLine, titleFallback } from "../chrome/title-bar.tsx";
 import { useArmButtons } from "../arm.ts";
 import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
 import type { ExitContext, Nav } from "../moments/exits.ts";
@@ -573,7 +573,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
             sub={where}
             tone={tone}
             paused={st.paused === true}
-            act={onMission ? actLine(st.night?.act, storyTitle) : undefined}
+            act={onMission ? actLine(st.night?.act, missionLine(objectives)) : undefined}
             lead={<MeButton name={meName} onOpen={() => nav.go({ to: "me" })} />}
             trail={<BellButton className="title-bar-bell" onOpen={() => nav.go({ to: "notifications" })} />}
           />

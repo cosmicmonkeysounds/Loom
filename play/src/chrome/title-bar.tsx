@@ -61,6 +61,15 @@ export function actLine(act: NightView["act"] | null | undefined, fallback: stri
   return `▣ ${code !== "" ? `ACT ${code}` : ""}${code !== "" && title !== "" ? " · " : ""}${title}`;
 }
 
+/** Mission's line 1 when the server sends no act (a guest never gets one:
+ *  the act's title is director copy): "▣ MISSION · {the NOW objective}",
+ *  never the story's title (GN-F6: the home screen read "Trapped in the
+ *  Internet" all night). */
+export function missionLine(objectives: readonly ObjectiveView[] | undefined): string {
+  const now = objectives?.[0]?.title.trim() ?? "";
+  return now !== "" ? `▣ MISSION · ${now}` : "▣ MISSION";
+}
+
 /** A loud objective just went live: what the bar unfolds to say. Its own
  *  brief when it is the one the bar names, else its title (and brief). */
 export function flashLine(flash: { id: string; title: string; brief: string }, now: ObjectiveView | null): string {

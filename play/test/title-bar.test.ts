@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { PAUSED_CLASS, PAUSED_WORD, PausedTag, TITLE_CHEVRON, TitleBar, actLine, flashLine, pausedClass, pausedTitle, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
+import { PAUSED_CLASS, PAUSED_WORD, PausedTag, TITLE_CHEVRON, TitleBar, actLine, flashLine, missionLine, pausedClass, pausedTitle, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
 import { nowFlashOf, whereLine } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
@@ -116,6 +116,9 @@ describe("the NOW bar's states (fguest)", () => {
     expect(actLine({ code: null, title: "The Desktop" }, "Story")).toBe("▣ The Desktop");
     expect(actLine({ code: "C", title: null }, "Story")).toBe("▣ ACT C");
     expect(actLine(null, "Story")).toBe("Story");
+    // GN-F6: a guest gets no act; Mission names the mission, never the story.
+    expect(actLine(null, missionLine([{ id: "b", title: "🎱 Computer Bingo", brief: "", checklist: [], buttons: [], act: null }]))).toBe("▣ MISSION · 🎱 Computer Bingo");
+    expect(missionLine([])).toBe("▣ MISSION");
     const html = renderToStaticMarkup(
       createElement(TitleBar, { objectives: [o("a", "Bingo")], fallback: "", onOpen: () => {}, act: "▣ ACT B · The Desktop", lead: createElement("i", { id: "lead" }), trail: createElement("i", { id: "trail" }) }),
     );
