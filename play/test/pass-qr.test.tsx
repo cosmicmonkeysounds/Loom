@@ -6,9 +6,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import jsQR from "jsqr";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
-import { PassQr, passQrSrc, passQrSvg } from "../src/pass-qr.tsx";
+import { PassQr, loadQr, passQrSrc, passQrSvg } from "../src/pass-qr.tsx";
 import { PassCard } from "../src/widgets.tsx";
 
 /** Paint the SVG's runs (`M x y h w v1 h-w z`) onto RGBA pixels, `scale`
@@ -32,6 +32,8 @@ function rasterize(svg: string, scale = 4): { data: Uint8ClampedArray; side: num
 }
 
 describe("passQrSvg", () => {
+  // Wave 18: the encoder is a lazy chunk; the app prefetches it after the first paint.
+  beforeAll(() => loadQr());
   it("scans back to the guest id", () => {
     for (const id of ["g-bd8666", "g-1", "a much longer pass text, 1234567890"]) {
       const { data, side } = rasterize(passQrSvg(id));

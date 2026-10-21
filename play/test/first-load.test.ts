@@ -50,4 +50,10 @@ describe("the guest's first load", () => {
     // the widgets' registration is eager, its render lazy
     expect(src("sides/widgets.tsx")).not.toMatch(/^import (?!type )[^;]*from "\.\/(doors|invite|index)\.tsx"/mu);
   });
+
+  it("wave 18: the pass's QR encoder is its own chunk", () => {
+    const qr = src("pass-qr.tsx");
+    expect(qr).toContain('import("qrcode")');
+    expect(qr).not.toMatch(/^import (?!type )[^;]*from "qrcode"/mu);
+  });
 });

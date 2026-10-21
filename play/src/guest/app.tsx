@@ -52,6 +52,7 @@ import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
+import { prefetchQr } from "../pass-qr.tsx";
 import { extOf, hasSidesOrCrew } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
@@ -63,6 +64,9 @@ registerSidesWidgets();
 // Mission is the home after sign-in: fetched now, while the join screen
 // (or the stream) loads.
 LazyMission.prefetch();
+// The pass's QR encoder: its own chunk, fetched just after the first paint
+// (the pass is one tap away; the arrival's `show pass` card follows soon).
+if (typeof window !== "undefined") window.setTimeout(prefetchQr, 1200);
 
 /**
  * Is the app on rails? While the story has the guest in a `cutscene`
