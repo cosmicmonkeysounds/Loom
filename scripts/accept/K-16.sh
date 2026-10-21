@@ -55,18 +55,30 @@ fi
 
 cat <<'STEPS'
 
-Device check (≤ 10 min) — one wall tablet, the preview event, nobody rehearsing on it:
+Device check (≤ 10 min) — one wall tablet, the preview event, nobody rehearsing on it.
+Since wave 17 the server's attract flag still means "Trabolta is hidden or asleep"; what a
+terminal draws while nobody is piloting it is the client's idle show (decision D1):
   1. Run → header: Restart (fresh story: Trabolta hidden). Above, expect attract=True hidden=True.
   2. Provision the tablet with view=auto FROM THE START:
        https://app.mapsandducks.com/terminal/?code=<mod code>&name=Hall&character=Trabolta&spot=hall&view=auto
-     PASS: the Mystify screensaver (coloured outlines), a Win98 ad card every ~40 s for 10 s,
-     no camera light, no "SCAN YOUR PASS", no "TRABOLTA" anywhere. Tap TOUCH TO WAKE once.
-  3. In a laptop terminal: MOD_CODE=<mod code> scripts/accept/K-16.sh --watch
-  4. Run → Director: fire call_to_the_desktop, start_the_bingo, bingo_time.
-     PASS: the tablet stays on the screensaver; --watch shows countdown=bingo, then none.
-  5. Fire introduce_trabolta. PASS: within 2 s the tablet flips to the face + scanner and
-     "TRABOLTA ONLINE" (or AWAY if his worker is off); --watch prints attract=False at the same moment.
-  6. Scan a pass (or type a program name): the line opens as before.
-  7. Run → header: Restart → within 2 s the tablet is back on the screensaver.
-  Oldest tablet (10-20 tablet gate): step 2 with chrome://inspect open → no red Console errors.
+     PASS (asleep): the idle show — screensavers that change (Mystify among them), fake-1999 ads,
+     Win98 popups that pile up; tap a popup's × and it closes with a click (sometimes two more open),
+     tap a screensaver and it reacts. No camera light, no scan box, no "SCAN YOUR PASS",
+     no "TRABOLTA" anywhere (no ad, popup or toast names him). Tap the screen once.
+  3. Full screen: that first tap takes the page full screen (no browser bar). Leave it with the
+     browser's own gesture, tap once more: full screen again. Run → Terminals: no ⛶ badge on Hall
+     (⛶ = not full screen; a tablet that can't be, or has it off in ⚙, shows no badge at all).
+  4. In a laptop terminal: MOD_CODE=<mod code> scripts/accept/K-16.sh --watch
+  5. Run → Director: fire call_to_the_desktop, start_the_bingo, bingo_time.
+     PASS: the tablet stays on the idle show (asleep: still no scan box, still no name);
+     --watch shows countdown=bingo, then none.
+  6. Fire introduce_trabolta. PASS: within 2 s --watch prints attract=False and the tablet keeps
+     its idle show with the scanner shrunk to a corner scan box: the live camera, the reticle,
+     SCAN YOUR PASS and a typed-name box. His own popups may now name him. Popups and taps never
+     cover the corner box.
+  7. Hold a pass up to the corner box mid-show (or type a program name): the idle show steps
+     aside and the line opens as before; DISCONNECT (or 30 s idle) brings the idle show back.
+  8. Run → header: Restart → within 2 s the tablet is back on the asleep idle show, no scan box.
+  Oldest tablet (10-20 tablet gate): step 2 with chrome://inspect open → no red Console errors,
+  and the show stays smooth (no stutter for a full minute of screensavers and popups).
 STEPS
