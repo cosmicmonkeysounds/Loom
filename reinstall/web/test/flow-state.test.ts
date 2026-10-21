@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { StationInfo } from "@loom/house";
+import { begin } from "../src/api.ts";
 import { defaultConfig, type DeviceRole } from "../src/config.ts";
 import { firstStep } from "../src/flow-state.ts";
 import { exitFlash, ReinstallFlow, type FlowStations } from "../src/flow.tsx";
@@ -208,6 +209,32 @@ describe("ReinstallFlow start=\"auto\" — the first screen, decided at mount", 
   });
 });
 
+describe("the flow's begin never forces (the server's marked-only gate decides, R16)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("begin sends guest, world, device and the station — never force", async () => {
+    const bodies: unknown[] = [];
+    vi.stubGlobal("fetch", async (_u: string, init: { body: string }) => {
+      bodies.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ token: "x" }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    const c = defaultConfig({ eventId: "e", token: "t", name: "Tent" });
+    await begin(c, "g1", "web");
+    await begin(c, "g1", "vr", "q1");
+    expect(bodies).toEqual([
+      { guest: "g1", world: "web", device: "Tent" },
+      { guest: "g1", world: "vr", device: "Tent", station: "q1" },
+    ]);
+  });
+
+  it("flow.tsx passes no force anywhere (its doc may say so)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("../src/flow.tsx", import.meta.url), "utf8");
+    expect(src).not.toMatch(/\bforce\s*[:=,})]/u);
+    expect(src).toMatch(/begin\(config, program\.id, "web"\)/u);
+    expect(src).toMatch(/begin\(config, program\.id, "vr", s\.id\)/u);
+  });
+});
+
 describe("a held frame — no find and no quack under an overlay", () => {
   afterEach(() => vi.unstubAllGlobals());
   function frameGame(held: boolean) {
@@ -264,5 +291,19 @@ describe("a held frame — no find and no quack under an overlay", () => {
     const free = frameGame(false);
     expect(free.found).toHaveBeenCalledTimes(1);
     expect(free.quack).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("held and onPlaying reach the game (structural: this package has no DOM renderer)", () => {
+  it("the flow hands held to Play and reports the play step; Play applies it to the game", async () => {
+    const { readFileSync } = await import("node:fs");
+    const flow = readFileSync(new URL("../src/flow.tsx", import.meta.url), "utf8");
+    expect(flow).toMatch(/<Play[\s\S]*?held=\{held\}[\s\S]*?\/>/u);
+    expect(flow).toMatch(/const playing = step\.kind === "play";/u);
+    expect(flow).toMatch(/playingRef\.current\?\.\(playing\);\s*\}, \[playing\]\);/u);
+    // Unmounting mid-walk says "not playing" (the host resumes its own work).
+    expect(flow).toMatch(/useEffect\(\(\) => \(\) => playingRef\.current\?\.\(false\), \[\]\);/u);
+    const play = readFileSync(new URL("../src/game/Play.tsx", import.meta.url), "utf8");
+    expect(play).toMatch(/\.hold\(held\)/u);
   });
 });
