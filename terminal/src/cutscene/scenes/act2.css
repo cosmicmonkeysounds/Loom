@@ -488,3 +488,5 @@
 .tv2-wall-tally-num { font-family: var(--mono); font-weight: 700; font-size: 3.2em; line-height: 1.1; color: #000080; }
 .tv2-wall-tally.high .tv2-wall-tally-num { color: #0a7a2a; }
 .tv2-wall-tally.low .tv2-wall-tally-num { color: #5a5a5a; }
+.tv2-ride.wall { bottom: 4%; }
+.tv2-ride-line.wall { font-size: 1.8em; bottom: 1.5%; }

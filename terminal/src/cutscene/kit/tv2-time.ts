@@ -7,6 +7,8 @@
 
 import { foldName } from "../../config.ts";
 import type { ScreenMoment, ScreenNight, ScreenState, ScreenVoice } from "../../screen.ts";
+import { SLIDE_HOLD_MS } from "../../slides.ts";
+import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import { clamp01, ease, lerp, noise1, progress } from "./time.ts";
 
 // --- the live clock ------------------------------------------------------------------
@@ -28,6 +30,24 @@ export function liveNow(state: Pick<ScreenState, "now" | "receivedAt">, localNow
 export function liveRemaining(state: Pick<ScreenState, "countdown" | "remaining" | "receivedAt">, kind: string, localNow: number): number | null {
   if (state.countdown !== kind || state.remaining === null) return null;
   return Math.max(0, state.remaining - Math.floor(sinceAnswer(state, localNow) / 1000));
+}
+
+// --- a hold's heartbeat -----------------------------------------------------------------
+
+/** A sound on a scene's clock (`useSfxCues`). */
+export type SfxCue = readonly [number, SfxName, SfxOpts?];
+
+/**
+ * A hold's heartbeat: a cue every `step` ms from `from` (until `to`, else for
+ * as long as the scene is up), as the two grid points around `t` — windowed
+ * off the scene's clock, so a hold never runs out of sound however long the
+ * slide stays (or a memo re-shows it) and the list stays two long.
+ */
+export function onGrid(t: number, from: number, step: number, name: SfxName, opts?: SfxOpts, to = Number.POSITIVE_INFINITY): SfxCue[] {
+  const k = t < from ? 0 : Math.floor((t - from) / step);
+  const out: SfxCue[] = [];
+  for (const x of [from + k * step, from + (k + 1) * step]) if (x < to) out.push([x, name, opts] as const);
+  return out;
 }
 
 // --- moments a scene reads (never queued: the slide's own scene follows them) ---------
@@ -141,6 +161,21 @@ export function glitchYear(t: number, level: number, seed = 3): string {
   if (noise1(seed, bucket) >= odds) return "1999";
   const forms = ["19100", "2000", "1900", "19:9", "19—", "1999"];
   return forms[Math.floor(noise1(seed + 1, bucket) * forms.length)]!;
+}
+
+// --- the recount -------------------------------------------------------------------------
+
+/** The motorcycle's ride and its line take this long (ms), ending as the slide lets go. */
+export const RECOUNT_RIDE_LEAD = 10_000;
+
+/**
+ * When the recount's motorcycle rides (scene ms): the end of the slide's hold
+ * (`SLIDE_HOLD_MS`: 90 s on the TV, 45 s on the walls). The story's `sound
+ * motorcycle` comes in the same drain as the slide — the TV then still has
+ * the whole recount to say — so its moment can't time the ride.
+ */
+export function recountRideAt(target: "tv" | "wall"): number {
+  return SLIDE_HOLD_MS[target === "tv" ? "tv" : "terminals"] - RECOUNT_RIDE_LEAD;
 }
 
 // --- the King --------------------------------------------------------------------------

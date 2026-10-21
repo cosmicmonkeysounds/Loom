@@ -52,18 +52,13 @@ import {
   type Emitter,
 } from "../kit/index.ts";
 import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingLine, latestMoment, liveNow, liveRemaining, scenarioOf, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingLine, liveNow, liveRemaining, onGrid, recountRideAt, scenarioOf, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
+type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
 
 /** The fade every scene leaves on (ms before its end). */
 const OUT_MS = 700;
-/** A cue list repeated every `every` ms from `from` until `to` (a hold's heartbeat). */
-function every(from: number, to: number, step: number, name: Parameters<Sfx>[0], opts?: Parameters<Sfx>[1]): Array<readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?]> {
-  const out: Array<readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?]> = [];
-  for (let x = from; x < to; x += step) out.push([x, name, opts] as const);
-  return out;
-}
 /** The fade out of a scene of length `ms`. */
 const fadeOut = (t: number, ms: number) => 1 - progress(t, ms - OUT_MS, OUT_MS);
 
@@ -113,7 +108,7 @@ function summonsLeft(p: SceneProps): number {
 function FiveMinutesTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
   const left = summonsLeft(p);
-  useSfxCues(t, sfx, [[0, "exclamation"], [320, "popup"], [720, "boom", { gain: 0.5 }], ...PHONE_SPOTS.map((_, i) => [900 + i * 180, "buzz", { gain: 0.35, pitch: 1 + i * 0.03 }] as const), ...every(4900, 92_000, 4000, "buzz", { gain: 0.3 }), ...every(2600, 92_000, 9000, "popup", { gain: 0.5 })]);
+  useSfxCues(t, sfx, [[0, "exclamation"], [320, "popup"], [720, "boom", { gain: 0.5 }], ...PHONE_SPOTS.map((_, i) => [900 + i * 180, "buzz", { gain: 0.35, pitch: 1 + i * 0.03 }] as const), ...onGrid(t, 4900, 4000, "buzz", { gain: 0.3 }), ...onGrid(t, 2600, 9000, "popup", { gain: 0.5 })]);
   const slam = eased(t, 700, 380, ease.outBack);
   const sweep = loop(t, 7000);
   const closing = left <= 0;
@@ -203,17 +198,20 @@ function project(x: number, y: number, z = 0): { x: number; y: number; s: number
   return { x: 80 + (x - 0.5) * 2 * half, y: 34 + y * 50 - z * 34 * s, s };
 }
 
-function pongCues(): Array<readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?]> {
-  const out: Array<readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?]> = [];
+/** The title's ticks and the cups' pops (once), then each throw's landing: the
+ *  throws around `t` only (windowed), so the table never falls silent. */
+function pongCues(t: number): SfxCue[] {
+  const out: SfxCue[] = [];
   for (let i = 0; i < PONG_WORD.length; i++) if (PONG_WORD[i] !== " ") out.push([150 + i * 90, "tick", { pitch: 0.8 + i * 0.05 }]);
   for (let i = 0; i < CUPS.length; i++) out.push([1300 + i * 90, "blip", { pitch: 0.8 + (i % 4) * 0.1, gain: 0.6 }]);
-  for (let n = 0; n < 40; n++) {
+  const land = PONG_START + 250 + 1100;
+  const k = t < land ? 0 : Math.floor((t - land) / THROW_MS);
+  for (const n of [k, k + 1]) {
     const th = throwAt(n * THROW_MS + 1, 7);
-    out.push([PONG_START + n * THROW_MS + 250 + 1100, th.sink ? "coin" : "click", { gain: th.sink ? 0.55 : 0.4 }]);
+    out.push([land + n * THROW_MS, th.sink ? "coin" : "click", { gain: th.sink ? 0.55 : 0.4 }]);
   }
   return out;
 }
-const PONG_CUES = pongCues();
 
 function PongTable({ t, reduced }: { t: number; reduced: boolean }) {
   const rise = eased(t, 1100, 900, ease.outCubic);
@@ -278,7 +276,7 @@ function pongSplash(t: number): Emitter[] {
 
 function TruthPongTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
-  useSfxCues(t, sfx, PONG_CUES);
+  useSfxCues(t, sfx, pongCues(t));
   const bt = t - PONG_START;
   const th = bt >= 0 ? throwAt(bt, 7) : null;
   const callout = th !== null && th.landed && th.at < 250 + 1100 + 900 ? (th.sink ? "+1 TRUTH" : "MISS — MARKED") : null;
@@ -377,7 +375,7 @@ function RoundTwoTallyTv(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
   const value = useLatch(p.seq, tallyOf(state.voice, p.night));
   const high = value === 61;
-  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.5 }], [300, "popup"], ...every(TALLY.facts, TALLY.gauge, 260, "type", { gain: 0.35 }), [TALLY.gauge, "drumroll", { gain: 0.6 }], ...(value === null ? [] : ([[TALLY.land, high ? "tada" : "lose"], ...(high ? ([[TALLY.land + 150, "sparkle"]] as const) : ([[TALLY.land, "boom", { gain: 0.5 }]] as const))] as const))]);
+  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.5 }], [300, "popup"], ...onGrid(t, TALLY.facts, 260, "type", { gain: 0.35 }, TALLY.gauge), [TALLY.gauge, "drumroll", { gain: 0.6 }], ...(value === null ? [] : ([[TALLY.land, high ? "tada" : "lose"], ...(high ? ([[TALLY.land + 150, "sparkle"]] as const) : ([[TALLY.land, "boom", { gain: 0.5 }]] as const))] as const))]);
   const bar = fakeProgress(t - TALLY.facts, TALLY.gauge - TALLY.facts - 300, 11);
   const ang = needleAngle(t, value);
   const spinning = t >= TALLY.gauge && t < TALLY.land;
@@ -656,7 +654,7 @@ function jamShudder(t: number): number {
 function PrintCertificateTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
   const copy = slideCopy("print_certificate");
-  useSfxCues(t, sfx, [[0, "popup"], [300, "whoosh", { gain: 0.5 }], [1100, "click"], [2400, "buzz", { gain: 0.4 }], ...every(3000, 96_000, 6500, "buzz", { gain: 0.35 }), ...driftLandings(2, 4000, 96_000, { seed: 41, life: 7000, gap: 4000, start: 4000 }).map((x) => [x, "ding", { gain: 0.4 }] as const)]);
+  useSfxCues(t, sfx, [[0, "popup"], [300, "whoosh", { gain: 0.5 }], [1100, "click"], [2400, "buzz", { gain: 0.4 }], ...onGrid(t, 3000, 6500, "buzz", { gain: 0.35 }), ...driftLandings(2, Math.max(4000, t - 1000), t + 1000, { seed: 41, life: 7000, gap: 4000, start: 4000 }).map((x) => [x, "ding", { gain: 0.4 }] as const)]);
   const fly = eased(t, 250, 800, ease.inOutCubic);
   const feed = t < 900 ? 0 : t < 2200 ? eased(t, 900, 1300, ease.outQuad) * 0.42 : 0.42;
   const shudder = reduced ? 0 : jamShudder(t);
@@ -741,7 +739,7 @@ const BEANS = beanEmitters();
 function BeansTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
   const copy = slideCopy("beans");
-  useSfxCues(t, sfx, [[0, "glitch"], [200, "critical"], [520, "boom", { gain: 0.6 }], [1700, "error"], ...every(9000, 96_000, 9000, "error", { gain: 0.4 })]);
+  useSfxCues(t, sfx, [[0, "glitch"], [200, "critical"], [520, "boom", { gain: 0.6 }], [1700, "error"], ...onGrid(t, 9000, 9000, "error", { gain: 0.4 })]);
   const lid = eased(t, 500, 260, ease.outBack);
   const heap = beanHeap(t, 900);
   const count = Math.floor(lerp(0, 2400, eased(t, 500, 1800, ease.outCubic)) + Math.max(0, t - 2300) / 37);
@@ -1224,7 +1222,7 @@ function heartLit(t: number) {
 
 function HeartTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
-  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.4, pitch: 0.6 }], [HEART.door - 200, "blip", { pitch: 1.4 }], [HEART.door, "chime", { gain: 0.5 }], ...every(HEART.bay, HEART.end - 1000, HEART.beat, "heartbeat", { gain: 0.45 })]);
+  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.4, pitch: 0.6 }], [HEART.door - 200, "blip", { pitch: 1.4 }], [HEART.door, "chime", { gain: 0.5 }], ...onGrid(t, HEART.bay, HEART.beat, "heartbeat", { gain: 0.45 }, HEART.end - 1000)]);
   const open = eased(t, HEART.door, 2200, ease.inOutCubic);
   const zoom = eased(t, HEART.bay, 2600, ease.inOutCubic);
   const out = fadeOut(t, HEART.end);
@@ -1624,9 +1622,11 @@ function TrabDisabledWall(p: SceneProps) {
 //   hold      the hung window drifts and smears (the old trail of copies), the
 //             face inside sags and jitters, the brightness gutters, System
 //             resources: 3% free; End Task / Wait — Wait is pressed, again
-//   motorcycle  when the house's motorcycle starts (sfx moment), a motorcycle
-//             rides across the bottom, Greased Lightning; the window fades — he
-//             does not come back
+//   the end   ten seconds before the slide lets go, a motorcycle rides across
+//             the bottom, Greased Lightning; the window fades — he does not come
+//             back. (The story's `sound motorcycle` lands in the same drain as the
+//             slide, before the TV has said a word of the recount, so the ride is
+//             timed off the hold, never off that moment.)
 
 const RECOUNT_RIDE_MS = 6000;
 
@@ -1646,12 +1646,11 @@ function DecrepitFace({ t, reduced }: { t: number; reduced: boolean }) {
 }
 
 function RecountTv(p: SceneProps) {
-  const { t, sfx, reduced, state } = p;
-  const now = liveNow(state, Date.now());
-  const moto = latestMoment(state.moments, "sfx", "motorcycle", p.at > 0 ? p.at : 0);
-  const rideT = moto === null ? null : p.at > 0 ? t - (moto.at - p.at) : now - moto.at;
+  const { t, sfx, reduced, target } = p;
+  const rideAt = recountRideAt(target);
+  const rideT = t >= rideAt ? t - rideAt : null;
   const gone = rideT !== null && rideT > 1200 ? progress(rideT, 1200, 2400) : 0;
-  useSfxCues(t, sfx, [[0, "static", { gain: 0.5 }], [1800, "glitch", { gain: 0.4 }], ...every(9000, 600_000, 9000, "error", { gain: 0.25 })]);
+  useSfxCues(t, sfx, [[0, "static", { gain: 0.5 }], [1800, "glitch", { gain: 0.4 }], ...onGrid(t, 9000, 9000, "error", { gain: 0.25 }, rideAt), [rideAt + 900, "whoosh", { gain: 0.35, pitch: 0.7 }], [rideAt + 1400, "shutdown", { gain: 0.25 }]]);
   const draw = progress(t, 400, 2000);
   const drift = reduced ? { x: 0, y: 0 } : { x: Math.sin(t / 5200) * 3, y: Math.cos(t / 6100) * 2 };
   const gutter = reduced ? 0.85 : 0.62 + 0.25 * noise1(9, Math.floor(t / 90)) + 0.1 * pulse(t, 3000);
@@ -1694,8 +1693,27 @@ function RecountTv(p: SceneProps) {
 }
 
 function RecountWall(p: SceneProps) {
-  const { t, reduced } = p;
-  return <WallCard t={t} value="recount" icon="computer" tone="black" bg="#14181c" reduced={reduced} accent={<span style={{ opacity: 0.6 + 0.3 * noise1(9, Math.floor(t / 90)), display: "inline-block", width: "10em" }}><DecrepitFace t={t} reduced={reduced} /></span>} />;
+  const { t, reduced, target } = p;
+  const rideT = t - recountRideAt(target);
+  const riding = rideT >= 0 && rideT < RECOUNT_RIDE_MS + 2000;
+  const gone = rideT > 1200 ? progress(rideT, 1200, 2000) : 0;
+  return (
+    <div className="kit-fill">
+      <div className="kit-fill" style={{ opacity: 1 - gone }}>
+        <WallCard t={t} value="recount" icon="computer" tone="black" bg="#14181c" reduced={reduced} accent={<span style={{ opacity: 0.6 + 0.3 * noise1(9, Math.floor(t / 90)), display: "inline-block", width: "10em" }}><DecrepitFace t={t} reduced={reduced} /></span>} />
+      </div>
+      {riding && (
+        <>
+          <div className="tv2-ride wall" style={{ transform: reduced ? undefined : `translate3d(${lerp(-30, 120, progress(rideT, 0, RECOUNT_RIDE_MS)).toFixed(2)}vw, 0, 0)`, opacity: reduced ? 1 - progress(rideT, RECOUNT_RIDE_MS, 600) : 1 }}>
+            <Motorcycle t={t} size="7em" />
+          </div>
+          <div className="tv2-ride-line wall" style={{ opacity: Math.min(progress(rideT, 800, 600), 1 - progress(rideT, RECOUNT_RIDE_MS + 800, 1000)) }}>
+            Greased Lightning.
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 // ══ E6: Computer Destroyed (beat) ═══════════════════════════════════════════════════════════
@@ -1718,7 +1736,7 @@ const DEAD_BSOD = [
 
 function ComputerDestroyedTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
-  useSfxCues(t, sfx, [[0, "critical", { gain: 0.6 }], [DEAD.bsod, "critical"], ...every(DEAD.scan + 400, DEAD.safe - 600, 380, "tick", { gain: 0.3 }), [DEAD.safe, "shutdown", { gain: 0.4 }]]);
+  useSfxCues(t, sfx, [[0, "critical", { gain: 0.6 }], [DEAD.bsod, "critical"], ...onGrid(t, DEAD.scan + 400, 380, "tick", { gain: 0.3 }, DEAD.safe - 600), [DEAD.safe, "shutdown", { gain: 0.4 }]]);
   if (t < DEAD.bsod) return <Stage bg="#000" className="tv2"><CrtOff t={t} reduced={reduced} /></Stage>;
   if (t < DEAD.scan) return <Stage bg="#0000aa" className="tv2"><Bsod t={t} start={DEAD.bsod} lines={DEAD_BSOD} cps={60} /></Stage>;
   if (t < DEAD.safe) {

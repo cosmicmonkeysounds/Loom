@@ -52,7 +52,7 @@ describe("act 2's triggers are the story's own names", () => {
 
   it("the names the scenes read off the moments are the story's too", () => {
     for (const b of ["Overshare One", "Overshare Two", "Overshare Three", "Overshare Four", "Round Two Tally"]) expect(BEATS.has(foldName(b)), b).toBe(true);
-    for (const x of ["y2k_chime", "motorcycle"]) expect(SOUNDS.has(foldName(x)), x).toBe(true);
+    for (const x of ["y2k_chime"]) expect(SOUNDS.has(foldName(x)), x).toBe(true);
   });
 
   it("every scene has a length, a TV take and a wall or TV fallback, and ids are unique", () => {
@@ -173,6 +173,22 @@ describe("act 2's scenes draw", () => {
     const chime: ScreenMoment[] = [{ seq: 4, at: AT + 60_000, kind: "sfx", name: "y2k_chime", who: null, kept: false }];
     expect(draw(y2k, "tv", 61_000, stateAt(61_000, { countdown: "y2k", remaining: 890, moments: chime }))).toContain("11:45 PM");
     expect(draw(y2k, "wall", 61_000, stateAt(61_000, { countdown: "y2k", remaining: 890, moments: chime }))).toContain("11:45 PM");
+    q.mockRestore();
+  });
+
+  it("the recount holds the hung window and rides off only at the end of the hold, not at the beat's own motorcycle", () => {
+    const q = quiet();
+    const recount = SCENES.find((s) => s.id === "recount")!;
+    // The story's `sound motorcycle` lands in the same drain as the slide (same at).
+    const moto: ScreenMoment[] = [{ seq: 3, at: AT, kind: "sfx", name: "motorcycle", who: null, kept: false }];
+    for (const t of [5000, 12_000, 40_000, 79_000]) {
+      const html = draw(recount, "tv", t, stateAt(t, { moments: moto }));
+      expect(html, `t ${t}`).toContain("Not Responding");
+      expect(html, `t ${t}`).not.toContain("Greased Lightning");
+    }
+    expect(draw(recount, "tv", 82_000, stateAt(82_000, { moments: moto }))).toContain("Greased Lightning");
+    expect(draw(recount, "wall", 20_000, stateAt(20_000))).not.toContain("Greased Lightning");
+    expect(draw(recount, "wall", 37_000, stateAt(37_000))).toContain("Greased Lightning");
     q.mockRestore();
   });
 

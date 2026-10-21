@@ -18,6 +18,8 @@ import {
   latestMoment,
   liveNow,
   liveRemaining,
+  onGrid,
+  recountRideAt,
   scenarioOf,
   sinceAnswer,
   latch,
@@ -42,6 +44,30 @@ describe("act 2 timelines — the live clock", () => {
     expect(liveRemaining({ countdown: "y2k", remaining: 100, receivedAt: 0 }, "y2k", 4500)).toBe(96);
     expect(liveRemaining({ countdown: "summons", remaining: 100, receivedAt: 0 }, "y2k", 0)).toBeNull();
     expect(liveRemaining({ countdown: "y2k", remaining: 2, receivedAt: 0 }, "y2k", 9000)).toBe(0);
+  });
+});
+
+describe("act 2 timelines — a hold's heartbeat", () => {
+  it("is windowed off t: the grid points around it, however long the hold", () => {
+    expect(onGrid(0, 4900, 4000, "buzz").map((c) => c[0])).toEqual([4900, 8900]);
+    expect(onGrid(10_000, 4900, 4000, "buzz").map((c) => c[0])).toEqual([8900, 12_900]);
+    // An hour in, still beating (the old fixed lists stopped at ~92 s).
+    const late = onGrid(3_600_000, 4900, 4000, "buzz");
+    expect(late[0]![0]).toBeLessThanOrEqual(3_600_000);
+    expect(late[1]![0]).toBeGreaterThan(3_600_000);
+    expect(late[1]![0] - late[0]![0]).toBe(4000);
+    // A bounded window stops at `to`.
+    expect(onGrid(5100, 700, 260, "type", undefined, 5200).map((c) => c[0])).toEqual([4860, 5120]);
+    expect(onGrid(5150, 700, 260, "type", undefined, 5200).map((c) => c[0])).toEqual([5120]);
+    expect(onGrid(6000, 700, 260, "type", undefined, 5200)).toEqual([]);
+    expect(onGrid(0, 0, 100, "tick", { gain: 0.5 })[0]).toEqual([0, "tick", { gain: 0.5 }]);
+  });
+});
+
+describe("act 2 timelines — the recount's ride", () => {
+  it("rides ten seconds before the slide lets go, on either screen", () => {
+    expect(recountRideAt("tv")).toBe(80_000);
+    expect(recountRideAt("wall")).toBe(35_000);
   });
 });
 
