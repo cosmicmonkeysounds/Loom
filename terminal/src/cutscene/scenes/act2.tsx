@@ -1257,24 +1257,25 @@ function Y2kWall(p: SceneProps) {
 //
 //   (over whatever is up — the Y2K clock, usually)
 //   0–4000    frost creeps in from the screen's edges; a low hum
-//   1200–9000 a small COLD STORAGE window rises in the corner: the room's
+//   1200–7400 a small COLD STORAGE window rises in the corner: the room's
 //             activity meter climbs, its hum waveform swells; one line types:
 //             "Somewhere in the basement, the cold-storage room hums louder."
-//   9000–12000 it all thaws away. Nothing says who, or why.
+//   7000–9000 it all thaws away. Nothing says who, or why. (Short, so it
+//             never holds back the hour's bigger moments behind it.)
 
-const MAJ_END = 12_000;
+const MAJ_END = 9000;
 
 function MajorityTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
   useSfxCues(t, sfx, [[0, "heartbeat", { gain: 0.35 }], [1200, "blip", { gain: 0.4, pitch: 0.6 }], [2600, "heartbeat", { gain: 0.35 }], [5200, "heartbeat", { gain: 0.4 }], [7800, "heartbeat", { gain: 0.3 }]]);
-  const frost = Math.min(eased(t, 0, 4000, ease.outQuad), 1 - progress(t, 9000, 2600));
-  const meter = eased(t, 1600, 6500, ease.inOutQuad);
+  const frost = Math.min(eased(t, 0, 4000, ease.outQuad), 1 - progress(t, 7000, 2000));
+  const meter = eased(t, 1600, 5000, ease.inOutQuad);
   const win = Math.min(eased(t, 1200, 500, ease.outCubic), 1 - progress(t, MAJ_END - 1600, 700));
   const line = "Somewhere in the basement, the cold-storage room hums louder.";
   return (
     <Stage bg="transparent" className="tv2">
       <Frost amount={frost} t={t} />
-      {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: -0.04, w: 1.1, start: 0, end: 9500, rate: 26, life: 5000, speed: 0.05, angle: 90, spread: 30, gravity: 0.03, sway: 0.03, size: 5, colors: ["#e8f6ff", "#ffffff", "#bfe2ff"], shape: "dot", seed: 101 }]} />}
+      {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: -0.04, w: 1.1, start: 0, end: 5500, rate: 26, life: 3500, speed: 0.05, angle: 90, spread: 30, gravity: 0.03, sway: 0.03, size: 5, colors: ["#e8f6ff", "#ffffff", "#bfe2ff"], shape: "dot", seed: 101 }]} />}
       <div className="tv2-cold" style={{ opacity: win, transform: reduced ? undefined : `translate3d(0, ${((1 - win) * 3).toFixed(2)}em, 0)` }}>
         <Win98Window title="C:\BASEMENT\COLD STORAGE" icon="lock" inactive width="100%">
           <div className="tv2-cold-row">
@@ -1306,7 +1307,7 @@ function MajorityTv(p: SceneProps) {
 
 function MajorityWall(p: SceneProps) {
   const { t, reduced, done } = p;
-  useEndAt(t, 9000, done);
+  useEndAt(t, MAJ_END, done);
   return (
     <Stage bg="transparent" className="tv2">
       <Frost amount={Math.min(eased(t, 0, 3000), 1 - progress(t, 7000, 2000))} t={t} />
