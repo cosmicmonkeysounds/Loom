@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: arm, two taps, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -158,17 +158,15 @@ INTERACTION go to the bathroom
 ```
 
 ```loom
-when mark_for_reinstallation for program:
-  set program.marked = true
-  restrict program to The Tube, The Internet
-  pin "!🚨 GO TO THE INTERNET. An Antivirus will escort you through the Tube." for program
-  pin "🚨 Escort {program.name} to the Internet — {reason}." in quarantine for program
+when quarantine for guest:
+  restrict guest to The Tube, The Internet
+  pin "!🚨 GO TO THE INTERNET. A host will walk you through the Tube." for guest
+  pin "🚨 Walk {guest.name} to the Internet." in quarantine for guest
 
-when unmarked for program:
-  set program.marked = false
-  unrestrict program
-  unpin for program "✅ The mark is lifted."
-  unpin in quarantine for program "✅ {program.name}: {how}."
+when release from quarantine for guest:
+  unrestrict guest
+  unpin for guest "✅ You're free."
+  unpin in quarantine for guest "✅ {guest.name} is free."
 ```
 
 The flag is `who.restricted` (readable in conditions, settable from
@@ -182,11 +180,11 @@ Roster, and the guest's Inspector has a **Restricted** field:
 **Restrict** / **Unrestrict** is a plain `restrict` / `unrestrict` (no
 place list) that runs only the `restricted` / `unrestricted` rules — not a
 story's own mark or unmark event, whose flags and pins it leaves alone —
-and asks first for a real guest on a live run. *Trapped in the
-Internet* uses it for a program **marked for reinstallation**: marked
-on the spot by a host's verdict, restricted to the Tube and the
-Internet, escorted by an Antivirus, and freed by the capture, the
-release, or 🩹 Unmark.
+and asks first for a real guest on a live run. (*Trapped in the
+Internet* used it for a program marked for reinstallation until wave 18;
+since then a mark hinders nothing: the program carries on and the
+Antivirus hunt them from a **Wanted board**, the header's `wanted:` line,
+[Live shows](live-shows.md). Restrict is only a director's hold there.)
 
 ## Sticky notices
 
@@ -238,7 +236,10 @@ app instead of on paper.
 
 **Built-in events** the engine raises by itself: `scanned`, `arrives`,
 `leaves`, `joins`, `someone joins` (a new participant), and the clock
-(`every 60s:`, `after 2m:`).
+(`every 60s:`, `after 2m:`). The guests' own sides and crews raise
+`recruited` (with `by`, the recruiter), `founded` and `join` for a crew
+(with `crew`), and `unaligned` (with `side`) — see [Live
+shows](live-shows.md).
 
 **Named events** are any other word you hook — `when lockdown:`,
 `when the_toast:`, `when unlocked for guest:` — raised by `fire` in the
@@ -268,7 +269,8 @@ app's animated scene for that cue when it has one
 `public/slides/<cue>.png`, else a text card (on the TV a
 `public/slides/<cue>.mp4` plays before the PNG when there is one). The
 screens also react with no cue at all: a house-wide beat (one with no
-subject), an admin cue the story took, a `do pick` draw (and the 🗣 / 🙅
+subject), an admin cue the story took, a `broadcast "!!…"` to everyone (a
+Win98 *Congratulations!* when it leads with a win emoji), a `do pick` draw (and the 🗣 / 🙅
 / 🎩 verdict on its pick), the King's signals (a hit, his fall, a lost
 or drawn game), a reinstallation beginning, a duck found, a `sound` and
 a house-wide `reveal` reach them as **moments**, and the TV (and,
@@ -325,7 +327,8 @@ character*, so only their own `when whisper for guest:` answers.
 `who: guest` puts a button in the guest's **⊞ Start** menu, fired with
 the guest as subject (catch it with a story rule or on the ROLE).
 `who: admin` is a director's **cue**: it is on Run → Director, the
-director phone and a host booth's NEXT bar, never on a booth's card.
+director phone and a host booth's NEXT bar, never on a booth's card (a
+`by:` on it also puts it on that booth's 🎤 cue bar, below).
 Interactions are listed in the Run cockpit's event picker too. An
 [`OBJECTIVE`](objectives.md) chooses which of them a phone leads with.
 
@@ -491,6 +494,29 @@ hand. Cues before the first `act:` form one unnamed act; a story with no
 only group the page (the current act is the one holding NEXT, else
 LAST). So moving a cue to another act is a one-line edit that renumbers
 nothing.
+
+### A performer who calls cues: `by:` on an admin cue
+
+`by:` on a `who: admin` cue names the booths that may **call** it as well as
+the directors and hosts:
+
+```loom
+INTERACTION bingo_time
+  label: V3 · ⏰ Bingo time: results
+  who: admin
+  by: Clippy
+```
+
+That booth (a CHARACTER, or every member of a GROUP) gets a **🎤 cue bar**
+above its taskbar with only those cues: the band turns yellow when one of
+them is the sheet's NEXT, a *Call it?* pop-out offers it, and ARM → FIRE
+presses it through the same cue-sheet path as Run's (journaled *Booth ·
+Clippy*, so LAST reads *Clippy*; a press the cues moved past is refused the
+same way). The bar shows the sheet's NEXT and who is calling the show, read
+only. It is not the host capability: a caller booth gets no console, and
+nothing else on the sheet. Hosts and directors still fire those cues too.
+Lint **`L1217 CallerNotAPart`** warns when the `by:` names no performer part
+(a guest's program, an agent, a prop), since no booth could call it then.
 
 ### A button as a fallback for a machine
 
