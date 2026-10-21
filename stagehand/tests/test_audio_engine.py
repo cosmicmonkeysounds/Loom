@@ -162,6 +162,73 @@ def test_a_callback_that_fails_writes_silence_and_counts():
     assert not out.any() and e.errors == 1
 
 
+class Replug:
+    """PortAudio's device list: frozen until `reinit` re-reads it."""
+
+    def __init__(self) -> None:
+        self.plugged = True
+        self.listed = True  # what PortAudio last read
+        self.reinits = 0
+
+    def query(self, device=None, kind=None):
+        if not self.listed:
+            raise ValueError(f"No device matching {device!r}")
+        return fake_query()(device, kind)
+
+    def reinit(self) -> None:
+        self.reinits += 1
+        self.listed = self.plugged
+
+
+def test_a_replugged_interface_needs_portaudio_reinitialised():
+    pa = Replug()
+    e = Engine("MOTU", 2, 2, query=pa.query, reinit=pa.reinit, stream_factory=lambda **kw: FakeStream(**kw))
+    e.open()
+    assert pa.reinits == 0  # the first open never re-reads
+    # Unplugged: the stream dies, and PortAudio's list is stale (still empty
+    # once re-read while unplugged).
+    pa.plugged = pa.listed = False
+    e.stream.active = False
+    with pytest.raises(ValueError):
+        e.open()
+    assert pa.reinits == 1 and e.needs_reinit
+    # Plugged back in: a plain query would still fail (the list is stale) —
+    # only the reinit before the next open finds it.
+    pa.plugged = True
+    with pytest.raises(ValueError):
+        pa.query("MOTU")
+    e.open()
+    assert pa.reinits == 2 and e.running and not e.needs_reinit
+    e.open()  # a healthy reopen (a config change) does not re-read
+    assert pa.reinits == 2
+
+
+def test_a_stalled_stream_is_marked_for_a_reinit():
+    pa = Replug()
+    e = Engine("MOTU", 2, 2, query=pa.query, reinit=pa.reinit, stream_factory=lambda **kw: FakeStream(**kw))
+    e.open()
+    e.mark_failed()
+    e.open()
+    assert pa.reinits == 1 and e.reinits == 1
+
+
+def test_a_blank_device_name_is_the_default_output():
+    asked = []
+
+    def query(device=None, kind=None):
+        asked.append((device, kind))
+        if device is not None:
+            raise ValueError(f"Multiple devices found for {device!r}")  # what PortAudio says to ""
+        return fake_query(2, 2)(None, kind)
+
+    for blank in ("", "   ", None):
+        e = Engine(blank, 2, 2, query=query, stream_factory=lambda **kw: FakeStream(**kw))
+        e.open()
+        assert e.running and e.device is None
+    assert asked == [(None, "output")] * 3
+    assert probe("", 0, 2, query)[1] == []
+
+
 def test_probe_reports_missing_and_short_devices():
     info, problems = probe("MOTU", 16, 16, fake_query(8, 8))
     assert info.outputs == 8 and len(problems) == 2 and "8 outputs" in problems[0]

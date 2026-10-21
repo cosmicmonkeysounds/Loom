@@ -6,8 +6,15 @@ through, output-only otherwise (no microphone permission needed) — at the
 device rate, and hands every block to a fresh `Mixer`. A stream that dies
 (the MOTU unplugged) reports `running == False`; the router reopens it.
 
-`sounddevice` is reached through injectable `query` / `stream_factory`
-arguments, so the tests drive the callback with numpy buffers and no card.
+PortAudio reads the device list once, when it initialises, and never again,
+so a replugged interface is invisible to a plain reopen (a stale index, or
+no device at all). Every open that follows a failure — a stream that died
+or stalled, an open that raised — re-initialises PortAudio first
+(`portaudio_reinit`), which re-reads the list.
+
+`sounddevice` is reached through injectable `query` / `stream_factory` /
+`reinit` arguments, so the tests drive the callback with numpy buffers and
+no card.
 """
 
 from __future__ import annotations
@@ -38,9 +45,29 @@ class DeviceInfo:
         return self.index if self.index is not None else self.name
 
 
+def device_name(name: str | None) -> str | None:
+    """A blank name (the server's default audio.json has `device.name: ""`)
+    means the default output: PortAudio reads `""` as a substring every
+    device matches and refuses it as ambiguous."""
+    if name is None or not str(name).strip():
+        return None
+    return str(name).strip()
+
+
+def portaudio_reinit() -> None:
+    """Re-read PortAudio's device list (a replugged interface). Every stream
+    in the process must be closed first; sounddevice keeps no others open
+    for the router."""
+    import sounddevice as sd
+
+    sd._terminate()
+    sd._initialize()
+
+
 def query_device(name: str | None, query: Callable | None = None) -> DeviceInfo:
-    """The device `name` (a substring; None = the default output) names.
-    Raises ValueError when it names none, or several."""
+    """The device `name` (a substring; None or blank = the default output)
+    names. Raises ValueError when it names none, or several."""
+    name = device_name(name)
     if query is None:
         import sounddevice as sd
 
@@ -83,8 +110,9 @@ class Engine:
         mixer_args: dict[str, Any] | None = None,
         query: Callable | None = None,
         stream_factory: Callable | None = None,
+        reinit: Callable[[], None] | None = None,
     ) -> None:
-        self.device = device
+        self.device = device_name(device)
         self.want_in, self.want_out = n_in, n_out
         self.want_rate = rate
         self.duplex = duplex
@@ -93,6 +121,12 @@ class Engine:
         self.mixer_args = mixer_args or {}
         self._query = query
         self._factory = stream_factory
+        # The real PortAudio is re-initialised only when the real query runs;
+        # an injected query (a test) gets an injected reinit or none.
+        self._reinit = reinit if reinit is not None else (portaudio_reinit if query is None else None)
+        #: The next open re-reads the device list (after any failure).
+        self.needs_reinit = False
+        self.reinits = 0
         self.stream: Any = None
         self.mixer: Mixer | None = None
         self.info: DeviceInfo | None = None
@@ -112,9 +146,28 @@ class Engine:
             return False
         return bool(getattr(self.stream, "active", True))
 
+    def mark_failed(self) -> None:
+        """The stream stalled or died: the next open re-reads the devices."""
+        self.needs_reinit = True
+
     def open(self) -> Mixer:
-        """Open (or reopen) the stream. Raises on a missing device / PortAudio error."""
+        """Open (or reopen) the stream. Raises on a missing device / PortAudio
+        error; the next open then re-initialises PortAudio first."""
+        if self.stream is not None and not self.running:
+            self.needs_reinit = True  # it died under us (the MOTU unplugged)
         self.close()
+        try:
+            return self._open()
+        except Exception:
+            self.needs_reinit = True
+            raise
+
+    def _open(self) -> Mixer:
+        if self.needs_reinit and self._reinit is not None:
+            self.reinits += 1
+            log.info("re-reading the audio devices (PortAudio re-initialised)")
+            self._reinit()
+        self.needs_reinit = False
         info = query_device(self.device, self._query)
         n_out = min(self.want_out, info.outputs)
         n_in = min(self.want_in, info.inputs) if self.duplex else 0
