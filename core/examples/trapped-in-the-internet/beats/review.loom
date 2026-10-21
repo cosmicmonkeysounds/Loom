@@ -36,8 +36,17 @@
 == The Night In Review
   setting: The Desktop
   cast: Trabolta, Clippy
+// His voice follows the ending, as The Ceremony's does: weak after the
+// patch bay or the hand jive (and he reads it while he reboots: The
+// Ceremony's first line is "Reboot complete.").
 if Night.ceremony_host == "Clippy":
   Clippy: Before the awards, the system report has one more section: a review of the night. I will read it exactly as it is written.
+else if Night.ending == "disabled" and Night.talked_down == true:
+  Trabolta (quietly): I am going. First, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
+else if Night.ending == "disabled":
+  Trabolta (weakly): I am going. First, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
+else if Night.ending == "hand_jive":
+  Trabolta (weakly): Rebooting. While I reboot, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
 else:
   Trabolta: Before the awards, a review of the night. Everyone in this house was a program tonight. Everyone was also a person. I kept a file on both.
 // Who everyone was (Recounts and Purgatory have just read it).
@@ -64,6 +73,10 @@ if Night.ending != "destroyed":
       -> What You Did
 if Night.ceremony_host == "Clippy":
   Clippy: That is the end of the review. The awards are next. The report says applause is mandatory.
+else if Night.ending == "disabled" and Night.talked_down == true:
+  Trabolta (quietly): That is the review. Your own file is on your phone. Now, the awards.
+else if Night.ending == "disabled" or Night.ending == "hand_jive":
+  Trabolta (weakly): That is the review. Your own file is on your phone. Now, the awards.
 else:
   Trabolta: That is the review. Your own file is on your phone. Now, the awards.
 -> The Ceremony
