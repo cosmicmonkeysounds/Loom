@@ -2,7 +2,9 @@
 //! event has it — Announce (+ 🔔), the alert-level dial (D2), wallet holds,
 //! the King, terminals + the TV voice, codes + invitations (🔓 2 min),
 //! performer parts (⏏ Release), and Trabolta: his worker, his queue, and
-//! the guests waiting on him, answered as him in their own thread.
+//! the guests waiting on him, answered as him in their own thread. Wave 18
+//! (§5.6): split in three — Night (doors, clock, announce, the dial) ·
+//! House (wallet, the King, terminals, Trabolta) · Setup (codes, parts).
 
 import { useEffect, useRef, useState } from "react";
 import { queueBadge } from "../../../core/src/host-board.ts";
@@ -12,13 +14,23 @@ import { PassQr } from "../pass-qr.tsx";
 import { Sheet } from "../ui/primitives.tsx";
 import type { HostView } from "../types.ts";
 import { joinLink, type HostCodes } from "./api.ts";
-import { ALERT_LADDER, optimisticValue, tvVoiceLabel, type Optimistic, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreSections, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus } from "./model.ts";
+import { ALERT_LADDER, MORE_TABS, optimisticValue, tvVoiceLabel, type Optimistic, agentQueue, agentSection, agentThread, agoText, kingHpInput, levelLabel, moreDefaultTab, moreGroups, presenceText, releasable, showControl, stimulusInput, threadLine, waitingFor, type MoreFocus, type MoreTabId } from "./model.ts";
 import { ActButton, ConfirmButton, HostEmpty, HostSection, failText, useHost, useRevealed } from "./kit.tsx";
 import { clockText, setToFields, setToTime, showClockOf, useShowClock } from "../show-clock.ts";
 
 export function MoreTab({ focus }: { focus: MoreFocus | null }) {
   const { view } = useHost();
-  const sections = moreSections(view);
+  const groups = moreGroups(view);
+  const doorsClosed = view.doorsClosed === true || view.runtime === "idle";
+  // Setup while the doors are closed, Night once they open (§5.6); a deep
+  // link (a need's section) picks its own tab. The host's own pick sticks
+  // until the next deep link.
+  const [picked, setPicked] = useState<MoreTabId | null>(null);
+  useEffect(() => {
+    if (focus !== null) setPicked(null);
+  }, [focus]);
+  const tab = picked ?? moreDefaultTab(doorsClosed, focus);
+  const sections = groups[tab];
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (focus === null) return;
@@ -30,6 +42,14 @@ export function MoreTab({ focus }: { focus: MoreFocus | null }) {
   }, [focus]);
   return (
     <div className="host-more" ref={root}>
+      <div className="host-subtabs" role="tablist" aria-label="More">
+        {MORE_TABS.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className={`w95-btn host-subtab ${t.id === tab ? "current" : ""}`} data-testid={`host-more-${t.id}`} onClick={() => setPicked(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {sections.length === 0 && <HostEmpty>{tab === "house" ? "This event has no wallet, King, terminals or agents." : "Nothing here."}</HostEmpty>}
       {sections.map((s) => {
         switch (s) {
           case "show":

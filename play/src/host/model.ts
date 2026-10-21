@@ -7,7 +7,8 @@ import type { AlertLevel } from "../../../core/src/delivery.ts";
 import { AWARD_SOURCES, PartPresence, REASON_WAIT_MS, REFUSED_NEEDS_MS, type NeedTarget } from "../../../core/src/host-board.ts";
 import type { CueRow } from "../../../core/src/cue-sheet.ts";
 import type { ChatMessage, HostNeed, HostPerson, HostView } from "../types.ts";
-import { STOPPED, actHandle, clockRuns, formatLeft, soonestCountdown, URGENT_S, type SheetLayout } from "../director.tsx";
+import { onDeck } from "../../../core/src/cue-sheet.ts";
+import { STOPPED, actHandle, clockRuns, formatLeft, formatWatchValue, soonestCountdown, URGENT_S, type SheetLayout } from "../director.tsx";
 
 // --- the drawer's tabs ----------------------------------------------------------
 
@@ -25,7 +26,7 @@ export interface HostTabInfo {
  *  filings). */
 export function hostTabs(view: Pick<HostView, "needs" | "judging"> | null, refused: number): HostTabInfo[] {
   const out: HostTabInfo[] = [{ id: "cues", label: "Cues" }];
-  out.push({ id: "needs", label: "Needs", count: groupNeeds(view?.needs ?? []).length + refused });
+  out.push({ id: "needs", label: "Needs", count: groupNeeds(view?.needs ?? []).length + refused + (wantedNeed(hostWanted(view)) !== null ? 1 : 0) });
   if (view?.judging != null) out.push({ id: "judge", label: "Judge", count: view.judging.pending.length });
   out.push({ id: "people", label: "People" }, { id: "more", label: "More" });
   return out;
@@ -71,6 +72,122 @@ export function needTab(target: NeedTarget): HostTab | "staff" {
     default:
       return "more";
   }
+}
+
+/** Which More tab a section lives on (wave 18 §5.6). */
+export type MoreTabId = "night" | "house" | "setup";
+
+export const MORE_TABS: ReadonlyArray<{ id: MoreTabId; label: string }> = [
+  { id: "night", label: "Night" },
+  { id: "house", label: "House" },
+  { id: "setup", label: "Setup" },
+];
+
+/** A section's More tab: the night (doors, clock, announce, the alert
+ *  dial), the house (wallet, the King, terminals, Trabolta), setup (codes,
+ *  parts). */
+export function moreTabOf(section: MoreFocus): MoreTabId {
+  if (section === "codes" || section === "parts") return "setup";
+  if (section === "wallet" || section === "king" || section === "terminals" || section.startsWith("agents")) return "house";
+  return "night";
+}
+
+/** More, split in three (wave 18 §5.6): each tab's sections in order, only
+ *  those the event has. A tab with none is still listed (empty). */
+export function moreGroups(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents">): Record<MoreTabId, MoreSection[]> {
+  const out: Record<MoreTabId, MoreSection[]> = { night: [], house: [], setup: [] };
+  for (const s of moreSections(view)) out[moreTabOf(s)].push(s);
+  return out;
+}
+
+/** The More tab a host lands on: Setup while the doors are closed (codes,
+ *  parts), Night once they open; a deep link's section wins. */
+export function moreDefaultTab(doorsClosed: boolean, focus: MoreFocus | null): MoreTabId {
+  if (focus !== null) return moreTabOf(focus);
+  return doorsClosed ? "setup" : "night";
+}
+
+// --- escorts waiting (wave 18 §5.5) -------------------------------------------
+
+/** One `hostView.wanted` entry (CONTRACTS C6), as the Needs row reads it. */
+export interface WantedLike {
+  id: string;
+  name: string;
+  avatar?: string | null;
+  reason: string | null;
+  location: string | null;
+  lastSeen: number | null;
+  markedAt: number;
+  claimedBy: string | null;
+  captured: boolean;
+}
+
+/** The host view's wanted list, feature-detected (absent until the core
+ *  lane merges, and on a story with no `wanted:` line). Malformed rows are
+ *  dropped. */
+export function hostWanted(view: unknown): WantedLike[] {
+  const w = view !== null && typeof view === "object" ? (view as { wanted?: unknown }).wanted : undefined;
+  if (!Array.isArray(w)) return [];
+  return w.filter((x): x is WantedLike => x !== null && typeof x === "object" && typeof (x as WantedLike).id === "string" && typeof (x as WantedLike).name === "string");
+}
+
+/** Needs' first row: `🚨 3 marked · 1 nobody on it`; null when nobody is
+ *  loose (every marked program caught, or none marked). */
+export function wantedNeed(wanted: readonly WantedLike[]): { loose: number; nobody: number; text: string } | null {
+  const loose = wanted.filter((w) => !w.captured);
+  if (loose.length === 0) return null;
+  const nobody = loose.filter((w) => w.claimedBy === null || w.claimedBy === "").length;
+  return { loose: loose.length, nobody, text: `🚨 ${loose.length} marked · ${nobody} nobody on it` };
+}
+
+/** A wanted program's line in the read-only list: place · who has them. */
+export function wantedLine(w: WantedLike, now: number): string {
+  const bits = [w.location !== null && w.location !== "" ? `📍 ${w.location}` : "📍 somewhere: not seen in a room"];
+  const seen = seenText(w.lastSeen, now);
+  if (seen !== null) bits.push(seen);
+  bits.push(w.claimedBy !== null && w.claimedBy !== "" ? `🙋 ${w.claimedBy}` : "🙋 Nobody yet");
+  return bits.join(" · ");
+}
+
+// --- the Cues tab's NEXT / LAST boxes (wave 18 §5.2) --------------------------
+
+/** What the view says a cue does: its row's `description` (the host view
+ *  sends it for NEXT and the next 3 on deck), else a `cues.rows` entry's
+ *  (the contract's other spelling), else nothing. */
+export function cueDescription(row: Pick<CueRow, "id" | "description">, cues: unknown): string | null {
+  const own = typeof row.description === "string" ? row.description.trim() : "";
+  if (own !== "") return own;
+  const rows = cues !== null && typeof cues === "object" ? (cues as { rows?: unknown }).rows : undefined;
+  if (!Array.isArray(rows)) return null;
+  const hit = rows.find((r) => r !== null && typeof r === "object" && (r as { id?: unknown }).id === row.id) as { description?: unknown } | undefined;
+  return typeof hit?.description === "string" && hit.description.trim() !== "" ? hit.description.trim() : null;
+}
+
+/** The cue on deck after NEXT (`then:`): the server's `cues.then` when it
+ *  sends one (null = none), else core's `onDeck` over the rows. */
+export function cueThen(rows: readonly CueRow[], cues: unknown): CueRow | null {
+  const then = cues !== null && typeof cues === "object" && "then" in cues ? (cues as { then?: unknown }).then : undefined;
+  if (then === null) return null;
+  if (typeof then === "string") return rows.find((r) => r.id === then) ?? null;
+  return onDeck([...rows]);
+}
+
+/** This console's own last press and what it did (`/api/mod/signal`'s
+ *  `said` / `staff`, kept per console for the LAST box). */
+export interface OwnPress {
+  id: string;
+  said: string[];
+  staff: string[];
+  at: number;
+}
+
+/** `did:` — what this console's last press did, or null (nothing came
+ *  back, or LAST has moved on to another cue). Staff lines first (they say
+ *  what the house did), then what was said; one line, the box clamps it. */
+export function didText(press: OwnPress | null, lastId: string | null): string | null {
+  if (press === null || press.id !== lastId) return null;
+  const lines = [...press.staff, ...press.said].map((l) => l.trim()).filter((l) => l !== "");
+  return lines.length === 0 ? null : lines.join(" · ");
 }
 
 /** Which More section a need opens (the drawer scrolls to it): an agent's
@@ -136,21 +253,33 @@ export interface HostStripItem {
   text: string;
   tone?: "urgent" | "needs";
   /** What the item is (a phone drops the phase first). */
-  kind?: "act" | "phase" | "clock" | "countdown" | "needs";
-  /** Dropped first on a phone (the phase, when a countdown is on). */
+  kind?: "caller" | "act" | "phase" | "clock" | "watch" | "countdown" | "needs";
+  /** Dropped first on a phone (the phase, when a countdown is on; a third
+   *  watch value, which only a wide bar shows). */
   optional?: true;
+  /** Dropped next on a narrower phone (wave 18 §5.1): 2 = the second watch
+   *  value (≤ 400 px), 3 = the countdown (≤ 360 px). */
+  drop?: 2 | 3;
 }
 
-/** The strip: act · `Night.phase` · ⏸ / 🚪 · the soonest countdown · ⚠ n
- *  (what waits on a host). */
-export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: number | null, needs: number, barCountdown = false): HostStripItem[] {
+/** The strip (wave 18 §5.1): 📣 caller · act · `Night.phase` · ⏸ / 🚪 ·
+ *  the watch values (two on a phone, three wide; never a secret one, the
+ *  server sends none) · the soonest countdown · ⚠ n (what waits on a host).
+ *  `caller` is the chip's text (`callerText`), null when the server has no
+ *  callers. */
+export function hostStrip(view: HostView | null, layout: SheetLayout, nowMs: number | null, needs: number, barCountdown = false, caller: string | null = null): HostStripItem[] {
   const out: HostStripItem[] = [];
+  if (caller !== null) out.push({ text: caller, kind: "caller" });
   if (layout.kind === "acts" && layout.focus >= 0) out.push({ text: actHandle(layout.acts[layout.focus]!), kind: "act" });
   const phase = view?.world.find((w) => w.path === "Night.phase")?.value.trim().replace(/^"(.*)"$/u, "$1") ?? "";
   if (phase !== "" && phase !== "null") out.push({ text: phaseLabel(phase), kind: "phase" });
   if (view !== null && !clockRuns({ phase: view.runtime, ...(view.paused === true ? { paused: true as const } : {}) })) out.push({ text: view.doorsClosed === true ? "🚪 doors closed" : STOPPED, kind: "clock" });
+  (view?.watch ?? [])
+    .filter((w) => typeof w.value === "string")
+    .slice(0, 3)
+    .forEach((w, k) => out.push({ text: `${w.label} ${formatWatchValue(w.value)}`, kind: "watch", ...(k === 1 ? { drop: 2 as const } : k === 2 ? { optional: true as const } : {}) }));
   const soon = soonestCountdown(view?.countdowns, nowMs);
-  if (soon !== null) out.push({ text: countdownLeft(soon.label, soon.left), kind: "countdown", ...(soon.left < URGENT_S ? { tone: "urgent" as const } : {}) });
+  if (soon !== null) out.push({ text: countdownLeft(soon.label, soon.left), kind: "countdown", drop: 3, ...(soon.left < URGENT_S ? { tone: "urgent" as const } : {}) });
   if (needs > 0) out.push({ text: `⚠ ${needs}`, tone: "needs", kind: "needs" });
   // `barCountdown`: the bar's first line already reads that countdown
   // ("nothing to press … ⏱ Midnight in 59:28"), so a phone drops the
@@ -251,10 +380,14 @@ export function barLine(s: {
   /** The refused press when it was this booth's latest press, else null. */
   refused: RefusedPress | null;
   reason: string | null;
+  /** The armed cue's description (wave 18 §5.1): what FIRE is about to do,
+   *  read in the 4 s window. A subject cue keeps "→ who" instead. */
+  description?: string | null;
 }): BarLine {
   // A live arm outranks a toast: the "Cues moved — tap again" toast asked
   // for exactly this new arm, and must not hide its 4 s window.
-  const armed = { kind: "armed" as const, text: s.subjectName !== null ? `Tap FIRE to fire → ${s.subjectName}` : "Tap FIRE within 4 s to fire" };
+  const what = typeof s.description === "string" && s.description.trim() !== "" ? s.description.trim() : null;
+  const armed = { kind: "armed" as const, text: s.subjectName !== null ? `Tap FIRE to fire → ${s.subjectName}` : what ?? "Tap FIRE within 4 s to fire" };
   if (s.armed && s.connected) return armed;
   if (s.toast !== null) return { kind: "toast", text: s.toast };
   if (!s.connected) return { kind: "stale", text: staleText(s.error, s.receivedAt, s.now) };

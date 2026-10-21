@@ -3,10 +3,23 @@
 //! then the latest judged filings, each overridable (wave 9 D5). A verdict
 //! is the story's confirm event on the filer (`verdictCall`).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { askingText, filingButtons, rulingText, type FactVerdictLike, type FilingButton, type JudgingRow } from "../../../core/src/host-board.ts";
 import type { HostJudging } from "../types.ts";
+import type { JudgeMode } from "./api.ts";
 import { ActButton, HostEmpty, HostSection, useHost } from "./kit.tsx";
+import { optimisticValue, type Optimistic } from "./model.ts";
+
+/** The two options (BOOTH-SPEC §5.4, the copy deck). */
+export const JUDGE_MODE_OPTIONS: ReadonlyArray<{ mode: JudgeMode; label: string }> = [
+  { mode: "auto", label: "Auto: the house judges; near misses wait here" },
+  { mode: "review", label: "Review: every filing waits for a host" },
+];
+
+/** The judge's mode as the view says it: `auto` unless it says `review`. */
+export function judgeModeOf(mode: string | null | undefined): JudgeMode {
+  return mode === "review" ? "review" : "auto";
+}
 
 /** The judging header: `auto · judge Trabolta · ⚠ 2 near`. */
 export function judgeHead(j: HostJudging): string {
@@ -25,6 +38,7 @@ export function JudgeTab() {
   if (j === null) return <HostEmpty>This event has no facts to judge.</HostEmpty>;
   return (
     <div className="host-judge">
+      <JudgeModeSwitch mode={judgeModeOf(j.mode)} />
       <p className="host-note">{judgeHead(j)}</p>
       <HostSection id="pending" title={`Waiting (${j.pending.length})`}>
         {j.pending.length === 0 ? (
@@ -91,3 +105,43 @@ function FilingItem({ who, question, person, row, buttons, judge, judged }: { wh
     </li>
   );
 }
+
+/** Judging: auto ⇄ review (wave 18 §5.4) — `Night.judge_mode` through the
+ *  host `/api/mod/var` path. The switch turns at once and trusts itself
+ *  until the view agrees (or `OPTIMISTIC_MS`). */
+function JudgeModeSwitch({ mode }: { mode: JudgeMode }) {
+  const { calls, run, now } = useHost();
+  const [flip, setFlip] = useState<Optimistic<JudgeMode> | null>(null);
+  useEffect(() => {
+    if (flip !== null && flip.value === mode) setFlip(null);
+  }, [mode, flip]);
+  const shown = optimisticValue(mode, flip, Math.max(now, Date.now()));
+  return (
+    <HostSection id="judge-mode" title="Judging">
+      <div className="host-dial host-judge-mode" role="group" aria-label="How filings are judged">
+        {JUDGE_MODE_OPTIONS.map((o) => (
+          <ActButton
+            key={o.mode}
+            className={`host-dial-step ${o.mode === shown ? "current" : ""}`}
+            pressed={o.mode === shown}
+            label={
+              <>
+                <span className="host-radio" aria-hidden="true" />
+                <span className="host-dial-words">
+                  <span className="host-dial-label">{o.label}</span>
+                </span>
+              </>
+            }
+            onClick={async () => {
+              if (o.mode === shown) return;
+              const at = Date.now();
+              setFlip({ value: o.mode, at });
+              if (!(await run(o.mode === "auto" ? "⚖ Auto judging" : "⚖ Every filing waits for review", () => calls.setJudgeMode(o.mode)))) setFlip(null);
+            }}
+          />
+        ))}
+      </div>
+    </HostSection>
+  );
+}
+
