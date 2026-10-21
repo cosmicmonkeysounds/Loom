@@ -17,6 +17,7 @@ import { registerSidesWidgets } from "../src/sides/widgets.tsx";
 import { Doors } from "../src/sides/doors.tsx";
 import { SidesContext } from "../src/sides/context.ts";
 import type { ChatMessage } from "../src/types.ts";
+import { boothAway } from "../src/booth/app.tsx";
 
 describe("N1: a new sign-in counts the server's answered cards", () => {
   it("merges the server's answered seqs into this device's answers", () => {
@@ -127,5 +128,19 @@ describe("BN2-FF: Clippy's drawer never scrolls the page sideways", () => {
 describe("BN2-FG: the Wanted poster's name is a 44 px target", () => {
   it("min-height: var(--tap)", () => {
     expect(readBundledCss()).toContain(".wanted-name { min-height: var(--tap); display: inline-flex; align-items: center; }");
+  });
+});
+
+describe("NMR-2: the phone's Back closes a booth's layer", () => {
+  it("away while a card, the board, the scanner, a sheet, people or help is open", () => {
+    const none = { layer: null, sheet: null, people: null, help: false };
+    expect(boothAway(none)).toBe(false);
+    expect(boothAway({ ...none, layer: { kind: "wanted", fresh: [] } })).toBe(true);
+    expect(boothAway({ ...none, layer: { kind: "card", id: "g1" } })).toBe(true);
+    expect(boothAway({ ...none, help: true })).toBe(true);
+  });
+  it("the booth wires useSystemBack", () => {
+    const src = readFileSync(new URL("../src/booth/app.tsx", import.meta.url), "utf8");
+    expect(src).toMatch(/useSystemBack\(host\.ownsPage && signedIn, boothAway\(/u);
   });
 });

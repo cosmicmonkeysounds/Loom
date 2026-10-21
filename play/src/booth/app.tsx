@@ -50,6 +50,7 @@ import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
 import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
 import { PopOutHost, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
+import { useSystemBack } from "../back-gesture.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
 import { WantedBoard } from "./wanted/board.tsx";
@@ -86,6 +87,11 @@ export { WantedBoard } from "./wanted/board.tsx";
 
 /** The room a performer lands in wide: Readouts (wave 18, G2: the house's
  *  broadcast feed is the far-away Chat log, never a default room). */
+/** Is something open over the booth's home that the phone's Back should close? */
+export function boothAway(open: { layer: unknown; sheet: unknown; people: unknown; help: boolean }): boolean {
+  return open.layer !== null || open.sheet !== null || open.people !== null || open.help;
+}
+
 export function boothHome(list: Channel[]): string | null {
   return list.find((c) => c.id === INBOX)?.id ?? list.find((c) => c.id !== "__feed" && c.id !== "__scanner")?.id ?? list[0]?.id ?? null;
 }
@@ -221,6 +227,15 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     if (activeId === "__scanner") t.open(INBOX);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
+  // The phone's own Back closes the booth's top layer (a card, the board,
+  // the scanner, a sheet) instead of leaving the app mid-escort (NMR-2,
+  // the booth half of NM-F9); only when the app owns the page.
+  useSystemBack(host.ownsPage && signedIn, boothAway({ layer, sheet, people, help }), () => {
+    if (layer !== null) setLayer(null);
+    else if (sheet !== null) setSheet(null);
+    else if (people !== null) setPeople(null);
+    else if (help) setHelp(false);
+  });
   if (!s.auth) return host.embedded ? <SessionEnded notice={s.notice} /> : <PrimeLogin session={s} />;
   const admin = s.auth.admin;
   // C4: the latest view says whether this booth is a host (an older server's: the sign-in's answer).
