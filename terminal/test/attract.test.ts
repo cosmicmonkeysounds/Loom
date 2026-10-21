@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MYSTIFY_TRAIL, mystifyInit, mystifyStep } from "../src/attract.ts";
-import { IDLE_ADS } from "../src/idle-show/ads.ts";
+import { FACE_TIPS, IDLE_ADS } from "../src/idle-show/ads.ts";
 import { ATTENTION_EVERY_MS, ATTENTION_IDLE_MS, ATTENTION_SHOW_MS, THANKS, adGag, attentionOn, duckLane, gagText, ringsAt } from "../src/idle-show/gags.ts";
 import { PHASE_POOLS, eligible, fillCopy, idleContextOf, phasePool, type IdleContext, type PhasePool } from "../src/idle-show/pools.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, POPUP_KINDS } from "../src/idle-show/popups.ts";
@@ -51,7 +51,7 @@ describe("the idle show's copy", () => {
     // And nothing anywhere names him outright: his own copy says {character}.
     for (const a of IDLE_ADS) expect(`${a.id} ${a.kicker ?? ""} ${a.title} ${a.body} ${a.button}`).not.toMatch(FORBIDDEN);
     for (const p of POPUP_KINDS) expect(`${p.id} ${p.title} ${p.text} ${p.buttons.map((b) => b.label).join(" ")}`).not.toMatch(FORBIDDEN);
-    for (const t of [LOGO_TEXT, LOGO_SUB, CONFIRM_TEXT, DODGED_TITLE, ...THANKS, ...SAVERS.map((s) => s.name), ...Object.values(SCAN_COPY)]) expect(t).not.toMatch(FORBIDDEN);
+    for (const t of [...FACE_TIPS, LOGO_TEXT, LOGO_SUB, CONFIRM_TEXT, DODGED_TITLE, ...THANKS, ...SAVERS.map((s) => s.name), ...Object.values(SCAN_COPY)]) expect(t).not.toMatch(FORBIDDEN);
     for (const g of ["loading", "shake", "won", "popup", "coin", "error"] as const) expect(gagText(g) ?? "").not.toMatch(FORBIDDEN);
   });
 
@@ -67,6 +67,7 @@ describe("the idle show's copy", () => {
     expect(adPool(awake).some((a) => a.names === true)).toBe(true);
     expect(popupPool(awake).some((p) => p.names === true)).toBe(true);
     expect(fillCopy("{character} wants to be your friend.", awake)).toBe("Trabolta wants to be your friend.");
+    expect(fillCopy("{character}.EXE IS RUNNING", awake)).toBe("TRABOLTA.EXE IS RUNNING");
   });
 
   it("keeps ids unique, buttons 1–3 and copy short enough to fit a tablet", () => {

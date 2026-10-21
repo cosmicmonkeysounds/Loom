@@ -94,3 +94,15 @@ describe("the popups' lives", () => {
     expect(relayout(mixed, "storm").live).toHaveLength(2);
   });
 });
+
+describe("the storm's trail", () => {
+  it("bounces inside its room, a pure function of time", async () => {
+    const { stormPath } = await import("../src/idle-show/storm.ts");
+    for (let t = 0; t < 60_000; t += 333) {
+      const p = stormPath(t, 1000, 600, 7);
+      expect(p.x >= 0 && p.x <= 1000 && p.y >= 0 && p.y <= 600).toBe(true);
+      expect(stormPath(t, 1000, 600, 7)).toEqual(p);
+    }
+    expect(stormPath(0, 0, 0, 7)).toEqual({ x: 0, y: 0 });
+  });
+});

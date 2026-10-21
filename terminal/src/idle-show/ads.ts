@@ -41,6 +41,24 @@ export type AdArt =
   | "pager"
   | "dice";
 
+/** What an ad's title bar says, by skin (its title is in its body). */
+export const SKIN_BAR: Record<AdSkin, string> = {
+  win98: "Special Offer",
+  banner: "ADVERTISEMENT",
+  geocities: "~*~ my home page ~*~",
+  lottery: "!!! WINNER !!!",
+  chat: "BuddyChat 99",
+  dialup: "Dial-Up Networking",
+  y2k: "Year 2000 Readiness",
+  duck: "Skill Testing Game",
+  fundraiser: "mapsandducks.com",
+  hijack: "000. 000. 000.",
+  phosphor: "message.txt",
+  classified: "THE CLASSIFIEDS",
+  warning: "Security Alert",
+  tycoon: "Truthcoin Exchange",
+};
+
 export interface IdleAd extends Pooled {
   id: string;
   skin: AdSkin;
@@ -117,4 +135,14 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-char-premium", skin: "banner", art: "face", kicker: "UPGRADE", title: "{character} PREMIUM", body: "All the honesty, none of the ads. (This is an ad.)", button: "Upgrade", names: true },
   { id: "ad-char-talk", skin: "chat", art: "face", title: "TALK TO {character} — RIGHT HERE", body: "This terminal is a direct line. Show it your pass and he will be with you shortly.", button: "Connect", names: true, scan: true },
   { id: "ad-char-online", skin: "hijack", art: "face", kicker: "ONLINE NOW", title: "{character}.EXE IS RUNNING", body: "He sees every screen in the house. Wave. He likes that.", button: "Wave", names: true },
+];
+
+/** What the character says in the `face` layout's bubble (awake, after the introduction only). */
+export const FACE_TIPS: readonly string[] = [
+  "Tell me something true. I will remember it. I remember everything.",
+  "Hold your pass to the camera in the corner. I don't bite. I don't have teeth.",
+  "Every room in this house is a part of me. Mind the furniture.",
+  "You are looking at my ads. I made them myself.",
+  "Message me from your phone any time. I am always typing.",
+  "I like you. I like everyone. Some of you more than others.",
 ];

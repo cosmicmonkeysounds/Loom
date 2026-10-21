@@ -127,7 +127,7 @@ export const windows: SaverDef = {
         for (const fl of flags) {
           const sx = w / 2 + fl.ox + (fl.x / fl.z) * f;
           const sy = h / 2 + fl.oy + (fl.y / fl.z) * f;
-          const size = (0.05 / fl.z) * f;
+          const size = (0.075 / fl.z) * f;
           if (sx < -size * 2 || sx > w + size * 2 || sy < -size * 2 || sy > h + size * 2) continue;
           const a = Math.min(1, (1 - fl.z) * 1.6);
           ctx.globalAlpha = a;

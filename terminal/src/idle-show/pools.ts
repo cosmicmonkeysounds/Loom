@@ -92,7 +92,10 @@ export function clockText(sec: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
-/** Fill a copy template: `{character}`, `{y2k}` (the countdown, or "not long"). */
+/** Fill a copy template: `{character}`, `{y2k}` (the countdown, or "not long").
+ *  A shouted template ("{character} PREMIUM") shouts his name too. */
 export function fillCopy(text: string, ctx: Pick<IdleContext, "character" | "y2kLeft">): string {
-  return text.replace(/\{character\}/gu, ctx.character).replace(/\{y2k\}/gu, ctx.y2kLeft === null ? "not long" : clockText(ctx.y2kLeft));
+  const bare = text.replace(/\{[a-z0-9]+\}/gu, "");
+  const shout = /[A-Z]/u.test(bare) && bare === bare.toUpperCase();
+  return text.replace(/\{character\}/gu, shout ? ctx.character.toUpperCase() : ctx.character).replace(/\{y2k\}/gu, ctx.y2kLeft === null ? "not long" : clockText(ctx.y2kLeft));
 }
