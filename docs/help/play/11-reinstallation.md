@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture
+keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture, voice, microphone, mic, mute, talk, hear
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -159,6 +159,24 @@ people in the real room see you, a ghost with your name and your
 picture. When nobody is in its room it follows whoever is playing, with
 a little map of the floor. Find the duck and every screen watching you celebrates. See
 [The terminals on the walls](terminals.md).
+
+## Talking to the house
+
+The terminals have microphones, and so does the simulation. Walk up to a
+terminal's screen in the simulation and you **hear the people standing by
+that terminal in the real room**, coming from where the screen hangs (from
+the next room it is quieter, the further away the quieter); talk, and they
+hear you on the terminal. Other players in the simulation can't hear you.
+
+- In a **headset**, your mic is on. **B** or **Y** mutes it (and unmutes
+  it); the HUD says **🎤 LIVE**, **🎤 MUTED** or **NO MIC**.
+- The **tablet in the tent** has no voice link: the tent is the tablet's
+  own room. A tablet or laptop set up elsewhere may have it. Then **Play
+  here** asks to use the microphone, the **🎤** button at the top right
+  (or **M**) mutes it, and the bottom line says *🎤 a terminal can hear
+  you* while one does.
+- Your voice only goes out when you speak up, and never while a terminal's
+  voice is playing to you, so talk in turns.
 
 Need the bathroom, or there's an emergency? Tap **🚻 Bathroom Mode** on
 your pass before you leave the tent. The exit is clearly marked. It is
