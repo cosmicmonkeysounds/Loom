@@ -198,7 +198,8 @@ Whiskars": the same as "Doctor Whiskers" (accurate).* and his reason).
 The rulings wait in a **queue**, oldest filing first: his worker takes
 one at a time, and a guest talking to him goes first (no ruling is sent
 while he is answering a message). A ruling expires 60 s after it was
-sent (never while it waits its turn); two expiries in a row mean his
+sent (never while it waits its turn), and one out when his worker drops
+off (a Wi-Fi blip) goes back in the queue for the reconnect; two expiries in a row mean his
 worker isn't ruling, and the staff room hears it once (*⚖ Trabolta isn't
 ruling: filings fall back to the house rule.*). A round of forty-odd
 filings can take him several minutes, so Run → Mind's Judging card
@@ -267,7 +268,8 @@ card's tallies and let the story draw a name:
   is up, the screens show them — who filed, what they said, sure or not,
   accepted / guess / not counted, and the judge's stamp on each filing
   (the rows on the TV only). The screens never tell an accurate filing
-  from a confident lie before the verdict.
+  from a confident lie before the verdict, and a reading never shows the
+  last round's questions (they are still open until the verdict).
 - `do fact_truth <id> accurate|lie|none` — the verdict on one question:
   for two minutes the TV shows each question's truth, its key answer and
   the names of the programs who lied (a wall shows the truths and the
