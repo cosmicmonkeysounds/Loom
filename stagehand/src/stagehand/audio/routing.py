@@ -72,6 +72,8 @@ class Route:
 class Cue:
     to: tuple[str, ...]
     gain_db: float = 0.0
+    #: `duck: false` on the cue (router-only, optional): never ducked.
+    duck: bool = True
 
 
 @dataclass(frozen=True)
@@ -207,6 +209,7 @@ def parse_audio(doc: Any) -> AudioDoc:
         cues[str(name)] = Cue(
             to=_names(raw.get("to") or [], f"audio.cues.{name}.to"),
             gain_db=0.0 if gain is None else _num(gain, f"audio.cues.{name}.gain", -60, 12),
+            duck=raw.get("duck") is not False,
         )
 
     announce = doc.get("announce") or {}
@@ -336,3 +339,14 @@ def output_gains(audio: AudioDoc, speakers: tuple[str, ...], gain_db: float = 0.
             db = s.gain_db + gain_db
             out[ch] = max(out.get(ch, -1e9), db)
     return out
+
+
+def speaker_layout(audio: AudioDoc, speakers: tuple[str, ...]) -> tuple[tuple[int, ...], ...]:
+    """Each speaker's outputs in its own `out` order — the mixer lays a
+    stereo file out per speaker (L → first, R → second; mono → a downmix)."""
+    out: list[tuple[int, ...]] = []
+    for sid in speakers:
+        s = audio.speaker(sid)
+        if s is not None and s.out:
+            out.append(s.out)
+    return tuple(out)

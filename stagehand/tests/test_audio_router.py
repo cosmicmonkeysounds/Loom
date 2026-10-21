@@ -7,6 +7,7 @@ import asyncio
 import io
 import json
 import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +17,7 @@ import soundfile as sf
 from stagehand.audio.config import parse_audio_section
 from stagehand.audio.module import AudioRouter, MixerOutput, sound_args
 from stagehand.audio.sounds import SoundBank
-from stagehand.alexa.module import Announcement
+from stagehand.alexa.module import Announcement, try_lock
 from stagehand.config import parse_config
 from stagehand.modapi import ModApiError
 from stagehand.module import ConfigError
@@ -53,7 +54,7 @@ def answer(version: str = "v1", **audio_over) -> dict:
     }
 
 
-def router(tmp_path, *, threaded=False, query=None, render_say=None, speak_direct=None, **over) -> AudioRouter:
+def router(tmp_path, *, threaded=False, query=None, render_say=None, speak_direct=None, voice=True, **over) -> AudioRouter:
     sounds = tmp_path / "sounds"
     sounds.mkdir(exist_ok=True)
     section = {"sounds_dir": str(sounds), "cache_dir": str(tmp_path / "cache"), "announce_lock_dir": str(tmp_path / "lock"), **over}
@@ -64,6 +65,8 @@ def router(tmp_path, *, threaded=False, query=None, render_say=None, speak_direc
         render_say=render_say or (lambda text, voice: wav_bytes(0.05)),
         speak_direct=speak_direct or (lambda text, voice, device: None),
     )
+    if voice and r.cfg.announce:
+        r.lock_fd = try_lock(r.cfg.announce_lock_dir)  # what run() takes first
     return r
 
 
@@ -237,6 +240,17 @@ def test_cue_and_speaker_gains_apply(tmp_path):
     assert out[100, 2] == pytest.approx(0.25 * 10 ** (-3 / 20), rel=0.02)
 
 
+def test_a_stereo_sound_is_laid_out_per_speaker(tmp_path):
+    r = playing(tmp_path)
+    sf.write(str(tmp_path / "sounds" / "song.wav"), np.stack([np.full(800, 0.2), np.full(800, 0.4)], axis=1).astype(np.float32), RATE)
+    # bar-1 is `out: [4, 3]` (L on 4), desk-l / desk-r are one output each.
+    assert r.on_sim({"type": "directive", "verb": "sfx", "args": "song, rooms: start-bar desktop"}) == "played"
+    out = stream_of(r).pump(200)
+    trim = 10 ** (-3 / 20)  # bar-1's −3 dB
+    assert out[100, 3] == pytest.approx(0.2 * trim, rel=0.02) and out[100, 2] == pytest.approx(0.4 * trim, rel=0.02)
+    assert out[100, 0] == pytest.approx(0.3, rel=0.02) and out[100, 1] == pytest.approx(0.3, rel=0.02)
+
+
 def test_a_missing_file_is_logged_once_and_never_crashes(tmp_path, caplog):
     r = playing(tmp_path)
     with caplog.at_level(logging.WARNING):
@@ -358,25 +372,131 @@ def test_mixer_output_refuses_targets_with_no_wired_speaker(tmp_path):
         MixerOutput(r).play(np.zeros((10, 1), dtype=np.float32), RATE)
 
 
-def test_an_announcing_router_waits_while_an_alexa_player_holds_the_lock(tmp_path, caplog):
-    from stagehand.alexa.module import try_lock
-
+def test_a_held_alexa_lock_blocks_only_the_announcements(tmp_path, caplog):
     held = try_lock(str(tmp_path / "lock"))
     assert held is not None
-    r = router(tmp_path, announce=True)
+    said: list[str] = []
+    r = router(tmp_path, announce=True, play_sounds=True, voice=False, threaded=True, render_say=lambda t, v: said.append(t) or wav_bytes(0.05))
+    write_wav(tmp_path / "sounds" / "zip.wav")
+
+    class FeedMod(FakeMod):
+        def feed_url(self, client_id="stagehand"):
+            return "fake://feed"
+
+        async def stream(self, url, on_open=None):
+            on_open()
+            await asyncio.sleep(0.05)
+            yield "sim", json.dumps({"type": "directive", "verb": "sfx", "args": "zip, rooms: hall"})
+            yield "sim", json.dumps({"type": "directive", "verb": "announce", "args": "Five minutes."})
+            await asyncio.sleep(3600)
 
     class Ctx:
-        mod = None
+        mod = FeedMod([answer("v1")])
 
     async def go():
         task = asyncio.ensure_future(r.run(Ctx()))
+        for _ in range(100):
+            await asyncio.sleep(0.01)
+            if r.played:
+                break
         await asyncio.sleep(0.05)
-        assert not task.done() and r.engine is None  # never opened the speakers
+        state = (r.engine_running(), r.played, r.announce_state(), r.health()["announce"], list(said), r.mixer.duck_hold > 0 or r.mixer.duck < 1.0)
         task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return state
 
     with caplog.at_level(logging.ERROR):
-        run(go())
+        running, played, state, health, spoken, ducked = run(go())
+    os.close(held)
+    assert running and played == 1  # the sounds play while the alexa player speaks
+    assert state == health == "blocked" and spoken == []
+    assert ducked  # its announcement still ducks the router's sounds
     assert "one owner" in caplog.text
+
+
+def test_the_voice_lock_loop_takes_the_lock_once_it_frees(tmp_path, monkeypatch):
+    held = try_lock(str(tmp_path / "lock"))
+    r = router(tmp_path, announce=True, voice=False)
+    real_sleep = asyncio.sleep
+
+    async def fast(_s):
+        await real_sleep(0.01)
+
+    monkeypatch.setattr("stagehand.audio.module.asyncio.sleep", fast)
+
+    async def go():
+        task = asyncio.ensure_future(r._voice_lock_loop())
+        await real_sleep(0.05)
+        blocked = r.announce_state()
+        os.close(held)
+        await asyncio.wait_for(task, 1.0)
+        return blocked
+
+    assert run(go()) == "blocked" and r.announce_state() == "on" and r.speaks_announcements()
+
+
+def test_a_blocked_announcement_is_dropped_not_queued_for_later(tmp_path, caplog):
+    held = try_lock(str(tmp_path / "lock"))
+    said: list[str] = []
+
+    async def go():
+        r = router(tmp_path, announce=True, voice=False, render_say=lambda t, v: said.append(t) or wav_bytes(0.05))
+        r.apply(answer("v1"))
+        r.announcements = asyncio.Queue()
+        assert r.on_sim({"type": "directive", "verb": "announce", "args": "Hi."}) == "duck"
+        r.announcements.put_nowait(Announcement(text="Hi."))  # e.g. off MQTT
+        worker = asyncio.ensure_future(r._announce_worker())
+        await asyncio.sleep(0.05)
+        worker.cancel()
+        return r
+
+    with caplog.at_level(logging.WARNING):
+        run(go())
+    os.close(held)
+    assert said == [] and "announcement dropped" in caplog.text
+
+
+# -- the announcement duck when the alexa player speaks ------------------------------
+
+
+def test_without_announce_each_announcement_ducks_the_beds_but_not_the_dance(tmp_path):
+    r = with_house(router(tmp_path, play_sounds=True, no_duck=["dance_song"], duck_hold_s=7))
+    write_wav(tmp_path / "sounds" / "beans_spill.wav", seconds=3)
+    write_wav(tmp_path / "sounds" / "dance_song.wav", seconds=3)
+    r.apply(answer("v1"))
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "beans_spill, rooms: start-bar"})  # 3, 4
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "dance_song, rooms: hall"})  # 5
+    s = stream_of(r)
+    before = s.pump(400)
+    assert r.on_sim({"type": "directive", "verb": "announce", "args": "Five minutes."}) == "duck"
+    for _ in range(25):
+        out = s.pump(400)
+    assert out[-1, 2] == pytest.approx(before[-1, 2] * 10 ** (-12 / 20), rel=0.05)  # the bed ducked
+    assert out[-1, 4] == pytest.approx(before[-1, 4], rel=0.01)  # dance_song did not
+
+
+def test_a_cue_can_say_duck_false_in_audio_json(tmp_path):
+    r = with_house(router(tmp_path, play_sounds=True))
+    cues = {**FIXTURE["audio"]["cues"], "rave": {"to": ["everywhere"], "duck": False}}
+    r.apply(answer("v1", cues=cues))
+    assert not r.ducks("rave") and r.ducks("beans_spill") and r.ducks("printer_grind")
+    r2 = router(tmp_path, no_duck=["Hand_Jive"])
+    r2.apply(answer("v1"))
+    assert not r2.ducks("hand jive") and not r2.ducks("hand_jive")
+
+
+def test_the_duck_hold_off_and_no_stream_mean_no_duck(tmp_path):
+    r = router(tmp_path, duck_hold_s=0)
+    r.apply(answer("v1"))
+    assert r.on_sim({"type": "directive", "verb": "announce", "args": "Hi."}) is None
+    assert router(tmp_path).on_sim({"type": "directive", "verb": "announce", "args": "Hi."}) is None  # no config yet
+
+
+def test_an_announcing_router_never_ducks_on_the_feed_its_own_voice_does(tmp_path):
+    r = router(tmp_path, announce=True, mqtt={"host": "127.0.0.1"})
+    r.apply(answer("v1"))
+    assert r.on_sim({"type": "directive", "verb": "announce", "args": "Hi."}) is None
+    assert r.mixer.duck_hold == 0
 
 
 # -- speaker tests -----------------------------------------------------------
@@ -498,6 +618,29 @@ def test_the_stall_watchdog_reopens_a_silent_stream(tmp_path, caplog):
     with caplog.at_level(logging.ERROR):
         assert r.check_stream()  # two: reopened
     assert first.closed and stream_of(r) is not first and "stopped calling back" in caplog.text
+
+
+def test_the_servers_default_doc_with_no_device_name_opens_the_default_output(tmp_path, caplog):
+    # `defaultAudio()` (no project audio.json) has device.name "": PortAudio
+    # reads "" as a substring every device matches and refuses it.
+    def query(device=None, kind=None):
+        if device is not None:
+            raise ValueError(f"Multiple devices found for {device!r}")
+        return fake_query(2, 2, name="MacBook Pro Speakers")(None, kind)
+
+    r = router(tmp_path, query=query)
+    default = {
+        "version": 1,
+        "device": {"name": "", "inputs": 16, "outputs": 16, "rate": 48000},
+        "inputs": [{"ch": i, "label": f"In {i}", "kind": "line"} for i in range(1, 17)],
+        "outputs": [{"ch": i, "label": f"Out {i}"} for i in range(1, 17)],
+        "speakers": [], "zones": [], "routes": [], "cues": {},
+    }
+    with caplog.at_level(logging.WARNING):
+        assert r.apply({"audio": default, "version": "d0", "source": "default"})
+    assert r.engine_running() and "Speakers" in r.engine.describe()
+    assert "names no device" in caplog.text
+    assert r.test_targets(None, 1) == ((1,), "Out 1")
 
 
 def test_health_reports_the_night(tmp_path):

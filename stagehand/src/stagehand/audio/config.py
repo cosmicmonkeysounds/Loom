@@ -17,6 +17,10 @@ Shape (`audio.example.yaml` carries a commented copy):
       master_db: 0
       limit_db: -1                 # the per-output limiter's ceiling
       duck_db: -12                 # sfx under an announcement
+      duck_hold_s: 7               # announce: false — the duck held for an
+                                   # announcement the alexa player speaks
+      no_duck: []                  # sounds that never duck (the show's
+                                   # dance_song, rave, hand_jive)
       config_file: null            # a local audio.json, used until the server answers
       house_file: null             # a local house.json (LOCATION → rooms) likewise
       cache_dir: ~/Library/Caches/stagehand-audio   # the last good audio.json + house.json
@@ -63,6 +67,8 @@ class AudioConfig:
     master_db: float = 0.0
     limit_db: float = -1.0
     duck_db: float = -12.0
+    duck_hold_s: float = 7.0
+    no_duck: tuple[str, ...] = ()
     config_file: str | None = None
     house_file: str | None = None
     cache_dir: str = DEFAULT_CACHE
@@ -118,6 +124,13 @@ def _str(doc: dict, key: str, default: str | None) -> str | None:
     return value
 
 
+def _names(doc: dict, key: str) -> tuple[str, ...]:
+    value = doc.get(key) or []
+    if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
+        raise ConfigError(f"audio.{key}: a list of sound names")
+    return tuple(value)
+
+
 def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
     if doc is None:
         doc = {}
@@ -167,6 +180,8 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
         master_db=_num(doc, "master_db", 0.0, -60, 12),
         limit_db=_num(doc, "limit_db", -1.0, -30, 0),
         duck_db=_num(doc, "duck_db", -12.0, -60, 0),
+        duck_hold_s=_num(doc, "duck_hold_s", 7.0, 0, 60),
+        no_duck=_names(doc, "no_duck"),
         config_file=_path(doc, "config_file", base_dir, must_exist=True),
         house_file=_path(doc, "house_file", base_dir, must_exist=True),
         cache_dir=os.path.expanduser(_str(doc, "cache_dir", DEFAULT_CACHE) or DEFAULT_CACHE),

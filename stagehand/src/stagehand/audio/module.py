@@ -22,8 +22,11 @@ keeps playing `sound X` — the router only runs the matrix and the tests; with
 `announce: false` the `alexa` player keeps the announcements. When the router
 plays sounds the `show` module drops its QLab `sound` cues (config.py), so no
 sound plays twice; when it announces, an `alexa:` section in the same YAML is a
-config error and the router holds the alexa player's lock, so the house never
-has two voices.
+config error and the router takes the alexa player's lock before it speaks
+(a leftover alexa job blocks only the announcements, never the sounds), so
+the house never has two voices. With `announce: false` each `do announce`
+ducks the router's sounds for `duck_hold_s` (QLab's `duck_music`); sounds
+in `no_duck` (the dance tracks) never duck.
 
 Survives the uplink: the last audio.json and house.json are kept in
 `cache_dir`, so a restart with the internet down still routes; sounds are
@@ -53,7 +56,7 @@ from ..module import ConfigError, Context
 from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
-from .engine import Engine, probe
+from .engine import Engine, device_name, probe
 from .mixer import Mixer, lin_to_db
 from .routing import (
     EVERYWHERE,
@@ -62,7 +65,9 @@ from .routing import (
     Resolved,
     output_gains,
     parse_audio,
+    fold,
     resolve_targets,
+    speaker_layout,
     split_targets,
 )
 from .sounds import SoundBank, identify_label, identify_tone
@@ -171,6 +176,10 @@ class AudioRouter:
         self._last_open_error = 0.0
         self._last_ticks = -1
         self._stalls = 0
+        self._blank_device_logged = False
+        #: The alexa player's lock, once held (announce: true only).
+        self.lock_fd: int | None = None
+        self._dropped_logged = 0.0
 
     # -- describe / check ----------------------------------------------------
 
@@ -207,7 +216,7 @@ class AudioRouter:
             if info is not None:
                 log.info("audio device %s: %d in / %d out @ %d Hz (no local audio.json to check against)", info.name, info.inputs, info.outputs, info.rate)
             return [f"audio: {p}" for p in problems]
-        info, problems = probe(self.cfg.device or doc.device, doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query)
+        info, problems = probe(device_name(self.cfg.device) or device_name(doc.device), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query)
         if info is not None:
             print(f"audio    : {info.name} — {info.inputs} in / {info.outputs} out @ {info.rate} Hz; audio.json wants {doc.inputs} / {doc.outputs}")
         return [f"audio: {p}" for p in problems]
@@ -320,7 +329,10 @@ class AudioRouter:
         if doc is None:
             return False
         cfg = self.cfg
-        signature = (cfg.device or doc.device, doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough)
+        signature = (device_name(cfg.device) or device_name(doc.device), doc.inputs, doc.outputs, cfg.rate or doc.rate, cfg.passthrough)
+        if signature[0] is None and not self._blank_device_logged:
+            self._blank_device_logged = True
+            log.warning("audio.json names no device (device.name is blank) and the YAML sets no `device:` — using the default output")
         if self.engine is not None and signature == self._signature and self.engine.running:
             return True
         if self.engine is not None and signature != self._signature:
@@ -397,12 +409,36 @@ class AudioRouter:
         if data is None:
             self.skipped += 1
             return "no-file"
-        self.mixer.play(data, output_gains(self.doc, res.speakers, gain), bus="sfx", tag=name)
+        self.mixer.play(
+            data,
+            output_gains(self.doc, res.speakers, gain),
+            bus="sfx",
+            tag=name,
+            duck=self.ducks(name),
+            layout=speaker_layout(self.doc, res.speakers),
+        )
         self.played += 1
         log.info("sound %s → %s (%s: %s) out %s", name, ",".join(res.speakers), why, ",".join(targets), ",".join(map(str, res.outputs)))
         return "played"
 
+    def ducks(self, name: str) -> bool:
+        """Does `sound <name>` duck under an announcement? Not when the YAML's
+        `no_duck` names it or its audio.json cue says `duck: false` (the
+        show's dance tracks, as QLab's `duck_music` group always skipped)."""
+        key = fold(name)
+        if any(fold(n) == key for n in self.cfg.no_duck):
+            return False
+        cue = self.doc.cue(name) if self.doc is not None else None
+        return cue is None or cue.duck
+
     # -- the story feed --------------------------------------------------------
+
+    def speaks_announcements(self) -> bool:
+        """`announce: true` and the voice lock is ours (no alexa player)."""
+        return self.cfg.announce and self.lock_fd is not None
+
+    def announce_state(self) -> str:
+        return "off" if not self.cfg.announce else ("on" if self.lock_fd is not None else "blocked")
 
     def announcements_from_feed(self) -> bool:
         """With a broker, announcements arrive on MQTT (the show module's
@@ -426,11 +462,20 @@ class AudioRouter:
                 return None
             setting = event.get("setting") if isinstance(event.get("setting"), str) else None
             return self.play_sound(name, rooms, setting)
-        if verb == "announce" and self.announcements_from_feed():
-            text = " ".join(unquote(str(event.get("args", "")).strip()).split())[:MAX_TEXT]
-            if text and text != "{target}":
-                self.enqueue(Announcement(text=text))
-                return "announce"
+        if verb == "announce":
+            if not self.speaks_announcements():
+                # The alexa player speaks it (announce: false, or its lock is
+                # still held): the router's beds duck for the line's length,
+                # as QLab's `duck_music` did.
+                if self.mixer is not None and self.cfg.duck_hold_s > 0:
+                    self.mixer.duck_for(self.cfg.duck_hold_s)
+                    return "duck"
+                return None
+            if self.announcements_from_feed():
+                text = " ".join(unquote(str(event.get("args", "")).strip()).split())[:MAX_TEXT]
+                if text and text != "{target}":
+                    self.enqueue(Announcement(text=text))
+                    return "announce"
         return None
 
     def on_lifecycle(self, doc: Any) -> None:
@@ -445,7 +490,7 @@ class AudioRouter:
         cfg = self.cfg
         alexa = AlexaConfig(
             mqtt=MqttConfig(host="-"),
-            device=cfg.device or (self.doc.device if self.doc else None),
+            device=device_name(cfg.device) or (device_name(self.doc.device) if self.doc else None),
             engine="say",
             say_voice=cfg.say_voice,
             chime=cfg.chime,
@@ -467,6 +512,12 @@ class AudioRouter:
         assert self.announcements is not None
         while True:
             item = await self.announcements.get()
+            if not self.speaks_announcements():
+                now = time.monotonic()
+                if now - self._dropped_logged > 60:
+                    self._dropped_logged = now
+                    log.warning("announcement dropped: an `alexa` player holds the house's voice (announce: blocked)")
+                continue
             if self.announcer is None:
                 self.announcer = self.make_announcer()
             try:
@@ -632,6 +683,7 @@ class AudioRouter:
                 return False
             log.error("the audio stream stopped calling back — reopening it")
             assert self.engine is not None
+            self.engine.mark_failed()
             self.engine.close()
         self._stalls = 0
         return self.ensure_engine()
@@ -652,12 +704,14 @@ class AudioRouter:
             "source": self.source,
             "voices": mixer.active() if mixer is not None else 0,
             "xruns": self.engine.xruns if self.engine is not None else 0,
+            "reinits": self.engine.reinits if self.engine is not None else 0,
             "limited": limited,
             "blocks": blocks,
             "peak_db": round(lin_to_db(float(peak.max())) if len(peak) else -120.0, 1),
             "played": self.played,
             "skipped": self.skipped,
             "missing": sorted(self.bank.missing) if self.bank is not None else [],
+            "announce": self.announce_state(),
         }
 
     async def _health_loop(self) -> None:
@@ -665,8 +719,8 @@ class AudioRouter:
             await asyncio.sleep(self.cfg.health_s)
             h = self.health()
             log.info(
-                "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS%s",
-                h["device"] or "closed", h["config"] or "—", h["source"], h["voices"], h["played"], h["skipped"], h["xruns"], h["limited"], h["blocks"], h["peak_db"],
+                "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s",
+                h["device"] or "closed", h["config"] or "—", h["source"], h["voices"], h["played"], h["skipped"], h["xruns"], h["limited"], h["blocks"], h["peak_db"], h["announce"],
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
             )
             if self.mqtt is not None:
@@ -695,19 +749,30 @@ class AudioRouter:
                 if a is not None:
                     self.enqueue(a)
 
+    async def _voice_lock_loop(self) -> None:
+        """announce: true — take the alexa player's lock. Until it is ours
+        only the announcements wait (dropped, logged, `announce: blocked` in
+        health); sounds, the matrix and the tests play from the start."""
+        warned = False
+        while self.lock_fd is None:
+            self.lock_fd = try_lock(self.cfg.announce_lock_dir)
+            if self.lock_fd is not None:
+                if warned:
+                    log.info("the alexa player stopped — the router speaks the announcements now")
+                return
+            if not warned:
+                log.error(
+                    "an `alexa` player holds %s/player.lock — the router owns announcements (announce: true), "
+                    "so it will not speak them until that player stops (one owner of the house's voice); "
+                    "every sound, the matrix and the tests play meanwhile",
+                    self.cfg.announce_lock_dir,
+                )
+                warned = True
+            await asyncio.sleep(5.0)
+
     async def run(self, ctx: Context) -> None:
-        lock_fd = None
         if self.cfg.announce:
-            warned = False
-            while (lock_fd := try_lock(self.cfg.announce_lock_dir)) is None:
-                if not warned:
-                    log.error(
-                        "an `alexa` player holds %s/player.lock — the router owns announcements (announce: true), "
-                        "so it will not open the speakers until that player stops (one owner of the house's voice)",
-                        self.cfg.announce_lock_dir,
-                    )
-                    warned = True
-                await asyncio.sleep(5.0)
+            self.lock_fd = try_lock(self.cfg.announce_lock_dir)
         self.loop = asyncio.get_running_loop()
         self.announcements = asyncio.Queue()
         if self.load_local():
@@ -720,6 +785,8 @@ class AudioRouter:
             asyncio.ensure_future(self._health_loop()),
             asyncio.ensure_future(self._announce_worker()),
         ]
+        if self.cfg.announce and self.lock_fd is None:
+            tasks.append(asyncio.ensure_future(self._voice_lock_loop()))
         if self.cfg.mqtt is not None:
             from ..show.mqtt import MqttBridge
 
@@ -739,5 +806,6 @@ class AudioRouter:
                 self.mqtt = None
             if self.engine is not None:
                 self.engine.close()
-            if lock_fd is not None:
-                os.close(lock_fd)
+            if self.lock_fd is not None:
+                os.close(self.lock_fd)
+                self.lock_fd = None
