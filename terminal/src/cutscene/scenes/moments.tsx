@@ -50,6 +50,13 @@ function slam(t: number, at: number, reduced: boolean, dur = 420) {
   return { opacity: clamp01(k * 3), transform: `scale(${lerp(2.4, 1, ease.outBack(k)).toFixed(3)})` };
 }
 
+/** A slam's style with a bounce of `vmin` up folded into its transform (never a layout property, OB-9). */
+export function bounced(style: { opacity: number; transform?: string }, vmin: number): { opacity: number; transform?: string } {
+  if (vmin === 0) return style;
+  const up = `translateY(${(-vmin).toFixed(1)}vmin)`;
+  return { ...style, transform: style.transform === undefined ? up : `${up} ${style.transform}` };
+}
+
 /** The program's name as the screen shows it (no name on the moment: "A PROGRAM"). */
 export function finderName(who: string | null): string {
   const w = who === null ? "" : who.trim();
@@ -449,7 +456,7 @@ function YouveGotMail({ t, sfx, reduced }: SceneProps) {
         <Envelope flap={flap} size="40vmin" />
       </div>
       {t >= 1900 && (
-        <div className="tv3-mail-title" style={{ ...slam(t, 1900, reduced), marginTop: `${(-bounce).toFixed(1)}vmin` }}>
+        <div className="tv3-mail-title" style={bounced(slam(t, 1900, reduced), bounce)}>
           YOU&apos;VE GOT MAIL!
         </div>
       )}
