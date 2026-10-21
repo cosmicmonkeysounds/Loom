@@ -622,7 +622,11 @@ screen asks again (`requestFullscreen` / `webkitRequestFullscreen`; Fully
 Kiosk's JS interface hides the bars where it has the calls). State on
 `<html data-fullscreen>` and the poll's `fs=1|0` (no `fs` when a director
 turned it off or the browser can't; Run → Terminals shows ⛶ on `fs=0`). The TV's Chrome keeps
-`--kiosk` — the only no-gesture route.
+`--kiosk` — the only no-gesture route. Browser-level full screen counts as
+full (`browserFullscreen`: `(display-mode: fullscreen|standalone)` or the
+window's inner size equal to the screen's), so `--kiosk`, F11 and a Home
+Screen app send `fs=1` with no fullscreen element and a tap there asks the
+API for nothing.
 
 **Cutscenes** (`src/cutscene/`). A scene (`types.ts` `SceneDef`) is started
 by a slide cue (`{slide: "trivia_1"}`, `award_*` prefixes) or a screen-state

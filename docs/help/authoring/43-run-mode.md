@@ -116,9 +116,10 @@ Front of house: getting people in.
   button before the doors. Each row
   shows what the tablet reports: **🔇** nobody has touched it yet so it
   can't speak, **💤** its screen is off or another app is on top, **⛶**
-  it is not full screen (touch it once: it asks again on every touch; a
-  tablet that can't go full screen, or has it turned off in ⚙, shows
-  nothing), its battery (red under 20 % and not charging), and its build (amber when
+  it is not full screen (on a tablet, touch it once: it asks again on
+  every touch; on the TV it means its Chrome was started without
+  `--kiosk`, so relaunch it with the kiosk line; a tablet that can't go
+  full screen, or has it turned off in ⚙, shows nothing), its battery (red under 20 % and not charging), and its build (amber when
   it isn't the one the others run, or **old build** when it reports none
   at all while the others do: either way, reload it before doors). **identify**
   puts that screen's name and spot full screen for 10 seconds, with a

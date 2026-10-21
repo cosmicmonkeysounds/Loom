@@ -46,9 +46,13 @@ an Android back swipe, so the page asks on several routes at once:
 
 The state is on `<html data-fullscreen="on|fully|off|disabled|unsupported">`
 and rides the heartbeat (`fs=1|0`): **Run → Terminals shows ⛶ on a
-terminal that is not full screen** — touch it once. A browser that can't go
-full screen, or a terminal with it turned off, reports nothing and shows no
-badge. ⚙ → **full screen** (on by default) turns it off: do that on a
+terminal that is not full screen**. Browser-level full screen counts: Chrome
+`--kiosk` (or F11) and a Home Screen web app report full screen with no tap,
+so the TV, which nobody ever touches, shows no ⛶. On a tablet a ⛶ means
+touch it once; on the TV or a laptop terminal it means its Chrome was
+started without `--kiosk`: quit it (⌘Q) and relaunch with the line below. A
+browser that can't go full screen, or a terminal with it turned off,
+reports nothing and shows no badge. ⚙ → **full screen** (on by default) turns it off: do that on a
 laptop a director tests on, so Esc sticks. It is stored with the terminal,
 not a URL key.
 
