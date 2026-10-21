@@ -108,7 +108,7 @@ describe("the tabs", () => {
   it("Judge: auto ⇄ review, the view's mode pressed", () => {
     const auto = inDrawer(hostFixture(), createElement(JudgeTab));
     expect(auto).toContain('data-section="judge-mode"');
-    expect(auto).toMatch(/aria-pressed="true"[^>]*>[\s\S]{0,120}Auto: the house judges; near misses wait here/u);
+    expect(auto).toMatch(/aria-pressed="true"[^>]*>[\s\S]{0,120}Auto: the house accepts exact matches, Trabolta rules the rest; what he can&#x27;t rule waits here/u);
     const review = inDrawer(hostFixture({ judging: { ...hostFixture().judging!, mode: "review" } }), createElement(JudgeTab));
     expect(review).toMatch(/aria-pressed="true"[^>]*>[\s\S]{0,120}Review: every filing waits for a host/u);
   });
