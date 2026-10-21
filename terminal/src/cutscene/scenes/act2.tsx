@@ -54,7 +54,7 @@ import {
   type Emitter,
 } from "../kit/index.ts";
 import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel, y2kRaceClosed } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -1207,6 +1207,13 @@ const Y2K_POPS: readonly PopMsg[] = [
   { title: "BIOS", text: "CMOS date: 01/01/1900. Continue anyway?", kind: "error", tone: "red", actions: ["Yes", "No"] },
 ];
 
+/** After a majority (`Night.phase` "majority") founding and the race are closed: the
+ *  hour's popups and ticker stop recruiting — and, like Majority Reached, never say who won. */
+const Y2K_POPS_CLOSED: readonly PopMsg[] = Y2K_POPS.filter((m) => m.title !== "Factions");
+const Y2K_TICKER = "🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ THE FACTIONS ARE RECRUITING: UNLIMITED POWER ★ THE WAY OUT ★ OR A FACTION OF YOUR OWN ★ MORE THAN HALF WINS ★ BRING THE FACTS, ACCURATELY ★ ONE HOUR ★";
+// DRAFT w18b: the ticker once a faction holds the majority.
+const Y2K_TICKER_CLOSED = "🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ BRING THE FACTS, ACCURATELY ★ SAVE YOUR WORK BEFORE MIDNIGHT ★";
+
 const LEVEL_TONE = ["#40a0ff", "#ffb000", "#ff8a00", "#ff5a2a", "#ff3b2f", "#9a9a9a"] as const;
 
 function y2kCues(t: number, remaining: number | null): Array<readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?]> {
@@ -1236,6 +1243,7 @@ function Y2kTv(p: SceneProps) {
   const minute = remaining === null ? 0 : ((3600 - Math.min(3600, remaining)) / 60) * 6;
   const tone = LEVEL_TONE[level];
   const shake = level >= 3 && !reduced ? (level === 4 ? 0.18 : 0.06) : 0;
+  const closed = y2kRaceClosed(p.night);
   return (
     <Stage bg="#000" fit className="tv2" style={{ ["--tv2-tone" as string]: tone } as CSSProperties}>
       <Grid t={t} reduced={reduced} speed={0.4 + level * 0.35} color={`${tone}55`} bg={level >= 3 ? "radial-gradient(ellipse at 50% 45%, #2a0a00 0%, #050000 75%)" : "radial-gradient(ellipse at 50% 40%, #071a33 0%, #01040a 75%)"} />
@@ -1275,7 +1283,7 @@ function Y2kTv(p: SceneProps) {
             <span className="tv2-y2k-date">{date}</span>
           </div>
         </Win98Window>
-        {level >= 1 && level < 5 && <DriftingPopups t={t} messages={Y2K_POPS} count={level >= 3 ? 4 : level === 2 ? 3 : 2} seed={61 + level} life={level >= 3 ? 4500 : 6500} gap={level >= 3 ? 1500 : 5000} area={{ x0: 0.02, x1: 0.7, y0: 0.04, y1: 0.66 }} width="21em" reduced={reduced} />}
+        {level >= 1 && level < 5 && <DriftingPopups t={t} messages={closed ? Y2K_POPS_CLOSED : Y2K_POPS} count={level >= 3 ? 4 : level === 2 ? 3 : 2} seed={61 + level} life={level >= 3 ? 4500 : 6500} gap={level >= 3 ? 1500 : 5000} area={{ x0: 0.02, x1: 0.7, y0: 0.04, y1: 0.66 }} width="21em" reduced={reduced} />}
       </Shake>
       {level === 4 && remaining !== null && (
         <div className="tv2-y2k-last" style={{ transform: reduced ? "translate(-50%, -50%)" : `translate(-50%, -50%) scale(${(1 + 0.08 * (1 - (t % 1000) / 1000)).toFixed(3)})` }}>
@@ -1292,7 +1300,7 @@ function Y2kTv(p: SceneProps) {
       )}
       <div className="tv2-marquee-bar" style={{ background: level >= 3 ? "#3a0800" : undefined }}>
         <Marquee t={t} speed={100 + level * 40}>
-          🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ THE FACTIONS ARE RECRUITING: UNLIMITED POWER ★ THE WAY OUT ★ OR A FACTION OF YOUR OWN ★ MORE THAN HALF WINS ★ BRING THE FACTS, ACCURATELY ★ ONE HOUR ★
+          {closed ? Y2K_TICKER_CLOSED : Y2K_TICKER}
         </Marquee>
       </div>
       {level >= 2 && !reduced && <Noise t={t} alpha={0.04 + level * 0.03} />}

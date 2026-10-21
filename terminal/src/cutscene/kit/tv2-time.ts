@@ -131,6 +131,12 @@ export function latch<T>(held: Latched<T> | null, key: number | string, value: T
 
 // --- the Y2K hour ------------------------------------------------------------------------
 
+/** Has a faction won the majority (`Night.phase` "majority": the race and founding are
+ *  closed, O7)? The hour's screens then stop recruiting, and never say who won. */
+export function y2kRaceClosed(night: Pick<ScreenNight, "phase">): boolean {
+  return night.phase === "majority";
+}
+
 /**
  * How hot the Y2K hour is, off the seconds to midnight (the story's
  * watchers, `main.loom`): 0 the first half hour, 1 from 11:30, 2 from

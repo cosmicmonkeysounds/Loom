@@ -117,6 +117,11 @@ describe("act 2's scenes draw", () => {
     const html = draw(y2k, "tv", 30_000, stateAt(30_000, { countdown: "y2k", remaining: 3000 }));
     expect(html).toContain("OR A FACTION OF YOUR OWN");
     expect(html).not.toContain("TWO FACTIONS");
+    // A faction has the majority: founding and the race are closed, and nothing says who won.
+    const won = draw(y2k, "tv", 30_000, stateAt(30_000, { countdown: "y2k", remaining: 3000, night: { ...EMPTY_NIGHT, phase: "majority" } }));
+    expect(won).not.toMatch(/FACTION OF YOUR OWN|RECRUITING|MORE THAN HALF/u);
+    expect(won).toContain("SYSTEM CLOCK RESET");
+    for (const t of [8000, 20_000, 40_000]) expect(draw(y2k, "tv", t, stateAt(t, { countdown: "y2k", remaining: 600, night: { ...EMPTY_NIGHT, phase: "majority" } }))).not.toMatch(/faction of your own/iu);
     q.mockRestore();
   });
 
