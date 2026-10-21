@@ -19,7 +19,7 @@ const wanted = [
   { id: "icq", captured: false, claimedBy: "McAfee", reason: null, lastSeen: 0 },
   { id: "gone", captured: true, claimedBy: "Norton", reason: null, lastSeen: 0 },
 ];
-const ctx = (extra: Partial<GuestListCtx> = {}): GuestListCtx => ({ wanted, me: "Norton", now: 30 * 60_000, summons: null, ...extra });
+const ctx = (extra: Partial<GuestListCtx> = {}): GuestListCtx => ({ wanted, me: "Norton", now: 30 * 60_000, wall: 30 * 60_000, summons: null, ...extra });
 
 describe("🗂 Guests (§4.11)", () => {
   const list = [g("winamp"), g("enc"), g("nap", { location: "Cloud" }), g("icq"), g("gone", { captured: true, location: "Internet" }), g("bath", { flags: [{ label: "Bathroom Mode", path: "p", value: "true", on: true }] })];
@@ -37,6 +37,14 @@ describe("🗂 Guests (§4.11)", () => {
     expect(hasMissingTab(list, ctx({ wanted: null }))).toBe(false);
     expect(hasMissingTab(seen, ctx())).toBe(true);
     expect(hasMissingTab(list, ctx({ summons: [] }))).toBe(true);
+  });
+  it("lastSeen is wall-clock ms: compared with the wall clock, never story ms (BN-F5 / A2 / M1)", () => {
+    const wall = 1_792_563_218_449; // a real epoch stamp off the server
+    const real = ctx({ now: 1_192_000, wall, wanted: null });
+    const idle = g("nav", { lastSeen: wall - 17 * 60_000 });
+    expect(placeLine(idle, "The Desktop", real)).toBe("📍 The Desktop · seen 17 min ago");
+    expect(guestTab(idle, "missing", real, null)).toBe(true);
+    expect(guestTab(g("fresh", { lastSeen: wall - 30_000 }), "missing", real, null)).toBe(false);
   });
   it("one status tag: MARKED, INTERNET, 🚻, ⛔ RESTRICTED (a director's only)", () => {
     expect(statusTag(g("enc"), ctx())?.text).toBe("MARKED");

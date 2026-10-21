@@ -13,6 +13,8 @@ export interface PosterProps {
   me: string;
   /** Story ms now. */
   now: number;
+  /** Wall-clock ms now (`lastSeen` is wall clock); default `Date.now()`. */
+  wall?: number;
   place: string | null;
   /** NEW: marked since this phone last opened the board. */
   fresh?: boolean;
@@ -36,7 +38,7 @@ export function Poster(p: PosterProps) {
   const reason = w.reason?.trim() ?? "";
   const since = p.claimedAt != null ? p.now - p.claimedAt : null;
   const stale = theirs && since !== null && since >= STALE_CLAIM_MS;
-  const seen = boothSeen(w.lastSeen, p.now);
+  const seen = boothSeen(w.lastSeen, p.wall ?? Date.now());
   const place = `📍 ${p.place ?? "somewhere: not seen in a room"}`;
   return (
     <article className={`wanted-poster ${theirs ? "theirs" : ""} ${w.captured ? "caught" : ""}`} aria-label={`Wanted: ${w.name}`}>

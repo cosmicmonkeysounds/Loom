@@ -627,8 +627,11 @@ export interface GuestListCtx {
   /** `PrimeView.wanted`, or null when this booth gets none. */
   wanted: ReadonlyArray<{ id: string; captured: boolean; claimedBy: string | null; reason: string | null; lastSeen: number | null }> | null;
   me: string;
-  /** Story ms now (the Missing tab, "seen …"). */
+  /** Story ms now. */
   now: number;
+  /** Wall-clock ms now: `lastSeen` is the server's wall-clock presence stamp
+   *  (the Missing tab, "seen …"); default `Date.now()`. */
+  wall?: number;
   /** The live summons objective's `pick` (the Missing tab while it runs), else null. */
   summons: readonly string[] | null;
 }
@@ -666,7 +669,7 @@ export function guestTab(g: PrimeGuest, tab: GuestTab, ctx: GuestListCtx, here: 
     case "missing": {
       if (ctx.summons !== null) return ctx.summons.includes(g.id);
       const seen = lastSeenOfRow(g, ctx);
-      return seen === null || (typeof seen === "number" && ctx.now - seen > MISSING_MS);
+      return seen === null || (typeof seen === "number" && (ctx.wall ?? Date.now()) - seen > MISSING_MS);
     }
   }
 }
@@ -682,9 +685,10 @@ export function statusTag(g: PrimeGuest, ctx: Pick<GuestListCtx, "wanted">): { t
 }
 
 /** A row's second line: always the place first, then when they were seen (else ✓ Cleared). */
-export function placeLine(g: PrimeGuest, where: string | null, ctx: Pick<GuestListCtx, "wanted" | "now">): string {
+export function placeLine(g: PrimeGuest, where: string | null, ctx: Pick<GuestListCtx, "wanted" | "now" | "wall">): string {
   const seen = lastSeenOfRow(g, { ...ctx, me: "", summons: null });
-  const s = seen === undefined ? null : seen === null ? "not seen since the server started" : ctx.now - seen < 60_000 ? "seen now" : `seen ${Math.floor((ctx.now - seen) / 60_000)} min ago`;
+  const wall = ctx.wall ?? Date.now();
+  const s = seen === undefined ? null : seen === null ? "not seen since the server started" : wall - seen < 60_000 ? "seen now" : `seen ${Math.floor((wall - seen) / 60_000)} min ago`;
   const cleared = flagOn(g, /^cleared\b/iu) ? "✓ Cleared" : null;
   return [`📍 ${where ?? "not in a room"}`, s ?? cleared].filter((x): x is string => x !== null).join(" · ");
 }

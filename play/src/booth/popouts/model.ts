@@ -55,11 +55,14 @@ export function withoutGlyph(label: string): string {
   return (g === "" ? label : label.trim().slice(g.length)).trim();
 }
 
-/** "seen now" / "seen 4 min ago" / "not seen since the server started" (§8). Undefined = unknown. */
-export function boothSeen(lastSeen: number | null | undefined, now: number): string | null {
+/** "seen now" / "seen 4 min ago" / "not seen since the server started" (§8). Undefined = unknown.
+ *  `lastSeen` is the server's WALL-clock ms (the presence stamp), so `wall`
+ *  is wall-clock ms too — never story ms (wave 18 fix: it read "seen now"
+ *  all night). */
+export function boothSeen(lastSeen: number | null | undefined, wall: number): string | null {
   if (lastSeen === undefined) return null;
   if (lastSeen === null) return "not seen since the server started";
-  const m = Math.floor(Math.max(0, now - lastSeen) / 60_000);
+  const m = Math.floor(Math.max(0, wall - lastSeen) / 60_000);
   return m < 1 ? "seen now" : `seen ${m} min ago`;
 }
 
@@ -105,6 +108,8 @@ export interface WantedCtx {
   me: string;
   /** Story ms now. */
   now: number;
+  /** Wall-clock ms now (`lastSeen` is wall clock); default `Date.now()`. */
+  wall?: number;
   placeTitle: (loc: string | null) => string | null;
   guestOf: (id: string) => BoothGuest | null;
   /** Ids this phone pressed 🙋 on: someone else's claim then reads "got there first". */
@@ -133,7 +138,7 @@ const place = (ctx: WantedCtx, loc: string | null) => ctx.placeTitle(loc) ?? "so
 
 function wantedGuest(w: WantedEntry, ctx: WantedCtx) {
   const g = ctx.guestOf(w.id);
-  const seen = inBathroom(g) ? "🚻 In Bathroom Mode: wait outside, never go in." : boothSeen(w.lastSeen, ctx.now);
+  const seen = inBathroom(g) ? "🚻 In Bathroom Mode: wait outside, never go in." : boothSeen(w.lastSeen, ctx.wall ?? Date.now());
   return { id: w.id, name: w.name, avatar: w.avatar ?? null, location: ctx.placeTitle(w.location), seen };
 }
 

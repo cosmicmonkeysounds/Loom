@@ -15,7 +15,7 @@ export interface WantedEntry {
   reason: string | null;
   /** The LOCATION id they stand in (null: not seen in a room). */
   location: string | null;
-  /** Story ms they were last seen (null: not since the server started). */
+  /** WALL-clock ms they were last seen (the server's presence stamp; null: not since the server started). */
   lastSeen: number | null;
   /** Story ms the mark turned true. */
   markedAt: number;

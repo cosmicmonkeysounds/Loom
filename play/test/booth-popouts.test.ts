@@ -31,7 +31,7 @@ import type { BoothGuest, BoothMessage, BoothObjective, CallsView, WantedEntry }
 import type { Interaction } from "../src/types.ts";
 
 const W = (id: string, extra: Partial<WantedEntry> = {}): WantedEntry => ({ id, name: id.toUpperCase(), reason: "named on the Bingo card", location: "Desktop", lastSeen: 1000, markedAt: 10_000, claimedBy: null, captured: false, ...extra });
-const ctx = (extra: Partial<WantedCtx> = {}): WantedCtx => ({ me: "Norton", now: 200_000, placeTitle: (l) => (l === null ? null : `The ${l}`), guestOf: () => null, tried: new Set(), canRelease: false, ...extra });
+const ctx = (extra: Partial<WantedCtx> = {}): WantedCtx => ({ me: "Norton", now: 200_000, wall: 200_000, placeTitle: (l) => (l === null ? null : `The ${l}`), guestOf: () => null, tried: new Set(), canRelease: false, ...extra });
 
 describe("the Wanted pop-out (§4.1)", () => {
   it("pops a new unclaimed mark: maroon WANTED, the reason, the place, 🙋 first, no 🛡", () => {

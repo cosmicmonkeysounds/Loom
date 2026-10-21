@@ -20,7 +20,7 @@ const noop = () => {};
 
 describe("the Wanted poster (§4.2)", () => {
   it("an open poster: WANTED head, name, reason, 📍, claim + card", () => {
-    const html = renderToStaticMarkup(<Poster w={W("Napster")} me="Norton" now={60_000} place="The Cloud" fresh />);
+    const html = renderToStaticMarkup(<Poster w={W("Napster")} me="Norton" now={60_000} wall={60_000} place="The Cloud" fresh />);
     expect(html).toContain("W A N T E D");
     expect(html).toContain("Napster");
     expect(html).toContain("NEW");
@@ -30,25 +30,25 @@ describe("the Wanted poster (§4.2)", () => {
     expect(html).toContain("🗂 Card ›");
   });
   it("mine: 🙋 YOU + Scan their pass (+ Hand back with A2); theirs: grey, take-over only when stale and A3", () => {
-    const mine = renderToStaticMarkup(<Poster w={W("Encarta", { claimedBy: "Norton" })} me="Norton" now={0} place="The Desktop" canRelease />);
+    const mine = renderToStaticMarkup(<Poster w={W("Encarta", { claimedBy: "Norton" })} me="Norton" now={0} wall={0} place="The Desktop" canRelease />);
     expect(mine).toContain("🙋 YOU");
     expect(mine).toContain("📷 Scan their pass");
     expect(mine).toContain("Hand back");
-    const theirs = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "McAfee Anti-Virus" })} me="Norton" now={11 * 60_000} claimedAt={0} place="The Tube" canTakeOver />);
+    const theirs = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "McAfee Anti-Virus" })} me="Norton" now={11 * 60_000} wall={11 * 60_000} claimedAt={0} place="The Tube" canTakeOver />);
     expect(theirs).toContain("wanted-poster theirs");
     expect(theirs).toContain("🙋 McAfee Anti-Virus");
     expect(theirs).toContain("claimed 11 min ago");
     expect(theirs).toContain("Still on it?");
     expect(theirs).toContain("🙋 Take over");
-    const fresh = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "McAfee Anti-Virus" })} me="Norton" now={60_000} claimedAt={0} place="The Tube" canTakeOver />);
+    const fresh = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "McAfee Anti-Virus" })} me="Norton" now={60_000} wall={60_000} claimedAt={0} place="The Tube" canTakeOver />);
     expect(fresh).not.toContain("Take over");
   });
   it("caught: the CAPTURED stamp, CAUGHT BY, no buttons; hosts read only", () => {
-    const html = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "Norton Anti-Virus", captured: true })} me="x" now={0} place={null} />);
+    const html = renderToStaticMarkup(<Poster w={W("ICQ", { claimedBy: "Norton Anti-Virus", captured: true })} me="x" now={0} wall={0} place={null} />);
     expect(html).toContain("CAPTURED");
     expect(html).toContain("CAUGHT BY NORTON ANTI-VIRUS");
     expect(html).not.toContain("wanted-actions");
-    expect(renderToStaticMarkup(<Poster w={W("A")} me="x" now={0} place={null} readOnly />)).not.toContain("I&#x27;ll get them");
+    expect(renderToStaticMarkup(<Poster w={W("A")} me="x" now={0} wall={0} place={null} readOnly />)).not.toContain("I&#x27;ll get them");
   });
   it("the card's banner: WANTED · reason, who is on it", () => {
     expect(renderToStaticMarkup(<WantedBanner w={W("A")} me="Norton" onClaim={noop} />)).toContain("🙋 Nobody yet");
