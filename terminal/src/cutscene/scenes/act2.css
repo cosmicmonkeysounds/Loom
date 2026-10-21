@@ -1,0 +1,514 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Act D–E's cutscenes (wave 17, lane tv2): `act2.tsx` + `kit/tv2-parts.tsx`.
+   Scoped by the `tv2-` prefix. Inside a fitted TV stage 1em = 1/60 of the
+   16:9 picture (32 px on the 1080p TV); a wall take sizes off vmin.
+   Chrome 87 / Safari 14: no :has, no color-mix, no flex gap (margins),
+   transform / opacity for everything that moves (set per frame from t).
+   ════════════════════════════════════════════════════════════════════════ */
+
+.tv2 { --tv2-tone: #40a0ff; }
+.tv2 .kit-stage-fit .kit-win { font-size: 0.85em; }
+.tv2 .kit-stage-fit .kit-storm .kit-win,
+.tv2 .kit-stage-fit .tv2-drift .kit-win { font-size: 0.72em; }
+.tv2-small { font-size: 0.8em; opacity: 0.85; }
+.tv2-shake { will-change: transform; }
+
+/* --- shared backdrops ---------------------------------------------------- */
+.tv2-grid { overflow: hidden; }
+.tv2-grid-floor {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  top: 52%;
+  bottom: -30%;
+  transform: perspective(14em) rotateX(64deg);
+  transform-origin: 50% 0;
+  overflow: hidden;
+}
+.tv2-grid-lines {
+  position: absolute;
+  inset: -4em 0 0;
+  background-image: linear-gradient(var(--tv2-grid, rgba(64, 160, 255, 0.35)) 0.08em, transparent 0.08em), linear-gradient(90deg, var(--tv2-grid, rgba(64, 160, 255, 0.35)) 0.08em, transparent 0.08em);
+  background-size: 4em 4em;
+  will-change: transform;
+}
+.tv2-glass {
+  pointer-events: none;
+  z-index: 90;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0, rgba(0, 0, 0, 0.16) 1px, transparent 1px, transparent 3px), radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.55) 100%);
+}
+.tv2-roll { position: absolute; left: 0; right: 0; top: 0; height: 18vh; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)); will-change: transform; }
+.tv2-teal { background: #008080; }
+.tv2-desk-dots { background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px); background-size: 1.2em 1.2em; }
+.tv2-night { background: radial-gradient(ellipse at 50% 30%, #12234a 0%, #03060f 70%); }
+.tv2-drift { pointer-events: none; }
+.tv2-marquee-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.35em 0;
+  font-family: var(--mono);
+  font-size: 1.35em;
+  letter-spacing: 0.08em;
+  color: #e8f4ff;
+  background: rgba(0, 0, 60, 0.85);
+  border-top: 0.08em solid #3fa7ff;
+  z-index: 60;
+}
+.tv2-marquee-bar.tv2-amber { color: #1a0d00; background: #ffb000; border-top-color: #fff2b0; font-weight: bold; }
+.tv2-stamp {
+  position: absolute;
+  left: 50%;
+  top: 70%;
+  padding: 0.1em 0.5em;
+  font-family: "Tahoma", sans-serif;
+  font-size: 4em;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: #ffd23f;
+  border: 0.12em solid #ffd23f;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 70;
+  white-space: nowrap;
+}
+
+/* --- five_minutes ---------------------------------------------------------- */
+.tv2-beacon {
+  left: 50%;
+  top: 50%;
+  width: 160%;
+  height: 160%;
+  margin: -80% 0 0 -80%;
+  background: conic-gradient(from 0deg, rgba(255, 176, 0, 0.32), rgba(255, 176, 0, 0) 12%, rgba(255, 176, 0, 0) 50%, rgba(255, 176, 0, 0.32) 50%, rgba(255, 176, 0, 0) 62%, rgba(255, 176, 0, 0) 100%);
+  will-change: transform;
+}
+.tv2-sweep { position: absolute; left: 0; right: 0; top: 0; height: 0.25em; background: linear-gradient(90deg, transparent, #3ddc84, transparent); box-shadow: 0 0 1em 0.3em rgba(61, 220, 132, 0.45); z-index: 5; will-change: transform; }
+.tv2-sweep span { position: absolute; right: 2em; top: -1.3em; font-family: var(--mono); font-size: 0.9em; letter-spacing: 0.3em; color: #3ddc84; }
+.tv2-five-body { text-align: center; padding: 0.4em 0.6em 0.6em; }
+.tv2-five-label { font-weight: bold; letter-spacing: 0.2em; margin-bottom: 0.4em; }
+.tv2-five-count { font-size: 4.4em; line-height: 1; margin: 0.1em 0 0.15em; will-change: transform; }
+.tv2-five-line { font-size: 1.15em; min-height: 1.4em; }
+.tv2-phone { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 8; }
+.tv2-phone svg { filter: drop-shadow(0.15em 0.2em 0 rgba(0, 0, 0, 0.5)); }
+.tv2-phone-note {
+  margin-top: 0.3em;
+  padding: 0.15em 0.4em;
+  font-family: "Tahoma", sans-serif;
+  font-size: 0.7em;
+  font-weight: bold;
+  color: #000;
+  background: #ffffe1;
+  border: 1px solid #000;
+  white-space: nowrap;
+}
+
+/* --- truth_pong ---------------------------------------------------------------- */
+.tv2-pong-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5%;
+  text-align: center;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 5.2em;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 0.05em 0.05em 0 #d81e2a, 0.1em 0.1em 0 #000;
+}
+.tv2-pong-title span { display: inline-block; will-change: transform; }
+.tv2-pong-sub { position: absolute; left: 0; right: 0; top: 23%; text-align: center; font-family: var(--mono); font-size: 2em; color: #bfe6ff; }
+.tv2-pong-arrow { display: inline-block; margin-left: 1em; color: #3ddc84; font-weight: bold; will-change: transform; }
+.tv2-pong-stage { position: absolute; left: 6%; right: 6%; top: 30%; bottom: 2%; }
+.tv2-pong { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; will-change: transform; }
+.tv2-pong-callout {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  padding: 0.1em 0.5em;
+  font-family: "Tahoma", sans-serif;
+  font-weight: bold;
+  font-size: 1.7em;
+  white-space: nowrap;
+  border: 0.08em solid #000;
+}
+.tv2-pong-callout.sink { color: #000; background: #ffd23f; }
+.tv2-pong-callout.miss { color: #fff; background: #5a0a10; }
+.tv2-wall-pong { width: 12em; height: 9em; display: block; margin: 0 auto; }
+
+/* --- the round-two tally ---------------------------------------------------------- */
+.tv2-tally-win .kit-win-body { padding: 0.6em 0.9em; }
+.tv2-tally-head { text-align: center; font-weight: bold; letter-spacing: 0.08em; font-size: 1.1em; margin-bottom: 0.5em; }
+.tv2-tally-facts { height: 15em; display: flex; flex-direction: column; }
+.tv2-tally-clip { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.tv2-tally-scroll { will-change: transform; padding-top: 12em; }
+.tv2-tally-row { display: flex; align-items: baseline; font-family: var(--mono); font-size: 1.3em; line-height: 1.25; }
+.tv2-tally-row b { font-weight: normal; }
+.tv2-tally-row .ok { color: #006000; }
+.tv2-tally-row .no { color: #a00000; }
+.tv2-dots { flex: 1 1 auto; margin: 0 0.4em; border-bottom: 0.1em dotted #808080; }
+.tv2-tally-bar { flex: none; padding-top: 0.4em; }
+.tv2-tally-gauge { text-align: center; height: 15em; }
+.tv2-tally-ask { font-weight: bold; letter-spacing: 0.05em; margin-bottom: 0.3em; }
+.tv2-gauge { width: 18em; height: 9.9em; display: block; margin: 0 auto; background: #101010; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+.tv2-tally-num { margin-top: -0.2em; font-family: var(--mono); font-size: 3.6em; line-height: 1; color: #000080; }
+.tv2-tally-num.high { color: #007a20; text-shadow: 0 0 0.2em rgba(61, 220, 132, 0.6); }
+.tv2-tally-num.low { color: #505050; }
+.tv2-tally-done { font-size: 0.55em; letter-spacing: 0.1em; }
+.tv2-tally-say { font-size: 0.95em; font-style: italic; }
+
+/* --- the trust chart ------------------------------------------------------------- */
+.tv2-chart-win { overflow: hidden; }
+.tv2-chart-win .kit-win-body { position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.tv2-chart-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.3em; }
+.tv2-chart-head h2 { margin: 0; font-size: 1.5em; letter-spacing: 0.04em; }
+.tv2-chart-head span { font-style: italic; color: #404040; }
+.tv2-chart { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.tv2-chart-callouts { display: flex; flex-wrap: wrap; flex: none; margin-bottom: 0.4em; font-size: 1.15em; font-weight: bold; }
+.tv2-callout { padding: 0.12em 0.5em; border: 2px solid #000; margin: 0 0.5em 0.2em 0; will-change: transform; }
+.tv2-callout.top { background: #ffe15a; box-shadow: 0 0 0.6em rgba(255, 210, 63, 0.8); }
+.tv2-callout.bottom { background: #d8d8d8; color: #303030; }
+.tv2-callout-wrap { display: inline-block; }
+.tv2-chart-rows { position: relative; flex: 1 1 auto; min-height: 6em; }
+.tv2-chart-row {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 0 0.4em;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #808080;
+  font-size: 1.05em;
+  will-change: transform, opacity;
+}
+.tv2-chart-row.hidden { visibility: hidden; }
+.tv2-chart-row.top { background: #fff6b8; font-weight: bold; box-shadow: 0 0 0.6em rgba(255, 200, 40, 0.9); border-color: #b08800; }
+.tv2-chart-row.bottom { background: #dedede; color: #404040; }
+.tv2-chart-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform-origin: 0 50%; background: linear-gradient(90deg, rgba(16, 132, 208, 0.18), rgba(16, 132, 208, 0.32)); }
+.tv2-chart-row.top .tv2-chart-bar { background: linear-gradient(90deg, rgba(255, 200, 40, 0.25), rgba(255, 200, 40, 0.55)); }
+.tv2-chart-scan { position: absolute; top: 0; bottom: 0; left: -20%; width: 20%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent); }
+.tv2-chart-rank { position: relative; width: 2.2em; text-align: right; margin-right: 0.5em; color: #404040; }
+.tv2-chart-name { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv2-chart-value { position: relative; margin-left: 0.5em; font-variant-numeric: tabular-nums; }
+.tv2-chart-crown { position: relative; margin-left: 0.3em; display: inline-block; color: #d09000; text-shadow: 0 0 0.3em #ffd23f; }
+.tv2-chart-pending { flex: none; display: flex; align-items: center; margin-top: 0.3em; font-style: italic; color: #303030; }
+.tv2-chart-pending .kit-hourglass { margin-right: 0.5em; }
+.tv2-chart-pending.big { justify-content: center; font-size: 1.6em; height: 60%; }
+.tv2-shimmer { position: absolute; top: 0; bottom: 0; left: 0; width: 30%; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent); }
+
+/* --- the printer + the beans --------------------------------------------------------- */
+.tv2-print-printer { position: absolute; right: 6%; top: 18%; }
+.tv2-printer { display: block; overflow: visible; }
+.tv2-print-doc { position: absolute; left: 36%; top: 42%; display: flex; flex-direction: column; align-items: center; color: #fff; font-family: "Tahoma", sans-serif; text-shadow: 1px 1px 0 #000; will-change: transform; z-index: 20; }
+.tv2-print-row { display: flex; align-items: center; }
+.tv2-print-row .tv2-printer { margin-right: 0.6em; }
+.tv2-print-bar {
+  height: 1.2em;
+  margin-top: 0.7em;
+  background-color: #fff;
+  background-image: repeating-linear-gradient(-45deg, rgba(0, 0, 128, 0.12) 0, rgba(0, 0, 128, 0.12) 10px, transparent 10px, transparent 20px);
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.tv2-print-pct { margin-top: 0.3em; font-size: 0.9em; }
+.tv2-print-actions { display: flex; justify-content: flex-end; margin-top: 0.4em; }
+.tv2-queue-head, .tv2-queue-row { display: flex; }
+.tv2-queue-head span, .tv2-queue-row span { flex: 1 1 0; padding: 0.15em 0.4em; }
+.tv2-queue-head { background: #c0c0c0; border-bottom: 1px solid #808080; font-weight: bold; font-size: 0.85em; }
+.tv2-queue-row { background: #fff; }
+.tv2-beans-printer { position: absolute; right: 8%; top: 22%; }
+.tv2-beans-still { position: absolute; right: 18%; top: 22%; font-size: 6em; }
+.tv2-heap {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  bottom: 0;
+  height: 26%;
+  border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+  background: radial-gradient(ellipse 0.55em 0.35em at 30% 40%, #a0582a 60%, transparent 62%) 0 0 / 1.6em 1.1em, radial-gradient(ellipse 0.55em 0.35em at 70% 70%, #5e2c10 60%, transparent 62%) 0 0 / 1.3em 1em, #6b3415;
+  will-change: transform;
+  z-index: 30;
+}
+.tv2-beans-dialog-wrap { position: absolute; inset: 0; z-index: 40; }
+.tv2-bean-count { position: absolute; left: 4%; top: 4%; font-family: var(--mono); font-size: 2em; color: #fff; text-shadow: 0.06em 0.06em 0 #000; z-index: 45; }
+.tv2-bean-count b { color: #ffd23f; }
+.tv2-wall-beans { position: relative; height: 6em; text-align: center; overflow: hidden; }
+.tv2-wall-beans span { position: absolute; left: 50%; top: 0; font-size: 1.6em; }
+
+/* --- the zip --------------------------------------------------------------------------- */
+.tv2-zip-win .kit-win-body { display: flex; flex-direction: column; }
+.tv2-zip-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; margin-bottom: 0.5em; }
+.tv2-zip-folder { position: absolute; left: 4%; top: 30%; display: flex; flex-direction: column; align-items: center; font-weight: bold; }
+.tv2-zip-vise { position: absolute; right: 8%; top: 22%; display: flex; align-items: center; transform-origin: 50% 50%; }
+.tv2-zip-jaw { width: 1.2em; height: 7em; background: linear-gradient(90deg, #707070, #c0c0c0, #707070); border: 1px solid #000; }
+.tv2-zip-archive { display: flex; align-items: center; justify-content: center; width: 6em; height: 6em; margin: 0 0.2em; background: repeating-linear-gradient(90deg, #ffd23f 0, #ffd23f 0.4em, #c89600 0.4em, #c89600 0.8em); border: 2px solid #000; font-weight: bold; font-size: 1.1em; }
+.tv2-zip-archive span { background: #fff; padding: 0 0.3em; border: 1px solid #000; }
+.tv2-zip-file { position: absolute; left: 6%; top: 32%; display: flex; flex-direction: column; align-items: center; font-size: 0.8em; transform-origin: 50% 50%; will-change: transform; }
+.tv2-zip-leftover { position: absolute; left: 14%; top: 66%; display: flex; flex-direction: column; align-items: center; font-size: 0.8em; color: #800000; }
+
+/* --- the overshare ---------------------------------------------------------------------- */
+.tv2-over-glitch { position: absolute; inset: 0; }
+.tv2-over-body { font-family: var(--mono); font-size: 4em; text-align: center; min-height: 1.4em; color: #400060; }
+.tv2-over-dots { letter-spacing: 0.1em; }
+.tv2-over-dots.small { font-family: var(--mono); font-size: 3em; color: #400060; }
+.tv2-over-files { position: absolute; left: 6%; top: 66%; display: flex; }
+.tv2-over-file { display: flex; flex-direction: column; align-items: center; margin-right: 2.5em; color: #fff; font-family: "Tahoma", sans-serif; text-shadow: 1px 1px 0 #000; will-change: transform; }
+.tv2-toast {
+  position: absolute;
+  right: 3%;
+  bottom: 4%;
+  display: flex;
+  align-items: center;
+  padding: 0.5em 0.8em;
+  font-family: "Tahoma", sans-serif;
+  font-size: 1.1em;
+  color: #000;
+  background: #ffffe1;
+  border: 1px solid #000;
+  box-shadow: 0.2em 0.2em 0 rgba(0, 0, 0, 0.5);
+  will-change: transform;
+}
+.tv2-toast b { margin: 0 0.3em; }
+.tv2-over-pop { position: absolute; }
+.tv2-cursor-only { background: #000; display: flex; align-items: center; justify-content: center; z-index: 80; }
+.tv2-cursor-only span { font-family: var(--mono); font-size: 12vmin; color: #e8e8e8; }
+
+/* --- the Y2K clock ------------------------------------------------------------------------- */
+.tv2-y2k-win .kit-win-body { padding: 0.7em 0.9em; }
+.tv2-y2k-body { display: flex; align-items: center; justify-content: space-between; }
+.tv2-y2k-cal { width: 48%; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; padding: 0.4em; }
+.tv2-y2k-cal-head { text-align: center; font-weight: bold; margin-bottom: 0.3em; }
+.tv2-y2k-cal-grid { display: flex; flex-wrap: wrap; }
+.tv2-y2k-cal-grid b, .tv2-y2k-cal-grid span { width: 14.28%; text-align: center; padding: 0.12em 0; font-size: 0.95em; }
+.tv2-y2k-cal-grid b { color: #000080; }
+.tv2-y2k-cal-grid span.on { background: #000080; color: #fff; font-weight: bold; border-radius: 50%; box-shadow: 0 0 0 0.12em var(--tv2-tone); display: inline-block; will-change: transform; }
+.tv2-y2k-face { width: 12em; height: 12em; margin-right: 1.5em; }
+.tv2-y2k-tray {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-top: 0.7em;
+  padding: 0.3em 0.6em;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.tv2-y2k-time { font-family: var(--mono); font-size: 3.8em; line-height: 1; color: #000; margin-right: 0.4em; font-variant-numeric: tabular-nums; }
+.tv2-y2k-date { font-family: var(--mono); font-size: 2.2em; color: #000080; }
+.tv2-y2k-last { position: absolute; left: 50%; top: 50%; z-index: 55; font-family: var(--mono); font-size: 14em; line-height: 1; color: #ff3b2f; text-shadow: 0 0 0.12em rgba(255, 60, 40, 0.9), 0.04em 0.04em 0 #000; pointer-events: none; }
+.tv2-y2k-hot { position: absolute; right: 3%; top: 4%; font-size: 3.4em; z-index: 55; }
+.tv2-y2k-flash { font-size: 1.4em; }
+.tv2-wall-y2k { display: flex; align-items: center; justify-content: center; }
+.tv2-wall-y2k-clock { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-family: var(--mono); text-shadow: 0 0 0.15em currentColor; }
+.tv2-wall-y2k-time { font-size: min(16vw, 22vh); line-height: 1; }
+.tv2-wall-y2k-date { font-size: min(7vw, 9vh); }
+.tv2-wall-y2k-label { margin-top: 0.6em; font-size: min(4vw, 4vh); letter-spacing: 0.4em; opacity: 0.7; }
+
+/* --- the majority (frost) ---------------------------------------------------------------------- */
+.tv2-frost { pointer-events: none; overflow: hidden; }
+.tv2-frost-edge {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 52%, rgba(200, 235, 255, 0.35) 72%, rgba(235, 248, 255, 0.85) 100%), repeating-conic-gradient(from 0deg at 50% 50%, rgba(255, 255, 255, 0.025) 0deg 1.5deg, transparent 1.5deg 7deg);
+  will-change: transform;
+}
+.tv2-cold { position: absolute; left: 3vmin; bottom: 4vmin; width: min(46vw, 34em); will-change: transform, opacity; }
+.tv2-cold .kit-win { font-size: clamp(13px, 2vmin, 26px); }
+.tv2-cold-row { display: flex; align-items: center; }
+.tv2-cold-row span { margin-right: 0.6em; }
+.tv2-cold-meter { flex: 1 1 auto; height: 0.9em; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; overflow: hidden; }
+.tv2-cold-meter div { height: 100%; transform-origin: 0 50%; background: linear-gradient(90deg, #3fa7ff, #bfe2ff); }
+.tv2-cold-wave { display: block; width: 100%; height: 3em; margin: 0.4em 0; background: #001020; }
+.tv2-cold-line { font-style: italic; min-height: 2.6em; }
+
+/* --- the Heart -------------------------------------------------------------------------------- */
+.tv2-heart-cold { background: radial-gradient(ellipse at 50% 55%, #0d3a66 0%, #02101e 50%, #000 85%); }
+.tv2-heart-room { position: absolute; left: 50%; top: 55%; will-change: transform, opacity; }
+.tv2-door { display: flex; align-items: flex-end; }
+.tv2-door-frame { position: relative; width: 11em; height: 19em; background: #000; border: 0.4em solid #3a3f48; border-bottom: none; overflow: visible; }
+.tv2-door-light { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #bfe8ff 0%, #3fa7ff 35%, #01223f 80%); }
+.tv2-door-leaf {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #5a616d, #8a929e 40%, #6a717c);
+  border: 0.12em solid #222;
+  transform-origin: 0 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: transform;
+}
+.tv2-door-sign { margin-top: 3em; padding: 0.2em 0.5em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 0.9em; color: #fff; background: #1a3a7a; border: 0.08em solid #fff; }
+.tv2-door-handle { position: absolute; right: 0.8em; top: 52%; width: 0.5em; height: 2.4em; background: #c0c0c0; border: 1px solid #000; }
+.tv2-keypad { display: flex; flex-wrap: wrap; width: 3em; margin: 0 0 9em 1.2em; padding: 0.3em; background: #222; border: 0.1em solid #555; }
+.tv2-keypad span { width: 0.7em; height: 0.55em; margin: 0.1em; background: #8a8f9a; }
+.tv2-keypad b { width: 100%; height: 0.4em; margin-top: 0.2em; }
+.tv2-heart-bay { position: absolute; left: 50%; top: 50%; width: 46em; will-change: transform, opacity; }
+.tv2-bay { display: block; width: 100%; height: auto; }
+.tv2-heart-ring { position: absolute; left: 50%; top: 50%; width: 30em; height: 30em; border-radius: 50%; border: 0.4em solid rgba(255, 90, 120, 0.8); box-shadow: 0 0 2em rgba(255, 90, 120, 0.6); will-change: transform, opacity; }
+.tv2-heart-title { position: absolute; left: 0; right: 0; top: 8%; text-align: center; font-family: var(--mono); font-size: 3.6em; letter-spacing: 0.12em; color: #e8f6ff; text-shadow: 0 0 0.3em #3fa7ff; }
+.tv2-heart-sub { position: absolute; left: 0; right: 0; bottom: 9%; text-align: center; font-family: "Tahoma", sans-serif; font-size: 1.5em; color: #bfe2ff; line-height: 1.5; }
+.tv2-wall-bay { width: 100%; max-width: 22em; display: block; margin: 0 auto; }
+
+/* --- the King ----------------------------------------------------------------------------------- */
+.tv2-king { display: block; overflow: visible; }
+.tv2-hit { position: absolute; left: 50%; bottom: 3vmin; width: min(88vw, 52em); will-change: transform; }
+.tv2-hit .kit-win { font-size: clamp(14px, 2.3vmin, 30px); }
+.tv2-hit-row { display: flex; align-items: center; }
+.tv2-hit-row .tv2-king { margin-right: 0.8em; flex: none; }
+.tv2-hit-main { flex: 1 1 auto; min-width: 0; }
+.tv2-hit-who { font-weight: bold; font-size: 1.3em; margin-bottom: 0.3em; min-height: 1.3em; }
+.tv2-hit-line { margin-top: 0.35em; font-style: italic; }
+.tv2-hit-dmg { position: absolute; left: 14%; top: -1em; font-family: var(--mono); font-size: clamp(30px, 9vmin, 120px); color: #ff3b2f; text-shadow: 0.05em 0.05em 0 #000; pointer-events: none; }
+.tv2-hit-wall { width: min(94vw, 40em); }
+.tv2-hp { width: 100%; }
+.tv2-hp-track { position: relative; height: 1.3em; background: #200000; border: 2px solid; border-color: #808080 #fff #fff #808080; overflow: hidden; }
+.tv2-hp-fill { position: absolute; inset: 0; transform-origin: 0 50%; background: linear-gradient(to bottom, #6cf08a, #1fa040); }
+.tv2-hp.hot .tv2-hp-fill { background: linear-gradient(to bottom, #ff9a6a, #d02a10); }
+.tv2-hp-chip { position: absolute; top: 0; bottom: 0; transform-origin: 0 50%; background: #fff; }
+.tv2-hp-flash { position: absolute; inset: 0; background: #fff; }
+.tv2-hp-ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(100% / 15 - 2px), rgba(0, 0, 0, 0.45) calc(100% / 15 - 2px), rgba(0, 0, 0, 0.45) calc(100% / 15)); }
+.tv2-hp-label { margin-top: 0.2em; font-family: var(--mono); font-size: 1.2em; text-align: right; }
+.tv2-board {
+  top: 40%;
+  height: 120%;
+  left: -30%;
+  width: 160%;
+  transform-origin: 50% 0;
+  background-color: #1a1a1a;
+  background-image: linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%), linear-gradient(45deg, #3a3a3a 25%, transparent 25%, transparent 75%, #3a3a3a 75%);
+  background-size: 4em 4em;
+  background-position: 0 0, 2em 2em;
+}
+.tv2-fall-king { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); }
+.tv2-fall-title { position: absolute; left: 0; right: 0; top: 7%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 4.4em; color: #ffd23f; text-shadow: 0.06em 0.06em 0 #000; will-change: transform; }
+.tv2-fall-title .kit-glitch { display: inline-block; }
+.tv2-fall-bar { position: absolute; left: 25%; right: 25%; top: 76%; }
+.tv2-fall-line { position: absolute; left: 0; right: 0; top: 86%; text-align: center; font-family: var(--mono); font-size: 2em; color: #fff; }
+
+/* --- chess -------------------------------------------------------------------------------------- */
+.tv2-chess-board { position: relative; display: flex; flex-wrap: wrap; width: 100%; height: 0; padding-bottom: 100%; border: 2px solid #000; }
+.tv2-chess-board span { width: 12.5%; height: 0; padding-bottom: 12.5%; }
+.tv2-chess-board span.l { background: #e8e0c8; }
+.tv2-chess-board span.d { background: #7a5c3a; }
+.tv2-chess-king { position: absolute; width: 12.5%; height: 18%; margin-top: -6%; }
+.tv2-chess-queen, .tv2-chess-rook { position: absolute; width: 12.5%; text-align: center; font-size: 2.3em; line-height: 1.1; color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 2px #000; }
+.tv2-chess-corner { position: absolute; right: 3vmin; bottom: 5vmin; width: min(70vw, 30em); will-change: transform, opacity; }
+.tv2-chess-corner .kit-win { font-size: clamp(14px, 2.2vmin, 28px); }
+.tv2-chess-corner-text { font-weight: bold; font-size: 1.15em; min-height: 3.6em; }
+.tv2-chess-mini { display: inline-block; flex: 0 0 6.5em; width: 6.5em; margin-right: 0.8em; will-change: transform; }
+.tv2-chess-mini .tv2-chess-queen, .tv2-chess-mini .tv2-chess-rook { font-size: 1.6em; line-height: 0.6; }
+
+/* --- the patch bay -------------------------------------------------------------------------------- */
+.tv2-hazard {
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, #ffb000 0, #ffb000 20px, #1a1000 20px, #1a1000 40px);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent 70%, #000 73%);
+  mask-image: radial-gradient(ellipse at 50% 50%, transparent 70%, #000 73%);
+}
+.tv2-patch-bay { position: absolute; left: 30%; right: 30%; bottom: 8vmin; }
+.tv2-patch-dlg .tv2-patch-big { font-size: 1.2em; }
+.tv2-patch-say { font-family: var(--mono); font-size: 2em; color: #a00000; min-height: 1.2em; }
+
+/* --- the endings ---------------------------------------------------------------------------------- */
+.tv2-crt { background: radial-gradient(ellipse at 50% 50%, #ffffff 0%, #bfe8ff 30%, #3fa7ff 60%, #001a33 100%); will-change: transform; }
+.tv2-dance-floor { background: radial-gradient(ellipse at 50% 120%, #4a0060 0%, #12001f 55%, #05000d 100%); }
+.tv2-beam { position: absolute; left: 50%; top: -5%; width: 6em; height: 120%; margin-left: -3em; transform-origin: 50% 0; opacity: 0.55; mix-blend-mode: screen; will-change: transform; }
+.tv2-dance-ball { position: absolute; left: 50%; top: 0; will-change: transform; z-index: 5; }
+.tv2-dance-ball.wall { top: 8vh; }
+.tv2-ball { display: block; overflow: visible; }
+.tv2-dance-wins { position: absolute; left: 4%; right: 4%; top: 47%; display: flex; justify-content: space-between; }
+.tv2-dance-win { width: 11em; will-change: transform; }
+.tv2-dance-win-body { font-size: 2.5em; text-align: center; color: #800080; }
+.tv2-dance-hang { position: absolute; left: 50%; top: 69%; width: 26em; will-change: transform; z-index: 6; }
+.tv2-dance-title { position: absolute; left: 0; right: 0; top: 31%; text-align: center; font-family: var(--mono); font-size: 3em; color: #ffd6fb; text-shadow: 0 0 0.3em #ff4fd8; z-index: 6; }
+.tv2-dance-title span { display: inline-block; will-change: transform; }
+.tv2-dance-title.wall { top: auto; bottom: 14vh; font-size: min(7vw, 7vh); }
+.tv2-eq { position: absolute; left: 10%; right: 10%; bottom: 0; height: 8em; display: flex; align-items: flex-end; }
+.tv2-eq span { flex: 1 1 0; margin: 0 0.15em; height: 100%; transform-origin: 50% 100%; opacity: 0.85; will-change: transform; }
+.tv2-recount-bg { background: radial-gradient(ellipse at 50% 45%, #1c2630 0%, #050708 80%); }
+.tv2-recount-win { will-change: transform, opacity; }
+.tv2-recount-win .kit-titlebar i { font-style: normal; opacity: 0.85; }
+.tv2-recount-win.trail .kit-win-body { visibility: hidden; }
+.tv2-recount-strip { display: flex; flex-direction: column; align-items: stretch; }
+.tv2-dface { display: block; width: 100%; height: 15em; background: #101820; }
+.tv2-recount-res { margin-top: 0.5em; }
+.tv2-recount-res b { color: #a00000; }
+.tv2-ride { position: absolute; left: 0; bottom: 6%; will-change: transform; z-index: 40; }
+.tv2-ride-line { position: absolute; left: 0; right: 0; bottom: 3%; text-align: center; font-family: var(--mono); font-size: 2.6em; color: #ffd23f; text-shadow: 0.05em 0.05em 0 #000; z-index: 40; }
+.tv2-moto { display: block; overflow: visible; }
+.tv2-scandisk { position: absolute; inset: 6% 8%; font-family: var(--mono); font-size: 1.6em; color: #fff; }
+.tv2-scan-head { display: inline-block; margin-bottom: 0.6em; padding: 0 0.6em; color: #0000aa; background: #aaaaaa; }
+.tv2-scan-map { display: flex; flex-wrap: wrap; margin: 0.6em 0; border: 0.1em solid #aaaaaa; padding: 0.2em; }
+.tv2-scan-map span { width: 3.33%; height: 0.95em; font-size: 0.75em; line-height: 0.95em; text-align: center; color: #fff; background: rgba(255, 255, 255, 0.08); border-right: 1px solid #0000aa; border-bottom: 1px solid #0000aa; }
+.tv2-scan-map span.ok { background: #00aaaa; }
+.tv2-scan-map span.bad { background: #aa0000; }
+.tv2-scandisk .kit-progress-wrap { color: #fff; }
+.tv2-scan-foot { opacity: 0.85; }
+.tv2-safe { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-family: "Tahoma", sans-serif; font-size: 6vmin; line-height: 1.4; color: #ff9a1f; }
+.tv2-safe.small { font-size: 5vmin; padding: 0 6vmin; }
+.tv2-fog { left: -6%; right: -6%; width: auto; background: radial-gradient(ellipse at 30% 40%, rgba(255, 255, 255, 0.35) 0%, transparent 50%), radial-gradient(ellipse at 75% 65%, rgba(255, 255, 255, 0.25) 0%, transparent 55%), linear-gradient(#8a8a8a, #5c5c5c); will-change: transform; }
+.tv2-ghosts span { position: absolute; top: 0; filter: grayscale(1) brightness(1.4); will-change: transform, opacity; }
+.tv2-notepad { filter: grayscale(0.85); }
+.tv2-notepad .kit-win-body { display: flex; flex-direction: column; padding: 0; }
+.tv2-notepad-menu { display: flex; padding: 0.15em 0.3em; font-size: 0.85em; }
+.tv2-notepad-menu span { margin-right: 1em; }
+.tv2-notepad-text { flex: 1 1 auto; margin: 0; padding: 0.5em 0.7em; font-family: "Courier New", monospace; font-size: 1.05em; line-height: 1.45; color: #000; background: #fff; white-space: pre-wrap; overflow: hidden; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+
+/* --- the wall card ---------------------------------------------------------------------------------- */
+.tv2-wall { overflow: hidden; }
+.tv2-wall-dots { position: absolute; left: 0; right: 0; top: -40px; bottom: 0; background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1.5px, transparent 2px); background-size: 40px 40px; will-change: transform; }
+.tv2-wall .kit-win { font-size: clamp(15px, 3vmin, 34px); }
+.tv2-wall-win .kit-win-body { padding: 0.8em 1em; }
+.tv2-wall-row { display: flex; align-items: flex-start; }
+.tv2-wall-row > span { display: inline-block; margin-right: 0.8em; flex: none; will-change: transform; }
+.tv2-wall-text { min-width: 0; }
+.tv2-wall-text h2 { margin: 0 0 0.3em; font-size: 1.4em; }
+.tv2-wall-text p { margin: 0 0 0.35em; line-height: 1.3; }
+.tv2-wall-accent { margin-top: 0.7em; padding: 0.5em; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; text-align: center; overflow: hidden; }
+.tv2-wall-foot { position: absolute; left: 0; right: 0; bottom: 3vmin; text-align: center; color: #fff; }
+.tv2-wall-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 0.6vmin; min-height: 3px; transform-origin: 0 50%; background: rgba(255, 255, 255, 0.45); }
+.tv2-wall-five { display: flex; align-items: center; justify-content: space-around; font-size: 2.6em; }
+.tv2-wall-phones { display: flex; font-size: 0.5em; }
+.tv2-wall-phones .tv2-phone { position: relative; margin: 0 0.4em; }
+.tv2-wall-chart .tv2-chart-row { font-size: 0.95em; }
+.tv2-wall-ghosts { display: inline-flex; }
+.tv2-wall-ghosts span { margin: 0 0.6em; filter: grayscale(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tv2-beam, .tv2-roll { display: none; }
+}
+.tv2-zip-log { position: absolute; left: 2%; bottom: 3%; font-family: var(--mono); font-size: 1.1em; line-height: 1.2; color: #000080; }
+
+/* the wall's tally: the number lands under the bar */
+.tv2-wall-tally { text-align: center; }
+.tv2-wall-tally-num { font-family: var(--mono); font-weight: 700; font-size: 3.2em; line-height: 1.1; color: #000080; }
+.tv2-wall-tally.high .tv2-wall-tally-num { color: #0a7a2a; }
+.tv2-wall-tally.low .tv2-wall-tally-num { color: #5a5a5a; }
+.tv2-ride.wall { bottom: 4%; }
+.tv2-ride-line.wall { font-size: 1.8em; bottom: 1.5%; }
+
+/* --- Summons Closed: the doors slam ---------------------------------------------- */
+.tv2-stamp.red { color: #ff3b2f; border-color: #ff3b2f; font-size: 5.2em; }
+.tv2-shut { overflow: hidden; z-index: 20; }
+.tv2-shut-door { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.25em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
+.tv2-shut-door.left { left: 0; }
+.tv2-shut-door.right { right: 0; }
+.tv2-shut-pane { position: absolute; left: 18%; right: 18%; top: 10%; height: 34%; background: linear-gradient(160deg, #0b1a4a, #3a5a9a); border: 0.2em solid; border-color: #404040 #fff #fff #404040; }
+.tv2-shut-sign { position: absolute; left: 0; right: 0; top: 76%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.6em; letter-spacing: 0.12em; color: #000080; }
+.tv2-shut-handle { position: absolute; top: 62%; width: 1.4em; height: 4.2em; background: #ffd23f; border: 0.12em solid #806000; border-radius: 0.3em; }
+.tv2-shut-door.left .tv2-shut-handle { right: 6%; }
+.tv2-shut-door.right .tv2-shut-handle { left: 6%; }
+.tv2-late-win { z-index: 45; }
+.tv2-late-row { display: flex; align-items: baseline; font-family: var(--mono); font-size: 0.95em; line-height: 1.5; }
+.tv2-late-row b { white-space: nowrap; }
+.tv2-late-row.ok b { color: #007a20; }
+.tv2-late-row.excused b { color: #000080; }
+.tv2-late-row.late b { color: #c00000; }
+.tv2-help-balloon { position: absolute; left: 6%; bottom: 8%; z-index: 50; display: flex; align-items: center; max-width: 34em; padding: 0.6em 0.9em; font-size: 1.3em; color: #000; background: #ffffe1; border: 1px solid #000; border-radius: 0.6em; box-shadow: 0.2em 0.2em 0 rgba(0, 0, 0, 0.5); will-change: transform, opacity; }
+.tv2-help-balloon > span { margin-left: 0.6em; }
+.tv2-wall-doors { position: relative; height: 4.5em; overflow: hidden; border: 2px solid #404040; background: #2a1600; }
+.tv2-wall-doors span { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.15em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
+.tv2-wall-doors span:first-child { left: 0; }
+.tv2-wall-doors span:last-child { right: 0; }

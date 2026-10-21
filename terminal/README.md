@@ -660,7 +660,8 @@ room terminal shows none, a slide's scene (else its card), one moment at a
 time over it (a moment that replaces the slide only hides it, so its clip or
 scene carries on; a tap on a moment never peeks), nothing that names the
 character before the introduction (the first fiction-safe scene on the same
-trigger plays instead). A slide from history starts `HISTORY_T` in, at the
+trigger plays instead), and nothing its own `gate(night)` refuses (the
+King's scenes after an ending: the story stops hearing him). A slide from history starts `HISTORY_T` in, at the
 moment this page first drew it, then moves on; a scene's `face` flashes the
 TV face once. The
 layer is a lazy chunk in the slide's slot (z 30), preloaded at boot. Lanes
@@ -674,5 +675,5 @@ popup storm, BSOD, spotlight, hourglass, count-ups, countdowns, `useSfxCues`).
 `http://localhost:5175/terminal/?preview=list` (every scene, a device frame,
 a scrubber), or `?preview=<id>&t=<ms>` for one frame (`&play=1`,
 `&target=wall`, `&intro=0`, `&reduced=1`, `&who=`, `&value=`, `&phase=`,
-`&countdown=<s>`). Outside dev it opens only on a terminal already set up
+`&countdown=<s>`, `&night=scenario:1,collection_complete:true`). Outside dev it opens only on a terminal already set up
 with the moderator passcode.
