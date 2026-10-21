@@ -78,7 +78,7 @@ glitches for a moment when it does. From quiet to loud:
 The big moments (an announcement to everyone, a card that's for you
 alone, a new objective that needs you) use the story's level; smaller
 ones (a quest starting, a note just for you) come one step quieter. Most
-have **Take me there**, which opens the room it's about (or your pass).
+have a button or two that take you where it's about: its room, a quest, your pass.
 A short ✔ note after you press something is separate and never hides an
 alert.
 

@@ -154,3 +154,13 @@ describe("the countdown line", () => {
     expect(MISSION_DOCK).toBe(MISSION_DOCK_ID);
   });
 });
+
+describe("the promoted card's button (GN-F18)", () => {
+  it("names the card's kind, never its whole text", () => {
+    const doors = { ...card(60, "dm:Truther Download", "sides"), widget: { kind: "sides", text: "🕚 SYSTEM CLOCK RESET. Two doors have opened in the computer.", params: {} } } as ChatMessage;
+    const list = [ch("dm:Truther Download", { title: "Truther Download", messages: [doors] })];
+    const m = missionOf(input({ list, cards: [{ glyph: "🚪", channel: "dm:Truther Download", seq: 60 }] }));
+    expect(m.cardButton!.label.length).toBeLessThan(60);
+    expect(m.cardButton!.label).not.toContain("TWO DOORS");
+  });
+});

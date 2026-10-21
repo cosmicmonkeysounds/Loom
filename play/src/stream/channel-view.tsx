@@ -316,7 +316,7 @@ export function ChannelView({
     <div className="screen stage">
       <header className="thread-head stream-room-head">
         {!wide && (
-          <button type="button" className="back stream-back" onClick={onBack} aria-label="Back to your rooms">
+          <button type="button" className="back stream-back" onClick={onBack} aria-label="Back">
             ‹
           </button>
         )}

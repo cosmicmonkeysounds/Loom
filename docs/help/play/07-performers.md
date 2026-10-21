@@ -124,7 +124,7 @@ guest whose card is open shows on the card instead of interrupting you.
 
 When a guest types to your character, their thread appears under
 **Messages**, just below Readouts, until you've read it; a balloon by
-the tray says so (**Take me there**), and the 🗂 Guests button's badge
+the tray says so (its button opens the thread), and the 🗂 Guests button's badge
 counts the guests waiting on an unread message. What you type in their
 thread lands as your character's message to them. The **broadcast
 feed** posts to the main room — everyone hears it.

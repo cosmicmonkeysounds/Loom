@@ -91,6 +91,12 @@ export interface MissionModel {
   paused: boolean;
 }
 
+/** A card label cut to a button's length (≤ 32 characters, an ellipsis past it). */
+function clipLabel(s: string): string {
+  const t = s.trim();
+  return t.length <= 32 ? t : `${t.slice(0, 31).trimEnd()}…`;
+}
+
 /** A label split into its leading pictograph and its words. */
 export function splitGlyph(text: string): { glyph: string | null; words: string } {
   const m = /^(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s*(.*)$/su.exec(text.trim());
@@ -198,7 +204,9 @@ export function missionOf(o: MissionInput): MissionModel {
   const byRoom = new Map(o.list.map((c) => [c.id, c]));
   const cardLabel = (c: LiveCard) => {
     const m = byRoom.get(c.channel)?.messages.find((x) => x.seq === c.seq);
-    const label = m?.widget !== undefined ? splitGlyph(widgetLabel(m.widget)).words : "a card";
+    // The kind's own short label, never the card's whole text (GN-F18: the
+    // doors' button read the Y2K headline twice over).
+    const label = m?.widget !== undefined ? clipLabel(splitGlyph(widgetLabel(m.widget)).words.split(" — ")[0]!) : "a card";
     return { label, room: roomTitle(c.channel) };
   };
   const cards = [...o.cards].sort((a, b) => b.seq - a.seq);
