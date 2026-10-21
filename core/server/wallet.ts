@@ -165,6 +165,8 @@ interface Transfer {
   state: WalletTxState;
   settleAt: number | null;
   by?: string;
+  /** Wave 18b: the approver's audit held it (its recipient has a flagged thread). */
+  held?: true;
 }
 interface Request {
   id: string;
@@ -349,6 +351,10 @@ export function possessive(name: string): string {
 export function walletLine(c: WalletCard, now?: number, viewer?: string): string {
   const amt = `${c.amount} ${c.unit}`;
   const audit = c.approver ?? "the auditor";
+  // Wave 18b (R13): what the approver's hold is called (`audit "a CRA audit"`).
+  const flaggedFor = c.audit ?? "an audit";
+  // A transfer card's recipient (the flagged thread's owner), not its sender.
+  const mine = viewer !== undefined && viewer === c.to && viewer !== c.from;
   const windowText = (): string =>
     c.settleAt !== undefined && now !== undefined ? `${Math.max(0, Math.ceil((c.settleAt - now) / 1000))} s` : "a moment";
   // A held transfer's auto-approval, in minutes once it's more than 90 s off.
@@ -359,18 +365,22 @@ export function walletLine(c: WalletCard, now?: number, viewer?: string): string
         case "pending":
           return `💸 You sent ${amt} to ${c.toName} — settles in ${windowText()} unless ${audit} denies it.`;
         case "held":
-          return `⏳ ${amt} to ${c.toName} is waiting for ${audit} to approve — it goes through on its own in ${holdText()}.`;
+          return `🚩 Flagged for ${flaggedFor}: ${amt} to ${c.toName} must be approved by ${audit} — it goes through on its own in ${holdText()}.`;
+        case "flagged":
+          return `🚩 Flagged for ${flaggedFor}: ${c.fromName} is sending you ${amt}. It must be approved by ${audit} first — it goes through on its own in ${holdText()}.`;
         case "settled":
           return `✅ ${amt} to ${c.toName} settled.`;
         case "received":
-          return `💰 ${c.fromName} sent you ${amt}.`;
+          return c.by !== undefined ? `✅ Approved by ${c.by}: ${c.fromName} sent you ${amt}.` : `💰 ${c.fromName} sent you ${amt}.`;
         case "approved":
           return `✅ Approved by ${c.by ?? audit}: ${amt} to ${c.toName}.`;
         case "timed_out":
           return `✅ Approved automatically: ${amt} to ${c.toName}.`;
         case "denied":
+          if (mine) return `⛔ Denied by ${c.by ?? audit}: ${possessive(c.fromName)} ${amt} never reached you.`;
           return `⛔ Denied by ${c.by ?? audit}: ${amt} to ${c.toName}. Refunded.`;
         case "cancelled":
+          if (mine) return c.by === undefined || c.by === c.fromName ? `↩️ ${c.fromName} cancelled the ${amt}. It never reached you.` : `↩️ ${c.by} cancelled ${possessive(c.fromName)} ${amt}. It never reached you.`;
           return `↩️ Cancelled: ${amt} to ${c.toName}. Refunded.`;
         default:
           return `💸 ${amt} to ${c.toName}.`;
@@ -380,7 +390,7 @@ export function walletLine(c: WalletCard, now?: number, viewer?: string): string
         case "pending":
           return `🧾 ${c.fromName} → ${c.toName}: ${amt}. Settles in ${windowText()} unless you deny it.`;
         case "held":
-          return `🧾 ${c.fromName} → ${c.toName}: ${amt}. Waiting for your approval — it goes through on its own in ${holdText()}.`;
+          return `🚩 Flagged for ${flaggedFor}: ${c.fromName} → ${c.toName}: ${amt}. Waiting for your approval — it goes through on its own in ${holdText()}.`;
         case "settled":
           return `✅ Settled: ${c.fromName} → ${c.toName}, ${amt}.`;
         case "approved":
@@ -856,11 +866,21 @@ export class WalletBook {
    *  the transfer and the signal args keep the raw id. */
   private byName(id: string): string {
     if (id === DIRECTOR) return DIRECTOR;
+    // Wave 18b: the approver acting is named as the story's `as` (MyCRA).
+    const a = this.currency.approver;
+    if (a !== null && a.as !== undefined && this.isApprover(id)) return a.as;
     return this.isPerson(id) ? this.seam.nameOf(id) : id.replace(/_/gu, " ");
   }
+  /** The approver as wallet cards name it: the story's `as <name>` (wave
+   *  18b, "MyCRA"), else the character's name. */
   private approverName(): string | undefined {
     const a = this.currency.approver;
-    return a === null ? undefined : a.id.replace(/_/gu, " ");
+    return a === null ? undefined : (a.as ?? a.id.replace(/_/gu, " "));
+  }
+  /** The approver's `audit <phrase>` (wave 18b), only when the story gives one. */
+  private auditOf(): { audit: string } | Record<string, never> {
+    const audit = this.currency.approver?.audit;
+    return audit !== undefined ? { audit } : {};
   }
   private ev(to: string, card: WalletCard, root: boolean): WalletEvent {
     return { type: "wallet", to, card, root };
@@ -882,9 +902,14 @@ export class WalletBook {
     const args = { to: t.to, amount: t.amount, tx: t.id };
     if (approver !== null && audience !== null && this.counter % approver.every === 0) {
       t.state = "held";
+      t.held = true;
       t.settleAt = op.at + HOLD_MS;
-      out.push(this.ev(t.from, this.card("transfer", t, "held", { settleAt: t.settleAt, approver: this.approverName() }), true));
-      out.push(this.ev(audience, this.card("approval", t, "held", { settleAt: t.settleAt, approver: this.approverName() }), true));
+      const flag = { settleAt: t.settleAt, approver: this.approverName(), ...this.auditOf() };
+      out.push(this.ev(t.from, this.card("transfer", t, "held", flag), true));
+      out.push(this.ev(audience, this.card("approval", t, "held", flag), true));
+      // Wave 18b (R13): the recipient learns it is coming and flagged —
+      // the thread its settle, deny or cancel later replies to.
+      out.push(this.ev(t.to, this.card("transfer", t, "flagged", flag), true));
       out.push(...this.seam.signal("transfer_sent", t.from, { ...args, state: "held" }));
       out.push(...this.seam.signal("transfer_held", t.from, args));
       return out;
@@ -923,7 +948,9 @@ export class WalletBook {
       out.push(this.ev(t.from, this.card("transfer", t, step, extra), false));
       if (audience !== null) out.push(this.ev(audience, this.card("approval", t, step, extra), false));
     }
-    out.push(this.ev(t.to, this.card("transfer", t, "received"), true));
+    // A held transfer's recipient has its flagged thread (wave 18b): the
+    // money lands there, named after the approver who let it through.
+    out.push(this.ev(t.to, this.card("transfer", t, "received", wasHeld && by !== undefined ? { by: this.byName(by) } : {}), !wasHeld || inlineRoot));
     out.push(...this.seam.signal("transfer_received", t.to, { from: t.from, amount: t.amount, tx: t.id }));
     if (t.request !== null) {
       const r = this.requests.get(t.request);
@@ -951,6 +978,7 @@ export class WalletBook {
     const t = this.transfers.get(id);
     if (t === undefined || (t.state !== "pending" && t.state !== "held")) return [];
     const out: WalletBookEvent[] = [];
+    const wasHeld = t.held === true;
     t.state = "denied";
     t.settleAt = null;
     t.by = by;
@@ -960,6 +988,7 @@ export class WalletBook {
     out.push(this.ev(t.from, this.card("transfer", t, "denied", shown), false));
     const audience = this.approverAudience();
     if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "denied", shown), false));
+    if (wasHeld) out.push(this.ev(t.to, this.card("transfer", t, "denied", shown), false)); // its flagged thread
     out.push(...this.seam.signal("transfer_denied", t.from, { to: t.to, amount: t.amount, tx: t.id, by }));
     if (t.request !== null) {
       const r = this.requests.get(t.request);
@@ -989,6 +1018,7 @@ export class WalletBook {
       out.push(this.ev(t.from, this.card("transfer", t, "cancelled", shown), false));
       const audience = this.approverAudience();
       if (audience !== null) out.push(this.ev(audience, this.card("approval", t, "cancelled", shown), false));
+      if (t.held === true) out.push(this.ev(t.to, this.card("transfer", t, "cancelled", shown), false)); // its flagged thread
       out.push(...this.seam.signal("transfer_cancelled", t.from, { to: t.to, amount: t.amount, tx: t.id, by }));
       if (t.request !== null) {
         const r = this.requests.get(t.request);
