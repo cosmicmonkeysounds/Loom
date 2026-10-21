@@ -7,7 +7,7 @@
 //! Adding a widget = adding a `WidgetDef` to `WIDGETS`. Unknown kinds render
 //! as plain text so an older client never hides a newer story's card.
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { createElement, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { PassQr } from "./pass-qr.tsx";
 import type { ChatMessage, WidgetCard } from "./types.ts";
 
@@ -43,6 +43,11 @@ export interface WidgetDef {
   /** This card asks nothing any more (a 📝 card dealt with no open
    *  questions — the round closed): it renders as a note, not a task. */
   closed?: (card: WidgetCard) => boolean;
+  /** Wave 18: a big moment carrying this card renders it inside the popup
+   *  (answered there, the same answer path as the room). */
+  inline?: boolean;
+  /** Wave 18: inside a big moment it takes the whole window (the sides' doors). */
+  fullBleed?: boolean;
   render: (p: WidgetProps) => ReactNode;
 }
 
@@ -604,14 +609,37 @@ function AnswerCard({ card, onAnswer, answered }: WidgetProps) {
 // --- registry ---------------------------------------------------------------
 
 export const WIDGETS: Record<string, WidgetDef> = {
-  captcha: { label: "🛡️ security check", answerable: true, render: (p) => <Captcha {...p} /> },
+  captcha: { label: "🛡️ security check", answerable: true, inline: true, render: (p) => <Captcha {...p} /> },
   image: { label: "🖼️ picture", answerable: false, render: (p) => <Image {...p} /> },
-  poll: { label: "📊 poll", answerable: true, render: (p) => <Poll {...p} /> },
+  poll: { label: "📊 poll", answerable: true, inline: true, render: (p) => <Poll {...p} /> },
   tutorial: { label: "📘 orientation", answerable: true, overlay: true, render: (p) => <TutorialCard {...p} /> },
   pass: { label: "🎟️ your pass", answerable: false, render: (p) => <PassCard {...p} /> },
   fact: { label: "📝 file a fact", answerable: true, supersedes: true, closed: (c) => factQuestions(c.params["questions"]).length === 0, render: (p) => <FactCard {...p} /> },
-  answer: { label: "💬 your answer", answerable: true, render: (p) => <AnswerCard {...p} /> },
+  answer: { label: "💬 your answer", answerable: true, inline: true, render: (p) => <AnswerCard {...p} /> },
 };
+
+/** What `registerWidget` takes besides a whole def: the component and its flags. */
+export type WidgetOptions = Partial<Omit<WidgetDef, "render">>;
+
+/**
+ * Add a card kind (wave 18, CONTRACTS A8: the guest lane registers `sides`
+ * and `invite`). Takes a whole `WidgetDef`, or a component and its flags
+ * (`label` defaults to the kind, `answerable` to true). Registering a kind
+ * again replaces it.
+ */
+export function registerWidget(kind: string, def: WidgetDef | ComponentType<WidgetProps>, opts: WidgetOptions = {}): void {
+  if (typeof def === "function") {
+    const Component = def;
+    WIDGETS[kind] = { label: opts.label ?? kind, answerable: opts.answerable ?? true, ...opts, render: (p) => createElement(Component, p) };
+    return;
+  }
+  WIDGETS[kind] = { ...def, ...opts };
+}
+
+/** Does a big moment render this card kind inside itself? */
+export function widgetInline(kind: string): boolean {
+  return WIDGETS[kind]?.inline === true;
+}
 
 /** Does this card still ask the viewer for an answer (an answerable kind
  *  that isn't closed)? */

@@ -189,11 +189,55 @@ export function playChime(): void {
 }
 
 /** Buzz the phone, where the browser allows it (never on iOS). */
-export function vibrate(): void {
+export function vibrate(pattern: readonly number[] = [180, 80, 180]): void {
   try {
-    navigator.vibrate?.([180, 80, 180]);
+    navigator.vibrate?.([...pattern]);
   } catch {
     /* unsupported */
+  }
+}
+
+/** A booth pop-out's tone (wave 18, BOOTH-SPEC §2.4). */
+export type PopTone = "alarm" | "info" | "win";
+
+/** What each tone plays: square-wave notes (Hz, ms each, back to back) and its buzz. */
+export const TONES: Readonly<Record<PopTone, { notes: readonly number[]; ms: number; vibrate: readonly number[] }>> = {
+  // E3 → C3
+  alarm: { notes: [164.81, 130.81], ms: 120, vibrate: [200, 80, 200] },
+  // one A4
+  info: { notes: [440], ms: 90, vibrate: [120] },
+  // C5 E5 G5 C6
+  win: { notes: [523.25, 659.25, 783.99, 1046.5], ms: 70, vibrate: [60, 40, 60, 40, 220] },
+};
+
+/**
+ * Play a pop-out's tone on the shared context (silent until the page has
+ * been tapped once, like the chime) and buzz its pattern. `sound: false`
+ * buzzes only.
+ */
+export function playTone(tone: PopTone, sound = true): void {
+  const t = TONES[tone];
+  vibrate(t.vibrate);
+  if (!sound) return;
+  const ctx = ensureAudio();
+  if (ctx === null) return;
+  try {
+    t.notes.forEach((freq, i) => {
+      const at = (i * t.ms) / 1000;
+      const dur = t.ms / 1000;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + at + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + at);
+      osc.stop(ctx.currentTime + at + dur + 0.02);
+    });
+  } catch {
+    /* no audio — fine */
   }
 }
 
