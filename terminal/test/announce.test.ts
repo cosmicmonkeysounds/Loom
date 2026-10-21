@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANNOUNCE_STALE_MS, announceAloud, announceChoice, announceOf, announceSetting, epochMoved, planAnnounce, type Announcement } from "../src/announce.ts";
+import { ANNOUNCE_STALE_MS, announceAloud, announceChoice, announceOf, announceReport, announceSetting, epochMoved, planAnnounce, type Announcement } from "../src/announce.ts";
 import { deviceQuery } from "../src/health.ts";
 import { defaultConfig } from "../src/config.ts";
 import { screenStateUrl } from "../src/screen.ts";
@@ -119,6 +119,18 @@ describe("the house setting (wave 18b, Q8)", () => {
     expect(announceAloud({ announce: null, view: "auto" }, { voice: null, ...spot(true) })).toBe(true);
     expect(announceAloud({ announce: null, view: "auto" }, { voice: null, ...spot(false) })).toBe(false);
     expect(announceAloud({ announce: null, view: "tv" }, { voice: muted, ...spot(true) })).toBe(false);
+  });
+
+  it("the poll reports ann off the last answer, and leaves it out before the first", () => {
+    // Its own Always / Never: known from the start.
+    expect(announceReport({ announce: true }, null)).toBe(true);
+    expect(announceReport({ announce: false }, spot(true))).toBe(false);
+    // House setting: unknown until an answer (never a false "0" on boot or after a ⚙ save)…
+    expect(announceReport({ announce: null }, null)).toBeNull();
+    // …then the house list's word for its spot; an answer with no spot is "not on it".
+    expect(announceReport({ announce: null }, spot(true))).toBe(true);
+    expect(announceReport({ announce: null }, spot(false))).toBe(false);
+    expect(announceReport({ announce: null }, { spot: null })).toBe(false);
   });
 
   it("the heartbeat reports what the tablet does as ann=1|0, nothing when not given", () => {

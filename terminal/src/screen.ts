@@ -64,7 +64,7 @@
 //! dropped poll never flips a hidden character onto the wall.
 
 import { useEffect, useRef, useState } from "react";
-import { announceOf, announceSetting, type Announcement } from "./announce.ts";
+import { announceOf, announceReport, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { deviceHealth, deviceQuery, type DeviceHealth } from "./health.ts";
 
@@ -752,8 +752,8 @@ export function useScreenState(
     let last: ScreenState | null = null;
     const tick = async () => {
       // `ann` is what this tablet does now: its own setting, else the house
-      // list's word off the last answer.
-      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null, announceSetting(config, last));
+      // list's word off the last answer (left out until there is one).
+      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null, announceReport(config, last));
       if (!alive) return;
       setMisses((m) => missesAfter(m, out.kind));
       if (out.kind === "state") {

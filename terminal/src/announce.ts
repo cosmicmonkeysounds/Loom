@@ -92,6 +92,15 @@ export function announceSetting(config: Pick<TerminalConfig, "announce">, state:
   return config.announce ?? state?.spot?.announce ?? false;
 }
 
+/** What the poll reports as `ann` (wave 18b, Q8): its own setting, else the
+ *  house list's word off the last answer (no `spot` there = not on it), else
+ *  null — not yet known, so `ann` is left out rather than reported as no
+ *  (a "House setting" tablet's first poll would turn its 📢 badge off). */
+export function announceReport(config: Pick<TerminalConfig, "announce">, last: Pick<ScreenState, "spot"> | null): boolean | null {
+  if (config.announce !== null) return config.announce;
+  return last === null ? null : (last.spot?.announce ?? false);
+}
+
 /** Does this screen say announcements out loud right now? (The TV's
  *  director mute holds for announcements too.) */
 export function announceAloud(config: Pick<TerminalConfig, "announce" | "view">, state: Pick<ScreenState, "voice" | "spot"> | null): boolean {
