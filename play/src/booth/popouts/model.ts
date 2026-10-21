@@ -654,6 +654,32 @@ function justEnded(countdowns: readonly CountdownSummary[] | undefined, now: num
   return null;
 }
 
+/** A countdown the booth has seen, and when it left the view (story ms). */
+export interface CountdownMemo {
+  c: CountdownSummary;
+  goneAt: number | null;
+}
+
+/**
+ * The countdowns the booth has seen in the last two minutes past their end
+ * (BN2-FA): the server drops a countdown the moment it ends (and the story
+ * stops it), so the view never carries an ended one and *Call it?* at the
+ * end never popped. One that left the view near its end ran out; one taken
+ * away early was stopped and is not "up". Mutates `memo`.
+ */
+export function rememberCountdowns(memo: Map<string, CountdownMemo>, current: readonly CountdownSummary[] | undefined, now: number): CountdownSummary[] {
+  const shown = new Set<string>();
+  for (const c of current ?? []) {
+    memo.set(c.label, { c, goneAt: null });
+    shown.add(c.label);
+  }
+  for (const [label, m] of memo) {
+    if (!shown.has(label) && m.goneAt === null) m.goneAt = now;
+    if (now / 1000 - m.c.endsAt > 120) memo.delete(label);
+  }
+  return [...memo.values()].filter((m) => m.goneAt === null || m.goneAt / 1000 >= m.c.endsAt - 15).map((m) => m.c);
+}
+
 /** *Call it?* for each of Clippy's cues that just turned live (not live at the last look). */
 export function cueSpecs(calls: CallsView, prevLive: ReadonlySet<string> | null, now: number, countdowns?: readonly CountdownSummary[]): Draft[] {
   if (prevLive === null) return [];

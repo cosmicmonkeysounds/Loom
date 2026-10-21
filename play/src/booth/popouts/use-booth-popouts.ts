@@ -11,7 +11,7 @@ import { usePlayHost } from "../../host.ts";
 import type { PrimeSession } from "../../session/prime.ts";
 import type { Interaction } from "../../types.ts";
 import { boothView, callsOf, mayPress, wantedOf, type BoothGuest, type BoothMessage, type BoothObjective } from "../wire.ts";
-import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, targetSpec, wantedSpecs, type BoothDo, type Draft, type SeenMap } from "./model.ts";
+import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, rememberCountdowns, targetSpec, wantedSpecs, type BoothDo, type CountdownMemo, type Draft, type SeenMap } from "./model.ts";
 import { usePopOuts, type PopOutSpec } from "./rung.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
@@ -203,6 +203,9 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   // with one waits for it to end (BN-F3).
   const cdSeen = useRef(new Map<string, number>());
   for (const c of view?.countdowns ?? []) if (!cdSeen.current.has(c.label)) cdSeen.current.set(c.label, now);
+  // Every countdown seen lately, ended ones too (the view drops them at the end).
+  const cdMemo = useRef(new Map<string, CountdownMemo>());
+  const seenCountdowns = rememberCountdowns(cdMemo.current, view?.countdowns, now);
   const cueWait = useRef(new Map<string, string>());
   const endRaised = useRef(new Set<string>());
   useEffect(() => {
@@ -251,7 +254,7 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
       const d = cueSpecs(calls, new Set(), now, view?.countdowns).find((x) => x.key === key);
       if (d !== undefined) rung.raise(bind(d));
     }
-    const end = cueAtEnd(calls, view?.countdowns, now);
+    const end = cueAtEnd(calls, seenCountdowns, now);
     if (end !== null && !endRaised.current.has(`${end.key}|${end.rev}`)) {
       endRaised.current.add(`${end.key}|${end.rev}`);
       rung.raise(bind(end));

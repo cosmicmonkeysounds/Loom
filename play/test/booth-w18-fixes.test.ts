@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { countdownRunning, cueAtEnd, cueWaitsFor, reconcilePopOuts, wantedSpecs, type HeldPopOut, type ReconcileCtx, type WantedCtx } from "../src/booth/popouts/model.ts";
+import { countdownRunning, cueAtEnd, cueWaitsFor, reconcilePopOuts, rememberCountdowns, wantedSpecs, type CountdownMemo, type HeldPopOut, type ReconcileCtx, type WantedCtx } from "../src/booth/popouts/model.ts";
 import { boardRowCount } from "../src/booth/now-card.tsx";
 import { scannedLine } from "../src/booth/confront.tsx";
 import type { BoothGuest, BoothObjective, CallsView, WantedEntry } from "../src/booth/wire.ts";
@@ -99,6 +99,22 @@ describe("Clippy's *Call it?* waits for its countdown (BN-F3)", () => {
     expect(d).toMatchObject({ key: "cue:bingo_time:3", rev: "end:Bingo ends" });
     expect(d.body).toContain("Bingo ends is up. Call it?");
     expect(cueAtEnd(calls([row("bingo_time", { live: true })], { next: "introduce_trabolta" }), cds, 1_230_000)).toBeNull();
+  });
+  it("live, the view drops the countdown as it ends: the booth remembers it, so Call it? still pops (BN2-FA)", () => {
+    const c = calls([row("bingo_time", { live: true, next: true, title: "⏰ Bingo time" })]);
+    const memo = new Map<string, CountdownMemo>();
+    const bingo = { label: "Bingo ends", path: "Night.bingo_end", endsAt: 1200 };
+    expect(cueAtEnd(c, rememberCountdowns(memo, [bingo], 1_190_000), 1_190_000)).toBeNull();
+    // The next view: no countdowns at all (ended, and the story stopped it).
+    const seen = rememberCountdowns(memo, [], 1_202_000);
+    expect(seen.map((x) => x.label)).toEqual(["Bingo ends"]);
+    expect(cueAtEnd(c, seen, 1_203_000)?.body).toContain("Bingo ends is up. Call it?");
+    // Two minutes on, forgotten.
+    expect(rememberCountdowns(memo, [], 1_330_000)).toEqual([]);
+    // Stopped early (a director cancelled it): not "up".
+    const early = new Map<string, CountdownMemo>();
+    rememberCountdowns(early, [bingo], 1_000_000);
+    expect(cueAtEnd(c, rememberCountdowns(early, [], 1_010_000), 1_201_000)).toBeNull();
   });
 });
 
