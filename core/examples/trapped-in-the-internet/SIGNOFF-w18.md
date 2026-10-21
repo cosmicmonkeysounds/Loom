@@ -228,6 +228,7 @@ lines are the fix round's.
 | `objectives.loom:290` | The Y2K Hour (guests) | *…Two factions are recruiting: pick one on the Choose your side card (it waits in the Trapped in the Internet room), or neither. …* | *…Two factions are recruiting: walk through one of their doors on the Sides screen, or neither, and scan a program's pass to recruit them. …* · `go: sides` |
 | `objectives.loom:469` | Patch Bay And Clubs (Password Manager) | *…The director may radio you for a count. …* | *…A host may ask you for a count. …* |
 | `quests.loom:209` | QUEST The Clubs (Password Manager) | *…Tell the director the count when asked.* | *…Tell a host the count when asked.* |
+| `main.loom:1108`–`:1116` | an ending with the doors card still up (recheck N5) | — | the card is replaced by *🚪 The doors have closed.* (no Walk in after the end) |
 
 ### Act IV: the final reveal, the verdict, the endings (🌑 → the end)
 
@@ -236,6 +237,7 @@ lines are the fix round's.
 | `codex/7-clippy.loom:233` | Clippy Instructions 8 | *(App) The director fires Bobbing for Truth.* | *(App) Fire 🍎 Bobbing for Truth from your 🎤 bar.* |
 | `codex/7-clippy.loom:244` | Clippy Instructions 8 | *…reads truth.txt aloud, when the director fires it.* | *…when a host fires it.* |
 | `objectives.loom:749` | Hand Over Truth Txt (Adobe Acrobat) | *They read it aloud. When they finish, radio the director for ⚖ the verdict.* | *They read it aloud. When they finish, ⚖ the verdict is NEXT: fire it, or tell whoever is calling the show.* |
+| `beats/finale.loom:155` | the song ending → everyone | `!🎵 TRABOLTA SOLVED IT. …` | the same words, with *Go to The Desktop* (recheck N9) |
 | `beats/finale.loom:233` | Help or Thwart → everyone | `moment` none | `moment: big` (*Will you help Trabolta win Sandy?*) |
 | `main.loom:2212` | the pickup line → each program | `moment: major` | `moment: big` |
 | `main.loom:4896` | the banishment → everyone | `!⛈ Trabolta is banishing EVERY program to the Internet. Antivirus included.` | **big**: the same words, with *Go to The Internet* |
