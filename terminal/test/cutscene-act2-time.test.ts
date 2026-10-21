@@ -20,7 +20,9 @@ import {
   liveRemaining,
   scenarioOf,
   sinceAnswer,
+  latch,
   tallyNumber,
+  tallyOf,
   throwAt,
   y2kLevel,
 } from "../src/cutscene/kit/tv2-time.ts";
@@ -64,6 +66,25 @@ describe("act 2 timelines — moments a scene reads", () => {
     expect(tallyNumber({ lines: [line("Twelve.", "Trust Chart")] })).toBeNull();
     expect(tallyNumber({ lines: [] })).toBeNull();
     expect(tallyNumber(null)).toBeNull();
+  });
+
+  it("falls back on the night's collection_complete, and the scene latches what it read once", () => {
+    const said = { lines: [{ seq: 1, from: "Trabolta", text: "…is sixty-one percent.", beat: "Round Two Tally" }] };
+    const none = { collection_complete: null };
+    expect(tallyOf(said, none)).toBe(61);
+    expect(tallyOf(null, { collection_complete: false })).toBe(12);
+    expect(tallyOf({ lines: [] }, { collection_complete: true })).toBe(61);
+    expect(tallyOf(null, none)).toBeNull();
+    // The voice block empties on the next poll (its cursor moved): the latch keeps 61.
+    let held = latch<number>(null, 7, tallyOf(said, none));
+    held = latch(held, 7, tallyOf({ lines: [] }, none));
+    held = latch(held, 7, tallyOf(null, none));
+    expect(held?.value).toBe(61);
+    // A first frame with nothing yet, then the number: latched from then on.
+    expect(latch<number>(null, 7, null)).toBeNull();
+    // A new scene (seq) starts over.
+    expect(latch(held, 8, null)).toBeNull();
+    expect(latch(held, 8, 12)?.value).toBe(12);
   });
 });
 

@@ -10,7 +10,7 @@ import { fakeChart, fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
 import { SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
-import type { ScreenMoment, ScreenState } from "../src/screen.ts";
+import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
 // --- the story, read the way the tests elsewhere read it (grep, not the compiler) --------
 
@@ -137,6 +137,13 @@ describe("act 2's scenes draw", () => {
     const deaf = draw(tally, "tv", 14_000, stateAt(14_000));
     expect(deaf).toContain("TALLY COMPLETE");
     expect(deaf).not.toMatch(/\b(61|12)%/u);
+    // No voice lines (the poll after, a reload): the night's outcome, on the TV and the walls.
+    const night = (complete: boolean) => stateAt(14_000, { night: { ...EMPTY_NIGHT, collection_complete: complete } });
+    expect(draw(tally, "tv", 14_000, night(true))).toContain("61%");
+    expect(draw(tally, "tv", 14_000, night(false))).toContain("12%");
+    expect(draw(tally, "wall", 9000, night(true))).toContain("61%");
+    expect(draw(tally, "wall", 9000, night(false))).toContain("12%");
+    expect(draw(tally, "wall", 3000, night(true))).not.toMatch(/\b(61|12)%/u);
     q.mockRestore();
   });
 

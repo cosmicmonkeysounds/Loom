@@ -482,3 +482,9 @@
   .tv2-beam, .tv2-roll { display: none; }
 }
 .tv2-zip-log { position: absolute; left: 2%; bottom: 3%; font-family: var(--mono); font-size: 1.1em; line-height: 1.2; color: #000080; }
+
+/* the wall's tally: the number lands under the bar */
+.tv2-wall-tally { text-align: center; }
+.tv2-wall-tally-num { font-family: var(--mono); font-weight: 700; font-size: 3.2em; line-height: 1.1; color: #000080; }
+.tv2-wall-tally.high .tv2-wall-tally-num { color: #0a7a2a; }
+.tv2-wall-tally.low .tv2-wall-tally-num { color: #5a5a5a; }

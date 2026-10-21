@@ -6,7 +6,7 @@
 //! the tests can pin them.
 
 import { foldName } from "../../config.ts";
-import type { ScreenMoment, ScreenState, ScreenVoice } from "../../screen.ts";
+import type { ScreenMoment, ScreenNight, ScreenState, ScreenVoice } from "../../screen.ts";
 import { clamp01, ease, lerp, noise1, progress } from "./time.ts";
 
 // --- the live clock ------------------------------------------------------------------
@@ -69,6 +69,30 @@ export function tallyNumber(voice: Pick<ScreenVoice, "lines"> | null): 61 | 12 |
     if (/\btwelve\b|\b12\b/u.test(s)) return 12;
   }
   return null;
+}
+
+/**
+ * The round-two number for the tally scene: the TV's voice lines when this
+ * poll carries them, else the night's `collection_complete` (every fact in →
+ * 61, else 12: what the beat says). Null with neither (an older server).
+ * The voice lines ride one poll only, so the scene latches what it read.
+ */
+export function tallyOf(voice: Pick<ScreenVoice, "lines"> | null, night: Pick<ScreenNight, "collection_complete">): 61 | 12 | null {
+  const said = tallyNumber(voice);
+  if (said !== null) return said;
+  return night.collection_complete === true ? 61 : night.collection_complete === false ? 12 : null;
+}
+
+/** What `useLatch` holds: the first value seen for a key. */
+export interface Latched<T> {
+  key: number | string;
+  value: T;
+}
+
+/** One step of a latch: a new key forgets; the first non-null value for a key is kept. */
+export function latch<T>(held: Latched<T> | null, key: number | string, value: T | null): Latched<T> | null {
+  const h = held !== null && held.key === key ? held : null;
+  return h !== null ? h : value === null ? null : { key, value };
 }
 
 // --- the Y2K hour ------------------------------------------------------------------------

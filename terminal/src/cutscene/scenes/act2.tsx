@@ -51,8 +51,8 @@ import {
   useSfxCues,
   type Emitter,
 } from "../kit/index.ts";
-import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingLine, latestMoment, liveNow, liveRemaining, scenarioOf, tallyNumber, throwAt, y2kLevel } from "../kit/tv2-time.ts";
+import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingLine, latestMoment, liveNow, liveRemaining, scenarioOf, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 
@@ -349,7 +349,9 @@ function TruthPongWall(p: SceneProps) {
 //   700–5200   facts scroll past, ticked and crossed; the tally bar lurches
 //   5200–8600  CONFIDENCE WE WILL DEFEAT THE MALWARE: the needle hunts, the digits spin
 //   8600       it lands — 61 % (green, a burst of confetti) or 12 % (it sinks,
-//              static, "sit with that number"); with no voice to read it, TALLY COMPLETE
+//              static, "sit with that number"), off the TV's voice lines (latched:
+//              they ride one poll) or the night's `collection_complete`; with
+//              neither (an older server), TALLY COMPLETE
 //   8600–16000 hold the number (it breathes); fade
 
 const TALLY = { open: 0, facts: 700, gauge: 5200, land: 8600, end: 16_000 } as const;
@@ -373,7 +375,7 @@ function needleAngle(t: number, value: number | null): number {
 
 function RoundTwoTallyTv(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
-  const value = tallyNumber(state.voice);
+  const value = useLatch(p.seq, tallyOf(state.voice, p.night));
   const high = value === 61;
   useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.5 }], [300, "popup"], ...every(TALLY.facts, TALLY.gauge, 260, "type", { gain: 0.35 }), [TALLY.gauge, "drumroll", { gain: 0.6 }], ...(value === null ? [] : ([[TALLY.land, high ? "tada" : "lose"], ...(high ? ([[TALLY.land + 150, "sparkle"]] as const) : ([[TALLY.land, "boom", { gain: 0.5 }]] as const))] as const))]);
   const bar = fakeProgress(t - TALLY.facts, TALLY.gauge - TALLY.facts - 300, 11);
@@ -442,11 +444,36 @@ function RoundTwoTallyTv(p: SceneProps) {
   );
 }
 
+/** The wall's tally: the facts bar, a spin, then the same number lands (no voice there: the night's). */
+const WALL_TALLY = { spin: 5600, land: 7600, end: 13_000 } as const;
+
 function RoundTwoTallyWall(p: SceneProps) {
-  const { t, reduced, done } = p;
-  useEndAt(t, 10_000, done);
-  const bar = fakeProgress(t - 500, 6000, 11);
-  return <WallCard t={t} title="TALLY" lines={["The second collection is closed.", "Tallying the facts received…"]} icon="computer" reduced={reduced} accent={<ProgressBar value={bar} percent />} />;
+  const { t, sfx, reduced, done, state } = p;
+  useEndAt(t, WALL_TALLY.end, done);
+  const value = useLatch(p.seq, tallyOf(state.voice, p.night));
+  const high = value === 61;
+  useSfxCues(t, sfx, [[0, "popup", { gain: 0.5 }], [WALL_TALLY.spin, "drumroll", { gain: 0.45 }], ...(value === null ? [] : ([[WALL_TALLY.land, high ? "tada" : "lose", { gain: 0.6 }]] as const))]);
+  const bar = fakeProgress(t - 500, WALL_TALLY.spin - 800, 11);
+  const landed = value !== null && t >= WALL_TALLY.land;
+  const spinning = t >= WALL_TALLY.spin && t < WALL_TALLY.land;
+  const accent =
+    t < WALL_TALLY.spin ? (
+      <ProgressBar value={bar} percent />
+    ) : (
+      <div className={`tv2-wall-tally${landed ? (high ? " high" : " low") : ""}`}>
+        <div className="tv2-small">CONFIDENCE THAT WE WILL DEFEAT THE MALWARE</div>
+        <div className="tv2-wall-tally-num" style={{ transform: reduced || !spinning ? undefined : `translate3d(0, ${(Math.sin(t / 40) * 0.06).toFixed(3)}em, 0)` }}>
+          {landed ? <BigNumber t={t} from={0} to={value!} start={WALL_TALLY.land} dur={600} suffix="%" /> : value === null && t >= WALL_TALLY.land ? "TALLY COMPLETE" : `${String(Math.floor(noise1(19, Math.floor(t / 70)) * 99)).padStart(2, "0")}%`}
+        </div>
+      </div>
+    );
+  return (
+    <div className="kit-fill">
+      <WallCard t={t} title="TALLY" lines={["The second collection is closed.", "Tallying the facts received…"]} icon="computer" reduced={reduced} bg={landed && !high ? "#2a2f33" : undefined} accent={accent} />
+      {landed && high && !reduced && <Confetti t={t} start={WALL_TALLY.land} dur={2600} density={0.5} seed={62} />}
+      {landed && !high && <Noise t={t} alpha={0.1} reduced={reduced} />}
+    </div>
+  );
 }
 
 // ══ D6: trust_chart — the live chart, kept exactly as the card draws it ═════════════

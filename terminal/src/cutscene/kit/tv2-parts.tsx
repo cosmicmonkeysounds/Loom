@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { slideCopy } from "../../slides.ts";
-import { driftPops, type DriftPop } from "./tv2-time.ts";
+import { driftPops, latch, type DriftPop, type Latched } from "./tv2-time.ts";
 import { blink, clamp01, ease, eased, noise1, progress, pulse } from "./time.ts";
 import { Stage } from "./stage.tsx";
 import { Typewriter } from "./text.tsx";
@@ -22,6 +22,17 @@ export function useEndAt(t: number, ms: number, done: () => void): void {
     fired.current = true;
     done();
   }, [t, ms, done]);
+}
+
+/**
+ * The first non-null `value` seen for `key` (the scene's seq), kept for as
+ * long as the key stays: a value that rides one poll only (the TV's voice
+ * lines) survives the next answer without it. A new key starts over.
+ */
+export function useLatch<T>(key: number | string, value: T | null): T | null {
+  const held = useRef<Latched<T> | null>(null);
+  held.current = latch(held.current, key, value);
+  return held.current === null ? null : held.current.value;
 }
 
 /**
