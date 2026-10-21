@@ -93,12 +93,12 @@ export function boothHome(list: Channel[]): string | null {
 /** The booth's frame: owns the keyboard rule (the taskbar and the NEXT bar
  *  step aside while a text field in the frame has focus). Its own
  *  component, so the listener attaches when the frame mounts (after sign-in). */
-function BoothFrame({ children, clocked = false }: { children: (keyboard: boolean) => ReactNode; clocked?: boolean }) {
+function BoothFrame({ children, clocked = false, alarmed = false }: { children: (keyboard: boolean) => ReactNode; clocked?: boolean; alarmed?: boolean }) {
   const frame = useRef<HTMLDivElement>(null);
   const keyboard = useKeyboardOpen(frame as RefObject<HTMLElement>); // React 19 types (the editor) widen the ref with null
   return (
     // `clocked`: the show clock or a countdown sits in the tray — a narrow phone's Guests drops its word for it.
-    <div className={`app-frame booth-frame${clocked ? " clocked" : ""}`} ref={frame}>
+    <div className={`app-frame booth-frame${clocked ? " clocked" : ""}${alarmed ? " alarmed" : ""}`} ref={frame}>
       {children(keyboard)}
     </div>
   );
@@ -426,7 +426,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
           <div className="root">
-            <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null}>
+            <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null} alarmed={(wanted !== null && loose > 0) || rung.tray.length + rung.queued > 0}>
               {(keyboard) => (
                 <>
               <NowCard

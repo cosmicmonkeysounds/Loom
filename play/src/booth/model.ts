@@ -709,7 +709,9 @@ export function loudLine(g: PrimeGuest, ctx: Pick<GuestListCtx, "wanted" | "me">
 /** Every tab's order: marked-unclaimed, marked-mine, marked-others', then by name. */
 export function guestSort<T extends PrimeGuest>(list: readonly T[], ctx: Pick<GuestListCtx, "wanted" | "me">): T[] {
   const rank = (g: PrimeGuest) => {
-    const w = ctx.wanted?.find((x) => x.id === g.id && !x.captured);
+    // An older server sends no board: a guest the story flags Marked still leads.
+    if (ctx.wanted == null) return !g.captured && flagOn(g, /^marked\b/iu) ? 0 : 3;
+    const w = ctx.wanted.find((x) => x.id === g.id && !x.captured);
     if (w === undefined) return 3;
     return w.claimedBy === null ? 0 : w.claimedBy === ctx.me ? 1 : 2;
   };

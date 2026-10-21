@@ -302,8 +302,10 @@ function Body({ spec, compact }: { spec: PopOutSpec; compact: boolean }) {
       {(spec.rows ?? []).slice(0, 4).map((g) => (
         <div key={g.id} className="bpop-row">
           <PersonAvatar name={g.name} size="sm" />
-          <span className="bpop-row-name">{g.name}</span>
-          {g.location != null && <span className="bpop-place">📍 {g.location}</span>}
+          <span className="bpop-row-text">
+            <span className="bpop-row-name">{g.name}</span>
+            {g.location != null && <span className="bpop-row-place">📍 {g.location}</span>}
+          </span>
         </div>
       ))}
       <div className="bpop-actions">
