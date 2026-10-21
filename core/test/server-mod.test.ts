@@ -783,7 +783,11 @@ describe("being anyone — the mod reads a participant's own projection", () => 
     expect(asPrime.status).toBe(200);
     // (plus the booth's own `answered` cards list — empty here, and the
     // server's explicit `host: false`, C4)
-    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...primeView(rt.liveSim!, "Recruiter"), host: false, answered: [], avatars: {} })));
+    // (and each guest's `lastSeen`, wave 18 A1 — the runtime's, a number)
+    const bare = primeView(rt.liveSim!, "Recruiter");
+    const seen = new Map((asPrime.json["guests"] as Array<{ id: string; lastSeen: unknown }>).map((g) => [g.id, g.lastSeen]));
+    for (const v of seen.values()) expect(typeof v).toBe("number");
+    expect(asPrime.json).toEqual(JSON.parse(JSON.stringify({ ...bare, guests: bare.guests.map((g) => ({ ...g, lastSeen: seen.get(g.id) })), host: false, answered: [], avatars: {} })));
     expect((await get(rt, "/api/state?role=guest&as=nobody")).status).toBe(404);
     expect((await get(rt, "/api/state?role=prime&as=Nobody")).status).toBe(404);
     expect((await get(rt, `/api/state?role=guest&as=${id}`, false)).status).toBe(403);

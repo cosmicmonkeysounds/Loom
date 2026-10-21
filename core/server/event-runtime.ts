@@ -19,10 +19,10 @@ import { fileURLToPath } from "node:url";
 
 import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVariantsResponse } from "@loom/house";
 
-import { asNumber } from "../src/runtime/expr.ts";
+import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
 import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
-import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
+import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
@@ -34,7 +34,7 @@ import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./r
 import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
 import { NOT_FROM_A_BOOTH, isHostRoute, isModSurface, type HostRouteContext } from "./routes/host.ts";
-import { pressLines, type PressLines } from "./routes/press-lines.ts";
+import { cueLines, pressLines, type PressLines } from "./routes/press-lines.ts";
 import { TtsProxy, ttsConfigFromEnv } from "./tts.ts";
 import { AvatarBook, ImageCache, avatarKey, avatarRefUrl } from "./avatars.ts";
 import { WikiClient, isAntivirusSoftware } from "./wiki.ts";
@@ -57,6 +57,7 @@ import { foldName } from "../src/parser/names.ts";
 import { cueSheetView } from "../src/cue-sheet.ts";
 import { showClock, clockChange, CLOCK_SET_TO, CLOCK_SET_AT, type ShowClock } from "../src/show-clock.ts";
 import { hostView, type HostView } from "../src/host-board.ts";
+import { StoryMarks, huntsFor } from "./wanted.ts";
 import { canonicalPlaceArgs } from "./place-args.ts";
 import { CHECKIN_ROUTE, GuestCheckin } from "./routes/k13.ts";
 import { LOGOUT_ROUTE, Pairing, RESUME_ROUTE } from "./routes/n02.ts";
@@ -301,6 +302,16 @@ export const REINSTALLATION_BEGUN = "reinstallation begun";
 
 /** `/api/mod/spatial/begin`'s 409 for a program neither captured nor marked. */
 export const NOT_MARKED = "not marked for reinstallation";
+
+/**
+ * May program `id` enter the reinstallation (C7)? The story's header
+ * `reinstall: <cond>`, evaluated with the program bound, when it writes one;
+ * else captured or restricted (the wave 16 rule).
+ */
+export function eligibleFor(sim: Sim, id: string): boolean {
+  const cond = sim.model.reinstall;
+  return cond !== null ? sim.holds(cond, id, id) : sim.isCaptured(id) || sim.isRestricted(id);
+}
 
 /** The show's house map file: `LOOM_HOUSE`, else the example's `house.json`. */
 export function defaultHouseFile(): string {
@@ -776,7 +787,12 @@ export class EventRuntime {
       eventId: init.eventId,
       ...(init.now !== undefined ? { now: init.now } : {}),
       // The speedrun survives a server restart mid-show (SW-RE-14).
-      onRun: (run) => this.store.appendRun(run),
+      // C7: a find after the night ended is a party favour, tagged at write
+      // time so the recap's duck board and the speedrun award leave it out.
+      onRun: (run) => {
+        if (this.nightEnded()) run.after = true;
+        this.store.appendRun(run);
+      },
       // The shared King's hit points live in the story world (C2: the
       // prop's `health` path, journaled, restart-safe).
       kingHp: (path) => {
@@ -1069,8 +1085,10 @@ export class EventRuntime {
    *  answered, with everyone's profile pictures. */
   private primeViewFor(character: string, online: ReadonlySet<string>, avatars = this.avatarMap(), host = false): PrimeView {
     const queue = this.wallet?.queueFor(character) ?? null;
+    const base = primeView(this.sim, character, online, { host });
     return {
-      ...primeView(this.sim, character, online, { host }),
+      ...base,
+      ...this.boothExtras(base, character, host),
       // C4: on every path, `false` too — play takes the latest view's host
       // (`view.host ?? auth.host`), so a reload that takes the part's
       // `admin: true` away must say so, not leave it out.
@@ -1083,6 +1101,66 @@ export class EventRuntime {
       ...(this.phase !== "open" ? { paused: true as const } : {}),
       ...this.showClockField(),
     };
+  }
+
+  /** Wave 18 additions to a booth's view the bare sim cannot know: each
+   *  guest's `lastSeen` (A1), a `target:`'s picture (C5), the Wanted board
+   *  for a hunting booth or a host (C6), the caller claim on `calls` (C8). */
+  private boothExtras(base: PrimeView, character: string, host: boolean): Partial<PrimeView> {
+    const sim = this.sim;
+    if (sim === null) return {};
+    const out: Partial<PrimeView> = {
+      guests: base.guests.map((g) => ({ ...g, lastSeen: this.lastSeen.get(g.id) ?? null })),
+    };
+    if (base.objectives?.some((o) => o.target !== undefined)) {
+      out.objectives = base.objectives.map((o) => {
+        if (o.target === undefined) return o;
+        const avatar = this.avatars.keyFor(o.target.name);
+        return avatar !== null ? { ...o, target: { ...o.target, avatar } } : o;
+      });
+    }
+    if (sim.model.wanted !== null && (host || huntsFor(sim, character))) out.wanted = this.wantedBoard();
+    if (base.calls !== undefined) out.calls = { ...base.calls, caller: this.cueCaller() };
+    return out;
+  }
+
+  /** Has the night ended (C7: `Night.ended` read true at some point)? */
+  private nightEnded(): boolean {
+    this.marks.observe(this.sim);
+    if (this.marks.endedAt() !== null) return true;
+    const v = this.sim?.world.peek("Night.ended");
+    return v != null && truthy(v);
+  }
+
+  /** Who claimed to be calling the show (C8): a name, when, and the token
+   *  that claimed it (null for an author session). Memory only. */
+  private caller: { name: string; at: number; token: string | null } | null = null;
+  /** The token of the mod / booth request being handled (C8's claim). */
+  private actingToken: string | undefined;
+
+  /** The caller claim now (C8), dropped once the token that made it no
+   *  longer holds a session (Release, Sign out, Go live). */
+  private cueCaller(): { name: string; at: number } | null {
+    const c = this.caller;
+    if (c === null) return null;
+    if (c.token !== null && !this.sessions.has(c.token)) {
+      this.caller = null;
+      return null;
+    }
+    return { name: c.name, at: c.at };
+  }
+
+  /** `view.cues` with the caller claim now (C8): absent when nobody claims it. */
+  private withCaller<T extends { cues?: { caller?: unknown } }>(view: T): T {
+    if (view.cues === undefined) return view;
+    const caller = this.cueCaller();
+    const { caller: _old, ...cues } = view.cues;
+    return { ...view, cues: caller !== null ? { ...cues, caller } : cues } as T;
+  }
+
+  /** The Wanted board now (C6). */
+  private wantedBoard(): NonNullable<PrimeView["wanted"]> {
+    return this.sim === null ? [] : this.marks.board(this.sim, this.lastSeen, (name) => this.avatars.keyFor(name));
   }
 
   /** `{showClock}` for a view (wave 13 K2), or nothing when the story set no
@@ -1098,8 +1176,11 @@ export class EventRuntime {
 
   /** The operator's god view, with everyone's profile pictures. */
   private modViewNow(): ModView {
+    const base = modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim);
     const view: ModView = {
-      ...modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim),
+      ...base,
+      // C8: the caller claim rides every cue-sheet view (lean, host, ModView).
+      ...this.withCaller(base),
       avatars: this.avatarMap(),
       ...(this.wallet !== null ? { wallet: this.wallet.modView() } : {}),
       // A restart with the doors shut leaves the run `paused` with its
@@ -1156,7 +1237,7 @@ export class EventRuntime {
     // Reused only inside the window, whether or not the log moved: a quiet
     // log still moves the clocks the panel shows (a terminal's silence, an
     // agent's oldest wait, who was seen when).
-    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.withShowClock(hit.view);
+    if (hit !== null && hit.phase === this.phase && hit.presses === presses && hit.writes === this.hostWrites && now - hit.at < this.hostViewMs) return this.withCaller(this.withShowClock(hit.view));
     const waiting = new Map<string, Array<{ guest: string; name: string; since: number; text: string }>>();
     for (const r of this.agents.pending) {
       if (r.speaker.kind !== "guest" || r.thread.channel !== `dm:${r.character}`) continue;
@@ -1171,7 +1252,9 @@ export class EventRuntime {
     // it is this log's and under a second old.
     const flags = sim === null ? new Map<string, ReturnType<typeof guestFlags>>() : allSnapshotFlags(sim);
     const last = this.modViewLast;
-    const mod = last !== null && last.len === len && last.phase === this.phase && now - last.at < 1000 ? last.view : this.modViewNow();
+    const reused = last !== null && last.len === len && last.phase === this.phase && now - last.at < 1000 ? last.view : this.modViewNow();
+    // C8: the caller claim is read now (a reused mod view may predate it).
+    const mod = this.withCaller(reused);
     this.spatialHouse();
     const king = this.spatial.king();
     const terms = screenTerminals(this.screens);
@@ -1184,10 +1267,12 @@ export class EventRuntime {
       flags,
       staffRooms: model === null ? [] : staffRoomChannels(model),
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),
+      // C6: hosts see the Wanted board too.
+      ...(sim !== null && sim.model.wanted !== null ? { wanted: this.wantedBoard() } : {}),
       now,
     });
     this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };
-    return this.withShowClock(view);
+    return this.withCaller(this.withShowClock(view));
   }
 
   /** A cached host view with the show clock read now (wave 13 K2): the
@@ -2952,16 +3037,24 @@ export class EventRuntime {
           return true;
         }
         const players = sortCandidates(
-          [...sim.persons.values()].map((p) => ({
-            id: p.id,
-            name: p.name,
-            captured: sim.isCaptured(p.id),
-            restricted: sim.isRestricted(p.id),
+          [...sim.persons.values()].map((p) => {
+            const captured = sim.isCaptured(p.id);
+            const restricted = sim.isRestricted(p.id);
             // What `/api/mod/spatial/begin` lets in (without `force`).
-            eligible: sim.isCaptured(p.id) || sim.isRestricted(p.id),
-            location: sim.locationOf(p.id),
-            avatar: this.avatars.keyFor(p.name),
-          })),
+            const eligible = eligibleFor(sim, p.id);
+            return {
+              id: p.id,
+              name: p.name,
+              captured,
+              restricted,
+              eligible,
+              // C7: eligible by the story's `reinstall:` alone (neither
+              // captured nor restricted) — the tablet / VR label "marked".
+              marked: eligible && !captured && !restricted,
+              location: sim.locationOf(p.id),
+              avatar: this.avatars.keyFor(p.name),
+            };
+          }),
         );
         sendJson(res, 200, { players });
         return true;
@@ -3189,11 +3282,13 @@ export class EventRuntime {
    *  a mod route the journal line also carries who did it (`by`). */
   private commit(m: Exclude<Mutation, "wallet">, ...args: unknown[]): SimEvent[] {
     this.flushTick();
+    this.marks.observe(this.sim); // C6: a tick's changes, stamped as a replay would
     this.store.appendCommand(m, args, this.actingBy);
     this.factsWatch.mark(this.sim!, factsBy(m, args, this.actingBy), factsRuling(m, args, this.actingBy));
     const out = (this.sim![m] as (...a: unknown[]) => SimEvent[])(...args);
     if (m === "signal") notePress(this.sim!, out, this.actingBy); // the cue sheet judges a press by its own events (and names who made it)
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
+    this.marks.observe(this.sim);
     return out;
   }
 
@@ -3202,10 +3297,12 @@ export class EventRuntime {
    *  inside, so a replay of the line lands on the same state. */
   private commitWallet(op: WalletOp): SimEvent[] {
     this.flushTick();
+    this.marks.observe(this.sim);
     this.store.appendCommand("wallet", [op], this.actingBy);
     if (this.sim !== null) this.factsWatch.mark(this.sim, this.actingBy ?? null);
     const out = this.wallet!.apply(op);
     this.spatial.syncKing();
+    this.marks.observe(this.sim);
     return out;
   }
 
@@ -3438,6 +3535,10 @@ export class EventRuntime {
   /** What the chat composer asks the runtime (C3: a readout's guest picture). */
   private readonly composeOpts: ComposeOptions = { avatarOf: (name) => this.avatars.keyFor(name) };
 
+  /** Wave 18 (C6, C7): when each wanted guest was marked / captured, and
+   *  when the night first ended — rebuilt by every replay. */
+  private readonly marks = new StoryMarks();
+
   /** The names on a join screen's picker: the story's pool of programs
    *  for a guest, its parts for a performer — each with its picture,
    *  whether someone already holds it, and whether it is a reserved program
@@ -3589,6 +3690,7 @@ export class EventRuntime {
     this.persistGuests();
     this.pairing.clear();
     this.personaOwners.clear();
+    this.caller = null; // C8: the caller claim is memory only, cut by every restart
     // Operator play-as sessions follow the sessions they stand in for: a
     // guest's dies with every restart, a booth's only when the show goes live.
     this.endImpersonations((imp) => imp.role === "guest" || kind === "golive");
@@ -3706,6 +3808,8 @@ export class EventRuntime {
     // story with no `start:` paused before its first tick journals neither.
     this.entryPlayed = meta.phase === "open" || meta.opened === true;
     for (const e of this.store.readJournal()) {
+      // C6: each line's changes, stamped at the story clock they happened at.
+      this.marks.observe(this.sim);
       if (e.m === "tick" || (e.m === "fireBeat" && entry !== null && e.a[0] === entry)) this.entryPlayed = true;
       if (e.m === "wallet") {
         // A wallet op: the book re-applies it (balances, grants, signals,
@@ -3759,6 +3863,7 @@ export class EventRuntime {
         }
       }
     }
+    this.marks.observe(this.sim);
     this.chat.loadHidden(this.store.loadHidden());
     this.spatial.restoreRuns(this.store.loadRuns().map(parseDuckRun).filter((r): r is DuckRun => r !== null));
     for (const m of this.chat.all()) if (this.isExpired(m)) this.notifiedExpired.add(m.seq);
@@ -4360,7 +4465,12 @@ export class EventRuntime {
         else sendJson(res, 200, { ok: true, resynced: done === "resynced" });
         return true;
       }
-      return this.handleMod(res, path, body, by, hostOnly);
+      this.actingToken = caller;
+      try {
+        return this.handleMod(res, path, body, by, hostOnly);
+      } finally {
+        this.actingToken = undefined;
+      }
     }
 
     return false;
@@ -4438,6 +4548,13 @@ export class EventRuntime {
     let changed = false;
     for (const [token, session] of this.sessions.entries()) {
       if (session.character === null) continue;
+      // C8: the caller capability follows the story's `by:` lines too.
+      const calls = isCaller(model, session.character);
+      if (calls !== (session.caller === true)) {
+        if (calls) this.sessions.grant(token, { caller: true });
+        else this.sessions.revokeCaller(token);
+        changed = true;
+      }
       const want = model.characters.get(session.character)?.admin === true;
       if (want === (session.host === true)) continue;
       if (want) this.sessions.grant(token, { host: true });
@@ -5037,8 +5154,11 @@ export class EventRuntime {
         // switching to any other part takes host away (admin is kept).
         if (model.characters.get(character)?.admin === true) this.sessions.grant(token, { host: true });
         else this.sessions.revokeHost(token);
+        // C8: a part some admin cue's `by:` names calls those cues.
+        if (isCaller(model, character)) this.sessions.grant(token, { caller: true });
+        else this.sessions.revokeCaller(token);
         this.persistSessions();
-        sendJson(res, 200, { token, character, admin: this.sessions.canModerate(token), host: this.sessions.canHost(token) });
+        sendJson(res, 200, { token, character, admin: this.sessions.canModerate(token), host: this.sessions.canHost(token), caller: this.sessions.canCall(token) });
         return true;
       }
 
@@ -5182,7 +5302,10 @@ export class EventRuntime {
           sendJson(res, 404, { error: "no such interaction for performers" });
           return true;
         }
-        if (!this.sim!.persons.has(guest)) {
+        // C4: a global button (some listener binds no subject) may be pressed
+        // with no guest — `signal(name, null, null, character)`.
+        const global = guest === "" && !interactionSubjectOnly(this.sim!, def.id);
+        if (!global && !this.sim!.persons.has(guest)) {
           sendJson(res, 404, { error: "unknown guest" });
           return true;
         }
@@ -5206,10 +5329,16 @@ export class EventRuntime {
           sendJson(res, 403, { error: refusal });
           return true;
         }
-        const pressed = this.commit("signal", name, guest, null, character);
+        const pressed = this.commit("signal", name, global ? null : guest, null, character);
         // D1: the cue sheet's own judgement (`pressRefused`) — the story
         // turned the press down, at most saying why in a staff room.
         const refused = pressRefused(this.sim!, pressed);
+        if (global) {
+          const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
+          const lines = pressLines(this.fanout(pressed), new Set(staffRoomChannels(this.sim!.model)), character, "");
+          sendJson(res, 200, { ok: true, replies, ...lines, ...(refused ? { refused: true } : {}) });
+          return true;
+        }
         // Wave 13: the story's replies to this booth, and its fresh card.
         const replies = character === null ? [] : pressed.flatMap((e) => (e.type === "respond" && e.to === character ? [readoutText(e.text).text] : []));
         // C1: the staff-room lines (a refusal's reason) and what the
@@ -5218,6 +5347,27 @@ export class EventRuntime {
         const card = character === null ? null : guestCardView(this.sim!, this.chat.all(), character, guest, this.canHostToken(token));
         sendJson(res, 200, { ok: true, guest: rosterRow(this.sim!, guest), replies, ...lines, ...(refused ? { refused: true } : {}), ...(card !== null ? { card } : {}) });
         return true;
+      }
+      case "/api/prime/cue": {
+        // C8: a caller booth (Clippy) presses a `who: admin` cue its part is
+        // named on (`by:`) — the cue sheet's own path (`/api/mod/signal`:
+        // 409 `moved` / `doorsClosed`, `refused`), journaled `Booth · <part>`.
+        const token = tokenOf(req, body);
+        const character = this.characterOf(token);
+        const name = str(body, "name");
+        const model = this.sim?.model ?? this.declaredModel;
+        const def = model?.interactions.get(name);
+        if (character === null || !this.sessions.canCall(token) || model === null || def === undefined || def.who !== "admin" || !callsCue(model, character, def.id)) {
+          sendJson(res, 404, { error: "no such cue for this booth" });
+          return true;
+        }
+        const { token: _t, actor: _a, label: _l, ...press } = body;
+        this.actingToken = token;
+        try {
+          return this.handleMod(res, "/api/mod/signal", press, `Booth · ${character}`);
+        } finally {
+          this.actingToken = undefined;
+        }
       }
       case "/api/prime/widget": {
         // A performer answered a card the story showed their character
@@ -5560,7 +5710,7 @@ export class EventRuntime {
         // marked = restricted) may enter, checked before `reinstallation
         // begun` fires so an unmarked guest never triggers the story's
         // capture. `force: true` is a director's override; no device sends it.
-        if (body["force"] !== true && !sim.isCaptured(guest) && !sim.isRestricted(guest)) {
+        if (body["force"] !== true && !eligibleFor(sim, guest)) {
           sendJson(res, 409, { error: NOT_MARKED });
           return true;
         }
@@ -5909,11 +6059,22 @@ export class EventRuntime {
         // `refused`: the story turned the press down (its `# hosts` line says
         // why) — the cue sheet's own judgement, so a phone needn't say "fired".
         const refused = pressRefused(this.sim, press);
-        this.fanout(press);
+        // C8: what the press said (its lines) and the staff rooms' lines.
+        const lines = cueLines(this.fanout(press), new Set(staffRoomChannels(this.sim.model)));
         // `presses`: the count after this press — the screen holds its lock
         // until its own snapshot shows it, so its next arm binds past it.
         const presses = cueState(this.sim).presses;
-        sendJson(res, 200, refused ? { ok: true, refused: true, presses } : { ok: true, presses });
+        sendJson(res, 200, refused ? { ok: true, refused: true, presses, ...lines } : { ok: true, presses, ...lines });
+        return true;
+      }
+      case "/api/mod/caller": {
+        // C8: "I'm calling the show" — a visible claim, never a lock. `on:
+        // false` takes back your own claim (another's stands).
+        const token = this.actingToken ?? null;
+        const name = by.startsWith("Booth · ") ? by.slice("Booth · ".length) : by;
+        if (body["on"] === true) this.caller = { name, at: this.clock(), token };
+        else if (this.caller !== null && this.caller.name === name) this.caller = null;
+        sendJson(res, 200, { ok: true, caller: this.cueCaller() });
         return true;
       }
       case "/api/mod/broadcast": {
