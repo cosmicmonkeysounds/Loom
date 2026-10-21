@@ -409,10 +409,10 @@ describe("a host's crew controls (M3)", () => {
 const MINI = readFileSync(new URL("./fixtures/w18b-mini/main.loom", import.meta.url), "utf8");
 const MINI_FACTS = readFileSync(new URL("./fixtures/w18b-mini/facts.json", import.meta.url), "utf8");
 
-function freshMini(dir?: string): { rt: EventRuntime; dir: string } {
+function freshMini(dir?: string, source = MINI): { rt: EventRuntime; dir: string } {
   const d = dir ?? mkdtempSync(join(tmpdir(), "loom-factions-"));
   if (dir === undefined) dirs.push(d);
-  const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "mini", scenarioSource: MINI, joinBase: () => "http://localhost", now: () => clock, facts: MINI_FACTS });
+  const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "mini", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock, facts: MINI_FACTS });
   return { rt, dir: d };
 }
 const cue = (rt: EventRuntime, name: string, subject = "") => post(rt, "/api/mod/signal", { name, ...(subject !== "" ? { subject } : {}) }, true);
@@ -509,6 +509,61 @@ describe("faction mode (wave 18b)", () => {
     const back = freshMini(dir).rt;
     back.restore();
     expect(chat(back).map((m) => `${m.seq}|${m.channel}|${m.text}`)).toEqual(live);
+  });
+
+  it("a crew line a story timer raises posts at the tick, and one raised mid-chain right after its commit, as a restart posts them", async () => {
+    // The mini story plus a story clock, a watcher that walks a program to
+    // The Way Out two ticks after a cue, and a filing that walks them there.
+    const source =
+      MINI.replace("  settle_gen: 0 to 99 = 0\n\nCHARACTER Kernel", "  settle_gen: 0 to 99 = 0\n  ticks: 0 to 99999 = 0\n  every 1s:\n    set self.ticks += 1\n\nCHARACTER Kernel")
+        .replace("  settle_seen: 0 to 99 = 0\n", "  settle_seen: 0 to 99 = 0\n  drift_at: 0 to 99999 = 0\n  drifts: bool = false\n")
+        .replace("  when answer answered for program:\n", "  when self.drift_at > 0 and Night.ticks >= self.drift_at:\n    set self.drift_at = 0\n    add self to The Way Out\n  when answer answered for program:\n")
+        .replace("  when fact answered for program:\n", "  when fact answered for program:\n    if program.drifts == true:\n      add program to The Way Out\n") +
+      `
+INTERACTION drift_later
+  who: admin
+  sequence: false
+INTERACTION drift_on_filing
+  who: admin
+  sequence: false
+
+when drift_later for program:
+  set program.drift_at = Night.ticks + 2
+
+when drift_on_filing for program:
+  set program.drifts = true
+`;
+    const { rt, dir } = freshMini(undefined, source);
+    rt.openDoors();
+    const [a, , c, d] = [await guest(rt, "Ada"), await guest(rt, "Bob"), await guest(rt, "Cy"), await guest(rt, "Dee")];
+    await cue(rt, "clear_everyone");
+    await cue(rt, "truther_download");
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" });
+    await post(rt, "/api/guest/crew/join", { token: d.token, crew: "crew-1" });
+    // The timer: Cy leaves on a tick, with no commit after it.
+    await cue(rt, "drift_later", c.id);
+    for (let i = 0; i < 3; i++) rt.tickOnce(1000);
+    expect(chat(rt).at(-1)?.text).toBe("◇ Cy left Night Shift.");
+    // Mid-chain: Dee's plain miss is filed under review (a worker voices the
+    // judge), so the story's line, the crew line and the server's own
+    // `# hosts` line come out of one fanout of four commits.
+    (rt as unknown as { agents: { attach(w: unknown): void } }).agents.attach({ id: "w1", name: "laptop", characters: new Set(["Oracle"]), send() {} });
+    await cue(rt, "drift_on_filing", d.id);
+    await cue(rt, "deal_the_fact");
+    const card = rt.chatHistoryFor(d.id).filter((m) => m.kind === "widget" && m.widget?.kind === "fact").at(-1)!;
+    expect((await post(rt, "/api/guest/widget", { token: d.token, seq: card.seq, result: { question: "H1", answer: "twelve", confidence: 80 } })).status).toBe(200);
+    const texts = chat(rt).map((m) => m.text);
+    const left = texts.indexOf("◇ Dee left Night Shift.");
+    const asked = texts.findIndex((t) => t.startsWith("📝 Not an exact match: Dee's"));
+    expect(left).toBeGreaterThan(-1);
+    expect(asked).toBeGreaterThan(left);
+    const live = chat(rt).map((m) => `${m.seq}|${m.channel}|${m.text}`);
+    rt.dispose();
+    const back = freshMini(dir, source).rt;
+    back.restore();
+    expect(chat(back).map((m) => `${m.seq}|${m.channel}|${m.text}`)).toEqual(live);
+    back.dispose();
   });
 
   it("outside faction mode a crew takes members by invitation only", async () => {

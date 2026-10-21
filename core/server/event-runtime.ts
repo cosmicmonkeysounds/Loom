@@ -736,9 +736,14 @@ export class EventRuntime {
   /** `runPicks` re-entrancy: a pick's own signal never draws again. */
   private pickDepth = 0;
   /** Wave 18b: the crew lines drafted right after a commit (`draftCrewNotices`),
-   *  posted by the next `fanout` after its own events — the order a replay
-   *  appends them in. */
-  private crewPending: DraftMessage[] = [];
+   *  keyed by that commit's last event: `fanout` posts them right after it,
+   *  the order a replay appends them in (after the commit's journal line). */
+  private readonly crewAfter = new Map<SimEvent, DraftMessage[]>();
+  /** …and those of a commit that logged nothing before any other since the
+   *  last `fanout` (posted ahead of its events). */
+  private crewHead: DraftMessage[] = [];
+  /** The last event of the newest commit since the last `fanout`. */
+  private commitTail: SimEvent | null = null;
   /** A drafted notice answered an invitation: `fanout` marks the cards. */
   private crewAnswered = false;
   // w18 crews — crews + recruiting (routes/crews.ts): one journaled `crew` op per change.
@@ -1698,18 +1703,43 @@ export class EventRuntime {
       // in-editor simulator can mirror the whole run.
       for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "sim", e);
     }
-    const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, events, this.composeOpts);
-    // A director speaking *as* a participant: the room sees the participant's
-    // name, the mod feed additionally sees who really typed it.
-    if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
-    const appended = this.chat.append(drafts);
-    for (const m of appended) this.deliverMessage(m);
-    // Wave 18b: the crew lines the commits drafted, after their events.
-    if (this.crewPending.length > 0) {
-      const crew = this.crewPending;
-      this.crewPending = [];
-      for (const m of this.chat.append(crew)) this.deliverMessage(m);
+    const post = (drafts: DraftMessage[]) => {
+      const got = this.chat.append(drafts);
+      for (const m of got) this.deliverMessage(m);
+      return got;
+    };
+    const compose = (batch: SimEvent[]) => {
+      const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, batch, this.composeOpts);
+      // A director speaking *as* a participant: the room sees the participant's
+      // name, the mod feed additionally sees who really typed it.
+      if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
+      return post(drafts);
+    };
+    // Wave 18b: the crew lines each commit drafted go right after that
+    // commit's events (a replay appends them after its journal line), so
+    // the events are composed in runs that end at such a commit.
+    if (this.crewHead.length > 0) {
+      const head = this.crewHead;
+      this.crewHead = [];
+      post(head);
     }
+    const appended: ChatMessage[] = [];
+    let from = 0;
+    if (this.crewAfter.size > 0) {
+      for (let i = 0; i < events.length; i++) {
+        const crew = this.crewAfter.get(events[i]!);
+        if (crew === undefined) continue;
+        this.crewAfter.delete(events[i]!);
+        appended.push(...compose(events.slice(from, i + 1)));
+        post(crew);
+        from = i + 1;
+      }
+    }
+    appended.push(...compose(from === 0 ? events : events.slice(from)));
+    // A commit whose events never reached a fanout: its lines go now.
+    for (const crew of this.crewAfter.values()) post(crew);
+    this.crewAfter.clear();
+    this.commitTail = null;
     if (this.crewAnswered && this.sim !== null) {
       this.crewAnswered = false;
       for (const k of answeredInviteCards(this.chat.all(), this.sim.crews)) this.answeredWidgets.add(k);
@@ -3444,21 +3474,35 @@ export class EventRuntime {
     if (m === "signal") notePress(this.sim!, out, this.actingBy); // the cue sheet judges a press by its own events (and names who made it)
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
     this.marks.observe(this.sim);
-    this.draftCrewNotices();
+    this.draftCrewNotices(out);
     return out;
   }
 
-  /** Wave 18b: draft the crew notices the last mutation raised — a crew
-   *  op's, or (faction mode) a `join` / `defect` / story `add` that took
-   *  someone out of a crew — at once, as `restore` drafts them after each
-   *  journal line; the next `fanout` posts them. */
-  private draftCrewNotices(): void {
+  /** Wave 18b: draft the crew notices the last mutation (or story tick)
+   *  raised — a crew op's, or (faction mode) a `join` / `defect` / story
+   *  `add` that took someone out of a crew — at once, as `restore` drafts
+   *  them after each journal line; `fanout` posts them right after `out`'s
+   *  last event (after the previous commit's, when `out` is empty). */
+  private draftCrewNotices(out: readonly SimEvent[]): void {
     const sim = this.sim;
     if (sim === null) return;
+    if (out.length > 0) this.commitTail = out[out.length - 1]!;
     const notices = sim.crews.takeNotices();
     if (notices.length === 0) return;
-    this.crewPending.push(...crewDrafts(sim, notices));
+    const drafts = crewDrafts(sim, notices);
+    const tail = this.commitTail;
+    if (tail === null) this.crewHead.push(...drafts);
+    else {
+      const list = this.crewAfter.get(tail);
+      if (list === undefined) this.crewAfter.set(tail, drafts);
+      else list.push(...drafts);
+    }
     if (notices.some((n) => n.kind === "answered")) this.crewAnswered = true;
+  }
+
+  /** Crew lines drafted and not yet posted (`draftCrewNotices`). */
+  private get crewWaiting(): boolean {
+    return this.crewHead.length > 0 || this.crewAfter.size > 0;
   }
 
   /** Apply one wallet op *and* journal it as a single `wallet` line — the
@@ -3472,7 +3516,7 @@ export class EventRuntime {
     const out = this.wallet!.apply(op);
     this.spatial.syncKing();
     this.marks.observe(this.sim);
-    this.draftCrewNotices();
+    this.draftCrewNotices(out);
     return out;
   }
 
@@ -3796,7 +3840,10 @@ export class EventRuntime {
     this.factsWatch.mark(this.sim, null);
     const evs = this.sim.tick(ms);
     this.pendingTickMs += ms;
-    if (evs.length > 0) {
+    // A story timer's crew lines (a faction-mode `add` in an `every` rule or
+    // a watcher) post now, after the tick line, as a replay posts them.
+    this.draftCrewNotices(evs);
+    if (evs.length > 0 || this.crewWaiting) {
       this.flushTick();
       // C6 (m2): a mark a story timer made (the summons' late watcher) is
       // stamped now, at the tick line's end, as a replay stamps it — not at
