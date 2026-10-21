@@ -38,8 +38,8 @@ describe("the cutscene slot", () => {
 });
 
 describe("the registry", () => {
-  it("lists the four act files, with no id used twice", () => {
-    expect(ACTS.map((a) => a.file)).toEqual(["act1", "act2", "act3", "moments"]);
+  it("lists the four act files and the house's wins, with no id used twice", () => {
+    expect(ACTS.map((a) => a.file)).toEqual(["act1", "act2", "act3", "moments", "house"]);
     expect(duplicateIds(SCENES)).toEqual([]);
     expect(duplicateIds([{ id: "a", when: [], ms: 1 }, { id: "a", when: [], ms: 2 }, { id: "b", when: [], ms: 3 }])).toEqual(["a"]);
   });
