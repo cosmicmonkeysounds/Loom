@@ -608,3 +608,35 @@ def test_on_the_real_rig_the_router_takes_every_qlab_sound_but_the_chime(tmp_pat
     left = [r for r in after if r.on_directive == "sfx"]
     assert [r.match.get("target") for r in left] == ["announce_chime"] and left[0].osc is None
     assert len(before) - len(after) == len(sounds) - 1
+
+
+def test_run_end_to_end_with_a_fake_server(tmp_path):
+    class FeedMod(FakeMod):
+        def feed_url(self, client_id="stagehand"):
+            assert client_id == "stagehand-audio"
+            return "fake://feed"
+
+        async def stream(self, url, on_open=None):
+            on_open()
+            await asyncio.sleep(0.05)  # the poll lands first
+            yield "sim", json.dumps({"type": "directive", "verb": "sfx", "args": "zip, rooms: hall", "setting": None})
+            await asyncio.sleep(3600)
+
+    class Ctx:
+        mod = FeedMod([answer("v1")])
+
+    async def go():
+        r = router(tmp_path, play_sounds=True)
+        write_wav(tmp_path / "sounds" / "zip.wav")
+        task = asyncio.ensure_future(r.run(Ctx()))
+        for _ in range(100):
+            await asyncio.sleep(0.01)
+            if r.played:
+                break
+        stream = stream_of(r)
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return r, stream
+
+    r, stream = run(go())
+    assert r.played == 1 and r.house == FIXTURE["house"] and stream.closed
