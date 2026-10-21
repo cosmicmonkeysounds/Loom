@@ -200,3 +200,18 @@ describe("showsNameplate (livetv-2)", () => {
     expect(showsNameplate({ character: { id: "Trabolta", hidden: false, awake: true, online: true } as never })).toBe(true);
   });
 });
+
+describe("a long line's caption follows the chunk being said (wave 18b)", () => {
+  it("over 180 characters a spoken line shows its current chunk; anything else the whole line", async () => {
+    const { CAPTION_CHUNK_OVER, captionText } = await import("../src/Tv.tsx");
+    const long = { seq: 7, mode: "speak" as const, text: `${"Winamp said the bank. ".repeat(12)}` };
+    expect(long.text.length).toBeGreaterThan(CAPTION_CHUNK_OVER);
+    expect(captionText(long, { seq: 7, text: "Winamp said the bank." })).toBe("Winamp said the bank.");
+    // Another line's chunk, or none yet: the whole line.
+    expect(captionText(long, { seq: 6, text: "old" })).toBe(long.text);
+    expect(captionText(long, null)).toBe(long.text);
+    // Short, or not spoken (muted, a song, Sandy's text): always the whole line.
+    expect(captionText({ seq: 7, mode: "speak", text: "Question one." }, { seq: 7, text: "Question" })).toBe("Question one.");
+    expect(captionText({ ...long, mode: "muted" }, { seq: 7, text: "Winamp said the bank." })).toBe(long.text);
+  });
+});

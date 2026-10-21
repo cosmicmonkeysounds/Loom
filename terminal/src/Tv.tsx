@@ -18,6 +18,10 @@
 //! voice. The mute (🔊 button, or the `M` key) is the director's — it lives on
 //! the server (`POST /api/mod/screen/voice`), so it holds across a reload and
 //! the Run page can flip it too (K-29).
+//!
+//! A long line (wave 18b: Trabolta reading everyone's filings, one line
+//! that can run to thousands of characters) is captioned by the sentence
+//! being spoken, not as one wall of text (`captionText`).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { baseOf, type TerminalConfig } from "./config.ts";
@@ -34,6 +38,16 @@ import { onSceneFace } from "./cutscene/face-bus.ts";
 
 /** A caption stays up this long after the last line (ms). */
 const CAPTION_LINGER_MS = 6000;
+/** A spoken line longer than this (characters) is captioned chunk by chunk. */
+export const CAPTION_CHUNK_OVER = 180;
+
+/** What the caption shows for `line`: a spoken line over
+ *  `CAPTION_CHUNK_OVER` shows the chunk being said (`spoken`, when it is
+ *  this line's), anything else the whole line. */
+export function captionText(line: Pick<TvLine, "seq" | "text" | "mode">, spoken: { seq: number; text: string } | null): string {
+  if (line.mode !== "speak" || line.text.length <= CAPTION_CHUNK_OVER) return line.text;
+  return spoken !== null && spoken.seq === line.seq && spoken.text.trim() !== "" ? spoken.text : line.text;
+}
 
 export function Tv({
   config,
@@ -60,6 +74,8 @@ export function Tv({
   const [mood, setMood] = useState<Mood>("idle");
   const [speaking, setSpeaking] = useState(false);
   const [caption, setCaption] = useState<TvLine | null>(null);
+  // The chunk of a line being spoken now (a long line's caption follows it).
+  const [spoken, setSpoken] = useState<{ seq: number; text: string } | null>(null);
   const [awake, setAwake] = useState(() => audioUnlocked());
   const [engineUsed, setEngineUsed] = useState<EngineKind | null>(null);
   const [latched, setLatched] = useState(false);
@@ -94,7 +110,9 @@ export function Tv({
     const q = new SpeechQueue(engines, {
       level: (v) => face.current?.level(v),
       chunk: (id, i) => {
-        setMood(moodOfText(chunks.get(id)?.[i] ?? ""));
+        const text = chunks.get(id)?.[i] ?? "";
+        setMood(moodOfText(text));
+        setSpoken({ seq: id, text });
         setSpeaking(true);
       },
       done: (id) => {
@@ -221,7 +239,7 @@ export function Tv({
       {caption !== null && !attract && (
         <div className={`tv-caption${caption.mode === "speak" ? "" : " text-only"}`} data-mode={caption.mode}>
           {caption.from !== config.character && <span className="tv-caption-who">{caption.from}: </span>}
-          {caption.text}
+          {captionText(caption, spoken)}
         </div>
       )}
       {attract && <div className="tv-attract">{attractScreen}</div>}
