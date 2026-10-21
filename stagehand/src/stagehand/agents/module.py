@@ -9,9 +9,11 @@
                 reset · survey · nudge · set · forget · thinking · effort ·
                 pause · rerun — see `Agents.control`
       judge   {id, character, filing, question: {id, text}, key: {answer, aliases},
-               answer, confidence}
-              — a near-miss 📝 filing for the story's `judge:` character to
-                rule on (wave 11b; `judge.py`); `cancel {id}` drops it too
+               answer, confidence, near}
+              — a 📝 filing that is not an exact match (wave 18b: near: the key
+                form it is close to, null = a plain miss) for the story's
+                `judge:` character to rule on (wave 11b; `judge.py`); the
+                server sends one at a time; `cancel {id}` drops it too
     POST /api/agent/reply {id, worker, say, adjust, acts}
     POST /api/agent/judge {id, worker, same, why}  — 410: a director ruled first / expired
     GET  /api/agent/facts                       — the whole session, for lookups
@@ -1235,7 +1237,7 @@ class Agents:
     # -- the judge (wave 11b) --------------------------------------------------------
 
     async def _judge(self, frame: dict[str, Any]) -> None:
-        """Rule on one near-miss filing: one call on the character's voice
+        """Rule on one filing (a near miss or, wave 18b, a plain miss): one call on the character's voice
         model (`judge.py`), traced as a `judge` thought, answered on
         `/api/agent/judge`. Touches no mind, enters no prompt, keeps
         nothing. Like a request it runs while the mind is paused (the
@@ -1254,7 +1256,7 @@ class Agents:
             messages = judge_messages(frame)
             question = frame.get("question") if isinstance(frame.get("question"), dict) else {}
             qid = str(question.get("id") or "?")
-            log.info("%s ⚖ rules on a near miss for %s: %r", character, qid, str(frame.get("answer") or "")[:80])
+            log.info("%s ⚖ rules on a filing for %s: %r", character, qid, str(frame.get("answer") or "")[:80])
             self.orchestrator.busy(+1)
             self._inflight += 1
             counted = True
