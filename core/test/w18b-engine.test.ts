@@ -253,4 +253,16 @@ CHARACTER Clippy
     expect(sim.model.characters.get("Clippy")!.avatar).toEqual(["File:Clippy-letter.PNG"]);
     expect(sim.model.characters.get("Clippy")).not.toHaveProperty("avatarRules");
   });
+
+  it("every option conditional: the first rule's picture is the default too", () => {
+    const sim = Sim.fromSources(`# Pics
+CHARACTER Trabolta
+  broken: bool = false
+  avatar: picture:trabolta-broken.svg when self.broken == true
+`);
+    expect(sim.model.characters.get("Trabolta")).toMatchObject({
+      avatar: ["picture:trabolta-broken.svg"],
+      avatarRules: [{ ref: "picture:trabolta-broken.svg", when: "self.broken == true" }],
+    });
+  });
 });

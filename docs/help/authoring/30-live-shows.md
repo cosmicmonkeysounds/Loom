@@ -161,7 +161,8 @@ COHORT Early Arrivals
   in **`when <condition>`** (the character as `self`) to swap the picture
   live: `avatar: picture:trabolta.svg | picture:trabolta-broken.svg when
   self.broken == true` shows the second while it holds (the last true
-  `when` wins), else the first.
+  `when` wins), else the first. Give one option with no `when` as the
+  default; when every option has one, the first is the default.
 - **`admin: true`** on a CHARACTER makes it a **host part**: whoever
   signs in as it with the performer code gets the host console in their
   booth — the cue sheet's NEXT bar, judging, announcements, the alert

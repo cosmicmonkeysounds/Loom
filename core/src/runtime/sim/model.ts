@@ -168,7 +168,8 @@ export interface CharDef {
    *  (`picture:trabolta-broken.svg when self.broken == true`), in written
    *  order, `self` bound to the character. The server shows the last one
    *  whose condition holds, else `avatar[0]`. Absent when there are none
-   *  (`avatar` keeps only the unconditional refs). */
+   *  (`avatar` keeps only the unconditional refs, or the first rule's ref
+   *  when every option is conditional). */
   avatarRules?: AvatarRule[];
   /** `wiki: Microsoft Minesweeper` — the Wikipedia article this character
    *  *is*, when its name alone would find the wrong one (the naval
@@ -1159,10 +1160,14 @@ function charDef(id: string, body: CharacterBody): CharDef {
   };
 }
 
-/** `CharDef.avatar` + (when any) `avatarRules`. */
+/** `CharDef.avatar` + (when any) `avatarRules`. When every option is
+ *  conditional, the first rule's picture is also the default (`avatar`
+ *  never empty), so no rule holding never falls back to a scraped
+ *  Wikipedia picture. */
 function avatarFields(value: string | undefined): Pick<CharDef, "avatar" | "avatarRules"> {
   const { refs, rules } = avatarOptionsOf(value);
-  return rules.length > 0 ? { avatar: refs, avatarRules: rules } : { avatar: refs };
+  if (rules.length === 0) return { avatar: refs };
+  return { avatar: refs.length > 0 ? refs : [rules[0]!.ref], avatarRules: rules };
 }
 
 /** Parse `wallet: approver[, every N][, window <dur>][, as <name>][, audit
