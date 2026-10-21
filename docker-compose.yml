@@ -103,6 +103,10 @@ services:
       # LOOM_FACTS is only the fallback (default: facts.json beside the
       # house map). Same rule as LOOM_HOUSE: bind-mount, never blank.
       # LOOM_FACTS: /config/facts.json
+      # The house speakers (wave 17): a project's audio.json is snapshotted at
+      # launch and wins; LOOM_AUDIO is only the fallback (no default file:
+      # unset = an empty 16 / 16 interface). Bind-mount, never blank.
+      # LOOM_AUDIO: /config/audio.json
       # Optional: pin the default event's passcodes (otherwise auto-generated
       # and printed in the logs + saved under the state volume):
       # LOOM_EVENT_PASS: ...
