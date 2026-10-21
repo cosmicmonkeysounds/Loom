@@ -74,6 +74,15 @@ export function scenarioOf(moments: readonly ScreenMoment[], after = 0): { scena
   return { scenario: (i + 1) as 1 | 2 | 3 | 4, at: m.at };
 }
 
+/** Which overshare played and when: its beat off the moments (from `slideAt` − 2 s), else the
+ *  night's `scenario` at the slide's own `at` (the four beats play in the slide's drain). */
+export function scenarioFor(moments: readonly ScreenMoment[], night: Pick<ScreenNight, "scenario">, slideAt: number): { scenario: 1 | 2 | 3 | 4; at: number } | null {
+  const seen = scenarioOf(moments, slideAt > 0 ? slideAt - 2000 : 0);
+  if (seen !== null) return seen;
+  const n = night.scenario;
+  return n === 1 || n === 2 || n === 3 || n === 4 ? { scenario: n, at: slideAt } : null;
+}
+
 /**
  * The round-two number Trabolta says (`beats/pong.loom` Round Two Tally:
  * sixty-one percent with every fact, else twelve), read off the TV's own

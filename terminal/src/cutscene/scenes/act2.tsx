@@ -15,7 +15,7 @@
 //! (`WallCard`) that still move for as long as they are up.
 
 import "./act2.css";
-import { useRef, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { CHART_STEP_MS, chartCallouts, chartLines, chartReveal, slideCopy, y2kClock } from "../../slides.ts";
 import type { ScreenChart } from "../../screen.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
@@ -52,7 +52,7 @@ import {
   type Emitter,
 } from "../kit/index.ts";
 import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, onGrid, recountRideAt, scenarioOf, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -1019,12 +1019,14 @@ const SCENARIO_WINDOWS: Record<1 | 2 | 3 | 4, ReadonlyArray<{ at: number; title:
   ],
 };
 
-/** The scenario, held for the slide once seen (the moments ring may move on). */
+/**
+ * The scenario, held for the slide once seen (the moments ring may move on):
+ * its beat off the moments, else the night's `scenario` (a reload after the
+ * ring has rolled past it) — that beat is in the slide's own drain, so it
+ * started at the slide's `at`.
+ */
 function useScenario(p: SceneProps): { scenario: 1 | 2 | 3 | 4; at: number } | null {
-  const held = useRef<{ seq: number; s: { scenario: 1 | 2 | 3 | 4; at: number } } | null>(null);
-  const found = scenarioOf(p.state.moments, p.at > 0 ? p.at - 2000 : 0);
-  if (found !== null) held.current = { seq: p.seq, s: found };
-  return held.current !== null && held.current.seq === p.seq ? held.current.s : null;
+  return useLatch(p.seq, scenarioFor(p.state.moments, p.night, p.at));
 }
 
 function OvershareTv(p: SceneProps) {

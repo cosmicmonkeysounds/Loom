@@ -160,6 +160,11 @@ describe("act 2's scenes draw", () => {
     const four = draw(over, "tv", later, stateAt(later, { moments: beat("Overshare Four") }));
     expect(four).not.toContain("VIRUS DETECTED");
     expect(four).toContain("continued cooperation");
+    // A reload after the moments ring rolled past the beat: the night's scenario.
+    const reloaded = stateAt(later, { night: { ...EMPTY_NIGHT, scenario: 1 } });
+    expect(draw(over, "tv", later, reloaded)).toContain("VIRUS DETECTED");
+    expect(draw(over, "tv", cursorT, stateAt(cursorT, { night: { ...EMPTY_NIGHT, scenario: 4 } }))).toContain("tv2-cursor-only");
+    expect(draw(over, "wall", cursorT, stateAt(cursorT, { night: { ...EMPTY_NIGHT, scenario: 2 } }))).toContain("tv2-cursor-only");
     // Sandy is named only on the night the story names her.
     expect(draw(over, "tv", OVERSHARE_CURSOR_DELAY + 4500, stateAt(OVERSHARE_CURSOR_DELAY + 4500, { moments: beat("Overshare Two") }))).not.toContain("Sandy");
     q.mockRestore();

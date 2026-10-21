@@ -22,6 +22,7 @@ import {
   liveRemaining,
   onGrid,
   recountRideAt,
+  scenarioFor,
   scenarioOf,
   sinceAnswer,
   latch,
@@ -85,6 +86,14 @@ describe("act 2 timelines — moments a scene reads", () => {
     expect(scenarioOf([m(1, 10, "beat", "Overshare Open"), m(2, 10, "beat", "overshare three")])).toEqual({ scenario: 3, at: 10 });
     expect(scenarioOf([m(1, 10, "beat", "Overshare Open")])).toBeNull();
     expect(scenarioOf([m(1, 10, "beat", "Overshare One")], 11)).toBeNull();
+  });
+
+  it("finds the scenario off its beat, else the night's scenario at the slide's own at", () => {
+    expect(scenarioFor([m(4, 5000, "beat", "Overshare Three")], { scenario: null }, 4000)).toEqual({ scenario: 3, at: 5000 });
+    // The ring rolled past the beat (a reload late in the slide): the night still says.
+    expect(scenarioFor([], { scenario: 1 }, 4000)).toEqual({ scenario: 1, at: 4000 });
+    expect(scenarioFor([], { scenario: null }, 4000)).toBeNull();
+    expect(scenarioFor([], { scenario: 7 }, 4000)).toBeNull();
   });
 
   it("reads the round-two number off the TV's voice lines for that beat only", () => {
