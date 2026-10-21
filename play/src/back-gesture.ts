@@ -30,7 +30,10 @@ export const BACK_MARK = { loomBack: 1 } as const;
 export class BackStack {
   private pushed = false;
   private ignore = 0;
-  constructor(private readonly history: HistoryLike) {}
+  private readonly history: HistoryLike;
+  constructor(history: HistoryLike) {
+    this.history = history;
+  }
 
   sync(away: boolean): void {
     if (away && !this.pushed) {
