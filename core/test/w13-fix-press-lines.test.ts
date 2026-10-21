@@ -33,6 +33,18 @@ describe("C1: a press's and a scan's own lines", () => {
     const got = pressLines([row({ channel: "lobby", kind: "narration", audience: ["g1"], text: "🎱 BINGO! Name the program for each square." })], new Set(), "Clippy", "g1");
     expect(got).toEqual({ toGuest: ["🎱 BINGO! Name the program for each square."] });
     expect(pressLines([], new Set(), "Norton", "g1")).toEqual({});
+    // BN2-FI: a codex card unlocked by the same press never leads; the moment does.
+    const ribbon = pressLines(
+      [
+        row({ channel: "codex", kind: "codex", audience: ["g1"], text: "The card is a big asterisk: two diagonals…" }),
+        row({ channel: "dm:Clippy", from: "Clippy", audience: ["g1"], text: "Nice." }),
+        row({ channel: "dm:Clippy", from: "Clippy", audience: ["g1"], text: "🎀 You won the Bingo Ribbon. Take a bow.", moment: "big" } as Partial<ChatMessage>),
+      ],
+      new Set(),
+      "Clippy",
+      "g1",
+    );
+    expect(ribbon.toGuest).toEqual(["🎀 You won the Bingo Ribbon. Take a bow.", "Nice."]);
   });
 
   it("a refused press answers its # hosts line as staff; an accepted one its reply; a silent one neither", async () => {

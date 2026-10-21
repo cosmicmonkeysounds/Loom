@@ -39,7 +39,11 @@ export interface PressLines {
 export function pressLines(appended: readonly ChatMessage[], staffChannels: ReadonlySet<string>, character: string | null, guest: string): PressLines {
   const staff: string[] = [];
   const said: SaidLine[] = [];
+  // The guest's moment (a `!` / `!!` line, a readout) leads: a codex card
+  // unlocked by the same press is the entry's text, not what they were told
+  // (BN2-FI: 🎀's reply line read the Computer Bingo entry).
   const toGuest: string[] = [];
+  const toldFirst: string[] = [];
   for (const m of appended) {
     if (m.hidden) continue;
     const text = m.text.trim();
@@ -49,11 +53,13 @@ export function pressLines(appended: readonly ChatMessage[], staffChannels: Read
       continue;
     }
     const theirs = guest !== "" && Array.isArray(m.audience) && m.audience.includes(guest);
-    if (theirs && m.kind !== "system" && m.ambient !== true && !toGuest.includes(text) && toGuest.length < 3) toGuest.push(text);
+    const card = m.kind === "codex" || m.kind === "quest" || m.kind === "wallet";
+    if (theirs && m.kind !== "system" && !card && m.ambient !== true && !toGuest.includes(text) && !toldFirst.includes(text)) (m.moment !== undefined || m.alert === true || m.readout === true ? toldFirst : toGuest).push(text);
     if (character === null || m.kind !== "line" || m.from !== character) continue;
     if (theirs) said.push({ from: m.from, text });
   }
-  return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}), ...(toGuest.length > 0 ? { toGuest } : {}) };
+  const told = [...toldFirst, ...toGuest].slice(0, 3);
+  return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}), ...(told.length > 0 ? { toGuest: told } : {}) };
 }
 
 /** A director's / host's cue press, as its 200 tells it (wave 18, C8):
