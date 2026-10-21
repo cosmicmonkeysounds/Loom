@@ -176,8 +176,9 @@ following the directives of Jean Trabolta; the Internet is where programs are
 reinstalled with a short activity; they come right back. Routine. Reassuring.
 
 **🤖 Introduce Trabolta.** Radio **INTRO** (so the tent starts the first game);
-a host (or the director) fires 🤖, and it shows as LAST on your bar. Your line is on the TV: *"Everyone, say hello to
-TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
+a host (or the director) fires 🤖, and it shows as LAST on your bar. Your line is on the TV: *"And now, joining us by video
+conference: the Sole Owner and Founder of Maps and Ducks! Everyone, say hello
+to JEAN TRABOLTA!"* He speaks. The TV switches to the reinstallation mirror: point at
 it, *"Look! That's {the first program}! Doing great!"* Hand off: *"And now,
 Trabolta has a game for all of us."*
 
@@ -331,8 +332,9 @@ if the winner refuses to name anyone, follow the Antivirus. (Norton presses
 🛡, not you.) No Bingo? Task Manager hands you a completed card (🃏 on MS
 Paint): read the name, invite them up, let the Antivirus respond to the
 denial. As they are escorted out: corruption is normal; the Internet is where
-programs are reinstalled; a short activity, then back. Introduce Trabolta (a
-host fires it after your speech; the TV mirror comes up). Point at the
+programs are reinstalled; a short activity, then back. Introduce Jean
+Trabolta, Sole Owner and Founder of Maps and Ducks, joining by video
+conference (a host fires it after your speech; the TV mirror comes up). Point at the
 reinstallation; be encouraging. Announce the Truth Scavenger Hunt: files
 around the computer Trabolta needs help interpreting. He explains the rules.
 

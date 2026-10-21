@@ -145,7 +145,7 @@ OBJECTIVE Meet Trabolta
   for: Program
   while: Night.phase == "introduced" and program.cleared == true
   act: B
-  title: Meet Trabolta, the computer's AI helper
+  title: Meet Trabolta, Sole Owner and Founder of Maps and Ducks
   go: Trabolta
   text:
     He is online at the Desktop, and his thread is open on your phone. He has a game for everyone.
@@ -589,7 +589,7 @@ OBJECTIVE Introduce Trabolta
   act: B
   title: Introduce Trabolta, then host the hunt
   text:
-    Once a host fires 🤖 (it is LAST on your bar): "Everyone, say hello to TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. 🔎 the hunt is your cue: it runs 15 minutes.
+    Once a host fires 🤖 (it is LAST on your bar): "Everyone, say hello to JEAN TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. 🔎 the hunt is your cue: it runs 15 minutes.
 
 // w18b: Trabolta reads; 🍾 after Q3; no "confident answers" line (DRAFT w18b)
 // DRAFT w18

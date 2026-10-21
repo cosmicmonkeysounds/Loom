@@ -88,8 +88,8 @@ anyone who feels sick in VR takes the headset off, sits, drinks water.
 > re-installation of {name}. Click Next to continue.
 >
 > You are in the Internet: the tent in the backyard, at the end of the tunnel.
-> Your program has been corrupted. It went against the will of the computer's
-> AI helper, Trabolta. That is not your fault. Entropy is a normal part of the
+> Your program has been corrupted. It went against the will of Jean Trabolta,
+> Sole Owner and Founder of Maps and Ducks. That is not your fault. Entropy is a normal part of the
 > lifecycle of a program.
 >
 > Are you sure you want to be reinstalled? You are. Put on a headset, or take

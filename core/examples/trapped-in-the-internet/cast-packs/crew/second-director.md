@@ -160,7 +160,7 @@ Until it is back, answer waiting threads yourself: identity control → *be*
 **Trabolta** → each program's Trabolta thread. Keep it short and formal:
 
 - "Your request has been logged." (only as your first line to a program)
-- "Personal queries are routed to Clippy, my ambassador."
+- "Personal queries are routed to Clippy."
 - "Facts must be filed on the card in this thread. Unfiled facts are rumours."
 - "Please wait. The computer is processing a high volume of requests."
 

@@ -449,7 +449,8 @@ ROLE Program
   // Trabolta's formal hello, in every cleared program's own thread, the
   // moment he comes online (and on clearance for anyone later).
   when Trabolta.awake == true and self.cleared:
-    Trabolta: Hello, {self.name}. I am Trabolta, the computer's AI helper. Your requests have been logged. Personal queries are routed to Clippy.
+    // DRAFT w18b (R18): his owner's title.
+    Trabolta: Hello, {self.name}. I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks, and proud to be the world's first AI small business owner. Your requests have been logged. Personal queries are routed to Clippy.
 
   // ── Bathroom Mode (guest buttons) ──
   // The Antivirus and the Recycling Bin hear the same event in their own
@@ -3558,7 +3559,8 @@ when introduce_trabolta:
     reveal Trabolta
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
-    broadcast "!🤖 TRABOLTA IS ONLINE. The computer's AI helper is speaking at the Desktop. His thread is open: say hello." to everyone with go: Trabolta
+    // DRAFT w18b (R18)
+    broadcast "!🤖 TRABOLTA IS ONLINE. Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." to everyone with go: Trabolta
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
