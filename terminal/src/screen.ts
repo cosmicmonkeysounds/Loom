@@ -168,16 +168,24 @@ export interface ScreenNight {
   help_votes: number | null;
   thwart_votes: number | null;
   alerts: string | null;
+  /** An ending has played (the story then ignores the King and the chess). */
+  ended: boolean | null;
+  /** Round two's tally: every fact in (61 %) or not (12 %). */
+  collection_complete: boolean | null;
+  /** The overshare that played (1–4), else null. */
+  scenario: number | null;
 }
 
-export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null };
+export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null };
 
 /** The night block off the wire; anything missing or malformed is null. */
 export function nightOf(raw: unknown): ScreenNight {
   const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const bool = (v: unknown): boolean | null => (typeof v === "boolean" ? v : null);
   const value = r["award_value"];
+  const scenario = num(r["scenario"]);
   return {
     screen: str(r["screen"]),
     terminals: str(r["terminals"]),
@@ -189,6 +197,9 @@ export function nightOf(raw: unknown): ScreenNight {
     help_votes: num(r["help_votes"]),
     thwart_votes: num(r["thwart_votes"]),
     alerts: str(r["alerts"]),
+    ended: bool(r["ended"]),
+    collection_complete: bool(r["collection_complete"]),
+    scenario: scenario !== null && Number.isInteger(scenario) && scenario >= 1 && scenario <= 4 ? scenario : null,
   };
 }
 

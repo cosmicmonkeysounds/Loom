@@ -516,6 +516,9 @@ export const SCREEN_NIGHT_VARS = {
   help_votes: "Night.help_votes",
   thwart_votes: "Night.thwart_votes",
   alerts: "Night.alerts",
+  ended: "Night.ended",
+  collection_complete: "Night.collection_complete",
+  scenario: "Night.scenario",
 } as const;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
@@ -533,6 +536,12 @@ export interface ScreenNight {
   help_votes: number | null;
   thwart_votes: number | null;
   alerts: string | null;
+  /** An ending has played (the story ignores the King and the chess from then on). */
+  ended: boolean | null;
+  /** Round two's tally: every fact in (the 61 % the TV says aloud) or not (12 %). */
+  collection_complete: boolean | null;
+  /** The overshare that played, 1–4 (0 = not yet: null). Public: its beat says it aloud. */
+  scenario: number | null;
 }
 
 /** A terminal that hasn't polled for this long is silent (K-29): the editor's
@@ -1011,6 +1020,10 @@ export class ScreenWatch {
       const v = peek(path);
       return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, MAX_MOMENT_NAME);
     };
+    const bool = (path: string): boolean | null => {
+      const v = peek(path);
+      return v === "true" ? true : v === "false" ? false : null;
+    };
     const awardUp = program.slide?.kind === "slide" && program.slide.value.startsWith("award_");
     const awardValue = awardUp ? named(SCREEN_NIGHT_VARS.award_value) : null;
     const night: ScreenNight = {
@@ -1024,6 +1037,9 @@ export class ScreenWatch {
       help_votes: num(SCREEN_NIGHT_VARS.help_votes),
       thwart_votes: num(SCREEN_NIGHT_VARS.thwart_votes),
       alerts: named(SCREEN_NIGHT_VARS.alerts),
+      ended: bool(SCREEN_NIGHT_VARS.ended),
+      collection_complete: bool(SCREEN_NIGHT_VARS.collection_complete),
+      scenario: ((n) => (n !== null && n >= 1 && n <= 4 ? n : null))(num(SCREEN_NIGHT_VARS.scenario)),
     };
 
     return {

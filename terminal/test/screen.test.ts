@@ -121,9 +121,10 @@ describe("screen state", () => {
   });
 
   it("reads the wave 17 night vars, each null when missing or malformed", () => {
-    const s = parseScreenState({ ...body, night: { screen: "bingo", terminals: null, phase: "y2k", step: 14, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: "3", alerts: "dialog" } })!;
-    expect(s.night).toEqual({ screen: "bingo", terminals: null, phase: "y2k", step: 14, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: null, alerts: "dialog" });
+    const s = parseScreenState({ ...body, night: { screen: "bingo", terminals: null, phase: "y2k", step: 14, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: "3", alerts: "dialog", ended: false, collection_complete: "yes", scenario: 9 } })!;
+    expect(s.night).toEqual({ screen: "bingo", terminals: null, phase: "y2k", step: 14, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: null, alerts: "dialog", ended: false, collection_complete: null, scenario: null });
     expect(parseScreenState({ ...body, night: { award_value: "4 / 8", step: Number.NaN } })!.night).toMatchObject({ award_value: "4 / 8", step: null, phase: null });
+    expect(parseScreenState({ ...body, night: { ended: true, collection_complete: true, scenario: 2 } })!.night).toMatchObject({ ended: true, collection_complete: true, scenario: 2 });
     expect(parseScreenState({ ...body, night: "nope" })!.night).toEqual(EMPTY_NIGHT);
   });
 

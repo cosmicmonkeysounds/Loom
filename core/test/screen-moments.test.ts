@@ -331,6 +331,13 @@ when bonus:
 when after:
   cue screens_screensaver
 
+when tally:
+  set Night.collection_complete = true
+  set Night.scenario = 3
+
+when curtain_call:
+  set Night.ended = true
+
 == Boot
 set Night.phase = "advice"
 set Night.step = 18
@@ -340,6 +347,9 @@ set Night.award_value = "none"
 set Night.help_votes = 7
 set Night.thwart_votes = 3
 set Night.alerts = "sticky"
+set Night.ended = false
+set Night.collection_complete = false
+set Night.scenario = 0
 `;
 
 describe("the night block", () => {
@@ -347,7 +357,7 @@ describe("the night block", () => {
     const sim = Sim.fromSources(NIGHT);
     sim.fireBeat("Boot");
     const s = watch(sim);
-    expect(s.poll().night).toEqual({ screen: null, terminals: null, phase: "advice", step: 18, bottle_pick: null, award_winner: null, award_value: null, help_votes: 7, thwart_votes: 3, alerts: "sticky" });
+    expect(s.poll().night).toEqual({ screen: null, terminals: null, phase: "advice", step: 18, bottle_pick: null, award_winner: null, award_value: null, help_votes: 7, thwart_votes: 3, alerts: "sticky", ended: false, collection_complete: false, scenario: null });
     sim.signal("award");
     expect(s.poll().night).toMatchObject({ award_winner: "Winamp", award_value: 42 });
     expect(s.poll("tv").night).toMatchObject({ award_winner: "Winamp", award_value: 42 });
@@ -355,6 +365,16 @@ describe("the night block", () => {
     expect(s.poll().night).toMatchObject({ award_winner: "Napster", award_value: null });
     sim.signal("after");
     expect(s.poll().night).toMatchObject({ award_winner: null, award_value: null });
+  });
+
+  it("carries the tally's outcome, the overshare's scenario and the ending (all said aloud by the story)", () => {
+    const sim = Sim.fromSources(NIGHT);
+    sim.fireBeat("Boot");
+    const s = watch(sim);
+    sim.signal("tally");
+    expect(s.poll().night).toMatchObject({ collection_complete: true, scenario: 3, ended: false });
+    sim.signal("curtain_call");
+    expect(s.poll("tv").night.ended).toBe(true);
   });
 
   it("a story without the vars reads null everywhere", () => {

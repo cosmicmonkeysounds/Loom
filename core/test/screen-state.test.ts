@@ -366,7 +366,7 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     let s = await state(rt);
     expect(s.character).toMatchObject({ id: "Trabolta", hidden: true, awake: false, online: false });
     expect(s.attract).toBe(true);
-    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky" });
+    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null });
     expect(s.moments).toEqual([]); // the doors' history is never a moment
     expect(s.cues.screens).toEqual({ value: "screensaver", seq: 1 });
     expect(s.countdown).toBeNull();
