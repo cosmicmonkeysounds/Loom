@@ -814,6 +814,12 @@ export class SpatialHub {
     const s = this.byTokenLive(token);
     if (s === null) return { kind: this.tokenState(token) };
     if (s.found) return { kind: "found", released: s.released, already: true, captured: s.keptCaptured };
+    // Unmarked since the last sweep (it runs once a second): over, never a
+    // release for a program no longer marked (R16, G2).
+    if (this.unmarked(s)) {
+      this.finish(s, "unmarked");
+      return { kind: "over" };
+    }
     if (!s.claimed) return { kind: "parked" };
     const near = nearDuck(s.pose.p, s.duck.pos, this.map?.house);
     if (!near.near) return { kind: "far", distance: near.distance, dy: near.dy };

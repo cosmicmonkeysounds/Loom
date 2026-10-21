@@ -1261,6 +1261,19 @@ describe("the marked-only gate (wave 18b, R16)", () => {
     expect(g.hub.sessionCount).toBe(1); // the found one
   });
 
+  it("G2: a find inside the sweep's second after an unmark answers over and releases nobody", () => {
+    const g = gated();
+    g.marked.add("g-1");
+    const a = g.begin("g-1");
+    g.hub.pose(a.token, { p: a.duck.pos, yaw: 0, pitch: 0 });
+    g.marked.delete("g-1"); // a director unmarks them; no sweep yet
+    let released = 0;
+    expect(g.hub.found(a.token, () => (released += 1) > 0)).toEqual({ kind: "over" });
+    expect(released).toBe(0);
+    expect(g.leaves()).toEqual([{ session: a.session, reason: "unmarked" }]);
+    expect(g.hub.found(a.token, () => true)).toEqual({ kind: "over" });
+  });
+
   it("a director's forced walk is never ended by the gate (K-30)", () => {
     const g = gated();
     const a = g.begin("g-1", null, true);
