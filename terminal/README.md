@@ -108,17 +108,43 @@ day's "which tablet is this?" — counted down on the device off the
 answer's `identifyLeft`, so a tablet that loses the server mid-identify
 still uncovers on time). While the character
 is **hidden** (not yet `reveal`ed) or **asleep** (`<Character>.awake ==
-false`) a face/world terminal shows a full-screen **Mystify** screensaver
-(Canvas2D, ≤ 30 fps) with a fake-1999 ad every 40 s for 10 s: no camera,
-no scanner, never "ONLINE", never a pilot — so tablets are provisioned
-`view=auto` from the start and flip to the face within 2 s of
+false`) a face/world terminal shows the **idle show** full screen (wave 17,
+`src/idle-show/`, see below): no camera, no scanner, never "ONLINE", never
+a pilot, and nothing that names the character — so tablets are
+provisioned `view=auto` from the start and wake within 2 s of
 `introduce_trabolta`. It fails closed (attract until the server first
 answers; a missed poll keeps the last answer) and an open line finishes
-on its own leash first. Ads are `public/ads/<id>.png` (ids in
-`attract.ts`: `ad-maps-and-ducks`, `ad-protection-expired`,
-`ad-geocities`, `ad-y2k`); a missing PNG renders the ad's copy as a Win98
-window. The mirror (the TV) honours attract too since K-17: it keeps the
-screensaver until the character is introduced.
+on its own leash first. The mirror (the TV) honours attract too since
+K-17: it keeps the idle show (quieter, nothing asking to be touched) until
+the character is introduced.
+
+**The idle show** (wave 17, `src/idle-show/`): what every wall terminal,
+the TV's attract and the Internet laptop show while nobody is on the line.
+A seeded, endless line of 7–18 s segments (`schedule.ts`: a screensaver
+with popups piling up, one big ad, a banner, two ads side by side, a popup
+storm, and — awake, after the introduction, on a terminal whose face is
+under the show — his face showing through with a tip and an ad beside it),
+over nine original screensavers at ≤ 30 fps (`savers/`: Mystify, starfield,
+pipes, bouncing logo, flying windows, rain, maze, beziers, ducks). The
+start is off the terminal's name + the wall clock and the place is kept per
+name in sessionStorage, so no screen restarts at ad 0. 50+ fake-1999 ads
+in fourteen skins (`ads.ts`, SVG art in `art.tsx`) and about fifty popup kinds
+(`popups.ts`) play to the night (`pools.ts`: `Night.phase` → early / hunt /
+malware (hijack ads, a storm every cycle) / late / y2k (the live Y2K
+countdown, faster near midnight — the majority stays in it) / finale; his
+own copy only on an awake, introduced screen). Every tap does something
+(`gags.ts`: × closes — sometimes two more come, a button dodges or asks
+"Are you sure?", ad buttons shake / load / "ERROR: too much fun", the saver
+ripples), and TOUCH ME asks after 30 s untouched. Sounds go through `sfx()`
+only, rationed and dropped while a voice speaks. The show pauses (frozen,
+silent) under a slide, an overlay or a moment's scene
+(`cutscene/moment-bus.ts`), and hides while a pass connects or a line is
+open. Awake, the **scan box** (`ScanBox.tsx`) sits in the corner above it:
+live camera, SCAN YOUR PASS, "open 🎟 Pass on your phone", the typed-name
+fallback — popups never land on it and a pass is read whatever plays.
+Reduced motion fades instead of moving. An ad may carry PNG art (`png:
+true` in `ads.ts` → `public/ads/<id>.png`, drawn in place of its SVG; a
+404 falls back to the SVG and is never fetched again); none does yet.
 
 **Overlays, slides, countdowns** (OCT31 K-17 + N-03, `src/slides.ts` +
 `src/ScreenLayer.tsx`): the same poll carries the story's screen program
@@ -528,8 +554,9 @@ src/app.tsx            the screens: setup → (screensaver) → attract → conn
 src/screen.ts          the 2 s screen-state poll (K-16): attract while the character is hidden/asleep
 src/tv.ts              the TV room voice: which lines are spoken / captioned, the cursor, the player (pure, K-18)
 src/Tv.tsx             view=tv: the face full screen, the voice, captions, the mute
-src/attract.ts         the screensaver rotation, the ads' copy, Mystify (pure)
-src/Attract.tsx        the screensaver screen (Canvas2D) + ad cards (PNG, else a Win98 window)
+src/attract.ts         Mystify's pure parts (one of the idle show's savers)
+src/Attract.tsx        the asleep screen: the idle show full screen + the name and ⚙ in the corner
+src/idle-show/         the idle show (wave 17): schedule, pools, ads, popups, gags, savers, the scan box
 src/slides.ts          the screen layer's precedence, holds, slide copy, corner + Y2K clock (pure, K-17)
 src/ScreenLayer.tsx    overlays, slides (TV: mp4 first; PNG, else a Win98 card), the corner, the flicker
 src/kiosk.ts           the Screen Wake Lock + the 2 s ⚙ hold (K-15)
