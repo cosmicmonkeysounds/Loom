@@ -26,6 +26,7 @@ import type {
   InteractionSummary,
   PrimeView,
   QuestSummary,
+  RaceView,
   WalletModView,
 } from '@loom/core/views'
 import { applyModPatch, type ModPatchFrame } from '@loom/core/mod-patch'
@@ -104,6 +105,8 @@ interface ModSnapshot {
    *  `watch` absent when the story declares no `watch:` line. */
   watch?: WatchSummary[]
   countdowns?: CountdownSummary[]
+  /** Wave 18b, faction mode only. */
+  race?: RaceView
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -181,6 +184,7 @@ const EMPTY_SNAPSHOT = {
   facts: null as FactsView | null,
   wallet: null as WalletModView | null,
   storyClock: null as { ms: number; at: number } | null,
+  race: null as RaceView | null,
   watch: [] as WatchSummary[],
   watchDeclared: false,
   countdowns: [] as CountdownSummary[],
@@ -438,6 +442,7 @@ export const useOperate = create<OperateState>((set, get) => {
         facts: snap.facts ?? null,
         wallet: snap.wallet ?? null,
         storyClock: typeof snap.clock === 'number' ? { ms: snap.clock, at: Date.now() } : null,
+        race: snap.race ?? null,
         watch: snap.watch ?? [],
         watchDeclared: snap.watch !== undefined,
         countdowns: snap.countdowns ?? [],
