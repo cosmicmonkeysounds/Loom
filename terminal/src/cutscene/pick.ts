@@ -23,7 +23,8 @@ import { foldName } from "../config.ts";
 import type { ScreenMoment, ScreenState } from "../screen.ts";
 import type { ScreenLayers } from "../slides.ts";
 import { sceneT } from "./clock.ts";
-import type { SceneDef, SceneTarget, SceneTrigger } from "./types.ts";
+import type { ComponentType } from "react";
+import type { SceneDef, SceneProps, SceneTarget, SceneTrigger } from "./types.ts";
 
 /** A moment first seen later than this after it happened is not played (ms). */
 export const MOMENT_STALE_MS = 30_000;
@@ -51,7 +52,7 @@ export function triggerMatches(trigger: SceneTrigger, on: { slide: string } | { 
 }
 
 /** The component a scene draws on this target (the TV falls back to the wall's), or null. */
-export function componentFor(def: SceneDef, target: SceneTarget): SceneDef["tv"] | null {
+export function componentFor(def: SceneDef, target: SceneTarget): ComponentType<SceneProps> | null {
   return target === "tv" ? (def.tv ?? def.wall ?? null) : (def.wall ?? null);
 }
 

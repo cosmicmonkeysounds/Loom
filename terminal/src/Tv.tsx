@@ -30,6 +30,7 @@ import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, type TvLine } fro
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundMuted } from "./sound/bus.ts";
+import { onSceneFace } from "./cutscene/face-bus.ts";
 
 /** A caption stays up this long after the last line (ms). */
 const CAPTION_LINGER_MS = 6000;
@@ -71,6 +72,8 @@ export function Tv({
   }, [localMute, serverMute]);
 
   const face = useRef<FaceHandle | null>(null);
+  // A cutscene's beat flashes the face's mood (wave 17, `cutscene/face-bus.ts`).
+  useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
 
   // --- the world, while someone is in the simulation ---
   const world = useSpatialStream(config, canDraw);

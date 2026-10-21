@@ -73,6 +73,7 @@ import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
 import { setSoundView } from "./sound/bus.ts";
+import { drawsSlides, loadCutscenes } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
@@ -148,6 +149,11 @@ export function App() {
     if (view === "chess") void loadChess().catch(() => {});
     if (view === "casino") void loadCasino().catch(() => {});
   }, [view, webgl2]);
+  // The cutscenes, on every screen that draws slides (wave 17).
+  const slides = view !== undefined && drawsSlides(view, room);
+  useEffect(() => {
+    if (slides) void loadCutscenes().catch(() => {});
+  }, [slides]);
 
   // Provision from the URL (`?code=…&name=…`) — a fleet is set up by opening one link each.
   useEffect(() => {
@@ -357,7 +363,7 @@ export function App() {
   const layer = (
     <>
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
-      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
+      <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
       {announcement !== null && (
         <div className="announce-banner" role="status">

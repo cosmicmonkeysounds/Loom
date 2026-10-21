@@ -1,0 +1,13 @@
+/* The cutscene stage (wave 17): the slot a slide card has always had —
+   above the wake prompt (20), the corner (31) and Sandy's caption (31) sit
+   over it, the overlays (32), the flicker (35), identify (39), the ⚙ (40)
+   and the announcement banner (41) above. A moment's stage follows its
+   slide's in the DOM, so it draws over it at the same z. Transparent:
+   a scene paints its own background (a popup moment shows what's under). */
+.cutscene-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  contain: strict;
+}

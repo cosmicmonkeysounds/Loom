@@ -4,12 +4,16 @@
 //! and the flicker. On the TV only, a slide plays its `.mp4` first when one
 //! is there (N-04a), over its PNG / card (shown at once; the clip covers it
 //! only once it has a frame) and gone on an error or at its end. The precedence lives in `slides.ts`; this only draws it.
+//! Wave 17: where the screen draws cutscenes, the slide's slot is the
+//! cutscene layer's (`cutscene/slot.tsx`) — a scene for the slide, else the
+//! card, and the moments' scenes over it.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IDENTIFY_MS, identifyOn, type ScreenState } from "./screen.ts";
 import type { ScreenChart } from "./screen.ts";
 import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
+import { CutsceneSlot } from "./cutscene/slot.tsx";
 import { FLICKER_MS, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
@@ -233,14 +237,20 @@ function Flicker({ seq }: { seq: number | null }) {
  * Everything the story layers on top. `gear` is the ⚙ (2 s hold), drawn over
  * a covering slide / overlay so setup is never out of reach.
  */
-export function ScreenLayer({ layers, gear, video, muted, onSlideTap }: { layers: ScreenLayers; gear: ReactNode; onSlideTap?: () => void } & SlideVideoOpts) {
+export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }: { layers: ScreenLayers; gear: ReactNode; onSlideTap?: () => void; cutscene?: (card: ReactNode) => ReactNode } & SlideVideoOpts) {
   const covered = layers.overlay !== null || layers.slide !== null;
   const slide = layers.overlay === null && layers.slide !== null && <SlideView slide={layers.slide} y2k={layers.y2k} chart={layers.chart} chartShown={layers.chartShown} video={video} muted={muted} />;
   return (
     <>
       {/* A tap on a slide peeks under it (B21) where `onSlideTap` is given;
-          the wrapper is unstyled, so the slide keeps its own fixed box. */}
-      {slide !== false && onSlideTap !== undefined ? (
+          the wrapper is unstyled, so the slide keeps its own fixed box. With
+          the cutscenes (wave 17) the wrapper always stands, so the layer
+          under it is never remounted, and the card is theirs to show. */}
+      {cutscene !== undefined ? (
+        <div className="slide-tap" data-peekable={onSlideTap !== undefined ? "" : undefined} onClick={onSlideTap}>
+          {cutscene(slide === false ? null : slide)}
+        </div>
+      ) : slide !== false && onSlideTap !== undefined ? (
         <div className="slide-tap" data-peekable="" onClick={onSlideTap}>
           {slide}
         </div>
@@ -255,8 +265,9 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap }: { layers
   );
 }
 
-/** The layer, live: re-decided every second (holds, the corner, the clock). */
-export function LiveScreenLayer({ state, piloting, peek = false, room = false, onSlideTap, gear, video }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean }) {
+/** The layer, live: re-decided every second (holds, the corner, the clock).
+ *  `cutscenes` (wave 17): the slide's slot draws the cutscene layer (`cutscene/`). */
+export function LiveScreenLayer({ state, piloting, peek = false, room = false, onSlideTap, gear, video, cutscenes = false }: { state: ScreenState | null; piloting: boolean; peek?: boolean; room?: boolean; onSlideTap?: () => void; gear: ReactNode; video?: boolean; cutscenes?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -264,7 +275,18 @@ export function LiveScreenLayer({ state, piloting, peek = false, room = false, o
   }, []);
   // A fresh answer re-decides at once rather than up to a second later.
   const at = Math.max(now, state?.receivedAt ?? 0);
-  return <ScreenLayer layers={screenLayers(state, at, { piloting, peek, room })} gear={gear} video={video} muted={state?.voice?.muted === true} onSlideTap={onSlideTap} />;
+  const layers = screenLayers(state, at, { piloting, peek, room });
+  const bare = piloting || peek || room;
+  return (
+    <ScreenLayer
+      layers={layers}
+      gear={gear}
+      video={video}
+      muted={state?.voice?.muted === true}
+      onSlideTap={onSlideTap}
+      cutscene={cutscenes ? (card) => <CutsceneSlot state={state} layers={layers} bare={bare} card={card} gear={gear} /> : undefined}
+    />
+  );
 }
 
 /**
