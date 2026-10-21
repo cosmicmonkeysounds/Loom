@@ -112,7 +112,11 @@ export type SimEvent =
       /** Set when the narration runs inside a `Narrator (manner):` block. */
       manner?: string;
     }
-  | { type: "directive"; verb: string; args: string }
+  // `setting`: the enclosing beat's `setting:` location (as on `dialogue`);
+  // absent on the structural directives (`fire`, `remove`) and null outside
+  // a beat (a story rule) — stagehand's house router plays an unrouted
+  // `sound X` there.
+  | { type: "directive"; verb: string; args: string; setting?: string | null }
   // `subject` is the participant the beat is playing for (the `guest`
   // binding, else `self` when self is a person) — null for a global beat.
   // Powers per-person story-position tracking in every console.
