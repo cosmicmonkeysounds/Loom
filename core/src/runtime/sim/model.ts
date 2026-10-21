@@ -108,7 +108,9 @@ export interface RoleDef {
   hooks: Hook[];
   /** `secret: a, b, …` — per-person slots no agent-voiced character may
    *  see: dropped from every agent request and the agents' facts document
-   *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). */
+   *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). Always holds
+   *  `codex_in` (wave 18b): the per-category codex counts count secret
+   *  entries too, and a category's name can be a secret's. */
   secret: Set<string>;
   /** Slots declared `bool` (wave 13: a booth card lists a boolean ROLE
    *  `watch:` item even when false — "Not cleared"). */
@@ -299,6 +301,10 @@ export interface ObjectiveDef {
 export const OBJECTIVE_AUDIENCE_WORDS = ["guests", "performers", "everyone"] as const;
 /** The reserved `buttons:` words of an OBJECTIVE (folded). */
 export const OBJECTIVE_BUTTON_WORDS = ["pass", "scan"] as const;
+
+/** The per-person world head of the codex category counts (wave 18b):
+ *  `<id>.codex_in.<category>`; never shown to an agent (`RoleDef.secret`). */
+export const CODEX_IN = "codex_in";
 
 /** One conditional `avatar:` option (wave 18b): the picture ref and the
  *  condition (a CHARACTER's, `self` bound) that selects it. */
@@ -1112,6 +1118,7 @@ function roleDef(id: string, body: CharacterBody): RoleDef {
       .map((s) => s.trim())
       .filter((s) => s !== ""),
   );
+  secret.add(CODEX_IN); // wave 18b: the category counts (`Sim.holdCodex`)
   const bools = new Set(
     body.typedProperties
       .filter((p) => p.slotType !== null && p.slotType.kind === "concrete" && p.slotType.name.toLowerCase() === "bool")

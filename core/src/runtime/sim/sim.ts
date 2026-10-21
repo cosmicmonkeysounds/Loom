@@ -25,7 +25,7 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type QuestAction, type QuestStatus, type SimEvent } from "./event.ts";
-import { DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
+import { CODEX_IN, DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
@@ -544,15 +544,17 @@ export class Sim {
     // conditions (`if guest.codex.the_sandy_file:` / `when self.codex >= 3:`).
     this.world.set(`${holder}.codex`, vNumber(set.size));
     this.world.set(`${holder}.codex.${Sim.codexSlug(id)}`, vBool(true));
-    // Wave 18b: `guest.codex_in.<category>` counts the holder's entries in
-    // each category (`when self.codex_in.facts >= 20:`); uncategorised
-    // entries are counted nowhere. A replay re-holds every entry, so the
-    // count rebuilds with it.
-    const category = this.model.codex.get(id)?.category ?? null;
+    // Wave 18b: `guest.codex_in.<category>` counts a participant's entries
+    // in each category (`when self.codex_in.facts >= 20:`); uncategorised
+    // entries are counted nowhere, and a character's holdings are not
+    // mirrored (its vars ride agent requests unmasked; a guest's
+    // `codex_in` is a ROLE secret slot). A replay re-holds every entry, so
+    // the count rebuilds with it.
+    const category = this.persons.has(holder) ? (this.model.codex.get(id)?.category ?? null) : null;
     if (category !== null) {
       const slug = Sim.codexCategorySlug(category);
       if (slug !== "") {
-        const path = `${holder}.codex_in.${slug}`;
+        const path = `${holder}.${CODEX_IN}.${slug}`;
         const was = this.world.peek(path);
         this.world.set(path, vNumber((was !== null && was.kind === "number" ? was.value : 0) + 1));
       }

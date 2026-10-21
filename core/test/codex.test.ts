@@ -718,7 +718,10 @@ CODEX Loose
     sim.createPerson("g1", "Ada");
     expect(Sim.codexCategorySlug("How it works!")).toBe("how_it_works");
     expect(Sim.codexCategorySlug("Facts")).toBe("facts");
-    expect(sim.world.get("Clerk.codex_in.how_it_works")).toEqual({ kind: "number", value: 1 });
+    // A character's holdings are not mirrored (its vars ride agent requests).
+    expect(sim.worldEntries().some((w) => w.path.startsWith("Clerk.codex_in"))).toBe(false);
+    // A guest's counts are a ROLE secret slot, never shown to an agent.
+    expect(sim.model.roles.get("Program")!.secret.has("codex_in")).toBe(true);
     sim.redeem("g1", "ONE");
     sim.redeem("g1", "ONE"); // a second redeem holds nothing new
     expect(sim.world.get("g1.codex_in.facts")).toEqual({ kind: "number", value: 1 });
@@ -742,7 +745,6 @@ CODEX Loose
     const b = play().worldEntries().filter((w) => w.path.includes(".codex_in."));
     expect(a).toEqual(b);
     expect(a).toEqual([
-      { path: "Clerk.codex_in.how_it_works", value: "1" },
       { path: "g1.codex_in.facts", value: "1" },
       { path: "g1.codex_in.how_it_works", value: "1" },
     ]);
