@@ -233,7 +233,7 @@ and print title + QR only, no digit anywhere), `@media print` hides the editor),
 after 20 s silent with a chime — again each minute until *ack* — the
 editor's own memory of terminals a restarted server forgot, the TV-voice
 mute, per-row device badges (SW-SCR-21 `terminalBadges` / `majorityVersion`:
-🔇 / 💤 / battery / build, an unstamped row beside a stamped majority =
+🔇 / 💤 / ⛶ not full screen (wave 17, `fs=0`) / battery / build, an unstamped row beside a stamped majority =
 amber *old build*), a room terminal's `room X` (amber off the
 `server-room` spot, `strayRoom`: a tablet that was the TV once and kept
 its room) and an **identify** button
