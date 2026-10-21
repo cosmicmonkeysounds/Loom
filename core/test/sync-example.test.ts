@@ -8,7 +8,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reloadVerdict } from "../scripts/live-guard.ts";
-import { reloadEvent, syncOptions, type SyncEvent } from "../scripts/sync-example.ts";
+import { exampleAudio, planAudioSync, reloadEvent, syncOptions, type SyncEvent } from "../scripts/sync-example.ts";
 
 const persona = { id: "p-ab12cd", name: "Ivo" };
 const phone = { id: "g-2", name: "Winamp" };
@@ -219,5 +219,28 @@ describe("reloadEvent", () => {
     expect(r.code).toBe(0);
     expect(r.saved).toBe(1);
     expect(r.lines.join("\n")).toMatch(/not reachable — the snapshot is saved/u);
+  });
+});
+
+describe("audio.json goes like a map (wave 17)", () => {
+  const A = { "audio.json": '{"version":1}' };
+  const B = { "audio.json": '{"version":1,"note":"surveyed"}' };
+
+  it("merge: added when the project has none, a differing project copy kept", () => {
+    expect(planAudioSync({}, A, "merge")).toEqual({ text: A["audio.json"], put: true, kept: false, replaced: null });
+    expect(() => planAudioSync(B, A, "merge")).toThrow(/project's audio\.json does not validate/u);
+  });
+
+  it("the example's starter validates and is read; an example without one is empty", () => {
+    const ex = exampleAudio("trapped-in-the-internet");
+    expect(Object.keys(ex)).toEqual(["audio.json"]);
+    const valid = ex["audio.json"]!;
+    const mine = JSON.stringify({ ...JSON.parse(valid), note: "surveyed in the house" });
+    expect(planAudioSync({ "audio.json": mine }, ex, "merge")).toEqual({ text: mine, put: false, kept: true, replaced: null });
+    expect(planAudioSync({ "audio.json": mine }, ex, "replace")).toEqual({ text: valid, put: true, kept: false, replaced: mine });
+    expect(planAudioSync({ "audio.json": mine }, ex, "keep")).toEqual({ text: mine, put: false, kept: false, replaced: null });
+    expect(planAudioSync({ "audio.json": mine }, {}, "replace")).toEqual({ text: null, put: false, kept: false, replaced: mine });
+    expect(planAudioSync({}, {}, "merge")).toEqual({ text: null, put: false, kept: false, replaced: null });
+    expect(exampleAudio("glass-orchard")).toEqual({});
   });
 });
