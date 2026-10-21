@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
+keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture, microphone, mic, hear, heard, voice link, headset voices, players' voices, 🎤, on air, privacy
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -227,6 +227,28 @@ that room — the room's shadow dimension. When the camera is on, a
 terminal nobody is talking to shows that shadow instead of the virtual
 room.
 
+## Hearing each other
+
+A terminal's **microphone** carries the room into the simulation too:
+someone playing in the virtual copy of the room (or near it, on the same
+floor) hears the real people talking by that terminal, coming out of the
+screen on the virtual wall. And it works the other way: the players
+walking the virtual house near a terminal are **heard out of its
+speaker**, quietly when they are a room or two away, clearly when they
+stand in its room. Nobody needs to press anything — the terminal sends
+the room only while someone talks, and only while a player is near
+enough to hear it.
+
+A small **🎤** in the top-left corner of a terminal means a player in the
+simulation can hear this room right now. When it isn't there, nothing
+from the room leaves the house.
+
+The terminal never sends its own sounds (the character's voice, its
+beeps, the players it is playing) back into the game, so it goes quiet
+for a moment while it speaks. The TV plays the players but has no
+microphone of its own; the tent's laptop (where the game is played)
+takes no part at all, and a silent mirror neither.
+
 An older tablet that can't draw the 3D house shows a **simple
 recreation of the game** instead, a blocky old-school 3D view drawn from
 the terminal's own spot, like a window into the virtual copy of its room.
@@ -264,3 +286,15 @@ screen and the room come from the map, which the house map editor sets.
 A whole fleet: open `/terminal/?code=<mod passcode>&spot=<terminal id>`
 on each tablet. To re-point a running tablet, hold ⚙ for 2 seconds and
 tap another terminal.
+
+The voice link needs nothing set up: a placed terminal hears and is heard
+as soon as someone touches it once (a tablet may not make or take sound
+before a first touch; the TV's Chrome needs none), and the first time it
+asks for the **microphone** — allow it. It needs `https` (the event's own
+address is; a bare `http://192.168…` LAN address isn't), and in Fully
+Kiosk, *Enable Microphone Access*. Under ⚙ → advanced, **let the games
+hear this room** turns one tablet's microphone off (or the TV's on), and
+**play the players near this screen** its speaker; `&mic=0` / `&voices=0`
+in the link do the same. The house map editor turns a terminal's voice
+link off for good (the tent's is off already). Run → Terminals shows a
+🎤 for a tablet whose microphone was refused or can't run.

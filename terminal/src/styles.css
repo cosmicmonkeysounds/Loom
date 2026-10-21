@@ -950,6 +950,37 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   pointer-events: none;
 }
 .announce-banner .announce-icon { margin-right: 0.5em; }
+/* The voice link's 🎤 (wave 19, voice/MicCue.tsx): a player in the
+   reinstallation hears this room. Small, top left, over the slides (30–35)
+   and the banner (41), under nothing a guest needs. */
+.mic-cue {
+  position: fixed;
+  left: 8px;
+  top: 6px;
+  z-index: 42;
+  font-size: 18px;
+  line-height: 1;
+  padding: 3px 5px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 77, 77, 0.8);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.mic-cue::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: #ff4d4d;
+  animation: pulse 1.2s steps(2, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-cue::after { animation: none; }
+}
+
 
 /* A director's identify (SW-SCR-21): the screen's name, full screen, ~10 s.
    Above the slides / overlays (30–35), below the covering ⚙ (40) and the

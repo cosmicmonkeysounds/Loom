@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { MIN_GAP_MS, OVER_GAIN, VIEW_VOLUME, playChime, playNotes, setSoundContext, setSoundMuted, setSoundView, sfx, sfxGate, type SoundContext } from "../src/sound/bus.ts";
+import { MIN_GAP_MS, OVER_GAIN, VIEW_VOLUME, VOICES_DUCK, VOICES_LEVEL, playChime, playNotes, setSoundContext, setSoundMuted, setSoundView, setVoicesDucked, sfx, sfxGate, soundPlayingUntil, voicesOut, type SoundContext } from "../src/sound/bus.ts";
 import { CHIME_PARTS, SFX_NAMES, hz, isSfxName, recipe, sfxLength } from "../src/sound/library.ts";
 import { voiceFloor } from "../src/speech/engine.ts";
 import { FakeAudioContext, type FakeGain, type FakeOsc } from "./fake-audio.ts";
@@ -154,3 +154,41 @@ describe("the bus", () => {
 function firstPeakOf(s: FakeOsc): number {
   return (s.out[0] as FakeGain).gain.events.find((e) => e[0] === "exp")![1];
 }
+
+describe("the voices bus (wave 19)", () => {
+  afterEach(() => setVoicesDucked(false));
+  it("sits on the master next to the effects, ducked under the floor and muted with the TV", () => {
+    const v = voicesOut()!;
+    expect(v.ctx).toBe(ctx);
+    const voices = v.out as unknown as FakeGain;
+    expect(ctx.path(voices)).toEqual(["gain", "gain", "destination"]);
+    expect(voices.gain.value).toBe(VOICES_LEVEL);
+    setVoicesDucked(true);
+    expect(voices.gain.events.at(-1)).toEqual(["lin", VOICES_DUCK, expect.any(Number)]);
+    setVoicesDucked(true); // no new ramp for the same level
+    const n = voices.gain.events.length;
+    setVoicesDucked(true);
+    expect(voices.gain.events.length).toBe(n);
+    setSoundMuted(true);
+    expect(voices.gain.events.at(-1)?.[1]).toBe(0);
+    setSoundMuted(false);
+    setVoicesDucked(false);
+    expect(voices.gain.events.at(-1)?.[1]).toBe(VOICES_LEVEL);
+  });
+  it("starts muted on a muted page", () => {
+    setSoundMuted(true);
+    setSoundContext(ctx as unknown as SoundContext);
+    expect((voicesOut()!.out as unknown as FakeGain).gain.value).toBe(0);
+  });
+  it("knows when this page's own effects, jingles and chime stop", () => {
+    expect(soundPlayingUntil()).toBe(0);
+    sfx("blip");
+    const after = soundPlayingUntil();
+    expect(after).toBeGreaterThan(ctx.currentTime);
+    playNotes([[523, 1], [659, 1]], { wave: "square", peak: 0.06, attack: 0.01 });
+    expect(soundPlayingUntil()).toBeGreaterThan(ctx.currentTime + 2);
+    // A new context starts with nothing playing.
+    setSoundContext(ctx as unknown as SoundContext);
+    expect(soundPlayingUntil()).toBe(0);
+  });
+});
