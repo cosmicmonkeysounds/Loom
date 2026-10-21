@@ -127,6 +127,35 @@ describe("badge: (wave 18b)", () => {
   });
 });
 
+describe("badge: a `while` that reads a secret (wave 18b)", () => {
+  const LEAKS = [
+    "program.afk as 🚻 A, while Kernel.armed == true",
+    "program.afk as 🚻 B, while self.virus == true",
+    "program.afk as 🚻 C, while program.virus",
+    "Clippy.busy as ⏳ D, while count([p for p in Persons where p.virus == true]) > 0",
+  ];
+  const src = BADGES.replace("lobby: hidden", ["lobby: hidden", ...LEAKS.map((l) => `badge: ${l}`)].join("\n"));
+
+  it("L1219 refuses each as an error", () => {
+    const errs = codesOf(src, "L1219").filter((d) => d.error && d.message.startsWith("the `while`"));
+    expect(errs.map((d) => d.message.split("`")[3])).toEqual(LEAKS.map((l) => `badge: ${l}`));
+  });
+
+  it("is never worn, so no phone learns the secret", () => {
+    const sim = Sim.fromSources(src);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bob");
+    sim.setVar("g1.afk", "true");
+    sim.setVar("g1.virus", "true");
+    sim.setVar("Kernel.armed", "true");
+    sim.setVar("Clippy.busy", "true");
+    expect(badgesOf(sim, "g1")).toEqual([{ glyph: "🚻", label: "Bathroom Mode" }]);
+    expect(guestView(sim, "g2").people.find((p) => p.id === "Clippy")).not.toHaveProperty("badges");
+    sim.setVar("Night.step", "2");
+    expect(badgesOf(sim, "Clippy")).toEqual([{ glyph: "⏳", label: "Busy" }]);
+  });
+});
+
 describe("lobby: hidden (wave 18b)", () => {
   it("flags the guest view and keeps the lobby channel", () => {
     const sim = Sim.fromSources(BADGES);

@@ -15,11 +15,12 @@
 //! evaluated with the wearer bound (`program` / `self`).
 //!
 //! Display only and never secret: a ROLE `secret:` slot or a `secret: true`
-//! CHARACTER is refused by lint L1219 and skipped here at run time, since
-//! every phone sees a badge.
+//! CHARACTER — as the path or anywhere in the `while` — is refused by lint
+//! L1219 and skipped here at run time, since every phone sees a badge (a
+//! `while Kernel.armed == true` would tell every phone that bit).
 
 import { foldName } from "../../parser/names.ts";
-import { truthy } from "../expr.ts";
+import { parseExprCached, truthy, type Expr } from "../expr.ts";
 import { isSecretRoleSlot, parseBoardLine } from "./board.ts";
 import type { BadgeDef } from "./model.ts";
 import type { Sim } from "./sim.ts";
@@ -78,6 +79,74 @@ export function badgeIsSecret(model: Pick<Sim["model"], "roles" | "characters">,
   return role !== undefined && isSecretRoleSlot(role.secret, def.rest);
 }
 
+/** Every dotted path an expression reads (as written, bound heads too). */
+function pathsIn(e: Expr, out: string[][], bound: Set<string>): void {
+  switch (e.kind) {
+    case "path":
+      out.push(bound.has(e.segments[0] ?? "") ? ["*", ...e.segments.slice(1)] : e.segments);
+      return;
+    case "list":
+      for (const x of e.items) pathsIn(x, out, bound);
+      return;
+    case "unary":
+      pathsIn(e.inner, out, bound);
+      return;
+    case "binary":
+      pathsIn(e.left, out, bound);
+      pathsIn(e.right, out, bound);
+      return;
+    case "call":
+      for (const x of e.args) pathsIn(x, out, bound);
+      return;
+    case "listComp": {
+      pathsIn(e.source, out, bound);
+      const inner = new Set(bound).add(e.var);
+      pathsIn(e.value, out, inner);
+      if (e.filter !== null) pathsIn(e.filter, out, inner);
+      return;
+    }
+    default:
+      return;
+  }
+}
+
+const whileSecret = new WeakMap<BadgeDef, boolean>();
+
+/** Does the badge's `while` read a secret: a `secret: true` CHARACTER, or
+ *  a ROLE `secret:` slot (through the ROLE's alias, `self` / `me` — the
+ *  wearer — or a list comprehension's variable, which may be anyone)? A
+ *  `while` that does not parse reads nothing (L1219 warns about it). */
+export function badgeWhileReadsSecret(model: Pick<Sim["model"], "roles" | "characters">, def: BadgeDef): boolean {
+  if (def.while === null) return false;
+  const hit = whileSecret.get(def);
+  if (hit !== undefined) return hit;
+  const paths: string[][] = [];
+  try {
+    pathsIn(parseExprCached(def.while), paths, new Set());
+  } catch {
+    paths.length = 0;
+  }
+  const anyRoleSlot = (rest: string): boolean => [...model.roles.values()].some((r) => isSecretRoleSlot(r.secret, rest));
+  const own = badgeHead(model, def.head);
+  const secret = paths.some((segs) => {
+    if (segs.length < 2) return false;
+    const rest = segs.slice(1).join(".");
+    const head = segs[0]!;
+    if (head === "*") return anyRoleSlot(rest);
+    if (head === "self" || head === "me") {
+      if (own?.kind === "character") return model.characters.get(own.id)?.secret === true;
+      if (own?.kind === "role") return isSecretRoleSlot(model.roles.get(own.id)?.secret ?? [], rest);
+      return anyRoleSlot(rest);
+    }
+    const h = badgeHead(model, head);
+    if (h === null) return false;
+    if (h.kind === "character") return model.characters.get(h.id)?.secret === true;
+    return isSecretRoleSlot(model.roles.get(h.id)?.secret ?? [], rest);
+  });
+  whileSecret.set(def, secret);
+  return secret;
+}
+
 /** Per sim: the badges worn at one log length (a view build asks for every
  *  person, and every view build asks again). */
 const memo = new WeakMap<Sim, { len: number; worn: Map<string, NameBadge[]> }>();
@@ -104,7 +173,7 @@ function computeBadges(sim: Sim, person: string): NameBadge[] {
   const out: NameBadge[] = [];
   for (const def of sim.model.badges) {
     const head = badgeHead(sim.model, def.head);
-    if (head === null || badgeIsSecret(sim.model, def)) continue;
+    if (head === null || badgeIsSecret(sim.model, def) || badgeWhileReadsSecret(sim.model, def)) continue;
     let path: string | null = null;
     if (head.kind === "role") {
       if (guest !== undefined && guest.role === head.id) path = `${person}.${def.rest}`;

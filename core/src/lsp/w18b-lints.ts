@@ -2,8 +2,8 @@
 //!
 //! - `L1219 BadgeOnSecret` — a header `badge:` line that does not parse,
 //!   names no ROLE or CHARACTER, or reads a ROLE `secret:` slot or a
-//!   `secret: true` CHARACTER (an error: every phone sees a badge, so the
-//!   runtime never shows it).
+//!   `secret: true` CHARACTER as its path or in its `while` (an error:
+//!   every phone sees a badge, so the runtime never shows it).
 //! - `L1220 FoundingInvalid` — a header `founding:` line that is no
 //!   expression (nobody may found a faction), or a second one (ignored).
 //!
@@ -12,7 +12,7 @@
 import type { LoomFile } from "../parser/ast.ts";
 import { Code } from "../parser/diagnostics.ts";
 import { parseExpr } from "../runtime/expr.ts";
-import { badgeHead, badgeIsSecret, parseBadgeLine } from "../runtime/sim/badges.ts";
+import { badgeHead, badgeIsSecret, badgeWhileReadsSecret, parseBadgeLine } from "../runtime/sim/badges.ts";
 import type { SimModel } from "../runtime/sim/model.ts";
 import type { Range } from "./types.ts";
 import { spanToRange } from "./util.ts";
@@ -38,6 +38,10 @@ export function wave18bLints(docs: ReadonlyArray<[string, Doc]>, model: SimModel
         }
         if (badgeIsSecret(model, def)) {
           push(uri, range, true, Code.L1219BadgeOnSecret, `\`badge: ${line.value.trim()}\` reads a secret (a ROLE \`secret:\` slot or a \`secret: true\` CHARACTER) — every phone sees a badge, so it is never shown`);
+          continue;
+        }
+        if (badgeWhileReadsSecret(model, def)) {
+          push(uri, range, true, Code.L1219BadgeOnSecret, `the \`while\` of \`badge: ${line.value.trim()}\` reads a secret (a ROLE \`secret:\` slot or a \`secret: true\` CHARACTER) — every phone sees a badge, so it would tell them that secret; it is never shown`);
           continue;
         }
         if (def.while !== null && !exprOk(def.while)) {
