@@ -169,10 +169,10 @@ describe("Trapped in the Internet — compile", () => {
       name: "Truthcoin",
       maxTransfer: 500,
       expiryMs: 600_000,
-      approver: { id: "CRA Agent Software", every: 3, windowMs: 60_000 },
+      approver: { id: "CRA Agent Software", every: 3, windowMs: 60_000, as: "MyCRA", audit: "a CRA audit" }, // wave 18b (R13)
       minter: { id: "Runescape", limit: 3, while: "program.cleared == true", grants: 3, freezeMs: 600_000 },
     });
-    expect(m.characters.get("CRA Agent Software")!.wallet).toEqual({ role: "approver", every: 3, windowMs: 60_000 });
+    expect(m.characters.get("CRA Agent Software")!.wallet).toEqual({ role: "approver", every: 3, windowMs: 60_000, as: "MyCRA", audit: "a CRA audit" });
     // The `while` clause is pinned verbatim: if ROLE Program is ever renamed it silently pays nobody.
     // grants 3 + freeze 10m are written out: the invitation and C24 promise a ten-minute freeze.
     expect(m.characters.get("Runescape")!.wallet).toEqual({ role: "minter", limit: 3, while: "program.cleared == true", grants: 3, freezeMs: 600_000 });
