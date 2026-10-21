@@ -26,7 +26,7 @@ import {
 } from "../src/cutscene/kit/tv2-time.ts";
 import type { ScreenMoment } from "../src/screen.ts";
 
-const m = (seq: number, at: number, kind: ScreenMoment["kind"], name: string): ScreenMoment => ({ seq, at, kind, name, who: null });
+const m = (seq: number, at: number, kind: ScreenMoment["kind"], name: string): ScreenMoment => ({ seq, at, kind, name, who: null, kept: false });
 
 describe("act 2 timelines — the live clock", () => {
   it("counts from the answer like the poll does, and ignores an answer over a minute old", () => {
