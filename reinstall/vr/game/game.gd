@@ -3,7 +3,9 @@
 ## autoload in a build, a fake in the tests).
 ##
 ## - **Lobby**: the dark room; the station waits for the tablet to send a
-##   program, or the player picks one with the stick ([Lobby]).
+##   program, or the player picks one — the laser, the stick or the mouse
+##   ([Lobby], [LobbyPointer]); a headset with no passcode sets itself up
+##   there first ([SetupPanel]).
 ## - **Playing**: spawned at the assignment's spawn in the virtual house;
 ##   poses stream to the server (feet, house frame); the golden trail is
 ##   re-routed twice a second; within 0.9 m (plan) of the duck, on its
@@ -80,6 +82,8 @@ var ghosts: Ghosts
 ## The terminals' live camera feeds on their screens ([CamFeeds]).
 var cams: CamFeeds
 var hud: Hud
+## The lobby's laser / mouse ([LobbyPointer]).
+var pointer: LobbyPointer
 
 var _trail_in := 0.0
 var _cand_in := 0.0
@@ -158,6 +162,12 @@ func setup(l: LinkBase, xr: bool) -> void:
 	hud = Hud.new()
 	hud.name = "Hud"
 	player.camera.add_child(hud)
+	# The lobby's picker: the laser / mouse, the ghosts' picture cache.
+	pointer = LobbyPointer.new()
+	pointer.name = "Pointer"
+	pointer.player = player
+	add_child(pointer)
+	lobby.attach(link, ghosts.avatars)
 	if bool(link.config.get("autopilot", false)):
 		autopilot = Autopilot.new()
 		player.read_input = false
@@ -206,6 +216,7 @@ func enter_lobby() -> void:
 	if _notice_left <= 0.0:
 		hud.hide_all()
 	player.locomotion_enabled = false
+	player.release_mouse()  # the lobby is pointed at, not looked around
 	player.teleport(Lobby.SPOT, 0.0)
 	lobby.visible = true
 	_cand_in = 0.0
@@ -349,6 +360,8 @@ func _on_assignment(a: Dictionary) -> void:
 	link.adopt(a)
 	var spawn: Dictionary = a["spawn"]
 	lobby.visible = false
+	pointer.hide_beam()
+	player.capture_mouse = true
 	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
 	player.locomotion_enabled = true
 	duck.place(builder.to_world(a["duck"]["pos"]))
@@ -519,6 +532,8 @@ func _process(delta: float) -> void:
 
 
 func _tick_lobby(delta: float) -> void:
+	var aim := pointer.poll()
+	pointer.draw(aim, lobby.aim(aim, delta))
 	# Either stick drives the picker: the larger deflection on each axis.
 	var l := player.left_stick
 	var r := player.right_stick

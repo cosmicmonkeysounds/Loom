@@ -18,8 +18,9 @@
 ##
 ## Without OpenXR (a Mac, the tests) it is a desktop rig: WASD / ↑↓ walk,
 ## Q/E / ←→ turn, Space / F hit, mouse look (click to capture, Esc to
-## release) — all feeding the same sticks and button, so the game logic
-## can't tell the difference.
+## release; never in the lobby, where the mouse points — [member
+## capture_mouse]) — all feeding the same sticks and button, so the game
+## logic can't tell the difference.
 class_name VrPlayer
 extends CharacterBody3D
 
@@ -55,6 +56,9 @@ var right_stick := Vector2.ZERO
 var hit_button := false
 ## Read the devices each tick (off in tests that drive the sticks).
 var read_input := true
+## Desktop rig: a click captures the mouse for looking around (off in the
+## lobby, where the mouse clicks tiles).
+var capture_mouse := true
 
 @onready var origin: XROrigin3D = $XROrigin3D
 @onready var camera: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -234,7 +238,7 @@ func vignette_strength() -> float:
 func _unhandled_input(event: InputEvent) -> void:
 	if xr_active:
 		return
-	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseButton and event.pressed and capture_mouse and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -243,3 +247,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		origin.global_transform = Locomotion.rotate_about(origin.global_transform, camera.global_position, -m.relative.x * MOUSE_SENSITIVITY)
 		_pitch = clampf(_pitch - m.relative.y * MOUSE_SENSITIVITY, -80.0, 80.0)
 		camera.rotation.x = deg_to_rad(_pitch)
+
+
+## The lobby: stop capturing clicks, and let go of a captured mouse.
+func release_mouse() -> void:
+	capture_mouse = false
+	if not xr_active and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
