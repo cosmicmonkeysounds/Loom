@@ -113,6 +113,16 @@ describe("Your move (§2.1 part 2)", () => {
     expect(inRoom.decision).toBeNull();
     expect(inRoom.moves[0]!.text).toBe("▶ Task Manager is asking you something");
   });
+  it("a dotted room the Where row already opens is not a second row (N9)", () => {
+    const m = missionOf(
+      input({
+        view: view({ objectives: [obj("talk")], mission: { objective: "talk", place: { id: "dm:Trabolta", name: "Trabolta" } } } as never),
+        list: [ch("dm:Trabolta", { title: "Trabolta", unread: 1, messages: [{ seq: 4 } as ChatMessage] }), ch("dm:Clippy", { title: "Clippy", unread: 1, messages: [{ seq: 5 } as ChatMessage] })],
+      }),
+    );
+    expect(m.where).toMatchObject({ kind: "go", nav: { to: "room", id: "dm:Trabolta" } });
+    expect(m.moves.map((x) => x.text)).toEqual(["💬 New in Clippy"]);
+  });
   it("invites, coin requests to you and dotted chats", () => {
     const wallet = { name: "Truthcoin", balance: 100, escrowed: 0, maxTransfer: 50, transfers: [], offers: [], requests: [{ id: "r1", from: "g-2", fromName: "Ada", to: "g-1", toName: "Winamp", amount: 5, state: "open", expiresAt: 0, at: 9 }] };
     const m = missionOf(
@@ -121,7 +131,7 @@ describe("Your move (§2.1 part 2)", () => {
         list: [ch("pm:g-1:g-2", { title: "Ada", unread: 1, messages: [{ seq: 4 } as ChatMessage] })],
       }),
     );
-    expect(m.moves.map((x) => x.text)).toEqual(["🚪 Excel wants you in Unlimited Power", "🪙 Ada asks for 5 Truthcoin", "💬 Ada replied to you"]);
+    expect(m.moves.map((x) => x.text)).toEqual(["🚪 Excel wants you in Unlimited Power", "🪙 Ada asks for 5 Truthcoin", "💬 New in Ada"]);
     expect(m.moves[0]!.action.kind).toBe("invite");
     expect(m.tiles.find((t) => t.id === "wallet")!.status).toBe("100 · 1 waiting");
   });

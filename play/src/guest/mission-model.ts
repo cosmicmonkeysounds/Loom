@@ -240,11 +240,13 @@ export function missionOf(o: MissionInput): MissionModel {
   }
   const already = new Set(moves.flatMap((m) => (m.action.kind === "nav" && m.action.nav.to === "room" ? [m.action.nav.id] : [])));
   if (promoted !== null) already.add(promoted.channel);
+  // The Where row already goes there (N9: "Trabolta replied to you" under "Open Trabolta").
+  if (where !== null && where.kind === "go" && where.nav.to === "room") already.add(where.nav.id);
   for (const c of o.list) {
     if (c.kind === "codex" || c.kind === "quests" || c.kind === "wallet" || c.spaceId === "pinned") continue;
     if (!guestDot(c) || already.has(c.id) || c.decision) continue;
     const last = c.messages[c.messages.length - 1]?.seq ?? 0;
-    moves.push({ key: `dot:${c.id}`, text: `💬 ${roomTitle(c.id)} replied to you`, action: { kind: "nav", nav: { to: "room", id: c.id } }, order: last });
+    moves.push({ key: `dot:${c.id}`, text: `💬 New in ${roomTitle(c.id)}`, action: { kind: "nav", nav: { to: "room", id: c.id } }, order: last });
   }
   moves.sort((a, b) => b.order - a.order);
 
