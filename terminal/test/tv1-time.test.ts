@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BOTTLE_SEATS,
+  BOTTLE_EMPTY_SPIN_MS,
   BOTTLE_SPIN_MS,
   EMPTY_RESULTS,
   INTRO_POST,
@@ -44,25 +45,35 @@ describe("tv1 time — the bottle", () => {
   });
 
   it("the landing spin ends exactly on the seat, fast first, a rock at the end", () => {
-    const seat = bottleSeat("Excel");
-    const end = bottleLanding(BOTTLE_SPIN_MS, seat);
-    expect(seatUnder(end)).toBe(seat);
-    expect(end % 360).toBeCloseTo(seatAngle(seat), 6);
-    expect(bottleLanding(BOTTLE_SPIN_MS + 5000, seat)).toBe(end);
-    expect(bottleLanding(0, seat)).toBe(0);
-    // Faster in the first second than in the last.
-    const early = bottleLanding(1000, seat) - bottleLanding(0, seat);
-    const late = bottleLanding(BOTTLE_SPIN_MS * 0.86, seat) - bottleLanding(BOTTLE_SPIN_MS * 0.86 - 1000, seat);
-    expect(early).toBeGreaterThan(late * 3);
-    // The rock: past the seat, then back onto it.
-    expect(bottleLanding(BOTTLE_SPIN_MS * 0.87, seat)).toBeGreaterThan(end);
+    for (const spin of [BOTTLE_SPIN_MS, BOTTLE_EMPTY_SPIN_MS]) {
+      const seat = bottleSeat("Excel");
+      const end = bottleLanding(spin, seat, BOTTLE_SEATS, spin);
+      expect(seatUnder(end)).toBe(seat);
+      expect(end % 360).toBeCloseTo(seatAngle(seat), 6);
+      expect(bottleLanding(spin + 5000, seat, BOTTLE_SEATS, spin)).toBe(end);
+      expect(bottleLanding(0, seat, BOTTLE_SEATS, spin)).toBe(0);
+      // Faster at the start than near the end.
+      const w = spin / 6;
+      const early = bottleLanding(w, seat, BOTTLE_SEATS, spin);
+      const late = bottleLanding(spin * 0.86, seat, BOTTLE_SEATS, spin) - bottleLanding(spin * 0.86 - w, seat, BOTTLE_SEATS, spin);
+      expect(early).toBeGreaterThan(late * 3);
+      // The rock: past the seat, then back onto it.
+      expect(bottleLanding(spin * 0.87, seat, BOTTLE_SEATS, spin)).toBeGreaterThan(end);
+    }
+  });
+
+  it("lands before the TV's voice names the pick (the same poll brings both)", () => {
+    expect(BOTTLE_SPIN_MS).toBeLessThanOrEqual(2000);
+    expect(BOTTLE_EMPTY_SPIN_MS).toBeGreaterThan(BOTTLE_SPIN_MS);
   });
 
   it("ticks once per seat passed, never closer than the gap, never after it lands", () => {
-    const ticks = bottleTicks(3);
-    expect(ticks.length).toBeGreaterThan(20);
-    for (let i = 1; i < ticks.length; i++) expect(ticks[i]! - ticks[i - 1]!).toBeGreaterThanOrEqual(70);
-    expect(Math.max(...ticks)).toBeLessThanOrEqual(BOTTLE_SPIN_MS);
+    for (const spin of [BOTTLE_SPIN_MS, BOTTLE_EMPTY_SPIN_MS]) {
+      const ticks = bottleTicks(3, BOTTLE_SEATS, spin);
+      expect(ticks.length).toBeGreaterThan(10);
+      for (let i = 1; i < ticks.length; i++) expect(ticks[i]! - ticks[i - 1]!).toBeGreaterThanOrEqual(70);
+      expect(Math.max(...ticks)).toBeLessThanOrEqual(spin);
+    }
   });
 
   it("spins freely forever before a pick", () => {

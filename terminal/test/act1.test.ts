@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import type { SceneProps } from "../src/cutscene/types.ts";
 import type { ScreenMoment } from "../src/screen.ts";
@@ -234,5 +234,13 @@ describe("act 1 — bingo's hold", () => {
     expect(f.k).toBeLessThan(1);
     expect(bingoTicks(4200 + 8000 * 2 + 600).has(f.cell)).toBe(true);
     expect(freshTick(4200 + 8000 * 2 + 5000).cell).toBe(-1);
+  });
+});
+
+describe("act 1 — the bottle's landing under his voice", () => {
+  it("every landing accent plays under the voice that names the pick", () => {
+    const cues = bottleLandedCues(5);
+    expect(cues.length).toBeGreaterThan(10);
+    for (const [, , o] of cues) expect(o.over).toBe(true);
   });
 });

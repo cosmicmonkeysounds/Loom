@@ -24,10 +24,19 @@ export function endDue(prev: number | null, t: number, end: number): boolean {
 
 /** How many seats round the bottle's table (the program icons). */
 export const BOTTLE_SEATS = 12;
-/** How long the landing spin takes (ms): fast, slower, the last wobble. */
-export const BOTTLE_SPIN_MS = 6200;
-/** Whole turns before it settles. */
-const BOTTLE_TURNS = 7;
+/**
+ * How long the landing spin takes (ms): fast, slower, the last wobble. The
+ * draw comes with the press, and the TV says "<pick>. Truth or dare?" on the
+ * same poll (`Bottle Landed`), so the bottle lands before he names the pick.
+ */
+export const BOTTLE_SPIN_MS = 1800;
+/** An empty table's spin: nobody is named, so it takes its time. */
+export const BOTTLE_EMPTY_SPIN_MS = 6200;
+
+/** Whole turns before it settles: about one per 0.9 s of spin, at least two. */
+export function spinTurns(spin: number): number {
+  return Math.max(2, Math.round(spin / 900));
+}
 
 /** The seat the bottle lands on for a program (the same on every screen; never seat 0, where an empty table points). */
 export function bottleSeat(who: string | null, seats = BOTTLE_SEATS): number {
@@ -47,7 +56,7 @@ export function seatAngle(seat: number, seats = BOTTLE_SEATS): number {
  * At and after the end it points exactly at the seat.
  */
 export function bottleLanding(t: number, seat: number, seats = BOTTLE_SEATS, spin = BOTTLE_SPIN_MS): number {
-  const target = BOTTLE_TURNS * 360 + seatAngle(seat, seats);
+  const target = spinTurns(spin) * 360 + seatAngle(seat, seats);
   if (t >= spin) return target;
   if (t <= 0) return 0;
   const main = spin * 0.86;

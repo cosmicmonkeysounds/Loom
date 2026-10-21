@@ -62,7 +62,9 @@ import {
 import { INTRO_MS, IntroTv, IntroWall, POWER_ON_MS, PowerOnTv, PowerOnWall } from "../kit/tv1-boot.tsx";
 import { AlarmClock, Beacon, BingoBall, BottleTable, Chevrons, DataRain, March, Redacted, Ribbon, WallCard, useEndAt } from "../kit/tv1-parts.tsx";
 import {
+  BOTTLE_EMPTY_SPIN_MS,
   BOTTLE_SPIN_MS,
+  BOTTLE_SEATS,
   EMPTY_RESULTS,
   bottleFree,
   bottleLanding,
@@ -1148,15 +1150,24 @@ function TruthOrDareTv({ t, at, state, night, reduced }: SceneProps) {
 }
 
 /**
- *   0–6200    the bottle spins down: fast, slower, a last rock onto its seat; a tick
- *             for every seat the neck passes, each seat glowing as it goes by
- *   6200–8400 it lands: the seat lifts and glows, sparks burst off it, the name types
- *   8400–14000 hold: "<name>. Truth or dare?" — TRUTH and DARE blink in turn
+ * The landing's accents, all `over`: the TV names the pick on the same poll,
+ * and a plain effect is dropped while he speaks.
+ */
+export function bottleLandedCues(seat: number): Array<readonly [number, SfxName, SfxOpts]> {
+  return [...bottleTicks(seat).map((x) => [x, "tick", { gain: 0.45, over: true }] as const), [BOTTLE_SPIN_MS, "boom", { gain: 0.4, over: true }], [BOTTLE_SPIN_MS + 100, "win", { gain: 0.6, over: true }]];
+}
+
+/**
+ *   0–1800    the bottle spins down: fast, slower, a last rock onto its seat; a tick
+ *             for every seat the neck passes, each seat glowing as it goes by — it
+ *             lands before he names the pick (the TV says it on the same poll)
+ *   1800–4000 it lands: the seat lifts and glows, sparks burst off it, the name types
+ *   4000–14000 hold: "<name>. Truth or dare?" — TRUTH and DARE blink in turn
  */
 function BottleLandedTv({ t, who, night, sfx, reduced }: SceneProps) {
   const name = who ?? night.bottle_pick ?? "A PROGRAM";
   const seat = bottleSeat(name);
-  useSfxCues(t, sfx, [...bottleTicks(seat).map((x) => [x, "tick", { gain: 0.5 }] as const), [BOTTLE_SPIN_MS, "boom", { gain: 0.4 }], [BOTTLE_SPIN_MS + 100, "win", { gain: 0.6 }]]);
+  useSfxCues(t, sfx, bottleLandedCues(seat));
   const angle = reduced ? seatAngle(seat) : bottleLanding(t, seat);
   const landed = t >= BOTTLE_SPIN_MS || reduced;
   const sa = (seatAngle(seat) - 90) * (Math.PI / 180);
@@ -1177,11 +1188,11 @@ function BottleLandedTv({ t, who, night, sfx, reduced }: SceneProps) {
   );
 }
 
-/** The bottle finds nobody (`bottle_empty`): it spins down onto the gap between two seats. */
+/** The bottle finds nobody (`bottle_empty`): it spins down slowly (nobody is named) onto the gap between two seats. */
 function BottleEmptyTv({ t, sfx, reduced }: SceneProps) {
-  useSfxCues(t, sfx, [...bottleTicks(EMPTY_SEAT).map((x) => [x, "tick", { gain: 0.45 }] as const), [BOTTLE_SPIN_MS + 100, "lose", { gain: 0.5 }]]);
-  const angle = reduced ? seatAngle(EMPTY_SEAT) : bottleLanding(t, EMPTY_SEAT);
-  const landed = t >= BOTTLE_SPIN_MS || reduced;
+  useSfxCues(t, sfx, [...bottleTicks(EMPTY_SEAT, BOTTLE_SEATS, BOTTLE_EMPTY_SPIN_MS).map((x) => [x, "tick", { gain: 0.45 }] as const), [BOTTLE_EMPTY_SPIN_MS + 100, "lose", { gain: 0.5 }]]);
+  const angle = reduced ? seatAngle(EMPTY_SEAT) : bottleLanding(t, EMPTY_SEAT, BOTTLE_SEATS, BOTTLE_EMPTY_SPIN_MS);
+  const landed = t >= BOTTLE_EMPTY_SPIN_MS || reduced;
   return <BottleScreen t={t} angle={angle} lit={landed ? null : seatUnder(angle)} name={null} title={landed ? "THE BOTTLE FINDS NO ONE" : "THE BOTTLE IS SPINNING"} sub={landed ? "Nobody left to pick for this question." : "…"} ask={false} reduced={reduced} />;
 }
 
@@ -1189,9 +1200,10 @@ function BottleWall({ t, value, who, night, sfx, reduced }: SceneProps) {
   const empty = value.replace(/[\s_-]/gu, "").toLowerCase() === "bottleempty";
   const name = empty ? null : (who ?? night.bottle_pick ?? "A PROGRAM");
   const seat = empty ? EMPTY_SEAT : bottleSeat(name);
-  useSfxCues(t, sfx, [[BOTTLE_SPIN_MS + 100, empty ? "lose" : "win", { gain: 0.5 }]]);
-  const angle = reduced ? seatAngle(seat) : bottleLanding(t, seat);
-  const landed = t >= BOTTLE_SPIN_MS || reduced;
+  const spin = empty ? BOTTLE_EMPTY_SPIN_MS : BOTTLE_SPIN_MS;
+  useSfxCues(t, sfx, [[spin + 100, empty ? "lose" : "win", { gain: 0.5 }]]);
+  const angle = reduced ? seatAngle(seat) : bottleLanding(t, seat, BOTTLE_SEATS, spin);
+  const landed = t >= spin || reduced;
   return (
     <WallCard
       t={t}
