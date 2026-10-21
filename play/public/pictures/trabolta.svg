@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Jean Trabolta</title>
+  <defs>
+    <radialGradient id="skin" cx="42%" cy="36%" r="70%">
+      <stop offset="0" stop-color="#9cf5b8"/>
+      <stop offset="1" stop-color="#17c45a"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" fill="#04110a"/>
+  <circle cx="128" cy="128" r="112" fill="none" stroke="#3dff7a" stroke-width="8"/>
+  <ellipse cx="128" cy="132" rx="92" ry="98" fill="url(#skin)" stroke="#04110a" stroke-width="6"/>
+  <path d="M68 86 Q90 70 110 84" fill="none" stroke="#04110a" stroke-width="9" stroke-linecap="round"/>
+  <path d="M146 84 Q166 70 188 86" fill="none" stroke="#04110a" stroke-width="9" stroke-linecap="round"/>
+  <ellipse cx="94" cy="112" rx="19" ry="22" fill="#e9fff1" stroke="#04110a" stroke-width="5"/>
+  <ellipse cx="162" cy="112" rx="19" ry="22" fill="#e9fff1" stroke="#04110a" stroke-width="5"/>
+  <circle cx="99" cy="116" r="9" fill="#04110a"/>
+  <circle cx="157" cy="116" r="9" fill="#04110a"/>
+  <circle cx="102" cy="112" r="3" fill="#e9fff1"/>
+  <circle cx="160" cy="112" r="3" fill="#e9fff1"/>
+  <path d="M58 156 Q128 236 198 156 Q128 176 58 156 Z" fill="#04110a" stroke="#04110a" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M70 162 Q128 178 186 162 L180 178 Q128 194 76 178 Z" fill="#e9fff1"/>
+  <g stroke="#04110a" stroke-width="4" stroke-linecap="round">
+    <line x1="92" y1="166" x2="94" y2="185"/>
+    <line x1="110" y1="169" x2="111" y2="189"/>
+    <line x1="128" y1="170" x2="128" y2="190"/>
+    <line x1="146" y1="169" x2="145" y2="189"/>
+    <line x1="164" y1="166" x2="162" y2="185"/>
+  </g>
+  <path d="M52 150 Q50 160 60 162" fill="none" stroke="#04110a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M204 150 Q206 160 196 162" fill="none" stroke="#04110a" stroke-width="5" stroke-linecap="round"/>
+</svg>
