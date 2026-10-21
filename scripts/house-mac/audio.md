@@ -79,20 +79,40 @@ Where everything is:
    The router and alexa share one voice lock, so a leftover alexa agent
    would block the router's announcements (the router logs
    `announce: blocked`; its sounds still play).
-2. `git pull`, then the sound files:
+2. `git pull`, then the **machine config**. The router and the `show` job
+   both run `stagehand/trapped.house.yaml`; its event id and passcode are
+   `CHANGE-ME` placeholders, and the real ones go in
+   `stagehand/trapped.house.local.yaml` (git-ignored, merged over
+   `server:`; it may hold only that mapping):
+   ```yaml
+   server: { event: <the live event's id>, mod_passcode: "<the mod passcode>" }
+   ```
+   The old alexa runbook had you copy the YAML to `stagehand/house.yaml`
+   with those values in it: take them from there into the overlay, then
+   retire the copy (`mv stagehand/house.yaml stagehand/house.yaml.retired`;
+   nothing reads it any more). See which file the `show` job runs:
+   `plutil -p ~/Library/LaunchAgents/com.mapsandducks.stagehand.show.plist | grep -A1 -- --config`.
+   If it names `house.yaml`, reinstall it on the tracked file:
+   `uv run stagehand launchd install --job show --config trapped.house.yaml`.
+   Without the overlay the router can't long-poll the server: Run's ■ Stop
+   house sounds never reaches it, and it routes from `config_file` alone.
+3. The sound files:
    `cd stagehand && uv run stagehand sounds placeholders --config trapped.house.yaml`
    writes a labelled placeholder per story sound (a distinct tone, then
    "Placeholder. printer grind."). Drop the real files in
    `stagehand/media/sounds/` as they arrive: a real file always wins, and the
    generator never touches one.
-3. `uv run stagehand check --config trapped.house.yaml --only audio` — it
+4. `uv run stagehand check --config trapped.house.yaml --only audio` — it
    shows the device's 32 / 30 against audio.json's 24 / 22 and fails if the
    layout moved; its warnings list every placeholder still there (the
-   pre-show gate: none on the night).
-4. `uv run stagehand launchd install --job audio --config trapped.house.yaml`.
-5. `uv run stagehand launchd restart --job show` (the cue map changed: no
+   pre-show gate: none on the night). It must print **no `PLACEHOLDER
+   server.…` line** (else step 2's overlay is missing). If it says
+   *wants 16 / 16* it read the wave 17 router's cached `audio.json`: delete
+   `~/Library/Caches/stagehand-audio/audio.json` and run it again.
+5. `uv run stagehand launchd install --job audio --config trapped.house.yaml`.
+6. `uv run stagehand launchd restart --job show` (the cue map changed: no
    QLab rules).
-6. On the map editor's Audio tab, 🔈 Test each speaker, then
+7. On the map editor's Audio tab, 🔈 Test each speaker, then
    `uv run stagehand announce --config trapped.house.yaml "Test."` and
    `uv run stagehand sounds play printer_grind --config trapped.house.yaml`.
 
