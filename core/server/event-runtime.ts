@@ -1212,7 +1212,6 @@ export class EventRuntime {
   private modViewNow(): ModView {
     const base = modView(this.sim, this.phase, this.scenarioName, this.presence(), this.sim === null ? this.declaredCharacters : undefined, this.declaredSim);
     const view: ModView = {
-      ...base,
       // C8: the caller claim rides every cue-sheet view (lean, host, ModView).
       ...this.withCaller(base),
       avatars: this.avatarMap(),

@@ -98,12 +98,6 @@ export function globalButtonsOf(view: PrimeView | null | undefined): string[] {
   return Array.isArray(g) ? g : [];
 }
 
-/** A guest's last sighting (A1), else the wanted entry's, else undefined (unknown). */
-export function lastSeenOf(g: Pick<BoothGuest, "id" | "lastSeen">, wanted: readonly WantedEntry[] | null): number | null | undefined {
-  if (g.lastSeen !== undefined) return g.lastSeen;
-  const w = wanted?.find((x) => x.id === g.id);
-  return w !== undefined ? w.lastSeen : undefined;
-}
 
 /** May this booth press story button `id` (it is in the view, and its `by:` names this character or nobody)? */
 export function mayPress(interactions: readonly Interaction[] | undefined, id: string, me: string): boolean {

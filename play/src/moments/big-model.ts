@@ -9,7 +9,7 @@ import type { Moment } from "./model.ts";
 export { HEADLINE_MAX, bigParts } from "./big-parts.ts";
 
 /** The acknowledge button is disabled this long (shown as the install bar filling). */
-export const BIG_DEAD_MS = 1_200;
+export { BIG_DEAD_MS } from "../../../core/src/delivery.ts";
 /** After a card inside a big is answered, the settled card shows this long, then the window closes. */
 export const BIG_SETTLE_MS = 1_200;
 /** A glyph without its variation selector (🛡️ and 🛡 are one glyph). */
