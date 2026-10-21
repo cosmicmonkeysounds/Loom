@@ -2,7 +2,7 @@
 title: Live verbs — building game rules from primitives
 section: Live Shows
 order: 33
-keywords: arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
+keywords: quietly, reveal quietly, arm, two taps, caller, callers, by on an admin cue, cue bar, L1217, recruited, founded, unaligned, tap again to fire, not your button, king hit, king fallen, capture, release, escape, reveal, respond, join, defect, betray, enroll, scan, signal, fire, named event, game, verbs, promote, cast, move, add, remove, reply, when, watcher, primitives, rules, hooks, do, INTERACTION, interaction, button, story rule, arguments, with, for, cue sheet, act, acts, anytime, director page, sequence, repeat, refused, not taken, branch, fallback, chess, chess won, the King, majority, limit, power, screens, slide, overlay, tv, blackout, award, restrict, unrestrict, restricted, marked, quarantine, pin, unpin, sticky, notice, pinned, staff quest, character quest
 ---
 
 Live shows run on **hooks** — `when <event>:` blocks in a CHARACTER,
@@ -119,7 +119,7 @@ it interrupts the reader as a major moment.
 | `set who.field = value` | change any state ([Memory](memory.md)) |
 | `move who to Place` | put a participant somewhere (fires `arrives` / `leaves`) |
 | `add who to Group` / `remove who from Group` | group membership (fires `joins`) |
-| `reveal Group` / `reveal Place` / `reveal room` / `reveal Character` | expose something `hidden: true` — a group to the party; a place, a chat room or a character to everyone, or `… for who` to one participant |
+| `reveal Group` / `reveal Place` / `reveal room` / `reveal Character` | expose something `hidden: true` — a group to the party; a place, a chat room or a character to everyone, or `… for who` to one participant; end it with `quietly` for no "📂 … is open now." / "exposed" notice |
 | `reply text` | a private line back to whoever acted (the scanned guest, the mover, a booth's Readouts); `reply !text` makes it an alert |
 | `fire name` / `fire name for who` / `fire name with k: v` | raise a named event every matching `when` hears |
 | `broadcast cue to scope` | send a cue (and indented lines) to an audience ([scopes](broadcast-improv.md)) |

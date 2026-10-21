@@ -2180,10 +2180,13 @@ export class Sim {
         // `reveal X` (to everyone) / `reveal X for who` (to one participant).
         // A room's exact name wins over name folding, so `reveal task
         // manager` opens `# task-manager` even beside CHARACTER Task Manager.
-        const kw = splitKeyword(rest, "for");
-        const raw = (kw !== null ? kw[0] : rest).trim();
+        // A trailing `quietly` (wave 18b) opens it with no chat notice.
+        const quietly = /\s+quietly\s*$/u.exec(rest);
+        const body = quietly !== null ? rest.slice(0, quietly.index) : rest;
+        const kw = splitKeyword(body, "for");
+        const raw = (kw !== null ? kw[0] : body).trim();
         const target = this.model.channels.has(channelId(raw)) ? channelId(raw) : this.resolveId(raw, bindings);
-        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null);
+        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null, quietly !== null);
         break;
       }
       case "quest_start":
@@ -2435,7 +2438,7 @@ export class Sim {
     this.fire({ verb: "betray", subject: person, scanner: null, filter: secret });
   }
 
-  private doReveal(target: string, person: string | null = null): void {
+  private doReveal(target: string, person: string | null = null, quiet = false): void {
     const hit = this.revealTarget(target);
     if (hit === null) return;
     if (hit.kind === "faction") {
@@ -2443,7 +2446,7 @@ export class Sim {
       if (this.revealed.has(hit.id)) return;
       this.revealed.add(hit.id);
       this.world.set(`${hit.id}.revealed`, vBool(true));
-      this.record({ type: "factionRevealed", faction: hit.id });
+      this.record({ type: "factionRevealed", faction: hit.id, ...(quiet ? { quiet: true as const } : {}) });
       this.fire({ verb: "revealed", subject: hit.id, scanner: null, filter: null });
       return;
     }
@@ -2460,7 +2463,7 @@ export class Sim {
       this.revealed.add(hit.id);
       if (hit.kind !== "channel") this.world.set(`${hit.id}.revealed`, vBool(true));
     }
-    this.record({ type: "revealed", target: hit.id, kind: hit.kind, person });
+    this.record({ type: "revealed", target: hit.id, kind: hit.kind, person, ...(quiet ? { quiet: true as const } : {}) });
     this.fire({ verb: "revealed", subject: hit.id, scanner: null, filter: null });
   }
 

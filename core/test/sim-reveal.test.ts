@@ -247,3 +247,71 @@ describe("cutscene locations", () => {
     expect(bare.cutsceneFor("g1")).toBe(false);
   });
 });
+
+describe("`reveal … quietly` (wave 18b)", () => {
+  const QUIET = `# Quiet House
+GROUP The Society
+  hidden: true
+
+LOCATION Hall
+LOCATION Cellar
+  label: The Cellar
+  hidden: true
+LOCATION Attic
+  hidden: true
+
+SPACE Rooms
+  CHANNEL secrets
+    kind: open
+    hidden: true
+
+ROLE Guest
+  when cleared for guest:
+    reveal Cellar for guest quietly
+  when cleared loudly for guest:
+    reveal Cellar for guest
+
+when the house opens:
+  reveal Attic quietly
+  reveal secrets quietly
+  reveal The Society quietly
+
+== Boot
+The house.
+`;
+
+  it("parses as a statement, with or without `for who`", () => {
+    expect(statementToDirective("reveal The Start Bar quietly")).toBe("reveal: The Start Bar quietly");
+    expect(statementToDirective("reveal The Start Bar for program quietly")).toBe("reveal: The Start Bar for program quietly");
+    expect(statementToDirective("reveal The Big Start Bar quietly")).toBe("reveal: The Big Start Bar quietly");
+  });
+
+  it("opens the room for its person, records `quiet`, and posts no notice", () => {
+    const sim = Sim.fromSources(QUIET);
+    sim.createPerson("g1", "Ada");
+    sim.createPerson("g2", "Bob");
+    const evs = sim.signal("cleared", "g1");
+    expect(evs.filter((e) => e.type === "revealed")).toEqual([{ type: "revealed", target: "Cellar", kind: "location", person: "g1", quiet: true }]);
+    expect(guestView(sim, "g1").channels.map((c) => c.id)).toContain("loc:Cellar");
+    expect(guestView(sim, "g2").channels.map((c) => c.id)).not.toContain("loc:Cellar");
+    expect(composeGuestMessages(sim, evs).filter((m) => m.kind === "system")).toEqual([]);
+  });
+
+  it("opens rooms and exposes a faction for everyone with no notice at all", () => {
+    const sim = Sim.fromSources(QUIET);
+    sim.createPerson("g1", "Ada");
+    const evs = sim.signal("the house opens");
+    expect(evs.filter((e) => e.type === "revealed" || e.type === "factionRevealed").map((e) => (e as { quiet?: true }).quiet)).toEqual([true, true, true]);
+    expect(guestView(sim, "g1").channels.map((c) => c.id)).toEqual(expect.arrayContaining(["loc:Attic", "room:secrets"]));
+    expect(sim.factionRevealed("The Society")).toBe(true);
+    expect(composeGuestMessages(sim, evs).filter((m) => m.kind === "system")).toEqual([]);
+  });
+
+  it("a plain reveal still announces itself", () => {
+    const sim = Sim.fromSources(QUIET);
+    sim.createPerson("g1", "Ada");
+    const evs = sim.signal("cleared loudly", "g1");
+    expect(evs.find((e) => e.type === "revealed")).not.toHaveProperty("quiet");
+    expect(composeGuestMessages(sim, evs).filter((m) => m.kind === "system").map((m) => m.text)).toEqual(["📂 The Cellar is open now."]);
+  });
+});

@@ -129,7 +129,7 @@ openers end with `:` and indent their body.
 | `PERSON` / `ROSTER` / `cast p as Role` | real people, the night's plan, binding |
 | `GROUP` (`hidden: true`) / `LOCATION` (`hidden: true`, `cutscene: true`) / `COHORT` | a side / a place (and a room; hidden until visited or revealed; on rails) / a grouping |
 | `move who to Place` | put a participant somewhere |
-| `add who to Group` / `remove who from Group` / `reveal X [for who]` | membership / open a hidden group, place, room or character |
+| `add who to Group` / `remove who from Group` / `reveal X [for who] [quietly]` | membership / open a hidden group, place, room or character (`quietly`: no notice) |
 | `broadcast cue to scope` (+ indented lines) | send a cue to a subset |
 | `broadcast "!📣 text" to everyone` / `broadcast "~✅ text" to everyone` | an alert (a major moment on every phone) / a per-person notice (folds with its neighbours) |
 | `participant(X)` `group(G)` `location(L)` , `and` / `but` | broadcast scopes |
