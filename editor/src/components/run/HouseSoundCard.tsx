@@ -14,7 +14,7 @@ import { RunBackend, useCockpit } from '@/store/cockpit'
 import { useHouseAudio } from '@/store/house-audio'
 import { useTerminals } from '@/store/terminals'
 import { TerminalStatus } from '@/lib/terminals'
-import { StopOutcome, announceTerminalsOf, routerLine, sourceLabel, stopButtonLabel } from '@/lib/house-audio'
+import { DIRECTOR_SAVE_PINS, StopOutcome, announceTerminalsOf, routerLine, sourceLabel, stopButtonLabel } from '@/lib/house-audio'
 import { useNow } from '@/components/cockpit/director/clock'
 
 const btn = 'rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40'
@@ -159,6 +159,11 @@ export function HouseSoundCard() {
           </button>
         )}
       </div>
+      {status.source === 'director' && (
+        <p className="mt-1 text-[11px] text-amber-300/90" data-testid="run-house-sound-pins">
+          {DIRECTOR_SAVE_PINS}
+        </p>
+      )}
     </section>
   )
 }

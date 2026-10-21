@@ -170,9 +170,16 @@ Front of house: getting people in.
   reach most rooms, and a tablet in a room with a house speaker would say
   each one twice. A tick is saved for **this event only** (the card says
   *In force: this event's save*); **Save to project** writes it into the
-  project's `audio.json`, so it survives End → relaunch. If someone saved
-  the speakers from the map page since the card read them, the tick is
-  refused and the card reloads: tick it again.
+  project's `audio.json`, so it survives End → relaunch. That save holds
+  the **whole** speaker config, not only the list: while it stands, a
+  newer `audio.json` synced to the project does not play on this event,
+  and the card says so. When the project's file has other speakers than
+  the save (a sync since the tick, or a map-page save on this event),
+  Save to project asks first and then keeps the project's speakers,
+  adding only the list; to write the map page's speakers, use Save to
+  project on the map page's Audio panel. If someone saved the speakers
+  from the map page since the card read them, the tick is refused and the
+  card reloads: tick it again.
 - **House map** — when the event has a house map, one button per map
   variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
   playing now highlighted. Press the other to switch every tablet,

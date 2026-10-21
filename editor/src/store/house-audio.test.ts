@@ -4,6 +4,13 @@
 // what a 409 means and reloads, and saves to the project.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+const dialog = vi.hoisted(() => ({ answer: true, asked: [] as { title: string; confirmLabel?: string; danger?: boolean }[] }))
+vi.mock('@/store/dialog', () => ({
+  confirmAction: async (o: { title: string; confirmLabel?: string; danger?: boolean }) => {
+    dialog.asked.push(o)
+    return dialog.answer
+  },
+}))
 import { useHouseAudio } from './house-audio'
 
 interface Call {
@@ -16,6 +23,8 @@ let calls: Call[] = []
 let version = 'v1'
 let audio: Record<string, unknown> = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
 let saveStatus = 200
+/** The project's audio.json text (null = no such file; 'error' = the read fails). */
+let projectFile: string | null | 'error' = null
 let stopAnswer: { status: number; body: unknown } = { status: 200, body: { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } } }
 /** Hold the next GET until `releaseGet` is called (a poll in flight). */
 let holdNextGet = false
@@ -30,6 +39,9 @@ beforeEach(() => {
   version = 'v1'
   audio = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
   saveStatus = 200
+  projectFile = null
+  dialog.answer = true
+  dialog.asked = []
   stopAnswer = { status: 200, body: { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } } }
   holdNextGet = false
   releaseGet = null
@@ -57,6 +69,10 @@ beforeEach(() => {
       audio = body!['audio'] as Record<string, unknown>
       version = 'v2'
       return answer(200, { ok: true, version, source: 'director', warnings: [] })
+    }
+    if (path === '/api/projects/p1') {
+      if (projectFile === 'error') return answer(500, { error: 'down' })
+      return answer(200, { project: { id: 'p1' }, files: projectFile === null ? [] : [{ path: 'audio.json', content: projectFile }] })
     }
     if (path === '/e/ev1/api/mod/audio/project') {
       version = 'v1'
@@ -153,5 +169,56 @@ describe('the house sound store', () => {
     expect(useHouseAudio.getState().saveError).toBeNull()
     const last = calls.filter((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio').at(-1)!
     expect(last.body?.['base']).toBe('v2')
+  })
+
+  describe('Save to project over a director save', () => {
+    async function ticked(): Promise<void> {
+      useHouseAudio.getState().bind('ev1', 'p1')
+      await vi.waitFor(() => expect(useHouseAudio.getState().status).not.toBeNull())
+      await useHouseAudio.getState().setTerminal('tent', true)
+      expect(useHouseAudio.getState().status?.source).toBe('director')
+    }
+    const posts = () => calls.filter((c) => c.method === 'POST').map((c) => c.path)
+
+    it('a save that differs only in the house list is written as it is, without asking', async () => {
+      projectFile = JSON.stringify({ version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } })
+      await ticked()
+      await useHouseAudio.getState().saveToProject()
+      expect(dialog.asked).toEqual([])
+      expect(posts()).toEqual(['/e/ev1/api/mod/audio', '/e/ev1/api/mod/audio/project'])
+    })
+
+    it('a project audio.json synced since the save: asks, then keeps its speakers and adds only the list', async () => {
+      await ticked()
+      // A sync since the tick: the surveyed speakers are in the project now.
+      projectFile = JSON.stringify({ version: 1, cues: {}, device: { name: '828x' }, speakers: [{ id: 'sp1' }], announce: { to: ['everywhere'], chime: true } })
+      await useHouseAudio.getState().saveToProject()
+      expect(dialog.asked.map((d) => d.confirmLabel)).toEqual(['Save the house list only'])
+      const save = calls.filter((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio').at(-1)!
+      expect(save.body).toEqual({
+        audio: { version: 1, cues: {}, device: { name: '828x' }, speakers: [{ id: 'sp1' }], announce: { to: ['everywhere'], chime: true, terminals: ['tent'] } },
+        base: 'v2',
+      })
+      expect(posts().at(-1)).toBe('/e/ev1/api/mod/audio/project')
+    })
+
+    it('saying no writes nothing', async () => {
+      await ticked()
+      projectFile = JSON.stringify({ version: 1, cues: {}, speakers: [{ id: 'sp1' }] })
+      dialog.answer = false
+      const before = posts().length
+      await useHouseAudio.getState().saveToProject()
+      expect(dialog.asked).toHaveLength(1)
+      expect(posts().length).toBe(before)
+      expect(useHouseAudio.getState().busy).toBeNull()
+    })
+
+    it('an unreadable project file asks before writing the whole save', async () => {
+      await ticked()
+      projectFile = 'error'
+      await useHouseAudio.getState().saveToProject()
+      expect(dialog.asked).toMatchObject([{ confirmLabel: 'Save to project', danger: true }])
+      expect(posts().at(-1)).toBe('/e/ev1/api/mod/audio/project')
+    })
   })
 })

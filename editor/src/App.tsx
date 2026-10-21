@@ -58,8 +58,8 @@ export default function App() {
   useEffect(() => {
     armChime()
     useTerminals.getState().bind(runEventId)
-    useHouseAudio.getState().bind(runEventId)
-  }, [runEventId])
+    useHouseAudio.getState().bind(runEventId, projectId)
+  }, [runEventId, projectId])
 
   return (
     <>

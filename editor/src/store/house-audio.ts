@@ -7,8 +7,20 @@
 //! `lib/house-audio.ts`. A local run has no router: nothing is bound.
 
 import { create } from 'zustand'
-import { ApiError, audioApi } from '@/lib/api'
-import { StopOutcome, announceTerminalsOf, stopFailedText, stopOutcomeOf, stopResultText, withAnnounceTerminal, type AudioStatus } from '@/lib/house-audio'
+import { ApiError, audioApi, projectsApi } from '@/lib/api'
+import { confirmAction } from '@/store/dialog'
+import {
+  StopOutcome,
+  announceTerminalsOf,
+  parseAudioFile,
+  sameBesideHouseList,
+  stopFailedText,
+  stopOutcomeOf,
+  stopResultText,
+  withAnnounceTerminal,
+  withAnnounceTerminals,
+  type AudioStatus,
+} from '@/lib/house-audio'
 
 /** How often the card re-reads the config and the router's presence. */
 export const AUDIO_POLL_MS = 10_000
@@ -20,6 +32,9 @@ export const STOP_WARN_MS = 15_000
 
 interface HouseAudioState {
   eventId: string | null
+  /** The server project the event belongs to (Save to project compares
+   *  against its `audio.json`); null when unknown. */
+  projectId: string | null
   /** The last read (null = not read yet, or a server with no audio route). */
   status: AudioStatus | null
   /** The last read reached the server. */
@@ -32,13 +47,16 @@ interface HouseAudioState {
   saveError: string | null
   /** The last save landed as a director save (the card offers Save to project). */
   savedAt: number | null
-  bind: (eventId: string | null) => void
+  bind: (eventId: string | null, projectId?: string | null) => void
   refresh: () => Promise<void>
   /** ■ Stop house sounds (`announce` also cuts the announcement). Never rejects. */
   stop: (announce: boolean) => Promise<void>
   /** Put one map spot on (or off) the house list and save. Never rejects. */
   setTerminal: (spot: string, on: boolean) => Promise<void>
-  /** Write the config in force to the project's `audio.json`. Never rejects. */
+  /** Write the config in force to the project's `audio.json`. A director
+   *  save that differs from the project's file in more than the house list
+   *  asks first, and then keeps the project's speakers and adds only the
+   *  list. Never rejects. */
   saveToProject: () => Promise<void>
 }
 
@@ -55,8 +73,20 @@ let writeGen = 0
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
+/** The project's `audio.json` as a config: null = the project has none (or
+ *  it isn't a JSON object); undefined = it could not be read. */
+async function projectAudio(projectId: string): Promise<Record<string, unknown> | null | undefined> {
+  try {
+    const { files } = await projectsApi.get(projectId)
+    return parseAudioFile(files.find((f) => f.path === 'audio.json')?.content)
+  } catch {
+    return undefined
+  }
+}
+
 export const useHouseAudio = create<HouseAudioState>((set, get) => ({
   eventId: null,
+  projectId: null,
   status: null,
   reachable: true,
   busy: null,
@@ -64,7 +94,8 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
   saveError: null,
   savedAt: null,
 
-  bind: (eventId) => {
+  bind: (eventId, projectId = null) => {
+    if (get().projectId !== projectId) set({ projectId })
     if (get().eventId === eventId) return
     if (timer !== null) clearInterval(timer)
     timer = null
@@ -156,15 +187,48 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
   },
 
   saveToProject: async () => {
-    const eventId = get().eventId
-    if (eventId === null || get().busy !== null) return
+    const { eventId, projectId, status } = get()
+    if (eventId === null || status === null || get().busy !== null) return
+    // A director save holds the whole config. When the project's audio.json
+    // has other speakers than it (a sync since, or a map-page save here),
+    // writing it whole would undo that file: keep the project's speakers and
+    // add only the house list, after asking.
+    let merged: Record<string, unknown> | null = null
+    if (status.source === 'director') {
+      const project = projectId !== null ? await projectAudio(projectId) : undefined
+      if (project === undefined) {
+        const ok = await confirmAction({
+          title: 'Save the whole speaker config to the project?',
+          body: 'The project’s audio.json could not be read to compare. Save to project writes this event’s whole save (the device, the speakers, the routes and the house list) over it: if audio.json was synced since this save, that sync is lost.',
+          confirmLabel: 'Save to project',
+          danger: true,
+        })
+        if (!ok) return
+      } else if (project !== null && !sameBesideHouseList(project, status.audio)) {
+        const ok = await confirmAction({
+          title: 'Keep the project’s speakers?',
+          body: 'The project’s audio.json differs from this event’s save in more than the house list: it changed since this save (a sync of audio.json?), or the map page saved speakers on this event. Save the house list only: the project’s speakers stay, only the tablets’ list is added, and this event plays the project’s speakers from now on. To write the map page’s speakers instead, use Save to project on the map page’s Audio panel.',
+          confirmLabel: 'Save the house list only',
+        })
+        if (!ok) return
+        merged = withAnnounceTerminals(project, announceTerminalsOf(status.audio))
+      }
+    }
+    if (get().eventId !== eventId || get().busy !== null) return
     set({ busy: 'project', saveError: null })
     writeGen++
     try {
+      if (merged !== null) await audioApi.save(eventId, merged, status.version)
       await audioApi.saveToProject(eventId)
       if (get().eventId === eventId) set({ savedAt: null })
     } catch (e) {
-      if (get().eventId === eventId) set({ saveError: `Couldn’t save to the project: ${message(e)}` })
+      if (get().eventId === eventId)
+        set({
+          saveError:
+            e instanceof ApiError && e.status === 409
+              ? 'The speakers changed since this card read them: reloaded. Press Save to project again.'
+              : `Couldn’t save to the project: ${message(e)}`,
+        })
     } finally {
       writeGen++
       if (get().eventId === eventId) set({ busy: null })

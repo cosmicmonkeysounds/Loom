@@ -6,6 +6,9 @@ import {
   routerOf,
   sourceLabel,
   StopOutcome,
+  parseAudioFile,
+  sameBesideHouseList,
+  withAnnounceTerminals,
   stopButtonLabel,
   stopFailedText,
   stopOutcomeOf,
@@ -91,5 +94,25 @@ describe('the card lines', () => {
   it('names where the config comes from; a director save points at Save to project', () => {
     expect(sourceLabel('director')).toMatch(/Save to project/u)
     expect(sourceLabel('project')).toBe('the project’s audio.json')
+  })
+
+  it('compares two configs on everything but the house list', () => {
+    const project = { version: 1, speakers: [{ id: 'a' }], cues: { x: { to: ['a'] } } }
+    // A tick on a config with no announce block adds the router's default one: still only the list.
+    expect(sameBesideHouseList(project, withAnnounceTerminals(project, ['tent']))).toBe(true)
+    expect(sameBesideHouseList({ ...project, announce: { to: ['everywhere'], terminals: ['x'] } }, { cues: project.cues, speakers: project.speakers, version: 1 })).toBe(true)
+    // Another speaker, or announcements moved: more than the list.
+    expect(sameBesideHouseList(project, { ...project, speakers: [{ id: 'a' }, { id: 'b' }] })).toBe(false)
+    expect(sameBesideHouseList(project, { ...project, announce: { to: ['kitchen'] } })).toBe(false)
+  })
+
+  it('sets the house list exactly, and reads a project file', () => {
+    expect(withAnnounceTerminals({ announce: { to: ['a'], terminals: ['x'] } }, ['tent', 'casino'])).toEqual({ announce: { to: ['a'], terminals: ['tent', 'casino'] } })
+    expect(withAnnounceTerminals({ announce: { to: ['a'], terminals: ['x'] } }, [])).toEqual({ announce: { to: ['a'] } })
+    expect(parseAudioFile('{"version":1}')).toEqual({ version: 1 })
+    expect(parseAudioFile('')).toBeNull()
+    expect(parseAudioFile('not json')).toBeNull()
+    expect(parseAudioFile('[1]')).toBeNull()
+    expect(parseAudioFile(undefined)).toBeNull()
   })
 })

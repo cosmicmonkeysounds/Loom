@@ -59,8 +59,10 @@ describe('the House sound card', () => {
     expect(html).toContain('📢')
     // A listed spot the map playing now lacks is named, never silently kept.
     expect(html).toContain('not on the map playing now: old-spot')
-    // A director save offers Save to project.
+    // A director save offers Save to project, and says it pins the whole config.
     expect(html).toContain('data-testid="run-house-sound-project"')
+    expect(html).toContain('data-testid="run-house-sound-pins"')
+    expect(html).toContain('does not play here')
   })
 
   it('a project config offers no Save to project; no router says so', () => {
@@ -68,6 +70,7 @@ describe('the House sound card', () => {
     fake.terminals = { map: MAP, rows: [] }
     const html = render(HouseSoundCard)
     expect(html).not.toContain('run-house-sound-project')
+    expect(html).not.toContain('run-house-sound-pins')
     expect(html).toContain('No router listening')
   })
 })

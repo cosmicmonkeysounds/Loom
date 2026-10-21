@@ -110,6 +110,68 @@ export function withAnnounceTerminal(audio: Record<string, unknown>, spot: strin
   return next
 }
 
+/** `audio` with the house list set to exactly `list`, everything else kept
+ *  (no `announce` block → the router's default one, as `withAnnounceTerminal`). */
+export function withAnnounceTerminals(audio: Record<string, unknown>, list: readonly string[]): Record<string, unknown> {
+  const next = JSON.parse(JSON.stringify(audio)) as Record<string, unknown>
+  const prev = next['announce']
+  const block: Record<string, unknown> = prev !== null && typeof prev === 'object' ? (prev as Record<string, unknown>) : { to: [...ANNOUNCE_DEFAULT_TO] }
+  if (list.length > 0) block['terminals'] = [...list]
+  else delete block['terminals']
+  next['announce'] = block
+  return next
+}
+
+/** A project's `audio.json` text as a config object; null when there is no
+ *  file, or it is not a JSON object (the server ignores it then too). */
+export function parseAudioFile(text: string | null | undefined): Record<string, unknown> | null {
+  if (text === null || text === undefined || text.trim() === '') return null
+  try {
+    const v = JSON.parse(text) as unknown
+    return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+
+/** Key-order-free JSON, for comparing two configs. */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`
+  if (v !== null && typeof v === 'object') {
+    const o = v as Record<string, unknown>
+    return `{${Object.keys(o)
+      .filter((k) => o[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(v)
+}
+
+/** The config without its house list (and without an `announce` block that
+ *  only says the router's default), so two configs compare on the rest. */
+function withoutHouseList(audio: Record<string, unknown>): Record<string, unknown> {
+  const next = JSON.parse(JSON.stringify(audio)) as Record<string, unknown>
+  const a = next['announce']
+  if (a !== null && typeof a === 'object') {
+    const block = a as Record<string, unknown>
+    delete block['terminals']
+    if (canonical(block) === canonical({ to: ANNOUNCE_DEFAULT_TO })) delete next['announce']
+  }
+  return next
+}
+
+/** Do two configs differ in nothing but the house list? A director save that
+ *  does is only a tick; one that doesn't pins other speakers too (the
+ *  project's `audio.json` moved on since, or the map page saved here). */
+export function sameBesideHouseList(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return canonical(withoutHouseList(a)) === canonical(withoutHouseList(b))
+}
+
+/** The card's warning while a director save is in force. */
+export const DIRECTOR_SAVE_PINS =
+  'This event’s save holds the whole speaker config (the device, the speakers, the routes and this list), not only the list: while it stands, a newer audio.json pushed to the project (a sync) does not play here. Save to project ends it.'
+
 /** "Router online · house-mac" / "No router listening (last seen 4 min ago)". */
 export function routerLine(router: AudioRouter, now: number): string {
   if (router.online) return `Router online${router.name !== null ? ` · ${router.name}` : ''}`
