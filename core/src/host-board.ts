@@ -139,7 +139,9 @@ export interface FilingRuling {
   at: number;
 }
 
-/** One filing awaiting a verdict (review mode, or a near miss in auto). */
+/** One filing awaiting a verdict: review mode, or in auto a filing put to
+ *  the story's `judge:` character (a near miss or a plain miss, wave 18b)
+ *  or a near miss waiting with nobody to rule. */
 export interface JudgingRow {
   person: string;
   name: string;
@@ -154,8 +156,11 @@ export interface JudgingRow {
   logAt?: number;
   /** The key answer it nearly matched, else null. */
   near: string | null;
-  /** The story's `judge:` character is being asked to rule. */
+  /** The story's `judge:` character is being asked to rule (its frame is
+   *  out, or it waits in the judge queue: `queued`). */
   asking: boolean;
+  /** Wave 18b: the ruling waits in the judge queue. */
+  queued?: true;
   /** Its ruling, once given. */
   ruling: FilingRuling | null;
 }
@@ -169,9 +174,11 @@ export function rulingOf(f: FilingLike): FilingRuling | null {
   return { by, same, why: typeof why === "string" ? why : "", at: typeof at === "number" ? at : 0 };
 }
 
-/** Is a ruling being asked for this filing right now? */
+/** Is a ruling being asked for this filing right now (its frame out, or
+ *  waiting in the judge queue)? */
 export function askingOf(f: FilingLike): boolean {
-  return (f as FilingLike & { asking?: unknown }).asking === true;
+  const g = f as FilingLike & { asking?: unknown; queued?: unknown };
+  return g.asking === true || g.queued === true;
 }
 
 /** "🤖 Trabolta: same — why". */
@@ -224,13 +231,16 @@ export function nearKeyOf(f: FilingLike): string | null {
   return typeof key === "string" && key.trim() !== "" ? key : null;
 }
 
-/** Every filing with no `final` yet, oldest first. */
+/** Every filing with no `final` yet, oldest first: review mode's whole
+ *  queue; in auto the filings with the judge (asked or queued — a near
+ *  miss or, since wave 18b, a plain miss) and the near misses waiting
+ *  with nobody to rule. */
 export function pendingFilings(facts: FactsLike): JudgingRow[] {
   const rows: JudgingRow[] = [];
   for (const q of facts.questions) {
     for (const f of q.filings) {
       if (f.final !== null) continue;
-      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, ...(typeof f.logAt === "number" ? { logAt: f.logAt } : {}), near: nearKeyOf(f), asking: askingOf(f), ruling: rulingOf(f) });
+      rows.push({ person: f.person, name: f.name, question: f.question, answer: f.answer, confidence: f.confidence, proposed: f.verdict, final: f.final, at: f.at, ...(typeof f.logAt === "number" ? { logAt: f.logAt } : {}), near: nearKeyOf(f), asking: askingOf(f), ...(f.queued === true ? { queued: true as const } : {}), ruling: rulingOf(f) });
     }
   }
   // Oldest first, by log position when both carry one: a restart re-stamps
@@ -238,7 +248,7 @@ export function pendingFilings(facts: FactsLike): JudgingRow[] {
   return rows.sort((a, b) => (typeof a.logAt === "number" && typeof b.logAt === "number" ? a.logAt - b.logAt : a.at - b.at));
 }
 
-/** How many filings wait as near misses. */
+/** How many filings wait as near misses (asked or not). */
 export function nearCount(facts: FactsLike): number {
   const n = (facts as FactsLike & { near?: unknown }).near;
   if (typeof n === "number" && Number.isFinite(n) && n >= 0) return n;
@@ -542,13 +552,27 @@ export function hostNeeds(input: NeedsInputLike): HostNeed[] {
   const out: HostNeed[] = [];
   const { now } = input;
   if (input.facts !== null) {
-    const near = nearCount(input.facts);
+    // Wave 18b (O4): a filing the story's `judge:` character is ruling on
+    // (asked, or waiting in the judge queue) — a near miss or a plain miss —
+    // is not "to judge": it is with the judge, one item of its own.
+    const pending = pendingFilings(input.facts);
+    const toJudge = pending.filter((r) => !r.asking);
+    const ruling = pending.length - toJudge.length;
+    const near = ruling > 0 ? toJudge.filter((r) => r.near !== null).length : nearCount(input.facts);
     const nearText = near > 0 ? ` (⚠ ${near} near miss${near === 1 ? "" : "es"})` : "";
     if (judgeModeOf(input.world, input.facts) === "review") {
-      const n = pendingFilings(input.facts).length;
+      const n = toJudge.length;
       if (n > 0) out.push({ kind: NeedKind.Filings, key: "filings", text: `📝 ${n} filing${n === 1 ? "" : "s"} to review${nearText}`, target: "judge" });
     } else if (near > 0) {
+      // In auto only a near miss nobody is ruling waits for a person (a
+      // plain miss nobody can rule is judged at once; one left over from
+      // review mode settles with its round).
       out.push({ kind: NeedKind.NearMiss, key: "near", text: `⚠ ${near} near miss${near === 1 ? "" : "es"} to judge`, target: "judge" });
+    }
+    if (ruling > 0) {
+      const judge = (input.facts as FactsLike & { judge?: unknown }).judge;
+      const who = typeof judge === "string" && judge !== "" ? judge : "the judge";
+      out.push({ kind: NeedKind.Ruling, key: "ruling", text: `🤖 ${ruling} with ${who}`, target: "judge" });
     }
   }
   const held = heldTransfers(input.wallet).length;
@@ -750,7 +774,8 @@ export interface HostJudging {
   judge: string | null;
   /** `FactsView.confirm` (verdict → event name), null when facts.json names none. */
   confirm: Partial<Record<"accurate" | "lie" | "uncertain", string>> | null;
-  /** `pendingFilings(facts)` — review-mode pending + every near miss, oldest first. */
+  /** `pendingFilings(facts)` — review-mode pending; in auto every filing
+   *  with the judge (asked or queued) and every near miss waiting; oldest first. */
   pending: JudgingRow[];
   near: number;
   /** Every filing with `final !== null` or a `ruling`, newest

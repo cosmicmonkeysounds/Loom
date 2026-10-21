@@ -656,3 +656,53 @@ describe("hostView", () => {
     expect(v).toMatchObject({ runtime: "idle", needs: [], judging: null, wallet: null, king: null, terminals: null, agents: [], parts: [], people: [], alerts: { path: "Night.alerts", level: "sticky" }, doorsClosed: true });
   });
 });
+
+describe("hostNeeds with the judge ruling every non-exact filing (wave 18b, O4)", () => {
+  const filing = (person: string, extra: Record<string, unknown>) => ({ person, name: person, question: "H2", answer: "x", confidence: 100, verdict: "lie", final: null, at: 1, ...extra });
+  const facts = (filings: unknown[]): FactsLike => ({ mode: "auto", judge: "Trabolta", questions: [{ id: "H2", filings }] }) as unknown as FactsLike;
+  const needs = (f: FactsLike) => hostNeeds({ now: 0, world: [], facts: f, wallet: null, cast: [], doorsOpen: true }).map((i) => [i.kind, i.text, i.target]);
+
+  it("a plain miss waiting on a ruling is not 'to judge': it is with the judge", () => {
+    expect(needs(facts([filing("g1", { asking: true }), filing("g2", { asking: true, queued: true }), filing("g3", { queued: true })]))).toEqual([[NeedKind.Ruling, "🤖 3 with Trabolta", "judge"]]);
+  });
+
+  it("near misses nobody is ruling stay to judge, beside the ones with the judge", () => {
+    expect(needs(facts([filing("g1", { near: { key: "Mr. Pickles" } }), filing("g2", { asking: true, near: { key: "Mr. Pickles" } })]))).toEqual([
+      [NeedKind.NearMiss, "⚠ 1 near miss to judge", "judge"],
+      [NeedKind.Ruling, "🤖 1 with Trabolta", "judge"],
+    ]);
+  });
+
+  it("in auto, a pending plain miss nobody is ruling (left from review mode) is not to judge", () => {
+    expect(needs(facts([filing("g1", {}), filing("g2", { near: { key: "k" } })]))).toEqual([[NeedKind.NearMiss, "⚠ 1 near miss to judge", "judge"]]);
+  });
+
+  it("review mode counts only the filings nobody is ruling", () => {
+    const f = { ...facts([filing("g1", {}), filing("g2", { asking: true })]), mode: "review" } as FactsLike;
+    expect(needs(f)).toEqual([
+      [NeedKind.Filings, "📝 1 filing to review", "judge"],
+      [NeedKind.Ruling, "🤖 1 with Trabolta", "judge"],
+    ]);
+  });
+
+  it("names 'the judge' when the view names none, and marks a queued row", () => {
+    const f = { mode: "auto", questions: [{ id: "H2", filings: [filing("g1", { queued: true })] }] } as unknown as FactsLike;
+    expect(needs(f)).toEqual([[NeedKind.Ruling, "🤖 1 with the judge", "judge"]]);
+    expect(pendingFilings(f)[0]).toMatchObject({ asking: true, queued: true });
+  });
+});
+
+describe("hostView people carry their badges (wave 18b)", () => {
+  it("copies a roster row's badges", () => {
+    const v = hostView({
+      mod: { roster: [{ id: "g1", name: "Ada", location: null, badges: [{ glyph: "🚻", label: "Bathroom Mode" }] }, { id: "g2", name: "Bob", location: null }] } as never,
+      waiting: new Map(),
+      king: null,
+      terminals: null,
+      flags: new Map(),
+      staffRooms: [],
+      now: 0,
+    });
+    expect(v.people.map((p) => p.badges)).toEqual([[{ glyph: "🚻", label: "Bathroom Mode" }], undefined]);
+  });
+});
