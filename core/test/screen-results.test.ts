@@ -78,6 +78,9 @@ ROLE Program
   when fact_uncertain for program:
     set program.v = "uncertain"
     do fact_judged {program} {program.q} uncertain
+  when fact_marked for program:
+    set program.v = "marked"
+    do fact_judged {program} {program.q} marked
 
 CHARACTER The Oracle
   listed: true
@@ -236,6 +239,9 @@ describe("the pure pieces", () => {
     expect(screenOutcome(f({ final: "marked", verdict: "uncertain" }))).toBe("g");
     expect(screenOutcome(f({ final: "marked", verdict: "lie" }))).toBe("u");
     expect(screenOutcome(f({ final: null }))).toBe("p");
+    // A mark judges off the final it replaced, not the proposal.
+    expect(screenOutcome(f({ final: "marked", verdict: "accurate", before: { final: "uncertain", how: "overridden", by: "The Oracle" } }))).toBe("g");
+    expect(screenOutcome(f({ final: "marked", verdict: "uncertain", before: { final: "accurate", how: "overridden", by: "The Oracle" } }))).toBe("u");
     const ruling = { by: "The Oracle", same: true, why: "spelling", at: 0 };
     expect(screenRuled(f({ final: "accurate", how: "auto" }))).toBe("");
     expect(screenRuled(f({ final: null, asking: true }))).toBe("?");
@@ -246,6 +252,10 @@ describe("the pure pieces", () => {
     expect(screenRuled(f({ final: "accurate", confidence: 100, by: "The Oracle", ruling }))).toBe("r");
     // A director's later verdict: his ruling no longer stands on the screen.
     expect(screenRuled(f({ final: "lie", by: "Ada", ruling }))).toBe("");
+    // A settle's mark keeps the stamp of the ruling it replaced, not a director's.
+    expect(screenRuled(f({ final: "marked", how: "marked", by: "Ada", ruling: { ...ruling, same: false }, before: { final: "uncertain", how: "overridden", by: "The Oracle" } }))).toBe("n");
+    expect(screenRuled(f({ final: "marked", how: "marked", by: "Ada", ruling, before: { final: "lie", how: "overridden", by: "Ada" } }))).toBe("");
+    expect(screenRuled(f({ final: "marked", how: "marked", by: "Ada", ruling }))).toBe("");
   });
 
   it("a voice answer carries long lines and drops the oldest past the block cap", () => {
@@ -342,6 +352,33 @@ describe("the results block", () => {
       ["Excel", "a", "r"], // a confident lie, held until the verdict
       ["Paint", "a", ""],
     ]);
+    w.close();
+  });
+
+  it("a settle's mark keeps his stamp and the outcome of the verdict it replaced; a director's override clears it", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const [a, b, c, d] = await Promise.all(["Winamp", "Excel", "Paint", "Word"].map((n) => guest(rt, n)));
+    await file(rt, a!, "Q2", "Mr Pickels", 80); // near miss → ruled not the same → a guess
+    await file(rt, b!, "Q2", "Garfield", 80); // plain miss → ruled the same → accepted
+    await file(rt, c!, "Q2", "Mister Pickels", 100); // at 100 → ruled the same
+    await file(rt, d!, "Q2", "Mr Pickles the cat", 80); // ruled the same, then a director's lie
+    for (const same of [false, true, true, true]) {
+      const j = w.judges().at(-1)!;
+      expect((await call(rt, "POST", "/api/agent/judge", { id: j.id, worker: w.id, same, why: "" }, true)).status).toBe(200);
+    }
+    await mod(rt, "/api/mod/signal", { name: "fact_lie", subject: d!.id, args: { question: "Q2" } });
+    // The settle: the guess is marked, the accepted filings have no cup.
+    for (const g of [a!, b!, c!, d!]) await mod(rt, "/api/mod/signal", { name: "fact_marked", subject: g.id });
+    await cue(rt, "read_two");
+    const q2 = (await poll(rt, "tv")).state.results!.questions[0]!;
+    expect(q2.rows!.map((r) => [r[0], r[3], r[4]])).toEqual([
+      ["Winamp", "g", "n"],
+      ["Excel", "u", "s"],
+      ["Paint", "u", "r"],
+      ["Word", "u", ""],
+    ]);
+    expect(q2).toMatchObject({ filed: 4, accepted: 0, guesses: 1, uncounted: 3 });
     w.close();
   });
 

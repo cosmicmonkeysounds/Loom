@@ -292,6 +292,11 @@ export interface FactsFiling {
   asking?: true;
   /** (wave 18b) The ruling is still in the hub's judge queue, not yet sent. */
   queued?: true;
+  /** (wave 18b) A `marked` filing: the final the mark replaced and how it
+   *  was reached (a settle marks a guess, or a round-2 filing with no cup,
+   *  after a ruling or a director already judged it). Absent when the
+   *  filing was still pending at the mark, and on every other final. */
+  before?: { final: FactVerdict; how: FactHow | null; by: string | null };
 }
 
 /** A `judge:` character's ruling on a filing (`FactsFiling.ruling`). */
@@ -334,6 +339,8 @@ interface FactsStep {
 interface FoldedFiling extends FactsFiling {
   filedStep: number;
   judged: FactsStep | null;
+  /** The final + step a `marked` replaced (`FactsFiling.before`). */
+  premark: { final: FactVerdict; judged: FactsStep | null } | null;
 }
 
 export interface FactsTally {
@@ -493,12 +500,15 @@ export class FactsWatch {
           logAt: this.cursor,
           filedStep: this.step.id,
           judged: null,
+          premark: null,
         });
       } else if (e.verb === FACT_JUDGED_VERB) {
         const j = parseFactJudged(e.args);
         if (j === null) continue;
         const prev = this.filings.get(FactsWatch.key(j.person, j.question));
         if (prev !== undefined) {
+          if (j.final !== "marked") prev.premark = null;
+          else if (prev.final !== null && prev.final !== "marked") prev.premark = { final: prev.final, judged: prev.judged };
           prev.final = j.final;
           prev.logAt = this.cursor;
           prev.judged = { ...this.step };
@@ -531,8 +541,10 @@ export class FactsWatch {
     this.sync(sim);
     const names = new Set(Object.values(confirm));
     return [...this.filings.values()].map((f) => {
-      const { filedStep: _s, judged: _j, ...pub } = f;
-      return { ...pub, ...FactsWatch.provenance(f, names) };
+      const { filedStep: _s, judged: _j, premark, ...pub } = f;
+      const out: FactsFiling = { ...pub, ...FactsWatch.provenance(f, names) };
+      if (f.final === "marked" && premark !== null) out.before = { final: premark.final, ...FactsWatch.provenance({ ...f, final: premark.final, judged: premark.judged }, names) };
+      return out;
     });
   }
 
@@ -658,13 +670,18 @@ export function screenOutcome(f: FactsFiling): ScreenOutcome {
   if (f.final === null) return "p";
   if (f.final === "accurate" || f.final === "lie") return "a";
   if (f.final === "uncertain") return "g";
-  return f.verdict === "uncertain" ? "g" : "u"; // marked
+  // Marked: a guess stays a guess; an accepted filing with no cup is not
+  // counted. Judge off the final the mark replaced (his ruling or a
+  // director's), else the proposal (the filing was pending at the mark).
+  return (f.before?.final ?? f.verdict) === "uncertain" ? "g" : "u";
 }
 
 /** Did the `judge:` character's ruling set this filing's final (not a
  *  director's later verdict)? */
 function rulingMadeIt(f: FactsFiling): boolean {
-  return f.ruling !== undefined && f.final !== null && f.final !== "marked" && f.by === f.ruling.by;
+  // A settle's mark keeps the stamp of the verdict it replaced.
+  const s = f.final === "marked" ? f.before : f;
+  return f.ruling !== undefined && s !== undefined && s.final !== null && s.final !== "marked" && s.by === f.ruling.by;
 }
 
 /** Trabolta's stamp on a filing (`ScreenRuled`, O4 / D10). */
