@@ -686,7 +686,8 @@ export class Crews {
 
   // -- the op --------------------------------------------------------------
 
-  /** What the last `apply` changed that the chat should say (then cleared). */
+  /** What changed since the last call that the chat should say (then
+   *  cleared): every `apply`'s notices, plus faction mode's `onSide` ones. */
   takeNotices(): CrewNotice[] {
     const out = this.notices;
     this.notices = [];
@@ -699,7 +700,10 @@ export class Crews {
    *  lands the same either way. */
   apply(op: CrewOp): SimEvent[] {
     const from = this.sim.log.len();
-    this.notices = [];
+    // Notices are never cleared here: a story `join` / `add` between ops
+    // (faction mode's `onSide`) raises "left" / "dissolved" ones too, and
+    // `takeNotices` is the one reset, so they reach the chat live and on
+    // replay alike.
     switch (op.op) {
       case "foundCrew":
         this.found(op.by, op.name);

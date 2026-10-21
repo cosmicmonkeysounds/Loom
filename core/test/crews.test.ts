@@ -57,6 +57,7 @@ describe("crews — found, invite, join", () => {
   it("an invitation's yes joins the crew, fires `join` + `recruited` (by the inviter)", () => {
     const { sim, a, b } = night();
     sim.crew({ op: "foundCrew", by: a, name: "Night Shift" });
+    expect(sim.crews.takeNotices().map((n) => n.kind)).toEqual(["founded"]);
     sim.crew({ op: "crewInvite", by: a, to: b, crew: "crew-1" });
     const view = guestView(sim, b);
     expect(view.invites).toEqual([{ id: "inv-1", from: a, fromName: "Ada", kind: "crew", target: "crew-1", targetName: "Night Shift" }]);

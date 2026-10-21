@@ -139,6 +139,20 @@ describe("faction mode: one faction at a time", () => {
     expect(sim.crews.factionOf("g4")).toBe("Red");
   });
 
+  it("a story join's `left` notice survives the next op until taken", () => {
+    const sim = open();
+    sim.crew({ op: "foundCrew", by: "g1", name: "One" });
+    sim.crew({ op: "joinCrew", person: "g2", crew: "crew-1" });
+    sim.crews.takeNotices();
+    sim.join("g2", "Red");
+    sim.crew({ op: "joinCrew", person: "g5", crew: "crew-1" });
+    expect(sim.crews.takeNotices().map((n) => [n.kind, "person" in n ? n.person : null])).toEqual([
+      ["left", "g2"],
+      ["joined", "g5"],
+    ]);
+    expect(sim.crews.takeNotices()).toEqual([]);
+  });
+
   it("a non-race group (Hosts) never touches a crew", () => {
     const sim = open();
     sim.crew({ op: "foundCrew", by: "g1", name: "Night Shift" });
