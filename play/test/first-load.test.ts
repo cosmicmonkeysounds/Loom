@@ -35,4 +35,19 @@ describe("the guest's first load", () => {
     expect(src("guest/app.tsx")).toContain('from "../help-lazy.tsx"');
     expect(src("ui.tsx")).toContain('from "./help-lazy.tsx"');
   });
+
+  it("wave 18: the sides chunk, the Notifications bin, the Me sheet and Mission load lazily", () => {
+    const app = src("guest/app.tsx");
+    expect(app).not.toMatch(/^import (?!type )[^;]*from "\.\.\/sides\/index\.tsx"/mu);
+    expect(app).not.toMatch(/^import (?!type )[^;]*from "\.\.\/sides\/(doors|invite)\.tsx"/mu);
+    expect(app).not.toMatch(/^import (?!type )[^;]*from "\.\/notifications\.tsx"/mu);
+    expect(app).not.toMatch(/^import (?!type )[^;]*from "\.\/me\.tsx"/mu);
+    expect(app).not.toMatch(/^import (?!type )[^;]*from "\.\/mission\.tsx"/mu);
+    expect(src("sides/lazy.tsx")).toContain('import("./index.tsx")');
+    expect(src("sides/lazy.tsx")).toContain('import("./doors.tsx")');
+    expect(src("guest/notifications-lazy.tsx")).toContain('import("./notifications.tsx")');
+    expect(src("guest/me-lazy.tsx")).toContain('import("./me.tsx")');
+    // the widgets' registration is eager, its render lazy
+    expect(src("sides/widgets.tsx")).not.toMatch(/^import (?!type )[^;]*from "\.\/(doors|invite|index)\.tsx"/mu);
+  });
 });

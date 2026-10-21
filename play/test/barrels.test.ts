@@ -23,7 +23,7 @@ const OLD: Record<string, string[]> = {
     "groupBySpace", "RUN_WINDOW_MS", "groupRuns", "rootsOf", "repliesFor", "replyCountFor", "questStatusOf", "questSummary", "groupByChannel",
     "advanceMarks", "useThreads",
   ],
-  "../src/guest.tsx": ["GuestApp", "homeChannel", "useCutscene"],
+  "../src/guest.tsx": ["GuestApp", "useCutscene"], // wave 18: homeChannel is gone (the phone never auto-opens a room)
   "../src/performer.tsx": ["PerformerApp", "boothHome", "splitInteractions"],
   "../src/presence.ts": ["occupantsByLocation", "locationOfRoom", "roomOrder", "occupancyLabel"],
   "../src/host.ts": ["createCrawl", "memoryStore", "browserHost", "PlayHostContext", "usePlayHost"],

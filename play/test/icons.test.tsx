@@ -25,11 +25,9 @@ describe("the chrome's icons", () => {
       name: "Ada",
       faction: "Mods",
       interactions: [{ id: "bathroom", label: "🚻 Bathroom Mode" } as never],
-      defectTo: ["Chatters"],
-      wake: { supported: true, on: false },
-      push: true,
+      sides: true,
       people: true,
-      open: { picture: () => {}, wake: () => {}, alerts: () => {}, people: () => {}, help: () => {}, act: () => {}, defect: () => {}, leave: () => {} },
+      open: { act: () => {}, sides: () => {}, people: () => {}, notifications: () => {}, help: () => {}, leave: () => {} },
     });
     const story = items.find((i) => i.id === "act:bathroom")!;
     expect(story.icon).toBe("🚻");

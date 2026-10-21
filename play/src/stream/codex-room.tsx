@@ -4,8 +4,8 @@
 //! on what you haven't opened; the Quest Log puts what is in progress first
 //! with its latest step, and folds what is done or failed.
 
-import { useEffect, useMemo, useState } from "react";
-import { usePlayHost } from "../host.ts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePlayHost, type SessionStorage } from "../host.ts";
 import type { ChatMessage } from "../types.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { useCardActions } from "./bubble.tsx";
@@ -25,11 +25,44 @@ function seenKey(meId: string | null | undefined): string {
   return `loom.stream.codex-seen.${meId ?? "booth"}`;
 }
 
+/** How long the Codex must be on screen before what it shows counts as seen
+ *  (wave 18, GUEST-SPEC §11 rule 6). */
+export const CODEX_SEEN_MS = 2_000;
+
+/** The seen records this page holds, so Mission's tile reads a save at once. */
+const SEEN_CACHE = new Map<string, ReadonlySet<string>>();
+
+function loadSeen(storage: SessionStorage, meId: string | null | undefined): ReadonlySet<string> | null {
+  const key = seenKey(meId);
+  const cached = SEEN_CACHE.get(key);
+  if (cached !== undefined) return cached;
+  try {
+    const list = storage.load<string[]>(key);
+    return Array.isArray(list) ? new Set(list) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSeen(storage: SessionStorage, meId: string | null | undefined, list: readonly string[]): void {
+  SEEN_CACHE.set(seenKey(meId), new Set(list));
+  try {
+    storage.save(seenKey(meId), list);
+  } catch {
+    /* a full or blocked store: the record lives for this visit */
+  }
+}
+
+/** Does the Codex hold an entry the guest hasn't seen (Mission's tile dot)? */
+export function codexUnseen(storage: SessionStorage, meId: string | null | undefined, messages: readonly ChatMessage[]): boolean {
+  return newEntries(codexRows(messages), loadSeen(storage, meId)).size > 0;
+}
+
 function CodexEntryRow({ row, isNew, open, onToggle }: { row: CodexRow; isNew: boolean; open: boolean; onToggle: () => void }) {
   const actions = useCardActions();
   const sub = codexSub(row);
   return (
-    <li className={`stream-row ${open ? "open" : ""} ${row.msg.hidden ? "hidden" : ""}`}>
+    <li id={`codex-entry-${row.card.entry}`} className={`stream-row ${open ? "open" : ""} ${row.msg.hidden ? "hidden" : ""}`}>
       <button type="button" className="stream-row-head" aria-expanded={open} onClick={onToggle}>
         <span className="stream-row-main">
           <span className="stream-row-title">{row.card.title}</span>
@@ -56,33 +89,35 @@ function CodexEntryRow({ row, isNew, open, onToggle }: { row: CodexRow; isNew: b
   );
 }
 
-export function CodexRoom({ messages, meId, empty }: { messages: readonly ChatMessage[]; meId?: string | null; empty: string }) {
+export function CodexRoom({ messages, meId, empty, focusEntry }: { messages: readonly ChatMessage[]; meId?: string | null; empty: string; focusEntry?: string | null }) {
   const host = usePlayHost();
   const rows = useMemo(() => codexRows(messages), [messages]);
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set(focusEntry ? [focusEntry] : []));
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
-  const [seen, setSeen] = useState<ReadonlySet<string> | null>(() => {
-    try {
-      const list = host.storage.load<string[]>(seenKey(meId));
-      return Array.isArray(list) ? new Set(list) : null;
-    } catch {
-      return null;
-    }
-  });
-  // This device's first look: keep a record at once, empty — nothing has
-  // been opened yet, so every entry held is NEW until it is (D7), the same
-  // entries the room-list badge counted as unread.
+  // What was seen when the room opened: NEW stays on what it was NEW for,
+  // for this whole visit (and on anything that lands while it is open).
+  const [seen, setSeen] = useState<ReadonlySet<string> | null>(() => loadSeen(host.storage, meId));
+  // Wave 18 (rule 6): two seconds on screen and everything shown is seen —
+  // stored at once, so the next open (and Mission's tile) agree.
+  const shown = useRef(rows);
+  shown.current = rows;
   useEffect(() => {
-    if (seen !== null) return;
-    const next = markSeen(rows, null, null);
-    setSeen(new Set(next));
-    try {
-      host.storage.save(seenKey(meId), next);
-    } catch {
-      /* a blocked store: the record lives for this visit */
-    }
-  }, [seen, rows, host, meId]);
+    const t = setTimeout(() => {
+      const base = loadSeen(host.storage, meId) ?? new Set<string>();
+      const next = new Set(base);
+      for (const r of shown.current) next.add(r.card.entry);
+      saveSeen(host.storage, meId, [...next]);
+    }, CODEX_SEEN_MS);
+    return () => clearTimeout(t);
+  }, [host, meId]);
+  // A Codex entry exit (`go codex: <Entry>`) opens on that entry.
+  useEffect(() => {
+    if (!focusEntry) return;
+    setOpen((o) => (o.has(focusEntry) ? o : new Set(o).add(focusEntry)));
+    const el = typeof document !== "undefined" ? document.getElementById(`codex-entry-${focusEntry}`) : null;
+    el?.scrollIntoView?.({ block: "center" });
+  }, [focusEntry]);
   const fresh = newEntries(rows, seen);
   const groups = codexGroups(rows, query);
   const note = lastNote(messages);
@@ -96,11 +131,9 @@ export function CodexRoom({ messages, meId, empty }: { messages: readonly ChatMe
     if (fresh.has(entry)) {
       const next = markSeen(rows, seen, entry);
       setSeen(new Set(next));
-      try {
-        host.storage.save(seenKey(meId), next);
-      } catch {
-        /* a full or blocked store: NEW just stays on */
-      }
+      const stored = new Set(loadSeen(host.storage, meId) ?? []);
+      stored.add(entry);
+      saveSeen(host.storage, meId, [...stored]);
     }
   };
   const foldGroup = (title: string) =>

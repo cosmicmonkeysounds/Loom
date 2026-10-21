@@ -6,7 +6,8 @@
 //! ghost program. Scanned here, in the app, the code lands in the session
 //! already open: an `unlock=` redeems through `/api/guest/codex/redeem`, a
 //! `checkin=` checks in through `/api/guest/checkin`, and anything else
-//! (the join QR, someone's pass, an invitation) just says what it is.
+//! (the join QR, your own pass, an invitation) just says what it is, and
+//! someone else's pass opens the Recruit sheet (wave 18).
 //!
 //! And the other half: a codex / check-in link that arrives in a browser
 //! with **no** session (`LinkLanding`) shows the code in big type — "type
@@ -29,6 +30,8 @@ export type GuestScan =
   | { kind: "unlock"; code: string }
   /** A room's sign: check in there (the room's slug, as the sign carries it). */
   | { kind: "checkin"; at: string }
+  /** Another guest's pass (wave 18, F3): the Recruit sheet. */
+  | { kind: "pass"; id: string }
   /** Anything else: say what it is, and keep the camera on. */
   | { kind: "note"; text: string };
 
@@ -41,15 +44,19 @@ export const SCAN_JOIN = "That's the party's join code — you're already in.";
 export const SCAN_INVITE = "That's an invitation link — you're already in.";
 export const SCAN_PAIR = "That's a director's re-pair code — it signs a phone in as someone. Only open it with your camera if a director handed it to you.";
 export const SCAN_OWN_PASS = "That's your own pass — performers scan it, not you.";
-export const SCAN_PASS = "That's someone's pass — performers scan those.";
 export const SCAN_DIRECTOR = "That's the director's page — not for guests.";
 export const SCAN_UNKNOWN = "That QR isn't one of the party's codes.";
+
+/** A pass: your own says so; anyone else's opens the Recruit sheet (wave 18). */
+function passScan(id: string, meId: string | null): GuestScan {
+  return id.toLowerCase() === meId?.toLowerCase() ? { kind: "note", text: SCAN_OWN_PASS } : { kind: "pass", id: id.toLowerCase() };
+}
 
 /** Classify a scanned QR for a signed-in guest (`meId`: their own id). */
 export function guestScan(raw: string, meId: string | null = null): GuestScan {
   const text = raw.trim();
   if (text === "") return { kind: "note", text: SCAN_UNKNOWN };
-  if (GUEST_ID.test(text)) return { kind: "note", text: text.toLowerCase() === meId?.toLowerCase() ? SCAN_OWN_PASS : SCAN_PASS };
+  if (GUEST_ID.test(text)) return passScan(text, meId);
   let url: URL | null = null;
   try {
     url = new URL(text);
@@ -64,7 +71,7 @@ export function guestScan(raw: string, meId: string | null = null): GuestScan {
   const p = url.searchParams;
   if ((p.get("pair") ?? "").trim() !== "") return { kind: "note", text: SCAN_PAIR };
   const pass = p.get("pass") ?? p.get("guest");
-  if (pass !== null && GUEST_ID.test(pass)) return { kind: "note", text: pass.toLowerCase() === meId?.toLowerCase() ? SCAN_OWN_PASS : SCAN_PASS };
+  if (pass !== null && GUEST_ID.test(pass)) return passScan(pass, meId);
   if (p.get("role") === "director") return { kind: "note", text: SCAN_DIRECTOR };
   if ((p.get("claim") ?? "").trim() !== "") return { kind: "note", text: SCAN_INVITE };
   if (p.has("code")) return { kind: "note", text: SCAN_JOIN };
@@ -170,7 +177,7 @@ export function ScanSheet({
     if (busy.current) return;
     if (hit.kind === "note") return setNote(hit.text);
     busy.current = true;
-    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : "📍 Checking in…");
+    setNote(hit.kind === "unlock" ? "🔓 Unlocking…" : hit.kind === "pass" ? "🎟 Reading the pass…" : "📍 Checking in…");
     void onScan(hit).then(
       (said) => {
         busy.current = false;

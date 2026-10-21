@@ -36,7 +36,13 @@ export type IconName =
   | "quest"
   | "receipt"
   | "cards"
-  | "shield";
+  | "shield"
+  | "mission"
+  | "bin-empty"
+  | "bin-full"
+  | "log"
+  | "door"
+  | "crew";
 
 /** Every icon the chrome draws (tests walk the list). */
 export const ICON_NAMES: readonly IconName[] = [
@@ -63,6 +69,12 @@ export const ICON_NAMES: readonly IconName[] = [
   "receipt",
   "cards",
   "shield",
+  "mission",
+  "bin-empty",
+  "bin-full",
+  "log",
+  "door",
+  "crew",
 ];
 
 function shape(name: IconName): ReactElement {
@@ -244,6 +256,47 @@ function shape(name: IconName): ReactElement {
           <path className="ico-white" d="m5.2 7.8 1.1-1.1 1.3 1.3 3-3 1.1 1.1-4.1 4.1Z" />
         </>
       );
+    case "mission":
+      // a window: the navy caption, the face, one tick on it (what to do now)
+      return (
+        <>
+          <rect className="ico-face ico-line" x="1.5" y="2.5" width="13" height="11" />
+          <rect className="ico-navy" x="2" y="3" width="12" height="2.5" />
+          <path className="ico-ink-line" d="m4.5 9.5 1.8 1.8 4-4" />
+        </>
+      );
+    case "bin-empty":
+    case "bin-full":
+      // the Recycle Bin: its lid, the can, its ribs; full = paper sticking out
+      return (
+        <>
+          {name === "bin-full" && <path className="ico-white ico-line" d="M5 1.5h4.5l1.5 2.5H5Z" />}
+          <path className="ico-face ico-line" d="M3 4.5h10l-1 10H4Z" />
+          <rect className="ico-face ico-line" x="2" y="3" width="12" height="1.5" />
+          <path className="ico-ink-line" d="M6 6.5v6M8 6.5v6M10 6.5v6" />
+        </>
+      );
+    case "log":
+      // a long scroll: the chat log
+      return (
+        <>
+          <path className="ico-white ico-line" d="M3.5 2.5h9v11h-9Z" />
+          <rect className="ico-sand ico-line" x="2" y="1.5" width="12" height="2" rx="1" />
+          <path className="ico-ink" d="M5 5.5h6v1H5ZM5 7.5h6v1H5ZM5 9.5h6v1H5ZM5 11.5h4v1H5Z" />
+        </>
+      );
+    case "door":
+      // an open door: the frame, the leaf swung in, the knob
+      return (
+        <>
+          <rect className="ico-face ico-line" x="3.5" y="1.5" width="9" height="13" />
+          <path className="ico-door ico-line" d="M3.5 1.5 9.5 3v12.5l-6-1Z" />
+          <rect className="ico-ink" x="8" y="8" width="1" height="1.4" />
+        </>
+      );
+    case "crew":
+      // an open diamond: a crew's badge (a side's is filled)
+      return <path className="ico-white ico-line" d="M8 1.5 14.5 8 8 14.5 1.5 8Z" />;
   }
 }
 

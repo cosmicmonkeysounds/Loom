@@ -37,11 +37,19 @@ export interface TaskbarButton {
   /** `data-tour` anchor. */
   tour?: string;
   active?: boolean;
+  /** The window on screen (wave 18: the guest's Mission / Chats): sunken, `aria-pressed`. */
+  pressed?: boolean;
+  /** The icon over its word, 56 px tall, the word kept at every width (the guest's bar). */
+  stacked?: boolean;
+  /** A yellow dot, never a number (the guest's Chats). */
+  dot?: boolean;
+  /** A short mark in the corner (Mission's "!" when the objective changed). */
+  mark?: string;
 }
 
 /** A taskbar button's classes (the order the tests and the CSS read). */
-export function taskbarButtonClass(b: Pick<TaskbarButton, "primary" | "active" | "labelled">): string {
-  return `w95-btn taskbar-btn${b.primary ? " primary" : ""}${b.labelled ? " labelled" : ""}${b.active ? " attn" : ""}`;
+export function taskbarButtonClass(b: Pick<TaskbarButton, "primary" | "active" | "labelled"> & Partial<Pick<TaskbarButton, "pressed" | "stacked">>): string {
+  return `w95-btn taskbar-btn${b.primary ? " primary" : ""}${b.labelled ? " labelled" : ""}${b.stacked ? " stacked" : ""}${b.pressed ? " pressed" : ""}${b.active ? " attn" : ""}`;
 }
 
 export function Taskbar({
@@ -101,7 +109,8 @@ export function Taskbar({
           key={b.id}
           type="button"
           className={taskbarButtonClass(b)}
-          aria-label={b.label}
+          aria-label={b.dot === true ? `${b.label}, something new` : b.label}
+          aria-pressed={b.pressed === undefined ? undefined : b.pressed}
           title={b.title ?? b.label}
           data-tour={b.tour}
           onClick={() => {
@@ -115,6 +124,12 @@ export function Taskbar({
           </span>
           <span className="taskbar-label">{b.label}</span>
           {b.badge !== undefined && b.badge > 0 && <span className="taskbar-badge">{b.badge > 9 ? "9+" : b.badge}</span>}
+          {b.dot === true && <span className="taskbar-dot" aria-hidden />}
+          {b.mark !== undefined && b.mark !== "" && (
+            <span className="taskbar-mark" aria-hidden>
+              {b.mark}
+            </span>
+          )}
         </button>
       ))}
       {tray !== undefined && (
