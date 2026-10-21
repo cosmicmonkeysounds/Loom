@@ -10,7 +10,7 @@ import type { SidesCalls } from "../session/guest.ts";
 import { PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { BlockBar } from "../ui/progress.tsx";
 import type { InviteView } from "../guest/wire.ts";
-import { countLine, crewNameOk, crewOf, crewRefusal, crewRoom, recruitOffer, recruitRefusal, sideAction, sidesOf, switchQuestion, type SideRow } from "./model.ts";
+import { countLine, crewNameOk, crewOf, crewRefusal, crewRoom, memberCount, recruitOffer, recruitRefusal, sideAction, sidesOf, switchQuestion, type SideRow } from "./model.ts";
 
 export type SidesWhich =
   | { sheet: "sides" }
@@ -143,7 +143,7 @@ export function SidesSheet({ view, calls, openRoom, scan, show, onClose }: Omit<
           <section className="side-card crew">
             <div className="side-card-head">
               <span className="side-card-name">◇ {crew.name}</span>
-              <span className="side-card-line">{crew.members.length} members</span>
+              <span className="side-card-line">{memberCount(crew.members.length)}</span>
             </div>
             {asking ? (
               <div className="side-ask" role="group" aria-label={`Leave ${crew.name}?`}>

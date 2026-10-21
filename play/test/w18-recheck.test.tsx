@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { ShowClockItem } from "../src/chrome/show-clock-tray.tsx";
 import { mergeAnswered, NO_ANSWERS } from "../src/session/shared.ts";
 import { whereRowOf } from "../src/guest/mission-model.ts";
+import { memberCount } from "../src/sides/model.ts";
 
 describe("N1: a new sign-in counts the server's answered cards", () => {
   it("merges the server's answered seqs into this device's answers", () => {
@@ -39,5 +40,13 @@ describe("N4 / NMR-4: Mission's Where row once the guest is on a side", () => {
   it("reads Sides, not Choose a side", () => {
     expect(whereRowOf({ location: null, mission: place, sides: side(true) }, new Set(), new Map())).toMatchObject({ kind: "word", word: "sides", label: "🚪 Sides", nav: { to: "sides" } });
     expect(whereRowOf({ location: null, mission: place, sides: side(false) }, new Set(), new Map())).toMatchObject({ label: "🚪 Choose a side" });
+  });
+});
+
+describe("N9: the crew's member count is pluralised", () => {
+  it("1 member, 2 members", () => {
+    expect(memberCount(1)).toBe("1 member");
+    expect(memberCount(2)).toBe("2 members");
+    expect(memberCount(0)).toBe("0 members");
   });
 });

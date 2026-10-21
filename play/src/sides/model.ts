@@ -59,6 +59,11 @@ export function crewOf(view: GuestView | null): CrewView | null {
 }
 
 /** The crew's room id (C10). */
+/** "1 member", "3 members" (N9: the crew read "1 members"). */
+export function memberCount(n: number): string {
+  return `${n} member${n === 1 ? "" : "s"}`;
+}
+
 export function crewRoom(crew: Pick<CrewView, "id">): string {
   return `crew:${crew.id}`;
 }
