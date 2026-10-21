@@ -34,9 +34,11 @@
 .plan:not(.tool-select) .speaker { pointer-events: none; }
 
 /* ── the side panel ───────────────────────────────────────────────────── */
-/* Five tabs: one row that scrolls, never two-line labels. */
-.map-side > .w98-tabs { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; }
-.map-side > .w98-tabs .w98-tab { white-space: nowrap; flex: 0 0 auto; padding-left: 0.7em; padding-right: 0.7em; }
+/* Five tabs, every one always in sight: short one-line labels, and a
+   narrow side column wraps them into a second row (Windows' multi-row
+   tabs) rather than scrolling them out of view. */
+.map-side > .w98-tabs { flex-wrap: wrap; row-gap: 2px; }
+.map-side > .w98-tabs .w98-tab { white-space: nowrap; flex: 0 0 auto; padding-left: 0.6em; padding-right: 0.6em; }
 @media (min-width: 861px) {
   .map-main.wide-side { grid-template-columns: 1fr minmax(420px, 44%); }
 }
