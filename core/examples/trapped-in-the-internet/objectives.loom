@@ -128,7 +128,7 @@ OBJECTIVE Play Computer Bingo
   act: B
   title: Computer Bingo: find a program for each square
   text:
-    Mingle. Find programs who match the squares on your card. Do not write names: use your computer memory. A Bingo is one full line through the centre. 20 minutes, then back to the Desktop.
+    Mingle. Find programs who match the squares on your card. A Bingo is one full line through the centre. 20 minutes, then back to the Desktop.
 
 // DRAFT for sign-off
 OBJECTIVE Bingo Results
@@ -138,7 +138,7 @@ OBJECTIVE Bingo Results
   title: The Bingo results: cheer for the winners
   go: The Desktop
   text:
-    Winners read their line from memory, centre square last. Somebody did not agree to be ruled by AI.
+    Winners read their line, centre square last. Somebody did not agree to be ruled by AI.
 
 // DRAFT for sign-off
 OBJECTIVE Meet Trabolta
@@ -555,6 +555,7 @@ OBJECTIVE Greet The Arrivals
     Greet people in person. Your scan greets them in your voice; it never clears anyone (only an Antivirus does).
   buttons: scan
 
+// w18b: Jean Trabolta joins by video conference; no "no names" (DRAFT w18b)
 // DRAFT w18
 OBJECTIVE Welcome Everyone
   for: Clippy
@@ -562,7 +563,7 @@ OBJECTIVE Welcome Everyone
   act: B
   title: CI 1: welcome everyone, then Computer Bingo
   text:
-    The fundraiser to restore the sign at Maps And Ducks. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, no names, one line through the centre. 🎱 and ⏰ Bingo time are your cues on the 🎤 bar.
+    The fundraiser to restore the sign at Maps And Ducks. Jean Trabolta joins by video conference later. Introduce Task Manager, Adobe Acrobat and the Recycling Bin. Bingo: 20 minutes, one line through the centre. 🎱 and ⏰ Bingo time are your cues on the 🎤 bar.
 
 // The checklist is PLAYER SELECT's steps, in order (wave 18, A5): each
 // to-do leads with its button's glyph.
@@ -574,7 +575,7 @@ OBJECTIVE Celebrate The Winners
   title: CI 2: celebrate the Bingo winners
   pick: program.location == "The Desktop" and program.cleared == true
   text:
-    Winners read their line from memory, centre square last. Demand applause. Tap each winner, give the ribbon, then tap the program they name at the centre square: Norton interrupts. You never press 🛡.
+    Winners read their line, centre square last. Demand applause. Tap each winner, give the ribbon, then tap the program they name at the centre square: Norton interrupts. You never press 🛡.
     - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
     - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
     - 🎯 Who did the winner name?, done when Night.bingo_named >= 1

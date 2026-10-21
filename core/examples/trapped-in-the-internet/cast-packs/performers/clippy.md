@@ -140,21 +140,25 @@ little line from you; play it up.
 **C1 · 📣 Call to the Desktop.** Everyone is swept to the living room. Your
 booth: *📋 Instructions 1/X…*. Welcome everyone (CI 1): the fundraiser to
 restore the sign at Maps And Ducks; you are Clippy, the official Office
-Assistant; *Jean Trabolta himself will make an appearance later tonight*.
+Assistant; *Jean Trabolta will be joining us later in the night! He'll be
+joining by video conference, because we are all people who have become
+computer programs, but he has ALWAYS been a computer program. He may or may
+not have already shared with you that he is an AI, but rest assured: he is
+the true owner of Maps and Ducks, and he is excited to lead you through Jean
+Trabolta's Scavenger Hunt!*
 Introduce the hosts: Task Manager keeps things running, Adobe Acrobat assists
 with documents and printing, Recycling Bin is hygiene and maintenance.
 
 **V2 · 🎱 Computer Bingo (20 min).** Your Quest Log: *Per the agenda: Computer Bingo*. Hand out
 cards and markers. The card is a big asterisk: a Bingo is one full line
-through the centre (two diagonals, the centre column, the centre row).
-**Nobody writes names**: they use their special computer memory. The centre
+through the centre (two diagonals, the centre column, the centre row). The centre
 square: *"Would you never agree to a life where AI makes all of your
 decisions?"* At 20 minutes every phone is called back and your bar turns
 yellow: **🎤 Call it**, then **FIRE ⏰ Bingo time**.
 
 **V3 · ⏰ Bingo results** (CI 2). Your ⏰ opens **🎮 PLAYER SELECT** by itself:
 everyone at the Desktop as picture tiles, three moves along the top (**① 🎱 ②
-🎀 ③ 🎯**). Winners read their line and name each match from memory, centre
+🎀 ③ 🎯**). Winners read their line and name each match, centre
 square last. **① tap the winner's tile, then 🎱 Bingo winner**: their phone
 pops a full-screen *🎱 BINGO!*. **② 🎀** offers the same winner (**SAME: …
 🎀 Give**): one tap, and their phone gets the medal while every other phone
@@ -307,16 +311,19 @@ password · … Nothing to carry: the TV and the phone ask.
 **CI 1/X · Beginning of night.** Welcome everyone to the computer: a special
 fundraiser party to restore the sign at Maps And Ducks. You are Clippy, the
 official Office Assistant; if anyone needs Help With That, you'll be available.
-Jean Trabolta himself will make an appearance later tonight. Introduce Task
+Jean Trabolta will be joining us later in the night, by video conference: we
+are all people who have become computer programs, but he has ALWAYS been a
+computer program; he may or may not have shared that he is an AI, but he is
+the true owner of Maps and Ducks and is excited to lead you through Jean
+Trabolta's Scavenger Hunt. Introduce Task
 Manager (keeps things running), Adobe Acrobat (documents and printing),
 Recycling Bin (hygiene and maintenance). First activity: Computer Bingo, to
 meet the other programs. Hand out cards and markers; mingle; find programs who
-match the squares. **Do NOT write down names**: use your special computer
-memory. A Bingo = one marked line through the centre. 20 minutes. You'll call
+match the squares. A Bingo = one marked line through the centre. 20 minutes. You'll call
 them back to celebrate the winners. Send them off enthusiastically.
 
 **CI 2/X · Bingo results.** Thank everyone. Who completed a Bingo? Each winner
-reads their line and names the match for each square from memory, centre
+reads their line and names the match for each square, centre
 last. (🎱 each winner.) At the centre square, have them clearly identify the
 program who would not agree to live under an AI's rules (🎯 on that program).
 Congratulate, ribbon (🎀), applause. An Antivirus interrupts: let them explain;

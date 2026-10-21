@@ -521,16 +521,16 @@ ROLE Program
       reply "!!🦆 Reinstallation complete. You can follow instructions. Welcome back to the computer." with go: The Desktop
     if self.cleared != true:
       set self.cleared = true
-      reveal The Start Bar for self
-      reveal The CPU for self
-      reveal The Steam Room for self
-      reveal Disk Cleanup for self
-      reveal The Cloud for self
-      reveal The RAM for self
-      reveal The Fan Closet for self
-      reveal The Graphics Card for self
-      reveal The Hard Drive for self
-      reveal task manager for self
+      reveal The Start Bar for self quietly
+      reveal The CPU for self quietly
+      reveal The Steam Room for self quietly
+      reveal Disk Cleanup for self quietly
+      reveal The Cloud for self quietly
+      reveal The RAM for self quietly
+      reveal The Fan Closet for self quietly
+      reveal The Graphics Card for self quietly
+      reveal The Hard Drive for self quietly
+      reveal task manager for self quietly
     // Back from the Internet with no live 📝 card (an old one closed while
     // they were away): the open round's card again.
     if self.fact_card_live != true and self.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
@@ -558,7 +558,7 @@ ROLE Program
       set program.bingo = true
       set Night.bingo_winners += 1
       // DRAFT w18: a big moment (the user's example: un-ignorable).
-      reply "!!🎱 BINGO! Name the program for each square, from memory. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
+      reply "!!🎱 BINGO! Name the program for each square. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
 
   when award_the_ribbon for program:
     if program.bingo == true:
@@ -2671,8 +2671,8 @@ ROLE Program
 // carries that character as the actor, so only its hooks would hear).
 // `sequence: false` marks a cue a machine fires (the duck game, the door
 // contact, the printer, the patch bay, the door terminal's King), and every optional,
-// anytime or fallback cue that is not the night's next step (the set
-// pieces, 🧾, 🔄, 🗳, 🪩, 💡, the timers' own steps: C2 ⏰, 📥, ⏳, 🚨 and
+// anytime or fallback cue that is not the night's next step (🔄, 🗳,
+// 🪩, 💡, the timers' own steps: C2 ⏰, 📥, ⏳, 🚨 and
 // 🎆 midnight) — the sheet ticks it but it never becomes LAST / NEXT, so a
 // duck find or a 💡 can't eat the next cue, and a timed window (hunt 1,
 // hunt 2's hour, the summons, the Y2K hour) suggests nothing until its
@@ -2766,16 +2766,6 @@ INTERACTION spin_the_bottle
   repeat: true
   description: After all three results. Picks a cleared program (not marked, away or in the Internet) not yet picked tonight. Trabolta asks on the TV; their phone gets Truth / Dare. NEXT offers five spins; spin more if you like, then 📺.
   while: Night.phase == "truth_1" and Night.results_q >= 3 and Night.bottle_open != true and Night.bottle_picks < 5 and Night.bottle_done != true
-
-INTERACTION telephone
-  label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
-  who: admin
-  sequence: false
-
-INTERACTION are_you_sure
-  label: (Optional) 🪅 The "Are you sure?" piñata
-  who: admin
-  sequence: false
 
 INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
@@ -3509,7 +3499,7 @@ when start_the_bingo:
     cue terminals_attract
     set Night.terminals = "attract"
     sound bingo_start
-    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes. Do not write names: use your computer memory." to everyone with go: quest: The Bingo Card
+    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes." to everyone with go: quest: The Bingo Card
     -> Computer Bingo
   else:
     broadcast "🎱 Not again: Bingo has already started. Nothing happens." to channel(hosts)
@@ -3768,20 +3758,6 @@ when bottle_announce:
 
 when truth_question:
   -> Truth Question
-
-// B10: optional set pieces, any time from the first Moment of Truth to
-// the Trust Chart.
-when telephone:
-  if Night.step >= 6 and Night.ended != true:
-    -> Telephone
-  else:
-    broadcast "☎️ Only from the First Moment of Truth until an ending. Nothing happens." to channel(hosts)
-
-when are_you_sure:
-  if Night.step >= 6 and Night.ended != true:
-    -> Are You Sure
-  else:
-    broadcast "🪅 Only from the First Moment of Truth until an ending. Nothing happens." to channel(hosts)
 
 // ── The Internet: the reinstallation games ──
 // A run's begin (the tablet's scan, a headset's station) fires `reinstallation
@@ -4292,11 +4268,8 @@ when majority_reached:
 // plays The Heart: the room opens on every phone and Trabolta speaks to it
 // candidly from the server-room terminal (like the Master: reaching him
 // is not stopping him; before the Y2K hour nothing in the room ends the
-// night). The quiet window is 2 minutes from the LAST opening: every
-// opening inside it (both contacts firing for one swing, the group
-// trickling in or out) does nothing but restart the 2 minutes, so a busy
-// doorway never replays the visit; an opening after 2 quiet minutes gets a
-// short line (Back To The Heart).
+// night). Every later opening does nothing (wave 18b: Back To The Heart
+// and its quiet window are gone); 🔄 reset_server_room re-arms The Heart.
 // Before he is awake (he is strictly offline until Clippy introduces him)
 // the door is just a door: # hosts hears of it, the story does nothing (a
 // curious guest, or a retained "open" replayed on a stagehand reconnect).
@@ -4313,15 +4286,8 @@ when server_door_opened:
   else if Night.ended != true and Trabolta.awake == true:
     if Night.heart_opened != true:
       set Night.heart_opened = true
-      set Night.door_quiet_until = Time.elapsed + 120
       broadcast "🚪 The server-room door opened. The Heart plays on the server-room terminal." to channel(hosts)
       -> The Heart
-    else if Time.elapsed >= Night.door_quiet_until:
-      set Night.door_quiet_until = Time.elapsed + 120
-      broadcast "🚪 The server-room door opened again." to channel(hosts)
-      -> Back To The Heart
-    else:
-      set Night.door_quiet_until = Time.elapsed + 120
   else if Night.ended != true:
     broadcast "🚪 The server-room door opened before Trabolta is awake. Nothing happens in the story." to channel(hosts)
 
@@ -4392,7 +4358,6 @@ when reset_server_room:
   set Night.alarm_on = false
   set Night.alarm_clear_at = 0
   set Night.heart_opened = false
-  set Night.door_quiet_until = 0
   set Night.crew_door_until = 0
   broadcast "🔄 Server room reset: the patch bay forgives one wrong combination again, and the next door opening plays The Heart." to channel(hosts)
 
@@ -5154,7 +5119,6 @@ set Night.alarm_clear_at = 0
 set Night.lights_before_alarm = "none"
 set Night.wrong_combos = 0
 set Night.heart_opened = false
-set Night.door_quiet_until = 0
 set Night.heart_holder = "none"
 set Night.gloat_at = 0
 // The King's one shared health bar (the server knocks a point off per

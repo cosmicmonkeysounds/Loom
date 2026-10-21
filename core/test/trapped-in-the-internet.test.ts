@@ -696,7 +696,11 @@ describe("Trapped in the Internet — the whole night", () => {
     const sb = sim.signal("start_the_bingo");
     expect(casts(sb).some((b) => b.cue.includes("COMPUTER BINGO has begun"))).toBe(true);
     expect(saidBy(sb, "Clippy").length).toBeGreaterThan(4);
-    expect(lines(sb, "Clippy").some((t) => t.includes("Do NOT write down"))).toBe(true);
+    // Wave 18b (R14, R17): no names rule; the owner joins by video conference.
+    expect(lines(sb, "Clippy").some((t) => /write down|computer memory|from memory/iu.test(t))).toBe(false);
+    expect(casts(sb).some((b) => /write names|computer memory/iu.test(b.cue))).toBe(false);
+    expect(lines(sb, "Clippy")).toContain("Jean Trabolta will be joining us later in the night! He'll be joining by video conference, because we are all people who have become computer programs, but he has ALWAYS been a computer program.");
+    expect(lines(sb, "Clippy")).toContain("He may or may not have already shared with you that he is an AI, but rest assured: he is the true owner of Maps and Ducks, and he is excited to lead you through Jean Trabolta's Scavenger Hunt!");
     expect(sim.questStatus("g1", "The Bingo Card")).toBe("active");
     // a late arrival catches up on clearance
     upload(sim, "g12", "Minesweeper");
@@ -989,8 +993,9 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(guestView(sim, "g11").restricted).toBe(false);
     expect(guestView(sim, "g11").channels.some((c) => c.canPost)).toBe(true);
     expect(v(sim, "g12.internet_visits")).toBe(2);
-    expect(beats(sim.signal("telephone"))).toContain("Telephone");
-    expect(beats(sim.signal("are_you_sure"))).toContain("Are You Sure");
+    // Wave 18b (Q3): Telephone and the piñata are no longer part of the night.
+    for (const id of ["telephone", "are_you_sure"]) expect(sim.model.interactions.has(id), id).toBe(false);
+    for (const b of ["Telephone", "Are You Sure"]) expect(sim.model.beats.has(b), b).toBe(false);
   });
 
   it("malware: the ad hijack, then hunt 2 and the Truther Download", () => {
@@ -1977,12 +1982,13 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       expect(v(sim, "Night.ended"), n).toBe(false);
     }
     expect(lines(fire(sim, "stand_down", "g1", null, "Trabolta"), "Trabolta")).toEqual(["That function is not available yet."]);
-    // The Y2K hour's own first opening is not replayed: the latch holds all night.
+    // The Y2K hour's own first opening is not replayed: the latch holds all
+    // night, and a later opening does nothing (wave 18b: no Back To The Heart).
     toHunt2(sim);
     toBeans(sim);
     fireAll(sim, "trabolta_overshares", "y2k_clock");
     advance(sim, 30);
-    expect(beats(fire(sim, "server_door_opened"))).toEqual(["Back To The Heart"]);
+    expect(beats(fire(sim, "server_door_opened"))).toEqual([]);
   });
 
   it("🔧 the crew's window: an opening inside it only tells # hosts and keeps The Heart for the programs; 🔄 clears it", { timeout: SLOW }, () => {
@@ -2229,31 +2235,20 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(words).toContain("Everything I took from you tonight was for Sandy.");
   });
 
-  it("latched: 2 minutes from the LAST opening; every opening inside it extends the quiet; after, a short line; never after an ending", { timeout: SLOW }, () => {
+  it("latched: every later opening does nothing (wave 18b, D16); 🔄 re-arms The Heart; never after an ending", { timeout: SLOW }, () => {
     const sim = boot();
     toY2k(sim);
-    fire(sim, "server_door_opened");
-    // Two contacts for one swing (0 s), then the group trickling out every
-    // 60–119 s: well past 2 minutes from the first, never 2 quiet minutes.
-    for (const wait of [0, 60, 119, 119, 61]) {
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]);
+    for (const wait of [0, 60, 119, 121, 600]) {
       advance(sim, wait);
       const again = fire(sim, "server_door_opened");
       expect(beats(again), String(wait)).toEqual([]);
       expect(casts(again), String(wait)).toEqual([]);
       expect(hostsSaid(again), String(wait)).toEqual([]);
     }
-    expect(v(sim, "Night.door_quiet_until")).toBe(v(sim, "Time.elapsed") + 120);
-    // 2 quiet minutes after the last opening: Back To The Heart.
-    advance(sim, 120);
-    const back = fire(sim, "server_door_opened");
-    expect(beats(back)).toEqual(["Back To The Heart"]);
-    expect(lines(back, "Trabolta")).toEqual(["Back again. The terminal is on the wall. I am not going anywhere."]);
-    expect(hostsSaid(back)).toEqual(['"🚪 The server-room door opened again."']);
-    expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // latched again
-    advance(sim, 119);
-    expect(beats(fire(sim, "server_door_opened"))).toEqual([]); // 119 s after the last: still quiet
-    advance(sim, 120);
-    expect(beats(fire(sim, "server_door_opened"))).toEqual(["Back To The Heart"]);
+    // 🔄 re-arms it: the next opening plays The Heart again.
+    fire(sim, "reset_server_room");
+    expect(beats(fire(sim, "server_door_opened"))).toEqual(["The Heart"]);
     fire(sim, "patch_combo_b");
     advance(sim, 121);
     const ended = fire(sim, "server_door_opened");
@@ -5735,13 +5730,16 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     expect(lines(r2, "Trabolta")).toContain("I accept it. The answer is: Pickles the Cat.");
   });
 
-  it("B6: clearance posts one \"open now\" notice: the house rooms and # task-manager together", () => {
+  it("clearance opens the house quietly (wave 18b, Q3): the rooms and # task-manager open with no \"open now\" notice", () => {
     const sim = fresh();
     sim.fireBeat("Power On");
     const evs = upload(sim, "g1", "Calculator");
-    const open = composeGuestMessages(sim, evs).filter((m) => m.text.includes("open now"));
-    expect(open.map((m) => m.text)).toEqual(["📂 The Start Bar, The CPU, The Steam Room, Disk Cleanup, The Cloud, The RAM, The Fan Closet, The Graphics Card, The Hard Drive and # task-manager are open now."]);
-    expect(open[0]!.audience).toEqual(["g1"]);
+    expect(composeGuestMessages(sim, evs).filter((m) => m.text.includes("open now"))).toEqual([]);
+    const rooms = guestView(sim, "g1").channels.map((c) => c.id);
+    for (const r of ["loc:The Start Bar", "loc:The CPU", "loc:The Steam Room", "loc:Disk Cleanup", "loc:The Cloud", "loc:The RAM", "loc:The Fan Closet", "loc:The Graphics Card", "loc:The Hard Drive"]) expect(rooms, r).toContain(r);
+    expect(evs.filter((e) => e.type === "revealed").every((e) => (e as Ev<"revealed">).quiet === true)).toBe(true);
+    // Task Manager still says the help desk is open.
+    expect(lines(evs, "Task Manager").some((t) => t.includes("# task-manager is open"))).toBe(true);
   });
 
   it("B16: count copy agrees with its number: the recount, Clippy's Purgatory summary and G10's signatures", () => {
@@ -5964,7 +5962,7 @@ function sheet(sim: Sim) {
 describe("Trapped in the Internet — wave 8 (story lane)", () => {
   it("S2-10 / T2-08: the anytime, optional and fallback cues are off-sequence, so NEXT after 🕚 is never 🎆 midnight", { timeout: SLOW }, () => {
     const m = fresh().model;
-    for (const id of ["telephone", "are_you_sure", "zip_everyone_out", "y2k_midnight", "waive_leader_tasks", "reset_server_room", "force_majority_stay", "force_majority_leave", "lights_dance", "restore_the_lights"]) {
+    for (const id of ["zip_everyone_out", "y2k_midnight", "waive_leader_tasks", "reset_server_room", "force_majority_stay", "force_majority_leave", "lights_dance", "restore_the_lights"]) {
       expect(m.interactions.get(id)!.sequence, id).toBe(false);
     }
     // The night's steps stay in sequence.

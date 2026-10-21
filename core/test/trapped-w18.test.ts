@@ -106,7 +106,7 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     const n = boot();
     for (const c of TO_BINGO) n.press(c);
     const win = n.signal("bingo_winner", "g1", undefined, "Clippy");
-    expect(bigFor(win, "g1").map((m) => m.text)).toEqual(["🎱 BINGO! Name the program for each square, from memory. Centre square last."]);
+    expect(bigFor(win, "g1").map((m) => m.text)).toEqual(["🎱 BINGO! Name the program for each square. Centre square last."]);
     // NM-F1: the win carries its way there and the card (never just "Collect ✓").
     expect(bigFor(win, "g1")[0]!.go).toEqual([
       { kind: "room", id: "loc:The Desktop", label: "🎱 To the Desktop" },

@@ -92,18 +92,18 @@ const countdowns = (sim: Sim) => boardFor(sim).countdowns.map((c) => c.label);
 describe("Trapped in the Internet — wave 10 (the Director page's acts and board)", () => {
   it("every admin cue has an act", () => {
     const rows = rowsOf(Sim.fromSources(SRC));
-    expect(rows).toHaveLength(68); // wave 11: 👑 and 🔧 appended to Anytime
+    expect(rows).toHaveLength(66); // wave 11: 👑 and 🔧 appended to Anytime; wave 18b: −☎️ −🪅
     for (const r of rows) expect(r.act, r.id).not.toBe(null);
     // `act:` rides admin cues only — never a performer's or a guest's button.
     const others = (modView(Sim.fromSources(SRC), "open", "x").interactions ?? []).filter((i) => i.who !== "admin");
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B12 C5 D8 E13 Anytime6 F12 G12 with 40 spine and 28 asides", () => {
+  it("the act split is B10 C5 D8 E13 Anytime6 F12 G12 with 40 spine and 26 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
-      ["B", 12, 9, 3], // wave 18b: 🍾 is a spine row after 📋 ×3
+      ["B", 10, 9, 1], // wave 18b: 🍾 is a spine row after 📋 ×3; ☎️ / 🪅 are gone
       ["C", 5, 2, 3],
       ["D", 8, 5, 3],
       ["E", 13, 1, 12],
@@ -112,7 +112,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
       ["G", 12, 11, 1],
     ]);
     expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(40);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(28);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(26);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
@@ -133,18 +133,18 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(["y2k_clock", "lights_dance", "patch_combo_a"].map(actOf)).toEqual(["E", "E", "E"]);
   });
 
-  it("cue numbers are unchanged", () => {
+  it("cue numbers (wave 18b: −2 after #10, ☎️ / 🪅 are gone)", () => {
     const n = new Map(rowsOf(Sim.fromSources(SRC)).map((r) => [r.id, r.n]));
     expect(n.get("call_to_the_desktop")).toBe(1);
-    expect(n.get("second_hunt_preview")).toBe(13);
-    expect(n.get("truth_pong")).toBe(18);
-    expect(n.get("y2k_clock")).toBe(26);
-    expect(n.get("restore_the_lights")).toBe(39);
-    expect(n.get("final_reveal")).toBe(40);
-    expect(n.get("own_award_lines")).toBe(52);
-    expect(n.get("start_the_ceremony")).toBe(53);
-    expect(n.get("resurrection")).toBe(63);
-    expect(n.get("reinstallation begun")).toBe(66);
+    expect(n.get("second_hunt_preview")).toBe(11);
+    expect(n.get("truth_pong")).toBe(16);
+    expect(n.get("y2k_clock")).toBe(24);
+    expect(n.get("restore_the_lights")).toBe(37);
+    expect(n.get("final_reveal")).toBe(38);
+    expect(n.get("own_award_lines")).toBe(50);
+    expect(n.get("start_the_ceremony")).toBe(51);
+    expect(n.get("resurrection")).toBe(61);
+    expect(n.get("reinstallation begun")).toBe(64);
   });
 
   it("focus act along the night", { timeout: SLOW }, () => {
@@ -163,22 +163,22 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(sheet(sim)).toMatchObject({ last: 9, next: 10, focus: "B" });
     pressAll(sim, ["second_hunt_preview", "start_the_second_hunt"]);
     // The hour: the timers run it, nothing to press.
-    expect(sheet(sim)).toMatchObject({ last: 14, next: null, focus: "C" });
+    expect(sheet(sim)).toMatchObject({ last: 12, next: null, focus: "C" });
     advance(sim, 3300); // ⏳ at 55 min
-    expect(sheet(sim)).toMatchObject({ last: 14, next: null, focus: "C" });
+    expect(sheet(sim)).toMatchObject({ last: 12, next: null, focus: "C" });
     advance(sim, 301); // 🚨 (auto)
     expect(v(sim, "Night.summons_closed")).toBe(true);
-    expect(sheet(sim)).toEqual({ last: 14, next: 18, focus: "D", starting: true });
+    expect(sheet(sim)).toEqual({ last: 12, next: 16, focus: "D", starting: true });
     pressAll(sim, ["truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares"]);
     // After 🤖 overshares: E is starting.
-    expect(sheet(sim)).toEqual({ last: 25, next: 26, focus: "E", starting: true });
+    expect(sheet(sim)).toEqual({ last: 23, next: 24, focus: "E", starting: true });
     press(sim, "y2k_clock");
     // The Y2K hour: no NEXT (🌑 waits for midnight).
-    expect(sheet(sim)).toMatchObject({ last: 26, next: null, focus: "E" });
+    expect(sheet(sim)).toMatchObject({ last: 24, next: null, focus: "E" });
     advance(sim, 3600);
     // Midnight fires 🌑 itself.
     expect(cueState(sim).lastBy).toBe("story");
-    expect(sheet(sim)).toMatchObject({ last: 40, next: 41, focus: "F" });
+    expect(sheet(sim)).toMatchObject({ last: 38, next: 39, focus: "F" });
   });
 
   it("focus act along the night: Combo A inside the hour, then the ceremony", { timeout: SLOW }, () => {
@@ -187,10 +187,10 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     press(sim, "patch_combo_a");
     advance(sim, 11);
     expect(v(sim, "Night.ending")).toBe("disabled");
-    expect(sheet(sim)).toMatchObject({ last: 26, next: 50, focus: "F" });
+    expect(sheet(sim)).toMatchObject({ last: 24, next: 48, focus: "F" });
     press(sim, "trabolta_recounts");
     // After any ending: G1.
-    expect(sheet(sim)).toMatchObject({ last: 50, next: 53, focus: "G" });
+    expect(sheet(sim)).toMatchObject({ last: 48, next: 51, focus: "G" });
   });
 
   it("an out-of-turn 🔌 / 💥 / ❌ is refused with a # hosts reason", { timeout: SLOW }, () => {

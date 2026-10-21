@@ -45,8 +45,7 @@ NEXT is V6), hunt 2's hour and the summons (📥, ⏳ and 🚨 fire themselves,
 then NEXT is 🏓) and the Y2K hour (midnight fires 🌑). Never tap those timer
 cues early: it cuts the window short. Hold 🕚 until the patch-bay watch radios **IN**.
 After 🍎, press 📄 (truth.txt holds on the screens while the bobber reads),
-then **⚖** for the verdict when they finish. Optional set pieces
-(☎️ Telephone, 🪅 Are you sure?) only if you are running early.
+then **⚖** for the verdict when they finish.
 
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
 window. ⏱ closes it (or it closes itself: then ⏱ ticks and NEXT is 📋). Then 📋 once per question (Q1, Q2,
