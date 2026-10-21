@@ -7,7 +7,8 @@
 //!   overlay (blackout · go_to_living_room · alarm)
 //!     > slide — held `SLIDE_HOLD_MS` (45 s terminals / 90 s TV), or until the
 //!       next cue for the persistent ones (`bingo`, `y2k`, `trust_chart`,
-//!       `truth_txt`, the ceremony's `award_*`); a slide beats attract
+//!       `truth_txt`, the finale's waits `bobbing` / `advice` / `grok_prom` /
+//!       `banish`, the ceremony's `award_*`); a slide beats attract
 //!     > attract (the character hidden or asleep — K-16)
 //!     > the base view (face / world / mirror).
 //!

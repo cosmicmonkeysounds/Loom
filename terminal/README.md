@@ -129,8 +129,9 @@ once, then standing; `go_to_living_room` / `alarm` — text blinking at
 1 Hz on a black field, never full-field red; an overlay pauses the
 scanner and ends an open line) > **slide** (any other `screens_*` /
 `tv_*` / `terminals_*` value, held 45 s on a terminal / 90 s on the TV;
-`bingo`, `y2k`, `trust_chart`, `truth_txt`, `award_*`, `ceremony*` stay
-until the next cue and beat attract) > **attract** > the base view. A
+`bingo`, `y2k`, `trust_chart`, `truth_txt`, the finale's waits
+`bobbing` / `advice` / `grok_prom` / `banish`, `award_*`, `ceremony*`
+stay until the next cue and beat attract) > **attract** > the base view. A
 pilot pre-empts a slide. **On a face terminal** (not the TV, not a
 mirror, not on the screensaver) **a tap on a held slide peeks under it**
 (B21): the scanner and *type your program name* show, the corner

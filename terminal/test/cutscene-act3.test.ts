@@ -68,6 +68,15 @@ describe("tv3 triggers name the story's real cues, beats and signals", () => {
     }
   });
 
+  it("every wait the scenes loop through is a slide the server keeps up until the next cue", () => {
+    const screen = readFileSync(join(__dirname, "../../core/server/routes/screen.ts"), "utf8");
+    const set = /PERSISTENT_SLIDES[^=]*= new Set\(\[([^\]]*)\]\)/u.exec(screen);
+    expect(set, "core's PERSISTENT_SLIDES").not.toBeNull();
+    const kept = [...set![1]!.matchAll(/"([^"]+)"/gu)].map((m) => m[1]);
+    for (const v of ["bobbing", "advice", "grok_prom", "banish", "truth_txt"]) expect(kept, v).toContain(v);
+    expect(screen).toContain("/^(award|ceremony)/u");
+  });
+
   it("covers every slide of Act F–G", () => {
     const slides = new Set(ACT3.flatMap((s) => s.when.flatMap((w) => ("slide" in w ? [w.slide] : []))));
     for (const v of ["final_reveal", "bobbing", "truth_txt", "song", "grok_prom", "rave", "advice", "banish", "ceremony", "award_*"]) expect(slides.has(v), v).toBe(true);
