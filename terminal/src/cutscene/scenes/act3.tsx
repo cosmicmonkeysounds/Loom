@@ -52,7 +52,7 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
-import { AWARDS, HAND_JIVE, TRUTH_TXT, awardOf, awardValue, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, spinAngle, tallyOf, vortexAt, wrapLines, type ChatLine } from "../kit/tv3-time.ts";
+import { AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, spinAngle, tallyOf, vortexAt, wrapLines, type ChatLine } from "../kit/tv3-time.ts";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -1056,7 +1056,8 @@ function Ceremony({ t, sfx, reduced, target }: SceneProps) {
 //   2200      "The report lists…"
 //   3200      the winner's NAME slams in (a tada, confetti, sparks)
 //   4000–5600 the number counts up with its label (Trust score 92, …)
-//   5600→     hold: the name glows, the spot breathes, confetti every 12 s,
+//   5600→     hold: the name glows, the spot breathes, the name's confetti
+//             lands, then more every 12 s from 11 600 (`awardConfettiAt`),
 //             stars twinkle, the emblem bobs — the name stays up all slide.
 // No winner on the night block (an older server): "Please come forward."
 
@@ -1074,9 +1075,8 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
   const flip = reduced ? fade(t, 800, 400) : eased(t, 800, 700, ease.outBack);
   const named = t >= 3200;
   const glow = 0.6 + 0.4 * pulse(t, 2400);
-  const burstAt = 3200;
-  const repeats = t >= 5600 ? Math.floor((t - 5600) / 12_000) : -1;
-  const confettiStart = repeats >= 0 ? 5600 + repeats * 12_000 + 6000 : burstAt;
+  const burstAt = AWARD_CONFETTI.first;
+  const confetti = awardConfettiAt(t);
   return (
     <Stage bg="radial-gradient(ellipse at 50% 55%, #1b1f5e 0%, #05030f 78%)" className="tv3-award">
       <SpotCones t={t} reduced={reduced} color="rgba(255, 240, 190, 0.13)" />
@@ -1109,7 +1109,7 @@ function AwardScene({ t, value, night, sfx, reduced, target }: SceneProps) {
         </div>
       )}
       {!lite && !reduced && <Particles t={t} emitters={burst(0.5, 0.56, burstAt, GOLD, 151, 1.2)} blend="add" />}
-      {!reduced && <Confetti t={t} start={confettiStart} dur={4200} density={lite ? 0.45 : 1} seed={153 + Math.max(0, repeats)} />}
+      {!reduced && <Confetti t={t} start={confetti.start} dur={AWARD_CONFETTI.dur} density={lite ? 0.45 : 1} seed={153 + confetti.n} />}
     </Stage>
   );
 }

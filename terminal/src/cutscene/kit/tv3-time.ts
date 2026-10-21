@@ -61,6 +61,24 @@ export function awardValue(v: string | number | null | undefined): string | numb
   return s;
 }
 
+/**
+ * An award slide's confetti: the burst under the winner's name (3200, falling
+ * 4200 ms), then one every 12 s for as long as the slide is up. A burst's
+ * last piece lands `CONFETTI_LIFE` after it stops falling, so the next one
+ * takes over only then: never a sky that empties in one frame.
+ */
+export const AWARD_CONFETTI = { first: 3200, dur: 4200, every: 12_000 } as const;
+/** How long a confetti piece lives (`confettiEmitters`' longest `life`). */
+export const CONFETTI_LIFE = 4200;
+
+/** The burst falling at `t` (its start, `n` = 0 for the name's, then 1, 2 …: each its own seed). */
+export function awardConfettiAt(t: number): { start: number; n: number } {
+  const repeat = AWARD_CONFETTI.first + AWARD_CONFETTI.dur + CONFETTI_LIFE;
+  if (t < repeat) return { start: AWARD_CONFETTI.first, n: 0 };
+  const k = Math.floor((t - repeat) / AWARD_CONFETTI.every);
+  return { start: repeat + k * AWARD_CONFETTI.every, n: k + 1 };
+}
+
 // --- truth.txt (beats/finale.loom, Truth Txt) --------------------------------------------
 
 /**

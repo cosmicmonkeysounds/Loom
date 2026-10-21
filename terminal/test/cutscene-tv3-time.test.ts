@@ -7,11 +7,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
+import { confettiEmitters } from "../src/cutscene/kit/physics.ts";
 import {
   AWARDS,
+  AWARD_CONFETTI,
+  CONFETTI_LIFE,
   HAND_JIVE,
   SONG_CHAT,
   TRUTH_TXT,
+  awardConfettiAt,
   awardOf,
   awardValue,
   binaryRainAt,
@@ -55,6 +59,28 @@ describe("tv3 timelines — the awards", () => {
     expect(awardValue(412)).toBe(412);
     expect(awardValue("17")).toBe(17);
     expect(awardValue("2:31")).toBe("2:31");
+  });
+
+  it("the name's confetti falls its whole length; each later burst takes over only once the last piece has landed", () => {
+    expect(Math.max(...confettiEmitters(0, AWARD_CONFETTI.dur).map((e) => e.life))).toBeLessThanOrEqual(CONFETTI_LIFE);
+    expect(awardConfettiAt(0)).toEqual({ start: AWARD_CONFETTI.first, n: 0 });
+    // The review's frames: the burst under the name is still falling either side of 5600.
+    expect(awardConfettiAt(5550)).toEqual(awardConfettiAt(5650));
+    expect(awardConfettiAt(AWARD_CONFETTI.first + AWARD_CONFETTI.dur - 1).start).toBe(AWARD_CONFETTI.first);
+    let last = awardConfettiAt(0);
+    const starts = new Set<number>([last.start]);
+    for (let t = 0; t <= HISTORY_T + 60_000; t += 50) {
+      const now = awardConfettiAt(t);
+      if (now.start !== last.start) {
+        expect(t, `switched at ${t}`).toBeGreaterThanOrEqual(last.start + AWARD_CONFETTI.dur + CONFETTI_LIFE);
+        expect(now.n).toBe(last.n + 1);
+        expect(now.start).toBeLessThanOrEqual(t);
+      }
+      starts.add(now.start);
+      last = now;
+    }
+    // Every 12 s, all slide long.
+    expect(starts.size).toBeGreaterThan(50);
   });
 });
 
