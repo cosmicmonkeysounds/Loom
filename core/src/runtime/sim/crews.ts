@@ -213,10 +213,15 @@ export class Crews {
   /** The header `majority: <expr>` (the side's threshold), or null. */
   majority: string | null = null;
 
-  constructor(
-    private readonly sim: Sim,
-    private readonly hooks: CrewSimHooks,
-  ) {}
+  private readonly sim: Sim;
+  private readonly hooks: CrewSimHooks;
+
+  // Plain fields, no parameter properties: the editor's typecheck reads this
+  // file (play's wire types import its views) under `erasableSyntaxOnly`.
+  constructor(sim: Sim, hooks: CrewSimHooks) {
+    this.sim = sim;
+    this.hooks = hooks;
+  }
 
   /** Read the story header's `majority:` line (first file that has one). */
   configure(headers: Iterable<{ lines?: Array<{ key: string; value: string }> }>): void {

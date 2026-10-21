@@ -3,7 +3,7 @@
 //! every reader still goes through these helpers so an older server (none of
 //! these fields) reads as "nothing new", never as a crash.
 
-import type { ChatMessage, CrewView, GoTarget, GuestMission, GuestView, InviteView, ObjectiveView, PersonCard, SideView } from "../types.ts";
+import type { ChatMessage, GoTarget, GuestMission, GuestView, ObjectiveView, PersonCard } from "../types.ts";
 
 export type { CrewView, GoTarget, InviteView, SideView } from "../types.ts";
 
