@@ -66,7 +66,7 @@ from ..module import ConfigError, Context
 from ..show.config import MqttConfig
 from ..show.directives import parse_directive, unquote
 from .config import AudioConfig, parse_audio_section
-from .engine import Engine, device_name, probe
+from .engine import Engine, device_name, layout_problem, probe
 from .mixer import Mixer, lin_to_db
 from .routing import (
     EVERYWHERE,
@@ -422,6 +422,8 @@ class AudioRouter:
         if signature[0] is None and not self._blank_device_logged:
             self._blank_device_logged = True
             log.warning("audio.json names no device (device.name is blank) and the YAML sets no `device:` — using the default output")
+        if self.engine is not None:
+            self.engine.expect = doc.expect
         if self.engine is not None and signature == self._signature and self.engine.running:
             return True
         if self.engine is not None and signature != self._signature:
@@ -442,7 +444,6 @@ class AudioRouter:
                 expect=doc.expect,
             )
             self._signature = signature
-        self.engine.expect = doc.expect
         try:
             mixer = self.engine.open()
         except Exception as err:  # noqa: BLE001 — missing device / PortAudio
@@ -858,6 +859,13 @@ class AudioRouter:
             if self.check_stream():
                 asyncio.ensure_future(self._preload())
 
+    def layout_state(self) -> str:
+        """`moved` while the open device disagrees with audio.json's
+        `device.expect` (read live: a corrected audio.json clears it)."""
+        info = self.engine.info if self.engine is not None and self.engine_running() else None
+        expect = self.doc.expect if self.doc is not None else None
+        return "moved" if info is not None and layout_problem(info, expect) is not None else "ok"
+
     def health(self) -> dict[str, Any]:
         mixer = self.mixer
         peak, limited, blocks = mixer.take_meters() if mixer is not None else (np.zeros(0), 0, 0)
@@ -879,7 +887,7 @@ class AudioRouter:
             "stops": self.stops_done,
             "placeholders": placeholders_in(self.cfg.sounds_dir) if self.cfg.play_sounds else [],
             # `device.expect` disagreed with the device at the last open.
-            "layout": "moved" if self.engine is not None and self.engine.layout_moved else "ok",
+            "layout": self.layout_state(),
         }
 
     async def _health_loop(self) -> None:

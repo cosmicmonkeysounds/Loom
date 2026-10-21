@@ -803,6 +803,9 @@ def test_check_fails_and_health_flags_a_moved_layout(tmp_path):
     problems = router(tmp_path, query=fake_query(32, 26)).preflight()
     assert len(problems) == 1 and "layout has moved" in problems[0]
     assert r.engine_running() and r.health()["layout"] == "moved"
+    # Corrected in audio.json (no reopen: same device): the health clears.
+    r.apply(answer("v2", device={**dev, "expect": {"inputs": 32, "outputs": 26}}))
+    assert r.health()["layout"] == "ok" and r.engine.expect == (32, 26)
     (tmp_path / "ok").mkdir()
     ok = router(tmp_path / "ok", query=fake_query(32, 30))
     ok.apply(answer("v1", device=dev))
