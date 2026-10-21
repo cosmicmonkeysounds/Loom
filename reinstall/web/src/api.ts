@@ -81,16 +81,23 @@ export async function endSession(config: ReinstallConfig, session: string): Prom
  */
 export async function fetchLocations(config: ReinstallConfig): Promise<{ id: string; label: string | null }[] | null> {
   try {
-    const r = await getJson<{ locations?: unknown }>(`${baseOf(config)}/api/state?role=mod`, config.token);
-    if (!Array.isArray(r.locations)) return null;
-    return r.locations.flatMap((l: unknown) => {
-      if (typeof l !== "object" || l === null) return [];
-      const { id, label } = l as { id?: unknown; label?: unknown };
-      return typeof id === "string" ? [{ id, label: typeof label === "string" ? label : null }] : [];
-    });
+    return locationsOf(await getJson<{ locations?: unknown; phase?: unknown }>(`${baseOf(config)}/api/state?role=mod`, config.token));
   } catch {
     return null;
   }
+}
+
+/** The story's LOCATIONs off a mod view, or null = unknown. An empty list
+ *  before the doors (an older server's null-sim view) is unknown too, never
+ *  "the story has none": else every room reads "not a LOCATION" (LA-3). */
+export function locationsOf(r: { locations?: unknown; phase?: unknown }): { id: string; label: string | null }[] | null {
+  if (!Array.isArray(r.locations)) return null;
+  if (r.locations.length === 0 && r.phase !== "open" && r.phase !== "paused") return null;
+  return r.locations.flatMap((l: unknown) => {
+    if (typeof l !== "object" || l === null) return [];
+    const { id, label } = l as { id?: unknown; label?: unknown };
+    return typeof id === "string" ? [{ id, label: typeof label === "string" ? label : null }] : [];
+  });
 }
 
 export interface LoadedHouse {

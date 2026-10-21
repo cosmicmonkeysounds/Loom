@@ -104,6 +104,14 @@ describe("server views", () => {
     expect(v.cast).toEqual([]);
   });
 
+  it("carries the story's LOCATIONs, empty, before the doors (the map editor's room check: LA-3)", () => {
+    const declared = Sim.fromSources(SCENARIO);
+    const v = modView(null, "idle", "demo", undefined, [], declared);
+    expect(v.locations.map((l) => l.id)).toEqual([...declared.model.locations.keys()]);
+    expect(v.locations.length).toBeGreaterThan(0);
+    expect(v.locations.every((l) => l.occupants.length === 0)).toBe(true);
+  });
+
   it("stamps the story clock on guest + prime views (the alert window's \"now\")", () => {
     const sim = Sim.fromSources(SCENARIO);
     sim.createPerson("g1", "Alice");
