@@ -87,8 +87,11 @@ headset, your microphone.
 **A headset that says SET UP THIS HEADSET** has no moderator passcode
 yet (crew only): point at the server, type the event's moderator passcode
 on its keyboard with the trigger, name it, and pull the trigger on
-**CONNECT**. It remembers; holding the lobby's **⚙** for 2 seconds forgets
-it. **PLAY OFFLINE** plays without the house's server.
+**CONNECT**. It remembers; holding the lobby's **⚙** for 5 seconds (2 on a
+computer) forgets it. If its passcode stops working (the staff codes were
+changed), the panel comes back on its own. **PLAY OFFLINE**, on a computer
+only, plays without the house's server. The first time a headset is set up
+it asks to use the **microphone** while it sits in the lobby — allow it.
 
 On a tablet with a keyboard (or a laptop standing in for the tablet):
 **W A S D** or the arrows walk, **Q / E** turn, **Shift** runs,
@@ -187,14 +190,17 @@ the next room it is quieter, the further away the quieter); talk, and they
 hear you on the terminal. Other players in the simulation can't hear you.
 
 - In a **headset**, your mic is on. **B** or **Y** mutes it (and unmutes
-  it); the HUD says **🎤 LIVE**, **🎤 MUTED** or **NO MIC**.
+  it); the HUD says **🎤 LIVE**, **🎤 MUTED** or **NO MIC** (**🎤 …** for a
+  moment while it opens).
 - The **tablet in the tent** has no voice link: the tent is the tablet's
   own room. A tablet or laptop set up elsewhere may have it. Then **Play
   here** asks to use the microphone, the **🎤** button at the top right
   (or **M**) mutes it, and the bottom line says *🎤 a terminal can hear
   you* while one does.
-- Your voice only goes out when you speak up, and never while a terminal's
-  voice is playing to you, so talk in turns.
+- Your voice only goes out when you speak up. While a terminal's room is
+  playing to you, only a voice **louder than the room** goes out — so to
+  get a word in over a noisy room, just speak up: the terminal plays you
+  and goes quiet itself while you talk, so the room hears you clearly.
 
 Need the bathroom, or there's an emergency? Tap **🚻 Bathroom Mode** on
 your pass before you leave the tent. The exit is clearly marked. It is

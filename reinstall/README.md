@@ -121,11 +121,16 @@ game-to-game voice: two players never hear each other.
   browser's permission prompt; it needs https or localhost). The HUD's
   **🎤 LIVE / MUTED / NO MIC** toggles it (or **M**), and the status line
   says *🎤 2 terminals can hear you* while the server says one does.
-  Nothing goes up unless a terminal can hear the player, unless the
-  level clears the gate (−42 dBFS, 400 ms hang), or while a terminal's
-  voice is playing on this device (+300 ms: the speakers would loop
-  back). Voices play from their screens (`PannerNode`s, equalpower; the
-  server's gain is the volume), ~200 ms behind.
+  Nothing goes up unless a terminal can hear the player and the level
+  clears the gate (−42 dBFS, 400 ms hang). While a terminal's voice plays
+  on this device (+300 ms) the gate is **raised** to −28 dBFS, not shut
+  (D5b, the barge-in): the speakers' echo stays home, a player speaking up
+  goes — and the terminal, playing them, holds its own mic, so the room
+  pauses for them (a hard hold on both ends let a loud room keep the floor
+  for good). The mic is low-passed at 7 kHz first. Voices play from their
+  screens (`PannerNode`s, equalpower; the server's gain is the volume),
+  ~200 ms behind; a skip ahead cuts only what is queued past the target,
+  with a 5 ms fade. *N terminals can hear you* is the server's `ears`.
 - `src/game/voice.ts` (`VoiceLink`) runs on the camera feeds' gate
   (playing, on screen) and stops with the session, mic tracks and all;
   every effect is injected, so `test/voice.test.ts` drives it in node.

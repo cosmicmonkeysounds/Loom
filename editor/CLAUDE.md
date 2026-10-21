@@ -237,8 +237,10 @@ mute, per-row device badges (SW-SCR-21 `terminalBadges` / `majorityVersion`:
 can't go full screen sends no `fs` and gets no badge; `fullscreenTitle`:
 on a TV or mirror row the hint is a Chrome started without `--kiosk`, on
 a tablet a touch) / 🎤 the voice link's mic (wave 19, the poll's
-`mic=`; `micBadge`: grey while live / held / off, red *🎤 denied* /
-*🎤 http* on a placed non-mirror row, `micWanted`) / battery / build, an unstamped row beside a stamped majority =
+`mic=`; `micBadge`: grey 🎤 live, *🎤 off* for `off` and `muted` (⚙
+turned it off on that tablet), red *🎤 denied* / *🎤 http* / *🎤 tap*
+(`locked`: open, the page's sound waiting for a touch) on a placed
+non-mirror row, `micWanted`) / battery / build, an unstamped row beside a stamped majority =
 amber *old build*), a room terminal's `room X` (amber off the
 `server-room` spot, `strayRoom`: a tablet that was the TV once and kept
 its room) and an **identify** button

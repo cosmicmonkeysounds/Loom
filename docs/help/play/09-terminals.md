@@ -245,9 +245,15 @@ from the room leaves the house.
 
 The terminal never sends its own sounds (the character's voice, its
 beeps, the players it is playing) back into the game, so it goes quiet
-for a moment while it speaks. The TV plays the players but has no
-microphone of its own; the tent's laptop (where the game is played)
-takes no part at all, and a silent mirror neither.
+for a moment while it speaks. **When a player talks, the room pauses
+for them**: a player can always cut in over a noisy room (their game only
+needs them to speak up), and while the terminal plays them it sends
+nothing, so they are heard clearly; the room is back the moment they
+stop. The TV plays the players but has no microphone of its own; the
+tent's laptop (where the game is played) takes no part at all, and a
+silent mirror neither. The players in the games hear what the
+terminal's microphone hears — keep secrets (the door code) away from a
+🎤 terminal.
 
 An older tablet that can't draw the 3D house shows a **simple
 recreation of the game** instead, a blocky old-school 3D view drawn from
@@ -296,5 +302,9 @@ Kiosk, *Enable Microphone Access*. Under ⚙ → advanced, **let the games
 hear this room** turns one tablet's microphone off (or the TV's on), and
 **play the players near this screen** its speaker; `&mic=0` / `&voices=0`
 in the link do the same. The house map editor turns a terminal's voice
-link off for good (the tent's is off already). Run → Terminals shows a
-🎤 for a tablet whose microphone was refused or can't run.
+link off for good (the tent's is off already); a tablet picks that up
+within a minute, no reload. Run → Terminals shows the 🎤 for each
+tablet: red **🎤 denied** (the microphone was refused), **🎤 http** (no
+microphone over plain http) or **🎤 tap** (nobody has touched it since it
+loaded, so it can neither hear nor be heard); **🎤 off** where ⚙, its
+view or the map turns it off.

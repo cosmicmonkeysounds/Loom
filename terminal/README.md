@@ -551,23 +551,39 @@ carrying only what that spot can hear, with a gain).
   the spawn room is off) take no part; nothing runs on the setup screen.
   ⚙ → advanced: *let the games hear this room* (`mic`, absent = the view's
   default) and *play the players near this screen* (`voices`, on); the
-  URL's `&mic=0|1` / `&voices=0|1`. The map's flag is copied as
-  `voiceLink` and followed (`setup-map.ts` `followVoice`); the page reads
-  the live map once per spot before opening anything.
+  URL's `&mic=0|1` / `&voices=0|1` (untouched, the ⚙ box reads as
+  following the screen you pick). The map's flag is copied as `voiceLink`
+  and followed (`setup-map.ts` `followVoice`); the page reads the live map
+  before opening anything (retried 5 s → 60 s, re-read every minute, the
+  link restarted only when the spot's answer changes; a config no map ever
+  set takes no part until one is read).
 - **Up** (`mic.ts` → `capture.ts` → `uplink.ts`): its own audio-only
   `getUserMedia` (`MicHub`, ref-counted like the camera's, never a track on
   the camera's stream; echo cancellation / noise suppression / AGC asked
-  for), a `ScriptProcessorNode` on the page's context through a zero gain
+  **off** — the gate is in software, and on Android they switch the device
+  into its voice-call audio mode), a `ScriptProcessorNode` on the page's
+  context through a zero gain
   (Safari 14.0 has no AudioWorklet), resampled to 16 kHz in JS, 200 ms
   chunks through the level gate (−42 dBFS, 400 ms hang, one chunk of
   pre-roll), μ-law, then raw POSTs to `/api/spatial/voice?seq=&spot=`
   (`x-loom-token`: the mod token), one in flight, backing off 1 s → 30 s,
   stopping on 401 / 403 (`voice is off at this terminal`) / 404 / 410.
-  **Only while someone hears it**: the voice stream's `listen {on}` (and a
-  POST's `listening: false`) gates the sending. **Half-duplex in
-  software**: nothing goes up while this page plays a player, speaks (the
-  voice floor), plays an effect / jingle / chime (`sound/bus.ts`
-  `soundPlayingUntil`), and for 300 ms after.
+  **Only while someone hears it**: the voice stream's `listen {on}` is the
+  authority (a POST's late `listening: false` only empties the queue); an
+  uplink a 403 / 404 stopped mid-night (a map edit) is rebuilt when a
+  `hello` / `listen {on}` proves the spot good again. **Half-duplex in
+  software, a hard hold**: nothing goes up while this page plays a player,
+  speaks (the voice floor), plays an effect / jingle / chime
+  (`sound/bus.ts` `soundPlayingUntil`), and for 300 ms after — plus the
+  chunk's span, the capture buffer and the output latency (a chunk is
+  judged when its buffer ends). The games raise their gate instead (D5b),
+  so a player speaking up is heard here, and this hold then pauses the
+  room for them.
+- **What works** goes on the stream: `?mic=0|1&hear=0|1` (no mic while it
+  is refused / missing / the page's audio locked; no speaker under the TV
+  mute or locked), re-opened when either changes (`VoiceLink.refresh`,
+  every 150 ms), so the server never routes a player to a device that
+  can't hear them nor counts a dead mic among a player's four terminals.
 - **Down** (`stream.ts` → `playback.ts`): one `EventSource` on
   `/api/spatial/voice/stream?token=&spot=` (`hello` / `listen` / `voice` /
   `bye`; reconnects like the spatial stream), each player's chunks
@@ -580,12 +596,15 @@ carrying only what that spot can hear, with a gain).
   anywhere (every view, the shadow / chess / casino screens included), or
   at once on the TV's Chrome (`--autoplay-policy=no-user-gesture-required`).
 - A small **🎤** at the left edge, half way down (`MicCue.tsx`), shows while a player
-  can hear this room. ⚙ shows the link's status as it stood when ⚙ opened;
-  the heartbeat sends `mic=live|muted|denied|insecure|off`
-  (`voice/roles.ts` `micReport`) for Run → Terminals.
+  can hear this room (never while locked or while the uplink is stopped).
+  ⚙ shows the link's status as it stood when ⚙ opened (*tap the screen to
+  start it* while the page's audio is locked); the heartbeat sends
+  `mic=live|muted|denied|insecure|locked|off` (`voice/roles.ts`
+  `micReport`; `muted` = ⚙ turned it off) for Run → Terminals.
 - `voice/link.ts` (`VoiceLink`, every effect injected, + `startPageLink`)
   is its own lazy chunk, loaded by `voice/hook.ts` `useVoiceLink` only on a
-  terminal that takes part.
+  terminal that takes part; the entry takes `voiceOn` from
+  `@loom/house/voice-on`, so the codec stays in that chunk.
 - Device-only: the old tablets' WebView echo and speaker volume with the
   microphone open; an iPad's play-and-record session (quieter speaker, a
   sample-rate change, a camera track muted by the second `getUserMedia`).

@@ -326,15 +326,21 @@ with `released: true` while you walk to Gerald.
   house (panned from where it hangs; the server sets how loud — full in the
   same room, fading to nothing at 12 m, the nearest four on your floor),
   and the player's voice is heard on the terminals within 8 m of them. The
-  mic is open with a level gate (nothing goes up in silence) and is held
-  while a terminal's voice plays here, plus 0.3 s, so the headset never
-  echoes a terminal back to it; it only uploads while some terminal can
-  hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
+  mic is open with a level gate (nothing goes up in silence). While a
+  terminal's voice plays here, plus 0.3 s, the gate is **raised** to
+  −28 dBFS instead of held (D5b, the barge-in): the room's echo off the
+  Quest's speakers stays home, but a player who speaks up is heard at once,
+  and the terminal then holds its own mic, so the room pauses for them. A
+  faint, far terminal (gain under 0.2) raises nothing. It only uploads
+  while some terminal can hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
   mic. The HUD's bottom line says **🎤 LIVE** (· *someone can hear you*
-  when a terminal listens), **🎤 MUTED**, or **NO MIC**. The tent's
-  terminal (the tent laptop beside the headsets) is never in the link.
-  The first voice start on a Quest asks inside the headset to allow
-  recording audio (Android's microphone prompt); until it is allowed the HUD says *NO MIC ·
+  when a terminal listens), **🎤 MUTED**, or **NO MIC** (**🎤 …** until
+  the mic hands over a real sample: a missing or denied input gives only
+  zeros, which read NO MIC). The tent's terminal (the tent laptop beside
+  the headsets) is never in the link. A Quest asks to allow recording audio
+  (Android's microphone prompt) **in the lobby**, before the first session
+  (the dialog pauses the app; in a session that would end it); one still up
+  at a start ends nobody's session. Until it is allowed the HUD says *NO MIC ·
   allow the microphone* and the game still hears the terminals. To ask
   again after a refusal: Settings → Apps → Reinstallation VR → Permissions
   → Microphone (or reinstall the APK). Offline there is no voice.
