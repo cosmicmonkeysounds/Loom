@@ -3,7 +3,9 @@
 ## autoload in a build, a fake in the tests).
 ##
 ## - **Lobby**: the dark room; the station waits for the tablet to send a
-##   program, or the player picks one with the stick ([Lobby]).
+##   program, or the player picks one — the laser, the stick or the mouse
+##   ([Lobby], [LobbyPointer]); a headset with no passcode sets itself up
+##   there first ([SetupPanel]).
 ## - **Playing**: spawned at the assignment's spawn in the virtual house;
 ##   poses stream to the server (feet, house frame); the golden trail is
 ##   re-routed twice a second; within 0.9 m (plan) of the duck, on its
@@ -87,6 +89,8 @@ var cams: CamFeeds
 var hud: Hud
 ## The voice link ([VoiceLink]; running only while a session plays).
 var voice: VoiceLink
+## The lobby's laser / mouse ([LobbyPointer]).
+var pointer: LobbyPointer
 
 var _trail_in := 0.0
 var _cand_in := 0.0
@@ -166,6 +170,12 @@ func setup(l: LinkBase, xr: bool) -> void:
 	hud.name = "Hud"
 	player.camera.add_child(hud)
 	_setup_voice()
+	# The lobby's picker: the laser / mouse, the ghosts' picture cache.
+	pointer = LobbyPointer.new()
+	pointer.name = "Pointer"
+	pointer.player = player
+	add_child(pointer)
+	lobby.attach(link, ghosts.avatars)
 	if bool(link.config.get("autopilot", false)):
 		autopilot = Autopilot.new()
 		player.read_input = false
@@ -215,7 +225,9 @@ func enter_lobby() -> void:
 	if _notice_left <= 0.0:
 		hud.hide_all()
 	player.locomotion_enabled = false
+	player.release_mouse()  # the lobby is pointed at, not looked around
 	player.teleport(Lobby.SPOT, 0.0)
+	lobby.reset()
 	lobby.visible = true
 	_cand_in = 0.0
 	_found_pending = false
@@ -358,6 +370,8 @@ func _on_assignment(a: Dictionary) -> void:
 	link.adopt(a)
 	var spawn: Dictionary = a["spawn"]
 	lobby.visible = false
+	pointer.hide_beam()
+	player.capture_mouse = true
 	player.teleport(builder.to_world(spawn["pos"]), builder.yaw_to_world(float(spawn["yaw"])))
 	player.locomotion_enabled = true
 	duck.place(builder.to_world(a["duck"]["pos"]))
@@ -373,7 +387,11 @@ func _on_assignment(a: Dictionary) -> void:
 	# hit him (missing on an old server = not yet).
 	king_hit_used = a.get("kingHit", false) == true
 	_king_hit_pending = false
+	# The play buttons act on a press made while playing, never on one held
+	# over from the lobby (the trigger that pulled START; B / Y does nothing
+	# there).
 	_hit_was = player.hit_button
+	_mute_was = player.mute_button
 	_update_route_house()
 	hud.show_play(_room_label(HouseLocate.locate(builder.house, spawn["pos"])["room"]))
 	if link.map_warning_text != "":
@@ -528,6 +546,8 @@ func _process(delta: float) -> void:
 
 
 func _tick_lobby(delta: float) -> void:
+	var aim := pointer.poll()
+	pointer.draw(aim, lobby.aim(aim, delta))
 	# Either stick drives the picker: the larger deflection on each axis.
 	var l := player.left_stick
 	var r := player.right_stick
@@ -587,6 +607,8 @@ func _setup_voice() -> void:
 func _tick_voice() -> void:
 	if not bool(link.config.get("voice", true)):
 		return
+	if not voice.is_running():
+		voice.mic_enabled = bool(link.config.get("mic", true))  # a reconfigured headset
 	voice.want(link.voice_stream_url(), link.voice_upload_url(), link.voice_token())
 	var pressed := player.mute_button and not _mute_was
 	_mute_was = player.mute_button

@@ -2910,6 +2910,27 @@ func _test_voice_game() -> void:
 	link.session_over.emit("reset")
 	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not game.builder.voice_attached("optical-drive") and game.hud.mic_text() == "", "voice game: the lobby stops the voice, the emitters and the HUD line")
 
+	# B / Y held in the lobby does nothing there, and a press held over into
+	# play (the hand still on it when the program starts) is not a toggle.
+	player.mute_button = true
+	player.hit_button = true
+	for i in 3:
+		game._process(0.016)
+	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not v.muted, "voice game: B / Y in the lobby does nothing")
+	link.assignment_received.emit(_assignment(house, "v-3", true))
+	game._process(0.016)
+	game._process(0.016)
+	_check(v.is_running() and not v.muted and game.hud.mic_text() == "🎤 LIVE", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
+	player.mute_button = false
+	player.hit_button = false
+	game._process(0.016)
+	player.mute_button = true
+	game._process(0.016)
+	_check(v.muted, "voice game: … a fresh press while playing mutes")
+	player.mute_button = false
+	game.enter_lobby()
+	_check(not v.is_running() and not v.muted and game.lobby.visible and game.lobby.view() != "confirm", "voice game: back in the lobby the voice is off, unmuted, the lobby reset")
+
 	# `--voice false`: never started.
 	link.config = StationConfig.merge(link.config, {"voice": false})
 	link.assignment_received.emit(_assignment(house, "v-2", true))
