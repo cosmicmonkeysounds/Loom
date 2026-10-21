@@ -484,6 +484,12 @@ function needleAngle(t: number, value: number | null): number {
   return lerp(from, target, k);
 }
 
+/** The share of fact rows that read RECEIVED: all of them on a 61 % night
+ *  ("I have every fact I asked for"), a few on a 12 % one. */
+export function tallyOkRate(value: number | null): number {
+  return value === 61 ? 1 : value === 12 ? 0.2 : 0.58;
+}
+
 function RoundTwoTallyTv(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
   const value = useLatch(p.seq, tallyOf(state.voice, p.night));
@@ -506,7 +512,7 @@ function RoundTwoTallyTv(p: SceneProps) {
               <div className="tv2-tally-clip">
               <div className="tv2-tally-scroll" style={{ transform: `translate3d(0, ${(-((t - TALLY.facts) / 90)).toFixed(2)}em, 0)` }}>
                 {Array.from({ length: 70 }, (_, i) => {
-                  const ok = noise1(23, i) < 0.58;
+                  const ok = noise1(23, i) < tallyOkRate(value);
                   return (
                     <div key={i} className="tv2-tally-row">
                       <span>FACT #{String(i + 1).padStart(3, "0")}</span>
