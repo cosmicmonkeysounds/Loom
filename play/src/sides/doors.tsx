@@ -180,7 +180,7 @@ export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
           </section>
         ))}
       </div>
-      {stays !== null && <p className="doors-foot">{stayNote(stays)}</p>}
+      {stays !== null && chosen === null && <p className="doors-foot">{stayNote(stays)}</p>}
       {canFound && !founding && (
         <button type="button" className="choice doors-found" disabled={!live || busy} onClick={() => setFounding(true)}>
           ＋ Start your own faction

@@ -472,3 +472,19 @@ describe("faction mode: the doors (wave 18b)", () => {
     expect(out).toMatch(/disabled=""[^>]*>Walk in ▸/u);
   });
 });
+
+describe("faction mode: Me (wave 18b)", () => {
+  it("your faction is a ◆ badge, the row reads Factions (shown while you may found), your badges beside your name", async () => {
+    const { MeSheet } = await import("../src/guest/me.tsx");
+    const me = (v: GuestView, sides: boolean) =>
+      renderToStaticMarkup(createElement(MeSheet, { view: v, where: "📍 The Desktop", wake: null, push: false, sides, onPass: noop, onPicture: noop, onSides: noop, onAlerts: noop, onClose: noop }));
+    const out = me(fview({ sides: [MINE], crew: MY_CREW, badges: [{ glyph: "🚻", label: "Bathroom Mode" }] }), true);
+    expect(out).toContain("◆ Winamp&#x27;s Club");
+    expect(out).not.toContain("◇");
+    expect(out).toContain("Factions");
+    expect(out).toContain('aria-label="Bathroom Mode"');
+    expect(me(fview({ canFound: true, sides: [] }), false)).toContain("Factions");
+    expect(me(fview({ canFound: false, sides: [] }), false)).not.toContain("Factions");
+    expect(me(view({ crew: { ...MY_CREW } }), true)).toContain("◇ Winamp&#x27;s Club");
+  });
+});

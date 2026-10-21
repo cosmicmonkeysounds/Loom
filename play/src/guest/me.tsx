@@ -89,7 +89,7 @@ export function MeSheet({
           <div className="me-badges">
             {badges.map((b) => (
               <span key={`${b.kind}:${b.name}`} className={`me-badge ${b.kind}`}>
-                {b.kind === "crew" ? "◇" : "◆"} {b.name}
+                {b.kind === "crew" && !factions ? "◇" : "◆"} {b.name}
               </span>
             ))}
           </div>

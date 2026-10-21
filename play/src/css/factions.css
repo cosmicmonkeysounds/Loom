@@ -12,11 +12,10 @@
 
 /* the doors with founded factions beside the sides: they wrap two a row */
 .doors-row.many { flex-wrap: wrap; }
-.doors-row.many .door { flex: 1 1 calc(50% - 6px); min-height: 200px; }
+.doors-row.many .door { flex: 1 1 calc(50% - 6px); min-height: 160px; }
 .door-ethos { margin: 0; font: italic 13px/1.3 var(--chat-font); overflow-wrap: anywhere; }
 .doors-found { min-height: 48px; width: 100%; margin: 0; font-weight: 700; }
 .doors-found-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; color: var(--ink); background: var(--face); box-shadow: var(--raised); border-radius: var(--radius); }
 
 /* the Mission tile: a long faction name wraps */
-.desk-tile.faction .desk-tile-label { max-width: 96px; overflow-wrap: anywhere; text-align: center; }
-.desk-tile.faction .desk-tile-status { max-width: 96px; text-align: center; }
+.desk-tile.faction .desk-tile-label, .desk-tile.faction .desk-tile-status { overflow-wrap: anywhere; text-align: center; }
