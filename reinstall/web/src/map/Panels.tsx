@@ -122,7 +122,7 @@ export function ProblemsPanel({
       ) : (
         <>
           <div className="bad-head">
-            ⚠ {errors.length} problem{errors.length === 1 ? "" : "s"} — fix before saving
+            ⚠ {errors.length} problem{errors.length === 1 ? "" : "s"} — {errors.every((e) => e.text.startsWith("🔊")) ? "fix before saving the speakers (the map still saves)" : "fix before saving"}
           </div>
           <ul>{errors.slice(0, 40).map(item)}</ul>
         </>
