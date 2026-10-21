@@ -64,6 +64,9 @@ when server_opens:
 when server_peeks for program:
   reveal The Server Room for program
 
+when server_quietly:
+  reveal The Server Room quietly
+
 when bottle_landed for program:
   set Night.bottle_pick = program.name
   -> Bottle Landed
@@ -132,6 +135,14 @@ describe("the moments ring", () => {
     sim.signal("server_opens");
     const ms = s.look().filter((m) => m.kind === "reveal");
     expect(ms.map((m) => m.name)).toEqual(["The Server Room"]);
+  });
+
+  it("wave 18b: a quiet reveal (`reveal X quietly`) is no moment", () => {
+    const sim = Sim.fromSources(STORY);
+    const s = watch(sim);
+    s.look();
+    sim.signal("server_quietly");
+    expect(s.look().filter((m) => m.kind === "reveal")).toEqual([]);
   });
 
   it("a phone's own card answer is never a moment; a secret character's name never is", () => {

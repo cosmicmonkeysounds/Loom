@@ -581,7 +581,7 @@ export function pickNamesOf(args: string): string[] {
  *   within `VERDICT_MS` (its verdict: 🗣 / 🙅 / 🎩, `who` the pick), a
  *   device's (`who` the player); the duck's pair becomes one `found`;
  * - a story `sound X` (`sfx`), by its name;
- * - a `reveal` to everyone;
+ * - a `reveal` to everyone (never a quiet one);
  * - a big `broadcast "!!…"` to everyone (`big`, its line in `text`).
  */
 export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets: readonly string[], signals: MomentSignals = momentSignalsOf(sim.model)): ScreenMoment | null {
@@ -632,7 +632,9 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
       return m === null ? null : { ...m, text: line };
     }
     case "revealed": {
-      if (e.person !== null) return null;
+      // A reveal for one person, or a quiet one (wave 18b: clearance's
+      // rooms open quietly), is no moment: no room "opens" on the screens.
+      if (e.person !== null || e.quiet === true) return null;
       const label = e.kind === "location" ? (sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
       return make("reveal", label, null);
     }
