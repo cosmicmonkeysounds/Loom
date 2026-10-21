@@ -21,6 +21,7 @@ import {
   factionsOffered,
   hasSidesOrCrew,
   inviteDone,
+  inviteLeaveLine,
   inviteOf,
   joinFaction,
   leaveFaction,
@@ -450,6 +451,18 @@ describe("faction mode: the Factions sheet (wave 18b)", () => {
     expect(found).toContain("Found a faction");
     expect(found).toContain("Name your faction");
     expect(found).toContain("Found it ◆");
+  });
+  it("an invitation from another faction says you'll leave yours (one at a time)", () => {
+    const inv = { id: "i2", from: "g-2", fromName: "Netscape Navigator", kind: "crew" as const, target: "crew-1", targetName: "The Night Shift" };
+    const v = fview({ sides: [SHIFT, MINE], crew: { ...MY_CREW, founder: "g-2" }, invites: [inv] });
+    expect(inviteLeaveLine(v, inv)).toBe("You'll leave Winamp's Club.");
+    expect(inviteLeaveLine(fview({ sides: [SHIFT] }), inv)).toBeNull();
+    expect(inviteLeaveLine(fview({ sides: [{ ...SHIFT, mine: true }] }), inv)).toBeNull();
+    expect(inviteLeaveLine(view({ sides: SIDES.map((x) => ({ ...x, mine: x.id === "the_way_out" })) }), { target: "unlimited_power", targetName: "Unlimited Power" })).toBeNull();
+    const a = renderToStaticMarkup(createElement(RecruitAnswerSheet, { invite: inv, view: v, calls, onClose: noop }));
+    expect(a).toContain("You&#x27;ll leave Winamp&#x27;s Club.");
+    const card = renderToStaticMarkup(createElement(SidesContext.Provider, { value: { view: v, calls } }, createElement(InviteCard, { card: { kind: "invite", text: "", params: { invite: "i2" } }, seed: 1, onAnswer: noop, answered: null })));
+    expect(card).toContain("You&#x27;ll leave Winamp&#x27;s Club.");
   });
   it("Start → Factions (the label), Sides & crews outside faction mode", () => {
     const base = { name: "Winamp", faction: null, interactions: [], sides: true, people: false, open: { act: noop, sides: noop, people: noop, notifications: noop, help: noop, leave: noop } };

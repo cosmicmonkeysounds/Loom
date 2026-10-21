@@ -27,6 +27,7 @@ import {
   factionAction,
   factionCountLine,
   factionModeOf,
+  inviteLeaveLine,
   joinFaction,
   leaveFaction,
   leaveQuestion,
@@ -418,6 +419,7 @@ export function RecruitAnswerSheet({ invite, view, calls, onClose }: { invite: I
   const [err, setErr] = useState<string | null>(null);
   // Faction mode: never a count on an invitation (nobody counts a rival).
   const side = invite.kind === "side" && !factionModeOf(view) ? sidesOf(view).find((s) => s.id === invite.target || s.name === invite.targetName) : undefined;
+  const leave = inviteLeaveLine(view, invite);
   const answer = (yes: boolean) =>
     void calls.answer(invite.id, yes).then(
       () => onClose(),
@@ -438,6 +440,7 @@ export function RecruitAnswerSheet({ invite, view, calls, onClose }: { invite: I
             Join {invite.targetName}
           </button>
         </div>
+        {leave !== null && <p className="side-dim invite-leave">{leave}</p>}
         {err !== null && <p className="err">{err}</p>}
       </div>
     </Sheet>

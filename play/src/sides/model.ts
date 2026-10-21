@@ -258,6 +258,15 @@ export function inviteDone(view: GuestView | null, inv: Pick<InviteView, "kind" 
   return "This invitation is closed.";
 }
 
+/** Faction mode: what saying yes to an invitation costs — *You'll leave
+ *  Y.* when you're in another faction (one at a time), else null. */
+export function inviteLeaveLine(view: GuestView | null, inv: Pick<InviteView, "target" | "targetName">): string | null {
+  if (!factionModeOf(view)) return null;
+  const mine = myRow(view, sidesOf(view));
+  if (mine === null || mine.id === inv.target || mine.name === inv.targetName) return null;
+  return `You'll leave ${mine.name}.`;
+}
+
 /** "Switch to The Way Out?"; in faction mode "… You'll leave Ada's Club." */
 export function switchQuestion(name: string, from?: string | null): string {
   return from != null && from !== "" ? `Switch to ${name}? You'll leave ${from}.` : `Switch to ${name}?`;
