@@ -69,6 +69,8 @@ import { CLAIM_UNLOCK_ROUTE, Claims, mintClaimSecret } from "./routes/claims.ts"
 import { modPatch, modViewJson } from "./mod-patch.ts";
 import { sendRecap } from "./routes/recap.ts";
 import { guestSide } from "./routes/sides.ts";
+import { CrewRoutes, answeredInviteCards, crewDrafts } from "./routes/crews.ts"; // w18 crews
+import { isCrewId, isCrewRoom } from "../src/runtime/sim/crews.ts"; // w18 crews
 import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, type AudioContext } from "./audio.ts";
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
@@ -233,6 +235,7 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
 function visibleToPrime(m: ChatMessage, c: Client, isAgent: (character: string) => boolean = () => false): boolean {
   if (c.admin === true) return true;
   if (m.channel.startsWith("pm:")) return false;
+  if (isCrewRoom(m.channel)) return false; // w18 crews: a crew's room is its members' own
   // A host booth also reads guests' threads with an agent-voiced character
   // (Trabolta), so it can answer as him — never another character's DMs, and
   // never a row addressed `@<Character>` (another booth's private
@@ -689,6 +692,13 @@ export class EventRuntime {
   private readonly random: () => number;
   /** `runPicks` re-entrancy: a pick's own signal never draws again. */
   private pickDepth = 0;
+  // w18 crews — crews + recruiting (routes/crews.ts): one journaled `crew` op per change.
+  private readonly crewRoutes = new CrewRoutes({
+    sim: () => this.sim, open: () => this.open, guest: (q, b, r) => this.requireGuest(q, b, r), facts: () => this.factsBook(), now: () => this.clock(),
+    apply: (op) => this.commit("crew", op), fanout: (e) => void this.fanout(e), messages: () => this.chat.all(),
+    post: (d) => { for (const m of this.chat.append(d)) this.deliverMessage(m); },
+    markAnswered: (keys) => { for (const k of keys) this.answeredWidgets.add(k); this.pushSnapshots(); },
+  });
   // K-13 room check-in by QR (routes/k13.ts).
   private readonly checkin: GuestCheckin;
   // N-02 re-pair a guest + N-10 release a performer part (routes/n02.ts).
@@ -1943,7 +1953,7 @@ export class EventRuntime {
       if (sim.factionMembers(group).includes(guestId)) return null;
       return def.hidden && !sim.factionRevealed(def.id) ? none : { status: 403, error: "you can't post here" };
     }
-    if (channel.startsWith("loc:")) return sim.canSeeChannel(guestId, channel) ? null : none;
+    if (channel.startsWith("loc:") || isCrewRoom(channel)) return sim.canSeeChannel(guestId, channel) ? null : none; // w18 crews: + crew rooms
     if (sim.model.channels.has(channel)) return sim.canSeeChannel(guestId, channel) ? null : none;
     return this.chat.historyFor(guestId, false).some((m) => m.channel === channel) ? null : none;
   }
@@ -2166,6 +2176,7 @@ export class EventRuntime {
         if (!w.path.startsWith(`${head}.`)) continue;
         const key = w.path.slice(head.length + 1);
         if (secretCodex.has(key)) continue;
+        if (key === "crew") continue; // w18 crews
         if (secret !== null && (secret.has(key) || secret.has(key.split(".")[0]!))) continue;
         if ((key === "faction" || key === "group" || key === "trueFaction") && hidden(w.value)) continue;
         if (key === "groups" && person !== undefined) {
@@ -2181,6 +2192,7 @@ export class EventRuntime {
   /** A `hidden: true` group the story has not revealed: an agent may not
    *  know it exists, let alone who is in it. */
   private agentHiddenGroup(group: string): boolean {
+    if (isCrewId(group)) return true; // w18 crews: a guest-typed crew name never reaches an agent
     const sim = this.sim!;
     return (sim.model.factions.get(group)?.hidden ?? false) && !sim.factionRevealed(group);
   }
@@ -3748,12 +3760,14 @@ export class EventRuntime {
               for (const d of drafts) if (d.kind === "line") d.via = e.by;
             }
             this.chat.append(drafts);
+            if (e.m === "crew") this.chat.append(crewDrafts(this.sim!, this.sim!.crews.takeNotices())); // w18 crews: as CrewRoutes posts live
           }
         } catch {
           /* tolerate a single bad/torn entry rather than abort recovery */
         }
       }
     }
+    if (this.sim !== null) for (const k of answeredInviteCards(this.chat.all(), this.sim.crews)) this.answeredWidgets.add(k); // w18 crews
     this.chat.loadHidden(this.store.loadHidden());
     this.spatial.restoreRuns(this.store.loadRuns().map(parseDuckRun).filter((r): r is DuckRun => r !== null));
     for (const m of this.chat.all()) if (this.isExpired(m)) this.notifiedExpired.add(m.seq);
@@ -4471,6 +4485,7 @@ export class EventRuntime {
    */
   private async handlePost(req: IncomingMessage, res: ServerResponse, path: string, body: Record<string, unknown>): Promise<boolean> {
     const open = this.open;
+    if (this.crewRoutes.handleGuest(req, res, path, body)) return true; // w18 crews
     switch (path) {
       // --- guest actions ---
       // Every route below `register` derives the acting guest from the
@@ -5411,6 +5426,7 @@ export class EventRuntime {
   private handleModInner(res: ServerResponse, path: string, body: Record<string, unknown>, by: string, hostOnly: boolean): boolean {
     if (this.pairing.handle(path, res, body)) return true;
     if (this.pushRoutes.handleMod(path, res)) return true;
+    if (this.crewRoutes.handleMod(res, path, body)) return true; // w18 crews
     switch (path) {
       case "/api/mod/load": {
         const source = str(body, "source") || this.scenarioSource;
