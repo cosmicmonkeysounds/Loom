@@ -188,8 +188,10 @@ function checkDirective(raw: string, at: string, ctx: { param: string | null }):
       break;
     }
     case "reveal": {
-      const f = rest.lastIndexOf(" for ");
-      const t = (f >= 0 ? rest.slice(0, f) : rest).trim();
+      // `reveal X [for who] quietly` (wave 18b): the trailing word is no name.
+      const body = rest.replace(/\s+quietly\s*$/u, "");
+      const f = body.lastIndexOf(" for ");
+      const t = (f >= 0 ? body.slice(0, f) : body).trim();
       if (t !== "self" && t !== ctx.param && !entity(t) && !m.channels.has(`room:${t}`)) report("WARN", `${at} \`reveal ${t}\` — not a declared GROUP / LOCATION / CHARACTER / CHANNEL (does nothing)`);
       break;
     }

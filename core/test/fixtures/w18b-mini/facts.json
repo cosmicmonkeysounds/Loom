@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "questions": [
+    { "id": "H1", "round": 1, "text": "How many rubber ducks are on the Desktop?", "answer": "seven", "accept": ["7"] }
+  ],
+  "answers": []
+}

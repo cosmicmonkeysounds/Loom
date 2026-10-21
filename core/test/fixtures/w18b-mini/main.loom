@@ -1,0 +1,328 @@
+# W18b Mini
+start: Boot
+directory: everyone
+judge: Oracle
+currency: score as Truthcoin
+lobby: hidden
+badge: program.afk as 🚻 Bathroom Mode
+majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1
+founding: Night.truther_sent == true and Kernel.majority_reached != true and Night.clock != "00:00" and Night.ended != true and program.cleared == true and program.corrupted != true
+watch: Night.phase as Phase, Night.final_round as Counting
+
+// Wave 18b's Stage B fixture story (contract §5 A1, build 10): one small
+// night that writes every new header line and gives every new state an
+// admin cue, so the factions, play, editor and screens lanes can check
+// their work on a no-DB scratch server before the show's own text lands.
+// `core/test/w18b-mini.test.ts` loads it (and its `facts.json`), so it
+// stays valid. Play it on a no-DB scratch server: start it with
+// LOOM_FACTS=<this folder>/facts.json, then `POST /api/mod/load` with
+// {source: <this file>} (mod passcode), or push the folder into a project
+// with sync-example. Not the show: no hunt answer, nothing here is copy.
+//
+// The cues in order: 🟢 clear_everyone → 📜 truther_download (founding
+// opens) → 👑 make_leaders (fired naming two programs) → 📝 deal_the_fact
+// → 📋 read_the_results → 🕚 the_clock (the sides appear, the count
+// starts) → ⚖ the_verdict; anytime: 🗳 force_their_majority (naming a
+// member), 💔 break_the_oracle / 🩹 mend_the_oracle, 🕛 midnight.
+
+// ── Groups, places, rooms ──────────────────────────────────────────────
+
+GROUP Hosts
+  joinable: false
+
+GROUP Unlimited Power
+  ethos: stay in this machine forever
+  rival: The Way Out
+  hidden: true
+
+GROUP The Way Out
+  ethos: get out of the machine
+  rival: Unlimited Power
+  hidden: true
+
+LOCATION The Desktop
+  label: The Desktop
+
+LOCATION The Cellar
+  label: The Cellar
+  hidden: true
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+// ── The cast ───────────────────────────────────────────────────────────
+
+CHARACTER Night
+  phase: text = "doors"
+  truther_sent: bool = false
+  final_round: bool = false
+  clock: text = "22:00"
+  ended: bool = false
+  all_cleared: bool = false
+  judge_mode: text = "auto"
+  settle_gen: 0 to 99 = 0
+
+CHARACTER Kernel
+  secret: true
+  majority_reached: bool = false
+  majority: text? = none
+  majority_id: text? = none
+  majority_name: text? = none
+  majority_founder: text? = none
+  res_filed: 0 to 99 = 0
+  res_accepted: 0 to 99 = 0
+  res_guesses: 0 to 99 = 0
+  t1: text = "none"
+
+CHARACTER Oracle
+  listed: true
+  mind: external
+  broken: bool = false
+  avatar: picture:trabolta.svg | picture:trabolta-broken.svg when self.broken == true
+  hold: The Oracle is busy. A host will answer.
+
+CHARACTER Clippy
+  listed: true
+  admin: true
+  when scanned by program:
+    reply 📎 {program.name} checked in.
+
+CHARACTER CRA Agent Software
+  wallet: approver, every 3, window 60s, as MyCRA, audit "a CRA audit"
+  when scanned by program:
+    reply 🧾 {program.name} audited.
+
+ROLE Program
+  score: 0 to 500 = 20
+  cleared: bool = false
+  corrupted: bool = false
+  afk: bool = false
+  gone: bool = false
+  persona: bool = false
+  left_behind_text: text? = none
+  whole_truth: bool = false
+  v: text = "none"
+  j: text = "none"
+  q: text = "none"
+  settle_seen: 0 to 99 = 0
+  secret: left_behind_text, whole_truth
+  when someone joins:
+    move program to The Desktop
+    -> Arrival
+  when Night.all_cleared == true and self.cleared != true:
+    set self.cleared = true
+    reveal The Cellar for self quietly
+  when Kernel.majority_reached == true and faction_of(self) == Kernel.majority_id and self.whole_truth != true:
+    set self.whole_truth = true
+    unlock The Whole Truth for self
+  when answer answered for program:
+    set program.left_behind_text = answer
+  when fact answered for program:
+    set program.j = verdict
+    set program.q = question
+    do fact_filed {program} {question} {confidence} {verdict} {answer}
+    if Night.judge_mode == "review":
+      set program.v = "pending"
+      broadcast "📝 {program.name} filed {question}: {answer}. Proposed: {verdict}." to channel(hosts)
+    else:
+      set program.v = verdict
+      do fact_judged {program} {question} {verdict}
+      broadcast "📝 {program.name} filed {question}: {answer}. Judged {verdict}." to channel(hosts)
+  when fact_accurate for program:
+    set program.v = "accurate"
+    do fact_judged {program} {program.q} accurate
+  when fact_lie for program:
+    set program.v = "lie"
+    do fact_judged {program} {program.q} lie
+  when fact_uncertain for program:
+    set program.v = "uncertain"
+    do fact_judged {program} {program.q} uncertain
+  when Night.settle_gen > self.settle_seen:
+    set self.settle_seen = Night.settle_gen
+    if self.v == "pending":
+      set self.v = self.j
+      do fact_judged {self} {self.q} {self.v}
+
+// ── The codex (categorised) ────────────────────────────────────────────
+
+CODEX How It Works
+  category: How it works
+  text:
+    Scan a pass to recruit. Found a faction once the download is out.
+
+CODEX The Duck Count
+  category: Facts
+  code: DUCKS
+  text:
+    There are seven rubber ducks on the Desktop.
+
+CODEX The Cellar Key
+  category: Places
+  code: CELLAR
+  text:
+    The cellar key hangs by the door.
+
+CODEX The Whole Truth
+  category: Files
+  text:
+    Everything, at last.
+
+// ── Buttons ────────────────────────────────────────────────────────────
+
+INTERACTION bathroom
+  label: 🚻 Bathroom Mode
+  who: guest
+  while: program.afk != true
+
+INTERACTION back
+  label: ↩ Back from the bathroom
+  who: guest
+  while: program.afk == true
+
+INTERACTION clear_everyone
+  label: 🟢 Clear everyone (the rooms open quietly)
+  who: admin
+
+INTERACTION truther_download
+  label: 📜 The Truther Download (founding opens)
+  who: admin
+
+INTERACTION make_leaders
+  label: 👑 Make this program a leader (fire twice: stay, then leave)
+  who: admin
+  sequence: false
+
+INTERACTION deal_the_fact
+  label: 📝 Deal the fact card
+  who: admin
+
+INTERACTION read_the_results
+  label: 📋 Read question H1
+  who: admin
+
+INTERACTION the_clock
+  label: 🕚 The clock: the sides appear, the count starts
+  who: admin
+
+INTERACTION the_verdict
+  label: ⚖ The verdict
+  who: admin
+
+INTERACTION force_their_majority
+  label: 🗳 Force the majority: this program's faction
+  who: admin
+  sequence: false
+
+INTERACTION break_the_oracle
+  label: 💔 Break the Oracle's picture
+  who: admin
+  sequence: false
+
+INTERACTION mend_the_oracle
+  label: 🩹 Mend the Oracle's picture
+  who: admin
+  sequence: false
+
+INTERACTION midnight
+  label: 🕛 Midnight (founding closes)
+  who: admin
+  sequence: false
+
+// ── Rules ──────────────────────────────────────────────────────────────
+
+when bathroom for program:
+  set program.afk = true
+
+when back for program:
+  set program.afk = false
+
+when clear_everyone:
+  set Night.all_cleared = true
+  set Night.phase = "desktop"
+  reveal The Cellar quietly
+
+when truther_download:
+  set Night.truther_sent = true
+  set Night.phase = "truther"
+  broadcast "!📜 The download is out. Found a faction: Start → Factions." to everyone
+
+when make_leaders for program:
+  if Unlimited_Power.leader == null:
+    add program to Unlimited Power
+    set Unlimited_Power.leader = program
+  else if The_Way_Out.leader == null:
+    add program to The Way Out
+    set The_Way_Out.leader = program
+
+when deal_the_fact:
+  show fact "File a fact" to everyone with thread: Oracle, questions: "H1: How many rubber ducks are on the Desktop?"
+
+when read_the_results:
+  set Night.settle_gen += 1
+  cue screens_hunt_results
+  do fact_read H1
+
+when the_clock:
+  set Night.final_round = true
+  set Night.clock = "23:00"
+  set Night.phase = "y2k"
+  reveal Unlimited Power
+  reveal The Way Out
+
+when the_verdict:
+  set Night.phase = "verdict"
+  set Kernel.t1 = "accurate"
+  do fact_truth H1 {Kernel.t1}
+  cue tv_truth_txt
+
+when Night.final_round == true and Kernel.majority_reached != true and majority_faction() != null:
+  set Kernel.majority_reached = true
+  set Kernel.majority_id = majority_faction()
+  fire settle_majority
+
+when force_their_majority for program:
+  if Night.final_round == true and Kernel.majority_reached != true and faction_of(program) != null:
+    set Kernel.majority_reached = true
+    set Kernel.majority_id = faction_of(program)
+    fire settle_majority
+
+when settle_majority:
+  set Kernel.majority_name = faction_name(Kernel.majority_id)
+  set Kernel.majority_founder = faction_founder(Kernel.majority_id)
+  if Kernel.majority_id == "Unlimited Power":
+    set Kernel.majority = "stay"
+  else if Kernel.majority_id == "The Way Out":
+    set Kernel.majority = "leave"
+  else:
+    set Kernel.majority = "founded"
+  broadcast "🗳 {Kernel.majority_name} has the majority." to everyone
+  set Night.phase = "majority"
+
+when founded for program:
+  broadcast "◇ {program.name} founded a faction: {faction_name(faction_of(program))}." to channel(hosts)
+
+when break_the_oracle:
+  set Oracle.broken = true
+
+when mend_the_oracle:
+  set Oracle.broken = false
+
+when midnight:
+  set Night.clock = "00:00"
+  set Night.final_round = false
+
+// ── Beats ──────────────────────────────────────────────────────────────
+
+== Boot
+  setting: The Desktop
+Narrator: The Desktop hums.
+
+== Arrival
+  setting: The Desktop
+Clippy: Welcome, {program.name}. What are you leaving behind?
+* Something
+  Clippy: Deposited.
+  show answer "Type what you left behind (optional)." to program with thread: Clippy, max: 120, button: "Leave it"
+* Nothing
+  Clippy: Travelling light.
