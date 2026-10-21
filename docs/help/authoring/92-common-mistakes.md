@@ -102,6 +102,11 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
   "!!…" to everyone` belongs in an admin cue's own `when` or a story rule,
   with `with close: 6s`; anywhere else `L1218` asks if you meant it. For one
   person, `reply !!…`.
+- **A `majority:` on `Night.present` lags.** A rule that keeps
+  `Night.present` runs after the race's watcher in the same pass, so a
+  late arrival leaves the line one behind. In faction mode write the count
+  itself: `majority: count([p for p in Persons where p.gone != true and
+  p.persona != true]) / 2 + 1`.
 - **A badge is public.** Every phone sees `badge:` glyphs, so a badge on a
   ROLE `secret:` slot or a `secret: true` CHARACTER is never shown; `L1219`
   says so (and flags a line with no ` as <glyph>` or a head that names no

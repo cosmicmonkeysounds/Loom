@@ -421,68 +421,137 @@ export class Crews {
     return this.founding !== null;
   }
 
+  /** Is `id` a declared joinable group (a side that races in faction mode,
+   *  revealed or not)? A `joinable: false` caste (`Hosts`) never is. */
+  private isRaceSide(id: string): boolean {
+    return this.sim.model.factions.get(id)?.joinable === true;
+  }
+
   /** Is `id` a race faction: a live crew, or a declared joinable group? */
   isRaceFaction(id: string): boolean {
-    return this.byId.has(id) || this.sim.model.factions.get(id)?.joinable === true;
+    return this.byId.has(id) || this.isRaceSide(id);
   }
 
   /** Every faction in the race now: the open sides (declared, joinable,
-   *  revealed) in declaration order, then the live crews. Empty outside
-   *  faction mode. */
+   *  revealed) in declaration order, then the live crews in founding order.
+   *  Empty outside faction mode. */
   raceFactions(): string[] {
     if (!this.factionMode) return [];
-    return [];
+    const sides = [...this.sim.model.factions.keys()].filter((id) => sideOpen(this.sim, id));
+    return [...sides, ...this.byId.keys()];
+  }
+
+  /** Does `person` count tonight: a real guest, not gone, not a Run persona? */
+  private isPresent(person: string): boolean {
+    return this.sim.persons.has(person) && !truthy(this.sim.world.get(`${person}.gone`)) && !truthy(this.sim.world.get(`${person}.persona`));
   }
 
   /** Programs present tonight (not gone, not a Run persona). */
   presentTotal(): number {
-    return 0;
+    let n = 0;
+    for (const id of this.sim.persons.keys()) if (this.isPresent(id)) n += 1;
+    return n;
   }
 
-  /** A race faction's present members (a side's or a crew's). */
-  presentCount(_id: string): number {
-    return 0;
+  /** A race faction's present members (a side's or a crew's); 0 for
+   *  anything else. */
+  presentCount(id: string): number {
+    const c = this.byId.get(id);
+    if (c !== undefined) return c.members.filter((m) => this.isPresent(m)).length;
+    return this.isRaceSide(id) ? this.presentMembers(id).length : 0;
   }
 
   /** The race faction over the `majority:` line now, else null (null
-   *  outside faction mode or with no threshold). */
+   *  outside faction mode or with no threshold). Membership is exclusive
+   *  in faction mode, so at most one can be over a line above half. */
   winner(): string | null {
+    if (!this.factionMode) return null;
+    const needs = this.needs();
+    if (needs === null || needs <= 0) return null;
+    for (const id of this.raceFactions()) if (this.presentCount(id) >= needs) return id;
+    return null;
+  }
+
+  /** The race side `person` is in (a declared joinable group they belong
+   *  to, primary or not), revealed or not; else null. */
+  private raceSideOf(person: string): string | null {
+    const primary = this.sim.factionOf(person);
+    if (primary !== null && this.isRaceSide(primary)) return primary;
+    for (const g of this.sim.groupsOf(person)) if (this.isRaceSide(g)) return g;
     return null;
   }
 
   /** The race faction `person` is in: their crew, else their open side,
    *  else null. */
-  factionOf(_person: string): string | null {
-    return null;
+  factionOf(person: string): string | null {
+    const crew = this.crewOf(person);
+    if (crew !== null) return crew.id;
+    const side = this.raceSideOf(person);
+    return side !== null && sideOpen(this.sim, side) ? side : null;
   }
 
   /** A race faction's name (a crew's, a side's id), else null. */
-  displayName(_id: string): string | null {
-    return null;
+  displayName(id: string): string | null {
+    const c = this.byId.get(id);
+    if (c !== undefined) return c.name;
+    return this.sim.model.factions.has(id) ? id : null;
   }
 
   /** A race faction's founder as a person id (a crew's founder, a side's
-   *  `<Side>.leader`), else null. */
-  founderOf(_id: string): string | null {
+   *  `<Side>.leader` when it names a person), else null. */
+  founderOf(id: string): string | null {
+    const c = this.byId.get(id);
+    if (c !== undefined) return c.founder;
+    if (!this.sim.model.factions.has(id)) return null;
+    const v = this.sim.world.peek(`${id}.leader`);
+    if (v === null || v.kind !== "string" || v.value.trim() === "") return null;
+    if (this.sim.persons.has(v.value)) return v.value;
+    const want = foldName(v.value);
+    for (const p of this.sim.persons.values()) if (foldName(p.name) === want) return p.id;
     return null;
   }
 
   /** May `person` found a faction now? Faction mode, the `founding:`
-   *  condition holds for them, not restricted or captured, no live crew
-   *  of their own, under `MAX_CREWS`, and not a side's leader. */
-  mayFound(_person: string): boolean {
-    return false;
+   *  condition holds for them (`program` / `self` bound), not restricted or
+   *  captured, no live crew of their own, under `MAX_CREWS`, and not a
+   *  side's leader. */
+  mayFound(person: string): boolean {
+    if (this.founding === null || !this.sim.persons.has(person)) return false;
+    if (this.sim.isRestricted(person) || this.sim.isCaptured(person)) return false;
+    if (this.foundedBy(person) !== null || this.byId.size >= MAX_CREWS || this.ledSide(person) !== null) return false;
+    return this.sim.holds(this.founding, person);
   }
 
-  /** The sim moved `person` onto `group` (`setFaction` / `addToGroup`).
-   *  In faction mode, when `group` is a race faction, they leave their
-   *  crew (a founder's disbands) and every other race side. A non-race
-   *  group (`Hosts`, a `joinable: false` caste) never touches a crew. */
-  onSide(_person: string, _group: string): void {}
+  /** The sim moves `person` onto `group` (`setFaction` / `addToGroup`
+   *  call this first). In faction mode, when `group` is a race side, they
+   *  leave their crew (a founder's disbands) and every other race side. A
+   *  non-race group (`Hosts`, a `joinable: false` caste) never touches a
+   *  crew. Raises no signal: the side's own `joined` / `defected` says it. */
+  onSide(person: string, group: string): void {
+    if (!this.factionMode || !this.isRaceSide(group)) return;
+    const crew = this.crewOf(person);
+    if (crew !== null) this.leave(crew, person);
+    for (const g of this.sim.groupsOf(person)) if (g !== group && this.isRaceSide(g)) this.hooks.removeFromGroup(person, g);
+  }
 
   /** `ModView.race`, or null outside faction mode. */
   raceView(): RaceView | null {
-    return null;
+    if (!this.factionMode) return null;
+    return {
+      needs: this.needs(),
+      present: this.presentTotal(),
+      winner: this.winner(),
+      factions: this.raceFactions().map((id) => {
+        const founder = this.founderOf(id);
+        return {
+          id,
+          name: this.displayName(id) ?? id,
+          kind: this.byId.has(id) ? ("founded" as const) : ("side" as const),
+          founder: founder !== null ? this.name(founder) : this.byId.has(id) ? null : this.leaderOf(id),
+          present: this.presentCount(id),
+        };
+      }),
+    };
   }
 
   // -- the crew room -------------------------------------------------------
@@ -531,6 +600,7 @@ export class Crews {
 
   /** The `GuestView` fields for `person`. */
   guestFields(person: string): CrewGuestFields {
+    if (this.factionMode) return this.factionFields(person);
     const crew = this.crewOf(person);
     const needs = this.needs();
     const mine = this.sim.factionOf(person);
@@ -544,7 +614,46 @@ export class Crews {
         ...(needs !== null ? { needs } : {}),
         mine: mine === f.id,
       }));
-    const invites: InviteView[] = this.openInvitesTo(person).map((i) => ({
+    const invites = this.inviteViews(person);
+    return { crew: crew === null ? null : this.crewView(crew), invites, sides };
+  }
+
+  /** Faction mode's `GuestView` fields: one list, the open sides then the
+   *  founded factions; the head count, threshold and "more to win" only on
+   *  the viewer's own row (nobody counts a rival), and `canFound`. */
+  private factionFields(person: string): CrewGuestFields {
+    const crew = this.crewOf(person);
+    const needs = this.needs();
+    const mine = this.factionOf(person);
+    const counts = (id: string): Pick<SideView, "members" | "needs" | "more"> => {
+      if (id !== mine) return {};
+      const members = this.presentCount(id);
+      return needs !== null ? { members, needs, more: Math.max(0, needs - members) } : { members };
+    };
+    const sides: SideView[] = this.raceFactions().map((id) => {
+      const c = this.byId.get(id);
+      if (c !== undefined) {
+        const founder = this.name(c.founder);
+        return { id, name: c.name, leader: founder, ...counts(id), mine: mine === id, kind: "founded" as const, founder };
+      }
+      const leader = this.leaderOf(id);
+      const ethos = this.sim.model.factions.get(id)?.ethos ?? null;
+      return {
+        id,
+        name: id,
+        leader,
+        ...counts(id),
+        mine: mine === id,
+        kind: "side" as const,
+        ...(ethos !== null && ethos.trim() !== "" ? { ethos } : {}),
+        ...(leader !== null ? { founder: leader } : {}),
+      };
+    });
+    return { crew: crew === null ? null : this.crewView(crew), invites: this.inviteViews(person), sides, canFound: this.mayFound(person) };
+  }
+
+  private inviteViews(person: string): InviteView[] {
+    return this.openInvitesTo(person).map((i) => ({
       id: i.id,
       from: i.from,
       fromName: this.name(i.from),
@@ -552,7 +661,6 @@ export class Crews {
       target: i.target,
       targetName: this.targetName(i),
     }));
-    return { crew: crew === null ? null : this.crewView(crew), invites, sides };
   }
 
   /** An invitation's target as people read it (a crew's name, a side's id). */
@@ -629,14 +737,40 @@ export class Crews {
         if (c !== undefined) this.dissolve(c);
         break;
       }
+      case "joinCrew": {
+        const c = this.byId.get(op.crew);
+        if (c === undefined || !this.mayJoin(op.person, c)) break;
+        this.joinCrew(c, op.person);
+        this.settleOthers(op.person, (o) => o.kind === "crew" && o.target === c.id);
+        break;
+      }
     }
+    // Faction mode: a leave or a disband raises no signal, yet it can move
+    // a majority, so the story's watchers get their pass now.
+    if (this.factionMode) this.hooks.drain();
     return this.sim.log.since(from);
+  }
+
+  /** May `person` walk into crew `c` (the `joinCrew` op)? A guest not
+   *  already in it; in faction mode not restricted or captured, not a
+   *  side's leader and not the founder of another live crew (the server
+   *  answers each of these before it journals). */
+  private mayJoin(person: string, c: Crew): boolean {
+    if (!this.sim.persons.has(person) || c.members.includes(person)) return false;
+    if (!this.factionMode) return true;
+    if (this.sim.isRestricted(person) || this.sim.isCaptured(person) || this.ledSide(person) !== null) return false;
+    const own = this.foundedBy(person);
+    return own === null || own === c;
   }
 
   private found(by: string, raw: string): void {
     const name = tidyCrewName(raw);
     if (!this.sim.persons.has(by) || name === "") return;
     if (this.byId.size >= MAX_CREWS || this.foundedBy(by) !== null || this.named(name) !== null) return;
+    // Faction mode: only inside the `founding:` window, and a founder
+    // leaves their side first (one faction at a time).
+    if (this.factionMode && !this.mayFound(by)) return;
+    if (this.factionMode) this.leaveRaceSides(by);
     const prior = this.crewOf(by);
     if (prior !== null) this.leave(prior, by);
     this.crewSeq += 1;
@@ -708,6 +842,7 @@ export class Crews {
   }
 
   private joinCrew(c: Crew, person: string): void {
+    if (this.factionMode) this.leaveRaceSides(person);
     const prior = this.crewOf(person);
     if (prior !== null && prior !== c) this.leave(prior, person);
     c.members.push(person);
@@ -718,12 +853,28 @@ export class Crews {
   }
 
   private leave(c: Crew, person: string): void {
+    // Faction mode: a founder leaving disbands the faction (its members go
+    // back to neither) — no faction is left without its founder.
+    if (this.factionMode && person === c.founder) {
+      this.dissolve(c);
+      return;
+    }
     c.members = c.members.filter((m) => m !== person);
     this.sim.world.set(`${person}.crew`, VNULL);
     this.syncMembers(c);
     this.notices.push({ kind: "left", crew: c, person });
     // An empty crew is gone (its slot of the eight is free again).
     if (c.members.length === 0) this.dissolve(c);
+  }
+
+  /** Faction mode: take `person` off every race side they are on (a crew
+   *  is joined or founded), each with its `unaligned` signal. */
+  private leaveRaceSides(person: string): void {
+    for (const g of this.sim.groupsOf(person)) {
+      if (!this.isRaceSide(g)) continue;
+      this.hooks.removeFromGroup(person, g);
+      this.sim.signal("unaligned", person, { side: g });
+    }
   }
 
   private leaveSide(person: string): void {

@@ -2617,6 +2617,8 @@ export class Sim {
   // -------------------------------------------------------------------
 
   private setFaction(person: string, faction: string): void {
+    // w18b faction mode: one race faction at a time (a crew, the other side).
+    this.crews.onSide(person, faction);
     const prior = this.factionOf(person);
     if (prior !== null && prior !== faction) {
       this.membership.get(prior)?.delete(person);
@@ -2642,6 +2644,7 @@ export class Sim {
 
   /** Additive membership — the primary group is only set when there was none. */
   private addToGroup(person: string, group: string): void {
+    this.crews.onSide(person, group); // w18b faction mode (a race side only)
     let set = this.membership.get(group);
     if (set === undefined) {
       set = new Set();
@@ -2818,6 +2821,15 @@ export class Sim {
         if (name === "sum") return vNumber(nums.reduce((a, b) => a + b, 0));
         return nums.length === 0 ? VNULL : vNumber(Math.max(...nums));
       }
+      // Wave 18b faction mode (crews.ts): the race, read by the story.
+      case "majority_faction":
+        return nullableString(this.crews.winner());
+      case "faction_of":
+        return nullableString(this.crews.factionOf(args[0]?.asName() ?? ""));
+      case "faction_name":
+        return nullableString(this.crews.displayName(args[0]?.asName() ?? ""));
+      case "faction_founder":
+        return nullableString(this.crews.founderOf(args[0]?.asName() ?? ""));
       case "names": {
         // Wave 18b: `names([p for p in Persons where …])` — the display
         // names joined for speech, "A, B and C" ("" for an empty list). A
@@ -2851,6 +2863,11 @@ export class Sim {
     }
     return this.log.push(event);
   }
+}
+
+/** A string, or null. */
+function nullableString(v: string | null): Value {
+  return v === null ? VNULL : vString(v);
 }
 
 /** "A", "A and B", "A, B and C" ("" for none) — the `names()` builtin. */

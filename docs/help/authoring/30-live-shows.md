@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: badge, badges, L1219, lobby hidden, hidden lobby, live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: founding, faction mode, founded faction, factions, majority_faction, faction_of, faction_name, faction_founder, L1220, badge, badges, L1219, lobby hidden, hidden lobby, live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -236,6 +236,50 @@ character hears. The story hears `founded` (the founder, with `crew`), `join`
 (a new member, with `crew`; a side's `when who joins <Side>:` never does)
 and `unaligned` (someone left their side, with `side`). Directors and hosts
 can rename or dissolve a crew.
+
+### Founded factions: `founding:`
+
+One more header line turns crews into **factions** that race like your
+sides:
+
+```loom
+majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1
+founding: Night.truther_sent == true and Kernel.majority_reached != true and program.cleared == true
+```
+
+- **`founding: <condition>`** (read with the founder bound as `program` /
+  `self`) says when a program may found one. With it the story is in
+  **faction mode**: a founded faction and every declared, joinable side
+  are peers in one race, and membership is **one faction at a time** —
+  founding or joining a faction leaves your side (`unaligned`), joining a
+  side (`join`, `defect`, `add`, a yes to a recruit) leaves your faction.
+  A `joinable: false` group (your hosts) never touches a faction.
+- **A founder leaving disbands it**; its members go back to neither. A
+  side's leader can't found or join one; a restricted or captured program
+  can't either. At most eight are founded in a night, one live one per
+  founder. A guest may also walk in from the Factions list (`join`, with
+  `crew`).
+- **Who sees the counts:** each member sees their own faction's head
+  count, the `majority:` line and how many more it needs; never anyone
+  else's. People cards show a faction only to its own members, or on its
+  founder or a side's leader.
+- **The race, read by the story:** `majority_faction()` is the faction
+  over the line now (else null), `faction_of(who)` the faction someone is
+  in, `faction_name(id)` its name, `faction_founder(id)` its founder (a
+  side's leader). The majority is yours to latch, as before:
+
+```loom
+when Night.final_round == true and Kernel.majority_reached != true and majority_faction() != null:
+  set Kernel.majority_reached = true
+  set Kernel.majority_id = majority_faction()
+  fire settle_majority
+```
+
+Use a direct count for `majority:` (above) rather than a `Night.present`
+kept by another rule, which lags one pass behind a late arrival. Keep a
+faction's name (it is typed by a guest) out of anything an agent-voiced
+character hears. Lint **`L1220 FoundingInvalid`** flags a `founding:` that
+is no expression. With no `founding:` line, crews stay friend clubs.
 
 ## The Wanted board, the reinstallation gate, finished threads
 

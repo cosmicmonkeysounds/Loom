@@ -1,0 +1,1105 @@
+{
+ "guests": [
+  {
+   "id": "g1",
+   "name": "Ada",
+   "title": "Crew Night",
+   "theme": "plain",
+   "clock": 0,
+   "role": "Guest",
+   "faction": null,
+   "score": 0,
+   "location": null,
+   "captured": false,
+   "restricted": false,
+   "canEscape": true,
+   "pendingChoice": null,
+   "decisionChannel": null,
+   "cutscene": false,
+   "channels": [
+    {
+     "id": "loc:Hall",
+     "kind": "location",
+     "title": "Hall",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    },
+    {
+     "id": "loc:Jail",
+     "kind": "location",
+     "title": "Jail",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    }
+   ],
+   "spaces": [],
+   "roster": [],
+   "factions": [
+    "Red",
+    "Blue"
+   ],
+   "groups": [],
+   "interactions": [],
+   "codex": [],
+   "codexTotal": 0,
+   "quests": [],
+   "questTotal": 0,
+   "people": [
+    {
+     "id": "g2",
+     "name": "Bob",
+     "kind": "guest",
+     "faction": "Blue",
+     "known": [],
+     "location": null,
+     "groups": [
+      "Blue",
+      "The Night Shift"
+     ]
+    },
+    {
+     "id": "g3",
+     "name": "Cy",
+     "kind": "guest",
+     "faction": null,
+     "known": [],
+     "location": null,
+     "groups": [
+      "Cy Club"
+     ]
+    },
+    {
+     "id": "g4",
+     "name": "Dee",
+     "kind": "guest",
+     "faction": "Red",
+     "known": [],
+     "location": null,
+     "groups": [
+      "Red"
+     ]
+    }
+   ],
+   "objectives": [],
+   "crew": null,
+   "invites": [],
+   "sides": [
+    {
+     "id": "Red",
+     "name": "Red",
+     "leader": "Dee",
+     "members": 1,
+     "needs": 1,
+     "mine": false
+    },
+    {
+     "id": "Blue",
+     "name": "Blue",
+     "leader": null,
+     "members": 0,
+     "needs": 1,
+     "mine": false
+    }
+   ],
+   "night": {
+    "act": null,
+    "phase": null,
+    "step": null
+   },
+   "alertLevel": "sticky",
+   "voiced": []
+  },
+  {
+   "id": "g2",
+   "name": "Bob",
+   "title": "Crew Night",
+   "theme": "plain",
+   "clock": 0,
+   "role": "Guest",
+   "faction": "Blue",
+   "score": 0,
+   "location": null,
+   "captured": false,
+   "restricted": false,
+   "canEscape": true,
+   "pendingChoice": null,
+   "decisionChannel": null,
+   "cutscene": false,
+   "channels": [
+    {
+     "id": "loc:Hall",
+     "kind": "location",
+     "title": "Hall",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    },
+    {
+     "id": "loc:Jail",
+     "kind": "location",
+     "title": "Jail",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    },
+    {
+     "id": "crew:crew-1",
+     "kind": "faction",
+     "title": "The Night Shift",
+     "spaceId": "story",
+     "member": true,
+     "canPost": true,
+     "threadable": true
+    }
+   ],
+   "spaces": [],
+   "roster": [],
+   "factions": [
+    "Red",
+    "Blue"
+   ],
+   "groups": [
+    "Blue"
+   ],
+   "interactions": [],
+   "codex": [],
+   "codexTotal": 0,
+   "quests": [],
+   "questTotal": 0,
+   "people": [
+    {
+     "id": "g1",
+     "name": "Ada",
+     "kind": "guest",
+     "faction": null,
+     "known": [],
+     "location": null,
+     "groups": []
+    },
+    {
+     "id": "g3",
+     "name": "Cy",
+     "kind": "guest",
+     "faction": null,
+     "known": [],
+     "location": null,
+     "groups": [
+      "Cy Club"
+     ]
+    },
+    {
+     "id": "g4",
+     "name": "Dee",
+     "kind": "guest",
+     "faction": "Red",
+     "known": [],
+     "location": null,
+     "groups": [
+      "Red"
+     ]
+    }
+   ],
+   "objectives": [],
+   "crew": {
+    "id": "crew-1",
+    "name": "The Night Shift",
+    "founder": "g1",
+    "founderName": "Ada",
+    "members": [
+     "g2"
+    ],
+    "memberNames": [
+     "Bob"
+    ],
+    "room": "crew:crew-1"
+   },
+   "invites": [],
+   "sides": [
+    {
+     "id": "Red",
+     "name": "Red",
+     "leader": "Dee",
+     "members": 1,
+     "needs": 1,
+     "mine": false
+    },
+    {
+     "id": "Blue",
+     "name": "Blue",
+     "leader": null,
+     "members": 0,
+     "needs": 1,
+     "mine": true
+    }
+   ],
+   "night": {
+    "act": null,
+    "phase": null,
+    "step": null
+   },
+   "alertLevel": "sticky",
+   "voiced": []
+  },
+  {
+   "id": "g3",
+   "name": "Cy",
+   "title": "Crew Night",
+   "theme": "plain",
+   "clock": 0,
+   "role": "Guest",
+   "faction": null,
+   "score": 0,
+   "location": null,
+   "captured": false,
+   "restricted": false,
+   "canEscape": true,
+   "pendingChoice": null,
+   "decisionChannel": null,
+   "cutscene": false,
+   "channels": [
+    {
+     "id": "loc:Hall",
+     "kind": "location",
+     "title": "Hall",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    },
+    {
+     "id": "loc:Jail",
+     "kind": "location",
+     "title": "Jail",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    },
+    {
+     "id": "crew:crew-2",
+     "kind": "faction",
+     "title": "Cy Club",
+     "spaceId": "story",
+     "member": true,
+     "canPost": true,
+     "threadable": true
+    }
+   ],
+   "spaces": [],
+   "roster": [],
+   "factions": [
+    "Red",
+    "Blue"
+   ],
+   "groups": [],
+   "interactions": [],
+   "codex": [],
+   "codexTotal": 0,
+   "quests": [],
+   "questTotal": 0,
+   "people": [
+    {
+     "id": "g1",
+     "name": "Ada",
+     "kind": "guest",
+     "faction": null,
+     "known": [],
+     "location": null,
+     "groups": []
+    },
+    {
+     "id": "g2",
+     "name": "Bob",
+     "kind": "guest",
+     "faction": "Blue",
+     "known": [],
+     "location": null,
+     "groups": [
+      "Blue",
+      "The Night Shift"
+     ]
+    },
+    {
+     "id": "g4",
+     "name": "Dee",
+     "kind": "guest",
+     "faction": "Red",
+     "known": [],
+     "location": null,
+     "groups": [
+      "Red"
+     ]
+    }
+   ],
+   "objectives": [],
+   "crew": {
+    "id": "crew-2",
+    "name": "Cy Club",
+    "founder": "g3",
+    "founderName": "Cy",
+    "members": [
+     "g3"
+    ],
+    "memberNames": [
+     "Cy"
+    ],
+    "room": "crew:crew-2"
+   },
+   "invites": [],
+   "sides": [
+    {
+     "id": "Red",
+     "name": "Red",
+     "leader": "Dee",
+     "members": 1,
+     "needs": 1,
+     "mine": false
+    },
+    {
+     "id": "Blue",
+     "name": "Blue",
+     "leader": null,
+     "members": 0,
+     "needs": 1,
+     "mine": false
+    }
+   ],
+   "night": {
+    "act": null,
+    "phase": null,
+    "step": null
+   },
+   "alertLevel": "sticky",
+   "voiced": []
+  },
+  {
+   "id": "g4",
+   "name": "Dee",
+   "title": "Crew Night",
+   "theme": "plain",
+   "clock": 0,
+   "role": "Guest",
+   "faction": "Red",
+   "score": 0,
+   "location": null,
+   "captured": false,
+   "restricted": false,
+   "canEscape": true,
+   "pendingChoice": null,
+   "decisionChannel": null,
+   "cutscene": false,
+   "channels": [
+    {
+     "id": "loc:Hall",
+     "kind": "location",
+     "title": "Hall",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    },
+    {
+     "id": "loc:Jail",
+     "kind": "location",
+     "title": "Jail",
+     "spaceId": "story",
+     "member": false,
+     "canPost": false,
+     "threadable": true
+    }
+   ],
+   "spaces": [],
+   "roster": [],
+   "factions": [
+    "Red",
+    "Blue"
+   ],
+   "groups": [
+    "Red"
+   ],
+   "interactions": [],
+   "codex": [],
+   "codexTotal": 0,
+   "quests": [],
+   "questTotal": 0,
+   "people": [
+    {
+     "id": "g1",
+     "name": "Ada",
+     "kind": "guest",
+     "faction": null,
+     "known": [],
+     "location": null,
+     "groups": []
+    },
+    {
+     "id": "g2",
+     "name": "Bob",
+     "kind": "guest",
+     "faction": "Blue",
+     "known": [],
+     "location": null,
+     "groups": [
+      "Blue",
+      "The Night Shift"
+     ]
+    },
+    {
+     "id": "g3",
+     "name": "Cy",
+     "kind": "guest",
+     "faction": null,
+     "known": [],
+     "location": null,
+     "groups": [
+      "Cy Club"
+     ]
+    }
+   ],
+   "objectives": [],
+   "crew": null,
+   "invites": [
+    {
+     "id": "inv-3",
+     "from": "g3",
+     "fromName": "Cy",
+     "kind": "crew",
+     "target": "crew-2",
+     "targetName": "Cy Club"
+    }
+   ],
+   "sides": [
+    {
+     "id": "Red",
+     "name": "Red",
+     "leader": "Dee",
+     "members": 1,
+     "needs": 1,
+     "mine": true
+    },
+    {
+     "id": "Blue",
+     "name": "Blue",
+     "leader": null,
+     "members": 0,
+     "needs": 1,
+     "mine": false
+    }
+   ],
+   "night": {
+    "act": null,
+    "phase": null,
+    "step": null
+   },
+   "alertLevel": "sticky",
+   "voiced": []
+  }
+ ],
+ "mod": {
+  "phase": "open",
+  "scenario": null,
+  "roster": [
+   {
+    "id": "g1",
+    "name": "Ada",
+    "role": "Guest",
+    "faction": null,
+    "trueFaction": null,
+    "location": null,
+    "captured": false,
+    "restricted": false,
+    "score": 0,
+    "beat": null,
+    "visited": {}
+   },
+   {
+    "id": "g2",
+    "name": "Bob",
+    "role": "Guest",
+    "faction": "Blue",
+    "trueFaction": "Blue",
+    "location": null,
+    "captured": false,
+    "restricted": false,
+    "score": 0,
+    "beat": null,
+    "visited": {},
+    "gone": true
+   },
+   {
+    "id": "g3",
+    "name": "Cy",
+    "role": "Guest",
+    "faction": null,
+    "trueFaction": null,
+    "location": null,
+    "captured": false,
+    "restricted": false,
+    "score": 0,
+    "beat": null,
+    "visited": {}
+   },
+   {
+    "id": "g4",
+    "name": "Dee",
+    "role": "Guest",
+    "faction": "Red",
+    "trueFaction": "Red",
+    "location": null,
+    "captured": false,
+    "restricted": false,
+    "score": 0,
+    "beat": null,
+    "visited": {}
+   }
+  ],
+  "title": "Crew Night",
+  "theme": "plain",
+  "interactions": [],
+  "factions": [
+   {
+    "id": "Hosts",
+    "hidden": false,
+    "revealed": false,
+    "ethos": null,
+    "rival": null,
+    "members": []
+   },
+   {
+    "id": "Red",
+    "hidden": true,
+    "revealed": true,
+    "ethos": null,
+    "rival": "Blue",
+    "members": [
+     "g4"
+    ]
+   },
+   {
+    "id": "Blue",
+    "hidden": true,
+    "revealed": true,
+    "ethos": null,
+    "rival": "Red",
+    "members": [
+     "g2"
+    ]
+   }
+  ],
+  "locations": [
+   {
+    "id": "Hall",
+    "label": null,
+    "prison": false,
+    "occupants": []
+   },
+   {
+    "id": "Jail",
+    "label": null,
+    "prison": true,
+    "occupants": []
+   }
+  ],
+  "characters": [
+   "Night"
+  ],
+  "cast": [
+   {
+    "id": "Night",
+    "faction": null
+   }
+  ],
+  "channels": [
+   {
+    "id": "lobby",
+    "kind": "lobby",
+    "title": "Crew Night",
+    "spaceId": "story"
+   },
+   {
+    "id": "faction:Hosts",
+    "kind": "faction",
+    "title": "#hosts",
+    "spaceId": "story"
+   },
+   {
+    "id": "faction:Red",
+    "kind": "faction",
+    "title": "#red",
+    "spaceId": "story"
+   },
+   {
+    "id": "faction:Blue",
+    "kind": "faction",
+    "title": "#blue",
+    "spaceId": "story"
+   },
+   {
+    "id": "loc:Hall",
+    "kind": "location",
+    "title": "Hall",
+    "spaceId": "story"
+   },
+   {
+    "id": "loc:Jail",
+    "kind": "location",
+    "title": "Jail",
+    "spaceId": "story"
+   },
+   {
+    "id": "crew:crew-1",
+    "kind": "faction",
+    "title": "The Night Shift",
+    "spaceId": "story"
+   },
+   {
+    "id": "crew:crew-2",
+    "kind": "faction",
+    "title": "Cy Club",
+    "spaceId": "story"
+   }
+  ],
+  "spaces": [],
+  "beats": [
+   "Hall"
+  ],
+  "choices": {},
+  "ledgerLen": 31,
+  "world": [
+   {
+    "path": "Blue",
+    "value": "Blue"
+   },
+   {
+    "path": "Blue.hidden",
+    "value": "true"
+   },
+   {
+    "path": "Blue.revealed",
+    "value": "true"
+   },
+   {
+    "path": "Blue.rival",
+    "value": "Red"
+   },
+   {
+    "path": "Guest",
+    "value": "Guest"
+   },
+   {
+    "path": "Hall",
+    "value": "Hall"
+   },
+   {
+    "path": "Hosts",
+    "value": "Hosts"
+   },
+   {
+    "path": "Hosts.hidden",
+    "value": "false"
+   },
+   {
+    "path": "Hosts.revealed",
+    "value": "false"
+   },
+   {
+    "path": "Jail",
+    "value": "Jail"
+   },
+   {
+    "path": "Night",
+    "value": "Night"
+   },
+   {
+    "path": "Night.crew_joins",
+    "value": "0"
+   },
+   {
+    "path": "Night.founded",
+    "value": "2"
+   },
+   {
+    "path": "Night.joins",
+    "value": "4"
+   },
+   {
+    "path": "Night.left",
+    "value": "1"
+   },
+   {
+    "path": "Night.present",
+    "value": "0"
+   },
+   {
+    "path": "Night.recruited",
+    "value": "2"
+   },
+   {
+    "path": "Night.side_joins",
+    "value": "2"
+   },
+   {
+    "path": "Red",
+    "value": "Red"
+   },
+   {
+    "path": "Red.hidden",
+    "value": "true"
+   },
+   {
+    "path": "Red.leader",
+    "value": "g4"
+   },
+   {
+    "path": "Red.revealed",
+    "value": "true"
+   },
+   {
+    "path": "Red.rival",
+    "value": "Blue"
+   },
+   {
+    "path": "crew-1.founder",
+    "value": "g1"
+   },
+   {
+    "path": "crew-1.name",
+    "value": "The Night Shift"
+   },
+   {
+    "path": "crew-2.founder",
+    "value": "g3"
+   },
+   {
+    "path": "crew-2.name",
+    "value": "Cy Club"
+   },
+   {
+    "path": "g1",
+    "value": "g1"
+   },
+   {
+    "path": "g1.crew",
+    "value": "null"
+   },
+   {
+    "path": "g1.name",
+    "value": "Ada"
+   },
+   {
+    "path": "g1.recruits",
+    "value": "1"
+   },
+   {
+    "path": "g1.role",
+    "value": "Guest"
+   },
+   {
+    "path": "g2",
+    "value": "g2"
+   },
+   {
+    "path": "g2.crew",
+    "value": "crew-1"
+   },
+   {
+    "path": "g2.faction",
+    "value": "Blue"
+   },
+   {
+    "path": "g2.gone",
+    "value": "true"
+   },
+   {
+    "path": "g2.group",
+    "value": "Blue"
+   },
+   {
+    "path": "g2.groups",
+    "value": "[Blue]"
+   },
+   {
+    "path": "g2.name",
+    "value": "Bob"
+   },
+   {
+    "path": "g2.recruits",
+    "value": "0"
+   },
+   {
+    "path": "g2.role",
+    "value": "Guest"
+   },
+   {
+    "path": "g3",
+    "value": "g3"
+   },
+   {
+    "path": "g3.crew",
+    "value": "crew-2"
+   },
+   {
+    "path": "g3.faction",
+    "value": "null"
+   },
+   {
+    "path": "g3.group",
+    "value": "null"
+   },
+   {
+    "path": "g3.groups",
+    "value": "[]"
+   },
+   {
+    "path": "g3.name",
+    "value": "Cy"
+   },
+   {
+    "path": "g3.recruits",
+    "value": "0"
+   },
+   {
+    "path": "g3.role",
+    "value": "Guest"
+   },
+   {
+    "path": "g4",
+    "value": "g4"
+   },
+   {
+    "path": "g4.faction",
+    "value": "Red"
+   },
+   {
+    "path": "g4.group",
+    "value": "Red"
+   },
+   {
+    "path": "g4.groups",
+    "value": "[Red]"
+   },
+   {
+    "path": "g4.name",
+    "value": "Dee"
+   },
+   {
+    "path": "g4.recruits",
+    "value": "1"
+   },
+   {
+    "path": "g4.role",
+    "value": "Guest"
+   }
+  ],
+  "codex": [],
+  "crews": [
+   {
+    "id": "crew-1",
+    "name": "The Night Shift",
+    "founder": "g1",
+    "founderName": "Ada",
+    "members": [
+     "g2"
+    ],
+    "memberNames": [
+     "Bob"
+    ],
+    "room": "crew:crew-1",
+    "at": 0
+   },
+   {
+    "id": "crew-2",
+    "name": "Cy Club",
+    "founder": "g3",
+    "founderName": "Cy",
+    "members": [
+     "g3"
+    ],
+    "memberNames": [
+     "Cy"
+    ],
+    "room": "crew:crew-2",
+    "at": 0
+   }
+  ],
+  "quests": [],
+  "cues": {
+   "last": null,
+   "lastBy": null,
+   "fired": [],
+   "presses": 0,
+   "pressed": null
+  },
+  "clock": 0,
+  "alerts": {
+   "path": "Night.alerts",
+   "level": "sticky"
+  }
+ },
+ "log": [
+  {
+   "type": "accountCreated",
+   "person": "g1",
+   "name": "Ada",
+   "role": "Guest"
+  },
+  {
+   "type": "accountCreated",
+   "person": "g2",
+   "name": "Bob",
+   "role": "Guest"
+  },
+  {
+   "type": "accountCreated",
+   "person": "g3",
+   "name": "Cy",
+   "role": "Guest"
+  },
+  {
+   "type": "accountCreated",
+   "person": "g4",
+   "name": "Dee",
+   "role": "Guest"
+  },
+  {
+   "type": "factionRevealed",
+   "faction": "Red"
+  },
+  {
+   "type": "factionRevealed",
+   "faction": "Blue"
+  },
+  {
+   "type": "worldSet",
+   "path": "Red.leader",
+   "value": "g4"
+  },
+  {
+   "type": "joined",
+   "person": "g4",
+   "faction": "Red"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.joins",
+   "value": "1"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.side_joins",
+   "value": "1"
+  },
+  {
+   "type": "signal",
+   "name": "founded",
+   "subject": "g1"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.founded",
+   "value": "1"
+  },
+  {
+   "type": "signal",
+   "name": "join",
+   "subject": "g2"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.joins",
+   "value": "2"
+  },
+  {
+   "type": "signal",
+   "name": "recruited",
+   "subject": "g2"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.recruited",
+   "value": "1"
+  },
+  {
+   "type": "worldSet",
+   "path": "g1.recruits",
+   "value": "1"
+  },
+  {
+   "type": "joined",
+   "person": "g2",
+   "faction": "Blue"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.joins",
+   "value": "3"
+  },
+  {
+   "type": "joined",
+   "person": "g3",
+   "faction": "Red"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.joins",
+   "value": "4"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.side_joins",
+   "value": "2"
+  },
+  {
+   "type": "signal",
+   "name": "recruited",
+   "subject": "g3"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.recruited",
+   "value": "2"
+  },
+  {
+   "type": "worldSet",
+   "path": "g4.recruits",
+   "value": "1"
+  },
+  {
+   "type": "defected",
+   "person": "g3",
+   "from": "Red",
+   "to": "Blue"
+  },
+  {
+   "type": "signal",
+   "name": "founded",
+   "subject": "g3"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.founded",
+   "value": "2"
+  },
+  {
+   "type": "worldSet",
+   "path": "g2.gone",
+   "value": "true"
+  },
+  {
+   "type": "signal",
+   "name": "unaligned",
+   "subject": "g3"
+  },
+  {
+   "type": "worldSet",
+   "path": "Night.left",
+   "value": "1"
+  }
+ ]
+}

@@ -97,9 +97,22 @@ export interface PersonCard {
 }
 
 function peopleFor(sim: Sim, id: string, agentsOnline?: ReadonlySet<string>): PersonCard[] {
+  const factionMode = sim.crews.factionMode;
+  const mine = factionMode ? sim.crews.factionOf(id) : null;
   return sim.peopleFor(id).map((p) => {
     const card: PersonCard = { ...p, known: p.known.map((e) => codexEntry(e, sim.model)), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
     card.groups = p.kind === "guest" ? sim.crews.groupsOf(p.id) : p.faction !== null ? [p.faction] : []; // w18 crews
+    // w18b faction mode: a person's race faction shows only when it is the
+    // viewer's own, or they founded / lead it ("led by X" is public) —
+    // else scrolling People would count a rival faction.
+    if (factionMode && p.kind === "guest") {
+      const theirs = sim.crews.factionOf(p.id);
+      if (theirs === null || (theirs !== mine && sim.crews.founderOf(theirs) !== p.id)) {
+        const crew = sim.crews.crewOf(p.id)?.name ?? null;
+        card.groups = card.groups.filter((g) => g !== crew && !sim.crews.isRaceFaction(g));
+        if (card.faction !== null && sim.crews.isRaceFaction(card.faction)) card.faction = null;
+      }
+    }
     Object.assign(card, badgesField(sim, p.id)); // w18b badges
     const def = p.kind === "character" ? sim.model.characters.get(p.id) : undefined;
     if (def?.mind === "external") {
