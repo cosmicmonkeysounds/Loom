@@ -69,6 +69,7 @@ openers end with `:` and indent their body.
 | `reply "text" with go: The Desktop, go: pass` / `broadcast "…" to everyone with go: quest: The Cold Door as "See it"` | the moment's buttons: a place, room, character, guest button, `codex[: Entry]`, `quests` / `quest: Quest`, or a screen (`pass` `scan` `chats` `mission` `notifications` `sides` `wallet` `me`); never `lobby` (lint `L1214`; quote the text) |
 | `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer` / `sides`); `with moment: major` makes it interrupt, `moment: big` takes the screen |
 | `unlock The Sandy File for guest` | hand out a codex entry |
+| `who.codex` / `who.codex.the_sandy_file` / `who.codex_in.facts` | how many entries they hold / do they hold this one / how many in a `category:` (lower-cased, `_` for anything else: `How it works` → `how_it_works`; uncategorised ones count nowhere) |
 | `start quest X for who` / `update` / `complete` / `fail` (+ `"line"`) | the quest log — `who` may be a character |
 | `restrict guest to The Tube, The Internet` / `unrestrict guest` | shrink a guest's app to DMs + those places, no buttons — and lift it |
 | `pin "!🚨 text" [in room] [for who]` / `unpin [in room] [for who] ["text"]` | a sticky notice above a stream (`!` = alert) — and take it down |

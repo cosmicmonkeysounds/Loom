@@ -520,6 +520,17 @@ export class Sim {
     return foldName(entry).replace(/ /gu, "_");
   }
 
+  /** World key for a codex category under a holder (wave 18b):
+   *  `g1.codex_in.facts`, `g1.codex_in.how_it_works` — the category lower-
+   *  cased, each run of anything but letters and digits one `_`, none at
+   *  either end. */
+  static codexCategorySlug(category: string): string {
+    return category
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "_")
+      .replace(/^_+|_+$/gu, "");
+  }
+
   /** Record a holding + its world mirrors, silently. True if it was new. */
   private holdCodex(holder: string, id: string): boolean {
     let set = this.codexHeld.get(holder);
@@ -533,6 +544,19 @@ export class Sim {
     // conditions (`if guest.codex.the_sandy_file:` / `when self.codex >= 3:`).
     this.world.set(`${holder}.codex`, vNumber(set.size));
     this.world.set(`${holder}.codex.${Sim.codexSlug(id)}`, vBool(true));
+    // Wave 18b: `guest.codex_in.<category>` counts the holder's entries in
+    // each category (`when self.codex_in.facts >= 20:`); uncategorised
+    // entries are counted nowhere. A replay re-holds every entry, so the
+    // count rebuilds with it.
+    const category = this.model.codex.get(id)?.category ?? null;
+    if (category !== null) {
+      const slug = Sim.codexCategorySlug(category);
+      if (slug !== "") {
+        const path = `${holder}.codex_in.${slug}`;
+        const was = this.world.peek(path);
+        this.world.set(path, vNumber((was !== null && was.kind === "number" ? was.value : 0) + 1));
+      }
+    }
     return true;
   }
 

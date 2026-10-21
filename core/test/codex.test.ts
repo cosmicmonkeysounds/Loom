@@ -678,3 +678,73 @@ describe("codex cards for a character's booth (wave 4, lane D)", () => {
     expect(tHistory.filter((m) => m.channel === "codex")).toEqual([]);
   });
 });
+
+describe("the codex category mirror (wave 18b)", () => {
+  const SRC = `# Files
+ROLE Program
+  when self.codex_in.facts >= 2:
+    set self.done = true
+
+CHARACTER Clerk
+  listed: true
+
+CODEX One
+  category: Facts
+  code: ONE
+  text:
+    One.
+
+CODEX Two
+  category: facts
+  code: TWO
+  text:
+    Two.
+
+CODEX How It Works
+  category: How it works!
+  code: HOW
+  known to: Clerk
+  text:
+    How.
+
+CODEX Loose
+  code: LOOSE
+  text:
+    Loose.
+`;
+
+  it("counts each holder's entries per category, slugged, and skips the uncategorised", () => {
+    const sim = Sim.fromSources(SRC);
+    sim.createPerson("g1", "Ada");
+    expect(Sim.codexCategorySlug("How it works!")).toBe("how_it_works");
+    expect(Sim.codexCategorySlug("Facts")).toBe("facts");
+    expect(sim.world.get("Clerk.codex_in.how_it_works")).toEqual({ kind: "number", value: 1 });
+    sim.redeem("g1", "ONE");
+    sim.redeem("g1", "ONE"); // a second redeem holds nothing new
+    expect(sim.world.get("g1.codex_in.facts")).toEqual({ kind: "number", value: 1 });
+    sim.redeem("g1", "LOOSE");
+    expect(sim.worldEntries().filter((w) => w.path.startsWith("g1.codex_in.")).map((w) => w.path)).toEqual(["g1.codex_in.facts"]);
+    expect(sim.world.get("g1.done").kind).not.toBe("bool");
+    sim.redeem("g1", "TWO"); // `facts` and `Facts` are one category
+    expect(sim.world.get("g1.codex_in.facts")).toEqual({ kind: "number", value: 2 });
+    expect(sim.world.get("g1.done")).toEqual({ kind: "bool", value: true });
+  });
+
+  it("rebuilds under a replay of the same mutations", () => {
+    const play = (): Sim => {
+      const sim = Sim.fromSources(SRC);
+      sim.createPerson("g1", "Ada");
+      sim.redeem("g1", "TWO");
+      sim.unlock("g1", "How It Works");
+      return sim;
+    };
+    const a = play().worldEntries().filter((w) => w.path.includes(".codex_in."));
+    const b = play().worldEntries().filter((w) => w.path.includes(".codex_in."));
+    expect(a).toEqual(b);
+    expect(a).toEqual([
+      { path: "Clerk.codex_in.how_it_works", value: "1" },
+      { path: "g1.codex_in.facts", value: "1" },
+      { path: "g1.codex_in.how_it_works", value: "1" },
+    ]);
+  });
+});
