@@ -5,11 +5,13 @@
                   mod feed  sim directive sfx / announce, lifecycle
          │
          ▼
-    this module ── ONE sounddevice stream on the interface (the MOTU, 16 / 16)
+    this module ── ONE sounddevice stream on the interface (the MOTU 828x + an
+                   │  ADAT expander: audio.json 24 in / 22 out, device.expect 32 / 30)
                    ├─ voices: `sound X` → sounds_dir/X.wav → its speakers' outputs
                    ├─ announcements: chime + `say` → audio.json `announce.to`
                    ├─ tests: a 1.5 s tone + the spoken label on one speaker / output
-                   └─ the matrix: inputs (QLab, mics, the TV) → outputs, audio.json `routes`
+                   ├─ stops: Run's ■ Stop house sounds (`stops=`) / show/audio/stop
+                   └─ the matrix: inputs (mics, the TV, a line) → outputs, audio.json `routes`
 
 Where a `sound X` goes, first rule that applies:
   1. the story line's own rooms (`sound X with rooms: …` / `sound X in <Place>`)
@@ -17,21 +19,28 @@ Where a `sound X` goes, first rule that applies:
   3. the enclosing beat's setting (a LOCATION)
   4. everywhere
 
-Opt-in twice over (decision D6): with `play_sounds: false` (the default) QLab
-keeps playing `sound X` — the router only runs the matrix and the tests; with
-`announce: false` the `alexa` player keeps the announcements. When the router
-plays sounds the `show` module drops its QLab `sound` cues (config.py), so no
-sound plays twice; when it announces, an `alexa:` section in the same YAML is a
-config error and the router takes the alexa player's lock before it speaks
-(a leftover alexa job blocks only the announcements, never the sounds), so
-the house never has two voices. With `announce: false` each `do announce`
-ducks the router's sounds for `duck_hold_s` (QLab's `duck_music`); sounds
-in `no_duck` (the dance tracks) never duck.
+Opt-in twice over (wave 17's D6; the show turns both on since wave 18b, and
+QLab and the `alexa` player are retired there): with `play_sounds: false`
+(the default) another cue player keeps `sound X` — the router only runs the
+matrix and the tests; with `announce: false` the `alexa` player keeps the
+announcements. When the router plays sounds the `show` module drops its OSC
+`sound` cues (config.py), so no sound plays twice; when it announces, an
+`alexa:` section in the same YAML is a config error and the router takes the
+alexa player's lock before it speaks (a leftover alexa job blocks only the
+announcements, never the sounds), so the house never has two voices. With
+`announce: false` each `do announce` ducks the router's sounds for
+`duck_hold_s`; sounds in `no_duck` (the dance tracks) never duck.
+
+"Stop all house sounds" (wave 18b, Q7) is one-shot and never journaled: every
+sfx voice and speaker test fades over 0.3 s; `+ announcements` also cuts the
+line playing now and empties the queue. The TV, the terminals and the live
+inputs are untouched, and the story clock is not (the dance still lands on
+`Night.dance_at`).
 
 Survives the uplink: the last audio.json and house.json are kept in
 `cache_dir`, so a restart with the internet down still routes; sounds are
-local files; MQTT (`show/announce`, `show/chime`, `show/audio/test`) works on
-the LAN alone.
+local files; MQTT (`show/announce`, `show/chime`, `show/audio/test`,
+`show/audio/stop`, `show/audio/play`) works on the LAN alone.
 """
 
 from __future__ import annotations
@@ -217,7 +226,7 @@ class AudioRouter:
         dev = cfg.device or (doc.device if doc else "the audio.json device")
         return [
             f"device   : {dev}" + (f" ({doc.inputs} in / {doc.outputs} out)" if doc else "") + (" duplex" if cfg.passthrough else " output-only"),
-            f"sounds   : {'the router plays `sound X` (QLab skipped)' if cfg.play_sounds else 'QLab plays `sound X` (router idle)'} — {cfg.sounds_dir}",
+            f"sounds   : {'the router plays `sound X` (OSC sound cues skipped)' if cfg.play_sounds else 'not here: play_sounds is false (another cue player)'} — {cfg.sounds_dir}",
             f"announce : {'the router (chime + say ' + (cfg.say_voice or 'default') + ')' if cfg.announce else 'not here (the alexa player)'}",
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",

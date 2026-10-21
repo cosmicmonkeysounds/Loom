@@ -943,19 +943,18 @@ def test_the_health_loop_publishes_stats(tmp_path):
     assert topic == "health/audio/stats" and retain and json.loads(payload)["config"] == "v1"
 
 
-def test_on_the_real_rig_the_router_takes_every_qlab_sound_but_the_chime(tmp_path):
+def test_on_the_real_rig_the_router_owns_every_sound_and_the_show_keeps_only_the_chime(tmp_path):
+    """wave 18b (Q1): the house YAML switches the router on for sounds and
+    announcements; the show module has no OSC sound cue left to hand off."""
     import yaml
 
     house = Path(__file__).parents[1] / "trapped.house.yaml"
     doc = yaml.safe_load(house.read_text())
-    assert "audio" not in doc  # off until the show switches it on
-    before = parse_config(doc, str(tmp_path), only=["show"], env={}).modules["show"].cfg.cues
-    after = parse_config({**doc, "audio": {"play_sounds": True}}, str(tmp_path), only=["show"], env={}).modules["show"].cfg.cues
-    sounds = [r for r in before if r.on_directive == "sfx"]
-    assert len(sounds) > 10
-    left = [r for r in after if r.on_directive == "sfx"]
-    assert [r.match.get("target") for r in left] == ["announce_chime"] and left[0].osc is None
-    assert len(before) - len(after) == len(sounds) - 1
+    assert doc["audio"]["play_sounds"] is True and doc["audio"]["announce"] is True and "alexa" not in doc
+    show = parse_config(doc, str(tmp_path), only=["show"], env={}).modules["show"]
+    left = [r for r in show.cfg.cues if r.on_directive == "sfx"]
+    assert [r.match.get("target") for r in left] == ["announce_chime"] and left[0].osc is None and left[0].mqtt is not None
+    assert show.sounds_handed_off == 0 and show.cfg.osc_targets == {}
 
 
 def test_run_end_to_end_with_a_fake_server(tmp_path):

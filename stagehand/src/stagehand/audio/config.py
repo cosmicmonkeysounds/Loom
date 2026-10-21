@@ -5,7 +5,7 @@ Shape (`audio.example.yaml` carries a commented copy):
     audio:
       sounds_dir: media/sounds     # <name>.wav|aiff|flac per story `sound <name>`
       play_sounds: false           # true: the router plays `sound X` (the show
-                                   # module's QLab sound cues are then skipped)
+                                   # module's OSC sound cues are then skipped)
       announce: false              # true: the router plays `do announce` too
                                    # (the `alexa:` section must be gone)
       passthrough: true            # the audio.json input→output matrix; false
@@ -208,7 +208,7 @@ def parse_audio_section(doc: Any, base_dir: str = ".") -> AudioConfig:
 
 
 def plays_sounds(section: Any) -> bool:
-    """Does this raw `audio:` section take `sound X` from QLab? (read by the
+    """Does this raw `audio:` section take `sound X` from an OSC cue player? (read by the
     config loader for the `show` module, which may run in another job)."""
     return isinstance(section, dict) and section.get("play_sounds") is True
 
