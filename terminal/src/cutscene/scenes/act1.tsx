@@ -1247,7 +1247,8 @@ function TruthOrDareWall({ t, at, state, night, sfx, reduced }: SceneProps) {
  *   8200–9000 it rises away
  */
 function TruthChosen({ t, night, sfx, reduced }: SceneProps) {
-  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.5 }], [600, "chime", { gain: 0.6 }]]);
+  // He asks the question on the TV as this lands: under the voice.
+  useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.5, over: true }], [600, "chime", { gain: 0.6, over: true }]]);
   const drop = reduced ? progress(t, 0, 300) : eased(t, 0, 600, ease.outBounce);
   const up = eased(t, 8200, 800, ease.inCubic);
   const name = night.bottle_pick;
