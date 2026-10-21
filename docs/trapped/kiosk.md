@@ -16,6 +16,64 @@ SW-SCR-19 / SW-SCR-23). The app's half is in `terminal/src/kiosk.ts`:
   the terminal's token, so this is what keeps a curious guest out of it.
   (The PIN on top is W-15 / SW-SCR-20, not this item.)
 
+## Full screen by default (wave 17)
+
+Every terminal runs full screen without anyone asking for it
+(`terminal/src/fullscreen.ts`, decision D7). A browser only enters full
+screen from a user gesture and drops it on a reload, a navigation, Esc or
+an Android back swipe, so the page asks on several routes at once:
+
+- **In the page: the Fullscreen API.** The first gesture (the TOUCH TO
+  WAKE tap, any tap, click or key) asks the browser for full screen, and
+  so does **every later gesture while the page is not full screen**:
+  whatever knocked it out, the next touch brings it back. A tap into a
+  text box (*type your program name*) is left alone so the keyboard can
+  open. Safari and older WebViews get the `webkit` spellings.
+- **Fully Kiosk.** Fully's own *Show Address / Status / Navigation Bar* ✘
+  and Kiosk Mode (the table below) already fill the screen. With
+  **Enable JavaScript Interface** ✔ (already on for the voice) the page
+  also asks Fully to hide the status and navigation bars itself.
+- **Chrome `--kiosk`** on the house Mac's TV (below) and on any laptop
+  used as a terminal (the Internet laptop): the only route that needs no
+  gesture at all, and it survives a reload. A laptop terminal, its own
+  profile:
+  `open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" --kiosk --autoplay-policy=no-user-gesture-required "https://app.mapsandducks.com/terminal/"`
+  (⌘Q quits).
+- **iPad: Home Screen + Guided Access** (below). The Home Screen copy
+  opens with no Safari bars (the page declares itself a web app), and
+  Guided Access keeps it there. In plain Safari the page asks for full
+  screen on a tap like anywhere else.
+
+The state is on `<html data-fullscreen="on|fully|off|disabled|unsupported">`
+and rides the heartbeat (`fs=1|0`): **Run → Terminals shows ⛶ on a
+terminal that is not full screen** — touch it once. A browser that can't go
+full screen, or a terminal with it turned off, reports nothing and shows no
+badge. ⚙ → **full screen** (on by default) turns it off: do that on a
+laptop a director tests on, so Esc sticks. It is stored with the terminal,
+not a URL key.
+
+## Sound: the tablet's speaker and the house speakers (wave 17)
+
+A terminal's own speaker makes only its **accents**: popup dings, clicks,
+cutscene stingers, the casino's jingles, the announcement chime on an
+`announce` tablet — synthesised in the page, no sound files, dropped while
+the character speaks. **Every story `sound X` and every announcement comes
+out of the house speakers** (decision D4): QLab today, the house Mac's
+stagehand `audio` router once a show switches it on. Nothing on a tablet
+plays a story sound.
+
+The house speakers are set up in the project file **`audio.json`**, not on
+any device: the speakers placed on the plan, the interface's 16 inputs and
+16 outputs, the input → output routing matrix, zones, and where each story
+sound plays. Edit it in the map editor's **Audio** panel at
+`/reinstall/map` (each speaker and output has a **Test** button); it is
+pushed by `scripts/sync-show.sh`, snapshotted at launch like the maps, and
+read by the router from `GET /api/mod/audio`. The contract is
+[`room-audio.md`](./room-audio.md) §11; a story line names its rooms with
+`sound X in <Place>` / `sound X with rooms: …` (Help → *Instructions* →
+*Where a sound plays*). The TV's accents are quiet and the director's TV
+mute cuts them with the voice.
+
 ## Android wall tablets — Fully Kiosk Browser PLUS
 
 Setting names are from Fully Kiosk Browser 1.5x. If one has moved, use the
@@ -34,9 +92,9 @@ search box at the top of Fully's Settings.
 | Web Auto Reload | **Auto Reload after Page Error** | ✔ | A network blip at boot recovers by itself. |
 | Web Auto Reload | **Auto Reload on Idle** | ✘ | **Never reload on a timer.** A reload loses the audio unlock. |
 | Advanced Web | **Wait for Network Connection** | ✔ | Boot waits for the Wi-Fi before loading the page. |
-| Advanced Web | **Enable JavaScript Interface** (PLUS) | ✔ | **The voice on the old tablets.** Their Android System WebView may not implement `speechSynthesis` (K-02); with this on, the terminal speaks through Fully's `fully.textToSpeech` (Android's own TTS) instead. Off → the terminal still runs, text only (the transcript reveals at reading pace). |
+| Advanced Web | **Enable JavaScript Interface** (PLUS) | ✔ | **The voice on the old tablets.** Their Android System WebView may not implement `speechSynthesis` (K-02); with this on, the terminal speaks through Fully's `fully.textToSpeech` (Android's own TTS) instead. Off → the terminal still runs, text only (the transcript reveals at reading pace). The page also uses it to hide the status and navigation bars (wave 17). |
 | Other (or *Device Management*) | **Text To Speech** engine / language, if your version lists them | the device's best English engine | What `fully.textToSpeech` speaks with. Otherwise it is Android's: Settings → System → Languages & input → **Text-to-speech output** → *Preferred engine* (Google Speech Services) + *Language: English (US)*, and **install the voice data** there (offline). Speech rate / pitch set there apply too. |
-| Toolbars & Appearance | **Show Address Bar / Status Bar / Navigation Bar** | ✘ | Full screen. |
+| Toolbars & Appearance | **Show Address Bar / Status Bar / Navigation Bar** | ✘ | Full screen (the page also asks on every tap: *Full screen by default* above). |
 | Device Management | **Keep Screen On** | ✔ | The belt to the Wake Lock's braces. |
 | Device Management | **Screen Off Timer** | 0 (off) | |
 | Device Management | **Screen Brightness** | ~70 % | Readable, not a heater. |
@@ -102,7 +160,8 @@ Limits* if the version has it. Set the volume before the party, not after.
 
 Settings → Display & Brightness → Auto-Lock: **Never**; Accessibility →
 Guided Access ✔ with a passcode; add the terminal to the Home Screen and
-start Guided Access on it. Every reload needs a TOUCH TO WAKE tap (iOS has
+start Guided Access on it (that is the iPad's full screen: the Home Screen
+copy has no Safari bars). Every reload needs a TOUCH TO WAKE tap (iOS has
 no autoplay setting).
 
 ## The TV — the house Mac on the long HDMI run
