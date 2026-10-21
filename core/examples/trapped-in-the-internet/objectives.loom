@@ -729,7 +729,7 @@ OBJECTIVE Judge The Cup
   while: Night.phase == "truth_pong"
   act: D
   title: Truth Pong: judge the cup
-  pick: program.cleared == true and program.pong_thrown != true and program.corrupted != true and program.gone != true and program.persona != true
+  pick: program.cleared == true and program.pong_thrown != true and program.marked != true and program.corrupted != true and program.gone != true and program.persona != true
   text:
     Made: 🏓 Made (they may answer one round-2 fact). Missed: 🏓 Missed (marked: they light up on the Antivirus' Wanted board). Press Made for every sink: no cup on record, no counted filing.
   buttons: made_the_cup, missed_the_cup
