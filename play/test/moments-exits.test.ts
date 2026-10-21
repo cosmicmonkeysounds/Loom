@@ -187,4 +187,11 @@ describe("push taps and deep links (§6.4)", () => {
     expect(navFromSearch("", listed)).toBeNull();
     expect(navFromRoom("  ", listed)).toBeNull();
   });
+  it("a moment's push lands where the moment goes: a screen word, a codex entry, a quest (NM-F5)", () => {
+    expect(navFromSearch("?go=pass", listed)).toEqual({ to: "pass" });
+    expect(navFromSearch("?go=sides", listed)).toEqual({ to: "sides" });
+    expect(navFromSearch("?go=nonsense&room=dm%3ATrabolta", listed)).toEqual({ to: "room", id: "dm:Trabolta" });
+    expect(navFromSearch("?room=codex&entry=computer-bingo", listed)).toEqual({ to: "codex", entry: "computer-bingo" });
+    expect(navFromSearch("?room=quests&quest=The%20Bingo%20Card", listed)).toEqual({ to: "quests", quest: "The Bingo Card" });
+  });
 });

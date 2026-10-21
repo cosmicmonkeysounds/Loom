@@ -26,7 +26,8 @@ describe("a guest's push tap", () => {
   });
 
   it("the booth keeps its own mapping", () => {
-    expect(roomTarget("lobby", ["__feed"], true)).toBe("__feed");
+    // A booth's lobby link lands on its home, never the Chat log (NM-F6).
+    expect(roomTarget("lobby", ["__feed"], true)).toBeNull();
     expect(roomTarget("dm:Trabolta", ["cast:Trabolta"], true)).toBe("cast:Trabolta");
   });
 });

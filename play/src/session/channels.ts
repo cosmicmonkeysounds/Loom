@@ -200,7 +200,8 @@ export function buildGuestChannels(
       id,
       kind: head.kind,
       title: lobby ? CHAT_LOG_TITLE : (otherName ?? castName ?? head.title),
-      subtitle: lobby ? CHAT_LOG_SUB : otherName !== null ? "private" : undefined,
+      // A pm row previews its last line (GN-F16: it read "private").
+      subtitle: lobby ? CHAT_LOG_SUB : undefined,
       spaceId: STORY_SPACE,
       spaceTitle: storyTitle,
       needsYou: needsYou(msgs),

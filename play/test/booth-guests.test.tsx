@@ -103,7 +103,7 @@ describe("the booth rooms list (§3, G2)", () => {
     // Quiet: it folds into Other rooms with the empty rooms.
     expect(foldRooms(flat as Channel[], null, 1).folded.map((c) => c.id)).toContain("__feed");
     // Open, it stays where it is.
-    expect(withChatLog(groupBySpace([...chans].sort(roomOrder)), "__feed").flatMap((s) => s.channels).find((c) => c.id === "__feed")!.title).toBe("Trapped in the Internet");
+    expect(withChatLog(groupBySpace([...chans].sort(roomOrder)), "__feed").flatMap((s) => s.channels).find((c) => c.id === "__feed")!.title).toBe("Chat log"); // never the story's title (NM-F6)
   });
   it("lands a wide booth on Readouts, never the lobby", () => {
     expect(boothHome(buildPrimeChannels(new Map(), view))).toBe(INBOX);

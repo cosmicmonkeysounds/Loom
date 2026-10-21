@@ -332,13 +332,24 @@ export function navFromRoom(room: string | null, listed: Iterable<string>): Nav 
   return { to: "mission" };
 }
 
-/** `navFromRoom` for a page's query string (`?room=…`). */
+/** The screen words a link may name (`?go=pass`, core's `momentUrl`). */
+const LINK_WORDS = ["pass", "scan", "chats", "mission", "notifications", "sides", "me", "wallet", "codex", "quests"] as const;
+
+/** `navFromRoom` for a page's query string: `?room=…` (plus `&entry=` /
+ *  `&quest=` for the Codex / Quest Log), or `?go=<screen word>` (NM-F5). */
 export function navFromSearch(search: string, listed: Iterable<string>): Nav | null {
-  let room: string | null = null;
+  let p: URLSearchParams;
   try {
-    room = new URLSearchParams(search).get("room");
+    p = new URLSearchParams(search);
   } catch {
-    room = null;
+    return null;
   }
-  return navFromRoom(room, listed);
+  const go = p.get("go")?.trim() ?? "";
+  if ((LINK_WORDS as readonly string[]).includes(go)) return { to: go } as Nav;
+  const nav = navFromRoom(p.get("room"), listed);
+  const entry = p.get("entry")?.trim() ?? "";
+  const quest = p.get("quest")?.trim() ?? "";
+  if (nav?.to === "codex" && entry !== "") return { to: "codex", entry };
+  if (nav?.to === "quests" && quest !== "") return { to: "quests", quest };
+  return nav;
 }

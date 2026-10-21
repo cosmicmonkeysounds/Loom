@@ -213,12 +213,20 @@ describe("sw.js (push-only)", () => {
     const front = client("https://app.mapsandducks.com/", "visible", true, focused);
     const w = loadWorker({ clients: [back, front] });
     await w.click({ url: "/?room=dm%3ATrabolta" });
-    expect(front.posted).toEqual([{ type: "open-room", room: "dm:Trabolta" }]);
+    expect(front.posted).toEqual([{ type: "open-room", room: "dm:Trabolta", link: "?room=dm%3ATrabolta" }]);
     expect(back.posted).toEqual([]);
     expect(focused).toEqual(["https://app.mapsandducks.com/"]);
     expect(w.opened).toEqual([]); // never a second window, never a navigate
     const none = loadWorker();
     await none.click({ url: "/?room=wallet" });
     expect(none.opened).toEqual(["https://app.mapsandducks.com/?room=wallet"]);
+  });
+
+  it("a moment's screen link (`?go=pass`) reaches the open window whole (NM-F5)", async () => {
+    const focused: string[] = [];
+    const front = client("https://app.mapsandducks.com/", "visible", true, focused);
+    const w = loadWorker({ clients: [front] });
+    await w.click({ url: "/?go=pass" });
+    expect(front.posted).toEqual([{ type: "open-room", room: "", link: "?go=pass" }]);
   });
 });

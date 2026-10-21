@@ -95,8 +95,9 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
   const feed: Channel = {
     id: "__feed",
     kind: "lobby",
-    title: view?.title ?? "Lobby",
-    subtitle: "everyone · broadcast feed",
+    // The far-away Chat log (wave 18, G2; NM-F6): never the story's title.
+    title: "Chat log",
+    subtitle: "everything the house said tonight",
     spaceId: STORY_SPACE,
     // Wave 18 (BOOTH-SPEC §3): the rooms list's section reads "Chats", never the story title.
     spaceTitle: CHATS_TITLE,

@@ -19,7 +19,7 @@ import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
 import { NO_ANSWERS, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
-import { navFromSearch, roomFromMessage, roomFromSearch, withoutRoom } from "../room.ts";
+import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../room.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
 
@@ -268,18 +268,16 @@ export interface SidesCalls {
  */
 function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav | null; take: () => void } {
   const { ownsPage } = usePlayHost();
-  const [want, setWant] = useState<string | null>(() => {
-    const room = ownsPage ? roomFromSearch(window.location.search) : null;
-    return room === null ? null : room;
-  });
+  // The link waiting to land: its query (`?room=…&entry=…`, `?go=pass`).
+  const [want, setWant] = useState<string | null>(() => (ownsPage ? linkFromSearch(window.location.search) : null));
   const [nav, setNav] = useState<Nav | null>(null);
   useEffect(() => {
     if (!ownsPage) return;
     const sw = typeof navigator !== "undefined" ? navigator.serviceWorker : undefined;
     if (sw === undefined) return;
     const on = (e: MessageEvent) => {
-      const room = roomFromMessage(e.data);
-      if (room !== null) setWant(room);
+      const link = linkFromMessage(e.data);
+      if (link !== null) setWant(link);
     };
     sw.addEventListener("message", on);
     try {
@@ -292,14 +290,14 @@ function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav
   useEffect(() => {
     if (want === null || !signedIn) return;
     setWant(null);
-    if (ownsPage && roomFromSearch(window.location.search) !== null) {
+    if (ownsPage && linkFromSearch(window.location.search) !== null) {
       try {
         window.history.replaceState(null, "", `${window.location.pathname}${withoutRoom(window.location.search)}`);
       } catch {
         /* fine */
       }
     }
-    setNav(navFromSearch(`?room=${encodeURIComponent(want)}`, listed));
+    setNav(navFromSearch(want, listed));
     // `listed` is rebuilt each render; the request is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [want, signedIn]);

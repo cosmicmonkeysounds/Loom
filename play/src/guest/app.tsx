@@ -425,7 +425,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       }
       stage = (
         <ChannelView
-          channel={active.id === "lobby" ? { ...active, title: `📜 ${active.title}`, subtitle: undefined } : active}
+          channel={active.id === "lobby" ? { ...active, subtitle: undefined } : active}
           wide={wide}
           meId={s.me.id}
           onBack={nav.back}
