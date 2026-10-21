@@ -379,14 +379,18 @@ export function queuedText(facts: FactsView): string {
 
 /** The judge character's queue of rulings (`CastSummary.agentQueue.judging`,
  *  else the mind summary's), or null: nothing queued or out and no stall,
- *  no judge, or an older server. */
-export function judgingQueueOf(judge: string | null, cast: readonly CastSummary[], minds: readonly AgentMindSummary[]): AgentJudging | null {
+ *  no judge, or an older server. Given `now`, a stamped wait is aged by the
+ *  time since it arrived. */
+export function judgingQueueOf(judge: string | null, cast: readonly CastSummary[], minds: readonly AgentMindSummary[], now?: number): AgentJudging | null {
   if (judge === null) return null
   const read = (q: unknown): AgentJudging | null => {
     const j = (q as { judging?: unknown } | null | undefined)?.judging as Partial<AgentJudging> | undefined
     if (j === undefined || j === null || typeof j !== 'object') return null
     if (typeof j.queued !== 'number' || typeof j.out !== 'number') return null
-    return { queued: j.queued, out: j.out, oldestMs: typeof j.oldestMs === 'number' ? j.oldestMs : null, stalled: j.stalled === true }
+    let oldestMs = typeof j.oldestMs === 'number' ? j.oldestMs : null
+    // The wait ages between snapshots (sent as of the send), like the voice queue's.
+    if (now !== undefined && oldestMs !== null && typeof j.receivedAt === 'number' && j.queued + j.out > 0) oldestMs += Math.max(0, now - j.receivedAt)
+    return { queued: j.queued, out: j.out, oldestMs, stalled: j.stalled === true }
   }
   return read(cast.find((c) => c.id === judge)?.agentQueue) ?? read((minds.find((m) => m.character === judge) as { agentQueue?: unknown } | undefined)?.agentQueue)
 }

@@ -240,6 +240,10 @@ function JudgingCard({ local = false }: { local?: boolean }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [openQ, setOpenQ] = useState<ReadonlySet<string>>(() => new Set())
   const mode = judgeModeOf(world, facts)
+  // The judge queue's oldest wait ages by the second between snapshots.
+  const judgeName = facts === null ? null : judgeOf(facts)
+  const rawJudging = judgingQueueOf(judgeName, cast, minds)
+  const now = useNow(rawJudging !== null && rawJudging.queued + rawJudging.out > 0, 1000)
   if (facts === null) {
     return (
       <section className={panel} data-testid="judging-card">
@@ -254,7 +258,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
   const ruled = ruledFilings(facts)
   const near = nearCount(facts)
   const judge = judgeOf(facts)
-  const queue = judge === null ? null : judgingBadge(judgingQueueOf(judge, cast, minds), judge)
+  const queue = judge === null ? null : judgingBadge(judgingQueueOf(judge, cast, minds, now), judge)
   const tallies = questionTallies(facts)
   const switchMode = async (m: JudgeMode) => {
     if (m === mode || busy !== null) return

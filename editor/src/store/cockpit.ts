@@ -374,6 +374,9 @@ export interface AgentJudging {
   oldestMs: number | null
   /** Every worker voicing it answers no rulings (two expiries in a row). */
   stalled: boolean
+  /** Client only: the wall ms this console received `oldestMs` (stamped
+   *  apart from the voice queue's), so the wait ages between snapshots. */
+  receivedAt?: number
 }
 
 /** Stamp each cast row's `agentQueue` with when it arrived. A queue the
@@ -386,7 +389,15 @@ export function stampAgentQueues(next: readonly CastSummary[], prev: readonly Ca
     if (q === undefined || q === null || typeof q !== 'object') return c
     const old = before.get(c.id)
     const same = old !== undefined && old.depth === q.depth && old.oldestMs === q.oldestMs && old.stalled === q.stalled
-    return { ...c, agentQueue: { ...q, receivedAt: same && old.receivedAt !== undefined ? old.receivedAt : at } }
+    const stamped: AgentQueue = { ...q, receivedAt: same && old.receivedAt !== undefined ? old.receivedAt : at }
+    // The judge queue (wave 18b) changes on its own clock: stamp it apart.
+    const j = q.judging
+    if (j !== undefined && j !== null && typeof j === 'object') {
+      const was = old?.judging
+      const sameJ = was !== undefined && was.queued === j.queued && was.out === j.out && was.oldestMs === j.oldestMs && was.stalled === j.stalled
+      stamped.judging = { ...j, receivedAt: sameJ && was.receivedAt !== undefined ? was.receivedAt : at }
+    }
+    return { ...c, agentQueue: stamped }
   })
 }
 

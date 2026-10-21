@@ -259,6 +259,27 @@ describe('judging', () => {
     expect(judgingQueueOf('Trabolta', [], minds)).toMatchObject({ queued: 1 })
   })
 
+  it('wave 18b (O4): the judge queue’s oldest wait ages between snapshots, stamped apart from the voice queue', () => {
+    const row = (judging: Record<string, unknown>, depth = 0, oldestMs: number | null = null): CastSummary =>
+      ({ id: 'Trabolta', faction: null, agent: true, agentQueue: { depth, oldestMs, stalled: false, judging } }) as unknown as CastSummary
+    const first = stampAgentQueues([row({ queued: 2, out: 1, oldestMs: 3_000, stalled: false })], [], 10_000)
+    expect(first[0]!.agentQueue?.judging?.receivedAt).toBe(10_000)
+    // 50 s later, no new snapshot: the badge reads 0:53, not 0:03.
+    const j = judgingQueueOf('Trabolta', first, [], 60_000)
+    expect(j?.oldestMs).toBe(53_000)
+    expect(judgingBadge(j, 'Trabolta')?.text).toBe('🤖 2 queued · 1 out · oldest 0:53')
+    // A snapshot that leaves the judge queue alone keeps its stamp, though the voice queue moved.
+    const second = stampAgentQueues([row({ queued: 2, out: 1, oldestMs: 3_000, stalled: false }, 1, 500)], first, 20_000)
+    expect(second[0]!.agentQueue?.judging?.receivedAt).toBe(10_000)
+    expect(second[0]!.agentQueue?.receivedAt).toBe(20_000)
+    // A new judge reading re-stamps it.
+    const third = stampAgentQueues([row({ queued: 1, out: 1, oldestMs: 1_000, stalled: false })], second, 30_000)
+    expect(third[0]!.agentQueue?.judging?.receivedAt).toBe(30_000)
+    // Nothing queued or out never ages; no now, no aging.
+    expect(judgingQueueOf('Trabolta', stampAgentQueues([row({ queued: 0, out: 0, oldestMs: 3_000, stalled: true })], [], 0), [], 9_000)?.oldestMs).toBe(3_000)
+    expect(judgingQueueOf('Trabolta', first, [])?.oldestMs).toBe(3_000)
+  })
+
   it('wave 18b (O4): the Judging card in auto with a judge says who rules and shows his queue', () => {
     const extra = (o: Record<string, unknown>) => o as unknown as Partial<FactsFiling>
     const q = [
