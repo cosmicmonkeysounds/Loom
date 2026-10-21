@@ -108,7 +108,7 @@ describe("the pop-out dock on a card (§2.2 rule 6)", () => {
       </PopOutProvider>,
     );
     const scroll = html.indexOf('class="booth-card-scroll"');
-    const strip = html.indexOf("popout-strip");
+    const strip = html.indexOf("bpop-strip");
     const foot = html.indexOf("booth-card-foot");
     expect(scroll).toBeGreaterThan(-1);
     expect(strip).toBeGreaterThan(scroll);

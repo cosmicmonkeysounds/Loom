@@ -25,8 +25,8 @@ export function GuestTiles({ list, everyone, chosen, greyed, disabled = false, o
   const [q, setQ] = useState("");
   const shown = searching ? filterGuests(everyone, q) : list;
   return (
-    <div className="pick-tiles-box">
-      {!searching && <div className="pick-at-hand">At hand ({list.length})</div>}
+    <div className="bsel-tiles-box">
+      {!searching && <div className="bsel-at-hand">At hand ({list.length})</div>}
       {searching && (
         <input className="w95-inset booth-search" type="search" placeholder="Search everyone" aria-label="Search everyone" value={q} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setQ(e.target.value)} />
       )}
@@ -46,7 +46,7 @@ export function GuestTiles({ list, everyone, chosen, greyed, disabled = false, o
         })}
       </div>
       {shown.length === 0 && <p className="booth-none">{searching ? "Nobody matches." : "Nobody at hand right now."}</p>}
-      <button type="button" className="w95-btn pick-search" onClick={() => setSearching((v) => !v)}>
+      <button type="button" className="w95-btn bsel-search" onClick={() => setSearching((v) => !v)}>
         {searching ? "‹ Back to who's at hand" : "🔍 Not here? Search everyone"}
       </button>
     </div>

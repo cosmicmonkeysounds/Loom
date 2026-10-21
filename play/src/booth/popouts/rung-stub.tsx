@@ -283,59 +283,59 @@ function Body({ spec, compact }: { spec: PopOutSpec; compact: boolean }) {
   };
   const actions = compact ? spec.actions.slice(0, 3) : spec.actions;
   return (
-    <div className={`popout-body ${compact ? "compact" : ""}`}>
+    <div className={`bpop-body ${compact ? "compact" : ""}`}>
       {spec.guest !== undefined && (
-        <div className="popout-guest">
+        <div className="bpop-guest">
           <PersonAvatar name={spec.guest.name} size={compact ? "md" : "lg"} />
-          <div className="popout-guest-text">
-            <strong className="popout-name">{spec.guest.name}</strong>
-            {spec.guest.location != null && <span className="popout-place">📍 {spec.guest.location}</span>}
-            {spec.guest.seen != null && <span className="popout-seen">{spec.guest.seen}</span>}
+          <div className="bpop-guest-text">
+            <strong className="bpop-name">{spec.guest.name}</strong>
+            {spec.guest.location != null && <span className="bpop-place">📍 {spec.guest.location}</span>}
+            {spec.guest.seen != null && <span className="bpop-seen">{spec.guest.seen}</span>}
           </div>
         </div>
       )}
       {body.filter((p) => p !== "").map((p, n) => (
-        <p key={n} className="popout-p">
+        <p key={n} className="bpop-p">
           {p}
         </p>
       ))}
       {(spec.rows ?? []).slice(0, 4).map((g) => (
-        <div key={g.id} className="popout-row">
+        <div key={g.id} className="bpop-row">
           <PersonAvatar name={g.name} size="sm" />
-          <span className="popout-row-name">{g.name}</span>
-          {g.location != null && <span className="popout-place">📍 {g.location}</span>}
+          <span className="bpop-row-name">{g.name}</span>
+          {g.location != null && <span className="bpop-place">📍 {g.location}</span>}
         </div>
       ))}
-      <div className="popout-actions">
+      <div className="bpop-actions">
         {actions.map((a) => {
           const armed = arm.armed === `${spec.key}:${a.id}`;
           const dead = (a.deadMs ?? 0) > Date.now() - since;
           return (
-            <button key={a.id} type="button" className={`w95-btn popout-btn ${a.kind === "primary" ? "primary booth-default" : ""} ${armed ? "armed" : ""}`} disabled={busy || dead} aria-busy={busy || undefined} onClick={() => run(a)}>
+            <button key={a.id} type="button" className={`w95-btn bpop-btn ${a.kind === "primary" ? "primary booth-default" : ""} ${armed ? "armed" : ""}`} disabled={busy || dead} aria-busy={busy || undefined} onClick={() => run(a)}>
               {busy ? `${a.label} …` : armed ? ARM_LINE : a.label}
             </button>
           );
         })}
         {spec.noLater !== true && (
-          <button type="button" className="w95-btn popout-btn popout-later" disabled={busy} onClick={() => r.defer(spec.key)}>
+          <button type="button" className="w95-btn bpop-btn bpop-later" disabled={busy} onClick={() => r.defer(spec.key)}>
             Later
           </button>
         )}
       </div>
-      {spec.status !== undefined && <div className="popout-status">{spec.status}</div>}
+      {spec.status !== undefined && <div className="bpop-status">{spec.status}</div>}
     </div>
   );
 }
 
 function Caption({ spec, queued, onLater }: { spec: PopOutSpec; queued: number; onLater?: () => void }) {
   return (
-    <div className={`popout-cap ${spec.tone}`}>
-      <span className="popout-cap-title">
+    <div className={`bpop-cap ${spec.tone}`}>
+      <span className="bpop-cap-title">
         <span aria-hidden>{spec.glyph}</span> {spec.title}
       </span>
-      {queued > 0 && <span className="popout-pager">1 of {queued + 1}</span>}
+      {queued > 0 && <span className="bpop-pager">1 of {queued + 1}</span>}
       {onLater !== undefined && spec.noLater !== true && (
-        <button type="button" className="w95-btn w95-x popout-min" aria-label="Later" onClick={onLater}>
+        <button type="button" className="w95-btn w95-x bpop-min" aria-label="Later" onClick={onLater}>
           _
         </button>
       )}
@@ -349,7 +349,7 @@ export function PopOutHost(): JSX.Element | null {
   const c = r.current;
   if (c === null || r.docks > 0) return null;
   return (
-    <div className={`popout popout-float ${c.tone}`} role="dialog" aria-modal="false" aria-label={`${c.title}${c.guest ? `: ${c.guest.name}` : ""}`} data-popout={c.key}>
+    <div className={`bpop bpop-float ${c.tone}`} role="dialog" aria-modal="false" aria-label={`${c.title}${c.guest ? `: ${c.guest.name}` : ""}`} data-popout={c.key}>
       <span className="booth-sr" aria-live="assertive">
         {c.title}
         {c.guest ? `: ${c.guest.name}` : ""}
@@ -375,14 +375,14 @@ export function PopOutDock(): JSX.Element | null {
   if (c === null || (r.topDock !== null && r.topDock !== id)) return null;
   if (!open) {
     return (
-      <div className={`popout popout-strip ${c.tone}`} data-popout={c.key}>
-        <button type="button" className="popout-strip-btn" onClick={() => setOpen(true)} aria-expanded={false}>
-          <span aria-hidden>{c.glyph}</span> <span className="popout-strip-text">
+      <div className={`bpop bpop-strip ${c.tone}`} data-popout={c.key}>
+        <button type="button" className="bpop-strip-btn" onClick={() => setOpen(true)} aria-expanded={false}>
+          <span aria-hidden>{c.glyph}</span> <span className="bpop-strip-text">
             {c.title}
             {c.guest ? `: ${c.guest.name}` : ""}
             {c.guest?.location ? ` · 📍 ${c.guest.location}` : ""}
           </span>
-          <span className="popout-strip-open" aria-hidden>
+          <span className="bpop-strip-open" aria-hidden>
             ▭
           </span>
         </button>
@@ -390,7 +390,7 @@ export function PopOutDock(): JSX.Element | null {
     );
   }
   return (
-    <div className={`popout popout-docked ${c.tone}`} role="group" aria-label={c.title} data-popout={c.key}>
+    <div className={`bpop bpop-docked ${c.tone}`} role="group" aria-label={c.title} data-popout={c.key}>
       <Caption spec={c} queued={r.queued} onLater={() => r.defer(c.key)} />
       <Body key={`${c.key}|${revOf(c)}`} spec={c} compact />
     </div>
@@ -403,7 +403,7 @@ export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }): 
   const now = Date.now();
   if (r.tray.length === 0) return <p className="booth-none">Nothing waiting. You're on top of it.</p>;
   return (
-    <ul className="popout-tray">
+    <ul className="bpop-tray">
       {r.tray.map((s) => {
         const at = r.deferredAt(s.key);
         const mins = at !== null ? Math.max(0, Math.round((now - at) / 60_000)) : null;
@@ -411,7 +411,7 @@ export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }): 
           <li key={s.key}>
             <button
               type="button"
-              className="booth-guest popout-tray-row"
+              className="booth-guest bpop-tray-row"
               onClick={() => {
                 r.restore(s.key);
                 onPick?.(s.key);

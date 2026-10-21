@@ -81,8 +81,8 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
   const target = chosen ?? null;
   const armed = step !== undefined && target !== null && arm.armed === `${step.id}:${target}`;
   const foot = finished ? (
-    <div className="pick-foot">
-      <button type="button" className="w95-btn booth-default pick-go" onClick={() => {
+    <div className="bsel-foot">
+      <button type="button" className="w95-btn booth-default bsel-go" onClick={() => {
         setDone(steps.map(() => null));
         setReply("");
         setStaff([]);
@@ -95,15 +95,15 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
       </button>
     </div>
   ) : (
-    <div className="pick-foot">
-      {reply.startsWith("Not done") && <p className="pick-reply refused">{reply}</p>}
+    <div className="bsel-foot">
+      {reply.startsWith("Not done") && <p className="bsel-reply refused">{reply}</p>}
       {step !== undefined && target !== null && step.destructive && <p className="booth-harm-head">⚠ Marks {nameOf(target)} for reinstallation: tap twice</p>}
       {step !== undefined && target !== null && (
-        <button type="button" className={`w95-btn pick-go ${step.destructive ? "harm" : "booth-default"} ${armed ? "armed" : ""}`} disabled={busy} aria-busy={busy || undefined} onClick={() => fire(target)}>
+        <button type="button" className={`w95-btn bsel-go ${step.destructive ? "harm" : "booth-default"} ${armed ? "armed" : ""}`} disabled={busy} aria-busy={busy || undefined} onClick={() => fire(target)}>
           {busy ? `${step.label} …` : armed ? ARM_LINE : `${step.label}: ${nameOf(target)}`}
         </button>
       )}
-      <div className="pick-foot-row">
+      <div className="bsel-foot-row">
         <button type="button" className="w95-btn" disabled={busy} onClick={() => go(at + 1)}>
           Skip
         </button>
@@ -126,25 +126,25 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
       onClose={onClose}
       foot={foot}
     >
-      <div className="pick">
-        <div className="pick-moves" role="tablist" aria-label="Moves">
-          <span className="pick-moves-k" aria-hidden>
+      <div className="bsel">
+        <div className="bsel-moves" role="tablist" aria-label="Moves">
+          <span className="bsel-moves-k" aria-hidden>
             MOVE
           </span>
           {steps.map((s, i) => (
-            <button key={s.id} type="button" role="tab" aria-selected={i === at} className={`w95-btn pick-move ${i === at ? "current" : ""} ${done[i] != null ? "done" : ""}`} onClick={() => go(i)}>
+            <button key={s.id} type="button" role="tab" aria-selected={i === at} className={`w95-btn bsel-move ${i === at ? "current" : ""} ${done[i] != null ? "done" : ""}`} onClick={() => go(i)}>
               {["①", "②", "③", "④", "⑤", "⑥"][i] ?? i + 1} {s.glyph}
               {done[i] != null ? " ✓" : ""}
             </button>
           ))}
         </div>
         {reply !== "" && !reply.startsWith("Not done") && (
-          <p className="pick-reply" role="status">
+          <p className="bsel-reply" role="status">
             {reply}
           </p>
         )}
         {finished ? (
-          <div className="pick-done w95-inset">
+          <div className="bsel-done w95-inset">
             <p>(i) Done.</p>
             {[...new Set(done.filter((x): x is string => x !== null))].map((id) => (
               <p key={id}>
@@ -159,13 +159,13 @@ export function PlayerSelect({ objective, steps, guests, press, onClose, onLater
           </div>
         ) : step !== undefined ? (
           <>
-            <p className="pick-prompt">{step.prompt}</p>
-            <p className="pick-helper">{stepHelper(step, at)}</p>
+            <p className="bsel-prompt">{step.prompt}</p>
+            <p className="bsel-helper">{stepHelper(step, at)}</p>
             {same !== null && (
-              <div className="pick-same">
+              <div className="bsel-same">
                 <PersonAvatar name={nameOf(same)} size="md" />
-                <span className="pick-same-name">SAME: {nameOf(same).toUpperCase()}</span>
-                <button type="button" className="w95-btn booth-default pick-same-go" disabled={busy} onClick={() => fire(same)}>
+                <span className="bsel-same-name">SAME: {nameOf(same).toUpperCase()}</span>
+                <button type="button" className="w95-btn booth-default bsel-same-go" disabled={busy} onClick={() => fire(same)}>
                   {sameLabel(step)}
                 </button>
               </div>
