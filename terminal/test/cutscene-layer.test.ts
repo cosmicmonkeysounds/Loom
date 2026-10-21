@@ -99,3 +99,17 @@ describe("the mirror fallback (X5)", () => {
     expect(silentView("auto")).toBe(false);
   });
 });
+
+describe("a slide scene hidden under a moment (OB-6)", () => {
+  it("is drawn frozen at the frame it was covered, then live again", async () => {
+    const { baseClock, sameSceneFrame } = await import("../src/cutscene/CutsceneLayer.tsx");
+    expect(baseClock(1000, 1500, false)).toBe(1500);
+    expect(baseClock(1000, 1500, true)).toBe(1000);
+    const scene = { kind: "slide" as const, def: { id: "x", when: [], ms: "hold" as const }, seq: 1, at: 1, start: 1, value: "x", who: null, key: "x:s1" };
+    const state = {} as never;
+    const a = { scene, now: 1000, state, target: "tv" as const, reduced: false, silent: true };
+    // A new pick object for the same scene at the same frozen clock: no redraw.
+    expect(sameSceneFrame(a, { ...a, scene: { ...scene } })).toBe(true);
+    expect(sameSceneFrame(a, { ...a, now: 1033 })).toBe(false);
+  });
+});
