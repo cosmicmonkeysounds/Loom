@@ -40,6 +40,9 @@ export const HOST_ROUTES = [
   "/api/mod/clock",
   // Who is calling the show (wave 18 C8): claim it, or let it go.
   "/api/mod/caller",
+  // A guest-founded crew: rename it, or dissolve it (fix round M3).
+  "/api/mod/crew/rename",
+  "/api/mod/crew/dissolve",
 ] as const;
 export type HostRoute = (typeof HOST_ROUTES)[number];
 
@@ -162,6 +165,8 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
       return { name: str(r["name"]), url: str(r["url"]), expiresAt: typeof r["expiresAt"] === "number" ? r["expiresAt"] : 0 };
     },
     release: (character: string) => post("/api/mod/prime/release", { character }),
+    renameCrew: (crew: string, name: string) => post("/api/mod/crew/rename", { crew, name }),
+    dissolveCrew: (crew: string) => post("/api/mod/crew/dissolve", { crew }),
     restrict: (id: string, on: boolean) => post("/api/mod/act", { id, action: on ? "restrict" : "unrestrict" }),
     /** End a stale Bathroom Mode: the story's own "back" event on the guest. */
     backFromBathroom: (id: string) => post("/api/mod/signal", { name: BACK_FROM_BATHROOM, subject: id }),

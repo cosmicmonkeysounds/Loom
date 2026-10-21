@@ -24,7 +24,7 @@ import { pendingWidget, personalStream } from "../session/channels.ts";
 import { useGuestSession, type GuestSession } from "../session/guest.ts";
 import { Tutorial, tourResult, tutorialSteps } from "../tutorial.tsx";
 import { CODEX_ROOM } from "../rooms/spaces.ts";
-import { chatSections, chatsDot } from "../rooms/chats.ts";
+import { chatSections, chatsDot, crewRoomGone } from "../rooms/chats.ts";
 import { FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, frozenUntil, guestWalletActions, useWalletClock, type WalletSheet } from "../wallet.tsx";
 import type { Action, Interaction } from "../types.ts";
 import { usePush } from "../push.ts";
@@ -222,6 +222,17 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   useEffect(() => {
     if (onMission && nowId !== seenNow) setSeenNow(nowId);
   }, [onMission, nowId, seenNow]);
+  // A crew room that left the view (dissolved, or the guest left it) while
+  // open: back to Chats with a word, never a dead room titled with its raw
+  // id (A3).
+  const openRoom = t.activeId;
+  const crewGone = openRoom !== null && crewRoomGone(openRoom, st?.channels);
+  useEffect(() => {
+    if (!crewGone) return;
+    nav.go({ to: "chats" });
+    s.alerts.raise("That crew was dissolved. Its room is closed.", { quiet: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crewGone]);
   // A notification's link (SW-PLAY-20, §6.4) once in the app — never under the cutscene.
   useEffect(() => {
     if (s.linkNav === null || !signedIn) return;

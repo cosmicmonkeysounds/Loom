@@ -72,6 +72,8 @@ export function MoreTab({ focus }: { focus: MoreFocus | null }) {
             return <Parts key={s} />;
           case "agents":
             return <Agents key={s} />;
+          case "crews":
+            return <Crews key={s} />;
           default:
             return null;
         }
@@ -477,6 +479,62 @@ function Parts() {
         </ul>
       )}
       {free.length > 0 && <p className="host-note">{presenceText(free[0]!.presence)}: {free.map((p) => p.id).join(", ")}</p>}
+    </HostSection>
+  );
+}
+
+/** The guest-founded crews (fix round M3, F4): rename one (the server's
+ *  moderation applies), or dissolve it. */
+function Crews() {
+  const { view, calls, run } = useHost();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const crews = view.crews ?? [];
+  return (
+    <HostSection id="crews" title="◇ Crews" aside={`${crews.length}`}>
+      <ul className="host-rows">
+        {crews.map((c) => (
+          <li key={c.id} className="host-subrow">
+            {editing === c.id ? (
+              <form
+                className="host-crew-rename"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const n = name.trim();
+                  if (n === "") return;
+                  void run(`◇ ${c.name} is now ${n}`, () => calls.renameCrew(c.id, n)).then(() => setEditing(null));
+                }}
+              >
+                <input className="w95-input" aria-label={`A new name for ${c.name}`} value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
+                <button type="submit" className="w95-btn">
+                  Save
+                </button>
+                <button type="button" className="w95-btn" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <>
+                <span className="host-subrow-name">
+                  {c.name}
+                  <span className="host-subrow-sub">{c.members === 1 ? "1 member" : `${c.members} members`}</span>
+                </span>
+                <button
+                  type="button"
+                  className="w95-btn"
+                  onClick={() => {
+                    setName(c.name);
+                    setEditing(c.id);
+                  }}
+                >
+                  ✎ Rename
+                </button>
+                <ConfirmButton label="✕ Dissolve" ask={`Dissolve ${c.name}? Its room closes for every member.`} danger onConfirm={() => run(`◇ ${c.name} dissolved`, () => calls.dissolveCrew(c.id))} />
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
     </HostSection>
   );
 }

@@ -88,13 +88,13 @@ export const MORE_TABS: ReadonlyArray<{ id: MoreTabId; label: string }> = [
  *  parts). */
 export function moreTabOf(section: MoreFocus): MoreTabId {
   if (section === "codes" || section === "parts") return "setup";
-  if (section === "wallet" || section === "king" || section === "terminals" || section.startsWith("agents")) return "house";
+  if (section === "wallet" || section === "king" || section === "terminals" || section === "crews" || section.startsWith("agents")) return "house";
   return "night";
 }
 
 /** More, split in three (wave 18 §5.6): each tab's sections in order, only
  *  those the event has. A tab with none is still listed (empty). */
-export function moreGroups(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents">): Record<MoreTabId, MoreSection[]> {
+export function moreGroups(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents"> & Partial<Pick<HostView, "crews">>): Record<MoreTabId, MoreSection[]> {
   const out: Record<MoreTabId, MoreSection[]> = { night: [], house: [], setup: [] };
   for (const s of moreSections(view)) out[moreTabOf(s)].push(s);
   return out;
@@ -199,7 +199,7 @@ export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocu
   return null;
 }
 
-export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents";
+export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents" | "crews";
 
 /** Where More scrolls to: a section, or one agent-voiced character's. */
 export type MoreFocus = MoreSection | `agents-${string}`;
@@ -211,7 +211,7 @@ export function agentSection(character: string): `agents-${string}` {
 }
 
 /** The More tab's sections in order, each only when the event has it. */
-export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents">): MoreSection[] {
+export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals" | "parts" | "agents"> & Partial<Pick<HostView, "crews">>): MoreSection[] {
   const out: MoreSection[] = ["show", "clock", "announce", "alerts"];
   if (view.wallet !== null) out.push("wallet");
   if (view.king !== null) out.push("king");
@@ -219,6 +219,7 @@ export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals
   out.push("codes");
   if (view.parts.length > 0) out.push("parts");
   if (view.agents.length > 0) out.push("agents");
+  if ((view.crews ?? []).length > 0) out.push("crews");
   return out;
 }
 

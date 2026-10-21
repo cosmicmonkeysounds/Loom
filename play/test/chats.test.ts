@@ -113,3 +113,13 @@ describe("guestDotOf (§3.3)", () => {
     expect(guestDotOf(ch("pm:g-1:g-2", { messages: [msg(11, { from: "Ada" })] }), 11, me)).toBe(0);
   });
 });
+
+describe("a dissolved crew's room (A3)", () => {
+  it("is gone once the view stops listing it; any other room never is", async () => {
+    const { crewRoomGone } = await import("../src/rooms/chats.ts");
+    expect(crewRoomGone("crew:crew-36", [{ id: "loc:The Desktop" }])).toBe(true);
+    expect(crewRoomGone("crew:crew-36", [{ id: "crew:crew-36" }])).toBe(false);
+    expect(crewRoomGone("crew:crew-36", undefined)).toBe(false);
+    expect(crewRoomGone("dm:Trabolta", [])).toBe(false);
+  });
+});

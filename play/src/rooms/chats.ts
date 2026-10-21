@@ -9,6 +9,11 @@ import type { Channel } from "../types.ts";
 /** How long a quiet thread still counts as a conversation (story time). */
 export const QUIET_MS = 15 * 60_000;
 
+/** A crew's room (`crew:<id>`) the view no longer lists: dissolved, or left (A3). */
+export function crewRoomGone(room: string, channels: ReadonlyArray<{ id: string }> | undefined): boolean {
+  return room.startsWith("crew:") && channels !== undefined && !channels.some((c) => c.id === room);
+}
+
 /** The guest-side words for the lobby (G2). */
 export const CHAT_LOG_TITLE = "Chat log";
 export const CHAT_LOG_SUB = "Everything the house said tonight";
