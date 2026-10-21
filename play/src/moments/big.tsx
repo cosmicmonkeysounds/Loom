@@ -14,6 +14,7 @@ import type { WidgetHook } from "../stream/bubble.tsx";
 import type { WidgetCard } from "../types.ts";
 import { WIDGETS, WidgetHost } from "../widgets.tsx";
 import { BIG_DEAD_MS, BIG_SETTLE_MS, bigParts, cheerLabel, kickerOf } from "./big-model.ts";
+import { cardTitleRepeats } from "./big-parts.ts";
 import { drawnIcon, type Exit } from "./exits.ts";
 import type { Queued } from "./model.ts";
 import { focusedIn, typingIn } from "../ui/focus.ts";
@@ -159,7 +160,7 @@ export function BigMoment({
             </h2>
           )}
           {inside && card !== undefined && widgets !== undefined && (
-            <div className="moments-big-card">
+            <div className={`moments-big-card${!bleed && cardTitleRepeats(m.text, card.card.text) ? " same-title" : ""}`}>
               <WidgetHost
                 card={card.card}
                 seed={card.seq}
@@ -182,7 +183,7 @@ export function BigMoment({
               {k.footer} It&apos;s also in {card.room}&apos;s chat.
             </p>
           )}
-          {k.bar !== null && (
+          {k.bar !== null && !bleed && (
             <div className="moments-big-install">
               <span className="moments-big-install-line">{live ? k.bar.done : k.bar.during}</span>
               <span className="moments-big-bar w95-inset" aria-hidden>
@@ -190,19 +191,21 @@ export function BigMoment({
               </span>
             </div>
           )}
-          <div className="moments-big-buttons">
-            {(bleed ? [] : exits.slice(0, 2)).map((x) => (
-              <button key={`${x.nav.to}:${x.label}`} type="button" className="w95-btn moments-big-exit" disabled={!live} onClick={() => live && onExit(x)}>
-                {drawnIcon(x) !== null && <Icon name={drawnIcon(x)!} size={16} />}
-                <span className="moments-exit-label">{x.label}</span>
-              </button>
-            ))}
-            {ackLabel !== null && (
-              <button ref={ack} type="button" className="w95-btn moments-big-ack" disabled={!live} onClick={() => live && finish()}>
-                {ackLabel}
-              </button>
-            )}
-          </div>
+          {(!bleed || ackLabel !== null) && (
+            <div className="moments-big-buttons">
+              {(bleed ? [] : exits.slice(0, 2)).map((x) => (
+                <button key={`${x.nav.to}:${x.label}`} type="button" className="w95-btn moments-big-exit" disabled={!live} onClick={() => live && onExit(x)}>
+                  {drawnIcon(x) !== null && <Icon name={drawnIcon(x)!} size={16} />}
+                  <span className="moments-exit-label">{x.label}</span>
+                </button>
+              ))}
+              {ackLabel !== null && (
+                <button ref={ack} type="button" className="w95-btn moments-big-ack" disabled={!live} onClick={() => live && finish()}>
+                  {ackLabel}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -325,6 +325,8 @@
 }
 .moments-big-text { margin: 0; padding: 0 14px; color: var(--ink); font: 16px/1.4 var(--chat-font); white-space: pre-line; overflow-wrap: anywhere; }
 .moments-big-card { padding: 0 10px; }
+/* the card's own title when the big already says it (N8) */
+.moments-big-card.same-title .widget-head, .moments-big-card.same-title .widget > .widget-title { display: none; }
 .moments-big-footer { margin: 0; padding: 0 14px; color: var(--dim-ink); font: 13px/1.35 var(--ui-font); }
 .moments-big-install { display: flex; flex-direction: column; gap: 4px; padding: 0 14px; font: 13px var(--ui-font); color: var(--ink); }
 .moments-big-bar { display: block; height: 18px; padding: 2px; overflow: hidden; }
@@ -338,8 +340,15 @@
 .moments-big-buttons .w95-btn { flex: 1 1 140px; min-height: 56px; font: 700 15px var(--ui-font); }
 .moments-big-ack { box-shadow: 0 0 0 1px var(--ink), var(--raised); }
 .moments-big-buttons .w95-btn:disabled { color: var(--dim-ink); cursor: default; }
-/* the doors (a full-bleed card) fill the window */
+/* the doors (a full-bleed card) are the whole screen, edge to edge: no
+   window margins, no bevel, no empty footer (GUEST-SPEC §9.1, N6) */
 .moments-big.full-bleed .moments-big-card { padding: 0; }
+.moments-big.full-bleed { padding: var(--safe-top) 0 var(--safe-bottom); background: var(--black); align-items: stretch; }
+.moments-big.full-bleed .moments-big-window { max-width: none; max-height: none; height: 100%; box-shadow: none; background: var(--black); display: flex; flex-direction: column; }
+.moments-big.full-bleed .moments-big-body { flex: 1 1 auto; gap: 0; padding: 0; }
+.moments-big.full-bleed .moments-big-card { flex: 1 1 auto; display: flex; flex-direction: column; }
+.moments-big.full-bleed .doors { flex: 1 1 auto; border-radius: 0; justify-content: center; }
+.moments-big.full-bleed .moments-big-buttons { padding: 8px 12px 12px; }
 @media (max-width: 379px) {
   .moments-big-buttons .w95-btn { flex-basis: 100%; }
 }

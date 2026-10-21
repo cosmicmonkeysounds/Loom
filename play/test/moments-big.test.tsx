@@ -7,6 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BigMoment } from "../src/moments/big.tsx";
 import { BIG_DEAD_MS, bigParts, cheerLabel, kickerOf } from "../src/moments/big-model.ts";
+import { cardTitleRepeats } from "../src/moments/big-parts.ts";
+import { registerSidesWidgets } from "../src/sides/widgets.tsx";
 import type { Exit } from "../src/moments/exits.ts";
 import type { Moment } from "../src/moments/model.ts";
 import type { WidgetHook } from "../src/stream/bubble.tsx";
@@ -81,6 +83,32 @@ describe("the window", () => {
     // Answered elsewhere: an OK appears.
     const done = renderToStaticMarkup(createElement(BigMoment, { q: q(moment({ card: { seq: 9, kind: "poll", glyph: "🍾" } })), index: 1, total: 1, exits: [], onExit: noop, onAck: noop, card, widgets: { ...widgets, answered: new Map([[9, { option: "Truth" }]]) } }));
     expect(done).toContain(">OK<");
+  });
+
+  it("a card that repeats the big's words hides its own title (N8)", () => {
+    expect(cardTitleRepeats("🍾 The bottle landed on you. Truth or dare?", "🍾 The bottle landed on you. Truth or dare?")).toBe(true);
+    expect(cardTitleRepeats("🍾 The bottle landed on you. Truth or dare?", "Truth or dare?")).toBe(true);
+    expect(cardTitleRepeats("Winamp wants you in Unlimited Power", "Winamp wants you in Unlimited Power")).toBe(true);
+    expect(cardTitleRepeats("📝 File your facts.", "Which program has a cat?")).toBe(false);
+    expect(cardTitleRepeats("Anything", "")).toBe(false);
+    const widgets: WidgetHook = { answer: noop, answered: new Map() };
+    const text = "🍾 The bottle landed on you. Truth or dare?";
+    const card = { card: { kind: "poll", text, params: { options: "Truth|Dare" } }, seq: 9, room: "Trabolta" };
+    const html = renderToStaticMarkup(createElement(BigMoment, { q: q(moment({ text, card: { seq: 9, kind: "poll", glyph: "🍾" } })), index: 1, total: 1, exits: [], onExit: noop, onAck: noop, card, widgets }));
+    expect(html).toContain('class="moments-big-card same-title"');
+    expect(readBundledCss()).toContain(".moments-big-card.same-title .widget-head");
+  });
+
+  it("the doors fill the screen with no empty footer (N6)", () => {
+    const widgets: WidgetHook = { answer: noop, answered: new Map() };
+    registerSidesWidgets();
+    const card = { card: { kind: "sides", text: "🕚 SYSTEM CLOCK RESET\nTwo doors have opened.", params: {} }, seq: 9, room: "Trabolta" };
+    const html = renderToStaticMarkup(createElement(BigMoment, { q: q(moment({ text: "🕚 SYSTEM CLOCK RESET", card: { seq: 9, kind: "sides", glyph: "🚪" } })), index: 1, total: 1, exits: [PASS], onExit: noop, onAck: noop, card, widgets }));
+    expect(html).toContain("moments-big full-bleed");
+    expect(html).not.toContain("moments-big-buttons");
+    expect(html).not.toContain("moments-big-install");
+    const css = readBundledCss();
+    expect(css).toContain(".moments-big.full-bleed .moments-big-window { max-width: none; max-height: none; height: 100%;");
   });
 
   it("the house cheer counts down, with no dead time", () => {
