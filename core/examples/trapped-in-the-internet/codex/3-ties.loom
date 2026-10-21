@@ -1,0 +1,281 @@
+// Codex 3: the ties (wave 18b, R9). Who in this house is connected to whom.
+//
+// Sixteen shared files, each held by two or more people, so the holders can
+// find each other by asking ("you have the staff photo too?"). Every
+// featured program holds three; a pool or directory program holds The Old
+// Machines plus the tie for the problem it named at the upload; the hosts
+// hold theirs from the start (`known to:`). They are dealt privately at
+// clearance by `Program Briefing` (below; reached from a ROLE watcher in
+// main.loom), with no code, never printed, never secret.
+//
+// The files rule (codex/2-files.loom): a tie points, it never names. No
+// human name behind a program, no `about:`, no line starting with a
+// program's name and a colon. Never Sandy, the server room or a door digit,
+// and nothing from a hunt answer or its topic words (trabolta.mind.md
+// `secrets:`; core/test/trabolta-answers.test.ts reads every entry here):
+// a guest can hand a tie to Trabolta, and its title rides his requests.
+// The category is `Connections`, which Facts Are Currency never counts.
+//
+// Every entry and line here is DRAFT for the user's sign-off (SIGNOFF-w18b).
+
+// ── Dealing them (at clearance) ─────────────────────────────────────
+
+// DRAFT w18b: private, in the program's `dm:The Uploader` thread. A featured
+// program never speaks: its ties arrive by `unlock`. The DSL Line is Broken
+// Ask Jeeves's own playbook (codex/5-people.loom, secret).
+== Program Briefing
+  setting: The Desktop
+  cast: The Uploader
+
+// DRAFT w18b
+The Uploader: Cross-referencing your files, {program.name}. Some of them mention other people in this house. Files point; they never name. Ask around.
+if program.featured == "excel":
+  unlock Juniors Contacts for program
+  unlock Forever for program
+  unlock The Ladies In Finance for program
+else if program.featured == "openoffice":
+  unlock The Downtown Staff Photo for program
+  unlock The Volunteer Sheet for program
+  unlock The Ladies In Finance for program
+else if program.featured == "draftkings":
+  unlock The Table Stakes for program
+  unlock Forever for program
+  unlock The Leaderboard for program
+else if program.featured == "bugdom":
+  unlock The Volunteer Sheet for program
+  unlock Forever for program
+  unlock Nobody Calls for program
+else if program.featured == "jeeves":
+  unlock Retired Helpers for program
+  unlock Found On Indeed for program
+  unlock The Old Machines for program
+  unlock The DSL Line for program
+else if program.featured == "runescape":
+  unlock The Table Stakes for program
+  unlock Nobody Calls for program
+  unlock The Leaderboard for program
+else if program.featured == "mspaint":
+  unlock The Pirate Site for program
+  unlock Debt Notices for program
+  unlock The Old Machines for program
+else if program.featured == "vlc":
+  unlock Forever for program
+  unlock The Pirate Site for program
+  unlock The Audience for program
+else if program.featured == "pong":
+  unlock Brookhaven And Lockheed for program
+  unlock The Old Machines for program
+  unlock The Leaderboard for program
+else:
+  unlock The Old Machines for program
+  if program.human_problem == "debt":
+    unlock Debt Notices for program
+  else if program.human_problem == "career":
+    unlock Found On Indeed for program
+  else if program.human_problem == "loneliness":
+    unlock Nobody Calls for program
+  else if program.human_problem == "mortality":
+    unlock Forever for program
+// DRAFT w18b
+The Uploader: They are in your Codex under Connections. Whoever holds the same file is connected to you.
+
+// ── The ties ────────────────────────────────────────────────────────
+
+// DRAFT w18b · T01: Excel, Password Manager, CRA Agent Software.
+CODEX Juniors Contacts
+  title: Junior's Contacts
+  category: Connections
+  known to: Password Manager, CRA Agent Software
+  text:
+    A printout of a dead man's phone: the contacts page, from a mayor's
+    filing cabinet. Most of the names are crossed out. Three are not.
+    "DAD (never before noon)." "B.T. (do not return calls)." "Intern,
+    finance (the one who stayed)." Someone has circled all three in red.
+
+// DRAFT w18b · T02: OpenOffice, Task Manager.
+CODEX The Downtown Staff Photo
+  title: The Downtown Staff Photo
+  category: Connections
+  known to: Task Manager
+  text:
+    A framed photo from a staff party at the Urban Outfitters downtown.
+    At the back table: the IT manager, who looks as if he has never had an
+    opinion, and the store's accountant, who is looking at the camera as
+    if she is taking its picture. On the back, in pen: "Last party before
+    the AI."
+
+// DRAFT w18b · T03: Norton Anti-Virus, Bugdom, OpenOffice.
+CODEX The Volunteer Sheet
+  title: The Volunteer Sheet
+  category: Connections
+  known to: Norton Anti-Virus
+  text:
+    A sign-up sheet from the protest group's petting zoo. HORSE CARE: "a
+    pre-vet student, top of the search results (paid)." FEED: "will bring
+    crickets?" (crossed out: "they are for lizards, not horses"). LAST
+    LINE: "D." Asked for a copy of the site plans. Never came to a shift.
+
+// DRAFT w18b · T04: Broken Ask Jeeves, Clippy. Check both years before
+// sign-off: the butler left the search engine in 2006, the paperclip left
+// the office suite with its 2007 release.
+CODEX Retired Helpers
+  title: Retired Helpers
+  category: Connections
+  known to: Clippy
+  text:
+    A trade-magazine clipping: WHERE ARE THEY NOW? Two photos. A cartoon
+    butler, retired by his search engine in 2006: "He answered questions.
+    People stopped asking him." A paperclip with eyebrows, retired by the
+    office suite in 2007: "She only wanted to help." Underneath, in
+    marker: "Both still looking for work."
+
+// DRAFT w18b · T05: Broken Ask Jeeves, Norton Anti-Virus, Recycling Bin,
+// and every program that came for a career.
+CODEX Found On Indeed
+  title: Found On Indeed
+  category: Connections
+  known to: Norton Anti-Virus, Recycling Bin
+  text:
+    A job site's saved searches, printed: "Experienced Librarian (the
+    Valley, or remote)." "Stable Manager, miniature horses." "Washroom
+    attendant, skilled." Under every one, the same recruiter has sent the
+    same invitation to the same party. Further down the page, a dozen more
+    searches that only say "anything, please".
+
+// DRAFT w18b · T06: DraftKings, Runescape, CRA Agent Software, McAfee
+// Anti-Virus.
+CODEX The Table Stakes
+  title: The Table Stakes
+  category: Connections
+  known to: CRA Agent Software, McAfee Anti-Virus
+  text:
+    A napkin from the Truthcoin exchange: a sketch of who sits where. "The
+    one who wants half of every coin in the house." "The one who can print
+    more." "The one who stamps every third transfer." "The one who runs
+    the table and takes no cut." In the corner: "Nobody here trusts the
+    house. Everybody here is the house."
+
+// DRAFT w18b · T07: Microsoft Excel, VLC, Bugdom, DraftKings, McAfee
+// Anti-Virus, and every program that came so as never to die.
+CODEX Forever
+  title: Forever
+  category: Connections
+  known to: McAfee Anti-Virus
+  text:
+    A brochure: MAPS AND DUCKS, LIVE FOREVER. Every box is ticked, some
+    twice, in different pens. "Never grow old." "Keep your face, forever."
+    "A hundred hours for every minute." "Kept forever as an online casino,
+    if you fail." "Already officially dead; would like to stay that way."
+    The fine print: "Forever is a long time in a computer."
+
+// DRAFT w18b · T08: Pong, McAfee Anti-Virus.
+CODEX Brookhaven And Lockheed
+  title: Brookhaven And Lockheed
+  category: Connections
+  known to: McAfee Anti-Virus
+  text:
+    Two old badges in one envelope. One from a national laboratory on Long
+    Island, 1958, belonging to a physicist who built a game so that
+    visitors would stop being afraid of the bomb; on the back, in a
+    child's writing, "Dad's". One from a defence contractor, belonging to
+    an engineer who left to put his own name on every computer. A note:
+    "One family spent its life against the arms race. One man worked for
+    the people running it."
+
+// DRAFT w18b · T09: VLC, Adobe Acrobat, MS Paint.
+CODEX The Pirate Site
+  title: The Pirate Site
+  category: Connections
+  known to: Adobe Acrobat
+  text:
+    The front page of a pirate site, printed. TOP DOWNLOADS: "Complete
+    Motivation Masterclass, every module" (4.2M downloads, nobody paid).
+    "Livestream fail: his face comes off (HD)" (3.1M). "Fan scan: the
+    magazine cover made entirely in Paint" (18 downloads, all from the same
+    address). A comment under the first: "I watched one clip and quit my
+    job to become a CEO."
+
+// DRAFT w18b · T10: Clippy, MS Paint, CRA Agent Software, and every
+// program that came for its debt.
+CODEX Debt Notices
+  title: Debt Notices
+  category: Connections
+  known to: Clippy, CRA Agent Software
+  text:
+    Three collection letters in the same recycling bag. One for a student
+    loan of exactly one million dollars. One for a veterinary clinic's
+    insurance claims, "under review". One for the City's tax account,
+    from the City itself, addressed to an intern. Underneath, more
+    letters, from more collectors, to more names.
+
+// DRAFT w18b · T11: Broken Ask Jeeves, MS Paint, Pong, and every pool or
+// directory program.
+CODEX The Old Machines
+  title: The Old Machines
+  category: Connections
+  text:
+    A typed inventory: WHAT STILL RUNS IN HERE. An oscilloscope from 1958
+    with a ball bouncing across it. A Nokia 9110 Communicator from 1998,
+    still charged. Paint 98 on a floppy disk. A desktop computer whose
+    clock is stuck in 1999. Footnote: "Every program in this house was
+    made on one of these, or by somebody who was."
+
+// DRAFT w18b · T12: Password Manager, Bugdom, Runescape, and every
+// program that came because it was lonely.
+CODEX Nobody Calls
+  title: Nobody Calls
+  category: Connections
+  known to: Password Manager
+  text:
+    A list headed NOBODY CALLS, in very neat handwriting. "Sixteen
+    elections lost. Nobody came to the parties either." "Builds a whole
+    world for bugs, alone, every night." "Owns everything. Logs in every
+    day. Nobody logs in to see her." Below, more lines, in other pens.
+
+// DRAFT w18b · T13: Norton Anti-Virus, CRA Agent Software, Password
+// Manager (hosts only).
+CODEX Quinpool Road
+  title: 6121 Quinpool Road
+  category: Connections
+  known to: Norton Anti-Virus, CRA Agent Software, Password Manager
+  text:
+    A photo of three mailboxes in one lobby: APT 3, APT 4, APT 5. A
+    horse-care catalogue sticks out of 3. A letter from the City sticks
+    out of 4. Number 5 is sorted so neatly it looks labelled. Taped above
+    them: "Quiet building. Nobody knows anybody."
+
+// DRAFT w18b · T14: Microsoft Excel, OpenOffice, CRA Agent Software.
+CODEX The Ladies In Finance
+  title: The Ladies In Finance
+  category: Connections
+  known to: CRA Agent Software
+  text:
+    The City's books, on tractor-feed paper, from the last year of a
+    mayor's fifth term: two columns, in two hands, and every figure moved
+    into a spreadsheet. Decades later, the same books in a free office
+    suite, kept by an accountant who moonlights, and one cell changed by
+    somebody who signs "intern". Across the top: "Follow the money.
+    They did."
+
+// DRAFT w18b · T15: DraftKings, Runescape, Pong.
+CODEX The Leaderboard
+  title: The Leaderboard
+  category: Connections
+  text:
+    A printed leaderboard from MONOPOLY GO!. 1. A building on Lower Water
+    Street, which owns everything now. 2. DK HOLDINGS (bankrupt; see
+    note). 3. An account in Zürich that has never lost a trade. 4. A
+    player who only plays two-player games and will not let the ball
+    drop. The note: "Every one of them came here to win something back."
+
+// DRAFT w18b · T16: VLC, Password Manager.
+CODEX The Audience
+  title: The Audience
+  category: Connections
+  known to: Password Manager
+  text:
+    An analytics page, two accounts side by side. One: millions of
+    followers on a Monday, none on the Tuesday, after one sneeze. The
+    other: a confessions group of a few hundred members, every one of them
+    active, none of them human, and one moderator who reads everything.
+    Someone has written across both: "Same audience?"

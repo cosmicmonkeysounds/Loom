@@ -119,7 +119,7 @@ cast/pool.loom         22 more guest programs: bare names + avatars
 cast/props.loom        The Uploader · The Router · The Screensaver · The Tablet · Kernel (the
                        hidden secret state)
 cast/trabolta.loom     the AI: his vars, hooks, and 12 agent powers (wave 7: stand_down; the_line_works retired 2026-10-19)
-codex/1-world.loom …   183 CODEX entries: 175 in eight numbered files + the 8 hunt answers
+codex/1-world.loom …   200 CODEX entries: 175 in eight numbered files + the 8 hunt answers
                        in generated/questions.loom (9-facts.loom is GENERATED from
                        facts.json; 3-hunt.loom is gone). The order matters:
 codex/8-jeeves.loom    stagehand feeds Trabolta's orchestrator up to 60 entries as "ground
@@ -187,7 +187,7 @@ These rules matter when you edit. Break one and something fails silently.
 
 As of 2026-10-17 (the wave 8 story pass) the project compiles clean, both
 per file and concatenated the way the server joins them (`loomcheck`):
-**31 files, 0 errors, 0 warnings; 105 beats, 183 codex entries (94 with codes), 26
+**31 files, 0 errors, 0 warnings; 105 beats, 200 codex entries (94 with codes), 26
 quests, 114 rules, 122 INTERACTIONs** (wave 11: the four digit notes, the
 quest *The Cold Door*, the King's shared health, the crew's door window and
 the performer copies of the room's fallbacks). Wave 8 split ⚖ `the_verdict` off 📄
@@ -696,7 +696,7 @@ but not used".
 ## Knowledge is the currency: the Codex
 
 Every `CODEX` entry is a piece of lore a participant can **hold**. There
-are **183**, and **94** of them carry a code (the 60 generated from
+are **200**, and **94** of them carry a code (the 60 generated from
 `facts.json` included: wave 11 added the cold door's four digit notes). An entry reaches a holder in one of five ways:
 
 1. **A code.** `code: MISTER-PICKLES` is printed as a QR in the house.

@@ -191,13 +191,14 @@ describe("Trapped in the Internet — compile", () => {
     expect(terminals).toMatch(/view=chess/u);
   });
 
-  it("pins the codex: 183 entries, 94 codes, every facts.json code resolving, no STAMPED anywhere", () => {
+  it("pins the codex: 200 entries, 94 codes, every facts.json code resolving, no STAMPED anywhere", () => {
     // Wave 11: + the cold door's four digit notes (facts.json door.clues).
-    expect(m.codex.size).toBe(183);
+    // Wave 18b: + the sixteen ties (codex/3-ties.loom) and The DSL Line, none coded.
+    expect(m.codex.size).toBe(200);
     expect(m.codexCodes.size).toBe(94);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).
     const readme = readFileSync(join(scenarioDir(SHOW), "README.md"), "utf8");
-    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([183, 183, 183]);
+    expect([...readme.matchAll(/\b(\d+) CODEX entries|(\d+) codex entries|There\s+are \*\*(\d+)\*\*/gu)].map((x) => Number(x[1] ?? x[2] ?? x[3]))).toEqual([200, 200, 200]);
     const codes: Record<string, string> = {
       trabolta4ever: "The LiveJournal",
       loveletterforyou: "ILOVEYOU",
