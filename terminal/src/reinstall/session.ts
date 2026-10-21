@@ -149,10 +149,19 @@ export function insideNow(roster: readonly Program[], ended: boolean): Program[]
   return quickPicks(roster, PICKS_MAX, ended).corrupted;
 }
 
-/** The device a guest is already walking on (an unfound player in the
- *  spatial stream), else null. */
-export function playingOn(players: Iterable<{ guest: string; device: string; found: boolean }>, guest: string): string | null {
-  for (const p of players) if (p.guest === guest && !p.found) return p.device || "another device";
+/** Where a guest is already walking (an unfound player in the spatial
+ *  stream), else null: the headset station that holds the session (a send
+ *  names the device that sent it, never the headset), else that device. */
+export function playingOn(
+  players: Iterable<{ session: string; guest: string; device: string; found: boolean }>,
+  guest: string,
+  stations: readonly { name: string; id: string; busy: { session: string } | null }[] = [],
+): string | null {
+  for (const p of players) {
+    if (p.guest !== guest || p.found) continue;
+    const station = stations.find((s) => s.busy?.session === p.session);
+    return (station !== undefined ? station.name || station.id : p.device) || "another device";
+  }
   return null;
 }
 

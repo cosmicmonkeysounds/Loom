@@ -116,6 +116,8 @@ export function ReinstallTerminal({ config, state, polled, takeover, covered, as
   playersRef.current = players;
   const endedRef = useRef(ended);
   endedRef.current = ended;
+  const stationsRef = useRef(stations.list);
+  stationsRef.current = stations.list;
   const checking = s.step.kind === "checking" ? s.step.id : null;
   useEffect(() => {
     if (checking === null) return;
@@ -124,7 +126,7 @@ export function ReinstallTerminal({ config, state, polled, takeover, covered, as
       (roster) => {
         if (!alive) return;
         const program = roster.find((p) => p.id === checking) ?? null;
-        dispatch({ type: "resolved", id: checking, program, ended: endedRef.current, playingOn: program === null ? null : playingOn(playersRef.current.values(), program.id), now: Date.now() });
+        dispatch({ type: "resolved", id: checking, program, ended: endedRef.current, playingOn: program === null ? null : playingOn(playersRef.current.values(), program.id, stationsRef.current), now: Date.now() });
       },
       (e: unknown) => alive && dispatch({ type: "lookupFailed", id: checking, status: e instanceof ApiError ? e.status : null, message: (e as Error).message, now: Date.now() }),
     );

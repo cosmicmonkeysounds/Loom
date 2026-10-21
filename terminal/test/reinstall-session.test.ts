@@ -78,8 +78,12 @@ describe("the tent station's session (wave 18b)", () => {
     expect(run([{ type: "cancel" }], s).step.kind).toBe("idle");
     expect(run([{ type: "tick", now: CONFIRM_MS }], s).step.kind).toBe("idle");
     // A found walk (lingering) is not a walk in progress.
-    expect(playingOn([{ guest: "g-1", device: "Quest 1", found: true }], "g-1")).toBeNull();
-    expect(playingOn([{ guest: "g-2", device: "Quest 1", found: false }, { guest: "g-1", device: "", found: false }], "g-1")).toBe("another device");
+    expect(playingOn([{ session: "s1", guest: "g-1", device: "Quest 1", found: true }], "g-1")).toBeNull();
+    expect(playingOn([{ session: "s2", guest: "g-2", device: "Quest 1", found: false }, { session: "s1", guest: "g-1", device: "", found: false }], "g-1")).toBe("another device");
+    // Sent from the tent to a headset: the session's device is the tent; the headset is the station holding it.
+    const sent = [{ session: "s1", guest: "g-1", device: "Tent", found: false }];
+    expect(playingOn(sent, "g-1")).toBe("Tent");
+    expect(playingOn(sent, "g-1", [{ id: "quest-1", name: "Quest 1", busy: { session: "s1" } }, { id: "quest-2", name: "", busy: null }])).toBe("Quest 1");
   });
 
   it("the capture cue's card: never the boot's own, a new seq while idle, never over a walk", () => {
