@@ -28,6 +28,14 @@
 //! path — `Night.king_armed`; null = the map names none). An older server
 //! sends no block (null).
 //!
+//! Wave 17: the answer also carries the house's live story **moments**
+//! (`moments`, ≤ 12, oldest first, never history — a house-wide beat, a named
+//! signal, an `sfx` name, a house-wide reveal, a duck find) and a few more
+//! public `night` vars (the phase, the step, the bottle's pick, an award's
+//! winner while its slide is up, the advice tally, the alert ladder). The
+//! cutscenes (`cutscene/`) play off them. An older server sends neither:
+//! no moments, every new var null.
+//!
 //! The answer also carries the latest house announcements (`announce` +
 //! the last few in `announces`, N-09); a terminal set to say announcements
 //! speaks each new one (`announce.ts`).
@@ -106,6 +114,84 @@ export function kingOf(raw: unknown): ScreenKing | null {
   return { hp: clamped, max: Math.round(max), fallen: r["fallen"] === true || clamped <= 0, armed: typeof r["armed"] === "boolean" ? r["armed"] : null };
 }
 
+/** What a moment is (wave 17). */
+export type ScreenMomentKind = "beat" | "signal" | "sfx" | "reveal" | "found";
+export const MOMENT_KINDS: readonly ScreenMomentKind[] = ["beat", "signal", "sfx", "reveal", "found"];
+
+/** A live story moment, house-wide (wave 17): `seq` is the sim log's (it
+ *  restarts with the sim: `announceEpoch` says which), `at` server ms (> 0). */
+export interface ScreenMoment {
+  seq: number;
+  at: number;
+  kind: ScreenMomentKind;
+  /** The beat's display name, the signal's, the sfx name, the revealed place / character, "golden duck" (or "golden duck kept"). */
+  name: string;
+  /** A public display name when the moment is about one program (the bottle's pick, a duck's finder). */
+  who: string | null;
+  /** A duck find the story kept (no release: GERALD CAN'T HELP). */
+  kept: boolean;
+}
+
+/** At most this many moments are kept off one answer (the server sends ≤ 12). */
+export const MOMENTS_MAX = 24;
+
+/** The moments off the wire, oldest first; malformed or history (`at` ≤ 0) entries drop. */
+export function momentsOf(raw: unknown): ScreenMoment[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ScreenMoment[] = [];
+  for (const x of raw) {
+    if (typeof x !== "object" || x === null) continue;
+    const r = x as Record<string, unknown>;
+    const seq = r["seq"];
+    const at = r["at"];
+    const kind = r["kind"];
+    const name = r["name"];
+    if (typeof seq !== "number" || !Number.isFinite(seq) || typeof at !== "number" || !Number.isFinite(at) || at <= 0) continue;
+    if (typeof kind !== "string" || !(MOMENT_KINDS as readonly string[]).includes(kind) || typeof name !== "string" || name.trim() === "") continue;
+    const who = typeof r["who"] === "string" && r["who"].trim() !== "" ? r["who"].trim() : null;
+    out.push({ seq, at, kind: kind as ScreenMomentKind, name: name.trim(), who, kept: r["kept"] === true || /\bkept$/iu.test(name.trim()) });
+  }
+  out.sort((a, b) => a.seq - b.seq);
+  return out.length > MOMENTS_MAX ? out.slice(out.length - MOMENTS_MAX) : out;
+}
+
+/** The public story vars on the screen state (wave 17 adds all but the first two). */
+export interface ScreenNight {
+  screen: string | null;
+  terminals: string | null;
+  phase: string | null;
+  step: number | null;
+  bottle_pick: string | null;
+  /** Only while an `award_*` slide is up. */
+  award_winner: string | null;
+  award_value: string | number | null;
+  help_votes: number | null;
+  thwart_votes: number | null;
+  alerts: string | null;
+}
+
+export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null };
+
+/** The night block off the wire; anything missing or malformed is null. */
+export function nightOf(raw: unknown): ScreenNight {
+  const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const value = r["award_value"];
+  return {
+    screen: str(r["screen"]),
+    terminals: str(r["terminals"]),
+    phase: str(r["phase"]),
+    step: num(r["step"]),
+    bottle_pick: str(r["bottle_pick"]),
+    award_winner: str(r["award_winner"]),
+    award_value: typeof value === "string" ? value : num(value),
+    help_votes: num(r["help_votes"]),
+    thwart_votes: num(r["thwart_votes"]),
+    alerts: str(r["alerts"]),
+  };
+}
+
 /** The TV's voice block (K-18). */
 export interface ScreenVoice {
   room: string;
@@ -119,7 +205,9 @@ export interface ScreenState {
   now: number;
   /** Local `Date.now()` when this answer arrived (not from the server). */
   receivedAt: number;
-  night: { screen: string | null; terminals: string | null };
+  night: ScreenNight;
+  /** The house's live story moments, oldest first (wave 17; [] from an older server). */
+  moments: ScreenMoment[];
   cues: Partial<Record<ScreenCueFamily, ScreenCue | null>>;
   /** `hold` — the character has a `hold:` line (it always answers): show no presence. */
   character: { id: string; hidden: boolean; awake: boolean; online: boolean; hold: boolean } | null;
@@ -261,13 +349,13 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
           hold: (ch as Record<string, unknown>)["hold"] === true,
         }
       : null;
-  const night = (typeof r["night"] === "object" && r["night"] !== null ? r["night"] : {}) as Record<string, unknown>;
   const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   return {
     now: num(r["now"]) ?? 0,
     receivedAt,
-    night: { screen: str(night["screen"]), terminals: str(night["terminals"]) },
+    night: nightOf(r["night"]),
+    moments: momentsOf(r["moments"]),
     cues: (typeof r["cues"] === "object" && r["cues"] !== null ? r["cues"] : {}) as ScreenState["cues"],
     character,
     attract: r["attract"] as boolean,

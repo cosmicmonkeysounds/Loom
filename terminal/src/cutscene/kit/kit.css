@@ -1,0 +1,221 @@
+/* ════════════════════════════════════════════════════════════════════════
+   The cutscene kit (wave 17). The terminal's own vocabulary, blown up for a
+   room: Win98 silver bevels and navy title bars for the machine's chrome
+   (the slide cards' `.slide-window`), VT323 phosphor for its voice.
+   Chrome 87 / Safari 14: no :has, no color-mix, no flex gap (margins),
+   no aspect-ratio without a fallback. Motion is transform / opacity only,
+   computed per frame from the scene's t — nothing here keyframes on its own.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.kit-stage {
+  --kit-ui: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  --kit-face: #c0c0c0;
+  --kit-hi: #ffffff;
+  --kit-lo: #808080;
+  --kit-dark: #404040;
+  --kit-navy: #000080;
+  --kit-navy-2: #1084d0;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: #fff;
+  font-family: var(--mono);
+  line-height: 1.2;
+  -webkit-font-smoothing: none;
+}
+/* A 16:9 picture kept whole on any screen; children size in em off it. */
+.kit-stage-fit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(100vw, 177.78vh);
+  height: min(100vh, 56.25vw);
+  transform: translate(-50%, -50%);
+  font-size: calc(min(100vw, 177.78vh) / 60);
+}
+.kit-fill { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* --- icons ---------------------------------------------------------------- */
+.kit-icon { display: inline-block; vertical-align: middle; flex: none; }
+
+/* --- windows -------------------------------------------------------------- */
+.kit-win {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--kit-ui);
+  font-size: clamp(14px, 2.4vmin, 32px);
+  color: #000;
+  background: var(--kit-face);
+  border: 2px solid;
+  border-color: var(--kit-hi) var(--kit-dark) var(--kit-dark) var(--kit-hi);
+  box-shadow: inset -1px -1px 0 var(--kit-lo), inset 1px 1px 0 #dfdfdf, 3px 3px 0 rgba(0, 0, 0, 0.45);
+  padding: 2px;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  max-width: 100%;
+}
+.kit-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.12em 0.18em 0.12em 0.3em;
+  background: linear-gradient(90deg, var(--kit-navy), var(--kit-navy-2));
+  color: #fff;
+  font-weight: bold;
+  white-space: nowrap;
+  min-height: 1.35em;
+}
+.kit-tone-red .kit-titlebar { background: linear-gradient(90deg, #800000, #d04040); }
+.kit-tone-green .kit-titlebar { background: linear-gradient(90deg, #005000, #20a040); }
+.kit-tone-purple .kit-titlebar { background: linear-gradient(90deg, #400060, #9040c0); }
+.kit-tone-black .kit-titlebar { background: linear-gradient(90deg, #000, #404040); }
+.kit-win-inactive .kit-titlebar { background: linear-gradient(90deg, #808080, #b5b5b5); color: #d4d0c8; }
+.kit-title { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.kit-title .kit-icon { margin-right: 0.3em; }
+.kit-title-text { overflow: hidden; text-overflow: ellipsis; }
+.kit-tb-buttons { display: flex; margin-left: 0.5em; }
+.kit-tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 0.95em;
+  margin-left: 2px;
+  background: var(--kit-face);
+  border: 1px solid;
+  border-color: var(--kit-hi) var(--kit-dark) var(--kit-dark) var(--kit-hi);
+  box-shadow: inset -1px -1px 0 var(--kit-lo);
+}
+.kit-tb-btn svg { width: 0.55em; height: 0.5em; display: block; }
+.kit-tb-close { margin-left: 4px; }
+.kit-win-body { flex: 1 1 auto; min-height: 0; padding: 0.55em 0.7em; }
+.kit-statusbar {
+  margin-top: 2px;
+  padding: 0.1em 0.4em;
+  font-size: 0.8em;
+  border: 1px solid;
+  border-color: var(--kit-lo) var(--kit-hi) var(--kit-hi) var(--kit-lo);
+}
+
+/* --- buttons + dialogs ----------------------------------------------------- */
+.kit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.2em;
+  padding: 0.18em 0.8em;
+  font-family: var(--kit-ui);
+  color: #000;
+  background: var(--kit-face);
+  border: 2px solid;
+  border-color: var(--kit-hi) var(--kit-dark) var(--kit-dark) var(--kit-hi);
+  box-shadow: inset -1px -1px 0 var(--kit-lo), inset 1px 1px 0 #dfdfdf;
+  white-space: nowrap;
+}
+.kit-btn-primary { outline: 1px solid #000; outline-offset: 0; }
+.kit-btn-pressed {
+  border-color: var(--kit-dark) var(--kit-hi) var(--kit-hi) var(--kit-dark);
+  box-shadow: inset 1px 1px 0 var(--kit-lo);
+  padding: 0.24em 0.74em 0.12em 0.86em;
+}
+.kit-dialog { display: flex; flex-direction: column; }
+.kit-dialog-row { display: flex; align-items: flex-start; }
+.kit-dialog-row .kit-icon { margin: 0.1em 0.75em 0 0.1em; }
+.kit-dialog-text { line-height: 1.3; padding-top: 0.25em; overflow-wrap: break-word; min-width: 0; }
+.kit-dialog-actions { display: flex; justify-content: center; flex-wrap: wrap; margin-top: 0.75em; }
+.kit-dialog-actions .kit-btn { margin: 0 0.3em 0.1em; }
+
+/* --- the progress bar ------------------------------------------------------ */
+.kit-progress-wrap { font-family: var(--kit-ui); color: #000; }
+.kit-progress-label { margin-bottom: 0.35em; }
+.kit-progress {
+  display: flex;
+  height: 1.2em;
+  padding: 2px;
+  background: #fff;
+  border: 2px solid;
+  border-color: var(--kit-lo) var(--kit-hi) var(--kit-hi) var(--kit-lo);
+}
+.kit-seg { flex: 1 1 0; margin-right: 2px; background: transparent; }
+.kit-seg:last-child { margin-right: 0; }
+.kit-seg.on { background: var(--kit-navy); }
+.kit-progress-pct { margin-top: 0.3em; font-size: 0.85em; }
+
+/* --- the desktop ------------------------------------------------------------ */
+.kit-desktop { position: absolute; inset: 0; overflow: hidden; font-family: var(--kit-ui); font-size: clamp(14px, 2.2vmin, 30px); }
+.kit-desk-icons { position: absolute; left: 1.2em; top: 1em; bottom: 3.4em; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; }
+.kit-desk-icon { display: flex; flex-direction: column; align-items: center; width: 6em; margin: 0 0.4em 1em 0; color: #fff; text-align: center; text-shadow: 1px 1px 0 #000; }
+.kit-desk-icon span { margin-top: 0.3em; font-size: 0.85em; line-height: 1.15; }
+.kit-desk-space { position: absolute; left: 0; right: 0; top: 0; bottom: 2.2em; }
+.kit-taskbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.2em;
+  display: flex;
+  align-items: center;
+  padding: 0 0.2em;
+  background: var(--kit-face);
+  border-top: 2px solid var(--kit-hi);
+  box-shadow: inset 0 1px 0 #dfdfdf;
+  color: #000;
+}
+.kit-start { min-width: 0; padding: 0.1em 0.5em; font-weight: bold; }
+.kit-flag { width: 1.15em; height: 1em; margin-right: 0.3em; }
+.kit-tasks { display: flex; flex: 1 1 auto; min-width: 0; margin-left: 0.4em; overflow: hidden; }
+.kit-task { justify-content: flex-start; min-width: 0; max-width: 11em; margin-right: 0.25em; overflow: hidden; text-overflow: ellipsis; }
+.kit-tray {
+  padding: 0.12em 0.7em;
+  border: 1px solid;
+  border-color: var(--kit-lo) var(--kit-hi) var(--kit-hi) var(--kit-lo);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- words that move ------------------------------------------------------------ */
+.kit-type { white-space: pre-wrap; }
+.kit-caret { margin-left: 0.04em; }
+.kit-type-rest { visibility: hidden; }
+.kit-marquee { overflow: hidden; white-space: nowrap; }
+.kit-marquee-track { display: inline-flex; will-change: transform; }
+.kit-marquee-item { display: inline-block; flex: none; }
+.kit-bignum { display: inline-block; font-variant-numeric: tabular-nums; transform-origin: 50% 60%; }
+.kit-countdown { display: inline-flex; flex-direction: column; align-items: center; }
+.kit-countdown-label { font-size: 0.32em; letter-spacing: 0.3em; margin-bottom: 0.25em; opacity: 0.8; }
+.kit-countdown-digits { font-variant-numeric: tabular-nums; transform-origin: 50% 50%; }
+.kit-countdown-lcd .kit-countdown-digits {
+  font-family: var(--mono);
+  padding: 0.04em 0.28em 0;
+  color: #ff3b2f;
+  background: #110000;
+  border: 0.06em solid #330000;
+  text-shadow: 0 0 0.18em rgba(255, 60, 40, 0.75);
+  letter-spacing: 0.06em;
+}
+.kit-countdown-lcd.hot .kit-countdown-digits { color: #ffd23f; text-shadow: 0 0 0.25em rgba(255, 210, 63, 0.9); }
+.kit-countdown-tray .kit-countdown-digits {
+  font-family: var(--kit-ui);
+  padding: 0.05em 0.4em;
+  color: #000;
+  background: var(--kit-face);
+  border: 0.08em solid;
+  border-color: var(--kit-lo) var(--kit-hi) var(--kit-hi) var(--kit-lo);
+}
+.kit-countdown-tray.hot .kit-countdown-digits { background: var(--kit-navy); color: #fff; }
+
+/* --- effects ------------------------------------------------------------------- */
+.kit-glitch { position: relative; will-change: transform; }
+.kit-glitch-slice { position: absolute; inset: 0; pointer-events: none; }
+.kit-noise { image-rendering: pixelated; image-rendering: crisp-edges; mix-blend-mode: screen; pointer-events: none; }
+.kit-spotlight { pointer-events: none; }
+.kit-hourglass { display: block; transform-origin: 50% 50%; filter: drop-shadow(0.15em 0.15em 0 rgba(0, 0, 0, 0.5)); }
+.kit-bsod { background: #0000aa; color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--mono); }
+.kit-bsod-inner { width: min(88%, 62em); font-size: clamp(18px, 3.2vmin, 46px); line-height: 1.35; }
+.kit-bsod-title { text-align: center; margin-bottom: 1.2em; }
+.kit-bsod-title span { background: #aaaaaa; color: #0000aa; padding: 0 0.5em; }
+.kit-bsod-body { margin: 0; font: inherit; white-space: pre-wrap; }
+.kit-bsod-foot { margin-top: 1.6em; text-align: center; }
+.kit-storm { pointer-events: none; }
+.kit-storm .kit-win { font-size: clamp(12px, 2vmin, 26px); }
+.kit-particles, .kit-starfield { pointer-events: none; }

@@ -600,3 +600,52 @@ reset); the corner reads *LIVE · n REINSTALLING* · *WINDOW · ROOM* (or
 *FOLLOWING NAME*) with the stream's dot. With nobody playing it says
 *NOBODY IS REINSTALLING* (`auto` keeps the face then, as before), and the
 attract screen still takes over while the character is asleep.
+
+## Sound, full screen and the cutscenes (wave 17)
+
+**Sound** (`src/sound/`). One master `GainNode` over the shared
+`audioContext()`, an effects bus at the view's level (TV 0.35, others 0.6)
+through a soft compressor, and 30 synthesised effects — no files:
+`sfx(name, {over?, gain?, pitch?, delay?}) → boolean`, names in
+`SFX_NAMES` (`ding chord error critical exclamation startup shutdown tada
+click popup close modem glitch type whoosh drumroll fanfare siren coin tick
+boom sparkle buzz blip spin win lose static heartbeat chime`). An effect is
+**dropped, never queued**, while sound is locked, while `setSoundMuted(true)`
+(the TV's director mute) or while a voice holds the floor — unless `{over:
+true}`, which plays it at 40 %. These are the page's accents only: every
+story `sound X` and every announcement is the house speakers' (D4). The
+announcement chime and the casino jingles ride the master bus unchanged.
+
+**Full screen** (`src/fullscreen.ts`, D7). On by default (`fullscreen` in
+the stored config, a ⚙ checkbox — no URL hint): every gesture while not full
+screen asks again (`requestFullscreen` / `webkitRequestFullscreen`; Fully
+Kiosk's JS interface hides the bars where it has the calls). State on
+`<html data-fullscreen>` and the poll's `fs=1|0` (no `fs` when a director
+turned it off or the browser can't; the server doesn't read `fs` yet). The TV's Chrome keeps
+`--kiosk` — the only no-gesture route.
+
+**Cutscenes** (`src/cutscene/`). A scene (`types.ts` `SceneDef`) is started
+by a slide cue (`{slide: "trivia_1"}`, `award_*` prefixes) or a screen-state
+moment (`{moment: "signal", name: "bottle landed"}`), and is a pure picture
+of `t` — ms since its start on the server's clock — so a reload resumes and
+history never replays. `pick.ts` decides: overlays win, a pilot / peek /
+room terminal shows none, a slide's scene (else its card), one moment at a
+time over it (a moment that replaces the slide only hides it, so its clip or
+scene carries on; a tap on a moment never peeks), nothing that names the
+character before the introduction (the first fiction-safe scene on the same
+trigger plays instead). A slide from history starts `HISTORY_T` in, at the
+moment this page first drew it, then moves on; a scene's `face` flashes the
+TV face once. The
+layer is a lazy chunk in the slide's slot (z 30), preloaded at boot. Lanes
+add scenes to their own `scenes/act1.tsx` / `act2.tsx` / `act3.tsx` /
+`moments.tsx` from the `kit/` blocks (Win98 windows, dialogs, typewriter,
+progress bar, marquee, glitch, static, particles, confetti, starfield,
+popup storm, BSOD, spotlight, hourglass, count-ups, countdowns, `useSfxCues`).
+`scenes/demo.tsx` is the pattern.
+
+**Preview**: `pnpm --filter loom-terminal dev` then
+`http://localhost:5175/terminal/?preview=list` (every scene, a device frame,
+a scrubber), or `?preview=<id>&t=<ms>` for one frame (`&play=1`,
+`&target=wall`, `&intro=0`, `&reduced=1`, `&who=`, `&value=`, `&phase=`,
+`&countdown=<s>`). Outside dev it opens only on a terminal already set up
+with the moderator passcode.

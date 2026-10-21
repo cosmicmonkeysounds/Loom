@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IdentifyOverlay, ScreenLayer, SlideView } from "../src/ScreenLayer.tsx";
-import { parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
+import { EMPTY_NIGHT, parseScreenState, type ScreenProgram, type ScreenState } from "../src/screen.ts";
 import { BLACKOUT_MS, FLICKER_FRESH_MS, PEEK_MS, PeekClock, canPeek, SLIDE_COPY, SLIDE_HOLD_MS, CHART_STEP_MS, chartCallouts, chartLines, chartReveal, formatCountdown, resetScreenMemo, screenLayers, setScreenMemoStorage, slideCopy, slideSources, slideVideoSources, y2kClock } from "../src/slides.ts";
 
 const T0 = 1_000_000;
@@ -16,7 +16,8 @@ function state(over: Partial<Omit<ScreenState, "program">> & { program?: Partial
   return {
     now: T0,
     receivedAt: T0,
-    night: { screen: null, terminals: null },
+    night: EMPTY_NIGHT,
+    moments: [],
     cues: {},
     character: null,
     attract: false,
@@ -120,7 +121,8 @@ describe("a tap peeks under a held slide (B21)", () => {
 describe("screen layers — precedence (N-03)", () => {
   it("holds a slide 45 s on a terminal and 90 s on the TV", () => {
     const s = state({ program: { slide: slide("trivia_2", T0) } });
-    expect(at(s, 0).slide).toEqual({ value: "trivia_2", cue: "screens_trivia_2" });
+    // The cue's seq and server time ride along: a cutscene is keyed and drawn off them.
+    expect(at(s, 0).slide).toEqual({ value: "trivia_2", cue: "screens_trivia_2", seq: 1, at: T0 });
     expect(at(s, SLIDE_HOLD_MS.terminals - 1).slide).not.toBeNull();
     expect(at(s, SLIDE_HOLD_MS.terminals).slide).toBeNull(); // back to auto
     const tv = { ...s, target: "tv" as const };
@@ -205,10 +207,10 @@ describe("screen layers — precedence (N-03)", () => {
       expect(at(before, 0).slide?.value).toBe(v);
       // 10 s later the dancing baby is the newest cue: the story slide keeps its 45 s.
       const after = state({ now: T0 + 10_000, receivedAt: T0 + 10_000, program: { slide: clip("dancing_baby", T0 + 10_000, 6) } });
-      expect(at(after, 0).slide).toEqual({ value: v, cue: `screens_${v}` });
+      expect(at(after, 0).slide).toEqual({ value: v, cue: `screens_${v}`, seq: 5, at: T0 });
       expect(at(after, SLIDE_HOLD_MS.terminals - 10_001).slide?.value).toBe(v);
       // The story slide's hold is over: the clip has what is left of its own.
-      expect(at(after, SLIDE_HOLD_MS.terminals - 10_000).slide).toEqual({ value: "dancing_baby", cue: "terminals_dancing_baby" });
+      expect(at(after, SLIDE_HOLD_MS.terminals - 10_000).slide).toEqual({ value: "dancing_baby", cue: "terminals_dancing_baby", seq: 6, at: T0 + 10_000 });
       expect(at(after, SLIDE_HOLD_MS.terminals).slide).toBeNull();
     }
   });
@@ -250,7 +252,7 @@ describe("screen layers — precedence (N-03)", () => {
     // The page reloads (memory gone, storage kept); its first answer is the clip.
     setScreenMemoStorage(disk);
     const after = state({ announceEpoch: "e1", now: T0 + 10_000, receivedAt: T0 + 10_000, program: { slide: clip("dancing_baby", T0 + 10_000, 6) } });
-    expect(at(after, 0).slide).toEqual({ value: "trivia_2", cue: "screens_trivia_2" });
+    expect(at(after, 0).slide).toEqual({ value: "trivia_2", cue: "screens_trivia_2", seq: 5, at: T0 });
     expect(at(after, SLIDE_HOLD_MS.terminals - 10_000).slide?.value).toBe("dancing_baby");
     // Another sim (a restart) never reads the old one's story slide.
     setScreenMemoStorage(disk);

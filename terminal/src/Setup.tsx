@@ -73,6 +73,7 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
   const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
   const [speed, setSpeed] = useState(current?.speed ?? 1);
   const [camFeed, setCamFeed] = useState(current?.camFeed ?? true);
+  const [fullscreen, setFullscreen] = useState(current?.fullscreen ?? true);
   // A manual screen type / room ("" = the map's). A terminal not set up from
   // the map shows what it had; that applies to a tap on its own spot only
   // (another terminal takes the map's) unless changed here.
@@ -153,7 +154,7 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
       const sameEvent = current !== null && current.eventId === access.eventId;
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
-      const next = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
+      const next = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, fullscreen, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
       const own = manualTouched || (current !== null && current.spot === pick.spot);
       onDone(own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next);
     } catch (e) {
@@ -341,6 +342,10 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
               <label className="check">
                 <input type="checkbox" checked={camFeed} onChange={(e) => setCamFeed(e.target.checked)} />
                 send this camera to the games <span className="muted">(placed terminals only)</span>
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={fullscreen} onChange={(e) => setFullscreen(e.target.checked)} />
+                full screen <span className="muted">(asked again on every tap; off for a laptop that needs Esc)</span>
               </label>
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
               <label>

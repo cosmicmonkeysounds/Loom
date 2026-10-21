@@ -28,6 +28,9 @@ import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type Engin
 import { splitSentences } from "./speech/split.ts";
 import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
+import { kioskFullscreen } from "./fullscreen.ts";
+import { setSoundMuted } from "./sound/bus.ts";
+import { onSceneFace } from "./cutscene/face-bus.ts";
 
 /** A caption stays up this long after the last line (ms). */
 const CAPTION_LINGER_MS = 6000;
@@ -69,6 +72,8 @@ export function Tv({
   }, [localMute, serverMute]);
 
   const face = useRef<FaceHandle | null>(null);
+  // A cutscene's beat flashes the face's mood (wave 17, `cutscene/face-bus.ts`).
+  useEffect(() => onSceneFace((m, ms) => face.current?.flash(m, ms)), []);
 
   // --- the world, while someone is in the simulation ---
   const world = useSpatialStream(config, canDraw);
@@ -160,10 +165,14 @@ export function Tv({
     player.push(plan.lines);
   }, [state, attract, config.character, cursor, player]);
 
-  // The mute cuts the line being said at once.
+  // The mute cuts the line being said at once — and the page's own accents.
   useEffect(() => {
     if (muted) player.stop();
   }, [muted, player]);
+  useEffect(() => {
+    setSoundMuted(muted);
+    return () => setSoundMuted(false);
+  }, [muted]);
   // Attract (a story restart, the character asleep): stop talking.
   useEffect(() => {
     if (attract) {
@@ -182,6 +191,7 @@ export function Tv({
 
   // One click (or key) anywhere enables sound after a reboot; `M` mutes.
   const wake = useCallback(() => {
+    void kioskFullscreen().request(); // a click: full screen too (`--kiosk` already is)
     void unlock().then(() => setAwake(audioUnlocked() || !("AudioContext" in window)));
   }, []);
   useEffect(() => {

@@ -1,0 +1,72 @@
+/* The kit demo's own pieces (preview only). An act file keeps its CSS
+   beside it the same way (`act1.css`), scoped by its own prefix. */
+.demo-prompt {
+  position: absolute;
+  left: 8%;
+  top: 38%;
+  font-family: var(--mono);
+  font-size: 6.5vmin;
+  line-height: 1.25;
+  color: hsl(140 100% 62%);
+  text-shadow: 0 0 0.35em hsl(140 70% 38%);
+}
+.demo-marquee {
+  padding: 0.25em 0;
+  background: #ffff00;
+  color: #c00000;
+  font-weight: bold;
+  font-size: 1.15em;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.demo-setup { display: flex; align-items: center; }
+.demo-setup .kit-hourglass { margin-right: 0.9em; flex: none; }
+.demo-setup-text { flex: 1 1 auto; min-width: 0; }
+.demo-small { font-size: 0.85em; margin: 0.25em 0 0.5em; }
+.demo-actions { display: flex; justify-content: flex-end; margin-top: 0.7em; }
+.demo-overload {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 100;
+}
+.demo-overload-text {
+  display: inline-block;
+  padding: 0.05em 0.45em;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+  font-weight: bold;
+  font-size: min(11vmin, 8.5vw);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  border: 0.06em solid #fff;
+}
+.demo-reveal { background: radial-gradient(ellipse at 50% 55%, #0c1446 0%, #02030c 70%); }
+.demo-count {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+.demo-count-label {
+  font-family: var(--mono);
+  font-size: 4.5vmin;
+  letter-spacing: 0.4em;
+  color: hsl(140 80% 60%);
+  text-shadow: 0 0 0.4em hsl(140 70% 38%);
+}
+.demo-count .kit-bignum {
+  font-family: var(--mono);
+  font-size: 17vmin;
+  line-height: 1;
+  color: #ffd23f;
+  text-shadow: 0 0 0.12em rgba(255, 210, 63, 0.75), 0.04em 0.04em 0 #7a4b00;
+}
+.demo-close { position: absolute; right: 4%; top: 6%; font-size: 7vmin; }

@@ -10,6 +10,13 @@ describe("device health (SW-SCR-21)", () => {
     expect(deviceQuery({ audio: null, visible: null, battery: Number.NaN, charging: null, version: "v1" })).toEqual({ ver: "v1" });
   });
 
+  it("says whether the screen is full screen (fs), only when it can know", () => {
+    const h = { audio: null, visible: null, battery: null, charging: null, version: "v1" };
+    expect(deviceQuery({ ...h, fullscreen: true })).toEqual({ ver: "v1", fs: "1" });
+    expect(deviceQuery({ ...h, fullscreen: false })).toEqual({ ver: "v1", fs: "0" });
+    expect(deviceQuery({ ...h, fullscreen: null })).toEqual({ ver: "v1" });
+  });
+
   it("reads getBattery once and follows its events", async () => {
     const listeners: Record<string, () => void> = {};
     const b = { level: 0.42, charging: false, addEventListener: (t: string, f: () => void) => (listeners[t] = f) };

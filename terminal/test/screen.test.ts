@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.ts";
-import { IDENTIFY_MS, MISSES_OFFLINE, attractOf, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
+import { EMPTY_NIGHT, IDENTIFY_MS, MISSES_OFFLINE, MOMENTS_MAX, attractOf, identifyOn, kingOf, missesAfter, parseScreenState, pollScreen, screenReachable, screenStateUrl, voiceOf } from "../src/screen.ts";
 
 const config = defaultConfig({ eventId: "evt 1", token: "tok", name: "Kitchen", spot: "start-bar", view: "auto" });
 
@@ -116,7 +116,43 @@ describe("screen state", () => {
     expect(s.character).toEqual({ id: "Clippy", hidden: false, awake: true, online: false, hold: false });
     expect(parseScreenState({ attract: false, character: { id: "Trabolta", online: false, hold: true } })!.character!.hold).toBe(true);
     expect(s.remaining).toBeNull();
-    expect(s.night).toEqual({ screen: null, terminals: null });
+    expect(s.night).toEqual(EMPTY_NIGHT);
+    expect(s.moments).toEqual([]);
+  });
+
+  it("reads the wave 17 night vars, each null when missing or malformed", () => {
+    const s = parseScreenState({ ...body, night: { screen: "bingo", terminals: null, phase: "y2k", step: 14, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: "3", alerts: "dialog" } })!;
+    expect(s.night).toEqual({ screen: "bingo", terminals: null, phase: "y2k", step: 14, bottle_pick: "Winamp", award_winner: "Excel", award_value: 412, help_votes: 7, thwart_votes: null, alerts: "dialog" });
+    expect(parseScreenState({ ...body, night: { award_value: "4 / 8", step: Number.NaN } })!.night).toMatchObject({ award_value: "4 / 8", step: null, phase: null });
+    expect(parseScreenState({ ...body, night: "nope" })!.night).toEqual(EMPTY_NIGHT);
+  });
+
+  it("reads the moments ring defensively, oldest first, never history", () => {
+    const s = parseScreenState({
+      ...body,
+      moments: [
+        { seq: 9, at: 5000, kind: "signal", name: "bottle landed", who: "Winamp" },
+        { seq: 4, at: 4000, kind: "beat", name: "Trabolta Introduction", who: null },
+        { seq: 5, at: 0, kind: "beat", name: "history" },
+        { seq: 6, at: 4100, kind: "telepathy", name: "x" },
+        { seq: 7, at: 4200, kind: "sfx", name: "  " },
+        { seq: "8", at: 4300, kind: "sfx", name: "zip" },
+        { seq: 10, at: 6000, kind: "found", name: "golden duck kept", who: "Excel" },
+        { seq: 11, at: 6100, kind: "found", name: "golden duck", who: "", kept: false },
+        null,
+      ],
+    })!;
+    expect(s.moments).toEqual([
+      { seq: 4, at: 4000, kind: "beat", name: "Trabolta Introduction", who: null, kept: false },
+      { seq: 9, at: 5000, kind: "signal", name: "bottle landed", who: "Winamp", kept: false },
+      { seq: 10, at: 6000, kind: "found", name: "golden duck kept", who: "Excel", kept: true },
+      { seq: 11, at: 6100, kind: "found", name: "golden duck", who: null, kept: false },
+    ]);
+    expect(parseScreenState({ ...body, moments: { seq: 1 } })!.moments).toEqual([]);
+    const many = Array.from({ length: 40 }, (_, i) => ({ seq: i + 1, at: 1000 + i, kind: "sfx", name: "zip" }));
+    const kept = parseScreenState({ ...body, moments: many })!.moments;
+    expect(kept.length).toBe(MOMENTS_MAX);
+    expect(kept[kept.length - 1]!.seq).toBe(40);
   });
 });
 
