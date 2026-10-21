@@ -94,8 +94,8 @@ else:
   Truther Download: You should still retrieve the virus from the Internet, and then recruit half + 1 of the programs to your faction.
 unlock Excel Final Orders for program
 start quest Recruit To Stay for program
-// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q21): no profile sheet any more.
-Truther Download: Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room.
+// DRAFT w18 (Q21 reworded): the Sides screen, and recruiting by pass.
+Truther Download: Programs walk through Unlimited Power's door on the Sides screen (Start → Sides). Scan a program's pass to recruit them.
 
 == OpenOffice Final Round
 set program.zipped = false
@@ -107,14 +107,18 @@ else:
   Truther Download: You should still gather 20 facts, and then recruit half + 1 of the programs to your faction.
 unlock OpenOffice Final Orders for program
 start quest Recruit To Leave for program
-// DRAFT for sign-off (wave 13 integration, SIGNOFF-w13 Q21).
-Truther Download: Programs join The Way Out, the Truthers, on the Choose your side card, in the Trapped in the Internet room.
+// DRAFT w18 (Q21 reworded): the Sides screen, and recruiting by pass.
+Truther Download: Programs walk through The Way Out's door on the Sides screen (Start → Sides): the Truthers. Scan a program's pass to recruit them.
 
 == Program Final Round
 set program.zipped = false
 unlock The Y2K Clock for program
 Truther Download: Two factions are recruiting. Unlimited Power wants to stay in this machine forever. The Way Out, the Truthers, wants to overthrow Trabolta and escape. Support one, or pursue your own interests.
 Truther Download: Some programs' human identities, and their reasons for accepting Trabolta's invitation, may conflict with yours.
+// Wave 18 (F2): the side reveal is a big full-screen card of the two doors
+// (the Play app's `sides` widget); after it, the Sides screen.
+// DRAFT w18
+show sides "🕚 SYSTEM CLOCK RESET. Two doors have opened in the computer." to program with thread: Truther Download, moment: big
 
 // ── Midnight ──
 

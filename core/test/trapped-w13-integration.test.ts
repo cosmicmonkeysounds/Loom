@@ -357,7 +357,17 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     // 🫘 is Adobe Acrobat's own hook: the other hosts are never offered it.
     expect(primeView(sim, "Task Manager", undefined, { host: true }).interactions.find((i) => i.id === "radio_beans")?.hostHeard).toBe(false);
     const norton = guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live;
-    for (const b of [...ANTIVIRUS, ...PATCH]) expect(norton, b).toContain(b);
+    for (const b of ["accuse", ...PATCH]) expect(norton, b).toContain(b);
+    // Wave 18 (A6): 🛡 only on a marked program's card, ✅ only on a captured one's
+    // (g1 missed the summons in this walk, so it is marked: late).
+    expect((sim.world.get("g1.marked") as { value: unknown }).value).toBe(true);
+    expect(norton).toContain("send to the internet");
+    expect(norton).not.toContain("mark as reinstalled");
+    sim.signal("unmark_for_reinstallation", "g1", undefined, "Norton Anti-Virus");
+    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).not.toContain("send to the internet");
+    sim.signal("mark_for_reinstallation", "g1");
+    sim.signal("send to the internet", "g1", undefined, "Norton Anti-Virus");
+    expect(guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live).toContain("mark as reinstalled");
   }, SLOW);
 
   it("/api/prime/act: a host's 🛡 is refused like any other booth's (403, nothing changes); its 🔧 lands", { timeout: SLOW }, async () => {

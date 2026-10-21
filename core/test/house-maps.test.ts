@@ -427,10 +427,10 @@ describe("EventRuntime — the project's maps", () => {
     rt.openDoors();
     const term = spatialStream(rt);
     await term.open;
-    // A marked program (restricted): the tablet's begin lets them in (wave 16).
+    // A marked program: the tablet's begin lets them in (wave 16; wave 18 marks, no restriction).
     const person = async (name: string) => {
       const id = ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
-      await mod(rt, "/api/mod/act", { id, action: "restrict" });
+      await mod(rt, "/api/mod/signal", { name: "mark_for_reinstallation", subject: id }); // wave 18: the show's `reinstall:` reads the mark
       return id;
     };
     const firstSpot = show().duck.spots[0]!.id;
@@ -664,7 +664,7 @@ describe("EventRuntime — the project's maps", () => {
     const rt = runtimeAt(freshDir(), { houseMaps: twoVariants(), project: fakeProject().link });
     rt.openDoors();
     const pid = ((await mod(rt, "/api/mod/persona", { name: "Paint" })).json.guest as { id: string }).id;
-    await mod(rt, "/api/mod/act", { id: pid, action: "restrict" });
+    await mod(rt, "/api/mod/signal", { name: "mark_for_reinstallation", subject: pid }); // wave 18: the show's `reinstall:` reads the mark
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web" })).json as unknown as Assignment;
     expect(typeof a.token).toBe("string");
     for (const auth of [{}, { token: "nope" }, { token: a.token }]) {

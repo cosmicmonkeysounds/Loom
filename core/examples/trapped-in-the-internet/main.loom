@@ -6,7 +6,7 @@ judge: Trabolta
 alerts: Night.alerts
 currency: score as Truthcoin, max 500, expiry 10m
 watch: Night.clock as Y2K clock, Night.round as Truth round, Night.judge_mode as Judge, Night.lights as Lights
-watch: program.cleared as Cleared, program.marked as Marked
+watch: program.cleared as Cleared, program.marked as Marked, program.door_by as At the door
 watch: program.afk as Bathroom Mode, program.late as Late, program.corrupted as In the Internet, program.checked_in as Checked in
 watch: Night.results_q as Results read, while Night.phase == "truth_1"
 watch: Night.scenario as Overshare scenario, while Night.scenario > 0 and Night.ended != true
@@ -26,6 +26,13 @@ countdown: Night.warn_at as Five-minute warning, while Night.hunt2_on == true an
 countdown: Night.summons_end as Summons closes, while Night.summons_open == true, for guests
 countdown: Night.y2k_end as Midnight, while Night.final_round == true and Night.ended != true, for guests
 countdown: Night.dance_at as Dance lights
+wanted: program.marked as program.marked_for by program.escort_by, for Antivirus
+reinstall: program.marked == true or program.corrupted == true or Night.ended == true
+archive: The Uploader when program.cleared == true and program.featured == "none" and Night.ended != true
+archive: Norton Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
+archive: McAfee Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
+archive: Password Manager when program.cleared == true and program.marked != true and program.corrupted != true
+archive: CRA Agent Software when program.cleared == true and program.marked != true and program.corrupted != true
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
@@ -337,6 +344,13 @@ ROLE Program
   marked: bool = false
   marked_for: text? = none
   unmark_av: 0 to 9 = 0
+  // Wave 18 (B3, A2–A4): the Antivirus who claimed this program on the
+  // Wanted board (`claim_escort`) and at the door (`claim_door`), as the
+  // character's name; "none" = nobody yet.
+  escort_by: text? = none
+  door_by: text? = none
+  // Truth Pong: a judge pressed 🏓 Made or Missed for them (the Rows list).
+  pong_thrown: bool = false
   lie_q1: bool = false
   lie_q2: bool = false
   lie_q3: bool = false
@@ -475,6 +489,8 @@ ROLE Program
     if Night.banish == true:
       reply ⛈ Banished to the Internet, with everyone else. Gerald cannot help you tonight. Remember what Trabolta let slip.
     else:
+      // DRAFT w18: the capture is a big moment with the way there (C12).
+      reply "!!🌐 Sent to the Internet. Go out back through the tunnel to the Internet, scan your pass at the reinstallation station and find Gerald, the golden duck." with go: The Internet, go: pass
       set self.internet_visits += 1
       set self.trust = self.truths_accepted * 10 - self.internet_visits * 5 + self.assessment
       cue tablet_wizard
@@ -492,10 +508,11 @@ ROLE Program
     set self.corrupted = false
     if Night.summons_closed == true and Night.phase == "summons":
       set self.summons_ok = true
+    // DRAFT w18: the release is a big moment (C12).
     if Night.ending == "hand_jive":
-      reply The hand jive broke his hold. You are out of the Internet.
+      reply "!!🕺 The hand jive broke his hold. You are out of the Internet." with go: The Desktop
     else:
-      reply Reinstallation complete. You can follow instructions. Welcome back to the computer.
+      reply "!!🦆 Reinstallation complete. You can follow instructions. Welcome back to the computer." with go: The Desktop
     if self.cleared != true:
       set self.cleared = true
       reveal The Start Bar for self
@@ -508,10 +525,9 @@ ROLE Program
       reveal The Graphics Card for self
       reveal The Hard Drive for self
       reveal task manager for self
-    // A program marked before the capture had its 📝 card closed (w13 Q35):
-    // back from the Internet, it gets the open round's card again (a
-    // still-marked one gets it from `unmarked`, once the mark is off).
-    if self.marked != true and self.fact_card_live != true and self.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
+    // Back from the Internet with no live 📝 card (an old one closed while
+    // they were away): the open round's card again.
+    if self.fact_card_live != true and self.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
       fire deal_fact_card for self
 
   when wrong code for program:
@@ -535,15 +551,20 @@ ROLE Program
     if Night.phase == "bingo_results" and program.bingo != true:
       set program.bingo = true
       set Night.bingo_winners += 1
-      reply 🎱 Bingo! Name the program for each square, from memory. Centre square last.
+      // DRAFT w18: a big moment (the user's example: un-ignorable).
+      reply !!🎱 BINGO! Name the program for each square, from memory. Centre square last.
 
   when award_the_ribbon for program:
     if program.bingo == true:
       // DRAFT for sign-off (w13 Q24): CI 2's 🎀 to-do ticks.
       set Night.bingo_ribbons += 1
       unlock Computer Bingo for program
-      broadcast "~🎀 {program.name} wins a Bingo Ribbon! Everyone cheer!" to everyone
-      reply 🎀 You won a Bingo Ribbon. Take a bow.
+      // Wave 18 (B7): the winner's medal is a big moment; the house cheer is
+      // a big one that closes itself (the story rule `ribbon_cheer`).
+      // DRAFT w18
+      reply "!!🎀 You won the Bingo Ribbon. Take a bow." with go: codex: Computer Bingo
+      set Night.ribbon_winner = program.name
+      fire ribbon_cheer
     else:
       broadcast "~🎀 {program.name} receives a ribbon from the hosts. Everyone cheer!" to everyone
       reply 🎀 You received a ribbon. Take a bow.
@@ -880,7 +901,7 @@ ROLE Program
     set Night.bottle_picks += 1
     set Night.bottle_pick = program.name
     fire bottle_announce
-    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare", moment: major
+    show poll "🍾 The bottle landed on you. Truth or dare?" to program with thread: Trabolta, options: "Truth | Dare", moment: big
 
   when truth_answered for program:
     if Night.bottle_open == true and program.name == Night.bottle_pick:
@@ -913,6 +934,7 @@ ROLE Program
   // 📝 round-2 filings count at the tally.
   when made_the_cup for program:
     if Night.phase == "truth_pong":
+      set program.pong_thrown = true
       set program.may_answer = true
       set program.cupped = true
       broadcast "~🏓 {program.name} made the cup and may submit a truth." to everyone
@@ -920,6 +942,7 @@ ROLE Program
 
   when missed_the_cup for program:
     if Night.phase == "truth_pong":
+      set program.pong_thrown = true
       set program.cupped = false
       broadcast "~🏓 {program.name} missed the cup. Reinstallation required." to everyone
       fire mark_for_reinstallation for program with reason: "missed the cup"
@@ -938,10 +961,13 @@ ROLE Program
       broadcast "🖌 {program.name} already signed. Nothing was counted." to channel(hosts)
 
   // ── Marked for reinstallation ──
-  // Every host verdict that used to capture on the spot now MARKS the program:
-  // their phone shrinks to a 🚨 card, their DMs and the Tube + Internet rooms
-  // (read-only); every Antivirus booth chimes; # quarantine pins an escort task.
-  // The capture itself is still the Antivirus' 🛡 (or the tent tablet). `reason`
+  // Every host verdict that used to capture on the spot MARKS the program.
+  // Wave 18 (Q30): a mark does not hinder them. Their phone keeps every
+  // button, room, 📝 card, check-in and the wallet; it hears one soft
+  // heads-up. Every Antivirus booth gets a WANTED pop-out (the `!!🚨`
+  // readout, TRAIT Enforcer) and the Wanted board (the header's `wanted:`
+  // line). It is the confrontation that banishes them: an Antivirus scans
+  // their pass and presses 🛡 (or the tent's begin captures them). `reason`
   // is a quoted phrase for the booths; the director may fire this from Run.
   when mark_for_reinstallation for program:
     if program.corrupted == true:
@@ -954,13 +980,10 @@ ROLE Program
         set program.marked_for = reason
       else:
         set program.marked_for = "flagged by a host"
-      restrict program to The Tube, The Internet
-      pin "!🚨 GO TO THE INTERNET. You are marked for reinstallation. An Antivirus will escort you through the Tube. Your buttons are off until you are reinstalled, except 🚻 Bathroom Mode." for program
-      pin "🚨 Escort {program.name} to the Internet — {program.marked_for}. Press 🛡 Send to the Internet on their card when you have them." in quarantine for program
+      set program.escort_by = "none"
+      // DRAFT w18: the soft heads-up (a minor moment; no pin, no restriction).
+      reply 🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you.
       fire marked for program
-      // A live 📝 card closes (w13 Q35): a marked program files nothing.
-      if program.fact_card_live == true:
-        fire deal_fact_card for program
 
   // A mis-tap, or mercy: the mark comes off without a trip to the tent.
   // Who pressed it (w13 Q32, DRAFT for sign-off): the pressing Antivirus'
@@ -981,20 +1004,26 @@ ROLE Program
         fire unmarked for program with how: "cleared by the Antivirus"
       else:
         fire unmarked for program with how: "cleared by a host"
+      set program.escort_by = "none"
+      // DRAFT w18: the 🩹 tells the program (the capture never says so).
+      reply ✅ Your mark is lifted. You are not going to the Internet.
     // Read once: a later settle (a director firing it from Run) never
     // reuses this press's count.
     set program.unmark_av = 0
 
-  // Shared by the capture, the release and 🩹: the mark comes off.
+  // Shared by the capture, the release and 🩹: the mark comes off (wave
+  // 18: a mark never restricted or pinned anything, so nothing to undo; the
+  // Wanted board keeps a captured program's poster for a minute by itself).
   when unmarked for program:
     set program.marked = false
-    unrestrict program
-    // The 📝 card comes back if a round is still open (w13 Q35); a round
-    // that opened while they were marked deals through its own watcher.
-    if program.cleared == true and program.corrupted != true and program.fact_card_live != true and program.fact_round == Night.round and Night.round >= 1 and Trabolta.awake == true and Night.ended != true:
-      fire deal_fact_card for program
-    unpin for program "✅ The mark is lifted."
-    unpin in quarantine for program "✅ {program.name}: {how}."
+
+  // The confrontation (wave 18, Q30 + B4): an Antivirus scanned a marked
+  // program's pass (TRAIT Enforcer's scan). The program's phone gets the
+  // big moment; the capture itself stays on that Antivirus' 🛡.
+  when confronted for program:
+    if program.marked == true and program.corrupted != true:
+      // DRAFT w18
+      reply !!🛡 CORRUPTION DETECTED. {hunter} has found you. Stay with them: you are going to the Internet.
 
   // ── 📝 File a fact: DM filings with Trabolta (#33, wave 4 judging) ──
   // A fact counts only when the program FILES it on the 📝 card in
@@ -1021,10 +1050,9 @@ ROLE Program
   // night has ended the record is closed: no filing, no card, no judging.
   // The card dealt here is the current one, so the re-deal watcher below
   // has nothing to catch up (a program cleared late would get two cards).
-  // Never to a marked program (w13 Q35, DRAFT for sign-off): its filings
-  // are refused, so a card would only ask again. The 🩹 or the release
-  // re-opens this watcher, so a round that opened meanwhile deals then.
-  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true and self.marked != true:
+  // A marked program files like anyone (wave 18, Q30: a mark does not
+  // hinder; w13 Q35's "no card for a marked program" is superseded).
+  when Night.round > self.fact_round and self.cleared and Trabolta.awake == true and Night.ended != true:
     set self.fact_round = Night.round
     set self.card_seen = Night.card_gen
     // One line per round, so a thread never shows the same words three times.
@@ -1075,8 +1103,7 @@ ROLE Program
     set program.fact_open = ""
     set program.fact_sep = ""
     // Once the night has ended nothing is open, but a live card still closes.
-    // A marked program files nothing (w13 Q35): its live card closes too.
-    if Night.ended != true and Night.round >= 1 and program.marked != true:
+    if Night.ended != true and Night.round >= 1:
       if Night.r1_closed != true:
         if program.fact_h1 != true:
           set program.fact_open = program.fact_open + program.fact_sep + Night.q_h1
@@ -1162,8 +1189,6 @@ ROLE Program
       Trabolta: That round is closed, {program.name}. The question is gone.
     else if program.corrupted == true:
       Trabolta: Programs in the Internet cannot file facts. Come back reinstalled.
-    else if program.marked == true:
-      Trabolta: You are marked for reinstallation, {program.name}. Report to the Internet.
     else if (program.fact_try == 1 and program.fact_h1) or (program.fact_try == 2 and program.fact_h2) or (program.fact_try == 3 and program.fact_h3) or (program.fact_try == 4 and program.fact_h4) or (program.fact_try == 5 and program.fact_h5) or (program.fact_try == 6 and program.fact_h6) or (program.fact_try == 7 and program.fact_f1) or (program.fact_try == 8 and program.fact_f2):
       Trabolta: You already filed a fact for that question, {program.name}. It stands.
     else:
@@ -2068,8 +2093,6 @@ ROLE Program
   when checked_in for program:
     if program.corrupted == true:
       reply You are in the Internet. Finish your reinstallation first.
-    else if program.marked == true:
-      reply You are marked for reinstallation. Go to the Internet, not the Desktop.
     else if at == "The Desktop":
       move program to The Desktop
       set program.checked_in = "The Desktop"
@@ -2182,7 +2205,7 @@ ROLE Program
   // director fires `pickup_line_accepted` with the subject.
   when Night.pickup_gen > self.pickup_seen and self.cleared == true:
     set self.pickup_seen = Night.pickup_gen
-    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it", moment: major
+    show answer "Give me a pickup line that works on Sandy. One line. I cannot tell a good one myself: say it here, and the house will judge it." to program with thread: Trabolta, question: "P1", max: 120, button: "Say it", moment: big
 
   // Only Grok Prom and the song hear it: after the rave he has ridden away,
   // and the advice poll, the banishment and the hand jive have moved on
@@ -2349,7 +2372,8 @@ ROLE Program
       // party (her painting), else G9. G11 waits for it.
       if Night.award == "the_painting" or (Night.award == "quest_completionist" and Night.painting != true):
         set Night.ceremony_done = true
-      reply !🏆 You won {Night.award_title}! Come up to the TV for your trophy.
+      // DRAFT w18: a big moment, with the way to the TV.
+      reply "!!🏆 You won {Night.award_title}! Come up to the TV for your trophy." with go: The Desktop
       fire present_award
 
   // ── Fan-out watchers (one run per program; late arrivals included) ──
@@ -2604,7 +2628,7 @@ ROLE Program
     release self from The Internet
 
   // G11, the resurrection (after the ceremony): out of character. The mark
-  // and its two pins come off (`unmarked`), any other restriction too; the
+  // comes off (`unmarked`), any director's restriction too; the
   // everyone_free watcher above lets the captured go.
   when Night.resurrected == true and self.cleared and self.resurrected != true:
     set self.resurrected = true
@@ -2655,6 +2679,12 @@ ROLE Program
 // Download, the five-minute warning and the dance lights stay the
 // director's: each one is a surprise the countdown would give away.
 
+// Wave 18 (B6, Q2): Clippy is the super-performer who calls the games.
+// `by: Clippy` on an admin cue puts it on Clippy's 🎤 bar (any host or Run
+// may still fire it): the Bingo, the hunts, the First Moment of Truth (⚖️ ⏱
+// 📋 🍾), the bob, the summary and the ceremony with its awards. Never the
+// doors, the alert dial, wallets, the King, terminals, codes, parts or
+// Trabolta. DRAFT w18
 INTERACTION call_to_the_desktop
   label: C1/V1 · 📣 Call everyone to the Desktop
   who: admin
@@ -2664,10 +2694,12 @@ INTERACTION call_to_the_desktop
 INTERACTION start_the_bingo
   label: V2 · 🎱 Start Computer Bingo (20 min)
   who: admin
+  by: Clippy
 
 INTERACTION bingo_time
   label: V3 · ⏰ Bingo time: results
   who: admin
+  by: Clippy
   description: Clippy gets Instructions 2/X. Norton is the selected Antivirus.
 
 INTERACTION introduce_trabolta
@@ -2678,27 +2710,32 @@ INTERACTION introduce_trabolta
 INTERACTION start_the_hunt
   label: V4/V5 · 🔎 Truth Scavenger Hunt 1 (15 min)
   who: admin
+  by: Clippy
 
 INTERACTION hunt_time_up
   label: C2 · ⏰ Hunt over: everyone back to the Desktop (auto at 15 min)
   who: admin
+  by: Clippy
   sequence: false
 
 INTERACTION first_moment_of_truth
   label: V6 · ⚖️ First Moment of Truth
   who: admin
+  by: Clippy
   description: Opens judging. Clippy has Instructions 3/X.
   while: Night.step == 6 and Night.judging != true
 
 INTERACTION close_the_filing
   label: ⏱ Close round-one filings now (auto at 2 min)
   who: admin
+  by: Clippy
   description: Ends the last-chance window early. Results can be read only once it is closed. A closed round never reopens.
   while: Night.filing_open == true
 
 INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
   who: admin
+  by: Clippy
   description: Clippy reads one question's result; the filings for it are settled (+50 / marked). Spin the bottle between questions.
   repeat: true
   while: Night.phase == "truth_1" and Night.results_q < 3
@@ -2706,6 +2743,7 @@ INTERACTION read_the_results
 INTERACTION spin_the_bottle
   label: 🍾 Spin the bottle (Truth or Dare, five per question)
   who: admin
+  by: Clippy
   sequence: false
   description: Picks a cleared program (not marked, away or in the Internet) not yet picked for this question. Trabolta asks on the TV; their phone gets Truth / Dare.
 
@@ -2728,6 +2766,7 @@ INTERACTION second_hunt_preview
 INTERACTION start_the_second_hunt
   label: 📓 Hunt 2 → quest logs; disperse for 1 hour
   who: admin
+  by: Clippy
   while: Night.step == 7
 
 INTERACTION truther_download
@@ -2878,6 +2917,7 @@ INTERACTION final_reveal
 INTERACTION bobbing_for_truth
   label: 🍎 Bobbing for Truth
   who: admin
+  by: Clippy
   while: Night.ended != true and Night.step == 16
 
 INTERACTION read_truth_txt
@@ -2937,6 +2977,7 @@ INTERACTION trabolta_recounts
 INTERACTION clippy_reads_summary
   label: 🪦 After the dance: Clippy reads the summary
   who: admin
+  by: Clippy
   while: Night.ending == "destroyed"
 
 INTERACTION own_award_lines
@@ -2949,52 +2990,62 @@ INTERACTION own_award_lines
 INTERACTION start_the_ceremony
   label: G1 · 🏆 Start the awards ceremony (after the ending)
   who: admin
+  by: Clippy
   description: Only once the night has ended. Trabolta hosts; Clippy hosts after destroyed and rave, and reads every line aloud.
   while: Night.ended == true and Night.ceremony != true
 
 INTERACTION award_most_trusted
   label: G2 · 🥇 Award: Most Trusted (winner = top trust)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_least_trusted
   label: G3 · 🫘 Award: Least Trusted (winner = bottom trust)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_frequent_flyer
   label: G4 · ✈️ Award: Frequent Flyer to the Internet (most visits)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_lore_hoarder
   label: G5 · 📚 Award: Lore Hoarder (most codex entries)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_truthcoin_tycoon
   label: G6 · 🪙 Award: Truthcoin Tycoon (most Truthcoin)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_best_liar
   label: G7 · 🎲 Bonus: Best Liar (value = lies accepted)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_duck_speedrun
   label: G8 · 🎲 Bonus: Golden Duck Speedrun (value = the time)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_quest_completionist
   label: G9 · 🎲 Bonus: Quest Completionist (value = quests done)
   who: admin
+  by: Clippy
   while: Night.ceremony == true
 
 INTERACTION award_the_painting
   label: G10 · 🖌 Bonus: The Million Dollar Painting (winner = MS Paint; value = signatures)
   who: admin
+  by: Clippy
   description: Only when MS Paint is at the party, and only on MS Paint (any other program is refused in # hosts). Reads the 🖌 Signed count unless value is given; the canvas itself is physical.
   while: Night.ceremony == true and Night.painting == true
 
@@ -3015,13 +3066,13 @@ INTERACTION the golden duck
   label: Reinstallation: the golden duck (server)
   who: admin
   sequence: false
-  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck (only a captured or marked program gets in since wave 16).
+  description: Fired by the reinstallation games right after the simulation completes, for whoever found the duck (a captured or marked program; after an ending, anyone, as a party favour).
 
 INTERACTION reinstallation begun
   label: Reinstallation: begun at the tent (server)
   who: admin
   sequence: false
-  description: Fired by the reinstallation games (tablet or headset) for one program when their run begins at the tent, before the game reads whether they are captured. Captures a marked program, so a missed 🛡 never leaves them marked after Gerald.
+  description: Fired by the reinstallation games (tablet or headset) for one program when their run begins at the tent, before the game reads whether they are captured. Captures a marked program, so a missed 🛡 never leaves them marked after Gerald; never after an ending (a party favour).
 
 // Wave 11, appended so no cue number moves (they ride Anytime, the act
 // above): the King's shared health bar and the crew's own door window.
@@ -3066,14 +3117,19 @@ INTERACTION send to the internet
   // DRAFT for sign-off (w13 Q22): the Antivirus' own. Only TRAIT Enforcer's hooks hear it, so no host's card lists it and a host's press is refused.
   by: Antivirus
   // DRAFT for sign-off (w13 Q29): arm then fire on every Antivirus booth. One tap used to capture a program just cleared at the door.
+  // (Wave 18: the booth's CORRUPTION DETECTED screen fires it with one tap after an in-person scan.)
   arm: true
-  description: Antivirus. Corrupted program: drag them through the Tube for reinstallation.
+  // DRAFT w18 (A6): on a marked program's card only (the hook still captures anyone).
+  while: program.marked == true and program.corrupted != true
+  description: Antivirus. A marked program, found: drag them through the Tube for reinstallation.
 
 INTERACTION mark as reinstalled
   label: ✅ Mark as reinstalled
   who: performer
   // DRAFT for sign-off (w13 Q22)
   by: Antivirus
+  // DRAFT w18 (A6): on a captured program's card only.
+  while: program.corrupted == true
   description: Antivirus. They completed the simulation: let them out.
 
 INTERACTION accuse
@@ -3278,6 +3334,38 @@ INTERACTION unmark_for_reinstallation
   while: program.marked == true
   description: A mis-tap or mercy. Lifts the mark; the program keeps their place.
 
+// The Wanted board (wave 18, B3; A2–A4): an Antivirus claims a marked
+// program (the others see it taken), hands it back, or takes over a claim
+// gone quiet; at the door, claims a waiting arrival. The hooks are TRAIT
+// Enforcer's (cast/kit.loom). DRAFT w18
+INTERACTION claim_escort
+  label: 🙋 I'll get them
+  who: performer
+  by: Antivirus
+  while: program.marked == true and program.corrupted != true and program.escort_by == "none"
+  description: Antivirus. Claim a marked program on the Wanted board: every other Antivirus sees you are on it.
+
+INTERACTION release_escort
+  label: Hand it back
+  who: performer
+  by: Antivirus
+  while: program.escort_by == self and program.marked == true and program.corrupted != true
+  description: Antivirus. Give your claim back to the Wanted board.
+
+INTERACTION take_over_escort
+  label: 🙋 Take over
+  who: performer
+  by: Antivirus
+  while: program.marked == true and program.corrupted != true and program.escort_by != "none" and program.escort_by != self
+  description: Antivirus. Take over another Antivirus' claim that has gone quiet.
+
+INTERACTION claim_door
+  label: 🙋 I've got them
+  who: performer
+  by: Antivirus
+  while: program.uploaded == true and program.cleared != true and program.door_by == "none"
+  description: Antivirus. Claim an arrival waiting at the Optical Drive, then scan their pass.
+
 INTERACTION made_the_cup
   label: 🏓 Made the cup: may answer
   who: performer
@@ -3372,7 +3460,7 @@ when call_to_the_desktop:
   if Night.step < 1:
     set Night.phase = "desktop"
     set Night.step = 1
-    broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone
+    broadcast "!📣 ALL PROGRAMS: report to the Desktop. A game is about to begin." to everyone with go: The Desktop
     do announce "All programs, report to the Desktop. A game is about to begin."
     sound announce_chime
     cue lights_call_desktop
@@ -3401,17 +3489,18 @@ when start_the_bingo:
     cue terminals_attract
     set Night.terminals = "attract"
     sound bingo_start
-    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes. Do not write names: use your computer memory." to everyone
+    broadcast "!🎱 COMPUTER BINGO has begun. 20 minutes. Do not write names: use your computer memory." to everyone with go: quest: The Bingo Card
     -> Computer Bingo
   else:
     broadcast "🎱 Not again: Bingo has already started. Nothing happens." to channel(hosts)
 
 when Night.bingo_on == true and Time.elapsed >= Night.bingo_end:
   set Night.bingo_on = false
-  broadcast "!⏰ Bingo time is up. Back to the Desktop." to everyone
+  broadcast "!⏰ Bingo time is up. Back to the Desktop." to everyone with go: The Desktop
   sound announce_chime
   fire bingo_time_up
-  update quest Run The Bingo for Clippy "Twenty minutes are up. Ask the director for BINGO TIME."
+  // DRAFT w18
+  update quest Run The Bingo for Clippy "Twenty minutes are up. Call ⏰ Bingo time from your 🎤 bar."
 
 // B3 · V3: the results. The Antivirus interruption, the frame, and the
 // first reinstallation are performed live with the performer buttons.
@@ -3430,6 +3519,13 @@ when bingo_time:
     -> Bingo Time
   else:
     broadcast "⏰ Not again: the Bingo results are already in. Nothing happens." to channel(hosts)
+
+// The Bingo Ribbon's house cheer (wave 18, B7): fired by 🎀 on a Bingo
+// winner (ROLE Program). A story rule, so the big moment to the whole house
+// is the cue's own (lint L1218); it closes itself after six seconds.
+when ribbon_cheer:
+  // DRAFT w18
+  broadcast "!!🎀 {Night.ribbon_winner} won the Bingo Ribbon! Cheer for them at the Desktop." to everyone with close: 6s
 
 // Fired (unbound) by the first Bingo-phase capture: `send to the internet`
 // or the tent's `reinstallation begun`.
@@ -3450,7 +3546,7 @@ when introduce_trabolta:
     reveal Trabolta
     cue terminals_trabolta_online
     set Night.terminals = "trabolta"
-    broadcast "!🤖 TRABOLTA IS ONLINE. The computer's AI helper is speaking at the Desktop. His thread is open: say hello." to everyone
+    broadcast "!🤖 TRABOLTA IS ONLINE. The computer's AI helper is speaking at the Desktop. His thread is open: say hello." to everyone with go: Trabolta
     -> Trabolta Introduction
   else if Night.trabolta_introduced == true:
     broadcast "🤖 Trabolta is already online. Nothing happens." to channel(hosts)
@@ -3483,7 +3579,7 @@ when start_the_hunt:
     cue screens_countdown_hunt
     set Night.screen = "countdown_hunt"
     set Night.terminals = "countdown_hunt"
-    broadcast "!🔎 THE TRUTH SCAVENGER HUNT has begun. Three questions are in your Quest Log. 15 minutes." to everyone
+    broadcast "!🔎 THE TRUTH SCAVENGER HUNT has begun. Three questions are in your Quest Log. 15 minutes." to everyone with go: quests
     -> Truth Scavenger Hunt One
   else:
     broadcast "🔎 Not again: hunt 1 has already started. Nothing happens." to channel(hosts)
@@ -3504,7 +3600,7 @@ when hunt_time_up:
     complete quest Hunt One for everyone
     update quest Host The Hunt for Clippy "Two-minute filing window, then ⏱ close, 📋 per question, 🍾 the bottle."
     unlock Clippy Instructions 3 for Clippy
-    broadcast "!📣 Time is up. Return to the Desktop for the First Moment of Truth." to everyone
+    broadcast "!📣 Time is up. Return to the Desktop for the First Moment of Truth." to everyone with go: The Desktop
     do announce "Time is up. Return to the Desktop."
     sound announce_chime
     cue screens_return
@@ -3530,7 +3626,7 @@ when first_moment_of_truth:
     set Night.filing_open = true
     set Night.filing_close = Time.elapsed + 120
     set Night.poll = "bottle"
-    broadcast "!📝 Last chance: file your round-one facts with Trabolta. Two minutes." to everyone
+    broadcast "!📝 Last chance: file your round-one facts with Trabolta. Two minutes." to everyone with go: Trabolta
     cue lights_truth_time
     set Night.lights = "truth_time"
     cue screens_hunt_results
@@ -3660,12 +3756,15 @@ when are_you_sure:
 // A run's begin (the tablet's scan, a headset's station) fires `reinstallation
 // begun` first: a marked program who reached the tent without a 🛡 is
 // captured here, so the game starts them CORRUPTED and Gerald releases them.
-// A corrupted one is already in. A free, unmarked program never gets here:
-// since wave 16 the server refuses its begin (409 not marked for reinstallation).
+// A corrupted one is already in. A free, unmarked program never gets here
+// before the end: the header's `reinstall:` line is the server's gate (409
+// not marked for reinstallation). After an ending the reinstallation is a
+// party favour open to everyone (wave 18, Q16): the begin never captures,
+// and Gerald finds a healthy program.
 // During the Bingo results a capture here is the night's first
 // reinstallation as surely as the Enforcer's 🛡 (cast/kit.loom).
 when reinstallation begun for program:
-  if program.marked == true and program.corrupted != true:
+  if program.marked == true and program.corrupted != true and Night.ended != true:
     capture program into The Internet
     if Night.phase == "bingo_results" and Night.first_reinstall_done != true:
       set Night.first_reinstall_done = true
@@ -3751,7 +3850,7 @@ when start_the_second_hunt:
     set Night.terminals = "trivia_2"
     cue lights_game
     set Night.lights = "game"
-    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth. # clipboard is open." to everyone
+    broadcast "!📓 Round 2 is in your Quest Log. You have ONE HOUR. Return for the Second Moment of Truth. # clipboard is open." to everyone with go: quests
     -> Second Hunt
   else if Night.step > 7:
     broadcast "📓 Not again: hunt 2 has already started. Nothing happens." to channel(hosts)
@@ -3778,7 +3877,7 @@ when truther_download:
     cue lights_glitch
     set Night.lights = "glitch"
     sound truther_glitch
-    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." to everyone
+    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." to everyone with go: Truther Download
   else:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
 
@@ -3794,7 +3893,8 @@ when five_minute_warning:
     set Night.alerts = "dialog"
     unlock Clippy Instructions 5 for Clippy
     update quest Keep Everyone Calm for Clippy "Truth Pong. Be more excited than ever."
-    broadcast "!⏳ FIVE MINUTES. Be in the Desktop for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone
+    // DRAFT w18
+    broadcast "!⏳ FIVE MINUTES. Be in the Desktop and scan its check-in QR for the Second Moment of Truth, or an Antivirus will take you to the Internet and you will not play Truth Pong. Bathroom Mode excuses you." to everyone with go: scan as "📷 Check in", go: The Desktop
     do announce "Five minutes. Everyone to the Desktop."
     sound countdown_tick
     cue lights_call_desktop
@@ -3838,7 +3938,7 @@ when truth_pong:
     cue screens_truth_pong
     set Night.screen = "truth_pong"
     set Night.terminals = "truth_pong"
-    broadcast "!🏓 TRUTH PONG. To the Cloud, out back: sink a cup and you may answer one fact. Miss and you are marked." to everyone
+    broadcast "!🏓 TRUTH PONG. To the Cloud, out back: sink a cup and you may answer one fact. Miss and you are marked." to everyone with go: The Cloud
     -> Truth Pong
   else:
     broadcast "🏓 Not again: Truth Pong has already started. Nothing happens." to channel(hosts)
@@ -3883,7 +3983,7 @@ when trust_chart:
     cue screens_trust_chart
     set Night.screen = "trust_chart"
     set Night.terminals = "trust_chart"
-    broadcast "!📊 THE TRUST CHART. Trabolta is ranking every program on the TV. Find your name." to everyone
+    broadcast "!📊 THE TRUST CHART. Trabolta is ranking every program on the TV. Find your name." to everyone with go: The Desktop
     -> Trust Chart
   else if Night.step >= 11:
     broadcast "📊 Not again: the Trust Chart has already played. Nothing happens." to channel(hosts)
@@ -3977,7 +4077,7 @@ when trabolta_overshares:
     set Night.round = 3
     set Night.facts_requested = 8
     start quest The Final Facts for everyone
-    broadcast "!🤖 Trabolta is sharing the final facts at the Desktop. They are in your Quest Log." to everyone
+    broadcast "!🤖 Trabolta is sharing the final facts at the Desktop. They are in your Quest Log." to everyone with go: quests
     set Night.scenario = 4
     if Kernel.excel_planted == true and Kernel.openoffice_dossier == true:
       set Night.scenario = 1
@@ -4026,7 +4126,7 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone
+    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone with go: sides, go: Truther Download
     -> The Y2K Clock
   else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
@@ -4640,7 +4740,7 @@ when final_reveal:
     cue screens_final_reveal
     set Night.screen = "final_reveal"
     set Night.terminals = "final_reveal"
-    broadcast "!🌑 ALL PROGRAMS: to the living room for the final Truth Scavenger Hunt reveal." to everyone
+    broadcast "!🌑 ALL PROGRAMS: to the living room for the final Truth Scavenger Hunt reveal." to everyone with go: The Desktop
     -> Final Reveal
   else:
     broadcast "🌑 Not now: the final reveal has already played, or the night has ended. Nothing happens." to channel(hosts)
@@ -4771,7 +4871,8 @@ when advice_thwarted:
     cue screens_banish
     set Night.screen = "banish"
     set Night.terminals = "banish"
-    broadcast "!⛈ Trabolta is banishing EVERY program to the Internet. Antivirus included." to everyone
+    // DRAFT w18
+    broadcast "!!⛈ Trabolta is banishing EVERY program to the Internet. Antivirus included." to everyone with go: The Internet
     -> Advice Thwarted
   else:
     broadcast "⛈ Only during the advice poll (💌 first), once. Nothing happens." to channel(hosts)
@@ -4816,7 +4917,7 @@ when start_the_ceremony:
     set Night.screen = "ceremony"
     set Night.terminals = "ceremony"
     sound ceremony_bed
-    broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone
+    broadcast "!🏆 THE AWARDS CEREMONY. Every program to the living room." to everyone with go: The Desktop
     -> The Ceremony
   else if Night.ceremony == true:
     broadcast "🏆 The ceremony has already started. Nothing happens." to channel(hosts)

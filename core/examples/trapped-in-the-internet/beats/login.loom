@@ -85,6 +85,8 @@ unlock The Terms Of Service for program
 set program.score = 100
 Task Manager: 100 Truthcoin credited. I am also the bank. Keep track. I will.
 set program.uploaded = true
+// Wave 18 (Q26): every Antivirus booth hears the door queue.
+fire waiting_at_the_door for program
 Task Manager: Installation complete. Find me in the house, or message me here, for help with the app. I am always running. That is the whole job.
 Task Manager: Antivirus, confirm.
 show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program

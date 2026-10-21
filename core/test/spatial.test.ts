@@ -528,11 +528,13 @@ async function capturedPersona(rt: EventRuntime, name: string): Promise<string> 
   return id.id;
 }
 
-/** A program an Antivirus marked (restricted, not captured): the tablet may
- *  begin their reinstallation (wave 16). */
+/** A program a host marked for reinstallation (not captured): the tablet may
+ *  begin their reinstallation (wave 16; wave 18: the show's `reinstall:`
+ *  header reads the mark, since a mark no longer restricts). */
 async function markedPersona(rt: EventRuntime, name: string): Promise<string> {
   const id = ((await mod(rt, "/api/mod/persona", { name })).json.guest as { id: string }).id;
-  expect((await mod(rt, "/api/mod/act", { id, action: "restrict" })).status).toBe(200);
+  expect((await mod(rt, "/api/mod/signal", { name: "mark_for_reinstallation", subject: id })).status).toBe(200);
+  expect(rt.liveSim!.world.peek(`${id}.marked`)).toMatchObject({ value: true });
   return id;
 }
 
@@ -615,10 +617,12 @@ describe("EventRuntime — the spatial plane", () => {
     rt.dispose();
   });
 
-  it("a marked (not captured) program finds Gerald: not released, still learns the duck", async () => {
+  it("a party-favour run (after an ending, wave 18 Q16): a healthy program finds Gerald, not released, still learns the duck", async () => {
     const rt = runtimeAt(freshDir());
     rt.openDoors();
-    const pid = await markedPersona(rt, "Winamp");
+    const pid = ((await mod(rt, "/api/mod/persona", { name: "Winamp" })).json.guest as { id: string }).id;
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web", device: "Tent tablet" })).status).toBe(409);
+    rt.liveSim!.setVar("Night.ended", "true");
     const a = (await mod(rt, "/api/mod/spatial/begin", { guest: pid, world: "web", device: "Tent tablet" })).json as unknown as Assignment;
     expect(a.captured).toBe(false);
     await call(rt, "POST", "/api/spatial/pose", { p: a.duck.pos, yaw: 0 }, { token: a.token });

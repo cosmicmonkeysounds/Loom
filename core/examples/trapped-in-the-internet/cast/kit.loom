@@ -54,13 +54,19 @@ TRAIT Enforcer is Person
       Self: Not yet. Finish your upload. I will be right here.
     else if not program.cleared:
       -> self.Clearance
+    else if program.marked == true and program.corrupted != true:
+      // The confrontation (wave 18, Q30 + B4): the scan of a marked program
+      // is the moment they are found, during the summons too (they may
+      // still check themselves in with the Desktop's QR). Their phone gets
+      // the big CORRUPTION DETECTED (the ROLE's `confronted`); this booth a
+      // big readout (its pop-out). The capture stays on this booth's 🛡.
+      // DRAFT w18
+      Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
+      fire confronted for program with hunter: self
+      reply !!🛡 Corruption detected: {program.name} ({program.marked_for}). Press 🛡 Send to the Internet, then walk them through the Tube to the Internet.
     else if Night.summons_open == true:
       fire checked_in for program with at: The Desktop
       Self: Checked in. {program.name} is present at the Desktop.
-    else if program.marked == true and program.corrupted != true:
-      // DRAFT for sign-off (w13 Q30): a marked program is never "no threats found".
-      Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
-      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
     else:
       Self:
         cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.
@@ -123,6 +129,8 @@ TRAIT Enforcer is Person
     if program.corrupted == true:
       reply {program.name} is already in the Internet.
     else if Night.phase == "bingo_results":
+      // Who caught them: the Wanted board's CAUGHT BY (wave 18).
+      set program.escort_by = self
       Self: {program.name}, you did not agree to be ruled by AI. That is what computer programs are here for. You have a virus that was not caught at the door. You are going to the Internet for a reinstallation.
       capture program into The Internet
       reply Logged: {program.name} sent to the Internet (Bingo).
@@ -131,6 +139,7 @@ TRAIT Enforcer is Person
         set Night.first_reinstall = program.name
         fire first_reinstallation
     else:
+      set program.escort_by = self
       set program.doubt += 20
       Self: {program.name}. Corruption detected. You are going to the Internet for reinstallation. Do not resist the Tube.
       capture program into The Internet
@@ -148,6 +157,41 @@ TRAIT Enforcer is Person
     if program.marked == true:
       set program.unmark_av += 1
 
+  // ── The Wanted board and the door (wave 18, B3 + B5) ──
+  // `program.escort_by` / `program.door_by` hold the claiming Antivirus'
+  // name ("none" = nobody). A director's press (no booth) reaches every
+  // Enforcer: the first one claims, the others find it taken.
+  when claim_escort for program:
+    if program.marked == true and program.corrupted != true and program.escort_by == "none":
+      set program.escort_by = self
+      // DRAFT w18
+      reply 🙋 {program.name} is yours. Find them and scan their pass: the scan is the confrontation.
+
+  when release_escort for program:
+    if program.escort_by == self and program.corrupted != true:
+      set program.escort_by = "none"
+      // DRAFT w18
+      reply 🙋 {program.name} is back on the Wanted board for every Antivirus.
+
+  when take_over_escort for program:
+    if program.marked == true and program.corrupted != true and program.escort_by != "none" and program.escort_by != self:
+      set program.escort_by = self
+      // DRAFT w18
+      reply 🙋 You took over {program.name}. Find them and scan their pass.
+
+  // A program finished uploading: every Antivirus hears the door queue (the
+  // booth turns these into one door pop-out; Q26: the four share the door).
+  when waiting_at_the_door for program:
+    if program.cleared != true:
+      // DRAFT w18
+      reply !!🚪 {program.name} is waiting at the Optical Drive.
+
+  when claim_door for program:
+    if program.uploaded == true and program.cleared != true and program.door_by == "none":
+      set program.door_by = self
+      // DRAFT w18
+      reply 🙋 {program.name} is yours at the door: scan their pass.
+
   when accuse for program:
     set program.doubt += 25
     Self: I am watching you, {program.name}. Your behaviour has been logged.
@@ -164,7 +208,8 @@ TRAIT Enforcer is Person
 
   when five_minute_warning:
     if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
-      reply 🛡 Scan every program arriving at the Desktop: that is their check-in.
+      // DRAFT w18 (B10): the programs check themselves in.
+      reply 🛡 The summons: programs check themselves in with the Desktop's QR. 📍 only for a dead or lost phone (Still missing, on your NOW card).
 
   when zip_everyone_out:
     if Night.ended != true and Night.ending != "banished":
@@ -190,11 +235,14 @@ TRAIT Enforcer is Person
     if Night.auto_sweep == true:
       reply !⏰ {program.name} is late for the Second Moment of Truth. Go get them.
 
+  // The WANTED pop-out (wave 18, B3): a big readout (the booth's pop-out
+  // rung), with the program's name and picture (C3).
   when marked for program:
+    // DRAFT w18
     if program.late == true and program.marked_for == "late for the Second Moment of Truth":
-      reply !🚨 {program.name} is late for the Second Moment of Truth: marked for reinstallation. Go get them, escort them through the Tube, then press 🛡 on their card.
+      reply !!🚨 {program.name} is late for the Second Moment of Truth: marked for reinstallation. Find them and scan their pass: the scan is the confrontation.
     else:
-      reply !🚨 {program.name} is marked for reinstallation ({program.marked_for}). Escort them through the Tube, then press 🛡 on their card.
+      reply !!🚨 {program.name} is marked for reinstallation ({program.marked_for}). Find them and scan their pass: the scan is the confrontation.
     if program.afk == true or (program.location == "Disk Cleanup" and Time.elapsed < program.checked_in_time + 900):
       reply ⚠️ {program.name} is in Bathroom Mode or Disk Cleanup. Wait for them outside; never go in.
 
