@@ -40,7 +40,8 @@ Device check (≤ 10 min) — the oldest tablet from the K-02 tags:
   1. On the tablet: Settings → Developer options → USB debugging on; plug into a laptop;
      laptop Chrome → chrome://inspect → the tablet's page → Console.
   2. Open https://app.mapsandducks.com/terminal/ (provision with the mod code if asked).
-     PASS: attract screen (face + scanner) and an empty Console (no red errors).
+     PASS: the idle show (screensavers, ads, popups; after the introduction the corner scan
+     box with the live camera) and an empty Console (no red errors).
   3. Open https://app.mapsandducks.com/reinstall/  → the wizard loads, Console empty.
   4. On that tablet, in the Console:  !!document.createElement('canvas').getContext('webgl2')
      - true  → set the terminal to view=world: the simulation draws in the face pane.
