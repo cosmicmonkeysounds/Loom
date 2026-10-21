@@ -14,7 +14,7 @@ import type { WidgetHook } from "../stream/bubble.tsx";
 import type { WidgetCard } from "../types.ts";
 import { WIDGETS, WidgetHost } from "../widgets.tsx";
 import { BIG_DEAD_MS, BIG_SETTLE_MS, bigParts, cheerLabel, kickerOf } from "./big-model.ts";
-import type { Exit } from "./exits.ts";
+import { drawnIcon, type Exit } from "./exits.ts";
 import type { Queued } from "./model.ts";
 import { focusedIn, typingIn } from "../ui/focus.ts";
 
@@ -193,7 +193,7 @@ export function BigMoment({
           <div className="moments-big-buttons">
             {(bleed ? [] : exits.slice(0, 2)).map((x) => (
               <button key={`${x.nav.to}:${x.label}`} type="button" className="w95-btn moments-big-exit" disabled={!live} onClick={() => live && onExit(x)}>
-                {x.icon !== null && <Icon name={x.icon} size={16} />}
+                {drawnIcon(x) !== null && <Icon name={drawnIcon(x)!} size={16} />}
                 <span className="moments-exit-label">{x.label}</span>
               </button>
             ))}

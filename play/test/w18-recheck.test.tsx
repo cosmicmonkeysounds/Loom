@@ -8,6 +8,8 @@ import { ShowClockItem } from "../src/chrome/show-clock-tray.tsx";
 import { mergeAnswered, NO_ANSWERS } from "../src/session/shared.ts";
 import { whereRowOf } from "../src/guest/mission-model.ts";
 import { memberCount } from "../src/sides/model.ts";
+import { drawnIcon } from "../src/moments/exits.ts";
+import { ExitButtons } from "../src/moments/surfaces.tsx";
 
 describe("N1: a new sign-in counts the server's answered cards", () => {
   it("merges the server's answered seqs into this device's answers", () => {
@@ -48,5 +50,19 @@ describe("N9: the crew's member count is pluralised", () => {
     expect(memberCount(1)).toBe("1 member");
     expect(memberCount(2)).toBe("2 members");
     expect(memberCount(0)).toBe("0 members");
+  });
+});
+
+describe("N7: an exit shows one icon", () => {
+  it("no drawn icon when the label leads with a pictograph", () => {
+    expect(drawnIcon({ label: "🎱 To the Desktop", icon: "pin" as never })).toBeNull();
+    expect(drawnIcon({ label: "🎟 Show my pass", icon: "pass" as never })).toBeNull();
+    expect(drawnIcon({ label: "Go to The Desktop ›", icon: "pin" as never })).toBe("pin");
+    const html = renderToStaticMarkup(createElement(ExitButtons, { exits: [{ label: "🎟 Show my pass", icon: "pass" as never, nav: { to: "pass" } }], onExit: () => {}, className: "moments-balloon-go" }));
+    expect(html).not.toContain("<svg");
+  });
+  it("the balloon's exit is a flex row (the icon never wraps onto its own line)", () => {
+    const css = readFileSync(new URL("../src/css/moments.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.moments-balloon-go \{\n  display: inline-flex; align-items: center;/u);
   });
 });

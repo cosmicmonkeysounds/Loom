@@ -11,7 +11,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../chrome/icons.tsx";
 import { WinWindow } from "../ui/window.tsx";
 import { DELETE_BAR_MS, GAG_COPY, clearGag, gagFor, mostFrequentCaption } from "./delete-gags.ts";
-import type { Exit } from "./exits.ts";
+import { drawnIcon, type Exit } from "./exits.ts";
 import type { GagStep } from "./gag-dialogs.tsx";
 import { deleteKeys, isUnread, rowOfGroup, type NotificationRow } from "./notifications.ts";
 import { useMomentsEngineContext } from "./provider.tsx";
@@ -234,7 +234,7 @@ export function NotificationsWindow({ onClose, timeOf }: NotificationsWindowProp
                   {r.inUse && <span className="moments-notif-inuse">● IN USE</span>}
                   {exits.map((x) => (
                     <button key={`${x.nav.to}:${x.label}`} type="button" className="w95-btn moments-notif-go" onClick={() => api.take(r, x)}>
-                      {x.icon !== null && <Icon name={x.icon} size={16} />}
+                      {drawnIcon(x) !== null && <Icon name={drawnIcon(x)!} size={16} />}
                       <span className="moments-exit-label">{x.label}</span>
                     </button>
                   ))}

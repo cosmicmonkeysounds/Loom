@@ -46,6 +46,13 @@ export interface Exit {
   nav: Nav;
 }
 
+/** The drawn icon an exit shows: none when its label already leads with a
+ *  pictograph (N7: "📍 🎱 To the Desktop", a lone 🎟 over "🎟 Show my pass"). */
+export function drawnIcon(x: Pick<Exit, "label" | "icon">): IconName | null {
+  if (x.icon === null) return null;
+  return /^\p{Extended_Pictographic}/u.test(x.label.trim()) ? null : x.icon;
+}
+
 /** A live card waiting on the viewer: its glyph, its room, its seq. */
 export interface LiveCard {
   glyph: string;

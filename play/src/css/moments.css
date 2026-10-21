@@ -166,6 +166,7 @@
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
 }
 .moments-balloon-go {
+  display: inline-flex; align-items: center;
   align-self: flex-start; min-height: var(--tap); margin: 2px 0 -6px; padding: 0 2px;
   border: none; background: none; color: var(--link); font: 700 13px var(--ui-font);
   text-decoration: underline; text-underline-offset: 2px; cursor: pointer;

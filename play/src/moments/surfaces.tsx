@@ -15,7 +15,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { Icon } from "../chrome/icons.tsx";
 import { usePlayHost } from "../host.ts";
 import { WinDialog } from "../ui/window.tsx";
-import type { Exit } from "./exits.ts";
+import { drawnIcon, type Exit } from "./exits.ts";
 import { faultAddress, type Moment, type Queued } from "./model.ts";
 import { focusedIn } from "../ui/focus.ts";
 
@@ -86,7 +86,7 @@ export function ExitButtons({ exits, onExit, className, guard }: { exits: readon
     <>
       {exits.map((x) => (
         <button key={`${x.nav.to}:${x.label}`} type="button" className={className} onClick={(guard ?? ((fn) => fn))(() => onExit(x))}>
-          {x.icon !== null && <Icon name={x.icon} size={16} />}
+          {drawnIcon(x) !== null && <Icon name={drawnIcon(x)!} size={16} />}
           <span className="moments-exit-label">{x.label}</span>
         </button>
       ))}
