@@ -4,13 +4,15 @@
 //! LAST boxes (then:, did:), More split in three, the escorts-waiting row,
 //! and the moments lane's pop-out strip looked up by name.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { cueRows } from "../../core/src/cue-sheet.ts";
 import { nextBar, sheetLayout, type CueDesk } from "../src/director.tsx";
 import { hostCalls } from "../src/host/api.ts";
-import { HostDock, popOutDock, stripClass } from "../src/host/dock.tsx";
+import { HostDock, stripClass } from "../src/host/dock.tsx";
 import { HostContext, type HostCtx } from "../src/host/kit.tsx";
 import { barLine, hostTabs, cueDescription, cueThen, didText, hostStrip, hostWanted, moreDefaultTab, moreGroups, moreTabOf, wantedLine, wantedNeed, type WantedLike } from "../src/host/model.ts";
 import { CuesTab } from "../src/host/tab-cues.tsx";
@@ -181,11 +183,10 @@ describe("escorts waiting (§5.5)", () => {
 });
 
 describe("the pop-out strip in the console (§5.7)", () => {
-  it("is looked up by name: absent before the moments lane merges", () => {
-    expect(popOutDock({})).toBeNull();
-    const Dock = () => null;
-    expect(popOutDock({ PopOutDock: Dock })).toBe(Dock);
-    expect(popOutDock(null)).toBeNull();
+  it("the drawer body docks the moments lane's PopOutDock first", () => {
+    const src = readFileSync(join(__dirname, "../src/host/dock.tsx"), "utf8");
+    expect(src).toMatch(/import \{ PopOutDock \} from "\.\.\/moments\/popout\.tsx";/u);
+    expect(src).toMatch(/function DockSlot\(\) \{\s*return <PopOutDock \/>;/u);
   });
 });
 

@@ -14,7 +14,7 @@ import { ArmDrain, CLOCK_HELD, CuePicker, NOTHING_TO_PRESS, type CueDesk, STORY_
 import { eventRoot } from "../chrome/balloon.tsx";
 import { URGENT_S } from "../clock.ts";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
-import * as momentsProvider from "../moments/provider.tsx";
+import { PopOutDock } from "../moments/popout.tsx";
 import { useMomentsHold } from "../moments/provider.tsx";
 import type { PrimeSession } from "../session/prime.ts";
 import type { HostView } from "../types.ts";
@@ -55,16 +55,6 @@ export interface HostDockProps {
    *  §5.5); `booth/app.tsx` supplies it. Without it Needs lists the wanted
    *  programs in place. */
   openWanted?: () => void;
-}
-
-/** The moments lane's `PopOutDock` (wave 18 C9), when it is there: the
- *  drawer body renders it first, so a pop-out docks as a strip inside the
- *  console and never covers the NEXT bar. Looked up by name so this lane
- *  builds before the moments lane merges (absent → nothing). */
-export function popOutDock(mod: unknown = momentsProvider): (() => ReactNode) | null {
-  const key = ["PopOut", "Dock"].join("");
-  const c = mod !== null && typeof mod === "object" ? (mod as Record<string, unknown>)[key] : undefined;
-  return typeof c === "function" ? (c as () => ReactNode) : null;
 }
 
 export function HostDock(p: HostDockProps) {
@@ -504,8 +494,8 @@ function Drawer({ tabs, tab, setTab, onClose, title, fit, children }: { tabs: Re
 }
 
 
-/** The pop-out strip's slot at the top of the console's body (§5.7). */
+/** The pop-out strip's slot at the top of the console's body (§5.7): a
+ *  pop-out docks as a strip inside the console, never over the NEXT bar. */
 function DockSlot() {
-  const Dock = popOutDock();
-  return Dock === null ? null : <Dock />;
+  return <PopOutDock />;
 }
