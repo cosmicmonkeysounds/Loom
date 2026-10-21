@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture
+keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture, pick your program, laser, pointer, set up this headset, moderator passcode
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -36,6 +36,15 @@ ways to play:
 - **Play here** — the simulation runs on the tablet in your hands.
 - **Send to a headset** — a VR headset (VR-1, VR-2 …) picks you up. Put
   it on; you're already in.
+
+**Or just put a headset on.** You don't need the tablet: the headset's
+lobby says **PICK YOUR PROGRAM**, with a tile and your profile picture for
+every program marked for reinstallation. Point either controller at yours
+(a thin beam shows where it points) and pull the **trigger** — or move
+with a stick and hold it **right** for a second. It asks **Start as
+<your name>?**: pull the trigger on **START** (or hold right again), or
+**BACK** to pick again. *Nobody is marked for reinstallation yet.* means
+there is nobody to pick right now.
 
 No camera, or it won't read your pass? Whoever runs the tent can find you
 by name, or tap you in the list of programs in the Internet. A program
@@ -71,6 +80,13 @@ You walk with **sticks**. The only button is for the King (below).
 | Turn | **right stick** — left or right, a step at a time | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
 | Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
+| Pick your program (lobby) | point + **trigger**, or stick + hold **right** 1 s | scan your pass |
+
+**A headset that says SET UP THIS HEADSET** has no moderator passcode
+yet (crew only): point at the server, type the event's moderator passcode
+on its keyboard with the trigger, name it, and pull the trigger on
+**CONNECT**. It remembers; holding the lobby's **⚙** for 2 seconds forgets
+it. **PLAY OFFLINE** plays without the house's server.
 
 On a tablet with a keyboard (or a laptop standing in for the tablet):
 **W A S D** or the arrows walk, **Q / E** turn, **Shift** runs,
