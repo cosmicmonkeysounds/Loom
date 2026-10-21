@@ -7,7 +7,7 @@
                      play one announcement through the `alexa:` section's
                      device right now (no broker, no story) — the routing
                      check and the hand-fired fallback.
-    stagehand launchd install|uninstall|restart|status|print --job show|agents [--config f.yaml]
+    stagehand launchd install|uninstall|restart|status|print --job show|agents|audio [--config f.yaml]
                      one launchd job per module on the house Mac (see launchd.py)
     stagehand ask    --config laptop.yaml [--character Trabolta] [--name Ada] [--reflect] [text…]
                      talk to an agent persona straight through the model — no
@@ -28,6 +28,7 @@ from pathlib import Path
 
 from . import app
 from .config import ConfigError, StagehandConfig, load_config, local_overlay_path, placeholders
+from .launchd import JOBS
 from .module import REGISTRY
 
 
@@ -61,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     ann.add_argument("text", nargs="+")
     ld = sub.add_parser("launchd", help="install / restart a module as its own launchd job (macOS)")
     ld.add_argument("action", choices=("install", "uninstall", "restart", "status", "print"))
-    ld.add_argument("--job", choices=("show", "agents"), help="which module (status: default both)")
+    ld.add_argument("--job", choices=JOBS, help="which module (status: default every job)")
     ld.add_argument("--config", help="the YAML the job runs (install / print)")
     ask = sub.add_parser("ask", help="chat with an agent persona through the model (no server)")
     ask.add_argument("--config", required=True)
@@ -158,9 +159,9 @@ def _launchd(args: argparse.Namespace) -> int:
     ld = Launchd(stagehand_dir=Path(__file__).resolve().parents[2])
     try:
         if args.action == "status":
-            lines = ld.status([args.job] if args.job else ("show", "agents"))
+            lines = ld.status([args.job] if args.job else JOBS)
         elif args.job is None:
-            print(f"launchd {args.action}: needs --job show|agents", file=sys.stderr)
+            print(f"launchd {args.action}: needs --job {'|'.join(JOBS)}", file=sys.stderr)
             return 2
         elif args.action in ("install", "print"):
             if not args.config:

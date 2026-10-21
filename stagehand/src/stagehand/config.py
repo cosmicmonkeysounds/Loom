@@ -4,6 +4,13 @@
     show:    { … }     # stagehand.show   — see show.example.yaml
     agents:  { … }     # stagehand.agents — see agents.example.yaml
     alexa:   { … }     # stagehand.alexa  — see trapped.house.yaml
+    audio:   { … }     # stagehand.audio  — see audio.example.yaml
+
+Two sections read each other here, because each module may run as its own
+job (`--only show`) from the same file: an `audio:` that plays `sound X`
+(`play_sounds: true`) takes the `show` module's QLab `sound` cues away, and
+an `audio:` that announces (`announce: true`) may not sit beside `alexa:` —
+one owner of the house's voice.
 
 A top-level key that isn't `server` or a registered module is an error
 (a typo'd section would otherwise silently switch a job off). A config
@@ -112,11 +119,17 @@ def parse_config(
                 raise ConfigError(f"--only: no module named {name!r}")
             if name not in doc:
                 raise ConfigError(f"--only {name}: the config has no '{name}:' section")
+    audio = doc.get("audio")
+    if isinstance(audio, dict) and audio.get("announce") is True and "alexa" in doc:
+        raise ConfigError("audio.announce is true but the 'alexa:' section is still here — one owner of the house's voice: remove 'alexa:' (or set announce: false)")
     modules: dict[str, Module] = {}
     for name in doc:
         if name == "server" or (only is not None and name not in only):
             continue
         modules[name] = REGISTRY[name].build(doc[name], base_dir)
+    show = modules.get("show")
+    if show is not None and isinstance(audio, dict) and audio.get("play_sounds") is True:
+        show.hand_sounds_to_router()  # type: ignore[attr-defined]
     if not modules:
         raise ConfigError(f"nothing to run — add a module section ({', '.join(REGISTRY)})")
     return StagehandConfig(server=server, modules=modules)
