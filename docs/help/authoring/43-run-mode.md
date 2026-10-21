@@ -2,7 +2,7 @@
 title: Run mode — rehearse, go live, be anyone
 section: The Editor
 order: 43
-keywords: run, invitations, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
+keywords: run, stop house sounds, house sound, router, announcements, house list, tablets, reinstall, tent laptop, faction race, over the line, founded, badge, bathroom, flagged, audit, judge queue, queued, invitations, reserved, claim, unlock, king, health bar, restore, last seen, went home, gone, near miss, agent queue, stalled, rehearse, rehearsal, live, go live, launch, deploy, event, cockpit, persona, choices, named events, identity, lens, be, view as, composer, quick fire, world, roster, stage, moderate, co-writer, director, push draft, restart, end, log, export, code, QR, join, passcode, lookup, scratch, private, print, poster, check-in sign, rotate, staff codes, terminals, heartbeat, silent, chime, TV voice, cue sheet, director page, act, acts, now card, on hand, anytime, arm, fire, double click, countdown, watch, glance, needs you, calling, watching, keyboard, cue, next, last, refused, not taken, repeat, branch, ledger, parts, phone offline, agent, worker, ceremony, award, recap, re-pair, lost phone, release, grant codex, give quest, complete quest, fail quest
 ---
 
 Run (`⌘2`) is the control room for your project's **one run**. You
@@ -50,6 +50,15 @@ Every page shares one header:
   page.
 - **⏳ N** — pending decisions across the run; click to answer them in
   Chat.
+- **■ Stop house sounds** (server runs) — fades out every story sound
+  and speaker test on the house speakers at once (0.3 s), from any page.
+  It is a panic button: one press, no confirm, nothing journaled. The TV's
+  voice (it has its own mute), the terminals and the live mics are
+  untouched, and stopping the dance song does not move the story's
+  clock. The button reads **■ Stopped** for a moment, or **■ No router**
+  when the house Mac's router isn't listening (nothing was playing
+  through the house). To cut the announcement playing too, use the
+  **House sound** card on the Run page.
 
 A banner under the header tells you when a co-writer restarted, pushed
 a draft, went live, or ended the run — and who.
@@ -133,7 +142,28 @@ Front of house: getting people in.
   Since a mod code lists the story's cast before the doors open, a
   terminal's ⚙ can check its character the moment it is set up, and a
   room terminal's room resolves before the doors too: *the story has no
-  room called …* means a typo in its `room=`.
+  room called …* means a typo in its `room=`. A **📢** on a row means
+  that tablet says the house announcements aloud right now (its own ⚙
+  setting, or the house list below). **🛠 Set up a terminal…** builds a
+  tablet's provisioning link from pickers: the spot, the view (including
+  **Reinstall**, the tent laptop: the idle show like any wall terminal,
+  and a marked pass plays the reinstallation right there or sends it to
+  a headset; like Chess and Casino it has no room and no character),
+  the room and the character. Its announcements box reads **Always
+  (ignore the house setting)**: leave it unticked and the tablet follows
+  the house list for its spot.
+- **House sound** — whether the router on the house Mac is listening,
+  **■ Stop house sounds** with a **+ announcements** box (also cuts the
+  announcement playing and drops the queue), and **Tablets that also say
+  the announcements**: one box per terminal spot on the house map
+  playing now. A tablet on a ticked spot says them aloud unless its own
+  ⚙ says Always or Never. They are off by default: the house speakers
+  reach most rooms, and a tablet in a room with a house speaker would say
+  each one twice. A tick is saved for **this event only** (the card says
+  *In force: this event's save*); **Save to project** writes it into the
+  project's `audio.json`, so it survives End → relaunch. If someone saved
+  the speakers from the map page since the card read them, the tick is
+  refused and the card reloads: tick it again.
 - **House map** — when the event has a house map, one button per map
   variant (*Trapped in the Internet*: **Tent** | **Shed**), the one
   playing now highlighted. Press the other to switch every tablet,
@@ -172,11 +202,38 @@ no run yet, the Run page also offers *Go live with real guests* directly.)
 | **Stage** | the floor plan: one card per location with its occupants as chips — **drag a chip between cards to move the guest** (hooks fire). The cast strip's dots: green a performer signed in, amber signed in · phone offline, sky blue an agent-voiced character a stagehand worker is voicing |
 | **Chat** | every room the current identity can see, with the composer. A GROUP's own room beside a room of the same name reads `#hosts (side)`: post in the plain one, where the story's readouts land |
 | **Story** | the story map, lit by the run ([story graph](story-graph.md)) |
-| **Roster** | all guests and the cast — group, location, score, presence, when each guest was last seen, whose persona, who went home |
+| **Roster** | all guests and the cast — group, location, score, presence, when each guest was last seen, whose persona, who went home, and the story's `badge:` lines a guest wears now (🚻 Bathroom Mode), as on the rail, the Stage and the Inspector ([live shows](live-shows.md)) |
 | **World** | the live state browser — a searchable variables table; **double-click any value to edit it live** |
 | **Director** | the night by **act** — the NOW card (NEXT, armed then fired), On hand, the running order — the glance column (Needs you, Watch, People, Cast, `# hosts`), and the Tools drawer: named events (with arguments), beats, broadcasts (below) |
-| **Mind** | an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
+| **Mind** | the **Judging card** (below), then an agent-voiced character's mind — its arc, drives, brief, the prompts and both models' reasoning, and a control panel ([the mind debugger](44-mind-debugger.md)) |
 | **Log** | the raw ledger, event by event — **filter to one participant**; export the run. The time column is story time (it stands still through a pause), on a server run as on a local one. Events from before this console opened (a reload, a late join) aren't listed: it says how many, and **⤓ Export run** pages the whole ledger off the server |
+
+### The Judging card
+
+The top of the Mind page: every filed `fact` card, its proposed verdict,
+and the ✅ / 😤 / 🤷 buttons that confirm or override it, with a tally per
+question ([cards & widgets](widgets.md)). Its two modes:
+
+- **review** — every verdict is a proposal until you (or a host) confirm
+  it; the round's settle takes the rest as proposed.
+- **auto** — with a `judge:` character in the header (the show's
+  Trabolta), *the house accepts exact matches; Trabolta rules every other
+  filing; what he can't rule (no worker, a stall, an expired or
+  unfinished ruling) falls back to the house rule and can be judged
+  here*. A pending filing reads **🤖 queued for Trabolta** while it waits
+  its turn and **🤖 asking Trabolta…** once his worker has it; only a near
+  miss also carries **⚠ near "…"**. His rulings list under the pending
+  rows (*🤖 Trabolta: same — why*), each with the usual buttons. The
+  header counts his queue (**🤖 4 queued · 1 out · oldest 1:05**: he rules
+  one at a time, and a guest's message to him goes first), or **⏳
+  Trabolta isn't ruling** when his worker answered no ruling twice in a
+  row. Whatever he hasn't ruled when its round settles takes the house
+  rule: a near miss accurate, a plain miss a lie at 100 and uncertain
+  below. With no `judge:` character, auto judges every filing at once and
+  only a near miss waits here.
+
+Judge any filing yourself first (his ruling is then dropped) or override
+his ruling after (the later verdict wins).
 
 ## The Director page
 
@@ -297,9 +354,9 @@ link. Each section hides when it has nothing to say:
 
 | Section | Shows | Goes to |
 |---|---|---|
-| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), ⚠ near misses waiting in `auto` mode (one the story's `judge:` character is ruling on shows until it rules), held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker, an agent whose queue is stalled or has waited 40 s or more, and *👋 N guests unseen 30 min — mark gone?* with a 👋 per guest. The same list a host's console shows under **Needs** in the Play app | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
+| **Needs you** | your refused press (60 s), filings waiting for review (Judging in `review` mode), ⚠ near misses waiting in `auto` mode with nobody to rule them, *🤖 N with Trabolta* for the filings the story's `judge:` character is ruling on (every filing that isn't an exact match goes to him, queued one at a time), held transfers, a performer whose phone is offline or whose part nobody holds, an agent with no worker, an agent whose queue is stalled or has waited 40 s or more, and *👋 N guests unseen 30 min — mark gone?* with a 👋 per guest. The same list a host's console shows under **Needs** in the Play app | Chat · Mind's Judging card · the Run page's Wallet card · the Inspector · Mind |
 | **Watch** | the header's `watch:` lines while their `while` holds: values (changed in the last 10 s → ◆), a ROLE path as a count over the guests (`Cleared 44/45` and a bar), a name as a person row (online, room, ⛓ / ⛔). A value on a `secret: true` CHARACTER shows `••••` — **press and hold 👁** to read it for 5 s. With no `watch:` line: **Recently changed**, the last few globals the story wrote | World, filtered to that path · Roster · the Inspector |
-| **People** | joined · online, who is in a prison room, how many are restricted, each faction's guests against a majority tick, the busiest rooms | the Inspector · Stage |
+| **People** | joined · online, who is in a prison room, how many are restricted, each faction's guests against a majority tick, the busiest rooms. In a story with `founding:` ([live shows](live-shows.md)) the factions are **one race**: every faction, founded (◇) or declared, its programs present against the line (the header's `majority:`, of the programs present), the one past it marked **over the line**. That is *now*, not *won*: founding opens before the story counts, and only the story's own majority beat says who won | the Inspector (a declared side) · Roster (a founded faction) · Stage |
 | **Cast** | one dot per performer part (green signed in, amber phone offline, hollow free), each agent's stage and mood | the Inspector · Mind |
 | **# hosts** | the last lines in the story's staff rooms (a `kind: faction` CHANNEL whose GROUP isn't joinable), newest first, each with how long ago it landed | Chat on that room |
 
@@ -431,7 +488,9 @@ in the guest's thread and in the booth's **Readouts**. The booth's own
 rooms come too, read-only: its **Quest Log**, **Codex**, **Readouts**
 (*Norton · Inbox* under the Operator) and (for the approver)
 **Wallet**. A wallet card shows what it is, who pays whom and how much;
-approve or deny it on the Run page's Wallet card. Being a **host part**
+approve or deny it on the Run page's Wallet card. A transfer the
+approver's audit holds reads **🚩 held** there, and its recipient's card
+**🚩 flagged for a CRA audit** (the story's `audit` words). Being a **host part**
 (a character with `admin: true`) is being a host: its lens says so, and
 a Players pane for it opens a host booth, NEXT bar and console included,
 journaled under your name.
