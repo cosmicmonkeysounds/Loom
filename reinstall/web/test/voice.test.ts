@@ -272,6 +272,18 @@ describe("VoiceLink — the stream", () => {
     expect(r.link.hud.hearing).toBe(0);
   });
 
+  it("a reconnect's hello starts over: every voice it had is let go", async () => {
+    const r = rig();
+    await started(r);
+    r.last().emit("voice", { from: "t:t", kind: "terminal", spot: "t", gain: 1, seq: 7, data: chunk() });
+    r.last().emit("hello", { codec: "mulaw", rate: 16000, chunkMs: 200, as: "player", session: "s1", listen: false });
+    expect(r.sink.channels[0]!.closed).toBe(true);
+    expect(r.link.hud).toMatchObject({ hearing: 0, listening: false });
+    // The terminal's seq counter carries on from wherever it is.
+    r.last().emit("voice", { from: "t:t", kind: "terminal", spot: "t", gain: 1, seq: 1, data: chunk() });
+    expect(r.sink.channels).toHaveLength(2);
+  });
+
   it("a remap drops a voice whose terminal left the map, re-hangs the rest", async () => {
     const r = rig();
     await started(r);

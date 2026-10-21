@@ -403,7 +403,10 @@ export class VoiceLink {
         return;
       }
       this.attempt = 0;
+      // A (re)connect starts over: the server re-sends whatever is audible.
+      for (const from of [...this.heard.keys()]) this.drop(from);
       this.setListening(d["listen"] === true);
+      this.changed();
     });
     on("listen", (d) => this.setListening(d["on"] === true));
     on("voice", (d) => this.voice(d));
