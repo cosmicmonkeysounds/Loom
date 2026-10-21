@@ -39,6 +39,7 @@ func _run() -> void:
 	_test_king_rules()
 	_test_avatar_decode()
 	_test_config()
+	_test_config_setup()
 	_test_sse_parser()
 	_test_pose_pump()
 	await _test_server_link()
@@ -428,6 +429,40 @@ func _test_config() -> void:
 	var s := StationConfig.parse_url("https://show.example.com/loom")
 	_check(s.get("port") == 443 and s.get("tls") == true and s.get("path") == "/loom", "config: parse_url https + path")
 	_check(StationConfig.parse_url("ftp://x").is_empty() and StationConfig.parse_url("http://h:x").is_empty(), "config: parse_url refuses junk")
+
+
+## The in-headset setup's file (wave 19): saved to a user path, merged
+## over what it held, read back by the precedence chain, forgotten; the
+## station id it mints; the servers it offers.
+func _test_config_setup() -> void:
+	var dir := "user://config-test"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir + "/setup-station.json"
+	StationConfig.forget_user(path)
+	_check(not StationConfig.forget_user(path), "setup file: forgetting no file is a no-op")
+	_check(StationConfig.save_user({"server": "http://127.0.0.1:7000", "code": "K7PQ3M", "name": "Headset", "bogus": 1}, path), "setup file: saved")
+	var back := StationConfig.read_file(path)
+	_check(back.get("code") == "K7PQ3M" and back.get("server") == "http://127.0.0.1:7000" and not back.has("bogus"), "setup file: known keys only (%s)" % [back])
+	_check(StationConfig.save_user({"name": "Headset 2", "smooth_turn": true}, path), "setup file: saved again")
+	back = StationConfig.read_file(path)
+	_check(back.get("code") == "K7PQ3M" and back.get("name") == "Headset 2" and back.get("smooth_turn") == true, "setup file: a second save merges over the first (%s)" % [back])
+	var cfg := StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())
+	_check(cfg["code"] == "K7PQ3M" and StationConfig.is_configured(cfg), "setup file: the user file configures the station over the committed placeholder")
+	_check(StationConfig.forget_user(path) and not FileAccess.file_exists(path), "setup file: forgotten")
+	_check(not StationConfig.is_configured(StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())), "setup file: … and the placeholder is back")
+	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup file: the committed res:// file still holds CHANGEME")
+
+	_check(StationConfig.station_id_for("Headset", 0xbeef) == "vr-headset-beef", "setup: a station id from the name (%s)" % StationConfig.station_id_for("Headset", 0xbeef))
+	_check(StationConfig.station_id_for("  HEADSET 2!! ", 0x1ffff) == "vr-headset-2-ffff", "setup: … slugged, the salt in 4 hex (%s)" % StationConfig.station_id_for("  HEADSET 2!! ", 0x1ffff))
+	_check(StationConfig.station_id_for("???", 1) == "vr-headset-0001", "setup: … a name with no letters is a headset")
+
+	var choices := StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", true)
+	_check(choices.size() == 2 and choices[0]["url"] == "https://app.mapsandducks.com" and choices[1]["url"] == StationConfig.LOCAL_SERVER and str(choices[1]["label"]).begins_with("This computer"), "setup: the committed server first, then this computer (%s)" % [choices])
+	_check(StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", false).size() == 1, "setup: a headset build offers no local server")
+	var dev := StationConfig.server_choices("http://10.0.0.5:7000/", "https://app.mapsandducks.com", true)
+	_check(dev.size() == 3 and dev[0]["url"] == "http://10.0.0.5:7000", "setup: a server named on the command line comes first (%s)" % [dev])
+	_check(StationConfig.server_choices("junk", "", false).is_empty(), "setup: junk is no choice")
+	_check(StationConfig.offers_local(), "setup: a desktop / editor run offers this computer")
 
 
 func _write(path: String, data: Dictionary) -> void:
