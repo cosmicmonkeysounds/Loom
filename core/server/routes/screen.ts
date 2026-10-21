@@ -3,15 +3,17 @@
 //!
 //! - `night`     — the story's own screen mirrors, `Night.screen` / `Night.terminals`,
 //!                 and (wave 17) the public vars a cutscene reads: the phase,
-//!                 the step, the bottle's pick, the advice tally, the alert
+//!                 the step, the bottle's pick and whether it waits on
+//!                 Truth or Dare, the results question, the advice tally, the alert
 //!                 level, and the award winner + value while an `award_*`
 //!                 slide is up (`SCREEN_NIGHT_VARS`; "none" reads null);
 //! - `moments`   — (wave 17) the last `MOMENT_RING` live story moments, oldest
 //!                 first: house-wide beats, allowlisted signals (admin cues
-//!                 the story took, `do pick` draws, the King / chess /
+//!                 the story took, `do pick` draws and their verdict — the
+//!                 first booth press taken about the pick —, the King / chess /
 //!                 reinstallation devices), `sound X` names, reveals to
 //!                 everyone and duck finds (`momentOf`), never history, never
-//!                 a per-guest beat, a guest's or booth's press or a secret;
+//!                 a per-guest beat, a guest's or other booth press or a secret;
 //! - `cues`      — the last `cue screens_*` / `terminals_*` / `tv_*` / `tablet_*`
 //!                 value per family, folded from the sim log (a `seq` per family
 //!                 so a re-fired cue — `screens_flicker` twice — is visible);
@@ -417,7 +419,7 @@ const touchesSecret = (name: string, secrets: readonly string[]): boolean => {
 export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_SIGNALS), "reinstallation begun"].map(foldName);
 
 /** Which signals may become a moment. Everything else a signal can be — a
- *  guest's or a booth's INTERACTION press, a room check-in (`checked_in`),
+ *  guest's or a booth's INTERACTION press (but a draw's verdict), a room check-in (`checked_in`),
  *  a facts verdict, a phone's card answer — is about one person and may
  *  carry a secret in its subject (who planted the virus, who lied), so it
  *  is never put on every screen. All names folded (`foldName`). */
@@ -430,19 +432,34 @@ export interface MomentSignals {
   picks: ReadonlySet<string>;
   /** Never a moment, even when allowlisted (the facts book's confirm events). */
   quiet: ReadonlySet<string>;
+  /** The booth presses (`INTERACTION … who: performer`): a moment only as the
+   *  verdict on the last draw's pick (`drawn`), `who` = the pick. */
+  verdicts?: ReadonlySet<string>;
+  /** The person the last live `do pick` drew, while its verdict is still due
+   *  (the first booth press about them the story takes, within `VERDICT_MS`). */
+  drawn?: string | null;
 }
+
+/** A draw's verdict (a booth press about its pick) counts this long after the draw (ms). */
+export const VERDICT_MS = 5 * 60_000;
 
 /** The allowlist a model gives on its own: its admin cues, the default
  *  devices, no picks yet, the default facts confirm events. */
 export function momentSignalsOf(model: SimModel, extra: { devices?: Iterable<string>; quiet?: Iterable<string>; picks?: Iterable<string> } = {}): MomentSignals {
   const admin = new Set<string>();
-  for (const i of model.interactions.values()) if (i.who === "admin") admin.add(foldName(i.id));
+  const verdicts = new Set<string>();
+  for (const i of model.interactions.values()) {
+    if (i.who === "admin") admin.add(foldName(i.id));
+    else if (i.who === "performer") verdicts.add(foldName(i.id));
+  }
   const fold = (xs: Iterable<string> | undefined): string[] => [...(xs ?? [])].map(foldName);
   return {
     admin,
     devices: new Set([...DEVICE_MOMENT_SIGNALS, ...fold(extra.devices)]),
     picks: new Set(fold(extra.picks)),
     quiet: new Set([...Object.values(DEFAULT_CONFIRM), ...fold(extra.quiet)].map(foldName)),
+    verdicts,
+    drawn: null,
   };
 }
 
@@ -459,8 +476,9 @@ export function pickNamesOf(args: string): string[] {
  * - `beatEntered` with no subject (a house-wide beat; a per-guest one is not);
  * - an allowlisted `signal` (`MomentSignals`): an admin cue the story took
  *   (a refused press — only a `# hosts` line — is not), a `do pick` draw
- *   (`who` its pick), a device's (`who` the player); the duck's pair
- *   becomes one `found`;
+ *   (`who` its pick), the first booth press the story takes about that pick
+ *   within `VERDICT_MS` (its verdict: 🗣 / 🙅 / 🎩, `who` the pick), a
+ *   device's (`who` the player); the duck's pair becomes one `found`;
  * - a story `sound X` (`sfx`), by its name;
  * - a `reveal` to everyone.
  */
@@ -484,6 +502,14 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
       const f = foldName(e.name);
       if (signals.quiet.has(f)) return null;
       if (signals.picks.has(f) || signals.devices.has(f)) return make("signal", e.name, who(e.subject));
+      // The verdict on a draw (🗣 / 🙅 / 🎩 on the bottle's pick): a booth press
+      // about the person the last draw picked — already on every screen — that
+      // the story took. Any other booth press stays off the screens.
+      if (signals.verdicts?.has(f) === true) {
+        if (signals.drawn == null || e.subject !== signals.drawn) return null;
+        if (sim.log.all()[seq - 1] === e && signalRefusedAt(sim, seq - 1)) return null;
+        return make("signal", e.name, who(e.subject));
+      }
       if (!signals.admin.has(f)) return null;
       if (sim.log.all()[seq - 1] === e && signalRefusedAt(sim, seq - 1)) return null;
       return make("signal", e.name, null);
@@ -511,6 +537,8 @@ export const SCREEN_NIGHT_VARS = {
   phase: "Night.phase",
   step: "Night.step",
   bottle_pick: "Night.bottle_pick",
+  bottle_open: "Night.bottle_open",
+  results_q: "Night.results_q",
   award_winner: "Night.award_winner",
   award_value: "Night.award_value",
   help_votes: "Night.help_votes",
@@ -526,6 +554,10 @@ export interface ScreenNight {
   phase: string | null;
   step: number | null;
   bottle_pick: string | null;
+  /** The bottle waits on its pick's Truth or Dare (`Night.bottle_open`). */
+  bottle_open: boolean | null;
+  /** Which hunt question's results are being read (`Night.results_q`: 0 before the first). */
+  results_q: number | null;
   /** Only while an `award_*` slide is up on this target (the story sets the
    *  winner just before it cues the slide). */
   award_winner: string | null;
@@ -726,6 +758,8 @@ export class ScreenWatch {
   private secrets: string[] | null = null;
   /** The `do pick` event names this sim's log has drawn from (folded). */
   private picks = new Set<string>();
+  /** The last live draw's pick, until its verdict lands (`MomentSignals.drawn`). */
+  private drawn: { subject: string; at: number } | null = null;
   /** The runtime's extra device signals (a map's own king signals) and
    *  quiet ones (the facts book's confirm events), read on every fold. */
   private readonly signalExtras: (() => { devices?: Iterable<string>; quiet?: Iterable<string> }) | undefined;
@@ -774,6 +808,7 @@ export class ScreenWatch {
       this.moments = [];
       this.secrets = null;
       this.picks = new Set();
+      this.drawn = null;
       this.chartUp.clear();
       this.chartVars = null;
     }
@@ -797,10 +832,16 @@ export class ScreenWatch {
       }
       // A live moment (never history: the first look carries none).
       if (signals !== null) {
+        signals.drawn = this.drawn !== null && at - this.drawn.at <= VERDICT_MS ? this.drawn.subject : null;
         const m = momentOf(e, this.cursor + 1, at, sim, this.secrets, signals);
         if (m !== null) {
           this.moments.push(m);
           if (this.moments.length > MOMENT_RING) this.moments.shift();
+        }
+        if (e.type === "signal" && e.subject !== null) {
+          const f = foldName(e.name);
+          if (signals.picks.has(f)) this.drawn = { subject: e.subject, at };
+          else if (m !== null && signals.verdicts?.has(f) === true) this.drawn = null; // one verdict a draw
         }
       }
       if (e.type !== "directive") continue;
@@ -1011,6 +1052,10 @@ export class ScreenWatch {
       const v = peek(path);
       return v === null || v.trim() === "" || v === NIGHT_NONE ? null : clip(v, MAX_MOMENT_NAME);
     };
+    const flag = (path: string): boolean | null => {
+      const v = peek(path);
+      return v === "true" ? true : v === "false" ? false : null;
+    };
     const awardUp = program.slide?.kind === "slide" && program.slide.value.startsWith("award_");
     const awardValue = awardUp ? named(SCREEN_NIGHT_VARS.award_value) : null;
     const night: ScreenNight = {
@@ -1019,6 +1064,8 @@ export class ScreenWatch {
       phase: named(SCREEN_NIGHT_VARS.phase),
       step: num(SCREEN_NIGHT_VARS.step),
       bottle_pick: named(SCREEN_NIGHT_VARS.bottle_pick),
+      bottle_open: flag(SCREEN_NIGHT_VARS.bottle_open),
+      results_q: num(SCREEN_NIGHT_VARS.results_q),
       award_winner: awardUp ? named(SCREEN_NIGHT_VARS.award_winner) : null,
       award_value: awardValue !== null && /^-?\d+(\.\d+)?$/u.test(awardValue) ? Number(awardValue) : awardValue,
       help_votes: num(SCREEN_NIGHT_VARS.help_votes),

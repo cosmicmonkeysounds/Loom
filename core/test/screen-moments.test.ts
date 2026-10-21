@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { MOMENT_RING, ScreenWatch, momentOf, pickNamesOf, secretMomentNames, type ScreenMoment } from "../server/routes/screen.ts";
+import { MOMENT_RING, ScreenWatch, VERDICT_MS, momentOf, pickNamesOf, secretMomentNames, type ScreenMoment } from "../server/routes/screen.ts";
 import { notePress } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
@@ -335,6 +335,8 @@ when after:
 set Night.phase = "advice"
 set Night.step = 18
 set Night.bottle_pick = "none"
+set Night.bottle_open = false
+set Night.results_q = 2
 set Night.award_winner = "none"
 set Night.award_value = "none"
 set Night.help_votes = 7
@@ -342,12 +344,139 @@ set Night.thwart_votes = 3
 set Night.alerts = "sticky"
 `;
 
+const VERDICT = `# T
+
+ROLE Program
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+INTERACTION spin
+  label: 🍾 Spin
+  who: admin
+
+INTERACTION truth_answered
+  label: 🗣 Truth answered
+  who: performer
+
+INTERACTION truth_refused
+  label: 🙅 Truth refused
+  who: performer
+
+INTERACTION scan_ok
+  label: ✅ Scan OK
+  who: performer
+
+when spin:
+  set Night.bottle_open = true
+  do pick bottle_landed from [g1] else bottle_empty
+
+when bottle_landed for program:
+  set Night.bottle_pick = program.name
+
+when truth_answered for program:
+  if Night.bottle_open == true and program.name == Night.bottle_pick:
+    set Night.bottle_open = false
+    set program.score += 50
+  else:
+    broadcast "🗣 The bottle is not on {program.name}." to channel(hosts)
+
+when truth_refused for program:
+  if Night.bottle_open == true and program.name == Night.bottle_pick:
+    set Night.bottle_open = false
+  else:
+    broadcast "🙅 The bottle is not on {program.name}." to channel(hosts)
+
+when scan_ok for program:
+  set Night.scans += 1
+`;
+
+describe("a draw's verdict", () => {
+  const night = () => {
+    const sim = Sim.fromSources(VERDICT);
+    sim.createPerson("g1", "Excel", "Program");
+    sim.createPerson("g2", "Winamp", "Program");
+    const s = watch(sim);
+    s.look();
+    let seen = 0;
+    /** The moments since the last call (the ring is the last 12, every poll). */
+    const fresh = () => {
+      const ms = s.look().filter((m) => m.seq > seen);
+      seen = Math.max(seen, ...ms.map((m) => m.seq));
+      return ms.map((m) => [m.name, m.who]);
+    };
+    const press = (name: string, subject?: string, actor?: string) => notePress(sim, sim.signal(name, subject, {}, actor ?? null));
+    /** 🍾: the admin cue, then the runtime's draw as its own signal. */
+    const spin = (pick = "g1") => {
+      press("spin");
+      sim.signal("bottle_landed", pick);
+    };
+    return { sim, s, press, spin, fresh };
+  };
+
+  it("the first booth press the story takes about the pick is a moment with the pick; one verdict a draw", () => {
+    const { press, spin, fresh } = night();
+    spin();
+    expect(fresh()).toEqual([
+      ["spin", null],
+      ["bottle_landed", "Excel"],
+    ]);
+    press("truth_answered", "g1", "Clippy");
+    expect(fresh()).toEqual([["truth_answered", "Excel"]]);
+    // The draw's verdict is spent: no other booth press about them reaches the screens.
+    press("scan_ok", "g1", "Norton");
+    press("truth_refused", "g1", "Clippy");
+    expect(fresh()).toEqual([]);
+  });
+
+  it("a verdict about someone else, or one the story refused, never shows", () => {
+    const { press, spin, fresh } = night();
+    spin();
+    fresh();
+    press("truth_answered", "g2", "Clippy"); // not the pick: the story refuses it too
+    press("scan_ok", "g2", "Norton"); // not the pick
+    expect(fresh()).toEqual([]);
+    press("truth_refused", "g1", "Clippy");
+    expect(fresh()).toEqual([["truth_refused", "Excel"]]);
+    // The next draw: a press the story turns down (only a # hosts line) is no verdict.
+    spin();
+    fresh();
+    press("truth_answered", "g1", "Clippy");
+    expect(fresh()).toEqual([["truth_answered", "Excel"]]);
+  });
+
+  it("a press long after the draw is no verdict", () => {
+    const { s, press, spin, fresh } = night();
+    spin();
+    fresh();
+    s.at(10_000 + VERDICT_MS + 1000);
+    press("truth_answered", "g1", "Clippy");
+    expect(fresh()).toEqual([]);
+  });
+
+  it("a refused press about the pick leaves the verdict due", () => {
+    const { sim, press, spin, fresh } = night();
+    spin();
+    fresh();
+    sim.setVar("Night.bottle_open", "false"); // closed by hand: 🗣 is refused (# hosts only)
+    press("truth_answered", "g1", "Clippy");
+    expect(fresh()).toEqual([]);
+    sim.setVar("Night.bottle_open", "true");
+    press("truth_refused", "g1", "Clippy");
+    expect(fresh()).toEqual([["truth_refused", "Excel"]]);
+  });
+});
+
 describe("the night block", () => {
   it("reads the public vars; 'none' is null; the award only while an award slide is up", () => {
     const sim = Sim.fromSources(NIGHT);
     sim.fireBeat("Boot");
     const s = watch(sim);
-    expect(s.poll().night).toEqual({ screen: null, terminals: null, phase: "advice", step: 18, bottle_pick: null, award_winner: null, award_value: null, help_votes: 7, thwart_votes: 3, alerts: "sticky" });
+    expect(s.poll().night).toEqual({ screen: null, terminals: null, phase: "advice", step: 18, bottle_pick: null, bottle_open: false, results_q: 2, award_winner: null, award_value: null, help_votes: 7, thwart_votes: 3, alerts: "sticky" });
     sim.signal("award");
     expect(s.poll().night).toMatchObject({ award_winner: "Winamp", award_value: 42 });
     expect(s.poll("tv").night).toMatchObject({ award_winner: "Winamp", award_value: 42 });
