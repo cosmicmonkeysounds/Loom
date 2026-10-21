@@ -370,6 +370,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     openNotifications: () => nav.go({ to: "notifications" }),
     name: s.me.name,
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
+    captured: st.captured,
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)

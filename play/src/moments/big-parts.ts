@@ -5,6 +5,15 @@
 import { noticeKey } from "../../../core/src/delivery.ts";
 import type { Moment } from "./model.ts";
 
+/** A glyph without its variation selector (🛡️ and 🛡 are one glyph). */
+export function bareGlyph(g: string): string {
+  return g.replace(/[︎️]/gu, "");
+}
+
+/** The kicker's virus and quarantine glyphs (`big-model.ts` `kickerOf`). */
+export const VIRUS: ReadonlySet<string> = new Set(["🛡", "🚨"]);
+export const QUARANTINE: ReadonlySet<string> = new Set(["🌐", "⛔", "🔒"]);
+
 /** A headline is at most this many characters. */
 export const HEADLINE_MAX = 90;
 
@@ -70,4 +79,41 @@ export function cardTitleRepeats(momentText: string, cardText: string): boolean 
   if (card === "") return false;
   const big = plainWords(momentText);
   return big === card || big.startsWith(`${card} `) || big.endsWith(` ${card}`) || card.startsWith(`${big} `);
+}
+
+/** Where a personal big sits in the capture chain (recheck BN2-FB / NMR-1):
+ *  found (🛡 CORRUPTION DETECTED), sent (🌐 Sent to the Internet), released
+ *  (🦆 Reinstallation complete, 🕺 out of the Internet). Null otherwise. */
+export type CaptureStage = "found" | "sent" | "released";
+
+export function captureStage(m: Pick<Moment, "text" | "kind" | "severity"> & Partial<Pick<Moment, "house" | "card">>): CaptureStage | null {
+  if (m.severity !== "big" || m.house === true || m.kind === "card" || m.card !== undefined) return null;
+  const g = bareGlyph(bigParts(m.text, m.kind).glyph);
+  if (VIRUS.has(g)) return "found";
+  if (QUARANTINE.has(g)) return "sent";
+  if (g === "🦆" || g === "🕺" || /reinstallation complete|out of the internet/iu.test(m.text)) return "released";
+  return null;
+}
+
+/**
+ * The queued capture bigs that are no longer true: a found / sent big with
+ * a newer one in the chain after it (the capture, the release, a second
+ * confrontation), and a sent big once a view newer than it says the guest
+ * is not captured (a director's release with no line of its own). Never a
+ * big from the same drain as the view (2 s of slack).
+ */
+export function staleCaptureKeys(
+  queued: readonly Pick<Moment, "key" | "seq" | "at" | "text" | "kind" | "severity" | "house" | "card">[],
+  chain: readonly { seq: number }[],
+  view: { captured?: boolean | undefined; clock?: number | undefined },
+): string[] {
+  const newest = chain.reduce((n, c) => Math.max(n, c.seq), -Infinity);
+  const out: string[] = [];
+  for (const q of queued) {
+    const stage = captureStage(q);
+    if (stage !== "found" && stage !== "sent") continue;
+    if (q.seq !== null && q.seq < newest) out.push(q.key);
+    else if (stage === "sent" && view.captured === false && view.clock !== undefined && view.clock > q.at + 2_000) out.push(q.key);
+  }
+  return out;
 }

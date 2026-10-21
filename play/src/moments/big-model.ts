@@ -3,7 +3,7 @@
 //! kicker / install-bar line / acknowledge label it wears. Pure — tested in
 //! `test/moments-big.test.tsx`; `big.tsx` renders it.
 
-import { bigParts } from "./big-parts.ts";
+import { QUARANTINE, VIRUS, bareGlyph, bigParts } from "./big-parts.ts";
 import type { Moment } from "./model.ts";
 
 export { HEADLINE_MAX, bigParts } from "./big-parts.ts";
@@ -12,10 +12,7 @@ export { HEADLINE_MAX, bigParts } from "./big-parts.ts";
 export { BIG_DEAD_MS } from "../../../core/src/delivery.ts";
 /** After a card inside a big is answered, the settled card shows this long, then the window closes. */
 export const BIG_SETTLE_MS = 1_200;
-/** A glyph without its variation selector (🛡️ and 🛡 are one glyph). */
-export function bareGlyph(g: string): string {
-  return g.replace(/[︎️]/gu, "");
-}
+export { bareGlyph } from "./big-parts.ts";
 
 /** What the big window wears: its kicker line, the install bar's two lines, its acknowledge label. */
 export interface Kicker {
@@ -30,8 +27,6 @@ export interface Kicker {
   countdown?: boolean;
 }
 
-const VIRUS = new Set(["🛡", "🚨"]);
-const QUARANTINE = new Set(["🌐", "⛔", "🔒"]);
 const WIN = new Set(["🎀", "🏆", "🎱", "🥇", "🦆", "✅", "🎉", "♟"]);
 
 /**
@@ -54,3 +49,4 @@ export function kickerOf(m: Pick<Moment, "text" | "kind"> & Partial<Pick<Moment,
 export function cheerLabel(leftMs: number): string {
   return `Cheer! (${Math.max(0, Math.ceil(leftMs / 1000))})`;
 }
+

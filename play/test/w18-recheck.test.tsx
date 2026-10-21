@@ -11,6 +11,7 @@ import { memberCount } from "../src/sides/model.ts";
 import { drawnIcon } from "../src/moments/exits.ts";
 import { ExitButtons } from "../src/moments/surfaces.tsx";
 import { doneCards } from "../src/moments/provider.tsx";
+import { captureStage, staleCaptureKeys } from "../src/moments/big-parts.ts";
 import { registerSidesWidgets } from "../src/sides/widgets.tsx";
 import { Doors } from "../src/sides/doors.tsx";
 import { SidesContext } from "../src/sides/context.ts";
@@ -88,5 +89,28 @@ describe("N5: after the ending the doors are no longer offered", () => {
     expect(out).not.toContain("Walk in");
     const old = renderToStaticMarkup(createElement(SidesContext.Provider, { value: { view: null, calls: null } }, createElement(Doors, { card: { ...card, params: {} }, seed: 1, superseded: true, answered: null })));
     expect(old).toContain("The doors have closed.");
+  });
+});
+
+describe("BN2-FB / NMR-1: stale capture bigs leave a live queue", () => {
+  const big = (seq: number, text: string, at = seq * 1000) => ({ key: `m:${seq}`, seq, at, text, kind: "readout" as const, severity: "big" as const });
+  const found = big(554, "🛡 CORRUPTION DETECTED. Norton has found you. Stay with them: you are going to the Internet.");
+  const sent = big(558, "🌐 Sent to the Internet. Go out back through the tunnel.");
+  const back = big(640, "🦆 Reinstallation complete. You can follow instructions.");
+  it("the stages", () => {
+    expect([captureStage(found), captureStage(sent), captureStage(back)]).toEqual(["found", "sent", "released"]);
+    expect(captureStage({ ...found, house: true })).toBeNull();
+    expect(captureStage(big(3, "🎀 You won the Bingo Ribbon."))).toBeNull();
+  });
+  it("a newer link in the chain retires the older found / sent bigs", () => {
+    expect(staleCaptureKeys([found, sent, back], [found, sent, back], { captured: false, clock: 640_000 })).toEqual(["m:554", "m:558"]);
+    // The capture itself: found goes, sent stays while captured.
+    expect(staleCaptureKeys([found, sent], [found, sent], { captured: true, clock: 559_000 })).toEqual(["m:554"]);
+  });
+  it("a release with no line of its own: a newer view with captured false retires sent", () => {
+    expect(staleCaptureKeys([sent], [sent], { captured: false, clock: 600_000 })).toEqual(["m:558"]);
+    // The same drain (a view not yet carrying the capture): kept.
+    expect(staleCaptureKeys([sent], [sent], { captured: false, clock: 558_500 })).toEqual([]);
+    expect(staleCaptureKeys([found], [found], { captured: false, clock: 900_000 })).toEqual([]);
   });
 });

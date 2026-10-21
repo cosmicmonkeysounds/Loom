@@ -27,6 +27,7 @@ import { retractedPinSeqs } from "../pins.ts";
 import type { WidgetHook } from "../stream/bubble.tsx";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../types.ts";
 import { WIDGETS, cardAsks, supersededCards, widgetInline } from "../widgets.tsx";
+import { captureStage, staleCaptureKeys } from "./big-parts.ts";
 import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
 import type { BigCard } from "./big.tsx";
 import { exitsOf, type Exit, type ExitContext, type Nav } from "./exits.ts";
@@ -41,6 +42,7 @@ import {
   missedCount,
   momentExit,
   momentMessage,
+  momentOf,
   momentsReducer,
   newestHouseSeq,
   sameWords,
@@ -174,6 +176,9 @@ export interface MomentsInput {
    *  sends them to choose one is done (GN-F2: the Y2K dialog showed after
    *  Walk in). */
   sideChosen?: boolean;
+  /** Wave 18 recheck (a guest): `GuestView.captured` — a sent-to-the-Internet
+   *  big still queued after a release is not news (BN2-FB / NMR-1). */
+  captured?: boolean;
 }
 
 /** How long the NOW bar stays flashed open on a new objective (visible time). */
@@ -515,6 +520,27 @@ function useMomentsEngine(input: MomentsInput): Engine {
     if (keys.length > 0) dispatch({ type: "read", keys });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, state.queue.length]);
+
+  // The capture chain moved on (a capture, a release, a second
+  // confrontation): the older found / sent bigs still queued are not true
+  // any more — read, and never brought back (BN2-FB / NMR-1: a released
+  // program was offered "Go to The Internet").
+  useEffect(() => {
+    if (session === null || role !== "guest") return;
+    const queued = mem.state.queue.filter((q) => q.level === "big").map((q) => q.moment);
+    if (queued.length === 0) return;
+    const chain: { seq: number }[] = [];
+    for (const msg of input.messages.values()) {
+      const m = momentOf(msg, viewerRef.current, live.current.phase);
+      if (m !== null && m.seq !== null && captureStage(m) !== null) chain.push({ seq: m.seq });
+    }
+    const keys = staleCaptureKeys(queued, chain, { captured: input.captured, clock: input.clock });
+    if (keys.length === 0) return;
+    for (const k of keys) mem.signIn.acked.add(k);
+    saveKeys(host.storage, ackedKey(session), mem.signIn.acked);
+    dispatch({ type: "read", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.messages, input.captured, input.clock, state.queue.length, session]);
 
   // A `!` pin taken down (an unpin, or a newer pin with its key) leaves the
   // queue and the missed list: a lifted mark is not news.
