@@ -1,0 +1,331 @@
+/* Act F–G's scenes (lane tv3, wave 17), scoped by `tv3-`. Sizes in vmin so
+   one picture fits the TV (16:9), a wall tablet (4:3) and a portrait one;
+   long titles wrap rather than run off a portrait screen. Motion is set per
+   frame inline (transform / opacity). Chrome 87 / Safari 14: no :has, no
+   color-mix, no flex gap. */
+
+.tv3-row { display: flex; align-items: center; }
+.tv3-row > .kit-hourglass { margin-right: 0.8em; flex: none; }
+.tv3-col { flex: 1 1 auto; min-width: 0; }
+.tv3-col .kit-progress-wrap { margin-top: 0.4em; }
+.tv3-small { font-size: 0.85em; margin-top: 0.2em; }
+
+/* A centred line of words, in the machine's voice. */
+.tv3-midnight .tv3-mid-center,
+.tv3-reveal-label, .tv3-reveal-ask, .tv3-bob-title, .tv3-bob-caption, .tv3-bag-title, .tv3-bag-line,
+.tv3-verdict-stamp, .tv3-pickup-yes, .tv3-song-title, .tv3-rave-title, .tv3-helped-title, .tv3-helped-sub,
+.tv3-banish-title, .tv3-jive-overflow, .tv3-jive-please, .tv3-cer-title, .tv3-cer-sub,
+.tv3-award-kind, .tv3-award-title, .tv3-award-lists, .tv3-award-name, .tv3-award-value, .tv3-award-line,
+.tv3-res-title, .tv3-res-sub {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  text-align: center;
+  font-family: var(--mono);
+  line-height: 1.05;
+  will-change: transform, opacity;
+}
+
+/* --- midnight -------------------------------------------------------------- */
+.tv3-mid-center { top: 50%; margin-top: -16vmin; }
+.tv3-mid-clock {
+  display: inline-block;
+  padding: 0.05em 0.35em 0;
+  font-size: min(16vmin, 14vw);
+  color: #ff3b2f;
+  background: #110000;
+  border: 0.05em solid #330000;
+  text-shadow: 0 0 0.16em rgba(255, 60, 40, 0.8);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tv3-mid-date { margin-top: 5vmin; font-size: min(9vmin, 8vw); color: #dfe8ff; display: block; }
+.tv3-mid-year { display: inline-block; min-width: 2.2em; text-align: left; }
+.tv3-mid-year.broken { color: #9ad0ff; text-shadow: 0.06em 0 0 rgba(255, 0, 72, 0.7), -0.06em 0 0 rgba(0, 230, 255, 0.7); }
+.tv3-mid-storm { top: 0; bottom: 55%; height: auto; }
+.tv3-mid-render { margin-top: 4vmin; font-size: min(5.6vmin, 6vw); color: #8a93a8; }
+
+/* --- the final reveal (dark) ------------------------------------------------- */
+.tv3-crt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at 50% 50%, #9ab 0%, #234 60%, #000 100%);
+  will-change: transform, opacity;
+}
+.tv3-reveal-cursor { position: absolute; left: 50%; top: 50%; width: 2.4vmin; height: 4.2vmin; margin: -2.1vmin 0 0 -1.2vmin; background: #6a8; }
+.tv3-reveal-label { top: 12%; font-size: 4vmin; letter-spacing: 0.5em; color: #3a5a48; }
+.tv3-reveal-bits {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: -14vmin;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 22vmin;
+  line-height: 1;
+  color: #1c3a28;
+}
+.tv3-reveal-bits .on { color: #7dffa8; text-shadow: 0 0 0.2em rgba(60, 255, 120, 0.6); }
+.tv3-reveal-bar { margin: 0 0.3em; color: #2a4a38; }
+.tv3-reveal-ask { top: 72%; font-size: min(5.4vmin, 6vw); color: #8fbfa0; }
+
+/* --- bobbing for truth --------------------------------------------------------- */
+.tv3-tank { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 72%; }
+.tv3-bubble-dot { display: block; width: 1em; height: 1em; border-radius: 50%; border: 0.12em solid rgba(220, 240, 255, 0.85); background: rgba(255, 255, 255, 0.15); }
+.tv3-bob-title { top: 8%; font-size: min(11vmin, 10vw); color: #ffe066; text-shadow: 0.05em 0.05em 0 #7a1010, 0 0 0.3em rgba(255, 80, 80, 0.5); }
+.tv3-bob-title span { font-size: 0.8em; }
+.tv3-bob-caption { top: 25%; font-size: min(4.4vmin, 5vw); color: #dfe8ff; }
+.tv3-bob-search { font-size: clamp(13px, 2vmin, 26px) !important; }
+
+/* --- the Bag of Truth ------------------------------------------------------------ */
+.tv3-bag-burst { left: 50%; top: 40%; width: 120vmax; height: 120vmax; margin: -60vmax 0 0 -60vmax; }
+.tv3-bag { position: absolute; left: 50%; width: 28vmin; height: 28vmin; will-change: transform; filter: drop-shadow(0 1vmin 1vmin rgba(0, 0, 0, 0.5)); }
+.tv3-bag-title { top: 8%; font-size: min(11vmin, 10vw); color: #ffe066; text-shadow: 0.05em 0.05em 0 #5a3a00, 0 0 0.35em rgba(255, 210, 63, 0.6); }
+.tv3-bag-line { top: 62%; font-size: min(6vmin, 7vw); color: #fff; text-shadow: 0 0.08em 0.2em #000; }
+
+/* --- truth.txt ----------------------------------------------------------------------- */
+.tv3-np-tv { font-size: clamp(14px, 2.5vmin, 34px) !important; }
+.tv3-np-wall { font-size: min(3.4vmin, calc(88vw / 26)) !important; }
+.tv3-np-tv .tv3-np-page, .tv3-np-wall .tv3-np-page { height: auto; }
+.tv3-icon-hi { position: absolute; left: 1.2em; top: 6.8em; width: 6em; height: 4.6em; background: rgba(0, 0, 128, 0.45); outline: 1px dotted #fff; }
+.tv3-pointer { position: fixed; left: 0; top: 0; width: 1.4em; height: 2.2em; will-change: transform; z-index: 5; }
+.tv3-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 8vh;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* --- the verdict ------------------------------------------------------------------------ */
+.tv3-verdict-scales { position: absolute; left: 50%; top: 8%; width: 28vmin; margin-left: -14vmin; will-change: transform, opacity; }
+.tv3-scales { display: block; width: 100%; height: auto; }
+.tv3-verdict-qs { position: absolute; left: 0; right: 0; top: 46%; display: flex; justify-content: center; flex-wrap: wrap; }
+.tv3-q {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 9vmin;
+  margin: 0 0.8vmin 1.6vmin;
+  padding: 0.6vmin 0;
+  font-family: var(--mono);
+  color: #9ad0ff;
+  border: 0.3vmin solid #2a3a8a;
+  background: rgba(10, 16, 60, 0.7);
+}
+.tv3-q-label { font-size: 3vmin; opacity: 0.8; }
+.tv3-q-bit { font-size: 6.5vmin; line-height: 1; color: #7dffa8; }
+.tv3-q.settled { border-color: #ffd23f; }
+.tv3-q.settled .tv3-q-bit { color: #ffd23f; }
+.tv3-verdict-bar { position: absolute; left: 50%; top: 74%; width: min(70vw, 60vmin); transform: translateX(-50%); font-size: 2.6vmin; }
+.tv3-verdict-bar .kit-progress-wrap { color: #dfe8ff; }
+.tv3-verdict-stamp {
+  top: 66%;
+  left: 10%;
+  right: 10%;
+  padding: 0.1em 0.2em;
+  font-size: min(10vmin, 9vw);
+  color: #ffd23f;
+  border: 0.08em solid #ffd23f;
+  background: rgba(20, 8, 0, 0.75);
+  text-shadow: 0 0 0.25em rgba(255, 210, 63, 0.7);
+}
+
+/* --- the pickup line ----------------------------------------------------------------------- */
+.tv3-pickup {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(84vw, 110vmin);
+  padding: 3vmin 4vmin;
+  background: #fff6fb;
+  color: #3a0020;
+  border: 0.5vmin solid #ff4f9a;
+  box-shadow: 1.5vmin 1.5vmin 0 rgba(0, 0, 0, 0.45);
+  text-align: center;
+  will-change: transform, opacity;
+}
+.tv3-pickup-head { font-family: Tahoma, "MS Sans Serif", sans-serif; font-weight: bold; font-size: 3vmin; letter-spacing: 0.25em; color: #b0006a; }
+.tv3-pickup-line { margin-top: 1.4vmin; font-family: var(--mono); font-size: min(8vmin, 7.5vw); line-height: 1.05; }
+.tv3-pickup-yes { top: 72%; font-size: min(11vmin, 10vw); color: #fff; text-shadow: 0 0 0.2em #ff4f9a, 0.05em 0.05em 0 #7a0040; }
+
+/* --- the song ---------------------------------------------------------------------------------- */
+.tv3-song-sky { background: radial-gradient(ellipse at 50% 110%, #ff7ab8 0%, #a0206a 38%, #3a0a3a 70%, rgba(20, 3, 31, 0) 100%); will-change: transform, opacity; }
+.tv3-song-title { top: 5%; font-size: min(7vmin, 7vw); color: #fff; text-shadow: 0 0 0.25em #ff4f9a; }
+.tv3-chat-tv { font-size: clamp(15px, 2.8vmin, 38px) !important; }
+.tv3-chat-wall { font-size: min(3.6vmin, 4.4vw) !important; }
+.tv3-song-eq { position: absolute; left: 0; right: 0; bottom: 0; height: 16%; opacity: 0.8; }
+.tv3-karaoke { position: absolute; left: 0; right: 0; bottom: 17%; text-align: center; font-family: var(--mono); font-size: 6vmin; color: rgba(255, 255, 255, 0.45); }
+.tv3-kara-word { position: relative; display: inline-block; margin: 0 0.25em; }
+.tv3-kara-word.sung { color: #ffe0f0; text-shadow: 0 0 0.25em #ff4f9a; }
+.tv3-kara-ball { position: absolute; left: 50%; top: -0.45em; width: 0.32em; height: 0.32em; margin-left: -0.16em; border-radius: 50%; background: #ffd23f; box-shadow: 0 0 0.3em #ffd23f; will-change: transform; }
+
+/* --- Grok Prom ------------------------------------------------------------------------------------ */
+.tv3-prom-dim { background: #000; }
+.tv3-prom-ball { position: absolute; left: 50%; top: 0; will-change: transform; }
+.tv3-prom-banner {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  padding: 0.12em 0.6em;
+  font-family: var(--mono);
+  font-size: min(10vmin, 9vw);
+  white-space: nowrap;
+  color: #ffe0f0;
+  background: linear-gradient(180deg, #6a1aa0, #3a0a6a);
+  border: 0.06em solid #ffd23f;
+  box-shadow: 0 0.12em 0 #1a0230, 0 0 0.6em rgba(200, 107, 255, 0.5);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.tv3-prom-badge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 54%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: min(9vmin, 9vw);
+  color: #ff9ad0;
+  text-shadow: 0 0 0.25em rgba(255, 80, 160, 0.7);
+  will-change: transform, opacity;
+}
+.tv3-prom-badge .tv3-heart { margin-right: 0.3em; }
+.tv3-ticker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.25em 0;
+  font-family: var(--mono);
+  font-size: 4.6vmin;
+  color: #ffe0f0;
+  background: rgba(30, 0, 40, 0.85);
+  border-top: 0.3vmin solid #c86bff;
+}
+.tv3-ticker-storm { background: rgba(10, 0, 30, 0.85); border-top-color: #6a3aff; color: #dcd0ff; }
+.tv3-ticker-gold { background: rgba(30, 10, 0, 0.8); border-top-color: #ffd23f; color: #ffe066; }
+
+/* --- the rave ----------------------------------------------------------------------------------------- */
+.tv3-rave-moto { position: absolute; left: 0; top: 58%; will-change: transform, opacity; }
+.tv3-rave-forever { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-family: var(--mono); font-size: min(6vmin, 7vw); color: #b8b0d0; }
+.tv3-rave-title { top: 36%; font-size: min(13vmin, 11vw); text-shadow: 0 0 0.2em currentColor, 0.05em 0.05em 0 #000; }
+.tv3-rave-eq { position: absolute; left: 0; right: 0; bottom: 0; height: 26%; }
+
+/* --- the advice ------------------------------------------------------------------------------------------- */
+.tv3-advice-ask { font-size: clamp(15px, 3vmin, 40px) !important; }
+.tv3-advice-ask-text { font-family: var(--mono); font-size: 1.7em; padding: 0.3em 0.2em; }
+.tv3-poll {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: min(88vw, 100vmin);
+  padding: 2.4vmin 3vmin;
+  font-family: Tahoma, "MS Sans Serif", sans-serif;
+  color: #000;
+  background: #c0c0c0;
+  border: 0.3vmin solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-shadow: 1vmin 1vmin 0 rgba(0, 0, 0, 0.45);
+  will-change: transform, opacity;
+}
+.tv3-poll-q { font-weight: bold; font-size: min(4.2vmin, 4.6vw); margin-bottom: 1.6vmin; }
+.tv3-pollbar { margin-bottom: 1.6vmin; }
+.tv3-pollbar-label { display: flex; justify-content: space-between; font-size: min(3.6vmin, 4vw); margin-bottom: 0.6vmin; }
+.tv3-pollbar-label b { font-family: var(--mono); font-size: 1.4em; line-height: 0.8; }
+.tv3-pollbar-track { height: 4.4vmin; background: #fff; border: 0.3vmin solid; border-color: #808080 #fff #fff #808080; overflow: hidden; }
+.tv3-pollbar-fill { display: block; height: 100%; transform-origin: 0 50%; transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform; }
+.tv3-pollbar.lead .tv3-pollbar-label span { font-weight: bold; }
+.tv3-poll-foot { font-family: var(--mono); font-size: min(4vmin, 4.6vw); text-align: center; color: #000080; }
+
+/* --- she said yes ------------------------------------------------------------------------------------------- */
+.tv3-helped-burst { left: 50%; top: 45%; width: 130vmax; height: 130vmax; margin: -65vmax 0 0 -65vmax; }
+.tv3-helped-title { top: 36%; font-size: min(14vmin, 12vw); color: #fff; text-shadow: 0 0 0.2em #ff4f9a, 0.05em 0.05em 0 #7a0040; }
+.tv3-helped-sub { top: 58%; font-size: min(5vmin, 5.6vw); color: #ffe0f0; }
+
+/* --- banished ---------------------------------------------------------------------------------------------------- */
+.tv3-vortex { position: absolute; left: 50%; top: 50%; width: 110vmin; height: 110vmin; will-change: transform, opacity; }
+.tv3-vortex-eye { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 0 2vmin #2a9aff); }
+.tv3-victim { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+.tv3-bolt { position: absolute; left: 0; top: 0; width: 100%; height: 70%; pointer-events: none; }
+.tv3-flash { background: #c8c0ff; pointer-events: none; }
+.tv3-banish-title { top: 7%; }
+.tv3-banish-text { display: inline-block; font-size: min(10vmin, 9vw); color: #fff; text-shadow: 0 0 0.25em #6a3aff, 0.05em 0.05em 0 #000; }
+
+/* --- the hand jive ------------------------------------------------------------------------------------------------- */
+.tv3-jive-over { background: #008080; }
+.tv3-jive-overflow { top: 50%; margin-top: -12vmin; font-size: min(10vmin, 7.4vw); color: #fff; text-shadow: 0.05em 0.05em 0 #000; z-index: 200; }
+.tv3-jive-overflow .kit-glitch { display: inline-block; padding: 0.15em 0.3em; background: rgba(0, 0, 0, 0.75); }
+.tv3-jive-wait { background: #303030; }
+.tv3-jive-mini, .tv3-jive-big { position: absolute; will-change: transform; }
+.tv3-jive-big { left: 50%; top: 48%; }
+.tv3-jive-please { top: 82%; font-size: 5vmin; color: #ddd; }
+.tv3-jive-boot { background: linear-gradient(180deg, #2a6ad8 0%, #74b2ff 60%, #c8e2ff 100%); overflow: hidden; }
+.tv3-cloud {
+  position: absolute;
+  width: 40vmin;
+  height: 14vmin;
+  border-radius: 7vmin;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 8vmin -4vmin 0 -1vmin rgba(255, 255, 255, 0.7), -9vmin -2vmin 0 -2vmin rgba(255, 255, 255, 0.65);
+  filter: blur(0.6vmin);
+  left: 0;
+  will-change: transform;
+}
+.tv3-jive-logo { position: absolute; left: 50%; top: 46%; display: flex; flex-direction: column; align-items: center; will-change: transform, opacity; }
+.tv3-flag { display: block; filter: drop-shadow(0 1vmin 1vmin rgba(0, 0, 0, 0.35)); }
+.tv3-jive-word { margin-top: 2vmin; font-family: Tahoma, "MS Sans Serif", sans-serif; font-weight: bold; font-style: italic; font-size: 6vmin; color: #fff; text-shadow: 0.06em 0.06em 0 #1a3a8a; }
+.tv3-jive-bar { position: absolute; left: 30%; right: 30%; bottom: 10%; height: 2vmin; overflow: hidden; background: rgba(0, 0, 60, 0.35); border: 0.3vmin solid rgba(255, 255, 255, 0.6); }
+.tv3-jive-bar span { display: block; width: 30%; height: 100%; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff, rgba(255, 255, 255, 0)); will-change: transform; }
+.tv3-jive-reboot { display: flex; align-items: center; justify-content: center; text-align: center; font-family: var(--mono); font-size: min(7vmin, 8vw); color: #c0c0c0; white-space: pre-wrap; }
+
+/* --- the ceremony + the awards ------------------------------------------------------------------------------------------ */
+.tv3-cer-trophy { position: absolute; left: 50%; top: 12%; will-change: transform, opacity; }
+.tv3-cer-title { top: 64%; font-size: min(10vmin, 9vw); color: #ffe066; text-shadow: 0 0 0.25em rgba(255, 200, 60, 0.7), 0.05em 0.05em 0 #5a3a00; }
+.tv3-cer-sub { top: 79%; font-size: min(4.6vmin, 5vw); color: #ffe8c0; }
+.tv3-award-spot {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 90vmin;
+  height: 70vmin;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 240, 190, 0.22) 0%, rgba(255, 240, 190, 0.06) 55%, rgba(255, 240, 190, 0) 70%);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.tv3-award-emblem { position: absolute; left: 50%; top: 5%; will-change: transform, opacity; }
+.tv3-award-kind { top: 24%; font-size: 3.4vmin; letter-spacing: 0.4em; color: #9ab0ff; }
+.tv3-award-title { top: 29%; font-size: min(8.4vmin, 8vw); color: #ffe066; text-shadow: 0.05em 0.05em 0 #5a3a00; }
+.tv3-award-lists { top: 44%; font-size: 4vmin; color: #b8c4ff; }
+.tv3-award-name { top: 51%; font-size: min(14vmin, 12vw); color: #fff; overflow-wrap: break-word; }
+.tv3-award-value { top: 72%; display: flex; flex-direction: column; align-items: center; color: #ffe8c0; }
+.tv3-award-label { font-size: 3.6vmin; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+.tv3-award-num { font-family: var(--mono); font-size: min(10vmin, 10vw); color: #ffd23f; line-height: 1; text-shadow: 0 0 0.2em rgba(255, 210, 63, 0.6); }
+.tv3-award-line { top: 90%; font-size: min(3.6vmin, 4.4vw); color: #c8d0ff; }
+
+/* --- the resurrection --------------------------------------------------------------------------------------------------- */
+.tv3-res-safe { display: flex; align-items: center; justify-content: center; padding: 0 6%; text-align: center; font-family: var(--mono); font-size: min(7vmin, 8vw); color: #ff9a1a; }
+.tv3-res-dawn { background: linear-gradient(180deg, #1a1440 0%, #a04a60 55%, #ffb070 100%); overflow: hidden; }
+.tv3-res-sun { position: absolute; left: 50%; bottom: -30vmin; width: 70vmin; height: 70vmin; border-radius: 50%; background: radial-gradient(circle, #fff6c8 0%, #ffd070 40%, rgba(255, 180, 90, 0) 70%); will-change: transform; }
+.tv3-mote { display: block; width: 0.5em; height: 0.5em; border-radius: 50%; background: #fff6c8; box-shadow: 0 0 0.6em #ffd070; }
+.tv3-res-title { top: 36%; font-size: min(11vmin, 10vw); color: #fff; text-shadow: 0 0 0.3em rgba(255, 210, 120, 0.8), 0.05em 0.05em 0 #5a2a20; }
+.tv3-res-sub { top: 56%; font-size: min(5vmin, 5.6vw); color: #fff1dc; }
+
+/* A portrait wall tablet: the words carry more of the height. */
+@media (orientation: portrait) {
+  .tv3-award-name { font-size: 16vw; }
+  .tv3-award-title, .tv3-cer-title, .tv3-bob-title, .tv3-bag-title { font-size: 11vw; }
+  .tv3-award-num { font-size: 13vw; }
+  .tv3-award-kind, .tv3-award-lists, .tv3-award-label { font-size: 4.6vw; }
+  .tv3-banish-text, .tv3-rave-title, .tv3-helped-title, .tv3-res-title { font-size: 12vw; }
+}
