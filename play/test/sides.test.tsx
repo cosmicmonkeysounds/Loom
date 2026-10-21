@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SidesContext } from "../src/sides/context.ts";
-import { DeferredAnswer, Doors, answeredSide, doorWords } from "../src/sides/doors.tsx";
+import { DeferredAnswer, Doors, answeredSide, doorTap, doorWords } from "../src/sides/doors.tsx";
 import { InviteCard } from "../src/sides/invite.tsx";
 import { FoundCrewSheet, RecruitAnswerSheet, RecruitSheet, SidesSheet } from "../src/sides/index.tsx";
 import {
@@ -478,6 +478,17 @@ describe("faction mode: the doors (wave 18b)", () => {
     expect(out).toContain("Stay ▸");
     expect(out).toContain("Founders stay with their faction.");
     expect(out).toMatch(/disabled=""[^>]*>Walk in ▸/u);
+  });
+  it("from another faction a door asks before switching; with none it walks in", () => {
+    expect(doorTap(SHIFT, null)).toBe("walk");
+    expect(doorTap(SHIFT, MINE)).toBe("ask");
+    expect(doorTap(MINE, MINE)).toBe("stay");
+    expect(switchQuestion(SHIFT.name, MINE.name)).toBe("Switch to The Night Shift? You'll leave Winamp's Club.");
+  });
+  it("a restricted program's doors are shut, with the note once", () => {
+    const out = doors(fview({ restricted: true, sides: [UP, WAY] }));
+    expect((out.match(/disabled=""[^>]*>Walk in ▸/gu) ?? []).length).toBe(2);
+    expect(out.split("Not while you&#x27;re restricted.").length - 1).toBe(1);
   });
 });
 

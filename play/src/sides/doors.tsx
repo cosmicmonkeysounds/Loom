@@ -9,15 +9,18 @@
 //! Wave 18b, faction mode (`founding:`): a door for every faction (the
 //! declared sides and the founded ones), each with who leads or founded it
 //! and its ethos but **no count** (nobody counts a rival); Walk in joins the
-//! faction (a founded one by its walk-in join); *＋ Start your own faction*
-//! sits above *Neither* while the story lets you found one.
+//! faction (a founded one by its walk-in join) — from another faction it
+//! asks *Switch to X? You'll leave Y.* on the door first; a leader, a
+//! founder or a restricted program can't walk anywhere (the foot says why);
+//! *＋ Start your own faction* sits above *Neither* while the story lets
+//! you found one.
 
 import { useEffect, useRef, useState } from "react";
 import type { WidgetProps } from "../widgets.tsx";
 import { BlockBar } from "../ui/progress.tsx";
 import { canFoundOf } from "../guest/wire.ts";
 import { useSides } from "./context.ts";
-import { countLine, crewNameOk, crewRefusal, factionAction, factionModeOf, joinFaction, sidesOf, whoLine, type SideRow } from "./model.ts";
+import { countLine, crewNameOk, crewRefusal, factionAction, factionModeOf, joinFaction, myRow, sidesOf, switchQuestion, whoLine, type SideRow } from "./model.ts";
 import { stayNote } from "./stay.ts";
 import "../css/factions.css";
 
@@ -64,6 +67,13 @@ export function answeredSide(picked: string | null, rows: readonly SideRow[]): s
   return rows.find((r) => r.id === picked)?.name ?? picked;
 }
 
+/** What tapping a door's button does (faction mode): your own door
+ *  stays; from another faction it asks before switching; else it walks in. */
+export function doorTap(row: Pick<SideRow, "id">, mine: Pick<SideRow, "id"> | null): "stay" | "ask" | "walk" {
+  if (mine === null) return "walk";
+  return row.id === mine.id ? "stay" : "ask";
+}
+
 export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
   const { view, calls } = useSides();
   const rows = sidesOf(view);
@@ -73,6 +83,9 @@ export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
   const [busy, setBusy] = useState(false);
   const [founding, setFounding] = useState(false);
   const [name, setName] = useState("");
+  // Faction mode: the door a member of another faction is asked about
+  // (*Switch to X? You'll leave Y.*, as the Factions cards ask).
+  const [asking, setAsking] = useState<string | null>(null);
   // The answer waiting out DOOR_SAY_MS. An unmount (the big closing under
   // it, a room switch) sends it at once: the join already happened, so the
   // card must settle (wave 18 fix: Walk in left the card open all night).
@@ -136,8 +149,10 @@ export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
       </div>
     );
   }
-  // Faction mode: a leader or a founder stays with theirs (said once).
-  const stays = factions && view !== null ? rows.map((r) => (r.mine ? null : factionAction(r, view, rows))).find((a) => a === "leader" || a === "founder") ?? null : null;
+  // Faction mode: a leader or a founder stays with theirs, and a
+  // restricted program moves nowhere (said once).
+  const mine = factions ? myRow(view, rows) : null;
+  const stays = factions && view !== null ? rows.map((r) => (r.id === mine?.id ? null : factionAction(r, view, rows))).find((a) => a === "leader" || a === "founder" || a === "restricted") ?? null : null;
   const canFound = factions && canFoundOf(view) && chosen === null;
   return (
     <div className="doors" role="group" aria-label={factions ? "Choose a faction" : "Choose a side"}>
@@ -152,16 +167,26 @@ export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
             <div className="door-body">
               {chosen === r.name ? (
                 <p className="door-in">You are in {r.name}.</p>
+              ) : factions && asking === r.id && mine !== null ? (
+                <>
+                  <p className="door-ask">{switchQuestion(r.name, mine.name)}</p>
+                  <button type="button" className="choice primary door-go" disabled={!live || busy} onClick={() => walk(r.id, r.name)}>
+                    Switch ▸
+                  </button>
+                  <button type="button" className="choice door-cancel" disabled={busy} onClick={() => setAsking(null)}>
+                    Cancel
+                  </button>
+                </>
               ) : factions ? (
                 <>
                   {whoLine(r) !== null && <p className="door-leader">{whoLine(r)}</p>}
                   {r.ethos !== null && <p className="door-ethos">{r.ethos}</p>}
-                  {r.mine ? (
+                  {r.id === mine?.id ? (
                     <button type="button" className="choice primary door-go" disabled={!live || busy} onClick={() => onAnswer?.({ side: r.id })}>
                       Stay ▸
                     </button>
                   ) : (
-                    <button type="button" className="choice primary door-go" disabled={!live || busy || stays !== null} onClick={() => walk(r.id, r.name)}>
+                    <button type="button" className="choice primary door-go" disabled={!live || busy || stays !== null} onClick={() => (doorTap(r, mine) === "ask" ? setAsking(r.id) : walk(r.id, r.name))}>
                       Walk in ▸
                     </button>
                   )}
