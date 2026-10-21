@@ -371,7 +371,7 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 /* Pass and the guest's Scan keep their words on every phone; the flag
    alone says Start (the Win95 logo is the button), and the tray holds 3 */
 @media (max-width: 399px) {
-  .taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled) .taskbar-label { display: none; }
+  .taskbar-btn:not(.primary):not(.taskbar-start):not(.labelled):not(.stacked) .taskbar-label { display: none; }
   .taskbar-start .taskbar-label { display: none; }
   .taskbar-btn.primary { min-width: 64px; }
   .taskbar-btn:not(.primary) { padding: 0 8px; }
@@ -386,3 +386,220 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
   .taskbar-btn.attn, .tray-balloon, .title-bar.flash { animation: none; }
 }
 .tray-clock { display: inline-flex; }
+
+/* ══ wave 18: the guest's frame — the top bar's slots, the taskbar's
+   windows, Mission, Chats, the Notifications bin, Me, Sides & crews ══ */
+
+/* the guest frame is taller at both ends: 52 px caption, 56 px taskbar */
+.guest-frame { --title-h: 52px; --taskbar-h: 56px; }
+
+/* ── the top bar's slots: your picture (→ Me) and the bin (→ Notifications) ── */
+.title-bar.slotted { padding-left: 4px; padding-right: 4px; }
+.title-bar-me, .title-bar-bell {
+  position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--tap); min-height: var(--tap); margin: 0; padding: 0;
+  border: none; background: none; color: inherit; cursor: pointer;
+}
+.title-bar-me:focus-visible, .title-bar-bell:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -3px; }
+.title-bar-me .pavatar { width: 32px; height: 32px; }
+.title-bar-count {
+  position: absolute; top: 2px; right: 0; min-width: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--highlight); color: var(--black); font: 700 11px/16px var(--ui-font); text-align: center;
+}
+
+/* ── the taskbar's windows: icon over word, pressed = on screen ── */
+.taskbar-btn.stacked {
+  flex: 1 1 0; min-width: 0; max-width: 120px; min-height: 50px; padding: 2px 4px;
+  flex-direction: column; gap: 1px; font-size: 11px;
+}
+.taskbar-btn.stacked .taskbar-icon { font-size: 20px; }
+.taskbar-btn.stacked .taskbar-label { font-weight: 700; font-size: 11px; }
+.taskbar-btn.pressed { box-shadow: var(--pressed); background: var(--face-hi); }
+.taskbar-btn.primary.stacked { max-width: 120px; min-width: 0; background: var(--navy); color: var(--white); }
+.taskbar-btn.primary.stacked .ico .ico-line { stroke: var(--white); }
+.taskbar-dot { position: absolute; top: 5px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--highlight); box-shadow: 0 0 0 1px var(--black); }
+.taskbar-mark {
+  position: absolute; top: 3px; right: 6px; min-width: 16px; padding: 0 3px; border-radius: 8px;
+  background: var(--bad); color: var(--white); font: 700 11px/16px var(--ui-font);
+}
+/* the tray: at 370–399 px the countdown takes the clock's place; below
+   370 px the clock goes, the countdown (while one runs) and the balance stay */
+@media (max-width: 399px) {
+  .guest-frame .taskbar-tray > :nth-child(n+4) { display: none; }
+}
+@media (max-width: 369px) {
+  .guest-frame .taskbar-tray .tray-clock { display: none; }
+  .taskbar-btn.stacked { padding: 2px 2px; }
+}
+
+/* ── the window over the room: one column that scrolls ── */
+.mission { display: flex; flex-direction: column; min-height: 0; background: var(--face); }
+.mission-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 16px; }
+.mission-card { flex: 0 0 auto; }
+.mission-card.paused .mission-caption { background: linear-gradient(90deg, var(--paused-1), var(--paused-2)); }
+.mission-body { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; }
+.mission-none { margin: 0; font: 15px/1.4 var(--chat-font); }
+.mission-title { display: flex; align-items: flex-start; gap: 8px; margin: 0; font: 700 20px/1.2 var(--ui-font); }
+.mission-glyph { flex: 0 0 auto; font-size: 28px; line-height: 1; }
+.mission-words { flex: 1; min-width: 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mission-kicker { font: 700 12px var(--ui-font); letter-spacing: 0.5px; text-transform: uppercase; color: var(--dim-ink); }
+.mission-where {
+  display: flex; align-items: center; gap: 8px; min-height: 48px; width: 100%; margin: 0; padding: 0 10px;
+  border: none; border-radius: var(--radius); background: var(--white); color: var(--ink);
+  box-shadow: var(--sunken); font: 700 14px var(--ui-font); text-align: left;
+}
+.mission-where-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.mission-here { flex: 0 0 auto; color: var(--good); font-weight: 700; font-size: 12px; }
+button.mission-where { cursor: pointer; box-shadow: var(--raised), inset 4px 0 0 var(--signal); background: var(--face); }
+button.mission-where:active { box-shadow: var(--pressed); }
+button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
+.mission-countdown { font: 700 14px var(--ui-font); font-variant-numeric: tabular-nums; }
+.mission-countdown.urgent { color: var(--bad); }
+.mission-brief { margin: 0; font: 15px/1.4 var(--chat-font); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+.mission-brief.open { display: block; }
+.mission-more { align-self: flex-end; }
+.mission-todos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.mission-todos.short { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+.mission-todos li.done { color: var(--dim-ink); text-decoration: line-through; }
+.w95-check { font-size: 15px; }
+.mission-buttons, .mission-pair { display: flex; flex-direction: column; gap: 6px; }
+.mission-pair { flex-direction: row; }
+.mission-pair > * { flex: 1 1 0; min-width: 0; }
+.mission-big { min-height: 56px; width: 100%; margin: 0; font-weight: 700; font-size: 15px; letter-spacing: 0.3px; }
+.mission-h { font: 700 11px var(--ui-font); letter-spacing: 0.6px; color: var(--dim-ink); padding: 0 2px; }
+.mission-moves { display: flex; flex-direction: column; gap: 4px; }
+.mission-move {
+  display: flex; align-items: center; gap: 8px; min-height: 48px; width: 100%; margin: 0; padding: 0 12px;
+  border: none; border-radius: var(--radius); background: var(--face); color: var(--ink); box-shadow: var(--raised);
+  font: 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.mission-move:active { box-shadow: var(--pressed); }
+.mission-move:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
+.mission-move-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.mission-more-moves { align-self: flex-start; }
+.mission-decision { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: var(--face); box-shadow: var(--raised); border-radius: var(--radius); }
+.mission-decision-title { font: 700 14px var(--ui-font); }
+.mission-option { min-height: 48px; margin: 0; width: 100%; text-align: left; }
+.mission-option-n { font-weight: 700; }
+.mission-also .objective-stack { margin-top: 4px; }
+
+/* the desktop strip and its three tiles */
+.desk-tiles {
+  display: flex; justify-content: space-around; gap: 6px; padding: 10px 6px;
+  background: var(--desktop); border-radius: var(--radius);
+}
+.mission.captured .desk-tiles { background: var(--maroon); }
+.desk-tile {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 96px; min-height: 88px; margin: 0; padding: 6px 2px; border: none; background: none; color: var(--ink); cursor: pointer;
+}
+.desk-tile:focus-visible { outline: 1px dotted var(--ink); outline-offset: -2px; }
+.desk-tile-icon { position: relative; display: inline-flex; }
+.desk-tile-label { font: 700 12px var(--ui-font); }
+.desk-tile-status { font: 11px var(--ui-font); }
+:root[data-theme="aol97"] .desk-tile, .mission.captured .desk-tile { color: var(--white); }
+:root[data-theme="aol97"] .desk-tile-label { text-shadow: 1px 1px 0 var(--black); }
+
+/* the one badge kind: a yellow dot */
+.guest-dot { flex: 0 0 auto; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--highlight); box-shadow: 0 0 0 1px var(--black); }
+.desk-tile-icon .guest-dot { position: absolute; top: -2px; right: -6px; }
+
+/* ── Chats ── */
+.chats-section .space-title { letter-spacing: 0.6px; }
+.chat-log-avatar.chat-log-avatar { background: var(--face); color: var(--ink); }
+
+/* ── the Notifications bin ── */
+.notifications { display: flex; flex-direction: column; min-height: 0; padding: 8px; background: var(--face); }
+.notif-window { flex: 1 1 auto; min-height: 0; }
+.notif-bar { display: flex; align-items: center; gap: 8px; padding: 4px 6px; min-height: 52px; }
+.notif-count { margin-left: auto; color: var(--dim-ink); font-size: 13px; }
+.notif-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.notif { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px; border-top: 1px solid var(--line); }
+.notif-head { display: flex; align-items: baseline; gap: 6px; }
+.notif-dot { flex: 0 0 12px; color: var(--signal); font-size: 12px; }
+.notif-glyph { flex: 0 0 auto; }
+.notif-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.notif.unread .notif-title { font-weight: 700; }
+.notif-inuse { font: 700 11px var(--ui-font); color: var(--bad); }
+.notif-time { flex: 0 0 auto; color: var(--dim-ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.notif-sub { padding-left: 18px; color: var(--dim-ink); font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.notif-foot { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 18px; }
+.notif-exit { font-weight: 700; }
+.notif-x { margin-left: auto; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; text-align: center; color: var(--dim-ink); }
+.gag-say { margin: 0 0 10px; }
+.gag-row { display: flex; justify-content: flex-end; gap: 6px; }
+.gag-deleting { display: flex; flex-direction: column; gap: 8px; }
+.gag-strip { font-size: 22px; }
+.gag-file { overflow-wrap: anywhere; }
+
+/* ── the block bar ── */
+.block-bar { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; font-size: 13px; }
+.block-bar-trough { flex: 1 1 auto; display: flex; gap: 1px; min-height: 16px; padding: 2px; background: var(--white); box-shadow: var(--sunken); border-radius: var(--radius); }
+.block-bar-trough .block { flex: 1 1 0; }
+.block-bar-trough .block.on { background: var(--navy); }
+.block-bar-label { flex: 0 0 auto; }
+
+/* ── Me ── */
+.me-sheet { display: flex; flex-direction: column; gap: 6px; }
+.me-head { display: flex; align-items: center; gap: 12px; }
+.me-head .pavatar { width: 96px; height: 96px; font-size: 32px; }
+.me-head-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.me-name { font: 700 20px var(--ui-font); overflow-wrap: anywhere; }
+.me-where, .me-coin { font-size: 14px; }
+.me-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.me-badge { padding: 4px 8px; border-radius: var(--radius); background: var(--face); box-shadow: var(--raised); font: 700 13px var(--ui-font); }
+.me-badge.crew { background: var(--white); }
+.me-none { margin: 0; color: var(--dim-ink); }
+.me-row { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; text-align: left; }
+
+/* ── Sides & crews ── */
+.sides-sheet { display: flex; flex-direction: column; gap: 8px; }
+.side-card { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--face); box-shadow: var(--raised); border-radius: var(--radius); }
+.side-card.mine { box-shadow: var(--raised), inset 4px 0 0 var(--navy); }
+.side-card-head { display: flex; align-items: center; gap: 8px; }
+.side-card-name { flex: 1; min-width: 0; font: 700 15px var(--ui-font); overflow-wrap: anywhere; }
+.side-in { font: 700 11px var(--ui-font); color: var(--good); }
+.side-card-line { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--dim-ink); }
+.side-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.side-btn { font-weight: 700; }
+.side-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 700 13px var(--ui-font); }
+.side-note { margin: 0; font-size: 13px; color: var(--dim-ink); }
+.side-dim { margin: 0; font-size: 12px; color: var(--dim-ink); }
+.side-err { margin: 0; }
+.side-found { width: 100%; margin: 0; }
+.recruit, .invite-sheet, .found-crew { display: flex; flex-direction: column; gap: 8px; }
+.recruit-who { display: flex; align-items: center; gap: 10px; }
+.recruit-go { width: 100%; margin: 0; min-height: 56px; font-weight: 700; }
+.recruit-sent { margin: 0; color: var(--good); font-weight: 700; }
+.invite-head { margin: 0; font: 700 18px var(--ui-font); }
+.invite-buttons { display: flex; gap: 8px; }
+.invite-buttons .choice { flex: 1 1 0; margin: 0; min-height: 56px; font-weight: 700; }
+.found-crew-input { min-height: var(--tap); padding: 0 10px; font-size: 16px; border: none; border-radius: var(--radius); background: var(--white); color: var(--ink); box-shadow: var(--sunken); }
+
+/* ── the doors (the side reveal) ── */
+.doors {
+  display: flex; flex-direction: column; gap: 12px; padding: 16px 12px; color: var(--white);
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 2px), var(--black);
+  border-radius: var(--radius);
+}
+.doors-kicker { font: 700 13px var(--ui-font); letter-spacing: 1px; text-transform: uppercase; }
+.doors-say { font: 700 20px/1.2 var(--ui-font); text-transform: uppercase; }
+.doors-row { display: flex; gap: 12px; }
+.door { flex: 1 1 0; min-width: 0; min-height: 300px; color: var(--ink); transform-origin: left center; transition: transform 250ms ease-out; }
+.door.open { transform: perspective(600px) rotateY(-70deg); }
+.door-body { display: flex; flex-direction: column; gap: 8px; padding: 10px; flex: 1 1 auto; justify-content: flex-end; }
+.door-leader, .door-count, .door-in { margin: 0; font-size: 13px; }
+.door-in { font: 700 16px var(--ui-font); }
+.door-go { min-height: 56px; width: 100%; margin: 0; font-weight: 700; }
+.doors-neither { min-height: 48px; width: 100%; margin: 0; }
+.doors-foot { margin: 0; font-size: 13px; color: var(--on-bar); }
+.doors-err { margin: 0; }
+@media (max-width: 359px) {
+  .door { min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .door { transition: none; }
+  .door.open { transform: none; }
+}

@@ -110,3 +110,8 @@ export function chatSections(list: readonly Channel[], ctx: ChatsContext): Chats
 export function chatsDot(chats: Chats): boolean {
   return chats.sections.some((s) => s.channels.some(guestDot)) || chats.other.some(guestDot);
 }
+
+/** The fold's button: "Other rooms (6)". */
+export function otherRoomsLabelOf(n: number): string {
+  return `Other rooms (${n})`;
+}

@@ -3,7 +3,8 @@
 //! "check your messages", then "What do I do?" — and the Notifications rows.
 
 import { describe, expect, it } from "vitest";
-import { firstSentence, localClearGag, localExitsOf, localGagFor, notificationsOf, type ExitContext } from "../src/guest/moments-bridge.ts";
+import { firstSentence, localClearGag, localExitsOf, localGagFor, notificationsOf } from "../src/guest/notification-rows.ts";
+import type { ExitContext } from "../src/guest/moments-bridge.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 const ctx = (o: Partial<ExitContext> = {}): ExitContext => ({

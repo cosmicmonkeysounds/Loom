@@ -204,7 +204,13 @@ export function ChannelView({
   wide,
   strip,
   composerExtra,
+  focusCard,
+  focusEntry,
 }: {
+  /** Open the card tray on this card (wave 18: a Your move row, an Answer exit). */
+  focusCard?: number | null;
+  /** Open the Codex on this entry (wave 18: a `codex: <Entry>` exit). */
+  focusEntry?: string | null;
   channel: Channel;
   onBack: () => void;
   footer?: ReactNode;
@@ -246,8 +252,8 @@ export function ChannelView({
   const people = channel.people ?? [];
   // Live cards waiting on the viewer dock in the tray (a receipt stays in
   // the stream); a booth reading a guest's thread has no widgets → none.
-  const [trayFocus, setTrayFocus] = useState<number | null>(null);
-  useEffect(() => setTrayFocus(null), [channel.id]);
+  const [trayFocus, setTrayFocus] = useState<number | null>(focusCard ?? null);
+  useEffect(() => setTrayFocus(focusCard ?? null), [channel.id, focusCard]);
   // Typing in the composer folds the tray, so the replies keep the room
   // (a phone keyboard leaves little else).
   const [composing, setComposing] = useState(false);
@@ -333,7 +339,7 @@ export function ChannelView({
       {pins && pins.length > 0 && <PinnedRail pins={pins} />}
       <AmbientTicker messages={channel.messages} />
       {channel.kind === "codex" ? (
-        <CodexRoom key={channel.id} messages={channel.messages} meId={meId} empty={emptyCopy} />
+        <CodexRoom key={channel.id} messages={channel.messages} meId={meId} empty={emptyCopy} focusEntry={focusEntry ?? null} />
       ) : channel.kind === "quests" ? (
         <QuestRoom key={channel.id} messages={channel.messages} empty={emptyCopy} />
       ) : (

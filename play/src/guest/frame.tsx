@@ -1,11 +1,12 @@
-//! The guest's frame (wave 13): what sits around the conversation on every
-//! screen — the NOW title bar's objective sheet, the taskbar's Start menu
-//! (who you are + everything the old identity card and ☰ sheet held), the
-//! tray's balance, and the one-time "Get alerts" balloon. `guest/app.tsx`
-//! lays them out as `[TitleBar][PinnedRail][Shell][Taskbar]`.
+//! The guest's frame (wave 13, wave 18): what sits around the window on
+//! every screen — the NOW title bar wired to the moments layer, the taskbar
+//! (⊞ Start · ▣ Mission · 💬 Chats · 🎟 Pass · 📷 Scan) and its Start menu,
+//! the tray's balance, the one-time "Get alerts" balloon, and the big
+//! buttons Mission draws for an objective. `guest/app.tsx` lays them out as
+//! `[TitleBar][MomentsAndPins][window or room][Taskbar]`.
 
 import { useState, type ComponentProps, type ReactElement } from "react";
-import { ARM_LINE, useArmButtons, type ArmButtons } from "../arm.ts";
+import { ARM_LINE, type ArmButtons } from "../arm.ts";
 import { TrayBalloon, TraySlot } from "../chrome/balloon.tsx";
 import type { StartItem, TaskbarButton } from "../chrome/taskbar.tsx";
 import { TrayItem } from "../chrome/taskbar.tsx";
@@ -19,9 +20,7 @@ import { usePlayHost } from "../host.ts";
 import type { Push } from "../push.ts";
 import { iosPushCopy, PushRow } from "../push-card.tsx";
 import { showPushCard } from "../push.ts";
-import { withThe } from "../rooms/spaces.ts";
 import type { Channel, Interaction, ObjectiveView, WalletView } from "../types.ts";
-import { ObjectiveCard } from "../ui/objective.tsx";
 import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { useWakeLock } from "../wake-lock.ts";
 
@@ -51,6 +50,31 @@ export function NowBar(props: Omit<ComponentProps<typeof TitleBar>, "flash">) {
   );
 }
 
+/** The top bar's left slot (wave 18, GUEST-SPEC §1.1): your picture, 44 × 44 → the Me sheet. */
+export function MeButton({ name, onOpen }: { name: string; onOpen: () => void }) {
+  return (
+    <button type="button" className="title-bar-me" data-tour="me" aria-label="Me" title={name} onClick={onOpen}>
+      <PersonAvatar name={name} size="sm" />
+    </button>
+  );
+}
+
+/** "Notifications, 3 new" — the bell's name. */
+export function bellLabel(n: number): string {
+  return n > 0 ? `Notifications, ${n} new` : "Notifications";
+}
+
+/** The top bar's right slot: the Recycle-Bin bell → Notifications. Empty
+ *  bin at 0, paper sticking out (and the count, 9+ above nine) past it. */
+export function BellButton({ unread, onOpen }: { unread: number; onOpen: () => void }) {
+  return (
+    <button type="button" className="title-bar-bell" data-tour="bell" aria-label={bellLabel(unread)} title="Notifications" onClick={onOpen}>
+      <Icon name={unread > 0 ? "bin-full" : "bin-empty"} size={24} />
+      {unread > 0 && <span className="title-bar-count">{unread > 9 ? "9+" : unread}</span>}
+    </button>
+  );
+}
+
 /** The live cards waiting on the guest, room by room (the tray's own rule),
  *  for a moment's "Take me there" (`exitRoomFor`). */
 export function liveCardsOf(list: readonly Channel[], answered: ReadonlyMap<number, WidgetResult>): LiveCard[] {
@@ -65,10 +89,11 @@ export function liveCardsOf(list: readonly Channel[], answered: ReadonlyMap<numb
 
 // --- the Start menu ----------------------------------------------------------
 
-/** The Start menu's banner: your picture, your name, your side, where you are. */
-export function GuestStartHeader({ name, faction, where }: { name: string; faction: string | null; where: string }) {
-  return (
-    <div className="start-who">
+/** The Start menu's banner: your picture, your name, your side, where you
+ *  are — a button to the Me sheet (wave 18) when `onMe` is given. */
+export function GuestStartHeader({ name, faction, where, onMe }: { name: string; faction: string | null; where: string; onMe?: () => void }) {
+  const body = (
+    <>
       <PersonAvatar name={name} size="lg" />
       <div className="start-who-body">
         <strong className="start-who-name">{name}</strong>
@@ -77,7 +102,16 @@ export function GuestStartHeader({ name, faction, where }: { name: string; facti
         </span>
         <span className="start-who-where">{where}</span>
       </div>
-    </div>
+    </>
+  );
+  if (onMe === undefined) return <div className="start-who">{body}</div>;
+  return (
+    <button type="button" className="start-who start-who-btn" aria-label={`Me: ${name}`} onClick={onMe}>
+      {body}
+      <span className="start-who-go" aria-hidden>
+        ›
+      </span>
+    </button>
   );
 }
 
@@ -103,19 +137,15 @@ export interface GuestStartInput {
   faction: string | null;
   /** The story's `who: guest` buttons (Bathroom Mode…). */
   interactions: readonly Interaction[];
-  /** Public sides to defect to (none while restricted). */
-  defectTo: readonly string[];
-  wake: { supported: boolean; on: boolean } | null;
-  push: boolean;
+  /** The story has sides open, or the guest has a crew: "Sides & crews". */
+  sides: boolean;
   people: boolean;
   open: {
-    picture: () => void;
-    wake: () => void;
-    alerts: () => void;
-    people: () => void;
-    help: () => void;
     act: (i: Interaction) => void;
-    defect: (to: string) => void;
+    sides: () => void;
+    people: () => void;
+    notifications: () => void;
+    help: () => void;
     leave: () => void;
   };
 }
@@ -127,11 +157,13 @@ export function splitIcon(label: string): { icon?: string; label: string } {
   return m === null ? { label } : { icon: m[1]!, label: m[2]! };
 }
 
-/** The guest's Start menu, top to bottom (pure — `test/start-menu.test.tsx`):
- *  the story's own buttons first (they are what a guest comes here for),
- *  then people and help, the phone's settings, switching sides, and Leave
- *  last, behind its confirmation. An `arm: true` button arms, then fires,
- *  through core's arm model (`chrome/start-menu.tsx`). */
+/** The guest's Start menu, top to bottom (pure — `test/start-menu.test.tsx`,
+ *  GUEST-SPEC §8.2): the story's own buttons first (they are what a guest
+ *  comes here for), then Sides & crews, People, Notifications, Help, and
+ *  Leave last, behind its confirmation — at most five items past the
+ *  story's. Your picture, the wake lock and alerts moved to the Me sheet;
+ *  switching sides to the Sides sheet. An `arm: true` button arms, then
+ *  fires, through core's arm model (`chrome/start-menu.tsx`). */
 export function guestStartItems(o: GuestStartInput): StartItem[] {
   const items: StartItem[] = o.interactions.map((i) => ({
     id: `act:${i.id}`,
@@ -139,16 +171,10 @@ export function guestStartItems(o: GuestStartInput): StartItem[] {
     onClick: () => o.open.act(i),
     ...(i.arm === true ? { arm: true } : {}),
   }));
+  if (o.sides) items.push({ id: "sides", label: "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
   if (o.people) items.push({ id: "people", label: "People", icon: <Icon name="people" />, onClick: o.open.people });
+  items.push({ id: "notifications", label: "Notifications", icon: <Icon name="bell" />, onClick: o.open.notifications });
   items.push({ id: "help", label: "Help", icon: <Icon name="help" />, onClick: o.open.help });
-  items.push({ id: "picture", label: "Change your picture", icon: <Icon name="picture" />, onClick: o.open.picture });
-  if (o.wake !== null && o.wake.supported) {
-    items.push({ id: "wake", label: o.wake.on ? "Screen stays on — tap to allow sleep" : "Keep my screen on", icon: <Icon name={o.wake.on ? "screen-on" : "screen-off"} />, onClick: o.open.wake });
-  }
-  if (o.push) items.push({ id: "alerts", label: "Get alerts", icon: <Icon name="bell" />, onClick: o.open.alerts });
-  if (o.faction !== null) {
-    for (const to of o.defectTo) items.push({ id: `defect:${to}`, label: `Leave ${withThe(o.faction)} for ${withThe(to)}`, icon: <Icon name="defect" />, onClick: () => o.open.defect(to), confirm: `Switch to ${withThe(to)}?` });
-  }
   items.push({ id: "leave", label: "Leave the event", icon: <Icon name="leave" />, onClick: o.open.leave, danger: true, confirm: leaveQuestion(o.name) });
   return items;
 }
@@ -162,13 +188,31 @@ export function useStartWake(): { supported: boolean; on: boolean; toggle: () =>
 
 // --- the taskbar's buttons ---------------------------------------------------
 
-/** 🎟 Pass (the guest's main button) and 📷 Scan, lit when the current
- *  objective names them. */
-export function guestTaskbarButtons(o: { now: ObjectiveView | null; pass: () => void; scan: () => void }): TaskbarButton[] {
+export interface GuestTaskbarInput {
+  now: ObjectiveView | null;
+  /** The window the taskbar shows pressed (null: none, e.g. Notifications). */
+  pressed: "mission" | "chats" | null;
+  /** A Chats row has a dot. */
+  chatsDot: boolean;
+  /** The NOW objective changed since Mission was last on screen. */
+  missionNew: boolean;
+  mission: () => void;
+  chats: () => void;
+  pass: () => void;
+  scan: () => void;
+}
+
+/** The guest's taskbar windows and tools (wave 18, GUEST-SPEC §1.2):
+ *  ▣ Mission · 💬 Chats (pressed like Win95 task buttons) · 🎟 Pass (the
+ *  navy primary) · 📷 Scan, each an icon over its word, the word kept at
+ *  every width. Pass / Scan light when the NOW objective names them. */
+export function guestTaskbarButtons(o: GuestTaskbarInput): TaskbarButton[] {
   const wants = new Set(o.now?.buttons ?? []);
   return [
-    { id: "pass", label: "Pass", icon: <Icon name="pass" />, onClick: o.pass, primary: true, tour: "pass", title: "Show your pass", active: wants.has("pass") },
-    { id: "scan", label: "Scan", icon: <Icon name="scan" />, onClick: o.scan, labelled: true, tour: "scan", title: "Scan a code on the wall", active: wants.has("scan") },
+    { id: "mission", label: "Mission", icon: <Icon name="mission" size={20} />, onClick: o.mission, stacked: true, tour: "mission", title: "What to do now", pressed: o.pressed === "mission", ...(o.missionNew ? { mark: "!" } : {}) },
+    { id: "chats", label: "Chats", icon: <Icon name="reply" size={20} />, onClick: o.chats, stacked: true, tour: "chats", title: "Places and people", pressed: o.pressed === "chats", dot: o.chatsDot },
+    { id: "pass", label: "Pass", icon: <Icon name="pass" size={20} />, onClick: o.pass, primary: true, stacked: true, tour: "pass", title: "Show your pass", active: wants.has("pass") },
+    { id: "scan", label: "Scan", icon: <Icon name="scan" size={20} />, onClick: o.scan, stacked: true, tour: "scan", title: "Scan a code on the wall", active: wants.has("scan") },
   ];
 }
 
@@ -243,7 +287,7 @@ export function AlertsSheet({ push, title, onClose }: { push: Push; title?: stri
   );
 }
 
-/** The NOW sheet's button for an objective's `buttons:` id (pure over its
+/** Mission's big button for an objective's `buttons:` id (pure over its
  *  inputs — `test/frame.test.tsx`): `pass` opens the full-screen pass,
  *  `scan` the scan sheet, a story button fires through the arm model (an
  *  `arm: true` one needs its two taps); an id the guest can't press is no
@@ -264,14 +308,14 @@ export function objectiveButton({
   return (id) => {
     if (id === "pass")
       return (
-        <button type="button" className="choice primary objective-go" onClick={onPass}>
-          <Icon name="pass" /> Show my pass
+        <button type="button" className="choice primary objective-go mission-big" onClick={onPass}>
+          <Icon name="pass" size={20} /> SHOW MY PASS
         </button>
       );
     if (id === "scan")
       return (
-        <button type="button" className="choice primary objective-go" onClick={onScan}>
-          <Icon name="scan" /> Scan a code
+        <button type="button" className="choice primary objective-go mission-big" onClick={onScan}>
+          <Icon name="scan" size={20} /> SCAN A CODE
         </button>
       );
     const i = interactions.find((x) => x.id === id);
@@ -279,7 +323,7 @@ export function objectiveButton({
     return (
       <button
         type="button"
-        className={`choice${arm.armed === i.id ? " armed" : ""}`}
+        className={`choice mission-big${arm.armed === i.id ? " armed" : ""}`}
         title={i.description ?? undefined}
         aria-pressed={arm.armed === i.id || undefined}
         onClick={() => arm.tap(i.id, i.arm, () => onAct(i))}
@@ -289,34 +333,4 @@ export function objectiveButton({
       </button>
     );
   };
-}
-
-/** ▣ What to do now: every live objective, the first one open, each with
- *  the buttons it names (≤ 3) — the pass, the scanner, the story's own. */
-export function ObjectiveSheet({
-  objectives,
-  interactions,
-  onPass,
-  onScan,
-  onAct,
-  onClose,
-}: {
-  objectives: readonly ObjectiveView[];
-  interactions: readonly Interaction[];
-  onPass: () => void;
-  onScan: () => void;
-  onAct: (i: Interaction) => void;
-  onClose: () => void;
-}) {
-  const arm = useArmButtons();
-  const button = objectiveButton({ interactions, arm, onPass, onScan, onAct });
-  return (
-    <Sheet title="▣ What to do now" onClose={onClose} tall>
-      <div className="objective-stack">
-        {objectives.map((o, n) => (
-          <ObjectiveCard key={o.id} objective={o} compact={n > 0} renderButton={button} />
-        ))}
-      </div>
-    </Sheet>
-  );
 }

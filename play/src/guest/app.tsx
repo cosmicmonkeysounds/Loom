@@ -1,13 +1,18 @@
-//! The guest (participant) app (moved out of `guest.tsx` in wave 13) — a
-//! Discord/MSN-style chat over the live story: a sidebar of rooms, the
-//! open room on the stage, the story's cards docked in the conversation.
+//! The guest (participant) app (moved out of `guest.tsx` in wave 13; the
+//! wave 18 frame): the NOW title bar (your picture → Me, the 🔔 →
+//! Notifications), one window at a time — Mission (home), Chats, the
+//! Notifications bin — or a room opened over it, and the taskbar (Start ·
+//! Mission · Chats · Pass · Scan). Every exit lands through `go(nav)`
+//! (`guest/nav.ts`); the lobby is the far-away 📜 Chat log, never a default
+//! room and never an exit.
 
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { ActionRow, InviteSheet, PickerSheet, SessionEnded, Sheet, useWide } from "../ui/primitives.tsx";
 import { MomentsAndPins } from "../moments/pins-rail.tsx";
-import { Shell, SpaceList } from "../rooms/list.tsx";
+import { Shell } from "../rooms/list.tsx";
 import { CardActionsProvider } from "../stream/bubble.tsx";
 import { ChannelView, MessageThread } from "../stream/channel-view.tsx";
+import { codexUnseen } from "../stream/codex-room.tsx";
 import { CutsceneStage } from "../cutscene.tsx";
 import { useOfflineFor } from "../client.ts";
 import { LazyHelpSheet as HelpSheet } from "../help-lazy.tsx";
@@ -18,17 +23,17 @@ import { useDocumentTitle, useLandingBrand } from "../session/shared.ts";
 import { pendingWidget, personalStream } from "../session/channels.ts";
 import { useGuestSession, type GuestSession } from "../session/guest.ts";
 import { Tutorial, tourResult, tutorialSteps } from "../tutorial.tsx";
-import { CODEX_ROOM, WALLET_ROOM } from "../rooms/spaces.ts";
+import { CODEX_ROOM } from "../rooms/spaces.ts";
+import { chatSections, chatsDot } from "../rooms/chats.ts";
 import { FreezeSheet, OfferSheet, PeopleAmountSheet, StimulusSheet, WalletActionsProvider, WalletFooter, frozenUntil, guestWalletActions, useWalletClock, type WalletSheet } from "../wallet.tsx";
-import type { Action, Channel, Interaction } from "../types.ts";
+import type { Action, Interaction } from "../types.ts";
 import { usePush } from "../push.ts";
-import { opensHome } from "../room.ts";
 import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
-import { MissedTray, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
-import { GuestRegister } from "./register.tsx";
+import { MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
+import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
 import { PeopleSheet } from "./sheets.tsx";
 import { CountdownTray } from "../chrome/countdown-tray.tsx";
@@ -37,23 +42,28 @@ import { showClockOf } from "../show-clock.ts";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
 import { Icon, IconTitle } from "../chrome/icons.tsx";
-import { titleFallback } from "../chrome/title-bar.tsx";
-import { defectTargets } from "../session/guest.ts";
-import { PictureChanger } from "./register.tsx";
-import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, NowBar, ObjectiveSheet, guestStartItems, guestTaskbarButtons, liveCardsOf, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import { actLine, titleFallback } from "../chrome/title-bar.tsx";
+import { useArmButtons } from "../arm.ts";
 import { exitRoomFor } from "../moments/model.ts";
+import { AlertsBalloon, AlertsSheet, BalanceTray, BellButton, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import type { ExitContext, Nav } from "./moments-bridge.ts";
+import { pressedWindow, questRootsOf, useGuestNav, type GuestWindow } from "./nav.ts";
+import { LazyMission } from "./mission-lazy.tsx";
+import { ChatsWindow } from "./chats.tsx";
+import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
+import { useGuestNotifications } from "./notifications-state.ts";
+import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
+import { extOf, hasSidesOrCrew } from "./wire.ts";
+import { SidesContext } from "../sides/context.ts";
+import { LazySidesLayer } from "../sides/lazy.tsx";
+import type { SidesWhich } from "../sides/index.tsx";
+import { registerSidesWidgets } from "../sides/widgets.tsx";
 
-/** The room a guest should land in when the app opens wide: where they
- *  stand, else the room asking for a decision, else the story's lobby. */
-export function homeChannel(list: Channel[]): string | null {
-  return (
-    list.find((c) => c.decision || c.needsYou)?.id ??
-    list.find((c) => c.here)?.id ??
-    list.find((c) => c.kind === "lobby")?.id ??
-    list[0]?.id ??
-    null
-  );
-}
+// The doors (`sides`) and the invitation (`invite`) card kinds (CONTRACTS A8).
+registerSidesWidgets();
+// Mission is the home after sign-in: fetched now, while the join screen
+// (or the stream) loads.
+LazyMission.prefetch();
 
 /**
  * Is the app on rails? While the story has the guest in a `cutscene`
@@ -116,6 +126,7 @@ export function FrameLayout({ className, frameRef, head, taskbar, typing, childr
   );
 }
 
+
 export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const host = usePlayHost();
   const s = useGuestSession();
@@ -128,14 +139,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const [codexNote, setCodexNote] = useState<string | null>(null);
   // The Wallet room's sheets: Send / Request / Trade a fact / Stimulus.
   const [walletSheet, setWalletSheet] = useState<WalletSheet | null>(null);
-  // 📷 Scan: a wall code read in this session (never a new tab).
-  const [scanning, setScanning] = useState(false);
-  // 🎟 Pass: the full-screen pass, one tap from every screen.
-  const [passing, setPassing] = useState(false);
-  // The Start menu's sheets, and the NOW title bar's objective sheet.
+  // The Me sheet's own sheets.
   const [picturing, setPicturing] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const [objectivesOpen, setObjectivesOpen] = useState(false);
+  // Sides & crews: which of its sheets is up (the lazy chunk).
+  const [sidesWhich, setSidesWhich] = useState<SidesWhich | null>(null);
   const wake = useStartWake();
   // A codex / check-in link opened with no session here: the landing says
   // to type it in the app the guest joined with, unless they pick Join.
@@ -169,18 +177,55 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // cutscene (it waits for the guest to step into the app).
   const tour = !cut.showing && s.me !== null ? pendingWidget(s.messages, "tutorial", new Set(s.widgetAnswers.keys())) : null;
   const tourSeq = tour?.seq ?? null;
-  // On a wide screen the stage is never blank: open the natural room — once
-  // the guest is in the app. Not under the cutscene, or its rail-time room
-  // (The Uploader's thread, asking for the upload) would still be open
-  // after Continue instead of the room they now stand in.
   const signedIn = s.me !== null && s.ready && !cut.showing;
-  const activeId = t.activeId;
-  const home = homeChannel(t.list);
+
+  // --- the window, the room over it, and every exit's `go` ----------------
+  const cards = useMemo(() => liveCardsOf(t.list, s.widgetAnswers), [t.list, s.widgetAnswers]);
+  const listed = useMemo(() => new Set(t.list.map((c) => c.id)), [t.list]);
+  const interactions = st?.interactions ?? [];
+  const liveActions = new Set(interactions.filter((i) => i.live !== false).map((i) => i.id));
+  const nav = useGuestNav(
+    t,
+    () => ({ listed, actions: liveActions, armed: new Set(interactions.filter((i) => i.arm === true).map((i) => i.id)), questRoots: questRootsOf(s.messages.values()) }),
+    (id) => {
+      const i = interactions.find((x) => x.id === id);
+      void s.act(id, i?.label).catch(() => {});
+    },
+  );
+  const ext = extOf(st);
+  const exitContext = (window: GuestWindow = nav.window): ExitContext => ({
+    listed,
+    titles: new Map(t.list.map((c) => [c.id, c.title])),
+    open: t.activeThreadRoot === null ? t.activeId : null,
+    window,
+    cards,
+    dms: t.list.filter((c) => c.kind === "dm").map((c) => ({ id: c.id, title: c.title, last: c.messages[c.messages.length - 1]?.seq ?? -1 })),
+    actions: liveActions,
+    sides: (ext.sides ?? []).length > 0,
+    actionLabels: new Map(interactions.map((i) => [i.id, i.label])),
+  });
+  const notifs = useGuestNotifications({ messages: s.messages, me: s.me, storage: host.storage });
+  const arm = useArmButtons();
+  const archived = ext.archived;
+  const chats = useMemo(
+    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}) }),
+    [t.list, st?.clock, cards, archived],
+  );
+  // Mission's "!" on the taskbar: the NOW objective changed since Mission
+  // was last on screen.
+  const nowId = st?.objectives?.[0]?.id ?? null;
+  const [seenNow, setSeenNow] = useState<string | null>(null);
+  const onMission = nav.window === "mission" && t.activeId === null;
   useEffect(() => {
-    if (opensHome(signedIn, wide, activeId, home, s.linkNav !== null) && home !== null) t.open(home);
-    // `t` is rebuilt each render; the ids are what matter.
+    if (onMission && nowId !== seenNow) setSeenNow(nowId);
+  }, [onMission, nowId, seenNow]);
+  // A notification's link (SW-PLAY-20, §6.4) once in the app — never under the cutscene.
+  useEffect(() => {
+    if (s.linkNav === null || !signedIn) return;
+    nav.go(s.linkNav);
+    s.takeLinkNav();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, wide, activeId, home, s.linkNav]);
+  }, [s.linkNav, signedIn]);
   // What the cutscene stage shows is read: stepping into the app, the
   // rooms it came from (The Uploader's thread) carry no backlog badges.
   const staged = cut.showing && s.me !== null ? personalStream(s.messages, s.me.id) : null;
@@ -189,11 +234,11 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     if (staged !== null && stagedMax >= 0) t.markRead(staged);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stagedMax]);
-  // The tour walks the sidebar: on a phone, come back to it first.
+  // The tour starts on Mission with no room open (§10).
   useEffect(() => {
-    if (tourSeq !== null && !wide && activeId !== null) t.back();
+    if (tourSeq !== null) nav.go({ to: "mission" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tourSeq, wide]);
+  }, [tourSeq]);
   if (!s.me) {
     if (host.embedded) return <SessionEnded notice={s.notice} />;
     // Only while the link is still in the address bar: once it redeemed
@@ -211,13 +256,18 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const takeover = <Takeover pin={activeTakeover(s.messages.values())} />;
   const restricted = st?.restricted ?? false;
   // A scanned codex code redeems like a typed one (the Codex room answers a
-  // wrong code itself); a room's sign checks in and opens that room.
+  // wrong code itself); a room's sign checks in and opens that room;
+  // someone else's pass opens the Recruit sheet (wave 18, F3).
   const onScanned = async (scan: Exclude<GuestScan, { kind: "note" }>): Promise<string | null> => {
     if (scan.kind === "checkin") {
       await s.checkin(scan.at);
       return null;
     }
-    t.open(CODEX_ROOM);
+    if (scan.kind === "pass") {
+      setSidesWhich({ sheet: "recruit", id: scan.id });
+      return null;
+    }
+    nav.openRoom(CODEX_ROOM, "mission");
     try {
       await s.redeem(scan.code);
       setCodexNote(null);
@@ -227,7 +277,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     return null;
   };
   const scanButton = (
-    <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => setScanning(true)}>
+    <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => nav.go({ to: "scan" })}>
       <Icon name="scan" size={20} />
     </button>
   );
@@ -250,10 +300,28 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     );
   }
 
+  // Continue on the arrival cutscene lands on Mission, no room open (§1.3).
+  const leaveCutscene = () => {
+    cut.leave();
+    nav.go({ to: "mission" });
+  };
+  // Every exit's `go`: none while on rails in the cutscene; once the story
+  // has moved them on (Continue is up) it steps into the app first.
+  const go: ((n: Nav) => void) | undefined = !cut.showing
+    ? nav.go
+    : cut.over
+      ? (n: Nav) => {
+          cut.leave();
+          nav.go(n);
+        }
+      : undefined;
+  // A room the old moments engine names: the lobby is never one (G2).
+  const openRoomExit = (id: string) => (id === "lobby" ? nav.go({ to: "mission" }) : nav.go({ to: "room", id }));
   // The moments layer (wave 13): one provider over both the cutscene and the
   // main frame, so the queue, its holds and the beat's blue screen carry
-  // across the cutscene → app switch.
-  const moments: MomentsInput = {
+  // across the cutscene → app switch. Wave 18: the moments lane's exits land
+  // through `go` (`exitContext` says what the guest lists).
+  const moments: MomentsInput & { go?: (n: Nav) => void; exitContext?: () => ExitContext } = {
     role: "guest",
     me: s.me.id,
     session: s.me.token,
@@ -264,36 +332,37 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     phase: st.night?.phase,
     clock: st.clock,
     // No room exit while on rails in the cutscene.
-    openRoom: roomExit(cut, t.open),
+    openRoom: roomExit(cut, openRoomExit),
     sound: host.sound,
     // The room the guest stands in: its beat lines reach the blue screen.
     here: st.location !== null ? `loc:${st.location}` : null,
-    // "Take me there" on the loud "show your pass" objective.
-    openPass: () => setPassing(true),
+    openPass: () => nav.go({ to: "pass" }),
     // A loud objective flashes the NOW bar (below the modal rungs) — not on
     // the cutscene's stage, which has no NOW bar: there it is the banner.
     nowBar: !cut.showing,
-    // "Take me there": a live card's room for a moment about that card, and
-    // never the room already open (wide: the one beside the list).
-    // An announcement that says "check your messages" opens the DM it names.
-    exitRoom: (m) =>
-      exitRoomFor(m, {
-        open: t.activeThreadRoot === null ? t.activeId : null,
-        cards: liveCardsOf(t.list, s.widgetAnswers),
-        dms: t.list.filter((c) => c.kind === "dm").map((c) => ({ id: c.id, title: c.title, last: c.messages[c.messages.length - 1]?.seq ?? -1 })),
-      }),
+    // The old rungs' one exit: a live card's room, else the moment's own —
+    // never the lobby (G2), never the room already open.
+    exitRoom: (m) => {
+      const room = exitRoomFor(m, { open: t.activeThreadRoot === null ? t.activeId : null, cards, dms: exitContext().dms });
+      return room === "lobby" ? null : room;
+    },
+    ...(go !== undefined ? { go } : {}),
+    exitContext: () => exitContext(),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
   // when the cutscene hands over to the app.
   const framed = (body: ReactElement) => (
     <KnownNamesProvider value={names}>
-      <MomentsProvider {...moments}>{body}</MomentsProvider>
+      <SidesContext.Provider value={{ view: st, calls: s.sides }}>
+        <MomentsProvider {...moments}>{body}</MomentsProvider>
+      </SidesContext.Provider>
     </KnownNamesProvider>
   );
 
+  const passing = nav.overlay === "pass";
   if (cut.showing) {
-    const dock = t.list.find((c) => c.decision !== null)?.decision ?? null;
+    const dock = t.list.find((c) => c.decision !== null)?.decision ?? s.decision?.decision ?? null;
     const here = st.location !== null ? (t.list.find((c) => c.id === `loc:${st.location}`)?.title ?? st.location) : null;
     if (!cut.over && here !== null) stageWhere.current = here;
     const where = cut.over ? stageWhere.current : here;
@@ -307,16 +376,17 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           decision={dock}
           widgets={widgets}
           over={cut.over}
-          onContinue={cut.leave}
-          onPass={() => setPassing(true)}
+          onContinue={leaveCutscene}
+          onPass={() => nav.setOverlay("pass")}
           offline={offline}
         />
-        {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => setPassing(false)} />}
+        {passing && <FullPass guestId={s.me.id} name={s.me.name} onClose={() => nav.setOverlay(null)} />}
         {takeover}
       </div>,
     );
   }
 
+  // --- the room over the window --------------------------------------------
   let stage: ReactElement | null = null;
   if (t.active) {
     const active = t.active;
@@ -351,13 +421,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       }
       stage = (
         <ChannelView
-          channel={active}
+          channel={active.id === "lobby" ? { ...active, title: `📜 ${active.title}`, subtitle: undefined } : active}
           wide={wide}
           meId={s.me.id}
-          onBack={t.back}
+          onBack={nav.back}
           onOpenThread={t.openThread}
           onSend={send}
           widgets={widgets}
+          focusCard={nav.focusSeq}
+          focusEntry={nav.focusEntry}
           onPeople={() => setPeople(new Set((active.people ?? []).map((p) => p.id)))}
           composerExtra={active.kind === "codex" ? scanButton : undefined}
           footer={
@@ -376,17 +448,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     }
   }
 
-  const side = (
-    <SpaceList
-      spaces={t.spaces}
-      activeId={t.activeId}
-      meId={s.me.id}
-      onOpen={t.open}
-      empty="Quiet… for now."
-      fold
-    />
-  );
-
+  // --- the windows ---------------------------------------------------------
   const objectives = st.objectives ?? [];
   const tourSteps = tour
     ? tutorialSteps({
@@ -395,39 +457,71 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         hasQuests: (st.questTotal ?? 0) > 0,
         hasWallet: st.wallet !== undefined,
         hasPeople: (st.people?.length ?? 0) > 0,
-        hasActions: (st.interactions?.length ?? 0) > 0,
+        hasActions: interactions.length > 0,
         hasObjectives: objectives.length > 0,
         bathroom: tour.widget?.params["bathroom"] ?? null,
       })
     : [];
-
-  // The other guests, for the wallet's pickers (never me, never a character).
   const meId = s.me.id;
   const meName = s.me.name;
+  // The other guests, for the wallet's pickers (never me, never a character).
   const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name }));
+  const act = (i: Interaction) => void s.act(i.id, i.label).catch(() => {});
+  const renderButton = objectiveButton({ interactions, arm, onPass: () => nav.go({ to: "pass" }), onScan: () => nav.go({ to: "scan" }), onAct: act });
+  const codexRoom = t.list.find((c) => c.id === CODEX_ROOM);
+  const missionInput = { view: st, list: t.list, cards, decision: s.decision, codexUnseen: codexRoom !== undefined && codexUnseen(host.storage, meId, codexRoom.messages) };
+  const here = st.location !== null ? t.list.find((c) => c.id === `loc:${st.location}`) : undefined;
+  const peopleHere = (here?.people ?? []).filter((p) => p.id !== meId).length;
+  const sidesOpen = hasSidesOrCrew(st);
+  const windowBody =
+    nav.window === "notifications" ? (
+      <LazyNotificationsWindow
+        messages={s.messages}
+        me={{ id: meId, name: meName }}
+        phase={st.night?.phase ?? null}
+        deleted={notifs.deleted}
+        mark={notifs.mark}
+        now={st.clock ?? 0}
+        exitContext={() => exitContext("mission")}
+        onGo={(n) => nav.go(n, "mission")}
+        remove={notifs.remove}
+        markRead={notifs.markRead}
+        view={st}
+      />
+    ) : nav.window === "chats" ? (
+      <ChatsWindow chats={chats} activeId={t.activeId} meId={meId} onOpen={(id) => nav.openRoom(id, "chats")} />
+    ) : (
+      <LazyMission
+        input={missionInput}
+        countdowns={st.countdowns}
+        clock={st.clock}
+        stamp={st}
+        captured={captured}
+        onGo={nav.go}
+        renderButton={renderButton}
+        onInvite={(invite) => setSidesWhich({ sheet: "answer", invite })}
+        peopleHere={peopleHere}
+        onPeople={() => setPeople(new Set((here?.people ?? []).filter((p) => p.id !== meId).map((p) => p.id)))}
+      />
+    );
 
   // --- the frame: the NOW title bar on top, the taskbar at the foot -------
   const tone = captured ? ("alarm" as const) : restricted ? ("restricted" as const) : undefined;
   const where = whereLine({ captured, restricted, location: st.location });
   const now = objectives[0] ?? null;
-  const act = (i: Interaction) => void s.act(i.id, i.label).catch(() => {});
   const frozen = st.wallet !== undefined && frozenUntil(st.wallet, walletClock) !== null;
   const start = guestStartItems({
     name: meName,
     faction: st.faction,
-    interactions: st.interactions ?? [],
-    defectTo: defectTargets(st),
-    wake,
-    push: pushOffered(push),
+    interactions,
+    sides: sidesOpen,
     people: (st.people?.length ?? 0) > 0,
     open: {
-      picture: () => setPicturing(true),
-      wake: () => wake?.toggle(),
-      alerts: () => setAlertsOpen(true),
-      people: () => setPeople("all"),
-      help: () => setHelp(true),
       act,
-      defect: (to) => void s.defect(to),
+      sides: () => setSidesWhich({ sheet: "sides" }),
+      people: () => setPeople("all"),
+      notifications: () => nav.go({ to: "notifications" }),
+      help: () => setHelp(true),
       leave: () => {
         push.release();
         s.leave();
@@ -440,34 +534,32 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       <ShowClockTray clock={showClockOf(st)} />
       <CountdownTray countdowns={st.countdowns} clock={st.clock} paused={st.paused === true} stamp={st} />
       {st.wallet !== undefined ? (
-        <BalanceTray view={st.wallet} frozen={frozen} onOpen={() => t.open(WALLET_ROOM)} />
+        <BalanceTray view={st.wallet} frozen={frozen} onOpen={() => nav.go({ to: "wallet" })} />
       ) : st.score !== 0 ? (
         <TrayItem icon={<Icon name="star" />} text={String(st.score)} title={`Score ${st.score}`} />
       ) : null}
-      <MissedTray />
     </>
   );
   const taskbar = (
     <Taskbar
       start={start}
-      startHeader={<GuestStartHeader name={meName} faction={st.faction} where={where} />}
+      startHeader={<GuestStartHeader name={meName} faction={st.faction} where={where} onMe={() => nav.go({ to: "me" })} />}
       brand={st.title ?? s.me.title ?? undefined}
       buttons={guestTaskbarButtons({
         now,
-        // One tap from anywhere: the NOW card under the taskbar closes as the pass / scanner opens.
-        pass: () => {
-          setObjectivesOpen(false);
-          setPassing(true);
-        },
-        scan: () => {
-          setObjectivesOpen(false);
-          setScanning(true);
-        },
+        pressed: pressedWindow(nav.window),
+        chatsDot: chatsDot(chats),
+        missionNew: nowId !== null && seenNow !== null && nowId !== seenNow,
+        mission: () => nav.tap("mission"),
+        chats: () => nav.tap("chats"),
+        pass: () => nav.go({ to: "pass" }),
+        scan: () => nav.go({ to: "scan" }),
       })}
       tray={tray}
       conn={s.connected ? "live" : offline ? "offline" : "reconnecting"}
     />
   );
+  const storyTitle = st.title ?? s.me.title ?? "";
   // The rooms a typed code may name (a sign's room name checks in).
   const scanRooms = t.list.filter((c) => c.kind === "location").map((c) => ({ id: c.id, title: c.title }));
   return framed(
@@ -483,10 +575,20 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       taskbar={taskbar}
       head={
         <>
-          <NowBar objectives={objectives} fallback={titleFallback(t.active?.title ?? null, st.title ?? s.me.title ?? null)} onOpen={() => setObjectivesOpen(true)} sub={where} tone={tone} paused={st.paused === true} />
-          {/* One strip above the room: the guest's own pin folds a sticky into its "+n". */}
+          <NowBar
+            objectives={objectives}
+            fallback={titleFallback(t.active?.title ?? null, storyTitle)}
+            onOpen={() => nav.go({ to: "mission" })}
+            sub={where}
+            tone={tone}
+            paused={st.paused === true}
+            act={onMission ? actLine(st.night?.act, storyTitle) : undefined}
+            lead={<MeButton name={meName} onOpen={() => nav.go({ to: "me" })} />}
+            trail={<BellButton unread={notifs.unread} onOpen={() => nav.go({ to: "notifications" })} />}
+          />
+          {/* One strip above the window: the guest's own pin folds a sticky into its "+n". */}
           <MomentsAndPins pins={pins} me={s.me.id} />
-          <Shell side={side} stage={stage} wide={wide} placeholder="Pick a room on the left. The one you're standing in is at the top." />
+          <Shell side={windowBody} stage={stage} wide={wide} placeholder="Pick a chat, or follow your mission." />
         </>
       }
     >
@@ -508,23 +610,52 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
           onClose={() => setInviting(false)}
         />
       )}
-      {objectivesOpen && objectives.length > 0 && (
-        <ObjectiveSheet
-          objectives={objectives}
-          interactions={st.interactions ?? []}
-          onPass={() => {
-            setObjectivesOpen(false);
-            setPassing(true);
+      {nav.overlay === "me" && (
+        <MeSheet
+          view={st}
+          where={where}
+          wake={wake}
+          push={pushOffered(push)}
+          sides={sidesOpen}
+          onPass={() => nav.go({ to: "pass" })}
+          onPicture={() => {
+            nav.setOverlay(null);
+            setPicturing(true);
           }}
-          onScan={() => {
-            setObjectivesOpen(false);
-            setScanning(true);
+          onSides={() => {
+            nav.setOverlay(null);
+            setSidesWhich({ sheet: "sides" });
           }}
-          onAct={(i) => {
-            setObjectivesOpen(false);
-            act(i);
+          onAlerts={() => {
+            nav.setOverlay(null);
+            setAlertsOpen(true);
           }}
-          onClose={() => setObjectivesOpen(false)}
+          onClose={() => nav.setOverlay(null)}
+        />
+      )}
+      {(nav.overlay === "sides" || sidesWhich !== null) && (
+        <LazySidesLayer
+          which={sidesWhich ?? { sheet: "sides" }}
+          view={st}
+          calls={s.sides}
+          openRoom={(id) => {
+            setSidesWhich(null);
+            nav.go({ to: "room", id });
+          }}
+          scan={() => {
+            setSidesWhich(null);
+            nav.go({ to: "scan" });
+          }}
+          profile={(id) => {
+            setSidesWhich(null);
+            nav.setOverlay(null);
+            setPeople(new Set([id]));
+          }}
+          show={setSidesWhich}
+          onClose={() => {
+            setSidesWhich(null);
+            if (nav.overlay === "sides") nav.setOverlay(null);
+          }}
         />
       )}
       {picturing && (
@@ -544,8 +675,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
-      {scanning && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => setScanning(false)} rooms={scanRooms} />}
-      {passing && <FullPass guestId={meId} name={meName} onClose={() => setPassing(false)} />}
+      {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
+      {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (
         <PeopleAmountSheet
           mode={walletSheet}

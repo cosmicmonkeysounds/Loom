@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { PAUSED_CLASS, PAUSED_WORD, PausedTag, TITLE_CHEVRON, TitleBar, flashLine, moreObjectives, pausedClass, pausedTitle, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
+import { PAUSED_CLASS, PAUSED_WORD, PausedTag, TITLE_CHEVRON, TitleBar, actLine, flashLine, pausedClass, pausedTitle, titleBarSub, titleBarText, titleFallback } from "../src/chrome/title-bar.tsx";
 import { nowFlashOf, whereLine } from "../src/guest/frame.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 
@@ -40,9 +40,10 @@ describe("the NOW title bar", () => {
     expect(none).toContain('data-tour="now"');
   });
 
-  it("says how many more objectives wait behind the first", () => {
+  it("wave 18: never says how many more objectives wait behind the first", () => {
     const out = renderToStaticMarkup(createElement(TitleBar, { objectives: [o("a", "A"), o("b", "B"), o("c", "C")], fallback: "", onOpen: () => {}, sub: "📍 Hall" }));
-    expect(out).toContain("📍 Hall · +2 objectives");
+    expect(out).toContain("📍 Hall");
+    expect(out).not.toContain("objective");
   });
 
   it("the sub-line says where you stand, or that you can't move", () => {
@@ -103,11 +104,24 @@ describe("the NOW bar's states (fguest)", () => {
     expect(flashLine(flash, o("b", "Other"))).toBe("Show your pass — Hold it up to an Antivirus.");
     expect(nowFlashOf({ key: "o:a", text: "Show your pass\nHold it up." })).toEqual({ id: "a", title: "Show your pass", brief: "Hold it up." });
     expect(nowFlashOf({ key: "m:4", text: "x" })).toBeNull();
-    expect(moreObjectives(1)).toBe("+1 objective");
   });
 
   it("the title wraps to two lines before any ellipsis", () => {
     const css = readFileSync(new URL("../src/css/chrome.css", import.meta.url), "utf8");
     expect(css).toMatch(/\.title-bar-title \{[^}]*-webkit-line-clamp: 2/u);
+  });
+
+  it("wave 18: Mission's caption reads the act, not a button; the slots sit at the ends", () => {
+    expect(actLine({ code: "B", title: "The Desktop" }, "Story")).toBe("▣ ACT B · The Desktop");
+    expect(actLine({ code: null, title: "The Desktop" }, "Story")).toBe("▣ The Desktop");
+    expect(actLine({ code: "C", title: null }, "Story")).toBe("▣ ACT C");
+    expect(actLine(null, "Story")).toBe("Story");
+    const html = renderToStaticMarkup(
+      createElement(TitleBar, { objectives: [o("a", "Bingo")], fallback: "", onOpen: () => {}, act: "▣ ACT B · The Desktop", lead: createElement("i", { id: "lead" }), trail: createElement("i", { id: "trail" }) }),
+    );
+    expect(html).toContain("▣ ACT B · The Desktop");
+    expect(html).not.toContain("<button");
+    expect(html.indexOf('id="lead"')).toBeLessThan(html.indexOf("▣ ACT"));
+    expect(html.indexOf('id="trail"')).toBeGreaterThan(html.indexOf("▣ ACT"));
   });
 });

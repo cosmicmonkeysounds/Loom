@@ -96,3 +96,11 @@ export function groupsOf(p: Pick<PersonCard, "faction"> & { groups?: unknown }):
   if (Array.isArray(p.groups)) return p.groups.filter((g): g is string => typeof g === "string");
   return p.faction !== null ? [p.faction] : [];
 }
+
+/** Does the guest have anything to see in Sides & crews (Start, Me): a side
+ *  open (the server's `sides`, else the story's `factions`) or a crew. */
+export function hasSidesOrCrew(view: GuestView | null | undefined): boolean {
+  if (view === null || view === undefined) return false;
+  const ext = extOf(view);
+  return (ext.sides ?? view.factions ?? []).length > 0 || (ext.crew ?? null) !== null;
+}

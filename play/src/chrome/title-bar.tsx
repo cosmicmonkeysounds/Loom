@@ -5,7 +5,8 @@
 //! alarm-red, restricted turns it ochre, and either adds ⛔ to the title.
 //! It owns the top safe-area inset.
 
-import type { ObjectiveView } from "../types.ts";
+import type { ReactNode } from "react";
+import type { NightView, ObjectiveView } from "../types.ts";
 
 /** What the bar falls back to with no objective (D4): the open room's
  *  name, else the story's title (the room list is open). */
@@ -50,9 +51,14 @@ export function titleBarText(objectives: readonly ObjectiveView[] | undefined, f
   return { title: now !== null ? `${mark}▣ NOW: ${pausedTitle(now.title, paused)}${TITLE_CHEVRON}` : `${mark}${pausedTitle(fallback, paused)}`, now };
 }
 
-/** "+1 objective", "+2 objectives": what waits behind the first. */
-export function moreObjectives(n: number): string {
-  return `+${n} ${n === 1 ? "objective" : "objectives"}`;
+/** Mission's caption (wave 18, GUEST-SPEC §1.1): the act on screen,
+ *  "▣ ACT B · The Desktop"; either part may be missing; both → the story's
+ *  title (`fallback`). */
+export function actLine(act: NightView["act"] | null | undefined, fallback: string): string {
+  const code = act?.code?.trim() ?? "";
+  const title = act?.title?.trim() ?? "";
+  if (code === "" && title === "") return fallback;
+  return `▣ ${code !== "" ? `ACT ${code}` : ""}${code !== "" && title !== "" ? " · " : ""}${title}`;
 }
 
 /** A loud objective just went live: what the bar unfolds to say. Its own
@@ -76,11 +82,14 @@ export function TitleBar({
   tone,
   paused = false,
   flash = null,
+  act,
+  lead,
+  trail,
 }: {
   objectives: readonly ObjectiveView[] | undefined;
   fallback: string;
   onOpen: (o: ObjectiveView) => void;
-  /** Sub-text under an objective title (📍 where you stand). */
+  /** Sub-text under the title (📍 where you stand). Never a count of objectives (wave 18). */
   sub?: string;
   /** Captured / restricted: the bar turns alarm-red / restricted-ochre and the title gains ⛔. */
   tone?: "alarm" | "restricted";
@@ -90,36 +99,46 @@ export function TitleBar({
    *  bar blinks like a Win95 window asking for attention and unfolds its
    *  brief, instead of a second copy of it in a banner. */
   flash?: { id: string; title: string; brief: string } | null;
+  /** The guest's Mission window is on screen: line 1 is the act
+   *  (`actLine`), not a button (wave 18). */
+  act?: string;
+  /** The left slot: the guest's picture (→ Me). */
+  lead?: ReactNode;
+  /** The right slot: the 🔔 (→ Notifications). */
+  trail?: ReactNode;
 }) {
   const { title, now } = titleBarText(objectives, fallback, tone, paused);
   const sub = titleBarSub(rawSub, tone);
-  const more = (objectives?.length ?? 0) - 1;
   const news = flash !== null ? flashLine(flash, now) : null;
+  const mark = tone !== undefined ? "⛔ " : "";
+  const shown = act !== undefined ? `${mark}${pausedTitle(act, paused)}` : title;
   return (
-    <header className={`title-bar ${tone ?? ""}${paused ? ` paused ${PAUSED_CLASS}` : ""}${news !== null ? " flash" : ""}`}>
-      {now !== null ? (
+    <header className={`title-bar ${tone ?? ""}${paused ? ` paused ${PAUSED_CLASS}` : ""}${news !== null ? " flash" : ""}${lead !== undefined || trail !== undefined ? " slotted" : ""}`}>
+      {lead}
+      {now !== null && act === undefined ? (
         <button type="button" className="title-bar-btn" data-tour="now" aria-haspopup="dialog" onClick={() => onOpen(now)}>
-          <span className="title-bar-title">{title}</span>
+          <span className="title-bar-title">{shown}</span>
           {news !== null ? (
             <span className="title-bar-news" role="status">
               {news}
             </span>
           ) : (
-            (sub !== undefined || more > 0) && (
-              <span className="title-bar-sub">
-                {sub}
-                {sub !== undefined && more > 0 && " · "}
-                {more > 0 && moreObjectives(more)}
-              </span>
-            )
+            sub !== undefined && <span className="title-bar-sub">{sub}</span>
           )}
         </button>
       ) : (
         <div className="title-bar-btn" data-tour="now">
-          <span className="title-bar-title">{title}</span>
-          {sub !== undefined && <span className="title-bar-sub">{sub}</span>}
+          <span className="title-bar-title">{shown}</span>
+          {news !== null ? (
+            <span className="title-bar-news" role="status">
+              {news}
+            </span>
+          ) : (
+            sub !== undefined && <span className="title-bar-sub">{sub}</span>
+          )}
         </div>
       )}
+      {trail}
     </header>
   );
 }

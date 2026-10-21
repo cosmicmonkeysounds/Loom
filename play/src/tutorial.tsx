@@ -1,13 +1,12 @@
 //! The guided tour of the app — what a `show tutorial … to guest` card
 //! puts on the screen. A spotlight walks the guest over the real controls
-//! (the NOW bar, the rooms list, the Quest Log, the Codex, the taskbar's
-//! Pass / Scan / Start) one step at a time, with a callout from the story's guide. Every step can be skipped;
-//! finishing or skipping answers the card, so the story hears which.
+//! (wave 18: Mission, Chats, Pass and Scan, the 🔔, Start — five steps)
+//! one at a time, with a callout from the story's guide. Every step can be
+//! skipped; finishing or skipping answers the card, so the story hears which.
 //!
-//! The steps are the app's own (they describe *this* app), trimmed to the
-//! features the story actually uses (no Codex step for a story with no
-//! codex). Targets are `data-tour` anchors on the live controls, measured
-//! against the app's root — so it works inside an embedded pane too.
+//! The steps are the app's own (they describe *this* app). Targets are
+//! `data-tour` anchors on the live controls, measured against the app's
+//! root — so it works inside an embedded pane too.
 
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import { usePlayHost } from "./host.ts";
@@ -42,86 +41,25 @@ export interface TourOptions {
 }
 
 /** Every `data-tour` anchor the guest frame renders (the tour may only
- *  point at these): the title bar, the room list and its pinned rows, the
- *  taskbar's Start / Pass / Scan. `test/chrome-tour.test.ts` checks it. */
-export const GUEST_TOUR_ANCHORS = ["now", "rooms", "wallet", "quests", "codex", "start", "pass", "scan"] as const;
+ *  point at these): the taskbar's Mission / Chats / Pass / Scan / Start, the
+ *  top bar's 🔔 and your picture. `test/chrome-tour.test.ts` checks it. */
+export const GUEST_TOUR_ANCHORS = ["mission", "chats", "pass", "scan", "bell", "start", "me"] as const;
 
-/** The tour, step by step, for what this story turns on. */
+/** The most steps a tour has (wave 18, G7). */
+export const TOUR_MAX = 5;
+
+/** The tour, step by step (wave 18, GUEST-SPEC §10): exactly five — your
+ *  mission, Chats, Pass and Scan, Notifications, Start. A story's
+ *  `with bathroom:` text replaces the Start step's. Before step 1 the app
+ *  shows the Mission window with no room open. */
 export function tutorialSteps(o: TourOptions): TourStep[] {
-  const steps: TourStep[] = [
-    {
-      id: "welcome",
-      target: null,
-      title: "This is your window into the night",
-      text: `Everything ${o.title} says to you, and every place it takes you, shows up here. Here's how to read it.`,
-    },
+  return [
+    { id: "mission", target: "mission", title: "Your mission", text: "This is home: what to do now, where to go, and what's waiting on you." },
+    { id: "chats", target: "chats", title: "Chats", text: "Places and people. A yellow dot means it's your move." },
+    { id: "pass", target: "pass", title: "Pass and Scan", text: "Your pass, one tap away. Scan is right beside it, for codes on walls and notes." },
+    { id: "bell", target: "bell", title: "Notifications", text: "Anything you missed lands in the Recycle Bin up here." },
+    { id: "start", target: "start", title: "Start", text: o.bathroom !== undefined && o.bathroom !== null && o.bathroom.trim() !== "" ? o.bathroom : "Bathroom Mode, people, help and you." },
   ];
-  if (o.hasObjectives) {
-    steps.push({
-      id: "now",
-      target: "now",
-      title: "Now",
-      text: "The bar on top says what to do right now. Tap it for the details and a checklist.",
-    });
-  }
-  steps.push({
-    id: "rooms",
-    target: "rooms",
-    title: "Rooms",
-    text: "Every conversation you can hear is a room: places, chatrooms, and people talking to you. The place you're standing in comes first, tagged YOU ARE HERE. Empty rooms wait under Other rooms at the bottom.",
-  });
-  if (o.hasWallet) {
-    steps.push({
-      id: "wallet",
-      target: "wallet",
-      title: "Your wallet",
-      text: "Your balance lives here and in the corner of the taskbar. Send coin to another program, ask them for some, or trade a fact you hold for coin. Some transfers wait for an audit.",
-    });
-  }
-  if (o.hasQuests) {
-    steps.push({
-      id: "quests",
-      target: "quests",
-      title: "The Quest Log",
-      text: "Pinned at the top: what the story has asked of you. Every quest is a card — open it to follow its progress in its own thread.",
-    });
-  }
-  if (o.hasCodex) {
-    steps.push({
-      id: "codex",
-      target: "codex",
-      title: "The Codex",
-      text: "Pinned too: what you know. Scan or type a code from a wall, a puzzle or a person to unlock an entry. Knowledge is the currency — share it carefully.",
-    });
-  }
-  steps.push({
-    id: "pass",
-    target: "pass",
-    title: "Your pass",
-    text: "Your QR code, one tap away on every screen. A performer scans it — hold it up, the screen stays bright.",
-  });
-  steps.push({
-    id: "scan",
-    target: "scan",
-    title: "Scan",
-    text: "Codes hide on walls, signs and notes. Tap Scan to read one here: it lands in your Codex, or checks you into the room. Never use the phone's own camera app.",
-  });
-  const startBits = [o.hasActions ? "the story's own buttons" : null, o.hasPeople ? "who's here" : null, "help, your picture and settings", "and Leave"].filter((x): x is string => x !== null);
-  steps.push({
-    id: "start",
-    target: "start",
-    title: "Start",
-    text: `Everything else is under Start: ${startBits.join(", ")}.`,
-  });
-  if (o.bathroom) steps.push({ id: "bathroom", target: "start", title: "Bathroom Mode", text: o.bathroom });
-  steps.push({
-    id: "cards",
-    target: null,
-    title: "When the story asks",
-    text: "A decision or a card lands right in the conversation. Answer with the buttons (or the number keys). Anything waiting on you moves up the list.",
-  });
-  steps.push({ id: "done", target: null, title: "That's it", text: "The story is happening in the room, not just on the screen. When the app says something is happening somewhere — go." });
-  return steps;
 }
 
 /** The answer a finished or skipped tour posts back (the card's result). */

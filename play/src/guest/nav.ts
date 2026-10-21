@@ -113,8 +113,9 @@ export interface GuestNav {
   /** The Codex entry a room was opened on. */
   focusEntry: string | null;
   setOverlay: (o: GuestOverlay | null) => void;
-  /** Land on a nav (§6.3). */
-  go: (nav: Nav) => void;
+  /** Land on a nav (§6.3). `from` = the window it is taken from (a
+   *  Notifications row's exit lands as if from Mission: the bin closes). */
+  go: (nav: Nav, from?: GuestWindow) => void;
   /** Open a room from the window on screen (a Chats row, a tile). */
   openRoom: (id: string, from?: GuestWindow) => void;
   /** A room's ‹: back to the window it came from. */
@@ -153,7 +154,7 @@ export function useGuestNav(threads: Threads, ctx: () => Omit<GoContext, "window
     t.current.open(plan.room.id);
     if (plan.room.thread !== undefined) t.current.openThread(plan.room.thread);
   }, []);
-  const go = useCallback((nav: Nav) => apply(planGo(nav, { ...c.current(), window: w.current })), [apply]);
+  const go = useCallback((nav: Nav, from?: GuestWindow) => apply(planGo(nav, { ...c.current(), window: from ?? w.current })), [apply]);
   const openRoom = useCallback((id: string, from?: GuestWindow) => {
     if (from !== undefined) setWindow(from);
     setFocusSeq(null);

@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import { keepsRoom, planGo, pressedWindow, questRootsOf, taskbarTap, type GoContext } from "../src/guest/nav.ts";
-import { localNavFromSearch, localNavOfTarget } from "../src/guest/moments-bridge.ts";
+import { localNavFromSearch } from "../src/guest/moments-bridge.ts";
+import { localNavOfTarget } from "../src/guest/notification-rows.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 const ctx = (o: Partial<GoContext> = {}): GoContext => ({

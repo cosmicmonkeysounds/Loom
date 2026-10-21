@@ -31,10 +31,29 @@ export function lastPreview(c: Channel, known?: KnownNames): string {
   return last.kind === "line" ? `${last.from ? `${displayName(last.from, known)}: ` : ""}${last.text}` : last.text;
 }
 
-export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel; active?: boolean; meId?: string | null; onOpen: (id: string) => void }) {
+export function ChannelRow({
+  channel,
+  active,
+  meId,
+  onOpen,
+  dot,
+  sub: subOverride,
+}: {
+  channel: Channel;
+  active?: boolean;
+  meId?: string | null;
+  onOpen: (id: string) => void;
+  /** The guest's one badge kind (wave 18): a yellow dot, never a number;
+   *  `false` = no badge at all. Absent = the booth's count. */
+  dot?: boolean;
+  /** The second line, instead of the preview ("chat room"). */
+  sub?: string;
+}) {
   const occupancy = occupancyLabel(channel, meId ?? null);
   const known = useKnownNames();
-  const sub = channel.typing ? `${channel.typing} is typing…` : (channel.subtitle ?? lastPreview(channel, known));
+  // The guest's Chat log (the lobby): its own glyph, a fixed line, never a preview.
+  const log = dot !== undefined && channel.id === "lobby";
+  const sub = subOverride ?? (log ? (channel.subtitle ?? "") : channel.typing ? `${channel.typing} is typing…` : (channel.subtitle ?? lastPreview(channel, known)));
   const quiet = channel.kind === "location" && (channel.people?.length ?? 0) === 0 && channel.messages.length === 0 && !channel.here;
   return (
     <button
@@ -43,21 +62,27 @@ export function ChannelRow({ channel, active, meId, onOpen }: { channel: Channel
       aria-current={active ? "true" : undefined}
       data-tour={channel.tour}
     >
-      <Avatar channel={channel} />
+      {log ? (
+        <div className="avatar lobby chat-log-avatar" aria-hidden>
+          📜
+        </div>
+      ) : (
+        <Avatar channel={channel} />
+      )}
       <div className="chrow-body">
         <div className="chrow-top">
           <span className="chrow-title">{channel.title}</span>
           {channel.here && <span className="here-tag">you are here</span>}
-          {channel.decision && <span className="decision-dot">decision</span>}
-          {!channel.decision && channel.needsYou && <span className="decision-dot">your move</span>}
+          {!log && channel.decision && <span className="decision-dot">decision</span>}
+          {!log && !channel.decision && channel.needsYou && <span className="decision-dot">your move</span>}
         </div>
         <div className="chrow-sub">
-          {occupancy && <span className="chrow-occ">{occupancy}</span>}
-          {occupancy && sub && <span className="chrow-dot"> · </span>}
+          {!log && occupancy && <span className="chrow-occ">{occupancy}</span>}
+          {!log && occupancy && sub && <span className="chrow-dot"> · </span>}
           {sub}
         </div>
       </div>
-      <Badge count={channel.unread} />
+      {dot === undefined ? <Badge count={channel.unread} /> : dot && !log ? <span className="guest-dot" aria-label="new" /> : null}
     </button>
   );
 }
