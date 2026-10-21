@@ -146,7 +146,7 @@ func stop() -> void:
 	_stop_mic()
 	for from: String in _sources.keys():
 		_drop_source(from)
-	if builder != null:
+	if is_instance_valid(builder):
 		builder.clear_voices()
 	stream_url = ""
 	upload_url = ""
@@ -328,7 +328,7 @@ func _attach(from: String, spot: String) -> Dictionary:
 func _drop_source(from: String) -> void:
 	var src: Dictionary = _sources.get(from, {})
 	_sources.erase(from)
-	if not src.is_empty() and builder != null:
+	if not src.is_empty() and is_instance_valid(builder):
 		builder.clear_voice(str(src["spot"]))
 
 

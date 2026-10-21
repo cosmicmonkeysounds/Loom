@@ -635,8 +635,9 @@ func clear_voice(id: String) -> void:
 	_voices.erase(id)
 	if not _terminals.has(id):
 		return
-	var e := (_terminals[id] as Node3D).get_node_or_null("Voice")
+	var e := (_terminals[id] as Node3D).get_node_or_null("Voice") as AudioStreamPlayer3D
 	if e != null:
+		e.stop()
 		e.get_parent().remove_child(e)
 		e.queue_free()
 
