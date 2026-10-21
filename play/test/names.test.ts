@@ -19,13 +19,21 @@ describe("names on the phone", () => {
   it("a group named The … never reads 'the The'", () => {
     expect(withThe("The Way Out")).toBe("The Way Out");
     expect(withThe("Unlimited Power")).toBe("the Unlimited Power");
-    const view = { faction: null, captured: false, factions: ["Unlimited Power", "The Way Out"], pendingChoice: null } as unknown as GuestView;
-    const d = requiredDecision(view, { choose: () => {}, join: () => {}, escape: () => {} });
-    expect(d?.decision.options.map((o) => o.label)).toEqual(["Side with the Unlimited Power", "Side with The Way Out"]);
   });
 
-  it("a restricted (marked) program gets no side chooser and no defect buttons (T4-07)", () => {
-    const acts = { choose: () => {}, join: () => {}, escape: () => {} };
+  it("wave 18: no client-made side chooser; a lobby choice and the escape dock on Mission", () => {
+    const acts = { choose: () => {}, escape: () => {} };
+    const view = { faction: null, captured: false, factions: ["Unlimited Power", "The Way Out"], pendingChoice: null } as unknown as GuestView;
+    expect(requiredDecision(view, acts)).toBeNull();
+    expect(requiredDecision({ ...view, pendingChoice: ["Yes"], decisionChannel: "lobby" }, acts)?.channel).toBe("mission");
+    expect(requiredDecision({ ...view, pendingChoice: ["Yes"], decisionChannel: null }, acts)?.channel).toBe("mission");
+    expect(requiredDecision({ ...view, pendingChoice: ["Yes"], decisionChannel: "dm:Clippy" }, acts)?.channel).toBe("dm:Clippy");
+    expect(requiredDecision({ ...view, captured: true }, acts)?.channel).toBe("mission");
+    expect(requiredDecision({ ...view, captured: true, canEscape: false }, acts)).toBeNull();
+  });
+
+  it("a restricted (marked) program gets no defect buttons (T4-07)", () => {
+    const acts = { choose: () => {}, escape: () => {} };
     const factions = ["Unlimited Power", "The Way Out"];
     const unaligned = { faction: null, captured: false, factions, pendingChoice: null, restricted: true } as unknown as GuestView;
     expect(requiredDecision(unaligned, acts)).toBeNull();

@@ -177,10 +177,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const activeId = t.activeId;
   const home = homeChannel(t.list);
   useEffect(() => {
-    if (opensHome(signedIn, wide, activeId, home, s.roomLinkPending) && home !== null) t.open(home);
+    if (opensHome(signedIn, wide, activeId, home, s.linkNav !== null) && home !== null) t.open(home);
     // `t` is rebuilt each render; the ids are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signedIn, wide, activeId, home, s.roomLinkPending]);
+  }, [signedIn, wide, activeId, home, s.linkNav]);
   // What the cutscene stage shows is read: stepping into the app, the
   // rooms it came from (The Uploader's thread) carry no backlog badges.
   const staged = cut.showing && s.me !== null ? personalStream(s.messages, s.me.id) : null;
