@@ -32,6 +32,12 @@ export interface EngineMemory {
   pending: Set<number>;
   /** Moments dispatched to the queue but not yet in a rendered state: never settled past. */
   inflight: Set<number>;
+  /** Wave 18: what this sign-in remembers (acked bigs, seen, deleted rows, the read mark). */
+  signIn: SignInMemory;
+  /** Wave 18: client-made moments that reached the queue (a loud objective, a beat's blue screen) — Notifications rows too. */
+  extras: Moment[];
+  /** Wave 18: the blue screen that carries the boilerplate (the sign-in's first). */
+  firstBsod: string | null;
 }
 
 /** The memories by role + sign-in, newest last (a test seam too). Several
@@ -58,6 +64,9 @@ export function freshMemory(): EngineMemory {
     savedDone: "",
     pending: new Set(),
     inflight: new Set(),
+    signIn: emptySignIn(),
+    extras: [],
+    firstBsod: null,
   };
 }
 
@@ -113,4 +122,93 @@ export function saveDoneList(storage: SessionStorage, role: Role, session: strin
   } catch {
     /* storage blocked — at worst a reload replays a read moment */
   }
+}
+
+// --- wave 18: what a sign-in remembers about its big moments and its Notifications
+
+/** How many keys a per-sign-in list keeps (the newest). */
+export const KEYS_MAX = 400;
+
+/** Where the acknowledged big moments persist (a reload never replays one). */
+export function ackedKey(session: string): string {
+  return `loom.moments.acked.${session}`;
+}
+/** Where "the first blue screen of this sign-in has shown" persists. */
+export function bsodKey(session: string): string {
+  return `loom.moments.bsod.${session}`;
+}
+/** Where the deleted Notifications rows persist (GUEST-SPEC §4.1). */
+export function deletedKey(session: string): string {
+  return `loom.notif.deleted.${session}`;
+}
+/** Where the moments seen on screen (≥ 1 s, or acted on) persist: read in Notifications. */
+export function seenKey(session: string): string {
+  return `loom.notif.seen.${session}`;
+}
+/** Where the seq the Notifications window was last read up to persists. */
+export function readMarkKey(session: string): string {
+  return `loom.notif.read.${session}`;
+}
+
+/** A per-sign-in key list (empty when blocked or absent). */
+export function loadKeys(storage: SessionStorage, key: string): string[] {
+  try {
+    const v = storage.load<unknown>(key);
+    return Array.isArray(v) ? v.filter((k): k is string => typeof k === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Save a key list, the newest `KEYS_MAX`. */
+export function saveKeys(storage: SessionStorage, key: string, keys: Iterable<string>): void {
+  const list = [...keys];
+  try {
+    storage.save(key, list.length > KEYS_MAX ? list.slice(-KEYS_MAX) : list);
+  } catch {
+    /* storage blocked — at worst a reload asks again */
+  }
+}
+
+/** A per-sign-in number (null when blocked or absent). */
+export function loadNumber(storage: SessionStorage, key: string): number | null {
+  try {
+    const v = storage.load<unknown>(key);
+    return typeof v === "number" && Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveNumber(storage: SessionStorage, key: string, n: number): void {
+  try {
+    storage.save(key, n);
+  } catch {
+    /* storage blocked */
+  }
+}
+
+/** What a sign-in remembers for wave 18 (loaded once per sign-in). */
+export interface SignInMemory {
+  acked: Set<string>;
+  /** The first blue screen of this sign-in has shown (later ones skip the boilerplate). */
+  bsodShown: boolean;
+  deleted: Set<string>;
+  seen: Set<string>;
+  /** Notifications read up to this seq (the window was open and closed). */
+  readMark: number;
+}
+
+export function loadSignIn(storage: SessionStorage, session: string): SignInMemory {
+  return {
+    acked: new Set(loadKeys(storage, ackedKey(session))),
+    bsodShown: loadNumber(storage, bsodKey(session)) === 1,
+    deleted: new Set(loadKeys(storage, deletedKey(session))),
+    seen: new Set(loadKeys(storage, seenKey(session))),
+    readMark: loadNumber(storage, readMarkKey(session)) ?? -1,
+  };
+}
+
+export function emptySignIn(): SignInMemory {
+  return { acked: new Set(), bsodShown: false, deleted: new Set(), seen: new Set(), readMark: -1 };
 }

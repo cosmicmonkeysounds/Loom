@@ -19,6 +19,12 @@
   --moments-composer-h: 64px;
   /* A host booth's NEXT bar (`.host-bar`, ≤ 64 px, + its 1 px top line): the tip floats above it and its ARM. */
   --moments-host-bar-h: 66px;
+  /* wave 18: the big moment sits over the pass (45) once its hold is over, under the takeover (50);
+     a booth's pop-out under every moment (40) */
+  --z-big: 47;
+  --z-popout: 38;
+  --moments-big-backdrop: var(--desktop);
+  --moments-win: var(--good);
 }
 :root[data-theme="aol97"] {
   --moments-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35), 3px 3px 6px rgba(0, 0, 0, 0.2);
@@ -54,6 +60,10 @@
   background: var(--balloon-bg); color: var(--balloon-ink); box-shadow: var(--raised);
   font-family: var(--ui-font);
 }
+/* an exit's icon and words (every rung) */
+.moments-exit-label { overflow-wrap: anywhere; }
+.moments-go, .moments-balloon-go, .moments-big-exit, .moments-notif-go { gap: 6px; }
+
 /* the info-tip yellow with a dark frame for ordinary notices; the full
    highlight only for a `!` alarm (in a dark room it glares) */
 .moments-sticky { box-shadow: inset 0 0 0 1px var(--black); }
@@ -73,7 +83,6 @@
 .moments-sticky-text { font: 15px/1.3 var(--ui-font); overflow-wrap: anywhere; white-space: pre-line; }
 .moments-sticky.major .moments-sticky-text { font-weight: 700; }
 .moments-sticky-lead { font-weight: 700; }
-.moments-sticky-all { font-weight: 700; }
 .moments-sticky-actions { display: flex; gap: 4px; margin-left: auto; }
 .moments-sticky-x { min-width: var(--tap); padding: 0; font-weight: 700; font-size: 16px; }
 .moments-go { font-weight: 700; }
@@ -207,16 +216,6 @@
 .moments-bsod-plain-go { margin: 0 0 24px; display: flex; flex-wrap: wrap; gap: 12px; }
 .moments-bsod-caret { animation: moments-caret 1s steps(1, end) infinite; }
 
-/* ── the missed list ───────────────────────────────────────────────────── */
-.moments-missed { display: flex; flex-direction: column; gap: 12px; font: 13px/1.35 var(--ui-font); }
-.moments-missed-list { list-style: none; margin: 0; padding: 2px; max-height: 50vh; overflow: auto; }
-.moments-missed-row { display: flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 4px 6px; border-bottom: 1px solid var(--face); }
-.moments-missed-row:last-child { border-bottom: none; }
-.moments-missed-words { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.moments-missed-caption { font-weight: 700; }
-.moments-missed-text { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-.moments-missed-go { flex: 0 0 auto; }
-
 /* ── the glitch: its own overlay, ~600 ms, never a filter on the app ───── */
 .moments-glitch {
   position: fixed; inset: 0; z-index: var(--z-glitch); pointer-events: none; overflow: hidden;
@@ -289,3 +288,178 @@
 .moments-pins-list { list-style: none; margin: 0; padding: 0 6px 6px; display: flex; flex-direction: column; gap: 4px; }
 .moments-pin { padding: 6px 8px; font: 700 13px/1.35 var(--ui-font); background: var(--face-hi); color: var(--black); box-shadow: var(--sunken); overflow-wrap: anywhere; }
 .moments-pin.alert { background: var(--highlight); }
+
+/* ── wave 18: the big moment — the Setup Wizard over the whole phone ───── */
+.moments-big {
+  position: fixed; inset: 0; z-index: var(--z-big);
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(12px + var(--safe-top)) 10px calc(12px + var(--safe-bottom));
+  background: var(--moments-big-backdrop);
+  font-family: var(--ui-font);
+  animation: moments-fade 160ms ease-out;
+}
+.moments-big-window { width: 100%; max-width: 480px; max-height: 100%; box-shadow: var(--raised), var(--moments-shadow); }
+.moments-big-caption { min-height: 32px; }
+.moments-big-body { display: flex; flex-direction: column; gap: 10px; padding: 0 0 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.moments-big-banner {
+  display: flex; align-items: center; justify-content: center; height: 120px;
+  background: var(--title-grad); color: var(--title-ink);
+}
+.moments-big-banner.short { height: 96px; }
+.moments-big-glyph { font-size: 72px; line-height: 1; }
+.moments-big-kicker {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 14px;
+  color: var(--navy); font: 700 12px var(--ui-font); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.moments-big.alarm .moments-big-kicker { color: var(--bad); }
+.moments-big.win .moments-big-kicker { color: var(--moments-win); }
+.moments-big-count { flex: 0 0 auto; color: var(--dim-ink); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.moments-big-headline {
+  margin: 0; padding: 0 14px; color: var(--ink);
+  font: 700 28px/1.15 var(--ui-font); overflow-wrap: anywhere;
+}
+.moments-big-text { margin: 0; padding: 0 14px; color: var(--ink); font: 16px/1.4 var(--chat-font); white-space: pre-line; overflow-wrap: anywhere; }
+.moments-big-card { padding: 0 10px; }
+.moments-big-footer { margin: 0; padding: 0 14px; color: var(--dim-ink); font: 13px/1.35 var(--ui-font); }
+.moments-big-install { display: flex; flex-direction: column; gap: 4px; padding: 0 14px; font: 13px var(--ui-font); color: var(--ink); }
+.moments-big-bar { display: block; height: 18px; padding: 2px; overflow: hidden; }
+.moments-big-fill {
+  display: block; height: 100%; width: 100%;
+  background: repeating-linear-gradient(90deg, var(--navy) 0 10px, transparent 10px 12px);
+  transform-origin: 0 50%; transform: scaleX(1);
+  animation: moments-install 1200ms linear both;
+}
+.moments-big-buttons { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 14px 0; }
+.moments-big-buttons .w95-btn { flex: 1 1 140px; min-height: 56px; font: 700 15px var(--ui-font); }
+.moments-big-ack { box-shadow: 0 0 0 1px var(--ink), var(--raised); }
+.moments-big-buttons .w95-btn:disabled { color: var(--dim-ink); cursor: default; }
+/* the doors (a full-bleed card) fill the window */
+.moments-big.full-bleed .moments-big-card { padding: 0; }
+@media (max-width: 379px) {
+  .moments-big-buttons .w95-btn { flex-basis: 100%; }
+}
+.moments-visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+@keyframes moments-install { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ── wave 18: the bell (the top bar's Recycle Bin) ─────────────────────── */
+.moments-bell {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+  min-width: var(--tap); min-height: var(--tap); margin: 0; padding: 0 6px;
+  border: none; background: none; color: inherit; font: 700 12px var(--ui-font); cursor: pointer;
+}
+.moments-bin { display: block; }
+.moments-bin-can, .moments-bin-lid { fill: var(--face); stroke: currentColor; stroke-width: 1; }
+.moments-bin-rib { fill: none; stroke: currentColor; stroke-width: 1; }
+.moments-bin-paper { fill: var(--white); stroke: currentColor; stroke-width: 0.8; }
+.moments-bell-count {
+  min-width: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--bad); color: var(--white); font: 700 11px/18px var(--ui-font); text-align: center;
+}
+
+/* ── wave 18: the Notifications window ───────────────────────────────── */
+.moments-notif { min-height: 0; flex: 1 1 auto; }
+.moments-notif-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px; }
+.moments-notif-clear { font-weight: 700; }
+.moments-notif-count { color: var(--dim-ink); font: 12px var(--ui-font); }
+.moments-notif-list { list-style: none; margin: 0 6px 6px; padding: 0; overflow-y: auto; }
+.moments-notif-row { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--face); font: 13px/1.35 var(--ui-font); }
+.moments-notif-row:last-child { border-bottom: none; }
+.moments-notif-head { display: flex; align-items: baseline; gap: 6px; }
+.moments-notif-dot { flex: 0 0 10px; color: var(--navy); }
+.moments-notif-glyph { flex: 0 0 auto; }
+.moments-notif-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.moments-notif-row.unread .moments-notif-title { font-weight: 700; }
+.moments-notif-time { flex: 0 0 auto; color: var(--dim-ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.moments-notif-sub {
+  margin: 0 0 0 16px; color: var(--dim-ink);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere;
+}
+.moments-notif-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: 16px; }
+.moments-notif-inuse { color: var(--bad); font: 700 11px var(--ui-font); letter-spacing: 0.04em; }
+.moments-notif-x { margin-left: auto; min-width: var(--tap); padding: 0; font-weight: 700; }
+.moments-notif-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; color: var(--dim-ink); text-align: center; font: 14px/1.4 var(--ui-font); }
+.moments-notif-bin { font-size: 64px; line-height: 1; }
+
+/* ── wave 18: the delete gags ─────────────────────────────────────────── */
+.moments-gag { display: flex; flex-direction: column; gap: 12px; font: 14px/1.4 var(--ui-font); }
+.moments-gag-text { display: flex; align-items: flex-start; gap: 12px; margin: 0; overflow-wrap: anywhere; }
+.moments-gag-icon { flex: 0 0 auto; font-size: 28px; line-height: 1; }
+.moments-gag-buttons { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.moments-gag-yes { min-width: 88px; box-shadow: 0 0 0 1px var(--ink), var(--raised); }
+.moments-gag-count { margin-right: auto; font-variant-numeric: tabular-nums; }
+.moments-gag-move { display: flex; align-items: center; gap: 4px; margin: 0; overflow: hidden; white-space: nowrap; }
+.moments-gag-name { overflow: hidden; text-overflow: ellipsis; }
+.moments-gag-paper { display: inline-block; animation: moments-paper 600ms ease-in-out infinite; }
+.moments-gag-paper.still { animation: none; }
+.moments-gag-bar { display: block; height: 18px; padding: 2px; }
+.moments-gag-fill { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--navy) 0 10px, transparent 10px 12px); }
+@keyframes moments-paper { 0% { transform: translateX(0); } 50% { transform: translateX(18px); } 100% { transform: translateX(0); } }
+
+/* ── wave 18: a booth's pop-out ──────────────────────────────────────── */
+.popout-host {
+  position: fixed; z-index: var(--z-popout);
+  left: 4px; right: 4px; bottom: calc(var(--safe-bottom) + var(--taskbar-h) + var(--moments-host-bar-h) + 4px);
+  display: flex; justify-content: center; pointer-events: none;
+}
+.popout-host > .popout { pointer-events: auto; width: 100%; max-width: 520px; max-height: 70vh; }
+.popout { display: flex; flex-direction: column; min-height: 0; box-shadow: var(--raised), var(--moments-shadow); font-family: var(--ui-font); }
+.popout.tone-alarm .popout-caption { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
+.popout.tone-win .popout-caption { background: var(--moments-win); }
+.popout-caption { min-height: 32px; }
+.popout-glyph { flex: 0 0 auto; }
+.popout-pager { flex: 0 0 auto; font: 12px var(--ui-font); font-variant-numeric: tabular-nums; }
+.popout-min { position: relative; min-width: var(--tap); min-height: 28px; padding: 0; font-weight: 700; }
+/* a 44 × 44 target round the caption's 28 px bevel (like a window's ×) */
+.popout-min::after { content: ""; position: absolute; inset: -8px -2px; }
+.popout-body { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; overflow-y: auto; min-height: 0; }
+.popout-guest { display: flex; align-items: center; gap: 10px; }
+.popout-guest-words { display: flex; flex-direction: column; min-width: 0; }
+.popout-guest-name { font: 700 17px/1.2 var(--ui-font); overflow-wrap: anywhere; }
+.popout-guest-where { color: var(--dim-ink); font: 13px var(--ui-font); }
+.popout-row { min-height: var(--tap); display: flex; align-items: center; }
+.popout-text { margin: 0; font: 14px/1.4 var(--ui-font); overflow-wrap: anywhere; }
+.popout-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
+.popout-btn { flex: 1 1 auto; flex-direction: column; font-weight: 700; }
+.popout-btn.primary { flex-basis: 100%; min-height: 56px; font-size: 15px; box-shadow: 0 0 0 1px var(--ink), var(--raised); }
+.popout-btn.armed { background: var(--black); color: var(--white); }
+.popout-arm { font: 400 11px var(--ui-font); }
+.popout-status { margin: 0 10px 8px; padding: 2px 6px; font: 12px var(--ui-font); }
+.popout.docked .popout-actions { flex-wrap: nowrap; }
+.popout.docked .popout-btn.primary { flex-basis: auto; min-height: var(--tap); }
+.popout-strip {
+  display: flex; min-height: 56px; margin: 0 0 6px;
+  background: var(--title-grad); color: var(--title-ink); box-shadow: var(--raised);
+}
+.popout-strip.tone-alarm { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
+.popout-strip.tone-win { background: var(--moments-win); }
+.popout-strip-body {
+  flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-height: 56px; margin: 0; padding: 0 10px;
+  border: none; background: none; color: inherit; font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.popout-strip-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popout-strip-open { flex: 0 0 auto; }
+.popout-dock { margin: 0 0 6px; }
+.popout-tray { list-style: none; margin: 0; padding: 0; }
+.popout-tray-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--tap); margin: 0; padding: 6px 10px;
+  border: none; border-bottom: 1px solid var(--face); background: none; color: inherit; font: 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.popout-tray-words { display: flex; flex-direction: column; min-width: 0; }
+.popout-tray-title { font-weight: 700; overflow-wrap: anywhere; }
+.popout-tray-when { color: var(--dim-ink); font-size: 12px; }
+.popout-tray-empty { margin: 0; padding: 24px 16px; color: var(--dim-ink); text-align: center; font: 14px var(--ui-font); }
+/* an alarm's caption flashes twice (2 × 400 ms), never under Reduce Motion */
+@media (prefers-reduced-motion: no-preference) {
+  .popout.tone-alarm .popout-caption.flash { animation: popout-flash 400ms steps(1, end) 2; }
+}
+@keyframes popout-flash { 50% { background: var(--highlight); color: var(--black); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .moments-big { animation: none; }
+  /* the install bar fills in one step at the end of the dead time */
+  .moments-big-fill { animation-timing-function: steps(1, end); }
+  .moments-gag-paper { animation: none; }
+}
