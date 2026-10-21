@@ -2830,15 +2830,16 @@ export class Sim {
         if (name === "sum") return vNumber(nums.reduce((a, b) => a + b, 0));
         return nums.length === 0 ? VNULL : vNumber(Math.max(...nums));
       }
-      // Wave 18b faction mode (crews.ts): the race, read by the story.
+      // Wave 18b faction mode (crews.ts): the race, read by the story. All
+      // four read null with no `founding:` line (no race: crews are clubs).
       case "majority_faction":
         return nullableString(this.crews.winner());
       case "faction_of":
-        return nullableString(this.crews.factionOf(args[0]?.asName() ?? ""));
+        return this.crews.factionMode ? nullableString(this.crews.factionOf(args[0]?.asName() ?? "")) : VNULL;
       case "faction_name":
-        return nullableString(this.crews.displayName(args[0]?.asName() ?? ""));
+        return this.crews.factionMode ? nullableString(this.crews.displayName(args[0]?.asName() ?? "")) : VNULL;
       case "faction_founder":
-        return nullableString(this.crews.founderOf(args[0]?.asName() ?? ""));
+        return this.crews.factionMode ? nullableString(this.crews.founderOf(args[0]?.asName() ?? "")) : VNULL;
       case "names": {
         // Wave 18b: `names([p for p in Persons where …])` — the display
         // names joined for speech, "A, B and C" ("" for an empty list). A

@@ -275,7 +275,8 @@ founding: Night.truther_sent == true and Kernel.majority_reached != true and pro
 - **The race, read by the story:** `majority_faction()` is the faction
   over the line now (else null), `faction_of(who)` the faction someone is
   in, `faction_name(id)` its name, `faction_founder(id)` its founder (a
-  side's leader). The majority is yours to latch, as before:
+  side's leader). With no `founding:` line all four read null. The
+  majority is yours to latch, as before:
 
 ```loom
 when Night.final_round == true and Kernel.majority_reached != true and majority_faction() != null:

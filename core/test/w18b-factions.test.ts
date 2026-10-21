@@ -65,6 +65,16 @@ const str = (sim: Sim, path: string): string | null => {
 };
 
 describe("faction mode: founding", () => {
+  it("the race builtins all read null with no `founding:` line", () => {
+    const sim = Sim.fromSources(CREW_SOURCE);
+    sim.createPerson("g1", "Ada");
+    sim.crew({ op: "foundCrew", by: "g1", name: "Night Shift" });
+    expect(sim.crews.get("crew-1")?.members).toEqual(["g1"]);
+    for (const e of ["majority_faction()", "faction_of(g1)", 'faction_name("crew-1")', 'faction_founder("crew-1")']) {
+      expect(sim.holds(`${e} == null`, "g1")).toBe(true);
+    }
+  });
+
   it("is off with no `founding:` line and on with one", () => {
     expect(Sim.fromSources(CREW_SOURCE).crews.factionMode).toBe(false);
     expect(night().crews.factionMode).toBe(true);
