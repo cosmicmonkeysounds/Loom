@@ -1019,3 +1019,422 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   padding: 0.1em 0.8em;
 }
 .file-scan { align-self: center; width: min(100%, 40vh); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Wave 17 — the idle show (`idle-show/`) and the scan box.
+   What every wall terminal, the TV's attract and the Internet laptop show
+   while nobody is on the line: screensavers, fake-1999 ads, popups. Chrome 87
+   / Safari 14: no :has, no color-mix, no flex `gap` (margins), no
+   aspect-ratio (padding boxes). Motion is transform / opacity only; reduced
+   motion fades instead. Layers inside the stage: the show 3, the scan box 4
+   (the bar 6, the flash 7, the wake prompt 20 and the screen layer 30+ stay
+   above both).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.terminal .stage { position: relative; }
+
+.idle-show {
+  --win-face: #c0c0c0;
+  --win-hi: #fff;
+  --win-lo: #808080;
+  --win-dark: #404040;
+  --win-navy: #000080;
+  --win-navy-2: #1084d0;
+  --win-ui: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: var(--win-ui);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: opacity 0.25s ease;
+}
+.idle-show[data-active="false"] { opacity: 0; visibility: hidden; pointer-events: none; }
+/* A moment's scene over it: still drawn, frozen where it stands, no taps under the scene. */
+.idle-show[data-paused] *, .idle-show[data-paused] *::before, .idle-show[data-paused] *::after { animation-play-state: paused !important; }
+.idle-show[data-active="true"][data-paused] { pointer-events: none; }
+.idle-show[data-active="true"][data-paused] * { pointer-events: none !important; }
+/* Beside the world view: the line pane only (the face pane's grid share). */
+.idle-show[data-region="pane"] { left: max(280px, 42%); border-left: 2px solid var(--phosphor-faint); }
+@media (orientation: portrait) {
+  .idle-show[data-region="pane"] { left: 0; top: max(220px, 38%); border-left: 0; border-top: 2px solid var(--phosphor-faint); }
+}
+.attract-screen .idle-show { z-index: 0; }
+
+.idle-saver-wrap { position: absolute; inset: 0; animation: idle-fade 0.6s ease both; }
+.idle-saver, .idle-storm-trail { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.idle-storm-trail { pointer-events: none; z-index: 1; }
+
+/* --- the face layout: his face shows through, a tip from him, an ad beside it --- */
+.idle-show[data-layout="face"] { background: transparent; pointer-events: none; }
+.idle-show[data-layout="face"] .idle-saver-wrap { visibility: hidden; }
+.idle-show[data-layout="face"] .idle-face-ad, .idle-show[data-layout="face"] .idle-popups > *, .idle-show[data-layout="face"] .idle-touch-me { pointer-events: auto; }
+.idle-face { position: absolute; inset: 0; }
+.idle-face-tip {
+  position: absolute;
+  left: 3%;
+  top: 5%;
+  width: min(36%, 22em);
+  padding: 0.7em 0.9em;
+  font-family: var(--mono);
+  font-size: clamp(16px, 2.6vmin, 32px);
+  line-height: 1.15;
+  color: var(--phosphor);
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid var(--phosphor-dim);
+  box-shadow: 0 0 18px var(--phosphor-faint);
+  animation: idle-pop-in 0.3s steps(4, end) both;
+}
+.idle-face-tip::after {
+  content: "";
+  position: absolute;
+  left: 2.2em;
+  bottom: -0.75em;
+  border: 0.7em solid transparent;
+  border-top-color: var(--phosphor-dim);
+  border-bottom: 0;
+}
+.idle-face-tip-who { display: block; font-size: 0.65em; letter-spacing: 0.25em; color: var(--phosphor-dim); margin-bottom: 0.3em; }
+.idle-face-ad {
+  position: absolute;
+  left: max(280px, 42%);
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5% 4% 0;
+  background: rgba(0, 0, 0, 0.82);
+}
+@media (orientation: portrait) {
+  .idle-face-tip { width: 60%; }
+  .idle-face-ad { left: 0; top: max(220px, 38%); }
+}
+
+/* --- ads ------------------------------------------------------------------- */
+.idle-ad-full {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4%;
+  background: rgba(0, 0, 0, 0.5);
+}
+/* Clear of the scan box: an awake terminal's big ad sits left of it (above it, portrait). */
+.stage .idle-ad-full { padding-right: calc(clamp(220px, 26vw, 360px) + 4%); }
+.stage .idle-show[data-region="pane"] .idle-ad-full { padding-right: 4%; align-items: flex-start; }
+@media (orientation: portrait) {
+  .stage .idle-ad-full { padding-right: 4%; padding-bottom: calc(clamp(220px, 48vw, 380px) * 0.75 + 7em); }
+}
+.idle-ad {
+  display: flex;
+  flex-direction: column;
+  width: min(92%, 34em);
+  font-size: clamp(14px, 2.3vmin, 28px);
+  color: #000;
+  background: var(--win-face);
+  border: 2px solid;
+  border-color: var(--win-hi) var(--win-dark) var(--win-dark) var(--win-hi);
+  box-shadow: inset -1px -1px 0 var(--win-lo), 4px 4px 0 rgba(0, 0, 0, 0.5);
+  padding: 2px;
+  animation: idle-zoom 0.32s steps(5, end) both;
+}
+.idle-ad.size-big { width: min(100%, 36em); font-size: clamp(15px, 2.8vmin, 34px); }
+.idle-ad.size-half { width: 100%; font-size: clamp(13px, 2.1vmin, 26px); }
+.idle-ad-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.15em 0.2em 0.15em 0.4em;
+  background: linear-gradient(90deg, var(--win-navy), var(--win-navy-2));
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.8em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.idle-ad-bar-title { overflow: hidden; text-overflow: ellipsis; margin-right: 0.5em; }
+.idle-ad-x, .idle-pop-x {
+  flex: none;
+  min-width: 1.5em;
+  height: 1.3em;
+  line-height: 1;
+  padding: 0;
+  font-weight: bold;
+  color: #000;
+  background: var(--win-face);
+  border: 2px solid;
+  border-color: var(--win-hi) var(--win-dark) var(--win-dark) var(--win-hi);
+}
+.idle-ad-x:active, .idle-pop-x:active, .idle-ad-button:active, .idle-pop-button:active { border-color: var(--win-dark) var(--win-hi) var(--win-hi) var(--win-dark); }
+.idle-ad-body { display: flex; align-items: flex-start; padding: 0.8em 0.9em 0.9em; }
+.idle-ad-art { flex: none; width: 3.4em; height: 3.4em; margin-right: 0.8em; }
+.idle-ad-png { object-fit: contain; image-rendering: pixelated; }
+.idle-ad-words { flex: 1 1 auto; min-width: 0; text-align: left; }
+.idle-ad-kicker { display: inline-block; margin-bottom: 0.3em; padding: 0 0.4em; font-size: 0.7em; font-weight: bold; letter-spacing: 0.08em; color: #fff; background: #c00000; }
+.idle-ad-title { font-size: 1.35em; font-weight: bold; line-height: 1.1; margin-bottom: 0.35em; }
+.idle-ad-text { margin: 0 0 0.8em; line-height: 1.3; font-size: 0.92em; }
+.idle-ad-button, .idle-pop-button {
+  display: inline-block;
+  min-width: 6em;
+  padding: 0.3em 1.2em;
+  font: inherit;
+  font-weight: bold;
+  color: #000;
+  background: var(--win-face);
+  border: 2px solid;
+  border-color: var(--win-hi) var(--win-dark) var(--win-dark) var(--win-hi);
+  box-shadow: 1px 1px 0 #000;
+}
+.idle-ad-loading { margin-top: 0.6em; height: 0.9em; border: 2px solid; border-color: var(--win-lo) var(--win-hi) var(--win-hi) var(--win-lo); background: #fff; overflow: hidden; }
+.idle-ad-loading span { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--win-navy) 0 0.7em, transparent 0.7em 0.9em); transform-origin: 0 50%; animation: idle-load 2s steps(14, end) both; }
+.idle-ad-gag { margin-top: 0.5em; padding: 0.2em 0.5em; font-weight: bold; color: #fff; background: #c00000; animation: idle-pop-in 0.2s steps(3, end) both; }
+.idle-ad[data-gag="shake"], .idle-banner-ad[data-gag="shake"] { animation: idle-shake 0.5s linear 2; }
+.idle-ad[data-gag="won"] .idle-ad-title { animation: idle-flash 0.25s steps(2, end) 6; }
+.idle-duck-lane { position: relative; height: 1.8em; margin: -0.2em 0 0.6em; border-bottom: 2px dashed #0a6; }
+/* The runner spans the lane, so its translateX(%) is a share of the lane. */
+.idle-duck-runner { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transition: transform 0.25s linear; will-change: transform; pointer-events: none; }
+.idle-duck-target { position: absolute; left: 0; bottom: 0; font-size: 1.6em; transform: translateX(-50%); }
+
+/* The skins: one ad structure, fourteen looks. */
+.idle-ad.skin-banner { background: linear-gradient(180deg, #fff200, #ff9a00); }
+.idle-ad.skin-banner .idle-ad-title { color: #d00000; text-shadow: 1px 1px 0 #fff; text-transform: uppercase; }
+.idle-ad.skin-geocities { background: #000 radial-gradient(#fff 1px, transparent 1.5px) 0 0 / 1.6em 1.6em; color: #00ff66; border-color: #ff00ff #00ffff #00ffff #ff00ff; }
+.idle-ad.skin-geocities .idle-ad-bar { background: repeating-linear-gradient(45deg, #000 0 0.6em, #ffdd00 0.6em 1.2em); color: #000; text-shadow: 0 0 2px #fff; }
+.idle-ad.skin-geocities .idle-ad-title { font-family: "Comic Sans MS", "Comic Neue", cursive; color: #ffff00; text-shadow: 2px 2px 0 #ff00ff; }
+.idle-ad.skin-geocities .idle-ad-kicker { background: transparent; color: #00ffff; font-family: "Comic Sans MS", cursive; }
+.idle-ad.skin-geocities .idle-ad-button { color: #0000ee; background: #fff; text-decoration: underline; }
+.idle-ad.skin-lottery { background: linear-gradient(135deg, #ffe066, #ffb300 45%, #ffe066 55%, #ff8f00); }
+.idle-ad.skin-lottery .idle-ad-title { color: #006400; font-size: 1.6em; text-transform: uppercase; }
+.idle-ad.skin-lottery .idle-ad-kicker { animation: idle-flash 0.6s steps(2, end) infinite; }
+.idle-ad.skin-chat .idle-ad-bar { background: linear-gradient(90deg, #1d7a1d, #6ccf3b); }
+.idle-ad.skin-chat { background: #f4fff0; }
+.idle-ad.skin-chat .idle-ad-text { padding: 0.4em 0.6em; background: #fff8b0; border: 1px solid #000; border-radius: 0.6em; }
+.idle-ad.skin-dialup .idle-ad-words::after { content: ""; display: block; height: 0.7em; margin-top: 0.6em; background: repeating-linear-gradient(90deg, var(--win-navy) 0 0.6em, #fff 0.6em 0.8em); border: 1px solid var(--win-dark); }
+.idle-ad.skin-y2k { background: #008080; color: #fff; }
+.idle-ad.skin-y2k .idle-ad-title { font-family: var(--mono); font-size: 1.7em; color: #ff4040; text-shadow: 0 0 6px #ff4040; letter-spacing: 0.04em; }
+.idle-ad.skin-duck { background: linear-gradient(180deg, #6ee0ff, #22a6e0); }
+.idle-ad.skin-duck .idle-ad-title { color: #fff; text-shadow: 2px 2px 0 #d00000, -1px -1px 0 #d00000; text-transform: uppercase; }
+.idle-ad.skin-fundraiser { background: #f2e6b8; }
+.idle-ad.skin-fundraiser .idle-ad-title { color: #0b2a6b; font-family: Georgia, "Times New Roman", serif; }
+.idle-ad.skin-fundraiser .idle-ad-button { color: #fff; background: #c8102e; }
+.idle-ad.skin-hijack { background: #000; color: #ff3030; border-color: #ff3030 #600 #600 #ff3030; }
+.idle-ad.skin-hijack .idle-ad-bar { background: #ff0000; color: #000; }
+.idle-ad.skin-hijack .idle-ad-title { font-family: var(--mono); font-size: 1.8em; text-shadow: -2px 0 #00ffff, 2px 0 #ff00ff; }
+.idle-ad.skin-hijack .idle-ad-kicker { background: #ff0000; color: #000; font-family: var(--mono); font-size: 1em; animation: idle-flash 0.3s steps(2, end) infinite; }
+.idle-ad.skin-phosphor { background: #050807; color: var(--phosphor); border-color: var(--phosphor-dim) var(--phosphor-faint) var(--phosphor-faint) var(--phosphor-dim); font-family: var(--mono); }
+.idle-ad.skin-phosphor .idle-ad-bar { background: var(--phosphor-faint); color: var(--phosphor); }
+.idle-ad.skin-phosphor .idle-ad-title { font-size: 1.6em; font-weight: normal; letter-spacing: 0.06em; text-shadow: 0 0 10px var(--phosphor-dim); }
+.idle-ad.skin-phosphor .idle-ad-button { background: transparent; color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 8px var(--phosphor-faint); }
+.idle-ad.skin-classified { background: #f4f1e8; font-family: Georgia, "Times New Roman", serif; border: 3px double #000; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5); }
+.idle-ad.skin-classified .idle-ad-bar { background: #000; font-family: Georgia, serif; letter-spacing: 0.2em; }
+.idle-ad.skin-classified .idle-ad-title { text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 0.2em; }
+.idle-ad.skin-warning { background: #fffbe0; border: 0.5em solid; border-image: repeating-linear-gradient(45deg, #000 0 0.7em, #ffcc00 0.7em 1.4em) 10; }
+.idle-ad.skin-warning .idle-ad-title { color: #c00000; text-transform: uppercase; }
+.idle-ad.skin-tycoon { background: radial-gradient(ellipse at center, #13703a, #063d1d); color: #ffe27a; border-color: #e8c25a #7a5a10 #7a5a10 #e8c25a; }
+.idle-ad.skin-tycoon .idle-ad-title { color: #ffd700; text-shadow: 1px 1px 0 #000; text-transform: uppercase; }
+.idle-ad.skin-tycoon .idle-ad-button { background: #ffd700; }
+
+/* While the ads are hijacked, everything twitches. */
+.idle-show[data-pool="malware"] .idle-ad, .idle-show[data-pool="malware"] .idle-banner-ad { animation: idle-zoom 0.32s steps(5, end) both, idle-jitter 0.18s steps(2, end) 0.4s infinite; }
+.idle-show[data-pool="malware"] .idle-ad-full { background: rgba(70, 0, 0, 0.55); }
+
+/* --- the banner, the side by side ------------------------------------------- */
+.idle-banner { position: absolute; left: 3%; right: 3%; top: 4%; z-index: 2; animation: idle-drop 0.4s steps(6, end) both; }
+.idle-banner-ad {
+  display: flex;
+  align-items: center;
+  padding: 0.4em 0.6em;
+  font-size: clamp(14px, 2.5vmin, 30px);
+  color: #000;
+  background: linear-gradient(180deg, #fff200, #ff9a00);
+  border: 3px ridge #ff4000;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+.idle-banner-ad.skin-hijack { background: #000; color: #ff3030; border-color: #ff0000; }
+.idle-banner-ad.skin-phosphor { background: #050807; color: var(--phosphor); border-color: var(--phosphor-dim); font-family: var(--mono); }
+.idle-banner-ad.skin-geocities, .idle-banner-ad.skin-y2k { background: #008080; color: #fff; border-color: #00ffff; }
+.idle-banner-ad.skin-tycoon, .idle-banner-ad.skin-lottery { background: linear-gradient(90deg, #ffe066, #ffb300); }
+.idle-banner-ad.skin-classified, .idle-banner-ad.skin-fundraiser { background: #f4f1e8; border: 3px double #000; font-family: Georgia, serif; }
+.idle-banner-art { flex: none; width: 2.6em; height: 2.6em; margin-right: 0.6em; }
+.idle-banner-words { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.idle-banner-title { font-weight: bold; font-size: 1.2em; line-height: 1.1; text-transform: uppercase; }
+.idle-banner-kicker { display: inline-block; margin-right: 0.6em; padding: 0 0.35em; font-size: 0.65em; vertical-align: middle; color: #fff; background: #c00000; animation: idle-flash 0.6s steps(2, end) infinite; }
+.idle-marquee { overflow: hidden; white-space: nowrap; font-size: 0.9em; }
+.idle-marquee span { display: inline-block; padding-left: 100%; animation: idle-marquee 16s linear infinite; }
+.idle-banner-ad .idle-ad-button { flex: none; margin-left: 0.6em; }
+.idle-side { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 3% 2%; background: rgba(0, 0, 0, 0.45); }
+.idle-side .idle-ad { width: 46%; margin: 0 1.5%; }
+.idle-side .idle-ad:nth-child(2) { animation-delay: 0.25s; }
+.stage .idle-side { align-items: flex-start; padding: 5% calc(clamp(220px, 26vw, 360px) + 2%) 0 2%; }
+.stage .idle-show[data-region="pane"] .idle-side { padding-right: 2%; flex-direction: column; align-items: center; }
+.stage .idle-show[data-region="pane"] .idle-side .idle-ad { width: 92%; margin: 0 0 3%; }
+@media (orientation: portrait) {
+  .idle-side, .stage .idle-side { flex-direction: column; align-items: center; padding: 4% 4% 0; }
+  .idle-side .idle-ad { width: 92%; margin: 0 0 3%; }
+}
+
+/* --- popups (a pool of six slots, reused) --------------------------------------- */
+.idle-popups { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.idle-pop {
+  position: absolute;
+  width: 34%;
+  min-width: 13em;
+  max-width: 30em;
+  font-size: clamp(11px, 1.9vmin, 22px);
+  color: #000;
+  background: var(--win-face);
+  border: 2px solid;
+  border-color: var(--win-hi) var(--win-dark) var(--win-dark) var(--win-hi);
+  box-shadow: inset -1px -1px 0 var(--win-lo), 3px 3px 0 rgba(0, 0, 0, 0.55);
+  padding: 2px;
+  pointer-events: auto;
+}
+.idle-pop[data-on="false"] { visibility: hidden; pointer-events: none; }
+.idle-pop-bar { display: flex; align-items: center; justify-content: space-between; padding: 0.12em 0.15em 0.12em 0.35em; background: linear-gradient(90deg, var(--win-navy), var(--win-navy-2)); color: #fff; font-weight: bold; white-space: nowrap; }
+.idle-pop-title { overflow: hidden; text-overflow: ellipsis; margin-right: 0.4em; }
+.idle-pop-body { display: flex; align-items: center; padding: 0.7em 0.8em 0.3em; }
+.idle-pop-icon { flex: none; margin-right: 0.7em; }
+.idle-pop-text { margin: 0; line-height: 1.25; }
+.idle-pop-buttons { display: flex; justify-content: center; flex-wrap: wrap; padding: 0.4em 0.5em 0.6em; }
+.idle-pop-button { min-width: 5em; padding: 0.2em 0.8em; margin: 0.15em 0.3em; font-weight: normal; }
+.idle-pop-progress { margin: 0.3em 0.8em 0.1em; height: 0.9em; border: 2px solid; border-color: var(--win-lo) var(--win-hi) var(--win-hi) var(--win-lo); background: #fff; overflow: hidden; }
+.idle-pop-progress span { display: block; width: 100%; height: 100%; background: repeating-linear-gradient(90deg, var(--win-navy) 0 0.6em, transparent 0.6em 0.8em); transform-origin: 0 50%; animation: idle-crawl 9s steps(30, end) both; }
+.idle-pop.style-warning { background: #fffbe0; border: 0.35em solid; border-image: repeating-linear-gradient(45deg, #000 0 0.5em, #ffcc00 0.5em 1em) 8; }
+.idle-pop.style-warning .idle-pop-bar { background: linear-gradient(90deg, #8b0000, #e02020); }
+.idle-pop.style-toast { width: 28%; min-width: 12em; background: #fffff0; border: 1px solid #000; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55); }
+.idle-pop.style-toast .idle-pop-bar { background: linear-gradient(90deg, #1d7a1d, #6ccf3b); }
+.idle-pop.style-toast .idle-pop-buttons { justify-content: flex-end; padding-top: 0; }
+.idle-pop.storm .idle-pop-bar { background: linear-gradient(90deg, #8b0000, #e02020); }
+
+/* --- the storm --------------------------------------------------------------------------- */
+.idle-storm-banner {
+  position: absolute;
+  left: 50%;
+  top: 3%;
+  z-index: 4;
+  transform: translateX(-50%);
+  padding: 0.25em 1em;
+  font-family: var(--mono);
+  font-size: clamp(18px, 3.4vmin, 44px);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  color: #fff;
+  background: #c00000;
+  border: 2px solid #fff;
+  animation: idle-flash 0.5s steps(2, end) infinite;
+}
+
+/* --- taps: TOUCH ME, the thanks, the ripple ------------------------------------------- */
+.idle-touch-me {
+  position: absolute;
+  bottom: 12%;
+  z-index: 5;
+  padding: 0.4em 1em;
+  font-family: var(--mono);
+  font-size: clamp(22px, 4.5vmin, 56px);
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  background: var(--phosphor);
+  border: 3px solid var(--white);
+  box-shadow: 0 0 24px var(--phosphor);
+  animation: idle-bounce 0.9s ease-in-out infinite;
+}
+.idle-thanks {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  font-family: var(--mono);
+  font-size: clamp(28px, 7vmin, 90px);
+  white-space: nowrap;
+  color: var(--amber);
+  text-shadow: 0 0 20px var(--amber);
+  pointer-events: none;
+  animation: idle-pop-in 0.25s steps(4, end) both;
+}
+.idle-ripple {
+  position: absolute;
+  z-index: 2;
+  width: 3em;
+  height: 3em;
+  margin: -1.5em 0 0 -1.5em;
+  border: 3px solid var(--phosphor);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: idle-ripple 0.6s ease-out both;
+}
+
+/* --- the scan box ------------------------------------------------------------------------ */
+.scan-box {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  width: clamp(220px, 26vw, 360px);
+  padding: 8px;
+  color: var(--phosphor);
+  font-family: var(--mono);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.88);
+  border: 2px solid var(--phosphor-dim);
+  border-radius: 6px;
+  box-shadow: 0 0 18px var(--phosphor-faint), inset 0 0 12px rgba(0, 0, 0, 0.8);
+  animation: scan-box-glow 2.4s ease-in-out infinite;
+}
+@media (orientation: portrait) {
+  .scan-box { width: clamp(220px, 48vw, 380px); }
+}
+.scan-box.open { width: clamp(280px, 34vw, 440px); }
+.scan-box.listening { border-color: var(--amber); }
+/* A 4:3 window on the camera without aspect-ratio (Chrome 87): a padding box. */
+.scan-box-cam { position: relative; width: 100%; height: 0; padding-top: 75%; }
+.scan-box-cam > .scanner { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 4px; }
+.scan-box-words { margin-top: 6px; }
+.scan-box-title { font-size: clamp(20px, 3.2vmin, 38px); letter-spacing: 0.16em; line-height: 1.05; text-shadow: 0 0 12px var(--phosphor-dim); }
+.scan-box-title.blink { animation: pulse 0.8s steps(2, end) infinite; color: var(--amber); }
+.scan-box-hint { font-size: clamp(12px, 1.7vmin, 19px); color: var(--phosphor-dim); line-height: 1.2; margin-top: 2px; }
+.scan-box-problem { font-size: clamp(12px, 1.6vmin, 18px); color: var(--amber); margin-top: 4px; }
+.scan-box-typed { margin-top: 6px; font-size: clamp(12px, 1.6vmin, 18px); }
+.scan-box .typed { flex-wrap: wrap; justify-content: center; }
+.scan-box .typed > * { margin: 4px 3px 0; }
+.scan-box .typed input { width: auto; flex: 1 1 8em; min-width: 0; }
+
+/* The story's corner countdown takes the other corner while the scan box is up. */
+.terminal.attract ~ .screen-corner { right: auto; left: var(--pad); }
+
+/* The wake prompt over a live idle show: see the show through it. */
+.wake { background: rgba(0, 0, 0, 0.5); }
+.wake-title { justify-self: center; padding: 0.15em 0.6em; background: rgba(0, 0, 0, 0.85); border: 2px solid var(--phosphor-dim); }
+.wake-sub { justify-self: center; padding: 0.2em 0.6em; background: rgba(0, 0, 0, 0.85); }
+
+/* --- motion -------------------------------------------------------------------------------- */
+@keyframes idle-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes idle-zoom { from { transform: scale(0.15); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes idle-pop-in { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes idle-drop { from { transform: translateY(-140%); } to { transform: none; } }
+@keyframes idle-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes idle-load { from { transform: scaleX(0); } to { transform: scaleX(0.99); } }
+@keyframes idle-crawl { from { transform: scaleX(0.05); } to { transform: scaleX(0.99); } }
+@keyframes idle-flash { 50% { opacity: 0.2; } }
+@keyframes idle-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-10px) rotate(-1deg); } 40% { transform: translateX(10px) rotate(1deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+@keyframes idle-jitter { 0% { transform: translate(0, 0); } 50% { transform: translate(2px, -1px); } 100% { transform: translate(-1px, 1px); } }
+@keyframes idle-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-18%); } }
+@keyframes idle-ripple { from { transform: scale(0.2); opacity: 1; } to { transform: scale(4); opacity: 0; } }
+@keyframes scan-box-glow { 50% { box-shadow: 0 0 30px var(--phosphor-dim), inset 0 0 12px rgba(0, 0, 0, 0.8); } }
+/* Reduced motion: things fade in; nothing bounces, shakes, scrolls or blinks. */
+@media (prefers-reduced-motion: reduce) {
+  .idle-ad, .idle-banner, .idle-banner-ad, .idle-face-tip, .idle-thanks, .idle-ad-gag { animation: idle-fade 0.3s ease both !important; }
+  .idle-show[data-pool="malware"] .idle-ad, .idle-show[data-pool="malware"] .idle-banner-ad { animation: idle-fade 0.3s ease both !important; }
+  .idle-duck-runner { transition: none; }
+  .idle-touch-me, .idle-marquee span, .idle-ad-kicker, .idle-banner-kicker, .idle-storm-banner, .scan-box, .scan-box-title.blink, .idle-ad[data-gag] .idle-ad-title, .idle-ripple { animation: none !important; }
+  .idle-marquee span { padding-left: 0; white-space: normal; }
+}

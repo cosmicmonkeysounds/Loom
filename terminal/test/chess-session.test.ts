@@ -113,4 +113,10 @@ describe("the chess terminal's screen", () => {
     expect(src).not.toMatch(/STAGE_LINE|strengthLine|stageFor/u);
     expect(src).not.toMatch(/full strength|rattled|reeling|dizzy|pawns only|grandmaster/iu);
   });
+
+  it("says where the pass is now (the phone taskbar's 🎟 Pass, the scan box's words — never ☰)", () => {
+    const src = readFileSync(fileURLToPath(new URL("../src/chess/ChessTerminal.tsx", import.meta.url)), "utf8");
+    expect(src).toContain("{SCAN_COPY.hint}");
+    expect(src).not.toContain("☰");
+  });
 });

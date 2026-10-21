@@ -70,7 +70,7 @@ cat <<'STEPS'
 Device check (≤ 10 min) — the TV (house Mac's Chrome, full screen) + one wall tablet, preview event:
   0. TV: https://app.mapsandducks.com/terminal/?code=<mod code>&name=TV&character=Trabolta&view=mirror
      Tablet: …&name=Hall&character=Trabolta&spot=hall&view=auto   (both already provisioned after K-16 is fine)
-  1. Run → header: Restart (Trabolta hidden). PASS: both on the Mystify screensaver.
+  1. Run → header: Restart (Trabolta hidden). PASS: both on the idle show (screensavers, ads, popups).
   2. Laptop: MOD_CODE=<mod code> scripts/accept/K-17.sh --watch   (leave it running)
   3. Run → Director: fire call_to_the_desktop.
      PASS: TV + tablet show REPORT TO THE DESKTOP (PNG, or the grey Win98 card — never a broken

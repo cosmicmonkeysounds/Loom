@@ -59,14 +59,16 @@ Device check (≤ 10 min) — one wall tablet, the preview event, nobody rehears
   1. Run → header: Restart (fresh story: Trabolta hidden). Above, expect attract=True hidden=True.
   2. Provision the tablet with view=auto FROM THE START:
        https://app.mapsandducks.com/terminal/?code=<mod code>&name=Hall&character=Trabolta&spot=hall&view=auto
-     PASS: the Mystify screensaver (coloured outlines), a Win98 ad card every ~40 s for 10 s,
-     no camera light, no "SCAN YOUR PASS", no "TRABOLTA" anywhere. Tap TOUCH TO WAKE once.
+     PASS: the idle show full screen — a screensaver (Mystify, starfield, pipes, …) with
+     fake-1999 ads and popups piling up, a new segment every 7–18 s; no camera light, no
+     "SCAN YOUR PASS", no "TRABOLTA" anywhere. Tap TOUCH TO WAKE once.
   3. In a laptop terminal: MOD_CODE=<mod code> scripts/accept/K-16.sh --watch
   4. Run → Director: fire call_to_the_desktop, start_the_bingo, bingo_time.
-     PASS: the tablet stays on the screensaver; --watch shows countdown=bingo, then none.
-  5. Fire introduce_trabolta. PASS: within 2 s the tablet flips to the face + scanner and
-     "TRABOLTA ONLINE" (or AWAY if his worker is off); --watch prints attract=False at the same moment.
+     PASS: the tablet stays on the idle show; --watch shows countdown=bingo, then none.
+  5. Fire introduce_trabolta. PASS: within 2 s the tablet shows the idle show with the corner
+     scan box (live camera, SCAN YOUR PASS, "open 🎟 Pass on your phone") and "TRABOLTA ONLINE"
+     (or AWAY if his worker is off) in the bar; --watch prints attract=False at the same moment.
   6. Scan a pass (or type a program name): the line opens as before.
-  7. Run → header: Restart → within 2 s the tablet is back on the screensaver.
+  7. Run → header: Restart → within 2 s the tablet is back on the full-screen idle show (no scan box).
   Oldest tablet (10-20 tablet gate): step 2 with chrome://inspect open → no red Console errors.
 STEPS

@@ -15,6 +15,7 @@ import type { ScreenLayers } from "../slides.ts";
 import { sfx } from "../sound/bus.ts";
 import { SCENE_FPS, serverNow, useReducedMotion, useSceneClock } from "./clock.ts";
 import { flashFace } from "./face-bus.ts";
+import { setMomentUp } from "./moment-bus.ts";
 import { MomentQueue, componentFor, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
 import type { SceneDef, SceneProps, SceneTarget } from "./types.ts";
@@ -95,6 +96,10 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
     const f = faceFlashFor(lead, target, flashedFor(target));
     if (f !== null) flashFace(f.mood, f.ms);
   }, [lead, target]);
+  // The idle show pauses under a moment's scene (`moment-bus.ts`).
+  const momentOn = pick.top !== null;
+  useEffect(() => setMomentUp(momentOn), [momentOn]);
+  useEffect(() => () => setMomentUp(false), []);
 
   if (state === null) return null;
   const host = (s: ActiveScene, hidden = false) => (

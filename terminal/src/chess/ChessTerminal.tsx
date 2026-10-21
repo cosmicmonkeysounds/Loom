@@ -26,6 +26,7 @@ import type { ScreenKing, ScreenState } from "../screen.ts";
 import { useIdleTimeout } from "../idle.ts";
 import { Scanner, cameraProblem, type CameraState } from "../scanner.tsx";
 import { Gear, TypedFallback } from "../controls.tsx";
+import { SCAN_COPY } from "../idle-show/scan-copy.ts";
 import { ChallengerError, fetchChallenger, flushPendingChess, postChess } from "./post.ts";
 import { CHESS_IDLE_MS, CHESS_WARN_MS, INITIAL, healthText, reduce, resultLine, settled, stakesLine, type ChessSession } from "./session.ts";
 
@@ -235,7 +236,7 @@ export function ChessTerminal({ config, state, polled, takeover, onSetup }: { co
                 </div>
                 <div className="attract-text">
                   <div className="big">SCAN YOUR PASS TO CHALLENGE HIM</div>
-                  <div className="small">open the app · tap ☰ · hold your pass to the camera</div>
+                  <div className="small">{SCAN_COPY.hint}</div>
                   {cameraProblem(camera) !== null && <div className="small problem">{cameraProblem(camera)}</div>}
                   <button className="link typed-link" onClick={() => setTypedOpen((o) => !o)}>
                     no camera? type your program name
