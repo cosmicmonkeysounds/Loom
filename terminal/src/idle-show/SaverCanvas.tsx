@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { frameDue } from "../cutscene/clock.ts";
+import { context2d, releaseCanvas } from "../canvas-release.ts";
 import { mix, mulberry32 } from "./rng.ts";
 import { saverOf, type SaverEvent, type SaverInstance } from "./savers/index.ts";
 import { stormPath } from "./storm.ts";
@@ -94,7 +95,7 @@ export function SaverCanvas({ saver, seed, active, reduced, handle, onEvent }: {
   eventRef.current = onEvent;
   const make = () => {
     const el = canvas.current;
-    const ctx = el?.getContext("2d") ?? null;
+    const ctx = el === null ? null : context2d(el);
     if (el === null || ctx === null) return;
     const box = fit(el, ctx);
     inst.current = { s: saverOf(saver).create(box.w, box.h, mulberry32(mix(seed, box.w, box.h))), box, ctx };
@@ -106,6 +107,8 @@ export function SaverCanvas({ saver, seed, active, reduced, handle, onEvent }: {
       inst.current = null;
     };
   }, [saver, seed]);
+  // Unmount only (a new segment is a new canvas): give its memory back.
+  useEffect(() => () => releaseCanvas(canvas.current), []);
   useResize(make, canvas);
   useEffect(() => {
     handle.current = {
@@ -190,12 +193,12 @@ export function StormTrail({ seed, active, reduced }: { seed: number; active: bo
   const canvas = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const el = canvas.current;
-    const ctx = el?.getContext("2d") ?? null;
+    const ctx = el === null ? null : context2d(el);
     if (el === null || ctx === null || reduced) return;
     const box = fit(el, ctx);
     const sprite = errorSprite(Math.max(1, Math.min(box.w, box.h) / 420));
     const t0 = Date.now();
-    return loop(
+    const stop = loop(
       SAVER_FPS,
       () => active,
       () => {
@@ -203,6 +206,11 @@ export function StormTrail({ seed, active, reduced }: { seed: number; active: bo
         ctx.drawImage(sprite, p.x, p.y);
       },
     );
+    return () => {
+      stop();
+      releaseCanvas(sprite);
+    };
   }, [seed, active, reduced]);
+  useEffect(() => () => releaseCanvas(canvas.current), []);
   return <canvas ref={canvas} className="idle-storm-trail" aria-hidden="true" />;
 }
