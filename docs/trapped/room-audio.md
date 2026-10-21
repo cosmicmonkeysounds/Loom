@@ -704,7 +704,7 @@ host's dock and the director phone post `POST /api/mod/audio/stop
 {announce?}`. The router polls with `stops=<seq>` (cursored like the tests:
 the first answer primes, a restarted server's seqs never hide a stop, one
 older than 10 s by the server's `now` is dropped) and runs `stop_all`:
-every sfx voice fades over 0.3 s, every speaker test over 0.1 s. With
+every sfx voice and speaker test fades over 0.3 s. With
 *+ announcements* the line being said is cut too, the queue is emptied, and
 nothing is spoken for a second — the Announcer's output and its `say -a`
 fallback return quietly during the cut, so no voice speaks around the

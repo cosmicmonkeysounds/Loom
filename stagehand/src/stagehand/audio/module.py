@@ -585,7 +585,7 @@ class AudioRouter:
         log.info("🔇 audio: %s stopped the house sounds%s", by or "someone", " and the announcements" if announce else "")
         if mixer is not None:
             mixer.stop(bus="sfx", fade_s=0.3)
-            mixer.stop(bus="test", fade_s=0.1)
+            mixer.stop(bus="test", fade_s=0.3)
         if announce:
             self._announce_epoch += 1
             self._cut_until = time.monotonic() + ANNOUNCE_CUT_S
