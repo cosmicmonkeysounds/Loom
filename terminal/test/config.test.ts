@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONFIG_KEY, CONFIG_VERSION, DEFAULT_TV_ROOM, adoptCharacter, announceChoiceValue, announceFromChoice, storedAnnounce, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, announceChoiceValue, announceFromChoice, storedAnnounce, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
 import { CAST_LOOKUP_MS, characterIdOf, fetchCharacters } from "../src/pilot.ts";
 
 function memory(): Storage {
@@ -121,17 +121,42 @@ describe("terminal config", () => {
     expect(loadConfig(s)?.announce).toBe(false);
     saveConfig(defaultConfig({ eventId: "evt", token: "t", announce: null }), s);
     expect(loadConfig(s)?.announce).toBeNull();
-    // A false stored before wave 18b (no `v`) was the old default: the house setting.
+    // A false stored before wave 18b (no `announceMode`) was the old default: the house setting.
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: false }));
     expect(loadConfig(s)?.announce).toBeNull();
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: true }));
     expect(loadConfig(s)?.announce).toBe(true);
-    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: "yes", v: CONFIG_VERSION }));
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: "yes", announceMode: "never" }));
     expect(loadConfig(s)?.announce).toBeNull();
-    // The stored version never leaks into the config.
+    // An earlier draft's `v` marker means nothing: false without the mode is the house setting.
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: false, v: 2 }));
+    expect(loadConfig(s)?.announce).toBeNull();
+    // Neither marker leaks into the config.
     expect(loadConfig(s)).not.toHaveProperty("v");
-    expect(storedAnnounce(false, 1)).toBeNull();
-    expect(storedAnnounce(false, CONFIG_VERSION)).toBe(false);
+    expect(loadConfig(s)).not.toHaveProperty("announceMode");
+    expect(storedAnnounce(false, undefined)).toBeNull();
+    expect(storedAnnounce(false, "house")).toBeNull();
+    expect(storedAnnounce(false, "never")).toBe(false);
+    expect(storedAnnounce(true, "house")).toBe(true);
+  });
+
+  it("a rollback's re-save never turns the house setting into Never (wave 18b Q8)", () => {
+    const s = memory();
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", announce: null }), s);
+    // A pre-18b build loads `announce: c.announce === true` over a spread of the
+    // stored fields, then saves the whole config back.
+    const stored = JSON.parse(s.getItem(CONFIG_KEY)!) as Record<string, unknown>;
+    s.setItem(CONFIG_KEY, JSON.stringify({ ...stored, announce: stored["announce"] === true }));
+    // Re-shipped: still the house setting.
+    expect(loadConfig(s)?.announce).toBeNull();
+    // Never, saved by this build and re-saved by the old one, stays Never.
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", announce: false }), s);
+    const never = JSON.parse(s.getItem(CONFIG_KEY)!) as Record<string, unknown>;
+    s.setItem(CONFIG_KEY, JSON.stringify({ ...never, announce: never["announce"] === true }));
+    expect(loadConfig(s)?.announce).toBe(false);
+  });
+
+  it("the announce choice maps both ways", () => {
     expect(announceChoiceValue(null)).toBe("house");
     expect(announceChoiceValue(true)).toBe("always");
     expect(announceChoiceValue(false)).toBe("never");

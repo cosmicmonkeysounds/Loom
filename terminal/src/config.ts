@@ -108,7 +108,9 @@ export interface TerminalConfig {
    *  device's voice): `true` always, `false` never, `null` the house setting
    *  (wave 18b, the default — the house list in `audio.json`, which the
    *  screen state answers as `spot.announce`; off when it doesn't say). A
-   *  config stored before wave 18b with `false` reads as the house setting. */
+   *  stored `false` is Never only beside `announceMode: "never"`
+   *  (`storedAnnounce`), so a config from before wave 18b, or one a rolled-back
+   *  build re-saved, reads as the house setting. */
   announce: boolean | null;
   /** Full screen on every tap while not (wave 17, `fullscreen.ts`): on by
    *  default; ⚙ turns it off. Stored only — no URL hint. */
@@ -160,15 +162,18 @@ export function announceFromChoice(v: string): boolean | null {
 }
 
 export const CONFIG_KEY = "loom.terminal";
-/** The stored config's shape (`v`): 2 = wave 18b, where `announce: false`
- *  means "never" (before it, `false` was the default: the house setting now). */
-export const CONFIG_VERSION = 2;
 
-/** A stored `announce`: true / false explicit, anything else the house setting;
- *  a `false` stored before wave 18b (no `v`) was the old default. */
-export function storedAnnounce(v: unknown, version: unknown): boolean | null {
+/**
+ * A stored `announce` (wave 18b, Q8). The three-way choice is stored in its
+ * own field, `announceMode`, because a build from before wave 18b (a
+ * rollback) re-saves `announce` as a plain `false` for anything not Always
+ * but keeps fields it doesn't know. So `true` is Always; `false` is Never
+ * only when `announceMode` says so; anything else — a pre-18b default, or a
+ * rolled-back build's re-save of the house setting — is the house setting.
+ */
+export function storedAnnounce(v: unknown, mode: unknown): boolean | null {
   if (v === true) return true;
-  if (v === false && typeof version === "number" && version >= CONFIG_VERSION) return false;
+  if (v === false && mode === "never") return false;
   return null;
 }
 export const DEFAULT_CHARACTER = "Trabolta";
@@ -214,20 +219,21 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
   try {
     const raw = storage.getItem(CONFIG_KEY);
     if (raw === null) return null;
-    const c = JSON.parse(raw) as Partial<TerminalConfig> & { v?: unknown };
+    const c = JSON.parse(raw) as Partial<TerminalConfig> & { v?: unknown; announceMode?: unknown };
     if (typeof c.eventId !== "string" || typeof c.token !== "string" || c.eventId === "" || c.token === "") return null;
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    const { v: _version, ...stored } = c;
-    return defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, c.v), camFeed: c.camFeed !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
+    // `v` was an earlier wave 18b draft's marker: dropped, never trusted.
+    const { v: _version, announceMode, ...stored } = c;
+    return defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, announceMode), camFeed: c.camFeed !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
   } catch {
     return null;
   }
 }
 
 export function saveConfig(c: TerminalConfig, storage: Pick<Storage, "setItem"> = localStorage): void {
-  storage.setItem(CONFIG_KEY, JSON.stringify({ ...c, v: CONFIG_VERSION }));
+  storage.setItem(CONFIG_KEY, JSON.stringify({ ...c, announceMode: announceChoiceValue(c.announce) }));
 }
 
 export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage): void {
