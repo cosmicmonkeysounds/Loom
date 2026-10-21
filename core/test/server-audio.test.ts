@@ -11,7 +11,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import type { AudioConfig } from "@loom/house";
+import { validateAudio, type AudioConfig } from "@loom/house";
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
@@ -19,10 +19,12 @@ import { AUDIO_TEST_MS, audioFileOf, audioOf, storySounds, type AudioView } from
 import type { MapFiles, ProjectLink } from "../server/house-maps.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
+import { scenarioSource } from "../examples/load.ts";
 
 const HOUSE_FILE = join(import.meta.dirname, "..", "..", "house", "test", "fixtures", "audio-house.json");
 const AUDIO_TEXT = readFileSync(join(import.meta.dirname, "..", "..", "house", "test", "fixtures", "audio-basic.json"), "utf8");
 const AUDIO = JSON.parse(AUDIO_TEXT) as AudioConfig;
+const SHOW_AUDIO = join(import.meta.dirname, "..", "examples", "trapped-in-the-internet", "audio.json");
 const CODES = { event: "EVTAUD", prime: "PRMAUD", mod: "MODAUD" };
 const STORY = `# T\n\nLOCATION The Desktop\n\nLOCATION The Tube\n\nwhen print:\n  sound printer_grind in The Desktop\n\n== Boot\n  setting: The Desktop\nsound modem_handshake\n<sfx: zip, rooms: hall>\nHello.\n`;
 
@@ -107,6 +109,27 @@ function runtime(o: { dir?: string; audio?: string | null; audioFile?: string | 
     ...(o.now !== undefined ? { now: o.now } : {}),
   });
 }
+
+describe("the starter audio.json (Trapped in the Internet)", () => {
+  it("validates on both map variants and names every sound the show plays", () => {
+    const text = readFileSync(SHOW_AUDIO, "utf8");
+    const audio = JSON.parse(text) as AudioConfig;
+    expect(audio.note).toMatch(/DRAFT/u);
+    const dir = join(import.meta.dirname, "..", "examples", "trapped-in-the-internet");
+    for (const map of ["house.json", "house.shed.json"]) {
+      const house = JSON.parse(readFileSync(join(dir, map), "utf8"));
+      expect(validateAudio(audio, house).problems).toEqual([]);
+    }
+    expect(audio.device).toMatchObject({ name: "MOTU", inputs: 16, outputs: 16 });
+    expect(audio.outputs).toHaveLength(16);
+    expect(audio.inputs).toHaveLength(16);
+    expect(audio.zones.map((z) => z.id)).toEqual(["living"]);
+    // Every `sound X` in the show has a cue, and every cue is a show sound.
+    const sounds = storySounds(Sim.fromSources(scenarioSource("trapped-in-the-internet")).model);
+    expect(sounds.length).toBeGreaterThanOrEqual(20);
+    expect(Object.keys(audio.cues).sort()).toEqual(sounds);
+  });
+});
 
 describe("storySounds", () => {
   it("lists every sfx name the compiled story uses, sorted", () => {
