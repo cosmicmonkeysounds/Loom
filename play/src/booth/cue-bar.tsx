@@ -8,7 +8,7 @@
 //! `refused`). Clippy is never asked *Fire anyway?* on its own cues.
 
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
-import { cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
+import { cueActs, cueTitleTags, type CueMarks, type CueRow } from "../../../core/src/cue-sheet.ts";
 import { ApiError } from "../client.ts";
 import { ArmDrain, CueActList, CuePicker, fireCue, sheetLayout, soonestCountdown, useCueDesk, type DeskFire, type FirePost } from "../director.tsx";
 import { formatLeft } from "../clock.ts";
@@ -27,6 +27,17 @@ export function yourCue(rows: readonly CueRow[], next: string | null = null): Cu
  *  running order not yet fired (the sequence's first; else an off-sequence one). */
 export function nextForYou(rows: readonly CueRow[]): CueRow | null {
   return rows.find((r) => !r.fired && r.sequence !== false) ?? rows.find((r) => !r.fired) ?? null;
+}
+
+/**
+ * Does a running countdown belong to the cue Clippy waits on? Only when
+ * that cue is in the act the night is in now (BN2-FE: during the summons
+ * the band read "🍎 Bobbing for Truth ⏳ 5:00", acts away): the sheet has
+ * no other link between a cue and a clock.
+ */
+export function waitsInThisAct(waiting: CueRow | null, nightAct: { code: string | null } | null | undefined): boolean {
+  if (waiting === null || waiting.act === null || nightAct === null || nightAct === undefined || nightAct.code === null) return false;
+  return cueActs([waiting])[0]?.code === nightAct.code;
 }
 
 /** The marks Clippy's desk binds an arm to. */
@@ -110,7 +121,7 @@ function CueBarOn({ session, calls, now, countdowns, onFired, armRef }: ClippyCu
   const caller = callerChip(calls, me);
   const line2 = [desk.toast ?? (sheet !== null ? `NEXT on the sheet: ${sheet}` : null), caller].filter((x): x is string => x !== null).join(" · ");
   const waiting = mine === null ? nextForYou(rows) : null;
-  const soon = soonestCountdown([...(countdowns ?? [])], now);
+  const soon = waitsInThisAct(waiting, session.view?.night?.act) ? soonestCountdown([...(countdowns ?? [])], now) : null;
   const armedHere = mine !== null && desk.armed?.id === mine.id;
   const sending = mine !== null && desk.pending === mine.id;
   return (

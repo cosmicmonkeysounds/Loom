@@ -9,7 +9,7 @@ import { RowsWindow, THEYRE_HERE, isSummons, rowLabel, rowsPlace } from "../src/
 import { GuestTiles } from "../src/booth/pick/tiles.tsx";
 import { DoorWindow } from "../src/booth/door.tsx";
 import { WaitingWindow } from "../src/booth/waiting.tsx";
-import { ClippyCueBar, callMarks, callerChip, clippyFire, nextForYou, sheetNext, yourCue } from "../src/booth/cue-bar.tsx";
+import { ClippyCueBar, callMarks, callerChip, clippyFire, nextForYou, sheetNext, waitsInThisAct, yourCue } from "../src/booth/cue-bar.tsx";
 import { wizardSteps } from "../src/booth/popouts/model.ts";
 import { PopOutScope } from "../src/booth/popouts/rung.ts";
 import { ApiError } from "../src/client.ts";
@@ -152,11 +152,18 @@ describe("Clippy's 🎤 bar (§4.9)", () => {
     expect(live).toContain("🎤 YOUR CUE");
     expect(live).toContain("V3");
     expect(live).toContain(">ARM<");
-    const wait = renderToStaticMarkup(<ClippyCueBar session={s(calls([row("bingo_time", { title: "⏰ Bingo time" })], { next: "introduce_trabolta" }))} now={0} countdowns={[{ label: "Bingo", endsAt: 252 } as never]} />);
+    const inAct = (cv: CallsView, code: string) => ({ ...s(cv), view: { ...s(cv).view, night: { act: { code, title: "x" }, phase: null, step: null } } }) as unknown as PrimeSession;
+    const waitRows = calls([row("bingo_time", { title: "⏰ Bingo time", act: "B · Act I" })], { next: "introduce_trabolta" });
+    const wait = renderToStaticMarkup(<ClippyCueBar session={inAct(waitRows, "B")} now={0} countdowns={[{ label: "Bingo", endsAt: 252 } as never]} />);
     expect(wait).toContain("cue-bar waiting");
     expect(wait).toContain("🎤 next for you");
     expect(wait).toContain("⏳ 4:12");
     expect(wait).toContain("NEXT: introduce_trabolta");
+    // BN2-FE: a countdown of another act (the summons) is not this cue's.
+    const elsewhere = renderToStaticMarkup(<ClippyCueBar session={inAct(waitRows, "E")} now={0} countdowns={[{ label: "Summons", endsAt: 300 } as never]} />);
+    expect(elsewhere).toContain("🎤 next for you");
+    expect(elsewhere).not.toContain("⏳");
+    expect(waitsInThisAct(null, { code: "B" })).toBe(false);
   });
   it("fires over /api/prime/cue: a 409 moved drops the arm, a refusal says not taken", async () => {
     let body: unknown[] = [];
