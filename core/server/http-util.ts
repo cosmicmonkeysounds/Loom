@@ -63,6 +63,22 @@ export async function readBody(req: IncomingMessage, limit = MAX_BODY_BYTES): Pr
   }
 }
 
+/** Read a request body as raw bytes (a binary upload: the voice link's
+ *  μ-law). Throws `PayloadTooLarge` (→ 413 at the router) past `limit`. */
+export async function readRawBody(req: IncomingMessage, limit: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > limit) {
+      req.destroy();
+      throw new PayloadTooLarge();
+    }
+    chunks.push(chunk as Buffer);
+  }
+  return chunks.length === 1 ? chunks[0]! : Buffer.concat(chunks);
+}
+
 /** Read a string field from a parsed body (`""` when absent / non-string). */
 export function str(body: Record<string, unknown>, key: string): string {
   const v = body[key];
