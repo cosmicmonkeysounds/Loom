@@ -473,7 +473,7 @@ function channelsInScope(sim: Sim, scope: string): string[] {
 }
 
 /** A scope addressed to the whole room (vs. a participant / faction slice). */
-function globalScope(scope: string): boolean {
+export function globalScope(scope: string): boolean {
   const s = scope.trim().toLowerCase();
   return s === "" || ["everyone", "all", "story", "internet", "world", "room", "party"].includes(s);
 }

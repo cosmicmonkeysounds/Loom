@@ -657,3 +657,66 @@ set Night.alerts = "sticky"
     expect(ring.every((m) => m.at === t)).toBe(true);
   });
 });
+
+// Wave 18 (lane edges' contract): a big house broadcast lights the TV and the
+// walls; only one to everyone, with the same secrecy as every moment.
+describe("wave 18: a big broadcast to everyone is a `big` moment", () => {
+  const BIG = `# T
+
+ROLE Program
+
+LOCATION The Desktop
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+INTERACTION cheer
+  label: 🎀 Cheer
+  who: admin
+
+INTERACTION staff
+  label: 📣 Staff
+  who: admin
+
+INTERACTION plain
+  label: 📣 Plain
+  who: admin
+
+when cheer:
+  broadcast "!!🎀 Encarta won the Bingo Ribbon! Cheer for them at the Desktop." to everyone with close: 6s
+
+when staff:
+  broadcast "!!🚨 Hosts only." to channel(hosts)
+
+when plain:
+  broadcast "!🎀 A loud one, not a big one." to everyone
+`;
+
+  it("carries the whole line in `text`, its glyph kept and `!!` stripped; `name` clipped", () => {
+    const sim = Sim.fromSources(BIG);
+    sim.createPerson("g1", "Encarta");
+    const s = watch(sim);
+    expect(s.look()).toEqual([]);
+    s.at(20_000);
+    sim.signal("cheer");
+    const big = s.look().filter((m) => m.kind === "big");
+    expect(big).toHaveLength(1);
+    expect(big[0]).toMatchObject({ kind: "big", at: 20_000, who: null, text: "🎀 Encarta won the Bingo Ribbon! Cheer for them at the Desktop." });
+    expect(big[0]!.name.length).toBeLessThanOrEqual(48);
+    expect(big[0]!.text!.startsWith(big[0]!.name)).toBe(true);
+  });
+
+  it("never a staff room's, never a plain `!` alert", () => {
+    const sim = Sim.fromSources(BIG);
+    sim.createPerson("g1", "Encarta");
+    const s = watch(sim);
+    s.look();
+    sim.signal("staff");
+    sim.signal("plain");
+    expect(s.look().filter((m) => m.kind === "big")).toEqual([]);
+  });
+});

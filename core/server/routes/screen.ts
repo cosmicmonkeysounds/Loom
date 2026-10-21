@@ -92,7 +92,7 @@ import type { SimModel } from "../../src/runtime/sim/model.ts";
 import type { BodyItem } from "../../src/parser/ast.ts";
 import { parseSet, splitDirective } from "../../src/runtime/sim/effects.ts";
 import type { SimEvent } from "../../src/runtime/sim/event.ts";
-import type { ChatMessage } from "../chat.ts";
+import { cueText, globalScope, splitAlert, type ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
 import { DEFAULT_CONFIRM } from "../facts.ts";
 import { signalRefusedAt } from "../views.ts";
@@ -379,7 +379,7 @@ export const MOMENT_RING = 12;
 /** Longest moment name / `who` carried (characters). */
 const MAX_MOMENT_NAME = 48;
 
-export type ScreenMomentKind = "beat" | "signal" | "sfx" | "reveal" | "found";
+export type ScreenMomentKind = "beat" | "signal" | "sfx" | "reveal" | "found" | "big";
 
 /**
  * A live, house-wide story moment the screens can animate (the introduction,
@@ -399,7 +399,13 @@ export interface ScreenMoment {
   /** The program the moment is about (the bottle's pick, the duck's finder)
    *  by display name, else null. */
   who: string | null;
+  /** A `big` moment's whole line (wave 18: a `broadcast "!!…"` to everyone,
+   *  its `!!` stripped, its leading glyph kept); `name` is it clipped. */
+  text?: string;
 }
+
+/** Longest big line carried (characters; the terminals clip to the same). */
+export const MAX_BIG_LINE = 200;
 
 /** The duck's two signals (`EventRuntime.commitFound`): the first is folded
  *  into the second, which becomes the `found` moment. */
@@ -566,7 +572,8 @@ export function pickNamesOf(args: string): string[] {
  *   within `VERDICT_MS` (its verdict: 🗣 / 🙅 / 🎩, `who` the pick), a
  *   device's (`who` the player); the duck's pair becomes one `found`;
  * - a story `sound X` (`sfx`), by its name;
- * - a `reveal` to everyone.
+ * - a `reveal` to everyone;
+ * - a big `broadcast "!!…"` to everyone (`big`, its line in `text`).
  */
 export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets: readonly string[], signals: MomentSignals = momentSignalsOf(sim.model)): ScreenMoment | null {
   const who = (id: string | null): string | null => {
@@ -604,6 +611,16 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
       if (e.verb !== "sfx") return null;
       const name = e.args.trim().split(/[\s,]+/u)[0] ?? "";
       return make("sfx", name, null);
+    }
+    case "broadcast": {
+      // Wave 18: a big moment to the whole house (`broadcast "!!…" to
+      // everyone`) lights the TV and the walls. Never a staff room, a side
+      // or any narrower scope: only what every phone in the house was told.
+      const split = splitAlert(e.cue);
+      if (split.big !== true || !globalScope(e.scope)) return null;
+      const line = clip(cueText(split.cue).trim(), MAX_BIG_LINE);
+      const m = make("big", line, null);
+      return m === null ? null : { ...m, text: line };
     }
     case "revealed": {
       if (e.person !== null) return null;
