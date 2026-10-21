@@ -178,6 +178,59 @@ describe("faction mode: one faction at a time", () => {
     expect(sim.crews.get("crew-1")?.members).toEqual(["g1"]);
     expect(sim.crews.get("crew-2")?.members).toEqual(["g2"]);
   });
+
+  it("an invitation's yes is held to the walk-in rules: a founder or a leader can't take it", () => {
+    const sim = open();
+    // A founder saying yes to another crew's invitation: void, theirs lives.
+    sim.crew({ op: "foundCrew", by: "g1", name: "One" });
+    sim.crew({ op: "joinCrew", person: "g3", crew: "crew-1" });
+    sim.crew({ op: "foundCrew", by: "g2", name: "Two" });
+    sim.crew({ op: "crewInvite", by: "g2", to: "g1", crew: "crew-2" });
+    sim.crews.takeNotices();
+    sim.crew({ op: "crewAnswer", id: "inv-1", yes: true });
+    expect(sim.crews.invite("inv-1")?.state).toBe("void");
+    expect(sim.crews.get("crew-1")?.members).toEqual(["g1", "g3"]);
+    expect(sim.crews.get("crew-2")?.members).toEqual(["g2"]);
+    expect(sim.crews.takeNotices().map((n) => n.kind)).toEqual(["answered"]);
+    // A side's leader saying yes to a crew: void, still on the side.
+    sim.join("g4", "Red");
+    sim.setVar("Red.leader", "g4");
+    sim.crew({ op: "crewInvite", by: "g1", to: "g4", crew: "crew-1" });
+    sim.crew({ op: "crewAnswer", id: "inv-2", yes: true });
+    expect(sim.crews.invite("inv-2")?.state).toBe("void");
+    expect(sim.crews.crewOf("g4")).toBeNull();
+    expect(sim.factionMembers("Red")).toEqual(["g4"]);
+    expect(sim.crews.founderOf("Red")).toBe("g4");
+    // A founder saying yes to a side: void, their faction lives.
+    sim.crew({ op: "recruit", by: "g4", to: "g2", side: "Red" });
+    sim.crew({ op: "recruitAnswer", id: "inv-3", yes: true });
+    expect(sim.crews.invite("inv-3")?.state).toBe("void");
+    expect(sim.crews.get("crew-2")?.members).toEqual(["g2"]);
+    expect(sim.factionMembers("Red")).toEqual(["g4"]);
+    // Another side's leader saying yes to a side: void.
+    sim.join("g5", "Blue");
+    sim.setVar("Blue.leader", "g5");
+    sim.crew({ op: "recruit", by: "g4", to: "g5", side: "Red" });
+    sim.crew({ op: "recruitAnswer", id: "inv-4", yes: true });
+    expect(sim.crews.invite("inv-4")?.state).toBe("void");
+    expect(sim.factionMembers("Blue")).toEqual(["g5"]);
+  });
+
+  it("founding settles the founder's open invitations, crew and side", () => {
+    const sim = open();
+    sim.crew({ op: "foundCrew", by: "g1", name: "One" });
+    sim.join("g4", "Red");
+    sim.crew({ op: "crewInvite", by: "g1", to: "g2", crew: "crew-1" });
+    sim.crew({ op: "recruit", by: "g4", to: "g2", side: "Red" });
+    sim.crew({ op: "crewInvite", by: "g1", to: "g3", crew: "crew-1" });
+    sim.crews.takeNotices();
+    sim.crew({ op: "foundCrew", by: "g2", name: "Two" });
+    expect(sim.crews.invite("inv-1")?.state).toBe("void");
+    expect(sim.crews.invite("inv-2")?.state).toBe("void");
+    expect(sim.crews.invite("inv-3")?.state).toBe("open");
+    expect(sim.crews.openInvitesTo("g2")).toEqual([]);
+    expect(sim.crews.takeNotices().map((n) => n.kind)).toEqual(["founded", "answered", "answered"]);
+  });
 });
 
 describe("faction mode: the race", () => {

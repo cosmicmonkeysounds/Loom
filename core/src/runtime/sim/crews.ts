@@ -781,6 +781,9 @@ export class Crews {
     this.syncMembers(crew);
     this.sim.world.set(`${by}.crew`, vString(crew.id));
     this.notices.push({ kind: "founded", crew });
+    // Faction mode: a founder's open invitations (crew or side) are moot —
+    // a yes to either would disband the faction just founded.
+    if (this.factionMode) this.settleOthers(by, () => true);
     this.sim.signal("founded", by, { crew: crew.id });
   }
 
@@ -806,7 +809,10 @@ export class Crews {
     }
     if (i.kind === "crew") {
       const c = this.byId.get(i.target);
-      if (c === undefined) {
+      // Faction mode: a yes arrives after its invitation, so it is held to
+      // the walk-in join's rules now (a founder of another faction, a
+      // side's leader, a restricted or captured program can't take it).
+      if (c === undefined || (this.factionMode && !c.members.includes(i.to) && !this.mayJoin(i.to, c))) {
         i.state = "void";
         this.notices.push({ kind: "answered", invite: i });
         return;
@@ -820,6 +826,13 @@ export class Crews {
     }
     // A side: the sim's own switching join (the server checked the doors,
     // the restriction and that the side is open before journaling this).
+    // Faction mode: a founder (it would disband their faction) or another
+    // side's leader can't take it.
+    if (this.factionMode && (this.foundedBy(i.to) !== null || (this.ledSide(i.to) ?? i.target) !== i.target)) {
+      i.state = "void";
+      this.notices.push({ kind: "answered", invite: i });
+      return;
+    }
     i.state = "yes";
     this.notices.push({ kind: "answered", invite: i });
     const prior = this.sim.factionOf(i.to);
