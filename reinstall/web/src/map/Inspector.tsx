@@ -14,7 +14,7 @@ import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
 import { metres, rectOf } from "./plan.ts";
-import { guardableDoors, guardedBy, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
+import { guardableDoors, guardedBy, isRoomlessView, onFloor, patchProp, PROP_KINDS, rotateBy, setGuard, snapTerminalToWall, TERMINAL_VIEW_HINTS, TERMINAL_VIEWS, YAW_STEP, type TerminalViewName } from "./props.ts";
 import { cascadeOf, cascadeText, deleteRoomText, deletesWith, patchFloor, patchStair, removeFloor, removeRoom, renameRoom, setRoomRect, stairCandidates } from "./structure.ts";
 import { fillYard, patchYard, yardClash, yardOf } from "./yards.ts";
 import { commitPending, isStep, parseNum } from "./tools.ts";
@@ -327,7 +327,7 @@ function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied
   const roomName = roomById(house, t.room)?.label ?? t.room;
   const location = roomById(house, t.room)?.location?.trim() || roomName;
   const view: TerminalViewName = t.view ?? "auto";
-  const roomless = view === "tv" || view === "chess" || view === "casino";
+  const roomless = isRoomlessView(view);
   const link = provisionLink(origin, t);
   return (
     <div className="inspect">
@@ -376,7 +376,7 @@ function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied
           ))}
         </select>
       </label>
-      <label className="field check" title={roomless ? "The TV, the chess board and the casino belong to no room" : "Asleep until the story opens this room to everyone, then it speaks the character's lines said there"}>
+      <label className="field check" title={roomless ? "The TV, the chess board, the casino and the reinstallation station belong to no room" : "Asleep until the story opens this room to everyone, then it speaks the character's lines said there"}>
         <input type="checkbox" checked={t.speaks === true && !roomless} disabled={!edit || roomless} onChange={(e) => commit(patchTerminal(house, t.id, { speaks: e.target.checked }))} />
         room terminal (speaks for {location})
       </label>
