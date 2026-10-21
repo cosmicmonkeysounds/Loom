@@ -539,14 +539,16 @@ applies:
 3. the enclosing beat's `setting` (a LOCATION; the directive event carries it);
 4. everywhere.
 
-A target is `everywhere`, a zone id, a `house.json` room id, a LOCATION
-(every room whose `location` it is) or a speaker id, the first that matches,
-names folded (case, spaces, `_`, `-`). `The Desktop` stays one name when it
-resolves whole; `desktop start-bar` and `a, b` split. The Python
-`resolve_targets` mirrors `@loom/house` `resolveTargets`; both are pinned by
-one fixture (`stagehand/tests/fixtures/audio-resolve.json` today; the
-integration pass points both suites at the shared file under
-`house/test/fixtures/`).
+A target is `everywhere` (every speaker) or reaches the union of everything
+it names: a speaker id, a zone id or name, a `house.json` room id or label,
+a LOCATION (every room whose `location` it is). Names fold like
+`foldTarget` (case, `_` / `-` → a space, runs of spaces collapse; `startbar`
+is not `Start Bar`). `The Desktop` stays one name when it resolves whole;
+`desktop start-bar` and `a, b` split. The Python `resolve_targets` mirrors
+`@loom/house` `resolveTargets` exactly; both run the shared cases in
+`house/test/fixtures/audio-resolve.json` (stagehand keeps byte-identical
+copies in `tests/fixtures/house-audio/`, diffed against the house files
+when they sit beside it).
 
 Files: `sounds_dir/X.wav | .aiff | .aif | .flac` (exact name, then
 case-insensitive), resampled once to the device rate and kept in memory

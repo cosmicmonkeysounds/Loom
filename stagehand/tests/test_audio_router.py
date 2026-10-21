@@ -23,7 +23,7 @@ from stagehand.module import ConfigError
 
 from test_audio_engine import FakeStream, fake_query  # the shared fakes
 
-FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "audio-resolve.json").read_text())
+FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "router-audio.json").read_text())
 RATE = 8000
 
 

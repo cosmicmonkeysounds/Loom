@@ -717,10 +717,12 @@ audio:
 - **Where a `sound X` goes**, first rule that applies: the story line's own
   rooms (`sound X with rooms: a b` / `sound X in <Place>`, the `rooms:`
   argument), `audio.json` `cues[X].to`, the enclosing beat's `setting`,
-  everywhere. A target is `everywhere`, a zone id, a `house.json` room id, a
-  LOCATION (its rooms via `Room.location`) or a speaker id — the Python
-  mirror of `@loom/house` `resolveTargets` (`audio/routing.py`, pinned by
-  `tests/fixtures/audio-resolve.json`). A name with no file is logged once.
+  everywhere. A target is `everywhere` or reaches the union of the speaker,
+  zone (id or name), `house.json` room (id or label) and LOCATION (its rooms
+  via `Room.location`) it names — the exact Python mirror of `@loom/house`
+  `resolveTargets` (`audio/routing.py`, pinned by the shared
+  `house/test/fixtures/audio-resolve.json`, copied byte for byte into
+  `tests/fixtures/house-audio/`). A name with no file is logged once.
 - **QLab or the router, never both** (decision D6). `play_sounds: false`
   (the default) leaves `sound X` to QLab; `play_sounds: true` makes the
   config loader drop the `show` module's `sound` cues that go to an OSC

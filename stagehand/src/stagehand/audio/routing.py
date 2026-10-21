@@ -6,18 +6,22 @@ everything routing can live without (labels, positions, notes) and strict on
 what it can't (channel numbers, speaker outputs), so a doc the server
 accepted always loads here.
 
-`resolve_targets` mirrors `@loom/house` `resolveTargets` and is pinned to it
-by a shared fixture (`tests/fixtures/audio-resolve.json`). One target name
-resolves by the first rule that knows it:
+`resolve_targets` mirrors `@loom/house` `resolveTargets` exactly and is
+pinned to it by the shared fixture `house/test/fixtures/audio-resolve.json`
+(stagehand keeps a byte-identical copy a test diffs against it). A target
+`everywhere` reaches every speaker; any other target reaches the union of
+everything it names:
 
-    everywhere      every speaker
-    a zone id       the zone's speakers
-    a room id       the speakers placed in that room
-    a LOCATION      every room whose `location` is it (house.json) → its speakers
-    a speaker id    that speaker
+    a speaker id            that speaker
+    a zone id or name       the zone's speakers (member ids exact)
+    a room id               the speakers whose `room` it is
+    a room label            (with a house) that room's speakers
+    a LOCATION              (with a house) every room whose `location` it is
 
-Names fold case, spaces, `_` and `-` (`The Desktop` = `the_desktop`).
+Names fold like `foldTarget`: case, `_` / `-` and runs of spaces don't
+matter (`The_Desktop` = `the desktop`, `start-bar` = `Start Bar`).
 Speakers come back in the doc's order, outputs ascending, each once.
+`unknown` (router only) lists the targets that name nothing at all.
 """
 
 from __future__ import annotations
@@ -36,8 +40,9 @@ class AudioDocError(ValueError):
 
 
 def fold(name: str) -> str:
-    """`The Desktop` / `the_desktop` / `THE-DESKTOP` → `thedesktop`."""
-    return re.sub(r"[\s_\-]+", "", str(name)).lower()
+    """`@loom/house` `foldTarget`: `The_Desktop` / `THE-DESKTOP` → `the desktop`."""
+    s = re.sub(r"[_-]+", " ", str(name).strip().lower())
+    return re.sub(r"\s+", " ", s).strip()
 
 
 @dataclass(frozen=True)
@@ -225,64 +230,84 @@ def parse_audio(doc: Any) -> AudioDoc:
     )
 
 
-def house_locations(house: Any) -> dict[str, str | None]:
-    """house.json → room id → its story LOCATION (None when it names none)."""
+@dataclass(frozen=True)
+class HouseRoom:
+    id: str
+    label: str
+    location: str | None
+
+
+def house_rooms(house: Any) -> tuple[HouseRoom, ...]:
+    """house.json → its rooms (id, label, story LOCATION or None)."""
     rooms = house.get("rooms") if isinstance(house, dict) else None
-    out: dict[str, str | None] = {}
+    out: list[HouseRoom] = []
     for room in rooms if isinstance(rooms, list) else []:
         if isinstance(room, dict) and isinstance(room.get("id"), str):
             loc = room.get("location")
-            out[room["id"]] = loc if isinstance(loc, str) and loc else None
-    return out
+            label = room.get("label")
+            out.append(HouseRoom(room["id"], label if isinstance(label, str) else "", loc if isinstance(loc, str) and loc else None))
+    return tuple(out)
 
 
 @dataclass(frozen=True)
 class Resolved:
     speakers: tuple[str, ...] = ()
     outputs: tuple[int, ...] = ()
-    #: Target names that matched nothing (logged once by the router).
+    #: Target names that name nothing at all (logged once by the router).
     unknown: tuple[str, ...] = ()
 
 
-def _one(audio: AudioDoc, rooms: dict[str, str | None], name: str) -> list[Speaker] | None:
-    key = fold(name)
-    if key == EVERYWHERE:
-        return list(audio.speakers)
-    zone = next((z for z in audio.zones if fold(z.id) == key), None)
-    if zone is not None:
-        ids = {fold(s) for s in zone.speakers}
-        return [s for s in audio.speakers if fold(s.id) in ids]
-    room_ids = {fold(r) for r in rooms} | {fold(s.room) for s in audio.speakers}
-    if key in room_ids:
-        return [s for s in audio.speakers if fold(s.room) == key]
-    located = {fold(r) for r, loc in rooms.items() if loc is not None and fold(loc) == key}
-    if located:
-        return [s for s in audio.speakers if fold(s.room) in located]
-    hit = next((s for s in audio.speakers if fold(s.id) == key), None)
-    return [hit] if hit is not None else None
+def _one(audio: AudioDoc, rooms: tuple[HouseRoom, ...], name: str) -> set[str] | None:
+    """The speaker ids one target reaches, or None when it names nothing
+    (a known room with no speaker in it reaches the empty set)."""
+    t = fold(name)
+    if t == EVERYWHERE:
+        return {s.id for s in audio.speakers}
+    known = False
+    hit: set[str] = set()
+    room_ids: set[str] = set()
+    for s in audio.speakers:
+        if fold(s.id) == t:
+            hit.add(s.id)
+            known = True
+        if fold(s.room) == t:
+            room_ids.add(s.room)
+    for z in audio.zones:
+        if fold(z.id) == t or fold(z.name) == t:
+            hit.update(z.speakers)
+            known = True
+    for r in rooms:
+        if fold(r.id) == t or fold(r.label) == t or (r.location is not None and fold(r.location) == t):
+            room_ids.add(r.id)
+    if room_ids:
+        known = True
+        hit.update(s.id for s in audio.speakers if s.room in room_ids)
+    return hit if known else None
 
 
 def resolve_targets(audio: AudioDoc, house: Any, to: list[str] | tuple[str, ...]) -> Resolved:
     """Target names → the speakers they reach and those speakers' outputs.
-    `house` is the house.json object (or None: LOCATIONs then resolve only
-    when a speaker's room id happens to fold to the same name)."""
-    rooms = house_locations(house) if house is not None else {}
-    chosen: dict[str, Speaker] = {}
+    `house` is the house.json object (or None: a LOCATION or a room label
+    then reaches nothing; a room id still reaches the speakers placed in it)."""
+    rooms = house_rooms(house) if house is not None else ()
+    chosen: set[str] = set()
     unknown: list[str] = []
     for name in to:
+        if not isinstance(name, str) or fold(name) == "":
+            continue
         hits = _one(audio, rooms, name)
         if hits is None:
             unknown.append(name)
             continue
-        for s in hits:
-            chosen.setdefault(s.id, s)
-    speakers = tuple(s.id for s in audio.speakers if s.id in chosen)
-    outputs = tuple(sorted({c for sid in speakers for c in chosen[sid].out}))
+        chosen |= hits
+    picked = [s for s in audio.speakers if s.id in chosen]
+    speakers = tuple(s.id for s in picked)
+    outputs = tuple(sorted({c for s in picked for c in s.out}))
     return Resolved(speakers=speakers, outputs=outputs, unknown=tuple(unknown))
 
 
 def knows(audio: AudioDoc, house: Any, name: str) -> bool:
-    return _one(audio, house_locations(house) if house is not None else {}, name) is not None
+    return _one(audio, house_rooms(house) if house is not None else (), name) is not None
 
 
 def split_targets(text: str, audio: AudioDoc, house: Any) -> list[str]:
