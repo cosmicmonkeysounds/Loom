@@ -9,6 +9,8 @@ Wire contract (core/server/event-runtime.ts):
     feed: every `sim` / `message` / `lifecycle` frame, never the ≈ 200 KB
     `snapshot` / `history` views a director's console needs
   - alexa: `POST /api/mod/tts {text, voice?, speed?}` → audio bytes (mp3/wav)
+  - audio: `GET /api/mod/audio?after=&tests=&wait=` (a long-poll: the
+    event's audio.json + pending speaker tests) and `GET /api/spatial/house`
   - agents: `GET /api/agent/stream?characters=…&name=…` (SSE) and
     `POST /api/agent/reply {id, say, adjust, worker}`
 
@@ -72,7 +74,11 @@ class ModClient:
 
     @property
     def sse_url(self) -> str:
-        return f"{self.base_url}{self.path('/events')}?role=mod&id=stagehand&lean=1"
+        return self.feed_url()
+
+    def feed_url(self, client_id: str = "stagehand") -> str:
+        """The lean mod feed, named `client_id` in the server's presence."""
+        return f"{self.base_url}{self.path('/events')}?role=mod&id={client_id}&lean=1"
 
     async def ensure_token(self) -> None:
         """Exchange the mod passcode for a session token if needed."""
@@ -109,14 +115,16 @@ class ModClient:
             return {}
         return doc if isinstance(doc, dict) else {}
 
-    async def get(self, p: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        """One authenticated GET (`/api/agent/facts`); re-logs in once on 403."""
+    async def get(self, p: str, params: dict[str, Any] | None = None, timeout: float | None = None) -> dict[str, Any]:
+        """One authenticated GET (`/api/agent/facts`); re-logs in once on 403.
+        `timeout` overrides the client's 10 s (a long-poll waits longer)."""
         await self.ensure_token()
-        r = await self._client.get(self.path(p), params=params, headers={"x-loom-token": self.token or ""})
+        extra: dict[str, Any] = {} if timeout is None else {"timeout": timeout}
+        r = await self._client.get(self.path(p), params=params, headers={"x-loom-token": self.token or ""}, **extra)
         if r.status_code == 403 and self.passcode is not None:
             self.forget_token()
             await self.ensure_token()
-            r = await self._client.get(self.path(p), params=params, headers={"x-loom-token": self.token or ""})
+            r = await self._client.get(self.path(p), params=params, headers={"x-loom-token": self.token or ""}, **extra)
         if r.status_code != 200:
             raise ModApiError(f"GET {p} → {r.status_code} {r.text}", r.status_code)
         try:

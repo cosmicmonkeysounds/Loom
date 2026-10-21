@@ -120,6 +120,8 @@ class Mixer:
         self.peak = np.zeros(n_out, dtype=np.float32)
         self.limited_blocks = 0
         self.blocks = 0
+        #: Blocks ever processed (never reset: the stall watchdog reads it).
+        self.ticks = 0
 
     # -- the control side (any thread) ---------------------------------------
 
@@ -265,6 +267,7 @@ class Mixer:
             np.clip(mix, -1.0, 1.0, out=mix)
             np.maximum(self.peak, np.abs(mix).max(axis=0), out=self.peak)
         self.blocks += 1
+        self.ticks += 1
         outdata[:] = mix
         for v in finished:
             if v.done is not None:
