@@ -46,6 +46,8 @@ export interface AudioPanelProps {
   house: HouseMap;
   /** The server's last answer (null: none yet / a server without the routes). */
   view: AudioView | null;
+  /** The version the draft was loaded / saved as (the server's may be newer). */
+  loadedVersion: string | null;
   /** `missing`: the server has no speaker routes; `error`: away. */
   status: "loading" | "ok" | "missing" | "error";
   edit: boolean;
@@ -61,6 +63,8 @@ export interface AudioPanelProps {
   onTest: (target: { speaker: string } | { out: number }) => void;
   /** Light these speakers on the plan (null: none). */
   onHighlight: (ids: readonly string[] | null) => void;
+  /** A zone was pinned: show a floor its speakers stand on (when none is on the one shown). */
+  onShowFloor?: (ids: readonly string[]) => void;
   onPick: (sel: Selection) => void;
   /** The project bar's status (Save to project). */
   projectStatus: string | null;
@@ -187,7 +191,8 @@ export function AudioPanel(p: AudioPanelProps) {
         {p.view !== null && (
           <span className="muted small">
             {" "}
-            · from {SOURCE_TEXT[p.view.source]} · v{p.view.version}
+            · from {SOURCE_TEXT[p.view.source]} · v{p.loadedVersion ?? p.view.version}
+            {p.loadedVersion !== null && p.loadedVersion !== p.view.version && <b className="bad-text"> (the server's is v{p.view.version})</b>}
           </span>
         )}
         {p.dirty && <b className="small"> · unsaved</b>}
@@ -206,33 +211,38 @@ export function AudioPanel(p: AudioPanelProps) {
           </button>
         </div>
         {p.projectStatus !== null && <div className="small">{p.projectStatus}</div>}
-      </div>
-      {p.status === "missing" && <p className="audio-note bad-text">This server has no speaker routes (it predates wave 17): the speakers can be drafted and downloaded, not saved.</p>}
-      {p.status === "error" && <p className="audio-note bad-text">Couldn't reach the speaker config — showing the last one loaded.</p>}
-      {p.saveState.kind === "conflict" && (
-        <div className="audio-note bad-text">
-          {audioConflictText(p.saveState.version)}
-          <div className="button-row">
-            <button className="w98-button default" onClick={p.onReload}>
-              Reload the speakers (discard my edits)
-            </button>
+        {p.status === "missing" && <p className="audio-note bad-text">This server has no speaker routes (it predates wave 17): the speakers can be drafted and downloaded, not saved.</p>}
+        {p.status === "error" && <p className="audio-note bad-text">Couldn't reach the speaker config — showing the last one loaded.</p>}
+        {p.saveState.kind === "conflict" && (
+          <div className="audio-note bad-text">
+            {audioConflictText(p.saveState.version)}
+            <div className="button-row">
+              <button className="w98-button default" onClick={p.onReload}>
+                Reload the speakers (discard my edits)
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+        {p.saveState.kind === "error" && (
+          <div className="audio-note bad-text">
+            Speakers not saved — {p.saveState.error}
+            {p.saveState.problems.length > 0 && (
+              <ul>
+                {p.saveState.problems.map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {p.saveState.kind === "ok" && <div className="audio-note good-text">Speakers saved as v{p.saveState.version}.</div>}
+      </div>
+      {audio.note !== undefined && audio.note !== "" && (
+        <details className="audio-note">
+          <summary>📝 {audio.note.length > 70 ? `${audio.note.slice(0, 68).trimEnd()}…` : audio.note}</summary>
+          {audio.note.length > 70 && audio.note}
+        </details>
       )}
-      {p.saveState.kind === "error" && (
-        <div className="audio-note bad-text">
-          Speakers not saved — {p.saveState.error}
-          {p.saveState.problems.length > 0 && (
-            <ul>
-              {p.saveState.problems.map((x, i) => (
-                <li key={i}>{x}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-      {p.saveState.kind === "ok" && <div className="audio-note good-text">Speakers saved as v{p.saveState.version}.</div>}
-      {audio.note !== undefined && audio.note !== "" && <p className="audio-note">📝 {audio.note}</p>}
 
       <Section title="Interface" count={`${nIn} in · ${nOut} out`}>
         <div className="num-row">
@@ -372,7 +382,10 @@ export function AudioPanel(p: AudioPanelProps) {
         {audio.zones.map((z) => (
           <div key={z.id} className={`zone-row${pinned === z.id ? " on" : ""}`} onMouseEnter={() => hover(z.speakers)} onMouseLeave={() => hover(null)}>
             <div className="zone-head">
-              <button className={`w98-button small${pinned === z.id ? " pressed" : ""}`} aria-pressed={pinned === z.id} onClick={() => setPinned(pinned === z.id ? null : z.id)} title="Light it on the plan">
+              <button className={`w98-button small${pinned === z.id ? " pressed" : ""}`} aria-pressed={pinned === z.id} onClick={() => {
+                  setPinned(pinned === z.id ? null : z.id);
+                  if (pinned !== z.id) p.onShowFloor?.(z.speakers);
+                }} title="Light it on the plan">
                 ◉
               </button>
               <LabelField value={z.name} disabled={off} aria={`Zone ${z.id} name`} onCommit={(v) => commit(patchZone(audio, z.id, { name: v }))} />

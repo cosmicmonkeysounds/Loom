@@ -115,3 +115,17 @@ button.chip { cursor: pointer; }
 .zone-head .label-field { flex: 1; min-width: 0; min-height: 1.9em; padding: 0.1em 0.35em; }
 .zone-members { display: flex; flex-wrap: wrap; gap: 0 0.9em; padding: 0.2em 0 0 2.4em; }
 .test-list { margin: 0; padding-left: 1.2em; }
+
+/* The Audio tab wants the room: the problem list shrinks under it. */
+.map-main.wide-side .problems { max-height: 20vh; }
+/* One column (a portrait tablet): the side panel takes its natural height
+   and the page scrolls, so the tabs never vanish under the problem list. */
+@media (max-width: 860px) {
+  .map-main > .map-side { min-height: auto; }
+  .map-side > .map-panel { flex: 0 0 auto; overflow: visible; }
+  .map-side > .problems { max-height: none; }
+  .audio-head { top: -6px; }
+}
+.audio-note > summary { cursor: pointer; }
+.audio-note[open] > summary { margin-bottom: 0.2em; }
+.audio-head .audio-note { margin-bottom: 0.4em; }

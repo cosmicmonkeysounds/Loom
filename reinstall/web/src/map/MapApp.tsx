@@ -885,6 +885,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 saved={savedAudio}
                 house={house}
                 view={audioView}
+                loadedVersion={audioVersionRef.current}
                 status={audioStatus}
                 edit={edit}
                 dirty={audioDirty}
@@ -901,6 +902,10 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                 }}
                 onTest={(t) => void testSpeaker(t)}
                 onHighlight={lightUp}
+                onShowFloor={(ids) => {
+                  const floors = ids.map((id) => floorOfSelection(house, { kind: "speaker", id }, audio)).filter((f) => f !== "");
+                  if (floors.length > 0 && !floors.includes(floor)) setFloor(floors[0]!);
+                }}
                 onPick={reveal}
                 projectStatus={projectStatus}
               />
