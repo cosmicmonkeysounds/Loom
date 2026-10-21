@@ -109,6 +109,15 @@ describe("act 2's scenes draw", () => {
     q.mockRestore();
   });
 
+  it("the Y2K hour's ticker asks for the two sides or a faction of your own (wave 18b)", () => {
+    const q = quiet();
+    const y2k = SCENES.find((s) => s.id === "y2k")!;
+    const html = draw(y2k, "tv", 30_000, stateAt(30_000, { countdown: "y2k", remaining: 3000 }));
+    expect(html).toContain("OR A FACTION OF YOUR OWN");
+    expect(html).not.toContain("TWO FACTIONS");
+    q.mockRestore();
+  });
+
   it("the Trust Chart keeps the card's reveal and its call-outs", () => {
     const q = quiet();
     const chart = SCENES.find((s) => s.id === "trust_chart")!;

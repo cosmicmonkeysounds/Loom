@@ -1128,7 +1128,7 @@ function OvershareWall(p: SceneProps) {
 const Y2K_POPS: readonly PopMsg[] = [
   { title: "Y2K Compliance", text: "Is your PC Y2K compliant? Click here to find out.", kind: "question", actions: ["Check now", "Later"] },
   { title: "System Clock", text: "Two-digit years detected: 99 → 00.", kind: "warning" },
-  { title: "Factions", text: "Unlimited Power and The Way Out are recruiting.", kind: "info" },
+  { title: "Factions", text: "Join Unlimited Power, The Way Out, or a faction of your own.", kind: "info" },
   { title: "Y2K", text: "Please save your work before 12:00 AM.", kind: "warning", actions: ["Save", "Panic"] },
   { title: "BIOS", text: "CMOS date: 01/01/1900. Continue anyway?", kind: "error", tone: "red", actions: ["Yes", "No"] },
 ];
@@ -1218,7 +1218,7 @@ function Y2kTv(p: SceneProps) {
       )}
       <div className="tv2-marquee-bar" style={{ background: level >= 3 ? "#3a0800" : undefined }}>
         <Marquee t={t} speed={100 + level * 40}>
-          🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ TWO FACTIONS ARE RECRUITING: UNLIMITED POWER ★ THE WAY OUT ★ BRING THE FACTS, ACCURATELY ★ ONE HOUR ★
+          🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999 ★ THE FACTIONS ARE RECRUITING: UNLIMITED POWER ★ THE WAY OUT ★ OR A FACTION OF YOUR OWN ★ MORE THAN HALF WINS ★ BRING THE FACTS, ACCURATELY ★ ONE HOUR ★
         </Marquee>
       </div>
       {level >= 2 && !reduced && <Noise t={t} alpha={0.04 + level * 0.03} />}
