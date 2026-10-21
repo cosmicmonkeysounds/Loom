@@ -894,13 +894,13 @@ ROLE Program
   // ── 🍾 The bottle: Truth or Dare (wave 4) ──
   // `spin_the_bottle` asks the server for one random cleared program, wherever
   // it stands (not marked, away, captured or in the Internet), not yet picked
-  // for this question (`do pick …`, journaled); the
+  // tonight (`do pick …`, journaled); the
   // pick lands here. Trabolta asks on the TV (`Bottle Landed`, a public line
   // in The Desktop); the phone gets a Truth / Dare poll in dm:Trabolta.
   // Dare, or a refused truth, marks for reinstallation. Truth asks
   // Trabolta's next personal question (`Truth Question`, generated from
   // facts.json truths[]); Clippy settles it with 🗣 Answered / 🙅 Refused.
-  // Five picks per hunt question, then the next question's results.
+  // After all three results (wave 18b): about five spins, then 📺 hunt 2.
   when bottle_landed for program:
     set program.bottle_q = Night.bottle_q
     set program.bottle_round = Night.bottle_round
@@ -2753,16 +2753,19 @@ INTERACTION read_the_results
   label: 📋 Results: the next question (press for Q1, Q2, Q3)
   who: admin
   by: Clippy
-  description: Clippy reads one question's result; the filings for it are settled (+50 / marked). Spin the bottle between questions.
+  description: Trabolta reads one question's result on the TV; the filings for it are settled (+50 / marked). After Q3: Truth or Dare (🍾).
   repeat: true
   while: Night.phase == "truth_1" and Night.results_q < 3
 
+// Wave 18b (R21): Truth or Dare comes after all three results, before
+// hunt 2. Five spins are NEXT's budget, not a hard cap. DRAFT w18b
 INTERACTION spin_the_bottle
-  label: 🍾 Spin the bottle (Truth or Dare, five per question)
+  label: 🍾 Spin the bottle: Truth or Dare (after the three results)
   who: admin
   by: Clippy
-  sequence: false
-  description: Picks a cleared program (not marked, away or in the Internet) not yet picked for this question. Trabolta asks on the TV; their phone gets Truth / Dare.
+  repeat: true
+  description: After all three results. Picks a cleared program (not marked, away or in the Internet) not yet picked tonight. Trabolta asks on the TV; their phone gets Truth / Dare. NEXT offers five spins; spin more if you like, then 📺.
+  while: Night.phase == "truth_1" and Night.results_q >= 3 and Night.bottle_open != true and Night.bottle_picks < 5 and Night.bottle_done != true
 
 INTERACTION telephone
   label: (Optional) ☎️ Telephone: a mangled message sends someone to the Internet
@@ -2778,7 +2781,7 @@ INTERACTION second_hunt_preview
   label: 📺 Preview hunt 2 → the ad hijack
   who: admin
   act: C · The malware, the hour, the Truther Download
-  while: Night.step == 6
+  while: Night.step == 6 and Night.bottle_open != true
 
 INTERACTION start_the_second_hunt
   label: 📓 Hunt 2 → quest logs; disperse for 1 hour
@@ -3658,7 +3661,7 @@ when first_moment_of_truth:
     broadcast "⚖️ Not again: round-one judging has already opened. Nothing happens." to channel(hosts)
 
 // B9: the last-chance window (two minutes, or ⏱), then the results one
-// question at a time (📋), the bottle between them (🍾). Round one closes
+// question at a time (📋), then the bottle (🍾) after the third. Round one closes
 // for good when the window shuts: a question nobody filed never comes back.
 // The two minutes run out: the timer presses ⏱ itself, so the cue sheet
 // ticks it and NEXT moves on to 📋.
@@ -3679,17 +3682,19 @@ when filing_closed:
     broadcast "📝 Round one is closed. Trabolta is reading." to everyone
     -> Filing Closed
 
-// One question's result: Clippy reads it (consensus / nobody / every
-// answer), then the ROLE settle watcher credits (+50) or marks (a guess)
-// every filing for it. Kernel.res_* are the beat's readout, computed here
-// (review filings still pending count by the judge's proposal).
+// One question's result: Trabolta reads it on the TV (consensus / nobody /
+// every answer, then the accepted and guess counts), then the ROLE settle
+// watcher credits (+50) or marks (a guess) every filing for it. Kernel.res_*
+// are the beat's readout, computed here (filings still pending, under
+// review or waiting on his ruling, count by their proposal). `do fact_read`
+// publishes the question's public rows to the screens (wave 18b, Q6).
 when read_the_results:
   if Night.phase != "truth_1" or Night.r1_closed != true:
     broadcast "📋 Close the filings first (⏱), then read the results." to channel(hosts)
   else if Night.bottle_open == true:
     broadcast "📋 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
   else if Night.results_q >= 3:
-    broadcast "📋 All three results are read. Next: 📺 Preview hunt 2." to channel(hosts)
+    broadcast "📋 All three results are read. Next: 🍾 Truth or Dare, then 📺 Preview hunt 2." to channel(hosts)
   else:
     set Night.results_q += 1
     set Night.bottle_picks = 0
@@ -3699,16 +3704,25 @@ when read_the_results:
       set Kernel.res_consensus = count([p for p in Persons where p.fact_c1 == 100 and (p.fact_v1 == "accurate" or (p.fact_v1 == "pending" and p.fact_j1 == "accurate"))])
       set Kernel.res_said = Kernel.said_1
       set Kernel.res_answer = Kernel.ans_1
+      set Kernel.res_accepted = count([p for p in Persons where p.fact_v1 == "accurate" or p.fact_v1 == "lie" or (p.fact_v1 == "pending" and p.fact_j1 != "uncertain")])
+      set Kernel.res_guesses = count([p for p in Persons where p.fact_v1 == "uncertain" or (p.fact_v1 == "pending" and p.fact_j1 == "uncertain")])
+      do fact_read H1
     else if Night.results_q == 2:
       set Kernel.res_filed = count([p for p in Persons where p.fact_v2 != "none"])
       set Kernel.res_consensus = count([p for p in Persons where p.fact_c2 == 100 and (p.fact_v2 == "accurate" or (p.fact_v2 == "pending" and p.fact_j2 == "accurate"))])
       set Kernel.res_said = Kernel.said_2
       set Kernel.res_answer = Kernel.ans_2
+      set Kernel.res_accepted = count([p for p in Persons where p.fact_v2 == "accurate" or p.fact_v2 == "lie" or (p.fact_v2 == "pending" and p.fact_j2 != "uncertain")])
+      set Kernel.res_guesses = count([p for p in Persons where p.fact_v2 == "uncertain" or (p.fact_v2 == "pending" and p.fact_j2 == "uncertain")])
+      do fact_read H2
     else:
       set Kernel.res_filed = count([p for p in Persons where p.fact_v3 != "none"])
       set Kernel.res_consensus = count([p for p in Persons where p.fact_c3 == 100 and (p.fact_v3 == "accurate" or (p.fact_v3 == "pending" and p.fact_j3 == "accurate"))])
       set Kernel.res_said = Kernel.said_3
       set Kernel.res_answer = Kernel.ans_3
+      set Kernel.res_accepted = count([p for p in Persons where p.fact_v3 == "accurate" or p.fact_v3 == "lie" or (p.fact_v3 == "pending" and p.fact_j3 != "uncertain")])
+      set Kernel.res_guesses = count([p for p in Persons where p.fact_v3 == "uncertain" or (p.fact_v3 == "pending" and p.fact_j3 == "uncertain")])
+      do fact_read H3
     set Night.settle_q = Night.results_q
     set Night.settle_round = 1
     set Night.settle_gen += 1
@@ -3717,25 +3731,25 @@ when read_the_results:
     set Night.terminals = "hunt_results"
     -> Question Results
 
-// 🍾 The bottle: the server picks one cleared program not yet picked for
-// this question (`do pick … else …`, journaled, so a restart replays the
-// same pick) and fires `bottle_landed` for them (ROLE Program). Five picks
-// per question. Anyone free and here counts, wherever their last room
+// 🍾 The bottle, after all three results (wave 18b, R21): the server picks
+// one cleared program not yet picked tonight (`do pick … else …`,
+// journaled, so a restart replays the same pick; `bottle_q` ends at 3, so
+// "not picked for this question" is "not picked tonight") and fires
+// `bottle_landed` for them (ROLE Program). NEXT offers five spins; a sixth
+// still spins (it only tells # hosts). Anyone free and here counts, wherever their last room
 // check-in put them: a location is only the last room sign scanned, the
 // hunt sends programs round the house, and nothing re-seats them at the
 // Desktop for the Moment of Truth (C2 only calls them back). The TV names
 // the pick, so they come forward. Not a program in the Internet (captured,
 // or in the tent's game), corrupted, marked or away.
 when spin_the_bottle:
-  if Night.phase != "truth_1" or Night.results_q < 1:
-    broadcast "🍾 Read a question's results first (📋)." to channel(hosts)
+  if Night.phase != "truth_1" or Night.results_q < 3:
+    broadcast "🍾 Truth or Dare comes after all three results: read them first (📋)." to channel(hosts)
   else if Night.bottle_open == true:
     broadcast "🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first." to channel(hosts)
-  else if Night.bottle_picks >= 5 and Night.results_q >= 3:
-    broadcast "🍾 Five picks for question 3. Next: 📺 Preview hunt 2." to channel(hosts)
-  else if Night.bottle_picks >= 5:
-    broadcast "🍾 Five picks for question {Night.results_q}. Read the next results (📋)." to channel(hosts)
   else:
+    if Night.bottle_picks >= 5:
+      broadcast "🍾 Past the five on NEXT: 📺 Preview hunt 2 when you're done." to channel(hosts)
     set Night.bottle_open = true
     set Night.bottle_round += 1
     cue screens_truth_or_dare
@@ -3743,13 +3757,11 @@ when spin_the_bottle:
     set Night.terminals = "truth_or_dare"
     do pick bottle_landed from {[p for p in Persons where p.cleared == true and p.corrupted != true and p.marked != true and p.afk != true and p.captured != true and p.location != "The Internet" and p.bottle_q != Night.bottle_q]} else bottle_empty
 
-// After question 3 there are no next results: 📋 would only refuse.
+// Everyone free has had a turn: NEXT moves on to 📺.
 when bottle_empty:
   set Night.bottle_open = false
-  if Night.bottle_q >= 3:
-    broadcast "🍾 Nobody left to pick for question 3. Next: 📺 Preview hunt 2." to channel(hosts)
-  else:
-    broadcast "🍾 Nobody left to pick for question {Night.bottle_q}. Read the next results (📋)." to channel(hosts)
+  set Night.bottle_done = true
+  broadcast "🍾 Nobody left to pick. Next: 📺 Preview hunt 2." to channel(hosts)
 
 when bottle_announce:
   -> Bottle Landed
@@ -3819,7 +3831,9 @@ when the golden duck for program:
 // overshare — or the skipped cue's work (a settle, the tally, round 3)
 // would be lost for good. 🏓 may still cut hunt 2's hour short on purpose.
 when second_hunt_preview:
-  if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3:
+  if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3 and Night.bottle_open == true:
+    broadcast "📺 The bottle is still open: 🗣 / 🙅 first." to channel(hosts)
+  else if Night.step < 7 and Night.phase == "truth_1" and Night.results_q >= 3:
     set Night.judging = false
     set Night.r1_closed = true
     set Night.filing_open = false
@@ -5175,6 +5189,7 @@ set Night.bottle_picks = 0
 set Night.bottle_q = 0
 set Night.bottle_round = 0
 set Night.bottle_pick = "none"
+set Night.bottle_done = false
 set Night.truth_n = 0
 set Night.stimulus_n = 0
 set Night.help_votes = 0

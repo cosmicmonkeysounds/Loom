@@ -190,7 +190,7 @@ describe("wave 9 — the bottle picks any cleared, free program (T5-crew-cards-0
     sim.capture("g6");
     expect(v(sim, "g6.location")).toBe("The Internet");
     advance(sim, 120);
-    fire(sim, "read_the_results");
+    for (let q = 0; q < 3; q++) fire(sim, "read_the_results"); // wave 18b: the bottle after Q3
     expect(pool(fire(sim, "spin_the_bottle"))).toEqual(["g1", "g2", "g3"]);
   });
 });

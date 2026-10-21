@@ -177,6 +177,7 @@ OBJECTIVE File Your Facts
     - Filed Q2, done when program.fact_h2 == true
     - Filed Q3, done when program.fact_h3 == true
 
+// w18b: Trabolta reads; the bottle after Q3 (DRAFT w18b)
 // DRAFT for sign-off
 OBJECTIVE The First Moment Of Truth
   for: Program
@@ -185,7 +186,7 @@ OBJECTIVE The First Moment Of Truth
   title: The First Moment of Truth
   go: The Desktop
   text:
-    Clippy reads each question's results at the Desktop. Between questions the bottle spins: if it lands on you, choose Truth and answer out loud.
+    Trabolta reads each question's results on the TV at the Desktop. After the third, the bottle spins: if it lands on you, choose Truth and answer out loud.
 
 // DRAFT for sign-off
 OBJECTIVE Stay Calm
@@ -589,6 +590,7 @@ OBJECTIVE Introduce Trabolta
   text:
     Once a host fires 🤖 (it is LAST on your bar): "Everyone, say hello to TRABOLTA!" Point at the reinstallation on the TV. Hand off: Trabolta has a game for all of us. 🔎 the hunt is your cue: it runs 15 minutes.
 
+// w18b: Trabolta reads; 🍾 after Q3; no "confident answers" line (DRAFT w18b)
 // DRAFT w18
 OBJECTIVE The First Moment Of Truth Host
   for: Clippy
@@ -596,11 +598,12 @@ OBJECTIVE The First Moment Of Truth Host
   act: B
   title: CI 3: the First Moment of Truth
   text:
-    Two minutes to file, then read each question's result aloud from the Desktop room. ⏱, 📋 and 🍾 are your cues on the 🎤 bar. Confident answers are accepted, right or wrong; guesses are a symptom of corruption. Never say which filings were lies.
+    Two minutes to file, then 📋 each question: Trabolta reads the result on the TV; when he has finished, the next. After Q3, 🍾 Truth or Dare (about five spins). ⏱, 📋 and 🍾 are your cues on the 🎤 bar. Guesses are a symptom of corruption. Never say which filings were lies.
     - Filings closed, done when Night.r1_closed == true
     - Q1 read, done when Night.results_q >= 1
     - Q2 read, done when Night.results_q >= 2
     - Q3 read, done when Night.results_q >= 3
+    - 🍾 Truth or Dare, done when Night.bottle_picks >= 5 or Night.bottle_done == true
   buttons: uncertain_answer
 
 // DRAFT for sign-off

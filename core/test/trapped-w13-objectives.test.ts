@@ -281,7 +281,8 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const n = boot();
     for (const c of TO_TRUTH_1) n.press(c);
     n.press("close_the_filing");
-    n.press("read_the_results");
+    // Wave 18b (R21): the bottle after all three results.
+    for (let q = 0; q < 3; q++) n.press("read_the_results");
     n.press("spin_the_bottle");
     // The server's pick lands as `bottle_landed` (the Sim has no random).
     const spin = n.signal("bottle_landed", "g2");
@@ -289,7 +290,7 @@ describe("Trapped in the Internet — wave 13: the cards that ask", () => {
     const card = spin.find((m) => m.kind === "widget" && m.text.startsWith("🍾 The bottle landed on you"))!;
     expect(card).toMatchObject({ moment: "big", audience: [pick.id] });
     // The pickup line (after truth.txt, both branches).
-    for (const c of ["read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
+    for (const c of ["second_hunt_preview", "start_the_second_hunt", "five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock", "final_reveal", "bobbing_for_truth"]) {
       if (v(n.sim, "Night.bottle_open") === true) n.signal("truth_answered", pick.id, undefined, "Clippy");
       n.press(c);
     }
@@ -491,12 +492,12 @@ function nightSteps(ending: "song" | "hand_jive"): Step[] {
     ["g6 back", (n) => { n.signal("back from the bathroom", "g6"); }],
     press("close_the_filing"),
     press("read_the_results"),
-    press("spin_the_bottle"),
-    ["the bottle lands on g2", (n) => { n.signal("bottle_landed", "g2"); }],
-    by("truth_answered", "g2", "Clippy"),
     by("uncertain_answer", "g5", "Clippy"),
     press("read_the_results"),
     press("read_the_results"),
+    press("spin_the_bottle"),
+    ["the bottle lands on g2", (n) => { n.signal("bottle_landed", "g2"); }],
+    by("truth_answered", "g2", "Clippy"),
     press("second_hunt_preview"),
     press("start_the_second_hunt"),
     ["+2 min (the Truther Download)", (n) => { n.tick(125); }],

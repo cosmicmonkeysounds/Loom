@@ -50,11 +50,12 @@ then **⚖** for the verdict when they finish. Optional set pieces
 
 **1b. The First Moment of Truth, in order.** V6 opens a two-minute filing
 window. ⏱ closes it (or it closes itself: then ⏱ ticks and NEXT is 📋). Then 📋 once per question (Q1, Q2,
-Q3): Clippy reads the result in the Desktop room and the filings settle.
-After each 📋, 🍾 up to five times: the server picks a program anywhere in the house,
-the TV asks "Truth or dare?", their phone asks too; Clippy settles a Truth
-with 🗣 / 🙅. 📋 refuses while a bottle is open; 🍾 refuses after five. After
-Q3's bottle, 📺 (it refuses until all three 📋 are read). Rounds never reopen.
+Q3): Trabolta reads the result on the TV and the filings settle.
+After the third 📋, 🍾 Truth or Dare (NEXT offers five spins; more is fine):
+the server picks a program not picked tonight, anywhere in the house, the TV
+asks "Truth or dare?", their phone asks too; Clippy settles a Truth with 🗣 /
+🙅. 🍾 refuses before all three 📋 are read and while a truth is open; 📺
+refuses while a truth is open. Then 📺. Rounds never reopen.
 
 **2. Watch Run → Mind** (wave 12, [`trabolta-mind.md`](./trabolta-mind.md)).
 On the story mind his stage follows the phase by itself (*set by story*):

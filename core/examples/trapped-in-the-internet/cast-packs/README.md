@@ -65,7 +65,8 @@ addresses, codes, where things are kept).
   --filter @loom/core titi:facts` regenerates the story and
   `generated/print-stacks.md`); the server judges every 📝 filing (the
   confidence slider, 1–100); the First Moment of Truth is ⏱ → 📋 per question
-  → 🍾 the bottle; a host's verdict **marks** a program and the Antivirus
+  (Trabolta reads it on the TV) → 🍾 the bottle after the third (wave 18b);
+  a host's verdict **marks** a program and the Antivirus
   escort them (`# quarantine`); Truthcoin moves from each program's Wallet
   (CRA approves every third transfer); Clippy and the Antivirus have Quest
   Logs in their booths; the Installation Wizard (Julia) is a voice, the tent

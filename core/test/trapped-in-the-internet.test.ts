@@ -344,19 +344,19 @@ describe("Trapped in the Internet — compile", () => {
     const admin = by("admin");
     expect(admin.length).toBeGreaterThan(40);
     for (const a of admin) expect(ev, a).toContain(a);
-    // The First Moment of Truth's cues, in running order: ⏱ close, 📋 results, 🍾 the bottle (off LAST / NEXT).
+    // The First Moment of Truth's cues, in running order: ⏱ close, 📋 results, then 🍾 the bottle after Q3 (wave 18b: a spine row).
     expect(admin).not.toContain("truth_or_dare");
     expect(admin.slice(admin.indexOf("first_moment_of_truth"), admin.indexOf("first_moment_of_truth") + 4)).toEqual(["first_moment_of_truth", "close_the_filing", "read_the_results", "spin_the_bottle"]);
-    expect(m.interactions.get("spin_the_bottle")!.sequence).toBe(false);
+    expect(m.interactions.get("spin_the_bottle")!.sequence).toBe(true);
     // The cue sheet's NEXT (T7-01): 📋 is pressed again and again (per
-    // question); 🗜 is an anytime cue (the tent's queue), and neither forced
-    // majority is the running order (both are fallbacks).
-    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["read_the_results"]);
+    // question), then 🍾 (about five spins); 🗜 is an anytime cue (the tent's
+    // queue), and neither forced majority is the running order (both are fallbacks).
+    expect(admin.filter((a) => m.interactions.get(a)!.repeat)).toEqual(["read_the_results", "spin_the_bottle"]);
     expect(m.interactions.get("zip_everyone_out")!.sequence).toBe(false);
     for (const a of ["force_majority_stay", "force_majority_leave"]) expect(m.interactions.get(a)!.sequence, a).toBe(false);
     expect(m.interactions.get("close_the_filing")!.label).toBe("⏱ Close round-one filings now (auto at 2 min)");
     expect(m.interactions.get("read_the_results")!.label).toBe("📋 Results: the next question (press for Q1, Q2, Q3)");
-    expect(m.interactions.get("spin_the_bottle")!.label).toBe("🍾 Spin the bottle (Truth or Dare, five per question)");
+    expect(m.interactions.get("spin_the_bottle")!.label).toBe("🍾 Spin the bottle: Truth or Dare (after the three results)");
     expect(ints.filter((i) => i.who === "agent").map((i) => `${i.id}:${i.limit}`)).toEqual([
       "snoop:8",
       "flicker_the_screens:3",
@@ -423,6 +423,19 @@ describe("Trapped in the Internet — compile", () => {
       res_consensus: "0",
       res_said: "none",
       res_answer: "none",
+      res_accepted: "0",
+      res_guesses: "0",
+      t1: "none",
+      t2: "none",
+      t3: "none",
+      t4: "none",
+      t5: "none",
+      t6: "none",
+      t7: "none",
+      t8: "none",
+      v_true: "0",
+      v_lies: "0",
+      v_none: "0",
       virus_planted: "false",
       excel_planted: "false",
       virus_planter: "none",
@@ -900,8 +913,13 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(beats(r1)).toContain("Question Results");
     expect(v(sim, "Kernel.res_filed")).toBe(3);
     expect(v(sim, "Kernel.res_consensus")).toBe(2);
-    expect(lines(r1, "Clippy").some((t) => t.startsWith("Question 1. 3 filed. No consensus."))).toBe(true);
-    expect(lines(r1, "Clippy").some((t) => t.trim() === "Calculator said Eleven years, certain. OpenOffice said 11, certain. Winamp said eleven, not certain.")).toBe(true);
+    // Wave 18b (Q6): Trabolta reads it, then the accepted and guess counts.
+    expect(lines(r1, "Trabolta").some((t) => t.startsWith("Question 1. 3 filed. No consensus."))).toBe(true);
+    expect(lines(r1, "Trabolta").some((t) => t.trim() === "Calculator said Eleven years, certain. OpenOffice said 11, certain. Winamp said eleven, not certain.")).toBe(true);
+    expect(lines(r1, "Trabolta")).toContain("3 accepted. 0 guesses. A guess is a symptom of corruption. Antivirus, you know what to do.");
+    expect(lines(r1, "Clippy")).toEqual(["Question 2, coming up!"]);
+    expect(said(r1).filter((e) => e.text.includes("accepted, right or wrong"))).toEqual([]);
+    expect(cues(r1)).toContain("fact_read H1");
     for (const g of ["g1", "g3", "g5"]) expect(v(sim, `${g}.truths_accepted`), g).toBe(ta0[g]! + 1);
     expect(sim.scoreOf("g1")).toBe(s1 + 50);
     expect(dm(r1, "g1")).toEqual(["Your fact for round 1 Q1 is accepted, Calculator. Trabolta thanks you. +50 Truthcoin."]);
@@ -911,7 +929,8 @@ describe("Trapped in the Internet — the whole night", () => {
     const s6 = sim.scoreOf("g6");
     const r2 = sim.signal("read_the_results");
     expect(v(sim, "Kernel.res_filed")).toBe(1);
-    expect(lines(r2, "Clippy").some((t) => t.startsWith("Question 2. 1 filed. No consensus."))).toBe(true);
+    expect(lines(r2, "Trabolta").some((t) => t.startsWith("Question 2. 1 filed. No consensus."))).toBe(true);
+    expect(v(sim, "Kernel.res_accepted")).toBe(1);
     expect(sim.scoreOf("g6")).toBe(s6 + 50);
     expect(dm(r2, "g6")).toEqual(["Your fact for round 1 Q2 is accepted, Broken Ask Jeeves. Trabolta thanks you. +50 Truthcoin."]);
     expect(v(sim, "Kernel.q2")).toBe("lie");
@@ -925,7 +944,9 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(cues(r3)).toContain("fact_judged g12 H3 marked");
     expect(sim.scoreOf("g12")).toBe(s12);
     const r4 = sim.signal("read_the_results");
-    expect(hosts(r4)).toEqual(["📋 All three results are read. Next: 📺 Preview hunt 2."]);
+    expect(v(sim, "Kernel.res_guesses")).toBe(1);
+    expect(cues(r3)).toContain("fact_read H3");
+    expect(hosts(r4)).toEqual(["📋 All three results are read. Next: 🍾 Truth or Dare, then 📺 Preview hunt 2."]);
     expect(beats(r4)).toEqual([]);
 
     // 🤷 marks for reinstallation (wave 4, lane E): not captured. Wave 18
@@ -3352,18 +3373,25 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     expect(v(sim, "Kernel.q5")).not.toBe("accurate");
   });
 
-  it("the bottle: five picks per question, Truth asks Trabolta's question, Dare / a refusal marks", { timeout: SLOW }, () => {
+  it("the bottle: after all three results, about five spins, Truth asks Trabolta's question, Dare / a refusal marks", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     const early = fire(sim, "spin_the_bottle");
     expect(beats(early)).toEqual([]);
-    expect(hosts(sim, early)).toEqual(["🍾 Read a question's results first (📋)."]);
+    expect(hosts(sim, early)).toEqual(["🍾 Truth or Dare comes after all three results: read them first (📋)."]);
     advance(sim, 120); // the window shuts
     const res = fire(sim, "read_the_results");
     expect(beats(res)).toContain("Question Results");
-    expect(lines(res, "Clippy").some((t) => t.startsWith("Question 1. Nobody filed an answer."))).toBe(true);
-    expect(v(sim, "Night.bottle_q")).toBe(1);
-    // The spin asks the server for a random cleared program at the Desktop.
+    expect(lines(res, "Trabolta").some((t) => t.startsWith("Question 1. Nobody filed an answer."))).toBe(true);
+    expect(lines(res, "Clippy")).toContain("Question 2, coming up!");
+    // Between the questions the bottle waits (wave 18b, R21).
+    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Truth or Dare comes after all three results: read them first (📋)."]);
+    fire(sim, "read_the_results");
+    const third = fire(sim, "read_the_results");
+    expect(lines(third, "Clippy")).toContain("That's all three! And before the next hunt: TRUTH OR DARE. I have a bottle.");
+    expect(v(sim, "Night.bottle_q")).toBe(3);
+    expect(hosts(sim, fire(sim, "read_the_results"))).toEqual(["📋 All three results are read. Next: 🍾 Truth or Dare, then 📺 Preview hunt 2."]);
+    // The spin asks the server for a random cleared program.
     const spin = fire(sim, "spin_the_bottle");
     expect(v(sim, "Night.bottle_open")).toBe(true);
     expect(v(sim, "Night.bottle_round")).toBe(1);
@@ -3381,9 +3409,11 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     expect(poll.audience).toEqual(["g2"]);
     expect(poll.params).toEqual({ thread: "Trabolta", options: "Truth | Dare", moment: "big" }); // wave 18: a big card that asks
     expect(composeGuestMessages(sim, land).find((m) => m.kind === "widget" && m.widget?.kind === "poll")?.channel).toBe("dm:Trabolta");
-    // Open bottle: no second spin, no next results.
+    // Open bottle: no second spin, no preview (D15).
     expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 The bottle is still open: 🗣 Answered or 🙅 Refused first."]);
-    expect(hosts(sim, fire(sim, "read_the_results"))).toEqual(["📋 The bottle is still open: 🗣 Answered or 🙅 Refused first."]);
+    const held = fire(sim, "second_hunt_preview");
+    expect(hosts(sim, held)).toEqual(["📺 The bottle is still open: 🗣 / 🙅 first."]);
+    expect(v(sim, "Night.step")).toBe(6);
     // Dare → marked for reinstallation.
     const dare = fire(sim, "poll answered", "g2", { index: 1, card: 1 });
     expect(casts(dare).some((b) => b.cue.includes("🎩 Microsoft Excel chose Dare. Programs choose Truth."))).toBe(true);
@@ -3394,7 +3424,7 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     const again = fire(sim, "poll answered", "g2", { index: 0, card: 1 });
     expect(casts(again)).toEqual([]);
     expect(v(sim, "Night.truth_n")).toBe(0);
-    // The next spin leaves out the picked (and the marked).
+    // The next spin leaves out the picked (and the marked): nobody is picked twice tonight.
     const spin2 = fire(sim, "spin_the_bottle");
     const pick2 = cues(spin2).find((c) => c.startsWith("pick "))!;
     expect(pick2).not.toContain("g2");
@@ -3433,33 +3463,24 @@ describe("Trapped in the Internet — 📝 File a fact (K-24 + N-05; wave 4 judg
     fire(sim, "chose_dare", "g5", null, "Clippy");
     expect(v(sim, "g5.marked_for")).toBe("chose Dare");
     expect(v(sim, "Night.bottle_open")).toBe(false);
-    // Five picks, then the next question's results reset the count.
+    // Five picks are NEXT's budget, not a cap (D15): a sixth still spins and tells # hosts.
     fire(sim, "spin_the_bottle");
     fire(sim, "bottle_landed", "g6");
     fire(sim, "poll answered", "g6", { index: 0, card: 5 });
     fire(sim, "truth_answered", "g6", null, "Clippy");
     expect(v(sim, "Night.bottle_picks")).toBe(5);
-    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Five picks for question 1. Read the next results (📋)."]);
-    fire(sim, "read_the_results");
-    expect(v(sim, "Night.bottle_picks")).toBe(0);
-    expect(v(sim, "Night.bottle_q")).toBe(2);
-    const spin3 = fire(sim, "spin_the_bottle");
-    expect(cues(spin3).find((c) => c.startsWith("pick "))).toContain("g1"); // picked for Q1, open again for Q2
-    // An empty pool (the server's `else`): the bottle closes.
+    const sixth = fire(sim, "spin_the_bottle");
+    expect(hosts(sim, sixth)).toEqual(["🍾 Past the five on NEXT: 📺 Preview hunt 2 when you're done."]);
+    expect(v(sim, "Night.bottle_open")).toBe(true);
+    // An empty pool (the server's `else`): the bottle closes for good.
     const empty = fire(sim, "bottle_empty");
     expect(v(sim, "Night.bottle_open")).toBe(false);
-    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left to pick for question 2. Read the next results (📋)."]);
-    // Question 3 has no next results: its readouts point at the preview.
-    fire(sim, "read_the_results");
-    expect(v(sim, "Night.bottle_q")).toBe(3);
-    fire(sim, "spin_the_bottle");
-    expect(hosts(sim, fire(sim, "bottle_empty"))).toEqual(["🍾 Nobody left to pick for question 3. Next: 📺 Preview hunt 2."]);
-    sim.setVar("Night.bottle_picks", "5");
-    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Five picks for question 3. Next: 📺 Preview hunt 2."]);
+    expect(v(sim, "Night.bottle_done")).toBe(true);
+    expect(hosts(sim, empty)).toEqual(["🍾 Nobody left to pick. Next: 📺 Preview hunt 2."]);
     // After the preview the bottle and the results are over.
     fire(sim, "second_hunt_preview");
     expect(v(sim, "Night.poll")).toBe("none");
-    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Read a question's results first (📋)."]);
+    expect(hosts(sim, fire(sim, "spin_the_bottle"))).toEqual(["🍾 Truth or Dare comes after all three results: read them first (📋)."]);
   });
 });
 
@@ -4185,10 +4206,10 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(v(sim, "g5.fact_a2")).toBe("Mister Pickles");
     advance(sim, 120);
     const r1 = fire(sim, "read_the_results");
-    expect(lines(r1, "Trabolta")).toEqual(["Your fact for round 1 Q1 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
+    expect(lines(r1, "Trabolta").filter((t) => t.startsWith("Your fact"))).toEqual(["Your fact for round 1 Q1 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
     expect(hosts(r1)).toContain("📝 Winamp's filing for H1 is accepted.");
     const r2 = fire(sim, "read_the_results");
-    expect(lines(r2, "Trabolta")).toEqual(["Your fact for round 1 Q2 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
+    expect(lines(r2, "Trabolta").filter((t) => t.startsWith("Your fact"))).toEqual(["Your fact for round 1 Q2 is accepted, Winamp. Trabolta thanks you. +50 Truthcoin."]);
     expect(hosts(r2)).toContain("📝 Winamp's filing for H2 is accepted.");
     expect(v(sim, "Kernel.q1")).toBe("accurate");
     expect(v(sim, "Kernel.q2")).toBe("accurate");
@@ -4296,7 +4317,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt");
     const early = fire(sim, "spin_the_bottle");
     expect(beats(early)).toEqual([]);
-    expect(hosts(early)).toEqual(["🍾 Read a question's results first (📋)."]);
+    expect(hosts(early)).toEqual(["🍾 Truth or Dare comes after all three results: read them first (📋)."]);
     expect(hosts(fire(sim, "read_the_results"))).toEqual(["📋 Close the filings first (⏱), then read the results."]);
     expect(hosts(fire(sim, "close_the_filing"))).toEqual(["⏱ No filing window is open."]);
     fireAll(sim, "hunt_time_up", "first_moment_of_truth");
@@ -4308,7 +4329,7 @@ describe("Trapped in the Internet — wave 3 story fixes", () => {
     expect(hosts(fire(sim, "close_the_filing"))).toEqual(["⏱ No filing window is open."]);
     expect(beats(fire(sim, "read_the_results"))).toContain("Question Results");
     fireAll(sim, "read_the_results", "read_the_results", "second_hunt_preview");
-    expect(hosts(fire(sim, "spin_the_bottle"))).toEqual(["🍾 Read a question's results first (📋)."]);
+    expect(hosts(fire(sim, "spin_the_bottle"))).toEqual(["🍾 Truth or Dare comes after all three results: read them first (📋)."]);
     expect(hosts(fire(sim, "read_the_results"))).toEqual(["📋 Close the filings first (⏱), then read the results."]);
 
     const done = boot();
@@ -5691,7 +5712,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     fire(sim, "close_the_filing");
     fire(sim, "read_the_results");
     const r2 = fire(sim, "read_the_results");
-    expect(lines(r2, "Clippy")).toContain("Trabolta accepts it. The answer is: Mister Pickles.");
+    expect(lines(r2, "Trabolta")).toContain("I accept it. The answer is: Mister Pickles.");
   });
 
   it("B13: a filing a host overrides to accurate reads what was filed when the judge gave no key answer", { timeout: SLOW }, () => {
@@ -5711,7 +5732,7 @@ describe("Trapped in the Internet — wave 6 (story lane)", () => {
     fire(sim, "close_the_filing");
     fire(sim, "read_the_results");
     const r2 = fire(sim, "read_the_results");
-    expect(lines(r2, "Clippy")).toContain("Trabolta accepts it. The answer is: Pickles the Cat.");
+    expect(lines(r2, "Trabolta")).toContain("I accept it. The answer is: Pickles the Cat.");
   });
 
   it("B6: clearance posts one \"open now\" notice: the house rooms and # task-manager together", () => {

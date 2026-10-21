@@ -195,20 +195,23 @@ Internet. Then:
    Trabolta is reading."* A closed round never reopens: a question nobody
    filed never comes back.
 2. **📋 Results, one question at a time** (you press 📋 on your bar for Q1,
-   then Q2, then Q3; it stays your cue until the third). Your phone shows that question's result in the Desktop
-   room; read it aloud. Three shapes: **CONSENSUS** (every answer matches and
-   everyone was 100% sure: Trabolta accepts it and you read the answer) ·
-   **nobody filed** (*"We have a backup. It's called Truth or Dare, and I
-   have a bottle."*) · **no consensus** (the list of what everyone told
-   Trabolta: read it, then *confident answers are accepted, right or wrong;
-   guesses are a symptom of corruption. Antivirus, you know what to do.*).
-   The app settles each filing as you read: +50 Truthcoin for an accepted
+   then Q2, then Q3; it stays your cue until the third). **Trabolta reads
+   the result on the TV** (the screens show every filing); you react and
+   keep the room with him. Three shapes: **CONSENSUS** (every answer matches
+   and everyone was 100% sure: he accepts it and says the answer) ·
+   **nobody filed** (he has nothing; you: *"That's okay! That's okay."*) ·
+   **no consensus** (he reads what everyone told him, then how many were
+   accepted and how many were guesses: *"A guess is a symptom of
+   corruption. Antivirus, you know what to do."*). When he has finished,
+   you say *"Question two, coming up!"* (or, after the third, *"That's all
+   three! And before the next hunt: TRUTH OR DARE. I have a bottle."*).
+   The app settles each filing as he reads: +50 Truthcoin for an accepted
    answer, marked for reinstallation for a guess. **Never say which filings
    were lies**: the room hears "accepted" for every confident answer.
-3. **🍾 The bottle.** After each question you spin it (🍾 on your bar) up to
-   **five times**. The server picks a cleared program who has not been
-   picked for this question, wherever they are in the house (call them
-   forward); the TV says *"{name}. Truth or dare?"*
+3. **🍾 The bottle, after all three results.** Spin it (🍾 on your bar)
+   about **five times** (NEXT offers five; more if the room wants it). The
+   server picks a cleared program who has not been picked tonight, wherever
+   they are in the house (call them forward); the TV says *"{name}. Truth or dare?"*
    and their phone asks. **Dare** → marked for reinstallation (programs
    choose Truth). **Truth** → Trabolta asks them a personal question on the
    TV; make them answer it in front of everyone, then press **🗣 Truth
@@ -216,8 +219,8 @@ Internet. Then:
    Truthcoin; no scan). Won't answer → **🙅 Truth refused** (two taps):
    marked, and the Antivirus come for them. A dead phone → **🎩 Chose Dare**
    (two taps) does the same as their tap.
-4. After five spins, 📋 for the next question's results. After Q3, preview
-   hunt 2 and fire **📓 Hunt 2** from your bar when you're ready.
+4. After the spins, a host previews hunt 2 (📺: it waits while a truth is
+   open), then fire **📓 Hunt 2** from your bar when you're ready.
 
 **📺 The ad hijack** (CI 4). You begin previewing round 2; an ad takes over
 every screen. A **private message from Trabolta** lands in your booth (and
@@ -331,17 +334,17 @@ answer filed with Trabolta on the phone is judged. Accurate → accepted; filed
 100% sure → accepted even if nonsensical; wrong at normal or low confidence,
 or a clear guess → corruption: the Antivirus escort them. Two-minute
 last-chance window: file NOW; you close it with ⏱ on your 🎤 bar (or it
-closes itself); a closed round never reopens. Then 📋 per question: read the result
-in the Desktop room (CONSENSUS / nobody filed / what everyone told Trabolta),
-say that confident answers are accepted right or wrong and guesses are a
-symptom of corruption; the app settles the filings (+50 accepted, a mark for
-a guess). Never say which filings were lies. Between questions, the bottle:
-🍾 up to five times per question; Trabolta names the program on the TV, their
+closes itself); a closed round never reopens. Then 📋 per question: Trabolta
+reads the result on the TV (CONSENSUS / nobody filed / what everyone told
+him, then the accepted and guess counts); when he has finished, the next 📋.
+Guesses are a symptom of corruption; the app settles the filings (+50
+accepted, a mark for a guess). Never say which filings were lies. After Q3,
+Truth or Dare: 🍾 about five times; Trabolta names the program on the TV, their
 phone asks Truth or Dare. Dare → marked (dead phone: 🎩 on their card).
 Truth → Trabolta asks a personal question; make them answer it in front of
 everyone: 🗣 Truth answered when they do, 🙅 Truth refused if they won't
-(marked and escorted). After five spins, the next question; after Q3, the
-second hunt is previewed. Ribbons always allowed.
+(marked and escorted). After the spins, the second hunt is previewed.
+Ribbons always allowed.
 
 **CI 4/X · The malware.** Preview round 2; an ad hijacks the screens. Trabolta's
 private message: "Don't let everyone know but if the malware continues we are

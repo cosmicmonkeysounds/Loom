@@ -99,11 +99,11 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     for (const i of others) expect(i.act, i.id).toBeUndefined();
   });
 
-  it("the act split is B12 C5 D8 E13 Anytime6 F12 G12 with 39 spine and 29 asides", () => {
+  it("the act split is B12 C5 D8 E13 Anytime6 F12 G12 with 40 spine and 28 asides", () => {
     const acts = cueActs(rowsOf(Sim.fromSources(SRC)));
     const shape = (a: CueAct) => [a.code ?? a.title, a.rows.length, a.spine.length, a.asides.length];
     expect(acts.map(shape)).toEqual([
-      ["B", 12, 8, 4],
+      ["B", 12, 9, 3], // wave 18b: 🍾 is a spine row after 📋 ×3
       ["C", 5, 2, 3],
       ["D", 8, 5, 3],
       ["E", 13, 1, 12],
@@ -111,8 +111,8 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
       ["F", 12, 12, 0],
       ["G", 12, 11, 1],
     ]);
-    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(39);
-    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(29);
+    expect(acts.reduce((s, a) => s + a.spine.length, 0)).toBe(40);
+    expect(acts.reduce((s, a) => s + a.asides.length, 0)).toBe(28);
     // The two `act: Anytime` lines are one act (💡, the reinstallation cues,
     // and wave 11's 👑 / 🔧, appended last so no cue number moved).
     const anytime = acts.find((a) => a.state === "anytime")!;
@@ -159,8 +159,8 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     // 📋 between questions: it stays NEXT.
     expect(sheet(sim)).toMatchObject({ last: 9, next: 9, focus: "B" });
     pressAll(sim, ["read_the_results", "read_the_results"]);
-    // After 📋 ×3: NEXT is C's first cue.
-    expect(sheet(sim)).toEqual({ last: 9, next: 13, focus: "C", starting: true });
+    // After 📋 ×3: NEXT is 🍾 Truth or Dare (wave 18b, R21), still B.
+    expect(sheet(sim)).toMatchObject({ last: 9, next: 10, focus: "B" });
     pressAll(sim, ["second_hunt_preview", "start_the_second_hunt"]);
     // The hour: the timers run it, nothing to press.
     expect(sheet(sim)).toMatchObject({ last: 14, next: null, focus: "C" });
