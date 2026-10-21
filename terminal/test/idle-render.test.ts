@@ -14,6 +14,7 @@ import { parseScreenState } from "../src/screen.ts";
 // A server render runs no effects; `useLayoutEffect` only warns there.
 vi.spyOn(console, "error").mockImplementation(() => {});
 
+const desk = parseScreenState({ attract: false, now: 1, character: { id: "Trabolta", hidden: true, awake: false }, night: { phase: "bingo" } }, 1);
 const awake = parseScreenState({ attract: false, now: 1, character: { id: "Trabolta", hidden: false, awake: true }, night: { phase: "hunt_1" } }, 1);
 
 describe("the scan box", () => {
@@ -46,6 +47,9 @@ describe("the idle show", () => {
       for (const target of ["wall", "tv"] as const) {
         expect(renderToStaticMarkup(createElement(Attract, { name, state: null, character: "Trabolta", target, corner: null }))).not.toMatch(/trabolta/iu);
         expect(renderToStaticMarkup(createElement(IdleShow, { name, state: awake, asleep: true, character: "Trabolta", target, active: true }))).not.toMatch(/trabolta/iu);
+        // D19 (wave 18b): from the Desktop on, an asleep screen may name him only as the owner, "Jean Trabolta".
+        const html = renderToStaticMarkup(createElement(IdleShow, { name, state: desk, asleep: true, character: "Trabolta", target, active: true }));
+        expect(html.replace(/Jean Trabolta/gu, ""), name).not.toMatch(/trabolta/iu);
       }
     }
   });

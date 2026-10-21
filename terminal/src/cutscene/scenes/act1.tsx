@@ -317,7 +317,7 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
         </div>
       )}
       <Marquee t={reduced ? 0 : t} speed={120} className="a1-ticker gold a1-bingo-ticker" style={{ opacity: progress(t, B.card, 600) }}>
-        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ NO NAMES: USE YOUR COMPUTER MEMORY ★
+        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ ONE LINE THROUGH THE CENTRE IS A BINGO ★
       </Marquee>
     </TvStage>
   );
@@ -429,7 +429,7 @@ function BingoTimeTv({ t, sfx, reduced }: SceneProps) {
       </div>
       <Confetti t={t} start={burst} dur={4500} density={reduced ? 0 : 1} seed={6 + Math.floor(burst / 1000)} />
       <Marquee t={reduced ? 0 : t} speed={140} className="a1-ticker gold" style={{ opacity: progress(t, 2600, 600) }}>
-        ★ WHO HAS A BINGO? ★ READ YOUR LINE FROM MEMORY ★ SAVE THE CENTRE SQUARE FOR LAST ★
+        ★ WHO HAS A BINGO? ★ READ YOUR LINE ALOUD ★ SAVE THE CENTRE SQUARE FOR LAST ★
       </Marquee>
     </TvStage>
   );
@@ -1693,7 +1693,7 @@ export const ACT1_TRIGGERS = {
 export const SCENES: SceneDef[] = [
   { id: "power_on", when: [{ moment: "beat", name: "Power On" }], ms: POWER_ON_MS, tv: PowerOnTv, wall: PowerOnWall, priority: 1 },
   { id: "call_desktop", when: [{ slide: "call_desktop" }], ms: "hold", tv: CallDesktopTv, wall: CallDesktopWall },
-  { id: "bingo", when: [{ slide: "bingo" }], ms: "hold", tv: BingoTv, wall: BingoWall, countdown: "tv" },
+  { id: "bingo", when: [{ slide: "bingo" }], ms: "hold", tv: BingoTv, wall: BingoWall, countdown: "tv", owner: true },
   { id: "bingo_time", when: [{ slide: "bingo_time" }], ms: "hold", tv: BingoTimeTv, wall: BingoTimeWall },
   { id: "corrupted_code", when: [{ moment: "beat", name: "Corrupted Code" }], ms: 12_000, tv: CorruptedTv, wall: CorruptedWall, priority: 2 },
   { id: "trabolta_introduction", when: [{ moment: "beat", name: "Trabolta Introduction" }], ms: INTRO_MS, tv: IntroTv, wall: IntroWall, priority: 5, namesCharacter: true },

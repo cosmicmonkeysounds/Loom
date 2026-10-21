@@ -143,7 +143,9 @@ describe("act 1 — the fiction", () => {
         const View = target === "tv" ? s.tv! : s.wall!;
         for (const t of [0, 400, 1500, 3000, 6000, 9000, ms - 500, HISTORY_T]) {
           const html = renderToStaticMarkup(createElement(View, props({ t, value: valueOf(s.id), state: before })));
-          expect(html.toLowerCase().includes("trabolta"), `${s.id} ${target} @${t}`).toBe(false);
+          // D19 (wave 18b): an owner scene may name him only as the owner, "Jean Trabolta".
+          const text = s.owner === true ? html.replace(/Jean Trabolta/gu, "") : html;
+          expect(text.toLowerCase().includes("trabolta"), `${s.id} ${target} @${t}`).toBe(false);
         }
       }
     }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MYSTIFY_TRAIL, mystifyInit, mystifyStep } from "../src/attract.ts";
 import { FACE_TIPS, IDLE_ADS } from "../src/idle-show/ads.ts";
 import { ATTENTION_EVERY_MS, ATTENTION_IDLE_MS, ATTENTION_SHOW_MS, THANKS, adGag, attentionOn, duckLane, gagText, ringsAt } from "../src/idle-show/gags.ts";
-import { PHASE_POOLS, eligible, fillCopy, idleContextOf, phasePool, y2kLeftAt, type IdleContext, type PhasePool } from "../src/idle-show/pools.ts";
+import { PHASE_POOLS, eligible, fillCopy, idleContextOf, ownerMay, phasePool, y2kLeftAt, type IdleContext, type PhasePool } from "../src/idle-show/pools.ts";
 import { screenLayers } from "../src/slides.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, POPUP_KINDS } from "../src/idle-show/popups.ts";
 import { drawAt, hash32, permutation, mulberry32 } from "../src/idle-show/rng.ts";
@@ -14,6 +14,8 @@ import type { ScreenState } from "../src/screen.ts";
 import { parseScreenState } from "../src/screen.ts";
 
 const FORBIDDEN = /trabolta|alexa|kernel/iu;
+/** D19 (wave 18b): an `owner` item may name him only as "Jean Trabolta", in the third person. */
+const ownerless = (text: string, owner: boolean | undefined) => (owner === true ? text.replace(/Jean Trabolta/gu, "") : text);
 
 function ctxOf(pool: PhasePool, o: Partial<IdleContext> = {}): IdleContext {
   return { pool, phase: "", names: false, character: "Trabolta", target: "wall", scan: true, face: true, y2kLeft: 600, ...o };
@@ -46,12 +48,26 @@ describe("the idle show's copy", () => {
 
   it("never names the character on a screen that may not (every asleep-pool string, filled)", () => {
     for (const ctx of quietContexts()) {
-      for (const a of adPool(ctx)) for (const t of [a.id, a.kicker ?? "", a.title, a.body, a.button]) expect(fillCopy(t, ctx)).not.toMatch(FORBIDDEN);
-      for (const p of popupPool(ctx)) for (const t of [p.id, p.title, p.text, ...p.buttons.map((b) => b.label)]) expect(fillCopy(t, ctx)).not.toMatch(FORBIDDEN);
+      for (const a of adPool(ctx)) for (const t of [a.id, a.kicker ?? "", a.title, a.body, a.button]) expect(ownerless(fillCopy(t, ctx), a.owner)).not.toMatch(FORBIDDEN);
+      for (const p of popupPool(ctx)) for (const t of [p.id, p.title, p.text, ...p.buttons.map((b) => b.label)]) expect(ownerless(fillCopy(t, ctx), p.owner)).not.toMatch(FORBIDDEN);
+      // The owner's copy only from the Desktop on (D19), never at the doors.
+      if (!ownerMay(ctx.phase)) expect([...adPool(ctx), ...popupPool(ctx)].some((x) => x.owner === true)).toBe(false);
     }
-    // And nothing anywhere names him outright: his own copy says {character}.
-    for (const a of IDLE_ADS) expect(`${a.id} ${a.kicker ?? ""} ${a.title} ${a.body} ${a.button}`).not.toMatch(FORBIDDEN);
-    for (const p of POPUP_KINDS) expect(`${p.id} ${p.title} ${p.text} ${p.buttons.map((b) => b.label).join(" ")}`).not.toMatch(FORBIDDEN);
+    // And nothing anywhere names him outright: his own copy says {character}, the owner's "Jean Trabolta".
+    for (const a of IDLE_ADS) expect(ownerless(`${a.id} ${a.kicker ?? ""} ${a.title} ${a.body} ${a.button}`, a.owner)).not.toMatch(FORBIDDEN);
+    for (const p of POPUP_KINDS) expect(ownerless(`${p.id} ${p.title} ${p.text} ${p.buttons.map((b) => b.label).join(" ")}`, p.owner)).not.toMatch(FORBIDDEN);
+    // D19: two or three owner ads, at the doors' end of the night, every one about the video conference or the hunt.
+    const owners = IDLE_ADS.filter((a) => a.owner === true);
+    expect(owners.length).toBeGreaterThanOrEqual(2);
+    expect(owners.length).toBeLessThanOrEqual(3);
+    for (const a of owners) {
+      expect(`${a.title} ${a.body}`).toMatch(/Jean Trabolta/u);
+      expect(a.names).not.toBe(true);
+      expect(a.pools).toEqual(["early"]);
+    }
+    expect(adPool(ctxOf("early", { phase: "" })).some((a) => a.owner === true)).toBe(false);
+    expect(adPool(ctxOf("early", { phase: "arrivals" })).some((a) => a.owner === true)).toBe(false);
+    expect(adPool(ctxOf("early", { phase: "bingo" })).some((a) => a.owner === true)).toBe(true);
     for (const t of [...FACE_TIPS, LOGO_TEXT, LOGO_SUB, CONFIRM_TEXT, DODGED_TITLE, ...THANKS, ...SAVERS.map((s) => s.name), ...Object.values(SCAN_COPY)]) expect(t).not.toMatch(FORBIDDEN);
     for (const g of ["loading", "shake", "won", "popup", "coin", "error"] as const) expect(gagText(g) ?? "").not.toMatch(FORBIDDEN);
   });
