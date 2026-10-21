@@ -851,6 +851,15 @@ export function pressRefused(sim: Sim, batch: readonly SimEvent[]): boolean {
   return refusedPress(sim, sim.log.all(), sim.log.len() - batch.length, first.name);
 }
 
+/** Did the story refuse the signal logged at index `n` (the same judgement
+ *  as `pressRefused`, for a press already in the log) — the screens never
+ *  animate a cue the story turned down (wave 17). False for anything else. */
+export function signalRefusedAt(sim: Sim, n: number): boolean {
+  const events = sim.log.all();
+  const e = events[n];
+  return e !== undefined && e.type === "signal" && refusedPress(sim, events, n, e.name);
+}
+
 /** Was the scan `batch` (a `Sim.scan` call just committed) refused by the
  *  story (D1): it did nothing but tell a staff room why — at least one
  *  staff-only broadcast ("🗣 Not now…"), and otherwise only diagnostics or

@@ -856,6 +856,16 @@ export class EventRuntime {
       ...(init.now !== undefined ? { now: init.now } : {}),
       muted: voiceMuted,
       onMute: (muted) => this.store.saveVoiceMuted(muted),
+      // The screens' signal allowlist (wave 17): the map's own king signals
+      // are device moments, the facts book's confirm events never are.
+      signals: () => {
+        const king = this.spatial.kingRef()?.prop;
+        const book = this.factsBook();
+        return {
+          ...(king !== undefined ? { devices: (["won", "lost", "drawn", "hit", "fallen"] as const).map((w) => kingSignal(king, w)) } : {}),
+          ...(book !== null ? { quiet: Object.values(book.confirm) } : {}),
+        };
+      },
     });
   }
 

@@ -2,11 +2,14 @@
 //! terminals' cutscenes key on. Live moments only (a fold's first look is
 //! history), house-wide only, never a secret; the public story vars, with
 //! the award winner only while an award slide is up; and the answer stays
-//! lean late at night with a full ring.
+//! lean late at night with a full ring. Signals are allowlisted: admin cues
+//! the story took, `do pick` draws and the devices' — never a guest's or a
+//! booth's press, a check-in or a facts verdict (each about one person).
 
 import { describe, expect, it } from "vitest";
 
-import { MOMENT_RING, ScreenWatch, momentOf, secretMomentNames, type ScreenMoment } from "../server/routes/screen.ts";
+import { MOMENT_RING, ScreenWatch, momentOf, pickNamesOf, secretMomentNames, type ScreenMoment } from "../server/routes/screen.ts";
+import { notePress } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
 const WHO = { name: "Hall", spot: "hall", view: "auto", character: "" };
@@ -34,6 +37,25 @@ LOCATION The Server Room
 
 CHARACTER Vault
   secret: true
+
+INTERACTION the big moment
+  label: 🎬 The big moment
+  who: admin
+
+INTERACTION server_opens
+  label: 🔓 Open the server room
+  who: admin
+
+INTERACTION vault opened
+  label: Vault
+  who: admin
+
+INTERACTION spin
+  label: 🍾 Spin
+  who: admin
+
+when spin:
+  do pick bottle_landed from [g1] else bottle_empty
 
 when server_opens:
   reveal The Server Room
@@ -90,9 +112,13 @@ describe("the moments ring", () => {
     sim.createPerson("g1", "Winamp", "Program");
     const s = watch(sim);
     s.look();
+    sim.signal("spin"); // the runtime draws the pick as its own signal
     sim.signal("bottle_landed", "g1");
     s.at(12_000);
-    expect(s.look()).toEqual([{ seq: expect.any(Number), at: 12_000, kind: "signal", name: "bottle_landed", who: "Winamp" }]);
+    expect(s.look().filter((m) => m.kind === "signal")).toEqual([
+      { seq: expect.any(Number), at: 12_000, kind: "signal", name: "spin", who: null },
+      { seq: expect.any(Number), at: 12_000, kind: "signal", name: "bottle_landed", who: "Winamp" },
+    ]);
     expect(s.poll().night.bottle_pick).toBe("Winamp");
   });
 
@@ -139,7 +165,7 @@ describe("the moments ring", () => {
   });
 
   it(`keeps the last MOMENT_RING (${MOMENT_RING}), oldest first; a restart (a new sim) starts over`, () => {
-    const sim = Sim.fromSources(STORY);
+    const sim = Sim.fromSources(STORY + Array.from({ length: MOMENT_RING + 5 }, (_, i) => `\nINTERACTION cue_${i}\n  label: ${i}\n  who: admin\n`).join(""));
     const s = watch(sim);
     s.look();
     for (let i = 0; i < MOMENT_RING + 5; i++) sim.signal(`cue_${i}`);
@@ -163,6 +189,130 @@ describe("the moments ring", () => {
     expect(no({ type: "beatEntered", beat: "Login", setting: null, subject: "g1" })).toBeNull();
     expect(no({ type: "signal", name: "the simulation completed", subject: null })).toBeNull();
     expect(no({ type: "directive", verb: "sfx", args: "zip, rooms: The_Desktop", setting: null })).toMatchObject({ kind: "sfx", name: "zip" });
+  });
+});
+
+const PRESSES = `# T
+
+ROLE Program
+
+LOCATION The Desktop
+
+GROUP Hosts
+  joinable: false
+
+CHANNEL hosts
+  kind: faction
+  faction: Hosts
+
+CHARACTER Norton
+
+INTERACTION plant_the_virus
+  label: 💾 Insert a disk
+  who: guest
+
+INTERACTION scan_ok
+  label: ✅ Scan OK
+  who: performer
+  by: Norton
+
+INTERACTION fact_lie
+  label: 📝 Filed fact: confident lie
+  who: performer
+
+INTERACTION y2k_midnight
+  label: 🎆 Midnight
+  who: admin
+
+INTERACTION lights
+  label: 💡 Lights (stagehand only)
+  who: admin
+
+when plant_the_virus for program:
+  set Night.virus = 1
+
+when scan_ok for program:
+  set Night.scans += 1
+
+when checked_in for program:
+  set Night.checkins += 1
+
+when fact_lie for program:
+  set Night.lies += 1
+
+when y2k_midnight:
+  if Night.phase == "y2k":
+    -> Midnight
+  else:
+    broadcast "🎆 Not the Y2K hour yet." to channel(hosts)
+
+== Midnight
+  setting: The Desktop
+Narrator: The year will not render.
+`;
+
+describe("signals are allowlisted", () => {
+  const night = () => {
+    const sim = Sim.fromSources(PRESSES);
+    sim.createPerson("g1", "Excel", "Program");
+    const s = watch(sim);
+    s.look();
+    /** A press the way the runtime journals it (noted, so refusal is judged per batch). */
+    const press = (name: string, subject?: string, actor?: string) => notePress(sim, sim.signal(name, subject, {}, actor ?? null));
+    return { sim, s, press };
+  };
+
+  it("a guest's press, a booth's press, a check-in and a facts verdict are never a moment, nor is who made them", () => {
+    const { s, press } = night();
+    press("plant_the_virus", "g1");
+    press("scan_ok", "g1", "Norton");
+    press("checked_in", "g1");
+    press("fact_lie", "g1");
+    press("fact_accurate", "g1");
+    const ms = s.look();
+    expect(ms).toEqual([]);
+    expect(JSON.stringify(s.poll())).not.toContain("Excel");
+  });
+
+  it("an admin cue the story refused (only a # hosts line) is no moment; the same cue taken is, without a who", () => {
+    const { sim, s, press } = night();
+    press("y2k_midnight");
+    expect(s.look()).toEqual([]);
+    sim.setVar("Night.phase", '"y2k"');
+    press("y2k_midnight", "g1");
+    expect(s.look().map((m) => [m.kind, m.name, m.who])).toEqual([
+      ["signal", "y2k_midnight", null],
+      ["beat", "Midnight", null],
+    ]);
+    // A cue no rule hears (stagehand's own) always counts.
+    press("lights");
+    expect(s.look().map((m) => m.name)).toContain("lights");
+  });
+
+  it("the devices' signals carry the player; a runtime's quiet names (the facts book's confirm events) never show", () => {
+    const sim = Sim.fromSources(PRESSES);
+    sim.createPerson("g1", "Excel", "Program");
+    let t = 10_000;
+    const w = new ScreenWatch({ now: () => t, signals: () => ({ devices: ["king struck"], quiet: ["lights"] }) });
+    w.poll(sim, WHO, () => false);
+    sim.signal("king hit", "g1", { hp: 3, max: 15 });
+    sim.signal("king struck", "g1");
+    sim.signal("chess won", "g1");
+    sim.signal("reinstallation begun", "g1");
+    sim.signal("lights");
+    t = 11_000;
+    expect(w.poll(sim, WHO, () => false).moments.map((m) => [m.name, m.who])).toEqual([
+      ["king hit", "Excel"],
+      ["king struck", "Excel"],
+      ["chess won", "Excel"],
+      ["reinstallation begun", "Excel"],
+    ]);
+  });
+
+  it("pickNamesOf reads a draw and its else", () => {
+    expect(pickNamesOf("bottle_landed from [g1, g2] else bottle_empty")).toEqual(["bottle_landed", "bottle_empty"]);
+    expect(pickNamesOf("chosen from []")).toEqual(["chosen"]);
+    expect(pickNamesOf("nonsense")).toEqual([]);
   });
 });
 
@@ -222,6 +372,18 @@ describe("the late-night answer stays lean", () => {
 ROLE Program
 
 LOCATION The Desktop
+
+INTERACTION present
+  label: 🏆 Present
+  who: admin
+
+INTERACTION call
+  label: 📣 Call
+  who: admin
+
+INTERACTION ending
+  label: ⏻ Ending
+  who: admin
 
 when present:
   set Night.award_winner = "Microsoft Internet Explorer"

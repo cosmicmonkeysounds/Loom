@@ -7,9 +7,11 @@
 //!                 level, and the award winner + value while an `award_*`
 //!                 slide is up (`SCREEN_NIGHT_VARS`; "none" reads null);
 //! - `moments`   — (wave 17) the last `MOMENT_RING` live story moments, oldest
-//!                 first: house-wide beats, external signals, `sound X` names,
-//!                 reveals to everyone and duck finds (`momentOf`), never
-//!                 history, never a per-guest beat or a secret's name;
+//!                 first: house-wide beats, allowlisted signals (admin cues
+//!                 the story took, `do pick` draws, the King / chess /
+//!                 reinstallation devices), `sound X` names, reveals to
+//!                 everyone and duck finds (`momentOf`), never history, never
+//!                 a per-guest beat, a guest's or booth's press or a secret;
 //! - `cues`      — the last `cue screens_*` / `terminals_*` / `tv_*` / `tablet_*`
 //!                 value per family, folded from the sim log (a `seq` per family
 //!                 so a re-fired cue — `screens_flicker` twice — is visible);
@@ -81,13 +83,15 @@
 import type { ShowClock } from "../../src/show-clock.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { KingState } from "@loom/house";
+import { KING_SIGNALS, type KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import type { SimModel } from "../../src/runtime/sim/model.ts";
 import type { SimEvent } from "../../src/runtime/sim/event.ts";
 import type { ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
+import { DEFAULT_CONFIRM } from "../facts.ts";
+import { signalRefusedAt } from "../views.ts";
 import { queryTokenOf, readBody, sendJson, tokenOf } from "../http-util.ts";
 
 /** The cue families a screen cares about (`cue <family>_<value>`). */
@@ -407,17 +411,60 @@ const touchesSecret = (name: string, secrets: readonly string[]): boolean => {
   return secrets.some((s) => f === s || f.startsWith(`${s}.`) || f.startsWith(`${s} `));
 };
 
+/** The device signals a screen may animate, folded: the King's and the
+ *  chess board's defaults (`KING_SIGNALS`) and the reinstallation's start.
+ *  A map's own king signal names are added by the runtime (`MomentSignals.devices`). */
+export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_SIGNALS), "reinstallation begun"].map(foldName);
+
+/** Which signals may become a moment. Everything else a signal can be — a
+ *  guest's or a booth's INTERACTION press, a room check-in (`checked_in`),
+ *  a facts verdict, a phone's card answer — is about one person and may
+ *  carry a secret in its subject (who planted the virus, who lied), so it
+ *  is never put on every screen. All names folded (`foldName`). */
+export interface MomentSignals {
+  /** The admin cues (`INTERACTION … who: admin`): `who` is never carried. */
+  admin: ReadonlySet<string>;
+  /** Device signals (`DEVICE_MOMENT_SIGNALS` + the map's kings'): `who` = the player. */
+  devices: ReadonlySet<string>;
+  /** `do pick <event> … else <event>` names seen in the log: `who` = the pick. */
+  picks: ReadonlySet<string>;
+  /** Never a moment, even when allowlisted (the facts book's confirm events). */
+  quiet: ReadonlySet<string>;
+}
+
+/** The allowlist a model gives on its own: its admin cues, the default
+ *  devices, no picks yet, the default facts confirm events. */
+export function momentSignalsOf(model: SimModel, extra: { devices?: Iterable<string>; quiet?: Iterable<string>; picks?: Iterable<string> } = {}): MomentSignals {
+  const admin = new Set<string>();
+  for (const i of model.interactions.values()) if (i.who === "admin") admin.add(foldName(i.id));
+  const fold = (xs: Iterable<string> | undefined): string[] => [...(xs ?? [])].map(foldName);
+  return {
+    admin,
+    devices: new Set([...DEVICE_MOMENT_SIGNALS, ...fold(extra.devices)]),
+    picks: new Set(fold(extra.picks)),
+    quiet: new Set([...Object.values(DEFAULT_CONFIRM), ...fold(extra.quiet)].map(foldName)),
+  };
+}
+
+/** The event names a `do pick` directive can signal (its draw and its `else`). */
+export function pickNamesOf(args: string): string[] {
+  const m = /^(\S+)\s+from\s+\[[^\]]*\](?:\s+else\s+(\S+))?$/u.exec(args.trim());
+  return m === null ? [] : m[2] === undefined ? [m[1]!] : [m[1]!, m[2]];
+}
+
 /**
  * The moment one sim event makes, or null (pure apart from reading the sim's
- * model and persons). `seq` is its log index + 1.
+ * model, persons and — for an admin cue that is the logged event at
+ * `seq − 1` — the story's refusal). `seq` is its log index + 1.
  * - `beatEntered` with no subject (a house-wide beat; a per-guest one is not);
- * - an external `signal` (an admin cue, a device, `do pick …`) — not a
- *   phone's own card answer (`<kind> answered`), with `who` its subject's
- *   display name; the duck's pair becomes one `found`;
+ * - an allowlisted `signal` (`MomentSignals`): an admin cue the story took
+ *   (a refused press — only a `# hosts` line — is not), a `do pick` draw
+ *   (`who` its pick), a device's (`who` the player); the duck's pair
+ *   becomes one `found`;
  * - a story `sound X` (`sfx`), by its name;
  * - a `reveal` to everyone.
  */
-export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets: readonly string[]): ScreenMoment | null {
+export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets: readonly string[], signals: MomentSignals = momentSignalsOf(sim.model)): ScreenMoment | null {
   const who = (id: string | null): string | null => {
     const p = id === null ? undefined : sim.persons.get(id);
     return p === undefined ? null : clip(p.name, MAX_MOMENT_NAME);
@@ -430,11 +477,16 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
     case "beatEntered":
       return e.subject === null ? make("beat", e.beat, null) : null;
     case "signal": {
-      if (e.name === FOUND_FIRST || /\s+answered$/u.test(e.name)) return null;
+      if (e.name === FOUND_FIRST) return null;
       if (e.name === FOUND_SIGNAL && e.subject !== null && sim.persons.has(e.subject)) {
         return make("found", sim.isCaptured(e.subject) ? "golden duck kept" : "golden duck", who(e.subject));
       }
-      return make("signal", e.name, who(e.subject));
+      const f = foldName(e.name);
+      if (signals.quiet.has(f)) return null;
+      if (signals.picks.has(f) || signals.devices.has(f)) return make("signal", e.name, who(e.subject));
+      if (!signals.admin.has(f)) return null;
+      if (sim.log.all()[seq - 1] === e && signalRefusedAt(sim, seq - 1)) return null;
+      return make("signal", e.name, null);
     }
     case "directive": {
       if (e.verb !== "sfx") return null;
@@ -672,6 +724,11 @@ export class ScreenWatch {
   private moments: ScreenMoment[] = [];
   /** This sim's secret names (`secretMomentNames`; null = not read yet). */
   private secrets: string[] | null = null;
+  /** The `do pick` event names this sim's log has drawn from (folded). */
+  private picks = new Set<string>();
+  /** The runtime's extra device signals (a map's own king signals) and
+   *  quiet ones (the facts book's confirm events), read on every fold. */
+  private readonly signalExtras: (() => { devices?: Iterable<string>; quiet?: Iterable<string> }) | undefined;
   /** Per target, the chart slide on screen and when it went up (`revealAt`). */
   private readonly chartUp = new Map<ScreenTarget, { slide: string; at: number }>();
   /** The chart call-out vars this sim's story mentions (null = not read yet). */
@@ -688,8 +745,9 @@ export class ScreenWatch {
   voiceMuted: boolean;
   private readonly onMute: ((muted: boolean) => void) | undefined;
 
-  constructor(o: { now?: () => number; muted?: boolean; onMute?: (muted: boolean) => void } = {}) {
+  constructor(o: { now?: () => number; muted?: boolean; onMute?: (muted: boolean) => void; signals?: () => { devices?: Iterable<string>; quiet?: Iterable<string> } } = {}) {
     this.now = o.now ?? Date.now;
+    this.signalExtras = o.signals;
     this.voiceMuted = o.muted ?? false;
     this.onMute = o.onMute;
   }
@@ -715,6 +773,7 @@ export class ScreenWatch {
       this.announcements = [];
       this.moments = [];
       this.secrets = null;
+      this.picks = new Set();
       this.chartUp.clear();
       this.chartVars = null;
     }
@@ -726,11 +785,19 @@ export class ScreenWatch {
     const at = first ? 0 : this.now();
     this.seeded = true;
     this.secrets ??= secretMomentNames(sim.model);
+    const signals = first || this.cursor >= events.length ? null : momentSignalsOf(sim.model, { ...this.signalExtras?.(), picks: this.picks });
     for (; this.cursor < events.length; this.cursor++) {
       const e = events[this.cursor]!;
+      // A `do pick` draw's events (history too: a draw after a restart).
+      if (e.type === "directive" && e.verb === "pick") {
+        for (const n of pickNamesOf(e.args)) {
+          this.picks.add(foldName(n));
+          if (signals !== null) (signals.picks as Set<string>).add(foldName(n));
+        }
+      }
       // A live moment (never history: the first look carries none).
-      if (!first) {
-        const m = momentOf(e, this.cursor + 1, at, sim, this.secrets);
+      if (signals !== null) {
+        const m = momentOf(e, this.cursor + 1, at, sim, this.secrets, signals);
         if (m !== null) {
           this.moments.push(m);
           if (this.moments.length > MOMENT_RING) this.moments.shift();
