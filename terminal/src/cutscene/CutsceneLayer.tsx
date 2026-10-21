@@ -15,8 +15,8 @@ import type { ScreenLayers } from "../slides.ts";
 import { sfx } from "../sound/bus.ts";
 import { SCENE_FPS, serverNow, useReducedMotion, useSceneClock } from "./clock.ts";
 import { flashFace } from "./face-bus.ts";
-import { setMomentUp } from "./moment-bus.ts";
-import { MomentQueue, componentFor, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
+import { setMomentUp, setSceneClockUp } from "./moment-bus.ts";
+import { MomentQueue, componentFor, drawsCountdown, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
 import type { SceneDef, SceneProps, SceneTarget } from "./types.ts";
 
@@ -100,6 +100,10 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   const momentOn = pick.top !== null;
   useEffect(() => setMomentUp(momentOn), [momentOn]);
   useEffect(() => () => setMomentUp(false), []);
+  // The corner countdown stands aside for a scene that draws its own.
+  const clockOn = drawsCountdown(pick, target);
+  useEffect(() => setSceneClockUp(clockOn), [clockOn]);
+  useEffect(() => () => setSceneClockUp(false), []);
 
   if (state === null) return null;
   const host = (s: ActiveScene, hidden = false) => (

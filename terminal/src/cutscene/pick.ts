@@ -291,3 +291,10 @@ export function faceFlashFor(lead: ActiveScene | null, target: SceneTarget, seen
   if (target !== "tv" || lead.def.face === undefined) return null;
   return { mood: lead.def.face, ms: lead.def.faceMs ?? FACE_FLASH_MS };
 }
+
+/** Does a scene on screen draw the story's countdown itself (`SceneDef.countdown`)?
+ *  Then the corner countdown stands aside: one clock, never two that disagree. */
+export function drawsCountdown(p: ScenePick, target: SceneTarget): boolean {
+  const owns = (s: ScenePick["base"]) => s !== null && s !== "card" && (s.def.countdown === true || (s.def.countdown === "tv" && target === "tv"));
+  return owns(p.top) || owns(p.base);
+}

@@ -1978,7 +1978,7 @@ function PurgatoryWall(p: SceneProps) {
 // ══ the act's scenes, in running order ═══════════════════════════════════════════════════════
 
 export const SCENES: SceneDef[] = [
-  { id: "five_minutes", when: [{ slide: "five_minutes" }], ms: "hold", tv: FiveMinutesTv, wall: FiveMinutesWall, face: "alarmed" },
+  { id: "five_minutes", when: [{ slide: "five_minutes" }], ms: "hold", tv: FiveMinutesTv, wall: FiveMinutesWall, face: "alarmed", countdown: true },
   { id: "summons_closed", when: [{ moment: "beat", name: "Summons Closed" }], ms: SHUT.end, tv: SummonsClosedTv, wall: SummonsClosedWall, priority: 1, face: "alarmed", faceMs: 2000 },
   { id: "truth_pong", when: [{ slide: "truth_pong" }], ms: "hold", tv: TruthPongTv, wall: TruthPongWall, face: "pleased" },
   { id: "round_two_tally", when: [{ moment: "beat", name: "Round Two Tally" }], ms: TALLY.end, tv: RoundTwoTallyTv, wall: RoundTwoTallyWall, namesCharacter: true, face: "thinking", faceMs: 8000 },
@@ -1987,7 +1987,7 @@ export const SCENES: SceneDef[] = [
   { id: "beans", when: [{ slide: "beans" }], ms: "hold", tv: BeansTv, wall: BeansWall, face: "alarmed" },
   { id: "zip", when: [{ moment: "beat", name: "Zip Everyone Out" }], ms: ZIP.end, tv: ZipTv, wall: ZipWall },
   { id: "overshare", when: [{ slide: "overshare" }], ms: "hold", tv: OvershareTv, wall: OvershareWall, namesCharacter: true, face: "glitch", faceMs: 3000 },
-  { id: "y2k", when: [{ slide: "y2k" }], ms: "hold", tv: Y2kTv, wall: Y2kWall, face: "alarmed" },
+  { id: "y2k", when: [{ slide: "y2k" }], ms: "hold", tv: Y2kTv, wall: Y2kWall, face: "alarmed", countdown: true },
   { id: "majority_reached", when: [{ moment: "beat", name: "Majority Reached" }], ms: MAJ_END, tv: MajorityTv, wall: MajorityWall, over: true, face: "curious" },
   { id: "the_heart", when: [{ moment: "beat", name: "The Heart" }], ms: HEART.end, tv: HeartTv, wall: HeartWall, namesCharacter: true, priority: 2, face: "attentive" },
   { id: "king_hit", when: [{ moment: "signal", name: "king hit" }], ms: HIT.end, tv: KingHitTv, wall: KingHitWall, over: true, priority: 1, gate: kingHeard, face: "angry", faceMs: 1500 },
