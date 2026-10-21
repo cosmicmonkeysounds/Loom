@@ -860,8 +860,8 @@ function HelpedHold({ t, reduced, lite }: { t: number; reduced: boolean; lite: b
 //   9200–12600 he rides off with a heart on the back (a whoosh)
 //   12600–14000 out on SHE SAID YES
 
-const ADVICE_CHAT: readonly ChatLine[] = [
-  { from: "him", text: "Sandy. I think you are the one that I want. Would you go to computer prom with me?" },
+export const ADVICE_CHAT: readonly ChatLine[] = [
+  { from: "him", text: "Sandy. I have wanted to talk to you since the first time you didn't understand me. I think you are the one that I want. Would you go to computer prom with me?" },
   { from: "her", text: "I'm sorry, I didn't understand that. Would you like to speak to a live agent?" },
 ];
 
