@@ -650,6 +650,10 @@ export const SCREEN_NIGHT_VARS = {
   ended: "Night.ended",
   collection_complete: "Night.collection_complete",
   scenario: "Night.scenario",
+  most_trusted: "Night.most_trusted",
+  least_trusted: "Night.least_trusted",
+  facts_accepted: "Night.facts_accepted",
+  first_reinstall: "Night.first_reinstall",
 } as const;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
@@ -677,6 +681,101 @@ export interface ScreenNight {
   collection_complete: boolean | null;
   /** The overshare that played, 1–4 (0 = not yet: null). Public: its beat says it aloud. */
   scenario: number | null;
+  /** (wave 18b) The Trust Chart's call-outs, only while the `bobbing` slide
+   *  is up on this target (Trabolta says both names aloud there). */
+  most_trusted: string | null;
+  least_trusted: string | null;
+  /** (wave 18b) The night's summary numbers, only while the `recount` or
+   *  `purgatory` slide is up: facts accepted, the first reinstalled program. */
+  facts_accepted: number | null;
+  first_reinstall: string | null;
+}
+
+// --- the results block (wave 18b) ----------------------------------------------
+
+/** `do fact_read H1 [H2 …]`: the story has read these questions aloud. */
+export const RESULTS_READ_VERB = "fact_read";
+/** `do fact_truth H1 accurate|lie|none`: the verdict on one question. */
+export const RESULTS_TRUTH_VERB = "fact_truth";
+/** The slides a `read` block rides (the reading's own scenes). */
+export const RESULTS_SLIDES: readonly string[] = ["hunt_results", "tally"];
+/** How long the verdict stays on the screens after its first `fact_truth`. */
+export const RESULTS_VERDICT_MS = 120_000;
+/** Rows (and liars) per question, TV only; `more` / `liarsMore` beyond. */
+export const MAX_RESULT_ROWS = 40;
+
+/** A filing's public outcome on a screen: `a` accepted (an accurate filing
+ *  or a confident lie — the screens never tell them apart before ⚖), `g` a
+ *  guess (uncertain, or marked as one), `u` not counted (marked with no cup
+ *  — its verdict was accurate or a lie), `p` still pending. */
+export type ScreenOutcome = "a" | "g" | "u" | "p";
+
+/** Trabolta's stamp on a filing (O4, D10): `s` he ruled it the same as the
+ *  key, `n` not the same — both only below confidence 100, where they equal
+ *  the public outcome; `r` he ruled on a filing at 100 (the result is held
+ *  until ⚖, so the screen says only that he ruled); `?` a ruling is asked
+ *  (queued or out with his worker); `""` no ruling (an exact match, the
+ *  house rule, a director). His `why` never reaches a screen. */
+export type ScreenRuled = "s" | "n" | "r" | "?" | "";
+
+/** One filing as a reading shows it (TV only): the filer's display name
+ *  (≤ 24), what they said (≤ 40, newlines → spaces), sure (1 = filed at
+ *  100) or not (0), its public outcome, Trabolta's stamp. */
+export type ScreenResultRow = [who: string, said: string, sure: 0 | 1, out: ScreenOutcome, ruled: ScreenRuled];
+
+/** One liar named at ⚖ (O2, TV only): display name (≤ 24), and 1 when his
+ *  ruling made the lie (a 🤖 on the name), else 0. */
+export type ScreenLiar = [who: string, ruled: 0 | 1];
+
+/** One question in a results block. */
+export interface ScreenResultQuestion {
+  /** The key id (`H1` … `F2`). */
+  id: string;
+  /** 1-based place in the book's questions. */
+  n: number;
+  /** The question's round (null: an `answers[]` key). */
+  round: number | null;
+  /** The question as the Quest Log shows it (≤ 140); `read` only. */
+  text?: string;
+  /** How many filed, and their public outcomes. */
+  filed: number;
+  accepted: number;
+  guesses: number;
+  uncounted: number;
+  /** Every filing matches the key and every one was filed at 100 (the
+   *  story says the answer aloud then). */
+  consensus: boolean;
+  /** The key's canonical answer: in a `read`, only on consensus; in a TV
+   *  `verdict`, for every question (O2); null otherwise (and on a wall). */
+  answer: string | null;
+  /** `verdict` only: true / a lie on record / nobody answered. */
+  truth?: "true" | "lie" | "none";
+  /** `read`, TV only: the filings in filing order, ≤ `MAX_RESULT_ROWS`. */
+  rows?: ScreenResultRow[];
+  /** Rows past the cap. */
+  more?: number;
+  /** TV `verdict` only (O2): the programs who lied — a final lie (house,
+   *  ruling or director) or a pending filing proposed a lie — ≤
+   *  `MAX_RESULT_ROWS`. Names only, never what they filed. */
+  liars?: ScreenLiar[];
+  /** Liars past the cap. */
+  liarsMore?: number;
+}
+
+/**
+ * `ScreenState.results` (wave 18b): what the story has published of the
+ * facts ledger. `read` after `do fact_read …` while the target's slide is
+ * `hunt_results` or `tally` (its ids only); `verdict` from the first `do
+ * fact_truth …` for `RESULTS_VERDICT_MS` (all the book's questions). Absent
+ * otherwise. Built off the facts ledger (`FactsWatch`), never `Night.*`.
+ */
+export interface ScreenResults {
+  kind: "read" | "verdict";
+  /** Bumps on every publication the fold sees (a screen latches on it). */
+  seq: number;
+  /** Server epoch ms the fold first saw it; 0 = replayed history. */
+  at: number;
+  questions: ScreenResultQuestion[];
 }
 
 /** A terminal that hasn't polled for this long is silent (K-29): the editor's
@@ -708,6 +807,9 @@ export interface ScreenDevice {
   fullscreen?: boolean;
   /** The terminal's build stamp. */
   version?: string;
+  /** (wave 18b, Q8) The tablet says the house announcements right now
+   *  (`ann=1|0`: its own setting, else the house list). */
+  announce?: boolean;
 }
 
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
@@ -794,6 +896,17 @@ export interface ScreenState {
   announceEpoch: string;
   /** The shared King (wave 11, C2); null = the map has none. */
   king: ScreenKing | null;
+  /** (wave 18b) The published results, when there are any (omitted else). */
+  results?: ScreenResults;
+  /** (wave 18b, Q8) Only when the poll names a `spot`: what the house says
+   *  about that map terminal — `announce`: it is on `audio.json`'s
+   *  `announce.terminals` list. */
+  spot?: ScreenSpot;
+}
+
+/** The house's word on a poller's map spot (Q8). */
+export interface ScreenSpot {
+  announce: boolean;
 }
 
 /** The shared King as the chess terminal reads him (C2). `armed`: a
@@ -1201,6 +1314,10 @@ export class ScreenWatch {
       ended: flag(SCREEN_NIGHT_VARS.ended),
       collection_complete: flag(SCREEN_NIGHT_VARS.collection_complete),
       scenario: ((n) => (n !== null && n >= 1 && n <= 4 ? n : null))(num(SCREEN_NIGHT_VARS.scenario)),
+      most_trusted: null,
+      least_trusted: null,
+      facts_accepted: null,
+      first_reinstall: null,
     };
 
     return {

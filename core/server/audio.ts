@@ -53,6 +53,36 @@ export interface AudioTest {
   out: number | null;
 }
 
+/** (wave 18b, Q7) A director's "stop all house sounds": the router fades
+ *  out every sfx voice and speaker test (0.3 s); with `announce` it also
+ *  cuts the announcement playing and empties its queue. One-shot, memory
+ *  only, never journaled (no story effect). */
+export interface AudioStop {
+  seq: number;
+  /** Server epoch ms. */
+  at: number;
+  /** Who stopped them (a director's name, a host's character). */
+  by: string;
+  announce: boolean;
+}
+
+/** `POST /api/mod/audio/stop` body. */
+export interface AudioStopRequest {
+  announce?: boolean;
+}
+
+/** `POST /api/mod/audio/stop` answer: the stop's seq and whether a router
+ *  is listening to play it (else "no router listening"). */
+export interface AudioStopAnswer {
+  ok: true;
+  seq: number;
+  router: AudioRouterPresence;
+}
+
+/** How many stops ride a GET, and for how long. */
+export const AUDIO_STOPS = 8;
+export const AUDIO_STOP_MS = 60_000;
+
 /** How many tests ride a GET, and for how long. */
 export const AUDIO_TESTS = 8;
 export const AUDIO_TEST_MS = 60_000;
@@ -343,6 +373,11 @@ export interface AudioView {
   sounds: string[];
   locations: string[];
   tests: AudioTest[];
+  /** (wave 18b) The recent stops (≤ `AUDIO_STOPS`, ≤ `AUDIO_STOP_MS` old,
+   *  oldest first); the router keeps its own `stops=` cursor. */
+  stops: AudioStop[];
+  /** (wave 18b) Server epoch ms, so the router can drop a stale stop. */
+  now: number;
   /** Is the router on the house Mac listening (a Test is played only then)? */
   router: AudioRouterPresence;
   /** The config in force checked against the house in force (a map edit
@@ -355,7 +390,7 @@ export function audioView(hub: AudioHub, ctx: AudioContext): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), router: hub.router(), problems: v.problems, warnings: v.warnings };
+  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: [], now: Date.now(), router: hub.router(), problems: v.problems, warnings: v.warnings };
 }
 
 /**
