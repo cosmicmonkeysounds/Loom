@@ -223,18 +223,25 @@ describe("VoiceRelay — who hears whom", () => {
 });
 
 describe("readRawBody", () => {
-  const req = (parts: Buffer[]) =>
+  const req = (parts: Buffer[], seen = { destroyed: false }) =>
     ({
       [Symbol.asyncIterator]: async function* () {
         for (const p of parts) yield p;
       },
-      destroy() {},
+      destroy() {
+        seen.destroyed = true;
+      },
     }) as unknown as IncomingMessage;
   it("joins the chunks as bytes; an empty body is empty", async () => {
     expect([...(await readRawBody(req([Buffer.from([1, 2]), Buffer.from([0xff])]), 10))]).toEqual([1, 2, 0xff]);
     expect((await readRawBody(req([]), 10)).length).toBe(0);
   });
-  it("throws PayloadTooLarge past the cap", async () => {
-    await expect(readRawBody(req([Buffer.alloc(6), Buffer.alloc(5)]), 10)).rejects.toBeInstanceOf(PayloadTooLarge);
+  it("throws PayloadTooLarge past the cap: a small overrun is drained (the 413 is read), a big one cut off", async () => {
+    const small = { destroyed: false };
+    await expect(readRawBody(req([Buffer.alloc(6), Buffer.alloc(5)], small), 10)).rejects.toBeInstanceOf(PayloadTooLarge);
+    expect(small.destroyed).toBe(false);
+    const big = { destroyed: false };
+    await expect(readRawBody(req([Buffer.alloc(30), Buffer.alloc(30)], big), 10)).rejects.toBeInstanceOf(PayloadTooLarge);
+    expect(big.destroyed).toBe(true);
   });
 });
