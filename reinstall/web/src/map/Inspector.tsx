@@ -1,13 +1,15 @@
 //! The map page's inspector: the fields of whatever is selected — a
-//! terminal, a duck spot, the spawn, a prop, a room, a door, a stair or a
-//! floor. Every change goes through the pure ops (`edit.ts`, `doors.ts`,
+//! terminal, a duck spot, the spawn, a prop, a room, a door, a stair, a
+//! floor or a house speaker (`audio.json`: its outputs, gain, zones, a
+//! Test button). Every change goes through the pure ops (`edit.ts`, `doors.ts`,
 //! `structure.ts`, `yards.ts`) and lands as one undo step; deleting a room
 //! or a floor says first what goes with it.
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById } from "@loom/house";
-import type { Compass, HouseMap, PropKind, Vec3 } from "@loom/house";
+import type { AudioConfig, Compass, HouseMap, PropKind, Vec3 } from "@loom/house";
+import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersIn, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
 import type { StoryLocation } from "./check.ts";
 import { DOOR_WIDTH, openEdge, patchDoor, resolveDoor } from "./doors.ts";
 import { addDuckSpot, addTerminal, moveTo, patchRoom, patchTerminal, positionOf, provisionLink, removeThing, setHeight, setYaw, yawOf, type Selection } from "./edit.ts";
@@ -68,7 +70,7 @@ export function Num({ label, value, onChange, step = 0.05, disabled, placeholder
 }
 
 /** A text field that commits on Enter / blur (ids: renaming on every keystroke would churn references; a yard's label: its pieces are grouped by it). */
-function CommitText({ label, value, disabled, onCommit, list, placeholder, children }: { label: ReactNode; value: string; disabled: boolean; onCommit: (v: string) => void; list?: string; placeholder?: string; children?: ReactNode }) {
+export function CommitText({ label, value, disabled, onCommit, list, placeholder, children }: { label: ReactNode; value: string; disabled: boolean; onCommit: (v: string) => void; list?: string; placeholder?: string; children?: ReactNode }) {
   const [text, setText] = useState(value);
   useEffect(() => setText(value), [value]);
   useCommitOnUnmount(text !== value ? () => onCommit(text) : null);
@@ -105,6 +107,13 @@ export interface InspectorProps {
   origin: string;
   copy: (key: string, value: string) => void;
   copied: string | null;
+  /** The house speakers (null: the server has no speaker routes). */
+  audio?: AudioConfig | null;
+  /** The speakers as last saved (a Test needs the speaker saved). */
+  savedAudio?: AudioConfig | null;
+  commitAudio?: (a: AudioConfig) => void;
+  /** Play the identifying tone on a speaker / output (stagehand's router). */
+  onTest?: (target: { speaker: string } | { out: number }) => void;
 }
 
 export function Inspector(props: InspectorProps) {
@@ -112,7 +121,7 @@ export function Inspector(props: InspectorProps) {
   if (sel === null) {
     return (
       <p className="muted">
-        Click a room, a door, a terminal, a duck spot or the spawn. Tick <b>Edit</b> to change the map: draw rooms and yards, click walls for doors, and type exact sizes here.
+        Click a room, a door, a terminal, a speaker, a duck spot or the spawn. Tick <b>Edit</b> to change the map: draw rooms and yards, click walls for doors, and type exact sizes here.
       </p>
     );
   }
@@ -290,6 +299,8 @@ export function Inspector(props: InspectorProps) {
     }
     case "floor":
       return <FloorInspector key={sel.id} {...props} id={sel.id} />;
+    case "speaker":
+      return <SpeakerInspector key={sel.id} {...props} id={sel.id} />;
   }
 }
 
@@ -453,7 +464,7 @@ function PropInspector({ house, edit, commit, id, posFields, yawField, floorButt
   );
 }
 
-function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id }: InspectorProps & { id: string }) {
+function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id, audio = null, commitAudio }: InspectorProps & { id: string }) {
   const r = roomById(house, id);
   if (r === undefined) return null;
   const rect = rectOf(r.poly);
@@ -473,7 +484,7 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
   const remove = () => {
     const c = cascadeOf(house, deletesWith(house, r.id));
     if (c.spawn) return onNotice(`The spawn is in this ${r.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
-    if (!window.confirm(deleteRoomText(r, c))) return;
+    if (!window.confirm(withSpeakersText(deleteRoomText(r, c), audio === null || r.outdoor ? 0 : speakersIn(audio, c.rooms).length))) return;
     const out = removeRoom(house, r.id);
     if ("error" in out) return onNotice(out.error);
     commit(out.house);
@@ -557,6 +568,19 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
           <button className="w98-button" onClick={() => add("duck")}>
             + Duck spot here
           </button>
+          {audio !== null && commitAudio !== undefined && (
+            <button
+              className="w98-button"
+              onClick={() => {
+                const out = addSpeaker(audio, house, r.id);
+                commitAudio(out.audio);
+                onSelect({ kind: "speaker", id: out.id });
+              }}
+              title="Hang a house speaker in this room (saved in audio.json, not the map)"
+            >
+              + Speaker here
+            </button>
+          )}
           {r.outdoor && (
             <button className="w98-button" onClick={() => commit(fillYard(house, r.id))} title="Re-cut the yard as its whole bounding box minus the rooms standing in it">
               Fill the yard
@@ -580,7 +604,7 @@ function RoomInspector({ house, edit, locations, commit, onSelect, onNotice, id 
   );
 }
 
-function FloorInspector({ house, edit, commit, onSelect, onNotice, id }: InspectorProps & { id: string }) {
+function FloorInspector({ house, edit, commit, onSelect, onNotice, id, audio = null }: InspectorProps & { id: string }) {
   const f = floorById(house, id);
   if (f === undefined) return null;
   const rooms = house.rooms.filter((r) => r.floor === id);
@@ -589,7 +613,7 @@ function FloorInspector({ house, edit, commit, onSelect, onNotice, id }: Inspect
     if (house.floors.length <= 1) return onNotice("A house needs at least one floor.");
     if (c.spawn) return onNotice("The spawn is on this floor — move it to another floor first.");
     const extra = cascadeText(c, true);
-    if (!window.confirm(`Delete the floor “${f.label}”${extra !== "" ? ` with ${extra}` : ""}?`)) return;
+    if (!window.confirm(withSpeakersText(`Delete the floor “${f.label}”${extra !== "" ? ` with ${extra}` : ""}?`, audio === null ? 0 : speakersIn(audio, c.rooms).length))) return;
     const out = removeFloor(house, id);
     if ("error" in out) return onNotice(out.error);
     commit(out.house);
@@ -618,6 +642,114 @@ function FloorInspector({ house, edit, commit, onSelect, onNotice, id }: Inspect
           Delete floor…
         </button>
       )}
+    </div>
+  );
+}
+
+function SpeakerInspector({ house, edit, onSelect, onNotice, id, audio = null, savedAudio = null, commitAudio, onTest }: InspectorProps & { id: string }) {
+  const s = audio === null ? undefined : speakerById(audio, id);
+  if (audio === null || s === undefined || commitAudio === undefined) return null;
+  const commit = commitAudio;
+  const room = roomById(house, s.room);
+  const floor = room !== undefined ? floorById(house, room.floor) : undefined;
+  const saved = savedAudio !== null && speakerById(savedAudio, id) !== undefined;
+  const chans = Array.from({ length: audio.device.outputs }, (_, i) => i + 1);
+  const mine = zonesOf(audio, id);
+  return (
+    <div className="inspect">
+      <h3>🔊 Speaker</h3>
+      <div className="kv">
+        in {room?.label ?? <b className="bad-text">{s.room} (not on the map)</b>}
+        {floor !== undefined && <> · {floor.label}</>} <span className="muted">(the room follows where it stands)</span>
+      </div>
+      <CommitText label="name" value={s.name} disabled={!edit} onCommit={(v) => commit(patchSpeaker(audio, id, { name: v }))} />
+      <CommitText
+        label="id (cues, zones and the router refer to it)"
+        value={s.id}
+        disabled={!edit}
+        onCommit={(v) => {
+          const next = renameSpeaker(audio, id, v);
+          if (next === audio) return onNotice(v.trim() === "" ? "A speaker needs an id." : `The id “${v.trim()}” is taken or reserved.`);
+          commit(next);
+          onSelect({ kind: "speaker", id: v.trim() });
+        }}
+      />
+      <div className="num-row">
+        <Num label="x" value={s.pos.x} disabled={!edit} onChange={(v) => v !== null && commit(moveSpeaker(audio, house, id, [v, s.pos.z]))} />
+        <Num label="y (height)" value={s.pos.y} disabled={!edit} onChange={(v) => v !== null && commit(setSpeakerHeight(audio, id, v))} />
+        <Num label="z" value={s.pos.z} disabled={!edit} onChange={(v) => v !== null && commit(moveSpeaker(audio, house, id, [s.pos.x, v]))} />
+      </div>
+      <div className="num-row">
+        <span className="yaw-field">
+          <Num label="yaw °" value={s.yaw} step={5} disabled={!edit} onChange={(v) => v !== null && commit(setSpeakerYaw(audio, id, v))} />
+          {edit && (
+            <span className="button-row tight">
+              <button className="w98-button small" onClick={() => commit(rotateSpeaker(audio, id, YAW_STEP))} title={`Turn ${YAW_STEP}° (R)`}>
+                ⟲ {YAW_STEP}°
+              </button>
+              <button className="w98-button small" onClick={() => commit(rotateSpeaker(audio, id, -YAW_STEP))} title={`Turn −${YAW_STEP}° (⇧R)`}>
+                ⟳ {YAW_STEP}°
+              </button>
+            </span>
+          )}
+        </span>
+        <Num label="gain dB" value={s.gain ?? 0} step={1} disabled={!edit} onChange={(v) => commit(patchSpeaker(audio, id, { gain: v ?? undefined }))} />
+      </div>
+      <div className="field">
+        outputs <span className="muted">(the interface's channels feeding it)</span>
+        <div className="out-pick" role="group" aria-label="Outputs">
+          {chans.map((ch) => {
+            const on = s.out.includes(ch);
+            const others = outputUsers(audio, ch).filter((x) => x.id !== id);
+            return (
+              <button
+                key={ch}
+                className={`w98-button small out-chip${on ? " pressed" : ""}${others.length > 0 ? " shared" : ""}`}
+                aria-pressed={on}
+                disabled={!edit}
+                onClick={() => commit(toggleSpeakerOutput(audio, id, ch))}
+                title={`${ch} · ${outputLabel(audio, ch)}${others.length > 0 ? ` — also feeds ${others.map((x) => x.name).join(", ")}` : ""}`}
+              >
+                {ch}
+              </button>
+            );
+          })}
+        </div>
+        <div className="muted small">{s.out.length === 0 ? "No output: nothing plays on it." : s.out.map((ch) => `${ch} ${outputLabel(audio, ch)}`).join(" · ")}</div>
+      </div>
+      <div className="field">
+        zones
+        {audio.zones.length === 0 && <span className="muted small">No zones yet.</span>}
+        <div className="zone-pick">
+          {audio.zones.map((z) => (
+            <label key={z.id} className="radio checkbox">
+              <input type="checkbox" checked={mine.includes(z.id)} disabled={!edit} onChange={(e) => commit(setZoneMember(audio, z.id, id, e.target.checked))} /> {z.name}
+            </label>
+          ))}
+        </div>
+        {edit && (
+          <button className="w98-button small" onClick={() => commit(addZone(audio, room?.label ?? "Zone", [id]).audio)} title="A new zone with this speaker in it (rename it in the Audio tab)">
+            + New zone with it
+          </button>
+        )}
+      </div>
+      <div className="button-row">
+        <button className="w98-button" disabled={onTest === undefined || !saved} onClick={() => onTest?.({ speaker: id })} title={saved ? "The router plays a short tone and says its name on this speaker" : "Save the speakers first — the router only knows saved ones"}>
+          🔈 Test{saved ? "" : " (save first)"}
+        </button>
+        {edit && (
+          <button
+            className="w98-button"
+            onClick={() => {
+              commit(removeSpeaker(audio, id));
+              onSelect(null);
+            }}
+          >
+            Delete speaker
+          </button>
+        )}
+      </div>
+      <p className="muted small">Drag it on the plan (⌥ no snap); the round handle, R / ⇧R or ⌥-wheel turns it; ⌘D duplicates; arrows nudge. Speakers are saved in audio.json with 💾 Save, never in the map.</p>
     </div>
   );
 }
