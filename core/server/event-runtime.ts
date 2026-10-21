@@ -1892,6 +1892,17 @@ export class EventRuntime {
     return null;
   }
 
+  /** Wave 18b, faction mode (D13 e): why `person` may not take `side` by
+   *  `/api/guest/join` or `/defect` — a live founder stays with their
+   *  faction, a side's leader with that side — or null. */
+  private staysWithSide(person: string, side: string): string | null {
+    const crews = this.sim!.crews;
+    if (!crews.factionMode) return null;
+    if (crews.foundedBy(person) !== null) return "Founders stay with their faction. Disband it first.";
+    const led = crews.ledSide(person);
+    return led !== null && led !== side ? "Leaders stay with their side." : null;
+  }
+
   /**
    * Commit `apply` (a 📝 near-miss filing) as if the judging mode were
    * `review`: the book's mode var is set to `review` just before and put
@@ -4956,9 +4967,9 @@ export class EventRuntime {
           sendJson(res, 403, { error: "that side isn't open" });
           return true;
         }
-        // Wave 18b, faction mode: a live founder stays with their faction.
-        if (this.sim!.crews.factionMode && this.sim!.crews.foundedBy(id) !== null) {
-          sendJson(res, 409, { error: "Founders stay with their faction. Disband it first." });
+        const stays = this.staysWithSide(id, side);
+        if (stays !== null) {
+          sendJson(res, 409, { error: stays });
           return true;
         }
         this.fanout(this.commit("join", id, side));
@@ -4984,9 +4995,9 @@ export class EventRuntime {
           sendJson(res, 403, { error: "that side isn't open" });
           return true;
         }
-        // Wave 18b, faction mode: a live founder stays with their faction.
-        if (this.sim!.crews.factionMode && this.sim!.crews.foundedBy(id) !== null) {
-          sendJson(res, 409, { error: "Founders stay with their faction. Disband it first." });
+        const stays = this.staysWithSide(id, side);
+        if (stays !== null) {
+          sendJson(res, 409, { error: stays });
           return true;
         }
         this.fanout(this.commit("defect", id, side));

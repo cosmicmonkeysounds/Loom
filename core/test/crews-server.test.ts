@@ -486,6 +486,11 @@ describe("faction mode (wave 18b)", () => {
     expect(await post(rt, "/api/guest/join", { token: a.token, faction: "The Way Out" })).toMatchObject({ status: 409, json: { error: "Founders stay with their faction. Disband it first." } });
     expect(await post(rt, "/api/guest/defect", { token: a.token, to: "The Way Out" })).toMatchObject({ status: 409 });
     expect(await post(rt, "/api/guest/recruit", { token: d.token, to: a.id })).toMatchObject({ status: 409, json: { error: "Ada founded Night Shift. Founders stay with their faction." } });
+    // A side's leader (Excel, OpenOffice) can't walk to the other side either.
+    expect(await post(rt, "/api/guest/join", { token: d.token, faction: "The Way Out" })).toMatchObject({ status: 409, json: { error: "Leaders stay with their side." } });
+    expect(await post(rt, "/api/guest/defect", { token: d.token, to: "The Way Out" })).toMatchObject({ status: 409, json: { error: "Leaders stay with their side." } });
+    expect((await post(rt, "/api/guest/join", { token: d.token, faction: "Unlimited Power" })).status).toBe(200);
+    expect(rt.liveSim!.crews.ledSide(d.id)).toBe("Unlimited Power");
   });
 
   it("a join that leaves a crew posts its line at once, and a restart posts the same", async () => {
