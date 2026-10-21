@@ -70,7 +70,7 @@ from .routing import (
     speaker_layout,
     split_targets,
 )
-from .sounds import SoundBank, identify_label, identify_tone
+from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone
 
 log = logging.getLogger("stagehand.audio")
 
@@ -227,16 +227,29 @@ class AudioRouter:
         if self.cfg.play_sounds:
             if not Path(self.cfg.sounds_dir).is_dir():
                 out.append(f"audio: sounds_dir {self.cfg.sounds_dir} does not exist — every `sound X` will be silent")
-            elif doc is not None:
-                bank = SoundBank(self.cfg.sounds_dir, 48000)
-                missing = sorted(n for n in doc.cues if n != CHIME_SOUND and bank.find(n) is None)
+            else:
+                rate = self.cfg.rate or (doc.rate if doc is not None else None) or self._device_rate() or 48000
+                bank = SoundBank(self.cfg.sounds_dir, rate)
+                names = {n for n in (doc.cues if doc is not None else {}) if n != CHIME_SOUND}
+                missing = sorted(n for n in names if bank.find(n) is None)
                 if missing:
                     out.append(f"audio: no file for {', '.join(missing)} in {self.cfg.sounds_dir}")
+                # Every file in the folder, not just the cues: `sound X` plays any name.
+                names |= {p.stem for p in Path(self.cfg.sounds_dir).iterdir() if p.suffix.lower() in EXTENSIONS}
+                off = bank.off_rate(names)
+                if off:
+                    listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
+                    out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
         if doc is None:
             out.append("audio: no local audio.json (config_file / cache) — the router waits for the server")
         return out
 
     # -- config ----------------------------------------------------------------
+
+    def _device_rate(self) -> int | None:
+        doc = self._local_doc()
+        info, _ = probe(device_name(self.cfg.device) or (device_name(doc.device) if doc else None), 0, 1, self._query)
+        return info.rate if info is not None else None
 
     def _cache_path(self, name: str) -> str:
         return os.path.join(self.cfg.cache_dir, name)

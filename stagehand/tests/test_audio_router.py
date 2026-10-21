@@ -671,6 +671,16 @@ def test_check_warns_about_missing_sound_files(tmp_path):
     assert missing == "dance_song, printer_grind"
 
 
+def test_check_warns_about_sound_files_off_the_device_rate(tmp_path):
+    r = router(tmp_path, play_sounds=True)
+    r.apply(answer("v1", device={"name": "MOTU", "inputs": 16, "outputs": 16, "rate": RATE}))
+    write_wav(tmp_path / "sounds" / "zip.wav", rate=RATE)
+    write_wav(tmp_path / "sounds" / "beans_spill.wav", rate=44100)  # not a cue: any file counts
+    warnings = router(tmp_path, play_sounds=True).warnings()
+    off = next(w for w in warnings if "not at the device" in w)
+    assert "beans_spill (44100 Hz)" in off and "zip" not in off and f"{RATE} Hz" in off
+
+
 
 def test_sound_args_read_the_lowered_and_the_unlowered_form():
     assert sound_args("printer_grind") == ("printer_grind", None)

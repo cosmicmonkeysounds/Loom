@@ -15,7 +15,7 @@ import soundfile as sf
 
 from stagehand.audio.config import parse_audio_section
 from stagehand.audio.engine import Engine, probe
-from stagehand.audio.sounds import IDENTIFY_S, SoundBank, identify_label, identify_tone
+from stagehand.audio.sounds import IDENTIFY_S, SoundBank, _smooth, identify_label, identify_tone, resample_hq
 from stagehand.modapi import ModClient
 from stagehand.module import ConfigError
 
@@ -288,3 +288,47 @@ def test_a_missing_or_broken_sound_is_logged_once(tmp_path, caplog):
 def test_preload_reports_what_has_no_file(tmp_path):
     write_wav(tmp_path / "zip.wav")
     assert SoundBank(tmp_path, RATE).preload(["zip", "dance_song", "zip"]) == (1, ["dance_song"])
+
+
+def _spur_db(y: np.ndarray, rate: int, freq: float) -> float:
+    """Energy outside ±150 Hz of `freq`, relative to the whole, in dB."""
+    w = np.hanning(len(y))
+    spec = np.abs(np.fft.rfft(y * w)) ** 2
+    f = np.fft.rfftfreq(len(y), 1 / rate)
+    near = np.abs(f - freq) < 150
+    return 10 * np.log10(spec[~near].sum() / spec.sum())
+
+
+def test_the_bank_resample_is_band_limited_where_linear_aliases():
+    from stagehand.alexa.player import resample as linear
+
+    n = 44100 // 2
+    t = np.arange(n) / 44100
+    x = (0.5 * np.sin(2 * np.pi * 15000 * t)).astype(np.float32)[:, None]
+    hq = resample_hq(x, 44100, 48000)
+    assert hq.shape == (round(n * 48000 / 44100), 1)
+    core = slice(2000, -2000)  # away from the abrupt start / end
+    assert _spur_db(hq[core, 0], 48000, 15000) < -60
+    assert _spur_db(linear(x, 44100, 48000)[core, 0], 48000, 15000) > -45  # what it replaced
+    assert np.sqrt(np.mean(hq[core, 0] ** 2)) == pytest.approx(0.5 / np.sqrt(2), rel=0.01)
+
+
+def test_the_bank_resample_drops_what_the_lower_rate_cannot_carry():
+    n = 24000
+    t = np.arange(n) / 48000
+    above = np.sin(2 * np.pi * 23000 * t).astype(np.float32)  # over 44.1 kHz's Nyquist
+    below = np.sin(2 * np.pi * 1000 * t).astype(np.float32)
+    y = resample_hq(np.stack([above, below], axis=1), 48000, 44100)
+    assert y.shape == (22050, 2)
+    assert np.abs(y[1000:-1000, 0]).max() < 0.02  # no alias at 21.1 kHz
+    assert np.abs(y[1000:-1000, 1]).max() == pytest.approx(1.0, abs=0.02)
+
+
+def test_smooth_fft_lengths():
+    assert [_smooth(n) for n in (1, 7, 11, 97, 1000)] == [1, 8, 12, 100, 1000]
+
+
+def test_the_bank_lists_files_off_the_device_rate(tmp_path):
+    write_wav(tmp_path / "zip.wav", rate=RATE)
+    write_wav(tmp_path / "song.wav", rate=RATE * 2)
+    assert SoundBank(tmp_path, RATE).off_rate(["zip", "song", "missing"]) == [("song", RATE * 2)]

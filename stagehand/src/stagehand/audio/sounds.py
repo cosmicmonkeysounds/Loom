@@ -1,8 +1,10 @@
 """The router's media: story sounds from `sounds_dir`, and the test signals.
 
 `sound printer_grind` plays `<sounds_dir>/printer_grind.(wav|aiff|aif|flac)`,
-decoded with libsndfile and resampled once to the device rate, then kept in
-memory (re-read when the file changes on disk). A name with no file is
+decoded with libsndfile and resampled once to the device rate with a
+band-limited (FFT, ideal low-pass) resampler — songs are full range, so the
+alexa player's linear resample (fine for a chime and a voice) would alias
+and dull them — then kept in memory (re-read when the file changes on disk). A name with no file is
 logged once and skipped — never a crash mid-show. Names are matched exactly,
 then case-insensitively; a name that isn't a plain file name (`../x`) is
 refused.
@@ -15,18 +17,70 @@ outputs apart by ear — followed by the speaker's spoken label.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from pathlib import Path
 
 import numpy as np
-
-from ..alexa.player import resample
 
 log = logging.getLogger("stagehand.audio")
 
 EXTENSIONS = (".wav", ".aiff", ".aif", ".flac")
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,80}$")
 IDENTIFY_S = 1.5
+
+
+def _smooth(n: int) -> int:
+    """The smallest 2·3·5-smooth number ≥ n (a fast FFT length)."""
+    best = 1 << max(0, (n - 1).bit_length())
+    p5 = 1
+    while p5 < best:
+        p35 = p5
+        while p35 < best:
+            q = p35
+            while q < n:
+                q *= 2
+            best = min(best, q)
+            p35 *= 3
+        p5 *= 5
+    return best
+
+
+def resample_hq(samples: np.ndarray, rate: int, target: int) -> np.ndarray:
+    """Band-limited resample of (frames, channels) float audio: one FFT per
+    channel, the spectrum cut (down) or zero-padded (up) at the lower
+    Nyquist, back at the exact ratio. Silence is padded after the sound so
+    the FFT's wrap-around can't ring into its start. Done once per file."""
+    if rate == target or len(samples) == 0:
+        return samples
+    x = samples if samples.ndim == 2 else samples[:, None]
+    n = len(x)
+    n_out = max(1, int(round(n * target / rate)))
+    g = math.gcd(rate, target)
+    step_in, step_out = rate // g, target // g
+    blocks = _smooth(-(-(n + rate // 20 + 64) // step_in))
+    m, m_out = blocks * step_in, blocks * step_out
+    bins = m_out // 2 + 1
+    keep = min(m // 2 + 1, bins)
+    out = np.empty((n_out, x.shape[1]), dtype=np.float32)
+    for c in range(x.shape[1]):
+        spec = np.fft.rfft(x[:, c].astype(np.float64), n=m)
+        cut = np.zeros(bins, dtype=np.complex128)
+        cut[:keep] = spec[:keep]
+        if m_out < m and m_out % 2 == 0:
+            cut[-1] = cut[-1].real  # the new Nyquist bin of a downsample
+        out[:, c] = (np.fft.irfft(cut, n=m_out)[:n_out] * (m_out / m)).astype(np.float32)
+    return out
+
+
+def rate_of(path: Path) -> int | None:
+    """A sound file's sample rate from its header (None if unreadable)."""
+    try:
+        import soundfile as sf
+
+        return int(sf.info(str(path)).samplerate)
+    except Exception:  # noqa: BLE001 — libsndfile raises its own types
+        return None
 
 
 def decode_file(path: Path) -> tuple[np.ndarray, int]:
@@ -84,10 +138,21 @@ class SoundBank:
                 self.missing.add(name)
                 log.warning("sound %r: can't decode %s (%s) — skipped", name, path, err)
             return None
-        data = resample(samples, rate, self.rate)
+        data = resample_hq(samples, rate, self.rate)
         self._cache[str(path)] = (mtime, data)
         self.missing.discard(name)
         return data
+
+    def off_rate(self, names) -> list[tuple[str, int]]:
+        """(name, file rate) for every file not at the bank's rate — they play
+        (resampled at load) but are best converted offline."""
+        out = []
+        for name in sorted(set(names)):
+            path = self.find(name)
+            r = rate_of(path) if path is not None else None
+            if r is not None and r != self.rate:
+                out.append((name, r))
+        return out
 
     def preload(self, names) -> tuple[int, list[str]]:
         """Decode every name now (at boot / on a config change). → (loaded, missing)."""
