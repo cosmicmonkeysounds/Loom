@@ -672,15 +672,30 @@ function CasinoSlot(props: SlotProps) {
   return <LazySlot {...props} load={loadCasino} cls="casino" failed="THE CASINO DIDN'T LOAD — RETRYING…" loading="OPENING THE CASINO…" />;
 }
 
-/** The tent laptop's reinstallation station (wave 18b), guarded like the board. */
+/** The tent laptop's reinstallation station (wave 18b), guarded like the
+ *  board. Busy (a walk or the wizard on screen) is the station's to report,
+ *  but never outlives it: a station that crashes into the boundary, or
+ *  unmounts mid-walk without saying so, must not keep slides and cutscenes
+ *  hidden until the retry. */
 function ReinstallSlot(props: ReinstallTerminalProps) {
-  return <LazySlot {...props} load={loadReinstall} cls="reinstall" failed="THE REINSTALLATION WIZARD DIDN'T LOAD — RETRYING…" loading="STARTING THE REINSTALLATION WIZARD…" />;
+  const busy = useRef(props.onBusy);
+  busy.current = props.onBusy;
+  useEffect(() => () => busy.current(false), []);
+  const onBroken = useCallback(() => busy.current(false), []);
+  return <LazySlot {...props} load={loadReinstall} cls="reinstall" failed="THE REINSTALLATION WIZARD DIDN'T LOAD — RETRYING…" loading="STARTING THE REINSTALLATION WIZARD…" onBroken={onBroken} />;
 }
 
 /** A lazy screen (the chess board, the casino, the reinstallation station)
  *  behind an error boundary: a failed load says so and is tried again
  *  `WORLD_RETRY_MS` later, in place. */
-function LazySlot<P extends SlotProps>({ load, cls, failed, loading, ...rest }: P & { load: () => Promise<{ default: (p: P) => ReactNode }>; cls: string; failed: string; loading: string }) {
+function LazySlot<P extends SlotProps>({
+  load,
+  cls,
+  failed,
+  loading,
+  onBroken,
+  ...rest
+}: P & { load: () => Promise<{ default: (p: P) => ReactNode }>; cls: string; failed: string; loading: string; onBroken?: () => void }) {
   const props = rest as unknown as P;
   const [attempt, setAttempt] = useState(0);
   const [broken, setBroken] = useState(false);
@@ -700,7 +715,14 @@ function LazySlot<P extends SlotProps>({ load, cls, failed, loading, ...rest }: 
     </div>
   );
   return (
-    <WorldBoundary key={attempt} fallback={note(failed)} onError={() => setBroken(true)}>
+    <WorldBoundary
+      key={attempt}
+      fallback={note(failed)}
+      onError={() => {
+        setBroken(true);
+        onBroken?.();
+      }}
+    >
       <Suspense fallback={note(loading)}>
         <View {...props} />
       </Suspense>
