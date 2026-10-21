@@ -35,7 +35,10 @@ import {
   truthStamp,
 } from "../src/cutscene/kit/results.ts";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
-import type { ScreenMoment, ScreenResults, ScreenState } from "../src/screen.ts";
+import { EMPTY_NIGHT, type ScreenMoment, type ScreenResults, type ScreenState } from "../src/screen.ts";
+import { nightSummary } from "../src/cutscene/kit/tv2-time.ts";
+import { purgatoryText } from "../src/cutscene/scenes/act2.tsx";
+import { trustCallout } from "../src/cutscene/scenes/act3.tsx";
 
 beforeAll(() => {
   const error = console.error.bind(console);
@@ -313,5 +316,37 @@ describe("the verdict (O2, D11)", () => {
     const html = text(draw("verdict", "tv", VERDICT_PLAN.pages + 800, { results: old }));
     expect(html).not.toContain("The answer");
     expect(html).not.toContain("Lied:");
+  });
+});
+
+describe("the other results scenes read the night's real numbers", () => {
+  const beatAt = (name: string, at: number): ScreenMoment => ({ seq: at, at, kind: "beat", name, who: null, kept: false });
+
+  it("Final Assessment names his most and least trusted once the assessment is final", () => {
+    const moments = [beatAt("The Bag Of Truth", AT + 51_000), beatAt("Final Assessment", AT + 90_000)];
+    const night = { most_trusted: "Winamp", least_trusted: "Notepad" };
+    for (const target of ["tv", "wall"] as const) {
+      expect(text(draw("bobbing", target, 125_000, { moments, night })), target).toContain("Most trusted: Winamp · Least trusted: Notepad");
+      // Weighing: not yet.
+      expect(text(draw("bobbing", target, 95_000, { moments, night })), target).not.toContain("Most trusted");
+      // An older server sends neither: no call-out.
+      expect(text(draw("bobbing", target, 125_000, { moments }))).not.toContain("trusted:");
+    }
+    expect(trustCallout({ most_trusted: null, least_trusted: "Notepad" })).toBe("Least trusted: Notepad");
+    expect(trustCallout({ most_trusted: null, least_trusted: null })).toBeNull();
+  });
+
+  it("the recount and purgatory say the facts accepted and the first program reinstalled", () => {
+    const night = { facts_accepted: 17, first_reinstall: "Winamp" };
+    for (const id of ["recount", "purgatory"]) {
+      for (const target of ["tv", "wall"] as const) {
+        const html = text(draw(id, target, HISTORY_T, { night }));
+        expect(html, `${id} ${target}`).toContain("17 facts accepted tonight.");
+        expect(html, `${id} ${target}`).toContain("First program reinstalled: Winamp.");
+        expect(text(draw(id, target, HISTORY_T, {}))).not.toMatch(/accepted tonight|reinstalled:/u);
+      }
+    }
+    expect(nightSummary({ facts_accepted: 1, first_reinstall: null })).toEqual(["1 fact accepted tonight."]);
+    expect(purgatoryText({ ...EMPTY_NIGHT })).not.toContain("tonight");
   });
 });

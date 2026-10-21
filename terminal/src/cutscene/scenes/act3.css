@@ -383,3 +383,6 @@
 .tv3-vw .tv3-v-totals { font-size: 4vmin; top: 70%; }
 .tv3-vw .tv3-v-stamp { font-size: 5vmin; top: 80%; }
 .tv3-vt.skip .tv3-vt-truth { white-space: normal; line-height: 1.1; }
+/* Final Assessment's call-outs (wave 18b): under "You may read truth.txt." */
+.tv3-bob-trust { position: absolute; left: 32%; right: 3%; top: 86%; padding: 0.2em 0.4em; background: rgba(4, 10, 40, 0.75); text-align: center; font-family: var(--mono); font-size: min(4vmin, 4.6vw); color: #ffd23f; text-shadow: 0 0.08em 0.2em #000; will-change: transform, opacity; }
+.tv3-bob-trust.lite { left: 4%; right: 4%; }

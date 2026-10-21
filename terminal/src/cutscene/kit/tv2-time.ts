@@ -401,3 +401,17 @@ export function chartLayout(n: number, maxCols = 3): { cols: number; perCol: num
   const cols = Math.min(Math.max(1, maxCols), n <= 10 ? 1 : n <= 24 ? 2 : 3);
   return { cols, perCol: Math.max(1, Math.ceil(n / cols)) };
 }
+
+// --- the night's summary (wave 18b: the recount and purgatory slides) ---------------------
+
+/**
+ * The night's real numbers, as the recount and purgatory say them (the
+ * screen state carries `facts_accepted` / `first_reinstall` only while one
+ * of those slides is up); empty when there are none (an older server).
+ */
+export function nightSummary(night: Pick<ScreenNight, "facts_accepted" | "first_reinstall">): string[] {
+  const out: string[] = [];
+  if (night.facts_accepted !== null) out.push(`${night.facts_accepted} ${night.facts_accepted === 1 ? "fact" : "facts"} accepted tonight.`);
+  if (night.first_reinstall !== null) out.push(`First program reinstalled: ${night.first_reinstall}.`);
+  return out;
+}

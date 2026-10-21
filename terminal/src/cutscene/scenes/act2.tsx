@@ -54,7 +54,7 @@ import {
   type Emitter,
 } from "../kit/index.ts";
 import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, nightSummary, onGrid, recountRideAt, scenarioFor, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -1825,7 +1825,8 @@ function DecrepitFace({ t, reduced }: { t: number; reduced: boolean }) {
 }
 
 function RecountTv(p: SceneProps) {
-  const { t, sfx, reduced, target } = p;
+  const { t, sfx, reduced, target, night } = p;
+  const summary = nightSummary(night);
   const rideAt = recountRideAt(target);
   const rideT = t >= rideAt ? t - rideAt : null;
   const gone = rideT !== null && rideT > 1200 ? progress(rideT, 1200, 2400) : 0;
@@ -1843,6 +1844,13 @@ function RecountTv(p: SceneProps) {
           System resources: <b>3% free</b>
           <ProgressBar value={0.03 + 0.01 * pulse(t, 2000)} segments={30} />
         </div>
+        {i === 0 && summary.length > 0 && (
+          <div className="tv2-recount-sum" style={{ opacity: progress(t, 2600, 600) }}>
+            {summary.map((l) => (
+              <div key={l}>{l}</div>
+            ))}
+          </div>
+        )}
       </div>
     </Win98Window>
   );
@@ -1872,14 +1880,15 @@ function RecountTv(p: SceneProps) {
 }
 
 function RecountWall(p: SceneProps) {
-  const { t, reduced, target } = p;
+  const { t, reduced, target, night } = p;
+  const summary = nightSummary(night);
   const rideT = t - recountRideAt(target);
   const riding = rideT >= 0 && rideT < RECOUNT_RIDE_MS + 2000;
   const gone = rideT > 1200 ? progress(rideT, 1200, 2000) : 0;
   return (
     <div className="kit-fill">
       <div className="kit-fill" style={{ opacity: 1 - gone }}>
-        <WallCard t={t} value="recount" icon="computer" tone="black" bg="#14181c" reduced={reduced} accent={<span style={{ opacity: 0.6 + 0.3 * noise1(9, Math.floor(t / 90)), display: "inline-block", width: "10em" }}><DecrepitFace t={t} reduced={reduced} /></span>} />
+        <WallCard t={t} value="recount" lines={summary.length > 0 ? ["(not responding)", ...summary] : undefined} icon="computer" tone="black" bg="#14181c" reduced={reduced} accent={<span style={{ opacity: 0.6 + 0.3 * noise1(9, Math.floor(t / 90)), display: "inline-block", width: "10em" }}><DecrepitFace t={t} reduced={reduced} /></span>} />
       </div>
       {riding && (
         <>
@@ -1987,9 +1996,16 @@ const PURGATORY_TEXT = [
 const PURG_TYPE = { start: 2400, cps: 9 } as const;
 const LEAVE_AT = 70_000;
 
+/** summary.txt with the night's real numbers under it (wave 18b), when the night has them. */
+export function purgatoryText(night: SceneProps["night"]): string {
+  const summary = nightSummary(night);
+  return summary.length === 0 ? PURGATORY_TEXT : `${PURGATORY_TEXT}\n\n${summary.join("\n")}`;
+}
+
 function PurgatoryTv(p: SceneProps) {
-  const { t, sfx, reduced } = p;
-  const typedEnd = typedDuration(PURGATORY_TEXT, { start: PURG_TYPE.start, cps: PURG_TYPE.cps });
+  const { t, sfx, reduced, night } = p;
+  const text = purgatoryText(night);
+  const typedEnd = typedDuration(text, { start: PURG_TYPE.start, cps: PURG_TYPE.cps });
   useSfxCues(t, sfx, [[0, "chime", { gain: 0.25, pitch: 0.5 }], [LEAVE_AT, "ding", { gain: 0.25, pitch: 0.7 }]]);
   const fog = progress(t, 0, 2000);
   return (
@@ -2014,7 +2030,7 @@ function PurgatoryTv(p: SceneProps) {
           <span>Help</span>
         </div>
         <pre className="tv2-notepad-text">
-          <Typewriter text={PURGATORY_TEXT} t={t} start={PURG_TYPE.start} cps={PURG_TYPE.cps} caret={t < typedEnd + 600_000} reserve={false} />
+          <Typewriter text={text} t={t} start={PURG_TYPE.start} cps={PURG_TYPE.cps} caret={t < typedEnd + 600_000} reserve={false} />
         </pre>
       </Win98Window>
       <Win98Dialog title="Help" message="It looks like you’re trying to leave. I can’t help you with that anymore." kind="question" actions={["OK"]} x={66} y={72} width="22em" inactive open={eased(t, LEAVE_AT, 2400, ease.inOutQuad) * 0.85} reduced={reduced} />
@@ -2025,7 +2041,7 @@ function PurgatoryTv(p: SceneProps) {
 }
 
 function PurgatoryWall(p: SceneProps) {
-  const { t, reduced } = p;
+  const { t, reduced, night } = p;
   return (
     <WallCard
       t={t}
@@ -2034,7 +2050,7 @@ function PurgatoryWall(p: SceneProps) {
       tone="black"
       bg="#5a5a5a"
       reduced={reduced}
-      lines={["This summary was auto-generated from the chat app."]}
+      lines={["This summary was auto-generated from the chat app.", ...nightSummary(night)]}
       accent={
         <span className="tv2-wall-ghosts">
           {[0, 1, 2].map((i) => (

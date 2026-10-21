@@ -17,7 +17,7 @@ import "./act3.css";
 import { useEffect, useRef, type ComponentType, type CSSProperties } from "react";
 import { HISTORY_T } from "../clock.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
-import type { ScreenResultQuestion } from "../../screen.ts";
+import type { ScreenNight, ScreenResultQuestion } from "../../screen.ts";
 import { useHeldResults } from "../kit/results-parts.tsx";
 import { VERDICT_MS, VERDICT_PLAN, VERDICT_WALL_MS, liarsLine, roundChip, truthStamp, verdictHasPages, verdictPageAt, verdictStamp, verdictTotals, verdictTotalsLine } from "../kit/results.ts";
 import { useEndAt } from "../kit/tv1-parts.tsx";
@@ -320,7 +320,7 @@ function Bobbing({ t, at, state, sfx, reduced, target }: SceneProps) {
   const ty = reduced ? 0 : lerp(-120, 0, ease.outBounce(progress(t, 500, 900)));
   const splash: Emitter[] = [{ x: 0.5, y: 0.62, w: 0.4, start: 950, end: 1150, rate: 500, life: 1200, speed: 0.7, angle: -90, spread: 70, gravity: 1.4, drag: 0.2, size: 7, colors: ["#bfe3ff", "#ffffff", "#7ec4ff"], shape: "dot", seed: 51 }];
   const wait = countdownParts(Math.max(0, t - 1500)).text;
-  if (upT !== null) return <BagIsUp t={t} upT={upT} judgeT={judgeT} final={final} reduced={reduced} lite={lite} />;
+  if (upT !== null) return <BagIsUp t={t} upT={upT} judgeT={judgeT} final={final} reduced={reduced} lite={lite} night={state.night} />;
   return (
     <Stage bg="linear-gradient(180deg, #0b1238 0%, #22104a 60%, #0b1238 100%)" className="tv3-bob-stage">
       <BobTank t={t} rise={rise} reduced={reduced} apples={lite ? 4 : 5} />
@@ -361,8 +361,18 @@ function Bobbing({ t, at, state, sfx, reduced, target }: SceneProps) {
   );
 }
 
-/** The bob's hold once the bag is up: it floats, locked, while the assessment runs; then the lock opens. */
-function BagIsUp({ t, upT, judgeT, final, reduced, lite }: { t: number; upT: number; judgeT: number | null; final: boolean; reduced: boolean; lite: boolean }) {
+/** "Most trusted: X · Least trusted: Y" off the night (wave 18b: the bobbing slide's call-outs), or null. */
+export function trustCallout(night: Pick<ScreenNight, "most_trusted" | "least_trusted">): string | null {
+  const parts: string[] = [];
+  if (night.most_trusted !== null) parts.push(`Most trusted: ${night.most_trusted}`);
+  if (night.least_trusted !== null) parts.push(`Least trusted: ${night.least_trusted}`);
+  return parts.length === 0 ? null : parts.join(" · ");
+}
+
+/** The bob's hold once the bag is up: it floats, locked, while the assessment runs; then the lock
+ *  opens, naming his most and least trusted (wave 18b; the night carries them while the slide is up). */
+function BagIsUp({ t, upT, judgeT, final, reduced, lite, night }: { t: number; upT: number; judgeT: number | null; final: boolean; reduced: boolean; lite: boolean; night: ScreenNight }) {
+  const trust = final ? trustCallout(night) : null;
   const lift = reduced ? 1 : eased(upT, 0, 1400, ease.outBack);
   const finalT = judgeT === null ? -1 : judgeT - ASSESSMENT_MS;
   const unlock = final ? (reduced ? 1 : eased(finalT, 0, 700, ease.outBack)) : 0;
@@ -391,6 +401,11 @@ function BagIsUp({ t, upT, judgeT, final, reduced, lite }: { t: number; upT: num
       <div className="tv3-bob-caption tv3-bob-hold" style={{ opacity: final ? progress(finalT, 300, 600) : 0.75 + 0.25 * pulse(t, 2000) }}>
         {final ? "You may read truth.txt." : "Do not read it yet."}
       </div>
+      {trust !== null && (
+        <div className={`tv3-bob-trust${lite ? " lite" : ""}`} style={{ opacity: progress(finalT, 900, 600), transform: reduced ? undefined : `translate3d(0, ${((1 - eased(finalT, 900, 600, ease.outCubic)) * 0.6).toFixed(2)}em, 0)` }}>
+          {trust}
+        </div>
+      )}
       {!lite && (
         <Win98Window title={final ? "Assessment - Complete" : "Assessment"} icon={final ? "document" : "info"} x={3} y={70} width="24em" open={reduced ? 1 : eased(upT, 900, 260, ease.linear)} reduced={reduced} className="tv3-bob-search" status={judgeT === null ? "Waiting for the assessment…" : final ? "Assessment is final." : "Weighing…"}>
           <div className="tv3-row">

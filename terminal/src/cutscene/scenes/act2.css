@@ -529,3 +529,5 @@
 .tv2-wall-tq-row span { margin: 0 0.4em; }
 .tv2-wall-tq-row .ok { color: #006000; }
 .tv2-wall-tq-row .no { color: #a00000; }
+/* the recount's real numbers (wave 18b) */
+.tv2-recount-sum { margin-top: 0.6em; padding: 0.3em 0.5em; font-family: var(--mono); font-size: 1em; color: #7fd6c8; background: #101820; border: 1px solid #2a3a44; }
