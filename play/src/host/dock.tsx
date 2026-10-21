@@ -21,7 +21,7 @@ import type { HostView } from "../types.ts";
 import { useHostView, useRecap, type HostClient } from "./client.ts";
 import { hostFire } from "./fire.ts";
 import { HostContext, failText, type HostCtx } from "./kit.tsx";
-import { OPTIMISTIC_MS, awardsNear, barLine, cueDescription, groupNeeds, type BarLine, type HostStripItem, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type OwnPress, type RefusedPress } from "./model.ts";
+import { OPTIMISTIC_MS, awardsNear, barLine, cueDescription, groupNeeds, hostWanted, wantedNeed, type BarLine, type HostStripItem, hostStrip, hostTabs, newestSeq, refusalReason, refusedLive, tabLabel, type HostTab, type MoreFocus, type OwnPress, type RefusedPress } from "./model.ts";
 import { callerKnown, callerText, cueCaller, shownCaller, type CallerFlip } from "./caller.ts";
 import { useFireAnyway } from "./fire-anyway.tsx";
 import { CuesTab } from "./tab-cues.tsx";
@@ -286,7 +286,7 @@ function HostDockOn({ session, wide, openCard, client: injected, keyboardOpen, o
 
   const bar = nextBar(rows, view.countdowns, nowMs, runs);
   const armedHere = bar.kind === "next" && desk.armed?.id === bar.row.id;
-  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0);
+  const needs = groupNeeds(view.needs).length + (refused !== null ? 1 : 0) + (wantedNeed(hostWanted(view)) !== null ? 1 : 0);
   // The countdown the bar's first line already reads ("nothing to press …
   // ⏱ Midnight in 59:28") leaves the strip on a phone.
   const strip = hostStrip(view, layout, nowMs, needs, bar.kind === "countdown", callers ? callerText(caller, [me], view.parts.map((p) => p.id)) : null);

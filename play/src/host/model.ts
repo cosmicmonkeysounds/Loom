@@ -26,7 +26,7 @@ export interface HostTabInfo {
  *  filings). */
 export function hostTabs(view: Pick<HostView, "needs" | "judging"> | null, refused: number): HostTabInfo[] {
   const out: HostTabInfo[] = [{ id: "cues", label: "Cues" }];
-  out.push({ id: "needs", label: "Needs", count: groupNeeds(view?.needs ?? []).length + refused });
+  out.push({ id: "needs", label: "Needs", count: groupNeeds(view?.needs ?? []).length + refused + (wantedNeed(hostWanted(view)) !== null ? 1 : 0) });
   if (view?.judging != null) out.push({ id: "judge", label: "Judge", count: view.judging.pending.length });
   out.push({ id: "people", label: "People" }, { id: "more", label: "More" });
   return out;

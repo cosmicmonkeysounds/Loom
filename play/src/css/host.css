@@ -384,3 +384,12 @@
 .host-box-did { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .host-box-tag { font-weight: 800; color: var(--muted-ink); }
 .host-box .host-last { margin: 0; }
+
+/* Needs › escorts waiting (§5.5): first, ringed like an alarm. */
+.host-need.wanted > .host-row-btn { box-shadow: var(--raised), inset 0 0 0 2px var(--bad); }
+.host-wanted-row { box-shadow: none; background: none; padding: 2px 0; }
+
+/* More › Night · House · Setup (§5.6): a row of small option tabs. */
+.host-subtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 0 10px; }
+.host-subtab { min-height: var(--tap); font-weight: 700; }
+.host-subtab.current { box-shadow: var(--pressed); background: var(--face-hi); font-weight: 800; }

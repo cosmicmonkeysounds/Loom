@@ -73,20 +73,56 @@ describe("the tabs", () => {
     expect(out).toContain("⛔ restricted");
   });
   it("More: every section the event has, nothing it hasn't; no mod passcode anywhere", () => {
-    const full = inDrawer(hostFixture(), createElement(MoreTab, { focus: null }));
+    // Wave 18 splits More in three (Night · House · Setup): a deep link opens
+    // each tab, so the three together are the whole of More.
+    const allTabs = (v: HostView) => (["alerts", "wallet", "codes"] as const).map((f) => inDrawer(v, createElement(MoreTab, { focus: f }))).join("\n");
+    const full = allTabs(hostFixture());
     for (const s of ["announce", "alerts", "wallet", "king", "terminals", "codes", "parts", "agents-trabolta"]) expect(full).toContain(`data-section="${s}"`);
     expect(full).toContain("Ada → Bob · 20");
     expect(full).toContain("15 / 15");
     expect(full).toContain("🔴 Server Door");
     // Two agent-voiced characters: two sections, two ids, no duplicate.
-    const two = inDrawer(hostFixture({ agents: [{ id: "Trabolta", online: true, queue: null, waiting: [] }, { id: "Clippy Mind", online: false, queue: null, waiting: [] }] }), createElement(MoreTab, { focus: null }));
+    const two = inDrawer(hostFixture({ agents: [{ id: "Trabolta", online: true, queue: null, waiting: [] }, { id: "Clippy Mind", online: false, queue: null, waiting: [] }] }), createElement(MoreTab, { focus: "agents" }));
     expect(two).toContain('id="host-agents-trabolta"');
     expect(two).toContain('id="host-agents-clippy-mind"');
     expect(two.match(/id="host-agents/gu)).toHaveLength(2);
     expect(full).toContain("“Are you there?”");
     expect(full).toContain('role="radio" aria-checked="true"');
-    const bare = inDrawer(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }), createElement(MoreTab, { focus: null }));
+    const bare = allTabs(hostFixture({ wallet: null, king: null, terminals: null, parts: [], agents: [] }));
     for (const s of ["wallet", "king", "terminals", "parts", "agents"]) expect(bare).not.toContain(`data-section="${s}`);
     expect(full).not.toMatch(/restart|go live|push draft|end the run/iu);
+  });
+  it("More opens on Night once the doors are open, Setup before; each tab lists only its own", () => {
+    const night = inDrawer(hostFixture(), createElement(MoreTab, { focus: null }));
+    expect(night).toMatch(/aria-selected="true"[^>]*>Night</u);
+    for (const s of ["show", "clock", "announce", "alerts"]) expect(night).toContain(`data-section="${s}"`);
+    for (const s of ["wallet", "codes", "parts"]) expect(night).not.toContain(`data-section="${s}"`);
+    const before = inDrawer(hostFixture({ runtime: "idle", doorsClosed: true }), createElement(MoreTab, { focus: null }));
+    expect(before).toMatch(/aria-selected="true"[^>]*>Setup</u);
+    expect(before).toContain('data-section="codes"');
+    expect(before).not.toContain('data-section="show"');
+    const house = inDrawer(hostFixture(), createElement(MoreTab, { focus: "terminals" }));
+    expect(house).toMatch(/aria-selected="true"[^>]*>House</u);
+    for (const s of ["wallet", "king", "terminals", "agents-trabolta"]) expect(house).toContain(`data-section="${s}"`);
+  });
+  it("Judge: auto ⇄ review, the view's mode pressed", () => {
+    const auto = inDrawer(hostFixture(), createElement(JudgeTab));
+    expect(auto).toContain('data-section="judge-mode"');
+    expect(auto).toMatch(/aria-pressed="true"[^>]*>[\s\S]{0,120}Auto: the house judges; near misses wait here/u);
+    const review = inDrawer(hostFixture({ judging: { ...hostFixture().judging!, mode: "review" } }), createElement(JudgeTab));
+    expect(review).toMatch(/aria-pressed="true"[^>]*>[\s\S]{0,120}Review: every filing waits for a host/u);
+  });
+  it("Needs: escorts waiting lead, read-only (no claim buttons)", () => {
+    const wanted = [
+      { id: "g1", name: "Napster", reason: "filed a guess", location: "The Cloud", lastSeen: 0, markedAt: 2, claimedBy: null, captured: false },
+      { id: "g2", name: "ICQ", reason: null, location: "The Tube", lastSeen: 0, markedAt: 1, claimedBy: "McAfee Anti-Virus", captured: false },
+      { id: "g3", name: "Encarta", reason: null, location: null, lastSeen: 0, markedAt: 0, claimedBy: "Norton", captured: true },
+    ];
+    const out = inDrawer({ ...hostFixture(), wanted } as HostView, createElement(NeedsTab, { refused: null, reason: null }));
+    expect(out.indexOf("🚨 2 marked · 1 nobody on it")).toBeGreaterThan(-1);
+    expect(out.indexOf("🚨 2 marked")).toBeLessThan(out.indexOf("💰 1 held transfer"));
+    expect(out).not.toMatch(/I&#x27;ll get them|Take over|Hand it back/u);
+    const none = inDrawer({ ...hostFixture({ needs: [] }), wanted: [wanted[2]] } as HostView, createElement(NeedsTab, { refused: null, reason: null }));
+    expect(none).toContain("Nothing needs you.");
   });
 });
