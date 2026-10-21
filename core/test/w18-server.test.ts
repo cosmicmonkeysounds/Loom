@@ -89,9 +89,14 @@ describe("C7: the reinstallation gate", () => {
     const players = (await modGet(rt, "/api/mod/spatial/candidates")).json.players as Array<{ id: string; eligible: boolean; marked: boolean }>;
     expect(players[0]).toMatchObject({ id: ada.id, eligible: true, marked: true });
     expect(players.find((p) => p.id === bo.id)).toMatchObject({ eligible: false, marked: false });
-    // After the end, everyone may (a party favour).
+    expect((await modGet(rt, "/api/mod/spatial/candidates")).json.ended).toBe(false);
+    // After the end, everyone may (a party favour): nobody reads "marked" then.
     await mod(rt, "/api/mod/signal", { name: "end_the_night" });
     expect(eligibleFor(rt.liveSim!, bo.id)).toBe(true);
+    const after = await modGet(rt, "/api/mod/spatial/candidates");
+    expect(after.json.ended).toBe(true);
+    const rows = after.json.players as Array<{ id: string; eligible: boolean; marked: boolean; favour: boolean }>;
+    for (const r of rows) expect(r).toMatchObject({ eligible: true, marked: false, favour: true });
   });
 
   it("the duck board leaves out a run found after the end", () => {

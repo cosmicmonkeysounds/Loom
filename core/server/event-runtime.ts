@@ -3052,6 +3052,10 @@ export class EventRuntime {
           sendJson(res, 409, { error: "no scenario loaded" });
           return true;
         }
+        // Once the night has ended the reinstallation is a party favour
+        // (Q16 dropped): nobody is "marked" any more, so a program the story
+        // lets in then says `favour`, never `marked`.
+        const ended = this.nightEnded();
         const players = sortCandidates(
           [...sim.persons.values()].map((p) => {
             const captured = sim.isCaptured(p.id);
@@ -3065,14 +3069,16 @@ export class EventRuntime {
               restricted,
               eligible,
               // C7: eligible by the story's `reinstall:` alone (neither
-              // captured nor restricted) — the tablet / VR label "marked".
-              marked: eligible && !captured && !restricted,
+              // captured nor restricted) — the tablet / VR label "marked";
+              // after the end, a party favour instead.
+              marked: !ended && eligible && !captured && !restricted,
+              favour: ended && eligible && !captured,
               location: sim.locationOf(p.id),
               avatar: this.avatars.keyFor(p.name),
             };
           }),
         );
-        sendJson(res, 200, { players });
+        sendJson(res, 200, { players, ended });
         return true;
       }
       default:
