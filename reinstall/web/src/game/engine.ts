@@ -279,8 +279,9 @@ export class Game {
 
   /**
    * Hold the walk (`on`) or let it go (wave 18b): something covers the game
-   * (a story overlay on the tent laptop). Held, the idle leash stops counting
-   * and input is ignored (no stuck keys, no walking blind), while the pose
+   * (a story overlay on the tent laptop). Held, the idle leash stops counting,
+   * input is ignored (no stuck keys, no walking blind), Gerald is never found
+   * and never quacks (nobody can see him under the overlay), while the pose
    * pump keeps sending — the server's 60 s pose timeout never fires on a
    * held player. Letting go resumes the leash where it stopped (unless the
    * tab is hidden, which holds it on its own).
@@ -465,7 +466,8 @@ export class Game {
         if (this.doorOpen && this.kingState?.fallen !== true) this.refreshDoor();
         this.refreshTrail(now);
       }
-      this.maybeQuack(now);
+      // Held (an overlay over the game): Gerald keeps quiet under it too.
+      if (!this.held) this.maybeQuack(now);
       if (this.kingProp !== null && this.phase === "playing") this.tickKing(now);
       // Held (an overlay over the game): nobody can see Gerald, so no find.
       if (this.phase === "playing" && this.duck.state === "idle" && !this.held) {

@@ -9,6 +9,7 @@ import type { StationInfo } from "@loom/house";
 import { defaultConfig, type DeviceRole } from "../src/config.ts";
 import { firstStep } from "../src/flow-state.ts";
 import { exitFlash, ReinstallFlow, type FlowStations } from "../src/flow.tsx";
+import { TWO_ROOMS } from "./houses.ts";
 import { createSfx } from "../src/game/audio.ts";
 import { Game } from "../src/game/engine.ts";
 import { IdleLeash } from "../src/game/leash.ts";
@@ -207,3 +208,61 @@ describe("ReinstallFlow start=\"auto\" — the first screen, decided at mount", 
   });
 });
 
+describe("a held frame — no find and no quack under an overlay", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  function frameGame(held: boolean) {
+    const house = TWO_ROOMS();
+    const at: [number, number, number] = [1, 0, 1];
+    const quack = vi.fn();
+    const found = vi.fn(async () => {});
+    const set = vi.fn();
+    const g = Object.create(Game.prototype) as Record<string, unknown>;
+    const noop = { set: () => {} };
+    Object.assign(g, {
+      phase: "playing",
+      o: { sticks: () => ({ left: { x: 0, y: 0 }, right: { x: 0, y: 0 } }), arrowsTurn: true, sfx: { quack } },
+      held,
+      keys: new Set<string>(),
+      drag: [0, 0],
+      leash: new IdleLeash(0),
+      body: { p: at, yaw: 0, pitch: 0, vy: 0 },
+      world: {},
+      pump: { set },
+      lastTrailAt: 1000,
+      doorOpen: false,
+      kingState: null,
+      kingProp: null,
+      duck: { state: "idle", update: () => {} },
+      map: house,
+      duckSpot: { id: "d1", room: house.rooms[0]!.id, pos: at },
+      foundRefusals: 0,
+      foundCooldownUntil: 0,
+      perchedSaid: false,
+      nextQuackAt: 0,
+      camera: { position: noop, rotation: noop },
+      trail: { update: () => {} },
+      house: { update: () => {} },
+      ghosts: new Map(),
+      renderer: { render: () => {} },
+      lastHudAt: 1000,
+      found,
+    });
+    (g as unknown as { frame(now: number, dt: number): void }).frame(1000, 0.016);
+    return { quack, found, set };
+  }
+
+  it("standing on Gerald, held: no find, no quack — and the pose still goes out", () => {
+    vi.stubGlobal("document", { hidden: false });
+    const held = frameGame(true);
+    expect(held.found).not.toHaveBeenCalled();
+    expect(held.quack).not.toHaveBeenCalled();
+    expect(held.set).toHaveBeenCalledTimes(1);
+  });
+
+  it("the same frame, not held: the find and the quack", () => {
+    vi.stubGlobal("document", { hidden: false });
+    const free = frameGame(false);
+    expect(free.found).toHaveBeenCalledTimes(1);
+    expect(free.quack).toHaveBeenCalledTimes(1);
+  });
+});
