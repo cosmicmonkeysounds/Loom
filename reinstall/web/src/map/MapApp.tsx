@@ -35,7 +35,7 @@ import type { ReactNode } from "react";
 import { polyBounds, validateAudio, validateHouse } from "@loom/house";
 import type { AudioConfig, HouseMap, PlayerState, Vec2 } from "@loom/house";
 import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, rebaseHistory, removeSpeaker, rotateSpeaker, sameAudio, saveAllPlan, speakerById, speakerSavePlan, speakersDropped, withSpeakersText, type Doc } from "./audio.ts";
-import { fetchAudio, saveAudio, saveAudioToProject, testAudio, testRefusal, type AudioView } from "./audio-api.ts";
+import { fetchAudio, routerOf, saveAudio, saveAudioToProject, testAudio, testRefusal, testSentText, type AudioView } from "./audio-api.ts";
 import { runAudioPoll } from "./audio-poll.ts";
 import { AudioPanel } from "./AudioPanel.tsx";
 import "./audio.css";
@@ -495,7 +495,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       const r = await testAudio(base, config.token, target);
       if (r.ok) {
         const what = "speaker" in target ? (speakerById(audioRef.current, target.speaker)?.name ?? target.speaker) : `output ${target.out}`;
-        setNotice(`🔈 Test #${r.result.seq} sent: the router plays a tone and says “${what}” there (if it is running on the house Mac).`);
+        setNotice(testSentText(r.result.seq, what, routerOf(r.result.router), Date.now()));
       } else setNotice(testRefusal(r, target));
     },
     [base, config.token, unlock],

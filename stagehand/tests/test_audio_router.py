@@ -590,8 +590,11 @@ def test_the_poll_applies_long_polls_and_plays_new_tests(tmp_path):
 
     r, mod = run(go())
     polls = [c for c in mod.calls if c[0] == "/api/mod/audio"]
-    assert polls[0][1] is None  # the first ask returns at once
-    assert polls[1][1] == {"after": "v1", "tests": 1, "wait": 25} and polls[1][2] == 40
+    # Every poll says it is the router (LA-4: the editor shows it listening);
+    # the first ask returns at once (no `after`).
+    assert polls[0][1]["router"] == 1 and polls[0][1]["name"] and "after" not in polls[0][1]
+    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "wait": 25} and polls[1][2] == 40
+    assert polls[1][1]["router"] == 1
     assert played == [(None, 7)]  # the boot answer's test was only primed
     assert r.version == "v2" and r.house == FIXTURE["house"]
 

@@ -20,6 +20,13 @@ export interface AudioTestRow {
 
 /** `GET /api/mod/audio`. `source`: a director's save, the project's file,
  *  `LOOM_AUDIO`, or the default (nothing configured). */
+/** Is the house Mac's router listening (LA-4)? An older server says nothing: null. */
+export interface AudioRouter {
+  online: boolean;
+  lastSeen: number | null;
+  name: string | null;
+}
+
 export interface AudioView {
   audio: AudioConfig;
   version: string;
@@ -27,6 +34,7 @@ export interface AudioView {
   sounds: string[];
   locations: string[];
   tests: AudioTestRow[];
+  router: AudioRouter | null;
   problems: string[];
   warnings: string[];
 }
@@ -50,9 +58,33 @@ export function audioViewOf(data: Record<string, unknown>): AudioView {
           return [{ seq: r["seq"], at: r["at"], speaker: typeof r["speaker"] === "string" ? r["speaker"] : null, out: typeof r["out"] === "number" ? r["out"] : null }];
         })
       : [],
+    router: routerOf(data["router"]),
     problems: strings(data["problems"]),
     warnings: strings(data["warnings"]),
   };
+}
+
+/** A `router` block off an answer, or null (an older server). */
+export function routerOf(v: unknown): AudioRouter | null {
+  if (typeof v !== "object" || v === null) return null;
+  const r = v as Record<string, unknown>;
+  if (typeof r["online"] !== "boolean") return null;
+  return { online: r["online"], lastSeen: typeof r["lastSeen"] === "number" ? r["lastSeen"] : null, name: typeof r["name"] === "string" ? r["name"] : null };
+}
+
+/** What a sent Test says, given whether a router is listening. */
+export function testSentText(seq: number, what: string, router: AudioRouter | null, now: number): string {
+  if (router === null) return `🔈 Test #${seq} sent: the router plays a tone and says “${what}” there (if it is running on the house Mac).`;
+  if (router.online) return `🔈 Test #${seq} sent: the router${router.name !== null ? ` (${router.name})` : ""} plays a tone and says “${what}” there.`;
+  const ago = router.lastSeen === null ? "no router has polled since the server started" : `no router has polled in ${testAge(router.lastSeen, now).replace(" ago", "")}`;
+  return `🔈 Test #${seq} queued, but ${ago}: is the stagehand audio module running on the house Mac?`;
+}
+
+/** The Audio tab's router badge. */
+export function routerBadge(router: AudioRouter | null, now: number): { text: string; ok: boolean } | null {
+  if (router === null) return null;
+  if (router.online) return { text: `router online${router.name !== null ? ` · ${router.name}` : ""}`, ok: true };
+  return { text: router.lastSeen === null ? "no router yet" : `router last seen ${testAge(router.lastSeen, now)}`, ok: false };
 }
 
 /** The GET's outcome: the view; `missing` = a server with no speaker routes (404); `error` = away / refused. */
@@ -122,8 +154,8 @@ export function saveAudioToProject(base: string, token: string, fetcher: typeof 
 }
 
 /** Ask the router to play its identifying tone + label on a speaker or an output. */
-export function testAudio(base: string, token: string, target: { speaker: string } | { out: number }, fetcher: typeof fetch = fetch): Promise<MapReply<{ ok: true; seq: number }>> {
-  return post<{ ok: true; seq: number }>(`${base}/api/mod/audio/test`, token, target, fetcher);
+export function testAudio(base: string, token: string, target: { speaker: string } | { out: number }, fetcher: typeof fetch = fetch): Promise<MapReply<{ ok: true; seq: number; router?: unknown }>> {
+  return post<{ ok: true; seq: number; router?: unknown }>(`${base}/api/mod/audio/test`, token, target, fetcher);
 }
 
 /** What a test's refusal tells the director (a speaker the server hasn't got is an unsaved one). */

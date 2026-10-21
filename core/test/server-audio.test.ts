@@ -15,7 +15,7 @@ import { AUDIO_CHIME_SOUND, resolveTargets, validateAudio, type AudioConfig } fr
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
-import { AUDIO_TEST_MS, audioFileOf, audioOf, storySounds, type AudioView } from "../server/audio.ts";
+import { AUDIO_ROUTER_ONLINE_MS, AUDIO_TEST_MS, audioFileOf, audioOf, storySounds, type AudioView } from "../server/audio.ts";
 import type { MapFiles, ProjectLink } from "../server/house-maps.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -269,16 +269,38 @@ describe("POST /api/mod/audio/test", () => {
     expect((await call(rt, "POST", "/api/mod/audio/test", { out: 2.5 })).status).toBe(400);
     expect((await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall" }, {})).status).toBe(403);
     const a = await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall" });
-    expect(a.json).toEqual({ ok: true, seq: 1 });
+    expect(a.json).toMatchObject({ ok: true, seq: 1, router: { online: false, lastSeen: null } });
     t += 1000;
     const b = await call(rt, "POST", "/api/mod/audio/test", { out: 16 });
-    expect(b.json).toEqual({ ok: true, seq: 2 });
+    expect(b.json).toMatchObject({ ok: true, seq: 2 });
     expect((await view(rt)).tests).toEqual([
       { seq: 1, at: 1_000_000, speaker: "hall", out: null },
       { seq: 2, at: 1_001_000, speaker: null, out: 16 },
     ]);
     t += AUDIO_TEST_MS;
     expect((await view(rt)).tests.map((x) => x.seq)).toEqual([2]);
+    rt.dispose();
+  });
+});
+
+describe("is the router listening? (LA-4)", () => {
+  it("a router=1 poll marks it online; the editor's own long poll never does; it lapses after the window", async () => {
+    let t = 5_000_000;
+    const rt = runtime({ audio: AUDIO_TEXT, now: () => t });
+    const v = await view(rt, `?after=nope&wait=0`); // the map editor's poll
+    expect(v.router).toEqual({ online: false, lastSeen: null, name: null });
+    await view(rt, `?after=nope&wait=0&router=1&name=house-mac`);
+    expect((await view(rt)).router).toEqual({ online: true, lastSeen: t, name: "house-mac" });
+    expect((await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall" })).json["router"]).toMatchObject({ online: true });
+    t += AUDIO_ROUTER_ONLINE_MS + 1;
+    expect((await view(rt)).router.online).toBe(false);
+    // Parked on a long poll: online however long it waits.
+    const parked = view(rt, `?after=${v.version}&tests=99&wait=5&router=1`);
+    await new Promise((r) => setTimeout(r, 20));
+    t += AUDIO_ROUTER_ONLINE_MS * 3;
+    expect((await view(rt)).router.online).toBe(true);
+    await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall" });
+    await parked;
     rt.dispose();
   });
 });

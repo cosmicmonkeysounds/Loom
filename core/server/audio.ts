@@ -58,6 +58,18 @@ export const AUDIO_TESTS = 8;
 export const AUDIO_TEST_MS = 60_000;
 /** The long poll's default and longest wait (seconds). */
 export const AUDIO_WAIT_S = 25;
+/** The router counts as online this long after its last poll (ms): a long
+ *  poll is 25 s, so a live router is never seen as gone between two (LA-4). */
+export const AUDIO_ROUTER_ONLINE_MS = 40_000;
+
+/** Is the house Mac's router listening (`GET /api/mod/audio?router=1`)? */
+export interface AudioRouterPresence {
+  online: boolean;
+  /** Its last poll (server ms), null = none since this server started. */
+  lastSeen: number | null;
+  /** The worker's `name=`, when it gave one. */
+  name: string | null;
+}
 export const AUDIO_WAIT_MAX_S = 30;
 
 /** Is `path` the project's audio file (at the project's root)? */
@@ -145,6 +157,9 @@ export class AudioHub {
   private testLog: AudioTest[] = [];
   private testSeq = 0;
   private waiters = new Set<() => void>();
+  private routerSeenAt: number | null = null;
+  private routerName: string | null = null;
+  private routerParked = 0;
   /** A problem logged once per text, not per request. */
   private readonly warned = new Set<string>();
 
@@ -246,6 +261,23 @@ export class AudioHub {
     this.wake();
   }
 
+  /** The router polled (or answered a long poll): it is listening. */
+  noteRouter(name: string | null): void {
+    this.routerSeenAt = this.now();
+    if (name !== null && name.trim() !== "") this.routerName = name.trim().slice(0, 64);
+  }
+
+  /** A router long poll parked (+1) or let go (−1). */
+  routerWaiting(delta: 1 | -1): void {
+    this.routerParked = Math.max(0, this.routerParked + delta);
+  }
+
+  /** Is a router listening? Parked on a long poll, or polled lately. */
+  router(): AudioRouterPresence {
+    const seen = this.routerSeenAt;
+    return { online: this.routerParked > 0 || (seen !== null && this.now() - seen < AUDIO_ROUTER_ONLINE_MS), lastSeen: seen, name: this.routerName };
+  }
+
   /** Queue a test (exactly one of speaker / output, already checked). */
   test(target: { speaker: string } | { out: number }): AudioTest {
     const t: AudioTest = { seq: ++this.testSeq, at: this.now(), speaker: "speaker" in target ? target.speaker : null, out: "out" in target ? target.out : null };
@@ -311,6 +343,8 @@ export interface AudioView {
   sounds: string[];
   locations: string[];
   tests: AudioTest[];
+  /** Is the router on the house Mac listening (a Test is played only then)? */
+  router: AudioRouterPresence;
   /** The config in force checked against the house in force (a map edit
    *  can leave a speaker outside its room) — advice, never a refusal here. */
   problems: string[];
@@ -321,7 +355,7 @@ export function audioView(hub: AudioHub, ctx: AudioContext): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), problems: v.problems, warnings: v.warnings };
+  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), router: hub.router(), problems: v.problems, warnings: v.warnings };
 }
 
 /**
@@ -339,12 +373,22 @@ export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: Inco
   const testsAfter = /^\d+$/u.test(testsRaw) ? Number(testsRaw) : null;
   const waitRaw = Number(url.searchParams.get("wait") ?? AUDIO_WAIT_S);
   const waitS = Number.isFinite(waitRaw) ? Math.min(AUDIO_WAIT_MAX_S, Math.max(0, waitRaw)) : AUDIO_WAIT_S;
+  // The house Mac's router says who it is (`router=1`); the map editor's own
+  // long poll does not, so it never passes for one.
+  const router = url.searchParams.get("router") === "1";
+  if (router) hub.noteRouter(url.searchParams.get("name"));
   if (after !== null && after !== "" && !hub.moved(after, testsAfter) && waitS > 0) {
     const w = hub.waitChange(waitS * 1000);
     // A caller that hangs up frees its waiter at once.
     req.on?.("close", w.cancel);
-    await w.done;
+    if (router) hub.routerWaiting(1);
+    try {
+      await w.done;
+    } finally {
+      if (router) hub.routerWaiting(-1);
+    }
   }
+  if (router) hub.noteRouter(url.searchParams.get("name"));
   sendJson(res, 200, audioView(hub, ctx));
   return true;
 }
@@ -409,7 +453,7 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
           sendJson(res, 404, { error: "no such speaker" });
           return true;
         }
-        sendJson(res, 200, { ok: true, seq: hub.test({ speaker: id }).seq });
+        sendJson(res, 200, { ok: true, seq: hub.test({ speaker: id }).seq, router: hub.router() });
         return true;
       }
       const out = body["out"];
@@ -417,7 +461,7 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
         sendJson(res, 400, { error: `out must be an output from 1 to ${audio.device.outputs}` });
         return true;
       }
-      sendJson(res, 200, { ok: true, seq: hub.test({ out }).seq });
+      sendJson(res, 200, { ok: true, seq: hub.test({ out }).seq, router: hub.router() });
       return true;
     }
     default:

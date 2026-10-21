@@ -63,3 +63,20 @@ describe("the speaker routes", () => {
     expect(testAge(0, 120_000)).toBe("2 min ago");
   });
 });
+
+describe("is the router listening? (LA-4)", () => {
+  it("reads the server's router block (null from an older server) and says what a Test did", async () => {
+    const { routerBadge, routerOf, testSentText } = await import("../src/map/audio-api.ts");
+    expect(routerOf(undefined)).toBeNull();
+    expect(routerOf({ online: true, lastSeen: 5, name: "mac" })).toEqual({ online: true, lastSeen: 5, name: "mac" });
+    expect(testSentText(4, "Living L", { online: true, lastSeen: 1, name: null }, 2)).toContain("plays a tone");
+    const down = testSentText(4, "Living L", { online: false, lastSeen: 1000, name: null }, 61_000);
+    expect(down).toContain("queued");
+    expect(down).toContain("stagehand audio module");
+    expect(testSentText(4, "Living L", { online: false, lastSeen: null, name: null }, 0)).toContain("no router has polled since the server started");
+    expect(testSentText(4, "x", null, 0)).toContain("if it is running");
+    expect(routerBadge({ online: true, lastSeen: 1, name: "mac" }, 2)).toEqual({ text: "router online · mac", ok: true });
+    expect(routerBadge({ online: false, lastSeen: null, name: null }, 2)).toEqual({ text: "no router yet", ok: false });
+    expect(routerBadge(null, 2)).toBeNull();
+  });
+});

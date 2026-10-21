@@ -40,6 +40,7 @@ import asyncio
 import json
 import logging
 import os
+import socket
 import threading
 import time
 from pathlib import Path
@@ -614,12 +615,14 @@ class AudioRouter:
         backoff = 1.0
         missing_route = False
         while True:
-            params: dict[str, Any] = {}
+            # `router=1` (+ this machine's name): the server shows the map
+            # editor that a router is listening, so a Test there is played.
+            params: dict[str, Any] = {"router": 1, "name": socket.gethostname().split(".")[0][:64]}
             if self.version is not None and self.source not in ("cache", "file"):
-                params = {"after": self.version, "tests": self.test_seq, "wait": int(self.cfg.poll_wait)}
+                params.update({"after": self.version, "tests": self.test_seq, "wait": int(self.cfg.poll_wait)})
             asked = time.monotonic()
             try:
-                answer = await mod.get("/api/mod/audio", params or None, timeout=self.cfg.poll_wait + 15)
+                answer = await mod.get("/api/mod/audio", params, timeout=self.cfg.poll_wait + 15)
             except ModApiError as err:
                 if err.status == 404:
                     if not missing_route:

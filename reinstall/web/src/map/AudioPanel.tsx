@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AUDIO_INPUT_KINDS, resolveTargets, roomById } from "@loom/house";
 import type { AudioConfig, AudioInputKind, HouseMap } from "@loom/house";
-import { audioConflictText, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
+import { audioConflictText, routerBadge, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
 import {
   addZone,
   cellGain,
@@ -193,6 +193,7 @@ export function AudioPanel(p: AudioPanelProps) {
   const withMap = !plan.alone && plan.withMap;
   const cellG = cell !== null ? cellGain(audio, cell.in, cell.out) : null;
 
+  const badge = routerBadge(p.view?.router ?? null, now);
   return (
     <div className="audio-panel">
       <div className="audio-head">
@@ -205,6 +206,7 @@ export function AudioPanel(p: AudioPanelProps) {
           </span>
         )}
         {p.dirty && <b className="small"> · unsaved</b>}
+        {badge !== null && <span className={`small ${badge.ok ? "good-text" : "bad-text"}`}> · {badge.text}</span>}
         <div className="button-row">
           <button
             className="w98-button default"
