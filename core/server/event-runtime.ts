@@ -1163,12 +1163,12 @@ export class EventRuntime {
     return { name: c.name, at: c.at };
   }
 
-  /** `view.cues` with the caller claim now (C8): absent when nobody claims it. */
+  /** `view.cues` with the caller claim now (C8): `caller: null` when nobody
+   *  claims it — the key is always there, so a console can tell "nobody"
+   *  from an older server that never says. */
   private withCaller<T extends { cues?: { caller?: unknown } }>(view: T): T {
     if (view.cues === undefined) return view;
-    const caller = this.cueCaller();
-    const { caller: _old, ...cues } = view.cues;
-    return { ...view, cues: caller !== null ? { ...cues, caller } : cues } as T;
+    return { ...view, cues: { ...view.cues, caller: this.cueCaller() } } as T;
   }
 
   /** The Wanted board now (C6). */
@@ -6095,7 +6095,11 @@ export class EventRuntime {
         // C8: "I'm calling the show" — a visible claim, never a lock. `on:
         // false` takes back your own claim (another's stands).
         const token = this.actingToken ?? null;
-        const name = by.startsWith("Booth · ") ? by.slice("Booth · ".length) : by;
+        // A headless mod token (the director's phone) names itself, as on
+        // `/api/mod/signal`: "Phone · Ada".
+        const label = str(body, "label").trim().slice(0, 60);
+        const who = label !== "" && by === "Director" ? label : by;
+        const name = who.startsWith("Booth · ") ? who.slice("Booth · ".length) : who;
         if (body["on"] === true) this.caller = { name, at: this.clock(), token };
         else if (this.caller !== null && this.caller.name === name) this.caller = null;
         sendJson(res, 200, { ok: true, caller: this.cueCaller() });

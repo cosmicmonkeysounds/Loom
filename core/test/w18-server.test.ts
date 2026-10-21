@@ -155,6 +155,22 @@ describe("C8: callers", () => {
     expect((await hostView(rt)).cues.caller ?? null).toBeNull();
   });
 
+  it("nobody calling is `caller: null`, the key present; a phone's mod token names itself", async () => {
+    const rt = rt18();
+    rt.openDoors();
+    const v = await hostView(rt);
+    expect("caller" in v.cues).toBe(true);
+    expect(v.cues.caller).toBeNull();
+    const lean = (await modGet(rt, "/api/state?role=mod&cues=1")).json.cues as Record<string, unknown>;
+    expect("caller" in lean && lean["caller"] === null).toBe(true);
+    // A headless mod token (no author name) is "Director"; the phone's label wins.
+    const phone = await call(rt, "POST", "/api/mod/caller", { on: true, label: "Phone · Bo" }, { moderator: true });
+    expect(phone.json.caller).toMatchObject({ name: "Phone · Bo" });
+    expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Phone · Bo" });
+    await call(rt, "POST", "/api/mod/caller", { on: false, label: "Phone · Bo" }, { moderator: true });
+    expect((await hostView(rt)).cues.caller).toBeNull();
+  });
+
   it("the host view describes NEXT and the three on deck, names `then`, and a press answers what it said", async () => {
     const rt = rt18();
     rt.openDoors();
