@@ -339,7 +339,7 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
   const PATCH = ["radio_crew_door", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"]; // 🔧 🔌 💥 ❌: story rules
   const ANTIVIRUS = ["send to the internet", "mark as reinstalled", "accuse"]; // 🛡 ✅ 👁: TRAIT Enforcer's hooks only
 
-  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌, never 🛡 ✅ 👁; Windows Defender's has them", () => {
+  it("at the Y2K hour Task Manager's card offers 🔧 🔌 💥 ❌, never 🛡 ✅ 👁; an Antivirus' has them", () => {
     const sim = boot();
     for (const c of TO_Y2K) sim.signal(c);
     expect((sim.world.get("Night.step") as { value: number }).value).toBeGreaterThanOrEqual(14);
@@ -356,9 +356,6 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     }
     // 🫘 is Adobe Acrobat's own hook: the other hosts are never offered it.
     expect(primeView(sim, "Task Manager", undefined, { host: true }).interactions.find((i) => i.id === "radio_beans")?.hostHeard).toBe(false);
-    const wd = guestCardView(sim, [], "Windows Defender", "g1", false)!.live;
-    for (const b of ANTIVIRUS) expect(wd, b).toContain(b);
-    for (const b of PATCH) expect(wd, b).not.toContain(b); // never the door-only part's
     const norton = guestCardView(sim, [], "Norton Anti-Virus", "g1", false)!.live;
     for (const b of [...ANTIVIRUS, ...PATCH]) expect(norton, b).toContain(b);
   }, SLOW);
@@ -380,8 +377,8 @@ describe("Trapped in the Internet — wave 13 integration: a host is offered onl
     const before = rt.liveSim!.world.peek("Night.crew_door_until");
     expect((await act("radio_crew_door")).status).toBe(200);
     expect(rt.liveSim!.world.peek("Night.crew_door_until")).not.toEqual(before);
-    // Windows Defender, an Antivirus, presses 🛡.
-    const wd = (await call(rt, "POST", "/api/prime/login", { character: "Windows Defender", passcode: CODES.prime })).json["token"] as string;
-    expect((await call(rt, "POST", "/api/prime/act", { name: "send to the internet", guest: g.id }, { token: wd })).status).toBe(200);
+    // An Antivirus presses 🛡 (wave 18: on any program; its `while:` only steers the card).
+    const av = (await call(rt, "POST", "/api/prime/login", { character: "McAfee Anti-Virus", passcode: CODES.prime })).json["token"] as string;
+    expect((await call(rt, "POST", "/api/prime/act", { name: "send to the internet", guest: g.id }, { token: av })).status).toBe(200);
   });
 });

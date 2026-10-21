@@ -29,9 +29,9 @@
 //
 // Every objective is a DRAFT for the user's sign-off (SIGNOFF-w13.md):
 // titles, briefs, checklists and buttons were drafted from the cast packs
-// and the booth audit (performer-booth §5). The four room Antivirus are
-// named (never `for: Antivirus`): Windows Defender holds the door all
-// night and sees only its own.
+// and the booth audit (performer-booth §5). The four Antivirus are named
+// (never `for: Antivirus`); since wave 18 (Q26) there is no door-only part:
+// the four share the door.
 
 // ════════════════════════════════════════════════════════════════════
 // Guests (ROLE Program). Urgent first, then the night in running order,
@@ -309,8 +309,8 @@ OBJECTIVE Explore The Computer
   buttons: scan
 
 // ════════════════════════════════════════════════════════════════════
-// The four room Antivirus (Norton, McAfee, Password Manager, CRA).
-// Windows Defender holds the door (below) and sees none of these.
+// The four Antivirus (Norton, McAfee, Password Manager, CRA). They share
+// the door (wave 18, Q26: the door-only part is gone).
 // ════════════════════════════════════════════════════════════════════
 
 // DRAFT for sign-off
@@ -458,15 +458,6 @@ OBJECTIVE After The Night
   title: The night is over: guide everyone to the living room
   text:
     The ceremony is at the Desktop. If everyone was banished, you are banished too: hand jive with them.
-
-// DRAFT for sign-off
-OBJECTIVE Hold The Door
-  for: Windows Defender
-  title: Hold the door: scan late arrivals
-  text:
-    Stay in the Optical Drive. A scan clears a late arrival exactly like the others. During the summons, scan only new arrivals and send everyone else to the living room. Never leave the door empty: radio LATE if an escort comes through. 🛡 is under All buttons…, only if a host or the director asks (tap to arm, tap again to send).
-  // DRAFT for sign-off (w13 Q29): the door's face is the scan alone; 🛡 left it.
-  buttons: scan
 
 // ════════════════════════════════════════════════════════════════════
 // Clippy (the MC): one per Clippy Instructions window, the bottle first.

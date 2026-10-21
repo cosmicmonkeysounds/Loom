@@ -61,32 +61,3 @@ CHARACTER CRA Agent Software is Enforcer
   when truther_download:
     if Night.truther_sent != true:
       reply 🧾 Every program has a Wallet now. Every third transfer waits in your Wallet room for Approve; any transfer can be denied for 60 seconds. Elaborate security questions encouraged.
-
-// The door-only part (wave 11): an extra Antivirus who stands at the
-// Optical Drive for late arrivals once the others are busy (the summons,
-// the server room). Nothing of their own: the Enforcer trait's door scan
-// clears a program exactly as the other four do, and their booth gets the
-// same readouts.
-CHARACTER Windows Defender is Enforcer
-  avatar: File:Microsoft Defender Icon Logo 2025 English.svg
-  wiki: Microsoft Defender Antivirus
-  // DRAFT for sign-off (w13 Q30): the door part never escorts, so its scan
-  // of a marked program says an Antivirus will come (TRAIT Enforcer's scan).
-  holds_the_door: bool = true
-  // Wave 13: the door hears only its door readouts. The patrol, the
-  // sweeps, the escort list, Bathroom Mode and the alarm are the four room
-  // Antivirus' (`: none` drops the Enforcer trait's hook for this part).
-  when call_to_the_desktop: none
-  when hunt_time_up: none
-  when zip_everyone_out: none
-  when go to the bathroom for program: none
-  when bathroom_timed_out for program: none
-  when program_late for program: none
-  when marked for program: none
-  when unmarked for program: none
-  when sweep_requested: none
-  when alarm_tripped: none
-  when five_minute_warning: none
-  when five_minute_warning:
-    if Night.step == 8 and Night.summons_open != true and Night.summons_closed != true:
-      reply 🛡 The summons: hold the door. Scan only new arrivals; send everyone else to the living room.

@@ -410,28 +410,6 @@ describe("Trapped in the Internet — wave 13: booth noise", () => {
     expect(lines(n.scan("Task Manager", "g5"), "Task Manager", "g5")[0]).toMatch(/^Truths accepted: 0\. Visits to the Internet: 0\. Truthcoin: \d+\.$/u);
   }, SLOW);
 
-  it("Windows Defender hears only its door readouts: no sweep, escort, late, Bathroom Mode or alarm", () => {
-    const n = boot();
-    const wd = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "dm:Windows Defender" && m.readout === true).map((m) => m.text);
-    const norton = (ms: readonly ChatMessage[]) => ms.filter((m) => m.channel === "dm:Norton Anti-Virus" && m.readout === true).map((m) => m.text);
-    const cd = n.press("call_to_the_desktop");
-    expect(wd(cd)).toEqual([]);
-    expect(norton(cd).length).toBe(1);
-    expect(wd(n.signal("go to the bathroom", "g5"))).toEqual([]);
-    n.signal("back from the bathroom", "g5");
-    for (const c of ["start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) n.press(c);
-    const mark = n.signal("uncertain_answer", "g6", undefined, "Clippy");
-    expect(wd(mark)).toEqual([]);
-    expect(norton(mark).some((t) => t.startsWith("🚨 VLC is marked"))).toBe(true);
-    for (const c of ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]) n.press(c);
-    const summons = n.press("five_minute_warning");
-    expect(wd(summons)).toEqual(["🛡 The summons: hold the door. Scan only new arrivals; send everyone else to the living room."]);
-    // A late arrival still clears at the door.
-    const late = n.upload("g9", "Netscape", "Windows Defender");
-    expect(v(n.sim, "g9.cleared")).toBe(true);
-    expect(wd(late).some((t) => t.startsWith("✅ Cleared Netscape"))).toBe(true);
-  }, SLOW);
-
   it("McAfee's expired-protection pop-up is a bark (the ambient ticker), not a broadcast", () => {
     const n = boot();
     const out = n.tick(20 * 60 + 5);
@@ -455,7 +433,7 @@ describe("Trapped in the Internet — wave 13: skipping the tour", () => {
 
 // ───────── the walk: a live objective for every phone at every cue ─────────
 
-export const PERFORMERS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender", "Clippy", "Task Manager", "Adobe Acrobat", "Recycling Bin"];
+export const PERFORMERS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Clippy", "Task Manager", "Adobe Acrobat", "Recycling Bin"];
 export const HOST_PARTS = new Set(["Task Manager", "Adobe Acrobat", "Recycling Bin"]);
 const RESERVED = new Set(["pass", "scan"]);
 const interactionButtons = (b: readonly string[]) => b.filter((x) => !RESERVED.has(x));
@@ -521,7 +499,7 @@ function nightSteps(ending: "song" | "hand_jive"): Step[] {
     press("second_hunt_preview"),
     press("start_the_second_hunt"),
     ["+2 min (the Truther Download)", (n) => { n.tick(125); }],
-    ["Windows Defender clears g7", (n) => { n.scan("Windows Defender", "g7"); }],
+    ["CRA Agent Software clears g7", (n) => { n.scan("CRA Agent Software", "g7"); }],
     by("send to the internet", "g5", "McAfee Anti-Virus"),
     press("five_minute_warning"),
     ["check-ins at the door", (n) => { for (const g of ["g1", "g2", "g3", "g4", "g6", "g7"]) n.scan("Norton Anti-Virus", g); }],
@@ -608,7 +586,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("close_the_filing").g1).toBe("The First Moment Of Truth");
     expect(at("second_hunt_preview").g1).toBe("Stay Calm");
     expect(at("start_the_second_hunt").g1).toBe("The Hour");
-    expect(at("Windows Defender clears g7").g7).not.toBe("Show Your Pass");
+    expect(at("CRA Agent Software clears g7").g7).not.toBe("Show Your Pass");
     expect(at("five_minute_warning").g1).toBe("Be At The Desktop");
     expect(at("summons_closed").g1).toBe("The Door Is Closed"); // never "five minutes" once the door has shut
     expect(at("truth_pong").g1).toBe("Truth Pong");
@@ -619,11 +597,11 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("the_verdict").g1).toBe("The Night Is Over");
     expect(at("start_the_ceremony").g1).toBe("The Night Is Over");
     // The booths.
-    expect(at("doors")).toMatchObject({ "Norton Anti-Virus": "Door Duty", "Windows Defender": "Hold The Door", Clippy: "Greet The Arrivals", "Task Manager": "The Help Desk", "Adobe Acrobat": "Documents And Printing", "Recycling Bin": "The Porch" });
+    expect(at("doors")).toMatchObject({ "Norton Anti-Virus": "Door Duty", Clippy: "Greet The Arrivals", "Task Manager": "The Help Desk", "Adobe Acrobat": "Documents And Printing", "Recycling Bin": "The Porch" });
     expect(at("call_to_the_desktop")).toMatchObject({ "Norton Anti-Virus": "Sweep To The Desktop", Clippy: "Welcome Everyone" });
     expect(at("start_the_bingo")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", "McAfee Anti-Virus": "Patrol The Computer", Clippy: "Welcome Everyone" });
     expect(at("bingo_time")).toMatchObject({ "Norton Anti-Virus": "The Selected Antivirus", Clippy: "Celebrate The Winners", "Task Manager": "The Fake Bingo Card" });
-    expect(at("Clippy: named_at_bingo g4")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked", "McAfee Anti-Virus": "Escort The Marked", "Windows Defender": "Hold The Door" });
+    expect(at("Clippy: named_at_bingo g4")).toMatchObject({ "Norton Anti-Virus": "Escort The Marked", "McAfee Anti-Virus": "Escort The Marked" });
     expect(at("introduce_trabolta")).toMatchObject({ Clippy: "Introduce Trabolta", "Norton Anti-Virus": "Patrol The Computer" });
     expect(at("first_moment_of_truth")).toMatchObject({ Clippy: "The First Moment Of Truth Host" });
     expect(at("the bottle lands on g2")).toMatchObject({ Clippy: "The Bottle" });
@@ -641,10 +619,10 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     expect(at("Password Manager: send to the internet g3")).toMatchObject({ g3: "Find Gerald", "Password Manager": "Patrol The Computer" });
     expect(at("bobbing_for_truth")).toMatchObject({ Clippy: "Bob For It", "Adobe Acrobat": "The Bag Of Truth" });
     expect(at("Adobe Acrobat: brought_up_the_bag g1")).toMatchObject({ "Adobe Acrobat": "Hand Over Truth Txt" });
-    expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony", "Windows Defender": "Hold The Door" });
+    expect(at("start_the_ceremony")).toMatchObject({ "Norton Anti-Virus": "After The Night", Clippy: "Host The Ceremony" });
   }, SLOW);
 
-  it("Clippy's card face has an objective button in every act (the cast pack's buttons), Windows Defender's none (🛡 folded, armed), and 🩹 only on a marked program", () => {
+  it("Clippy's card face has an objective button in every act (the cast pack's buttons), and 🩹 only on a marked program", () => {
     // Per checkpoint: Clippy's objective-sourced face on each cleared,
     // unmarked guest's card, and the act.
     const clippy = new Map<string, string[]>();
@@ -660,14 +638,6 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
       clippy.set(label, [...new Set(faces.flat())]);
       if (!acts.has(act)) acts.set(act, new Set());
       for (const id of faces.flat()) acts.get(act)!.add(id);
-      // Windows Defender's face is the scan alone (w13 Q29): 🛡 is under
-      // All buttons… (armed, only when a host or the director asks), never
-      // the patch bay. ♟ rides it only while the King is armed.
-      for (const g of guests) {
-        const wd = cardFace(n, "Windows Defender", g).face;
-        expect(wd, `${label}: Windows Defender on ${g}`).not.toContain("send to the internet");
-        for (const b of ["radio_combo_a", "radio_combo_b", "radio_wrong_patch", "accuse", "mark as reinstalled"]) expect(wd, `${label}: Windows Defender on ${g}`).not.toContain(b);
-      }
       // The patch-bay radios are not about the scanned guest: on the four
       // room Antivirus' faces in the Y2K hour (Patch Bay Watch is NOW), never
       // from the final reveal on (w13 Q33: Lights Down is NOW, the radios fold).
@@ -712,7 +682,7 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     for (const c of ["call_to_the_desktop", "start_the_bingo", "bingo_time"]) n.press(c);
     n.signal("named_at_bingo", "g4", undefined, "Clippy");
     n.press("introduce_trabolta"); // past the Bingo results: Clippy's NOW names no button
-    for (const p of ["Clippy", "Norton Anti-Virus", "Windows Defender", "Task Manager"]) {
+    for (const p of ["Clippy", "Norton Anti-Virus", "McAfee Anti-Virus", "Task Manager"]) {
       const card = guestCardView(n.sim, n.chat.all(), p, "g4", HOST_PARTS.has(p))!;
       expect(card.guestScoped, p).toContain("unmark_for_reinstallation");
       expect(cardFace(n, p, "g4").face, p).toContain("unmark_for_reinstallation");
@@ -800,18 +770,17 @@ describe("Trapped in the Internet — wave 13: the objectives, walked through th
     const at = (label: string) => table.get(label)!;
     expect(at("the verdict: Grok Prom")).toMatchObject({ g1: "The Pickup Line", Clippy: "Grok Prom", "Task Manager": "Grok Prom", "Recycling Bin": "Grok Prom" });
     expect(at("ask_for_advice").g1).toBe("Help Or Thwart");
-    expect(at("advice_tally")).toMatchObject({ g1: "The Hand Jive", g5: "The Hand Jive", "Norton Anti-Virus": "Banished Too", "Windows Defender": "Hold The Door" });
+    expect(at("advice_tally")).toMatchObject({ g1: "The Hand Jive", g5: "The Hand Jive", "Norton Anti-Virus": "Banished Too" });
     expect(at("the_hand_jive").g1).toBe("The Night Is Over");
   }, SLOW);
 
-  it("audiences never cross: a guest sees only Program objectives, Windows Defender only its own, Clippy never a host part's", () => {
+  it("audiences never cross: a guest sees only Program objectives, Clippy never a host part's", () => {
     const n = boot();
     const m = n.sim.model;
     const guestIds = new Set([...m.objectives.values()].filter((o) => o.audience.roles.includes("Program")).map((o) => o.id));
     for (const c of TO_Y2K) n.press(c);
     for (const o of guestView(n.sim, "g1").objectives ?? []) expect(guestIds.has(o.id), o.id).toBe(true);
     for (const p of PERFORMERS) for (const o of primeView(n.sim, p).objectives ?? []) expect(guestIds.has(o.id), `${p}: ${o.id}`).toBe(false);
-    expect((primeView(n.sim, "Windows Defender").objectives ?? []).map((o) => o.id)).toEqual(["Hold The Door"]);
     for (const o of primeView(n.sim, "Clippy").objectives ?? []) expect(["The Bank", "Summons Door", "The Help Desk"]).not.toContain(o.id);
     // Every objective carries the sign-off marker in the source.
     const src = scenarioFiles("trapped-in-the-internet").find((f) => f.path === "objectives.loom")!.source;
@@ -835,14 +804,14 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
     evs.filter((e) => e.type === "widget" && (e as { widget: string }).widget === "fact" && (e as { audience: string[] }).audience[0] === g).map((e) => (e as { text: string }).text);
   const replyTo = (ms: readonly ChatMessage[], who: string) => ms.filter((m) => m.channel === `dm:${who}` && m.readout === true).map((m) => m.text);
 
-  it("🛡 arms first on every Antivirus booth, and Windows Defender's door objective puts nothing but the scan on a card (Q29)", () => {
+  it("🛡 arms first on every Antivirus booth, and Door Duty puts nothing but the scan on a card (Q29)", () => {
     const n = boot();
     expect(n.sim.model.interactions.get("send to the internet")!.arm).toBe(true);
-    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"]) {
+    for (const who of ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"]) {
       expect(primeView(n.sim, who).interactions?.find((i) => i.id === "send to the internet")?.arm, who).toBe(true);
     }
-    const door = primeView(n.sim, "Windows Defender").objectives!;
-    expect(door.map((o) => o.id)).toEqual(["Hold The Door"]);
+    const door = primeView(n.sim, "Password Manager").objectives!;
+    expect(door[0]!.id).toBe("Door Duty");
     expect(door[0]!.buttons).toEqual(["scan"]);
   });
 
@@ -858,12 +827,6 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
       expect(said.some((t) => t.includes("you are marked for reinstallation") && t.includes("the Internet")), who).toBe(true);
       expect(replyTo(out, who).some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("🛡")), who).toBe(true);
     }
-    // Windows Defender holds the door: it never says "come with me".
-    const door = n.scan("Windows Defender", "g5");
-    const doorSaid = forGuest(door, "g5").filter((m) => m.channel === "dm:Windows Defender").map((m) => m.text).join("\n");
-    expect(doorSaid).toContain("An Antivirus will escort you through the Tube to the Internet.");
-    expect(doorSaid).not.toMatch(/Come with me|no threats found/u);
-    expect(replyTo(door, "Windows Defender").some((t) => t.startsWith("🚨 Winamp is marked for reinstallation (") && t.includes("Stay at the door"))).toBe(true);
     // An unmarked, cleared program still gets the old patter.
     const ok = n.scan("Norton Anti-Virus", "g1");
     expect(forGuest(ok, "g1").filter((m) => m.channel === "dm:Norton Anti-Virus").map((m) => m.text).join("\n")).toMatch(/Scanning|no threats|definitions/u);
@@ -951,6 +914,5 @@ describe("Trapped in the Internet — wave 13 recheck: the Antivirus' door, the 
       expect(r, who).toHaveLength(lateOnes.length);
       for (const t of r) expect(t, who).toMatch(/^🚨 .+ is late for the Second Moment of Truth: marked for reinstallation\./u);
     }
-    expect(replyTo(late, "Windows Defender").filter((t) => t.includes("late"))).toEqual([]);
   }, SLOW);
 });

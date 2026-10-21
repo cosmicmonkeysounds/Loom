@@ -3189,10 +3189,9 @@ INTERACTION beat_the_machine
 // fires the admin cue; `while:` shows it only when that cue would do
 // something. `by:` the four Antivirus who may be stationed there (the
 // read-through picks who). A host part may press them too (a story rule
-// hears any booth's press, Q2); no other booth may. Never Windows Defender,
-// the door-only part who never leaves the Optical Drive, so a late arrival's
-// card at the door leads with nothing that ends the night. 🫘 is Adobe
-// Acrobat's, at the printer (her own hook: no other host is offered it).
+// hears any booth's press, Q2); no other booth may. (Wave 18, Q26: the
+// door-only part is gone; the four share the door.) 🫘 is Adobe Acrobat's,
+// at the printer (Adobe Acrobat's own hook: no other host is offered it).
 INTERACTION radio_combo_a
   label: 🔌 Patch: Combo A is in
   who: performer

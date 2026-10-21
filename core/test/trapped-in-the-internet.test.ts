@@ -85,13 +85,13 @@ function advance(sim: Sim, seconds: number): SimEvent[] {
 }
 
 const FEATURED = ["Microsoft Excel", "OpenOffice", "DraftKings", "Bugdom", "Broken Ask Jeeves", "Runescape", "MS Paint", "VLC", "Pong"];
-const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager", "Windows Defender"];
-/** The five Enforcer booths (TRAIT Enforcer in cast/kit.loom; wave 11 adds
- *  Windows Defender, the door-only part): every escort readout lands in each. */
-const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software", "Windows Defender"];
-/** Wave 13: the four room Antivirus hear the patrol, sweep, escort, Bathroom
- *  Mode and alarm readouts; Windows Defender, the door, hears only its own. */
-const PATROL = ANTIVIRUS.filter((a) => a !== "Windows Defender");
+const PERFORMERS = ["Adobe Acrobat", "CRA Agent Software", "Clippy", "McAfee Anti-Virus", "Norton Anti-Virus", "Password Manager", "Recycling Bin", "Task Manager"];
+/** The four Enforcer booths (TRAIT Enforcer in cast/kit.loom): every escort
+ *  readout lands in each. Wave 18 (Q26): the door-only part is gone. */
+const ANTIVIRUS = ["Norton Anti-Virus", "McAfee Anti-Virus", "Password Manager", "CRA Agent Software"];
+/** The four hear the patrol, sweep, escort, Bathroom Mode and alarm
+ *  readouts (the same four as ANTIVIRUS since wave 18). */
+const PATROL = ANTIVIRUS;
 /** The rooms an Antivirus clearance (or a release) opens: the whole house
  *  but the Optical Drive, the Tube, the Internet and the Server Room. */
 const HOUSE_ROOMS = ["The Start Bar", "The CPU", "The Steam Room", "Disk Cleanup", "The Cloud", "The RAM", "The Fan Closet", "The Graphics Card", "The Hard Drive"];
@@ -2027,7 +2027,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     expect(v(sim, "Night.ending")).toBe("destroyed");
   });
 
-  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there) and every host part, never Clippy's or Windows Defender's", { timeout: SLOW }, async () => {
+  it("integration: the patch-bay watch's 🔧 🚪 🔌 💥 ❌ press from every Antivirus booth (whoever the read-through stations there) and every host part, never Clippy's", { timeout: SLOW }, async () => {
     const dir = mkdtempSync(join(tmpdir(), "loom-trapped-radio-"));
     tmp.push(dir);
     const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: SHOW, scenarioSource: SRC, joinBase: () => "http://localhost" });
@@ -2038,12 +2038,10 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const booth = async (character: string) => (await call(rt, "POST", "/api/prime/login", { character, passcode: CODES.prime })).json["token"] as string;
     const act = (token: string, name: string) => call(rt, "POST", "/api/prime/act", { name, guest: id }, { token });
     const RADIO = ["radio_crew_door", "radio_door_opened", "radio_combo_a", "radio_combo_b", "radio_wrong_patch"];
-    // Windows Defender is the door-only part: it never leaves the Optical
-    // Drive, so a late arrival's card there leads with nothing that ends the night.
     // Wave 13: Task Manager, Adobe Acrobat and the Recycling Bin are host
     // parts (`admin: true`): a host booth keeps every `by:` button, as a
     // passcode admin always did, so only Clippy (a Host, never a host part)
-    // and Windows Defender are refused here.
+    // is refused here (wave 18: the door-only part is gone).
     const hostTokens = new Map<string, string>();
     for (const who of ["Adobe Acrobat", "Task Manager", "Recycling Bin"]) {
       const login = await call(rt, "POST", "/api/prime/login", { character: who, passcode: CODES.prime });
@@ -2051,7 +2049,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
       hostTokens.set(who, login.json["token"] as string);
     }
     const refused = new Map<string, string>();
-    for (const who of ["Clippy", "Windows Defender"]) {
+    for (const who of ["Clippy"]) {
       const t = await booth(who);
       refused.set(who, t);
       for (const name of RADIO) expect((await act(t, name)).status, `${name} by ${who}`).toBe(403);
@@ -2060,7 +2058,7 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     }
     expect(v(rt.liveSim!, "Night.wrong_combos") ?? 0).toBe(0);
     expect(v(rt.liveSim!, "Night.crew_door_until") ?? 0).toBe(0);
-    for (const who of ANTIVIRUS.filter((a) => a !== "Windows Defender")) {
+    for (const who of ANTIVIRUS) {
       const t = await booth(who);
       const view = (await call(rt, "GET", `/api/state?role=prime&token=${encodeURIComponent(t)}`, {})).json as unknown as PrimeView;
       for (const name of RADIO) expect(view.interactions.find((i) => i.id === name)?.actors, `${name} on ${who}`).toContain(who);
@@ -2116,7 +2114,6 @@ describe("Trapped in the Internet — The Heart: the cold door opens (wave 7)", 
     const booth = primeView(sim, "CRA Agent Software").interactions ?? [];
     expect(booth.find((i) => i.id === "radio_combo_a")?.arm).toBe(true);
     expect(booth.find((i) => i.id === "send to the internet")?.arm).toBe(true);
-    expect(primeView(sim, "Windows Defender").interactions?.find((i) => i.id === "send to the internet")?.arm).toBe(true);
     expect(booth.find((i) => i.id === "mark as reinstalled")?.arm).toBeUndefined();
   });
 
@@ -2429,27 +2426,19 @@ describe("Trapped in the Internet — ghosts and personas never block a majority
   });
 });
 
-describe("Trapped in the Internet — Windows Defender, the door-only part (wave 11)", () => {
-  it("is an Antivirus performer part whose scan clears a late arrival exactly like the others; no lines of its own", { timeout: SLOW }, () => {
+describe("Trapped in the Internet — no door-only part (wave 18, Q26)", () => {
+  it("Windows Defender is gone: the four Antivirus share the door, and any of them clears a late arrival", { timeout: SLOW }, () => {
     const sim = boot();
     const m = sim.model;
-    const wd = m.characters.get("Windows Defender")!;
-    expect(wd).toBeDefined();
-    expect(isSpecial(m, "Windows Defender")).toBe(true);
-    expect(identityDefs(m).find((d) => d.name === "Windows Defender")).toMatchObject({ faction: "Antivirus" });
-    const src = FILES.find((f) => f.path === "cast/antivirus.loom")!.source;
-    const own = src.slice(src.indexOf("CHARACTER Windows Defender"));
-    // Wave 13: its own hooks only drop the trait's patrol readouts (`: none`)
-    // and give the door its own summons readout; no lines of its own.
-    for (const line of own.split("\n").filter((l) => /^\s+when /u.test(l))) expect(line, line).toMatch(/: none$|^\s+when five_minute_warning:$/u);
-    expect(own).not.toMatch(/^\s+Self:/mu);
+    expect(m.characters.has("Windows Defender")).toBe(false);
+    for (const f of FILES) expect(f.source, f.path).not.toMatch(/Windows Defender|holds_the_door/u);
+    expect(identityDefs(m).filter((d) => d.faction === "Antivirus").map((d) => d.name).sort()).toEqual([...ANTIVIRUS].sort());
     toTruth1(sim);
-    const late = upload(sim, "g9", "Winamp Classic", "Windows Defender");
+    const late = upload(sim, "g9", "Winamp Classic", "Password Manager");
     expect(v(sim, "g9.cleared")).toBe(true);
     expect(sim.locationOf("g9")).toBe("The Desktop");
-    expect(beats(late)).toContain("Windows Defender.Clearance");
-    expect(replies(late).filter((r) => r.to === "Windows Defender").map((r) => r.text)).toContain("✅ Cleared Winamp Classic.");
-    for (const r of ["The Start Bar", "The Hard Drive"]) expect(sim.isRevealedTo(r, "g9"), r).toBe(true);
+    expect(beats(late)).toContain("Password Manager.Clearance");
+    expect(replies(late).filter((r) => r.to === "Password Manager").map((r) => r.text)).toContain("✅ Cleared Winamp Classic.");
   });
 });
 
