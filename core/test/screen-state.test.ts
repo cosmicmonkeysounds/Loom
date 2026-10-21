@@ -111,6 +111,9 @@ describe("the screen program (K-17 + N-03)", () => {
     expect(["trivia_1", "five_minutes", "bingo", "y2k", "award_best_liar"].map(screenCueClass)).toEqual(["slide", "slide", "slide", "slide", "slide"]);
     expect(["bingo", "y2k", "trust_chart", "truth_txt", "award_most_honest", "ceremony_host"].every(slidePersists)).toBe(true);
     expect(["trivia_1", "bingo_time", "call_desktop", "hunt_results"].some(slidePersists)).toBe(false);
+    // The finale's waits hold until the story's next screen cue (wave 17).
+    expect(["bobbing", "advice", "grok_prom", "banish"].every(slidePersists)).toBe(true);
+    expect(["final_reveal", "song", "rave", "dancing_baby", "bobbing_extra"].some(slidePersists)).toBe(false);
     expect(screenTargetOf("mirror")).toBe("tv");
     expect(screenTargetOf("tv")).toBe("tv");
     expect(screenTargetOf("auto")).toBe("terminals");

@@ -11,7 +11,10 @@
 //! `t` and play / pause by `postMessage`. Options ride the iframe's URL:
 //! `target=tv|wall`, `intro=0` (before the introduction), `reduced=1`,
 //! `who=<name>`, `value=<slide value>` (an `award_*` family), `phase=`,
-//! `countdown=<s>` (a running countdown, counting down with `t`).
+//! `countdown=<s>` (a running countdown, counting down with `t`),
+//! `beats=<Beat>@<ms>,…` (house-wide beat moments that many ms after the
+//! scene started: `beats=The Bag Of Truth@20000`), `world=1` (a world view
+//! is on this screen: the duck's see-through take).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./kit/kit.css";
@@ -23,9 +26,11 @@ import { SceneStage } from "./CutsceneLayer.tsx";
 import { useReducedMotion } from "./clock.ts";
 import { fakeState } from "./fake.ts";
 import { introduced } from "./pick.ts";
+import { noteWorldShowing } from "./world-bus.ts";
 import { ACTS } from "./registry.ts";
 import { DEMO_SCENES } from "./scenes/demo.tsx";
 import type { SceneDef, SceneTarget } from "./types.ts";
+import type { ScreenMoment } from "../screen.ts";
 
 /** Every scene the preview knows, grouped by file (the demo last). */
 const GROUPS: ReadonlyArray<{ file: string; scenes: readonly SceneDef[] }> = [...ACTS, { file: "demo (preview only)", scenes: DEMO_SCENES }];
@@ -45,6 +50,17 @@ const DEVICES = [
 
 export function lengthOf(def: SceneDef): number {
   return typeof def.ms === "number" ? def.ms : HOLD_SCRUB_MS;
+}
+
+/** `beats=Name@ms,…` → the beat moments already played by `t` (each `ms` after the scene's `at`). */
+export function previewBeats(spec: string, t: number): ScreenMoment[] {
+  const out: ScreenMoment[] = [];
+  spec.split(",").forEach((part, i) => {
+    const m = /^(.+)@(\d+)$/u.exec(part.trim());
+    if (m === null || Number(m[2]) > t) return;
+    out.push({ seq: 100 + i, at: AT + Number(m[2]), kind: "beat", name: m[1]!.trim(), who: null, kept: false });
+  });
+  return out;
 }
 
 /** What a scene's first trigger says it was started by. */
@@ -109,6 +125,10 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
   const phase = q.get("phase");
   const intro = q.get("intro") !== "0";
   const nightQ = q.get("night");
+  const beats = q.get("beats") ?? "";
+  // `world=1`: before the scene mounts, as a world view would be.
+  const [world] = useState(() => (q.get("world") === "1" ? noteWorldShowing() : null));
+  useEffect(() => () => world?.(), [world]);
   const state = useMemo(
     () =>
       fakeState({
@@ -118,8 +138,9 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
         night: { ...nightParam(nightQ), ...(phase !== null ? { phase } : {}) },
         countdown: countdown !== null ? "y2k" : null,
         remaining: countdown !== null ? Math.max(0, Number(countdown) - Math.floor(t / 1000)) : null,
+        moments: previewBeats(beats, t),
       }),
-    [t, target, countdown, phase, intro, nightQ],
+    [t, target, countdown, phase, intro, nightQ, beats],
   );
   if (def === null) return <div className="pv-missing">No scene called “{id}”. Try ?preview=list.</div>;
   const blocked = def.namesCharacter === true && !introduced(state);

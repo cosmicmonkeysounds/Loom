@@ -31,6 +31,7 @@ import { MiniMap } from "./MiniMap.tsx";
 import { countsLine, windowCounts } from "./overlay.ts";
 import { avatarUrl, byActivity, celebrationLine, laysEgg, type WorldPlayer } from "./state.ts";
 import { useWorld, type WorldStore } from "./stream.ts";
+import { noteWorldShowing } from "../cutscene/world-bus.ts";
 
 const FRAME_MS = 1000 / 30;
 const MAX_PIXEL_RATIO = 1.5;
@@ -59,6 +60,8 @@ export function WorldView({ store, spotId, size }: { store: WorldStore; spotId: 
   const host = useRef<HTMLDivElement>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [failed, setFailed] = useState(false);
+  // This view celebrates a find itself: the duck's cutscene plays over it, see-through.
+  useEffect(() => noteWorldShowing(), []);
 
   const spot = useMemo(() => info?.house.terminals.find((t) => t.id === spotId) ?? null, [info, spotId]);
 

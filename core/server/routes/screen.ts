@@ -183,9 +183,13 @@ export const ALARM_VAR = "Night.alarm_on";
 /** Base cues: they clear the slide (back to attract / the configured view). */
 export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirror"] as const;
 
-/** Slides that stay up until the next cue (no 45 s / 90 s hold); they beat attract. */
+/** Slides that stay up until the next cue (no 45 s / 90 s hold); they beat attract.
+ *  The finale's waits are among them (wave 17): the bob until 📄, the advice
+ *  poll until its tally, Grok Prom and the banishment until the story's next
+ *  screen cue — each one's scene keeps moving the whole time. */
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish"]);
 export function slidePersists(value: string): boolean {
-  return value === "bingo" || value === "y2k" || value === "trust_chart" || value === "truth_txt" || /^(award|ceremony)/u.test(value);
+  return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }
 
 export type ScreenCueClass = "overlay" | "flicker" | "countdown" | "base" | "slide";
