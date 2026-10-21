@@ -447,10 +447,13 @@ Antivirus' own).
 - **Sound.** The game's quack, fanfare and thuds play on the terminal's
   own sound bus, so the tent's speaker is one level for everything.
 - **Set it up** once, in kiosk Chrome with the webcam allowed:
-  `https://app.mapsandducks.com/terminal/?code=<mod>&spot=tent&view=reinstall&announce=1`
-  (the map's tent spot already says `view: reinstall`, so `&spot=tent`
-  alone does it on a current server; `&announce=1` because no house
-  speaker reaches the yard). Launch Chrome with the `--kiosk
+  `https://app.mapsandducks.com/terminal/?code=<mod>&spot=tent&announce=1`
+  (the map's tent spot says `view: reinstall`, so the spot alone sets the
+  view and the name, *Tent*, and the laptop follows the map: on a rain
+  night the shed variant renames it *Shed*. Never add `&view=reinstall`:
+  a link that names its own view keeps its own name, *Terminal*, and
+  stops following the map. `&announce=1` because no house speaker
+  reaches the yard). Launch Chrome with the `--kiosk
   --autoplay-policy=no-user-gesture-required` line above, its own
   profile, and tap TOUCH TO WAKE once if it shows. The camera is the
   laptop's own webcam (`user`).

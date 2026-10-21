@@ -297,5 +297,8 @@ spot on or off there. **Always** says them whatever the list says, and
 **Never** never does. On a provisioning link, `&announce=1` is Always and
 `&announce=0` Never. The TV stays off: its room hears the speakers.
 
-The tent laptop: `/terminal/?code=<mod passcode>&spot=tent&view=reinstall&announce=1`,
+The tent laptop: `/terminal/?code=<mod passcode>&spot=tent&announce=1`,
 in Chrome started in kiosk mode (the crew's kiosk notes have the line).
+The spot alone sets its view and its name (*Tent*, or *Shed* on a rain
+night); don't add `&view=reinstall`, or it keeps the name *Terminal* and
+stops following the map.

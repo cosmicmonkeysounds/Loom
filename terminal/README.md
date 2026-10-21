@@ -360,11 +360,14 @@ https://<server>/terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&vi
 terminal **and** the reinstallation wizard (Q4).
 
 ```
-https://<server>/terminal/?code=<mod passcode>&spot=tent&view=reinstall&announce=1
+https://<server>/terminal/?code=<mod passcode>&spot=tent&announce=1
 ```
 
-(the map's tent spot carries `view: reinstall` on both variants, so
-`&spot=tent` alone does it on a current server).
+(the map's tent spot carries `view: reinstall` on both variants, so the
+spot alone sets the view and the name, *Tent* or *Shed*, and the laptop
+follows the map's variant; a link that also names `&view=reinstall` is an
+old fleet link to `urlConfig`: it keeps the name it was given, *Terminal*,
+and never follows the map).
 
 - **Awake all night**, no character, no room (the Internet's lines are
   prisoners' own DMs, never said aloud). Idle: the wall idle show (its

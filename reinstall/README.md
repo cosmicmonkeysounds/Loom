@@ -154,7 +154,7 @@ passcode. The device trades it for a moderator token and does not store the
 passcode:
 
 ```
-/terminal/?code=<mod>&spot=tent&view=reinstall&announce=1
+/terminal/?code=<mod>&spot=tent&announce=1
 /reinstall/?code=<mod>&name=Spare tablet
 /terminal/?code=<mod>&name=Kitchen&character=Trabolta&spot=start-bar&view=auto
 /terminal/?code=<mod>&name=Server Door&spot=server-room-door&view=chess
