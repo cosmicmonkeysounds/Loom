@@ -423,7 +423,7 @@ export async function postVoice(
   seq: number,
   bytes: Uint8Array,
   fetcher: typeof fetch = fetch,
-): Promise<{ status: number | null; listening: boolean | null }> {
+): Promise<{ status: number | null; listening: boolean | null; ears?: number }> {
   try {
     const res = await fetcher(`${base}/api/spatial/voice?seq=${seq}`, {
       method: "POST",
@@ -432,7 +432,11 @@ export async function postVoice(
       cache: "no-store",
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    return { status: res.status, listening: typeof data["listening"] === "boolean" ? data["listening"] : null };
+    return {
+      status: res.status,
+      listening: typeof data["listening"] === "boolean" ? data["listening"] : null,
+      ...(typeof data["ears"] === "number" ? { ears: data["ears"] } : {}),
+    };
   } catch {
     return { status: null, listening: null };
   }

@@ -16,9 +16,14 @@
 //! Up: the mic (opened in the **Play here** tap, the gesture) → resampled to
 //! 16 kHz → 200 ms chunks → the level gate → μ-law → `POST
 //! /api/spatial/voice?seq=`, one at a time, only while somebody listens and
-//! the player hasn't muted. Half-duplex in software: nothing goes up while a
-//! terminal's voice plays here (+ `VOICE_TAIL_MS`), so a laptop's speakers
-//! never loop back into the house.
+//! the player hasn't muted. The barge-in (D5b): while a terminal's voice
+//! plays here (+ `VOICE_TAIL_MS`) the gate rises to `VOICE_BARGE_DBFS`
+//! instead of closing — a laptop's speakers' echo stays home, but a player
+//! speaking up over a room that never goes quiet is still heard; the
+//! terminal then plays them and holds its own mic, so the room pauses for
+//! them. A voice under `VOICE_BARGE_MIN_GAIN` raises nothing. The mic is
+//! low-passed at 7 kHz before the 16 kHz resample (no aliased sibilants),
+//! and a track the OS ends (an unplugged headset) reads NO MIC.
 //!
 //! The codec, the gate, the chunker, the resampler, the jitter rule and the
 //! routing are `@loom/house`'s; this file is the imperative loop, with every
@@ -36,6 +41,8 @@ import {
   Resampler,
   rmsDbfs,
   styleOf,
+  VOICE_BARGE_DBFS,
+  VOICE_BARGE_MIN_GAIN,
   VOICE_CODEC,
   VOICE_RATE,
   VOICE_TAIL_MS,
@@ -54,6 +61,10 @@ export const VOICE_FADE_MS = 8;
 export const VOICE_BYE_MS = 60;
 /** The screen's face sits this far in front of the wall line (the scene's 3.5 cm). */
 const SCREEN_OUT = 0.035;
+/** The mic's low-pass ahead of the 16 kHz resample (Hz): under Nyquist (8 kHz). */
+export const VOICE_LOWPASS_HZ = 7000;
+/** A skip's cut fades over this (s). */
+const CUT_FADE_S = 0.005;
 
 /** The mic as the HUD says it: on and sending when loud, muted by the
  *  player, not there (refused, insecure, none), or still being opened. */
@@ -66,6 +77,9 @@ export interface VoiceHud {
   listening: boolean;
   /** Terminals playing into this game now. */
   hearing: number;
+  /** How many terminals hear this player, by the server (`listen.ears`);
+   *  null from a server that doesn't say. */
+  heardBy: number | null;
 }
 
 /** The voice link as the game's HUD shows it: plus how many terminals hear
@@ -141,6 +155,8 @@ export interface MicSource {
   onSamples: ((samples: Float32Array) => void) | null;
   /** The track on / off (a muted or hidden game captures silence). */
   setEnabled(on: boolean): void;
+  /** Set by the link: the OS ended the track (unplugged, taken back). */
+  onEnded?: (() => void) | null;
   /** Stop the tracks for good (the browser's mic light goes out). */
   stop(): void;
 }
@@ -152,8 +168,9 @@ export interface VoiceChannel {
   volume(gain: number): void;
   /** Play `samples` (at the sink's rate) at audio time `at`, seconds. */
   play(samples: Float32Array, at: number): void;
-  /** Drop everything scheduled (a skip ahead). */
-  flush(): void;
+  /** A skip ahead: stop what is scheduled from audio time `at` on, with a
+   *  short fade into the cut (what plays before `at` is kept). */
+  cut(at: number): void;
   /** Fade out and let go. */
   close(): void;
 }
@@ -222,6 +239,7 @@ export class VoiceLink {
   private micState: MicState;
   private muted = false;
   private listening = false;
+  private heardBy: number | null = null;
   private active = false;
   private dead = false;
   private es: SpatialSource | null = null;
@@ -252,7 +270,7 @@ export class VoiceLink {
 
   /** What the HUD shows. */
   get hud(): VoiceHud {
-    return { mic: this.micState, listening: this.listening, hearing: this.heard.size };
+    return { mic: this.micState, listening: this.listening, hearing: this.heard.size, heardBy: this.heardBy };
   }
 
   /** Chunks sent up so far (tests). */
@@ -321,8 +339,23 @@ export class VoiceLink {
     }
     this.mic = m;
     this.micState = m === null ? "none" : this.muted ? "muted" : "live";
-    if (m !== null) m.onSamples = (s) => this.capture(s);
+    if (m !== null) {
+      m.onSamples = (s) => this.capture(s);
+      m.onEnded = () => this.micLost(m);
+    }
     this.syncMic();
+    this.changed();
+  }
+
+  /** The OS ended the mic's track: nothing more can go up (NO MIC). */
+  private micLost(m: MicSource): void {
+    if (this.mic !== m) return;
+    m.onSamples = null;
+    m.onEnded = null;
+    m.stop();
+    this.mic = null;
+    this.micState = "none";
+    this.queue.length = 0;
     this.changed();
   }
 
@@ -364,16 +397,18 @@ export class VoiceLink {
           this.queue.length = 0;
           return;
         }
-        if (r.status === 200 && r.listening !== null) this.setListening(r.listening);
+        if (r.status === 200 && r.listening !== null) this.setListening(r.listening, r.ears);
       }
     } finally {
       this.sending = false;
     }
   }
 
-  private setListening(on: boolean): void {
-    if (on === this.listening) return;
+  private setListening(on: boolean, ears?: unknown): void {
+    const by = typeof ears === "number" && Number.isFinite(ears) ? Math.max(0, Math.round(ears)) : this.heardBy;
+    if (on === this.listening && by === this.heardBy) return;
     this.listening = on;
+    this.heardBy = on ? by : by === null ? null : 0;
     if (!on) this.queue.length = 0;
     this.changed();
   }
@@ -405,10 +440,10 @@ export class VoiceLink {
       this.attempt = 0;
       // A (re)connect starts over: the server re-sends whatever is audible.
       for (const from of [...this.heard.keys()]) this.drop(from);
-      this.setListening(d["listen"] === true);
+      this.setListening(d["listen"] === true, d["ears"]);
       this.changed();
     });
-    on("listen", (d) => this.setListening(d["on"] === true));
+    on("listen", (d) => this.setListening(d["on"] === true, d["ears"]));
     on("voice", (d) => this.voice(d));
     on("bye", (d) => {
       if (typeof d["from"] === "string") this.drop(d["from"]);
@@ -501,7 +536,8 @@ export class VoiceLink {
     const time = sink.time();
     const plan = jitterPlan((h.end - time) * 1000);
     if (plan.action !== "queue") h.up.reset();
-    if (plan.action === "skip") h.channel.flush();
+    // A skip keeps the next `at` ms of what is queued and drops the rest.
+    if (plan.action === "skip") h.channel.cut(time + plan.at / 1000);
     const samples = h.up.push(mulawDecode(bytes));
     if (plan.fadeIn) fadeIn(samples, sink.rate);
     const at = time + plan.at / 1000;
@@ -509,9 +545,9 @@ export class VoiceLink {
     h.channel.volume(gain);
     h.channel.play(samples, at);
     h.end = at + samples.length / sink.rate;
-    // Half-duplex: nothing goes up until this voice (and its echo) is over.
-    this.gate.holdUntil(this.now() + (h.end - time) * 1000 + VOICE_TAIL_MS);
-    this.queue.length = 0;
+    // The barge-in (D5b): until this voice (and its echo) is over only a
+    // player louder than the echo goes up. A faint, far terminal raises nothing.
+    if (gain >= VOICE_BARGE_MIN_GAIN) this.gate.raiseUntil(this.now() + (h.end - time) * 1000 + VOICE_TAIL_MS, VOICE_BARGE_DBFS);
   }
 }
 
@@ -536,28 +572,40 @@ export function stopStream(stream: MediaStream | null | undefined): void {
 }
 
 /**
- * The mic captured on the game's context: a `ScriptProcessorNode` (Safari
- * 14.0 has no AudioWorklet), wired to the destination through a zero gain
- * (Chrome only runs one that is connected). Blocks arrive at `ctx.sampleRate`.
+ * The mic captured on the game's context: a 7 kHz low-pass (the linear
+ * resample to 16 kHz has no anti-alias filter of its own), then a
+ * `ScriptProcessorNode` (Safari 14.0 has no AudioWorklet), wired to the
+ * destination through a zero gain (Chrome only runs one that is connected).
+ * Blocks arrive at `ctx.sampleRate`. A track the OS ends calls `onEnded`.
  */
 export function micSourceOf(ctx: AudioContext, stream: MediaStream): MicSource {
   const input = ctx.createMediaStreamSource(stream);
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = VOICE_LOWPASS_HZ;
+  lowpass.Q.value = Math.SQRT1_2;
   const proc = ctx.createScriptProcessor(4096, 1, 1);
   const silent = ctx.createGain();
   silent.gain.value = 0;
-  input.connect(proc);
+  input.connect(lowpass);
+  lowpass.connect(proc);
   proc.connect(silent);
   silent.connect(ctx.destination);
+  const tracks = stream.getAudioTracks();
+  const ended = (): void => mic.onEnded?.();
   const mic: MicSource = {
     rate: ctx.sampleRate,
     onSamples: null,
+    onEnded: null,
     setEnabled(on) {
-      for (const t of stream.getAudioTracks()) t.enabled = on;
+      for (const t of tracks) t.enabled = on;
     },
     stop() {
       proc.onaudioprocess = null;
+      for (const t of tracks) t.removeEventListener("ended", ended);
       try {
         input.disconnect();
+        lowpass.disconnect();
         proc.disconnect();
         silent.disconnect();
       } catch {
@@ -566,6 +614,7 @@ export function micSourceOf(ctx: AudioContext, stream: MediaStream): MicSource {
       stopStream(stream);
     },
   };
+  for (const t of tracks) t.addEventListener("ended", ended);
   proc.onaudioprocess = (e) => {
     const fn = mic.onSamples;
     if (fn !== null) fn(new Float32Array(e.inputBuffer.getChannelData(0)));
@@ -615,20 +664,43 @@ export function createVoiceSink(ctx: AudioContext, out: AudioNode): VoiceSink {
       panner.rolloffFactor = 0;
       const gain = ctx.createGain();
       gain.gain.value = 0;
+      // The skip's fade: its own node, so the server's gain (`gain`) is untouched.
+      const fade = ctx.createGain();
+      fade.gain.value = 1;
+      fade.connect(gain);
       gain.connect(panner);
       panner.connect(bus);
       const ppos: Params3 | null = panner.positionX ? [panner.positionX, panner.positionY, panner.positionZ] : null;
-      const live = new Set<AudioBufferSourceNode>();
+      /** Each scheduled chunk → its start and end (audio time). */
+      const live = new Map<AudioBufferSourceNode, { start: number; end: number }>();
       let first = true;
-      const flush = (): void => {
-        for (const s of live) {
-          try {
-            s.stop();
-          } catch {
-            /* not started */
-          }
+      const stopAt = (s: AudioBufferSourceNode, when?: number): void => {
+        try {
+          if (when === undefined) s.stop();
+          else s.stop(when);
+        } catch {
+          /* not started */
         }
+      };
+      const flush = (): void => {
+        for (const s of live.keys()) stopAt(s);
         live.clear();
+      };
+      const cut = (at: number): void => {
+        const now = ctx.currentTime;
+        const from = Math.max(at, now);
+        // A short ramp to silence into the cut, back to full for what follows it.
+        const g = fade.gain;
+        g.cancelScheduledValues(now);
+        g.setValueAtTime(1, Math.max(now, from - CUT_FADE_S));
+        g.linearRampToValueAtTime(0, from);
+        g.setValueAtTime(1, from);
+        for (const [s, span] of [...live]) {
+          if (span.start >= from) {
+            stopAt(s);
+            live.delete(s);
+          } else if (span.end > from) stopAt(s, from);
+        }
       };
       return {
         place(at) {
@@ -645,19 +717,21 @@ export function createVoiceSink(ctx: AudioContext, out: AudioNode): VoiceSink {
           buf.getChannelData(0).set(samples);
           const src = ctx.createBufferSource();
           src.buffer = buf;
-          src.connect(gain);
+          src.connect(fade);
           src.onended = () => {
             live.delete(src);
             src.disconnect();
           };
-          live.add(src);
-          src.start(Math.max(at, ctx.currentTime));
+          const start = Math.max(at, ctx.currentTime);
+          live.set(src, { start, end: start + buf.duration });
+          src.start(start);
         },
-        flush,
+        cut,
         close() {
           gain.gain.setTargetAtTime(0, ctx.currentTime, VOICE_BYE_MS / 3000);
           setTimeout(() => {
             flush();
+            fade.disconnect();
             gain.disconnect();
             panner.disconnect();
           }, VOICE_BYE_MS * 3);

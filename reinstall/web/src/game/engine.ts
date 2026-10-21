@@ -596,7 +596,9 @@ export class Game {
     if (this.voice === null) return null;
     const hud = this.voice.hud;
     if (!hud.listening) return { ...hud, ears: 0 };
-    // The server says someone hears us; count who would, by its own rule.
+    // The server counts the terminals that hear us; an older one doesn't
+    // say, so count who would by its rule (every voice-on spot in reach).
+    if (hud.heardBy !== null) return { ...hud, ears: Math.max(1, hud.heardBy) };
     const mine = this.o.assignment.session;
     const players = [...this.players.values()].filter((p) => p.session !== mine).map((p) => ({ session: p.session, p: p.p }));
     players.push({ session: mine, p: this.body.p });

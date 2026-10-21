@@ -28,6 +28,7 @@ import {
 } from "../src/map/edit.ts";
 import { along, clientToPlan, hitRectEdge, labelSpot, planBounds, playerColor, pointsAttr, propCorners, rectOf, roomUnder, snap, snap2, stairArrow, viewBoxOf, viewCone } from "../src/map/plan.ts";
 import { L_ROOM, STAIR, TWO_FLOOR as SHOW, TWO_ROOMS } from "./houses.ts";
+import { voiceProblems } from "../src/map/check.ts";
 
 describe("plan — the SVG frame", () => {
   it("bounds every floor, and pads the viewBox", () => {
@@ -248,7 +249,7 @@ describe("edit — every op returns a copy", () => {
     expect(patchRoom(house, "nope", { label: "x" })).toBe(house);
   });
 
-  it("keeps a terminal's voice flag only when it differs from the default", () => {
+  it("keeps an explicit voice off always, an on only where the default is off (S5)", () => {
     const house = frozen();
     const spawnRoom = house.spawn.room;
     const inSpawn = house.terminals.find((x) => x.room === spawnRoom)!;
@@ -259,8 +260,12 @@ describe("edit — every op returns a copy", () => {
     expect(spot(patchTerminal(house, elsewhere.id, { voice: false }), elsewhere.id).voice).toBe(false);
     expect("voice" in spot(patchTerminal(house, elsewhere.id, { voice: true }), elsewhere.id)).toBe(false);
     expect(spot(patchTerminal(house, inSpawn.id, { voice: true }), inSpawn.id).voice).toBe(true);
-    expect("voice" in spot(patchTerminal(house, inSpawn.id, { voice: false }), inSpawn.id)).toBe(false);
-    // Back to the default drops it; undefined drops it.
+    // An explicit off is kept even where it is the default (the tent): ticked
+    // on and off again, the tent still says voice: false.
+    expect(spot(patchTerminal(house, inSpawn.id, { voice: false }), inSpawn.id).voice).toBe(false);
+    const toggled = patchTerminal(patchTerminal(house, inSpawn.id, { voice: true }), inSpawn.id, { voice: false });
+    expect(spot(toggled, inSpawn.id).voice).toBe(false);
+    // An on back where the default is on drops it; undefined drops it.
     const off = patchTerminal(house, elsewhere.id, { voice: false });
     expect("voice" in spot(patchTerminal(off, elsewhere.id, { voice: true }), elsewhere.id)).toBe(false);
     expect("voice" in spot(patchTerminal(off, elsewhere.id, { voice: undefined }), elsewhere.id)).toBe(false);
@@ -270,6 +275,9 @@ describe("edit — every op returns a copy", () => {
     expect(spot(patchTerminal(explicit, inSpawn.id, { name: "Tent tablet" }), inSpawn.id).voice).toBe(false);
     expect(spot(patchTerminal(off, elsewhere.id, { pitch: -5 }), elsewhere.id).voice).toBe(false);
     expect(validateHouse(patchTerminal(house, inSpawn.id, { voice: true })).ok).toBe(true);
+    // The problem list warns of a spawn-room terminal with the link on.
+    expect(voiceProblems(house)).toEqual([]);
+    expect(voiceProblems(patchTerminal(house, inSpawn.id, { voice: true }))).toEqual([expect.objectContaining({ level: "warning", sel: { kind: "terminal", id: inSpawn.id } })]);
   });
 
   it("sets a height", () => {

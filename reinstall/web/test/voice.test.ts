@@ -36,7 +36,7 @@ interface FakeChannel extends VoiceChannel {
   pose: ScreenPose | null;
   gain: number;
   plays: Array<{ at: number; n: number; first: number }>;
-  flushes: number;
+  cuts: number[];
   closed: boolean;
 }
 
@@ -54,12 +54,12 @@ function fakeSink() {
         pose: null,
         gain: -1,
         plays: [],
-        flushes: 0,
+        cuts: [],
         closed: false,
         place: (p) => (c.pose = p),
         volume: (g) => (c.gain = g),
         play: (s, at) => c.plays.push({ at, n: s.length, first: s[0] ?? 0 }),
-        flush: () => (c.flushes += 1),
+        cut: (at) => c.cuts.push(at),
         close: () => (c.closed = true),
       };
       channels.push(c);
@@ -73,6 +73,7 @@ function fakeMic(rate = VOICE_RATE) {
   const m = {
     rate,
     onSamples: null as ((s: Float32Array) => void) | null,
+    onEnded: null as (() => void) | null,
     enabled: [] as boolean[],
     stopped: false,
     setEnabled(on: boolean) {
@@ -190,10 +191,10 @@ describe("placement", () => {
   });
 
   it("the status line says who hears you only while someone does and the mic is live", () => {
-    expect(earsLine({ mic: "live", listening: true, hearing: 0, ears: 1 })).toBe("🎤 a terminal can hear you");
-    expect(earsLine({ mic: "live", listening: true, hearing: 0, ears: 2 })).toBe("🎤 2 terminals can hear you");
-    expect(earsLine({ mic: "muted", listening: true, hearing: 0, ears: 2 })).toBeNull();
-    expect(earsLine({ mic: "live", listening: false, hearing: 0, ears: 0 })).toBeNull();
+    expect(earsLine({ mic: "live", listening: true, hearing: 0, heardBy: null, ears: 1 })).toBe("🎤 a terminal can hear you");
+    expect(earsLine({ mic: "live", listening: true, hearing: 0, heardBy: null, ears: 2 })).toBe("🎤 2 terminals can hear you");
+    expect(earsLine({ mic: "muted", listening: true, hearing: 0, heardBy: null, ears: 2 })).toBeNull();
+    expect(earsLine({ mic: "live", listening: false, hearing: 0, heardBy: null, ears: 0 })).toBeNull();
   });
 
   it("fades a chunk's head in, and reads base64", () => {
@@ -216,7 +217,7 @@ describe("VoiceLink — the stream", () => {
     await started(r);
     expect(r.sources).toHaveLength(1);
     expect(r.last().url).toBe("/e/evt/api/spatial/voice/stream?token=tok");
-    expect(r.link.hud).toEqual({ mic: "live", listening: true, hearing: 0 });
+    expect(r.link.hud).toEqual({ mic: "live", listening: true, hearing: 0, heardBy: null });
     r.link.setActive(false);
     expect(r.last().closed).toBe(true);
     expect(r.link.hud.listening).toBe(false);
@@ -251,12 +252,14 @@ describe("VoiceLink — the stream", () => {
     say(2); // 200 + 200 queued
     say(3); // 600 queued > 400: drop it, play this one at the target
     const c = r.sink.channels[0]!;
-    expect(c.flushes).toBe(1);
+    // Only what is queued past the target is cut (with a fade), not all of it.
+    expect(c.cuts).toHaveLength(1);
+    expect(c.cuts[0]).toBeCloseTo(10.2, 9);
     expect(c.plays[2]!.at).toBeCloseTo(10.2, 9);
     r.sink.advance(5); // long silence
     say(4);
     expect(c.plays[3]!.at).toBeCloseTo(15.2, 9);
-    expect(c.flushes).toBe(1);
+    expect(c.cuts).toHaveLength(1);
   });
 
   it("ignores players, unknown spots and the tent's terminal; bye lets a voice go", async () => {
@@ -371,22 +374,67 @@ describe("VoiceLink — the mic", () => {
     expect(r.posts[0]!.bytes).toBe(VOICE_CHUNK_BYTES);
   });
 
-  it("half-duplex: nothing goes up while a terminal's voice plays here, and for the tail after", async () => {
+  /** `ms` of a steady tone at `dbfs` (RMS) through the mic. */
+  const say = (r: ReturnType<typeof rig>, ms: number, dbfs: number) => {
+    const n = Math.round((r.mic.rate * ms) / 1000);
+    const a = Math.SQRT2 * 10 ** (dbfs / 20);
+    r.mic.onSamples!(Float32Array.from({ length: n }, (_, i) => a * Math.sin(i / 3)));
+  };
+
+  it("the barge-in (D5b): while a terminal's voice plays here (+ the tail) the echo stays home, a player speaking up goes", async () => {
     const r = rig();
     await started(r);
     r.last().emit("voice", { from: "t:t", kind: "terminal", spot: "t", gain: 1, seq: 1, data: chunk() });
-    // The voice plays from +200 ms for 200 ms: held until +400 + the tail.
-    speak(r, 400);
+    // The voice plays from +200 ms for 200 ms: raised until +400 + the tail.
+    // Its echo (-35 dBFS, over the plain gate) is not sent…
+    say(r, 400, -35);
     await r.settle();
     expect(r.posts).toHaveLength(0);
     r.tick(400 + VOICE_TAIL_MS - 1);
-    speak(r, 200);
+    say(r, 200, -35);
     await r.settle();
     expect(r.posts).toHaveLength(0);
-    r.tick(2);
-    speak(r, 200);
+    // … but the player speaking up (-20) is, at once, with no echo pre-roll.
+    say(r, 200, -20);
     await r.settle();
     expect(r.posts).toHaveLength(1);
+    // Past the raise the plain gate is back: -35 goes up.
+    r.tick(2 + 1000);
+    say(r, 400, -35);
+    await r.settle();
+    expect(r.posts.length).toBeGreaterThan(1);
+  });
+
+  it("a faint, far terminal (gain under 0.2) raises nothing", async () => {
+    const r = rig();
+    await started(r);
+    r.last().emit("voice", { from: "t:t", kind: "terminal", spot: "t", gain: 0.1, seq: 1, data: chunk() });
+    say(r, 400, -35);
+    await r.settle();
+    expect(r.posts.length).toBeGreaterThan(0);
+  });
+
+  it("the server's count of who hears this player (listen.ears) is the HUD's", async () => {
+    const r = rig();
+    await started(r, false);
+    expect(r.link.hud.heardBy).toBeNull();
+    r.last().emit("listen", { on: true, ears: 2 });
+    expect(r.link.hud).toMatchObject({ listening: true, heardBy: 2 });
+    r.last().emit("listen", { on: true, ears: 1 });
+    expect(r.link.hud.heardBy).toBe(1);
+    r.last().emit("listen", { on: false, ears: 0 });
+    expect(r.link.hud).toMatchObject({ listening: false, heardBy: 0 });
+  });
+
+  it("a track the OS ends (an unplugged headset) reads NO MIC and sends nothing", async () => {
+    const r = rig();
+    await started(r);
+    expect(r.link.hud.mic).toBe("live");
+    r.mic.onEnded!();
+    expect(r.link.hud.mic).toBe("none");
+    expect(r.mic.stopped).toBe(true);
+    expect(r.mic.onSamples).toBeNull();
+    expect(earsLine({ ...r.link.hud, listening: true, ears: 1 })).toBeNull();
   });
 
   it("a muted player sends nothing; the mic's track follows mute and the active gate", async () => {
