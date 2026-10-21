@@ -4,7 +4,8 @@
 //! core merges these mirror its names exactly, so the casts here can go.
 
 import type { CueRow } from "../../../core/src/cue-sheet.ts";
-import type { ChatMessage, ObjectiveView, PrimeGuest, PrimeView } from "../types.ts";
+import { foldName } from "../avatars.ts";
+import type { ChatMessage, Interaction, ObjectiveView, PrimeGuest, PrimeView } from "../types.ts";
 
 /** One marked program on the Wanted board (C6 `PrimeView.wanted[]`). */
 export interface WantedEntry {
@@ -100,4 +101,13 @@ export function lastSeenOf(g: Pick<BoothGuest, "id" | "lastSeen">, wanted: reado
   if (g.lastSeen !== undefined) return g.lastSeen;
   const w = wanted?.find((x) => x.id === g.id);
   return w !== undefined ? w.lastSeen : undefined;
+}
+
+/** May this booth press story button `id` (it is in the view, and its `by:` names this character or nobody)? */
+export function mayPress(interactions: readonly Interaction[] | undefined, id: string, me: string): boolean {
+  const i = (interactions ?? []).find((x) => x.id === id);
+  if (i === undefined) return false;
+  if (i.actors === undefined || i.only !== true) return true;
+  const f = foldName(me);
+  return i.actors.some((a) => foldName(a) === f);
 }
