@@ -51,6 +51,7 @@ func _run() -> void:
 	_test_voice_codec()
 	_test_voice_uplink()
 	_test_voice_link()
+	await _test_voice_generator()
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
@@ -2784,7 +2785,7 @@ func _test_voice_link() -> void:
 	# Over 400 ms queued: skip ahead to 200 ms.
 	pb.consume(1000)
 	v.on_frame("voice", _voice_frame("hall", 3, 0.5))
-	_check(pb.clears >= 2 and pb.queued.size() == 3200 + 3200, "voice: over 400 ms queued, the oldest is dropped down to 200 ms (%d frames queued)" % pb.queued.size())
+	_check(pb.clears == 1 and pb.queued.size() == 3200 + 3200, "voice: over 400 ms queued, the oldest is dropped down to 200 ms (%d frames queued)" % pb.queued.size())
 	# The tent's terminal (voice off on the map) is never played; nor a player.
 	v.on_frame("voice", _voice_frame("tent", 1, 1.0))
 	var player_voice := _voice_frame("hall", 9, 1.0)
@@ -2956,3 +2957,42 @@ func _test_voice_server_link() -> void:
 	var base := LinkBase.new()
 	_check(base.voice_stream_url() == "" and base.voice_upload_url() == "" and base.voice_token() == "", "voice link: LinkBase's defaults are no voice")
 	base.free()
+
+
+## The real AudioStreamGenerator (not the fake): its clear_buffer() refuses
+## while it plays, so a skip ahead and a bye restart it — the backlog really
+## goes, and the fresh playback is the one pushed to.
+func _test_voice_generator() -> void:
+	var e := HouseBuilder.make_voice_emitter()
+	root.add_child(e)
+	e.play()
+	var pb := e.get_stream_playback()
+	await process_frame  # the mixer has started it: from now on it is "active"
+	await process_frame
+	_check(pb is AudioStreamGeneratorPlayback and e.get_stream_playback() == pb, "voice generator: a real generator playback, playing")
+	if not pb is AudioStreamGeneratorPlayback:
+		e.queue_free()
+		return
+	var cap := int(pb.get_frames_available())
+	var backlog := PackedVector2Array()
+	backlog.resize(16 * 600)  # 600 ms queued: past the 400 ms skip
+	backlog.fill(Vector2(0.1, 0.1))
+	_check(pb.push_buffer(backlog) and cap - int(pb.get_frames_available()) == backlog.size(), "voice generator: 600 ms queued")
+	var src := {"spot": "x", "emitter": e, "playback": pb, "capacity": cap, "tail": backlog.duplicate(), "seq": -1}
+	var v := VoiceLink.new()
+	var chunk := PackedFloat32Array()
+	chunk.resize(3200)
+	chunk.fill(0.2)
+	var ms := v._play(src, chunk)
+	var now_pb: Object = src["playback"]
+	var queued := (cap - int(now_pb.get_frames_available())) / 16.0
+	_check(now_pb != pb and ms <= 450.0 and queued <= 450.0, "voice generator: a skip drops the backlog (%.0f ms queued, was 600 + 200)" % queued)
+	v._sources["t:x"] = src
+	v._bye("t:x")
+	var after: Object = src["playback"]
+	var left := (cap - int(after.get_frames_available())) / 16.0
+	_check(left <= 70.0 and not v._sources.has("t:x"), "voice generator: a bye leaves only the fade-out (%.0f ms)" % left)
+	v.free()
+	e.stop()
+	e.queue_free()
+	await process_frame

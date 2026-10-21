@@ -251,7 +251,8 @@ func _play(src: Dictionary, samples: PackedFloat32Array) -> float:
 	var out := PackedVector2Array()
 	match plan["action"]:
 		"start":
-			pb.clear_buffer()
+			if queued > 0:
+				pb = _clear(src)
 			tail = PackedVector2Array()
 			out.resize(int(float(plan["at"]) * 16.0))  # zeros: the target's silence
 			out.append_array(_frames(samples, true))
@@ -260,7 +261,7 @@ func _play(src: Dictionary, samples: PackedFloat32Array) -> float:
 			# fade the cut in, then this chunk.
 			var keep := mini(int(float(plan["at"]) * 16.0), queued)
 			keep = mini(keep, tail.size())
-			pb.clear_buffer()
+			pb = _clear(src)
 			out = _fade(tail.slice(tail.size() - keep), true, FADE_IN_MS * 16)
 			out.append_array(_frames(samples, false))
 		_:
@@ -275,6 +276,27 @@ func _play(src: Dictionary, samples: PackedFloat32Array) -> float:
 		tail = tail.slice(tail.size() - cap)
 	src["tail"] = tail
 	return maxi(0, cap - int(pb.get_frames_available())) / 16.0
+
+
+## Empty `src`'s queue; returns the playback to push to from now on. A
+## generator's own `clear_buffer()` refuses while it plays (Godot: `Condition
+## "active" is true`, and nothing is cleared), so a real one is restarted: a
+## fresh playback, empty. A test's stand-in is cleared in place.
+static func _clear(src: Dictionary) -> Object:
+	var pb: Object = src["playback"]
+	if not pb is AudioStreamGeneratorPlayback:
+		pb.clear_buffer()
+		return pb
+	var emitter := src["emitter"] as AudioStreamPlayer3D
+	if emitter == null or not emitter.is_inside_tree():
+		return pb
+	emitter.stop()
+	emitter.play()
+	var fresh := emitter.get_stream_playback()
+	if fresh != null:
+		src["playback"] = fresh
+		return fresh
+	return pb
 
 
 ## Mono samples → stereo frames, faded in over [constant FADE_IN_MS] when asked.
@@ -306,7 +328,8 @@ func _bye(from: String) -> void:
 	var tail: PackedVector2Array = src["tail"]
 	var queued := mini(maxi(0, int(src["capacity"]) - int(pb.get_frames_available())), tail.size())
 	var head := tail.slice(tail.size() - queued, tail.size() - queued + mini(queued, FADE_OUT_MS * 16))
-	pb.clear_buffer()
+	if queued > 0:
+		pb = _clear(src)
 	if not head.is_empty():
 		pb.push_buffer(_fade(head, false, head.size()))
 	_sources.erase(from)
