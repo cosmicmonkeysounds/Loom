@@ -22,6 +22,7 @@ import {
   type Viewer,
 } from "../src/moments/model.ts";
 import type { AlertLevel, ChatMessage } from "../src/types.ts";
+import { loadNow, nowSinceOnLoad, saveNow } from "../src/moments/memory.ts";
 
 const MIN = 60_000;
 function moment(seq: number, over: Partial<Moment> = {}): Moment {
@@ -145,5 +146,32 @@ describe("hygiene (§7, G6)", () => {
     // Far apart: both stay.
     s = run([arrive([moment(3, { kind: "other", at: 1_000, channel: "dm:Clippy" }), quest])]);
     expect(s.queue.map((q) => q.moment.seq).sort()).toEqual([2, 3]);
+  });
+});
+
+describe("N3: a load after the NOW changed never brings back a banner from before it", () => {
+  it("the backlog's newest house banner must be no older than the NOW's start", () => {
+    const old = house(10, { at: 10_000 });
+    expect(wakeReplay([old], {}, "bingo", 60_000, null).show.map((m) => m.seq)).toEqual([10]);
+    expect(wakeReplay([old], {}, "bingo", 60_000, null, 30_000).show).toEqual([]);
+    // Posted with the press that moved NOW (inside the 2 s echo window): stays.
+    expect(wakeReplay([house(11, { at: 29_000 })], {}, "bingo", 60_000, null, 30_000).show.map((m) => m.seq)).toEqual([11]);
+    const s = run([arrive([old], { batch: true, storyNow: 60_000, houseSince: 30_000 })]);
+    expect(s.queue).toEqual([]);
+    expect(s.missed.map((m) => m.seq)).toEqual([10]);
+  });
+
+  it("when the NOW began, on a load: its stored start, else the last time the phone looked", () => {
+    const store = new Map<string, unknown>();
+    const storage = { load: <T,>(k: string) => (store.get(k) ?? null) as T | null, save: (k: string, v: unknown) => void store.set(k, v), drop: (k: string) => void store.delete(k) };
+    expect(loadNow(storage, "t")).toBeNull();
+    expect(nowSinceOnLoad(null, "zip")).toBeNull();
+    saveNow(storage, "t", { id: "beans", since: 5_000, seen: 9_000 });
+    const r = loadNow(storage, "t");
+    expect(r).toEqual({ id: "beans", since: 5_000, seen: 9_000 });
+    expect(nowSinceOnLoad(r, "beans")).toBe(5_000);
+    expect(nowSinceOnLoad(r, "zip")).toBe(9_000);
+    store.set("loom.moments.now.t", { id: 3 });
+    expect(loadNow(storage, "t")).toBeNull();
   });
 });

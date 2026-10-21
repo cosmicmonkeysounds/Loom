@@ -433,14 +433,14 @@ export const EMPTY_MOMENTS: MomentsState = { queue: [], missed: [], lastMajor: {
 
 export type MomentsAction =
   /** Moments that just arrived. `batch` = a history replay (several at once): only the bigs and the newest live house banner show. */
-  | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean; storyNow?: number; newestHouse?: number | null }
+  | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean; storyNow?: number; newestHouse?: number | null; houseSince?: number | null }
   /**
    * The page became visible (or the last hold released): the unacked bigs
    * (inside `BIG_WINDOW_MS` of `storyNow`) and the newest live house banner
    * come back; the rest stay unread. `manual` (a booth tray's 🔔) brings
    * back every live one, the parked too.
    */
-  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; manual?: boolean; storyNow?: number; newestHouse?: number | null }
+  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; manual?: boolean; storyNow?: number; newestHouse?: number | null; houseSince?: number | null }
   /** A moment left the screen. A plain close after `onScreenMs` < `GLANCE_MS` → missed; `acted` (the user took an exit) never is; a big never is. */
   | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean; keep?: boolean }
   /** The NOW objective changed (live): every queued house moment from before it (story time) is no longer news (GN-F2: "Last chance" outlived the filing). Bigs never retire. */
@@ -656,7 +656,7 @@ function newestMoment(list: readonly Moment[]): Moment | null {
  *   comes back over a newer one already seen (GN-F2).
  * The rest stay unread.
  */
-export function wakeReplay(list: readonly Moment[], lastMajor: Readonly<Record<string, number>>, phase: string | null, storyNow?: number, newestHouse?: number | null): { show: Moment[]; rest: Moment[] } {
+export function wakeReplay(list: readonly Moment[], lastMajor: Readonly<Record<string, number>>, phase: string | null, storyNow?: number, newestHouse?: number | null, houseSince?: number | null): { show: Moment[]; rest: Moment[] } {
   const inWindow = (m: Moment) => storyNow === undefined || m.at >= storyNow - BIG_WINDOW_MS;
   const bigs0 = list.filter((m) => m.severity === "big" && m.superseded !== true && (m.kind === "card" || inWindow(m)));
   const cards = bigs0.filter((m) => m.kind === "card");
@@ -664,7 +664,9 @@ export function wakeReplay(list: readonly Moment[], lastMajor: Readonly<Record<s
   const house = newestMoment(bigs0.filter((m) => m.kind !== "card" && m.house === true));
   const bigs = [...cards, ...(mine !== null ? [mine] : []), ...(house !== null ? [house] : [])];
   const superseded = bigs0.filter((m) => !bigs.includes(m)).map((m): Moment => ({ ...m, superseded: true }));
-  const live = newestMoment(list.filter((m) => m.severity !== "big" && isHouseAlert(m) && !isStale(m, lastMajor, phase)));
+  // A house banner from before the NOW objective on screen began is not news (N3).
+  const current = (m: Moment) => houseSince === undefined || houseSince === null || m.at >= houseSince - ECHO_WINDOW_MS;
+  const live = newestMoment(list.filter((m) => m.severity !== "big" && isHouseAlert(m) && !isStale(m, lastMajor, phase) && current(m)));
   const banner = live !== null && (newestHouse === undefined || newestHouse === null || live.seq === null || live.seq >= newestHouse) ? live : null;
   const show = [...bigs, ...(banner !== null ? [banner] : [])];
   return { show, rest: [...list.filter((m) => !show.includes(m) && (m.severity !== "big" || m.superseded === true)), ...superseded] };
@@ -687,7 +689,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
         return { ...next, queue, missed: missed.length === 0 ? s.missed : [...s.missed, ...missed] };
       }
       // A backlog (a reload, a reconnect): the bigs and the newest live house banner.
-      const { show, rest } = wakeReplay(withoutEchoes(fresh.filter((m) => !isPeek(m))), lastMajor, a.phase, a.storyNow, a.newestHouse);
+      const { show, rest } = wakeReplay(withoutEchoes(fresh.filter((m) => !isPeek(m))), lastMajor, a.phase, a.storyNow, a.newestHouse, a.houseSince);
       const q = enqueue(s.queue, show, a.level, a.role, a.now);
       const missed = [...q.out, ...rest];
       return { ...next, queue: q.queue, missed: missed.length === 0 ? s.missed : [...s.missed, ...missed] };
@@ -702,7 +704,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       }
       // A wake on its own: the moments a level rise parked wait for the tray.
       const due = s.missed.filter((m) => m.parked !== true);
-      const { show, rest } = wakeReplay(due, s.lastMajor, a.phase, a.storyNow, a.newestHouse);
+      const { show, rest } = wakeReplay(due, s.lastMajor, a.phase, a.storyNow, a.newestHouse, a.houseSince);
       if (show.length === 0 && rest.length === due.length) return s;
       const parked = s.missed.filter((m) => m.parked === true);
       const q = enqueue(s.queue, show, a.level, a.role, a.now);

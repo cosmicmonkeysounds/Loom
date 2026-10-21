@@ -41,6 +41,10 @@ export interface EngineMemory {
   /** Wave 18 fix (GN-F7 / NM-F3): the sign-in whose first backlog was swept
    *  for its unacknowledged big moments (once per page load). */
   swept?: string;
+  /** Wave 18 recheck (N3): when the NOW objective on screen began (story
+   *  clock), as far as this sign-in knows; a house banner older than it is
+   *  not news on a load or a wake. Null = unknown (a brand-new phone). */
+  nowSince?: number | null;
 }
 
 /** The memories by role + sign-in, newest last (a test seam too). Several
@@ -151,6 +155,49 @@ export function seenKey(session: string): string {
 /** Where the seq the Notifications window was last read up to persists. */
 export function readMarkKey(session: string): string {
   return `loom.notif.read.${session}`;
+}
+
+/** Where the NOW objective this sign-in last saw persists (N3). */
+export function nowKey(session: string): string {
+  return `loom.moments.now.${session}`;
+}
+
+/** The NOW objective last seen: its id, when it began (null = before this
+ *  phone first looked), and the story time the phone last looked. */
+export interface NowRecord {
+  id: string | null;
+  since: number | null;
+  seen: number;
+}
+
+export function loadNow(storage: SessionStorage, session: string): NowRecord | null {
+  try {
+    const v = storage.load<unknown>(nowKey(session));
+    if (v === null || typeof v !== "object") return null;
+    const r = v as Record<string, unknown>;
+    if (typeof r["seen"] !== "number" || !(typeof r["id"] === "string" || r["id"] === null) || !(typeof r["since"] === "number" || r["since"] === null)) return null;
+    return { id: r["id"] as string | null, since: r["since"] as number | null, seen: r["seen"] };
+  } catch {
+    return null;
+  }
+}
+
+export function saveNow(storage: SessionStorage, session: string, r: NowRecord): void {
+  try {
+    storage.save(nowKey(session), r);
+  } catch {
+    /* storage blocked — at worst an old house banner shows once */
+  }
+}
+
+/**
+ * When the NOW objective `id` began, on a page load: the stored start when
+ * it is the one this phone last saw; when it has changed since, the last
+ * time the phone looked (it changed after that); unknown on a new phone.
+ */
+export function nowSinceOnLoad(stored: NowRecord | null, id: string | null): number | null {
+  if (stored === null) return null;
+  return stored.id === id ? stored.since : stored.seen;
 }
 
 /** A per-sign-in key list (empty when blocked or absent). */

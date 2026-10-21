@@ -64,12 +64,15 @@ import {
   emptySignIn,
   type SignInMemory,
   loadDone,
+  loadNow,
   loadSignIn,
+  nowSinceOnLoad,
   readMarkKey,
   recallMoments,
   rememberMoments,
   saveDoneList,
   saveKeys,
+  saveNow,
   saveNumber,
   seenKey,
   type EngineMemory,
@@ -318,7 +321,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
       const l = live.current;
       const now = storyNow(inputRef.current.messages.values(), inputRef.current.clock);
       const newestHouse = batch ? newestHouseSeq(inputRef.current.messages.values(), viewerRef.current, l.phase) : null;
-      dispatch({ type: "arrive", moments, visible: l.visible, level: l.level, role, now: Date.now(), phase: l.phase, batch, storyNow: now, newestHouse });
+      dispatch({ type: "arrive", moments, visible: l.visible, level: l.level, role, now: Date.now(), phase: l.phase, batch, storyNow: now, newestHouse, houseSince: mem.nowSince ?? null });
     },
     [role],
   );
@@ -443,15 +446,38 @@ function useMomentsEngine(input: MomentsInput): Engine {
 
   // The NOW objective changed: the house moments queued before it are no
   // longer news (G6; the phase alone missed ⏱ and 📋, GN-F2).
+  // A load remembers when the NOW began (N3): a page opened after it
+  // changed retires the house banners from before, as a live change does.
   const prevNow = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (input.objectives === undefined) return;
     const id = input.objectives[0]?.id ?? null;
     const before = prevNow.current;
     prevNow.current = id;
-    if (before !== undefined && before !== id) dispatch({ type: "now", storyNow: storyNow(input.messages.values(), input.clock) });
+    const at = storyNow(input.messages.values(), input.clock);
+    if (session !== null && before === undefined) {
+      const since = nowSinceOnLoad(loadNow(host.storage, session), id);
+      mem.nowSince = since;
+      saveNow(host.storage, session, { id, since, seen: at });
+      if (since !== null) dispatch({ type: "now", storyNow: since });
+    } else if (session !== null && before !== id) {
+      mem.nowSince = at;
+      saveNow(host.storage, session, { id, since: at, seen: at });
+    }
+    if (before !== undefined && before !== id) dispatch({ type: "now", storyNow: at });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.objectives]);
+  // The last time this phone looked (story clock): a NOW that changed while
+  // it was closed changed after this.
+  const lastSeenSave = useRef(0);
+  useEffect(() => {
+    if (session === null || prevNow.current === undefined) return;
+    const at = storyNow(input.messages.values(), input.clock);
+    if (at - lastSeenSave.current < 5_000) return;
+    lastSeenSave.current = at;
+    saveNow(host.storage, session, { id: prevNow.current, since: mem.nowSince ?? null, seen: at });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.messages, input.clock, session]);
 
   // On a side now: a queued house moment that only asked them to choose one is read.
   useEffect(() => {
@@ -504,7 +530,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const wake = useCallback(
     (manual: boolean) => {
       const i = inputRef.current;
-      dispatch({ type: "wake", level: live.current.level, role, now: Date.now(), phase: i.phase ?? null, storyNow: storyNow(i.messages.values(), i.clock), newestHouse: newestHouseSeq(i.messages.values(), viewerRef.current, i.phase ?? null), ...(manual ? { manual: true } : {}) });
+      dispatch({ type: "wake", level: live.current.level, role, now: Date.now(), phase: i.phase ?? null, storyNow: storyNow(i.messages.values(), i.clock), newestHouse: newestHouseSeq(i.messages.values(), viewerRef.current, i.phase ?? null), houseSince: mem.nowSince ?? null, ...(manual ? { manual: true } : {}) });
     },
     [role],
   );
