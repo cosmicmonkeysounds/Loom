@@ -2,7 +2,9 @@
 //! blink, and a mouth that opens with the voice. Mood (`mood.ts`) sets
 //! where everything rests; a requestAnimationFrame loop eases toward it,
 //! adds the involuntary life (saccades, blinks, breathing) and drives the
-//! mouth from the live loudness the speech queue reports. The loop writes
+//! mouth from the live loudness the speech queue reports. A one-shot
+//! `flash(mood, ms)` (a cutscene's beat on the TV) overrides the mood for a
+//! moment and lets it go. The loop writes
 //! attributes straight onto the SVG nodes — React only re-renders on a
 //! mood change, never per frame.
 
@@ -12,7 +14,13 @@ import { EXPRESSIONS, blend, mouthFromLevel, type Expression, type Mood } from "
 export interface FaceHandle {
   /** Feed the current loudness (0..1) — called every frame while speaking. */
   level: (v: number) => void;
+  /** Wear `mood` for `ms`, then go back to the mood the face was given (a
+   *  cutscene's one-shot: `glitch` jitters, `alarmed` widens). A new flash replaces the last. */
+  flash: (mood: Mood, ms: number) => void;
 }
+
+/** The longest one-shot a flash may hold (ms). */
+export const FLASH_MAX_MS = 10_000;
 
 /** A tiny deterministic noise for the idle drift (no allocation per frame). */
 function drift(t: number, seed: number): number {
@@ -28,9 +36,15 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
   target.current = EXPRESSIONS[mood];
   const moodRef = useRef(mood);
   moodRef.current = mood;
+  const flashRef = useRef<{ mood: Mood; until: number } | null>(null);
 
   useEffect(() => {
-    handle.current = { level: (v) => (level.current = v) };
+    handle.current = {
+      level: (v) => (level.current = v),
+      flash: (m, ms) => {
+        flashRef.current = { mood: m, until: performance.now() + Math.max(0, Math.min(FLASH_MAX_MS, ms)) };
+      },
+    };
     return () => {
       handle.current = null;
     };
@@ -69,10 +83,14 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
 
     const frame = (now: number) => {
       const t = now / 1000;
+      // A one-shot flash wears its mood until it runs out.
+      const fl = flashRef.current;
+      if (fl !== null && now >= fl.until) flashRef.current = null;
+      const want = flashRef.current?.mood ?? moodRef.current;
       // Ease toward the mood's expression.
-      cur = blend(cur, target.current, 0.08);
-      if (moodRef.current !== lastMood) {
-        lastMood = moodRef.current;
+      cur = blend(cur, flashRef.current !== null ? EXPRESSIONS[want] : target.current, flashRef.current !== null ? 0.16 : 0.08);
+      if (want !== lastMood) {
+        lastMood = want;
         if (lastMood === "glitch") glitchUntil = now + 900;
         // A new mood: glance at the person.
         gazeTarget = { x: 0, y: 0.3 };
@@ -82,12 +100,12 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
       // Eyes: rest on the mood's bias, with saccades every 0.8–3 s and a
       // little continuous drift so they never look painted on.
       if (now > nextSaccade) {
-        const spread = moodRef.current === "idle" ? 0.9 : 0.35;
+        const spread = want === "idle" ? 0.9 : 0.35;
         gazeTarget = {
           x: cur.gazeBias.x + (Math.random() * 2 - 1) * spread,
           y: cur.gazeBias.y + (Math.random() * 2 - 1) * spread * 0.6,
         };
-        nextSaccade = now + 800 + Math.random() * (moodRef.current === "idle" ? 2600 : 1400);
+        nextSaccade = now + 800 + Math.random() * (want === "idle" ? 2600 : 1400);
       }
       gaze = { x: gaze.x + (gazeTarget.x - gaze.x) * 0.18, y: gaze.y + (gazeTarget.y - gaze.y) * 0.18 };
       const gx = Math.max(-1, Math.min(1, gaze.x + drift(t, 1) * 0.06));
