@@ -346,3 +346,41 @@
 .host-ask-cancel { font-weight: 800; box-shadow: var(--raised), inset 0 0 0 1px var(--ink); }
 .host-ask-fire { color: var(--maroon); font-weight: 700; }
 .cue-strip-caller { font-weight: 800; }
+
+/* The strip on a narrower phone (§5.1): the phase goes first (optional,
+   above), then the second watch value, then the countdown. The caller chip
+   never goes. */
+@media (max-width: 400px) { .host-strip-drop2 { display: none; } }
+@media (max-width: 360px) { .host-strip-drop3 { display: none; } }
+.host-strip-caller { color: var(--navy); font-weight: 800; cursor: pointer; }
+
+/* Cues › Who's calling · NEXT · LAST: Win95 group boxes (an etched frame,
+   the caption sitting on its top edge). */
+.host-box {
+  min-width: 0; margin: 6px 0 10px; padding: 6px 8px 8px;
+  border: none; border-radius: var(--radius); box-shadow: var(--sunken), inset 0 0 0 1px var(--face-hi);
+}
+.host-box legend {
+  padding: 0 4px; margin-left: 4px; font: 800 11px var(--ui-font);
+  letter-spacing: 0.5px; text-transform: uppercase; color: var(--ink); background: var(--dialog-face);
+}
+.host-box-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; }
+.host-box-row > * + * { margin-left: 8px; }
+.host-box-line { flex: 1 1 auto; min-width: 0; font: 700 14px var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-box-cue { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; font: 700 14px var(--ui-font); }
+.host-box-cue .cue-code { flex: 0 0 auto; margin-right: 6px; }
+.host-box-title { min-width: 0; overflow-wrap: anywhere; }
+.host-box-next.armed { box-shadow: var(--sunken), inset 0 0 0 2px var(--highlight); }
+.host-box-desc {
+  margin: 6px 0 0; font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.host-box-desc.open { display: block; -webkit-line-clamp: unset; }
+.host-box-more {
+  min-height: var(--tap); margin: 0; padding: 0 4px; border: none; background: none;
+  color: var(--navy); font: 700 13px var(--ui-font); cursor: pointer;
+}
+.host-box-then, .host-box-did { margin: 6px 0 0; font: 13px/1.35 var(--ui-font); color: var(--ink); overflow-wrap: anywhere; }
+.host-box-did { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.host-box-tag { font-weight: 800; color: var(--muted-ink); }
+.host-box .host-last { margin: 0; }
