@@ -15,18 +15,50 @@ import { countLine, sidesOf } from "./model.ts";
 /** How long the chosen door says so before the card answers. */
 export const DOOR_SAY_MS = 1200;
 
+/** An answer sent after a pause — or at once when flushed (an unmount).
+ *  Sent exactly once either way. */
+export class DeferredAnswer {
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private send: (() => void) | null = null;
+  schedule(send: () => void, ms: number): void {
+    this.flush();
+    this.send = send;
+    this.timer = setTimeout(() => this.flush(), ms);
+  }
+  flush(): void {
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
+    const send = this.send;
+    this.send = null;
+    send?.();
+  }
+}
+
+/** The card's words as the kicker (line 1) and the headline (line 2). A
+ *  one-line text splits after its first sentence, so the kicker never
+ *  repeats the headline (GN-F8). */
+export function doorWords(text: string): { kicker: string; say: string } {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length >= 2) return { kicker: lines[0]!, say: lines[1]! };
+  const one = lines[0] ?? "";
+  const m = /^(.+?[.!?])\s+(\S.*)$/u.exec(one);
+  if (m !== null) return { kicker: m[1]!, say: m[2]! };
+  return { kicker: one, say: "Two doors have opened in the computer." };
+}
+
 export function Doors({ card, onAnswer, answered }: WidgetProps) {
   const { view, calls } = useSides();
   const rows = sidesOf(view);
   const [chosen, setChosen] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (timer.current !== null) clearTimeout(timer.current);
-  }, []);
-  const lines = card.text.split("\n").map((l) => l.trim()).filter(Boolean);
-  const kicker = lines[0] ?? "";
+  // The answer waiting out DOOR_SAY_MS. An unmount (the big closing under
+  // it, a room switch) sends it at once: the join already happened, so the
+  // card must settle (wave 18 fix: Walk in left the card open all night).
+  const later = useRef<DeferredAnswer | null>(null);
+  if (later.current === null) later.current = new DeferredAnswer();
+  useEffect(() => () => later.current?.flush(), []);
+  const { kicker, say } = doorWords(card.text);
   const live = onAnswer !== undefined && calls !== null && answered == null;
   const pickedName = (answered?.["side"] as string | undefined) ?? null;
   const walk = (id: string, name: string) => {
@@ -36,7 +68,7 @@ export function Doors({ card, onAnswer, answered }: WidgetProps) {
     void calls!.join(name).then(
       () => {
         setChosen(name);
-        timer.current = setTimeout(() => onAnswer!({ side: id }), DOOR_SAY_MS);
+        later.current!.schedule(() => onAnswer!({ side: id }), DOOR_SAY_MS);
       },
       (e: unknown) => {
         setBusy(false);
@@ -56,7 +88,7 @@ export function Doors({ card, onAnswer, answered }: WidgetProps) {
   return (
     <div className="doors" role="group" aria-label="Choose a side">
       {kicker !== "" && <div className="doors-kicker">{kicker}</div>}
-      <div className="doors-say">{lines[1] ?? "Two doors have opened in the computer."}</div>
+      <div className="doors-say">{say}</div>
       <div className="doors-row">
         {rows.map((r) => (
           <section key={r.id} className={`w95-window door${chosen === r.name ? " open" : ""}`} aria-label={r.name}>

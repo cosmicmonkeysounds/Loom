@@ -5,9 +5,9 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SidesContext } from "../src/sides/context.ts";
-import { Doors } from "../src/sides/doors.tsx";
+import { DeferredAnswer, Doors, doorWords } from "../src/sides/doors.tsx";
 import { InviteCard } from "../src/sides/invite.tsx";
 import { FoundCrewSheet, RecruitSheet, SidesSheet } from "../src/sides/index.tsx";
 import { countLine, crewNameOk, crewRefusal, crewRoom, hasSidesOrCrew, inviteOf, recruitOffer, recruitRefusal, sideAction, sidesOf } from "../src/sides/model.ts";
@@ -120,6 +120,33 @@ describe("the doors (§9.1)", () => {
     expect(render({ answered: { side: "unlimited_power" } })).toContain("You are in Unlimited Power.");
     expect(render({ answered: { side: "neither" } })).toContain("You chose neither.");
     expect(render({ live: false })).toContain("disabled");
+  });
+
+  it("a one-line card splits after its first sentence: the kicker never repeats the headline (GN-F8)", () => {
+    expect(doorWords("🕚 SYSTEM CLOCK RESET. Two doors have opened in the computer.")).toEqual({ kicker: "🕚 SYSTEM CLOCK RESET.", say: "Two doors have opened in the computer." });
+    expect(doorWords("A\nB")).toEqual({ kicker: "A", say: "B" });
+    expect(doorWords("Doors")).toEqual({ kicker: "Doors", say: "Two doors have opened in the computer." });
+  });
+
+  it("Walk in's answer is sent once: after the pause, or at once when the doors unmount first (NM-F4)", () => {
+    vi.useFakeTimers();
+    try {
+      const sent: string[] = [];
+      const later = new DeferredAnswer();
+      later.schedule(() => sent.push("a"), 1200);
+      vi.advanceTimersByTime(1199);
+      expect(sent).toEqual([]);
+      later.flush(); // the big closed under it
+      expect(sent).toEqual(["a"]);
+      vi.advanceTimersByTime(5000);
+      expect(sent).toEqual(["a"]);
+      later.schedule(() => sent.push("b"), 1200);
+      vi.advanceTimersByTime(1200);
+      later.flush();
+      expect(sent).toEqual(["a", "b"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("registers as an inline, full-bleed, answerable kind", () => {
