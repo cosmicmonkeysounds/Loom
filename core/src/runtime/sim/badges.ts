@@ -8,13 +8,19 @@
 //! ```
 //!
 //! One line is `<ROLE alias|Character>.<path> as <glyph> <label>[, while
-//! <cond>]` (`parseBoardLine`'s shape, one item). A ROLE head (or its alias,
-//! `program`) is a per-guest flag read off the guest's own world path; a
-//! CHARACTER head reads the character's (a guest playing it shows it).
+//! <cond>]` (`parseBoardLine`'s shape, one item, its ` as ` required). A
+//! ROLE head (its id or alias, `program`) is a per-guest flag read off the
+//! guest's own world path; a CHARACTER head reads the character's (a guest
+//! whose program is that character wears it too). The `while` condition is
+//! evaluated with the wearer bound (`program` / `self`).
+//!
 //! Display only and never secret: a ROLE `secret:` slot or a `secret: true`
 //! CHARACTER is refused by lint L1219 and skipped here at run time, since
 //! every phone sees a badge.
 
+import { foldName } from "../../parser/names.ts";
+import { truthy } from "../expr.ts";
+import { isSecretRoleSlot, parseBoardLine } from "./board.ts";
 import type { BadgeDef } from "./model.ts";
 import type { Sim } from "./sim.ts";
 
@@ -24,12 +30,90 @@ export interface NameBadge {
   label: string;
 }
 
-/** Parse one `badge:` value, or null when it does not parse (L1219). */
-export function parseBadgeLine(_value: string): BadgeDef | null {
+/** Parse one `badge:` value, or null when it does not parse (L1219): one
+ *  dotted path, ` as ` a label whose first word is the glyph. */
+export function parseBadgeLine(value: string): BadgeDef | null {
+  const line = parseBoardLine(value);
+  if (line === null || line.items.length !== 1) return null;
+  const item = line.items[0]!;
+  if (item.path === null) return null;
+  const itemsText = line.while === null ? value : value.slice(0, value.search(/,\s*while\s+/u));
+  if (!/\sas\s/u.test(itemsText)) return null;
+  const words = item.label.trim().split(/\s+/u);
+  const glyph = words[0] ?? "";
+  if (glyph === "") return null;
+  const label = words.slice(1).join(" ");
+  const dot = item.path.indexOf(".");
+  return {
+    head: item.path.slice(0, dot),
+    rest: item.path.slice(dot + 1),
+    path: item.path,
+    glyph,
+    label: label === "" ? glyph : label,
+    while: line.while,
+    raw: line.raw,
+  };
+}
+
+/** What a badge's head names: a ROLE (by id or alias) or a CHARACTER. */
+export type BadgeHead = { kind: "role"; id: string } | { kind: "character"; id: string } | null;
+
+/** Resolve a badge head against the story's ROLEs and CHARACTERs. */
+export function badgeHead(model: Pick<Sim["model"], "roles" | "characters">, head: string): BadgeHead {
+  const fold = foldName(head);
+  for (const id of model.roles.keys()) {
+    if (foldName(id) === fold || id.toLowerCase().replace(/\s+/gu, "_") === head.toLowerCase()) return { kind: "role", id };
+  }
+  for (const id of model.characters.keys()) if (foldName(id) === fold) return { kind: "character", id };
   return null;
 }
 
-/** The badges `person` wears now (header order; only the true ones). */
-export function badgesOf(_sim: Sim, _person: string): NameBadge[] {
-  return [];
+/** Is the badge on a secret (a ROLE `secret:` slot, a `secret: true`
+ *  CHARACTER)? Such a badge is never shown (L1219). */
+export function badgeIsSecret(model: Pick<Sim["model"], "roles" | "characters">, def: BadgeDef): boolean {
+  const head = badgeHead(model, def.head);
+  if (head === null) return false;
+  if (head.kind === "character") return model.characters.get(head.id)?.secret === true;
+  const role = model.roles.get(head.id);
+  return role !== undefined && isSecretRoleSlot(role.secret, def.rest);
+}
+
+/** Per sim: the badges worn at one log length (a view build asks for every
+ *  person, and every view build asks again). */
+const memo = new WeakMap<Sim, { len: number; worn: Map<string, NameBadge[]> }>();
+
+/** The badges `person` (a guest or a listed character) wears now, header
+ *  order, only the true ones. Memoised per sim log length. */
+export function badgesOf(sim: Sim, person: string): NameBadge[] {
+  if (sim.model.badges.length === 0) return [];
+  const len = sim.log.len();
+  let m = memo.get(sim);
+  if (m === undefined || m.len !== len) {
+    m = { len, worn: new Map() };
+    memo.set(sim, m);
+  }
+  const hit = m.worn.get(person);
+  if (hit !== undefined) return hit;
+  const worn = computeBadges(sim, person);
+  m.worn.set(person, worn);
+  return worn;
+}
+
+function computeBadges(sim: Sim, person: string): NameBadge[] {
+  const guest = sim.persons.get(person);
+  const out: NameBadge[] = [];
+  for (const def of sim.model.badges) {
+    const head = badgeHead(sim.model, def.head);
+    if (head === null || badgeIsSecret(sim.model, def)) continue;
+    let path: string | null = null;
+    if (head.kind === "role") {
+      if (guest !== undefined && guest.role === head.id) path = `${person}.${def.rest}`;
+    } else if (head.id === person || (guest !== undefined && foldName(guest.name) === foldName(head.id))) {
+      path = `${head.id}.${def.rest}`;
+    }
+    if (path === null || !truthy(sim.world.get(path))) continue;
+    if (def.while !== null && !(guest !== undefined ? sim.holds(def.while, person) : sim.holds(def.while, null, person))) continue;
+    out.push({ glyph: def.glyph, label: def.label });
+  }
+  return out;
 }

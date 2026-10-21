@@ -102,6 +102,10 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
   "!!…" to everyone` belongs in an admin cue's own `when` or a story rule,
   with `with close: 6s`; anywhere else `L1218` asks if you meant it. For one
   person, `reply !!…`.
+- **A badge is public.** Every phone sees `badge:` glyphs, so a badge on a
+  ROLE `secret:` slot or a `secret: true` CHARACTER is never shown; `L1219`
+  says so (and flags a line with no ` as <glyph>` or a head that names no
+  ROLE alias or CHARACTER).
 - **`reinstall:` replaces the default.** Without it a captured or restricted
   guest may enter the reinstallation games; with it only your condition
   counts, so include `program.corrupted == true` (or your capture flag)

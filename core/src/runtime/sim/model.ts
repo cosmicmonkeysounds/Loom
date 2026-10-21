@@ -24,6 +24,7 @@ import { vBool, vNumber, vString, type Value } from "../expr.ts";
 import { lowerRawBody } from "./effects.ts";
 import { resolveRules, type ChannelRules } from "./channel-types.ts";
 import { parseBoardLine, type BoardLine } from "./board.ts";
+import { parseBadgeLine } from "./badges.ts";
 
 export type EntityKind = "person" | "character" | "faction" | "location" | "role";
 
@@ -737,6 +738,13 @@ export function compileModel(bundle: Bundle): SimModel {
         if (model.reinstall === null && line.value.trim() !== "") model.reinstall = line.value.trim();
       } else if (line.key === "archive") {
         archiveRaw.push(line.value);
+      } else if (line.key === "badge") {
+        const b = parseBadgeLine(line.value);
+        if (b !== null) model.badges.push(b);
+      } else if (line.key === "lobby") {
+        if (line.value.trim().toLowerCase() === "hidden") model.lobbyHidden = true;
+      } else if (line.key === "founding") {
+        if (model.founding === null && line.value.trim() !== "") model.founding = line.value.trim();
       }
     }
 

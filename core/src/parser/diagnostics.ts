@@ -116,6 +116,14 @@ export const Code = {
    *  rule: a big moment for the whole house (wave 18, a warning). The
    *  contract's L1213 was taken by wave 17's sound lint. */
   L1218BigHouseBroadcast: "L1218",
+  /** A header `badge:` line that does not parse (one dotted path ` as `
+   *  a glyph and label), names no ROLE or CHARACTER, or sits on a ROLE
+   *  `secret:` slot / a `secret: true` CHARACTER — every phone sees a badge,
+   *  so a secret one is never shown (wave 18b; an error on a secret). */
+  L1219BadgeOnSecret: "L1219",
+  /** A header `founding:` line that is no expression, so nobody can found
+   *  a faction (wave 18b, a warning). */
+  L1220FoundingInvalid: "L1220",
 } as const;
 
 export type Code = (typeof Code)[keyof typeof Code];

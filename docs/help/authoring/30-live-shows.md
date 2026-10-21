@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: badge, badges, L1219, lobby hidden, hidden lobby, live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -268,6 +268,27 @@ archive: The Uploader when program.cleared == true
 
 Lint **`L1216 HeaderLineInvalid`** flags a `wanted:` / `archive:` /
 `reinstall:` line that doesn't parse or names nothing.
+
+## Badges and a hidden lobby
+
+```loom
+badge: program.afk as 🚻 Bathroom Mode
+badge: Clippy.busy as ⏳ Busy, while Night.step >= 2
+lobby: hidden
+```
+
+- **`badge: <ROLE alias or CHARACTER>.<path> as <glyph> <label>[, while
+  <condition>]`** (repeatable) puts the glyph beside a person's name on
+  every people list — the People sheet, who's here, a booth's guests, the
+  host dock and Run's roster — while the path is true for them (the
+  `while`, if any, read with them bound). Never on a chat bubble: a
+  bubble is a line already said. Every phone sees a badge, so a ROLE
+  `secret:` slot or a `secret: true` CHARACTER is never shown: lint
+  **`L1219 BadgeOnSecret`** refuses it (and a line that doesn't parse or
+  names nobody).
+- **`lobby: hidden`** keeps the lobby (the story's own chat log room) off
+  every guest's phone. Nothing is rerouted: its lines still reach each
+  guest as moments and in Notifications, and booths and Run keep the room.
 
 ## One beat, many participants
 

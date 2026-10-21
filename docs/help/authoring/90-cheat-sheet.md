@@ -153,6 +153,8 @@ openers end with `:` and indent their body.
 | `reinstall: <cond>` (header) | who may enter the reinstallation games, read per guest |
 | `archive: The Uploader when program.cleared == true` (header, repeatable) | moves a guest's finished thread under *Other rooms* |
 | `majority: Night.present / 2 + 1` (header) | what a side needs, shown on the Sides screen's doors (lint `L1216` for a bad `wanted:` / `reinstall:` / `archive:`) |
+| `badge: program.afk as 🚻 Bathroom Mode[, while …]` (header) | a glyph beside their name on every people list while it is true (never a secret: lint `L1219`) |
+| `lobby: hidden` (header) | guests never list the lobby (its lines still reach them as moments / Notifications) |
 | `watch: Night.round as Round, program.cleared, Ivo Marsh, while <cond>` (header, first file) | what the Director page's glance column keeps in view ([run mode](run-mode.md)) |
 | `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone; end it `, for guests` and the guests' app shows it too |
 | `reserved: true` (a guest's program CHARACTER) | held for an invitee: 🔒 to everyone without its claim link ([live shows](live-shows.md)) |
