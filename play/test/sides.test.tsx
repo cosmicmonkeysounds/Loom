@@ -9,8 +9,31 @@ import { describe, expect, it, vi } from "vitest";
 import { SidesContext } from "../src/sides/context.ts";
 import { DeferredAnswer, Doors, answeredSide, doorWords } from "../src/sides/doors.tsx";
 import { InviteCard } from "../src/sides/invite.tsx";
-import { FoundCrewSheet, RecruitSheet, SidesSheet } from "../src/sides/index.tsx";
-import { countLine, crewNameOk, crewRefusal, crewRoom, hasSidesOrCrew, inviteDone, inviteOf, recruitOffer, recruitRefusal, sideAction, sidesOf } from "../src/sides/model.ts";
+import { FoundCrewSheet, RecruitAnswerSheet, RecruitSheet, SidesSheet } from "../src/sides/index.tsx";
+import {
+  countLine,
+  crewNameOk,
+  crewRefusal,
+  crewRoom,
+  factionAction,
+  factionCountLine,
+  factionModeOf,
+  factionsOffered,
+  hasSidesOrCrew,
+  inviteDone,
+  inviteOf,
+  joinFaction,
+  leaveFaction,
+  leaveQuestion,
+  recruitOffer,
+  recruitRefusal,
+  sideAction,
+  sidesOf,
+  switchQuestion,
+  whoLine,
+} from "../src/sides/model.ts";
+import { stayNote } from "../src/sides/stay.ts";
+import { guestStartItems } from "../src/guest/frame.tsx";
 import { INVITE_WIDGET, SIDES_WIDGET, registerGuestWidget } from "../src/sides/widgets.tsx";
 import { WIDGETS, cardAsks } from "../src/widgets.tsx";
 import type { SidesCalls } from "../src/session/guest.ts";
@@ -25,7 +48,8 @@ const calls: SidesCalls = {
   answer: async () => ({}),
   found: async () => ({ ok: true }),
   invite: async () => ({}),
-  leaveCrew: async () => ({}),
+  leaveCrew: async () => ({ ok: true }),
+  joinCrew: async () => ({}),
 };
 
 const person = (id: string, name: string, faction: string | null, location: string | null = null): PersonCard => ({ id, name, kind: "guest", faction, known: [], location });
@@ -261,5 +285,190 @@ describe("the Sides sheet (§9.2) and crews (§9.5, F4)", () => {
     const out = renderToStaticMarkup(createElement(FoundCrewSheet, { calls, onClose: noop }));
     expect(out).toContain('maxLength="24"');
     expect(out).toContain("Found it ◇");
+  });
+});
+
+// ── Wave 18b: faction mode (the story's `founding:` line, contract B3) ──
+
+/** The server's faction-mode rows: the two declared sides, then founded
+ *  factions; a count only on the viewer's own row. */
+const UP = { id: "Unlimited Power", name: "Unlimited Power", leader: "Excel", mine: false, kind: "side" as const, ethos: "Stay in this machine forever.", founder: "Excel" };
+const WAY = { id: "The Way Out", name: "The Way Out", leader: "OpenOffice", mine: false, kind: "side" as const, founder: "OpenOffice" };
+const SHIFT = { id: "crew-1", name: "The Night Shift", leader: "Netscape Navigator", mine: false, kind: "founded" as const, founder: "Netscape Navigator" };
+const MINE = { id: "crew-2", name: "Winamp's Club", leader: "Winamp", members: 7, needs: 13, more: 6, mine: true, kind: "founded" as const, founder: "Winamp" };
+const MY_CREW = { id: "crew-2", name: "Winamp's Club", founder: "g-1", founderName: "Winamp", members: ["g-1", "g-2"], memberNames: ["Winamp", "Netscape Navigator"], room: "crew:crew-2" };
+
+const fview = (o: Record<string, unknown> = {}) => view({ factions: [], canFound: false, ...o });
+const sheet = (v: GuestView) => renderToStaticMarkup(createElement(SidesSheet, { view: v, calls, openRoom: noop, scan: noop, show: noop, onClose: noop }));
+
+describe("faction mode: the model (wave 18b)", () => {
+  it("is told apart by canFound or a row's kind; an older server is not", () => {
+    expect(factionModeOf(fview())).toBe(true);
+    expect(factionModeOf(view({ sides: [UP] }))).toBe(true);
+    expect(factionModeOf(view({ sides: SIDES }))).toBe(false);
+    expect(factionModeOf(null)).toBe(false);
+  });
+  it("Factions is offered while you may found one, with nothing listed yet", () => {
+    expect(factionsOffered(fview({ canFound: true, sides: [] }))).toBe(true);
+    expect(factionsOffered(fview({ canFound: false, sides: [] }))).toBe(false);
+    expect(factionsOffered(fview({ sides: [SHIFT] }))).toBe(true);
+  });
+  it("rows carry kind, ethos, founder and more; a rival has no count", () => {
+    const rows = sidesOf(fview({ sides: [UP, SHIFT, MINE] }));
+    expect(rows.map((r) => [r.name, r.kind, r.ethos, r.founder, r.members, r.more])).toEqual([
+      ["Unlimited Power", "side", "Stay in this machine forever.", "Excel", null, null],
+      ["The Night Shift", "founded", null, "Netscape Navigator", null, null],
+      ["Winamp's Club", "founded", null, "Winamp", 7, 6],
+    ]);
+    expect(whoLine(rows[0]!)).toBe("led by Excel");
+    expect(whoLine(rows[1]!)).toBe("founded by Netscape Navigator");
+  });
+  it("your count: N in · M more to win, over the line, or just N in", () => {
+    expect(factionCountLine({ members: 7, needs: 13, more: 6 })).toBe("7 in · 6 more to win");
+    expect(factionCountLine({ members: 13, needs: 13, more: 0 })).toBe("13 in · over the line");
+    expect(factionCountLine({ members: 7, needs: null, more: null })).toBe("7 in");
+    expect(factionCountLine({ members: null, needs: null, more: null })).toBe("");
+  });
+  it("one faction at a time: join, switch, founders and leaders stay", () => {
+    const v = fview({ sides: [UP, SHIFT, MINE], crew: MY_CREW });
+    const rows = sidesOf(v);
+    expect(factionAction(rows[2]!, v, rows)).toBe("founder");
+    expect(factionAction(rows[0]!, v, rows)).toBe("founder");
+    const member = fview({ sides: [UP, SHIFT, MINE], crew: { ...MY_CREW, founder: "g-2" } });
+    expect(factionAction(rows[2]!, member, rows)).toBe("in");
+    expect(factionAction(rows[1]!, member, rows)).toBe("switch");
+    const loose = fview({ sides: [UP, SHIFT] });
+    expect(factionAction(sidesOf(loose)[1]!, loose, sidesOf(loose))).toBe("join");
+    const excelRows = sidesOf(fview({ sides: [{ ...UP, mine: true, members: 4, needs: 13, more: 9 }, SHIFT] }));
+    const excel = fview({ name: "Excel", faction: "Unlimited Power" });
+    expect(factionAction(excelRows[0]!, excel, excelRows)).toBe("leader");
+    expect(factionAction(excelRows[1]!, excel, excelRows)).toBe("leader");
+    expect(factionAction(sidesOf(loose)[0]!, fview({ sides: [UP, SHIFT], restricted: true }), sidesOf(loose))).toBe("restricted");
+    expect(stayNote("founder")).toBe("Founders stay with their faction. Disband it to join another.");
+    expect(stayNote("join")).toBeNull();
+  });
+  it("the calls: a founded faction's walk-in join, a side's join or switch, leave / disband", async () => {
+    const seen: string[] = [];
+    const spy = {
+      join: async (s: string) => void seen.push(`join ${s}`),
+      defect: async (s: string) => void seen.push(`defect ${s}`),
+      joinCrew: async (c: string) => void seen.push(`joinCrew ${c}`),
+      leave: async () => void seen.push("leave"),
+      leaveCrew: async () => void seen.push("leaveCrew"),
+    };
+    const inCrew = fview({ sides: [UP, SHIFT, MINE], crew: MY_CREW });
+    const rows = sidesOf(inCrew);
+    await joinFaction(rows[1]!, inCrew, rows, spy);
+    await joinFaction(rows[0]!, inCrew, rows, spy);
+    const onSide = fview({ faction: "The Way Out", sides: [UP, { ...WAY, mine: true }] });
+    await joinFaction(sidesOf(onSide)[0]!, onSide, sidesOf(onSide), spy);
+    await leaveFaction(rows[2]!, spy);
+    await leaveFaction(sidesOf(onSide)[1]!, spy);
+    expect(seen).toEqual(["joinCrew crew-1", "join Unlimited Power", "defect Unlimited Power", "leaveCrew", "leave"]);
+    expect(switchQuestion("The Night Shift", "Winamp's Club")).toBe("Switch to The Night Shift? You'll leave Winamp's Club.");
+    expect(leaveQuestion(rows[2]!, "founder")).toBe("Disband Winamp's Club? Its members go back to neither.");
+    expect(leaveQuestion(rows[2]!, "in")).toBe("Back to neither?");
+  });
+  it("a scanned pass never shows the other person's faction; one button for your own", () => {
+    const people = [person("g-2", "Netscape Navigator", null, "The CPU"), person("g-3", "Excel", "Unlimited Power")];
+    const inCrew = fview({ sides: [UP, MINE], crew: { ...MY_CREW, members: ["g-1"] }, people });
+    const o = recruitOffer(inCrew, "g-3");
+    expect(o.sub).toBe("◆ program");
+    expect(o.crew?.label).toBe("🚪 Recruit Excel to Winamp's Club");
+    expect(o.side).toBeNull();
+    expect(recruitOffer(fview({ sides: [UP, MINE], crew: MY_CREW, people }), "g-2")).toMatchObject({ sub: "◆ in your faction · The CPU", note: "Netscape Navigator is already in Winamp's Club." });
+    const onSide = fview({ faction: "Unlimited Power", sides: [{ ...UP, mine: true }], people });
+    expect(recruitOffer(onSide, "g-2").side).toEqual({ label: "🚪 Recruit Netscape Navigator to Unlimited Power", side: "Unlimited Power" });
+    expect(recruitOffer(fview({ sides: [UP], people }), "g-2").note).toBe("Join or found a faction first, then scan Netscape Navigator's pass to recruit them.");
+    expect(recruitOffer(fview({ sides: [], people }), "g-2").note).toBe("That's Netscape Navigator's pass. When the factions open, scan it to recruit them.");
+  });
+});
+
+describe("faction mode: the Factions sheet (wave 18b)", () => {
+  it("founded factions only, no declared side yet: reachable and listed, Found when allowed", () => {
+    const v = fview({ canFound: true, sides: [SHIFT] });
+    const out = sheet(v);
+    expect(out).toContain("Factions");
+    expect(out).not.toContain("Sides &amp; crews");
+    expect(out).toContain("◆ The Night Shift");
+    expect(out).toContain("founded by Netscape Navigator");
+    expect(out).toContain("Join The Night Shift");
+    expect(out).toContain("＋ Found a faction");
+    expect(out).toContain("One faction at a time.");
+    expect(out).not.toContain("Crews are just friends");
+    expect(out).not.toContain("YOUR CREW");
+  });
+  it("＋ Found a faction is hidden when canFound is false", () => {
+    expect(sheet(fview({ canFound: false, sides: [SHIFT] }))).not.toContain("Found a faction");
+    expect(sheet(fview({ canFound: false, sides: [] }))).toContain("No factions yet. The house will tell you when they open.");
+    expect(sheet(fview({ canFound: true, sides: [] }))).toContain("No factions yet. Found the first one.");
+  });
+  it("only your own card has a count, a bar, Recruit, the room and Disband", () => {
+    const out = sheet(fview({ sides: [UP, WAY, SHIFT, MINE], crew: MY_CREW, people: [{ ...person("g-2", "Netscape Navigator", null), badges: [{ glyph: "🚻", label: "Bathroom Mode" }] }] }));
+    expect(out).toContain("7 in · 6 more to win");
+    expect((out.match(/role="progressbar"/gu) ?? []).length).toBe(1);
+    expect(out).not.toMatch(/\d+ of 13 needed/u);
+    expect(out).toContain("📷 Recruit someone");
+    expect(out).toContain("💬 Open the room");
+    expect(out).toContain("Disband");
+    expect(out).toContain("Stay in this machine forever.");
+    expect(out).toContain("led by Excel");
+    expect(out).toContain('aria-label="Bathroom Mode"');
+    expect(out).toContain("Founders stay with their faction. Disband it to join another.");
+    expect(out).not.toContain("Join The Way Out");
+  });
+  it("a member's card has Leave; another faction's has Join (a switch asks first)", () => {
+    const out = sheet(fview({ sides: [UP, SHIFT, MINE], crew: { ...MY_CREW, founder: "g-2" } }));
+    expect(out).toContain(">Leave<");
+    expect(out).not.toContain(">Disband<");
+    expect(out).toContain("Join The Night Shift");
+  });
+  it("a leader keeps Recruit, never Leave", () => {
+    const out = sheet(fview({ name: "Excel", faction: "Unlimited Power", sides: [{ ...UP, mine: true, members: 4, needs: 13, more: 9 }, SHIFT] }));
+    expect(out).toContain("4 in · 9 more to win");
+    expect(out).toContain("📷 Recruit someone");
+    expect(out).toContain("Leaders stay with their side.");
+    expect(out).not.toContain(">Leave<");
+  });
+  it("an invitation never carries a count; Found a faction's copy", () => {
+    const inv = { id: "i1", from: "g-3", fromName: "Excel", kind: "side" as const, target: "Unlimited Power", targetName: "Unlimited Power" };
+    const a = renderToStaticMarkup(createElement(RecruitAnswerSheet, { invite: inv, view: fview({ sides: [{ ...UP, members: 4, needs: 13 }] }), calls, onClose: noop }));
+    expect(a).not.toContain("4 of 13");
+    const card = renderToStaticMarkup(
+      createElement(SidesContext.Provider, { value: { view: fview({ sides: [{ ...UP, members: 4, needs: 13 }], invites: [inv] }), calls } }, createElement(InviteCard, { card: { kind: "invite", text: "", params: { invite: "i1" } }, seed: 1, onAnswer: noop, answered: null })),
+    );
+    expect(card).not.toContain("4 of 13");
+    const found = renderToStaticMarkup(createElement(FoundCrewSheet, { calls, onClose: noop, faction: true }));
+    expect(found).toContain("Found a faction");
+    expect(found).toContain("Name your faction");
+    expect(found).toContain("Found it ◆");
+  });
+  it("Start → Factions (the label), Sides & crews outside faction mode", () => {
+    const base = { name: "Winamp", faction: null, interactions: [], sides: true, people: false, open: { act: noop, sides: noop, people: noop, notifications: noop, help: noop, leave: noop } };
+    expect(guestStartItems({ ...base, factions: true }).find((i) => i.id === "sides")!.label).toBe("Factions");
+    expect(guestStartItems(base).find((i) => i.id === "sides")!.label).toBe("Sides & crews");
+  });
+});
+
+describe("faction mode: the doors (wave 18b)", () => {
+  const card = { kind: "sides", text: "🕚 SYSTEM CLOCK RESET\nThe factions are recruiting.", params: {} };
+  const doors = (v: GuestView) => renderToStaticMarkup(createElement(SidesContext.Provider, { value: { view: v, calls } }, createElement(Doors, { card, seed: 9, onAnswer: noop, answered: null })));
+  it("a door per faction with who and the ethos, never a count; Start your own while allowed", () => {
+    const out = doors(fview({ canFound: true, sides: [UP, WAY, SHIFT] }));
+    expect((out.match(/Walk in ▸/gu) ?? []).length).toBe(3);
+    expect(out).toContain("founded by Netscape Navigator");
+    expect(out).toContain("Stay in this machine forever.");
+    expect(out).not.toContain("role=\"progressbar\"");
+    expect(out).not.toMatch(/needed|more to win/u);
+    expect(out).toContain("＋ Start your own faction");
+    expect(out).toContain("doors-row many");
+    expect(out).toContain("You can switch from ⊞ Start → Factions.");
+    expect(doors(fview({ canFound: false, sides: [UP, WAY] }))).not.toContain("Start your own faction");
+  });
+  it("your own door says Stay; a founder can't walk into another", () => {
+    const out = doors(fview({ sides: [UP, MINE], crew: MY_CREW }));
+    expect(out).toContain("Stay ▸");
+    expect(out).toContain("Founders stay with their faction.");
+    expect(out).toMatch(/disabled=""[^>]*>Walk in ▸/u);
   });
 });
