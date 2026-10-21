@@ -253,6 +253,7 @@ export const TERMINAL_VIEW_HINTS: Record<TerminalViewName, string> = {
   chess: "chess — the King's board (the Server Door)",
   shadow: "shadow — this terminal's camera with the players as ghosts",
   casino: "casino — Truthcoin bets on the coin, the dice and the slots",
+  reinstall: "reinstall — the tent laptop: idle show + the reinstallation wizard",
 };
 
 /** The story LOCATIONs the map's rooms stand for, for the room picker. */

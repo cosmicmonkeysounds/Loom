@@ -204,7 +204,7 @@ describe("snapTerminalToWall", () => {
 
 describe("the provisioning link's enums", () => {
   it("lists every terminal view, shadow included", () => {
-    expect(TERMINAL_VIEWS).toEqual(["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"]);
+    expect(TERMINAL_VIEWS).toEqual(["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino", "reinstall"]);
   });
 
   it("the link names only the spot (the screen and room live on the map)", () => {
