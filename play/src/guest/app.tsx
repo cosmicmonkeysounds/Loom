@@ -205,6 +205,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     dms: t.list.filter((c) => c.kind === "dm").map((c) => ({ id: c.id, title: c.title, last: c.messages[c.messages.length - 1]?.seq ?? -1 })),
     actions: liveActions,
     sides: (ext.sides ?? []).length > 0,
+    sideChosen: (ext.sides ?? []).some((x) => x.mine),
     actionLabels: new Map(interactions.map((i) => [i.id, i.label])),
   });
   const arm = useArmButtons();
@@ -349,6 +350,8 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     // The big rung renders a card inside itself through the same answer path.
     widgets,
     openNotifications: () => nav.go({ to: "notifications" }),
+    name: s.me.name,
+    sideChosen: (ext.sides ?? []).some((x) => x.mine),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)

@@ -8,11 +8,14 @@ import type { Moment } from "./model.ts";
 /** A headline is at most this many characters. */
 export const HEADLINE_MAX = 90;
 
-/** The fallback glyph for a moment kind. */
-function kindGlyph(kind: Moment["kind"]): string {
+/** A card kind's own glyph (GN-F10: an invitation wore a 🃏 joker). */
+const CARD_GLYPHS: Readonly<Record<string, string>> = { invite: "🚪", answer: "💬", sides: "🚪", fact: "📝", poll: "📊", captcha: "🤖", pass: "🎟" };
+
+/** The fallback glyph for a moment kind (a card's own kind first). */
+function kindGlyph(kind: Moment["kind"], cardKind?: string): string {
   switch (kind) {
     case "card":
-      return "🃏";
+      return (cardKind !== undefined ? CARD_GLYPHS[cardKind] : undefined) ?? "🃏";
     case "quest":
       return "📓";
     case "objective":
@@ -36,10 +39,10 @@ function clip(s: string, max: number): string {
  * headline is clipped there and the body keeps the whole text, so no word
  * is lost.
  */
-export function bigParts(text: string, kind: Moment["kind"] = "other"): { glyph: string; headline: string; body: string } {
+export function bigParts(text: string, kind: Moment["kind"] = "other", cardKind?: string): { glyph: string; headline: string; body: string } {
   const t = text.trim();
   const lead = noticeKey(t);
-  const glyph = lead !== "•" ? lead : kindGlyph(kind);
+  const glyph = lead !== "•" ? lead : kindGlyph(kind, cardKind);
   const words = (lead !== "•" ? t.replace(/^["'`]+/u, "").trimStart().slice(lead.length) : t).trim();
   const end = /[.!?](?=\s|$)/u.exec(words);
   const first = end === null ? words : words.slice(0, end.index + 1);

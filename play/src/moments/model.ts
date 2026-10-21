@@ -95,6 +95,10 @@ export interface Moment {
   entry?: string;
   /** A quest moment's quest id (its exit opens that quest). */
   quest?: string;
+  /** A big one a newer big of yours replaced in a backlog (BN-F10): never
+   *  shown, and the provider acknowledges it so a reload never brings it
+   *  back. */
+  superseded?: true;
 }
 
 /** How a moment renders at a level (`lowerRung` for a minor one). */
@@ -114,6 +118,8 @@ export interface Viewer {
   here?: string | null;
   /** The booth's filter (`boothAlertFilter`). */
   filter?: (m: ChatMessage) => boolean;
+  /** A guest's display name: a house cheer that names them is not for them. */
+  name?: string;
 }
 
 /** The highest rung a booth ever shows: performers are working, a modal would stop them. */
@@ -224,11 +230,22 @@ function momentKindOf(m: ChatMessage): MomentKind {
 /** The caption for a message moment: the speaker, a quest's title, else the room. */
 function momentCaption(m: ChatMessage, kind: MomentKind): string {
   if (kind === "quest" && m.quest !== undefined) return `New quest: ${m.quest.title}`;
+  if (m.widget?.kind === "invite") return "Invitation";
   const from = m.from.trim();
   if (from !== "" && from !== "Narrator") return from;
-  // The lobby is the house's announcement room (its own title is the story's).
-  if (m.channel === "lobby") return "Announcement";
+  // The lobby is the house's announcement room (its own title is the
+  // story's): an announcement when it is for everyone, else a line for you
+  // alone (GN-F12: every readout was "Announcement").
+  if (m.channel === "lobby") return m.audience === "all" ? "Announcement" : "For you";
   return m.title.trim() !== "" ? m.title.trim() : "Message";
+}
+
+/** Does `text` name `name` as whole words (any case)? */
+export function namesViewer(text: string, name: string | undefined): boolean {
+  const n = name?.trim() ?? "";
+  if (n === "") return false;
+  const esc = n.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${esc}($|[^\\p{L}\\p{N}])`, "iu").test(text);
 }
 
 /**
@@ -282,6 +299,9 @@ export function momentOf(m: ChatMessage, viewer: Viewer, phase: string | null): 
   const kind = momentKindOf(m);
   const go = Array.isArray(w.go) && w.go.length > 0 ? w.go : undefined;
   const autoClose = severity === "big" && typeof w.autoClose === "number" && w.autoClose > 0 ? w.autoClose : undefined;
+  // A house cheer that names you ("Winamp won the Bingo Ribbon! Cheer for
+  // them") is for everyone else: the winner has their own medal (B7).
+  if (viewer.role === "guest" && autoClose !== undefined && m.audience === "all" && namesViewer(m.text, viewer.name)) return null;
   return {
     key: `m:${m.seq}`,
     seq: m.seq,
@@ -413,16 +433,18 @@ export const EMPTY_MOMENTS: MomentsState = { queue: [], missed: [], lastMajor: {
 
 export type MomentsAction =
   /** Moments that just arrived. `batch` = a history replay (several at once): only the bigs and the newest live house banner show. */
-  | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean; storyNow?: number }
+  | { type: "arrive"; moments: Moment[]; visible: boolean; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; batch: boolean; storyNow?: number; newestHouse?: number | null }
   /**
    * The page became visible (or the last hold released): the unacked bigs
    * (inside `BIG_WINDOW_MS` of `storyNow`) and the newest live house banner
    * come back; the rest stay unread. `manual` (a booth tray's 🔔) brings
    * back every live one, the parked too.
    */
-  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; manual?: boolean; storyNow?: number }
+  | { type: "wake"; level: AlertLevel; role: Viewer["role"]; now: number; phase: string | null; manual?: boolean; storyNow?: number; newestHouse?: number | null }
   /** A moment left the screen. A plain close after `onScreenMs` < `GLANCE_MS` → missed; `acted` (the user took an exit) never is; a big never is. */
-  | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean }
+  | { type: "dismiss"; key: string; onScreenMs: number; acted?: boolean; keep?: boolean }
+  /** The NOW objective changed (live): every queued house moment from before it (story time) is no longer news (GN-F2: "Last chance" outlived the filing). Bigs never retire. */
+  | { type: "now"; storyNow: number }
   /** These leave the queue, read (the pin rail shows them in full). */
   | { type: "read"; keys: readonly string[] }
   /** While a hold lasts: modal moments queued too long move to missed. */
@@ -513,7 +535,9 @@ export function withoutEchoes(moments: readonly Moment[], already: readonly Mome
  * A `!` alarm addressed to you counts as your move (4).
  */
 export function priorityOf(m: Pick<Moment, "kind" | "severity"> & Partial<Pick<Moment, "house" | "alarm">>): number {
-  if (m.severity === "big") return m.house === true ? 5 : 6;
+  // A big card (the bottle, the doors) is your move: it comes before your
+  // other big moments, and those before the house's (BN-F10).
+  if (m.severity === "big") return m.house === true ? 5 : m.kind === "card" ? 7 : 6;
   if (m.kind === "objective") return 1;
   if (m.severity !== "major") return 0;
   // Yours: a card, a readout or a `!` alarm addressed to you (G6: personal outranks the house).
@@ -620,14 +644,30 @@ function newestMoment(list: readonly Moment[]): Moment | null {
 }
 
 /**
- * What a wake / reload / reconnect brings back (§7): every big inside its
- * window and the newest still-live house banner; the rest stay unread.
+ * What a wake / reload / reconnect brings back (§7):
+ * - every unanswered big card (whatever its age: it is your move);
+ * - the newest of your other big moments inside the window, and the newest
+ *   of the house's — an older one is superseded (BN-F10: a phone away for
+ *   five minutes stepped through BINGO, a ribbon, an old capture and a
+ *   release before the live bottle); a superseded one goes to `rest`
+ *   marked `superseded` (read, never shown);
+ * - the newest still-live house banner, and only when it is the newest
+ *   house banner of all (`newestHouse`, read or not): an older one never
+ *   comes back over a newer one already seen (GN-F2).
+ * The rest stay unread.
  */
-export function wakeReplay(list: readonly Moment[], lastMajor: Readonly<Record<string, number>>, phase: string | null, storyNow?: number): { show: Moment[]; rest: Moment[] } {
-  const bigs = list.filter((m) => m.severity === "big" && (storyNow === undefined || m.at >= storyNow - BIG_WINDOW_MS));
-  const banner = newestMoment(list.filter((m) => m.severity !== "big" && isHouseAlert(m) && !isStale(m, lastMajor, phase)));
+export function wakeReplay(list: readonly Moment[], lastMajor: Readonly<Record<string, number>>, phase: string | null, storyNow?: number, newestHouse?: number | null): { show: Moment[]; rest: Moment[] } {
+  const inWindow = (m: Moment) => storyNow === undefined || m.at >= storyNow - BIG_WINDOW_MS;
+  const bigs0 = list.filter((m) => m.severity === "big" && m.superseded !== true && (m.kind === "card" || inWindow(m)));
+  const cards = bigs0.filter((m) => m.kind === "card");
+  const mine = newestMoment(bigs0.filter((m) => m.kind !== "card" && m.house !== true));
+  const house = newestMoment(bigs0.filter((m) => m.kind !== "card" && m.house === true));
+  const bigs = [...cards, ...(mine !== null ? [mine] : []), ...(house !== null ? [house] : [])];
+  const superseded = bigs0.filter((m) => !bigs.includes(m)).map((m): Moment => ({ ...m, superseded: true }));
+  const live = newestMoment(list.filter((m) => m.severity !== "big" && isHouseAlert(m) && !isStale(m, lastMajor, phase)));
+  const banner = live !== null && (newestHouse === undefined || newestHouse === null || live.seq === null || live.seq >= newestHouse) ? live : null;
   const show = [...bigs, ...(banner !== null ? [banner] : [])];
-  return { show, rest: list.filter((m) => !show.includes(m) && !(m.severity === "big" && !bigs.includes(m))) };
+  return { show, rest: [...list.filter((m) => !show.includes(m) && (m.severity !== "big" || m.superseded === true)), ...superseded] };
 }
 
 export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState {
@@ -647,7 +687,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
         return { ...next, queue, missed: missed.length === 0 ? s.missed : [...s.missed, ...missed] };
       }
       // A backlog (a reload, a reconnect): the bigs and the newest live house banner.
-      const { show, rest } = wakeReplay(withoutEchoes(fresh.filter((m) => !isPeek(m))), lastMajor, a.phase, a.storyNow);
+      const { show, rest } = wakeReplay(withoutEchoes(fresh.filter((m) => !isPeek(m))), lastMajor, a.phase, a.storyNow, a.newestHouse);
       const q = enqueue(s.queue, show, a.level, a.role, a.now);
       const missed = [...q.out, ...rest];
       return { ...next, queue: q.queue, missed: missed.length === 0 ? s.missed : [...s.missed, ...missed] };
@@ -662,7 +702,7 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       }
       // A wake on its own: the moments a level rise parked wait for the tray.
       const due = s.missed.filter((m) => m.parked !== true);
-      const { show, rest } = wakeReplay(due, s.lastMajor, a.phase, a.storyNow);
+      const { show, rest } = wakeReplay(due, s.lastMajor, a.phase, a.storyNow, a.newestHouse);
       if (show.length === 0 && rest.length === due.length) return s;
       const parked = s.missed.filter((m) => m.parked === true);
       const q = enqueue(s.queue, show, a.level, a.role, a.now);
@@ -676,9 +716,11 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
       const twin = a.acted === true ? hit.moment.peekOf : undefined;
       const queue = s.queue.filter((q) => q !== hit && q.moment.peekOf !== hit.moment.key && (twin === undefined || q.moment.key !== twin));
       if (hit.level === "big") {
-        // Acknowledged: never missed.
+        // Acknowledged: never missed. `keep` (an exit taken from a big card
+        // still unanswered, NM-F2): out of the way, but back on the next
+        // wake or load until it is answered.
         const bigLeft = queue.some((q) => q.level === "big");
-        return { ...s, queue, bigBurst: bigLeft ? s.bigBurst + 1 : 0 };
+        return { ...s, queue, bigBurst: bigLeft ? s.bigBurst + 1 : 0, ...(a.keep === true ? { missed: [...s.missed, hit.moment] } : {}) };
       }
       const glance = isModal(hit.level) ? (s.burst > 0 ? 0 : MODAL_GLANCE_MS) : GLANCE_MS;
       const missed = a.acted !== true && a.onScreenMs < glance && !isPeek(hit.moment) ? [...s.missed, hit.moment] : s.missed;
@@ -728,6 +770,14 @@ export function momentsReducer(s: MomentsState, a: MomentsAction): MomentsState 
     }
     case "phase": {
       const retire = s.queue.filter((q) => q.moment.house === true && q.level !== "big" && q.moment.severity !== "big" && !isPeek(q.moment) && (q.moment.phase ?? null) !== (a.phase ?? null));
+      if (retire.length === 0) return s;
+      const queue = s.queue.filter((q) => !retire.includes(q) && !(q.moment.peekOf !== undefined && retire.some((r) => r.moment.key === q.moment.peekOf)));
+      return { ...s, queue, missed: [...s.missed, ...retire.map((q) => q.moment)], burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
+    }
+    case "now": {
+      // Well before the change (2 s of slack: the press that moved NOW
+      // also posted its own banner, which stays).
+      const retire = s.queue.filter((q) => q.moment.house === true && q.level !== "big" && q.moment.severity !== "big" && q.moment.kind !== "objective" && !isPeek(q.moment) && q.moment.at < a.storyNow - ECHO_WINDOW_MS);
       if (retire.length === 0) return s;
       const queue = s.queue.filter((q) => !retire.includes(q) && !(q.moment.peekOf !== undefined && retire.some((r) => r.moment.key === q.moment.peekOf)));
       return { ...s, queue, missed: [...s.missed, ...retire.map((q) => q.moment)], burst: queue.some((q) => isModal(q.level)) ? s.burst : 0 };
@@ -898,6 +948,43 @@ export function arrivals(
   return { moments, seen };
 }
 
+/** The newest house banner's seq for this viewer (read or not), else null:
+ *  a reload / wake never brings back an older one over it (GN-F2). */
+export function newestHouseSeq(messages: Iterable<ChatMessage>, viewer: Viewer, phase: string | null): number | null {
+  let max: number | null = null;
+  for (const m of messages) {
+    if (m.audience !== "all" || m.alert !== true || !Number.isInteger(m.seq)) continue;
+    if (max !== null && m.seq <= max) continue;
+    const own = momentOf(m, viewer, phase);
+    if (own !== null && own.severity !== "big" && isHouseAlert(own)) max = m.seq;
+  }
+  return max;
+}
+
+/**
+ * The sign-in's first backlog sweep (GN-F7 / NM-F3): the big moments at or
+ * under the mark (a new sign-in takes its first history as old news) that
+ * still matter — every unanswered big card addressed to the viewer,
+ * whatever its age, and any other big inside `BIG_WINDOW_MS` — never one
+ * acknowledged, nor a house cheer that closes itself.
+ */
+export function sweepBigs(
+  messages: Iterable<ChatMessage>,
+  mark: number,
+  viewer: Viewer,
+  ctx: { now: number; phase: string | null; acked: ReadonlySet<string>; answered: (seq: number) => boolean; processed: ReadonlySet<number> },
+): Moment[] {
+  const out: Moment[] = [];
+  for (const m of messages) {
+    if (!Number.isInteger(m.seq) || m.seq > mark || ctx.processed.has(m.seq)) continue;
+    const own = momentOf(m, viewer, ctx.phase);
+    if (own === null || own.severity !== "big" || own.autoClose !== undefined || ctx.acked.has(own.key)) continue;
+    if (own.kind === "card" ? ctx.answered(m.seq) : m.ts < ctx.now - BIG_WINDOW_MS) continue;
+    out.push(own);
+  }
+  return out.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+}
+
 /** The story clock now: the later of the view's clock and the newest message. */
 export function storyNow(messages: Iterable<ChatMessage>, clock: number | null | undefined): number {
   let max = clock ?? Number.NEGATIVE_INFINITY;
@@ -971,7 +1058,7 @@ export function sortArrivals(
   for (const m of moments) {
     if (m.kind !== "readout") push(m);
     else if (ctx.role === "booth" && ctx.about(m.seq) && busy && shownOnCard(m, ctx)) continue;
-    else if (m.severity === "major") push(m);
+    else if (m.severity === "major" || m.severity === "big") push(m);
     else if (ctx.role === "booth") {
       if (toldBy(ctx.recent, m.text, false, ctx.now, ECHO_MS)) push(m);
     } else out.later.push(m);

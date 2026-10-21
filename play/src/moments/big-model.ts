@@ -43,7 +43,7 @@ export function kickerOf(m: Pick<Moment, "text" | "kind"> & Partial<Pick<Moment,
   if (m.card?.kind === "invite") return { kicker: "🚪 AN INVITATION", bar: null, ack: null };
   if (opts.cardInside === true) return { kicker: "⚡ YOUR MOVE", bar: null, ack: null, footer: "Answer to continue." };
   if (m.autoClose !== undefined && m.autoClose > 0) return { kicker: "📣 HOUSE NEWS", bar: null, ack: "Cheer!", countdown: true };
-  const g = bareGlyph(bigParts(m.text, m.kind).glyph);
+  const g = bareGlyph(bigParts(m.text, m.kind, m.card?.kind).glyph);
   if (VIRUS.has(g)) return { kicker: "⚠ VIRUS DETECTED", bar: { during: "Scanning…", done: "Threat found." }, ack: "OK" };
   if (QUARANTINE.has(g)) return { kicker: "⛔ QUARANTINED", bar: { during: "Moving to the Internet…", done: "Done." }, ack: "OK" };
   if (WIN.has(g)) return { kicker: "★ ACHIEVEMENT UNLOCKED", bar: { during: "Installing achievement…", done: "Installed." }, ack: "Collect ✓" };

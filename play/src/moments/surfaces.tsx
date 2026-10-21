@@ -159,7 +159,14 @@ export function StickyBanner({ q, count, exits, onExit, onDismiss }: { q: Queued
   }, [m.text, open]);
   return (
     <div className={`moments-sticky ${m.severity}${alarm ? " alarm" : ""}`} role={m.severity === "minor" ? "status" : "alert"} data-waiting={count}>
-      <button type="button" className="moments-sticky-body" onClick={onDismiss} aria-label={`${lead !== null ? `${lead}: ` : ""}${m.text}. Tap to dismiss.`}>
+      <button
+        type="button"
+        className="moments-sticky-body"
+        // The words take you there when the sticky has somewhere to go
+        // (NM-F11: a tap on them used to dismiss it); × dismisses.
+        onClick={exits.length > 0 ? () => onExit(exits[0]!) : onDismiss}
+        aria-label={`${lead !== null ? `${lead}: ` : ""}${m.text}. ${exits.length > 0 ? `Tap to ${exits[0]!.label}.` : "Tap to dismiss."}`}
+      >
         <span className="moments-sticky-icon">
           <MomentIcon kind={iconOf(m)} size={24} />
         </span>

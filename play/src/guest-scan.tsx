@@ -18,7 +18,7 @@
 //! camera is `scanner.tsx`'s, the booth's.
 
 import { useEffect, useRef, useState } from "react";
-import { useMomentsHold } from "./moments/provider.tsx";
+import { useBigOnScreen, useMomentsHold } from "./moments/provider.tsx";
 import { checkinFromSearch } from "./checkin.ts";
 import { unlockFromSearch } from "./codex.ts";
 import type { CameraState } from "./scan.ts";
@@ -165,6 +165,13 @@ export function ScanSheet({
   const busy = useRef(false);
   const close = useRef(onClose);
   close.current = onClose;
+  // A big moment that waited out its hold covers the sheet: the camera and
+  // its decode loop stop with it (OD-F5: a code read behind the big acted
+  // unseen, and jsQR kept an old phone busy).
+  const bigUp = useBigOnScreen();
+  useEffect(() => {
+    if (bigUp) close.current();
+  }, [bigUp]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") close.current();

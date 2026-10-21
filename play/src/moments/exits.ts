@@ -81,6 +81,8 @@ export interface ExitContext {
   sides: boolean;
   /** Labels of the live guest INTERACTIONs (an `act` exit with no server label). */
   actionLabels?: ReadonlyMap<string, string>;
+  /** The guest is on a side already: a `sides` exit is "Sides", never "Choose a side". */
+  sideChosen?: boolean;
 }
 
 /** The far-away Chat log (the room named after the story): never an exit. */
@@ -147,7 +149,7 @@ export function exitIcon(n: Nav): IconName | null {
  * is a card's leading glyph (a `room` + `focusSeq` exit reads "📊 Answer ›");
  * `entryTitle` a codex entry's title.
  */
-export function exitLabel(n: Nav, ctx: Pick<ExitContext, "titles"> & Partial<Pick<ExitContext, "actionLabels">>, extra: { glyph?: string; entryTitle?: string } = {}): string {
+export function exitLabel(n: Nav, ctx: Pick<ExitContext, "titles"> & Partial<Pick<ExitContext, "actionLabels" | "sideChosen">>, extra: { glyph?: string; entryTitle?: string } = {}): string {
   switch (n.to) {
     case "mission":
       return "What do I do?";
@@ -158,7 +160,7 @@ export function exitLabel(n: Nav, ctx: Pick<ExitContext, "titles"> & Partial<Pic
     case "me":
       return "Me";
     case "sides":
-      return "Choose a side";
+      return ctx.sideChosen === true ? "Sides" : "Choose a side";
     case "room": {
       if (n.focusSeq !== undefined) return `${extra.glyph !== undefined && extra.glyph !== "•" ? `${extra.glyph} ` : ""}Answer ›`;
       const title = ctx.titles.get(n.id) ?? n.id.replace(/^(?:loc|dm|pm):/u, "");
@@ -239,7 +241,7 @@ export function namedDm(text: string, dms: readonly DmRoom[]): string | null {
 }
 
 /** What a moment's exits need of it. */
-export type ExitMoment = Pick<Moment, "text" | "kind" | "channel" | "seq"> & Partial<Pick<Moment, "go" | "card" | "pass" | "entry" | "quest">>;
+export type ExitMoment = Pick<Moment, "text" | "kind" | "channel" | "seq"> & Partial<Pick<Moment, "go" | "card" | "pass" | "entry" | "quest" | "alarm">>;
 
 export interface ExitOptions {
   /** The moment is a big one whose card renders inline: its card is no exit. */
@@ -275,8 +277,8 @@ export function exitsOf(m: ExitMoment, ctx: ExitContext, max: 1 | 2, opts: ExitO
     const entryTitle = nav.to === "codex" && nav.entry !== undefined ? opts.entryTitles?.get(nav.entry) : undefined;
     out.push({ label: label !== undefined && label.trim() !== "" ? label : exitLabel(nav, ctx, { ...extra, ...(entryTitle !== undefined ? { entryTitle } : {}) }), icon: exitIcon(nav), nav });
   };
-  // 1. The story's own buttons.
-  for (const t of m.go ?? []) add(navOfTarget(t, ctx), t.label);
+  // 1. The story's own buttons (a guest on a side already is never asked to choose one).
+  for (const t of m.go ?? []) add(navOfTarget(t, ctx), t.kind === "sides" && ctx.sideChosen === true ? undefined : t.label);
   // The loud "show your pass" objective.
   if (m.pass === true) add({ to: "pass" });
   // 2. Its own card.
@@ -303,6 +305,12 @@ export function exitsOf(m: ExitMoment, ctx: ExitContext, max: 1 | 2, opts: ExitO
   if (dm !== null && ctx.listed.has(dm)) add({ to: "room", id: dm });
   // 6. Mission.
   if (!(ctx.window === "mission" && ctx.open === null)) add({ to: "mission" });
+  // A big moment or an alarm is never left without a way to go (NM-F1):
+  // "What do I do?" even on Mission (it lands on the NOW card).
+  if (out.length === 0 && (opts.big === true || m.alarm === true)) {
+    seen.delete("mission");
+    add({ to: "mission" });
+  }
   return out.slice(0, max);
 }
 

@@ -51,7 +51,7 @@ export function rowOfGroup(g: NotificationGroup, acked: ReadonlySet<string>): No
     const title = `${n} updates about others`;
     return { key: g.key, seq: g.seq, members: g.members, glyph: g.fold.glyph, title, caption: m.caption, rest: "", at: g.at, moment: { ...m, text: `${g.fold.glyph} ${title}` }, big: false, inUse: false, house: true, folded: n };
   }
-  const parts = bigParts(m.text, m.kind);
+  const parts = bigParts(m.text, m.kind, m.card?.kind);
   const big = m.severity === "big";
   return { key: g.key, seq: g.seq, members: g.members, glyph: parts.glyph, title: parts.headline, caption: m.caption, rest: parts.body, at: g.at, moment: m, big, inUse: big && !acked.has(m.key), house: m.house === true };
 }

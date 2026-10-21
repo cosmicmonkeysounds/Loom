@@ -38,6 +38,9 @@ export interface EngineMemory {
   extras: Moment[];
   /** Wave 18: the blue screen that carries the boilerplate (the sign-in's first). */
   firstBsod: string | null;
+  /** Wave 18 fix (GN-F7 / NM-F3): the sign-in whose first backlog was swept
+   *  for its unacknowledged big moments (once per page load). */
+  swept?: string;
 }
 
 /** The memories by role + sign-in, newest last (a test seam too). Several

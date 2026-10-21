@@ -42,7 +42,9 @@ import {
   momentExit,
   momentMessage,
   momentsReducer,
+  newestHouseSeq,
   sameWords,
+  sweepBigs,
   settledMark,
   shouldGlitch,
   sortArrivals,
@@ -163,6 +165,12 @@ export interface MomentsInput {
   popOutAdapter?: PopOutAdapter;
   /** Wave 18 (a booth): open a guest's card (the generic pop-out's 🗂 Open card). */
   openCard?: (guestId: string) => void;
+  /** Wave 18 fix (a guest): their display name — a house cheer that names them is not theirs. */
+  name?: string;
+  /** Wave 18 fix (a guest): they are on a side — a house moment that only
+   *  sends them to choose one is done (GN-F2: the Y2K dialog showed after
+   *  Walk in). */
+  sideChosen?: boolean;
 }
 
 /** How long the NOW bar stays flashed open on a new objective (visible time). */
@@ -248,7 +256,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
 
   const live = useRef({ visible, level, held, phase: input.phase ?? null });
   live.current = { visible, level, held, phase: input.phase ?? null };
-  const viewer: Viewer = { role, me: input.me, here: input.here ?? null, filter: input.filter };
+  const viewer: Viewer = { role, me: input.me, here: input.here ?? null, filter: input.filter, ...(input.name !== undefined ? { name: input.name } : {}) };
   const viewerRef = useRef(viewer);
   viewerRef.current = viewer;
   const inputRef = useRef(input);
@@ -309,7 +317,8 @@ function useMomentsEngine(input: MomentsInput): Engine {
       if (moments.length === 0) return;
       const l = live.current;
       const now = storyNow(inputRef.current.messages.values(), inputRef.current.clock);
-      dispatch({ type: "arrive", moments, visible: l.visible, level: l.level, role, now: Date.now(), phase: l.phase, batch, storyNow: now });
+      const newestHouse = batch ? newestHouseSeq(inputRef.current.messages.values(), viewerRef.current, l.phase) : null;
+      dispatch({ type: "arrive", moments, visible: l.visible, level: l.level, role, now: Date.now(), phase: l.phase, batch, storyNow: now, newestHouse });
     },
     [role],
   );
@@ -334,8 +343,10 @@ function useMomentsEngine(input: MomentsInput): Engine {
       mem.processed.add(s);
       if (s > mem.processedMax) mem.processedMax = s;
     }
-    // An acknowledged big moment never comes back (a reload, a reconnect).
-    let moments = found.moments.filter((m) => !mem.signIn.acked.has(m.key));
+    // An acknowledged big moment never comes back (a reload, a reconnect);
+    // a house moment that only sends a guest already on a side to choose one
+    // is done before it shows.
+    let moments = found.moments.filter((m) => !mem.signIn.acked.has(m.key) && !(input.sideChosen === true && sendsToSides(m)));
     // A booth: its big moments and `!` readouts about a guest are pop-outs.
     const adapter = input.popOutAdapter;
     if (role === "booth" && adapter !== undefined) {
@@ -391,6 +402,65 @@ function useMomentsEngine(input: MomentsInput): Engine {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.messages, session, alerts.epoch]);
 
+  // A sign-in's first backlog (a new phone, a re-paired one, a cleared tab):
+  // its alert mark starts at the newest seq, so the big moments it missed
+  // would never show. Once the history and the view (its answered cards)
+  // are in, the ones that still matter join the queue (GN-F7 / NM-F3).
+  useEffect(() => {
+    if (session === null || role !== "guest" || mem.swept === session) return;
+    if ((alerts.histories?.() ?? 1) === 0 || input.objectives === undefined) return;
+    mem.swept = session;
+    const answered = input.widgets?.answered;
+    const old = sweepBigs(input.messages.values(), alerts.mark(), viewerRef.current, {
+      now: storyNow(input.messages.values(), input.clock),
+      phase: live.current.phase,
+      acked: mem.signIn.acked,
+      answered: (seq) => answered?.has(seq) === true,
+      processed: mem.processed,
+    });
+    if (old.length === 0) return;
+    for (const m of old) if (m.seq !== null) mem.inflight.add(m.seq);
+    arrive(old, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.messages, input.objectives, input.widgets?.answered, session]);
+
+  // A big moment a newer one replaced in a backlog is read: acknowledged, so
+  // no reload brings it back and Notifications never holds it "in use".
+  useEffect(() => {
+    if (session === null) return;
+    let changed = false;
+    for (const m of state.missed) {
+      if (m.superseded !== true || mem.signIn.acked.has(m.key)) continue;
+      mem.signIn.acked.add(m.key);
+      changed = true;
+    }
+    if (changed) {
+      saveKeys(host.storage, ackedKey(session), mem.signIn.acked);
+      setRev((r) => r + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.missed, session]);
+
+  // The NOW objective changed: the house moments queued before it are no
+  // longer news (G6; the phase alone missed ⏱ and 📋, GN-F2).
+  const prevNow = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (input.objectives === undefined) return;
+    const id = input.objectives[0]?.id ?? null;
+    const before = prevNow.current;
+    prevNow.current = id;
+    if (before !== undefined && before !== id) dispatch({ type: "now", storyNow: storyNow(input.messages.values(), input.clock) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.objectives]);
+
+  // On a side now: a queued house moment that only asked them to choose one is read.
+  useEffect(() => {
+    if (input.sideChosen !== true) return;
+    const keys = mem.state.queue.filter((q) => sendsToSides(q.moment)).map((q) => q.moment.key);
+    if (keys.length > 0) dispatch({ type: "read", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.sideChosen]);
+
   // The level is switchable live (D2): what is still queued follows it, so a
   // host who calms the room never leaves phones stepping through old modals.
   useEffect(() => {
@@ -434,7 +504,7 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const wake = useCallback(
     (manual: boolean) => {
       const i = inputRef.current;
-      dispatch({ type: "wake", level: live.current.level, role, now: Date.now(), phase: i.phase ?? null, storyNow: storyNow(i.messages.values(), i.clock), ...(manual ? { manual: true } : {}) });
+      dispatch({ type: "wake", level: live.current.level, role, now: Date.now(), phase: i.phase ?? null, storyNow: storyNow(i.messages.values(), i.clock), newestHouse: newestHouseSeq(i.messages.values(), viewerRef.current, i.phase ?? null), ...(manual ? { manual: true } : {}) });
     },
     [role],
   );
@@ -512,12 +582,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
   );
 
   const close = useCallback(
-    (q: Queued, acted: boolean) => {
+    (q: Queued, acted: boolean, keep = false) => {
       const at = mem.shownAt.get(q.moment.key);
       mem.shownAt.delete(q.moment.key);
       const onScreenMs = at === undefined ? 0 : Date.now() - at;
       if (acted || onScreenMs >= GLANCE_MS || q.level === "big") markSeen(q.moment.key);
-      dispatch({ type: "dismiss", key: q.moment.key, onScreenMs, acted });
+      dispatch({ type: "dismiss", key: q.moment.key, onScreenMs, acted, ...(keep ? { keep: true } : {}) });
     },
     [markSeen],
   );
@@ -599,7 +669,11 @@ function useMomentsEngine(input: MomentsInput): Engine {
   const act = useCallback(
     (q: Queued, e: Exit) => {
       goTo(e);
-      if (q.level === "big") ack(q);
+      // A big card still waiting on its answer is never acknowledged by an
+      // exit: it steps aside and comes back on the next wake / load until it
+      // is answered (NM-F2: the bottle escaped through "What do I do?").
+      if (q.level === "big" && unansweredCard(q.moment, inputRef.current.widgets)) close(q, true, true);
+      else if (q.level === "big") ack(q);
       else close(q, true);
     },
     [goTo, close, ack],
@@ -685,6 +759,17 @@ function keepExtra(mem: EngineMemory, m: Moment): void {
   if (mem.extras.some((x) => x.key === m.key)) return;
   mem.extras.push(m);
   if (mem.extras.length > EXTRAS_MAX) mem.extras.splice(0, mem.extras.length - EXTRAS_MAX);
+}
+
+/** A moment that only sends the viewer to choose a side (a house one with `go: sides`). */
+function sendsToSides(m: Moment): boolean {
+  return m.house === true && m.severity !== "big" && (m.go ?? []).some((g) => g.kind === "sides");
+}
+
+/** A card moment whose card the viewer has not answered. */
+function unansweredCard(m: Moment, widgets: WidgetHook | undefined): boolean {
+  const seq = m.card?.seq ?? (m.kind === "card" ? m.seq : null);
+  return seq !== null && widgets !== undefined && !widgets.answered.has(seq);
 }
 
 /** Is a readout about one guest (`about`) — the answer to a scan or a card press? */
@@ -811,6 +896,12 @@ export function useStickyMoment(): { key: string | null; count: number; keys: re
   const joined = (e?.surfaces.stickyKeys ?? []).join("\u0000");
   const read = e?.readMany;
   return useMemo(() => ({ key, count, keys: joined === "" ? [] : joined.split("\u0000"), read: read ?? (() => {}) }), [key, count, joined, read]);
+}
+
+/** Is a big moment on screen now (it covers everything: a sheet under it steps aside)? */
+export function useBigOnScreen(): boolean {
+  const e = useContext(EngineContext);
+  return e?.surfaces.big != null;
 }
 
 /** The missed count (a guest: the unread Notifications), the booth's replay, the level. */

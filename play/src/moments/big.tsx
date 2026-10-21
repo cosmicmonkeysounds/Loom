@@ -16,7 +16,7 @@ import { WIDGETS, WidgetHost } from "../widgets.tsx";
 import { BIG_DEAD_MS, BIG_SETTLE_MS, bigParts, cheerLabel, kickerOf } from "./big-model.ts";
 import type { Exit } from "./exits.ts";
 import type { Queued } from "./model.ts";
-import { typingIn } from "../ui/focus.ts";
+import { focusedIn, typingIn } from "../ui/focus.ts";
 
 export { BIG_DEAD_MS } from "./big-model.ts";
 
@@ -55,7 +55,7 @@ export function BigMoment({
   const m = q.moment;
   const inside = card !== undefined && widgets !== undefined;
   const k = kickerOf(m, { cardInside: inside });
-  const parts = bigParts(m.text, m.kind);
+  const parts = bigParts(m.text, m.kind, m.card?.kind);
   const cheer = k.countdown === true && m.autoClose !== undefined;
   const [live, setLive] = useState(cheer);
   const [left, setLeft] = useState(m.autoClose ?? 0);
@@ -66,6 +66,14 @@ export function BigMoment({
     done.current = true;
     onAck();
   };
+  // A big moment must be acknowledged: a text field it opens over loses
+  // focus (OD-F1: keys went through it and Enter posted to the room
+  // behind). The iOS keyboard dropping is fine here.
+  const frame = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = focusedIn(frame.current) as HTMLElement | null;
+    if (el !== null && typingIn(frame.current) && frame.current?.contains(el) !== true) el.blur();
+  }, []);
   // The dead time: every button waits 1.2 s (the install bar fills meanwhile).
   useEffect(() => {
     if (cheer) return;
@@ -111,26 +119,32 @@ export function BigMoment({
   // The ack: none while a card waits for its answer (answered elsewhere → OK).
   const ackLabel = inside ? (answered !== null && !answeredHere.current ? "OK" : null) : cheer ? cheerLabel(left) : k.ack;
   const tone = k.kicker.startsWith("⚠") || k.kicker.startsWith("⛔") ? " alarm" : k.kicker.startsWith("★") ? " win" : "";
+  // A full-bleed card (the doors) is the whole screen: no caption, no
+  // kicker, no footer, no exits — only the card (GN-F9, GUEST-SPEC §9.1).
   return (
-    <div className={`moments-big${bleed ? " full-bleed" : ""}${tone}`} role="alertdialog" aria-modal="true" aria-labelledby={`moments-big-${m.key}`} onKeyDown={onKey}>
+    <div ref={frame} className={`moments-big${bleed ? " full-bleed" : ""}${tone}`} role="alertdialog" aria-modal="true" aria-labelledby={`moments-big-${m.key}`} onKeyDown={onKey}>
       <div className="moments-big-window w95-window">
-        <div className="w95-titlebar moments-big-caption">
-          <span className="w95-title">{m.caption}</span>
-        </div>
+        {!bleed && (
+          <div className="w95-titlebar moments-big-caption">
+            <span className="w95-title">{m.caption}</span>
+          </div>
+        )}
         <div className="moments-big-body">
           {!bleed && (
             <div className={`moments-big-banner${inside ? " short" : ""}`} aria-hidden>
               <span className="moments-big-glyph">{parts.glyph}</span>
             </div>
           )}
-          <div className="moments-big-kicker">
-            <span>{k.kicker}</span>
-            {total > 1 && (
-              <span className="moments-big-count" aria-label={`${index} of ${total}`}>
-                {index} of {total}
-              </span>
-            )}
-          </div>
+          {!bleed && (
+            <div className="moments-big-kicker">
+              <span>{k.kicker}</span>
+              {total > 1 && (
+                <span className="moments-big-count" aria-label={`${index} of ${total}`}>
+                  {index} of {total}
+                </span>
+              )}
+            </div>
+          )}
           {!bleed && (
             <>
               <h2 id={`moments-big-${m.key}`} className="moments-big-headline">
@@ -163,7 +177,7 @@ export function BigMoment({
               />
             </div>
           )}
-          {inside && k.footer !== undefined && answered === null && (
+          {inside && !bleed && k.footer !== undefined && answered === null && (
             <p className="moments-big-footer">
               {k.footer} It&apos;s also in {card.room}&apos;s chat.
             </p>
@@ -177,7 +191,7 @@ export function BigMoment({
             </div>
           )}
           <div className="moments-big-buttons">
-            {exits.slice(0, 2).map((x) => (
+            {(bleed ? [] : exits.slice(0, 2)).map((x) => (
               <button key={`${x.nav.to}:${x.label}`} type="button" className="w95-btn moments-big-exit" disabled={!live} onClick={() => live && onExit(x)}>
                 {x.icon !== null && <Icon name={x.icon} size={16} />}
                 <span className="moments-exit-label">{x.label}</span>
