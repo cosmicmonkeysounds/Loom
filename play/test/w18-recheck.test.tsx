@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ShowClockItem } from "../src/chrome/show-clock-tray.tsx";
 import { mergeAnswered, NO_ANSWERS } from "../src/session/shared.ts";
+import { whereRowOf } from "../src/guest/mission-model.ts";
 
 describe("N1: a new sign-in counts the server's answered cards", () => {
   it("merges the server's answered seqs into this device's answers", () => {
@@ -29,5 +30,14 @@ describe("N2: the guest tray never clips the balance", () => {
   it("the balance never shrinks; only the clock does", () => {
     expect(css).toContain(".guest-frame .taskbar-tray > * { flex: 0 0 auto; }");
     expect(css).toContain(".guest-frame .taskbar-tray > .tray-clock { flex: 0 1 auto; min-width: 0; overflow: hidden; }");
+  });
+});
+
+describe("N4 / NMR-4: Mission's Where row once the guest is on a side", () => {
+  const place = { objective: "y2k", place: { id: "sides", name: "Choose a side" } };
+  const side = (mine: boolean) => [{ id: "unlimited_power", name: "Unlimited Power", leader: "Excel", members: 4, needs: 13, mine }];
+  it("reads Sides, not Choose a side", () => {
+    expect(whereRowOf({ location: null, mission: place, sides: side(true) }, new Set(), new Map())).toMatchObject({ kind: "word", word: "sides", label: "🚪 Sides", nav: { to: "sides" } });
+    expect(whereRowOf({ location: null, mission: place, sides: side(false) }, new Set(), new Map())).toMatchObject({ label: "🚪 Choose a side" });
   });
 });

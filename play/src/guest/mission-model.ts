@@ -142,7 +142,7 @@ function wordNav(word: PlaceWord): Nav {
  * `name` is the words to show.
  */
 export function whereRowOf(
-  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean },
+  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean; sides?: GuestView["sides"] },
   listed: ReadonlySet<string>,
   titles: ReadonlyMap<string, string>,
 ): WhereRow | null {
@@ -155,6 +155,8 @@ export function whereRowOf(
   const button = (view.interactions ?? []).find((i) => i.id === place.id);
   if (button !== undefined) return { kind: "word", word: "mission", label: button.label, nav: { to: "act", id: button.id } };
   const word = (PLACE_WORDS as readonly string[]).includes(place.id) ? (place.id as PlaceWord) : null;
+  // On a side already: the row opens Sides, never asks them to choose (N4).
+  if (word === "sides" && (view.sides ?? []).some((x) => x.mine)) return { kind: "word", word, label: "🚪 Sides", nav: wordNav(word) };
   if (word !== null) {
     const custom = place.name.trim() !== "" && place.name.trim().toLowerCase() !== word ? place.name.trim() : null;
     const glyph = splitGlyph(WORD_ROW[word]).glyph;
@@ -193,7 +195,7 @@ export function missionOf(o: MissionInput): MissionModel {
   const split = splitGlyph(objective?.title ?? "");
   const listed = new Set(o.list.map((c) => c.id));
   const titles = new Map(o.list.map((c) => [c.id, c.title]));
-  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured }, listed, titles) : null;
+  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured, ...(ext.sides !== undefined ? { sides: ext.sides } : {}) }, listed, titles) : null;
   // A screen word (📷 Check in, 🎟 Show my pass) is done once every to-do
   // is ticked: the row would ask again for what was just done (GN-F11).
   const allDone = objective !== null && objective.checklist.length > 0 && objective.checklist.every((c) => c.done === true);
