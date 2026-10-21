@@ -211,6 +211,41 @@ describe("moments", () => {
     expect(q.pending).toBe(0);
   });
 
+  it("a reload 35 s into a 45 s scene resumes it; an answer after the first still skips a moment first seen 35 s late (X4)", () => {
+    const DANCE = def({ id: "dance", when: [{ moment: "beat", name: "Trabolta Disabled" }], ms: 45_000 });
+    const fresh = new MomentQueue();
+    const s = state({ moments: [m(4, T0, "beat", "Trabolta Disabled")] });
+    fresh.update(s, T0 + 35_000, [DANCE], "tv");
+    expect(pickScene({ state: s, now: T0 + 35_000, layers: { overlay: null, slide: null }, bare: false, target: "tv", scenes: [DANCE], queue: fresh }).top).toMatchObject({ def: { id: "dance" }, start: T0 });
+    const late = new MomentQueue();
+    late.update(state({ moments: [] }), T0 + 1000, [DANCE], "tv"); // an earlier answer: no longer fresh
+    late.update(s, T0 + 35_000, [DANCE], "tv");
+    expect(late.pending).toBe(0);
+    // A hold moment on a reload: no older than the queue's own hold cap.
+    const hold = new MomentQueue();
+    hold.update(state({ moments: [m(5, T0, "signal", "forever")] }), T0 + MOMENT_HOLD_MAX_MS + 1, SCENES, "tv");
+    expect(hold.pending).toBe(0);
+  });
+
+  it("a higher-priority moment that has happened cuts the one playing short (livetv-4)", () => {
+    const MAJ = def({ id: "maj", when: [{ moment: "beat", name: "Majority Reached" }], ms: 9_000, over: true });
+    const MID = def({ id: "mid", when: [{ moment: "beat", name: "Clock Strikes" }], ms: 20_000, priority: 3 });
+    const scenes = [MAJ, MID];
+    const q = new MomentQueue();
+    let s = state({ moments: [m(1, T0, "beat", "Majority Reached")] });
+    q.update(s, T0 + 100, scenes, "tv");
+    const at = (now: number) => pickScene({ state: s, now, layers: { overlay: null, slide: null }, bare: false, target: "tv", scenes, queue: q }).top;
+    expect(at(T0 + 100)?.def.id).toBe("maj");
+    s = state({ moments: [m(1, T0, "beat", "Majority Reached"), m(2, T0 + 8000, "beat", "Clock Strikes")] });
+    q.update(s, T0 + 8100, scenes, "tv");
+    expect(at(T0 + 8100)).toMatchObject({ def: { id: "mid" }, start: T0 + 8000 });
+    // An equal or lower priority still waits its turn.
+    const q2 = new MomentQueue();
+    const s2 = state({ moments: [m(1, T0, "signal", "bottle landed"), m(2, T0 + 1000, "sfx", "zip")] });
+    q2.update(s2, T0 + 1100, SCENES, "tv");
+    expect(pick(s2, T0 + 1100, q2).top?.def.id).toBe("bottle");
+  });
+
   it("a reload mid-scene resumes on the right frame (the first answer is not skipped)", () => {
     const q = new MomentQueue();
     const s = state({ moments: [m(3, T0, "beat", "Trabolta Introduction")] });
