@@ -27,6 +27,14 @@
 ##
 ## `--offline` plays without a server at all (the duck is picked locally,
 ## the King's bar is kept here).
+##
+## **In-headset setup** (wave 19): a station with no passcode shows the
+## lobby's SET UP panel. [method try_setup] dials the chosen server with the
+## typed passcode (resolve-code must say `mod`, then the moderator login);
+## a working one is saved to [member user_path] and the link carries on as
+## if it had booted with it — no restart. PLAY OFFLINE ([method
+## play_offline]) is for this run only; ⚙ [method forget_setup] deletes the
+## file and asks again.
 extends LinkBase
 
 const BUNDLED_HOUSE := "res://house/house.json"
@@ -68,9 +76,33 @@ var _claims_waiting: Array[String] = []
 ## Offline: the sessions that already hit the King.
 var _offline_hits := {}
 
+## The SET UP panel's answers.
+const SETUP_NOT_MOD := "That isn't a moderator passcode."
+const SETUP_UNREACHABLE := "Can't reach the server."
+const SETUP_EMPTY := "Type the moderator passcode."
+const NOT_CONFIGURED := "Not configured — set this headset up."
+## Where a working setup is saved (tests point it elsewhere).
+var user_path := StationConfig.USER_PATH
+## The sources under the user file, for [method forget_setup]: the files
+## and the command line it was loaded with.
+var base_files: Array = [StationConfig.RES_PATH]
+var base_args := PackedStringArray()
+## Mixed into the station id a setup mints ([method StationConfig.station_id_for]).
+var station_salt := randi()
+## Bumped by [method configure]: a connect step answered for an older
+## configuration is dropped.
+var _epoch := 0
+## The setup being tried (`{server, code, name, station}`; `{}` = none),
+## and the configuration to go back to when it fails.
+var _setup_trial := {}
+var _setup_before := {}
+## PLAY OFFLINE was chosen in the headset (⚙ goes back to SET UP).
+var _offline_chosen := false
+
 
 func _ready() -> void:
 	config = StationConfig.load_station()
+	base_args = OS.get_cmdline_user_args()
 	transport = HttpTransport.new()
 	transport.name = "Transport"
 	add_child(transport)
@@ -82,7 +114,7 @@ func _ready() -> void:
 	if config["offline"]:
 		_set_status.call_deferred("Offline — no server; the duck is picked here.")
 	elif not StationConfig.is_configured(config):
-		_set_status.call_deferred("Not configured — set the server + passcode in user://station.json.")
+		_set_status.call_deferred(NOT_CONFIGURED)
 	else:
 		transport.base = str(StationConfig.parse_url(str(config["server"]))["base"])
 		_connect()
@@ -120,29 +152,36 @@ func _base() -> String:
 func _connect() -> void:
 	phase = "connecting"
 	_set_status("Connecting to %s…" % config["server"])
-	transport.send("POST", "/api/resolve-code", {"code": config["code"]}, "", _on_resolved)
+	var epoch := _epoch
+	transport.send("POST", "/api/resolve-code", {"code": config["code"]}, "",
+		func(c: int, d: Variant) -> void: if epoch == _epoch: _on_resolved(c, d))
 
 
 func _on_resolved(status_code: int, data: Variant) -> void:
 	if status_code == 404:
-		_wait("No event answers to that passcode.")
+		_fail_or_wait(SETUP_NOT_MOD, "No event answers to that passcode.")
 		return
 	if status_code != 200 or not data is Dictionary:
-		_wait("Couldn't reach the event server (%s)." % _code_text(status_code))
+		_fail_or_wait(SETUP_UNREACHABLE, "Couldn't reach the event server (%s)." % _code_text(status_code))
 		return
 	if str(data.get("role", "")) != "mod":
-		_wait("That passcode isn't the moderator's — a headset needs the moderator passcode.")
+		_fail_or_wait(SETUP_NOT_MOD, "That passcode isn't the moderator's — a headset needs the moderator passcode.")
 		return
 	event_id = str(data["eventId"])
 	title = str(data.get("title", ""))
-	transport.send("POST", _base() + "/api/mod/login", {"passcode": config["code"]}, "", _on_login)
+	var epoch := _epoch
+	transport.send("POST", _base() + "/api/mod/login", {"passcode": config["code"]}, "",
+		func(c: int, d: Variant) -> void: if epoch == _epoch: _on_login(c, d))
 
 
 func _on_login(status_code: int, data: Variant) -> void:
 	if status_code != 200 or not data is Dictionary or str(data.get("token", "")) == "":
-		_wait("Moderator login failed (%s)." % _code_text(status_code))
+		_fail_or_wait(SETUP_NOT_MOD if status_code == 401 or status_code == 403 else SETUP_UNREACHABLE,
+			"Moderator login failed (%s)." % _code_text(status_code))
 		return
 	_mod_token = str(data["token"])
+	if not _setup_trial.is_empty():
+		_setup_worked()
 	phase = "ready"
 	_set_status("Connected%s." % (" to %s" % title if title != "" else ""))
 	fetch_house()
@@ -151,6 +190,28 @@ func _on_login(status_code: int, data: Variant) -> void:
 	request_candidates()
 	if str(config["guest"]) != "":
 		begin(str(config["guest"]))
+
+
+## A connect step failed: a setup being tried answers the panel and goes
+## back to SET UP; a configured station waits and retries.
+func _fail_or_wait(setup_message: String, message: String) -> void:
+	if _setup_trial.is_empty():
+		_wait(message)
+		return
+	var before := _setup_before
+	_setup_trial = {}
+	_setup_before = {}
+	configure(before)
+	_set_status(NOT_CONFIGURED)
+	setup_answered.emit(false, setup_message)
+
+
+func _setup_worked() -> void:
+	StationConfig.save_user(_setup_trial, user_path)
+	_setup_trial = {}
+	_setup_before = {}
+	_offline_chosen = false
+	setup_answered.emit(true, "")
 
 
 func _wait(message: String) -> void:
@@ -261,6 +322,99 @@ func _relink(message: String, event_gone: bool) -> void:
 	event_id = ""
 	_dead_polls = 0
 	_wait(message)
+
+
+# --- in-headset setup ---------------------------------------------------------
+
+
+func needs_setup() -> bool:
+	return not is_offline() and not StationConfig.is_configured(config)
+
+
+func server_choices() -> Array:
+	var committed := str(StationConfig.read_file(StationConfig.RES_PATH).get("server", ""))
+	return StationConfig.server_choices(str(config.get("server", "")), committed, StationConfig.offers_local())
+
+
+func try_setup(server: String, code: String, name: String) -> void:
+	if not _setup_trial.is_empty():
+		return  # one at a time
+	var u := StationConfig.parse_url(server)
+	var c := code.strip_edges().to_upper()
+	if c == "":
+		setup_answered.emit(false, SETUP_EMPTY)
+		return
+	if u.is_empty():
+		setup_answered.emit(false, SETUP_UNREACHABLE)
+		return
+	var n := name.strip_edges()
+	if n == "":
+		n = StationConfig.DEFAULT_NAME
+	var before := config.duplicate()
+	var trial := {"server": str(u["base"]), "code": c, "name": n, "station": StationConfig.station_id_for(n, station_salt)}
+	var cfg := StationConfig.merge(config, trial)
+	cfg["offline"] = false
+	configure(cfg)
+	_setup_before = before
+	_setup_trial = trial
+	_connect()
+
+
+func play_offline() -> void:
+	var cfg := config.duplicate()
+	cfg["offline"] = true
+	configure(cfg)
+	_offline_chosen = true
+	_set_status("Offline — no server; the duck is picked here.")
+	seed_offline_king()
+
+
+func can_forget_setup() -> bool:
+	return _offline_chosen or FileAccess.file_exists(user_path)
+
+
+func forget_setup() -> void:
+	StationConfig.forget_user(user_path)
+	_offline_chosen = false
+	var cfg := StationConfig.resolve(base_files, base_args)
+	cfg["offline"] = false
+	configure(cfg)
+	reconnect()
+
+
+## Drop the event link (stream, queue, token, session) and take `cfg`;
+## [method reconnect] dials it.
+func configure(cfg: Dictionary) -> void:
+	_epoch += 1
+	if stream != null:
+		stream.close()
+	if transport != null:
+		transport.clear_queue()
+	_lose_session("reconfigured")
+	phase = "idle"
+	_mod_token = ""
+	event_id = ""
+	title = ""
+	_poll_in_flight = false
+	_dead_polls = 0
+	_setup_trial = {}
+	_setup_before = {}
+	config = cfg
+	var u := StationConfig.parse_url(str(cfg.get("server", "")))
+	if not u.is_empty() and transport != null:
+		transport.base = str(u["base"])
+
+
+func reconnect() -> void:
+	if is_offline():
+		phase = "idle"
+		_set_status("Offline — no server; the duck is picked here.")
+		seed_offline_king()
+	elif not StationConfig.is_configured(config):
+		phase = "idle"
+		_set_status(NOT_CONFIGURED)
+	else:
+		_connect()
 
 
 # --- calls ------------------------------------------------------------------

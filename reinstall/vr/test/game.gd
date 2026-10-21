@@ -51,6 +51,7 @@ func _run() -> void:
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	_test_server_link_setup()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -1961,3 +1962,68 @@ func _test_main_and_game() -> void:
 
 	main.queue_free()
 	await process_frame
+
+## A ServerLink with no passcode: try a setup over the fake transport (every
+## refusal answers the panel and stays unconfigured; a working one is saved
+## and links), forget it, play offline.
+func _test_server_link_setup() -> void:
+	var sl: LinkBase = load("res://net/server_link.gd").new()
+	var tr: Variant = preload("res://test/fake_transport.gd").new()
+	sl.set("transport", tr)
+	sl.set("stream", SseClient.new())
+	var path := "user://config-test/setup-link.json"
+	StationConfig.forget_user(path)
+	sl.set("user_path", path)
+	sl.set("base_files", [StationConfig.RES_PATH])
+	sl.set("base_args", PackedStringArray())
+	sl.set("station_salt", 0xabcd)
+	sl.config = StationConfig.resolve([StationConfig.RES_PATH], PackedStringArray())
+	_check(sl.needs_setup() and not sl.can_forget_setup(), "setup link: the committed placeholder needs a setup")
+	var choices := sl.server_choices()
+	_check(not choices.is_empty() and choices[0]["url"] == "https://app.mapsandducks.com" and choices.back()["url"] == StationConfig.LOCAL_SERVER, "setup link: the committed server, then this computer (%s)" % [choices])
+	var answers: Array = []
+	sl.setup_answered.connect(func(ok: bool, m: String) -> void: answers.append([ok, m]))
+
+	sl.try_setup("http://127.0.0.1:7000", " ", "x")
+	_check(answers.back() == [false, "Type the moderator passcode."] and tr.calls.is_empty(), "setup link: no passcode, no call")
+	sl.try_setup("http://127.0.0.1:7000", "k7pq3m", "Headset 3")
+	_check(tr.log.back() == "POST /api/resolve-code" and tr.calls[0]["body"]["code"] == "K7PQ3M" and tr.base == "http://127.0.0.1:7000", "setup link: CONNECT resolves the typed passcode on the chosen server (%s)" % [tr.calls])
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	_check(tr.calls.size() == 1, "setup link: one try at a time")
+	tr.answer("/api/resolve-code", 200, {"role": "event", "eventId": "e1"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."] and sl.needs_setup() and sl.get("phase") == "idle" and str(sl.config["code"]) == StationConfig.PLACEHOLDER_CODE, "setup link: a guest code is no moderator passcode — still unconfigured")
+	_check(not FileAccess.file_exists(path) and sl.status == "Not configured — set this headset up.", "setup link: … nothing saved")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 404, {"error": "no such code"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."], "setup link: an unknown code is no moderator passcode")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 0)
+	_check(answers.back() == [false, "Can't reach the server."] and sl.get("phase") == "idle", "setup link: no answer → can't reach the server, no retry loop")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	tr.answer("/api/mod/login", 401, {"error": "bad passcode"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."], "setup link: a refused login is no moderator passcode")
+
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	_check(tr.log.back() == "POST /e/e1/api/mod/login", "setup link: a moderator code logs in")
+	tr.answer("/api/mod/login", 200, {"token": "mod-tok"})
+	_check(answers.back() == [true, ""] and not sl.needs_setup() and sl.get("phase") == "ready", "setup link: a working passcode links (%s)" % [answers.back()])
+	var saved := StationConfig.read_file(path)
+	_check(saved.get("code") == "K7PQ3M" and saved.get("server") == "http://127.0.0.1:7000" and saved.get("name") == "Headset 3" and saved.get("station") == "vr-headset-3-abcd", "setup link: … and is saved to the user file (%s)" % [saved])
+	_check(sl.station_name() == "Headset 3" and sl.status == "Connected to The Show." and tr.count("/api/mod/spatial/candidates") == 1, "setup link: … and carries on as if it booted with it")
+	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup link: the committed res:// file is untouched")
+
+	# A late answer from before a reconfigure is dropped.
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")  # linked: a fresh try
+	sl.forget_setup()
+	var before := answers.size()
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e9"})
+	_check(answers.size() == before and str(sl.get("event_id")) == "", "setup link: an answer for an older setup is dropped")
+	_check(not FileAccess.file_exists(path) and sl.needs_setup() and sl.status == "Not configured — set this headset up.", "setup link: ⚙ forget deletes the file — back to SET UP")
+
+	sl.play_offline()
+	_check(sl.is_offline() and not sl.needs_setup() and sl.can_forget_setup() and sl.status.begins_with("Offline"), "setup link: PLAY OFFLINE plays this run without a server")
+	sl.forget_setup()
+	_check(not sl.is_offline() and sl.needs_setup(), "setup link: … and ⚙ goes back to SET UP")
+	_free_server_link(sl)
