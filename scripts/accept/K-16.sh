@@ -62,19 +62,21 @@ terminal draws while nobody is piloting it is the client's idle show (decision D
   2. Provision the tablet with view=auto FROM THE START:
        https://app.mapsandducks.com/terminal/?code=<mod code>&name=Hall&character=Trabolta&spot=hall&view=auto
      PASS (asleep): the idle show — screensavers that change (Mystify among them), fake-1999 ads,
-     Win98 popups that pile up; tap a popup's × and it closes with a click (sometimes two more open),
-     tap a screensaver and it reacts. No camera light, no scan box, no "SCAN YOUR PASS",
+     Win98 popups that pile up; tap a popup's buttons: most close it with a click, some open two
+     more, jump away or ask "Are you sure?" first; tap a screensaver and it reacts. No camera light, no scan box, no "SCAN YOUR PASS",
      no "TRABOLTA" anywhere (no ad, popup or toast names him). Tap the screen once.
   3. Full screen: that first tap takes the page full screen (no browser bar). Leave it with the
      browser's own gesture, tap once more: full screen again. Run → Terminals: no ⛶ badge on Hall
      (⛶ = not full screen; a tablet that can't be, or has it off in ⚙, shows no badge at all).
+     The TV (Chrome --kiosk, never tapped): no ⛶ on its row either; a ⛶ there means its Chrome
+     was started without --kiosk (docs/trapped/kiosk.md → the TV).
   4. In a laptop terminal: MOD_CODE=<mod code> scripts/accept/K-16.sh --watch
   5. Run → Director: fire call_to_the_desktop, start_the_bingo, bingo_time.
      PASS: the tablet stays on the idle show (asleep: still no scan box, still no name);
      --watch shows countdown=bingo, then none.
   6. Fire introduce_trabolta. PASS: within 2 s --watch prints attract=False and the tablet keeps
      its idle show with the scanner shrunk to a corner scan box: the live camera, the reticle,
-     SCAN YOUR PASS and a typed-name box. His own popups may now name him. Popups and taps never
+     SCAN YOUR PASS and "no camera? type your program name". His own popups may now name him. Popups and taps never
      cover the corner box.
   7. Hold a pass up to the corner box mid-show (or type a program name): the idle show steps
      aside and the line opens as before; DISCONNECT (or 30 s idle) brings the idle show back.
