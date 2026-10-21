@@ -476,14 +476,18 @@ export function AudioPanel(p: AudioPanelProps) {
 
       <Section title="Announcements and the TV voice">
         <div className="field" onMouseEnter={() => hover(reach(audio.announce?.to ?? []))} onMouseLeave={() => hover(null)}>
-          house announcements (<code>do announce</code>, when the router plays them)
+          <span>
+            house announcements (<code>do announce</code>, when the router plays them)
+          </span>
           <Targets value={audio.announce?.to ?? []} options={options} disabled={off} empty="(the router's default)" onChange={(to) => commit(setAnnounce(audio, to))} />
           <label className="radio checkbox small">
             <input type="checkbox" checked={audio.announce?.chime ?? true} disabled={off} onChange={(e) => commit(setAnnounce(audio, audio.announce?.to ?? [], e.target.checked))} /> chime first
           </label>
         </div>
         <div className="field" onMouseEnter={() => hover(reach(audio.voice?.tv ?? []))} onMouseLeave={() => hover(null)}>
-          the TV's voice also reaches <span className="muted small">(set on the interface's mixer today)</span>
+          <span>
+            the TV's voice also reaches <span className="muted small">(set on the interface's mixer today)</span>
+          </span>
           <Targets value={audio.voice?.tv ?? []} options={options} disabled={off} empty="(only the TV)" onChange={(to) => commit(setTvVoice(audio, to))} />
         </div>
       </Section>
