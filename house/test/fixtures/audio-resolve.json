@@ -1,0 +1,28 @@
+{
+  "comment": "resolveTargets cases, shared by @loom/house (test/audio.test.ts) and stagehand's router (its Python mirror). Each `to` resolves on audio-basic.json + audio-house.json (`house: false`: no house — a LOCATION name or a room label then reaches nothing). Targets fold: case, _ / - and runs of spaces don't matter; each target reaches the union of every speaker, zone, room (id or label) and LOCATION it names; speakers come back in file order, outputs ascending.",
+  "audio": "audio-basic.json",
+  "house": "audio-house.json",
+  "cases": [
+    { "to": ["everywhere"], "speakers": ["living-l", "living-r", "kitchen", "hall", "down-hall", "studio"], "outputs": [1, 2, 3, 4, 5, 6] },
+    { "to": ["EveryWhere"], "speakers": ["living-l", "living-r", "kitchen", "hall", "down-hall", "studio"], "outputs": [1, 2, 3, 4, 5, 6] },
+    { "to": ["living"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["Living room"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["The Desktop"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["The_Desktop"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["the desktop"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["desktop"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["start-bar"], "speakers": ["kitchen"], "outputs": [3] },
+    { "to": ["Start Bar"], "speakers": ["kitchen"], "outputs": [3] },
+    { "to": ["The Tube"], "speakers": ["hall", "down-hall"], "outputs": [4, 5] },
+    { "to": ["The_Tube", "kitchen"], "speakers": ["kitchen", "hall", "down-hall"], "outputs": [3, 4, 5] },
+    { "to": ["studio"], "speakers": ["studio"], "outputs": [5, 6] },
+    { "to": ["downstairs", "down_stairs"], "speakers": ["down-hall", "studio"], "outputs": [5, 6] },
+    { "to": ["hall"], "speakers": ["hall"], "outputs": [4] },
+    { "to": ["Kitchen", "living-r"], "speakers": ["living-r", "kitchen"], "outputs": [2, 3] },
+    { "to": ["Desktop (living room)"], "speakers": ["living-l", "living-r"], "outputs": [1, 2] },
+    { "to": ["nowhere", ""], "speakers": [], "outputs": [] },
+    { "to": [], "speakers": [], "outputs": [] },
+    { "to": ["The Desktop"], "house": false, "speakers": [], "outputs": [] },
+    { "to": ["desktop", "living"], "house": false, "speakers": ["living-l", "living-r"], "outputs": [1, 2] }
+  ]
+}
