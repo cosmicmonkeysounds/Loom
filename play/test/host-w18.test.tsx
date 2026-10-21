@@ -146,8 +146,8 @@ describe("the Cues tab's group boxes (§5.2)", () => {
 describe("More, split in three (§5.6)", () => {
   it("puts each section on its tab, only what the event has", () => {
     const v = hostFixture();
-    expect(moreGroups(v)).toEqual({ night: ["show", "clock", "announce", "alerts"], house: ["wallet", "king", "terminals", "agents"], setup: ["codes", "parts"] });
-    expect(moreGroups(hostFixture({ wallet: null, king: null, terminals: null, agents: [], parts: [] }))).toEqual({ night: ["show", "clock", "announce", "alerts"], house: [], setup: ["codes"] });
+    expect(moreGroups(v)).toEqual({ night: ["show", "clock", "announce", "alerts"], house: ["wallet", "king", "terminals", "sound", "agents"], setup: ["codes", "parts"] });
+    expect(moreGroups(hostFixture({ wallet: null, king: null, terminals: null, agents: [], parts: [] }))).toEqual({ night: ["show", "clock", "announce", "alerts"], house: ["sound"], setup: ["codes"] });
   });
   it("opens on Setup before the doors, Night after; a deep link picks its tab", () => {
     expect(moreDefaultTab(true, null)).toBe("setup");

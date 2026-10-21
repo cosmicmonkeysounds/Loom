@@ -89,7 +89,7 @@ export const MORE_TABS: ReadonlyArray<{ id: MoreTabId; label: string }> = [
  *  parts). */
 export function moreTabOf(section: MoreFocus): MoreTabId {
   if (section === "codes" || section === "parts") return "setup";
-  if (section === "wallet" || section === "king" || section === "terminals" || section === "crews" || section.startsWith("agents")) return "house";
+  if (section === "wallet" || section === "king" || section === "terminals" || section === "sound" || section === "crews" || section.startsWith("agents")) return "house";
   return "night";
 }
 
@@ -200,7 +200,7 @@ export function needSection(n: Pick<HostNeed, "target" | "character">): MoreFocu
   return null;
 }
 
-export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "codes" | "parts" | "agents" | "crews";
+export type MoreSection = "show" | "clock" | "announce" | "alerts" | "wallet" | "king" | "terminals" | "sound" | "codes" | "parts" | "agents" | "crews";
 
 /** Where More scrolls to: a section, or one agent-voiced character's. */
 export type MoreFocus = MoreSection | `agents-${string}`;
@@ -217,6 +217,9 @@ export function moreSections(view: Pick<HostView, "wallet" | "king" | "terminals
   if (view.wallet !== null) out.push("wallet");
   if (view.king !== null) out.push("king");
   if (view.terminals !== null) out.push("terminals");
+  // Wave 18b (Q7): stop every house sound, on any event (the router plays
+  // whether or not a terminal has polled).
+  out.push("sound");
   out.push("codes");
   if (view.parts.length > 0) out.push("parts");
   if (view.agents.length > 0) out.push("agents");

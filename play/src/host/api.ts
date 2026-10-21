@@ -24,6 +24,8 @@ export const HOST_ROUTES = [
   "/api/mod/wallet/stimulus",
   "/api/mod/spatial/king",
   "/api/mod/screen/voice",
+  // Stop every house sound (wave 18b Q7): one-shot, not journaled.
+  "/api/mod/audio/stop",
   "/api/mod/screen/identify",
   "/api/mod/codes",
   "/api/mod/claim/unlock",
@@ -146,6 +148,10 @@ export function hostCalls(post: HostPost, alertsPath: () => string) {
     walletStimulus: (amount: number) => post("/api/mod/wallet/stimulus", { amount }),
     kingHp: (hp: number) => post("/api/mod/spatial/king", { hp }),
     tvMute: (muted: boolean) => post("/api/mod/screen/voice", { muted }),
+    /** 🔇 Stop all house sounds (wave 18b Q7): every story sound and speaker
+     *  test fades out; `announce` also cuts the announcement and its queue.
+     *  The TV voice (its own mute), the terminals and live mics are untouched. */
+    stopSounds: (announce: boolean) => post("/api/mod/audio/stop", { announce }),
     identify: (name: string) => post("/api/mod/screen/identify", { name }),
     codes: async (): Promise<HostCodes> => {
       const r = await post("/api/mod/codes", {});
