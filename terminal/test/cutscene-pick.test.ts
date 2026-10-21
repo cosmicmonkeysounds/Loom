@@ -128,6 +128,40 @@ describe("the slide's scene", () => {
     expect(idOf(pick(state(), T0, q, { slide: slide("trivia_1", 0) }).base)).toBe("card");
   });
 
+  it("a held scene from history moves on from HISTORY_T, once per seq", () => {
+    const q = new MomentQueue();
+    const seen = new Map<number, number>();
+    const at = (now: number, seq = 2) => pickScene({ state: state(), now, layers: { overlay: null, slide: slide("bingo", 0, seq) }, bare: false, target: "tv", scenes: SCENES, queue: q, historyStarts: seen }).base;
+    const first = at(T0);
+    const later = at(T0 + 4321);
+    expect(first).toMatchObject({ start: T0 - HISTORY_T });
+    expect(later).toMatchObject({ start: T0 - HISTORY_T }); // the same start: t advances
+    const tOf = (b: ScenePick["base"], now: number) => (b !== null && b !== "card" ? now - b.start : NaN);
+    expect(tOf(later, T0 + 4321) - tOf(first, T0)).toBe(4321);
+    expect(tOf(first, T0)).toBe(HISTORY_T);
+    // Another history slide (a new seq) starts from its own first sight.
+    expect(at(T0 + 9000, 3)).toMatchObject({ start: T0 + 9000 - HISTORY_T });
+  });
+
+  it("a namesCharacter scene before the introduction gives way to a fiction-safe one on the same trigger", () => {
+    const hidden = state({ character: { id: "Trabolta", hidden: true, awake: false, online: false, hold: false } });
+    const named = def({ id: "named", when: [{ slide: "overshare" }], ms: "hold", namesCharacter: true });
+    const safe = def({ id: "safe", when: [{ slide: "overshare" }], ms: "hold" });
+    expect(sceneForSlide([named, safe], "overshare", "tv", hidden)?.id).toBe("safe");
+    expect(sceneForSlide([named, safe], "overshare", "tv", state())?.id).toBe("named");
+    expect(sceneForSlide([named, safe], "overshare", "tv")?.id).toBe("named"); // no state, no gate
+    const p = pickScene({ state: hidden, now: T0, layers: { overlay: null, slide: slide("overshare", T0) }, bare: false, target: "tv", scenes: [named, safe], queue: new MomentQueue() });
+    expect(p.base).toMatchObject({ def: { id: "safe" } });
+    // A moment too: the safe take plays instead of the moment being dropped.
+    const mNamed = def({ id: "mnamed", when: [{ moment: "signal", name: "found" }], ms: 5000, namesCharacter: true });
+    const mSafe = def({ id: "msafe", when: [{ moment: "signal", name: "found" }], ms: 5000 });
+    const s = state({ character: hidden.character, moments: [m(1, T0, "signal", "found")] });
+    expect(sceneForMoment([mNamed, mSafe], s.moments[0]!, "tv", s)?.id).toBe("msafe");
+    const q = new MomentQueue();
+    q.update(s, T0 + 10, [mNamed, mSafe], "tv");
+    expect(pickScene({ state: s, now: T0 + 10, layers: { overlay: null, slide: null }, bare: false, target: "tv", scenes: [mNamed, mSafe], queue: q }).top?.def.id).toBe("msafe");
+  });
+
   it("a scene that ended itself early gives way to the card", () => {
     const q = new MomentQueue();
     const p = pickScene({ state: state(), now: T0 + 1000, layers: { overlay: null, slide: slide("bingo", T0, 3) }, bare: false, target: "tv", scenes: SCENES, queue: q, slideDone: (seq) => seq === 3 });

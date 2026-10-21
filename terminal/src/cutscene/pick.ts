@@ -56,14 +56,19 @@ export function componentFor(def: SceneDef, target: SceneTarget): ComponentType<
   return target === "tv" ? (def.tv ?? def.wall ?? null) : (def.wall ?? null);
 }
 
-/** The first scene for a slide value with something to draw on `target`. */
-export function sceneForSlide(scenes: readonly SceneDef[], value: string, target: SceneTarget): SceneDef | null {
-  return scenes.find((d) => componentFor(d, target) !== null && d.when.some((w) => triggerMatches(w, { slide: value }))) ?? null;
+/**
+ * The first scene for a slide value with something to draw on `target` —
+ * and, given the state, that may play now (`allowed`): a `namesCharacter`
+ * scene before the introduction gives way to a later fiction-safe one on
+ * the same trigger. Without a state, no gate.
+ */
+export function sceneForSlide(scenes: readonly SceneDef[], value: string, target: SceneTarget, state?: Pick<ScreenState, "character"> | null): SceneDef | null {
+  return scenes.find((d) => componentFor(d, target) !== null && (state === undefined || allowed(d, state)) && d.when.some((w) => triggerMatches(w, { slide: value }))) ?? null;
 }
 
-/** The first scene for a moment with something to draw on `target`. */
-export function sceneForMoment(scenes: readonly SceneDef[], moment: ScreenMoment, target: SceneTarget): SceneDef | null {
-  return scenes.find((d) => componentFor(d, target) !== null && d.when.some((w) => triggerMatches(w, { moment }))) ?? null;
+/** The first scene for a moment with something to draw on `target` (and, given the state, that may play now). */
+export function sceneForMoment(scenes: readonly SceneDef[], moment: ScreenMoment, target: SceneTarget, state?: Pick<ScreenState, "character"> | null): SceneDef | null {
+  return scenes.find((d) => componentFor(d, target) !== null && (state === undefined || allowed(d, state)) && d.when.some((w) => triggerMatches(w, { moment }))) ?? null;
 }
 
 /** Has the character been introduced (revealed)? No answer, no character, still hidden: no. */
@@ -132,8 +137,8 @@ export class MomentQueue {
     for (const m of list) {
       if (m.seq <= from) continue;
       if (now - m.at > MOMENT_STALE_MS) continue; // stale on arrival (an offline tablet catching up)
-      const def = sceneForMoment(scenes, m, target);
-      if (def === null || !allowed(def, state)) continue;
+      const def = sceneForMoment(scenes, m, target, state);
+      if (def === null) continue;
       if (typeof def.ms === "number" && m.at + def.ms <= now) continue; // already over by its own clock
       if (this.playing?.w.moment.seq === m.seq || this.waiting.some((w) => w.moment.seq === m.seq)) continue;
       this.waiting.push({ def, moment: m });
@@ -207,7 +212,10 @@ export const NO_PICK: ScenePick = { base: null, top: null };
  * Decide the layer at server `now`. `layers` is `screenLayers`' answer
  * (overlay + the slide on top, already bare for a pilot / peek / room);
  * `bare` is that same "no slides here" flag, which hides moments too;
- * `slideDone(seq)` says a slide scene ended itself early.
+ * `slideDone(seq)` says a slide scene ended itself early; `historyStarts`
+ * (seq → server ms) remembers when a slide from history (`at` 0) was first
+ * drawn, so its scene starts `HISTORY_T` in and then moves on (the caller
+ * keeps it across answers and clears it on a story restart).
  */
 export function pickScene(o: {
   state: ScreenState | null;
@@ -218,6 +226,7 @@ export function pickScene(o: {
   scenes: readonly SceneDef[];
   queue: MomentQueue;
   slideDone?: (seq: number) => boolean;
+  historyStarts?: Map<number, number>;
 }): ScenePick {
   // The queue moves on whatever is drawn (its scenes run on the server's clock).
   const moment = o.queue.current(o.now);
@@ -227,11 +236,12 @@ export function pickScene(o: {
   let slideScene: ActiveScene | null = null;
   if (slide !== null) {
     base = "card";
-    const def = sceneForSlide(o.scenes, slide.value, o.target);
-    if (def !== null && allowed(def, o.state) && o.slideDone?.(slide.seq) !== true) {
-      const t = sceneT(slide.at, o.now);
+    const def = sceneForSlide(o.scenes, slide.value, o.target, o.state);
+    if (def !== null && o.slideDone?.(slide.seq) !== true) {
+      const start = slide.at > 0 ? slide.at : historyStart(o.historyStarts, slide.seq, o.now);
+      const t = Math.max(0, o.now - start);
       if (typeof def.ms !== "number" || t < def.ms) {
-        slideScene = { kind: "slide", def, seq: slide.seq, at: slide.at, start: slide.at > 0 ? slide.at : o.now - t, value: slide.value, who: null, key: `${def.id}:s${slide.seq}` };
+        slideScene = { kind: "slide", def, seq: slide.seq, at: slide.at, start, value: slide.value, who: null, key: `${def.id}:s${slide.seq}` };
         base = slideScene;
       }
     }
@@ -239,4 +249,14 @@ export function pickScene(o: {
   if (moment === null) return { base, top: null };
   if (slideScene !== null && priorityOf(slideScene.def) > priorityOf(moment.def)) return { base, top: null };
   return { base: moment.def.over === true ? base : null, top: moment };
+}
+
+/** A history slide's start: `HISTORY_T` before the first time it was drawn (recorded in `seen`). */
+function historyStart(seen: Map<number, number> | undefined, seq: number, now: number): number {
+  let first = seen?.get(seq);
+  if (first === undefined) {
+    first = now;
+    seen?.set(seq, now);
+  }
+  return first - sceneT(0, first);
 }

@@ -37,10 +37,17 @@ export interface CutsceneLayerProps {
 /** The queue and the scenes that ended themselves, per target — kept across a remount (the app moves the layer between screens). */
 const queues = new Map<SceneTarget, MomentQueue>();
 const endedSlides = new Map<SceneTarget, Set<number>>();
+/** When each history slide (`at` 0) was first drawn, server ms, per target (`pickScene`'s `historyStarts`). */
+const historyStarts = new Map<SceneTarget, Map<number, number>>();
 function queueFor(t: SceneTarget): MomentQueue {
   let q = queues.get(t);
   if (q === undefined) queues.set(t, (q = new MomentQueue()));
   return q;
+}
+function historyFor(t: SceneTarget): Map<number, number> {
+  let s = historyStarts.get(t);
+  if (s === undefined) historyStarts.set(t, (s = new Map()));
+  return s;
 }
 function endedFor(t: SceneTarget): Set<number> {
   let s = endedSlides.get(t);
@@ -54,17 +61,22 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   const [, bump] = useReducer((n: number) => n + 1, 0);
   const queue = queueFor(target);
   const ended = endedFor(target);
+  const history = historyFor(target);
   // Each new answer feeds the queue once, before this render picks.
   const fed = useRef<ScreenState | null>(null);
   const epoch = useRef<string | null | undefined>(undefined);
   if (state !== null && fed.current !== state) {
     fed.current = state;
-    if (epoch.current !== undefined && epoch.current !== state.announceEpoch) ended.clear(); // a restart: its seqs start over
+    if (epoch.current !== undefined && epoch.current !== state.announceEpoch) {
+      // A restart: its seqs start over.
+      ended.clear();
+      history.clear();
+    }
     epoch.current = state.announceEpoch;
     queue.update(state, serverNow(state), scenes, target);
   }
   const now = serverNow(state, Date.now());
-  const pick = pickScene({ state, now, layers, bare, target, scenes, queue, slideDone: (seq) => ended.has(seq) });
+  const pick = pickScene({ state, now, layers, bare, target, scenes, queue, slideDone: (seq) => ended.has(seq), historyStarts: history });
   const playing = typeof pick.base === "object" || pick.top !== null || queue.pending > 0;
   useSceneClock(playing, SCENE_FPS);
 
