@@ -6,6 +6,8 @@
 //! picture of `t` (ms into its scene), seeded, never `Math.random`, so a
 //! reload resumes on the right frame and every screen in the house agrees.
 
+import { foldName } from "../../config.ts";
+import type { ScreenMoment } from "../../screen.ts";
 import { clamp01, ease, hashSeed, loop, noise1, progress, typedCount, typedDuration } from "./time.ts";
 
 // --- the awards (beats/ceremony.loom) --------------------------------------------------
@@ -77,6 +79,40 @@ export function awardConfettiAt(t: number): { start: number; n: number } {
   if (t < repeat) return { start: AWARD_CONFETTI.first, n: 0 };
   const k = Math.floor((t - repeat) / AWARD_CONFETTI.every);
   return { start: repeat + k * AWARD_CONFETTI.every, n: k + 1 };
+}
+
+// --- bobbing for truth: has the bag come up? (beats/finale.loom) ------------------------
+
+/** The beat that plays when the bag comes up, and the one that follows it (Trabolta's ranking). */
+export const BAG_UP_BEAT = "The Bag Of Truth";
+export const ASSESSMENT_BEAT = "Final Assessment";
+/** How long the screen gives the assessment (its four lines) before it reads final. */
+export const ASSESSMENT_MS = 18_000;
+
+/** Where the bob stands: when (server ms) the bag came up and the assessment began, or null. */
+export interface BobState {
+  up: number | null;
+  assessed: number | null;
+}
+
+/**
+ * The bobbing slide stays up after the bag comes up (the next screen cue is
+ * 📄 truth.txt, after the assessment), so its hold reads the moments ring:
+ * the bag's beat at or after the slide's `at` (a history slide, `at` 0, takes
+ * any), then the assessment's after that. `prev` latches what was seen once
+ * (the ring holds only the last dozen moments).
+ */
+export function bobStateOf(moments: readonly Pick<ScreenMoment, "kind" | "name" | "at">[], slideAt: number, prev: BobState | null = null): BobState {
+  const beat = (name: string, after: number) => moments.find((m) => m.kind === "beat" && m.at >= after && foldName(m.name) === foldName(name))?.at ?? null;
+  const up = prev?.up ?? beat(BAG_UP_BEAT, slideAt);
+  const assessed = up === null ? null : (prev?.assessed ?? beat(ASSESSMENT_BEAT, up));
+  return { up, assessed };
+}
+
+/** ms since a moment at server `since`, drawn by a scene that started at `at` and is `t` in (a history slide can't tell: long ago). */
+export function sinceMoment(since: number | null, at: number, t: number, history: number): number | null {
+  if (since === null) return null;
+  return at > 0 ? Math.max(0, at + t - since) : history;
 }
 
 // --- truth.txt (beats/finale.loom, Truth Txt) --------------------------------------------

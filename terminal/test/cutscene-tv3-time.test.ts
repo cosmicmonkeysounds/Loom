@@ -15,7 +15,9 @@ import {
   HAND_JIVE,
   SONG_CHAT,
   TRUTH_TXT,
+  ASSESSMENT_MS,
   awardConfettiAt,
+  bobStateOf,
   awardOf,
   awardValue,
   binaryRainAt,
@@ -27,6 +29,7 @@ import {
   karaokeAt,
   notepadAt,
   rainAt,
+  sinceMoment,
   spinAngle,
   tallyOf,
   vortexAt,
@@ -81,6 +84,31 @@ describe("tv3 timelines — the awards", () => {
     }
     // Every 12 s, all slide long.
     expect(starts.size).toBeGreaterThan(50);
+  });
+});
+
+describe("tv3 timelines — the bob", () => {
+  const m = (name: string, at: number, kind: "beat" | "signal" = "beat") => ({ kind, name, at });
+  it("the bag is up once its beat plays after the slide went up; the assessment only after the bag", () => {
+    expect(FINALE).toContain("== The Bag Of Truth");
+    expect(FINALE).toContain("== Final Assessment");
+    expect(bobStateOf([], 1000)).toEqual({ up: null, assessed: null });
+    expect(bobStateOf([m("The Bag Of Truth", 500)], 1000)).toEqual({ up: null, assessed: null });
+    expect(bobStateOf([m("The Bag Of Truth", 500)], 0)).toEqual({ up: 500, assessed: null });
+    expect(bobStateOf([m("the_bag_of_truth", 5000), m("Final Assessment", 9000)], 1000)).toEqual({ up: 5000, assessed: 9000 });
+    expect(bobStateOf([m("Final Assessment", 3000), m("The Bag Of Truth", 5000)], 1000)).toEqual({ up: 5000, assessed: null });
+    expect(bobStateOf([m("The Bag Of Truth", 5000, "signal")], 1000).up).toBeNull();
+    // Latched: the ring may forget the bag; the hold doesn't.
+    expect(bobStateOf([], 1000, { up: 5000, assessed: null })).toEqual({ up: 5000, assessed: null });
+    expect(bobStateOf([m("Final Assessment", 9000)], 1000, { up: 5000, assessed: null })).toEqual({ up: 5000, assessed: 9000 });
+    expect(ASSESSMENT_MS).toBeGreaterThan(10_000);
+  });
+
+  it("time since a moment, off the scene's own clock (a history slide reads it as long ago)", () => {
+    expect(sinceMoment(null, 1000, 5000, HISTORY_T)).toBeNull();
+    expect(sinceMoment(4000, 1000, 5000, HISTORY_T)).toBe(2000);
+    expect(sinceMoment(9000, 1000, 5000, HISTORY_T)).toBe(0);
+    expect(sinceMoment(4000, 0, HISTORY_T + 10, HISTORY_T)).toBe(HISTORY_T);
   });
 });
 

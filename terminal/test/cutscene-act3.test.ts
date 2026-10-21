@@ -13,7 +13,7 @@ import { componentFor } from "../src/cutscene/pick.ts";
 import { SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
 import { SCENES as MOMENTS, finderName } from "../src/cutscene/scenes/moments.tsx";
 import type { SceneDef, SceneTarget } from "../src/cutscene/types.ts";
-import type { ScreenNight } from "../src/screen.ts";
+import type { ScreenMoment, ScreenNight } from "../src/screen.ts";
 
 const SHOW = join(__dirname, "../../core/examples/trapped-in-the-internet");
 
@@ -75,13 +75,15 @@ describe("tv3 triggers name the story's real cues, beats and signals", () => {
 
 const NIGHT: Partial<ScreenNight> = { award_winner: "Netscape Navigator", award_value: 37, help_votes: 5, thwart_votes: 2, phase: "advice" };
 
-function draw(def: SceneDef, target: SceneTarget, t: number, o: { reduced?: boolean; introduced?: boolean; night?: Partial<ScreenNight>; value?: string; who?: string | null } = {}): string {
+function draw(def: SceneDef, target: SceneTarget, t: number, o: { reduced?: boolean; introduced?: boolean; night?: Partial<ScreenNight>; value?: string; who?: string | null; moments?: ScreenMoment[]; at?: number } = {}): string {
   const View = componentFor(def, target);
   if (View === null) return "";
-  const state = fakeState({ introduced: o.introduced ?? true, target: target === "tv" ? "tv" : "terminals", night: { ...NIGHT, ...o.night } });
+  const state = fakeState({ introduced: o.introduced ?? true, target: target === "tv" ? "tv" : "terminals", night: { ...NIGHT, ...o.night }, moments: o.moments });
   const value = o.value ?? (def.when[0] && "slide" in def.when[0] ? def.when[0].slide.replace(/\*$/u, "most_trusted") : (def.when[0] as { name: string }).name);
-  return renderToStaticMarkup(createElement(View, { t, at: 1000, seq: 1, value, state, night: state.night, who: o.who === undefined ? "Winamp" : o.who, target, sfx: () => false, done: () => {}, reduced: o.reduced ?? false }));
+  return renderToStaticMarkup(createElement(View, { t, at: o.at ?? 1000, seq: 1, value, state, night: state.night, who: o.who === undefined ? "Winamp" : o.who, target, sfx: () => false, done: () => {}, reduced: o.reduced ?? false }));
 }
+
+const beatMoment = (name: string, at: number, seq = at): ScreenMoment => ({ seq, at, kind: "beat", name, who: null, kept: false });
 
 describe("every tv3 scene draws", () => {
   // A server render warns about the kit's layout effects (they measure a canvas / a marquee).
@@ -158,6 +160,31 @@ describe("every tv3 scene draws", () => {
     expect(finderName(null)).toBe("A PROGRAM");
     expect(finderName("  ")).toBe("A PROGRAM");
     expect(finderName("Winamp")).toBe("WINAMP");
+  });
+
+  it("bobbing knows when the bag is up: no more searching, then the assessment, then truth.txt may be read", () => {
+    const bob = ACT3.find((d) => d.id === "bobbing")!;
+    for (const target of ["tv", "wall"] as const) {
+      const searching = draw(bob, target, 60_000);
+      expect(searching).toContain("Nothing happens until someone brings up the Bag Of Truth.");
+      // The slide went up at 1000; the bag came up 50 s in: 90 s in, the hold has moved on.
+      const up = draw(bob, target, 90_000, { moments: [beatMoment("The Bag Of Truth", 51_000)] });
+      expect(up, target).toContain("THE BAG IS UP");
+      expect(up).toContain("Do not read it yet.");
+      expect(up).not.toContain("Nothing happens until");
+      expect(up).not.toContain("Searching for the Bag of Truth");
+      expect(up).not.toContain("Waiting: ");
+      expect(up).not.toMatch(/Trabolta/u);
+      const weighing = draw(bob, target, 95_000, { moments: [beatMoment("The Bag Of Truth", 51_000), beatMoment("Final Assessment", 90_000)] });
+      expect(weighing).toContain("Do not read it yet.");
+      const final = draw(bob, target, 120_000, { moments: [beatMoment("The Bag Of Truth", 51_000), beatMoment("Final Assessment", 90_000)] });
+      expect(final).toContain("ASSESSMENT FINAL");
+      expect(final).toContain("You may read truth.txt.");
+    }
+    // A bag from an earlier bob (before this slide went up) doesn't count; a history slide takes any.
+    expect(draw(bob, "tv", 60_000, { at: 40_000, moments: [beatMoment("The Bag Of Truth", 20_000)] })).toContain("Nothing happens until");
+    expect(draw(bob, "tv", HISTORY_T, { at: 0, moments: [beatMoment("the bag of truth", 20_000)] })).toContain("THE BAG IS UP");
+    expect(draw(bob, "tv", HISTORY_T + 1700, { at: 0, moments: [beatMoment("The Bag Of Truth", 20_000)] })).not.toBe(draw(bob, "tv", HISTORY_T, { at: 0, moments: [beatMoment("The Bag Of Truth", 20_000)] }));
   });
 
   it("midnight shows the year that will not render", () => {

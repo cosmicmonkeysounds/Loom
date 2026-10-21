@@ -15,6 +15,7 @@
 
 import "./act3.css";
 import { useEffect, useRef, type ComponentType, type CSSProperties } from "react";
+import { HISTORY_T } from "../clock.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
 import {
   BigNumber,
@@ -52,7 +53,7 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { AwardEmblem, BinaryRain, ChatWindow, Curtains, DiscoBall, EqBars, FloatLayer, Heart, Lasers, Motorcycle, Notepad, RainCanvas, SpotCones, Sunburst, Trophy } from "../kit/tv3-parts.tsx";
-import { AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, spinAngle, tallyOf, vortexAt, wrapLines, type ChatLine } from "../kit/tv3-time.ts";
+import { ASSESSMENT_MS, AWARDS, AWARD_CONFETTI, HAND_JIVE, TRUTH_TXT, awardConfettiAt, awardOf, awardValue, bobStateOf, brokenYear, chatAt, handJivePhase, karaokeAt, notepadAt, sinceMoment, spinAngle, tallyOf, vortexAt, wrapLines, type BobState, type ChatLine } from "../kit/tv3-time.ts";
 
 // --- small shared helpers ---------------------------------------------------------------------
 
@@ -225,6 +226,13 @@ function FinalReveal({ t, sfx, reduced, target }: SceneProps) {
 //             the bottom, bubbles rise, a "Searching for the Bag of Truth…"
 //             box with its hourglass, and a wait clock counting up — nothing
 //             happens until someone brings up the bag
+//   bag up    (the beat The Bag Of Truth, off the moments ring: the slide
+//             stays up until 📄) the bag floats on the surface under a slow
+//             sunburst, a padlock on it: THE BAG IS UP · Do not read it yet.,
+//             an "Assessment" box weighing every program
+//   assessed  (Final Assessment) the box fills over the assessment's lines,
+//             then ASSESSMENT FINAL, the padlock springs open: You may read
+//             truth.txt.
 
 function Apple({ x, y, r, rot }: { x: number; y: number; r: number; rot: number }) {
   return (
@@ -243,9 +251,11 @@ function wavePath(t: number, y: number, amp: number, len: number, speed: number,
   return `${d} L${w} ${h} Z`;
 }
 
-function BobTank({ t, rise, reduced, apples = 5, bag = true }: { t: number; rise: number; reduced: boolean; apples?: number; bag?: boolean }) {
+function BobTank({ t, rise, reduced, apples = 5, bag = true, lift = 0 }: { t: number; rise: number; reduced: boolean; apples?: number; bag?: boolean; lift?: number }) {
   const tt = reduced ? 0 : t;
   const surface = lerp(100, 36, rise);
+  // `lift` 0..1 brings the bag from the bottom to float on the surface.
+  const bagY = lerp(86, surface - 3 + Math.sin(tt / 640) * 1.6 * lift, lift);
   return (
     <svg className="tv3-tank" viewBox="0 0 200 100" preserveAspectRatio="none" aria-hidden="true">
       <defs>
@@ -257,7 +267,7 @@ function BobTank({ t, rise, reduced, apples = 5, bag = true }: { t: number; rise
       <path d={wavePath(tt, surface + 2, 1.6, 70, -1.3)} fill="#1c5fbf" opacity="0.6" />
       <path d={wavePath(tt, surface, 2.2, 48, 2.1)} fill="url(#tv3-water)" />
       {/* the Bag of Truth, on the bottom */}
-      <g transform={`translate(${100 + Math.sin(tt / 1700) * 3} 86) rotate(${(Math.sin(tt / 1300) * 4).toFixed(1)})`} opacity={bag ? rise : 0}>
+      <g transform={`translate(${(100 + Math.sin(tt / 1700) * 3).toFixed(2)} ${bagY.toFixed(2)}) rotate(${(Math.sin(tt / 1300) * (4 + 6 * lift)).toFixed(1)})`} opacity={bag ? rise : 0}>
         <path d="M-10 8 L-12 -8 Q0 -12 12 -8 L10 8 Z" fill="#c8a26a" stroke="#5a3d00" strokeWidth="0.8" />
         <path d="M-12 -8 Q-4 -4 0 -9 Q4 -4 12 -8" fill="none" stroke="#5a3d00" strokeWidth="0.8" />
         <text x="0" y="3" textAnchor="middle" fontSize="4.6" fontFamily="Tahoma, sans-serif" fontWeight="bold" fill="#3a2400">
@@ -273,19 +283,38 @@ function BobTank({ t, rise, reduced, apples = 5, bag = true }: { t: number; rise
   );
 }
 
-function Bobbing({ t, sfx, reduced, target }: SceneProps) {
+function Bobbing({ t, at, state, sfx, reduced, target }: SceneProps) {
   const lite = target === "wall";
+  // Has the bag come up (and the assessment begun) since this slide went up?
+  const seen = useRef<{ at: number; bob: BobState } | null>(null);
+  const bob = bobStateOf(state.moments, at, seen.current !== null && seen.current.at === at ? seen.current.bob : null);
+  seen.current = { at, bob };
+  const upT = sinceMoment(bob.up, at, t, HISTORY_T);
+  const judgeT = sinceMoment(bob.assessed, at, t, HISTORY_T);
+  const final = judgeT !== null && judgeT >= ASSESSMENT_MS;
   useSfxCues(t, sfx, [
     [100, "whoosh"],
     [950, "blip", { pitch: 0.6 }],
     [1100, "blip", { pitch: 0.8 }],
     [1800, "popup", { gain: 0.6 }],
   ]);
+  // The bag's own clock: its moment covers the first 8 s, so the hold says hello as it comes back.
+  useSfxCues(upT ?? -1, sfx, [
+    [200, "sparkle", { gain: 0.6 }],
+    [8100, "chime", { gain: 0.5 }],
+  ]);
+  useSfxCues(judgeT ?? -1, sfx, [
+    [300, "popup", { gain: 0.5 }],
+    [ASSESSMENT_MS - 1600, "drumroll", { gain: 0.4 }],
+    [ASSESSMENT_MS, "ding", { gain: 0.7 }],
+    [ASSESSMENT_MS + 250, "sparkle", { gain: 0.5 }],
+  ]);
   const rise = eased(t, 0, 1400, ease.outCubic);
   const drop = reduced ? fade(t, 600, 400) : 1;
   const ty = reduced ? 0 : lerp(-120, 0, ease.outBounce(progress(t, 500, 900)));
   const splash: Emitter[] = [{ x: 0.5, y: 0.62, w: 0.4, start: 950, end: 1150, rate: 500, life: 1200, speed: 0.7, angle: -90, spread: 70, gravity: 1.4, drag: 0.2, size: 7, colors: ["#bfe3ff", "#ffffff", "#7ec4ff"], shape: "dot", seed: 51 }];
   const wait = countdownParts(Math.max(0, t - 1500)).text;
+  if (upT !== null) return <BagIsUp t={t} upT={upT} judgeT={judgeT} final={final} reduced={reduced} lite={lite} />;
   return (
     <Stage bg="linear-gradient(180deg, #0b1238 0%, #22104a 60%, #0b1238 100%)" className="tv3-bob-stage">
       <BobTank t={t} rise={rise} reduced={reduced} apples={lite ? 4 : 5} />
@@ -318,6 +347,52 @@ function Bobbing({ t, sfx, reduced, target }: SceneProps) {
               <b>Searching for the Bag of Truth…</b>
               <div className="tv3-small">Look in: The Desktop (wet)</div>
               <ProgressBar value={loop(t, 5200)} segments={16} />
+            </div>
+          </div>
+        </Win98Window>
+      )}
+    </Stage>
+  );
+}
+
+/** The bob's hold once the bag is up: it floats, locked, while the assessment runs; then the lock opens. */
+function BagIsUp({ t, upT, judgeT, final, reduced, lite }: { t: number; upT: number; judgeT: number | null; final: boolean; reduced: boolean; lite: boolean }) {
+  const lift = reduced ? 1 : eased(upT, 0, 1400, ease.outBack);
+  const finalT = judgeT === null ? -1 : judgeT - ASSESSMENT_MS;
+  const unlock = final ? (reduced ? 1 : eased(finalT, 0, 700, ease.outBack)) : 0;
+  const lockSwing = reduced || !final ? 0 : Math.sin(Math.max(0, finalT) / 160) * 18 * (1 - progress(finalT, 0, 1600));
+  const glint = pulse(t, 2400);
+  const ripples: Emitter[] = [{ x: 0.5, y: 0.6, w: 0.18, start: 0, end: 10_000_000, rate: 3, life: 2600, speed: 0.05, angle: -90, spread: 160, gravity: -0.02, size: 9, colors: ["#bfe3ff", "#ffffff"], shape: "dot", seed: 59, fade: 0.8 }];
+  const gold: Emitter[] = [{ x: 0.5, y: 0.52, w: 0.2, start: t - finalT, end: t - finalT + 220, rate: 520, life: 1600, speed: 0.6, speedJitter: 0.5, angle: -90, spread: 300, gravity: 0.4, drag: 0.5, size: 9, colors: GOLD, shape: "star", seed: 67 }];
+  const bar = judgeT === null ? loop(t, 4800) * 0.35 : clamp01(judgeT / ASSESSMENT_MS);
+  return (
+    <Stage bg="linear-gradient(180deg, #0b1238 0%, #2a1460 60%, #0b1238 100%)" className="tv3-bob-stage tv3-bob-up">
+      <Sunburst t={t} rays={16} speed={6} reduced={reduced} color={final ? "rgba(255, 214, 64, 0.22)" : "rgba(255, 214, 64, 0.1)"} className="tv3-bag-burst" style={{ opacity: progress(upT, 0, 1600) }} />
+      <BobTank t={t} rise={1} reduced={reduced} apples={lite ? 3 : 5} lift={lift} />
+      {!lite && !reduced && <Particles t={t} emitters={ripples} />}
+      {!lite && !reduced && final && <Particles t={t} emitters={gold} blend="add" />}
+      <div className="tv3-bob-lock" style={{ opacity: progress(upT, 600, 500) * (0.75 + 0.25 * glint), transform: `translate(-50%, 0) rotate(${lockSwing.toFixed(1)}deg)` }} aria-hidden="true">
+        <svg viewBox="-10 -14 20 26" width="100%" height="100%">
+          <path d={`M-5 -2 V-7 A5 5 0 0 1 5 -7 V${(-2 - 7 * unlock).toFixed(2)}`} fill="none" stroke="#e8e8e8" strokeWidth="2.4" strokeLinecap="round" />
+          <rect x="-7.5" y="-2" width="15" height="12" rx="1.6" fill={final ? "#ffd23f" : "#c0c0c0"} stroke="#3a2400" strokeWidth="0.8" />
+          <circle cx="0" cy="3" r="1.6" fill="#3a2400" />
+          <rect x="-0.6" y="3.6" width="1.2" height="3.4" fill="#3a2400" />
+        </svg>
+      </div>
+      <div className="tv3-bob-title" style={slam(t, t - upT, reduced)}>
+        {final ? "ASSESSMENT FINAL" : "THE BAG IS UP"}
+      </div>
+      <div className="tv3-bob-caption tv3-bob-hold" style={{ opacity: final ? progress(finalT, 300, 600) : 0.75 + 0.25 * pulse(t, 2000) }}>
+        {final ? "You may read truth.txt." : "Do not read it yet."}
+      </div>
+      {!lite && (
+        <Win98Window title={final ? "Assessment - Complete" : "Assessment"} icon={final ? "document" : "info"} x={3} y={70} width="24em" open={reduced ? 1 : eased(upT, 900, 260, ease.linear)} reduced={reduced} className="tv3-bob-search" status={judgeT === null ? "Waiting for the assessment…" : final ? "Assessment is final." : "Weighing…"}>
+          <div className="tv3-row">
+            {final ? <Win98Icon kind="document" size="2.6em" /> : <Hourglass t={t} size="2.6em" />}
+            <div className="tv3-col">
+              <b>{final ? "Every program has been weighed." : judgeT === null ? "The bag is sealed." : "Weighing every program…"}</b>
+              <div className="tv3-small">{final ? "Open: truth.txt" : "Contents: truth.txt (sealed)"}</div>
+              <ProgressBar value={final ? 1 : bar} segments={16} percent={judgeT !== null} />
             </div>
           </div>
         </Win98Window>

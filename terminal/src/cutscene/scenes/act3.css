@@ -80,6 +80,9 @@
 .tv3-bob-title span { font-size: 0.8em; }
 .tv3-bob-caption { top: 25%; font-size: min(4.4vmin, 5vw); color: #dfe8ff; }
 .tv3-bob-search { font-size: clamp(13px, 2vmin, 26px) !important; }
+/* The bag is up: the line under the title carries the instruction; a padlock hangs over the bag. */
+.tv3-bob-hold { font-size: min(6vmin, 7vw); color: #fff; text-shadow: 0 0.08em 0.2em #000; }
+.tv3-bob-lock { position: absolute; left: 50%; top: 34%; width: 7vmin; height: 9vmin; transform-origin: 50% 0; will-change: transform; filter: drop-shadow(0 0.4vmin 0.6vmin rgba(0, 0, 0, 0.6)); }
 
 /* --- the Bag of Truth ------------------------------------------------------------ */
 .tv3-bag-burst { left: 50%; top: 40%; width: 120vmax; height: 120vmax; margin: -60vmax 0 0 -60vmax; }
