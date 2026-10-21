@@ -2,7 +2,7 @@
 title: The house map — drawing the house from a survey
 section: Live Shows
 order: 39
-keywords: house map, map editor, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo
+keywords: house map, map editor, floor plan, survey, measure, rooms, doors, yard, outdoor, tent, shed, stairs, floors, basement, upstairs, duck spot, spawn, terminal, location, reinstall, house.json, walkable, unreachable, undo, speaker, speakers, house speakers, audio, audio.json, Audio tab, interface, MOTU, inputs, outputs, routing, matrix, zone, cue, announcements, TV voice, test, router, stagehand
 ---
 
 The reinstallation games and the wall terminals share one **house map**
@@ -52,8 +52,15 @@ out is plenty; 5 cm is close enough.
   of floor beyond its foot and its head.
 - **+ Terminal here** / **+ Duck spot here** on a selected room; drag
   them (and the spawn) into place, turn them with the round handle.
+- **🔊 Speaker** — click where a house speaker hangs (or **+ Speaker
+  here** on a selected room). It is drawn as a small cabinet facing the
+  way it points, with a badge of its interface outputs (a red **—** when
+  it has none) and a dashed ring that grows with its gain. Drag it, turn
+  it with the handle or **R** / **⇧R**, nudge it with the arrows, **⌘D**
+  copies it, **Delete** removes it. See *The house speakers* below.
 
-Doors and wall terminals follow a room you move or resize. Everything
+Doors, wall terminals and speakers follow a room you move or resize
+(deleting a room deletes its speakers; the confirm says how many). Everything
 snaps to the **snap** step, and room edges pull onto their neighbours'.
 The wheel zooms; drag empty ground (or hold Space) to pan. **⌘Z** /
 **⇧⌘Z** undo and redo any edit; **New blank house** starts over from one
@@ -68,15 +75,84 @@ don't: a duck spot nobody can walk to from the spawn (the same route the
 VR autopilot takes), a duck spot close enough to a wall to be picked up
 from the room behind it (move it ≥ ~1.2 m from that wall), a room or yard
 no door leads into yet, a room naming no LOCATION in the story, a
-LOCATION with no room. The **JSON** tab is the whole map as text, for anything the
-drawing tools don't do (props, colours).
+LOCATION with no room. The speakers' problems and warnings are listed
+too, marked 🔊 (an output two speakers share, a speaker with no output, a
+story sound that reaches no speaker): click one to select that speaker or
+open the Audio tab. The **JSON** tab is the whole map as text, for
+anything the drawing tools don't do (props, colours). It holds the map
+only, not the speakers.
 
 **🧊 3D** shows the draft as the games will build it (once it is valid):
 drag to orbit, wheel to zoom.
 
-**💾 Save** sends the map to the event. If the map changed since you
-loaded it (a save or a variant switch), nothing is saved and you are
-offered your edits as JSON and a reload.
+**💾 Save** sends the map to the event, then the speakers when they
+changed. If the map changed since you loaded it (a save or a variant
+switch), nothing is saved and you are offered your edits as JSON and a
+reload. **⌘Z** steps back through map and speaker edits alike, in the
+order you made them.
+
+## The house speakers
+
+The house speakers are not part of the map. They live in the project's
+own file, **`audio.json`** — never `house.json` or a `house.<word>.json`,
+which is read as a map variant — so moving a speaker or re-patching the
+interface mid-show never changes the map's version (which remaps every
+game), and the tent and shed maps share one set of speakers. A speaker names the map room it stands in (set from
+where you put it) and its position in that room.
+
+The **Audio** tab is the rest of the file, top to bottom:
+
+- **Interface** — the audio interface on the house Mac: its name (part of
+  the name the Mac shows, e.g. `MOTU`), how many inputs and outputs it has
+  (16 and 16 on the show's MOTU), and its rate.
+- **Speakers** — every speaker, its room and its outputs. Select one on
+  the plan for its inspector: name, id (renaming it renames it in every
+  zone and cue), position and height, angle, gain in dB, its outputs as a
+  grid of 16 (an output another speaker uses is marked) and its zones.
+- **Outputs** — a label per output and the speakers on it.
+- **Inputs** — a label per input and what it is: software (the house
+  Mac, QLab), a mic, or a line from another device.
+- **Routing** — the inputs × outputs matrix. Tap a cell to send that input
+  to that output at 0 dB, tap again to cut it; the selected cell has a
+  gain field.
+- **Zones** — named groups of speakers a cue can name. `everywhere` is
+  every speaker and needs no zone. **◉** keeps a zone lit on the plan.
+- **Story sounds** — every `sound` in the story, each with its targets
+  (zones, rooms, LOCATIONs, single speakers) and a gain. A line's own
+  `in` / `rooms:` wins over these targets; a sound with neither follows the
+  beat's setting (see [where a sound plays](19-directives.md)). `announce_chime` has no row of
+  its own: it rings with the announcements.
+- **Announcements and the TV voice** — the speakers the house
+  announcements play on (and whether a chime goes first), and the
+  speakers the TV's voice should also reach (patched on the interface's
+  own mixer for now).
+
+Hovering a speaker, a zone or a cue lights the speakers it reaches.
+
+**🔈 Test** on a speaker or an output makes the house Mac play a short
+tone there and say its name — the walk round the house with the Audio tab
+open. A speaker is tested only once it is saved. The header's badge says
+whether the house Mac's speaker router is listening (*router online*,
+*router last seen …*); a Test sent with nobody listening says it was only
+queued. **Recent tests** lists the last minute's.
+
+**💾 Save speakers** sends the file to the event, and the router follows
+at once. When a speaker stands in a room only your unsaved map has, the
+button reads **💾 Save map + speakers** and saves the map first. If the
+speakers changed since you loaded them, nothing is saved: **Reload the
+speakers** and redo your edits. **Save to project** (once they are saved)
+writes `audio.json` into the project for the next launch and every
+co-writer; **Download JSON** gives you the file. With no file yet the tab starts from a blank
+16 in / 16 out interface.
+
+The router runs only once the house Mac's YAML has an `audio:` section
+(the show's `trapped.house.yaml` keeps it commented out); until then a
+Test is only queued. With both switches off it runs the routing matrix
+and the Tests. It plays the story's sounds only with `play_sounds: true`,
+and the announcements only with `announce: true`; until then QLab and
+the house announcement player play them as before, and the cues you set
+here change nothing. Setting it up: `docs/trapped/room-audio.md` §11 and
+the `audio` module in `stagehand/README.md`.
 
 ## Tent or shed, and keeping the map
 

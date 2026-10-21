@@ -124,7 +124,7 @@ Front of house: getting people in.
   at all while the others do: either way, reload it before doors). **identify**
   puts that screen's name and spot full screen for 10 seconds, with a
   chime: install day's "which tablet is this?". A terminal set up with a
-  **room** (the show's server-room terminal) sleeps on its screensaver
+  **room** (the show's server-room terminal) sleeps on its idle show
   until the story opens that room to everyone, and still checks in while
   it sleeps: green and asleep is right before then. Its row says
   **room The Server Room**. A room on any other spot is amber: usually a
