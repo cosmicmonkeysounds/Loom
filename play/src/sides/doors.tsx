@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { WidgetProps } from "../widgets.tsx";
 import { BlockBar } from "../ui/progress.tsx";
 import { useSides } from "./context.ts";
-import { countLine, sidesOf } from "./model.ts";
+import { countLine, sidesOf, type SideRow } from "./model.ts";
 
 /** How long the chosen door says so before the card answers. */
 export const DOOR_SAY_MS = 1200;
@@ -46,6 +46,15 @@ export function doorWords(text: string): { kicker: string; say: string } {
   return { kicker: one, say: "Two doors have opened in the computer." };
 }
 
+/** The side an answered card names. A card the server says is answered
+ *  carries no result (a new phone, a reload): the side the guest is on now
+ *  (N1: the doors said "You chose neither." to a guest in Unlimited Power). */
+export function answeredSide(picked: string | null, rows: readonly SideRow[]): string | null {
+  if (picked === "neither") return null;
+  if (picked === null) return rows.find((r) => r.mine)?.name ?? null;
+  return rows.find((r) => r.id === picked)?.name ?? picked;
+}
+
 export function Doors({ card, onAnswer, answered }: WidgetProps) {
   const { view, calls } = useSides();
   const rows = sidesOf(view);
@@ -77,7 +86,7 @@ export function Doors({ card, onAnswer, answered }: WidgetProps) {
     );
   };
   if (!live && answered != null) {
-    const side = pickedName === "neither" ? null : (rows.find((r) => r.id === pickedName)?.name ?? pickedName);
+    const side = answeredSide(pickedName, rows);
     return (
       <div className="widget doors-done">
         <div className="widget-title">🚪 {kicker || "The doors"}</div>

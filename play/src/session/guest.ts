@@ -18,7 +18,7 @@ import type { ChatMessage, Decision, GuestView } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
-import { NO_ANSWERS, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
+import { NO_ANSWERS, mergeAnswered, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
 import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../room.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
@@ -581,6 +581,9 @@ export function useGuestSession(): GuestSession {
       return next;
     });
   }, [answeredList]);
+  // The same, in this render: the state above lands a render later, after
+  // the children's effects (the moments sweep) have run.
+  const answeredNow = useMemo(() => mergeAnswered(widgetAnswers, answeredList), [widgetAnswers, answeredList]);
   const answerWidget = useCallback(
     async (seq: number, result: WidgetResult) => {
       setWidgetAnswers((prev) => new Map(prev).set(seq, result));
@@ -606,7 +609,7 @@ export function useGuestSession(): GuestSession {
   const [opened, setOpened] = usePerSession(me?.token ?? null, NONE_OPENED);
   const dock = requiredDecision(status, { choose: (i) => void choose(i), escape: () => void escape() });
   const threads = useThreads(
-    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(widgetAnswers.keys())), status, typing),
+    withAgents(buildGuestChannels(shown, dock, status, opened, new Set(answeredNow.keys())), status, typing),
     { store: host.storage, slot: GUEST_READ, session: me?.token ?? null },
     { me: me !== null ? { id: me.id, name: me.name, booth: false } : undefined, unread: guestDotOf, order: roomOrder },
   );
@@ -703,7 +706,7 @@ export function useGuestSession(): GuestSession {
     dismissAlert,
     alerts,
     answerWidget,
-    widgetAnswers,
+    widgetAnswers: answeredNow,
     messages: shown,
     leave,
     linkNav: links.nav,

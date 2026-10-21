@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SidesContext } from "../src/sides/context.ts";
-import { DeferredAnswer, Doors, doorWords } from "../src/sides/doors.tsx";
+import { DeferredAnswer, Doors, answeredSide, doorWords } from "../src/sides/doors.tsx";
 import { InviteCard } from "../src/sides/invite.tsx";
 import { FoundCrewSheet, RecruitSheet, SidesSheet } from "../src/sides/index.tsx";
 import { countLine, crewNameOk, crewRefusal, crewRoom, hasSidesOrCrew, inviteDone, inviteOf, recruitOffer, recruitRefusal, sideAction, sidesOf } from "../src/sides/model.ts";
@@ -120,6 +120,17 @@ describe("the doors (§9.1)", () => {
     expect(render({ answered: { side: "unlimited_power" } })).toContain("You are in Unlimited Power.");
     expect(render({ answered: { side: "neither" } })).toContain("You chose neither.");
     expect(render({ live: false })).toContain("disabled");
+  });
+
+  it("a card the server says is answered (no result) names the side the guest is on (N1)", () => {
+    const mine = SIDES.map((x) => ({ ...x, mine: x.id === "unlimited_power" }));
+    const out = renderToStaticMarkup(
+      createElement(SidesContext.Provider, { value: { view: view({ sides: mine }), calls } }, createElement(Doors, { card, seed: 9, answered: {} })),
+    );
+    expect(out).toContain("You are in Unlimited Power.");
+    expect(out).not.toContain("You chose neither.");
+    expect(answeredSide(null, SIDES.map((x) => ({ ...x, needs: x.needs })))).toBeNull();
+    expect(answeredSide("neither", mine)).toBeNull();
   });
 
   it("a one-line card splits after its first sentence: the kicker never repeats the headline (GN-F8)", () => {
