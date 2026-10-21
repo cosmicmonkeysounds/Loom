@@ -21,7 +21,7 @@ import type {
   SwitchVariantResult,
 } from "@loom/house";
 import { baseOf, type ReinstallConfig } from "./config.ts";
-import { isEligible, type Program } from "./program.ts";
+import { isEligible, isMarked, type Program } from "./program.ts";
 import { showHouse } from "./show-house.ts";
 import { isDuckSpot, kingOf } from "./spatial.ts";
 
@@ -51,11 +51,28 @@ export async function fetchCandidates(config: ReinstallConfig): Promise<Program[
   return (r.players ?? []).map(toProgram);
 }
 
-/** A candidate row → the tablet's `Program` (`restricted` false from a server that doesn't say). */
+/** A candidate row → the tablet's `Program` (`restricted` false from a
+ *  server that doesn't say; `marked` off the wave 18 server's flag, else
+ *  read from `restricted`). */
 export function toProgram(row: SpatialCandidate): Program {
   const restricted = (row as { restricted?: unknown }).restricted === true;
   const eligible = typeof row.eligible === "boolean" ? row.eligible : isEligible({ captured: row.captured, restricted });
-  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, location: row.location };
+  const flag = (row as { marked?: unknown }).marked;
+  const marked = isMarked({ captured: row.captured, restricted, eligible, ...(typeof flag === "boolean" ? { marked: flag } : {}) });
+  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, marked, location: row.location };
+}
+
+/** Has an ending played? (`night.ended` off the lean screen state, polled
+ *  without a terminal name so the tablet never shows up as a terminal.)
+ *  Null when the server can't say (no story yet, an older server, offline). */
+export async function fetchNightEnded(config: ReinstallConfig): Promise<boolean | null> {
+  try {
+    const r = await getJson<{ night?: { ended?: unknown } | null }>(`${baseOf(config)}/api/screen/state`, config.token);
+    const ended = r.night?.ended;
+    return typeof ended === "boolean" ? ended : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The VR (and web) stations the server has seen. */

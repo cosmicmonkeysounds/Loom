@@ -36,6 +36,15 @@
 //! cutscenes (`cutscene/`) play off them. An older server sends neither:
 //! no moments, every new var null.
 //!
+//! Wave 18: a **big** house broadcast (`broadcast "!!…"` to everyone — the
+//! Bingo Ribbon, an award) may ride the same ring. The core lane's shape is
+//! read generously: an entry of kind `big` (or any other unknown kind
+//! carrying `moment: "big"` / `big: true`), its line in `text` (else
+//! `name`), the program it is about in `who`. It becomes a moment of kind
+//! `big` whose `name` is the line with its `!!` / `~` marks stripped, so a
+//! scene can match it by its leading glyph (`🎀*`). An older server sends
+//! none.
+//!
 //! The answer also carries the latest house announcements (`announce` +
 //! the last few in `announces`, N-09); a terminal set to say announcements
 //! speaks each new one (`announce.ts`).
@@ -115,8 +124,26 @@ export function kingOf(raw: unknown): ScreenKing | null {
 }
 
 /** What a moment is (wave 17). */
-export type ScreenMomentKind = "beat" | "signal" | "sfx" | "reveal" | "found";
+export type ScreenMomentKind = "beat" | "signal" | "sfx" | "reveal" | "found" | "big";
+/** The wave 17 kinds, exactly as the server names them. */
 export const MOMENT_KINDS: readonly ScreenMomentKind[] = ["beat", "signal", "sfx", "reveal", "found"];
+/** The longest big line kept (characters). */
+export const BIG_LINE_MAX = 200;
+
+/** A big broadcast's line as the screens show it: no leading `!` / `~`
+ *  marks (the phones' delivery marks), trimmed, clipped. */
+export function bigLineOf(raw: string): string {
+  const line = raw.replace(/^[\s!~]+/u, "").trim();
+  return line.length > BIG_LINE_MAX ? `${line.slice(0, BIG_LINE_MAX - 1).trimEnd()}…` : line;
+}
+
+/** Is this wire entry a big house broadcast (wave 18)? Kind `big`, or an
+ *  unknown kind flagged `moment: "big"` / `big: true`. A wave 17 kind keeps
+ *  its own meaning whatever it is flagged. */
+function isBigEntry(r: Record<string, unknown>, kind: string): boolean {
+  if ((MOMENT_KINDS as readonly string[]).includes(kind)) return false;
+  return kind === "big" || r["moment"] === "big" || r["big"] === true;
+}
 
 /** A live story moment, house-wide (wave 17): `seq` is the sim log's (it
  *  restarts with the sim: `announceEpoch` says which), `at` server ms (> 0). */
@@ -124,7 +151,8 @@ export interface ScreenMoment {
   seq: number;
   at: number;
   kind: ScreenMomentKind;
-  /** The beat's display name, the signal's, the sfx name, the revealed place / character, "golden duck" (or "golden duck kept"). */
+  /** The beat's display name, the signal's, the sfx name, the revealed place / character, "golden duck" (or "golden duck kept"),
+   *  or (kind `big`, wave 18) the big broadcast's line, marks stripped. */
   name: string;
   /** A public display name when the moment is about one program (the bottle's pick, a duck's finder). */
   who: string | null;
@@ -147,8 +175,14 @@ export function momentsOf(raw: unknown): ScreenMoment[] {
     const kind = r["kind"];
     const name = r["name"];
     if (typeof seq !== "number" || !Number.isFinite(seq) || typeof at !== "number" || !Number.isFinite(at) || at <= 0) continue;
-    if (typeof kind !== "string" || !(MOMENT_KINDS as readonly string[]).includes(kind) || typeof name !== "string" || name.trim() === "") continue;
     const who = typeof r["who"] === "string" && r["who"].trim() !== "" ? r["who"].trim() : null;
+    if (typeof kind === "string" && isBigEntry(r, kind)) {
+      const text = typeof r["text"] === "string" && r["text"].trim() !== "" ? r["text"] : name;
+      const line = typeof text === "string" ? bigLineOf(text) : "";
+      if (line !== "") out.push({ seq, at, kind: "big", name: line, who, kept: false });
+      continue;
+    }
+    if (typeof kind !== "string" || !(MOMENT_KINDS as readonly string[]).includes(kind) || typeof name !== "string" || name.trim() === "") continue;
     out.push({ seq, at, kind: kind as ScreenMomentKind, name: name.trim(), who, kept: r["kept"] === true || /\bkept$/iu.test(name.trim()) });
   }
   out.sort((a, b) => a.seq - b.seq);

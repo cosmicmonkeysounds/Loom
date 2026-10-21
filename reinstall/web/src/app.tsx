@@ -14,11 +14,11 @@ import type { Assignment, HouseMap, KingState, StationInfo } from "@loom/house";
 import { matchName, parseScan } from "@loom/terminal/scan.ts";
 import { Scanner, cameraProblem, type CameraState } from "@loom/terminal/scanner.tsx";
 import { hasWebGL2 } from "@loom/terminal/webgl.ts";
-import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchStations, postEnd, tokenAlive } from "./api.ts";
+import { ApiError, begin, fetchCandidates, fetchDealtHouse, fetchNightEnded, fetchStations, postEnd, tokenAlive } from "./api.ts";
 import { applyHints, baseOf, dropConfig, hintsFromSearch, loadConfig, provision, saveConfig, withoutSecrets, type DeviceRole, type ReinstallConfig } from "./config.ts";
 import { createSfx } from "./game/audio.ts";
 import { findFlash } from "./game/hud.ts";
-import { beginErrorText, NOT_MARKED, programStatus, quickPicks, type Program } from "./program.ts";
+import { beginErrorText, markedLegend, NOT_MARKED, programPitch, programState, programStatus, quickPicks, startingHeading, type Program } from "./program.ts";
 import { HOLD_MS, useLongPress } from "./kiosk.ts";
 import { NO_WEBGL2, Play, type PlayExit } from "./game/Play.tsx";
 import { showHouse } from "./show-house.ts";
@@ -176,6 +176,8 @@ function Device({
   onSetup: () => void;
 }) {
   const stations = useStations(config, config.role !== "player");
+  // After an ending the reinstallation is a party favour (S1).
+  const ended = useNightEnded(config);
   // three.js needs WebGL2: never begin a session this browser can't play.
   const canDraw = useMemo(() => hasWebGL2(), []);
   const vr = stations.list.filter((s) => s.world === "vr");
@@ -264,13 +266,13 @@ function Device({
     <Desktop status={status}>
       <Window title={`Reinstallation Wizard — ${config.name}`} className="main-window">
         {screen.kind === "scan" && (
-          <ScanStep config={config} canDraw={canDraw} onCode={onCode} onPick={(p) => setScreen({ kind: "choose", program: p })} onProblem={(t) => setFlash({ text: t, tone: "bad" })} stations={vr} showStations={config.role !== "player"} onSetup={onSetup} />
+          <ScanStep config={config} ended={ended} canDraw={canDraw} onCode={onCode} onPick={(p) => setScreen({ kind: "choose", program: p })} onProblem={(t) => setFlash({ text: t, tone: "bad" })} stations={vr} showStations={config.role !== "player"} onSetup={onSetup} />
         )}
         {screen.kind === "choose" && (
           <Wizard
             step={2}
             total={3}
-            heading={programStatus(screen.program).heading}
+            heading={programStatus(screen.program, ended).heading}
             actions={
               <>
                 <button className="w98-button" onClick={() => setScreen({ kind: "scan" })}>
@@ -287,20 +289,18 @@ function Device({
           >
             <div className="program-card w98-sunken">
               <div className="program-icon" aria-hidden="true">
-                {programStatus(screen.program).icon}
+                {programStatus(screen.program, ended).icon}
               </div>
               <div>
                 <div className="program-name">{screen.program.name}</div>
                 <div className="program-meta">
-                  {programStatus(screen.program).status}
+                  {programStatus(screen.program, ended).status}
                   {screen.program.location !== null && <> · in {screen.program.location}</>}
                 </div>
               </div>
             </div>
-            <p>
-              To be reinstalled, a program must prove it can follow instructions: walk the virtual house and find <b>Gerald, the golden duck</b>.
-            </p>
-            {HAS_KING && config.role !== "station" && (
+            <p className="program-pitch">{programPitch(programState(screen.program, ended))}</p>
+            {HAS_KING && config.role !== "station" && programState(screen.program, ended) !== "favour" && (
               <p className="king-note">Find Gerald. In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation, and every hit weakens him for everyone.</p>
             )}
             {!screen.program.eligible && (
@@ -329,7 +329,7 @@ function Device({
           </Wizard>
         )}
         {screen.kind === "starting" && (
-          <Wizard step={3} total={3} heading={`Reinstalling ${screen.program.name}`}>
+          <Wizard step={3} total={3} heading={startingHeading(programState(screen.program, ended), screen.program.name)}>
             <p>{screen.label}</p>
             <IndeterminateBar />
           </Wizard>
@@ -382,6 +382,26 @@ function IndeterminateBar() {
 
 // --- stations ----------------------------------------------------------------
 
+/** `night.ended` off the screen state, every `ENDED_POLL_MS` (false until it says so). */
+const ENDED_POLL_MS = 15_000;
+function useNightEnded(config: ReinstallConfig): boolean {
+  const [ended, setEnded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      const e = await fetchNightEnded(config);
+      if (alive && e !== null) setEnded(e);
+    };
+    void poll();
+    const t = window.setInterval(() => void poll(), ENDED_POLL_MS);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [config]);
+  return ended;
+}
+
 function useStations(config: ReinstallConfig, enabled: boolean): { list: StationInfo[]; ok: boolean; refresh: () => void } {
   const [list, setList] = useState<StationInfo[]>([]);
   const [ok, setOk] = useState(false);
@@ -431,6 +451,7 @@ function HoldButton({ onFire, label, children }: { onFire: () => void; label: st
 
 function ScanStep({
   config,
+  ended,
   canDraw,
   onCode,
   onPick,
@@ -440,6 +461,8 @@ function ScanStep({
   onSetup,
 }: {
   config: ReinstallConfig;
+  /** An ending has played: anyone may play (a party favour). */
+  ended: boolean;
   /** This browser has WebGL2 (it can play here). */
   canDraw: boolean;
   onCode: (text: string) => void;
@@ -468,7 +491,7 @@ function ScanStep({
       window.clearInterval(t);
     };
   }, [config]);
-  const { corrupted, restricted } = quickPicks(candidates);
+  const { corrupted, marked } = quickPicks(candidates, 8, ended);
 
   const submit = async () => {
     if (typed.trim() === "" || busy) return;
@@ -521,8 +544,8 @@ function ScanStep({
               <>
                 Show the program's <b>pass</b> (the QR on their phone: menu → Your pass).
               </>
-            ) : corrupted.length + restricted.length > 0 ? (
-              <>No camera here: tap the program in the Internet below, or type their name.</>
+            ) : corrupted.length + marked.length > 0 ? (
+              <>No camera here: tap the program below, or type their name.</>
             ) : (
               <>No camera here: type the program's name.</>
             )}
@@ -554,13 +577,13 @@ function ScanStep({
               </div>
             </fieldset>
           )}
-          {restricted.length > 0 && (
+          {marked.length > 0 && (
             <fieldset className="w98-group">
-              <legend>Restricted — marked, or held by a director</legend>
+              <legend>{markedLegend(ended)}</legend>
               <div className="quick-picks">
-                {restricted.map((c) => (
+                {marked.map((c) => (
                   <button key={c.id} className="w98-button pick" onClick={() => onPick(c)}>
-                    🚨 {c.name}
+                    {ended ? "🎉" : "🚨"} {c.name}
                   </button>
                 ))}
               </div>
