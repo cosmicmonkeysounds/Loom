@@ -97,7 +97,10 @@ describe('walletCardTag (the cockpit chat row)', () => {
   const card = { id: 't1', from: 'g-1', fromName: 'Excel', to: 'g-2', toName: 'Winamp', amount: 20, unit: 'Truthcoin' } as const
   it('names the kind, the step, both parties and the amount', () => {
     expect(walletCardTag({ ...card, kind: 'transfer', step: 'pending' })).toBe('💰 transfer · pending · Excel → Winamp · 20 Truthcoin')
-    expect(walletCardTag({ ...card, kind: 'approval', step: 'held' })).toBe('💰 approval · held · Excel → Winamp · 20 Truthcoin')
+    expect(walletCardTag({ ...card, kind: 'approval', step: 'held' })).toBe('💰 approval · 🚩 held · Excel → Winamp · 20 Truthcoin')
+    // Wave 18b (R13): the recipient's flagged card, and the audit's name when the story gives one.
+    expect(walletCardTag({ ...card, kind: 'transfer', step: 'flagged', audit: 'a CRA audit' })).toBe('💰 transfer · 🚩 flagged for a CRA audit · Excel → Winamp · 20 Truthcoin')
+    expect(walletCardTag({ ...card, kind: 'transfer', step: 'held', audit: 'a CRA audit' })).toBe('💰 transfer · 🚩 held for a CRA audit · Excel → Winamp · 20 Truthcoin')
   })
   it('a freeze names both sides and no amount (it moves no coin)', () => {
     expect(walletCardTag({ ...card, amount: 0, kind: 'freeze', step: 'frozen' })).toBe('🧊 freeze · frozen · Excel → Winamp')

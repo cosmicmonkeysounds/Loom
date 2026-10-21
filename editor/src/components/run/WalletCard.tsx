@@ -164,7 +164,12 @@ export function WalletCard() {
                 <span className="tabular-nums text-zinc-300">
                   {t.amount} {wallet.name}
                 </span>
-                <span className={clsx('rounded px-1', t.state === 'held' ? 'bg-amber-950/60 text-amber-200' : 'text-zinc-500')}>{t.state === 'held' ? '⏳ held' : t.state}</span>
+                <span
+                  className={clsx('rounded px-1', t.state === 'held' ? 'bg-amber-950/60 text-amber-200' : 'text-zinc-500')}
+                  title={t.state === 'held' ? 'Flagged by the approver’s audit: both phones show it held until it is approved, denied, or approves itself' : undefined}
+                >
+                  {t.state === 'held' ? '🚩 held' : t.state}
+                </span>
                 {due !== null && (
                   <span className="tabular-nums text-zinc-500">
                     {deadlineLabel(t.state)} {due}
