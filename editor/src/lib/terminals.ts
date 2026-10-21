@@ -46,10 +46,11 @@ export interface TerminalPoll {
   version?: string
 }
 
-/** What a terminal's mic reports (wave 19): open and sending, open but held
- *  (the gate, the half-duplex), the permission refused, plain http (no
- *  microphone at all), or turned off (⚙, its view, the map's voice link). */
-export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'off'
+/** What a terminal's mic reports (wave 19): open, turned off in ⚙ on that
+ *  tablet (`muted`), the permission refused, plain http (no microphone at
+ *  all), open but the page's sound locked until a touch (`locked`: nothing is
+ *  captured or played), or off by its view / the map's voice link. */
+export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'locked' | 'off'
 
 /** A row's device health, as its last listed poll said. */
 export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version'>
@@ -234,7 +235,11 @@ export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState)
     case 'live':
       return { key: 'mic', text: '🎤', title: 'Mic live: the games near it hear this room', warn: false }
     case 'muted':
-      return { key: 'mic', text: '🎤', title: 'Mic open, holding: quiet, or it is speaking / playing a voice (half-duplex)', warn: false }
+      return { key: 'mic', text: '🎤 off', title: 'Mic turned off in ⚙ on this tablet (its view would have it on)', warn: false }
+    case 'locked':
+      return micWanted(row)
+        ? { key: 'mic', text: '🎤 tap', title: 'Mic open, but the page’s sound waits for a touch: nothing is heard or played until someone taps the screen (Fully Kiosk: Autoplay audio)', warn: true }
+        : { key: 'mic', text: '🎤 off', title: 'Mic off (its sound is locked, but this view has no mic)', warn: false }
     case 'off':
       return { key: 'mic', text: '🎤 off', title: 'Mic off: its view, ⚙ or the map’s voice link turns it off', warn: false }
     case 'denied':
