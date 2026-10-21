@@ -478,6 +478,10 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 .mission-option { min-height: 48px; margin: 0; width: 100%; text-align: left; }
 .mission-option-n { font-weight: 700; }
 .mission-also .objective-stack { margin-top: 4px; }
+/* a standing condition about you (*You are marked*): never folded */
+.mission-strip { padding: 8px 10px; background: var(--face); color: var(--ink); box-shadow: var(--raised), inset 4px 0 0 var(--bad); border-radius: var(--radius); }
+.mission-strip-title { font: 700 14px var(--ui-font); color: var(--bad); }
+.mission-strip-text { margin: 4px 0 0; font: 14px/1.35 var(--chat-font); }
 
 /* the desktop strip and its three tiles */
 .desk-tiles {

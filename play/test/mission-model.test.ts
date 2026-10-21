@@ -69,6 +69,29 @@ describe("the Where row (§2.1)", () => {
     expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "lobby", name: "Lobby" } } }, listed, titles)).toBeNull();
     expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "loc:Hidden", name: "Hidden" } } }, listed, titles)).toBeNull();
   });
+  it("captured: the Internet is somewhere to go, never 'YOU'RE HERE' (GN-F3)", () => {
+    const l = new Set([...listed, "loc:The Internet"]);
+    const t = new Map([...titles, ["loc:The Internet", "The Internet (Reinstallation — backyard)"]]);
+    const mission = { objective: "x", place: { id: "loc:The Internet", name: "The Internet" } };
+    expect(whereRowOf({ location: "The Internet", captured: true, mission }, l, t)).toMatchObject({ kind: "go", nav: { to: "room", id: "loc:The Internet" } });
+    expect(whereRowOf({ location: "The Internet", captured: false, mission }, l, t)).toMatchObject({ kind: "here" });
+  });
+  it("a DM target says Open, never Go to (GN-F18)", () => {
+    const l = new Set([...listed, "dm:Trabolta"]);
+    expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "dm:Trabolta", name: "Trabolta" } } }, l, titles)).toMatchObject({ kind: "go", dm: true });
+  });
+  it("📷 Check in goes once every to-do is ticked (GN-F11)", () => {
+    const mission = { objective: "summons", place: { id: "scan", name: "Check in" } };
+    const open = missionOf(input({ view: view({ objectives: [obj("summons", { checklist: [{ label: "Checked in", done: false }] })], mission }) }));
+    expect(open.where).toMatchObject({ kind: "word", word: "scan" });
+    const done = missionOf(input({ view: view({ objectives: [obj("summons", { checklist: [{ label: "Checked in", done: true }] })], mission }) }));
+    expect(done.where).toBeNull();
+  });
+  it("a standing condition (no to-dos, no buttons) is a strip, never folded under Also now (NM-F1)", () => {
+    const m = missionOf(input({ view: view({ objectives: [obj("summons", { checklist: [{ label: "a", done: false }] }), obj("You Are Marked", { brief: "Carry on." }), obj("hunt", { checklist: [{ label: "x", done: null }] }), obj("explore")] }) }));
+    expect(m.strips.map((o) => o.id)).toEqual(["You Are Marked"]);
+    expect(m.also.map((o) => o.id)).toEqual(["hunt"]);
+  });
   it("the objective's button the row already is, is not repeated", () => {
     const m = missionOf(input({ view: view({ objectives: [obj("summons", { buttons: ["scan", "pass"] })], mission: { objective: "summons", place: { id: "scan", name: "Check in" } } }) }));
     expect(m.buttons).toEqual(["pass"]);

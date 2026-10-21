@@ -32,7 +32,7 @@ function Where({ where, onGo }: { where: WhereRow; onGo: (n: Nav) => void }) {
       </div>
     );
   }
-  const label = where.kind === "go" ? `📍 Go to ${where.name}` : where.label;
+  const label = where.kind === "go" ? (where.dm === true ? `💬 Open ${where.name}` : `📍 Go to ${where.name}`) : where.label;
   return (
     <button type="button" className="mission-where go" onClick={() => onGo(where.nav)}>
       <span className="mission-where-name">{label}</span>
@@ -193,6 +193,13 @@ export function MissionWindow({
             )}
           </section>
         )}
+
+        {model.strips.map((x) => (
+          <section key={x.id} className="mission-strip" role="status" aria-label={x.title}>
+            <div className="mission-strip-title">{x.title}</div>
+            {x.brief.trim() !== "" && <p className="mission-strip-text">{x.brief}</p>}
+          </section>
+        ))}
 
         <Tiles tiles={model.tiles} onGo={onGo} />
 

@@ -35,8 +35,8 @@ export const WORD_ROW: Record<PlaceWord, string> = {
 export type WhereRow =
   /** You stand in the place: `📍 {name}  ✓ YOU'RE HERE`, not a button. */
   | { kind: "here"; name: string }
-  /** The place is elsewhere: the whole row is a button. */
-  | { kind: "go"; name: string; nav: Nav }
+  /** The place is elsewhere: the whole row is a button (`dm`: a character's thread, "Open …"). */
+  | { kind: "go"; name: string; nav: Nav; dm?: true }
   /** A word target: the row is that exit's button. */
   | { kind: "word"; word: PlaceWord; label: string; nav: Nav };
 
@@ -85,6 +85,9 @@ export interface MissionModel {
   decision: Decision | null;
   tiles: MissionTile[];
   also: ObjectiveView[];
+  /** Standing conditions about you (no to-dos, no buttons: *You are
+   *  marked*): shown as a strip, never folded under Also now (NM-F1). */
+  strips: ObjectiveView[];
   paused: boolean;
 }
 
@@ -133,7 +136,7 @@ function wordNav(word: PlaceWord): Nav {
  * `name` is the words to show.
  */
 export function whereRowOf(
-  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"] },
+  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean },
   listed: ReadonlySet<string>,
   titles: ReadonlyMap<string, string>,
 ): WhereRow | null {
@@ -153,9 +156,12 @@ export function whereRowOf(
   }
   const id = roomIdOf(place.id);
   const name = titles.get(id) ?? place.name;
-  if (view.location !== null && id === `loc:${view.location}`) return { kind: "here", name };
+  // A captured program stands "in" the Internet from the moment of the
+  // capture, still in the living room: until they are released the tent is
+  // somewhere to go, never "✓ YOU'RE HERE" (GN-F3).
+  if (view.location !== null && id === `loc:${view.location}` && view.captured !== true) return { kind: "here", name };
   if (id === "lobby" || !listed.has(id)) return null;
-  return { kind: "go", name, nav: { to: "room", id } };
+  return { kind: "go", name, nav: { to: "room", id }, ...(id.startsWith("dm:") ? { dm: true as const } : {}) };
 }
 
 export interface MissionInput {
@@ -181,7 +187,11 @@ export function missionOf(o: MissionInput): MissionModel {
   const split = splitGlyph(objective?.title ?? "");
   const listed = new Set(o.list.map((c) => c.id));
   const titles = new Map(o.list.map((c) => [c.id, c.title]));
-  const where = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions }, listed, titles) : null;
+  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured }, listed, titles) : null;
+  // A screen word (📷 Check in, 🎟 Show my pass) is done once every to-do
+  // is ticked: the row would ask again for what was just done (GN-F11).
+  const allDone = objective !== null && objective.checklist.length > 0 && objective.checklist.every((c) => c.done === true);
+  const where = where0 !== null && where0.kind === "word" && (where0.word === "scan" || where0.word === "pass") && allDone ? null : where0;
   const roomTitle = (id: string) => (titles.get(id) ?? id).replace(/\s*\([^)]*\)\s*$/u, "");
 
   // the live cards, newest first; the newest is the first big button
@@ -265,9 +275,15 @@ export function missionOf(o: MissionInput): MissionModel {
     moreMoves: Math.max(0, moves.length - 4),
     decision: dock !== null && dock.channel === MISSION_DOCK_ID ? dock.decision : null,
     tiles,
-    also: objectives.slice(1).filter((x) => x !== evergreen),
+    also: objectives.slice(1).filter((x) => x !== evergreen && !isStrip(x)),
+    strips: objectives.slice(1).filter((x) => x !== evergreen && isStrip(x)),
     paused: v.paused === true,
   };
+}
+
+/** A standing condition about you: no to-dos and no buttons. */
+function isStrip(o: ObjectiveView): boolean {
+  return o.checklist.length === 0 && (o.buttons ?? []).length === 0 && evergreenFlag(o) !== true;
 }
 
 /** `⏳ 18:42 left`, `⏳ 1h 05m left`, `⏸ stopped`. */
