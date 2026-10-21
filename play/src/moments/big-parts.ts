@@ -61,26 +61,6 @@ export function bigParts(text: string, kind: Moment["kind"] = "other", cardKind?
 }
 
 
-/** Words only: no pictographs, quotes or punctuation, one case, one space. */
-function plainWords(s: string): string {
-  return s
-    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "")
-    .replace(/[!"'`“”‘’.,:;?…()[\]-]+/gu, " ")
-    .toLowerCase()
-    .replace(/\s+/gu, " ")
-    .trim();
-}
-
-/** The card inside a big says what the big already says (N8: "The bottle
- *  landed on you. Truth or dare?" over "THE BOTTLE LANDED ON YOU. TRUTH OR
- *  DARE?"): the card's own title is hidden there. */
-export function cardTitleRepeats(momentText: string, cardText: string): boolean {
-  const card = plainWords(cardText);
-  if (card === "") return false;
-  const big = plainWords(momentText);
-  return big === card || big.startsWith(`${card} `) || big.endsWith(` ${card}`) || card.startsWith(`${big} `);
-}
-
 /** Where a personal big sits in the capture chain (recheck BN2-FB / NMR-1):
  *  found (🛡 CORRUPTION DETECTED), sent (🌐 Sent to the Internet), released
  *  (🦆 Reinstallation complete, 🕺 out of the Internet). Null otherwise. */

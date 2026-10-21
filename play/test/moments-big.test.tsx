@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BigMoment } from "../src/moments/big.tsx";
 import { BIG_DEAD_MS, bigParts, cheerLabel, kickerOf } from "../src/moments/big-model.ts";
-import { cardTitleRepeats } from "../src/moments/big-parts.ts";
+import { cardTitleRepeats } from "../src/moments/big-model.ts";
 import { registerSidesWidgets } from "../src/sides/widgets.tsx";
 import type { Exit } from "../src/moments/exits.ts";
 import type { Moment } from "../src/moments/model.ts";
