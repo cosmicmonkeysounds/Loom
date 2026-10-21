@@ -1,0 +1,254 @@
+/* Act A–C's building blocks (lane tv1, `tv1-parts.tsx`). Chrome 87 /
+   Safari 14: no inset, no flex gap, no aspect-ratio, no :has. Motion is
+   transform / opacity, set per frame from t. */
+
+/* --- the wall card --------------------------------------------------------- */
+.a1w { font-family: var(--mono); }
+.a1w-stripes {
+  position: absolute;
+  left: -100px;
+  top: -100px;
+  right: -100px;
+  bottom: -100px;
+  background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.045) 0 20px, rgba(255, 255, 255, 0) 20px 40px);
+  will-change: transform;
+}
+.a1w-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 60%);
+}
+.a1w-win.kit-win { font-size: clamp(14px, 3.3vmin, 34px); }
+.a1w-art {
+  position: relative;
+  height: 30vmin;
+  margin: -0.55em -0.7em 0.6em;
+  overflow: hidden;
+  background: #000;
+  border-bottom: 2px solid #808080;
+}
+.a1w-title {
+  font-family: var(--mono);
+  font-size: 2.1em;
+  line-height: 1.05;
+  color: #000080;
+  margin-bottom: 0.25em;
+}
+.a1w-line { font-size: 1.05em; line-height: 1.3; margin-top: 0.2em; }
+.a1w-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.3em 0;
+  font-family: var(--mono);
+  font-size: 4.2vmin;
+  color: #ffd23f;
+  background: rgba(0, 0, 0, 0.72);
+  border-top: 2px solid #ffd23f;
+}
+
+/* --- marchers, beacon, chevrons ----------------------------------------------- */
+.a1-march { pointer-events: none; }
+.a1-marcher { position: absolute; will-change: transform, opacity; filter: drop-shadow(0.08em 0.08em 0 rgba(0, 0, 0, 0.5)); }
+.a1-beacon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260vmax;
+  height: 260vmax;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.a1-chevrons { pointer-events: none; }
+.a1-chev-arm { position: absolute; left: 50%; top: 50%; width: 48%; height: 0; transform-origin: 0 0; }
+.a1-chev {
+  position: absolute;
+  top: 0;
+  font-size: 3.2em;
+  line-height: 1;
+  transform: translate(0, -50%) scaleX(-1);
+  text-shadow: 0 0 0.3em currentColor;
+}
+
+/* --- the bottle's table --------------------------------------------------------- */
+.a1-table { position: relative; width: 100%; height: 100%; }
+.a1-felt {
+  position: absolute;
+  left: 4%;
+  top: 4%;
+  right: 4%;
+  bottom: 4%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #1f7a3a 0, #0c4a20 62%, #06260f 100%);
+  border: 0.35em solid #6b3f17;
+  box-shadow: inset 0 0 2em rgba(0, 0, 0, 0.6), 0 0 0 0.25em #3a2008;
+}
+.a1-seat {
+  position: absolute;
+  width: 11%;
+  height: 11%;
+  will-change: transform;
+  transition: none;
+  filter: drop-shadow(0.06em 0.06em 0 rgba(0, 0, 0, 0.6));
+}
+.a1-seat.on { filter: drop-shadow(0 0 0.5em #ffd23f) drop-shadow(0 0 0.2em #fff); z-index: 3; }
+.a1-seat svg { display: block; width: 100%; height: 100%; }
+.a1-table-bottle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18%;
+  height: 54%;
+  margin-left: -9%;
+  margin-top: -27%;
+  transform-origin: 50% 50%;
+  filter: drop-shadow(0.15em 0.25em 0.15em rgba(0, 0, 0, 0.55));
+  z-index: 2;
+}
+.a1-seat-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0.1em 0.5em;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+  font-weight: bold;
+  font-size: 1.15em;
+  white-space: nowrap;
+  color: #000;
+  background: #ffd23f;
+  border: 0.12em solid #000;
+  box-shadow: 0.15em 0.15em 0 rgba(0, 0, 0, 0.5);
+  z-index: 4;
+}
+
+/* --- emblems, clock, ribbon, balls -------------------------------------------------- */
+.a1-emblem, .a1-clock, .a1-ribbon { display: block; will-change: transform; filter: drop-shadow(0.12em 0.15em 0 rgba(0, 0, 0, 0.45)); }
+.a1-ball {
+  width: 1em;
+  height: 1em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0.1em 0.18em 0.25em rgba(0, 0, 0, 0.45);
+  will-change: transform;
+}
+.a1-ball > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+  font-weight: bold;
+  font-size: 0.13em;
+  line-height: 1.05;
+  text-align: center;
+  overflow: hidden;
+  flex-direction: column;
+}
+.a1-ball .a1-ball-word { display: block; width: auto; height: auto; background: none; border-radius: 0; font-size: 1em; }
+
+/* --- the face, the rain, the redactions ------------------------------------------------ */
+.a1-face { display: block; filter: drop-shadow(0 0 1em rgba(61, 255, 122, 0.25)); }
+.a1-rain { pointer-events: none; }
+.a1-redact { padding: 0.4em 0.2em; }
+.a1-redact-line { position: relative; height: 0.55em; margin: 0 0 0.55em; background: rgba(0, 0, 0, 0.18); }
+.a1-redact-bar { position: absolute; top: -0.12em; bottom: -0.12em; background: #000; transform-origin: 0 50%; }
+
+/* --- the CRT warming up --------------------------------------------------------------- */
+.a1-crt { background: #000; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.a1-crt-line { width: 100%; height: 100%; background: #f4fff8; box-shadow: 0 0 40px #fff; will-change: transform, opacity; }
+
+/* --- Power On ------------------------------------------------------------------------- */
+.a1-po-splash { background: radial-gradient(ellipse at 50% 38%, #1b5fa8 0, #0a2a5c 55%, #020a1c 100%); }
+.a1-po-emblem { position: absolute; left: 50%; top: 36%; will-change: transform, opacity; }
+.a1-po-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  text-align: center;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+  font-weight: bold;
+  font-size: 3.4em;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0.06em 0.06em 0 #001640, 0 0 0.4em rgba(120, 190, 255, 0.6);
+  white-space: pre;
+}
+.a1-po-word span { display: inline-block; will-change: transform, opacity; }
+.a1-po-bar { position: absolute; left: 30%; right: 30%; top: 75%; height: 0.55em; overflow: hidden; background: #000; border: 2px solid #7a8fb0; }
+.a1-po-bar-run { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0), #3a8cff 30%, #bfe9ff 50%, #3a8cff 70%, rgba(0,0,0,0)); will-change: transform; }
+.a1-po-small { position: absolute; left: 0; right: 0; top: 80%; text-align: center; font-family: var(--mono); font-size: 1.3em; color: #bfe9ff; }
+.a1-po-desk.kit-desktop { font-size: 0.9em; }
+.a1-po-bounce { position: absolute; width: 14%; height: 25%; will-change: transform; }
+.a1-po-wall { background: radial-gradient(ellipse at 50% 38%, #1b5fa8 0, #0a2a5c 55%, #020a1c 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.a1-po-wall-emblem { will-change: transform, opacity; }
+.a1-po-wall-word { margin-top: 3vmin; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 7vmin; color: #fff; text-shadow: 0.06em 0.06em 0 #001640; min-height: 1.2em; }
+.a1-po-wall-bar { width: min(80vw, 60vmin); margin-top: 3vmin; padding: 0.6em; background: #c0c0c0; font-size: 3vmin; border: 2px solid; border-color: #fff #404040 #404040 #fff; }
+
+/* --- the introduction: POST ------------------------------------------------------------- */
+.a1-post { padding: 1.4em 2em; color: #c8c8c8; font-family: var(--mono); font-size: 1.55em; line-height: 1.25; }
+.a1-post-head { color: #fff; margin-bottom: 1.1em; }
+.a1-post-line { white-space: pre; }
+.a1-post-mem { color: #fff; }
+.a1-post-ok { color: #3dff7a; }
+.a1-post-eye { position: absolute; right: 1.6em; top: 1.2em; width: 6.5em; text-align: center; color: #3dff7a; font-size: 0.7em; }
+.a1-eye { display: block; width: 100%; height: auto; }
+.a1-post-foot { position: absolute; left: 2em; bottom: 1.2em; color: #fff; }
+.a1-in-loading { display: block; }
+.a1-in-dos { position: absolute; left: 2em; top: 1.4em; font-family: var(--mono); font-size: 1.55em; color: #c8c8c8; }
+.a1-in-loadwin.kit-win { font-size: 0.85em; }
+.a1-in-loadrow { display: flex; align-items: center; }
+.a1-in-loadrow .kit-hourglass { margin-right: 0.8em; flex: none; }
+.a1-in-loadtext { flex: 1 1 auto; min-width: 0; }
+.a1-in-loadtext > div:first-child { margin-bottom: 0.4em; }
+
+/* --- the introduction: the logo --------------------------------------------------------- */
+.a1-in-splash { background: radial-gradient(ellipse at 50% 45%, #052d14 0, #010a04 70%); }
+.a1-in-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 34%;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 7.6em;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  color: #3dff7a;
+  text-shadow: 0 0 0.25em rgba(61, 255, 122, 0.7), 0.05em 0.05em 0 #021a0a;
+}
+.a1-in-word span { display: inline-block; will-change: transform, opacity; }
+.a1-in-tag { position: absolute; left: 0; right: 0; top: 60%; text-align: center; font-family: var(--mono); font-size: 1.9em; letter-spacing: 0.3em; color: #9cf5b8; }
+.a1-in-bar { position: absolute; left: 25%; right: 25%; top: 72%; height: 0.5em; overflow: hidden; border: 2px solid #1d6b36; background: #000; }
+.a1-in-bar-run { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; background: linear-gradient(90deg, rgba(0,0,0,0), #1fbf55 30%, #e9fff1 50%, #1fbf55 70%, rgba(0,0,0,0)); will-change: transform; }
+
+/* --- the introduction: the face and the greeting --------------------------------------------- */
+.a1-in-facewrap { background: radial-gradient(ellipse at 50% 42%, #032212 0, #000 70%); }
+.a1-in-face { position: absolute; left: 50%; top: 42%; width: 26em; height: 26em; will-change: transform, opacity; }
+.a1-in-face .kit-glitch, .a1-in-face .a1-face { width: 100%; height: 100%; }
+.a1-in-progress { position: absolute; left: 32%; right: 32%; top: 84%; font-family: var(--mono); font-size: 1.5em; color: #9cf5b8; text-align: center; }
+.a1-in-progress-track { height: 0.45em; margin-top: 0.3em; background: #021a0a; border: 2px solid #1d6b36; overflow: hidden; }
+.a1-in-progress-fill { height: 100%; background: #3dff7a; transform-origin: 0 50%; will-change: transform; }
+.a1-in-hello { position: absolute; left: 0; right: 0; top: 79%; text-align: center; font-family: var(--mono); color: #3dff7a; text-shadow: 0 0 0.3em rgba(61, 255, 122, 0.6); }
+.a1-in-hello-big { font-size: 3.6em; line-height: 1; }
+.a1-in-hello-line { font-size: 1.8em; margin-top: 0.3em; color: #e9fff1; }
+.a1-in-online { position: absolute; right: 2em; top: 1.4em; font-family: var(--mono); font-size: 1.6em; color: #3dff7a; letter-spacing: 0.2em; }
+.a1-in-dot { display: inline-block; width: 0.6em; height: 0.6em; margin-right: 0.3em; border-radius: 50%; background: #3dff7a; box-shadow: 0 0 0.5em #3dff7a; }
+.a1-in-wall { background: #000; }
+.a1-in-wall-face { height: 34vmin; margin: -0.55em -0.7em 0.6em; background: #000; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #808080; }
+.a1-in-wall-face .a1-face { height: 100%; width: auto; }
+.a1-in-wall-connect { width: 80%; padding: 0.6em; background: #c0c0c0; }
+.a1-po-welcome-row { display: flex; align-items: center; }
+.a1-po-welcome-row .a1-emblem { margin-right: 0.9em; flex: none; }
+.a1-po-welcome-text b { font-size: 1.3em; }
+.a1-po-welcome-small { margin-top: 0.4em; }
