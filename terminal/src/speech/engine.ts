@@ -65,7 +65,34 @@ export type Prepared = { kind: "server"; buffer: AudioBuffer } | { kind: "browse
 
 // --- audio context (shared, unlocked by a gesture) --------------------------
 
+/** `decodeAudioData` in either form: Safari before 14.1 (`webkitAudioContext`)
+ *  has only the callback one and returns undefined; newer browsers a promise.
+ *  Rejects on a failure, never resolves undefined (OB-12). */
+export function decodeAudio(c: Pick<BaseAudioContext, "decodeAudioData">, buf: ArrayBuffer): Promise<AudioBuffer> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const ok = (b: AudioBuffer) => {
+      if (settled) return;
+      settled = true;
+      if (b) resolve(b);
+      else reject(new Error("no audio decoded"));
+    };
+    const fail = (e: unknown) => {
+      if (settled) return;
+      settled = true;
+      reject(e);
+    };
+    try {
+      const p = c.decodeAudioData(buf, ok, fail) as unknown as Promise<AudioBuffer> | undefined;
+      if (p !== undefined && p !== null && typeof p.then === "function") p.then(ok, fail);
+    } catch (e) {
+      fail(e);
+    }
+  });
+}
+
 let ctx: AudioContext | null = null;
+
 /** Bumped by every `unlock()`; a `BrowserEngine` write-off holds until the next. */
 let gesture = 0;
 export function audioContext(): AudioContext | null {
@@ -180,7 +207,8 @@ export class ServerEngine implements SpeechEngine {
     }
     const bytes = await res.arrayBuffer();
     try {
-      const buffer = await c.decodeAudioData(bytes.slice(0));
+      const buffer = await decodeAudio(c, bytes.slice(0));
+      if (!buffer) return null;
       return { kind: "server", buffer };
     } catch {
       return null;
