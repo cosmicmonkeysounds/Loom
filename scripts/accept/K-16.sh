@@ -9,7 +9,8 @@
 # Desk part (automatic): the route answers with the mod code, says whether
 # the terminals are on attract, and stays small. Device part (≤ 10 min) is
 # printed at the end. Read-only: it polls with no terminal name, so it never
-# lands in the route's `terminals` list (the K-29 card) and writes nothing.
+# lands in Run → Terminals (`/api/mod/screen/terminals`, the K-29 card) and
+# writes nothing.
 set -euo pipefail
 
 BASE="${BASE:-https://app.mapsandducks.com}"
@@ -36,7 +37,10 @@ body=$(look)
 bytes=${#body}
 echo "OK  event $event — $(line "$body")"
 [[ $bytes -lt 2048 ]] && echo "OK  $bytes bytes" || echo "WARN $bytes bytes (aim ≈ 1 KB)"
-printf '%s' "$body" | json "'    terminals seen: ' + (', '.join('%s (%s, %ss ago)' % (t['name'], t['view'], t['ago'] // 1000) for t in d['terminals']) or 'none')"
+# The heartbeats live on the director's own route since wave 17 (the screen
+# state no longer carries them).
+curl -fsS -H "x-loom-token: $token" "$BASE/e/$event/api/mod/screen/terminals" \
+  | json "'    terminals seen: ' + (', '.join('%s (%s, %ss ago)' % (t['name'], t['view'], t['ago'] // 1000) for t in d['terminals']) or 'none')"
 
 if [[ "${1:-}" == "--watch" ]]; then
   echo "watching every 2 s — Ctrl+C to stop"

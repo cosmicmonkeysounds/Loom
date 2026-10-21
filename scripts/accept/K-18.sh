@@ -13,8 +13,8 @@
 #   MOD_CODE=… scripts/accept/K-18.sh --mute on|off              the director's TV-voice mute
 #   BASE=http://localhost:7000 MOD_CODE=… scripts/accept/K-18.sh  against a local server
 #
-# The watcher polls with no terminal name (view=tv), so it never lands in the route's
-# `terminals` list (the K-29 card). --say / --beat / --fire / --mute WRITE to the event:
+# The watcher polls with no terminal name (view=tv), so it never lands in Run → Terminals
+# (`/api/mod/screen/terminals`, the K-29 card). --say / --beat / --fire / --mute WRITE to the event:
 # they run the live guard first (refuses a roster with real guests unless
 # --i-know-this-is-live; asks y/N unless --yes or localhost).
 set -euo pipefail

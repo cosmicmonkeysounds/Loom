@@ -9,7 +9,7 @@
 #   BASE=http://localhost:7000 MOD_CODE=… scripts/accept/K-17.sh   against a local server
 #
 # The looks poll with no terminal name (view=mirror → the TV's program, view=auto → the
-# terminals'), so they never land in the route's `terminals` list (the K-29 card).
+# terminals'), so they never land in Run → Terminals (`/api/mod/screen/terminals`, the K-29 card).
 # --fire WRITES to the event: it runs the live guard first (refuses a roster with real
 # guests unless --i-know-this-is-live; asks y/N unless --yes or localhost).
 # It also lists which slide PNGs the server has (the rest render as Win98 text cards).
