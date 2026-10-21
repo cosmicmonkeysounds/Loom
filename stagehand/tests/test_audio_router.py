@@ -8,8 +8,10 @@ import io
 import json
 import logging
 import os
+import types
 from pathlib import Path
 
+import httpx
 import numpy as np
 import pytest
 import soundfile as sf
@@ -673,6 +675,54 @@ def test_check_warns_about_missing_sound_files(tmp_path):
     warnings = router(tmp_path, play_sounds=True).warnings()
     missing = next(w for w in warnings if "no file for" in w).split("no file for ")[1].split(" in ")[0]
     assert missing == "dance_song, printer_grind"
+
+
+class CheckMod:
+    """A ModClient for `fetch_for_check`: one canned answer (or an error)."""
+
+    calls: list = []
+
+    def __init__(self, url, event="default", token=None, passcode=None, reply=None):
+        self.reply = reply
+
+    async def get(self, path, params=None, timeout=None):
+        CheckMod.calls.append((path, params, timeout))
+        if isinstance(self.reply, Exception):
+            raise self.reply
+        return self.reply
+
+    async def aclose(self):
+        pass
+
+
+def test_check_asks_the_server_when_nothing_is_cached(tmp_path):
+    """LA-5: a fresh house Mac (no cache, no config_file) checks the device
+    and the sound files against the server's audio.json, asked once."""
+    server = types.SimpleNamespace(url="http://x", event="default", mod_token=None, mod_passcode="p")
+    r = router(tmp_path, play_sounds=True, query=fake_query(8, 8))
+    CheckMod.calls = []
+    r.fetch_for_check(server, client_factory=lambda *a, **k: CheckMod(*a, reply=answer("v1"), **k))
+    assert CheckMod.calls == [("/api/mod/audio", None, 3.0)]
+    problems = r.preflight()
+    assert problems and "audio.json asks for 16" in problems[0]
+    warnings = r.warnings()
+    missing = next(w for w in warnings if "no file for" in w)
+    assert "dance_song" in missing and "beans_spill" in missing and "announce_chime" not in missing
+    assert any("checked against the server's audio.json" in w for w in warnings)
+
+
+def test_a_check_that_cannot_reach_the_server_warns_and_passes(tmp_path):
+    server = types.SimpleNamespace(url="http://x", event="default", mod_token=None, mod_passcode="p")
+    r = router(tmp_path, play_sounds=True)
+    r.fetch_for_check(server, client_factory=lambda *a, **k: CheckMod(*a, reply=httpx.ConnectError("refused"), **k))
+    assert r.preflight() == []
+    assert any("could not ask the server" in w for w in r.warnings())
+    # Something cached: the server is never asked.
+    r.apply(answer("v1"))
+    CheckMod.calls = []
+    again = router(tmp_path)
+    again.fetch_for_check(server, client_factory=lambda *a, **k: CheckMod(*a, reply=answer("v2"), **k))
+    assert CheckMod.calls == []
 
 
 def test_check_warns_about_sound_files_off_the_device_rate(tmp_path):

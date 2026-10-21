@@ -499,7 +499,7 @@ stream, a fake server).
 |---|---|---|
 | Says | the device (name substring, 16 in / 16 out, rate), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to`, `voice.tv` | what this Mac may do: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
 | Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | the file, then `stagehand launchd restart --job audio` |
-| Reaches the router | a long-poll, `GET /api/mod/audio?after=<version>&tests=<seq>&wait=25` (returns at once on a new version or a pending speaker test) | at boot |
+| Reaches the router | a long-poll, `GET /api/mod/audio?router=1&name=<host>&after=<version>&tests=<seq>&wait=25` (returns at once on a new version or a pending speaker test; `router=1` is what the editor's router badge reads) | at boot |
 
 The router keeps the last `audio.json` and `house.json` it saw in
 `cache_dir` (`~/Library/Caches/stagehand-audio`), so a boot with the house
@@ -614,10 +614,19 @@ warned about.
   are never replayed; a restarted server's new sequence still plays (the
   cursor is the server's `at`). With `mqtt:` also `show/audio/test
   {"speaker": "desk-l"}` / `{"out": 3}`.
+- The server knows whether a router is listening: its polls say
+  `router=1`, and `GET /api/mod/audio` and every Test's answer carry
+  `router {online, lastSeen, name}` (online while it is parked on a long
+  poll or polled in the last 40 s). The Audio tab shows *router online* /
+  *router last seen …*, and a Test sent while nobody listens says it was
+  only queued: check the `audio` job on the house Mac.
 - `stagehand check --only audio` probes the device against the cached /
   local `audio.json` (channel counts), lists cue sounds with no file, and
   names every file in `sounds_dir` not at the device rate (convert those
-  offline; they still play, resampled at load).
+  offline; they still play, resampled at load). On a fresh house Mac with
+  nothing cached it asks the server once (3 s, no long poll) and checks
+  against that, the story's own sound names included; a server it can't
+  reach is a warning, never a failed check.
 - Every `health_s` (60) a log line: device, config version + source,
   voices, played / skipped, xruns, limiter blocks, peak, `announce` (`off` /
   `on` / `blocked`), sounds with no file (the JSON adds `reinits`);
