@@ -3,7 +3,7 @@
 //! the context a toolbar extra (the project bar) is handed.
 
 import { roomById } from "@loom/house";
-import type { HouseMap } from "@loom/house";
+import type { AudioConfig, HouseMap, PropKind } from "@loom/house";
 import type { LoadedHouse } from "../api.ts";
 import type { ReinstallConfig } from "../config.ts";
 import { doorFloor } from "./doors.ts";
@@ -20,11 +20,14 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: "stair", label: "▤ Stairs", key: "s", hint: "Drag the stair's rectangle on its lower floor (S)" },
 ];
 
+/** What the next click on the plan places: a palette prop, or a 🔊 speaker. */
+export type Placing = PropKind | "speaker";
+
 /** `push`: a new undo step. `replace`: the running drag's next frame (its step was pushed when it started changing). */
 export type EditMode = "push" | "replace";
 
-/** The floor the selected thing is on ("" when unknown). */
-export function floorOfSelection(house: HouseMap, sel: Selection): string {
+/** The floor the selected thing is on ("" when unknown; a speaker needs its `audio`). */
+export function floorOfSelection(house: HouseMap, sel: Selection, audio?: AudioConfig | null): string {
   const ofRoom = (id: string) => roomById(house, id)?.floor ?? "";
   switch (sel.kind) {
     case "terminal":
@@ -45,11 +48,15 @@ export function floorOfSelection(house: HouseMap, sel: Selection): string {
       return ofRoom(house.stairs.find((s) => s.id === sel.id)?.from ?? "");
     case "floor":
       return sel.id;
+    case "speaker": {
+      const s = audio?.speakers.find((x) => x.id === sel.id);
+      return s === undefined ? "" : (roomById(house, s.room)?.floor ?? s.floor ?? "");
+    }
   }
 }
 
-/** Whether a selection still names something in the map. */
-export function selectionExists(house: HouseMap, sel: Selection): boolean {
+/** Whether a selection still names something in the map (or, for a speaker, in `audio`). */
+export function selectionExists(house: HouseMap, sel: Selection, audio?: AudioConfig | null): boolean {
   switch (sel.kind) {
     case "terminal":
       return house.terminals.some((t) => t.id === sel.id);
@@ -67,6 +74,8 @@ export function selectionExists(house: HouseMap, sel: Selection): boolean {
       return house.stairs.some((s) => s.id === sel.id);
     case "floor":
       return house.floors.some((f) => f.id === sel.id);
+    case "speaker":
+      return audio?.speakers.some((s) => s.id === sel.id) ?? false;
   }
 }
 

@@ -20,6 +20,8 @@ export interface Problem {
   sel: Selection | null;
   /** `error`: from `validateHouse` (blocks a save); `warning`: advice. */
   level: "error" | "warning";
+  /** A speaker-config item naming no speaker: a click opens the Audio tab. */
+  tab?: "audio";
 }
 
 const LISTS: Record<string, (house: HouseMap, id: string) => Selection | null> = {
