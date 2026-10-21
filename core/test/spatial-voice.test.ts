@@ -30,11 +30,12 @@ const AT = {
 };
 
 type Sent = Array<{ event: string; data: Record<string, unknown> }>;
-function listener(id: string, kind: "terminal" | "player", key: string): VoiceListener & { sent: Sent; closed: boolean } {
+function listener(id: string, kind: "terminal" | "player", key: string, flags: { mic?: boolean; hear?: boolean } = {}): VoiceListener & { sent: Sent; closed: boolean } {
   const l = {
     id,
     kind,
     ...(kind === "terminal" ? { spot: key } : { session: key }),
+    ...flags,
     sent: [] as Sent,
     closed: false,
     send(event: string, data: unknown) {
@@ -82,6 +83,9 @@ describe("VoiceRelay — who hears whom", () => {
     const hall = listener("t1", "terminal", "hall");
     relay.connect(player);
     relay.connect(hall);
+    // Only a terminal with an open stream is heard: the hall, so far.
+    expect([...relay.hearing("p1")]).toEqual([["t:hall", 1]]);
+    for (const spot of ["steam-room", "start-bar", "backyard"]) relay.connect(listener(`t-${spot}`, "terminal", spot));
     expect([...relay.hearing("p1")]).toEqual([
       ["t:hall", 1],
       ["t:steam-room", 0.28],
@@ -90,10 +94,11 @@ describe("VoiceRelay — who hears whom", () => {
     ]);
     expect([...relay.hearing("t1")]).toEqual([["s:s-a", 1]]);
     // Each was greeted; the hall's hello came before the player could hear it,
-    // so the player's own mic turns on in a `listen` once the hall connects.
-    expect(events(player, "hello")[0]!.data).toEqual({ codec: "mulaw", rate: 16000, chunkMs: 200, as: "player", session: "s-a", listen: false });
-    expect(events(player, "listen").map((s) => s.data)).toEqual([{ on: true }]);
-    expect(events(hall, "hello")[0]!.data).toEqual({ codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal", spot: "hall", listen: true });
+    // so the player's own mic turns on in a `listen` once the hall connects,
+    // and `ears` counts the streams that hear it as they come.
+    expect(events(player, "hello")[0]!.data).toEqual({ codec: "mulaw", rate: 16000, chunkMs: 200, as: "player", session: "s-a", listen: false, ears: 0 });
+    expect(events(player, "listen").map((s) => s.data)).toEqual([{ on: true, ears: 1 }, { on: true, ears: 2 }, { on: true, ears: 3 }]);
+    expect(events(hall, "hello")[0]!.data).toEqual({ codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal", spot: "hall", listen: true, ears: 1 });
     expect(relay.wants({ kind: "terminal", spot: "hall" })).toBe(true);
     expect(relay.wants({ kind: "terminal", spot: "cpu" })).toBe(false);
   });
@@ -106,14 +111,14 @@ describe("VoiceRelay — who hears whom", () => {
     const steam = listener("t2", "terminal", "steam-room");
     for (const l of [player, hall, steam]) relay.connect(l);
 
-    expect(relay.upload({ kind: "terminal", spot: "steam-room" }, 1, chunk(4, 0x80))).toEqual({ listening: true, dropped: false });
+    expect(relay.upload({ kind: "terminal", spot: "steam-room" }, 1, chunk(4, 0x80))).toEqual({ listening: true, dropped: false, ears: 1 });
     const v = events(player, "voice");
     expect(v.map((s) => s.data)).toEqual([{ from: "t:steam-room", kind: "terminal", spot: "steam-room", name: expect.any(String), gain: 0.28, seq: 1, data: Buffer.from([0x80, 0x80, 0x80, 0x80]).toString("base64") }]);
     // A terminal never hears a terminal.
     expect(events(hall, "voice")).toEqual([]);
     expect(events(steam, "voice")).toEqual([]);
 
-    expect(relay.upload({ kind: "player", session: "s-a" }, 7, chunk())).toEqual({ listening: true, dropped: false });
+    expect(relay.upload({ kind: "player", session: "s-a" }, 7, chunk())).toEqual({ listening: true, dropped: false, ears: 2 });
     expect(events(hall, "voice").map((s) => [s.data.from, s.data.gain, s.data.name, s.data.session])).toEqual([["s:s-a", 1, "Pinball", "s-a"]]);
     // The steam room is 5 m off through a wall: within 8 m → half gain and falling.
     expect(events(steam, "voice").map((s) => s.data.from)).toEqual(["s:s-a"]);
@@ -123,18 +128,21 @@ describe("VoiceRelay — who hears whom", () => {
 
   it("nobody hearing: dropped and never stored; a stale seq is dropped", () => {
     const { clock, world, relay } = harness();
-    expect(relay.upload({ kind: "terminal", spot: "hall" }, 1, chunk())).toEqual({ listening: false, dropped: true });
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 1, chunk())).toEqual({ listening: false, dropped: true, ears: 0 });
     world.players = [{ session: "s-a", p: AT.hall }];
     const player = listener("p1", "player", "s-a");
     relay.connect(player);
-    expect(relay.upload({ kind: "terminal", spot: "hall" }, 5, chunk())).toEqual({ listening: true, dropped: false });
-    expect(relay.upload({ kind: "terminal", spot: "hall" }, 5, chunk())).toEqual({ listening: true, dropped: true });
-    expect(relay.upload({ kind: "terminal", spot: "hall" }, 4, chunk())).toEqual({ listening: true, dropped: true });
-    expect(relay.upload({ kind: "terminal", spot: "hall" }, 6, chunk())).toEqual({ listening: true, dropped: false });
+    relay.connect(listener("t1", "terminal", "hall"));
+    const heard = { listening: true, dropped: false, ears: 1 };
+    const stale = { listening: true, dropped: true, ears: 1 };
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 5, chunk())).toEqual(heard);
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 5, chunk())).toEqual(stale);
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 4, chunk())).toEqual(stale);
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 6, chunk())).toEqual(heard);
     expect(events(player, "voice").map((s) => s.data.seq)).toEqual([5, 6]);
     // Quiet for VOICE_FRESH_MS: a lower seq is a reloaded terminal, kept.
     clock.t += VOICE_FRESH_MS;
-    expect(relay.upload({ kind: "terminal", spot: "hall" }, 0, chunk())).toEqual({ listening: true, dropped: false });
+    expect(relay.upload({ kind: "terminal", spot: "hall" }, 0, chunk())).toEqual(heard);
     expect(relay.talking()).toEqual(new Map([["t:hall", 0]]));
   });
 
@@ -152,8 +160,11 @@ describe("VoiceRelay — who hears whom", () => {
     relay.route();
     expect(events(player, "bye").map((s) => s.data)).toEqual([{ from: "t:hall" }]); // steam-room etc. never spoke
     expect(events(hall, "bye").map((s) => s.data)).toEqual([{ from: "s:s-a" }]);
-    expect(events(player, "listen").map((s) => s.data)).toEqual([{ on: true }, { on: false }]);
-    expect(events(hall, "listen").map((s) => s.data)).toEqual([{ on: false }]);
+    expect(events(player, "listen").map((s) => s.data)).toEqual([{ on: true, ears: 1 }, { on: false, ears: 0 }]);
+    expect(events(hall, "listen").map((s) => s.data)).toEqual([{ on: false, ears: 0 }]);
+    expect([...relay.hearing("p1").keys()]).toEqual([]); // no basement terminal is connected
+    relay.connect(listener("t2", "terminal", "server-room"));
+    relay.connect(listener("t3", "terminal", "server-room-door"));
     expect([...relay.hearing("p1").keys()]).toEqual(["t:server-room", "t:server-room-door"]);
     // A second route with nothing changed sends nothing.
     const before = player.sent.length + hall.sent.length;
@@ -169,10 +180,11 @@ describe("VoiceRelay — who hears whom", () => {
     const tent = listener("t1", "terminal", "tent");
     relay.connect(player);
     relay.connect(tent);
+    relay.connect(listener("t2", "terminal", "backyard"));
     expect([...relay.hearing("p1").keys()]).toEqual(["t:backyard"]);
     expect([...relay.hearing("t1").keys()]).toEqual([]);
     expect(events(tent, "hello")[0]!.data.listen).toBe(false);
-    expect(relay.upload({ kind: "terminal", spot: "tent" }, 1, chunk())).toEqual({ listening: false, dropped: true });
+    expect(relay.upload({ kind: "terminal", spot: "tent" }, 1, chunk())).toEqual({ listening: false, dropped: true, ears: 0 });
 
     // Unset in the spawn room is still off; `voice: true` opts in.
     const tentSpot = house.terminals.find((t) => t.id === "tent")!;
@@ -183,6 +195,68 @@ describe("VoiceRelay — who hears whom", () => {
     relay.route();
     expect([...relay.hearing("t1").keys()]).toEqual(["s:s-a"]);
     expect([...relay.hearing("p1").keys()]).toEqual(["t:tent", "t:backyard"]);
+  });
+
+  it("a stream says what it does: mic=0 is no candidate for a player's ears, hear=0 is routed nothing", () => {
+    const { world, relay } = harness();
+    world.players = [{ session: "s-a", p: AT.hall }];
+    const player = listener("p1", "player", "s-a");
+    const hall = listener("t1", "terminal", "hall", { mic: false });
+    const steam = listener("t2", "terminal", "steam-room", { hear: false });
+    for (const l of [player, hall, steam]) relay.connect(l);
+    // The hall's mic is off: the player doesn't hear it (and its slot is free
+    // for the steam room, whose mic is on). The steam room plays nothing:
+    // it hears nobody, so it doesn't count as the player's ears.
+    expect([...relay.hearing("p1").keys()]).toEqual(["t:steam-room"]);
+    expect([...relay.hearing("t1").keys()]).toEqual(["s:s-a"]);
+    expect([...relay.hearing("t2").keys()]).toEqual([]);
+    expect(events(steam, "hello")[0]!.data.listen).toBe(true); // its own mic is still wanted
+    expect(events(player, "listen").at(-1)!.data).toEqual({ on: true, ears: 1 });
+    // A player whose every stream says mic=0 is heard by no terminal.
+    relay.connect(listener("p1b", "player", "s-a", { mic: false })); // the newest stream wins
+    expect(player.closed).toBe(true);
+    expect([...relay.hearing("t1").keys()]).toEqual([]);
+  });
+
+  it("the edge: a route already formed is kept 0.75 m past the reach, never flapping on jitter", () => {
+    const { world, relay } = harness();
+    const hall = listener("t1", "terminal", "backyard"); // at [-4.4, 1.4, 20.5]
+    relay.connect(hall);
+    // Walk west across the backyard (the same room): 8 m is the reach.
+    const at = (d: number) => [{ session: "s-a", p: [-4.4 - Math.sqrt(d * d - 0.25), 0, 21] as Vec3 }];
+    world.players = at(7.5);
+    relay.route();
+    expect([...relay.hearing("t1").keys()]).toEqual(["s:s-a"]);
+    for (const d of [8.1, 7.9, 8.2, 7.95, 8.3]) {
+      world.players = at(d);
+      relay.route();
+      expect([...relay.hearing("t1").keys()], `kept at ${d} m`).toEqual(["s:s-a"]);
+    }
+    expect(events(hall, "bye")).toEqual([]);
+    world.players = at(9);
+    relay.route();
+    expect([...relay.hearing("t1").keys()]).toEqual([]);
+    // Coming back, a new route forms only inside the reach.
+    world.players = at(8.3);
+    relay.route();
+    expect([...relay.hearing("t1").keys()]).toEqual([]);
+  });
+
+  it("the newest stream wins: one per player session, at most 2 per terminal spot", () => {
+    const { world, relay } = harness();
+    world.players = [{ session: "s-a", p: AT.hall }];
+    const a1 = listener("p1", "player", "s-a");
+    const a2 = listener("p2", "player", "s-a");
+    relay.connect(a1);
+    relay.connect(a2);
+    expect(a1.closed).toBe(true);
+    expect(relay.size).toBe(1);
+    const h1 = listener("t1", "terminal", "hall");
+    const h2 = listener("t2", "terminal", "hall");
+    const h3 = listener("t3", "terminal", "hall");
+    for (const l of [h1, h2, h3]) relay.connect(l);
+    expect([h1.closed, h2.closed, h3.closed]).toEqual([true, false, false]);
+    expect(relay.size).toBe(3);
   });
 
   it("caps: a terminal hears the 3 nearest players", () => {

@@ -910,6 +910,9 @@ describe("the heartbeat's device health and the director's identify", () => {
     expect(screenDeviceOf(q({ fs: "1" }))).toEqual({ fullscreen: true });
     expect(screenDeviceOf(q({ fs: "0", audio: "1" }))).toEqual({ fullscreen: false, audio: true });
     expect(screenDeviceOf(q({ fs: "yes" }))).toEqual({});
+    // The voice link's mic (wave 19), `locked` included (open, sound waiting for a touch).
+    for (const mic of ["live", "muted", "denied", "insecure", "locked", "off"]) expect(screenDeviceOf(q({ mic }))).toEqual({ mic });
+    expect(screenDeviceOf(q({ mic: "loud" }))).toEqual({});
     expect(screenDeviceOf(q({ fs: "" }))).toEqual({});
   });
 

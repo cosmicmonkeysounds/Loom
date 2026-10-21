@@ -166,24 +166,24 @@ describe("EventRuntime — the voice link", () => {
 
     const term = await stream(rt, `/api/spatial/voice/stream?token=${modToken}&spot=hall`);
     expect(term.status).toBe(200);
-    expect(of(term, "hello")).toEqual([{ codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal", spot: "hall", listen: false }]);
+    expect(of(term, "hello")).toEqual([{ codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal", spot: "hall", listen: false, ears: 0 }]);
     const player = await stream(rt, `/api/spatial/voice/stream?token=${a.token}`);
     expect(player.status).toBe(200);
-    expect(of(player, "hello")).toEqual([{ codec: "mulaw", rate: 16000, chunkMs: 200, as: "player", session: a.session, listen: true }]);
-    expect(of(term, "listen")).toEqual([{ on: true }]);
+    expect(of(player, "hello")).toEqual([{ codec: "mulaw", rate: 16000, chunkMs: 200, as: "player", session: a.session, listen: true, ears: 1 }]);
+    expect(of(term, "listen")).toEqual([{ on: true, ears: 1 }]);
 
     // The terminal speaks: the player hears it at full gain (same room).
     const up = await call(rt, "POST", "/api/spatial/voice?seq=1&spot=hall", Buffer.alloc(3200, 0x80), { token: modToken });
     expect(up.status).toBe(200);
-    expect(up.json).toEqual({ ok: true, listening: true });
+    expect(up.json).toEqual({ ok: true, listening: true, ears: 1 });
     expect(of(player, "voice")).toEqual([{ from: "t:hall", kind: "terminal", spot: "hall", name: expect.any(String), gain: 1, seq: 1, data: Buffer.alloc(3200, 0x80).toString("base64") }]);
     // A stale seq: 200, dropped, nothing sent.
-    expect((await call(rt, "POST", "/api/spatial/voice?seq=1&spot=hall", Buffer.alloc(3200), { token: modToken })).json).toEqual({ ok: true, listening: true, dropped: true });
+    expect((await call(rt, "POST", "/api/spatial/voice?seq=1&spot=hall", Buffer.alloc(3200), { token: modToken })).json).toEqual({ ok: true, listening: true, ears: 1, dropped: true });
     expect(of(player, "voice")).toHaveLength(1);
 
     // The player speaks back.
     const back = await call(rt, "POST", "/api/spatial/voice?seq=1", Buffer.alloc(1600, 0x7f), { token: a.token });
-    expect(back.json).toEqual({ ok: true, listening: true });
+    expect(back.json).toEqual({ ok: true, listening: true, ears: 1 });
     expect(of(term, "voice").map((v) => [v.from, v.kind, v.session, v.name, v.gain])).toEqual([[`s:${a.session}`, "player", a.session, "Pinball", 1]]);
 
     // Down the stairs: the spatial loop's next tick re-routes → bye + listen off.
@@ -192,9 +192,9 @@ describe("EventRuntime — the voice link", () => {
     await new Promise((r) => setTimeout(r, 130));
     expect(of(player, "bye")).toEqual([{ from: "t:hall" }]);
     expect(of(term, "bye")).toEqual([{ from: `s:${a.session}` }]);
-    expect(of(term, "listen")).toEqual([{ on: true }, { on: false }]);
+    expect(of(term, "listen")).toEqual([{ on: true, ears: 1 }, { on: false, ears: 0 }]);
     const away = await call(rt, "POST", "/api/spatial/voice?seq=2&spot=hall", Buffer.alloc(3200), { token: modToken });
-    expect(away.json).toEqual({ ok: true, listening: false, dropped: true });
+    expect(away.json).toEqual({ ok: true, listening: false, ears: 0, dropped: true });
 
     // The session ends: the player's stream closes; its token is over (410).
     expect((await call(rt, "POST", "/api/spatial/end", {}, { token: a.token })).status).toBeLessThan(300);
@@ -239,6 +239,28 @@ describe("EventRuntime — the voice link", () => {
     expect((await stream(rt, `/api/spatial/voice/stream?token=${modToken}`)).status).toBe(400);
     // An author session (the editor) may listen as a terminal.
     expect((await stream(rt, "/api/spatial/voice/stream?spot=hall", { moderator: true })).status).toBe(200);
+    rt.dispose();
+  });
+
+  it("a stream's ?mic=0 / ?hear=0: a mic nobody hears, a speaker that plays nothing", async () => {
+    const clock = { t: 7_000 };
+    const { rt, modToken, a } = await setup(clock);
+    await pose(rt, a.token, AT.hall);
+    // The hall plays nothing (⚙ voices off): it is no ear for the player.
+    const deaf = await stream(rt, `/api/spatial/voice/stream?token=${modToken}&spot=hall&mic=1&hear=0`);
+    const player = await stream(rt, `/api/spatial/voice/stream?token=${a.token}`);
+    expect(of(player, "hello")).toEqual([expect.objectContaining({ listen: false, ears: 0 })]);
+    expect(of(deaf, "listen")).toEqual([{ on: true, ears: 1 }]); // its own mic is still wanted
+    const up = await call(rt, "POST", "/api/spatial/voice?seq=1&spot=hall", Buffer.alloc(3200, 0x80), { token: modToken });
+    expect(up.json).toEqual({ ok: true, listening: true, ears: 1 });
+    // Re-opened (⚙ changed) with the mic off (the TV's default) and the
+    // speaker on: the player no longer hears the hall, but the hall hears them.
+    deaf.close();
+    const mute = await stream(rt, `/api/spatial/voice/stream?token=${modToken}&spot=hall&mic=0`);
+    expect(of(player, "listen").at(-1)).toEqual({ on: true, ears: 1 });
+    expect(of(mute, "hello")).toEqual([expect.objectContaining({ listen: false, ears: 0 })]);
+    const unheard = await call(rt, "POST", "/api/spatial/voice?seq=2&spot=hall", Buffer.alloc(3200, 0x80), { token: modToken });
+    expect(unheard.json).toEqual({ ok: true, listening: false, ears: 0, dropped: true });
     rt.dispose();
   });
 

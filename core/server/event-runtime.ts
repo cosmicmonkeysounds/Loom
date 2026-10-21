@@ -76,7 +76,7 @@ import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, t
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
-import { VOICE_LAG_BYTES, VOICE_PING_MS, VOICE_SSE_CAP, VoiceRelay, parseVoiceUpload, type VoiceListener } from "./spatial-voice.ts";
+import { VOICE_LAG_BYTES, VOICE_PING_MS, VoiceRelay, parseVoiceUpload, type VoiceListener } from "./spatial-voice.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type KingRef, type SessionRef } from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
@@ -3070,7 +3070,7 @@ export class EventRuntime {
       return true;
     }
     const out = this.voice.upload(who.kind === "terminal" ? { kind: "terminal", spot: who.spot } : { kind: "player", session: who.session }, up.seq, up.bytes);
-    sendJson(res, 200, { ok: true, listening: out.listening, ...(out.dropped ? { dropped: true } : {}) });
+    sendJson(res, 200, { ok: true, listening: out.listening, ears: out.ears, ...(out.dropped ? { dropped: true } : {}) });
     return true;
   }
 
@@ -3090,11 +3090,22 @@ export class EventRuntime {
     }
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
     res.write(":ok\n\n");
-    sseCap(res, VOICE_SSE_CAP);
+    // The stall cap is the lag cap: past it only control frames and the
+    // ping are written, so a reader that stopped (a zero-window tablet, a
+    // half-open socket) is dropped by the ping's write 15 s on (S2).
+    sseCap(res, VOICE_LAG_BYTES);
     const id = randomUUID();
+    const flag = (name: string): boolean | undefined => {
+      const v = url.searchParams.get(name);
+      return v === "0" ? false : v === "1" ? true : undefined;
+    };
+    const mic = flag("mic");
+    const hear = flag("hear");
     const listener: VoiceListener = {
       id,
       ...(who.kind === "terminal" ? { kind: "terminal", spot: who.spot } : { kind: "player", session: who.session }),
+      ...(mic !== undefined ? { mic } : {}),
+      ...(hear !== undefined ? { hear } : {}),
       // A reader behind by seconds skips audio until it catches up: late
       // voice is worse than a gap. Control frames always go.
       send: (event, data) => {

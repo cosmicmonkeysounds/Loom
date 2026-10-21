@@ -707,16 +707,17 @@ export interface ScreenDevice {
    *  turned off in ⚙, or predates the flag). */
   fullscreen?: boolean;
   /** The voice link's microphone (wave 19, `MIC_STATES`): `live` (open),
-   *  `muted` (open, the half-duplex or the gate holding it), `denied` (the
-   *  permission refused), `insecure` (plain http: no getUserMedia), `off`
-   *  (⚙, the view or the map turns it off). Absent: a build that predates it. */
+   *  `muted` (turned off in ⚙ on that tablet), `denied` (the permission
+   *  refused), `insecure` (plain http: no getUserMedia), `locked` (open, but
+   *  the page's sound waits for a touch), `off` (the view or the map turns it
+   *  off). Absent: a build that predates it. */
   mic?: ScreenMic;
   /** The terminal's build stamp. */
   version?: string;
 }
 
 /** What a terminal's `mic=` may say (wave 19). */
-export const MIC_STATES = ["live", "muted", "denied", "insecure", "off"] as const;
+export const MIC_STATES = ["live", "muted", "denied", "insecure", "locked", "off"] as const;
 export type ScreenMic = (typeof MIC_STATES)[number];
 
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,

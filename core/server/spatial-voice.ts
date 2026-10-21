@@ -15,13 +15,16 @@
 import { VOICE_CHUNK_MS, VOICE_CODEC, VOICE_FRESH_MS, VOICE_MAX_BYTES, VOICE_MIN_BYTES, VOICE_RATE, hearsPlayers, hearsTerminals, voiceOn } from "@loom/house";
 import type { HouseMap, Vec3 } from "@loom/house";
 
-/** A voice stream's SSE queue cap: past it (and stalled 15 s) the stream is dropped. */
-export const VOICE_SSE_CAP = 512 * 1024;
 /** A listener holding more than this unsent skips `voice` frames until it
- *  catches up (≈ 3 s of one source): late audio is worse than a gap. */
+ *  catches up (≈ 3 s of one source): late audio is worse than a gap. It is
+ *  the stream's SSE queue cap too: past it, stalled 15 s, the stream is
+ *  dropped (only the ping is still written then, so that is what drops it). */
 export const VOICE_LAG_BYTES = 64 * 1024;
 /** A voice stream's keep-alive comment interval. */
 export const VOICE_PING_MS = 15_000;
+/** Open streams per terminal spot at most: a further one closes the oldest
+ *  (a reloaded tablet's old socket, half-open after a Wi-Fi flap). */
+export const VOICE_STREAMS_PER_SPOT = 2;
 
 /** Where a chunk comes from: a terminal's mic (by spot) or a player's headset (by session). */
 export type VoiceSource = { kind: "terminal"; spot: string } | { kind: "player"; session: string };
@@ -34,6 +37,14 @@ export interface VoiceListener {
   spot?: string;
   /** The game session's public id (`kind: "player"`). */
   session?: string;
+  /** This device's mic can be heard (`?mic=0` says it can't: a tablet with
+   *  ⚙ mic off, the TV's default). Absent = yes. A terminal without one is
+   *  no candidate for a player's ears. */
+  mic?: boolean;
+  /** This device plays what it hears (`?hear=0`: ⚙ voices off, the TV
+   *  under the director's mute). Absent = yes. One that doesn't is routed
+   *  nothing, though its own `listen` is still told. */
+  hear?: boolean;
   send(event: string, data: unknown): void;
   /** End the stream (the session is over, the story reset). */
   close(): void;
@@ -58,8 +69,9 @@ export interface VoiceWorld {
 
 /** The stream's frames (`event:` name → `data:`). */
 export interface VoiceFrames {
-  hello: { codec: typeof VOICE_CODEC; rate: number; chunkMs: number; as: "terminal" | "player"; spot?: string; session?: string; listen: boolean };
-  listen: { on: boolean };
+  hello: { codec: typeof VOICE_CODEC; rate: number; chunkMs: number; as: "terminal" | "player"; spot?: string; session?: string; listen: boolean; ears: number };
+  /** `ears`: how many listener streams hear this device now. */
+  listen: { on: boolean; ears: number };
   voice: { from: string; kind: "terminal" | "player"; spot?: string; session?: string; name?: string; gain: number; seq: number; data: string };
   bye: { from: string };
 }
@@ -69,6 +81,8 @@ export interface VoiceFrames {
 export interface VoiceUploadResult {
   listening: boolean;
   dropped: boolean;
+  /** Listener streams that hear this source now. */
+  ears: number;
 }
 
 /** A parsed upload, or why it is refused (400). */
@@ -112,6 +126,8 @@ interface Listening {
   heard: Set<string>;
   /** The last `listen` told (null: not greeted yet — `hello` carries it). */
   listen: boolean | null;
+  /** The last `ears` told with it. */
+  ears: number;
 }
 
 /** The fan-out: listener streams, who hears whom, and each source's last seq. */
@@ -133,9 +149,20 @@ export class VoiceRelay {
     this.now = opts.now ?? Date.now;
   }
 
-  /** Open a listener: routed at once, then greeted with `hello` (its `listen` included). */
+  /** Open a listener: routed at once, then greeted with `hello` (its
+   *  `listen` included). The newest stream wins: a player's older stream for
+   *  the same session is closed, and a spot keeps at most
+   *  `VOICE_STREAMS_PER_SPOT` (the oldest closed). */
   connect(l: VoiceListener): void {
-    this.listeners.set(l.id, { l, hearing: new Map(), heard: new Set(), listen: null });
+    const same = [...this.listeners.values()].filter((x) =>
+      l.kind === "player" ? x.l.kind === "player" && x.l.session === l.session : x.l.kind === "terminal" && x.l.spot === l.spot,
+    );
+    const over = l.kind === "player" ? same : same.slice(0, Math.max(0, same.length - (VOICE_STREAMS_PER_SPOT - 1)));
+    for (const x of over) {
+      this.listeners.delete(x.l.id);
+      x.l.close();
+    }
+    this.listeners.set(l.id, { l, hearing: new Map(), heard: new Set(), listen: null, ears: 0 });
     this.route();
   }
 
@@ -173,10 +200,14 @@ export class VoiceRelay {
    * Recompute who hears whom from the world: a player's stream hears the
    * terminals `hearsTerminals` names, a terminal's the players
    * `hearsPlayers` names (a terminal never hears a terminal, a player never
-   * a player, so nothing hears itself). A player stream whose session ended
-   * is closed. Then the diffs go out: `hello` to a new stream, `listen` to
-   * one whose own mic became (un)wanted, `bye` for a source that was heard
-   * and no longer is.
+   * a player, so nothing hears itself). Only a terminal with an open stream
+   * whose mic can be heard is a candidate for a player's ears, and a player
+   * whose every stream says `mic=0` for a terminal's; a stream that plays
+   * nothing (`hear=0`) is routed nothing. What each stream hears now is the
+   * rule's `keep` (the hysteresis at the reach's edge). A player stream
+   * whose session ended is closed. Then the diffs go out: `hello` to a new
+   * stream, `listen` to one whose own mic became (un)wanted or whose ears
+   * changed, `bye` for a source that was heard and no longer is.
    */
   route(): void {
     const w = this.world();
@@ -191,14 +222,23 @@ export class VoiceRelay {
     this.playerNames = new Map(w.players.filter((p) => p.name !== undefined).map((p) => [p.session, p.name!]));
     const routes = new Map<string, Map<string, number>>();
     const next = new Map<string, Map<string, number>>();
+    // The terminals whose room can be heard; the players who can't be.
+    const liveMics = new Set<string>();
+    const playerMic = new Map<string, boolean>();
+    for (const x of this.listeners.values()) {
+      if (x.l.kind === "terminal" && x.l.spot !== undefined && x.l.mic !== false) liveMics.add(x.l.spot);
+      if (x.l.kind === "player" && x.l.session !== undefined) playerMic.set(x.l.session, (playerMic.get(x.l.session) ?? false) || x.l.mic !== false);
+    }
+    const speakers = new Set(w.players.filter((p) => playerMic.get(p.session) !== false).map((p) => p.session));
+    const keepOf = (x: Listening): Set<string> => new Set([...x.hearing.keys()].map((from) => from.slice(2)));
     for (const x of this.listeners.values()) {
       const hear = new Map<string, number>();
-      if (house !== null) {
+      if (house !== null && x.l.hear !== false) {
         if (x.l.kind === "player") {
           const me = w.players.find((p) => p.session === x.l.session);
-          if (me !== undefined) for (const t of hearsTerminals(house, me)) hear.set(`t:${t.spot}`, t.gain);
+          if (me !== undefined) for (const t of hearsTerminals(house, me, { keep: keepOf(x), only: liveMics })) hear.set(`t:${t.spot}`, t.gain);
         } else if (x.l.spot !== undefined && voiceOn(house, x.l.spot)) {
-          for (const p of hearsPlayers(house, x.l.spot, w.players)) hear.set(`s:${p.session}`, p.gain);
+          for (const p of hearsPlayers(house, x.l.spot, w.players, { keep: keepOf(x), only: speakers })) hear.set(`s:${p.session}`, p.gain);
         }
       }
       next.set(x.l.id, hear);
@@ -218,7 +258,8 @@ export class VoiceRelay {
       }
       for (const from of [...x.heard]) if (!hear.has(from)) x.heard.delete(from);
       x.hearing = hear;
-      const on = (routes.get(ownFrom(x.l))?.size ?? 0) > 0;
+      const ears = routes.get(ownFrom(x.l))?.size ?? 0;
+      const on = ears > 0;
       if (x.listen === null) {
         const hello: VoiceFrames["hello"] = {
           codec: VOICE_CODEC,
@@ -227,10 +268,12 @@ export class VoiceRelay {
           as: x.l.kind,
           ...(x.l.kind === "terminal" ? { spot: x.l.spot } : { session: x.l.session }),
           listen: on,
+          ears,
         };
         x.l.send("hello", hello);
-      } else if (on !== x.listen) x.l.send("listen", { on } satisfies VoiceFrames["listen"]);
+      } else if (on !== x.listen || ears !== x.ears) x.l.send("listen", { on, ears } satisfies VoiceFrames["listen"]);
       x.listen = on;
+      x.ears = ears;
     }
   }
 
@@ -246,10 +289,11 @@ export class VoiceRelay {
     const now = this.now();
     const last = this.seqs.get(from);
     const to = this.routes.get(from);
-    const listening = (to?.size ?? 0) > 0;
-    if (last !== undefined && seq <= last.seq && now - last.at < VOICE_FRESH_MS) return { listening, dropped: true };
+    const ears = to?.size ?? 0;
+    const listening = ears > 0;
+    if (last !== undefined && seq <= last.seq && now - last.at < VOICE_FRESH_MS) return { listening, dropped: true, ears };
     this.seqs.set(from, { seq, at: now });
-    if (to === undefined || to.size === 0) return { listening: false, dropped: true };
+    if (to === undefined || to.size === 0) return { listening: false, dropped: true, ears: 0 };
     const data = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("base64");
     const name = src.kind === "terminal" ? this.spotNames.get(src.spot) : this.playerNames.get(src.session);
     const base = src.kind === "terminal" ? { from, kind: src.kind, spot: src.spot } : { from, kind: src.kind, session: src.session };
@@ -260,7 +304,7 @@ export class VoiceRelay {
       const frame: VoiceFrames["voice"] = { ...base, ...(name !== undefined ? { name } : {}), gain, seq, data };
       x.l.send("voice", frame);
     }
-    return { listening: true, dropped: false };
+    return { listening: true, dropped: false, ears };
   }
 
   /** Sources that sent within `VOICE_FRESH_MS` ("talking"), source key → seq. */
