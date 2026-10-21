@@ -35,6 +35,8 @@ archive: McAfee Anti-Virus when program.cleared == true and program.marked != tr
 archive: Password Manager when program.cleared == true and program.marked != true and program.corrupted != true
 archive: CRA Agent Software when program.cleared == true and program.marked != true and program.corrupted != true
 majority: Night.present / 2 + 1
+lobby: hidden
+badge: program.afk as 🚻 Bathroom Mode
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.

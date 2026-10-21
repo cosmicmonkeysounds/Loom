@@ -18,7 +18,8 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages, type ChatMessage } from "../server/chat.ts";
-import { notePress } from "../server/views.ts";
+import { guestView, notePress } from "../server/views.ts";
+import { badgesOf } from "../src/runtime/sim/badges.ts";
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const FILES = scenarioFiles("trapped-in-the-internet");
@@ -180,5 +181,28 @@ describe("Trapped in the Internet — wave 18b: Facts Are Currency counts what s
     expect(n.sim.questStatus("g3", "OpenOffice Dossier")).toBe("done");
     expect([...(n.sim.model.roles.get("Program")?.secret ?? [])]).toEqual(expect.arrayContaining(["dossier_start", "dossier_base"]));
     expect(worldKeys(n.sim).filter((k) => k.startsWith("Night.") && /dossier/u.test(k))).toEqual([]);
+  });
+});
+
+describe("Trapped in the Internet — wave 18b: the header's new lines (R12, R15, R13)", () => {
+  it("the lobby is hidden from guests, Bathroom Mode is a 🚻 badge, and the approver is MyCRA with a CRA audit", () => {
+    const n = boot();
+    expect(n.sim.model.lobbyHidden).toBe(true);
+    expect(guestView(n.sim, "g1").lobby).toBe("hidden");
+    expect(n.sim.model.badges.map((b) => [b.glyph, b.label])).toEqual([["🚻", "Bathroom Mode"]]);
+    expect(badgesOf(n.sim, "g2")).toEqual([]);
+    n.signal("go to the bathroom", "g2");
+    expect(badgesOf(n.sim, "g2")).toEqual([{ glyph: "🚻", label: "Bathroom Mode" }]);
+    expect(guestView(n.sim, "g1").people?.find((p) => p.id === "g2")?.badges).toEqual([{ glyph: "🚻", label: "Bathroom Mode" }]);
+    n.signal("back from the bathroom", "g2");
+    expect(badgesOf(n.sim, "g2")).toEqual([]);
+    expect(n.sim.model.currency?.approver).toMatchObject({ id: "CRA Agent Software", every: 3, windowMs: 60_000, as: "MyCRA", audit: "a CRA audit" });
+  });
+
+  it("no `show tutorial` text names the story's title (R11)", () => {
+    const title = "Trapped in the Internet";
+    const shows = FILES.flatMap((f) => f.source.split("\n").filter((l) => /^\s*show tutorial\b/u.test(l)));
+    expect(shows.length).toBeGreaterThan(0);
+    for (const l of shows) expect(l.toLowerCase()).not.toContain(title.toLowerCase());
   });
 });
