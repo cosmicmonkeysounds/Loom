@@ -8,12 +8,15 @@
 
 import { create } from 'zustand'
 import { ApiError, audioApi } from '@/lib/api'
-import { announceTerminalsOf, stopResultText, withAnnounceTerminal, type AudioStatus } from '@/lib/house-audio'
+import { StopOutcome, announceTerminalsOf, stopFailedText, stopOutcomeOf, stopResultText, withAnnounceTerminal, type AudioStatus } from '@/lib/house-audio'
 
 /** How often the card re-reads the config and the router's presence. */
 export const AUDIO_POLL_MS = 10_000
 /** How long a stop's feedback stays on the button. */
 export const STOP_NOTE_MS = 4_000
+/** How long a stop that reached nothing (or failed) stays on the button:
+ *  someone has to act on it. */
+export const STOP_WARN_MS = 15_000
 
 interface HouseAudioState {
   eventId: string | null
@@ -24,7 +27,7 @@ interface HouseAudioState {
   /** A stop / save in flight. */
   busy: 'stop' | 'save' | 'project' | null
   /** The last stop's feedback (cleared after `STOP_NOTE_MS`). */
-  stopNote: { text: string; ok: boolean; at: number } | null
+  stopNote: { text: string; outcome: StopOutcome; at: number } | null
   /** Why the last save / Save to project failed (or what a 409 means); null = fine. */
   saveError: string | null
   /** The last save landed as a director save (the card offers Save to project). */
@@ -108,16 +111,19 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
     let note: HouseAudioState['stopNote']
     try {
       const r = await audioApi.stop(eventId, announce)
-      note = { text: stopResultText(r, announce), ok: r.router.online, at: Date.now() }
+      note = { text: stopResultText(r, announce), outcome: stopOutcomeOf(r), at: Date.now() }
     } catch (e) {
-      note = { text: `Couldn’t stop the house sounds: ${message(e)}`, ok: false, at: Date.now() }
+      note = { text: stopFailedText(message(e)), outcome: StopOutcome.Failed, at: Date.now() }
     }
     if (get().eventId !== eventId) return
     set({ busy: null, stopNote: note })
     if (noteTimer !== null) clearTimeout(noteTimer)
-    noteTimer = setTimeout(() => {
-      if (get().stopNote === note) set({ stopNote: null })
-    }, STOP_NOTE_MS)
+    noteTimer = setTimeout(
+      () => {
+        if (get().stopNote === note) set({ stopNote: null })
+      },
+      note.outcome === StopOutcome.Stopped ? STOP_NOTE_MS : STOP_WARN_MS,
+    )
   },
 
   setTerminal: async (spot, on) => {

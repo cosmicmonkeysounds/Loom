@@ -80,8 +80,16 @@ describe('the header Stop button', () => {
     expect(render(StopSoundsButton, { run: null })).toBe('')
   })
 
-  it('shows the stop’s outcome for a moment', () => {
-    fake.audio = { stopNote: { text: 'Sent, but no router is listening', ok: false, at: 1 } }
-    expect(render(StopSoundsButton, { run: run(RunBackend.Server) })).toContain('■ No router')
+  it('shows the stop’s outcome for a moment: stopped, no router, or failed', () => {
+    fake.audio = { stopNote: { text: '■ Stopped the house sounds', outcome: 'stopped', at: 1 } }
+    expect(render(StopSoundsButton, { run: run(RunBackend.Server) })).toContain('■ Stopped')
+    fake.audio = { stopNote: { text: 'No router is listening…', outcome: 'noRouter', at: 1 } }
+    expect(render(StopSoundsButton, { run: run(RunBackend.Server) })).toContain('■ No router: stop it on the house Mac')
+    // A failed request is never read as "no router": it is red and says retry.
+    fake.audio = { stopNote: { text: 'The stop failed (Unauthorized): nothing was stopped.', outcome: 'failed', at: 1 } }
+    const failed = render(StopSoundsButton, { run: run(RunBackend.Server) })
+    expect(failed).toContain('■ Stop failed: retry')
+    expect(failed).not.toContain('No router')
+    expect(failed).toContain('border-red-600')
   })
 })

@@ -16,6 +16,7 @@ let calls: Call[] = []
 let version = 'v1'
 let audio: Record<string, unknown> = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
 let saveStatus = 200
+let stopAnswer: { status: number; body: unknown } = { status: 200, body: { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } } }
 /** Hold the next GET until `releaseGet` is called (a poll in flight). */
 let holdNextGet = false
 let releaseGet: (() => void) | null = null
@@ -29,6 +30,7 @@ beforeEach(() => {
   version = 'v1'
   audio = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
   saveStatus = 200
+  stopAnswer = { status: 200, body: { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } } }
   holdNextGet = false
   releaseGet = null
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
@@ -46,7 +48,7 @@ beforeEach(() => {
       }
       return answer(200, { audio: snap.audio, version: snap.version, source: snap.version === 'v1' ? 'project' : 'director', router: { online: true, lastSeen: 1, name: 'house-mac' }, problems: [], warnings: [], now: 2 })
     }
-    if (path === '/e/ev1/api/mod/audio/stop') return answer(200, { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } })
+    if (path === '/e/ev1/api/mod/audio/stop') return answer(stopAnswer.status, stopAnswer.body)
     if (path === '/e/ev1/api/mod/audio') {
       if (saveStatus !== 200) {
         version = 'v9'
@@ -87,7 +89,20 @@ describe('the house sound store', () => {
     await useHouseAudio.getState().stop(false)
     await useHouseAudio.getState().stop(true)
     expect(calls.filter((c) => c.path.endsWith('/audio/stop')).map((c) => c.body)).toEqual([{ announce: false }, { announce: true }])
-    expect(useHouseAudio.getState().stopNote).toMatchObject({ ok: true, text: '■ Stopped the house sounds and the announcement' })
+    expect(useHouseAudio.getState().stopNote).toMatchObject({ outcome: 'stopped', text: '■ Stopped the house sounds and the announcement' })
+  })
+
+  it('a stop with no router says it can’t reach the house Mac; a failed stop says nothing was stopped', async () => {
+    await bound()
+    stopAnswer = { status: 200, body: { ok: true, seq: 4, router: { online: false, lastSeen: 1, name: 'house-mac' } } }
+    await useHouseAudio.getState().stop(false)
+    expect(useHouseAudio.getState().stopNote).toMatchObject({ outcome: 'noRouter' })
+    expect(useHouseAudio.getState().stopNote?.text).toMatch(/can’t reach the house Mac/u)
+    stopAnswer = { status: 401, body: { error: 'Unauthorized' } }
+    await useHouseAudio.getState().stop(false)
+    expect(useHouseAudio.getState().stopNote).toMatchObject({ outcome: 'failed' })
+    expect(useHouseAudio.getState().stopNote?.text).toMatch(/^The stop failed .*nothing was stopped/u)
+    expect(useHouseAudio.getState().busy).toBeNull()
   })
 
   it('a tick saves the whole config back with base, then re-reads', async () => {

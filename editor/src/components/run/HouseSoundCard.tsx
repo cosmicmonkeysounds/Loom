@@ -14,7 +14,7 @@ import { RunBackend, useCockpit } from '@/store/cockpit'
 import { useHouseAudio } from '@/store/house-audio'
 import { useTerminals } from '@/store/terminals'
 import { TerminalStatus } from '@/lib/terminals'
-import { announceTerminalsOf, routerLine, sourceLabel } from '@/lib/house-audio'
+import { StopOutcome, announceTerminalsOf, routerLine, sourceLabel, stopButtonLabel } from '@/lib/house-audio'
 import { useNow } from '@/components/cockpit/director/clock'
 
 const btn = 'rounded border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40'
@@ -35,7 +35,13 @@ export function StopSoundsButton() {
       disabled={busy}
       className={clsx(
         'shrink-0 whitespace-nowrap rounded border px-2 py-0.5 text-[11px] disabled:opacity-50',
-        note === null ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-900' : note.ok ? 'border-emerald-700 text-emerald-200' : 'border-amber-700 text-amber-200',
+        note === null
+          ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-900'
+          : note.outcome === StopOutcome.Stopped
+            ? 'border-emerald-700 text-emerald-200'
+            : note.outcome === StopOutcome.Failed
+              ? 'border-red-600 bg-red-950/60 text-red-100 hover:bg-red-900/60'
+              : 'border-amber-600 bg-amber-950/40 text-amber-100',
       )}
       title={
         note?.text ??
@@ -43,7 +49,7 @@ export function StopSoundsButton() {
       }
       data-testid="run-stop-sounds"
     >
-      {busy ? '■ Stopping…' : note !== null ? (note.ok ? '■ Stopped' : '■ No router') : '■ Stop house sounds'}
+      {busy ? '■ Stopping…' : note !== null ? stopButtonLabel(note.outcome) : '■ Stop house sounds'}
     </button>
   )
 }
@@ -93,7 +99,10 @@ export function HouseSoundCard() {
         </label>
       </div>
       {note !== null && (
-        <p className={clsx('mt-1 text-xs', note.ok ? 'text-emerald-300' : 'text-amber-300')} data-testid="run-house-sound-note">
+        <p
+          className={clsx('mt-1 text-xs', note.outcome === StopOutcome.Stopped ? 'text-emerald-300' : note.outcome === StopOutcome.Failed ? 'text-red-300' : 'text-amber-300')}
+          data-testid="run-house-sound-note"
+        >
           {note.text}
         </p>
       )}

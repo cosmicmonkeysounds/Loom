@@ -55,10 +55,19 @@ Every page shares one header:
   It is a panic button: one press, no confirm, nothing journaled. The TV's
   voice (it has its own mute), the terminals and the live mics are
   untouched, and stopping the dance song does not move the story's
-  clock. The button reads **■ Stopped** for a moment, or **■ No router**
-  when the house Mac's router isn't listening (nothing was playing
-  through the house). To cut the announcement playing too, use the
-  **House sound** card on the Run page.
+  clock. The button then reads one of three things:
+  - **■ Stopped**: the router heard it and fades out now.
+  - **■ No router: stop it on the house Mac** (amber): the server took
+    the stop, but no router is listening, so it can't reach the house
+    Mac. The house may still be playing (its connection down mid-song):
+    stop it there with `stagehand sounds stop`, or publish to MQTT
+    `show/audio/stop`.
+  - **■ Stop failed: retry** (red): the request itself failed (signed
+    out, the server down, an older server), so nothing was stopped.
+    Press it again; the tooltip names the error.
+
+  To cut the announcement playing too, use the **House sound** card on
+  the Run page.
 
 A banner under the header tells you when a co-writer restarted, pushed
 a draft, went live, or ended the run — and who.

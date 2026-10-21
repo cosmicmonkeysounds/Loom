@@ -5,6 +5,10 @@ import {
   routerLine,
   routerOf,
   sourceLabel,
+  StopOutcome,
+  stopButtonLabel,
+  stopFailedText,
+  stopOutcomeOf,
   stopResultText,
   withAnnounceTerminal,
 } from './house-audio'
@@ -68,7 +72,20 @@ describe('the card lines', () => {
     const online = { ok: true as const, seq: 1, router: { online: true, lastSeen: 1, name: null } }
     expect(stopResultText(online, false)).toBe('■ Stopped the house sounds')
     expect(stopResultText(online, true)).toBe('■ Stopped the house sounds and the announcement')
-    expect(stopResultText({ ...online, router: { online: false, lastSeen: null, name: null } }, false)).toMatch(/no router is listening/u)
+    const deaf = { ...online, router: { online: false, lastSeen: null, name: null } }
+    // No router: the stop can't reach the house Mac, which may still be playing.
+    expect(stopResultText(deaf, false)).toMatch(/^No router is listening, so the stop can’t reach the house Mac: stop it there/u)
+    expect(stopResultText(deaf, false)).toContain('stagehand sounds stop')
+    expect(stopResultText(deaf, false)).not.toMatch(/nothing was playing/u)
+    expect(stopOutcomeOf(online)).toBe(StopOutcome.Stopped)
+    expect(stopOutcomeOf(deaf)).toBe(StopOutcome.NoRouter)
+  })
+
+  it('a failed stop says nothing was stopped, never "no router"', () => {
+    expect(stopFailedText('Unauthorized')).toMatch(/^The stop failed \(Unauthorized\): nothing was stopped\. Press it again/u)
+    expect(stopButtonLabel(StopOutcome.Failed)).toBe('■ Stop failed: retry')
+    expect(stopButtonLabel(StopOutcome.NoRouter)).toMatch(/^■ No router/u)
+    expect(stopButtonLabel(StopOutcome.Stopped)).toBe('■ Stopped')
   })
 
   it('names where the config comes from; a director save points at Save to project', () => {
