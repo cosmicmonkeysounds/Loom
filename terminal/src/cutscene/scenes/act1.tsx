@@ -59,7 +59,7 @@ import {
   type StormMessage,
 } from "../kit/index.ts";
 import { INTRO_MS, IntroTv, IntroWall, POWER_ON_MS, PowerOnTv, PowerOnWall } from "../kit/tv1-boot.tsx";
-import { AlarmClock, Beacon, BingoBall, BottleTable, Chevrons, DataRain, March, Redacted, Ribbon, WallCard } from "../kit/tv1-parts.tsx";
+import { AlarmClock, Beacon, BingoBall, BottleTable, Chevrons, DataRain, March, Redacted, Ribbon, WallCard, useEndAt } from "../kit/tv1-parts.tsx";
 import {
   BOTTLE_SPIN_MS,
   EMPTY_RESULTS,
@@ -486,9 +486,13 @@ function CorruptedTv({ t, sfx, reduced }: SceneProps) {
   );
 }
 
-function CorruptedWall({ t, sfx, reduced }: SceneProps) {
+/** A wall's Corrupted Code ends here (the TV's runs 12 s). */
+export const CORRUPTED_WALL_MS = 9000;
+
+function CorruptedWall({ t, sfx, reduced, done }: SceneProps) {
   useSfxCues(t, sfx, [[100, "critical", { gain: 0.7 }]]);
-  if (t >= 9000) return null;
+  useEndAt(t, CORRUPTED_WALL_MS, done);
+  if (t >= CORRUPTED_WALL_MS) return null;
   const k = eased(t, 2500, 3500, ease.inOutCubic);
   return (
     <div className="kit-fill" style={{ opacity: 1 - progress(t, 8200, 800) }}>

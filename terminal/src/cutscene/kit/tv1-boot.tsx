@@ -12,7 +12,7 @@ import { Particles, Starfield } from "./canvas-fx.tsx";
 import { Glitch, Hourglass, Noise } from "./effects.tsx";
 import { Typewriter } from "./text.tsx";
 import { between, blink, clamp01, ease, eased, fakeProgress, lerp, progress, typedCount, typedDuration } from "./time.ts";
-import { AssembleFace, DuckEmblem } from "./tv1-parts.tsx";
+import { AssembleFace, DuckEmblem, useEndAt } from "./tv1-parts.tsx";
 import { INTRO_POST, bootLinesAt, bounceAt, memoryCount } from "./tv1-time.ts";
 import { Desktop, ProgressBar, Win98Window, type DesktopIcon } from "./win98.tsx";
 import type { Emitter } from "./physics.ts";
@@ -138,13 +138,17 @@ function PowerDesktop({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
-/** A wall terminal's Power On (8 s, then nothing: the idle show underneath). */
-export function PowerOnWall({ t, sfx, reduced }: SceneProps) {
+/** A wall's Power On ends here (the TV's runs `POWER_ON_MS`): it hands back to the idle show. */
+export const POWER_ON_WALL_MS = 8000;
+
+/** A wall terminal's Power On (8 s, then it ends: the idle show underneath). */
+export function PowerOnWall({ t, sfx, reduced, done }: SceneProps) {
   useSfxCues(t, sfx, [
     [60, "click"],
     [1400, "startup", { gain: 0.6 }],
   ]);
-  if (t >= 8000) return null;
+  useEndAt(t, POWER_ON_WALL_MS, done);
+  if (t >= POWER_ON_WALL_MS) return null;
   const fly = reduced ? progress(t, 900, 400) : eased(t, 900, 800, ease.outBack);
   const bar = fakeProgress(t - 1600, 4800, 3);
   return (
@@ -372,17 +376,21 @@ function IntroFace({ t, reduced }: { t: number; reduced: boolean }) {
   );
 }
 
+/** A wall's introduction ends here (the TV's runs `INTRO_MS`). */
+export const INTRO_WALL_MS = 12_500;
+
 /**
- * A wall terminal's introduction (≈ 12 s, then nothing: the live face
+ * A wall terminal's introduction (≈ 12 s, then it ends: the live face
  * underneath). A Win98 card: CONNECTING… with a lurching bar, the face
  * assembling in it, TRABOLTA IS ONLINE typed, his thread open.
  */
-export function IntroWall({ t, sfx, reduced }: SceneProps) {
+export function IntroWall({ t, sfx, reduced, done }: SceneProps) {
   useSfxCues(t, sfx, [
     [100, "modem", { gain: 0.5 }],
     [3400, "chord", { gain: 0.6 }],
   ]);
-  if (t >= 12_500) return null;
+  useEndAt(t, INTRO_WALL_MS, done);
+  if (t >= INTRO_WALL_MS) return null;
   const v = fakeProgress(t - 300, 2800, 5, 2);
   const open = eased(t, 0, 380, ease.linear);
   const fade = 1 - progress(t, 11_500, 1000);

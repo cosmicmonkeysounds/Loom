@@ -5,12 +5,12 @@
 //! picture of `t` (no timers, no `Math.random`). Original art throughout.
 
 import "./tv1.css";
-import { useId, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { useCanvas } from "./canvas.ts";
 import { Glitch } from "./effects.tsx";
 import { Marquee, Typewriter } from "./text.tsx";
 import { blink, clamp01, ease, eased, loop, noise1, progress, pulse, typedDuration } from "./time.ts";
-import { BOTTLE_SEATS, marchersAt, rainColumn, seatAngle } from "./tv1-time.ts";
+import { BOTTLE_SEATS, endDue, marchersAt, rainColumn, seatAngle } from "./tv1-time.ts";
 import { Win98Icon, Win98Window, type IconKind } from "./win98.tsx";
 
 /**
@@ -20,6 +20,16 @@ import { Win98Icon, Win98Window, type IconKind } from "./win98.tsx";
  */
 export function useSvgId(prefix: string): string {
   return `${prefix}-${useId().replace(/[^A-Za-z0-9_-]/gu, "")}`;
+}
+
+/** End the scene (`done()`) once, when `t` reaches `end` — a wall's take shorter than the TV's. */
+export function useEndAt(t: number, end: number, done: () => void): void {
+  const prev = useRef<number | null>(null);
+  useEffect(() => {
+    const due = endDue(prev.current, t, end);
+    prev.current = t;
+    if (due) done();
+  }, [t, end, done]);
 }
 
 // --- the wall card ------------------------------------------------------------------------

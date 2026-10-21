@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
-import { INTRO_HELLO, INTRO_LINE, INTRO_MS, IN, IntroTv, IntroWall, POWER_ON_MS, PowerOnTv, PowerOnWall } from "../src/cutscene/kit/tv1-boot.tsx";
+import { INTRO_HELLO, INTRO_LINE, INTRO_MS, INTRO_WALL_MS, IN, IntroTv, IntroWall, POWER_ON_MS, POWER_ON_WALL_MS, PowerOnTv, PowerOnWall } from "../src/cutscene/kit/tv1-boot.tsx";
 import type { SceneProps } from "../src/cutscene/types.ts";
 
 beforeAll(() => {
@@ -37,7 +37,8 @@ describe("tv1 boot — the introduction", () => {
 
   it("hands back to the live face: fully transparent at its end", () => {
     expect(draw(IntroTv, INTRO_MS)).toMatch(/opacity:0[;"]/u);
-    expect(draw(IntroWall, 12_600)).toBe("");
+    expect(draw(IntroWall, INTRO_WALL_MS)).toBe("");
+    expect(INTRO_WALL_MS).toBeLessThan(INTRO_MS);
   });
 });
 
@@ -47,7 +48,8 @@ describe("tv1 boot — Power On", () => {
     expect(draw(PowerOnTv, 7500, false)).toContain("Welcome to Maps and Ducks 98");
     expect(draw(PowerOnTv, 11_000, false)).toContain("a1-po-bounce");
     expect(draw(PowerOnTv, POWER_ON_MS, false)).toMatch(/opacity:0[;"]/u);
-    expect(draw(PowerOnWall, 8000, false)).toBe("");
+    expect(draw(PowerOnWall, POWER_ON_WALL_MS, false)).toBe("");
+    expect(POWER_ON_WALL_MS).toBeLessThan(POWER_ON_MS);
   });
 
   it("never names the character", () => {

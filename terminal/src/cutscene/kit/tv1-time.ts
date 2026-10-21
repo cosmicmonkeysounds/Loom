@@ -8,6 +8,18 @@ import { foldName } from "../../config.ts";
 import type { ScreenMoment, ScreenState } from "../../screen.ts";
 import { clamp01, ease, hashSeed, lerp, loop, noise1, progress } from "./time.ts";
 
+// --- a take that ends early -----------------------------------------------------------
+
+/**
+ * A one-shot end: true on the first frame `t` reaches `end` (`prev` the
+ * last frame's `t`, null on the first — so a reload past the end ends at
+ * once). A wall's take is shorter than its scene's `ms` (the TV's): it ends
+ * itself (`done()`) rather than drawing nothing until the TV's length is up.
+ */
+export function endDue(prev: number | null, t: number, end: number): boolean {
+  return t >= end && (prev === null || prev < end);
+}
+
 // --- the bottle -----------------------------------------------------------------------
 
 /** How many seats round the bottle's table (the program icons). */

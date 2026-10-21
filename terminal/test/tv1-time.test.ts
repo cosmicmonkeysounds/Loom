@@ -11,6 +11,7 @@ import {
   bottleTicks,
   bounceAt,
   countdownLeft,
+  endDue,
   marchersAt,
   memoryCount,
   momentAfter,
@@ -163,5 +164,16 @@ describe("tv1 time — clocks, marches, loops", () => {
     const c = rainColumn(1000, 3, 5);
     expect(c.chars).toMatch(/^[01]{14}$/u);
     expect(rainColumn(1000, 3, 5)).toEqual(c);
+  });
+});
+
+describe("tv1 time — a take that ends early", () => {
+  it("ends once, on the frame that reaches the end (or at once past it)", () => {
+    expect(endDue(null, 100, 8000)).toBe(false);
+    expect(endDue(7900, 7990, 8000)).toBe(false);
+    expect(endDue(7990, 8010, 8000)).toBe(true);
+    expect(endDue(8010, 8040, 8000)).toBe(false);
+    // A reload past the end: the first frame ends it.
+    expect(endDue(null, 9500, 8000)).toBe(true);
   });
 });

@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, SCENES, bingoTicks, carryAt } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, SCENES, bingoTicks, carryAt } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import type { SceneProps } from "../src/cutscene/types.ts";
 
@@ -86,6 +86,11 @@ describe("act 1 — the triggers are the story's", () => {
     expect(story).toContain("Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running.");
     expect(story).toContain("I am Trabolta. I keep the computer running.");
     expect(INTRO_LINE).toBe("I am Trabolta. I keep the computer running.");
+  });
+
+  it("a wall's shorter take ends inside its scene's length (it ends itself, never a blank wait)", () => {
+    const corrupted = SCENES.find((s) => s.id === "corrupted_code")!;
+    expect(typeof corrupted.ms === "number" && CORRUPTED_WALL_MS < corrupted.ms).toBe(true);
   });
 
   it("ids are unique and every scene draws on both targets", () => {
