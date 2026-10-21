@@ -1694,6 +1694,8 @@ export class EventRuntime {
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
+    // Wave 18b: a `when` picture whose condition moved (the snapshots below carry it).
+    this.syncConditionalAvatars();
     this.pushSnapshots();
     this.runPicks(events);
     return appended;
@@ -3528,8 +3530,37 @@ export class EventRuntime {
       }
     }
     this.persistAvatars();
+    this.syncConditionalAvatars();
     this.prefetchAvatars();
     this.lookupAvatars(lookups);
+  }
+
+  /**
+   * Wave 18b: a character whose `avatar:` options carry `when <cond>`
+   * (`picture:trabolta-broken.svg when self.broken == true`) wears the last
+   * option whose condition holds (`self` bound to it), else its first.
+   * Re-read after a load, a restore and every fanout; only a change writes
+   * the book, the disk and the snapshots. True when a picture changed.
+   */
+  private syncConditionalAvatars(): boolean {
+    const sim = this.sim;
+    if (sim === null) return false;
+    let changed = false;
+    for (const c of sim.model.characters.values()) {
+      const rules = c.avatarRules;
+      if (rules === undefined || rules.length === 0) continue;
+      let ref = c.avatar[0] ?? null;
+      for (const r of rules) if (sim.holds(r.when, null, c.id)) ref = r.ref;
+      if (ref === null || this.avatars.isChosen(c.id)) continue;
+      const url = avatarRefUrl(ref);
+      if (this.avatars.keyFor(c.id) === avatarKey(url)) continue;
+      this.avatars.assign(c.id, url);
+      void this.images.get(url);
+      this.refreshGhosts(c.id);
+      changed = true;
+    }
+    if (changed) this.persistAvatars();
+    return changed;
   }
 
   /** Warm the picture cache (and its disk copy) with every picture in the book. */
@@ -3979,6 +4010,7 @@ export class EventRuntime {
     const waits = this.store.loadAgentWaits();
     this.requeueAgentThreads(waits);
     this.noteRulingsDue();
+    this.syncConditionalAvatars(); // wave 18b: the replayed world's `when` pictures
     this.spatial.syncKing(); // the replayed world's King
     this.screens.adopt(this.sim!); // the replayed journal is the screens' history
     if (this.phase === "open") this.startTicker();
