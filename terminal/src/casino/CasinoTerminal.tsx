@@ -19,7 +19,8 @@ import type { ScreenState } from "../screen.ts";
 import { useIdleTimeout } from "../idle.ts";
 import { Scanner, cameraProblem, type CameraState } from "../scanner.tsx";
 import { Gear, TypedFallback } from "../controls.tsx";
-import { audioContext, unlock } from "../speech/engine.ts";
+import { unlock } from "../speech/engine.ts";
+import { playNotes } from "../sound/bus.ts";
 import { CASINO_GAMES, CASINO_INFO, REEL, multiplier, pickLabel, rollText, type CasinoGame } from "../../../core/src/casino.ts";
 import { ChallengerError, fetchPlayer, placeBet } from "./post.ts";
 import { CASINO_IDLE_MS, CASINO_WARN_MS, INITIAL, SPIN_MS, betProblem, cashOutLine, chipsFor, reduce, type BetResult, type CasinoSession } from "./session.ts";
@@ -392,10 +393,8 @@ function Die({ n }: { n: number }) {
 
 // --- sound ------------------------------------------------------------------------
 
-/** A few square-wave notes: the arcade's own (silent until a tap unlocked audio). */
+/** A few square-wave notes on the sound bus: the arcade's own (silent until a tap unlocked audio). */
 function sound(kind: "win" | "jackpot" | "lose" | "push"): void {
-  const c = audioContext();
-  if (c === null || c.state !== "running") return;
   const notes: Array<[number, number]> =
     kind === "jackpot"
       ? [
@@ -420,19 +419,5 @@ function sound(kind: "win" | "jackpot" | "lose" | "push"): void {
               [147, 0.3],
             ]
           : [[440, 0.15]];
-  let t = c.currentTime + 0.02;
-  for (const [freq, dur] of notes) {
-    const osc = c.createOscillator();
-    const env = c.createGain();
-    osc.type = "square";
-    osc.frequency.value = freq;
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(env);
-    env.connect(c.destination);
-    osc.start(t);
-    osc.stop(t + dur + 0.02);
-    t += dur;
-  }
+  playNotes(notes, { wave: "square", peak: 0.06, attack: 0.01 });
 }

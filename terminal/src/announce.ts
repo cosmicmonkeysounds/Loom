@@ -27,7 +27,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TerminalConfig } from "./config.ts";
 import type { ScreenState } from "./screen.ts";
-import { DeviceEngine, SpeechQueue, audioContext, type VoiceChoice } from "./speech/engine.ts";
+import { DeviceEngine, SpeechQueue, type VoiceChoice } from "./speech/engine.ts";
+import { playChime } from "./sound/bus.ts";
 import { ANNOUNCE_VOICE } from "./speech/pick-voice.ts";
 import { splitSentences } from "./speech/split.ts";
 
@@ -95,36 +96,11 @@ export function announceChoice(choice: VoiceChoice): Exclude<VoiceChoice, "serve
 }
 
 /** The house-announcement earcon, synthesised like the house Mac's (`stagehand/alexa`):
- *  two soft bell tones rising a fifth. Resolves when it has rung (at once
- *  when sound isn't unlocked yet). */
+ *  two soft bell tones rising a fifth, on the sound bus's master (`sound/`).
+ *  Resolves when it has rung (at once when sound isn't unlocked yet). It
+ *  rings inside the voice floor its announcement holds, so no effect gate. */
 export function ringChime(): Promise<void> {
-  const c = audioContext();
-  if (c === null || c.state !== "running") return Promise.resolve();
-  const start = c.currentTime + 0.02;
-  let t = start;
-  for (const [freq, dur] of [
-    [660, 0.16],
-    [990, 0.38],
-  ] as const) {
-    for (const [mult, gain] of [
-      [1, 0.3],
-      [2, 0.075],
-    ] as const) {
-      const osc = c.createOscillator();
-      const env = c.createGain();
-      osc.frequency.value = freq * mult;
-      env.gain.setValueAtTime(0.0001, t);
-      env.gain.exponentialRampToValueAtTime(gain, t + 0.008);
-      env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      osc.connect(env);
-      env.connect(c.destination);
-      osc.start(t);
-      osc.stop(t + dur + 0.02);
-    }
-    t += dur;
-  }
-  const ms = (t - start + 0.12) * 1000;
-  return new Promise((r) => window.setTimeout(r, ms));
+  return playChime();
 }
 
 /**
