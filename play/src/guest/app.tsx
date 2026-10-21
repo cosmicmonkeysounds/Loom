@@ -34,6 +34,7 @@ import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
+import { ScanDoneDialog, checkinOutcome, redeemOutcome, scanErrorNote } from "../scan-done.tsx";
 import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
@@ -256,6 +257,18 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     if (staged !== null && stagedMax >= 0) t.markRead(staged);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stagedMax]);
+  // A scan done (R1): land where it went — the Codex on its entry, the room
+  // checked into (opened even before the snapshot lists it: a hidden place
+  // appears once stood in) — then the dialog says so on top. Never under
+  // the cutscene: it waits for the guest to step into the app.
+  const scanDoneId = signedIn ? (s.scanDone?.id ?? null) : null;
+  useEffect(() => {
+    const d = s.scanDone;
+    if (scanDoneId === null || d === null) return;
+    if (d.go.to === "codex") nav.go({ to: "codex", entry: d.go.entry });
+    else nav.openRoom(d.go.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanDoneId]);
   // The tour starts on Mission with no room open (§10).
   useEffect(() => {
     if (tourSeq !== null) nav.go({ to: "mission" });
@@ -277,26 +290,25 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // restricted guest whose list hides the lobby still sees it.
   const takeover = <Takeover pin={activeTakeover(s.messages.values())} />;
   const restricted = st?.restricted ?? false;
-  // A scanned codex code redeems like a typed one (the Codex room answers a
-  // wrong code itself); a room's sign checks in and opens that room;
-  // someone else's pass opens the Recruit sheet (wave 18, F3).
+  // A scanned codex code redeems like a typed one, a room's sign checks in,
+  // someone else's pass opens the Recruit sheet (wave 18, F3). Wave 18b
+  // (R1): a hit, a code already held or a check-in closes the sheet and the
+  // "scan done" dialog lands on the entry / the room; a miss or a refusal
+  // keeps the sheet open with the reason (the camera keeps reading).
   const onScanned = async (scan: Exclude<GuestScan, { kind: "note" }>): Promise<string | null> => {
-    if (scan.kind === "checkin") {
-      await s.checkin(scan.at);
-      return null;
-    }
     if (scan.kind === "pass") {
       setSidesWhich({ sheet: "recruit", id: scan.id });
       return null;
     }
-    nav.openRoom(CODEX_ROOM, "mission");
     try {
-      await s.redeem(scan.code);
-      setCodexNote(null);
+      const o = scan.kind === "checkin" ? checkinOutcome(await s.checkin(scan.at)) : redeemOutcome(await s.redeem(scan.code));
+      if (scan.kind === "unlock") setCodexNote(null);
+      if ("note" in o) return o.note;
+      s.showScan(o.done);
+      return null;
     } catch (e) {
-      setCodexNote(redeemErrorText(e));
+      return scanErrorNote(e, scan.kind);
     }
-    return null;
   };
   const scanButton = (
     <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => nav.go({ to: "scan" })}>
@@ -432,7 +444,13 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         active.kind === "codex"
           ? (text: string) =>
               void s.redeem(text).then(
-                () => setCodexNote(null),
+                (r) => {
+                  setCodexNote(null);
+                  // A hit or a code already held: the dialog, on the entry.
+                  // A miss is answered in the room itself (its ⛔ row).
+                  const o = redeemOutcome(r);
+                  if ("done" in o) s.showScan(o.done);
+                },
                 (e: unknown) => setCodexNote(redeemErrorText(e)),
               )
           : active.kind === "quests" || active.kind === "wallet"
@@ -689,6 +707,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
+      {s.scanDone !== null && <ScanDoneDialog done={s.scanDone} onClose={s.clearScan} />}
       {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
       {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (
