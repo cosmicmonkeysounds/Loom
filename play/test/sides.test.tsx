@@ -38,7 +38,7 @@ import {
   whoLine,
 } from "../src/sides/model.ts";
 import { stayNote } from "../src/sides/stay.ts";
-import { guestStartItems } from "../src/guest/frame.tsx";
+import { guestStartItems, startSidesOf } from "../src/guest/frame.tsx";
 import { INVITE_WIDGET, SIDES_WIDGET, registerGuestWidget } from "../src/sides/widgets.tsx";
 import { WIDGETS, cardAsks } from "../src/widgets.tsx";
 import type { SidesCalls } from "../src/session/guest.ts";
@@ -494,6 +494,19 @@ describe("faction mode: the Factions sheet (wave 18b)", () => {
     expect(a).toContain("You&#x27;ll leave Winamp&#x27;s Club.");
     const card = renderToStaticMarkup(createElement(SidesContext.Provider, { value: { view: v, calls } }, createElement(InviteCard, { card: { kind: "invite", text: "", params: { invite: "i2" } }, seed: 1, onAnswer: noop, answered: null })));
     expect(card).toContain("You&#x27;ll leave Winamp&#x27;s Club.");
+  });
+  it("Start off the view: Factions while you may found one with nothing listed, Sides & crews in a crews story", () => {
+    const base = { name: "Winamp", faction: null, interactions: [], people: false, open: { act: noop, sides: noop, people: noop, notifications: noop, help: noop, leave: noop } };
+    const item = (v: GuestView) => guestStartItems({ ...base, ...startSidesOf(v) }).find((i) => i.id === "sides");
+    // The show between the Truther Download and the clock: founding open, nothing listed.
+    expect(item(fview({ canFound: true, sides: [] }))?.label).toBe("Factions");
+    // A faction listed (a founded one), founding shut for you: still Factions.
+    expect(item(fview({ canFound: false, sides: [SHIFT] }))?.label).toBe("Factions");
+    // Faction mode with nothing listed and nothing to found: no item yet.
+    expect(item(fview({ canFound: false, sides: [] }))).toBeUndefined();
+    // A wave 18 crews story: unchanged.
+    expect(item(view({ sides: SIDES }))?.label).toBe("Sides & crews");
+    expect(startSidesOf(view({ factions: [], sides: [] }))).toEqual({ sides: false, factions: false });
   });
   it("Start → Factions (the label), Sides & crews outside faction mode", () => {
     const base = { name: "Winamp", faction: null, interactions: [], sides: true, people: false, open: { act: noop, sides: noop, people: noop, notifications: noop, help: noop, leave: noop } };
