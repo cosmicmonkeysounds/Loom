@@ -148,6 +148,8 @@ export interface PopOutsApi {
   /** Deferred with Later, newest first. */
   tray: PopOutSpec[];
   trayEntries: PopEntry[];
+  /** Every pop-out the store holds, waiting or deferred (the booth reconciles them with the night). */
+  held: PopEntry[];
   /** = Later. */
   defer: (key: string) => void;
   /** Tray → the front of the queue, shown now. */
@@ -166,6 +168,7 @@ const NOOP_API: PopOutsApi = {
   queued: 0,
   tray: [],
   trayEntries: [],
+  held: [],
   defer: () => {},
   restore: () => {},
   raise: () => {},
@@ -234,6 +237,7 @@ export function usePopOuts(): PopOutsApi {
     queued: queuedOf(st, entry),
     tray: st.tray.map((x) => x.spec),
     trayEntries: st.tray,
+    held: [...st.live, ...st.tray],
     defer: (key) => apply(store, { type: "defer", key, at: Date.now() }),
     restore: (key) => apply(store, { type: "restore", key }),
     raise: (spec) => apply(store, { type: "raise", spec }),
@@ -323,12 +327,17 @@ export function PopOut({ entry, api, docked = false }: { entry: PopEntry; api: P
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spec.key]);
-  // Retires itself after a while on screen untouched.
+  // Retires itself after a while on screen untouched. The api object is
+  // new every render, so it is read through a ref: depending on it
+  // restarted the timer on every render and a TAKEN pop-out never left
+  // (BN-F2).
+  const apiRef = useRef(api);
+  apiRef.current = api;
   useEffect(() => {
     if (spec.autoRetireMs === undefined) return;
-    const t = window.setTimeout(() => api.retire(spec.key), spec.autoRetireMs);
+    const t = window.setTimeout(() => apiRef.current.retire(spec.key), spec.autoRetireMs);
     return () => window.clearTimeout(t);
-  }, [spec.key, spec.autoRetireMs, api]);
+  }, [spec.key, spec.rev, spec.autoRetireMs]);
 
   const runAction = (a: PopAction) => {
     if (busy) return;
