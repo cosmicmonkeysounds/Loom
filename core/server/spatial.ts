@@ -720,6 +720,18 @@ export class SpatialHub {
     return this.byTokenLive(token) !== null;
   }
 
+  /** The voice link's view of a token's session: its public id, and whether
+   *  it is in the simulation yet (a parked one is heard by nobody). */
+  voiceSessionFor(token: string | undefined): { id: string; joined: boolean } | null {
+    const s = this.byTokenLive(token);
+    return s === null ? null : { id: s.id, joined: s.joined };
+  }
+
+  /** Is the session with this public id still live (claimed or parked)? */
+  hasSession(id: string): boolean {
+    return this.sessions.has(id);
+  }
+
   private byTokenLive(token: string | undefined): Session | null {
     if (token === undefined || token === "") return null;
     const id = this.byToken.get(token);
