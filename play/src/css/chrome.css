@@ -65,7 +65,10 @@
 :root[data-theme="aol97"] .ico .ico-flag { display: inline; }
 :root[data-theme="aol97"] .ico .ico-menu { display: none; }
 /* on a caption-blue (attention) button the outline turns white */
-.taskbar-btn.attn .ico .ico-line, .start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
+/* split, never one list: Safari before 15.4 drops a whole rule list that
+   names :focus-visible (OD-F6) */
+.taskbar-btn.attn .ico .ico-line { stroke: var(--white); }
+.start-menu-item:focus-visible .ico .ico-line { stroke: var(--white); }
 @media (hover: hover) { .start-menu-item:hover .ico .ico-line { stroke: var(--white); } }
 
 /* ── the frame ─────────────────────────────────────────────────────────── */
@@ -221,7 +224,8 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 .start-menu-icon { flex: 0 0 24px; display: inline-flex; justify-content: center; text-align: center; font-size: 18px; }
 .start-menu-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* an `arm: true` story button, armed: the director phone's look */
-.start-menu-item.armed, .start-menu-item.armed:hover, .start-menu-item.armed:focus-visible { background: var(--black); color: var(--highlight); box-shadow: inset 0 0 0 3px var(--highlight); }
+.start-menu-item.armed, .start-menu-item.armed:hover { background: var(--black); color: var(--highlight); box-shadow: inset 0 0 0 3px var(--highlight); }
+.start-menu-item.armed:focus-visible { background: var(--black); color: var(--highlight); box-shadow: inset 0 0 0 3px var(--highlight); }
 .start-menu-label .arm-line { display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; margin-top: 2px; }
 .start-menu-item + .start-menu-item[class*="danger"] { border-top: 1px solid var(--line); }
 .start-menu-confirm { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--face-hi); box-shadow: var(--sunken); }
@@ -460,6 +464,10 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 .mission-countdown.urgent { color: var(--bad); }
 .mission-brief { margin: 0; font: 15px/1.4 var(--chat-font); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
 .mission-brief.open { display: block; }
+/* a small phone keeps Mission's buttons above the fold (GUEST-SPEC §2.3, OD-F3) */
+@media (max-width: 379px) {
+  .mission-brief { -webkit-line-clamp: 3; }
+}
 .mission-more { align-self: flex-end; }
 .mission-todos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .mission-todos.short { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }

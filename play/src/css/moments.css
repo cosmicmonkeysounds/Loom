@@ -467,3 +467,6 @@
   .moments-big-fill { animation-timing-function: steps(1, end); }
   .moments-gag-paper { animation: none; }
 }
+
+/* fix round (OD-F8): the Notifications caption keeps its 🔔 beside its word */
+.moments-notif .w95-title { display: inline-flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
