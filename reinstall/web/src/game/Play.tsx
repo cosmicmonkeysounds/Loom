@@ -100,6 +100,8 @@ export function Play({
       game.current = null;
     };
     // `king` only seeds the game: the stream keeps it current after that.
+    // A new `config` or `sfx` object restarts the game: hosts keep both
+    // stable (`flow.tsx`'s header).
   }, [house, houseVersion, assignment, base, config, sfx]);
 
   // Held while something covers the game; let go when it lifts.

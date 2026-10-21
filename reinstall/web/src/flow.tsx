@@ -14,7 +14,14 @@
 //! `"auto"` asks `firstStep` (the tent laptop: straight to Play here when no
 //! headset is online, once a station poll has answered). The begin never
 //! sends `force`: the server's marked-only gate decides (wave 16, R16).
-
+//!
+//! **Keep `config` and `sfx` referentially stable** across the host's
+//! renders. `Play` restarts the game when either is a new object (it drops
+//! the walk and re-claims the session), and `useStations` / `useNightEnded`
+//! re-subscribe on a new `config`. A host that re-renders on every poll (the
+//! tent laptop's terminal) builds them once — `useMemo(() => createSfx(
+//! soundOutput), [])`, disposed on unmount, and a memoised config — never
+//! inline in the JSX.
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -67,6 +74,7 @@ export function ReinstallFlow({
   onPlaying,
   onExit,
 }: {
+  /** Stable across renders (see the header): a new object restarts the game. */
   config: ReinstallConfig;
   program: Program;
   /** An ending has played: the reinstallation is a party favour. */
@@ -74,6 +82,7 @@ export function ReinstallFlow({
   stations: FlowStations;
   /** This browser has WebGL2 (it can play here). */
   canDraw: boolean;
+  /** Stable across renders (see the header): a new object restarts the game. */
   sfx: Sfx;
   /** Something covers the game (a story overlay on the tent laptop): the
    *  walk is held — the leash paused, input ignored, the pose kept alive. */
