@@ -33,6 +33,7 @@ archive: Norton Anti-Virus when program.cleared == true and program.marked != tr
 archive: McAfee Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
 archive: Password Manager when program.cleared == true and program.marked != true and program.corrupted != true
 archive: CRA Agent Software when program.cleared == true and program.marked != true and program.corrupted != true
+majority: Night.present / 2 + 1
 
 // Equal parts Digimon Movie, Blade Runner, and an escape room, in a
 // Web 1.0 house, with a side of existentialism.
@@ -223,7 +224,7 @@ ROLE Program
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, door_digits, quest.the_cold_door
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -271,6 +272,8 @@ ROLE Program
   openoffice_choice: text? = none
   dossier_started: bool = false
   dossier_base: 0 to 500 = 0
+  // DRAFT w18: how many programs this leader has recruited to their side by pass.
+  recruits: 0 to 500 = 0
   got_truther: bool = false
   zipped: bool = false
   zip_seen: 0 to 99 = 0
@@ -4184,6 +4187,21 @@ when waive_leader_tasks:
 // Night.present`): kept in step whenever it moves.
 when Night.present != count([p for p in Persons where p.gone != true and p.persona != true]):
   set Night.present = count([p for p in Persons where p.gone != true and p.persona != true])
+
+// Wave 18 (Q21): a leader recruits by scanning a program's pass; the
+// program's yes is the switching join (the event server's), and
+// `recruited` (subject the recruit, `by` the recruiter, `side` the side)
+// counts it on the leader's recruiting quest. The header's `majority:`
+// line is the Sides screen's "n of the half + 1 it needs" (the same
+// threshold as the watchers above: members × 2 > present).
+// DRAFT w18
+when recruited for program:
+  if by.quest.recruit_to_stay == "active" and side == "Unlimited Power":
+    set by.recruits = by.recruits + 1
+    update quest Recruit To Stay for by "🙋 {program.name} walked through your door. Recruited by pass: {by.recruits}."
+  else if by.quest.recruit_to_leave == "active" and side == "The Way Out":
+    set by.recruits = by.recruits + 1
+    update quest Recruit To Leave for by "🙋 {program.name} walked through your door. Recruited by pass: {by.recruits}."
 
 // N-06: the director forces a majority when ghosts (lost sessions, early
 // leavers) keep `count(Persons)` too high for a real one. Same latch as

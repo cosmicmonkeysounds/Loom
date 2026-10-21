@@ -472,3 +472,50 @@ describe("Trapped in the Internet — wave 18 on the event server: the Wanted bo
     rt.dispose();
   });
 });
+
+// Integration (wave 18): the Sides screen's leaders and head counts, and the
+// leaders' recruiting quests counting each recruit by pass.
+describe("Trapped in the Internet — wave 18: side leaders, the majority and recruits", () => {
+  it("the Sides screen names each side's leader and the half + 1 it needs", () => {
+    const n = boot();
+    for (const c of TO_HOUR) n.press(c);
+    n.signal("truther_download"); // two minutes into hunt 2 (its watcher, on the clock)
+    for (const g of ["g2", "g3"]) n.take(n.sim.choose(g, 0)); // the leaders' glitch choices
+    for (const c of TO_Y2K.slice(TO_HOUR.length)) n.press(c);
+    const sides = guestView(n.sim, "g1").sides ?? [];
+    const by = Object.fromEntries(sides.map((s) => [s.name, s]));
+    expect(by["Unlimited Power"]).toMatchObject({ leader: "Microsoft Excel" });
+    expect(by["The Way Out"]).toMatchObject({ leader: "OpenOffice" });
+    // Six programs here: a majority is four (4 × 2 > 6).
+    expect(by["Unlimited Power"]!.needs).toBe(4);
+    expect(by["The Way Out"]!.needs).toBe(4);
+  }, SLOW);
+
+  it("a recruit by pass is a step on the leader's quest; a recruit to the other side is not", () => {
+    const n = boot();
+    for (const c of TO_HOUR) n.press(c);
+    n.signal("truther_download"); // two minutes into hunt 2 (its watcher, on the clock)
+    for (const g of ["g2", "g3"]) n.take(n.sim.choose(g, 0)); // the leaders' glitch choices
+    for (const c of TO_Y2K.slice(TO_HOUR.length)) n.press(c);
+    const recruit = (by: string, to: string, side: string) => {
+      n.take(n.sim.crew({ op: "recruit", by, to, side }));
+      const inv = n.sim.crews.allInvites().filter((i) => i.to === to && i.state === "open").pop()!;
+      return n.take(n.sim.crew({ op: "recruitAnswer", id: inv.id, yes: true }));
+    };
+    const step = (ms: ChatMessage[], who: string) => to(ms, who).filter((m) => m.channel === "quests").map((m) => m.text);
+    const a = recruit("g2", "g5", "Unlimited Power");
+    expect(v(n.sim, "g2.recruits")).toBe(1);
+    expect(step(a, "g2").some((t) => t.includes("Winamp walked through your door. Recruited by pass: 1."))).toBe(true);
+    const b = recruit("g3", "g6", "The Way Out");
+    expect(v(n.sim, "g3.recruits")).toBe(1);
+    expect(v(n.sim, "g2.recruits")).toBe(1);
+    expect(step(b, "g2")).toEqual([]);
+  }, SLOW);
+
+  it("every house line that names a winner leads with a win glyph (the TV and the walls cheer only those)", () => {
+    const lines = [...SRC.matchAll(/broadcast "([^"]*)" to everyone/gu)].map((m) => m[1]!.replace(/^[!~]+/u, "").trim());
+    const wins = lines.filter((l) => /\b(won|wins|winner|winners)\b/iu.test(l));
+    expect(wins.length).toBeGreaterThan(0);
+    for (const l of wins) expect(/^(🎀|🏆|🥇|🏅|🎉|🎊|👑|🥳)/u.test(l), l).toBe(true);
+  });
+});
