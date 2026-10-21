@@ -621,7 +621,7 @@ the stored config, a ⚙ checkbox — no URL hint): every gesture while not full
 screen asks again (`requestFullscreen` / `webkitRequestFullscreen`; Fully
 Kiosk's JS interface hides the bars where it has the calls). State on
 `<html data-fullscreen>` and the poll's `fs=1|0` (no `fs` when a director
-turned it off or the browser can't; the server doesn't read `fs` yet). The TV's Chrome keeps
+turned it off or the browser can't; Run → Terminals shows ⛶ on `fs=0`). The TV's Chrome keeps
 `--kiosk` — the only no-gesture route.
 
 **Cutscenes** (`src/cutscene/`). A scene (`types.ts` `SceneDef`) is started
