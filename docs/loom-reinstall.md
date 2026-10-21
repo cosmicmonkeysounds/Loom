@@ -98,13 +98,22 @@ interface Stair { id: string; from: string; to: string; rect: [number, number, n
 //   inside both rooms' footprints. The ramp rises toward `up`: from `from`'s floor elevation at the
 //   opposite edge to `to`'s floor elevation at the `up` edge. The rect is a hole in the upper floor
 //   (and the lower room's ceiling); rails guard the hole on the upper floor on the three non-`up` sides.
-interface TerminalSpot { id: string; name: string; room: string; pos: Vec3; yaw: number; pitch?: number; fov?: number }
+interface TerminalSpot {
+  id: string; name: string; room: string; pos: Vec3; yaw: number; pitch?: number; fov?: number;
+  view?: "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";   // TERMINAL_VIEWS; unset: auto
+  speaks?: boolean;             // a room terminal (speaks its room's LOCATION's lines); unset: false
+  voice?: boolean;              // the voice link (§2.4); unset: on, except a terminal in the spawn room (off) — voiceOn
+}
 //   pos = the screen's centre on the real wall; yaw = the direction the screen faces (into the room);
 //   pitch = the mount camera's pitch, degrees (+ = up; unset: the terminal's default, a little down);
 //   fov = the mount camera's VERTICAL field of view in degrees, exactly three.js's PerspectiveCamera.fov
 //   (Godot: Camera3D.fov with the default keep_aspect = KEEP_HEIGHT); unset = DEFAULT_SPOT_FOV = 70.
 //   The horizontal fov depends on the screen: horizontalFov(vfov, aspect = 16/10) =
 //   2·atan(tan(vfov/2)·aspect) — ≈ 96.5° for the default on a 16:10 wall tablet.
+//   view = what a tablet set up on this spot shows; speaks = it sleeps until its room's LOCATION is open
+//   to everyone, then speaks the lines said there. voice: true → in the voice link, false → out; unset →
+//   in, unless `room === spawn.room` (the tent / the shed: the tent laptop and the headsets). The server
+//   refuses and never routes a spot that is out; both show maps also set `voice: false` on `tent`.
 interface DuckSpot { id: string; room: string; pos: Vec3 }   // pos = where the duck sits (its feet)
 interface Prop {
   id: string; room: string; kind: "box" | "cylinder" | "screen" | "label" | "king";
