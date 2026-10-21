@@ -295,7 +295,7 @@ describe("is the router listening? (LA-4)", () => {
     t += AUDIO_ROUTER_ONLINE_MS + 1;
     expect((await view(rt)).router.online).toBe(false);
     // Parked on a long poll: online however long it waits.
-    const parked = view(rt, `?after=${v.version}&tests=99&wait=5&router=1`);
+    const parked = view(rt, `?after=${v.version}&tests=1&wait=5&router=1`); // the one test above
     await new Promise((r) => setTimeout(r, 20));
     t += AUDIO_ROUTER_ONLINE_MS * 3;
     expect((await view(rt)).router.online).toBe(true);
@@ -381,6 +381,23 @@ describe("stop all house sounds (wave 18b, Q7)", () => {
     expect(Date.now() - t0).toBeLessThan(1000);
     const seen = view(rt, `?after=${v.version}&stops=1&wait=0.05`);
     expect((await seen).stops).toHaveLength(1);
+    rt.dispose();
+  });
+
+  it("a cursor from before a server restart is stale: the poll answers at once", async () => {
+    const rt = runtime({ audio: AUDIO_TEXT });
+    const v = await view(rt);
+    // The router still holds the old process's cursors (stops=7, tests=4).
+    let t0 = Date.now();
+    expect((await view(rt, `?after=${v.version}&stops=7&wait=5`)).stops).toEqual([]);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    t0 = Date.now();
+    expect((await view(rt, `?after=${v.version}&tests=4&wait=5`)).tests).toEqual([]);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    // A cursor this hub issued still waits.
+    await call(rt, "POST", "/api/mod/audio/stop", {});
+    expect(rt.audio.moved(v.version, null, 1)).toBe(false);
+    expect(rt.audio.moved(v.version, null, 0)).toBe(true);
     rt.dispose();
   });
 

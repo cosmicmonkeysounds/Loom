@@ -356,11 +356,14 @@ export class AudioHub {
     return this.now();
   }
 
-  /** Is anything newer than the poller's view? */
+  /** Is anything newer than the poller's view? A cursor past this hub's
+   *  own counter was issued by an earlier process (a server restart counts
+   *  from 1 again): stale, so the poll answers at once with today's list
+   *  instead of holding a stop for the whole long poll. */
   moved(after: string, testsAfter: number | null, stopsAfter: number | null = null): boolean {
     if (this.current().version !== after) return true;
-    if (testsAfter !== null && this.tests().some((t) => t.seq > testsAfter)) return true;
-    return stopsAfter !== null && this.stops().some((s) => s.seq > stopsAfter);
+    if (testsAfter !== null && (testsAfter > this.testSeq || this.tests().some((t) => t.seq > testsAfter))) return true;
+    return stopsAfter !== null && (stopsAfter > this.stopSeq || this.stops().some((s) => s.seq > stopsAfter));
   }
 
   /** Resolve on the next change (a save, a project snapshot, a test) or
