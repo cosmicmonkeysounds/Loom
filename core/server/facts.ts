@@ -24,7 +24,7 @@ import { readFileSync } from "node:fs";
 import { nearMatch, spellOut } from "../src/answer-match.ts";
 import { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, type FactVerdictKind, type FactsFile } from "../src/facts.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
-import type { ScreenResultQuestion } from "./routes/screen.ts";
+import type { ScreenOutcome, ScreenResultQuestion, ScreenRuled } from "./routes/screen.ts";
 
 export { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, validateFacts, factsProblems } from "../src/facts.ts";
 export type { FactsFile } from "../src/facts.ts";
@@ -575,6 +575,9 @@ export class FactsWatch {
 
 // ───────────────────────── the screens' results (wave 18b) ─────────────────────────
 
+/** Rows (and liars) per question on the TV; `more` / `liarsMore` beyond. */
+export const MAX_RESULT_ROWS = 40;
+
 /** What `screenResultsOf` builds: a reading (`read`, the ids the story
  *  read) or the verdict (`verdict`, every book question with its truth). */
 export interface ScreenResultsOptions {
@@ -592,9 +595,69 @@ export interface ScreenResultsOptions {
  * `ScreenResults` for what each kind holds.
  */
 export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly string[] | null, o: ScreenResultsOptions): ScreenResultQuestion[] {
-  void view;
-  void book;
-  void ids;
-  void o;
-  return [];
+  const byId = new Map(view.questions.map((q) => [q.id, q]));
+  const want = ids === null ? book.questions.map((k) => k.id) : book.questions.map((k) => k.id).filter((id) => ids.includes(id));
+  const out: ScreenResultQuestion[] = [];
+  for (const id of want) {
+    const n = book.questions.findIndex((k) => k.id === id) + 1;
+    const key = book.questions[n - 1]!;
+    const filings = byId.get(id)?.filings ?? [];
+    const counts = { filed: filings.length, accepted: 0, guesses: 0, uncounted: 0 };
+    for (const f of filings) {
+      const out = screenOutcome(f);
+      if (out === "a") counts.accepted += 1;
+      else if (out === "g") counts.guesses += 1;
+      else if (out === "u") counts.uncounted += 1;
+    }
+    const consensus = tallyFilings(filings).consensus;
+    if (o.kind === "verdict") {
+      const q: ScreenResultQuestion = { id, n, round: key.round, ...counts, consensus, answer: o.tv ? key.answer : null };
+      const truth = o.truths?.get(id);
+      if (truth !== undefined) q.truth = truth;
+      if (o.tv) {
+        // O2: the programs who lied — a final lie (the house, a ruling or a
+        // director), or a pending filing proposed a lie. Names only.
+        const liars = filings.filter((f) => f.final === "lie" || (f.final === null && f.verdict === "lie"));
+        q.liars = liars.slice(0, MAX_RESULT_ROWS).map((f) => [clipText(f.name, 24), rulingMadeIt(f) && f.final === "lie" ? 1 : 0]);
+        if (liars.length > MAX_RESULT_ROWS) q.liarsMore = liars.length - MAX_RESULT_ROWS;
+      }
+      out.push(q);
+      continue;
+    }
+    const q: ScreenResultQuestion = { id, n, round: key.round, text: clipText(key.text, 140), ...counts, consensus, answer: consensus ? key.answer : null };
+    if (o.tv) {
+      q.rows = filings.slice(0, MAX_RESULT_ROWS).map((f) => [clipText(f.name, 24), clipText(f.answer, 40), f.confidence >= CONFIDENCE_MAX ? 1 : 0, screenOutcome(f), screenRuled(f)]);
+      if (filings.length > MAX_RESULT_ROWS) q.more = filings.length - MAX_RESULT_ROWS;
+    }
+    out.push(q);
+  }
+  return out;
+}
+
+/** One line, at most `n` characters (newlines and runs of space → one space). */
+function clipText(s: string, n: number): string {
+  const one = s.replace(/\s+/gu, " ").trim();
+  return Array.from(one).slice(0, n).join("");
+}
+
+/** A filing's public outcome (`ScreenOutcome`): never accurate vs lie. */
+export function screenOutcome(f: FactsFiling): ScreenOutcome {
+  if (f.final === null) return "p";
+  if (f.final === "accurate" || f.final === "lie") return "a";
+  if (f.final === "uncertain") return "g";
+  return f.verdict === "uncertain" ? "g" : "u"; // marked
+}
+
+/** Did the `judge:` character's ruling set this filing's final (not a
+ *  director's later verdict)? */
+function rulingMadeIt(f: FactsFiling): boolean {
+  return f.ruling !== undefined && f.final !== null && f.final !== "marked" && f.by === f.ruling.by;
+}
+
+/** Trabolta's stamp on a filing (`ScreenRuled`, O4 / D10). */
+export function screenRuled(f: FactsFiling): ScreenRuled {
+  if (f.asking === true && f.final === null) return "?";
+  if (!rulingMadeIt(f)) return "";
+  if (f.confidence >= CONFIDENCE_MAX) return "r"; // held until the verdict (D11)
+  return f.ruling!.same ? "s" : "n";
 }

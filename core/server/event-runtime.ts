@@ -107,6 +107,7 @@ import {
   parseFactsBook,
   readFactsFile,
   rulingOfArgs,
+  screenResultsOf,
   worldReader,
   type FactVerdict,
   type FactsBook,
@@ -4360,6 +4361,15 @@ export class EventRuntime {
         // Programs walking the simulation right now: a house terminal shows
         // them even while the character is hidden or asleep.
         () => this.spatial.players().length,
+        {
+          // Wave 18b: the facts ledger's public results, built only while
+          // a reading's slide is up or the verdict's window is open.
+          results: (q) => {
+            const book = this.factsBook();
+            const view = this.factsView();
+            return book === null || view === undefined ? [] : screenResultsOf(view, book, q.ids, { kind: q.kind, tv: q.tv, truths: q.truths });
+          },
+        },
       );
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---

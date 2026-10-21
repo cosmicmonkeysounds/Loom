@@ -189,7 +189,7 @@ export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirro
  *  The finale's waits are among them (wave 17): the bob until 📄, the advice
  *  poll until its tally, Grok Prom and the banishment until the story's next
  *  screen cue — each one's scene keeps moving the whole time. */
-const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish"]);
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally"]);
 export function slidePersists(value: string): boolean {
   return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }
@@ -280,7 +280,11 @@ export const SCREEN_TEXT_ONLY: readonly string[] = ["Sandy"];
 /** At most this many lines per answer (the newest). A whole scripted beat lands
  *  in one poll, so this is generous; a TV that was *away* resyncs on its own. */
 export const MAX_VOICE_LINES = 40;
-const MAX_VOICE_TEXT = 600;
+/** Longest line carried (wave 18b: a reading of every filing is one line). */
+export const MAX_VOICE_TEXT = 4000;
+/** At most this many characters in one answer's lines: past it the oldest
+ *  are dropped (a TV that was away resyncs on its own). */
+export const MAX_VOICE_BLOCK = 16_000;
 
 /**
  * The lines said by a speaker `speaks` admits in `channel` after `after`
@@ -298,11 +302,16 @@ export function voiceLinesOf(
   const head = messages.length === 0 ? -1 : messages[messages.length - 1]!.seq;
   const lines: ScreenVoiceLine[] = [];
   if (after === null || after >= head || channel === "") return { head, lines };
+  let total = 0;
   for (let i = messages.length - 1; i >= 0 && lines.length < max; i--) {
     const m = messages[i]!;
     if (m.seq <= after) break;
     if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !speaks(m.from)) continue;
-    lines.push({ seq: m.seq, from: m.from, text: m.text.slice(0, MAX_VOICE_TEXT), beat: m.beat ?? null });
+    const text = m.text.slice(0, MAX_VOICE_TEXT);
+    // Newest first: past the block's cap, the older lines are dropped.
+    if (total + text.length > MAX_VOICE_BLOCK && lines.length > 0) break;
+    total += text.length;
+    lines.push({ seq: m.seq, from: m.from, text, beat: m.beat ?? null });
   }
   return { head, lines: lines.reverse() };
 }
@@ -701,8 +710,33 @@ export const RESULTS_TRUTH_VERB = "fact_truth";
 export const RESULTS_SLIDES: readonly string[] = ["hunt_results", "tally"];
 /** How long the verdict stays on the screens after its first `fact_truth`. */
 export const RESULTS_VERDICT_MS = 120_000;
-/** Rows (and liars) per question, TV only; `more` / `liarsMore` beyond. */
-export const MAX_RESULT_ROWS = 40;
+export { MAX_RESULT_ROWS } from "../facts.ts";
+
+/** `do fact_truth`'s status as the screens say it: `accurate` (or `true`)
+ *  → "true", `lie` → "lie", anything else → "none". */
+export function truthStatusOf(raw: string): "true" | "lie" | "none" {
+  const v = raw.trim().toLowerCase();
+  return v === "accurate" || v === "true" ? "true" : v === "lie" ? "lie" : "none";
+}
+
+/** The key ids a `do fact_read …` names (`H1 H2`, commas allowed). */
+export function resultIdsOf(args: string): string[] {
+  const out: string[] = [];
+  for (const id of args.split(/[\s,]+/u)) if (/^[A-Za-z0-9_-]{1,16}$/u.test(id) && !out.includes(id)) out.push(id);
+  return out;
+}
+
+/** What the runtime builds a results block from (`screenResultsOf` over
+ *  the facts ledger). Empty when there is no key in force. */
+export type ScreenResultsSource = (q: { kind: "read" | "verdict"; ids: readonly string[] | null; tv: boolean; truths: ReadonlyMap<string, "true" | "lie" | "none"> }) => ScreenResultQuestion[];
+
+/** The runtime's extras for one poll (wave 18b), all optional. */
+export interface ScreenPollExtras {
+  /** The facts ledger's public results (gated here: see `ScreenResults`). */
+  results?: ScreenResultsSource;
+  /** Is this map spot on `audio.json`'s `announce.terminals` (Q8)? */
+  spotAnnounce?: (spot: string) => boolean;
+}
 
 /** A filing's public outcome on a screen: `a` accepted (an accurate filing
  *  or a confident lie — the screens never tell them apart before ⚖), `g` a
@@ -993,6 +1027,12 @@ export class ScreenWatch {
   /** The runtime's extra device signals (a map's own king signals) and
    *  quiet ones (the facts book's confirm events), read on every fold. */
   private readonly signalExtras: (() => { devices?: Iterable<string>; quiet?: Iterable<string> }) | undefined;
+  /** Wave 18b: the last `do fact_read` (its ids), the verdict's truths
+   *  (`do fact_truth`) and when its window opened; `resultSeq` bumps on each. */
+  private read: { seq: number; at: number; ids: string[] } | null = null;
+  private readonly truths = new Map<string, "true" | "lie" | "none">();
+  private truthAt: { seq: number; at: number } | null = null;
+  private resultSeq = 0;
   /** Per target, the chart slide on screen and when it went up (`revealAt`). */
   private readonly chartUp = new Map<ScreenTarget, { slide: string; at: number }>();
   /** The chart call-out vars this sim's story mentions (null = not read yet). */
@@ -1041,6 +1081,10 @@ export class ScreenWatch {
       this.drawn = null;
       this.chartUp.clear();
       this.chartVars = null;
+      this.read = null;
+      this.truths.clear();
+      this.truthAt = null;
+      this.resultSeq = 0;
     }
     if (sim === null) return false;
     const events = sim.log.all();
@@ -1075,6 +1119,22 @@ export class ScreenWatch {
         }
       }
       if (e.type !== "directive") continue;
+      // Wave 18b: the story publishes results (a reading, the verdict).
+      if (e.verb === RESULTS_READ_VERB) {
+        const ids = resultIdsOf(e.args);
+        if (ids.length > 0) this.read = { seq: ++this.resultSeq, at, ids };
+        continue;
+      }
+      if (e.verb === RESULTS_TRUTH_VERB) {
+        const [id, status] = e.args.trim().split(/\s+/u);
+        if (id !== undefined && /^[A-Za-z0-9_-]{1,16}$/u.test(id)) {
+          this.truths.set(id, truthStatusOf(status ?? ""));
+          // One window per verdict: a truth inside the open window keeps it.
+          const open = this.truthAt !== null && this.truthAt.at > 0 && at - this.truthAt.at < RESULTS_VERDICT_MS;
+          this.truthAt = { seq: ++this.resultSeq, at: open ? this.truthAt!.at : at };
+        }
+        continue;
+      }
       if (e.verb === ANNOUNCE_VERB) {
         const text = announceTextOf(e.args);
         if (text !== null) {
@@ -1169,6 +1229,7 @@ export class ScreenWatch {
     messages: readonly ChatMessage[] = [],
     declared: SimModel | null = null,
     king: ScreenKing | null = null,
+    extras: ScreenPollExtras = {},
   ): ScreenState {
     const first = this.sync(sim);
     this.note(who);
@@ -1297,6 +1358,9 @@ export class ScreenWatch {
       return v === "true" ? true : v === "false" ? false : null;
     };
     const awardUp = program.slide?.kind === "slide" && program.slide.value.startsWith("award_");
+    const slideUp = program.slide?.kind === "slide" ? program.slide.value : null;
+    const bobbingUp = slideUp === "bobbing";
+    const summaryUp = slideUp === "recount" || slideUp === "purgatory";
     const awardValue = awardUp ? named(SCREEN_NIGHT_VARS.award_value) : null;
     const night: ScreenNight = {
       screen: peek("Night.screen"),
@@ -1314,11 +1378,27 @@ export class ScreenWatch {
       ended: flag(SCREEN_NIGHT_VARS.ended),
       collection_complete: flag(SCREEN_NIGHT_VARS.collection_complete),
       scenario: ((n) => (n !== null && n >= 1 && n <= 4 ? n : null))(num(SCREEN_NIGHT_VARS.scenario)),
-      most_trusted: null,
-      least_trusted: null,
-      facts_accepted: null,
-      first_reinstall: null,
+      most_trusted: bobbingUp ? named(SCREEN_NIGHT_VARS.most_trusted) : null,
+      least_trusted: bobbingUp ? named(SCREEN_NIGHT_VARS.least_trusted) : null,
+      facts_accepted: summaryUp ? num(SCREEN_NIGHT_VARS.facts_accepted) : null,
+      first_reinstall: summaryUp ? named(SCREEN_NIGHT_VARS.first_reinstall) : null,
     };
+
+    // Wave 18b: the published results — the verdict for its window, else a
+    // reading while the reading's slide is up on this target.
+    let results: ScreenResults | undefined;
+    if (extras.results !== undefined && sim !== null) {
+      const now = this.now();
+      const tv = target === "tv";
+      if (this.truthAt !== null && this.truthAt.at > 0 && now - this.truthAt.at < RESULTS_VERDICT_MS) {
+        const questions = extras.results({ kind: "verdict", ids: null, tv, truths: this.truths });
+        if (questions.length > 0) results = { kind: "verdict", seq: this.truthAt.seq, at: this.truthAt.at, questions };
+      } else if (this.read !== null && slideUp !== null && RESULTS_SLIDES.includes(slideUp)) {
+        const questions = extras.results({ kind: "read", ids: this.read.ids, tv, truths: this.truths });
+        if (questions.length > 0) results = { kind: "read", seq: this.read.seq, at: this.read.at, questions };
+      }
+    }
+    const spot = who.spot !== "" && extras.spotAnnounce !== undefined ? { announce: extras.spotAnnounce(who.spot) } : undefined;
 
     return {
       now: this.now(),
@@ -1347,6 +1427,8 @@ export class ScreenWatch {
       identifyLeft,
       announceEpoch: `${this.boot}.${this.sims}`,
       king,
+      ...(results !== undefined ? { results } : {}),
+      ...(spot !== undefined ? { spot } : {}),
     };
   }
 }
@@ -1369,6 +1451,7 @@ export function handleScreenGet(
   king: () => ScreenKing | null = () => null,
   showClock: () => ShowClock | undefined = () => undefined,
   reinstalling: () => number = () => 0,
+  extras: ScreenPollExtras = {},
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
@@ -1393,7 +1476,7 @@ export function handleScreenGet(
   const named = voice !== "" || room !== "";
   const clock = showClock();
   // The show clock (wave 13 K2) rides along for the terminals; nothing reads it yet.
-  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()), ...(clock !== undefined ? { showClock: clock } : {}), reinstalling: reinstalling() });
+  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king(), extras), ...(clock !== undefined ? { showClock: clock } : {}), reinstalling: reinstalling() });
   return true;
 }
 
