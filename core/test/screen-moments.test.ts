@@ -8,7 +8,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import { MOMENT_RING, ScreenWatch, VERDICT_MS, momentOf, pickNamesOf, secretMomentNames, type ScreenMoment } from "../server/routes/screen.ts";
+import { MOMENT_RING, ScreenWatch, VERDICT_MS, momentOf, momentSignalsOf, pickNamesOf, secretMomentNames, type ScreenMoment } from "../server/routes/screen.ts";
+import { scenarioSource } from "../examples/load.ts";
 import { notePress } from "../server/views.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
@@ -301,12 +302,58 @@ describe("signals are allowlisted", () => {
     sim.signal("reinstallation begun", "g1");
     sim.signal("lights");
     t = 11_000;
+    // A checkmate never shows (it would hint who holds the door code).
     expect(w.poll(sim, WHO, () => false).moments.map((m) => [m.name, m.who])).toEqual([
       ["king hit", "Excel"],
       ["king struck", "Excel"],
-      ["chess won", "Excel"],
       ["reinstallation begun", "Excel"],
     ]);
+  });
+
+  it("a checkmate is never a moment, by the device or by the admin cue", () => {
+    const sim = Sim.fromSources(PRESSES + "\nINTERACTION chess_won\n  label: ♟ Chess won\n  who: admin\n");
+    sim.createPerson("g1", "Excel", "Program");
+    const s = watch(sim);
+    s.look();
+    sim.signal("chess won", "g1");
+    notePress(sim, sim.signal("chess_won", "g1"));
+    sim.signal("chess lost", "g1");
+    expect(s.look().map((m) => m.name)).toEqual(["chess lost"]);
+    expect(JSON.stringify(s.poll())).not.toContain("chess won");
+  });
+
+  it("an admin cue whose rule writes a secret character's var never shows its name", () => {
+    const story = `${STORY}
+INTERACTION force_majority_leave
+  label: 🗳 Force the majority: leave
+  who: admin
+
+when force_majority_leave:
+  set Vault.majority = "leave"
+  fire majority_reached
+
+when majority_reached:
+  -> Majority Reached
+
+== Majority Reached
+  setting: The Desktop
+Narrator: Nobody announces it.
+`;
+    const sim = Sim.fromSources(story);
+    const s = watch(sim);
+    s.look();
+    notePress(sim, sim.signal("force_majority_leave"));
+    const ms = s.look();
+    expect(ms.map((m) => [m.kind, m.name])).toEqual([["beat", "Majority Reached"]]);
+  });
+
+  it("the show: a forced majority puts no side on the screens; the bottle's verdicts are 🗣 / 🙅 / 🎩 only", () => {
+    const sim = Sim.fromSources(scenarioSource("trapped-in-the-internet"));
+    const sig = momentSignalsOf(sim.model);
+    expect(sig.admin.has("force majority leave")).toBe(false);
+    expect(sig.admin.has("force majority stay")).toBe(false);
+    expect(sig.admin.has("introduce trabolta")).toBe(true);
+    expect([...(sig.verdicts ?? [])].sort()).toEqual(["chose dare", "truth answered", "truth refused"]);
   });
 
   it("pickNamesOf reads a draw and its else", () => {
@@ -380,6 +427,20 @@ INTERACTION truth_refused
 INTERACTION scan_ok
   label: ✅ Scan OK
   who: performer
+
+INTERACTION accuse
+  label: 👁 Accuse
+  who: performer
+
+INTERACTION fact_lie
+  label: 📝 Filed fact: confident lie
+  who: performer
+
+when accuse for program:
+  set program.accused = true
+
+when fact_lie for program:
+  set program.lies += 1
 
 when spin:
   set Night.bottle_open = true
@@ -455,6 +516,18 @@ describe("a draw's verdict", () => {
     // The next draw: a press the story turns down (only a # hosts line) is no verdict.
     spin();
     fresh();
+    press("truth_answered", "g1", "Clippy");
+    expect(fresh()).toEqual([["truth_answered", "Excel"]]);
+  });
+
+  it("only a declared verdict (🗣 / 🙅 / 🎩) stands: another booth press the story takes about the pick neither shows nor spends the draw", () => {
+    const { press, spin, fresh } = night();
+    spin();
+    fresh();
+    press("accuse", "g1", "Norton");
+    press("fact_lie", "g1", "Clippy");
+    press("scan_ok", "g1", "Norton");
+    expect(fresh()).toEqual([]);
     press("truth_answered", "g1", "Clippy");
     expect(fresh()).toEqual([["truth_answered", "Excel"]]);
   });

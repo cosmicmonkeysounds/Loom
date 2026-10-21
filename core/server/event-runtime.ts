@@ -857,13 +857,16 @@ export class EventRuntime {
       muted: voiceMuted,
       onMute: (muted) => this.store.saveVoiceMuted(muted),
       // The screens' signal allowlist (wave 17): the map's own king signals
-      // are device moments, the facts book's confirm events never are.
+      // are device moments, but a checkmate never is (it would tell the
+      // house someone now holds the door code); nor are the facts book's
+      // confirm events.
       signals: () => {
         const king = this.spatial.kingRef()?.prop;
         const book = this.factsBook();
+        const quiet = [...(book !== null ? Object.values(book.confirm) : []), ...(king !== undefined ? [kingSignal(king, "won")] : [])];
         return {
-          ...(king !== undefined ? { devices: (["won", "lost", "drawn", "hit", "fallen"] as const).map((w) => kingSignal(king, w)) } : {}),
-          ...(book !== null ? { quiet: Object.values(book.confirm) } : {}),
+          ...(king !== undefined ? { devices: (["lost", "drawn", "hit", "fallen"] as const).map((w) => kingSignal(king, w)) } : {}),
+          ...(quiet.length > 0 ? { quiet } : {}),
         };
       },
     });

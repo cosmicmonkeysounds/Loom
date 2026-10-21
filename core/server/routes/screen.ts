@@ -89,6 +89,8 @@ import { KING_SIGNALS, type KingState } from "@loom/house";
 
 import type { Sim } from "../../src/runtime/sim/index.ts";
 import type { SimModel } from "../../src/runtime/sim/model.ts";
+import type { BodyItem } from "../../src/parser/ast.ts";
+import { parseSet, splitDirective } from "../../src/runtime/sim/effects.ts";
 import type { SimEvent } from "../../src/runtime/sim/event.ts";
 import type { ChatMessage } from "../chat.ts";
 import { foldName } from "../../src/parser/names.ts";
@@ -420,7 +422,79 @@ const touchesSecret = (name: string, secrets: readonly string[]): boolean => {
 /** The device signals a screen may animate, folded: the King's and the
  *  chess board's defaults (`KING_SIGNALS`) and the reinstallation's start.
  *  A map's own king signal names are added by the runtime (`MomentSignals.devices`). */
-export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_SIGNALS), "reinstallation begun"].map(foldName);
+export const DEVICE_MOMENT_SIGNALS: readonly string[] = [...Object.values(KING_SIGNALS).filter((s) => s !== KING_SIGNALS.won), "reinstallation begun"].map(foldName);
+
+/** Never a moment: a checkmate (the story tells only the winner and
+ *  `# hosts` — a public one would hint who now holds the door code). Folded,
+ *  so the show's admin `chess_won` press is quiet too. */
+export const QUIET_MOMENT_SIGNALS: readonly string[] = [KING_SIGNALS.won].map(foldName);
+
+/** The booth presses that may stand as a draw's verdict (🗣 / 🙅 / 🎩 on the
+ *  bottle's pick) — only those the story declares as an INTERACTION. Every
+ *  other booth press (an accusation, a facts verdict, a charge) stays off
+ *  the screens and never uses up the draw. */
+export const BOTTLE_VERDICTS: readonly string[] = ["truth_answered", "truth_refused", "chose_dare"];
+
+/** Every directive in a body, nested arms included. */
+function* directivesIn(body: readonly BodyItem[]): Generator<string> {
+  for (const item of body) {
+    switch (item.kind) {
+      case "directive":
+        yield item.value.raw;
+        break;
+      case "directiveBlock":
+        yield item.value.directive.raw;
+        yield* directivesIn(item.value.body);
+        break;
+      case "conditional":
+        for (const arm of item.value.arms) yield* directivesIn(arm.body);
+        break;
+      case "match":
+        for (const arm of item.value.arms) yield* directivesIn(arm.body);
+        break;
+      case "eachVisit":
+        yield* directivesIn(item.value.first);
+        yield* directivesIn(item.value.then);
+        yield* directivesIn(item.value.finally);
+        break;
+      case "afterMorph":
+        yield* directivesIn(item.value.after);
+        yield* directivesIn(item.value.otherwise);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+const secretCueCache = new WeakMap<SimModel, ReadonlySet<string>>();
+
+/** The admin cues (folded) whose own story rule writes a secret character's
+ *  var (`set Kernel.majority = "leave"`): the cue's name tells the secret
+ *  (🗳 force_majority_leave), so it is never a moment. Cached per model. */
+export function secretWritingCues(model: SimModel): ReadonlySet<string> {
+  const hit = secretCueCache.get(model);
+  if (hit !== undefined) return hit;
+  const secrets = secretMomentNames(model);
+  const admin = new Set<string>();
+  for (const i of model.interactions.values()) if (i.who === "admin") admin.add(foldName(i.id));
+  const out = new Set<string>();
+  for (const rule of model.rules) {
+    const f = foldName(rule.verb);
+    if (f === "" || !admin.has(f) || out.has(f)) continue;
+    for (const raw of directivesIn(rule.body)) {
+      const { verb, rest } = splitDirective(raw);
+      if (verb !== "set") continue;
+      const head = parseSet(rest)?.path[0];
+      if (head !== undefined && secrets.includes(foldName(head))) {
+        out.add(f);
+        break;
+      }
+    }
+  }
+  secretCueCache.set(model, out);
+  return out;
+}
 
 /** Which signals may become a moment. Everything else a signal can be — a
  *  guest's or a booth's INTERACTION press (but a draw's verdict), a room check-in (`checked_in`),
@@ -436,8 +510,9 @@ export interface MomentSignals {
   picks: ReadonlySet<string>;
   /** Never a moment, even when allowlisted (the facts book's confirm events). */
   quiet: ReadonlySet<string>;
-  /** The booth presses (`INTERACTION … who: performer`): a moment only as the
-   *  verdict on the last draw's pick (`drawn`), `who` = the pick. */
+  /** The draw's verdicts (`BOTTLE_VERDICTS` the story declares, plus a
+   *  runtime's own): a moment only as the verdict on the last draw's pick
+   *  (`drawn`), `who` = the pick. */
   verdicts?: ReadonlySet<string>;
   /** The person the last live `do pick` drew, while its verdict is still due
    *  (the first booth press about them the story takes, within `VERDICT_MS`). */
@@ -449,19 +524,26 @@ export const VERDICT_MS = 5 * 60_000;
 
 /** The allowlist a model gives on its own: its admin cues, the default
  *  devices, no picks yet, the default facts confirm events. */
-export function momentSignalsOf(model: SimModel, extra: { devices?: Iterable<string>; quiet?: Iterable<string>; picks?: Iterable<string> } = {}): MomentSignals {
+export function momentSignalsOf(
+  model: SimModel,
+  extra: { devices?: Iterable<string>; quiet?: Iterable<string>; picks?: Iterable<string>; verdicts?: Iterable<string> } = {},
+): MomentSignals {
+  const fold = (xs: Iterable<string> | undefined): string[] => [...(xs ?? [])].map(foldName);
+  const verdictNames = new Set([...BOTTLE_VERDICTS.map(foldName), ...fold(extra.verdicts)]);
+  const secretCues = secretWritingCues(model);
   const admin = new Set<string>();
   const verdicts = new Set<string>();
   for (const i of model.interactions.values()) {
-    if (i.who === "admin") admin.add(foldName(i.id));
-    else if (i.who === "performer") verdicts.add(foldName(i.id));
+    const f = foldName(i.id);
+    if (i.who === "admin") {
+      if (!secretCues.has(f)) admin.add(f);
+    } else if (verdictNames.has(f)) verdicts.add(f);
   }
-  const fold = (xs: Iterable<string> | undefined): string[] => [...(xs ?? [])].map(foldName);
   return {
     admin,
     devices: new Set([...DEVICE_MOMENT_SIGNALS, ...fold(extra.devices)]),
     picks: new Set(fold(extra.picks)),
-    quiet: new Set([...Object.values(DEFAULT_CONFIRM), ...fold(extra.quiet)].map(foldName)),
+    quiet: new Set([...Object.values(DEFAULT_CONFIRM).map(foldName), ...QUIET_MOMENT_SIGNALS, ...fold(extra.quiet)]),
     verdicts,
     drawn: null,
   };
