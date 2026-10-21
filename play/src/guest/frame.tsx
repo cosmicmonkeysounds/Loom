@@ -123,6 +123,8 @@ export interface GuestStartInput {
   interactions: readonly Interaction[];
   /** The story has sides open, or the guest has a crew: "Sides & crews". */
   sides: boolean;
+  /** Wave 18b, faction mode (`founding:`): the item reads "Factions". */
+  factions?: boolean;
   people: boolean;
   open: {
     act: (i: Interaction) => void;
@@ -155,7 +157,7 @@ export function guestStartItems(o: GuestStartInput): StartItem[] {
     onClick: () => o.open.act(i),
     ...(i.arm === true ? { arm: true } : {}),
   }));
-  if (o.sides) items.push({ id: "sides", label: "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
+  if (o.sides) items.push({ id: "sides", label: o.factions === true ? "Factions" : "Sides & crews", icon: <Icon name="door" />, onClick: o.open.sides });
   if (o.people) items.push({ id: "people", label: "People", icon: <Icon name="people" />, onClick: o.open.people });
   items.push({ id: "notifications", label: "Notifications", icon: <Icon name="bell" />, onClick: o.open.notifications });
   items.push({ id: "help", label: "Help", icon: <Icon name="help" />, onClick: o.open.help });
