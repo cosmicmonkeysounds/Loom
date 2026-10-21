@@ -46,6 +46,7 @@ func _run() -> void:
 	_test_picker()
 	_test_flow()
 	_test_cam_feeds()
+	_test_voice_codec()
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
@@ -1886,3 +1887,155 @@ func _test_main_and_game() -> void:
 
 	main.queue_free()
 	await process_frame
+
+
+# --- voice (wave 19) --------------------------------------------------------
+
+
+## The codec, the resampler, the gate, the jitter plan and the routing rule
+## against `@loom/house`'s vectors (`test/golden/voice-mulaw.json`).
+func _test_voice_codec() -> void:
+	var path := GOLDEN_DIR + "voice-mulaw.json"
+	_check(FileAccess.file_exists(path), "voice: the codec's vectors are synced (pnpm --filter @loom/house sync)")
+	if not FileAccess.file_exists(path):
+		return
+	var records: Array = _read_json(path)
+	var house: Dictionary = _read_json("res://house/house.json")
+	var bad := {}
+	var seen := {}
+	var players: Array = []
+	var miss := func(kind: String, what: String) -> void:
+		if not bad.has(kind):
+			bad[kind] = []
+		if (bad[kind] as Array).size() < SHOW_MISMATCHES:
+			printerr("    voice %s: %s" % [kind, what])
+		(bad[kind] as Array).append(what)
+	for r: Dictionary in records:
+		var kind := str(r["kind"])
+		seen[kind] = int(seen.get(kind, 0)) + 1
+		match kind:
+			"constants":
+				var consts: Dictionary = load("res://net/voice_codec.gd").get_script_constant_map()
+				for k: String in r:
+					if k != "kind" and (not consts.has(k) or consts[k] != r[k]):
+						miss.call(kind, "%s = %s, want %s" % [k, consts.get(k, "missing"), r[k]])
+			"encode":
+				var got := VoiceCodec.mulaw_byte(float(r["x"]))
+				if got != int(r["byte"]):
+					miss.call(kind, "%s → %d, want %d" % [r["x"], got, r["byte"]])
+			"decode":
+				var got := VoiceCodec.mulaw_decode(PackedByteArray([int(r["byte"])]))[0]
+				if got != float(r["x"]):
+					miss.call(kind, "%d → %s, want %s" % [r["byte"], got, r["x"]])
+			"rms":
+				var got := VoiceCodec.rms_dbfs(PackedFloat32Array(r["samples"]))
+				var want: float = -INF if r["dbfs"] == null else float(r["dbfs"])
+				if not (got == want or _near(got, want, 1e-6)):
+					miss.call(kind, "%s, want %s" % [got, want])
+			"resample":
+				var rs := VoiceCodec.Resampler.new(float(r["from"]), float(r["to"]))
+				var input := PackedFloat32Array(r["input"])
+				var out := PackedFloat32Array()
+				var at := 0
+				for n: Variant in r["chunks"]:
+					out.append_array(rs.push(input.slice(at, at + int(n))))
+					at += int(n)
+				var want: Array = r["output"]
+				var ok := out.size() == want.size()
+				for i in mini(out.size(), want.size()):
+					ok = ok and _near(out[i], float(want[i]), 1e-6)
+				if not ok:
+					miss.call(kind, "%s → %s: %d outputs, want %d" % [r["from"], r["to"], out.size(), want.size()])
+			"gate":
+				var g := VoiceCodec.Gate.new()
+				var sent: Array = []
+				var i := 0
+				for s: Dictionary in r["steps"]:
+					if s.has("hold"):
+						g.hold_until(float(s["hold"]))
+					sent.append_array(g.push(i, -INF if s["dbfs"] == null else float(s["dbfs"]), float(s["now"])))
+					i += 1
+				if sent != (r["sent"] as Array).map(func(v: Variant) -> int: return int(v)):
+					miss.call(kind, "%s, want %s" % [sent, r["sent"]])
+			"jitter":
+				var p := VoiceCodec.jitter_plan(float(r["buffered"]), float(r["target"]), float(r["max"]))
+				var w: Dictionary = r["plan"]
+				if p["action"] != w["action"] or not _near(p["at"], w["at"], 1e-9) or not _near(p["drop"], w["drop"], 1e-9) or p["fadeIn"] != w["fadeIn"]:
+					miss.call(kind, "%s → %s, want %s" % [r["buffered"], p, w])
+			"voiceOn":
+				if VoiceCodec.voice_on(house, str(r["spot"])) != bool(r["on"]):
+					miss.call(kind, "%s" % r["spot"])
+			"hearsTerminals":
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]})
+				var located := VoiceCodec.hears_terminals(house, {"p": r["p"]})
+				var want: Array = r["heard"]
+				var same := got.size() == want.size() and located.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s → %s, want %s" % [r["p"], got, want])
+			"players":
+				players = r["players"]
+			"hearsPlayers":
+				pass  # the server's and the terminals' half of the rule
+	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals"]:
+		var n := int(seen.get(kind, 0))
+		var b := (bad.get(kind, []) as Array).size()
+		_check(n > 0 and b == 0, "voice: %s vectors match (%d of %d)" % [kind, n - b, n])
+	_check(int(seen.get("decode", 0)) == 256, "voice: every μ-law byte decodes")
+	_check(not players.is_empty(), "voice: the vectors carry the routing's players")
+	# The tent (the spawn room) is off; the show map says so too.
+	_check(not VoiceCodec.voice_on(house, "tent") and VoiceCodec.voice_on(house, "hall") and not VoiceCodec.voice_on(house, "nowhere"), "voice: the tent's terminal is off, the hall's on, an unknown spot off")
+	var tent: Dictionary = VoiceCodec._spot_of(house, "tent").duplicate()
+	tent.erase("voice")
+	_check(not VoiceCodec.voice_on(house, tent), "voice: … off with no flag too: it stands in the spawn room")
+	tent["voice"] = true
+	_check(VoiceCodec.voice_on(house, tent), "voice: … unless the map says voice: true")
+
+	# The encoder over a whole chunk = the per-sample byte; decode ∘ encode stays close.
+	var chunk := PackedFloat32Array()
+	for i in 320:
+		chunk.append(0.6 * sin(TAU * 440.0 * i / 16000.0))
+	var enc := VoiceCodec.mulaw_encode(chunk)
+	var each := true
+	for i in chunk.size():
+		each = each and enc[i] == VoiceCodec.mulaw_byte(chunk[i])
+	_check(enc.size() == 320 and each, "voice: mulaw_encode = mulaw_byte per sample")
+	var dec := VoiceCodec.mulaw_decode(enc)
+	var worst := 0.0
+	for i in chunk.size():
+		worst = maxf(worst, absf(dec[i] - chunk[i]))
+	_check(worst < 0.02, "voice: decode(encode(x)) within μ-law's step (%.4f)" % worst)
+	_check(VoiceCodec.mulaw_byte(NAN) == 0xff, "voice: NaN encodes as silence")
+
+	# The resampler: any split is the whole; a 48 kHz second is 16 000 samples.
+	var tone := PackedFloat32Array()
+	for i in 48000:
+		tone.append(sin(TAU * 300.0 * i / 48000.0))
+	var whole := VoiceCodec.Resampler.new(48000, 16000).push(tone)
+	var split := VoiceCodec.Resampler.new(48000, 16000)
+	var parts := PackedFloat32Array()
+	var at := 0
+	for n in [1, 480, 7, 1023, 46489]:
+		parts.append_array(split.push(tone.slice(at, at + n)))
+		at += n
+	_check(whole.size() == 16000 and parts == whole, "voice: the resampler's output does not depend on the chunking (%d)" % whole.size())
+	var odd := VoiceCodec.Resampler.new(44100.4, 16000)
+	_check(odd.from == 44100 and odd.to == 16000, "voice: rates round to whole Hz")
+
+	# The chunker: 200 ms chunks, the remainder kept.
+	var ca := VoiceCodec.ChunkAssembler.new()
+	var got: Array = ca.push(whole.slice(0, 5000))
+	_check(got.size() == 1 and (got[0] as PackedFloat32Array).size() == 3200 and ca.pending() == 1800, "voice: one 3200-sample chunk, 1800 held")
+	got = ca.push(whole.slice(5000, 6400))
+	_check(got.size() == 1 and (got[0] as PackedFloat32Array)[0] == whole[3200] and ca.pending() == 0, "voice: … the next chunk carries on where the last stopped")
+
+	# The gate's half-duplex: a hold closes it and forgets the pre-roll.
+	var gate := VoiceCodec.Gate.new()
+	_check(gate.push("quiet", -60.0, 0.0).is_empty(), "voice: a quiet chunk is not sent (it is the pre-roll)")
+	_check(gate.push("loud", -20.0, 200.0) == ["quiet", "loud"], "voice: a loud chunk opens the gate with the pre-roll")
+	gate.hold_until(1000.0)
+	gate.hold_until(500.0)
+	_check(gate.holding(900.0) and not gate.holding(1000.0), "voice: a hold only ever extends")
+	_check(gate.push("loud", -20.0, 600.0).is_empty() and not gate.is_open(), "voice: no sending while incoming voice plays")
+	_check(gate.push("loud", -20.0, 1000.0) == ["loud"], "voice: … and no stale pre-roll after it")
