@@ -53,6 +53,8 @@ import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { useGuestNotifications } from "./notifications-state.ts";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
+import { TheirBell, TheirNotificationsWindow } from "./moments-ui.tsx";
+import { rowClockOf } from "./show-time.ts";
 import { extOf, hasSidesOrCrew } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
@@ -321,7 +323,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // main frame, so the queue, its holds and the beat's blue screen carry
   // across the cutscene → app switch. Wave 18: the moments lane's exits land
   // through `go` (`exitContext` says what the guest lists).
-  const moments: MomentsInput & { go?: (n: Nav) => void; exitContext?: () => ExitContext } = {
+  const moments: MomentsInput & { go?: (n: Nav) => void; exitContext?: () => ExitContext; widgets?: typeof widgets; openNotifications?: () => void } = {
     role: "guest",
     me: s.me.id,
     session: s.me.token,
@@ -348,6 +350,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     },
     ...(go !== undefined ? { go } : {}),
     exitContext: () => exitContext(),
+    // The big rung renders a card inside itself through the same answer path.
+    widgets,
+    openNotifications: () => nav.go({ to: "notifications" }),
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)
@@ -474,7 +479,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const peopleHere = (here?.people ?? []).filter((p) => p.id !== meId).length;
   const sidesOpen = hasSidesOrCrew(st);
   const windowBody =
-    nav.window === "notifications" ? (
+    nav.window === "notifications" && TheirNotificationsWindow !== null ? (
+      <TheirNotificationsWindow onClose={() => nav.go({ to: "mission" })} timeOf={rowClockOf(st as unknown as { clock?: number } & Record<string, unknown>)} />
+    ) : nav.window === "notifications" ? (
       <LazyNotificationsWindow
         messages={s.messages}
         me={{ id: meId, name: meName }}
@@ -584,7 +591,15 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
             paused={st.paused === true}
             act={onMission ? actLine(st.night?.act, storyTitle) : undefined}
             lead={<MeButton name={meName} onOpen={() => nav.go({ to: "me" })} />}
-            trail={<BellButton unread={notifs.unread} onOpen={() => nav.go({ to: "notifications" })} />}
+            trail={
+              TheirBell !== null ? (
+                <span className="title-bar-bell-slot" data-tour="bell">
+                  <TheirBell onOpen={() => nav.go({ to: "notifications" })} />
+                </span>
+              ) : (
+                <BellButton unread={notifs.unread} onOpen={() => nav.go({ to: "notifications" })} />
+              )
+            }
           />
           {/* One strip above the window: the guest's own pin folds a sticky into its "+n". */}
           <MomentsAndPins pins={pins} me={s.me.id} />

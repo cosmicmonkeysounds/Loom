@@ -56,6 +56,13 @@ describe("the Where row (§2.1)", () => {
     expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "sides", name: "sides" } } }, listed, titles)).toMatchObject({ kind: "word", word: "sides", label: "🚪 Choose a side", nav: { to: "sides" } });
     expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "scan", name: "Check in" } } }, listed, titles)).toMatchObject({ kind: "word", label: "📷 Check in", nav: { to: "scan" } });
   });
+  it("core's other place ids: a Codex entry, a quest, a guest button (C11)", () => {
+    expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "codex:the-door-sign", name: "Read the sign" } } }, listed, titles)).toMatchObject({ label: "📓 Read the sign", nav: { to: "codex", entry: "the-door-sign" } });
+    expect(whereRowOf({ location: null, mission: { objective: "x", place: { id: "quests:bingo", name: "quests:bingo" } } }, listed, titles)).toMatchObject({ label: "📜 See the quest", nav: { to: "quests", quest: "bingo" } });
+    const interactions = [{ id: "bathroom_mode", label: "🚻 Bathroom Mode", who: "guest" as const, description: null }];
+    expect(whereRowOf({ location: null, interactions, mission: { objective: "x", place: { id: "bathroom_mode", name: "Bathroom Mode" } } }, listed, titles)).toMatchObject({ label: "🚻 Bathroom Mode", nav: { to: "act", id: "bathroom_mode" } });
+  });
+
   it("no mission field, no place, the lobby or a room not listed: no row", () => {
     expect(whereRowOf({ location: null }, listed, titles)).toBeNull();
     expect(whereRowOf({ location: null, mission: { objective: null, place: null } }, listed, titles)).toBeNull();

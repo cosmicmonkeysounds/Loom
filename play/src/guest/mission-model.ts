@@ -126,10 +126,25 @@ function wordNav(word: PlaceWord): Nav {
   return { to: word } as Nav;
 }
 
-/** The Where row (§2.1) from `GuestView.mission` (C11). */
-export function whereRowOf(view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"] }, listed: ReadonlySet<string>, titles: ReadonlyMap<string, string>): WhereRow | null {
+/**
+ * The Where row (§2.1) from `GuestView.mission` (C11). The server's
+ * `place.id` is a room / DM id (`loc:X`, `room:x`, `dm:C`, `pm:…`), a guest
+ * INTERACTION id, `codex[:entry]`, `quests[:quest]`, or a screen word; its
+ * `name` is the words to show.
+ */
+export function whereRowOf(
+  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"] },
+  listed: ReadonlySet<string>,
+  titles: ReadonlyMap<string, string>,
+): WhereRow | null {
   const place = view.mission?.place ?? null;
   if (place === null) return null;
+  const entry = /^codex:(.+)$/u.exec(place.id);
+  if (entry !== null) return { kind: "word", word: "codex", label: `📓 ${place.name.trim() !== "" && place.name !== place.id ? place.name : "Open the Codex"}`, nav: { to: "codex", entry: entry[1]! } };
+  const quest = /^quests?:(.+)$/u.exec(place.id);
+  if (quest !== null) return { kind: "word", word: "quests", label: `📜 ${place.name.trim() !== "" && place.name !== place.id ? place.name : "See the quest"}`, nav: { to: "quests", quest: quest[1]! } };
+  const button = (view.interactions ?? []).find((i) => i.id === place.id);
+  if (button !== undefined) return { kind: "word", word: "mission", label: button.label, nav: { to: "act", id: button.id } };
   const word = (PLACE_WORDS as readonly string[]).includes(place.id) ? (place.id as PlaceWord) : null;
   if (word !== null) {
     const custom = place.name.trim() !== "" && place.name.trim().toLowerCase() !== word ? place.name.trim() : null;
@@ -166,7 +181,7 @@ export function missionOf(o: MissionInput): MissionModel {
   const split = splitGlyph(objective?.title ?? "");
   const listed = new Set(o.list.map((c) => c.id));
   const titles = new Map(o.list.map((c) => [c.id, c.title]));
-  const where = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission }, listed, titles) : null;
+  const where = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions }, listed, titles) : null;
   const roomTitle = (id: string) => (titles.get(id) ?? id).replace(/\s*\([^)]*\)\s*$/u, "");
 
   // the live cards, newest first; the newest is the first big button
