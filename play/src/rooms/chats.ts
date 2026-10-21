@@ -116,6 +116,17 @@ export function chatsDot(chats: Chats): boolean {
   return chats.sections.some((s) => s.channels.some(guestDot)) || chats.other.some(guestDot);
 }
 
+/** The person a one-to-one thread is with (wave 18b, R15: their badges sit
+ *  on its row): the other party of a `pm:<a>:<b>`, the character of a
+ *  `dm:<Character>`; null for any other room. */
+export function threadPersonId(channel: string, meId: string): string | null {
+  if (channel.startsWith("dm:")) return channel.slice(3) || null;
+  if (!channel.startsWith("pm:")) return null;
+  const parties = channel.slice(3).split(":");
+  if (parties.length !== 2 || !parties.includes(meId)) return null;
+  return parties[0] === meId ? parties[1]! : parties[0]!;
+}
+
 /** The fold's button: "Other rooms (6)". */
 export function otherRoomsLabelOf(n: number): string {
   return `Other rooms (${n})`;

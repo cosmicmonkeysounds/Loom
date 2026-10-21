@@ -56,7 +56,7 @@ import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
-import { extOf, hasSidesOrCrew } from "./wire.ts";
+import { badgesOf, extOf, hasSidesOrCrew } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
@@ -507,7 +507,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const meId = s.me.id;
   const meName = s.me.name;
   // The other guests, for the wallet's pickers (never me, never a character).
-  const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name }));
+  const walletPeople = (st.people ?? []).filter((p) => p.kind === "guest" && p.id !== meId).map((p) => ({ id: p.id, name: p.name, badges: badgesOf(p) }));
   const act = (i: Interaction) => void s.act(i.id, i.label).catch(() => {});
   const renderButton = objectiveButton({ interactions, arm, onPass: () => nav.go({ to: "pass" }), onScan: () => nav.go({ to: "scan" }), onAct: act });
   const codexRoom = t.list.find((c) => c.id === CODEX_ROOM);
@@ -521,7 +521,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         <LazyNotificationsWindow onClose={() => nav.go({ to: "mission" })} timeOf={rowClockOf(st)} />
       </div>
     ) : nav.window === "chats" ? (
-      <ChatsWindow chats={chats} activeId={t.activeId} meId={meId} onOpen={(id) => nav.openRoom(id, "chats")} />
+      <ChatsWindow chats={chats} activeId={t.activeId} meId={meId} onOpen={(id) => nav.openRoom(id, "chats")} people={st.people} />
     ) : (
       <LazyMission
         input={missionInput}
@@ -699,7 +699,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       {sharing && (
         <PickerSheet
           title={`Share “${sharing.title}” with…`}
-          items={shareTargets(st.people ?? [], (st.codex ?? []).find((e) => e.id === sharing.entry)).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true }))}
+          items={shareTargets(st.people ?? [], (st.codex ?? []).find((e) => e.id === sharing.entry)).map((p) => ({ id: p.id, label: p.name, sub: p.kind === "character" ? "character" : (p.faction ?? "guest"), avatar: true, badges: badgesOf(p) }))}
           onPick={(id) => void s.shareCodex(sharing.entry, id)}
           onClose={() => setSharing(null)}
           empty="Nobody else is here yet."

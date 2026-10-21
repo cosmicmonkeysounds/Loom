@@ -7,6 +7,7 @@ import type { AlertLevel } from "../../../core/src/delivery.ts";
 import { AWARD_SOURCES, PartPresence, REASON_WAIT_MS, REFUSED_NEEDS_MS, type NeedTarget } from "../../../core/src/host-board.ts";
 import type { CueRow } from "../../../core/src/cue-sheet.ts";
 import type { ChatMessage, HostNeed, HostPerson, HostView } from "../types.ts";
+import { badgesOf } from "../guest/wire.ts";
 import { onDeck } from "../../../core/src/cue-sheet.ts";
 import { STOPPED, actHandle, clockRuns, formatLeft, formatWatchValue, soonestCountdown, URGENT_S, type SheetLayout } from "../director.tsx";
 
@@ -424,9 +425,21 @@ export function isBathroomFlag(f: { label: string; path: string }): boolean {
   return /(^|\.)afk$/iu.test(f.path.trim()) || /bathroom/iu.test(f.label);
 }
 
-/** Is this guest in Bathroom Mode right now (an `on` Bathroom flag)? */
-export function inBathroom(p: Pick<HostPerson, "flags">): boolean {
-  return (p.flags ?? []).some((f) => f.on && isBathroomFlag(f));
+/** Is this badge Bathroom Mode (🚻, or a label naming it)? Wave 18b. */
+export function isBathroomBadge(b: { glyph: string; label: string }): boolean {
+  return b.glyph.includes("🚻") || /bathroom/iu.test(b.label);
+}
+
+/** Is this guest in Bathroom Mode right now: a Bathroom badge (wave 18b's
+ *  `badge:` line), else an `on` Bathroom flag (an older server). */
+export function inBathroom(p: Pick<HostPerson, "flags"> & { badges?: unknown }): boolean {
+  return badgesOf(p).some(isBathroomBadge) || (p.flags ?? []).some((f) => f.on && isBathroomFlag(f));
+}
+
+/** The row's own "🚻 bathroom" tag: only when no badge already says it
+ *  (the badge wins; the tag is the heuristic an older server needs). */
+export function bathroomTag(p: Pick<HostPerson, "flags"> & { badges?: unknown }): boolean {
+  return !badgesOf(p).some(isBathroomBadge) && inBathroom(p);
 }
 
 /** "seen 12 m ago" / "seen just now" / "not seen since the server started". */

@@ -4,7 +4,7 @@
 import { useState, type ReactNode } from "react";
 import { occupancyLabel } from "../presence.ts";
 import type { Channel } from "../types.ts";
-import { Avatar, Badge } from "../ui/primitives.tsx";
+import { Avatar, Badge, NameBadges } from "../ui/primitives.tsx";
 import { widgetLabel } from "../widgets.tsx";
 import { foldRooms } from "./order.ts";
 import { type SpaceGroup } from "./spaces.ts";
@@ -38,6 +38,7 @@ export function ChannelRow({
   onOpen,
   dot,
   sub: subOverride,
+  badges,
 }: {
   channel: Channel;
   active?: boolean;
@@ -48,6 +49,8 @@ export function ChannelRow({
   dot?: boolean;
   /** The second line, instead of the preview ("chat room"). */
   sub?: string;
+  /** Wave 18b: the badges of the person a one-to-one thread is with. */
+  badges?: ReadonlyArray<{ glyph: string; label: string }>;
 }) {
   const occupancy = occupancyLabel(channel, meId ?? null);
   const known = useKnownNames();
@@ -72,6 +75,7 @@ export function ChannelRow({
       <div className="chrow-body">
         <div className="chrow-top">
           <span className="chrow-title">{channel.title}</span>
+          <NameBadges badges={badges} />
           {channel.here && <span className="here-tag">you are here</span>}
           {!log && channel.decision && <span className="decision-dot">decision</span>}
           {!log && !channel.decision && channel.needsYou && <span className="decision-dot">your move</span>}

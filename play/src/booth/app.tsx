@@ -23,6 +23,7 @@ import { opensHome } from "../room.ts";
 import { activePins } from "../pins.ts";
 import { boothAlertFilter } from "../alerts.ts";
 import { MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
+import { BoothBadgesProvider, boothBadgeMap } from "./badges.tsx";
 import { Taskbar } from "../chrome/taskbar.tsx";
 import { useKeyboardOpen } from "../chrome/keyboard.ts";
 import { WALLET_ROOM } from "../rooms/spaces.ts";
@@ -443,6 +444,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     <MomentsProvider {...moments}>
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
+          <BoothBadgesProvider guests={s.view?.guests}>
           <div className="root">
             <BoothFrame clocked={showClockOf(s.view) !== null || soonest(s.view?.countdowns, s.view?.clock ?? null) !== null} alarmed={(wanted !== null && loose > 0) || rung.tray.length + rung.queued > 0}>
               {(keyboard) => (
@@ -565,7 +567,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             {people && (
               <PickerSheet
                 title={`👥 In ${people.title}`}
-                items={(people.people ?? []).map((p) => ({ id: p.id, label: p.name, sub: p.group ?? undefined, avatar: true }))}
+                items={(() => {
+                  const worn = boothBadgeMap(s.view?.guests);
+                  return (people.people ?? []).map((p) => ({ id: p.id, label: p.name, sub: p.group ?? undefined, avatar: true, ...(worn.has(p.id) ? { badges: worn.get(p.id)! } : {}) }));
+                })()}
                 onPick={(id) => openCard(id)}
                 onClose={() => setPeople(null)}
                 empty="Nobody is standing here."
@@ -576,6 +581,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             {sheet === "alerts" && <AlertsSheet session={s} push={push} onClose={() => setSheet(null)} />}
             {help && <HelpSheet role="performer" onClose={() => setHelp(false)} />}
           </div>
+          </BoothBadgesProvider>
         </WalletActionsProvider>
       </AvatarsContext.Provider>
     </MomentsProvider>

@@ -4,7 +4,8 @@
 
 import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { useState } from "react";
-import { GroupPill, PersonAvatar, Sheet } from "../ui/primitives.tsx";
+import { GroupPill, NameBadges, PersonAvatar, Sheet } from "../ui/primitives.tsx";
+import { badgesOf } from "./wire.ts";
 import type { GuestSession } from "../session/guest.ts";
 import type { PersonCard } from "../types.ts";
 
@@ -18,7 +19,10 @@ export function PersonRow({ card, onMessage }: { card: PersonCard; onMessage: ()
         {/* The name gets the whole line; its tags sit under it, so a phone
             never squeezes "Password Manager" down to "Pass…". */}
         <div className="people-id">
-          <span className="name">{card.name}</span>
+          <span className="people-name">
+            <span className="name">{card.name}</span>
+            <NameBadges badges={badgesOf(card)} />
+          </span>
           <span className="people-tags">
             {card.faction && <GroupPill group={card.faction} />}
             {card.location && <span className="people-where">📍 {card.location}</span>}

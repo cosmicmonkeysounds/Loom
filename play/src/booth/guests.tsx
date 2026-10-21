@@ -8,6 +8,7 @@
 import { useState } from "react";
 import type { PrimeView } from "../types.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
+import { GuestBadges } from "./badges.tsx";
 import { usePlayHost } from "../host.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothLayer } from "./layer.tsx";
@@ -121,6 +122,7 @@ export function GuestsSheet({ view, me = "", session = null, now = 0, onPick, on
                   <span className="booth-guest-body">
                     <span className="booth-guest-name">
                       {g.name}
+                      <GuestBadges id={g.id} />
                       {tag !== null && <span className={`booth-tag ${tag.tone}`}>{tag.text}</span>}
                     </span>
                     <span className="booth-guest-sub">{placeLine(g, whereOf(g.location), ctx)}</span>
