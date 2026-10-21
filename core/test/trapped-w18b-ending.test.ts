@@ -279,9 +279,19 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     const debt = t.find((l) => l.includes("because of your debt"))!;
     expect(debt.startsWith("Calculator, 3D Pinball and RollerCoaster Tycoon. ")).toBe(true);
     expect(t.join("\n")).not.toMatch(/MSN Messenger|Ring Doorbell/u);
-    // A gone featured program is not read out either.
+    // A gone featured program is not read out either, nor a Run persona:
+    // not who they were, and not their goal.
     sim.setVar("f-pong.gone", "true");
-    expect(lines(review(sim), "Trabolta").some((l) => l.startsWith("Pong is "))).toBe(false);
+    sim.setVar("f-excel.persona", "true");
+    const t2 = lines(review(sim), "Trabolta");
+    expect(t2.some((l) => l.startsWith("Pong is ") || l.startsWith("Microsoft Excel is "))).toBe(false);
+    expect(t2.join("\n")).not.toMatch(/(Pong|Microsoft Excel)\b[^.]*\bgoal/u);
+    expect(t2.join("\n")).toMatch(/OpenOffice\b[^.]*\bgoal/u);
+    // Purgatory's goal lines (Clippy's) leave them out too.
+    sim.setVar("Night.ending", "destroyed");
+    const c = lines(sim.fireBeat("Purgatory"), "Clippy");
+    expect(c.join("\n")).not.toMatch(/(Pong|Microsoft Excel) (met|did not meet) their goal/u);
+    expect(c).toContain("OpenOffice did not meet their goal.");
   });
 
   it("after `disabled` skips who everyone was and the deeds (Recounts just read them), keeps the goals", { timeout: SLOW }, () => {

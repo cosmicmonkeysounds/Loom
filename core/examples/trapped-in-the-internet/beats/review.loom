@@ -172,7 +172,8 @@ if count([p for p in Persons where p.featured == "none" and p.human_problem == "
   Clippy: Mortality: {names([p for p in Persons where p.featured == "none" and p.human_problem == "mortality" and p.cleared == true and p.gone != true and p.persona != true])}. They came so that they would never die.
 
 // ── What they did ──────────────────────────────────────────────────
-// Each featured program here tonight: did they meet the goal their
+// Each featured program here tonight (gone programs and Run personas are
+// left out, as in who everyone was): did they meet the goal their
 // invitation (or the Truther Download) gave them? Their own quest says.
 // (Clippy's copy is Purgatory's, moved here; Trabolta's is the same.)
 
@@ -180,81 +181,81 @@ if count([p for p in Persons where p.featured == "none" and p.human_problem == "
 == Goals Met Tonight
   setting: The Desktop
   cast: Trabolta
-if count([p for p in Persons where p.featured == "excel" and p.quest.excel_mission == "done"]) > 0:
+if count([p for p in Persons where p.featured == "excel" and p.quest.excel_mission == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Microsoft Excel met their goal tonight.
-else if count([p for p in Persons where p.featured == "excel"]) > 0:
+else if count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Microsoft Excel did not meet their goal.
-if count([p for p in Persons where p.featured == "openoffice" and p.quest.openoffice_dossier == "done"]) > 0:
+if count([p for p in Persons where p.featured == "openoffice" and p.quest.openoffice_dossier == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: OpenOffice met their goal tonight.
-else if count([p for p in Persons where p.featured == "openoffice"]) > 0:
+else if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
   Trabolta: OpenOffice did not meet their goal.
-if count([p for p in Persons where p.featured == "draftkings" and p.quest.truthcoin_hustle == "done"]) > 0:
+if count([p for p in Persons where p.featured == "draftkings" and p.quest.truthcoin_hustle == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: DraftKings met their goal tonight.
-else if count([p for p in Persons where p.featured == "draftkings"]) > 0:
+else if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
   Trabolta: DraftKings did not meet their goal.
-if count([p for p in Persons where p.featured == "bugdom" and p.quest.master_of_the_bugs == "done"]) > 0:
+if count([p for p in Persons where p.featured == "bugdom" and p.quest.master_of_the_bugs == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Bugdom met their goal tonight.
-else if count([p for p in Persons where p.featured == "bugdom"]) > 0:
+else if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Bugdom did not meet their goal.
-if count([p for p in Persons where p.featured == "jeeves" and p.quest.ten_findings == "done"]) > 0:
+if count([p for p in Persons where p.featured == "jeeves" and p.quest.ten_findings == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Broken Ask Jeeves met their goal tonight.
-else if count([p for p in Persons where p.featured == "jeeves"]) > 0:
+else if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Broken Ask Jeeves did not meet their goal.
-if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "done"]) > 0:
+if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Runescape met their goal tonight.
-else if count([p for p in Persons where p.featured == "runescape"]) > 0:
+else if count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Runescape did not meet their goal.
-if count([p for p in Persons where p.featured == "mspaint" and p.quest.the_painting == "done"]) > 0:
+if count([p for p in Persons where p.featured == "mspaint" and p.quest.the_painting == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: MS Paint met their goal tonight.
-else if count([p for p in Persons where p.featured == "mspaint"]) > 0:
+else if count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
   Trabolta: MS Paint did not meet their goal.
-if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "done"]) > 0:
+if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: VLC met their goal tonight.
-else if count([p for p in Persons where p.featured == "vlc"]) > 0:
+else if count([p for p in Persons where p.featured == "vlc" and p.gone != true and p.persona != true]) > 0:
   Trabolta: VLC did not meet their goal.
-if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "done"]) > 0:
+if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "done" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Pong met their goal tonight.
-else if count([p for p in Persons where p.featured == "pong"]) > 0:
+else if count([p for p in Persons where p.featured == "pong" and p.gone != true and p.persona != true]) > 0:
   Trabolta: Pong did not meet their goal.
 
 == The Goals Report
   setting: The Desktop
   cast: Clippy
-if count([p for p in Persons where p.featured == "excel" and p.quest.excel_mission == "done"]) > 0:
+if count([p for p in Persons where p.featured == "excel" and p.quest.excel_mission == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: Microsoft Excel met their goal tonight.
-else if count([p for p in Persons where p.featured == "excel"]) > 0:
+else if count([p for p in Persons where p.featured == "excel" and p.gone != true and p.persona != true]) > 0:
   Clippy: Microsoft Excel did not meet their goal.
-if count([p for p in Persons where p.featured == "openoffice" and p.quest.openoffice_dossier == "done"]) > 0:
+if count([p for p in Persons where p.featured == "openoffice" and p.quest.openoffice_dossier == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: OpenOffice met their goal tonight.
-else if count([p for p in Persons where p.featured == "openoffice"]) > 0:
+else if count([p for p in Persons where p.featured == "openoffice" and p.gone != true and p.persona != true]) > 0:
   Clippy: OpenOffice did not meet their goal.
-if count([p for p in Persons where p.featured == "draftkings" and p.quest.truthcoin_hustle == "done"]) > 0:
+if count([p for p in Persons where p.featured == "draftkings" and p.quest.truthcoin_hustle == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: DraftKings met their goal tonight.
-else if count([p for p in Persons where p.featured == "draftkings"]) > 0:
+else if count([p for p in Persons where p.featured == "draftkings" and p.gone != true and p.persona != true]) > 0:
   Clippy: DraftKings did not meet their goal.
-if count([p for p in Persons where p.featured == "bugdom" and p.quest.master_of_the_bugs == "done"]) > 0:
+if count([p for p in Persons where p.featured == "bugdom" and p.quest.master_of_the_bugs == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: Bugdom met their goal tonight.
-else if count([p for p in Persons where p.featured == "bugdom"]) > 0:
+else if count([p for p in Persons where p.featured == "bugdom" and p.gone != true and p.persona != true]) > 0:
   Clippy: Bugdom did not meet their goal.
-if count([p for p in Persons where p.featured == "jeeves" and p.quest.ten_findings == "done"]) > 0:
+if count([p for p in Persons where p.featured == "jeeves" and p.quest.ten_findings == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: Broken Ask Jeeves met their goal tonight.
-else if count([p for p in Persons where p.featured == "jeeves"]) > 0:
+else if count([p for p in Persons where p.featured == "jeeves" and p.gone != true and p.persona != true]) > 0:
   Clippy: Broken Ask Jeeves did not meet their goal.
-if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "done"]) > 0:
+if count([p for p in Persons where p.featured == "runescape" and p.quest.the_gold_standard == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: Runescape met their goal tonight.
-else if count([p for p in Persons where p.featured == "runescape"]) > 0:
+else if count([p for p in Persons where p.featured == "runescape" and p.gone != true and p.persona != true]) > 0:
   Clippy: Runescape did not meet their goal.
-if count([p for p in Persons where p.featured == "mspaint" and p.quest.the_painting == "done"]) > 0:
+if count([p for p in Persons where p.featured == "mspaint" and p.quest.the_painting == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: MS Paint met their goal tonight.
-else if count([p for p in Persons where p.featured == "mspaint"]) > 0:
+else if count([p for p in Persons where p.featured == "mspaint" and p.gone != true and p.persona != true]) > 0:
   Clippy: MS Paint did not meet their goal.
-if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "done"]) > 0:
+if count([p for p in Persons where p.featured == "vlc" and p.quest.go_viral == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: VLC met their goal tonight.
-else if count([p for p in Persons where p.featured == "vlc"]) > 0:
+else if count([p for p in Persons where p.featured == "vlc" and p.gone != true and p.persona != true]) > 0:
   Clippy: VLC did not meet their goal.
-if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "done"]) > 0:
+if count([p for p in Persons where p.featured == "pong" and p.quest.keep_the_ball_in_play == "done" and p.gone != true and p.persona != true]) > 0:
   Clippy: Pong met their goal tonight.
-else if count([p for p in Persons where p.featured == "pong"]) > 0:
+else if count([p for p in Persons where p.featured == "pong" and p.gone != true and p.persona != true]) > 0:
   Clippy: Pong did not meet their goal.
 
 // The night's deeds, in Trabolta's voice (Trabolta Recounts' lines, moved
