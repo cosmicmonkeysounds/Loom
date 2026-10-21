@@ -51,6 +51,8 @@ describe("which event reads resolve the author session", () => {
   it("the spatial map + stream (the editor reads them on its cookie)", () => {
     expect(wantsModRead("/api/spatial/house", params())).toBe(true);
     expect(wantsModRead("/api/spatial/stream", params("name=Map"))).toBe(true);
+    // The voice link's stream (§2.4): a terminal's token, or the editor's cookie.
+    expect(wantsModRead("/api/spatial/voice/stream", params("spot=hall"))).toBe(true);
   });
 
   it("the wall terminals' screen state (a terminal's mod token, or the author's session)", () => {
@@ -74,6 +76,7 @@ describe("which event reads resolve the author session", () => {
 
   it("never a game's own writes or anything else", () => {
     expect(wantsModRead("/api/spatial/pose", params())).toBe(false);
+    expect(wantsModRead("/api/spatial/voice", params("seq=1"))).toBe(false);
     expect(wantsModRead("/api/spatial/found", params())).toBe(false);
     expect(wantsModRead("/api/guest/say", params())).toBe(false);
   });

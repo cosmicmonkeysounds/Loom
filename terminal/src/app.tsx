@@ -55,8 +55,10 @@ import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, use
 import { Composer, Thread } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
-import { followMap, urlConfig } from "./setup-map.ts";
+import { followMap, followVoice, urlConfig } from "./setup-map.ts";
 import { useCamFeed } from "./camfeed.ts";
+import { useVoiceLink } from "./voice/hook.ts";
+import { MicCue } from "./voice/MicCue.tsx";
 import { useCameraLive, type Facing } from "./camera.ts";
 import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
@@ -140,6 +142,20 @@ export function App() {
   const announcement = useAnnouncements(config, screenState.state);
   // The camera feed (wave 14): a placed terminal sends its camera to the games.
   useCamFeed(config);
+  // The voice link (wave 19): this room heard in the games at this screen,
+  // the players near it heard out of its speaker — per the view and the
+  // map's `voice` (`voice/roles.ts`), never on the setup screen. Capture
+  // and playback wait for the context to run: the first touch anywhere
+  // (below), or at once on the TV's Chrome.
+  const voiceHouse = useVoiceLink(config, screen.kind !== "setup");
+  // The map turned this spot's link on or off: keep the stored flag in step.
+  useEffect(() => {
+    if (config === null || voiceHouse === null) return;
+    const next = followVoice(config, voiceHouse);
+    if (next === null) return;
+    saveConfig(next);
+    setConfig(next);
+  }, [config, voiceHouse]);
 
   // Fetch the world view's code at boot, while this page and the server are
   // known to match — hours later a rebuild may have renamed the chunk. Not
@@ -379,6 +395,7 @@ export function App() {
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
       <LiveScreenLayer state={screenState.state} piloting={piloting} peek={peek} room={bare} onSlideTap={peekable ? onSlideTap : undefined} video={config.view === "tv"} cutscenes={drawsSlides(config.view, room)} gear={<Gear onOpen={openSetup} label="Set up this terminal" className="mirror-gear" />} />
       <IdentifyOverlay state={screenState.state} name={config.name} spot={config.spot} view={config.view} />
+      <MicCue />
       {announcement !== null && (
         <div className="announce-banner" role="status">
           <span className="announce-icon" aria-hidden="true">

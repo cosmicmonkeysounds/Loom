@@ -83,7 +83,7 @@ describe("terminal config", () => {
   });
   it("reads provisioning hints off the URL and scrubs them back out", () => {
     const h = hintsFromSearch("?code=MOD111&name=Kitchen&character=Trabolta&camera=environment&engine=browser&spot=start-bar&view=world&keep=1");
-    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null });
+    expect(h).toEqual({ code: "MOD111", name: "Kitchen", character: "Trabolta", camera: "environment", engine: "browser", spot: "start-bar", view: "world", room: null, announce: null, camFeed: null, mic: null, voices: null });
     expect(withoutSecrets("?code=MOD111&name=Kitchen&spot=start-bar&view=mirror&keep=1")).toBe("?keep=1");
     expect(withoutSecrets("?code=MOD111")).toBe("");
     // The TV (K-18): view=tv + the room it speaks for.
@@ -269,5 +269,44 @@ describe("wave 14 config", () => {
     expect(spotProblem("ta", house)).toBeNull();
     expect(spotProblem("", house)).toBeNull();
     expect(spotProblem("nope", house)).toContain('"nope"');
+  });
+});
+
+describe("wave 19 config: the voice link", () => {
+  it("keeps the players' voices on and the microphone at the view's default unless told otherwise", () => {
+    const s = memory();
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t" }));
+    const c = loadConfig(s)!;
+    expect(c.voices).toBe(true);
+    expect(c.voiceLink).toBe(true);
+    expect("mic" in c).toBe(false);
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t", mic: false, voices: false, voiceLink: false }));
+    expect(loadConfig(s)).toMatchObject({ mic: false, voices: false, voiceLink: false });
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "e", token: "t", mic: "yes" }));
+    expect("mic" in loadConfig(s)!).toBe(false);
+    saveConfig(defaultConfig({ eventId: "e", token: "t", view: "tv", mic: true }), s);
+    expect(loadConfig(s)?.mic).toBe(true);
+  });
+  it("reads mic= / voices= off the URL and scrubs them", () => {
+    expect(hintsFromSearch("?code=X&mic=0&voices=off")).toMatchObject({ mic: false, voices: false });
+    expect(hintsFromSearch("?code=X&mic=1").mic).toBe(true);
+    expect(hintsFromSearch("?code=X")).toMatchObject({ mic: null, voices: null });
+    expect(withoutSecrets("?code=X&mic=1&voices=0&keep=1")).toBe("?keep=1");
+  });
+  it("provisions the URL's switches, leaving the microphone to the view when not given", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      const body = url.endsWith("/api/resolve-code") ? { eventId: "evt", role: "mod", title: "T", characters: [] } : { token: "tok" };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const none = await provision("MOD", { ...hintsFromSearch("?code=MOD"), name: null });
+      expect("mic" in none).toBe(false);
+      expect(none.voices).toBe(true);
+      const tv = await provision("MOD", hintsFromSearch("?code=MOD&view=tv&mic=1&voices=0"));
+      expect(tv).toMatchObject({ view: "tv", mic: true, voices: false });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

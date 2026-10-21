@@ -8,11 +8,14 @@
 //!      whether another tablet is online on it right now. One tap powers on.
 //!
 //! Everything else (character, camera, voice, announcements, the camera
-//! feed, a manual screen type or room) sits under a folded *advanced*.
+//! feed, the voice link's microphone and speaker, a manual screen type or
+//! room) sits under a folded *advanced*.
 
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
+import { micBox, voiceRoles } from "./voice/roles.ts";
+import { voiceStatus, voiceStatusText } from "./voice/status.ts";
 import { fetchCharacters } from "./pilot.ts";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, deviceEnv, pickDeviceEngine, unlock, voiceEngines, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
 import { ringChime } from "./announce.ts";
@@ -73,6 +76,9 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
   const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
   const [speed, setSpeed] = useState(current?.speed ?? 1);
   const [camFeed, setCamFeed] = useState(current?.camFeed ?? true);
+  // The voice link's microphone: undefined = the view's default (the TV's is off).
+  const [mic, setMic] = useState<boolean | undefined>(current?.mic);
+  const [voicesOn, setVoicesOn] = useState(current?.voices ?? true);
   const [fullscreen, setFullscreen] = useState(current?.fullscreen ?? true);
   // A manual screen type / room ("" = the map's). A terminal not set up from
   // the map shows what it had; that applies to a tap on its own spot only
@@ -84,6 +90,9 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
   const [tested, setTested] = useState<string | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const feed = useFeedStatus();
+  // The link stops while ⚙ is open (D9): show how it stood when ⚙ opened
+  // (read while this screen first renders, before the link's cleanup runs).
+  const [voice] = useState(() => voiceStatus.snapshot);
   const heart = useHeartbeats(access);
 
   useEffect(() => {
@@ -154,7 +163,10 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
       const sameEvent = current !== null && current.eventId === access.eventId;
       const base: TerminalConfig = sameEvent ? { ...current, token: access.token, title: access.title || current.title } : defaultConfig({ ...access, character: pickCharacter(null, cast) });
       const kept = await savedCharacter(character, base.character, async () => cast);
-      const next = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, fullscreen, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
+      const voiceFields = mic === undefined ? { voices: voicesOn } : { voices: voicesOn, mic };
+      const picked = applyPick({ ...base, character: kept, camera, engine, announce, camFeed, ...voiceFields, fullscreen, serverVoice: serverVoice.trim(), browserVoice, speed }, pick);
+      if (mic === undefined) delete picked.mic;
+      const next = picked;
       const own = manualTouched || (current !== null && current.spot === pick.spot);
       onDone(own ? withManual(next, pick, { view: viewOverride, room: roomOverride }) : next);
     } catch (e) {
@@ -344,10 +356,29 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
                 send this camera to the games <span className="muted">(placed terminals only)</span>
               </label>
               <label className="check">
+                <input
+                  type="checkbox"
+                  checked={micBox(mic, viewOverride || current?.view || "auto").checked}
+                  ref={(el) => {
+                    if (el !== null) el.indeterminate = micBox(mic, viewOverride || current?.view || "auto").follows;
+                  }}
+                  onChange={(e) => setMic(e.target.checked)}
+                />
+                let the games hear this room{" "}
+                <span className="muted">
+                  {mic === undefined ? "(follows the screen you pick: on, off on the TV — tick or untick to choose; " : "("}the microphone; placed terminals only, never the tent)
+                </span>
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={voicesOn} onChange={(e) => setVoicesOn(e.target.checked)} />
+                play the players near this screen <span className="muted">(their headset voices)</span>
+              </label>
+              <label className="check">
                 <input type="checkbox" checked={fullscreen} onChange={(e) => setFullscreen(e.target.checked)} />
                 full screen <span className="muted">(asked again on every tap; off for a laptop that needs Esc)</span>
               </label>
               {current !== null && feedWanted(current) && <div className={`small ${feed.kind === "stopped" ? "warn" : "muted"}`}>{feedStatusText(feed)}</div>}
+              {current !== null && (voiceRoles(current).mic || voiceRoles(current).voices) && <div className={`small ${voice.link === "stopped" || voice.mic === "denied" || voice.mic === "insecure" ? "warn" : "muted"}`}>{voice.link === "off" ? "voice link: starts once this terminal is set up" : `before ⚙ opened — ${voiceStatusText(voice)}`}</div>}
               <label>
                 screen <span className="muted">(blank = the map's)</span>
                 <select value={viewOverride} onChange={(e) => {

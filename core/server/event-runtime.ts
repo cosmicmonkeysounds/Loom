@@ -17,7 +17,7 @@ import { readFileSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVariantsResponse } from "@loom/house";
+import { VOICE_MAX_BYTES, kingSignal, validateHouse, voiceOn, type HouseMap, type KingState, type MapVariantsResponse } from "@loom/house";
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
@@ -29,7 +29,7 @@ import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.t
 import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
-import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
+import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, readRawBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
 import { RateLimiter, limiterFor, rateLimitsFromEnv, type RateLimits } from "./rate-limit.ts";
 import { handleMetrics } from "./routes/metrics.ts";
 import { handleModLog } from "./routes/mod-log.ts";
@@ -76,6 +76,7 @@ import { AUDIO_FILE, AudioHub, audioProblems, handleAudioGet, handleAudioPost, t
 import { ScreenWatch, handleScreenGet, handleScreenTerminalsGet, handleScreenVoicePost, screenKingOf, screenTerminals } from "./routes/screen.ts";
 import { handleScreenIdentifyPost } from "./routes/screen.ts";
 import { CAM_BODY_LIMIT, CamStore, parseCamUpload } from "./spatial-cams.ts";
+import { VOICE_LAG_BYTES, VOICE_PING_MS, VoiceRelay, parseVoiceUpload, type VoiceListener } from "./spatial-voice.ts";
 import { SpatialHub, houseVersion, houseWarnings, isWorld, parseDuckRun, parsePose, sortCandidates, type DuckRun, type KingRef, type SessionRef } from "./spatial.ts";
 import {
   DEFAULT_MAP_FILE,
@@ -689,6 +690,8 @@ export class EventRuntime {
   readonly spatial: SpatialHub;
   /** The wall terminals' camera feeds (wave 14): the latest frame per spot, memory only. */
   readonly cams: CamStore;
+  /** The voice link (wave 19): terminal mics ⇄ headsets, routed by pose, memory only. */
+  readonly voice: VoiceRelay;
   private readonly houseFile: string;
   // The project's map files as snapshotted (launch / reload / a save to the
   // project), null = no project snapshot; and the active variant's file
@@ -828,6 +831,12 @@ export class EventRuntime {
     });
     this.spatial.setOpen(false); // idle until the doors open
     this.cams = new CamStore({ now: () => this.clock() });
+    this.voice = new VoiceRelay({
+      now: () => this.clock(),
+      // The hub's current map (never a fresh `spatialHouse()` read: that
+      // stats the show file, and this runs every 100 ms while anyone listens).
+      world: () => ({ house: this.spatial.house, players: this.spatial.players(), live: (s) => this.spatial.hasSession(s) }),
+    });
     this.checkin = new GuestCheckin({
       sim: () => this.sim,
       open: () => this.open,
@@ -2945,7 +2954,11 @@ export class EventRuntime {
       this.spatial.flush();
       this.spatialTicks += 1;
       if (this.spatialTicks % 10 === 0) this.spatial.sweep();
-      if (!this.spatial.active) this.stopSpatialLoop();
+      // Who hears whom follows every flush (a move, a map swap, a session
+      // that ended); the diffs are `listen` / `bye` frames, so a quiet tick
+      // sends nothing.
+      if (this.voice.size > 0) this.voice.route();
+      if (!this.spatial.active && this.voice.size === 0) this.stopSpatialLoop();
     }, 100);
     this.spatialLoop.unref?.();
   }
@@ -3004,9 +3017,126 @@ export class EventRuntime {
     return true;
   }
 
+  /**
+   * Who a voice call speaks for (§2.4): a terminal (a moderator — token or
+   * author session — and a `spot` on the current map whose voice link is
+   * on), or a game session (its token; no `spot`). Else the refusal as
+   * `[status, error]`: 401 / 410 a session token, 403 `moderators only` a
+   * non-mod token with a spot, 404 `no such spot`, 403 `voice is off at this
+   * terminal`, 400 a mod token with no spot.
+   */
+  private voiceCaller(
+    token: string | undefined,
+    spot: string | null,
+    moderator: boolean,
+  ): { kind: "terminal"; spot: string } | { kind: "player"; session: string; joined: boolean } | { kind: "refused"; status: number; error: string; spot?: true } {
+    if (spot !== null) {
+      if (!moderator && !this.sessions.canModerate(token)) return { kind: "refused", status: 403, error: "moderators only" };
+      const house = this.spatialHouse();
+      if (house === null || !house.terminals.some((t) => t.id === spot)) return { kind: "refused", status: 404, error: "no such spot", spot: true };
+      if (!voiceOn(house, spot)) return { kind: "refused", status: 403, error: "voice is off at this terminal", spot: true };
+      return { kind: "terminal", spot };
+    }
+    const s = this.spatial.voiceSessionFor(token);
+    if (s !== null) return { kind: "player", session: s.id, joined: s.joined };
+    if (this.spatial.tokenState(token) === "over") return { kind: "refused", status: 410, error: "this session is over" };
+    if (moderator || this.sessions.canModerate(token)) return { kind: "refused", status: 400, error: "a terminal names its spot (?spot=)" };
+    return { kind: "refused", status: 401, error: "unknown session token" };
+  }
+
+  /** `POST /api/spatial/voice?seq=<n>[&spot=<id>]` — one chunk of μ-law
+   *  (§2.4), raw bytes under their own cap, before the 2 KB spatial parse. */
+  private async handleVoiceUpload(req: IncomingMessage, res: ServerResponse, url: URL, moderator: boolean): Promise<boolean> {
+    const body = await readRawBody(req, VOICE_MAX_BYTES);
+    const spotParam = url.searchParams.get("spot");
+    const who = this.voiceCaller(queryTokenOf(req, url), spotParam === null ? null : spotParam.trim(), moderator);
+    // Who first (401 / 403 / 410), then the chunk (400), then the spot (404 / 403).
+    if (who.kind === "refused" && who.spot !== true) {
+      sendJson(res, who.status, { error: who.error });
+      return true;
+    }
+    const up = parseVoiceUpload(url.searchParams, body);
+    if (!up.ok) {
+      sendJson(res, up.status, { error: up.error });
+      return true;
+    }
+    if (who.kind === "refused") {
+      sendJson(res, who.status, { error: who.error });
+      return true;
+    }
+    // A parked session (no pose yet) is heard by nobody.
+    if (who.kind === "player" && !who.joined) {
+      sendJson(res, 200, { ok: true, listening: false, dropped: true });
+      return true;
+    }
+    const out = this.voice.upload(who.kind === "terminal" ? { kind: "terminal", spot: who.spot } : { kind: "player", session: who.session }, up.seq, up.bytes);
+    sendJson(res, 200, { ok: true, listening: out.listening, ears: out.ears, ...(out.dropped ? { dropped: true } : {}) });
+    return true;
+  }
+
+  /** `GET /api/spatial/voice/stream?token=<t>[&spot=<id>]` — what this
+   *  device can hear (§2.4). Refusals are plain HTTP before it opens. */
+  private openVoiceStream(req: IncomingMessage, res: ServerResponse, url: URL, moderator: boolean): void {
+    const spotParam = url.searchParams.get("spot");
+    const spot = spotParam === null ? null : spotParam.trim();
+    if (spot !== null && (spot === "" || spot.length > 80)) {
+      sendJson(res, 400, { error: "spot is a terminal id" });
+      return;
+    }
+    const who = this.voiceCaller(queryTokenOf(req, url), spot, moderator);
+    if (who.kind === "refused") {
+      sendJson(res, who.status, { error: who.error });
+      return;
+    }
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
+    res.write(":ok\n\n");
+    // The stall cap is the lag cap: past it only control frames and the
+    // ping are written, so a reader that stopped (a zero-window tablet, a
+    // half-open socket) is dropped by the ping's write 15 s on (S2).
+    sseCap(res, VOICE_LAG_BYTES);
+    const id = randomUUID();
+    const flag = (name: string): boolean | undefined => {
+      const v = url.searchParams.get(name);
+      return v === "0" ? false : v === "1" ? true : undefined;
+    };
+    const mic = flag("mic");
+    const hear = flag("hear");
+    const listener: VoiceListener = {
+      id,
+      ...(who.kind === "terminal" ? { kind: "terminal", spot: who.spot } : { kind: "player", session: who.session }),
+      ...(mic !== undefined ? { mic } : {}),
+      ...(hear !== undefined ? { hear } : {}),
+      // A reader behind by seconds skips audio until it catches up: late
+      // voice is worse than a gap. Control frames always go.
+      send: (event, data) => {
+        if (event === "voice" && sseQueued(res) > VOICE_LAG_BYTES) return;
+        sseSend(res, event, data);
+      },
+      close: () => {
+        try {
+          res.end();
+        } catch {
+          /* already gone */
+        }
+      },
+    };
+    const ping = setInterval(() => sseWrite(res, ":ping\n\n"), VOICE_PING_MS);
+    ping.unref?.();
+    req.on("close", () => {
+      clearInterval(ping);
+      this.voice.disconnect(id);
+    });
+    this.voice.connect(listener);
+    this.startSpatialLoop();
+  }
+
   /** The spatial plane's GET routes. True when `path` matched. */
   private handleSpatialGet(req: IncomingMessage, res: ServerResponse, path: string, url: URL, moderator: boolean): boolean {
     const token = queryTokenOf(req, url);
+    if (path === "/api/spatial/voice/stream") {
+      this.openVoiceStream(req, res, url, moderator);
+      return true;
+    }
     if (path === "/api/spatial/cams" || path === "/api/spatial/cam") {
       // The camera feeds (§2.3): a game session or a moderator, like the map.
       if (!this.spatialReader(token, moderator)) {
@@ -3771,6 +3901,9 @@ export class EventRuntime {
     this.rulingsAsked.clear();
     this.rulingsDue.clear();
     this.spatial.reset(kind);
+    // Every session just ended: the voice streams close (games re-begin,
+    // terminals reconnect to a fresh routing).
+    this.voice.reset();
     this.agentPowerUses.clear();
     this.agentMinds.clear();
     this.sim = null;
@@ -3836,6 +3969,7 @@ export class EventRuntime {
     }
     this.agentStreams.clear();
     this.stopSpatialLoop();
+    this.voice.reset();
     this.spatial.detachAll();
     for (const s of [...this.spatialStreams]) {
       try {
@@ -4312,6 +4446,9 @@ export class EventRuntime {
 
     if (method !== "POST") return false;
 
+    // --- the voice link (§2.4): raw μ-law chunks (≤ 8 KB, 5/s per source),
+    // ahead of the 2 KB JSON cap below ---
+    if (path === "/api/spatial/voice") return this.handleVoiceUpload(req, res, url, opts.moderator === true);
     // --- a game's own calls (pose at 10 Hz, found, end): tiny bodies, read
     // under their own cap before the generic parse ---
     if (path.startsWith("/api/spatial/")) {

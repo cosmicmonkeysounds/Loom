@@ -3,6 +3,9 @@
 //! whether it is full screen, which build it runs — so on install day (and on the night) the director's
 //! Run → Terminals card shows a tablet nobody has touched (🔇), one whose
 //! screen went off (💤), one running flat, or one still on a cached old build.
+//! Wave 19 adds the voice link's microphone (`mic=live|muted|denied|insecure|off`,
+//! `voice/roles.ts` `micReport`): a tablet whose microphone was refused or
+//! needs https shows before the doors.
 //!
 //! The poll is the heartbeat: a throw here would stop it and turn the tablet
 //! red, so every read is guarded and `deviceHealth()` never throws. Chrome 87
@@ -10,6 +13,8 @@
 
 import { fullscreenFlag } from "./fullscreen.ts";
 import { audioUnlocked } from "./speech/engine.ts";
+import type { MicReport } from "./voice/roles.ts";
+import { micHeartbeat } from "./voice/status.ts";
 
 declare const __BUILD__: string | undefined;
 
@@ -25,14 +30,17 @@ export interface DeviceHealth {
   version: string;
   /** Full screen right now (wave 17); null / absent = can't be, or not asked. */
   fullscreen?: boolean | null;
+  /** The voice link's microphone (wave 19); null / absent = nothing to say yet. */
+  mic?: MicReport | null;
 }
 
-/** The poll's query fields: `audio=1|0`, `vis=v|h`, `bat=<0-100>[c]`, `fs=1|0`, `ver=<build>`. */
+/** The poll's query fields: `audio=1|0`, `vis=v|h`, `bat=<0-100>[c]`, `fs=1|0`, `mic=<state>`, `ver=<build>`. */
 export function deviceQuery(h: DeviceHealth): Record<string, string> {
   const q: Record<string, string> = { ver: h.version };
   if (h.audio !== null) q["audio"] = h.audio ? "1" : "0";
   if (h.visible !== null) q["vis"] = h.visible ? "v" : "h";
   if (h.fullscreen !== undefined && h.fullscreen !== null) q["fs"] = h.fullscreen ? "1" : "0";
+  if (h.mic !== undefined && h.mic !== null) q["mic"] = h.mic;
   if (h.battery !== null && Number.isFinite(h.battery)) q["bat"] = `${Math.max(0, Math.min(100, Math.round(h.battery)))}${h.charging === true ? "c" : ""}`;
   return q;
 }
@@ -97,5 +105,6 @@ export function deviceHealth(): DeviceHealth {
     charging: b?.charging ?? null,
     version: BUILD,
     fullscreen: safe(() => fullscreenFlag(), null),
+    mic: safe(() => micHeartbeat(), null),
   };
 }

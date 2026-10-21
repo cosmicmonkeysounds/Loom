@@ -39,16 +39,31 @@ func _run() -> void:
 	_test_king_rules()
 	_test_avatar_decode()
 	_test_config()
+	_test_config_setup()
 	_test_sse_parser()
 	_test_pose_pump()
 	await _test_server_link()
 	_test_locomotion()
 	_test_picker()
+	_test_picker_grid()
 	_test_flow()
 	_test_cam_feeds()
+	_test_voice_codec()
+	_test_voice_uplink()
+	_test_voice_link()
+	_test_voice_silent_mic()
+	await _test_voice_generator()
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	_test_lobby_geometry()
+	_test_lobby_pure()
+	_test_server_link_setup()
+	await _test_lobby_picker()
+	await _test_setup_panel()
+	_test_voice_config()
+	_test_voice_server_link()
+	await _test_voice_game()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -428,6 +443,43 @@ func _test_config() -> void:
 	var s := StationConfig.parse_url("https://show.example.com/loom")
 	_check(s.get("port") == 443 and s.get("tls") == true and s.get("path") == "/loom", "config: parse_url https + path")
 	_check(StationConfig.parse_url("ftp://x").is_empty() and StationConfig.parse_url("http://h:x").is_empty(), "config: parse_url refuses junk")
+
+
+## The in-headset setup's file (wave 19): saved to a user path, merged
+## over what it held, read back by the precedence chain, forgotten; the
+## station id it mints; the servers it offers.
+func _test_config_setup() -> void:
+	var dir := "user://config-test"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir + "/setup-station.json"
+	StationConfig.forget_user(path)
+	_check(not StationConfig.forget_user(path), "setup file: forgetting no file is a no-op")
+	_check(StationConfig.save_user({"server": "http://127.0.0.1:7000", "code": "K7PQ3M", "name": "Headset", "bogus": 1}, path), "setup file: saved")
+	var back := StationConfig.read_file(path)
+	_check(back.get("code") == "K7PQ3M" and back.get("server") == "http://127.0.0.1:7000" and not back.has("bogus"), "setup file: known keys only (%s)" % [back])
+	_check(StationConfig.save_user({"name": "Headset 2", "smooth_turn": true}, path), "setup file: saved again")
+	back = StationConfig.read_file(path)
+	_check(back.get("code") == "K7PQ3M" and back.get("name") == "Headset 2" and back.get("smooth_turn") == true, "setup file: a second save merges over the first (%s)" % [back])
+	var cfg := StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())
+	_check(cfg["code"] == "K7PQ3M" and StationConfig.is_configured(cfg), "setup file: the user file configures the station over the committed placeholder")
+	_check(StationConfig.forget_user(path) and not FileAccess.file_exists(path), "setup file: forgotten")
+	_check(not StationConfig.is_configured(StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())), "setup file: … and the placeholder is back")
+	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup file: the committed res:// file still holds CHANGEME")
+
+	_check(StationConfig.station_id_for("Headset", 0xbeef) == "vr-headset-beef", "setup: a station id from the name (%s)" % StationConfig.station_id_for("Headset", 0xbeef))
+	_check(StationConfig.station_id_for("  HEADSET 2!! ", 0x1ffff) == "vr-headset-2-ffff", "setup: … slugged, the salt in 4 hex (%s)" % StationConfig.station_id_for("  HEADSET 2!! ", 0x1ffff))
+	_check(StationConfig.station_id_for("???", 1) == "vr-headset-0001", "setup: … a name with no letters is a headset")
+
+	var choices := StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", true)
+	_check(choices.size() == 2 and choices[0]["url"] == "https://app.mapsandducks.com" and choices[1]["url"] == StationConfig.LOCAL_SERVER and str(choices[1]["label"]).begins_with("This computer"), "setup: the committed server first, then this computer (%s)" % [choices])
+	_check(StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", false).size() == 1, "setup: a headset build offers no local server")
+	var dev := StationConfig.server_choices("http://10.0.0.5:7000/", "https://app.mapsandducks.com", true)
+	_check(dev.size() == 3 and dev[0]["url"] == "http://10.0.0.5:7000" and dev[0]["label"] == "10.0.0.5:7000" and dev[1]["label"] == "app.mapsandducks.com", "setup: a server named on the command line comes first (%s)" % [dev])
+	_check(StationConfig.server_choices("junk", "", false).is_empty(), "setup: junk is no choice")
+	var ed := StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", true, true)
+	_check(ed.size() == 2 and ed[0]["url"] == StationConfig.LOCAL_SERVER, "setup: an editor run naming no server puts this computer first (%s)" % [ed])
+	_check(StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", false, true).size() == 1, "setup: … never on a headset build")
+	_check(StationConfig.offers_local(), "setup: a desktop / editor run offers this computer")
 
 
 func _write(path: String, data: Dictionary) -> void:
@@ -1058,6 +1110,45 @@ func _test_picker() -> void:
 	_check(p.selected().get("id") == "c", "picker: a refreshed list keeps the selection")
 
 
+## The tile grid's stick (wave 19): up / down a row, left one back, a
+## right flick let go early one on, a right hold still confirms.
+func _test_picker_grid() -> void:
+	var p := CandidatePicker.new()
+	var six: Array = []
+	for i in 6:
+		six.append({"id": "p%d" % i})
+	p.set_items(six)
+	p.columns = 3
+	p.update(Vector2(0, -1), 0.0)
+	_check(p.index == 3, "grid: stick down is a row down")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(0, -1), 0.0)
+	_check(p.index == 0, "grid: down from the bottom row wraps to the top, same column")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(-1, 0), 0.0)
+	_check(p.index == 5, "grid: left from the first tile wraps to the last")
+	p.update(Vector2(-1, 0), 0.0)
+	_check(p.index == 5, "grid: a held left moves once")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(1, 0), 0.2)
+	_check(p.index == 5 and p.progress() > 0.0, "grid: a right flick starts the hold bar")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0 and p.progress() == 0.0, "grid: … let go early it moves one on (wraps)")
+	p.update(Vector2(1, 0), 0.5)
+	var got := p.update(Vector2(1, 0), 0.6)
+	_check(got.get("id") == "p0" and p.index == 0, "grid: holding right 1 s confirms, no move")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0, "grid: letting go after a confirm moves nothing")
+	p.update(Vector2(1, 0), 0.4)
+	p.disarm()
+	_check(p.update(Vector2(1, 0), 2.0).is_empty() and p.progress() == 0.0, "grid: disarmed, a held right never confirms")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0, "grid: … nor moves when let go")
+	_check(CandidatePicker.row_step(4, 5, 3, 1) == 1 and CandidatePicker.row_step(1, 5, 3, 1) == 4 and CandidatePicker.row_step(2, 5, 3, 1) == 4, "grid: a short last row takes its nearest tile")
+	_check(CandidatePicker.row_step(0, 2, 2, 1) == 1 and CandidatePicker.row_step(1, 2, 2, -1) == 0, "grid: one row — up / down move one tile")
+	_check(CandidatePicker.row_step(0, 0, 3, 1) == 0, "grid: an empty grid stays put")
+
+
 # --- camera feeds (wave 14) ---------------------------------------------------
 
 
@@ -1636,8 +1727,19 @@ func _test_main_and_game() -> void:
 	_check(link.begun.is_empty(), "game: half a second is not a confirm")
 	for i in 40:
 		game._process(1.0 / 60.0)
-	_check(link.begun == ["g-bbbbbb"], "game: hold right confirms the highlighted program (%s)" % [link.begun])
+	# Wave 19: the hold picks the tile, and a card asks first.
+	_check(link.begun.is_empty() and game.lobby.view() == "confirm" and str(game.lobby.confirming().get("id", "")) == "g-bbbbbb", "game: hold right picks the highlighted program — the card asks first (%s)" % [link.begun])
+	for i in 70:
+		game._process(1.0 / 60.0)
+	_check(link.begun.is_empty(), "game: the hold that opened the card never starts it")
 	player.right_stick = Vector2.ZERO
+	game._process(1.0 / 60.0)
+	player.right_stick = Vector2(1, 0)
+	for i in 70:
+		game._process(1.0 / 60.0)
+	_check(link.begun == ["g-bbbbbb"] and game.lobby.view() == "pick", "game: hold right again on START begins it (%s)" % [link.begun])
+	player.right_stick = Vector2.ZERO
+	game._process(1.0 / 60.0)
 
 	# An assignment arrives: play.
 	var a := _assignment(house, "s-1", true)
@@ -1885,4 +1987,1169 @@ func _test_main_and_game() -> void:
 	_check(under_trail.size() > 2 and _near3(under_trail[1], [-1.65, -2.7, 6.2]), "game: from under the stair the trail first steps out of its nearer side")
 
 	main.queue_free()
+	await process_frame
+
+
+# --- the lobby's picker + setup (wave 19) -------------------------------------------
+
+
+## The panel's pure geometry: the grid for a list, pages, hit mapping, the
+## pointer's ray onto the panel, the beam's hand rule.
+func _test_lobby_geometry() -> void:
+	_check(LobbyTiles.layout(0)["pages"] == 0, "tiles: nothing to lay out")
+	var l1 := LobbyTiles.layout(1)
+	var l4 := LobbyTiles.layout(4)
+	var l5 := LobbyTiles.layout(5)
+	var l7 := LobbyTiles.layout(7)
+	var l8 := LobbyTiles.layout(8)
+	var l17 := LobbyTiles.layout(17)
+	_check(l1["cols"] == 1 and l1["rows"] == 1 and l4["cols"] == 4 and l4["rows"] == 1, "tiles: up to 4 on one row")
+	_check(l5["cols"] == 3 and l5["rows"] == 2 and l7["cols"] == 4 and l8["cols"] == 4 and l8["rows"] == 2 and l8["pages"] == 1, "tiles: 5–8 on two rows")
+	_check(l17["cols"] == 4 and l17["per_page"] == 8 and l17["pages"] == 3, "tiles: past 8, pages of 4 × 2")
+	_check(LobbyTiles.page_of(7, 8) == 0 and LobbyTiles.page_of(8, 8) == 1 and LobbyTiles.count_on_page(17, 2, 8) == 1 and LobbyTiles.count_on_page(17, 3, 8) == 0, "tiles: pages and what they hold")
+	var a := LobbyTiles.tile_center(0, 4, 2)
+	var d := LobbyTiles.tile_center(3, 4, 2)
+	var e := LobbyTiles.tile_center(4, 4, 2)
+	_check(_near(a.x, -d.x) and a.y > e.y and _near(a.x, e.x) and _near((a.y + e.y) / 2.0, LobbyTiles.GRID_Y), "tiles: the grid is centred, reading order")
+	_check(LobbyTiles.slot_at(e, 4, 2, 8) == 4 and LobbyTiles.slot_at(e + Vector2(0.2, 0.25), 4, 2, 8) == 4, "tiles: a point on a tile is that tile")
+	_check(LobbyTiles.slot_at((a + LobbyTiles.tile_center(1, 4, 2)) / 2.0, 4, 2, 8) == -1, "tiles: the gap between tiles is no tile")
+	_check(LobbyTiles.slot_at(e, 4, 2, 4) == -1, "tiles: an empty slot on a short page is no tile")
+	var buttons := [{"id": "a", "center": Vector2(0, 1), "size": Vector2(0.4, 0.2)}, {"id": "b", "center": Vector2(0.1, 1), "size": Vector2(0.2, 0.2)}]
+	_check(LobbyTiles.button_at(Vector2(0.1, 1.05), buttons) == "b" and LobbyTiles.button_at(Vector2(-0.15, 1), buttons) == "a" and LobbyTiles.button_at(Vector2(0, 2), buttons) == "", "tiles: the button under a point (the last drawn wins)")
+
+	var panel := Transform3D(Basis.IDENTITY, Vector3(0, 400, -2.4))
+	var eye := Vector3(0, 401.6, 0)
+	var target := panel * Vector3(e.x, e.y, 0)
+	var h := LobbyTiles.ray_to_panel(eye, target - eye, panel)
+	_check(not h.is_empty() and (h["point"] as Vector2).distance_to(e) < 1e-4 and _near(float(h["distance"]), eye.distance_to(target)), "pointer: a ray onto the panel lands in panel coordinates (%s)" % [h])
+	_check(LobbyTiles.ray_to_panel(eye, Vector3(0, 0, 1), panel).is_empty(), "pointer: a ray away from the panel misses")
+	_check(LobbyTiles.ray_to_panel(eye, Vector3(1, 0, 0), panel).is_empty(), "pointer: a ray along the panel misses")
+	_check(LobbyTiles.ray_to_panel(Vector3(0, 401.6, -3.0), Vector3(0, 0, -1), panel).is_empty(), "pointer: from behind the panel, nothing")
+	var turned := Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(1, 400, 0))
+	var side := LobbyTiles.ray_to_panel(Vector3(3, 401.5, -0.3), Vector3(-1, 0, 0), turned)
+	_check(not side.is_empty() and _near((side["point"] as Vector2).y, 1.5) and _near((side["point"] as Vector2).x, 0.3), "pointer: a turned panel maps through its own frame (%s)" % [side])
+
+	var rest := Transform3D.IDENTITY
+	# Moving is a rate, never a distance since the last switch: drift (a few
+	# cm over seconds) never counts, a flick does.
+	_check(not LobbyPointer.moving(rest, rest.translated(Vector3(0.001, 0, 0)), 1.0 / 72.0), "pointer: a hand drifting 1 mm a frame is not moving")
+	_check(LobbyPointer.moving(rest, rest.translated(Vector3(0.01, 0, 0)), 1.0 / 72.0), "pointer: … 1 cm a frame (0.7 m/s) is")
+	_check(LobbyPointer.moving(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(1.0)), Vector3.ZERO), 1.0 / 72.0) and not LobbyPointer.moving(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(0.2)), Vector3.ZERO), 1.0 / 72.0), "pointer: … or turning 72°/s, not 14°/s")
+	var drift := rest
+	var drifted := false
+	for i in 72 * 4:  # 4 s of 1 cm/s drift, 4 cm in all
+		var next := drift.translated(Vector3(0.01 / 72.0, 0, 0))
+		drifted = drifted or LobbyPointer.moving(drift, next, 1.0 / 72.0)
+		drift = next
+	_check(not drifted, "pointer: slow drift never takes the beam, however far it goes")
+	_check(LobbyPointer.takes_beam(false, LobbyPointer.MOVE_FOR, false) and not LobbyPointer.takes_beam(false, 0.05, false), "pointer: the idle hand takes the beam after moving MOVE_FOR s")
+	_check(LobbyPointer.takes_beam(true, 0.0, false), "pointer: … or by a fresh trigger pull")
+	_check(not LobbyPointer.takes_beam(true, 1.0, true), "pointer: … never while the beam hand's trigger is held (a ⚙ hold)")
+	_check(LobbyPointer.trigger_down(false, 0.9, false) and not LobbyPointer.trigger_down(false, 0.6, false) and LobbyPointer.trigger_down(true, 0.6, false) and not LobbyPointer.trigger_down(true, 0.3, false) and LobbyPointer.trigger_down(false, 0.0, true), "pointer: the trigger with hysteresis (a click is a pull)")
+
+
+## The tiles' and the SET UP panel's pure helpers.
+func _test_lobby_pure() -> void:
+	_check(Lobby.initials_of("MS Paint") == "MP" and Lobby.initials_of("Excel") == "E" and Lobby.initials_of("") == "?", "lobby: initials for a tile with no picture")
+	_check(Lobby.tile_name({"name": "Microsoft Internet Explorer 6"}).length() == Lobby.NAME_CHARS and Lobby.tile_name({"id": "g-1"}) == "g-1", "lobby: long names are cut on their tile")
+	_check(SetupPanel.code_text("K7P") == "PASSCODE  K7P···" and SetupPanel.code_char("k") == "K" and SetupPanel.code_char("!") == "" and SetupPanel.code_char("0") == "0", "setup: the passcode field + what a key may type")
+	_check(SetupPanel.key_ids().size() == SetupPanel.ALPHABET.length() + 2 and SetupPanel.key_center(0).y > SetupPanel.key_center(SetupPanel.KEYS_PER_ROW).y, "setup: the keyboard is the passcode alphabet, ⌫ and SPACE, in rows")
+	var probe := HouseLook.label("", 0.05)
+	Lobby.fit(probe, "START", 1.0, 0.05)
+	var short_px := probe.pixel_size
+	Lobby.fit(probe, "This computer · 127.0.0.1:7000", 0.4, 0.05)
+	var w := ThemeDB.fallback_font.get_string_size(probe.text, HORIZONTAL_ALIGNMENT_LEFT, -1, probe.font_size).x * probe.pixel_size
+	_check(_near(short_px, 0.05 / 64.0, 1e-6) and w <= 0.4 + 1e-4 and probe.pixel_size < short_px, "lobby: a label keeps its height, or shrinks to fit (%.3f m)" % w)
+	probe.free()
+	var servers := SetupPanel.server_slots(2)
+	_check(servers.size() == 2 and _near(servers[0]["center"].x, -servers[1]["center"].x), "setup: the server buttons side by side")
+
+
+## A ServerLink with no passcode: try a setup over the fake transport (every
+## refusal answers the panel and stays unconfigured; a working one is saved
+## and links), forget it, play offline.
+func _test_server_link_setup() -> void:
+	var sl: LinkBase = load("res://net/server_link.gd").new()
+	var tr: Variant = preload("res://test/fake_transport.gd").new()
+	sl.set("transport", tr)
+	sl.set("stream", SseClient.new())
+	var path := "user://config-test/setup-link.json"
+	StationConfig.forget_user(path)
+	sl.set("user_path", path)
+	sl.set("base_files", [StationConfig.RES_PATH])
+	sl.set("base_args", PackedStringArray())
+	sl.set("station_salt", 0xabcd)
+	sl.config = StationConfig.resolve([StationConfig.RES_PATH], PackedStringArray())
+	_check(sl.needs_setup() and not sl.can_forget_setup(), "setup link: the committed placeholder needs a setup")
+	_check(sl.default_station_name() == "Headset ABCD", "setup link: the default NAME carries the station id's hex (%s)" % sl.default_station_name())
+	var choices := sl.server_choices()
+	# An editor run naming no server tests against `pnpm dev`: this computer
+	# first; any other run, the committed server first.
+	var local_first := OS.has_feature("editor_runtime")
+	var want_first := StationConfig.LOCAL_SERVER if local_first else "https://app.mapsandducks.com"
+	var want_last := "https://app.mapsandducks.com" if local_first else StationConfig.LOCAL_SERVER
+	_check(choices.size() == 2 and choices[0]["url"] == want_first and choices.back()["url"] == want_last, "setup link: the committed server and this computer, in the run's order (%s)" % [choices])
+	var answers: Array = []
+	sl.setup_answered.connect(func(ok: bool, m: String) -> void: answers.append([ok, m]))
+
+	sl.try_setup("http://127.0.0.1:7000", " ", "x")
+	_check(answers.back() == [false, "Type the moderator passcode."] and tr.calls.is_empty(), "setup link: no passcode, no call")
+	sl.try_setup("http://127.0.0.1:7000", "k7pq3m", "Headset 3")
+	_check(tr.log.back() == "POST /api/resolve-code" and tr.calls[0]["body"]["code"] == "K7PQ3M" and tr.base == "http://127.0.0.1:7000", "setup link: CONNECT resolves the typed passcode on the chosen server (%s)" % [tr.calls])
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	_check(tr.calls.size() == 1, "setup link: one try at a time")
+	_check(sl.needs_setup(), "setup link: the SET UP panel stays up while a try is out")
+	tr.answer("/api/resolve-code", 200, {"role": "event", "eventId": "e1"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."] and sl.needs_setup() and sl.get("phase") == "idle" and str(sl.config["code"]) == StationConfig.PLACEHOLDER_CODE, "setup link: a guest code is no moderator passcode — still unconfigured")
+	_check(not FileAccess.file_exists(path) and sl.status == "Not configured — set this headset up.", "setup link: … nothing saved")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 404, {"error": "no such code"})
+	_check(answers.back() == [false, "No event on 127.0.0.1:7000 answers to that passcode."], "setup link: an unknown code names the server it asked (%s)" % [answers.back()])
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 0)
+	_check(answers.back() == [false, "Can't reach the server."] and sl.get("phase") == "idle", "setup link: no answer → can't reach the server, no retry loop")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	tr.answer("/api/mod/login", 401, {"error": "bad passcode"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."], "setup link: a refused login is no moderator passcode")
+
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	_check(tr.log.back() == "POST /e/e1/api/mod/login", "setup link: a moderator code logs in")
+	tr.answer("/api/mod/login", 200, {"token": "mod-tok"})
+	_check(answers.back() == [true, ""] and not sl.needs_setup() and sl.get("phase") == "ready", "setup link: a working passcode links (%s)" % [answers.back()])
+	var saved := StationConfig.read_file(path)
+	_check(saved.get("code") == "K7PQ3M" and saved.get("server") == "http://127.0.0.1:7000" and saved.get("name") == "Headset 3" and saved.get("station") == "vr-headset-3-abcd", "setup link: … and is saved to the user file (%s)" % [saved])
+	_check(sl.station_name() == "Headset 3" and sl.status == "Connected to The Show." and tr.count("/api/mod/spatial/candidates") == 1, "setup link: … and carries on as if it booted with it")
+	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup link: the committed res:// file is untouched")
+	_check(sl.linked() and sl.default_station_name() == "Headset 3", "setup link: linked; the panel would start from its own name")
+
+	# The passcode stops working (the staff codes rotated): no retry fixes
+	# it — SET UP again, prefilled. A network blip still just retries.
+	sl.reconnect()
+	tr.answer("/api/resolve-code", 0)
+	_check(sl.get("phase") == "waiting" and not sl.needs_setup(), "setup link: no answer on a configured station → retry, no SET UP")
+	sl.reconnect()
+	tr.answer("/api/resolve-code", 404, {"error": "no such code"})
+	_check(sl.needs_setup() and sl.get("phase") == "idle" and not sl.linked() and str(sl.get("dead_code")) != "" and sl.status.ends_with("Set this headset up again."), "setup link: a 404 on a configured station → SET UP again (%s)" % sl.status)
+	_check(sl.server_choices()[0]["url"] == "http://127.0.0.1:7000", "setup link: … its own server first")
+	sl.try_setup("http://127.0.0.1:7000", "Q2W3E4", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "event", "eventId": "e1"})
+	_check(sl.needs_setup(), "setup link: … a wrong new code keeps SET UP up")
+	sl.try_setup("http://127.0.0.1:7000", "Q2W3E4", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	tr.answer("/api/mod/login", 200, {"token": "mod-tok"})
+	_check(not sl.needs_setup() and str(sl.get("dead_code")) == "" and StationConfig.read_file(path).get("code") == "Q2W3E4", "setup link: … the new code links and is saved")
+
+	# A late answer from before a reconfigure is dropped.
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")  # linked: a fresh try
+	sl.forget_setup()
+	var before := answers.size()
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e9"})
+	_check(answers.size() == before and str(sl.get("event_id")) == "", "setup link: an answer for an older setup is dropped")
+	_check(not FileAccess.file_exists(path) and sl.needs_setup() and sl.status == "Not configured — set this headset up.", "setup link: ⚙ forget deletes the file — back to SET UP")
+
+	sl.play_offline()
+	_check(sl.is_offline() and not sl.needs_setup() and sl.can_forget_setup() and sl.status.begins_with("Offline"), "setup link: PLAY OFFLINE plays this run without a server")
+	sl.forget_setup()
+	_check(not sl.is_offline() and sl.needs_setup(), "setup link: … and ⚙ goes back to SET UP")
+	_free_server_link(sl)
+
+
+## main.tscn with a fake link: the tiles (pictures, names, tags, pages), the
+## laser's hover and press, the card's START / BACK, the ⚙ hold, the copy.
+func _test_lobby_picker() -> void:
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var lobby := game.lobby
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	var asked: Array = []
+	game.ghosts.avatars.requester = func(url: String, done: Callable) -> void: asked.append([url, done])
+	var title: Label3D = lobby.get("_title")
+	var empty: Label3D = lobby.get("_empty")
+	var station: Label3D = lobby.get("_station")
+	var message: Label3D = lobby.get("_message")
+	_check(title.text == "PICK YOUR PROGRAM" and empty.text == Lobby.EMPTY and station.text == "this headset: Test Headset", "lobby: PICK YOUR PROGRAM, nobody marked yet, this headset's name")
+	_check(not title.text.contains("TABLET"), "lobby: no more scan-on-the-tablet")
+
+	link.candidates_received.emit([
+		{"id": "g-1", "name": "Excel", "captured": true, "eligible": true, "avatar": "aaaa"},
+		{"id": "g-2", "name": "MS Paint", "eligible": true, "marked": true},
+		{"id": "g-3", "name": "Clippy", "eligible": false},
+		{"id": "g-4", "name": "Winamp", "eligible": true, "favour": true, "avatar": "bbbb"},
+	])
+	game._process(0.016)
+	_check(lobby.picker.items.size() == 3 and empty.text == "" and lobby.picker.columns == 3, "lobby: a tile per marked program, one row (%d)" % lobby.picker.items.size())
+	var t0 := lobby.tile_node(0)
+	var t1 := lobby.tile_node(1)
+	_check(t0 != null and t0.visible and (t0.get_node("Label") as Label3D).text == "Excel" and (t0.get_node("Tag") as Label3D).text == "[corrupted]", "lobby: a tile names its program and tags it")
+	_check((t1.get_node("Initials") as Label3D).text == "MP" and not (t1.get_node("Picture") as Sprite3D).visible, "lobby: no picture → initials")
+	_check(asked.size() == 2 and str(asked[0][0]) == "fixture://avatar/aaaa", "lobby: pictures are fetched through the ghosts' cache (%s)" % [asked.map(func(x: Array) -> String: return str(x[0]))])
+	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.2, 0.6, 0.9))
+	(asked[0][1] as Callable).call(true, PackedStringArray(["Content-Type: image/png"]), img.save_png_to_buffer())
+	_check((t0.get_node("Picture") as Sprite3D).visible and (t0.get_node("Initials") as Label3D).text == "", "lobby: … and a tile wears its picture once it lands")
+	_check(((t0.get_node("Ring") as Node3D).visible) and not (t1.get_node("Ring") as Node3D).visible, "lobby: the selection is ringed")
+
+	# The laser: hover, then the trigger picks; BACK cancels; START begins.
+	var eye := player.camera.global_position
+	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
+	var c2 := LobbyTiles.tile_center(2, 3, 1)
+	game.pointer.inject(eye, aim_at.call(c2), false)
+	game._process(0.016)
+	_check(lobby.hovered() == "tile:2" and lobby.view() == "pick", "lobby: the laser hovers a tile")
+	_check(not game.pointer.beam_visible(), "lobby: no beam on the desktop rig (the mouse has its cursor)")
+	game.pointer.inject(eye, aim_at.call(c2), true)
+	game._process(0.016)
+	_check(lobby.view() == "confirm" and str(lobby.confirming().get("id")) == "g-4" and lobby.picker.index == 2, "lobby: the trigger on a tile asks about it")
+	var card_text: Label3D = lobby.get("_card_text")
+	_check(card_text.text == "Start as Winamp?", "lobby: Start as <name>? (%s)" % card_text.text)
+	var card_initials: Label3D = lobby.get("_card_initials")
+	var card_tag: Label3D = lobby.get("_card_tag")
+	_check(card_initials.text == "W" and not (lobby.get("_card_picture") as Sprite3D).visible and card_tag.text == Lobby.tag_of(lobby.confirming()).strip_edges() and card_tag.text != "", "lobby: the card shows initials until the picture lands, and the tag (%s / %s)" % [card_initials.text, card_tag.text])
+	var backdrop := (lobby.get("_panel") as Node3D).get_node_or_null("Backdrop") as MeshInstance3D
+	_check(backdrop != null and backdrop.position.z < 0.0 and (backdrop.mesh as QuadMesh).size.x >= 2.6, "lobby: the panel has its own backdrop, behind the tiles (the posts never show through)")
+	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), true)
+	game._process(0.016)
+	_check(lobby.view() == "confirm", "lobby: a trigger still held from the tile presses nothing")
+	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), false)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), true)
+	game._process(0.016)
+	_check(lobby.view() == "pick" and link.begun.is_empty(), "lobby: BACK cancels")
+	game.pointer.inject(eye, aim_at.call(LobbyTiles.tile_center(1, 3, 1)), false)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(LobbyTiles.tile_center(1, 3, 1)), true)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(Lobby.START_AT), false)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(Lobby.START_AT), true)
+	game._process(0.016)
+	game._process(0.016)
+	_check(link.begun == ["g-2"] and lobby.view() == "pick", "lobby: START begins the program (%s)" % [link.begun])
+	_check(message.text == "Starting MS Paint…", "lobby: … and says so (%s)" % message.text)
+	game.pointer.inject(eye, Vector3(0, 0, 1), false)
+	game._process(0.016)
+	_check(lobby.hovered() == "", "lobby: pointing away hovers nothing")
+
+	# The mouse (a click is a press on the button under the cursor) and the keys.
+	lobby.press("tile:0")
+	_check(lobby.view() == "confirm" and str(lobby.confirming().get("id")) == "g-1", "lobby: a click on a tile asks about it")
+	var enter := InputEventKey.new()
+	enter.pressed = true
+	enter.keycode = KEY_BACKSPACE
+	lobby._unhandled_input(enter)
+	_check(lobby.view() == "pick", "lobby: Backspace backs out of the card")
+	enter.keycode = KEY_ENTER
+	lobby._unhandled_input(enter)
+	lobby._unhandled_input(enter)
+	game._process(0.016)
+	_check(link.begun == ["g-2", "g-1"], "lobby: Enter picks, Enter starts (%s)" % [link.begun])
+
+	# A program that leaves the list while its card is up: back to the tiles.
+	lobby.press("tile:1")
+	link.candidates_received.emit([{"id": "g-1", "name": "Excel", "captured": true, "eligible": true}])
+	_check(lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: the card closes when its program is gone")
+	link.begin_failed.emit("Nobody has that pass.")
+	_check(message.text == "Nobody has that pass.", "lobby: a begin error still flashes")
+	link.candidates_received.emit([])
+	game._process(0.016)
+	_check(empty.text == Lobby.EMPTY, "lobby: an empty list says nobody is marked yet")
+
+	# Pages past 8: the stick walks across them, ◀ ▶ turn them.
+	var many: Array = []
+	for i in 11:
+		many.append({"id": "g-%02d" % i, "name": "P%d" % i, "eligible": true})
+	link.candidates_received.emit(many)
+	_check(lobby.picker.columns == 4 and lobby.tile_node(0) != null and lobby.tile_node(8) == null, "lobby: 11 programs, a page of 4 × 2")
+	link.set("saved_setup", true)
+	link.status_changed.emit("Connected.")
+	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1, "lobby: a full page, ◀ ▶ and the ⚙ never overlap (%s)" % _overlap(lobby.get("_buttons")))
+	link.set("saved_setup", false)
+	link.status_changed.emit("Connected.")
+	lobby.press("next")
+	_check(lobby.picker.index == 8 and lobby.tile_node(8) != null and lobby.tile_node(0) == null and (lobby.get("_page_label") as Label3D).text == "page 2 / 2", "lobby: ▶ turns the page")
+	lobby.press("next")
+	_check(lobby.picker.index == 0, "lobby: … and wraps")
+	player.left_stick = Vector2(0, -1)
+	game._process(0.016)
+	player.left_stick = Vector2.ZERO
+	game._process(0.016)
+	player.left_stick = Vector2(0, -1)
+	game._process(0.016)
+	player.left_stick = Vector2.ZERO
+	game._process(0.016)
+	_check(lobby.picker.index == 8 and lobby.tile_node(8) != null, "lobby: the stick walks a row down onto the next page (%d)" % lobby.picker.index)
+
+	# The tablet's Send to headset lands whatever the view; back in the
+	# lobby, the card it interrupted is gone.
+	lobby.press("tile:1")
+	link.give_house(_placeholder_house())
+	lobby.flash("Starting Old News…", 3.0)
+	link.assignment_received.emit(_assignment(game.builder.house, "s-tab", true))
+	_check(game.state() == GameFlow.State.PLAYING and link.begun.size() == 2, "lobby: the tablet's program still lands with the card up")
+	_check(game.hud.room_text() != "", "lobby: … and the HUD shows the room while playing")
+	link.session_over.emit("over")
+	_check(game.state() == GameFlow.State.LOBBY and lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: … and the lobby comes back to the tiles, no card")
+	_check(game.hud.room_text() == "" and game.hud.notice_text() == "" and game.hud.mic_text() == "", "lobby: back from a session, no HUD line floats over the tiles")
+	_check(message.text == "Session ended." and message.modulate == Lobby.MESSAGE_NEWS, "lobby: … the session's end is the lobby's own line, in place of a stale flash (%s)" % message.text)
+	_check(Game.session_over_text("reset") == "The story restarted — session ended." and Game.session_over_text("event ended") == "The event is over." and Game.session_over_text("reconfigured") == "" and Game.session_over_text("headset") == "Session ended (headset).", "lobby: the session's end in words, never a bare code")
+	link.begin_failed.emit("Nobody has that pass.")
+	_check(message.modulate == Lobby.MESSAGE_ERROR, "lobby: a refused begin flashes red")
+
+	# ⚙ only once there is a setup to forget; held 2 s it forgets it.
+	_check(not (lobby.get("_gear") as Node3D).visible, "lobby: no ⚙ with nothing to forget")
+	link.set("saved_setup", true)
+	link.status_changed.emit("Connected.")
+	_check((lobby.get("_gear") as Node3D).visible, "lobby: a saved setup shows the ⚙")
+	game.pointer.inject(eye, aim_at.call(Lobby.GEAR_AT), true)
+	for i in 60:
+		game._process(1.0 / 60.0)
+	_check(int(link.get("forgotten")) == 0 and lobby.forget_progress() > 0.4, "lobby: holding the ⚙ fills the bar")
+	game.pointer.inject(eye, aim_at.call(Lobby.GEAR_AT), false)
+	game._process(0.016)
+	_check(lobby.forget_progress() == 0.0, "lobby: … letting go empties it")
+	game.pointer.inject(eye, aim_at.call(Lobby.GEAR_AT), true)
+	for i in 130:
+		game._process(1.0 / 60.0)
+	_check(int(link.get("forgotten")) == 1 and lobby.view() == "setup" and title.text == "SET UP THIS HEADSET", "lobby: two seconds on the ⚙ forget the setup — SET UP (%s)" % lobby.view())
+	game.pointer.clear_injection()
+	game.ghosts.avatars.requester = Callable()
+	main.queue_free()
+	await process_frame
+
+
+## The SET UP panel on main.tscn with a fake link: the keyboard (laser and
+## physical keys), the server choice, CONNECT's answers, PLAY OFFLINE.
+func _test_setup_panel() -> void:
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Headset"})
+	link.set("unconfigured", true)
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var lobby := game.lobby
+	game.player.set_physics_process(false)
+	game.player.read_input = false
+	game._process(0.016)
+	var panel := lobby.setup_panel()
+	_check(lobby.view() == "setup" and panel.visible and not (lobby.get("_grid") as Node3D).visible, "setup: an unconfigured headset shows SET UP THIS HEADSET")
+	_check(panel.choices.size() == 2 and panel.server_index == 0 and panel.station == "Headset", "setup: the link's servers, the first chosen; the name starts as Headset")
+	_check(_overlap(panel.buttons()) == "", "setup: no two buttons overlap (%s)" % _overlap(panel.buttons()))
+	var eye := game.player.camera.global_position
+	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
+	var tap := func(at: Vector2) -> void:
+		game.pointer.inject(eye, aim_at.call(at), false)
+		game._process(0.016)
+		game.pointer.inject(eye, aim_at.call(at), true)
+		game._process(0.016)
+	var keys := SetupPanel.key_ids()
+	for ch in "K7PQ":
+		tap.call(SetupPanel.key_center(keys.find("key:" + ch)))
+	_check(panel.code == "K7PQ" and lobby.hovered() == "key:Q", "setup: the laser types on the keyboard (%s)" % panel.code)
+	tap.call(SetupPanel.key_center(keys.find("key:back")))
+	_check(panel.code == "K7P", "setup: ⌫")
+	var ev := InputEventKey.new()
+	ev.pressed = true
+	for ch in "q3m":
+		ev.keycode = KEY_NONE
+		ev.unicode = ch.unicode_at(0)
+		lobby._unhandled_input(ev)
+	_check(panel.code == "K7PQ3M", "setup: physical keys type too, upper-cased (%s)" % panel.code)
+	tap.call(SetupPanel.server_slots(2)[1]["center"])
+	_check(panel.server_index == 1, "setup: a server is chosen with the laser")
+	tap.call(Vector2(0.46, SetupPanel.FIELD_Y))
+	tap.call(SetupPanel.key_center(keys.find("key:space")))
+	tap.call(SetupPanel.key_center(keys.find("key:2")))
+	_check(panel.field == "name" and panel.station == "Headset 2", "setup: the name field takes the keys (%s)" % panel.station)
+	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
+	var setups: Array = link.get("setups")
+	_check(setups.size() == 1 and setups[0] == ["http://127.0.0.1:7000", "K7PQ3M", "Headset 2"] and panel.busy, "setup: CONNECT tries the chosen server, the passcode and the name (%s)" % [setups])
+	_check((panel.get("_message") as Label3D).text == SetupPanel.CONNECTING and (panel.get("_message") as Label3D).modulate == Lobby.MESSAGE_NEWS, "setup: Connecting… is news, not an error")
+	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
+	_check(setups.size() == 1, "setup: … once")
+	link.call("answer_setup", false, "That isn't a moderator passcode.")
+	var msg: Label3D = panel.get("_message")
+	_check(not panel.busy and msg.text == "That isn't a moderator passcode." and lobby.view() == "setup" and panel.code == "K7PQ3M", "setup: a refusal says why and keeps the passcode")
+	_check(msg.modulate == Lobby.MESSAGE_ERROR and not (lobby.get("_station") as Label3D).visible, "setup: a refusal is red; the old name stays off the heading (the NAME field says it)")
+	ev.unicode = 0
+	ev.keycode = KEY_ENTER
+	lobby._unhandled_input(ev)
+	_check(setups.size() == 2, "setup: Enter connects too")
+	link.call("answer_setup", false, "Can't reach the server.")
+	_check(msg.text == "Can't reach the server.", "setup: can't reach the server")
+	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
+	link.call("answer_setup", true)
+	game._process(0.016)
+	_check(lobby.view() == "pick" and (lobby.get("_station") as Label3D).text == "this headset: Headset 2", "setup: a working passcode goes on to the tiles, named")
+	_check((lobby.get("_gear") as Node3D).visible, "setup: … with the ⚙ to forget it")
+	link.forget_setup()
+	game._process(0.016)
+	_check(lobby.view() == "setup", "setup: forgotten, it asks again")
+	tap.call(Vector2(0.42, SetupPanel.ACTION_Y))
+	game._process(0.016)
+	_check(int(link.get("offline_chosen")) == 1 and lobby.view() == "pick", "setup: PLAY OFFLINE goes on to the tiles")
+	game.pointer.clear_injection()
+	main.queue_free()
+	await process_frame
+
+
+## The first two of `buttons` (`{id, center, size}`) whose rects overlap, as
+## text, else "".
+static func _overlap(buttons: Array) -> String:
+	for i in buttons.size():
+		for j in range(i + 1, buttons.size()):
+			var a: Dictionary = buttons[i]
+			var b: Dictionary = buttons[j]
+			var d: Vector2 = (a["center"] - b["center"]).abs()
+			var reach: Vector2 = (a["size"] + b["size"]) / 2.0
+			if d.x < reach.x and d.y < reach.y:
+				return "%s × %s" % [a["id"], b["id"]]
+	return ""
+
+
+# --- voice (wave 19) --------------------------------------------------------
+
+
+## The codec, the resampler, the gate, the jitter plan and the routing rule
+## against `@loom/house`'s vectors (`test/golden/voice-mulaw.json`).
+func _test_voice_codec() -> void:
+	var path := GOLDEN_DIR + "voice-mulaw.json"
+	_check(FileAccess.file_exists(path), "voice: the codec's vectors are synced (pnpm --filter @loom/house sync)")
+	if not FileAccess.file_exists(path):
+		return
+	var records: Array = _read_json(path)
+	var house: Dictionary = _read_json("res://house/house.json")
+	var bad := {}
+	var seen := {}
+	var players: Array = []
+	var miss := func(kind: String, what: String) -> void:
+		if not bad.has(kind):
+			bad[kind] = []
+		if (bad[kind] as Array).size() < SHOW_MISMATCHES:
+			printerr("    voice %s: %s" % [kind, what])
+		(bad[kind] as Array).append(what)
+	for r: Dictionary in records:
+		var kind := str(r["kind"])
+		seen[kind] = int(seen.get(kind, 0)) + 1
+		match kind:
+			"constants":
+				var consts: Dictionary = load("res://net/voice_codec.gd").get_script_constant_map()
+				for k: String in r:
+					if k != "kind" and (not consts.has(k) or consts[k] != r[k]):
+						miss.call(kind, "%s = %s, want %s" % [k, consts.get(k, "missing"), r[k]])
+			"encode":
+				var got := VoiceCodec.mulaw_byte(float(r["x"]))
+				if got != int(r["byte"]):
+					miss.call(kind, "%s → %d, want %d" % [r["x"], got, r["byte"]])
+			"decode":
+				var got := VoiceCodec.mulaw_decode(PackedByteArray([int(r["byte"])]))[0]
+				if got != float(r["x"]):
+					miss.call(kind, "%d → %s, want %s" % [r["byte"], got, r["x"]])
+			"rms":
+				var got := VoiceCodec.rms_dbfs(PackedFloat32Array(r["samples"]))
+				var want: float = -INF if r["dbfs"] == null else float(r["dbfs"])
+				if not (got == want or _near(got, want, 1e-6)):
+					miss.call(kind, "%s, want %s" % [got, want])
+			"resample":
+				var rs := VoiceCodec.Resampler.new(float(r["from"]), float(r["to"]))
+				var input := PackedFloat32Array(r["input"])
+				var out := PackedFloat32Array()
+				var at := 0
+				for n: Variant in r["chunks"]:
+					out.append_array(rs.push(input.slice(at, at + int(n))))
+					at += int(n)
+				var want: Array = r["output"]
+				var ok := out.size() == want.size()
+				for i in mini(out.size(), want.size()):
+					ok = ok and _near(out[i], float(want[i]), 1e-6)
+				if not ok:
+					miss.call(kind, "%s → %s: %d outputs, want %d" % [r["from"], r["to"], out.size(), want.size()])
+			"gate":
+				var g := VoiceCodec.Gate.new()
+				var sent: Array = []
+				var i := 0
+				for s: Dictionary in r["steps"]:
+					if s.has("hold"):
+						g.hold_until(float(s["hold"]))
+					if s.has("raise"):
+						g.raise_until(float(s["raise"]), VoiceCodec.VOICE_BARGE_DBFS)
+					sent.append_array(g.push(i, -INF if s["dbfs"] == null else float(s["dbfs"]), float(s["now"])))
+					i += 1
+				if sent != (r["sent"] as Array).map(func(v: Variant) -> int: return int(v)):
+					miss.call(kind, "%s, want %s" % [sent, r["sent"]])
+			"jitter":
+				var p := VoiceCodec.jitter_plan(float(r["buffered"]), float(r["target"]), float(r["max"]))
+				var w: Dictionary = r["plan"]
+				if p["action"] != w["action"] or not _near(p["at"], w["at"], 1e-9) or not _near(p["drop"], w["drop"], 1e-9) or p["fadeIn"] != w["fadeIn"]:
+					miss.call(kind, "%s → %s, want %s" % [r["buffered"], p, w])
+			"voiceOn":
+				if VoiceCodec.voice_on(house, str(r["spot"])) != bool(r["on"]):
+					miss.call(kind, "%s" % r["spot"])
+			"hearsTerminals":
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]})
+				var located := VoiceCodec.hears_terminals(house, {"p": r["p"]})
+				var want: Array = r["heard"]
+				var same := got.size() == want.size() and located.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s → %s, want %s" % [r["p"], got, want])
+			"hearsKept":
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]}, {"keep": r["keep"]})
+				var want: Array = r["heard"]
+				var same := got.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s keep %d → %s, want %s" % [r["p"], (r["keep"] as Array).size(), got, want])
+			"players":
+				players = r["players"]
+			"hearsPlayers":
+				pass  # the server's and the terminals' half of the rule
+	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals", "hearsKept"]:
+		var n := int(seen.get(kind, 0))
+		var b := (bad.get(kind, []) as Array).size()
+		_check(n > 0 and b == 0, "voice: %s vectors match (%d of %d)" % [kind, n - b, n])
+	_check(int(seen.get("decode", 0)) == 256, "voice: every μ-law byte decodes")
+	_check(not players.is_empty(), "voice: the vectors carry the routing's players")
+	# The tent (the spawn room) is off; the show map says so too.
+	_check(not VoiceCodec.voice_on(house, "tent") and VoiceCodec.voice_on(house, "hall") and not VoiceCodec.voice_on(house, "nowhere"), "voice: the tent's terminal is off, the hall's on, an unknown spot off")
+	var tent: Dictionary = VoiceCodec._spot_of(house, "tent").duplicate()
+	tent.erase("voice")
+	_check(not VoiceCodec.voice_on(house, tent), "voice: … off with no flag too: it stands in the spawn room")
+	tent["voice"] = true
+	_check(VoiceCodec.voice_on(house, tent), "voice: … unless the map says voice: true")
+
+	# The encoder over a whole chunk = the per-sample byte; decode ∘ encode stays close.
+	var chunk := PackedFloat32Array()
+	for i in 320:
+		chunk.append(0.6 * sin(TAU * 440.0 * i / 16000.0))
+	var enc := VoiceCodec.mulaw_encode(chunk)
+	var each := true
+	for i in chunk.size():
+		each = each and enc[i] == VoiceCodec.mulaw_byte(chunk[i])
+	_check(enc.size() == 320 and each, "voice: mulaw_encode = mulaw_byte per sample")
+	var dec := VoiceCodec.mulaw_decode(enc)
+	var worst := 0.0
+	for i in chunk.size():
+		worst = maxf(worst, absf(dec[i] - chunk[i]))
+	_check(worst < 0.02, "voice: decode(encode(x)) within μ-law's step (%.4f)" % worst)
+	_check(VoiceCodec.mulaw_byte(NAN) == 0xff, "voice: NaN encodes as silence")
+
+	# The resampler: any split is the whole; a 48 kHz second is 16 000 samples.
+	var tone := PackedFloat32Array()
+	for i in 48000:
+		tone.append(sin(TAU * 300.0 * i / 48000.0))
+	var whole := VoiceCodec.Resampler.new(48000, 16000).push(tone)
+	var split := VoiceCodec.Resampler.new(48000, 16000)
+	var parts := PackedFloat32Array()
+	var at := 0
+	for n in [1, 480, 7, 1023, 46489]:
+		parts.append_array(split.push(tone.slice(at, at + n)))
+		at += n
+	_check(whole.size() == 16000 and parts == whole, "voice: the resampler's output does not depend on the chunking (%d)" % whole.size())
+	var odd := VoiceCodec.Resampler.new(44100.4, 16000)
+	_check(odd.from == 44100 and odd.to == 16000, "voice: rates round to whole Hz")
+
+	# The chunker: 200 ms chunks, the remainder kept.
+	var ca := VoiceCodec.ChunkAssembler.new()
+	var got: Array = ca.push(whole.slice(0, 5000))
+	_check(got.size() == 1 and (got[0] as PackedFloat32Array).size() == 3200 and ca.pending() == 1800, "voice: one 3200-sample chunk, 1800 held")
+	got = ca.push(whole.slice(5000, 6400))
+	_check(got.size() == 1 and (got[0] as PackedFloat32Array)[0] == whole[3200] and ca.pending() == 0, "voice: … the next chunk carries on where the last stopped")
+
+	# The gate's half-duplex: a hold closes it and forgets the pre-roll.
+	var gate := VoiceCodec.Gate.new()
+	_check(gate.push("quiet", -60.0, 0.0).is_empty(), "voice: a quiet chunk is not sent (it is the pre-roll)")
+	_check(gate.push("loud", -20.0, 200.0) == ["quiet", "loud"], "voice: a loud chunk opens the gate with the pre-roll")
+	gate.hold_until(1000.0)
+	gate.hold_until(500.0)
+	_check(gate.holding(900.0) and not gate.holding(1000.0), "voice: a hold only ever extends")
+	_check(gate.push("loud", -20.0, 600.0).is_empty() and not gate.is_open(), "voice: no sending while incoming voice plays")
+	_check(gate.push("loud", -20.0, 1000.0) == ["loud"], "voice: … and no stale pre-roll after it")
+
+
+## An [HTTPClient]-like for the voice uplink: the test moves its status.
+class FakeHttp:
+	extends RefCounted
+
+	var status := HTTPClient.STATUS_DISCONNECTED
+	var connects: Array = []
+	## `[method, url, headers, body]` per request.
+	var requests: Array = []
+	var closed := 0
+	var code := 0
+	var body := PackedByteArray()
+
+	func connect_to_host(host: String, port: int, tls: TLSOptions = null) -> int:
+		connects.append([host, port, tls != null])
+		status = HTTPClient.STATUS_CONNECTING
+		return OK
+
+	func poll() -> int:
+		return OK
+
+	func get_status() -> int:
+		return status
+
+	func request_raw(method: int, url: String, headers: PackedStringArray, b: PackedByteArray) -> int:
+		requests.append([method, url, headers, b])
+		status = HTTPClient.STATUS_REQUESTING
+		return OK
+
+	func get_response_code() -> int:
+		return code
+
+	func read_response_body_chunk() -> PackedByteArray:
+		var b := body
+		body = PackedByteArray()
+		status = HTTPClient.STATUS_CONNECTED
+		return b
+
+	func close() -> void:
+		closed += 1
+		status = HTTPClient.STATUS_DISCONNECTED
+
+	## The server answers the request in flight.
+	func answer(c: int, data: Dictionary) -> void:
+		code = c
+		body = JSON.stringify(data).to_utf8_buffer()
+		status = HTTPClient.STATUS_BODY
+
+
+## An [AudioStreamGeneratorPlayback]-like: what was pushed, what is queued.
+class FakePlayback:
+	extends RefCounted
+
+	var cap := 16383
+	var queued := PackedVector2Array()
+	var pushes: Array = []
+	var clears := 0
+
+	func get_frames_available() -> int:
+		return cap - queued.size()
+
+	func push_buffer(f: PackedVector2Array) -> bool:
+		if f.size() > cap - queued.size():
+			return false
+		queued.append_array(f)
+		pushes.append(f.size())
+		return true
+
+	func clear_buffer() -> void:
+		queued.clear()
+		clears += 1
+
+	## The mixer plays `n` frames.
+	func consume(n: int) -> void:
+		queued = queued.slice(mini(n, queued.size()))
+
+
+## `n` frames of a 300 Hz tone at amplitude `amp` (stereo, the mic's shape).
+static func _mic_tone(n: int, amp: float, rate := 48000.0) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(n)
+	for i in n:
+		var x := amp * sin(TAU * 300.0 * i / rate)
+		out[i] = Vector2(x, x)
+	return out
+
+
+## Every chunk the link has handed its uplink: posted (by body size),
+## waiting, or dropped off the full queue.
+static func _voice_given(v: VoiceLink, clients: Array) -> int:
+	var n := v.uplink.queue.size() + v.uplink.dropped
+	for cl: FakeHttp in clients:
+		for r: Array in cl.requests:
+			n += (r[3] as PackedByteArray).size() / VoiceCodec.VOICE_CHUNK_BYTES
+	return n
+
+
+## A `voice` frame from terminal `spot` carrying 200 ms of tone.
+static func _voice_frame(spot: String, seq: int, gain: float) -> Dictionary:
+	var chunk := PackedFloat32Array()
+	for i in VoiceCodec.VOICE_CHUNK_BYTES:
+		chunk.append(0.4 * sin(TAU * 300.0 * i / 16000.0))
+	return {"from": "t:" + spot, "kind": "terminal", "spot": spot, "name": spot, "gain": gain, "seq": seq,
+		"data": Marshalls.raw_to_base64(VoiceCodec.mulaw_encode(chunk))}
+
+
+## The uplink alone: one keep-alive connection, one POST in flight, the
+## queue capped, batches, `seq` up, reconnects.
+func _test_voice_uplink() -> void:
+	var up := VoiceLink.Uplink.new()
+	var clients: Array = []
+	up.client_factory = func() -> Object:
+		var c := FakeHttp.new()
+		clients.append(c)
+		return c
+	var answers: Array = []
+	up.answered.connect(func(s: int, d: Dictionary) -> void: answers.append([s, d]))
+	up.configure("https://show.example.com/loom/e/e1/api/spatial/voice", "tok")
+	var chunk := PackedByteArray()
+	chunk.resize(VoiceCodec.VOICE_CHUNK_BYTES)
+	up.poll(0.016)
+	_check(clients.is_empty(), "voice uplink: nothing to send, nobody listening → no connection")
+	up.wanted = true
+	up.poll(0.016)
+	_check(clients.size() == 1 and clients[0].connects == [["show.example.com", 443, true]], "voice uplink: someone listens → one TLS connection, ahead of the first word (%s)" % [clients.map(func(c: FakeHttp) -> Array: return c.connects)])
+	var c: FakeHttp = clients[0]
+	up.send(chunk)
+	up.poll(0.016)
+	_check(c.requests.is_empty(), "voice uplink: nothing goes before the connection is up")
+	c.status = HTTPClient.STATUS_CONNECTED
+	up.poll(0.016)
+	_check(c.requests.size() == 1 and c.requests[0][0] == HTTPClient.METHOD_POST and c.requests[0][1] == "/loom/e/e1/api/spatial/voice?seq=0", "voice uplink: a POST to …/voice?seq=0 (%s)" % [c.requests.map(func(r: Array) -> String: return r[1])])
+	var h: PackedStringArray = c.requests[0][2]
+	_check(h.has("x-loom-token: tok") and h.has("Content-Type: application/octet-stream") and (c.requests[0][3] as PackedByteArray).size() == 3200, "voice uplink: the token header, raw octets, one 3200-byte chunk")
+	for i in 3:
+		up.send(chunk)
+	up.poll(0.016)
+	up.poll(0.016)
+	_check(c.requests.size() == 1 and up.in_flight(), "voice uplink: never two requests in flight")
+	c.answer(200, {"ok": true, "listening": true})
+	up.poll(0.016)
+	up.poll(0.016)
+	_check(answers.size() == 1 and answers[0][0] == 200 and answers[0][1].get("listening") == true, "voice uplink: the answer's listening comes back (%s)" % [answers])
+	_check(c.requests.size() == 2 and c.requests[1][1].ends_with("?seq=1") and (c.requests[1][3] as PackedByteArray).size() == 6400, "voice uplink: the next POST batches two chunks, seq 1 (%d bytes)" % (c.requests[1][3] as PackedByteArray).size() if c.requests.size() == 2 else "voice uplink: a second POST")
+	_check(clients.size() == 1, "voice uplink: … on the same connection")
+	# Backpressure: past a second of chunks the oldest are dropped.
+	var before := up.dropped
+	for i in 9:
+		up.send(chunk)
+	_check(up.queue.size() == VoiceLink.UPLINK_QUEUE and up.dropped - before == 1 + 9 - VoiceLink.UPLINK_QUEUE, "voice uplink: at most %d chunks wait, the rest are dropped (%d dropped)" % [VoiceLink.UPLINK_QUEUE, up.dropped - before])
+	# A request lost in flight: answered 0, a new connection after the backoff.
+	c.status = HTTPClient.STATUS_CONNECTION_ERROR
+	up.poll(0.016)
+	_check(answers.back()[0] == 0 and not up.connected(), "voice uplink: a lost POST is answered 0 and the connection dropped")
+	up.poll(0.1)
+	_check(clients.size() == 1, "voice uplink: … backing off before reconnecting")
+	up.poll(0.5)
+	_check(clients.size() == 2, "voice uplink: … then a new connection")
+	var c2: FakeHttp = clients[1]
+	c2.status = HTTPClient.STATUS_CONNECTED
+	up.poll(0.016)
+	_check(c2.requests.size() == 1 and c2.requests[0][1].ends_with("?seq=2"), "voice uplink: seq keeps increasing over a reconnect")
+	c2.answer(200, {"ok": true, "listening": true})
+	up.poll(0.016)
+	up.drop_queue()
+	up.poll(0.016)
+	# Idle past Node's keep-alive: the next POST goes on a fresh connection.
+	for i in 5:
+		up.poll(1.0)
+	_check(clients.size() == 3 and c2.closed == 1, "voice uplink: a connection idle past %d s is replaced while someone listens" % int(VoiceLink.Uplink.IDLE_REOPEN))
+	up.send(chunk)
+	# The server closes an idle keep-alive: dropped quietly, reconnected at once.
+	var c3: FakeHttp = clients[2]
+	c3.status = HTTPClient.STATUS_CONNECTED
+	up.poll(0.016)
+	c3.answer(200, {"ok": true, "listening": true})
+	up.poll(0.016)
+	up.poll(0.016)
+	c3.status = HTTPClient.STATUS_DISCONNECTED
+	up.poll(0.016)
+	up.send(chunk)
+	up.poll(0.016)
+	_check(clients.size() == 4 and answers.back()[0] == 200, "voice uplink: a keep-alive the server closed is reopened with no backoff and no lost answer")
+	up.close()
+	_check(not up.connected() and up.queue.is_empty(), "voice uplink: close drops the connection and the queue")
+
+
+## The whole link with fakes: listen on / off, the gate, half-duplex, the
+## voices under their terminals, the jitter plan, bye, a rebuild, mute, stop.
+func _test_voice_link() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	root.add_child(b)
+	b.build(house)
+	var v := VoiceLink.new()
+	v.builder = b
+	v.use_stream = false
+	var now := [1000.0]
+	v.clock = func() -> float: return now[0]
+	var clients: Array = []
+	v.client_factory = func() -> Object:
+		var c := FakeHttp.new()
+		clients.append(c)
+		return c
+	var pbs := {}
+	v.playback_of = func(e: Node) -> Object:
+		if not pbs.has(e.get_instance_id()):
+			pbs[e.get_instance_id()] = FakePlayback.new()
+		return pbs[e.get_instance_id()]
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array:
+		var f: PackedVector2Array = mic[0]
+		mic[0] = PackedVector2Array()
+		return f
+	v.source_rate = 48000.0
+	root.add_child(v)
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(v.is_running() and v.mic_state == "opening" and not v.listen_on, "voice: running, the mic opening (no sample yet), nobody listening")
+	_check(v.hud_text(true) == "🎤 …", "voice: the HUD says 🎤 … until a real sample lands (%s)" % v.hud_text(true))
+	# Zeros are no mic: still opening.
+	mic[0] = _mic_tone(9600, 0.0)
+	v._process(0.016)
+	_check(v.mic_state == "opening", "voice: a block of zeros is no sample")
+
+	# Nobody can hear us: a loud word goes nowhere, no connection.
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.hud_text(true) == "🎤 LIVE", "voice: a real sample → 🎤 LIVE (%s)" % v.hud_text(true))
+	_check(v.uplink.queue.is_empty() and clients.is_empty(), "voice: nobody listening → nothing queued, no connection")
+	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
+	v.on_frame("listen", {"on": true})
+	_check(v.listen_on and v.hud_text(true) == "🎤 LIVE · someone can hear you", "voice: listen {on} → someone can hear you")
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(clients.size() == 1 and v.uplink.queue.size() == 1, "voice: … a loud chunk is queued, the connection opening (%d queued)" % v.uplink.queue.size())
+	(clients[0] as FakeHttp).status = HTTPClient.STATUS_CONNECTED
+	v._process(0.016)
+	var c: FakeHttp = clients[0]
+	_check(c.requests.size() == 1 and c.requests[0][1] == "/e/e1/api/spatial/voice?seq=0", "voice: … and posted")
+	var chunk_bytes: PackedByteArray = c.requests[0][3] if not c.requests.is_empty() else PackedByteArray()
+	_check(chunk_bytes.size() == 3200 and VoiceCodec.rms_dbfs(VoiceCodec.mulaw_decode(chunk_bytes)) > -20.0, "voice: 200 ms of μ-law at 16 kHz from 48 kHz frames")
+	c.answer(200, {"ok": true, "listening": true})
+	v._process(0.016)
+	v._process(0.016)
+	# Silence past the hang: the gate closes, nothing more goes up.
+	for i in 4:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	var queued_after_quiet: int = c.requests.size() + v.uplink.queue.size()
+	for i in 3:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() == queued_after_quiet, "voice: the gate shuts after the hang — silence never goes up")
+
+	# A terminal's voice: under Terminal_hall, at the server's gain, the
+	# jitter target ahead of it, faded in.
+	v.on_frame("voice", _voice_frame("hall", 1, 0.5))
+	var e := b.get_node_or_null("Terminal_hall/Voice") as AudioStreamPlayer3D
+	_check(e != null and b.voice_attached("hall") and v.sources() == ["t:hall"], "voice: a voice frame hangs an emitter under Terminal_hall")
+	if e == null:
+		v.stop()
+		v.queue_free()
+		b.queue_free()
+		return
+	_check(e.stream is AudioStreamGenerator and (e.stream as AudioStreamGenerator).mix_rate == 16000.0 and e.attenuation_model == AudioStreamPlayer3D.ATTENUATION_DISABLED, "voice: … a 16 kHz generator, attenuation off")
+	_check(_near(e.volume_db, linear_to_db(0.5), 0.01), "voice: … its volume from the gain (%.2f dB)" % e.volume_db)
+	var pb: FakePlayback = pbs[e.get_instance_id()]
+	_check(pb.pushes == [6400] and pb.queued[3200 - 1] == Vector2.ZERO and absf(pb.queued[3200].x) < 0.001 and absf(pb.queued[3200 + 200].x) > 0.01, "voice: … 200 ms of silence, then the chunk faded in (%s)" % [pb.pushes])
+	# D5b, the barge-in: while it plays (+ the tail) the gate is raised to
+	# -28 dBFS — the room's echo (-35) stays home, a player speaking up goes.
+	var sent := c.requests.size() + v.uplink.queue.size()
+	mic[0] = _mic_tone(9600, 0.025)
+	now[0] += 100.0
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() == sent, "voice: an echo-level chunk while a voice plays here is not sent (the raised gate)")
+	_check(v._gate.raised_at(now[0]) and not v._gate.holding(now[0]), "voice: … the gate is raised, not held")
+	mic[0] = _mic_tone(9600, 0.3)
+	now[0] += 100.0
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() == sent + 1, "voice: a loud word over the playing voice is sent (barge-in), without the echo before it")
+	sent = c.requests.size() + v.uplink.queue.size()
+	v.on_frame("voice", _voice_frame("hall", 2, 0.5))
+	_check(pb.pushes.size() == 2 and pb.pushes[1] == 3200 and pb.queued.size() == 9600, "voice: the next chunk queues behind (%s)" % [pb.pushes])
+	v.on_frame("voice", _voice_frame("hall", 2, 0.5))
+	_check(pb.pushes.size() == 2, "voice: a repeated seq is not played twice")
+	# Over 400 ms queued: skip ahead to 200 ms.
+	pb.consume(1000)
+	v.on_frame("voice", _voice_frame("hall", 3, 0.5))
+	_check(pb.clears == 1 and pb.queued.size() == 3200 + 3200, "voice: over 400 ms queued, the oldest is dropped down to 200 ms (%d frames queued)" % pb.queued.size())
+	# The tent's terminal (voice off on the map) is never played; nor a player.
+	v.on_frame("voice", _voice_frame("tent", 1, 1.0))
+	var player_voice := _voice_frame("hall", 9, 1.0)
+	player_voice["kind"] = "player"
+	player_voice["from"] = "s:s2"
+	player_voice.erase("spot")
+	v.on_frame("voice", player_voice)
+	_check(not b.voice_attached("tent") and v.sources() == ["t:hall"], "voice: the tent's terminal and other players are never played here")
+
+	# After the raise the mic is sent again at the plain gate.
+	now[0] += 2000.0
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() > sent, "voice: once the voice and its tail are over, the mic goes up again")
+	# A faint, far terminal (gain 0.1) raises nothing: an echo-level word goes.
+	for i in 4:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	sent = _voice_given(v, clients)
+	v.on_frame("voice", _voice_frame("steam-room", 1, 0.1))
+	_check(not v._gate.raised_at(float(now[0]) + 100.0), "voice: a voice under gain 0.2 raises no gate")
+	mic[0] = _mic_tone(9600, 0.025)
+	now[0] += 100.0
+	v._process(0.016)
+	_check(_voice_given(v, clients) > sent, "voice: … so a quiet word still goes up")
+	v.on_frame("bye", {"from": "t:steam-room"})
+
+	# A rebuild (a map edit): the emitter is re-made and the source carries on.
+	b.build(house)
+	var e2 := b.get_node_or_null("Terminal_hall/Voice") as AudioStreamPlayer3D
+	_check(e2 != null and not is_same(e2, e) and v.sources() == ["t:hall"], "voice: a rebuilt house re-attaches the emitter")
+	if e2 != null:
+		var pb2: FakePlayback = pbs[e2.get_instance_id()]
+		v.on_frame("voice", _voice_frame("hall", 4, 1.0))
+		_check(pb2.pushes == [6400] and _near(e2.volume_db, 0.0, 0.01), "voice: … and plays the next chunk on it, from the start")
+		# bye: faded out over 60 ms, forgotten.
+		v.on_frame("bye", {"from": "t:hall"})
+		_check(v.sources().is_empty() and pb2.queued.size() == VoiceLink.FADE_OUT_MS * 16 and pb2.queued[pb2.queued.size() - 1].length() < 0.001, "voice: bye fades the queued voice out and forgets the source (%d frames left)" % pb2.queued.size())
+
+	# Mute: the mic's chunks are dropped; the HUD says so.
+	v.toggle_mute()
+	_check(v.mic_state == "muted" and v.hud_text(true) == "🎤 MUTED · B / Y to talk" and v.hud_text(false) == "🎤 MUTED · M to talk", "voice: mute → 🎤 MUTED (%s)" % v.hud_text(true))
+	var q := c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size()
+	now[0] += 1000.0
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size() == q, "voice: muted, nothing goes up")
+	v.toggle_mute()
+	_check(v.mic_state == "live", "voice: unmute → live")
+	# The server stops listening.
+	v.on_frame("listen", {"on": false})
+	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "🎤 LIVE", "voice: listen {on: false} → nothing queued, the HUD drops the line")
+	# The same URLs again change nothing; stop ends everything.
+	v.on_frame("voice", _voice_frame("hall", 5, 1.0))
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(v.sources() == ["t:hall"], "voice: want() with the same URLs keeps playing")
+	# A lower seq is stale — until the source was quiet VOICE_FRESH_MS (the
+	# server's rule: a terminal that started counting again).
+	v.on_frame("voice", _voice_frame("hall", 3, 1.0))
+	_check(int(v._sources["t:hall"]["seq"]) == 5, "voice: a lower seq right after is stale")
+	now[0] += float(VoiceCodec.VOICE_FRESH_MS)
+	v.on_frame("voice", _voice_frame("hall", 3, 1.0))
+	_check(int(v._sources["t:hall"]["seq"]) == 3, "voice: … after a quiet VOICE_FRESH_MS it plays")
+	# A (re)connect's hello lets every voice go.
+	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
+	_check(v.sources().is_empty(), "voice: a hello lets every voice it had go")
+	v.stop()
+	_check(not v.is_running() and v.sources().is_empty() and not b.voice_attached("hall") and v.mic_state == "off" and v.hud_text(true) == "", "voice: stop ends the stream, the mic and every voice")
+	# A server speaking another wire is not played.
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("hello", {"codec": "opus", "rate": 48000, "listen": false})
+	v.on_frame("voice", _voice_frame("hall", 1, 1.0))
+	_check(v.sources().is_empty(), "voice: a hello naming another codec / rate → nothing played")
+	v.stop()
+	# Listen-only: the mic off in the config never opens.
+	v.mic_enabled = false
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("listen", {"on": true})
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "off" and v.uplink.queue.is_empty() and v.hud_text(true) == "", "voice: --mic false listens only")
+	v.on_frame("voice", _voice_frame("hall", 1, 1.0))
+	_check(v.sources() == ["t:hall"], "voice: … and still hears the terminals")
+	v.stop()
+	v.queue_free()
+	b.queue_free()
+
+
+## A mic that only hands over zeros (missing, denied) never reads LIVE and
+## wants no uplink; NO MIC after MIC_FALLBACK_AFTER; a real sample heals it.
+func _test_voice_silent_mic() -> void:
+	var v := VoiceLink.new()
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array: return mic[0]
+	root.add_child(v)
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("listen", {"on": true})
+	mic[0] = _mic_tone(4800, 0.0)
+	for i in 3:
+		v._process(0.5)
+	_check(v.mic_state == "opening" and v.hud_text(true) == "🎤 …" and not v.uplink.wanted, "voice: zeros for 1.5 s → still opening, no uplink wanted (%s)" % v.mic_state)
+	v._process(1.0)
+	_check(v.mic_state == "nomic" and v.hud_text(true) == "NO MIC" and not v.uplink.wanted, "voice: zeros past MIC_FALLBACK_AFTER → NO MIC")
+	mic[0] = _mic_tone(4800, 0.01)
+	v._process(0.016)
+	_check(v.mic_state == "live" and v.uplink.wanted, "voice: … a real sample → LIVE, the uplink wanted")
+	v.stop()
+	v.queue_free()
+
+
+## The voice config keys: on by default, `--mic false` / `--voice=0` turn them off.
+func _test_voice_config() -> void:
+	var d := StationConfig.defaults()
+	_check(d.get("voice") == true and d.get("mic") == true, "voice config: voice and mic on by default")
+	var o := StationConfig.parse_args(PackedStringArray(["--mic", "false", "--voice=0"]))
+	_check(o.get("mic") == false and o.get("voice") == false, "voice config: --mic false, --voice=0")
+	_check(StationConfig.merge(d, {"mic": false}).get("mic") == false, "voice config: a station file may turn the mic off")
+
+
+## The game drives the link: on while a session plays (with the session's
+## URLs), the mute button toggles the mic and the HUD shows it, the lobby
+## stops it; `voice` off or no URLs (offline) never start it.
+func _test_voice_game() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var v := game.voice
+	_check(v != null and not v.is_running(), "voice game: the link is there, off in the lobby")
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	v.frame_source = func() -> PackedVector2Array: return _mic_tone(800, 0.001)  # a quiet room, under the gate
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+
+	# Offline (no voice URLs): playing starts no voice.
+	link.assignment_received.emit(_assignment(house, "v-0", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running() and game.hud.mic_text() == "", "voice game: no voice URLs (offline) → no voice")
+	game.enter_lobby()
+
+	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
+	link.assignment_received.emit(_assignment(house, "v-1", true))
+	game._process(0.016)
+	v._process(0.016)  # the mic's first real sample
+	game._process(0.016)
+	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
+	_check(game.hud.mic_text() == "🎤 LIVE", "voice game: the HUD shows 🎤 LIVE (%s)" % game.hud.mic_text())
+	player.mute_button = true
+	game._process(0.016)
+	game._process(0.016)
+	_check(v.muted and game.hud.mic_text() == "🎤 MUTED · M to talk", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	player.mute_button = false
+	game._process(0.016)
+	player.mute_button = true
+	game._process(0.016)
+	_check(not v.muted, "voice game: … a second press unmutes")
+	player.mute_button = false
+	v.on_frame("voice", _voice_frame("optical-drive", 1, 1.0))
+	_check(game.builder.voice_attached("optical-drive"), "voice game: a terminal's voice hangs in the game's house")
+	link.session_over.emit("reset")
+	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not game.builder.voice_attached("optical-drive") and game.hud.mic_text() == "", "voice game: the lobby stops the voice, the emitters and the HUD line")
+
+	# B / Y held in the lobby does nothing there, and a press held over into
+	# play (the hand still on it when the program starts) is not a toggle.
+	player.mute_button = true
+	player.hit_button = true
+	for i in 3:
+		game._process(0.016)
+	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not v.muted, "voice game: B / Y in the lobby does nothing")
+	link.assignment_received.emit(_assignment(house, "v-3", true))
+	game._process(0.016)
+	v._process(0.016)
+	game._process(0.016)
+	_check(v.is_running() and not v.muted and game.hud.mic_text() == "🎤 LIVE", "voice game: … nor when it is still held as play starts (%s)" % game.hud.mic_text())
+	player.mute_button = false
+	player.hit_button = false
+	game._process(0.016)
+	player.mute_button = true
+	game._process(0.016)
+	_check(v.muted, "voice game: … a fresh press while playing mutes")
+	player.mute_button = false
+	game.enter_lobby()
+	_check(not v.is_running() and not v.muted and game.lobby.visible and game.lobby.view() != "confirm", "voice game: back in the lobby the voice is off, unmuted, the lobby reset")
+
+	# The Android microphone dialog (mic "asking") pauses / unfocuses the app:
+	# that ends no session. Taking the headset off still does.
+	link.assignment_received.emit(_assignment(house, "v-4", true))
+	game._process(0.016)
+	v.mic_state = "asking"
+	game.app_paused()
+	game.focus_changed(false)
+	_check(game.get("_away_until").is_empty(), "voice game: the mic dialog's pause / unfocus arms no away deadline")
+	game.presence_changed(false)
+	_check(game.get("_away_until").has("presence"), "voice game: … taking the headset off still does")
+	game.presence_changed(true)
+	game.app_resumed()
+	game.focus_changed(true)
+	v.mic_state = "live"
+	game.enter_lobby()
+
+	# `--voice false`: never started.
+	link.config = StationConfig.merge(link.config, {"voice": false})
+	link.assignment_received.emit(_assignment(house, "v-2", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running(), "voice game: voice off in the config → no voice")
+	# A desktop run's mouse-look pitch from play never follows into the lobby.
+	player.set("_pitch", -60.0)
+	player.camera.rotation.x = deg_to_rad(-60.0)
+	game.enter_lobby()
+	_check(is_zero_approx(float(player.get("_pitch"))) and is_zero_approx(player.camera.rotation.x), "lobby: a desktop run is level again in the lobby (no captured mouse there to look up)")
+	main.queue_free()
+	await process_frame
+
+
+## ServerLink's voice URLs: the session's stream + upload on the event, ""
+## with no session or offline; the base LinkBase (the fake's parent) has none.
+func _test_voice_server_link() -> void:
+	var sl := _linked_server_link()
+	(sl.get("transport") as HttpTransport).base = "http://127.0.0.1:7999"
+	_check(sl.voice_stream_url() == "" and sl.voice_token() == "", "voice link: no session → no voice stream")
+	_check(sl.voice_upload_url() == "http://127.0.0.1:7999/e/e1/api/spatial/voice", "voice link: the upload URL is the event's (%s)" % sl.voice_upload_url())
+	sl.adopt({"session": "s-9", "token": "tok 9", "duck": {}, "spawn": {}})
+	_check(sl.voice_stream_url() == "http://127.0.0.1:7999/e/e1/api/spatial/voice/stream?token=tok%209" and sl.voice_token() == "tok 9", "voice link: playing → the session's stream (%s)" % sl.voice_stream_url())
+	sl.config["offline"] = true
+	_check(sl.voice_stream_url() == "" and sl.voice_upload_url() == "", "voice link: offline → no voice")
+	_free_server_link(sl)
+	var base := LinkBase.new()
+	_check(base.voice_stream_url() == "" and base.voice_upload_url() == "" and base.voice_token() == "", "voice link: LinkBase's defaults are no voice")
+	base.free()
+
+
+## The real AudioStreamGenerator (not the fake): its clear_buffer() refuses
+## while it plays, so a skip ahead and a bye restart it — the backlog really
+## goes, and the fresh playback is the one pushed to.
+func _test_voice_generator() -> void:
+	var e := HouseBuilder.make_voice_emitter()
+	root.add_child(e)
+	e.play()
+	var pb := e.get_stream_playback()
+	await process_frame  # the mixer has started it: from now on it is "active"
+	await process_frame
+	_check(pb is AudioStreamGeneratorPlayback and e.get_stream_playback() == pb, "voice generator: a real generator playback, playing")
+	if not pb is AudioStreamGeneratorPlayback:
+		e.queue_free()
+		return
+	var cap := int(pb.get_frames_available())
+	var backlog := PackedVector2Array()
+	backlog.resize(16 * 600)  # 600 ms queued: past the 400 ms skip
+	backlog.fill(Vector2(0.1, 0.1))
+	_check(pb.push_buffer(backlog) and cap - int(pb.get_frames_available()) == backlog.size(), "voice generator: 600 ms queued")
+	var src := {"spot": "x", "emitter": e, "playback": pb, "capacity": cap, "tail": backlog.duplicate(), "seq": -1}
+	var v := VoiceLink.new()
+	var chunk := PackedFloat32Array()
+	chunk.resize(3200)
+	chunk.fill(0.2)
+	var ms := v._play(src, chunk)
+	var now_pb: Object = src["playback"]
+	var queued := (cap - int(now_pb.get_frames_available())) / 16.0
+	_check(now_pb != pb and ms <= 450.0 and queued <= 450.0, "voice generator: a skip drops the backlog (%.0f ms queued, was 600 + 200)" % queued)
+	v._sources["t:x"] = src
+	v._bye("t:x")
+	var after: Object = src["playback"]
+	var left := (cap - int(after.get_frames_available())) / 16.0
+	_check(left <= 70.0 and not v._sources.has("t:x"), "voice generator: a bye leaves only the fade-out (%.0f ms)" % left)
+	v.free()
+	e.stop()
+	e.queue_free()
 	await process_frame

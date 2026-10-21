@@ -98,13 +98,22 @@ interface Stair { id: string; from: string; to: string; rect: [number, number, n
 //   inside both rooms' footprints. The ramp rises toward `up`: from `from`'s floor elevation at the
 //   opposite edge to `to`'s floor elevation at the `up` edge. The rect is a hole in the upper floor
 //   (and the lower room's ceiling); rails guard the hole on the upper floor on the three non-`up` sides.
-interface TerminalSpot { id: string; name: string; room: string; pos: Vec3; yaw: number; pitch?: number; fov?: number }
+interface TerminalSpot {
+  id: string; name: string; room: string; pos: Vec3; yaw: number; pitch?: number; fov?: number;
+  view?: "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";   // TERMINAL_VIEWS; unset: auto
+  speaks?: boolean;             // a room terminal (speaks its room's LOCATION's lines); unset: false
+  voice?: boolean;              // the voice link (§2.4); unset: on, except a terminal in the spawn room (off) — voiceOn
+}
 //   pos = the screen's centre on the real wall; yaw = the direction the screen faces (into the room);
 //   pitch = the mount camera's pitch, degrees (+ = up; unset: the terminal's default, a little down);
 //   fov = the mount camera's VERTICAL field of view in degrees, exactly three.js's PerspectiveCamera.fov
 //   (Godot: Camera3D.fov with the default keep_aspect = KEEP_HEIGHT); unset = DEFAULT_SPOT_FOV = 70.
 //   The horizontal fov depends on the screen: horizontalFov(vfov, aspect = 16/10) =
 //   2·atan(tan(vfov/2)·aspect) — ≈ 96.5° for the default on a 16:10 wall tablet.
+//   view = what a tablet set up on this spot shows; speaks = it sleeps until its room's LOCATION is open
+//   to everyone, then speaks the lines said there. voice: true → in the voice link, false → out; unset →
+//   in, unless `room === spawn.room` (the tent / the shed: the tent laptop and the headsets). The server
+//   refuses and never routes a spot that is out; both show maps also set `voice: false` on `tent`.
 interface DuckSpot { id: string; room: string; pos: Vec3 }   // pos = where the duck sits (its feet)
 interface Prop {
   id: string; room: string; kind: "box" | "cylinder" | "screen" | "label" | "king";
@@ -669,6 +678,133 @@ real room, which keeps moving); a feed that fails 3 times rests 5 s; a 401 /
 terminal's screen and facing its yaw / pitch; with no feed the terminal's own
 screen look shows.
 
+### 2.4 Voice (wave 19)
+
+The wall terminals' microphones are heard in the games at each terminal's
+screen, and a player's headset is heard on the terminals near them — the
+audio twin of §2.3. Plain HTTP, no WebRTC or WebSocket: a source **POSTs**
+raw chunks up, a listener holds **one SSE stream** down, and the server does
+the routing, since it already holds every pose and every terminal spot.
+Server: `core/server/spatial-voice.ts` (`VoiceRelay`, `parseVoiceUpload`),
+the rule in `@loom/house` `house/src/voice.ts`, wired in `EventRuntime`.
+**Memory only, no ring**: a chunk is fanned out the moment it lands to the
+streams that can hear it and forgotten — never journaled, never on disk; a
+restart has no routes until devices reconnect. Voice ignores a pause like
+poses and cams (the real room keeps moving).
+
+**The wire.** G.711 **μ-law, mono, 16 000 Hz** (`VOICE_RATE`), one byte per
+sample, **200 ms chunks** (`VOICE_CHUNK_MS`, `VOICE_CHUNK_BYTES` 3 200). Every
+port encodes with `mulawByte` (14-bit magnitude `floor(|x|·8192 + 0.5)`,
+clipped at 8159, biased, segmented, inverted; 0 → `0xFF`) and decodes with
+Sun's `ulaw2linear` / 32768; the Godot port is pinned by
+`house/test/fixtures/voice-mulaw.json`.
+
+| Route | Auth | Body / query | Result |
+|---|---|---|---|
+| `POST /api/spatial/voice` | **a terminal**: a mod token (`x-loom-token`) or an author session, plus `?spot=`; **a game**: its session token, no `spot` | `?seq=<n>` a non-negative integer, increasing per source; the body raw `application/octet-stream`, `VOICE_MIN_BYTES` 160 … `VOICE_MAX_BYTES` 8 000 bytes (≤ 500 ms). Read under its own 8 000-byte cap ahead of the 2 KB `/api/spatial/*` JSON cap; no author-session lookup (it is not a `/api/mod/` path) | Who first: 401 `unknown session token` · 410 `this session is over` · 403 `moderators only` (a non-mod token with a `spot`) · 400 a mod token with no `spot`. Then the chunk: 400 a bad `seq` / `spot` / body size · 413 the body over the cap (the router). Then the spot: 404 `no such spot` (not on the current map) · 403 `voice is off at this terminal`. Else 200 `{ok: true, listening, ears}` — `listening`: someone can hear this source now; `ears`: how many listener streams do; `{ok: true, listening, ears, dropped: true}` when the chunk went nowhere (nobody hears it, a parked session that has not posed yet, or a stale seq). A client treats `listening: false` as "empty the queue" only: the stream's `listen` is the authority (an answer can land after a newer `listen {on}`) |
+| `GET /api/spatial/voice/stream` (SSE) | as the upload, the token in `?token=` (EventSource sets no headers): a terminal = a moderator + `?spot=`, a game = its session token | `?mic=0\|1` — this device's room can be heard (absent = 1; a terminal sends 0 while its mic is refused, missing, off or its page's audio is locked); `?hear=0\|1` — it plays what it hears (absent = 1; 0 under the TV mute, ⚙ voices off, or locked). A device re-opens its stream when either changes | the same refusals as plain HTTP before the stream opens (a parked session's stream opens; it hears nothing until it joins) · 200 `text/event-stream`. The path ends in `/stream`, so Caddy neither compresses nor buffers it. A token-bearing open skips the author-session lookup like the camera polls; the editor may open one on its cookie (`wantsModRead`) |
+
+**Frames** (`event:` name, JSON `data:`; `VoiceFrames`):
+
+- `hello {codec: "mulaw", rate: 16000, chunkMs: 200, as: "terminal" | "player", spot? | session?, listen, ears}` — first, once.
+- `listen {on, ears}` — whether this device's own mic is wanted (someone can hear it), and by how many listener streams (the game's HUD says *🎤 N terminals can hear you* off it); sent on a change of either. **A source uploads only while `on`**, so a terminal's mic never streams to an empty house.
+- `voice {from, kind: "terminal" | "player", spot? | session?, name?, gain, seq, data}` — `from` = `t:<spot>` / `s:<session id>`; `name` the spot's name on the map or the program's; `gain` 0..1 (2 decimals, this listener's); `data` base64 μ-law. A stream more than 64 KB behind (`VOICE_LAG_BYTES`, ≈ 3 s of one source) skips `voice` frames until it catches up: late voice is worse than a gap. Control frames always go.
+- `bye {from}` — a source this stream heard (it delivered at least one chunk since the route formed) is out of earshot: fade it out and drop its buffer. A source that merely goes quiet sends nothing; its buffer drains.
+- `:ping` every 15 s (`VOICE_PING_MS`). The stream's stall cap is the same 64 KB: past it only the control frames and the ping are written, so a reader that stopped (a suspended tablet with its socket up, a half-open socket after a Wi-Fi flap) is dropped by the ping 15 s on and leaves the routing. **The newest stream wins**: a player's older stream for the same session is closed, and a spot keeps at most `VOICE_STREAMS_PER_SPOT` 2 (the oldest closed). The stream closes when its session ends (the next call answers 410), on a story reset or restart (every session ends; terminals reconnect), and in `dispose()`.
+
+**Who hears whom** (`@loom/house`; the server's `VoiceRelay.route()` applies
+it on every 100 ms spatial flush — a move, a map swap, a session that ended —
+and on every listener connect / disconnect; the spatial loop keeps running
+while any voice stream is open):
+
+- `voiceOn(house, spot)`: `voice: true` → on, `voice: false` → off; unset →
+  off for a terminal standing in the map's spawn room (the tent laptop is the
+  web game, beside the headsets; the shed on the rain map), on anywhere else.
+  Both show maps also set `"voice": false` on `tent`. The server refuses an
+  off spot's uploads and streams and never routes to it.
+- A player hears terminal T (`hearsTerminals`) when T's voice is on, T is on
+  the player's floor (`floorOf(house, T.pos[1])`), within
+  `VOICE_TERMINAL_REACH_M` 12 m on the plan; the `VOICE_MAX_TERMINALS` 4
+  nearest. A terminal hears player P (`hearsPlayers`) on its floor within
+  `VOICE_PLAYER_REACH_M` 8 m of its `pos`; the `VOICE_MAX_PLAYERS` 3 nearest.
+  The relay passes `only` (the rule's `VoiceRouteOptions`): a player's
+  candidates are the terminals with an open stream whose mic can be heard
+  (`mic` not 0), a terminal's the players not every one of whose streams
+  says `mic=0`; a stream with `hear=0` is routed nothing (it is still told
+  `listen`).
+- `gain` = 1 in the same room (the player's `room` non-null and equal to
+  T's), fading to 0 over the last `VOICE_EDGE_FADE_M` 1.5 m of the reach
+  (`(reach − d) / 1.5`), so the cut is never at full volume; else
+  `0.5 · (1 − d / reach)`; rounded to 2 decimals, never below 0. Under
+  `VOICE_MIN_GAIN` 0.05 it is not routed (dropped before the nearest-N cap).
+  Nearest first; ties by id.
+- **Hysteresis** (`keep`): a source a listener already hears is judged
+  `VOICE_REACH_HYSTERESIS_M` 0.75 m nearer for staying in (never for its
+  gain, which is kept at least at `VOICE_MIN_GAIN`), so a player standing on
+  the reach's edge, with pose jitter, never flaps the route (`bye`, a fade,
+  a restart, the uplink toggling). New routes form only inside the reach.
+- A terminal hears only players and a player only terminals: nothing hears
+  itself, and two headsets never hear each other (not asked for).
+- `seq`: a chunk at or below the source's last kept seq is dropped — unless
+  the source has been quiet for `VOICE_FRESH_MS` 1.5 s, when a lower seq is
+  a reloaded device counting from 0 again and is kept.
+
+**Clients** (each its own lane; the rules every one follows): an open mic
+behind a **voice gate** (`VoiceGate`: a chunk whose RMS is over
+`VOICE_GATE_DBFS` −42 dBFS opens it, with one chunk of pre-roll and a
+`VOICE_HANG_MS` 400 ms hang), and **half-duplex in software**, which is
+different on each end:
+
+- **A terminal holds** (`holdUntil`): it sends nothing while it plays
+  incoming voice, speaks, or plays its own sounds, plus `VOICE_TAIL_MS`
+  300 ms — and the chunk's span, the capture buffer and the device's output
+  latency, since a chunk is judged when its capture buffer ends. Its speaker
+  sits beside its mic; this hold is what breaks any loop.
+- **A game barges in** (D5b, `raiseUntil`): while a terminal's voice plays
+  there (+ the tail) its gate rises to `VOICE_BARGE_DBFS` −28 dBFS instead
+  of closing, and keeps no pre-roll. The echo of the room stays home; a
+  player speaking up is sent at once. Their voice then plays on the terminal,
+  whose hold pauses its room — **the floor goes to the player when they
+  speak**. A hard hold on both ends was one-way: a source over the gate
+  without a pause (a loud party room) held the floor for good, and a headset
+  player was never heard. An incoming voice under `VOICE_BARGE_MIN_GAIN` 0.2
+  (a faint, far terminal) raises nothing.
+
+Playback keeps a small jitter buffer per source (`jitterPlan`:
+`VOICE_JITTER_TARGET_MS` 200, the terminals 250; past `VOICE_JITTER_MAX_MS`
+400 ms queued it skips ahead, cutting only what is queued past the target,
+with a short fade), fading in on a start and out on `bye`. A player's own
+stream drops what it heard on a (re)connect's `hello` and takes a lower seq
+again after `VOICE_FRESH_MS` of quiet, like the server.
+
+- **Terminals** (`terminal/src/voice/`): auto / world / shadow / face / chess /
+  casino have mic + speaker; `tv` a speaker (cut by the TV mute) and a mic
+  off by default; `mirror`, the setup screen and an unplaced terminal
+  neither. ⚙ / URL `mic=0|1` and `voices=0|1`. The heartbeat reports
+  `mic=live|muted|denied|insecure|locked|off` on `/api/screen/state` (beside
+  `fs=`; `muted` = ⚙ turned it off, `locked` = open but the page's sound
+  waits for a touch), and Run → Terminals shows it as 🎤 (red for `denied`,
+  plain http or `locked` on a terminal that should hear). Echo cancellation,
+  noise suppression and AGC are asked off (the gate is in software; on
+  Android they switch the device into its voice-call audio mode). The map is
+  read before the link opens (retried, re-read every minute: a director
+  turning a spot's link on or off takes effect without a reload).
+- **The web game** (`reinstall/web/src/game/voice.ts`): off by default (it
+  runs on the tent laptop; config `voice`, URL `voice=1|0`); on, it hears the
+  terminals through `PannerNode`s at their screens. The mic is low-passed at
+  7 kHz before the resample; a track the OS ends reads NO MIC.
+- **VR** (`reinstall/vr/net/voice_link.gd` + `voice_codec.gd`): the mic on
+  **B / Y** (desktop **M**), `AudioStreamPlayer3D`s under each terminal; one
+  keep-alive `HTTPClient` for the uploads. The mic reads 🎤 … until a real
+  (non-zero) sample lands — a missing or denied input mixes zeros, which
+  count as no frames (then NO MIC); the Quest's microphone grant is asked in
+  the lobby, before any session.
+
+The mic needs a secure context in a browser (https, or localhost): a LAN
+`http://<ip>:7000` setup gets no microphone on the tablets (`mic=insecure`),
+as with the camera. No `Permissions-Policy` header is sent, so top-level
+pages may ask; nothing works inside a frame (`x-frame-options: DENY`).
+
 ## 3. The web game — `reinstall/web/` (`loom-reinstall`)
 
 React shell + three.js canvas (three r186 needs WebGL2: the wizard probes
@@ -998,6 +1134,38 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   (the event ended, or the server forgot it) drops back to the lobby and
   re-resolves the passcode to whatever event it names now; no answer at all
   for 5 s shows "Lost the server — retrying…".
+- **In-headset setup** (wave 19): a station whose passcode is missing or the
+  committed `CHANGEME` (and not `--offline`) shows **SET UP THIS HEADSET**
+  in the lobby (`game/setup_panel.gd`) instead of a dead status line: the
+  server choices (`StationConfig.server_choices`: a server named on the
+  command line, the committed `res://` one, and **This computer ·
+  127.0.0.1:7000** (`http://127.0.0.1:7000`) only on an editor / desktop run —
+  `OS.has_feature("editor_runtime")` or not Android — and first on an editor
+  run that names no server of its own), an on-screen keyboard
+  of the passcode alphabet `ABCDEFGHJKMNPQRSTUVWXYZ23456789` with ⌫ and
+  SPACE (physical keys too on a desktop: Tab switches field, Enter
+  connects), the station name (default "Headset <4 hex>", the hex of the
+  station id it mints), **CONNECT** and — on an editor / desktop run only —
+  **PLAY OFFLINE** (on a headset it would be a guest's way into a game
+  nobody is released from). CONNECT is `ServerLink.try_setup`: resolve-code
+  must answer `role: "mod"`, then the mod login; a refusal says "No event on
+  <server> answers to that passcode." (404) or "That isn't a moderator
+  passcode." (another role, a 401 / 403 login), no answer or any other
+  status "Can't reach the server.", and the station stays unconfigured
+  with no retry loop. A working one is saved by `StationConfig.save_user`
+  to `user://station.json` (never `res://`: the Quest preset ships
+  `config/*.json`) with a minted station id `vr-<name>-<4 hex>`, and the
+  link carries on with no restart (`configure` / `reconnect`; an epoch
+  drops a connect answer for an older configuration). PLAY OFFLINE is for
+  that run only. A ⚙ in the lobby (shown when there is a saved setup or
+  offline was chosen) held 2 s (5 s on a headset build, where the hover
+  hint is not shown: a guest must not take a show headset out of service)
+  calls `forget_setup`: the file is deleted and the panel comes back. A
+  **configured** station whose passcode stops working — a 404, not a
+  moderator's, a refused login (the staff codes rotated, the event gone) —
+  shows SET UP again, its own server first, instead of retrying for ever; a
+  network error or a 5xx still retries, and while the link is down the
+  lobby says its status rather than "Nobody is marked…".
 - **Found:** the game claims the duck within 0.9 m of it in plan, when the
   feet are within 1.2 m of its height (`HouseDuck.DUCK_MAX_RISE`) or on its
   floor — the server's `nearDuck` rule, tighter in plan.
@@ -1031,16 +1199,75 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   decoded by magic bytes (PNG / JPEG / WebP / SVG — an SVG rendered once
   near 256 px whatever size it declares; GIF / AVIF keep the capsule),
   cached for the run; a failure is retried once on the next visit.
+- **The voice link** (wave 19, `net/voice_codec.gd` + `net/voice_link.gd`,
+  §2.4): `voice_codec.gd` is a literal port of `@loom/house` `voice.ts`
+  (μ-law with a 256-entry decode table, the integer-phase resampler, the
+  gate + half-duplex hold, the chunker, `jitter_plan`, `voice_on`), pinned
+  by `test/golden/voice-mulaw.json`. While a session plays the game holds
+  `GET …/api/spatial/voice/stream?token=<session>` on `SseClient`; each
+  heard terminal plays from an `AudioStreamPlayer3D` "Voice" under its
+  `Terminal_<id>` (`HouseBuilder.voice_emitter`, re-made after a rebuild)
+  on a 16 kHz `AudioStreamGenerator` (1 s buffer), attenuation off,
+  `volume_db` from the frame's `gain`; 200 ms of jitter target, a skip
+  ahead to it past 400 ms queued, a 10 ms fade-in and a 60 ms fade-out on
+  `bye`; a terminal the map has voice off (the tent) is never played. The
+  mic: `AudioServer.set_input_device_active(true)` + `get_input_frames()`
+  at `get_input_mix_rate()` (an `AudioStreamMicrophone` on a muted
+  `VoiceMic` bus with an `AudioEffectCapture` when that gives nothing for
+  2 s), resampled to 16 kHz, 200 ms chunks, μ-law, the −42 dBFS gate
+  (400 ms hang, one chunk of pre-roll), held while a voice plays here
+  (+ 300 ms). Uploads only while `listen.on` (the stream's `hello` /
+  `listen`, the POST's `listening`), on one persistent keep-alive
+  `HTTPClient` (`request_raw`, `x-loom-token`, `?seq=`), one POST in flight,
+  two chunks a POST at most, at most 1 s queued (older chunks dropped),
+  reconnecting with a back-off and reopening a connection idle 4 s. A
+  401 / 403 / 410 stops the uploads until the next session. **B / Y**
+  (`by_button`, either hand; **M** on the desktop rig) toggles the mic; the
+  HUD's line reads 🎤 LIVE (· someone can hear you) / 🎤 MUTED / NO MIC.
+  `project.godot` `[audio] driver/enable_input=true`; the Quest preset's
+  `permissions/record_audio=true`, the grant asked in the lobby, before any
+  session (`VoiceLink.prime_permission`: the system dialog pauses the app,
+  which in a session would end it; a dialog still up at a start arms no
+  away deadline while the mic is "asking"), the mic re-opened on
+  `on_request_permissions_result`. While a terminal plays here the gate is
+  raised, not held (D5b, §2.4). Config `voice` / `mic` (both on;
+  `--mic false` listens only). Everything stops in `enter_lobby`;
+  offline there is none.
 - `player/`: XROrigin3D rig on a CharacterBody3D; **left stick** walks
   head-relative (dead zone 0.15, 1.8 m/s), **right stick** snap-turns 45°
   (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
-  room-scale head offset folded into the body. The only button is the
-  King's hit (trigger, or A / X); on a Mac, Space or F.
-- `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
-  picker of candidates — only the eligible ones, `Lobby.eligible_only`;
-  up/down chooses, hold right 1 s to confirm; a begin 409 `not marked for
-  reinstallation` flashes *Not marked — an Antivirus marks programs for
-  reinstallation.*),
+  room-scale head offset folded into the body. The buttons are the King's
+  hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute
+  (B / Y; on a Mac, M), both only while playing. In the lobby
+  `player/pointer.gd` (`LobbyPointer`) casts a **laser** from each hand's
+  aim pose (an `XRController3D` on the `aim` pose, the hand's own transform
+  until it tracks): a thin teal beam with a gold dot where it meets the
+  panel (`LobbyTiles.ray_to_panel`); the trigger (a click, or pulled past
+  0.8, let go under 0.4) presses; the other hand takes the beam by a fresh
+  trigger pull or by moving now (over 30°/s or 0.15 m/s for 0.15 s), never
+  by drift and never while the beam hand's trigger is held. On the desktop
+  rig the
+  mouse is the pointer (the camera's ray through it, the left button the
+  press; never captured in the lobby, and the camera levelled on entry) and
+  there is no beam.
+- `game/`: lobby (a dark room; wave 19: **PICK YOUR PROGRAM** — a picture
+  tile per eligible program, `Lobby.eligible_only`: its profile picture off
+  the ghosts' `AvatarCache` (initials until it lands), its name, its tag
+  *[corrupted]* / *[marked]* / *[party favour]*; one row up to 4, two rows
+  up to 8, then pages of 4 × 2 with ◀ ▶ (`LobbyTiles.layout`). Point the
+  laser and pull the trigger, click (desktop), or the stick
+  (`CandidatePicker` on a grid: up / down a row, left one back, a right
+  flick let go early one on, **hold right 1 s** picks); a card asks
+  **"Start as <name>?"** with **START** / **BACK** (the same three ways,
+  Enter / Backspace on a desktop; the hold that opened it must let go
+  first) and START calls `begin` with the headset's mod token, so the tent
+  tablet is not needed. "Nobody is marked for reinstallation yet." for an
+  empty list; "this headset: <name>" and the connection state above the
+  tiles; a card closes when its program leaves the list, and every return
+  to the lobby clears it. The tablet's *Send to headset* lands whatever the
+  view. A begin 409 `not marked for reinstallation` flashes *Not marked for
+  reinstallation — until the night is over, only a marked program may
+  play.*; a 404 *Nobody has that pass.*),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
   complete"; a find the story kept — nothing released, still captured —
   says "GERALD CAN'T HELP" and the duck stays put; a find by a program that
@@ -1059,8 +1286,17 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   duck changes.
 - `test/run.sh` + `test/game.gd`: headless checks, including the §1.2
   goldens (every fixture's, at 1e-3), the link over a fake transport (map
-  refetch, duck adoption), the found rule, and the autopilot reaching
-  every show duck spot kinematically and with real collision.
+  refetch, duck adoption, the setup's answers + save + forget), the found
+  rule, the lobby's tiles / laser / confirm card / setup panel on
+  `main.tscn` with a fake link, and the autopilot reaching every show duck
+  spot kinematically and with real collision.
+- **Editor runs** (wave 19): F5 with no arguments reaches SET UP THIS
+  HEADSET (then the tiles, once `user://station.json` holds a passcode)
+  with no script errors; the OpenXR loader's "no runtime" errors and
+  *Godot will start in normal mode* are harmless (`startup_alert=false`).
+  The lobby prints each view to the log. Debug → Customize Run Instances →
+  Main Run Args takes the command-line flags after `--`. See
+  `reinstall/vr/README.md` → *Run it from the Godot editor*.
 
 ## 6. The story
 
