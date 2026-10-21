@@ -79,7 +79,10 @@ export type SimEvent =
   | { type: "promoted"; person: string; role: string }
   | { type: "worldSet"; path: string; value: string }
   | { type: "relationshipChanged"; subject: string; relation: string; object: string; value: number }
-  | { type: "broadcast"; cue: string; audience: string[]; scope: string }
+  // `go` / `close` (wave 18, C2): the story's `with go: …, close: 6s` tail —
+  // the moment's exit words as written (interpolated), resolved by the chat
+  // composer; `close` in ms. Absent when not written.
+  | { type: "broadcast"; cue: string; audience: string[]; scope: string; go?: string[]; close?: number }
   // A scripted line. `setting` is the enclosing beat's `setting:` location
   // (inherited through diverts) and `beat` the beat it was spoken in — chat
   // routes an un-addressed line to the setting's room, and the cockpit links
@@ -130,13 +133,16 @@ export type SimEvent =
        *  (`subjectAudience(bindings)[0]`), or null — which guest a booth
        *  readout is about. */
       about?: string | null;
+      /** `reply "…" with go: …, close: …` (wave 18, C2). */
+      go?: string[];
+      close?: number;
     }
   // `show <kind> ["text"] [to scope] [with k: v]` — a widget (a game, a
   // picture, a form) the participant app renders in the conversation.
   // `audience` + `scope` mirror `broadcast` (empty audience with a global
   // scope = everyone); `setting` + `beat` mirror `dialogue` so the card
   // lands in the same room as the lines around it.
-  | { type: "widget"; widget: string; text: string; params: Record<string, string>; audience: string[]; scope: string; setting: string | null; beat: string | null }
+  | { type: "widget"; widget: string; text: string; params: Record<string, string>; audience: string[]; scope: string; setting: string | null; beat: string | null; go?: string[]; close?: number }
   | { type: "signal"; name: string; subject: string | null }
   // A codex entry landed in a holder's hands (a person or a character):
   // redeemed from a code, handed over by the story / an operator, or shared
@@ -158,7 +164,7 @@ export type SimEvent =
   // place (`loc:X`). `key` = the person's id, or "" for a room-wide pin —
   // the client keeps the newest pin per (channel, key) until an `unpin`
   // with the same key. A leading `!` in the text is an alert.
-  | { type: "pinned"; text: string; channel: string | null; person: string | null; key: string }
+  | { type: "pinned"; text: string; channel: string | null; person: string | null; key: string; go?: string[] }
   | { type: "unpinned"; text: string | null; channel: string | null; person: string | null; key: string }
   // A wallet card for one viewer (a person id, or `@<Character>` for a booth)
   // — emitted by the server's WalletBook, never by the Sim itself; `root`

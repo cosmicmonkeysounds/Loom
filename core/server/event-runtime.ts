@@ -26,7 +26,7 @@ import { allSnapshotFlags, awardOnly, cueState, guestCardView, guestFlags, guest
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -283,9 +283,11 @@ export type LifecycleKind = "reset" | "reload" | "golive" | "ended";
 
 /** A message as a guest client may see it: never the director attribution
  *  a mod `say`-as-a-participant carries. */
-function forGuest(m: ChatMessage): ChatMessage {
-  if (m.via === undefined) return m;
-  const { via: _via, ...rest } = m;
+function forGuest(m: ChatMessage, sim: Sim | null = null, viewer: string | null = null): ChatMessage {
+  // Wave 18 (C2): a guest gets only the exits to rooms they can see.
+  const seen = viewer !== null ? goForViewer(m, sim, viewer) : m;
+  if (seen.via === undefined) return seen;
+  const { via: _via, ...rest } = seen;
   return rest;
 }
 
@@ -1384,7 +1386,7 @@ export class EventRuntime {
    *  pinned rooms, pins, alerts, cards, own threads and thread roots). */
   private historyFor(c: Client): ChatMessage[] {
     return c.role === "guest"
-      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map(forGuest)
+      ? capHistory(this.chat.historyFor(c.id, false), HISTORY_LIMIT, guestOwnRow(c.id)).map((m) => forGuest(m, this.sim, c.id))
       : c.role === "mod"
         ? [...this.chat.all()]
         : capHistory(
@@ -1451,7 +1453,7 @@ export class EventRuntime {
   private deliverMessage(m: ChatMessage): void {
     for (const c of this.clients) {
       if (c.role === "guest") {
-        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m));
+        if (!m.hidden && visibleTo(m, c.id)) sseSend(c.res, "message", forGuest(m, this.sim, c.id));
       } else if (c.role === "prime") {
         if (visibleToPrime(m, c, this.agentVoiced)) sseSend(c.res, "message", m);
       } else {
@@ -1540,7 +1542,7 @@ export class EventRuntime {
       // in-editor simulator can mirror the whole run.
       for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "sim", e);
     }
-    const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, events);
+    const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, events, this.composeOpts);
     // A director speaking *as* a participant: the room sees the participant's
     // name, the mod feed additionally sees who really typed it.
     if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
@@ -3433,6 +3435,9 @@ export class EventRuntime {
     return this.avatars.keys();
   }
 
+  /** What the chat composer asks the runtime (C3: a readout's guest picture). */
+  private readonly composeOpts: ComposeOptions = { avatarOf: (name) => this.avatars.keyFor(name) };
+
   /** The names on a join screen's picker: the story's pool of programs
    *  for a guest, its parts for a performer — each with its picture,
    *  whether someone already holds it, and whether it is a reserved program
@@ -3710,7 +3715,7 @@ export class EventRuntime {
             this.factsWatch.mark(this.sim!, e.by ?? null);
             const batch = this.wallet.apply(e.a[0] as WalletOp);
             events++;
-            this.chat.append(composeGuestMessages(this.sim!, batch));
+            this.chat.append(composeGuestMessages(this.sim!, batch, this.composeOpts));
           } catch {
             /* tolerate a torn line */
           }
@@ -3741,7 +3746,7 @@ export class EventRuntime {
                 this.decisionChannels.set(ev.person, decisionChannelFor(batch, ev.person));
               }
             }
-            const drafts = composeGuestMessages(this.sim!, batch);
+            const drafts = composeGuestMessages(this.sim!, batch, this.composeOpts);
             // A director's speech *as* a participant keeps its attribution
             // across a restart — the same rule `fanout` applies live.
             if (e.m === "say" && e.by !== undefined && this.sim!.persons.has(String(e.a[0]))) {
@@ -4066,7 +4071,7 @@ export class EventRuntime {
         id = gid;
       }
       const messages = this.chat.historyFor(id, admin).filter((m) => !this.isExpired(m));
-      sendJson(res, 200, { messages: admin ? messages : messages.map(forGuest) });
+      sendJson(res, 200, { messages: admin ? messages : messages.map((m) => forGuest(m, this.sim, id)) });
       return true;
     }
 
@@ -5939,7 +5944,7 @@ export class EventRuntime {
           if (c.role === "guest") {
             if (!visibleTo(m, c.id)) continue;
             if (m.hidden) sseSend(c.res, "messageModerated", { seq: m.seq, hidden: true });
-            else sseSend(c.res, "message", forGuest(m));
+            else sseSend(c.res, "message", forGuest(m, this.sim, c.id));
           } else if (c.role === "mod" || visibleToPrime(m, c, this.agentVoiced)) {
             sseSend(c.res, "messageModerated", m);
           }
