@@ -30,8 +30,8 @@ describe("pickOf — a map terminal → name / view / room", () => {
     expect(pickOf(show, spot(show, "start-bar"))).toEqual({ spot: "start-bar", name: "Start Bar", view: "auto", room: "" });
   });
 
-  it("speaks is ignored on the TV, the board and the casino", () => {
-    for (const view of ["tv", "chess", "casino"] as const) expect(pickOf(show, { ...spot(show, "server-room"), view, speaks: true }).room).toBe("");
+  it("speaks is ignored on the TV, the board, the casino and the reinstallation station", () => {
+    for (const view of ["tv", "chess", "casino", "reinstall"] as const) expect(pickOf(show, { ...spot(show, "server-room"), view, speaks: true }).room).toBe("");
     expect(pickOf(show, { ...spot(show, "hall"), speaks: true }).room).toBe("The Tube");
   });
 });
@@ -40,6 +40,7 @@ describe("screenWords + groupTerminals", () => {
   it("names each screen in words", () => {
     expect(screenWords({ view: "tv", room: "" })).toMatch(/^TV/);
     expect(screenWords({ view: "casino", room: "" })).toBe("casino");
+    expect(screenWords({ view: "reinstall", room: "" })).toBe("reinstallation station");
     expect(screenWords({ view: "chess", room: "" })).toMatch(/^chess board/);
     expect(screenWords({ view: "face", room: "The Server Room" })).toBe("room terminal — The Server Room");
     expect(screenWords({ view: "auto", room: "" })).toBe("house terminal");
