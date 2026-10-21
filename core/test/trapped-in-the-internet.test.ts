@@ -75,6 +75,8 @@ const aud = (e: { audience: readonly string[] }) => JSON.stringify(e.audience);
 /** Everything but the crew's # hosts notes (a refused cue tells only them, T1-02). */
 const offstage = (evs: SimEvent[]) => texts(evs.filter((e) => !(e.type === "broadcast" && e.scope === "channel(hosts)")));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/** The categories OpenOffice's dossier counts (wave 18b, R22). */
+const DOSSIER_CATEGORIES = new Set(["Facts", "Files", "People", "Trabolta", "Places"]);
 const worldKeys = (sim: Sim) => [...((sim.world as any).values as Map<string, unknown>).keys()];
 
 /** Ticks one second at a time, like the server's clock. */
@@ -1067,7 +1069,8 @@ describe("Trapped in the Internet — the whole night", () => {
     sim.redeem("g5", "FREE-TRIAL-30-DAYS");
     expect(v(sim, "g5.carries_virus")).toBe(true);
 
-    const codes = [...sim.model.codexCodes.entries()].filter(([, e]) => !["The LiveJournal", "ILOVEYOU", "Free Antivirus Trial"].includes(e));
+    // Wave 18b (R22): only the counted categories make the dossier.
+    const codes = [...sim.model.codexCodes.entries()].filter(([, e]) => !["The LiveJournal", "ILOVEYOU", "Free Antivirus Trial"].includes(e) && DOSSIER_CATEGORIES.has(sim.model.codex.get(e)?.category ?? ""));
     const ev: SimEvent[] = [];
     let got = 0;
     for (const [code, entry] of codes) {
@@ -1390,12 +1393,13 @@ function toHunt2(sim: Sim, ex = 0, oo = 0) {
   sim.choose("g2", ex);
   sim.choose("g3", oo);
 }
-/** OpenOffice redeems 20 codes after her prompt. */
+/** OpenOffice redeems 20 codes after her prompt (wave 18b: the dossier's
+ *  counted categories). */
 function dossier(sim: Sim): SimEvent[] {
   const out: SimEvent[] = [];
   let got = 0;
   for (const [code, entry] of sim.model.codexCodes) {
-    if (["The LiveJournal", "ILOVEYOU", "Free Antivirus Trial"].includes(entry) || sim.holdsCodex("g3", entry)) continue;
+    if (["The LiveJournal", "ILOVEYOU", "Free Antivirus Trial"].includes(entry) || sim.holdsCodex("g3", entry) || !DOSSIER_CATEGORIES.has(sim.model.codex.get(entry)?.category ?? "")) continue;
     out.push(...sim.redeem("g3", code));
     if (++got >= 20) break;
   }
