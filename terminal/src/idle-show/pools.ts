@@ -17,8 +17,9 @@ export function phasePool(phase: string | null | undefined): PhasePool {
   if (p === "" || p === "arrivals" || p === "desktop" || p === "bingo" || p === "bingo_results") return "early";
   if (p === "introduced" || p === "hunt_1" || p === "truth_1") return "hunt";
   if (p === "malware" || p === "hunt_2" || p === "summons") return "malware";
-  if (p === "truth_pong" || p === "trust_chart" || p === "beans" || p === "overshare" || p === "majority") return "late";
-  if (p === "y2k") return "y2k";
+  if (p === "truth_pong" || p === "trust_chart" || p === "beans" || p === "overshare") return "late";
+  // A side's majority lands inside the Y2K hour: the clock keeps running.
+  if (p === "y2k" || p === "majority") return "y2k";
   if (p === "final_reveal" || p === "bobbing" || p === "advice" || p === "grok_prom" || p.startsWith("finale")) return "finale";
   return "early";
 }
@@ -36,6 +37,9 @@ export interface IdleContext {
   target: "tv" | "wall";
   /** A scan box is in the corner (a popup may point at it). */
   scan: boolean;
+  /** His face is under the show (a wall terminal's whole stage, no world
+   *  view in its face pane): the `face` layout may let it show through. */
+  face: boolean;
   /** The Y2K countdown's seconds left, when it runs (a popup counts with it). */
   y2kLeft: number | null;
 }
@@ -45,18 +49,31 @@ export function introducedIn(state: ScreenState | null): boolean {
   return state !== null && state.character !== null && state.character.hidden === false;
 }
 
-export function idleContextOf(o: { state: ScreenState | null; asleep: boolean; character: string; target: "tv" | "wall"; scan: boolean }): IdleContext {
+/** The Y2K countdown's seconds left at `now`, counted down off the answer's
+ *  arrival exactly as `screenLayers` does (`slides.ts`), so every Y2K
+ *  readout on a screen agrees; null when it isn't running. */
+export function y2kLeftAt(state: Pick<ScreenState, "countdown" | "remaining" | "receivedAt"> | null, now: number): number | null {
+  if (state === null || state.countdown !== "y2k" || state.remaining === null) return null;
+  const since = Math.max(0, now - state.receivedAt);
+  return Math.max(0, state.remaining - Math.floor(since / 1000));
+}
+
+export function idleContextOf(o: { state: ScreenState | null; asleep: boolean; character: string; target: "tv" | "wall"; scan: boolean; region?: "full" | "pane"; now?: number }): IdleContext {
   const s = o.state;
   const phase = s?.night.phase ?? "";
   const awake = s !== null && s.character !== null && s.character.awake && !s.attract;
+  let pool = phasePool(phase);
+  // The Y2K clock is running: the Y2K pool, whatever beat the phase names (never over a finale).
+  if (s !== null && s.countdown === "y2k" && pool !== "finale") pool = "y2k";
   return {
-    pool: phasePool(phase),
+    pool,
     phase: phase.trim().toLowerCase(),
     names: !o.asleep && awake && introducedIn(s) && o.character.trim() !== "",
     character: s?.character?.id ?? o.character,
     target: o.target,
     scan: o.scan,
-    y2kLeft: s !== null && s.countdown === "y2k" && s.remaining !== null ? Math.max(0, s.remaining) : null,
+    face: o.target === "wall" && (o.region ?? "full") === "full",
+    y2kLeft: y2kLeftAt(s, o.now ?? Date.now()),
   };
 }
 

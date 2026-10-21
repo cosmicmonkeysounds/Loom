@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { MYSTIFY_TRAIL, mystifyInit, mystifyStep } from "../src/attract.ts";
 import { FACE_TIPS, IDLE_ADS } from "../src/idle-show/ads.ts";
 import { ATTENTION_EVERY_MS, ATTENTION_IDLE_MS, ATTENTION_SHOW_MS, THANKS, adGag, attentionOn, duckLane, gagText, ringsAt } from "../src/idle-show/gags.ts";
-import { PHASE_POOLS, eligible, fillCopy, idleContextOf, phasePool, type IdleContext, type PhasePool } from "../src/idle-show/pools.ts";
+import { PHASE_POOLS, eligible, fillCopy, idleContextOf, phasePool, y2kLeftAt, type IdleContext, type PhasePool } from "../src/idle-show/pools.ts";
+import { screenLayers } from "../src/slides.ts";
 import { CONFIRM_TEXT, DODGED_TITLE, POPUP_KINDS } from "../src/idle-show/popups.ts";
 import { drawAt, hash32, permutation, mulberry32 } from "../src/idle-show/rng.ts";
 import { LAYOUT_MS, PATTERN, SEGMENT_MAX_MS, adPool, advance, loadCursor, popupPool, resumeCursor, saveCursor, segmentAt, startIndex, type Segment } from "../src/idle-show/schedule.ts";
@@ -15,7 +16,7 @@ import { parseScreenState } from "../src/screen.ts";
 const FORBIDDEN = /trabolta|alexa|kernel/iu;
 
 function ctxOf(pool: PhasePool, o: Partial<IdleContext> = {}): IdleContext {
-  return { pool, phase: "", names: false, character: "Trabolta", target: "wall", scan: true, y2kLeft: 600, ...o };
+  return { pool, phase: "", names: false, character: "Trabolta", target: "wall", scan: true, face: true, y2kLeft: 600, ...o };
 }
 
 /** Every context a screen that may not name him can be in. */
@@ -127,7 +128,43 @@ describe("the pools", () => {
     expect(idleContextOf({ ...base, state: state({ character: { id: "Trabolta", hidden: true, awake: true, online: false, hold: false } }), asleep: false }).names).toBe(false);
     expect(idleContextOf({ ...base, state: state({ attract: true }), asleep: false }).names).toBe(false);
     expect(idleContextOf({ ...base, state: state({ phase: "malware" }), asleep: false }).pool).toBe("malware");
-    expect(idleContextOf({ ...base, state: state({ countdown: "y2k", remaining: 99 }), asleep: false }).y2kLeft).toBe(99);
+    expect(idleContextOf({ ...base, state: state({ countdown: "y2k", remaining: 99 }), asleep: false, now: 1 }).y2kLeft).toBe(99);
+  });
+
+  it("keeps the Y2K pool through a side's majority, while the clock runs (never over a finale)", () => {
+    expect(phasePool("majority")).toBe("y2k");
+    const base = { character: "Trabolta", target: "wall" as const, scan: true, asleep: false, now: 1 };
+    const majority = idleContextOf({ ...base, state: state({ phase: "majority", countdown: "y2k", remaining: 1200 }) });
+    expect(majority.pool).toBe("y2k");
+    const ids = popupPool(majority).map((p) => p.id);
+    expect(ids).toContain("pop-y2k-countdown");
+    expect(ids).toContain("pop-majority");
+    expect(ids).not.toContain("pop-load-beans");
+    expect(adPool(majority).map((a) => a.id)).toContain("ad-y2k-kit");
+    expect(POPUP_KINDS.find((p) => p.id === "pop-load-beans")!.phases).not.toContain("majority");
+    // The Y2K clock running is the Y2K hour, whatever beat the phase names…
+    expect(idleContextOf({ ...base, state: state({ phase: "overshare", countdown: "y2k", remaining: 99 }) }).pool).toBe("y2k");
+    // …but a finale is a finale.
+    expect(idleContextOf({ ...base, state: state({ phase: "final_reveal", countdown: "y2k", remaining: 99 }) }).pool).toBe("finale");
+    expect(idleContextOf({ ...base, state: state({ phase: "beans" }) }).pool).toBe("late");
+  });
+
+  it("counts the Y2K popup down off the answer's arrival, as the slide and the corner do", () => {
+    const s = state({ phase: "y2k", countdown: "y2k", remaining: 600, receivedAt: 10_000 });
+    for (const now of [10_000, 10_999, 11_000, 12_500, 70_000, 700_000, 5_000]) {
+      expect(y2kLeftAt(s, now)).toBe(screenLayers(s, now, { piloting: false }).y2k);
+      expect(idleContextOf({ state: s, asleep: false, character: "Trabolta", target: "wall", scan: true, now }).y2kLeft).toBe(screenLayers(s, now, { piloting: false }).y2k);
+    }
+    expect(y2kLeftAt(s, 13_000)).toBe(597); // a stalled poll still ticks
+    expect(y2kLeftAt(state({ countdown: "hunt", remaining: 60 }), 0)).toBe(null);
+    expect(y2kLeftAt(null, 0)).toBe(null);
+  });
+
+  it("lets the face show through only where the face is under the show", () => {
+    const base = { state: state(), asleep: false, character: "Trabolta", scan: true };
+    expect(idleContextOf({ ...base, target: "wall" }).face).toBe(true);
+    expect(idleContextOf({ ...base, target: "wall", region: "pane" }).face).toBe(false);
+    expect(idleContextOf({ ...base, target: "tv" }).face).toBe(false);
   });
 
   it("filters an item on every tag at once", () => {
@@ -212,6 +249,10 @@ describe("the schedule", () => {
     expect(walk(ctxOf("hunt", { names: true, target: "tv" }), 0, 200).some((s) => s.layout === "face")).toBe(false);
     expect(walk(ctxOf("hunt", { names: false }), 0, 200).some((s) => s.layout === "face")).toBe(false);
     for (const s of walk(ctxOf("hunt", { names: false }), 0, 400)) for (const a of s.ads) expect(a.names).not.toBe(true);
+  });
+
+  it("never picks the face layout beside the world view (the face pane shows the world)", () => {
+    expect(walk(ctxOf("hunt", { names: true, face: false }), 0, 400).some((s) => s.layout === "face")).toBe(false);
   });
 
   it("plays the phase's pool: hijack ads while hijacked, never before", () => {

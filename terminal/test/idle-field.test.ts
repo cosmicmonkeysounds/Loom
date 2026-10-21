@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_POPUPS, POPUP_H, POPUP_W, STORM_EVERY_MS, ask, close, closeGag, dodge, emptyField, hydra, placePopup, relayout, spawn, spawnGap, stormPlace, tick, type PopupField, type Rect } from "../src/idle-show/field.ts";
+import { MAX_POPUPS, POPUP_H, POPUP_W, STORM_EVERY_MS, ask, close, closeGag, dodge, emptyField, hydra, placePopup, relayout, spawn, spawnGap, stormPlace, tick, y2kPace, type PopupField, type Rect } from "../src/idle-show/field.ts";
 import { mulberry32 } from "../src/idle-show/rng.ts";
 import type { Layout } from "../src/idle-show/schedule.ts";
 
@@ -38,6 +38,28 @@ describe("the popups' lives", () => {
     expect(spawnGap("saver", "malware", "wall", 0.5)!).toBeLessThan(spawnGap("saver", "early", "wall", 0.5)!);
     expect(spawnGap("saver", "early", "tv", 0.5)!).toBeGreaterThan(spawnGap("saver", "early", "wall", 0.5)!);
     expect(spawnGap("face", "early", "wall", 0.5)).toBeNull();
+  });
+
+  it("pile up faster as midnight nears in the Y2K hour", () => {
+    const at = (left: number | null) => spawnGap("saver", "y2k", "wall", 0.5, left)!;
+    expect(at(null)).toBe(at(3_000));
+    expect(at(300)).toBeLessThan(at(301));
+    expect(at(60)).toBeLessThan(at(300));
+    expect(y2kPace(0)).toBe(0.3);
+    // Only the Y2K pool hears the clock.
+    expect(spawnGap("saver", "early", "wall", 0.5, 10)).toBe(spawnGap("saver", "early", "wall", 0.5));
+    // tick carries it through.
+    const run = (left: number | null) => {
+      let f = emptyField();
+      let n = 0;
+      for (let t = 0; t < 120_000; t += 250) {
+        const r = tick(f, t, { seed: 7, layout: "saver", pool: "y2k", target: "wall", reserve: null, y2kLeft: left });
+        f = { ...r.field, live: [] };
+        if (r.arrived !== null) n++;
+      }
+      return n;
+    };
+    expect(run(30)).toBeGreaterThan(run(null));
   });
 
   it("each slot draws one window at a time", () => {

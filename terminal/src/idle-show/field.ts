@@ -61,13 +61,22 @@ export function emptyField(drawn = 0): PopupField {
 }
 
 /** The wait before the next window (ms) on this layout; null = none come. */
-export function spawnGap(layout: Layout, pool: PhasePool, target: "tv" | "wall", r: number): number | null {
+export function spawnGap(layout: Layout, pool: PhasePool, target: "tv" | "wall", r: number, y2kLeft: number | null = null): number | null {
   if (layout === "face") return null;
   if (layout === "storm") return STORM_EVERY_MS;
   const [lo, hi] = layout === "saver" ? [3_000, 6_500] : layout === "banner" ? [4_500, 8_000] : [7_000, 12_000];
-  // Hijacked: twice as often. The TV, across the room: a little calmer.
-  const k = (pool === "malware" ? 0.5 : pool === "y2k" ? 0.8 : 1) * (target === "tv" ? 1.3 : 1);
+  // Hijacked: twice as often. The Y2K hour: faster as midnight nears. The TV, across the room: a little calmer.
+  const k = (pool === "malware" ? 0.5 : pool === "y2k" ? y2kPace(y2kLeft) : 1) * (target === "tv" ? 1.3 : 1);
   return Math.round((lo + r * (hi - lo)) * k);
+}
+
+/** The Y2K hour's pace (a share of the usual gap): 0.8 all hour, 0.5 in
+ *  the last five minutes, 0.3 in the last minute. */
+export function y2kPace(left: number | null): number {
+  if (left === null) return 0.8;
+  if (left <= 60) return 0.3;
+  if (left <= 300) return 0.5;
+  return 0.8;
 }
 
 function overlaps(a: Rect, b: Rect): boolean {
@@ -117,9 +126,9 @@ export function spawn(f: PopupField, now: number, o: { seed: number; reserve: Re
  * One step of the clock: windows past their time close, and if one is due
  * (and the layout brings any) it arrives. Returns who arrived (for the sound).
  */
-export function tick(f: PopupField, now: number, o: { seed: number; layout: Layout; pool: PhasePool; target: "tv" | "wall"; reserve: Rect | null }): { field: PopupField; arrived: LivePopup | null } {
+export function tick(f: PopupField, now: number, o: { seed: number; layout: Layout; pool: PhasePool; target: "tv" | "wall"; reserve: Rect | null; y2kLeft?: number | null }): { field: PopupField; arrived: LivePopup | null } {
   let field: PopupField = { ...f, live: f.live.filter((p) => p.dies > now) };
-  const gap = spawnGap(o.layout, o.pool, o.target, mulberry32(mix(o.seed, field.drawn, 0x6a9))());
+  const gap = spawnGap(o.layout, o.pool, o.target, mulberry32(mix(o.seed, field.drawn, 0x6a9))(), o.y2kLeft ?? null);
   if (gap === null) return { field: { ...field, nextAt: null }, arrived: null };
   if (field.nextAt === null) return { field: { ...field, nextAt: now + (o.layout === "storm" ? 0 : Math.round(gap / 2)) }, arrived: null };
   if (now < field.nextAt) return { field, arrived: null };

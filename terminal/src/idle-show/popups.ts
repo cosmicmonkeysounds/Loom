@@ -73,11 +73,13 @@ export const POPUP_KINDS: readonly PopupKind[] = [
   { id: "pop-blocker", style: "toast", icon: "info", title: "Pop-up Blocker", text: "Pop-up blocker blocked 0 pop-ups.", buttons: OK, sound: "blip", pools: ["malware"] },
   // --- after the hunts ---------------------------------------------------------------
   { id: "pop-chart-updated", style: "toast", icon: "info", title: "Trust Chart", text: "The Trust Chart has been updated.", buttons: OK, sound: "chord", pools: ["late"], phases: ["trust_chart"] },
-  { id: "pop-load-beans", style: "dialog", icon: "printer", title: "Printer", text: "PC LOAD BEANS", buttons: [{ label: "Retry", gag: "more" }, { label: "Cancel" }], sound: "error", pools: ["late"], phases: ["beans", "overshare", "majority"] },
+  { id: "pop-load-beans", style: "dialog", icon: "printer", title: "Printer", text: "PC LOAD BEANS", buttons: [{ label: "Retry", gag: "more" }, { label: "Cancel" }], sound: "error", pools: ["late"], phases: ["beans", "overshare"] },
   // --- Y2K -------------------------------------------------------------------------------
   { id: "pop-y2k-countdown", style: "warning", icon: "clock", title: "Y2K", text: "{y2k} until midnight. Is everything saved?", buttons: OK, sound: "tick", pools: ["y2k"] },
   { id: "pop-y2k-1900", style: "dialog", icon: "warning", title: "Year 2000", text: "At midnight your clock may read 1900. Please dress accordingly.", buttons: OK, sound: "exclamation", pools: ["y2k"] },
   { id: "pop-y2k-toaster", style: "dialog", icon: "question", title: "Y2K Compliance", text: "Is your toaster Y2K compliant?", buttons: [{ label: "Yes" }, { label: "It's a toaster", gag: "confirm" }], sound: "ding", pools: ["y2k"] },
+  { id: "pop-y2k-save", style: "warning", icon: "clock", title: "Year 2000", text: "{y2k} left in 1999. Save your work. Save everything.", buttons: [{ label: "Save" }, { label: "Save As…", gag: "more" }], sound: "exclamation", pools: ["y2k"] },
+  { id: "pop-majority", style: "dialog", icon: "info", title: "Network Poll", text: "The votes are in: a majority has been reached. Please remain calm until midnight.", buttons: [{ label: "OK" }, { label: "Appeal", gag: "dodge" }], sound: "ding", pools: ["y2k"], phases: ["majority"] },
   // --- the end of the night ---------------------------------------------------------
   { id: "pop-safe-off", style: "dialog", icon: "computer", title: "Shut Down", text: "It is now safe to turn off your house.", buttons: OK, sound: "chord", pools: ["finale"] },
   { id: "pop-saving", style: "progress", icon: "computer", title: "Please Wait", text: "Saving your settings. This is taking a while because you have so many.", buttons: [{ label: "Cancel", gag: "dodge" }], sound: "ding", pools: ["finale"] },

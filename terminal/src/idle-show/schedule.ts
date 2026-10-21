@@ -8,7 +8,8 @@
 //!   side    two ads side by side (stacked on a portrait tablet)
 //!   storm   a popup storm: windows everywhere, a trail of them, an alarm
 //!   face    the character's face shows through, with a tip from him and
-//!           an ad beside it (awake wall terminals after the introduction)
+//!           an ad beside it (awake wall terminals after the introduction,
+//!           only where the face is under the show — never beside the world)
 //!
 //! The order repeats in cycles of `PATTERN` with the draws (which saver,
 //! which ads) taken from seeded shuffles (`rng.ts` `drawAt`), so segment
@@ -94,7 +95,7 @@ export function segmentAt(seed: number, index: number, ctx: IdleContext, pool: r
   const pos = i - cycle * PATTERN.length;
   const slot = PATTERN[pos]!;
   let layout = slot.layout;
-  if (slot.alt === "face") layout = ctx.names && ctx.target === "wall" && roll(seed, cycle, 0xface) < 0.6 ? "face" : "saver";
+  if (slot.alt === "face") layout = ctx.names && ctx.target === "wall" && ctx.face && roll(seed, cycle, 0xface) < 0.6 ? "face" : "saver";
   else if (slot.alt !== undefined) layout = roll(seed, cycle, 0x5707) < (ctx.pool === "malware" ? 1 : STORM_CHANCE) ? slot.layout : slot.alt;
   const first = cycle * ADS_PER_CYCLE + ADS_BEFORE[pos]!;
   const wants = layout === "saver" || layout === "storm" ? 0 : layout === "side" ? 2 : 1;
