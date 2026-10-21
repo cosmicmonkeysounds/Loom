@@ -120,6 +120,9 @@ export interface Viewer {
   filter?: (m: ChatMessage) => boolean;
   /** A guest's display name: a house cheer that names them is not for them. */
   name?: string;
+  /** Wave 18b (D18): a guest whose story hides the lobby (`lobby: hidden`):
+   *  a lobby line that is no moment is still a Notifications row. */
+  lobbyHidden?: boolean;
 }
 
 /** The highest rung a booth ever shows: performers are working, a modal would stop them. */

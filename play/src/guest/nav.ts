@@ -27,6 +27,8 @@ export interface GoContext {
   armed?: ReadonlySet<string>;
   /** Quest id → the seq of its thread root (its `start` card in the Quest Log). */
   questRoots: ReadonlyMap<string, number>;
+  /** Wave 18b (D18): the lobby is hidden from guests: a nav to it lands on Notifications. */
+  lobbyHidden?: boolean;
 }
 
 /** A `go`'s plan: what to change, in this order (pure). */
@@ -50,7 +52,8 @@ export function planGo(nav: Nav, ctx: GoContext): GoPlan {
     case "notifications":
       return { window: nav.to, room: null };
     case "room":
-      if (nav.id === "lobby" || !ctx.listed.has(nav.id)) return mission;
+      if (nav.id === "lobby") return ctx.lobbyHidden === true ? { window: "notifications", room: null } : mission;
+      if (!ctx.listed.has(nav.id)) return mission;
       return { window: ctx.window, room: { id: nav.id, ...(nav.focusSeq !== undefined ? { focusSeq: nav.focusSeq } : {}) } };
     case "codex":
       if (!ctx.listed.has(CODEX_ROOM)) return mission;

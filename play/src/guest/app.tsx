@@ -48,7 +48,7 @@ import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { actLine, missionLine, titleFallback } from "../chrome/title-bar.tsx";
 import { useArmButtons } from "../arm.ts";
 import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
-import type { ExitContext, Nav } from "../moments/exits.ts";
+import { lobbyNav, type ExitContext, type Nav } from "../moments/exits.ts";
 import { pressedWindow, questRootsOf, useGuestNav, type GuestWindow } from "./nav.ts";
 import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
@@ -56,7 +56,7 @@ import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
-import { badgesOf, extOf, hasSidesOrCrew } from "./wire.ts";
+import { badgesOf, extOf, hasSidesOrCrew, lobbyHidden } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
 import type { SidesWhich } from "../sides/index.tsx";
@@ -190,9 +190,12 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const listed = useMemo(() => new Set(t.list.map((c) => c.id)), [t.list]);
   const interactions = st?.interactions ?? [];
   const liveActions = new Set(interactions.filter((i) => i.live !== false).map((i) => i.id));
+  // Wave 18b (R12, D18): `lobby: hidden` — no Chat log row; a link to the
+  // lobby lands on Notifications, which carries its lines.
+  const noLobby = lobbyHidden(st);
   const nav = useGuestNav(
     t,
-    () => ({ listed, actions: liveActions, armed: new Set(interactions.filter((i) => i.arm === true).map((i) => i.id)), questRoots: questRootsOf(s.messages.values()) }),
+    () => ({ listed, actions: liveActions, armed: new Set(interactions.filter((i) => i.arm === true).map((i) => i.id)), questRoots: questRootsOf(s.messages.values()), lobbyHidden: noLobby }),
     (id) => {
       const i = interactions.find((x) => x.id === id);
       void s.act(id, i?.label).catch(() => {});
@@ -210,12 +213,13 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     sides: (ext.sides ?? []).length > 0,
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     actionLabels: new Map(interactions.map((i) => [i.id, i.label])),
+    lobbyHidden: noLobby,
   });
   const arm = useArmButtons();
   const archived = ext.archived;
   const chats = useMemo(
-    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}) }),
-    [t.list, st?.clock, cards, archived],
+    () => chatSections(t.list, { now: st?.clock ?? 0, cardRooms: new Set(cards.map((c) => c.channel)), ...(archived !== undefined ? { archived: new Set(archived) } : {}), lobbyHidden: noLobby }),
+    [t.list, st?.clock, cards, archived, noLobby],
   );
   // Mission's "!" on the taskbar: the NOW objective changed since Mission
   // was last on screen.
@@ -352,7 +356,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
         }
       : undefined;
   // A room the old moments engine names: the lobby is never one (G2).
-  const openRoomExit = (id: string) => (id === "lobby" ? nav.go({ to: "mission" }) : nav.go({ to: "room", id }));
+  const openRoomExit = (id: string) => (id === "lobby" ? nav.go(lobbyNav(noLobby)) : nav.go({ to: "room", id }));
   // The moments layer (wave 13): one provider over both the cutscene and the
   // main frame, so the queue, its holds and the beat's blue screen carry
   // across the cutscene → app switch. Wave 18: the moments lane's exits land
@@ -384,6 +388,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     name: s.me.name,
     sideChosen: (ext.sides ?? []).some((x) => x.mine),
     captured: st.captured,
+    lobbyHidden: noLobby,
   };
   // Both branches below return through `framed`, so the provider is the same
   // element at the root: React keeps the one engine (its queue and holds)

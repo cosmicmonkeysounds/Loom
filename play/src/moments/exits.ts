@@ -90,10 +90,19 @@ export interface ExitContext {
   actionLabels?: ReadonlyMap<string, string>;
   /** The guest is on a side already: a `sides` exit is "Sides", never "Choose a side". */
   sideChosen?: boolean;
+  /** Wave 18b (R12, D18): the story hides the lobby from guests
+   *  (`lobby: hidden`): what would land on it lands on Notifications. */
+  lobbyHidden?: boolean;
 }
 
 /** The far-away Chat log (the room named after the story): never an exit. */
 export const LOBBY = "lobby";
+
+/** Where a link to the lobby lands: Mission, or — with the lobby hidden from
+ *  guests (wave 18b, D18) — Notifications, where its lines are. */
+export function lobbyNav(lobbyHidden: boolean | undefined): Nav {
+  return lobbyHidden === true ? { to: "notifications" } : { to: "mission" };
+}
 
 /** A stable key for a nav (deduplication). */
 export function navKey(n: Nav): string {
@@ -193,11 +202,11 @@ export function exitLabel(n: Nav, ctx: Pick<ExitContext, "titles"> & Partial<Pic
  * they don't list, an `act` that isn't live, `sides` before there are any.
  * The lobby is never a destination: its target is Mission.
  */
-export function navOfTarget(t: GoTarget, ctx: Pick<ExitContext, "listed" | "actions" | "sides">): Nav | null {
+export function navOfTarget(t: GoTarget, ctx: Pick<ExitContext, "listed" | "actions" | "sides" | "lobbyHidden">): Nav | null {
   switch (t.kind) {
     case "room":
     case "dm":
-      if (t.id === LOBBY) return { to: "mission" };
+      if (t.id === LOBBY) return lobbyNav(ctx.lobbyHidden);
       return ctx.listed.has(t.id) ? { to: "room", id: t.id } : null;
     case "codex":
       return t.entry !== undefined && t.entry !== "" ? { to: "codex", entry: t.entry } : { to: "codex" };
@@ -327,11 +336,11 @@ export function exitsOf(m: ExitMoment, ctx: ExitContext, max: 1 | 2, opts: ExitO
  * those; a listed room → that room; any other → Mission. Null when the link
  * names no room at all.
  */
-export function navFromRoom(room: string | null, listed: Iterable<string>): Nav | null {
+export function navFromRoom(room: string | null, listed: Iterable<string>, lobbyHidden = false): Nav | null {
   if (room === null) return null;
   const id = room.trim();
   if (id === "") return null;
-  if (id === LOBBY) return { to: "mission" };
+  if (id === LOBBY) return lobbyNav(lobbyHidden);
   if (id === "codex") return { to: "codex" };
   if (id === "quests") return { to: "quests" };
   if (id === "wallet") return { to: "wallet" };
@@ -344,7 +353,7 @@ const LINK_WORDS = ["pass", "scan", "chats", "mission", "notifications", "sides"
 
 /** `navFromRoom` for a page's query string: `?room=…` (plus `&entry=` /
  *  `&quest=` for the Codex / Quest Log), or `?go=<screen word>` (NM-F5). */
-export function navFromSearch(search: string, listed: Iterable<string>): Nav | null {
+export function navFromSearch(search: string, listed: Iterable<string>, lobbyHidden = false): Nav | null {
   let p: URLSearchParams;
   try {
     p = new URLSearchParams(search);
@@ -353,7 +362,7 @@ export function navFromSearch(search: string, listed: Iterable<string>): Nav | n
   }
   const go = p.get("go")?.trim() ?? "";
   if ((LINK_WORDS as readonly string[]).includes(go)) return { to: go } as Nav;
-  const nav = navFromRoom(p.get("room"), listed);
+  const nav = navFromRoom(p.get("room"), listed, lobbyHidden);
   const entry = p.get("entry")?.trim() ?? "";
   const quest = p.get("quest")?.trim() ?? "";
   if (nav?.to === "codex" && entry !== "") return { to: "codex", entry };

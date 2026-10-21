@@ -21,6 +21,7 @@ import { checkinOutcome, redeemOutcome, scanErrorNote, type CheckinAnswer, type 
 import { buildGuestChannels, withAgents } from "./channels.ts";
 import { NO_ANSWERS, mergeAnswered, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
 import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../room.ts";
+import { lobbyHidden } from "../guest/wire.ts";
 import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
 
@@ -276,7 +277,7 @@ export interface SidesCalls {
  * becomes a `Nav` once signed in with the backlog in — the lobby lands on
  * Mission, an unlisted room on Mission, never a room the guest can't see.
  */
-function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav | null; take: () => void } {
+function useGuestLinks(signedIn: boolean, listed: readonly string[], lobbyHidden = false): { nav: Nav | null; take: () => void } {
   const { ownsPage } = usePlayHost();
   // The link waiting to land: its query (`?room=…&entry=…`, `?go=pass`).
   const [want, setWant] = useState<string | null>(() => (ownsPage ? linkFromSearch(window.location.search) : null));
@@ -307,7 +308,7 @@ function useGuestLinks(signedIn: boolean, listed: readonly string[]): { nav: Nav
         /* fine */
       }
     }
-    setNav(navFromSearch(want, listed));
+    setNav(navFromSearch(want, listed, lobbyHidden));
     // `listed` is rebuilt each render; the request is what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [want, signedIn]);
@@ -675,7 +676,7 @@ export function useGuestSession(): GuestSession {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
-  const links = useGuestLinks(me !== null && ready && status !== null, threads.list.map((c) => c.id));
+  const links = useGuestLinks(me !== null && ready && status !== null, threads.list.map((c) => c.id), lobbyHidden(status));
   const sides = useMemo<SidesCalls>(
     () => ({
       join: (side) => post("/api/guest/join", { faction: side }),

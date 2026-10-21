@@ -40,6 +40,8 @@ export interface ChatsContext {
   archived?: ReadonlySet<string>;
   /** Rooms holding a live card for the guest. */
   cardRooms: ReadonlySet<string>;
+  /** Wave 18b (R12): `lobby: hidden` — no 📜 Chat log row at all. */
+  lobbyHidden?: boolean;
 }
 
 export interface Chats {
@@ -106,7 +108,7 @@ export function chatSections(list: readonly Channel[], ctx: ChatsContext): Chats
     else if (c.kind === "faction" || guestDot(c) || (c.member !== false && ctx.now - lastTs(c) <= QUIET_MS)) out.rooms.push(c);
     else other.push(c);
   }
-  if (lobby !== null) other.push(lobby);
+  if (lobby !== null && ctx.lobbyHidden !== true) other.push(lobby);
   const sections = (Object.keys(out) as ChatSectionId[]).filter((id) => out[id].length > 0).map((id) => ({ id, title: CHAT_SECTION_TITLES[id], channels: out[id] }));
   return { sections, other };
 }
