@@ -61,8 +61,10 @@ differently:
   with *led by* or *founded by* and what it stands for. **One faction at a
   time:** joining one takes you out of the other.
 - **Only your own count.** Your own card shows how many are in and how many
-  more you need (*7 in · 6 more to win*, a bar, and *over the line* once you
-  have enough), the same on Mission's **◆** tile. Nobody sees another
+  more you need (*7 in · 6 more to win*, a bar, and *over the line · hold
+  on to them* once you have enough: enough for now, but nothing is won
+  until the story counts, and people can still leave), the same on
+  Mission's **◆** tile. Nobody sees another
   faction's count, and the People list shows a faction only for your own
   faction's people and for founders and leaders.
 - **＋ Found a faction** (while the story allows it): a name of 2 to 24

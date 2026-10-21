@@ -78,7 +78,8 @@ you've found). A yellow dot means something new inside; never a number.
 They open your [Wallet](wallet.md), [Quest Log](quests.md) and
 [Codex](codex.md). In a story where programs found factions, a **◆** tile
 shows your own faction: *◆ The Night Shift · 7 of 13 · 6 more to win* (or
-*over the line*); it opens [Factions](sides.md). Nobody else's count is
+*over the line · hold on to them*: enough for now, but nothing is won
+until the story counts); it opens [Factions](sides.md). Nobody else's count is
 ever on it.
 
 ## Also now

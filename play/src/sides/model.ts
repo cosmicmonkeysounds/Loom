@@ -84,12 +84,17 @@ export function myRow(view: Pick<GuestView, "faction"> | null, rows: readonly Si
 }
 
 /** Your own faction's count line (faction mode): "7 in · 6 more to win",
- *  "13 in · over the line", "7 in" (no `majority:`), "" (no count). */
+ *  "13 in · over the line · hold on to them", "7 in" (no `majority:`), ""
+ *  (no count). Over the line is not a win: the story may count later (the
+ *  show from its last hour), and members can still drift away. */
+/** Over the line, never "won": the win is the story's count, not this. */
+export const OVER_THE_LINE = "over the line · hold on to them";
+
 export function factionCountLine(s: Pick<SideRow, "members" | "needs" | "more">): string {
   if (s.members === null) return "";
   if (s.needs === null) return `${s.members} in`;
   const more = s.more ?? Math.max(0, s.needs - s.members);
-  return more > 0 ? `${s.members} in · ${more} more to win` : `${s.members} in · over the line`;
+  return more > 0 ? `${s.members} in · ${more} more to win` : `${s.members} in · ${OVER_THE_LINE}`;
 }
 
 /** "founded by Ada" / "led by Excel" (faction mode), else "led by X". */
@@ -307,7 +312,7 @@ interface SidesCallsLike {
 }
 
 /** The Mission tile for your faction (wave 18b, faction mode): its name
- *  and "7 of 13 · 6 more to win" ("14 in · over the line"); null when you're in none or the server
+ *  and "7 of 13 · 6 more to win" ("14 in · over the line · hold on to them"); null when you're in none or the server
  *  sends no count. */
 export function factionTileOf(view: GuestView | null): { name: string; status: string } | null {
   if (!factionModeOf(view)) return null;
@@ -316,5 +321,5 @@ export function factionTileOf(view: GuestView | null): { name: string; status: s
   if (mine.needs === null) return { name: mine.name, status: `${mine.members} in` };
   const more = mine.more ?? Math.max(0, mine.needs - mine.members);
   // Over the line, "14 of 13" would read wrong: say how many are in.
-  return { name: mine.name, status: more > 0 ? `${mine.members} of ${mine.needs} · ${more} more to win` : `${mine.members} in · over the line` };
+  return { name: mine.name, status: more > 0 ? `${mine.members} of ${mine.needs} · ${more} more to win` : `${mine.members} in · ${OVER_THE_LINE}` };
 }

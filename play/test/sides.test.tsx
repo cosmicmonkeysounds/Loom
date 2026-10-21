@@ -336,7 +336,7 @@ describe("faction mode: the model (wave 18b)", () => {
   });
   it("your count: N in · M more to win, over the line, or just N in", () => {
     expect(factionCountLine({ members: 7, needs: 13, more: 6 })).toBe("7 in · 6 more to win");
-    expect(factionCountLine({ members: 13, needs: 13, more: 0 })).toBe("13 in · over the line");
+    expect(factionCountLine({ members: 13, needs: 13, more: 0 })).toBe("13 in · over the line · hold on to them");
     expect(factionCountLine({ members: 7, needs: null, more: null })).toBe("7 in");
     expect(factionCountLine({ members: null, needs: null, more: null })).toBe("");
   });
