@@ -51,8 +51,8 @@ import {
   useSfxCues,
   type Emitter,
 } from "../kit/index.ts";
-import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
-import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingLine, liveNow, liveRemaining, onGrid, recountRideAt, scenarioOf, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
+import { ColdDoor, DriftingPopups, Frost, Glass, HealthBar, KingPiece, MirrorBall, Motorcycle, PatchBay, Phone, PrinterArt, Shake, WallCard, useEndAt, useFirstSeen, useFrozen, useLatch, type PopMsg } from "../kit/tv2-parts.tsx";
+import { CUPS, THROW_MS, Y2K_CHIME_TEXT, beanHeap, chartLayout, chartRowAt, chimeFlash, danceBeat, driftLandings, equaliser, glitchYear, kingBar, kingHeard, kingHpAt, kingLine, liveNow, liveRemaining, onGrid, recountRideAt, scenarioOf, tallyOf, throwAt, y2kLevel } from "../kit/tv2-time.ts";
 
 type Sfx = SceneProps["sfx"];
 type SfxCue = readonly [number, Parameters<Sfx>[0], Parameters<Sfx>[1]?];
@@ -1265,9 +1265,14 @@ function HeartWall(p: SceneProps) {
 //   hit (over the screen, a lower third):
 //   0–400     the King's panel slides up from the bottom
 //   400–1500  WHACK: the bar flashes white, a point chips off and drains, "−1"
-//             floats up, sparks fly, the panel shakes; who hit him types in
-//   1500–6200 hold: the bar as it now stands (`n / max`) and the house's line
-//             for it (he staggers at 10, bleeds pixels at 5); fade at 7 s
+//             floats up, sparks fly, the panel shakes; "A program hit the King!"
+//             types in — never who (the story names the hitter, and the feller,
+//             only in # hosts)
+//   1500–6200 hold: the bar as this hit left it (`kingHpAt`: the bar now plus
+//             the hits since, frozen on the first frame; after a 👑 restore, no
+//             count) and the house's line for it (he staggers at 10, bleeds
+//             pixels at 5); fade at 7 s. Neither plays after an ending
+//             (`kingHeard`): the story ignores the King from then on.
 //
 //   fallen:
 //   0–2600    a checkerboard floor; the King totters, harder and harder
@@ -1277,15 +1282,20 @@ function HeartWall(p: SceneProps) {
 
 const HIT = { in: 0, whack: 400, end: 7000 } as const;
 
+/** The hp this hit left (frozen on the scene's first frame), the bar's max, and whether it was the felling blow. */
+function useHitHp(p: SceneProps): { hp: number | null; max: number; felled: boolean } {
+  const king = p.state.king;
+  const hp = useFrozen(p.seq, kingHpAt(king, p.state.moments, p.seq));
+  return { hp, max: king?.max ?? 15, felled: hp === 0 || (hp === null && king !== null && king.fallen) };
+}
+
 function KingHitTv(p: SceneProps) {
-  const { t, sfx, reduced, state, who, done } = p;
-  const king = state.king;
-  const zero = king !== null && (king.fallen || king.hp <= 0);
-  useEndAt(t, zero ? 1 : Number.POSITIVE_INFINITY, done);
+  const { t, sfx, reduced, done } = p;
+  const { hp, max, felled } = useHitHp(p);
+  // The felling blow is the fall's scene.
+  useEndAt(t, felled ? 1 : Number.POSITIVE_INFINITY, done);
   useSfxCues(t, sfx, [[0, "whoosh", { gain: 0.4 }], [HIT.whack, "boom", { gain: 0.55 }], [HIT.whack + 60, "error", { gain: 0.4 }]]);
-  if (zero) return null;
-  const hp = king?.hp ?? null;
-  const max = king?.max ?? 15;
+  if (felled) return null;
   const bar = hp === null ? null : kingBar(hp, max, t, HIT.whack);
   const slide = Math.min(eased(t, 0, 380, ease.outBack), 1 - progress(t, HIT.end - 600, 500));
   const hitShake = reduced ? 0 : 1 - progress(t, HIT.whack, 600);
@@ -1299,7 +1309,7 @@ function KingHitTv(p: SceneProps) {
               <KingPiece size="6.5em" wobble={reduced ? 0 : Math.sin(t / 60) * 12 * hitShake} />
               <div className="tv2-hit-main">
                 <div className="tv2-hit-who">
-                  <Typewriter text={who !== null ? `${who} hit the King!` : "A program hit the King!"} t={t} start={HIT.whack + 200} cps={40} />
+                  <Typewriter text="A program hit the King!" t={t} start={HIT.whack + 200} cps={40} />
                 </div>
                 {bar !== null && hp !== null ? <HealthBar share={bar.share} chip={bar.chip} flash={bar.flash} label={`${hp} / ${max}`} /> : <div className="tv2-small">The King staggers.</div>}
                 <div className="tv2-hit-line" style={{ opacity: progress(t, HIT.whack + 1200, 500) }}>
@@ -1321,11 +1331,11 @@ function KingHitTv(p: SceneProps) {
 }
 
 function KingHitWall(p: SceneProps) {
-  const { t, state, who, done, reduced } = p;
-  useEndAt(t, 6500, done);
-  const king = state.king;
-  if (king !== null && (king.fallen || king.hp <= 0)) return null;
-  const bar = king === null ? null : kingBar(king.hp, king.max, t, 300);
+  const { t, done, reduced } = p;
+  const { hp, max, felled } = useHitHp(p);
+  useEndAt(t, felled ? 1 : 6500, done);
+  if (felled) return null;
+  const bar = hp === null ? null : kingBar(hp, max, t, 300);
   return (
     <Stage bg="transparent" className="tv2">
       <div className="tv2-hit tv2-hit-wall" style={{ transform: reduced ? undefined : `translate3d(-50%, ${((1 - Math.min(eased(t, 0, 380, ease.outBack), 1 - progress(t, 5800, 500))) * 140).toFixed(1)}%, 0)` }}>
@@ -1333,8 +1343,8 @@ function KingHitWall(p: SceneProps) {
           <div className="tv2-hit-row">
             <KingPiece size="4em" />
             <div className="tv2-hit-main">
-              <div className="tv2-hit-who">{who !== null ? `${who} hit the King!` : "A program hit the King!"}</div>
-              {bar !== null && <HealthBar share={bar.share} chip={bar.chip} flash={bar.flash} label={`${king!.hp} / ${king!.max}`} />}
+              <div className="tv2-hit-who">A program hit the King!</div>
+              {bar !== null && hp !== null ? <HealthBar share={bar.share} chip={bar.chip} flash={bar.flash} label={`${hp} / ${max}`} /> : <div className="tv2-small">The King staggers.</div>}
             </div>
           </div>
         </Win98Window>
@@ -1346,7 +1356,7 @@ function KingHitWall(p: SceneProps) {
 const FALL = { totter: 0, fall: 2600, title: 4000, end: 14_000 } as const;
 
 function KingFallenTv(p: SceneProps) {
-  const { t, sfx, reduced, state, who } = p;
+  const { t, sfx, reduced, state } = p;
   useSfxCues(t, sfx, [[0, "drumroll", { gain: 0.5 }], [FALL.fall, "boom"], [FALL.fall + 300, "glitch"], [FALL.title, "tada"], [FALL.title + 200, "fanfare", { gain: 0.6 }]]);
   const tot = progress(t, 0, FALL.fall);
   const wobble = reduced ? 0 : Math.sin(t / lerp(240, 70, tot)) * lerp(2, 16, tot) * (t < FALL.fall ? 1 : 0);
@@ -1372,7 +1382,6 @@ function KingFallenTv(p: SceneProps) {
         </div>
         <div className="tv2-fall-line" style={{ opacity: progress(t, FALL.title + 1200, 600) }}>
           <Typewriter text="He kneels at the cold door, and its virtual copy stands open." t={t} start={FALL.title + 1200} cps={30} />
-          {who !== null && <div className="tv2-fall-who" style={{ opacity: progress(t, FALL.title + 3800, 500) }}>The last blow: {who}</div>}
         </div>
         {t >= FALL.title && <Confetti t={t} start={FALL.title} dur={5000} density={0.9} seed={14} />}
         <Glass t={t} reduced={reduced} />
@@ -1858,8 +1867,8 @@ export const SCENES: SceneDef[] = [
   { id: "y2k", when: [{ slide: "y2k" }], ms: "hold", tv: Y2kTv, wall: Y2kWall, face: "alarmed" },
   { id: "majority_reached", when: [{ moment: "beat", name: "Majority Reached" }], ms: MAJ_END, tv: MajorityTv, wall: MajorityWall, over: true, face: "curious" },
   { id: "the_heart", when: [{ moment: "beat", name: "The Heart" }], ms: HEART.end, tv: HeartTv, wall: HeartWall, namesCharacter: true, priority: 2, face: "attentive" },
-  { id: "king_hit", when: [{ moment: "signal", name: "king hit" }], ms: HIT.end, tv: KingHitTv, wall: KingHitWall, over: true, priority: 1, face: "angry", faceMs: 1500 },
-  { id: "king_fallen", when: [{ moment: "signal", name: "king fallen" }], ms: FALL.end, tv: KingFallenTv, wall: KingFallenWall, priority: 3, face: "alarmed" },
+  { id: "king_hit", when: [{ moment: "signal", name: "king hit" }], ms: HIT.end, tv: KingHitTv, wall: KingHitWall, over: true, priority: 1, gate: kingHeard, face: "angry", faceMs: 1500 },
+  { id: "king_fallen", when: [{ moment: "signal", name: "king fallen" }], ms: FALL.end, tv: KingFallenTv, wall: KingFallenWall, priority: 3, gate: kingHeard, face: "alarmed" },
   { id: "chess_lost", when: [{ moment: "beat", name: "Chess Lost" }], ms: CORNER_MS, tv: ChessLostTv, over: true, namesCharacter: true, face: "sly" },
   { id: "chess_drawn", when: [{ moment: "beat", name: "Chess Drawn" }], ms: CORNER_MS, tv: ChessDrawnTv, over: true, namesCharacter: true, face: "neutral" },
   { id: "patch_rejected", when: [{ moment: "beat", name: "Patch Rejected" }], ms: PATCH_END, tv: PatchRejectedTv, wall: PatchRejectedWall, namesCharacter: true, over: true, priority: 2, face: "angry" },

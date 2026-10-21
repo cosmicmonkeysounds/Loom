@@ -6,7 +6,7 @@
 //! the tests can pin them.
 
 import { foldName } from "../../config.ts";
-import type { ScreenMoment, ScreenNight, ScreenState, ScreenVoice } from "../../screen.ts";
+import type { ScreenKing, ScreenMoment, ScreenNight, ScreenState, ScreenVoice } from "../../screen.ts";
 import { SLIDE_HOLD_MS } from "../../slides.ts";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import { clamp01, ease, lerp, noise1, progress } from "./time.ts";
@@ -190,6 +190,31 @@ export function kingBar(hp: number, max: number, t: number, hitAt: number): { sh
   const flash = t < hitAt ? 0 : 1 - progress(t, hitAt, 260);
   return { share, chip: Math.min(chip, 1 - share), flash };
 }
+
+/** The admin cue that stands the King back up (`main.loom` 👑). */
+export const KING_RESTORE = "restore_the_king";
+
+/**
+ * The King's hp just after the hit at `seq`, off the bar now and the house's
+ * moments since: each later `king hit` took one more point (the server knocks
+ * it off before it fires the signal), so count them back. A 👑 restore since
+ * (or no King on the wire) leaves the count unknown: null. A director's
+ * hand-set bar is no moment — the ring can't see it.
+ */
+export function kingHpAt(king: Pick<ScreenKing, "hp" | "max"> | null, moments: readonly ScreenMoment[], seq: number): number | null {
+  if (king === null) return null;
+  let hp = king.hp;
+  for (const m of moments) {
+    if (m.seq <= seq || m.kind !== "signal") continue;
+    const f = foldName(m.name);
+    if (f === foldName(KING_RESTORE)) return null;
+    if (f === foldName("king hit")) hp += 1;
+  }
+  return Math.max(0, Math.min(king.max, hp));
+}
+
+/** The King's scenes play only while the story still hears him (never after an ending). */
+export const kingHeard = (night: Pick<ScreenNight, "ended">): boolean => night.ended !== true;
 
 /** The house's lines as the bar falls (the story's broadcasts at 10 and 5, `main.loom`). */
 export function kingLine(hp: number, max: number): string {

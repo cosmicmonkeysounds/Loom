@@ -14,6 +14,8 @@ import {
   equaliser,
   glitchYear,
   kingBar,
+  kingHeard,
+  kingHpAt,
   kingLine,
   latestMoment,
   liveNow,
@@ -165,6 +167,22 @@ describe("act 2 timelines — the King", () => {
     expect(kingLine(5, 15)).toContain("bleeding pixels");
     expect(kingLine(0, 15)).toContain("fallen");
     expect(kingLine(15, 15)).toContain("full strength");
+  });
+});
+
+describe("act 2 timelines — the King's count", () => {
+  it("counts back the hits since, forgets on a restore, and is heard until an ending", () => {
+    const k = { hp: 8, max: 15 };
+    const hit = (seq: number) => m(seq, 1, "signal", "king hit");
+    expect(kingHpAt(k, [hit(1)], 1)).toBe(8);
+    expect(kingHpAt(k, [hit(1), hit(2), hit(3)], 1)).toBe(10);
+    expect(kingHpAt(k, [hit(1), m(2, 1, "signal", "restore_the_king"), hit(3)], 1)).toBeNull();
+    expect(kingHpAt(k, [hit(1), m(2, 1, "beat", "king hit")], 1)).toBe(8); // only signals
+    expect(kingHpAt({ hp: 15, max: 15 }, [hit(1), hit(2)], 1)).toBe(15); // never over the max
+    expect(kingHpAt(null, [hit(1)], 1)).toBeNull();
+    expect(kingHeard({ ended: null })).toBe(true);
+    expect(kingHeard({ ended: false })).toBe(true);
+    expect(kingHeard({ ended: true })).toBe(false);
   });
 });
 

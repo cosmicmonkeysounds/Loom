@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { KING_SIGNALS } from "@loom/house";
 import { foldName } from "../src/config.ts";
 import { fakeChart, fakeState } from "../src/cutscene/fake.ts";
-import { componentFor } from "../src/cutscene/pick.ts";
+import { allowed, componentFor } from "../src/cutscene/pick.ts";
 import { SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
@@ -192,15 +192,33 @@ describe("act 2's scenes draw", () => {
     q.mockRestore();
   });
 
-  it("the King's hit shows his bar as it stands and who hit him; at 0 it gives way to the fall", () => {
+  it("the King's hit shows the bar this hit left, never who; the felling blow gives way to the fall; nothing after an ending", () => {
     const q = quiet();
     const hit = SCENES.find((s) => s.id === "king_hit")!;
-    const html = draw(hit, "tv", 3000, stateAt(3000, { king: { hp: 10, max: 15, fallen: false, armed: true } }));
+    const fallen = SCENES.find((s) => s.id === "king_fallen")!;
+    const king = (hp: number) => ({ hp, max: 15, fallen: hp <= 0, armed: true });
+    const hitM = (seq: number): ScreenMoment => ({ seq, at: AT, kind: "signal", name: "king hit", who: "Winamp", kept: false });
+    const html = draw(hit, "tv", 3000, stateAt(3000, { king: king(10), moments: [hitM(1)] }));
     expect(html).toContain("10 / 15");
     expect(html).toContain("staggers");
-    expect(html).toContain("Winamp hit the King!");
-    expect(draw(hit, "tv", 3000, stateAt(3000, { king: { hp: 0, max: 15, fallen: true, armed: true } }))).toBe("");
-    expect(SCENES.find((s) => s.id === "king_fallen")!.priority).toBeGreaterThan(hit.priority ?? 0);
+    expect(html).toContain("A program hit the King!");
+    for (const target of ["tv", "wall"] as const) expect(draw(hit, target, 3000, stateAt(3000, { king: king(10), moments: [hitM(1)] }), "Winamp")).not.toContain("Winamp");
+    // A second hit landed before this panel played: the bar it left was one more.
+    expect(draw(hit, "tv", 3000, stateAt(3000, { king: king(9), moments: [hitM(1), hitM(2)] }))).toContain("10 / 15");
+    // A 👑 restore since: no count under "hit the King!" (never 15 / 15).
+    const restored = draw(hit, "tv", 3000, stateAt(3000, { king: king(15), moments: [hitM(1), { seq: 2, at: AT, kind: "signal", name: "restore_the_king", who: null, kept: false }] }));
+    expect(restored).not.toContain("15 / 15");
+    expect(restored).toContain("A program hit the King!");
+    // The felling blow is the fall's scene; an earlier one queued behind it still shows.
+    expect(draw(hit, "tv", 3000, stateAt(3000, { king: king(0), moments: [hitM(1)] }))).toBe("");
+    expect(draw(hit, "tv", 3000, stateAt(3000, { king: king(0), moments: [hitM(1), hitM(2)] }))).toContain("1 / 15");
+    expect(fallen.priority).toBeGreaterThan(hit.priority ?? 0);
+    for (const t of [5000, 9000, 13_000]) expect(draw(fallen, "tv", t, stateAt(t, { king: king(0) }), "Winamp")).not.toContain("Winamp");
+    // After an ending the story ignores him: neither scene may play.
+    const ended = stateAt(0, { night: { ...EMPTY_NIGHT, ended: true } });
+    expect(allowed(hit, ended)).toBe(false);
+    expect(allowed(fallen, ended)).toBe(false);
+    expect(allowed(hit, stateAt(0))).toBe(true);
     q.mockRestore();
   });
 

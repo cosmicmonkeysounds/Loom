@@ -35,6 +35,13 @@ export function useLatch<T>(key: number | string, value: T | null): T | null {
   return held.current === null ? null : held.current.value;
 }
 
+/** `value` as it was on the first frame for `key` (null included): later answers can't move it. */
+export function useFrozen<T>(key: number | string, value: T): T {
+  const held = useRef<Latched<{ v: T }> | null>(null);
+  held.current = latch(held.current, key, { v: value });
+  return held.current!.value.v;
+}
+
 /**
  * The scene `t` at which `key` was first non-null (a name the story fills
  * in mid-scene), else null. Already there on the scene's first frame (a
