@@ -234,11 +234,11 @@ func refresh() -> void:
 			var b: Node3D = _looks[id]
 			b.visible = true
 			b.position = Vector3(slots[i]["center"].x, slots[i]["center"].y, 0.0)
-			(b.get_node("Label") as Label3D).text = str(choices[i]["label"])
+			Lobby.fit(b.get_node("Label") as Label3D, str(choices[i]["label"]), float(slots[i]["size"].x) - 0.04, 0.05)
 		elif _looks.has(id):
 			(_looks[id] as Node3D).visible = false
-	(_looks["field:code"].get_node("Label") as Label3D).text = code_text(code)
-	(_looks["field:name"].get_node("Label") as Label3D).text = "NAME  " + (station if station != "" else "…")
+	Lobby.fit(_looks["field:code"].get_node("Label") as Label3D, code_text(code), FIELD_SIZE.x - 0.04, 0.06)
+	Lobby.fit(_looks["field:name"].get_node("Label") as Label3D, "NAME  " + (station if station != "" else "…"), FIELD_SIZE.x - 0.04, 0.06)
 	(_looks["connect"].get_node("Label") as Label3D).text = CONNECTING if busy else "CONNECT"
 	_message.text = message
 	_render_looks()

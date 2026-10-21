@@ -27,8 +27,10 @@ const EMPTY := "Nobody is marked for reinstallation yet."
 const HINT := "point + trigger · or stick, hold RIGHT 1 s · or click"
 ## Seconds the ⚙ must be held to forget the setup.
 const FORGET_HOLD := 2.0
-## A name longer than this is cut on its tile.
-const NAME_CHARS := 18
+## A name longer than this is cut on its tile (it must fit the tile's width
+## at [constant NAME_HEIGHT]).
+const NAME_CHARS := 16
+const NAME_HEIGHT := 0.044
 ## The confirm card's buttons and the ⚙ (panel coordinates).
 const START_AT := Vector2(-0.36, 1.06)
 const BACK_AT := Vector2(0.36, 1.06)
@@ -227,6 +229,16 @@ static func make_button(parent: Node3D, text: String, center: Vector2, size: Vec
 	return n
 
 
+## Set `label` to `text` at `height` m, shrunk to fit `max_width` m.
+static func fit(label: Label3D, text: String, max_width: float, height: float) -> void:
+	label.text = text
+	var font: Font = label.font if label.font != null else ThemeDB.fallback_font
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.font_size).x
+	label.pixel_size = height / float(label.font_size)
+	if w > 0.0 and w * label.pixel_size > max_width:
+		label.pixel_size = max_width / w
+
+
 ## A button's look: lit while pointed at (`hover`), ringed while `on`.
 static func set_look(button: Node3D, hover: bool, on: bool) -> void:
 	if button == null:
@@ -237,7 +249,7 @@ static func set_look(button: Node3D, hover: bool, on: bool) -> void:
 
 func _make_tile(i: int) -> Node3D:
 	var size := Vector2(LobbyTiles.TILE_W, LobbyTiles.TILE_H)
-	var t := make_button(_grid, "", Vector2.ZERO, size, 0.05)
+	var t := make_button(_grid, "", Vector2.ZERO, size, NAME_HEIGHT)
 	t.name = "Tile_%d" % i
 	var pic := _sprite(0.3)
 	pic.position = Vector3(0, 0.08, 0.004)
@@ -624,7 +636,7 @@ func _render() -> void:
 			var p: Dictionary = items[i]
 			var c := LobbyTiles.tile_center(slot, cols, rows)
 			t.position = Vector3(c.x, c.y, 0.0)
-			(t.get_node("Label") as Label3D).text = tile_name(p)
+			fit(t.get_node("Label") as Label3D, tile_name(p), LobbyTiles.TILE_W - 0.04, NAME_HEIGHT)
 			(t.get_node("Tag") as Label3D).text = tag_of(p).strip_edges()
 			var tex := _picture(p.get("avatar"))
 			_show(t.get_node("Picture") as Sprite3D, tex)
@@ -635,7 +647,7 @@ func _render() -> void:
 			_buttons.append({"id": "prev", "center": Vector2(-0.55, PAGE_Y), "size": Vector2(0.18, 0.12)})
 			_buttons.append({"id": "next", "center": Vector2(0.55, PAGE_Y), "size": Vector2(0.18, 0.12)})
 	else:
-		_card_text.text = "Start as %s?" % str(_confirming.get("name", _confirming.get("id", "?")))
+		fit(_card_text, "Start as %s?" % str(_confirming.get("name", _confirming.get("id", "?"))), 1.6, 0.09)
 		_show(_card_picture, _picture(_confirming.get("avatar")))
 		_buttons.append({"id": "start", "center": START_AT, "size": CARD_BUTTON})
 		_buttons.append({"id": "back", "center": BACK_AT, "size": CARD_BUTTON})
