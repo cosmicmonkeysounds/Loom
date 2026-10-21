@@ -8,7 +8,7 @@ import { Icon, IconTitle } from "../chrome/icons.tsx";
 import type { GuestView } from "../types.ts";
 import { NameBadges, PersonAvatar, Sheet } from "../ui/primitives.tsx";
 import { badgesOf, canFoundOf } from "./wire.ts";
-import { factionModeOf } from "../sides/model.ts";
+import { factionModeOf, leadsOf } from "../sides/model.ts";
 
 export interface MeBadge {
   name: string;
@@ -22,6 +22,10 @@ export function meBadges(view: Pick<GuestView, "faction" | "groups" | "factions"
   const sides = new Set([...(view.factions ?? []), ...(Array.isArray(view.sides) ? view.sides : []).map((s) => s.name)]);
   const names = [...(view.groups ?? [])];
   if (view.faction !== null && !names.includes(view.faction)) names.unshift(view.faction);
+  // Faction mode: the side you lead shows though it is still hidden.
+  const led = leadsOf(view);
+  if (led !== null) sides.add(led);
+  if (led !== null && !names.includes(led)) names.unshift(led);
   const out: MeBadge[] = [];
   const seen = new Set<string>();
   for (const n of names) {

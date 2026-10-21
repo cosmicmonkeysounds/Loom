@@ -24,7 +24,9 @@ import {
   inviteDone,
   inviteLeaveLine,
   inviteOf,
+  factionNameOf,
   joinFaction,
+  leadsOf,
   leaveFaction,
   leaveQuestion,
   recruitOffer,
@@ -380,6 +382,25 @@ describe("faction mode: the model (wave 18b)", () => {
     expect(leaveQuestion(rows[2]!, "founder")).toBe("Disband Winamp's Club? Its members go back to neither.");
     expect(leaveQuestion(rows[2]!, "in")).toBe("Back to neither?");
   });
+  it("a leader whose side is still hidden (no row of theirs): stays, never Join, and is told which side", () => {
+    // The show from the Truther Download to the clock: Excel leads Unlimited
+    // Power, still hidden, while founded factions are listed (review #1).
+    const v = fview({ name: "Excel", sides: [SHIFT], leads: "Unlimited Power" });
+    expect(leadsOf(v)).toBe("Unlimited Power");
+    expect(leadsOf(fview({ sides: [SHIFT] }))).toBeNull();
+    expect(factionAction(sidesOf(v)[0]!, v, sidesOf(v))).toBe("leader");
+    expect(factionNameOf(v)).toBe("Unlimited Power");
+    expect(factionNameOf(fview({ sides: [SHIFT, MINE] }))).toBe("Winamp's Club");
+    const out = sheet(v);
+    expect(out).not.toContain("Join The Night Shift");
+    expect(out.split("Leaders stay with their side.").length - 1).toBe(1);
+    expect(out).toContain("You lead Unlimited Power.");
+    // Nothing listed at all: still told.
+    expect(sheet(fview({ name: "Excel", sides: [], leads: "Unlimited Power" }))).toContain("You lead Unlimited Power.");
+    // A scanned pass waits for the side to open.
+    const offer = recruitOffer(fview({ name: "Excel", sides: [SHIFT], leads: "Unlimited Power" }), "g-2");
+    expect(offer).toMatchObject({ side: null, crew: null, note: "That's Netscape Navigator's pass. When Unlimited Power opens, scan it to recruit them." });
+  });
   it("a scanned pass never shows the other person's faction; one button for your own", () => {
     const people = [person("g-2", "Netscape Navigator", null, "The CPU"), person("g-3", "Excel", "Unlimited Power")];
     const inCrew = fview({ sides: [UP, MINE], crew: { ...MY_CREW, members: ["g-1"] }, people });
@@ -531,6 +552,8 @@ describe("faction mode: Me (wave 18b)", () => {
     expect(out).toContain("Factions");
     expect(out).toContain('aria-label="Bathroom Mode"');
     expect(me(fview({ canFound: true, sides: [] }), false)).toContain("Factions");
+    // A leader's still-hidden side shows on Me (never "unaligned").
+    expect(me(fview({ name: "Excel", sides: [], leads: "Unlimited Power" }), true)).toContain("◆ Unlimited Power");
     expect(me(fview({ canFound: false, sides: [] }), false)).not.toContain("Factions");
     expect(me(view({ crew: { ...MY_CREW } }), true)).toContain("◇ Winamp&#x27;s Club");
   });

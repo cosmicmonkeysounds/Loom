@@ -29,6 +29,7 @@ import {
   factionModeOf,
   inviteLeaveLine,
   joinFaction,
+  leadsOf,
   leaveFaction,
   leaveQuestion,
   memberCount,
@@ -279,7 +280,9 @@ export function FactionsSheet({ view, calls, openRoom, scan, show, onClose }: Om
   const rows = sidesOf(view);
   const mine = myRow(view, rows);
   const other = rows.find((r) => mine === null || r.id !== mine.id);
-  const note = other !== undefined ? stayNote(factionAction(other, view, rows)) : null;
+  // A leader whose side isn't listed yet (still hidden) is told which.
+  const led = mine === null ? leadsOf(view) : null;
+  const note = led !== null ? `You lead ${led}. Leaders stay with their side.` : other !== undefined ? stayNote(factionAction(other, view, rows)) : null;
   const canFound = canFoundOf(view);
   return (
     <Sheet title="Factions" onClose={onClose} tall>

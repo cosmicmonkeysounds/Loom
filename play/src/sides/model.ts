@@ -78,6 +78,24 @@ export function factionsOffered(view: GuestView | null | undefined): boolean {
   return (ext.sides ?? view.factions ?? []).length > 0 || (ext.crew ?? null) !== null || canFoundOf(view);
 }
 
+/** Faction mode: the race side you lead, by name — the server's `leads`,
+ *  sent whether the side is listed or still hidden (the show's Excel and
+ *  OpenOffice from the Truther Download to the clock). You stay with it.
+ *  Null when you lead none, or the server doesn't say (read loosely, so an
+ *  older wire without the field reads null). */
+export function leadsOf(view: object | null | undefined): string | null {
+  const v = (view as { leads?: unknown } | null | undefined)?.leads;
+  return typeof v === "string" && v.trim() !== "" ? v : null;
+}
+
+/** Your faction's name for a profile (Start, Me): your row's, else the
+ *  side you lead though it isn't listed yet, else the public faction. */
+export function factionNameOf(view: GuestView | null): string | null {
+  if (view === null) return null;
+  if (!factionModeOf(view)) return view.faction;
+  return myRow(view, sidesOf(view))?.name ?? leadsOf(view) ?? view.faction;
+}
+
 /** Your own faction's row (faction mode: the side or the founded faction). */
 export function myRow(view: Pick<GuestView, "faction"> | null, rows: readonly SideRow[]): SideRow | null {
   return rows.find((r) => r.mine) ?? (view?.faction != null ? rows.find((r) => r.name === view.faction) ?? null : null);
@@ -121,7 +139,9 @@ export function factionAction(side: SideRow, view: Pick<GuestView, "id" | "name"
   const mine = myRow(view, rows);
   const crew = view.crew ?? null;
   const founder = crew !== null && crew.founder === view.id;
-  const leads = mine !== null && mine.kind !== "founded" && mine.leader !== null && mine.leader === view.name;
+  // A leader stays with their side, listed or not: a still-hidden side is
+  // no row (the server's `leads` says so), and Join would only answer 409.
+  const leads = leadsOf(view) !== null || (mine !== null && mine.kind !== "founded" && mine.leader !== null && mine.leader === view.name);
   if (mine !== null && mine.id === side.id) {
     if (leads) return "leader";
     if (side.kind === "founded" && founder) return "founder";
@@ -212,7 +232,10 @@ function factionRecruitOffer(view: GuestView, target: string): RecruitOffer {
   let side: RecruitOffer["side"] = null;
   let crewOffer: RecruitOffer["crew"] = null;
   let note: string | null = null;
-  if (mine === null) {
+  const led = mine === null ? leadsOf(view) : null;
+  if (led !== null) {
+    note = `That's ${name}'s pass. When ${led} opens, scan it to recruit them.`;
+  } else if (mine === null) {
     note = rows.length === 0 && !canFoundOf(view) ? `That's ${name}'s pass. When the factions open, scan it to recruit them.` : `Join or found a faction first, then scan ${name}'s pass to recruit them.`;
   } else if (inMine) {
     note = `${name} is already in ${mine.name}.`;
