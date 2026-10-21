@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
-import { micDefault, voiceRoles } from "./voice/roles.ts";
+import { micBox, voiceRoles } from "./voice/roles.ts";
 import { voiceStatus, voiceStatusText } from "./voice/status.ts";
 import { fetchCharacters } from "./pilot.ts";
 import { BrowserEngine, DeviceEngine, ENGINE_LABEL, SpeechQueue, deviceEnv, pickDeviceEngine, unlock, voiceEngines, type EngineKind, type VoiceChoice } from "./speech/engine.ts";
@@ -356,8 +356,18 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
                 send this camera to the games <span className="muted">(placed terminals only)</span>
               </label>
               <label className="check">
-                <input type="checkbox" checked={mic ?? micDefault(viewOverride || current?.view || "auto")} onChange={(e) => setMic(e.target.checked)} />
-                let the games hear this room <span className="muted">(the microphone; placed terminals only, never the tent; off on the TV unless ticked)</span>
+                <input
+                  type="checkbox"
+                  checked={micBox(mic, viewOverride || current?.view || "auto").checked}
+                  ref={(el) => {
+                    if (el !== null) el.indeterminate = micBox(mic, viewOverride || current?.view || "auto").follows;
+                  }}
+                  onChange={(e) => setMic(e.target.checked)}
+                />
+                let the games hear this room{" "}
+                <span className="muted">
+                  {mic === undefined ? "(follows the screen you pick: on, off on the TV — tick or untick to choose; " : "("}the microphone; placed terminals only, never the tent)
+                </span>
               </label>
               <label className="check">
                 <input type="checkbox" checked={voicesOn} onChange={(e) => setVoicesOn(e.target.checked)} />

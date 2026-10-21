@@ -25,6 +25,7 @@ function rig(over: Partial<VoiceLinkDeps> = {}) {
   let now = 1000;
   let floor = false;
   const pushed: string[] = [];
+  const opened: Array<{ mic: boolean; hear: boolean }> = [];
   const playback = {
     count: 0,
     push: vi.fn((f: { from: string }) => (pushed.push(f.from), true)),
@@ -37,7 +38,7 @@ function rig(over: Partial<VoiceLinkDeps> = {}) {
     report: (s) => (s === "live" || s === "denied" || s === "insecure" ? s : null),
     hub,
     capture: (_s, fn) => ((onFrames = fn), { rate: RATE, stop: stopCapture }),
-    openStream: (h) => ((handlers = h), closeStream),
+    openStream: (h, f) => ((handlers = h), opened.push(f), closeStream),
     post: async (body, seq) => (posts.push({ body, seq }), answers.shift() ?? { status: 200, listening: true }),
     playback,
     ctxTime: () => 5,
@@ -60,6 +61,7 @@ function rig(over: Partial<VoiceLinkDeps> = {}) {
     statuses,
     playback,
     pushed,
+    opened,
     closeStream,
     stopCapture,
     h: () => handlers!,
@@ -103,7 +105,7 @@ describe("the voice link on a terminal", () => {
     expect(r.posts).toHaveLength(sent);
     expect(onAir(r.last())).toBe(false);
   });
-  it("a POST saying nobody listens stops the sending until the stream says otherwise", async () => {
+  it("the stream alone decides whether to send: a POST's stale `listening: false` only empties the queue (T3)", async () => {
     const r = rig();
     r.answers.push({ status: 200, listening: false });
     r.link.start();
@@ -111,16 +113,95 @@ describe("the voice link on a terminal", () => {
     r.h().onFrame({ type: "hello", codec: "mulaw", rate: 16000, listen: true, as: "terminal", spot: "hall" });
     r.frames();
     await flush();
-    expect(r.last().listening).toBe(false);
-    r.tick(200);
-    r.frames();
-    await flush();
-    expect(r.posts).toHaveLength(1);
-    r.h().onFrame({ type: "listen", on: true });
+    // The answer said no — but the stream (newer, or not) still says yes.
+    expect(r.last().listening).toBe(true);
     r.tick(200);
     r.frames();
     await flush();
     expect(r.posts.length).toBeGreaterThan(1);
+    // The stream's own "no" does stop it.
+    const sent = r.posts.length;
+    r.h().onFrame({ type: "listen", on: false });
+    r.tick(200);
+    r.frames();
+    await flush();
+    expect(r.posts).toHaveLength(sent);
+  });
+  it("an upload refused mid-night (403 / 404) starts over once the stream says the room is heard again (T4)", async () => {
+    const r = rig();
+    r.answers.push({ status: 403 });
+    r.link.start();
+    await flush();
+    r.h().onFrame({ type: "hello", codec: "mulaw", rate: 16000, listen: true, as: "terminal", spot: "hall" });
+    r.frames();
+    await flush();
+    expect(r.last().uplink.kind).toBe("stopped");
+    expect(onAir(r.last())).toBe(false);
+    expect(voiceStatusText(r.last())).toMatch(/not sent/);
+    const sent = r.posts.length;
+    r.h().onFrame({ type: "listen", on: false });
+    r.h().onFrame({ type: "listen", on: true });
+    expect(r.last().uplink.kind).toBe("idle");
+    expect(onAir(r.last())).toBe(true);
+    r.tick(200);
+    r.frames();
+    await flush();
+    expect(r.posts.length).toBeGreaterThan(sent);
+    expect(r.posts.at(-1)!.seq).toBeGreaterThan(r.posts[0]!.seq); // the seq carries on
+  });
+  it("the hold is stretched by the chunk span and the device's latency (T2)", async () => {
+    let playingUntil = 0;
+    const r = rig({ latencyMs: () => 500 });
+    (r.playback as unknown as { playingUntil: () => number }).playingUntil = () => playingUntil;
+    r.link.start();
+    await flush();
+    r.h().onFrame({ type: "hello", codec: "mulaw", rate: 16000, listen: true, as: "terminal", spot: "hall" });
+    playingUntil = 5 + 0.1; // 100 ms more of a player's voice
+    r.frames();
+    await flush();
+    expect(r.posts).toHaveLength(0);
+    playingUntil = 0;
+    r.tick(100 + VOICE_TAIL_MS + 100); // past the plain tail, inside the latency
+    r.frames();
+    await flush();
+    expect(r.posts).toHaveLength(0);
+    r.tick(500);
+    r.frames();
+    await flush();
+    expect(r.posts.length).toBeGreaterThan(0);
+  });
+  it("tells the server what works (?mic / ?hear) and re-opens the stream when it changes (S3, T5)", async () => {
+    let running = false;
+    let tvMuted = false;
+    const r = rig({ audioRunning: () => running, soundMuted: () => tvMuted, report: (s) => (s === "live" || s === "locked" ? s : null) });
+    r.link.start();
+    await flush();
+    // Locked until a touch: nothing works yet; the heartbeat says `locked`.
+    expect(r.opened).toEqual([{ mic: false, hear: false }]);
+    expect(r.last()).toMatchObject({ locked: true, report: "locked" });
+    expect(voiceStatusText(r.last())).toMatch(/tap the screen/);
+    r.h().onFrame({ type: "hello", codec: "mulaw", rate: 16000, listen: true, as: "terminal", spot: "hall" });
+    expect(onAir(r.last())).toBe(false);
+    running = true;
+    r.link.refresh();
+    expect(r.opened.at(-1)).toEqual({ mic: true, hear: true });
+    expect(r.last()).toMatchObject({ locked: false, report: "live", link: "connecting" });
+    r.link.refresh();
+    expect(r.opened).toHaveLength(2); // nothing changed: no new stream
+    tvMuted = true;
+    r.link.refresh();
+    expect(r.opened.at(-1)).toEqual({ mic: true, hear: false });
+  });
+  it("a refused microphone is no mic for the games: the stream re-opens with mic=0", async () => {
+    const denied = Object.assign(new Error("no"), { name: "NotAllowedError" });
+    const hub = new MicHub(() => ({ secure: true, getUserMedia: () => Promise.reject(denied) }));
+    const r = rig({ hub });
+    r.link.start();
+    expect(r.opened).toEqual([{ mic: true, hear: true }]);
+    await flush();
+    await flush();
+    expect(r.last().mic).toBe("denied");
+    expect(r.opened.at(-1)).toEqual({ mic: false, hear: true });
   });
   it("half-duplex: nothing goes up while this page speaks or plays a player", async () => {
     let playingUntil = 0;

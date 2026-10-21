@@ -4,12 +4,17 @@
 //! the uplink, the stream, the playback), so a terminal that takes no part
 //! (the mirror, the tent, an unplaced tablet) never fetches it.
 //!
-//! The map is read once per spot before anything opens, so the tent never
-//! asks for its microphone; the stored `voiceLink` stands in when the map
-//! can't be read (the server refuses the tent's uploads either way).
+//! The map is read before anything opens, so the tent never asks for its
+//! microphone: a failed read is retried (5 s, doubling to 60 s), and until
+//! one lands the stored `voiceLink` stands in only when a map once set it (a
+//! config from before wave 19 has none: no link until the map is read). The
+//! map is re-read every minute after, so a director turning a spot's link on
+//! or off takes effect without a reload (the link restarts only when that
+//! spot's answer changes).
 
 import { useEffect, useMemo, useState } from "react";
 import type { HouseMap } from "@loom/house";
+import { voiceOn } from "@loom/house/voice-on";
 import type { TerminalConfig } from "../config.ts";
 import { retryable } from "../retry.ts";
 import { fetchHouse } from "../world/stream.ts";
@@ -20,8 +25,27 @@ import { VOICE_OFF, voiceStatus } from "./status.ts";
 const loadLink = retryable(() => import("./link.ts"));
 /** After the link's chunk failed to load, try again this much later (ms). */
 const LINK_RETRY_MS = 30_000;
+/** A failed map read is tried again after this, doubling (ms)… */
+export const MAP_RETRY_MS = 5_000;
+/** … up to this. */
+export const MAP_RETRY_MAX_MS = 60_000;
+/** A read map is read again this often (ms). */
+export const MAP_REREAD_MS = 60_000;
 
 type VoiceMap = Pick<HouseMap, "terminals" | "spawn">;
+
+/** What of a map the link depends on for `spot`: whether it has the spot,
+ *  and its voice link there. A re-read map with the same key changes nothing. */
+export function mapVoiceKey(map: VoiceMap | null, spot: string): string {
+  if (map === null) return "unread";
+  return map.terminals.some((t) => t.id === spot) ? (voiceOn(map as HouseMap, spot) ? "on" : "off") : "absent";
+}
+
+/** The roles before / without a readable map: the stored flag stands in only
+ *  when a map once set it. */
+export function rolesWithoutMap(config: TerminalConfig): VoiceRoles {
+  return config.voiceLink === undefined ? NO_VOICE : voiceRoles(config, null);
+}
 
 /**
  * Run this terminal's voice link while `active` (set up: never on the
@@ -39,17 +63,34 @@ export function useVoiceLink(config: TerminalConfig | null, active: boolean): Vo
   useEffect(() => {
     if (!placed) return;
     let alive = true;
-    void fetchHouse({ eventId, token }).then(
-      (h) => alive && setHouse({ key, map: h.house }),
-      () => alive && setHouse({ key, map: null }),
-    );
+    let timer = 0;
+    let wait = MAP_RETRY_MS;
+    const read = (): void => {
+      void fetchHouse({ eventId, token }).then(
+        (h) => {
+          if (!alive) return;
+          wait = MAP_RETRY_MS;
+          setHouse((now) => (now !== undefined && now.key === key && now.map !== null && mapVoiceKey(now.map, spot) === mapVoiceKey(h.house, spot) ? now : { key, map: h.house }));
+          timer = window.setTimeout(read, MAP_REREAD_MS);
+        },
+        () => {
+          if (!alive) return;
+          // Keep a map already read (a blip); else say it is unreadable for now.
+          setHouse((now) => (now !== undefined && now.key === key && now.map !== null ? now : { key, map: null }));
+          timer = window.setTimeout(read, wait);
+          wait = Math.min(MAP_RETRY_MAX_MS, wait * 2);
+        },
+      );
+    };
+    read();
     return () => {
       alive = false;
+      window.clearTimeout(timer);
     };
-  }, [placed, eventId, token, key]);
+  }, [placed, eventId, token, key, spot]);
   const map = house !== undefined && house.key === key ? house.map : undefined;
   const ready = placed && map !== undefined;
-  const r = config === null || !ready ? NO_VOICE : voiceRoles(config, map);
+  const r = config === null || !ready ? NO_VOICE : map === null ? rolesWithoutMap(config) : voiceRoles(config, map);
   // Kept by value: a name / character change never restarts the link.
   const roles = useMemo<VoiceRoles>(() => ({ mic: r.mic, voices: r.voices }), [r.mic, r.voices]);
   const view = config?.view;
@@ -57,7 +98,7 @@ export function useVoiceLink(config: TerminalConfig | null, active: boolean): Vo
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const reportOf = (state: MicState | null) => (config === null || !active ? null : micReport(config, map ?? null, state));
+    const reportOf = (state: MicState | "locked" | null) => (config === null || !active ? null : micReport(config, map ?? null, state));
     if (!ready || config === null || (!roles.mic && !roles.voices)) {
       voiceStatus.set({ ...VOICE_OFF, report: reportOf(null) ?? "off" });
       return;

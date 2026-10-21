@@ -13,7 +13,7 @@ function fakeStream() {
 describe("the shared microphone", () => {
   it("asks for audio only, never touching the camera's constraints", () => {
     expect(MIC_CONSTRAINTS.video).toBe(false);
-    expect(MIC_CONSTRAINTS.audio).toEqual({ echoCancellation: true, noiseSuppression: true, autoGainControl: true });
+    expect(MIC_CONSTRAINTS.audio).toEqual({ echoCancellation: false, noiseSuppression: false, autoGainControl: false });
     expect(constraintsFor("user").audio).toBe(false);
   });
   it("opens one stream for every holder and stops it with the last", async () => {

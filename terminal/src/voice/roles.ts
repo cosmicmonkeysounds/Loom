@@ -12,7 +12,9 @@
 //! the tent, where the reinstallation laptop sits beside the headsets).
 //! The setup screen takes no part either — the caller passes `active`.
 
-import { voiceOn, type HouseMap } from "@loom/house";
+// The subpath, not the barrel: the codec stays in the lazy link chunk.
+import { voiceOn } from "@loom/house/voice-on";
+import type { HouseMap } from "@loom/house";
 import type { TerminalConfig, TerminalView } from "../config.ts";
 
 export interface VoiceRoles {
@@ -27,6 +29,16 @@ export const NO_VOICE: VoiceRoles = { mic: false, voices: false };
 /** The microphone's default for a view (⚙'s `mic` absent). */
 export function micDefault(view: TerminalView): boolean {
   return view !== "tv" && view !== "mirror";
+}
+
+/**
+ * ⚙'s microphone box. Untouched (`mic` absent) it follows the screen the
+ * terminal ends up on — which a tap on the map picks and saves at once — so
+ * it shows the default for the view known now but reads as "follows"
+ * (indeterminate), never as a promise about a spot not yet tapped.
+ */
+export function micBox(mic: boolean | undefined, view: TerminalView): { checked: boolean; follows: boolean } {
+  return mic === undefined ? { checked: micDefault(view), follows: true } : { checked: mic, follows: false };
 }
 
 type RoleConfig = Pick<TerminalConfig, "view" | "spot" | "voices" | "voiceLink"> & { mic?: boolean };
@@ -46,17 +58,17 @@ export function voiceRoles(c: RoleConfig, house?: Pick<HouseMap, "terminals" | "
 }
 
 /** What the heartbeat says about this terminal's microphone (`mic=`). */
-export type MicReport = "live" | "muted" | "denied" | "insecure" | "off";
+export type MicReport = "live" | "muted" | "denied" | "insecure" | "locked" | "off";
 
 /**
  * The heartbeat's `mic=`: `off` — this terminal takes no part (its view, no
  * spot, the map, the TV's default); `muted` — it would, but ⚙ turned its
  * microphone off; else the microphone's own state (`live`, `denied`,
- * `insecure`). Null = nothing to report yet (opening, no microphone, a
+ * `insecure`; `locked` — open, but the page's audio waits for a touch). Null = nothing to report yet (opening, no microphone, a
  * failure: the ⚙ status line says which).
  */
 export function micReport(c: RoleConfig, house: Pick<HouseMap, "terminals" | "spawn"> | null | undefined, state: string | null): MicReport | null {
   if (!voiceRoles(c, house).mic) return voiceRoles({ ...c, mic: true }, house).mic && c.mic === false ? "muted" : "off";
-  if (state === "live" || state === "denied" || state === "insecure") return state;
+  if (state === "live" || state === "denied" || state === "insecure" || state === "locked") return state;
   return null;
 }

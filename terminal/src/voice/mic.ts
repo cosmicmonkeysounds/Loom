@@ -8,9 +8,14 @@
 //! ends under us (the OS took the microphone back, the tablet slept) is
 //! opened again for whoever still holds it.
 //!
-//! Echo cancellation, noise suppression and gain control are asked for, but
-//! nothing relies on them (browsers don't cancel Web Audio or speech output):
-//! the uplink gates itself in software (`capture.ts`).
+//! Echo cancellation, noise suppression and gain control are asked **off**:
+//! nothing relies on them (browsers don't cancel Web Audio or speech output;
+//! the uplink gates itself in software, `capture.ts`), and on Android Chrome
+//! / WebView turning them on moves the device into its voice-call audio mode,
+//! which can lower or re-route the terminal's own output (the character's
+//! voice, the effects, the players) the moment the link opens the mic; AGC
+//! would also lift a quiet room's noise over the gate. (A device check: the
+//! oldest Android tablet's and an iPad's output level with the link on/off.)
 
 import { useSyncExternalStore } from "react";
 import { cameraStateOfError, type CameraEnv, type CameraState } from "../camera.ts";
@@ -18,7 +23,7 @@ import { cameraStateOfError, type CameraEnv, type CameraState } from "../camera.
 export type MicState = CameraState;
 
 export const MIC_CONSTRAINTS: MediaStreamConstraints = {
-  audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   video: false,
 };
 

@@ -10,7 +10,9 @@
 //!
 //! Pure: the setup screen (`Setup.tsx`) and the boot (`app.tsx`) call these.
 
-import { voiceOn, type HouseMap, type TerminalSpot } from "@loom/house";
+// The subpath, not the barrel: the voice codec stays in the lazy link chunk.
+import { voiceOn } from "@loom/house/voice-on";
+import type { HouseMap, TerminalSpot } from "@loom/house";
 import { DEFAULT_TV_ROOM, VIEWS, type TerminalConfig, type TerminalView, type UrlHints } from "./config.ts";
 
 /** What a map terminal sets on a tablet chosen as it. */

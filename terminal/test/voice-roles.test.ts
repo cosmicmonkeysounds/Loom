@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateHouse, type HouseMap } from "@loom/house";
 import showHouse from "../../core/examples/trapped-in-the-internet/house.json";
 import { VIEWS, defaultConfig, type TerminalConfig } from "../src/config.ts";
-import { NO_VOICE, micDefault, micReport, voiceRoles } from "../src/voice/roles.ts";
+import { NO_VOICE, micBox, micDefault, micReport, voiceRoles } from "../src/voice/roles.ts";
 
 const show = validateHouse(showHouse).house!;
 const cfg = (over: Partial<TerminalConfig> = {}): TerminalConfig => defaultConfig({ eventId: "e", token: "t", spot: "hall", ...over });
@@ -49,5 +49,18 @@ describe("micReport (the heartbeat's mic=)", () => {
     expect(micReport(cfg(), null, "insecure")).toBe("insecure");
     expect(micReport(cfg(), null, "starting")).toBeNull();
     expect(micReport(cfg(), null, null)).toBeNull();
+  });
+});
+
+describe("⚙'s microphone box (T1)", () => {
+  it("untouched it follows the screen picked (indeterminate); ticked or not it is the choice", () => {
+    expect(micBox(undefined, "auto")).toEqual({ checked: true, follows: true });
+    expect(micBox(undefined, "tv")).toEqual({ checked: false, follows: true });
+    expect(micBox(false, "auto")).toEqual({ checked: false, follows: false });
+    expect(micBox(true, "tv")).toEqual({ checked: true, follows: false });
+  });
+  it("a locked page's open microphone reports `locked`", () => {
+    expect(micReport(cfg(), show, "locked")).toBe("locked");
+    expect(micReport(cfg({ view: "mirror" }), show, "locked")).toBe("off");
   });
 });

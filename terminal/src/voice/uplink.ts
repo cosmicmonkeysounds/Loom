@@ -11,8 +11,10 @@
 //! during a backoff. `seq` starts at the wall clock, so a reloaded page never
 //! sends a seq the server already kept (it drops an old one silently).
 //!
-//! The answer's `listening` says whether anyone can still hear this room;
-//! false stops the sending until the voice stream says `listen {on: true}`.
+//! The answer's `listening: false` empties the queue (`onListening`); the
+//! voice stream alone decides whether to keep sending (an answer can land
+//! after a newer `listen {on}`). A stopped uplink is replaced by the link
+//! when the stream proves the spot good again.
 
 import { VOICE_MAX_BYTES } from "@loom/house";
 
@@ -89,6 +91,11 @@ export class Uplink {
 
   get stopped(): boolean {
     return this.dead;
+  }
+
+  /** The seq the next upload will carry (a successor starts past it). */
+  get nextSeq(): number {
+    return this.seq;
   }
 
   /** Queue one chunk for the games. */

@@ -23,20 +23,26 @@ export interface VoiceStatus {
   problem: string | null;
   /** The heartbeat's `mic=`. */
   report: MicReport | null;
+  /** The page's audio is locked until someone touches the screen: nothing
+   *  is captured or played (the server is told so). */
+  locked: boolean;
 }
 
-export const VOICE_OFF: VoiceStatus = { roles: NO_VOICE, mic: null, link: "off", listening: false, hearing: 0, uplink: { kind: "idle" }, problem: null, report: "off" };
+export const VOICE_OFF: VoiceStatus = { roles: NO_VOICE, mic: null, link: "off", listening: false, hearing: 0, uplink: { kind: "idle" }, problem: null, report: "off", locked: false };
 
 /** ⚙'s line for the voice link. */
 export function voiceStatusText(s: VoiceStatus): string {
   if (!s.roles.mic && !s.roles.voices) return "voice link off at this terminal";
   if (s.link === "stopped") return `voice link stopped: ${s.problem ?? "refused"}`;
+  if (s.locked) return "voice link: tap the screen to start it (the page's sound is locked until a touch)";
   const parts: string[] = [];
   if (s.roles.mic) {
     const m =
       s.mic === "live"
         ? s.listening
-          ? s.uplink.kind === "retrying"
+          ? s.uplink.kind === "stopped"
+            ? `microphone not sent — ${s.uplink.problem}`
+            : s.uplink.kind === "retrying"
             ? `microphone heard in the games — retrying (${s.uplink.problem})`
             : "microphone heard in the games now"
           : "microphone ready — nobody in the games is near"
@@ -60,7 +66,7 @@ export function voiceStatusText(s: VoiceStatus): string {
 
 /** Whether to show the 🎤 corner cue: a player in the games hears this room now. */
 export function onAir(s: VoiceStatus): boolean {
-  return s.roles.mic && s.mic === "live" && s.link === "live" && s.listening;
+  return s.roles.mic && s.mic === "live" && s.link === "live" && s.listening && !s.locked && s.uplink.kind !== "stopped";
 }
 
 class VoiceStatusStore {
