@@ -118,6 +118,14 @@ describe('device badges (SW-SCR-21)', () => {
     expect(terminalBadges(none!, null)).toEqual([])
   })
 
+  it('📢 when the tablet says the house announcements (wave 18b, ann=1); never a warning', () => {
+    const [on] = rowsOf({ ...poll('Kitchen', 0), announce: true })
+    expect(on!.device).toMatchObject({ announce: true })
+    expect(terminalBadges(on!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['announce', '📢', false]])
+    const [off] = rowsOf({ ...poll('Kitchen', 0), announce: false })
+    expect(terminalBadges(off!, null)).toEqual([])
+  })
+
   it('⛶ on the TV points at --kiosk (nobody taps it); on a tablet, a touch', () => {
     expect(fullscreenTitle({ view: 'tv' })).toMatch(/--kiosk/)
     expect(fullscreenTitle({ view: 'mirror' })).toMatch(/--kiosk/)

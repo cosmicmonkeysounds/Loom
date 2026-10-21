@@ -17,7 +17,8 @@
 //! A current terminal build also reports its device on every poll
 //! (SW-SCR-21): sound unlocked, page visible, battery, full screen (wave
 //! 17), build stamp — the row's badges (`terminalBadges`). An older build
-//! reports none.
+//! reports none. Wave 18b adds 📢 when the tablet says the house
+//! announcements (`ann=1` on its poll).
 //!
 //! A room terminal (wave 7) also reports the LOCATION it belongs to (`room`):
 //! the row says so, and one that isn't on the server-room spot is amber
@@ -42,10 +43,14 @@ export interface TerminalPoll {
   /** Full screen (wave 17); absent: can't be, turned off in ⚙, or an older build. */
   fullscreen?: boolean
   version?: string
+  /** It says the house announcements right now (wave 18b, Q8: its own
+   *  Always / Never, else the house list `audio.json` `announce.terminals`
+   *  for its spot); absent from an older build. */
+  announce?: boolean
 }
 
 /** A row's device health, as its last listed poll said. */
-export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'version'>
+export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'version' | 'announce'>
 
 /** `GET /api/mod/screen/terminals`. */
 export interface ScreenTerminals {
@@ -110,7 +115,7 @@ export function mergeTerminals(
   const listed = new Map<string, TerminalDevice>()
   for (const p of server?.terminals ?? []) {
     if (p.name === '') continue
-    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, version: p.version })
+    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, version: p.version, announce: p.announce })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
@@ -187,7 +192,7 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'fullscreen' | 'battery' | 'version'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'battery' | 'version' | 'announce'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
@@ -214,9 +219,10 @@ export function fullscreenTitle(row: Pick<TerminalRow, 'view'>): string {
 }
 
 /** A row's install-day badges: 🔇 sound locked, 💤 page hidden, ⛶ not full
- *  screen (only when the build says so: one that can't be sends nothing), the battery,
- *  and the build (flagged when it differs from the majority's, or is missing
- *  while the others report one). */
+ *  screen (only when the build says so: one that can't be sends nothing),
+ *  📢 it says the house announcements (wave 18b), the battery, and the
+ *  build (flagged when it differs from the majority's, or is missing while
+ *  the others report one). */
 export function terminalBadges(row: TerminalRow, majority: string | null): TerminalBadge[] {
   const d = row.device
   if (d === null) return []
@@ -224,6 +230,9 @@ export function terminalBadges(row: TerminalRow, majority: string | null): Termi
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })
+  if (d.announce === true) {
+    out.push({ key: 'announce', text: '📢', title: 'Says the house announcements aloud (its own ⚙ setting, or the house list for its spot)', warn: false })
+  }
   if (typeof d.battery === 'number') {
     const low = d.battery < LOW_BATTERY && d.charging !== true
     out.push({ key: 'battery', text: `${d.charging === true ? '⚡' : '🔋'}${d.battery}%`, title: d.charging === true ? 'Charging' : low ? 'Battery low: plug it in' : 'On battery', warn: low })
