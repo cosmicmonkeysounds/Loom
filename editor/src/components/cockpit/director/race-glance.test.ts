@@ -42,6 +42,10 @@ describe('the race on the glance', () => {
     expect(html).not.toMatch(/\bwon\b/)
     expect(html).toContain('the line: 2 of 3 present')
     expect(html).toContain('founded by Winamp')
+    // Every row keeps the same label slot, so the bars share one scale (the
+    // leader's bar is not shortened by its words).
+    expect(html.match(/data-testid="glance-race-mark"/gu)?.length).toBe(2)
+    expect(html.match(/class="w-20 shrink-0[^"]*" data-testid="glance-race-mark"/gu)?.length).toBe(2)
   })
 
   it('says so when no faction has formed yet', () => {

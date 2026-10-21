@@ -442,7 +442,10 @@ function People() {
           <span className="absolute -inset-y-0.5 w-px bg-amber-400" style={{ left: racePct(race!.needs, race!.present) }} />
         </span>
         <span className="w-6 shrink-0 text-right tabular-nums text-zinc-100">{f.count}</span>
-        {f.over && <span className="shrink-0 text-[10px] text-emerald-300">over the line</span>}
+        {/* A fixed slot on every row, so every bar shares one scale and one threshold tick. */}
+        <span className="w-20 shrink-0 whitespace-nowrap text-[10px] text-emerald-300" data-testid="glance-race-mark">
+          {f.over ? 'over the line' : ''}
+        </span>
       </button>,
     )
   }
