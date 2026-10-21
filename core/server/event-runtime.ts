@@ -207,6 +207,15 @@ export const WIDGET_FREE_TEXT: Readonly<Record<string, ReadonlySet<string>>> = {
  *  never supply its own verdict or key. */
 export const RESERVED_WIDGET_KEYS: ReadonlySet<string> = new Set(["card", "verdict", "key_answer"]);
 
+/** Fields that name a story GROUP on purpose: the doors card (`show sides`)
+ *  answers with the side the guest walked into (a declared group id) or
+ *  `neither`. Anything else in that field is refused (wave 18 fix: the
+ *  side's own name was refused as "an entity", so Walk in never settled
+ *  the card). */
+export const WIDGET_SIDE_FIELDS: Readonly<Record<string, ReadonlySet<string>>> = {
+  sides: new Set(["side"]),
+};
+
 /**
  * Sanitise a widget's client-supplied result into event arguments: a flat
  * bag of short scalars under plain keys. A string that happens to name a
@@ -226,7 +235,9 @@ export function widgetResultArgs(raw: unknown, sim: Sim, kind = ""): Record<stri
     if (typeof v === "boolean" || (typeof v === "number" && Number.isFinite(v))) out[k] = v;
     else if (typeof v === "string") {
       if (v.length > 200) return null;
-      if (free?.has(k) !== true && (sim.persons.has(v) || sim.model.entityKind.has(v))) return null;
+      if (Object.hasOwn(WIDGET_SIDE_FIELDS, kind) && WIDGET_SIDE_FIELDS[kind]!.has(k)) {
+        if (v !== "neither" && !sim.model.factions.has(v)) return null;
+      } else if (free?.has(k) !== true && (sim.persons.has(v) || sim.model.entityKind.has(v))) return null;
       out[k] = v;
     } else return null;
   }

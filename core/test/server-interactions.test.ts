@@ -315,6 +315,18 @@ describe("widgetResultArgs — free-text fields", () => {
     expect(widgetResultArgs({ text: "The Gatekeeper" }, sim, "fact")).toBeNull();
   });
 
+  it("lets the doors card answer with a declared side or neither, and nothing else (GN-F1)", () => {
+    const sim = Sim.fromSources("# T\n\nGROUP Unlimited Power\n\nCHARACTER The Gatekeeper\n\nROLE Guest\n");
+    const side = "Unlimited Power";
+    expect(sim.model.factions.has(side)).toBe(true);
+    expect(widgetResultArgs({ side }, sim, "sides")).toEqual({ side });
+    expect(widgetResultArgs({ side: "neither" }, sim, "sides")).toEqual({ side: "neither" });
+    expect(widgetResultArgs({ side: "The Gatekeeper" }, sim, "sides")).toBeNull();
+    expect(widgetResultArgs({ side: "made up" }, sim, "sides")).toBeNull();
+    expect(widgetResultArgs({ other: side }, sim, "sides")).toBeNull();
+    expect(widgetResultArgs({ side }, sim, "poll")).toBeNull();
+  });
+
   it("refuses the reserved keys the server attaches itself (`card`, `verdict`) on every kind", () => {
     const rt = freshRuntime();
     rt.openDoors();
