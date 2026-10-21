@@ -298,7 +298,14 @@ the focus act holds NEXT, else LAST; an all-`sequence: false` act is
   340 / 300 px; one column + `GlanceStrip` below), **Calling / Watching**
   (`localStorage` `loom.director.mode.<eventId|local>`, try/catch;
   Watching = NOW as one line, the glance column first and whole at every
-  width, keys off).
+  width, keys off). Wave 18: on a server whose cue state carries `caller`,
+  Calling is the show's **caller claim** (`CockpitState.claimCaller(on)` →
+  `POST /api/mod/caller`; `director-mode.ts` `showCallerOf` / `callerIsMe`
+  / `claimMode` / `callerNote` / `shownMode`, `FLIP_MS`;
+  `useDirectorMode()` returns `[mode, set, CallerInfo | null]`): another
+  console's or a host's claim turns this console to Watching and the
+  `director-caller` line names them; a local rehearsal keeps the
+  per-console choice.
 - `NightBar.tsx` — the act stepper (hidden with < 2 non-anytime acts),
   `cue-phase` (`nightPhase`), two countdown chips, the PAUSED strip.
 - `NowCard.tsx` — NEXT + full description + `director-next-fire`, *then:*
