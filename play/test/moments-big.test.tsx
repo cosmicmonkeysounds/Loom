@@ -98,3 +98,11 @@ describe("the window", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^@]*\.moments-big-fill \{[^}]*animation-timing-function: steps\(1, end\)/u);
   });
 });
+
+describe("plain theme", () => {
+  it("the window flat: a 96 px banner and a hairline instead of the bevel", () => {
+    const css = readBundledCss();
+    expect(css).toMatch(/:root:not\(\[data-theme="aol97"\]\) \.moments-big-banner \{ height: 96px; \}/u);
+    expect(css).toMatch(/:root:not\(\[data-theme="aol97"\]\) \.moments-big-window \{ box-shadow: 0 0 0 1px var\(--line\)/u);
+  });
+});

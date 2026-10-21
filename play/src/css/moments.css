@@ -306,6 +306,9 @@
   background: var(--title-grad); color: var(--title-ink);
 }
 .moments-big-banner.short { height: 96px; }
+/* plain: the same window flat — a 96 px navy block for the glyph, a hairline round the window */
+:root:not([data-theme="aol97"]) .moments-big-banner { height: 96px; }
+:root:not([data-theme="aol97"]) .moments-big-window { box-shadow: 0 0 0 1px var(--line), var(--moments-shadow); }
 .moments-big-glyph { font-size: 72px; line-height: 1; }
 .moments-big-kicker {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 14px;
