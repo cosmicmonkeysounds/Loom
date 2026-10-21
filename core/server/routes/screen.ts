@@ -66,7 +66,7 @@
 //! The director's side (K-29): `GET /api/mod/screen/terminals` answers the
 //! heartbeat list (each terminal's last poll: name, spot, view, how long ago,
 //! and the device health a current build reports — sound unlocked, page
-//! visible, battery, build version, SW-SCR-21; since wave 17 only here, not
+//! visible, battery, full screen (wave 17), build version, SW-SCR-21; since wave 17 only here, not
 //! on every terminal's answer) + the TV-voice mute, without recording a poll, for the
 //! editor's Run → Terminals card (red after `TERMINAL_SILENT_MS`, a chime);
 //! `POST /api/mod/screen/identify {name}` makes that terminal show its name
@@ -604,12 +604,15 @@ export interface ScreenDevice {
   /** Battery percent, 0–100. */
   battery?: number;
   charging?: boolean;
+  /** The page is full screen (wave 17; absent: a build that can't be, has it
+   *  turned off in ⚙, or predates the flag). */
+  fullscreen?: boolean;
   /** The terminal's build stamp. */
   version?: string;
 }
 
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
- *  `bat=<0-100>[c]`, `ver=<build>`); anything malformed is left out. */
+ *  `bat=<0-100>[c]`, `fs=1|0`, `ver=<build>`); anything malformed is left out. */
 export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const d: ScreenDevice = {};
   const audio = q("audio");
@@ -621,6 +624,8 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
     d.battery = Number(bat[1]);
     d.charging = bat[2] === "c";
   }
+  const fs = q("fs");
+  if (fs === "1" || fs === "0") d.fullscreen = fs === "1";
   const ver = q("ver").replace(/[^\w.:+-]/gu, "").slice(0, 24);
   if (ver !== "") d.version = ver;
   return d;

@@ -881,14 +881,22 @@ describe("the heartbeat's device health and the director's identify", () => {
     expect(screenDeviceOf(q({ ver: "x".repeat(80) })).version).toHaveLength(24);
   });
 
+  it("reads the full-screen flag (wave 17): fs=1|0, anything else or none left out", () => {
+    expect(screenDeviceOf(q({ fs: "1" }))).toEqual({ fullscreen: true });
+    expect(screenDeviceOf(q({ fs: "0", audio: "1" }))).toEqual({ fullscreen: false, audio: true });
+    expect(screenDeviceOf(q({ fs: "yes" }))).toEqual({});
+    expect(screenDeviceOf(q({ fs: "" }))).toEqual({});
+  });
+
   it("the extras ride the heartbeat to the card; a poll without them clears them", async () => {
     const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: "t", scenarioSource: AGENT_SOURCE, joinBase: () => "http://localhost" });
-    await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost&audio=0&vis=v&bat=12&ver=abc", {}, { moderator: true });
+    await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost&audio=0&vis=v&bat=12&fs=0&ver=abc", {}, { moderator: true });
     let body = (await call(rt, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals;
-    expect(body.terminals[0]).toMatchObject({ name: "Hall", audio: false, visible: true, battery: 12, charging: false, version: "abc" });
+    expect(body.terminals[0]).toMatchObject({ name: "Hall", audio: false, visible: true, battery: 12, charging: false, fullscreen: false, version: "abc" });
     await call(rt, "GET", "/api/screen/state?name=Hall&spot=hall&view=auto&character=Ghost", {}, { moderator: true });
     body = (await call(rt, "GET", "/api/mod/screen/terminals", {}, { moderator: true })).json as unknown as ScreenTerminals;
     expect(body.terminals[0]).not.toHaveProperty("battery");
+    expect(body.terminals[0]).not.toHaveProperty("fullscreen");
     expect(body.terminals[0]).not.toHaveProperty("version");
     rt.dispose();
   });

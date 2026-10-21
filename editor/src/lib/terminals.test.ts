@@ -4,6 +4,7 @@ import {
   RECHIME_MS,
   TerminalStatus,
   formatSilence,
+  fullscreenTitle,
   majorityVersion,
   mergeTerminals,
   terminalBadges,
@@ -102,6 +103,26 @@ describe('device badges (SW-SCR-21)', () => {
     ])
     const [c] = rowsOf({ ...poll('Kitchen', 0), audio: true, visible: true, battery: 12, charging: true })
     expect(terminalBadges(c!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['battery', '⚡12%', false]])
+  })
+
+  it('⛶ not full screen is red; full screen or no flag (a build that cannot be) shows nothing', () => {
+    const [r] = rowsOf({ ...poll('Kitchen', 0), audio: true, visible: false, fullscreen: false })
+    expect(r!.device).toMatchObject({ fullscreen: false })
+    expect(terminalBadges(r!, null).map((x) => [x.key, x.text, x.warn])).toEqual([
+      ['hidden', '💤', true],
+      ['fullscreen', '⛶', true],
+    ])
+    const [on] = rowsOf({ ...poll('Kitchen', 0), fullscreen: true })
+    expect(terminalBadges(on!, null)).toEqual([])
+    const [none] = rowsOf({ ...poll('Kitchen', 0), audio: true })
+    expect(terminalBadges(none!, null)).toEqual([])
+  })
+
+  it('⛶ on the TV points at --kiosk (nobody taps it); on a tablet, a touch', () => {
+    expect(fullscreenTitle({ view: 'tv' })).toMatch(/--kiosk/)
+    expect(fullscreenTitle({ view: 'mirror' })).toMatch(/--kiosk/)
+    expect(fullscreenTitle({ view: 'face' })).toMatch(/touch the screen once/)
+    expect(fullscreenTitle({ view: 'face' })).not.toMatch(/kiosk/)
   })
 
   it('flags a build that differs from the majority (none on a tie)', () => {

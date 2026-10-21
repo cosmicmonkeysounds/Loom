@@ -2,7 +2,7 @@
 title: Instructions — verbs, cues, and the long form
 section: Language
 order: 19
-keywords: directive, sfx, cue, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
+keywords: directive, sfx, cue, sound in, rooms, speakers, house speakers, audio.json, zone, L1213, pause, flash, anchor, fire, set, goal, spawn, run, broadcast, angle brackets, luau, extension, instruction, verb, sound, reply, move, add, remove, reveal, do, long form, show, widget, captcha
 ---
 
 An **instruction** is a plain lowercase verb at the start of a line —
@@ -31,6 +31,7 @@ set storm = true
 | `cycle a \| b` / `shuffle a \| b` | variety |
 | `cue lx_dawn` | fire a lighting/tech cue |
 | `sound bell_toll` (or `sfx`) | play a sound effect |
+| `sound bell_toll in The Bell Tower` / `sound bell_toll with rooms: tower, The Cellar` | …on the house speakers in those places only (below) |
 | `pause` | hold for a beat |
 | `flash white, 200` | a 200 ms white flash |
 | `anchor the_bell_rings` | name this spot in the story (tests, analytics, show control) |
@@ -66,6 +67,51 @@ name; a block-opener its trailing colon. Anything else is narration —
 *Move slowly through the dark.* is prose, `move guest to The Cellar` is
 an instruction. To force a line that fits a verb's shape to stay prose,
 start it with `\`.
+
+## Where a sound plays: `in` and `rooms:`
+
+A live show's sounds come out of the **house speakers**, never out of a
+phone or a wall terminal (a terminal only makes its own small clicks and
+dings). Name the places a sound is for:
+
+```loom
+sound printer_grind in The Desktop
+sound alarm_siren with rooms: hall, The Server Room
+sound dance_song with rooms: living, The Start Bar
+```
+
+`in <Place>` takes one place. `with rooms:` takes a list: LOCATION
+names, the house map's room ids (`hall`, `start-bar`: the ids in
+`house.json`, not the LOCATION names), and the zones and
+speakers of the house's speaker setup (`living`, `everywhere`) — that is
+`audio.json`, drawn in the map editor's Audio panel (see
+[the house map](house-map.md)).
+**Separate several names with commas** — `rooms: desktop, The Start
+Bar`. Without commas each lowercase word is its own name and a run of
+Capitalised words is one place, so `rooms: Living Upstairs` reads as one
+place called *Living Upstairs*.
+
+Where a `sound` goes, the first rule that applies wins:
+
+1. the line's own `in` / `rooms:`;
+2. the sound's entry in `audio.json` (its cue);
+3. the `setting:` of the beat it plays in;
+4. every speaker in the house.
+
+So a plain `sound x` still works: give it a cue in `audio.json`, or let
+it follow the scene's setting. **A sound whose rule reaches no wired
+speaker is skipped, not played everywhere** — a setting with no speaker
+in it, or a room id the map doesn't have, plays nowhere (the router logs
+*reaches no wired speaker*). Only a sound with no `in` / `rooms:`, no cue
+and no setting falls through to every speaker, so give every new sound a
+cue in `audio.json`. The rooms only matter once the house
+Mac's speaker router plays the show's sounds; until then QLab plays every
+`sound` the way it always has, and the rooms are ignored.
+
+Lint **`L1213 SoundRoomUnresolved`** (a warning) flags a target of
+several words that is no LOCATION — a misspelt place, or two Capitalised
+zones written side by side without a comma. One-word targets live in
+`audio.json`, which the story can't see, so the lint can't check those.
 
 ## The long form: `<verb: args>`
 

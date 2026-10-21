@@ -62,6 +62,7 @@ openers end with `:` and indent their body.
 | `if cond:` / `else if cond:` / `else:` | conditional |
 | `match value:` + `arm:` lines | pick an arm by value |
 | `cue x` / `sound x` / `pause` / `flash white, 200` / `anchor x` | stagecraft |
+| `sound x in The Desktop` / `sound x with rooms: hall, The Start Bar` | a sound on the house speakers in those places only (map room ids or LOCATIONs); commas between names; a target with no wired speaker is skipped, so give new sounds a cue in `audio.json` ([instructions](directives.md); lint `L1213` when a several-word name is no LOCATION) |
 | `fire lockdown` / `fire rally for guest` / `fire alarm with level: 3` | raise a named event |
 | `reply text` / `reply !text` | private line back to whoever acted (a booth: its Readouts) / the same as an alert |
 | `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer`); `with moment: major` makes it interrupt |
