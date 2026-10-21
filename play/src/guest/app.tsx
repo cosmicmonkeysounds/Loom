@@ -34,7 +34,7 @@ import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
-import { ScanDoneDialog, checkinOutcome, redeemOutcome, scanErrorNote } from "../scan-done.tsx";
+import { LazyScanDone, loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
@@ -56,6 +56,7 @@ import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { prefetchQr } from "../pass-qr.tsx";
+import { prefetchFactCard } from "../widgets.tsx";
 import { badgesOf, extOf, hasSidesOrCrew, lobbyHidden } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
 import { LazySidesLayer } from "../sides/lazy.tsx";
@@ -70,6 +71,8 @@ LazyMission.prefetch();
 // The pass's QR encoder: its own chunk, fetched just after the first paint
 // (the pass is one tap away; the arrival's `show pass` card follows soon).
 if (typeof window !== "undefined") window.setTimeout(prefetchQr, 1200);
+// The 📝 fact card's chunk (wave 18b), a little later: it is dealt in the hunts.
+if (typeof window !== "undefined") window.setTimeout(prefetchFactCard, 2500);
 
 /**
  * Is the app on rails? While the story has the guest in a `cutscene`
@@ -273,6 +276,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     else nav.openRoom(d.go.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanDoneId]);
+  // The 📷 sheet open: fetch the scan-done chunk its answer needs.
+  useEffect(() => {
+    if (nav.overlay === "scan") LazyScanDone.prefetch();
+  }, [nav.overlay]);
   // The tour starts on Mission with no room open (§10).
   useEffect(() => {
     if (tourSeq !== null) nav.go({ to: "mission" });
@@ -304,15 +311,21 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       setSidesWhich({ sheet: "recruit", id: scan.id });
       return null;
     }
-    try {
-      const o = scan.kind === "checkin" ? checkinOutcome(await s.checkin(scan.at)) : redeemOutcome(await s.redeem(scan.code));
-      if (scan.kind === "unlock") setCodexNote(null);
-      if ("note" in o) return o.note;
-      s.showScan(o.done);
-      return null;
-    } catch (e) {
-      return scanErrorNote(e, scan.kind);
+    // The dialog's chunk loads beside the request (the sheet prefetched it).
+    let o;
+    if (scan.kind === "checkin") {
+      const [m, a] = await Promise.all([loadScanDone(), settled(s.checkin(scan.at))]);
+      if ("e" in a) return m.scanErrorNote(a.e, "checkin");
+      o = m.checkinOutcome(a.r);
+    } else {
+      const [m, a] = await Promise.all([loadScanDone(), settled(s.redeem(scan.code))]);
+      if ("e" in a) return m.scanErrorNote(a.e, "unlock");
+      setCodexNote(null);
+      o = m.redeemOutcome(a.r);
     }
+    if ("note" in o) return o.note;
+    s.showScan(o.done);
+    return null;
   };
   const scanButton = (
     <button type="button" className="choice composer-scan" title="Scan a code on the wall" aria-label="Scan a code" onClick={() => nav.go({ to: "scan" })}>
@@ -453,8 +466,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
                   setCodexNote(null);
                   // A hit or a code already held: the dialog, on the entry.
                   // A miss is answered in the room itself (its ⛔ row).
-                  const o = redeemOutcome(r);
-                  if ("done" in o) s.showScan(o.done);
+                  void loadScanDone().then((m) => {
+                    const o = m.redeemOutcome(r);
+                    if ("done" in o) s.showScan(o.done);
+                  });
                 },
                 (e: unknown) => setCodexNote(redeemErrorText(e)),
               )
@@ -712,7 +727,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
       )}
       {people !== null && <PeopleSheet session={s} only={people === "all" ? undefined : people} onClose={() => setPeople(null)} />}
       {help && <HelpSheet role="guest" onClose={() => setHelp(false)} />}
-      {s.scanDone !== null && <ScanDoneDialog done={s.scanDone} onClose={s.clearScan} />}
+      {s.scanDone !== null && <LazyScanDone done={s.scanDone} onClose={s.clearScan} />}
       {nav.overlay === "scan" && <ScanSheet meId={s.me.id} onScan={onScanned} onClose={() => nav.setOverlay(null)} rooms={scanRooms} />}
       {passing && <FullPass guestId={meId} name={meName} onClose={() => nav.setOverlay(null)} />}
       {st.wallet && (walletSheet === "send" || walletSheet === "request" || walletSheet === "grant") && (

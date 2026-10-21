@@ -72,17 +72,6 @@ export function codexGroups(rows: readonly CodexRow[], query = ""): CodexGroup[]
   return [...groups.entries()].sort((a, b) => firstSeq.get(a[0])! - firstSeq.get(b[0])!).map(([title, rs]) => ({ title, rows: rs }));
 }
 
-/** What the cabinet must change to show `entry` (wave 18b, R1: a scan
- *  lands on its entry): null while the entry isn't in the rows yet (its card
- *  may come in on the stream just after the redeem answered — try again on
- *  the next rows), else the group to unfold and whether the filter box has
- *  to be cleared (it hides the entry). */
-export function focusPlan(rows: readonly CodexRow[], entry: string, query: string): { group: string; clearQuery: boolean } | null {
-  const row = rows.find((r) => r.card.entry === entry);
-  if (row === undefined) return null;
-  return { group: row.category, clearQuery: query !== "" && !codexMatches(row, query) };
-}
-
 /** "Unlocked with a code" / "Learned tonight" / "Shared by Ada". */
 export function codexVia(card: Pick<CodexCard, "via" | "from">): string {
   if (card.via === "share" && card.from) return `Shared by ${card.from.replace(/_/g, " ")}`;

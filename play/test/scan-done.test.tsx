@@ -21,7 +21,8 @@ import {
   redeemOutcome,
   scanErrorNote,
 } from "../src/scan-done.tsx";
-import { codexRows, focusPlan } from "../src/stream/codex-groups.ts";
+import { codexRows } from "../src/stream/codex-groups.ts";
+import { focusPlan } from "../src/stream/codex-room.tsx";
 import type { ChatMessage, CodexCard } from "../src/types.ts";
 
 describe("a redeem's answer", () => {

@@ -10,7 +10,7 @@ import { CODEX_SEEN_MS, loadSeen, saveSeen } from "./codex-seen.ts";
 import type { ChatMessage } from "../types.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { useCardActions } from "./bubble.tsx";
-import { codexGroups, codexRows, codexSub, focusPlan, markSeen, newEntries, questSections, type CodexRow, type QuestRow } from "./codex-groups.ts";
+import { codexGroups, codexMatches, codexRows, codexSub, markSeen, newEntries, questSections, type CodexRow, type QuestRow } from "./codex-groups.ts";
 
 /** Show the filter box once the cabinet holds this many entries. */
 export const CODEX_FILTER_AT = 4;
@@ -53,6 +53,17 @@ function CodexEntryRow({ row, isNew, open, onToggle }: { row: CodexRow; isNew: b
       )}
     </li>
   );
+}
+
+/** What the cabinet must change to show `entry` (wave 18b, R1: a scan
+ *  lands on its entry): null while the entry isn't in the rows yet (its card
+ *  may come in on the stream just after the redeem answered — try again on
+ *  the next rows), else the group to unfold and whether the filter box has
+ *  to be cleared (it hides the entry). */
+export function focusPlan(rows: readonly CodexRow[], entry: string, query: string): { group: string; clearQuery: boolean } | null {
+  const row = rows.find((r) => r.card.entry === entry);
+  if (row === undefined) return null;
+  return { group: row.category, clearQuery: query !== "" && !codexMatches(row, query) };
 }
 
 export function CodexRoom({ messages, meId, empty, focusEntry }: { messages: readonly ChatMessage[]; meId?: string | null; empty: string; focusEntry?: string | null }) {

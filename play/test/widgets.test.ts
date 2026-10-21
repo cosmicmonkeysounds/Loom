@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factMissing, factQuestionOf, factRequiredHint, factQuestions, factQuestionsShown, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
+import { FactCard, factMissing, factRequiredHint } from "../src/widgets-fact.tsx";
+import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factQuestionsShown, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -156,7 +157,7 @@ describe("📝 fact card", () => {
 
   it("an unset card renders the slider greyed, reads 'not set', and File it is off", () => {
     const html = renderToStaticMarkup(
-      createElement(() => WIDGETS["fact"]!.render({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H3: Who wrote it?" } }, seed: 1, onAnswer: () => {}, answered: null })),
+      createElement(() => FactCard({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H3: Who wrote it?" } }, seed: 1, onAnswer: () => {}, answered: null })),
     );
     expect(html).toContain("fact-confidence unset");
     expect(html).toContain(`<output>${CONFIDENCE_UNSET}</output>`);
@@ -188,8 +189,14 @@ describe("📝 fact card", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.fact-confidence\.missing \{ animation/u);
   });
 
+  it("the card is its own chunk, out of the guest's first load (wave 18b)", () => {
+    const reg = readFileSync(new URL("../src/widgets.tsx", import.meta.url), "utf8");
+    expect(reg).toContain('import("./widgets-fact.tsx")');
+    expect(reg).not.toMatch(/^import [^\n]*widgets-fact/mu);
+  });
+
   it("pointing at the slider focuses it, which never sets it: only change, pointer-up and the value keys do (W11)", () => {
-    const src = readFileSync(new URL("../src/widgets.tsx", import.meta.url), "utf8");
+    const src = readFileSync(new URL("../src/widgets-fact.tsx", import.meta.url), "utf8");
     const range = src.slice(src.indexOf('type="range"'), src.indexOf("aria-valuetext", src.indexOf('type="range"')));
     expect(range).toContain("onChange");
     expect(range).toContain("onPointerUp");
@@ -238,7 +245,7 @@ describe("📝 fact card fits the tray (fguest)", () => {
 
   it("File it is the card's default button (bold, the heavy frame), like Send", () => {
     const html = renderToStaticMarkup(
-      createElement(() => WIDGETS["fact"]!.render({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H1: One? | H2: Two?" } }, seed: 1, onAnswer: () => {}, answered: null })),
+      createElement(() => FactCard({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H1: One? | H2: Two?" } }, seed: 1, onAnswer: () => {}, answered: null })),
     );
     expect(html).toContain('class="choice primary widget-go waiting"');
     expect(html.match(/fact-questions/gu)).toHaveLength(1);

@@ -17,7 +17,8 @@ import { guestDotOf } from "../stream/badges.ts";
 import type { ChatMessage, Decision, GuestView } from "../types.ts";
 import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
-import { checkinOutcome, redeemOutcome, scanErrorNote, type CheckinAnswer, type RedeemAnswer, type ScanDone } from "../scan-done.tsx";
+import type { CheckinAnswer, RedeemAnswer, ScanDone } from "../scan-done.tsx";
+import { loadScanDone, settled } from "../scan-done-lazy.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
 import { NO_ANSWERS, mergeAnswered, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
 import { linkFromMessage, linkFromSearch, navFromSearch, withoutRoom } from "../room.ts";
@@ -577,13 +578,14 @@ export function useGuestSession(): GuestSession {
     }
     // A hit or a code already held: the dialog, on its entry. A miss opens
     // the Codex, where the room's own ⛔ row says so.
-    void redeem(code).then(
-      (r) => {
-        const o = redeemOutcome(r);
+    void Promise.all([loadScanDone(), settled(redeem(code))]).then(
+      ([m, a]) => {
+        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "unlock"), { quiet: true });
+        const o = m.redeemOutcome(a.r);
         if ("done" in o) showScan(o.done);
         else setOpenCodex(true);
       },
-      (e: unknown) => alertsRef.current?.raise(scanErrorNote(e, "unlock"), { quiet: true }),
+      () => setOpenCodex(true),
     );
   }, [me, status, redeem, showScan]);
 
@@ -666,13 +668,14 @@ export function useGuestSession(): GuestSession {
     }
     // In: the dialog over the room. Kept out (by the story or the server):
     // a quiet banner says why.
-    void checkin(at).then(
-      (r) => {
-        const o = checkinOutcome(r);
+    void Promise.all([loadScanDone(), settled(checkin(at))]).then(
+      ([m, a]) => {
+        if ("e" in a) return alertsRef.current?.raise(m.scanErrorNote(a.e, "checkin"), { quiet: true });
+        const o = m.checkinOutcome(a.r);
         if ("done" in o) showScan(o.done);
         else alertsRef.current?.raise(o.note, { quiet: true });
       },
-      (e: unknown) => alertsRef.current?.raise(scanErrorNote(e, "checkin"), { quiet: true }),
+      () => {},
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me, status, post]);
