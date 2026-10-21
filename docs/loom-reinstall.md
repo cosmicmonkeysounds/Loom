@@ -481,6 +481,21 @@ tolerance: metres, and m² for orientations).
   fallback (the web game never *plays* on it, §3).
 - Godot: `reinstall/vr/house/house.json` is a copy kept identical by
   `pnpm --filter @loom/house sync` (a test fails when it drifts).
+- **The house speakers are not in the map** (wave 17, decision D5). They
+  live in the project file **`audio.json`** (`@loom/house` `AudioConfig`,
+  `validateAudio`, `resolveTargets`; `house/src/audio.ts`): the audio
+  interface (16 in / 16 out), its routing matrix, the speakers (each on a
+  `house.json` room id with a position and its outputs), zones, and where
+  each story sound plays. A speaker edit or a re-patch mid-show never bumps
+  the map version (which would remap every game), and the tent and shed
+  variants share it — one physical house. Never name it `house.audio.json`
+  (that reads as a map variant). It is snapshotted at launch beside the
+  maps, a director's save from the map editor's Audio panel wins over it,
+  `LOOM_AUDIO` is the LAN fallback, and `sync-example` merges it like a
+  map with its own `--keep-audio` / `--replace-audio`. Routes: `GET | POST
+  /api/mod/audio`, `POST /api/mod/audio/{project,test}`
+  (`core/server/audio.ts`); the house Mac's stagehand `audio` router reads
+  it — [`docs/trapped/room-audio.md`](./trapped/room-audio.md) §11.
 
 The shared code is the pure-TS package **`@loom/house`** (`house/`, no
 dependencies): schema, `validateHouse`, `buildWalls`/`buildFloors`/
@@ -922,7 +937,18 @@ the mod feed: the screen cues, attract mode (the character hidden or asleep → 
 ads, never "ONLINE", no pass piloting), the countdown, the TV's lines, the shared King (`king: {hp, max, fallen,
 armed} | null` — `armed` off his prop's `armed` world var at or above its
 `min`, null with no such rule or no story; null when the map has no King),
-and a heartbeat the editor's Run → Terminals card reads. A tablet without
+and a heartbeat the editor's Run → Terminals card reads (the device's health
+rides the poll's query: sound unlocked, visible, battery, full screen
+`fs=1|0` since wave 17 — ⛶ on the card when not —, build). Since wave 17
+it also carries the house-wide story **`moments`** (beats, admin cues,
+picks, finds; ≤ 12, live only) and the public **`night`** vars the
+cutscenes draw from (`terminal/src/cutscene/`). While nobody pilots a
+terminal it plays a client-side **idle show** (screensavers, ads,
+popups) — asleep, with nothing that names the character; awake, with the
+scanner shrunk to a corner scan box — and the server's `attract` keeps
+meaning only "the character is hidden or asleep". Every terminal asks for
+full screen on every tap while it isn't (`terminal/src/fullscreen.ts`;
+[`docs/trapped/kiosk.md`](./trapped/kiosk.md)). A tablet without
 **WebGL2** (probed once at boot, `terminal/src/webgl.ts`) behaves as
 `face` and never loads three.js; a `mirror` shows a still notice.
 
