@@ -8,7 +8,7 @@ import type { LiveCard } from "../moments/model.ts";
 import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "../rooms/spaces.ts";
 import { guestDot } from "../rooms/chats.ts";
 import type { Channel, CountdownSummary, Decision, GuestView, NameBadge, ObjectiveView } from "../types.ts";
-import { factionTileOf } from "../sides/model.ts";
+import { factionModeOf, factionTileOf } from "../sides/model.ts";
 import { widgetLabel } from "../widgets.tsx";
 import type { Nav } from "../moments/exits.ts";
 /** Where a decision docks when it would have docked in the lobby (= `session/guest.ts` MISSION_DOCK). */
@@ -146,7 +146,7 @@ function wordNav(word: PlaceWord): Nav {
  * `name` is the words to show.
  */
 export function whereRowOf(
-  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean; sides?: GuestView["sides"] },
+  view: Pick<GuestView, "location"> & { mission?: ReturnType<typeof extOf>["mission"]; interactions?: GuestView["interactions"]; captured?: boolean; sides?: GuestView["sides"]; canFound?: GuestView["canFound"] },
   listed: ReadonlySet<string>,
   titles: ReadonlyMap<string, string>,
 ): WhereRow | null {
@@ -160,8 +160,9 @@ export function whereRowOf(
   if (button !== undefined) return { kind: "word", word: "mission", label: button.label, nav: { to: "act", id: button.id } };
   const word = (PLACE_WORDS as readonly string[]).includes(place.id) ? (place.id as PlaceWord) : null;
   // On a side already: the row opens Sides, never asks them to choose (N4).
-  // Wave 18b, faction mode (a row carries `kind`): the words say "faction".
-  const factions = (view.sides ?? []).some((x) => x.kind !== undefined);
+  // Wave 18b, faction mode (`canFound`, or a row's `kind`): the words say
+  // "faction" — before anyone has founded one too.
+  const factions = factionModeOf(view);
   if (word === "sides" && (view.sides ?? []).some((x) => x.mine)) return { kind: "word", word, label: factions ? "🚪 Factions" : "🚪 Sides", nav: wordNav(word) };
   if (word !== null) {
     const custom = place.name.trim() !== "" && place.name.trim().toLowerCase() !== word ? place.name.trim() : null;
@@ -202,7 +203,7 @@ export function missionOf(o: MissionInput): MissionModel {
   const split = splitGlyph(objective?.title ?? "");
   const listed = new Set(o.list.map((c) => c.id));
   const titles = new Map(o.list.map((c) => [c.id, c.title]));
-  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured, ...(ext.sides !== undefined ? { sides: ext.sides } : {}) }, listed, titles) : null;
+  const where0 = objective !== null ? whereRowOf({ location: v.location, mission: ext.mission, interactions: v.interactions, captured: v.captured, ...(ext.sides !== undefined ? { sides: ext.sides } : {}), ...(typeof v.canFound === "boolean" ? { canFound: v.canFound } : {}) }, listed, titles) : null;
   // A screen word (📷 Check in, 🎟 Show my pass) is done once every to-do
   // is ticked: the row would ask again for what was just done (GN-F11).
   const allDone = objective !== null && objective.checklist.length > 0 && objective.checklist.every((c) => c.done === true);

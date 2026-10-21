@@ -206,4 +206,16 @@ describe("wave 18b, faction mode: your faction's tile and your badges", () => {
     expect(whereRowOf({ location: null, mission: place, sides: [rival, mine] }, listed, titles)).toMatchObject({ label: "🚪 Factions" });
     expect(whereRowOf({ location: null, mission: place, sides: [{ id: "x", name: "X", leader: null, mine: true }] }, listed, titles)).toMatchObject({ label: "🚪 Sides" });
   });
+
+  it("wave 18b fix: before anyone founds one, `canFound` alone says faction mode (never \"Choose a side\")", () => {
+    const listed = new Set<string>();
+    const titles = new Map<string, string>();
+    const place = { objective: "x", place: { id: "sides", name: "sides" } };
+    expect(whereRowOf({ location: null, mission: place, sides: [], canFound: true }, listed, titles)).toMatchObject({ label: "🚪 Choose a faction" });
+    // Not allowed to found (a leader, the window shut) is still faction mode.
+    expect(whereRowOf({ location: null, mission: place, sides: [], canFound: false }, listed, titles)).toMatchObject({ label: "🚪 Choose a faction" });
+    // The mission model passes the view's `canFound` through.
+    const m = missionOf(input({ view: view({ canFound: true, sides: [], objectives: [obj("found")], mission: place }) }));
+    expect(m.where).toMatchObject({ label: "🚪 Choose a faction" });
+  });
 });

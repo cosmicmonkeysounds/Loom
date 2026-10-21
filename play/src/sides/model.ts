@@ -57,10 +57,10 @@ export function sidesOf(view: GuestView | null): SideRow[] {
 
 /** Is the story in faction mode (wave 18b, `founding:`)? The server says so
  *  with `canFound` (always sent then) or a row's `kind`. */
-export function factionModeOf(view: GuestView | null | undefined): boolean {
+export function factionModeOf(view: Pick<GuestView, "canFound" | "sides"> | null | undefined): boolean {
   if (view === null || view === undefined) return false;
   if (typeof view.canFound === "boolean") return true;
-  return (extOf(view).sides ?? []).some((s) => s.kind !== undefined);
+  return (Array.isArray(view.sides) ? view.sides : []).some((s) => s.kind !== undefined);
 }
 
 /** Start → Factions (wave 18b): offered when a faction is listed, you have
