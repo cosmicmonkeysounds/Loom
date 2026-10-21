@@ -41,3 +41,14 @@ describe("expression blending + the mouth", () => {
     expect(mouthFromLevel(0, 0.02)).toBe(0); // the noise floor stays shut
   });
 });
+
+describe("the face's frame cap (OB-2)", () => {
+  it("draws at most 30 fps and eases a 30 Hz frame as two 60 Hz ones", async () => {
+    const { FACE_FPS, easeOver } = await import("../src/face/Face.tsx");
+    expect(FACE_FPS).toBeLessThanOrEqual(30);
+    expect(easeOver(0.08, 1)).toBeCloseTo(0.08, 6);
+    // Two steps of 0.08 from 0: 1 - 0.92².
+    expect(easeOver(0.08, 2)).toBeCloseTo(1 - 0.92 * 0.92, 6);
+    expect(easeOver(0.5, 0)).toBe(0);
+  });
+});

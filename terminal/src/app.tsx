@@ -977,6 +977,9 @@ function Terminal({
 
   // The idle show plays while the terminal waits and nobody is speaking in its room.
   const idle = screen.kind === "attract" && !roomBusy && roomLine === null;
+  // The face under a full-screen idle show is covered: it sleeps (OB-2),
+  // except while the show's `face` layout lets it through.
+  const [idleLayout, setIdleLayout] = useState("");
   const scanBox = useRef<HTMLElement>(null);
 
   const online = pilot !== null ? session.online : castOnline;
@@ -1008,7 +1011,7 @@ function Terminal({
         <section className={`face-pane${showWorld ? " showing-world" : ""}`}>
           {/* The face stays mounted under the world view: it holds the speech
               queue's level handle and its own easing state. */}
-          <Face mood={mood} speaking={speaking} handle={face} />
+          <Face mood={mood} speaking={speaking} handle={face} paused={idle && !covered && !showWorld && idleLayout !== "face"} />
           {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
           {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
           {showWorld && (pane === "shadow" ? <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="pane" recover="retry" /> : <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" raycast={pane === "raycast"} />)}
@@ -1052,7 +1055,7 @@ function Terminal({
             line — the world keeps its pane beside it — and the scan box in the
             corner above it: the camera always drawn, a pass read whatever
             plays. A pass connecting, a line, or the room's voice puts it away. */}
-        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={idle && !covered} region={showWorld ? "pane" : "full"} reserveRef={scanBox} />
+        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={idle && !covered} region={showWorld ? "pane" : "full"} reserveRef={scanBox} onLayout={setIdleLayout} />
         {screen.kind === "attract" && (
           <ScanBox
             boxRef={scanBox}

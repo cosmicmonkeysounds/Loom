@@ -214,7 +214,7 @@ export function Tv({
   return (
     <div className={`terminal tv${showWorld ? " with-world" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
       <section className="tv-face">
-        <Face mood={mood} speaking={speaking} handle={face} />
+        <Face mood={mood} speaking={speaking} handle={face} paused={attract} />
         {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
       </section>
       {showWorld && <section className="tv-world">{worldSlot(world)}</section>}

@@ -48,6 +48,8 @@ export interface IdleShowProps {
   region?: "full" | "pane";
   /** The scan box in the corner: no popup lands on it. */
   reserveRef?: RefObject<HTMLElement | null>;
+  /** Hears each segment's layout (the wall's face sleeps unless it shows: `face`). */
+  onLayout?: (layout: string) => void;
 }
 
 interface Gag {
@@ -67,7 +69,7 @@ function reserveOf(show: HTMLElement | null, box: HTMLElement | null | undefined
   return { x: (b.left - a.left) / a.width - m, y: (b.top - a.top) / a.height - m, w: b.width / a.width + 2 * m, h: b.height / a.height + 2 * m };
 }
 
-export function IdleShow({ name, state, asleep, character, target, active, region = "full", reserveRef }: IdleShowProps) {
+export function IdleShow({ name, state, asleep, character, target, active, region = "full", reserveRef, onLayout }: IdleShowProps) {
   const seed = useMemo(() => hash32(name.trim().toLowerCase() || "terminal"), [name]);
   const reduced = useReducedMotion();
   // A moment's scene over the show pauses it where it stands (still drawn —
@@ -271,6 +273,8 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
   const attention = running && attentionOn(lastTouch.current, now, target);
   const gagFor = (ad: IdleAd) => (gag !== null && gag.ad === ad.id && now < gag.until ? gag : null);
   const adNode = (ad: IdleAd, size: "big" | "half") => <AdView key={ad.id} ad={ad} ctx={ctx} size={size} gag={gagFor(ad)} now={now} reduced={reduced} onButton={(e) => onAdButton(ad, e)} onClose={onAdClose} />;
+  const layout = seg.layout;
+  useEffect(() => onLayout?.(layout), [layout, onLayout]);
   const tip = seg.layout === "face" ? fillCopy(FACE_TIPS[mix(seed, seg.index) % FACE_TIPS.length]!, ctx) : null;
   const storming = seg.layout === "storm";
   return (
