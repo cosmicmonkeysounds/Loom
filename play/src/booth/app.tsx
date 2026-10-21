@@ -267,7 +267,11 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const openScan = (guest?: string, name?: string) => setLayer({ kind: "scan", ...(guest !== undefined ? { guest } : {}), ...(name !== undefined ? { caption: `📷 Scan ${name}'s pass` } : {}) });
   const openPick = (objective: string) => {
     const o = (s.view?.objectives ?? []).find((x) => x.id === objective) as BoothObjective | undefined;
-    if (o !== undefined) setLayer({ kind: "pick", objective, opened: o });
+    if (o === undefined) return;
+    // Its "PLAYER SELECT is ready" pop-out is answered by opening it.
+    const prefix = `pick:${objective}:`;
+    for (const k of [rung.current?.key, ...rung.tray.map((x) => x.key)]) if (k !== undefined && k.startsWith(prefix)) rung.retire(k);
+    setLayer({ kind: "pick", objective, opened: o });
   };
   const openers: BoothOpeners = {
     act: (n, g) => s.act(n, g ?? null),
