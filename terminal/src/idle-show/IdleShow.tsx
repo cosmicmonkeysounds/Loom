@@ -202,7 +202,7 @@ export function IdleShow({ name, state, asleep, character, target, active, regio
   };
   const onSaverEvent = useCallback(
     (e: SaverEvent) => {
-      if (e === "corner") play("tada", 0.5);
+      if (e === "corner") play("lose", 0.35); // a near miss: so close
       else if (e === "quack") play("blip", 0.6, 1.8);
       else if (e === "solved") play("sparkle", 0.35);
     },
