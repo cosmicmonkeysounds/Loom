@@ -2218,6 +2218,11 @@ func _test_lobby_picker() -> void:
 		many.append({"id": "g-%02d" % i, "name": "P%d" % i, "eligible": true})
 	link.candidates_received.emit(many)
 	_check(lobby.picker.columns == 4 and lobby.tile_node(0) != null and lobby.tile_node(8) == null, "lobby: 11 programs, a page of 4 × 2")
+	link.set("saved_setup", true)
+	link.status_changed.emit("Connected.")
+	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1, "lobby: a full page, ◀ ▶ and the ⚙ never overlap (%s)" % _overlap(lobby.get("_buttons")))
+	link.set("saved_setup", false)
+	link.status_changed.emit("Connected.")
 	lobby.press("next")
 	_check(lobby.picker.index == 8 and lobby.tile_node(8) != null and lobby.tile_node(0) == null and (lobby.get("_page_label") as Label3D).text == "page 2 / 2", "lobby: ▶ turns the page")
 	lobby.press("next")
@@ -2282,6 +2287,7 @@ func _test_setup_panel() -> void:
 	var panel := lobby.setup_panel()
 	_check(lobby.view() == "setup" and panel.visible and not (lobby.get("_grid") as Node3D).visible, "setup: an unconfigured headset shows SET UP THIS HEADSET")
 	_check(panel.choices.size() == 2 and panel.server_index == 0 and panel.station == "Headset", "setup: the link's servers, the first chosen; the name starts as Headset")
+	_check(_overlap(panel.buttons()) == "", "setup: no two buttons overlap (%s)" % _overlap(panel.buttons()))
 	var eye := game.player.camera.global_position
 	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
 	var tap := func(at: Vector2) -> void:
@@ -2336,3 +2342,17 @@ func _test_setup_panel() -> void:
 	game.pointer.clear_injection()
 	main.queue_free()
 	await process_frame
+
+
+## The first two of `buttons` (`{id, center, size}`) whose rects overlap, as
+## text, else "".
+static func _overlap(buttons: Array) -> String:
+	for i in buttons.size():
+		for j in range(i + 1, buttons.size()):
+			var a: Dictionary = buttons[i]
+			var b: Dictionary = buttons[j]
+			var d: Vector2 = (a["center"] - b["center"]).abs()
+			var reach: Vector2 = (a["size"] + b["size"]) / 2.0
+			if d.x < reach.x and d.y < reach.y:
+				return "%s × %s" % [a["id"], b["id"]]
+	return ""
