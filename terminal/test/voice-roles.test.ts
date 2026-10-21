@@ -8,13 +8,13 @@ const show = validateHouse(showHouse).house!;
 const cfg = (over: Partial<TerminalConfig> = {}): TerminalConfig => defaultConfig({ eventId: "e", token: "t", spot: "hall", ...over });
 
 describe("voiceRoles (D9)", () => {
-  it("a placed wall terminal hears and is heard, on every view but the TV and the mirror", () => {
+  it("a placed wall terminal hears and is heard, on every view but the TV, the mirror and the tent laptop", () => {
     for (const view of VIEWS) {
       const r = voiceRoles(cfg({ view }));
-      if (view === "mirror") expect(r).toEqual(NO_VOICE);
+      if (view === "mirror" || view === "reinstall") expect(r).toEqual(NO_VOICE);
       else if (view === "tv") expect(r).toEqual({ mic: false, voices: true });
       else expect(r).toEqual({ mic: true, voices: true });
-      expect(micDefault(view)).toBe(view !== "tv" && view !== "mirror");
+      expect(micDefault(view)).toBe(view !== "tv" && view !== "mirror" && view !== "reinstall");
     }
   });
   it("⚙ turns either half off, and only the TV's microphone on", () => {
