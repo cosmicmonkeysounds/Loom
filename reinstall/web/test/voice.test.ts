@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { forward, mulawEncode, styleOf, VOICE_CHUNK_BYTES, VOICE_RATE, VOICE_TAIL_MS } from "@loom/house";
 import type { HouseMap } from "@loom/house";
 import type { SpatialSource } from "../src/spatial.ts";
-import { earsFor, fadeIn, fromBase64, listenerAxes, screenPose, VOICE_UP_QUEUE, VoiceLink, voiceGone, type MicSource, type ScreenPose, type VoiceChannel, type VoiceSink } from "../src/game/voice.ts";
+import { earsFor, earsLine, fadeIn, fromBase64, listenerAxes, screenPose, VOICE_UP_QUEUE, VoiceLink, voiceGone, type MicSource, type ScreenPose, type VoiceChannel, type VoiceSink } from "../src/game/voice.ts";
 import { TWO_ROOMS } from "./houses.ts";
 
 class FakeSource implements SpatialSource {
@@ -187,6 +187,13 @@ describe("placement", () => {
     expect(earsFor(h, "s1", [{ session: "s1", p: [6, 0, 1.5] }])).toBe(1);
     expect(earsFor(h, "s1", [{ session: "s1", p: [0.5, 0, 1.5] }])).toBe(1); // `t` is 6.5 m away
     expect(earsFor(h, "s1", [{ session: "s2", p: [6, 0, 1.5] }])).toBe(0);
+  });
+
+  it("the status line says who hears you only while someone does and the mic is live", () => {
+    expect(earsLine({ mic: "live", listening: true, hearing: 0, ears: 1 })).toBe("🎤 a terminal can hear you");
+    expect(earsLine({ mic: "live", listening: true, hearing: 0, ears: 2 })).toBe("🎤 2 terminals can hear you");
+    expect(earsLine({ mic: "muted", listening: true, hearing: 0, ears: 2 })).toBeNull();
+    expect(earsLine({ mic: "live", listening: false, hearing: 0, ears: 0 })).toBeNull();
   });
 
   it("fades a chunk's head in, and reads base64", () => {

@@ -68,6 +68,19 @@ export interface VoiceHud {
   hearing: number;
 }
 
+/** The voice link as the game's HUD shows it: plus how many terminals hear
+ *  this player (`earsFor`, counted only while the server says one does). */
+export interface VoiceHudState extends VoiceHud {
+  ears: number;
+}
+
+/** The status line's "N can hear you": while the server says a terminal
+ *  hears this player and the mic is live, else nothing. */
+export function earsLine(voice: VoiceHudState): string | null {
+  if (!voice.listening || voice.ears <= 0 || voice.mic !== "live") return null;
+  return voice.ears === 1 ? "🎤 a terminal can hear you" : `🎤 ${voice.ears} terminals can hear you`;
+}
+
 // --- pure placement ------------------------------------------------------------
 
 /** Where a voice comes from: a point in house metres and the way it faces. */
