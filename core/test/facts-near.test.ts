@@ -182,14 +182,14 @@ describe("judgeFiling — the pure judge", () => {
   if (!v.ok) throw new Error("bad fixture");
   const book = bookOf(v.facts as FactsFile);
   it("a near miss is proposed accurate with the key form it is near; exact and far are as before", () => {
-    expect(judgeFiling(book, "Q2", "Mr Pickels", 100)).toEqual({ verdict: "accurate", near: "Mister Pickles" });
-    expect(judgeFiling(book, "Q2", "Mr Pickels", 40)).toEqual({ verdict: "accurate", near: "Mister Pickles" });
-    expect(judgeFiling(book, "Q2", "tabbby", 100)).toEqual({ verdict: "accurate", near: "tabby" });
-    expect(judgeFiling(book, "Q1", "1,997", 100)).toEqual({ verdict: "accurate", near: "1997" });
-    expect(judgeFiling(book, "Q2", "Mister Pickles", 100)).toEqual({ verdict: "accurate", near: null });
-    expect(judgeFiling(book, "Q2", "Mister Whiskers", 100)).toEqual({ verdict: "lie", near: null });
-    expect(judgeFiling(book, "Q1", "1996", 100)).toEqual({ verdict: "lie", near: null });
-    expect(judgeFiling(book, "Q1", "1996", 99)).toEqual({ verdict: "uncertain", near: null });
+    expect(judgeFiling(book, "Q2", "Mr Pickels", 100)).toEqual({ verdict: "accurate", near: "Mister Pickles", ask: true });
+    expect(judgeFiling(book, "Q2", "Mr Pickels", 40)).toEqual({ verdict: "accurate", near: "Mister Pickles", ask: true });
+    expect(judgeFiling(book, "Q2", "tabbby", 100)).toEqual({ verdict: "accurate", near: "tabby", ask: true });
+    expect(judgeFiling(book, "Q1", "1,997", 100)).toEqual({ verdict: "accurate", near: "1997", ask: true });
+    expect(judgeFiling(book, "Q2", "Mister Pickles", 100)).toEqual({ verdict: "accurate", near: null, ask: false });
+    expect(judgeFiling(book, "Q2", "Mister Whiskers", 100)).toEqual({ verdict: "lie", near: null, ask: true });
+    expect(judgeFiling(book, "Q1", "1996", 100)).toEqual({ verdict: "lie", near: null, ask: true });
+    expect(judgeFiling(book, "Q1", "1996", 99)).toEqual({ verdict: "uncertain", near: null, ask: true });
     expect(judgeFiling(book, "Q9", "x", 100)).toBeNull();
     expect(nearKey(book, "Q2", "the mister pickles")).toBeNull(); // exact after folding
   });

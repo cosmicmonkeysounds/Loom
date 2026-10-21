@@ -179,22 +179,35 @@ export function nearKey(book: FactsBook, keyId: string, answer: string): string 
 export interface FilingJudgement {
   verdict: FactVerdict;
   near: string | null;
+  /** (wave 18b, O4) Not an exact match (the fold, an alias, `spellOut`):
+   *  a near miss or a plain miss — the story's `judge:` character is asked
+   *  to rule on it in `auto` mode. False for an exact match. */
+  ask: boolean;
 }
 
 /**
- * Judge a 📝 filing (wave 11, C6): `judgeAnswer`, except that a near miss
+ * Judge a 📝 filing (wave 11, C6; wave 18b, O4): `judgeAnswer`, except that a near miss
  * (`nearKey`) is never a lie or a guess by itself — it is **proposed
  * accurate** with `near` set, and the runtime routes that one filing down
  * the review path whatever the mode, so a director decides; left alone, a
  * round's settle takes the proposal, so a mistyped right answer is never
- * marked. Null for a key the book lacks.
+ * marked. Every filing that is not an exact match carries `ask` (wave 18b:
+ * the `judge:` character rules on all of them in `auto` mode, not only on
+ * the near misses). Null for a key the book lacks.
  */
 export function judgeFiling(book: FactsBook, keyId: string, answer: string, confidence: number): FilingJudgement | null {
   const verdict = judgeAnswer(book, keyId, answer, confidence);
   if (verdict === null) return null;
-  if (verdict === "accurate") return { verdict, near: null };
+  if (verdict === "accurate") return { verdict, near: null, ask: false };
   const near = nearKey(book, keyId, answer);
-  return near === null ? { verdict, near: null } : { verdict: "accurate", near };
+  return near === null ? { verdict, near: null, ask: true } : { verdict: "accurate", near, ask: true };
+}
+
+/** Is `answer` an exact match of the key (wave 18b: the one case nobody
+ *  rules on)? False for a key the book lacks. */
+export function isExact(book: FactsBook, keyId: string, answer: string): boolean {
+  const key = factsKey(book, keyId);
+  return key !== null && exactly(key, answer);
 }
 
 /** The mode the world holds at the book's `modeVar`: `review` exactly, else `auto`. */

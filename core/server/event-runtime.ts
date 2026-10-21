@@ -102,6 +102,7 @@ import {
   factsKey,
   factsProblems,
   judgeAnswer,
+  isExact,
   judgeFiling,
   judgeMode,
   parseFactsBook,
@@ -384,6 +385,21 @@ export function nearNotice(name: string, args: Record<string, string | number | 
     return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate — asked ${judge} to rule. Without a ruling it is credited if nobody judges it; you can judge it yourself on Run → Mind → Judging.`;
   }
   return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate and is credited if nobody judges it. Judge it on Run → Mind → Judging.`;
+}
+
+/** The `# hosts` line after a 📝 plain miss's own (wave 18b, O4): it is not
+ *  an exact match and not spelled close to the key, so it is held pending
+ *  with its proposal (a lie at 100, a guess below) while `judge` rules. */
+export function missNotice(name: string, args: Record<string, string | number | boolean>, verdict: string, judge: string): string {
+  const q = typeof args["question"] === "string" ? args["question"] : "?";
+  const a = typeof args["answer"] === "string" ? args["answer"] : "";
+  return `📝 Not an exact match: ${name}'s ${q} filing "${a}" is proposed ${verdict} — asked ${judge} to rule. Without a ruling the proposal stands at the round's settle; you can judge it yourself on Run → Mind → Judging.`;
+}
+
+/** The `# hosts` line when the `judge:` character's worker stops ruling
+ *  (wave 18b: two expiries in a row — the judge stall). */
+export function judgeStallNotice(judge: string): string {
+  return `⚖ ${judge} isn't ruling: filings fall back to the house rule.`;
 }
 
 /** The `# hosts` line after a `judge:` character's ruling (wave 11b). */
@@ -775,6 +791,10 @@ export class EventRuntime {
     busy: (req) => this.postAgentBusy(req),
     stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
     judgeGone: () => this.pushModSnapshots(),
+    // Wave 18b: a ruling left the judge queue (queued → asking), and the
+    // judge stall's one `# hosts` line.
+    judgeSent: () => this.pushModSnapshots(),
+    judgeStalled: () => this.postJudgeStall(),
     now: () => this.clock(),
     presence: () => this.pushSnapshots(),
   });
@@ -1775,11 +1795,18 @@ export class EventRuntime {
     if (book === null || this.sim === null) return undefined;
     const judge = this.sim.model.judge;
     const view = judge === null ? this.factsWatch.view(this.sim, book) : { ...this.factsWatch.view(this.sim, book), judge };
-    const asking = new Set(this.agents.judging.map((j) => `${j.filing.person}\u0000${j.filing.question}`));
+    // Asking (out with the worker) or — wave 18b — still in the judge queue.
+    const asking = new Map(this.agents.judging.map((j) => [`${j.filing.person}\u0000${j.filing.question}`, this.agents.judgeQueued(j.id)]));
     if (asking.size === 0) return view;
     return {
       ...view,
-      questions: view.questions.map((q) => ({ ...q, filings: q.filings.map((f) => (asking.has(`${f.person}\u0000${f.question}`) ? { ...f, asking: true as const } : f)) })),
+      questions: view.questions.map((q) => ({
+        ...q,
+        filings: q.filings.map((f) => {
+          const queued = asking.get(`${f.person}\u0000${f.question}`);
+          return queued === undefined ? f : { ...f, asking: true as const, ...(queued ? { queued: true as const } : {}) };
+        }),
+      })),
     };
   }
 
@@ -1822,11 +1849,13 @@ export class EventRuntime {
    * the client's) and {text}. Null = nothing to judge (no key in force, an
    * un-keyed card, another kind); "refused" = a bad filing (400). A `fact`
    * filing for a question the key lacks is refused only while a key exists;
-   * without one the args pass untouched (other projects). `review`: a near
-   * miss filed while the mode is `auto` — that one filing takes the review
-   * path (`commitUnderReview`); `near` = the key form it is close to.
+   * without one the args pass untouched (other projects). `review`: the
+   * filing takes the review path (`commitUnderReview`) while the mode is
+   * `auto` — a near miss always (wave 11), and (wave 18b, O4) any filing
+   * that is not an exact match when the `judge:` character can rule now
+   * (`ruler`); `near` = the key form it is close to.
    */
-  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean; near: string | null } | null | "refused" {
+  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean; near: string | null; ruler: string | null; verdict: FactVerdict | null } | null | "refused" {
     const book = this.factsBook();
     if (book === null) return null;
     if (card.kind === "fact") {
@@ -1843,10 +1872,14 @@ export class EventRuntime {
       // story reads "Mister Pickles", never whichever alias came in last.
       // Only a filer who already knew it (or all but typed it) ever puts it
       // in the journal.
+      const auto = judgeMode(book, worldReader(this.sim!)) === "auto";
+      const ruler = auto && judged.ask ? this.rulerOnline() : null;
       return {
         args: verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict },
-        review: judged.near !== null && judgeMode(book, worldReader(this.sim!)) === "auto",
+        review: auto && (judged.near !== null || ruler !== null),
         near: judged.near,
+        ruler,
+        verdict,
       };
     }
     if (card.kind === "answer") {
@@ -1855,7 +1888,7 @@ export class EventRuntime {
       if (q === undefined) return null;
       if (typeof t !== "string" || t.trim() === "") return "refused";
       const verdict = judgeAnswer(book, q, t, 100);
-      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false, near: null };
+      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false, near: null, ruler: null, verdict };
     }
     return null;
   }
@@ -1910,10 +1943,11 @@ export class EventRuntime {
   }
 
   /**
-   * Ask the `judge:` character to rule on `person`'s pending near miss for
-   * `question` — once per filing answer (`rulingsAsked`; a restart forgets,
-   * so a near miss still pending after a restore may be asked again). True
-   * when the `judge` frame went out.
+   * Ask the `judge:` character to rule on `person`'s pending filing for
+   * `question` — a near miss, or (wave 18b, O4) any other filing that is
+   * not an exact match — once per filing answer (`rulingsAsked`; a restart
+   * forgets, so one still pending after a restore may be asked again).
+   * True when the ruling joined the hub's judge queue.
    */
   private askRuling(person: string, question: string): boolean {
     const judge = this.rulerOnline();
@@ -1922,8 +1956,8 @@ export class EventRuntime {
     const f = this.filingOf(person, question);
     if (f === null || f.final !== null) return false;
     const key = factsKey(book, question);
+    if (key === null || isExact(book, question, f.answer)) return false;
     const near = this.factsWatch.nearOf(book, question, f.answer);
-    if (key === null || near === null) return false;
     const asked = `${person}\u0000${question}\u0000${f.answer}`;
     if (this.rulingsAsked.has(asked)) return false;
     if (this.agents.judging.some((j) => j.filing.person === person && j.filing.question === question)) return false;
@@ -1934,6 +1968,7 @@ export class EventRuntime {
       key: { answer: key.answer, aliases: key.forms.slice(1) },
       answer: f.answer,
       confidence: f.confidence,
+      near,
     });
     if (id === null) return false;
     this.rulingsAsked.add(asked);
@@ -1953,7 +1988,7 @@ export class EventRuntime {
     for (const f of this.factsWatch.all(this.sim, book.confirm)) {
       const due = `${f.person}\u0000${f.question}\u0000${f.answer}`;
       if (!this.rulingsDue.has(due)) continue;
-      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) {
+      if (f.final !== null || isExact(book, f.question, f.answer)) {
         this.rulingsDue.delete(due);
         continue;
       }
@@ -1961,13 +1996,15 @@ export class EventRuntime {
     }
   }
 
-  /** After a restore: the near misses still pending, due a ruling. */
+  /** After a restore: the filings still pending that are not an exact
+   *  match (near misses, and — wave 18b — plain misses held for a ruling),
+   *  due a ruling. */
   private noteRulingsDue(): void {
     this.rulingsDue.clear();
     const book = this.factsBook();
     if (book === null || this.sim === null || this.sim.model.judge === null) return;
     for (const f of this.factsWatch.all(this.sim, book.confirm)) {
-      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) continue;
+      if (f.final !== null || isExact(book, f.question, f.answer)) continue;
       this.rulingsDue.add(`${f.person}\u0000${f.question}\u0000${f.answer}`);
     }
   }
@@ -2285,6 +2322,15 @@ export class EventRuntime {
   /** A worker stopped answering (its head waited 60 s): one line in the
    *  story's staff room (`# hosts`), so a director answers by hand. No staff
    *  room → nothing (Run still shows `agentQueue.stalled`). */
+  /** Wave 18b: the `judge:` character's worker stopped ruling (two expiries
+   *  in a row): one `# hosts` line; the queue waits, then falls back. */
+  private postJudgeStall(): void {
+    const sim = this.sim;
+    const room = sim === null ? null : hostsRoomOf(sim.model);
+    if (room === null || sim === null) return;
+    this.fanout(this.commit("broadcast", `channel(${room})`, judgeStallNotice(sim.model.judge ?? "The judge")));
+  }
+
   private postAgentStall(worker: { name: string; characters: string[] }, waiting: number): void {
     const sim = this.sim;
     const room = sim === null ? null : hostsRoomOf(sim.model);
@@ -5043,10 +5089,14 @@ export class EventRuntime {
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
         const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
-        // A near miss in auto mode: the story's `judge:` character rules on
-        // it when its worker can answer now (wave 11b) — else wave 11's rule.
-        const ruler = judged?.review === true ? this.rulerOnline() : null;
-        this.fanout(judged?.review === true ? this.commitUnderReview(answered, nearNotice(this.sim!.persons.get(id)?.name ?? id, args, judged.near, ruler)) : answered());
+        // Not an exact match in auto mode: the story's `judge:` character
+        // rules on it when its worker can (wave 11b near misses, wave 18b
+        // every other filing) — else wave 11's rule: a near miss waits,
+        // proposed accurate; a plain miss is judged at once.
+        const ruler = judged !== null && judged.review ? judged.ruler : null;
+        const who = this.sim!.persons.get(id)?.name ?? id;
+        const notice = judged === null || !judged.review ? null : judged.near !== null ? nearNotice(who, args, judged.near, ruler) : ruler !== null ? missNotice(who, args, judged.verdict ?? "uncertain", ruler) : null;
+        this.fanout(judged?.review === true ? this.commitUnderReview(answered, notice) : answered());
         if (ruler !== null && typeof args["question"] === "string") this.askRuling(id, args["question"]);
         sendJson(res, 200, { ok: true });
         return true;
