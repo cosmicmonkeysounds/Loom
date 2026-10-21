@@ -10,6 +10,7 @@ import { allowed } from "../src/cutscene/pick.ts";
 import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import type { SceneProps } from "../src/cutscene/types.ts";
+import type { ScreenMoment } from "../src/screen.ts";
 
 const SHOW = fileURLToPath(new URL("../../core/examples/trapped-in-the-internet", import.meta.url));
 
@@ -191,8 +192,8 @@ describe("act 1 — the card and the carry", () => {
 describe("act 1 — the filing window fits its slide", () => {
   const scene = SCENES.find((s) => s.id === "hunt_results")!;
   const draw = (target: "tv" | "wall", at: number, t: number, closed = false) => {
-    const moments = [{ seq: 10, at, kind: "signal" as const, name: "first_moment_of_truth", who: null }];
-    if (closed) moments.push({ seq: 20, at: at + 60_000, kind: "beat" as const, name: "Filing Closed", who: null });
+    const moments: ScreenMoment[] = [{ seq: 10, at, kind: "signal", name: "first_moment_of_truth", who: null, kept: false }];
+    if (closed) moments.push({ seq: 20, at: at + 60_000, kind: "beat", name: "Filing Closed", who: null, kept: false });
     const state = fakeState({ now: at + t, moments, target: target === "tv" ? "tv" : "terminals" });
     return renderToStaticMarkup(createElement((target === "tv" ? scene.tv : scene.wall)!, props({ t, at, state, target, value: "hunt_results" })));
   };
