@@ -389,3 +389,17 @@ describe("crews and agents, booths, directors", () => {
     expect((await state(rt, a.token)).crew).toBeNull();
   });
 });
+
+describe("a host's crew controls (M3)", () => {
+  it("the host view lists the crews; rename and dissolve work from a host booth", async () => {
+    const { rt, a } = await party();
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    const res = Object.assign(fakeRes(), { setHeader() {} });
+    const url = new URL("http://x/api/state?role=mod&host=1");
+    await rt.handle(fakeReq({}), res, "GET", url.pathname, url, { moderator: true });
+    const view = JSON.parse(res.body) as { crews?: Array<{ id: string; name: string; members: number }> };
+    expect(view.crews).toEqual([{ id: "crew-1", name: "Night Shift", members: 1 }]);
+    expect((await post(rt, "/api/mod/crew/rename", { crew: "crew-1", name: "Day Shift" }, true)).status).toBe(200);
+    expect(rt.liveSim!.crews.get("crew-1")?.name).toBe("Day Shift");
+  });
+});

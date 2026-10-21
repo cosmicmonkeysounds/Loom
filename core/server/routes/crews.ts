@@ -9,7 +9,7 @@
 //!                                            yours; with no side, your crew)
 //!   POST /api/guest/recruit/answer {id, yes} → {ok, joined, kind, target, targetName}
 //!   POST /api/guest/side/leave             → {ok}  (back to neither)
-//! Director routes (mod token / Run; not on the host allowlist):
+//! Director routes (mod token / Run, and the host allowlist since the fix round):
 //!   POST /api/mod/crew/rename {crew, name} → {ok, crew}
 //!   POST /api/mod/crew/dissolve {crew}     → {ok}
 //!

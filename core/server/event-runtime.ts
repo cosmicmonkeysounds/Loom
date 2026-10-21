@@ -1303,6 +1303,8 @@ export class EventRuntime {
       ...(sim !== null ? { awardOnly: awardOnly(sim) } : {}),
       // C6: hosts see the Wanted board too.
       ...(sim !== null && sim.model.wanted !== null ? { wanted: this.wantedBoard() } : {}),
+      // M3: the crews a host renames or dissolves from More.
+      ...(sim !== null ? { crews: sim.crews.all().map((c) => ({ id: c.id, name: c.name, members: c.members.length })) } : {}),
       now,
     });
     this.hostViewCache = { len, phase: this.phase, presses, writes: this.hostWrites, at: now, view };

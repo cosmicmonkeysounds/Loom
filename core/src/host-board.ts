@@ -783,6 +783,9 @@ export interface HostView extends CueSheetView {
   /** The Wanted board (wave 18, C6: `PrimeView.wanted`'s rows) when the
    *  story declares a `wanted:` line. Absent otherwise. */
   wanted?: HostWanted[];
+  /** Wave 18 fix (M3): the guest-founded crews a host may rename or
+   *  dissolve (F4: "directors can rename / dissolve"). Absent with none. */
+  crews?: Array<{ id: string; name: string; members: number }>;
 }
 
 /** One Wanted poster (`PrimeView.wanted`'s row, structurally). */
@@ -857,6 +860,8 @@ export interface HostViewInput {
   awardOnly?: Readonly<Record<string, { id: string; name: string }>>;
   /** The Wanted board (C6), when the story declares a `wanted:` line. */
   wanted?: readonly HostWanted[];
+  /** The live crews (M3). */
+  crews?: ReadonlyArray<{ id: string; name: string; members: number }>;
   /** Wall ms. */
   now: number;
 }
@@ -982,5 +987,6 @@ export function hostView(input: HostViewInput): HostView {
     staffRooms: [...input.staffRooms],
     ...(input.awardOnly !== undefined && Object.keys(input.awardOnly).length > 0 ? { awardOnly: Object.fromEntries(Object.entries(input.awardOnly).map(([k, v]) => [k, { id: v.id, name: v.name }])) } : {}),
     ...(input.wanted !== undefined ? { wanted: input.wanted.map((w) => ({ ...w })) } : {}),
+    ...(input.crews !== undefined && input.crews.length > 0 ? { crews: input.crews.map((c) => ({ id: c.id, name: c.name, members: c.members })) } : {}),
   };
 }

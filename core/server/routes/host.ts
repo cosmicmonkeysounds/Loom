@@ -57,6 +57,9 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   "/api/mod/login",
   // Wave 18 (C8): "I'm calling the show" — the visible caller claim.
   "/api/mod/caller",
+  // Wave 18 fix (M3): a guest-founded crew's name, or the crew itself.
+  "/api/mod/crew/rename",
+  "/api/mod/crew/dissolve",
 ]);
 
 /** The facts judge's mode path (wave 18, C8: hosts switch auto ⇄ review). */

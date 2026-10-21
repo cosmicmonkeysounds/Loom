@@ -239,6 +239,9 @@ describe("C8: callers", () => {
     expect(isHostRoute("POST", "/api/mod/var", { path: "Night.judge_mode", value: "auto" }, ctx)).toBe(true);
     expect(isHostRoute("POST", "/api/mod/var", { path: "Night.judge_mode", value: "lie" }, ctx)).toBe(false);
     expect(isHostRoute("POST", "/api/mod/caller", { on: true }, ctx)).toBe(true);
+    // M3: a host renames or dissolves a crew.
+    expect(isHostRoute("POST", "/api/mod/crew/rename", { crew: "crew-1", name: "X" }, ctx)).toBe(true);
+    expect(isHostRoute("POST", "/api/mod/crew/dissolve", { crew: "crew-1" }, ctx)).toBe(true);
   });
 });
 
