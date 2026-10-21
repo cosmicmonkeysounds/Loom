@@ -15,7 +15,7 @@ import { AUDIO_CHIME_SOUND, resolveTargets, validateAudio, type AudioConfig } fr
 
 import { EventRuntime } from "../server/event-runtime.ts";
 import { snapshotDiffers } from "../server/events-api.ts";
-import { AUDIO_ROUTER_ONLINE_MS, AUDIO_TEST_MS, audioFileOf, audioOf, storySounds, type AudioView } from "../server/audio.ts";
+import { AUDIO_ROUTER_ONLINE_MS, AUDIO_STOP_MS, AUDIO_TEST_MS, audioFileOf, audioOf, storySounds, type AudioView } from "../server/audio.ts";
 import type { MapFiles, ProjectLink } from "../server/house-maps.ts";
 import { Store } from "../server/store.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
@@ -26,7 +26,7 @@ const AUDIO_TEXT = readFileSync(join(import.meta.dirname, "..", "..", "house", "
 const AUDIO = JSON.parse(AUDIO_TEXT) as AudioConfig;
 const SHOW_AUDIO = join(import.meta.dirname, "..", "examples", "trapped-in-the-internet", "audio.json");
 const CODES = { event: "EVTAUD", prime: "PRMAUD", mod: "MODAUD" };
-const STORY = `# T\n\nLOCATION The Desktop\n\nLOCATION The Tube\n\nwhen print:\n  sound printer_grind in The Desktop\n\n== Boot\n  setting: The Desktop\nsound modem_handshake\n<sfx: zip, rooms: hall>\nHello.\n`;
+const STORY = `# T\n\nLOCATION The Desktop\n\nLOCATION The Tube\n\nCHARACTER Task Manager\n  admin: true\n  when scanned by guest:\n    reply ok\n\nwhen print:\n  sound printer_grind in The Desktop\n\n== Boot\n  setting: The Desktop\nsound modem_handshake\n<sfx: zip, rooms: hall>\nHello.\n`;
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -295,7 +295,7 @@ describe("is the router listening? (LA-4)", () => {
     t += AUDIO_ROUTER_ONLINE_MS + 1;
     expect((await view(rt)).router.online).toBe(false);
     // Parked on a long poll: online however long it waits.
-    const parked = view(rt, `?after=${v.version}&tests=99&wait=5&router=1`);
+    const parked = view(rt, `?after=${v.version}&tests=1&wait=5&router=1`); // the one test above
     await new Promise((r) => setTimeout(r, 20));
     t += AUDIO_ROUTER_ONLINE_MS * 3;
     expect((await view(rt)).router.online).toBe(true);
@@ -337,6 +337,90 @@ describe("the long poll (stagehand's router)", () => {
     const moved = await watching;
     expect(moved.version).not.toBe(v.version);
     expect(moved.source).toBe("director");
+    rt.dispose();
+  });
+});
+
+describe("stop all house sounds (wave 18b, Q7)", () => {
+  it("POST /api/mod/audio/stop → its own seq + the router; 400 on a bad body; recent stops ride the GET with now", async () => {
+    let t = 2_000_000;
+    const rt = runtime({ audio: AUDIO_TEXT, now: () => t });
+    expect((await call(rt, "POST", "/api/mod/audio/stop", { announce: "yes" })).status).toBe(400);
+    expect((await call(rt, "POST", "/api/mod/audio/stop", {}, {})).status).toBe(403);
+    const a = await call(rt, "POST", "/api/mod/audio/stop", {});
+    expect(a).toMatchObject({ status: 200, json: { ok: true, seq: 1, router: { online: false } } });
+    t += 1000;
+    expect((await call(rt, "POST", "/api/mod/audio/stop", { announce: true })).json["seq"]).toBe(2);
+    const v = await view(rt);
+    expect(v.stops.map((x) => [x.seq, x.at, x.announce])).toEqual([
+      [1, 2_000_000, false],
+      [2, 2_001_000, true],
+    ]);
+    expect(v.now).toBe(2_001_000);
+    expect(v.tests).toEqual([]); // a stop is never a test
+    t += AUDIO_STOP_MS;
+    expect((await view(rt)).stops.map((x) => x.seq)).toEqual([2]);
+    rt.dispose();
+  });
+
+  it("a long poll given stops= wakes on a newer stop; one watching only tests= does not", async () => {
+    const rt = runtime({ audio: AUDIO_TEXT });
+    const v = await view(rt);
+    const testsOnly = view(rt, `?after=${v.version}&tests=0&wait=0.3`);
+    const parked = view(rt, `?after=${v.version}&tests=0&stops=0&wait=5`);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(rt.audio.waiting).toBe(2);
+    await call(rt, "POST", "/api/mod/audio/stop", {});
+    // The wake answers every parked poll; the tests-only one answers the same config.
+    const woke = await parked;
+    expect(woke.stops.map((x) => x.seq)).toEqual([1]);
+    await testsOnly;
+    // A stop already seen waits; a newer one answers at once.
+    const t0 = Date.now();
+    expect((await view(rt, `?after=${v.version}&stops=0&wait=5`)).stops).toHaveLength(1);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    const seen = view(rt, `?after=${v.version}&stops=1&wait=0.05`);
+    expect((await seen).stops).toHaveLength(1);
+    rt.dispose();
+  });
+
+  it("a cursor from before a server restart is stale: the poll answers at once", async () => {
+    const rt = runtime({ audio: AUDIO_TEXT });
+    const v = await view(rt);
+    // The router still holds the old process's cursors (stops=7, tests=4).
+    let t0 = Date.now();
+    expect((await view(rt, `?after=${v.version}&stops=7&wait=5`)).stops).toEqual([]);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    t0 = Date.now();
+    expect((await view(rt, `?after=${v.version}&tests=4&wait=5`)).tests).toEqual([]);
+    expect(Date.now() - t0).toBeLessThan(1000);
+    // A cursor this hub issued still waits.
+    await call(rt, "POST", "/api/mod/audio/stop", {});
+    expect(rt.audio.moved(v.version, null, 1)).toBe(false);
+    expect(rt.audio.moved(v.version, null, 0)).toBe(true);
+    rt.dispose();
+  });
+
+  it("a host's booth may stop them, never save the speakers", async () => {
+    const rt = runtime({ audio: AUDIO_TEXT });
+    const r = await call(rt, "POST", "/api/prime/login", { character: "Task Manager", passcode: CODES.prime }, {});
+    expect(r.json).toMatchObject({ host: true });
+    const token = r.json["token"] as string;
+    expect((await call(rt, "POST", "/api/mod/audio/stop", { token }, { token })).status).toBe(200);
+    expect((await call(rt, "POST", "/api/mod/audio", { audio: AUDIO, token }, { token })).status).toBe(403);
+    expect((await call(rt, "POST", "/api/mod/audio/test", { speaker: "hall", token }, { token })).status).toBe(403);
+    expect((await view(rt)).stops[0]!.by).toBe("Booth · Task Manager");
+    rt.dispose();
+  });
+
+  it("Q8: the screen state answers a spot's house setting; the heartbeat records the tablet's own", async () => {
+    const rt = runtime({ audio: JSON.stringify({ ...AUDIO, announce: { to: ["everywhere"], terminals: ["hall-tablet"] } }) });
+    const poll = async (q: string) => (await call(rt, "GET", `/api/screen/state?${q}`)).json as { spot?: { announce: boolean } };
+    expect((await poll("name=Hall&spot=hall-tablet&view=auto&ann=1")).spot).toEqual({ announce: true });
+    expect((await poll("name=Den&spot=den&view=auto&ann=0")).spot).toEqual({ announce: false });
+    expect((await poll("name=Loose&view=auto")).spot).toBeUndefined();
+    const list = (await call(rt, "GET", "/api/mod/screen/terminals")).json as { terminals: Array<{ name: string; announce?: boolean }> };
+    expect(Object.fromEntries(list.terminals.map((x) => [x.name, x.announce]))).toEqual({ Hall: true, Den: false, Loose: undefined });
     rt.dispose();
   });
 });

@@ -97,6 +97,12 @@ export interface SpatialHubOptions {
   /** A program's profile picture: its avatar key (`/api/avatar/<key>`), or
    *  null. Read live, so a changed picture never goes stale. */
   avatarOf?: (guest: string, name: string) => string | null;
+  /** (wave 18b, R16) May this program play now — still marked for
+   *  reinstallation (the runtime's `eligibleFor`)? Read when a station
+   *  takes a parked assignment, when its first pose claims it, and every
+   *  sweep of a claimed, unfound walk: false ends it (`unmarked`).
+   *  Absent: everyone may (the begin route checked). */
+  mayPlay?: (guest: string) => boolean;
 }
 
 /** One find of the duck: who, on what, and how long it took — from the
@@ -137,6 +143,8 @@ export type { HouseSource };
 
 /** One program in the simulation. */
 interface Session {
+  /** Begun with `force: true` (exempt from `mayPlay`, wave 18b). */
+  forced: boolean;
   id: string;
   token: string;
   guest: string;
@@ -191,6 +199,9 @@ export interface BeginInput {
   device: string;
   station: string | null;
   captured: boolean;
+  /** (wave 18b) A director's `force: true` begin: the marked-only gate
+   *  (`mayPlay`) never ends it (K-30's unmarked test walk). */
+  forced?: boolean;
 }
 
 export type PoseOutcome = "ok" | "unknown" | "over";
@@ -640,6 +651,7 @@ export class SpatialHub {
     const at = locate(map.house, spawn.pos);
     const now = this.now();
     const s: Session = {
+      forced: input.forced === true,
       id,
       token,
       guest: input.guest,
@@ -697,6 +709,12 @@ export class SpatialHub {
     this.broadcast("join", { player: this.stateOf(s) });
   }
 
+  /** R16 (wave 18b): is this session's program no longer allowed in? Never
+   *  for a director's forced walk. */
+  private unmarked(s: Session): boolean {
+    return !s.forced && this.o.mayPlay?.(s.guest) === false;
+  }
+
   /** End a session: forget it, remember its token, tell the stream. */
   private finish(s: Session, reason: LeaveReason): void {
     this.sessions.delete(s.id);
@@ -747,6 +765,12 @@ export class SpatialHub {
       }
     }
     if (!s.claimed) {
+      // A parked assignment whose program is no longer marked (released
+      // between the send and the put-on) never plays (R16, G1).
+      if (this.unmarked(s)) {
+        this.finish(s, "unmarked");
+        return "over";
+      }
       this.claim(s); // the join frame carries this very pose
     } else if (!same) {
       s.dirty = true;
@@ -790,6 +814,12 @@ export class SpatialHub {
     const s = this.byTokenLive(token);
     if (s === null) return { kind: this.tokenState(token) };
     if (s.found) return { kind: "found", released: s.released, already: true, captured: s.keptCaptured };
+    // Unmarked since the last sweep (it runs once a second): over, never a
+    // release for a program no longer marked (R16, G2).
+    if (this.unmarked(s)) {
+      this.finish(s, "unmarked");
+      return { kind: "over" };
+    }
     if (!s.claimed) return { kind: "parked" };
     const near = nearDuck(s.pose.p, s.duck.pos, this.map?.house);
     if (!near.near) return { kind: "far", distance: near.distance, dy: near.dy };
@@ -858,6 +888,11 @@ export class SpatialHub {
         if (now - s.foundAt >= FOUND_LINGER_MS) this.finish(s, "found");
       } else if (!s.claimed) {
         if (now - s.startedAt >= PARK_TIMEOUT_MS) this.finish(s, "timeout");
+      } else if (this.unmarked(s)) {
+        // A live walk whose program was unmarked mid-way (a director's
+        // release): it ends before a find could reward a healthy program
+        // (R16, G2). A found walk is exempt — its own release unmarks it.
+        this.finish(s, "unmarked");
       } else if (now - s.activeAt >= POSE_TIMEOUT_MS) {
         this.finish(s, "timeout");
       }
@@ -883,8 +918,14 @@ export class SpatialHub {
   station(id: string, name: string, world: SpatialWorld): Assignment | null {
     this.stations.set(id, { id, name: name || id, world, seenAt: this.now() });
     let newest: Session | null = null;
-    for (const s of this.sessions.values()) {
-      if (s.station === id && !s.claimed && (newest === null || s.startedAt >= newest.startedAt)) newest = s;
+    for (const s of [...this.sessions.values()]) {
+      if (s.station !== id || s.claimed) continue;
+      // Parked for a program no longer marked (R16, G1): over, never handed out.
+      if (this.unmarked(s)) {
+        this.finish(s, "unmarked");
+        continue;
+      }
+      if (newest === null || s.startedAt >= newest.startedAt) newest = s;
     }
     return newest === null ? null : this.assignmentOf(newest);
   }

@@ -24,6 +24,7 @@ import { readFileSync } from "node:fs";
 import { nearMatch, spellOut } from "../src/answer-match.ts";
 import { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, type FactVerdictKind, type FactsFile } from "../src/facts.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
+import type { ScreenOutcome, ScreenResultQuestion, ScreenRuled } from "./routes/screen.ts";
 
 export { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, validateFacts, factsProblems } from "../src/facts.ts";
 export type { FactsFile } from "../src/facts.ts";
@@ -178,22 +179,35 @@ export function nearKey(book: FactsBook, keyId: string, answer: string): string 
 export interface FilingJudgement {
   verdict: FactVerdict;
   near: string | null;
+  /** (wave 18b, O4) Not an exact match (the fold, an alias, `spellOut`):
+   *  a near miss or a plain miss — the story's `judge:` character is asked
+   *  to rule on it in `auto` mode. False for an exact match. */
+  ask: boolean;
 }
 
 /**
- * Judge a 📝 filing (wave 11, C6): `judgeAnswer`, except that a near miss
+ * Judge a 📝 filing (wave 11, C6; wave 18b, O4): `judgeAnswer`, except that a near miss
  * (`nearKey`) is never a lie or a guess by itself — it is **proposed
  * accurate** with `near` set, and the runtime routes that one filing down
  * the review path whatever the mode, so a director decides; left alone, a
  * round's settle takes the proposal, so a mistyped right answer is never
- * marked. Null for a key the book lacks.
+ * marked. Every filing that is not an exact match carries `ask` (wave 18b:
+ * the `judge:` character rules on all of them in `auto` mode, not only on
+ * the near misses). Null for a key the book lacks.
  */
 export function judgeFiling(book: FactsBook, keyId: string, answer: string, confidence: number): FilingJudgement | null {
   const verdict = judgeAnswer(book, keyId, answer, confidence);
   if (verdict === null) return null;
-  if (verdict === "accurate") return { verdict, near: null };
+  if (verdict === "accurate") return { verdict, near: null, ask: false };
   const near = nearKey(book, keyId, answer);
-  return near === null ? { verdict, near: null } : { verdict: "accurate", near };
+  return near === null ? { verdict, near: null, ask: true } : { verdict: "accurate", near, ask: true };
+}
+
+/** Is `answer` an exact match of the key (wave 18b: the one case nobody
+ *  rules on)? False for a key the book lacks. */
+export function isExact(book: FactsBook, keyId: string, answer: string): boolean {
+  const key = factsKey(book, keyId);
+  return key !== null && exactly(key, answer);
 }
 
 /** The mode the world holds at the book's `modeVar`: `review` exactly, else `auto`. */
@@ -273,8 +287,16 @@ export interface FactsFiling {
    *  server saw it. Kept after a director overrides it (the later verdict
    *  wins — `final` / `how` say so). Absent when nobody ruled. */
   ruling?: FactRuling;
-  /** A ruling is asked and not yet given (the runtime's overlay). */
+  /** A ruling is asked and not yet given (the runtime's overlay): out with
+   *  the judge's worker, or (wave 18b) still waiting in the judge queue. */
   asking?: true;
+  /** (wave 18b) The ruling is still in the hub's judge queue, not yet sent. */
+  queued?: true;
+  /** (wave 18b) A `marked` filing: the final the mark replaced and how it
+   *  was reached (a settle marks a guess, or a round-2 filing with no cup,
+   *  after a ruling or a director already judged it). Absent when the
+   *  filing was still pending at the mark, and on every other final. */
+  before?: { final: FactVerdict; how: FactHow | null; by: string | null };
 }
 
 /** A `judge:` character's ruling on a filing (`FactsFiling.ruling`). */
@@ -317,6 +339,8 @@ interface FactsStep {
 interface FoldedFiling extends FactsFiling {
   filedStep: number;
   judged: FactsStep | null;
+  /** The final + step a `marked` replaced (`FactsFiling.before`). */
+  premark: { final: FactVerdict; judged: FactsStep | null } | null;
 }
 
 export interface FactsTally {
@@ -476,12 +500,15 @@ export class FactsWatch {
           logAt: this.cursor,
           filedStep: this.step.id,
           judged: null,
+          premark: null,
         });
       } else if (e.verb === FACT_JUDGED_VERB) {
         const j = parseFactJudged(e.args);
         if (j === null) continue;
         const prev = this.filings.get(FactsWatch.key(j.person, j.question));
         if (prev !== undefined) {
+          if (j.final !== "marked") prev.premark = null;
+          else if (prev.final !== null && prev.final !== "marked") prev.premark = { final: prev.final, judged: prev.judged };
           prev.final = j.final;
           prev.logAt = this.cursor;
           prev.judged = { ...this.step };
@@ -514,8 +541,10 @@ export class FactsWatch {
     this.sync(sim);
     const names = new Set(Object.values(confirm));
     return [...this.filings.values()].map((f) => {
-      const { filedStep: _s, judged: _j, ...pub } = f;
-      return { ...pub, ...FactsWatch.provenance(f, names) };
+      const { filedStep: _s, judged: _j, premark, ...pub } = f;
+      const out: FactsFiling = { ...pub, ...FactsWatch.provenance(f, names) };
+      if (f.final === "marked" && premark !== null) out.before = { final: premark.final, ...FactsWatch.provenance({ ...f, final: premark.final, judged: premark.judged }, names) };
+      return out;
     });
   }
 
@@ -567,4 +596,104 @@ export class FactsWatch {
       pending: filings.filter((f) => f.final === null).length,
     };
   }
+}
+
+// ───────────────────────── the screens' results (wave 18b) ─────────────────────────
+
+/** Rows (and liars) per question on the TV; `more` / `liarsMore` beyond. */
+export const MAX_RESULT_ROWS = 40;
+
+/** What `screenResultsOf` builds: a reading (`read`, the ids the story
+ *  read) or the verdict (`verdict`, every book question with its truth). */
+export interface ScreenResultsOptions {
+  kind: "read" | "verdict";
+  /** The poller is the TV (rows, the verdict's answers and liars). */
+  tv: boolean;
+  /** `verdict`: the story's `do fact_truth` per question id. */
+  truths?: ReadonlyMap<string, "true" | "lie" | "none">;
+}
+
+/**
+ * The public results of `ids` (book order) off the director's ledger view
+ * (`FactsWatch.view` with the runtime's asking overlay). Never carries a
+ * verdict, a confidence number, a ruling's `why` or `near`; see
+ * `ScreenResults` for what each kind holds.
+ */
+export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly string[] | null, o: ScreenResultsOptions): ScreenResultQuestion[] {
+  const byId = new Map(view.questions.map((q) => [q.id, q]));
+  // D11: a reading never publishes the book's final round (in the show, F1 /
+  // F2, still open at truth.txt and the pickup line's clue): the verdict
+  // names its liars like every other round's. A one-round book has no final.
+  const rounds = book.questions.map((k) => k.round ?? 0);
+  const finalRound = new Set(rounds).size > 1 ? Math.max(...rounds) : null;
+  const readable = (k: FactsKey) => o.kind === "verdict" || k.round === null || k.round !== finalRound;
+  const want = book.questions.filter((k) => readable(k) && (ids === null || ids.includes(k.id))).map((k) => k.id);
+  const out: ScreenResultQuestion[] = [];
+  for (const id of want) {
+    const n = book.questions.findIndex((k) => k.id === id) + 1;
+    const key = book.questions[n - 1]!;
+    const filings = byId.get(id)?.filings ?? [];
+    const counts = { filed: filings.length, accepted: 0, guesses: 0, uncounted: 0 };
+    for (const f of filings) {
+      const out = screenOutcome(f);
+      if (out === "a") counts.accepted += 1;
+      else if (out === "g") counts.guesses += 1;
+      else if (out === "u") counts.uncounted += 1;
+    }
+    const consensus = tallyFilings(filings).consensus;
+    if (o.kind === "verdict") {
+      const q: ScreenResultQuestion = { id, n, round: key.round, ...counts, consensus, answer: o.tv ? key.answer : null };
+      const truth = o.truths?.get(id);
+      if (truth !== undefined) q.truth = truth;
+      if (o.tv) {
+        // O2: the programs who lied — a final lie (the house, a ruling or a
+        // director), or a pending filing proposed a lie. Names only.
+        const liars = filings.filter((f) => f.final === "lie" || (f.final === null && f.verdict === "lie"));
+        q.liars = liars.slice(0, MAX_RESULT_ROWS).map((f) => [clipText(f.name, 24), rulingMadeIt(f) && f.final === "lie" ? 1 : 0]);
+        if (liars.length > MAX_RESULT_ROWS) q.liarsMore = liars.length - MAX_RESULT_ROWS;
+      }
+      out.push(q);
+      continue;
+    }
+    const q: ScreenResultQuestion = { id, n, round: key.round, text: clipText(key.text, 140), ...counts, consensus, answer: consensus ? key.answer : null };
+    if (o.tv) {
+      q.rows = filings.slice(0, MAX_RESULT_ROWS).map((f) => [clipText(f.name, 24), clipText(f.answer, 40), f.confidence >= CONFIDENCE_MAX ? 1 : 0, screenOutcome(f), screenRuled(f)]);
+      if (filings.length > MAX_RESULT_ROWS) q.more = filings.length - MAX_RESULT_ROWS;
+    }
+    out.push(q);
+  }
+  return out;
+}
+
+/** One line, at most `n` characters (newlines and runs of space → one space). */
+function clipText(s: string, n: number): string {
+  const one = s.replace(/\s+/gu, " ").trim();
+  return Array.from(one).slice(0, n).join("");
+}
+
+/** A filing's public outcome (`ScreenOutcome`): never accurate vs lie. */
+export function screenOutcome(f: FactsFiling): ScreenOutcome {
+  if (f.final === null) return "p";
+  if (f.final === "accurate" || f.final === "lie") return "a";
+  if (f.final === "uncertain") return "g";
+  // Marked: a guess stays a guess; an accepted filing with no cup is not
+  // counted. Judge off the final the mark replaced (his ruling or a
+  // director's), else the proposal (the filing was pending at the mark).
+  return (f.before?.final ?? f.verdict) === "uncertain" ? "g" : "u";
+}
+
+/** Did the `judge:` character's ruling set this filing's final (not a
+ *  director's later verdict)? */
+function rulingMadeIt(f: FactsFiling): boolean {
+  // A settle's mark keeps the stamp of the verdict it replaced.
+  const s = f.final === "marked" ? f.before : f;
+  return f.ruling !== undefined && s !== undefined && s.final !== null && s.final !== "marked" && s.by === f.ruling.by;
+}
+
+/** Trabolta's stamp on a filing (`ScreenRuled`, O4 / D10). */
+export function screenRuled(f: FactsFiling): ScreenRuled {
+  if (f.asking === true && f.final === null) return "?";
+  if (!rulingMadeIt(f)) return "";
+  if (f.confidence >= CONFIDENCE_MAX) return "r"; // held until the verdict (D11)
+  return f.ruling!.same ? "s" : "n";
 }

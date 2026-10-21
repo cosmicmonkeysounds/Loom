@@ -21,12 +21,12 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
+import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
 import { Store, type AgentWait, type AgentWaits, type Mutation } from "./store.ts";
-import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions } from "./chat.ts";
+import { ChatStore, HISTORY_LIMIT, boothOwnRow, capHistory, composeGuestMessages, goForViewer, guestOwnRow, decisionChannelFor, isPinnedRoom, readoutText, visibleTo, type ChatMessage, type ComposeOptions, type DraftMessage } from "./chat.ts";
 import { CASINO_BET_GAP_MS, DIRECTOR, WalletBook, walletSeam, type WalletOp, type WalletRefusal } from "./wallet.ts";
 import { payoutOf, rollFor, type CasinoGame } from "../src/casino.ts";
 import { CHAT_TEXT_MAX, SSE_MOD_QUEUE_CAP, chatTooLong, ipOf, queryTokenOf, readBody, sendJson, sseCap, sseFrame, sseQueued, sseSend, sseWrite, str, tokenOf } from "./http-util.ts";
@@ -102,11 +102,13 @@ import {
   factsKey,
   factsProblems,
   judgeAnswer,
+  isExact,
   judgeFiling,
   judgeMode,
   parseFactsBook,
   readFactsFile,
   rulingOfArgs,
+  screenResultsOf,
   worldReader,
   type FactVerdict,
   type FactsBook,
@@ -383,6 +385,23 @@ export function nearNotice(name: string, args: Record<string, string | number | 
     return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate — asked ${judge} to rule. Without a ruling it is credited if nobody judges it; you can judge it yourself on Run → Mind → Judging.`;
   }
   return `⚠ Near miss, not an exact match: ${name}'s ${q} filing "${a}" is close to "${near}", so it is proposed accurate and is credited if nobody judges it. Judge it on Run → Mind → Judging.`;
+}
+
+/** The `# hosts` line after a 📝 plain miss's own (wave 18b, O4): it is not
+ *  an exact match and not spelled close to the key, so it is held pending
+ *  with its proposal (a lie at 100, a guess below) while `judge` rules
+ *  (null: the ask did not land, and the proposal waits for the settle). */
+export function missNotice(name: string, args: Record<string, string | number | boolean>, verdict: string, judge: string | null): string {
+  const q = typeof args["question"] === "string" ? args["question"] : "?";
+  const a = typeof args["answer"] === "string" ? args["answer"] : "";
+  if (judge === null) return `📝 Not an exact match: ${name}'s ${q} filing "${a}" is proposed ${verdict}. The proposal stands at the round's settle; you can judge it yourself on Run → Mind → Judging.`;
+  return `📝 Not an exact match: ${name}'s ${q} filing "${a}" is proposed ${verdict} — asked ${judge} to rule. Without a ruling the proposal stands at the round's settle; you can judge it yourself on Run → Mind → Judging.`;
+}
+
+/** The `# hosts` line when the `judge:` character's worker stops ruling
+ *  (wave 18b: two expiries in a row — the judge stall). */
+export function judgeStallNotice(judge: string): string {
+  return `⚖ ${judge} isn't ruling: filings fall back to the house rule.`;
 }
 
 /** The `# hosts` line after a `judge:` character's ruling (wave 11b). */
@@ -708,9 +727,6 @@ export class EventRuntime {
   private readonly factsWatch = new FactsWatch();
   /** The house speakers + the audio interface (`audio.ts`, wave 17). */
   readonly audio: AudioHub;
-  /** Near misses already put to the `judge:` character (person, question,
-   *  answer) — never asked twice in one run of this process. */
-  private readonly rulingsAsked = new Set<string>();
   /** Near misses a restore found still pending (person, question, answer):
    *  the only ones put to the `judge:` character after they landed —
    *  contract J. A near miss filed with nobody online keeps wave 11's
@@ -719,6 +735,17 @@ export class EventRuntime {
   private readonly random: () => number;
   /** `runPicks` re-entrancy: a pick's own signal never draws again. */
   private pickDepth = 0;
+  /** Wave 18b: the crew lines drafted right after a commit (`draftCrewNotices`),
+   *  keyed by that commit's last event: `fanout` posts them right after it,
+   *  the order a replay appends them in (after the commit's journal line). */
+  private readonly crewAfter = new Map<SimEvent, DraftMessage[]>();
+  /** …and those of a commit that logged nothing before any other since the
+   *  last `fanout` (posted ahead of its events). */
+  private crewHead: DraftMessage[] = [];
+  /** The last event of the newest commit since the last `fanout`. */
+  private commitTail: SimEvent | null = null;
+  /** A drafted notice answered an invitation: `fanout` marks the cards. */
+  private crewAnswered = false;
   // w18 crews — crews + recruiting (routes/crews.ts): one journaled `crew` op per change.
   private readonly crewRoutes = new CrewRoutes({
     sim: () => this.sim, open: () => this.open, guest: (q, b, r) => this.requireGuest(q, b, r), facts: () => this.factsBook(), now: () => this.clock(),
@@ -768,6 +795,10 @@ export class EventRuntime {
     busy: (req) => this.postAgentBusy(req),
     stalled: (worker, waiting) => this.postAgentStall(worker, waiting),
     judgeGone: () => this.pushModSnapshots(),
+    // Wave 18b: a ruling left the judge queue (queued → asking), and the
+    // judge stall's one `# hosts` line.
+    judgeSent: () => this.pushModSnapshots(),
+    judgeStalled: () => this.postJudgeStall(),
     now: () => this.clock(),
     presence: () => this.pushSnapshots(),
   });
@@ -809,6 +840,9 @@ export class EventRuntime {
     this.snapshotMs = Math.max(0, init.snapshotMs ?? snapshotMsFromEnv());
     this.spatial = new SpatialHub({
       eventId: init.eventId,
+      // R16 (wave 18b): only a marked program plays — a parked headset claim
+      // or a live walk after an unmark ends (`unmarked`). No story, no walk.
+      mayPlay: (guest) => this.sim !== null && eligibleFor(this.sim, guest),
       ...(init.now !== undefined ? { now: init.now } : {}),
       // The speedrun survives a server restart mid-show (SW-RE-14).
       // C7: a find after the night ended is a party favour, tagged at write
@@ -1669,15 +1703,52 @@ export class EventRuntime {
       // in-editor simulator can mirror the whole run.
       for (const c of this.clients) if (c.role === "mod") sseSend(c.res, "sim", e);
     }
-    const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, events, this.composeOpts);
-    // A director speaking *as* a participant: the room sees the participant's
-    // name, the mod feed additionally sees who really typed it.
-    if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
-    const appended = this.chat.append(drafts);
-    for (const m of appended) this.deliverMessage(m);
+    const post = (drafts: DraftMessage[]) => {
+      const got = this.chat.append(drafts);
+      for (const m of got) this.deliverMessage(m);
+      return got;
+    };
+    const compose = (batch: SimEvent[]) => {
+      const drafts = composeGuestMessages(this.sim ?? EMPTY_SIM, batch, this.composeOpts);
+      // A director speaking *as* a participant: the room sees the participant's
+      // name, the mod feed additionally sees who really typed it.
+      if (via !== undefined) for (const d of drafts) if (d.kind === "line") d.via = via;
+      return post(drafts);
+    };
+    // Wave 18b: the crew lines each commit drafted go right after that
+    // commit's events (a replay appends them after its journal line), so
+    // the events are composed in runs that end at such a commit.
+    if (this.crewHead.length > 0) {
+      const head = this.crewHead;
+      this.crewHead = [];
+      post(head);
+    }
+    const appended: ChatMessage[] = [];
+    let from = 0;
+    if (this.crewAfter.size > 0) {
+      for (let i = 0; i < events.length; i++) {
+        const crew = this.crewAfter.get(events[i]!);
+        if (crew === undefined) continue;
+        this.crewAfter.delete(events[i]!);
+        appended.push(...compose(events.slice(from, i + 1)));
+        post(crew);
+        from = i + 1;
+      }
+    }
+    appended.push(...compose(from === 0 ? events : events.slice(from)));
+    // A commit whose events never reached a fanout: its lines go now.
+    for (const crew of this.crewAfter.values()) post(crew);
+    this.crewAfter.clear();
+    this.commitTail = null;
+    if (this.crewAnswered && this.sim !== null) {
+      this.crewAnswered = false;
+      for (const k of answeredInviteCards(this.chat.all(), this.sim.crews)) this.answeredWidgets.add(k);
+    }
     for (const id of [...this.decisionChannels.keys()]) {
       if (this.sim?.pendingChoiceFor(id) == null) this.decisionChannels.delete(id);
     }
+    // Wave 18b: a `when` picture whose condition moved (the snapshots below carry it).
+    this.syncConditionalAvatars();
     this.pushSnapshots();
     this.runPicks(events);
     return appended;
@@ -1753,11 +1824,18 @@ export class EventRuntime {
     if (book === null || this.sim === null) return undefined;
     const judge = this.sim.model.judge;
     const view = judge === null ? this.factsWatch.view(this.sim, book) : { ...this.factsWatch.view(this.sim, book), judge };
-    const asking = new Set(this.agents.judging.map((j) => `${j.filing.person}\u0000${j.filing.question}`));
+    // Asking (out with the worker) or — wave 18b — still in the judge queue.
+    const asking = new Map(this.agents.judging.map((j) => [`${j.filing.person}\u0000${j.filing.question}`, this.agents.judgeQueued(j.id)]));
     if (asking.size === 0) return view;
     return {
       ...view,
-      questions: view.questions.map((q) => ({ ...q, filings: q.filings.map((f) => (asking.has(`${f.person}\u0000${f.question}`) ? { ...f, asking: true as const } : f)) })),
+      questions: view.questions.map((q) => ({
+        ...q,
+        filings: q.filings.map((f) => {
+          const queued = asking.get(`${f.person}\u0000${f.question}`);
+          return queued === undefined ? f : { ...f, asking: true as const, ...(queued ? { queued: true as const } : {}) };
+        }),
+      })),
     };
   }
 
@@ -1800,11 +1878,13 @@ export class EventRuntime {
    * the client's) and {text}. Null = nothing to judge (no key in force, an
    * un-keyed card, another kind); "refused" = a bad filing (400). A `fact`
    * filing for a question the key lacks is refused only while a key exists;
-   * without one the args pass untouched (other projects). `review`: a near
-   * miss filed while the mode is `auto` — that one filing takes the review
-   * path (`commitUnderReview`); `near` = the key form it is close to.
+   * without one the args pass untouched (other projects). `review`: the
+   * filing takes the review path (`commitUnderReview`) while the mode is
+   * `auto` — a near miss always (wave 11), and (wave 18b, O4) any filing
+   * that is not an exact match when the `judge:` character can rule now
+   * (`ruler`); `near` = the key form it is close to.
    */
-  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean; near: string | null } | null | "refused" {
+  private judgeWidget(card: NonNullable<ChatMessage["widget"]>, args: Record<string, string | number | boolean>): { args: Record<string, string | number>; review: boolean; near: string | null; ruler: string | null; verdict: FactVerdict | null } | null | "refused" {
     const book = this.factsBook();
     if (book === null) return null;
     if (card.kind === "fact") {
@@ -1821,10 +1901,14 @@ export class EventRuntime {
       // story reads "Mister Pickles", never whichever alias came in last.
       // Only a filer who already knew it (or all but typed it) ever puts it
       // in the journal.
+      const auto = judgeMode(book, worldReader(this.sim!)) === "auto";
+      const ruler = auto && judged.ask ? this.rulerOnline() : null;
       return {
         args: verdict === "accurate" ? { verdict, key_answer: factsKey(book, q)!.answer } : { verdict },
-        review: judged.near !== null && judgeMode(book, worldReader(this.sim!)) === "auto",
+        review: auto && (judged.near !== null || ruler !== null),
         near: judged.near,
+        ruler,
+        verdict,
       };
     }
     if (card.kind === "answer") {
@@ -1833,9 +1917,20 @@ export class EventRuntime {
       if (q === undefined) return null;
       if (typeof t !== "string" || t.trim() === "") return "refused";
       const verdict = judgeAnswer(book, q, t, 100);
-      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false, near: null };
+      return verdict === null ? "refused" : { args: { verdict, question: q }, review: false, near: null, ruler: null, verdict };
     }
     return null;
+  }
+
+  /** Wave 18b, faction mode (D13 e): why `person` may not take `side` by
+   *  `/api/guest/join` or `/defect` — a live founder stays with their
+   *  faction, a side's leader with that side — or null. */
+  private staysWithSide(person: string, side: string): string | null {
+    const crews = this.sim!.crews;
+    if (!crews.factionMode) return null;
+    if (crews.foundedBy(person) !== null) return "Founders stay with their faction. Disband it first.";
+    const led = crews.ledSide(person);
+    return led !== null && led !== side ? "Leaders stay with their side." : null;
   }
 
   /**
@@ -1846,9 +1941,11 @@ export class EventRuntime {
    * Judging, one `# hosts` line from the story), and a replay lands the same.
    * `notice`: the server's own `# hosts` line after the story's, saying the
    * proposal came from the near-miss rule, not an exact match (the story's
-   * line only reads "Proposed: accurate").
+   * line only reads "Proposed: accurate"); a function is called once the
+   * mode is back (it may ask for a ruling first, so the line says what
+   * happened).
    */
-  private commitUnderReview(apply: () => SimEvent[], notice: string | null = null): SimEvent[] {
+  private commitUnderReview(apply: () => SimEvent[], notice: string | null | (() => string | null) = null): SimEvent[] {
     const book = this.factsBook();
     const sim = this.sim;
     if (book === null || sim === null) return apply();
@@ -1860,8 +1957,9 @@ export class EventRuntime {
     const events = apply();
     this.actingBy = JUDGE_BY;
     const after = this.commit("setVar", book.modeVar, was);
-    const room = notice === null ? null : hostsRoomOf(sim.model);
-    const told = room === null ? [] : this.commit("broadcast", `channel(${room})`, notice!);
+    const text = typeof notice === "function" ? notice() : notice;
+    const room = text === null ? null : hostsRoomOf(sim.model);
+    const told = room === null || text === null ? [] : this.commit("broadcast", `channel(${room})`, text);
     this.actingBy = actingBy;
     return [...before, ...events, ...after, ...told];
   }
@@ -1888,10 +1986,12 @@ export class EventRuntime {
   }
 
   /**
-   * Ask the `judge:` character to rule on `person`'s pending near miss for
-   * `question` — once per filing answer (`rulingsAsked`; a restart forgets,
-   * so a near miss still pending after a restore may be asked again). True
-   * when the `judge` frame went out.
+   * Ask the `judge:` character to rule on `person`'s pending filing for
+   * `question` — a near miss, or (wave 18b, O4) any other filing that is
+   * not an exact match — never while one for it is queued or out (wave
+   * 18b: a ruling that expired, was cancelled or answered leaves no mark,
+   * so the same answer filed again is asked again). True when the ruling
+   * joined the hub's judge queue.
    */
   private askRuling(person: string, question: string): boolean {
     const judge = this.rulerOnline();
@@ -1900,10 +2000,9 @@ export class EventRuntime {
     const f = this.filingOf(person, question);
     if (f === null || f.final !== null) return false;
     const key = factsKey(book, question);
+    if (key === null || isExact(book, question, f.answer)) return false;
     const near = this.factsWatch.nearOf(book, question, f.answer);
-    if (key === null || near === null) return false;
     const asked = `${person}\u0000${question}\u0000${f.answer}`;
-    if (this.rulingsAsked.has(asked)) return false;
     if (this.agents.judging.some((j) => j.filing.person === person && j.filing.question === question)) return false;
     const id = this.agents.judge({
       character: judge,
@@ -1912,9 +2011,9 @@ export class EventRuntime {
       key: { answer: key.answer, aliases: key.forms.slice(1) },
       answer: f.answer,
       confidence: f.confidence,
+      near,
     });
     if (id === null) return false;
-    this.rulingsAsked.add(asked);
     this.rulingsDue.delete(asked);
     this.pushModSnapshots();
     return true;
@@ -1931,7 +2030,7 @@ export class EventRuntime {
     for (const f of this.factsWatch.all(this.sim, book.confirm)) {
       const due = `${f.person}\u0000${f.question}\u0000${f.answer}`;
       if (!this.rulingsDue.has(due)) continue;
-      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) {
+      if (f.final !== null || isExact(book, f.question, f.answer)) {
         this.rulingsDue.delete(due);
         continue;
       }
@@ -1939,13 +2038,15 @@ export class EventRuntime {
     }
   }
 
-  /** After a restore: the near misses still pending, due a ruling. */
+  /** After a restore: the filings still pending that are not an exact
+   *  match (near misses, and — wave 18b — plain misses held for a ruling),
+   *  due a ruling. */
   private noteRulingsDue(): void {
     this.rulingsDue.clear();
     const book = this.factsBook();
     if (book === null || this.sim === null || this.sim.model.judge === null) return;
     for (const f of this.factsWatch.all(this.sim, book.confirm)) {
-      if (f.final !== null || this.factsWatch.nearOf(book, f.question, f.answer) === null) continue;
+      if (f.final !== null || isExact(book, f.question, f.answer)) continue;
       this.rulingsDue.add(`${f.person}\u0000${f.question}\u0000${f.answer}`);
     }
   }
@@ -1954,9 +2055,14 @@ export class EventRuntime {
    *  settle) or filed again with another answer — is cancelled, so its
    *  late answer gets a 410. */
   private dropMootRulings(): void {
+    // One ledger read for the whole queue (wave 18b: a round's worth of
+    // rulings can wait here, and this runs on every fanout).
+    const book = this.factsBook();
+    const filings = new Map<string, { final: unknown; answer: string }>();
+    if (book !== null && this.sim !== null) for (const f of this.factsWatch.all(this.sim, book.confirm)) filings.set(`${f.person}\u0000${f.question}`, f);
     for (const j of this.agents.judging) {
-      const f = this.filingOf(j.filing.person, j.filing.question);
-      if (f === null || f.final !== null || f.answer !== j.answer) this.agents.cancelJudge(j.id);
+      const f = filings.get(`${j.filing.person}\u0000${j.filing.question}`);
+      if (f === undefined || f.final !== null || f.answer !== j.answer) this.agents.cancelJudge(j.id);
     }
   }
 
@@ -2263,6 +2369,15 @@ export class EventRuntime {
   /** A worker stopped answering (its head waited 60 s): one line in the
    *  story's staff room (`# hosts`), so a director answers by hand. No staff
    *  room → nothing (Run still shows `agentQueue.stalled`). */
+  /** Wave 18b: the `judge:` character's worker stopped ruling (two expiries
+   *  in a row): one `# hosts` line; the queue waits, then falls back. */
+  private postJudgeStall(): void {
+    const sim = this.sim;
+    const room = sim === null ? null : hostsRoomOf(sim.model);
+    if (room === null || sim === null) return;
+    this.fanout(this.commit("broadcast", `channel(${room})`, judgeStallNotice(sim.model.judge ?? "The judge")));
+  }
+
   private postAgentStall(worker: { name: string; characters: string[] }, waiting: number): void {
     const sim = this.sim;
     const room = sim === null ? null : hostsRoomOf(sim.model);
@@ -2283,10 +2398,13 @@ export class EventRuntime {
    * `group` / `trueFaction` naming it are dropped and `groups` lists only
    * the groups an agent may know of.
    */
-  private agentVarsOf(world: ReadonlyArray<{ path: string; value: string }>): (head: string) => Record<string, string> {
+  private agentVarsOf(world: ReadonlyArray<{ path: string; value: string }>, o: { race?: boolean } = {}): (head: string) => Record<string, string> {
     const sim = this.sim!;
     const secretCodex = new Set([...sim.model.codex.values()].filter((e) => e.secret).map((e) => `codex.${Sim.codexSlug(e.id)}`));
-    const hidden = (g: string) => this.agentHiddenGroup(g);
+    // `race` (the facts document, wave 18b D13 j): race sides too — the
+    // document lists every program, so a side on each would count it. A
+    // request keeps its speaker's own `group` (the mind courts its members).
+    const hidden = (g: string) => this.agentHiddenGroup(g) || (o.race === true && this.agentHiddenRace(g));
     return (head: string): Record<string, string> => {
       const person = sim.persons.get(head);
       const secret = person === undefined ? null : (sim.model.roles.get(person.role)?.secret ?? null);
@@ -2316,16 +2434,31 @@ export class EventRuntime {
     return (sim.model.factions.get(group)?.hidden ?? false) && !sim.factionRevealed(group);
   }
 
+  /** Wave 18b (D13 j): in faction mode (`founding:`) every race side — a
+   *  declared joinable group, revealed or not — is an agent's blind spot
+   *  like a crew: its own world paths (`members`, `leader`) would let the
+   *  worker count it and tell a founder the rival's number. Outside faction
+   *  mode, false (requests unchanged). */
+  private agentHiddenRace(group: string): boolean {
+    const sim = this.sim!;
+    if (!sim.crews.factionMode) return false;
+    if (sim.crews.isRaceFaction(group)) return true;
+    const want = foldName(group);
+    for (const id of sim.model.factions.keys()) if (foldName(id) === want) return sim.crews.isRaceFaction(id);
+    return false;
+  }
+
   /** The world's globals as an agent may see them: every path whose head is
    *  neither a person nor a character, minus an unrevealed hidden group's
-   *  own paths (`<Group>.members` would name its members). */
+   *  own paths (`<Group>.members` would name its members) and, in faction
+   *  mode, every race side's (`agentHiddenRace`). */
   private agentGlobals(world: ReadonlyArray<{ path: string; value: string }>): Record<string, string> {
     const sim = this.sim!;
     const globals: Record<string, string> = {};
     for (const w of world) {
       const head = w.path.split(".")[0]!;
       if (sim.persons.has(head) || sim.model.characters.has(head)) continue;
-      if (this.agentHiddenGroup(head)) continue;
+      if (this.agentHiddenGroup(head) || this.agentHiddenRace(head)) continue;
       globals[w.path] = w.value;
     }
     return globals;
@@ -2459,9 +2592,11 @@ export class EventRuntime {
     const sim = this.sim;
     if (sim === null) return null;
     const world = sim.worldEntries();
-    const varsOf = this.agentVarsOf(world);
+    const varsOf = this.agentVarsOf(world, { race: true });
     const globals = this.agentGlobals(world);
     const online = new Set(this.agents.onlineCharacters());
+    // Wave 18b (D13 j): no race side on any program or character either.
+    const unseen = (g: string) => this.agentHiddenGroup(g) || this.agentHiddenRace(g);
     // The booths online, as `presence()` counts them (not the whole presence:
     // that builds the facts view too).
     const primes = new Set([...this.clients].filter((c) => c.role === "prime").map((c) => c.id));
@@ -2469,8 +2604,8 @@ export class EventRuntime {
     const programs = [...sim.persons.values()].map((p) => ({
       id: p.id,
       name: p.name,
-      faction: sim.publicFactionOf(p.id),
-      groups: sim.groupsOf(p.id).filter((g) => !this.agentHiddenGroup(g)),
+      faction: ((f) => (f !== null && this.agentHiddenRace(f) ? null : f))(sim.publicFactionOf(p.id)),
+      groups: sim.groupsOf(p.id).filter((g) => !unseen(g)),
       location: sim.locationOf(p.id),
       captured: sim.isCaptured(p.id),
       vars: varsOf(p.id),
@@ -2485,7 +2620,7 @@ export class EventRuntime {
       // guest's.
       characters: [...sim.model.characters.values()].filter((c) => !c.secret).map((c) => ({
         id: c.id,
-        faction: c.faction !== null && this.agentHiddenGroup(c.faction) ? null : c.faction,
+        faction: c.faction !== null && unseen(c.faction) ? null : c.faction,
         listed: c.listed,
         mind: c.mind,
         online: c.mind === "external" ? online.has(c.id) : primes.has(c.id),
@@ -3339,7 +3474,35 @@ export class EventRuntime {
     if (m === "signal") notePress(this.sim!, out, this.actingBy); // the cue sheet judges a press by its own events (and names who made it)
     this.spatial.syncKing(); // a `king` frame when this moved his hit points (C2)
     this.marks.observe(this.sim);
+    this.draftCrewNotices(out);
     return out;
+  }
+
+  /** Wave 18b: draft the crew notices the last mutation (or story tick)
+   *  raised — a crew op's, or (faction mode) a `join` / `defect` / story
+   *  `add` that took someone out of a crew — at once, as `restore` drafts
+   *  them after each journal line; `fanout` posts them right after `out`'s
+   *  last event (after the previous commit's, when `out` is empty). */
+  private draftCrewNotices(out: readonly SimEvent[]): void {
+    const sim = this.sim;
+    if (sim === null) return;
+    if (out.length > 0) this.commitTail = out[out.length - 1]!;
+    const notices = sim.crews.takeNotices();
+    if (notices.length === 0) return;
+    const drafts = crewDrafts(sim, notices);
+    const tail = this.commitTail;
+    if (tail === null) this.crewHead.push(...drafts);
+    else {
+      const list = this.crewAfter.get(tail);
+      if (list === undefined) this.crewAfter.set(tail, drafts);
+      else list.push(...drafts);
+    }
+    if (notices.some((n) => n.kind === "answered")) this.crewAnswered = true;
+  }
+
+  /** Crew lines drafted and not yet posted (`draftCrewNotices`). */
+  private get crewWaiting(): boolean {
+    return this.crewHead.length > 0 || this.crewAfter.size > 0;
   }
 
   /** Apply one wallet op *and* journal it as a single `wallet` line — the
@@ -3353,6 +3516,7 @@ export class EventRuntime {
     const out = this.wallet!.apply(op);
     this.spatial.syncKing();
     this.marks.observe(this.sim);
+    this.draftCrewNotices(out);
     return out;
   }
 
@@ -3497,8 +3661,37 @@ export class EventRuntime {
       }
     }
     this.persistAvatars();
+    this.syncConditionalAvatars();
     this.prefetchAvatars();
     this.lookupAvatars(lookups);
+  }
+
+  /**
+   * Wave 18b: a character whose `avatar:` options carry `when <cond>`
+   * (`picture:trabolta-broken.svg when self.broken == true`) wears the last
+   * option whose condition holds (`self` bound to it), else its first.
+   * Re-read after a load, a restore and every fanout; only a change writes
+   * the book, the disk and the snapshots. True when a picture changed.
+   */
+  private syncConditionalAvatars(): boolean {
+    const sim = this.sim;
+    if (sim === null) return false;
+    let changed = false;
+    for (const c of sim.model.characters.values()) {
+      const rules = c.avatarRules;
+      if (rules === undefined || rules.length === 0) continue;
+      let ref = c.avatar[0] ?? null;
+      for (const r of rules) if (sim.holds(r.when, null, c.id)) ref = r.ref;
+      if (ref === null || this.avatars.isChosen(c.id)) continue;
+      const url = avatarRefUrl(ref);
+      if (this.avatars.keyFor(c.id) === avatarKey(url)) continue;
+      this.avatars.assign(c.id, url);
+      void this.images.get(url);
+      this.refreshGhosts(c.id);
+      changed = true;
+    }
+    if (changed) this.persistAvatars();
+    return changed;
   }
 
   /** Warm the picture cache (and its disk copy) with every picture in the book. */
@@ -3647,7 +3840,10 @@ export class EventRuntime {
     this.factsWatch.mark(this.sim, null);
     const evs = this.sim.tick(ms);
     this.pendingTickMs += ms;
-    if (evs.length > 0) {
+    // A story timer's crew lines (a faction-mode `add` in an `every` rule or
+    // a watcher) post now, after the tick line, as a replay posts them.
+    this.draftCrewNotices(evs);
+    if (evs.length > 0 || this.crewWaiting) {
       this.flushTick();
       // C6 (m2): a mark a story timer made (the summons' late watcher) is
       // stamped now, at the tick line's end, as a replay stamps it — not at
@@ -3768,7 +3964,6 @@ export class EventRuntime {
     }
     this.stopTicker();
     this.agents.reset(opts.by ?? "server", kind);
-    this.rulingsAsked.clear();
     this.rulingsDue.clear();
     this.spatial.reset(kind);
     this.agentPowerUses.clear();
@@ -3879,6 +4074,8 @@ export class EventRuntime {
             const batch = this.wallet.apply(e.a[0] as WalletOp);
             events++;
             this.chat.append(composeGuestMessages(this.sim!, batch, this.composeOpts));
+            const notices = this.sim!.crews.takeNotices(); // as `commitWallet` drafts them live
+            if (notices.length > 0) this.chat.append(crewDrafts(this.sim!, notices));
           } catch {
             /* tolerate a torn line */
           }
@@ -3916,8 +4113,11 @@ export class EventRuntime {
               for (const d of drafts) if (d.kind === "line") d.via = e.by;
             }
             this.chat.append(drafts);
-            if (e.m === "crew") this.chat.append(crewDrafts(this.sim!, this.sim!.crews.takeNotices())); // w18 crews: as CrewRoutes posts live
           }
+          // Wave 18b: after every line, as `commit` drafts them live (a crew
+          // op's, or a faction-mode join / defect / add leaving a crew).
+          const notices = this.sim!.crews.takeNotices();
+          if (notices.length > 0) this.chat.append(crewDrafts(this.sim!, notices));
         } catch {
           /* tolerate a single bad/torn entry rather than abort recovery */
         }
@@ -3943,6 +4143,7 @@ export class EventRuntime {
     const waits = this.store.loadAgentWaits();
     this.requeueAgentThreads(waits);
     this.noteRulingsDue();
+    this.syncConditionalAvatars(); // wave 18b: the replayed world's `when` pictures
     this.spatial.syncKing(); // the replayed world's King
     this.screens.adopt(this.sim!); // the replayed journal is the screens' history
     if (this.phase === "open") this.startTicker();
@@ -4289,6 +4490,17 @@ export class EventRuntime {
         // Programs walking the simulation right now: a house terminal shows
         // them even while the character is hidden or asleep.
         () => this.spatial.players().length,
+        {
+          // Wave 18b: the facts ledger's public results, built only while
+          // a reading's slide is up or the verdict's window is open.
+          results: (q) => {
+            const book = this.factsBook();
+            const view = this.factsView();
+            return book === null || view === undefined ? [] : screenResultsOf(view, book, q.ids, { kind: q.kind, tv: q.tv, truths: q.truths });
+          },
+          // Q8: is this map spot on `audio.json`'s announce list?
+          spotAnnounce: (spot) => this.audio.current().audio.announce?.terminals?.includes(spot) === true,
+        },
       );
     }
     // --- the house speakers (wave 17, audio.ts): the config + stagehand's long poll ---
@@ -4802,6 +5014,11 @@ export class EventRuntime {
           sendJson(res, 403, { error: "that side isn't open" });
           return true;
         }
+        const stays = this.staysWithSide(id, side);
+        if (stays !== null) {
+          sendJson(res, 409, { error: stays });
+          return true;
+        }
         this.fanout(this.commit("join", id, side));
         sendJson(res, 200, { ok: true });
         return true;
@@ -4823,6 +5040,11 @@ export class EventRuntime {
         const side = guestSide(this.sim!, str(body, "to"));
         if (side === null) {
           sendJson(res, 403, { error: "that side isn't open" });
+          return true;
+        }
+        const stays = this.staysWithSide(id, side);
+        if (stays !== null) {
+          sendJson(res, 409, { error: stays });
           return true;
         }
         this.fanout(this.commit("defect", id, side));
@@ -4930,11 +5152,23 @@ export class EventRuntime {
         // `card` rides the journaled args so a restart rebuilds the
         // answered set (`restore`) — the story sees it as one more argument.
         const answered = () => this.commit("signal", `${m.widget!.kind} answered`, id, { ...args, ...(judged?.args ?? {}), card: seq });
-        // A near miss in auto mode: the story's `judge:` character rules on
-        // it when its worker can answer now (wave 11b) — else wave 11's rule.
-        const ruler = judged?.review === true ? this.rulerOnline() : null;
-        this.fanout(judged?.review === true ? this.commitUnderReview(answered, nearNotice(this.sim!.persons.get(id)?.name ?? id, args, judged.near, ruler)) : answered());
-        if (ruler !== null && typeof args["question"] === "string") this.askRuling(id, args["question"]);
+        // Not an exact match in auto mode: the story's `judge:` character
+        // rules on it when its worker can (wave 11b near misses, wave 18b
+        // every other filing) — else wave 11's rule: a near miss waits,
+        // proposed accurate; a plain miss is judged at once.
+        // The ruling is asked once the filing is in (and the mode is back),
+        // before the `# hosts` line, so the line never claims an ask that
+        // did not land.
+        const ruler = judged !== null && judged.review ? judged.ruler : null;
+        const who = this.sim!.persons.get(id)?.name ?? id;
+        const question = args["question"];
+        const notice = () => {
+          if (judged === null) return null;
+          const asked = ruler !== null && typeof question === "string" && this.askRuling(id, question) ? ruler : null;
+          if (judged.near !== null) return nearNotice(who, args, judged.near, asked);
+          return ruler === null ? null : missNotice(who, args, judged.verdict ?? "uncertain", asked);
+        };
+        this.fanout(judged?.review === true ? this.commitUnderReview(answered, notice) : answered());
         sendJson(res, 200, { ok: true });
         return true;
       }
@@ -5070,7 +5304,25 @@ export class EventRuntime {
         this.fanout(events);
         if (events.some((e) => e.type === "codexMissed" && e.person === id)) this.redeemMisses.record(id);
         const hit = events.find((e): e is Extract<SimEvent, { type: "codexUnlocked" }> => e.type === "codexUnlocked" && e.person === id);
-        sendJson(res, 200, { ok: true, unlocked: hit !== undefined ? hit.entry : null, codex: guestView(this.sim!, id).codex });
+        const missed = events.some((e) => e.type === "codexMissed" && e.person === id);
+        // Wave 18b (R1): the entry's title for a hit, and for a code whose
+        // entry the guest already holds (`already`) — looked up only once
+        // they hold it, so a miss never names a code's entry.
+        let already: string | null = null;
+        if (hit === undefined && !missed) {
+          const entry = this.sim!.model.codexCodes.get(foldCode(code));
+          if (entry !== undefined && this.sim!.holdsCodex(id, entry)) already = entry;
+        }
+        const shown = hit !== undefined ? hit.entry : already;
+        const title = shown !== null ? (this.sim!.model.codex.get(shown)?.title ?? null) : null;
+        sendJson(res, 200, {
+          ok: true,
+          unlocked: hit !== undefined ? hit.entry : null,
+          ...(title !== null ? { title } : {}),
+          ...(already !== null ? { already } : {}),
+          ...(missed ? { missed: true } : {}),
+          codex: guestView(this.sim!, id).codex,
+        });
         return true;
       }
       case "/api/guest/codex/share": {
@@ -5807,6 +6059,7 @@ export class EventRuntime {
           device,
           station: station === "" ? null : station,
           captured: sim.isCaptured(guest),
+          ...(body["force"] === true ? { forced: true } : {}),
         });
         this.startSpatialLoop();
         sendJson(res, 200, assignment);

@@ -25,7 +25,14 @@
 //!   project's `audio.json`;
 //! - `POST /api/mod/audio/test {speaker} | {out}` → `{ok, seq}`: the router
 //!   plays an identifying tone + label there (the last `AUDIO_TESTS`, memory
-//!   only, `AUDIO_TEST_MS` old at most, ride every GET).
+//!   only, `AUDIO_TEST_MS` old at most, ride every GET);
+//! - `POST /api/mod/audio/stop {announce?}` → `{ok, seq, router}` (wave 18b,
+//!   Q7): "stop all house sounds" — the router fades out every sfx voice and
+//!   speaker test (with `announce`, the announcement too, and empties its
+//!   queue). One-shot, memory only, never journaled; the last `AUDIO_STOPS`
+//!   ride every GET as `stops` with the server's `now`, and a long poll
+//!   given `stops=<seq>` wakes on a newer one. A host's booth may stop them
+//!   too (the host allowlist).
 //!
 //! Transport-light: `AudioHub` takes an injected clock and store; the
 //! handlers take the runtime's context.
@@ -52,6 +59,36 @@ export interface AudioTest {
   speaker: string | null;
   out: number | null;
 }
+
+/** (wave 18b, Q7) A director's "stop all house sounds": the router fades
+ *  out every sfx voice and speaker test (0.3 s); with `announce` it also
+ *  cuts the announcement playing and empties its queue. One-shot, memory
+ *  only, never journaled (no story effect). */
+export interface AudioStop {
+  seq: number;
+  /** Server epoch ms. */
+  at: number;
+  /** Who stopped them (a director's name, a host's character). */
+  by: string;
+  announce: boolean;
+}
+
+/** `POST /api/mod/audio/stop` body. */
+export interface AudioStopRequest {
+  announce?: boolean;
+}
+
+/** `POST /api/mod/audio/stop` answer: the stop's seq and whether a router
+ *  is listening to play it (else "no router listening"). */
+export interface AudioStopAnswer {
+  ok: true;
+  seq: number;
+  router: AudioRouterPresence;
+}
+
+/** How many stops ride a GET, and for how long. */
+export const AUDIO_STOPS = 8;
+export const AUDIO_STOP_MS = 60_000;
 
 /** How many tests ride a GET, and for how long. */
 export const AUDIO_TESTS = 8;
@@ -156,6 +193,10 @@ export class AudioHub {
   private readonly now: () => number;
   private testLog: AudioTest[] = [];
   private testSeq = 0;
+  /** The recent stops (wave 18b) and their own counter: a router's `tests=`
+   *  cursor never sees a stop, so an old router never spins on one. */
+  private stopLog: AudioStop[] = [];
+  private stopSeq = 0;
   private waiters = new Set<() => void>();
   private routerSeenAt: number | null = null;
   private routerName: string | null = null;
@@ -294,10 +335,35 @@ export class AudioHub {
     return [...this.testLog];
   }
 
-  /** Is anything newer than the poller's view? */
-  moved(after: string, testsAfter: number | null): boolean {
+  /** Stop every house sound now (wave 18b, Q7): queued for the router. */
+  stop(o: { announce?: boolean }, by: string): AudioStop {
+    const s: AudioStop = { seq: ++this.stopSeq, at: this.now(), by: by.slice(0, 64), announce: o.announce === true };
+    this.stopLog.push(s);
+    if (this.stopLog.length > AUDIO_STOPS) this.stopLog.shift();
+    this.wake();
+    return s;
+  }
+
+  /** The recent stops (≤ `AUDIO_STOPS`, ≤ `AUDIO_STOP_MS` old), oldest first. */
+  stops(): AudioStop[] {
+    const since = this.now() - AUDIO_STOP_MS;
+    this.stopLog = this.stopLog.filter((s) => s.at >= since);
+    return [...this.stopLog];
+  }
+
+  /** The hub's clock (server epoch ms). */
+  clock(): number {
+    return this.now();
+  }
+
+  /** Is anything newer than the poller's view? A cursor past this hub's
+   *  own counter was issued by an earlier process (a server restart counts
+   *  from 1 again): stale, so the poll answers at once with today's list
+   *  instead of holding a stop for the whole long poll. */
+  moved(after: string, testsAfter: number | null, stopsAfter: number | null = null): boolean {
     if (this.current().version !== after) return true;
-    return testsAfter !== null && this.tests().some((t) => t.seq > testsAfter);
+    if (testsAfter !== null && (testsAfter > this.testSeq || this.tests().some((t) => t.seq > testsAfter))) return true;
+    return stopsAfter !== null && (stopsAfter > this.stopSeq || this.stops().some((s) => s.seq > stopsAfter));
   }
 
   /** Resolve on the next change (a save, a project snapshot, a test) or
@@ -343,6 +409,11 @@ export interface AudioView {
   sounds: string[];
   locations: string[];
   tests: AudioTest[];
+  /** (wave 18b) The recent stops (≤ `AUDIO_STOPS`, ≤ `AUDIO_STOP_MS` old,
+   *  oldest first); the router keeps its own `stops=` cursor. */
+  stops: AudioStop[];
+  /** (wave 18b) Server epoch ms, so the router can drop a stale stop. */
+  now: number;
   /** Is the router on the house Mac listening (a Test is played only then)? */
   router: AudioRouterPresence;
   /** The config in force checked against the house in force (a map edit
@@ -355,7 +426,7 @@ export function audioView(hub: AudioHub, ctx: AudioContext): AudioView {
   const cur = hub.current();
   const model = ctx.model();
   const v = validateAudio(cur.audio, ctx.house());
-  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), router: hub.router(), problems: v.problems, warnings: v.warnings };
+  return { ...cur, sounds: storySounds(model), locations: storyLocations(model), tests: hub.tests(), stops: hub.stops(), now: hub.clock(), router: hub.router(), problems: v.problems, warnings: v.warnings };
 }
 
 /**
@@ -371,13 +442,15 @@ export async function handleAudioGet(hub: AudioHub, ctx: AudioContext, req: Inco
   const after = url.searchParams.get("after");
   const testsRaw = url.searchParams.get("tests") ?? "";
   const testsAfter = /^\d+$/u.test(testsRaw) ? Number(testsRaw) : null;
+  const stopsRaw = url.searchParams.get("stops") ?? "";
+  const stopsAfter = /^\d+$/u.test(stopsRaw) ? Number(stopsRaw) : null;
   const waitRaw = Number(url.searchParams.get("wait") ?? AUDIO_WAIT_S);
   const waitS = Number.isFinite(waitRaw) ? Math.min(AUDIO_WAIT_MAX_S, Math.max(0, waitRaw)) : AUDIO_WAIT_S;
   // The house Mac's router says who it is (`router=1`); the map editor's own
   // long poll does not, so it never passes for one.
   const router = url.searchParams.get("router") === "1";
   if (router) hub.noteRouter(url.searchParams.get("name"));
-  if (after !== null && after !== "" && !hub.moved(after, testsAfter) && waitS > 0) {
+  if (after !== null && after !== "" && !hub.moved(after, testsAfter, stopsAfter) && waitS > 0) {
     const w = hub.waitChange(waitS * 1000);
     // A caller that hangs up frees its waiter at once.
     req.on?.("close", w.cancel);
@@ -462,6 +535,18 @@ export async function handleAudioPost(hub: AudioHub, ctx: AudioContext, path: st
         return true;
       }
       sendJson(res, 200, { ok: true, seq: hub.test({ out }).seq, router: hub.router() });
+      return true;
+    }
+    case "/api/mod/audio/stop": {
+      const announce = body["announce"];
+      if (announce !== undefined && typeof announce !== "boolean") {
+        sendJson(res, 400, { error: "announce must be true or false" });
+        return true;
+      }
+      const stop = hub.stop({ announce: announce === true }, by);
+      process.stdout.write(`  🔇 audio: ${by} stopped the house sounds${stop.announce ? " (and the announcements)" : ""}\n`);
+      const answer: AudioStopAnswer = { ok: true, seq: stop.seq, router: hub.router() };
+      sendJson(res, 200, answer);
       return true;
     }
     default:

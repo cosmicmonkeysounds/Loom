@@ -9,6 +9,8 @@
 //!                                            yours; with no side, your crew)
 //!   POST /api/guest/recruit/answer {id, yes} → {ok, joined, kind, target, targetName}
 //!   POST /api/guest/side/leave             → {ok}  (back to neither)
+//!   POST /api/guest/crew/join {crew}       → {ok, crew}  (wave 18b, faction mode:
+//!                                            a walk-in join from the Factions list)
 //! Director routes (mod token / Run, and the host allowlist since the fix round):
 //!   POST /api/mod/crew/rename {crew, name} → {ok, crew}
 //!   POST /api/mod/crew/dissolve {crew}     → {ok}
@@ -17,7 +19,18 @@
 //! invitation's yes is the sim's switching `join` / `defect`, so it is
 //! checked here exactly as `/api/guest/join` is: doors open, the guest not
 //! restricted, the side declared + joinable + revealed (`guestSide`). A crew
-//! never touches a side or the majority.
+//! never touches a side or the majority — unless the story has a `founding:`
+//! line (wave 18b, **faction mode**): then a founded crew is a faction in
+//! the one majority race beside the declared sides, membership is
+//! exclusive (founding or joining one leaves the other), a founder's leave
+//! disbands it, founding opens only inside the `founding:` window, and a
+//! founder or a side's leader is never moved into another faction (the
+//! routes refuse before journaling; the engine refuses on replay too).
+//!
+//! The chat lines a crew op posts (`crewDrafts`) are drafted by the runtime
+//! right after **every** commit — a crew op's, and a `join` / `defect` /
+//! story `add` that took someone out of a crew in faction mode — live and
+//! at replay alike, so the seqs match.
 //!
 //! The invitation itself is a `widget` card of kind `invite` posted to the
 //! invitee in the private thread with the inviter (`pm:<a>:<b>`), as a big
@@ -41,6 +54,9 @@ export const INVITES_PER_MINUTE = 10;
 /** At most this many crew/found attempts (taken or refused) a guest makes a
  *  minute: a name check is never a free lookup. */
 export const FOUNDS_PER_MINUTE = 6;
+/** At most this many walk-in joins (taken or refused) a guest makes a
+ *  minute: join, leave, join again posts a line to the faction each time. */
+export const JOINS_PER_MINUTE = 6;
 
 // ───────────────────────── name moderation ─────────────────────────
 
@@ -223,6 +239,7 @@ export const CREW_GUEST_ROUTES = [
   "/api/guest/recruit",
   "/api/guest/recruit/answer",
   "/api/guest/side/leave",
+  "/api/guest/crew/join",
 ] as const;
 export const CREW_MOD_ROUTES = ["/api/mod/crew/rename", "/api/mod/crew/dissolve"] as const;
 
@@ -253,10 +270,13 @@ export class CrewRoutes {
   private readonly sent = new Map<string, number[]>();
   /** guest id → wall ms of their recent crew/found attempts. */
   private readonly founds = new Map<string, number[]>();
+  /** guest id → wall ms of their recent walk-in joins. */
+  private readonly walkIns = new Map<string, number[]>();
 
   constructor(private readonly host: CrewHost) {}
 
-  /** Journal + apply + fan out one op, then post its lines. */
+  /** Journal + apply + fan out one op, then post its lines (a host that
+   *  drafts every commit's notices itself has taken them already). */
   private commit(sim: Sim, op: CrewOp): void {
     const events = this.host.apply(op);
     this.host.fanout(events);
@@ -264,6 +284,26 @@ export class CrewRoutes {
     const drafts = crewDrafts(sim, notices);
     if (drafts.length > 0) this.host.post(drafts);
     if (notices.some((n) => n.kind === "answered")) this.host.markAnswered(answeredInviteCards(this.host.messages(), sim.crews));
+  }
+
+  /** "crew" or, in faction mode, "faction" (the copy's word). */
+  private static word(sim: Sim): string {
+    return sim.crews.factionMode ? "faction" : "crew";
+  }
+
+  /** Faction mode: why `person` may not be moved into another faction than
+   *  `into` (a crew id, a side, or null = any): a live founder elsewhere, or
+   *  a side's leader. Null outside faction mode. `self`: the copy speaks to
+   *  them ("Disband X first.") rather than about them. */
+  private static anchored(sim: Sim, person: string, into: string | null, self: boolean): Refusal | null {
+    const crews = sim.crews;
+    if (!crews.factionMode) return null;
+    const name = nameOf(sim, person);
+    const own = crews.foundedBy(person);
+    if (own !== null && own.id !== into) return { status: 409, error: self ? `Disband ${own.name} first.` : `${name} founded ${own.name}. Founders stay with their faction.` };
+    const led = crews.ledSide(person);
+    if (led !== null && led !== into) return { status: 409, error: self ? "Leaders stay with their side." : `${name} leads ${led}. Leaders stay with their side.` };
+    return null;
   }
 
   /** A guest named by id (a pass) or by display name. */
@@ -316,7 +356,10 @@ export class CrewRoutes {
         if (sim.isCaptured(id)) return { status: 409, error: "Not from the Internet." };
         const mine = crews.foundedBy(id);
         if (mine !== null) return { status: 409, error: `You already founded ${mine.name}.` };
-        if (crews.all().length >= MAX_CREWS) return { status: 409, error: `The computer has room for ${MAX_CREWS} crews, and they're all taken.` };
+        if (crews.all().length >= MAX_CREWS) return { status: 409, error: `The computer has room for ${MAX_CREWS} ${CrewRoutes.word(sim)}s, and they're all taken.` };
+        // Faction mode: only inside the story's `founding:` window, never a
+        // side's leader. Generic on purpose: the reason is story state.
+        if (crews.factionMode && !crews.mayFound(id)) return { status: 403, error: "You can't found a faction right now." };
         if (this.throttled(id, this.founds, FOUNDS_PER_MINUTE)) return { status: 429, error: "slow down — wait a minute" };
         const raw = str(body, "name");
         const name = cleanGuestName(raw);
@@ -332,11 +375,16 @@ export class CrewRoutes {
         return this.inviteToCrew(sim, id, body, res);
       case "/api/guest/crew/leave": {
         const crew = crews.crewOf(id);
-        if (crew === null) return { status: 409, error: "You're not in a crew." };
+        if (crew === null) return { status: 409, error: `You're not in a ${CrewRoutes.word(sim)}.` };
+        // Faction mode: the founder's leave disbands it (the engine turns
+        // the op into a dissolve; the client asks first).
+        const dissolved = crews.factionMode && crew.founder === id;
         this.commit(sim, { op: "leaveCrew", person: id, crew: crew.id });
-        sendJson(res, 200, { ok: true });
+        sendJson(res, 200, dissolved ? { ok: true, dissolved: true } : { ok: true });
         return null;
       }
+      case "/api/guest/crew/join":
+        return this.walkIn(sim, id, body, res);
       case "/api/guest/recruit":
         return this.recruit(sim, id, body, res);
       case "/api/guest/recruit/answer":
@@ -354,6 +402,26 @@ export class CrewRoutes {
     return { status: 404, error: "no such route" };
   }
 
+  /** `/api/guest/crew/join {crew}` (faction mode): a walk-in join from the
+   *  Factions list — leaving the guest's side or other crew. */
+  private walkIn(sim: Sim, id: string, body: Record<string, unknown>, res: ServerResponse): Refusal | null {
+    const crews = sim.crews;
+    if (!crews.factionMode) return { status: 409, error: "A crew takes members by invitation: ask for a scan." };
+    if (this.throttled(id, this.walkIns, JOINS_PER_MINUTE)) return { status: 429, error: "slow down — wait a minute" };
+    if (sim.isRestricted(id)) return { status: 403, error: "Not while you're restricted." };
+    if (sim.isCaptured(id)) return { status: 409, error: "Not from the Internet." };
+    const crew = crews.get(str(body, "crew").trim());
+    if (crew === null) return { status: 404, error: "No such faction." };
+    if (crew.members.includes(id)) return { status: 409, error: `You're already in ${crew.name}.` };
+    const anchored = CrewRoutes.anchored(sim, id, crew.id, true);
+    if (anchored !== null) return anchored;
+    this.commit(sim, { op: "joinCrew", person: id, crew: crew.id });
+    const now = crews.get(crew.id);
+    if (now === null || !now.members.includes(id)) return { status: 409, error: "That didn't go through." };
+    sendJson(res, 200, { ok: true, crew: crews.crewView(now) });
+    return null;
+  }
+
   /** Why `to` can't be invited by `by` at all (who they are, not where). */
   private targetRefusal(sim: Sim, by: string, to: string | null): Refusal | null {
     if (to === null) return { status: 404, error: "No such program." };
@@ -369,7 +437,7 @@ export class CrewRoutes {
     const crew = sim.crews.crewOf(id);
     if (crew === null) return { status: 409, error: "Found a crew first." };
     const to = this.person(sim, str(body, "to"));
-    const bad = this.targetRefusal(sim, id, to);
+    const bad = this.targetRefusal(sim, id, to) ?? CrewRoutes.anchored(sim, to!, crew.id, false);
     if (bad !== null) return bad;
     return this.send(sim, id, to!, "crew", crew.id, res);
   }
@@ -390,12 +458,18 @@ export class CrewRoutes {
     } else side = sim.crews.sideOf(id);
     if (side === null) {
       const crew = sim.crews.crewOf(id);
-      if (crew !== null) return this.send(sim, id, to!, "crew", crew.id, res);
+      if (crew !== null) {
+        const anchored = CrewRoutes.anchored(sim, to!, crew.id, false);
+        if (anchored !== null) return anchored;
+        return this.send(sim, id, to!, "crew", crew.id, res);
+      }
       return { status: 409, error: `Join a side first, then scan ${name}'s pass to recruit them.` };
     }
     if (sim.factionOf(to!) === side) return { status: 409, error: `${name} is already in ${side}.` };
     const led = sim.crews.ledSide(to!);
     if (led !== null && led !== side) return { status: 409, error: `${name} leads ${led}. Leaders stay with their side.` };
+    const anchored = CrewRoutes.anchored(sim, to!, side, false);
+    if (anchored !== null) return anchored;
     return this.send(sim, id, to!, "side", side, res);
   }
 
@@ -432,7 +506,11 @@ export class CrewRoutes {
         if (guestSide(sim, invite.target) === null) return { status: 403, error: "that side isn't open" };
         const led = crews.ledSide(id);
         if (led !== null && led !== invite.target) return { status: 409, error: "Leaders stay with their side." };
-      } else if (crews.get(invite.target) === null) return { status: 409, error: "That crew is gone." };
+      } else if (crews.get(invite.target) === null) return { status: 409, error: `That ${CrewRoutes.word(sim)} is gone.` };
+      // Faction mode: a founder or a leader says yes only into their own
+      // faction (the engine voids such a yes on replay too).
+      const anchored = CrewRoutes.anchored(sim, id, invite.target, true);
+      if (anchored !== null) return anchored;
     }
     const targetName = crews.targetName(invite);
     this.commit(sim, invite.kind === "crew" ? { op: "crewAnswer", id: invite.id, yes } : { op: "recruitAnswer", id: invite.id, yes });

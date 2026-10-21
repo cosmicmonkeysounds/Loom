@@ -5,14 +5,14 @@
 //! rename / dissolve.
 
 import { afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { ChatMessage } from "../server/chat.ts";
-import { crewNameRefusal } from "../server/routes/crews.ts";
+import { JOINS_PER_MINUTE, crewNameRefusal } from "../server/routes/crews.ts";
 import { parseFactsBook } from "../server/facts.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 import { CREW_SOURCE } from "./crews.fixture.ts";
@@ -401,5 +401,233 @@ describe("a host's crew controls (M3)", () => {
     expect(view.crews).toEqual([{ id: "crew-1", name: "Night Shift", members: 1 }]);
     expect((await post(rt, "/api/mod/crew/rename", { crew: "crew-1", name: "Day Shift" }, true)).status).toBe(200);
     expect(rt.liveSim!.crews.get("crew-1")?.name).toBe("Day Shift");
+  });
+});
+
+// ───────────────────────── wave 18b: faction mode ─────────────────────────
+
+const MINI = readFileSync(new URL("./fixtures/w18b-mini/main.loom", import.meta.url), "utf8");
+const MINI_FACTS = readFileSync(new URL("./fixtures/w18b-mini/facts.json", import.meta.url), "utf8");
+
+function freshMini(dir?: string, source = MINI): { rt: EventRuntime; dir: string } {
+  const d = dir ?? mkdtempSync(join(tmpdir(), "loom-factions-"));
+  if (dir === undefined) dirs.push(d);
+  const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "mini", scenarioSource: source, joinBase: () => "http://localhost", now: () => clock, facts: MINI_FACTS });
+  return { rt, dir: d };
+}
+const cue = (rt: EventRuntime, name: string, subject = "") => post(rt, "/api/mod/signal", { name, ...(subject !== "" ? { subject } : {}) }, true);
+
+async function factions(): Promise<{ rt: EventRuntime; dir: string; g: Array<{ id: string; token: string }> }> {
+  const { rt, dir } = freshMini();
+  rt.openDoors();
+  const g: Array<{ id: string; token: string }> = [];
+  for (const n of ["Ada", "Bob", "Cy", "Dee", "Eve"]) g.push(await guest(rt, n));
+  await cue(rt, "clear_everyone");
+  return { rt, dir, g };
+}
+
+describe("faction mode (wave 18b)", () => {
+  it("founding opens only inside the founding: window, and says nothing of why", async () => {
+    const { rt, g } = await factions();
+    const early = await post(rt, "/api/guest/crew/found", { token: g[0]!.token, name: "Night Shift" });
+    expect(early).toMatchObject({ status: 403, json: { error: "You can't found a faction right now." } });
+    await cue(rt, "truther_download");
+    const ok = await post(rt, "/api/guest/crew/found", { token: g[0]!.token, name: "Night Shift" });
+    expect(ok.status).toBe(200);
+    // Midnight closes it.
+    await cue(rt, "midnight");
+    expect((await post(rt, "/api/guest/crew/found", { token: g[1]!.token, name: "Day Shift" })).status).toBe(403);
+  });
+
+  it("a walk-in join, its refusals, and a founder's leave disbands", async () => {
+    const { rt, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, b, c, d, e] = g as [typeof g[0], typeof g[0], typeof g[0], typeof g[0], typeof g[0]];
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/found", { token: b.token, name: "Day Shift" });
+    expect(await post(rt, "/api/guest/crew/join", { token: c.token, crew: "nope" })).toMatchObject({ status: 404 });
+    const joined = await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" });
+    expect(joined.status).toBe(200);
+    expect(joined.json.crew).toMatchObject({ id: "crew-1", members: [a.id, c.id] });
+    expect(await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).toMatchObject({ status: 409 });
+    // A founder elsewhere: disband first.
+    expect(await post(rt, "/api/guest/crew/join", { token: b.token, crew: "crew-1" })).toMatchObject({ status: 409, json: { error: "Disband Day Shift first." } });
+    // A side's leader stays with the side.
+    await cue(rt, "make_leaders", d.id);
+    expect(await post(rt, "/api/guest/crew/join", { token: d.token, crew: "crew-1" })).toMatchObject({ status: 409, json: { error: "Leaders stay with their side." } });
+    // Restricted, captured.
+    await post(rt, "/api/mod/act", { action: "restrict", id: e.id }, true);
+    expect(await post(rt, "/api/guest/crew/join", { token: e.token, crew: "crew-1" })).toMatchObject({ status: 403 });
+    await post(rt, "/api/mod/act", { action: "unrestrict", id: e.id }, true);
+    await post(rt, "/api/mod/act", { action: "capture", id: e.id }, true);
+    expect(await post(rt, "/api/guest/crew/join", { token: e.token, crew: "crew-1" })).toMatchObject({ status: 409 });
+    // Switching: c walks from Night Shift into Day Shift.
+    expect((await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-2" })).status).toBe(200);
+    expect(rt.liveSim!.crews.get("crew-1")!.members).toEqual([a.id]);
+    // The founder's leave disbands.
+    const left = await post(rt, "/api/guest/crew/leave", { token: b.token });
+    expect(left).toMatchObject({ status: 200, json: { ok: true, dissolved: true } });
+    expect(rt.liveSim!.crews.get("crew-2")).toBeNull();
+    expect(rt.liveSim!.crews.crewOf(c.id)).toBeNull();
+    expect(chat(rt).some((m) => m.text === "◇ Day Shift was dissolved." && m.audience.includes(c.id))).toBe(true);
+  });
+
+  it("no founder or leader is invited, recruited or moved into another faction", async () => {
+    const { rt, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, b, , d] = g as [typeof g[0], typeof g[0], typeof g[0], typeof g[0]];
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/found", { token: b.token, name: "Day Shift" });
+    expect(await post(rt, "/api/guest/crew/invite", { token: a.token, to: b.id })).toMatchObject({ status: 409, json: { error: "Bob founded Day Shift. Founders stay with their faction." } });
+    await cue(rt, "make_leaders", d.id);
+    expect(await post(rt, "/api/guest/crew/invite", { token: a.token, to: d.id })).toMatchObject({ status: 409, json: { error: "Dee leads Unlimited Power. Leaders stay with their side." } });
+    // The sides open at the clock: a founder can't join one, nor be recruited into one.
+    await cue(rt, "the_clock");
+    expect(await post(rt, "/api/guest/join", { token: a.token, faction: "The Way Out" })).toMatchObject({ status: 409, json: { error: "Founders stay with their faction. Disband it first." } });
+    expect(await post(rt, "/api/guest/defect", { token: a.token, to: "The Way Out" })).toMatchObject({ status: 409 });
+    expect(await post(rt, "/api/guest/recruit", { token: d.token, to: a.id })).toMatchObject({ status: 409, json: { error: "Ada founded Night Shift. Founders stay with their faction." } });
+    // A side's leader (Excel, OpenOffice) can't walk to the other side either.
+    expect(await post(rt, "/api/guest/join", { token: d.token, faction: "The Way Out" })).toMatchObject({ status: 409, json: { error: "Leaders stay with their side." } });
+    expect(await post(rt, "/api/guest/defect", { token: d.token, to: "The Way Out" })).toMatchObject({ status: 409, json: { error: "Leaders stay with their side." } });
+    expect((await post(rt, "/api/guest/join", { token: d.token, faction: "Unlimited Power" })).status).toBe(200);
+    expect(rt.liveSim!.crews.ledSide(d.id)).toBe("Unlimited Power");
+  });
+
+  it("a join that leaves a crew posts its line at once, and a restart posts the same", async () => {
+    const { rt, dir, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, , c] = g as [typeof g[0], typeof g[0], typeof g[0]];
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" });
+    await cue(rt, "the_clock");
+    expect((await post(rt, "/api/guest/join", { token: c.token, faction: "The Way Out" })).status).toBe(200);
+    const left = chat(rt).filter((m) => m.text === "◇ Cy left Night Shift.");
+    expect(left).toHaveLength(1);
+    expect(rt.liveSim!.crews.crewOf(c.id)).toBeNull();
+    const live = chat(rt).map((m) => `${m.seq}|${m.channel}|${m.text}`);
+    rt.dispose();
+    const back = freshMini(dir).rt;
+    back.restore();
+    expect(chat(back).map((m) => `${m.seq}|${m.channel}|${m.text}`)).toEqual(live);
+  });
+
+  it("a crew line a story timer raises posts at the tick, and one raised mid-chain right after its commit, as a restart posts them", async () => {
+    // The mini story plus a story clock, a watcher that walks a program to
+    // The Way Out two ticks after a cue, and a filing that walks them there.
+    const source =
+      MINI.replace("  settle_gen: 0 to 99 = 0\n\nCHARACTER Kernel", "  settle_gen: 0 to 99 = 0\n  ticks: 0 to 99999 = 0\n  every 1s:\n    set self.ticks += 1\n\nCHARACTER Kernel")
+        .replace("  settle_seen: 0 to 99 = 0\n", "  settle_seen: 0 to 99 = 0\n  drift_at: 0 to 99999 = 0\n  drifts: bool = false\n")
+        .replace("  when answer answered for program:\n", "  when self.drift_at > 0 and Night.ticks >= self.drift_at:\n    set self.drift_at = 0\n    add self to The Way Out\n  when answer answered for program:\n")
+        .replace("  when fact answered for program:\n", "  when fact answered for program:\n    if program.drifts == true:\n      add program to The Way Out\n") +
+      `
+INTERACTION drift_later
+  who: admin
+  sequence: false
+INTERACTION drift_on_filing
+  who: admin
+  sequence: false
+
+when drift_later for program:
+  set program.drift_at = Night.ticks + 2
+
+when drift_on_filing for program:
+  set program.drifts = true
+`;
+    const { rt, dir } = freshMini(undefined, source);
+    rt.openDoors();
+    const [a, , c, d] = [await guest(rt, "Ada"), await guest(rt, "Bob"), await guest(rt, "Cy"), await guest(rt, "Dee")];
+    await cue(rt, "clear_everyone");
+    await cue(rt, "truther_download");
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" });
+    await post(rt, "/api/guest/crew/join", { token: d.token, crew: "crew-1" });
+    // The timer: Cy leaves on a tick, with no commit after it.
+    await cue(rt, "drift_later", c.id);
+    for (let i = 0; i < 3; i++) rt.tickOnce(1000);
+    expect(chat(rt).at(-1)?.text).toBe("◇ Cy left Night Shift.");
+    // Mid-chain: Dee's plain miss is filed under review (a worker voices the
+    // judge), so the story's line, the crew line and the server's own
+    // `# hosts` line come out of one fanout of four commits.
+    (rt as unknown as { agents: { attach(w: unknown): void } }).agents.attach({ id: "w1", name: "laptop", characters: new Set(["Oracle"]), send() {} });
+    await cue(rt, "drift_on_filing", d.id);
+    await cue(rt, "deal_the_fact");
+    const card = rt.chatHistoryFor(d.id).filter((m) => m.kind === "widget" && m.widget?.kind === "fact").at(-1)!;
+    expect((await post(rt, "/api/guest/widget", { token: d.token, seq: card.seq, result: { question: "H1", answer: "twelve", confidence: 80 } })).status).toBe(200);
+    const texts = chat(rt).map((m) => m.text);
+    const left = texts.indexOf("◇ Dee left Night Shift.");
+    const asked = texts.findIndex((t) => t.startsWith("📝 Not an exact match: Dee's"));
+    expect(left).toBeGreaterThan(-1);
+    expect(asked).toBeGreaterThan(left);
+    const live = chat(rt).map((m) => `${m.seq}|${m.channel}|${m.text}`);
+    rt.dispose();
+    const back = freshMini(dir, source).rt;
+    back.restore();
+    expect(chat(back).map((m) => `${m.seq}|${m.channel}|${m.text}`)).toEqual(live);
+    back.dispose();
+  });
+
+  it("walk-in joins are capped per minute: join / leave / join can't flood a faction", async () => {
+    const { rt, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, , c] = g as [typeof g[0], typeof g[0], typeof g[0]];
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    for (let i = 0; i < JOINS_PER_MINUTE; i++) {
+      expect((await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).status).toBe(200);
+      expect((await post(rt, "/api/guest/crew/leave", { token: c.token })).status).toBe(200);
+    }
+    expect(await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).toMatchObject({ status: 429 });
+    clock += 60_000;
+    expect((await post(rt, "/api/guest/crew/join", { token: c.token, crew: "crew-1" })).status).toBe(200);
+  });
+
+  it("outside faction mode a crew takes members by invitation only", async () => {
+    const { rt, a } = await party();
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    const bob = await guest(rt, "Bea");
+    expect(await post(rt, "/api/guest/crew/join", { token: bob.token, crew: "crew-1" })).toMatchObject({ status: 409 });
+  });
+});
+
+describe("faction mode keeps every race side from the agents (wave 18b, D13 j)", () => {
+  type Req = { world: Record<string, string>; them: { vars: Record<string, string> } } | null;
+  const request = (rt: EventRuntime, guest: string): Req =>
+    (rt as unknown as { buildAgentRequest(t: { character: string; channel: string; audience: string[] }, id: string): Req }).buildAgentRequest({ character: "Oracle", channel: "dm:Oracle", audience: [guest] }, "ar-test");
+  const raceKey = (k: string) => /^(Unlimited Power|The Way Out|Unlimited_Power|The_Way_Out|crew-)/u.test(k);
+
+  it("a revealed side's members and leader ride neither a request nor the facts document; the speaker keeps their own group", async () => {
+    const { rt, g } = await factions();
+    await cue(rt, "truther_download");
+    const [a, b, , d] = g as [typeof g[0], typeof g[0], typeof g[0], typeof g[0]];
+    await cue(rt, "make_leaders", d.id);
+    await cue(rt, "the_clock");
+    expect((await post(rt, "/api/guest/join", { token: a.token, faction: "Unlimited Power" })).status).toBe(200);
+    await post(rt, "/api/guest/crew/found", { token: b.token, name: "Night Shift" });
+    expect(rt.liveSim!.world.peek("Unlimited Power.leader")).not.toBeNull();
+    expect((await post(rt, "/api/guest/say", { token: a.token, channel: "dm:Oracle", text: "how many are with you?" })).status).toBe(200);
+    const req = request(rt, a.id)!;
+    expect(Object.keys(req.world).filter(raceKey)).toEqual([]);
+    expect(req.them.vars["group"] ?? req.them.vars["faction"]).toBe("Unlimited Power");
+    const res = fakeRes();
+    await rt.handle(fakeReq({}), res, "GET", "/api/agent/facts", new URL("http://x/api/agent/facts"), { moderator: true });
+    const facts = JSON.parse(res.body) as { world: Record<string, string>; programs: Array<{ faction: string | null; groups: string[]; vars: Record<string, string> }> };
+    expect(Object.keys(facts.world).filter(raceKey)).toEqual([]);
+    for (const p of facts.programs) {
+      expect(p.faction === null || !raceKey(p.faction)).toBe(true);
+      expect(p.groups.filter(raceKey)).toEqual([]);
+      expect(Object.values(p.vars).filter((v) => raceKey(v))).toEqual([]);
+    }
+  });
+
+  it("with no founding: line a revealed side still rides a request (unchanged)", async () => {
+    const src = MINI.replace(/^founding: .*$/mu, "");
+    const d = mkdtempSync(join(tmpdir(), "loom-factions-"));
+    dirs.push(d);
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(d), codes: CODES, scenarioName: "mini", scenarioSource: src, joinBase: () => "http://localhost", now: () => clock, facts: MINI_FACTS });
+    rt.openDoors();
+    const a = await guest(rt, "Ada");
+    await cue(rt, "make_leaders", a.id);
+    await cue(rt, "the_clock");
+    expect((await post(rt, "/api/guest/say", { token: a.token, channel: "dm:Oracle", text: "hello" })).status).toBe(200);
+    expect(Object.keys(request(rt, a.id)!.world).some((k) => k.startsWith("Unlimited Power."))).toBe(true);
   });
 });

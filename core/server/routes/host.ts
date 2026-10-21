@@ -60,6 +60,9 @@ const HOST_POSTS: ReadonlySet<string> = new Set([
   // Wave 18 fix (M3): a guest-founded crew's name, or the crew itself.
   "/api/mod/crew/rename",
   "/api/mod/crew/dissolve",
+  // Wave 18b (Q7): "stop all house sounds" from the host dock. Only the
+  // stop: the speakers' saves and tests stay a director's.
+  "/api/mod/audio/stop",
 ]);
 
 /** The facts judge's mode path (wave 18, C8: hosts switch auto ⇄ review). */

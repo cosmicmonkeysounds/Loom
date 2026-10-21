@@ -416,3 +416,45 @@ def test_a_judge_thought_reruns_on_the_judge_model(tmp_path):
     run(go())
     job = next(iter(agents.orchestrator._jobs.values()))
     assert job.kind == "rerun" and job.payload["model"].temperature == JUDGE_TEMPERATURE
+
+
+# -- wave 18b (O4): every non-exact filing ----------------------------------------
+
+
+def test_the_prompt_no_longer_says_every_filing_is_spelled_close():
+    system = judge_messages(frame())[0]["content"]
+    assert "spelled close to the key" not in system
+    assert "Judge what the guest meant" in system
+
+
+def test_a_plain_miss_says_a_different_answer_is_not_the_same():
+    user = judge_messages(frame(near=None, answer="Claude"))[1]["content"]
+    last = user.rsplit("\n", 1)[1]
+    assert last.startswith("Is the filed answer the same as the answer key?")
+    assert "a different answer is NOT the same" in last
+    assert "only a spelling slip, a paraphrase or another way of writing the key is the same" in last
+    # The JSON document is unchanged (no `near` in it).
+    doc = json.loads(user.split("\n", 1)[1].rsplit("\n", 1)[0])
+    assert set(doc) == {"question", "answer_key", "also_accepted", "filed_answer"}
+
+
+def test_a_near_miss_says_so_and_an_old_server_frame_says_nothing():
+    near = judge_messages(frame(near="Grok"))[1]["content"].rsplit("\n", 1)[1]
+    assert near.endswith("The filed answer is spelled close to the key.")
+    old = judge_messages(frame())[1]["content"].rsplit("\n", 1)[1]
+    assert old == "Is the filed answer the same as the answer key?"
+
+
+def test_an_old_shape_frame_and_a_plain_miss_frame_both_rule(tmp_path):
+    seen = []
+
+    async def complete_fn(messages, model):
+        seen.append(messages[1]["content"])
+        return '{"same": false, "why": "A different chatbot."}'
+
+    agents = worker(tmp_path, complete_fn)
+    run(judge_once(agents))  # no `near` key: an old server
+    run(judge_once(agents, id="aj-2", near=None, answer="Claude"))
+    rulings = posts(agents, "/api/agent/judge")
+    assert [(r["id"], r["same"]) for r in rulings] == [("aj-1", False), ("aj-2", False)]
+    assert "NOT the same" not in seen[0] and "NOT the same" in seen[1]

@@ -110,7 +110,9 @@ describe("the screen program (K-17 + N-03)", () => {
     expect(["screensaver", "attract", "trabolta_online", "mirror"].map(screenCueClass)).toEqual(["base", "base", "base", "base"]);
     expect(["trivia_1", "five_minutes", "bingo", "y2k", "award_best_liar"].map(screenCueClass)).toEqual(["slide", "slide", "slide", "slide", "slide"]);
     expect(["bingo", "y2k", "trust_chart", "truth_txt", "award_most_honest", "ceremony_host"].every(slidePersists)).toBe(true);
-    expect(["trivia_1", "bingo_time", "call_desktop", "hunt_results"].some(slidePersists)).toBe(false);
+    expect(["trivia_1", "bingo_time", "call_desktop"].some(slidePersists)).toBe(false);
+    // Wave 18b: a reading holds while Trabolta reads (it may outlast 90 s).
+    expect(["hunt_results", "tally"].every(slidePersists)).toBe(true);
     // The finale's waits hold until the story's next screen cue (wave 17).
     expect(["bobbing", "advice", "grok_prom", "banish"].every(slidePersists)).toBe(true);
     expect(["final_reveal", "song", "rave", "dancing_baby", "bobbing_extra"].some(slidePersists)).toBe(false);
@@ -389,7 +391,7 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     let s = await state(rt);
     expect(s.character).toMatchObject({ id: "Trabolta", hidden: true, awake: false, online: false });
     expect(s.attract).toBe(true);
-    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null });
+    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null });
     // The doors' entry beat is live (the sim is folded from its birth), so
     // the TV's Power On scene plays on a real door-open.
     expect(s.moments.find((m) => m.kind === "beat" && m.name === "Power On")).toMatchObject({ seq: 1 });

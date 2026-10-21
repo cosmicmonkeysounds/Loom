@@ -1,12 +1,17 @@
-"""The judge: one stateless ruling on a near-miss 📝 filing (wave 11b).
+"""The judge: one stateless ruling on a 📝 filing (wave 11b; wave 18b, O4).
 
 A story header `judge: <Character>` names an agent-voiced character who
-rules on the facts judge's near misses (a small typo, the key said at
-length) so directors don't have to. The server sends the worker voicing
-that character a `judge` frame on the agent stream:
+rules on every filing the facts judge can't accept as an exact match — a
+near miss (a small typo, the key said at length) or a plain miss (an
+answer that may still be a paraphrase of the key) — so directors don't
+have to. The server sends the worker voicing that character a `judge`
+frame on the agent stream, one at a time (it queues the rest):
 
     judge {id, character, filing: {…}, question: {id, text},
-           key: {answer, aliases}, answer, confidence}
+           key: {answer, aliases}, answer, confidence, near}
+
+`near` (wave 18b) is the key form the answer is spelled close to, or null
+for a plain miss; an older server sends no `near` at all.
 
 and the worker answers `POST /api/agent/judge {id, worker, same, why}`
 (410 when the request is gone: a director ruled first, it expired, the
@@ -48,7 +53,7 @@ JUDGE_SYSTEM = """You are an impartial answer checker for a party quiz. You deci
 
 The key may list other accepted answers (aliases); matching any of them counts.
 
-Guests type on phones at a party, and this filing was sent to you because it is spelled close to the key. Judge what the guest meant, in the context of the question.
+Guests type on phones at a party. Judge what the guest meant, in the context of the question.
 
 The SAME (same: true):
 - spelling slips, typos, swapped, missing or extra letters, wrong capitals, missing accents — even when the slip happens to spell some other real name, as long as nothing else in the answer points to that other thing;
@@ -101,8 +106,25 @@ def judge_messages(frame: dict[str, Any]) -> list[dict[str, str]]:
         "also_accepted": aliases[:20],
         "filed_answer": _text(frame.get("answer")),
     }
-    user = "Check this filing:\n" + json.dumps(doc, ensure_ascii=False, indent=1) + "\nIs the filed answer the same as the answer key?"
+    user = "Check this filing:\n" + json.dumps(doc, ensure_ascii=False, indent=1) + "\nIs the filed answer the same as the answer key?" + _near_note(frame)
     return [{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": user}]
+
+
+#: Wave 18b: the frame's `near` said on the question's line (the system
+#: prompt stays one fixed text, so the model's cache holds it).
+NEAR_NOTE = " The filed answer is spelled close to the key."
+PLAIN_NOTE = (
+    " The filed answer is not spelled close to the key: a different answer is NOT the same;"
+    " only a spelling slip, a paraphrase or another way of writing the key is the same."
+)
+
+
+def _near_note(frame: dict[str, Any]) -> str:
+    """What the frame's `near` says: a near miss, a plain miss (`near` null),
+    or nothing at all for an old server's frame (no `near` key)."""
+    if "near" not in frame:
+        return ""
+    return NEAR_NOTE if isinstance(frame.get("near"), str) and frame["near"].strip() else PLAIN_NOTE
 
 
 _YES = {"true", "yes", "same", "y", "1"}
