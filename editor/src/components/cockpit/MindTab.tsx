@@ -81,7 +81,13 @@ import {
   judgeModeOf,
   mindCharacters,
   agentQueueOf,
+  autoJudgeCopy,
+  isQueuedFiling,
   judgeModeTitle,
+  judgeOf,
+  judgingBadge,
+  judgingQueueOf,
+  queuedText,
   nearCount,
   queueBadge,
   QueueTone,
@@ -216,12 +222,19 @@ function MindDebugger() {
  * `judge:` character, an `auto`-mode near miss is put to it first — the row
  * reads "🤖 asking Trabolta…", then its ruling lists under the pending
  * rows ("🤖 Trabolta: same — why") with the usual buttons, so a director
- * can still override it (the later verdict wins). The verdict never reaches
- * a phone or the voice prompt; this card is the only place it is shown.
+ * can still override it (the later verdict wins). Wave 18b (O4): the judge
+ * rules **every** non-exact filing, a plain miss too (no ⚠ near tag): each
+ * waits in his queue (*🤖 queued for Trabolta*) until its frame is out
+ * (*🤖 asking Trabolta…*), the header counts the queue (`agentQueue.judging`,
+ * ⏳ on a judge stall), and what he can't rule falls back to the house rule.
+ * The verdict never reaches a phone or the voice prompt; this card is the
+ * only place it is shown.
  */
 function JudgingCard({ local = false }: { local?: boolean }) {
   const facts = useCockpit((s) => s.facts)
   const world = useCockpit((s) => s.world)
+  const cast = useCockpit((s) => s.cast)
+  const minds = useCockpit((s) => s.minds)
   const setVar = useCockpit((s) => s.setVar)
   const fireSignal = useCockpit((s) => s.fireSignal)
   const [busy, setBusy] = useState<string | null>(null)
@@ -240,6 +253,8 @@ function JudgingCard({ local = false }: { local?: boolean }) {
   const pending = pendingFilings(facts)
   const ruled = ruledFilings(facts)
   const near = nearCount(facts)
+  const judge = judgeOf(facts)
+  const queue = judge === null ? null : judgingBadge(judgingQueueOf(judge, cast, minds), judge)
   const tallies = questionTallies(facts)
   const switchMode = async (m: JudgeMode) => {
     if (m === mode || busy !== null) return
@@ -274,7 +289,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
               aria-pressed={m === mode}
               disabled={busy !== null}
               onClick={() => void switchMode(m)}
-              title={judgeModeTitle(m)}
+              title={judgeModeTitle(m, judge)}
               data-testid={`judging-mode-${m}`}
             >
               {m}
@@ -285,11 +300,29 @@ function JudgingCard({ local = false }: { local?: boolean }) {
           <span className="font-mono">{facts.modeVar}</span> · {facts.pending === 0 ? 'nothing pending' : `${facts.pending} pending`}
         </span>
         {near > 0 && (
-          <span className="text-xs text-amber-300" title="Answers a letter or a word away from the key (a typo, a plural, digits for words): never judged a lie or a guess on their own — they wait here, in either mode." data-testid="judging-near-count">
+          <span
+            className="text-xs text-amber-300"
+            title={
+              judge !== null && mode === 'auto'
+                ? `Answers a letter or a word away from the key (a typo, a plural, digits for words): proposed accurate while ${judge} rules them, as every other non-exact filing is.`
+                : 'Answers a letter or a word away from the key (a typo, a plural, digits for words): never judged a lie or a guess on their own — they wait here, in either mode.'
+            }
+            data-testid="judging-near-count"
+          >
             ⚠ {near} near miss{near === 1 ? '' : 'es'}
           </span>
         )}
+        {queue !== null && (
+          <span className={clsx('text-xs', queue.stalled ? 'text-amber-300' : 'text-violet-300')} title={queue.title} data-testid="judging-queue">
+            {queue.text}
+          </span>
+        )}
       </div>
+      {mode === 'auto' && judge !== null && (
+        <p className="mt-1 text-xs text-zinc-500" data-testid="judging-auto-copy">
+          {autoJudgeCopy(judge)}
+        </p>
+      )}
       {pending.length > 0 && (
         <ul className="mt-2 space-y-1 text-xs" data-testid="judging-pending">
           {pending.map((row) => {
@@ -306,8 +339,12 @@ function JudgingCard({ local = false }: { local?: boolean }) {
                     </span>
                   )}
                   {row.asking && (
-                    <span className="ml-2 text-violet-300" title="The story's judge character is ruling on this near miss; judge it yourself to decide first" data-testid="judging-asking">
-                      {askingText(facts)}
+                    <span
+                      className="ml-2 text-violet-300"
+                      title={`${judge ?? 'The story’s judge character'} ${row.queued === true ? 'will rule on this filing when its turn comes' : 'is ruling on this filing'}; judge it yourself to decide first`}
+                      data-testid={row.queued === true ? 'judging-queued' : 'judging-asking'}
+                    >
+                      {row.queued === true ? queuedText(facts) : askingText(facts)}
                     </span>
                   )}
                 </span>
@@ -337,7 +374,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
       )}
       {mode === 'review' && pending.length === 0 && <p className="mt-2 text-xs text-zinc-600">No filing is waiting for a verdict.</p>}
       {ruled.length > 0 && (
-        <ul className="mt-2 space-y-1 text-xs" data-testid="judging-rulings" aria-label="Rulings on near misses">
+        <ul className="mt-2 space-y-1 text-xs" data-testid="judging-rulings" aria-label="Rulings">
           {ruled.map((row) => (
             <li key={`${row.person}:${row.question}`} className="flex flex-wrap items-center gap-2 rounded border border-zinc-800/70 px-2 py-1">
               <span className="font-medium text-zinc-100">{row.name}</span>
@@ -424,6 +461,7 @@ function JudgingCard({ local = false }: { local?: boolean }) {
                     <FilingRows
                       rows={questionFilings(facts, t.id)}
                       questionId={t.id}
+                      queued={(person) => isQueuedFiling(facts, person, t.id)}
                       buttons={(r) => filingButtons(facts, r)}
                       busy={busy !== null}
                       onVerdict={(r, verdict) => void confirm({ person: r.person, question: t.id }, verdict)}
@@ -460,12 +498,15 @@ const HOW_STYLE: Record<FilingHow, string> = {
 function FilingRows({
   rows,
   questionId,
+  queued,
   buttons,
   busy,
   onVerdict,
 }: {
   rows: FilingRow[]
   questionId: string
+  /** Is this person's filing still waiting in the judge queue (wave 18b)? */
+  queued: (person: string) => boolean
   buttons: (r: FilingRow) => FilingButton[]
   busy: boolean
   onVerdict: (r: FilingRow, verdict: FilingButton['verdict']) => void
@@ -495,7 +536,7 @@ function FilingRows({
             <td className="pr-2">{r.name}</td>
             <td className="pr-2 text-zinc-200">
               “{r.answer}”{r.near !== null && <span className="ml-1 text-amber-300" title={`A near miss of “${r.near}”`}>⚠ “{r.near}”</span>}
-              {r.asking && <span className="ml-1 text-violet-300">🤖 asking…</span>}
+              {r.asking && <span className="ml-1 text-violet-300">{queued(r.person) ? '🤖 queued…' : '🤖 asking…'}</span>}
               {r.ruling !== null && (
                 <span className="ml-1 text-violet-300" title={rulingText(r.ruling)}>
                   {rulingText(r.ruling)}

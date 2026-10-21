@@ -3,7 +3,8 @@
 //! and sparklines. No React here — `MindTab.tsx` renders these.
 
 import type { AgentControl, AgentMindPerson, AgentMindSummary, AgentThought } from '@loom/core/views'
-import type { FactsView } from '@/store/cockpit'
+import type { AgentJudging, CastSummary, FactsView } from '@/store/cockpit'
+import { waitText as hostWaitText } from '@loom/core/host-board'
 
 /** How the page labels one kind of thought. */
 export interface KindMeta {
@@ -341,13 +342,78 @@ export function questionTallies(facts: FactsView): QuestionTally[] {
   }))
 }
 
-/** The Judging card's mode button tooltip. Auto judges at once — except a
- *  near miss, which waits on the card for a director in either mode (C6). */
-export function judgeModeTitle(mode: 'auto' | 'review'): string {
-  return mode === 'auto'
-    ? 'Every filed fact gets its verdict at once, except a near miss (a letter or a word from the key), which waits here for you'
-    : 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest. A near miss waits here too.'
+/** The Judging card's mode button tooltip. With no `judge:` character auto
+ *  judges at once, except a near miss, which waits on the card for a
+ *  director (C6). With one (wave 18b, O4) the house accepts exact matches
+ *  and the judge rules every other filing; what he can't rule falls back. */
+export function judgeModeTitle(mode: 'auto' | 'review', judge: string | null = null): string {
+  if (mode === 'review') return 'Every verdict is a proposal until you (or a host) confirm it; a round closing settles the rest. A near miss waits here too.'
+  return judge !== null
+    ? autoJudgeCopy(judge)
+    : 'Every filed fact gets its verdict at once, except a near miss (a letter or a word from the key), which waits here for you'
 }
+
+/** What `auto` means with a `judge:` character (wave 18b, O4, D10). */
+export function autoJudgeCopy(judge: string): string {
+  return `The house accepts exact matches; ${judge} rules every other filing; what he can't rule (no worker, a stall, an expired or unfinished ruling) falls back to the house rule and can be judged here.`
+}
+
+/** The story's `judge:` character off the facts view, or null. */
+export function judgeOf(facts: FactsView | null): string | null {
+  const j = (facts as (FactsView & { judge?: unknown }) | null)?.judge
+  return typeof j === 'string' && j.trim() !== '' ? j : null
+}
+
+/** A filing waiting in the judge queue (wave 18b: `FactsFiling.queued`),
+ *  as opposed to one whose frame is out (`asking`). */
+export function isQueuedFiling(facts: FactsView, person: string, question: string): boolean {
+  const q = facts.questions.find((x) => x.id === question)
+  const f = q?.filings.find((x) => x.person === person) as { queued?: unknown } | undefined
+  return f?.queued === true
+}
+
+/** "🤖 queued for Trabolta" — a ruling waiting its turn in the judge queue. */
+export function queuedText(facts: FactsView): string {
+  return `🤖 queued for ${judgeOf(facts) ?? 'the judge'}`
+}
+
+/** The judge character's queue of rulings (`CastSummary.agentQueue.judging`,
+ *  else the mind summary's), or null: nothing queued or out and no stall,
+ *  no judge, or an older server. */
+export function judgingQueueOf(judge: string | null, cast: readonly CastSummary[], minds: readonly AgentMindSummary[]): AgentJudging | null {
+  if (judge === null) return null
+  const read = (q: unknown): AgentJudging | null => {
+    const j = (q as { judging?: unknown } | null | undefined)?.judging as Partial<AgentJudging> | undefined
+    if (j === undefined || j === null || typeof j !== 'object') return null
+    if (typeof j.queued !== 'number' || typeof j.out !== 'number') return null
+    return { queued: j.queued, out: j.out, oldestMs: typeof j.oldestMs === 'number' ? j.oldestMs : null, stalled: j.stalled === true }
+  }
+  return read(cast.find((c) => c.id === judge)?.agentQueue) ?? read((minds.find((m) => m.character === judge) as { agentQueue?: unknown } | undefined)?.agentQueue)
+}
+
+/** The Judging card header's judge-queue badge: "🤖 4 queued · 1 out", and
+ *  ⏳ on a judge stall (his worker answered no ruling twice in a row). Null
+ *  when there is nothing to say. */
+export function judgingBadge(j: AgentJudging | null, judge: string): { text: string; title: string; stalled: boolean } | null {
+  if (j === null || (j.queued === 0 && j.out === 0 && !j.stalled)) return null
+  const parts: string[] = []
+  if (j.queued > 0) parts.push(`${j.queued} queued`)
+  if (j.out > 0) parts.push(`${j.out} out`)
+  const oldest = j.oldestMs !== null && j.oldestMs > 0 ? ` · oldest ${hostWaitText(j.oldestMs)}` : ''
+  if (j.stalled) {
+    return {
+      text: `⏳ ${judge} isn't ruling${parts.length > 0 ? ` · ${parts.join(' · ')}` : ''}`,
+      title: `${judge}'s worker answered no ruling twice in a row: nothing more is sent to it until it answers or reconnects. The filings wait, then fall back to the house rule at their round's settle; judge them here meanwhile.`,
+      stalled: true,
+    }
+  }
+  return {
+    text: `🤖 ${parts.join(' · ')}${oldest}`,
+    title: `Rulings ${judge} has still to give, one at a time (a guest's message to him goes first). One still waiting when its round settles falls back to the house rule.`,
+    stalled: false,
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // Wave 12: the story mind's report, its labels, and the controls that changed
