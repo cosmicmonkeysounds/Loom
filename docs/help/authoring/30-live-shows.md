@@ -236,7 +236,7 @@ when recruited for program:
 
 Guests may also found **crews** of their own: a name (2–24 characters,
 moderated), a members-only room `crew:<id>`, invitations by pass, at most
-eight in a night, one per founder. A crew is **never a side**: it never
+eight at once (an empty crew frees its place), one per founder. A crew is **never a side**: it never
 touches a GROUP's members, `who.group`, a majority, or what an agent-voiced
 character hears. The story hears `founded` (the founder, with `crew`), `join`
 (a new member, with `crew`; a side's `when who joins <Side>:` never does)
@@ -262,9 +262,11 @@ founding: Night.truther_sent == true and Kernel.majority_reached != true and pro
   A `joinable: false` group (your hosts) never touches a faction.
 - **A founder leaving disbands it**; its members go back to neither. A
   side's leader can't found or join one; a restricted or captured program
-  can't either. At most eight are founded in a night, one live one per
-  founder. A guest may also walk in from the Factions list (`join`, with
-  `crew`).
+  can't either, and the same holds for a yes to an invitation (a founder's
+  or a leader's yes is void; founding closes your own open invitations).
+  At most eight live at once (a disbanded one frees its place), one live
+  one per founder. A guest may also walk in from the Factions list
+  (`join`, with `crew`).
 - **Who sees the counts:** each member sees their own faction's head
   count, the `majority:` line and how many more it needs; never anyone
   else's. People cards show a faction only to its own members, or on its
