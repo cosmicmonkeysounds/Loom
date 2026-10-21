@@ -15,8 +15,9 @@
 //! skewed laptop clock never paints a live tablet red.
 //!
 //! A current terminal build also reports its device on every poll
-//! (SW-SCR-21): sound unlocked, page visible, battery, build stamp — the
-//! row's badges (`terminalBadges`). An older build reports none.
+//! (SW-SCR-21): sound unlocked, page visible, battery, full screen (wave
+//! 17), build stamp — the row's badges (`terminalBadges`). An older build
+//! reports none.
 //!
 //! A room terminal (wave 7) also reports the LOCATION it belongs to (`room`):
 //! the row says so, and one that isn't on the server-room spot is amber
@@ -38,11 +39,13 @@ export interface TerminalPoll {
   visible?: boolean
   battery?: number
   charging?: boolean
+  /** Full screen (wave 17); absent: can't be, turned off in ⚙, or an older build. */
+  fullscreen?: boolean
   version?: string
 }
 
 /** A row's device health, as its last listed poll said. */
-export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'version'>
+export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'version'>
 
 /** `GET /api/mod/screen/terminals`. */
 export interface ScreenTerminals {
@@ -107,7 +110,7 @@ export function mergeTerminals(
   const listed = new Map<string, TerminalDevice>()
   for (const p of server?.terminals ?? []) {
     if (p.name === '') continue
-    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, version: p.version })
+    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, version: p.version })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
@@ -184,7 +187,7 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'battery' | 'version'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'battery' | 'version'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
@@ -201,7 +204,8 @@ export function majorityVersion(rows: readonly TerminalRow[]): string | null {
   return ranked[0]![0]
 }
 
-/** A row's install-day badges: 🔇 sound locked, 💤 page hidden, the battery,
+/** A row's install-day badges: 🔇 sound locked, 💤 page hidden, ⛶ not full
+ *  screen (only when the build says so: one that can't be sends nothing), the battery,
  *  and the build (flagged when it differs from the majority's, or is missing
  *  while the others report one). */
 export function terminalBadges(row: TerminalRow, majority: string | null): TerminalBadge[] {
@@ -210,6 +214,7 @@ export function terminalBadges(row: TerminalRow, majority: string | null): Termi
   const out: TerminalBadge[] = []
   if (d.audio === false) out.push({ key: 'audio', text: '🔇', title: 'Sound is locked: touch the screen once so it can speak', warn: true })
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
+  if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: 'Not full screen: touch the screen once (it asks on every touch), or check the kiosk launch flags', warn: true })
   if (typeof d.battery === 'number') {
     const low = d.battery < LOW_BATTERY && d.charging !== true
     out.push({ key: 'battery', text: `${d.charging === true ? '⚡' : '🔋'}${d.battery}%`, title: d.charging === true ? 'Charging' : low ? 'Battery low: plug it in' : 'On battery', warn: low })

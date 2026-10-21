@@ -104,6 +104,19 @@ describe('device badges (SW-SCR-21)', () => {
     expect(terminalBadges(c!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['battery', '⚡12%', false]])
   })
 
+  it('⛶ not full screen is red; full screen or no flag (a build that cannot be) shows nothing', () => {
+    const [r] = rowsOf({ ...poll('Kitchen', 0), audio: true, visible: false, fullscreen: false })
+    expect(r!.device).toMatchObject({ fullscreen: false })
+    expect(terminalBadges(r!, null).map((x) => [x.key, x.text, x.warn])).toEqual([
+      ['hidden', '💤', true],
+      ['fullscreen', '⛶', true],
+    ])
+    const [on] = rowsOf({ ...poll('Kitchen', 0), fullscreen: true })
+    expect(terminalBadges(on!, null)).toEqual([])
+    const [none] = rowsOf({ ...poll('Kitchen', 0), audio: true })
+    expect(terminalBadges(none!, null)).toEqual([])
+  })
+
   it('flags a build that differs from the majority (none on a tie)', () => {
     const rows = rowsOf({ ...poll('A', 0), version: 'new' }, { ...poll('B', 0), version: 'new' }, { ...poll('C', 0), version: 'old' }, poll('D', 0))
     expect(majorityVersion(rows)).toBe('new')
