@@ -206,3 +206,30 @@ describe("Trapped in the Internet — wave 18b: the header's new lines (R12, R15
     for (const l of shows) expect(l.toLowerCase()).not.toContain(title.toLowerCase());
   });
 });
+
+describe("Trapped in the Internet — wave 18b: Trabolta's picture (R19, D23)", () => {
+  it("the grin by default; broken while more than half of the cleared programs here are below 0 on his chart; mended after", { timeout: SLOW }, () => {
+    const n = boot();
+    const t = n.sim.model.characters.get("Trabolta")!;
+    expect(t.avatar).toEqual(["picture:trabolta.svg"]);
+    expect(t.avatarRules).toEqual([{ ref: "picture:trabolta-broken.svg", when: "self.broken == true" }]);
+    for (const c of [...TO_BINGO, "introduce_trabolta"]) n.press(c);
+    expect(v(n.sim, "Trabolta.broken")).toBe(false);
+    // Three of six below 0: not more than half.
+    for (const g of ["g1", "g2", "g3"]) n.take(n.sim.setVar(`${g}.trust`, "-10"));
+    n.take(n.sim.tick(1000));
+    expect(v(n.sim, "Trabolta.broken")).toBe(false);
+    n.take(n.sim.setVar("g4.trust", "-5"));
+    n.take(n.sim.tick(1000));
+    expect(v(n.sim, "Trabolta.broken")).toBe(true);
+    // A high program who went home makes it four of five: still broken.
+    n.take(n.sim.setVar("g6.gone", "true"));
+    n.take(n.sim.tick(1000));
+    expect(v(n.sim, "Trabolta.broken")).toBe(true);
+    // Trust back up: three of five is still more than half; two of five mends it.
+    n.take(n.sim.setVar("g4.trust", "10"));
+    n.take(n.sim.setVar("g3.trust", "10"));
+    n.take(n.sim.tick(1000));
+    expect(v(n.sim, "Trabolta.broken")).toBe(false);
+  });
+});

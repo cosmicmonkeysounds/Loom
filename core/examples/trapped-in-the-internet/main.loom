@@ -4972,6 +4972,16 @@ when own_award_lines:
 
 // ── Anytime ──
 
+// Trabolta's picture (wave 18b, R19, D23): it breaks while more than half
+// of the cleared programs still here sit below 0 on his Trust Chart
+// (`program.trust`, his score of them), and mends when that stops. Only
+// his own `broken` (a bool) moves: the server swaps the avatar.
+when Trabolta.broken != true and Trabolta.awake == true and count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true and p.trust < 0]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true]):
+  set Trabolta.broken = true
+
+when Trabolta.broken == true and count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true and p.trust < 0]) * 2 <= count([p for p in Persons where p.gone != true and p.persona != true and p.cleared == true]):
+  set Trabolta.broken = false
+
 // Lore shared TO Trabolta counts as a delivery for the sharer. Lore
 // Broken Ask Jeeves shares with a program counts toward Ten Findings
 // (`jeeves_shared` is a ROLE hook, so a share to a character never counts).

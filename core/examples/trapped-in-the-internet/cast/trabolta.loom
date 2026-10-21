@@ -48,8 +48,13 @@
 // server-room door code (all `secret: true`): at his heart he can admit he
 // does not know them, because it is true.
 
+// Wave 18b (R19, D23): his picture is the green grinning face (the play
+// app's own `pictures/`), and a broken-image thumbnail while more than half
+// of the cleared programs still here sit below 0 on his Trust Chart
+// (main.loom's two watchers set `broken`; a bool, so his worker's `adjust`
+// can never flip it).
 CHARACTER Trabolta is Person
-  avatar: File:HAL9000.svg
+  avatar: picture:trabolta.svg | picture:trabolta-broken.svg when self.broken == true
   mind: external
   hold: Jean Trabolta is not responding. Please do not move the mouse.
   busy: Jean Trabolta is answering other programs. Your message is in the queue. Please do not move the mouse.
@@ -60,6 +65,7 @@ CHARACTER Trabolta is Person
   composure: 0 to 100 = 85
   love: 0 to 100 = 40
   regard: -50 to 50 = 0
+  broken: bool = false
 
   // Clippy introduces him (director cue "Clippy introduces Trabolta").
   // The story rule in main.loom refuses before the Bingo results
