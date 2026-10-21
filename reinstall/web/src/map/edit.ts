@@ -4,7 +4,7 @@
 //! Nothing here enforces validity: an edit that leaves a door off its wall
 //! is shown to the director as a live problem, not silently refused.
 
-import { DOOR_TOLERANCE, cloneData, distanceToBoundary, roomAt, roomById, roomElevation, wrapYaw, yawToward } from "@loom/house";
+import { DOOR_TOLERANCE, cloneData, distanceToBoundary, roomAt, roomById, roomElevation, voiceOn, wrapYaw, yawToward } from "@loom/house";
 import type { Door, HouseMap, Room, TerminalSpot, Vec2, Vec3 } from "@loom/house";
 import type { SaveHouseReply } from "../api.ts";
 import { clampGap, fitDoor, rectSideOf, resolveDoor, round } from "./doors.ts";
@@ -264,6 +264,16 @@ export function patchTerminal(house: HouseMap, id: string, patch: Partial<Omit<T
   // `auto` and "not a room terminal" are the defaults: kept off the map.
   if (t.view === undefined || t.view === "auto") delete t.view;
   if (t.speaks !== true) delete t.speaks;
+  // The voice link: an explicit off is always kept (the tent's `voice: false`
+  // must not hang on the spawn-room default, which a moved spawn flips); an
+  // on is kept only where the default is off (the spawn room). Only when
+  // this patch sets it, so a flag the map already carries survives a rename
+  // or a nudge.
+  if ("voice" in patch) {
+    delete t.voice;
+    if (patch.voice === false) t.voice = false;
+    else if (patch.voice === true && !voiceOn(next, t)) t.voice = true;
+  }
   return next;
 }
 

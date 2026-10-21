@@ -4,6 +4,10 @@
 //!
 //!   /reinstall/?code=<mod passcode>&name=Tent tablet&role=both
 //!
+//! The voice link (wave 19, `voice=1`) is off by default: this app runs
+//! on the tent laptop, which is the tent's own terminal and takes no part
+//! in it. Another device (a spare laptop playing elsewhere) turns it on.
+//!
 //! Like the wall terminal (`terminal/src/config.ts`), the mod passcode
 //! resolves (via `/api/resolve-code`) to the event and is traded for a
 //! **moderator token** (`/api/mod/login`) — what lets this device `begin` a
@@ -29,6 +33,9 @@ export interface ReinstallConfig {
   camera: "user" | "environment";
   /** ←/→ turn (true) or strafe (false); A/D always strafe. */
   arrowsTurn: boolean;
+  /** The voice link (§2.4): this device's mic is heard on the terminals
+   *  near the player, and it plays their mics. Off by default (D8). */
+  voice: boolean;
 }
 
 export const CONFIG_KEY = "loom.reinstall";
@@ -41,6 +48,7 @@ export function defaultConfig(partial: Partial<ReinstallConfig> & Pick<Reinstall
     role: "both",
     camera: "user",
     arrowsTurn: true,
+    voice: false,
     ...partial,
   };
 }
@@ -63,6 +71,7 @@ export function loadConfig(storage: Pick<Storage, "getItem"> | null = safeStorag
       role: isRole(c.role) ? c.role : base.role,
       camera: c.camera === "environment" ? "environment" : "user",
       arrowsTurn: typeof c.arrowsTurn === "boolean" ? c.arrowsTurn : base.arrowsTurn,
+      voice: typeof c.voice === "boolean" ? c.voice : base.voice,
     };
   } catch {
     return null;
@@ -93,28 +102,32 @@ function safeStorage(): Storage | null {
   }
 }
 
-/** Provisioning hints riding on the URL (`?code=&name=&role=&camera=&arrows=`). */
+/** Provisioning hints riding on the URL (`?code=&name=&role=&camera=&arrows=&voice=`). */
 export interface UrlHints {
   code: string;
   name: string | null;
   role: DeviceRole | null;
   camera: "user" | "environment" | null;
   arrowsTurn: boolean | null;
+  /** `voice=1` / `voice=0`. */
+  voice: boolean | null;
 }
 
-const HINT_KEYS = ["code", "name", "role", "camera", "arrows"] as const;
+const HINT_KEYS = ["code", "name", "role", "camera", "arrows", "voice"] as const;
 
 export function hintsFromSearch(search: string): UrlHints {
   const p = new URLSearchParams(search);
   const role = p.get("role");
   const camera = p.get("camera");
   const arrows = p.get("arrows");
+  const voice = p.get("voice");
   return {
     code: (p.get("code") ?? "").trim(),
     name: p.get("name")?.trim() || null,
     role: isRole(role) ? role : null,
     camera: camera === "user" || camera === "environment" ? camera : null,
     arrowsTurn: arrows === "turn" ? true : arrows === "strafe" ? false : null,
+    voice: voice === "1" ? true : voice === "0" ? false : null,
   };
 }
 
@@ -134,6 +147,7 @@ export function applyHints(c: ReinstallConfig, hints: Omit<UrlHints, "code">): R
     role: hints.role ?? c.role,
     camera: hints.camera ?? c.camera,
     arrowsTurn: hints.arrowsTurn ?? c.arrowsTurn,
+    voice: hints.voice ?? c.voice,
   };
 }
 

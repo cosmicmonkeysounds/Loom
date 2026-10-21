@@ -142,7 +142,7 @@ describe("the tent station's wiring", () => {
       .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
   it("plays as role both, with the terminal's own name and camera", () => {
-    expect(reinstallConfigOf({ eventId: "e1", title: "T", token: "tok", name: "Tent", camera: "user" })).toEqual({ eventId: "e1", title: "T", token: "tok", name: "Tent", role: "both", camera: "user", arrowsTurn: true });
+    expect(reinstallConfigOf({ eventId: "e1", title: "T", token: "tok", name: "Tent", camera: "user" })).toEqual({ eventId: "e1", title: "T", token: "tok", name: "Tent", role: "both", camera: "user", arrowsTurn: true, voice: false });
   });
 
   it("never forces a begin and never fires the story's scan (R16, D8)", () => {

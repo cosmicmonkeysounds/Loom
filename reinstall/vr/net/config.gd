@@ -1,12 +1,16 @@
 ## A headset's station configuration — `docs/loom-reinstall.md` §5.
 ##
 ## Precedence, lowest first: the built-in defaults → `res://config/station.json`
-## (committed, placeholders) → `user://station.json` (written on the headset
-## once, e.g. with `adb push`) → the command line after `--`:
+## (committed, placeholders) → `user://station.json` (written by the headset's
+## own SET UP panel, [method save_user], or pushed with `adb`) → the command
+## line after `--`:
 ##
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline] [--smooth-turn]
-##         [--autopilot [--hit-king]]
+##         [--autopilot [--hit-king]] [--voice false] [--mic false]
+##
+## `voice` (default on) is the voice link (wave 19): the terminals heard in
+## the house, this headset heard on them; `mic` (default on) off = listen only.
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
 ## quits when the session is over — see [Autopilot]. With `--hit-king` it
@@ -14,7 +18,9 @@
 ## check).
 ##
 ## `--key value` and `--key=value` both work. Pure: everything but
-## [method load_station] takes its inputs as arguments, so the tests drive it.
+## [method load_station], [method save_user] and [method forget_user] takes
+## its inputs as arguments, so the tests drive it. Never write a dev file
+## under `res://config/`: the Quest preset ships `config/*.json`.
 class_name StationConfig
 extends RefCounted
 
@@ -36,6 +42,8 @@ const KEYS := {
 	"smooth_turn": TYPE_BOOL,
 	"autopilot": TYPE_BOOL,
 	"hit_king": TYPE_BOOL,
+	"voice": TYPE_BOOL,
+	"mic": TYPE_BOOL,
 }
 
 
@@ -50,6 +58,8 @@ static func defaults() -> Dictionary:
 		"smooth_turn": false,
 		"autopilot": false,
 		"hit_king": false,
+		"voice": true,
+		"mic": true,
 	}
 
 
@@ -159,3 +169,83 @@ static func parse_url(url: String) -> Dictionary:
 		return {}
 	var origin := ("https://" if tls else "http://") + hostport
 	return {"tls": tls, "host": host, "port": port, "path": path, "base": origin + path}
+
+
+# --- the user file (in-headset setup) -----------------------------------------
+
+
+## The server a desktop / editor run may also offer: the event server on
+## this computer (`pnpm dev`, a scratch server).
+const LOCAL_SERVER := "http://127.0.0.1:7000"
+## The station name a fresh setup starts with.
+const DEFAULT_NAME := "Headset"
+
+
+## Write `values` (known keys only, well typed) over what `path` already
+## holds; true when it was written. The in-headset setup saves the server,
+## passcode, name and station here — never under `res://`.
+static func save_user(values: Dictionary, path := USER_PATH) -> bool:
+	var cur := {}
+	var file := read_file(path)
+	for key: String in file:
+		if KEYS.has(key):
+			cur[key] = file[key]
+	var keep := merge(cur, values)
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string(JSON.stringify(keep, "  "))
+	f.close()
+	return true
+
+
+## Delete the user file (⚙ *Forget this setup*); true when there was one.
+static func forget_user(path := USER_PATH) -> bool:
+	if not FileAccess.file_exists(path):
+		return false
+	return DirAccess.remove_absolute(path) == OK
+
+
+## A station id for a headset set up in the headset: `vr-<name>-<4 hex>`,
+## so two headsets both called "Headset" never share a station (a parked
+## program would go to whichever polled first).
+static func station_id_for(name: String, salt: int) -> String:
+	var slug := ""
+	for ch in name.to_lower():
+		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
+			slug += ch
+		elif not slug.ends_with("-") and slug != "":
+			slug += "-"
+	slug = slug.trim_suffix("-").left(24)
+	if slug == "":
+		slug = "headset"
+	return "vr-%s-%04x" % [slug, salt & 0xffff]
+
+
+## Whether this run may offer [constant LOCAL_SERVER]: an editor / CLI run,
+## or any desktop — never a headset build.
+static func offers_local() -> bool:
+	return OS.has_feature("editor_runtime") or OS.get_name() != "Android"
+
+
+## The servers the SET UP panel offers, `[{url, label}]`, first = the
+## default: `current` (what the config says) when it is a URL, the
+## committed `res://` server, and [constant LOCAL_SERVER] when `local` —
+## first of all when `prefer_local` (an editor run naming no server of its
+## own: it tests against `pnpm dev`).
+static func server_choices(current: String, committed: String, local: bool, prefer_local := false) -> Array:
+	var out: Array = []
+	var seen := {}
+	var order: Array = [current, committed, LOCAL_SERVER if local else ""]
+	if local and prefer_local:
+		order = [LOCAL_SERVER, current, committed]
+	for url: String in order:
+		var u := parse_url(url)
+		if u.is_empty() or seen.has(u["base"]):
+			continue
+		seen[u["base"]] = true
+		var bare := str(u["base"]).trim_prefix("https://").trim_prefix("http://")
+		var label := "This computer · %s" % bare if u["base"] == LOCAL_SERVER else bare
+		out.append({"url": u["base"], "label": label})
+	return out

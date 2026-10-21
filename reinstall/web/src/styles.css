@@ -369,6 +369,9 @@ code { font-family: var(--pixel); font-size: 1.15em; background: rgba(255, 255, 
 .hud-right { justify-self: end; display: flex; gap: 6px; align-items: stretch; }
 .hud-clock { padding: 0.05em 0.5em; background: #000; color: #4f4; font-size: clamp(24px, 3vw, 32px); line-height: 1.2; text-shadow: 0 0 6px #2f2; min-width: 3.6em; text-align: center; }
 .hud-quit { min-width: 2.4em; font-family: var(--ui); }
+.hud-mic { font-family: var(--ui); white-space: nowrap; padding: 0 0.6em; }
+.hud-mic.mic-live { color: #060; font-weight: bold; }
+.hud-mic.mic-muted { color: #a00; font-weight: bold; }
 
 .compass { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + clamp(78px, 10vw, 104px)); left: 50%; width: 74px; height: 74px; margin-left: -37px; border-radius: 50%; background: radial-gradient(circle, rgba(0, 0, 40, 0.55), rgba(0, 0, 40, 0.75)); box-shadow: 0 0 0 2px var(--face), 0 0 0 3px var(--dark), 0 3px 8px rgba(0, 0, 0, 0.5); pointer-events: none; }
 .compass-rose { position: absolute; inset: 0; }

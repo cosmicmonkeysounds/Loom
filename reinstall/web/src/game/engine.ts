@@ -22,6 +22,12 @@
 //! visit's one hit; at 0 he kneels and his door opens for everyone. An old
 //! server sends no King state: then he just stands, with no ⚔. Ghosts wear
 //! the guest's profile picture (`/api/avatar/<key>`, the `avatar` frame).
+//!
+//! With the voice link on (`config.voice`, wave 19, `voice.ts`) the terminals
+//! near the player are heard at their screens and the player's mic (opened
+//! in the Play here tap) on the terminals near them; M / the 🎤 button mutes.
+//! It runs on the same gate as the camera feeds and stops (tracks and all)
+//! when the session does.
 
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 import type { Group } from "three";
@@ -31,6 +37,7 @@ import { applySpace, buildHouseScene, createAvatar, createDuck, createTrail, hou
 import type { Avatar, Duck, HouseScene, King, Trail } from "@loom/house/three";
 import { fetchHouse, postEnd, postFound, postKingHit, postPose, streamProbe, streamUrl, type FoundAnswer } from "../api.ts";
 import { CamFeeds } from "./cams.ts";
+import { createVoiceSink, earsFor, micSourceOf, stopStream, VoiceLink, type VoiceHudState } from "./voice.ts";
 import { applyFrame, avatarUrl, duckToAdopt, houseVersionOf, kingOf, openSpatialStream, type SpatialStreamHandle } from "../spatial.ts";
 import type { Sfx } from "./audio.ts";
 import { HIT_USED, hitSpentAtStart, keepDoorOpen, kingMeter, kingReach, nudgeFor, stageFor, type KingReach, type Stage } from "./fight.ts";
@@ -72,7 +79,10 @@ export interface HudState {
   /** The shared King (a `king` prop on this map), null when the map has
    *  none or the server shares no King state (an old server). */
   king: KingHud | null;
+  /** The voice link, null when it is off on this device. */
+  voice: VoiceHudState | null;
 }
+
 
 /** The King as the HUD shows him. */
 export interface KingHud {
@@ -115,6 +125,11 @@ export interface GameOptions {
   onEnd: (e: GameEnd) => void;
   /** The shared King off the dealt map's GET (`LoadedHouse.king`; absent = an old server). */
   king?: KingState | null;
+  /** The voice link is on for this device (`config.voice`). */
+  voice?: boolean;
+  /** The mic opened in the Play here tap (null: none to be had). The game
+   *  owns it: its tracks stop when the session does. */
+  mic?: Promise<MediaStream | null> | null;
 }
 
 interface Ghost {
@@ -156,6 +171,8 @@ export class Game {
   private stream: SpatialStreamHandle | null = null;
   /** The terminals' live camera windows (wave 14, `cams.ts`). */
   private feeds: CamFeeds | null = null;
+  /** The voice link with the terminals (wave 19, `voice.ts`), null when off. */
+  private voice: VoiceLink | null = null;
   private body: Body;
   private keys = new Set<string>();
   private drag: [number, number] = [0, 0];
@@ -275,13 +292,54 @@ export class Game {
       sink: (spot, source) => void this.house.setTerminalFeed(spot, source),
       where: () => ({ terminals: this.map.terminals, at: this.body.p }),
     });
+    this.voice = this.startVoice();
     this.syncFeeds();
     this.loop(performance.now());
   }
 
-  /** Camera feeds poll only while someone plays on screen. */
+  /** The voice link on the effects' context, when this device has it on. */
+  private startVoice(): VoiceLink | null {
+    const mic = this.o.mic ?? null;
+    const audio = this.o.voice === true ? this.o.sfx.context() : null;
+    if (audio === null) {
+      void mic?.then(stopStream);
+      return null;
+    }
+    const { ctx } = audio;
+    return new VoiceLink({
+      base: this.o.base,
+      token: this.o.assignment.token,
+      house: () => this.map,
+      sink: createVoiceSink(ctx, ctx.destination),
+      mic:
+        mic === null
+          ? null
+          : mic.then((stream) => {
+              if (stream === null) return null;
+              // Opening the mic may interrupt the context on iOS: wake it.
+              this.o.sfx.resume();
+              try {
+                return micSourceOf(ctx, stream);
+              } catch {
+                stopStream(stream);
+                return null;
+              }
+            }),
+    });
+  }
+
+  /** Camera feeds poll (and the voice link runs) only while someone plays
+   *  on screen; once the session is over the voice link stops for good. */
   private syncFeeds(): void {
-    this.feeds?.setActive(!document.hidden && (this.phase === "playing" || this.phase === "finding"));
+    const on = !document.hidden && (this.phase === "playing" || this.phase === "finding");
+    this.feeds?.setActive(on);
+    if (this.phase === "found" || this.phase === "ended") this.voice?.stop();
+    else this.voice?.setActive(on);
+  }
+
+  /** The 🎤 button / M: mute or unmute this player's mic. */
+  toggleMute(): void {
+    this.voice?.toggleMute();
   }
 
   /**
@@ -333,6 +391,7 @@ export class Game {
     this.pump.stop();
     this.stream?.close();
     this.feeds?.dispose();
+    this.voice?.stop();
     this.resizeObserver?.disconnect();
     for (const c of this.cleanups) c();
     for (const g of this.ghosts.values()) g.avatar.dispose();
@@ -361,6 +420,7 @@ export class Game {
       if (typing(e)) return;
       if (this.held) return;
       if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && this.phase === "playing" && e.code === "Space") this.hitQueued = true;
+      if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.code === "KeyM") this.voice?.toggleMute();
       if (keyDown(this.keys, e)) e.preventDefault();
     };
     const up = (e: KeyboardEvent): void => keyUp(this.keys, e);
@@ -499,6 +559,8 @@ export class Game {
     const eye = toSpace(space, eyeOf(this.body));
     this.camera.position.set(eye[0], eye[1], eye[2]);
     this.camera.rotation.set(this.body.pitch * DEG, yawToSpace(space, this.body.yaw) * DEG, 0);
+    // The ears, in house metres (the voices hang there too).
+    this.voice?.listen(eyeOf(this.body), this.body.yaw, this.body.pitch);
 
     this.duck.update(dt);
     this.trail.update(dt);
@@ -568,7 +630,21 @@ export class Game {
       live: this.live,
       notice: this.notice?.text ?? null,
       king: this.kingHud(),
+      voice: this.voiceHud(),
     });
+  }
+
+  private voiceHud(): VoiceHudState | null {
+    if (this.voice === null) return null;
+    const hud = this.voice.hud;
+    if (!hud.listening) return { ...hud, ears: 0 };
+    // The server counts the terminals that hear us; an older one doesn't
+    // say, so count who would by its rule (every voice-on spot in reach).
+    if (hud.heardBy !== null) return { ...hud, ears: Math.max(1, hud.heardBy) };
+    const mine = this.o.assignment.session;
+    const players = [...this.players.values()].filter((p) => p.session !== mine).map((p) => ({ session: p.session, p: p.p }));
+    players.push({ session: mine, p: this.body.p });
+    return { ...hud, ears: Math.max(1, earsFor(this.map, mine, players)) };
   }
 
   // --- the King ------------------------------------------------------------
@@ -846,6 +922,7 @@ export class Game {
     applySpace(this.root, spaceOf(house, "web"));
     this.map = house;
     this.mapVersion = version;
+    this.voice?.remap();
     // The King on the new map: the same prop id keeps the shared state; a
     // new one waits for the server's word on him (the GET / a frame); none drops it.
     const king = house.props.find((p) => p.kind === "king") ?? null;

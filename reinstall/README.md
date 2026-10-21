@@ -101,6 +101,43 @@ draw the event's `/api/avatar/<key>` as the ghost's head (a Win98 tile)
 and in its name tag. No picture, or one that won't load, is the plain
 tinted capsule.
 
+### The voice link (wave 19)
+
+The players and the wall terminals hear each other, like the camera
+feeds (`docs/loom-reinstall.md` §2.4): a terminal's mic is heard in the
+game at that terminal's screen, and a player's mic on the terminals near
+them. G.711 μ-law, 16 kHz mono, 200 ms chunks, up by raw `POST
+/api/spatial/voice?seq=` (the session token), down on one SSE stream
+(`/api/spatial/voice/stream`) that carries only what this player can hear,
+each chunk with the server's gain. The codec, the gate, the resampler, the
+jitter rule and who-hears-whom are `@loom/house` `voice.ts`. No
+game-to-game voice: two players never hear each other.
+
+- **The web game has it off by default.** It runs on the tent laptop,
+  which is the tent's own terminal (the tent's spot is `voice: false` on
+  both show maps), so the tent never talks to itself. Turn it on for a
+  device elsewhere with **🎤 Voice link with the terminals** in Setup or
+  `&voice=1` on the provisioning link (`&voice=0` turns it off).
+- With it on, **Play here** asks for the mic in the same tap (the
+  browser's permission prompt; it needs https or localhost). The HUD's
+  **🎤 LIVE / MUTED / NO MIC** toggles it (or **M**), and the status line
+  says *🎤 2 terminals can hear you* while the server says one does.
+  Nothing goes up unless a terminal can hear the player and the level
+  clears the gate (−42 dBFS, 400 ms hang). While a terminal's voice plays
+  on this device (+300 ms) the gate is **raised** to −28 dBFS, not shut
+  (D5b, the barge-in): the speakers' echo stays home, a player speaking up
+  goes — and the terminal, playing them, holds its own mic, so the room
+  pauses for them (a hard hold on both ends let a loud room keep the floor
+  for good). The mic is low-passed at 7 kHz first. Voices play from their
+  screens (`PannerNode`s, equalpower; the server's gain is the volume),
+  ~200 ms behind; a skip ahead cuts only what is queued past the target,
+  with a 5 ms fade. *N terminals can hear you* is the server's `ears`.
+- `src/game/voice.ts` (`VoiceLink`) runs on the camera feeds' gate
+  (playing, on screen) and stops with the session, mic tracks and all;
+  every effect is injected, so `test/voice.test.ts` drives it in node.
+- In a headset, **B / Y** mutes (**M** on a desktop run); the terminals
+  have their own ⚙ `mic` / `voices` switches.
+
 ### The map editor (`/reinstall/map`)
 
 Tick **Edit** to build the house from a survey (the walkthrough is the

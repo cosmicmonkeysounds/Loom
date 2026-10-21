@@ -3,7 +3,7 @@ import { TERMINAL_VIEWS, validateHouse, type HouseMap } from "@loom/house";
 import showHouse from "../../core/examples/trapped-in-the-internet/house.json";
 import shedHouse from "../../core/examples/trapped-in-the-internet/house.shed.json";
 import { VIEWS, defaultConfig, type TerminalConfig } from "../src/config.ts";
-import { UNPLACED, applyPick, followMap, groupTerminals, onlineBadge, pickOf, screenWords, urlConfig, withManual } from "../src/setup-map.ts";
+import { UNPLACED, applyPick, followMap, followVoice, groupTerminals, onlineBadge, pickOf, screenWords, urlConfig, withManual } from "../src/setup-map.ts";
 
 const load = (raw: unknown): HouseMap => {
   const v = validateHouse(raw);
@@ -23,14 +23,14 @@ describe("the terminal's views are the house's", () => {
 
 describe("pickOf — a map terminal → name / view / room", () => {
   it("the show's special tablets", () => {
-    expect(pickOf(show, spot(show, "desktop-tv"))).toEqual({ spot: "desktop-tv", name: "TV", view: "tv", room: "" });
-    expect(pickOf(show, spot(show, "server-room"))).toEqual({ spot: "server-room", name: "Server Room", view: "face", room: "The Server Room" });
-    expect(pickOf(show, spot(show, "server-room-door"))).toEqual({ spot: "server-room-door", name: "Server Door", view: "chess", room: "" });
-    expect(pickOf(show, spot(show, "graphics-card"))).toEqual({ spot: "graphics-card", name: "Casino", view: "casino", room: "" });
-    expect(pickOf(show, spot(show, "start-bar"))).toEqual({ spot: "start-bar", name: "Start Bar", view: "auto", room: "" });
+    expect(pickOf(show, spot(show, "desktop-tv"))).toEqual({ spot: "desktop-tv", name: "TV", view: "tv", room: "", voice: true });
+    expect(pickOf(show, spot(show, "server-room"))).toEqual({ spot: "server-room", name: "Server Room", view: "face", room: "The Server Room", voice: true });
+    expect(pickOf(show, spot(show, "server-room-door"))).toEqual({ spot: "server-room-door", name: "Server Door", view: "chess", room: "", voice: true });
+    expect(pickOf(show, spot(show, "graphics-card"))).toEqual({ spot: "graphics-card", name: "Casino", view: "casino", room: "", voice: true });
+    expect(pickOf(show, spot(show, "start-bar"))).toEqual({ spot: "start-bar", name: "Start Bar", view: "auto", room: "", voice: true });
     // Wave 18b (Q4): the tent laptop is the reinstallation station, on either variant.
-    expect(pickOf(show, spot(show, "tent"))).toEqual({ spot: "tent", name: "Tent", view: "reinstall", room: "" });
-    expect(pickOf(shed, spot(shed, "tent"))).toEqual({ spot: "tent", name: "Shed", view: "reinstall", room: "" });
+    expect(pickOf(show, spot(show, "tent"))).toEqual({ spot: "tent", name: "Tent", view: "reinstall", room: "", voice: false });
+    expect(pickOf(shed, spot(shed, "tent"))).toEqual({ spot: "tent", name: "Shed", view: "reinstall", room: "", voice: false });
   });
 
   it("speaks is ignored on the TV, the board, the casino and the reinstallation station", () => {
@@ -146,5 +146,37 @@ describe("applyPick / urlConfig / followMap", () => {
     expect(followMap(c, { ...show, terminals: [] })).toBeNull();
     // The shed variant: the same spot, the same screen.
     expect(followMap(applyPick(base(), pickOf(show, spot(show, "graphics-card"))), shed)).toBeNull();
+  });
+});
+
+describe("the map's voice link (wave 19)", () => {
+  it("the tent takes no part, on both variants; unplaced neither", () => {
+    expect(pickOf(show, spot(show, "tent")).voice).toBe(false);
+    expect(pickOf(shed, spot(shed, "tent")).voice).toBe(false);
+    expect(UNPLACED.voice).toBe(false);
+    const unset = { ...spot(show, "tent"), voice: undefined };
+    delete unset.voice;
+    // Unset in the spawn room: still off; `voice: true` turns it on.
+    expect(pickOf(show, unset).voice).toBe(false);
+    expect(pickOf(show, { ...unset, voice: true }).voice).toBe(true);
+    expect(pickOf(show, { ...spot(show, "hall"), voice: false }).voice).toBe(false);
+  });
+  it("a tap / a link copies it into the config", () => {
+    expect(applyPick(base(), pickOf(show, spot(show, "tent")))).toMatchObject({ spot: "tent", voiceLink: false });
+    expect(applyPick(base({ voiceLink: false }), pickOf(show, spot(show, "hall")))).toMatchObject({ voiceLink: true });
+    expect(applyPick(base(), UNPLACED).voiceLink).toBe(false);
+    // An old fleet link (it names a view) still takes the map's link.
+    expect(urlConfig(base({ spot: "tent", view: "world" }), { spot: "tent", name: "Tent", view: "world", room: null }, show).voiceLink).toBe(false);
+    expect(urlConfig(base({ spot: "tent" }), { spot: "tent", name: null, view: null, room: null }, show).voiceLink).toBe(false);
+  });
+  it("follows a director turning a spot's link on or off", () => {
+    const c = applyPick(base(), pickOf(show, spot(show, "hall")));
+    const off: HouseMap = { ...show, terminals: show.terminals.map((t) => (t.id === "hall" ? { ...t, voice: false } : t)) };
+    expect(followMap(c, off)).toMatchObject({ voiceLink: false, name: c.name });
+    expect(followVoice(c, show)).toBeNull();
+    // Not set up from the map: only the link follows.
+    expect(followVoice({ ...c, fromMap: false, name: "Mine" }, off)).toMatchObject({ voiceLink: false, name: "Mine" });
+    expect(followVoice({ ...c, spot: "" }, off)).toBeNull();
+    expect(followVoice({ ...c, spot: "nowhere" }, off)).toBeNull();
   });
 });

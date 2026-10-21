@@ -2,7 +2,7 @@
 title: The simulation (reinstallation)
 section: Guest Guide
 order: 11
-keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture, laptop, reinstallation station, not marked, paused, notice
+keywords: simulation, reinstallation, party favour, after the end, confrontation, corruption detected, quarantined, Installation Wizard, Gerald, reinstall, VR, headset, tablet, joystick, stick, controls, chevrons, indicators, duck, golden duck, egg, tent, backyard, tunnel, Internet, game, walk, wall screens, TV, marked, escort, the King, king, chess, server room, hit, trigger, health bar, shared, kneel, kneels, door code, ghost, ghosts, picture, profile picture, laptop, reinstallation station, not marked, paused, notice, voice, microphone, mic, mute, talk, hear, pick your program, laser, pointer, set up this headset, moderator passcode
 ---
 
 Some events have a **simulation**: a virtual copy of the house you're
@@ -40,6 +40,15 @@ box. The wizard opens full screen:
 - **Send to a headset** — when a VR headset (VR-1, VR-2 …) is free, the
   wizard asks first. Put it on; you're already in.
 
+**Or just put a headset on.** You don't need the tablet: the headset's
+lobby says **PICK YOUR PROGRAM**, with a tile and your profile picture for
+every program marked for reinstallation. Point either controller at yours
+(a thin beam shows where it points) and pull the **trigger** — or move
+with a stick and hold it **right** for a second. It asks **Start as
+<your name>?**: pull the trigger on **START** (or hold right again), or
+**BACK** to pick again. *Nobody is marked for reinstallation yet.* means
+there is nobody to pick right now.
+
 No camera, or it won't read your pass? Tap *no camera? type your program
 name* in the box, or tap your name in the red **IN THE INTERNET NOW**
 strip above it. A program that is marked but not in the Internet yet is
@@ -72,7 +81,8 @@ duck speedrun award.
 
 ## Moving around
 
-You walk with **sticks**. The only button is for the King (below).
+You walk with **sticks**. The buttons are for the King (below) and, in a
+headset, your microphone.
 
 | | Headset | Tablet |
 |---|---|---|
@@ -80,6 +90,17 @@ You walk with **sticks**. The only button is for the King (below).
 | Turn | **right stick** — left or right, a step at a time | **right** on-screen stick (push up/down to look up/down) |
 | Look | turn your head | drag on the screen |
 | Hit the King | **trigger** (either hand), or **A / X** | **⚔ HIT** |
+| Mute your mic | **B / Y** | **🎤** (or **M**), when the tablet has a voice link |
+| Pick your program (lobby) | point + **trigger**, or stick + hold **right** 1 s | scan your pass |
+
+**A headset that says SET UP THIS HEADSET** has no moderator passcode
+yet (crew only): point at the server, type the event's moderator passcode
+on its keyboard with the trigger, name it, and pull the trigger on
+**CONNECT**. It remembers; holding the lobby's **⚙** for 5 seconds (2 on a
+computer) forgets it. If its passcode stops working (the staff codes were
+changed), the panel comes back on its own. **PLAY OFFLINE**, on a computer
+only, plays without the house's server. The first time a headset is set up
+it asks to use the **microphone** while it sits in the lobby — allow it.
 
 On a tablet with a keyboard (or a laptop standing in for the tablet):
 **W A S D** or the arrows walk, **Q / E** turn, **Shift** runs,
@@ -168,6 +189,27 @@ people in the real room see you, a ghost with your name and your
 picture. When nobody is in its room it follows whoever is playing, with
 a little map of the floor. Find the duck and every screen watching you celebrates. See
 [The terminals on the walls](terminals.md).
+
+## Talking to the house
+
+The terminals have microphones, and so does the simulation. Walk up to a
+terminal's screen in the simulation and you **hear the people standing by
+that terminal in the real room**, coming from where the screen hangs (from
+the next room it is quieter, the further away the quieter); talk, and they
+hear you on the terminal. Other players in the simulation can't hear you.
+
+- In a **headset**, your mic is on. **B** or **Y** mutes it (and unmutes
+  it); the HUD says **🎤 LIVE**, **🎤 MUTED** or **NO MIC** (**🎤 …** for a
+  moment while it opens).
+- The **tablet in the tent** has no voice link: the tent is the tablet's
+  own room. A tablet or laptop set up elsewhere may have it. Then **Play
+  here** asks to use the microphone, the **🎤** button at the top right
+  (or **M**) mutes it, and the bottom line says *🎤 a terminal can hear
+  you* while one does.
+- Your voice only goes out when you speak up. While a terminal's room is
+  playing to you, only a voice **louder than the room** goes out — so to
+  get a word in over a noisy room, just speak up: the terminal plays you
+  and goes quiet itself while you talk, so the room hears you clearly.
 
 Need the bathroom, or there's an emergency? Tap **🚻 Bathroom Mode** on
 your pass before you leave the tent. The exit is clearly marked. It is
