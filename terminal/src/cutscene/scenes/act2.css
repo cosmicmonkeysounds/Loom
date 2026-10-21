@@ -398,7 +398,7 @@
 .tv2-chess-corner .kit-win { font-size: clamp(14px, 2.2vmin, 28px); }
 .tv2-chess-corner-text { font-weight: bold; font-size: 1.15em; min-height: 3.6em; }
 .tv2-chess-mini { display: inline-block; flex: 0 0 6.5em; width: 6.5em; margin-right: 0.8em; will-change: transform; }
-.tv2-chess-mini .tv2-chess-queen, .tv2-chess-mini .tv2-chess-rook { font-size: 0.72em; }
+.tv2-chess-mini .tv2-chess-queen, .tv2-chess-mini .tv2-chess-rook { font-size: 1.6em; line-height: 0.6; }
 
 /* --- the patch bay -------------------------------------------------------------------------------- */
 .tv2-hazard {
@@ -491,15 +491,15 @@
 
 /* --- Summons Closed: the doors slam ---------------------------------------------- */
 .tv2-stamp.red { color: #ff3b2f; border-color: #ff3b2f; font-size: 5.2em; }
-.tv2-doors { overflow: hidden; z-index: 20; }
-.tv2-door { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.25em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
-.tv2-door.left { left: 0; }
-.tv2-door.right { right: 0; }
-.tv2-door-pane { position: absolute; left: 18%; right: 18%; top: 10%; height: 34%; background: linear-gradient(160deg, #0b1a4a, #3a5a9a); border: 0.2em solid; border-color: #404040 #fff #fff #404040; }
-.tv2-door-sign { position: absolute; left: 0; right: 0; top: 54%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.6em; letter-spacing: 0.12em; color: #000080; }
-.tv2-door-handle { position: absolute; top: 62%; width: 1.4em; height: 4.2em; background: #ffd23f; border: 0.12em solid #806000; border-radius: 0.3em; }
-.tv2-door.left .tv2-door-handle { right: 6%; }
-.tv2-door.right .tv2-door-handle { left: 6%; }
+.tv2-shut { overflow: hidden; z-index: 20; }
+.tv2-shut-door { position: absolute; top: 0; bottom: 0; width: 50%; background: linear-gradient(90deg, #a8a8a8, #c8c8c8 40%, #9a9a9a); border: 0.25em solid; border-color: #fff #404040 #404040 #fff; will-change: transform; }
+.tv2-shut-door.left { left: 0; }
+.tv2-shut-door.right { right: 0; }
+.tv2-shut-pane { position: absolute; left: 18%; right: 18%; top: 10%; height: 34%; background: linear-gradient(160deg, #0b1a4a, #3a5a9a); border: 0.2em solid; border-color: #404040 #fff #fff #404040; }
+.tv2-shut-sign { position: absolute; left: 0; right: 0; top: 76%; text-align: center; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 2.6em; letter-spacing: 0.12em; color: #000080; }
+.tv2-shut-handle { position: absolute; top: 62%; width: 1.4em; height: 4.2em; background: #ffd23f; border: 0.12em solid #806000; border-radius: 0.3em; }
+.tv2-shut-door.left .tv2-shut-handle { right: 6%; }
+.tv2-shut-door.right .tv2-shut-handle { left: 6%; }
 .tv2-late-win { z-index: 45; }
 .tv2-late-row { display: flex; align-items: baseline; font-family: var(--mono); font-size: 0.95em; line-height: 1.5; }
 .tv2-late-row b { white-space: nowrap; }

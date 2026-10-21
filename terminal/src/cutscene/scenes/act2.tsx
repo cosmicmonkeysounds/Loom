@@ -196,12 +196,12 @@ function DesktopDoors({ t, slam, reduced }: { t: number; slam: number; reduced: 
   const k = reduced ? (t >= slam ? 1 : 0) : eased(t, SHUT.slide, slam - SHUT.slide, ease.inCubic);
   const bounce = reduced || t < slam ? 0 : Math.sin(progress(t, slam, 420) * Math.PI) * (1 - progress(t, slam, 420)) * 1.4;
   return (
-    <div className="kit-fill tv2-doors" aria-hidden="true">
+    <div className="kit-fill tv2-shut" aria-hidden="true">
       {(["left", "right"] as const).map((side) => (
-        <div key={side} className={`tv2-door ${side}`} style={{ transform: `translate3d(${((side === "left" ? -1 : 1) * ((1 - k) * 100 + bounce)).toFixed(2)}%, 0, 0)` }}>
-          <div className="tv2-door-pane" />
-          <div className="tv2-door-sign">{side === "left" ? "THE" : "DESKTOP"}</div>
-          <div className="tv2-door-handle" />
+        <div key={side} className={`tv2-shut-door ${side}`} style={{ transform: `translate3d(${((side === "left" ? -1 : 1) * ((1 - k) * 100 + bounce)).toFixed(2)}%, 0, 0)` }}>
+          <div className="tv2-shut-pane" />
+          <div className="tv2-shut-sign">{side === "left" ? "THE" : "DESKTOP"}</div>
+          <div className="tv2-shut-handle" />
         </div>
       ))}
     </div>
@@ -237,7 +237,7 @@ function SummonsClosedTv(p: SceneProps) {
             </div>
           )}
         </Shake>
-        <Win98Window title="LATE.TXT — Antivirus" icon="document" x={66} y={8} width="25em" open={eased(t, SHUT.list, 300, ease.outCubic)} reduced={reduced} className="tv2-late-win" status={shown >= rows ? "The Antivirus have the list." : `Checking the house… ${shown} of ${rows}`}>
+        <Win98Window title="LATE.TXT — Antivirus" icon="document" x={58} y={8} width="24em" open={eased(t, SHUT.list, 300, ease.outCubic)} reduced={reduced} className="tv2-late-win" status={shown >= rows ? "The Antivirus have the list." : `Checking the house… ${shown} of ${rows}`}>
           {LATE_ROWS.slice(0, shown).map((r, i) => (
             <div key={r.room} className={`tv2-late-row ${r.mark}`} style={{ opacity: progress(t, SHUT.list + 500 + i * LATE_EVERY, 200) }}>
               <span>Sweep · {r.room}</span>
