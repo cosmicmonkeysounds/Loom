@@ -133,8 +133,10 @@ export interface TerminalSpot {
   speaks?: boolean;
 }
 
-/** A terminal screen type — the values of `TERMINAL_VIEWS`. */
-export type TerminalViewName = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";
+/** A terminal screen type — the values of `TERMINAL_VIEWS`. `reinstall` (wave 18b,
+ *  Q4): the tent laptop — a terminal that is also the reinstallation wizard
+ *  (an old server refuses it: deploy the server first). */
+export type TerminalViewName = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino" | "reinstall";
 
 /** `pos` = where the duck sits (its feet). */
 export interface DuckSpot {
