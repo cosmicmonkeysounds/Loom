@@ -72,7 +72,7 @@ def test_the_firmware_dials_the_house_macs_password_listener():
     cfg = _defines("config.h")
     broker = ipaddress.ip_address(cfg["SR_BROKER_IP"])
     assert broker.version == 4 and broker.is_private and not broker.is_loopback
-    # The anonymous listener is loopback-only (scripts/house-mac/alexa.md →
+    # The anonymous listener is loopback-only (scripts/house-mac/audio.md →
     # "Lock down the broker"), so the box uses :1884 with the props login…
     port = re.search(r"^#define\s+SR_BROKER_PORT\s+(\d+)", (FIRMWARE / "config.h").read_text(encoding="utf-8"), re.M)
     assert port and port.group(1) == "1884"

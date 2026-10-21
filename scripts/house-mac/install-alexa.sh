@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Install (or reinstall) the fake Alexa as a LaunchAgent on the house Mac (K-20).
 #
+# RETIRED for Trapped in the Internet (wave 18b): the speaker router (the
+# `audio` launchd job) speaks the announcements now, and the two share one
+# voice lock — run `--uninstall` once (scripts/house-mac/audio.md). The
+# install path stays for a house that still runs the player (a YAML with an
+# `alexa:` section).
+#
 #   scripts/house-mac/install-alexa.sh                    stagehand/house.yaml
 #   scripts/house-mac/install-alexa.sh --config <yaml>    another machine config
 #   scripts/house-mac/install-alexa.sh --dry-run          print the plist, load nothing
@@ -40,6 +46,16 @@ FAIL no machine config at $CONFIG
   server.mod_passcode, and alexa.device (uv run python -m sounddevice).
 MSG
   exit 1
+fi
+
+if ! grep -q '^alexa:' "$CONFIG"; then
+  cat <<MSG
+FAIL $CONFIG has no alexa: section — the speaker router speaks the
+  announcements (wave 18b). Retire the player instead:
+  $0 --uninstall
+  then: uv run stagehand launchd install --job audio --config <yaml>  (scripts/house-mac/audio.md)
+MSG
+  exit 2
 fi
 
 # Validate before installing — a bad config should fail here, not loop in launchd.

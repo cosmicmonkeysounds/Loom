@@ -5,7 +5,8 @@
   system daemon: CoreAudio output needs the logged-in user's session, so
   the Mac auto-logs-in that user. Template: install-alexa.sh fills the
   __UV__ / __STAGEHAND__ / __CONFIG__ / __LOG__ / __PATH__ placeholders and
-  loads it. See alexa.md.
+  loads it. Retired for Trapped in the Internet (wave 18b: the speaker
+  router speaks the announcements); see audio.md.
 -->
 <plist version="1.0">
 <dict>

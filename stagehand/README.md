@@ -9,18 +9,18 @@ machine, **modules** switched on by section:
 |---|---|---|---|
 | **show** | `show:` | the house Mac | story → OSC/MQTT cues; MQTT sensors → story mutations |
 | **agents** | `agents:` | the house Mac (Ollama) | answers every conversation with a `mind: external` character through a local model |
-| **alexa** | `alexa:` | the house Mac | MQTT `show/announce` → a chime + the Mac's own `say` voice on a named CoreAudio device + channel map (`engine: server` opts in to `/api/mod/tts`, cached on disk) |
-| **audio** | `audio:` | the house Mac | the house speaker router: the event's `audio.json` (speakers, zones, the interface's input→output matrix) on one 16 in / 16 out stream; story `sound X` per room, announcements and the map editor's speaker tests — all opt-in |
+| **alexa** | `alexa:` | (retired for the show, wave 18b) | MQTT `show/announce` → a chime + the Mac's own `say` voice on a named CoreAudio device + channel map (`engine: server` opts in to `/api/mod/tts`, cached on disk). The router speaks the show's announcements now; the module stays for a house that wants a player of its own |
+| **audio** | `audio:` | the house Mac | the house speaker router: the event's `audio.json` (speakers, zones, the interface's input→output matrix) on one stream (the show's MOTU 828x + an ADAT expander); every story `sound X` per room, the house announcements, the map editor's speaker tests and Run's ■ Stop house sounds. The show switches both on (wave 18b) |
 
-All four can run on one machine (the show does: one house Mac); they
-still run as **separate launchd jobs** (see *launchd* below; the `alexa`
-player has its own agent in `scripts/house-mac/`).
+All four can run on one machine (the show runs three on one house Mac:
+`show`, `audio`, `agents`); they run as **separate launchd jobs** (see
+*launchd* below).
 
 ```
 trapped.house.yaml (the house Mac)     laptop.yaml (same Mac, the agents job)
   server: {url, event, code}             server: {url, event, code}
-  show:   {mqtt, osc, cues, sensors}     agents: {llm, characters}
-  alexa:  {device, channels, chime, …}
+  show:   {mqtt, cues, sensors}          agents: {llm, characters}
+  audio:  {sounds_dir, play_sounds, announce, mqtt, …}
 ```
 
 Every module shares the process's one authenticated link to the server
@@ -113,7 +113,7 @@ What runs when:
 | `Night.phase` changes | the phase watch (a facts fetch every `phase_poll_s`, no model) applies the mind file's card: stage, favours, drives, live powers, `tell` list, brief — one revision `by: story` | 0 |
 | a conversation goes quiet (≥ 3 turns, then 120 s idle) | the **quiet summary**: one call on the voice model condenses that person's memos into a few lines (thought kind `summary`, trigger `quiet`). Never while a request or a ruling waits, never asleep or after a finale | 1 |
 | a director presses **Rewrite brief** | one voice-model call rewrites the brief from the phase card, the whispers and a digest built in code (thought kind `brief`); it holds as `by: director` until the next phase | 1 |
-| a near-miss filing | the judge, unchanged (below) | 1 |
+| a filing that is not an exact match | the judge (below; wave 18b: every non-exact filing, queued one at a time behind the voice) | 1 |
 | an empty house, asleep, after the ending, paused, a timer tick | nothing | 0 |
 
 A guest line or a ruling always goes first: a summary, a Rewrite brief
@@ -551,14 +551,23 @@ keep that ≥ 1000 with the mind block in the prompt. JSON mode stays
 off: the reply parser copes with prose, code fences, and `<think>`
 blocks.
 
-### The judge: ruling on near misses
+### The judge: ruling on filings
 
 A story whose header names `judge: <Character>` (an agent-voiced
-character) hands that character the facts judge's **near misses** in
-auto mode (a small typo, the key said at length) instead of leaving them
-to the directors. The server sends a `judge` frame `{id, character,
-filing, question: {id, text}, key: {answer, aliases}, answer,
-confidence}`; the worker makes **one** call on the character's voice
+character) hands that character the facts judge's rulings in auto mode
+instead of leaving them to the directors. Since wave 18b (the user's
+answer, O4) that is **every filing that is not an exact match** (the
+fold, an alias, a spelled-out abbreviation is accepted at once): a near
+miss (a small typo, the key said at length) and a plain miss alike. The
+server queues them (by filing time), keeps at most one frame out per
+worker and sends none while that worker holds a voice request, so a
+guest's DM never waits behind a backlog; a ruling not given by the
+round's settle falls back to the house rule (a near miss accurate, a
+plain miss a lie at 100, uncertain below). The server sends a `judge`
+frame `{id, character, filing, question: {id, text}, key: {answer,
+aliases}, answer, confidence, near}` (`near`: the key form it is close
+to, null for a plain miss; an older worker ignores it); the worker makes
+**one** call on the character's voice
 model at temperature 0.1 (`agents/judge.py`): an impartial same-or-not
 check, nothing of the persona, the mind or the live state in it, and the
 filer's confidence left out. It answers `POST /api/agent/judge {id,
@@ -652,8 +661,9 @@ Zigbee2MQTT group scenes + WLED presets for every `cue lights_*`, the
 per-room long form `<cue: lights, room: …, state: …>` (The Start Bar — the
 kitchen, dimmed to ~20%, never dark — The Desktop, The RAM), `screens_flicker`
 blinking the house's bulbs (their own one-shot blink effect; the LED strips
-keep their look), every `sound <name>` as a QLab OSC cue (but `announce_chime` → the `alexa`
-player), `do announce` to the `alexa` speaker plus QLab's `duck_music` cue (the music dips under it), `do door server_room` to the ESP32's door
+keep their look), `do announce` and the story's `sound announce_chime` to
+the `audio` router over MQTT (`show/announce`, `show/chime`; every other
+`sound <name>` the router plays off the feed itself, wave 18b: no QLab), `do door server_room` to the ESP32's door
 **indicator** (`show/serverroom/lock`, the one retained command; the real
 lock is a standalone keypad lock, code set by hand, never networked, and
 nothing here drives it), `lights_alarm` to the server-room box's own siren
@@ -670,7 +680,8 @@ safety rooms (stairs, bathroom, tent, server room, the server-room →
 living-room path) are out of the `house` group, and `lights_blackout`
 turns WLED off per device, leaving the Tube strip on dim preset 22.
 `tests/test_trapped_house.py` cross-checks it against the story: every
-light / sound cue has a rule, every sensor signal has a `when` in
+light cue has a rule, every sound an `audio.json` cue and a
+`media/sounds.yaml` entry, every sensor signal has a `when` in
 `main.loom`, the two combos match the `Kernel.combo_*` seeds and the
 codex halves — and it pins the safety edits (no cue darkens a safety
 room or all of WLED, nothing drives a lock, edge-only door sensors that
@@ -680,14 +691,15 @@ the Internet: the house rig*.
 
 Mosquitto on the house Mac (static `192.168.8.10`) runs two listeners:
 anonymous on `127.0.0.1:1883` for what runs on that Mac (stagehand's
-`mqtt.host`, Zigbee2MQTT, the `alexa` player) and password-only on the
+`mqtt.host`, Zigbee2MQTT, the router) and password-only on the
 LAN at `:1884` as user `props` for the network props (WLED, the
 server-room ESP32 in [`hardware/server-room/`](../hardware/server-room)).
-Setup: `scripts/house-mac/alexa.md` → *Lock down the broker*.
+Setup: `scripts/house-mac/audio.md` → *Lock down the broker*.
 
 ```bash
 uv run stagehand check --config trapped.house.yaml
 uv run stagehand run   --config trapped.house.yaml --only show
+uv run stagehand run   --config trapped.house.yaml --only audio
 ```
 
 ## audio — the house speaker router
@@ -702,10 +714,16 @@ story sound goes; the `audio:` section only says what this Mac may do
 ```yaml
 audio:
   sounds_dir: media/sounds   # sound printer_grind → media/sounds/printer_grind.wav|aiff|flac
-  play_sounds: false         # true: the router plays `sound X` (QLab's sound cues are skipped)
+  play_sounds: false         # true: the router plays `sound X` (OSC sound cues are skipped)
   announce: false            # true: the router plays `do announce` (remove `alexa:` first)
   passthrough: true          # audio.json routes; false = an output-only stream
 ```
+
+The show (`trapped.house.yaml`, wave 18b) runs `play_sounds: true`,
+`announce: true`, `passthrough: false` (live mics are mixed in CueMix FX)
+and MQTT on the loopback broker; QLab and the `alexa` player are retired
+there. House-Mac setup and the night's runbook:
+[`scripts/house-mac/audio.md`](../scripts/house-mac/audio.md).
 
 - **One stream.** The device named by `audio.json` `device.name` (a
   CoreAudio substring; `device:` overrides) opens as ONE `sounddevice`
@@ -718,6 +736,13 @@ audio:
   PortAudio re-initialised first so a replugged interface is found. Sound
   files are resampled band-limited once at load; `check` names those not at
   the device rate.
+- **The 828x and `device.expect`** (wave 18b). `audio.json` declares the
+  channels used, numbered as the device numbers them (the show: 24 in / 22
+  out; the expander on Optical A is outputs 15–22, inputs 17–24). The
+  optional `device.expect {inputs, outputs}` is what the device itself must
+  report (32 / 30); anything else means mirroring, 96 kHz or TOSLink moved
+  the layout: `check` fails, the router logs an error at every open, plays
+  anyway, and its health says `layout: moved`.
 - **Where a `sound X` goes**, first rule that applies: the story line's own
   rooms (`sound X with rooms: a b` / `sound X in <Place>`, the `rooms:`
   argument), `audio.json` `cues[X].to`, the enclosing beat's `setting`,
@@ -727,11 +752,31 @@ audio:
   `resolveTargets` (`audio/routing.py`, pinned by the shared
   `house/test/fixtures/audio-resolve.json`, copied byte for byte into
   `tests/fixtures/house-audio/`). A name with no file is logged once.
-- **QLab or the router, never both** (decision D6). `play_sounds: false`
-  (the default) leaves `sound X` to QLab; `play_sounds: true` makes the
-  config loader drop the `show` module's `sound` cues that go to an OSC
-  target — even in the show's own `--only show` job, so keep `audio:` in the
-  same YAML as `show:`. The `announce_chime` MQTT rule stays.
+- **One player, never two** (decision D6). `play_sounds: false` (the
+  default) leaves `sound X` to another cue player; `play_sounds: true`
+  makes the config loader drop the `show` module's `sound` cues that go to
+  an OSC target — even in the show's own `--only show` job, so keep `audio:`
+  in the same YAML as `show:`. The `announce_chime` MQTT rule stays.
+- **Placeholders** (wave 18b). `stagehand/media/sounds.yaml` (tracked)
+  lists every story sound and what its real file should be; `uv run
+  stagehand sounds placeholders --config … [--force] [--no-say] [--only
+  a,b] [--out DIR]` writes a labelled placeholder for each (48 kHz mono: a
+  distinct motif, then the name in `say`, tagged `loom-placeholder v1` in
+  the WAV's INFO chunk; `audio/placeholders.py`). It never overwrites an
+  untagged file and skips a name with a real file under any extension; the
+  router always prefers a real file over a placeholder; `check` lists every
+  placeholder still in `sounds_dir` and health carries them.
+  `media/sounds/` is git-ignored.
+- **Stop all house sounds** (wave 18b, Q7). Run's ■ Stop house sounds, a
+  host's dock or the director phone post `POST /api/mod/audio/stop
+  {announce?}`; the router polls with `stops=<seq>` (primed by the first
+  answer, a stop older than 10 s by the server's `now` dropped) and fades
+  every sfx voice over 0.3 s and every speaker test; `announce: true` also
+  cuts the line being said and empties the queue (the `say -a` fallback
+  never speaks around the cut). One-shot, never journaled; the TV voice,
+  terminals, live inputs and the story clock are untouched. On the LAN:
+  `show/audio/stop` (`{}` / `{"announce": true}`) or `uv run stagehand
+  sounds stop [--announce] --config …`.
 - **Announcements.** `announce: true` plays the chime + the Mac's `say`
   (the `alexa` module's `Announcer`, merge window included) on `audio.json`
   `announce.to`, ducking the sounds −12 dB. With `mqtt:` they come from
@@ -742,32 +787,44 @@ audio:
   player holds it only announcements are dropped (`announce: blocked` in
   health), every sound still plays. While the alexa player speaks
   (`announce: false`) each feed `do announce` ducks the sounds for
-  `duck_hold_s` (7 s, QLab's `duck_music`); `no_duck: [dance_song, rave,
+  `duck_hold_s` (7 s); `no_duck: [dance_song, rave,
   hand_jive]` (or a cue's `duck: false` in `audio.json`) never ducks.
 - **Speaker tests.** The map editor's Test (`POST /api/mod/audio/test`)
   arrives in the long-poll; the router plays a 1.5 s tone (three rising
   beeps pitched by the output number) and then says the label ("Start Bar.
   Outputs 3, 4.") at `test_gain_db`. By hand: `mosquitto_pub -t
   show/audio/test -m '{"speaker":"desk-l"}'` (or `{"out": 3}`) with `mqtt:`.
+- **By hand** (the uplink down, the broker local): `uv run stagehand sounds
+  play <name> [--to living …]` (`show/audio/play {"name", "to"?}`) plays one
+  sound; `uv run stagehand announce --config … "text"` publishes on
+  `show/announce` once the YAML has no `alexa:` section.
 - **Offline.** The last `audio.json` + `house.json` are kept in
   `cache_dir`; a boot with the uplink down routes from them (else
   `config_file` / `house_file`). A server without the route (an older
   release) is logged once and polled each minute.
 - **Health.** Every `health_s` a line (device, config version, voices,
   played / skipped, xruns, limiter, peak, `announce off | on | blocked`,
-  sounds with no file; the JSON adds `reinits`); with
+  sounds with no file, `LAYOUT MOVED`, placeholders; the JSON adds
+  `reinits`, `stops`, `layout`, `placeholders`); with
   `mqtt:` the same JSON on `health/audio/stats` (retained) and
   `online` / `lost` on `health/audio`.
 
 ```bash
-uv run stagehand check   --config trapped.house.yaml --only audio   # the device vs audio.json, missing files
+uv run stagehand sounds placeholders --config trapped.house.yaml   # a labelled file per story sound
+uv run stagehand check   --config trapped.house.yaml --only audio   # the device vs audio.json, missing files, placeholders
 uv run stagehand run     --config trapped.house.yaml --only audio
 uv run stagehand launchd install --job audio --config trapped.house.yaml
+uv run stagehand sounds stop [--announce] --config trapped.house.yaml   # by hand, over MQTT
 ```
 
 Room-by-room design and what is still open: [`docs/trapped/room-audio.md`](../docs/trapped/room-audio.md).
 
 ## alexa — announcements out of the house speakers
+
+**Retired for Trapped in the Internet (wave 18b):** the `audio` router
+speaks the show's announcements, and the two share one voice lock, so the
+house Mac's alexa agent is uninstalled (`scripts/house-mac/install-alexa.sh
+--uninstall`). The module stays for a house that wants a player of its own.
 
 `do announce "…"` reaches the house as `show/announce {"text": "…"}` (a
 `show` cue rule). The `alexa` module, on the Mac wired to the speakers,
@@ -796,8 +853,8 @@ uv run stagehand announce --config house.yaml --offline --no-chime "Time is up."
 uv run stagehand run      --config house.yaml --only alexa                        # the daemon
 ```
 
-House-Mac setup, launchd agent and the night's runbook:
-[`scripts/house-mac/alexa.md`](../scripts/house-mac/alexa.md).
+The house Mac's runbook (now the router's):
+[`scripts/house-mac/audio.md`](../scripts/house-mac/audio.md).
 
 ### Sensor rules: `edge` and retained messages
 
@@ -902,7 +959,9 @@ the pre-wave-12 prompts), the replay harness (`test_replay`, no model), the
 `alexa` player, the `audio` router (`test_audio_routing` — the shared
 `resolveTargets` fixture, `test_audio_mixer` — block-by-block numpy,
 `test_audio_engine` / `test_audio_router` — a fake sounddevice stream and a
-fake server), launchd plists, the `.local.yaml` overlay, `edge` /
+fake server, the stops and `device.expect`; `test_placeholders` — the
+generator and real-files-win; `test_cli_router` — announce / sounds over a
+fake MQTT publish), launchd plists, the `.local.yaml` overlay, `edge` /
 retained sensor rules, the real rig against the story
 (`test_trapped_house`) and the server-room firmware's broker settings
 (`test_serverroom_firmware`). The router's socket wiring is
