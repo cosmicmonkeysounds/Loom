@@ -62,12 +62,12 @@ export function actLine(act: NightView["act"] | null | undefined, fallback: stri
 }
 
 /** Mission's line 1 when the server sends no act (a guest never gets one:
- *  the act's title is director copy): "▣ MISSION · {the NOW objective}",
- *  never the story's title (GN-F6: the home screen read "Trapped in the
- *  Internet" all night). */
+ *  the act's title is director copy): "▣ MISSION" — the card under it names
+ *  the objective — never the story's title (GN-F6: the home screen read
+ *  "Trapped in the Internet" all night). `objectives` is read for the
+ *  paused / free-roam word only. */
 export function missionLine(objectives: readonly ObjectiveView[] | undefined): string {
-  const now = objectives?.[0]?.title.trim() ?? "";
-  return now !== "" ? `▣ MISSION · ${now}` : "▣ MISSION";
+  return (objectives ?? []).length === 0 ? "▣ MISSION · waiting" : "▣ MISSION";
 }
 
 /** A loud objective just went live: what the bar unfolds to say. Its own

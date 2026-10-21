@@ -117,8 +117,8 @@ describe("the NOW bar's states (fguest)", () => {
     expect(actLine({ code: "C", title: null }, "Story")).toBe("▣ ACT C");
     expect(actLine(null, "Story")).toBe("Story");
     // GN-F6: a guest gets no act; Mission names the mission, never the story.
-    expect(actLine(null, missionLine([{ id: "b", title: "🎱 Computer Bingo", brief: "", checklist: [], buttons: [], act: null }]))).toBe("▣ MISSION · 🎱 Computer Bingo");
-    expect(missionLine([])).toBe("▣ MISSION");
+    expect(actLine(null, missionLine([{ id: "b", title: "🎱 Computer Bingo", brief: "", checklist: [], buttons: [], act: null }]))).toBe("▣ MISSION");
+    expect(missionLine([])).toBe("▣ MISSION · waiting");
     const html = renderToStaticMarkup(
       createElement(TitleBar, { objectives: [o("a", "Bingo")], fallback: "", onOpen: () => {}, act: "▣ ACT B · The Desktop", lead: createElement("i", { id: "lead" }), trail: createElement("i", { id: "trail" }) }),
     );
