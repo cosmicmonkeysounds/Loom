@@ -254,7 +254,7 @@ describe("AgentHub rulings", () => {
     expect(h.judgeSettle(id, "w2")?.id).toBe(id);
     expect(h.judgeSettle(id, "w2")).toBeNull(); // answered already
   });
-  it("expires after 60 s (a pause excluded), cancelling it on the worker; a leaving worker and a restart drop theirs", () => {
+  it("expires after 60 s (a pause excluded), cancelling it on the worker; a leaving worker's goes back in the queue; a restart drops theirs", () => {
     const now = { t: 0 };
     const gone: string[] = [];
     const h = hub(now, gone);
@@ -273,12 +273,18 @@ describe("AgentHub rulings", () => {
     expect(gone).toEqual([`${a}:expired`]);
     const b = h.judge(body)!;
     h.detach("w");
-    expect(gone.at(-1)).toBe(`${b}:offline`);
+    // Wave 18b: a blip never loses a ruling — it waits in its place.
+    expect(gone.at(-1)).toBe(`${a}:expired`);
+    expect(h.judging.map((j) => j.id)).toEqual([b]);
+    expect(h.judgeQueued(b)).toBe(true);
     h.attach(workerOf("w3", sent));
-    const c = h.judge(body)!;
+    expect(sent.at(-1)).toEqual(["judge", expect.objectContaining({ id: b })]);
+    expect(h.judgeSettle(b, "w")).toBeNull(); // the old connection's late answer
+    const c = h.judge(body)!; // queued behind b
     h.reset();
     expect(h.judging).toEqual([]);
-    expect(sent.filter(([e, d]) => e === "cancel" && (d as { id: string }).id === c)).toHaveLength(1);
+    expect(sent.filter(([e, d]) => e === "cancel" && (d as { id: string }).id === b)).toHaveLength(1);
+    expect(sent.filter(([e, d]) => e === "cancel" && (d as { id: string }).id === c)).toHaveLength(0); // never sent
     const d = h.judge(body)!;
     expect(h.cancelJudge(d)).toBe(true);
     expect(h.cancelJudge(d)).toBe(false);
@@ -655,6 +661,22 @@ describe("the event — every non-exact filing goes to the judge (wave 18b, O4)"
     expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: false, why: "" })).status).toBe(200);
     expect(w.judges()).toHaveLength(1);
     w.close();
+    rt.dispose();
+  });
+
+  it("a worker's blip puts its ruling back in the queue; the reconnect is asked it", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const ada = await guest(rt, "Ada");
+    await file(rt, ada, "Q2", "the dog", 80);
+    const [a] = w.judges();
+    w.close(); // the laptop's Wi-Fi drops
+    expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: null, asking: true, queued: true });
+    const w2 = await worker(rt);
+    expect(w2.judges().map((j) => j.id)).toEqual([a!.id]);
+    expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: true, why: "" })).status).toBe(410);
+    expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w2.id, same: true, why: "" })).json).toEqual({ ok: true, verdict: "accurate" });
+    w2.close();
     rt.dispose();
   });
 

@@ -58,7 +58,8 @@
 //! worker while it holds an open voice request (one already out runs to its
 //! end). The worker answers `POST /api/agent/judge`; a frame unanswered
 //! `AGENT_JUDGE_TIMEOUT_MS` (60 s, a pause excluded) after it was **sent**
-//! expires — a queued one never does. Two expiries in a row on one worker
+//! expires — a queued one never does; a worker leaving puts its frame back
+//! in the queue, in its place. Two expiries in a row on one worker
 //! (it answered nothing between) are a **judge stall**: no more frames to
 //! it until it answers anything (a ruling or a request) or reconnects, one
 //! `judgeStalled` call (the runtime's `# hosts` line), and the queue waits.
@@ -874,9 +875,10 @@ export interface AgentHubOptions {
   maxAttempts?: number;
   /** A ruling unanswered this long is dropped (`AGENT_JUDGE_TIMEOUT_MS`). */
   judgeTimeoutMs?: number;
-  /** A ruling went unanswered: it expired, its worker left, or a restart
-   *  dropped it (the runtime refreshes the Judging card's "asking…"). */
-  judgeGone?: (req: AgentJudgeRequest, why: "expired" | "offline" | "cancelled") => void;
+  /** A ruling went unanswered: it expired or was cancelled (the runtime
+   *  refreshes the Judging card's "asking…"). A worker leaving puts its
+   *  rulings back in the queue instead (wave 18b). */
+  judgeGone?: (req: AgentJudgeRequest, why: "expired" | "cancelled") => void;
   /** (wave 18b) A ruling left the queue for a worker (the Judging card's
    *  "queued" becomes "asking"). */
   judgeSent?: (req: AgentJudgeRequest) => void;
@@ -1005,13 +1007,15 @@ export class AgentHub {
     this.pumpJudges();
   }
 
-  /** A worker went away: its in-flight requests go back in the queue. */
+  /** A worker went away: its in-flight requests go back in the queue, and
+   *  (wave 18b) so do its rulings, in their place (a Wi-Fi blip never loses
+   *  one; a late answer from the old connection gets a 410). */
   detach(workerId: string): void {
     if (!this.workers.delete(workerId)) return;
-    for (const [id, j] of [...this.judges]) {
+    for (const j of this.judges.values()) {
       if (j.worker !== workerId) continue;
-      this.judges.delete(id);
-      this.o.judgeGone?.(j.req, "offline");
+      j.worker = null;
+      j.sentAt = null;
     }
     this.judgeExpiries.delete(workerId);
     this.judgeStalls.delete(workerId);
