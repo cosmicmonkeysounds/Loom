@@ -16,7 +16,9 @@
     "types": [],
     "baseUrl": ".",
     "paths": {
-      "@loom/play/*": ["../play/src/*"]
+      "@loom/play/*": ["../play/src/*"],
+      "@loom/reinstall/*": ["../reinstall/web/src/*"],
+      "@loom/terminal/*": ["./src/*"]
     }
   },
   "include": ["src", "test"]
