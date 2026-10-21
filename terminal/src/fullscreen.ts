@@ -220,9 +220,17 @@ export function kioskFullscreen(): KioskFullscreen {
   return shared;
 }
 
-/** For the poll's health: full screen now (true / false), null where it can't be (or isn't asked). */
+/**
+ * A state as the poll's health flag: full screen (true), asked for and not
+ * full screen (false — worth a badge), else null: it can't be
+ * (`unsupported`) or a director turned it off (`disabled`), so no `fs` is sent.
+ */
+export function fullscreenFlagOf(s: FullscreenState): boolean | null {
+  if (s === "on" || s === "fully") return true;
+  return s === "off" ? false : null;
+}
+
+/** For the poll's health: `fullscreenFlagOf` the page's keeper (null before it starts). */
 export function fullscreenFlag(): boolean | null {
-  if (shared === null) return null;
-  const s = shared.state;
-  return s === "unsupported" ? null : s === "on" || s === "fully";
+  return shared === null ? null : fullscreenFlagOf(shared.state);
 }

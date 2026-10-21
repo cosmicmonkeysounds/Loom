@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GESTURES, KioskFullscreen, type FullscreenDoc, type FullyLike, type GestureLike } from "../src/fullscreen.ts";
+import { GESTURES, KioskFullscreen, fullscreenFlagOf, type FullscreenDoc, type FullyLike, type GestureLike } from "../src/fullscreen.ts";
 
 /** A document whose root can (or can't) go full screen. */
 class FakeDoc implements FullscreenDoc {
@@ -183,5 +183,15 @@ describe("KioskFullscreen — full screen by default", () => {
     const doc = new FakeDoc();
     doc.fullscreenEnabled = false;
     expect(new KioskFullscreen(doc).supported).toBe(false);
+  });
+});
+
+describe("the health flag (fs)", () => {
+  it("sends 1 when full, 0 when asked but not full, nothing when off by choice or impossible", () => {
+    expect(fullscreenFlagOf("on")).toBe(true);
+    expect(fullscreenFlagOf("fully")).toBe(true);
+    expect(fullscreenFlagOf("off")).toBe(false);
+    expect(fullscreenFlagOf("disabled")).toBeNull(); // a director turned it off: not a fault
+    expect(fullscreenFlagOf("unsupported")).toBeNull();
   });
 });
