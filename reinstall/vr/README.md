@@ -55,8 +55,8 @@ house may be wrong until the event's map arrives.
 ## Run it on a desktop
 
 Without an OpenXR runtime (a Mac) the game runs on the desktop rig. WASD or
-↑↓ walk, Q/E or ←→ turn, Space or F hits the King, and the mouse looks
-(click to capture it, Esc to release it). In the lobby the same keys drive the picker: W/S choose, and
+↑↓ walk, Q/E or ←→ turn, Space or F hits the King, M mutes the microphone,
+and the mouse looks (click to capture it, Esc to release it). In the lobby the same keys drive the picker: W/S choose, and
 holding D or E for 1 s confirms.
 
 ```bash
@@ -94,7 +94,10 @@ and logs in as a moderator. Settings are applied in this order (lowest first):
 1. built-in defaults
 2. `res://config/station.json`: committed, with placeholders (`CHANGEME` never dials out)
 3. `user://station.json`: per headset
-4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot]`
+4. the command line after `--`: `--server URL --code PASS --station vr-1 --name "Headset 1" [--guest g-xxxxxx] [--offline] [--smooth-turn] [--autopilot] [--voice false] [--mic false]`
+
+`voice` (on by default) is the voice link; `mic: false` keeps it but
+listens only (the headset hears the terminals and is never heard).
 
 ```json
 { "server": "https://app.mapsandducks.com", "code": "4821", "station": "vr-1", "name": "Headset 1", "smooth_turn": false }
@@ -247,6 +250,33 @@ with `released: true` while you walk to Gerald.
   puts the terminal's own screen back (a timeout or a 5xx alone keeps the
   last frame); failures back off, a spot's frames up to 5 s, the list up
   to 30 s.
+- **The terminals can hear and be heard** (wave 19, `net/voice_link.gd`,
+  [§2.4](../../docs/loom-reinstall.md)): while playing, a person talking at
+  a wall terminal is heard from that terminal's screen in the virtual
+  house (panned from where it hangs; the server sets how loud — full in the
+  same room, fading to nothing at 12 m, the nearest four on your floor),
+  and the player's voice is heard on the terminals within 8 m of them. The
+  mic is open with a level gate (nothing goes up in silence) and is held
+  while a terminal's voice plays here, plus 0.3 s, so the headset never
+  echoes a terminal back to it; it only uploads while some terminal can
+  hear it. **B / Y** (either hand; **M** on a Mac) mutes and unmutes the
+  mic. The HUD's bottom line says **🎤 LIVE** (· *someone can hear you*
+  when a terminal listens), **🎤 MUTED**, or **NO MIC**. The tent's
+  terminal (the tent laptop beside the headsets) is never in the link.
+  The first voice start on a Quest asks inside the headset to allow
+  recording audio (Android's microphone prompt); until it is allowed the HUD says *NO MIC ·
+  allow the microphone* and the game still hears the terminals. To ask
+  again after a refusal: Settings → Apps → Reinstallation VR → Permissions
+  → Microphone (or reinstall the APK). Offline there is no voice.
+- **The microphone from the Godot editor**: `project.godot` turns audio
+  input on (`audio/driver/enable_input`), so an F5 run on a Mac asks once
+  for the microphone, as *Godot* (the game runs inside Godot.app). If it
+  was refused, the HUD still says 🎤 LIVE but nothing goes up (macOS hands
+  the game silence); reset the answer with `tccutil reset Microphone
+  org.godotengine.godot` and run again. Debug → Customize Run Instances →
+  Main Run Args takes the same arguments as the command line (e.g.
+  `-- --server http://127.0.0.1:7000 --code <mod> --station vr-1`, or
+  `--mic false` to run without the microphone).
 
 ## Tests
 
@@ -283,6 +313,18 @@ scene, then runs `test/game.gd` headless with `--offline`:
   texture updates, the panel's transform from pos / yaw / pitch, and the
   loop over a fake requester (one request per spot, ~3 fps, a 404 → the
   screen back, kept across a rebuild, stop ignores late answers)
+- the voice link (`net/voice_codec.gd` against `@loom/house`'s vectors in
+  `test/golden/voice-mulaw.json` — the constants, every μ-law byte, the
+  resampler, the RMS level, the gate, the jitter plan, `voice_on` and
+  `hears_terminals` on the show map), the uplink over a fake
+  `HTTPClient`-like (one keep-alive connection, one POST in flight, `seq`
+  up, two chunks a batch, at most 1 s queued, reconnects, the idle
+  reopen), and the link with fake frames / playbacks / clock (listen on
+  and off, the gate, half-duplex, the emitter under `Terminal_<id>` at the
+  server's gain, the jitter target and skip, `bye`, a rebuild re-attaching
+  it, mute, stop, listen-only), and the game running it while a session
+  plays (B / Y / M, the HUD line, stopped in the lobby, off offline or with
+  `--voice false`)
 - a smoke test that `main.tscn` builds the house
 - `test/quest_sh.sh`: `tools/quest.sh`'s helpers and dry runs, and the Quest preset's must-haves (no Android SDK needed)
 - the autopilot reaching every duck spot of the show from the spawn, once
