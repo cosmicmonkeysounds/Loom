@@ -500,6 +500,8 @@ export interface PrimeActResult {
   staff?: string[];
   /** Lines the booth's character spoke to the guest in this commit (C1). */
   said?: Array<{ from: string; text: string }>;
+  /** What reached the guest's own phone (wave 18 fix, BN-F13). */
+  toGuest?: string[];
   /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
   refused?: boolean;
 }

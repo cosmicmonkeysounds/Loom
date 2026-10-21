@@ -224,6 +224,8 @@ describe("pickers (§4.6–4.7)", () => {
   it("says what a press came to on the guest's phone", () => {
     expect(replyLine("ICQ", { said: [{ text: "🎱 Bingo!" }] })).toBe("→ ICQ's phone: 🎱 Bingo!");
     expect(replyLine("ICQ", {})).toBe("→ Sent. The story said nothing back.");
+    // BN-F13: what reached their phone comes first.
+    expect(replyLine("ICQ", { toGuest: ["🎀 You won the Bingo Ribbon."], said: [{ text: "Well done." }] })).toBe("→ ICQ's phone: 🎀 You won the Bingo Ribbon.");
     expect(replyLine("ICQ", { refused: true, staff: ["already has the ribbon"] })).toBe("Not done: already has the ribbon");
     expect(leadingGlyph("🛡️ Send")).toBe("🛡️");
   });

@@ -56,7 +56,7 @@ export function clippyFire(session: Pick<PrimeSession, "cue">, onFired?: (at: nu
     const post: FirePost = async (body) => {
       try {
         const r = await session.cue(body.name, body.subject ?? null, body.args ?? null, body.presses);
-        return { refused: r.refused === true, moved: r.moved === true };
+        return { refused: r.refused === true, moved: r.moved === true, said: (r as { said?: unknown }).said, staff: (r as { staff?: unknown }).staff };
       } catch (e) {
         if (e instanceof ApiError && e.status === 409 && /moved/iu.test(e.message)) return { moved: true };
         throw e;
