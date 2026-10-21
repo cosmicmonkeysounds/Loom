@@ -511,7 +511,8 @@ OBJECTIVE The Audit
 // DRAFT w18
 OBJECTIVE Patrol The Computer
   for: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software
-  while: Night.ended != true
+  // fix BN-F16: never during Door Duty (its card face is the scan alone).
+  while: Night.ended != true and Night.step >= 1
   evergreen: true
   title: Patrol the computer
   text:

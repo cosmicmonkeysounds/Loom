@@ -79,6 +79,9 @@ TRAIT Enforcer is Person
   // performer's booth.
   beat Clearance(program)
     set program.cleared = true
+    // DRAFT w18 (fix BN-F16): the door is done with them; the card's
+    // "At the door" flag goes with it.
+    set program.door_by = "none"
     // Before the call to the Desktop (step 1) the night hasn't started: the
     // TV still runs its screensaver. Between the call and 🎱 Bingo (step 2)
     // the game is about to begin. A later arrival walks into a night

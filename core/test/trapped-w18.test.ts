@@ -323,6 +323,8 @@ describe("Trapped in the Internet — wave 18: the door without Windows Defender
     n.scan("McAfee Anti-Virus", "g1");
     expect(v(n.sim, "g1.cleared")).toBe(true);
     expect(guestCardView(n.sim, n.chat.all(), "Norton Anti-Virus", "g1", false)!.live).not.toContain("claim_door");
+    // BN-F16: cleared, the door is done with them: no "At the door" flag.
+    expect(guestFlags(n.sim, "g1").some((f) => f.label === "At the door" && f.on)).toBe(false);
   });
 });
 
