@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HISTORY_T, frameDue, sceneT, serverNow } from "../src/cutscene/clock.ts";
-import { FACE_FLASH_MS, MOMENT_HOLD_MAX_MS, MOMENT_STALE_MS, MomentQueue, NO_PICK, QUEUE_MAX, QUEUE_WAIT_MAX_MS, allowed, componentFor, faceFlashFor, introduced, nameMatches, pickScene, sceneForMoment, sceneForSlide, type ScenePick } from "../src/cutscene/pick.ts";
+import { FACE_FLASH_MS, MOMENT_HOLD_MAX_MS, MOMENT_STALE_MS, MomentQueue, NO_PICK, QUEUE_MAX, QUEUE_WAIT_MAX_MS, allowed, componentFor, drawsCountdown, faceFlashFor, introduced, nameMatches, pickScene, sceneForMoment, sceneForSlide, type ScenePick } from "../src/cutscene/pick.ts";
 import type { SceneDef } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
@@ -211,6 +211,41 @@ describe("moments", () => {
     expect(q.pending).toBe(0);
   });
 
+  it("a reload 35 s into a 45 s scene resumes it; an answer after the first still skips a moment first seen 35 s late (X4)", () => {
+    const DANCE = def({ id: "dance", when: [{ moment: "beat", name: "Trabolta Disabled" }], ms: 45_000 });
+    const fresh = new MomentQueue();
+    const s = state({ moments: [m(4, T0, "beat", "Trabolta Disabled")] });
+    fresh.update(s, T0 + 35_000, [DANCE], "tv");
+    expect(pickScene({ state: s, now: T0 + 35_000, layers: { overlay: null, slide: null }, bare: false, target: "tv", scenes: [DANCE], queue: fresh }).top).toMatchObject({ def: { id: "dance" }, start: T0 });
+    const late = new MomentQueue();
+    late.update(state({ moments: [] }), T0 + 1000, [DANCE], "tv"); // an earlier answer: no longer fresh
+    late.update(s, T0 + 35_000, [DANCE], "tv");
+    expect(late.pending).toBe(0);
+    // A hold moment on a reload: no older than the queue's own hold cap.
+    const hold = new MomentQueue();
+    hold.update(state({ moments: [m(5, T0, "signal", "forever")] }), T0 + MOMENT_HOLD_MAX_MS + 1, SCENES, "tv");
+    expect(hold.pending).toBe(0);
+  });
+
+  it("a higher-priority moment that has happened cuts the one playing short (livetv-4)", () => {
+    const MAJ = def({ id: "maj", when: [{ moment: "beat", name: "Majority Reached" }], ms: 9_000, over: true });
+    const MID = def({ id: "mid", when: [{ moment: "beat", name: "Clock Strikes" }], ms: 20_000, priority: 3 });
+    const scenes = [MAJ, MID];
+    const q = new MomentQueue();
+    let s = state({ moments: [m(1, T0, "beat", "Majority Reached")] });
+    q.update(s, T0 + 100, scenes, "tv");
+    const at = (now: number) => pickScene({ state: s, now, layers: { overlay: null, slide: null }, bare: false, target: "tv", scenes, queue: q }).top;
+    expect(at(T0 + 100)?.def.id).toBe("maj");
+    s = state({ moments: [m(1, T0, "beat", "Majority Reached"), m(2, T0 + 8000, "beat", "Clock Strikes")] });
+    q.update(s, T0 + 8100, scenes, "tv");
+    expect(at(T0 + 8100)).toMatchObject({ def: { id: "mid" }, start: T0 + 8000 });
+    // An equal or lower priority still waits its turn.
+    const q2 = new MomentQueue();
+    const s2 = state({ moments: [m(1, T0, "signal", "bottle landed"), m(2, T0 + 1000, "sfx", "zip")] });
+    q2.update(s2, T0 + 1100, SCENES, "tv");
+    expect(pick(s2, T0 + 1100, q2).top?.def.id).toBe("bottle");
+  });
+
   it("a reload mid-scene resumes on the right frame (the first answer is not skipped)", () => {
     const q = new MomentQueue();
     const s = state({ moments: [m(3, T0, "beat", "Trabolta Introduction")] });
@@ -363,5 +398,33 @@ describe("the face flash", () => {
     expect(faceFlashFor(lead(y2k, "y2k:s1"), "tv", seen)).toBeNull(); // the slide leads again
     expect(faceFlashFor(null, "tv", seen)).toBeNull();
     expect(faceFlashFor(lead(y2k, "y2k:s9"), "wall", seen)).toBeNull(); // only the TV has a face
+  });
+});
+
+describe("one countdown, never two (livetv-3)", () => {
+  it("a scene that draws the story's countdown puts the corner aside, on the targets it draws it on", () => {
+    const CLOCKED = def({ id: "clocked", when: [{ slide: "bingo" }], ms: "hold", countdown: "tv" });
+    const BOTH = def({ id: "both", when: [{ slide: "five_minutes" }], ms: "hold", countdown: true });
+    const scenes = [CLOCKED, BOTH, ZIP];
+    const at = (value: string, target: "tv" | "wall") => {
+      const q = new MomentQueue();
+      return drawsCountdown(pickScene({ state: state(), now: T0 + 1000, layers: { overlay: null, slide: slide(value, T0) }, bare: false, target, scenes, queue: q }), target);
+    };
+    expect(at("bingo", "tv")).toBe(true);
+    expect(at("bingo", "wall")).toBe(false);
+    expect(at("five_minutes", "wall")).toBe(true);
+    expect(at("call_desktop", "tv")).toBe(false); // a card: the corner stays
+    expect(drawsCountdown(NO_PICK, "tv")).toBe(false);
+  });
+
+  it("the show's timed slides say so", async () => {
+    const { SCENES: A1 } = await import("../src/cutscene/scenes/act1.tsx");
+    const { SCENES: A2 } = await import("../src/cutscene/scenes/act2.tsx");
+    const flag = (id: string) => [...A1, ...A2].find((d) => d.id === id)?.countdown;
+    expect(flag("bingo")).toBe("tv");
+    expect(flag("trivia_1")).toBe("tv");
+    expect(flag("trivia_2")).toBe("tv");
+    expect(flag("hunt_results")).toBe(true);
+    expect(flag("five_minutes")).toBe(true);
   });
 });

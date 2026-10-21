@@ -17,8 +17,25 @@ import { useCamera, type CameraState } from "./camera.ts";
 
 /** Time before the same code may be reported again. */
 const REPEAT_MS = 4000;
-/** How often to look for a code (ms). */
+/** How often to look for a code (ms): the native detector, and jsQR just after a read. */
 const SCAN_EVERY_MS = 120;
+/** How often jsQR looks otherwise (ms): it runs on the main thread beside the idle show (OB-3). */
+export const JSQR_EVERY_MS = 250;
+/** jsQR stays fast this long after a read (a second pass held up, a re-scan). */
+export const JSQR_FAST_MS = 3000;
+/** jsQR decodes frames at most this wide (px): plenty for a phone-screen QR. */
+export const JSQR_WIDTH = 480;
+
+/** The next look's delay: the native detector always at its pace, jsQR fast only just after a read. */
+export function scanDelay(native: boolean, now: number, lastRead: number): number {
+  return native || now - lastRead < JSQR_FAST_MS ? SCAN_EVERY_MS : JSQR_EVERY_MS;
+}
+
+/** The size jsQR decodes a frame at. */
+export function jsqrSize(videoWidth: number, videoHeight: number): { w: number; h: number } {
+  const scale = Math.min(1, JSQR_WIDTH / videoWidth);
+  return { w: Math.round(videoWidth * scale), h: Math.round(videoHeight * scale) };
+}
 
 interface DetectedBarcode {
   rawValue: string;
@@ -92,8 +109,10 @@ export function Scanner({
     let timer = 0;
     const seen = new Map<string, number>();
     const canvas = document.createElement("canvas");
+    let lastRead = Number.NEGATIVE_INFINITY;
     const report = (text: string) => {
       const now = Date.now();
+      lastRead = now;
       const last = seen.get(text) ?? 0;
       if (now - last < REPEAT_MS) return;
       seen.set(text, now);
@@ -110,27 +129,30 @@ export function Scanner({
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       const scan = async () => {
         if (stopped) return;
-        if (v.readyState >= 2 && v.videoWidth > 0) {
+        // Hidden (screen off, app switched): no decoding, just look again later.
+        if (!document.hidden && v.readyState >= 2 && v.videoWidth > 0) {
           try {
             if (native !== null) {
               const codes = await native.detect(v);
               for (const c of codes) if (c.rawValue) report(c.rawValue);
             } else if (ctx !== null) {
-              // Decode at a reduced size — plenty for a phone-screen QR
-              // and cheap enough for a tablet at ~8 fps.
-              const scale = Math.min(1, 640 / v.videoWidth);
-              canvas.width = Math.round(v.videoWidth * scale);
-              canvas.height = Math.round(v.videoHeight * scale);
-              ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-              const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const hit = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+              // Decode at a reduced size — plenty for a phone-screen QR and
+              // cheap on an old tablet. The canvas is resized only when the
+              // frame's size changes (a resize clears and reallocates it), and
+              // a pass is dark on light (pass-qr.tsx): no inverted pass.
+              const { w, h } = jsqrSize(v.videoWidth, v.videoHeight);
+              if (canvas.width !== w) canvas.width = w;
+              if (canvas.height !== h) canvas.height = h;
+              ctx.drawImage(v, 0, 0, w, h);
+              const img = ctx.getImageData(0, 0, w, h);
+              const hit = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
               if (hit !== null && hit.data) report(hit.data);
             }
           } catch {
             /* a frame failed to decode — try the next */
           }
         }
-        timer = window.setTimeout(() => void scan(), SCAN_EVERY_MS);
+        timer = window.setTimeout(() => void scan(), scanDelay(native !== null, Date.now(), lastRead));
       };
       void scan();
     })();

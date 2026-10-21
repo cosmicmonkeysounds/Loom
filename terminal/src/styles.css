@@ -63,7 +63,8 @@ input, select {
   background:
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px),
     radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55) 100%);
-  mix-blend-mode: multiply;
+  /* Plain source-over: black at alpha is the same picture multiply would
+     give, without a full-screen blend group over animated content (OB-5). */
   z-index: 5;
 }
 
@@ -213,15 +214,18 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 .reticle span:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; }
 .reticle span:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; }
 .reticle span:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+/* The sweep line: a full-height layer moved by transform (no layout or
+   shadow repaint a frame), the line a 2 px band drawn at its top. */
 .scanner.live .reticle::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--phosphor);
-  box-shadow: 0 0 10px var(--phosphor);
+  top: 0;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--phosphor) 0, var(--phosphor) 2px, rgba(0, 0, 0, 0) 2px);
   animation: sweep 2.4s ease-in-out infinite;
+  will-change: transform;
 }
 .scanner-problem {
   position: absolute;
@@ -738,7 +742,7 @@ button.gear { border-color: transparent; opacity: 0.55; font-size: 1.3em; paddin
 /* --- motion ------------------------------------------------------------- */
 
 @keyframes pulse { 50% { opacity: 0.25; } }
-@keyframes sweep { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+@keyframes sweep { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(100% - 2px)); } }
 @keyframes dots { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
 @keyframes celebrate { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
@@ -1388,6 +1392,20 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
   border: 2px solid var(--phosphor-dim);
   border-radius: 6px;
   box-shadow: 0 0 18px var(--phosphor-faint), inset 0 0 12px rgba(0, 0, 0, 0.8);
+}
+/* The glow breathes on its own layer, by opacity: the blurred shadow is
+   painted once, not every frame all night (OB-4). No inset shorthand (Safari 14.0). */
+.scan-box::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  bottom: -2px;
+  left: -2px;
+  border-radius: 6px;
+  box-shadow: 0 0 30px var(--phosphor-dim);
+  opacity: 0;
+  pointer-events: none;
   animation: scan-box-glow 2.4s ease-in-out infinite;
 }
 @media (orientation: portrait) {
@@ -1429,12 +1447,12 @@ button.gear.holding::after { width: 100%; transition: width var(--hold-ms, 2000m
 @keyframes idle-jitter { 0% { transform: translate(0, 0); } 50% { transform: translate(2px, -1px); } 100% { transform: translate(-1px, 1px); } }
 @keyframes idle-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-18%); } }
 @keyframes idle-ripple { from { transform: scale(0.2); opacity: 1; } to { transform: scale(4); opacity: 0; } }
-@keyframes scan-box-glow { 50% { box-shadow: 0 0 30px var(--phosphor-dim), inset 0 0 12px rgba(0, 0, 0, 0.8); } }
+@keyframes scan-box-glow { 50% { opacity: 1; } }
 /* Reduced motion: things fade in; nothing bounces, shakes, scrolls or blinks. */
 @media (prefers-reduced-motion: reduce) {
   .idle-ad, .idle-banner, .idle-banner-ad, .idle-face-tip, .idle-thanks, .idle-ad-gag { animation: idle-fade 0.3s ease both !important; }
   .idle-show[data-pool="malware"] .idle-ad, .idle-show[data-pool="malware"] .idle-banner-ad { animation: idle-fade 0.3s ease both !important; }
   .idle-duck-runner { transition: none; }
-  .idle-touch-me, .idle-marquee span, .idle-ad-kicker, .idle-banner-kicker, .idle-storm-banner, .scan-box, .scan-box-title.blink, .idle-ad[data-gag] .idle-ad-title, .idle-ripple { animation: none !important; }
+  .idle-touch-me, .idle-marquee span, .idle-ad-kicker, .idle-banner-kicker, .idle-storm-banner, .scan-box, .scan-box::before, .scan-box-title.blink, .idle-ad[data-gag] .idle-ad-title, .idle-ripple { animation: none !important; }
   .idle-marquee span { padding-left: 0; white-space: normal; }
 }

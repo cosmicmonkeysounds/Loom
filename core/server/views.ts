@@ -1146,7 +1146,8 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
       scenario,
       roster: [],
       factions: [],
-      locations: [],
+      // The story's LOCATIONs, empty (the map editor checks its rooms against them before the doors: LA-3).
+      locations: declaredSim != null ? [...declaredSim.model.locations.values()].map((l) => ({ id: l.id, label: l.label, prison: l.prison, occupants: [] })) : [],
       characters: [...(declared ?? [])],
       cast: [],
       channels: [],

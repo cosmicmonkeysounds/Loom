@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mulberry32 } from "../src/idle-show/rng.ts";
 import { SAVERS } from "../src/idle-show/savers/index.ts";
-import { bounceInit, bounceStep } from "../src/idle-show/savers/fun.ts";
+import { LOGO_TEXT, bounceInit, bounceStep } from "../src/idle-show/savers/fun.ts";
 import { PIPE_FILL, mazeMake, mazeSolve, pipesInit, pipesStep } from "../src/idle-show/savers/grid.ts";
 
 /** A Canvas2D that takes every call and every property: the savers' paint must never throw. */
@@ -42,17 +42,22 @@ describe("every screensaver", () => {
 });
 
 describe("the bouncing logo", () => {
-  it("stays on screen and lands in a corner now and then", () => {
+  it("stays on screen and never quite hits the corner (the story's screensaver, F7)", () => {
     const s = bounceInit(640, 400, mulberry32(4));
-    let corners = 0;
+    let misses = 0;
     for (let i = 0; i < 60_000; i++) {
-      if (bounceStep(s, 640, 400, 1)) corners++;
+      if (bounceStep(s, 640, 400, 1)) misses++;
       expect(s.x).toBeGreaterThanOrEqual(0);
       expect(s.y).toBeGreaterThanOrEqual(0);
       expect(s.x + s.bw).toBeLessThanOrEqual(640 + 1e-6);
       expect(s.y + s.bh).toBeLessThanOrEqual(400 + 1e-6);
+      // Never on two edges at once.
+      const onX = s.x <= 0.5 || s.x + s.bw >= 639.5;
+      const onY = s.y <= 0.5 || s.y + s.bh >= 399.5;
+      expect(onX && onY).toBe(false);
     }
-    expect(corners).toBeGreaterThan(0);
+    expect(misses).toBeGreaterThan(0);
+    expect(LOGO_TEXT).toBe("Maps and Ducks");
   });
 });
 

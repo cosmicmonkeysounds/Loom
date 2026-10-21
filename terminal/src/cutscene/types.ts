@@ -68,6 +68,9 @@ export interface SceneDef {
   gate?: (night: ScreenNight) => boolean;
   /** A moment scene that draws over the slide under it (a popup) instead of in its place. */
   over?: boolean;
+  /** The scene draws the story's countdown itself (on both targets, or only
+   *  the TV's take): the corner countdown stands aside while it shows. */
+  countdown?: boolean | "tv";
   /** The TV face's one-shot mood when the scene starts (`FaceHandle.flash`). */
   face?: Mood;
   /** How long that mood holds (ms; default `FACE_FLASH_MS`). */

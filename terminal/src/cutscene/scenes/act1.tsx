@@ -66,6 +66,7 @@ import {
   pulse,
   useSfxCues,
   type Emitter,
+  type IconKind,
   type StormMessage,
 } from "../kit/index.ts";
 import { INTRO_MS, IntroTv, IntroWall, POWER_ON_MS, PowerOnTv, PowerOnWall } from "../kit/tv1-boot.tsx";
@@ -186,8 +187,16 @@ export const BINGO_CELLS: ReadonlyArray<readonly [number, number]> = (() => {
   return out;
 })();
 const CENTRE_Q = "Would you never agree to a life where AI makes all of your decisions?";
-/** What the balls say (program kinds, nobody's description). */
-export const BALL_WORDS: readonly string[] = ["GAME", "BROWSER", "MEDIA PLAYER", "UTILITY", "WORD PRO-CESSOR", "SPREAD-SHEET", "SCREEN-SAVER", "CHAT", "ENCYCLO-PEDIA", "PAINT", "DRIVER", "MAIL"];
+/** The programs that meet on the hold, a pair per square (icons only: nobody's description). */
+const MINGLE_PAIRS: ReadonlyArray<readonly [IconKind, IconKind]> = [
+  ["computer", "globe"],
+  ["mail", "document"],
+  ["folder", "duck"],
+  ["trash", "computer"],
+  ["globe", "mail"],
+  ["document", "folder"],
+];
+/** A square is checked every this many ms (two programs meet, then it ticks). */
 const BALL_EVERY = 8000;
 const BALL_CYCLE = BALL_EVERY * 6;
 const B = { title: 300, card: 1800, hold: 4200 } as const;
@@ -210,9 +219,10 @@ export function bingoTicks(t: number, seed = 5): Set<number> {
 }
 
 /**
- * The hold's accents: every ball pops (a popup, its pitch walking up the
- * round) and its square ticks a beat later; every fourth ball rings the
- * chord, and a new round's empty card whooshes in.
+ * The hold's accents: every meeting blips (soft, its pitch walking up the
+ * round — never a ball draw: the story's Bingo has no caller) and its square
+ * ticks a beat later; every fourth rings the chord, and a new round's empty
+ * card whooshes in.
  */
 export function bingoCues(t: number): Array<readonly [number, SfxName, SfxOpts]> {
   const out: Array<readonly [number, SfxName, SfxOpts]> = [];
@@ -220,14 +230,14 @@ export function bingoCues(t: number): Array<readonly [number, SfxName, SfxOpts]>
     const k = Math.round((x - B.hold) / BALL_EVERY);
     const inRound = k % (BALL_CYCLE / BALL_EVERY);
     if (inRound === 0 && k > 0) out.push([x - 300, "whoosh", { gain: 0.4 }]);
-    out.push([x, "popup", { gain: 0.4, pitch: 1 + 0.06 * inRound }]);
+    out.push([x, "blip", { gain: 0.3, pitch: 1 + 0.06 * inRound }]);
     out.push([x + TICK_AFTER, "tick", { gain: 0.5 }]);
     if (k % 4 === 3) out.push([x + TICK_AFTER + 150, "chord", { gain: 0.45 }]);
   }
   return out;
 }
 
-/** The square ticks this long after its ball pops (ms). */
+/** The square ticks this long after its two programs meet (ms). */
 const TICK_AFTER = 350;
 
 /** The square that just ticked and how far (0..1) its stamp has landed; cell -1 when none is fresh. */
@@ -244,10 +254,11 @@ export function freshTick(t: number): { cell: number; k: number } {
 /**
  *   0–1800    B-I-N-G-O balls bounce in along the top, COMPUTER BINGO slams under them
  *   1800–4200 the asterisk card draws itself square by square; the rules type in
- *   4200–     hold: the cage turns, its balls tumbling; every 8 s one pops out with a
- *             program kind and a square ticks (six a round, then the card clears);
- *             the centre square's question glows; the story's bingo countdown ticks
- *             big top right (under 5 minutes it turns hot)
+ *   4200–     hold: the mingle — two programs drift together and meet with a ✔
+ *             spark every 8 s, and a square ticks (six a round, then the card
+ *             clears): guests find each other, nobody calls a number; the centre
+ *             square's question glows; the story's bingo countdown ticks big top
+ *             right (under 5 minutes it turns hot); the ticker says how to play
  */
 function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
   const lines = linesOf("bingo");
@@ -259,8 +270,6 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
   const ticks = bingoTicks(t);
   const fresh = freshTick(t);
   const left = countdownLeft(state, ["bingo"], at, t);
-  const ballN = t >= B.hold ? Math.floor((t - B.hold) / BALL_EVERY) : -1;
-  const ballAt = B.hold + ballN * BALL_EVERY;
   return (
     <TvStage bg="radial-gradient(ellipse at 50% 30%, #2a1a7a 0, #0b0630 70%)">
       {!reduced && <Starfield t={t} speed={0.03} count={90} bg={null} color="#c8b8ff" />}
@@ -294,12 +303,7 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
       <div className="a1-bingo-q" style={{ opacity: progress(t, B.card + 1800, 500) }}>
         ★ <Typewriter text={CENTRE_Q} t={t} start={B.card + 1900} cps={40} caret={false} />
       </div>
-      <BingoCage t={t} reduced={reduced} />
-      {ballN >= 0 && (
-        <div className="a1-bingo-out" style={{ transform: `translate(-50%, -50%) scale(${(reduced ? 1 : eased(t, ballAt, 500, ease.outBack)).toFixed(3)})` }}>
-          <BingoBall label={BALL_WORDS[(ballN + 3) % BALL_WORDS.length]!} color={ballN} size="6.5em" />
-        </div>
-      )}
+      <BingoMingle t={t} reduced={reduced} />
       <Win98Window title="How to play" icon="info" x={70} y={66} width="17em" open={eased(t, B.card + 400, 260, ease.linear)} reduced={reduced} className="a1-bingo-rules">
         {lines.map((l, i) => (
           <div key={i} className="a1-bingo-rule">
@@ -312,32 +316,47 @@ function BingoTv({ t, at, state, sfx, reduced }: SceneProps) {
           <Countdown ms={left} warn={300_000} label="TIME LEFT" reduced={reduced} />
         </div>
       )}
+      <Marquee t={reduced ? 0 : t} speed={120} className="a1-ticker gold a1-bingo-ticker" style={{ opacity: progress(t, B.card, 600) }}>
+        ★ MINGLE ★ FIND A PROGRAM FOR EVERY SQUARE ★ CHECK THE BOX YOURSELF ★ NO NAMES: USE YOUR COMPUTER MEMORY ★
+      </Marquee>
     </TvStage>
   );
 }
 
-/** The ball cage, turning, its balls tumbling inside (pure orbits). */
-function BingoCage({ t, reduced }: { t: number; reduced: boolean }) {
-  const turn = reduced ? 0 : (t / 18) % 360;
+/** Where the mingle is at `t`: `m` = ms into the square's 8 s (the meeting at 0). */
+export function mingleAt(t: number): { m: number; pair: number } {
+  const d = t - B.hold;
+  const m = ((d % BALL_EVERY) + BALL_EVERY) % BALL_EVERY;
+  return { m, pair: Math.floor((d + (m >= MINGLE_APPROACH ? BALL_EVERY : 0)) / BALL_EVERY) };
+}
+/** The two programs set off toward each other this far into the 8 s (ms). */
+const MINGLE_APPROACH = 4000;
+
+/** The mingle: two programs drift in from either side, meet with a ✔ spark, and part. */
+function BingoMingle({ t, reduced }: { t: number; reduced: boolean }) {
+  const { m, pair } = mingleAt(t);
+  const kinds = MINGLE_PAIRS[((pair % MINGLE_PAIRS.length) + MINGLE_PAIRS.length) % MINGLE_PAIRS.length]!;
+  const met = m < 1600;
+  // Approach: 4000 → 8000 (the meeting at 0 of the next square).
+  const k = met ? 1 : reduced ? (m >= MINGLE_APPROACH ? 1 : 0) : eased(m, MINGLE_APPROACH, BALL_EVERY - MINGLE_APPROACH, ease.inOutQuad);
+  const shown = met ? 1 - progress(m, 1000, 600) : progress(m, 2600, 800);
+  const spark = met && !reduced ? clamp01(m / 900) : met ? 1 : 0;
+  const bob = reduced ? 0 : 0.25 * Math.sin(t / 420);
+  const x = (from: number, to: number) => from + (to - from) * k;
   return (
-    <div className="a1-cage">
-      <svg viewBox="-60 -60 120 120" className="a1-cage-svg" aria-hidden="true">
-        <circle r="54" fill="rgba(255,255,255,0.06)" stroke="#d8c060" strokeWidth="3" />
-        <g transform={`rotate(${turn.toFixed(1)})`}>
-          {Array.from({ length: 8 }, (_, i) => (
-            <line key={i} x1="0" y1="0" x2="0" y2="-54" stroke="#d8c060" strokeWidth="1.5" transform={`rotate(${i * 45})`} />
-          ))}
-        </g>
-        {Array.from({ length: 9 }, (_, i) => {
-          const a = reduced ? i : t / (380 + i * 47) + i * 1.7;
-          const r = 14 + 26 * noise1(41, i);
-          const x = Math.cos(a) * r;
-          const y = Math.sin(a * 1.3) * r * 0.9 + 10;
-          return <circle key={i} cx={x.toFixed(2)} cy={Math.min(42, y).toFixed(2)} r="7" fill={["#ff4b4b", "#ffd23f", "#3ddc84", "#3fa7ff", "#c86bff"][i % 5]} stroke="#000" strokeWidth="1" />;
-        })}
-        <circle r="5" fill="#d8c060" />
-      </svg>
-      <div className="a1-cage-stand" />
+    <div className="a1-cage a1-mingle" style={{ opacity: progress(t, B.card, 600) }}>
+      <div className="a1-art-at" style={{ left: `${x(4, 34).toFixed(2)}%`, top: "40%", opacity: shown, transform: `translate3d(-50%, ${bob.toFixed(2)}em, 0)` }}>
+        <Win98Icon kind={kinds[0]} size="4em" />
+      </div>
+      <div className="a1-art-at" style={{ left: `${x(96, 66).toFixed(2)}%`, top: "40%", opacity: shown, transform: `translate3d(-50%, ${(-bob).toFixed(2)}em, 0)` }}>
+        <Win98Icon kind={kinds[1]} size="4em" />
+      </div>
+      {met && (
+        <div className="a1-art-at a1-mingle-spark" style={{ left: "50%", top: "38%", opacity: 1 - progress(m, 1000, 600), transform: `translate(-50%, -50%) scale(${(reduced ? 1 : 0.4 + 0.9 * eased(spark, 0, 1, ease.outBack)).toFixed(3)})` }}>
+          ✔
+        </div>
+      )}
+      <div className="a1-mingle-cap">FOUND A MATCH?</div>
     </div>
   );
 }
@@ -852,7 +871,8 @@ function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: n
           </div>
         )
       )}
-      {nudgeOpen > 0 && <Win98Dialog title="Trabolta" kind="info" message={FILE_NUDGES[nudge % FILE_NUDGES.length]!} x={6 + 30 * noise1(57, nudge)} y={58 + 8 * noise1(58, nudge)} width="19em" open={nudgeOpen} reduced={reduced} className="a1-res-nudge" />}
+      {/* The nudge sits bottom-left, under the rules and clear of the inbox (livetv-5). */}
+      {nudgeOpen > 0 && <Win98Dialog title="Trabolta" kind="info" message={FILE_NUDGES[nudge % FILE_NUDGES.length]!} x={6 + 24 * noise1(57, nudge)} y={68 + 2 * noise1(58, nudge)} width="19em" open={nudgeOpen} reduced={reduced} className="a1-res-nudge" />}
       {closed && (
         <div className="a1-res-closed">
           <div className="a1-res-closed-big">PENCILS DOWN</div>
@@ -1673,13 +1693,13 @@ export const ACT1_TRIGGERS = {
 export const SCENES: SceneDef[] = [
   { id: "power_on", when: [{ moment: "beat", name: "Power On" }], ms: POWER_ON_MS, tv: PowerOnTv, wall: PowerOnWall, priority: 1 },
   { id: "call_desktop", when: [{ slide: "call_desktop" }], ms: "hold", tv: CallDesktopTv, wall: CallDesktopWall },
-  { id: "bingo", when: [{ slide: "bingo" }], ms: "hold", tv: BingoTv, wall: BingoWall },
+  { id: "bingo", when: [{ slide: "bingo" }], ms: "hold", tv: BingoTv, wall: BingoWall, countdown: "tv" },
   { id: "bingo_time", when: [{ slide: "bingo_time" }], ms: "hold", tv: BingoTimeTv, wall: BingoTimeWall },
   { id: "corrupted_code", when: [{ moment: "beat", name: "Corrupted Code" }], ms: 12_000, tv: CorruptedTv, wall: CorruptedWall, priority: 2 },
   { id: "trabolta_introduction", when: [{ moment: "beat", name: "Trabolta Introduction" }], ms: INTRO_MS, tv: IntroTv, wall: IntroWall, priority: 5, namesCharacter: true },
-  { id: "trivia_1", when: [{ slide: "trivia_1" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true },
+  { id: "trivia_1", when: [{ slide: "trivia_1" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true, countdown: "tv" },
   { id: "return", when: [{ slide: "return" }], ms: "hold", tv: ReturnTv, wall: ReturnWall },
-  { id: "hunt_results", when: [{ slide: "hunt_results" }], ms: "hold", tv: ResultsTv, wall: ResultsWall, namesCharacter: true },
+  { id: "hunt_results", when: [{ slide: "hunt_results" }], ms: "hold", tv: ResultsTv, wall: ResultsWall, namesCharacter: true, countdown: true },
   { id: "filing_closed", when: [{ moment: "beat", name: "Filing Closed" }], ms: 6500, tv: FilingClosedTv, wall: FilingClosedWall, priority: 1, namesCharacter: true, face: "thinking" },
   { id: "truth_or_dare", when: [{ slide: "truth_or_dare" }], ms: "hold", tv: TruthOrDareTv, wall: TruthOrDareWall },
   { id: "bottle_landed", when: [{ moment: "signal", name: "bottle_landed" }], ms: 14_000, tv: BottleLandedTv, wall: BottleWall, priority: 2, face: "curious" },
@@ -1689,6 +1709,6 @@ export const SCENES: SceneDef[] = [
   { id: "truth_refused", when: [{ moment: "signal", name: "truth_refused" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_REFUSED.tv, wall: VERDICT_REFUSED.wall, priority: 3, face: "angry" },
   { id: "chose_dare", when: [{ moment: "signal", name: "chose_dare" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_DARE.tv, wall: VERDICT_DARE.wall, priority: 3, face: "sly" },
   { id: "ad_hijack", when: [{ slide: "ad_hijack" }], ms: "hold", tv: AdHijackTv, wall: AdHijackWall, namesCharacter: true },
-  { id: "trivia_2", when: [{ slide: "trivia_2" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true },
+  { id: "trivia_2", when: [{ slide: "trivia_2" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true, countdown: "tv" },
   { id: "truther", when: [{ slide: "truther" }], ms: "hold", tv: TrutherTv, wall: TrutherWall },
 ];

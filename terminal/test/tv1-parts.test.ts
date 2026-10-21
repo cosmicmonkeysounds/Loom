@@ -60,3 +60,17 @@ describe("tv1 parts", () => {
     expect(html(Redacted, { t: 0, seed: 3, reduced: false })).toMatch(/scaleX\(0\.000\)/u);
   });
 });
+
+describe("motion by transform, not layout (OB-9)", () => {
+  it("the march moves its icons by transform, never left / top", () => {
+    const out = renderToStaticMarkup(createElement(March, { t: 1234, reduced: false }));
+    expect(out).toContain("translate3d(");
+    expect(out).not.toMatch(/left:\s*[\d.]+%|top:\s*[\d.]+%/u);
+  });
+
+  it("the mail title's bounce is folded into its transform", async () => {
+    const { bounced } = await import("../src/cutscene/scenes/moments.tsx");
+    expect(bounced({ opacity: 1, transform: "scale(1.2)" }, 4)).toEqual({ opacity: 1, transform: "translateY(-4.0vmin) scale(1.2)" });
+    expect(bounced({ opacity: 0.5 }, 0)).toEqual({ opacity: 0.5 });
+  });
+});

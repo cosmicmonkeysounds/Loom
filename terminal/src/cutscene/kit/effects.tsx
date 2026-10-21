@@ -3,7 +3,7 @@
 //! Photosensitivity: no full-field flashing above 3 Hz and never a full red
 //! field — the glitch tears a few slices, the static stays dim.
 
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { useCanvas } from "./canvas.ts";
 import { blink, clamp01, hourglass, keyframes, noise1, rng, typedCount } from "./time.ts";
 
@@ -56,25 +56,39 @@ export function Glitch({ t, intensity = 0.5, seed = 1, reduced = false, classNam
  * veil over something, or 1 for a dead channel. Fills its parent. Under
  * reduced motion the grain holds still.
  */
+/** One grain into an RGBA buffer (alpha left as it is): grey levels off the grain's seed. */
+export function fillGrain(d: Uint8ClampedArray, grain: number): void {
+  const r = rng(grain * 2654435761);
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (r() * 255) | 0;
+    d[i] = v;
+    d[i + 1] = v;
+    d[i + 2] = v;
+  }
+}
+
 export function Noise({ t, alpha = 0.35, roll: rollWanted = true, reduced = false, className, style }: { t: number; alpha?: number; roll?: boolean; reduced?: boolean; className?: string; style?: CSSProperties }) {
   // Reduced motion: one still grain, no roll bar.
   const grain = reduced ? 0 : Math.floor(t / 50);
   const roll = rollWanted && !reduced;
+  // One ImageData per size, refilled only when the grain moves (the roll
+  // bar alone redraws over the same grain): no 0.5 MB of garbage a frame (OB-8).
+  const buf = useRef<{ img: ImageData; grain: number } | null>(null);
   const ref = useCanvas(
     (ctx, { w, h, dpr }) => {
       const cw = Math.max(1, Math.round(w * dpr));
       const ch = Math.max(1, Math.round(h * dpr));
-      const img = ctx.createImageData(cw, ch);
-      const r = rng(grain * 2654435761);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (r() * 255) | 0;
-        d[i] = v;
-        d[i + 1] = v;
-        d[i + 2] = v;
-        d[i + 3] = 255;
+      let b = buf.current;
+      if (b === null || b.img.width !== cw || b.img.height !== ch) {
+        b = buf.current = { img: ctx.createImageData(cw, ch), grain: Number.NaN };
+        const d = b.img.data;
+        for (let i = 3; i < d.length; i += 4) d[i] = 255;
       }
-      ctx.putImageData(img, 0, 0);
+      if (b.grain !== grain) {
+        b.grain = grain;
+        fillGrain(b.img.data, grain);
+      }
+      ctx.putImageData(b.img, 0, 0);
       if (roll) {
         const y = ((t / 2600) % 1) * h;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

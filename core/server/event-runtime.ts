@@ -857,13 +857,16 @@ export class EventRuntime {
       muted: voiceMuted,
       onMute: (muted) => this.store.saveVoiceMuted(muted),
       // The screens' signal allowlist (wave 17): the map's own king signals
-      // are device moments, the facts book's confirm events never are.
+      // are device moments, but a checkmate never is (it would tell the
+      // house someone now holds the door code); nor are the facts book's
+      // confirm events.
       signals: () => {
         const king = this.spatial.kingRef()?.prop;
         const book = this.factsBook();
+        const quiet = [...(book !== null ? Object.values(book.confirm) : []), ...(king !== undefined ? [kingSignal(king, "won")] : [])];
         return {
-          ...(king !== undefined ? { devices: (["won", "lost", "drawn", "hit", "fallen"] as const).map((w) => kingSignal(king, w)) } : {}),
-          ...(book !== null ? { quiet: Object.values(book.confirm) } : {}),
+          ...(king !== undefined ? { devices: (["lost", "drawn", "hit", "fallen"] as const).map((w) => kingSignal(king, w)) } : {}),
+          ...(quiet.length > 0 ? { quiet } : {}),
         };
       },
     });
@@ -3311,6 +3314,9 @@ export class EventRuntime {
 
   private loadScenario(source: string, name: string): void {
     this.sim = Sim.fromSources(source);
+    // The screens fold this sim from its (empty) start, so the entry beat
+    // the doors play next is a live moment, not history (wave 17).
+    this.screens.adopt(this.sim);
     const currency = this.sim.model.currency;
     this.wallet = currency !== null ? new WalletBook(currency, walletSeam(this.sim, currency)) : null;
     this.scenarioSource = source;
@@ -3773,6 +3779,7 @@ export class EventRuntime {
     this.requeueAgentThreads(waits);
     this.noteRulingsDue();
     this.spatial.syncKing(); // the replayed world's King
+    this.screens.adopt(this.sim!); // the replayed journal is the screens' history
     if (this.phase === "open") this.startTicker();
     // Restored with the doors paused: the re-asked requests wait out the
     // pause like live ones do — from when it began, if a restart came

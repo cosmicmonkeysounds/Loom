@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { ScreenVoice, VoiceLine } from "../src/screen.ts";
-import { LinePlayer, TV_SILENT_BEATS, TV_STALE_MS, cursorAfterGap, cursorWhileAsleep, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
+import { LinePlayer, TV_SILENT_BEATS, showsNameplate, TV_STALE_MS, cursorAfterGap, cursorWhileAsleep, isSilentBeat, planVoice, postVoiceMute, readingMs, type TvLine } from "../src/tv.ts";
 
 const line = (seq: number, from = "Trabolta", beat: string | null = "Trabolta Introduction", text = `line ${seq}`): VoiceLine => ({ seq, from, text, beat });
 const voice = (head: number, lines: VoiceLine[], muted = false): ScreenVoice => ({ room: "loc:The Desktop", muted, head, lines });
@@ -189,5 +189,14 @@ describe("the TV caption's layer (T6-02)", () => {
 
   it("a spoken line stays under the slide: the room hears it", () => {
     expect(zOf(".tv-caption")).toBeLessThan(zOf(".screen-slide, .screen-overlay"));
+  });
+});
+
+describe("showsNameplate (livetv-2)", () => {
+  it("names the character only once the server says it is out of hiding", () => {
+    expect(showsNameplate(null)).toBe(false);
+    expect(showsNameplate({ character: null })).toBe(false); // before the doors
+    expect(showsNameplate({ character: { id: "Trabolta", hidden: true, awake: false, online: false } as never })).toBe(false);
+    expect(showsNameplate({ character: { id: "Trabolta", hidden: false, awake: true, online: true } as never })).toBe(true);
   });
 });

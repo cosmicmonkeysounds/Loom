@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ScreenLayer } from "../src/ScreenLayer.tsx";
 import { CutsceneSlot } from "../src/cutscene/slot.tsx";
-import { drawsSlides } from "../src/cutscene/load.ts";
+import { drawsSlides, screenTargetOf, silentView } from "../src/cutscene/load.ts";
 import { ACTS, SCENES, duplicateIds } from "../src/cutscene/registry.ts";
 import { NO_LAYERS, type ScreenLayers } from "../src/slides.ts";
 
@@ -86,5 +86,30 @@ describe("the cutscene layer, drawn", () => {
     // An overlay or a pilot: nothing.
     expect(renderToStaticMarkup(createElement(CutsceneLayer, { state: m, layers: { overlay: "alarm", slide: null }, bare: false, card: null, gear: null, scenes: DEMO_SCENES }))).toBe("");
     quiet.mockRestore();
+  });
+});
+
+describe("the mirror fallback (X5)", () => {
+  it("draws the TV's takes (no wall gags) and keeps its effects silent", () => {
+    expect(screenTargetOf("mirror")).toBe("tv");
+    expect(screenTargetOf("tv")).toBe("tv");
+    for (const v of ["auto", "world", "face", "shadow"]) expect(screenTargetOf(v), v).toBe("wall");
+    expect(silentView("mirror")).toBe(true);
+    expect(silentView("tv")).toBe(false);
+    expect(silentView("auto")).toBe(false);
+  });
+});
+
+describe("a slide scene hidden under a moment (OB-6)", () => {
+  it("is drawn frozen at the frame it was covered, then live again", async () => {
+    const { baseClock, sameSceneFrame } = await import("../src/cutscene/CutsceneLayer.tsx");
+    expect(baseClock(1000, 1500, false)).toBe(1500);
+    expect(baseClock(1000, 1500, true)).toBe(1000);
+    const scene = { kind: "slide" as const, def: { id: "x", when: [], ms: "hold" as const }, seq: 1, at: 1, start: 1, value: "x", who: null, key: "x:s1" };
+    const state = {} as never;
+    const a = { scene, now: 1000, state, target: "tv" as const, reduced: false, silent: true };
+    // A new pick object for the same scene at the same frozen clock: no redraw.
+    expect(sameSceneFrame(a, { ...a, scene: { ...scene } })).toBe(true);
+    expect(sameSceneFrame(a, { ...a, now: 1033 })).toBe(false);
   });
 });

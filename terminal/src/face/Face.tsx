@@ -6,7 +6,8 @@
 //! `flash(mood, ms)` (a cutscene's beat on the TV) overrides the mood for a
 //! moment and lets it go. The loop writes
 //! attributes straight onto the SVG nodes — React only re-renders on a
-//! mood change, never per frame.
+//! mood change, never per frame. It draws at most `FACE_FPS` (old tablets)
+//! and not at all while `paused` (fully covered: the idle show, attract).
 
 import { useEffect, useRef } from "react";
 import { EXPRESSIONS, blend, mouthFromLevel, type Expression, type Mood } from "./mood.ts";
@@ -22,12 +23,20 @@ export interface FaceHandle {
 /** The longest one-shot a flash may hold (ms). */
 export const FLASH_MAX_MS = 10_000;
 
+/** The face draws at most this often (OB-2: a third loop beside the saver and the scanner). */
+export const FACE_FPS = 30;
+
+/** A per-60-Hz-frame easing `k`, applied over `frames` (≥ 1) frames' worth of time. */
+export function easeOver(k: number, frames: number): number {
+  return 1 - Math.pow(1 - k, Math.max(0, frames));
+}
+
 /** A tiny deterministic noise for the idle drift (no allocation per frame). */
 function drift(t: number, seed: number): number {
   return Math.sin(t * 0.7 + seed) * 0.5 + Math.sin(t * 1.3 + seed * 2.1) * 0.3 + Math.sin(t * 2.9 + seed * 0.7) * 0.2;
 }
 
-export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean; handle: React.MutableRefObject<FaceHandle | null> }) {
+export function Face({ mood, speaking, handle, paused = false }: { mood: Mood; speaking: boolean; handle: React.MutableRefObject<FaceHandle | null>; paused?: boolean }) {
   const svg = useRef<SVGSVGElement>(null);
   const target = useRef<Expression>(EXPRESSIONS[mood]);
   const level = useRef(0);
@@ -52,7 +61,8 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
 
   useEffect(() => {
     const root = svg.current;
-    if (root === null) return;
+    // Covered: no frames at all; on resume the face starts from its mood (a snap, not an ease).
+    if (root === null || paused) return;
     const q = <T extends SVGElement>(id: string) => root.querySelector(`#${id}`) as T;
     const head = q<SVGGElement>("head");
     const browL = q<SVGPathElement>("browL");
@@ -80,15 +90,22 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
     let glitchUntil = 0;
     let lastMood = moodRef.current;
     let raf = 0;
+    let drawn = 0;
+    let hueWritten = Number.NaN;
 
     const frame = (now: number) => {
+      raf = requestAnimationFrame(frame);
+      if (now - drawn < 1000 / FACE_FPS - 2) return;
+      // How many 60 Hz frames this one stands for (the easing constants are per one).
+      const f = drawn === 0 ? 1 : Math.min(4, (now - drawn) / (1000 / 60));
+      drawn = now;
       const t = now / 1000;
       // A one-shot flash wears its mood until it runs out.
       const fl = flashRef.current;
       if (fl !== null && now >= fl.until) flashRef.current = null;
       const want = flashRef.current?.mood ?? moodRef.current;
       // Ease toward the mood's expression.
-      cur = blend(cur, flashRef.current !== null ? EXPRESSIONS[want] : target.current, flashRef.current !== null ? 0.16 : 0.08);
+      cur = blend(cur, flashRef.current !== null ? EXPRESSIONS[want] : target.current, easeOver(flashRef.current !== null ? 0.16 : 0.08, f));
       if (want !== lastMood) {
         lastMood = want;
         if (lastMood === "glitch") glitchUntil = now + 900;
@@ -107,7 +124,8 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
         };
         nextSaccade = now + 800 + Math.random() * (want === "idle" ? 2600 : 1400);
       }
-      gaze = { x: gaze.x + (gazeTarget.x - gaze.x) * 0.18, y: gaze.y + (gazeTarget.y - gaze.y) * 0.18 };
+      const gk = easeOver(0.18, f);
+      gaze = { x: gaze.x + (gazeTarget.x - gaze.x) * gk, y: gaze.y + (gazeTarget.y - gaze.y) * gk };
       const gx = Math.max(-1, Math.min(1, gaze.x + drift(t, 1) * 0.06));
       const gy = Math.max(-1, Math.min(1, gaze.y + drift(t, 2) * 0.06));
       const px = gx * 9;
@@ -127,10 +145,10 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
       // Blinks: every 2–6 s (sooner when attentive), ~120 ms down, ~160 ms up.
       if (blinkPhase === "none" && now > nextBlink) blinkPhase = "closing";
       if (blinkPhase === "closing") {
-        blink = Math.min(1, blink + 0.34);
+        blink = Math.min(1, blink + 0.34 * f);
         if (blink >= 1) blinkPhase = "opening";
       } else if (blinkPhase === "opening") {
-        blink = Math.max(0, blink - 0.22);
+        blink = Math.max(0, blink - 0.22 * f);
         if (blink <= 0) {
           blinkPhase = "none";
           nextBlink = now + 2000 + Math.random() * 4000;
@@ -152,6 +170,7 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
       // opening follows the voice.
       const lvl = speakingRef.current ? level.current : 0;
       mouthOpen = mouthFromLevel(mouthOpen, lvl);
+      if (f > 1.5) mouthOpen = mouthFromLevel(mouthOpen, lvl); // a 30 Hz frame is two of its steps
       const w = 34 * cur.mouthWidth * (1 - mouthOpen * 0.25);
       const curve = cur.mouthCurve * 16;
       const open = mouthOpen * 30 + (speakingRef.current ? 2 : 0);
@@ -173,15 +192,17 @@ export function Face({ mood, speaking, handle }: { mood: Mood; speaking: boolean
       const jy = glitching ? (Math.random() * 2 - 1) * 3 : 0;
       head.setAttribute("transform", `translate(${jx} ${jy}) scale(${breathe} ${breathe * (glitching ? 1 + (Math.random() - 0.5) * 0.08 : 1)})`);
       const hue = cur.tint * 40; // cold ← → hot
-      root.style.setProperty("--hue", String(hue));
+      if (!(Math.abs(hue - hueWritten) <= 0.5)) {
+        // Only on a real move: each write restyles the whole face.
+        root.style.setProperty("--hue", String(hue));
+        hueWritten = hue;
+      }
       glow.setAttribute("opacity", String(0.35 + lvl * 1.2 + (glitching ? 0.3 : 0)));
       root.classList.toggle("glitching", glitching);
-
-      raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [paused]);
 
   return (
     <svg ref={svg} className={`face mood-${mood}${speaking ? " speaking" : ""}`} viewBox="-160 -160 320 320" role="img" aria-label="The face">

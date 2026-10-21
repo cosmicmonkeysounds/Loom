@@ -1,8 +1,9 @@
 //! Is a moment's scene up on this screen? (wave 17) The cutscene layer is
 //! a lazy chunk beside the idle show, not inside it, so it says so here and
 //! the idle show pauses under a moment (no popup, saver chime or arrival
-//! sound over the scene's own stingers). Base bundle: a few lines, like
-//! `face-bus.ts`.
+//! sound over the scene's own stingers). It also says when a scene draws the
+//! story's countdown itself, so the corner countdown stands aside. Base
+//! bundle: a few lines, like `face-bus.ts`.
 
 import { useSyncExternalStore } from "react";
 
@@ -37,4 +38,37 @@ export function onMomentUp(l: Listener): () => void {
 /** `momentUp`, following a change. */
 export function useMomentUp(): boolean {
   return useSyncExternalStore(onMomentUp, momentUp, momentUp);
+}
+
+// --- the scene's own countdown --------------------------------------------------------
+
+const clockListeners = new Set<Listener>();
+let clockUp = false;
+
+/** A scene on screen draws the story's countdown itself (the corner stands aside). */
+export function sceneClockUp(): boolean {
+  return clockUp;
+}
+
+/** The cutscene layer: a scene that draws the countdown came up (true) or went (false). */
+export function setSceneClockUp(on: boolean): void {
+  if (on === clockUp) return;
+  clockUp = on;
+  for (const l of [...clockListeners]) {
+    try {
+      l();
+    } catch {
+      /* a listener that went away */
+    }
+  }
+}
+
+function onSceneClockUp(l: Listener): () => void {
+  clockListeners.add(l);
+  return () => void clockListeners.delete(l);
+}
+
+/** `sceneClockUp`, following a change. */
+export function useSceneClockUp(): boolean {
+  return useSyncExternalStore(onSceneClockUp, sceneClockUp, sceneClockUp);
 }

@@ -111,6 +111,12 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
     if args.command == "check":
+        # A module that checks against the server's config asks it first
+        # (the audio router on a fresh house Mac, LA-5); never with placeholders.
+        if not todo:
+            for module in cfg.modules.values():
+                if hasattr(module, "fetch_for_check"):
+                    module.fetch_for_check(cfg.server)
         problems = [p for module in cfg.modules.values() for p in (module.preflight() if hasattr(module, "preflight") else [])]
         for problem in problems:
             print(f"check failed: {problem}", file=sys.stderr)

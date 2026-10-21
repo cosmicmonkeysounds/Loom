@@ -177,3 +177,18 @@ describe("kit windows", () => {
     expect(openStyle(1, true, false).transform).toBe("none");
   });
 });
+
+describe("the noise grain (OB-8)", () => {
+  it("fills grey levels off its seed, the same each time, leaving alpha alone", async () => {
+    const { fillGrain } = await import("../src/cutscene/kit/effects.tsx");
+    const a = new Uint8ClampedArray(16).fill(7);
+    const b = new Uint8ClampedArray(16).fill(7);
+    fillGrain(a, 3);
+    fillGrain(b, 3);
+    expect([...a]).toEqual([...b]);
+    for (let i = 0; i < a.length; i += 4) {
+      expect(a[i]).toBe(a[i + 1]);
+      expect(a[i + 3]).toBe(7);
+    }
+  });
+});

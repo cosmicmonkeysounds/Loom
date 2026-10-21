@@ -7,7 +7,7 @@
 //! throws is dropped (the card shows); the layer never takes a screen down.
 //! On the TV a scene's `face` mood flashes the face (`face-bus.ts`).
 
-import { Component, useEffect, useReducer, useRef, type ReactNode } from "react";
+import { Component, memo, useEffect, useReducer, useRef, type ReactNode } from "react";
 import "./kit/kit.css";
 import "./cutscene.css";
 import type { ScreenState } from "../screen.ts";
@@ -15,8 +15,8 @@ import type { ScreenLayers } from "../slides.ts";
 import { sfx } from "../sound/bus.ts";
 import { SCENE_FPS, serverNow, useReducedMotion, useSceneClock } from "./clock.ts";
 import { flashFace } from "./face-bus.ts";
-import { setMomentUp } from "./moment-bus.ts";
-import { MomentQueue, componentFor, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
+import { setMomentUp, setSceneClockUp } from "./moment-bus.ts";
+import { MomentQueue, componentFor, drawsCountdown, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
 import type { SceneDef, SceneProps, SceneTarget } from "./types.ts";
 
@@ -100,13 +100,26 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   const momentOn = pick.top !== null;
   useEffect(() => setMomentUp(momentOn), [momentOn]);
   useEffect(() => () => setMomentUp(false), []);
+  // The corner countdown stands aside for a scene that draws its own.
+  const clockOn = drawsCountdown(pick, target);
+  useEffect(() => setSceneClockUp(clockOn), [clockOn]);
+  useEffect(() => () => setSceneClockUp(false), []);
+
+  // A slide scene hidden under a moment is drawn frozen at the frame it was
+  // covered (OB-6): one scene tree reconciled a frame, not two, and its
+  // canvases stop. Uncovered, it reads the live clock again (its `t` jumps
+  // to where it should be).
+  const below = pick.base ?? pick.under;
+  const hidden = pick.base === null && pick.under !== null;
+  const baseNow = useRef(now);
+  baseNow.current = baseClock(baseNow.current, now, hidden);
 
   if (state === null) return null;
   const host = (s: ActiveScene, hidden = false) => (
     <SceneHost
       key={s.key}
       scene={s}
-      now={now}
+      now={hidden ? baseNow.current : now}
       state={state}
       target={target}
       reduced={reduced}
@@ -120,8 +133,6 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   );
   // The slide's card or scene sits in one standing wrapper, hidden (never
   // unmounted) under a moment that replaces it.
-  const below = pick.base ?? pick.under;
-  const hidden = pick.base === null && pick.under !== null;
   return (
     <>
       {below !== null && (
@@ -144,8 +155,30 @@ const stopTap = (e: { stopPropagation(): void }) => e.stopPropagation();
 /** A hidden scene plays no sound (it reports "dropped", as a locked bus does). */
 const quiet: SceneProps["sfx"] = () => false;
 
-/** One scene on its stage, at its `t`. */
-function SceneHost({ scene, now, state, target, reduced, silent, onDone }: { scene: ActiveScene; now: number; state: ScreenState; target: SceneTarget; reduced: boolean; silent: boolean; onDone: () => void }) {
+/** The clock a slide scene is drawn at: live, or frozen where it was while hidden under a moment. */
+export function baseClock(frozen: number, now: number, hidden: boolean): number {
+  return hidden ? frozen : now;
+}
+
+export interface SceneHostProps {
+  scene: ActiveScene;
+  now: number;
+  state: ScreenState;
+  target: SceneTarget;
+  reduced: boolean;
+  silent: boolean;
+  onDone: () => void;
+}
+
+/** One scene on its stage, at its `t`. Memoised: a render with the same
+ *  scene, clock and state (a hidden base, frozen) does no work; `onDone`
+ *  is the same act for the same scene, so it is not compared. */
+export function sameSceneFrame(a: Omit<SceneHostProps, "onDone">, b: Omit<SceneHostProps, "onDone">): boolean {
+  return a.scene.key === b.scene.key && a.scene.start === b.scene.start && a.now === b.now && a.state === b.state && a.target === b.target && a.reduced === b.reduced && a.silent === b.silent;
+}
+const SceneHost = memo(SceneHostView, sameSceneFrame);
+
+function SceneHostView({ scene, now, state, target, reduced, silent, onDone }: SceneHostProps) {
   return <SceneStage def={scene.def} kind={scene.kind} target={target} t={Math.max(0, now - scene.start)} at={scene.at} seq={scene.seq} value={scene.value} who={scene.who} state={state} reduced={reduced} play={silent ? quiet : sfx} onDone={onDone} />;
 }
 

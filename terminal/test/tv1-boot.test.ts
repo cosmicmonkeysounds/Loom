@@ -28,6 +28,11 @@ describe("tv1 boot — the introduction", () => {
     expect(IN.back - IN.online).toBeGreaterThanOrEqual(2000);
   });
 
+  it("the BIOS POST is done and gone before the face comes in: never printing under it (livetv-5)", () => {
+    expect(draw(IntroTv, 600)).toContain("Detecting Primary Master");
+    for (const t of [IN.face, IN.face + 300, 1500, 2000]) expect(draw(IntroTv, t), String(t)).not.toContain("Detecting");
+  });
+
   it("is in step with his voice: the face is whole and the greeting is up when the TV starts saying the line", () => {
     // The TV speaks the beat's line on the poll that brings the beat (≈ 0.5–2.5 s in).
     expect(INTRO_FACE_DONE).toBeLessThanOrEqual(IN.hello + 50);

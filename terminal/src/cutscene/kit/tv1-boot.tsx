@@ -189,9 +189,9 @@ export const INTRO_VOICE_END = INTRO_CAPTIONS[INTRO_CAPTIONS.length - 1]!.end;
  * a fast flash under an assembling face, the greeting is on screen while it
  * is heard, and the long setup comes after the voice.
  */
-export const IN = { post: 150, face: 250, hello: INTRO_VOICE.start, voiceEnd: INTRO_VOICE_END, montage: INTRO_VOICE_END + 400, setup: INTRO_VOICE_END + 800, logo: INTRO_VOICE_END + 4200, online: INTRO_VOICE_END + 7000, back: 24_600, end: INTRO_MS } as const;
+export const IN = { post: 150, face: 900, hello: INTRO_VOICE.start, voiceEnd: INTRO_VOICE_END, montage: INTRO_VOICE_END + 400, setup: INTRO_VOICE_END + 800, logo: INTRO_VOICE_END + 4200, online: INTRO_VOICE_END + 7000, back: 24_600, end: INTRO_MS } as const;
 /** The assembly runs this many times faster than the wall's: done before he speaks. */
-export const INTRO_FACE_SPEED = 3;
+export const INTRO_FACE_SPEED = 6;
 /** When the face is whole (ms into the scene). */
 export const INTRO_FACE_DONE = IN.face + FACE_ASSEMBLY_MS / INTRO_FACE_SPEED;
 
@@ -220,7 +220,7 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
     // Under the voice from the first frame on (the line may already be playing): `over`.
     [60, "click", { over: true }],
     [200, "static", { gain: 0.35, over: true }],
-    ...[420, 640, 860, 1080, 1300].map((x) => [x, "tick", { gain: 0.45, over: true }] as const),
+    ...[230, 300, 390, 450, 510, 570].map((x) => [x, "tick", { gain: 0.45, over: true }] as const),
     [IN.face + 80, "whoosh", { gain: 0.5, over: true }],
     [INTRO_FACE_DONE - 100, "sparkle", { gain: 0.6, over: true }],
     [IN.hello, "chime", { gain: 0.45, over: true }],
@@ -236,10 +236,10 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
 
 /**
  *   0–250        the CRT warms out of black, a click, a hiss
- *   150–1700     the BIOS POST races up the screen behind him (the processor, the memory
- *                counting to 65536K, THE DESKTOP, THE INTERNET, programs FOUND, the AI
- *                helper) while his face assembles at speed: the outline traced, the skin
- *                scanned in, the eyes, the brows, the mouth — whole by ≈ 1.5 s
+ *   150–900      the BIOS POST races up the screen (the processor, the memory counting to
+ *                65536K, THE DESKTOP, THE INTERNET, programs FOUND, the AI helper) and is
+ *                gone by 900, when his face assembles at speed: the outline traced, the
+ *                skin scanned in, the eyes, the brows, the mouth — whole by ≈ 1.5 s
  *   1500–≈12400  he speaks (the TV's voice): HELLO, PROGRAMS. types big, then his line a
  *                sentence at a time at his pace, the mouth moving while he talks; quiet
  *                accents only, under the voice
@@ -258,7 +258,7 @@ export function IntroTv({ t, sfx, reduced }: SceneProps) {
     <div className="kit-stage a1-tv a1-in" style={{ background: t < IN.back ? "#000" : `rgba(0,0,0,${(1 - progress(t, IN.back, 1200)).toFixed(3)})`, opacity: out }}>
       <div className="kit-stage-fit">
         {t < IN.back && <IntroBackdrop t={t} reduced={reduced} />}
-        {t < 2400 && <IntroPost t={t} reduced={reduced} />}
+        {t < IN.face && <IntroPost t={t} reduced={reduced} />}
         {between(t, IN.setup, IN.logo + 400) && <IntroSetup t={t} reduced={reduced} />}
         {between(t, IN.logo - 300, IN.back + 1200) && <IntroLogo t={t} reduced={reduced} />}
         <IntroFace t={t} reduced={reduced} />
@@ -280,12 +280,12 @@ function IntroBackdrop({ t, reduced }: { t: number; reduced: boolean }) {
 
 function IntroPost({ t, reduced }: { t: number; reduced: boolean }) {
   const lines = bootLinesAt(INTRO_POST, t);
-  const kb = memoryCount(t, 560, 420);
-  // It races up, then dims under the face and is gone once he speaks.
-  const out = 1 - progress(t, 1400, 900);
-  const scroll = reduced ? 0 : eased(t, 1000, 1200, ease.inQuad) * -6;
+  const kb = memoryCount(t, 290, 260);
+  // It races up and is gone before the face comes in (never under it).
+  const out = 1 - progress(t, IN.face - 300, 300);
+  const scroll = reduced ? 0 : eased(t, 500, 700, ease.inQuad) * -3;
   return (
-    <div className="kit-fill a1-post" style={{ opacity: clamp01((t - IN.post + 100) / 200) * out * (t > IN.face + 400 ? 0.55 : 1), transform: `translate3d(0, ${scroll.toFixed(2)}em, 0)` }}>
+    <div className="kit-fill a1-post" style={{ opacity: clamp01((t - IN.post + 100) / 200) * out, transform: `translate3d(0, ${scroll.toFixed(2)}em, 0)` }}>
       <div className="a1-post-eye">
         <EyeMark t={t} reduced={reduced} />
         <div>EnergyWatcher</div>
@@ -356,7 +356,7 @@ function IntroFace({ t, reduced }: { t: number; reduced: boolean }) {
       </div>
       {t < IN.hello && (
         <div className="a1-in-progress" style={{ opacity: progress(t, IN.face + 100, 200) * (1 - progress(t, IN.hello - 250, 250)) }}>
-          <div className="a1-in-progress-label">{t < IN.face + 600 ? "Assembling face…" : t < INTRO_FACE_DONE - 200 ? "Calibrating eyes…" : "Ready."}</div>
+          <div className="a1-in-progress-label">{t < IN.face + 250 ? "Assembling face…" : t < INTRO_FACE_DONE - 150 ? "Calibrating eyes…" : "Ready."}</div>
           <div className="a1-in-progress-track">
             <div className="a1-in-progress-fill" style={{ transform: `scaleX(${progress(t, IN.face, INTRO_FACE_DONE - IN.face).toFixed(3)})` }} />
           </div>

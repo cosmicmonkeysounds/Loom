@@ -74,8 +74,8 @@ import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } fr
 import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundView, sfx } from "./sound/bus.ts";
-import { drawsSlides, loadCutscenes } from "./cutscene/load.ts";
+import { setSoundMuted, setSoundView, sfx } from "./sound/bus.ts";
+import { drawsSlides, loadCutscenes, screenTargetOf, silentView } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdleShow } from "./idle-show/IdleShow.tsx";
@@ -83,7 +83,7 @@ import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
-import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, type TvLine } from "./tv.ts";
+import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
 // three.js is most of the weight of the world view — a face-only terminal
 // never loads it. Retryable: `lazy` alone caches a failed load forever.
@@ -275,8 +275,15 @@ export function App() {
   useEffect(() => {
     kioskFullscreen().setEnabled(fullscreen);
   }, [fullscreen]);
-  // The effects' level follows the view (the TV's are quieter).
+  // The effects' level follows the view (the TV's are quieter); the mirror
+  // fallback stays silent (X5).
   useEffect(() => setSoundView(config?.view), [config?.view]);
+  const silent = config !== null && silentView(config.view);
+  useEffect(() => {
+    if (!silent) return;
+    setSoundMuted(true);
+    return () => setSoundMuted(false);
+  }, [silent]);
 
   const wake = useCallback(() => {
     void kioskFullscreen().request();
@@ -387,7 +394,7 @@ export function App() {
       name={config.name}
       state={screenState.state}
       character={config.character}
-      target={config.view === "tv" ? "tv" : "wall"}
+      target={screenTargetOf(config.view)}
       covered={covered}
       corner={
         <>
@@ -970,6 +977,9 @@ function Terminal({
 
   // The idle show plays while the terminal waits and nobody is speaking in its room.
   const idle = screen.kind === "attract" && !roomBusy && roomLine === null;
+  // The face under a full-screen idle show is covered: it sleeps (OB-2),
+  // except while the show's `face` layout lets it through.
+  const [idleLayout, setIdleLayout] = useState("");
   const scanBox = useRef<HTMLElement>(null);
 
   const online = pilot !== null ? session.online : castOnline;
@@ -1001,8 +1011,8 @@ function Terminal({
         <section className={`face-pane${showWorld ? " showing-world" : ""}`}>
           {/* The face stays mounted under the world view: it holds the speech
               queue's level handle and its own easing state. */}
-          <Face mood={mood} speaking={speaking} handle={face} />
-          <div className="nameplate">{config.character.toUpperCase()}</div>
+          <Face mood={mood} speaking={speaking} handle={face} paused={idle && !covered && !showWorld && idleLayout !== "face"} />
+          {showsNameplate(state) && <div className="nameplate">{config.character.toUpperCase()}</div>}
           {voiceNote(config.engine, engineUsed, latched) !== null && <div className="engine-note">{voiceNote(config.engine, engineUsed, latched)}</div>}
           {showWorld && (pane === "shadow" ? <ShadowSlot store={world} spotId={config.spot} facing={config.camera} size="pane" recover="retry" /> : <WorldSlot store={world} spotId={config.spot} size="pane" recover="retry" raycast={pane === "raycast"} />)}
           {roomLine !== null && (
@@ -1045,7 +1055,7 @@ function Terminal({
             line — the world keeps its pane beside it — and the scan box in the
             corner above it: the camera always drawn, a pass read whatever
             plays. A pass connecting, a line, or the room's voice puts it away. */}
-        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={idle && !covered} region={showWorld ? "pane" : "full"} reserveRef={scanBox} />
+        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={idle && !covered} region={showWorld ? "pane" : "full"} reserveRef={scanBox} onLayout={setIdleLayout} />
         {screen.kind === "attract" && (
           <ScanBox
             boxRef={scanBox}

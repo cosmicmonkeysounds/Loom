@@ -8,7 +8,7 @@ import { KING_SIGNALS } from "@loom/house";
 import { foldName } from "../src/config.ts";
 import { fakeChart, fakeState } from "../src/cutscene/fake.ts";
 import { allowed, componentFor } from "../src/cutscene/pick.ts";
-import { SCENES, OVERSHARE_CURSOR_DELAY } from "../src/cutscene/scenes/act2.tsx";
+import { SCENES, OVERSHARE_CURSOR_DELAY, tallyOkRate } from "../src/cutscene/scenes/act2.tsx";
 import type { SceneDef, SceneProps, SceneTarget } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
@@ -258,5 +258,19 @@ describe("act 2's scenes draw", () => {
       expect(draw(SCENES.find((x) => x.id === id)!, "tv", 7000, stateAt(7000)), id).toContain(line);
     }
     q.mockRestore();
+  });
+});
+
+describe("the round-two tally's fact rows (F8)", () => {
+  it("all read RECEIVED on a 61 % night, few on a 12 % one", () => {
+    const q = vi.spyOn(console, "error").mockImplementation(() => {});
+    const tally = SCENES.find((s) => s.id === "round_two_tally")!;
+    const full = draw(tally, "tv", 2000, stateAt(2000, { night: { ...EMPTY_NIGHT, collection_complete: true } }));
+    expect(full).toContain("✓ RECEIVED");
+    expect(full).not.toContain("✗ MISSING");
+    q.mockRestore();
+    expect(tallyOkRate(61)).toBe(1);
+    expect(tallyOkRate(12)).toBeLessThan(0.5);
+    expect(tallyOkRate(null)).toBeGreaterThan(0);
   });
 });

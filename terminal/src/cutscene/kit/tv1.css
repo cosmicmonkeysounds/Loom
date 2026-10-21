@@ -52,8 +52,11 @@
 }
 
 /* --- marchers, beacon, chevrons ----------------------------------------------- */
-.a1-march { pointer-events: none; }
-.a1-marcher { position: absolute; will-change: transform, opacity; filter: drop-shadow(0.08em 0.08em 0 rgba(0, 0, 0, 0.5)); }
+/* One shared shadow on the stream, not a filtered layer per icon; each
+   runner is stage-sized (no inset shorthand) and moved by transform. */
+.a1-march { pointer-events: none; filter: drop-shadow(0.08em 0.08em 0 rgba(0, 0, 0, 0.5)); }
+.a1-marcher { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.a1-marcher-icon { position: absolute; left: 0; top: 0; }
 .a1-beacon {
   position: absolute;
   left: 50%;
@@ -201,7 +204,7 @@
 .a1-post-line { white-space: pre; }
 .a1-post-mem { color: #fff; }
 .a1-post-ok { color: #3dff7a; }
-.a1-post-eye { position: absolute; right: 1.6em; top: 1.2em; width: 6.5em; text-align: center; color: #3dff7a; font-size: 0.7em; }
+.a1-post-eye { position: absolute; right: 4.5em; top: 1.2em; width: 6.5em; text-align: center; color: #3dff7a; font-size: 0.7em; }
 .a1-eye { display: block; width: 100%; height: auto; }
 .a1-post-foot { position: absolute; left: 2em; bottom: 1.2em; color: #fff; }
 .a1-in-loadrow { display: flex; align-items: center; }

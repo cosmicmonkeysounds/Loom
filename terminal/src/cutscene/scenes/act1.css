@@ -80,11 +80,11 @@
 .a1-cell.ticked { background: #c8ffd8; color: #007a2a; }
 .a1-cell span { display: inline-block; }
 .a1-cell .a1-cell-ring { position: absolute; top: 0; right: 0; bottom: 0; left: 0; border: 0.12em solid #3ddc84; border-radius: 50%; will-change: transform, opacity; }
-.a1-bingo-q { position: absolute; left: 5.00%; top: 84.15%; width: 22em; font-family: var(--mono); font-size: 1.1em; line-height: 1.15; color: #fff; }
-.a1-cage { position: absolute; left: 25em; top: 9.4em; width: 14em; height: 17em; }
-.a1-cage-svg { display: block; width: 14em; height: 14em; }
-.a1-cage-stand { margin: -0.4em auto 0; width: 6em; height: 2.4em; background: linear-gradient(#a08020, #5a4510); clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); -webkit-clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%); }
-.a1-bingo-out { position: absolute; left: 32em; top: 29.4em; will-change: transform; }
+.a1-bingo-q { position: absolute; left: 5.00%; top: 82%; width: 30em; font-family: var(--mono); font-size: 1.1em; line-height: 1.15; color: #fff; }
+.a1-cage { position: absolute; left: 23em; top: 9.4em; width: 18em; height: 17em; }
+.a1-mingle-spark { font-size: 5em; font-weight: bold; color: #3ddc84; text-shadow: 0 0 0.2em #3ddc84, 0.05em 0.05em 0 #000; }
+.a1-mingle-cap { position: absolute; left: 0; right: 0; bottom: 1.2em; text-align: center; font-family: var(--mono); font-size: 1.1em; letter-spacing: 0.1em; color: #ffd23f; }
+.a1-bingo-ticker { font-size: 1.1em; }
 .a1-bingo-rules { font-size: 0.7em !important; }
 .a1-bingo-rule { margin-bottom: 0.5em; line-height: 1.3; }
 .a1-bingo-clock { position: absolute; right: 3.67%; top: 26.67%; font-size: 3.2em; }

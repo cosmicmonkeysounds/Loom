@@ -264,3 +264,16 @@ describe("BrowserEngine — a speak() that never starts", () => {
     expect(browser.dead).toBe(false);
   });
 });
+
+describe("decodeAudio on old Safari (OB-12)", () => {
+  it("takes the callback form (webkitAudioContext) and the promise form alike, and rejects a failure", async () => {
+    const { decodeAudio } = await import("../src/speech/engine.ts");
+    const buf = { duration: 1 } as unknown as AudioBuffer;
+    const callbackOnly = { decodeAudioData: (_b: ArrayBuffer, ok?: (b: AudioBuffer) => void) => void ok?.(buf) } as never;
+    await expect(decodeAudio(callbackOnly, new ArrayBuffer(4))).resolves.toBe(buf);
+    const promised = { decodeAudioData: () => Promise.resolve(buf) } as never;
+    await expect(decodeAudio(promised, new ArrayBuffer(4))).resolves.toBe(buf);
+    const bad = { decodeAudioData: (_b: ArrayBuffer, _ok?: unknown, fail?: (e: unknown) => void) => void fail?.(new Error("bad")) } as never;
+    await expect(decodeAudio(bad, new ArrayBuffer(4))).rejects.toThrow("bad");
+  });
+});

@@ -45,3 +45,19 @@ describe("matchName", () => {
     expect(matchName("   ", roster)).toEqual({ kind: "none" });
   });
 });
+
+describe("the scanner's pace on old tablets (OB-3)", () => {
+  it("jsQR looks every 250 ms, fast for 3 s after a read; the native detector always at its pace", async () => {
+    const { JSQR_EVERY_MS, JSQR_FAST_MS, scanDelay } = await import("../src/scanner.tsx");
+    expect(scanDelay(false, 10_000, Number.NEGATIVE_INFINITY)).toBe(JSQR_EVERY_MS);
+    expect(scanDelay(false, 10_000, 9_000)).toBeLessThan(JSQR_EVERY_MS);
+    expect(scanDelay(false, 10_000 + JSQR_FAST_MS, 10_000)).toBe(JSQR_EVERY_MS);
+    expect(scanDelay(true, 10_000, Number.NEGATIVE_INFINITY)).toBeLessThan(JSQR_EVERY_MS);
+  });
+
+  it("decodes at most 480 px wide, keeping the aspect", async () => {
+    const { jsqrSize } = await import("../src/scanner.tsx");
+    expect(jsqrSize(1280, 720)).toEqual({ w: 480, h: 270 });
+    expect(jsqrSize(320, 240)).toEqual({ w: 320, h: 240 });
+  });
+});

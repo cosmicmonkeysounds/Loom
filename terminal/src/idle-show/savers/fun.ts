@@ -1,5 +1,5 @@
-//! The playful savers: a bouncing logo (it lands in a corner now and then,
-//! and everyone cheers), code rain in phosphor green, and a pond of rubber
+//! The playful savers: a bouncing Maps and Ducks logo (it never quite hits
+//! the corner — the story's own screensaver joke), code rain in phosphor green, and a pond of rubber
 //! ducks that quack when poked. All original art, drawn with plain paths.
 
 import { Events, clamp, type Rand, type SaverDef, type SaverInstance } from "./types.ts";
@@ -24,7 +24,12 @@ export function bounceInit(w: number, h: number, rand: Rand): BounceState {
   return { x: rand() * Math.max(1, w - bw), y: rand() * Math.max(1, h - bh), dx: v, dy: v * 0.8, bw, bh, hue: Math.floor(rand() * 360), corners: 0 };
 }
 
-/** One frame; returns true when the logo hit a corner (both edges at once). */
+/** The gap a near miss leaves (px): the logo is nudged this far off the
+ *  other edge, so it never lands in the corner. */
+export const NEAR_MISS_PX = 10;
+
+/** One frame; returns true on a near miss (one edge hit with the other
+ *  within a few px — the logo is nudged clear, so it never quite hits the corner). */
 export function bounceStep(s: BounceState, w: number, h: number, dt: number): boolean {
   s.x += s.dx * dt;
   s.y += s.dy * dt;
@@ -41,16 +46,24 @@ export function bounceStep(s: BounceState, w: number, h: number, dt: number): bo
     hitY = true;
   }
   if (hitX || hitY) s.hue = (s.hue + 67) % 360;
-  // A corner within a few px counts: an exact one would almost never land.
+  // Within a few px of the corner: nudge it clear on the other axis.
   const near = (v: number, edge: number) => Math.abs(v - edge) < 6;
-  const corner = (hitX && (near(s.y, 0) || near(s.y + s.bh, h))) || (hitY && (near(s.x, 0) || near(s.x + s.bw, w)));
-  if (corner) s.corners += 1;
-  return corner;
+  const off = (v: number, size: number, span: number) => (v < span / 2 ? Math.min(Math.max(0, span - size), NEAR_MISS_PX) : Math.max(0, span - size - NEAR_MISS_PX));
+  let miss = false;
+  if (hitX && (near(s.y, 0) || near(s.y + s.bh, h))) {
+    s.y = off(s.y, s.bh, h);
+    miss = true;
+  } else if (hitY && (near(s.x, 0) || near(s.x + s.bw, w))) {
+    s.x = off(s.x, s.bw, w);
+    miss = true;
+  }
+  if (miss) s.corners += 1;
+  return miss;
 }
 
 /** The logo's words. A machine's name, never the character's. */
-export const LOGO_TEXT = "HouseOS";
-export const LOGO_SUB = "98 · second edition";
+export const LOGO_TEXT = "Maps and Ducks";
+export const LOGO_SUB = "98";
 
 export const bounce: SaverDef = {
   id: "bounce",
@@ -72,24 +85,36 @@ export const bounce: SaverDef = {
         ctx.fillRect(0, 0, w, h);
         const { x, y, bw, bh, hue } = s;
         const col = `hsl(${hue}, 100%, 60%)`;
-        // The four-pane flag.
+        // The emblem: a teal disc, the duck and its bill.
         const fs = bh * 0.78;
-        const p = fs / 2.2;
-        for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = `hsl(${(hue + i * 90) % 360}, 90%, 55%)`;
-          ctx.fillRect(x + (i % 2) * (p + fs * 0.1), y + bh * 0.11 + Math.floor(i / 2) * (p + fs * 0.1), p, p);
-        }
+        const cx = x + fs / 2;
+        const cy = y + bh / 2;
+        ctx.fillStyle = `hsl(${(hue + 180) % 360}, 70%, 40%)`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, fs / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffd23f";
+        ctx.beginPath();
+        ctx.arc(cx - fs * 0.05, cy + fs * 0.12, fs * 0.24, 0, Math.PI * 2);
+        ctx.arc(cx + fs * 0.1, cy - fs * 0.14, fs * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ff8a1f";
+        ctx.beginPath();
+        ctx.moveTo(cx + fs * 0.22, cy - fs * 0.16);
+        ctx.lineTo(cx + fs * 0.4, cy - fs * 0.1);
+        ctx.lineTo(cx + fs * 0.22, cy - fs * 0.06);
+        ctx.fill();
         ctx.fillStyle = col;
         ctx.textBaseline = "alphabetic";
-        ctx.font = `bold ${Math.round(bh * 0.5)}px Tahoma, "Segoe UI", sans-serif`;
-        ctx.fillText(LOGO_TEXT, x + fs * 1.15, y + bh * 0.58);
-        ctx.font = `${Math.round(bh * 0.2)}px Tahoma, "Segoe UI", sans-serif`;
+        ctx.font = `bold ${Math.round(bh * 0.34)}px Tahoma, "Segoe UI", sans-serif`;
+        ctx.fillText(LOGO_TEXT, x + fs * 1.15, y + bh * 0.55);
+        ctx.font = `bold ${Math.round(bh * 0.26)}px Tahoma, "Segoe UI", sans-serif`;
         ctx.fillText(LOGO_SUB, x + fs * 1.18, y + bh * 0.88);
         if (cheer > 0) {
           ctx.fillStyle = `rgba(255, 255, 255, ${cheer / 40})`;
-          ctx.font = `bold ${Math.round(Math.min(w, h) * 0.08)}px Tahoma, sans-serif`;
+          ctx.font = `bold ${Math.round(Math.min(w, h) * 0.07)}px Tahoma, sans-serif`;
           ctx.textAlign = "center";
-          ctx.fillText("★ CORNER! ★", w / 2, h / 2);
+          ctx.fillText("SO CLOSE…", w / 2, h / 2);
           ctx.textAlign = "start";
         }
       },

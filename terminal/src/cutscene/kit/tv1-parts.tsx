@@ -104,8 +104,12 @@ export function March({ t, count = 18, period = 5200, seed = 3, reduced, icons =
   return (
     <div className={`kit-fill a1-march${className ? ` ${className}` : ""}`} aria-hidden="true">
       {marchersAt(t, count, period, seed, reduced).map((m) => (
-        <div key={m.i} className="a1-marcher" style={{ left: `${(m.x * 100).toFixed(2)}%`, top: `${(m.y * 100).toFixed(2)}%`, opacity: m.alpha, transform: `translate(-50%, -50%) scale(${(1 - m.k * 0.45).toFixed(3)})` }}>
-          <Win98Icon kind={icons[m.kind % icons.length]!} size={size} />
+        // A stage-sized runner moved by transform (its % are the stage's), so a
+        // walking icon never lays the page out again (OB-9).
+        <div key={m.i} className="a1-marcher" style={{ opacity: m.alpha, transform: `translate3d(${(m.x * 100).toFixed(2)}%, ${(m.y * 100).toFixed(2)}%, 0)` }}>
+          <div className="a1-marcher-icon" style={{ transform: `translate(-50%, -50%) scale(${(1 - m.k * 0.45).toFixed(3)})` }}>
+            <Win98Icon kind={icons[m.kind % icons.length]!} size={size} />
+          </div>
         </div>
       ))}
     </div>

@@ -11,7 +11,7 @@ import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
 import { previewBeats } from "../src/cutscene/preview.tsx";
-import { CEREMONY_ROLL, SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
+import { ADVICE_CHAT, CEREMONY_ROLL, SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
 import { SCENES as MOMENTS, OVER_WORLD_MS, finderName } from "../src/cutscene/scenes/moments.tsx";
 import { noteWorldShowing, worldCelebratesFinds } from "../src/cutscene/world-bus.ts";
 import { CELEBRATION_MS } from "../src/world/state.ts";
@@ -266,5 +266,12 @@ describe("every tv3 scene draws", () => {
     const midnight = ACT3.find((d) => d.id === "midnight")!;
     expect(draw(midnight, "tv", 10_500)).toContain("the year will not render");
     expect(STORY).toContain("the year will not render");
+  });
+});
+
+describe("Advice Helped quotes the story (F9)", () => {
+  it("his bubble and hers are the story's lines verbatim", () => {
+    const finale = readFileSync(join(__dirname, "../../core/examples/trapped-in-the-internet/beats/finale.loom"), "utf8");
+    for (const l of ADVICE_CHAT) expect(finale, l.text).toContain(l.text);
   });
 });

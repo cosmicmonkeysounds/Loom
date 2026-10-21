@@ -244,6 +244,24 @@ describe("screen layers — precedence (N-03)", () => {
     };
   }
 
+  it("the memo is not written on every poll: only a new slide, a new sim or a seenAt that moved half a gap (OB-11)", () => {
+    const disk = fakeStorage();
+    let writes = 0;
+    const counted = { ...disk, setItem: (k: string, v: string) => (writes++, disk.setItem(k, v)) } as Storage;
+    setScreenMemoStorage(counted);
+    resetScreenMemo();
+    const poll = (dt: number, seq = 5) => at(state({ announceEpoch: "e1", now: T0 + dt, receivedAt: T0 + dt, program: { slide: story("trivia_2", T0, seq) } }), 0);
+    for (let i = 0; i < 10; i++) poll(i * 2000);
+    // 0–18 s at 2 s: written once, then once more each half gap (7.5 s) the seenAt moved.
+    expect(writes).toBeLessThanOrEqual(3);
+    const before = writes;
+    poll(18_500, 6); // a new story slide
+    expect(writes).toBe(before + 1);
+    poll(18_500 + 8_000, 6); // 8 s later
+    expect(writes).toBe(before + 2);
+    setScreenMemoStorage(null);
+  });
+
   it("a reload mid-clip keeps the story slide on top: the memo is stored per sim", () => {
     const disk = fakeStorage();
     setScreenMemoStorage(disk);

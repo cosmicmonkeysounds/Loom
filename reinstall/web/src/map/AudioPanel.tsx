@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AUDIO_INPUT_KINDS, resolveTargets, roomById } from "@loom/house";
 import type { AudioConfig, AudioInputKind, HouseMap } from "@loom/house";
-import { audioConflictText, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
+import { audioConflictText, routerBadge, testAge, type AudioTestRow, type AudioView } from "./audio-api.ts";
 import {
   addZone,
   cellGain,
@@ -193,6 +193,7 @@ export function AudioPanel(p: AudioPanelProps) {
   const withMap = !plan.alone && plan.withMap;
   const cellG = cell !== null ? cellGain(audio, cell.in, cell.out) : null;
 
+  const badge = routerBadge(p.view?.router ?? null, now);
   return (
     <div className="audio-panel">
       <div className="audio-head">
@@ -205,6 +206,7 @@ export function AudioPanel(p: AudioPanelProps) {
           </span>
         )}
         {p.dirty && <b className="small"> · unsaved</b>}
+        {badge !== null && <span className={`small ${badge.ok ? "good-text" : "bad-text"}`}> · {badge.text}</span>}
         <div className="button-row">
           <button
             className="w98-button default"
@@ -447,12 +449,26 @@ export function AudioPanel(p: AudioPanelProps) {
                     <code>{r.name}</code>
                     {!r.inStory && <div className="muted small">not in the story</div>}
                   </td>
-                  <td>
-                    <Targets value={to} options={options} disabled={off} empty="(the line's room / the beat's setting)" onChange={(next) => commit(setCueTargets(audio, r.name, next))} />
-                  </td>
-                  <td className="gain">
-                    {r.cue !== null && <Num label="dB" value={r.cue.gain ?? 0} step={1} disabled={off} onChange={(v) => commit(setCueGain(audio, r.name, v))} />}
-                  </td>
+                  {r.chime ? (
+                    // The chime rings with the announcements: its speakers are theirs (LA-2).
+                    <td colSpan={2} className="muted small">
+                      <span>rings with the announcements: its speakers are the ones under Announcements below</span>
+                      {r.cue !== null && (
+                        <button type="button" className="small" disabled={off} onClick={() => commit(setCueTargets(audio, r.name, []))}>
+                          Drop the unused cue
+                        </button>
+                      )}
+                    </td>
+                  ) : (
+                    <>
+                      <td>
+                        <Targets value={to} options={options} disabled={off} empty="(the line's room / the beat's setting)" onChange={(next) => commit(setCueTargets(audio, r.name, next))} />
+                      </td>
+                      <td className="gain">
+                        {r.cue !== null && <Num label="dB" value={r.cue.gain ?? 0} step={1} disabled={off} onChange={(v) => commit(setCueGain(audio, r.name, v))} />}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -462,14 +478,18 @@ export function AudioPanel(p: AudioPanelProps) {
 
       <Section title="Announcements and the TV voice">
         <div className="field" onMouseEnter={() => hover(reach(audio.announce?.to ?? []))} onMouseLeave={() => hover(null)}>
-          house announcements (<code>do announce</code>, when the router plays them)
+          <span>
+            house announcements (<code>do announce</code>, when the router plays them)
+          </span>
           <Targets value={audio.announce?.to ?? []} options={options} disabled={off} empty="(the router's default)" onChange={(to) => commit(setAnnounce(audio, to))} />
           <label className="radio checkbox small">
             <input type="checkbox" checked={audio.announce?.chime ?? true} disabled={off} onChange={(e) => commit(setAnnounce(audio, audio.announce?.to ?? [], e.target.checked))} /> chime first
           </label>
         </div>
         <div className="field" onMouseEnter={() => hover(reach(audio.voice?.tv ?? []))} onMouseLeave={() => hover(null)}>
-          the TV's voice also reaches <span className="muted small">(set on the interface's mixer today)</span>
+          <span>
+            the TV's voice also reaches <span className="muted small">(set on the interface's mixer today)</span>
+          </span>
           <Targets value={audio.voice?.tv ?? []} options={options} disabled={off} empty="(only the TV)" onChange={(to) => commit(setTvVoice(audio, to))} />
         </div>
       </Section>

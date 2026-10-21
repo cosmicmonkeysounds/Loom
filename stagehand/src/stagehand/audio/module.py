@@ -40,6 +40,7 @@ import asyncio
 import json
 import logging
 import os
+import socket
 import threading
 import time
 from pathlib import Path
@@ -180,6 +181,10 @@ class AudioRouter:
         #: The alexa player's lock, once held (announce: true only).
         self.lock_fd: int | None = None
         self._dropped_logged = 0.0
+        #: `stagehand check` on a fresh house Mac: the server's answer, asked
+        #: once, when no cache or config_file holds an audio.json yet (LA-5).
+        self._check_answer: dict | None = None
+        self._check_problem: str | None = None
 
     # -- describe / check ----------------------------------------------------
 
@@ -200,7 +205,7 @@ class AudioRouter:
         ]
 
     def _local_doc(self) -> AudioDoc | None:
-        for raw in (self._read_json(self._cache_path("audio.json")), self._read_json(self.cfg.config_file)):
+        for raw in (self._read_json(self._cache_path("audio.json")), self._read_json(self.cfg.config_file), self._check_answer):
             if raw is None:
                 continue
             try:
@@ -208,6 +213,32 @@ class AudioRouter:
             except AudioDocError:
                 continue
         return None
+
+    def fetch_for_check(self, server: Any, *, client_factory: Any = None, timeout: float = 3.0) -> None:
+        """`stagehand check` with no local audio.json (a fresh house Mac): ask
+        the server once (no long poll, `timeout` s), so the device's channel
+        counts and the sound files are checked against the config in force.
+        A failure is a warning, never a failed check."""
+        if self._local_doc() is not None or server is None or not getattr(server, "url", ""):
+            return
+
+        async def ask() -> dict:
+            mod = (client_factory or ModClient)(server.url, event=server.event, token=server.mod_token, passcode=server.mod_passcode)
+            try:
+                return await asyncio.wait_for(mod.get("/api/mod/audio", None, timeout=timeout), timeout + 2)
+            finally:
+                close = getattr(mod, "aclose", None)
+                if close is not None:
+                    await close()
+
+        try:
+            answer = asyncio.run(ask())
+        except (ModApiError, httpx.HTTPError, OSError, ValueError, asyncio.TimeoutError) as err:
+            self._check_problem = f"audio: could not ask the server for audio.json ({err or type(err).__name__}) — checked against nothing"
+            return
+        if isinstance(answer, dict) and isinstance(answer.get("audio"), dict):
+            self._check_answer = answer
+            self.story_sounds = [str(x) for x in answer.get("sounds") or [] if isinstance(x, str)]
 
     def preflight(self) -> list[str]:
         """`stagehand check`: the device against the local / cached audio.json."""
@@ -233,6 +264,8 @@ class AudioRouter:
                 rate = self.cfg.rate or (doc.rate if doc is not None else None) or self._device_rate() or 48000
                 bank = SoundBank(self.cfg.sounds_dir, rate)
                 names = {n for n in (doc.cues if doc is not None else {}) if n != CHIME_SOUND}
+                # The server's own list of the story's sounds (a check that asked it).
+                names |= {n for n in self.story_sounds if n != CHIME_SOUND}
                 missing = sorted(n for n in names if bank.find(n) is None)
                 if missing:
                     out.append(f"audio: no file for {', '.join(missing)} in {self.cfg.sounds_dir}")
@@ -242,8 +275,12 @@ class AudioRouter:
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
                     out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
-        if doc is None:
+        if self._check_problem is not None:
+            out.append(self._check_problem)
+        elif doc is None:
             out.append("audio: no local audio.json (config_file / cache) — the router waits for the server")
+        elif self._check_answer is not None:
+            out.append("audio: checked against the server's audio.json (nothing cached on this Mac yet)")
         return out
 
     # -- config ----------------------------------------------------------------
@@ -614,12 +651,14 @@ class AudioRouter:
         backoff = 1.0
         missing_route = False
         while True:
-            params: dict[str, Any] = {}
+            # `router=1` (+ this machine's name): the server shows the map
+            # editor that a router is listening, so a Test there is played.
+            params: dict[str, Any] = {"router": 1, "name": socket.gethostname().split(".")[0][:64]}
             if self.version is not None and self.source not in ("cache", "file"):
-                params = {"after": self.version, "tests": self.test_seq, "wait": int(self.cfg.poll_wait)}
+                params.update({"after": self.version, "tests": self.test_seq, "wait": int(self.cfg.poll_wait)})
             asked = time.monotonic()
             try:
-                answer = await mod.get("/api/mod/audio", params or None, timeout=self.cfg.poll_wait + 15)
+                answer = await mod.get("/api/mod/audio", params, timeout=self.cfg.poll_wait + 15)
             except ModApiError as err:
                 if err.status == 404:
                     if not missing_route:

@@ -13,6 +13,7 @@ cd "$(dirname "$0")/../.."
 if [[ "${1:-}" != "--no-build" ]]; then
   pnpm --filter loom-terminal build >/dev/null
   pnpm --filter loom-reinstall build >/dev/null
+  pnpm --filter loom-play build >/dev/null
 fi
 
 fail=0
@@ -31,8 +32,16 @@ for f in terminal/dist/assets/*.js reinstall/web/dist/assets/*.js; do
     echo "FAIL $f"; echo "$hits"; fail=1
   fi
 done
+# Regex lookbehind (Safari 16.4): esbuild can't lower it, so it ships as a
+# literal or as `new RegExp("(?<=…")`, and throws on Safari 14 / 15 when run.
+for f in terminal/dist/assets/*.js reinstall/web/dist/assets/*.js play/dist/assets/*.js; do
+  [[ -f "$f" ]] || continue
+  if grep -qE '\(\?<[=!]' "$f"; then
+    echo "FAIL $f: a regex lookbehind (Safari 16.4+)"; grep -oE '.{20}\(\?<[=!].{20}' "$f" | head -3; fail=1
+  fi
+done
 grep -q 'typeof globalThis.structuredClone' terminal/dist/assets/index-*.js || { echo "FAIL terminal bundle lacks the structuredClone guard"; fail=1; }
-[[ $fail -eq 0 ]] && echo "OK  bundles: no unguarded post-Chrome-87 API (terminal + reinstall)"
+[[ $fail -eq 0 ]] && echo "OK  bundles: no unguarded post-Chrome-87 API (terminal + reinstall), no regex lookbehind (+ play)"
 
 cat <<'STEPS'
 

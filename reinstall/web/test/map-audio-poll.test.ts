@@ -3,7 +3,7 @@ import { defaultAudio } from "@loom/house";
 import type { AudioFetch, AudioView } from "../src/map/audio-api.ts";
 import { runAudioPoll } from "../src/map/audio-poll.ts";
 
-const view = (version: string, tests: AudioView["tests"] = []): AudioView => ({ audio: defaultAudio(), version, source: "director", sounds: [], locations: [], tests, problems: [], warnings: [] });
+const view = (version: string, tests: AudioView["tests"] = []): AudioView => ({ audio: defaultAudio(), version, source: "director", sounds: [], locations: [], tests, router: null, problems: [], warnings: [] });
 
 /**
  * A server that answers like the real one: a GET with `after` equal to its

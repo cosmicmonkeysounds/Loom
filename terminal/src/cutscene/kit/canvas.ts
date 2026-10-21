@@ -3,6 +3,7 @@
 //! change — the scene's clock already paces the frames (≤ 30 fps).
 
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { context2d, releaseCanvas } from "../../canvas-release.ts";
 
 /** The pixel-ratio cap for every kit canvas. */
 export const MAX_DPR = 1.5;
@@ -29,7 +30,7 @@ export function useCanvas(draw: (ctx: CanvasRenderingContext2D, size: CanvasSize
     if (c === null) return;
     const s = size.current;
     if (s.w === 0 || s.h === 0) return;
-    const ctx = c.getContext("2d");
+    const ctx = context2d(c);
     if (ctx === null) return;
     ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
     drawRef.current(ctx, s);
@@ -59,5 +60,13 @@ export function useCanvas(draw: (ctx: CanvasRenderingContext2D, size: CanvasSize
     return () => window.removeEventListener("resize", measure);
   }, [pixel]);
   useEffect(paint, deps);
+  // Unmount only (a scene's canvases go with it): give their memory back.
+  useEffect(
+    () => () => {
+      releaseCanvas(ref.current);
+      size.current = { w: 0, h: 0, dpr: 1 }; // a remount (StrictMode) measures afresh
+    },
+    [],
+  );
   return ref;
 }

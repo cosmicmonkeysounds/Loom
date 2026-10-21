@@ -14,6 +14,7 @@ import type { ScreenChart } from "./screen.ts";
 import { ringChime } from "./announce.ts";
 import { BUILD } from "./health.ts";
 import { CutsceneSlot } from "./cutscene/slot.tsx";
+import { useSceneClockUp } from "./cutscene/moment-bus.ts";
 import { FLICKER_MS, chartCallouts, chartLines, formatCountdown, screenLayers, slideCopy, slideSources, slideVideoSources, y2kClock, type OverlayKind, type ScreenLayers } from "./slides.ts";
 
 /** PNGs that failed to load this page-load: go straight to the next source. */
@@ -210,6 +211,12 @@ export function OverlayView({ kind }: { kind: OverlayKind }) {
   );
 }
 
+/** The corner countdown under the cutscenes: it stands aside while a scene
+ *  draws the story's countdown itself — one clock, never two (livetv-3). */
+function SceneCorner({ seconds }: { seconds: number }) {
+  return useSceneClockUp() ? null : <CornerCountdown seconds={seconds} />;
+}
+
 /** The corner countdown: a Win98 tray box. */
 export function CornerCountdown({ seconds }: { seconds: number }) {
   return (
@@ -260,7 +267,7 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
         slide
       )}
       {layers.overlay !== null && <OverlayView kind={layers.overlay} />}
-      {layers.corner !== null && <CornerCountdown seconds={layers.corner} />}
+      {layers.corner !== null && (cutscene !== undefined ? <SceneCorner seconds={layers.corner} /> : <CornerCountdown seconds={layers.corner} />)}
       <Flicker seq={layers.flicker} />
       {covered && <div className="screen-gear">{gear}</div>}
     </>

@@ -422,7 +422,7 @@ function TruthPongTv(p: SceneProps) {
           </div>
         )}
       </div>
-      {t > 3000 && <DriftingPopups t={t} messages={PONG_POPS} count={2} seed={31} start={3000} life={7000} gap={3500} area={{ x0: 0.02, x1: 0.66, y0: 0.04, y1: 0.18 }} width="22em" reduced={reduced} />}
+      {t > 3000 && <DriftingPopups t={t} messages={PONG_POPS} count={2} seed={31} start={3000} life={7000} gap={3500} area={{ x0: 0.55, x1: 0.58, y0: 0.36, y1: 0.5 }} width="22em" reduced={reduced} />}
       <Glass t={t} reduced={reduced} strength={0.7} />
     </Stage>
   );
@@ -484,6 +484,12 @@ function needleAngle(t: number, value: number | null): number {
   return lerp(from, target, k);
 }
 
+/** The share of fact rows that read RECEIVED: all of them on a 61 % night
+ *  ("I have every fact I asked for"), a few on a 12 % one. */
+export function tallyOkRate(value: number | null): number {
+  return value === 61 ? 1 : value === 12 ? 0.2 : 0.58;
+}
+
 function RoundTwoTallyTv(p: SceneProps) {
   const { t, sfx, reduced, state } = p;
   const value = useLatch(p.seq, tallyOf(state.voice, p.night));
@@ -506,7 +512,7 @@ function RoundTwoTallyTv(p: SceneProps) {
               <div className="tv2-tally-clip">
               <div className="tv2-tally-scroll" style={{ transform: `translate3d(0, ${(-((t - TALLY.facts) / 90)).toFixed(2)}em, 0)` }}>
                 {Array.from({ length: 70 }, (_, i) => {
-                  const ok = noise1(23, i) < 0.58;
+                  const ok = noise1(23, i) < tallyOkRate(value);
                   return (
                     <div key={i} className="tv2-tally-row">
                       <span>FACT #{String(i + 1).padStart(3, "0")}</span>
@@ -1257,24 +1263,25 @@ function Y2kWall(p: SceneProps) {
 //
 //   (over whatever is up — the Y2K clock, usually)
 //   0–4000    frost creeps in from the screen's edges; a low hum
-//   1200–9000 a small COLD STORAGE window rises in the corner: the room's
+//   1200–7400 a small COLD STORAGE window rises in the corner: the room's
 //             activity meter climbs, its hum waveform swells; one line types:
 //             "Somewhere in the basement, the cold-storage room hums louder."
-//   9000–12000 it all thaws away. Nothing says who, or why.
+//   7000–9000 it all thaws away. Nothing says who, or why. (Short, so it
+//             never holds back the hour's bigger moments behind it.)
 
-const MAJ_END = 12_000;
+const MAJ_END = 9000;
 
 function MajorityTv(p: SceneProps) {
   const { t, sfx, reduced } = p;
   useSfxCues(t, sfx, [[0, "heartbeat", { gain: 0.35 }], [1200, "blip", { gain: 0.4, pitch: 0.6 }], [2600, "heartbeat", { gain: 0.35 }], [5200, "heartbeat", { gain: 0.4 }], [7800, "heartbeat", { gain: 0.3 }]]);
-  const frost = Math.min(eased(t, 0, 4000, ease.outQuad), 1 - progress(t, 9000, 2600));
-  const meter = eased(t, 1600, 6500, ease.inOutQuad);
+  const frost = Math.min(eased(t, 0, 4000, ease.outQuad), 1 - progress(t, 7000, 2000));
+  const meter = eased(t, 1600, 5000, ease.inOutQuad);
   const win = Math.min(eased(t, 1200, 500, ease.outCubic), 1 - progress(t, MAJ_END - 1600, 700));
   const line = "Somewhere in the basement, the cold-storage room hums louder.";
   return (
     <Stage bg="transparent" className="tv2">
       <Frost amount={frost} t={t} />
-      {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: -0.04, w: 1.1, start: 0, end: 9500, rate: 26, life: 5000, speed: 0.05, angle: 90, spread: 30, gravity: 0.03, sway: 0.03, size: 5, colors: ["#e8f6ff", "#ffffff", "#bfe2ff"], shape: "dot", seed: 101 }]} />}
+      {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: -0.04, w: 1.1, start: 0, end: 5500, rate: 26, life: 3500, speed: 0.05, angle: 90, spread: 30, gravity: 0.03, sway: 0.03, size: 5, colors: ["#e8f6ff", "#ffffff", "#bfe2ff"], shape: "dot", seed: 101 }]} />}
       <div className="tv2-cold" style={{ opacity: win, transform: reduced ? undefined : `translate3d(0, ${((1 - win) * 3).toFixed(2)}em, 0)` }}>
         <Win98Window title="C:\BASEMENT\COLD STORAGE" icon="lock" inactive width="100%">
           <div className="tv2-cold-row">
@@ -1306,7 +1313,7 @@ function MajorityTv(p: SceneProps) {
 
 function MajorityWall(p: SceneProps) {
   const { t, reduced, done } = p;
-  useEndAt(t, 9000, done);
+  useEndAt(t, MAJ_END, done);
   return (
     <Stage bg="transparent" className="tv2">
       <Frost amount={Math.min(eased(t, 0, 3000), 1 - progress(t, 7000, 2000))} t={t} />
@@ -1971,7 +1978,7 @@ function PurgatoryWall(p: SceneProps) {
 // ══ the act's scenes, in running order ═══════════════════════════════════════════════════════
 
 export const SCENES: SceneDef[] = [
-  { id: "five_minutes", when: [{ slide: "five_minutes" }], ms: "hold", tv: FiveMinutesTv, wall: FiveMinutesWall, face: "alarmed" },
+  { id: "five_minutes", when: [{ slide: "five_minutes" }], ms: "hold", tv: FiveMinutesTv, wall: FiveMinutesWall, face: "alarmed", countdown: true },
   { id: "summons_closed", when: [{ moment: "beat", name: "Summons Closed" }], ms: SHUT.end, tv: SummonsClosedTv, wall: SummonsClosedWall, priority: 1, face: "alarmed", faceMs: 2000 },
   { id: "truth_pong", when: [{ slide: "truth_pong" }], ms: "hold", tv: TruthPongTv, wall: TruthPongWall, face: "pleased" },
   { id: "round_two_tally", when: [{ moment: "beat", name: "Round Two Tally" }], ms: TALLY.end, tv: RoundTwoTallyTv, wall: RoundTwoTallyWall, namesCharacter: true, face: "thinking", faceMs: 8000 },
@@ -1980,7 +1987,7 @@ export const SCENES: SceneDef[] = [
   { id: "beans", when: [{ slide: "beans" }], ms: "hold", tv: BeansTv, wall: BeansWall, face: "alarmed" },
   { id: "zip", when: [{ moment: "beat", name: "Zip Everyone Out" }], ms: ZIP.end, tv: ZipTv, wall: ZipWall },
   { id: "overshare", when: [{ slide: "overshare" }], ms: "hold", tv: OvershareTv, wall: OvershareWall, namesCharacter: true, face: "glitch", faceMs: 3000 },
-  { id: "y2k", when: [{ slide: "y2k" }], ms: "hold", tv: Y2kTv, wall: Y2kWall, face: "alarmed" },
+  { id: "y2k", when: [{ slide: "y2k" }], ms: "hold", tv: Y2kTv, wall: Y2kWall, face: "alarmed", countdown: true },
   { id: "majority_reached", when: [{ moment: "beat", name: "Majority Reached" }], ms: MAJ_END, tv: MajorityTv, wall: MajorityWall, over: true, face: "curious" },
   { id: "the_heart", when: [{ moment: "beat", name: "The Heart" }], ms: HEART.end, tv: HeartTv, wall: HeartWall, namesCharacter: true, priority: 2, face: "attentive" },
   { id: "king_hit", when: [{ moment: "signal", name: "king hit" }], ms: HIT.end, tv: KingHitTv, wall: KingHitWall, over: true, priority: 1, gate: kingHeard, face: "angry", faceMs: 1500 },

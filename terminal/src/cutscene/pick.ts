@@ -10,7 +10,8 @@
 //!   A moment older than `MOMENT_STALE_MS` when this page first sees it is
 //!   skipped; the cursor resyncs on a story restart (`announceEpoch`), like
 //!   the announcements' (`planAnnounce`). The first answer after a reload
-//!   resumes whatever is still running (D2) instead of skipping it.
+//!   resumes whatever is still running (D2) instead of skipping it. A
+//!   higher-priority moment that has happened cuts the one playing short.
 //!
 //! Precedence: an overlay (blackout / alarm / go to the living room) wins
 //! over everything, and a pilot / peek / room terminal shows no scene at all
@@ -134,13 +135,18 @@ export class MomentQueue {
       this.lastEnd = 0;
       this.cursor = null;
     }
+    // The first answer this page reads (a reload, a story restart): resume
+    // whatever is still running by its own clock (D2), however long ago it
+    // began. Later answers: a moment first seen late is skipped.
+    const fresh = this.cursor === null;
     const from = this.cursor ?? Number.NEGATIVE_INFINITY;
     for (const m of list) {
       if (m.seq <= from) continue;
-      if (now - m.at > MOMENT_STALE_MS) continue; // stale on arrival (an offline tablet catching up)
+      if (!fresh && now - m.at > MOMENT_STALE_MS) continue; // stale on arrival (an offline tablet catching up)
       const def = sceneForMoment(scenes, m, target, state);
       if (def === null) continue;
       if (typeof def.ms === "number" && m.at + def.ms <= now) continue; // already over by its own clock
+      if (fresh && typeof def.ms !== "number" && now - m.at > MOMENT_HOLD_MAX_MS) continue; // a hold the queue would have ended
       if (this.playing?.w.moment.seq === m.seq || this.waiting.some((w) => w.moment.seq === m.seq)) continue;
       this.waiting.push({ def, moment: m });
     }
@@ -157,9 +163,13 @@ export class MomentQueue {
       if (this.playing !== null) {
         const { w, start } = this.playing;
         const end = start + (typeof w.def.ms === "number" ? w.def.ms : MOMENT_HOLD_MAX_MS);
-        const cut = this.finished.has(w.moment.seq);
+        // A bigger moment that has happened cuts this one short (midnight
+        // never waits behind the majority's frost), from its own `at`, so
+        // every screen cuts at the same frame.
+        const bigger = this.waiting.reduce((cutAt, x) => (priorityOf(x.def) > priorityOf(w.def) && x.moment.at <= now ? Math.min(cutAt, Math.max(x.moment.at, start)) : cutAt), Number.POSITIVE_INFINITY);
+        const cut = this.finished.has(w.moment.seq) || bigger !== Number.POSITIVE_INFINITY;
         if (!cut && now < end) return activeOf(w, start);
-        this.lastEnd = Math.min(now, end);
+        this.lastEnd = Math.min(now, end, bigger);
         this.playing = null;
       }
       if (this.waiting.length === 0) return null;
@@ -280,4 +290,11 @@ export function faceFlashFor(lead: ActiveScene | null, target: SceneTarget, seen
   seen.add(lead.key);
   if (target !== "tv" || lead.def.face === undefined) return null;
   return { mood: lead.def.face, ms: lead.def.faceMs ?? FACE_FLASH_MS };
+}
+
+/** Does a scene on screen draw the story's countdown itself (`SceneDef.countdown`)?
+ *  Then the corner countdown stands aside: one clock, never two that disagree. */
+export function drawsCountdown(p: ScenePick, target: SceneTarget): boolean {
+  const owns = (s: ScenePick["base"]) => s !== null && s !== "card" && (s.def.countdown === true || (s.def.countdown === "tv" && target === "tv"));
+  return owns(p.top) || owns(p.base);
 }
