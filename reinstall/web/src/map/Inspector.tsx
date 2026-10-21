@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById } from "@loom/house";
+import { DEFAULT_SPOT_FOV, DUCK_MAX_RISE, floorById, propSolid, roomById, voiceOn } from "@loom/house";
 import type { AudioConfig, Compass, HouseMap, PropKind, Vec3 } from "@loom/house";
 import { addSpeaker, addZone, outputLabel, outputUsers, patchSpeaker, removeSpeaker, renameSpeaker, rotateSpeaker, setSpeakerHeight, setSpeakerYaw, setZoneMember, moveSpeaker, speakerById, speakersDropped, toggleSpeakerOutput, withSpeakersText, zonesOf } from "./audio.ts";
 import type { StoryLocation } from "./check.ts";
@@ -328,6 +328,8 @@ function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied
   const location = roomById(house, t.room)?.location?.trim() || roomName;
   const view: TerminalViewName = t.view ?? "auto";
   const roomless = view === "tv" || view === "chess" || view === "casino";
+  const voice = voiceOn(house, t);
+  const inSpawn = t.room === house.spawn.room;
   const link = provisionLink(origin, t);
   return (
     <div className="inspect">
@@ -379,6 +381,17 @@ function TerminalInspector({ house, edit, commit, onNotice, origin, copy, copied
       <label className="field check" title={roomless ? "The TV, the chess board and the casino belong to no room" : "Asleep until the story opens this room to everyone, then it speaks the character's lines said there"}>
         <input type="checkbox" checked={t.speaks === true && !roomless} disabled={!edit || roomless} onChange={(e) => commit(patchTerminal(house, t.id, { speaks: e.target.checked }))} />
         room terminal (speaks for {location})
+      </label>
+      <label
+        className="field check"
+        title={
+          inSpawn
+            ? "Off by default here: the spawn room is where the headsets and the tent laptop are, so a mic and speaker here would feed back"
+            : "This tablet's mic is heard in the games at this screen, and the players near it are heard on its speaker"
+        }
+      >
+        <input type="checkbox" checked={voice} disabled={!edit} onChange={(e) => commit(patchTerminal(house, t.id, { voice: e.target.checked }))} />
+        🎤 Voice link (mic + speaker to the games){inSpawn && <span className="muted"> — off by default in the spawn room</span>}
       </label>
       <div className="field">
         provisioning link <span className="muted">(add <code>&amp;code=&lt;mod passcode&gt;</code>; the tablet takes its name, screen and room from here — or open <code>/terminal/</code> and tap this terminal)</span>
