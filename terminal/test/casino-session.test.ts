@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INITIAL, MARKED_NOTICE, NOTICE_MS, betProblem, cashOutLine, chipsFor, clampStake, openingStake, reduce, type CasinoSession } from "../src/casino/session.ts";
+import { CAPTURED_NOTICE, INITIAL, MARKED_NOTICE, NOTICE_MS, betProblem, cashOutLine, chipsFor, clampStake, openingStake, reduce, type CasinoSession } from "../src/casino/session.ts";
 
 const player = (balance: number, extra: Partial<{ restricted: boolean; wallet: boolean }> = {}) => ({ id: "g-abc123", name: "Winamp", balance, unit: "Truthcoin", restricted: false, wallet: true, ...extra });
 
@@ -19,6 +19,8 @@ describe("the casino session", () => {
     expect(reduce(INITIAL, { type: "scan", text: "https://x/?code=ABC&unlock=XYZ", now: 0 })).toMatchObject({ kind: "attract", notice: { text: "THAT'S A WALL CODE — SHOW ME YOUR PASS" } });
     const checking = reduce(INITIAL, { type: "scan", text: "g-abc123", now: 10 });
     expect(reduce(checking, { type: "resolved", player: player(100, { restricted: true }), now: 10 })).toEqual({ kind: "attract", notice: { text: MARKED_NOTICE, until: 10 + NOTICE_MS } });
+    // Wave 18: a program in the Internet is in the tent; a mark alone plays (it no longer restricts).
+    expect(reduce(checking, { type: "resolved", player: { ...player(100), captured: true }, now: 10 })).toEqual({ kind: "attract", notice: { text: CAPTURED_NOTICE, until: 10 + NOTICE_MS } });
     expect(reduce(checking, { type: "resolved", player: player(100, { wallet: false }), now: 10 })).toMatchObject({ kind: "attract" });
     // A different pass's answer never seats this one.
     expect(reduce(checking, { type: "resolved", player: { ...player(100), id: "g-ffffff" }, now: 10 })).toBe(checking);

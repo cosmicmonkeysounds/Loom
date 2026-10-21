@@ -36,8 +36,8 @@ async function call(url: string, init: RequestInit, fetcher: typeof fetch, ms: n
   }
 }
 
-/** A scanned guest: who, whether marked, and what their wallet holds (`wallet: false` — the story has no currency). */
-export async function fetchPlayer(config: Caller, id: string, o: { fetcher?: typeof fetch; timeoutMs?: number } = {}): Promise<Player & { restricted: boolean; wallet: boolean }> {
+/** A scanned guest: who, whether restricted or in the Internet, and what their wallet holds (`wallet: false` — the story has no currency). */
+export async function fetchPlayer(config: Caller, id: string, o: { fetcher?: typeof fetch; timeoutMs?: number } = {}): Promise<Player & { restricted: boolean; captured: boolean; wallet: boolean }> {
   let res: Response;
   try {
     res = await call(`${baseOf(config)}/api/state?role=guest&as=${encodeURIComponent(id)}`, { headers: { "x-loom-token": config.token } }, o.fetcher ?? fetch, o.timeoutMs ?? CALL_MS);
@@ -48,7 +48,7 @@ export async function fetchPlayer(config: Caller, id: string, o: { fetcher?: typ
   if (res.status === 401 || res.status === 403) throw new ChallengerError("moderators only", "access");
   if (res.status === 409) throw new ChallengerError("the doors are closed", "closed");
   if (!res.ok) throw new ChallengerError(`HTTP ${res.status}`, "other");
-  const v = (await res.json().catch(() => null)) as { id?: unknown; name?: unknown; restricted?: unknown; wallet?: { balance?: unknown; name?: unknown } } | null;
+  const v = (await res.json().catch(() => null)) as { id?: unknown; name?: unknown; restricted?: unknown; captured?: unknown; wallet?: { balance?: unknown; name?: unknown } } | null;
   if (v === null || typeof v.name !== "string") throw new ChallengerError("a view this terminal can't read", "other");
   const w = v.wallet;
   const wallet = w !== undefined && w !== null && typeof w.balance === "number";
@@ -56,6 +56,7 @@ export async function fetchPlayer(config: Caller, id: string, o: { fetcher?: typ
     id: typeof v.id === "string" && v.id !== "" ? v.id : id,
     name: v.name,
     restricted: v.restricted === true,
+    captured: v.captured === true,
     wallet,
     balance: wallet ? (w!.balance as number) : 0,
     unit: wallet && typeof w!.name === "string" ? w!.name : "Truthcoin",

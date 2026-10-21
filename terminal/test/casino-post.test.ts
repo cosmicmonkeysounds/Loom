@@ -13,7 +13,7 @@ describe("the casino's calls", () => {
   it("reads a player's name, mark and balance through the moderator lens", async () => {
     const seen: Array<{ url: string; init?: RequestInit }> = [];
     const p = await fetchPlayer(config, "g-abc123", { fetcher: fake(200, { id: "g-abc123", name: "Winamp", wallet: { name: "Truthcoin", balance: 140 } }, seen) });
-    expect(p).toEqual({ id: "g-abc123", name: "Winamp", restricted: false, wallet: true, balance: 140, unit: "Truthcoin" });
+    expect(p).toEqual({ id: "g-abc123", name: "Winamp", restricted: false, captured: false, wallet: true, balance: 140, unit: "Truthcoin" });
     expect(seen[0]!.url).toBe("/e/evt/api/state?role=guest&as=g-abc123");
     expect((seen[0]!.init!.headers as Record<string, string>)["x-loom-token"]).toBe("tok");
     const none = await fetchPlayer(config, "g-abc123", { fetcher: fake(200, { name: "Winamp", restricted: true }) });
