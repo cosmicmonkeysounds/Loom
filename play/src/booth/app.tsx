@@ -486,7 +486,11 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
             </BoothFrame>
             <PopOutDriver session={s} open={openers} now={storyMs} placeTitle={placeTitle} ownFireAt={() => ownFire.current} targetKey={targetKey} />
             {layer?.kind === "scan" && (
-              <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => (cardGuest.current = guestByName(id)?.id ?? id)} />
+              <ScannerScreen session={s} admin={admin} gate={passGate} caption={layer.caption} onBoard={openBoard} onClose={() => setLayer(null)} onOpenThread={openThread} onCardGuest={(id) => {
+                  cardGuest.current = guestByName(id)?.id ?? id;
+                  // The scan landed: the "Scan Winamp's pass" caption has done its job (BN-F16).
+                  setLayer((l) => (l?.kind === "scan" && l.caption !== undefined ? { kind: "scan" } : l));
+                }} />
             )}
             {layer?.kind === "guests" && <GuestsSheet view={s.view} me={character} session={token} now={storyMs} onPick={(id) => openCard(id)} onClose={() => setLayer(null)} />}
             {layer?.kind === "card" && (

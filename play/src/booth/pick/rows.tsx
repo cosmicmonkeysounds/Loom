@@ -19,6 +19,14 @@ import type { BoothObjective } from "../wire.ts";
 export const CHECK_IN_ID = "check_in_at_desktop";
 export const THEYRE_HERE = "📍 They're here";
 
+/** A row's place. On the summons list every row is someone not checked in,
+ *  wherever they stand — even in the living room (BN-F24: "Still missing"
+ *  read as if the Desktop's own were missing). */
+export function rowsPlace(place: string | null, summons: boolean): string {
+  const where = `📍 ${place ?? "not in a room"}`;
+  return summons ? `${where} · not checked in` : where;
+}
+
 /** A row button's label: the summons' check-in reads "📍 They're here"; a destructive one "· ×2" until armed. */
 export function rowLabel(i: Pick<Interaction, "id" | "label" | "arm">, armed: boolean): string {
   if (armed) return "Tap again";
@@ -126,7 +134,7 @@ export function RowsWindow(p: RowsProps) {
                         {gone ? "✓ " : ""}
                         {g.name}
                       </span>
-                      <span className="rows-place">📍 {p.placeTitle(g.location) ?? "not in a room"}</span>
+                      <span className="rows-place">{rowsPlace(p.placeTitle(g.location), summons)}</span>
                     </button>
                     <div className="rows-btns">
                       {inline.map((b) => {

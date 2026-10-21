@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { PlayerSelect, sameLabel, stepHelper } from "../src/booth/pick/select.tsx";
-import { RowsWindow, THEYRE_HERE, isSummons, rowLabel } from "../src/booth/pick/rows.tsx";
+import { RowsWindow, THEYRE_HERE, isSummons, rowLabel, rowsPlace } from "../src/booth/pick/rows.tsx";
 import { GuestTiles } from "../src/booth/pick/tiles.tsx";
 import { DoorWindow } from "../src/booth/door.tsx";
 import { WaitingWindow } from "../src/booth/waiting.tsx";
@@ -167,5 +167,13 @@ describe("Clippy's 🎤 bar (§4.9)", () => {
     expect(await moved("x", null, undefined, 1)).toMatchObject({ ok: false, moved: true });
     const refused = clippyFire({ cue: async () => ({ refused: true }) });
     expect(await refused("x", null, undefined, 1)).toEqual({ ok: true, refused: true });
+  });
+});
+
+describe("the summons rows' place (BN-F24)", () => {
+  it("says not checked in on the summons list, wherever they stand", () => {
+    expect(rowsPlace("The Desktop (living room)", true)).toBe("📍 The Desktop (living room) · not checked in");
+    expect(rowsPlace("The Cloud", false)).toBe("📍 The Cloud");
+    expect(rowsPlace(null, false)).toBe("📍 not in a room");
   });
 });
