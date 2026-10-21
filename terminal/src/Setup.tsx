@@ -353,7 +353,7 @@ export function Setup({
                 {tested !== null && <span className="muted small">{tested}</span>}
               </div>
               <label>
-                say the house announcements <span className="muted">(the house setting lists the tablets the house speakers don't reach)</span>
+                say the house announcements <span className="muted">(house setting = this spot's 📢 on Run → Terminals)</span>
                 <select value={announceChoiceValue(announce)} onChange={(e) => setAnnounce(announceFromChoice(e.target.value))}>
                   <option value="house">house setting{spotAnnounce === null ? "" : spotAnnounce ? " (this spot: says them)" : " (this spot: doesn't)"}</option>
                   <option value="always">always</option>
