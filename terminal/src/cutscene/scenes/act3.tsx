@@ -276,6 +276,8 @@ function BobTank({ t, rise, reduced, apples = 5, bag = true, lift = 0 }: { t: nu
       </g>
       {Array.from({ length: apples }, (_, i) => {
         const x = 26 + i * (150 / Math.max(1, apples - 1));
+        // A floating bag has the middle of the surface to itself.
+        if (lift > 0 && Math.abs(x - 100) < 20) return null;
         const bob = Math.sin(tt / 700 + i * 1.7) * 2.2;
         return <Apple key={i} x={x + Math.sin(tt / 2100 + i) * 3} y={surface - 1 + bob} r={5.5} rot={Math.sin(tt / 900 + i) * 12} />;
       })}
@@ -1085,10 +1087,10 @@ function HandJive({ t, sfx, reduced, target }: SceneProps) {
 //             twinkle, the five awards of every night scroll along the bottom
 //             (the bonus ones are the host's call, so the TV never promises them)
 
-/** The ticker under the ceremony: the main awards only, then the sub line. */
+/** The ticker under the ceremony: the main awards only, then a nudge to applaud. */
 export const CEREMONY_ROLL = `${AWARDS.filter((a) => a.kind === "Award")
   .map((a) => a.title.toUpperCase())
-  .join("  ★  ")}  ★  COME UP WHEN YOUR NAME IS CALLED  ★  `;
+  .join("  ★  ")}  ★  PLEASE APPLAUD AFTER EACH ONE  ★  `;
 
 function twinkles(n: number, seed: number): Emitter[] {
   return [{ x: 0.5, y: 0.45, w: 1, h: 0.9, start: 0, end: 10_000_000, rate: n, life: 1600, speed: 0.01, angle: -90, spread: 360, size: 10, colors: ["#fff6c8", "#ffd23f", "#ffffff"], shape: "star", seed, fade: 0.6 }];
