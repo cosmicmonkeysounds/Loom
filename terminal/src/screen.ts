@@ -162,6 +162,10 @@ export interface ScreenNight {
   phase: string | null;
   step: number | null;
   bottle_pick: string | null;
+  /** The bottle waits on its pick's Truth or Dare. */
+  bottle_open: boolean | null;
+  /** Which hunt question's results are being read (0 before the first). */
+  results_q: number | null;
   /** Only while an `award_*` slide is up. */
   award_winner: string | null;
   award_value: string | number | null;
@@ -170,7 +174,7 @@ export interface ScreenNight {
   alerts: string | null;
 }
 
-export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null };
+export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null };
 
 /** The night block off the wire; anything missing or malformed is null. */
 export function nightOf(raw: unknown): ScreenNight {
@@ -184,6 +188,8 @@ export function nightOf(raw: unknown): ScreenNight {
     phase: str(r["phase"]),
     step: num(r["step"]),
     bottle_pick: str(r["bottle_pick"]),
+    bottle_open: typeof r["bottle_open"] === "boolean" ? r["bottle_open"] : null,
+    results_q: num(r["results_q"]),
     award_winner: str(r["award_winner"]),
     award_value: typeof value === "string" ? value : num(value),
     help_votes: num(r["help_votes"]),

@@ -65,7 +65,6 @@ import {
   BOTTLE_EMPTY_SPIN_MS,
   BOTTLE_SPIN_MS,
   BOTTLE_SEATS,
-  EMPTY_RESULTS,
   bottleFree,
   bottleLanding,
   bottleSeat,
@@ -76,12 +75,11 @@ import {
   momentNear,
   odometerWheel,
   periodicCues,
-  resolveResults,
+  resultsKind,
   seatAngle,
   seatUnder,
   windowClock,
   type ResultsKind,
-  type ResultsMemory,
 } from "../kit/tv1-time.ts";
 
 const copy = (v: string) => SLIDE_COPY[v] ?? { title: v.toUpperCase(), lines: [] };
@@ -751,34 +749,11 @@ function ReturnWall({ t, sfx, reduced }: SceneProps) {
 
 // --- B8 · the results ------------------------------------------------------------------------
 
-const RESULTS_KEY = "loom.tv1.results";
-let resultsMemo: ResultsMemory | null = null;
-
-function loadResults(): ResultsMemory {
-  try {
-    const raw = window.localStorage.getItem(RESULTS_KEY);
-    if (raw === null) return EMPTY_RESULTS;
-    const m = JSON.parse(raw) as ResultsMemory;
-    return Array.isArray(m.seqs) && typeof m.slides === "object" && m.slides !== null ? m : EMPTY_RESULTS;
-  } catch {
-    return EMPTY_RESULTS;
-  }
-}
-
-/** What this results slide is about, learned once and kept (a reload keeps it: the TV's own memory). */
+/** What this results slide is about, learned once (the moment it came with may leave the ring; `results_q` says the rest). */
 function useResultsKind(state: ScreenState, at: number): ResultsKind {
   const latched = useRef<ResultsKind | null>(null);
-  const mem = resultsMemo ?? (resultsMemo = typeof window === "undefined" ? EMPTY_RESULTS : loadResults());
-  const r = resolveResults(mem, state.announceEpoch, state.moments, at);
-  if (r.mem !== mem) {
-    resultsMemo = r.mem;
-    try {
-      window.localStorage.setItem(RESULTS_KEY, JSON.stringify(r.mem));
-    } catch {
-      /* private mode: memory only */
-    }
-  }
-  if (latched.current === null || latched.current.kind === "unknown") latched.current = r.kind;
+  const r = resultsKind(state.moments, state.night, at);
+  if (latched.current === null || latched.current.kind === "unknown" || (latched.current.kind === "question" && latched.current.n === null && r.kind === "question")) latched.current = r;
   return latched.current;
 }
 

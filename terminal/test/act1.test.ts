@@ -244,3 +244,18 @@ describe("act 1 — the bottle's landing under his voice", () => {
     for (const [, , o] of cues) expect(o.over).toBe(true);
   });
 });
+
+describe("act 1 — a results card's number is the story's", () => {
+  const scene = SCENES.find((s) => s.id === "hunt_results")!;
+  it("QUESTION n and its text come from night.results_q; with no count, no number", () => {
+    const at = 5_000_000;
+    const moments: ScreenMoment[] = [{ seq: 50, at, kind: "signal", name: "read_the_results", who: null, kept: false }];
+    const draw = (q: number | null) => {
+      const state = fakeState({ now: at + 3000, moments, night: { results_q: q } });
+      return renderToStaticMarkup(createElement(scene.tv!, props({ t: 3000, at: at + 1, state, value: "hunt_results" })));
+    };
+    expect(draw(2)).toContain("QUESTION 2");
+    expect(draw(2)).not.toContain("QUESTION 1");
+    expect(draw(null)).not.toMatch(/QUESTION \d/u);
+  });
+});

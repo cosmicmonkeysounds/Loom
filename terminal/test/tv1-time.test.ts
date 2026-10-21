@@ -3,7 +3,6 @@ import {
   BOTTLE_SEATS,
   BOTTLE_EMPTY_SPIN_MS,
   BOTTLE_SPIN_MS,
-  EMPTY_RESULTS,
   INTRO_POST,
   bootLinesAt,
   bottleFree,
@@ -24,7 +23,7 @@ import {
   odometerWheel,
   periodicCues,
   rainColumn,
-  resolveResults,
+  resultsKind,
   seatAngle,
   seatUnder,
   windowClock,
@@ -93,26 +92,19 @@ describe("tv1 time — reading the moments", () => {
     expect(momentAfter(moments, "beat", ["filing closed"], 10_000)).toBeNull();
   });
 
-  it("tells the filing window from a question's results and numbers the questions", () => {
-    let r = resolveResults(EMPTY_RESULTS, "e1", moments.slice(0, 1), 5100);
-    expect(r.kind).toEqual({ kind: "filing" });
-    r = resolveResults(r.mem, "e1", moments.slice(0, 3), 50_050);
-    expect(r.kind).toEqual({ kind: "question", n: 1 });
-    r = resolveResults(r.mem, "e1", moments, 120_100);
-    expect(r.kind).toEqual({ kind: "question", n: 2 });
-    // A reload (the ring has moved on): the memory keeps the slide's answer.
-    expect(resolveResults(r.mem, "e1", [], 50_050).kind).toEqual({ kind: "question", n: 1 });
-    // History, or nothing to go on: unknown.
-    expect(resolveResults(r.mem, "e1", [], 0).kind).toEqual({ kind: "unknown" });
-    expect(resolveResults(r.mem, "e1", [], 777).kind).toEqual({ kind: "unknown" });
-  });
-
-  it("a story restart forgets the questions; past three it shows no number", () => {
-    let r = resolveResults(EMPTY_RESULTS, "e1", moments, 120_100);
-    r = resolveResults(r.mem, "e2", [m(3, 7000, "signal", "read_the_results")], 7000);
-    expect(r.kind).toEqual({ kind: "question", n: 1 });
-    const many = [1, 2, 3, 4].map((i) => m(i, i * 1000, "signal", "read_the_results"));
-    expect(resolveResults(EMPTY_RESULTS, "e3", many, 4000).kind).toEqual({ kind: "question", n: null });
+  it("tells the filing window from a question's results; the number is the story's own (results_q)", () => {
+    const night = (q: number | null) => ({ results_q: q });
+    expect(resultsKind(moments, night(0), 5100)).toEqual({ kind: "filing" });
+    expect(resultsKind(moments, night(1), 50_050)).toEqual({ kind: "question", n: 1 });
+    // A TV that missed the first press still numbers the second right: the count is the server's.
+    expect(resultsKind(moments.slice(3), night(2), 120_100)).toEqual({ kind: "question", n: 2 });
+    // History (at 0) or a ring that moved on: the story's count says which.
+    expect(resultsKind([], night(3), 0)).toEqual({ kind: "question", n: 3 });
+    expect(resultsKind([], night(0), 0)).toEqual({ kind: "filing" });
+    // An older server (no results_q): a question with no number; nothing to go on: unknown.
+    expect(resultsKind(moments, night(null), 50_050)).toEqual({ kind: "question", n: null });
+    expect(resultsKind([], night(null), 777)).toEqual({ kind: "unknown" });
+    expect(resultsKind([], night(7), 777)).toEqual({ kind: "unknown" });
   });
 });
 

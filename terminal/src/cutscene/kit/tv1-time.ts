@@ -5,7 +5,7 @@
 //! reload resumes it. `scenes/act1.tsx` draws them; `test/act1.test.ts` pins them.
 
 import { foldName } from "../../config.ts";
-import type { ScreenMoment, ScreenState } from "../../screen.ts";
+import type { ScreenMoment, ScreenNight, ScreenState } from "../../screen.ts";
 import { clamp01, ease, hashSeed, lerp, loop, noise1, progress } from "./time.ts";
 
 // --- a take that ends early -----------------------------------------------------------
@@ -100,48 +100,27 @@ export function momentAfter(moments: readonly ScreenMoment[], kind: ScreenMoment
 
 // --- the results card ---------------------------------------------------------------------
 
-/** What a `hunt_results` slide is about: the filing window opening, one question's results, or (history / an older server) unknown. */
+/** What a `hunt_results` slide is about: the filing window opening, one question's results, or (an older server, nothing to go on) unknown. */
 export type ResultsKind = { kind: "filing" } | { kind: "question"; n: number | null } | { kind: "unknown" };
 
-/** The results presses this TV has seen, per story (`announceEpoch`): question n is the n-th. */
-export interface ResultsMemory {
-  epoch: string | null;
-  /** The `read_the_results` moments' seqs, in order. */
-  seqs: number[];
-  /** Each results slide resolved so far, by its `at` (a reload keeps its card). */
-  slides: Record<string, ResultsKind>;
-}
-
-export const EMPTY_RESULTS: ResultsMemory = { epoch: null, seqs: [], slides: {} };
-
 /**
- * Resolve a results slide (at `at`) against the moments, remembering what
- * it learns. The window is `first_moment_of_truth`; a question is a
- * `read_the_results` press, numbered by how many this TV has seen this
- * story (shown only for 1–3: a TV that missed a press shows no number, it
- * never shows a wrong one past three). Pure: returns the new memory.
+ * What the results slide (cued at `at`) is about. The press it came with
+ * says which (`first_moment_of_truth` = the window, `read_the_results` = a
+ * question); the story's `Night.results_q` says which question — the
+ * server's count, never this screen's (a TV that was off for a press still
+ * numbers the next one right). `results_q` is current, and only a results
+ * press changes it (and re-cues the slide), so it also tells a slide from
+ * history: 0 = the window, 1–3 = that question. An older server sends no
+ * `results_q`: a question then shows no number.
  */
-export function resolveResults(mem: ResultsMemory, epoch: string | null, moments: readonly ScreenMoment[], at: number): { kind: ResultsKind; mem: ResultsMemory } {
-  let m: ResultsMemory = mem.epoch === epoch ? mem : { epoch, seqs: [], slides: {} };
-  // Learn every results press on the wire (they arrive in seq order).
-  for (const x of moments) {
-    if (x.kind === "signal" && foldName(x.name) === foldName("read_the_results") && !m.seqs.includes(x.seq)) m = { ...m, seqs: [...m.seqs, x.seq].sort((a, b) => a - b) };
-  }
-  const key = String(at);
-  const known = m.slides[key];
-  if (known !== undefined) return { kind: known, mem: m };
-  if (!(at > 0)) return { kind: { kind: "unknown" }, mem: m };
-  let kind: ResultsKind | null = null;
-  if (momentNear(moments, "signal", ["first_moment_of_truth"], at) !== null) kind = { kind: "filing" };
-  else {
-    const q = momentNear(moments, "signal", ["read_the_results"], at);
-    if (q !== null) {
-      const n = m.seqs.indexOf(q.seq) + 1;
-      kind = { kind: "question", n: n >= 1 && n <= 3 ? n : null };
-    }
-  }
-  if (kind === null) return { kind: { kind: "unknown" }, mem: m };
-  return { kind, mem: { ...m, slides: { ...m.slides, [key]: kind } } };
+export function resultsKind(moments: readonly ScreenMoment[], night: Pick<ScreenNight, "results_q">, at: number): ResultsKind {
+  const q = night.results_q;
+  const n = q !== null && Number.isInteger(q) && q >= 1 && q <= 3 ? q : null;
+  if (momentNear(moments, "signal", ["first_moment_of_truth"], at) !== null) return { kind: "filing" };
+  if (momentNear(moments, "signal", ["read_the_results"], at) !== null) return { kind: "question", n };
+  if (q === 0) return { kind: "filing" };
+  if (n !== null) return { kind: "question", n };
+  return { kind: "unknown" };
 }
 
 // --- countdowns -------------------------------------------------------------------------------
