@@ -50,12 +50,14 @@ import {
   RunMode,
   stampAgentQueues,
   storyNow,
+  withFoundedFactions,
   type CastSummary,
   type ChannelSummary,
   type CockpitMessage,
   type CockpitNotice,
   type CockpitState,
   type FactionSummary,
+  type FoundedFaction,
   type LastRun,
   type LedgerEntry,
   type Lens,
@@ -107,6 +109,8 @@ interface ModSnapshot {
   countdowns?: CountdownSummary[]
   /** Wave 18b, faction mode only. */
   race?: RaceView
+  /** w18 crews: every live guest-founded crew (a founded faction in faction mode). */
+  crews?: FoundedFaction[]
 }
 
 /** What the server tells every console on a lifecycle transition. */
@@ -423,7 +427,7 @@ export const useOperate = create<OperateState>((set, get) => {
     let last: { frame: number | null; snap: Partial<ModSnapshot> } | null = null
     const applySnap = (snap: Partial<ModSnapshot>) => {
       const me = get().me
-      const roster = snap.roster ?? []
+      const roster = withFoundedFactions(snap.roster ?? [], snap.crews, snap.race !== undefined)
       const sel = get().selection
       set({
         phase: snap.phase !== undefined ? phaseOf(snap.phase) : get().phase,

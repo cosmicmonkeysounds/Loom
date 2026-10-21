@@ -229,6 +229,30 @@ export interface RosterRow {
   /** Wave 18b: the story's `badge:` lines true for them now (🚻 Bathroom
    *  Mode); absent when none is (and from an older server). */
   badges?: NameBadge[]
+  /** Wave 18b, faction mode only: the guest-founded faction they belong to
+   *  (`ModView.crews`, client-joined by `withFoundedFactions`). A founded
+   *  faction is no declared side, so `faction` reads null for its members. */
+  founded?: { id: string; name: string } | null
+}
+
+/** A founded faction as `ModView.crews` carries it (the parts the cockpit reads). */
+export interface FoundedFaction {
+  id: string
+  name: string
+  members: readonly string[]
+}
+
+/** Each roster row's founded faction, in faction mode (a story with a
+ *  `founding:` line: `race` is present); outside it a crew is a friends'
+ *  club, not a faction, and the rows are left alone. */
+export function withFoundedFactions(rows: readonly RosterRow[], crews: readonly FoundedFaction[] | undefined, factionMode: boolean): RosterRow[] {
+  if (!factionMode || crews === undefined || crews.length === 0) return rows as RosterRow[]
+  const of = new Map<string, { id: string; name: string }>()
+  for (const c of crews) for (const m of c.members) if (!of.has(m)) of.set(m, { id: c.id, name: c.name })
+  return rows.map((r) => {
+    const f = of.get(r.id)
+    return f === undefined ? r : { ...r, founded: f }
+  })
 }
 
 export interface CockpitMessage {

@@ -91,7 +91,7 @@ function GuestChip({ r }: { r: RosterRow }) {
         </span>
       )}
       <NameBadges badges={r.badges} className="shrink-0 text-[11px]" />
-      <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />
+      <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} founded={locked ? null : r.founded} />
     </button>
   )
 }

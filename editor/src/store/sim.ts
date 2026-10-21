@@ -29,6 +29,7 @@ import {
   OPERATOR_LENS,
   RunBackend,
   RunMode,
+  withFoundedFactions,
   type CockpitState,
   type Lens,
   type RunInfo,
@@ -157,7 +158,11 @@ export const useSim = create<SimState>((set, get) => {
     const lens = lensFor(s.perspective)
     const perspective = s.perspective === OPERATOR_LENS || lens !== null ? s.perspective : OPERATOR_LENS
     set({
-      roster: view.roster.map((r) => ({ ...r, owner: s.personas.includes(r.id) ? ME : null })),
+      roster: withFoundedFactions(
+        view.roster.map((r) => ({ ...r, owner: s.personas.includes(r.id) ? ME : null })),
+        view.crews,
+        view.race !== undefined,
+      ),
       factions: view.factions,
       locations: view.locations,
       cast: view.cast,

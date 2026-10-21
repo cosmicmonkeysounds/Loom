@@ -701,7 +701,7 @@ export function RosterTab() {
                 <div className="text-[10px] text-zinc-600">{r.id}</div>
               </td>
               <td className="px-3 py-2">
-                <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />
+                <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} founded={locked ? null : r.founded} />
               </td>
               <td className="px-3 py-2 text-zinc-400">{r.location ?? '—'}</td>
               <td className="px-3 py-2 text-zinc-300">{r.score}</td>
