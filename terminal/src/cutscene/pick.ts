@@ -76,9 +76,10 @@ export function introduced(state: Pick<ScreenState, "character"> | null): boolea
   return state !== null && state.character !== null && state.character.hidden === false;
 }
 
-/** May this scene play now (the introduction gate)? */
-export function allowed(def: SceneDef, state: Pick<ScreenState, "character"> | null): boolean {
-  return def.namesCharacter !== true || introduced(state);
+/** May this scene play now (the introduction gate, then the scene's own `gate` on the night)? */
+export function allowed(def: SceneDef, state: (Pick<ScreenState, "character"> & { night?: ScreenState["night"] }) | null): boolean {
+  if (def.namesCharacter === true && !introduced(state)) return false;
+  return def.gate === undefined || state?.night === undefined || def.gate(state.night);
 }
 
 const priorityOf = (d: SceneDef) => d.priority ?? 0;

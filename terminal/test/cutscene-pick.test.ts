@@ -162,6 +162,20 @@ describe("the slide's scene", () => {
     expect(pickScene({ state: s, now: T0 + 10, layers: { overlay: null, slide: null }, bare: false, target: "tv", scenes: [mNamed, mSafe], queue: q }).top?.def.id).toBe("msafe");
   });
 
+  it("a scene's own gate reads the night: a moment it refuses is never queued", () => {
+    const hit = def({ id: "hit", when: [{ moment: "signal", name: "king hit" }], ms: 5000, gate: (n) => n.ended !== true });
+    const over = state({ night: { ...EMPTY_NIGHT, ended: true }, moments: [m(1, T0, "signal", "king hit")] });
+    expect(allowed(hit, state())).toBe(true);
+    expect(allowed(hit, over)).toBe(false);
+    expect(allowed(hit, { character: over.character })).toBe(true); // no night, no gate
+    const q = new MomentQueue();
+    q.update(over, T0 + 10, [hit], "tv");
+    expect(q.pending).toBe(0);
+    const live = state({ moments: [m(2, T0 + 20, "signal", "king hit")] });
+    q.update(live, T0 + 30, [hit], "tv");
+    expect(q.current(T0 + 30)?.def.id).toBe("hit");
+  });
+
   it("a scene that ended itself early gives way to the card", () => {
     const q = new MomentQueue();
     const p = pickScene({ state: state(), now: T0 + 1000, layers: { overlay: null, slide: slide("bingo", T0, 3) }, bare: false, target: "tv", scenes: SCENES, queue: q, slideDone: (seq) => seq === 3 });

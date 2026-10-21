@@ -63,6 +63,9 @@ export interface SceneDef {
   priority?: number;
   /** Says or shows the character's name: never before the introduction. */
   namesCharacter?: boolean;
+  /** May it play on this night (the story's own gates: not after an ending …)? Checked
+   *  with the introduction gate, on arrival; absent = always. */
+  gate?: (night: ScreenNight) => boolean;
   /** A moment scene that draws over the slide under it (a popup) instead of in its place. */
   over?: boolean;
   /** The TV face's one-shot mood when the scene starts (`FaceHandle.flash`). */
