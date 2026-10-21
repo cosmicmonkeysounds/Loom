@@ -21,7 +21,7 @@ import { kingSignal, validateHouse, type HouseMap, type KingState, type MapVaria
 
 import { asNumber, truthy } from "../src/runtime/expr.ts";
 import { Sim, type SimEvent } from "../src/runtime/sim/index.ts";
-import { namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
+import { foldCode, namedEvents, type SimModel } from "../src/runtime/sim/model.ts";
 import { allSnapshotFlags, awardOnly, callsCue, cueState, guestCardView, interactionSubjectOnly, isCaller, guestFlags, guestView, modView, staffRoomChannels, notePress, pressMovedArm, pressRefusal, pressRefused, primeView, scanRefused, rosterRow, staffRoomIds, themeOf, titleOf, type AgentMindSummary, type GuestView, type ModPresence, type ModView, type PrimeView, type RuntimePhase } from "./views.ts";
 import { passOk, type Passcodes } from "./auth.ts";
 import { SessionStore } from "./session.ts";
@@ -5116,7 +5116,25 @@ export class EventRuntime {
         this.fanout(events);
         if (events.some((e) => e.type === "codexMissed" && e.person === id)) this.redeemMisses.record(id);
         const hit = events.find((e): e is Extract<SimEvent, { type: "codexUnlocked" }> => e.type === "codexUnlocked" && e.person === id);
-        sendJson(res, 200, { ok: true, unlocked: hit !== undefined ? hit.entry : null, codex: guestView(this.sim!, id).codex });
+        const missed = events.some((e) => e.type === "codexMissed" && e.person === id);
+        // Wave 18b (R1): the entry's title for a hit, and for a code whose
+        // entry the guest already holds (`already`) — looked up only once
+        // they hold it, so a miss never names a code's entry.
+        let already: string | null = null;
+        if (hit === undefined && !missed) {
+          const entry = this.sim!.model.codexCodes.get(foldCode(code));
+          if (entry !== undefined && this.sim!.holdsCodex(id, entry)) already = entry;
+        }
+        const shown = hit !== undefined ? hit.entry : already;
+        const title = shown !== null ? (this.sim!.model.codex.get(shown)?.title ?? null) : null;
+        sendJson(res, 200, {
+          ok: true,
+          unlocked: hit !== undefined ? hit.entry : null,
+          ...(title !== null ? { title } : {}),
+          ...(already !== null ? { already } : {}),
+          ...(missed ? { missed: true } : {}),
+          codex: guestView(this.sim!, id).codex,
+        });
         return true;
       }
       case "/api/guest/codex/share": {

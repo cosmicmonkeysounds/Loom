@@ -244,3 +244,78 @@ describe("a restricted guest (wave 4, lane E)", () => {
     expect((await checkin(rt, g.token, "the-cache")).status).toBe(200);
   });
 });
+
+// ───────────────────────── wave 18b (R1): what a scan answers ─────────────────────────
+
+const SCAN_SOURCE = `# Scan Answers
+start: Hall
+
+LOCATION Hall
+LOCATION The Cache
+  label: The Cache Room
+LOCATION Attic
+
+ROLE Guest
+  when checked_in for guest:
+    if at == "The Cache":
+      move guest to The Cache
+      reply 📍 Checked in at the Cache.
+    else:
+      reply !⛔ Not the attic, not tonight.
+
+CODEX The Duck Count
+  code: DUCKS
+  text:
+    Seven ducks.
+
+CODEX The Secret Recipe
+  code: RECIPE
+  text:
+    Butter.
+
+== Hall
+  setting: Hall
+Narrator: The hall.
+`;
+
+function freshScan(): EventRuntime {
+  const dir = mkdtempSync(join(tmpdir(), "loom-scan-"));
+  dirs.push(dir);
+  const rt = new EventRuntime({ eventId: "evt", store: new Store(dir), codes: CODES, scenarioName: "scan", scenarioSource: SCAN_SOURCE, joinBase: () => "http://localhost", now: () => clock });
+  rt.openDoors();
+  return rt;
+}
+
+describe("scan answers (wave 18b, R1)", () => {
+  it("a check-in answers the room's label and the story's replies to this guest", async () => {
+    const rt = freshScan();
+    const g = await guest(rt);
+    const r = await checkin(rt, g.token, "the-cache");
+    expect(r.json).toMatchObject({ ok: true, at: "The Cache", moved: true, room: "The Cache Room", replies: ["📍 Checked in at the Cache."] });
+    clock += CHECKIN_COOLDOWN_MS + 1;
+    // The story's own refusal: no move, its reply (the `!` stripped).
+    const no = await checkin(rt, g.token, "attic");
+    expect(no.json).toMatchObject({ ok: true, moved: false, room: "Attic", replies: ["⛔ Not the attic, not tonight."] });
+  });
+
+  it("a redeem names the entry for a hit and a duplicate, and never for a miss", async () => {
+    const rt = freshScan();
+    const g = await guest(rt);
+    const redeem = (code: string) => post(rt, "/api/guest/codex/redeem", { token: g.token, code });
+    const hit = await redeem("ducks");
+    expect(hit.json).toMatchObject({ ok: true, unlocked: "The Duck Count", title: "The Duck Count" });
+    expect(hit.json).not.toHaveProperty("already");
+    expect(hit.json).not.toHaveProperty("missed");
+    const dup = await redeem("DUCKS");
+    expect(dup.json).toMatchObject({ ok: true, unlocked: null, already: "The Duck Count", title: "The Duck Count" });
+    const miss = await redeem("GOOSE");
+    expect(miss.json).toMatchObject({ ok: true, unlocked: null, missed: true });
+    expect(miss.json).not.toHaveProperty("title");
+    expect(miss.json).not.toHaveProperty("already");
+    // A code the guest doesn't hold yet is a hit, never "already" — and
+    // nobody else's holding leaks through someone's duplicate.
+    const other = await guest(rt, "Bob");
+    const theirs = await post(rt, "/api/guest/codex/redeem", { token: other.token, code: "DUCKS" });
+    expect(theirs.json).toMatchObject({ unlocked: "The Duck Count", title: "The Duck Count" });
+  });
+});
