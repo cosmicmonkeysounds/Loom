@@ -1,16 +1,17 @@
 //! The Stage — the director's floor plan. One card per LOCATION with the
 //! guests standing in it as live chips (presence · story position ·
-//! decision/captured/restricted badges), an "Elsewhere" card for the unplaced, and a
-//! cast strip showing which performers are actually signed in. Everything
-//! clicks through to the Inspector, so "who is that and what are they
-//! doing" is one glance + one click from any cockpit page.
+//! decision/captured/restricted badges, and wave 18b's `badge:` lines),
+//! an "Elsewhere" card for the unplaced, and a cast strip showing which
+//! performers are actually signed in. Everything clicks through to the
+//! Inspector, so "who is that and what are they doing" is one glance + one
+//! click from any cockpit page.
 
 import { useState } from 'react'
 import clsx from 'clsx'
 import { CockpitTab, SelectionKind, useCockpit, type CastSummary, type RosterRow } from '@/store/cockpit'
 import { useGraph } from '@/store/graph'
 import { openContextMenu } from '@/store/context-menu'
-import { FactionPill } from './ui'
+import { FactionPill, NameBadges } from './ui'
 import { PartPresence, castPresence, isSignedIn, partPresenceTitle, performerParts } from './parts'
 import { publicFaction } from './format'
 import { PresenceDot } from './presence'
@@ -89,6 +90,7 @@ function GuestChip({ r }: { r: RosterRow }) {
           ⛔
         </span>
       )}
+      <NameBadges badges={r.badges} className="shrink-0 text-[11px]" />
       <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />
     </button>
   )

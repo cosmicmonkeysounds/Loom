@@ -28,6 +28,7 @@ import {
 import { promptText } from '@/store/dialog'
 import { PANE_PX, PaneWidth, performerParts, reseatTarget, usePlayers, type PlayerSlot } from '@/store/players'
 import { useInspect } from './inspect'
+import { badgeText } from './format'
 import { usePlayAs } from './play-as'
 
 /** Why a pane has no live session right now. */
@@ -323,6 +324,7 @@ function Toolbar() {
         {openGuests.map((r) => (
           <option key={r.id} value={r.id}>
             {r.name}
+            {badgeText(r.badges)}
             {isPersonaId(r.id) ? (r.owner ? ` · ${r.owner}'s persona` : ' · persona') : ' · real guest'}
           </option>
         ))}

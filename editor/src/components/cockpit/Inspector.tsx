@@ -545,6 +545,11 @@ function GuestInspector({ id }: { id: string }) {
           )}
           {row.captured && <span className="text-xs text-red-400">🔒 captured</span>}
           {row.restricted && <span className="text-xs text-red-400" title="restricted">⛔ restricted</span>}
+          {(row.badges ?? []).map((b) => (
+            <span key={`${b.glyph}${b.label}`} className="text-xs text-zinc-300" data-testid="inspector-badge">
+              {b.glyph} {b.label}
+            </span>
+          ))}
           <button
             onClick={() => {
               setPerspective(id)
