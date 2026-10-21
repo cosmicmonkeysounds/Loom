@@ -83,9 +83,8 @@ describe("act 1 — the triggers are the story's", () => {
 
   it("the introduction's greeting is the story's own line", () => {
     expect(INTRO_HELLO).toBe("HELLO, PROGRAMS.");
-    expect(story).toContain("Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running.");
-    expect(story).toContain("I am Trabolta. I keep the computer running.");
-    expect(INTRO_LINE).toBe("I am Trabolta. I keep the computer running.");
+    // The whole line, as the TV says it (its captions follow the voice).
+    expect(story).toContain(`Trabolta: ${INTRO_HELLO} ${INTRO_LINE}\n`);
   });
 
   it("a wall's shorter take ends inside its scene's length (it ends itself, never a blank wait)", () => {

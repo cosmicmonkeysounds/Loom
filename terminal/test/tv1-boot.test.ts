@@ -2,7 +2,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
-import { INTRO_HELLO, INTRO_LINE, INTRO_MS, INTRO_WALL_MS, IN, IntroTv, IntroWall, POWER_ON_MS, POWER_ON_WALL_MS, PowerOnTv, PowerOnWall } from "../src/cutscene/kit/tv1-boot.tsx";
+import { INTRO_CAPTIONS, INTRO_FACE_DONE, INTRO_HELLO, INTRO_LINE, INTRO_MS, INTRO_SFX, INTRO_VOICE_END, INTRO_WALL_MS, IN, IntroTv, IntroWall, POWER_ON_MS, POWER_ON_WALL_MS, PowerOnTv, PowerOnWall, introFacePose } from "../src/cutscene/kit/tv1-boot.tsx";
+import { INTRO_VOICE } from "../src/cutscene/kit/tv1-time.ts";
 import type { SceneProps } from "../src/cutscene/types.ts";
 
 beforeAll(() => {
@@ -19,20 +20,49 @@ function draw(View: (p: SceneProps) => unknown, t: number, introduced = true): s
 }
 
 describe("tv1 boot — the introduction", () => {
-  it("runs 20–30 s in order: POST, loading, logo, face, greeting, hand-back", () => {
+  it("runs 20–30 s in order: boot + face, the greeting, the setup, the logo, ALL SYSTEMS ONLINE, the hand-back", () => {
     expect(INTRO_MS).toBeGreaterThanOrEqual(20_000);
     expect(INTRO_MS).toBeLessThanOrEqual(30_000);
-    expect(IN.post < IN.loading && IN.loading < IN.splash && IN.splash < IN.face && IN.face < IN.hello && IN.hello < IN.back && IN.back < IN.end).toBe(true);
+    const order = [IN.post, IN.face, IN.hello, IN.voiceEnd, IN.montage, IN.setup, IN.logo, IN.online, IN.back, IN.end];
+    for (let i = 1; i < order.length; i++) expect(order[i]!, `phase ${i}`).toBeGreaterThan(order[i - 1]!);
+    expect(IN.back - IN.online).toBeGreaterThanOrEqual(2000);
+  });
+
+  it("is in step with his voice: the face is whole and the greeting is up when the TV starts saying the line", () => {
+    // The TV speaks the beat's line on the poll that brings the beat (≈ 0.5–2.5 s in).
+    expect(INTRO_FACE_DONE).toBeLessThanOrEqual(IN.hello + 50);
+    expect(INTRO_FACE_DONE).toBeLessThanOrEqual(1600);
+    expect(INTRO_CAPTIONS[0]!.start).toBe(INTRO_VOICE.start);
+    expect(INTRO_VOICE.start).toBeLessThanOrEqual(2000);
+    // The captions are the line, word for word, and last about as long as it takes to say (8–12 s).
+    expect(INTRO_CAPTIONS.map((c) => c.text).join(" ")).toBe(`${INTRO_HELLO} ${INTRO_LINE}`);
+    expect(INTRO_VOICE_END - INTRO_VOICE.start).toBeGreaterThanOrEqual(8000);
+    expect(INTRO_VOICE_END - INTRO_VOICE.start).toBeLessThanOrEqual(12_000);
+    // Each sentence is on screen while it is said; none is typed after the voice.
+    for (const c of INTRO_CAPTIONS) expect(draw(IntroTv, c.end + 10)).toContain(c.text.replace(/'/gu, "&#x27;"));
+    expect(draw(IntroTv, IN.montage + 700)).not.toContain(INTRO_HELLO);
+    // The setup is after the line, never during it.
+    expect(IN.setup).toBeGreaterThan(INTRO_VOICE_END);
+  });
+
+  it("plays its accents under the voice (a plain effect is dropped while he speaks)", () => {
+    for (const [at, , opts] of INTRO_SFX) if (at < INTRO_VOICE_END + 3000) expect(opts?.over, `cue at ${at}`).toBe(true);
+    expect(INTRO_SFX.length).toBeGreaterThanOrEqual(14);
   });
 
   it("each phase draws its own picture", () => {
-    expect(draw(IntroTv, 3000)).toContain("TRABOLTA BIOS");
-    expect(draw(IntroTv, 3000)).toContain("Memory Test");
-    expect(draw(IntroTv, 7800)).toContain("STARTING TRABOLTA");
-    expect(draw(IntroTv, 11_000)).toContain("the computer&#x27;s AI helper");
-    expect(draw(IntroTv, 16_000)).toContain("a1-face");
-    expect(draw(IntroTv, 23_500)).toContain(INTRO_HELLO);
-    expect(draw(IntroTv, 24_200)).toContain(INTRO_LINE);
+    expect(draw(IntroTv, 800)).toContain("TRABOLTA BIOS");
+    expect(draw(IntroTv, 800)).toContain("Memory Test");
+    expect(draw(IntroTv, 1200)).toContain("a1-face");
+    expect(draw(IntroTv, IN.setup + 1000)).toContain("Trabolta Setup");
+    expect(draw(IntroTv, IN.logo + 1500)).toContain("the computer&#x27;s AI helper");
+    expect(draw(IntroTv, IN.online + 500)).toContain("ALL SYSTEMS ONLINE");
+  });
+
+  it("the face glides aside for the setup and back for the hand-back", () => {
+    expect(introFacePose(5000, false).x).toBeCloseTo(0, 5);
+    expect(introFacePose(IN.setup + 2000, false).x).toBeLessThan(-10);
+    expect(introFacePose(IN.end, false).x).toBeCloseTo(0, 5);
   });
 
   it("hands back to the live face: fully transparent at its end", () => {

@@ -10,6 +10,9 @@ import {
   bottleSeat,
   bottleTicks,
   bounceAt,
+  captionAt,
+  introCaptions,
+  sentencesOf,
   countdownLeft,
   endDue,
   marchersAt,
@@ -137,6 +140,20 @@ describe("tv1 time — clocks, marches, loops", () => {
     expect(bootLinesAt(INTRO_POST, 0)).toEqual([]);
     expect(bootLinesAt(INTRO_POST, 99_999).length).toBe(INTRO_POST.length);
     for (let i = 1; i < INTRO_POST.length; i++) expect(INTRO_POST[i]!.at).toBeGreaterThan(INTRO_POST[i - 1]!.at);
+    // The POST is a flash: done before he speaks (≈ 1.5 s).
+    expect(INTRO_POST[INTRO_POST.length - 1]!.at).toBeLessThan(1500);
+  });
+
+  it("captions a line a sentence at a time, back to back at the voice's pace", () => {
+    expect(sentencesOf("I am X. I keep it running. Hi, you!")).toEqual(["I am X.", "I keep it running.", "Hi, you!"]);
+    const c = introCaptions(["HELLO.", "I am X."], { start: 1000, cps: 10, gap: 200 });
+    expect(c).toEqual([
+      { text: "HELLO.", start: 1000, end: 1600 },
+      { text: "I am X.", start: 1800, end: 2500 },
+    ]);
+    expect(captionAt(c, 999)).toBeNull();
+    expect(captionAt(c, 1700)!.text).toBe("HELLO."); // held between sentences
+    expect(captionAt(c, 9000)!.text).toBe("I am X.");
   });
 
   it("the bounce stays inside the frame", () => {

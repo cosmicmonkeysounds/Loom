@@ -289,6 +289,9 @@ export function BingoBall({ label, color = 0, size = "5em", style, className }: 
 
 // --- the face, assembling ---------------------------------------------------------------------
 
+/** How long the face takes to assemble at `speed` 1 (ms): the mouth is the last stroke. */
+export const FACE_ASSEMBLY_MS = 3800;
+
 /**
  * The character's face drawn line by line — the head's outline traced, the
  * skin scanned in, the eyes popping, the brows and the mouth last — in the
@@ -296,8 +299,11 @@ export function BingoBall({ label, color = 0, size = "5em", style, className }: 
  * up. `start` is when it begins (ms); `mouth` 0..1 opens it (talking);
  * blinks are fixed times, so every screen blinks together.
  */
-export function AssembleFace({ t, start, mouth = 0, reduced, className, style }: { t: number; start: number; mouth?: number; reduced: boolean; className?: string; style?: CSSProperties }) {
-  const l = t - start;
+export function AssembleFace({ t, start, mouth = 0, speed = 1, reduced, className, style }: { t: number; start: number; mouth?: number; speed?: number; reduced: boolean; className?: string; style?: CSSProperties }) {
+  // `speed` runs the assembly faster (3 = done in ~1.3 s); blinks and the gaze keep real time.
+  const raw = t - start;
+  const l = raw * Math.max(0.1, speed);
+  const settled = FACE_ASSEMBLY_MS / Math.max(0.1, speed);
   const C = 2 * Math.PI * 128;
   const outline = reduced ? progress(l, 0, 600) : eased(l, 0, 1300, ease.inOutQuad);
   const skin = progress(l, 700, 1300);
@@ -309,9 +315,9 @@ export function AssembleFace({ t, start, mouth = 0, reduced, className, style }:
   const MW = 80;
   const open = clamp01(mouth);
   // A blink every ~3.3 s after the eyes are in, the same on every screen.
-  const bl = l > 2600 ? loop(l - 2600, 3300) : 1;
+  const bl = raw > settled ? loop(raw - settled, 3300) : 1;
   const lid = bl < 0.05 ? 46 * (1 - Math.abs(bl / 0.025 - 1)) : 0;
-  const gx = l > 2800 && !reduced ? 4 * Math.sin(l / 1700) : 0;
+  const gx = raw > settled && !reduced ? 4 * Math.sin(raw / 1700) : 0;
   const id = useSvgId("a1-face");
   return (
     <svg className={`a1-face${className ? ` ${className}` : ""}`} viewBox="-160 -160 320 320" style={style} aria-hidden="true">

@@ -204,16 +204,12 @@
 .a1-post-eye { position: absolute; right: 1.6em; top: 1.2em; width: 6.5em; text-align: center; color: #3dff7a; font-size: 0.7em; }
 .a1-eye { display: block; width: 100%; height: auto; }
 .a1-post-foot { position: absolute; left: 2em; bottom: 1.2em; color: #fff; }
-.a1-in-loading { display: block; }
-.a1-in-dos { position: absolute; left: 2em; top: 1.4em; font-family: var(--mono); font-size: 1.55em; color: #c8c8c8; }
-.a1-in-loadwin.kit-win { font-size: 0.85em; }
 .a1-in-loadrow { display: flex; align-items: center; }
 .a1-in-loadrow .kit-hourglass { margin-right: 0.8em; flex: none; }
 .a1-in-loadtext { flex: 1 1 auto; min-width: 0; }
 .a1-in-loadtext > div:first-child { margin-bottom: 0.4em; }
 
 /* --- the introduction: the logo --------------------------------------------------------- */
-.a1-in-splash { background: radial-gradient(ellipse at 50% 45%, #052d14 0, #010a04 70%); }
 .a1-in-word {
   position: absolute;
   left: 0;
@@ -239,9 +235,9 @@
 .a1-in-progress { position: absolute; left: 32%; right: 32%; top: 84%; font-family: var(--mono); font-size: 1.5em; color: #9cf5b8; text-align: center; }
 .a1-in-progress-track { height: 0.45em; margin-top: 0.3em; background: #021a0a; border: 2px solid #1d6b36; overflow: hidden; }
 .a1-in-progress-fill { height: 100%; background: #3dff7a; transform-origin: 0 50%; will-change: transform; }
-.a1-in-hello { position: absolute; left: 0; right: 0; top: 79%; text-align: center; font-family: var(--mono); color: #3dff7a; text-shadow: 0 0 0.3em rgba(61, 255, 122, 0.6); }
+.a1-in-hello { position: absolute; left: 0; right: 0; top: 75%; text-align: center; font-family: var(--mono); color: #3dff7a; text-shadow: 0 0 0.3em rgba(61, 255, 122, 0.6); }
 .a1-in-hello-big { font-size: 3.6em; line-height: 1; }
-.a1-in-hello-line { font-size: 1.8em; margin-top: 0.3em; color: #e9fff1; }
+.a1-in-hello-line { font-size: 1.6em; min-height: 1.2em; margin-top: 0.3em; padding: 0 2em; color: #e9fff1; white-space: nowrap; }
 .a1-in-online { position: absolute; right: 2em; top: 1.4em; font-family: var(--mono); font-size: 1.6em; color: #3dff7a; letter-spacing: 0.2em; }
 .a1-in-dot { display: inline-block; width: 0.6em; height: 0.6em; margin-right: 0.3em; border-radius: 50%; background: #3dff7a; box-shadow: 0 0 0.5em #3dff7a; }
 .a1-in-wall { background: #000; }
@@ -252,3 +248,26 @@
 .a1-po-welcome-row .a1-emblem { margin-right: 0.9em; flex: none; }
 .a1-po-welcome-text b { font-size: 1.3em; }
 .a1-po-welcome-small { margin-top: 0.4em; }
+
+/* --- the introduction: the face alone, the setup and the logo after his line ----------- */
+.a1-in-faceonly .a1-in-face { top: 39%; width: 23em; height: 23em; }
+.a1-in-setup.kit-win { font-size: 0.85em; }
+.a1-in-setup-row { margin-bottom: 0.5em; }
+.a1-in-setup-row > div:first-child { margin-bottom: 0.25em; font-family: var(--mono); }
+.a1-in-word.right { left: 41%; right: 2%; top: 58%; font-size: 4.4em; }
+.a1-in-tag.right { left: 41%; right: 2%; top: 73%; font-size: 1.4em; }
+.a1-in-bar.right { left: 49%; right: 10%; top: 81%; }
+.a1-in-allok {
+  position: absolute;
+  left: 43%;
+  right: 4%;
+  top: 14%;
+  padding: 0.25em 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 2.6em;
+  color: #ffd23f;
+  border: 0.12em solid #ffd23f;
+  text-shadow: 0 0 0.3em rgba(255, 210, 63, 0.6);
+  will-change: transform, opacity;
+}

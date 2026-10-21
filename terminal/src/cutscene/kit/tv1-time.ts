@@ -231,15 +231,56 @@ export interface BootLine {
   after?: number;
 }
 
-/** The introduction's POST lines (never more than the story says: he keeps the computer running). */
+/** The introduction's POST lines, racing (the whole POST is ≈ 1.5 s: he speaks at once). Never more than the story says: he keeps the computer running. */
 export const INTRO_POST: readonly BootLine[] = [
-  { at: 1600, text: "Main Processor : Desktop-233", status: "OK", after: 500 },
-  { at: 2300, text: "Memory Test :", status: "", after: 0 },
-  { at: 4100, text: "Detecting Primary Master ..... THE DESKTOP", status: "OK", after: 350 },
-  { at: 4600, text: "Detecting Primary Slave ...... THE INTERNET", status: "OK", after: 350 },
-  { at: 5100, text: "Detecting Programs ...........", status: "FOUND", after: 500 },
-  { at: 5800, text: "Loading AI helper ............", status: "OK", after: 400 },
+  { at: 330, text: "Main Processor : Desktop-233", status: "OK", after: 60 },
+  { at: 480, text: "Memory Test :", status: "", after: 0 },
+  { at: 1000, text: "Detecting Primary Master ..... THE DESKTOP", status: "OK", after: 40 },
+  { at: 1120, text: "Detecting Primary Slave ...... THE INTERNET", status: "OK", after: 40 },
+  { at: 1240, text: "Detecting Programs ...........", status: "FOUND", after: 60 },
+  { at: 1360, text: "Loading AI helper ............", status: "OK", after: 40 },
 ];
+
+// --- the introduction's voice ----------------------------------------------------------------
+
+/**
+ * The TV says his introduction line as soon as the screen poll that brings
+ * the beat lands (the poll is every 1–2 s; the scene starts on the same
+ * poll), so the greeting is on screen from `start` at about his speaking
+ * pace (`cps`, with `gap` between sentences — the voice's chunks).
+ */
+export const INTRO_VOICE = { start: 1500, cps: 15, gap: 350 } as const;
+
+/** One caption: typed from `start` to `end` (ms into the scene). */
+export interface Caption {
+  text: string;
+  start: number;
+  end: number;
+}
+
+/** A line's sentences, as the voice splits them. */
+export function sentencesOf(line: string): string[] {
+  return (line.match(/[^.!?]+[.!?]+/gu) ?? [line]).map((x) => x.trim()).filter((x) => x !== "");
+}
+
+/** Captions for `parts` said one after another from `v.start` (pure). */
+export function introCaptions(parts: readonly string[], v: { start: number; cps: number; gap: number } = INTRO_VOICE): Caption[] {
+  const out: Caption[] = [];
+  let at = v.start;
+  for (const text of parts) {
+    const end = at + (text.length * 1000) / Math.max(1, v.cps);
+    out.push({ text, start: at, end });
+    at = end + v.gap;
+  }
+  return out;
+}
+
+/** The caption up at `t`: the latest begun (it stays up until the next begins), null before the first. */
+export function captionAt(captions: readonly Caption[], t: number): Caption | null {
+  let cur: Caption | null = null;
+  for (const c of captions) if (t >= c.start) cur = c;
+  return cur;
+}
 
 /** Which of `lines` are showing at `t`. */
 export function bootLinesAt(lines: readonly BootLine[], t: number): BootLine[] {
