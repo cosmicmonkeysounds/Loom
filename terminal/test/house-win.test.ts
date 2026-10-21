@@ -106,7 +106,9 @@ describe("the story's wins lead with a win glyph", () => {
     .join("\n");
 
   it("the Bingo Ribbon's house line", () => {
-    const ribbon = [...story.matchAll(/broadcast "([^"]*wins a Bingo Ribbon[^"]*)" to everyone/gu)].map((m) => bigLineOf(m[1]!));
+    // Wave 18: the house cheer is a story rule's big broadcast that closes itself
+    // (`broadcast "!!🎀 … won the Bingo Ribbon …" to everyone with close: 6s`).
+    const ribbon = [...story.matchAll(/broadcast "(!![^"]*(?:won|wins) (?:the|a) Bingo Ribbon[^"]*)" to everyone with close: 6s/gu)].map((m) => bigLineOf(m[1]!));
     expect(ribbon.length).toBeGreaterThan(0);
     for (const line of ribbon) expect(isWinLine(line), line).toBe(true);
   });
