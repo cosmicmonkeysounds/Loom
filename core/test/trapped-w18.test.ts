@@ -462,6 +462,13 @@ describe("Trapped in the Internet — wave 18 on the event server: the Wanted bo
     const token = login.json["token"] as string;
     expect((await call(rt, "POST", "/api/prime/act", { token, name: "claim_escort", guest: id })).status).toBe(200);
     expect((await view("McAfee Anti-Virus")).wanted?.[0]?.claimedBy).toBe("Norton Anti-Virus");
+    // The guest's own view: not restricted, a mission with its place.
+    const gv = (await call(rt, "GET", `/api/state?role=guest&as=${encodeURIComponent(id)}`, {}, true)).json as unknown as { restricted?: boolean; mission?: { objective: string | null } };
+    expect(gv.restricted).not.toBe(true);
+    expect(gv.mission?.objective).toBeTruthy();
+    // The reinstallation gate lets the marked program in.
+    const begin = await call(rt, "POST", "/api/mod/spatial/begin", { guest: id, world: "web", device: "Tent tablet" }, true);
+    expect(begin.status).toBe(200);
     rt.dispose();
   });
 });
