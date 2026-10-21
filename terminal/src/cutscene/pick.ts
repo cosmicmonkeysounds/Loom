@@ -200,13 +200,20 @@ function activeOf(w: Waiting, start: number): ActiveScene {
 
 // --- the pick -------------------------------------------------------------------------
 
-/** What the cutscene layer draws: under (`base`: the slide's scene, its plain card, or nothing) and over (`top`: a moment). */
+/**
+ * What the cutscene layer draws: under (`base`: the slide's scene, its plain
+ * card, or nothing) and over (`top`: a moment). A moment that replaces the
+ * slide (no `over`) leaves `base` null and hands the slide's in `under`: the
+ * layer keeps it mounted but hidden, so the card (its N-04a clip) and a
+ * slide scene carry on underneath instead of starting over afterwards.
+ */
 export interface ScenePick {
   base: ActiveScene | "card" | null;
   top: ActiveScene | null;
+  under: ActiveScene | "card" | null;
 }
 
-export const NO_PICK: ScenePick = { base: null, top: null };
+export const NO_PICK: ScenePick = { base: null, top: null, under: null };
 
 /**
  * Decide the layer at server `now`. `layers` is `screenLayers`' answer
@@ -246,9 +253,9 @@ export function pickScene(o: {
       }
     }
   }
-  if (moment === null) return { base, top: null };
-  if (slideScene !== null && priorityOf(slideScene.def) > priorityOf(moment.def)) return { base, top: null };
-  return { base: moment.def.over === true ? base : null, top: moment };
+  if (moment === null) return { base, top: null, under: null };
+  if (slideScene !== null && priorityOf(slideScene.def) > priorityOf(moment.def)) return { base, top: null, under: null };
+  return moment.def.over === true ? { base, top: moment, under: null } : { base: null, top: moment, under: base };
 }
 
 /** A history slide's start: `HISTORY_T` before the first time it was drawn (recorded in `seen`). */
@@ -259,4 +266,17 @@ function historyStart(seen: Map<number, number> | undefined, seq: number, now: n
     seen?.set(seq, now);
   }
   return first - sceneT(0, first);
+}
+
+/**
+ * The TV face's one-shot for the scene that leads now, or null: once per
+ * scene key, ever (`seen` remembers every key — a held slide scene leading
+ * again after a moment over it never flashes twice; the caller clears it on
+ * a story restart). Records the key whatever the target.
+ */
+export function faceFlashFor(lead: ActiveScene | null, target: SceneTarget, seen: Set<string>): { mood: NonNullable<SceneDef["face"]>; ms: number } | null {
+  if (lead === null || seen.has(lead.key)) return null;
+  seen.add(lead.key);
+  if (target !== "tv" || lead.def.face === undefined) return null;
+  return { mood: lead.def.face, ms: lead.def.faceMs ?? FACE_FLASH_MS };
 }

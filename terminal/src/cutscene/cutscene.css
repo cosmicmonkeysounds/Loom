@@ -11,3 +11,10 @@
   overflow: hidden;
   contain: strict;
 }
+
+/* The slide's card / scene and a moment's stage stand in their own
+   wrappers (boxless), so a moment that replaces the slide only hides it:
+   the card's clip and a held scene carry on underneath. */
+.cutscene-base,
+.cutscene-top { display: contents; }
+.cutscene-base[data-hidden] { visibility: hidden; }

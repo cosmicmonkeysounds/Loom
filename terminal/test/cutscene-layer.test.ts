@@ -22,6 +22,13 @@ describe("the cutscene slot", () => {
     expect(html).toBe('<div class="slide-tap" data-peekable=""></div>');
   });
 
+  it("a tap peeks only while a slide is up (never a moment alone)", () => {
+    const tap = vi.fn();
+    const slot = (l: ScreenLayers) => (ScreenLayer({ layers: l, gear: null, onSlideTap: tap, cutscene: () => null }) as { props: { children: { props: { onClick?: () => void } }[] } }).props.children[0]!.props.onClick;
+    expect(slot(NO_LAYERS)).toBeUndefined();
+    expect(slot(layers)).toBe(tap);
+  });
+
   it("only screens that draw slides draw cutscenes", () => {
     for (const v of ["auto", "world", "face", "mirror", "tv", "shadow"]) expect(drawsSlides(v, null), v).toBe(true);
     expect(drawsSlides("chess", null)).toBe(false);
@@ -62,13 +69,20 @@ describe("the cutscene layer, drawn", () => {
     expect(html).not.toContain("CARD");
     // A slide no scene draws: its card.
     const card = renderToStaticMarkup(createElement(CutsceneLayer, { state: fakeState({ now }), layers: { overlay: null, slide: { ...slide, value: "beans" } }, bare: false, card: createElement("i", null, "CARD"), gear: null, scenes: DEMO_SCENES, target: "wall" }));
-    expect(card).toBe("<i>CARD</i>");
+    expect(card).toBe('<div class="cutscene-base"><i>CARD</i></div>');
     // A fresh moment over no slide, with the ⚙ (no slide brought one).
     const m = fakeState({ now, target: "terminals", moments: [{ seq: 4, at: now - 13_000, kind: "signal", name: "Kit Demo", who: "Excel", kept: false }] });
     const top = renderToStaticMarkup(createElement(CutsceneLayer, { state: m, layers: { overlay: null, slide: null }, bare: false, card: null, gear: createElement("b", null, "GEAR"), scenes: DEMO_SCENES }));
     expect(top).toContain('class="cutscene-stage cutscene-moment"');
     expect(top).toContain("Windows"); // 13 s in: the blue screen
     expect(top).toContain("<b>GEAR</b>");
+    // A moment that replaces a slide keeps its card mounted, hidden (its clip
+    // never starts over), and the moment's stage stands in its own wrapper.
+    const over = fakeState({ now, target: "terminals", moments: [{ seq: 5, at: now - 13_000, kind: "signal", name: "Kit Demo", who: null, kept: false }] });
+    const both = renderToStaticMarkup(createElement(CutsceneLayer, { state: over, layers: { overlay: null, slide: { ...slide, value: "beans", seq: 10 } }, bare: false, card: createElement("i", null, "CARD"), gear: createElement("b", null, "GEAR"), scenes: DEMO_SCENES }));
+    expect(both).toContain('<div class="cutscene-base" data-hidden="" aria-hidden="true"><i>CARD</i></div>');
+    expect(both).toContain('<div class="cutscene-top"><div class="cutscene-stage cutscene-moment"');
+    expect(both).not.toContain("GEAR"); // the slide brought the ⚙ already
     // An overlay or a pilot: nothing.
     expect(renderToStaticMarkup(createElement(CutsceneLayer, { state: m, layers: { overlay: "alarm", slide: null }, bare: false, card: null, gear: null, scenes: DEMO_SCENES }))).toBe("");
     quiet.mockRestore();

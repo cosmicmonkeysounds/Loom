@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HISTORY_T, frameDue, sceneT, serverNow } from "../src/cutscene/clock.ts";
-import { FACE_FLASH_MS, MOMENT_HOLD_MAX_MS, MOMENT_STALE_MS, MomentQueue, NO_PICK, QUEUE_MAX, QUEUE_WAIT_MAX_MS, allowed, componentFor, introduced, nameMatches, pickScene, sceneForMoment, sceneForSlide, type ScenePick } from "../src/cutscene/pick.ts";
+import { FACE_FLASH_MS, MOMENT_HOLD_MAX_MS, MOMENT_STALE_MS, MomentQueue, NO_PICK, QUEUE_MAX, QUEUE_WAIT_MAX_MS, allowed, componentFor, faceFlashFor, introduced, nameMatches, pickScene, sceneForMoment, sceneForSlide, type ScenePick } from "../src/cutscene/pick.ts";
 import type { SceneDef } from "../src/cutscene/types.ts";
 import { EMPTY_NIGHT, type ScreenMoment, type ScreenState } from "../src/screen.ts";
 
@@ -115,7 +115,7 @@ describe("the slide's scene", () => {
 
   it("a slide no scene names keeps its card; no slide, nothing", () => {
     const q = new MomentQueue();
-    expect(pick(state(), T0, q, { slide: slide("beans", T0) })).toEqual({ base: "card", top: null });
+    expect(pick(state(), T0, q, { slide: slide("beans", T0) })).toEqual({ base: "card", top: null, under: null });
     expect(pick(state(), T0, q)).toEqual(NO_PICK);
   });
 
@@ -315,7 +315,10 @@ describe("precedence", () => {
 
   it("a moment takes the slide's place; an `over` moment draws over it", () => {
     const { q, s } = withBottle();
-    expect(pick(s, T0 + 1000, q, { slide: slide("bingo", T0) })).toMatchObject({ base: null, top: { def: { id: "bottle" } } });
+    expect(pick(s, T0 + 1000, q, { slide: slide("bingo", T0) })).toMatchObject({ base: null, top: { def: { id: "bottle" } }, under: { def: { id: "bingo" } } });
+    // A slide with no scene: its card waits under the moment (kept mounted, hidden).
+    const { q: q3, s: s3 } = withBottle();
+    expect(pick(s3, T0 + 1000, q3, { slide: slide("beans", T0) })).toMatchObject({ base: null, under: "card" });
     const q2 = new MomentQueue();
     const s2 = state({ moments: [m(1, T0, "sfx", "zip")] });
     q2.update(s2, T0, SCENES, "tv");
@@ -332,5 +335,19 @@ describe("precedence", () => {
 
   it("the face flash has a default", () => {
     expect(FACE_FLASH_MS).toBeGreaterThan(1000);
+  });
+});
+
+describe("the face flash", () => {
+  it("flashes once per scene, never again when a held slide scene leads again after a moment", () => {
+    const y2k = def({ id: "y2k", when: [{ slide: "y2k" }], ms: "hold", face: "alarmed" });
+    const zip = def({ id: "zip", when: [{ moment: "sfx", name: "zip" }], ms: 3000, face: "pleased", faceMs: 900 });
+    const lead = (d: SceneDef, key: string) => ({ kind: "slide" as const, def: d, seq: 1, at: T0, start: T0, value: "", who: null, key });
+    const seen = new Set<string>();
+    expect(faceFlashFor(lead(y2k, "y2k:s1"), "tv", seen)).toEqual({ mood: y2k.face, ms: FACE_FLASH_MS });
+    expect(faceFlashFor(lead(zip, "zip:m2"), "tv", seen)).toEqual({ mood: zip.face, ms: 900 });
+    expect(faceFlashFor(lead(y2k, "y2k:s1"), "tv", seen)).toBeNull(); // the slide leads again
+    expect(faceFlashFor(null, "tv", seen)).toBeNull();
+    expect(faceFlashFor(lead(y2k, "y2k:s9"), "wall", seen)).toBeNull(); // only the TV has a face
   });
 });

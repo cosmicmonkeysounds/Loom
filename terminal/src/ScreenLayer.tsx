@@ -245,9 +245,11 @@ export function ScreenLayer({ layers, gear, video, muted, onSlideTap, cutscene }
       {/* A tap on a slide peeks under it (B21) where `onSlideTap` is given;
           the wrapper is unstyled, so the slide keeps its own fixed box. With
           the cutscenes (wave 17) the wrapper always stands, so the layer
-          under it is never remounted, and the card is theirs to show. */}
+          under it is never remounted, and the card is theirs to show. Only a
+          slide peeks: with none up (a moment alone) a tap does nothing, and
+          the cutscene layer keeps a tap on a moment from reaching here. */}
       {cutscene !== undefined ? (
-        <div className="slide-tap" data-peekable={onSlideTap !== undefined ? "" : undefined} onClick={onSlideTap}>
+        <div className="slide-tap" data-peekable={onSlideTap !== undefined ? "" : undefined} onClick={layers.slide !== null ? onSlideTap : undefined}>
           {cutscene(slide === false ? null : slide)}
         </div>
       ) : slide !== false && onSlideTap !== undefined ? (

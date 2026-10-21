@@ -15,7 +15,7 @@ import type { ScreenLayers } from "../slides.ts";
 import { sfx } from "../sound/bus.ts";
 import { SCENE_FPS, serverNow, useReducedMotion, useSceneClock } from "./clock.ts";
 import { flashFace } from "./face-bus.ts";
-import { FACE_FLASH_MS, MomentQueue, componentFor, pickScene, type ActiveScene } from "./pick.ts";
+import { MomentQueue, componentFor, faceFlashFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
 import type { SceneDef, SceneProps, SceneTarget } from "./types.ts";
 
@@ -44,6 +44,13 @@ function queueFor(t: SceneTarget): MomentQueue {
   if (q === undefined) queues.set(t, (q = new MomentQueue()));
   return q;
 }
+/** The scenes whose `face` mood has flashed, per target (once per scene, cleared on a restart). */
+const flashed = new Map<SceneTarget, Set<string>>();
+function flashedFor(t: SceneTarget): Set<string> {
+  let s = flashed.get(t);
+  if (s === undefined) flashed.set(t, (s = new Set()));
+  return s;
+}
 function historyFor(t: SceneTarget): Map<number, number> {
   let s = historyStarts.get(t);
   if (s === undefined) historyStarts.set(t, (s = new Map()));
@@ -71,6 +78,7 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       // A restart: its seqs start over.
       ended.clear();
       history.clear();
+      flashedFor(target).clear();
     }
     epoch.current = state.announceEpoch;
     queue.update(state, serverNow(state), scenes, target);
@@ -80,17 +88,16 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
   const playing = typeof pick.base === "object" || pick.top !== null || queue.pending > 0;
   useSceneClock(playing, SCENE_FPS);
 
-  // The TV face wears a starting scene's mood (once per scene).
-  const faced = useRef<string | null>(null);
+  // The TV face wears a starting scene's mood — once per scene, never again
+  // when a held slide's scene leads again after a moment over it.
   const lead = pick.top ?? (typeof pick.base === "object" ? pick.base : null);
   useEffect(() => {
-    if (lead === null || faced.current === lead.key) return;
-    faced.current = lead.key;
-    if (target === "tv" && lead.def.face !== undefined) flashFace(lead.def.face, lead.def.faceMs ?? FACE_FLASH_MS);
+    const f = faceFlashFor(lead, target, flashedFor(target));
+    if (f !== null) flashFace(f.mood, f.ms);
   }, [lead, target]);
 
   if (state === null) return null;
-  const host = (s: ActiveScene) => (
+  const host = (s: ActiveScene, hidden = false) => (
     <SceneHost
       key={s.key}
       scene={s}
@@ -98,6 +105,7 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       state={state}
       target={target}
       reduced={reduced}
+      silent={hidden}
       onDone={() => {
         if (s.kind === "slide") ended.add(s.seq);
         else queue.done(s.seq);
@@ -105,18 +113,35 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
       }}
     />
   );
+  // The slide's card or scene sits in one standing wrapper, hidden (never
+  // unmounted) under a moment that replaces it.
+  const below = pick.base ?? pick.under;
+  const hidden = pick.base === null && pick.under !== null;
   return (
     <>
-      {pick.base === "card" ? card : pick.base !== null ? host(pick.base) : null}
-      {pick.top !== null && host(pick.top)}
-      {pick.top !== null && layers.slide === null && <div className="screen-gear">{gear}</div>}
+      {below !== null && (
+        <div className="cutscene-base" data-hidden={hidden ? "" : undefined} aria-hidden={hidden ? true : undefined}>
+          {below === "card" ? card : host(below, hidden)}
+        </div>
+      )}
+      {pick.top !== null && (
+        // A tap on a moment never peeks the slide under it (B21 is for held slides).
+        <div className="cutscene-top" onClick={stopTap}>
+          {host(pick.top)}
+          {layers.slide === null && <div className="screen-gear">{gear}</div>}
+        </div>
+      )}
     </>
   );
 }
 
+const stopTap = (e: { stopPropagation(): void }) => e.stopPropagation();
+/** A hidden scene plays no sound (it reports "dropped", as a locked bus does). */
+const quiet: SceneProps["sfx"] = () => false;
+
 /** One scene on its stage, at its `t`. */
-function SceneHost({ scene, now, state, target, reduced, onDone }: { scene: ActiveScene; now: number; state: ScreenState; target: SceneTarget; reduced: boolean; onDone: () => void }) {
-  return <SceneStage def={scene.def} kind={scene.kind} target={target} t={Math.max(0, now - scene.start)} at={scene.at} seq={scene.seq} value={scene.value} who={scene.who} state={state} reduced={reduced} play={sfx} onDone={onDone} />;
+function SceneHost({ scene, now, state, target, reduced, silent, onDone }: { scene: ActiveScene; now: number; state: ScreenState; target: SceneTarget; reduced: boolean; silent: boolean; onDone: () => void }) {
+  return <SceneStage def={scene.def} kind={scene.kind} target={target} t={Math.max(0, now - scene.start)} at={scene.at} seq={scene.seq} value={scene.value} who={scene.who} state={state} reduced={reduced} play={silent ? quiet : sfx} onDone={onDone} />;
 }
 
 /**
