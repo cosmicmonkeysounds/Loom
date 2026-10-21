@@ -17,7 +17,7 @@ function copyOf(path: string): string {
 }
 
 describe("the King's tablet copy (wave 11)", () => {
-  const files = ["game/engine.ts", "game/fight.ts", "game/Play.tsx", "app.tsx", "api.ts", "map/Inspector.tsx"];
+  const files = ["game/engine.ts", "game/fight.ts", "game/Play.tsx", "app.tsx", "flow.tsx", "api.ts", "map/Inspector.tsx"];
 
   it("no on-screen line promises the real door opens, unlocks or disarms", () => {
     for (const f of files) {
@@ -41,7 +41,7 @@ describe("the King's tablet copy (wave 11)", () => {
   });
 
   it("the hit is once per reinstallation, shared, and the King kneels at 0", () => {
-    expect(copyOf("app.tsx")).toContain("In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation");
+    expect(copyOf("flow.tsx")).toContain("In the simulation the King guards the Server Room's door: every program may hit him once per reinstallation");
     expect(copyOf("game/fight.ts")).toContain('"You hit him this reinstallation. Find Gerald before you hit him again."');
     expect(copyOf("game/engine.ts")).toContain('"The King kneels. His door stands open."');
     expect(copyOf("game/Play.tsx")).toContain("⚔ HIT");
