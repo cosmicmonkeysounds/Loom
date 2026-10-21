@@ -871,7 +871,8 @@ function FilingWindow({ t, at, state, target, sfx, reduced }: { t: number; at: n
           </div>
         )
       )}
-      {nudgeOpen > 0 && <Win98Dialog title="Trabolta" kind="info" message={FILE_NUDGES[nudge % FILE_NUDGES.length]!} x={6 + 30 * noise1(57, nudge)} y={58 + 8 * noise1(58, nudge)} width="19em" open={nudgeOpen} reduced={reduced} className="a1-res-nudge" />}
+      {/* The nudge sits bottom-left, under the rules and clear of the inbox (livetv-5). */}
+      {nudgeOpen > 0 && <Win98Dialog title="Trabolta" kind="info" message={FILE_NUDGES[nudge % FILE_NUDGES.length]!} x={6 + 24 * noise1(57, nudge)} y={68 + 2 * noise1(58, nudge)} width="19em" open={nudgeOpen} reduced={reduced} className="a1-res-nudge" />}
       {closed && (
         <div className="a1-res-closed">
           <div className="a1-res-closed-big">PENCILS DOWN</div>

@@ -422,7 +422,7 @@ function TruthPongTv(p: SceneProps) {
           </div>
         )}
       </div>
-      {t > 3000 && <DriftingPopups t={t} messages={PONG_POPS} count={2} seed={31} start={3000} life={7000} gap={3500} area={{ x0: 0.02, x1: 0.66, y0: 0.04, y1: 0.18 }} width="22em" reduced={reduced} />}
+      {t > 3000 && <DriftingPopups t={t} messages={PONG_POPS} count={2} seed={31} start={3000} life={7000} gap={3500} area={{ x0: 0.55, x1: 0.58, y0: 0.36, y1: 0.5 }} width="22em" reduced={reduced} />}
       <Glass t={t} reduced={reduced} strength={0.7} />
     </Stage>
   );

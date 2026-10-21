@@ -127,7 +127,7 @@
 .tv3-q-bit { font-size: 6.5vmin; line-height: 1; color: #7dffa8; }
 .tv3-q.settled { border-color: #ffd23f; }
 .tv3-q.settled .tv3-q-bit { color: #ffd23f; }
-.tv3-verdict-bar { position: absolute; left: 50%; top: 74%; width: min(70vw, 60vmin); transform: translateX(-50%); font-size: 2.6vmin; }
+.tv3-verdict-bar { position: absolute; left: 50%; top: 61%; width: min(70vw, 60vmin); transform: translateX(-50%); font-size: 2.6vmin; }
 .tv3-verdict-bar .kit-progress-wrap { color: #dfe8ff; }
 .tv3-verdict-stamp {
   top: 66%;
