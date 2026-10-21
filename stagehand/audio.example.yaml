@@ -41,6 +41,10 @@ audio:
   master_db: 0
   limit_db: -1         # each output's limiter ceiling (dBFS)
   duck_db: -12         # sounds under an announcement
+  duck_hold_s: 7       # announce: false — how long each `do announce` (spoken
+                       # by the alexa player) ducks the router's sounds
+  no_duck: [dance_song, rave, hand_jive]   # never ducked (QLab's duck_music
+                                           # always skipped the dance tracks)
 
   # Until the server answers (the house internet down at boot) the router
   # routes from the last audio.json it saw (cache_dir), else this file:

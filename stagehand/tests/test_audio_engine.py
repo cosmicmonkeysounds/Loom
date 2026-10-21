@@ -118,6 +118,8 @@ def test_section_paths_resolve_beside_the_yaml(tmp_path):
         ({"chime": "missing.wav"}, "chime"),
         ({"mqtt": {"port": 1883}}, "mqtt"),
         ({"blocksize": 7}, "blocksize"),
+        ({"no_duck": "dance_song"}, "no_duck"),
+        ({"duck_hold_s": 90}, "duck_hold_s"),
         ([], "mapping"),
     ],
 )

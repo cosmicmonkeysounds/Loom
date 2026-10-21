@@ -711,9 +711,13 @@ audio:
   CoreAudio substring; `device:` overrides) opens as ONE `sounddevice`
   stream — duplex N in / N out while `passthrough: true`, output-only
   otherwise — at the device rate. A numpy callback (`audio/mixer.py`) mixes
-  the voices, the matrix (gain changes smoothed), an sfx duck under
-  announcements, the master gain and a per-output peak limiter. A stream
-  that dies or stops calling back is reopened every 2 s.
+  the voices (a stereo file laid out per speaker: L / R on a pair, the
+  downmix on a one-output speaker), the matrix (gain changes smoothed), an
+  sfx duck under announcements, the master gain and a per-output peak
+  limiter. A stream that dies or stops calling back is reopened every 2 s,
+  PortAudio re-initialised first so a replugged interface is found. Sound
+  files are resampled band-limited once at load; `check` names those not at
+  the device rate.
 - **Where a `sound X` goes**, first rule that applies: the story line's own
   rooms (`sound X with rooms: a b` / `sound X in <Place>`, the `rooms:`
   argument), `audio.json` `cues[X].to`, the enclosing beat's `setting`,
@@ -734,8 +738,12 @@ audio:
   `show/announce` / `show/chime` (the show module's rules), without it from
   the feed's `announce` directive and `sound announce_chime` — never both.
   An `alexa:` section beside `announce: true` is a config error, and the
-  router holds the alexa player's `player.lock` (it will not open the
-  speakers while a player holds it).
+  router takes the alexa player's `player.lock` before it speaks: while a
+  player holds it only announcements are dropped (`announce: blocked` in
+  health), every sound still plays. While the alexa player speaks
+  (`announce: false`) each feed `do announce` ducks the sounds for
+  `duck_hold_s` (7 s, QLab's `duck_music`); `no_duck: [dance_song, rave,
+  hand_jive]` (or a cue's `duck: false` in `audio.json`) never ducks.
 - **Speaker tests.** The map editor's Test (`POST /api/mod/audio/test`)
   arrives in the long-poll; the router plays a 1.5 s tone (three rising
   beeps pitched by the output number) and then says the label ("Start Bar.
@@ -746,7 +754,8 @@ audio:
   `config_file` / `house_file`). A server without the route (an older
   release) is logged once and polled each minute.
 - **Health.** Every `health_s` a line (device, config version, voices,
-  played / skipped, xruns, limiter, peak, sounds with no file); with
+  played / skipped, xruns, limiter, peak, `announce off | on | blocked`,
+  sounds with no file; the JSON adds `reinits`); with
   `mqtt:` the same JSON on `health/audio/stats` (retained) and
   `online` / `lost` on `health/audio`.
 

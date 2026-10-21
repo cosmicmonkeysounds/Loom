@@ -133,6 +133,7 @@ def test_the_example_config_parses(tmp_path):
     cfg = load_config(example, env={})
     audio = cfg.modules["audio"]
     assert audio.cfg.play_sounds is False and audio.cfg.announce is False
+    assert audio.cfg.no_duck == ("dance_song", "rave", "hand_jive") and audio.cfg.duck_hold_s == 7
 
 
 # -- the stream --------------------------------------------------------------

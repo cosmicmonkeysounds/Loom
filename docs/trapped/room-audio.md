@@ -515,16 +515,27 @@ routes matrix can pass the inputs (QLab, mics, the TV) to the speakers;
 numpy callback per block mixes:
 
 1. the matrix, `in @ gains`, every change crossfaded over 50 ms;
-2. the voices — each sound on its speakers' outputs (mono → every output,
-   stereo → L R across them in channel order), the speaker's trim + the
-   cue's gain, 5 ms fade-in, a fade-out on stop; at most 32 (the oldest sfx
-   drops);
-3. the duck: sfx voices −12 dB while an announcement plays (0.3 s ramps);
+2. the voices — each sound laid out per speaker: a mono file on every
+   output; a stereo file L → a pair's first output and R → its second (the
+   speaker's own `out` order), the mono downmix ((L + R) / 2) on a
+   one-output speaker. The speaker's trim + the cue's gain, 5 ms fade-in, a
+   fade-out on stop; at most 32 (the oldest sfx drops);
+3. the duck: sfx voices −12 dB (down over 0.3 s, back over 1 s) while the
+   router's own announcement plays — or, while the `alexa` player speaks
+   them (`announce: false`, or its lock still held), for `duck_hold_s` (7 s)
+   after each `do announce` on the feed, as QLab's `duck_music` did. Sounds
+   in `no_duck` (the show's `dance_song`, `rave`, `hand_jive`) or with
+   `duck: false` on their `audio.json` cue never duck;
 4. the master gain, then a per-output peak limiter (−1 dBFS, instant
    attack, 0.25 s release) and a hard clip.
 
 A stream that closes, or stays "active" but stops calling back (a replugged
-MOTU), is reopened by a 2 s watchdog. A story restart (`reset`, `reload`,
+MOTU), is reopened by a 2 s watchdog. PortAudio reads its device list only
+when it initialises, so every open after a failure (a dead or stalled
+stream, an open that raised) re-initialises PortAudio first and a replugged
+interface is found again (`reinits` in the health line). A blank
+`device.name` (the server's default `audio.json`) opens the Mac's default
+output, with one warning. A story restart (`reset`, `reload`,
 `golive`, `ended`) fades every sound out over 1 s.
 
 ### 11.3 Where a sound goes
@@ -551,7 +562,9 @@ copies in `tests/fixtures/house-audio/`, diffed against the house files
 when they sit beside it).
 
 Files: `sounds_dir/X.wav | .aiff | .aif | .flac` (exact name, then
-case-insensitive), resampled once to the device rate and kept in memory
+case-insensitive), resampled once to the device rate with a band-limited
+FFT resampler (songs are full range; the alexa player's linear resample is
+for a chime and a voice) and kept in memory
 (re-read when the file changes), preloaded on every config change. A name
 with no file, a cue that reaches no wired speaker, or a closed stream is
 logged once and skipped — never a crash.
@@ -570,9 +583,12 @@ logged once and skipped — never a crash.
   `audio.json` `announce.to`. With `mqtt:` it takes `show/announce` /
   `show/chime` (the show's existing rules); without, the feed's `announce`
   directive and `sound announce_chime`; never both. An `alexa:` section beside
-  `announce: true` is a config error, and the router holds the alexa
-  player's `player.lock`: while a player holds it, the router does not open
-  the speakers.
+  `announce: true` is a config error, and the router takes the alexa
+  player's `player.lock` before it speaks: while a player (a leftover
+  launchd agent) holds it, only the announcements wait — dropped, never
+  queued for later, `announce: blocked` in the health JSON — and every
+  sound, the matrix and the tests play from the start; the router retries
+  the lock every 5 s.
 - Trabolta's TV voice still comes from Chrome on the TV (MOTU 1/2 through
   the Mac's default output). `audio.json` `voice.tv` documents where it
   should also reach; build that fan-out in the MOTU's own mixer, or route
@@ -588,9 +604,12 @@ logged once and skipped — never a crash.
   cursor is the server's `at`). With `mqtt:` also `show/audio/test
   {"speaker": "desk-l"}` / `{"out": 3}`.
 - `stagehand check --only audio` probes the device against the cached /
-  local `audio.json` (channel counts) and lists cue sounds with no file.
+  local `audio.json` (channel counts), lists cue sounds with no file, and
+  names every file in `sounds_dir` not at the device rate (convert those
+  offline; they still play, resampled at load).
 - Every `health_s` (60) a log line: device, config version + source,
-  voices, played / skipped, xruns, limiter blocks, peak, sounds with no file;
+  voices, played / skipped, xruns, limiter blocks, peak, `announce` (`off` /
+  `on` / `blocked`), sounds with no file (the JSON adds `reinits`);
   with `mqtt:` the same JSON retained on `health/audio/stats`, `online` /
   `lost` on `health/audio`.
 - Its own launchd job: `stagehand launchd install --job audio --config

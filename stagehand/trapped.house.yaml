@@ -602,6 +602,9 @@ alexa:
 #   play_sounds: false
 #   announce: false
 #   passthrough: true            # false = output-only (no microphone permission)
+#   duck_hold_s: 7               # announce: false — each `do announce` ducks the
+#                                # router's beds this long (duck_music's hold)
+#   no_duck: [dance_song, rave, hand_jive]   # never ducked (as duck_music)
 #   mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }
 #   say_voice: Samantha
 #   chime: synth
