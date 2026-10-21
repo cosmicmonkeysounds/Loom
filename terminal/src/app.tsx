@@ -3,11 +3,13 @@
 //!   setup      — provision this tablet (moderator passcode → token), name it,
 //!                pick the character, camera and voice. Once per tablet.
 //!   (screensaver) while the character is hidden or asleep (`screen.ts`
-//!                polls `/api/screen/state` every 2 s — K-16): the Mystify
-//!                screensaver + fake-1999 ads (`Attract.tsx`). No camera,
-//!                no scanner, never "ONLINE", never a pilot. Fails closed:
-//!                shown until the server first says otherwise.
-//!   attract    — the face, waiting; the camera looking for a pass.
+//!                polls `/api/screen/state` every 2 s — K-16): the idle
+//!                show full screen (`Attract.tsx`, `idle-show/` — wave 17:
+//!                screensavers, fake-1999 ads, popups), never naming him.
+//!                No camera, no scanner, never "ONLINE", never a pilot.
+//!                Fails closed: shown until the server first says otherwise.
+//!   attract    — the idle show again, now free to name him, with the
+//!                camera in the corner's scan box looking for a pass (D1).
 //!   connecting — a pass was scanned: minting the guest's session.
 //!   piloting   — the direct line: the thread, the composer, the countdown.
 //!
@@ -72,10 +74,12 @@ import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } fr
 import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundView } from "./sound/bus.ts";
+import { setSoundView, sfx } from "./sound/bus.ts";
 import { drawsSlides, loadCutscenes } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
+import { IdleShow } from "./idle-show/IdleShow.tsx";
+import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
@@ -358,8 +362,11 @@ export function App() {
   // story slide, the countdown corner or the Y2K clock.
   const bare = room !== null || config.view === "chess" || config.view === "casino";
   // An overlay (blackout / go to the living room / alarm) ends any pilot
-  // (and covers a chess game, which it holds rather than ends).
-  const takeover = screenLayers(screenState.state, Date.now(), { piloting, room: bare }).overlay !== null;
+  // (and covers a chess game, which it holds rather than ends). A slide or
+  // an overlay over the idle show pauses it (no popup dings under a scene).
+  const top = screenLayers(screenState.state, Date.now(), { piloting, peek, room: bare });
+  const takeover = top.overlay !== null;
+  const covered = takeover || top.slide !== null;
   const layer = (
     <>
       {/* A slide's .mp4 plays on the TV only (N-04a); the tablets keep the PNG. */}
@@ -377,6 +384,11 @@ export function App() {
   );
   const attractScreen = (
     <Attract
+      name={config.name}
+      state={screenState.state}
+      character={config.character}
+      target={config.view === "tv" ? "tv" : "wall"}
+      covered={covered}
       corner={
         <>
           <div className="mirror-corner">
@@ -479,6 +491,7 @@ export function App() {
         voiceCursor={voiceCursor}
         visits={visits}
         takeover={takeover}
+        covered={covered}
         onSetup={openSetup}
         onGone={onGone}
       />
@@ -661,6 +674,7 @@ function Terminal({
   voiceCursor,
   visits,
   takeover,
+  covered,
   onSetup,
   onGone,
 }: {
@@ -682,6 +696,8 @@ function Terminal({
   visits: MutableRefObject<VisitLatch>;
   /** A story overlay covers the screen: no scanning, and an open line ends. */
   takeover: boolean;
+  /** A slide or an overlay covers the screen: the idle show pauses under it. */
+  covered: boolean;
   onSetup: () => void;
   onGone: (g: Gone) => void;
 }) {
@@ -944,12 +960,17 @@ function Terminal({
   const onCode = useCallback(
     (text: string) => {
       const hit = parseScan(text);
+      sfx(hit.kind === "guest" ? "blip" : "buzz", { gain: 0.6 }); // the box heard it (quiet; never over a voice)
       if (hit.kind === "guest") void connect(hit.id);
       else if (hit.kind === "wall") setFlash("THAT'S A WALL CODE — SHOW ME YOUR PASS");
       else setFlash("UNREADABLE — SHOW ME YOUR PASS");
     },
     [connect],
   );
+
+  // The idle show plays while the terminal waits and nobody is speaking in its room.
+  const idle = screen.kind === "attract" && !roomBusy && roomLine === null;
+  const scanBox = useRef<HTMLElement>(null);
 
   const online = pilot !== null ? session.online : castOnline;
   const status = online === null ? "" : online ? `${config.character.toUpperCase()} ONLINE` : `${config.character.toUpperCase()} AWAY — REPLIES WHEN BACK`;
@@ -976,7 +997,7 @@ function Terminal({
         </span>
       </header>
 
-      <main className="stage">
+      <main className={`stage${screen.kind === "attract" ? " idle" : ""}${showWorld ? " with-world" : ""}`}>
         <section className={`face-pane${showWorld ? " showing-world" : ""}`}>
           {/* The face stays mounted under the world view: it holds the speech
               queue's level handle and its own easing state. */}
@@ -993,38 +1014,6 @@ function Terminal({
         </section>
 
         <section className={`line-pane${room !== null && pilot !== null && !filesOpen ? " with-files" : ""}`}>
-          {screen.kind === "attract" && (
-            <div className="attract">
-              <div className="scan-frame">
-                <Scanner facing={config.camera} active={!takeover && !roomBusy} onCode={onCode} onState={setCamera} />
-              </div>
-              <div className="attract-text">
-                {roomBusy ? (
-                  <>
-                    <div className="big blink">LISTEN</div>
-                    <div className="small">{config.character.toUpperCase()} IS SPEAKING — scan your pass when he is done</div>
-                  </>
-                ) : (
-                  <div className="big">SCAN YOUR PASS</div>
-                )}
-                <div className="small">open the app · tap ☰ · hold your pass to the camera</div>
-                {cameraProblem(camera) !== null && <div className="small problem">{cameraProblem(camera)}</div>}
-                <button className="link typed-link" onClick={() => setTypedOpen((o) => !o)}>
-                  no camera? type your program name
-                </button>
-                {typedOpen && (
-                  <TypedFallback
-                    config={config}
-                    onPick={(id) => {
-                      setTypedOpen(false);
-                      void connect(id);
-                    }}
-                    onProblem={setFlash}
-                  />
-                )}
-              </div>
-            </div>
-          )}
           {screen.kind === "connecting" && (
             <div className="attract">
               <div className="big blink">CONNECTING…</div>
@@ -1051,6 +1040,32 @@ function Terminal({
             </>
           )}
         </section>
+
+        {/* The idle show (wave 17, D1) over the stage while nobody is on the
+            line — the world keeps its pane beside it — and the scan box in the
+            corner above it: the camera always drawn, a pass read whatever
+            plays. A pass connecting, a line, or the room's voice puts it away. */}
+        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={idle && !covered} region={showWorld ? "pane" : "full"} reserveRef={scanBox} />
+        {screen.kind === "attract" && (
+          <ScanBox
+            boxRef={scanBox}
+            scanner={<Scanner facing={config.camera} active={!takeover && !roomBusy} onCode={onCode} onState={setCamera} />}
+            listen={roomBusy ? `${config.character.toUpperCase()} IS SPEAKING — scan your pass when he is done` : null}
+            problem={cameraProblem(camera)}
+            typedOpen={typedOpen}
+            onToggleTyped={() => setTypedOpen((o) => !o)}
+            typed={
+              <TypedFallback
+                config={config}
+                onPick={(id) => {
+                  setTypedOpen(false);
+                  void connect(id);
+                }}
+                onProblem={setFlash}
+              />
+            }
+          />
+        )}
       </main>
 
       {flash !== null && <div className="flash">{flash}</div>}

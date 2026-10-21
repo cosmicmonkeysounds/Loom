@@ -1,62 +1,8 @@
-//! Attract mode, the pure parts (OCT31 K-16): what a wall terminal shows
-//! while its character is hidden or asleep — a Mystify screensaver drawn on
-//! a Canvas2D, alternating with fake-1999 ads. An ad is a PNG dropped into
-//! `public/ads/<id>.png` (served at `/terminal/ads/<id>.png`); until the
-//! art lands, or if one fails to load, the ad's own copy renders as a Win98
-//! window instead, so a missing file is never a broken image.
-//!
-//! Nothing here may name the character: attract exists to keep him secret.
-
-/** One ad. `title`/`body`/`button` are the text-card fallback. */
-export interface Ad {
-  id: string;
-  title: string;
-  body: string;
-  button: string;
-}
-
-export const ADS: readonly Ad[] = [
-  {
-    id: "ad-maps-and-ducks",
-    title: "MAPS AND DUCKS — RESTORE THE SIGN!",
-    body: "Tonight's fundraiser keeps the billboard on Barrington Street glowing. Every program helps. mapsandducks.com",
-    button: "DONATE NOW",
-  },
-  {
-    id: "ad-protection-expired",
-    title: "Your protection has expired",
-    body: "Your computer may be at risk. Viruses, worms and other programs could be in this house right now. Renew today to stay protected.",
-    button: "Renew now",
-  },
-  {
-    id: "ad-geocities",
-    title: "Build your FREE home page!",
-    body: "15 MB of space, a hit counter and a guestbook. Move into the neighbourhood today — GeoCities.",
-    button: "Join now",
-  },
-  {
-    id: "ad-y2k",
-    title: "Is your PC Y2K ready?",
-    body: "Time is running out. Run the free Year 2000 checker before midnight on December 31, 1999.",
-    button: "Check now",
-  },
-];
-
-/** How long the screensaver runs between ads, and how long each ad holds (ms). */
-export const SAVER_MS = 40_000;
-export const AD_MS = 10_000;
-
-export type AttractSlide = { kind: "saver" } | { kind: "ad"; index: number };
-
-/** The slide `t` ms into attract: saver, ad 0, saver, ad 1, … (wrapping). */
-export function attractSlide(t: number, adCount: number = ADS.length): AttractSlide {
-  if (adCount <= 0) return { kind: "saver" };
-  const period = SAVER_MS + AD_MS;
-  const n = Math.floor(Math.max(0, t) / period);
-  return t - n * period < SAVER_MS ? { kind: "saver" } : { kind: "ad", index: n % adCount };
-}
-
-// --- Mystify -------------------------------------------------------------------
+//! Mystify, the pure parts (OCT31 K-16): the first screensaver a terminal
+//! ever showed — two four-cornered shapes bouncing round the screen with
+//! eight fading echoes each. Since wave 17 it is one of the idle show's
+//! savers (`idle-show/savers/classic.ts`); the ads, the popups and the
+//! rotation live in `idle-show/` too.
 
 export interface Point {
   x: number;
