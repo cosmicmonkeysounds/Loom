@@ -2,7 +2,9 @@
 //! bend): Gerald's quack (a buzzy sawtooth through a nasal formant, pitch
 //! falling, two syllables), the celebration fanfare, and
 //! the failure buzz. Needs one user gesture first (`resume` on the tap that
-//! starts the game); without WebAudio every call is a no-op.
+//! starts the game); without WebAudio every call is a no-op. The voice link
+//! (`voice.ts`) plays and captures on this same context (`context()`): one
+//! context to unlock, never two.
 
 export interface Sfx {
   /** Call from a user gesture. */
@@ -15,6 +17,9 @@ export interface Sfx {
   buzz(): void;
   /** A hit landing on the King: a short low thump with a noise burst. */
   thud(): void;
+  /** The shared context and the effects' master bus (made on first use),
+   *  null without WebAudio or once closed. */
+  context(): { ctx: AudioContext; out: AudioNode } | null;
   dispose(): void;
 }
 
@@ -23,7 +28,7 @@ type Ctx = AudioContext;
 export function createSfx(): Sfx {
   const Ctor: typeof AudioContext | undefined =
     typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, dispose() {} };
+  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, context: () => null, dispose() {} };
   let ctx: Ctx | null = null;
   let master: GainNode | null = null;
   const get = (): { ctx: Ctx; out: GainNode } | null => {
@@ -149,6 +154,7 @@ export function createSfx(): Sfx {
       osc.stop(t + 0.11);
       noise(a.ctx, a.out, t, 0.06, 0.16);
     },
+    context: () => get(),
     dispose() {
       const c = ctx;
       ctx = null;
