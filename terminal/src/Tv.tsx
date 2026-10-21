@@ -29,7 +29,7 @@ import { Face, type FaceHandle } from "./face/Face.tsx";
 import { moodOfText, type Mood } from "./face/mood.ts";
 import type { ScreenState } from "./screen.ts";
 import { SpeechQueue, audioUnlocked, unlock, voiceEngines, voiceNote, type EngineKind } from "./speech/engine.ts";
-import { splitSentences } from "./speech/split.ts";
+import { revealOffsets, splitSentences } from "./speech/split.ts";
 import { LinePlayer, cursorAfterGap, planVoice, postVoiceMute, showsNameplate, type TvLine } from "./tv.ts";
 import { useSpatialStream, useWorld, type Gone, type WorldStore } from "./world/stream.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
@@ -41,12 +41,39 @@ const CAPTION_LINGER_MS = 6000;
 /** A spoken line longer than this (characters) is captioned chunk by chunk. */
 export const CAPTION_CHUNK_OVER = 180;
 
+/**
+ * The caption's pieces of a line: the cuts the voice speaks (`splitSentences`),
+ * taken from the **original** text (`revealOffsets`), so a guest's filed
+ * answer read aloud keeps its emoji, its emphasis marks, its link and its "…"
+ * on screen. A cut that maps to nothing falls back to the spoken words.
+ */
+export function captionChunks(text: string): string[] {
+  const spoken = splitSentences(text);
+  const ends = revealOffsets(text, spoken);
+  const out: string[] = [];
+  let from = 0;
+  for (let i = 0; i < spoken.length; i++) {
+    const end = ends[i] ?? text.length;
+    const piece = text.slice(from, end).trim();
+    out.push(piece !== "" ? piece : spoken[i]!);
+    from = Math.max(from, end);
+  }
+  return out;
+}
+
 /** What the caption shows for `line`: a spoken line over
- *  `CAPTION_CHUNK_OVER` shows the chunk being said (`spoken`, when it is
- *  this line's), anything else the whole line. */
-export function captionText(line: Pick<TvLine, "seq" | "text" | "mode">, spoken: { seq: number; text: string } | null): string {
+ *  `CAPTION_CHUNK_OVER` shows the piece being said (`spoken.index`, when it
+ *  is this line's) — its first piece until the voice starts, never the wall
+ *  of text — anything else the whole line. `chunks` is `captionChunks` of
+ *  the line (passed in so a render doesn't re-split thousands of characters). */
+export function captionText(
+  line: Pick<TvLine, "seq" | "text" | "mode">,
+  spoken: { seq: number; index: number } | null,
+  chunks: readonly string[] = captionChunks(line.text),
+): string {
   if (line.mode !== "speak" || line.text.length <= CAPTION_CHUNK_OVER) return line.text;
-  return spoken !== null && spoken.seq === line.seq && spoken.text.trim() !== "" ? spoken.text : line.text;
+  const i = spoken !== null && spoken.seq === line.seq ? spoken.index : 0;
+  return chunks[i] ?? chunks[0] ?? line.text;
 }
 
 export function Tv({
@@ -75,7 +102,7 @@ export function Tv({
   const [speaking, setSpeaking] = useState(false);
   const [caption, setCaption] = useState<TvLine | null>(null);
   // The chunk of a line being spoken now (a long line's caption follows it).
-  const [spoken, setSpoken] = useState<{ seq: number; text: string } | null>(null);
+  const [spoken, setSpoken] = useState<{ seq: number; index: number } | null>(null);
   const [awake, setAwake] = useState(() => audioUnlocked());
   const [engineUsed, setEngineUsed] = useState<EngineKind | null>(null);
   const [latched, setLatched] = useState(false);
@@ -112,7 +139,7 @@ export function Tv({
       chunk: (id, i) => {
         const text = chunks.get(id)?.[i] ?? "";
         setMood(moodOfText(text));
-        setSpoken({ seq: id, text });
+        setSpoken({ seq: id, index: i });
         setSpeaking(true);
       },
       done: (id) => {
@@ -229,6 +256,11 @@ export function Tv({
   }, [wake, toggleMute]);
 
   const showWorld = canDraw && inSimulation && !attract;
+  // A long spoken line's caption pieces, cut once per line.
+  const captionPieces = useMemo(
+    () => (caption === null || caption.mode !== "speak" || caption.text.length <= CAPTION_CHUNK_OVER ? [] : captionChunks(caption.text)),
+    [caption],
+  );
   return (
     <div className={`terminal tv${showWorld ? " with-world" : ""}`} data-muted={String(muted)} data-speaking={String(speaking)}>
       <section className="tv-face">
@@ -239,7 +271,7 @@ export function Tv({
       {caption !== null && !attract && (
         <div className={`tv-caption${caption.mode === "speak" ? "" : " text-only"}`} data-mode={caption.mode}>
           {caption.from !== config.character && <span className="tv-caption-who">{caption.from}: </span>}
-          {captionText(caption, spoken)}
+          {captionText(caption, spoken, captionPieces)}
         </div>
       )}
       {attract && <div className="tv-attract">{attractScreen}</div>}
