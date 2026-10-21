@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick, mingleAt } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
 import { VERDICT_SIGNALS } from "../src/cutscene/kit/tv1-time.ts";
 import type { SceneProps } from "../src/cutscene/types.ts";
@@ -234,16 +234,29 @@ describe("act 1 — the filing window fits its slide", () => {
 });
 
 describe("act 1 — bingo's hold", () => {
-  it("every ball pops with a sound and its square ticks a beat later; every fourth rings the chord", () => {
+  it("every meeting blips softly (no ball draw: nobody calls the Bingo) and its square ticks a beat later; every fourth rings the chord", () => {
     // Walk 90 s of the hold collecting each due cue once (as useSfxCues would).
     const seen = new Map<number, string>();
     for (let t = 0; t < 90_000; t += 100) for (const [at, name] of bingoCues(t)) seen.set(at * 100 + name.length, name);
     const names = [...seen.values()];
     const balls = Math.floor((90_000 - 4200) / 8000) + 1;
-    expect(names.filter((n) => n === "popup").length).toBe(balls);
+    expect(names.filter((n) => n === "blip").length).toBe(balls);
+    expect(names).not.toContain("popup");
     expect(names.filter((n) => n === "tick").length).toBeGreaterThanOrEqual(balls - 1);
     expect(names.filter((n) => n === "chord").length).toBe(Math.floor(balls / 4));
     expect(names).toContain("whoosh"); // a new round's card
+  });
+
+  it("the hold is a mingle: two programs meet as the square ticks; no cage, no called ball (F3)", () => {
+    expect(mingleAt(4200).m).toBe(0);
+    expect(mingleAt(4200 + 8000 * 2 + 100)).toEqual({ m: 100, pair: 2 });
+    // Approaching the next square: already its pair.
+    expect(mingleAt(4200 + 8000 * 2 + 5000).pair).toBe(3);
+    // Before the hold, the first pair is on its way in.
+    expect(mingleAt(1000).pair).toBe(0);
+    const src = readFileSync(fileURLToPath(new URL("../src/cutscene/scenes/act1.tsx", import.meta.url)), "utf8");
+    expect(src).not.toMatch(/BingoCage|BALL_WORDS|a1-bingo-out/u);
+    expect(src).toContain("FIND A PROGRAM FOR EVERY SQUARE");
   });
 
   it("the freshly ticked square stamps in", () => {
