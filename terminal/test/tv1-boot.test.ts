@@ -60,7 +60,8 @@ describe("tv1 boot — the introduction", () => {
     expect(draw(IntroTv, 800)).toContain("Memory Test");
     expect(draw(IntroTv, 1200)).toContain("a1-face");
     expect(draw(IntroTv, IN.setup + 1000)).toContain("Trabolta Setup");
-    expect(draw(IntroTv, IN.logo + 1500)).toContain("the computer&#x27;s AI helper");
+    expect(draw(IntroTv, IN.logo + 1500)).toContain("Sole Owner &amp; Founder · Maps and Ducks");
+    expect(draw(IntroTv, IN.logo + 1500)).not.toMatch(/AI helper/u);
     expect(draw(IntroTv, IN.online + 500)).toContain("ALL SYSTEMS ONLINE");
   });
 

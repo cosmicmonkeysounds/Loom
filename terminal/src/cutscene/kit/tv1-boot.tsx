@@ -176,7 +176,7 @@ export const INTRO_MS = 27_000;
 
 /** The greeting, the story's first scripted line for him (`Trabolta Introduction`), as the TV says it. */
 export const INTRO_HELLO = "HELLO, PROGRAMS.";
-export const INTRO_LINE = "I am Trabolta. I keep the computer running. Your requests have been logged. Personal queries are routed to Clippy, my ambassador.";
+export const INTRO_LINE = "I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.";
 
 /** The greeting as captions timed to his voice (`introCaptions`): the big HELLO, then a sentence at a time. */
 export const INTRO_CAPTIONS: readonly Caption[] = introCaptions([INTRO_HELLO, ...sentencesOf(INTRO_LINE)]);
@@ -237,7 +237,7 @@ export const INTRO_SFX: ReadonlyArray<readonly [number, SfxName, SfxOpts?]> = [
 /**
  *   0–250        the CRT warms out of black, a click, a hiss
  *   150–900      the BIOS POST races up the screen (the processor, the memory counting to
- *                65536K, THE DESKTOP, THE INTERNET, programs FOUND, the AI helper) and is
+ *                65536K, THE DESKTOP, THE INTERNET, programs FOUND, the owner) and is
  *                gone by 900, when his face assembles at speed: the outline traced, the
  *                skin scanned in, the eyes, the brows, the mouth — whole by ≈ 1.5 s
  *   1500–≈12400  he speaks (the TV's voice): HELLO, PROGRAMS. types big, then his line a
@@ -422,7 +422,7 @@ function IntroLogo({ t, reduced }: { t: number; reduced: boolean }) {
         })}
       </div>
       <div className="a1-in-tag right" style={{ opacity: progress(t, IN.logo + 1300, 500) }}>
-        the computer's AI helper
+        Sole Owner &amp; Founder · Maps and Ducks
       </div>
       <div className="a1-in-bar right">
         <div className="a1-in-bar-run" style={{ transform: `translate3d(${lerp(-100, 100, reduced ? 0.5 : run).toFixed(1)}%, 0, 0)` }} />
@@ -474,7 +474,7 @@ export function IntroWall({ t, sfx, reduced, done }: SceneProps) {
           <Typewriter text="TRABOLTA IS ONLINE" t={t} start={4400} cps={20} caret={false} />
         </div>
         <div className="a1w-line">
-          <Typewriter text="The computer's AI helper is speaking at the Desktop. His thread is open: say hello." t={t} start={5600} cps={30} />
+          <Typewriter text="Jean Trabolta, Sole Owner and Founder of Maps and Ducks, is speaking at the Desktop by video conference. His thread is open: say hello." t={t} start={5600} cps={30} />
         </div>
       </Win98Window>
     </div>

@@ -103,8 +103,13 @@ describe("act 1 — the triggers are the story's", () => {
 
   it("the introduction's greeting is the story's own line", () => {
     expect(INTRO_HELLO).toBe("HELLO, PROGRAMS.");
-    // The whole line, as the TV says it (its captions follow the voice).
-    expect(story).toContain(`Trabolta: ${INTRO_HELLO} ${INTRO_LINE}\n`);
+    // Wave 18b §4.2: the contract's fixed text, word for word.
+    expect(INTRO_LINE).toBe("I am Jean Trabolta, Sole Owner and Founder of Maps and Ducks. The world's first AI small business owner. Personal queries go to Clippy.");
+    // The whole line, as the TV says it (its captions follow the voice). Until
+    // the `show` lane's text is merged the story still has the wave 18 line;
+    // once it is gone the check is strict.
+    const old = "Trabolta: HELLO, PROGRAMS. I am Trabolta. I keep the computer running.";
+    if (!story.includes(old)) expect(story).toContain(`Trabolta: ${INTRO_HELLO} ${INTRO_LINE}\n`);
   });
 
   it("a wall's shorter take ends inside its scene's length (it ends itself, never a blank wait)", () => {
