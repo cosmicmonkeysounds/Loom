@@ -4,12 +4,15 @@ Pure numpy, no device: `Mixer.process(indata, outdata)` fills one block of
 the interface's outputs from
 
   - the **voices** — decoded sounds, each on its own outputs with per-output
-    gains, a fade-in, a fade-out when stopped (a story restart fades every
+    gains laid out per speaker (a stereo file: L → a pair's first output,
+    R → its second; a one-output speaker gets the mono downmix), a fade-in, a fade-out when stopped (a story restart fades every
     sound out), and a bus (`sfx`, `announce`, `test`);
   - the **matrix** — the interface's inputs (QLab, mics, the TV) passed
     through to outputs at `audio.json`'s `routes` gains, every change
     smoothed so a re-patch never clicks;
-  - the **duck** — sfx voices drop `duck_db` while an announcement plays;
+  - the **duck** — sfx voices drop `duck_db` while an announcement plays,
+    or for a timed hold (`duck_for`: an announcement another player speaks);
+    a voice played with `duck=False` (the dance tracks) never ducks;
   - the **master** gain, then a per-output peak **limiter** (instant attack,
     smooth release) and a hard clip as the last word.
 
@@ -42,6 +45,25 @@ def lin_to_db(lin: float) -> float:
     return -120.0 if lin <= 1e-6 else 20 * math.log10(lin)
 
 
+def source_map(outs: list[int], channels: int, layout: tuple[tuple[int, ...], ...] | None) -> list[int]:
+    """The file channel each output plays. Index `channels` is the mono
+    downmix ((L + R …) / n). Per speaker: one output → the downmix; two or
+    more → the file's channels in the speaker's own output order (L R). A
+    mono file plays channel 0 everywhere. An output two speakers share takes
+    the first speaker's; one in no speaker gets the downmix."""
+    if channels == 1:
+        return [0] * len(outs)
+    groups = layout if layout is not None else (tuple(outs),)
+    pick: dict[int, int] = {}
+    for group in groups:
+        if len(group) == 1:
+            pick.setdefault(group[0], channels)
+            continue
+        for k, o in enumerate(group):
+            pick.setdefault(o, k % channels)
+    return [pick.get(o, channels) for o in outs]
+
+
 @dataclass
 class Voice:
     id: int
@@ -51,6 +73,13 @@ class Voice:
     tag: str = ""
     fade_in: int = 0
     done: Callable[[], None] | None = None
+    #: An sfx voice that ignores the duck (dance_song, rave, hand_jive).
+    duck: bool = True
+    #: 0-based outputs per speaker, in the speaker's own order (None: all the
+    #: outputs as one speaker, in channel order).
+    layout: tuple[tuple[int, ...], ...] | None = None
+    #: The block gets a mono downmix column (a one-output speaker, a stereo file).
+    mix_mono: bool = False
     pos: int = 0
     #: Set by `stop`: the frame the fade-out started at and its length.
     stop_at: int | None = None
@@ -64,9 +93,8 @@ class Voice:
             self.samples = self.samples[:, None]
         outs = sorted(self.gains)
         self.outs = np.asarray(outs, dtype=np.intp)
-        # The source channels repeat across the outputs in channel order
-        # (mono → every output; stereo on a pair → L R).
-        self.src = np.asarray([i % self.samples.shape[1] for i in range(len(outs))], dtype=np.intp)
+        self.src = np.asarray(source_map(outs, self.samples.shape[1], self.layout), dtype=np.intp)
+        self.mix_mono = self.samples.shape[1] > 1 and bool((self.src == self.samples.shape[1]).any())
         self.gain_vec = np.asarray([self.gains[o] for o in outs], dtype=np.float32)
 
     @property
@@ -98,6 +126,7 @@ class Mixer:
         release_s: float = 0.25,
         duck_db: float = -12.0,
         duck_s: float = 0.3,
+        duck_release_s: float = 1.0,
         smooth_s: float = 0.05,
     ) -> None:
         self.n_in, self.n_out, self.rate = n_in, n_out, rate
@@ -106,6 +135,9 @@ class Mixer:
         self.release_frames = max(1, int(release_s * rate))
         self.duck_target = db_to_lin(duck_db)
         self.duck_frames = max(1, int(duck_s * rate))
+        self.duck_release_frames = max(1, int(duck_release_s * rate))
+        #: Frames left of a timed duck (`duck_for`).
+        self.duck_hold = 0
         self.smooth_frames = max(1, int(smooth_s * rate))
         self.voices: list[Voice] = []
         self.matrix = np.zeros((n_in, n_out), dtype=np.float32)
@@ -134,9 +166,13 @@ class Mixer:
         tag: str = "",
         fade_in_s: float = 0.005,
         done: Callable[[], None] | None = None,
+        duck: bool = True,
+        layout: list[tuple[int, ...]] | tuple[tuple[int, ...], ...] | None = None,
     ) -> int:
         """Queue a voice: `gains` maps a 1-based output channel to dB. Returns
-        its id (for `stop`). Outputs past the device are dropped."""
+        its id (for `stop`). Outputs past the device are dropped. `duck=False`
+        keeps an sfx voice at full level under an announcement. `layout` lists
+        each speaker's 1-based outputs in its own order (`source_map`)."""
         if bus not in BUSES:
             raise ValueError(f"bus {bus!r}: {', '.join(BUSES)}")
         lin = {ch - 1: db_to_lin(db) for ch, db in gains.items() if 1 <= ch <= self.n_out}
@@ -149,6 +185,10 @@ class Mixer:
             tag=tag,
             fade_in=int(fade_in_s * self.rate),
             done=done,
+            duck=duck,
+            layout=None
+            if layout is None
+            else tuple(t for t in (tuple(ch - 1 for ch in g if 1 <= ch <= self.n_out) for g in layout) if t),
         )
         self._commands.put(("play", voice))
         return vid
@@ -156,6 +196,11 @@ class Mixer:
     def stop(self, *, vid: int | None = None, tag: str | None = None, bus: str | None = None, fade_s: float = 0.5) -> None:
         """Fade out the matching voices (no filter = every voice)."""
         self._commands.put(("stop", (vid, tag, bus, int(fade_s * self.rate))))
+
+    def duck_for(self, seconds: float) -> None:
+        """Duck the sfx bus for `seconds` (an announcement the router does not
+        speak itself: the `alexa` player's). A new hold extends, never cuts."""
+        self._commands.put(("duck_hold", max(0, int(seconds * self.rate))))
 
     def set_routes(self, routes: dict[tuple[int, int], float]) -> None:
         """The input→output matrix: (1-based in, 1-based out) → dB. Replaces it."""
@@ -210,6 +255,8 @@ class Mixer:
                 self._matrix_target = self._routes if arg else np.zeros_like(self._routes)
             elif kind == "master":
                 self.master = arg
+            elif kind == "duck_hold":
+                self.duck_hold = max(self.duck_hold, arg)
 
     def process(self, indata: np.ndarray | None, outdata: np.ndarray) -> None:
         """Fill `outdata` (frames × n_out) for one block."""
@@ -227,9 +274,13 @@ class Mixer:
             mix += (src @ self.matrix[:n]) * (1.0 - ramp) + (src @ new[:n]) * ramp
             self.matrix = new if alpha < 1.0 else self._matrix_target.copy()
 
-        # The duck follows whether an announcement is playing.
-        duck_goal = self.duck_target if any(v.bus == "announce" for v in self.voices) else 1.0
-        step = (duck_goal - self.duck) * min(1.0, frames / self.duck_frames)
+        # The duck follows whether an announcement is playing (or a timed
+        # hold runs): down over `duck_s`, back up over `duck_release_s`.
+        ducking = self.duck_hold > 0 or any(v.bus == "announce" for v in self.voices)
+        self.duck_hold = max(0, self.duck_hold - frames)
+        duck_goal = self.duck_target if ducking else 1.0
+        span = self.duck_frames if duck_goal < self.duck else self.duck_release_frames
+        step = (duck_goal - self.duck) * min(1.0, frames / span)
         duck = self.duck + step * ramp[:, 0] if frames else np.zeros(0, dtype=np.float32)
         self.duck += step
 
@@ -237,9 +288,12 @@ class Mixer:
         for v in self.voices:
             n = min(frames, len(v.samples) - v.pos)
             if n > 0 and len(v.outs):
-                chunk = v.samples[v.pos : v.pos + n][:, v.src] * v.gain_vec
+                part = v.samples[v.pos : v.pos + n]
+                if v.mix_mono:
+                    part = np.concatenate([part, part.mean(axis=1, keepdims=True)], axis=1)
+                chunk = part[:, v.src] * v.gain_vec
                 env = v.envelope(n)
-                if v.bus == "sfx":
+                if v.bus == "sfx" and v.duck:
                     env = env * duck[:n]
                 mix[:n, v.outs] += chunk * env[:, None]
             v.pos += max(n, 0)

@@ -93,7 +93,7 @@ def test_stop_with_no_filter_stops_every_voice():
 
 
 def test_an_announcement_ducks_the_sfx_bus_only():
-    m = Mixer(1, 2, RATE, duck_db=-12, duck_s=0.1)
+    m = Mixer(1, 2, RATE, duck_db=-12, duck_s=0.1, duck_release_s=0.1)
     m.play(tone(2000, 0.1), {1: 0.0}, fade_in_s=0)  # a bed
     m.play(tone(2000, 0.1), {2: 0.0}, bus="test", fade_in_s=0)
     block(m)
@@ -105,6 +105,67 @@ def test_an_announcement_ducks_the_sfx_bus_only():
     for _ in range(4):  # the announcement ends; the bed comes back
         out = block(m)
     assert out[-1, 0] == pytest.approx(0.1, rel=0.02)
+
+
+def test_a_timed_duck_holds_then_releases_slowly():
+    m = Mixer(1, 1, RATE, duck_db=-12, duck_s=0.1, duck_release_s=0.5)
+    m.play(tone(5000, 0.1), {1: 0.0}, fade_in_s=0)
+    block(m)
+    m.duck_for(0.7)  # the alexa player speaks: no announce voice here
+    m.duck_for(0.2)  # a shorter hold never cuts the longer one
+    for _ in range(3):
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
+    for _ in range(4):  # still held at 0.7 s
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
+    out = block(m)  # released: on its way up, not back at once
+    assert 0.1 * db_to_lin(-12) * 1.05 < out[-1, 0] < 0.09
+    for _ in range(20):
+        out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1, rel=0.02)
+
+
+def test_a_no_duck_voice_keeps_its_level_under_an_announcement():
+    m = Mixer(1, 2, RATE, duck_db=-12, duck_s=0.1)
+    m.play(tone(2000, 0.1), {1: 0.0}, fade_in_s=0)  # a bed
+    m.play(tone(2000, 0.1), {2: 0.0}, fade_in_s=0, duck=False)  # dance_song
+    m.duck_for(1.0)
+    block(m)
+    out = block(m)
+    assert out[-1, 0] == pytest.approx(0.1 * db_to_lin(-12), rel=0.05)
+    assert out[-1, 1] == pytest.approx(0.1, rel=0.01)
+
+
+def test_a_stereo_file_on_a_mono_speaker_plays_the_downmix():
+    m = Mixer(1, 2, RATE)
+    stereo = np.stack([np.full(200, 0.2), np.full(200, 0.4)], axis=1).astype(np.float32)
+    m.play(stereo, {1: 0.0}, fade_in_s=0, layout=[(1,)])
+    out = block(m)
+    assert np.allclose(out[:, 0], 0.3) and not out[:, 1].any()
+
+
+def test_a_stereo_file_is_laid_out_per_speaker_not_by_output_parity():
+    # Output 3 is a mono hall speaker, 4 / 5 a left / right pair: the pair
+    # must get L R (by channel parity it would get R L), the hall the downmix.
+    m = Mixer(1, 6, RATE)
+    stereo = np.stack([np.full(200, 0.2), np.full(200, 0.4)], axis=1).astype(np.float32)
+    m.play(stereo, {3: 0.0, 4: 0.0, 5: 0.0}, fade_in_s=0, layout=[(3,), (4, 5)])
+    out = block(m)
+    assert np.allclose(out[:, 2], 0.3) and np.allclose(out[:, 3], 0.2) and np.allclose(out[:, 4], 0.4)
+    # A pair keeps its own order (`out: [6, 5]` → L on 6).
+    m.play(stereo, {5: 0.0, 6: 0.0}, fade_in_s=0, layout=[(6, 5)])
+    block(m)  # the first voice is still going on 3–5: look at 6 alone
+    m2 = Mixer(1, 6, RATE)
+    m2.play(stereo, {5: 0.0, 6: 0.0}, fade_in_s=0, layout=[(6, 5)])
+    out = block(m2)
+    assert np.allclose(out[:, 5], 0.2) and np.allclose(out[:, 4], 0.4)
+
+
+def test_a_mono_file_plays_on_every_speaker_layout():
+    m = Mixer(1, 3, RATE)
+    m.play(tone(200, 0.25), {1: 0.0, 2: 0.0, 3: 0.0}, fade_in_s=0, layout=[(1,), (2, 3)])
+    assert np.allclose(block(m), 0.25)
 
 
 def test_the_matrix_passes_inputs_through_and_smooths_a_change():
