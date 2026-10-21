@@ -485,7 +485,11 @@
 .cue-bar-fire { position: relative; flex: 0 0 auto; min-width: 88px; min-height: 56px; margin: 0; font: 700 16px var(--ui-font); overflow: hidden; }
 .cue-bar.armed .cue-bar-fire { background: var(--ink); color: var(--white); }
 .cue-bar-drawer { position: absolute; left: 0; right: 0; bottom: 100%; z-index: var(--z-drawer); max-height: 60vh; display: flex; flex-direction: column; }
-.cue-bar-drawer-body { overflow: auto; -webkit-overflow-scrolling: touch; padding: 6px; }
+.cue-bar-drawer-body { overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 6px; }
+/* the act heads bleed to the body's own padding, never past the drawer
+   (BN2-FF: their -8 px margins scrolled the page 3 px sideways) */
+.cue-bar-drawer { box-sizing: border-box; max-width: 100%; }
+.cue-bar-drawer-body .cue-act-head { margin: 0 -6px; top: -6px; }
 
 /* fix round (OD-F8): on a small phone the Guests tabs wrap rather than clip */
 @media (max-width: 379px) {

@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ShowClockItem } from "../src/chrome/show-clock-tray.tsx";
+import { readBundledCss } from "./css.ts";
 import { mergeAnswered, NO_ANSWERS } from "../src/session/shared.ts";
 import { whereRowOf } from "../src/guest/mission-model.ts";
 import { memberCount } from "../src/sides/model.ts";
@@ -112,5 +113,13 @@ describe("BN2-FB / NMR-1: stale capture bigs leave a live queue", () => {
     // The same drain (a view not yet carrying the capture): kept.
     expect(staleCaptureKeys([sent], [sent], { captured: false, clock: 558_500 })).toEqual([]);
     expect(staleCaptureKeys([found], [found], { captured: false, clock: 900_000 })).toEqual([]);
+  });
+});
+
+describe("BN2-FF: Clippy's drawer never scrolls the page sideways", () => {
+  it("the act heads bleed only to the drawer body's padding, which clips sideways", () => {
+    const css = readBundledCss();
+    expect(css).toContain(".cue-bar-drawer-body { overflow-x: hidden;");
+    expect(css).toContain(".cue-bar-drawer-body .cue-act-head { margin: 0 -6px; top: -6px; }");
   });
 });
