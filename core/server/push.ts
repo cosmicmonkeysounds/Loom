@@ -207,6 +207,35 @@ export function roomUrl(room: string): string {
   return `/?room=${encodeURIComponent(room)}`;
 }
 
+/**
+ * Where a tap on a moment's push lands (wave 18 fix NM-F5): its first
+ * `go:` target — a room or DM (`?room=`), the Codex / Quest Log entry or
+ * quest (`?room=codex&entry=`), the Wallet, or a screen word (`?go=pass`,
+ * `scan`, `sides`, `mission`, …) — never the lobby by default; with no
+ * `go:` (or only a guest button) its own room.
+ */
+export function momentUrl(m: Pick<ChatMessage, "channel" | "go">): string {
+  const g = m.go?.[0];
+  if (g !== undefined) {
+    switch (g.kind) {
+      case "room":
+      case "dm":
+        return roomUrl(g.id);
+      case "codex":
+        return g.entry !== undefined && g.entry !== "" ? `${roomUrl("codex")}&entry=${encodeURIComponent(g.entry)}` : roomUrl("codex");
+      case "quests":
+        return g.quest !== undefined && g.quest !== "" ? `${roomUrl("quests")}&quest=${encodeURIComponent(g.quest)}` : roomUrl("quests");
+      case "wallet":
+        return roomUrl("wallet");
+      case "act":
+        break;
+      default:
+        return `/?go=${encodeURIComponent(g.kind)}`;
+    }
+  }
+  return roomUrl(m.channel);
+}
+
 function clip(text: string): string {
   const t = text.replace(/\s+/gu, " ").trim();
   return t.length > MAX_BODY ? `${t.slice(0, MAX_BODY - 1)}…` : t;
@@ -222,7 +251,7 @@ function clip(text: string): string {
 export function messagePush(m: ChatMessage, eventTitle: string): { payload: PushPayload; always: boolean } | null {
   if (m.hidden) return null;
   if (m.alert === true) {
-    return { always: true, payload: { kind: "alert", title: `🚨 ${eventTitle}`, body: clip(m.text), tag: `alert-${m.seq}`, url: roomUrl(m.channel) } };
+    return { always: true, payload: { kind: "alert", title: `🚨 ${eventTitle}`, body: clip(m.text), tag: `alert-${m.seq}`, url: momentUrl(m) } };
   }
   // A wallet card: the approver's held card always (someone is waiting on
   // them); a card that asks something of its viewer (a request, an offer,
