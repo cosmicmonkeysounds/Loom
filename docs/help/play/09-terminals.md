@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
+keywords: terminal, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -11,24 +11,46 @@ direct line to one of the story's characters. They talk back, out loud.
 ## Before the character is online
 
 A character can arrive partway through the night. Until then its
-terminals are just screens: a 1999 screensaver with the odd
-advertisement — no camera, nothing to scan, nobody to talk to. The same
+terminals are just screens playing the **idle show** (below) full
+screen — no camera, nothing to scan, nobody to talk to. The same
 happens if the character is switched off later in the story. At
 *Trapped in the Internet* the terminals stay that way until Clippy
 introduces Trabolta; a message sent to him before then gets "Jean
 Trabolta will make an appearance later tonight. Please do not move the
 mouse." Once he is introduced, the terminals become his line.
 
+## The idle show
+
+A terminal nobody is using is never a blank "scan" screen. It plays an
+endless 1999 **idle show**: screensavers (pipes, a starfield, a maze
+that solves itself, a duck pond, …), fake advertisements, and **popups**
+that pile up — Win98 dialogs, chat windows, warnings, now and then a
+whole **popup storm**. What it shows follows the night: during the ad
+hijack the popups come faster, in the last hour they count down to
+midnight.
+
+Everything on it can be tapped. **×** closes a popup (sometimes two more
+take its place, and some windows jump away), an ad's button does
+something silly, and tapping a screensaver pokes it. Leave a terminal
+alone for half a minute and it asks you to **TOUCH ME**. None of this
+gets in the way of connecting: on a terminal you can talk to, the corner
+box below is always there.
+
+The terminals run **full screen**. If one ever shows the browser's bars,
+touch it and it fills the screen again.
+
 ## Connecting
 
 1. Open the app on your phone and tap **🎟 Pass** on the taskbar: your
    QR fills the screen.
-2. Hold it up to the terminal's camera. The screen says **CONNECTING…**,
-   then the line is yours: the conversation on one side, the character's
-   face on the other.
+2. Hold it up to the camera in the terminal's corner box, the one that
+   says **SCAN YOUR PASS** — whatever the idle show is doing around it.
+   The show steps aside, the screen says **CONNECTING…**, and the line
+   is yours: the conversation on one side, the character's face
+   on the other.
 
-No camera on that terminal (or it can't be used)? Tap *type your program
-name* and enter the name you registered with.
+No camera on that terminal (or it can't be used)? Tap *no camera? type
+your program name* in the box and enter the name you registered with.
 
 A slide covering the terminal (the countdown clock in the last hour, a
 bingo card, the Trust Chart)? **Tap it**: it steps aside so you can scan
@@ -70,6 +92,15 @@ corner, or a full-screen **notice** — a blackout, "go to the living
 room", an alarm. A notice ends whatever line is open; when it clears,
 scan again.
 
+The night's **big moments** play as animated scenes, with sound — the
+character's arrival, a bingo card filling in, the bottle landing on
+someone, the download, the clock running out, an award going to its
+winner, the golden duck found. The TV plays the full version; the wall
+terminals a shorter one, and only while nobody is talking to them. A
+scene that started before a terminal reloaded carries on where it was;
+nothing that already happened plays again. A tap on a slide still steps
+it aside.
+
 A **chart** (like the Trust Chart) fills in from the bottom, one name
 at a time; once the character has named the most and least trusted,
 their rows light up and a banner calls them out. The character can also
@@ -81,16 +112,20 @@ A terminal that suddenly shows its own **name** full screen for ten
 seconds, with a chime, is the crew checking which tablet is which. It
 goes back on its own.
 
-Some terminals also pass on the **house announcements** — a chime, then
-the line ("Go to the living room.") with a 📢 banner — the same ones you
-hear from the house speakers. An announcement waits for the character to
+The tablets themselves only make **small sounds** — a ding when a popup
+arrives, a click when you close one, a sting under a scene. The dings
+and clicks never sound while the character is talking; a scene's stings
+play quietly under him. The story's real sounds and the **house
+announcements** come out of the house speakers. Some terminals also pass
+on those announcements — a chime, then the line ("Go to the living
+room.") with a 📢 banner. An announcement waits for the character to
 finish his sentence; it never cuts him off.
 
 ## A terminal that belongs to a room
 
 A few terminals belong to **one room** rather than the house. Until the
-story opens that room for everyone, the terminal sleeps — the
-screensaver, nothing to scan — even when the character is online
+story opens that room for everyone, the terminal sleeps — the idle
+show, nothing to scan — even when the character is online
 elsewhere. When the room opens, it wakes and the character **speaks
 there, out loud**, whatever he says in that room, with a caption under
 his face; wait for him to finish (the screen says **LISTEN**), then scan
@@ -202,9 +237,12 @@ and **speaks his lines** in the room it watches (the Desktop), with a
 caption under each; songs are captioned only, and most other characters'
 lines stay on your phone. While someone is in the simulation, the window
 into it takes the right side of the screen. It shows the same slides,
-countdowns and notices as the terminals, and the screensaver until the
-character is introduced. It has no camera and no chat — just watch and
-listen. (Another screen can be a silent **mirror**: the window into the
+countdowns and notices as the terminals, and the idle show until the
+character is introduced (nothing to tap there). Every big moment of the
+night gets its **longest scene** on the TV: his arrival is a whole
+computer booting up. Its own sounds are quiet and stop when the crew
+mutes the TV. It has no camera and no chat — just watch and listen.
+(Another screen can be a silent **mirror**: the window into the
 simulation, full screen.)
 
 ## Setting a terminal up (for the crew)

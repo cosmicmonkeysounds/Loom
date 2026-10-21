@@ -262,11 +262,24 @@ or `tv_` family (`cue screens_bingo`, `cue tv_award_most_trusted`,
 `cue screens_blackout`) puts a slide or a notice on the wall terminals
 and the TV — `screens_` on both, the others on one. `blackout`,
 `go_to_living_room` and `alarm` are full-screen notices; `screensaver`
-clears back to the base view; any other value is a slide (a
-`public/slides/<cue>.png` in the terminal app, else a text card; on the
-TV a `public/slides/<cue>.mp4` plays first when there is one). A
-terminal whose character is still `hidden`, or whose
-`<Character>.awake` is false, shows its screensaver.
+clears back to the base view; any other value is a slide: the terminal
+app's animated scene for that cue when it has one
+(`terminal/src/cutscene/scenes/`); with no scene, a
+`public/slides/<cue>.png`, else a text card (on the TV a
+`public/slides/<cue>.mp4` plays before the PNG when there is one). The
+screens also react with no cue at all: a house-wide beat (one with no
+subject), an admin cue the story took, a `do pick` draw (and the 🗣 / 🙅
+/ 🎩 verdict on its pick), the King's signals (a hit, his fall, a lost
+or drawn game), a reinstallation beginning, a duck found, a `sound` and
+a house-wide `reveal` reach them as **moments**, and the TV (and,
+shorter, a wall terminal nobody is using) plays the scene that names
+one. Any other guest or booth button press never does. Nothing about a
+`secret: true` character, an admin cue whose rule sets one, or a
+checkmate ever becomes a moment. A terminal whose character is still
+`hidden`, or whose `<Character>.awake` is false, plays its **idle show**
+(screensavers, ads, popups) with nothing in it that names the character;
+an awake wall terminal plays the same show around a corner box that scans
+passes.
 
 **Watchers** are `when` with a condition — `when self.suspicion >= 70:`,
 `when Tension > 60:`. They fire once when the condition *becomes* true

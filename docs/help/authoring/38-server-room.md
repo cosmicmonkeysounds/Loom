@@ -130,7 +130,7 @@ server-room door — the **Server Door** terminal (`view=chess`; the
 kiosk runbook, `docs/trapped/kiosk.md`, has the provisioning link). Not
 on the tent tablet, not in a headset.
 
-- It is **awake all night** and never sleeps on a screensaver. It shows
+- It is **awake all night** and never sleeps on the idle show. It shows
   THE KING, his bar (*n / 15*, *HE KNEELS* at 0), what a win is worth
   (*"Checkmate him and the server-room door code goes to your Codex."*,
   or *"No prize now."* after 📄) and the scanner. **No hints, no tips**:
@@ -219,7 +219,7 @@ button on their booth (on any program's card).
 
 A wall terminal hangs inside the room, provisioned with
 `room=The Server Room` (the kiosk runbook has the link). It sleeps on
-its screensaver until the room is open to everyone — The Heart or the
+the idle show until the room is open to everyone — The Heart or the
 alarm opens it; the majority's private reveal does not — then wakes,
 speaks Trabolta's lines in that room aloud, and works like any terminal:
 a program holds up their pass and talks to him on their own thread.
@@ -343,7 +343,7 @@ everyone is banished. The way out is the hand jive, together."* — no
 golden egg, no Golden Duck in the Codex. The tablet and the headset
 show **GERALD CAN'T HELP** instead of the reinstallation, the wall
 terminals' window the same with no egg, and the TV keeps the banish
-card. The hand jive frees everyone and puts the screensaver back on
+card. The hand jive frees everyone and puts the idle show back on
 every screen.
 
 ## When the keypad itself fails
