@@ -63,7 +63,7 @@ describe("Game.hold — an overlay holds the walk, never ends it", () => {
     g["dragPointer"] = 7;
     g["hitQueued"] = true;
     g["held"] = false;
-    return g as unknown as Game & { leash: IdleLeash; keys: Set<string>; hitQueued: boolean };
+    return g as unknown as { hold(on: boolean): void; readonly isHeld: boolean; leash: IdleLeash; keys: Set<string>; hitQueued: boolean };
   }
 
   it("pauses the leash and drops held input; letting go resumes it where it stopped", () => {
