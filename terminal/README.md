@@ -633,7 +633,8 @@ room terminal shows none, a slide's scene (else its card), one moment at a
 time over it (a moment that replaces the slide only hides it, so its clip or
 scene carries on; a tap on a moment never peeks), nothing that names the
 character before the introduction (the first fiction-safe scene on the same
-trigger plays instead). A slide from history starts `HISTORY_T` in, at the
+trigger plays instead), and nothing its own `gate(night)` refuses (the
+King's scenes after an ending: the story stops hearing him). A slide from history starts `HISTORY_T` in, at the
 moment this page first drew it, then moves on; a scene's `face` flashes the
 TV face once. The
 layer is a lazy chunk in the slide's slot (z 30), preloaded at boot. Lanes
