@@ -156,6 +156,12 @@ COHORT Early Arrivals
   loads, so the night never waits on Wikipedia. A guest choosing a
   program sees its hand-picked pictures first, then the article's own
   gallery, and picks one (and can switch later from the Start menu).
+  A picture the app ships is `picture:<file>` (`picture:trabolta.svg`, a
+  lower-case svg / png / webp in the app's `pictures/`). An option may end
+  in **`when <condition>`** (the character as `self`) to swap the picture
+  live: `avatar: picture:trabolta.svg | picture:trabolta-broken.svg when
+  self.broken == true` shows the second while it holds (the last true
+  `when` wins), else the first.
 - **`admin: true`** on a CHARACTER makes it a **host part**: whoever
   signs in as it with the performer code gets the host console in their
   booth — the cue sheet's NEXT bar, judging, announcements, the alert

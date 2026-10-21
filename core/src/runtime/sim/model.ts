@@ -1143,13 +1143,19 @@ function charDef(id: string, body: CharacterBody): CharDef {
     ranges,
     playable: body.properties.get("playable")?.value.trim() !== "false",
     reserved: body.properties.get("reserved")?.value.trim().toLowerCase() === "true",
-    avatar: avatarsOf(body.properties.get("avatar")?.value),
+    ...avatarFields(body.properties.get("avatar")?.value),
     wiki: body.properties.get("wiki")?.value.trim() || null,
     secret: body.properties.get("secret")?.value.trim() === "true",
     wallet: walletRoleOf(body.properties.get("wallet")?.value),
     admin: body.properties.get("admin")?.value.trim().toLowerCase() === "true",
     crawl: body.properties.get("crawl")?.value.trim().toLowerCase() === "fx" ? "fx" : null,
   };
+}
+
+/** `CharDef.avatar` + (when any) `avatarRules`. */
+function avatarFields(value: string | undefined): Pick<CharDef, "avatar" | "avatarRules"> {
+  const { refs, rules } = avatarOptionsOf(value);
+  return rules.length > 0 ? { avatar: refs, avatarRules: rules } : { avatar: refs };
 }
 
 /** Parse `wallet: approver[, every N][, window <dur>][, as <name>][, audit
@@ -1257,16 +1263,38 @@ function holdOf(raw: string | undefined): string | null {
   return v === "" ? null : v;
 }
 
+/** A picture the app ships (wave 18b): `picture:trabolta.svg`, served from
+ *  the app's own `pictures/` (lower-case name, an svg / png / webp). */
+export const PICTURE_REF = /^picture:[a-z0-9][a-z0-9._-]*\.(svg|png|webp)$/u;
+
+/** Is `ref` an `avatar:` picture: an absolute http(s) URL, a Wikipedia /
+ *  Commons file by name (`File:Winamp Logo.svg`) or a shipped `picture:`? */
+export function isAvatarRef(ref: string): boolean {
+  return /^https?:\/\/\S+$/u.test(ref) || /^File:\S/iu.test(ref) || PICTURE_REF.test(ref);
+}
+
 /**
- * Authored `avatar:` pictures, `|`-separated: an absolute http(s) URL, or
- * a Wikipedia / Commons file by name (`File:Winamp Logo.svg`). Anything
+ * Authored `avatar:` options, `|`-separated, each a picture (`isAvatarRef`)
+ * optionally ending in `when <cond>` (wave 18b: `picture:trabolta.svg |
+ * picture:trabolta-broken.svg when self.broken == true`). `refs` are the
+ * unconditional pictures in order, `rules` the conditional ones. Anything
  * else is ignored.
  */
+export function avatarOptionsOf(value: string | undefined): { refs: string[]; rules: AvatarRule[] } {
+  const refs: string[] = [];
+  const rules: AvatarRule[] = [];
+  for (const raw of (value ?? "").split("|")) {
+    const v = raw.trim();
+    const m = /^(.+?)\s+when\s+(\S.*)$/su.exec(v);
+    if (m !== null && isAvatarRef(m[1]!.trim())) rules.push({ ref: m[1]!.trim(), when: m[2]!.trim() });
+    else if (isAvatarRef(v)) refs.push(v);
+  }
+  return { refs, rules };
+}
+
+/** The unconditional `avatar:` pictures, best first (`avatarOptionsOf`). */
 export function avatarsOf(value: string | undefined): string[] {
-  return (value ?? "")
-    .split("|")
-    .map((v) => v.trim())
-    .filter((v) => /^https?:\/\/\S+$/u.test(v) || /^File:\S/iu.test(v));
+  return avatarOptionsOf(value).refs;
 }
 
 function hooksOf(ownerId: string, ownerKind: "character" | "role", body: CharacterBody): Hook[] {

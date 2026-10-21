@@ -177,3 +177,32 @@ CHARACTER CRA Agent Software
     expect(moments).toEqual(["minor", "minor", undefined]);
   });
 });
+
+import { avatarOptionsOf, avatarsOf } from "../src/runtime/sim/model.ts";
+
+describe("avatar: picture refs and when rules (wave 18b)", () => {
+  it("accepts a shipped picture and splits off conditional options", () => {
+    expect(avatarsOf("picture:trabolta.svg")).toEqual(["picture:trabolta.svg"]);
+    expect(avatarsOf("picture:Trabolta.svg | picture:../x.svg | picture:x.gif | picture:-x.png")).toEqual([]);
+    expect(avatarOptionsOf("picture:trabolta.svg | picture:trabolta-broken.svg when self.broken == true")).toEqual({
+      refs: ["picture:trabolta.svg"],
+      rules: [{ ref: "picture:trabolta-broken.svg", when: "self.broken == true" }],
+    });
+    expect(avatarsOf("File:Winamp Logo.svg | https://x.test/a.png")).toEqual(["File:Winamp Logo.svg", "https://x.test/a.png"]);
+    expect(avatarOptionsOf("nonsense when self.x").rules).toEqual([]);
+  });
+
+  it("lands on the CharDef", () => {
+    const sim = Sim.fromSources(`# Pics
+CHARACTER Trabolta
+  broken: bool = false
+  avatar: picture:trabolta.svg | picture:trabolta-broken.svg when self.broken == true
+
+CHARACTER Clippy
+  avatar: File:Clippy-letter.PNG
+`);
+    expect(sim.model.characters.get("Trabolta")).toMatchObject({ avatar: ["picture:trabolta.svg"], avatarRules: [{ ref: "picture:trabolta-broken.svg", when: "self.broken == true" }] });
+    expect(sim.model.characters.get("Clippy")!.avatar).toEqual(["File:Clippy-letter.PNG"]);
+    expect(sim.model.characters.get("Clippy")).not.toHaveProperty("avatarRules");
+  });
+});
