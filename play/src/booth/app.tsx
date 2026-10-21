@@ -49,7 +49,7 @@ import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
 import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
-import { PopOutHost, PopOutScope, usePopOuts } from "./popouts/rung.ts";
+import { PopOutHost, PopOutScope, popOutWaiting, usePopOuts } from "./popouts/rung.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
 import { WantedBoard } from "./wanted/board.tsx";
@@ -477,7 +477,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                     { id: "scan", label: "Scan", icon: <Icon name="scan" />, primary: true, title: "Scan a guest's pass", tour: "scan", onClick: () => setLayer({ kind: "scan" }), active: layer?.kind === "scan" },
                     { id: "guests", label: "Guests", icon: <Icon name="people" />, title: `Every guest (${guests.length}), searchable`, tour: "guests", badge: waiting, onClick: () => setLayer({ kind: "guests" }), active: layer?.kind === "guests" },
                   ]}
-                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null ? loose : null} waiting={rung.tray.length + rung.queued} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} />}
+                  tray={<BoothTray view={s.view} onWallet={() => t.open(WALLET_ROOM)} loose={wanted !== null ? loose : null} waiting={popOutWaiting(rung)} onBoard={openBoard} onWaiting={() => setLayer({ kind: "waiting" })} />}
                   conn={s.connected ? "live" : "reconnecting"}
                 />
               )}

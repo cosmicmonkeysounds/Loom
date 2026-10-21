@@ -272,7 +272,9 @@ describe("the window (popout.tsx)", () => {
   it("outside a booth's provider nothing floats, and the tray says nothing waits", () => {
     expect(renderToStaticMarkup(createElement(PopOutHost))).toBe("");
     expect(renderToStaticMarkup(createElement(PopOutTrayList, {}))).toContain("Nothing waiting. You&#x27;re on top of it.");
-    expect(popOutWaiting({ tray: [spec("a")], queued: 2 })).toBe(3);
+    // The bell counts what the 🔔 window lists, never the queue behind the one on screen (BN2-FD).
+    expect(popOutWaiting({ tray: [spec("a")] })).toBe(1);
+    expect(popOutWaiting({ tray: [] })).toBe(0);
   });
 
   it("the stylesheet: docked over the stream above the dock, over the balloons and stickies (41, BN-F8), a 56 px primary, the flash only with motion", () => {

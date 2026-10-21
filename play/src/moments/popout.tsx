@@ -515,7 +515,9 @@ export function PopOutTrayList({ onPick }: { onPick?: (key: string) => void }) {
   );
 }
 
-/** How many pop-outs wait for the booth's 🔔 (the tray + the queue behind the one on screen). */
-export function popOutWaiting(api: Pick<PopOutsApi, "tray" | "queued">): number {
-  return api.tray.length + api.queued;
+/** How many pop-outs wait in the booth's 🔔 window: the deferred ones, the
+ *  rows it lists. The queue behind the one on screen has its own "1 of N"
+ *  pager (BN2-FD: the bell said 1 waiting, the window said none). */
+export function popOutWaiting(api: Pick<PopOutsApi, "tray">): number {
+  return api.tray.length;
 }
