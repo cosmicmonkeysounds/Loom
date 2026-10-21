@@ -14,6 +14,17 @@ beforeAll(() => {
 const html = (el: (p: any) => unknown, p: Record<string, unknown>) => renderToStaticMarkup(createElement(el as never, p as never));
 
 describe("tv1 parts", () => {
+  it("two faces and two bottles on one page never share an SVG id", () => {
+    const two = renderToStaticMarkup(
+      createElement("div", null, createElement(AssembleFace as never, { t: 2000, start: 0, reduced: false } as never), createElement(AssembleFace as never, { t: 900, start: 0, reduced: false } as never), createElement(BottleTable as never, { t: 0, angle: 0, reduced: false } as never), createElement(BottleTable as never, { t: 0, angle: 90, reduced: false } as never)),
+    );
+    const ids = [...two.matchAll(/ id="([^"]+)"/gu)].map((m) => m[1]!);
+    expect(ids.length).toBeGreaterThanOrEqual(12);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Every url(#…) points at an id on the page.
+    for (const m of two.matchAll(/url\(#([^)]+)\)/gu)) expect(ids).toContain(m[1]);
+  });
+
   it("the wall card types its title, then its lines, and keeps its backdrop moving", () => {
     const at = (t: number) => html(WallCard, { t, title: "TIME IS UP", lines: ["Back to the Desktop."], reduced: false, footer: "★ GO ★" });
     expect(at(0)).not.toContain(">TIME IS UP<");

@@ -5,13 +5,22 @@
 //! picture of `t` (no timers, no `Math.random`). Original art throughout.
 
 import "./tv1.css";
-import type { CSSProperties, ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { useCanvas } from "./canvas.ts";
 import { Glitch } from "./effects.tsx";
 import { Marquee, Typewriter } from "./text.tsx";
 import { blink, clamp01, ease, eased, loop, noise1, progress, pulse, typedDuration } from "./time.ts";
 import { BOTTLE_SEATS, marchersAt, rainColumn, seatAngle } from "./tv1-time.ts";
 import { Win98Icon, Win98Window, type IconKind } from "./win98.tsx";
+
+/**
+ * An SVG id unique to this instance (React's `useId`, made fragment-safe), so
+ * two bottles or faces on one page — a moment over its hidden slide, the
+ * preview list — never share a gradient or a per-frame clip.
+ */
+export function useSvgId(prefix: string): string {
+  return `${prefix}-${useId().replace(/[^A-Za-z0-9_-]/gu, "")}`;
+}
 
 // --- the wall card ------------------------------------------------------------------------
 
@@ -127,17 +136,18 @@ export function Chevrons({ t, reduced, rows = 6, color = "#ffd23f" }: { t: numbe
 
 /** A green glass bottle, its neck at 12 o'clock, turned `angle`° (original art). */
 export function Bottle({ angle, className, style }: { angle: number; className?: string; style?: CSSProperties }) {
+  const glass = useSvgId("a1-glass");
   return (
     <svg className={`a1-bottle${className ? ` ${className}` : ""}`} viewBox="-20 -60 40 120" style={{ ...style, transform: `rotate(${angle.toFixed(2)}deg)` }} aria-hidden="true">
       <defs>
-        <linearGradient id="a1-glass" x1="0" x2="1">
+        <linearGradient id={glass} x1="0" x2="1">
           <stop offset="0" stopColor="#0c5a26" />
           <stop offset="0.35" stopColor="#3ccf6e" />
           <stop offset="0.55" stopColor="#1f9a49" />
           <stop offset="1" stopColor="#0a4a1f" />
         </linearGradient>
       </defs>
-      <path d="M -5 -58 H 5 V -40 Q 5 -30 14 -18 Q 18 -12 18 0 V 50 Q 18 58 10 58 H -10 Q -18 58 -18 50 V 0 Q -18 -12 -14 -18 Q -5 -30 -5 -40 Z" fill="url(#a1-glass)" stroke="#063314" strokeWidth="1.5" />
+      <path d="M -5 -58 H 5 V -40 Q 5 -30 14 -18 Q 18 -12 18 0 V 50 Q 18 58 10 58 H -10 Q -18 58 -18 50 V 0 Q -18 -12 -14 -18 Q -5 -30 -5 -40 Z" fill={`url(#${glass})`} stroke="#063314" strokeWidth="1.5" />
       <rect x="-6" y="-60" width="12" height="6" rx="1.5" fill="#d9b44a" stroke="#6b5212" />
       <rect x="-14" y="6" width="28" height="22" rx="2" fill="#f4ecd2" stroke="#7a6a3a" />
       <text x="0" y="21" textAnchor="middle" fontSize="8" fontFamily="Tahoma, sans-serif" fontWeight="bold" fill="#7a1010">
@@ -292,35 +302,36 @@ export function AssembleFace({ t, start, mouth = 0, reduced, className, style }:
   const bl = l > 2600 ? loop(l - 2600, 3300) : 1;
   const lid = bl < 0.05 ? 46 * (1 - Math.abs(bl / 0.025 - 1)) : 0;
   const gx = l > 2800 && !reduced ? 4 * Math.sin(l / 1700) : 0;
+  const id = useSvgId("a1-face");
   return (
     <svg className={`a1-face${className ? ` ${className}` : ""}`} viewBox="-160 -160 320 320" style={style} aria-hidden="true">
       <defs>
-        <radialGradient id="a1-skin" cx="0.5" cy="0.4" r="0.7">
+        <radialGradient id={`${id}-skin`} cx="0.5" cy="0.4" r="0.7">
           <stop offset="0" stopColor="var(--face-hi, #9cf5b8)" />
           <stop offset="1" stopColor="var(--face-lo, #17c45a)" />
         </radialGradient>
-        <radialGradient id="a1-halo" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${id}-halo`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0.6" stopColor="var(--phosphor, #3dff7a)" stopOpacity="0.35" />
           <stop offset="1" stopColor="var(--phosphor, #3dff7a)" stopOpacity="0" />
         </radialGradient>
-        <clipPath id="a1-scan">
+        <clipPath id={`${id}-scan`}>
           <rect x="-160" y="-160" width="320" height={Math.max(0, scanY + 160)} />
         </clipPath>
-        <clipPath id="a1-eyeL">
+        <clipPath id={`${id}-eyeL`}>
           <ellipse cx="-52" cy="-22" rx="26" ry="23" />
         </clipPath>
-        <clipPath id="a1-eyeR">
+        <clipPath id={`${id}-eyeR`}>
           <ellipse cx="52" cy="-22" rx="26" ry="23" />
         </clipPath>
       </defs>
-      <circle cx="0" cy="0" r="158" fill="url(#a1-halo)" opacity={0.4 * skin} />
-      <circle cx="0" cy="0" r="128" fill="url(#a1-skin)" clipPath="url(#a1-scan)" />
+      <circle cx="0" cy="0" r="158" fill={`url(#${id}-halo)`} opacity={0.4 * skin} />
+      <circle cx="0" cy="0" r="128" fill={`url(#${id}-skin)`} clipPath={`url(#${id}-scan)`} />
       {skin > 0 && skin < 1 && <rect x="-130" y={scanY - 2} width="260" height="4" fill="#fff" opacity="0.75" />}
       <circle cx="0" cy="0" r="128" fill="none" stroke="var(--phosphor, #3dff7a)" strokeWidth="3" strokeDasharray={`${C * outline} ${C}`} transform="rotate(-90)" />
       {[-52, 52].map((x, i) => (
         <g key={x} transform={`translate(${x} -22) scale(${eyes.toFixed(3)})`} opacity={clamp01(eyes * 3)}>
           <ellipse rx="26" ry="23" fill="var(--white, #e9fff1)" stroke="var(--ink, #04110a)" strokeWidth="3" />
-          <g clipPath={`url(#a1-eye${i === 0 ? "L" : "R"})`} transform={`translate(${-x} 22)`}>
+          <g clipPath={`url(#${id}-eye${i === 0 ? "L" : "R"})`} transform={`translate(${-x} 22)`}>
             <circle cx={x + gx} cy={-22} r={9 * pupils} fill="var(--ink, #04110a)" />
             <circle cx={x + gx - 3} cy={-25} r={2.6 * pupils} fill="var(--white, #e9fff1)" opacity="0.9" />
             <rect x={x - 28} y={-47} width="56" height={lid} fill="var(--face-lo, #17c45a)" />
