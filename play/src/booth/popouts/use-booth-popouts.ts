@@ -11,7 +11,7 @@ import { usePlayHost } from "../../host.ts";
 import type { PrimeSession } from "../../session/prime.ts";
 import type { Interaction } from "../../types.ts";
 import { boothView, callsOf, mayPress, wantedOf, type BoothGuest, type BoothMessage, type BoothObjective } from "../wire.ts";
-import { cueSpecs, doorQueue, doorSpec, pickLayout, pickReadySpec, targetSpec, wantedSpecs, type BoothDo, type Draft, type SeenMap } from "./model.ts";
+import { countdownRunning, cueAtEnd, cueSpecs, cueWaitsFor, doorQueue, doorSpec, pickLayout, pickReadySpec, reconcilePopOuts, targetSpec, wantedSpecs, type BoothDo, type Draft, type SeenMap } from "./model.ts";
 import { usePopOuts, type PopOutSpec } from "./rung.ts";
 
 /** What a bound pop-out's buttons may open in the booth. */
@@ -199,9 +199,19 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
   const prevLive = useRef<Set<string> | null>(null);
   const prevPresses = useRef<number | null>(null);
   const callsKey = calls === null ? "" : JSON.stringify([calls.presses, calls.rows.map((r) => [r.id, r.live])]);
+  // When each countdown first showed (story ms): a cue that turned live
+  // with one waits for it to end (BN-F3).
+  const cdSeen = useRef(new Map<string, number>());
+  for (const c of view?.countdowns ?? []) if (!cdSeen.current.has(c.label)) cdSeen.current.set(c.label, now);
+  const cueWait = useRef(new Map<string, string>());
+  const endRaised = useRef(new Set<string>());
   useEffect(() => {
     if (calls === null) return;
-    for (const d of cueSpecs(calls, prevLive.current, now, view?.countdowns)) rung.raise(bind(d));
+    for (const d of cueSpecs(calls, prevLive.current, now, view?.countdowns)) {
+      const waits = cueWaitsFor(view?.countdowns, cdSeen.current, now);
+      if (waits !== null) cueWait.current.set(d.key, waits);
+      else rung.raise(bind(d));
+    }
     // Moot: a cue that fired (presses moved) or stopped being live.
     if (prevPresses.current !== null && prevPresses.current !== calls.presses) for (const r of calls.rows) rung.retire(`cue:${r.id}:${prevPresses.current}`);
     prevPresses.current = calls.presses;
@@ -209,6 +219,46 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     prevLive.current = new Set(calls.rows.filter((r) => r.live).map((r) => r.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callsKey]);
+  // What the store holds vs the night: moot ones go (a list whose objective
+  // ended, a confrontation about someone caught, a burst whose programs
+  // were all caught), and the ones restored from storage without their
+  // buttons get them back (BN-F4, NM-F7, NM-F8, NM-F13).
+  const heldKey = rung.held.map((e) => `${e.spec.key}:${e.restored === true ? 1 : 0}:${(e.spec.rows ?? []).length}`).join("|");
+  const objIds = JSON.stringify((view?.objectives ?? []).map((o) => [o.id, (o as BoothObjective).target?.id ?? null]));
+  const caughtKey = guests.filter((g) => g.captured).map((g) => g.id).join(",");
+  useEffect(() => {
+    if (rung.held.length === 0) return;
+    const r = reconcilePopOuts(rung.held, {
+      wanted,
+      objectives: (view?.objectives ?? []) as BoothObjective[],
+      calls,
+      guestOf,
+      wctx: { me, now, placeTitle, guestOf, tried: tried.current, canRelease: mayPress(interactions, "release_escort", me) },
+    });
+    for (const k of r.retire) rung.retire(k);
+    for (const d of r.rebind) rung.raise(bind(d));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heldKey, wantedKey, objIds, callsKey, caughtKey]);
+
+  // A deferred *Call it?* pops once its countdown is up; and when a
+  // countdown ends with Clippy's own cue as the sheet's NEXT, it pops too.
+  const cueBucket = Math.floor(now / 5_000);
+  useEffect(() => {
+    if (calls === null) return;
+    for (const [key, label] of [...cueWait.current]) {
+      if (countdownRunning(view?.countdowns, label, now)) continue;
+      cueWait.current.delete(key);
+      const d = cueSpecs(calls, new Set(), now, view?.countdowns).find((x) => x.key === key);
+      if (d !== undefined) rung.raise(bind(d));
+    }
+    const end = cueAtEnd(calls, view?.countdowns, now);
+    if (end !== null && !endRaised.current.has(`${end.key}|${end.rev}`)) {
+      endRaised.current.add(`${end.key}|${end.rev}`);
+      rung.raise(bind(end));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cueBucket, callsKey]);
+
   const laterBucket = Math.floor(now / 30_000);
   useEffect(() => {
     if (calls === null) return;

@@ -10,6 +10,7 @@
 //! (`closedGate`, kept by the booth across scanner openings), so closing a
 //! card never re-opens it.
 
+import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PrimeSession } from "../session/prime.ts";
 import { cameraProblem, parseScan, scanProblem, typedTarget, type CameraState } from "../scan.ts";
@@ -208,6 +209,7 @@ export function ScannerScreen({
               unmarkId={card.seed.card !== undefined ? unmarkIdOf(card.seed.card.live, session.view?.interactions ?? []) : null}
               board={looseWanted(session.view).filter((w) => w.id !== card.id).length}
               caughtBy={(wantedOf(session.view) ?? []).find((w) => w.id === card.id && w.captured)?.claimedBy ?? null}
+              showClock={showClockOf(session.view)}
               press={(id) => session.act(id, card.id)}
               onNotNow={next}
               onNext={next}

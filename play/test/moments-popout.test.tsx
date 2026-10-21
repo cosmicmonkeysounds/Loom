@@ -275,9 +275,9 @@ describe("the window (popout.tsx)", () => {
     expect(popOutWaiting({ tray: [spec("a")], queued: 2 })).toBe(3);
   });
 
-  it("the stylesheet: docked over the stream above the dock, under every moment (38), a 56 px primary, the flash only with motion", () => {
+  it("the stylesheet: docked over the stream above the dock, over the balloons and stickies (41, BN-F8), a 56 px primary, the flash only with motion", () => {
     const css = readBundledCss();
-    expect(css).toMatch(/--z-popout: 38;/u);
+    expect(css).toMatch(/--z-popout: 41;/u);
     expect(css).toMatch(/\.popout-host \{[^}]*z-index: var\(--z-popout\)/u);
     expect(css).toMatch(/\.popout-host > \.popout \{[^}]*max-height: 70vh/u);
     expect(css).toMatch(/\.popout-btn\.primary \{[^}]*min-height: 56px/u);

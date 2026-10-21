@@ -32,6 +32,13 @@ export type NowRow =
  * loose (a booth that gets the board), else the NOW objective's target, else
  * its picker, else its global buttons (C4, ≤ 2), else none.
  */
+/** The NOW row's board count: only a booth that may claim (an Antivirus)
+ *  leads with the Wanted board; a host keeps its picker row and reads the
+ *  LED (BN-F6, §12.6). Null = no board row. */
+export function boardRowCount(loose: number, hasBoard: boolean, mayClaim: boolean): number | null {
+  return hasBoard && mayClaim ? loose : null;
+}
+
 export function nowRow(o: BoothObjective | undefined, opts: { wanted: number | null; interactions: readonly Interaction[]; globals: readonly string[]; placeTitle: (loc: string | null) => string | null }): NowRow | null {
   if (opts.wanted !== null && opts.wanted > 0) return { kind: "board", n: opts.wanted };
   if (o === undefined) return null;

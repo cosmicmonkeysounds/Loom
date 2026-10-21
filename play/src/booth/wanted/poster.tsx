@@ -66,7 +66,8 @@ export function Poster(p: PosterProps) {
           {reason !== "" && <span className="wanted-reason">{reason}</span>}
           <span className="wanted-place">
             {place}
-            {theirs && since !== null ? ` · claimed ${Math.floor(since / 60_000)} min ago` : seen !== null ? ` · ${seen}` : ""}
+            {/* A caught poster's claim is the capture itself, never "claimed 0 min ago" (BN-F19). */}
+            {theirs && !w.captured && since !== null ? ` · claimed ${Math.floor(since / 60_000)} min ago` : !w.captured && seen !== null ? ` · ${seen}` : ""}
           </span>
         </div>
       </div>

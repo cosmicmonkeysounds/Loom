@@ -20,9 +20,10 @@
   /* A host booth's NEXT bar (`.host-bar`, ≤ 64 px, + its 1 px top line): the tip floats above it and its ARM. */
   --moments-host-bar-h: 66px;
   /* wave 18: the big moment sits over the pass (45) once its hold is over, under the takeover (50);
-     a booth's pop-out under every moment (40) */
+     a booth's pop-out over the balloons and stickies (40), under the pass (45): the important
+     one is the one on screen, and a readout balloon never covers its buttons (BN-F8, B9) */
   --z-big: 47;
-  --z-popout: 38;
+  --z-popout: 41;
   --moments-big-backdrop: var(--desktop);
   --moments-win: var(--good);
 }
@@ -433,13 +434,13 @@
 .popout.docked .popout-actions { flex-wrap: nowrap; }
 .popout.docked .popout-btn.primary { flex-basis: auto; min-height: var(--tap); }
 .popout-strip {
-  display: flex; min-height: 56px; margin: 0 0 6px;
+  display: flex; min-height: 56px; min-width: 0; max-width: 100%; overflow: hidden; margin: 0 0 6px;
   background: var(--title-grad); color: var(--title-ink); box-shadow: var(--raised);
 }
 .popout-strip.tone-alarm { background: linear-gradient(90deg, var(--maroon), var(--maroon-2)); }
 .popout-strip.tone-win { background: var(--moments-win); }
 .popout-strip-body {
-  flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-height: 56px; margin: 0; padding: 0 10px;
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 56px; margin: 0; padding: 0 10px;
   border: none; background: none; color: inherit; font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
 }
 .popout-strip-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

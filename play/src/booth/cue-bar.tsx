@@ -63,9 +63,11 @@ export function clippyFire(session: Pick<PrimeSession, "cue">, onFired?: (at: nu
       }
     };
     const body = { name: id, label: "", ...(subject !== null ? { subject } : {}), ...(value !== undefined ? { args: { value } } : {}), ...(presses !== undefined ? { presses } : {}) };
-    const out = await fireCue(post, body, () => {});
-    if (out.ok && out.refused !== true) onFired?.(Date.now());
-    return out;
+    // Stamped as the press goes out (BN-F12): the snapshot the fire causes
+    // can land before the post resolves, and PLAYER SELECT opens at once
+    // only inside 10 s of this booth's own fire.
+    onFired?.(Date.now());
+    return fireCue(post, body, () => {});
   };
 }
 

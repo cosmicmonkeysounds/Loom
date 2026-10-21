@@ -6,6 +6,7 @@
 //! a card's *Scan again* (not in person) it takes two. On the capture the
 //! screen wears the CAPTURED stamp and says where to walk them.
 
+import { clockText, useShowClock, type ShowClock } from "../show-clock.ts";
 import { useEffect, useState } from "react";
 import { playTone } from "../alerts.ts";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
@@ -22,8 +23,10 @@ function winTone(): void {
 }
 
 /** The confrontation's status bar: "Scanned 7:12 PM · claimed by you". */
-export function scannedLine(at: Date, claimedBy: string | null, me: string): string {
-  const time = at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+export function scannedLine(at: Date | string, claimedBy: string | null, me: string): string {
+  // The party's show clock ("7:12 PM") when the story keeps one, never the
+  // wall clock (BN-F17: it read 3:12 AM at 7:09 PM on the tray).
+  const time = typeof at === "string" ? at : at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return `Scanned ${time} · ${claimNote(claimedBy, me)}`;
 }
 
@@ -39,6 +42,8 @@ export interface ConfrontProps {
   /** Caught by someone else (the board says so): the refused line. */
   caughtBy?: string | null;
   scannedAt?: Date;
+  /** The view's show clock (the tray's): the status bar's time. */
+  showClock?: ShowClock | null;
   /** Press a story button on this guest. */
   press: (id: string) => Promise<PrimeActResult>;
   onNotNow: () => void;
@@ -56,6 +61,8 @@ export function ConfrontScreen(p: ConfrontProps) {
   const [dead, setDead] = useState(c.deadMs > 0);
   const [fold, setFold] = useState(false);
   const [at] = useState(() => p.scannedAt ?? new Date());
+  const show = useShowClock(p.showClock ?? null);
+  const [showAt] = useState(() => (show !== null ? clockText(show.minutes) : null));
   useEffect(() => {
     if (c.deadMs <= 0) return;
     const t = setTimeout(() => setDead(false), c.deadMs);
@@ -159,7 +166,7 @@ export function ConfrontScreen(p: ConfrontProps) {
           </button>
         )}
       </div>
-      <div className="booth-status">{scannedLine(at, c.claimedBy, p.me)}</div>
+      <div className="booth-status">{scannedLine(showAt ?? at, c.claimedBy, p.me)}</div>
     </div>
   );
 }

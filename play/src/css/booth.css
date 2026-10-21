@@ -314,7 +314,7 @@
 
 /* The NOW card's extra row and its 🚨 chip. */
 .booth-now-chip {
-  flex: 0 0 auto; min-height: 32px; min-width: var(--tap); padding: 0 8px;
+  flex: 0 0 auto; min-height: var(--tap); min-width: var(--tap); padding: 0 8px;
   border: none; background: var(--maroon); color: var(--white); box-shadow: var(--raised); font: 700 14px var(--ui-font); cursor: pointer;
 }
 .booth-now-row {

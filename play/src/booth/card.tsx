@@ -7,6 +7,7 @@
 //! description. `arm: true` buttons arm on the first tap and fire on the
 //! second.
 
+import { showClockOf } from "../show-clock.ts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PersonAvatar, PickerSheet } from "../ui/primitives.tsx";
 import { usePlayHost } from "../host.ts";
@@ -295,6 +296,7 @@ export function GuestCardBody({
             unmarkId={card !== null ? unmarkIdOf(card.live, view?.interactions ?? []) : null}
             board={looseWanted(view).filter((w) => w.id !== guestId).length}
             caughtBy={(wantedOf(view) ?? []).find((w) => w.id === guestId && w.captured)?.claimedBy ?? null}
+            showClock={showClockOf(view)}
             press={(id) => session.act(id, guestId)}
             onNotNow={() => {
               setConfront(null);

@@ -45,7 +45,7 @@ import type { PrimeSession } from "../session/prime.ts";
 import type { PrimeActResult } from "../types.ts";
 import { ClippyCueBar } from "./cue-bar.tsx";
 import { DoorWindow } from "./door.tsx";
-import { nowRow } from "./now-card.tsx";
+import { boardRowCount, nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
 import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
@@ -265,10 +265,15 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   const openScan = (guest?: string, name?: string) => setLayer({ kind: "scan", ...(guest !== undefined ? { guest } : {}), ...(name !== undefined ? { caption: `📷 Scan ${name}'s pass` } : {}) });
   const openPick = (objective: string) => {
     const o = (s.view?.objectives ?? []).find((x) => x.id === objective) as BoothObjective | undefined;
-    if (o === undefined) return;
-    // Its "PLAYER SELECT is ready" pop-out is answered by opening it.
+    // Its "PLAYER SELECT is ready" pop-out is answered by opening it — or,
+    // when the objective has ended, by saying so (NM-F7: the button did
+    // nothing at all).
     const prefix = `pick:${objective}:`;
     for (const k of [rung.current?.key, ...rung.tray.map((x) => x.key)]) if (k !== undefined && k.startsWith(prefix)) rung.retire(k);
+    if (o === undefined) {
+      s.alerts.raise("That's over now: the list closed with its objective.", { quiet: true });
+      return;
+    }
     setLayer({ kind: "pick", objective, opened: o });
   };
   const openers: BoothOpeners = {
@@ -436,7 +441,9 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
                 session={token}
                 compact={keyboard}
                 paused={viewPaused(s.view)}
-                row={nowRow((s.view?.objectives ?? [])[0] as BoothObjective | undefined, { wanted: wanted !== null ? loose : null, interactions: s.view?.interactions ?? [], globals: globalButtonsOf(s.view), placeTitle })}
+                // The board row is for a booth that may claim (an Antivirus);
+                // a host keeps its picker row and reads the LED (BN-F6, §12.6).
+                row={nowRow((s.view?.objectives ?? [])[0] as BoothObjective | undefined, { wanted: boardRowCount(loose, wanted !== null, mayPress(s.view?.interactions, "claim_escort", character)), interactions: s.view?.interactions ?? [], globals: globalButtonsOf(s.view), placeTitle })}
                 rowActions={{
                   onBoard: openBoard,
                   onTarget: (tg) => {

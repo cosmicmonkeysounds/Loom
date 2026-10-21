@@ -217,6 +217,8 @@ export function burstSpec(group: readonly WantedEntry[], ctx: WantedCtx): Draft 
   const min = Math.min(...group.map((w) => w.markedAt));
   return {
     key: `wanted-burst:${min}`,
+    // A burst that grows shows again (a handled one is `{key, rev}`).
+    rev: String(group.length),
     glyph: "🚨",
     title: `${group.length} programs marked`,
     body: group.length > 4 ? [`+${group.length - 4} more on the board.`] : [],
@@ -242,7 +244,13 @@ export function wantedSpecs(wanted: readonly WantedEntry[], seen: SeenMap, ctx: 
   const retire: string[] = [];
   const next: SeenMap = {};
   const fresh = wanted.filter((w) => !w.captured && w.claimedBy === null && seen[w.id]?.markedAt !== w.markedAt);
-  const bursts = burstOf(fresh);
+  // A burst forms across snapshots too (BN-F9: marks a second apart came
+  // as separate snapshots): every loose, unclaimed entry already popped
+  // (single or burst) joins a fresh one marked within 10 s; a single that
+  // joins folds into the burst.
+  const freshIds = new Set(fresh.map((w) => w.id));
+  const joinable = wanted.filter((w) => !w.captured && w.claimedBy === null && (freshIds.has(w.id) || (seen[w.id]?.markedAt === w.markedAt && (seen[w.id]!.mode === "raised" || seen[w.id]!.mode === "burst"))));
+  const bursts = burstOf(joinable).filter((g) => g.some((w) => freshIds.has(w.id)));
   const inBurst = new Set(bursts.flat().map((w) => w.id));
   for (const g of bursts) raise.push(burstSpec(g, ctx));
   for (const w of wanted) {
@@ -264,6 +272,12 @@ export function wantedSpecs(wanted: readonly WantedEntry[], seen: SeenMap, ctx: 
       else if (mode === "raised") raise.push(wantedSpec(w, "open", ctx));
       continue;
     }
+    if (inBurst.has(w.id) && was.mode === "raised") {
+      // Folded into a burst: its single goes.
+      retire.push(key);
+      next[w.id] = { ...was, mode: "burst", claimed: w.claimedBy };
+      continue;
+    }
     const again = was.again === true || (was.claimed !== null && w.claimedBy === null);
     next[w.id] = { ...was, claimed: w.claimedBy, ...(again ? { again: true as const } : {}) };
     if (w.claimedBy === ctx.me) raise.push(wantedSpec(w, "mine", ctx));
@@ -278,6 +292,114 @@ export function wantedSpecs(wanted: readonly WantedEntry[], seen: SeenMap, ctx: 
   const now = new Set(wanted.map((w) => w.id));
   for (const id of Object.keys(seen)) if (!now.has(id)) retire.push(`wanted:${id}`);
   return { raise, retire, seen: next };
+}
+
+// --- what the store holds vs the night (fix round: BN-F4, NM-F7, NM-F8, NM-F13) ---
+
+/** A pop-out the store holds: its spec (handlers or not) and whether it came back from storage without them. */
+export interface HeldPopOut {
+  spec: Pick<PopOutSpec, "key" | "title" | "glyph" | "body" | "tone" | "priority" | "at" | "sticky"> & Partial<Pick<PopOutSpec, "guest" | "rows" | "rev" | "status" | "noLater">>;
+  restored?: boolean;
+}
+
+export interface ReconcileCtx {
+  /** `PrimeView.wanted`, or null (no board for this booth / an older server). */
+  wanted: readonly WantedEntry[] | null;
+  /** The booth's live objectives (the NOW one first). */
+  objectives: readonly BoothObjective[];
+  calls: CallsView | null;
+  guestOf: (id: string) => BoothGuest | null;
+  wctx: WantedCtx;
+}
+
+function loose(ctx: ReconcileCtx, id: string): WantedEntry | null {
+  return (ctx.wanted ?? []).find((w) => w.id === id && !w.captured) ?? null;
+}
+
+/**
+ * The pop-outs the night has made moot (`retire`), and the ones restored
+ * from storage without their buttons that are still true (`rebind`: drafts
+ * with the same key, so a raise puts the buttons back in place):
+ * - `pick:<objective>:…` — the objective ended (a stale list that opened
+ *   nothing, NM-F7 / BN-F4);
+ * - `target:…` — not the NOW objective's target any more (a restored one
+ *   always goes: the driver raises the live one);
+ * - `wanted:<id>` — off the board, or caught;
+ * - `wanted-burst:…` — fewer than two of its programs still loose and
+ *   unclaimed (its rows shrink to those that are);
+ * - `confront:<seq>` — the program is caught, or no longer marked (NM-F8);
+ * - `cue:<id>:<presses>` — the sheet moved on, or the cue stopped being live.
+ */
+export function reconcilePopOuts(held: readonly HeldPopOut[], ctx: ReconcileCtx): { retire: string[]; rebind: Draft[] } {
+  const retire: string[] = [];
+  const rebind: Draft[] = [];
+  const base = (s: HeldPopOut["spec"]) => ({ ...s, body: s.body });
+  for (const h of held) {
+    const s = h.spec;
+    const k = s.key;
+    if (k.startsWith("pick:")) {
+      const rest = k.slice(5);
+      const obj = rest.slice(0, rest.lastIndexOf(":"));
+      const o = ctx.objectives.find((x) => x.id === obj);
+      if (o === undefined) retire.push(k);
+      else {
+        // The count follows the list ("6 programs" with 5 left, BN-F19).
+        const n = o.pick?.length ?? 0;
+        const body = [`${n} program${n === 1 ? "" : "s"}`];
+        const stale = JSON.stringify(Array.isArray(s.body) ? s.body : [s.body]) !== JSON.stringify(body);
+        if (h.restored === true || stale) rebind.push({ ...base(s), body, actions: [{ id: "open", label: s.glyph === "🎮" ? "🎮 Open" : "📋 Open the list", kind: "primary", do: { kind: "pick", objective: obj } }] });
+      }
+      continue;
+    }
+    if (k.startsWith("target:")) {
+      if (h.restored === true || !ctx.objectives.slice(0, 1).some((o) => o.target != null && k.startsWith(`target:${o.id}:${o.target.id}:`))) retire.push(k);
+      continue;
+    }
+    if (k.startsWith("wanted-burst:")) {
+      if (ctx.wanted === null) continue;
+      const members = (s.rows ?? []).map((r) => r.id).map((id) => loose(ctx, id)).filter((w): w is WantedEntry => w !== null && w.claimedBy === null);
+      if (members.length < 2) retire.push(k);
+      else if (h.restored === true || members.length !== (s.rows ?? []).length) rebind.push({ ...burstSpec(members, ctx.wctx), key: k });
+      continue;
+    }
+    if (k.startsWith("wanted:")) {
+      if (ctx.wanted === null) continue;
+      const w = loose(ctx, k.slice(7));
+      if (w === null) retire.push(k);
+      else if (h.restored === true) {
+        if (w.claimedBy !== null && w.claimedBy !== ctx.wctx.me) retire.push(k);
+        else rebind.push(wantedSpec(w, w.claimedBy === ctx.wctx.me ? "mine" : "open", ctx.wctx));
+      }
+      continue;
+    }
+    if (k.startsWith("confront:")) {
+      const id = s.guest?.id;
+      if (id === undefined) continue;
+      const g = ctx.guestOf(id);
+      const caught = g?.captured === true || (ctx.wanted ?? []).some((w) => w.id === id && w.captured);
+      const unmarked = ctx.wanted !== null && !ctx.wanted.some((w) => w.id === id);
+      if (caught || unmarked) retire.push(k);
+      else if (h.restored === true) rebind.push({ ...base(s), actions: [{ id: "open", label: "🛡 Open the confrontation", kind: "primary", do: { kind: "card", guest: id, confront: "rescan" } }] });
+      continue;
+    }
+    if (k.startsWith("cue:")) {
+      const rest = k.slice(4);
+      const at = rest.lastIndexOf(":");
+      const id = rest.slice(0, at);
+      const presses = Number(rest.slice(at + 1));
+      const c = ctx.calls;
+      if (c === null || c.presses !== presses || !c.rows.some((r) => r.id === id && r.live)) retire.push(k);
+      else if (h.restored === true)
+        rebind.push({
+          ...base(s),
+          actions: [
+            { id: "call", label: "🎤 Call it", kind: "primary", do: { kind: "cue", id } },
+            { id: "later", label: "Not yet", closes: false, do: { kind: "later" } },
+          ],
+        });
+    }
+  }
+  return { retire, rebind };
 }
 
 // --- the Wanted board's order (§4.2) ----------------------------------------------
@@ -552,6 +674,40 @@ export function cueSpecs(calls: CallsView, prevLive: ReadonlySet<string> | null,
       priority: 70,
       at: now,
     }));
+}
+
+/**
+ * Which countdown a cue that just turned live belongs to (BN-F3): one that
+ * appeared with it (first seen within 5 s) — the cue is "auto at N min",
+ * so *Call it?* waits until that countdown is up rather than popping as
+ * the guests are told they have two minutes. Null: pop now.
+ */
+export function cueWaitsFor(countdowns: readonly CountdownSummary[] | undefined, firstSeen: ReadonlyMap<string, number>, now: number): string | null {
+  for (const c of countdowns ?? []) {
+    const at = firstSeen.get(c.label);
+    if (at !== undefined && Math.abs(now - at) <= 5_000 && c.endsAt * 1000 > now) return c.label;
+  }
+  return null;
+}
+
+/** Is the countdown named `label` still running (not ended, still in the view)? */
+export function countdownRunning(countdowns: readonly CountdownSummary[] | undefined, label: string, now: number): boolean {
+  return (countdowns ?? []).some((c) => c.label === label && c.endsAt * 1000 > now);
+}
+
+/**
+ * *Call it?* when a countdown just ended and Clippy's own cue is the
+ * sheet's NEXT (BN-F3: Bingo time is live from the doors, so no live flip
+ * ever raised it): "Bingo ends is up. Call it?". Its rev names the
+ * countdown, so it shows again after a *Not yet* on an earlier one.
+ */
+export function cueAtEnd(calls: CallsView, countdowns: readonly CountdownSummary[] | undefined, now: number): Draft | null {
+  const ended = justEnded(countdowns, now);
+  if (ended === null) return null;
+  const row = calls.rows.find((r) => r.live && (r.next || r.id === calls.next));
+  if (row === undefined) return null;
+  const d = cueSpecs(calls, new Set(calls.rows.filter((r) => r.id !== row.id).map((r) => r.id)), now, countdowns).find((x) => x.key === `cue:${row.id}:${calls.presses}`);
+  return d === undefined ? null : { ...d, rev: `end:${ended}` };
 }
 
 // --- what the booth's moments do with a message (§4.12) ---------------------------
