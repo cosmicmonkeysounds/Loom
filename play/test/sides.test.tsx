@@ -3,6 +3,7 @@
 //! recruiting by pass and founding a crew — against the C10 fields, with an
 //! old server's `factions` as the fallback.
 
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -483,6 +484,11 @@ describe("faction mode: the doors (wave 18b)", () => {
     expect(out).not.toMatch(/needed|more to win/u);
     expect(out).toContain("＋ Start your own faction");
     expect(out).toContain("doors-row many");
+    // A faction door sizes to its words (no 300px window of empty space).
+    expect(out).toContain("w95-window door faction");
+    const css = readFileSync(new URL("../src/css/factions.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.doors-row \.door\.faction \{ min-height: 0; \}/u);
+    expect(css).not.toMatch(/\.doors-row\.many \.door \{[^}]*min-height/u);
     expect(out).toContain("You can switch from ⊞ Start → Factions.");
     expect(doors(fview({ canFound: false, sides: [UP, WAY] }))).not.toContain("Start your own faction");
   });

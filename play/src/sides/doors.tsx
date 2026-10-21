@@ -160,7 +160,7 @@ export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
       <div className="doors-say">{say}</div>
       <div className={`doors-row${rows.length > 2 ? " many" : ""}`}>
         {rows.map((r) => (
-          <section key={r.id} className={`w95-window door${chosen === r.name ? " open" : ""}`} aria-label={r.name}>
+          <section key={r.id} className={`w95-window door${factions ? " faction" : ""}${chosen === r.name ? " open" : ""}`} aria-label={r.name}>
             <div className="w95-titlebar">
               <span className="w95-title">▣ {r.name.toUpperCase()}</span>
             </div>
