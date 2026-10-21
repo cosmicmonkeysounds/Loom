@@ -24,6 +24,7 @@ import { readFileSync } from "node:fs";
 import { nearMatch, spellOut } from "../src/answer-match.ts";
 import { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, type FactVerdictKind, type FactsFile } from "../src/facts.ts";
 import type { Sim } from "../src/runtime/sim/index.ts";
+import type { ScreenResultQuestion } from "./routes/screen.ts";
 
 export { FACTS_FILE, isFactsFile, foldAnswer, parseFactsText, validateFacts, factsProblems } from "../src/facts.ts";
 export type { FactsFile } from "../src/facts.ts";
@@ -273,8 +274,11 @@ export interface FactsFiling {
    *  server saw it. Kept after a director overrides it (the later verdict
    *  wins — `final` / `how` say so). Absent when nobody ruled. */
   ruling?: FactRuling;
-  /** A ruling is asked and not yet given (the runtime's overlay). */
+  /** A ruling is asked and not yet given (the runtime's overlay): out with
+   *  the judge's worker, or (wave 18b) still waiting in the judge queue. */
   asking?: true;
+  /** (wave 18b) The ruling is still in the hub's judge queue, not yet sent. */
+  queued?: true;
 }
 
 /** A `judge:` character's ruling on a filing (`FactsFiling.ruling`). */
@@ -567,4 +571,30 @@ export class FactsWatch {
       pending: filings.filter((f) => f.final === null).length,
     };
   }
+}
+
+// ───────────────────────── the screens' results (wave 18b) ─────────────────────────
+
+/** What `screenResultsOf` builds: a reading (`read`, the ids the story
+ *  read) or the verdict (`verdict`, every book question with its truth). */
+export interface ScreenResultsOptions {
+  kind: "read" | "verdict";
+  /** The poller is the TV (rows, the verdict's answers and liars). */
+  tv: boolean;
+  /** `verdict`: the story's `do fact_truth` per question id. */
+  truths?: ReadonlyMap<string, "true" | "lie" | "none">;
+}
+
+/**
+ * The public results of `ids` (book order) off the director's ledger view
+ * (`FactsWatch.view` with the runtime's asking overlay). Never carries a
+ * verdict, a confidence number, a ruling's `why` or `near`; see
+ * `ScreenResults` for what each kind holds.
+ */
+export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly string[] | null, o: ScreenResultsOptions): ScreenResultQuestion[] {
+  void view;
+  void book;
+  void ids;
+  void o;
+  return [];
 }

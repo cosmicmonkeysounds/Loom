@@ -389,7 +389,7 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     let s = await state(rt);
     expect(s.character).toMatchObject({ id: "Trabolta", hidden: true, awake: false, online: false });
     expect(s.attract).toBe(true);
-    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null });
+    expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null });
     // The doors' entry beat is live (the sim is folded from its birth), so
     // the TV's Power On scene plays on a real door-open.
     expect(s.moments.find((m) => m.kind === "beat" && m.name === "Power On")).toMatchObject({ seq: 1 });
