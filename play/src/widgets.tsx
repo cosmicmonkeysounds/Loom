@@ -7,7 +7,7 @@
 //! Adding a widget = adding a `WidgetDef` to `WIDGETS`. Unknown kinds render
 //! as plain text so an older client never hides a newer story's card.
 
-import { createElement, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { createElement, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { PassQr } from "./pass-qr.tsx";
 import { lazyPart } from "./guest/lazy-part.tsx";
 import type { ChatMessage, WidgetCard } from "./types.ts";
