@@ -446,6 +446,26 @@ func cams_token() -> String:
 	return token if token != "" else _mod_token
 
 
+# --- voice ---
+
+
+func voice_stream_url() -> String:
+	var token := voice_token()
+	if is_offline() or event_id == "" or token == "":
+		return ""
+	return transport.base + _base() + "/api/spatial/voice/stream?token=" + token.uri_encode()
+
+
+func voice_upload_url() -> String:
+	if is_offline() or event_id == "":
+		return ""
+	return transport.base + _base() + "/api/spatial/voice"
+
+
+func voice_token() -> String:
+	return str(session.get("token", "")) if has_session() else ""
+
+
 func end_session(_reason: String) -> void:
 	if not has_session():
 		return

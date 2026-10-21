@@ -52,6 +52,9 @@ func _run() -> void:
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	_test_voice_config()
+	_test_voice_server_link()
+	await _test_voice_game()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -2370,3 +2373,89 @@ func _test_voice_link() -> void:
 	v.stop()
 	v.queue_free()
 	b.queue_free()
+
+
+## The voice config keys: on by default, `--mic false` / `--voice=0` turn them off.
+func _test_voice_config() -> void:
+	var d := StationConfig.defaults()
+	_check(d.get("voice") == true and d.get("mic") == true, "voice config: voice and mic on by default")
+	var o := StationConfig.parse_args(PackedStringArray(["--mic", "false", "--voice=0"]))
+	_check(o.get("mic") == false and o.get("voice") == false, "voice config: --mic false, --voice=0")
+	_check(StationConfig.merge(d, {"mic": false}).get("mic") == false, "voice config: a station file may turn the mic off")
+
+
+## The game drives the link: on while a session plays (with the session's
+## URLs), the mute button toggles the mic and the HUD shows it, the lobby
+## stops it; `voice` off or no URLs (offline) never start it.
+func _test_voice_game() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var v := game.voice
+	_check(v != null and not v.is_running(), "voice game: the link is there, off in the lobby")
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	v.frame_source = func() -> PackedVector2Array: return PackedVector2Array()
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+
+	# Offline (no voice URLs): playing starts no voice.
+	link.assignment_received.emit(_assignment(house, "v-0", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running() and game.hud.mic_text() == "", "voice game: no voice URLs (offline) → no voice")
+	game.enter_lobby()
+
+	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
+	link.assignment_received.emit(_assignment(house, "v-1", true))
+	game._process(0.016)
+	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
+	_check(game.hud.mic_text() == "🎤 LIVE", "voice game: the HUD shows 🎤 LIVE (%s)" % game.hud.mic_text())
+	player.mute_button = true
+	game._process(0.016)
+	game._process(0.016)
+	_check(v.muted and game.hud.mic_text() == "🎤 MUTED · M to talk", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	player.mute_button = false
+	game._process(0.016)
+	player.mute_button = true
+	game._process(0.016)
+	_check(not v.muted, "voice game: … a second press unmutes")
+	player.mute_button = false
+	v.on_frame("voice", _voice_frame("optical-drive", 1, 1.0))
+	_check(game.builder.voice_attached("optical-drive"), "voice game: a terminal's voice hangs in the game's house")
+	link.session_over.emit("reset")
+	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not game.builder.voice_attached("optical-drive") and game.hud.mic_text() == "", "voice game: the lobby stops the voice, the emitters and the HUD line")
+
+	# `--voice false`: never started.
+	link.config = StationConfig.merge(link.config, {"voice": false})
+	link.assignment_received.emit(_assignment(house, "v-2", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running(), "voice game: voice off in the config → no voice")
+	game.enter_lobby()
+	main.queue_free()
+	await process_frame
+
+
+## ServerLink's voice URLs: the session's stream + upload on the event, ""
+## with no session or offline; the base LinkBase (the fake's parent) has none.
+func _test_voice_server_link() -> void:
+	var sl := _linked_server_link()
+	(sl.get("transport") as HttpTransport).base = "http://127.0.0.1:7999"
+	_check(sl.voice_stream_url() == "" and sl.voice_token() == "", "voice link: no session → no voice stream")
+	_check(sl.voice_upload_url() == "http://127.0.0.1:7999/e/e1/api/spatial/voice", "voice link: the upload URL is the event's (%s)" % sl.voice_upload_url())
+	sl.adopt({"session": "s-9", "token": "tok 9", "duck": {}, "spawn": {}})
+	_check(sl.voice_stream_url() == "http://127.0.0.1:7999/e/e1/api/spatial/voice/stream?token=tok%209" and sl.voice_token() == "tok 9", "voice link: playing → the session's stream (%s)" % sl.voice_stream_url())
+	sl.config["offline"] = true
+	_check(sl.voice_stream_url() == "" and sl.voice_upload_url() == "", "voice link: offline → no voice")
+	_free_server_link(sl)
+	var base := LinkBase.new()
+	_check(base.voice_stream_url() == "" and base.voice_upload_url() == "" and base.voice_token() == "", "voice link: LinkBase's defaults are no voice")
+	base.free()

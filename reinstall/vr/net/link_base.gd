@@ -106,6 +106,26 @@ func cams_token() -> String:
 	return ""
 
 
+# --- voice ---
+
+
+## The voice link's stream for the playing session
+## (`http://…/e/<event>/api/spatial/voice/stream?token=<session>`), "" when
+## there is none (offline, no session).
+func voice_stream_url() -> String:
+	return ""
+
+
+## Where the voice chunks go (`http://…/e/<event>/api/spatial/voice`), "" offline.
+func voice_upload_url() -> String:
+	return ""
+
+
+## The voice link's token: the playing session's ("" = none).
+func voice_token() -> String:
+	return ""
+
+
 ## End our session (found + celebrated, headset off, …).
 func end_session(_reason: String) -> void:
 	session = {}
