@@ -583,3 +583,25 @@ alexa:
     - "Five minutes. Everyone to the Desktop."
     - "Go to the living room."
     - "Time is up. Return to the Desktop."
+
+# --- the house speaker router (wave 17; module `audio:`, OFF until switched on) ---
+# The speakers, zones, the MOTU's input→output matrix and where every
+# `sound X` goes live in the event's audio.json (the map editor's Audio
+# panel). This section only says what the router may do on this Mac. Its
+# own launchd job: `uv run stagehand launchd install --job audio --config
+# trapped.house.yaml`. Keep it in THIS file: the show job reads it.
+#   1. Uncomment with both switches false: the router only runs the matrix
+#      (audio.json routes) and the map editor's speaker Test buttons.
+#   2. play_sounds: true — the router plays every `sound X` from sounds_dir
+#      and the QLab sound cues above are skipped (restart the show job too).
+#   3. announce: true — the router plays `do announce` on audio.json
+#      `announce.to`; DELETE the `alexa:` section first (one owner of the
+#      house's voice) and stop its launchd agent.
+# audio:
+#   sounds_dir: media/sounds     # <sound name>.wav | .aiff | .flac
+#   play_sounds: false
+#   announce: false
+#   passthrough: true            # false = output-only (no microphone permission)
+#   mqtt: { host: 127.0.0.1, port: 1883, client_id: stagehand-audio }
+#   say_voice: Samantha
+#   chime: synth

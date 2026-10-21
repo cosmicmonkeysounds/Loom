@@ -10,8 +10,9 @@ machine, **modules** switched on by section:
 | **show** | `show:` | the house Mac | story → OSC/MQTT cues; MQTT sensors → story mutations |
 | **agents** | `agents:` | the house Mac (Ollama) | answers every conversation with a `mind: external` character through a local model |
 | **alexa** | `alexa:` | the house Mac | MQTT `show/announce` → a chime + the Mac's own `say` voice on a named CoreAudio device + channel map (`engine: server` opts in to `/api/mod/tts`, cached on disk) |
+| **audio** | `audio:` | the house Mac | the house speaker router: the event's `audio.json` (speakers, zones, the interface's input→output matrix) on one 16 in / 16 out stream; story `sound X` per room, announcements and the map editor's speaker tests — all opt-in |
 
-All three can run on one machine (the show does: one house Mac); they
+All four can run on one machine (the show does: one house Mac); they
 still run as **separate launchd jobs** (see *launchd* below; the `alexa`
 player has its own agent in `scripts/house-mac/`).
 
@@ -689,6 +690,72 @@ uv run stagehand check --config trapped.house.yaml
 uv run stagehand run   --config trapped.house.yaml --only show
 ```
 
+## audio — the house speaker router
+
+The house Mac plays what comes out of the speakers. The event's
+`audio.json` (a project file, edited in the map editor's Audio panel,
+served at `GET /api/mod/audio`) says which speakers sit in which room, which
+interface output each is wired to, the input→output matrix and where each
+story sound goes; the `audio:` section only says what this Mac may do
+(`audio.example.yaml` is a commented copy):
+
+```yaml
+audio:
+  sounds_dir: media/sounds   # sound printer_grind → media/sounds/printer_grind.wav|aiff|flac
+  play_sounds: false         # true: the router plays `sound X` (QLab's sound cues are skipped)
+  announce: false            # true: the router plays `do announce` (remove `alexa:` first)
+  passthrough: true          # audio.json routes; false = an output-only stream
+```
+
+- **One stream.** The device named by `audio.json` `device.name` (a
+  CoreAudio substring; `device:` overrides) opens as ONE `sounddevice`
+  stream — duplex N in / N out while `passthrough: true`, output-only
+  otherwise — at the device rate. A numpy callback (`audio/mixer.py`) mixes
+  the voices, the matrix (gain changes smoothed), an sfx duck under
+  announcements, the master gain and a per-output peak limiter. A stream
+  that dies or stops calling back is reopened every 2 s.
+- **Where a `sound X` goes**, first rule that applies: the story line's own
+  rooms (`sound X with rooms: a b` / `sound X in <Place>`, the `rooms:`
+  argument), `audio.json` `cues[X].to`, the enclosing beat's `setting`,
+  everywhere. A target is `everywhere`, a zone id, a `house.json` room id, a
+  LOCATION (its rooms via `Room.location`) or a speaker id — the Python
+  mirror of `@loom/house` `resolveTargets` (`audio/routing.py`, pinned by
+  `tests/fixtures/audio-resolve.json`). A name with no file is logged once.
+- **QLab or the router, never both** (decision D6). `play_sounds: false`
+  (the default) leaves `sound X` to QLab; `play_sounds: true` makes the
+  config loader drop the `show` module's `sound` cues that go to an OSC
+  target — even in the show's own `--only show` job, so keep `audio:` in the
+  same YAML as `show:`. The `announce_chime` MQTT rule stays.
+- **Announcements.** `announce: true` plays the chime + the Mac's `say`
+  (the `alexa` module's `Announcer`, merge window included) on `audio.json`
+  `announce.to`, ducking the sounds −12 dB. With `mqtt:` they come from
+  `show/announce` / `show/chime` (the show module's rules), without it from
+  the feed's `announce` directive and `sound announce_chime` — never both.
+  An `alexa:` section beside `announce: true` is a config error, and the
+  router holds the alexa player's `player.lock` (it will not open the
+  speakers while a player holds it).
+- **Speaker tests.** The map editor's Test (`POST /api/mod/audio/test`)
+  arrives in the long-poll; the router plays a 1.5 s tone (three rising
+  beeps pitched by the output number) and then says the label ("Start Bar.
+  Outputs 3, 4.") at `test_gain_db`. By hand: `mosquitto_pub -t
+  show/audio/test -m '{"speaker":"desk-l"}'` (or `{"out": 3}`) with `mqtt:`.
+- **Offline.** The last `audio.json` + `house.json` are kept in
+  `cache_dir`; a boot with the uplink down routes from them (else
+  `config_file` / `house_file`). A server without the route (an older
+  release) is logged once and polled each minute.
+- **Health.** Every `health_s` a line (device, config version, voices,
+  played / skipped, xruns, limiter, peak, sounds with no file); with
+  `mqtt:` the same JSON on `health/audio/stats` (retained) and
+  `online` / `lost` on `health/audio`.
+
+```bash
+uv run stagehand check   --config trapped.house.yaml --only audio   # the device vs audio.json, missing files
+uv run stagehand run     --config trapped.house.yaml --only audio
+uv run stagehand launchd install --job audio --config trapped.house.yaml
+```
+
+Room-by-room design and what is still open: [`docs/trapped/room-audio.md`](../docs/trapped/room-audio.md).
+
 ## alexa — announcements out of the house speakers
 
 `do announce "…"` reaches the house as `show/announce {"text": "…"}` (a
@@ -745,7 +812,8 @@ reconnect). Two per-rule switches make it fire once per real change:
 ```bash
 uv run stagehand launchd install --job show   --config trapped.house.yaml
 uv run stagehand launchd install --job agents --config laptop.yaml
-uv run stagehand launchd status                    # both
+uv run stagehand launchd install --job audio  --config trapped.house.yaml   # the speaker router
+uv run stagehand launchd status                    # every job
 uv run stagehand launchd restart --job show        # only the show; agents keep talking
 uv run stagehand launchd print --job agents --config laptop.yaml   # the plist, not installed
 ```
@@ -820,7 +888,10 @@ and dry-run against a fake server), the judge's rulings (`test_judge`),
 answer secrecy (`test_secrets`), the story mind (`test_story_mind`, `test_phase_table`, `test_voice_lean`,
 `test_guards`, `test_memo`, `test_wire`, `test_survey_guard`, `test_classic_snapshot` — classic still builds
 the pre-wave-12 prompts), the replay harness (`test_replay`, no model), the
-`alexa` player, launchd plists, the `.local.yaml` overlay, `edge` /
+`alexa` player, the `audio` router (`test_audio_routing` — the shared
+`resolveTargets` fixture, `test_audio_mixer` — block-by-block numpy,
+`test_audio_engine` / `test_audio_router` — a fake sounddevice stream and a
+fake server), launchd plists, the `.local.yaml` overlay, `edge` /
 retained sensor rules, the real rig against the story
 (`test_trapped_house`) and the server-room firmware's broker settings
 (`test_serverroom_firmware`). The router's socket wiring is

@@ -593,3 +593,18 @@ def test_the_health_loop_publishes_stats(tmp_path):
     published = run(go())
     topic, payload, retain = published[0]
     assert topic == "health/audio/stats" and retain and json.loads(payload)["config"] == "v1"
+
+
+def test_on_the_real_rig_the_router_takes_every_qlab_sound_but_the_chime(tmp_path):
+    import yaml
+
+    house = Path(__file__).parents[1] / "trapped.house.yaml"
+    doc = yaml.safe_load(house.read_text())
+    assert "audio" not in doc  # off until the show switches it on
+    before = parse_config(doc, str(tmp_path), only=["show"], env={}).modules["show"].cfg.cues
+    after = parse_config({**doc, "audio": {"play_sounds": True}}, str(tmp_path), only=["show"], env={}).modules["show"].cfg.cues
+    sounds = [r for r in before if r.on_directive == "sfx"]
+    assert len(sounds) > 10
+    left = [r for r in after if r.on_directive == "sfx"]
+    assert [r.match.get("target") for r in left] == ["announce_chime"] and left[0].osc is None
+    assert len(before) - len(after) == len(sounds) - 1
