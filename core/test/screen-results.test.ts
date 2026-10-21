@@ -374,6 +374,9 @@ describe("the results block", () => {
       ["Excel", "a", "r"], // a confident lie, held until the verdict
       ["Paint", "a", ""],
     ]);
+    // A director overrides his ruling: the stamp goes, the director's verdict shows.
+    expect((await mod(rt, "/api/mod/signal", { name: "fact_accurate", subject: a.id, args: { question: "Q2" } })).status).toBe(200);
+    expect((await stamps())[0]).toEqual(["Winamp", "a", ""]);
     w.close();
   });
 
