@@ -4,6 +4,8 @@
 >
 > **Superseded 2026-10-15 (Oct 31 wave 2):** the voices are the **devices' own** — the terminals' and the TV's `speechSynthesis` / Fully Kiosk TTS / the macOS voices, and the alexa player's `say` (`engine: say`). Kokoro is an opt-in behind the compose `tts` profile, `LOOM_TTS_URL` defaults to `off`; the TTS plans below (`LOOM_TTS_CACHE_DIR`, `tts:warm`, SW-AUD-08) are not needed for the show. Terminals with `&announce=1` also say the house announcements (N-09).
 
+> **Wave 17 status (2026-10-20, branch `oct31-w17/router`, not merged or deployed):** **the `audio` router module is built** (SW-AUD-01's core, SW-AUD-05's announcements, SW-AUD-07's health, HW-AUD-10's walk as the map editor's Test buttons). It is **off** until a show switches it on, and what it reads changed from §4: the speakers, zones, the interface's input→output matrix and the per-sound targets are the event's project file **`audio.json`** (the map editor's Audio panel, `@loom/house` `validateAudio`, `GET /api/mod/audio`), not YAML, and rooms are **`house.json` room ids / LOCATIONs**, not the Z2M group names. §11 below is the built contract; §4's YAML (buses, `sync`, `exclusive`, `stop_on`, `show/audio/cmd`, the `:7700` page, the media manifest) is **not** built.
+
 # Audio + TV architecture (Trapped in the Internet)
 
 *2026-10-15. Scope: the living-room TV and the computer that drives it, its
@@ -479,3 +481,137 @@ Mac.
   failover**. Decision #14 ("where music plays") is **closed** as "the
   router through the 16-out interface". Add ceremony assets (`drumroll`,
   `award_fanfare`, `ceremony_bed`) to HW-AUD-02.
+
+---
+
+## 11. What wave 17 built (the `audio` module)
+
+Code: `stagehand/src/stagehand/audio/` (`routing.py`, `mixer.py`,
+`engine.py`, `sounds.py`, `config.py`, `module.py`); config:
+`stagehand/audio.example.yaml` and a commented `audio:` block at the end of
+`stagehand/trapped.house.yaml`; the README's *audio — the house speaker
+router*. Every part runs in pytest with no device (a fake `sounddevice`
+stream, a fake server).
+
+### 11.1 Two files, two owners
+
+| | `audio.json` (the event's project file) | `audio:` (the house Mac's YAML) |
+|---|---|---|
+| Says | the device (name substring, 16 in / 16 out, rate), input + output labels, **speakers** (room, position, outputs, trim), **zones**, the **routes** matrix, **cues** (sound → targets, gain), `announce.to`, `voice.tv` | what this Mac may do: `play_sounds`, `announce`, `passthrough`, `sounds_dir`, levels (`master_db`, `limit_db`, `duck_db`), `say_voice`, `chime`, an optional broker |
+| Edited in | the map editor's Audio panel (a director save in the event state dir beats the project copy; `LOOM_AUDIO` is the LAN fallback) | the file, then `stagehand launchd restart --job audio` |
+| Reaches the router | a long-poll, `GET /api/mod/audio?after=<version>&tests=<seq>&wait=25` (returns at once on a new version or a pending speaker test) | at boot |
+
+The router keeps the last `audio.json` and `house.json` it saw in
+`cache_dir` (`~/Library/Caches/stagehand-audio`), so a boot with the house
+internet down still routes; failing that, `config_file` / `house_file`. A
+server with no `/api/mod/audio` (an older release) is logged once.
+
+### 11.2 The stream
+
+One `sounddevice` stream on the interface, opened by device index at the
+device rate: **duplex** (N in / N out) while `passthrough: true`, so the
+routes matrix can pass the inputs (QLab, mics, the TV) to the speakers;
+**output-only** with `passthrough: false` (no microphone permission). A
+numpy callback per block mixes:
+
+1. the matrix, `in @ gains`, every change crossfaded over 50 ms;
+2. the voices — each sound on its speakers' outputs (mono → every output,
+   stereo → L R across them in channel order), the speaker's trim + the
+   cue's gain, 5 ms fade-in, a fade-out on stop; at most 32 (the oldest sfx
+   drops);
+3. the duck: sfx voices −12 dB while an announcement plays (0.3 s ramps);
+4. the master gain, then a per-output peak limiter (−1 dBFS, instant
+   attack, 0.25 s release) and a hard clip.
+
+A stream that closes, or stays "active" but stops calling back (a replugged
+MOTU), is reopened by a 2 s watchdog. A story restart (`reset`, `reload`,
+`golive`, `ended`) fades every sound out over 1 s.
+
+### 11.3 Where a sound goes
+
+`sound X` arrives as the mod feed's `sim` directive `sfx`. First rule that
+applies:
+
+1. the story line's rooms — `sound X with rooms: a b` / `sound X in <Place>`,
+   lowered to the `rooms:` argument (an unlowered `X with rooms: …` from an
+   older server reads the same);
+2. `audio.json` `cues[X].to`;
+3. the enclosing beat's `setting` (a LOCATION; the directive event carries it);
+4. everywhere.
+
+A target is `everywhere`, a zone id, a `house.json` room id, a LOCATION
+(every room whose `location` it is) or a speaker id, the first that matches,
+names folded (case, spaces, `_`, `-`). `The Desktop` stays one name when it
+resolves whole; `desktop start-bar` and `a, b` split. The Python
+`resolve_targets` mirrors `@loom/house` `resolveTargets`; both are pinned by
+one fixture (`stagehand/tests/fixtures/audio-resolve.json` today; the
+integration pass points both suites at the shared file under
+`house/test/fixtures/`).
+
+Files: `sounds_dir/X.wav | .aiff | .aif | .flac` (exact name, then
+case-insensitive), resampled once to the device rate and kept in memory
+(re-read when the file changes), preloaded on every config change. A name
+with no file, a cue that reaches no wired speaker, or a closed stream is
+logged once and skipped — never a crash.
+
+### 11.4 QLab or the router, announcements, one voice
+
+- `play_sounds: false` (default): QLab plays `sound X` as before; the router
+  runs only the matrix and the tests.
+- `play_sounds: true`: the config loader drops every `show` cue rule `on:
+  {directive: sfx}` with an OSC output (QLab) — in the show's own `--only
+  show` job too, which is why `audio:` lives in `trapped.house.yaml`. The
+  `announce_chime` MQTT rule stays. Restart both jobs.
+- `announce: true`: the router plays `do announce` — the chime, then the
+  line rendered by the Mac's `say` — through the `alexa` module's own
+  `Announcer` (the 10 s chime merge, `say -a <device>` as the fallback) on
+  `audio.json` `announce.to`. With `mqtt:` it takes `show/announce` /
+  `show/chime` (the show's existing rules); without, the feed's `announce`
+  directive and `sound announce_chime`; never both. An `alexa:` section beside
+  `announce: true` is a config error, and the router holds the alexa
+  player's `player.lock`: while a player holds it, the router does not open
+  the speakers.
+- Trabolta's TV voice still comes from Chrome on the TV (MOTU 1/2 through
+  the Mac's default output). `audio.json` `voice.tv` documents where it
+  should also reach; build that fan-out in the MOTU's own mixer, or route
+  the TV's input pair through the matrix.
+
+### 11.5 Speaker tests and health
+
+- The map editor's Test (`POST /api/mod/audio/test {speaker | out}`) reaches
+  the router in the long-poll's `tests`; it plays a 1.5 s tone (three rising
+  beeps, the pitch stepped by the output number) then says the label
+  ("Start Bar. Outputs 3, 4.") at `test_gain_db` (−12). Tests seen at boot
+  are never replayed; a restarted server's new sequence still plays (the
+  cursor is the server's `at`). With `mqtt:` also `show/audio/test
+  {"speaker": "desk-l"}` / `{"out": 3}`.
+- `stagehand check --only audio` probes the device against the cached /
+  local `audio.json` (channel counts) and lists cue sounds with no file.
+- Every `health_s` (60) a log line: device, config version + source,
+  voices, played / skipped, xruns, limiter blocks, peak, sounds with no file;
+  with `mqtt:` the same JSON retained on `health/audio/stats`, `online` /
+  `lost` on `health/audio`.
+- Its own launchd job: `stagehand launchd install --job audio --config
+  trapped.house.yaml`.
+
+### 11.6 Switching it on (the show)
+
+1. Uncomment `audio:` in `trapped.house.yaml` with both switches false,
+   install the job, press Test on each speaker in the map editor (the walk).
+2. Put the show's files in `sounds_dir` (`stagehand check --only audio`
+   lists the missing ones), set `play_sounds: true`, restart the `show` and
+   `audio` jobs. QLab no longer gets `sound` cues.
+3. To move announcements: delete `alexa:` (and its launchd agent), set
+   `announce: true`, restart.
+
+### 11.7 Not checked on hardware
+
+Nothing here has run on the MOTU. Open: whether the unit presents 16 in /
+16 out to CoreAudio at 48 kHz; a duplex stream under launchd needs the
+microphone permission (TCC) for the `uv`/Python binary — grant it once by
+hand, or run `passthrough: false`; sharing the device with Chrome (the TV
+voice on 1/2) and QLab in CoreAudio's shared mode; the right `blocksize` /
+`latency` for no xruns with Ollama loading the CPU; the limiter's levels on
+real speakers; `say` render time before an announcement (≈ 0.3–1 s,
+covered by the chime).
+
