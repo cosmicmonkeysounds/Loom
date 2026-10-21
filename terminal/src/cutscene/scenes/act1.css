@@ -379,3 +379,18 @@
 .a1-verdict-mark.kit-win { font-size: 0.95em; }
 .a1-verdict-way { position: absolute; left: 52%; top: 83%; font-family: var(--mono); font-size: 1.8em; color: #ff8a8a; letter-spacing: 0.1em; }
 .a1-verdict-way span { display: inline-block; margin-right: 0.2em; }
+
+/* --- the results, read off the wire (wave 18b) ---------------------------------------------- */
+/* `top` in % of the stage: an `em` top would scale with the element's own font. */
+.a1-read-q.kit-win { font-size: 0.95em; }
+.a1-read-filed { position: absolute; right: 4%; top: 15.5%; font-family: var(--mono); font-size: 1.8em; color: #9cf5b8; text-align: right; }
+.a1-read-filed b { font-size: 1.8em; color: #ffd23f; margin-right: 0.15em; }
+.res-rows.a1-read-rows { position: absolute; left: 3em; right: 3em; top: 10.6em; }
+.a1-read-nobody { position: absolute; left: 0; right: 0; top: 42%; text-align: center; font-family: var(--mono); font-size: 4em; color: #ff4b4b; text-shadow: 0 0 0.3em rgba(255, 75, 75, 0.6); will-change: transform, opacity; }
+.a1-read-totals { position: absolute; left: 3em; top: 78.5%; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.3em; color: #fff; }
+.a1-read-more { color: #9cf5b8; font-weight: normal; }
+.a1-read-consensus { position: absolute; left: 3em; right: 3em; top: 84.5%; padding: 0.15em 0.5em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.4em; color: #1a1200; background: linear-gradient(#ffe36a, #ffb400); border: 0.12em solid #7a4b00; transform-origin: 0 50%; will-change: transform, opacity; }
+.a1-read-consensus-tag { margin-right: 0.5em; padding: 0 0.3em; color: #ffd23f; background: #1a1200; }
+.a1-read-next { left: auto; right: 4%; top: 78%; }
+.a1-read-board { font-size: 1.1em; }
+.a1-scan-card.read { border-color: #3dff7a; }
