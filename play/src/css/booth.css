@@ -281,63 +281,9 @@
    `aspect-ratio`, `color-mix()`, `inset` or flex `gap` here (Chrome 87 /
    iOS 15): grid `gap` and margins only. Tokens from `themes.css` only. ── */
 
-/* The pop-out rung's stand-in (`booth/popouts/rung-stub.tsx`; the moments
-   lane's `popout.tsx` replaces it). Floating: anchored just above the dock,
-   no scrim. Docked: a 56 px strip in the window's own flow. */
+/* The pop-out (the moments lane's `popout.tsx`) floats just above the dock,
+   no scrim; this zero-height anchor marks the place. */
 .booth-popout-anchor { position: relative; flex: 0 0 auto; height: 0; }
-.bpop {
-  background: var(--face); color: var(--ink); box-shadow: var(--raised);
-  font: 14px/1.35 var(--ui-font);
-}
-.bpop-float {
-  position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 38;
-  max-height: 70vh; overflow: auto; -webkit-overflow-scrolling: touch;
-}
-.bpop-cap {
-  display: flex; align-items: center; min-height: 32px; padding: 2px 4px 2px 8px;
-  background: var(--title-grad); color: var(--title-ink); font: 700 14px var(--ui-font);
-}
-.bpop-cap.alarm { background: var(--maroon); }
-.bpop-cap.win { background: var(--good); }
-.bpop-cap-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bpop-pager { flex: 0 0 auto; margin: 0 8px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.bpop-min { flex: 0 0 auto; }
-.bpop-body { padding: 8px 10px 10px; }
-.bpop-guest { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 6px; }
-.bpop-body.compact .bpop-guest { grid-template-columns: 48px minmax(0, 1fr); }
-.bpop-guest .pavatar { width: 96px; height: 96px; font-size: 28px; }
-.bpop-body.compact .bpop-guest .pavatar { width: 48px; height: 48px; font-size: 18px; }
-.bpop-guest-text { display: flex; flex-direction: column; min-width: 0; }
-.bpop-name { font-size: 24px; line-height: 1.15; text-transform: uppercase; overflow-wrap: anywhere; }
-.bpop-place { margin-top: 4px; font-size: 18px; font-weight: 700; }
-.bpop-seen { margin-top: 2px; font-size: 13px; color: var(--dim-ink); }
-.bpop-p { margin: 4px 0; }
-.bpop-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; align-items: center; min-height: var(--tap); padding: 4px 0; border-top: 1px solid var(--line); }
-.bpop-row-text { display: flex; flex-direction: column; min-width: 0; }
-.bpop-row-place { font-size: 13px; color: var(--muted-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bpop-row .pavatar { width: 32px; height: 32px; }
-.bpop-row-name { font-weight: 700; overflow-wrap: anywhere; }
-.bpop-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
-.bpop-btn { min-height: var(--tap); font: 14px var(--ui-font); }
-.bpop-btn.primary { grid-column: 1 / -1; min-height: 56px; font-size: 17px; font-weight: 700; }
-.bpop-btn.armed { background: var(--ink); color: var(--white); }
-.bpop-body.compact .bpop-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.bpop-body.compact .bpop-btn.primary { grid-column: auto; min-height: var(--tap); font-size: 14px; }
-.bpop-status { margin-top: 8px; padding: 3px 6px; box-shadow: var(--sunken); font-size: 12px; color: var(--muted-ink); }
-.bpop-strip { margin: 0 0 8px; }
-.bpop-strip-btn {
-  display: flex; align-items: center; width: 100%; min-height: 56px; margin: 0; padding: 0 10px;
-  border: none; background: var(--title-grad); color: var(--title-ink); font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
-}
-.bpop-strip.alarm .bpop-strip-btn { background: var(--maroon); }
-.bpop-strip-text { flex: 1 1 auto; min-width: 0; margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bpop-strip-open { flex: 0 0 auto; margin-left: 8px; }
-.bpop-docked { margin: 0 0 8px; }
-.bpop-tray { margin: 0; padding: 0; list-style: none; }
-@media (prefers-reduced-motion: no-preference) {
-  .bpop-float .bpop-cap.alarm { animation: bpop-flash 400ms steps(2) 2; }
-}
-@keyframes bpop-flash { 50% { background: var(--maroon-2); } }
 
 /* A booth window in alarm: the maroon caption (the Wanted board, a confrontation). */
 .booth-layer-win.alarm > .w95-titlebar { background: var(--maroon); }

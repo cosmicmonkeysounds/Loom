@@ -7,7 +7,7 @@
 //! screen wears the CAPTURED stamp and says where to walk them.
 
 import { useEffect, useState } from "react";
-import * as alerts from "../alerts.ts";
+import { playTone } from "../alerts.ts";
 import { ARM_LINE, useArmButtons } from "../arm.ts";
 import { PersonAvatar } from "../ui/primitives.tsx";
 import { Icon } from "../chrome/icons.tsx";
@@ -16,10 +16,9 @@ import { Outcome } from "./card.tsx";
 import { pressOutcome, type OutcomeLine } from "./model.ts";
 import { claimNote, type Confront } from "./popouts/model.ts";
 
-/** The win tone, once the moments lane exports it (`alerts.ts` `playTone`). */
+/** The win tone (`alerts.ts`). */
 function winTone(): void {
-  const play = (alerts as unknown as { playTone?: (tone: string) => void }).playTone;
-  if (typeof play === "function") play("win");
+  playTone("win");
 }
 
 /** The confrontation's status bar: "Scanned 7:12 PM · claimed by you". */

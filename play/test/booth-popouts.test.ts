@@ -27,7 +27,6 @@ import {
   wizardSteps,
   type WantedCtx,
 } from "../src/booth/popouts/model.ts";
-import { pickCurrent } from "../src/booth/popouts/rung-stub.tsx";
 import type { BoothGuest, BoothMessage, BoothObjective, CallsView, WantedEntry } from "../src/booth/wire.ts";
 import type { Interaction } from "../src/types.ts";
 
@@ -287,13 +286,3 @@ describe("the moments adapter's table (§4.12)", () => {
   });
 });
 
-describe("the rung's queue (stub, §2.2)", () => {
-  const s = (key: string, priority: number, at: number) => ({ key, priority, at, glyph: "", title: "", body: "", actions: [], tone: "info" as const, sticky: false });
-  it("keeps the one on screen; else priority, then age", () => {
-    const list = [s("a", 30, 1), s("b", 90, 5), s("c", 90, 2)];
-    expect(pickCurrent(list, null)!.key).toBe("c");
-    expect(pickCurrent(list, "a")!.key).toBe("a");
-    expect(pickCurrent(list, "gone")!.key).toBe("c");
-    expect(pickCurrent(list, null, (x) => x.key === "c")!.key).toBe("b");
-  });
-});

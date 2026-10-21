@@ -21,7 +21,7 @@
 //!
 //! The guest app never imports this file (its bundle stays as it was).
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { playTone } from "../alerts.ts";
 import { useArmButtons, ARM_LINE } from "../arm.ts";
 import { usePlayHost, type SessionStorage } from "../host.ts";
@@ -175,11 +175,44 @@ const NOOP_API: PopOutsApi = {
 
 const noSubscribe = () => () => {};
 
-/** The pop-outs of the booth this component sits in (its `MomentsProvider`'s sign-in). */
-export function usePopOuts(): PopOutsApi {
-  const e = useMomentsEngineContext();
+/** A booth's sign-in for the pop-outs, for components above its
+ *  `MomentsProvider` (the booth shell reads its own store before it renders
+ *  the provider). Inside a booth's provider the provider's sign-in wins. */
+interface PopScope {
+  session: string | null;
+  cardGuest?: () => string | null;
+}
+const PopScopeContext = createContext<PopScope | null>(null);
+
+/**
+ * Names the booth sign-in the pop-outs below belong to. `seed` raises specs
+ * into that store on first render (a test seam; SSR renders them at once).
+ */
+export function PopOutScope({ session, cardGuest, seed, children }: { session: string | null; cardGuest?: () => string | null; seed?: readonly PopOutSpec[]; children: ReactNode }) {
   const host = usePlayHost();
-  const session = e?.input.role === "booth" ? e.input.session : null;
+  const seeded = useRef(false);
+  if (!seeded.current && seed !== undefined && session !== null) {
+    seeded.current = true;
+    const store = storeFor(session, host.storage);
+    for (const spec of seed) apply(store, { type: "raise", spec });
+  }
+  return <PopScopeContext.Provider value={{ session, ...(cardGuest !== undefined ? { cardGuest } : {}) }}>{children}</PopScopeContext.Provider>;
+}
+
+/** The booth sign-in (and its open card's guest) this component's pop-outs belong to. */
+function usePopScope(): { session: string | null; cardGuest: (() => string | null) | undefined; sound: boolean } {
+  const e = useMomentsEngineContext();
+  const scope = useContext(PopScopeContext);
+  if (e?.input.role === "booth") return { session: e.input.session, cardGuest: e.input.cardGuest ?? scope?.cardGuest, sound: e.input.sound ?? false };
+  if (e !== null) return { session: null, cardGuest: undefined, sound: false };
+  return { session: scope?.session ?? null, cardGuest: scope?.cardGuest, sound: false };
+}
+
+/** The pop-outs of the booth this component sits in (its `MomentsProvider`'s sign-in, else a `PopOutScope`'s). */
+export function usePopOuts(): PopOutsApi {
+  const scope = usePopScope();
+  const host = usePlayHost();
+  const session = scope.session;
   const store = session !== null ? storeFor(session, host.storage) : null;
   const subscribe = useCallback(
     (l: () => void) => {
@@ -193,7 +226,7 @@ export function usePopOuts(): PopOutsApi {
   useSyncExternalStore(store !== null ? subscribe : noSubscribe, snap, snap);
   if (store === null) return NOOP_API;
   const st = store.state;
-  const entry = currentOf(st, e?.input.cardGuest?.() ?? null);
+  const entry = currentOf(st, scope.cardGuest?.() ?? null);
   return {
     current: entry?.spec ?? null,
     entry,
@@ -222,9 +255,7 @@ export function usePopOuts(): PopOutsApi {
 
 /** The one on screen holds (rule 1) and is announced once per tone (rule 8): the host runs this. */
 function useHoldAndAnnounce(api: PopOutsApi): void {
-  const e = useMomentsEngineContext();
-  const session = e?.input.role === "booth" ? e.input.session : null;
-  const sound = e?.input.sound ?? false;
+  const { session, sound } = usePopScope();
   const key = api.entry?.spec.key ?? null;
   const tone = api.entry?.spec.tone ?? null;
   useEffect(() => {

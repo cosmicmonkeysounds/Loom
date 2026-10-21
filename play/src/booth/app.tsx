@@ -48,13 +48,13 @@ import { DoorWindow } from "./door.tsx";
 import { nowRow } from "./now-card.tsx";
 import { PlayerSelect } from "./pick/select.tsx";
 import { RowsWindow } from "./pick/rows.tsx";
-import { adaptBoothMessage, boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
-import { PopOutHost, PopOutProvider, usePopOuts } from "./popouts/rung.ts";
+import { boothPopOutAdapter, coveredElsewhere, doorQueue, pickLayout, wizardSteps, type AdapterCtx, type DoorEntry } from "./popouts/model.ts";
+import { PopOutHost, PopOutScope, usePopOuts } from "./popouts/rung.ts";
 import { bindDraft, useBoothPopOuts, type BoothOpeners } from "./popouts/use-booth-popouts.ts";
 import { WaitingWindow } from "./waiting.tsx";
 import { WantedBoard } from "./wanted/board.tsx";
 import { boothView, globalButtonsOf, looseWanted, mayPress, wantedOf, type BoothMessage, type BoothObjective } from "./wire.ts";
-import { HostDock as HostDockBase, type HostDockProps } from "../host/dock.tsx";
+import { HostDock } from "../host/dock.tsx";
 
 /**
  * A guest's thread as the booth shows it: its rows come from several rooms,
@@ -116,8 +116,6 @@ type Layer =
   | { kind: "waiting" }
   | null;
 
-/** The host dock with wave 18's `openWanted` (the host lane adds the prop; an older dock ignores it). */
-const HostDock = HostDockBase as (p: HostDockProps & { openWanted?: () => void }) => ReturnType<typeof HostDockBase>;
 
 const BOARD_KEY = (token: string) => `loom.booth.board.${token}`;
 
@@ -134,9 +132,9 @@ export function PerformerApp({ onLeave }: { onLeave: () => void }) {
   // every other booth readout through; a pop-out about them waits (§2.2 rule 7).
   const cardGuest = useRef<string | null>(null);
   return (
-    <PopOutProvider session={s.auth?.token ?? null} cardGuest={() => cardGuest.current}>
+    <PopOutScope session={s.auth?.token ?? null} cardGuest={() => cardGuest.current}>
       <BoothApp onLeave={onLeave} s={s} cardGuest={cardGuest} />
-    </PopOutProvider>
+    </PopOutScope>
   );
 }
 
@@ -401,14 +399,10 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
     filter: boothAlertFilter(character),
     sound: host.sound,
     cardGuest: () => cardGuest.current,
-  };
-  // Wave 18 (§2.3): the moments lane reads these (an older provider ignores them).
-  const momentsW18 = {
-    ...moments,
+    // Wave 18 (§2.3): the booth's big moments and `!` readouts become pop-outs.
     popOutAdapter: boothPopOutAdapter(adapterCtx, (d) => bindDraft(d, openers, rung.defer)),
     openCard: (guestId: string) => openCard(guestId),
   };
-  void adaptBoothMessage;
   const start = boothStartItems({
     character,
     admin,
@@ -426,7 +420,7 @@ function BoothApp({ onLeave, s, cardGuest }: { onLeave: () => void; s: PrimeSess
   });
 
   return (
-    <MomentsProvider {...momentsW18}>
+    <MomentsProvider {...moments}>
       <AvatarsContext.Provider value={avatars}>
         <WalletActionsProvider value={{ view: s.view?.wallet ?? null, me: null, clock: walletClock, approve: (id) => void s.walletApprove(id), deny: (id) => void s.walletDeny(id) }}>
           <div className="root">

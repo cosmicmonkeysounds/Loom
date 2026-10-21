@@ -1,6 +1,8 @@
 // Wave 18 (booth lane): the Wanted board and its posters (BOOTH-SPEC §4.2),
 // the card's WANTED banner, the confrontation screen (§4.3) and the pop-out
 // dock inside the card's scroll, never over its face (§2.2 rule 6).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -8,7 +10,8 @@ import { Poster, WantedBanner } from "../src/booth/wanted/poster.tsx";
 import { WantedBoard, defaultBoardTab } from "../src/booth/wanted/board.tsx";
 import { ConfrontScreen, scannedLine } from "../src/booth/confront.tsx";
 import { GuestCardBody, unmarkIdOf } from "../src/booth/card.tsx";
-import { PopOutProvider, type PopOutSpec } from "../src/booth/popouts/rung.ts";
+import { PopOutScope, resetPopOutStores, usePopOuts, type PopOutSpec } from "../src/booth/popouts/rung.ts";
+import { stripText } from "../src/moments/popout-model.ts";
 import type { PrimeSession } from "../src/session/prime.ts";
 import type { WantedEntry } from "../src/booth/wire.ts";
 
@@ -100,19 +103,25 @@ describe("the confrontation (§4.3)", () => {
 
 describe("the pop-out dock on a card (§2.2 rule 6)", () => {
   const spec: PopOutSpec = { key: "wanted:icq", glyph: "🚨", title: "WANTED", body: "x", guest: { id: "icq", name: "ICQ", location: "The Tube" }, actions: [], tone: "alarm", sticky: true, priority: 90, at: 1 };
-  const session = { view: { character: "Norton", guests: [{ id: "w", name: "Winamp", faction: null, captured: false, location: null }], channels: [], spaces: [], interactions: [] }, auth: { token: "t", character: "Norton", admin: false, eventId: "e" } } as unknown as PrimeSession;
-  it("renders as a strip inside .booth-card-scroll, before the face", () => {
-    const html = renderToStaticMarkup(
-      <PopOutProvider session="t" seed={[spec]}>
-        <GuestCardBody session={session} guestId="w" admin={false} onOpenThread={noop} onNext={noop} />
-      </PopOutProvider>,
-    );
-    const scroll = html.indexOf('class="booth-card-scroll"');
-    const strip = html.indexOf("bpop-strip");
-    const foot = html.indexOf("booth-card-foot");
+  it("the dock is the first child of .booth-card-scroll, before the face", () => {
+    const src = readFileSync(join(__dirname, "../src/booth/card.tsx"), "utf8");
+    const scroll = src.indexOf('className="booth-card-scroll"');
     expect(scroll).toBeGreaterThan(-1);
-    expect(strip).toBeGreaterThan(scroll);
-    expect(foot).toBeGreaterThan(strip);
+    const after = src.slice(scroll);
+    expect(after.indexOf("<PopOutDock />")).toBeGreaterThan(-1);
+    expect(after.indexOf("<PopOutDock />")).toBeLessThan(after.indexOf("booth-card-foot"));
+  });
+  it("a scope's seed lands in that booth's store (the strip's words)", () => {
+    resetPopOutStores();
+    function Probe() {
+      const p = usePopOuts();
+      return <i>{p.current !== null ? stripText(p.current) : "none"}</i>;
+    }
+    const html = renderToStaticMarkup(
+      <PopOutScope session="t-dock" seed={[spec]}>
+        <Probe />
+      </PopOutScope>,
+    );
     expect(html).toContain("WANTED: ICQ · 📍 The Tube");
   });
 });

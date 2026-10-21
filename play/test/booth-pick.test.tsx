@@ -11,7 +11,7 @@ import { DoorWindow } from "../src/booth/door.tsx";
 import { WaitingWindow } from "../src/booth/waiting.tsx";
 import { ClippyCueBar, callMarks, callerChip, clippyFire, nextForYou, sheetNext, yourCue } from "../src/booth/cue-bar.tsx";
 import { wizardSteps } from "../src/booth/popouts/model.ts";
-import { PopOutProvider } from "../src/booth/popouts/rung.ts";
+import { PopOutScope } from "../src/booth/popouts/rung.ts";
 import { ApiError } from "../src/client.ts";
 import type { BoothObjective, CallsView } from "../src/booth/wire.ts";
 import type { Interaction, PrimeGuest } from "../src/types.ts";
@@ -111,9 +111,9 @@ describe("the door queue window (§4.4)", () => {
 describe("the 🔔 Waiting window (§4.13)", () => {
   it("is empty and says so", () => {
     const html = renderToStaticMarkup(
-      <PopOutProvider session="t">
+      <PopOutScope session="t">
         <WaitingWindow onClose={noop} />
-      </PopOutProvider>,
+      </PopOutScope>,
     );
     expect(html).toContain("Waiting (0)");
     expect(html).toContain("Nothing waiting. You&#x27;re on top of it.");
