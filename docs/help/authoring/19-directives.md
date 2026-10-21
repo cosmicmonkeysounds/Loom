@@ -76,12 +76,13 @@ dings). Name the places a sound is for:
 
 ```loom
 sound printer_grind in The Desktop
-sound alarm_siren with rooms: tube, The Server Room
+sound alarm_siren with rooms: hall, The Server Room
 sound dance_song with rooms: living, The Start Bar
 ```
 
 `in <Place>` takes one place. `with rooms:` takes a list: LOCATION
-names, the house map's one-word room ids (`tube`), and the zones and
+names, the house map's room ids (`hall`, `start-bar`: the ids in
+`house.json`, not the LOCATION names), and the zones and
 speakers of the house's speaker setup (`living`, `everywhere`) — that is
 `audio.json`, drawn in the map editor's Audio panel (see
 [the house map](house-map.md)).
@@ -98,7 +99,12 @@ Where a `sound` goes, the first rule that applies wins:
 4. every speaker in the house.
 
 So a plain `sound x` still works: give it a cue in `audio.json`, or let
-it follow the scene's setting. The rooms only matter once the house
+it follow the scene's setting. **A sound whose rule reaches no wired
+speaker is skipped, not played everywhere** — a setting with no speaker
+in it, or a room id the map doesn't have, plays nowhere (the router logs
+*reaches no wired speaker*). Only a sound with no `in` / `rooms:`, no cue
+and no setting falls through to every speaker, so give every new sound a
+cue in `audio.json`. The rooms only matter once the house
 Mac's speaker router plays the show's sounds; until then QLab plays every
 `sound` the way it always has, and the rooms are ignored.
 
