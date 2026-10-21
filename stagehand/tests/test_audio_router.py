@@ -668,6 +668,20 @@ def test_check_compares_the_device_with_the_cached_config(tmp_path, capsys):
     assert "8 in / 8 out" in capsys.readouterr().out
 
 
+def test_check_fails_and_health_flags_a_moved_layout(tmp_path):
+    """wave 18b (Q2): audio.json's `device.expect` against the device."""
+    dev = {"name": "MOTU", "inputs": 16, "outputs": 16, "expect": {"inputs": 32, "outputs": 30}}
+    r = router(tmp_path, query=fake_query(32, 26))
+    r.apply(answer("v1", device=dev))
+    problems = router(tmp_path, query=fake_query(32, 26)).preflight()
+    assert len(problems) == 1 and "layout has moved" in problems[0]
+    assert r.engine_running() and r.health()["layout"] == "moved"
+    (tmp_path / "ok").mkdir()
+    ok = router(tmp_path / "ok", query=fake_query(32, 30))
+    ok.apply(answer("v1", device=dev))
+    assert ok.preflight() == [] and ok.health()["layout"] == "ok"
+
+
 def test_check_warns_about_missing_sound_files(tmp_path):
     r = router(tmp_path, play_sounds=True)
     r.apply(answer("v1"))

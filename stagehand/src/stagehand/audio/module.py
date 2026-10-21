@@ -249,9 +249,10 @@ class AudioRouter:
             if info is not None:
                 log.info("audio device %s: %d in / %d out @ %d Hz (no local audio.json to check against)", info.name, info.inputs, info.outputs, info.rate)
             return [f"audio: {p}" for p in problems]
-        info, problems = probe(device_name(self.cfg.device) or device_name(doc.device), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query)
+        info, problems = probe(device_name(self.cfg.device) or device_name(doc.device), doc.inputs if self.cfg.passthrough else 0, doc.outputs, self._query, expect=doc.expect)
         if info is not None:
-            print(f"audio    : {info.name} — {info.inputs} in / {info.outputs} out @ {info.rate} Hz; audio.json wants {doc.inputs} / {doc.outputs}")
+            expect = f", the device must report {doc.expect[0]} / {doc.expect[1]}" if doc.expect is not None else ""
+            print(f"audio    : {info.name} — {info.inputs} in / {info.outputs} out @ {info.rate} Hz; audio.json wants {doc.inputs} / {doc.outputs}{expect}")
         return [f"audio: {p}" for p in problems]
 
     def warnings(self) -> list[str]:
@@ -402,8 +403,10 @@ class AudioRouter:
                 mixer_args={"master_db": cfg.master_db, "limit_db": cfg.limit_db, "duck_db": cfg.duck_db},
                 query=self._query,
                 stream_factory=self._stream_factory,
+                expect=doc.expect,
             )
             self._signature = signature
+        self.engine.expect = doc.expect
         try:
             mixer = self.engine.open()
         except Exception as err:  # noqa: BLE001 — missing device / PortAudio
@@ -766,6 +769,8 @@ class AudioRouter:
             "skipped": self.skipped,
             "missing": sorted(self.bank.missing) if self.bank is not None else [],
             "announce": self.announce_state(),
+            # `device.expect` disagreed with the device at the last open.
+            "layout": "moved" if self.engine is not None and self.engine.layout_moved else "ok",
         }
 
     async def _health_loop(self) -> None:
@@ -773,8 +778,9 @@ class AudioRouter:
             await asyncio.sleep(self.cfg.health_s)
             h = self.health()
             log.info(
-                "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s",
+                "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s%s",
                 h["device"] or "closed", h["config"] or "—", h["source"], h["voices"], h["played"], h["skipped"], h["xruns"], h["limited"], h["blocks"], h["peak_db"], h["announce"],
+                " | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "",
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
             )
             if self.mqtt is not None:
