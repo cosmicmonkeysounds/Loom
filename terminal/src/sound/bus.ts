@@ -16,7 +16,9 @@
 //!
 //! The announcement chime (`ringChime`, which rings *while* the floor is
 //! held for the announcement it opens) and the casino jingles keep their old
-//! levels on the master bus and skip the gate but for the lock.
+//! levels on the master bus and skip the gate but for the lock. So does the
+//! reinstallation game on the tent laptop (wave 18b, `soundOutput()`: the
+//! game's quack, fanfare, buzz and thud play on the master bus).
 //!
 //! The voices bus (wave 19) carries the reinstallation players this terminal
 //! hears: never the voice floor's (Trabolta's replies never queue behind a
@@ -323,5 +325,19 @@ export function playChime(): Promise<void> {
     return new Promise((r) => setTimeout(r, ms));
   } catch {
     return Promise.resolve();
+  }
+}
+
+/** The master bus as an output for sounds made elsewhere (wave 18b: the
+ *  reinstallation game's `createSfx(soundOutput)` on the tent laptop): the
+ *  page's shared context and its master gain, so the game rides the same
+ *  speakers and level as every other sound here, skipping the effects' gate
+ *  like the casino's jingles. Null while there is no context. Never throws. */
+export function soundOutput(): { ctx: AudioContext; out: AudioNode } | null {
+  try {
+    const b = ensureBus();
+    return b === null ? null : { ctx: b.ctx as AudioContext, out: b.master };
+  } catch {
+    return null;
   }
 }

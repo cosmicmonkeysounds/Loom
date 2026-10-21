@@ -244,6 +244,14 @@ describe("the two variants", () => {
     }
   });
 
+  it("make the tent (or shed) spot the reinstallation station, belonging to no room's voice (wave 18b, Q4)", () => {
+    for (const h of [tent, shed]) {
+      const t = h.terminals.find((x) => x.id === "tent");
+      expect(t?.view, h.variant ?? "map").toBe("reinstall");
+      expect(t?.speaks, h.variant ?? "map").toBeUndefined();
+    }
+  });
+
   it("differ only where the Internet is", () => {
     const moved = new Set(["tent", "shed", "backyard"]);
     const keep = (h: HouseMap) => h.rooms.filter((r) => !moved.has(r.id));

@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live Shows
 order: 36
-keywords: show, widget, card, moment, major, minor, big, sides, doors, invite, invitation, tray, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
+keywords: show, widget, card, moment, major, minor, big, sides, doors, invite, invitation, tray, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, fact_read, fact_truth, results, queue, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -164,8 +164,8 @@ plus up to four more (*12 years ago* for *12*, *Doctor Whiskers the cat*),
 unless an extra word turns it around or hedges (*not*, *never*, *or*,
 *but*…), adds an am / pm the key leaves open (*7:30 pm* for *7:30*), or
 is a lone letter (*Chapter B* for *chapter*). Numbers and am / pm must
-match exactly, and a plainly wrong answer at 100 is still an automatic
-lie. *Dr Whiskars* for *Doctor Whiskers* and
+match exactly, and a plainly wrong answer at 100 is a lie by the house
+rule (a `judge:` character is still asked about it first, below). *Dr Whiskars* for *Doctor Whiskers* and
 *Mosiac* for *Mosaic* are near; *Chapter B* for *Chapter Q*, *7pm* for
 *7:30 a.m.* and *did work* for *didn't work* are not. In
 `auto` mode a near miss takes the `review` path for that one filing: it
@@ -177,20 +177,41 @@ judges it.*). If nobody judges it before the round settles, the
 proposal stands: the filer is credited. Real but different answers can
 be near too (*Mrs Whiskers* for *Doctor Whiskers*: honorifics drop).
 
-**A judge for near misses.** A header line `judge: <Character>` names a
-`mind: external` character who rules on them, so a director doesn't
-have to (*Trapped in the Internet* has `judge: Trabolta`). In `auto`
-mode, when a worker voicing it is online, each near miss goes to that
-worker at once: one model call that sees the question, the key and the
-filed answer, nothing else, and answers *same* or *not*. *Same* →
-accurate; *not* → a confident lie at confidence 100, else uncertain. The
-verdict lands through the same confirm event a director's button fires,
-so the story reacts as it would to a host. The staff-room line then
-says *… asked Trabolta to rule* and his ruling follows (*🤖 Trabolta
-ruled X's Q2 filing "Dr Whiskars": the same as "Doctor Whiskers"
-(accurate).* and his reason). A director can still override it on the
-Judging card. With no worker online the near miss waits as above, and
-the settle credits it if nobody judges it. A `judge:` that names no
+**A judge for every answer that isn't exact.** A header line `judge:
+<Character>` names a `mind: external` character who rules on the
+filings the house can't, so a director doesn't have to (*Trapped in the
+Internet* has `judge: Trabolta`). An **exact match** (the fold, an
+alias, a spelled-out abbreviation) is accepted at once and nobody is
+asked. In `auto` mode, while a worker voicing the judge is online,
+**every other filing** — a near miss or a plain miss — is held pending
+with the house's proposal (a near miss accurate; a plain miss a lie at
+100, a guess below) and put to that worker: one model call that sees
+the question, the key and the filed answer, nothing else, and answers
+*same* or *not*. *Same* → accurate; *not* → a confident lie at
+confidence 100, else uncertain. The verdict lands through the same
+confirm event a director's button fires, so the story reacts as it
+would to a host. The staff-room line ends *… asked Trabolta to rule*
+(*⚠ Near miss…* for a near miss, *📝 Not an exact match…* for a plain
+one) and his ruling follows (*🤖 Trabolta ruled X's Q2 filing "Dr
+Whiskars": the same as "Doctor Whiskers" (accurate).* and his reason).
+
+The rulings wait in a **queue**, oldest filing first: his worker takes
+one at a time, and a guest talking to him goes first (no ruling is sent
+while he is answering a message). A ruling expires 60 s after it was
+sent (never while it waits its turn), and one out when his worker drops
+off (a Wi-Fi blip) goes back in the queue for the reconnect; two expiries in a row mean his
+worker isn't ruling, and the staff room hears it once (*⚖ Trabolta isn't
+ruling: filings fall back to the house rule.*). A round of forty-odd
+filings can take him several minutes, so Run → Mind's Judging card
+shows *🤖 queued* / *🤖 asking* on each one and the queue in its header.
+
+**When nobody can rule** — no `judge:`, no worker online, a stalled
+worker, an expired ruling, or one still waiting when its round settles
+— the house rule stands: the proposal is the verdict (a near miss is
+credited, a plain miss is a lie at 100, a guess below). A near miss
+filed with nobody online waits on the Judging card as above; a plain
+miss is judged at once. A director's verdict cancels a ruling not yet
+given and overrides one already given. A `judge:` that names no
 `mind: external` CHARACTER is lint `L1206` and judges nothing. In
 `review` mode nothing goes to the character.
 
@@ -242,6 +263,17 @@ card's tallies and let the story draw a name:
 - `do fact_judged {program} {question} {verdict}` — the filing is
   settled: `accurate` / `lie` / `uncertain`, or `marked` for a guess
   settled at a reveal.
+- `do fact_read <id> [<id> …]` — the story has read these questions'
+  results aloud: while the reading's slide (`hunt_results` or `tally`)
+  is up, the screens show them — who filed, what they said, sure or not,
+  accepted / guess / not counted, and the judge's stamp on each filing
+  (the rows on the TV only). The screens never tell an accurate filing
+  from a confident lie before the verdict, and a reading never shows the
+  last round's questions (they are still open until the verdict).
+- `do fact_truth <id> accurate|lie|none` — the verdict on one question:
+  for two minutes the TV shows each question's truth, its key answer and
+  the names of the programs who lied (a wall shows the truths and the
+  counts only). Nothing of it reaches the agents.
 - `do pick <event> from [id, id, …] else <other event>` — the server
   picks one person at random from the list and fires `<event>` for
   them (journaled, so a replay picks the same one); with nobody in the

@@ -143,9 +143,10 @@ describe("wallet book — transfers", () => {
     book.apply(send(book, "g1", "g2", 10, 0));
     book.apply(send(book, "g2", "g1", 10, 0));
     const held = book.apply(send(book, "g4", "g2", 30, 0));
-    expect(cards(held).map((c) => [c.to, c.card.step])).toEqual([
-      ["g4", "held"],
-      ["@Auditor", "held"],
+    expect(cards(held).map((c) => [c.to, c.card.step, c.root])).toEqual([
+      ["g4", "held", true],
+      ["@Auditor", "held", true],
+      ["g2", "flagged", true], // wave 18b: the recipient's flagged thread
     ]);
     expect(f.signals.slice(-2).map((s) => s[0])).toEqual(["transfer_sent", "transfer_held"]);
     expect(f.balances.get("g4")).toBe(70);
@@ -166,8 +167,9 @@ describe("wallet book — transfers", () => {
     expect(cards(ok).map((c) => [c.to, c.card.step, c.card.by])).toEqual([
       ["g4", "approved", "Auditor"],
       ["@Auditor", "approved", "Auditor"],
-      ["g2", "received", undefined],
+      ["g2", "received", "Auditor"],
     ]);
+    expect(cards(ok).find((c) => c.to === "g2")!.root).toBe(false); // into its flagged thread
     expect(f.signals.at(-1)).toEqual(["transfer_approved", "g4", { to: "g2", amount: 30, tx: "t3", by: "Auditor" }]);
 
     // The sixth is held too; deny it.
@@ -178,9 +180,10 @@ describe("wallet book — transfers", () => {
     const before = f.balances.get("g1")!;
     const denied = book.apply({ op: "deny", id: "t6", by: DIRECTOR });
     expect(f.balances.get("g1")).toBe(before + 20);
-    expect(cards(denied).map((c) => [c.to, c.card.step, c.card.by])).toEqual([
-      ["g1", "denied", "Director"],
-      ["@Auditor", "denied", "Director"],
+    expect(cards(denied).map((c) => [c.to, c.card.step, c.card.by, c.root])).toEqual([
+      ["g1", "denied", "Director", false],
+      ["@Auditor", "denied", "Director", false],
+      ["g4", "denied", "Director", false],
     ]);
     expect(walletLine(cards(denied)[0]!.card)).toBe("⛔ Denied by Director: 20 Truthcoin to Solitaire. Refunded.");
 
@@ -193,7 +196,11 @@ describe("wallet book — transfers", () => {
     const b2 = f.balances.get("g2")!;
     const cancelled = book.apply({ op: "cancel", id: "t9", by: "g2" });
     expect(f.balances.get("g2")).toBe(b2 + 40);
-    expect(cards(cancelled).map((c) => c.card.step)).toEqual(["cancelled", "cancelled"]);
+    expect(cards(cancelled).map((c) => [c.to, c.card.step])).toEqual([
+      ["g2", "cancelled"],
+      ["@Auditor", "cancelled"],
+      ["g1", "cancelled"],
+    ]);
     expect(f.signals.at(-1)![0]).toBe("transfer_cancelled");
     expect(book.checkCancel("t9", "g2")).toEqual({ status: 409, error: "already settled" });
     // A pending transfer: only a director may cancel it.
@@ -215,9 +222,11 @@ describe("wallet book — transfers", () => {
     expect(cards(held).map((c) => [c.to, c.card.step, c.card.settleAt])).toEqual([
       ["g4", "held", 1000 + HOLD_MS],
       ["@Auditor", "held", 1000 + HOLD_MS],
+      ["g2", "flagged", 1000 + HOLD_MS],
     ]);
-    expect(walletLine(cards(held)[0]!.card, 1000)).toBe("⏳ 30 Truthcoin to Paint is waiting for Auditor to approve — it goes through on its own in 5 min.");
-    expect(walletLine(cards(held)[1]!.card, HOLD_MS - 29_000)).toBe("🧾 Solitaire → Paint: 30 Truthcoin. Waiting for your approval — it goes through on its own in 30 s.");
+    expect(walletLine(cards(held)[0]!.card, 1000)).toBe("🚩 Flagged for an audit: 30 Truthcoin to Paint must be approved by Auditor — it goes through on its own in 5 min.");
+    expect(walletLine(cards(held)[1]!.card, HOLD_MS - 29_000)).toBe("🚩 Flagged for an audit: Solitaire → Paint: 30 Truthcoin. Waiting for your approval — it goes through on its own in 30 s.");
+    expect(walletLine(cards(held)[2]!.card, 1000, "g2")).toBe("🚩 Flagged for an audit: Solitaire is sending you 30 Truthcoin. It must be approved by Auditor first — it goes through on its own in 5 min.");
     expect(book.viewFor("g4").transfers[0]).toMatchObject({ id: "t3", state: "held", settleAt: 1000 + HOLD_MS });
     for (const op of book.due(60_000)) run(op); // t1 + t2 settle; t3 still held
     expect(book.heldIds()).toEqual(["t3"]);
@@ -503,7 +512,9 @@ describe("wallet book — requests", () => {
     expect(ev.map((c) => [c.card.kind, c.card.step, c.card.by])).toEqual([
       ["transfer", "cancelled", "MS Paint"],
       ["approval", "cancelled", "MS Paint"],
+      ["transfer", "cancelled", "MS Paint"], // the recipient's flagged thread
     ]);
+    expect(walletLine(ev[2]!.card, undefined, "g1")).toBe("↩️ MS Paint cancelled the 7 Truthcoin. It never reached you.");
     expect(f.signals.at(-1)).toEqual(["transfer_cancelled", "g-cdb857", { to: "g1", amount: 7, tx: "t3", by: "g-cdb857" }]);
     // A guest minter's grant cards name the program too.
     const granted = cards(book.apply({ op: "grant", id: book.nextId("g"), by: "g3", to: "g1", amount: 5, at: 1 }));
@@ -511,6 +522,35 @@ describe("wallet book — requests", () => {
       ["g3", "granted", "Mint"],
       ["g1", "received", "Mint"],
     ]);
+  });
+
+  it("wave 18b (R13): the approver's `as` names it on every card, `audit` names the hold, and the recipient's thread closes", () => {
+    const cra: CurrencyDef = { ...COIN, approver: { id: "CRA_Agent_Software", every: 3, windowMs: 60_000, as: "MyCRA", audit: "a CRA audit" } };
+    const f = fake(PEOPLE, { parts: ["CRA_Agent_Software"] });
+    const book = new WalletBook(cra, f.seam);
+    book.apply(send(book, "g1", "g2", 1, 0));
+    book.apply(send(book, "g1", "g2", 1, 0));
+    const held = cards(book.apply(send(book, "g1", "g2", 10, 0)));
+    expect(held.map((c) => [c.to, c.card.step, c.card.approver, c.card.audit])).toEqual([
+      ["g1", "held", "MyCRA", "a CRA audit"],
+      ["@CRA_Agent_Software", "held", "MyCRA", "a CRA audit"],
+      ["g2", "flagged", "MyCRA", "a CRA audit"],
+    ]);
+    expect(walletLine(held[0]!.card, 0)).toBe("🚩 Flagged for a CRA audit: 10 Truthcoin to Paint must be approved by MyCRA — it goes through on its own in 5 min.");
+    expect(walletLine(held[2]!.card, 0, "g2")).toBe("🚩 Flagged for a CRA audit: Winamp is sending you 10 Truthcoin. It must be approved by MyCRA first — it goes through on its own in 5 min.");
+    // The booth denies: named MyCRA on the cards, the raw id in the signal.
+    const denied = cards(book.apply({ op: "deny", id: "t3", by: "CRA_Agent_Software" }));
+    expect(denied.map((c) => [c.to, c.card.by])).toEqual([
+      ["g1", "MyCRA"],
+      ["@CRA_Agent_Software", "MyCRA"],
+      ["g2", "MyCRA"],
+    ]);
+    expect(walletLine(denied[2]!.card, 0, "g2")).toBe("⛔ Denied by MyCRA: Winamp's 10 Truthcoin never reached you.");
+    expect(f.signals.at(-1)).toEqual(["transfer_denied", "g1", { to: "g2", amount: 10, tx: "t3", by: "CRA_Agent_Software" }]);
+    // A pending (not held) transfer's recipient hears only its settle, as before.
+    const pending = cards(book.apply(send(book, "g2", "g1", 1, 0)));
+    expect(pending.map((c) => c.to)).toEqual(["g2", "@CRA_Agent_Software"]);
+    expect(cards(book.apply({ op: "deny", id: "t4", by: "CRA_Agent_Software" })).map((c) => c.to)).toEqual(["g2", "@CRA_Agent_Software"]);
   });
 
   it("accepting a request you can no longer pay declines it inside apply, deterministically", () => {

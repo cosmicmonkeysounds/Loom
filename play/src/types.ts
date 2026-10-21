@@ -5,6 +5,7 @@
 import type { AlertLevel, GoTarget, MomentClass } from "../../core/src/delivery.ts";
 import type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
 import type { CrewView, InviteView, SideView } from "../../core/src/runtime/sim/crews.ts";
+import type { NameBadge } from "../../core/src/runtime/sim/badges.ts";
 import type { ShowClock } from "../../core/src/show-clock.ts";
 
 // Wave 13: the interrupt ladder and the host view are dependency-free core
@@ -14,7 +15,8 @@ export type { HostView, HostNeed, HostPerson, HostJudging, HostWanted, NeedTarge
 // Wave 18 (C8): the caller claim and a cue row, as the server sends them.
 export type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
 /** Wave 18 (C10): crews and sides, the server's own shapes. */
-export type { CrewSummary, CrewView, InviteView, SideView } from "../../core/src/runtime/sim/crews.ts";
+export type { CrewSummary, CrewView, FactionKind, InviteView, RaceFaction, RaceView, SideView } from "../../core/src/runtime/sim/crews.ts";
+export type { NameBadge } from "../../core/src/runtime/sim/badges.ts";
 export type { ShowClock } from "../../core/src/show-clock.ts";
 
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
@@ -200,8 +202,11 @@ export interface PersonCard {
    *  model on a stagehand machine); `online` = someone is answering now;
    *  `hold` = the story has a `hold:` line, so they always answer. */
   agent?: { online: boolean; hold?: true };
-  /** Wave 18 (C10): every group as a badge (display names, crew included). */
+  /** Wave 18 (C10): every group as a badge (display names, crew included).
+   *  In faction mode (w18b) a rival faction is left off. */
   groups?: string[];
+  /** Wave 18b: the story's `badge:` lines true for them (`🚻 Bathroom Mode`). */
+  badges?: NameBadge[];
 }
 
 export interface GuestView {
@@ -284,8 +289,16 @@ export interface GuestView {
   crew?: CrewView | null;
   /** Wave 18 (C10): invitations (crew or side) waiting on the guest. */
   invites?: InviteView[];
-  /** Wave 18 (C10): the joinable, revealed sides (the Sides screen). */
+  /** Wave 18 (C10): the joinable, revealed sides (the Sides screen); in
+   *  faction mode (w18b) every founded faction too, counts on your own row only. */
   sides?: SideView[];
+  /** Wave 18b, faction mode only: may you found a faction now? */
+  canFound?: boolean;
+  /** Wave 18b: your own badges (`badge:` lines true for you). */
+  badges?: NameBadge[];
+  /** Wave 18b: header `lobby: hidden` — never list the lobby (its lines
+   *  still reach you as moments / Notifications). */
+  lobby?: "hidden";
 }
 
 /** `GuestView.mission` (C11). `place.id` is a room / DM id (`loc:X`,
@@ -318,6 +331,8 @@ export interface PrimeGuest {
   /** Wave 18 (A1): when the server last heard from this guest (the mod
    *  roster's `lastSeen`, ms); null = not since the server started. */
   lastSeen?: number | null;
+  /** Wave 18b: the story's `badge:` lines true for them. */
+  badges?: NameBadge[];
 }
 
 /** One poster on the Wanted board (wave 18, C6). */
@@ -630,7 +645,9 @@ export type WalletStep =
   /** A casino bet: won (paid more than the stake), lost, push (the stake back). */
   | "won"
   | "lost"
-  | "push";
+  | "push"
+  /** Wave 18b: a transfer the approver's audit held, as its recipient sees it. */
+  | "flagged";
 
 /** One wallet card as this viewer sees it (mirror of server/wallet.ts
  *  `WalletCard`): `kind` + `step` say which side the viewer is on; `id`
@@ -657,6 +674,8 @@ export interface WalletCard {
   closedBy?: string;
   /** The approver's display name, on a card that waits on them. */
   approver?: string;
+  /** Wave 18b: what the audit is ("a CRA audit"), on a held / flagged transfer. */
+  audit?: string;
   /** A casino bet: the game, the pick, the roll in words, everything paid back. */
   game?: string;
   pick?: string;

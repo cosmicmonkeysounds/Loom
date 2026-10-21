@@ -1,6 +1,7 @@
 //! The device health a terminal reports on every screen-state poll
 //! (SW-SCR-21): is its sound unlocked, is the page visible, its battery, and
-//! whether it is full screen, which build it runs — so on install day (and on the night) the director's
+//! whether it is full screen, which build it runs, whether it says the house
+//! announcements (wave 18b, `ann`: its own setting or the house list's) — so on install day (and on the night) the director's
 //! Run → Terminals card shows a tablet nobody has touched (🔇), one whose
 //! screen went off (💤), one running flat, or one still on a cached old build.
 //! Wave 19 adds the voice link's microphone (`mic=live|muted|denied|insecure|off`,
@@ -30,16 +31,19 @@ export interface DeviceHealth {
   version: string;
   /** Full screen right now (wave 17); null / absent = can't be, or not asked. */
   fullscreen?: boolean | null;
+  /** Says the house announcements (wave 18b, Q8: `announceSetting`); null / absent = not asked. */
+  announce?: boolean | null;
   /** The voice link's microphone (wave 19); null / absent = nothing to say yet. */
   mic?: MicReport | null;
 }
 
-/** The poll's query fields: `audio=1|0`, `vis=v|h`, `bat=<0-100>[c]`, `fs=1|0`, `mic=<state>`, `ver=<build>`. */
+/** The poll's query fields: `audio=1|0`, `vis=v|h`, `bat=<0-100>[c]`, `fs=1|0`, `ann=1|0`, `mic=<state>`, `ver=<build>`. */
 export function deviceQuery(h: DeviceHealth): Record<string, string> {
   const q: Record<string, string> = { ver: h.version };
   if (h.audio !== null) q["audio"] = h.audio ? "1" : "0";
   if (h.visible !== null) q["vis"] = h.visible ? "v" : "h";
   if (h.fullscreen !== undefined && h.fullscreen !== null) q["fs"] = h.fullscreen ? "1" : "0";
+  if (h.announce !== undefined && h.announce !== null) q["ann"] = h.announce ? "1" : "0";
   if (h.mic !== undefined && h.mic !== null) q["mic"] = h.mic;
   if (h.battery !== null && Number.isFinite(h.battery)) q["bat"] = `${Math.max(0, Math.min(100, Math.round(h.battery)))}${h.charging === true ? "c" : ""}`;
   return q;
@@ -87,8 +91,9 @@ export function watchBattery(nav: unknown): BatteryWatch {
 
 let battery: BatteryWatch | null = null;
 
-/** This device's health right now. Never throws. */
-export function deviceHealth(): DeviceHealth {
+/** This device's health right now (`announce`: whether it says the house
+ *  announcements, which the caller knows). Never throws. */
+export function deviceHealth(announce: boolean | null = null): DeviceHealth {
   const safe = <T>(f: () => T, fallback: T): T => {
     try {
       return f();
@@ -105,6 +110,7 @@ export function deviceHealth(): DeviceHealth {
     charging: b?.charging ?? null,
     version: BUILD,
     fullscreen: safe(() => fullscreenFlag(), null),
+    announce,
     mic: safe(() => micHeartbeat(), null),
   };
 }

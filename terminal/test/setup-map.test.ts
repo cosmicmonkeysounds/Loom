@@ -28,10 +28,13 @@ describe("pickOf — a map terminal → name / view / room", () => {
     expect(pickOf(show, spot(show, "server-room-door"))).toEqual({ spot: "server-room-door", name: "Server Door", view: "chess", room: "", voice: true });
     expect(pickOf(show, spot(show, "graphics-card"))).toEqual({ spot: "graphics-card", name: "Casino", view: "casino", room: "", voice: true });
     expect(pickOf(show, spot(show, "start-bar"))).toEqual({ spot: "start-bar", name: "Start Bar", view: "auto", room: "", voice: true });
+    // Wave 18b (Q4): the tent laptop is the reinstallation station, on either variant.
+    expect(pickOf(show, spot(show, "tent"))).toEqual({ spot: "tent", name: "Tent", view: "reinstall", room: "", voice: false });
+    expect(pickOf(shed, spot(shed, "tent"))).toEqual({ spot: "tent", name: "Shed", view: "reinstall", room: "", voice: false });
   });
 
-  it("speaks is ignored on the TV, the board and the casino", () => {
-    for (const view of ["tv", "chess", "casino"] as const) expect(pickOf(show, { ...spot(show, "server-room"), view, speaks: true }).room).toBe("");
+  it("speaks is ignored on the TV, the board, the casino and the reinstallation station", () => {
+    for (const view of ["tv", "chess", "casino", "reinstall"] as const) expect(pickOf(show, { ...spot(show, "server-room"), view, speaks: true }).room).toBe("");
     expect(pickOf(show, { ...spot(show, "hall"), speaks: true }).room).toBe("The Tube");
   });
 });
@@ -40,6 +43,7 @@ describe("screenWords + groupTerminals", () => {
   it("names each screen in words", () => {
     expect(screenWords({ view: "tv", room: "" })).toMatch(/^TV/);
     expect(screenWords({ view: "casino", room: "" })).toBe("casino");
+    expect(screenWords({ view: "reinstall", room: "" })).toBe("reinstallation station");
     expect(screenWords({ view: "chess", room: "" })).toMatch(/^chess board/);
     expect(screenWords({ view: "face", room: "The Server Room" })).toBe("room terminal — The Server Room");
     expect(screenWords({ view: "auto", room: "" })).toBe("house terminal");
@@ -80,6 +84,8 @@ describe("applyPick / urlConfig / followMap", () => {
   it("a ?code=&spot= link takes the map terminal", () => {
     const given = base({ spot: "graphics-card", name: "Terminal" });
     expect(urlConfig(given, { spot: "graphics-card", name: null, view: null, room: null }, show)).toMatchObject({ name: "Casino", view: "casino", room: "", fromMap: true });
+    // The tent laptop's link: `?code=<mod>&spot=tent` alone makes it the station.
+    expect(urlConfig(base({ spot: "tent", name: "Terminal" }), { spot: "tent", name: null, view: null, room: null }, show)).toMatchObject({ name: "Tent", view: "reinstall", room: "", fromMap: true });
   });
 
   it("an old fleet link (it names a view) plays exactly as given, as before", () => {
@@ -93,6 +99,7 @@ describe("applyPick / urlConfig / followMap", () => {
       [{ spot: "graphics-card", name: "Casino", view: "casino", room: "" }, null],
       [{ spot: "desktop-tv", name: "TV", view: "tv", room: "" }, null],
       [{ spot: "start-bar", name: "Start Bar", view: "auto", room: "" }, null],
+      [{ spot: "tent", name: "Tent", view: "reinstall", room: "" }, null],
     ];
     for (const [over, room] of links) {
       const g = base(over);

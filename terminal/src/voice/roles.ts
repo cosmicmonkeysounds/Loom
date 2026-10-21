@@ -5,7 +5,7 @@
 //! |----------------------------------------|--------------------------|-----------------------------|
 //! | auto · world · shadow · face · chess · casino | on                | on                          |
 //! | tv                                     | off (⚙ / `mic=1` turns it on) | on, under the TV mute  |
-//! | mirror                                 | never                    | never                       |
+//! | mirror · reinstall (the tent laptop)   | never                    | never                       |
 //!
 //! Never on an unplaced terminal (no spot: nowhere in the games to be
 //! heard), and never on a spot the map's voice link turns off (`voiceOn`:
@@ -28,7 +28,7 @@ export const NO_VOICE: VoiceRoles = { mic: false, voices: false };
 
 /** The microphone's default for a view (⚙'s `mic` absent). */
 export function micDefault(view: TerminalView): boolean {
-  return view !== "tv" && view !== "mirror";
+  return view !== "tv" && view !== "mirror" && view !== "reinstall";
 }
 
 /**
@@ -50,7 +50,9 @@ type RoleConfig = Pick<TerminalConfig, "view" | "spot" | "voices" | "voiceLink">
  */
 export function voiceRoles(c: RoleConfig, house?: Pick<HouseMap, "terminals" | "spawn"> | null): VoiceRoles {
   const spot = c.spot.trim();
-  if (spot === "" || c.view === "mirror") return NO_VOICE;
+  // The tent laptop (wave 18b `reinstall`) is the reinstallation station
+  // beside the headsets: never part of the link, wherever it is placed.
+  if (spot === "" || c.view === "mirror" || c.view === "reinstall") return NO_VOICE;
   const linked = house ? voiceOn(house as HouseMap, spot) : c.voiceLink !== false;
   if (!linked) return NO_VOICE;
   const mic = c.view === "tv" ? c.mic === true : c.mic !== false;

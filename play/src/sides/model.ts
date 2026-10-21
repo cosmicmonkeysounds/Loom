@@ -24,7 +24,7 @@ export function sidesOf(view: GuestView | null): SideRow[] {
   if (view === null) return [];
   const ext = extOf(view);
   if (ext.sides !== undefined) {
-    return ext.sides.map((s: SideView) => ({ id: s.id, name: s.name, leader: s.leader, members: s.members, needs: s.needs ?? null, mine: s.mine }));
+    return ext.sides.map((s: SideView) => ({ id: s.id, name: s.name, leader: s.leader, members: s.members ?? null, needs: s.needs ?? null, mine: s.mine }));
   }
   return (view.factions ?? []).map((f) => ({ id: f, name: f, leader: null, members: null, needs: null, mine: view.faction === f }));
 }

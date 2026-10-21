@@ -21,9 +21,12 @@ import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "../src/identity-kind.ts";
 import { joinableFactions } from "./routes/sides.ts";
-import { crewRoom, type CrewSummary, type CrewView, type InviteView, type SideView } from "../src/runtime/sim/crews.ts"; // w18 crews
+import { crewRoom, type CrewSummary, type CrewView, type InviteView, type RaceView, type SideView } from "../src/runtime/sim/crews.ts"; // w18 crews
+import { badgesOf, type NameBadge } from "../src/runtime/sim/badges.ts"; // w18b badges
 import type { ShowClock } from "../src/show-clock.ts";
 
+export type { NameBadge } from "../src/runtime/sim/badges.ts";
+export type { RaceFaction, RaceView } from "../src/runtime/sim/crews.ts";
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
 // The facts judge's ledger (`ModView.facts`, Wave 4 lane B): the editor
 // imports these from `@loom/core/views` only.
@@ -84,14 +87,33 @@ export interface PersonCard {
    *  `hold` — the character has a `hold:` line, so a guest is always
    *  answered (by the line, then a director) and the app shows no presence. */
   agent?: { online: boolean; hold?: true };
-  /** w18 crews: every group as a badge (display names; a hidden one until revealed) + their crew's name. */
+  /** w18 crews: every group as a badge (display names; a hidden one until revealed) + their crew's name.
+   *  In faction mode (w18b) a race faction shows only when it is the
+   *  viewer's own, or this person founded / leads it. */
   groups?: string[];
+  /** Wave 18b: the header `badge:` lines true for this person now
+   *  (`🚻 Bathroom Mode`), header order. Absent when none. */
+  badges?: NameBadge[];
 }
 
 function peopleFor(sim: Sim, id: string, agentsOnline?: ReadonlySet<string>): PersonCard[] {
+  const factionMode = sim.crews.factionMode;
+  const mine = factionMode ? sim.crews.factionOf(id) : null;
   return sim.peopleFor(id).map((p) => {
     const card: PersonCard = { ...p, known: p.known.map((e) => codexEntry(e, sim.model)), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
     card.groups = p.kind === "guest" ? sim.crews.groupsOf(p.id) : p.faction !== null ? [p.faction] : []; // w18 crews
+    // w18b faction mode: a person's race faction shows only when it is the
+    // viewer's own, or they founded / lead it ("led by X" is public) —
+    // else scrolling People would count a rival faction.
+    if (factionMode && p.kind === "guest") {
+      const theirs = sim.crews.factionOf(p.id);
+      if (theirs === null || (theirs !== mine && sim.crews.founderOf(theirs) !== p.id)) {
+        const crew = sim.crews.crewOf(p.id)?.name ?? null;
+        card.groups = card.groups.filter((g) => g !== crew && !sim.crews.isRaceFaction(g));
+        if (card.faction !== null && sim.crews.isRaceFaction(card.faction)) card.faction = null;
+      }
+    }
+    Object.assign(card, badgesField(sim, p.id)); // w18b badges
     const def = p.kind === "character" ? sim.model.characters.get(p.id) : undefined;
     if (def?.mind === "external") {
       card.agent = { online: agentsOnline?.has(p.id) ?? false, ...(def.hold !== null ? { hold: true as const } : {}) };
@@ -447,6 +469,15 @@ export interface GuestView {
   crew?: CrewView | null;
   invites?: InviteView[];
   sides?: SideView[];
+  /** Wave 18b, faction mode only: may this guest found a faction now? */
+  canFound?: boolean;
+  /** Wave 18b: the viewer's own badges (`badge:` lines true for them).
+   *  Absent when none. */
+  badges?: NameBadge[];
+  /** Wave 18b: header `lobby: hidden` — the phone never lists the lobby
+   *  (its lines still reach the guest as moments / Notifications). The
+   *  `lobby` channel stays in `channels`. Absent otherwise. */
+  lobby?: "hidden";
   /** Wave 18 (C11): the mission screen's NOW objective and the one place it
    *  sends you (its `go:`), resolved for this guest (a room they cannot see
    *  yet reads null). Filled when the story declares any OBJECTIVE. */
@@ -514,6 +545,8 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     night: { ...nightView(sim), act: null },
     alertLevel: alertLevelNow(sim),
     voiced: voicedOf(sim, id),
+    ...badgesField(sim, id),
+    ...(sim.model.lobbyHidden ? { lobby: "hidden" as const } : {}),
   };
 }
 
@@ -589,6 +622,8 @@ export interface RosterRow {
   gone?: true;
   /** A director's Run persona (`<id>.persona`, set at `/api/mod/persona`). */
   persona?: true;
+  /** Wave 18b: the header `badge:` lines true for them. Absent when none. */
+  badges?: NameBadge[];
 }
 
 /** The operator's god-view of one guest. Null if the QR is unknown. */
@@ -609,6 +644,7 @@ export function rosterRow(sim: Sim, id: string): RosterRow | null {
     visited: sim.visitedBeatsFor(p.id),
     ...(worldTrue(sim, `${p.id}.gone`) ? { gone: true as const } : {}),
     ...(worldTrue(sim, `${p.id}.persona`) ? { persona: true as const } : {}),
+    ...badgesField(sim, p.id),
   };
 }
 
@@ -735,6 +771,10 @@ export interface ModView {
   factions: FactionSummary[];
   /** w18 crews: every live guest-founded crew (rename / dissolve from Run). */
   crews?: CrewSummary[];
+  /** Wave 18b, faction mode only: the race — the threshold, who is present
+   *  and every faction's head count (directors and hosts see them all).
+   *  `winner` is the faction over the line now, not the story's latch. */
+  race?: RaceView;
   locations: LocationSummary[];
   /** Character ids (thin list; the run panel uses `cast` for factions too). */
   characters: string[];
@@ -1291,6 +1331,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     directors: presence?.directors,
     codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e, sim.model), code: e.code, holders: sim.codexHolders(e.id) })),
     crews: sim.crews.summaries(), // w18 crews
+    ...(sim.crews.factionMode ? { race: sim.crews.raceView()! } : {}), // w18b factions
     quests: questSummaries(sim),
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
     ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
@@ -2044,7 +2085,15 @@ function primeGuest(sim: Sim, id: string, name: string, flags: readonly GuestFla
     restricted: sim.isRestricted(id),
     location: sim.locationOf(id),
     ...(flags.length > 0 ? { flags: [...flags] } : {}),
+    ...badgesField(sim, id),
   };
+}
+
+/** `{ badges }` when `id` wears any (`badge:` lines), else nothing (w18b). */
+function badgesField(sim: Sim, id: string): { badges?: NameBadge[] } {
+  if (sim.model.badges.length === 0) return {};
+  const badges = badgesOf(sim, id);
+  return badges.length > 0 ? { badges } : {};
 }
 
 export interface PrimeGuest {
@@ -2061,6 +2110,8 @@ export interface PrimeGuest {
   /** When the server last heard from this guest (the mod roster's
    *  `lastSeen`, A1) — runtime-filled; null = not since the server started. */
   lastSeen?: number | null;
+  /** Wave 18b: the header `badge:` lines true for them. Absent when none. */
+  badges?: NameBadge[];
 }
 
 /** What an actor playing a character sees: their part + scannable guests. */

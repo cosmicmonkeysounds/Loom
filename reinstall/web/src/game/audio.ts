@@ -5,6 +5,11 @@
 //! starts the game); without WebAudio every call is a no-op. The voice link
 //! (`voice.ts`) plays and captures on this same context (`context()`): one
 //! context to unlock, never two.
+//!
+//! On the tent laptop (wave 18b) the game plays inside the terminal page:
+//! `createSfx(soundOutput)` borrows the terminal's context and master bus
+//! (`terminal/src/sound/bus.ts`) instead of opening a context of its own,
+//! and never closes what it borrowed (the tent has no voice link).
 
 export interface Sfx {
   /** Call from a user gesture. */
@@ -25,18 +30,53 @@ export interface Sfx {
 
 type Ctx = AudioContext;
 
-export function createSfx(): Sfx {
+/** Where a host's sounds go (the terminal's `soundOutput`): its context and
+ *  the node to play into, or null while it has none. */
+export type SfxOutput = () => { ctx: AudioContext; out: AudioNode } | null;
+
+/** The game's master level. */
+const GAME_LEVEL = 0.7;
+
+const SILENT: Sfx = { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, context: () => null, dispose() {} };
+
+/** The game's sounds: on a context of their own, or (`output`) on a host's. */
+export function createSfx(output?: SfxOutput): Sfx {
+  if (output !== undefined) {
+    // The game's own level (0.7, as on its own context) into the host's bus.
+    let level: { ctx: Ctx; out: AudioNode; gain: GainNode } | null = null;
+    return sfxOn(
+      () => {
+        try {
+          const a = output();
+          if (a === null || a.ctx.state === "closed") return null;
+          if (level === null || level.ctx !== a.ctx || level.out !== a.out) {
+            const gain = a.ctx.createGain();
+            gain.gain.value = GAME_LEVEL;
+            gain.connect(a.out);
+            level = { ctx: a.ctx, out: a.out, gain };
+          }
+          return { ctx: a.ctx, out: level.gain };
+        } catch {
+          return null;
+        }
+      },
+      () => {
+        level?.gain.disconnect();
+        level = null;
+      },
+    );
+  }
   const Ctor: typeof AudioContext | undefined =
     typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (Ctor === undefined) return { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, context: () => null, dispose() {} };
+  if (Ctor === undefined) return SILENT;
   let ctx: Ctx | null = null;
   let master: GainNode | null = null;
-  const get = (): { ctx: Ctx; out: GainNode } | null => {
+  const get = (): { ctx: Ctx; out: AudioNode } | null => {
     if (ctx === null) {
       try {
         ctx = new Ctor();
         master = ctx.createGain();
-        master.gain.value = 0.7;
+        master.gain.value = GAME_LEVEL;
         master.connect(ctx.destination);
       } catch {
         return null;
@@ -44,6 +84,17 @@ export function createSfx(): Sfx {
     }
     return ctx.state === "closed" || master === null ? null : { ctx, out: master };
   };
+  return sfxOn(get, () => {
+    const c = ctx;
+    ctx = null;
+    master = null;
+    void c?.close().catch(() => {});
+  });
+}
+
+/** The sounds over `get` (the context + the node they play into); `close`
+ *  releases what `get` owns (nothing, for a borrowed output). */
+function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void): Sfx {
 
   const syllable = (c: Ctx, out: AudioNode, at: number, f0: number, f1: number, len: number, vol: number): void => {
     const osc = c.createOscillator();
@@ -156,10 +207,7 @@ export function createSfx(): Sfx {
     },
     context: () => get(),
     dispose() {
-      const c = ctx;
-      ctx = null;
-      master = null;
-      void c?.close().catch(() => {});
+      close();
     },
   };
 }

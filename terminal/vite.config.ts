@@ -48,6 +48,12 @@ export default defineConfig({
       // POST helper, and the message / view types — so a terminal reads the
       // same threads a phone does, off the same stream.
       "@loom/play": path.resolve(__dirname, "../play/src"),
+      // The reinstallation flow + game (wave 18b, `view=reinstall` on the
+      // tent laptop): the reinstall app's own source, mounted in a lazy
+      // chunk. Its files import the terminal's scanner as `@loom/terminal/…`,
+      // which here is this package's own `src`.
+      "@loom/reinstall": path.resolve(__dirname, "../reinstall/web/src"),
+      "@loom/terminal": path.resolve(__dirname, "src"),
     },
   },
   build: {

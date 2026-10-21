@@ -815,6 +815,7 @@
         27.5
       ],
       "yaw": 90,
+      "view": "reinstall",
       "voice": false
     }
   ],

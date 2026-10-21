@@ -118,8 +118,21 @@ const NAME_WORDS = /^[A-Za-z_][A-Za-z0-9_.'\-]*(\s+[A-Z][A-Za-z0-9_.'\-]*)*$/u;
 const HAS_BAR = /\|/u;
 /** `reveal The Society` / `reveal task manager` / `reveal The Start Bar for guest`
  *  — a name of up to four words (a room's name may be lowercase), optionally
- *  scoped to one participant. Longer prose starting with "reveal" stays prose. */
-const REVEAL = /^[A-Za-z_][A-Za-z0-9_.'\-]*(?:\s+[A-Za-z][A-Za-z0-9_.'\-]*){0,3}(?:\s+for\s+\S+)?$/u;
+ *  scoped to one participant, and optionally ending in `quietly` or with it
+ *  before `for` (wave 18b: the room opens with no "📂 … is open now."
+ *  notice; `splitRevealQuietly`). Longer prose starting
+ *  with "reveal" stays prose. */
+const REVEAL = /^[A-Za-z_][A-Za-z0-9_.'\-]*(?:\s+[A-Za-z][A-Za-z0-9_.'\-]*){0,3}(?:\s+quietly)?(?:\s+for\s+\S+)?(?:\s+quietly)?$/u;
+
+/** A `reveal` directive's argument split from its `quietly` (wave 18b),
+ *  which may close the line or sit before `for`: `reveal The Cellar for
+ *  guest quietly` and `reveal The Cellar quietly for guest` are one
+ *  statement. `body` is the rest without the word. */
+export function splitRevealQuietly(rest: string): { body: string; quiet: boolean } {
+  const m = /\s+quietly(?=\s+for\s+\S+\s*$|\s*$)/u.exec(rest);
+  if (m === null) return { body: rest, quiet: false };
+  return { body: (rest.slice(0, m.index) + rest.slice(m.index + m[0].length)).trim(), quiet: true };
+}
 /** `unlock The Sandy File for guest` — a codex entry for a holder. */
 const UNLOCK = /^.+\s+for\s+\S+$/u;
 /** `start quest The Three Keys for everyone` / `update quest The Hunt for

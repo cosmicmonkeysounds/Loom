@@ -6,3 +6,4 @@ export * from "./event.ts";
 export * from "./model.ts";
 export { lowerRawBody, splitDirective, parseSet, splitKeyword } from "./effects.ts";
 export { Sim, compileFromSource, type Person } from "./sim.ts";
+export { badgesOf, parseBadgeLine, type NameBadge } from "./badges.ts";

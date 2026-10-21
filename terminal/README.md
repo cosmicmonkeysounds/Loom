@@ -42,8 +42,8 @@ steps: **CONNECT** (the moderator passcode; skipped when the tablet already
 has access), then **WHICH TERMINAL IS THIS?** — the event's live house map's
 terminals (the map it plays: a director's save, the shed variant), by floor
 and room, each saying its room + LOCATION and its screen in words (*TV*,
-*casino*, *chess board*, *room terminal — The Server Room*, *house
-terminal*), with *⚠ online now: <name>, seen 5 s ago* when another tablet
+*casino*, *chess board*, *reinstallation station*, *room terminal — The
+Server Room*, *house terminal*), with *⚠ online now: <name>, seen 5 s ago* when another tablet
 polls from that spot. One tap powers on: the name, the screen (`view`) and
 the room come from the map entry (`TerminalSpot.view` / `speaks`, set in
 the map editor at `/reinstall/map`), the character defaults to Trabolta.
@@ -355,6 +355,48 @@ https://<server>/terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&vi
   (`CasinoTerminal-*.js`, ~20 kB). Pure session in `src/casino/session.ts`
   (`test/casino-session.test.ts`), calls in `test/casino-post.test.ts`.
 
+**The reinstallation station** (wave 18b, `view=reinstall`;
+`src/reinstall/`): the laptop in the tent, one device that is a wall
+terminal **and** the reinstallation wizard (Q4).
+
+```
+https://<server>/terminal/?code=<mod passcode>&spot=tent&announce=1
+```
+
+(the map's tent spot carries `view: reinstall` on both variants, so the
+spot alone sets the view and the name, *Tent* or *Shed*, and the laptop
+follows the map's variant; a link that also names `&view=reinstall` is an
+old fleet link to `urlConfig`: it keeps the name it was given, *Terminal*,
+and never follows the map).
+
+- **Awake all night**, no character, no room (the Internet's lines are
+  prisoners' own DMs, never said aloud). Idle: the wall idle show (its
+  `asleep` naming gate: nothing names Trabolta before the introduction),
+  the scan box + typed fallback, a red **☣ IN THE INTERNET NOW** strip of
+  the captured programs (one tap each; never the marked: D8), the world
+  view beside the show while someone walks on a headset, and the story's
+  slides, cutscenes, moments and overlays as on any wall terminal.
+- **A pass** (`src/reinstall/session.ts`, pure): the candidates decide.
+  Healthy or director-held → the **NOT MARKED** card for 8 s and nothing
+  else (no `/api/mod/scan`, no Trabolta line: D8 / O6). Already walking
+  on a headset → *Play here instead?* (names the headset station). Marked,
+  captured, or anyone after an ending → the reinstall app's own flow
+  (`@loom/reinstall/flow.tsx`, `start: "auto"`: straight to Play here with
+  no headset online, else the choose card), in a shadow root with its own
+  React root (`src/reinstall/pane.tsx`) and the reinstall stylesheet
+  re-scoped (`scope-css.ts`). The begin never sends `force`.
+- **A capture** (`cue tablet_wizard` → the screen state's `cues.tablet`
+  seq): a 12 s Win98 card, *Setup is preparing to reinstall a program*,
+  naming nobody; never the boot's own seq, never over a walk.
+- **During a walk** `onBusy(true)`: the app counts the terminal as
+  piloting, so story slides and beat cutscenes stand aside. An overlay
+  **holds** the walk (`held = takeover` → `Game.hold`): controls, leash,
+  quacks and a find pause, the pose keepalives go on. The game's sounds
+  ride the master bus (`createSfx(soundOutput)`, built once).
+- Its own lazy chunk (`ReinstallTerminal-*.js`, ~120 kB beside three.js),
+  preloaded at boot on this view only. Tests: `test/reinstall-session`,
+  `reinstall-css`, `reinstall-layers`.
+
 ## The voice
 
 **Every device speaks with its own voice** (decision 2026-10-15: "for the
@@ -388,12 +430,16 @@ sentence and the transcript reveals as it is said.
 
 **The house announcements** (OCT31 N-09, decision #20, `src/announce.ts`):
 the story's `do announce "Go to the living room."` already plays out of the
-house speakers (stagehand `alexa`, K-20). The screen poll carries the
+house speakers (the house Mac's stagehand router since wave 18b; the
+`alexa` player before it, K-20). The screen poll carries the
 last three too (`announces: [{seq, text, at}]`, oldest first, beside the
 latest in `announce` for older builds), and a terminal with
-**`announce`** on (⚙ → *say the house announcements here*, or
-`&announce=1`; **off by default**, the TV too — its room hears the house
-speakers) rings a two-tone chime and says it in its own voice under a 📢
+**`announce`** on — ⚙ → *say the house announcements*, three-way since
+wave 18b: **House setting** (the default; on only for a spot on the house
+list, `audio.json` `announce.terminals`, which the screen state answers as
+`spot.announce` — the 📢 on Run → Terminals), **Always** (`&announce=1`) or
+**Never** (`&announce=0`); the TV too stays off — its room hears the house
+speakers — rings a two-tone chime and says it in its own voice under a 📢
 banner — each of two inside one poll, in order. Never one that was current
 when the page loaded, never replayed history after a server reboot or a
 story restart (one announced right after a restart is said: the state's

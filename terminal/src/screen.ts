@@ -45,6 +45,16 @@
 //! scene can match it by its leading glyph (`🎀*`). An older server sends
 //! none.
 //!
+//! Wave 18b: the **results** the story reads out (`results`, `ScreenResults`
+//! — `do fact_read` / `do fact_truth`: who filed, what they said, sure or
+//! not, the public outcome and Trabolta's ruling stamp; at ⚖ on the TV the
+//! key answers and the liars' names), the spot's house setting for
+//! announcements (`spot: {announce}`, a tablet on "House setting" follows
+//! it), and four more `night` vars, each sent only while its slide is up
+//! (`most_trusted` / `least_trusted` on the bobbing slide, `facts_accepted`
+//! / `first_reinstall` on the recount and purgatory slides). An older server
+//! sends none of them (null).
+//!
 //! The answer also carries the latest house announcements (`announce` +
 //! the last few in `announces`, N-09); a terminal set to say announcements
 //! speaks each new one (`announce.ts`).
@@ -54,7 +64,7 @@
 //! dropped poll never flips a hidden character onto the wall.
 
 import { useEffect, useRef, useState } from "react";
-import { announceOf, type Announcement } from "./announce.ts";
+import { announceOf, announceReport, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { deviceHealth, deviceQuery, type DeviceHealth } from "./health.ts";
 
@@ -212,9 +222,18 @@ export interface ScreenNight {
   collection_complete: boolean | null;
   /** The overshare that played (1–4), else null. */
   scenario: number | null;
+  /** Wave 18b, only while the bobbing slide is up (Final Assessment): the
+   *  programs the Trust Chart ranks top and bottom (null: not yet, or none). */
+  most_trusted: string | null;
+  least_trusted: string | null;
+  /** Wave 18b, only while the recount / purgatory slide is up: how many
+   *  filed facts were accepted tonight, and the first program reinstalled
+   *  (null: nobody — the story's `"none"`). */
+  facts_accepted: number | null;
+  first_reinstall: string | null;
 }
 
-export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null };
+export const EMPTY_NIGHT: ScreenNight = { screen: null, terminals: null, phase: null, step: null, bottle_pick: null, bottle_open: null, results_q: null, award_winner: null, award_value: null, help_votes: null, thwart_votes: null, alerts: null, ended: null, collection_complete: null, scenario: null, most_trusted: null, least_trusted: null, facts_accepted: null, first_reinstall: null };
 
 /** The night block off the wire; anything missing or malformed is null. */
 export function nightOf(raw: unknown): ScreenNight {
@@ -224,6 +243,9 @@ export function nightOf(raw: unknown): ScreenNight {
   const bool = (v: unknown): boolean | null => (typeof v === "boolean" ? v : null);
   const value = r["award_value"];
   const scenario = num(r["scenario"]);
+  // A program's name; the story's "none" (and "") is nobody.
+  const who = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" && v.trim().toLowerCase() !== "none" ? v.trim() : null);
+  const accepted = num(r["facts_accepted"]);
   return {
     screen: str(r["screen"]),
     terminals: str(r["terminals"]),
@@ -240,7 +262,196 @@ export function nightOf(raw: unknown): ScreenNight {
     ended: bool(r["ended"]),
     collection_complete: bool(r["collection_complete"]),
     scenario: scenario !== null && Number.isInteger(scenario) && scenario >= 1 && scenario <= 4 ? scenario : null,
+    most_trusted: who(r["most_trusted"]),
+    least_trusted: who(r["least_trusted"]),
+    facts_accepted: accepted !== null && accepted >= 0 ? Math.floor(accepted) : null,
+    first_reinstall: who(r["first_reinstall"]),
   };
+}
+
+// --- the results (wave 18b) ----------------------------------------------------
+//
+// The server's `ScreenResults` (`core/server/routes/screen.ts`,
+// `screenResultsOf` in `core/server/facts.ts`), copied here because the
+// terminal never imports `core/server`. Field names follow the wire; the
+// wire's tuples are read into named objects (`rows` `[who, said, sure, out,
+// ruled]` → `ResultRow`, `liars` `[who, ruled]` → `ResultLiar`).
+
+/** A filing's public outcome: `a` accepted, `g` a guess, `u` not counted
+ *  (no cup / marked), `p` pending. Never accurate versus lie. */
+export type ResultOutcome = "a" | "g" | "u" | "p";
+/** Trabolta's ruling stamp on a filing (O4, D10): `s` / `n` he ruled it the
+ *  same / not the same (only below 100, where it equals the outcome); `r`
+ *  he ruled a filing at 100 (the result held until ⚖); `?` he is asking
+ *  (queued or out); `""` no ruling (an exact match, the house rule, a director). */
+export type RulingStamp = "s" | "n" | "r" | "?" | "";
+/** A question's truth at ⚖ (`do fact_truth`). */
+export type ResultTruth = "true" | "lie" | "none";
+
+/** One filing as a reading shows it (TV only). */
+export interface ResultRow {
+  /** The filer's display name (clipped by the server). */
+  who: string;
+  /** What they filed (clipped by the server). */
+  said: string;
+  /** Filed one hundred percent sure. */
+  sure: boolean;
+  out: ResultOutcome;
+  ruled: RulingStamp;
+}
+
+/** A program named a liar at ⚖ (TV only). */
+export interface ResultLiar {
+  who: string;
+  /** Trabolta's ruling made the lie (a 🤖 mark on the name). */
+  ruled: boolean;
+}
+
+export interface ScreenResultQuestion {
+  /** The facts book id (`H1` … `F2`). */
+  id: string;
+  /** 1-based position in the book. */
+  n: number;
+  round: number | null;
+  /** The question's public text (a read only; null on a verdict). */
+  text: string | null;
+  filed: number;
+  accepted: number;
+  guesses: number;
+  uncounted: number;
+  /** Every filing matches and every one was sure. */
+  consensus: boolean;
+  /** The key's answer: a read carries it on consensus only; a TV verdict
+   *  carries it for every question (O2). Else null. */
+  answer: string | null;
+  /** The verdict's truth (null on a read, or not judged). */
+  truth: ResultTruth | null;
+  /** The filings, in filing order (TV reads only; null elsewhere). */
+  rows: ResultRow[] | null;
+  /** Filings past the row cap. */
+  more: number;
+  /** Who lied (a TV verdict only; null elsewhere). */
+  liars: ResultLiar[] | null;
+  /** Liars past the name cap. */
+  liarsMore: number;
+}
+
+export interface ScreenResults {
+  /** `read`: `do fact_read` while a results slide is up; `verdict`: the window after `do fact_truth`. */
+  kind: "read" | "verdict";
+  seq: number;
+  /** Server epoch ms of the publication; 0 = history (a replay). */
+  at: number;
+  questions: ScreenResultQuestion[];
+}
+
+/** Caps on a parsed block (the server's are lower: 8 questions, 40 rows / names). */
+export const RESULTS_MAX_QUESTIONS = 16;
+export const RESULTS_MAX_ROWS = 60;
+const RESULT_TEXT_MAX = 400;
+
+const OUTCOMES: readonly string[] = ["a", "g", "u", "p"];
+const STAMPS: readonly string[] = ["s", "n", "r", "?", ""];
+const TRUTHS: readonly string[] = ["true", "lie", "none"];
+
+function clipText(v: unknown, max: number): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.replace(/\s+/gu, " ").trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
+function count(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+}
+
+/** A results row off the wire (`[who, said, sure, out, ruled?]`), else null. */
+export function resultRowOf(raw: unknown): ResultRow | null {
+  if (!Array.isArray(raw) || raw.length < 4) return null;
+  const who = clipText(raw[0], 60);
+  const said = clipText(raw[1], RESULT_TEXT_MAX);
+  const out = raw[3];
+  if (who === null || who === "" || said === null || typeof out !== "string" || !OUTCOMES.includes(out)) return null;
+  const ruled = raw.length > 4 && typeof raw[4] === "string" && STAMPS.includes(raw[4]) ? (raw[4] as RulingStamp) : "";
+  return { who, said, sure: raw[2] === 1 || raw[2] === true, out: out as ResultOutcome, ruled };
+}
+
+function resultQuestionOf(raw: unknown): ScreenResultQuestion | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const id = r["id"];
+  const n = r["n"];
+  if (typeof id !== "string" || id.trim() === "" || typeof n !== "number" || !Number.isFinite(n)) return null;
+  const round = typeof r["round"] === "number" && Number.isFinite(r["round"]) ? r["round"] : null;
+  let rows: ResultRow[] | null = null;
+  if (Array.isArray(r["rows"])) {
+    rows = [];
+    for (const x of r["rows"]) {
+      if (rows.length >= RESULTS_MAX_ROWS) break;
+      const row = resultRowOf(x);
+      if (row !== null) rows.push(row);
+    }
+  }
+  let liars: ResultLiar[] | null = null;
+  if (Array.isArray(r["liars"])) {
+    liars = [];
+    for (const x of r["liars"]) {
+      if (liars.length >= RESULTS_MAX_ROWS) break;
+      const pair = Array.isArray(x) ? x : null;
+      const who = pair === null ? null : clipText(pair[0], 60);
+      if (who === null || who === "") continue;
+      liars.push({ who, ruled: pair !== null && (pair[1] === 1 || pair[1] === true) });
+    }
+  }
+  const answer = clipText(r["answer"], RESULT_TEXT_MAX);
+  const truth = r["truth"];
+  return {
+    id: id.trim(),
+    n: Math.floor(n),
+    round,
+    text: clipText(r["text"], RESULT_TEXT_MAX),
+    filed: count(r["filed"]),
+    accepted: count(r["accepted"]),
+    guesses: count(r["guesses"]),
+    uncounted: count(r["uncounted"]),
+    consensus: r["consensus"] === true,
+    answer: answer === "" ? null : answer,
+    truth: typeof truth === "string" && TRUTHS.includes(truth) ? (truth as ResultTruth) : null,
+    rows,
+    more: count(r["more"]),
+    liars,
+    liarsMore: count(r["liarsMore"]),
+  };
+}
+
+/** The results block off the wire; malformed questions drop, a malformed
+ *  block (or none: an older server, or nothing public) is null. */
+export function resultsOf(raw: unknown): ScreenResults | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const kind = r["kind"];
+  const seq = r["seq"];
+  if ((kind !== "read" && kind !== "verdict") || typeof seq !== "number" || !Number.isFinite(seq) || !Array.isArray(r["questions"])) return null;
+  const questions: ScreenResultQuestion[] = [];
+  for (const x of r["questions"]) {
+    if (questions.length >= RESULTS_MAX_QUESTIONS) break;
+    const q = resultQuestionOf(x);
+    if (q !== null) questions.push(q);
+  }
+  const at = typeof r["at"] === "number" && Number.isFinite(r["at"]) && r["at"] > 0 ? r["at"] : 0;
+  return { kind, seq, at, questions };
+}
+
+/** This terminal's map spot as the server reads it (wave 18b, Q8):
+ *  `announce` = the house list (`audio.json` `announce.terminals`) names it. */
+export interface ScreenSpot {
+  announce: boolean;
+}
+
+/** A spot block off the wire; anything malformed is null (an older server sends none). */
+export function spotOf(raw: unknown): ScreenSpot | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const a = (raw as Record<string, unknown>)["announce"];
+  return typeof a === "boolean" ? { announce: a } : null;
 }
 
 /** The TV's voice block (K-18). */
@@ -288,6 +499,12 @@ export interface ScreenState {
   king: ScreenKing | null;
   /** Programs in the reinstallation simulation right now (0: none, or an older server). */
   reinstalling: number;
+  /** The results the story is reading out (wave 18b; null: none public now, or an older server).
+   *  Optional for hand-built states; `parseScreenState` always sets it. */
+  results?: ScreenResults | null;
+  /** This terminal's map spot (wave 18b; null: unplaced, or an older server).
+   *  Optional for hand-built states; `parseScreenState` always sets it. */
+  spot?: ScreenSpot | null;
 }
 
 /** A ranked chart the server keeps live (`SCREEN_CHARTS`, core). */
@@ -424,6 +641,8 @@ export function parseScreenState(raw: unknown, receivedAt: number = Date.now()):
     announceEpoch: str(r["announceEpoch"]),
     king: kingOf(r["king"]),
     reinstalling: typeof r["reinstalling"] === "number" && r["reinstalling"] > 0 ? Math.floor(r["reinstalling"]) : 0,
+    results: resultsOf(r["results"]),
+    spot: spotOf(r["spot"]),
   };
 }
 
@@ -471,10 +690,11 @@ export type PollOutcome = { kind: "state"; state: ScreenState } | { kind: "revok
 
 /** One poll. A 401/403 is a revoked token; a 404 "unknown event" means the
  *  event this terminal was set up for is over (a new one was launched); anything
- *  else that fails is a miss (keep the last answer). */
-export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch, voice: VoiceQuery | null = null): Promise<PollOutcome> {
+ *  else that fails is a miss (keep the last answer). `announce`: whether this
+ *  tablet says the house announcements, reported as `ann` (null: not said). */
+export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch, voice: VoiceQuery | null = null, announce: boolean | null = null): Promise<PollOutcome> {
   try {
-    const res = await fetchFn(screenStateUrl(c, voice, deviceHealth()), { headers: { "x-loom-token": c.token }, cache: "no-store" });
+    const res = await fetchFn(screenStateUrl(c, voice, deviceHealth(announce)), { headers: { "x-loom-token": c.token }, cache: "no-store" });
     if (res.status === 401 || res.status === 403) return { kind: "revoked" };
     if (res.status === 404) {
       const err = await res.json().then((j: unknown) => (typeof j === "object" && j !== null ? (j as Record<string, unknown>)["error"] : null)).catch(() => null);
@@ -529,11 +749,17 @@ export function useScreenState(
     let alive = true;
     let timer = 0;
     const every = config.view === "tv" ? TV_POLL_MS : SCREEN_POLL_MS;
+    let last: ScreenState | null = null;
     const tick = async () => {
-      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null);
+      // `ann` is what this tablet does now: its own setting, else the house
+      // list's word off the last answer (left out until there is one).
+      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null, announceReport(config, last));
       if (!alive) return;
       setMisses((m) => missesAfter(m, out.kind));
-      if (out.kind === "state") setState(out.state);
+      if (out.kind === "state") {
+        last = out.state;
+        setState(out.state);
+      }
       else if (out.kind === "revoked") {
         setRevoked(true);
         return; // stop polling: setup takes over

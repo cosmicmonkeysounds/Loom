@@ -6,7 +6,7 @@
 //! Antivirus, any software from the directory (Wikipedia, faked here) with
 //! its picture served same-origin.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -694,5 +694,92 @@ describe("performers: one booth per part", () => {
     expect(b.status).toBe(409);
     expect(b.json.error).toMatch(/already taken/u);
     expect((await login("Clippy", a.json.token)).status).toBe(200);
+  });
+});
+
+// --- wave 18b: shipped pictures + conditional avatars ------------------------
+
+describe("shipped pictures (picture:) and when-avatars (wave 18b)", () => {
+  const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"></svg>`;
+  function picturesDir(): string {
+    const d = mkdtempSync(join(tmpdir(), "loom-pictures-"));
+    dirs.push(d);
+    writeFileSync(join(d, "grin.svg"), SVG);
+    writeFileSync(join(d, "broken.svg"), SVG.replace("8", "9"));
+    mkdirSync(join(d, "sub"));
+    writeFileSync(join(d, "sub", "x.svg"), SVG);
+    return d;
+  }
+
+  it("picture:<file> is served from the app's pictures, by a strict name, never fetched", async () => {
+    expect(avatarRefUrl("picture:grin.svg")).toBe("loom-picture:grin.svg");
+    const f = fakeImages();
+    const cache = new ImageCache({ fetch: f.fetch, pictures: picturesDir() });
+    const hit = await cache.get("loom-picture:grin.svg");
+    expect(hit).toMatchObject({ contentType: "image/svg+xml" });
+    expect(new TextDecoder().decode(hit!.bytes)).toBe(SVG);
+    for (const bad of ["loom-picture:../grin.svg", "loom-picture:sub/x.svg", "loom-picture:Grin.svg", "loom-picture:grin.gif", "loom-picture:missing.svg"]) expect(await cache.get(bad), bad).toBeNull();
+    expect(await new ImageCache({ fetch: f.fetch }).get("loom-picture:grin.svg")).toBeNull(); // no pictures dir
+    expect(f.calls).toEqual([]);
+  });
+
+  it("a character wears its last true `when` picture, else its first; only a change writes", async () => {
+    const src = `# T
+start: A
+
+CHARACTER Oracle
+  broken: bool = false
+  avatar: picture:grin.svg | picture:broken.svg when self.broken == true
+
+INTERACTION break_it
+  who: admin
+  sequence: false
+
+INTERACTION mend_it
+  who: admin
+  sequence: false
+
+when break_it:
+  set Oracle.broken = true
+
+when mend_it:
+  set Oracle.broken = false
+
+== A
+Hi.
+`;
+    const d = mkdtempSync(join(tmpdir(), "loom-identity-"));
+    dirs.push(d);
+    const images = new ImageCache({ fetch: fakeImages().fetch, pictures: picturesDir() });
+    const store = new Store(d);
+    let writes = 0;
+    const save = store.saveAvatars.bind(store);
+    store.saveAvatars = (e) => {
+      writes += 1;
+      save(e);
+    };
+    const make = () => new EventRuntime({ eventId: "evt", store, codes: CODES, scenarioName: "t", scenarioSource: src, joinBase: () => "http://x", images });
+    const rt = make();
+    rt.openDoors();
+    const keyOf = async () => ((await get(rt, "/api/state?role=mod", { moderator: true })).json as { avatars: Record<string, string> }).avatars["oracle"];
+    const grin = avatarKey("loom-picture:grin.svg");
+    const broken = avatarKey("loom-picture:broken.svg");
+    expect(await keyOf()).toBe(grin);
+    const fire = (name: string) => post(rt, "/api/mod/signal", { name }, undefined, { moderator: true });
+    await fire("break_it");
+    expect(await keyOf()).toBe(broken);
+    const served = await get(rt, `/api/avatar/${broken}`);
+    expect(served.status).toBe(200);
+    expect(served.headers["content-type"]).toBe("image/svg+xml");
+    // A fanout that moves nothing writes nothing.
+    const before = writes;
+    await fire("break_it");
+    expect(writes).toBe(before);
+    // A restart replays the journal and wears the same picture.
+    const back = make();
+    back.restore();
+    expect(((await get(back, "/api/state?role=mod", { moderator: true })).json as { avatars: Record<string, string> }).avatars["oracle"]).toBe(broken);
+    await fire("mend_it");
+    expect(await keyOf()).toBe(grin);
   });
 });

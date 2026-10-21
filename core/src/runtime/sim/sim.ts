@@ -25,12 +25,13 @@ import {
   type Value,
 } from "../expr.ts";
 import { SimLog, type QuestAction, type QuestStatus, type SimEvent } from "./event.ts";
-import { DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
+import { CODEX_IN, DEFAULT_SPACE_ID, channelId, compileModel, foldCode, type ChannelDef, type CodexDef, type Hook, type QuestDef, type SimModel } from "./model.ts";
 import { routesCue } from "./channel-types.ts";
 import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
 import { parse } from "../../parser/index.ts";
 import { foldName } from "../../parser/names.ts";
+import { splitRevealQuietly } from "../../parser/statements.ts";
 import { splitMomentArgs, withIndex } from "../../go.ts";
 import { indexOutsideQuotes, splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { Crews, isCrewRoom, type CrewOp } from "./crews.ts"; // w18 crews
@@ -222,7 +223,7 @@ export class Sim {
   private readonly subjectNames: string[];
 
   // w18 crews — guest-founded crews + recruiting (crews.ts), one journaled `crew` op.
-  readonly crews: Crews = new Crews(this, { removeFromGroup: (p, g) => this.removeFromGroup(p, g) });
+  readonly crews: Crews = new Crews(this, { removeFromGroup: (p, g) => this.removeFromGroup(p, g), drain: () => this.drain() });
   crew(op: CrewOp): SimEvent[] {
     return this.crews.apply(op);
   }
@@ -520,6 +521,23 @@ export class Sim {
     return foldName(entry).replace(/ /gu, "_");
   }
 
+  /** World key for a codex category under a holder (wave 18b):
+   *  `g1.codex_in.facts`, `g1.codex_in.how_it_works` — the category's
+   *  accents dropped (`Café` → `cafe`), lower-cased, each run of anything
+   *  but `a-z` / `0-9` one `_`, none at either end, and a `_` before a
+   *  leading digit (`1999 Files` → `_1999_files`), so a story can always
+   *  read it as a path segment. A category with no such letter at all
+   *  slugs to "" and is counted nowhere. */
+  static codexCategorySlug(category: string): string {
+    const slug = category
+      .normalize("NFKD")
+      .replace(/\p{M}+/gu, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gu, "_")
+      .replace(/^_+|_+$/gu, "");
+    return /^[0-9]/u.test(slug) ? `_${slug}` : slug;
+  }
+
   /** Record a holding + its world mirrors, silently. True if it was new. */
   private holdCodex(holder: string, id: string): boolean {
     let set = this.codexHeld.get(holder);
@@ -533,6 +551,21 @@ export class Sim {
     // conditions (`if guest.codex.the_sandy_file:` / `when self.codex >= 3:`).
     this.world.set(`${holder}.codex`, vNumber(set.size));
     this.world.set(`${holder}.codex.${Sim.codexSlug(id)}`, vBool(true));
+    // Wave 18b: `guest.codex_in.<category>` counts a participant's entries
+    // in each category (`when self.codex_in.facts >= 20:`); uncategorised
+    // entries are counted nowhere, and a character's holdings are not
+    // mirrored (its vars ride agent requests unmasked; a guest's
+    // `codex_in` is a ROLE secret slot). A replay re-holds every entry, so
+    // the count rebuilds with it.
+    const category = this.persons.has(holder) ? (this.model.codex.get(id)?.category ?? null) : null;
+    if (category !== null) {
+      const slug = Sim.codexCategorySlug(category);
+      if (slug !== "") {
+        const path = `${holder}.${CODEX_IN}.${slug}`;
+        const was = this.world.peek(path);
+        this.world.set(path, vNumber((was !== null && was.kind === "number" ? was.value : 0) + 1));
+      }
+    }
     return true;
   }
 
@@ -2180,10 +2213,13 @@ export class Sim {
         // `reveal X` (to everyone) / `reveal X for who` (to one participant).
         // A room's exact name wins over name folding, so `reveal task
         // manager` opens `# task-manager` even beside CHARACTER Task Manager.
-        const kw = splitKeyword(rest, "for");
-        const raw = (kw !== null ? kw[0] : rest).trim();
+        // `quietly` (wave 18b), last or before `for`, opens it with no chat
+        // notice.
+        const { body, quiet } = splitRevealQuietly(rest);
+        const kw = splitKeyword(body, "for");
+        const raw = (kw !== null ? kw[0] : body).trim();
         const target = this.model.channels.has(channelId(raw)) ? channelId(raw) : this.resolveId(raw, bindings);
-        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null);
+        this.doReveal(target, kw !== null ? this.resolveId(kw[1], bindings) : null, quiet);
         break;
       }
       case "quest_start":
@@ -2435,7 +2471,7 @@ export class Sim {
     this.fire({ verb: "betray", subject: person, scanner: null, filter: secret });
   }
 
-  private doReveal(target: string, person: string | null = null): void {
+  private doReveal(target: string, person: string | null = null, quiet = false): void {
     const hit = this.revealTarget(target);
     if (hit === null) return;
     if (hit.kind === "faction") {
@@ -2443,7 +2479,7 @@ export class Sim {
       if (this.revealed.has(hit.id)) return;
       this.revealed.add(hit.id);
       this.world.set(`${hit.id}.revealed`, vBool(true));
-      this.record({ type: "factionRevealed", faction: hit.id });
+      this.record({ type: "factionRevealed", faction: hit.id, ...(quiet ? { quiet: true as const } : {}) });
       this.fire({ verb: "revealed", subject: hit.id, scanner: null, filter: null });
       return;
     }
@@ -2460,7 +2496,7 @@ export class Sim {
       this.revealed.add(hit.id);
       if (hit.kind !== "channel") this.world.set(`${hit.id}.revealed`, vBool(true));
     }
-    this.record({ type: "revealed", target: hit.id, kind: hit.kind, person });
+    this.record({ type: "revealed", target: hit.id, kind: hit.kind, person, ...(quiet ? { quiet: true as const } : {}) });
     this.fire({ verb: "revealed", subject: hit.id, scanner: null, filter: null });
   }
 
@@ -2590,6 +2626,8 @@ export class Sim {
   // -------------------------------------------------------------------
 
   private setFaction(person: string, faction: string): void {
+    // w18b faction mode: one race faction at a time (a crew, the other side).
+    this.crews.onSide(person, faction);
     const prior = this.factionOf(person);
     if (prior !== null && prior !== faction) {
       this.membership.get(prior)?.delete(person);
@@ -2615,6 +2653,7 @@ export class Sim {
 
   /** Additive membership — the primary group is only set when there was none. */
   private addToGroup(person: string, group: string): void {
+    this.crews.onSide(person, group); // w18b faction mode (a race side only)
     let set = this.membership.get(group);
     if (set === undefined) {
       set = new Set();
@@ -2791,6 +2830,25 @@ export class Sim {
         if (name === "sum") return vNumber(nums.reduce((a, b) => a + b, 0));
         return nums.length === 0 ? VNULL : vNumber(Math.max(...nums));
       }
+      // Wave 18b faction mode (crews.ts): the race, read by the story. All
+      // four read null with no `founding:` line (no race: crews are clubs).
+      case "majority_faction":
+        return nullableString(this.crews.winner());
+      case "faction_of":
+        return this.crews.factionMode ? nullableString(this.crews.factionOf(args[0]?.asName() ?? "")) : VNULL;
+      case "faction_name":
+        return this.crews.factionMode ? nullableString(this.crews.displayName(args[0]?.asName() ?? "")) : VNULL;
+      case "faction_founder":
+        return this.crews.factionMode ? nullableString(this.crews.founderOf(args[0]?.asName() ?? "")) : VNULL;
+      case "names": {
+        // Wave 18b: `names([p for p in Persons where …])` — the display
+        // names joined for speech, "A, B and C" ("" for an empty list). A
+        // person id reads as their name; anything else as written.
+        const v = args[0]?.value;
+        const items = v !== undefined && v.kind === "list" ? v.items : v !== undefined && v.kind !== "null" ? [v] : [];
+        const words = items.map((x) => (x.kind === "string" ? (this.persons.get(x.value)?.name ?? x.value) : display(x))).filter((w) => w !== "");
+        return vString(joinNames(words));
+      }
       case "visits": {
         const subj = this.subjectKey(this.currentBindings);
         const beatKey = this.resolveBeatKey(args[0]?.asName() ?? "");
@@ -2815,6 +2873,17 @@ export class Sim {
     }
     return this.log.push(event);
   }
+}
+
+/** A string, or null. */
+function nullableString(v: string | null): Value {
+  return v === null ? VNULL : vString(v);
+}
+
+/** "A", "A and B", "A, B and C" ("" for none) — the `names()` builtin. */
+export function joinNames(words: readonly string[]): string {
+  if (words.length <= 1) return words[0] ?? "";
+  return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }
 
 function isQuestAction(a: string): a is QuestAction {

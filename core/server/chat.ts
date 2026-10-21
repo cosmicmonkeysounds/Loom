@@ -837,6 +837,9 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
           go: [{ kind: "wallet", label: "Open my Wallet" }],
           threadKey: `${e.to}\u0000${e.card.id}`,
           ...(e.root ? { threadRoot: true } : {}),
+          // Wave 18b (R13): a transfer the approver's audit held — the
+          // sender's `held`, the recipient's `flagged` — is a minor moment.
+          ...(e.card.kind === "transfer" && (e.card.step === "held" || e.card.step === "flagged") ? { moment: "minor" as const } : {}),
         });
         break;
       case "ambient":
@@ -859,12 +862,14 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
         out.push(sys(`You betrayed ${withThe(e.from ?? "unaligned")} and defected to ${withThe(e.to)}.`, [e.person]));
         break;
       case "factionRevealed":
+        if (e.quiet === true) break; // `reveal X quietly` (wave 18b)
         out.push(sys(`⚠️ ${capitalised(withThe(e.faction))} has been exposed!`, "all"));
         break;
       case "revealed": {
         // A hidden place / room opened up — tell whoever it opened for. A
-        // character's reveal is the story's to announce (it is a person).
-        if (e.kind === "character") break;
+        // character's reveal is the story's to announce (it is a person),
+        // and `reveal X quietly` (wave 18b) says nothing at all.
+        if (e.kind === "character" || e.quiet === true) break;
         const head = sim.channelHead(e.kind === "location" ? `loc:${e.target}` : e.target);
         const audience: Audience = e.person === null ? "all" : [e.person];
         // A run of places and rooms opening for the same people at once (a

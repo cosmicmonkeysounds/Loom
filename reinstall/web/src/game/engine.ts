@@ -11,7 +11,10 @@
 //! (≤ 0.9 m, same floor) posts `found`; the duck lays its egg and flies.
 //! Rendering, the pose pump and the idle leash pause while the tab is
 //! hidden (so the server's 60 s pose timeout drops a tab left hidden);
-//! 120 s without input ends it; leaving the page ends it at once.
+//! 120 s without input ends it; leaving the page ends it at once. A walk
+//! can also be **held** (`hold(on)`, wave 18b: a story overlay over the tent
+//! laptop): the leash pauses and input is ignored, but the pose pump keeps
+//! its keepalives going, so the server never drops a held player.
 //!
 //! The King (`fight.ts`) stands in the Server Room's doorway with the one
 //! health bar every guest shares (the server's `KingState`, off `hello`,
@@ -139,7 +142,14 @@ const LEAVE_REASON: Record<string, string> = {
   timeout: "The connection timed out.",
   reset: "The system restarted — scan the pass again.",
   ended: "A director ended this session.",
+  // Wave 18b (R16): the program was unmarked mid-walk (a director's release).
+  unmarked: "No longer marked for reinstallation — the simulation ended.",
 };
+
+/** Why the server ended this game's session, in the HUD's words. */
+export function leaveText(reason: string): string {
+  return LEAVE_REASON[reason] ?? "This session is over.";
+}
 
 export class Game {
   private readonly o: GameOptions;
@@ -201,6 +211,8 @@ export class Game {
   private trailHouse: HouseMap;
   private king: King | null = null;
   private hitQueued = false;
+  /** Held by the host (`hold`): no input, no leash, the pump still alive. */
+  private held = false;
   /** This visit's one hit is spent (the assignment's `kingHit`, a 200, or the server's "already hit"). */
   private hitUsed = false;
   private hitting = false;
@@ -330,6 +342,33 @@ export class Game {
     this.voice?.toggleMute();
   }
 
+  /**
+   * Hold the walk (`on`) or let it go (wave 18b): something covers the game
+   * (a story overlay on the tent laptop). Held, the idle leash stops counting,
+   * input is ignored (no stuck keys, no walking blind), Gerald is never found
+   * and never quacks (nobody can see him under the overlay), while the pose
+   * pump keeps sending — the server's 60 s pose timeout never fires on a
+   * held player. Letting go resumes the leash where it stopped (unless the
+   * tab is hidden, which holds it on its own).
+   */
+  hold(on: boolean): void {
+    if (on === this.held) return;
+    this.held = on;
+    const now = performance.now();
+    if (on) {
+      this.leash.hide(now);
+      this.keys.clear();
+      this.dragPointer = null;
+      this.drag = [0, 0];
+      this.hitQueued = false;
+    } else if (!document.hidden) this.leash.show(now);
+  }
+
+  /** Whether the walk is held (`hold`). */
+  get isHeld(): boolean {
+    return this.held;
+  }
+
   /** The player gave up (the ✕ button): end the session on the server. */
   quit(): void {
     if (this.phase === "ended") return;
@@ -379,6 +418,7 @@ export class Game {
     };
     const down = (e: KeyboardEvent): void => {
       if (typing(e)) return;
+      if (this.held) return;
       if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && this.phase === "playing" && e.code === "Space") this.hitQueued = true;
       if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.code === "KeyM") this.voice?.toggleMute();
       if (keyDown(this.keys, e)) e.preventDefault();
@@ -390,7 +430,7 @@ export class Game {
     };
     const canvas = this.o.canvas;
     const pdown = (e: PointerEvent): void => {
-      if (this.dragPointer !== null) return;
+      if (this.dragPointer !== null || this.held) return;
       this.dragPointer = e.pointerId;
       this.dragLast = [e.clientX, e.clientY];
       canvas.setPointerCapture?.(e.pointerId);
@@ -415,7 +455,7 @@ export class Game {
         window.clearInterval(this.pumpTimer);
         return;
       }
-      this.leash.show(now);
+      if (!this.held) this.leash.show(now);
       if (this.phase === "playing" || this.phase === "finding") {
         this.startPump();
         void this.pump.tick(); // timed out meanwhile → the 410 ends it as "over"
@@ -480,7 +520,7 @@ export class Game {
   private frame(now: number, dt: number): void {
     const playing = this.phase === "playing" || this.phase === "finding";
     const sticks = this.o.sticks();
-    const input = playing ? combineInput({ keys: this.keys, left: sticks.left, right: sticks.right, drag: this.drag, arrowsTurn: this.o.arrowsTurn }) : NO_INPUT;
+    const input = playing && !this.held ? combineInput({ keys: this.keys, left: sticks.left, right: sticks.right, drag: this.drag, arrowsTurn: this.o.arrowsTurn }) : NO_INPUT;
     this.drag = [0, 0];
     if (isActive(input)) this.leash.touch(now);
     this.body = move(this.body, input, dt, this.world);
@@ -493,9 +533,11 @@ export class Game {
         if (this.doorOpen && this.kingState?.fallen !== true) this.refreshDoor();
         this.refreshTrail(now);
       }
-      this.maybeQuack(now);
+      // Held (an overlay over the game): Gerald keeps quiet under it too.
+      if (!this.held) this.maybeQuack(now);
       if (this.kingProp !== null && this.phase === "playing") this.tickKing(now);
-      if (this.phase === "playing" && this.duck.state === "idle") {
+      // Held (an overlay over the game): nobody can see Gerald, so no find.
+      if (this.phase === "playing" && this.duck.state === "idle" && !this.held) {
         if (!withinReach(this.map, this.body.p, this.duckSpot)) {
           this.foundRefusals = 0;
           // Right under him but he sits higher than the server allows (a map
@@ -944,7 +986,7 @@ export class Game {
       return;
     }
     if (f.event === "leave" && f.data.session === mine && f.data.reason !== "found") {
-      this.end({ kind: "over", reason: LEAVE_REASON[f.data.reason] ?? "This session is over." });
+      this.end({ kind: "over", reason: leaveText(f.data.reason) });
       return;
     }
     // A director saved (`house`), or the stream (re)connected (`hello`) —

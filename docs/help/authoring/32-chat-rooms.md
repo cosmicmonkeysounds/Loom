@@ -91,7 +91,10 @@ when the doors open for guest:
 A hidden **place** also appears for anyone who has stood there (the app
 never hides the room you're in). Opening a room posts a small system
 notice ("📂 The Cellar is open now.") to whoever it opened for; lines
-said in a room before it opened are delivered and appear with it.
+said in a room before it opened are delivered and appear with it. End
+the line with **`quietly`** to open it with no notice at all — `reveal
+The Cellar quietly`, `reveal The Cellar for guest quietly` (the room
+simply appears; a `when … revealed` rule still hears it).
 Performers and directors always see every room. A hidden `private` /
 `group` room still needs membership once revealed.
 

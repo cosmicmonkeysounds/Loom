@@ -189,7 +189,7 @@ export const SCREEN_BASES = ["screensaver", "attract", "trabolta_online", "mirro
  *  The finale's waits are among them (wave 17): the bob until 📄, the advice
  *  poll until its tally, Grok Prom and the banishment until the story's next
  *  screen cue — each one's scene keeps moving the whole time. */
-const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish"]);
+const PERSISTENT_SLIDES: ReadonlySet<string> = new Set(["bingo", "y2k", "trust_chart", "truth_txt", "bobbing", "advice", "grok_prom", "banish", "hunt_results", "tally"]);
 export function slidePersists(value: string): boolean {
   return PERSISTENT_SLIDES.has(value) || /^(award|ceremony)/u.test(value);
 }
@@ -280,7 +280,11 @@ export const SCREEN_TEXT_ONLY: readonly string[] = ["Sandy"];
 /** At most this many lines per answer (the newest). A whole scripted beat lands
  *  in one poll, so this is generous; a TV that was *away* resyncs on its own. */
 export const MAX_VOICE_LINES = 40;
-const MAX_VOICE_TEXT = 600;
+/** Longest line carried (wave 18b: a reading of every filing is one line). */
+export const MAX_VOICE_TEXT = 4000;
+/** At most this many characters in one answer's lines: past it the oldest
+ *  are dropped (a TV that was away resyncs on its own). */
+export const MAX_VOICE_BLOCK = 16_000;
 
 /**
  * The lines said by a speaker `speaks` admits in `channel` after `after`
@@ -298,11 +302,16 @@ export function voiceLinesOf(
   const head = messages.length === 0 ? -1 : messages[messages.length - 1]!.seq;
   const lines: ScreenVoiceLine[] = [];
   if (after === null || after >= head || channel === "") return { head, lines };
+  let total = 0;
   for (let i = messages.length - 1; i >= 0 && lines.length < max; i--) {
     const m = messages[i]!;
     if (m.seq <= after) break;
     if (m.channel !== channel || m.kind !== "line" || m.hidden || m.from === "" || !speaks(m.from)) continue;
-    lines.push({ seq: m.seq, from: m.from, text: m.text.slice(0, MAX_VOICE_TEXT), beat: m.beat ?? null });
+    const text = m.text.slice(0, MAX_VOICE_TEXT);
+    // Newest first: past the block's cap, the older lines are dropped.
+    if (total + text.length > MAX_VOICE_BLOCK && lines.length > 0) break;
+    total += text.length;
+    lines.push({ seq: m.seq, from: m.from, text, beat: m.beat ?? null });
   }
   return { head, lines: lines.reverse() };
 }
@@ -572,7 +581,7 @@ export function pickNamesOf(args: string): string[] {
  *   within `VERDICT_MS` (its verdict: 🗣 / 🙅 / 🎩, `who` the pick), a
  *   device's (`who` the player); the duck's pair becomes one `found`;
  * - a story `sound X` (`sfx`), by its name;
- * - a `reveal` to everyone;
+ * - a `reveal` to everyone (never a quiet one);
  * - a big `broadcast "!!…"` to everyone (`big`, its line in `text`).
  */
 export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets: readonly string[], signals: MomentSignals = momentSignalsOf(sim.model)): ScreenMoment | null {
@@ -623,7 +632,9 @@ export function momentOf(e: SimEvent, seq: number, at: number, sim: Sim, secrets
       return m === null ? null : { ...m, text: line };
     }
     case "revealed": {
-      if (e.person !== null) return null;
+      // A reveal for one person, or a quiet one (wave 18b: clearance's
+      // rooms open quietly), is no moment: no room "opens" on the screens.
+      if (e.person !== null || e.quiet === true) return null;
       const label = e.kind === "location" ? (sim.model.locations.get(e.target)?.label ?? e.target) : e.kind === "channel" ? e.target.replace(/^room:/u, "") : e.target;
       return make("reveal", label, null);
     }
@@ -650,6 +661,10 @@ export const SCREEN_NIGHT_VARS = {
   ended: "Night.ended",
   collection_complete: "Night.collection_complete",
   scenario: "Night.scenario",
+  most_trusted: "Night.most_trusted",
+  least_trusted: "Night.least_trusted",
+  facts_accepted: "Night.facts_accepted",
+  first_reinstall: "Night.first_reinstall",
 } as const;
 /** A story var holding this names nobody / nothing yet (the show's "none"). */
 const NIGHT_NONE = "none";
@@ -677,6 +692,127 @@ export interface ScreenNight {
   collection_complete: boolean | null;
   /** The overshare that played, 1–4 (0 = not yet: null). Public: its beat says it aloud. */
   scenario: number | null;
+  /** (wave 18b) The Trust Chart's call-outs, only while the `bobbing` slide
+   *  is up on this target (Trabolta says both names aloud there). */
+  most_trusted: string | null;
+  least_trusted: string | null;
+  /** (wave 18b) The night's summary numbers, only while the `recount` or
+   *  `purgatory` slide is up: facts accepted, the first reinstalled program. */
+  facts_accepted: number | null;
+  first_reinstall: string | null;
+}
+
+// --- the results block (wave 18b) ----------------------------------------------
+
+/** `do fact_read H1 [H2 …]`: the story has read these questions aloud. */
+export const RESULTS_READ_VERB = "fact_read";
+/** `do fact_truth H1 accurate|lie|none`: the verdict on one question. */
+export const RESULTS_TRUTH_VERB = "fact_truth";
+/** The slides a `read` block rides (the reading's own scenes). */
+export const RESULTS_SLIDES: readonly string[] = ["hunt_results", "tally"];
+/** How long the verdict stays on the screens after its first `fact_truth`. */
+export const RESULTS_VERDICT_MS = 120_000;
+export { MAX_RESULT_ROWS } from "../facts.ts";
+
+/** `do fact_truth`'s status as the screens say it: `accurate` (or `true`)
+ *  → "true", `lie` → "lie", anything else → "none". */
+export function truthStatusOf(raw: string): "true" | "lie" | "none" {
+  const v = raw.trim().toLowerCase();
+  return v === "accurate" || v === "true" ? "true" : v === "lie" ? "lie" : "none";
+}
+
+/** The key ids a `do fact_read …` names (`H1 H2`, commas allowed). */
+export function resultIdsOf(args: string): string[] {
+  const out: string[] = [];
+  for (const id of args.split(/[\s,]+/u)) if (/^[A-Za-z0-9_-]{1,16}$/u.test(id) && !out.includes(id)) out.push(id);
+  return out;
+}
+
+/** What the runtime builds a results block from (`screenResultsOf` over
+ *  the facts ledger). Empty when there is no key in force. */
+export type ScreenResultsSource = (q: { kind: "read" | "verdict"; ids: readonly string[] | null; tv: boolean; truths: ReadonlyMap<string, "true" | "lie" | "none"> }) => ScreenResultQuestion[];
+
+/** The runtime's extras for one poll (wave 18b), all optional. */
+export interface ScreenPollExtras {
+  /** The facts ledger's public results (gated here: see `ScreenResults`). */
+  results?: ScreenResultsSource;
+  /** Is this map spot on `audio.json`'s `announce.terminals` (Q8)? */
+  spotAnnounce?: (spot: string) => boolean;
+}
+
+/** A filing's public outcome on a screen: `a` accepted (an accurate filing
+ *  or a confident lie — the screens never tell them apart before ⚖), `g` a
+ *  guess (uncertain, or marked as one), `u` not counted (marked with no cup
+ *  — its verdict was accurate or a lie), `p` still pending. */
+export type ScreenOutcome = "a" | "g" | "u" | "p";
+
+/** Trabolta's stamp on a filing (O4, D10): `s` he ruled it the same as the
+ *  key, `n` not the same — both only below confidence 100, where they equal
+ *  the public outcome; `r` he ruled on a filing at 100 (the result is held
+ *  until ⚖, so the screen says only that he ruled); `?` a ruling is asked
+ *  (queued or out with his worker); `""` no ruling (an exact match, the
+ *  house rule, a director). His `why` never reaches a screen. */
+export type ScreenRuled = "s" | "n" | "r" | "?" | "";
+
+/** One filing as a reading shows it (TV only): the filer's display name
+ *  (≤ 24), what they said (≤ 40, newlines → spaces), sure (1 = filed at
+ *  100) or not (0), its public outcome, Trabolta's stamp. */
+export type ScreenResultRow = [who: string, said: string, sure: 0 | 1, out: ScreenOutcome, ruled: ScreenRuled];
+
+/** One liar named at ⚖ (O2, TV only): display name (≤ 24), and 1 when his
+ *  ruling made the lie (a 🤖 on the name), else 0. */
+export type ScreenLiar = [who: string, ruled: 0 | 1];
+
+/** One question in a results block. */
+export interface ScreenResultQuestion {
+  /** The key id (`H1` … `F2`). */
+  id: string;
+  /** 1-based place in the book's questions. */
+  n: number;
+  /** The question's round (null: an `answers[]` key). */
+  round: number | null;
+  /** The question as the Quest Log shows it (≤ 140); `read` only. */
+  text?: string;
+  /** How many filed, and their public outcomes. */
+  filed: number;
+  accepted: number;
+  guesses: number;
+  uncounted: number;
+  /** Every filing matches the key and every one was filed at 100 (the
+   *  story says the answer aloud then). */
+  consensus: boolean;
+  /** The key's canonical answer: in a `read`, only on consensus; in a TV
+   *  `verdict`, for every question (O2); null otherwise (and on a wall). */
+  answer: string | null;
+  /** `verdict` only: true / a lie on record / nobody answered. */
+  truth?: "true" | "lie" | "none";
+  /** `read`, TV only: the filings in filing order, ≤ `MAX_RESULT_ROWS`. */
+  rows?: ScreenResultRow[];
+  /** Rows past the cap. */
+  more?: number;
+  /** TV `verdict` only (O2): the programs who lied — a final lie (house,
+   *  ruling or director) or a pending filing proposed a lie — ≤
+   *  `MAX_RESULT_ROWS`. Names only, never what they filed. */
+  liars?: ScreenLiar[];
+  /** Liars past the cap. */
+  liarsMore?: number;
+}
+
+/**
+ * `ScreenState.results` (wave 18b): what the story has published of the
+ * facts ledger. `read` after `do fact_read …` while the target's slide is
+ * `hunt_results` or `tally` (its ids only, never the book's final round:
+ * D11); `verdict` from the first `do
+ * fact_truth …` for `RESULTS_VERDICT_MS` (all the book's questions). Absent
+ * otherwise. Built off the facts ledger (`FactsWatch`), never `Night.*`.
+ */
+export interface ScreenResults {
+  kind: "read" | "verdict";
+  /** Bumps on every publication the fold sees (a screen latches on it). */
+  seq: number;
+  /** Server epoch ms the fold first saw it; 0 = replayed history. */
+  at: number;
+  questions: ScreenResultQuestion[];
 }
 
 /** A terminal that hasn't polled for this long is silent (K-29): the editor's
@@ -714,6 +850,9 @@ export interface ScreenDevice {
   mic?: ScreenMic;
   /** The terminal's build stamp. */
   version?: string;
+  /** (wave 18b, Q8) The tablet says the house announcements right now
+   *  (`ann=1|0`: its own setting, else the house list). */
+  announce?: boolean;
 }
 
 /** What a terminal's `mic=` may say (wave 19). */
@@ -721,8 +860,8 @@ export const MIC_STATES = ["live", "muted", "denied", "insecure", "locked", "off
 export type ScreenMic = (typeof MIC_STATES)[number];
 
 /** The device fields off a poll's query (`audio=1|0`, `vis=v|h`,
- *  `bat=<0-100>[c]`, `fs=1|0`, `mic=<MIC_STATES>`, `ver=<build>`); anything
- *  malformed is left out. */
+ *  `bat=<0-100>[c]`, `fs=1|0`, `mic=<MIC_STATES>`, `ver=<build>`, wave 18b
+ *  `ann=1|0`); anything malformed is left out. */
 export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   const d: ScreenDevice = {};
   const audio = q("audio");
@@ -740,6 +879,8 @@ export function screenDeviceOf(q: (k: string) => string): ScreenDevice {
   if ((MIC_STATES as readonly string[]).includes(mic)) d.mic = mic as ScreenMic;
   const ver = q("ver").replace(/[^\w.:+-]/gu, "").slice(0, 24);
   if (ver !== "") d.version = ver;
+  const ann = q("ann");
+  if (ann === "1" || ann === "0") d.announce = ann === "1";
   return d;
 }
 
@@ -807,6 +948,17 @@ export interface ScreenState {
   announceEpoch: string;
   /** The shared King (wave 11, C2); null = the map has none. */
   king: ScreenKing | null;
+  /** (wave 18b) The published results, when there are any (omitted else). */
+  results?: ScreenResults;
+  /** (wave 18b, Q8) Only when the poll names a `spot`: what the house says
+   *  about that map terminal — `announce`: it is on `audio.json`'s
+   *  `announce.terminals` list. */
+  spot?: ScreenSpot;
+}
+
+/** The house's word on a poller's map spot (Q8). */
+export interface ScreenSpot {
+  announce: boolean;
 }
 
 /** The shared King as the chess terminal reads him (C2). `armed`: a
@@ -893,6 +1045,12 @@ export class ScreenWatch {
   /** The runtime's extra device signals (a map's own king signals) and
    *  quiet ones (the facts book's confirm events), read on every fold. */
   private readonly signalExtras: (() => { devices?: Iterable<string>; quiet?: Iterable<string> }) | undefined;
+  /** Wave 18b: the last `do fact_read` (its ids), the verdict's truths
+   *  (`do fact_truth`) and when its window opened; `resultSeq` bumps on each. */
+  private read: { seq: number; at: number; ids: string[] } | null = null;
+  private readonly truths = new Map<string, "true" | "lie" | "none">();
+  private truthAt: { seq: number; at: number } | null = null;
+  private resultSeq = 0;
   /** Per target, the chart slide on screen and when it went up (`revealAt`). */
   private readonly chartUp = new Map<ScreenTarget, { slide: string; at: number }>();
   /** The chart call-out vars this sim's story mentions (null = not read yet). */
@@ -941,6 +1099,10 @@ export class ScreenWatch {
       this.drawn = null;
       this.chartUp.clear();
       this.chartVars = null;
+      this.read = null;
+      this.truths.clear();
+      this.truthAt = null;
+      this.resultSeq = 0;
     }
     if (sim === null) return false;
     const events = sim.log.all();
@@ -975,6 +1137,22 @@ export class ScreenWatch {
         }
       }
       if (e.type !== "directive") continue;
+      // Wave 18b: the story publishes results (a reading, the verdict).
+      if (e.verb === RESULTS_READ_VERB) {
+        const ids = resultIdsOf(e.args);
+        if (ids.length > 0) this.read = { seq: ++this.resultSeq, at, ids };
+        continue;
+      }
+      if (e.verb === RESULTS_TRUTH_VERB) {
+        const [id, status] = e.args.trim().split(/\s+/u);
+        if (id !== undefined && /^[A-Za-z0-9_-]{1,16}$/u.test(id)) {
+          this.truths.set(id, truthStatusOf(status ?? ""));
+          // One window per verdict: a truth inside the open window keeps it.
+          const open = this.truthAt !== null && this.truthAt.at > 0 && at - this.truthAt.at < RESULTS_VERDICT_MS;
+          this.truthAt = { seq: ++this.resultSeq, at: open ? this.truthAt!.at : at };
+        }
+        continue;
+      }
       if (e.verb === ANNOUNCE_VERB) {
         const text = announceTextOf(e.args);
         if (text !== null) {
@@ -1069,6 +1247,7 @@ export class ScreenWatch {
     messages: readonly ChatMessage[] = [],
     declared: SimModel | null = null,
     king: ScreenKing | null = null,
+    extras: ScreenPollExtras = {},
   ): ScreenState {
     const first = this.sync(sim);
     this.note(who);
@@ -1197,6 +1376,9 @@ export class ScreenWatch {
       return v === "true" ? true : v === "false" ? false : null;
     };
     const awardUp = program.slide?.kind === "slide" && program.slide.value.startsWith("award_");
+    const slideUp = program.slide?.kind === "slide" ? program.slide.value : null;
+    const bobbingUp = slideUp === "bobbing";
+    const summaryUp = slideUp === "recount" || slideUp === "purgatory";
     const awardValue = awardUp ? named(SCREEN_NIGHT_VARS.award_value) : null;
     const night: ScreenNight = {
       screen: peek("Night.screen"),
@@ -1214,7 +1396,27 @@ export class ScreenWatch {
       ended: flag(SCREEN_NIGHT_VARS.ended),
       collection_complete: flag(SCREEN_NIGHT_VARS.collection_complete),
       scenario: ((n) => (n !== null && n >= 1 && n <= 4 ? n : null))(num(SCREEN_NIGHT_VARS.scenario)),
+      most_trusted: bobbingUp ? named(SCREEN_NIGHT_VARS.most_trusted) : null,
+      least_trusted: bobbingUp ? named(SCREEN_NIGHT_VARS.least_trusted) : null,
+      facts_accepted: summaryUp ? num(SCREEN_NIGHT_VARS.facts_accepted) : null,
+      first_reinstall: summaryUp ? named(SCREEN_NIGHT_VARS.first_reinstall) : null,
     };
+
+    // Wave 18b: the published results — the verdict for its window, else a
+    // reading while the reading's slide is up on this target.
+    let results: ScreenResults | undefined;
+    if (extras.results !== undefined && sim !== null) {
+      const now = this.now();
+      const tv = target === "tv";
+      if (this.truthAt !== null && this.truthAt.at > 0 && now - this.truthAt.at < RESULTS_VERDICT_MS) {
+        const questions = extras.results({ kind: "verdict", ids: null, tv, truths: this.truths });
+        if (questions.length > 0) results = { kind: "verdict", seq: this.truthAt.seq, at: this.truthAt.at, questions };
+      } else if (this.read !== null && slideUp !== null && RESULTS_SLIDES.includes(slideUp)) {
+        const questions = extras.results({ kind: "read", ids: this.read.ids, tv, truths: this.truths });
+        if (questions.length > 0) results = { kind: "read", seq: this.read.seq, at: this.read.at, questions };
+      }
+    }
+    const spot = who.spot !== "" && extras.spotAnnounce !== undefined ? { announce: extras.spotAnnounce(who.spot) } : undefined;
 
     return {
       now: this.now(),
@@ -1243,6 +1445,8 @@ export class ScreenWatch {
       identifyLeft,
       announceEpoch: `${this.boot}.${this.sims}`,
       king,
+      ...(results !== undefined ? { results } : {}),
+      ...(spot !== undefined ? { spot } : {}),
     };
   }
 }
@@ -1265,6 +1469,7 @@ export function handleScreenGet(
   king: () => ScreenKing | null = () => null,
   showClock: () => ShowClock | undefined = () => undefined,
   reinstalling: () => number = () => 0,
+  extras: ScreenPollExtras = {},
 ): boolean {
   if (!authorized(queryTokenOf(req, url))) {
     sendJson(res, 403, { error: "moderators only" });
@@ -1289,7 +1494,7 @@ export function handleScreenGet(
   const named = voice !== "" || room !== "";
   const clock = showClock();
   // The show clock (wave 13 K2) rides along for the terminals; nothing reads it yet.
-  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king()), ...(clock !== undefined ? { showClock: clock } : {}), reinstalling: reinstalling() });
+  sendJson(res, 200, { ...watch.poll(sim, who, online, named ? messages() : [], named && sim === null ? declared() : null, king(), extras), ...(clock !== undefined ? { showClock: clock } : {}), reinstalling: reinstalling() });
   return true;
 }
 

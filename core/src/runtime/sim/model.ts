@@ -17,13 +17,14 @@ import type {
   RawLine,
   SpaceBody,
 } from "../../parser/index.ts";
-import { splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
+import { splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { FoldedIndex, foldName } from "../../parser/names.ts";
 import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
 import { lowerRawBody } from "./effects.ts";
 import { resolveRules, type ChannelRules } from "./channel-types.ts";
 import { parseBoardLine, type BoardLine } from "./board.ts";
+import { parseBadgeLine } from "./badges.ts";
 
 export type EntityKind = "person" | "character" | "faction" | "location" | "role";
 
@@ -107,7 +108,9 @@ export interface RoleDef {
   hooks: Hook[];
   /** `secret: a, b, …` — per-person slots no agent-voiced character may
    *  see: dropped from every agent request and the agents' facts document
-   *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). */
+   *  (a guest's own `<id>.a`, and anything under `<id>.a.…`). Always holds
+   *  `codex_in` (wave 18b): the per-category codex counts count secret
+   *  entries too, and a category's name can be a secret's. */
   secret: Set<string>;
   /** Slots declared `bool` (wave 13: a booth card lists a boolean ROLE
    *  `watch:` item even when false — "Not cleared"). */
@@ -161,6 +164,13 @@ export interface CharDef {
    *  (`a | b | c` offers a guest several). The first is the default; the
    *  server scrapes one from Wikipedia when there is none. */
   avatar: string[];
+  /** Wave 18b: the `avatar:` options that end in `when <cond>`
+   *  (`picture:trabolta-broken.svg when self.broken == true`), in written
+   *  order, `self` bound to the character. The server shows the last one
+   *  whose condition holds, else `avatar[0]`. Absent when there are none
+   *  (`avatar` keeps only the unconditional refs, or the first rule's ref
+   *  when every option is conditional). */
+  avatarRules?: AvatarRule[];
   /** `wiki: Microsoft Minesweeper` — the Wikipedia article this character
    *  *is*, when its name alone would find the wrong one (the naval
    *  minesweeper). The source of a guest's extra picture options. */
@@ -194,7 +204,7 @@ export interface CharDef {
  * booth or a guest's program is decided at the door, not here.
  */
 export type WalletRole =
-  | { role: "approver"; every: number; windowMs: number }
+  | { role: "approver"; every: number; windowMs: number; as?: string; audit?: string }
   | { role: "minter"; limit: number; while: string | null; grants?: number; freezeMs?: number };
 
 /**
@@ -211,7 +221,10 @@ export interface CurrencyDef {
   maxTransfer: number;
   /** Request / offer lifetime (default 10 min). */
   expiryMs: number;
-  approver: { id: string; every: number; windowMs: number } | null;
+  /** `as` (wave 18b): the name wallet cards give the approver (`as MyCRA`);
+   *  `audit`: what a held transfer is flagged for (`audit "a CRA audit"`).
+   *  Both only when authored. */
+  approver: { id: string; every: number; windowMs: number; as?: string; audit?: string } | null;
   /** `grants` / `freezeMs` only when authored (the book's defaults: 3 / 10 min). */
   minter: { id: string; limit: number; while: string | null; grants?: number; freezeMs?: number } | null;
 }
@@ -289,6 +302,35 @@ export interface ObjectiveDef {
 export const OBJECTIVE_AUDIENCE_WORDS = ["guests", "performers", "everyone"] as const;
 /** The reserved `buttons:` words of an OBJECTIVE (folded). */
 export const OBJECTIVE_BUTTON_WORDS = ["pass", "scan"] as const;
+
+/** The per-person world head of the codex category counts (wave 18b):
+ *  `<id>.codex_in.<category>`; never shown to an agent (`RoleDef.secret`). */
+export const CODEX_IN = "codex_in";
+
+/** One conditional `avatar:` option (wave 18b): the picture ref and the
+ *  condition (a CHARACTER's, `self` bound) that selects it. */
+export interface AvatarRule {
+  ref: string;
+  when: string;
+}
+
+/** A header `badge:` line (wave 18b): a glyph beside a person's name on
+ *  every people list while the path is true for them. `head` is the path's
+ *  first segment as written — a ROLE (or its alias, `program`) for a per-
+ *  guest flag, else a CHARACTER — and `rest` the path under it. */
+export interface BadgeDef {
+  head: string;
+  rest: string;
+  /** The whole path as written (`program.afk`). */
+  path: string;
+  /** The first word of the label (`🚻`). */
+  glyph: string;
+  /** The rest of the label (`Bathroom Mode`; the glyph when there is none). */
+  label: string;
+  /** The `, while <cond>` tail, or null. */
+  while: string | null;
+  raw: string;
+}
 
 /** The world path an interrupt level lives at when the header names none. */
 export const DEFAULT_ALERTS_PATH = "Night.alerts";
@@ -539,6 +581,18 @@ export interface SimModel {
    *  C11), every file's, in order — rooms done for a guest once the
    *  condition holds for them (the phone tucks them away). */
   archive: ArchiveDef[];
+  /** Header `badge:` lines (wave 18b), every file's, in order. Display
+   *  only; a line on a secret slot or a secret CHARACTER is skipped at run
+   *  time (lint L1219). */
+  badges: BadgeDef[];
+  /** Header `lobby: hidden` (wave 18b): guests never list the lobby (its
+   *  routing stays; booths and Run keep it). */
+  lobbyHidden: boolean;
+  /** Header `founding: <cond>` (wave 18b), the first file's that has one:
+   *  the story is in **faction mode** (founded crews race like sides, one
+   *  faction at a time) and a program may found while the condition holds
+   *  for them (`program` / `self` bound). Null = crews are friend clubs. */
+  founding: string | null;
 }
 
 /** A header `wanted:` line (C6): `wanted: program.marked [as
@@ -644,6 +698,9 @@ export function compileModel(bundle: Bundle): SimModel {
     wanted: null,
     reinstall: null,
     archive: [],
+    badges: [],
+    lobbyHidden: false,
+    founding: null,
   };
   /** OBJECTIVE bodies in model order, compiled once every name is known. */
   const objectiveBodies: Array<[string, ObjectiveBody]> = [];
@@ -688,6 +745,13 @@ export function compileModel(bundle: Bundle): SimModel {
         if (model.reinstall === null && line.value.trim() !== "") model.reinstall = line.value.trim();
       } else if (line.key === "archive") {
         archiveRaw.push(line.value);
+      } else if (line.key === "badge") {
+        const b = parseBadgeLine(line.value);
+        if (b !== null) model.badges.push(b);
+      } else if (line.key === "lobby") {
+        if (line.value.trim().toLowerCase() === "hidden") model.lobbyHidden = true;
+      } else if (line.key === "founding") {
+        if (model.founding === null && line.value.trim() !== "") model.founding = line.value.trim();
       }
     }
 
@@ -853,7 +917,8 @@ export function compileModel(bundle: Bundle): SimModel {
     for (const c of model.characters.values()) {
       if (c.wallet === null) continue;
       if (c.wallet.role === "approver" && model.currency.approver === null) {
-        model.currency.approver = { id: c.id, every: c.wallet.every, windowMs: c.wallet.windowMs };
+        const { every, windowMs, as, audit } = c.wallet;
+        model.currency.approver = { id: c.id, every, windowMs, ...(as !== undefined ? { as } : {}), ...(audit !== undefined ? { audit } : {}) };
       } else if (c.wallet.role === "minter" && model.currency.minter === null) {
         const { limit, while: cond, grants, freezeMs } = c.wallet;
         model.currency.minter = { id: c.id, limit, while: cond, ...(grants !== undefined ? { grants } : {}), ...(freezeMs !== undefined ? { freezeMs } : {}) };
@@ -1054,6 +1119,7 @@ function roleDef(id: string, body: CharacterBody): RoleDef {
       .map((s) => s.trim())
       .filter((s) => s !== ""),
   );
+  secret.add(CODEX_IN); // wave 18b: the category counts (`Sim.holdCodex`)
   const bools = new Set(
     body.typedProperties
       .filter((p) => p.slotType !== null && p.slotType.kind === "concrete" && p.slotType.name.toLowerCase() === "bool")
@@ -1085,7 +1151,7 @@ function charDef(id: string, body: CharacterBody): CharDef {
     ranges,
     playable: body.properties.get("playable")?.value.trim() !== "false",
     reserved: body.properties.get("reserved")?.value.trim().toLowerCase() === "true",
-    avatar: avatarsOf(body.properties.get("avatar")?.value),
+    ...avatarFields(body.properties.get("avatar")?.value),
     wiki: body.properties.get("wiki")?.value.trim() || null,
     secret: body.properties.get("secret")?.value.trim() === "true",
     wallet: walletRoleOf(body.properties.get("wallet")?.value),
@@ -1094,20 +1160,43 @@ function charDef(id: string, body: CharacterBody): CharDef {
   };
 }
 
-/** Parse `wallet: approver[, every N][, window <dur>]` / `wallet: minter[,
- *  limit N][, while <cond>][, grants N][, freeze <dur>]` (clauses in any
- *  order, case-insensitive role). Defaults: every 3, window 60s; limit 3, no
- *  `while` (= everyone with a balance); `grants` / `freeze` are left off
- *  unless written (the book reads 3 / 10 min). Anything else — a typo, a
- *  missing role — reads null. */
+/** `CharDef.avatar` + (when any) `avatarRules`. When every option is
+ *  conditional, the first rule's picture is also the default (`avatar`
+ *  never empty), so no rule holding never falls back to a scraped
+ *  Wikipedia picture. */
+function avatarFields(value: string | undefined): Pick<CharDef, "avatar" | "avatarRules"> {
+  const { refs, rules } = avatarOptionsOf(value);
+  if (rules.length === 0) return { avatar: refs };
+  return { avatar: refs.length > 0 ? refs : [rules[0]!.ref], avatarRules: rules };
+}
+
+/** Parse `wallet: approver[, every N][, window <dur>][, as <name>][, audit
+ *  <phrase>]` / `wallet: minter[, limit N][, while <cond>][, grants N][,
+ *  freeze <dur>]` (clauses in any order, case-insensitive role; a comma
+ *  inside a quoted phrase is text). Defaults: every 3, window 60s; limit 3,
+ *  no `while` (= everyone with a balance); `grants` / `freeze` are left off
+ *  unless written (the book reads 3 / 10 min). The approver's `as` (the name
+ *  wallet cards give it: `as MyCRA`) and `audit` (what a held transfer is
+ *  flagged for: `audit "a CRA audit"`, quotes optional) are left off unless
+ *  written (wave 18b). Anything else — a typo, a missing role — reads null. */
 export function walletRoleOf(raw: string | undefined): WalletRole | null {
   if (raw === undefined) return null;
-  const parts = splitTopLevelCommas(raw).map((p) => p.trim());
+  const parts = splitArgsCommas(raw).map((p) => p.trim());
   const role = (parts.shift() ?? "").toLowerCase();
   if (role === "approver") {
     let every = 3;
     let windowMs = 60_000;
+    let as: string | undefined;
+    let audit: string | undefined;
     for (const clause of parts) {
+      const named = /^(as|audit)\s+(.+)$/iu.exec(clause);
+      if (named !== null) {
+        const text = unquote(named[2]!);
+        if (text === "") return null;
+        if (named[1]!.toLowerCase() === "as") as = text;
+        else audit = text;
+        continue;
+      }
       const m = /^(every|window)\s+(.+)$/iu.exec(clause);
       if (m === null) return null;
       if (m[1]!.toLowerCase() === "every") {
@@ -1120,7 +1209,7 @@ export function walletRoleOf(raw: string | undefined): WalletRole | null {
         windowMs = ms;
       }
     }
-    return { role: "approver", every, windowMs };
+    return { role: "approver", every, windowMs, ...(as !== undefined ? { as } : {}), ...(audit !== undefined ? { audit } : {}) };
   }
   if (role === "minter") {
     let limit = 3;
@@ -1147,6 +1236,13 @@ export function walletRoleOf(raw: string | undefined): WalletRole | null {
     return { role: "minter", limit, while: cond, ...(grants !== undefined ? { grants } : {}), ...(freezeMs !== undefined ? { freezeMs } : {}) };
   }
   return null;
+}
+
+/** A clause's text, surrounding double quotes (and `\"` escapes) undone. */
+function unquote(raw: string): string {
+  const t = raw.trim();
+  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1).replace(/\\"/gu, '"').trim();
+  return t;
 }
 
 /** Parse the header `currency: <slot> as <Name>[, max N][, expiry <dur>]`
@@ -1179,16 +1275,38 @@ function holdOf(raw: string | undefined): string | null {
   return v === "" ? null : v;
 }
 
+/** A picture the app ships (wave 18b): `picture:trabolta.svg`, served from
+ *  the app's own `pictures/` (lower-case name, an svg / png / webp). */
+export const PICTURE_REF = /^picture:[a-z0-9][a-z0-9._-]*\.(svg|png|webp)$/u;
+
+/** Is `ref` an `avatar:` picture: an absolute http(s) URL, a Wikipedia /
+ *  Commons file by name (`File:Winamp Logo.svg`) or a shipped `picture:`? */
+export function isAvatarRef(ref: string): boolean {
+  return /^https?:\/\/\S+$/u.test(ref) || /^File:\S/iu.test(ref) || PICTURE_REF.test(ref);
+}
+
 /**
- * Authored `avatar:` pictures, `|`-separated: an absolute http(s) URL, or
- * a Wikipedia / Commons file by name (`File:Winamp Logo.svg`). Anything
+ * Authored `avatar:` options, `|`-separated, each a picture (`isAvatarRef`)
+ * optionally ending in `when <cond>` (wave 18b: `picture:trabolta.svg |
+ * picture:trabolta-broken.svg when self.broken == true`). `refs` are the
+ * unconditional pictures in order, `rules` the conditional ones. Anything
  * else is ignored.
  */
+export function avatarOptionsOf(value: string | undefined): { refs: string[]; rules: AvatarRule[] } {
+  const refs: string[] = [];
+  const rules: AvatarRule[] = [];
+  for (const raw of (value ?? "").split("|")) {
+    const v = raw.trim();
+    const m = /^(.+?)\s+when\s+(\S.*)$/su.exec(v);
+    if (m !== null && isAvatarRef(m[1]!.trim())) rules.push({ ref: m[1]!.trim(), when: m[2]!.trim() });
+    else if (isAvatarRef(v)) refs.push(v);
+  }
+  return { refs, rules };
+}
+
+/** The unconditional `avatar:` pictures, best first (`avatarOptionsOf`). */
 export function avatarsOf(value: string | undefined): string[] {
-  return (value ?? "")
-    .split("|")
-    .map((v) => v.trim())
-    .filter((v) => /^https?:\/\/\S+$/u.test(v) || /^File:\S/iu.test(v));
+  return avatarOptionsOf(value).refs;
 }
 
 function hooksOf(ownerId: string, ownerKind: "character" | "role", body: CharacterBody): Hook[] {

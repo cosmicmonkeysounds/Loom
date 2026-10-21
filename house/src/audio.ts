@@ -46,6 +46,12 @@ export interface AudioDevice {
   outputs: number;
   /** Sample rate in Hz (the router opens the device at it; 48000 if absent). */
   rate?: number;
+  /** (wave 18b) The channel counts the device itself reports when its
+   *  layout is as planned (the 828x + an ADAT expander: 32 in / 30 out).
+   *  `inputs` / `outputs` above are the channels we use; a device that
+   *  reports other totals has moved its layout (mirroring, 96 kHz,
+   *  TOSLink): `stagehand check` fails and the router logs an error. */
+  expect?: { inputs: number; outputs: number };
 }
 
 /** One interface input (1-based `ch`): a house Mac / QLab output, a mic, a line. */
@@ -105,7 +111,11 @@ export interface AudioConfig {
   zones: AudioZone[];
   routes: AudioRoute[];
   cues: Record<string, AudioCue>;
-  announce?: { to: string[]; chime?: boolean };
+  /** `terminals` (wave 18b, Q8): the house map's terminal spot ids whose
+   *  tablets also say the announcements unless their own setting says
+   *  Always / Never (kept here, not in `house.json`, so a toggle never
+   *  bumps the map version). */
+  announce?: { to: string[]; chime?: boolean; terminals?: string[] };
   /** Speakers / zones the TV's voice should also reach (documents the
    *  interface mixer's fan-out today). */
   voice?: { tv?: string[] };
@@ -227,6 +237,16 @@ export function validateAudio(audio: unknown, house?: HouseMap | null): AudioVal
       else nOut = v;
     }
     if (device["rate"] !== undefined && (!isInt(device["rate"]) || device["rate"] < 8000 || device["rate"] > 384000)) problems.push("device.rate must be a sample rate in Hz (8000 to 384000)");
+    const expect = device["expect"];
+    if (expect !== undefined) {
+      if (!isObj(expect)) problems.push("device.expect must be an object {inputs, outputs}");
+      else
+        for (const k of ["inputs", "outputs"] as const) {
+          const v = expect[k];
+          if (!isInt(v) || v < 1 || v > AUDIO_MAX_CHANNELS) problems.push(`device.expect.${k} must be a whole number from 1 to ${AUDIO_MAX_CHANNELS}`);
+          else if (isInt(device[k]) && v < (device[k] as number)) warnings.push(`device.expect.${k} (${v}) is fewer than device.${k} (${device[k] as number}): those channels can't exist`);
+        }
+    }
   }
   const gainOk = (v: unknown) => v === undefined || (isNum(v) && v >= AUDIO_GAIN_MIN && v <= AUDIO_GAIN_MAX);
   const gainMsg = `must be dB from ${AUDIO_GAIN_MIN} to +${AUDIO_GAIN_MAX}`;
@@ -367,10 +387,18 @@ export function validateAudio(audio: unknown, house?: HouseMap | null): AudioVal
   }
   const announce = audio["announce"];
   if (announce !== undefined) {
-    if (!isObj(announce)) problems.push("announce must be an object {to, chime?}");
+    if (!isObj(announce)) problems.push("announce must be an object {to, chime?, terminals?}");
     else {
       targets("announce.to", announce["to"]);
       if (announce["chime"] !== undefined && typeof announce["chime"] !== "boolean") problems.push("announce.chime must be true or false");
+      const terms = announce["terminals"];
+      if (terms !== undefined) {
+        if (!Array.isArray(terms) || terms.some((t) => !isStr(t) || t.trim() === "")) problems.push("announce.terminals must be a list of terminal spot ids");
+        else if (house != null) {
+          const spots = new Set(house.terminals.map((t) => t.id));
+          for (const t of terms as string[]) if (!spots.has(t)) warnings.push(`announce.terminals: "${t}" is no terminal spot on the house map`);
+        }
+      }
     }
   }
   const voice = audio["voice"];

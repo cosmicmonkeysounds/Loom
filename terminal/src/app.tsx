@@ -43,6 +43,12 @@
 //! when a pass opens and closes a line there (`terminal opened` / `closed`;
 //! a visit a crash or reload left open is closed on the next boot).
 //!
+//! `view: reinstall` (wave 18b) is the tent laptop: a wall terminal that is
+//! also the reinstallation wizard (`reinstall/ReinstallTerminal.tsx`, a lazy
+//! chunk with the reinstall app's own flow). Awake all night; while a walk
+//! is on screen it counts as piloting (slides and cutscenes stand aside) and
+//! an overlay holds the walk rather than ending it.
+//!
 //! A tap on the wake overlay (or anywhere on the page) is the one gesture the browser needs
 //! before the terminal may make a sound unattended — and, while it is not
 //! full screen, every tap asks for full screen again (`fullscreen.ts`, on
@@ -51,7 +57,7 @@
 //! comes back into view), and the ⚙ opens setup only on a 2 s hold
 //! (`kiosk.ts`) — a guest's short tap does nothing.
 
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject, type ReactNode } from "react";
 import { Composer, Thread } from "./chat.tsx";
 import { adoptCharacter, baseOf, castCheckKey, characterProblem, dropConfig, hintsFromSearch, loadConfig, provision, roomOf, saveConfig, spotProblem, tvRoomOf, withoutSecrets, type TerminalConfig } from "./config.ts";
 import { Setup } from "./Setup.tsx";
@@ -84,6 +90,7 @@ import { IdleShow } from "./idle-show/IdleShow.tsx";
 import { ScanBox } from "./idle-show/ScanBox.tsx";
 import { IdentifyOverlay, LiveScreenLayer } from "./ScreenLayer.tsx";
 import { Tv } from "./Tv.tsx";
+import type { ReinstallTerminalProps } from "./reinstall/ReinstallTerminal.tsx";
 import { PeekClock, canPeek, screenLayers } from "./slides.ts";
 import { LinePlayer, cursorAfterGap, cursorWhileAsleep, planVoice, showsNameplate, type TvLine } from "./tv.ts";
 
@@ -99,6 +106,9 @@ const loadRaycast = retryable(() => import("./raycast/RaycastView.tsx").then((m)
 const loadChess = retryable(() => import("./chess/ChessTerminal.tsx").then((m) => ({ default: m.ChessTerminal })));
 // The casino's tables (wave 15): only the casino terminal loads them.
 const loadCasino = retryable(() => import("./casino/CasinoTerminal.tsx").then((m) => ({ default: m.CasinoTerminal })));
+// The tent laptop's reinstallation station (wave 18b): the reinstall app's
+// flow + game, only on `view=reinstall`.
+const loadReinstall = retryable(() => import("./reinstall/ReinstallTerminal.tsx").then((m) => ({ default: m.ReinstallTerminal })));
 
 type Screen = { kind: "setup"; notice: string | null; step?: "connect" | "character" } | { kind: "attract" } | { kind: "connecting"; id: string } | { kind: "piloting"; pilot: Pilot };
 
@@ -106,6 +116,8 @@ export function App() {
   const [config, setConfig] = useState<TerminalConfig | null>(() => loadConfig());
   const [screen, setScreen] = useState<Screen>(() => (loadConfig() ? { kind: "attract" } : { kind: "setup", notice: null }));
   const [awake, setAwake] = useState(() => audioUnlocked());
+  // The tent laptop (`view=reinstall`) has a walk or the wizard on screen.
+  const [reinstallBusy, setReinstallBusy] = useState(false);
   // The lean screen state, polled every 2 s (also this terminal's heartbeat).
   // The TV also asks for its room's new lines after its chat cursor (K-18);
   // a room terminal names its room and the same cursor (wave 7).
@@ -168,7 +180,11 @@ export function App() {
     if (webgl2 && (view === "shadow" || view === "auto")) void loadShadow().catch(() => {});
     if (view === "chess") void loadChess().catch(() => {});
     if (view === "casino") void loadCasino().catch(() => {});
+    if (view === "reinstall") void loadReinstall().catch(() => {});
   }, [view, webgl2]);
+  useEffect(() => {
+    if (view !== "reinstall") setReinstallBusy(false);
+  }, [view]);
   // The cutscenes, on every screen that draws slides (wave 17).
   const slides = view !== undefined && drawsSlides(view, room);
   useEffect(() => {
@@ -366,6 +382,7 @@ export function App() {
         current={config}
         notice={screen.kind === "setup" ? screen.notice : null}
         step={screen.kind === "setup" ? screen.step : undefined}
+        spotAnnounce={screenState.state?.spot?.announce ?? null}
         onDone={(c) => {
           wake();
           finish(c);
@@ -380,7 +397,9 @@ export function App() {
   }
 
   const openSetup = () => setScreen({ kind: "setup", notice: null });
-  const piloting = screen.kind === "piloting" || screen.kind === "connecting";
+  // A walk on the tent laptop is a pilot to the screen layer: slides and
+  // cutscenes stand aside, and an overlay still covers it (and holds it).
+  const piloting = screen.kind === "piloting" || screen.kind === "connecting" || (config.view === "reinstall" && reinstallBusy);
   // The chess board is layered like a room terminal: overlays only, never a
   // story slide, the countdown corner or the Y2K clock.
   const bare = room !== null || config.view === "chess" || config.view === "casino";
@@ -426,6 +445,13 @@ export function App() {
     />
   );
 
+  const wakeOverlay = !awake && (
+    <button className="wake" onClick={wake}>
+      <span className="wake-title">TOUCH TO WAKE</span>
+      <span className="wake-sub">this terminal needs one touch before it may speak</span>
+    </button>
+  );
+
   if (config.view === "tv") {
     return (
       <>
@@ -465,6 +491,28 @@ export function App() {
     );
   }
 
+  if (config.view === "reinstall") {
+    // Awake all night: a reinstallation station, whatever the character does.
+    return (
+      <>
+        <ReinstallSlot
+          config={config}
+          state={screenState.state}
+          polled={screenState.reachable}
+          takeover={takeover}
+          covered={covered}
+          asleep={asleep}
+          onSetup={openSetup}
+          onGone={onGone}
+          onBusy={setReinstallBusy}
+          worldSlot={(store, size) => <WorldSlot store={store} spotId={config.spot} size={size} recover="retry" raycast={!webgl2} />}
+        />
+        {wakeOverlay}
+        {layer}
+      </>
+    );
+  }
+
   if (config.view === "mirror" || config.view === "shadow") {
     return (
       <>
@@ -473,13 +521,6 @@ export function App() {
       </>
     );
   }
-
-  const wakeOverlay = !awake && (
-    <button className="wake" onClick={wake}>
-      <span className="wake-title">TOUCH TO WAKE</span>
-      <span className="wake-sub">this terminal needs one touch before it may speak</span>
-    </button>
-  );
 
   // The character is hidden or asleep: the screensaver, unless a line is
   // already open (a pilot ends on its own leash, then attract takes over).
@@ -648,12 +689,34 @@ function CasinoSlot(props: SlotProps) {
   return <LazySlot {...props} load={loadCasino} cls="casino" failed="THE CASINO DIDN'T LOAD — RETRYING…" loading="OPENING THE CASINO…" />;
 }
 
-/** A lazy screen (the chess board, the casino) behind an error boundary: a
- *  failed load says so and is tried again `WORLD_RETRY_MS` later, in place. */
-function LazySlot({ load, cls, failed, loading, ...props }: SlotProps & { load: () => Promise<{ default: (p: SlotProps) => ReactNode }>; cls: string; failed: string; loading: string }) {
+/** The tent laptop's reinstallation station (wave 18b), guarded like the
+ *  board. Busy (a walk or the wizard on screen) is the station's to report,
+ *  but never outlives it: a station that crashes into the boundary, or
+ *  unmounts mid-walk without saying so, must not keep slides and cutscenes
+ *  hidden until the retry. */
+function ReinstallSlot(props: ReinstallTerminalProps) {
+  const busy = useRef(props.onBusy);
+  busy.current = props.onBusy;
+  useEffect(() => () => busy.current(false), []);
+  const onBroken = useCallback(() => busy.current(false), []);
+  return <LazySlot {...props} load={loadReinstall} cls="reinstall" failed="THE REINSTALLATION WIZARD DIDN'T LOAD — RETRYING…" loading="STARTING THE REINSTALLATION WIZARD…" onBroken={onBroken} />;
+}
+
+/** A lazy screen (the chess board, the casino, the reinstallation station)
+ *  behind an error boundary: a failed load says so and is tried again
+ *  `WORLD_RETRY_MS` later, in place. */
+function LazySlot<P extends SlotProps>({
+  load,
+  cls,
+  failed,
+  loading,
+  onBroken,
+  ...rest
+}: P & { load: () => Promise<{ default: (p: P) => ReactNode }>; cls: string; failed: string; loading: string; onBroken?: () => void }) {
+  const props = rest as unknown as P;
   const [attempt, setAttempt] = useState(0);
   const [broken, setBroken] = useState(false);
-  const View = useMemo(() => lazy(load), [attempt, load]);
+  const View = useMemo(() => lazy(load) as unknown as ComponentType<SlotProps>, [attempt, load]);
   useEffect(() => {
     if (!broken) return;
     const t = window.setTimeout(() => {
@@ -669,7 +732,14 @@ function LazySlot({ load, cls, failed, loading, ...props }: SlotProps & { load: 
     </div>
   );
   return (
-    <WorldBoundary key={attempt} fallback={note(failed)} onError={() => setBroken(true)}>
+    <WorldBoundary
+      key={attempt}
+      fallback={note(failed)}
+      onError={() => {
+        setBroken(true);
+        onBroken?.();
+      }}
+    >
       <Suspense fallback={note(loading)}>
         <View {...props} />
       </Suspense>

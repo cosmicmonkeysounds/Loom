@@ -26,9 +26,18 @@ export function avatarKey(url: string): string {
   return createHash("sha256").update(url).digest("hex").slice(0, 16);
 }
 
+/** The URL scheme of a picture the app ships itself (wave 18b): an
+ *  authored `picture:<file>` is served from the play app's `pictures/`. */
+export const LOCAL_PICTURE = "loom-picture:";
+/** A shipped picture's file name: lower case, no path, svg / png / webp. */
+export const LOCAL_PICTURE_FILE = /^[a-z0-9][a-z0-9._-]*\.(svg|png|webp)$/u;
+const LOCAL_TYPES: Record<string, string> = { svg: "image/svg+xml", png: "image/png", webp: "image/webp" };
+
 /** An authored `avatar:` reference as a fetchable URL: a URL stays one,
- *  a `File:…` name becomes its Wikipedia thumbnail. */
+ *  a `File:…` name becomes its Wikipedia thumbnail, and (wave 18b) a
+ *  `picture:<file>` the app's own `loom-picture:<file>`. */
 export function avatarRefUrl(ref: string): string {
+  if (/^picture:/iu.test(ref)) return `${LOCAL_PICTURE}${ref.slice("picture:".length)}`;
   return /^File:/iu.test(ref) ? fileUrl(ref) : ref;
 }
 
@@ -144,11 +153,14 @@ export class ImageCache {
   private readonly maxImageBytes: number;
   private readonly timeoutMs: number;
   private readonly dir: string | null;
+  /** The app's shipped pictures (`loom-picture:<file>`), or null. */
+  private readonly pictures: string | null;
   private size = 0;
 
-  constructor(opts: { fetch?: ImageFetch; maxBytes?: number; maxImageBytes?: number; timeoutMs?: number; dir?: string | null } = {}) {
+  constructor(opts: { fetch?: ImageFetch; maxBytes?: number; maxImageBytes?: number; timeoutMs?: number; dir?: string | null; pictures?: string | null } = {}) {
     this.fetchFn = opts.fetch ?? ((url, init) => fetch(url, init));
     this.dir = opts.dir ?? null;
+    this.pictures = opts.pictures ?? null;
     this.maxBytes = opts.maxBytes ?? 32 * 1024 * 1024;
     this.maxImageBytes = opts.maxImageBytes ?? 2 * 1024 * 1024;
     this.timeoutMs = opts.timeoutMs ?? 8000;
@@ -173,6 +185,7 @@ export class ImageCache {
   }
 
   private async load(url: string): Promise<CachedImage | null> {
+    if (url.startsWith(LOCAL_PICTURE)) return this.local(url.slice(LOCAL_PICTURE.length));
     if (!/^https?:\/\//u.test(url)) return null;
     const disk = this.fromDisk(url);
     if (disk !== null) return this.keep(url, disk);
@@ -190,8 +203,24 @@ export class ImageCache {
     return this.keep(url, img);
   }
 
-  /** Is this picture held on disk already? (No fetch.) */
+  /** A picture the app ships (wave 18b): one file straight out of
+   *  `pictures` — a strict name (no path), never the network, never the
+   *  disk cache. */
+  private local(file: string): CachedImage | null {
+    if (this.pictures === null || !LOCAL_PICTURE_FILE.test(file)) return null;
+    try {
+      const bytes = new Uint8Array(readFileSync(join(this.pictures, file)));
+      if (bytes.byteLength === 0 || bytes.byteLength > this.maxImageBytes) return null;
+      return this.keep(`${LOCAL_PICTURE}${file}`, { bytes, contentType: LOCAL_TYPES[file.slice(file.lastIndexOf(".") + 1)]! });
+    } catch {
+      return null;
+    }
+  }
+
+  /** Is this picture held on disk already? (No fetch; a shipped picture
+   *  always is.) */
   onDisk(url: string): boolean {
+    if (url.startsWith(LOCAL_PICTURE)) return true;
     return this.dir !== null && existsSync(this.diskPath(url, "img"));
   }
 

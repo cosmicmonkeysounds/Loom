@@ -12,7 +12,7 @@
 //! room) sits under a folded *advanced*.
 
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, type TerminalConfig, type TerminalView } from "./config.ts";
+import { DEFAULT_TV_ROOM, VIEWS, VIEW_INFO, announceChoiceValue, announceFromChoice, baseOf, connect, defaultConfig, pickCharacter, roomChoices, savedCharacter, type TerminalConfig, type TerminalView } from "./config.ts";
 import { feedStatusText, feedWanted, useFeedStatus } from "./camfeed.ts";
 import { micBox, voiceRoles } from "./voice/roles.ts";
 import { voiceStatus, voiceStatusText } from "./voice/status.ts";
@@ -56,7 +56,23 @@ function useHeartbeats(access: Access | null): { beats: Heartbeat[]; silentMs: n
 /** `step`: where setup opens — `connect` when the stored access is no good
  *  (the event ended: a new passcode first), `character` when the story
  *  lacks this terminal's character (advanced, unfolded). */
-export function Setup({ current, notice, step, onDone, onForget }: { current: TerminalConfig | null; notice: string | null; step?: "connect" | "character"; onDone: (c: TerminalConfig) => void; onForget: () => void }) {
+export function Setup({
+  current,
+  notice,
+  step,
+  spotAnnounce = null,
+  onDone,
+  onForget,
+}: {
+  current: TerminalConfig | null;
+  notice: string | null;
+  step?: "connect" | "character";
+  /** What the house setting says for this tablet's spot now (the last
+   *  screen state's `spot.announce`; null = unknown). */
+  spotAnnounce?: boolean | null;
+  onDone: (c: TerminalConfig) => void;
+  onForget: () => void;
+}) {
   const [access, setAccess] = useState<Access | null>(() => (current === null || step === "connect" ? null : { eventId: current.eventId, token: current.token, title: current.title }));
   const [changing, setChanging] = useState(false);
   const [advanced, setAdvanced] = useState(step === "character");
@@ -71,7 +87,8 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
   const [character, setCharacter] = useState(current?.character ?? "");
   const [camera, setCamera] = useState<TerminalConfig["camera"]>(current?.camera ?? "user");
   const [engine, setEngine] = useState<VoiceChoice>(current?.engine ?? "browser");
-  const [announce, setAnnounce] = useState(current?.announce ?? false);
+  // Wave 18b, Q8: null = the house setting (`audio.json`'s list), else Always / Never.
+  const [announce, setAnnounce] = useState<boolean | null>(current?.announce ?? null);
   const [serverVoice, setServerVoice] = useState(current?.serverVoice ?? "");
   const [browserVoice, setBrowserVoice] = useState(current?.browserVoice ?? "");
   const [speed, setSpeed] = useState(current?.speed ?? 1);
@@ -347,9 +364,13 @@ export function Setup({ current, notice, step, onDone, onForget }: { current: Te
                 </button>
                 {tested !== null && <span className="muted small">{tested}</span>}
               </div>
-              <label className="check">
-                <input type="checkbox" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} />
-                say the house announcements here <span className="muted">(off where the house speakers reach)</span>
+              <label>
+                say the house announcements <span className="muted">(house setting = this spot's 📢 on Run → Terminals)</span>
+                <select value={announceChoiceValue(announce)} onChange={(e) => setAnnounce(announceFromChoice(e.target.value))}>
+                  <option value="house">house setting{spotAnnounce === null ? "" : spotAnnounce ? " (this spot: says them)" : " (this spot: doesn't)"}</option>
+                  <option value="always">always</option>
+                  <option value="never">never</option>
+                </select>
               </label>
               <label className="check">
                 <input type="checkbox" checked={camFeed} onChange={(e) => setCamFeed(e.target.checked)} />

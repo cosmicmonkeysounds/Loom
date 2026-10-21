@@ -819,17 +819,21 @@ program that wasn't corrupted, "You found Gerald"; for a kept find —
 with — "GERALD CAN'T HELP": *Gerald can't help <name> tonight. The
 Internet keeps you — your phone says what happens next.*, progress
 *Nothing to copy*, no egg, decided by `findOutcome` in `game/hud.ts`) →
-back to scan. A restricted, not-captured program reads *Restricted
-program detected* / *STATUS: RESTRICTED — marked for reinstallation*, and
-the scan screen lists them under *Restricted — marked, or held by a
-director*. An unmarked program (`eligible` false; a pre-wave-16 server's
-row: neither captured nor restricted) is never a quick pick; scanned or
-typed, its card reads *Program not marked* / *STATUS: healthy — not marked
-for reinstallation* with *Not marked — an Antivirus marks programs for
-reinstallation.*, and Play here and every headset button are disabled. The
+back to scan. A marked, not-captured program reads *Marked program
+detected* / *STATUS: MARKED — marked for reinstallation*, and the scan
+screen lists them under *Marked for reinstallation*; one a director
+restricted without a mark reads *Program held by a director*. An unmarked
+program (`eligible` false; a pre-wave-16 server's row: neither captured
+nor restricted) is never a quick pick; scanned or typed, its card reads
+*Program not marked* / *STATUS: healthy — not marked for reinstallation*
+with *Not marked for reinstallation — until the night is over, only a
+marked program may play.*, and Play here and every headset button are
+disabled. The
 server's 409 for one (a race) reads the same line (`beginErrorText` in
 `program.ts`).
-Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet`. The scan
+Provisioning link: `/reinstall/?code=<mod>&name=Tent tablet` (a spare
+tablet or a headset-only controller since wave 18b: the tent laptop is a
+terminal, below). The scan
 step's **⚙ Setup…** and **🗺 House map** open only after a 2 s hold
 (`kiosk.ts`, a copy of the terminal's `useLongPress`; W-15): the tablet
 is in guests' hands.
@@ -895,6 +899,47 @@ Session lifecycle:
   says "Gerald moved" (not once he is found).
 - A run restart (`reset`), a director's end, or the same program started
   elsewhere (`replaced`) returns the device to the scanner with a message.
+- **Only the marked may play** (wave 16, re-checked wave 18b — R16). Every
+  way in is `POST /api/mod/spatial/begin`, which refuses an ineligible
+  program with 409 `not marked for reinstallation`; no device sends
+  `force`. The hub re-checks too (`mayPlay`): a walk parked for a headset
+  whose program was unmarked before the put-on is never handed out (or a
+  claiming pose answers 410), and a live walk whose program was unmarked
+  mid-way ends with `leave {reason: "unmarked"}` — the web game and the
+  headset both say *No longer marked for reinstallation — the simulation
+  ended.* A found walk is exempt (its own release unmarks it).
+- **Held** (wave 18b, `Game.hold` / `Play` `held`): a host that covers the
+  game (the tent laptop under a story overlay) holds it: the controls, the
+  leash, Gerald's quacks and a find pause, the pose pump keeps its
+  keepalives, so the server never times the session out; letting go
+  carries on.
+
+### The tent laptop — one device, terminal + wizard (wave 18b)
+
+The laptop in the tent runs the **wall terminal** at `view=reinstall`
+(`terminal/src/reinstall/`, a lazy chunk), not this app's page. The
+terminal mounts this app's own flow (`flow.tsx`: the choose card, the
+begin, the game) from source through the `@loom/reinstall` alias, in a
+**shadow root** with its own React root (`pane.tsx`) and this stylesheet
+re-scoped (`scope-css.ts`: `:root` → `:host`, `html, body, #root` / `body`
+→ `.ri-root`; an iframe is refused by `frame-ancestors 'none'`). Between
+walks it is a terminal: the idle show, the scan box, the story's slides,
+cutscenes, moments and overlays, and the world view beside the show while
+someone walks on a headset. The station's screens (`session.ts`, pure):
+**idle** (the quick picks are only the programs in the Internet — never
+the marked, whose names are the Antivirus' list — and a `tablet_*` cue's
+card, *Setup is preparing to reinstall a program*, naming nobody) →
+**checking** (the candidates) → **refused** (healthy or director-held: the
+NOT MARKED card, nothing reaches the story) | **confirm** (already walking
+on a headset: play here instead?) | **flow** (`start: "auto"`: straight to
+Play here with no headset online, else the choose card). The flow is
+**busy** (the screen layer then treats the terminal as piloting: slides
+and beat cutscenes stand aside) and **held** under an overlay
+(`held = takeover`), never ended by one. Its config is role `both` with
+the terminal's name (the journal's `by`) and camera; the game's sounds
+ride the terminal's master bus (`createSfx(soundOutput)`, built once). The
+tent spot's map entry carries `view: "reinstall"` (both variants), so
+`/terminal/?code=<mod>&spot=tent` provisions it.
 
 ### The King
 

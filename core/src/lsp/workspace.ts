@@ -53,6 +53,7 @@ import { definitionAt } from "./definition.ts";
 import { documentSymbols } from "./symbols.ts";
 import { referencesAt } from "./references.ts";
 import { wave18Lints } from "./w18-lints.ts";
+import { wave18bLints } from "./w18b-lints.ts";
 
 /** A single open document plus its latest parse. */
 export interface OpenDoc {
@@ -207,6 +208,7 @@ export class Workspace {
     this.addSoundRoomLints();
     // Wave 18: moment exits, booth pickers, header lines, callers, big broadcasts.
     wave18Lints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
+    wave18bLints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
   }
 
   /** Push one project diagnostic onto a document. */
@@ -617,7 +619,7 @@ export class Workspace {
         if (w === undefined || (d.kind !== "character" && d.kind !== "trait")) continue;
         const range = spanToRange(w.span);
         if (walletRoleOf(w.value) === null) {
-          lint(uri, range, true, Code.L1204WalletRoleUnparsed, `\`wallet: ${w.value.trim()}\` does not parse, so ${d.name} has no wallet role — write \`wallet: approver[, every N][, window <duration>]\` or \`wallet: minter[, limit N][, while <condition>]\``);
+          lint(uri, range, true, Code.L1204WalletRoleUnparsed, `\`wallet: ${w.value.trim()}\` does not parse, so ${d.name} has no wallet role — write \`wallet: approver[, every N][, window <duration>][, as <name>][, audit "<what it is flagged for>"]\` or \`wallet: minter[, limit N][, while <condition>][, grants N][, freeze <duration>]\``);
           continue;
         }
         roles.push({ uri, range, name: d.name });

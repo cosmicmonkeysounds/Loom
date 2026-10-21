@@ -48,14 +48,24 @@
 //! starts its next request held); once the stall ends — or the worker goes
 //! offline, where the offline rule takes over — that is forgotten.
 //!
-//! **Rulings** (wave 11b, contract J). The story header's `judge:
-//! <Character>` names an agent character that rules on the facts judge's
-//! near misses. A ruling is no request: the hub sends it as a `judge` frame
-//! to an online, unstalled worker voicing the judge (never queued, never in
-//! `AgentQueue`, never thread-bound), the worker answers
-//! `POST /api/agent/judge`, and an unanswered one expires after
-//! `AGENT_JUDGE_TIMEOUT_MS` (60 s, a pause excluded) — the runtime then
-//! keeps wave 11's fallback.
+//! **Rulings** (wave 11b, contract J; wave 18b, O4). The story header's
+//! `judge: <Character>` names an agent character that rules on every 📝
+//! filing that is not an exact match. A ruling is no request: it is never
+//! thread-bound and never in the DM queue's `depth`. It joins the hub's own
+//! **judge queue** (FIFO by filing time), asked only while a worker voicing
+//! the judge is connected and answering; at most `AGENT_JUDGE_INFLIGHT` (1)
+//! `judge` frame is out per worker, and **voice first**: no frame goes to a
+//! worker while it holds an open voice request (one already out runs to its
+//! end). The worker answers `POST /api/agent/judge`; a frame unanswered
+//! `AGENT_JUDGE_TIMEOUT_MS` (60 s, a pause excluded) after it was **sent**
+//! expires — a queued one never does; a worker leaving puts its frame back
+//! in the queue, in its place. Two expiries in a row on one worker
+//! (it answered nothing between) are a **judge stall**: no more frames to
+//! it until it answers anything (a ruling or a request) or reconnects, one
+//! `judgeStalled` call (the runtime's `# hosts` line), and the queue waits.
+//! A ruling not given by its round's settle is dropped by the runtime and
+//! wave 11's fallback stands. Judge frames never count toward a worker's
+//! voice stall.
 //!
 //! One open request per thread keeps a burst of three messages from
 //! producing three replies: the model answers once, then once more with
@@ -772,20 +782,43 @@ export interface AgentJudgeRequest {
   key: { answer: string; aliases: string[] };
   answer: string;
   confidence: number;
+  /** (wave 18b) The key form the filing is spelled close to; null = a plain
+   *  miss (a different answer is not the same — only a slip, a paraphrase
+   *  or another way of writing the key is). An older worker ignores it. */
+  near: string | null;
   /** Server wall clock when the ruling was asked. */
   at: number;
 }
 
 interface OpenJudge {
   req: AgentJudgeRequest;
-  worker: string;
-  /** Hub clock when it was sent. */
-  sentAt: number;
+  /** The worker it was sent to; null = still in the judge queue. */
+  worker: string | null;
+  /** Hub clock when it was sent (null while queued): the expiry's start. */
+  sentAt: number | null;
+  /** Hub clock when it joined the queue (the director's oldest wait). */
+  queuedAt: number;
 }
 
-/** A ruling nobody gives within this long is dropped (wave 11's fallback
- *  then stands: the near miss waits, and is credited at the round's settle). */
+/** A ruling sent and not given within this long is dropped (wave 11's
+ *  fallback then stands: the proposal is credited at the round's settle). */
 export const AGENT_JUDGE_TIMEOUT_MS = 60_000;
+/** At most this many `judge` frames out per worker at once (wave 18b). */
+export const AGENT_JUDGE_INFLIGHT = 1;
+/** Expiries in a row on one worker that make a judge stall (wave 18b). */
+export const AGENT_JUDGE_STALL_EXPIRIES = 2;
+
+/** The judge queue for one character (`AgentQueue.judging`, wave 18b). */
+export interface AgentJudging {
+  /** Rulings waiting in the hub's queue, not yet sent. */
+  queued: number;
+  /** Rulings sent to a worker, not yet answered. */
+  out: number;
+  /** How long the oldest (queued or out) has waited since it was asked (ms). */
+  oldestMs: number | null;
+  /** Every connected worker voicing it is judge-stalled (answering nothing). */
+  stalled: boolean;
+}
 
 /** One agent character's line of requests, for the director (`CastSummary.agentQueue`). */
 export interface AgentQueue {
@@ -795,6 +828,9 @@ export interface AgentQueue {
   oldestMs: number | null;
   /** Every connected worker voicing it has stalled (connected, not answering). */
   stalled: boolean;
+  /** (wave 18b) Its judge queue, when it has rulings waiting or out, or a
+   *  judge stall; absent otherwise. */
+  judging?: AgentJudging;
 }
 
 export interface AgentHubOptions {
@@ -839,9 +875,16 @@ export interface AgentHubOptions {
   maxAttempts?: number;
   /** A ruling unanswered this long is dropped (`AGENT_JUDGE_TIMEOUT_MS`). */
   judgeTimeoutMs?: number;
-  /** A ruling went unanswered: it expired, its worker left, or a restart
-   *  dropped it (the runtime refreshes the Judging card's "asking…"). */
-  judgeGone?: (req: AgentJudgeRequest, why: "expired" | "offline" | "cancelled") => void;
+  /** A ruling went unanswered: it expired or was cancelled (the runtime
+   *  refreshes the Judging card's "asking…"). A worker leaving puts its
+   *  rulings back in the queue instead (wave 18b). */
+  judgeGone?: (req: AgentJudgeRequest, why: "expired" | "cancelled") => void;
+  /** (wave 18b) A ruling left the queue for a worker (the Judging card's
+   *  "queued" becomes "asking"). */
+  judgeSent?: (req: AgentJudgeRequest) => void;
+  /** (wave 18b) A worker's rulings expired `AGENT_JUDGE_STALL_EXPIRIES`
+   *  times in a row: the judge stall's one `# hosts` line. */
+  judgeStalled?: (worker: { name: string; characters: string[] }) => void;
   now?: () => number;
 }
 
@@ -865,8 +908,13 @@ export class AgentHub {
    *  stall ends, the worker goes, or the character speaks. */
   private readonly heldThreads = new Map<string, string>();
   private dispatches = 0;
-  /** Rulings out with a worker (id →), apart from the DM requests. */
+  /** Rulings queued or out with a worker (id →, FIFO), apart from the DM
+   *  requests. */
   private readonly judges = new Map<string, OpenJudge>();
+  /** Per worker: rulings expired in a row since it last answered anything. */
+  private readonly judgeExpiries = new Map<string, number>();
+  /** Workers in a judge stall (no frames until they answer or reconnect). */
+  private readonly judgeStalls = new Set<string>();
 
   private readonly o: AgentHubOptions;
 
@@ -910,7 +958,31 @@ export class AgentHub {
       depth += 1;
       if (oldest === null || r.since < oldest) oldest = r.since;
     }
-    return { depth, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: this.isOnline(character) && !this.canAnswer(character) };
+    const out: AgentQueue = { depth, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: this.isOnline(character) && !this.canAnswer(character) };
+    const judging = this.judgingOf(character);
+    if (judging.queued > 0 || judging.out > 0 || judging.stalled) out.judging = judging;
+    return out;
+  }
+
+  /** `character`'s judge queue right now (`AgentQueue.judging`). */
+  judgingOf(character: string): AgentJudging {
+    let queued = 0;
+    let out = 0;
+    let oldest: number | null = null;
+    for (const j of this.judges.values()) {
+      if (j.req.character !== character) continue;
+      if (j.worker === null) queued += 1;
+      else out += 1;
+      if (oldest === null || j.queuedAt < oldest) oldest = j.queuedAt;
+    }
+    let voicing = 0;
+    let stalled = 0;
+    for (const w of this.workers.values()) {
+      if (!w.characters.has(character)) continue;
+      voicing += 1;
+      if (this.judgeStalls.has(w.id)) stalled += 1;
+    }
+    return { queued, out, oldestMs: oldest === null ? null : Math.max(0, this.now() - oldest), stalled: voicing > 0 && stalled === voicing };
   }
 
   /** Open requests (queued or in flight). */
@@ -932,16 +1004,21 @@ export class AgentHub {
     this.pruneHeld();
     this.o.presence?.();
     for (const r of this.open.values()) if (r.worker === null) this.dispatch(r);
+    this.pumpJudges();
   }
 
-  /** A worker went away: its in-flight requests go back in the queue. */
+  /** A worker went away: its in-flight requests go back in the queue, and
+   *  (wave 18b) so do its rulings, in their place (a Wi-Fi blip never loses
+   *  one; a late answer from the old connection gets a 410). */
   detach(workerId: string): void {
     if (!this.workers.delete(workerId)) return;
-    for (const [id, j] of [...this.judges]) {
+    for (const j of this.judges.values()) {
       if (j.worker !== workerId) continue;
-      this.judges.delete(id);
-      this.o.judgeGone?.(j.req, "offline");
+      j.worker = null;
+      j.sentAt = null;
     }
+    this.judgeExpiries.delete(workerId);
+    this.judgeStalls.delete(workerId);
     this.stalls.delete(workerId);
     this.pruneHeld();
     for (const r of this.open.values()) {
@@ -953,6 +1030,7 @@ export class AgentHub {
       this.dispatch(r);
     }
     this.o.presence?.();
+    this.pumpJudges(); // another worker may take the queue now
   }
 
   // -- conversation ---------------------------------------------------------
@@ -1070,11 +1148,14 @@ export class AgentHub {
     if (r.worker !== null) this.startHead(r.worker);
     const by = workerId ?? r.worker;
     if (by !== null) this.answering(by);
+    this.pumpJudges(); // voice first: a worker free of voice requests rules next
     return { req: r.req, followUp: r.followUp };
   }
 
-  /** `workerId` answered something: a stall ends, and the queue goes to it. */
+  /** `workerId` answered something: a stall ends (a voice stall, and — wave
+   *  18b — a judge stall), and the queue goes to it. */
   private answering(workerId: string): void {
+    this.judgeAnswered(workerId);
     if (!this.workers.has(workerId) || !this.stalls.delete(workerId)) return;
     this.pruneHeld();
     this.o.presence?.();
@@ -1143,12 +1224,25 @@ export class AgentHub {
     const busyAfter = this.o.busyAfterMs ?? 40_000;
     const stallAfter = this.o.stallAfterMs ?? 60_000;
     const judgeTimeout = this.o.judgeTimeoutMs ?? AGENT_JUDGE_TIMEOUT_MS;
+    let judgeMoved = false;
     for (const [id, j] of [...this.judges]) {
-      if (now - j.sentAt <= judgeTimeout) continue;
+      // Only a frame that was sent expires (from `sentAt`): a queued
+      // ruling waits for its turn, however long the queue is.
+      if (j.worker === null || j.sentAt === null || now - j.sentAt <= judgeTimeout) continue;
+      const worker = j.worker;
       this.judges.delete(id);
-      this.workers.get(j.worker)?.send("cancel", { id });
+      this.workers.get(worker)?.send("cancel", { id });
       this.o.judgeGone?.(j.req, "expired");
+      judgeMoved = true;
+      const n = (this.judgeExpiries.get(worker) ?? 0) + 1;
+      this.judgeExpiries.set(worker, n);
+      const w = this.workers.get(worker);
+      if (n >= AGENT_JUDGE_STALL_EXPIRIES && w !== undefined && !this.judgeStalls.has(worker)) {
+        this.judgeStalls.add(worker);
+        this.o.judgeStalled?.({ name: w.name, characters: [...w.characters].sort() });
+      }
     }
+    if (judgeMoved) this.pumpJudges();
     const heads = new Set<OpenRequest>(); // each worker's oldest in flight
     for (const w of this.workers.values()) {
       const h = this.headOf(w.id);
@@ -1184,6 +1278,7 @@ export class AgentHub {
         this.holdOnce(r);
       }
     }
+    this.pumpJudges(); // a voice request given back may have freed a worker
     // Behind a burst on a worker still answering: the busy line, once per
     // thread. A lone request's own wait is the stall's to call.
     for (const r of this.open.values()) {
@@ -1221,7 +1316,10 @@ export class AgentHub {
       r.req = { ...r.req, at: moved(r.req.at) };
     }
     for (const [w, at] of this.stalls) this.stalls.set(w, moved(at));
-    for (const j of this.judges.values()) j.sentAt = moved(j.sentAt);
+    for (const j of this.judges.values()) {
+      if (j.sentAt !== null) j.sentAt = moved(j.sentAt);
+      j.queuedAt = moved(j.queuedAt);
+    }
   }
 
   /**
@@ -1246,6 +1344,7 @@ export class AgentHub {
       // The cancel frees the worker for the next in its line: its clock
       // starts now, not at the worker's last answer.
       this.startHead(r.worker);
+      this.pumpJudges();
     }
     return true;
   }
@@ -1270,8 +1369,10 @@ export class AgentHub {
     }
     this.open.clear();
     this.byThread.clear();
-    for (const [id, j] of this.judges) this.workers.get(j.worker)?.send("cancel", { id });
+    for (const [id, j] of this.judges) if (j.worker !== null) this.workers.get(j.worker)?.send("cancel", { id });
     this.judges.clear();
+    this.judgeExpiries.clear();
+    this.judgeStalls.clear();
     // A new story: no stall carried over (a still-wedged worker stalls
     // again on its first head), every thread may hear busy / hold anew.
     const wasStalled = this.stalls.size > 0;
@@ -1285,61 +1386,97 @@ export class AgentHub {
   // -- rulings (wave 11b, contract J) ---------------------------------------
 
   /** Could a ruling by `character` be asked right now — a worker voicing it
-   *  connected and not stalled? */
+   *  connected, not stalled and (wave 18b) not judge-stalled? (It may still
+   *  wait in the judge queue for its turn.) */
   canJudge(character: string): boolean {
-    return this.canAnswer(character);
+    for (const w of this.workers.values()) if (w.characters.has(character) && !this.stalls.has(w.id) && !this.judgeStalls.has(w.id)) return true;
+    return false;
   }
 
   /**
-   * Ask `body.character` for a ruling: sent as a `judge` frame to the
-   * least-busy worker voicing it that is answering (a stalled one never
-   * gets one). Returns the ruling's id, or null when nobody can answer — the
-   * caller falls back to wave 11's rule. Never queued: a ruling is asked now
-   * or not at all.
+   * Ask `body.character` for a ruling (wave 18b: through the judge queue).
+   * Returns the ruling's id, or null when nobody can rule now (`canJudge`) —
+   * the caller falls back to wave 11's rule. A ruling asked joins the
+   * queue's end and goes out as soon as a worker voicing the judge is free
+   * (`pumpJudges`).
    */
   judge(body: Omit<AgentJudgeRequest, "id" | "at">): string | null {
-    let best: AgentWorker | null = null;
-    let bestLoad = Infinity;
-    for (const w of this.workers.values()) {
-      if (!w.characters.has(body.character) || this.stalls.has(w.id)) continue;
-      let load = 0;
-      for (const j of this.judges.values()) if (j.worker === w.id) load += 1;
-      if (load < bestLoad) {
-        best = w;
-        bestLoad = load;
-      }
-    }
-    if (best === null) return null;
+    if (!this.canJudge(body.character)) return null;
     const id = `jr-${globalThis.crypto.randomUUID().slice(0, 8)}`;
     const req: AgentJudgeRequest = { ...body, id, at: Date.now() };
-    this.judges.set(id, { req, worker: best.id, sentAt: this.now() });
-    best.send("judge", req);
+    this.judges.set(id, { req, worker: null, sentAt: null, queuedAt: this.now() });
+    this.pumpJudges();
     return id;
   }
 
-  /** The rulings still out (the Judging card's "asking…"). */
+  /**
+   * Send the queue's rulings to the workers free to take one, oldest
+   * first: a worker voicing the ruling's character, connected, not
+   * stalled or judge-stalled, with fewer than `AGENT_JUDGE_INFLIGHT` out
+   * and — voice first — no open voice request.
+   */
+  private pumpJudges(): void {
+    for (const j of this.judges.values()) {
+      if (j.worker !== null) continue;
+      let best: AgentWorker | null = null;
+      for (const w of this.workers.values()) {
+        if (!w.characters.has(j.req.character) || this.stalls.has(w.id) || this.judgeStalls.has(w.id)) continue;
+        if (this.loadOf(w.id) > 0) continue; // voice first
+        let out = 0;
+        for (const o of this.judges.values()) if (o.worker === w.id) out += 1;
+        if (out >= AGENT_JUDGE_INFLIGHT) continue;
+        best = w;
+        break;
+      }
+      if (best === null) continue;
+      j.worker = best.id;
+      j.sentAt = this.now();
+      best.send("judge", j.req);
+      this.o.judgeSent?.(j.req);
+    }
+  }
+
+  /** `workerId` answered something: its expiry count and judge stall end. */
+  private judgeAnswered(workerId: string): void {
+    this.judgeExpiries.delete(workerId);
+    if (this.judgeStalls.delete(workerId)) this.o.presence?.();
+  }
+
+  /** The rulings queued or out (the Judging card's "asking…"), FIFO. */
   get judging(): AgentJudgeRequest[] {
     return [...this.judges.values()].map((j) => j.req);
   }
 
+  /** Is ruling `id` still in the queue, not yet sent (wave 18b)? */
+  judgeQueued(id: string): boolean {
+    return this.judges.get(id)?.worker === null;
+  }
+
   /** A worker answered ruling `id`: it is closed and returned, or null when
-   *  it is gone (answered, cancelled, expired, a restart) or another
-   *  worker holds it. */
+   *  it is gone (answered, cancelled, expired, a restart), still queued, or
+   *  another worker holds it. Any answer shows the worker is answering. */
   judgeSettle(id: string, workerId?: string): AgentJudgeRequest | null {
+    if (workerId !== undefined && this.workers.has(workerId)) this.judgeAnswered(workerId);
     const j = this.judges.get(id);
-    if (j === undefined || (workerId !== undefined && j.worker !== workerId)) return null;
+    if (j === undefined || j.worker === null || (workerId !== undefined && j.worker !== workerId)) return null;
+    // An answer without its worker's id is still that worker answering: its
+    // expiry count ends too, so two expiries around it are no stall.
+    if (workerId === undefined) this.judgeAnswered(j.worker);
     this.judges.delete(id);
+    this.pumpJudges();
     return j.req;
   }
 
   /** The ruling is moot (a director judged the filing first, it was filed
-   *  again): drop it and tell its worker, so a late answer gets a 410. */
+   *  again, its round settled): drop it — queued or out — and tell its
+   *  worker, so a late answer gets a 410. */
   cancelJudge(id: string): boolean {
     const j = this.judges.get(id);
     if (j === undefined) return false;
     this.judges.delete(id);
-    this.workers.get(j.worker)?.send("cancel", { id });
+    if (j.worker !== null) this.workers.get(j.worker)?.send("cancel", { id });
     this.o.judgeGone?.(j.req, "cancelled");
+    this.pumpJudges();
     return true;
   }
 

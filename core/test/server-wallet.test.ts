@@ -271,7 +271,9 @@ describe("sending coin", () => {
       [["@Auditor"], "approval", "held"],
     ]);
     expect(seen(cStream)).toEqual([]);
-    expect(walletRoom(rt, b.id)).toEqual([]);
+    // Wave 18b (R13): the recipient sees the held one flagged (a minor moment).
+    expect(rows(walletRoom(rt, b.id))).toEqual([["transfer", "flagged", "root"]]);
+    expect(walletRoom(rt, b.id)[0]!.moment).toBe("minor");
     // A fresh booth stream replays them in its history.
     const again = await stream(rt, "prime", auditor);
     const history = again.frames.find((f) => f.event === "history")!.data as ChatMessage[];
@@ -291,7 +293,10 @@ describe("sending coin", () => {
     expect(ok.status).toBe(200);
     expect((ok.json["queue"] as { queue: unknown[] }).queue.map((t) => (t as { id: string }).id)).toEqual(["t1"]);
     expect((await guestState(rt, b.token)).wallet!.balance).toBe(120);
-    expect(rows(walletRoom(rt, b.id))).toEqual([["transfer", "received", "root"]]);
+    expect(rows(walletRoom(rt, b.id))).toEqual([
+      ["transfer", "flagged", "root"],
+      ["transfer", "received", "step"],
+    ]);
     expect(rows(walletRoom(rt, a.id)).at(-1)).toEqual(["transfer", "approved", "step"]);
     expect(walletRoom(rt, a.id).at(-1)!.wallet!.by).toBe("Auditor");
     expect((await post(rt, "/api/prime/wallet/approve", { id: "t2" }, auditor)).status).toBe(409);

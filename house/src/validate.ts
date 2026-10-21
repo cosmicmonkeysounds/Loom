@@ -27,7 +27,7 @@ import type { HouseMap, Room, SpaceTransform, TerminalViewName, Validation, Vec2
 
 /** Every screen type a terminal spot may name (`TerminalSpot.view`) — the
  *  `terminal` app's `VIEWS` is this list. */
-export const TERMINAL_VIEWS: readonly TerminalViewName[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"];
+export const TERMINAL_VIEWS: readonly TerminalViewName[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino", "reinstall"];
 
 /** How far outside its room a terminal / duck spot / spawn / prop may sit. */
 export const SPOT_TOLERANCE = 0.05;

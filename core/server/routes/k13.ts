@@ -12,12 +12,19 @@
 //! prison / sealed room, is on rails (a `cutscene: true` room, or the ROLE
 //! convention `uploaded && !cleared`), or the target is hidden from them,
 //! a prison, a cutscene, or `checkin: false`; and at most once per `CHECKIN_COOLDOWN_MS`.
+//!
+//! Answers `{ok, at, channel, moved, room, replies}` (wave 18b, R1): `room`
+//! is the LOCATION's label, `replies` the story's own readouts to this guest
+//! from the check-in (`reply …`, their `!` stripped) — the phone's "scan
+//! done" dialog says them, and a refusal the story gave (`moved: false`)
+//! reads as its reply.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Sim, SimEvent } from "../../src/runtime/sim/index.ts";
 import { truthy } from "../../src/runtime/expr.ts";
 import { foldName } from "../../src/parser/names.ts";
 import { sendJson, str } from "../http-util.ts";
+import { readoutText } from "../chat.ts";
 
 export const CHECKIN_ROUTE = "/api/guest/checkin";
 /** One check-in per guest per this long (a sign scanned twice, a loop). */
@@ -97,8 +104,10 @@ export class GuestCheckin {
       return true;
     }
     this.last.set(id, now);
-    this.host.signal(id, at);
-    sendJson(res, 200, { ok: true, at, channel: `loc:${at}`, moved: sim.locationOf(id) === at });
+    const events = this.host.signal(id, at);
+    const replies = events.filter((e): e is Extract<SimEvent, { type: "respond" }> => e.type === "respond" && e.to === id).map((e) => readoutText(e.text).text);
+    const room = sim.model.locations.get(at)?.label ?? at;
+    sendJson(res, 200, { ok: true, at, channel: `loc:${at}`, moved: sim.locationOf(id) === at, room, replies });
     return true;
   }
 }

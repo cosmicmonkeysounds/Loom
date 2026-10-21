@@ -2,7 +2,7 @@
 title: Live shows — people, places, casting
 section: Live Shows
 order: 30
-keywords: live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
+keywords: founding, faction mode, founded faction, factions, majority_faction, faction_of, faction_name, faction_founder, L1220, badge, badges, L1219, lobby hidden, hidden lobby, live, judge, wanted, wanted board, reinstall, archive, majority, sides, crews, crew, recruit, recruited, founded, unaligned, party favour, L1216, reserved, admin, host, host part, alerts, alert level, interrupt, moment, balloon, sticky, dialog, bsod, blue screen, glitch, crawl, fx, effect text, manner, invitation, claim, for guests, went home, gone, persona, present, PERSON, ROSTER, cast, COHORT, LOCATION, participant, capacity, swings, roster, casting, immersive, ROLE, GROUP, hidden, someone joins, when, participant app, title, check in, checked_in, checkin, sign, qr, header, watch, countdown, director page, glance, board
 ---
 
 In a live Loom show, the audience aren't just readers — they're
@@ -156,6 +156,13 @@ COHORT Early Arrivals
   loads, so the night never waits on Wikipedia. A guest choosing a
   program sees its hand-picked pictures first, then the article's own
   gallery, and picks one (and can switch later from the Start menu).
+  A picture the app ships is `picture:<file>` (`picture:trabolta.svg`, a
+  lower-case svg / png / webp in the app's `pictures/`). An option may end
+  in **`when <condition>`** (the character as `self`) to swap the picture
+  live: `avatar: picture:trabolta.svg | picture:trabolta-broken.svg when
+  self.broken == true` shows the second while it holds (the last true
+  `when` wins), else the first. Give one option with no `when` as the
+  default; when every option has one, the first is the default.
 - **`admin: true`** on a CHARACTER makes it a **host part**: whoever
   signs in as it with the performer code gets the host console in their
   booth — the cue sheet's NEXT bar, judging, announcements, the alert
@@ -230,12 +237,59 @@ when recruited for program:
 
 Guests may also found **crews** of their own: a name (2–24 characters,
 moderated), a members-only room `crew:<id>`, invitations by pass, at most
-eight in a night, one per founder. A crew is **never a side**: it never
+eight at once (an empty crew frees its place), one per founder. A crew is **never a side**: it never
 touches a GROUP's members, `who.group`, a majority, or what an agent-voiced
 character hears. The story hears `founded` (the founder, with `crew`), `join`
 (a new member, with `crew`; a side's `when who joins <Side>:` never does)
 and `unaligned` (someone left their side, with `side`). Directors and hosts
 can rename or dissolve a crew.
+
+### Founded factions: `founding:`
+
+One more header line turns crews into **factions** that race like your
+sides:
+
+```loom
+majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1
+founding: Night.truther_sent == true and Kernel.majority_reached != true and program.cleared == true
+```
+
+- **`founding: <condition>`** (read with the founder bound as `program` /
+  `self`) says when a program may found one. With it the story is in
+  **faction mode**: a founded faction and every declared, joinable side
+  are peers in one race, and membership is **one faction at a time** —
+  founding or joining a faction leaves your side (`unaligned`), joining a
+  side (`join`, `defect`, `add`, a yes to a recruit) leaves your faction.
+  A `joinable: false` group (your hosts) never touches a faction.
+- **A founder leaving disbands it**; its members go back to neither. A
+  side's leader can't found or join one; a restricted or captured program
+  can't either, and the same holds for a yes to an invitation (a founder's
+  or a leader's yes is void; founding closes your own open invitations).
+  At most eight live at once (a disbanded one frees its place), one live
+  one per founder. A guest may also walk in from the Factions list
+  (`join`, with `crew`).
+- **Who sees the counts:** each member sees their own faction's head
+  count, the `majority:` line and how many more it needs; never anyone
+  else's. People cards show a faction only to its own members, or on its
+  founder or a side's leader.
+- **The race, read by the story:** `majority_faction()` is the faction
+  over the line now (else null), `faction_of(who)` the faction someone is
+  in, `faction_name(id)` its name, `faction_founder(id)` its founder (a
+  side's leader). With no `founding:` line all four read null. The
+  majority is yours to latch, as before:
+
+```loom
+when Night.final_round == true and Kernel.majority_reached != true and majority_faction() != null:
+  set Kernel.majority_reached = true
+  set Kernel.majority_id = majority_faction()
+  fire settle_majority
+```
+
+Use a direct count for `majority:` (above) rather than a `Night.present`
+kept by another rule, which lags one pass behind a late arrival. Keep a
+faction's name (it is typed by a guest) out of anything an agent-voiced
+character hears. Lint **`L1220 FoundingInvalid`** flags a `founding:` that
+is no expression. With no `founding:` line, crews stay friend clubs.
 
 ## The Wanted board, the reinstallation gate, finished threads
 
@@ -268,6 +322,27 @@ archive: The Uploader when program.cleared == true
 
 Lint **`L1216 HeaderLineInvalid`** flags a `wanted:` / `archive:` /
 `reinstall:` line that doesn't parse or names nothing.
+
+## Badges and a hidden lobby
+
+```loom
+badge: program.afk as 🚻 Bathroom Mode
+badge: Clippy.busy as ⏳ Busy, while Night.step >= 2
+lobby: hidden
+```
+
+- **`badge: <ROLE alias or CHARACTER>.<path> as <glyph> <label>[, while
+  <condition>]`** (repeatable) puts the glyph beside a person's name on
+  every people list — the People sheet, who's here, a booth's guests, the
+  host dock and Run's roster — while the path is true for them (the
+  `while`, if any, read with them bound). Never on a chat bubble: a
+  bubble is a line already said. Every phone sees a badge, so a ROLE
+  `secret:` slot or a `secret: true` CHARACTER is never shown: lint
+  **`L1219 BadgeOnSecret`** refuses it (and a line that doesn't parse or
+  names nobody).
+- **`lobby: hidden`** keeps the lobby (the story's own chat log room) off
+  every guest's phone. Nothing is rerouted: its lines still reach each
+  guest as moments and in Notifications, and booths and Run keep the room.
 
 ## One beat, many participants
 

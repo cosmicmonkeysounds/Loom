@@ -7,6 +7,7 @@ import {
   duplicate,
   guardableDoors,
   guardedBy,
+  isRoomlessView,
   mapLocations,
   onFloor,
   patchProp,
@@ -16,9 +17,11 @@ import {
   setGuard,
   snapTerminalToWall,
   snapYaw,
+  ROOMLESS_TERMINAL_VIEWS,
   TERMINAL_VIEWS,
   WALL_INSET,
 } from "../src/map/props.ts";
+import { ROOMLESS_VIEWS } from "@loom/terminal/setup-map.ts";
 import { SHOW, STAIR, TWO_ROOMS } from "./houses.ts";
 
 const withKing = (): HouseMap => {
@@ -204,7 +207,13 @@ describe("snapTerminalToWall", () => {
 
 describe("the provisioning link's enums", () => {
   it("lists every terminal view, shadow included", () => {
-    expect(TERMINAL_VIEWS).toEqual(["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"]);
+    expect(TERMINAL_VIEWS).toEqual(["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino", "reinstall"]);
+  });
+
+  it("the views that belong to no room match the terminal's, the reinstallation station included", () => {
+    expect([...ROOMLESS_TERMINAL_VIEWS]).toEqual([...ROOMLESS_VIEWS]);
+    expect(isRoomlessView("reinstall")).toBe(true);
+    expect(isRoomlessView("face")).toBe(false);
   });
 
   it("the link names only the spot (the screen and room live on the map)", () => {

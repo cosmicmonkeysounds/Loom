@@ -69,6 +69,7 @@ openers end with `:` and indent their body.
 | `reply "text" with go: The Desktop, go: pass` / `broadcast "…" to everyone with go: quest: The Cold Door as "See it"` | the moment's buttons: a place, room, character, guest button, `codex[: Entry]`, `quests` / `quest: Quest`, or a screen (`pass` `scan` `chats` `mission` `notifications` `sides` `wallet` `me`); never `lobby` (lint `L1214`; quote the text) |
 | `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer` / `sides`); `with moment: major` makes it interrupt, `moment: big` takes the screen |
 | `unlock The Sandy File for guest` | hand out a codex entry |
+| `who.codex` / `who.codex.the_sandy_file` / `who.codex_in.facts` | how many entries they hold / do they hold this one / how many in a `category:` (lower-cased, accents dropped, `_` for anything else: `How it works` → `how_it_works`, and a `_` before a leading digit: `1999 Files` → `_1999_files`; uncategorised ones count nowhere; **unset, not 0, until the first entry**, so for "none" write `< 1`, never `== 0` (`>= 1` and adding to it are fine); a guest's only, and never shown to an agent-voiced character) |
 | `start quest X for who` / `update` / `complete` / `fail` (+ `"line"`) | the quest log — `who` may be a character |
 | `restrict guest to The Tube, The Internet` / `unrestrict guest` | shrink a guest's app to DMs + those places, no buttons — and lift it |
 | `pin "!🚨 text" [in room] [for who]` / `unpin [in room] [for who] ["text"]` | a sticky notice above a stream (`!` = alert) — and take it down |
@@ -85,6 +86,7 @@ openers end with `:` and indent their body.
 | `visits("The Beat")` `played(b)` `since(e)` `count(C)` | ask the ledger |
 | `[x for x in C where cond]` | list comprehension |
 | `sum([p.score for p in Persons])` `max(list)` `len(list)` | add up / top / count a list |
+| `names([p for p in Persons where p.slow == true])` | their names for speech: "A, B and C" ("" for nobody) |
 | `30s` `2m` `1h` | durations |
 
 **Variety**
@@ -129,7 +131,7 @@ openers end with `:` and indent their body.
 | `PERSON` / `ROSTER` / `cast p as Role` | real people, the night's plan, binding |
 | `GROUP` (`hidden: true`) / `LOCATION` (`hidden: true`, `cutscene: true`) / `COHORT` | a side / a place (and a room; hidden until visited or revealed; on rails) / a grouping |
 | `move who to Place` | put a participant somewhere |
-| `add who to Group` / `remove who from Group` / `reveal X [for who]` | membership / open a hidden group, place, room or character |
+| `add who to Group` / `remove who from Group` / `reveal X [for who] [quietly]` | membership / open a hidden group, place, room or character (`quietly`: no notice) |
 | `broadcast cue to scope` (+ indented lines) | send a cue to a subset |
 | `broadcast "!📣 text" to everyone` / `broadcast "~✅ text" to everyone` | an alert (a major moment on every phone) / a per-person notice (folds with its neighbours) |
 | `participant(X)` `group(G)` `location(L)` , `and` / `but` | broadcast scopes |
@@ -151,6 +153,9 @@ openers end with `:` and indent their body.
 | `reinstall: <cond>` (header) | who may enter the reinstallation games, read per guest |
 | `archive: The Uploader when program.cleared == true` (header, repeatable) | moves a guest's finished thread under *Other rooms* |
 | `majority: Night.present / 2 + 1` (header) | what a side needs, shown on the Sides screen's doors (lint `L1216` for a bad `wanted:` / `reinstall:` / `archive:`) |
+| `founding: <condition>` (header) | faction mode: programs found factions that race like the sides, one faction at a time; `majority_faction()` / `faction_of(who)` / `faction_name(id)` / `faction_founder(id)` read the race (lint `L1220`) |
+| `badge: program.afk as 🚻 Bathroom Mode[, while …]` (header) | a glyph beside their name on every people list while it is true (never a secret: lint `L1219`) |
+| `lobby: hidden` (header) | guests never list the lobby (its lines still reach them as moments / Notifications) |
 | `watch: Night.round as Round, program.cleared, Ivo Marsh, while <cond>` (header, first file) | what the Director page's glance column keeps in view ([run mode](run-mode.md)) |
 | `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone; end it `, for guests` and the guests' app shows it too |
 | `reserved: true` (a guest's program CHARACTER) | held for an invitee: 🔒 to everyone without its claim link ([live shows](live-shows.md)) |

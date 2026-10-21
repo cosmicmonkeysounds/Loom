@@ -74,6 +74,8 @@ ROLE Program
     if program.v == "pending":
       set program.v = program.j
       do fact_judged {program} {program.q} {program.v}
+  when deal_again for program:
+    -> Deal
 
 CHARACTER The Oracle
   listed: true
@@ -231,7 +233,7 @@ describe("the judge: header (model + lint L1206)", () => {
 });
 
 describe("AgentHub rulings", () => {
-  const body = { character: "The Oracle", filing: { id: "g1:Q2", person: "g1", name: "Ada", question: "Q2" }, question: { id: "Q2", text: "Who?" }, key: { answer: "Mister Pickles", aliases: ["tabby"] }, answer: "Mr Pickels", confidence: 100 };
+  const body = { character: "The Oracle", filing: { id: "g1:Q2", person: "g1", name: "Ada", question: "Q2" }, question: { id: "Q2", text: "Who?" }, key: { answer: "Mister Pickles", aliases: ["tabby"] }, answer: "Mr Pickels", confidence: 100, near: "Mister Pickles" };
   const hub = (now: { t: number }, gone: string[] = []) => new AgentHub({ build: () => null, now: () => now.t, judgeGone: (r, why) => gone.push(`${r.id}:${why}`) });
   const workerOf = (id: string, sent: Array<[string, unknown]>, characters = ["The Oracle"]): AgentWorker => ({ id, name: id, characters: new Set(characters), send: (e, d) => sent.push([e, d]) });
   it("asks only an online worker voicing the judge, apart from the DM queue; a ruling is never queued", () => {
@@ -246,14 +248,15 @@ describe("AgentHub rulings", () => {
     expect(id).toMatch(/^jr-/u);
     expect(sent.map(([e]) => e)).toEqual(["judge"]);
     expect(sent[0]![1]).toMatchObject({ ...body, id });
-    expect(h.queue("The Oracle")).toEqual({ depth: 0, oldestMs: null, stalled: false });
+    // Wave 18b: a ruling out shows on the queue's own `judging`, never in `depth`.
+    expect(h.queue("The Oracle")).toEqual({ depth: 0, oldestMs: null, stalled: false, judging: { queued: 0, out: 1, oldestMs: 0, stalled: false } });
     expect(h.pending).toEqual([]);
     expect(h.judging.map((j) => j.id)).toEqual([id]);
     expect(h.judgeSettle(id, "w1")).toBeNull(); // another worker's answer
     expect(h.judgeSettle(id, "w2")?.id).toBe(id);
     expect(h.judgeSettle(id, "w2")).toBeNull(); // answered already
   });
-  it("expires after 60 s (a pause excluded), cancelling it on the worker; a leaving worker and a restart drop theirs", () => {
+  it("expires after 60 s (a pause excluded), cancelling it on the worker; a leaving worker's goes back in the queue; a restart drops theirs", () => {
     const now = { t: 0 };
     const gone: string[] = [];
     const h = hub(now, gone);
@@ -272,12 +275,18 @@ describe("AgentHub rulings", () => {
     expect(gone).toEqual([`${a}:expired`]);
     const b = h.judge(body)!;
     h.detach("w");
-    expect(gone.at(-1)).toBe(`${b}:offline`);
+    // Wave 18b: a blip never loses a ruling — it waits in its place.
+    expect(gone.at(-1)).toBe(`${a}:expired`);
+    expect(h.judging.map((j) => j.id)).toEqual([b]);
+    expect(h.judgeQueued(b)).toBe(true);
     h.attach(workerOf("w3", sent));
-    const c = h.judge(body)!;
+    expect(sent.at(-1)).toEqual(["judge", expect.objectContaining({ id: b })]);
+    expect(h.judgeSettle(b, "w")).toBeNull(); // the old connection's late answer
+    const c = h.judge(body)!; // queued behind b
     h.reset();
     expect(h.judging).toEqual([]);
-    expect(sent.filter(([e, d]) => e === "cancel" && (d as { id: string }).id === c)).toHaveLength(1);
+    expect(sent.filter(([e, d]) => e === "cancel" && (d as { id: string }).id === b)).toHaveLength(1);
+    expect(sent.filter(([e, d]) => e === "cancel" && (d as { id: string }).id === c)).toHaveLength(0); // never sent
     const d = h.judge(body)!;
     expect(h.cancelJudge(d)).toBe(true);
     expect(h.cancelJudge(d)).toBe(false);
@@ -362,8 +371,11 @@ describe("the event — the judge character rules on near misses", () => {
     const ben = await guest(rt, "Ben");
     await file(rt, ada, "Q2", "Mr Pickels", 100);
     await file(rt, ben, "Q1", "1,997", 60);
-    const [a, b] = w.judges();
+    // Wave 18b: one frame out per worker — Ben's waits in the judge queue.
+    const [a] = w.judges();
+    expect(w.judges()).toHaveLength(1);
     expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: false, why: "x".repeat(300) })).json).toEqual({ ok: true, verdict: "lie" });
+    const b = w.judges()[1];
     expect((await mod(rt, "/api/agent/judge", { id: b!.id, worker: w.id, same: false, why: "A different year." })).json).toEqual({ ok: true, verdict: "uncertain" });
     const v = await facts(rt);
     expect(filingOf(v, "Q2", "Ada")).toMatchObject({ final: "lie", how: "overridden", ruling: { same: false } });
@@ -380,9 +392,10 @@ describe("the event — the judge character rules on near misses", () => {
     const ben = await guest(rt, "Ben");
     await file(rt, ada, "Q2", "Mr Pickels", 100);
     await file(rt, ben, "Q2", "Mrs Pickles", 100);
-    const [a, b] = w.judges();
+    const [a] = w.judges();
     expect((await mod(rt, "/api/mod/signal", { name: "fact_lie", subject: ada.id, args: { question: "Q2" } })).status).toBe(200);
     expect(w.frames("cancel")).toEqual([{ id: a!.id }]);
+    const b = w.judges()[1]; // Ben's goes out once Ada's is cancelled
     expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: true, why: "late" })).status).toBe(410);
     expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: "lie", how: "overridden", by: "Ada" });
     expect(filingOf(await facts(rt), "Q2", "Ada").ruling).toBeUndefined();
@@ -486,5 +499,249 @@ describe("the event — the judge character rules on near misses", () => {
     const w2 = await worker(again);
     expect(w2.judges().map((j) => j.filing.person)).toEqual([ben.id]);
     again.dispose();
+  });
+});
+
+// ───────────────────────── wave 18b (O4): every non-exact filing ─────────────────────────
+
+describe("the judge queue (wave 18b, O4)", () => {
+  const ruling = (person: string, answer: string, near: string | null = null) => ({
+    character: "The Oracle",
+    filing: { id: `${person}:Q1`, person, name: person, question: "Q1" },
+    question: { id: "Q1", text: "How many years?" },
+    key: { answer: "1997", aliases: [] },
+    answer,
+    confidence: 100,
+    near,
+  });
+  function rig() {
+    const now = { t: 0 };
+    const gone: string[] = [];
+    const stalls: string[] = [];
+    const h = new AgentHub({
+      build: (thread, id) => ({ id, character: thread.character, thread, text: "…", at: now.t }) as never,
+      now: () => now.t,
+      judgeGone: (r, why) => gone.push(`${r.answer}:${why}`),
+      judgeStalled: (w) => stalls.push(w.name),
+    });
+    const sent: Array<[string, unknown]> = [];
+    const w: AgentWorker = { id: "w1", name: "laptop", characters: new Set(["The Oracle"]), send: (e, d) => sent.push([e, d]) };
+    const judges = () => sent.filter(([e]) => e === "judge").map(([, d]) => (d as AgentJudgeRequest).answer);
+    return { now, gone, stalls, h, w, sent, judges };
+  }
+
+  it("one frame out per worker, the rest queued in filing order (FIFO)", () => {
+    const r = rig();
+    r.h.attach(r.w);
+    const ids = ["1990", "1991", "1992"].map((a, i) => r.h.judge(ruling(`g${i}`, a))!);
+    expect(r.judges()).toEqual(["1990"]);
+    expect(r.h.judgeQueued(ids[0]!)).toBe(false);
+    expect(r.h.judgeQueued(ids[1]!)).toBe(true);
+    expect(r.h.queue("The Oracle").judging).toEqual({ queued: 2, out: 1, oldestMs: 0, stalled: false });
+    expect(r.h.judgeSettle(ids[1]!, "w1")).toBeNull(); // still queued: no answer to take
+    expect(r.h.judgeSettle(ids[0]!, "w1")?.answer).toBe("1990");
+    expect(r.judges()).toEqual(["1990", "1991"]);
+    expect(r.h.cancelJudge(ids[2]!)).toBe(true); // a queued one: dropped, no cancel frame
+    expect(r.sent.filter(([e]) => e === "cancel")).toEqual([]);
+    expect(r.gone).toEqual(["1992:cancelled"]);
+    expect(r.h.judgeSettle(ids[1]!, "w1")?.answer).toBe("1991");
+    expect(r.h.queue("The Oracle").judging).toBeUndefined();
+  });
+
+  it("voice first: no frame while the worker holds an open voice request; it goes out on the reply", () => {
+    const r = rig();
+    r.h.attach(r.w);
+    r.h.line({ character: "The Oracle", channel: "dm:The Oracle", audience: ["g9"] });
+    const voice = r.sent.find(([e]) => e === "request")![1] as { id: string };
+    const id = r.h.judge(ruling("g1", "1990"))!;
+    expect(id).toMatch(/^jr-/u);
+    expect(r.judges()).toEqual([]);
+    expect(r.h.queue("The Oracle")).toMatchObject({ depth: 1, judging: { queued: 1, out: 0 } });
+    r.h.settle(voice.id, "w1");
+    expect(r.judges()).toEqual(["1990"]);
+  });
+
+  it("the expiry counts from dispatch, never while queued; two in a row are a judge stall, cleared by any answer", () => {
+    const r = rig();
+    r.h.attach(r.w);
+    r.h.judge(ruling("g1", "1990"));
+    r.now.t = 50_000;
+    r.h.judge(ruling("g2", "1991")); // queued at 50 s
+    r.now.t = AGENT_JUDGE_TIMEOUT_MS + 1;
+    r.h.sweep();
+    expect(r.gone).toEqual(["1990:expired"]);
+    expect(r.judges()).toEqual(["1990", "1991"]); // sent now: its own 60 s from here
+    r.now.t += AGENT_JUDGE_TIMEOUT_MS - 1;
+    r.h.sweep();
+    expect(r.gone).toEqual(["1990:expired"]);
+    r.now.t += 2;
+    r.h.sweep();
+    expect(r.gone).toEqual(["1990:expired", "1991:expired"]);
+    expect(r.stalls).toEqual(["laptop"]);
+    expect(r.h.canJudge("The Oracle")).toBe(false);
+    expect(r.h.judge(ruling("g3", "1992"))).toBeNull(); // nobody to rule: the caller falls back
+    expect(r.h.queue("The Oracle").judging).toEqual({ queued: 0, out: 0, oldestMs: null, stalled: true });
+    // A late answer to the expired one still shows it is answering.
+    expect(r.h.judgeSettle("jr-gone", "w1")).toBeNull();
+    expect(r.h.canJudge("The Oracle")).toBe(true);
+    expect(r.stalls).toEqual(["laptop"]); // once
+  });
+
+  it("an answer without its worker's id still ends the expiry count: no false judge stall", () => {
+    const r = rig();
+    r.h.attach(r.w);
+    r.h.judge(ruling("g0", "1990"));
+    r.now.t += AGENT_JUDGE_TIMEOUT_MS + 1;
+    r.h.sweep(); // one expiry
+    const b = r.h.judge(ruling("g1", "1991"))!;
+    expect(r.h.judgeSettle(b)?.id).toBe(b); // answered, no `worker` field
+    r.h.judge(ruling("g2", "1992"));
+    r.now.t += AGENT_JUDGE_TIMEOUT_MS + 1;
+    r.h.sweep(); // one expiry again, not two in a row
+    expect(r.stalls).toEqual([]);
+    expect(r.h.queue("The Oracle").judging?.stalled ?? false).toBe(false);
+  });
+
+  it("a judge frame never counts toward the worker's voice stall", () => {
+    const r = rig();
+    r.h.attach(r.w);
+    r.h.judge(ruling("g1", "1990"));
+    r.now.t = 59_000;
+    r.h.sweep();
+    expect(r.h.queue("The Oracle").stalled).toBe(false);
+  });
+});
+
+describe("the event — every non-exact filing goes to the judge (wave 18b, O4)", () => {
+  it("a plain miss with a worker online is held pending, asked with near: null; same → accurate, not → lie (at 80 → uncertain)", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const [ada, ben, cy] = await Promise.all(["Ada", "Ben", "Cy"].map((n) => guest(rt, n)));
+    await file(rt, ada!, "Q2", "the cat from next door", 100);
+    expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: null, verdict: "lie", asking: true });
+    expect(hostsLines(rt).at(-1)).toMatch(/^📝 Not an exact match: Ada's Q2 filing "the cat from next door" is proposed lie — asked The Oracle to rule\./u);
+    const [a] = w.judges();
+    expect(a).toMatchObject({ answer: "the cat from next door", near: null, key: { answer: "Mister Pickles" } });
+    await file(rt, ben!, "Q2", "a paraphrase of the key", 100);
+    await file(rt, cy!, "Q1", "nineteen ninety-six", 80);
+    const v1 = await facts(rt);
+    expect(filingOf(v1, "Q2", "Ben")).toMatchObject({ asking: true, queued: true });
+    expect((await modView(rt)).cast.find((c) => c.id === "The Oracle")!.agentQueue!.judging).toMatchObject({ queued: 2, out: 1, stalled: false });
+    expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: false, why: "" })).json).toEqual({ ok: true, verdict: "lie" });
+    const b = w.judges()[1]!;
+    expect(b.answer).toBe("a paraphrase of the key");
+    expect((await mod(rt, "/api/agent/judge", { id: b.id, worker: w.id, same: true, why: "" })).json).toEqual({ ok: true, verdict: "accurate" });
+    const c = w.judges()[2]!;
+    expect((await mod(rt, "/api/agent/judge", { id: c.id, worker: w.id, same: false, why: "" })).json).toEqual({ ok: true, verdict: "uncertain" });
+    const v = await facts(rt);
+    expect(filingOf(v, "Q2", "Ada")).toMatchObject({ final: "lie", ruling: { same: false } });
+    expect(filingOf(v, "Q2", "Ben")).toMatchObject({ final: "accurate", ruling: { same: true } });
+    expect(filingOf(v, "Q1", "Cy")).toMatchObject({ final: "uncertain" });
+    w.close();
+    rt.dispose();
+  });
+
+  it("an exact match is never asked; with nobody online a plain miss is judged at once; review mode asks nothing", async () => {
+    const { rt } = fresh();
+    const [ada, ben, cy] = await Promise.all(["Ada", "Ben", "Cy"].map((n) => guest(rt, n)));
+    await file(rt, ada!, "Q2", "the cat from next door", 100); // nobody online
+    expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: "lie", how: "auto" });
+    const w = await worker(rt);
+    await file(rt, ben!, "Q2", "Mister Pickles", 100); // exact
+    expect(w.judges()).toEqual([]);
+    expect(filingOf(await facts(rt), "Q2", "Ben")).toMatchObject({ final: "accurate" });
+    rt.liveSim!.setVar("Night.judge_mode", "review");
+    await file(rt, cy!, "Q2", "the cat from next door", 100);
+    expect(w.judges()).toEqual([]);
+    expect(filingOf(await facts(rt), "Q2", "Cy")).toMatchObject({ final: null });
+    w.close();
+    rt.dispose();
+  });
+
+  it("the round's settle and a director's verdict drop a queued ruling; the proposal stands", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const [ada, ben, cy] = await Promise.all(["Ada", "Ben", "Cy"].map((n) => guest(rt, n)));
+    await file(rt, ada!, "Q2", "the dog", 100); // out
+    await file(rt, ben!, "Q2", "the hamster", 70); // queued
+    await file(rt, cy!, "Q2", "the goldfish", 100); // queued
+    expect(w.judges()).toHaveLength(1);
+    // A director judges Ben's first: his queued ruling is dropped.
+    expect((await mod(rt, "/api/mod/signal", { name: "fact_accurate", subject: ben!.id, args: { question: "Q2" } })).status).toBe(200);
+    expect(filingOf(await facts(rt), "Q2", "Ben")).toMatchObject({ final: "accurate" });
+    // The round settles Cy's while still queued: the proposal (a lie) stands.
+    expect((await mod(rt, "/api/mod/signal", { name: "settle", subject: cy!.id })).status).toBe(200);
+    expect(filingOf(await facts(rt), "Q2", "Cy")).toMatchObject({ final: "lie" });
+    expect(filingOf(await facts(rt), "Q2", "Cy").asking).toBeUndefined();
+    // Ada's, out, then answered: nothing else was ever sent.
+    const [a] = w.judges();
+    expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: false, why: "" })).status).toBe(200);
+    expect(w.judges()).toHaveLength(1);
+    w.close();
+    rt.dispose();
+  });
+
+  it("a worker's blip puts its ruling back in the queue; the reconnect is asked it", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const ada = await guest(rt, "Ada");
+    await file(rt, ada, "Q2", "the dog", 80);
+    const [a] = w.judges();
+    w.close(); // the laptop's Wi-Fi drops
+    expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: null, asking: true, queued: true });
+    const w2 = await worker(rt);
+    expect(w2.judges().map((j) => j.id)).toEqual([a!.id]);
+    expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: true, why: "" })).status).toBe(410);
+    expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w2.id, same: true, why: "" })).json).toEqual({ ok: true, verdict: "accurate" });
+    w2.close();
+    rt.dispose();
+  });
+
+  it("the same answer filed again after its ruling was cancelled is asked again, and the # hosts line says so only when it was", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const ada = await guest(rt, "Ada");
+    await file(rt, ada, "Q2", "the dog", 80);
+    expect((await mod(rt, "/api/mod/signal", { name: "fact_uncertain", subject: ada.id, args: { question: "Q2" } })).status).toBe(200);
+    expect((await mod(rt, "/api/mod/signal", { name: "deal_again", subject: ada.id })).status).toBe(200);
+    const card = rt.chatHistoryFor(ada.id).filter((m) => m.kind === "widget" && m.widget?.kind === "fact").at(-1)!;
+    expect((await call(rt, "POST", "/api/guest/widget", { token: ada.token, seq: card.seq, result: { question: "Q2", answer: "the dog", confidence: 80 } })).status).toBe(200);
+    expect(w.judges().map((j) => j.answer)).toEqual(["the dog", "the dog"]);
+    expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: null, asking: true });
+    expect(hostsLines(rt).filter((l) => l.startsWith("📝 Not an exact match"))).toHaveLength(2);
+    expect(hostsLines(rt).at(-1)).toMatch(/asked The Oracle to rule/u);
+    w.close();
+    rt.dispose();
+  });
+
+  it("two expiries in a row: one # hosts line, the queue waits; a restore re-asks a pending plain miss", async () => {
+    let t = 10_000_000;
+    const d = mkdtempSync(join(tmpdir(), "loom-facts-judge-"));
+    dirs.push(d);
+    const rt = runtimeIn(d, SOURCE, () => t);
+    rt.openDoors();
+    const w = await worker(rt);
+    const [ada, ben, cy] = await Promise.all(["Ada", "Ben", "Cy"].map((n) => guest(rt, n)));
+    await file(rt, ada!, "Q2", "the dog", 100);
+    await file(rt, ben!, "Q2", "the hamster", 100);
+    await file(rt, cy!, "Q2", "the goldfish", 100);
+    const sweep = () => (rt as unknown as { agents: AgentHub }).agents.sweep();
+    t += AGENT_JUDGE_TIMEOUT_MS + 1;
+    sweep();
+    t += AGENT_JUDGE_TIMEOUT_MS + 1;
+    sweep();
+    expect(hostsLines(rt).filter((l) => l.startsWith("⚖ "))).toEqual(["⚖ The Oracle isn't ruling: filings fall back to the house rule."]);
+    expect(w.judges()).toHaveLength(2); // Cy's waits
+    expect(filingOf(await facts(rt), "Q2", "Cy")).toMatchObject({ final: null, asking: true, queued: true });
+    w.close();
+    rt.dispose();
+    // A restart: the pending plain misses are due a ruling and asked again.
+    const back = runtimeIn(d, SOURCE, () => t);
+    back.restore();
+    const w2 = await worker(back);
+    expect(w2.judges().map((j) => j.answer)).toEqual(["the dog"]);
+    expect(w2.judges()[0]!.near).toBeNull();
+    w2.close();
+    back.dispose();
   });
 });

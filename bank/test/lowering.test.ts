@@ -455,3 +455,22 @@ Hi.
     expect(plain.diagnostics.map((x) => x.code)).not.toContain("generatorWhileIgnored");
   });
 });
+
+describe("wave 18b live-event headers", () => {
+  it("are diagnosed together, not silently dropped", () => {
+    const bank = bankOf(`founding: Night.open == true
+badge: program.afk as 🚻 Bathroom Mode
+lobby: hidden
+
+CHARACTER Trabolta
+  avatar: picture:trabolta.svg | picture:trabolta-broken.svg when self.broken == true
+
+== a
+Hi.
+`);
+    const d = bank.diagnostics.filter((x) => x.code === "liveHeadersIgnored");
+    expect(d.map((x) => x.severity)).toEqual(["warning"]);
+    expect(d[0]!.message).toContain("`founding:`, `badge:`, `lobby: hidden`, `avatar: … when …` are live-event only");
+    expect(bankOf("== a\nHi.\n").diagnostics.map((x) => x.code)).not.toContain("liveHeadersIgnored");
+  });
+});

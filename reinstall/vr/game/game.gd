@@ -457,9 +457,13 @@ func _on_session_over(reason: String) -> void:
 
 
 ## The lobby's line for a session that ended under the player
-## ([signal LinkBase.session_over]'s reason): "" says nothing.
+## ([signal LinkBase.session_over]'s reason): "" says nothing. `unmarked`
+## (wave 18b, R16): the program is no longer marked for reinstallation (a
+## director released it mid-walk), so the walk is over before a find.
 static func session_over_text(reason: String) -> String:
 	match reason:
+		"unmarked":
+			return "No longer marked for reinstallation — the simulation ended."
 		"over", "ended", "found":
 			return "Session ended."
 		"reset":

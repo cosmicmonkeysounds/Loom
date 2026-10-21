@@ -169,7 +169,9 @@ function joinBase(): string {
 const wiki = process.env.LOOM_WIKI === "off" ? null : new WikiClient();
 // Profile pictures, kept on disk once fetched: the cast's hand-picked
 // pictures download when a story loads and survive restarts + outages.
-const images = new ImageCache({ dir: join(STATE_DIR, "pictures") });
+// Wave 18b: the pictures the play app ships (`avatar: picture:<file>`,
+// Trabolta's two faces) are served straight from its dist's `pictures/`.
+const images = new ImageCache({ dir: join(STATE_DIR, "pictures"), pictures: fileURLToPath(new URL("pictures/", APP_DIST)) });
 
 // The webmaster outbox at `/webmaster/` — only with a password + a Resend key.
 const webmaster =

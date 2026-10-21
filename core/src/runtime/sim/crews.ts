@@ -89,7 +89,9 @@ export type CrewOp =
   | { op: "recruitAnswer"; id: string; yes: boolean }
   | { op: "leaveSide"; person: string }
   | { op: "renameCrew"; crew: string; name: string }
-  | { op: "dissolveCrew"; crew: string };
+  | { op: "dissolveCrew"; crew: string }
+  /** Wave 18b: a walk-in join from the Factions list (no invitation). */
+  | { op: "joinCrew"; person: string; crew: string };
 
 export const CREW_OPS: readonly CrewOp["op"][] = [
   "foundCrew",
@@ -101,6 +103,7 @@ export const CREW_OPS: readonly CrewOp["op"][] = [
   "leaveSide",
   "renameCrew",
   "dissolveCrew",
+  "joinCrew",
 ];
 
 /** What one applied op changed that the chat should say (the server turns
@@ -138,19 +141,38 @@ export interface InviteView {
   targetName: string;
 }
 
-/** One declared, joinable, revealed side (the Sides screen). */
+/** What a race faction is (wave 18b): a declared side, or a crew a
+ *  program founded tonight. */
+export type FactionKind = "side" | "founded";
+
+/** One declared, joinable, revealed side (the Sides screen) — and, in
+ *  **faction mode** (wave 18b, header `founding:`), every live founded
+ *  faction too. */
 export interface SideView {
   id: string;
   name: string;
-  /** The leader's display name (the world's `<Side>.leader`), else null. */
+  /** The leader's display name (the world's `<Side>.leader`; a founded
+   *  faction's founder), else null. */
   leader: string | null;
   /** Members present tonight (a gone guest and a Run persona never count,
-   *  as the majority doesn't). */
-  members: number;
-  /** The header `majority:` threshold, when the story declares one. */
+   *  as the majority doesn't). Every row outside faction mode; in faction
+   *  mode **only on the viewer's own row** (`mine`): nobody counts a rival. */
+  members?: number;
+  /** The header `majority:` threshold, when the story declares one (in
+   *  faction mode only on the viewer's own row). */
   needs?: number;
+  /** Faction mode, the viewer's own row, with a threshold: how many more
+   *  present members it needs to win (`max(0, needs − members)`). */
+  more?: number;
   /** The viewer is on this side. */
   mine: boolean;
+  /** Faction mode only: a declared side or a founded faction. */
+  kind?: FactionKind;
+  /** Faction mode only: a declared side's `ethos:`, when it has one. */
+  ethos?: string;
+  /** Faction mode only: who founded it (a founded faction's founder, a
+   *  side's leader), by display name, when there is one. */
+  founder?: string;
 }
 
 /** The C10 fields of a `GuestView`. */
@@ -158,6 +180,37 @@ export interface CrewGuestFields {
   crew: CrewView | null;
   invites: InviteView[];
   sides: SideView[];
+  /** Faction mode only (wave 18b): may this guest found a faction now
+   *  (`mayFound`)? A boolean, never the reason. */
+  canFound?: boolean;
+}
+
+/** One race faction as a director sees it (`ModView.race`). */
+export interface RaceFaction {
+  id: string;
+  name: string;
+  kind: FactionKind;
+  /** The founder's (a side's leader's) display name, else null. */
+  founder: string | null;
+  /** Its members present tonight. */
+  present: number;
+}
+
+/**
+ * The race as a director sees it (`ModView.race`, wave 18b, faction mode):
+ * the threshold, the programs present, every race faction's head count and
+ * `winner` — the faction over the line **now**. That is not the story's
+ * latch: founding opens at the Truther Download, so a faction can be over
+ * the line before the story starts counting (the show counts only in the
+ * Y2K hour), and the story decides when it wins.
+ */
+export interface RaceView {
+  /** The header `majority:` value now, or null when there is none. */
+  needs: number | null;
+  /** Programs present (not gone, not a Run persona). */
+  present: number;
+  winner: string | null;
+  factions: RaceFaction[];
 }
 
 /** One crew as a director sees it (`ModView.crews`). */
@@ -198,6 +251,9 @@ function sideOpen(sim: Sim, id: string): boolean {
 export interface CrewSimHooks {
   /** Take `person` off `group` (the primary moves to the next membership). */
   removeFromGroup(person: string, group: string): void;
+  /** Run pending hooks and watchers to a fixpoint (faction mode: a leave or
+   *  a disband raises no signal, but it can move a majority). */
+  drain(): void;
 }
 
 /**
@@ -212,6 +268,8 @@ export class Crews {
   private notices: CrewNotice[] = [];
   /** The header `majority: <expr>` (the side's threshold), or null. */
   majority: string | null = null;
+  /** The header `founding: <cond>` (wave 18b), or null: set = faction mode. */
+  founding: string | null = null;
 
   private readonly sim: Sim;
   private readonly hooks: CrewSimHooks;
@@ -228,6 +286,7 @@ export class Crews {
     for (const h of headers) {
       for (const line of h.lines ?? []) {
         if (line.key === "majority" && line.value.trim() !== "" && this.majority === null) this.majority = line.value.trim();
+        if (line.key === "founding" && line.value.trim() !== "" && this.founding === null) this.founding = line.value.trim();
       }
     }
   }
@@ -354,6 +413,147 @@ export class Crews {
     );
   }
 
+  // -- faction mode (wave 18b) ---------------------------------------------
+
+  /** The header has a `founding:` line: crews are factions in the race,
+   *  one faction at a time. */
+  get factionMode(): boolean {
+    return this.founding !== null;
+  }
+
+  /** Is `id` a declared joinable group (a side that races in faction mode,
+   *  revealed or not)? A `joinable: false` caste (`Hosts`) never is. */
+  private isRaceSide(id: string): boolean {
+    return this.sim.model.factions.get(id)?.joinable === true;
+  }
+
+  /** Is `id` a race faction: a live crew, or a declared joinable group? */
+  isRaceFaction(id: string): boolean {
+    return this.byId.has(id) || this.isRaceSide(id);
+  }
+
+  /** Every faction in the race now: the open sides (declared, joinable,
+   *  revealed) in declaration order, then the live crews in founding order.
+   *  Empty outside faction mode. */
+  raceFactions(): string[] {
+    if (!this.factionMode) return [];
+    const sides = [...this.sim.model.factions.keys()].filter((id) => sideOpen(this.sim, id));
+    return [...sides, ...this.byId.keys()];
+  }
+
+  /** Does `person` count tonight: a real guest, not gone, not a Run persona? */
+  private isPresent(person: string): boolean {
+    return this.sim.persons.has(person) && !truthy(this.sim.world.get(`${person}.gone`)) && !truthy(this.sim.world.get(`${person}.persona`));
+  }
+
+  /** Programs present tonight (not gone, not a Run persona). */
+  presentTotal(): number {
+    let n = 0;
+    for (const id of this.sim.persons.keys()) if (this.isPresent(id)) n += 1;
+    return n;
+  }
+
+  /** A race faction's present members (a side's or a crew's); 0 for
+   *  anything else. */
+  presentCount(id: string): number {
+    const c = this.byId.get(id);
+    if (c !== undefined) return c.members.filter((m) => this.isPresent(m)).length;
+    return this.isRaceSide(id) ? this.presentMembers(id).length : 0;
+  }
+
+  /** The race faction over the `majority:` line now, else null (null
+   *  outside faction mode or with no threshold). Membership is exclusive
+   *  in faction mode, so at most one can be over a line above half. */
+  winner(): string | null {
+    if (!this.factionMode) return null;
+    const needs = this.needs();
+    if (needs === null || needs <= 0) return null;
+    for (const id of this.raceFactions()) if (this.presentCount(id) >= needs) return id;
+    return null;
+  }
+
+  /** The race side `person` is in (a declared joinable group they belong
+   *  to, primary or not), revealed or not; else null. */
+  private raceSideOf(person: string): string | null {
+    const primary = this.sim.factionOf(person);
+    if (primary !== null && this.isRaceSide(primary)) return primary;
+    for (const g of this.sim.groupsOf(person)) if (this.isRaceSide(g)) return g;
+    return null;
+  }
+
+  /** The race faction `person` is in: their crew, else their open side,
+   *  else null. */
+  factionOf(person: string): string | null {
+    const crew = this.crewOf(person);
+    if (crew !== null) return crew.id;
+    const side = this.raceSideOf(person);
+    return side !== null && sideOpen(this.sim, side) ? side : null;
+  }
+
+  /** A race faction's name (a crew's, a side's id), else null. */
+  displayName(id: string): string | null {
+    const c = this.byId.get(id);
+    if (c !== undefined) return c.name;
+    return this.sim.model.factions.has(id) ? id : null;
+  }
+
+  /** A race faction's founder as a person id (a crew's founder, a side's
+   *  `<Side>.leader` when it names a person), else null. */
+  founderOf(id: string): string | null {
+    const c = this.byId.get(id);
+    if (c !== undefined) return c.founder;
+    if (!this.sim.model.factions.has(id)) return null;
+    const v = this.sim.world.peek(`${id}.leader`);
+    if (v === null || v.kind !== "string" || v.value.trim() === "") return null;
+    if (this.sim.persons.has(v.value)) return v.value;
+    const want = foldName(v.value);
+    for (const p of this.sim.persons.values()) if (foldName(p.name) === want) return p.id;
+    return null;
+  }
+
+  /** May `person` found a faction now? Faction mode, the `founding:`
+   *  condition holds for them (`program` / `self` bound), not restricted or
+   *  captured, no live crew of their own, under `MAX_CREWS`, and not a
+   *  side's leader. */
+  mayFound(person: string): boolean {
+    if (this.founding === null || !this.sim.persons.has(person)) return false;
+    if (this.sim.isRestricted(person) || this.sim.isCaptured(person)) return false;
+    if (this.foundedBy(person) !== null || this.byId.size >= MAX_CREWS || this.ledSide(person) !== null) return false;
+    return this.sim.holds(this.founding, person);
+  }
+
+  /** The sim moves `person` onto `group` (`setFaction` / `addToGroup`
+   *  call this first). In faction mode, when `group` is a race side, they
+   *  leave their crew (a founder's disbands) and every other race side. A
+   *  non-race group (`Hosts`, a `joinable: false` caste) never touches a
+   *  crew. Raises no signal: the side's own `joined` / `defected` says it. */
+  onSide(person: string, group: string): void {
+    if (!this.factionMode || !this.isRaceSide(group)) return;
+    const crew = this.crewOf(person);
+    if (crew !== null) this.leave(crew, person);
+    for (const g of this.sim.groupsOf(person)) if (g !== group && this.isRaceSide(g)) this.hooks.removeFromGroup(person, g);
+  }
+
+  /** `ModView.race`, or null outside faction mode. */
+  raceView(): RaceView | null {
+    if (!this.factionMode) return null;
+    return {
+      needs: this.needs(),
+      present: this.presentTotal(),
+      winner: this.winner(),
+      factions: this.raceFactions().map((id) => {
+        const founder = this.founderOf(id);
+        return {
+          id,
+          name: this.displayName(id) ?? id,
+          kind: this.byId.has(id) ? ("founded" as const) : ("side" as const),
+          founder: founder !== null ? this.name(founder) : this.byId.has(id) ? null : this.leaderOf(id),
+          present: this.presentCount(id),
+        };
+      }),
+    };
+  }
+
   // -- the crew room -------------------------------------------------------
 
   /** May `person` see (and post in) a crew room? Members only. */
@@ -400,6 +600,7 @@ export class Crews {
 
   /** The `GuestView` fields for `person`. */
   guestFields(person: string): CrewGuestFields {
+    if (this.factionMode) return this.factionFields(person);
     const crew = this.crewOf(person);
     const needs = this.needs();
     const mine = this.sim.factionOf(person);
@@ -413,7 +614,46 @@ export class Crews {
         ...(needs !== null ? { needs } : {}),
         mine: mine === f.id,
       }));
-    const invites: InviteView[] = this.openInvitesTo(person).map((i) => ({
+    const invites = this.inviteViews(person);
+    return { crew: crew === null ? null : this.crewView(crew), invites, sides };
+  }
+
+  /** Faction mode's `GuestView` fields: one list, the open sides then the
+   *  founded factions; the head count, threshold and "more to win" only on
+   *  the viewer's own row (nobody counts a rival), and `canFound`. */
+  private factionFields(person: string): CrewGuestFields {
+    const crew = this.crewOf(person);
+    const needs = this.needs();
+    const mine = this.factionOf(person);
+    const counts = (id: string): Pick<SideView, "members" | "needs" | "more"> => {
+      if (id !== mine) return {};
+      const members = this.presentCount(id);
+      return needs !== null ? { members, needs, more: Math.max(0, needs - members) } : { members };
+    };
+    const sides: SideView[] = this.raceFactions().map((id) => {
+      const c = this.byId.get(id);
+      if (c !== undefined) {
+        const founder = this.name(c.founder);
+        return { id, name: c.name, leader: founder, ...counts(id), mine: mine === id, kind: "founded" as const, founder };
+      }
+      const leader = this.leaderOf(id);
+      const ethos = this.sim.model.factions.get(id)?.ethos ?? null;
+      return {
+        id,
+        name: id,
+        leader,
+        ...counts(id),
+        mine: mine === id,
+        kind: "side" as const,
+        ...(ethos !== null && ethos.trim() !== "" ? { ethos } : {}),
+        ...(leader !== null ? { founder: leader } : {}),
+      };
+    });
+    return { crew: crew === null ? null : this.crewView(crew), invites: this.inviteViews(person), sides, canFound: this.mayFound(person) };
+  }
+
+  private inviteViews(person: string): InviteView[] {
+    return this.openInvitesTo(person).map((i) => ({
       id: i.id,
       from: i.from,
       fromName: this.name(i.from),
@@ -421,7 +661,6 @@ export class Crews {
       target: i.target,
       targetName: this.targetName(i),
     }));
-    return { crew: crew === null ? null : this.crewView(crew), invites, sides };
   }
 
   /** An invitation's target as people read it (a crew's name, a side's id). */
@@ -447,7 +686,8 @@ export class Crews {
 
   // -- the op --------------------------------------------------------------
 
-  /** What the last `apply` changed that the chat should say (then cleared). */
+  /** What changed since the last call that the chat should say (then
+   *  cleared): every `apply`'s notices, plus faction mode's `onSide` ones. */
   takeNotices(): CrewNotice[] {
     const out = this.notices;
     this.notices = [];
@@ -460,7 +700,10 @@ export class Crews {
    *  lands the same either way. */
   apply(op: CrewOp): SimEvent[] {
     const from = this.sim.log.len();
-    this.notices = [];
+    // Notices are never cleared here: a story `join` / `add` between ops
+    // (faction mode's `onSide`) raises "left" / "dissolved" ones too, and
+    // `takeNotices` is the one reset, so they reach the chat live and on
+    // replay alike.
     switch (op.op) {
       case "foundCrew":
         this.found(op.by, op.name);
@@ -498,14 +741,40 @@ export class Crews {
         if (c !== undefined) this.dissolve(c);
         break;
       }
+      case "joinCrew": {
+        const c = this.byId.get(op.crew);
+        if (c === undefined || !this.mayJoin(op.person, c)) break;
+        this.joinCrew(c, op.person);
+        this.settleOthers(op.person, (o) => o.kind === "crew" && o.target === c.id);
+        break;
+      }
     }
+    // Faction mode: a leave or a disband raises no signal, yet it can move
+    // a majority, so the story's watchers get their pass now.
+    if (this.factionMode) this.hooks.drain();
     return this.sim.log.since(from);
+  }
+
+  /** May `person` walk into crew `c` (the `joinCrew` op)? A guest not
+   *  already in it; in faction mode not restricted or captured, not a
+   *  side's leader and not the founder of another live crew (the server
+   *  answers each of these before it journals). */
+  private mayJoin(person: string, c: Crew): boolean {
+    if (!this.sim.persons.has(person) || c.members.includes(person)) return false;
+    if (!this.factionMode) return true;
+    if (this.sim.isRestricted(person) || this.sim.isCaptured(person) || this.ledSide(person) !== null) return false;
+    const own = this.foundedBy(person);
+    return own === null || own === c;
   }
 
   private found(by: string, raw: string): void {
     const name = tidyCrewName(raw);
     if (!this.sim.persons.has(by) || name === "") return;
     if (this.byId.size >= MAX_CREWS || this.foundedBy(by) !== null || this.named(name) !== null) return;
+    // Faction mode: only inside the `founding:` window, and a founder
+    // leaves their side first (one faction at a time).
+    if (this.factionMode && !this.mayFound(by)) return;
+    if (this.factionMode) this.leaveRaceSides(by);
     const prior = this.crewOf(by);
     if (prior !== null) this.leave(prior, by);
     this.crewSeq += 1;
@@ -516,6 +785,9 @@ export class Crews {
     this.syncMembers(crew);
     this.sim.world.set(`${by}.crew`, vString(crew.id));
     this.notices.push({ kind: "founded", crew });
+    // Faction mode: a founder's open invitations (crew or side) are moot —
+    // a yes to either would disband the faction just founded.
+    if (this.factionMode) this.settleOthers(by, () => true);
     this.sim.signal("founded", by, { crew: crew.id });
   }
 
@@ -541,7 +813,10 @@ export class Crews {
     }
     if (i.kind === "crew") {
       const c = this.byId.get(i.target);
-      if (c === undefined) {
+      // Faction mode: a yes arrives after its invitation, so it is held to
+      // the walk-in join's rules now (a founder of another faction, a
+      // side's leader, a restricted or captured program can't take it).
+      if (c === undefined || (this.factionMode && !c.members.includes(i.to) && !this.mayJoin(i.to, c))) {
         i.state = "void";
         this.notices.push({ kind: "answered", invite: i });
         return;
@@ -555,6 +830,13 @@ export class Crews {
     }
     // A side: the sim's own switching join (the server checked the doors,
     // the restriction and that the side is open before journaling this).
+    // Faction mode: a founder (it would disband their faction) or another
+    // side's leader can't take it.
+    if (this.factionMode && (this.foundedBy(i.to) !== null || (this.ledSide(i.to) ?? i.target) !== i.target)) {
+      i.state = "void";
+      this.notices.push({ kind: "answered", invite: i });
+      return;
+    }
     i.state = "yes";
     this.notices.push({ kind: "answered", invite: i });
     const prior = this.sim.factionOf(i.to);
@@ -577,6 +859,7 @@ export class Crews {
   }
 
   private joinCrew(c: Crew, person: string): void {
+    if (this.factionMode) this.leaveRaceSides(person);
     const prior = this.crewOf(person);
     if (prior !== null && prior !== c) this.leave(prior, person);
     c.members.push(person);
@@ -587,12 +870,28 @@ export class Crews {
   }
 
   private leave(c: Crew, person: string): void {
+    // Faction mode: a founder leaving disbands the faction (its members go
+    // back to neither) — no faction is left without its founder.
+    if (this.factionMode && person === c.founder) {
+      this.dissolve(c);
+      return;
+    }
     c.members = c.members.filter((m) => m !== person);
     this.sim.world.set(`${person}.crew`, VNULL);
     this.syncMembers(c);
     this.notices.push({ kind: "left", crew: c, person });
     // An empty crew is gone (its slot of the eight is free again).
     if (c.members.length === 0) this.dissolve(c);
+  }
+
+  /** Faction mode: take `person` off every race side they are on (a crew
+   *  is joined or founded), each with its `unaligned` signal. */
+  private leaveRaceSides(person: string): void {
+    for (const g of this.sim.groupsOf(person)) {
+      if (!this.isRaceSide(g)) continue;
+      this.hooks.removeFromGroup(person, g);
+      this.sim.signal("unaligned", person, { side: g });
+    }
   }
 
   private leaveSide(person: string): void {

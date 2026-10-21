@@ -25,7 +25,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { answerMentions, buildRecent, secretMentions, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
+import { answerMentions, buildRecent, inReadingBeat, secretMentions, storyTag, storyTexts, type RecentInput, type StoryTagContext } from "../server/agent-recent.ts";
 import type { AgentRecent, AgentRequest } from "../server/agents.ts";
 import type { ChatMessage } from "../server/chat.ts";
 import { scenarioDir, scenarioSource } from "../examples/load.ts";
@@ -325,6 +325,26 @@ describe("buildRecent (C1.2)", () => {
       { kind: "house", text: "Attention, house.", at: 20 },
       { kind: "gift", title: "The Ribbon", new: true, at: 10 },
     ]);
+  });
+
+  it("wave 18b: no line of a reading beat is a house item, whatever it says — a near miss, the key, the readings", () => {
+    const messages = [
+      house("Question 1. 3 filed. No consensus. I will read what you told me.", 1, { beat: "Question Results" }),
+      house("Ada said Mr Pickels, certain. Bea said a cat, not certain.", 2, { beat: "Question Results" }),
+      house("I accept it. The answer is: Mister Pickles.", 3, { beat: "question results" }),
+      house("Question four. Cy said the tabby, certain.", 4, { beat: "Round Two Tally" }),
+      house("2 true. 1 with a lie on record. 0 nobody answered.", 5, { beat: "The Verdict" }),
+      house("The house is closing.", 6, { beat: "Announce" }),
+    ];
+    expect(buildRecent(input({ messages }))).toEqual([{ kind: "house", text: "The house is closing.", at: 6 }]);
+    expect(inReadingBeat({ beat: "The_Verdict" })).toBe(true);
+    // Outside a reading beat, a line holding the Kernel's said_* / res_said
+    // text is still dropped (`secretMentions` over the secret values).
+    const said = "Ada said Mr Pickels, certain. Bea said a cat, not certain.";
+    const elsewhere = [house(`As I said: ${said}`, 7, { beat: "Announce" })];
+    expect(buildRecent(input({ messages: elsewhere, mentionsSecret: secretMentions([said]) }))).toEqual([]);
+    expect(inReadingBeat({ beat: null })).toBe(false);
+    expect(inReadingBeat({})).toBe(false);
   });
 
   it("house: his public lines only, newest 2, verbatim", () => {
