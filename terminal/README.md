@@ -620,7 +620,8 @@ announcement chime and the casino jingles ride the master bus unchanged.
 the stored config, a ⚙ checkbox — no URL hint): every gesture while not full
 screen asks again (`requestFullscreen` / `webkitRequestFullscreen`; Fully
 Kiosk's JS interface hides the bars where it has the calls). State on
-`<html data-fullscreen>` and the poll's `fs=1|0`. The TV's Chrome keeps
+`<html data-fullscreen>` and the poll's `fs=1|0` (no `fs` when a director
+turned it off or the browser can't; the server doesn't read `fs` yet). The TV's Chrome keeps
 `--kiosk` — the only no-gesture route.
 
 **Cutscenes** (`src/cutscene/`). A scene (`types.ts` `SceneDef`) is started
@@ -629,7 +630,12 @@ moment (`{moment: "signal", name: "bottle landed"}`), and is a pure picture
 of `t` — ms since its start on the server's clock — so a reload resumes and
 history never replays. `pick.ts` decides: overlays win, a pilot / peek /
 room terminal shows none, a slide's scene (else its card), one moment at a
-time over it, nothing that names the character before the introduction. The
+time over it (a moment that replaces the slide only hides it, so its clip or
+scene carries on; a tap on a moment never peeks), nothing that names the
+character before the introduction (the first fiction-safe scene on the same
+trigger plays instead). A slide from history starts `HISTORY_T` in, at the
+moment this page first drew it, then moves on; a scene's `face` flashes the
+TV face once. The
 layer is a lazy chunk in the slide's slot (z 30), preloaded at boot. Lanes
 add scenes to their own `scenes/act1.tsx` / `act2.tsx` / `act3.tsx` /
 `moments.tsx` from the `kit/` blocks (Win98 windows, dialogs, typewriter,
