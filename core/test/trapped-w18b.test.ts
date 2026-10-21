@@ -93,6 +93,8 @@ function boot(programs = PROGRAMS): Night {
   for (const [id, name] of programs) n.upload(id, name);
   return n;
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const worldKeys = (sim: Sim) => [...((sim.world as any).values as Map<string, unknown>).keys()];
 type Dialogue = Extract<SimEvent, { type: "dialogue" }>;
 const lines = (evs: readonly SimEvent[], speaker: string) => evs.filter((e): e is Dialogue => e.type === "dialogue" && e.speaker === speaker).map((e) => e.text.trim());
 
@@ -122,5 +124,61 @@ describe("Trapped in the Internet — wave 18b: Jean Trabolta, Sole Owner and Fo
     const hits = files.flatMap((f) => f.source.split("\n").map((l, i) => ({ at: `${f.path}:${i + 1}`, l }))).filter((x) => !x.l.trim().startsWith("//") && /AI helper/iu.test(x.l));
     // server-room.loom is the `ending` lane's (its :230 / :376 are a request).
     expect(hits.filter((h) => !h.at.includes("server-room.loom")).map((h) => h.at)).toEqual([]);
+  });
+});
+
+const COUNTED = new Set(["Facts", "Files", "People", "Trabolta", "Places"]);
+/** Codes of entries the dossier counts that `who` does not hold yet. */
+function countedCodes(sim: Sim, who: string): string[] {
+  return [...sim.model.codexCodes.entries()]
+    .filter(([, e]) => {
+      const def = sim.model.codex.get(e);
+      return def !== undefined && COUNTED.has(def.category ?? "") && !def.secret && !sim.holdsCodex(who, e) && !["The LiveJournal", "ILOVEYOU", "Free Antivirus Trial"].includes(e);
+    })
+    .map(([code]) => code);
+}
+const TO_HOUR = [...TO_BINGO, "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth", "close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"];
+
+describe("Trapped in the Internet — wave 18b: Facts Are Currency counts what she found (R22, D21)", () => {
+  it("8 found in hunt 1 → 8 of 20 at the glitch; 12 more completes it; a handout never counts", { timeout: SLOW }, () => {
+    const n = boot();
+    // The base is what she holds at the end of her briefing (her three
+    // entries and the Optical Drive); the handouts are not in it.
+    expect(v(n.sim, "g3.dossier_base")).toBe(4);
+    expect(v(n.sim, "g3.codex")).toBeGreaterThan(4);
+    for (const c of TO_HOUR.slice(0, 6)) n.press(c);
+    const found = countedCodes(n.sim, "g3").slice(0, 8);
+    for (const code of found) n.take(n.sim.redeem("g3", code));
+    for (const c of TO_HOUR.slice(6)) n.press(c);
+    n.tick(125); // 📥 the Truther Download
+    const glitch = n.take(n.sim.choose("g3", 0));
+    void glitch;
+    expect(v(n.sim, "g3.dossier_start")).toBe(8);
+    expect(n.sim.questStatus("g3", "OpenOffice Dossier")).toBe("active");
+    const start = n.events.filter((e) => e.type === "quest" && (e as { quest: string }).quest === "OpenOffice Dossier").map((e) => (e as { text?: string }).text);
+    expect(start).toContain("8 of 20 facts.");
+    // A handout (How it works / The story / Missions) never counts.
+    const before = v(n.sim, "g3.codex_in.facts");
+    n.take(n.sim.unlock("g3", "Bathroom Mode"));
+    expect(v(n.sim, "g3.codex_in.facts")).toBe(before);
+    // Twelve more: the quest is done (no "10 of 20" step, she started at 8).
+    const more = countedCodes(n.sim, "g3").slice(0, 12);
+    for (const code of more.slice(0, 11)) n.take(n.sim.redeem("g3", code));
+    expect(n.sim.questStatus("g3", "OpenOffice Dossier")).toBe("active");
+    n.take(n.sim.redeem("g3", more[11]!));
+    expect(n.sim.questStatus("g3", "OpenOffice Dossier")).toBe("done");
+    expect(v(n.sim, "Kernel.openoffice_dossier")).toBe(true);
+  });
+
+  it("holding 20 at the glitch completes it at once; the secret slots never ride Night.*", { timeout: SLOW }, () => {
+    const n = boot();
+    for (const c of TO_HOUR.slice(0, 6)) n.press(c);
+    for (const code of countedCodes(n.sim, "g3").slice(0, 20)) n.take(n.sim.redeem("g3", code));
+    for (const c of TO_HOUR.slice(6)) n.press(c);
+    n.tick(125);
+    n.take(n.sim.choose("g3", 0));
+    expect(n.sim.questStatus("g3", "OpenOffice Dossier")).toBe("done");
+    expect([...(n.sim.model.roles.get("Program")?.secret ?? [])]).toEqual(expect.arrayContaining(["dossier_start", "dossier_base"]));
+    expect(worldKeys(n.sim).filter((k) => k.startsWith("Night.") && /dossier/u.test(k))).toEqual([]);
   });
 });

@@ -143,6 +143,9 @@ else if program.featured == "openoffice":
   unlock Dana Anderson for program
   unlock The Halifax Water Hack for program
   unlock This Is Blackmail for program
+  // Wave 18b (R22, D21): Facts Are Currency counts what she finds from here
+  // on, by category (the handouts and the ties never count).
+  set program.dossier_base = program.codex_in.facts + program.codex_in.files + program.codex_in.people + program.codex_in.trabolta + program.codex_in.places
 else if program.featured == "draftkings":
   unlock Crab Fisherwoman for program
   unlock The Coin Toss Of The Century for program
