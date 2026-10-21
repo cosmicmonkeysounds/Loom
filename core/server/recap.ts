@@ -245,6 +245,7 @@ export function runTime(ms: number): string {
 export function duckBoard(sim: Sim, runs: readonly DuckRun[], personas: RecapOptions["personas"] = new Set<string>()): RecapDuckRow[] {
   const best = new Map<string, { run: DuckRun; count: number }>();
   for (const r of runs) {
+    if (r.after === true) continue; // C7: after the end, a party favour
     const prev = best.get(r.guest);
     if (prev === undefined) best.set(r.guest, { run: r, count: 1 });
     else best.set(r.guest, { run: r.ms < prev.run.ms ? r : prev.run, count: prev.count + 1 });

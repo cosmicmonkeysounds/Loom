@@ -31,6 +31,7 @@ import { parseSet, splitDirective, splitKeyword } from "./effects.ts";
 import { Bundle, type LoomFileEntry } from "../bundle.ts";
 import { parse } from "../../parser/index.ts";
 import { foldName } from "../../parser/names.ts";
+import { splitMomentArgs, withIndex } from "../../go.ts";
 import { indexOutsideQuotes, splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 
 export interface Person {
@@ -806,6 +807,23 @@ export class Sim {
       return this.evalCond(condition, bindings);
     } catch {
       return false;
+    } finally {
+      this.currentBindings = saved;
+    }
+  }
+
+  /** The value of an expression with `subject` bound under every subject
+   *  name (the ROLE aliases, `guest`) and `self` — `holds`' bindings, any
+   *  value (wave 18: an OBJECTIVE's `target:`). Null on an error. */
+  valueOf(expr: string, subject: string | null, self: string | null = subject): Value {
+    const bindings: Bindings = new Map();
+    if (subject !== null) for (const name of this.subjectNames) bindings.set(name, subject);
+    if (self !== null) bindings.set("self", self);
+    const saved = this.currentBindings;
+    try {
+      return this.evalValue(expr, bindings);
+    } catch {
+      return VNULL;
     } finally {
       this.currentBindings = saved;
     }
@@ -2181,9 +2199,14 @@ export class Sim {
         // To `self`'s device (a scanner prop → its performer; a role → the
         // participant); in a story rule, to the acting participant.
         const to = bindings.get("self") ?? this.subjectAudience(bindings)[0] ?? "";
+        // Wave 18 (C2): `reply "text" with go: X, close: 6s` — the tail is
+        // taken only after a quoted text, so prose with "with" never changes.
+        const tail = /^("(?:[^"\\]|\\.)*")\s+with\s+(\S.*)$/su.exec(rest.trim());
+        const moment = tail !== null ? this.momentArgs(tail[2]!, bindings) : {};
+        const text = tail !== null ? tail[1]!.slice(1, -1) : rest;
         // `about`: the guest the reply concerns (the bound subject) — which
         // guest a booth readout is about.
-        this.record({ type: "respond", to, text: this.interpolate(rest, bindings), about: this.subjectAudience(bindings)[0] ?? null });
+        this.record({ type: "respond", to, text: this.interpolate(text, bindings), about: this.subjectAudience(bindings)[0] ?? null, ...moment });
         break;
       }
       case "fire": {
@@ -2340,7 +2363,16 @@ export class Sim {
    *  (as `reply` / `show`); no subject at all → a room-wide pin (key ""). A
    *  leading `!` in the text is an alert (chat.ts splits it). */
   private runPin(rest: string, bindings: Bindings): void {
-    const m = /^("(?:[^"\\]|\\.)*")(?:\s+in\s+(.+?))?(?:\s+for\s+(\S+))?$/su.exec(rest.trim());
+    // Wave 18 (C2): a trailing `with go: …` names the pin's exits.
+    let head = rest.trim();
+    let moment: { go?: string[] } = {};
+    const w = withIndex(head);
+    if (w >= 0) {
+      const { close: _close, ...args } = this.momentArgs(head.slice(w + 6), bindings);
+      moment = args;
+      head = head.slice(0, w).trim();
+    }
+    const m = /^("(?:[^"\\]|\\.)*")(?:\s+in\s+(.+?))?(?:\s+for\s+(\S+))?$/su.exec(head);
     if (m === null) return;
     const text = this.interpolate(m[1]!.slice(1, -1), bindings);
     const channel = m[2] !== undefined ? this.pinChannel(m[2]) : null;
@@ -2351,7 +2383,7 @@ export class Sim {
     const who = m[3] !== undefined ? this.resolveId(m[3], bindings) : (this.subjectAudience(bindings)[0] ?? null);
     const person = who !== null && this.persons.has(who) ? who : null;
     if (m[3] !== undefined && person === null) return; // `for` someone unknown: nothing
-    this.record({ type: "pinned", text, channel, person, key: person ?? "" });
+    this.record({ type: "pinned", text, channel, person, key: person ?? "", ...moment });
   }
 
   /** `unpin [in <room>] [for who] ["text"]` — takes down the pin with that
@@ -2423,7 +2455,19 @@ export class Sim {
     // `cue to scope`, the block form `to scope` (no cue), or the v3
     // scope-only block `<broadcast: location(X)>`. A quoted prose cue is
     // split *after* its closing quote, so `"Come to the Desktop." to
-    // everyone` keeps its own ` to ` intact.
+    // everyone` keeps its own ` to ` intact. Wave 18 (C2): a trailing
+    // `with go: …, close: 6s` (after the scope) names the moment's exits.
+    let moment: { go?: string[]; close?: number } = {};
+    {
+      const t = rest.trim();
+      const close = t.startsWith('"') ? t.indexOf('"', 1) : -1;
+      const after = close > 0 ? close + 1 : 0;
+      const w = withIndex(t.slice(after));
+      if (w >= 0 && /\sto\s/u.test(` ${t.slice(after, after + w)} `)) {
+        moment = this.momentArgs(t.slice(after + w + 6), bindings);
+        rest = t.slice(0, after + w);
+      }
+    }
     const quoted = /^("(?:[^"\\]|\\.)*")\s+to\s+(\S.*)$/su.exec(rest.trim());
     const kw = quoted !== null ? ([quoted[1]!, quoted[2]!] as [string, string]) : splitKeyword(rest, "to");
     const toOnly = quoted !== null ? null : stripPrefix(rest.trim(), "to ");
@@ -2433,7 +2477,16 @@ export class Sim {
     // A cue written as prose (`broadcast "The bell rings." to …`) is its own
     // copy — interpolate it like a line; a bare cue name stays a name.
     const text = /^".*"$/su.test(cue) || /\s/u.test(cue) ? this.interpolate(cue, bindings) : cue;
-    this.record({ type: "broadcast", cue: text, audience, scope: scopeText });
+    this.record({ type: "broadcast", cue: text, audience, scope: scopeText, ...moment });
+  }
+
+  /** A `with …` tail's `go:` words (each interpolated) and `close:` (C2). */
+  private momentArgs(tail: string, bindings: Bindings): { go?: string[]; close?: number } {
+    const { go, close } = splitMomentArgs(tail);
+    return {
+      ...(go.length > 0 ? { go: go.map((g) => this.interpolate(g, bindings)) } : {}),
+      ...(close !== null ? { close } : {}),
+    };
   }
 
   /**
@@ -2448,15 +2501,24 @@ export class Sim {
   private runShow(rest: string, bindings: Bindings, ctx: RoomContext): void {
     let head = rest.trim();
     const params: Record<string, string> = {};
+    let moment: { go?: string[]; close?: number } = {};
     const withIdx = indexOutsideQuotes(head, " with ");
     if (withIdx >= 0) {
+      // Wave 18 (C2): `go:` / `close:` are the moment's, not card params.
+      const split = splitMomentArgs(head.slice(withIdx + 6));
+      moment = this.momentArgs(head.slice(withIdx + 6), bindings);
+      head = `${head.slice(0, withIdx)}${split.rest !== "" ? ` with ${split.rest}` : ""}`;
+    }
+    const withAt = indexOutsideQuotes(head, " with ");
+    if (withAt >= 0) {
+      const withIdx = withAt;
       const { args, argIds } = this.parseEventArgs(head.slice(withIdx + 6), bindings);
       for (const [k, v] of args) params[k] = display(v);
       for (const [k, v] of argIds) params[k] = v;
       // `with moment: major` (wave 13) is a word, not an expression: a bare
       // `major` evaluates to null, so keep the written word for the client.
-      const moment = /(?:^|,)\s*moment\s*:\s*([A-Za-z]+)\s*(?:,|$)/u.exec(head.slice(withIdx + 6));
-      if (moment !== null && params["moment"] === "null") params["moment"] = moment[1]!;
+      const word = /(?:^|,)\s*moment\s*:\s*([A-Za-z]+)\s*(?:,|$)/u.exec(head.slice(withIdx + 6));
+      if (word !== null && params["moment"] === "null") params["moment"] = word[1]!;
       head = head.slice(0, withIdx).trim();
     }
     // Split `to scope` after a quoted text (which may itself contain " to ").
@@ -2476,7 +2538,7 @@ export class Sim {
       const id = this.resolveId(scopeText, bindings);
       audience = this.isHolder(id) ? [id] : [];
     }
-    this.record({ type: "widget", widget: kind, text, params, audience, scope: scopeText, setting: ctx.setting, beat: ctx.beat });
+    this.record({ type: "widget", widget: kind, text, params, audience, scope: scopeText, setting: ctx.setting, beat: ctx.beat, ...moment });
   }
 
   /** Resolve a broadcast scope into a list of person ids. */

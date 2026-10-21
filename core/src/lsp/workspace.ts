@@ -52,6 +52,7 @@ import { hoverAt } from "./hover.ts";
 import { definitionAt } from "./definition.ts";
 import { documentSymbols } from "./symbols.ts";
 import { referencesAt } from "./references.ts";
+import { wave18Lints } from "./w18-lints.ts";
 
 /** A single open document plus its latest parse. */
 export interface OpenDoc {
@@ -204,6 +205,8 @@ export class Workspace {
     this.addAdminLints();
     this.addTriggerLints();
     this.addSoundRoomLints();
+    // Wave 18: moment exits, booth pickers, header lines, callers, big broadcasts.
+    wave18Lints(this.orderedDocs(), this.compiled, (uri, range, error, code, message) => this.pushProject(uri, range, error, code, message));
   }
 
   /** Push one project diagnostic onto a document. */

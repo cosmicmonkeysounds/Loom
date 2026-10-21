@@ -2,13 +2,16 @@
 //! authoritative `server/chat.ts`; the rest mirror the per-role snapshot
 //! projections in `server/views.ts`.
 
-import type { AlertLevel, MomentClass } from "../../core/src/delivery.ts";
+import type { AlertLevel, GoTarget, MomentClass } from "../../core/src/delivery.ts";
+import type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
 import type { ShowClock } from "../../core/src/show-clock.ts";
 
 // Wave 13: the interrupt ladder and the host view are dependency-free core
 // modules, re-exported so every app reads one definition.
-export type { AlertLevel, MomentClass } from "../../core/src/delivery.ts";
-export type { HostView, HostNeed, HostPerson, HostJudging, NeedTarget } from "../../core/src/host-board.ts";
+export type { AlertLevel, GoTarget, MomentClass } from "../../core/src/delivery.ts";
+export type { HostView, HostNeed, HostPerson, HostJudging, HostWanted, NeedTarget } from "../../core/src/host-board.ts";
+// Wave 18 (C8): the caller claim and a cue row, as the server sends them.
+export type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
 export type { ShowClock } from "../../core/src/show-clock.ts";
 
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
@@ -101,8 +104,20 @@ export interface ChatMessage {
   readout?: true;
   /** A booth readout's subject guest id, when one was bound. */
   about?: string;
-  /** The server's moment class; absent = not a moment. */
+  /** Wave 18 (C3): that guest's display name and avatar key, beside `about`. */
+  aboutName?: string;
+  aboutAvatar?: string;
+  /** The server's moment class; absent = not a moment. Wave 18 (C1):
+   *  `big` — full screen, un-ignorable (a booth's pop-out rung). */
   moment?: MomentClass;
+  /** Wave 18 (C2): the moment's exits — the story's `with go:` targets or
+   *  the server's default (a card's thread, a quest, a codex entry, the
+   *  Wallet), never the lobby; a room the guest can't see is already
+   *  dropped. Absent = none (the client derives its own). */
+  go?: GoTarget[];
+  /** Wave 18 (C1): a big moment to two or more that closes itself after
+   *  this many ms (`with close: 6s`). */
+  autoClose?: number;
   /** The story's `Night.phase` when the server composed this message (null
    *  = set to nothing). Only on what can be a moment, and only once the
    *  story has a phase; absent → the moments layer uses the phase it knows
@@ -253,6 +268,21 @@ export interface GuestView {
   alertLevel?: AlertLevel;
   /** Characters whose `dm:` thread somebody reads (performer parts, agent-voiced); others get no composer (wave 13). */
   voiced?: string[];
+  /** Wave 18 (C11): the NOW objective and the one place its `go:` sends
+   *  you (null when it names none, or a room you can't see yet). Present
+   *  when the story declares OBJECTIVEs. */
+  mission?: GuestMission;
+  /** Wave 18 (C11): channel ids the story's `archive:` lines mark done for
+   *  you (tucked under Other rooms). Absent when none. */
+  archived?: string[];
+}
+
+/** `GuestView.mission` (C11). `place.id` is a room / DM id (`loc:X`,
+ *  `room:x`, `dm:C`), a guest INTERACTION id, `codex[:entry]`,
+ *  `quests[:quest]`, or a screen word (`pass`, `scan`, `wallet`, …). */
+export interface GuestMission {
+  objective: string | null;
+  place: { id: string; name: string } | null;
 }
 
 /** One running countdown (mirror of server views.ts `CountdownSummary`). */
@@ -274,6 +304,39 @@ export interface PrimeGuest {
   location: string | null;
   /** ROLE-scoped `watch:` items for this guest (secret slots dropped), wave 13. Absent when none. */
   flags?: GuestFlag[];
+  /** Wave 18 (A1): when the server last heard from this guest (the mod
+   *  roster's `lastSeen`, ms); null = not since the server started. */
+  lastSeen?: number | null;
+}
+
+/** One poster on the Wanted board (wave 18, C6). */
+export interface WantedRow {
+  id: string;
+  name: string;
+  avatar?: string;
+  /** Why they are wanted (the `wanted:` line's `as` value), or null. */
+  reason: string | null;
+  location: string | null;
+  lastSeen: number | null;
+  /** Story ms the mark landed. */
+  markedAt: number;
+  /** The character who claimed the escort, or null. */
+  claimedBy: string | null;
+  /** Captured: the poster stays 60 s, then drops. */
+  captured: boolean;
+}
+
+/** `PrimeView.calls` (wave 18, C8): a caller booth's own admin cues plus
+ *  the whole sheet's NEXT / LAST / act, read only. */
+export interface PrimeCalls {
+  rows: CueRow[];
+  next: string | null;
+  last: string | null;
+  lastName: string | null;
+  act: string | null;
+  /** What `POST /api/prime/cue {presses}` arms against. */
+  presses: number;
+  caller: CueCaller | null;
 }
 
 export interface PrimeView {
@@ -330,6 +393,15 @@ export interface PrimeView {
    *  unless that button says `hostHeard: false`.
    *  The server sends `false` too, so a revoked host reaches the booth. */
   host?: boolean;
+  /** Wave 18 (C4): live global buttons — pressed with `/api/prime/act
+   *  {name}` and no guest. Absent when none. */
+  globalButtons?: string[];
+  /** Wave 18 (C6): the Wanted board, for a booth the story's `wanted:` line
+   *  names (and hosts). Absent otherwise. */
+  wanted?: WantedRow[];
+  /** Wave 18 (C8): the cues this booth calls (Clippy's games). Absent for a
+   *  booth that calls none. */
+  calls?: PrimeCalls;
 }
 
 // --- wave 13: objectives, the night, a booth's guest card (mirror of server/views.ts)
@@ -346,6 +418,13 @@ export interface ObjectiveView {
   /** `act:` as written, else null. Display only. */
   act: string | null;
   loud?: true;
+  /** Wave 18 (A7): the fallback objective — never counted as "+1". */
+  evergreen?: true;
+  /** Wave 18 (C5, booths only): the guest this objective is about. */
+  target?: { id: string; name: string; avatar?: string; location?: string | null };
+  /** Wave 18 (C5, booths only): the guests its picker offers (ids, ≤ 60,
+   *  those in the booth's room first, then by name). */
+  pick?: string[];
 }
 export interface ObjectiveCheck {
   label: string;
@@ -399,10 +478,11 @@ export interface ScanResult {
   /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
   refused?: boolean;
 }
-/** `/api/prime/act` 200 body. */
+/** `/api/prime/act` 200 body. A global press (wave 18, C4: no guest) has
+ *  no `guest` and no `card`. */
 export interface PrimeActResult {
   ok: true;
-  guest: unknown;
+  guest?: unknown;
   replies?: string[];
   card?: GuestCardView;
   /** The staff-room lines (`# hosts` …) this press produced: the story's refusal / explanation (fix round C1). */
@@ -411,6 +491,25 @@ export interface PrimeActResult {
   said?: Array<{ from: string; text: string }>;
   /** The story refused it (the cue sheet's `pressRefused`): the `staff` lines say why. Absent: unknown. */
   refused?: boolean;
+}
+
+/** `POST /api/prime/cue` (wave 18, C8) and `/api/mod/signal` 200 bodies:
+ *  the cue sheet's answer plus what the press said. A 409 carries
+ *  `moved: true` (re-arm) or `doorsClosed: true`. */
+export interface CuePressResult {
+  ok: true;
+  presses: number;
+  refused?: true;
+  /** What the press posted outside the staff rooms (each text once, ≤ 8). */
+  said?: string[];
+  /** The staff rooms' lines (a refusal's reason). */
+  staff?: string[];
+}
+
+/** `POST /api/mod/caller {on}` 200 (wave 18, C8). */
+export interface CallerResult {
+  ok: true;
+  caller: CueCaller | null;
 }
 
 // --- client-side view models (composed by the chat store) -------------------

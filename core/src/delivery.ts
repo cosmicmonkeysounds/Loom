@@ -71,5 +71,40 @@ export function noticeKey(text: string): string {
   return m ? m[0] : "•";
 }
 
-/** Moment classes the server stamps (§2.3). */
-export type MomentClass = "major" | "minor";
+/** Moment classes the server stamps (§2.3). `big` (wave 18, C1): an
+ *  un-ignorable full-screen moment (`reply !!…`, `broadcast "!!…"`,
+ *  `show … with moment: big`) — a booth renders it as its pop-out rung. */
+export type MomentClass = "major" | "minor" | "big";
+
+/** A moment's exit button (wave 18, C2): where a tap takes the viewer.
+ *  Resolved server-side from the story's `with go:` words (or a default:
+ *  a card's DM thread, a quest step's quest, a codex unlock's entry, a
+ *  wallet card's Wallet) — never the lobby. A `room` the viewer cannot see
+ *  is dropped per viewer before it is sent. */
+export type GoTarget =
+  | { kind: "room"; id: string; label: string }
+  | { kind: "dm"; id: string; label: string }
+  | { kind: "pass" | "scan" | "chats" | "mission" | "notifications" | "sides" | "wallet" | "me"; label: string }
+  | { kind: "codex"; entry?: string; label: string }
+  | { kind: "quests"; quest?: string; label: string }
+  | { kind: "act"; id: string; label: string };
+
+/** The reserved `go:` words (C2), each a screen of the phone. */
+export const GO_WORDS = ["pass", "scan", "chats", "mission", "notifications", "sides", "wallet", "me", "codex", "quests"] as const;
+
+/** The label a reserved `go:` word gets when the story writes none. */
+export const GO_LABELS: Readonly<Record<(typeof GO_WORDS)[number], string>> = {
+  pass: "Show my pass",
+  scan: "Scan",
+  chats: "Chats",
+  mission: "What do I do?",
+  notifications: "See all",
+  sides: "Choose a side",
+  wallet: "Open my Wallet",
+  me: "Me",
+  codex: "Open the Codex",
+  quests: "Open the Quest Log",
+};
+
+/** The dead time before a big moment's acknowledge button works (C1). */
+export const BIG_DEAD_MS = 1200;

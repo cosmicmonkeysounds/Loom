@@ -555,6 +555,17 @@ export interface ObjectiveBody {
   buttons: string[];
   /** `loud: true` (case-insensitive). */
   loud: boolean;
+  /** `go:` (wave 18, C11) — the one place this objective sends you (a
+   *  LOCATION / CHANNEL / CHARACTER / a reserved word, as `with go:`), as written; null when absent. */
+  go: string | null;
+  /** `target:` (wave 18, C5) — an expression naming the guest a booth's
+   *  objective is about (`Night.bottle_pick`), as written; null when absent. */
+  target: string | null;
+  /** `pick:` (wave 18, C5) — a per-guest condition (the guest bound as the
+   *  ROLE alias) choosing the guests a booth's picker offers; null when absent. */
+  pick: string | null;
+  /** `evergreen: true` (wave 18, A7) — the fallback objective a phone never counts as "+1". */
+  evergreen: boolean;
   properties: Map<string, PropertyValue>;
 }
 
@@ -567,7 +578,7 @@ export interface ObjectiveCheckBody {
 }
 
 export function emptyObjectiveBody(): ObjectiveBody {
-  return { title: null, for: [], while: null, act: null, brief: "", checklist: [], buttons: [], loud: false, properties: new Map() };
+  return { title: null, for: [], while: null, act: null, brief: "", checklist: [], buttons: [], loud: false, go: null, target: null, pick: null, evergreen: false, properties: new Map() };
 }
 
 // ---------------------------------------------------------------------

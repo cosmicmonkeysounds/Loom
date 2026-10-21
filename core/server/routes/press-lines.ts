@@ -48,3 +48,20 @@ export function pressLines(appended: readonly ChatMessage[], staffChannels: Read
   }
   return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}) };
 }
+
+/** A director's / host's cue press, as its 200 tells it (wave 18, C8):
+ *  `staff` = the staff-room lines, `said` = what the press posted anywhere
+ *  else (lines, notices, readouts; system rows skipped), each text once, at
+ *  most 8. */
+export function cueLines(appended: readonly ChatMessage[], staffChannels: ReadonlySet<string>): { staff?: string[]; said?: string[] } {
+  const staff: string[] = [];
+  const said: string[] = [];
+  for (const m of appended) {
+    if (m.hidden || m.kind === "system" || m.ambient === true) continue;
+    const text = m.text.trim();
+    if (text === "") continue;
+    const into = staffChannels.has(m.channel) ? staff : said;
+    if (!into.includes(text) && into.length < 8) into.push(text);
+  }
+  return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}) };
+}

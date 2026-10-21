@@ -27,7 +27,8 @@
 
 import type { Sim, SimEvent, WalletCard } from "../src/runtime/sim/index.ts";
 import { walletLine } from "./wallet.ts";
-import { isEffectManner, noticeKey, splitNotice, type MomentClass } from "../src/delivery.ts";
+import { isEffectManner, noticeKey, splitNotice, type GoTarget, type MomentClass } from "../src/delivery.ts";
+import { resolveGoWords } from "../src/go.ts";
 import { display } from "../src/runtime/expr.ts";
 
 // `lobby` / `faction` / `dm` / `location` are derived; `group` / `open` /
@@ -145,6 +146,18 @@ export interface ChatMessage {
   about?: string;
   /** The server's moment class (§2.3 rules); absent = not a moment. */
   moment?: MomentClass;
+  /** A booth readout's subject guest, by display name and avatar key (wave
+   *  18, C3) — a pop-out renders the guest with no lookup. Only beside `about`. */
+  aboutName?: string;
+  aboutAvatar?: string;
+  /** The moment's exits (wave 18, C2): the story's `with go: …` targets, or
+   *  the default one (a card's thread, a quest step's quest, a codex
+   *  unlock's entry, a wallet card's Wallet), never the lobby. A guest gets
+   *  only the rooms they can see (`goForViewer`). Absent = none. */
+  go?: GoTarget[];
+  /** A self-closing `big` moment (`with close: 6s`, C1), in ms — only on a
+   *  big moment addressed to two or more. */
+  autoClose?: number;
   /** The story's `Night.phase` when this message was composed (after the
    *  batch that posted it; `null` = the path is declared but unset) — the
    *  moments layer's staleness rule ("the phase moved on since it arrived")
@@ -370,8 +383,11 @@ export function describeChannel(id: string): ChannelDescriptor {
  * Split an alert marker off a broadcast cue: a leading `!` — outside or
  * just inside the quotes of a prose cue — makes the message an alert.
  */
-export function splitAlert(rawCue: string): { cue: string; alert: boolean } {
+export function splitAlert(rawCue: string): { cue: string; alert: boolean; big?: true } {
   const t = rawCue.trim();
+  // `!!` (wave 18, C1): a big moment — both marks stripped.
+  if (t.startsWith("!!")) return { cue: t.slice(2).trim(), alert: true, big: true };
+  if (t.startsWith('"!!')) return { cue: `"${t.slice(3).trimStart()}`, alert: true, big: true };
   if (t.startsWith("!")) return { cue: t.slice(1).trim(), alert: true };
   if (t.startsWith('"!')) return { cue: `"${t.slice(2)}`, alert: true };
   return { cue: t, alert: false };
@@ -381,9 +397,62 @@ export function splitAlert(rawCue: string): { cue: string; alert: boolean } {
  *  Inbox / lobby row's rule), with whether it was there. Every path that
  *  hands a readout's text on — the act / scan replies, the booth's
  *  `response` frame, the readout push — reads it through this. */
-export function readoutText(text: string): { text: string; alert: boolean } {
-  const { cue, alert } = splitAlert(text);
-  return { text: alert ? cue : text, alert };
+export function readoutText(text: string): { text: string; alert: boolean; big?: true } {
+  const { cue, alert, big } = splitAlert(text);
+  return { text: alert ? cue : text, alert, ...(big === true ? { big } : {}) };
+}
+
+/** A readout's subject guest, named (C3): `about`, `aboutName` and, when
+ *  the runtime knows their picture, `aboutAvatar`. */
+function aboutOf(sim: Sim, about: string, opts: ComposeOptions): Pick<ChatMessage, "about" | "aboutName" | "aboutAvatar"> {
+  const name = sim.persons.get(about)?.name;
+  if (name === undefined) return { about };
+  const avatar = opts.avatarOf?.(name) ?? null;
+  return { about, aboutName: name, ...(avatar !== null ? { aboutAvatar: avatar } : {}) };
+}
+
+/** Options for `composeGuestMessages` the runtime supplies. */
+export interface ComposeOptions {
+  /** A guest's avatar key by display name (`AvatarBook.keyFor`), for a
+   *  readout's `aboutAvatar` (C3). */
+  avatarOf?: (name: string) => string | null;
+}
+
+/** `with close:` as a draft's `autoClose`: only a big moment to two or more (C1). */
+function autoCloseOf(moment: MomentClass | undefined, close: number | undefined, audience: Audience): { autoClose?: number } {
+  if (moment !== "big" || close === undefined) return {};
+  return audience === "all" || audience.length >= 2 ? { autoClose: close } : {};
+}
+
+/** The story's `go:` words resolved (C2), else `fallback`; never the lobby. */
+function goOf(sim: Sim, words: readonly string[] | undefined, fallback: GoTarget[] = []): { go?: GoTarget[] } {
+  const go = words !== undefined && words.length > 0 ? resolveGoWords(sim.model, words) : fallback;
+  return go.length > 0 ? { go } : {};
+}
+
+/** A card's default exit: its own thread (a DM, a place, an authored room) — never the lobby. */
+function cardGo(sim: Sim, channel: string): GoTarget[] {
+  if (channel.startsWith("dm:")) return [{ kind: "dm", id: channel, label: `Open ${channel.slice(3)}` }];
+  if (channel.startsWith("loc:") || channel.startsWith("room:")) {
+    const head = sim.channelHead(channel);
+    const title = head.title.replace(/\s*\([^()]*\)$/u, "").trim() || head.title;
+    return [{ kind: "room", id: channel, label: channel.startsWith("loc:") ? `Go to ${title}` : `Open ${head.title}` }];
+  }
+  return [];
+}
+
+/**
+ * A message's exits as one viewer may take them (C2): a `room` target the
+ * guest cannot see right now (a hidden place not yet open, a faction room
+ * of the other side) is dropped. A booth / mod row is never trimmed.
+ */
+export function goForViewer(m: ChatMessage, sim: Sim | null, viewer: string): ChatMessage {
+  if (m.go === undefined || sim === null) return m;
+  const go = m.go.filter((t) => t.kind !== "room" || sim.canSeeChannel(viewer, t.id));
+  if (go.length === m.go.length) return m;
+  if (go.length > 0) return { ...m, go };
+  const { go: _go, ...rest } = m;
+  return rest;
 }
 
 /** Faction names referenced by a broadcast scope like `faction(Mods) | …`. */
@@ -463,7 +532,7 @@ const listWords = (words: readonly string[]): string =>
  * Pure apart from reading the sim's current clock + faction membership, both
  * of which are deterministic functions of the replayed command history.
  */
-export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): DraftMessage[] {
+export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts: ComposeOptions = {}): DraftMessage[] {
   const out: DraftMessage[] = [];
   const ts = sim.elapsed();
   const lobby = lobbyHead(sim);
@@ -511,10 +580,15 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const widget = { kind: e.widget, text: e.text, params: { ...e.params } };
         // `with moment: major|minor` makes the card a moment (the param stays).
         const momentParam = (e.params["moment"] ?? "").trim().toLowerCase();
-        const cardMoment = momentParam === "major" || momentParam === "minor" ? { moment: momentParam as MomentClass } : {};
+        const cardMoment = momentParam === "major" || momentParam === "minor" || momentParam === "big" ? { moment: momentParam as MomentClass } : {};
         const base = { from: "", kind: "widget" as const, text: e.text, ts, parentSeq: null, beat: e.beat, widget, ...cardMoment };
+        // C2: the story's exits, else the card's own thread (never the lobby).
+        const exits = (channel: string) => goOf(sim, e.go, cardGo(sim, channel));
         if (e.audience.length === 0) {
-          if (globalScope(e.scope)) out.push({ ...storyChannel(sim, e.setting), ...base, audience: "all" });
+          if (globalScope(e.scope)) {
+            const head = storyChannel(sim, e.setting);
+            out.push({ ...head, ...base, audience: "all", ...exits(head.channel), ...autoCloseOf(cardMoment.moment, e.close, "all") });
+          }
           break; // a narrowed scope that resolved to nobody: no card
         }
         // `with thread: <Character>` pins the card to that character's DM
@@ -540,20 +614,23 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           slot.to.push(p);
           byChannel.set(head.channel, slot);
         }
-        for (const { head, to } of byChannel.values()) out.push({ ...head, ...base, audience: to });
+        for (const { head, to } of byChannel.values()) out.push({ ...head, ...base, audience: to, ...exits(head.channel), ...autoCloseOf(cardMoment.moment, e.close, to) });
         break;
       }
       case "respond": {
         // A readout (`reply …`). A `reply !…` is an alert (a major moment);
         // otherwise a personal readout is a minor one.
-        const { text, alert } = readoutText(e.text);
-        const flags = { readout: true as const, ...(alert ? { alert: true } : {}) };
+        const { text, alert, big } = readoutText(e.text);
+        // C2: the story's exits (a readout lives in the lobby feed: no default).
+        const flags = { readout: true as const, ...(alert ? { alert: true } : {}), ...goOf(sim, e.go) };
+        // C1: `reply !!…` is a big moment; `reply !…` a major one.
+        const loud: MomentClass = big === true ? "big" : "major";
         if (e.to === "") {
           // A story rule's reply with nobody acting: the lobby, for everyone.
-          out.push({ ...lobby, from: "", kind: "narration", text, ts, audience: "all", parentSeq: null, ...flags, ...(alert ? { moment: "major" as const } : {}) });
+          out.push({ ...lobby, from: "", kind: "narration", text, ts, audience: "all", parentSeq: null, ...flags, ...(alert ? { moment: loud, ...autoCloseOf(loud, e.close, "all") } : {}) });
         } else if (sim.persons.has(e.to)) {
           // The participant's own readout, in their lobby feed.
-          out.push({ ...lobby, from: "", kind: "narration", text, ts, audience: [e.to], parentSeq: null, ...flags, moment: alert ? "major" : "minor" });
+          out.push({ ...lobby, from: "", kind: "narration", text, ts, audience: [e.to], parentSeq: null, ...flags, moment: alert ? loud : "minor" });
         } else {
           // A booth readout (a scanner prop → its performer): the character's
           // own Inbox (`dm:<Character>`, addressed `@<Character>`), naming the
@@ -567,8 +644,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
             audience: [audienceOf(sim, e.to)],
             parentSeq: null,
             ...flags,
-            ...(e.about != null ? { about: e.about } : {}),
-            moment: alert ? "major" : "minor",
+            ...(e.about != null ? aboutOf(sim, e.about, opts) : {}),
+            moment: alert ? loud : "minor",
           });
         }
         break;
@@ -619,9 +696,15 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
         const noticed = alert ? { cue: split.cue, notice: false } : splitNotice(split.cue);
         const cue = noticed.cue;
         const text = cueText(cue);
-        const flag = alert ? { alert: true, moment: "major" as const } : noticed.notice ? { notice: noticeKey(text) } : {};
-        const factions = factionsInScope(e.scope);
+        // C1: `broadcast "!!…"` is a big moment (a self-closing one with
+        // `with close:`); C2: the story's exits ride every copy.
+        const loud: MomentClass = split.big === true ? "big" : "major";
         const base: Audience = globalScope(e.scope) ? "all" : [...e.audience];
+        const flag = {
+          ...(alert ? { alert: true, moment: loud, ...autoCloseOf(loud, e.close, base) } : noticed.notice ? { notice: noticeKey(text) } : {}),
+          ...goOf(sim, e.go),
+        };
+        const factions = factionsInScope(e.scope);
         const rooms = channelsInScope(sim, e.scope);
         if (rooms.length > 0) {
           // `broadcast "…" to channel(hosts)`: a notice posted straight into
@@ -675,7 +758,7 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           const alert = e.text.startsWith("!");
           const text = takeover ? e.text.slice(2).trim() : alert ? e.text.slice(1).trim() : e.text;
           // A `!` pin is a major moment; a takeover has its own layer.
-          out.push({ ...h, kind: "signal", text, pin: e.key, ...(alert ? { alert: true } : {}), ...(takeover ? { takeover: true } : alert ? { moment: "major" as const } : {}) });
+          out.push({ ...h, kind: "signal", text, pin: e.key, ...(alert ? { alert: true } : {}), ...(takeover ? { takeover: true } : alert ? { moment: "major" as const } : {}), ...goOf(sim, e.go) });
         } else {
           out.push({ ...h, kind: "system", text: e.text ?? "📌 Cleared.", unpin: e.key });
         }
@@ -700,7 +783,9 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
             ...(def?.category != null ? { category: def.category } : {}),
             ...(kind !== null ? { aboutKind: kind } : {}),
           };
-          out.push({ ...CODEX_ROOM, from: "", kind: "codex", text: def?.text ?? "", ts, audience: [audienceOf(sim, e.person)], parentSeq: null, codex });
+          // C2: the default exit is the entry itself.
+          const go: GoTarget[] = [{ kind: "codex", entry: e.entry, label: `Read “${title.length <= 24 ? title : `${title.slice(0, 23).trimEnd()}…`}”` }];
+          out.push({ ...CODEX_ROOM, from: "", kind: "codex", text: def?.text ?? "", ts, audience: [audienceOf(sim, e.person)], parentSeq: null, codex, go });
         }
         if (e.via === "share" && e.from !== null && sim.persons.has(e.from)) {
           out.push({ ...CODEX_ROOM, from: "", kind: "system", text: `📤 You shared “${title}” with ${nameOf(e.person)}.`, ts, audience: [e.from], parentSeq: null });
@@ -725,6 +810,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           audience: [audienceOf(sim, e.person)],
           parentSeq: null,
           quest: { quest: e.quest, title, action: e.action },
+          // C2: the default exit is the quest itself.
+          go: [{ kind: "quests", quest: e.quest, label: "See the quest" }],
           threadKey: `${e.person}\u0000${e.quest}`,
           ...(e.action === "start" ? { threadRoot: true, moment: "minor" as const } : {}),
         });
@@ -743,6 +830,8 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[]): Dra
           audience: [e.to],
           parentSeq: null,
           wallet: e.card,
+          // C2: the default exit is the Wallet.
+          go: [{ kind: "wallet", label: "Open my Wallet" }],
           threadKey: `${e.to}\u0000${e.card.id}`,
           ...(e.root ? { threadRoot: true } : {}),
         });

@@ -35,8 +35,9 @@ const INTO = /^[A-Za-z_][A-Za-z0-9_.]*(\s+(into|from)\s+\S.*)?$/u;
  *  shrinks to the named places + DMs, read-only, no buttons. */
 const RESTRICT = /^[A-Za-z_][A-Za-z0-9_.]*(\s+to\s+\S.*)?$/u;
 /** `pin "text"` / `pin "text" for guest` / `pin "text" in quarantine for guest`
- *  — a sticky notice above a stream. A leading `!` in the text is an alert. */
-const PIN = /^"(?:[^"\\]|\\.)*"(\s+in\s+[^"]+?)?(\s+for\s+\S+)?$/u;
+ *  — a sticky notice above a stream. A leading `!` in the text is an alert.
+ *  A trailing `with go: …` (wave 18) names its exits. */
+const PIN = /^"(?:[^"\\]|\\.)*"(\s+in\s+[^"]+?)?(\s+for\s+\S+)?(\s+with\s+\S.*)?$/u;
 /** `unpin for guest` / `unpin in quarantine for guest ["text"]` — takes a
  *  pin down. Needs at least a room or a person (a bare `unpin` is prose). */
 const UNPIN = /^(?:in\s+[^"]+?)?(?:\s*\bfor\s+\S+)?(?:\s*"(?:[^"\\]|\\.)*")?$/u;
