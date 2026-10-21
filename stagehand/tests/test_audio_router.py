@@ -355,6 +355,30 @@ def test_stop_with_announcements_cuts_the_line_empties_the_queue_and_never_falls
     assert direct == [] and r.mixer.active() == 0
 
 
+def test_a_stop_during_a_speaker_test_also_silences_its_spoken_label(tmp_path):
+    import time
+
+    async def go():
+        def slow_say(t, v):
+            time.sleep(0.4)  # the label is still rendering when the stop lands
+            return wav_bytes(0.5)
+
+        r = router(tmp_path, threaded=True, render_say=slow_say)
+        r.apply(answer("v1"))
+        task = asyncio.ensure_future(r.play_test(speaker="bar-1"))
+        await asyncio.sleep(0.1)
+        r.stop_all(False, "Ada")
+        await asyncio.sleep(0.05)
+        mark = len(stream_of(r).out)
+        assert await task
+        await asyncio.sleep(0.2)
+        s = stream_of(r)
+        s.stop()
+        return [b for b in s.out[mark:] if loud(b)]
+
+    assert run(go()) == []
+
+
 def test_a_cut_announcement_returns_quietly_instead_of_raising(tmp_path):
     r = router(tmp_path, announce=True)
     r.apply(answer("v1"))

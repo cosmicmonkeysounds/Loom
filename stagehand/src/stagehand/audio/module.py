@@ -199,6 +199,9 @@ class AudioRouter:
         self._announce_epoch = 0
         self._playing_epoch = 0
         self._cut_until = 0.0
+        #: Bumped by every stop: a speaker test started before it never
+        #: plays its spoken label (the tone fades with the test bus).
+        self._test_epoch = 0
         self.loop: asyncio.AbstractEventLoop | None = None
         self.announcements: asyncio.Queue | None = None
         self.announcer: Announcer | None = None
@@ -587,6 +590,7 @@ class AudioRouter:
         if mixer is not None:
             mixer.stop(bus="sfx", fade_s=0.3)
             mixer.stop(bus="test", fade_s=0.3)
+        self._test_epoch += 1
         if announce:
             self._announce_epoch += 1
             self._cut_until = time.monotonic() + ANNOUNCE_CUT_S
@@ -719,6 +723,7 @@ class AudioRouter:
         gains = {ch: self.cfg.test_gain_db for ch in outs}
         text = identify_label(label, outs)
         log.info("speaker test: %s", text)
+        epoch = self._test_epoch
         loop = asyncio.get_running_loop()
         tone_done = loop.create_future()
 
@@ -736,6 +741,9 @@ class AudioRouter:
             await asyncio.wait_for(tone_done, timeout=5.0)
         except asyncio.TimeoutError:
             pass
+        if self._test_epoch != epoch:
+            log.info("speaker test %s: stopped, label not played", label or outs)
+            return True
         mixer.play(resample(samples, rate, mixer.rate), gains, bus="test", tag="test")
         return True
 
