@@ -1281,7 +1281,7 @@ export const AD_MESSAGES: readonly StormMessage[] = [
 ];
 const AD = { freeze: 0, slam: 1400, storm: 3200, cycle: 24_000 } as const;
 
-/** The odometer: 000. 000. 000., every wheel rolling and stopping dead on 0. */
+/** The odometer: 000. 000. 000., resting on 0, now and then a wheel rolling round and landing on 0 again. */
 function Odometer({ t, reduced }: { t: number; reduced: boolean }) {
   const groups = [0, 1, 2];
   return (
@@ -1349,7 +1349,7 @@ function AdHijackTv({ t, sfx, reduced }: SceneProps) {
             OFFER EXPIRES NEVER
           </div>
           {cycle >= 0 && stormLocal < AD.cycle - 1500 && (
-            <div className="kit-fill" style={{ opacity: 1 - progress(stormLocal, AD.cycle - 3000, 1500) }}>
+            <div className="a1-ad-stormlayer" style={{ opacity: 1 - progress(stormLocal, AD.cycle - 3000, 1500) }}>
               <PopupStorm key={cycle} t={t} seed={cycle + 3} count={14} start={stormStart} span={10_000} messages={AD_MESSAGES} width="20em" sfx={cycle === 0 ? sfx : undefined} sound="popup" reduced={reduced} />
             </div>
           )}
@@ -1396,7 +1396,9 @@ function AdHijackWall({ t, sfx, reduced }: SceneProps) {
         <div className="a1-ad-wall-offer">{linesOf("ad_hijack")[0]}</div>
         <div className="a1-ad-wall-call">CALL NOW: (&nbsp;&nbsp;&nbsp;)&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;&nbsp;</div>
       </div>
-      <PopupStorm key={cycle} t={t} seed={cycle + 11} count={5} start={cycle * 20_000 + 2500} span={8000} messages={AD_MESSAGES} width="44vmin" reduced={reduced} />
+      <div className="a1-ad-stormlayer">
+        <PopupStorm key={cycle} t={t} seed={cycle + 11} count={5} start={cycle * 20_000 + 2500} span={8000} messages={AD_MESSAGES} width="44vmin" reduced={reduced} />
+      </div>
     </div>
   );
 }

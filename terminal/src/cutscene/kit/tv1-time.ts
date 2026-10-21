@@ -352,15 +352,20 @@ export function bounceAt(t: number, bw: number, bh: number, speed = 0.11, seed =
 
 // --- the odometer ------------------------------------------------------------------------------
 
+/** The share of each odometer period spent rolling (the rest it rests on a dead 0). */
+export const ODOMETER_ROLL = 0.22;
+
 /**
- * One wheel of the ad's odometer at `t`: it rolls (a digit's worth every
- * `per` ms, faster for later wheels) and every `period` ms snaps back to a
- * dead 0 for a beat — a price that is just 000. Returns the roll in digits
- * (0..10, the strip's offset).
+ * One wheel of the ad's odometer at `t`: it rests on 0 most of the time
+ * (the price is just 000. 000. 000.); every `period` ms it rolls through a
+ * whole number of turns (one to three, by wheel) in `ODOMETER_ROLL` of it,
+ * easing out, and lands on 0 again. Returns the roll in digits (0..10, the
+ * strip's offset; 0 = showing 0).
  */
-export function odometerWheel(t: number, wheel: number, period = 2600, per = 90): number {
+export function odometerWheel(t: number, wheel: number, period = 2600): number {
   const k = loop(t + wheel * 37, period);
-  if (k > 0.72) return 0; // stopped on 0
-  const spin = (k * period) / Math.max(10, per - wheel * 6);
-  return spin % 10;
+  if (k >= ODOMETER_ROLL) return 0;
+  const turns = 1 + (wheel % 3);
+  const roll = (turns * 10 * ease.outCubic(k / ODOMETER_ROLL)) % 10;
+  return roll >= 9.995 ? 0 : roll;
 }

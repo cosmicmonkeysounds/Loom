@@ -19,6 +19,7 @@ import {
   memoryCount,
   momentAfter,
   momentNear,
+  ODOMETER_ROLL,
   odometerWheel,
   periodicCues,
   rainColumn,
@@ -168,15 +169,25 @@ describe("tv1 time — clocks, marches, loops", () => {
     }
   });
 
-  it("the odometer rolls and stops dead on 0", () => {
-    let zeros = 0;
-    for (let t = 0; t < 26_000; t += 100) {
-      const v = odometerWheel(t, 2);
-      expect(v).toBeGreaterThanOrEqual(0);
-      expect(v).toBeLessThan(10);
-      if (v === 0) zeros++;
+  it("the odometer rests on 000 and its rolls always land on 0", () => {
+    for (let w = 0; w < 9; w++) {
+      let zeros = 0;
+      let n = 0;
+      for (let t = 0; t < 26_000; t += 20) {
+        const v = odometerWheel(t, w);
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThan(10);
+        if (v === 0) zeros++;
+        n++;
+      }
+      // Most frames read 0 (the price is just 000.), and it does roll.
+      expect(zeros / n, `wheel ${w}`).toBeGreaterThan(0.75);
+      expect(zeros).toBeLessThan(n);
+      // Just before a roll ends it is nearly back on 0 (it lands, never jumps).
+      const end = 2600 * 3 - w * 37 + 2600 * ODOMETER_ROLL - 5;
+      const v = odometerWheel(end, w);
+      expect(Math.min(v, 10 - v), `wheel ${w} lands`).toBeLessThan(0.1);
     }
-    expect(zeros).toBeGreaterThan(40);
   });
 
   it("the rain is a seeded stream of 0 / 1", () => {
