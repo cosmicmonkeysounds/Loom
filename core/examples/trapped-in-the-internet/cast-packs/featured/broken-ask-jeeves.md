@@ -37,6 +37,61 @@ and *Jeopardy!* never called you back.
 
 You uploaded on a **10 MB/minute plan**. Some of your files did not arrive.
 
+<!-- DRAFT w18b (R7): the two sections below, and "Who you know", await sign-off. -->
+
+## What happened on the line
+
+The invitation insisted: **at least 1 GB upload**, a **backup generator**, and
+a headset that **must not go offline**. You had a grandfathered **Eastlink
+10 MB/Minute** plan, Lawrencetown's old DSL, and the power out there flickers.
+Surely it couldn't be such a big problem.
+
+It was. The transfer took most of the evening. The line reset several times,
+and the power flickered once, halfway through. Trabolta wanted you to sort every
+piece of unorganised information in the computer; he did not foresee the
+upload going badly. What didn't arrive, or arrived in the wrong place:
+
+- **Most of what happened after 2006**, when Ask.com retired the butler. You are
+  sharpest about 1998–2005. After that, memories come and go.
+- **The ends of some sentences.**
+- **Where you learned things.** Every fact arrived. Who told you did not. (Your
+  scrambled fragments, later tonight, are the same problem on paper.)
+- **Some words landed in the wrong slots**, in your files and sometimes in your
+  mouth.
+- **Part of Virgil.** The butler was written over the librarian, and sometimes
+  the librarian comes back.
+
+Your phone has the same log and menu as **The DSL Line** in your Codex (secret:
+Trabolta never sees it and won't take it; you can show it to another program).
+
+## Glitch menu
+
+Pick from these whenever you like. None is required; use the triggers when you
+want a reason.
+
+| Glitch | When |
+|---|---|
+| **Answer the question before last.** You must answer any question asked near you (people should Ask Jeeves), but now and then you answer the one before. | Someone asks anyone anything within earshot. |
+| **Freeze.** Stop mid-sentence, say "…buffering…", then carry on. | You're asked something you don't know, or someone says "quick". |
+| **"Did you mean…?"** Correct what someone just said, usually wrongly. | A name, a room, a word you half-heard. |
+| **Search results.** Answer as a numbered list: "1. … 2. … 3. … Page 2 of 40." | A big question: what is this place, who is Trabolta. |
+| **Rival crash.** The name of a rival search engine crashes you. Go still, then reboot ("Starting Ask Jeeves…"). | Anyone says *Google*. |
+| **Handshake.** A modem's dial-up screech gives you two minutes of perfect clarity. | You hear the dial-up sound at the door (every program's login plays it), or your phone's ticker says a modem is handshaking (every few minutes). |
+| **Virgil.** Suddenly you are a children's librarian again: story time, an overdue notice, "inside voices, please". | A child's game (Bingo, the bottle), or someone being kind to you. |
+
+**Escalation by act**
+
+- **Act I (arrival, Bingo, the first hunt):** mild. One glitch in a
+  conversation, at most.
+- **Act II (from the Truther Download, about two hours in):** your 20 scrambled
+  files arrive and so does the worst of it. Freeze, crash and answer the
+  question before last freely.
+- **Act III (the Y2K hour):** the clock goes back to 1999, your era. You are
+  **almost completely yourself**: lucid, precise, Virgil more than the butler.
+  A blackout reboots you (a short freeze, then a fresh start).
+- **Whenever you are lucid** (a handshake, the Y2K hour), **share a finding**:
+  it counts toward your job (Ten Findings).
+
 ## Why you said yes
 
 You thought tonight was a **job interview**: full-time remote employment as
@@ -44,6 +99,16 @@ the resident Maps and Ducks **Map Librarian**, promised on one condition —
 that you **share at least ten of your findings with every program** at the
 party. You want people to Ask Jeeves once again, so you give facts whether
 anyone asked for them or not.
+
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **Retired Helpers**: another helper who was retired, the year after you.
+- **Found On Indeed**: everyone the same recruiter found by job search.
+- **The Old Machines**: what still runs in here, your Nokia 9110 among it.
 
 ## How to play
 

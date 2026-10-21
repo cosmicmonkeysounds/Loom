@@ -48,6 +48,16 @@ Truth Scavenger Hunt and win. You have already ruled out a sting (that would
 be entrapment). Facts are currency here and you need twenty for your dossier;
 you intend to find out what is really happening and leave in one piece.
 
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **The Downtown Staff Photo**: the store where you kept the books, and the IT manager at your table.
+- **The Volunteer Sheet**: the petting zoo's sign-up sheet. You are "D.", who asked for the site plans.
+- **The Ladies In Finance**: the City's books, decades of them, and an intern who changed a cell.
+
 ## How to play
 
 - When you're scanned in, the app restores your "user profile": your memories

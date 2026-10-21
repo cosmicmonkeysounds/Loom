@@ -32,6 +32,16 @@ right off**, and your followers went to zero on the spot.
 
 Jean Trabolta's offer: stay in a computer and **keep your beauty forever**.
 
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+
+## Who you know
+
+When you're scanned in, three files about **who you're connected to** arrive in your Codex under **Connections**. Each one points at other people in the house without naming them; whoever holds the same file is connected to you. Ask around ("you have the staff photo too?"), and never say who is behind a program.
+
+- **Forever**: everyone who wants to keep something forever (your face).
+- **The Pirate Site**: your livestream, on a page with two other people's worst days.
+- **The Audience**: your followers, and somebody else's audience of bots.
+
 ## How to play
 
 - When you're scanned in, the app restores your memories into your **Codex**.
