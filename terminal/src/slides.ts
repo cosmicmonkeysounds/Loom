@@ -85,7 +85,7 @@ const isClip = (s: ProgramSlide) => s.kind === "slide" && s.cue.startsWith("term
  * past its hold by then). `seenAt` (server ms) is the newest answer this memo
  * was confirmed against.
  */
-interface ScreenMemo {
+export interface ScreenMemo {
   epoch: string | null;
   story: ProgramSlide | null;
   blindUntil: number;
@@ -93,6 +93,9 @@ interface ScreenMemo {
 }
 type MemoStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const memo = new Map<ScreenTarget, ScreenMemo>();
+/** What was last written to storage per target: a poll only moves `seenAt`,
+ *  which is written at `MEMO_GAP_MS / 2` precision, not every 2 s all night (OB-11). */
+const persisted = new Map<ScreenTarget, ScreenMemo>();
 const memoKey = (t: ScreenTarget) => `loom.terminal.screen.${t}`;
 /** undefined = not resolved yet (the page's `localStorage`, if it has one). */
 let memoStorage: MemoStorage | null | undefined;
@@ -110,10 +113,12 @@ function storage(): MemoStorage | null {
 export function setScreenMemoStorage(s: MemoStorage | null): void {
   memoStorage = s;
   memo.clear();
+  persisted.clear();
 }
 /** Forget the story slide under a clip (tests). */
 export function resetScreenMemo(): void {
   memo.clear();
+  persisted.clear();
   for (const t of ["terminals", "tv"] as const) {
     try {
       storage()?.removeItem(memoKey(t));
@@ -137,6 +142,7 @@ function recall(target: ScreenTarget, epoch: string | null): ScreenMemo | undefi
       if (j !== null && (typeof j["epoch"] === "string" || j["epoch"] === null) && (j["story"] === null || isShot(j["story"]))) {
         m = { epoch: j["epoch"] as string | null, story: (j["story"] as ProgramSlide | null) ?? null, blindUntil: typeof j["blindUntil"] === "number" ? j["blindUntil"] : 0, seenAt: typeof j["seenAt"] === "number" ? j["seenAt"] : 0 };
         memo.set(target, m);
+        persisted.set(target, m);
       }
     } catch {
       // unreadable: no memory
@@ -145,10 +151,18 @@ function recall(target: ScreenTarget, epoch: string | null): ScreenMemo | undefi
   // Another sim (a restart, a server boot): its slides are not this one's.
   return m !== undefined && m.epoch === epoch ? m : undefined;
 }
+/** Must a memo be written over what storage holds? Its story, sim or blind
+ *  window moved, or `seenAt` moved by half a gap (the reload check's precision). */
+export function memoNeedsWrite(prev: ScreenMemo | undefined, m: ScreenMemo): boolean {
+  if (prev === undefined) return true;
+  const sameStory = prev.story === null || m.story === null ? prev.story === m.story : prev.story.seq === m.story.seq && prev.story.at === m.story.at;
+  if (prev.epoch !== m.epoch || !sameStory || prev.blindUntil !== m.blindUntil) return true;
+  return Math.abs(m.seenAt - prev.seenAt) >= MEMO_GAP_MS / 2;
+}
 function remember(target: ScreenTarget, m: ScreenMemo): void {
-  const prev = memo.get(target);
   memo.set(target, m);
-  if (prev !== undefined && prev.epoch === m.epoch && prev.story?.seq === m.story?.seq && prev.blindUntil === m.blindUntil && prev.seenAt === m.seenAt) return;
+  if (!memoNeedsWrite(persisted.get(target), m)) return;
+  persisted.set(target, m);
   try {
     storage()?.setItem(memoKey(target), JSON.stringify(m));
   } catch {
