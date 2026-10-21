@@ -1614,8 +1614,9 @@ export class EventRuntime {
     for (const e of events) {
       if (e.type === "respond") {
         // The alert `!` stripped, as the Inbox row has it (`alert` says it was there).
-        const { text, alert } = readoutText(e.text);
-        this.toPrime(e.to, "response", { text, ...(alert ? { alert: true } : {}) });
+        const { text, alert, big } = readoutText(e.text);
+        // C1: a `reply !!…` says so on the booth's response frame too.
+        this.toPrime(e.to, "response", { text, ...(alert ? { alert: true } : {}), ...(big === true ? { big: true } : {}) });
         // A locked booth still hears it (the door alarm, the late list).
         this.push.notify(boothOwner(e.to), readoutPush(e.to, text), false);
       }
