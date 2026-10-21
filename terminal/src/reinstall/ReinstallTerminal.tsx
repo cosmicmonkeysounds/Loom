@@ -264,7 +264,7 @@ function Station({
       <main className={`stage idle${withWorld ? " with-world" : ""}`}>
         <section className={`face-pane${withWorld ? " showing-world" : ""}`}>{pane}</section>
         <section className="line-pane" />
-        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={!covered && step.kind === "idle"} region={withWorld ? "pane" : "full"} reserveRef={corner} />
+        <IdleShow name={config.name} state={state} asleep={asleep} character={config.character} target="wall" active={!covered} region={withWorld ? "pane" : "full"} reserveRef={corner} />
         <div ref={corner} className="ri-corner">
           {picks.length > 0 && (
             <div className="ri-picks" aria-label="In the Internet now">
