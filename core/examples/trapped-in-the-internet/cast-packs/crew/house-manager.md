@@ -11,15 +11,18 @@
 - Get the handover from Recycling Bin: which featured guests are in.
 - The sign says "ring and wait". Open, welcome, point at the door QR, radio
   **ARRIVAL**.
-- **After C1, a late guest is stuck in the Optical Drive** until an Antivirus scans
-  them. Radio ARRIVAL; the director scans them in from Run (OP-18), or walk an
-  Antivirus over.
+- **After C1, a late guest waits in the Optical Drive** until an Antivirus scans
+  them. Every Antivirus booth gets *🚪 X is waiting at the Optical Drive* by
+  itself (the four share the door); radio ARRIVAL if nobody comes, and the
+  director scans them in from Run (OP-18), or walk an Antivirus over.
 - Answer from the door FAQ ([`all-crew.md`](../all-crew.md)): rejoin, loaners,
   Wi-Fi, flashing lights.
 
-**A grey phone.** A guest whose app has gone grey with a 🚨 GO TO THE
-INTERNET card is **marked for reinstallation**: nothing is broken. Find them
-an Antivirus (or radio one); they walk them through the Tube.
+**A marked guest.** A guest whose phone says *You are marked for
+reinstallation* has nothing broken: a mark switches nothing off (Q30). The
+Antivirus are hunting them (it's the game); one will scan their pass and
+walk them through the Tube. A guest whose app has gone **grey** with ⛔ was
+held by a director (Run → Restrict): send them to the director.
 
 **Loaners + re-pairs.** Loaner phones are at [[EDIT: where]]. A guest who lost
 their session or their phone: walk them to the director, who shows a QR that

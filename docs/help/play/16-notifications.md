@@ -1,0 +1,96 @@
+---
+title: Notifications & big moments
+section: Guest Guide
+order: 3.5
+keywords: notifications, recycle bin, bin, bell, alert, alerts, pop-up, popup, balloon, banner, sticky, dialog, blue screen, glitch, big moment, full screen, achievement, collect, cheer, house news, virus detected, quarantined, missed, clear all, delete, access is denied, full of beans, in use, take me there, go there, buttons, chime, push, get alerts, locked, keep screen on, iphone, home screen, takeover, flashing, go to the living room
+---
+
+The story interrupts you when it matters, and **every interruption has a
+way there**: its buttons take you to the moment's own place (the room, the
+person, your pass, the Codex entry, the quest, your Wallet), never to some
+general feed.
+
+## Big moments
+
+When something is **yours** and important (you won the Bingo, you were
+found by an Antivirus, you were sent to the Internet, you were invited onto
+a side, the bottle landed on you), the whole screen becomes it, whatever
+else you were doing. It looks like a Windows 98 Setup Wizard: a big emoji, a
+headline, and a progress bar that fills for about a second. Then its button
+wakes up:
+
+- **★ ACHIEVEMENT UNLOCKED** (*You won the Bingo Ribbon.*) → **Collect ✓**.
+- **⚠ VIRUS DETECTED** (an Antivirus found you) → **OK**.
+- **⛔ QUARANTINED** (sent to the Internet) → **📍 Go to The Internet** or
+  **🎟 Show my pass**.
+- **⚡ YOUR MOVE**: a card is inside it (the bottle's *Truth or dare?*, a
+  poll, a line to type). Answer it right there; the window closes by itself
+  once you have. *It's also in Trabolta's chat*, if you'd rather answer later.
+- **📣 HOUSE NEWS**: news for everyone (*Encarta won the Bingo Ribbon! Cheer
+  for them at the Desktop.*) with **Cheer! (6)** counting down; it closes by
+  itself.
+
+There is no ×, and tapping outside does nothing: press its button. Several at
+once queue up (*1 of 2*). If your screen was off, or you reloaded, an
+unanswered big moment comes back for fifteen minutes. A big moment waits a
+few seconds while your pass is open, then shows over it.
+
+## Smaller alerts
+
+How loud the rest is, is the story's choice, and it can change during the
+night; every screen glitches for a moment when it does. From quiet to loud:
+
+- **A balloon tip** pops up by the tray and goes away by itself.
+- **A yellow banner** across the top stays until you tap it (×). Only one
+  announcement to everyone shows at a time: the newest.
+- **A dialog box** covers the screen with **OK**; more than one waits its
+  turn.
+- **The blue screen**: everything the story says to you takes over the
+  screen in white on blue. Tap anywhere to continue.
+
+Each has a button or two: **📍 Go to The Desktop**, **📷 Check in**, **Open
+Trabolta**, **Read "…"**, **See the quest**, **Open my Wallet**, **What do I
+do?** (Mission). A personal one (a card for you, something only you can
+do) comes before a house announcement, and an announcement from an earlier
+part of the night is dropped once the night has moved on (it is still in the
+bin).
+
+## The Recycle Bin
+
+The **Recycle Bin** at the top right of every screen is your notifications:
+every alert and big moment of the night, and every note about you, newest
+first, each with its time and its buttons. It fills up (paper sticking out,
+and a count) when there's something you haven't seen. A run of notes about
+other people folds into one row (*🎀 2 updates about others*). Nothing in it
+pops up or sticks: it's the place to catch up.
+
+**✕** on a row deletes it. **🗑 Clear all** deletes the lot. It is a 1999
+computer, so it argues: sometimes *Are you sure you want to send '…' to the
+Recycle Bin?*; a big moment you haven't answered yet is *in use* and won't
+go; and after the fake *Deleting…* bar, Clear all may end with *Access is
+denied* (some rows stay), or *The Recycle Bin is full of beans*.
+
+## When the phone sleeps
+
+Tap the app once after you open it so it is allowed to make sound. If your
+screen was off when something happened, the bin counts it and an unanswered
+big moment shows again when you wake the phone; everything else just waits
+in the bin. Want to be sure? Tap your picture → **Keep my screen on** stops
+the phone from sleeping while the app is open.
+
+On an Android phone, tap **Turn on** in the **🔔 Get alerts** balloon by the
+tray (or your picture → **Get alerts on this phone**) and allow
+notifications: alerts and messages from the characters then reach you even
+when the phone is locked, and tapping one opens the moment's own place.
+Leaving the event turns them off. On an iPhone the balloon says what works
+there: if it shows **Get alerts on your iPhone**, tap Share → **Add to Home
+Screen**, open the party from the new icon (you'll still be you) and tap 🔔
+there; if it says **Your iPhone can't get alerts**, keep the app open with
+the screen on.
+
+## The takeover
+
+At the biggest moment of a night the whole screen can become the alert:
+it flashes black and yellow with one instruction (*GO TO THE LIVING
+ROOM*) and there's nothing to close. Go. The story takes it down when
+the moment has passed (with Reduce Motion on, it doesn't flash).

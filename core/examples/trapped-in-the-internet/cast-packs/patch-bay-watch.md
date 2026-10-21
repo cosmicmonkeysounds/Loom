@@ -3,10 +3,10 @@
 > **Holder:** the Antivirus stationed in the server room from the Y2K clock
 > (**inside, door shut, before 🕚**)
 > ([[EDIT: who — suggested CRA Agent Software, decided at the 10-25
-> read-through]]; Norton, McAfee, Password Manager or CRA Agent Software,
-> **never Windows Defender**: only those four booths show 🔌 💥 ❌ 🚪 🔧 to a
-> performer; since wave 13 the three host booths can press them too, but the
-> watch and the press are yours). **Keep this card face-down in your pocket.** It holds the
+> read-through]]; Norton, McAfee, Password Manager or CRA Agent Software:
+> only those four Antivirus booths show 🔌 💥 ❌ 🚪 🔧 to a performer; since
+> wave 13 the three host booths can press them too, but the watch and the
+> press are yours). **Keep this card face-down in your pocket.** It holds the
 > two combinations, which no guest may see. It is only needed if the patch-bay
 > scanner fails on the bench (10-22) or flakes on the night (W-31, OP-13);
 > otherwise the bay judges itself and you just watch.
@@ -31,8 +31,8 @@ keypad, never on the radio).
 
 ## What you do
 
-1. **Be inside with the door shut before 🕚**, then radio the director
-   **"IN"**: the director fires 🕚 only after it. Once Trabolta is awake
+1. **Be inside with the door shut before 🕚**, then radio **"IN"**:
+   whoever is calling the show (📣) fires 🕚 only after it. Once Trabolta is awake
    the **first opening of the door plays The Heart**, whoever opens it, and
    the door contact can't tell you from a guest: **press 🔧 *Crew going
    through the door* on your booth (any program's card) before you open
@@ -43,12 +43,15 @@ keypad, never on the radio).
    yourself on your booth, on the card of the program at the cables: **🔌
    Combo A is in**, **💥 Combo B is in** or **❌ wrong combination** (the
    buttons lead the card from 🕚 through the Y2K hour; from 🌑 the final
-   reveal until 📄 they are under **All buttons…** on any card, DRAFT Q33). Radio the director **"A"**, **"B"**
-   or **"WRONG"** only if your phone can't: the director fires 🔌 / 💥 / ❌.
+   reveal until 📄 they are under **All buttons…** on any card, DRAFT Q33). Radio **"A"**, **"B"**
+   or **"WRONG"** only if your phone can't: a host or the director fires
+   🔌 / 💥 / ❌.
 3. After a WRONG, nod at the guests, say nothing, let them pull cables.
    (Everyone is forgiven one: the **second** wrong combination trips the
    alarm. The director's 🔄 *Server room: reset the patch-bay alarm* forgives
-   one again.)
+   one again.) When the alarm trips, whoever is at the cables goes to the
+   Internet: they are not marked, so **🛡** is under **All buttons…** on
+   their card (*Not on offer now*: tap it, tap again).
 4. Reset after an ending only if the director asks: every cable out.
 
 ## Also yours
@@ -59,7 +62,8 @@ keypad, never on the radio).
   plays **The Heart**: the room opens on every phone and Trabolta speaks from the
   server-room terminal on the wall. If nothing happens when the door first
   opens, press **🚪 The server-room door opened** on your booth (on the
-  card of whoever came in), or radio the director, who fires **🚪**.
+  card of whoever came in), or radio a host or the director, who fires
+  **🚪**.
   Never say the code on the radio.
 - **The server-room terminal.** A guest scans their pass and talks to Trabolta
   on their own thread; at his heart he is candid. If he offers to stand down,
@@ -72,8 +76,8 @@ keypad, never on the radio).
   already holds it is told so, and the screen still says the code is in
   their Codex; after 📄 it says *No prize now.*). **Only if the
   terminal could not** and you **saw** "checkmate" (OP-12): press **♟ They
-  beat the machine** on the winner's card. Terminal dead → radio the
-  director, who fires ♟ naming the winner.
+  beat the machine** on the winner's card. Terminal dead → radio a host or
+  the director, who fires ♟ naming the winner.
 - **The real gear** (router, UPS, the dongle, the ESP32 power) is taped off and
   out of reach. Keep guests off it, politely and firmly. In Act III the room
   fills up.

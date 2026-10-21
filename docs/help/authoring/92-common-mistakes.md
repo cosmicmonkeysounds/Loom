@@ -93,6 +93,22 @@ keywords: mistakes, errors, troubleshooting, gotchas, faq, why, broken, diagnost
   Clippy one too). `L1211` warns when nobody can sign in as it at all.
 - **`alerts:` only counts in the first file's header.** Anywhere else it
   is ignored (`L1210`), and the level is read from `Night.alerts`.
+- **`with go:` needs a quoted text.** `reply Sent to the Internet. with go:
+  The Internet` shows those words, *with go:* and all; write `reply "Sent to
+  the Internet." with go: The Internet`. A `broadcast` also needs its `to`
+  scope before the `with`. `L1214` points both out, and a `go:` word that
+  names nothing (it's dropped). `go: lobby` is never an exit.
+- **A big moment for the whole house stops every phone.** `broadcast
+  "!!…" to everyone` belongs in an admin cue's own `when` or a story rule,
+  with `with close: 6s`; anywhere else `L1218` asks if you meant it. For one
+  person, `reply !!…`.
+- **`reinstall:` replaces the default.** Without it a captured or restricted
+  guest may enter the reinstallation games; with it only your condition
+  counts, so include `program.corrupted == true` (or your capture flag)
+  yourself.
+- **A claim path is a character, not a name.** In a CHARACTER or TRAIT
+  hook, `set program.escort_by = self` (the character); `self.name` is
+  empty there.
 - **`~` and `!` don't mix.** A cue that starts with `!` is an alert and
   never folds; a `~` notice needs a leading emoji to fold by, and the
   person it is about still needs their own `reply`.

@@ -2,7 +2,7 @@
 title: Cards & widgets — `show`
 section: Live Shows
 order: 36
-keywords: show, widget, card, moment, major, minor, tray, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
+keywords: show, widget, card, moment, major, minor, big, sides, doors, invite, invitation, tray, fact, file a fact, near miss, near, typo, judge, ruling, L1206, judging, verdict, key_answer, filed, confidence, slider, facts.json, answer key, accept, fold, judge_mode, auto, review, fact_filed, fact_judged, pick, random, captcha, security check, poll, picture, image, answer, free text, pickup line, answered, verify, game, media, minigame, booth card, inbox, thread, commas
 ---
 
 The participant app can put more than text in a conversation. A **card**
@@ -48,9 +48,24 @@ show poll "Ready?" to group(Antivirus) with options: "Yes | No | Never"
 
 - **`moment: major`** (or `minor`) makes the card a **moment**: besides
   docking in its room it interrupts the guest at the story's alert level
-  ([Live shows](live-shows.md)). Keep `major` for the card that one
-  guest must answer now (*Trapped in the Internet*: the bottle's Truth
-  or Dare, the pickup line). Quoted or bare, either works.
+  ([Live shows](live-shows.md)). **`moment: big`** takes the whole screen
+  whatever the level, and the guest answers it right there (a `poll`,
+  `captcha`, `answer`, `sides` or `invite` card; a `fact` card offers a
+  button to its room instead); the window closes a moment after the
+  answer, and an unanswered one comes back on a reload. Keep `big` for the
+  card one guest must answer now (*Trapped in the Internet*: the bottle's
+  Truth or Dare, Help or Thwart, the pickup line). Quoted or bare, either
+  works. A `go:` param adds exits, as on a broadcast
+  ([Broadcasts](broadcast-improv.md)).
+- **`sides`** is the two doors: `show sides "🕚 SYSTEM CLOCK RESET. Two doors
+  have opened in the computer." to program with moment: big` shows every
+  joinable, revealed side as a full-screen door (its leader and its count
+  toward `majority:`), *Walk in ▸* on each and *Neither*. Walking in is the
+  switching join; the card then answers `{side}` (or `neither`) as `sides
+  answered`. The text's first line is the kicker.
+- **`invite`** is what a guest's recruit by pass sends the other phone
+  (*Excel wants you in Unlimited Power* · *Join* / *Not now*); the server
+  posts it, so a story never writes one.
 
 On the guest's phone a card that waits for an answer docks in a **tray**
 above the message box, one at a time, while the conversation keeps a

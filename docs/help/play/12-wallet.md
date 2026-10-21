@@ -13,9 +13,10 @@ know for it. The story is watching every coin.
 
 Your balance sits in the taskbar's tray, bottom right — **🪙 120**
 (🧊 while frozen). Tap it for what's on hold and **Open the Wallet ›**,
-or open the **🪙 Wallet** room pinned at the top of your rooms (beside
-your Quest Log and Codex). Its line in
-the list says how much you have and how many deals are still open.
+or tap the **🪙 Wallet** tile on [Mission](mission.md) (beside your Quest
+Log and Codex): it says how much you have and how many requests are
+waiting on you. A coin request to you is also a row in Mission's **Your
+move**.
 
 Every deal is a card in the Wallet, with its own thread that updates as
 the deal moves: *💸 You sent 50 Truthcoin to Excel — settles in 42 s…*,

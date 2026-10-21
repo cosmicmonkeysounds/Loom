@@ -18,19 +18,23 @@ Vite, served by the `@loom/core` event server at `/`.)
   a piece of software. They hold their phone in one hand, walk between
   rooms, talk to people and performers, and glance down when the story
   calls. Their job: know where to be and what to do next, show their pass
-  to be scanned, answer the story's cards, chat, and not miss the beats.
+  to be scanned, answer the story's cards, chat, pick a side (or found a
+  crew), and not miss the beats.
 - **Performers.** Cast members playing characters with a booth on their
-  phone: the Antivirus (Norton, McAfee, Password Manager, CRA Agent
-  Software, Windows Defender) and Clippy. They work face to face with
-  guests, mostly one-handed. Their job: scan a guest's pass and press the
-  one or two buttons that matter for this act, and follow the night's
+  phone: the four Antivirus (Norton, McAfee, Password Manager, CRA Agent
+  Software; they share the door) and Clippy, who calls the games from a
+  🎤 cue bar (a super-performer, not a host). They work face to face with
+  guests, mostly one-handed. Their job: act on the guest the story names
+  (a pop-out, a picker of picture tiles, a list), scan only to clear a
+  program at the door or to confront a marked one, and follow the night's
   running order without reading a cast pack mid-scene.
 - **Hosts / directors.** Three performer characters who also run the
   night: **Adobe Acrobat, Recycling Bin and Task Manager** (Task Manager is
   the show owner). They are on stage, in costume, in their booths. Their
-  job: call the cue sheet, watch what needs them (judging, wallet holds,
-  refusals, lost guests, terminals, Trabolta's worker), announce, and fix
-  a guest, all from the Play app without leaving it all evening. A second
+  job: call the cue sheet (any of them, equally: whoever calls claims it,
+  📣), watch what needs them (judging, wallet holds, refusals, escorts
+  waiting, lost guests, terminals, Trabolta's worker), announce, and fix a
+  guest, all from the Play app without leaving it all evening. A second
   director may still sit at the editor's Run mode on a laptop as backup.
 
 ## Product Purpose
@@ -39,10 +43,14 @@ The Play app is the participant client of Loom, a language and server
 for live, branching, multi-person stories. The story (`.loom` files) is
 the source of truth. The server turns every line into exactly one room
 (DMs, location rooms, the lobby, pinned Codex / Quest Log / Wallet), and
-the app renders it as a chat app with presence, cards (mini-games) and
-story buttons. Success on the night: every guest always knows the current
-beat and their next move. Performers act on a scanned guest in one or two
-taps. Hosts never have to open a laptop.
+the app renders it as a game: a guest's home is **Mission** (the NOW
+objective, the one place to go, its buttons big, what's waiting on you),
+the rooms are a **Chats** tab you visit, the lobby is a far-away **📜 Chat
+log**, every moment lands in a **Recycle Bin** of notifications, and the
+big decisions take the whole screen. Success on the night: every guest
+always knows the current beat and their next move. Performers act on the
+guest the story names in one or two taps, mostly without scanning. Hosts
+never have to open a laptop.
 
 ## Positioning
 
@@ -91,6 +99,23 @@ speakers and lights.
 - **Decision (2026-10-20):** performers' per-act instructions, objectives
   and checklists are authored in the story (a new Loom surface), drafted
   from the cast packs, with the text signed off by the user.
+- **Decision (2026-10-21, wave 18):** *"the Play app should feel more like
+  a game than it does now for everybody"*. Mission is home; the tab is
+  **Chats** (never the story's title); the lobby is a far-away Chat log,
+  never where a moment sends you; big decisions are un-ignorable
+  full-screen moments with their own buttons; navigation from every alert
+  lands on the moment's own place; a Notifications tab (the Recycle Bin)
+  with funny Win95 delete dialogs, where nothing is sticky.
+- **Decision (2026-10-21, Q30):** a mark doesn't hinder; the Antivirus
+  hunt from a Wanted board with pop-outs, and their scan is the
+  confrontation. **Q26:** Windows Defender is gone; the four share the
+  door. **Q2:** Clippy calls its own games. **Q1:** hosts see and call the
+  event equally from Play. **Q21:** sides are joined through doors, a
+  member recruits by pass, guests may found crews, and joining never
+  replaces the profile (the Me sheet). **Q16 dropped:** the reinstallation
+  is a party favour after the end.
+- Minimise scanning: scans are for clearance at the door and the
+  confrontation; everything else is a tap.
 - Typewriter: minimal for ordinary speech; exaggerated effects are wanted
   for effect text (alerts, glitches, takeovers).
 - The pass QR and the QR scanner must be reachable in one tap from
@@ -125,6 +150,10 @@ speakers and lights.
 - The user's source story docs: repo-root `Trapped In The Internet story/`.
 - The 2026-10-20 UX mapping (scratchpad `ux/*.md`) and 107 phone-width
   screenshots of the live show from that day.
+- Wave 18's two specs (GUEST-SPEC, BOOTH-SPEC), its six test reports
+  (guest night, booth night, adversary, navigation matrix, old devices,
+  code review) and the decisions in
+  `core/examples/trapped-in-the-internet/SIGNOFF-w18.md`.
 - Help articles bundled into the app: `docs/help/play/`.
 
 ## Product Principles
@@ -141,6 +170,8 @@ speakers and lights.
    night, has what it needs in the Play app.
 5. **The interface is in the fiction.** Chrome, glitches and pop-ups belong
    to the 1990s computer the guests are trapped in.
+6. **It's a game.** Home is a mission, not an inbox; big moments are
+   events you can't miss; every alert has a way there.
 
 ## Accessibility & Inclusion
 

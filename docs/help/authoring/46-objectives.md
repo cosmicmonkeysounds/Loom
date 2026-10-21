@@ -2,14 +2,15 @@
 title: Objectives — what to do now
 section: Live Shows
 order: 46
-keywords: OBJECTIVE, objective, objectives, now, now bar, now card, title bar, checklist, to-do, done when, for, while, act, title, text, brief, buttons, pass, scan, loud, face, card, booth, guests, performers, everyone, L1207, L1208, L1209
+keywords: OBJECTIVE, objective, objectives, mission, go, target, pick, picker, player select, evergreen, fallback, L1214, L1215, now, now bar, now card, title bar, checklist, to-do, done when, for, while, act, title, text, brief, buttons, pass, scan, loud, face, card, booth, guests, performers, everyone, L1207, L1208, L1209
 ---
 
 An **objective** is what one phone should be doing right now. The
-participant app shows the first live one as **NOW**: the title bar on a
-guest's phone (*▣ NOW: Show your pass to an Antivirus ›*, tap for the
-card), and the card pinned at the top of a performer's booth, with its
-checklist. Its buttons lead the screen: the guest's NOW card, and the
+participant app shows the first live one as **NOW**: a guest's **Mission**
+(their home screen: the title, the one place to go, the brief, the
+checklist and its buttons as big game buttons; the title bar elsewhere
+reads *▣ NOW: Show your pass to an Antivirus ›*), and the card pinned at
+the top of a performer's booth, with its checklist. Its buttons lead the screen: the guest's NOW card, and the
 **face** of a scanned guest's card in a booth (at most three; everything
 else folds under *All buttons…*).
 
@@ -46,6 +47,10 @@ OBJECTIVE Door Duty
 | `text:` | the brief (re-flowed prose); its `- ` lines are the checklist (`brief:` works too) |
 | `buttons:` | INTERACTION names, plus `pass` (the full-screen pass) and `scan` (the scanner) |
 | `loud: true` | going live interrupts that phone once |
+| `go:` | the one place a guest's Mission sends them (below) |
+| `target:` | a booth objective's one guest (below) |
+| `pick:` | a booth objective's list of guests (below) |
+| `evergreen: true` | the fallback: never counted as "one more objective" |
 
 ## Who sees it
 
@@ -67,7 +72,7 @@ a CHARACTER, then a GROUP.
 ## Order is the rule
 
 For each viewer the **first live objective in model order** (file order,
-the first file first) is NOW; the others wait behind it (*+1 objective*).
+the first file first) is NOW; the others wait folded under *Also now (n)*.
 So write the urgent ones first in each audience (a guest who has been
 marked is told where to go before anything else), and end every
 audience with a fallback with no `while:`, so a phone always has
@@ -95,6 +100,71 @@ On a booth's guest card the face fills from every live objective in
 order, NOW first, until it has three buttons this guest can take; then
 come the buttons whose `while:` reads the guest.
 
+## Where to go: `go:`
+
+```loom
+OBJECTIVE Be At The Desktop
+  for: Program
+  while: Night.summons_open == true
+  title: Five minutes: be at the Desktop
+  go: scan as "📷 Check in"
+  text:
+    Go to the living room and scan the Desktop's check-in QR.
+    - Checked in, done when program.summons_ok == true
+```
+
+`go:` names the one place the objective wants a guest. Mission turns it
+into its **Where row**: *📍 The Desktop ✓ YOU'RE HERE* once they're there,
+else a button (*📍 Go to The Desktop ›*). It takes the same words as a
+moment's `with go:` ([Broadcasts](broadcast-improv.md)): a LOCATION, a
+CHANNEL, a CHARACTER (their thread), a `who: guest` INTERACTION, `codex[:
+Entry]`, `quests` / `quest: Quest`, or a screen (`pass`, `scan`, `sides`,
+`wallet`, `chats`, …), with `as "Label"`. A place the guest can't see yet
+shows nothing. Lint **`L1214`** flags a `go:` that names nothing.
+
+## One guest, or a list: `target:` and `pick:`
+
+A booth objective can name the guests it is about, so the performer taps
+instead of scanning:
+
+```loom
+OBJECTIVE The Bottle
+  for: Clippy
+  while: Night.bottle_open == true
+  target: Night.bottle_pick
+  buttons: truth_answered, truth_refused, chose_dare
+
+OBJECTIVE Celebrate The Winners
+  for: Clippy
+  while: Night.phase == "bingo_results"
+  pick: program.location == "The Desktop" and program.cleared == true
+  text:
+    - 🎱 Who shouted BINGO?, done when Night.bingo_winners >= 1
+    - 🎀 Give the winner the Bingo Ribbon, done when Night.bingo_ribbons >= 1
+    - 🎯 Who did the winner name?, done when Night.bingo_named >= 1
+  buttons: bingo_winner, award_the_ribbon, named_at_bingo
+```
+
+- `target:` is an expression that comes to one guest's id or name. The
+  booth gets a pop-out naming them, with the objective's buttons for them.
+- `pick:` is a condition read once per guest (the ROLE's name is that
+  guest), and the booth's NOW card gets a list of everyone it holds (at most
+  60, those in the booth character's room first). How the list looks is
+  chosen from the buttons: when there are two or more story buttons and
+  each one's label leads with an emoji that also leads a checklist line, it
+  is **PLAYER SELECT**, one step per line in
+  checklist order, the guests as picture tiles; otherwise it is a **list**,
+  one row per guest with its buttons.
+
+Both are booth-only: lint **`L1215 ObjectivePickNotForBooths`** warns on an
+objective no booth sees, or a value that isn't an expression.
+
+## The fallback: `evergreen: true`
+
+Mark each audience's catch-all objective (the one with no `while:`)
+`evergreen: true`. A phone never counts it as *Also now*, and a guest's
+Mission shows it as **FREE ROAM** only when nothing else is live.
+
 ## Loud
 
 `loud: true` makes the objective a **major moment** the first time it
@@ -118,3 +188,5 @@ participant's live objectives ([Run mode](run-mode.md)).
 | `L1207 ObjectiveForUnresolved` | a `for:` name is no reserved word, ROLE, CHARACTER or GROUP (a warning), or none resolves or `for:` is missing (an error: nobody ever sees it) |
 | `L1208 ObjectiveButtonUnresolved` | a `buttons:` name is no INTERACTION (nor `pass` / `scan`); a `who: admin` or `who: agent` button; a button for an audience the objective doesn't have; more than three story buttons (warnings) |
 | `L1209 ObjectiveConditionInvalid` | a `while:` or a `done when` is empty or doesn't parse (an error: never live, never ticks) |
+| `L1214 GoTargetUnresolved` | a `go:` names no place, room, character, guest button, entry, quest or screen (the Where row shows nothing) |
+| `L1215 ObjectivePickNotForBooths` | `target:` / `pick:` on an objective no booth sees, or not an expression |

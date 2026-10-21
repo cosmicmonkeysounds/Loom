@@ -271,16 +271,22 @@ the row under the cursor (or NEXT) and fires it on the second press;
 filter; **.** scrolls NEXT (or LAST) into view. Enter or Space on a
 focused button that isn't a cue is that button's.
 
-**Calling / Watching** (top right, remembered per console): **Calling**
-is the layout above with the keys on. A second director sets
+**Calling / Watching** (top right): on a server run **Calling** is the
+show's **caller claim**, the same one a host's *📣 I'll call* makes: every
+console, host booth, Clippy's 🎤 bar and the director phone then shows
+*📣 your name*, and another console's claim turns yours to Watching (*X is
+calling*). A FIRE in the Play app by anyone else asks once (*Fire anyway?*).
+The claim lives in memory: a restart clears it. In a local-folder
+rehearsal (or on an older server) the choice is just this console's,
+remembered per console. **Calling** is the layout above with the keys on. A second director sets
 **Watching**: the NOW card shrinks to one line with no button, the
 glance column comes first with a longer `# hosts` feed, On hand and the
 running order fold into one closed **On hand · Running order** drawer
 (open it to arm a cue; clicks there still arm, then fire), and the keys
 are off. Watching draws no *Cues moved … Re-arm* / *landed first* notice:
 a dropped arm or a press turned down shows only as the cue going back to
-unarmed, so call cues from Calling. There is no lock between directors — the stale-arm rule
-and the radio cover two people pressing at once.
+unarmed, so call cues from Calling. The claim is no lock — anyone may
+still press — the stale-arm rule covers two people pressing at once.
 
 **The glance column** (beside the NOW card; under 896 px a strip of
 chips, one section at a time — or, in **Calling** mode while the
@@ -485,9 +491,9 @@ it for every guest unseen for half an hour.
 `restrict` (their DMs only, no places, no buttons; ⛔ shows beside them on
 the Stage, the rail and the Roster), **Unrestrict** a bare `unrestrict`.
 Only the story's `restricted` / `unrestricted` rules run, so it is **not**
-a show's own mark: in *Trapped in the Internet* a mark also sets
-`marked`, pins the 🚨 card and the escort task, and opens the Tube and the
-Internet. To mark or unmark the way the story does, fire its event under
+a show's own mark: in *Trapped in the Internet* a mark (since wave 18)
+restricts nothing, sets `marked` and puts the program on the Antivirus'
+Wanted board. To mark or unmark the way the story does, fire its event under
 **Fire on this guest** (`mark_for_reinstallation` /
 `unmark_for_reinstallation`) or have a host press 🩹 Unmark. On a live run
 it asks first for a real guest.

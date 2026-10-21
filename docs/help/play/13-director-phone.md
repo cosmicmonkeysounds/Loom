@@ -3,7 +3,7 @@ title: The cue sheet on your phone
 section: Performers
 order: 13
 role: performer
-keywords: director, cue, cue sheet, cues, phone, fire, arm, double tap, act, acts, fallbacks, anytime, countdown, strip, next bar, mod, moderator, passcode, next, last, not taken, refused, value, award, winner, stage manager, radio, laptop, role=director
+keywords: director, caller, calling, i'll call, stop calling, fire anyway, cue, cue sheet, cues, phone, fire, arm, double tap, act, acts, fallbacks, anytime, countdown, strip, next bar, mod, moderator, passcode, next, last, not taken, refused, value, award, winner, stage manager, radio, laptop, role=director
 ---
 
 Away from the laptop? The director's **cue sheet** — the same running
@@ -63,7 +63,8 @@ no acts (or an older server) shows one plain list.
 
 **The top of the screen** stays put while you scroll:
 
-- The **strip**: the act the night is in, the story's phase, the soonest
+- The **strip**: **📣 who is calling the show** (*📣 You*, *📣 Task Manager*,
+  *📣 Run*, *📣 nobody*), the act the night is in, the story's phase, the soonest
   countdown (*⏱ Midnight 37:52*, red under a minute) and up to three
   of the story-wide values it asks directors to watch (a value that only
   matters for a stretch of the night, like *Results read* during the
@@ -82,6 +83,16 @@ no acts (or an older server) shows one plain list.
   and fires by itself: don't press its cue early. Tapping the bar scrolls
   to the cue; it never fires anything. You still arm and fire on the cue
   itself.
+
+## Who is calling
+
+Every host, Clippy, the laptop's Run and this phone see the same sheet, and
+any of them may call the show. Whoever is calling claims it, so the others
+know: on this phone, **☰ → 📣 I'll call** (and **Stop calling** to hand it
+back); the strip then says *📣 You* here and *📣 Phone · your name* on
+everyone else's. When someone else is calling, your FIRE asks once first:
+*Fire it anyway? They'll see you did.* — **Fire anyway** or **Cancel** (the
+default). With nobody calling, nothing asks.
 
 ## Firing a cue
 

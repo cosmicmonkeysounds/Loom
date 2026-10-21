@@ -3,7 +3,7 @@ title: Performer station
 section: Performers
 order: 7
 role: performer
-keywords: performer, booth, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
+keywords: performer, booth, pop-out, popout, later, waiting, wanted, wanted board, claim, i'll get them, hand it back, take over, confrontation, corruption detected, captured, caught by, door queue, at the door, player select, tiles, picker, still missing, they're here, cue bar, your cue, call it, clippy, chat log, chats, now, objective, checklist, to-do, tick, alert, chime, late, keep screen on, push, notifications, get alerts, iphone, home screen, release, re-sign, loaner, lost phone, file a fact, filed fact, judge, judging, verdict, confidence, override, review, hosts, character, sign in, scanner, scan, camera, next guest, readout, readouts, admin, moderator, capture, hide, guest card, card, face, all buttons, not on offer, facts, guests, messages, who's here, restricted, marked, pinned, pin, quest log, codex, wallet, approve, deny, audit, approval, transfer, arm, tap twice, tap again to fire, near miss, not your button, start, taskbar, balloon, sticky
 ---
 
 The performer station is the same app, recomposed for the booth: your
@@ -13,8 +13,15 @@ the story tells you what this part of the night needs from you.
 The booth's frame, top to bottom: the **NOW card** (your current
 objective), your rooms, and the **taskbar**: **⊞ Start**, **📷 Scan**
 (the biggest button), **🗂 Guests**, and the tray (the act, the soonest
-countdown, and **🔔 n** for anything you missed). A host's booth also has
-a NEXT bar above the taskbar: see [The host console](hosts.md).
+countdown, a red **🚨 003** counter while programs are wanted, and **🔔 n**
+for pop-outs waiting on you). A host's booth also has a NEXT bar above the
+taskbar ([The host console](hosts.md)); Clippy's has a **🎤 cue bar** (below).
+
+Since wave 18 you **scan much less**. What needs you **pops out** over your
+rooms with a picture, a name, where they are and the buttons you need: a
+marked program to find, an arrival at the door, your cue, the Bingo
+results. Scans are for two things: clearing a program at the door, and
+confronting a marked one.
 
 ## Signing in
 
@@ -52,6 +59,27 @@ folds again when you tap elsewhere or open a room. With nothing live it
 shows your character. The story moves it on by itself as the night
 goes: there is nothing to dismiss.
 
+Under the checklist the card can carry **one extra row**: **🚨 Wanted board
+(n)** while programs are marked, a picture of the **one program** the
+objective is about (the bottle's), **🎮 PLAYER SELECT (n)** or **📋 a list
+(n)** of the programs to work through, or one or two buttons that act on
+no particular guest. Tap it.
+
+## Pop-outs
+
+A pop-out is a small Win95 window docked over your rooms: its title (*🚨
+WANTED*, *🚪 At the door*, *🎤 Your cue*), the program's picture and name
+when it's about one, and its buttons. Only one shows at a time; the next
+waits behind it (*1 of 2*), and a later one never replaces the one on
+screen. It stays until you press one of its buttons, or **Later**, which
+puts it in the tray's **🔔 n**: tap that for the **🔔 Waiting** window (*Nothing
+waiting. You're on top of it.* when it's empty) and pick one to bring it
+back. While a guest's card or the scanner is open, a pop-out shrinks to a
+strip at the top and never covers the card's buttons; one about the guest
+on the card waits until you close it. Pop-outs survive a reload, and one
+that no longer applies (the program was caught, the arrival was cleared)
+goes away by itself.
+
 ## Scanning guests
 
 Tap **📷 Scan**. The scanner fills the screen with the camera on, and a
@@ -70,8 +98,10 @@ arrives as your direction.
 
 ## The guest card
 
-You also open a card from **🗂 Guests** (search by name or id; each row
-shows the guest's two most important facts), by tapping a guest's name
+You also open a card from **🗂 Guests** (search by name or id; tabs
+**Here** (pick the room), **Marked**, **Internet**, **Missing** and **All**;
+each row shows one status tag, the guest's place first, and up to two loud
+facts), by tapping a guest's name
 in any room, or from a room's 👥 list. Top to bottom:
 
 - **The facts.** The loud ones first: *✗ Not cleared* for a guest who
@@ -117,8 +147,8 @@ same way when the story marks them so.
 ## Readouts and messages
 
 **Readouts** is a pinned room of everything the story tells your booth
-alone: *⏰ X is late*, *🚨 X is marked for reinstallation*, the answer to
-a scan. Newest first; a readout about a guest has a **🪪 Name ›** button
+alone: *⏰ X is late*, the answer to a scan, the story's notes to your
+character (the urgent ones also pop out). Newest first; a readout about a guest has a **🪪 Name ›** button
 that opens their card. Readouts survive a reload. A readout about the
 guest whose card is open shows on the card instead of interrupting you.
 
@@ -136,17 +166,17 @@ character, or into a staff room (`# hosts`), and any readout you didn't
 ask for — "⏰ *Name* is late", a private warning. A booth never takes
 the whole screen: an alert to everyone is a **balloon tip** by the tray
 that goes away by itself, and one to your character or a staff room is a
-yellow **banner** that stays until you tap it (**Dismiss all** clears a
-pile). While the scanner or a card is open, a big alert shows as a
-balloon over it and its banner waits until you close the card. An alert
-the story sends to **one guest** or **one room** (a guest's own pinned
-*🚨 GO TO THE INTERNET*, the lights going out in a room) doesn't banner
-your booth: your cue is the readout. Tap the app once after signing in
+yellow **banner** that stays until you tap it. A big moment for your booth
+is a **pop-out** (above), never a full screen. While the scanner or a card
+is open, a big alert shows as a balloon over it and its banner waits until
+you close the card. An alert the story sends to **one guest** or **one
+room** (a guest's own heads-up, the lights going out in a room) doesn't
+banner your booth: your cue is the readout. A `!` readout that needs you
+jumps the queue and stays in **🔔 n** until you handle it. Tap the app once after signing in
 so it may make sound (iPhones never buzz — watch for the banner).
 
-Anything you missed while the phone slept, or dismissed without reading,
-counts in the tray as **🔔 n** and replays when you wake the phone, in
-order. Keep the phone awake with **⊞ Start → Keep my screen on**.
+Anything you put off, or missed while the phone slept, waits in the tray's
+**🔔 n**. Keep the phone awake with **⊞ Start → Keep my screen on**.
 
 On an Android phone, tap **🔔 Get alerts → Turn on** (or **⊞ Start → Get
 alerts**) and allow notifications: house-wide alerts and alerts pinned
@@ -154,30 +184,99 @@ in a staff room, the server-room (patch-bay) alarm, the late list and a
 transfer waiting for your approval then reach you as notifications
 even with the phone locked in your pocket; tapping one opens where it
 landed (a readout opens Readouts). An alert the story sends to **one
-guest** — their own pinned *🚨 GO TO THE INTERNET* — never pushes your
-booth. On an iPhone, if the card shows **Get alerts on your iPhone**:
+guest** — their own heads-up — never pushes your booth. On an iPhone, if the card shows **Get alerts on your iPhone**:
 tap Share → **Add to Home Screen**, then **⊞ Start → Sign out** (that
 frees your part) and sign in from the Home Screen icon (a part is one
 phone's; a host's or the director's ⏏ Release frees one that's stuck),
 and tap 🔔 there. If it says **Your iPhone can't get alerts**, keep the
 screen on.
 
-## Pinned lines, and a guest who is restricted
+## The Wanted board (the Antivirus)
 
-A room can carry a **pinned line** above its conversation — a standing
-notice the story put there, up until the story clears it. At *Trapped
-in the Internet* the `# quarantine` room pins one escort task per
-program marked for reinstallation (*🚨 Escort Excel to the Internet —
-chose Dare…*), and it comes down with a ✅ when the program is captured,
-released, or unmarked.
+At *Trapped in the Internet* a host's verdict **marks** a program for
+reinstallation. A mark **hinders nothing**: their phone keeps every
+button and room. It's the Antivirus who banish them, and the hunt is
+yours:
 
-A guest the story has **restricted** shows **⛔ restricted** on their
+- **🚨 WANTED** pops out on every Antivirus booth: their picture, name,
+  why (*named on the Bingo card*), 📍 where they are and *seen 2 min ago*,
+  with **🙋 I'll get them**, **🗂 Open card** and **Later**. In Bathroom
+  Mode it says *🚻 In Bathroom Mode: wait outside, never go in.* Several at
+  once come as one *🚨 n programs marked* with **🚨 Open the Wanted board**.
+- **🙋 I'll get them** claims them: your pop-out turns into *WANTED ·
+  YOURS* with **📷 Scan their pass** and **Hand it back**; the other booths
+  see *🙋 McAfee Anti-Virus is on Minesweeper.* for a few seconds. If two of
+  you claim at once, one reads *… got there first.*
+- **The Wanted board** (the tray's 🚨 counter, or the NOW card's row): one
+  poster per marked program, tabs **Open / Mine / Everyone**, kept across a
+  reload. **Hand back** puts a poster back for everyone; on someone else's
+  claim that has gone quiet for ten minutes, **Still on it? 🙋 Take over**.
+  A caught poster is stamped **CAPTURED · CAUGHT BY …** for a minute, then
+  leaves. A wanted guest's card carries a maroon **WANTED** banner with the
+  claim. Hosts see the board read-only.
+
+## The confrontation
+
+The scan **is** the confrontation. Scan a marked program's pass and the
+scanner turns into **⚠ CORRUPTION DETECTED**: their picture, why, and a
+**SAY IT** box with your line, while their phone goes full screen (*… has
+found you*). The big **🛡 SEND TO THE INTERNET** wakes up after a moment;
+one tap and the screen stamps **CAPTURED** (*Walk them through the Tube to
+the tent. Their phone shows them the way.*), with **📷 Next guest** and the
+board. **Not now** keeps the mark and your claim; **🩹 Not them…** (two
+taps) lifts the mark. From a card's **📡 Scan again** (not in person) 🛡
+takes two taps. A program someone else already caught says so (*Caught by
+…*).
+
+## At the door
+
+When a program finishes uploading, every Antivirus booth hears it, and
+the four of you share the door. During the opening rush a **🚪 At the
+door** pop-out appears only if nobody has had them for a minute; later, a
+late arrival pops at once: *Winamp is waiting at the Optical Drive*, with
+how long, **🙋 I've got Winamp** (the others see you have them, and your
+scanner opens captioned *📷 Scan Winamp's pass*) and **🚪 Door queue (n)**
+(everyone waiting and who has them, with **📷 Scan the next pass**).
+
+## PLAYER SELECT, lists and targets
+
+Some objectives work through several guests with no scans:
+
+- **🎮 PLAYER SELECT** (at the show, Clippy's Bingo results): every guest
+  at hand as a picture tile, and the moves along the top (**① 🎱 ② 🎀 ③
+  🎯**). Tap a tile, then the move's button; the next move offers the same
+  guest (**SAME: …**) when it's harmless, and a move with no way back never
+  pre-selects and takes two taps. **🔍 Not here? Search everyone**, **Skip**,
+  **Later**, then **+ Another round**. It opens by itself right after your
+  own cue; otherwise *PLAYER SELECT is ready* pops out.
+- **📋 A list** (Adobe Acrobat's Truth Pong cups, Clippy's cup-makers, the
+  summons' **Still missing**): one row per guest with its place and up to two
+  buttons (*🏓 Made* / *🏓 Missed · ×2*). A pressed row greys with ✓ and
+  leaves; *Done here* folds what you did. During the summons the guests
+  check themselves in with the Desktop's QR, so **📍 They're here** is only
+  for a dead or lost phone.
+- **A target** (the bottle): a pop-out names the one guest it landed on,
+  with the objective's buttons for them.
+
+## Clippy's 🎤 cue bar
+
+Clippy calls the games. Clippy's booth has a **🎤 cue bar** above the
+taskbar with Clippy's own cues on it (the story's admin cues marked `by:
+Clippy`). When one is the sheet's NEXT the band turns yellow (**🎤 YOUR
+CUE … ARM**) and a *🎤 Your cue · Call it?* pop-out asks; **🎤 Call it** arms
+it, then tap **FIRE** on the bar within four seconds (*Not yet* asks again in
+two minutes). Otherwise the grey band says what's **next for you**. Its
+second line shows the sheet's NEXT and who is calling the show (📣). **▴**
+lists all of Clippy's cues. A host or the director may fire them too.
+
+## A guest who is restricted
+
+A guest a director has **restricted** shows **⛔ RESTRICTED** on their
 card and their row in 🗂 Guests: their phone is greyed out, its buttons
 are off, they can't post in rooms or check in, and they keep only their
-own feed (with the pinned 🚨 line), their private messages, their pinned
-rooms and the places the story named. Their thread with you still works
-— talk to them there. In the show, that is a marked program: your
-readout says why, and the escort is yours.
+own feed, their private messages, their pinned rooms and the places the
+story named. Their thread with you still works — talk to them there. (A
+marked program is not restricted: they keep everything.)
 
 ## Judging filed facts
 
@@ -246,7 +345,9 @@ encouraged; the story cannot freeze anyone's balance for you.
 
 Every place is a room, and the list says who's standing in each — the
 same view the guests have, minus the "you are here" (a character is
-everywhere). Empty rooms fold under **Other rooms (n)**. Authored
+everywhere). The story's rooms are headed **Chats**. Empty rooms fold under
+**Other rooms (n)**, and the room named after the story is the **📜 Chat
+log**, always last there. Authored
 channels work like the guest app: post as your character, invite guests
 into gated rooms, leave when the scene's done. Lines the story sends to
 one guest privately (their arrival, a whisper) are theirs alone; you see

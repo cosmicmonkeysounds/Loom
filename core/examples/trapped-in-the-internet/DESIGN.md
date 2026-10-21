@@ -321,7 +321,7 @@ Traits: `Person` = `listed: true`. `Host is Person` (faction Hosts). `Enforcer i
 | Norton Anti-Virus | `is Enforcer` | Julie | `File:Norton-logo-2021.svg` (wiki: Norton AntiVirus) | The **selected Antivirus** who interrupts the Bingo celebration. Door scans. |
 | McAfee Anti-Virus | `is Enforcer` | TBD | `File:McAfee logo.svg` (wiki: McAfee Antivirus) | Door scans; **broker of the `# truthcoin-exchange`** and referee of bets (wave 9, D1: he has no Wallet, holds no pot and takes no cut; a bet settles player to player, the winner's 🙏 Request paid by the loser; 🪙 pay/charge are corrections; CS: he wants to "exploit the exchange of information and become rich"); `every 20m` "Your protection has expired" pop-up gag (character timer, allowed). |
 | Password Manager | `is Enforcer` | Francine | `File:1password-logo.svg` (wiki: 1Password) | Door scans; reacts to `wrong code` (codex misses); **keeper of the clubs** (CS: "manage… who gets to be part of what clubs"): booth readouts on every faction join (§3 D10) and she owns the `# hidden-partition` / `# back-channel` invites. Yu-gi-oh! everywhere. |
-| Windows Defender | `is Enforcer` | [[EDIT: who]] | `File:Microsoft Defender Icon Logo 2025 English.svg` (wiki: Microsoft Defender Antivirus) | Wave 11: **the door, for late arrivals**: a part with no lines of its own (no hooks; the Enforcer trait's door scan clears a program exactly as the other four do), so the Optical Drive is never left without a scanner once the others are busy. Its booth never shows the patch-bay fallbacks 🔌 💥 ❌ 🚪 🔧 (they are `by:` the four room Antivirus, §2.9; the server refuses a press from it), but ♟ *They beat the machine* still shows there. |
+| ~~Windows Defender~~ | — | — | — | **Deleted in wave 18 (Q26):** the four Antivirus share the door (the `waiting_at_the_door` queue, `claim_door`; §12). |
 | CRA Agent Software | `is Enforcer` | Emma | `File:Canada Revenue Agency logo.svg` (wiki: Canada Revenue Agency) | Replaces MalwareBytes. Door scans; audits Truthcoin (presses 🪙 charge). |
 
 **Agent:** `Trabolta` (`is Person`, `mind: external`, `hidden: true`, avatar
@@ -741,7 +741,7 @@ watcher/rule, **S** = server hard-code.
 | chess_won | H (wave 11: the Server Door terminal: `POST /api/mod/signal {name: "chess won", subject, label: "Terminal · <name>"}`; was the tent tablet), P (`beat_the_machine` → `fire chess_won for program`) or D (`♟ They beat the King: the door code`, `sequence: false`, a subject cue since wave 7) | program | rule (§3 E2b: *The Door Code* for the winner, once, until 📄; no subject → a `# hosts` reminder) |
 | king hit / king fallen | H (wave 11: the server, on a validated `POST /api/spatial/king/hit` from either reinstallation game, `by` the device; args `hp`, `max`) | program | rules (§3 E2b: `# hosts` readouts, house lines at 10 and 5, an `!` alert at 0) |
 | door_digit_found | ROLE hooks (wave 11: `when program learns Cold Door First Digit:` … one per note) | program | rule (§3 E2d: counts the notes, steps *The Cold Door*, four → *The Door Code* until 📄) |
-| crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by:` the four room Antivirus, never Windows Defender; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
+| crew_through_the_door / radio_* | D (🔧, Anytime) / P (the server-room Antivirus' booth, `by:` the four Antivirus; Adobe's 🫘) | — | rules (§3 E2; each `radio_*` fires its admin cue) |
 | chess_lost / chess_drawn | H (the tablet; a phone app may) | program | rules (a `# hosts` readout each time; `-> Chess Lost` / `-> Chess Drawn` at most once per 300 s, never from step 16) |
 | reset_server_room | D (🔄, wave 7; was `rearm_server_room`) | — | rule (clear the wrong-combination count, the alarm latch and The Heart's latch; the keypad is never touched) |
 | terminal_opened / terminal_closed | H (a wall terminal with a `room`: `terminal opened` / `terminal closed`, args `at`) | program; args `at` | rules (§3 E2a: `program.at_the_heart`) |
@@ -980,8 +980,7 @@ button; a director's quick-fire (no actor) may press any, and a host part's or a
 another character's only when a story rule or a ROLE hook hears it (wave 13: never 🛡 ✅ 👁, which
 only `TRAIT Enforcer` hears, nor Adobe Acrobat's 🫘). That is why
 the patch-bay fallbacks are story rules `by: Norton Anti-Virus, McAfee Anti-Virus, Password Manager, CRA Agent Software` (any of
-the four room Antivirus' booths, while the read-through picks the holder; never Windows Defender,
-the door-only part, whose booth never shows them; a trait hook would fire once per Antivirus on a
+the four Antivirus' booths, while the read-through picks the holder; a trait hook would fire once per Antivirus on a
 director's quick-fire). `while:` is still not enforced. `arm: true` marks a press with no way
 back — an ending (🔌 💥 💘), the alarm (❌), The Heart (🚪), two minutes of the room (🔧), a
 secret handed over (♟, 🍎), a once-a-night moment (🫘), the guest's 💾 — and the booth or the
@@ -1576,16 +1575,14 @@ when scanned by program:
     Self: Not yet. Finish your upload. I will be right here.
   else if not program.cleared:
     -> self.Clearance
+  else if program.marked == true and program.corrupted != true:
+    // Wave 18 (Q30 + B4): the scan is the confrontation, before the summons check-in.
+    Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
+    fire confronted for program with hunter: self
+    reply !!🛡 Corruption detected: {program.name} ({program.marked_for}). Press 🛡 Send to the Internet, then walk them through the Tube to the Internet.
   else if Night.summons_open == true:
     fire checked_in for program with at: The Desktop
     Self: Checked in. {program.name} is present at the Desktop.
-  else if program.marked == true and program.corrupted != true:
-    if self.holds_the_door == true:   // Windows Defender: never escorts
-      Self: {program.name}. Corruption detected: you are marked for reinstallation. An Antivirus will escort you through the Tube to the Internet.
-      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}). Stay at the door: radio a room Antivirus to escort them. 🛡 only if a host or the director asks.
-    else:
-      Self: {program.name}. Corruption detected: you are marked for reinstallation. Come with me through the Tube to the Internet.
-      reply 🚨 {program.name} is marked for reinstallation ({program.marked_for}): an escort through the Tube to the Internet, then 🛡 on their card.
   else:
     Self:
       cycle Scanning. Scanning. | {program.name}: no threats found. Today. | Your definitions are out of date. So are mine.
@@ -2364,7 +2361,7 @@ checked_in for program with at: The Desktop`, bare); the director (`checked_in`,
     we can have unlimited power and joy.` else `Truther Download: You should still retrieve
     the virus from the Internet, and then recruit half + 1 of the programs to your faction.` ·
     `unlock Excel Final Orders for program` · `start quest Recruit To Stay for program` ·
-    `Truther Download: Programs join Unlimited Power on the Choose your side card, in the Trapped in the Internet room.`
+    `Truther Download: Programs walk through Unlimited Power's door on the Sides screen (Start → Sides). Scan a program's pass to recruit them.` (wave 18; was the Choose your side card)
   - `== OpenOffice Final Round`: `if Kernel.openoffice_dossier == true:` `…recruit half + 1 of the
     programs to convince them we need to combine our power to overthrow Trabolta and escape
     the computer, where we are at risk of being stuck forever – or worse.` else `…you should
@@ -3462,8 +3459,8 @@ at a time.
    Trabolta.truth 24, `Kernel.q1 == "accurate"`; `confident_q2` → `Kernel.q2 == "lie"`,
    `Kernel.lies_accepted` 1, Trabolta.truth 28 and `Trabolta.untruth` unchanged, and the
    **same** public broadcast and reply text; a later `accurate_q2` leaves `Kernel.q2 ==
-   "lie"` (sticky); `uncertain_answer` → marked for reinstallation (restricted, the 🚨 pin,
-   the `# quarantine` escort pin), not captured; the bottle: `spin_the_bottle` → `bottle_landed`
+   "lie"` (sticky); `uncertain_answer` → marked for reinstallation (since wave 18 not
+   restricted and not pinned: a Wanted poster on every Antivirus booth), not captured; the bottle: `spin_the_bottle` → `bottle_landed`
    → Dare marked / Truth → `Truth Question`; 🗣 +50, 🙅 marked (wave 4).
 8. **Malware.** `second_hunt_preview` → Clippy booth `respond` contains "we are all going to
    die"; Clippy holds Instructions 4 and no guest does; every cleared program gets the
@@ -3909,3 +3906,55 @@ Every finding of the three critiques, with its disposition. **A** = accepted and
 | 18 docs not listed | A — §6.2 docs/README list extended |
 | 19 live-collab e2e | A — run it; fallback `template: "blank"` (§6.2) |
 | C1–C9 test additions | A — §6.1 items 6, 10, 14, 17, 19, 21 and the stagehand bullet in §6.2 |
+
+## 12. Wave 18 (2026-10-21): the Play app plays like a game
+
+The user's sign-off of `SIGNOFF-w13.md` changed seven rows and asked for a
+less bloated app; the design record of the wave is in the scratch specs
+(GUEST-SPEC, BOOTH-SPEC) and its decisions are in
+[`SIGNOFF-w18.md`](./SIGNOFF-w18.md) §1. What it changes in this spec:
+
+- **A mark doesn't hinder (Q30).** §3's marked state (restricted to the Tube
+  and the Internet, the 🚨 GO TO THE INTERNET pin, the `# quarantine` escort
+  pin, no filings, no check-in) is gone. `mark_for_reinstallation` sets
+  `marked`, `marked_for`, `escort_by = "none"` and sends one minor heads-up;
+  the header's `wanted: program.marked as program.marked_for by
+  program.escort_by, for Antivirus` gives every Antivirus booth a Wanted board
+  and a WANTED pop-out (`reply !!🚨`, TRAIT Enforcer). `claim_escort` /
+  `release_escort` / `take_over_escort` set `program.escort_by` (the
+  claimer's character). The Antivirus' scan of a marked program is the
+  confrontation (`confronted` → the program's big *CORRUPTION DETECTED*); 🛡
+  captures (`while: program.marked …`), and the capture is a big moment with
+  *Go to The Internet* / *Show my pass*. The scoring exclusions stay.
+- **The door is the four Antivirus' (Q26).** CHARACTER Windows Defender, its
+  `holds_the_door` slot and OBJECTIVE Hold The Door are deleted; the Upload
+  beat fires `waiting_at_the_door` (*🚪 X is waiting at the Optical Drive* to
+  all four), `claim_door` sets `program.door_by` (the *At the door* watch
+  item), and clearance resets it.
+- **Clippy calls the games (Q2).** `by: Clippy` on 21 admin cues (§3's B–G
+  game cues and the awards); Clippy's booth has a 🎤 cue bar. **Any host calls
+  the show (Q1)**: the caller claim replaces "fire only when the director
+  radios you" in every brief.
+- **Big moments and exits.** The Bingo win, the ribbon (winner + a self-closing
+  house cheer, the rule `ribbon_cheer`), the bottle, the side reveal, Help or
+  Thwart, the pickup line, the awards, the capture, the confrontation, the
+  release and the banishment are `!!` / `moment: big`; every house `!` alert
+  carries `with go:`; every guest objective a `go:`. Booth objectives gain
+  `target:` (the bottle) and `pick:` (the Bingo results' PLAYER SELECT, the
+  summons' Still missing, the cups).
+- **The summons** is the guests' own check-in at the Desktop QR (B10); staff
+  objectives drop `scan` and carry a Still missing list.
+- **Act II's NOW** follows each beat (S3): The Overshare, Zipped Out, Full Of
+  Beans and Where You Stand.
+- **Sides (Q21).** The side reveal is a full-screen `show sides` card at the Y2K
+  hour; `<Side>.leader` is set in the leaders' glitch beats; the header's
+  `majority: Night.present / 2 + 1` is the doors' bar; a guest recruits by
+  scanning a pass (`recruited`, counted on Recruit To Stay / Recruit To Leave
+  in the ROLE's `recruits`); guests may found crews (never a side).
+- **The party favour (Q16 dropped).** The header's `reinstall:` line opens the
+  reinstallation to everyone once `Night.ended`; the tent's begin never
+  captures after the end; the Tablet Video and The Night Is Over say so.
+- **Q37 / Q38 signed off**: the show clock at 7 PM and 11 PM.
+- `archive:` lines move the Uploader's and the clearing Antivirus' threads
+  under *Other rooms* once a program is cleared.
+

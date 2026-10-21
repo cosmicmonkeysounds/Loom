@@ -2,7 +2,7 @@
 title: Your pass, score & fate
 section: Guest Guide
 order: 6
-keywords: pass, qr, scan, full screen, brightness, start, start menu, score, balance, coin, wallet, faction, side, choose your side, defect, captured, escape, leave, menu, restricted, marked, reinstallation, greyed, bathroom, bathroom mode, tour, resurrection, human again, show over
+keywords: pass, qr, scan, full screen, brightness, start, start menu, me, profile, picture, badges, settings, score, balance, coin, wallet, faction, side, defect, captured, escape, leave, menu, restricted, marked, reinstallation, greyed, bathroom, bathroom mode, tour, resurrection, human again, show over
 ---
 
 Tap **🎟 Pass** on the taskbar, from any screen: your pass fills the
@@ -12,8 +12,18 @@ Turn your screen brightness up.*). **Done** (or Escape) puts it away.
 When the story is running you on rails (the dark opening screen), it
 puts your pass on the screen itself when someone needs to scan you —
 and **🎟️ My pass** in the corner opens it any time. When the current
-objective needs your pass, the Pass button blinks and the NOW card has
-**Show my pass**.
+objective needs your pass, the Pass button blinks and Mission has a big
+**🎟 SHOW MY PASS**.
+
+## Me
+
+Tap **your picture** at the top left (or the banner at the top of ⊞ Start)
+for **Me**: your picture and name, where you are, your 🪙 balance, your
+**badges** (◆ your side, the story's groups you're in, ◇ your crew; *No
+badges yet.* before any), **🎟 Show my pass**, **🖼 Change my picture**,
+**🚪 Sides & crews**, and the **settings**: *Keep my screen on* and *Get
+alerts on this phone*. Joining a side or a crew adds a badge; nothing ever
+replaces the sheet.
 
 ## The QR pass
 
@@ -28,10 +38,10 @@ busy or the Wi-Fi is weak.
 Some stories give you things to do of your own — ring a bell, knock,
 raise a hand. If there are any, they're the first items in the **⊞
 Start** menu, and the one the current objective needs is also on the
-NOW card. At *Trapped in the Internet* one of them is **🚻 Bathroom
+Mission. At *Trapped in the Internet* one of them is **🚻 Bathroom
 Mode**: open Start and tap it before you step out so the Antivirus know
 you are not hacking the Internet, and tap **Back from the bathroom** (in
-Start, or on the NOW card) when you're back. It turns itself off after
+Start, or on Mission) when you're back. It turns itself off after
 fifteen minutes; tap it again if you're still away. The guided tour
 points it out over Start when the story uses it.
 
@@ -42,15 +52,14 @@ seconds, presses it. Leave it alone and it disarms itself.
 ## Your group
 
 Once you've joined one of the story's groups — a side, a house, a
-society — it shows next to your name, and its private room appears in
-your inbox. You can only join a side the story offers you: the staff's
-own groups and a secret side it hasn't revealed yet are never on the
-list. With no side yet, the story's **Choose your side** card waits in
-the lobby (the room named after the story). Feeling treacherous? ⊞
-Start has **Leave … for …** (it asks first). Switching sides is
-dramatic, remembered, and not free — the story tracks heat on people
-who do. Your side shows in the Start menu's banner, beside your picture
-and name.
+society — it's a badge on your Me sheet and in the Start menu's banner,
+and its private room appears in Chats. You can only join a side the story
+offers you: the staff's own groups and a secret side it hasn't revealed
+yet are never on the list. Sides are joined through their doors, on the
+Sides screen (**⊞ Start → Sides & crews**), and another program can recruit
+you by scanning your pass: see [Sides, crews & recruiting](sides.md).
+Switching sides is dramatic, remembered, and not free — the story tracks
+heat on people who do.
 
 ## Your score
 
@@ -61,14 +70,27 @@ your **🪙 balance** sits in the taskbar's tray instead — tap it, then
 
 ## Getting captured
 
-Some stories can **capture** you — the title bar turns red, the screen goes dark-red and your
-world shrinks until you're freed, you escape, or someone bargains for
-you. Being captured isn't losing; it's a plot development. Work the
-room from the inside.
+Some stories can **capture** you — the screen becomes it for a moment
+(at *Trapped in the Internet*: *⛔ QUARANTINED · Sent to the Internet*,
+with **Go to The Internet** and **Show my pass**), then the title bar
+turns red, Mission's desktop goes dark-red and your world shrinks until
+you're freed, you escape, or someone bargains for you. Being captured
+isn't losing; it's a plot development. Work the room from the inside.
+
+## Marked
+
+At *Trapped in the Internet* a host's verdict can **mark you for
+reinstallation**. A mark **hinders nothing**: you hear one quiet line
+(*🚨 You are marked for reinstallation … Nothing is switched off: carry
+on. The Antivirus are looking for you.*), and you keep every button, room,
+card and check-in. The Antivirus are hunting you, though: when one finds
+you and scans your pass, your screen says *⚠ VIRUS DETECTED · CORRUPTION
+DETECTED*, and they take you to the Internet for a reinstallation. A host
+can lift a mark (*✅ Your mark is lifted.*).
 
 ## Restricted
 
-Before that, a story may **restrict** you: the app greys out, the title
+A director may also **restrict** you: the app greys out, the title
 bar turns ochre with **⛔**, the story's buttons are gone from Start (a
 story can keep a few, like 🚻 Bathroom Mode), you
 can't check into rooms or post in them, and your rooms list shrinks to
@@ -78,12 +100,9 @@ can't join a side or switch sides either (the side chooser and the
 defect buttons go). Your
 wallet can't send, request, pay or accept a trade until it's lifted
 (declining an offer and cancelling your own still work). A pinned
-line at the top of your feed tells you what to do about it. At *Trapped in the Internet* that is being **marked for
-reinstallation** — *🚨 GO TO THE INTERNET* — and an Antivirus will come
-and escort you through the Tube. 🚻 Bathroom Mode stays in Start.
-The mark comes off the moment the Antivirus sends you into the Internet,
-or you start the reinstallation game in the tent (or a host lifts it);
-the reinstallation itself is what gets you out again.
+line at the top of your feed tells you what to do about it. A story can
+keep a few buttons through it (🚻 Bathroom Mode at *Trapped in the
+Internet*).
 
 When the show is over (after the awards), the director may send one
 last alert — *🎃 The show is over: you are human again.* Every mark,

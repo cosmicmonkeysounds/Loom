@@ -16,7 +16,7 @@
 | any time | **🩹 Unmark: not going to the Internet** | a marked program a host mis-tapped, or mercy (on a marked program's card face) |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each; only shows when MS Paint is here) |
 | Grok Prom | **💘 Said "You're the one that I want"** | the first program who says it to you |
-| the summons (⏳ → 🚨) | scan a pass at the living-room door, or **📍 Checked in at the Desktop** | each arrival |
+| the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
 | any time, until 📄 (if you saw it) | **♟ They beat the machine** | only when the door terminal could not report it and you **saw** "checkmate" on it: it gives them the door code |
 
 **Your scenes:** every clearance (your line, in the app) · introduced by
@@ -58,18 +58,26 @@ the taskbar · Codex · `# hosts` · `# quarantine` · `# task-manager` · **Rea
 **Messages** (a program typing to you) · the rooms. A scanned program's card
 leads with at most three buttons your objective needs; the rest are under
 **All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
-never on your card: radio one. Help → *The host console* has the rest.
+never on your card: radio one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
-**Directing from your booth:** the NEXT bar is the same cue sheet as Run →
-Director, and **any host may fire it** (tap **ARM**, then **FIRE** within 4 s;
-agree by radio who calls). If two phones (or Run) press the same moment the
-server takes one and the other reads *Cues moved — tap again*; the Cues tab's
-**LAST** line says who pressed. The console also opens the doors, pauses and
+**Calling the show (Q1: any host may call it).** NEXT sits above your
+taskbar, and every host sees and may fire it: there is no "wait for the
+director to radio you" any more. Whoever is calling taps **📣 I'll call** in
+the console's Cues tab (*Who's calling*); every host, Clippy's bar and the
+director phone then show **📣 {name}** on their strip, and **Stop calling**
+hands it back. Tap **ARM**, then **FIRE** within 4 s. If someone else is
+calling, your FIRE asks once: *Fire anyway? They'll see you did.* (Cancel is
+the default.) If two phones (or Run) press the same moment the server takes
+one and the other reads *Cues moved — tap again*. The Cues tab shows NEXT
+with what it does and *then:* the cue after it, and **LAST** with who
+pressed it and, for your own press, *did:* (what the story said back). Agree
+at the read-through who calls by default (the second director at Run, or a
+host from Play). The NEXT bar is the same cue
+sheet as Run → Director. The console also opens the doors, pauses and
 resumes the show, announces, sets the alert level, judges filings, shows the
 codes and the join and invitation QRs, releases a part and answers as
 Trabolta. Restart, push draft, go live and end stay at Run. When you step
-off-stage to direct, tell the second director by radio first. (Who calls the
-cues is DRAFT for sign-off, Q1.)
+off-stage to direct, tap 📣 I'll call so the second director sees it.
 
 **Radio:** HOLD · LIGHTS · ALL STOP.
 
