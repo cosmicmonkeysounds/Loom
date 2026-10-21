@@ -385,6 +385,17 @@ when tally:
 when curtain_call:
   set Night.ended = true
 
+when bob:
+  set Night.most_trusted = "Winamp"
+  set Night.least_trusted = "Napster"
+  cue screens_bobbing
+
+when recount:
+  cue screens_recount
+
+when purgatory:
+  cue terminals_purgatory
+
 == Boot
 set Night.phase = "advice"
 set Night.step = 18
@@ -399,6 +410,10 @@ set Night.alerts = "sticky"
 set Night.ended = false
 set Night.collection_complete = false
 set Night.scenario = 0
+set Night.most_trusted = "none"
+set Night.least_trusted = "none"
+set Night.facts_accepted = 31
+set Night.first_reinstall = "Clippy Jr"
 `;
 
 const VERDICT = `# T
@@ -577,6 +592,25 @@ describe("the night block", () => {
     expect(s.poll().night).toMatchObject({ collection_complete: true, scenario: 3, ended: false });
     sim.signal("curtain_call");
     expect(s.poll("tv").night.ended).toBe(true);
+  });
+
+  it("wave 18b: the Trust Chart's call-outs only while bobbing is up, the summary only on recount / purgatory", () => {
+    const sim = Sim.fromSources(NIGHT);
+    sim.fireBeat("Boot");
+    const s = watch(sim);
+    const pick = (view = "auto") => {
+      const n = s.poll(view).night;
+      return [n.most_trusted, n.least_trusted, n.facts_accepted, n.first_reinstall];
+    };
+    expect(pick()).toEqual([null, null, null, null]);
+    sim.signal("bob");
+    expect(pick()).toEqual(["Winamp", "Napster", null, null]);
+    sim.signal("recount");
+    expect(pick("tv")).toEqual([null, null, 31, "Clippy Jr"]);
+    sim.signal("purgatory"); // the walls only: the TV keeps the recount
+    expect(pick()).toEqual([null, null, 31, "Clippy Jr"]);
+    sim.signal("after");
+    expect(pick()).toEqual([null, null, null, null]);
   });
 
   it("a story without the vars reads null everywhere", () => {
