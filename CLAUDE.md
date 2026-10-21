@@ -220,6 +220,165 @@ backbone; the SaaS lives entirely in the TS stack.
 
 ## Status
 
+**Wave 17 — terminals come alive + house speakers, built 2026-10-21**
+(Stage A lanes `oct31-w17/{core,tfound,router}` merged `--no-ff` as
+dd350aa, 00931fd, 4511054; Stage B lanes
+`oct31-w17/{attract,tv1,tv2,tv3,mapaudio,glue}` as 4f82384, bee10c4,
+d201d6c, 151a1b9, 23d5654, 38fd7be; then `oct31-w17/integration` (a live
+TV run, old-browser and lore reviews, 35 findings fixed in 29 commits)
+merged as 6d01848, then `oct31-w17/docs`; **not shipped**). The user's asks: *"the cutscenes are extremely barebones
+-- they should be extensive with animations and sounds and popups. Right
+now most of the time the terminals just show a "scan your id" screen when
+it should really be a lot of random ads / screensaver / popups. The
+terminals should feel a lot more interactive. They should also be full
+screen by default. The main terminal (the TV in the living room) should
+have very elobrate animations for all main beats / events."*, *"we will be
+placing speakers ALL over the house -- the map editor should allow for
+placing these, and mapping through the audio interface (16 in + 16
+out)"* (the inputs carry the house Mac / QLab outputs, microphones and
+other devices; the house Mac plays the story's sounds out of chosen
+outputs, routed by room from the map) and *"the terminals (tablets, laptop
+for the the Internet) can also output sound via their speakers, but all
+major announcements and other sfx comes out of speakers"*. **The idle
+show** (`terminal/src/idle-show/`): 9 screensavers (Mystify kept, starfield
+warp, pipes, the *Maps and Ducks 98* bouncing logo, flying windows, code
+rain, a maze, Beziers, a duck pond), 54 ads in 14 skins and 49 popup kinds
+with popup storms, on a pure seeded schedule (segment `i` = the terminal's
+name + `i` + the pool; the place kept in sessionStorage, so a reload never
+restarts at ad 0), six pools by `night.phase` (the hijack doubles the
+popups), the character's own copy only once he is introduced and awake;
+taps all do something (× sometimes spawns two more, button gags, the
+saver pokes, TOUCH ME after 30 s untouched, never on the TV). An awake wall
+terminal that is not piloting plays it with the **corner scan box**
+(`ScanBox.tsx`, `scan-copy.ts`: the live camera, reticle, SCAN YOUR PASS,
+*open 🎟 Pass on your phone*, the typed fallback; popups never land on
+it, the scanner keeps decoding under a storm); asleep terminals and the
+TV's attract play it full screen. **Cutscenes** (`terminal/src/cutscene/`):
+a `SceneDef` fires on a slide cue or a screen-state moment, keyed on its
+`seq` and drawn from server time (`clock.ts`, ≤ 30 fps, paused while
+hidden; a reload resumes, history never replays), picked by the pure
+`pick.ts` (overlays win, one moment at a time by priority, a moment older
+than 30 s skipped, a `namesCharacter` scene never before the
+introduction), rendered by `CutsceneLayer.tsx` in the slide's slot over a
+t-driven `kit/` (Win98 windows, Typewriter, ProgressBar, PopupStorm, Bsod,
+Particles ≤ 400, Confetti, Starfield, `useSfxCues`), the TV face's
+one-shot `FaceHandle.flash`; a lazy chunk; `?preview=<id>&t=<ms>` /
+`?preview=list` scrub any scene on a fake state. **64 scenes** in
+`scenes/{act1,act2,act3,moments}.tsx`, each with an elaborate TV take and a
+lighter wall take (but the four `play_on_the_screens` clips, wall only,
+and the chess corners for a lost or drawn game, TV only): Power On, the summons, Bingo, the first reinstallation,
+**the Trabolta Introduction** (27 s: a BIOS POST → the face assembling →
+HELLO, PROGRAMS. → a setup window → his logo), the hunts, the results, the bottle's spin landing on
+`night.bottle_pick`, the ad hijack's 000. 000. 000., the Truther Download,
+Truth Pong, the round-two tally, the live Trust Chart with motion, the
+jammed printer and the beans, the zip, the overshare scenarios, the Y2K
+clock's escalation, the majority's frost (nothing named), The Heart, the
+King hit / fallen off the shared bar, midnight, the final reveal,
+bobbing, truth.txt typed in Notepad, the verdict, the song, Grok Prom, the
+rave, the advice poll on the live votes, banishment, the hand jive, the
+ceremony and every award with the winner's name, the resurrection, the
+golden duck (kept → GERALD CAN'T HELP) and the four `play_on_the_screens`
+clips. **Screen state** (`core/server/routes/screen.ts`, additive):
+`moments` (≤ 12 live house-wide beats, the admin cues the story took, `do
+pick` draws, device signals, reveals, the duck's find; `who` only on picks and
+their verdicts, devices and finds) and `night` (allowlisted public `Night.*` incl.
+`bottle_open`, `results_q`, `ended`, `collection_complete`, `scenario`,
+the award winner only under an `award_*` slide); the heartbeat
+`terminals` list left the answer (Run → Terminals reads it off
+`/api/mod/screen/terminals`, which gains `fullscreen` off the poll's
+`fs=1|0`). **Full screen by default**
+(`terminal/src/fullscreen.ts` `KioskFullscreen`: a request on every
+gesture, the webkit spellings, Fully Kiosk's JS interface, Chrome
+`--kiosk` / F11 / a Home Screen app counted as full screen, config
+`fullscreen` + a ⚙ toggle, `<html data-fullscreen>`); Run → Terminals
+shows a red ⛶ for a terminal that is not. **The sound split**
+(`terminal/src/sound/`): terminals play only synthesised WebAudio accents
+(`sfx()`, 30 effects, no files), dropped while a voice speaks; the TV's at
+0.35 and cut by the director's TV mute; a terminal never plays a story
+`sound X`. **Speakers:** `audio.json`, a project file beside the maps
+(`@loom/house` `house/src/audio.ts`: `AudioConfig` v1 — the device, 16
+inputs, 16 outputs, speakers on room + position + yaw + outputs, zones, the
+sparse input → output matrix, cues, announce and TV voice targets;
+`validateAudio`, `resolveTargets`, pinned to the Python mirror by
+`house/test/fixtures/audio-*.json`), served by `core/server/audio.ts` (a
+director's save > the project snapshot > `LOOM_AUDIO` > a default 16 / 16;
+`GET|POST /api/mod/audio` with a `base` → 409 and a long poll,
+`/api/mod/audio/project`, `/api/mod/audio/test {speaker}|{out}`), and the
+starter `core/examples/trapped-in-the-internet/audio.json` (DRAFT).
+`sound X in <Place>` / `with rooms:` lower to `sfx` `rooms` args, directive
+events carry `setting`, lint L1213 `SoundRoomUnresolved`. **The map
+editor** (`reinstall/web/src/map/`): a 🔊 Speaker tool (place, drag, turn,
+⌘D, Delete, arrows; the output badge and a coverage ring), a speaker
+inspector, *+ Speaker here* on a room, and the **🔊 Audio tab** (the
+device, inputs, outputs, the 16 × 16 matrix with per-cell gain, zones lit
+on the plan, a cue's targets as chips for every story sound, the
+announce + TV voice targets, 🔈 Test per speaker and output, a router
+badge), with its own 409, Save to project, Download JSON and one undo
+history for map + speakers. **The router** (stagehand `audio`,
+`stagehand/src/stagehand/audio/`, launchd job `audio`): one duplex stream
+on the interface, a numpy mixer (the matrix, a duck under announcements,
+a limiter), story `sound X` from `sounds_dir` to the line's rooms, else
+its `audio.json` cue, else the beat's setting, else everywhere; spoken
+Test tones; `stagehand check --only audio`; opt-in: `play_sounds` and
+`announce` both default false. Help: `play/09-terminals` (the idle show,
+the scan box, the scenes, the sounds), `authoring/33-live-verbs`
+(moments), `39-house-map` (*The house speakers*), `19-directives`
+(*Where a sound plays*), `43-run-mode` (⛶), `docs/trapped/kiosk.md`,
+`docs/trapped/room-audio.md` §11, `docs/loom-reinstall.md` §1.3 / §4.
+**Decisions taken for the user (vetoable):** D1 the idle show is
+client-side, the server's `attract` flag keeps meaning hidden / asleep,
+and an awake terminal shows the idle show with a corner scan box; D2
+cutscenes are keyed on the cue's `seq` and drawn from server time; D3
+the screen state gains the moments ring + public night vars, with no
+story edits; D4 terminals play only local WebAudio accents, story sounds
+and announcements go to the house speakers, and the TV's sounds are quiet
+(0.35) and follow the TV mute; D5 speakers live in `audio.json`, never
+`house.audio.json` (a map variant) or the map (a speaker edit never bumps
+the map version); D6 the router is opt-in (`play_sounds`, `announce`),
+QLab and `alexa` stay the players until then, and `announce: true` beside
+`alexa:` is refused; D7 full screen by default (the Fullscreen API on
+gestures, Fully Kiosk's JS interface, a config `fullscreen` field, no new
+URL key); D8 no public checkmate scene (a checkmate is never a moment, so
+the door code stays the winner's); D9 only 🗣 `truth_answered` / 🙅
+`truth_refused` / 🎩 `chose_dare` on the bottle's pick within 5 min of the
+draw stand as its verdict moment, and an admin cue whose own rule sets a
+secret character's var (`force_majority_stay` / `_leave`,
+`read_the_results`, `waive_leader_tasks`) never becomes a moment. The
+integration calls: the guessed Optical Drive speaker on output 8 in the
+starter `audio.json`, an asleep mirror on the TV's idle show with its sounds muted, a faster
+introduction boot (the BIOS gone by 0.9 s), a higher-priority moment cutting
+in on the one playing (a verdict cuts the bottle's landing short).
+**Deploy order:** the server first (`ship.sh`; the screen state is
+additive, an old terminal ignores it), then `sync-show` (it adds the
+starter `audio.json` while the project has none; afterwards the project's
+copy wins, and only `--replace-audio` swaps it for the repo's), reload
+every terminal and the TV. The router stays off until the house Mac's
+YAML has an `audio:` section: uncomment it in `trapped.house.yaml` with
+both switches false (the matrix and the Test buttons only), `stagehand
+launchd install --job audio`, walk the speakers with Test; then
+`play_sounds: true` once `sounds_dir` holds the files (restart `show`
+and `audio`), and `announce: true` only after the `alexa:` section and
+its launchd agent are gone (`docs/trapped/room-audio.md` §11.6). **Open:** the router is off and no sound files
+exist (`sounds_dir` is empty; QLab's 20 sounds need exporting); the
+starter `audio.json` is a draft (5 guessed speakers, an empty matrix,
+output labels from the old plan), so the TV voice (input 6) and the mics
+reach no speaker through the router; no TV scene for Telephone, the Are
+You Sure piñata, Back To The Heart or clearance's *the house is open*
+reveal; cutscenes can't be tapped (only the idle show takes taps); the
+tent's reinstall wizard (`/reinstall/`) has no idle show, full screen or
+sounds; no *stop all house sounds* control (only a story reset fades
+them); a tablet can't be a speaker target; `&announce=1` tablets still
+speak announcements themselves; the terminal's main bundle grew 169 → 198
+kB gzip; only a device can check the oldest Android tablet's frame rate
+and Fully's calls, Safari 14's `webkitRequestFullscreen` and WebAudio
+unlock, the TV at 1080p over a whole night, and the MOTU (16 / 16 at 48
+kHz, microphone permission under launchd, sharing with QLab, Chrome and
+`say`, xruns under Ollama, the levels, the Test tone on each output).
+Suites on master after the integration merge: core 2201 (132 files,
+incl. Postgres), play 900 (98 files), editor 477 (58 files), terminal 650
+(52 files), reinstall/web 412 (32 files), house 213 + 4 skipped, stagehand
+871.
+
 **Wave 16, shipped 2026-10-20 as `w16-1020`** (rollback `w15c-1020`; lanes `oct31-w16/{mirrors,raycast,gate}`): **a placed terminal is a fixed window** into the virtual copy of its room (`terminal/src/world/director.ts`: a spot always mounts, `windowPose`; the counts line *N REINSTALLING · M HERE*; director.ts is three-free via `world/label-point.ts`); unplaced terminals still follow. **No WebGL2 → a raycaster** (`terminal/src/raycast/`, Canvas 2D at ~320×180, 20 fps): the game recreated from the terminal's spot, players as picture cut-outs, the duck and the King as sprites, the old plan kept only as its inset (`PlanView` deleted). **Only a captured or marked (restricted) program enters the reinstallation**: `POST /api/mod/spatial/begin` → 409 *not marked for reinstallation* before `reinstallation begun` fires, `force: true` for directors, `eligible` on the candidates, the tablet's *Program not marked* card, the VR lobby hides the unmarked. Also `w15c-1020`: house terminals watch the reinstallation while the character is hidden or asleep (`reinstalling` on the screen state, `watchWhileAsleep`). Open: the shadow view still uses `mountCamera` (no ceiling clamp); a director-restricted program counts as marked; re-export the Quest APK.
 
 **Wave 15 additions, shipped 2026-10-20 as `w15b-1020`** (rollback `w15-1020`, the casino): **terminal setup** = passcode, then tap the live map's terminal (`terminal/src/Setup.tsx`, `setup-map.ts`; `/terminal/?code=<mod>&spot=<id>` picks it with no taps, old long links still win); a house-map terminal carries optional **`view`** (`TERMINAL_VIEWS` in `@loom/house`) and **`speaks`** (a room terminal for its room's LOCATION), editable in the map editor and in the show maps (TV, Server Room face + speaks, Server Door chess, Casino); a map-configured tablet follows its map entry on boot. **The plan view** (`terminal/src/plan/`): with no WebGL2, world / auto / mirror / shadow show a live 2D floor plan of the reinstallation (players, trails, the duck + chevrons, the King, finds) instead of the face; three.js never loads. Open: the attract screen still covers every terminal until Trabolta is introduced, so the first reinstallation shows on no terminal.
