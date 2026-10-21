@@ -817,9 +817,9 @@ const RULES: ReadonlyArray<{ text: string; ok: boolean }> = [
  *   5200–     one filing every ROW_MS (≈ his voice saying "X said Y, certain."):
  *             the name, "what they said", SURE / NOT SURE; at +0.6 × ROW_MS its
  *             stamps land: ✔ ACCEPTED, ✘ GUESS or — NOT COUNTED, and beside it his
- *             ruling (🤖 SAME / NOT THE SAME below 100, 🤖 RULED at 100: held until
- *             ⚖; 🤖 … while he is asking, changed in place by the next poll;
- *             nothing for an exact match). The list scrolls, eight in view
+ *             ruling (🤖 SAME / NOT THE SAME below 100; 🤖 … while he is asking,
+ *             changed in place by the next poll; nothing for an exact match, and
+ *             nothing on a sure row: held until ⚖, D11). The list scrolls, eight in view
  *   after     ACCEPTED a · GUESSES g; then NEXT: QUESTION n+1 (or TRUTH OR DARE
  *             after the third, the bottle in the corner). A consensus: a gold
  *             banner with the answer; nobody filed: NOBODY FILED

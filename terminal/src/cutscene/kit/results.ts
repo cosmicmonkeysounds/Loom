@@ -4,10 +4,13 @@
 //!
 //! - **The stamps.** A filing's public outcome (✔ ACCEPTED, ✘ GUESS, —
 //!   NOT COUNTED, … PENDING) and Trabolta's ruling beside it (O4, D10):
-//!   🤖 SAME / 🤖 NOT THE SAME below 100, 🤖 RULED at 100 (the result held
-//!   until ⚖: same / not the same there would tell an accurate filing from
-//!   a confident lie, D11), 🤖 … while he is asking, nothing for an exact
-//!   match, the house rule or a director. Never his `why`.
+//!   🤖 SAME / 🤖 NOT THE SAME below 100, 🤖 … while he is asking, nothing
+//!   for an exact match, the house rule or a director. Never his `why`.
+//!   **A sure row (filed at 100) carries no ruling stamp at all** before ⚖
+//!   (`rowRuling`): he asks about every non-exact filing (O4), so a sure row
+//!   with no stamp would be an exact match — certainly right — and the room
+//!   could read the key off those rows, then pick out the confident lies
+//!   (D11). His ruling there shows at ⚖, as the 🤖 on a liar's name.
 //! - **The timelines.** A reading reveals one row every `ROW_MS`; the tally
 //!   pages the round's questions, then lands its gauge; the verdict flips
 //!   eight tiles, then (the TV only, O2) one page per question: the truth,
@@ -56,6 +59,15 @@ export function rulingStamp(ruled: RulingStamp): Stamp | null {
     default:
       return null;
   }
+}
+
+/**
+ * The ruling stamp a reading draws beside a row: his ruling below 100, and
+ * nothing on a sure row whatever the wire says (`r`, `?`, or none: all
+ * three must look alike before ⚖, D11).
+ */
+export function rowRuling(row: Pick<ResultRow, "sure" | "ruled">): Stamp | null {
+  return row.sure ? null : rulingStamp(row.ruled);
 }
 
 /** A question's truth at ⚖, as its tile says it. */

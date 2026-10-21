@@ -28,6 +28,7 @@ import {
   rowScroll,
   rowStateAt,
   rowsShown,
+  rowRuling,
   rulingStamp,
   tallyGauge,
   tallyPages,
@@ -71,6 +72,10 @@ describe("the stamps (O4, D10)", () => {
     expect(rulingStamp("r")?.text).toBe("🤖 RULED");
     expect(rulingStamp("?")?.text).toBe("🤖 …");
     expect(rulingStamp("")).toBeNull();
+    // A sure row draws no ruling stamp, whatever the wire says (D11); below 100 it does.
+    for (const ruled of ["", "r", "?", "s", "n"] as const) expect(rowRuling({ sure: true, ruled })).toBeNull();
+    expect(rowRuling({ sure: false, ruled: "s" })?.text).toBe("🤖 SAME");
+    expect(rowRuling({ sure: false, ruled: "?" })?.text).toBe("🤖 …");
   });
 
   it("map every public outcome; never accurate versus lie", () => {
@@ -155,7 +160,7 @@ describe("hunt_results reads the filings off the wire", () => {
     expect(end).not.toMatch(/filing\.txt|\bREAD\b/u);
   });
 
-  it("a row shows its ruling beside its outcome; a ruled row at 100 never says same or not the same", () => {
+  it("a row shows its ruling beside its outcome; a sure row shows none before ⚖, whatever he ruled", () => {
     const q = { ...fakeReadQuestion(1, 0), filed: 5 };
     q.rows = [
       { who: "Winamp", said: "Blue", sure: false, out: "a", ruled: "s" },
@@ -170,8 +175,11 @@ describe("hunt_results reads the filings off the wire", () => {
     expect(row("Winamp")).toContain("🤖 SAME");
     expect(row("Excel")).toContain("🤖 NOT THE SAME");
     expect(row("Excel")).toContain("✘ GUESS");
-    expect(row("Notepad")).toContain("🤖 RULED");
-    expect(row("Notepad")).not.toMatch(/SAME/u);
+    // Filed at 100: his ruling (`r`) and an exact match (``) look alike, or the
+    // unstamped sure rows would give the key away (D11).
+    expect(row("Notepad")).not.toContain("🤖");
+    expect(row("Notepad")).not.toMatch(/SAME|RULED/u);
+    for (const who of ["Notepad", "Solitaire"]) expect(row(who)).toMatch(/^ “[^”]+” SURE ✔ ACCEPTED (<|ACCEPTED)/u);
     expect(row("ICQ")).toContain("🤖 …");
     expect(row("Solitaire")).not.toContain("🤖");
     // The stamp changes in place on the next poll: the same frame with the ruling in.

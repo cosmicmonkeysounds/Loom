@@ -6,7 +6,7 @@
 import "./results.css";
 import { useRef } from "react";
 import type { ResultRow, ResultOutcome, RulingStamp, ScreenResultQuestion, ScreenResults, ScreenState } from "../../screen.ts";
-import { ROWS_VISIBLE, latchResults, outcomeStamp, rowScroll, rowStateAt, rulingStamp, saidText, type ReadingPlan, type Stamp } from "./results.ts";
+import { ROWS_VISIBLE, latchResults, outcomeStamp, rowRuling, rowScroll, rowStateAt, saidText, type ReadingPlan, type Stamp } from "./results.ts";
 
 /** The screen state's results block of `kind`, held across a poll that lost it (`latchResults`). */
 export function useHeldResults(state: Pick<ScreenState, "results">, kind: ScreenResults["kind"]): ScreenResults | null {
@@ -28,9 +28,10 @@ export function StampBadge({ stamp, k = 1, reduced, className }: { stamp: Stamp;
   );
 }
 
-/** A filing's two stamps: the outcome, and his ruling beside it (O4) — none for an exact match. */
-export function RowStamps({ out, ruled, k, reduced }: { out: ResultOutcome; ruled: RulingStamp; k: number; reduced: boolean }) {
-  const rule = rulingStamp(ruled);
+/** A filing's two stamps: the outcome, and his ruling beside it (O4) — none for an
+ *  exact match, and none on a sure row before ⚖ (`rowRuling`, D11). */
+export function RowStamps({ out, ruled, sure, k, reduced }: { out: ResultOutcome; ruled: RulingStamp; sure: boolean; k: number; reduced: boolean }) {
+  const rule = rowRuling({ sure, ruled });
   return (
     <span className="res-stamps">
       <StampBadge stamp={outcomeStamp(out)} k={k} reduced={reduced} />
@@ -45,7 +46,7 @@ function Row({ row, i, k, stampK, reduced }: { row: ResultRow; i: number; k: num
       <span className="res-who">{row.who}</span>
       <span className="res-said">{saidText(row)}</span>
       <span className={`res-sure${row.sure ? " sure" : ""}`}>{row.sure ? "SURE" : "NOT SURE"}</span>
-      {stampK > 0 ? <RowStamps out={row.out} ruled={row.ruled} k={stampK} reduced={reduced} /> : <span className="res-stamps" />}
+      {stampK > 0 ? <RowStamps out={row.out} ruled={row.ruled} sure={row.sure} k={stampK} reduced={reduced} /> : <span className="res-stamps" />}
     </div>
   );
 }
