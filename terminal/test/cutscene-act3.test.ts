@@ -11,7 +11,7 @@ import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
 import { previewBeats } from "../src/cutscene/preview.tsx";
-import { SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
+import { CEREMONY_ROLL, SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
 import { SCENES as MOMENTS, OVER_WORLD_MS, finderName } from "../src/cutscene/scenes/moments.tsx";
 import { noteWorldShowing, worldCelebratesFinds } from "../src/cutscene/world-bus.ts";
 import { CELEBRATION_MS } from "../src/world/state.ts";
@@ -132,6 +132,19 @@ describe("every tv3 scene draws", () => {
     const none = draw(award, "tv", 6000, { night: { award_winner: null, award_value: null } });
     expect(none).toContain("Please come forward");
     expect(none).not.toContain("Trust score");
+  });
+
+  it("the ceremony's ticker names only the awards every night gives, never a bonus one", () => {
+    const ceremony = ACT3.find((d) => d.id === "ceremony")!;
+    const html = draw(ceremony, "tv", 12_000);
+    for (const title of ["MOST TRUSTED", "LEAST TRUSTED", "FREQUENT FLYER TO THE INTERNET", "LORE HOARDER", "TRUTHCOIN TYCOON"]) {
+      expect(CEREMONY_ROLL).toContain(title);
+      expect(html).toContain(title);
+    }
+    for (const title of ["BEST LIAR", "GOLDEN DUCK SPEEDRUN", "QUEST COMPLETIONIST", "THE MILLION DOLLAR PAINTING"]) {
+      expect(CEREMONY_ROLL).not.toContain(title);
+      expect(html).not.toContain(title);
+    }
   });
 
   it("the advice poll shows the live tally, and SHE SAID YES once he is helped", () => {

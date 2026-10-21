@@ -1082,9 +1082,13 @@ function HandJive({ t, sfx, reduced, target }: SceneProps) {
 //   0–2200    the curtains part
 //   1600      THE AWARDS OF THE NIGHT, the trophy rising (a sparkle)
 //   2200→     hold: spotlights sweep, the trophy turns and glints, stars
-//             twinkle, the night's awards scroll along the bottom
+//             twinkle, the five awards of every night scroll along the bottom
+//             (the bonus ones are the host's call, so the TV never promises them)
 
-const CEREMONY_ROLL = `${AWARDS.map((a) => a.title.toUpperCase()).join("  ★  ")}  ★  `;
+/** The ticker under the ceremony: the main awards only, then the sub line. */
+export const CEREMONY_ROLL = `${AWARDS.filter((a) => a.kind === "Award")
+  .map((a) => a.title.toUpperCase())
+  .join("  ★  ")}  ★  COME UP WHEN YOUR NAME IS CALLED  ★  `;
 
 function twinkles(n: number, seed: number): Emitter[] {
   return [{ x: 0.5, y: 0.45, w: 1, h: 0.9, start: 0, end: 10_000_000, rate: n, life: 1600, speed: 0.01, angle: -90, spread: 360, size: 10, colors: ["#fff6c8", "#ffd23f", "#ffffff"], shape: "star", seed, fade: 0.6 }];
