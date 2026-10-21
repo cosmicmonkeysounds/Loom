@@ -110,10 +110,13 @@ are aliases), then again with abbreviations spelled out ("Mr. Pickles",
 "11 yrs", "ext 1978", "0900" are accurate, no ⚠); a different fact at 100%
 is a lie, below 100% a guess (marked).
 
-**3b. The escort list and the Wallet.** Marks are the hosts' buttons; you
+**3b. The Wanted board and the Wallet.** Marks are the hosts' buttons; you
 only step in from Run when nobody is near: fire `mark_for_reinstallation` or
 `unmark_for_reinstallation` with the program as the subject (Director →
-quick-fire). `# quarantine` shows every open escort pin. Truthcoin moves by
+quick-fire). A mark hinders nothing (Q30): the program lights up on every
+Antivirus' **Wanted board** (who is marked, why, who has claimed them), and
+the Antivirus' scan is the confrontation. No escort pins in `# quarantine`
+any more. Truthcoin moves by
 itself from the guests' Wallets; CRA Agent Software approves every third
 transfer in her booth's Wallet room and can deny any within 60 s. If she is
 busy or gone: Run → **Wallet** has **✓ Approve** / **⛔ Deny** / **↩ Cancel**
@@ -124,9 +127,13 @@ ten-minute freezes early. Only a grant or a freeze is API-only:
 `POST /e/<event>/api/mod/wallet/grant {to, amount}` / `freeze {to}`, signed in
 as yourself.
 
-**4. The late list** (OP-08b). At 🚨 Summons closed the Antivirus booths
-already read *🚨 X is late for the Second Moment of Truth: marked for reinstallation. Go get them…* (one per late program; the ⏰ line only with the auto sweep) and
-`# quarantine` pins each one (marked: *late for the Second Moment of Truth*).
+**4. The late list** (OP-08b). The programs checked themselves in with the
+Desktop's QR during the summons (the booths' *Still missing* lists were who
+hadn't). At 🚨 Summons closed the Antivirus booths already have *🚨 X is late
+for the Second Moment of Truth: marked for reinstallation…* (one per late
+program, as one *🚨 n programs marked* pop-out; the ⏰ line only with the auto
+sweep), each a poster on the Wanted board (marked: *late for the Second
+Moment of Truth*).
 Confirm the list by radio (**LATE**, then names and where) from Run → World
 (each guest's `late` var; the roster has no late column) if a booth missed
 it. Or, before the hour ends, set `Night.auto_sweep = true` in Run → World to
