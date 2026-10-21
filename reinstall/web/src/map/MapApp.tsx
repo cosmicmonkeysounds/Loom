@@ -11,6 +11,20 @@
 //! is a tab away, and a save goes to the event (`POST /api/mod/spatial/house`
 //! with the `base` version it loaded; a 409 offers copy / reload).
 //!
+//! The house speakers (wave 17) are drawn and placed on the same plan but
+//! saved apart, in the event's `audio.json` (`GET` / `POST /api/mod/audio`,
+//! its own `base` → 409): the Audio tab holds the interface, the matrix,
+//! zones and cues. **Undo:** one history of `{house, audio}` pairs, so a
+//! map edit, a speaker edit, and a room move that carries its speakers are
+//! each one step, whichever was last. Another director's speaker save
+//! adopted into the page is swapped into every entry (`rebaseHistory`):
+//! the map's steps still undo, the speaker-only ones go. **Saving:** the
+//! two files save separately — 💾 Save writes the map when it changed and
+//! can be saved, then the speakers when they are valid against the map the
+//! server will hold (`speakerSavePlan`); a speaker problem never greys a
+//! valid map's save. A long poll on the speaker config (`audio-poll.ts`)
+//! keeps the tests list live and catches another director's save.
+//!
 //! This file holds the state; the plan is `Canvas.tsx`, the toolbar
 //! `Toolbar.tsx`, the fields `Inspector.tsx`, the other tabs and the
 //! problem list `Panels.tsx`, and every edit a pure op (`edit.ts`,
@@ -18,8 +32,13 @@
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { polyBounds, validateHouse } from "@loom/house";
-import type { HouseMap, PlayerState, PropKind, Vec2 } from "@loom/house";
+import { polyBounds, validateAudio, validateHouse } from "@loom/house";
+import type { AudioConfig, HouseMap, PlayerState, Vec2 } from "@loom/house";
+import { audioDownload, audioProblemList, duplicateSpeaker, followHouse, moveSpeaker, normalizeAudio, placeSpeaker, planOf, rebaseHistory, removeSpeaker, rotateSpeaker, sameAudio, saveAllPlan, speakerById, speakerSavePlan, speakersDropped, withSpeakersText, type Doc } from "./audio.ts";
+import { fetchAudio, saveAudio, saveAudioToProject, testAudio, testRefusal, type AudioView } from "./audio-api.ts";
+import { runAudioPoll } from "./audio-poll.ts";
+import { AudioPanel } from "./AudioPanel.tsx";
+import "./audio.css";
 import { Setup } from "../app.tsx";
 import { fetchHouse, fetchLocations, saveHouse, streamProbe, streamUrl, tokenAlive, type LoadedHouse } from "../api.ts";
 import { baseOf, dropConfig, loadConfig, saveConfig, type ReinstallConfig } from "../config.ts";
@@ -29,7 +48,7 @@ import { Canvas } from "./Canvas.tsx";
 import { locationProblems, structuredProblems, walkabilityProblems, type StoryLocation } from "./check.ts";
 import { moveDoorAlong } from "./doors.ts";
 import { draftFromText, editableSource, moveRoom, moveTo, positionOf, remoteMapAction, removeThing, saveBaseOf, saveStateOf, setYaw, yawOf, type SaveState, type Selection } from "./edit.ts";
-import { EMPTY_HISTORY, pushed, redone, undone, type History } from "./history.ts";
+import { emptyHistory, pushed, redone, undone, type History } from "./history.ts";
 import { Inspector } from "./Inspector.tsx";
 import { JsonTab, PlayersTab, ProblemsPanel, TerminalsTab } from "./Panels.tsx";
 import { snap2, SNAP_STEPS } from "./plan.ts";
@@ -38,7 +57,7 @@ import { addFloor, addRoom, blankHouse, cascadeOf, deleteRoomText, deletesWith, 
 import { flapsAdded, yardOf } from "./yards.ts";
 import { Toolbar } from "./Toolbar.tsx";
 import { checkModCode, editorTakesKey, MapUnlock } from "./unlock.ts";
-import { floorOfSelection, selectionExists, TOOLS, type EditMode, type MapToolbarContext, type Tool } from "./tools.ts";
+import { floorOfSelection, selectionExists, TOOLS, type EditMode, type MapToolbarContext, type Placing, type Tool } from "./tools.ts";
 
 /** three.js only loads when the 3D preview is opened. */
 const Preview3D = lazy(() => import("./Preview3D.tsx"));
@@ -86,7 +105,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "color", "range"].includes(target.type);
 }
 
-type Tab = "inspect" | "terminals" | "players" | "json";
+type Tab = "inspect" | "terminals" | "players" | "audio" | "json";
 
 const stringify = (h: HouseMap): string => JSON.stringify(h, null, 2);
 
@@ -106,14 +125,14 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [loaded, setLoaded] = useState<LoadedHouse | null>(null);
   const [saved, setSaved] = useState<HouseMap | null>(null);
   const [draft, setDraft] = useState<HouseMap | null>(null);
-  const [history, setHistory] = useState<History>(EMPTY_HISTORY);
+  const [history, setHistory] = useState<History<Doc>>(emptyHistory);
   const [text, setText] = useState("");
   const [textError, setTextError] = useState<string | null>(null);
   const [floor, setFloor] = useState("");
   const [edit, setEdit] = useState(false);
   const [tool, setTool] = useState<Tool>("select");
-  /** A palette prop armed for the next click on the plan. */
-  const [placing, setPlacing] = useState<PropKind | null>(null);
+  /** A palette prop (or a speaker) armed for the next click on the plan. */
+  const [placing, setPlacing] = useState<Placing | null>(null);
   const [snapStep, setSnapStep] = useState(loadSnap);
   const [sel, setSel] = useState<Selection | null>(null);
   const [tab, setTab] = useState<Tab>("inspect");
@@ -128,6 +147,23 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const [locations, setLocations] = useState<StoryLocation[] | null>(null);
   const [view3d, setView3d] = useState(false);
   const saving = useRef(false);
+  // The house speakers (`audio.json`): the draft, as last loaded / saved, the server's view.
+  const [audio, setAudio] = useState<AudioConfig>(() => normalizeAudio(null));
+  const [savedAudio, setSavedAudio] = useState<AudioConfig | null>(null);
+  const [audioView, setAudioView] = useState<AudioView | null>(null);
+  const [audioStatus, setAudioStatus] = useState<"loading" | "ok" | "missing" | "error">("loading");
+  const [audioSaveState, setAudioSaveState] = useState<SaveState>({ kind: "idle" });
+  /** `changed`: another director saved the speakers while this page held edits;
+   *  `drafted`: the server's speakers came in after this page drafted some offline. */
+  const [audioRemote, setAudioRemote] = useState<null | "changed" | "drafted">(null);
+  const [projectStatus, setProjectStatus] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<ReadonlySet<string>>(() => new Set());
+  const audioRef = useRef(audio);
+  audioRef.current = audio;
+  const audioVersionRef = useRef<string | null>(null);
+  const audioSaving = useRef(false);
+  const audioDirtyRef = useRef(false);
+  const testSeqRef = useRef(0);
   /** The passcode re-check before this page load's first write (W-15). */
   const lock = useMemo(() => new MapUnlock((code) => checkModCode(code, config.eventId)), [config.eventId]);
   const [asking, setAsking] = useState<{ round: number; error: string | null; answer: (code: string | null) => void } | null>(null);
@@ -161,7 +197,8 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     setDraft(l.house);
     setText(stringify(l.house));
     setTextError(null);
-    setHistory(EMPTY_HISTORY);
+    historyRef.current = emptyHistory();
+    setHistory(historyRef.current);
     setRemoteChanged(false);
     setSaveState((s) => (s.kind === "conflict" ? { kind: "idle" } : s));
     setFloor((f) => (l.house.floors.some((x) => x.id === f) ? f : (l.house.floors[0]?.id ?? "")));
@@ -174,6 +211,85 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
 
   const dirty = useMemo(() => draft !== null && saved !== null && JSON.stringify(draft) !== JSON.stringify(saved), [draft, saved]);
   dirtyRef.current = dirty || textError !== null;
+  const audioDirty = useMemo(() => savedAudio !== null && !sameAudio(audio, savedAudio), [audio, savedAudio]);
+  audioDirtyRef.current = audioDirty;
+
+  /** The server's speaker config. A new one is adopted when the page holds
+   *  no speaker edits (swapped into the undo history, so the map's steps
+   *  stay); with edits the page says it changed elsewhere; drafted before
+   *  the first answer (an outage), the draft stays, unsaved against it.
+   *  True when the page took something (a config, a new test) — the long
+   *  poll pauses after an answer that changed nothing. */
+  const adoptAudio = useCallback((v: AudioView, force = false): boolean => {
+    setAudioView(v);
+    setAudioStatus("ok");
+    let took = false;
+    for (const t of v.tests) {
+      if (t.seq > testSeqRef.current) {
+        testSeqRef.current = t.seq;
+        took = true;
+      }
+    }
+    if (v.version === audioVersionRef.current && !force) return took;
+    if (audioSaving.current && !force) return took;
+    const first = audioVersionRef.current === null;
+    if (audioDirtyRef.current && !force) {
+      if (!first) {
+        setAudioRemote("changed");
+        return took;
+      }
+      audioVersionRef.current = v.version;
+      setSavedAudio(v.audio);
+      setAudioRemote("drafted");
+      return true;
+    }
+    audioVersionRef.current = v.version;
+    setSavedAudio(v.audio);
+    setAudioRemote(null);
+    setAudioSaveState((s) => (s.kind === "conflict" ? { kind: "idle" } : s));
+    // The same speakers (a Save to project, a reload of what is shown): nothing to undo differently.
+    if (sameAudio(v.audio, audioRef.current)) return true;
+    const cur = draftRef.current;
+    if (cur !== null) {
+      historyRef.current = rebaseHistory(historyRef.current, { house: cur, audio: audioRef.current }, v.audio);
+      setHistory(historyRef.current);
+    }
+    audioRef.current = v.audio;
+    setAudio(v.audio);
+    return true;
+  }, []);
+
+  const reloadAudio = useCallback(async () => {
+    const r = await fetchAudio(base, config.token);
+    if (r.kind === "ok") adoptAudio(r.view, true);
+    else if (r.kind === "missing") setAudioStatus("missing");
+    else setNotice(`Couldn't load the speakers (${r.error}).`);
+  }, [base, config.token, adoptAudio]);
+
+  // The speaker config: one GET, then a long poll (a save elsewhere, a test).
+  useEffect(() => {
+    let stop = false;
+    const ctrl = new AbortController();
+    void runAudioPoll({
+      fetch: (q) => fetchAudio(base, config.token, { ...q, signal: ctrl.signal }),
+      onView: (v) => adoptAudio(v),
+      onMissing: () => {
+        // A server before wave 17: draft against the default interface, never saved.
+        setAudioStatus("missing");
+        setSavedAudio((s) => s ?? audioRef.current);
+      },
+      onError: () => {
+        setAudioStatus((s) => (s === "loading" ? "error" : s));
+        setSavedAudio((s) => s ?? audioRef.current);
+      },
+      testSeq: () => testSeqRef.current,
+      stopped: () => stop,
+    });
+    return () => {
+      stop = true;
+      ctrl.abort();
+    };
+  }, [base, config.token, adoptAudio]);
 
   // The live players, and the map changing under us.
   useEffect(() => {
@@ -221,55 +337,171 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     }
   }, [snapStep]);
 
-  /** Apply an edit: `push` makes a new undo step, `replace` updates the running drag's. */
-  const apply = useCallback((next: HouseMap, mode: EditMode = "push") => {
+  /** Apply a `{house, audio}` edit: `push` makes a new undo step, `replace` updates the running drag's. */
+  const applyDoc = useCallback((next: Doc, mode: EditMode = "push") => {
     const cur = draftRef.current;
-    if (cur === null || next === cur) return;
+    if (cur === null || (next.house === cur && next.audio === audioRef.current)) return;
     if (mode === "push") {
-      const h = pushed(historyRef.current, cur);
+      const h = pushed(historyRef.current, { house: cur, audio: audioRef.current });
       historyRef.current = h;
       setHistory(h);
     }
-    draftRef.current = next;
-    setDraft(next);
-    setText(stringify(next));
-    setTextError(null);
-    setSaveState((s) => (s.kind === "ok" ? { kind: "idle" } : s));
+    if (next.house !== cur) {
+      draftRef.current = next.house;
+      setDraft(next.house);
+      setText(stringify(next.house));
+      setTextError(null);
+      setSaveState((s) => (s.kind === "ok" ? { kind: "idle" } : s));
+    }
+    if (next.audio !== audioRef.current) {
+      audioRef.current = next.audio;
+      setAudio(next.audio);
+      setAudioSaveState((s) => (s.kind === "ok" ? { kind: "idle" } : s));
+    }
+  }, []);
+
+  /** A speaker edit (the map unchanged). */
+  const applyAudio = useCallback((next: AudioConfig, mode: EditMode = "push") => {
+    const cur = draftRef.current;
+    if (cur !== null) applyDoc({ house: cur, audio: next }, mode);
+  }, [applyDoc]);
+
+  /** A map edit: the speakers standing in what moved go with it (`followHouse`), in the same step. */
+  const apply = useCallback((next: HouseMap, mode: EditMode = "push") => {
+    const cur = draftRef.current;
+    if (cur === null || next === cur) return;
+    applyDoc({ house: next, audio: followHouse(cur, next, audioRef.current) }, mode);
     // A door nobody placed is said out loud: the cut gave a room a flap into the yard.
     const flaps = flapsAdded(cur, next);
     if (flaps.length > 0) {
       const name = (id: string | null) => (id === null ? "outside" : (next.rooms.find((r) => r.id === id)?.label ?? id));
       setNotice(`Added ${flaps.map((d) => `a door from ${name(d.a)} into ${name(d.b)}`).join(" and ")} (a tent flap) — move or delete it if that's not where the way in is.`);
     }
-  }, []);
+  }, [applyDoc]);
 
   const step = useCallback((dir: "undo" | "redo") => {
     const cur = draftRef.current;
     if (cur === null) return;
-    const r = (dir === "undo" ? undone : redone)(historyRef.current, cur);
+    const r = (dir === "undo" ? undone : redone)(historyRef.current, { house: cur, audio: audioRef.current });
     if (r === null) return;
     historyRef.current = r.history;
     setHistory(r.history);
-    draftRef.current = r.present;
-    setDraft(r.present);
-    setText(stringify(r.present));
+    draftRef.current = r.present.house;
+    setDraft(r.present.house);
+    setText(stringify(r.present.house));
     setTextError(null);
+    audioRef.current = r.present.audio;
+    setAudio(r.present.audio);
   }, []);
 
   // A selection the edit (or the undo) took away goes; the floor follows the history too.
   useEffect(() => {
     if (draft === null) return;
-    if (sel !== null && !selectionExists(draft, sel)) setSel(null);
+    if (sel !== null && !selectionExists(draft, sel, audio)) setSel(null);
     if (!draft.floors.some((f) => f.id === floor)) setFloor(draft.floors[0]?.id ?? "");
-  }, [draft, sel, floor]);
+  }, [draft, sel, floor, audio]);
 
   /** Back to the saved map — the draft *and* the JSON text (which may be broken while the draft is not). */
   const revert = () => {
     if (saved === null) return;
-    apply(saved);
+    applyDoc({ house: saved, audio: savedAudio ?? audio });
     setText(stringify(saved));
     setTextError(null);
   };
+
+  /** The speaker validity the save is gated on (against the draft map; the server re-checks against its own). */
+  const audioCheck = useMemo(() => (draft === null ? null : validateAudio(audio, draft)), [audio, draft]);
+
+  /** Save the speakers to the event (`base` = the version this page loaded → 409 when another save landed). */
+  const saveSpeakers = async (): Promise<string | null> => {
+    if (!audioDirty || audioStatus !== "ok") return null;
+    if (!(await unlock())) return null;
+    setAudioSaveState({ kind: "saving" });
+    audioSaving.current = true;
+    const sent = audio;
+    try {
+      const r = await saveAudio(base, config.token, sent, audioVersionRef.current);
+      if (r.ok) {
+        audioVersionRef.current = r.result.version;
+        setSavedAudio(sent);
+        setAudioView((v) => (v === null ? v : { ...v, audio: sent, version: r.result.version, source: "director" }));
+        setAudioSaveState({ kind: "ok", warnings: r.result.warnings ?? [], version: r.result.version });
+        return r.result.version;
+      }
+      if (r.status === 401 || r.status === 403) onRevoked();
+      setAudioSaveState(r.conflict ? { kind: "conflict", version: r.version } : { kind: "error", error: r.error, problems: r.problems });
+      if (r.conflict) setAudioRemote(null);
+      return null;
+    } finally {
+      audioSaving.current = false;
+    }
+  };
+
+  /** The speakers' validity against the map the server holds (they save alone only when this passes). */
+  const audioCheckSaved = useMemo(() => (saved === null ? null : validateAudio(audio, saved)), [audio, saved]);
+  const mapSaveable = textError === null && validation?.ok === true && editable;
+  const speakerSave = speakerSavePlan({
+    audioDirty,
+    status: audioStatus,
+    mapDirty: dirty,
+    mapSaveable,
+    validDraft: audioCheck?.ok === true,
+    validSaved: audioCheckSaved?.ok === true,
+  });
+  const allPlan = saveAllPlan({ mapDirty: dirty, mapSaveable, speakers: speakerSave });
+
+  /** 💾 Save: the map (when it changed and can be saved), then the speakers when they fit the map the server will hold. */
+  const saveAll = async () => {
+    if (allPlan.map && (await save()) === null) return;
+    if (allPlan.speakers) await saveSpeakers();
+    else if (audioDirty) {
+      const why = speakerSave.why ?? (allPlan.map ? "they don't fit the map as saved — fix the speaker problems" : "fix the speaker problems first");
+      setNotice(`${allPlan.map ? "Map saved — the" : "The"} speakers are not saved: ${why}.`);
+    }
+  };
+
+  /** The Audio tab's save: the speakers alone when they fit the saved map, else the map first. */
+  const saveFromAudioTab = async () => {
+    if (speakerSave.alone) await saveSpeakers();
+    else if (speakerSave.withMap && (await save()) !== null) await saveSpeakers();
+  };
+
+  const speakersToProject = async () => {
+    if (!(await unlock())) return;
+    setProjectStatus("Saving audio.json to the project…");
+    const r = await saveAudioToProject(base, config.token);
+    if (r.ok) {
+      setProjectStatus(`Saved to the project as ${r.result.file}.`);
+      await reloadAudio();
+    } else setProjectStatus(r.status === 409 ? "This event has no project — Download JSON and commit it instead." : `Not saved to the project — ${r.error}.`);
+  };
+
+  const downloadSpeakers = () => {
+    const { name, text: body } = audioDownload(audio);
+    const url = URL.createObjectURL(new Blob([body], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  /** 🔈: the router on the house Mac plays its tone + label there. */
+  const testSpeaker = useCallback(
+    async (target: { speaker: string } | { out: number }) => {
+      if (!(await unlock())) return;
+      const r = await testAudio(base, config.token, target);
+      if (r.ok) {
+        const what = "speaker" in target ? (speakerById(audioRef.current, target.speaker)?.name ?? target.speaker) : `output ${target.out}`;
+        setNotice(`🔈 Test #${r.result.seq} sent: the router plays a tone and says “${what}” there (if it is running on the house Mac).`);
+      } else setNotice(testRefusal(r, target));
+    },
+    [base, config.token, unlock],
+  );
+
+  const lightUp = useCallback((ids: readonly string[] | null) => setHighlight(new Set(ids ?? [])), []);
 
   const save = async (): Promise<string | null> => {
     if (draft === null || !validation?.ok || !editable) return null;
@@ -316,7 +548,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     (s: Selection) => {
       const h = draftRef.current;
       if (h === null) return;
-      const f = floorOfSelection(h, s);
+      const f = floorOfSelection(h, s, audioRef.current);
       if (f !== "") setFloor(f);
       select(s);
     },
@@ -326,15 +558,20 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
   const deleteSelected = useCallback(() => {
     const h = draftRef.current;
     if (h === null || sel === null) return;
+    if (sel.kind === "speaker") {
+      applyAudio(removeSpeaker(audioRef.current, sel.id));
+      setSel(null);
+      return;
+    }
     if (sel.kind === "room") {
       const room = h.rooms.find((r) => r.id === sel.id);
       if (room === undefined) return;
       // A yard goes whole: every piece it was cut into.
       const c = cascadeOf(h, deletesWith(h, sel.id));
       if (c.spawn) return setNotice(`The spawn is in this ${room.outdoor ? "yard" : "room"} — move the spawn to another room first.`);
-      if (!window.confirm(deleteRoomText(room, c))) return;
       const out = removeRoom(h, sel.id);
       if ("error" in out) return setNotice(out.error);
+      if (!window.confirm(withSpeakersText(deleteRoomText(room, c), speakersDropped(h, out.house, audioRef.current).length))) return;
       apply(out.house);
       setSel(null);
       return;
@@ -344,7 +581,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       apply(next);
       setSel(null);
     } else if (sel.kind === "duck") setNotice("A map needs at least one duck spot.");
-  }, [sel, apply]);
+  }, [sel, apply, applyAudio]);
 
   // Keys: ⌘Z / ⇧⌘Z (⌘Y) undo / redo, ⌘D duplicates, Delete removes,
   // arrows nudge (the snap step, Shift ×10), R / ⇧R turn 15° (with a
@@ -369,8 +606,16 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       if (mod && e.key.toLowerCase() === "d") {
         e.preventDefault();
         if (sel === null) return;
+        if (sel.kind === "speaker") {
+          const d = duplicateSpeaker(audioRef.current, h, sel.id, snapStep < 0.1 ? 0.25 : snapStep);
+          if (d !== null) {
+            applyAudio(d.audio);
+            setSel({ kind: "speaker", id: d.id });
+          }
+          return;
+        }
         const out = duplicate(h, sel, snapStep < 0.1 ? 0.25 : snapStep);
-        if (out === null) return setNotice("Only a prop, a terminal or a duck spot can be duplicated.");
+        if (out === null) return setNotice("Only a prop, a terminal, a speaker or a duck spot can be duplicated.");
         apply(out.house);
         setSel(out.sel);
         return;
@@ -380,6 +625,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         if (placing !== null) setPlacing(null);
         else if (tool !== "select") setTool("select");
         else setSel(null);
+        return;
+      }
+      if (e.key.toLowerCase() === "r" && tool === "select" && sel?.kind === "speaker") {
+        e.preventDefault();
+        applyAudio(rotateSpeaker(audioRef.current, sel.id, e.shiftKey ? -YAW_STEP : YAW_STEP));
         return;
       }
       if (e.key.toLowerCase() === "r" && tool === "select" && sel !== null && yawOf(h, sel) !== null) {
@@ -398,6 +648,10 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         deleteSelected();
         return;
       }
+      if ((e.key === "[" || e.key === "]") && sel.kind === "speaker") {
+        applyAudio(rotateSpeaker(audioRef.current, sel.id, e.key === "[" ? 5 : -5));
+        return;
+      }
       if (e.key === "[" || e.key === "]") {
         const yaw = yawOf(h, sel);
         if (yaw !== null) apply(setYaw(h, sel, yaw + (e.key === "[" ? 5 : -5)));
@@ -414,6 +668,13 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         else apply(moveRoom(h, sel.id, by[0], by[1]));
       }
       else if (sel.kind === "stair") apply(moveStair(h, sel.id, by[0], by[1]));
+      else if (sel.kind === "speaker") {
+        const s = speakerById(audioRef.current, sel.id);
+        if (s !== undefined) {
+          const at = planOf(s);
+          applyAudio(moveSpeaker(audioRef.current, h, sel.id, snap2([at[0] + by[0], at[1] + by[1]], Math.min(snapStep, 0.01))));
+        }
+      }
       else if (sel.kind === "door") {
         const door = h.doors.find((x) => x.id === sel.id);
         if (door !== undefined) apply(moveDoorAlong(h, sel.id, [door.at[0] + by[0], door.at[1] + by[1]], snapStep / 10));
@@ -424,7 +685,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
     };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
-  }, [edit, sel, tool, placing, snapStep, apply, step, deleteSelected]);
+  }, [edit, sel, tool, placing, snapStep, apply, applyAudio, step, deleteSelected]);
 
   useEffect(() => {
     if (copied === null) return;
@@ -455,9 +716,11 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
       () => setCopied(null),
     );
   };
-  const errors = textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? []);
-  const warnings = [...(walk ?? []), ...locationProblems(house, locations)];
-  const canSave = dirty && textError === null && validation?.ok === true && saveState.kind !== "saving" && editable;
+  const speakerProblems = audioProblemList(audio, house);
+  const errors = [...(textError !== null ? [{ text: textError, sel: null, level: "error" as const }] : structuredProblems(house, validation?.problems ?? [])), ...speakerProblems.errors];
+  const warnings = [...(walk ?? []), ...locationProblems(house, locations), ...speakerProblems.warnings];
+  const busy = saveState.kind === "saving" || audioSaveState.kind === "saving";
+  const canSave = (allPlan.map || allPlan.speakers) && !busy && editable;
 
   const addSized = (w: number, d: number) => {
     const selRoom = sel?.kind === "room" ? house.rooms.find((r) => r.id === sel.id && r.floor === floor) : undefined;
@@ -498,9 +761,10 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         editable={editable}
         tool={tool}
         snapStep={snapStep}
-        dirty={dirty}
+        dirty={dirty || audioDirty}
         canSave={canSave}
-        saving={saveState.kind === "saving"}
+        saving={saveState.kind === "saving" || audioSaveState.kind === "saving"}
+        speakers={audioStatus !== "loading"}
         canUndo={history.past.length > 0}
         canRedo={history.future.length > 0}
         view3d={view3d}
@@ -508,7 +772,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         extras={toolbarExtras?.(ctx)}
         onFloor={(id) => {
           setFloor(id);
-          if (sel !== null && floorOfSelection(house, sel) !== id) setSel(null);
+          if (sel !== null && floorOfSelection(house, sel, audio) !== id) setSel(null);
         }}
         onFloorInspect={(id) => select({ kind: "floor", id })}
         onAddFloor={() => {
@@ -530,13 +794,16 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         onRedo={() => step("redo")}
         onRevert={revert}
         onBlank={() => {
-          if (!window.confirm("Start a new blank house (one floor and a yard)? The current map stays until you save — Undo brings it back.")) return;
+          const n = audio.speakers.length;
+          const keep = n === 0 ? "" : ` The ${n === 1 ? "speaker stays" : `${n} speakers stay`} in audio.json, flagged until ${n === 1 ? "it stands" : "they stand"} in a room again (drag ${n === 1 ? "it" : "them"} onto the new rooms).`;
+          if (!window.confirm(`Start a new blank house (one floor and a yard)? The current map stays until you save — Undo brings it back.${keep}`)) return;
           const next = blankHouse(house.name, house.origin);
-          apply(next);
+          // Not `apply`: a redraw never takes the physical speaker layout with it.
+          applyDoc({ house: next, audio: audioRef.current });
           setFloor(next.floors[0]!.id);
           setSel(null);
         }}
-        onSave={() => void save()}
+        onSave={() => void saveAll()}
       />
 
       {!editable && (
@@ -560,6 +827,18 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         </div>
       )}
 
+      {audioRemote !== null && (
+        <div className="map-banner w98-raised">
+          {audioRemote === "changed" ? "The speakers were changed elsewhere." : "The server's speakers came in after you drafted some while it was away — your draft is kept, unsaved."}
+          <button className="w98-button" onClick={() => void reloadAudio()}>
+            {audioRemote === "changed" ? "Reload the speakers (discard my speaker edits)" : "Use the server's speakers (drop my draft)"}
+          </button>
+          <button className="w98-button" onClick={() => setAudioRemote(null)}>
+            {audioRemote === "changed" ? "Keep editing" : "Keep my draft"}
+          </button>
+        </div>
+      )}
+
       {notice !== null && (
         <div className="map-banner notice w98-raised" role="status">
           {notice}
@@ -569,7 +848,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
         </div>
       )}
 
-      <main className="map-main">
+      <main className={`map-main${tab === "audio" ? " wide-side" : ""}`}>
         {view3d ? (
           <div className="map-canvas w98-sunken">
             <Suspense fallback={<p className="pad">Loading 3D…</p>}>
@@ -589,8 +868,19 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             onEdit={apply}
             onNotice={setNotice}
             placing={placing}
+            audio={audio}
+            onEditAudio={applyAudio}
+            highlight={highlight}
             onPlace={(at) => {
               if (placing === null) return;
+              if (placing === "speaker") {
+                const r = placeSpeaker(audio, house, floor, at);
+                if (r === null) return setNotice("Click inside a room on this floor to hang the speaker.");
+                applyAudio(r.audio);
+                setPlacing(null);
+                select({ kind: "speaker", id: r.id });
+                return;
+              }
               const r = addProp(house, placing, floor, at);
               if (r === null) return setNotice(`Click inside a room on this floor to place the ${placing}.`);
               apply(r.house);
@@ -605,8 +895,9 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             {(
               [
                 ["inspect", "Inspector"],
-                ["terminals", `Terminals (${house.terminals.length})`],
-                ["players", `Players (${players.size})`],
+                ["terminals", `Terminals ${house.terminals.length}`],
+                ["players", `Players ${players.size}`],
+                ["audio", `🔊 Audio ${audio.speakers.length}`],
                 ["json", "JSON"],
               ] as const
             ).map(([id, label]) => (
@@ -616,7 +907,57 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             ))}
           </div>
           <div className="map-panel w98-raised">
-            {tab === "inspect" && <Inspector house={house} sel={sel} edit={edit} locations={locations} commit={apply} onSelect={select} onNotice={setNotice} origin={origin} copy={copy} copied={copied} />}
+            {tab === "inspect" && (
+              <Inspector
+                house={house}
+                sel={sel}
+                edit={edit}
+                locations={locations}
+                commit={apply}
+                onSelect={select}
+                onNotice={setNotice}
+                origin={origin}
+                copy={copy}
+                copied={copied}
+                audio={audioStatus === "loading" ? null : audio}
+                savedAudio={audioStatus === "ok" ? savedAudio : null}
+                commitAudio={applyAudio}
+                onTest={audioStatus === "ok" ? (t) => void testSpeaker(t) : undefined}
+              />
+            )}
+            {tab === "audio" && (
+              <AudioPanel
+                audio={audio}
+                saved={savedAudio}
+                house={house}
+                view={audioView}
+                loadedVersion={audioVersionRef.current}
+                status={audioStatus}
+                edit={edit}
+                dirty={audioDirty}
+                valid={audioCheck?.ok === true}
+                speakerSave={speakerSave}
+                mapBusy={saveState.kind === "saving"}
+                saveState={audioSaveState}
+                commit={applyAudio}
+                onSave={() => void saveFromAudioTab()}
+                onSaveToProject={() => void speakersToProject()}
+                onDownload={downloadSpeakers}
+                onReload={() => {
+                  if (audioDirty && !window.confirm("Reload the speakers from the server? Your speaker edits are dropped.")) return;
+                  setAudioSaveState({ kind: "idle" });
+                  void reloadAudio();
+                }}
+                onTest={(t) => void testSpeaker(t)}
+                onHighlight={lightUp}
+                onShowFloor={(ids) => {
+                  const floors = ids.map((id) => floorOfSelection(house, { kind: "speaker", id }, audio)).filter((f) => f !== "");
+                  if (floors.length > 0 && !floors.includes(floor)) setFloor(floors[0]!);
+                }}
+                onPick={reveal}
+                projectStatus={projectStatus}
+              />
+            )}
             {tab === "terminals" && <TerminalsTab house={house} origin={origin} sel={sel} copy={copy} copied={copied} onPick={(s) => reveal(s)} />}
             {tab === "players" && <PlayersTab house={house} players={players} onFloor={setFloor} />}
             {tab === "json" && (
@@ -631,7 +972,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
                   setTextError(null);
                   const cur = draftRef.current;
                   if (cur !== null) {
-                    const h = pushed(historyRef.current, cur);
+                    const h = pushed(historyRef.current, { house: cur, audio: audioRef.current });
                     historyRef.current = h;
                     setHistory(h);
                   }
@@ -649,6 +990,7 @@ function MapEditor({ config, onRevoked, toolbarExtras }: { config: ReinstallConf
             saveState={saveState}
             copied={copied}
             onPick={reveal}
+            onTab={(t) => setTab(t)}
             onCopyDraft={() => copy("draft", stringify(house))}
             onReload={() => void load()}
           />

@@ -23,7 +23,9 @@ export type Selection =
   | { kind: "prop"; id: string }
   | { kind: "door"; id: string }
   | { kind: "stair"; id: string }
-  | { kind: "floor"; id: string };
+  | { kind: "floor"; id: string }
+  /** A house speaker — in `audio.json`, not the map (`audio.ts`). */
+  | { kind: "speaker"; id: string };
 
 /** Terminal screens hang at about eye height above their floor. */
 export const TERMINAL_HEIGHT = 1.4;

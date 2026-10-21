@@ -1,7 +1,8 @@
 //! The map page's side tabs besides the inspector — the terminals'
 //! provisioning links, the live players, the raw JSON — and the problem
 //! panel under them: `validateHouse`'s problems (each a click away from
-//! the thing it names), the walkability and LOCATION warnings, and how
+//! the thing it names), the speaker config's problems and warnings
+//! (`validateAudio`), the walkability and LOCATION warnings, and how
 //! the last save went (incl. the 409 copy / reload offer).
 
 import { useEffect, useRef } from "react";
@@ -70,6 +71,7 @@ export function ProblemsPanel({
   saveState,
   copied,
   onPick,
+  onTab,
   onCopyDraft,
   onReload,
 }: {
@@ -80,14 +82,19 @@ export function ProblemsPanel({
   saveState: SaveState;
   copied: string | null;
   onPick: (sel: Selection) => void;
+  /** A speaker-config problem naming no speaker opens its tab. */
+  onTab?: (tab: "audio") => void;
   onCopyDraft: () => void;
   onReload: () => void;
 }) {
-  const item = (p: Problem, i: number) => (
-    <li key={i} className={p.sel !== null ? "pick" : undefined} onClick={p.sel !== null ? () => onPick(p.sel!) : undefined} title={p.sel !== null ? "Select it" : undefined}>
-      {p.text}
-    </li>
-  );
+  const item = (p: Problem, i: number) => {
+    const go = p.sel !== null ? () => onPick(p.sel!) : p.tab !== undefined && onTab !== undefined ? () => onTab(p.tab!) : undefined;
+    return (
+      <li key={i} className={go !== undefined ? "pick" : undefined} onClick={go} title={p.sel !== null ? "Select it" : go !== undefined ? "Open the Audio tab" : undefined}>
+        {p.text}
+      </li>
+    );
+  };
   // A conflict sits first and scrolls into view: below a long problem list
   // its Reload button was off screen.
   const conflictRef = useRef<HTMLDivElement | null>(null);
@@ -115,7 +122,7 @@ export function ProblemsPanel({
       ) : (
         <>
           <div className="bad-head">
-            ⚠ {errors.length} problem{errors.length === 1 ? "" : "s"} — fix before saving
+            ⚠ {errors.length} problem{errors.length === 1 ? "" : "s"} — {errors.every((e) => e.text.startsWith("🔊")) ? "fix before saving the speakers (the map still saves)" : "fix before saving"}
           </div>
           <ul>{errors.slice(0, 40).map(item)}</ul>
         </>

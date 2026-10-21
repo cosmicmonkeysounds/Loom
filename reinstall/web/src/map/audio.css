@@ -1,0 +1,133 @@
+/* ════════════════════════════════════════════════════════════════════════
+   House speakers on the map page (wave 17): the speaker glyph on the plan
+   (violet, so it never reads as a terminal's cyan), its coverage ring and
+   output badge, and the Audio tab — the interface, the routing matrix,
+   zones and cues, in the page's Windows 98 chrome.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --spk: #4a2a80;
+  --spk-light: #b28cff;
+  --spk-ring: rgba(110, 60, 200, 0.07);
+  --spk-ring-edge: rgba(90, 50, 170, 0.35);
+}
+
+/* ── the plan ─────────────────────────────────────────────────────────── */
+.lg.spk { width: 0.9em; height: 0.6em; background: var(--spk); border: 1px solid var(--spk-light); }
+.speaker-ring { fill: var(--spk-ring); stroke: var(--spk-ring-edge); stroke-width: 0.025; stroke-dasharray: 0.12 0.1; pointer-events: none; }
+.speaker-ring.selected { fill: rgba(255, 0, 170, 0.07); stroke: #ff00aa; stroke-width: 0.035; }
+.speaker-ring.lit { fill: rgba(255, 200, 61, 0.2); stroke: var(--gold-deep); stroke-width: 0.04; stroke-dasharray: none; }
+.speaker .cab { fill: var(--spk); stroke: var(--spk-light); stroke-width: 0.025; }
+.speaker .horn { fill: #6a44b0; stroke: var(--spk-light); stroke-width: 0.02; }
+.speaker .waves { fill: none; stroke: var(--spk); stroke-width: 0.025; stroke-linecap: round; opacity: 0.7; pointer-events: none; }
+.speaker .hit { fill: transparent; }
+.speaker.selected .cab, .speaker.selected .horn { stroke: #ff00aa; stroke-width: 0.045; }
+.speaker.lit .cab { stroke: var(--gold); stroke-width: 0.05; }
+.speaker.lit .waves { stroke: var(--gold-deep); opacity: 1; }
+.speaker .out-badge { pointer-events: none; }
+.speaker .out-badge rect { fill: #fff; stroke: var(--spk); stroke-width: 0.018; }
+.speaker .out-badge text { font-size: 0.125px; font-weight: bold; fill: var(--spk); text-anchor: middle; dominant-baseline: central; font-family: var(--ui); }
+.speaker.silent .out-badge rect { fill: #ffe6e6; stroke: var(--bad); }
+.speaker.silent .out-badge text { fill: var(--bad); }
+.speaker .speaker-name { font-size: 0.13px; text-anchor: middle; font-weight: bold; fill: #2a1050; pointer-events: none; paint-order: stroke; stroke: #f4f4ec; stroke-width: 0.04; }
+.editing .speaker g { cursor: grab; }
+.plan:not(.tool-select) .speaker { pointer-events: none; }
+
+/* ── the side panel ───────────────────────────────────────────────────── */
+/* Five tabs, every one always in sight: short one-line labels, and a
+   narrow side column wraps them into a second row (Windows' multi-row
+   tabs) rather than scrolling them out of view. */
+.map-side > .w98-tabs { flex-wrap: wrap; row-gap: 2px; }
+.map-side > .w98-tabs .w98-tab { white-space: nowrap; flex: 0 0 auto; padding-left: 0.6em; padding-right: 0.6em; }
+@media (min-width: 861px) {
+  .map-main.wide-side { grid-template-columns: 1fr minmax(420px, 44%); }
+}
+.bad-text { color: var(--bad); }
+.good-text { color: var(--good); }
+.linkish { padding: 0; border: 0; background: none; color: var(--navy); text-align: left; text-decoration: underline dotted; cursor: pointer; font: inherit; }
+.inspect .out-pick { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin-top: 0.2em; }
+.inspect .out-chip { min-height: 1.9em; padding: 0; font-variant-numeric: tabular-nums; }
+.inspect .out-chip.pressed { background: var(--spk); color: #fff; box-shadow: inset 1px 1px var(--dark), inset -1px -1px var(--spk-light); font-weight: bold; }
+.inspect .out-chip.shared:not(.pressed)::after { content: "•"; color: #806000; margin-left: 1px; }
+.inspect .zone-pick { display: flex; flex-wrap: wrap; gap: 0 0.9em; }
+.inspect .zone-pick .checkbox, .zone-members .checkbox { display: inline-flex; align-items: center; gap: 0.3em; margin-top: 0.2em; }
+
+.audio-panel { display: flex; flex-direction: column; gap: 0.4em; }
+.audio-head { position: sticky; top: -0.8em; z-index: 2; margin: -0.8em -0.8em 0; padding: 0.6em 0.8em 0.1em; background: var(--face); border-bottom: 1px solid var(--shadow); box-shadow: 0 1px 0 var(--hi); }
+.audio-head .button-row { margin: 0.4em 0; }
+.audio-note { margin: 0; padding: 0.4em 0.6em; background: #ffffe1; border: 1px solid #c8b860; font-size: 0.9em; }
+.audio-note.bad-text { background: #fff0f0; border-color: var(--bad); }
+.audio-note.good-text { background: #f0fff0; border-color: var(--good); }
+.audio-note ul { margin: 0.3em 0 0; padding-left: 1.2em; }
+.audio-section { border-top: 1px solid var(--shadow); box-shadow: inset 0 1px var(--hi); padding-top: 0.3em; }
+.audio-section > summary { cursor: pointer; font-weight: bold; padding: 0.2em 0; list-style-position: inside; }
+.audio-section-body { padding: 0.2em 0 0.4em; }
+.audio-section-body > p { margin: 0.2em 0 0.5em; }
+
+.audio-table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+.audio-table td { padding: 2px 3px; vertical-align: middle; border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+.audio-table tr:hover td { background: rgba(0, 0, 128, 0.05); }
+.audio-table td.ch { width: 1.8em; text-align: right; font-variant-numeric: tabular-nums; color: #404040; font-weight: bold; }
+.audio-table td:last-child { width: 1%; white-space: nowrap; text-align: right; }
+.audio-table .label-field { width: 100%; min-width: 6em; min-height: 1.9em; padding: 0.1em 0.35em; }
+.audio-table select.w98-input { min-height: 1.9em; padding: 0.05em 0.2em; max-width: 12em; }
+.audio-table tr.stale td { opacity: 0.7; }
+.audio-table.cues td:first-child { width: 30%; word-break: break-all; }
+.audio-table.cues td.gain .num { flex-direction: row; align-items: center; gap: 0.3em; }
+.audio-table.cues td.gain input { width: 3.6em; min-height: 1.9em; }
+.ch-badge { display: inline-block; min-width: 1.4em; margin-right: 2px; padding: 0 0.25em; text-align: center; background: var(--spk); color: #fff; font-weight: bold; font-variant-numeric: tabular-nums; }
+
+.targets { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.chip { display: inline-flex; align-items: center; gap: 2px; padding: 0 0.35em; min-height: 1.6em; border: 1px solid #808080; background: #fff; font-size: 0.88em; white-space: nowrap; font: inherit; font-size: 0.88em; }
+button.chip { cursor: pointer; }
+.chip.k-everywhere { background: #e8f4ff; border-color: #3070b0; }
+.chip.k-zone { background: #fff6d8; border-color: var(--gold-deep); }
+.chip.k-location { background: #eef8e8; border-color: #4a8a30; }
+.chip.k-room { background: #f0f0f0; }
+.chip.k-speaker { background: #f2ecff; border-color: var(--spk); }
+.chip.k-speaker.warn { border-color: #b08000; background: #fff3d0; }
+.chip.unknown { background: #fff0f0; border-color: var(--bad); color: var(--bad); }
+.chip-x { margin-left: 2px; padding: 0 2px; border: 0; background: none; font: inherit; line-height: 1; cursor: pointer; color: #404040; }
+.chip-x:hover { color: var(--bad); }
+.add-target { min-height: 1.7em; padding: 0 0.2em; font-size: 0.88em; max-width: 9em; }
+
+/* The routing matrix: inputs down, outputs across. */
+.matrix-wrap { overflow-x: auto; padding-bottom: 2px; }
+.matrix { display: grid; gap: 1px; width: max-content; font-size: 0.82em; background: var(--shadow); padding: 1px; }
+.matrix > div { background: var(--face); display: flex; align-items: center; }
+.matrix .corner { padding: 0 0.3em; font-size: 0.85em; }
+.matrix .mh { justify-content: center; font-weight: bold; min-height: 1.7em; font-variant-numeric: tabular-nums; }
+.matrix .mr { padding: 0 0.35em; min-height: 1.9em; max-width: 11em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; gap: 0.3em; }
+.matrix .mr .ch { font-weight: bold; color: #404040; min-width: 1.3em; text-align: right; font-variant-numeric: tabular-nums; }
+.matrix .mh.on, .matrix .mr.on { background: #dcdcff; }
+.matrix .mc { width: 100%; height: 100%; min-height: 1.9em; padding: 0; border: 0; background: #fff; font: inherit; font-size: 0.85em; font-weight: bold; color: #fff; cursor: pointer; font-variant-numeric: tabular-nums; }
+.matrix .mc.cross { background: #f0f0ff; }
+.matrix .mc:hover { background: #e4e4ff; }
+.matrix .mc.routed { background: var(--navy); }
+.matrix .mc.routed:hover { background: #2020a0; }
+.matrix .mc.sel { outline: 2px solid #ff00aa; outline-offset: -2px; }
+.matrix .mc:focus-visible { outline: 2px dotted var(--ink); outline-offset: -3px; }
+.cell-gain { align-items: flex-end; }
+.cell-gain .num input { width: 4.5em; }
+
+.zone-row { padding: 0.3em 0.35em; margin-bottom: 0.3em; border: 1px solid transparent; }
+.zone-row:hover { background: rgba(255, 200, 61, 0.12); }
+.zone-row.on { border-color: var(--gold-deep); background: rgba(255, 200, 61, 0.18); }
+.zone-head { display: flex; align-items: center; gap: 0.4em; }
+.zone-head .label-field { flex: 1; min-width: 0; min-height: 1.9em; padding: 0.1em 0.35em; }
+.zone-members { display: flex; flex-wrap: wrap; gap: 0 0.9em; padding: 0.2em 0 0 2.4em; }
+.test-list { margin: 0; padding-left: 1.2em; }
+
+/* The Audio tab wants the room: the problem list shrinks under it. */
+.map-main.wide-side .problems { max-height: 20vh; }
+/* One column (a portrait tablet): the side panel takes its natural height
+   and the page scrolls, so the tabs never vanish under the problem list. */
+@media (max-width: 860px) {
+  .map-main > .map-side { min-height: auto; }
+  .map-side > .map-panel { flex: 0 0 auto; overflow: visible; }
+  .map-side > .problems { max-height: none; }
+  .audio-head { top: -6px; }
+}
+.audio-note > summary { cursor: pointer; }
+.audio-note[open] > summary { margin-bottom: 0.2em; }
+.audio-head .audio-note { margin-bottom: 0.4em; }

@@ -10,12 +10,16 @@
 //! it to turn (15° steps, ⇧ 1°). A terminal dropped near a wall hangs on
 //! it. With a palette prop armed, the next click places it. The wheel
 //! zooms (⌥ + wheel turns the selected thing); drag empty ground, hold
-//! Space, or use the middle button to pan.
+//! Space, or use the middle button to pan. The house speakers (`audio.json`,
+//! wave 17) stand on their room's floor: a cabinet facing its yaw, its
+//! output channels in a badge, a coverage ring; the 🔊 palette places one,
+//! and a speaker drags and turns like a terminal (edits go to `onEditAudio`).
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { buildWalls, polyArea, polyBounds, roomById, wallEnds } from "@loom/house";
-import type { HouseMap, PlayerState, PropKind, Vec2, WallSegment } from "@loom/house";
+import type { AudioConfig, HouseMap, PlayerState, Vec2, WallSegment } from "@loom/house";
+import { aimSpeaker, coverageRadius, moveSpeaker, rotateSpeaker, speakerFloor } from "./audio.ts";
 import { doorGap, moveDoorAlong, placeDoor } from "./doors.ts";
 import { aimAt, MIN_ROOM, moveRectEdge, moveRoom, moveTo, setYaw, yawOf, type Selection } from "./edit.ts";
 import {
@@ -47,7 +51,7 @@ import {
 } from "./plan.ts";
 import { snapTerminalToWall, WALL_SNAP, YAW_STEP } from "./props.ts";
 import { addRoom, addStair, moveStair, rectFrom } from "./structure.ts";
-import type { EditMode, Tool } from "./tools.ts";
+import type { EditMode, Placing, Tool } from "./tools.ts";
 import { yardOf, yardsOn } from "./yards.ts";
 
 type ViewBox = [number, number, number, number];
@@ -60,7 +64,9 @@ type Drag =
   | { kind: "door"; id: string; base: HouseMap }
   | { kind: "stair"; id: string; base: HouseMap; grab: Vec2 }
   | { kind: "draw"; tool: "room" | "yard" | "stair"; from: Vec2 }
-  | { kind: "pan"; vb: ViewBox; client: Vec2 };
+  | { kind: "pan"; vb: ViewBox; client: Vec2 }
+  | { kind: "spk-move"; id: string; base: AudioConfig; grab: Vec2; origin: Vec2 }
+  | { kind: "spk-aim"; id: string; base: AudioConfig };
 
 /** How close (screen px) a room edge pulls a dragged edge onto it. */
 const EDGE_PULL_PX = 9;
@@ -78,13 +84,19 @@ export interface CanvasProps {
   onSelect: (sel: Selection | null) => void;
   onEdit: (next: HouseMap, mode: EditMode) => void;
   onNotice: (text: string) => void;
-  /** A palette prop waiting for its click (null: none). */
-  placing?: PropKind | null;
-  /** Place the armed prop at a plan point (already snapped). */
+  /** A palette prop (or a speaker) waiting for its click (null: none). */
+  placing?: Placing | null;
+  /** Place the armed prop / speaker at a plan point (already snapped). */
   onPlace?: (at: Vec2) => void;
+  /** The house speakers (null: none to draw). */
+  audio?: AudioConfig | null;
+  /** A speaker edit (a drag frame, a turn). */
+  onEditAudio?: (next: AudioConfig, mode: EditMode) => void;
+  /** Speakers to light up (a zone or a cue picked in the Audio tab). */
+  highlight?: ReadonlySet<string>;
 }
 
-export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSelect, onEdit, onNotice, placing = null, onPlace }: CanvasProps) {
+export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSelect, onEdit, onNotice, placing = null, onPlace, audio = null, onEditAudio, highlight }: CanvasProps) {
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<Drag | null>(null);
   /** The running drag has pushed its starting map on the undo stack. */
@@ -158,6 +170,10 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
     if (el === null) return;
     const on = (e: WheelEvent) => {
       e.preventDefault();
+      if (e.altKey && edit && sel?.kind === "speaker" && audio !== null) {
+        onEditAudio?.(rotateSpeaker(audio, sel.id, (e.deltaY > 0 ? -1 : 1) * (e.shiftKey ? 1 : 5)), "push");
+        return;
+      }
       if (e.altKey && edit && sel !== null) {
         const yaw = yawOf(house, sel);
         if (yaw !== null) onEdit(setYaw(house, sel, yaw + (e.deltaY > 0 ? -1 : 1) * (e.shiftKey ? 1 : 5)), "push");
@@ -171,7 +187,7 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
     };
     el.addEventListener("wheel", on, { passive: false });
     return () => el.removeEventListener("wheel", on);
-  }, [edit, sel, house, onEdit]);
+  }, [edit, sel, house, onEdit, audio, onEditAudio]);
 
   const startDrag = (e: ReactPointerEvent, d: Drag) => {
     if (d.kind !== "pan" && !edit) return;
@@ -189,6 +205,12 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
   const frame = (next: HouseMap) => {
     if (JSON.stringify(next) === JSON.stringify(house)) return;
     onEdit(next, dragPushed.current ? "replace" : "push");
+    dragPushed.current = true;
+  };
+  /** A speaker drag's frame, the same way. */
+  const frameAudio = (next: AudioConfig) => {
+    if (audio === null || onEditAudio === undefined || JSON.stringify(next) === JSON.stringify(audio)) return;
+    onEditAudio(next, dragPushed.current ? "replace" : "push");
     dragPushed.current = true;
   };
 
@@ -242,6 +264,10 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
       case "draw":
         setPreview({ tool: d.tool, rect: rectFrom(d.from, corner(p)) });
         return;
+      case "spk-move":
+        return frameAudio(moveSpeaker(d.base, house, d.id, snap2([d.origin[0] + p[0] - d.grab[0], d.origin[1] + p[1] - d.grab[1]], e.altKey ? 0.001 : snapStep)));
+      case "spk-aim":
+        return frameAudio(aimSpeaker(d.base, d.id, p, e.shiftKey ? 1 : YAW_STEP));
     }
   };
 
@@ -380,6 +406,14 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           ),
         )}
 
+        {/* speaker coverage (under everything placed) */}
+        {audio?.speakers.map((s) => {
+          if (speakerFloor(house, s) !== floor) return null;
+          const on = selected("speaker", s.id);
+          const lit = highlight?.has(s.id) === true;
+          return <circle key={`cov-${s.id}`} className={`speaker-ring${on ? " selected" : ""}${lit ? " lit" : ""}`} cx={s.pos.x} cy={s.pos.z} r={coverageRadius(s.gain)} />;
+        })}
+
         {/* stairs */}
         {house.stairs.map((s) => {
           const lower = floorOfRoom(house, s.from) === floor;
@@ -503,6 +537,47 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
           );
         })}
 
+        {/* speakers: drawn bigger as the plan zooms out, so the badge stays readable */}
+        {audio !== null &&
+          audio.speakers.map((s) => {
+            if (speakerFloor(house, s) !== floor) return null;
+            const ss: Selection = { kind: "speaker", id: s.id };
+            const on = selected("speaker", s.id);
+            const lit = highlight?.has(s.id) === true;
+            const k = Math.max(1, Math.min(2.6, viewBox[2] / 12));
+            const knob = along([s.pos.x, s.pos.z], s.yaw, 0.6 * k);
+            const badge = s.out.length === 0 ? "—" : s.out.join(" ");
+            const bw = 0.12 + 0.085 * badge.length;
+            return (
+              <g key={s.id} className={`speaker${on ? " selected" : ""}${lit ? " lit" : ""}${s.out.length === 0 ? " silent" : ""}`}>
+                <g transform={`translate(${s.pos.x} ${s.pos.z}) scale(${k})`}>
+                  <g transform={`rotate(${-s.yaw})`} onPointerDown={(e) => pick(e, ss, { kind: "spk-move", id: s.id, base: audio, grab: toPlan(e), origin: [s.pos.x, s.pos.z] })}>
+                    <path className="waves" d="M -0.13 -0.24 Q 0 -0.31 0.13 -0.24 M -0.19 -0.31 Q 0 -0.41 0.19 -0.31" />
+                    <path className="horn" d="M -0.08 -0.03 L -0.17 -0.16 L 0.17 -0.16 L 0.08 -0.03 Z" />
+                    <rect className="cab" x={-0.12} y={-0.04} width={0.24} height={0.15} rx={0.02} />
+                    <rect className="hit" x={-0.28} y={-0.42} width={0.56} height={0.56} />
+                  </g>
+                  <g className="out-badge" transform="translate(0 0.28)">
+                    <rect x={-bw / 2} y={-0.08} width={bw} height={0.16} rx={0.03} />
+                    <text>{badge}</text>
+                  </g>
+                  <text className="speaker-name" y={0.5}>
+                    {s.name}
+                  </text>
+                </g>
+                {edit && on && (
+                  <>
+                    <line className="rot-arm" x1={s.pos.x} y1={s.pos.z} x2={knob[0]} y2={knob[1]} />
+                    <circle className="rot-handle" cx={knob[0]} cy={knob[1]} r={0.13 * k} onPointerDown={(e) => startDrag(e, { kind: "spk-aim", id: s.id, base: audio })}>
+                      <title>{`Drag to turn (${YAW_STEP}° steps, ⇧ 1°) · R / ⇧R · ${s.yaw}°`}</title>
+                    </circle>
+                  </>
+                )}
+                <title>{`${s.name} (${s.id}) · out ${s.out.length === 0 ? "none" : s.out.join(", ")}${s.gain !== undefined ? ` · ${s.gain > 0 ? "+" : ""}${s.gain} dB` : ""}`}</title>
+              </g>
+            );
+          })}
+
         {/* duck spots */}
         {house.duck.spots.map((d) => {
           if (!onFloor(d.room)) return null;
@@ -598,13 +673,13 @@ export function Canvas({ house, floor, edit, tool, snapStep, sel, players, onSel
         </button>
       </div>
       <div className="map-legend">
-        <span className="lg wall" /> wall <span className="lg fence" /> fence <span className="lg rail" /> rail <span className="lg door" /> door <span className="lg term" /> terminal <span className="lg duck" /> duck spot
+        <span className="lg wall" /> wall <span className="lg fence" /> fence <span className="lg rail" /> rail <span className="lg door" /> door <span className="lg term" /> terminal <span className="lg duck" /> duck spot{audio !== null && audio.speakers.length > 0 && <><span className="lg spk" /> speaker (outputs)</>}
         <span className="muted">
           {" "}
           · wheel zooms · drag empty ground (or Space-drag) pans
           {edit &&
             (placing !== null
-              ? ` · click inside a room to place the ${placing} · Esc cancels`
+              ? ` · click inside a room to place the ${placing === "speaker" ? "speaker" : placing} · Esc cancels`
               : tool === "select"
                 ? " · drag to move (⌥ no snap) · the round handle, R / ⇧R or ⌥-wheel turns · arrows nudge · ⌘D duplicates · Delete removes · ⌘Z / ⇧⌘Z"
                 : " · Esc back to Select")}

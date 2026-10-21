@@ -1,16 +1,17 @@
 //! The map page's toolbar: the floors (a tab each, `+ Floor`), the Edit
 //! switch, the drawing tools with a typed "W × D" entry, the snap step,
 //! undo / redo, revert, a blank house, save — and the slot for extras
-//! (the project bar: variants, Save to project, Download JSON).
+//! (the project bar: variants, Save to project, Download JSON). The palette
+//! places props and (wave 17) house speakers.
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { HouseMap, PlayerState, PropKind } from "@loom/house";
+import type { HouseMap, PlayerState } from "@loom/house";
 import type { LoadedHouse } from "../api.ts";
 import { SNAP_STEPS } from "./plan.ts";
 import { sourceLabel } from "./project.ts";
 import { PROP_PALETTE } from "./props.ts";
-import { TOOLS, type Tool } from "./tools.ts";
+import { TOOLS, type Placing, type Tool } from "./tools.ts";
 
 export interface ToolbarProps {
   house: HouseMap;
@@ -37,10 +38,12 @@ export interface ToolbarProps {
   onEdit: (on: boolean) => void;
   onView3d: (on: boolean) => void;
   onTool: (t: Tool) => void;
-  /** The palette prop armed for the next click (null: none). */
-  placing: PropKind | null;
-  /** Arm a palette prop (null: disarm). */
-  onPlacing: (kind: PropKind | null) => void;
+  /** The palette prop / speaker armed for the next click (null: none). */
+  placing: Placing | null;
+  /** Arm a palette prop or a speaker (null: disarm). */
+  onPlacing: (kind: Placing | null) => void;
+  /** The speakers can be placed (the server has the speaker routes). */
+  speakers?: boolean;
   onSnap: (step: number) => void;
   onAddSized: (w: number, d: number) => void;
   onUndo: () => void;
@@ -144,6 +147,19 @@ export function Toolbar(p: ToolbarProps) {
               </button>
             ))}
           </span>
+          {p.speakers !== false && (
+            <span className="prop-palette" role="group" aria-label="Add a speaker">
+              <span className="muted">+ audio</span>
+              <button
+                className={`w98-button small${p.placing === "speaker" ? " pressed" : ""}`}
+                aria-pressed={p.placing === "speaker"}
+                onClick={() => p.onPlacing(p.placing === "speaker" ? null : "speaker")}
+                title="Add a house speaker: click here, then click where it hangs on the plan (Esc cancels) — saved in audio.json, not the map"
+              >
+                🔊 Speaker
+              </button>
+            </span>
+          )}
           <span className="spacer" />
           <label className="snap">
             snap
