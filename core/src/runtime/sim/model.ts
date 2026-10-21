@@ -17,7 +17,7 @@ import type {
   RawLine,
   SpaceBody,
 } from "../../parser/index.ts";
-import { splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
+import { splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
 import { FoldedIndex, foldName } from "../../parser/names.ts";
 import type { Bundle } from "../bundle.ts";
 import { vBool, vNumber, vString, type Value } from "../expr.ts";
@@ -910,7 +910,8 @@ export function compileModel(bundle: Bundle): SimModel {
     for (const c of model.characters.values()) {
       if (c.wallet === null) continue;
       if (c.wallet.role === "approver" && model.currency.approver === null) {
-        model.currency.approver = { id: c.id, every: c.wallet.every, windowMs: c.wallet.windowMs };
+        const { every, windowMs, as, audit } = c.wallet;
+        model.currency.approver = { id: c.id, every, windowMs, ...(as !== undefined ? { as } : {}), ...(audit !== undefined ? { audit } : {}) };
       } else if (c.wallet.role === "minter" && model.currency.minter === null) {
         const { limit, while: cond, grants, freezeMs } = c.wallet;
         model.currency.minter = { id: c.id, limit, while: cond, ...(grants !== undefined ? { grants } : {}), ...(freezeMs !== undefined ? { freezeMs } : {}) };
@@ -1151,20 +1152,33 @@ function charDef(id: string, body: CharacterBody): CharDef {
   };
 }
 
-/** Parse `wallet: approver[, every N][, window <dur>]` / `wallet: minter[,
- *  limit N][, while <cond>][, grants N][, freeze <dur>]` (clauses in any
- *  order, case-insensitive role). Defaults: every 3, window 60s; limit 3, no
- *  `while` (= everyone with a balance); `grants` / `freeze` are left off
- *  unless written (the book reads 3 / 10 min). Anything else — a typo, a
- *  missing role — reads null. */
+/** Parse `wallet: approver[, every N][, window <dur>][, as <name>][, audit
+ *  <phrase>]` / `wallet: minter[, limit N][, while <cond>][, grants N][,
+ *  freeze <dur>]` (clauses in any order, case-insensitive role; a comma
+ *  inside a quoted phrase is text). Defaults: every 3, window 60s; limit 3,
+ *  no `while` (= everyone with a balance); `grants` / `freeze` are left off
+ *  unless written (the book reads 3 / 10 min). The approver's `as` (the name
+ *  wallet cards give it: `as MyCRA`) and `audit` (what a held transfer is
+ *  flagged for: `audit "a CRA audit"`, quotes optional) are left off unless
+ *  written (wave 18b). Anything else — a typo, a missing role — reads null. */
 export function walletRoleOf(raw: string | undefined): WalletRole | null {
   if (raw === undefined) return null;
-  const parts = splitTopLevelCommas(raw).map((p) => p.trim());
+  const parts = splitArgsCommas(raw).map((p) => p.trim());
   const role = (parts.shift() ?? "").toLowerCase();
   if (role === "approver") {
     let every = 3;
     let windowMs = 60_000;
+    let as: string | undefined;
+    let audit: string | undefined;
     for (const clause of parts) {
+      const named = /^(as|audit)\s+(.+)$/iu.exec(clause);
+      if (named !== null) {
+        const text = unquote(named[2]!);
+        if (text === "") return null;
+        if (named[1]!.toLowerCase() === "as") as = text;
+        else audit = text;
+        continue;
+      }
       const m = /^(every|window)\s+(.+)$/iu.exec(clause);
       if (m === null) return null;
       if (m[1]!.toLowerCase() === "every") {
@@ -1177,7 +1191,7 @@ export function walletRoleOf(raw: string | undefined): WalletRole | null {
         windowMs = ms;
       }
     }
-    return { role: "approver", every, windowMs };
+    return { role: "approver", every, windowMs, ...(as !== undefined ? { as } : {}), ...(audit !== undefined ? { audit } : {}) };
   }
   if (role === "minter") {
     let limit = 3;
@@ -1204,6 +1218,13 @@ export function walletRoleOf(raw: string | undefined): WalletRole | null {
     return { role: "minter", limit, while: cond, ...(grants !== undefined ? { grants } : {}), ...(freezeMs !== undefined ? { freezeMs } : {}) };
   }
   return null;
+}
+
+/** A clause's text, surrounding double quotes (and `\"` escapes) undone. */
+function unquote(raw: string): string {
+  const t = raw.trim();
+  if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1).replace(/\\"/gu, '"').trim();
+  return t;
 }
 
 /** Parse the header `currency: <slot> as <Name>[, max N][, expiry <dur>]`

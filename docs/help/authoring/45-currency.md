@@ -2,7 +2,7 @@
 title: Currency — a wallet over a score
 section: Live Shows
 order: 45
-keywords: currency, wallet, coin, money, Truthcoin, balance, send, request, pay, trade, offer, buy, sell, escrow, approver, approve, deny, audit, minter, stimulus, reserve, grant, freeze, frozen, transfer, expiry, max, window, every, limit, while, transfer_received, transfer_denied, transfer_approved, offer_accepted, stimulus_received, exchange, bank, LOOM_RL_WALLET, rate limit, escrowed
+keywords: flagged, MyCRA, as, audit phrase, currency, wallet, coin, money, Truthcoin, balance, send, request, pay, trade, offer, buy, sell, escrow, approver, approve, deny, audit, minter, stimulus, reserve, grant, freeze, frozen, transfer, expiry, max, window, every, limit, while, transfer_received, transfer_denied, transfer_approved, offer_accepted, stimulus_received, exchange, bank, LOOM_RL_WALLET, rate limit, escrowed
 ---
 
 A score is a number the story moves. A **currency** is a score the
@@ -48,6 +48,17 @@ CHARACTER Runescape
   window (default 60 s) and settles on its own unless the approver
   denies it first. A denied transfer is refunded. A performer's part audits from its booth's Wallet room; a
   bare program (a guest's) audits from that guest's phone.
+  Two more clauses name the audit on the guests' cards: **`as <name>`**
+  is what the wallet cards call the approver (`as MyCRA`; its booth and
+  the character keep their own name), and **`audit "<phrase>"`** what a
+  held transfer is flagged for. Both parties of a held transfer then see
+  it flagged: *🚩 Flagged for a CRA audit: must be approved by MyCRA*,
+  a small moment on each phone.
+
+```loom
+CHARACTER CRA Agent Software
+  wallet: approver, every 3, window 60s, as MyCRA, audit "a CRA audit"
+```
 - **`wallet: minter[, limit N][, while <condition>][, grants N][, freeze <dur>]`**
   — the one program that holds the **reserve**. It can pay a
   **stimulus**: coin minted, not debited, to every program the

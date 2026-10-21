@@ -837,6 +837,9 @@ export function composeGuestMessages(sim: Sim, events: readonly SimEvent[], opts
           go: [{ kind: "wallet", label: "Open my Wallet" }],
           threadKey: `${e.to}\u0000${e.card.id}`,
           ...(e.root ? { threadRoot: true } : {}),
+          // Wave 18b (R13): a transfer the approver's audit held — the
+          // sender's `held`, the recipient's `flagged` — is a minor moment.
+          ...(e.card.kind === "transfer" && (e.card.step === "held" || e.card.step === "flagged") ? { moment: "minor" as const } : {}),
         });
         break;
       case "ambient":

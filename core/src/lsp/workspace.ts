@@ -619,7 +619,7 @@ export class Workspace {
         if (w === undefined || (d.kind !== "character" && d.kind !== "trait")) continue;
         const range = spanToRange(w.span);
         if (walletRoleOf(w.value) === null) {
-          lint(uri, range, true, Code.L1204WalletRoleUnparsed, `\`wallet: ${w.value.trim()}\` does not parse, so ${d.name} has no wallet role — write \`wallet: approver[, every N][, window <duration>]\` or \`wallet: minter[, limit N][, while <condition>]\``);
+          lint(uri, range, true, Code.L1204WalletRoleUnparsed, `\`wallet: ${w.value.trim()}\` does not parse, so ${d.name} has no wallet role — write \`wallet: approver[, every N][, window <duration>][, as <name>][, audit "<what it is flagged for>"]\` or \`wallet: minter[, limit N][, while <condition>][, grants N][, freeze <duration>]\``);
           continue;
         }
         roles.push({ uri, range, name: d.name });

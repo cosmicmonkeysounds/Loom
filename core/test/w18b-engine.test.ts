@@ -139,3 +139,41 @@ describe("lobby: hidden (wave 18b)", () => {
     expect(guestView(plain, "g1")).not.toHaveProperty("lobby");
   });
 });
+
+import { walletRoleOf } from "../src/runtime/sim/model.ts";
+import { composeGuestMessages } from "../server/chat.ts";
+import type { SimEvent, WalletCard } from "../src/runtime/sim/event.ts";
+
+describe("the approver's as / audit clauses (wave 18b)", () => {
+  it("parse in any order, quotes optional, a comma inside quotes kept", () => {
+    expect(walletRoleOf('approver, every 3, window 60s, as MyCRA, audit "a CRA audit"')).toEqual({ role: "approver", every: 3, windowMs: 60_000, as: "MyCRA", audit: "a CRA audit" });
+    expect(walletRoleOf("approver, audit a spot check, as The Bank")).toEqual({ role: "approver", every: 3, windowMs: 60_000, as: "The Bank", audit: "a spot check" });
+    expect(walletRoleOf('approver, audit "an audit, sorry"')).toMatchObject({ audit: "an audit, sorry" });
+    expect(walletRoleOf("approver, every 3")).toEqual({ role: "approver", every: 3, windowMs: 60_000 });
+    expect(walletRoleOf('approver, as ""')).toBeNull();
+    expect(walletRoleOf("minter, as MyCRA")).toBeNull(); // the minter has no `as`
+  });
+
+  it("reach the currency's approver", () => {
+    const sim = Sim.fromSources(`# Coin
+currency: score as Truthcoin
+
+CHARACTER CRA Agent Software
+  wallet: approver, every 3, window 60s, as MyCRA, audit "a CRA audit"
+`);
+    expect(sim.model.currency?.approver).toEqual({ id: "CRA Agent Software", every: 3, windowMs: 60_000, as: "MyCRA", audit: "a CRA audit" });
+  });
+
+  it("a held or flagged transfer card is a minor moment; a settled one is not", () => {
+    const sim = Sim.fromSources("# Coin\ncurrency: score as Truthcoin\nROLE Guest\n");
+    sim.createPerson("g1", "Ada");
+    const card = (step: WalletCard["step"]): SimEvent => ({
+      type: "wallet",
+      to: "g1",
+      root: true,
+      card: { kind: "transfer", id: "t1", step, from: "g2", fromName: "Bob", to: "g1", toName: "Ada", amount: 5, unit: "Truthcoin", approver: "MyCRA", audit: "a CRA audit" },
+    });
+    const moments = (["held", "flagged", "settled"] as const).map((s) => composeGuestMessages(sim, [card(s)])[0]?.moment);
+    expect(moments).toEqual(["minor", "minor", undefined]);
+  });
+});
