@@ -25,13 +25,14 @@ import { Store } from "../server/store.ts";
 
 const CODES = { event: "EVT818", prime: "PRM818", mod: "MOD818" };
 
-/** A made-up key (nothing from the show): three questions, two rounds. */
+/** A made-up key (nothing from the show): four questions, three rounds. */
 const FACTS = JSON.stringify({
   version: 1,
   questions: [
     { id: "Q1", round: 1, text: "How many rubber ducks?", answer: "seven", accept: ["7"] },
     { id: "Q2", round: 2, text: "Who is the cat?", answer: "Mister Pickles", accept: ["the tabby"] },
     { id: "Q3", round: 2, text: "What colour is the door?", answer: "teal", accept: [] },
+    { id: "Q4", round: 3, text: "What is the dog called?", answer: "Biscuit", accept: [] },
   ],
   answers: [],
 });
@@ -68,7 +69,7 @@ ROLE Program
     else:
       set program.v = verdict
       do fact_judged {program} {question} {verdict}
-    show fact "File another" to program with thread: The Oracle, questions: "Q1: Ducks? | Q2: The cat? | Q3: The door?"
+    show fact "File another" to program with thread: The Oracle, questions: "Q1: Ducks? | Q2: The cat? | Q3: The door? | Q4: The dog?"
   when fact_accurate for program:
     set program.v = "accurate"
     do fact_judged {program} {program.q} accurate
@@ -90,6 +91,8 @@ INTERACTION read_one
   who: admin
 INTERACTION read_two
   who: admin
+INTERACTION read_final
+  who: admin
 INTERACTION the_verdict
   who: admin
 INTERACTION review_mode
@@ -107,11 +110,16 @@ when read_two:
   cue screens_tally
   do fact_read Q2 Q3
 
+when read_final:
+  cue screens_tally
+  do fact_read Q3 Q4
+
 when the_verdict:
   cue tv_truth_txt
   do fact_truth Q1 accurate
   do fact_truth Q2 lie
   do fact_truth Q3 none
+  do fact_truth Q4 none
 
 when review_mode:
   set Night.judge_mode = "review"
@@ -122,7 +130,7 @@ Nothing yet.
 
 == Deal
   setting: The Desktop
-show fact "File a fact" to program with thread: The Oracle, questions: "Q1: Ducks? | Q2: The cat? | Q3: The door?"
+show fact "File a fact" to program with thread: The Oracle, questions: "Q1: Ducks? | Q2: The cat? | Q3: The door? | Q4: The dog?"
 `;
 
 const dirs: string[] = [];
@@ -315,6 +323,20 @@ describe("the results block", () => {
     expect(two.seq).toBeGreaterThan(tv.seq);
   });
 
+  it("a reading never publishes the final round's rows, counts or answer (D11)", async () => {
+    const { rt } = fresh();
+    const a = await guest(rt, "Winamp");
+    const b = await guest(rt, "Excel");
+    await file(rt, a, "Q4", "Biscuit", 100);
+    await file(rt, b, "Q4", "biscuit", 100); // a consensus: the key would ride the walls
+    await mod(rt, "/api/mod/signal", { name: "read_final" });
+    for (const view of ["tv", "auto"] as const) {
+      const p = await poll(rt, view);
+      expect(p.state.results!.questions.map((q) => q.id)).toEqual(["Q3"]);
+      expect(p.body).not.toMatch(/Biscuit|biscuit/u);
+    }
+  });
+
   it("a consensus read names the key's answer", async () => {
     const { rt } = fresh();
     const a = await guest(rt, "Winamp");
@@ -413,6 +435,7 @@ describe("the results block", () => {
     await file(rt, a!, "Q1", "seven", 100); // accurate
     await file(rt, b!, "Q1", "eight", 100); // the house's lie
     await file(rt, c!, "Q1", "six", 70); // a guess: never a liar
+    await file(rt, a!, "Q4", "Rex", 100); // the final round: never a row, a liar at ⚖
     const w = await worker(rt);
     await file(rt, d!, "Q2", "Mister Pickels", 100); // near miss: his ruling's lie
     const [j] = w.judges();
@@ -426,6 +449,8 @@ describe("the results block", () => {
     const before = (await poll(rt, "tv")).state.results!;
     expect(before.kind).toBe("read");
     expect(before.questions.every((q) => q.answer === null && q.liars === undefined)).toBe(true);
+    await cue(rt, "read_final");
+    expect((await poll(rt, "tv")).state.results!.questions.map((q) => q.id)).toEqual(["Q3"]);
     const agentFacts = async () => {
       const { at: _at, ...rest } = (await call(rt, "GET", "/api/agent/facts", {}, true)).json;
       return JSON.stringify(rest);
@@ -438,6 +463,7 @@ describe("the results block", () => {
       { id: "Q1", n: 1, round: 1, filed: 3, accepted: 2, guesses: 1, uncounted: 0, consensus: false, answer: "seven", truth: "true", liars: [["Excel", 0]] },
       { id: "Q2", n: 2, round: 2, filed: 2, accepted: 2, guesses: 0, uncounted: 0, consensus: false, answer: "Mister Pickles", truth: "lie", liars: [["Word", 1], ["Doom", 0]] },
       { id: "Q3", n: 3, round: 2, filed: 1, accepted: 0, guesses: 0, uncounted: 0, consensus: false, answer: "teal", truth: "none", liars: [["Paint", 0]] },
+      { id: "Q4", n: 4, round: 3, filed: 1, accepted: 1, guesses: 0, uncounted: 0, consensus: false, answer: "Biscuit", truth: "none", liars: [["Winamp", 0]] },
     ]);
     const wall = (await poll(rt, "auto")).state.results!;
     expect(wall.kind).toBe("verdict");
@@ -446,7 +472,7 @@ describe("the results block", () => {
       expect(q).not.toHaveProperty("liars");
       expect(q).not.toHaveProperty("rows");
     }
-    expect(wall.questions.map((q) => q.truth)).toEqual(["true", "lie", "none"]);
+    expect(wall.questions.map((q) => q.truth)).toEqual(["true", "lie", "none", "none"]);
     // Nothing of it reaches the agent's facts.
     const facts1 = await agentFacts();
     expect(facts1).toBe(facts0);

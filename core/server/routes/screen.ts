@@ -801,7 +801,8 @@ export interface ScreenResultQuestion {
 /**
  * `ScreenState.results` (wave 18b): what the story has published of the
  * facts ledger. `read` after `do fact_read …` while the target's slide is
- * `hunt_results` or `tally` (its ids only); `verdict` from the first `do
+ * `hunt_results` or `tally` (its ids only, never the book's final round:
+ * D11); `verdict` from the first `do
  * fact_truth …` for `RESULTS_VERDICT_MS` (all the book's questions). Absent
  * otherwise. Built off the facts ledger (`FactsWatch`), never `Night.*`.
  */

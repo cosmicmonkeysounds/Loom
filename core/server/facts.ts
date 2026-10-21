@@ -621,7 +621,13 @@ export interface ScreenResultsOptions {
  */
 export function screenResultsOf(view: FactsView, book: FactsBook, ids: readonly string[] | null, o: ScreenResultsOptions): ScreenResultQuestion[] {
   const byId = new Map(view.questions.map((q) => [q.id, q]));
-  const want = ids === null ? book.questions.map((k) => k.id) : book.questions.map((k) => k.id).filter((id) => ids.includes(id));
+  // D11: a reading never publishes the book's final round (in the show, F1 /
+  // F2, still open at truth.txt and the pickup line's clue): the verdict
+  // names its liars like every other round's. A one-round book has no final.
+  const rounds = book.questions.map((k) => k.round ?? 0);
+  const finalRound = new Set(rounds).size > 1 ? Math.max(...rounds) : null;
+  const readable = (k: FactsKey) => o.kind === "verdict" || k.round === null || k.round !== finalRound;
+  const want = book.questions.filter((k) => readable(k) && (ids === null || ids.includes(k.id))).map((k) => k.id);
   const out: ScreenResultQuestion[] = [];
   for (const id of want) {
     const n = book.questions.findIndex((k) => k.id === id) + 1;
