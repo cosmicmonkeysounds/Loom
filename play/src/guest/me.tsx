@@ -7,7 +7,6 @@
 import { Icon, IconTitle } from "../chrome/icons.tsx";
 import type { GuestView } from "../types.ts";
 import { PersonAvatar, Sheet } from "../ui/primitives.tsx";
-import { extOf } from "./wire.ts";
 
 export interface MeBadge {
   name: string;
@@ -16,10 +15,9 @@ export interface MeBadge {
 
 /** Every group the guest is in, as badges (pure): the sides (◆) first, then
  *  any other group, then the crew (◇). */
-export function meBadges(view: Pick<GuestView, "faction" | "groups" | "factions"> & Record<string, unknown>): MeBadge[] {
-  const ext = extOf(view as unknown as GuestView);
-  const crew = ext.crew ?? null;
-  const sides = new Set([...(view.factions ?? []), ...(ext.sides ?? []).map((s) => s.name)]);
+export function meBadges(view: Pick<GuestView, "faction" | "groups" | "factions" | "crew" | "sides">): MeBadge[] {
+  const crew = view.crew ?? null;
+  const sides = new Set([...(view.factions ?? []), ...(Array.isArray(view.sides) ? view.sides : []).map((s) => s.name)]);
   const names = [...(view.groups ?? [])];
   if (view.faction !== null && !names.includes(view.faction)) names.unshift(view.faction);
   const out: MeBadge[] = [];
@@ -59,7 +57,7 @@ export function MeSheet({
   onAlerts: () => void;
   onClose: () => void;
 }) {
-  const badges = meBadges(view as unknown as GuestView & Record<string, unknown>);
+  const badges = meBadges(view);
   return (
     <Sheet title={<IconTitle icon="people">Me</IconTitle>} onClose={onClose} tall>
       <div className="me-sheet">

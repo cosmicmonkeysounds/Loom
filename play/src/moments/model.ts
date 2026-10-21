@@ -27,30 +27,19 @@ import { LOBBY, namedDm, type DmRoom, type GoTarget, type LiveCard } from "./exi
 
 export { namedDm, type DmRoom, type LiveCard } from "./exits.ts";
 
-/** A moment's class: the server's two, plus wave 18's `big` (C1). */
-export type MomentSeverity = MomentClass | "big";
+/** A moment's class: major, minor, or wave 18's `big` (C1). */
+export type MomentSeverity = MomentClass;
 /** A rung: the story's ladder, plus the big moment that ignores it. */
 export type Rung = AlertLevel | "big";
 
-/**
- * A message as the moments layer reads it: the wave 18 fields core adds to
- * `ChatMessage` (C1–C3), declared optional here so this lane builds before
- * core's merge (a message from an older server simply has none).
- */
-export type MomentMessage = Omit<ChatMessage, "moment"> & {
-  moment?: MomentSeverity;
-  /** The story's `with go:` buttons, resolved per viewer (C2). */
-  go?: GoTarget[];
-  /** A big house cheer closes itself after this long (ms, C1). */
-  autoClose?: number;
-  /** A readout's guest, by display name and avatar key (C3). */
-  aboutName?: string;
-  aboutAvatar?: string | null;
-};
+/** A message as the moments layer reads it: core's `ChatMessage`, which
+ *  carries the wave 18 fields (C1–C3: `moment: "big"`, `go`, `autoClose`,
+ *  `aboutName`, `aboutAvatar`; an older server's message simply has none). */
+export type MomentMessage = ChatMessage;
 
-/** Read a message with the wave 18 fields (a cast: they are optional). */
+/** Read a message with the wave 18 fields (kept for callers; now the identity). */
 export function momentMessage(m: ChatMessage): MomentMessage {
-  return m as unknown as MomentMessage;
+  return m;
 }
 
 // --- the moments themselves --------------------------------------------------

@@ -11,22 +11,14 @@
 
 import { noticeKey } from "../../../core/src/delivery.ts";
 import type { IconName } from "../chrome/icons.tsx";
+import type { GoTarget } from "../types.ts";
 import type { Moment } from "./model.ts";
 
-// --- the wire type (core mirrors it in `play/src/types.ts`) ---------------------
+// --- the wire type -------------------------------------------------------------
 
-/**
- * A moment's button, as the server sends it (`ChatMessage.go`, CONTRACTS C2),
- * already resolved per viewer. Declared here until core's `types.ts` carries
- * it; the shapes are the contract's, field for field.
- */
-export type GoTarget =
-  | { kind: "room"; id: string; label: string }
-  | { kind: "dm"; id: string; label: string }
-  | { kind: "pass" | "scan" | "chats" | "mission" | "notifications" | "sides" | "wallet" | "me"; label: string }
-  | { kind: "codex"; entry?: string; label: string }
-  | { kind: "quests"; quest?: string; label: string }
-  | { kind: "act"; id: string; label: string };
+/** A moment's button, as the server sends it (`ChatMessage.go`, CONTRACTS C2),
+ *  already resolved per viewer: core's own shape (`../types.ts`). */
+export type { GoTarget } from "../types.ts";
 
 // --- where an exit goes ----------------------------------------------------------
 

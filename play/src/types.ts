@@ -4,6 +4,7 @@
 
 import type { AlertLevel, GoTarget, MomentClass } from "../../core/src/delivery.ts";
 import type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
+import type { CrewView, InviteView, SideView } from "../../core/src/runtime/sim/crews.ts";
 import type { ShowClock } from "../../core/src/show-clock.ts";
 
 // Wave 13: the interrupt ladder and the host view are dependency-free core
@@ -12,6 +13,8 @@ export type { AlertLevel, GoTarget, MomentClass } from "../../core/src/delivery.
 export type { HostView, HostNeed, HostPerson, HostJudging, HostWanted, NeedTarget } from "../../core/src/host-board.ts";
 // Wave 18 (C8): the caller claim and a cue row, as the server sends them.
 export type { CueCaller, CueRow } from "../../core/src/cue-sheet.ts";
+/** Wave 18 (C10): crews and sides, the server's own shapes. */
+export type { CrewSummary, CrewView, InviteView, SideView } from "../../core/src/runtime/sim/crews.ts";
 export type { ShowClock } from "../../core/src/show-clock.ts";
 
 // --- server-authoritative chat (mirror of server/chat.ts) -------------------
@@ -197,6 +200,8 @@ export interface PersonCard {
    *  model on a stagehand machine); `online` = someone is answering now;
    *  `hold` = the story has a `hold:` line, so they always answer. */
   agent?: { online: boolean; hold?: true };
+  /** Wave 18 (C10): every group as a badge (display names, crew included). */
+  groups?: string[];
 }
 
 export interface GuestView {
@@ -275,6 +280,12 @@ export interface GuestView {
   /** Wave 18 (C11): channel ids the story's `archive:` lines mark done for
    *  you (tucked under Other rooms). Absent when none. */
   archived?: string[];
+  /** Wave 18 (C10): the guest's crew (null = none; absent = an older server). */
+  crew?: CrewView | null;
+  /** Wave 18 (C10): invitations (crew or side) waiting on the guest. */
+  invites?: InviteView[];
+  /** Wave 18 (C10): the joinable, revealed sides (the Sides screen). */
+  sides?: SideView[];
 }
 
 /** `GuestView.mission` (C11). `place.id` is a room / DM id (`loc:X`,
