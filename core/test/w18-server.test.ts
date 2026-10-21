@@ -8,7 +8,7 @@ import { duckBoard } from "../server/recap.ts";
 import { parseDuckRun } from "../server/spatial.ts";
 import { eligibleFor } from "../server/event-runtime.ts";
 import { isHostRoute } from "../server/routes/host.ts";
-import { booth, call, cleanup, freshDir, guest, mod, post, rt18 } from "./w18-harness.ts";
+import { booth, call, cleanup, freshDir, guest, mod, post, primeStream, rt18 } from "./w18-harness.ts";
 import type { PrimeView } from "../server/views.ts";
 import type { HostView } from "../src/host-board.ts";
 
@@ -122,6 +122,9 @@ describe("C8: callers", () => {
     expect(view.calls!.rows.map((r) => r.id)).toEqual(["start_bingo", "bingo_time"]);
     expect(view.calls!.rows[0]!.description).toBe("Clippy deals the cards.");
     expect(view.calls).toMatchObject({ next: "call_to_the_desktop", last: null, presses: 0, caller: null });
+    // BN-F11: NEXT's title rides along when the row isn't the booth's own.
+    expect(view.calls!.nextTitle).toBeTruthy();
+    expect(view.calls!.nextTitle).not.toBe("call_to_the_desktop");
     expect((await boothView(rt, "Norton")).calls).toBeUndefined();
     const token = login.token as string;
     const refused = await post(rt, "/api/prime/cue", { token, name: "the_bottle", presses: 0 });
@@ -157,6 +160,31 @@ describe("C8: callers", () => {
     await mod(rt, "/api/mod/caller", { on: true });
     expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Ada" });
     rt.restart();
+    expect((await hostView(rt)).cues.caller ?? null).toBeNull();
+  });
+
+  it("a claim reaches the booths' streams at once, not on the next story change (m3 / BN-F15)", async () => {
+    const rt = rt18();
+    rt.openDoors();
+    const clippy = (await booth(rt, "Clippy")).json.token as string;
+    const s = primeStream(rt, clippy);
+    await s.open;
+    const tm = (await booth(rt, "Task Manager")).json.token as string;
+    await post(rt, "/api/mod/caller", { token: tm, on: true });
+    const last = (s.res.frames("snapshot") as Array<{ calls?: { caller?: { name: string } | null } }>).at(-1);
+    expect(last?.calls?.caller?.name).toBe("Task Manager");
+  });
+
+  it("a label never passes for a booth; a booth that switches part drops its claim (A7, m4)", async () => {
+    const rt = rt18();
+    rt.openDoors();
+    const spoof = await call(rt, "POST", "/api/mod/caller", { on: true, label: "Booth · Clippy" }, { moderator: true });
+    expect(spoof.json.caller).toMatchObject({ name: "Phone · Clippy" });
+    const tm = (await booth(rt, "Task Manager")).json.token as string;
+    await post(rt, "/api/mod/caller", { token: tm, on: true });
+    expect((await hostView(rt)).cues.caller).toMatchObject({ name: "Task Manager" });
+    // The same token signs in again as another part.
+    expect((await booth(rt, "Clippy", tm)).status).toBe(200);
     expect((await hostView(rt)).cues.caller ?? null).toBeNull();
   });
 

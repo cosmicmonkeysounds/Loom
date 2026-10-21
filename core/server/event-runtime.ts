@@ -1161,7 +1161,7 @@ export class EventRuntime {
 
   /** Who claimed to be calling the show (C8): a name, when, and the token
    *  that claimed it (null for an author session). Memory only. */
-  private caller: { name: string; at: number; token: string | null } | null = null;
+  private caller: { name: string; at: number; token: string | null; character?: string | null } | null = null;
   /** The token of the mod / booth request being handled (C8's claim). */
   private actingToken: string | undefined;
 
@@ -1171,6 +1171,12 @@ export class EventRuntime {
     const c = this.caller;
     if (c === null) return null;
     if (c.token !== null && !this.sessions.has(c.token)) {
+      this.caller = null;
+      return null;
+    }
+    // A booth that signed in again as another part is no longer the caller
+    // it claimed to be (m4).
+    if (c.token !== null && c.character != null && this.sessions.get(c.token)?.character !== c.character) {
       this.caller = null;
       return null;
     }
@@ -6130,11 +6136,19 @@ export class EventRuntime {
         const token = this.actingToken ?? null;
         // A headless mod token (the director's phone) names itself, as on
         // `/api/mod/signal`: "Phone · Ada".
+        // A label never passes for a booth (A7): "Booth · Clippy" from a
+        // mod token reads "Phone · Clippy"; only a real booth session's
+        // by-line drops its "Booth · ".
+        const BOOTH = "Booth · ";
         const label = str(body, "label").trim().slice(0, 60);
-        const who = label !== "" && by === "Director" ? label : by;
-        const name = who.startsWith("Booth · ") ? who.slice("Booth · ".length) : who;
-        if (body["on"] === true) this.caller = { name, at: this.clock(), token };
+        const labelled = label !== "" && by === "Director";
+        const name = labelled ? (label.startsWith(BOOTH) ? `Phone · ${label.slice(BOOTH.length)}` : label) : by.startsWith(BOOTH) ? by.slice(BOOTH.length) : by;
+        const before = JSON.stringify(this.cueCaller());
+        if (body["on"] === true) this.caller = { name, at: this.clock(), token, character: token !== null ? (this.sessions.get(token)?.character ?? null) : null };
         else if (this.caller !== null && this.caller.name === name) this.caller = null;
+        // Every cue-sheet view carries the claim: push it now, not on the
+        // next story change (m3 / BN-F15: Clippy's chip lagged).
+        if (JSON.stringify(this.cueCaller()) !== before) this.pushSnapshots();
         sendJson(res, 200, { ok: true, caller: this.cueCaller() });
         return true;
       }

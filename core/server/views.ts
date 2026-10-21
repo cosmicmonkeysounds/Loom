@@ -2161,6 +2161,9 @@ export interface PrimeCalls {
   rows: CueRow[];
   /** The whole sheet's NEXT / LAST (INTERACTION ids), read only. */
   next: string | null;
+  /** NEXT's title (its label without the code), for a booth whose own
+   *  rows don't hold it (BN-F11: Clippy's bar showed raw ids). */
+  nextTitle?: string | null;
   last: string | null;
   lastName: string | null;
   /** The focus act as written, or null. */
@@ -2305,6 +2308,7 @@ function boothCalls(sim: Sim, character: string): Pick<PrimeView, "calls"> {
     calls: {
       rows: rows.filter((r) => callsCue(sim.model, character, r.id)),
       next: rows.find((r) => r.next)?.id ?? null,
+      nextTitle: rows.find((r) => r.next)?.title ?? null,
       last: cues.last,
       lastName: cues.lastName ?? null,
       act: focus?.rows[0]?.act ?? null,
