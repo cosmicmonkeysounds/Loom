@@ -7,19 +7,19 @@
 
 | When | Press | On whom |
 |---|---|---|
-| 🏓 Truth Pong | **🏓 Made the cup: may answer** / **🏓 Missed the cup: marked for reinstallation** | the thrower |
+| 🏓 Truth Pong | the **📋 Truth Pong: judge the cup** list (from your NOW card): one row per thrower, **🏓 Made** / **🏓 Missed** (two taps) — no scans | the thrower |
 | 🏓 Truth Pong, after a made cup (if Clippy is busy) | **✅ Q1/Q2/Q3** accurate · **😤 Q1/Q2/Q3** confident · **🤷** uncertain or guessed: marked | the answerer (Q1–Q3 = H4–H6) |
 | 🍎 Bobbing for Truth (with Clippy) | **🍎 Brought up the Bag of Truth** / **🍎 Failed the bob: marked for reinstallation** | the bobber |
 | any time | **🎀 Award a ribbon** (announced as *from the hosts*: DRAFT, Q28) · **🤝 Vouch** · **🩹 Unmark** (on a marked program's card face) | |
 | any time | **🖌 Signed the painting** | a program who just signed MS Paint's canvas (once each) |
 | Grok Prom | **💘 Said "You're the one that I want"** | |
-| the summons | scan at the living-room door, or **📍 Checked in** | |
+| the summons (⏳ → 🚨) | nothing to scan: programs check themselves in with the Desktop's QR. **📍 They're here** on your NOW card's *Still missing* list only for a dead or lost phone | |
 
 **Marked, not captured.** 🏓 Missed, 🤷 and 🍎 Failed never send anyone
-anywhere: they **mark** the program. Their phone greys out with a 🚨 GO TO
-THE INTERNET card, every Antivirus booth gets the escort task in
-`# quarantine`, and an Antivirus walks them through the Tube and presses 🛡.
-Keep the line moving; the Antivirus do the walking. A mis-tap: 🩹 Unmark.
+anywhere: they **mark** the program. Nothing on their phone switches off
+(Q30); they light up on every Antivirus' **Wanted board**, and an Antivirus
+finds them, scans their pass (the confrontation) and presses 🛡. Keep the line
+moving; the Antivirus do the walking. A mis-tap: 🩹 Unmark.
 
 **Press 🏓 Made the cup for every sink.** The cup is what makes a program's
 📝 round-2 filings count: at the tally a program with no 🏓 Made on record is
@@ -36,13 +36,13 @@ Never say which.
 START; nothing happens. When the **lid lifts and the beans show** and the
 room heard nothing (the lid's sensor failed), press **🫘 The printer lid is
 open: full of beans** on your booth, on VLC's card (OP-09); radio **"BEANS"**
-only if you can't, and the director presses 🫘.
+only if you can't, and a host or the director presses 🫘.
 
 **The Bag of Truth:** you hold it and the **dry truth.txt printout**. At 🍎
 the bag goes in the tub. When the director fires 📄, hand the printout to the
 bobber; they read it aloud while truth.txt holds on the screens. **When the
-bobber finishes, radio the director: they fire ⚖ for the verdict** (your
-booth says so too). Right after ⚖, every program's phone gets Trabolta's card
+bobber finishes, ⚖ the verdict is NEXT: fire it, or tell whoever is
+calling the show** (your booth says so too). Right after ⚖, every program's phone gets Trabolta's card
 asking for a pickup line that works on Sandy; the server judges the answers.
 
 **Your booth is a host's** (your part has `admin: true`): the **NOW card** on
@@ -52,13 +52,21 @@ the taskbar · Codex · `# hosts` · `# quarantine` · **Readouts** ·
 **Messages** (a program typing to you) · the rooms. A scanned program's card
 leads with at most three buttons your objective needs; the rest are under
 **All buttons…**. 🛡, ✅ Mark as reinstalled and 👁 are the Antivirus' own and
-never on your card: radio one. Help → *The host console* has the rest.
+never on your card: radio one. The console's **Needs** tab leads with **🚨 n marked · m nobody on it** while programs wait on the Antivirus' Wanted board (tap it for the board, read-only); **Judge** has the *Judging: auto ⇄ review* switch; **More** is split into **Night** (doors, pause, the show clock, announce, the alert level), **House** (wallets, the King, terminals, Trabolta, crews) and **Setup** (codes and QRs, parts). Help → *The host console* has the rest.
 
-**The cue sheet:** NEXT sits above your taskbar. Fire a cue only when the
-director radios you: tap **ARM**, then **FIRE** within 4 s. Any host may
-fire; if two phones press the same moment the server takes one and the other
-reads *Cues moved — tap again*, and the Cues tab's **LAST** line says who
-pressed. Who calls the cues is DRAFT for sign-off (Q1).
+**Calling the show (Q1: any host may call it).** NEXT sits above your
+taskbar, and every host sees and may fire it: there is no "wait for the
+director to radio you" any more. Whoever is calling taps **📣 I'll call** in
+the console's Cues tab (*Who's calling*); every host, Clippy's bar and the
+director phone then show **📣 {name}** on their strip, and **Stop calling**
+hands it back. Tap **ARM**, then **FIRE** within 4 s. If someone else is
+calling, your FIRE asks once: *Fire anyway? They'll see you did.* (Cancel is
+the default.) If two phones (or Run) press the same moment the server takes
+one and the other reads *Cues moved — tap again*. The Cues tab shows NEXT
+with what it does and *then:* the cue after it, and **LAST** with who
+pressed it and, for your own press, *did:* (what the story said back). Agree
+at the read-through who calls by default (the second director at Run, or a
+host from Play).
 
 **Radio:** BEANS · HOLD · ALL STOP.
 
