@@ -108,17 +108,18 @@ function PreviewOne({ id, q }: { id: string; q: URLSearchParams }) {
   const countdown = q.get("countdown");
   const phase = q.get("phase");
   const intro = q.get("intro") !== "0";
+  const nightQ = q.get("night");
   const state = useMemo(
     () =>
       fakeState({
         now: AT + t,
         introduced: intro,
         target: target === "tv" ? "tv" : "terminals",
-        night: phase !== null ? { phase } : undefined,
+        night: { ...nightParam(nightQ), ...(phase !== null ? { phase } : {}) },
         countdown: countdown !== null ? "y2k" : null,
         remaining: countdown !== null ? Math.max(0, Number(countdown) - Math.floor(t / 1000)) : null,
       }),
-    [t, target, countdown, phase, intro],
+    [t, target, countdown, phase, intro, nightQ],
   );
   if (def === null) return <div className="pv-missing">No scene called “{id}”. Try ?preview=list.</div>;
   const blocked = def.namesCharacter === true && !introduced(state);
@@ -336,4 +337,16 @@ function PreviewList() {
       </main>
     </div>
   );
+}
+
+/** `&night=scenario:1,collection_complete:true,ended:false`: night vars for the fake state. */
+function nightParam(raw: string | null): Record<string, string | number | boolean | null> {
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const pair of (raw ?? "").split(",")) {
+    const i = pair.indexOf(":");
+    if (i <= 0) continue;
+    const v = pair.slice(i + 1);
+    out[pair.slice(0, i)] = v === "true" ? true : v === "false" ? false : v === "null" ? null : /^-?\d+(\.\d+)?$/u.test(v) ? Number(v) : v;
+  }
+  return out;
 }

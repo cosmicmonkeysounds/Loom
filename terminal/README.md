@@ -648,5 +648,5 @@ popup storm, BSOD, spotlight, hourglass, count-ups, countdowns, `useSfxCues`).
 `http://localhost:5175/terminal/?preview=list` (every scene, a device frame,
 a scrubber), or `?preview=<id>&t=<ms>` for one frame (`&play=1`,
 `&target=wall`, `&intro=0`, `&reduced=1`, `&who=`, `&value=`, `&phase=`,
-`&countdown=<s>`). Outside dev it opens only on a terminal already set up
+`&countdown=<s>`, `&night=scenario:1,collection_complete:true`). Outside dev it opens only on a terminal already set up
 with the moderator passcode.
