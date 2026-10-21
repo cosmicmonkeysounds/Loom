@@ -13,7 +13,7 @@
 //! - The show's copy names the wave 13 chrome (⊞ Start, the Choose your side
 //!   card), never the pass page's old buttons, ☰ or a profile sheet, and
 //!   the tour's `bathroom:` blurb reaches the phone whole.
-//! - SIGNOFF-w13 §8 stays the app's own words: every tour step's title and
+//! - SIGNOFF-w18 §8 (was w13's) stays the app's own words: every tour step's title and
 //!   text in `play/src/tutorial.tsx`, the pass hint and the Leave question.
 
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -312,7 +312,9 @@ describe("Trapped in the Internet — wave 13 integration: the copy names the ne
 
 describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the app's own words", () => {
   const PLAY = join(__dirname, "../../play/src");
-  const sheet = () => readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w13.md"), "utf8").split("## 8.")[1] ?? "";
+  // Wave 18 cut the tour to five steps: the current words live in SIGNOFF-w18 §8
+  // (SIGNOFF-w13 §8 stays as the wave 13 record).
+  const sheet = () => readFileSync(join(__dirname, "../examples/trapped-in-the-internet/SIGNOFF-w18.md"), "utf8").split("## 8.")[1] ?? "";
   /** The string literals on `key: "…"` lines (a template with `${…}` is checked by its static parts). */
   const literals = (src: string, key: string) => [...src.matchAll(new RegExp(`\\b${key}: (?:"([^"]*)"|\`([^\`]*)\`)`, "gu"))].map((m) => m[1] ?? m[2]!);
 
@@ -320,7 +322,7 @@ describe("Trapped in the Internet — wave 13 integration: SIGNOFF §8 is the ap
     const tour = readFileSync(join(PLAY, "tutorial.tsx"), "utf8").split("export function tutorialSteps")[1]!;
     const s8 = sheet();
     const strings = [...literals(tour, "title"), ...literals(tour, "text")];
-    expect(strings.length).toBeGreaterThanOrEqual(20);
+    expect(strings.length).toBeGreaterThanOrEqual(9); // 5 titles + 4 literal texts (Start's is the story's `bathroom:` blurb)
     for (const str of strings) for (const part of str.split(/\$\{[^}]*\}/u).map((x) => x.trim()).filter((x) => x.length > 3)) expect(s8, part).toContain(part);
   });
 
