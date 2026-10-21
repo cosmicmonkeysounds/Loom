@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ANNOUNCE_STALE_MS, announceAloud, announceChoice, announceOf, epochMoved, planAnnounce, type Announcement } from "../src/announce.ts";
+import { ANNOUNCE_STALE_MS, announceAloud, announceChoice, announceOf, announceSetting, epochMoved, planAnnounce, type Announcement } from "../src/announce.ts";
+import { deviceQuery } from "../src/health.ts";
+import { defaultConfig } from "../src/config.ts";
+import { screenStateUrl } from "../src/screen.ts";
 import { announcesOf, parseScreenState } from "../src/screen.ts";
 
 const NOW = 5_000_000;
@@ -97,5 +100,34 @@ describe("who says announcements", () => {
     expect(announceChoice("server")).toBe("browser");
     expect(announceChoice("silent")).toBe("browser");
     expect(announceChoice("fully")).toBe("fully");
+  });
+});
+
+describe("the house setting (wave 18b, Q8)", () => {
+  const spot = (announce: boolean) => ({ spot: { announce } });
+  it("a tablet's own Always / Never wins; House setting follows its spot; neither says: off", () => {
+    expect(announceSetting({ announce: true }, spot(false))).toBe(true);
+    expect(announceSetting({ announce: false }, spot(true))).toBe(false);
+    expect(announceSetting({ announce: null }, spot(true))).toBe(true);
+    expect(announceSetting({ announce: null }, spot(false))).toBe(false);
+    expect(announceSetting({ announce: null }, { spot: null })).toBe(false);
+    expect(announceSetting({ announce: null }, null)).toBe(false);
+  });
+
+  it("aloud follows it; the TV's mute still holds", () => {
+    const muted = { room: "", muted: true, head: 0, lines: [] };
+    expect(announceAloud({ announce: null, view: "auto" }, { voice: null, ...spot(true) })).toBe(true);
+    expect(announceAloud({ announce: null, view: "auto" }, { voice: null, ...spot(false) })).toBe(false);
+    expect(announceAloud({ announce: null, view: "tv" }, { voice: muted, ...spot(true) })).toBe(false);
+  });
+
+  it("the heartbeat reports what the tablet does as ann=1|0, nothing when not given", () => {
+    const h = { audio: null, visible: null, battery: null, charging: null, version: "v1" };
+    expect(deviceQuery({ ...h, announce: true })).toEqual({ ver: "v1", ann: "1" });
+    expect(deviceQuery({ ...h, announce: false })).toEqual({ ver: "v1", ann: "0" });
+    expect(deviceQuery({ ...h, announce: null })).toEqual({ ver: "v1" });
+    expect(deviceQuery(h)).toEqual({ ver: "v1" });
+    const c = defaultConfig({ eventId: "e", token: "t", name: "Tent", spot: "tent", view: "reinstall" });
+    expect(screenStateUrl(c, null, { ...h, announce: true })).toBe("/e/e/api/screen/state?name=Tent&spot=tent&view=reinstall&character=Trabolta&ver=v1&ann=1");
   });
 });

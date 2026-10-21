@@ -64,7 +64,7 @@
 //! dropped poll never flips a hidden character onto the wall.
 
 import { useEffect, useRef, useState } from "react";
-import { announceOf, type Announcement } from "./announce.ts";
+import { announceOf, announceSetting, type Announcement } from "./announce.ts";
 import { baseOf, type TerminalConfig } from "./config.ts";
 import { deviceHealth, deviceQuery, type DeviceHealth } from "./health.ts";
 
@@ -690,10 +690,11 @@ export type PollOutcome = { kind: "state"; state: ScreenState } | { kind: "revok
 
 /** One poll. A 401/403 is a revoked token; a 404 "unknown event" means the
  *  event this terminal was set up for is over (a new one was launched); anything
- *  else that fails is a miss (keep the last answer). */
-export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch, voice: VoiceQuery | null = null): Promise<PollOutcome> {
+ *  else that fails is a miss (keep the last answer). `announce`: whether this
+ *  tablet says the house announcements, reported as `ann` (null: not said). */
+export async function pollScreen(c: TerminalConfig, fetchFn: typeof fetch = fetch, voice: VoiceQuery | null = null, announce: boolean | null = null): Promise<PollOutcome> {
   try {
-    const res = await fetchFn(screenStateUrl(c, voice, deviceHealth()), { headers: { "x-loom-token": c.token }, cache: "no-store" });
+    const res = await fetchFn(screenStateUrl(c, voice, deviceHealth(announce)), { headers: { "x-loom-token": c.token }, cache: "no-store" });
     if (res.status === 401 || res.status === 403) return { kind: "revoked" };
     if (res.status === 404) {
       const err = await res.json().then((j: unknown) => (typeof j === "object" && j !== null ? (j as Record<string, unknown>)["error"] : null)).catch(() => null);
@@ -748,11 +749,17 @@ export function useScreenState(
     let alive = true;
     let timer = 0;
     const every = config.view === "tv" ? TV_POLL_MS : SCREEN_POLL_MS;
+    let last: ScreenState | null = null;
     const tick = async () => {
-      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null);
+      // `ann` is what this tablet does now: its own setting, else the house
+      // list's word off the last answer.
+      const out = await pollScreen(config, fetch, voiceRef.current?.() ?? null, announceSetting(config, last));
       if (!alive) return;
       setMisses((m) => missesAfter(m, out.kind));
-      if (out.kind === "state") setState(out.state);
+      if (out.kind === "state") {
+        last = out.state;
+        setState(out.state);
+      }
       else if (out.kind === "revoked") {
         setRevoked(true);
         return; // stop polling: setup takes over

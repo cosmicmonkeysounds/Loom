@@ -8,9 +8,13 @@
 //! and a terminal whose config says `announce` rings a short chime and
 //! says each in the device's own voice, with the words on a banner.
 //!
-//! Off by default (provision with `&announce=1`, or tick it in ⚙): most
-//! tablets hang within earshot of the house speakers, and the TV's room
-//! hears them for sure. The rules (`planAnnounce`, pure):
+//! Whether a tablet says them (wave 18b, Q8, `announceSetting`): its own ⚙
+//! setting when it has one (Always / Never — `&announce=1|0`), else the
+//! **house setting**: the house list in `audio.json` (`announce.terminals`,
+//! map spot ids), which the screen poll answers as `spot.announce` — read
+//! live, so a director's toggle reaches the tablet within a poll. Off when
+//! neither says (most tablets hang within earshot of the house speakers,
+//! and the TV's room hears them for sure). The rules (`planAnnounce`, pure):
 //!
 //! - never an announcement that was already current when the page loaded
 //!   (the first answer only sets the cursor), nor replayed history (`at`
@@ -81,10 +85,17 @@ export function epochMoved(prev: string | null | undefined, next: string | null)
   return typeof prev === "string" && next !== null && next !== prev;
 }
 
+/** Does this screen say the house announcements (wave 18b, Q8)? Its own
+ *  setting (true: Always, false: Never), else the house list's word for its
+ *  spot (`spot.announce` off the poll), else no. */
+export function announceSetting(config: Pick<TerminalConfig, "announce">, state: Pick<ScreenState, "spot"> | null): boolean {
+  return config.announce ?? state?.spot?.announce ?? false;
+}
+
 /** Does this screen say announcements out loud right now? (The TV's
  *  director mute holds for announcements too.) */
-export function announceAloud(config: Pick<TerminalConfig, "announce" | "view">, state: Pick<ScreenState, "voice"> | null): boolean {
-  if (!config.announce) return false;
+export function announceAloud(config: Pick<TerminalConfig, "announce" | "view">, state: Pick<ScreenState, "voice" | "spot"> | null): boolean {
+  if (!announceSetting(config, state)) return false;
   return !(config.view === "tv" && state?.voice?.muted === true);
 }
 
@@ -113,7 +124,8 @@ export function useAnnouncements(config: TerminalConfig | null, state: ScreenSta
   /** The last answer's `announceEpoch` (undefined = no answer yet). */
   const epoch = useRef<string | null | undefined>(undefined);
   const linger = useRef(0);
-  const enabled = config?.announce === true;
+  // Live: a house-setting tablet follows its spot's entry on every poll.
+  const enabled = config !== null && announceSetting(config, state);
   const choice = config?.engine ?? "browser";
   const speed = config?.speed ?? 1;
 

@@ -8,8 +8,10 @@
 //!
 //!   /terminal/?code=<mod passcode>&name=TV&character=Trabolta&spot=desktop-tv&view=tv
 //!
-//! A tablet that should also say the house announcements (N-09 — the
-//! house system's lines, `do announce "…"`) adds `&announce=1`; off by default.
+//! Saying the house announcements (N-09 — the house system's lines, `do
+//! announce "…"`) follows the house list by default (wave 18b, Q8: `audio.json`
+//! `announce.terminals`, which the screen state answers as `spot.announce`);
+//! `&announce=1` says them always, `&announce=0` never.
 //!
 //! A terminal that belongs to a room (wave 7 — the server-room terminal) adds
 //! `&room=<LOCATION>` to any view but the TV:
@@ -36,6 +38,13 @@
 //! the one-armed bandit — the server rolls every bet into their wallet:
 //!
 //!   /terminal/?code=<mod passcode>&name=Casino&spot=graphics-card&view=casino
+//!
+//! The tent laptop (wave 18b, `view=reinstall`, `reinstall/ReinstallTerminal.tsx`):
+//! the reinstallation station — the idle show like any wall terminal, and a
+//! marked pass plays the reinstallation game right here (or is sent to a
+//! headset). Awake all night, no room, no line:
+//!
+//!   /terminal/?code=<mod passcode>&spot=tent&announce=1
 //!
 //! The mod passcode resolves (via `/api/resolve-code`) to the event and is
 //! traded for a **moderator token** (`/api/mod/login`) — that is what lets
@@ -72,7 +81,9 @@ export interface TerminalConfig {
   /** Where this screen hangs: a `house.terminals[].id` of the event's house
    *  map (`docs/loom-reinstall.md` §4), or "" — unplaced. */
   spot: string;
-  /** What the attract screen shows: `auto` (the world view while a program
+  /** What the attract screen shows (`reinstall`, wave 18b: the tent laptop's
+   *  reinstallation station — the idle show, a marked pass plays the game
+   *  here): `auto` (the world view while a program
    *  is in the reinstallation simulation, else the face), `world` (always
    *  the world view), `face` (never), `mirror` (a full-screen spectator —
    *  no scanner, no chat), `tv` (the room voice, K-18: the face full screen
@@ -94,9 +105,11 @@ export interface TerminalConfig {
    *  `roomOf`): asleep until it is open, speaking its lines. */
   room: string;
   /** Say the house announcements (N-09: a chime + `do announce "…"` in the
-   *  device's voice). Off by default — the TV's room already hears the
-   *  house speakers, and most tablets hang where the speakers reach. */
-  announce: boolean;
+   *  device's voice): `true` always, `false` never, `null` the house setting
+   *  (wave 18b, the default — the house list in `audio.json`, which the
+   *  screen state answers as `spot.announce`; off when it doesn't say). A
+   *  config stored before wave 18b with `false` reads as the house setting. */
+  announce: boolean | null;
   /** Full screen on every tap while not (wave 17, `fullscreen.ts`): on by
    *  default; ⚙ turns it off. Stored only — no URL hint. */
   fullscreen: boolean;
@@ -106,8 +119,8 @@ export interface TerminalConfig {
   fromMap?: boolean;
 }
 
-export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino";
-export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino"];
+export type TerminalView = "auto" | "world" | "face" | "mirror" | "tv" | "chess" | "shadow" | "casino" | "reinstall";
+export const VIEWS: readonly TerminalView[] = ["auto", "world", "face", "mirror", "tv", "chess", "shadow", "casino", "reinstall"];
 
 /** ⚙'s one line per view. */
 export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
@@ -119,6 +132,7 @@ export const VIEW_INFO: Readonly<Record<TerminalView, string>> = {
   chess: "chess — the King at the server-room door, no hints",
   casino: "casino — scan a pass, bet Truthcoin on the coin, the dice and the slots",
   shadow: "shadow — this camera full screen, the players as ghosts in it, no scanner",
+  reinstall: "reinstallation station — idle show; a marked pass plays the game here",
 };
 
 export const VOICE_CHOICES: readonly VoiceChoice[] = ["browser", "fully", "silent", "server"];
@@ -134,7 +148,29 @@ function isView(v: unknown): v is TerminalView {
   return typeof v === "string" && (VIEWS as readonly string[]).includes(v);
 }
 
+/** ⚙'s three-way announcement choice (wave 18b, Q8) ⇄ the config's `announce`. */
+export type AnnounceChoice = "house" | "always" | "never";
+
+export function announceChoiceValue(v: boolean | null): AnnounceChoice {
+  return v === true ? "always" : v === false ? "never" : "house";
+}
+
+export function announceFromChoice(v: string): boolean | null {
+  return v === "always" ? true : v === "never" ? false : null;
+}
+
 export const CONFIG_KEY = "loom.terminal";
+/** The stored config's shape (`v`): 2 = wave 18b, where `announce: false`
+ *  means "never" (before it, `false` was the default: the house setting now). */
+export const CONFIG_VERSION = 2;
+
+/** A stored `announce`: true / false explicit, anything else the house setting;
+ *  a `false` stored before wave 18b (no `v`) was the old default. */
+export function storedAnnounce(v: unknown, version: unknown): boolean | null {
+  if (v === true) return true;
+  if (v === false && typeof version === "number" && version >= CONFIG_VERSION) return false;
+  return null;
+}
 export const DEFAULT_CHARACTER = "Trabolta";
 /** The room the TV hangs in — *Trapped in the Internet*'s living room. */
 export const DEFAULT_TV_ROOM = "The Desktop";
@@ -146,9 +182,10 @@ export function tvRoomOf(c: Pick<TerminalConfig, "room">): string {
 
 /** The LOCATION a wall terminal belongs to (the server-room terminal), or
  *  null: no room, the TV (whose `room` is only the room it speaks for) or the
- *  chess board or the casino (awake all night, whatever room they were given). */
+ *  chess board, the casino or the reinstallation station (awake all night,
+ *  whatever room they were given). */
 export function roomOf(c: Pick<TerminalConfig, "room" | "view">): string | null {
-  if (c.view === "tv" || c.view === "chess" || c.view === "casino") return null;
+  if (c.view === "tv" || c.view === "chess" || c.view === "casino" || c.view === "reinstall") return null;
   const room = c.room.trim();
   return room === "" ? null : room;
 }
@@ -166,7 +203,7 @@ export function defaultConfig(partial: Partial<TerminalConfig> & Pick<TerminalCo
     spot: "",
     view: "auto",
     room: "",
-    announce: false,
+    announce: null,
     camFeed: true,
     fullscreen: true,
     ...partial,
@@ -177,19 +214,20 @@ export function loadConfig(storage: Pick<Storage, "getItem"> = localStorage): Te
   try {
     const raw = storage.getItem(CONFIG_KEY);
     if (raw === null) return null;
-    const c = JSON.parse(raw) as Partial<TerminalConfig>;
+    const c = JSON.parse(raw) as Partial<TerminalConfig> & { v?: unknown };
     if (typeof c.eventId !== "string" || typeof c.token !== "string" || c.eventId === "" || c.token === "") return null;
     const spot = typeof c.spot === "string" ? c.spot : "";
     const view = isView(c.view) ? c.view : "auto";
     const room = typeof c.room === "string" ? c.room : "";
-    return defaultConfig({ ...c, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: c.announce === true, camFeed: c.camFeed !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
+    const { v: _version, ...stored } = c;
+    return defaultConfig({ ...stored, eventId: c.eventId, token: c.token, spot, view, room, engine: voiceChoiceOf(c.engine), announce: storedAnnounce(c.announce, c.v), camFeed: c.camFeed !== false, fullscreen: c.fullscreen !== false, fromMap: c.fromMap === true });
   } catch {
     return null;
   }
 }
 
 export function saveConfig(c: TerminalConfig, storage: Pick<Storage, "setItem"> = localStorage): void {
-  storage.setItem(CONFIG_KEY, JSON.stringify(c));
+  storage.setItem(CONFIG_KEY, JSON.stringify({ ...c, v: CONFIG_VERSION }));
 }
 
 export function dropConfig(storage: Pick<Storage, "removeItem"> = localStorage): void {
@@ -206,7 +244,7 @@ export interface UrlHints {
   spot: string | null;
   view: TerminalView | null;
   room: string | null;
-  /** `announce=1` / `0`; null = not given (provisioning keeps the default: off). */
+  /** `announce=1` (always) / `0` (never); null = not given (the house setting). */
   announce: boolean | null;
   /** `cam=0` / `1`: the camera feed (null = not given: on). */
   camFeed?: boolean | null;
@@ -271,7 +309,7 @@ export async function provision(code: string, hints: Omit<UrlHints, "code">): Pr
     spot: hints.spot ?? "",
     view: hints.view ?? "auto",
     room: hints.room ?? "",
-    announce: hints.announce ?? false,
+    announce: hints.announce ?? null,
     camFeed: hints.camFeed ?? true,
   });
 }

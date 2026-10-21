@@ -350,6 +350,7 @@ export function App() {
         current={config}
         notice={screen.kind === "setup" ? screen.notice : null}
         step={screen.kind === "setup" ? screen.step : undefined}
+        spotAnnounce={screenState.state?.spot?.announce ?? null}
         onDone={(c) => {
           wake();
           finish(c);

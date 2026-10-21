@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONFIG_KEY, DEFAULT_TV_ROOM, adoptCharacter, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
+import { CONFIG_KEY, CONFIG_VERSION, DEFAULT_TV_ROOM, adoptCharacter, announceChoiceValue, announceFromChoice, storedAnnounce, canonicalCharacter, castCheckKey, characterProblem, defaultConfig, hintsFromSearch, loadConfig, pickCharacter, provision, roomOf, saveConfig, savedCharacter, tvRoomOf, voiceChoiceOf, withoutSecrets } from "../src/config.ts";
 import { CAST_LOOKUP_MS, characterIdOf, fetchCharacters } from "../src/pilot.ts";
 
 function memory(): Storage {
@@ -19,7 +19,7 @@ describe("terminal config", () => {
     const s = memory();
     saveConfig(defaultConfig({ eventId: "evt", token: "t", name: "Kitchen" }), s);
     const back = loadConfig(s);
-    expect(back).toMatchObject({ eventId: "evt", token: "t", name: "Kitchen", character: "Trabolta", engine: "browser", camera: "user", speed: 1, spot: "", view: "auto", announce: false });
+    expect(back).toMatchObject({ eventId: "evt", token: "t", name: "Kitchen", character: "Trabolta", engine: "browser", camera: "user", speed: 1, spot: "", view: "auto", announce: null });
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t" }));
     expect(loadConfig(s)).toMatchObject({ character: "Trabolta", spot: "", view: "auto" });
   });
@@ -58,6 +58,9 @@ describe("terminal config", () => {
     expect(roomOf({ view: "mirror", room: "The Server Room" })).toBe("The Server Room");
     expect(roomOf({ view: "face", room: " " })).toBeNull();
     expect(roomOf({ view: "tv", room: "The Desktop" })).toBeNull();
+    // The tent laptop (wave 18b) belongs to no room either: the Internet's lines are per-guest DMs.
+    expect(roomOf({ view: "reinstall", room: "The Internet" })).toBeNull();
+    expect(hintsFromSearch("?code=M&spot=tent&view=reinstall").view).toBe("reinstall");
     // Provisioning keeps the room hint for a non-TV view.
     const h = hintsFromSearch("?code=M&name=Server%20Room&character=Trabolta&spot=server-room&view=face&room=The%20Server%20Room");
     expect(h).toMatchObject({ name: "Server Room", spot: "server-room", view: "face", room: "The Server Room" });
@@ -107,14 +110,33 @@ describe("terminal config", () => {
     expect(hintsFromSearch("?engine=server").engine).toBe("server");
     expect(hintsFromSearch("").engine).toBeNull();
   });
-  it("announcements are off unless provisioned on (N-09)", () => {
+  it("announcements follow the house setting unless provisioned always / never (N-09, wave 18b Q8)", () => {
     const s = memory();
     s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t" }));
-    expect(loadConfig(s)?.announce).toBe(false);
+    expect(loadConfig(s)?.announce).toBeNull();
     saveConfig(defaultConfig({ eventId: "evt", token: "t", announce: true }), s);
     expect(loadConfig(s)?.announce).toBe(true);
-    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: "yes" }));
+    // Never, saved now, stays never.
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", announce: false }), s);
     expect(loadConfig(s)?.announce).toBe(false);
+    saveConfig(defaultConfig({ eventId: "evt", token: "t", announce: null }), s);
+    expect(loadConfig(s)?.announce).toBeNull();
+    // A false stored before wave 18b (no `v`) was the old default: the house setting.
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: false }));
+    expect(loadConfig(s)?.announce).toBeNull();
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: true }));
+    expect(loadConfig(s)?.announce).toBe(true);
+    s.setItem(CONFIG_KEY, JSON.stringify({ eventId: "evt", token: "t", announce: "yes", v: CONFIG_VERSION }));
+    expect(loadConfig(s)?.announce).toBeNull();
+    // The stored version never leaks into the config.
+    expect(loadConfig(s)).not.toHaveProperty("v");
+    expect(storedAnnounce(false, 1)).toBeNull();
+    expect(storedAnnounce(false, CONFIG_VERSION)).toBe(false);
+    expect(announceChoiceValue(null)).toBe("house");
+    expect(announceChoiceValue(true)).toBe("always");
+    expect(announceChoiceValue(false)).toBe("never");
+    for (const v of [true, false, null]) expect(announceFromChoice(announceChoiceValue(v))).toBe(v);
+    expect(announceFromChoice("bogus")).toBeNull();
     expect(hintsFromSearch("?announce=1").announce).toBe(true);
     expect(hintsFromSearch("?announce=on").announce).toBe(true);
     expect(hintsFromSearch("?announce=0").announce).toBe(false);
@@ -247,6 +269,7 @@ import { twoRooms } from "./world-fixture.ts";
 describe("wave 14 config", () => {
   it("knows the shadow view and describes every view", () => {
     expect(VIEWS).toContain("shadow");
+    expect(VIEWS).toContain("reinstall");
     for (const v of VIEWS) expect(VIEW_INFO[v].length).toBeGreaterThan(3);
     expect(hintsFromSearch("?code=X&view=shadow").view).toBe("shadow");
   });
