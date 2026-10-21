@@ -25,7 +25,6 @@ addresses, codes, where things are kept).
 | [`performers/password-manager.md`](./performers/password-manager.md) | Password Manager (Francine) | |
 | [`performers/cra-agent.md`](./performers/cra-agent.md) | CRA Agent Software (Emma) | |
 | [`performers/installation-wizard.md`](./performers/installation-wizard.md) | the Installation Wizard (Julia — a voice, no booth), incl. the tent card | |
-| [`performers/windows-defender.md`](./performers/windows-defender.md) | Windows Defender (wave 11: the door-only Antivirus, late arrivals) ([[EDIT: who]]) | |
 | **Crew** | | trained 10-25 |
 | [`crew/director.md`](./crew/director.md) | the Director card (the Run console) + the show owner's day (John) | |
 | [`crew/second-director.md`](./crew/second-director.md) | the second director (at Run all night) | |
@@ -93,10 +92,10 @@ addresses, codes, where things are kept).
   **The Heart** plays on the first opening once Trabolta is awake,
   however the door was unlocked (press **🔧** first when the crew go in).
   The server-room Antivirus presses 🔌 💥 ❌ 🚪 🔧 on their own booth (any
-  room Antivirus booth has them; Windows Defender's and Clippy's never do,
-  and the server refuses their press; since wave 13 a host part's booth may
-  press them too), Adobe Acrobat presses 🫘, and
-  **Windows Defender** is a door-only part for late arrivals. Buttons with
+  Antivirus booth has them; Clippy's never does, and the server refuses its
+  press; since wave 13 a host part's booth may press them too), and Adobe
+  Acrobat presses 🫘. (Wave 11's door-only Antivirus part is gone since wave
+  18: the four Antivirus share the door.) Buttons with
   no way back (🔌 💥 ❌ 🚪 🔧 ♟ 🍎 🫘 💘) **arm on the first tap and fire on
   the second**. The nine featured programs are 🔒 Reserved: each invitee
   joins from the QR on their invitation (the featured sheets say so), and
@@ -136,6 +135,37 @@ addresses, codes, where things are kept).
   one tap from anywhere. The objectives and every new line are **DRAFT** until
   the user signs off `../SIGNOFF-w13.md` (Q1 — who calls the cues — above all);
   every pack below is written to the drafts.
+- **Wave 18 (2026-10-21), on `oct31-w18/integration`:** the Play app plays
+  like a game. A guest lands on **Mission** (what to do now, where to go, its
+  buttons big), the rooms are the **Chats** tab, the room named after the
+  story is a far-away **📜 Chat log**, and the big moments (the Bingo win,
+  the ribbon, the capture, the awards, the side reveal) are **full-screen
+  and can't be ignored**. The user's sign-off answers (`../SIGNOFF-w13.md`)
+  change the crew's night:
+  - **Q1: any host may call the show.** The *radio the director before you
+    fire* rule is retired. A host taps **📣 I'll call** in the console's Cues
+    tab; every booth and the director phone show who is calling, and a FIRE
+    by someone else asks once (*Fire anyway?*).
+  - **Q2: Clippy is a super-performer.** Clippy's own game cues (the Bingo,
+    the hunts, ⏱ 📋 🍾, the bob, the summary, the ceremony and its awards) sit
+    on a **🎤 cue bar** in Clippy's booth; the Bingo results are one
+    **PLAYER SELECT** window of tiles (🎱 → 🎀 → 🎯), no scans.
+  - **Q26: Windows Defender is gone.** The four Antivirus share the door: a
+    *🚪 X is waiting* pop-out reaches all four, and the first **🙋** wins.
+  - **Q30: a mark doesn't hinder.** A marked program keeps everything; every
+    Antivirus booth gets a **🚨 WANTED** pop-out and the **Wanted board**
+    (claim, hand back, take over), and the Antivirus' **scan is the
+    confrontation** (CORRUPTION DETECTED → 🛡 → CAPTURED). No `# quarantine`
+    escort pins any more.
+  - **The summons:** programs check themselves in with the Desktop's QR; staff
+    tap 📍 only for a dead phone on the *Still missing* list.
+  - **Q16 dropped:** after an ending the reinstallation is a party favour for
+    everyone.
+  - **Q21:** sides are joined on the **Sides screen** (two doors at the Y2K
+    clock), and a member recruits by **scanning another program's pass**;
+    guests may also found their own **crews** (never a side).
+  The new lines are `// DRAFT w18` until the user signs off
+  `../SIGNOFF-w18.md`; every pack below is written to the drafts.
 
 ## Rules every sheet keeps
 
@@ -150,14 +180,19 @@ addresses, codes, where things are kept).
   the tech op and the house manager know it. A featured
   sheet holds only its own secret.
 - Buttons that do nothing out of phase are normal (W-05). Only the un-phased
-  buttons work any time: 🛡 **Send to the Internet**, ✅ **Mark as
-  reinstalled**, 🩹 **Unmark**, 🎀 ribbon, 🤝 Vouch, 👁 watchlist, 🪙 Pay /
-  Charge and ♟ They beat the machine; every verdict button is phase-gated.
-  🛡 ✅ 👁 are the Antivirus' own (wave 13): no host's or Clippy's card shows
-  them.
+  buttons work any time: 🛡 **Send to the Internet** (on a marked program's
+  card since wave 18; under All buttons… on anyone else), ✅ **Mark as
+  reinstalled** (on a captured program's card), 🩹 **Unmark**, 🎀 ribbon, 🤝
+  Vouch, 👁 watchlist, 🪙 Pay / Charge and ♟ They beat the machine; every
+  verdict button is phase-gated. 🛡 ✅ 👁 are the Antivirus' own (wave 13):
+  no host's or Clippy's card shows them.
 - **Hosts mark, Antivirus capture.** Every host verdict (🎯 🤷 🙅 🎩 🏓 🍎)
-  marks a program for reinstallation; an Antivirus walks them through the
-  Tube and presses 🛡.
+  marks a program for reinstallation. The mark hinders nothing (Q30): the
+  program lights up on every Antivirus' Wanted board, one claims them, finds
+  them and scans their pass (the confrontation), then presses 🛡 and walks
+  them through the Tube.
+- **Any host may call the show** (Q1): never "radio the director before you
+  fire". 📣 shows who is calling; agree it at the read-through.
 
 ## Print notes (for PAPER, batch 2 on 10-26)
 
@@ -166,11 +201,13 @@ addresses, codes, where things are kept).
   the back. The rest of the file is the pack (read it once at home). Since
   wave 13 each booth's **NOW card** carries the same per-act job on the phone,
   so the laminated card is the backup, not the instructions.
-- **Print after the sign-off.** The objectives (`../objectives.loom`) and the
-  wave 13 lines are DRAFT until `../SIGNOFF-w13.md` is signed off; the packs
-  follow the drafts (who fires the cues, the ribbon *from the hosts*, Windows
-  Defender's face (the scan alone), McAfee's line in the ticker). Re-check them against the
-  signed-off text before batch 2, and reprint every pack that changed.
+- **Print after the sign-off.** `../SIGNOFF-w13.md` is signed off (the
+  user's answers, 2026-10-21); the wave 18 lines are DRAFT until
+  `../SIGNOFF-w18.md` is. The packs follow the drafts (any host calls the
+  show, Clippy's 🎤 bar, the Wanted board and the confrontation, the shared
+  door, the self check-in, McAfee's line in the ticker). Re-check them
+  against the signed-off text before batch 2, and reprint every pack that
+  changed (all four Antivirus, Clippy, the three hosts, all-crew).
 - Clippy's CI 1–9 cards: one index card each (from the appendix of her pack).
 - The Desktop's QR stacks: print the codex posters from Run → 🖨 Print sheet
   and sort them by colour into the piles `generated/print-stacks.md` lists
