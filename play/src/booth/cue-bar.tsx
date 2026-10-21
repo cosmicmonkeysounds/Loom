@@ -16,14 +16,17 @@ import type { PrimeSession } from "../session/prime.ts";
 import type { CountdownSummary } from "../types.ts";
 import { callsOf, type CallsView } from "./wire.ts";
 
-/** The cue that is Clippy's to call now: NEXT among its own, else a live one not yet fired, else any live one. */
-export function yourCue(rows: readonly CueRow[]): CueRow | null {
-  return rows.find((r) => r.live && r.next) ?? rows.find((r) => r.live && !r.fired) ?? rows.find((r) => r.live) ?? null;
+/** The cue that is Clippy's to call now: only its own row that is the
+ *  sheet's NEXT (and live). Never just any live row (BN-F1: cues with no
+ *  `while:` are live all night, fired or not, out of order). */
+export function yourCue(rows: readonly CueRow[], next: string | null = null): CueRow | null {
+  return rows.find((r) => r.live && (r.next || (next !== null && r.id === next))) ?? null;
 }
 
-/** The next of Clippy's cues while none is live: the first not yet fired, in running order. */
+/** The next of Clippy's cues while none is its to call: the first in
+ *  running order not yet fired (the sequence's first; else an off-sequence one). */
 export function nextForYou(rows: readonly CueRow[]): CueRow | null {
-  return rows.find((r) => !r.fired && !r.live) ?? null;
+  return rows.find((r) => !r.fired && r.sequence !== false) ?? rows.find((r) => !r.fired) ?? null;
 }
 
 /** The marks Clippy's desk binds an arm to. */
@@ -36,8 +39,8 @@ export function sheetNext(calls: CallsView, mine: CueRow | null): string | null 
   if (calls.next === null) return null;
   if (mine !== null && calls.next === mine.id) return "the same";
   const row = calls.rows.find((r) => r.id === calls.next);
-  const title = (calls as CallsView & { nextTitle?: string }).nextTitle;
-  return row !== undefined ? cueTitleTags(row.title).title : (title ?? calls.next);
+  const title = calls.nextTitle;
+  return row !== undefined ? cueTitleTags(row.title).title : title != null && title !== "" ? cueTitleTags(title).title : calls.next;
 }
 
 /** The caller chip on line 2: "📣 You" / "📣 Task Manager". */
@@ -90,7 +93,7 @@ function CueBarOn({ session, calls, now, countdowns, onFired, armRef }: ClippyCu
   fired.current = onFired;
   const desk = useCueDesk(rows, callMarks(calls), session.view?.guests, clippyFire(session, (at) => fired.current?.(at)));
   const [open, setOpen] = useState(false);
-  const mine = yourCue(rows);
+  const mine = yourCue(rows, calls.next);
   useEffect(() => {
     if (armRef === undefined) return;
     armRef.current = (id) => {

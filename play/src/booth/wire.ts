@@ -46,6 +46,8 @@ export interface CallerView {
 export interface CallsView {
   rows: CueRow[];
   next: string | null;
+  /** NEXT's title when the row isn't this booth's (C8 fix, BN-F11). */
+  nextTitle?: string | null;
   last: string | null;
   lastName: string | null;
   act: string | null;

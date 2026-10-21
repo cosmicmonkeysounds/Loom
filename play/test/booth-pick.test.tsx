@@ -123,17 +123,23 @@ describe("the 🔔 Waiting window (§4.13)", () => {
 describe("Clippy's 🎤 bar (§4.9)", () => {
   const row = (id: string, extra: Record<string, unknown> = {}) => ({ id, n: 1, code: null, title: id, fired: false, last: false, next: false, sequence: true, live: false, subject: false, act: null, description: null, ...extra });
   const calls = (rows: ReturnType<typeof row>[], extra: Partial<CallsView> = {}): CallsView => ({ rows: rows as CallsView["rows"], next: null, last: null, lastName: null, act: null, presses: 7, ...extra });
-  it("picks your cue (live NEXT, else live unfired) and the next one while none is live", () => {
-    expect(yourCue(calls([row("a", { live: true, fired: true }), row("b", { live: true })]).rows)?.id).toBe("b");
+  it("your cue is only your row that is the sheet's NEXT; else the next one for you (BN-F1)", () => {
+    // Live all night (no while:), fired or not, out of order: never your cue.
+    expect(yourCue(calls([row("a", { live: true, fired: true }), row("b", { live: true })]).rows)).toBeNull();
     expect(yourCue(calls([row("a", { live: true }), row("b", { live: true, next: true })]).rows)?.id).toBe("b");
+    expect(yourCue(calls([row("a", { live: true }), row("b", { live: true })]).rows, "a")?.id).toBe("a");
     expect(yourCue(calls([row("a")]).rows)).toBeNull();
     expect(nextForYou(calls([row("a", { fired: true }), row("b")]).rows)?.id).toBe("b");
+    // The first unfired in running order, live or not; an off-sequence fallback only when nothing else waits.
+    expect(nextForYou(calls([row("hunt_over", { sequence: false }), row("bingo", { live: true })]).rows)?.id).toBe("bingo");
   });
   it("binds the arm to Clippy's marks; line 2 reads the sheet's NEXT and the caller", () => {
     const c = calls([row("bingo_time", { live: true, fired: true, title: "⏰ Bingo time" })], { last: "bingo_time", lastName: "Clippy", next: "bingo_time", caller: { name: "Task Manager", at: 1 } });
     expect(callMarks(c)).toEqual({ last: "bingo_time", fired: ["bingo_time"], presses: 7, lastName: "Clippy" });
     expect(sheetNext(c, c.rows[0]!)).toBe("the same");
     expect(sheetNext({ ...c, next: "introduce_trabolta" }, c.rows[0]!)).toBe("introduce_trabolta");
+    // BN-F11: the server's title, never the raw id, when it sends one.
+    expect(sheetNext({ ...c, next: "introduce_trabolta", nextTitle: "🤖 Introduce Trabolta" }, c.rows[0]!)).toBe("🤖 Introduce Trabolta");
     expect(callerChip(c, "Clippy")).toBe("📣 Task Manager");
     expect(callerChip({ ...c, caller: { name: "Clippy", at: 1 } }, "Clippy")).toBe("📣 You");
     expect(callerChip({ ...c, caller: null }, "Clippy")).toBeNull();
@@ -141,7 +147,7 @@ describe("Clippy's 🎤 bar (§4.9)", () => {
   it("renders only for a booth that gets calls: yellow YOUR CUE + ARM, or grey next for you", () => {
     const s = (cv: CallsView | undefined) => ({ view: { character: "Clippy", guests: [], channels: [], spaces: [], ...(cv !== undefined ? { calls: cv } : {}) }, auth: { token: "t", character: "Clippy", admin: false, eventId: "e" } }) as unknown as PrimeSession;
     expect(renderToStaticMarkup(<ClippyCueBar session={s(undefined)} now={0} />)).toBe("");
-    const live = renderToStaticMarkup(<ClippyCueBar session={s(calls([row("bingo_time", { live: true, code: "V3", title: "⏰ Bingo time" })]))} now={0} />);
+    const live = renderToStaticMarkup(<ClippyCueBar session={s(calls([row("bingo_time", { live: true, next: true, code: "V3", title: "⏰ Bingo time" })]))} now={0} />);
     expect(live).toContain("cue-bar live");
     expect(live).toContain("🎤 YOUR CUE");
     expect(live).toContain("V3");
