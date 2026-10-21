@@ -12,8 +12,9 @@
 //! `ended`, the stations and the sounds, and hears how it ended (`onExit`).
 //! `start: "choose"` always shows the card (the standalone wizard);
 //! `"auto"` asks `firstStep` (the tent laptop: straight to Play here when no
-//! headset is online). The begin never sends `force`: the server's marked-only
-//! gate decides (wave 16, R16).
+//! headset is online, once a station poll has answered). The begin never
+//! sends `force`: the server's marked-only gate decides (wave 16, R16).
+
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -85,12 +86,10 @@ export function ReinstallFlow({
   onExit: (e: FlowExit) => void;
 }) {
   const vr = stations.list.filter((s) => s.world === "vr");
-  const online = vr.filter((s) => s.online).length;
-  const [step, setStep] = useState<Step>(() => {
-    if (start === "choose") return { kind: "choose" };
-    const first = firstStep(program, ended, config.role, online, canDraw);
-    return first === "play" ? { kind: "starting", label: "Copying files…" } : { kind: "choose" };
-  });
+  // `auto` decides once, at mount: on stations it has heard from (null =
+  // no poll has answered yet, so the card — a headset may be ready, D8).
+  const [first] = useState(() => (start === "auto" ? firstStep(program, ended, config.role, stations.ok ? vr.filter((s) => s.online).length : null, canDraw) : "choose"));
+  const [step, setStep] = useState<Step>(() => (first === "play" ? { kind: "starting", label: "Copying files…" } : { kind: "choose" }));
   const exit = useRef(onExit);
   exit.current = onExit;
   const alive = useRef(true);
@@ -148,9 +147,8 @@ export function ReinstallFlow({
   // card; a program the server would turn away never begins.
   const started = useRef(false);
   useEffect(() => {
-    if (started.current || start !== "auto") return;
+    if (started.current) return;
     started.current = true;
-    const first = firstStep(program, ended, config.role, online, canDraw);
     if (first === "refuse") exit.current({ kind: "failed", text: NOT_MARKED });
     else if (first === "play") void playHere();
   }, []);
@@ -178,6 +176,8 @@ export function ReinstallFlow({
     );
   }
 
+  // Turned away at mount: nothing to show while the host hears why.
+  if (first === "refuse") return null;
   const state = programState(program, ended);
   const info = programStatus(program, ended);
   return (

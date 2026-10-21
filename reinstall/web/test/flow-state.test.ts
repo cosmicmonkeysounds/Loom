@@ -3,12 +3,22 @@
 //! (`Game.hold`: the leash paused, input ignored, the pump alive), and the
 //! game's sounds on a borrowed bus (`createSfx(output)`).
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import type { StationInfo } from "@loom/house";
+import { defaultConfig, type DeviceRole } from "../src/config.ts";
 import { firstStep } from "../src/flow-state.ts";
-import { exitFlash } from "../src/flow.tsx";
+import { exitFlash, ReinstallFlow, type FlowStations } from "../src/flow.tsx";
 import { createSfx } from "../src/game/audio.ts";
 import { Game } from "../src/game/engine.ts";
 import { IdleLeash } from "../src/game/leash.ts";
-import { NOT_MARKED } from "../src/program.ts";
+import { NOT_MARKED, type Program } from "../src/program.ts";
+
+// A frame on a bare Game: the walk itself is not under test here.
+vi.mock("../src/game/physics.ts", async (orig) => ({
+  ...(await orig<object>()),
+  move: (body: unknown) => body,
+}));
 
 const row = (over: Partial<{ captured: boolean; restricted: boolean; eligible: boolean; marked: boolean; favour: boolean }> = {}) => ({ captured: false, restricted: false, eligible: false, marked: false, favour: false, ...over });
 const corrupted = row({ captured: true, eligible: true });
@@ -35,6 +45,13 @@ describe("firstStep", () => {
     expect(firstStep(marked, false, "station", 0, true)).toBe("choose");
     expect(firstStep(marked, false, "both", 0, false)).toBe("choose");
     expect(firstStep(marked, false, "player", 0, false)).toBe("choose");
+  });
+
+  it("no station poll has answered yet: the card on a device that may send (a headset may be ready, D8)", () => {
+    expect(firstStep(marked, false, "both", null, true)).toBe("choose");
+    // A player-only device never sends, so it doesn't wait on the headsets.
+    expect(firstStep(marked, false, "player", null, true)).toBe("play");
+    expect(firstStep(healthy, false, "both", null, true)).toBe("refuse");
   });
 
   it("after an ending anyone the server lets in plays (the party favour)", () => {
@@ -146,3 +163,47 @@ describe("createSfx(output) — the game on a host's bus", () => {
     }).not.toThrow();
   });
 });
+
+describe("ReinstallFlow start=\"auto\" — the first screen, decided at mount", () => {
+  const program = (over: Partial<Program> = {}): Program => ({ id: "g1", name: "Winamp", location: null, ...marked, ...over });
+  const vr = (online: boolean): StationInfo => ({ id: "q1", name: "Quest 1", world: "vr", online, busy: null });
+  const render = (p: Program, stations: FlowStations, role: DeviceRole = "both", start: "auto" | "choose" = "auto") =>
+    renderToStaticMarkup(
+      createElement(ReinstallFlow, {
+        config: defaultConfig({ eventId: "e", token: "t", role }),
+        program: p,
+        ended: false,
+        stations,
+        canDraw: true,
+        sfx: createSfx(() => null),
+        start,
+        onExit: () => {},
+      }),
+    );
+  const polled = (list: StationInfo[]): FlowStations => ({ list, ok: true, refresh: () => {} });
+  const unpolled: FlowStations = { list: [], ok: false, refresh: () => {} };
+
+  it("no headset online: straight to the begin (no card)", () => {
+    const html = render(program(), polled([vr(false)]));
+    expect(html).toContain("Copying files…");
+    expect(html).not.toContain("Play here");
+  });
+
+  it("a headset online, or the stations not polled yet: the choose card", () => {
+    for (const st of [polled([vr(true)]), unpolled]) {
+      const html = render(program(), st);
+      expect(html).toContain("Play here");
+      expect(html).toContain("Send to a headset");
+      expect(html).not.toContain("Copying files…");
+    }
+  });
+
+  it("a program the server would turn away: nothing on screen (not even a frame of the card)", () => {
+    expect(render(program({ marked: false, restricted: false, eligible: false }), polled([]))).toBe("");
+  });
+
+  it("start=\"choose\" (the standalone wizard) always shows the card", () => {
+    expect(render(program(), polled([vr(false)]), "both", "choose")).toContain("Play here");
+  });
+});
+
