@@ -100,6 +100,11 @@ const MAPS = "spatial-maps.json";
  *  `facts.ts`). Not `facts.json`: `LOOM_FACTS` defaults to a sibling of
  *  `LOOM_HOUSE`, and the default event's state dir can be that same dir. */
 const FACTS = "project-facts.json";
+/** The project's `audio.json` as this event snapshotted it (wave 17,
+ *  `audio.ts`). Not `audio.json`: `LOOM_AUDIO` may sit in the same dir. */
+const AUDIO = "project-audio.json";
+/** A director's speaker save (the map editor), which wins over the project's. */
+const AUDIO_SAVE = "audio-save.json";
 /** Web Push subscriptions by device (K-31a, `push.ts`). */
 const PUSH = "push.json";
 /** Every duck found this story (SW-RE-14, the ceremony's speedrun). */
@@ -320,6 +325,29 @@ export class Store {
   }
   saveFacts(text: string | null): void {
     writeFileSync(this.path(FACTS), JSON.stringify({ version: 1, text }));
+  }
+
+  // The project's `audio.json` this event snapshotted (launch, reload,
+  // `/api/mod/load {audio}`, Save to project) and a director's save, which
+  // wins over it (`audio.ts`). Neither is story state: a restart keeps both.
+
+  loadAudio(): string | null {
+    const v = readJson<{ version?: unknown; text?: unknown }>(this.path(AUDIO));
+    if (v === null || v.version !== 1) return null;
+    return typeof v.text === "string" ? v.text : null;
+  }
+  saveAudio(text: string | null): void {
+    writeFileSync(this.path(AUDIO), JSON.stringify({ version: 1, text }));
+  }
+  /** The director's save, unvalidated (the hub checks it). */
+  loadAudioSave(): unknown {
+    return readJson<unknown>(this.path(AUDIO_SAVE));
+  }
+  saveAudioSave(audio: unknown): void {
+    writeFileSync(this.path(AUDIO_SAVE), JSON.stringify(audio, null, 2));
+  }
+  clearAudioSave(): void {
+    rmSync(this.path(AUDIO_SAVE), { force: true });
   }
 
   // One line per duck found (`spatial.ts` `DuckRun`), cleared with the
