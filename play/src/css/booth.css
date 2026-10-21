@@ -275,3 +275,256 @@
    the booth windows' close box (the window's caption is already 44 px). */
 .booth-back { width: var(--tap); height: var(--tap); font-size: 18px; }
 .booth-layer-win > .w95-titlebar .w95-x { min-height: var(--tap); }
+
+/* ── wave 18 (BOOTH-SPEC §3–4): pop-outs, the Wanted board, the confrontation,
+   PLAYER SELECT, Rows, the door, Clippy's 🎤 bar, Guests' tabs. No `:has()`,
+   `aspect-ratio`, `color-mix()`, `inset` or flex `gap` here (Chrome 87 /
+   iOS 15): grid `gap` and margins only. Tokens from `themes.css` only. ── */
+
+/* The pop-out rung's stand-in (`booth/popouts/rung-stub.tsx`; the moments
+   lane's `popout.tsx` replaces it). Floating: anchored just above the dock,
+   no scrim. Docked: a 56 px strip in the window's own flow. */
+.booth-popout-anchor { position: relative; flex: 0 0 auto; height: 0; }
+.bpop {
+  background: var(--face); color: var(--ink); box-shadow: var(--raised);
+  font: 14px/1.35 var(--ui-font);
+}
+.bpop-float {
+  position: absolute; left: 4px; right: 4px; bottom: 4px; z-index: 38;
+  max-height: 70vh; overflow: auto; -webkit-overflow-scrolling: touch;
+}
+.bpop-cap {
+  display: flex; align-items: center; min-height: 32px; padding: 2px 4px 2px 8px;
+  background: var(--title-grad); color: var(--title-ink); font: 700 14px var(--ui-font);
+}
+.bpop-cap.alarm { background: var(--maroon); }
+.bpop-cap.win { background: var(--good); }
+.bpop-cap-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpop-pager { flex: 0 0 auto; margin: 0 8px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.bpop-min { flex: 0 0 auto; }
+.bpop-body { padding: 8px 10px 10px; }
+.bpop-guest { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 6px; }
+.bpop-body.compact .bpop-guest { grid-template-columns: 48px minmax(0, 1fr); }
+.bpop-guest .pavatar { width: 96px; height: 96px; font-size: 28px; }
+.bpop-body.compact .bpop-guest .pavatar { width: 48px; height: 48px; font-size: 18px; }
+.bpop-guest-text { display: flex; flex-direction: column; min-width: 0; }
+.bpop-name { font-size: 24px; line-height: 1.15; text-transform: uppercase; overflow-wrap: anywhere; }
+.bpop-place { margin-top: 4px; font-size: 18px; font-weight: 700; }
+.bpop-seen { margin-top: 2px; font-size: 13px; color: var(--dim-ink); }
+.bpop-p { margin: 4px 0; }
+.bpop-row { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; align-items: center; min-height: var(--tap); padding: 4px 0; border-top: 1px solid var(--line); }
+.bpop-row-text { display: flex; flex-direction: column; min-width: 0; }
+.bpop-row-place { font-size: 13px; color: var(--muted-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpop-row .pavatar { width: 32px; height: 32px; }
+.bpop-row-name { font-weight: 700; overflow-wrap: anywhere; }
+.bpop-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+.bpop-btn { min-height: var(--tap); font: 14px var(--ui-font); }
+.bpop-btn.primary { grid-column: 1 / -1; min-height: 56px; font-size: 17px; font-weight: 700; }
+.bpop-btn.armed { background: var(--ink); color: var(--white); }
+.bpop-body.compact .bpop-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bpop-body.compact .bpop-btn.primary { grid-column: auto; min-height: var(--tap); font-size: 14px; }
+.bpop-status { margin-top: 8px; padding: 3px 6px; box-shadow: var(--sunken); font-size: 12px; color: var(--muted-ink); }
+.bpop-strip { margin: 0 0 8px; }
+.bpop-strip-btn {
+  display: flex; align-items: center; width: 100%; min-height: 56px; margin: 0; padding: 0 10px;
+  border: none; background: var(--title-grad); color: var(--title-ink); font: 700 14px var(--ui-font); text-align: left; cursor: pointer;
+}
+.bpop-strip.alarm .bpop-strip-btn { background: var(--maroon); }
+.bpop-strip-text { flex: 1 1 auto; min-width: 0; margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpop-strip-open { flex: 0 0 auto; margin-left: 8px; }
+.bpop-docked { margin: 0 0 8px; }
+.bpop-tray { margin: 0; padding: 0; list-style: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .bpop-float .bpop-cap.alarm { animation: bpop-flash 400ms steps(2) 2; }
+}
+@keyframes bpop-flash { 50% { background: var(--maroon-2); } }
+
+/* A booth window in alarm: the maroon caption (the Wanted board, a confrontation). */
+.booth-layer-win.alarm > .w95-titlebar { background: var(--maroon); }
+.booth-status { padding: 3px 6px; box-shadow: var(--sunken); font: 12px var(--ui-font); color: var(--muted-ink); }
+.booth-status.refused { color: var(--bad); font-weight: 700; }
+
+/* Win95 tab strips (Guests, the board): they scroll sideways inside themselves. */
+/* `min-width: 0` on the window: a tab strip's min-content would otherwise
+   widen the whole booth window past a 360 px phone. */
+.booth-layer-win { min-width: 0; }
+.booth-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; min-width: 0; max-width: 100%; -webkit-overflow-scrolling: touch; margin: 0 0 4px; padding: 2px 0; }
+.booth-tab {
+  flex: 0 0 auto; min-height: var(--tap); margin-right: 2px; padding: 0 12px;
+  border: none; background: var(--face); color: var(--ink); box-shadow: var(--raised); font: 14px var(--ui-font); cursor: pointer;
+}
+.booth-tab.current { box-shadow: var(--pressed); font-weight: 700; }
+.booth-tab.zero { color: var(--dim-ink); }
+.booth-tab:focus-visible { outline: 1px dotted var(--ink); outline-offset: -4px; }
+.booth-here { display: flex; align-items: center; font: 14px var(--ui-font); }
+.booth-here > span { flex: 0 0 auto; margin-right: 8px; font-weight: 700; }
+.booth-here select { flex: 1 1 auto; min-width: 0; min-height: var(--tap); border: none; font: 16px var(--ui-font); }
+.booth-guest-sub.loud { color: var(--maroon); font-weight: 700; }
+.booth-tag { display: inline-block; margin-left: 8px; padding: 0 6px; font: 700 11px/18px var(--ui-font); vertical-align: middle; }
+.booth-tag.marked { background: var(--maroon); color: var(--white); }
+.booth-tag.internet { background: var(--navy); color: var(--white); }
+.booth-tag.restricted { background: var(--avatar-guest); color: var(--white); }
+.booth-tag.bath { box-shadow: var(--sunken); }
+
+/* The NOW card's extra row and its 🚨 chip. */
+.booth-now-chip {
+  flex: 0 0 auto; min-height: 32px; min-width: var(--tap); padding: 0 8px;
+  border: none; background: var(--maroon); color: var(--white); box-shadow: var(--raised); font: 700 14px var(--ui-font); cursor: pointer;
+}
+.booth-now-row {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: var(--tap);
+  margin: 4px 0; padding: 0 10px; font: 700 14px var(--ui-font); text-align: left;
+}
+.booth-now > .booth-now-row { width: calc(100% - 16px); margin: 4px 8px; }
+.booth-now-row.alarm { background: var(--maroon); color: var(--white); }
+.booth-now-row .pavatar { flex: 0 0 auto; margin-right: 8px; }
+.booth-now-row-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booth-now-globals { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; margin: 4px 8px; }
+.booth-now-global { min-height: var(--tap); }
+.booth-now-global.armed { background: var(--ink); color: var(--white); }
+
+/* The tray's Minesweeper LED. */
+.tray-item.led { background: var(--black); color: var(--bad); box-shadow: var(--sunken); }
+.led-digits { margin-left: 4px; font: 700 22px/1 "Courier New", Courier, monospace; letter-spacing: 1px; }
+/* The tray with the LED or the 🔔 on a phone: the clock drops first, then
+   Guests' word, so Scan keeps its room (§3). */
+@media (max-width: 479px) {
+  .booth-frame.alarmed .taskbar .tray-clock { display: none; }
+  .booth-frame.alarmed .taskbar .taskbar-btn[data-tour="guests"] .taskbar-label { display: none; }
+  .booth-frame.alarmed .taskbar .taskbar-btn[data-tour="guests"] { padding: 0 8px; }
+  .led-digits { font-size: 18px; }
+}
+:root[data-theme="plain"] .tray-item.led { background: var(--white); color: var(--ink); }
+
+/* The WANTED poster. */
+.wanted-board { display: flex; flex-direction: column; }
+.wanted-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.wanted-poster { background: var(--white); color: var(--ink); box-shadow: var(--raised); padding: 0 0 8px; }
+.wanted-head { padding: 4px 8px; background: var(--maroon); color: var(--white); font: 700 14px var(--ui-font); letter-spacing: 0.2em; }
+.wanted-poster.theirs .wanted-head { background: var(--line); }
+.wanted-poster.caught .wanted-head { background: var(--dim-ink); }
+.wanted-main { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; padding: 8px 8px 0; align-items: start; }
+.wanted-pic { position: relative; width: 72px; height: 72px; margin: 0; padding: 0; border: none; background: none; cursor: pointer; }
+.wanted-pic .pavatar { width: 72px; height: 72px; font-size: 24px; }
+.wanted-text { display: flex; flex-direction: column; min-width: 0; }
+.wanted-name { margin: 0; padding: 0; border: none; background: none; color: inherit; font: 700 24px/1.15 var(--ui-font); text-transform: uppercase; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.wanted-tag { align-self: flex-start; margin-top: 2px; padding: 0 6px; font: 700 12px/20px var(--ui-font); box-shadow: var(--sunken); }
+.wanted-tag.new { background: var(--highlight); color: var(--ink); }
+.wanted-tag.you { background: var(--navy); color: var(--white); }
+.wanted-tag.caught { color: var(--bad); }
+.wanted-reason { margin-top: 4px; font-size: 14px; }
+.wanted-place { margin-top: 2px; font-size: 16px; font-weight: 700; }
+.wanted-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 8px 8px 0; }
+.wanted-btn { min-height: var(--tap); font: 14px var(--ui-font); }
+.wanted-stale { grid-column: 1 / -1; font: 13px var(--ui-font); }
+.wanted-banner { margin: 6px 0; box-shadow: var(--sunken); background: var(--white); }
+.wanted-banner-head { padding: 3px 8px; background: var(--maroon); color: var(--white); font: 700 13px var(--ui-font); }
+.wanted-banner-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font: 14px var(--ui-font); }
+.wanted-banner-row .wanted-btn { margin-left: 8px; }
+
+/* The CAPTURED rubber stamp: −12°, a double border, static under Reduce Motion. */
+.stamp {
+  position: absolute; left: 50%; top: 50%; z-index: 1; padding: 2px 8px; white-space: nowrap;
+  border: 3px double var(--bad); color: var(--bad); background: var(--white);
+  font: 700 14px var(--ui-font); letter-spacing: 0.1em;
+  transform: translate(-50%, -50%) rotate(-12deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stamp.slam { animation: stamp-slam 160ms steps(4) 1; }
+}
+@keyframes stamp-slam {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(1.6); }
+  to { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+}
+
+/* The confrontation (§4.3). */
+.confront { display: flex; flex-direction: column; align-items: stretch; text-align: center; }
+.confront-cap { margin: -2px 0 10px; padding: 4px 8px; background: var(--maroon); color: var(--white); font: 700 15px var(--ui-font); text-align: left; }
+.confront-pic { position: relative; align-self: center; width: 96px; height: 96px; }
+.confront-pic .pavatar { width: 96px; height: 96px; font-size: 32px; }
+.confront.captured .confront-pic .stamp { font-size: 18px; }
+.confront-name { margin: 8px 0 2px; font: 700 28px/1.1 var(--ui-font); text-transform: uppercase; overflow-wrap: anywhere; }
+.confront-reason { margin: 4px 0 8px; font: 15px var(--ui-font); }
+.confront-say { margin: 0 0 10px; padding: 8px 10px; text-align: left; font: 15px/1.35 var(--chat-font); }
+.confront-say-k { font: 700 12px var(--ui-font); }
+.confront-remote { margin: 0 0 8px; font: 700 14px var(--ui-font); color: var(--maroon); }
+.confront-shield { position: relative; min-height: 64px; margin: 4px 0 10px; font: 700 18px var(--ui-font); overflow: hidden; }
+.confront-shield.armed { background: var(--ink); color: var(--white); }
+.confront-dead-bar { position: absolute; left: 0; bottom: 0; height: 6px; width: 100%; background: var(--navy); transform-origin: left center; }
+.confront-dead-word { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .confront-shield.dead .confront-dead-bar { animation: confront-fill 600ms linear 1; }
+}
+@keyframes confront-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .confront-shield.dead .confront-shield-label { display: none; }
+  .confront-shield.dead .confront-dead-word { display: inline; }
+}
+.confront-foot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-bottom: 8px; }
+.confront-btn { min-height: var(--tap); font: 14px var(--ui-font); }
+.confront-walk { margin: 8px 0; font: 16px var(--ui-font); }
+
+/* PLAYER SELECT (§4.7). */
+.bsel { display: flex; flex-direction: column; }
+.bsel-moves { display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.bsel-moves-k { margin-right: 6px; font: 700 12px var(--ui-font); letter-spacing: 0.1em; }
+.bsel-move { min-height: 56px; min-width: 64px; margin: 0 4px 4px 0; font: 700 16px var(--ui-font); }
+.bsel-move.current { box-shadow: var(--pressed); }
+.bsel-move.done { color: var(--good); }
+.bsel-prompt { margin: 6px 0 2px; font: 700 18px/1.25 var(--ui-font); }
+.bsel-helper { margin: 0 0 6px; font: 14px var(--ui-font); color: var(--muted-ink); }
+.bsel-reply { margin: 4px 0; padding: 4px 8px; box-shadow: var(--sunken); background: var(--white); font: 14px var(--ui-font); }
+.bsel-reply.refused { color: var(--bad); font-weight: 700; }
+.bsel-same { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 56px; margin-bottom: 6px; padding: 4px 8px; box-shadow: var(--sunken); background: var(--white); }
+.bsel-same-name { font: 700 16px var(--ui-font); overflow-wrap: anywhere; }
+.bsel-same-go { min-height: var(--tap); }
+.bsel-at-hand { margin: 4px 0; font: 700 13px var(--ui-font); }
+.bsel-search { min-height: var(--tap); margin-top: 8px; }
+.bsel-foot { display: flex; flex-direction: column; }
+.bsel-go { min-height: 56px; font: 700 16px var(--ui-font); }
+.bsel-go.armed { background: var(--ink); color: var(--white); }
+.bsel-foot-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+.bsel-foot-row .w95-btn { min-height: var(--tap); }
+.bsel-done p { margin: 4px 0; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 380px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tile { display: flex; flex-direction: column; align-items: stretch; min-width: 0; margin: 0; padding: 4px; border: none; background: var(--face); color: var(--ink); box-shadow: var(--raised); font: 14px var(--ui-font); cursor: pointer; }
+.tile.chosen { background: var(--navy); color: var(--white); box-shadow: var(--pressed); }
+.tile.greyed { opacity: 0.55; cursor: default; }
+.tile-pic { position: relative; display: block; width: 100%; padding-top: 100%; }
+.tile-pic .pavatar { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-size: 24px; }
+.tile-name { margin-top: 4px; font-weight: 700; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.tile-grey { font-size: 12px; }
+
+/* Rows (§4.10) and the door queue (§4.4). */
+.rows { display: flex; flex-direction: column; }
+.rows-note { margin: 0 0 8px; font: 14px var(--ui-font); }
+.rows-list { margin: 0; padding: 0; list-style: none; box-shadow: var(--sunken); background: var(--white); }
+.rows-row { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.rows-row.pressed { opacity: 0.55; }
+.rows-who { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 0 8px; width: 100%; min-height: var(--tap); margin: 0; padding: 0; border: none; background: none; color: inherit; font: 14px var(--ui-font); text-align: left; cursor: pointer; }
+.rows-who .pavatar { grid-row: 1 / span 2; }
+.rows-name { font-weight: 700; overflow-wrap: anywhere; }
+.rows-place { font-size: 12px; color: var(--dim-ink); }
+.rows-btns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 4px; }
+.rows-btn { min-height: 56px; font: 14px var(--ui-font); }
+.rows-btn.armed { background: var(--ink); color: var(--white); }
+.rows-more { grid-column: 1 / -1; min-height: var(--tap); }
+.rows-over { padding: 10px; font: 16px var(--ui-font); text-align: center; }
+.rows-clock { margin-left: 6px; font-variant-numeric: tabular-nums; }
+.door-has { font: 13px var(--ui-font); color: var(--muted-ink); }
+.door-next { width: 100%; min-height: 56px; font: 700 16px var(--ui-font); }
+.booth-readout-done { display: inline-block; margin-top: 4px; font: 700 13px var(--ui-font); color: var(--good); }
+
+/* Clippy's 🎤 ON MIC bar (§4.9): a yellow band while a cue is live. */
+.cue-bar { position: relative; display: flex; align-items: stretch; min-height: 56px; background: var(--face); color: var(--ink); box-shadow: var(--raised); }
+.cue-bar.live { background: var(--highlight); color: var(--ink); }
+.cue-bar-main { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-width: 0; margin: 0; padding: 4px 8px; border: none; background: none; color: inherit; font: 14px var(--ui-font); text-align: left; cursor: pointer; }
+.cue-bar-line1 { display: flex; align-items: center; min-width: 0; font-weight: 700; }
+.cue-bar-line1 > * { flex: 0 0 auto; margin-right: 6px; }
+.cue-bar-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-bar-line2 { margin-top: 2px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cue-bar-fire { position: relative; flex: 0 0 auto; min-width: 88px; min-height: 56px; margin: 0; font: 700 16px var(--ui-font); overflow: hidden; }
+.cue-bar.armed .cue-bar-fire { background: var(--ink); color: var(--white); }
+.cue-bar-drawer { position: absolute; left: 0; right: 0; bottom: 100%; z-index: var(--z-drawer); max-height: 60vh; display: flex; flex-direction: column; }
+.cue-bar-drawer-body { overflow: auto; -webkit-overflow-scrolling: touch; padding: 6px; }

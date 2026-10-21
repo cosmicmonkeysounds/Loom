@@ -44,6 +44,9 @@ export function hostOf(viewHost: boolean | undefined, authHost: boolean | undefi
   return (viewHost ?? authHost) === true;
 }
 
+/** The story's own rooms' section header in a booth (wave 18, G2). */
+export const CHATS_TITLE = "Chats";
+
 /** The sidebar section the staff rooms sit in (`rooms/spaces.ts SPACES.staff`). */
 export const STAFF_SPACE = "staff";
 
@@ -95,7 +98,8 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
     title: view?.title ?? "Lobby",
     subtitle: "everyone · broadcast feed",
     spaceId: STORY_SPACE,
-    spaceTitle: view?.title,
+    // Wave 18 (BOOTH-SPEC §3): the rooms list's section reads "Chats", never the story title.
+    spaceTitle: CHATS_TITLE,
     order: 0,
     people: everyone,
     messages: feedMsgs,
@@ -136,7 +140,7 @@ export function buildPrimeChannels(messages: Map<number, ChatMessage>, view: Pri
       title: c.title,
       spaceId: isStaff ? STAFF_SPACE : c.spaceId,
       ...(isStaff ? { staff: true as const, subtitle: "staff only" } : {}),
-      spaceTitle: isStaff ? undefined : c.spaceId === STORY_SPACE ? (view?.title ?? spaceTitles.get(c.spaceId)) : spaceTitles.get(c.spaceId),
+      spaceTitle: isStaff ? undefined : c.spaceId === STORY_SPACE ? CHATS_TITLE : spaceTitles.get(c.spaceId),
       member: c.member,
       canPost: c.canPost,
       threadable: c.threadable,
@@ -282,8 +286,12 @@ export interface PrimeSession {
   /** Leave a membership-gated channel. */
   leaveChannel: (channel: string) => Promise<unknown>;
   becomeAdmin: (passcode: string) => Promise<void>;
-  /** Fire a performer / admin interaction on a guest, as this character. */
-  act: (name: string, guest: string) => Promise<PrimeActResult>;
+  /** Fire a performer / admin interaction on a guest, as this character —
+   *  or (C4, wave 18) a global one with no guest. */
+  act: (name: string, guest?: string | null) => Promise<PrimeActResult>;
+  /** Clippy's own cue (C8, wave 18): `/api/prime/cue`, the cue-sheet path
+   *  (409 `moved` / `doorsClosed`, `refused`). */
+  cue: (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined, signal?: AbortSignal) => Promise<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>;
   /** Codex: hand one of the character's entries to a guest. */
   shareCodex: (entry: string, to: string) => Promise<unknown>;
   /** The approver's booth: settle a held transfer / deny one in its window. */
@@ -470,7 +478,16 @@ export function usePrimeSession(): PrimeSession {
     [base, auth],
   );
   const act = useCallback(
-    (name: string, guest: string) => post<PrimeActResult>("/api/prime/act", { name, guest }, auth!.token),
+    (name: string, guest?: string | null) => post<PrimeActResult>("/api/prime/act", guest != null && guest !== "" ? { name, guest } : { name }, auth!.token),
+    [post, auth],
+  );
+  const cue = useCallback(
+    (name: string, subject: string | null, args: Record<string, unknown> | null, presses: number | undefined) =>
+      post<{ refused?: boolean; moved?: boolean; said?: string[]; staff?: string[] }>(
+        "/api/prime/cue",
+        { name, ...(subject !== null ? { subject } : {}), ...(args !== null ? { args } : {}), ...(presses !== undefined ? { presses } : {}) },
+        auth!.token,
+      ),
     [post, auth],
   );
   const shareCodex = useCallback(
@@ -577,5 +594,5 @@ export function usePrimeSession(): PrimeSession {
   const roomLinkPending = useRoomLinks(threads, auth !== null && ready && view !== null, true);
   const landing = useLandingBrand();
   useTheme(auth === null ? landing.theme : view?.theme);
-  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
+  return { auth, view, alert: alerts.alert, dismissAlert: alerts.dismiss, alerts, messages, connected, ready, notice, threads, login, scan, card, say, inviteToChannel, leaveChannel, becomeAdmin, act, cue, shareCodex, walletApprove, walletDeny, moderate, setHidden, answerWidget, widgetAnswers, leave, roomLinkPending };
 }

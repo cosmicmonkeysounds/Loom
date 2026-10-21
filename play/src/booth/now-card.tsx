@@ -15,6 +15,41 @@ import { usePlayHost } from "../host.ts";
 import { eventRoot, tappedInside } from "../chrome/balloon.tsx";
 import type { Interaction, ObjectiveCheck, ObjectiveView } from "../types.ts";
 import { checkDone, loadTicks, saveTicks, tickable, toggleTick, withTicks } from "./ticks.ts";
+import { ARM_LINE, useArmButtons } from "../arm.ts";
+import { armsFirst } from "./model.ts";
+import { pickLayout, type PickLayout } from "./popouts/model.ts";
+import type { BoothObjective, ObjectiveTarget } from "./wire.ts";
+
+/** The NOW card's one extra row (wave 18, BOOTH-SPEC §4.5); first match wins. */
+export type NowRow =
+  | { kind: "board"; n: number }
+  | { kind: "target"; target: ObjectiveTarget; place: string | null }
+  | { kind: "pick"; layout: Exclude<PickLayout, "target">; n: number; title: string }
+  | { kind: "global"; buttons: Interaction[] };
+
+/**
+ * Which extra row the NOW card shows: the Wanted board while marks are
+ * loose (a booth that gets the board), else the NOW objective's target, else
+ * its picker, else its global buttons (C4, ≤ 2), else none.
+ */
+export function nowRow(o: BoothObjective | undefined, opts: { wanted: number | null; interactions: readonly Interaction[]; globals: readonly string[]; placeTitle: (loc: string | null) => string | null }): NowRow | null {
+  if (opts.wanted !== null && opts.wanted > 0) return { kind: "board", n: opts.wanted };
+  if (o === undefined) return null;
+  const layout = pickLayout(o, opts.interactions);
+  if (layout === "target" && o.target !== undefined) return { kind: "target", target: o.target, place: opts.placeTitle(o.target.location ?? null) };
+  if (layout === "steps" || layout === "rows") return { kind: "pick", layout, n: o.pick?.length ?? 0, title: o.title };
+  const byId = new Map(opts.interactions.map((i) => [i.id, i]));
+  const globals = o.buttons.filter((id) => opts.globals.includes(id) && byId.has(id)).slice(0, 2).map((id) => byId.get(id)!);
+  return globals.length > 0 ? { kind: "global", buttons: globals } : null;
+}
+
+/** What the extra row's taps do (the booth binds them). */
+export interface NowRowActions {
+  onBoard?: () => void;
+  onTarget?: (t: ObjectiveTarget) => void;
+  onPick?: (objectiveId: string) => void;
+  onGlobal?: (id: string) => Promise<unknown>;
+}
 
 /** The labels of the story buttons an objective puts on a guest's card. */
 export function objectiveButtonLabels(o: Pick<ObjectiveView, "buttons">, interactions: readonly Interaction[]): string[] {
@@ -31,7 +66,7 @@ export function nowCount(o: ObjectiveView | Pick<ObjectiveView, "checklist">, ti
 /** What a paused show adds to the caption, the Win95 way (the guest's NOW bar's word, D3). */
 export const PAUSED = " (Paused)";
 
-/** How many checklist lines the pinned card always shows. */
+/** How many checklist lines the pinned card always shows (2 while the extra row shows: never taller than before). */
 export const PINNED_CHECKS = 3;
 
 /**
@@ -41,12 +76,12 @@ export const PINNED_CHECKS = 3;
  * never moves a line: the one just ticked stays under the finger, to
  * untick.
  */
-export function pinnedChecks(o: ObjectiveView): { shown: number[]; rest: number[] } {
+export function pinnedChecks(o: ObjectiveView, max: number = PINNED_CHECKS): { shown: number[]; rest: number[] } {
   const all = o.checklist.map((_, i) => i);
-  if (all.length <= PINNED_CHECKS) return { shown: all, rest: [] };
+  if (all.length <= max) return { shown: all, rest: [] };
   const open = all.filter((i) => o.checklist[i]!.done !== true);
-  const pick = new Set(open.slice(0, PINNED_CHECKS));
-  for (const i of all) if (pick.size < PINNED_CHECKS) pick.add(i);
+  const pick = new Set(open.slice(0, max));
+  for (const i of all) if (pick.size < max) pick.add(i);
   const shown = all.filter((i) => pick.has(i));
   return { shown, rest: all.filter((i) => !pick.has(i)) };
 }
@@ -111,6 +146,8 @@ export function NowCard({
   session = null,
   compact = false,
   paused = false,
+  row = null,
+  rowActions = {},
 }: {
   objectives: readonly ObjectiveView[] | undefined;
   interactions: readonly Interaction[];
@@ -126,6 +163,9 @@ export function NowCard({
   /** The show is paused (`PrimeView.paused`): the caption greys out and says
    *  "(Paused)", as the guest's NOW bar does (D3). */
   paused?: boolean;
+  /** Wave 18 (§4.5): the one extra row under the checklist (`nowRow`). */
+  row?: NowRow | null;
+  rowActions?: NowRowActions;
 }) {
   const host = usePlayHost();
   const [open, setOpen] = useState(false);
@@ -168,14 +208,20 @@ export function NowCard({
             {character}
             {paused && PAUSED}
           </span>
+          {row?.kind === "board" && (
+            <button type="button" className="booth-now-chip" aria-label={`Wanted board: ${row.n}`} onClick={rowActions.onBoard}>
+              🚨 {row.n}
+            </button>
+          )}
           {pill !== null && <span className="booth-now-pill">{pill}</span>}
         </div>
+        {!compact && row?.kind === "board" && <NowExtra row={row} actions={rowActions} objectiveId="" />}
       </div>
     );
   }
   const count = nowCount(now, ticks);
   const others = list.slice(1);
-  const { shown, rest } = pinnedChecks(now);
+  const { shown, rest } = pinnedChecks(now, row !== null ? PINNED_CHECKS - 1 : PINNED_CHECKS);
   const hint = (o: ObjectiveView) => {
     const labels = objectiveButtonLabels(o, interactions);
     return labels.length > 0 ? <p className="booth-now-hint">On a guest's card: {labels.join(" · ")}</p> : null;
@@ -197,8 +243,14 @@ export function NowCard({
           {paused && PAUSED}
         </span>
         {count !== "" && <span className="booth-now-count">{count}</span>}
+        {row?.kind === "board" && (
+          <button type="button" className="booth-now-chip" aria-label={`Wanted board: ${row.n}`} onClick={rowActions.onBoard}>
+            🚨 {row.n}
+          </button>
+        )}
         {pill !== null && <span className="booth-now-pill">{pill}</span>}
       </div>
+      {!compact && row !== null && <NowExtra row={row} actions={rowActions} objectiveId={now.id} />}
       {!compact && (shown.length > 0 || hasMore) && (
         <div className="booth-now-body">
           {shown.length > 0 && (
@@ -236,6 +288,65 @@ export function NowCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** The NOW card's extra row (§4.5). */
+function NowExtra({ row, actions, objectiveId }: { row: NowRow; actions: NowRowActions; objectiveId: string }) {
+  const arm = useArmButtons();
+  const [busy, setBusy] = useState<string | null>(null);
+  if (row.kind === "board") {
+    return (
+      <button type="button" className="w95-btn booth-now-row alarm" onClick={actions.onBoard}>
+        <span>🚨 Wanted board ({row.n})</span>
+        <span aria-hidden>▸</span>
+      </button>
+    );
+  }
+  if (row.kind === "target") {
+    return (
+      <button type="button" className="w95-btn booth-now-row" onClick={() => actions.onTarget?.(row.target)}>
+        <PersonAvatar name={row.target.name} size="sm" />
+        <span className="booth-now-row-text">
+          {row.target.name}
+          {row.place !== null ? ` · 📍 ${row.place}` : ""}
+        </span>
+        <span aria-hidden>▸</span>
+      </button>
+    );
+  }
+  if (row.kind === "pick") {
+    return (
+      <button type="button" className="w95-btn booth-now-row" onClick={() => actions.onPick?.(objectiveId)}>
+        <span>{row.layout === "steps" ? `🎮 PLAYER SELECT (${row.n})` : `📋 ${row.title} (${row.n})`}</span>
+        <span aria-hidden>▸</span>
+      </button>
+    );
+  }
+  return (
+    <div className="booth-now-globals">
+      {row.buttons.map((b) => {
+        const armed = arm.armed === b.id;
+        return (
+          <button
+            key={b.id}
+            type="button"
+            className={`w95-btn booth-btn booth-now-global ${armed ? "armed" : ""}`}
+            disabled={busy !== null}
+            aria-busy={busy === b.id || undefined}
+            onClick={() =>
+              arm.tap(b.id, armsFirst(b), () => {
+                if (actions.onGlobal === undefined) return;
+                setBusy(b.id);
+                void actions.onGlobal(b.id).finally(() => setBusy(null));
+              })
+            }
+          >
+            {busy === b.id ? `${b.label} …` : armed ? ARM_LINE : b.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

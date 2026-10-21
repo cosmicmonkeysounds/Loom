@@ -18,6 +18,11 @@ import { CardTitle, GuestCardBody, type CardSeed } from "./card.tsx";
 import { BoothLayer } from "./layer.tsx";
 import { cameraOn, closedGate, passAccepted, scanError, scannerClose } from "./model.ts";
 import { Icon } from "../chrome/icons.tsx";
+import { ConfrontScreen } from "./confront.tsx";
+import { unmarkIdOf } from "./card.tsx";
+import { confrontFor, type Confront } from "./popouts/model.ts";
+import { PopOutDock } from "./popouts/rung.ts";
+import { looseWanted, wantedOf } from "./wire.ts";
 
 /** How long a just-closed card's pass is ignored by the camera. */
 export const CLOSED_PASS_MS = 4000;
@@ -84,6 +89,8 @@ export function ScannerScreen({
   onOpenThread,
   gate: sharedGate,
   onCardGuest,
+  caption,
+  onBoard,
 }: {
   session: PrimeSession;
   admin: boolean;
@@ -92,12 +99,16 @@ export function ScannerScreen({
   gate?: PassGate;
   /** The guest a scan is for (its target at once, the card's guest on the reply): the moments layer drops readouts about them while the card shows them. */
   onCardGuest?: (guestId: string) => void;
+  /** Wave 18: opened from a claim — "📷 Scan Minesweeper's pass". */
+  caption?: string;
+  /** Open the Wanted board (the CAPTURED screen's Board button). */
+  onBoard?: () => void;
 }) {
   const [cam, setCam] = useState<CameraState>("off");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [card, setCard] = useState<{ id: string; seed: CardSeed } | null>(null);
+  const [card, setCard] = useState<{ id: string; seed: CardSeed; confront?: Confront; said?: string[] } | null>(null);
   const ownGate = useMemo(() => closedGate(CLOSED_PASS_MS), []);
   const gate = sharedGate ?? ownGate;
   const problem = cameraProblem(cam);
@@ -122,7 +133,13 @@ export function ScannerScreen({
         setBusy(false);
         setNote("");
         onCardGuest?.(r.guest.id);
-        setCard({ id: r.guest.id, seed: { card: r.card, replies: r.responses, ...(r.said !== undefined ? { said: r.said } : {}), ...(r.staff !== undefined ? { staff: r.staff } : {}), ...(r.refused !== undefined ? { refused: r.refused } : {}) } });
+        // Wave 18 (§4.3): an in-person scan of a wanted program is the confrontation.
+        const confront = confrontFor(r, wantedOf(session.view), session.view?.interactions ?? [], "scanner");
+        setCard({
+          id: r.guest.id,
+          seed: { card: r.card, replies: r.responses, ...(r.said !== undefined ? { said: r.said } : {}), ...(r.staff !== undefined ? { staff: r.staff } : {}), ...(r.refused !== undefined ? { refused: r.refused } : {}) },
+          ...(confront !== null ? { confront, said: (r.said ?? []).map((l) => l.text) } : {}),
+        });
         return true;
       },
       (e) => {
@@ -153,7 +170,13 @@ export function ScannerScreen({
 
   const name = card === null ? "" : (card.seed.card?.guest.name ?? session.view?.guests.find((g) => g.id === card.id)?.name ?? card.id);
   return (
-    <BoothLayer title={card !== null ? <CardTitle name={name} /> : <span className="booth-layer-title"><Icon name="scan" /> Scan a pass</span>} label={card !== null ? `${name}'s card` : "Scanner"} onClose={close}>
+    <BoothLayer
+      title={card !== null ? <CardTitle name={name} /> : <span className="booth-layer-title"><Icon name="scan" /> {caption ?? "Scan a pass"}</span>}
+      label={card !== null ? `${name}'s card` : "Scanner"}
+      onClose={close}
+      tone={card?.confront !== undefined ? "alarm" : undefined}
+      dock={card === null}
+    >
       <div className={`booth-scan ${card !== null ? "behind" : ""}`} ref={scanBox} aria-hidden={card !== null || undefined}>
         <div className={`booth-cam ${cam}`}>
           {live && !problem && <CameraScanner onCode={onCode} onState={setCam} />}
@@ -173,7 +196,27 @@ export function ScannerScreen({
         )}
         <Scanner onScan={doScan} busy={busy} />
       </div>
-      {card !== null && (
+      {card !== null && card.confront !== undefined && (
+        <div className="booth-card">
+          <div className="booth-card-scroll">
+            <PopOutDock />
+            <ConfrontScreen
+              key={card.id}
+              c={card.confront}
+              me={session.auth?.character ?? ""}
+              said={card.said}
+              unmarkId={card.seed.card !== undefined ? unmarkIdOf(card.seed.card.live, session.view?.interactions ?? []) : null}
+              board={looseWanted(session.view).filter((w) => w.id !== card.id).length}
+              caughtBy={(wantedOf(session.view) ?? []).find((w) => w.id === card.id && w.captured)?.claimedBy ?? null}
+              press={(id) => session.act(id, card.id)}
+              onNotNow={next}
+              onNext={next}
+              onBoard={onBoard}
+            />
+          </div>
+        </div>
+      )}
+      {card !== null && card.confront === undefined && (
         <GuestCardBody
           key={card.id}
           session={session}
@@ -185,6 +228,7 @@ export function ScannerScreen({
             onOpenThread(card.id);
           }}
           onNext={next}
+          onBoard={onBoard}
         />
       )}
     </BoothLayer>

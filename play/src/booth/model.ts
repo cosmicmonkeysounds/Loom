@@ -505,6 +505,40 @@ export function boothSidebar(spaces: readonly SpaceGroup[], opts: { character?: 
     const after = at >= 0 ? at + 1 : out.findIndex((s) => s.id !== "pinned" && s.id !== "staff");
     out.splice(after < 0 ? out.length : after, 0, messages);
   }
+  return withChatLog(out, opts.activeId ?? null);
+}
+
+/** The booth's broadcast feed (the room named after the story). */
+export const FEED_ID = "__feed";
+
+/** The demoted lobby's row (wave 18, G2): never a default room. */
+export const CHAT_LOG_TITLE = "📜 Chat log";
+
+/**
+ * Wave 18 (G2, BOOTH-SPEC §3): the house's broadcast feed leaves the top of
+ * Chats and becomes the last row of the list — `📜 Chat log`, quiet (no
+ * preview, no badge), so it folds into *Other rooms* with the empty rooms.
+ * It stays where it is while it is the open room.
+ */
+export function withChatLog(spaces: SpaceGroup[], activeId: string | null): SpaceGroup[] {
+  let feed: Channel | null = null;
+  const out: SpaceGroup[] = [];
+  for (const s of spaces) {
+    const keep = s.channels.filter((c) => {
+      if (c.id === FEED_ID && c.id !== activeId) {
+        feed = c;
+        return false;
+      }
+      return true;
+    });
+    if (keep.length > 0) out.push(keep.length === s.channels.length ? s : { ...s, channels: keep });
+  }
+  if (feed === null) return out;
+  const f: Channel = feed;
+  const row: Channel = { ...f, kind: "open", title: CHAT_LOG_TITLE, subtitle: "Everything the house said tonight", people: [], messages: [], unread: 0, decision: null, needsYou: false };
+  const last = out[out.length - 1];
+  if (last === undefined) return [{ id: f.spaceId, title: "Chats", channels: [row] }];
+  out[out.length - 1] = { ...last, channels: [...last.channels, row] };
   return out;
 }
 
@@ -581,4 +615,127 @@ export function primeStreamUrl(base: string, auth: { token: string; admin: boole
   if (auth === null) return null;
   const cap = `${auth.admin ? "a" : ""}${auth.host === true ? "h" : ""}`;
   return `${base}/events?role=prime&token=${encodeURIComponent(auth.token)}${cap !== "" ? `&cap=${cap}` : ""}`;
+}
+
+// --- 🗂 Guests, wave 18 (BOOTH-SPEC §4.11): tabs, one status tag, the place first ---
+
+/** The Guests window's tabs. */
+export type GuestTab = "here" | "marked" | "internet" | "missing" | "all";
+
+/** What the Guests rules read off the wanted board (C6) and the night. */
+export interface GuestListCtx {
+  /** `PrimeView.wanted`, or null when this booth gets none. */
+  wanted: ReadonlyArray<{ id: string; captured: boolean; claimedBy: string | null; reason: string | null; lastSeen: number | null }> | null;
+  me: string;
+  /** Story ms now (the Missing tab, "seen …"). */
+  now: number;
+  /** The live summons objective's `pick` (the Missing tab while it runs), else null. */
+  summons: readonly string[] | null;
+}
+
+/** Ten minutes unseen = missing (A1). */
+export const MISSING_MS = 10 * 60_000;
+
+const lastSeenOfRow = (g: PrimeGuest, ctx: GuestListCtx): number | null | undefined => {
+  const own = (g as PrimeGuest & { lastSeen?: number | null }).lastSeen;
+  if (own !== undefined) return own;
+  const w = ctx.wanted?.find((x) => x.id === g.id);
+  return w !== undefined ? w.lastSeen : undefined;
+};
+
+const flagOn = (g: PrimeGuest, re: RegExp) => (g.flags ?? []).some((f) => f.on && re.test(f.label.trim()));
+
+/** Is the Missing tab there? While a summons with a pick runs, or once the server sends `lastSeen` (A1). */
+export function hasMissingTab(guests: readonly PrimeGuest[], ctx: GuestListCtx): boolean {
+  return ctx.summons !== null || guests.some((g) => (g as PrimeGuest & { lastSeen?: unknown }).lastSeen !== undefined);
+}
+
+/** Is this guest on that tab? */
+export function guestTab(g: PrimeGuest, tab: GuestTab, ctx: GuestListCtx, here: string | null): boolean {
+  const w = ctx.wanted?.find((x) => x.id === g.id);
+  switch (tab) {
+    case "all":
+      return true;
+    case "here":
+      return here !== null && g.location === here;
+    case "marked":
+      // An older server sends no board: the story's Marked flag stands in.
+      return ctx.wanted === null ? !g.captured && flagOn(g, /^marked\b/iu) : w !== undefined && !w.captured;
+    case "internet":
+      return g.captured || flagOn(g, /^in the internet\b/iu);
+    case "missing": {
+      if (ctx.summons !== null) return ctx.summons.includes(g.id);
+      const seen = lastSeenOfRow(g, ctx);
+      return seen === null || (typeof seen === "number" && ctx.now - seen > MISSING_MS);
+    }
+  }
+}
+
+/** The one status tag on a row's first line. */
+export function statusTag(g: PrimeGuest, ctx: Pick<GuestListCtx, "wanted">): { text: string; tone: "marked" | "internet" | "bath" | "restricted" } | null {
+  const w = ctx.wanted?.find((x) => x.id === g.id);
+  if (w !== undefined ? !w.captured : ctx.wanted === null && !g.captured && flagOn(g, /^marked\b/iu)) return { text: "MARKED", tone: "marked" };
+  if (g.captured || flagOn(g, /^in the internet\b/iu)) return { text: "INTERNET", tone: "internet" };
+  if (flagOn(g, /bathroom/iu)) return { text: "🚻", tone: "bath" };
+  if (g.restricted === true) return { text: "⛔ RESTRICTED", tone: "restricted" };
+  return null;
+}
+
+/** A row's second line: always the place first, then when they were seen (else ✓ Cleared). */
+export function placeLine(g: PrimeGuest, where: string | null, ctx: Pick<GuestListCtx, "wanted" | "now">): string {
+  const seen = lastSeenOfRow(g, { ...ctx, me: "", summons: null });
+  const s = seen === undefined ? null : seen === null ? "not seen since the server started" : ctx.now - seen < 60_000 ? "seen now" : `seen ${Math.floor((ctx.now - seen) / 60_000)} min ago`;
+  const cleared = flagOn(g, /^cleared\b/iu) ? "✓ Cleared" : null;
+  return [`📍 ${where ?? "not in a room"}`, s ?? cleared].filter((x): x is string => x !== null).join(" · ");
+}
+
+/** A row's third line: at most two loud facts (a wanted guest's reason and claimer; else the card's loud chips). */
+export function loudLine(g: PrimeGuest, ctx: Pick<GuestListCtx, "wanted" | "me">): string[] {
+  const w = ctx.wanted?.find((x) => x.id === g.id && !x.captured);
+  if (w !== undefined) {
+    const out: string[] = [];
+    if (w.reason !== null && w.reason.trim() !== "") out.push(w.reason.trim());
+    out.push(w.claimedBy === null ? "🙋 Nobody yet" : w.claimedBy === ctx.me ? "🙋 You" : `🙋 ${w.claimedBy}`);
+    return out.slice(0, 2);
+  }
+  const tag = statusTag(g, ctx);
+  return factChips(g, null)
+    .filter((c) => c.tone !== "quiet")
+    .filter((c) => !(tag?.tone === "internet" && /captured/iu.test(c.text)) && !(tag?.tone === "bath" && /bathroom/iu.test(c.text)) && !(tag?.tone === "restricted" && /restricted/iu.test(c.text)) && !/^(marked|in the internet)$/iu.test(c.text))
+    .map((c) => c.text)
+    .slice(0, 2);
+}
+
+/** Every tab's order: marked-unclaimed, marked-mine, marked-others', then by name. */
+export function guestSort<T extends PrimeGuest>(list: readonly T[], ctx: Pick<GuestListCtx, "wanted" | "me">): T[] {
+  const rank = (g: PrimeGuest) => {
+    // An older server sends no board: a guest the story flags Marked still leads.
+    if (ctx.wanted == null) return !g.captured && flagOn(g, /^marked\b/iu) ? 0 : 3;
+    const w = ctx.wanted.find((x) => x.id === g.id && !x.captured);
+    if (w === undefined) return 3;
+    return w.claimedBy === null ? 0 : w.claimedBy === ctx.me ? 1 : 2;
+  };
+  return [...list].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+}
+
+/** The Here tab's default room: where the NOW pick stands most, else the fullest room, else The Desktop. */
+export function defaultHere(guests: readonly PrimeGuest[], pick: readonly string[] | null | undefined, rooms: readonly string[]): string | null {
+  const most = (ids: readonly PrimeGuest[]) => {
+    const n = new Map<string, number>();
+    for (const g of ids) if (g.location !== null) n.set(g.location, (n.get(g.location) ?? 0) + 1);
+    let best: string | null = null;
+    for (const [loc, c] of n) if (best === null || c > n.get(best)! || (c === n.get(best)! && loc < best)) best = loc;
+    return best;
+  };
+  if (pick !== null && pick !== undefined && pick.length > 0) {
+    const set = new Set(pick);
+    const hit = most(guests.filter((g) => set.has(g.id)));
+    if (hit !== null) return hit;
+  }
+  return most(guests) ?? rooms.find((r) => /desktop/iu.test(r)) ?? rooms[0] ?? null;
+}
+
+/** The tab Guests opens on: Marked when any (a booth that gets the board), else Here. */
+export function defaultGuestTab(guests: readonly PrimeGuest[], ctx: GuestListCtx): GuestTab {
+  return ctx.wanted !== null && guests.some((g) => guestTab(g, "marked", ctx, null)) ? "marked" : "here";
 }

@@ -53,11 +53,15 @@ export function ReadoutsView({
             m.readout === true || (m.kind !== "widget" && m.kind !== "codex" && m.kind !== "quest" && m.kind !== "wallet") ? (
               <li key={m.seq} className={`booth-readout w95-inset ${m.alert ? "alarm" : ""}`}>
                 <p className="booth-readout-text">{m.text}</p>
-                {m.about !== undefined && (
-                  <button type="button" className="w95-btn booth-readout-guest" onClick={() => onGuest(m.about!)}>
-                    <BoothIcon name="card" /> {nameOf(m.about)} ›
-                  </button>
-                )}
+                {m.about !== undefined &&
+                  (guests.find((g) => g.id === m.about)?.captured === true ? (
+                    // Wave 18 (§7.1): a readout about a program already in the Internet is done.
+                    <span className="booth-readout-done">✓ done</span>
+                  ) : (
+                    <button type="button" className="w95-btn booth-readout-guest" aria-label={`Open ${nameOf(m.about)}'s card`} onClick={() => onGuest(m.about!)}>
+                      <BoothIcon name="card" /> 🗂 Open card
+                    </button>
+                  ))}
               </li>
             ) : (
               <li key={m.seq} className="booth-readout-card">

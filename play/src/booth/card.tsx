@@ -17,6 +17,17 @@ import { BoothLayer } from "./layer.tsx";
 import { armsFirst, boothHost, goneLine, cardButtons, cardGuestFacts, cardReadKey, defaultFaceId, destructive, faceGroups, factChips, faceSettled, foldOpensItself, heldFace, inFlightGate, pressOutcome, scanError, scanRepeated, SCAN_REPEATED, type CardButton, type OutcomeLine } from "./model.ts";
 import { Icon } from "../chrome/icons.tsx";
 import { BoothIcon } from "./icons.tsx";
+import { ConfrontScreen } from "./confront.tsx";
+import { confrontFor, leadingGlyph, type Confront } from "./popouts/model.ts";
+import { PopOutDock } from "./popouts/rung.ts";
+import { WantedBanner } from "./wanted/poster.tsx";
+import { looseWanted, wantedOf } from "./wire.ts";
+
+/** The card's 🩹 unmark button among the live ids (the confrontation's "Not them…"). */
+export function unmarkIdOf(live: readonly string[], interactions: readonly { id: string; label: string }[]): string | null {
+  const byId = new Map(interactions.map((i) => [i.id, i.label]));
+  return live.find((id) => leadingGlyph(byId.get(id) ?? "") === "🩹") ?? null;
+}
 
 // `splitInteractions` lives in `model.ts` now; the barrel re-exports it from here.
 export { splitInteractions } from "./model.ts";
@@ -51,6 +62,9 @@ export function GuestCardBody({
   admin,
   onOpenThread,
   onNext,
+  confront: confrontMode,
+  onBoard,
+  onConfrontDone,
 }: {
   session: PrimeSession;
   guestId: string;
@@ -58,6 +72,12 @@ export function GuestCardBody({
   admin: boolean;
   onOpenThread: () => void;
   onNext?: () => void;
+  /** Wave 18 (§4.3): open on the confrontation (a remote one: two taps), e.g. from a `🛡` pop-out. */
+  confront?: "rescan";
+  /** Open the Wanted board (the captured screen's Board button). */
+  onBoard?: () => void;
+  /** Where the confrontation's Not now / Next guest go (default: `onNext`, else back to the card). */
+  onConfrontDone?: () => void;
 }) {
   const [card, setCard] = useState<GuestCardView | null>(seed?.card ?? null);
   // What the last press / scan came to (C1): replies, the character's
@@ -82,6 +102,11 @@ export function GuestCardBody({
   const [pressedId, setPressedId] = useState<string | null>(null);
   const arm = useArmButtons();
   const host = usePlayHost();
+  // Wave 18: the confrontation over the card (a rescan of a wanted program,
+  // or a card opened in confront mode); `said` = the scan's SAY IT lines.
+  const [confront, setConfront] = useState<{ c: Confront; said: string[] } | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const confrontAsked = useRef(confrontMode === "rescan");
   // Escape closes the "Share lore…" picker first (the booth window leaves
   // Escape alone while a sheet is open inside it) — on the host's key
   // target, so it works in a Run → Players pane too.
@@ -128,6 +153,16 @@ export function GuestCardBody({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestId, nightKey]);
+
+  // A card opened in confront mode shows the confrontation once its read lands.
+  useEffect(() => {
+    if (!confrontAsked.current || card === null) return;
+    confrontAsked.current = false;
+    const c = confrontFor({ guest: { id: guestId }, card }, wantedOf(view), view?.interactions ?? [], "rescan");
+    if (c !== null) setConfront({ c, said: [] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card]);
+  const wantedRow = (wantedOf(view) ?? []).find((w) => w.id === guestId && !w.captured) ?? null;
 
   // C3: the row's flags are the ones on plus failed gates; the card's read has them all.
   const guest: PrimeGuest | null = cardGuestFacts(row, card?.guest ?? null);
@@ -190,6 +225,9 @@ export function GuestCardBody({
         landed();
         setOutcome(pressOutcome({ replies: r.responses, said: r.said, staff: r.staff, refused: r.refused }, "scan"));
         if (r.card !== undefined) setCard(r.card);
+        // Wave 18 (§4.3): Scan again on a wanted program is a remote confrontation (two taps).
+        const c = confrontFor(r, wantedOf(session.view), session.view?.interactions ?? [], "rescan");
+        if (c !== null) setConfront({ c, said: (r.said ?? []).map((l) => l.text) });
       },
       (e) => {
         settle();
@@ -245,9 +283,50 @@ export function GuestCardBody({
     </p>
   );
 
+  if (confront !== null) {
+    return (
+      <div className="booth-card">
+        <div className="booth-card-scroll">
+          <PopOutDock />
+          <ConfrontScreen
+            c={confront.c}
+            me={character}
+            said={confront.said}
+            unmarkId={card !== null ? unmarkIdOf(card.live, view?.interactions ?? []) : null}
+            board={looseWanted(view).filter((w) => w.id !== guestId).length}
+            caughtBy={(wantedOf(view) ?? []).find((w) => w.id === guestId && w.captured)?.claimedBy ?? null}
+            press={(id) => session.act(id, guestId)}
+            onNotNow={() => {
+              setConfront(null);
+              (onConfrontDone ?? onNext)?.();
+            }}
+            onNext={() => {
+              setConfront(null);
+              (onConfrontDone ?? onNext)?.();
+            }}
+            onBoard={onBoard}
+          />
+        </div>
+      </div>
+    );
+  }
+  const claim = () => {
+    if (claiming) return;
+    setClaiming(true);
+    session.act("claim_escort", guestId).then(
+      () => setClaiming(false),
+      (e) => {
+        setClaiming(false);
+        setErr(cardError(e, session.view));
+      },
+    );
+  };
+
   return (
     <div className="booth-card">
       <div className="booth-card-scroll">
+        {/* Wave 18 (§2.2 rule 6): a waiting pop-out docks here, never over the face. */}
+        <PopOutDock />
         <div className="booth-card-who">
           <PersonAvatar name={name} size="md" />
           <div className="booth-card-name">
@@ -257,6 +336,7 @@ export function GuestCardBody({
             </span>
           </div>
         </div>
+        {wantedRow !== null && <WantedBanner w={wantedRow} me={character} busy={claiming} onClaim={(view?.interactions ?? []).some((i) => i.id === "claim_escort") ? claim : undefined} />}
         {chips.length > 0 && (
           <ul className="booth-facts" aria-label="Facts">
             {chips.map((c) => (
@@ -383,6 +463,8 @@ export function GuestCard({
   admin,
   onClose,
   onOpenThread,
+  confront,
+  onBoard,
 }: {
   session: PrimeSession;
   guestId: string;
@@ -390,12 +472,14 @@ export function GuestCard({
   admin: boolean;
   onClose: () => void;
   onOpenThread: () => void;
+  confront?: "rescan";
+  onBoard?: () => void;
 }) {
   const name = session.view?.guests.find((g) => g.id === guestId)?.name ?? seed?.card?.guest.name ?? guestId;
   return (
-    <BoothLayer title={<CardTitle name={name} />} label={`${name}'s card`} onClose={onClose}>
+    <BoothLayer title={<CardTitle name={name} />} label={`${name}'s card`} onClose={onClose} dock={false}>
       {/* Keyed per guest: a card's held face, outcome and fold never carry over to another guest. */}
-      <GuestCardBody key={guestId} session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} />
+      <GuestCardBody key={guestId} session={session} guestId={guestId} seed={seed} admin={admin} onOpenThread={onOpenThread} confront={confront} onBoard={onBoard} onConfrontDone={confront === "rescan" ? onClose : undefined} />
     </BoothLayer>
   );
 }
