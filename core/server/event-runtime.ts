@@ -389,10 +389,12 @@ export function nearNotice(name: string, args: Record<string, string | number | 
 
 /** The `# hosts` line after a 📝 plain miss's own (wave 18b, O4): it is not
  *  an exact match and not spelled close to the key, so it is held pending
- *  with its proposal (a lie at 100, a guess below) while `judge` rules. */
-export function missNotice(name: string, args: Record<string, string | number | boolean>, verdict: string, judge: string): string {
+ *  with its proposal (a lie at 100, a guess below) while `judge` rules
+ *  (null: the ask did not land, and the proposal waits for the settle). */
+export function missNotice(name: string, args: Record<string, string | number | boolean>, verdict: string, judge: string | null): string {
   const q = typeof args["question"] === "string" ? args["question"] : "?";
   const a = typeof args["answer"] === "string" ? args["answer"] : "";
+  if (judge === null) return `📝 Not an exact match: ${name}'s ${q} filing "${a}" is proposed ${verdict}. The proposal stands at the round's settle; you can judge it yourself on Run → Mind → Judging.`;
   return `📝 Not an exact match: ${name}'s ${q} filing "${a}" is proposed ${verdict} — asked ${judge} to rule. Without a ruling the proposal stands at the round's settle; you can judge it yourself on Run → Mind → Judging.`;
 }
 
@@ -725,9 +727,6 @@ export class EventRuntime {
   private readonly factsWatch = new FactsWatch();
   /** The house speakers + the audio interface (`audio.ts`, wave 17). */
   readonly audio: AudioHub;
-  /** Near misses already put to the `judge:` character (person, question,
-   *  answer) — never asked twice in one run of this process. */
-  private readonly rulingsAsked = new Set<string>();
   /** Near misses a restore found still pending (person, question, answer):
    *  the only ones put to the `judge:` character after they landed —
    *  contract J. A near miss filed with nobody online keeps wave 11's
@@ -1901,9 +1900,11 @@ export class EventRuntime {
    * Judging, one `# hosts` line from the story), and a replay lands the same.
    * `notice`: the server's own `# hosts` line after the story's, saying the
    * proposal came from the near-miss rule, not an exact match (the story's
-   * line only reads "Proposed: accurate").
+   * line only reads "Proposed: accurate"); a function is called once the
+   * mode is back (it may ask for a ruling first, so the line says what
+   * happened).
    */
-  private commitUnderReview(apply: () => SimEvent[], notice: string | null = null): SimEvent[] {
+  private commitUnderReview(apply: () => SimEvent[], notice: string | null | (() => string | null) = null): SimEvent[] {
     const book = this.factsBook();
     const sim = this.sim;
     if (book === null || sim === null) return apply();
@@ -1915,8 +1916,9 @@ export class EventRuntime {
     const events = apply();
     this.actingBy = JUDGE_BY;
     const after = this.commit("setVar", book.modeVar, was);
-    const room = notice === null ? null : hostsRoomOf(sim.model);
-    const told = room === null ? [] : this.commit("broadcast", `channel(${room})`, notice!);
+    const text = typeof notice === "function" ? notice() : notice;
+    const room = text === null ? null : hostsRoomOf(sim.model);
+    const told = room === null || text === null ? [] : this.commit("broadcast", `channel(${room})`, text);
     this.actingBy = actingBy;
     return [...before, ...events, ...after, ...told];
   }
@@ -1945,9 +1947,10 @@ export class EventRuntime {
   /**
    * Ask the `judge:` character to rule on `person`'s pending filing for
    * `question` — a near miss, or (wave 18b, O4) any other filing that is
-   * not an exact match — once per filing answer (`rulingsAsked`; a restart
-   * forgets, so one still pending after a restore may be asked again).
-   * True when the ruling joined the hub's judge queue.
+   * not an exact match — never while one for it is queued or out (wave
+   * 18b: a ruling that expired, was cancelled or answered leaves no mark,
+   * so the same answer filed again is asked again). True when the ruling
+   * joined the hub's judge queue.
    */
   private askRuling(person: string, question: string): boolean {
     const judge = this.rulerOnline();
@@ -1959,7 +1962,6 @@ export class EventRuntime {
     if (key === null || isExact(book, question, f.answer)) return false;
     const near = this.factsWatch.nearOf(book, question, f.answer);
     const asked = `${person}\u0000${question}\u0000${f.answer}`;
-    if (this.rulingsAsked.has(asked)) return false;
     if (this.agents.judging.some((j) => j.filing.person === person && j.filing.question === question)) return false;
     const id = this.agents.judge({
       character: judge,
@@ -1971,7 +1973,6 @@ export class EventRuntime {
       near,
     });
     if (id === null) return false;
-    this.rulingsAsked.add(asked);
     this.rulingsDue.delete(asked);
     this.pushModSnapshots();
     return true;
@@ -3905,7 +3906,6 @@ export class EventRuntime {
     }
     this.stopTicker();
     this.agents.reset(opts.by ?? "server", kind);
-    this.rulingsAsked.clear();
     this.rulingsDue.clear();
     this.spatial.reset(kind);
     this.agentPowerUses.clear();
@@ -5098,11 +5098,19 @@ export class EventRuntime {
         // rules on it when its worker can (wave 11b near misses, wave 18b
         // every other filing) — else wave 11's rule: a near miss waits,
         // proposed accurate; a plain miss is judged at once.
+        // The ruling is asked once the filing is in (and the mode is back),
+        // before the `# hosts` line, so the line never claims an ask that
+        // did not land.
         const ruler = judged !== null && judged.review ? judged.ruler : null;
         const who = this.sim!.persons.get(id)?.name ?? id;
-        const notice = judged === null || !judged.review ? null : judged.near !== null ? nearNotice(who, args, judged.near, ruler) : ruler !== null ? missNotice(who, args, judged.verdict ?? "uncertain", ruler) : null;
+        const question = args["question"];
+        const notice = () => {
+          if (judged === null) return null;
+          const asked = ruler !== null && typeof question === "string" && this.askRuling(id, question) ? ruler : null;
+          if (judged.near !== null) return nearNotice(who, args, judged.near, asked);
+          return ruler === null ? null : missNotice(who, args, judged.verdict ?? "uncertain", asked);
+        };
         this.fanout(judged?.review === true ? this.commitUnderReview(answered, notice) : answered());
-        if (ruler !== null && typeof args["question"] === "string") this.askRuling(id, args["question"]);
         sendJson(res, 200, { ok: true });
         return true;
       }

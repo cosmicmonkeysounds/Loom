@@ -74,6 +74,8 @@ ROLE Program
     if program.v == "pending":
       set program.v = program.j
       do fact_judged {program} {program.q} {program.v}
+  when deal_again for program:
+    -> Deal
 
 CHARACTER The Oracle
   listed: true
@@ -677,6 +679,23 @@ describe("the event — every non-exact filing goes to the judge (wave 18b, O4)"
     expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w.id, same: true, why: "" })).status).toBe(410);
     expect((await mod(rt, "/api/agent/judge", { id: a!.id, worker: w2.id, same: true, why: "" })).json).toEqual({ ok: true, verdict: "accurate" });
     w2.close();
+    rt.dispose();
+  });
+
+  it("the same answer filed again after its ruling was cancelled is asked again, and the # hosts line says so only when it was", async () => {
+    const { rt } = fresh();
+    const w = await worker(rt);
+    const ada = await guest(rt, "Ada");
+    await file(rt, ada, "Q2", "the dog", 80);
+    expect((await mod(rt, "/api/mod/signal", { name: "fact_uncertain", subject: ada.id, args: { question: "Q2" } })).status).toBe(200);
+    expect((await mod(rt, "/api/mod/signal", { name: "deal_again", subject: ada.id })).status).toBe(200);
+    const card = rt.chatHistoryFor(ada.id).filter((m) => m.kind === "widget" && m.widget?.kind === "fact").at(-1)!;
+    expect((await call(rt, "POST", "/api/guest/widget", { token: ada.token, seq: card.seq, result: { question: "Q2", answer: "the dog", confidence: 80 } })).status).toBe(200);
+    expect(w.judges().map((j) => j.answer)).toEqual(["the dog", "the dog"]);
+    expect(filingOf(await facts(rt), "Q2", "Ada")).toMatchObject({ final: null, asking: true });
+    expect(hostsLines(rt).filter((l) => l.startsWith("📝 Not an exact match"))).toHaveLength(2);
+    expect(hostsLines(rt).at(-1)).toMatch(/asked The Oracle to rule/u);
+    w.close();
     rt.dispose();
   });
 
