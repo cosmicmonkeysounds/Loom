@@ -74,8 +74,8 @@ import { fetchHouse, useSpatialStream, useWorld, type Gone, type WorldStore } fr
 import { fullScreenSim, hasWebGL2, paneSimulation } from "./webgl.ts";
 import { screenWake } from "./kiosk.ts";
 import { kioskFullscreen } from "./fullscreen.ts";
-import { setSoundView, sfx } from "./sound/bus.ts";
-import { drawsSlides, loadCutscenes } from "./cutscene/load.ts";
+import { setSoundMuted, setSoundView, sfx } from "./sound/bus.ts";
+import { drawsSlides, loadCutscenes, screenTargetOf, silentView } from "./cutscene/load.ts";
 import { attractOf, useScreenState, watchWhileAsleep, type ScreenState } from "./screen.ts";
 import { Attract } from "./Attract.tsx";
 import { IdleShow } from "./idle-show/IdleShow.tsx";
@@ -275,8 +275,15 @@ export function App() {
   useEffect(() => {
     kioskFullscreen().setEnabled(fullscreen);
   }, [fullscreen]);
-  // The effects' level follows the view (the TV's are quieter).
+  // The effects' level follows the view (the TV's are quieter); the mirror
+  // fallback stays silent (X5).
   useEffect(() => setSoundView(config?.view), [config?.view]);
+  const silent = config !== null && silentView(config.view);
+  useEffect(() => {
+    if (!silent) return;
+    setSoundMuted(true);
+    return () => setSoundMuted(false);
+  }, [silent]);
 
   const wake = useCallback(() => {
     void kioskFullscreen().request();
@@ -387,7 +394,7 @@ export function App() {
       name={config.name}
       state={screenState.state}
       character={config.character}
-      target={config.view === "tv" ? "tv" : "wall"}
+      target={screenTargetOf(config.view)}
       covered={covered}
       corner={
         <>

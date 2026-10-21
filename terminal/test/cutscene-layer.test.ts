@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ScreenLayer } from "../src/ScreenLayer.tsx";
 import { CutsceneSlot } from "../src/cutscene/slot.tsx";
-import { drawsSlides } from "../src/cutscene/load.ts";
+import { drawsSlides, screenTargetOf, silentView } from "../src/cutscene/load.ts";
 import { ACTS, SCENES, duplicateIds } from "../src/cutscene/registry.ts";
 import { NO_LAYERS, type ScreenLayers } from "../src/slides.ts";
 
@@ -86,5 +86,16 @@ describe("the cutscene layer, drawn", () => {
     // An overlay or a pilot: nothing.
     expect(renderToStaticMarkup(createElement(CutsceneLayer, { state: m, layers: { overlay: "alarm", slide: null }, bare: false, card: null, gear: null, scenes: DEMO_SCENES }))).toBe("");
     quiet.mockRestore();
+  });
+});
+
+describe("the mirror fallback (X5)", () => {
+  it("draws the TV's takes (no wall gags) and keeps its effects silent", () => {
+    expect(screenTargetOf("mirror")).toBe("tv");
+    expect(screenTargetOf("tv")).toBe("tv");
+    for (const v of ["auto", "world", "face", "shadow"]) expect(screenTargetOf(v), v).toBe("wall");
+    expect(silentView("mirror")).toBe(true);
+    expect(silentView("tv")).toBe(false);
+    expect(silentView("auto")).toBe(false);
   });
 });
