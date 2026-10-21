@@ -579,7 +579,7 @@ carrying only what that spot can hear, with a gain).
 - Capture and playback wait for the context to run: the first touch
   anywhere (every view, the shadow / chess / casino screens included), or
   at once on the TV's Chrome (`--autoplay-policy=no-user-gesture-required`).
-- A small **🎤** in the top-left corner (`MicCue.tsx`) shows while a player
+- A small **🎤** at the left edge, half way down (`MicCue.tsx`), shows while a player
   can hear this room. ⚙ shows the link's status as it stood when ⚙ opened;
   the heartbeat sends `mic=live|muted|denied|insecure|off`
   (`voice/roles.ts` `micReport`) for Run → Terminals.

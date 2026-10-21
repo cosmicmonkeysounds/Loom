@@ -239,7 +239,7 @@ stand in its room. Nobody needs to press anything — the terminal sends
 the room only while someone talks, and only while a player is near
 enough to hear it.
 
-A small **🎤** in the top-left corner of a terminal means a player in the
+A small **🎤** at the left edge of a terminal, half way down, means a player in the
 simulation can hear this room right now. When it isn't there, nothing
 from the room leaves the house.
 

@@ -168,8 +168,8 @@ The same speaker plays the reinstallation players near this terminal
 
 **The voice link (wave 19).** A placed terminal sends its room to the
 players near it in the games and plays them out of its speaker; nothing
-leaves the room unless a player is near enough to hear it (the 🎤 in the
-top-left corner says so), and the terminal sends nothing while it is
+leaves the room unless a player is near enough to hear it (the 🎤 at the
+left edge, half way down, says so), and the terminal sends nothing while it is
 making a sound itself (no echo back into the game). It starts with the
 first touch after a reload, like the voice. ⚙ → advanced has *let the
 games hear this room* and *play the players near this screen*; Run →
