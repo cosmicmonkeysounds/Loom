@@ -2,7 +2,8 @@
 //! bingo_time, the first reinstallation (Corrupted Code), the introduction,
 //! trivia_1, return, the results (the filing window and each question),
 //! filing closed, truth or dare and the bottle (its landing, an empty
-//! table, a Truth chosen), the ad hijack, trivia_2, the Truther Download.
+//! table, a Truth chosen, its verdict), the ad hijack, trivia_2, the
+//! Truther Download.
 //! Owned by its lane; the engine (`../registry.ts`) only lists them.
 //!
 //! Every scene is a picture of `t` (the server's ms since its cue), with a
@@ -16,10 +17,16 @@
 //! Triggers, checked against the story (`test/act1.test.ts`): slides are
 //! `screens_*` / `tv_*` cue values; moments are the house-wide beats
 //! (`Power On`, `Corrupted Code`, `Trabolta Introduction`, `Filing Closed`,
-//! `Truth Question`) and the `do pick` draws (`bottle_landed`,
-//! `bottle_empty`). Truth answered / refused and Dare are booth presses,
-//! which the server never makes moments of: the bottle's outcome on the TV
-//! is the landing and a Truth chosen (the poll's `Truth Question`).
+//! `Truth Question`), the `do pick` draws (`bottle_landed`, `bottle_empty`)
+//! and the draw's verdict — the booth's `truth_answered` / `truth_refused`
+//! / `chose_dare` about the pick, which the server makes a moment of. A
+//! Dare tapped on the phone is no press: the bottle's slide reads it off
+//! the night (`phoneDare`).
+//!
+//! The TV says the character's lines as the poll that brings them lands, so
+//! a scene with his voice in it (the introduction, the bottle's landing) is
+//! timed to it and plays its accents `{over: true}` (a plain effect is
+//! dropped while he speaks).
 
 import "./act1.css";
 import { useRef, type CSSProperties, type ReactNode } from "react";
