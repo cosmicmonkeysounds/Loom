@@ -334,6 +334,14 @@
 .led-digits { margin-left: 4px; font: 700 22px/1 "Courier New", Courier, monospace; letter-spacing: 1px; }
 /* The tray with the LED or the 🔔 on a phone: the clock drops first, then
    Guests' word, so Scan keeps its room (§3). */
+/* A countdown in the tray: on a phone the clock steps aside for it, then
+   (under 400 px) the act chip, so the bar never scrolls sideways. */
+@media (max-width: 479px) {
+  .booth-frame .taskbar .tray-clock.yields { display: none; }
+}
+@media (max-width: 399px) {
+  .booth-frame .taskbar .tray-act.yields { display: none; }
+}
 @media (max-width: 479px) {
   .booth-frame.alarmed .taskbar .tray-clock { display: none; }
   .booth-frame.alarmed .taskbar .taskbar-btn[data-tour="guests"] .taskbar-label { display: none; }

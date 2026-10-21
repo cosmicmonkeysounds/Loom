@@ -8,7 +8,7 @@
   background: var(--face); border-top: 1px solid var(--line);
 }
 .host-bar {
-  display: flex; align-items: stretch; gap: 4px;
+  display: flex; align-items: stretch; gap: 4px; min-width: 0; max-width: 100%; overflow: hidden;
   min-height: 52px; max-height: 64px; padding: 3px 4px;
 }
 .host-bar-main {

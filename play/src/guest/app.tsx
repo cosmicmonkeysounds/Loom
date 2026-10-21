@@ -522,7 +522,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   });
   const tray = (
     <>
-      <ShowClockTray clock={showClockOf(st)} />
+      <ShowClockTray clock={showClockOf(st)} yields={(st.countdowns ?? []).length > 0} />
       <CountdownTray countdowns={st.countdowns} clock={st.clock} paused={st.paused === true} stamp={st} />
       {st.wallet !== undefined ? (
         <BalanceTray view={st.wallet} frozen={frozen} onOpen={() => nav.go({ to: "wallet" })} />

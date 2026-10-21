@@ -94,6 +94,7 @@ export function Taskbar({
         className={`w95-btn taskbar-btn taskbar-start${open ? " open" : ""}`}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label="Start"
         data-tour="start"
         onClick={() => (open ? close() : setOpen(true))}
       >

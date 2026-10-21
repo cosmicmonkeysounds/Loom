@@ -74,11 +74,13 @@ export function BoothTray({
         </button>
       )}
       {waiting > 0 && <TrayItem text={`🔔 ${waiting}`} title={`${waiting} waiting for you`} onClick={onWaiting} tone="alarm" />}
-      <ShowClockTray clock={showClockOf(view)} />
+      <ShowClockTray clock={showClockOf(view)} yields={soon !== null} />
       {held > 0 ? (
         <TrayItem icon={<BoothIcon name="receipt" />} text={String(held)} title={`${held} held transfer${held === 1 ? "" : "s"} to approve — open the Wallet`} onClick={onWallet} tone="alarm" />
       ) : act !== null ? (
-        <TrayItem text={act.text} title={act.title} />
+        <span className={`tray-act${soon !== null ? " yields" : ""}`}>
+          <TrayItem text={act.text} title={act.title} />
+        </span>
       ) : null}
       {soon !== null && (
         <TrayItem

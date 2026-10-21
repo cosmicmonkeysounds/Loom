@@ -418,8 +418,15 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
   position: absolute; top: 3px; right: 6px; min-width: 16px; padding: 0 3px; border-radius: 8px;
   background: var(--bad); color: var(--white); font: 700 11px/16px var(--ui-font);
 }
-/* the tray: at 370–399 px the countdown takes the clock's place; below
-   370 px the clock goes, the countdown (while one runs) and the balance stay */
+/* the tray: below 430 px a running countdown takes the clock's place
+   (`.tray-clock.yields`); below 370 px the clock goes anyway, the countdown
+   (while one runs) and the balance stay. The windows never shrink under a
+   48 px target; the tray gives way first (it clips, never pushes the page). */
+.guest-frame .taskbar-btn.stacked { min-width: 48px; }
+.guest-frame .taskbar-tray { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+@media (max-width: 429px) {
+  .tray-clock.yields { display: none; }
+}
 @media (max-width: 399px) {
   .guest-frame .taskbar-tray > :nth-child(n+4) { display: none; }
 }
