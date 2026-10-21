@@ -40,6 +40,10 @@
 9. Wall tablets in Fully Kiosk (`view=auto`: they show the screensaver + ads
    until Trabolta is introduced), all green on the heartbeat card (the Run
    page's Terminals card; the `📟 N/N` pill goes red + chimes on a tablet silent 20 s).
+   Wave 19's voice link: Fully Kiosk → *Enable Microphone Access* on each,
+   touch each once after a reload, and every placed tablet's row reads
+   **🎤** (red **🎤 tap** = untouched since it loaded, **🎤 denied** = the
+   permission, **🎤 http** = not the https address); the TV's reads 🎤 off.
 10. The tent tablet on `/reinstall/?code=<mod>&name=Tent tablet`. In both
     games a program may hit the King once per visit; his one health bar is
     shared all night (Run shows it; 👑 restores it). The King's **chess**
