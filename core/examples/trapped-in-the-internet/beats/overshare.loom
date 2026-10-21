@@ -119,6 +119,7 @@ Truther Download: Some programs' human identities, and their reasons for accepti
 // (the Play app's `sides` widget); after it, the Sides screen.
 // DRAFT w18
 show sides "🕚 SYSTEM CLOCK RESET. Two doors have opened in the computer." to program with thread: Truther Download, moment: big
+set program.doors_open = true
 
 // ── Midnight ──
 

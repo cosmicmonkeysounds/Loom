@@ -10,7 +10,9 @@ import { LazyDoors, LazyInvite } from "./lazy.tsx";
 /** A `WidgetDef` (it carries the wave 18 `inline` / `fullBleed` flags the big rung reads). */
 export type GuestWidgetDef = WidgetDef;
 
-export const SIDES_WIDGET: GuestWidgetDef = { label: "🚪 choose a side", answerable: true, inline: true, fullBleed: true, render: (p) => <LazyDoors {...p} /> };
+/** The doors re-deal: an ending deals `show sides … with closed: true`,
+ *  which supersedes a card still up (recheck N5) and asks nothing. */
+export const SIDES_WIDGET: GuestWidgetDef = { label: "🚪 choose a side", answerable: true, inline: true, fullBleed: true, supersedes: true, closed: (c) => c.params["closed"] === "true", render: (p) => <LazyDoors {...p} /> };
 export const INVITE_WIDGET: GuestWidgetDef = { label: "🚪 an invitation", answerable: true, inline: true, render: (p) => <LazyInvite {...p} /> };
 
 /** Register a kind through the moments lane's `registerWidget`. */

@@ -26,7 +26,7 @@ import { usePlayHost } from "../host.ts";
 import { retractedPinSeqs } from "../pins.ts";
 import type { WidgetHook } from "../stream/bubble.tsx";
 import type { AlertLevel, ChatMessage, ObjectiveView } from "../types.ts";
-import { widgetInline } from "../widgets.tsx";
+import { WIDGETS, cardAsks, supersededCards, widgetInline } from "../widgets.tsx";
 import { ChunkBoundary, retryableLazy } from "../lazy-chunk.tsx";
 import type { BigCard } from "./big.tsx";
 import { exitsOf, type Exit, type ExitContext, type Nav } from "./exits.ts";
@@ -414,11 +414,12 @@ function useMomentsEngine(input: MomentsInput): Engine {
     if ((alerts.histories?.() ?? 1) === 0 || input.objectives === undefined) return;
     mem.swept = session;
     const answered = input.widgets?.answered;
+    const done = doneCards(input.messages);
     const old = sweepBigs(input.messages.values(), alerts.mark(), viewerRef.current, {
       now: storyNow(input.messages.values(), input.clock),
       phase: live.current.phase,
       acked: mem.signIn.acked,
-      answered: (seq) => answered?.has(seq) === true,
+      answered: (seq) => answered?.has(seq) === true || done.has(seq),
       processed: mem.processed,
     });
     if (old.length === 0) return;
@@ -503,6 +504,17 @@ function useMomentsEngine(input: MomentsInput): Engine {
     prevPhase.current = now;
     if (before !== undefined && before !== now) dispatch({ type: "phase", phase: now });
   }, [input.phase]);
+
+  // A card a newer one replaced, or one that asks nothing any more (an
+  // ending's closing doors card), is no longer anyone's move: its big
+  // moment leaves the queue (recheck N5: Walk in after the ending).
+  useEffect(() => {
+    const done = doneCards(input.messages);
+    if (done.size === 0) return;
+    const keys = mem.state.queue.filter((q) => q.moment.kind === "card" && q.moment.seq !== null && done.has(q.moment.seq)).map((q) => q.moment.key);
+    if (keys.length > 0) dispatch({ type: "read", keys });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.messages, state.queue.length]);
 
   // A `!` pin taken down (an unpin, or a newer pin with its key) leaves the
   // queue and the missed list: a lifted mark is not news.
@@ -790,6 +802,14 @@ function keepExtra(mem: EngineMemory, m: Moment): void {
 /** A moment that only sends the viewer to choose a side (a house one with `go: sides`). */
 function sendsToSides(m: Moment): boolean {
   return m.house === true && m.severity !== "big" && (m.go ?? []).some((g) => g.kind === "sides");
+}
+
+/** The cards that no longer ask anything: replaced by a newer one of their
+ *  kind in the room, or closed (`WidgetDef.closed`). */
+export function doneCards(messages: ReadonlyMap<number, ChatMessage>): Set<number> {
+  const done = supersededCards(messages.values());
+  for (const m of messages.values()) if (m.kind === "widget" && m.widget !== undefined && WIDGETS[m.widget.kind]?.answerable === true && !cardAsks(m.widget)) done.add(m.seq);
+  return done;
 }
 
 /** A card moment whose card the viewer has not answered. */

@@ -10,6 +10,11 @@ import { whereRowOf } from "../src/guest/mission-model.ts";
 import { memberCount } from "../src/sides/model.ts";
 import { drawnIcon } from "../src/moments/exits.ts";
 import { ExitButtons } from "../src/moments/surfaces.tsx";
+import { doneCards } from "../src/moments/provider.tsx";
+import { registerSidesWidgets } from "../src/sides/widgets.tsx";
+import { Doors } from "../src/sides/doors.tsx";
+import { SidesContext } from "../src/sides/context.ts";
+import type { ChatMessage } from "../src/types.ts";
 
 describe("N1: a new sign-in counts the server's answered cards", () => {
   it("merges the server's answered seqs into this device's answers", () => {
@@ -64,5 +69,24 @@ describe("N7: an exit shows one icon", () => {
   it("the balloon's exit is a flex row (the icon never wraps onto its own line)", () => {
     const css = readFileSync(new URL("../src/css/moments.css", import.meta.url), "utf8");
     expect(css).toMatch(/\.moments-balloon-go \{\n  display: inline-flex; align-items: center;/u);
+  });
+});
+
+describe("N5: after the ending the doors are no longer offered", () => {
+  registerSidesWidgets();
+  const doors = (seq: number, params: Record<string, string> = {}) =>
+    ({ seq, channel: "dm:Truther Download", channelKind: "dm", title: "", from: "Truther Download", kind: "widget", text: "", ts: seq, audience: ["g-1"], parentSeq: null, hidden: false, widget: { kind: "sides", text: "🕚 Two doors.", params } }) as ChatMessage;
+  it("the closing card supersedes the open one; both are done", () => {
+    const msgs = new Map([[5, doors(5)], [9, doors(9, { closed: "true" })]]);
+    expect([...doneCards(msgs)].sort()).toEqual([5, 9]);
+    expect([...doneCards(new Map([[5, doors(5)]]))]).toEqual([]);
+  });
+  it("the doors render closed, with no Walk in", () => {
+    const card = { kind: "sides", text: "🕚 Two doors.", params: { closed: "true" } };
+    const out = renderToStaticMarkup(createElement(SidesContext.Provider, { value: { view: null, calls: null } }, createElement(Doors, { card, seed: 1, onAnswer: () => {}, answered: null })));
+    expect(out).toContain("The doors have closed.");
+    expect(out).not.toContain("Walk in");
+    const old = renderToStaticMarkup(createElement(SidesContext.Provider, { value: { view: null, calls: null } }, createElement(Doors, { card: { ...card, params: {} }, seed: 1, superseded: true, answered: null })));
+    expect(old).toContain("The doors have closed.");
   });
 });

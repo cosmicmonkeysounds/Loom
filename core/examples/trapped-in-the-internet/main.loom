@@ -276,6 +276,8 @@ ROLE Program
   // DRAFT w18: how many programs this leader has recruited to their side by pass.
   recruits: 0 to 500 = 0
   got_truther: bool = false
+  // DRAFT w18 (fix): the doors card is still up on this program's phone (recheck N5).
+  doors_open: bool = false
   zipped: bool = false
   zip_seen: 0 to 99 = 0
   bobbed: bool = false
@@ -1103,6 +1105,17 @@ ROLE Program
   // hasn't filed yet (the play app folds every fact card but the newest in
   // the thread). The question strings are Night.q_h1 … Night.q_f2, set by
   // the generated `== Facts Seed` (generated/questions.loom, from facts.json).
+  // DRAFT w18 (fix, recheck N5): the doors card answered, or the night
+  // over with it still up: an ending deals a closing card that supersedes
+  // it (the phone folds it to a note), so no Walk in is offered after the end.
+  when sides answered for program:
+    set program.doors_open = false
+  when Night.ended == true and self.doors_open == true:
+    set self.doors_open = false
+    fire doors_shut for self
+  when doors_shut for program:
+    show sides "🚪 The doors have closed." to program with thread: Truther Download, closed: true
+
   when deal_fact_card for program:
     set program.fact_open = ""
     set program.fact_sep = ""

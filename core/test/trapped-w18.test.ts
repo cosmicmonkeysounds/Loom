@@ -167,6 +167,19 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     expect(alert.go).toEqual([{ kind: "sides", label: "Choose a side" }, { kind: "dm", id: "dm:Truther Download", label: "Open Truther Download" }]);
   }, SLOW);
 
+  it("an ending closes a doors card still up: a closing card supersedes it; an answered one gets none (recheck N5)", () => {
+    const n = boot();
+    for (const c of TO_Y2K) n.press(c);
+    // g1 walks through a door; g4 leaves the card up all night.
+    n.signal("sides answered", "g1", { side: "Unlimited Power" });
+    const end = n.take(n.sim.setVar("Night.ended", "true"));
+    const closing = (id: string) => to(end, id).filter((m) => m.kind === "widget" && m.widget?.kind === "sides");
+    expect(closing("g4")).toHaveLength(1);
+    expect(closing("g4")[0]).toMatchObject({ channel: "dm:Truther Download", widget: { params: { closed: "true" } } });
+    expect(closing("g4")[0]!.moment).toBeUndefined();
+    expect(closing("g1")).toEqual([]);
+  }, SLOW);
+
   it("no house alert sends a phone to the lobby; the night's alerts carry their place", () => {
     const n = boot();
     const all: ChatMessage[] = [];

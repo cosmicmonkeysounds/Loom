@@ -55,7 +55,7 @@ export function answeredSide(picked: string | null, rows: readonly SideRow[]): s
   return rows.find((r) => r.id === picked)?.name ?? picked;
 }
 
-export function Doors({ card, onAnswer, answered }: WidgetProps) {
+export function Doors({ card, onAnswer, answered, superseded }: WidgetProps) {
   const { view, calls } = useSides();
   const rows = sidesOf(view);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -68,7 +68,9 @@ export function Doors({ card, onAnswer, answered }: WidgetProps) {
   if (later.current === null) later.current = new DeferredAnswer();
   useEffect(() => () => later.current?.flush(), []);
   const { kicker, say } = doorWords(card.text);
-  const live = onAnswer !== undefined && calls !== null && answered == null;
+  // The night ended with the card up: a closing card replaced it (N5).
+  const shut = answered == null && (superseded === true || card.params["closed"] === "true");
+  const live = onAnswer !== undefined && calls !== null && answered == null && !shut;
   const pickedName = (answered?.["side"] as string | undefined) ?? null;
   const walk = (id: string, name: string) => {
     if (!live || busy) return;
@@ -85,6 +87,13 @@ export function Doors({ card, onAnswer, answered }: WidgetProps) {
       },
     );
   };
+  if (shut) {
+    return (
+      <div className="widget doors-done">
+        <div className="widget-title">🚪 The doors have closed.</div>
+      </div>
+    );
+  }
   if (!live && answered != null) {
     const side = answeredSide(pickedName, rows);
     return (
