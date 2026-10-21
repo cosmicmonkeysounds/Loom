@@ -519,7 +519,8 @@ function lowerQuest(body: RawLine[]): QuestBody {
 
 /**
  * `OBJECTIVE name` body (wave 13): `for:`, `while:`, `act:`, `title:`
- * (`label:`), `buttons:`, `loud:`, and a `text:` (`brief:`) block whose
+ * (`label:`), `buttons:`, `loud:`, wave 18's `go:` / `target:` / `pick:` /
+ * `evergreen:`, and a `text:` (`brief:`) block whose
  * `- ` lines are the checklist (`- label[, done when <condition>]`) and
  * whose other lines are the brief, re-flowed. Keys fold case / `_` / `-` /
  * spaces, read like a quest body.
@@ -549,6 +550,10 @@ function lowerObjective(body: RawLine[]): ObjectiveBody {
     else if (key === "act") out.act = value;
     else if (key === "buttons") out.buttons = splitTopLevelCommas(value).map((s) => s.trim()).filter((s) => s.length > 0);
     else if (key === "loud") out.loud = value.toLowerCase() === "true";
+    else if (key === "go") out.go = value;
+    else if (key === "target") out.target = value;
+    else if (key === "pick") out.pick = value;
+    else if (key === "evergreen") out.evergreen = value.toLowerCase() === "true";
     else if (key === "text" || key === "brief") {
       if (value.length > 0) {
         if (value.startsWith("- ")) out.checklist.push(objectiveCheck(value.slice(2), line.span));

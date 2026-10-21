@@ -275,6 +275,14 @@ export interface ObjectiveDef {
   /** Resolved: canonical INTERACTION ids and the reserved words "pass" / "scan", in written order; unknown names dropped (L1208). */
   buttons: string[];
   loud: boolean;
+  /** `go:` as written (wave 18, C11), resolved per viewer (`resolveGoWord`); null = none. */
+  go: string | null;
+  /** `target:` expression (wave 18, C5), booth objectives only; null = none. */
+  target: string | null;
+  /** `pick:` per-guest condition (wave 18, C5), booth objectives only; null = none. */
+  pick: string | null;
+  /** `evergreen: true` (wave 18, A7). */
+  evergreen: boolean;
 }
 
 /** The reserved `for:` words of an OBJECTIVE (folded). */
@@ -367,6 +375,10 @@ function objectiveDef(model: SimModel, id: string, body: ObjectiveBody): Objecti
     checklist: body.checklist.map((c) => ({ label: c.label, done: c.done })),
     buttons: resolveObjectiveButtons(model, body.buttons).buttons,
     loud: body.loud,
+    go: body.go !== null && body.go.trim() !== "" ? body.go.trim() : null,
+    target: body.target !== null && body.target.trim() !== "" ? body.target.trim() : null,
+    pick: body.pick !== null && body.pick.trim() !== "" ? body.pick.trim() : null,
+    evergreen: body.evergreen,
   };
 }
 
@@ -517,6 +529,83 @@ export interface SimModel {
    *  lint L1210). The world path the interrupt level is read from. Default
    *  "Night.alerts" (also when the value is not a dotted path). Never null. */
   alerts: string;
+  /** Header `wanted:` (wave 18, C6) — who a booth hunts (the Wanted board);
+   *  null when the story writes none (or the line does not parse, L1216). */
+  wanted: WantedDef | null;
+  /** Header `reinstall: <cond>` (wave 18, C7) — who may enter the
+   *  reinstallation, evaluated per program; null = captured or restricted. */
+  reinstall: string | null;
+  /** Header `archive: <channel or CHARACTER> when <cond>` lines (wave 18,
+   *  C11), every file's, in order — rooms done for a guest once the
+   *  condition holds for them (the phone tucks them away). */
+  archive: ArchiveDef[];
+}
+
+/** A header `wanted:` line (C6): `wanted: program.marked [as
+ *  program.marked_for] [by program.escort_by], for Antivirus[, Clippy]`. The
+ *  paths are relative to the guest (`marked` = the world's `<id>.marked`). */
+export interface WantedDef {
+  /** The flag that makes a guest wanted (`marked`). */
+  flag: string;
+  /** Why (`marked_for`), or null. */
+  reason: string | null;
+  /** Who claimed the escort (`escort_by`), or null. */
+  claim: string | null;
+  /** The booths that hunt: CHARACTER / GROUP names as written. */
+  for: string[];
+}
+
+/** A header `archive:` line (C11). */
+export interface ArchiveDef {
+  /** The channel id it archives (`dm:The Uploader`, `loc:X`, `room:x`). */
+  channel: string;
+  /** The per-guest condition (the guest bound as the ROLE alias). */
+  when: string;
+}
+
+/** A guest-relative path of a `wanted:` line: `program.marked` → `marked`
+ *  (the head must be a ROLE id or its alias, or a subject word). */
+function wantedPath(model: Pick<SimModel, "roles">, raw: string): string | null {
+  const m = /^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_.]*)$/u.exec(raw.trim());
+  if (m === null) return null;
+  const head = m[1]!.toLowerCase();
+  const role = [...model.roles.keys()].some((r) => r.toLowerCase().replace(/\s+/gu, "_") === head);
+  return role || head === "guest" || head === "person" ? m[2]! : null;
+}
+
+/** Parse a header `wanted:` value; null when it does not parse (L1216). */
+export function parseWanted(model: Pick<SimModel, "roles">, raw: string): WantedDef | null {
+  const at = raw.search(/,\s*for\s+/iu);
+  if (at < 0) return null;
+  const head = raw.slice(0, at).trim();
+  const who = raw
+    .slice(at)
+    .replace(/^,\s*for\s+/iu, "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x !== "");
+  const m = /^(\S+)(?:\s+as\s+(\S+))?(?:\s+by\s+(\S+))?$/u.exec(head);
+  if (m === null || who.length === 0) return null;
+  const flag = wantedPath(model, m[1]!);
+  const reason = m[2] !== undefined ? wantedPath(model, m[2]) : null;
+  const claim = m[3] !== undefined ? wantedPath(model, m[3]) : null;
+  if (flag === null || (m[2] !== undefined && reason === null) || (m[3] !== undefined && claim === null)) return null;
+  return { flag, reason, claim, for: who };
+}
+
+/** Parse a header `archive:` value against the story's rooms; null when the
+ *  room names nothing or there is no `when` (the line is dropped). */
+export function parseArchive(model: Pick<SimModel, "locations" | "channels" | "characters">, raw: string): ArchiveDef | null {
+  const m = /^(.+?)\s+when\s+(.+)$/su.exec(raw.trim());
+  if (m === null) return null;
+  const name = m[1]!.trim().replace(/^#\s*/u, "");
+  const when = m[2]!.trim();
+  const fold = foldName(name);
+  if (/^(dm|pm|loc|room|faction|crew):/u.test(name)) return { channel: name, when };
+  for (const id of model.locations.keys()) if (foldName(id) === fold) return { channel: `loc:${id}`, when };
+  for (const id of model.channels.keys()) if (foldName(id.slice("room:".length)) === fold) return { channel: id, when };
+  for (const id of model.characters.keys()) if (foldName(id) === fold) return { channel: `dm:${id}`, when };
+  return null;
 }
 
 /** Compile every loaded file in `bundle` into one `SimModel`. */
@@ -552,6 +641,9 @@ export function compileModel(bundle: Bundle): SimModel {
     judge: null,
     objectives: new Map(),
     alerts: DEFAULT_ALERTS_PATH,
+    wanted: null,
+    reinstall: null,
+    archive: [],
   };
   /** OBJECTIVE bodies in model order, compiled once every name is known. */
   const objectiveBodies: Array<[string, ObjectiveBody]> = [];
@@ -561,6 +653,9 @@ export function compileModel(bundle: Bundle): SimModel {
   }
   /** The raw `judge:` header value (first file that has one). */
   let judgeName: string | null = null;
+  /** Wave 18 header lines resolved once every name is known. */
+  let wantedRaw: string | null = null;
+  const archiveRaw: string[] = [];
 
   // Resolve `is X, Y` inheritance so `mergedCharacters` is populated before
   // we read it below. Without this the merge is dead code (its only other
@@ -587,6 +682,12 @@ export function compileModel(bundle: Bundle): SimModel {
       } else if (line.key === "countdown") {
         const b = parseBoardLine(line.value, { pathsOnly: true });
         if (b !== null) model.countdowns.push(b);
+      } else if (line.key === "wanted") {
+        if (wantedRaw === null) wantedRaw = line.value;
+      } else if (line.key === "reinstall") {
+        if (model.reinstall === null && line.value.trim() !== "") model.reinstall = line.value.trim();
+      } else if (line.key === "archive") {
+        archiveRaw.push(line.value);
       }
     }
 
@@ -760,6 +861,11 @@ export function compileModel(bundle: Bundle): SimModel {
     }
   }
   model.judge = judgeOf(model, judgeName);
+  model.wanted = wantedRaw === null ? null : parseWanted(model, wantedRaw);
+  for (const raw of archiveRaw) {
+    const a = parseArchive(model, raw);
+    if (a !== null) model.archive.push(a);
+  }
   for (const [id, body] of objectiveBodies) model.objectives.set(id, objectiveDef(model, id, body));
   return model;
 }

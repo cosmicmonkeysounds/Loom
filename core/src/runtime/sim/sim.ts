@@ -812,6 +812,23 @@ export class Sim {
     }
   }
 
+  /** The value of an expression with `subject` bound under every subject
+   *  name (the ROLE aliases, `guest`) and `self` — `holds`' bindings, any
+   *  value (wave 18: an OBJECTIVE's `target:`). Null on an error. */
+  valueOf(expr: string, subject: string | null, self: string | null = subject): Value {
+    const bindings: Bindings = new Map();
+    if (subject !== null) for (const name of this.subjectNames) bindings.set(name, subject);
+    if (self !== null) bindings.set("self", self);
+    const saved = this.currentBindings;
+    try {
+      return this.evalValue(expr, bindings);
+    } catch {
+      return VNULL;
+    } finally {
+      this.currentBindings = saved;
+    }
+  }
+
   /** Is `person` standing in a `cutscene: true` location right now? The
    *  app goes on rails there (no sidebar, just what is said to them). */
   cutsceneFor(person: string): boolean {
