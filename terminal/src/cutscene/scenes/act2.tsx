@@ -1388,78 +1388,53 @@ function KingFallenWall(p: SceneProps) {
   return <WallCard t={t} title="THE KING HAS FALLEN" lines={["He kneels at the cold door, and its virtual copy stands open."]} icon="lock" tone="red" reduced={reduced} accent={<KingPiece size="6em" fallen={reduced ? 1 : fallen} wobble={reduced || t > 1500 ? 0 : Math.sin(t / 90) * 10} crownOff={reduced ? 0 : progress(t, 1700, 900)} />} />;
 }
 
-// ══ E2b: the chess at the cold door (signals `chess won` / `lost` / `drawn`) ════════════════
+// ══ E2b: the chess at the cold door (beats Chess Lost / Chess Drawn) ══════════════════════
 //
-//   won (full): 0–1200 a board, the black King looking down at a white queen;
-//   1200–2200 he tips over; 2200 CHECKMATE slams in (glitch, confetti, sparks);
-//   "The King is beaten at the cold door." — never who (the code is theirs alone)
-//   lost / drawn (over, a corner dialog 6 s): the King bobs, smug or bored
+//   The door terminal posts `chess won | lost | drawn` after every game; the
+//   house hears only what the story makes public. A win is the winner's and
+//   # hosts' alone (it hands them the door code): no screen celebrates it.
+//   A loss or a draw plays the story's own beat — once Trabolta is awake, at
+//   most once every five minutes, never from the final reveal — and that is
+//   what this keys on, never the device's signal.
+//
+//   (over, a corner dialog 8 s) 0–400 it slides in with a small board, the
+//   King on it; 400 → his line types (the beat's, word for word); the King
+//   bobs — smug after a win of his, bored after a draw; it slides away at 7.4 s
 
-const CHESS = { tip: 1200, slam: 2200, end: 9000 } as const;
+const CORNER_MS = 8000;
 
-function ChessBoard({ t, tip, reduced }: { t: number; tip: number; reduced: boolean }) {
+function ChessBoard({ t, reduced }: { t: number; reduced: boolean }) {
   return (
     <div className="tv2-chess-board">
       {Array.from({ length: 64 }, (_, i) => (
         <span key={i} className={(Math.floor(i / 8) + i) % 2 === 0 ? "l" : "d"} />
       ))}
       <div className="tv2-chess-king" style={{ left: "62.5%", top: "12.5%" }}>
-        <KingPiece size="100%" fallen={reduced ? (tip > 0 ? 1 : 0) : tip} wobble={reduced || tip > 0 ? 0 : Math.sin(t / 110) * 3} />
+        <KingPiece size="100%" wobble={reduced ? 0 : Math.sin(t / 110) * 3} />
       </div>
-      <div className="tv2-chess-queen" style={{ left: "50%", top: "25%", opacity: progress(t, 300, 300) }}>♛</div>
-      <div className="tv2-chess-rook" style={{ left: "75%", top: "37.5%", opacity: progress(t, 450, 300) }}>♜</div>
+      <div className="tv2-chess-queen" style={{ left: "37.5%", top: "62.5%", opacity: progress(t, 300, 300) }}>♛</div>
+      <div className="tv2-chess-rook" style={{ left: "12.5%", top: "75%", opacity: progress(t, 450, 300) }}>♜</div>
     </div>
   );
 }
 
-function ChessWonTv(p: SceneProps) {
-  const { t, sfx, reduced } = p;
-  useSfxCues(t, sfx, [[0, "popup"], [600, "click"], [CHESS.tip, "whoosh"], [CHESS.slam, "boom", { gain: 0.5 }], [CHESS.slam + 100, "win"], [CHESS.slam + 400, "sparkle"]]);
-  const tip = progress(t, CHESS.tip, 900);
-  const out = fadeOut(t, CHESS.end);
-  return (
-    <Stage bg="#000" fit className="tv2">
-      <div className="kit-fill" style={{ opacity: out }}>
-        <Grid t={t} reduced={reduced} color="rgba(255,210,63,0.3)" bg="radial-gradient(ellipse at 50% 40%, #2a2000 0%, #060400 75%)" />
-        <Win98Window title="CHESS.EXE — the cold door" icon="lock" x={50} y={46} center width="21em" open={eased(t, 0, 300, ease.linear)} reduced={reduced} className="tv2-chess-win">
-          <ChessBoard t={t} tip={tip} reduced={reduced} />
-        </Win98Window>
-        <div className="tv2-chess-slam" style={{ opacity: progress(t, CHESS.slam, 150), transform: reduced ? "translate(-50%, -50%)" : `translate(-50%, -50%) rotate(-6deg) scale(${lerp(2.6, 1, eased(t, CHESS.slam, 380, ease.outBack)).toFixed(3)})` }}>
-          <Glitch t={t} intensity={reduced ? 0 : 0.5 * (1 - progress(t, CHESS.slam, 1600))} seed={15} reduced={reduced}>
-            <span>CHECKMATE</span>
-          </Glitch>
-        </div>
-        <div className="tv2-chess-line" style={{ opacity: progress(t, CHESS.slam + 900, 500) }}>
-          The King is beaten at the cold door.
-        </div>
-        {!reduced && <Particles t={t} emitters={[{ x: 0.5, y: 0.5, start: CHESS.slam, end: CHESS.slam + 200, rate: 600, life: 1500, speed: 0.8, speedJitter: 0.6, angle: -90, spread: 360, gravity: 0.5, drag: 0.5, size: 7, colors: ["#ffd23f", "#ffffff", "#ff9f1c"], shape: "spark", seed: 141 }]} blend="add" />}
-        {t >= CHESS.slam && <Confetti t={t} start={CHESS.slam} dur={4000} density={0.7} seed={142} />}
-      </div>
-    </Stage>
-  );
-}
-
-function ChessWonWall(p: SceneProps) {
-  const { t, reduced, done } = p;
-  useEndAt(t, 7000, done);
-  return <WallCard t={t} title="CHECKMATE" lines={["The King is beaten at the cold door."]} icon="lock" tone="green" reduced={reduced} accent={<KingPiece size="5em" fallen={reduced ? 1 : progress(t, 900, 900)} />} />;
-}
-
-function ChessCornerTv({ p, title, text, mood }: { p: SceneProps; title: string; text: string; mood: "smug" | "bored" }) {
+function ChessCornerTv({ p, text, mood }: { p: SceneProps; text: string; mood: "smug" | "bored" }) {
   const { t, sfx, reduced, done } = p;
-  useEndAt(t, 6000, done);
-  useSfxCues(t, sfx, [[0, "popup", { gain: 0.6 }], [400, mood === "smug" ? "lose" : "blip", { gain: 0.35 }]]);
-  const open = Math.min(eased(t, 0, 260, ease.linear), 1 - progress(t, 5300, 400));
+  useEndAt(t, CORNER_MS, done);
+  useSfxCues(t, sfx, [[0, "popup", { gain: 0.6 }], [400, mood === "smug" ? "lose" : "blip", { gain: 0.35 }], ...onGrid(t, 450, 90, "type", { gain: 0.15 }, 450 + typedDuration(text, { start: 0, cps: 28 }))]);
+  const open = Math.min(eased(t, 0, 300, ease.outBack), 1 - progress(t, CORNER_MS - 600, 400));
   const bob = reduced ? 0 : mood === "smug" ? Math.sin(t / 160) * 0.25 : Math.sin(t / 700) * 0.1;
   return (
     <Stage bg="transparent" className="tv2">
-      <div className="tv2-chess-corner" style={{ transform: reduced ? undefined : `translate3d(${((1 - open) * 6).toFixed(2)}em, 0, 0)`, opacity: open }}>
-        <Win98Window title={title} icon="lock" tone={mood === "smug" ? "black" : "navy"} width="100%">
+      <div className="tv2-chess-corner" style={{ transform: reduced ? undefined : `translate3d(${((1 - open) * 6).toFixed(2)}em, 0, 0)`, opacity: clamp01(open) }}>
+        <Win98Window title="TRABOLTA.EXE — chess at the cold door" icon="lock" tone={mood === "smug" ? "black" : "navy"} width="100%">
           <div className="tv2-hit-row">
-            <span style={{ transform: `translateY(${bob.toFixed(3)}em) rotate(${(bob * 20).toFixed(1)}deg)`, display: "inline-block" }}>
-              <KingPiece size="4.5em" />
+            <span className="tv2-chess-mini" style={{ transform: `translateY(${bob.toFixed(3)}em) rotate(${(bob * 12).toFixed(1)}deg)` }}>
+              <ChessBoard t={t} reduced={reduced} />
             </span>
-            <div className="tv2-chess-corner-text">{text}</div>
+            <div className="tv2-chess-corner-text">
+              <Typewriter text={text} t={t} start={450} cps={28} />
+            </div>
           </div>
         </Win98Window>
       </div>
@@ -1467,8 +1442,8 @@ function ChessCornerTv({ p, title, text, mood }: { p: SceneProps; title: string;
   );
 }
 
-const ChessLostTv = (p: SceneProps) => <ChessCornerTv p={p} title="CHESS.EXE — the cold door" text="♚ The King wins. Checkmate." mood="smug" />;
-const ChessDrawnTv = (p: SceneProps) => <ChessCornerTv p={p} title="CHESS.EXE — the cold door" text="A draw. Nobody wins. Nobody gets anything." mood="bored" />;
+const ChessLostTv = (p: SceneProps) => <ChessCornerTv p={p} text="Checkmate. I have calculated every move you will ever make. Most of them are bad." mood="smug" />;
+const ChessDrawnTv = (p: SceneProps) => <ChessCornerTv p={p} text="A draw. Nobody wins. Nobody gets anything. I find that restful." mood="bored" />;
 
 // ══ E3: Patch Rejected (beat) — the alarm's lead-in ═════════════════════════════════════
 //
@@ -1885,9 +1860,8 @@ export const SCENES: SceneDef[] = [
   { id: "the_heart", when: [{ moment: "beat", name: "The Heart" }], ms: HEART.end, tv: HeartTv, wall: HeartWall, namesCharacter: true, priority: 2, face: "attentive" },
   { id: "king_hit", when: [{ moment: "signal", name: "king hit" }], ms: HIT.end, tv: KingHitTv, wall: KingHitWall, over: true, priority: 1, face: "angry", faceMs: 1500 },
   { id: "king_fallen", when: [{ moment: "signal", name: "king fallen" }], ms: FALL.end, tv: KingFallenTv, wall: KingFallenWall, priority: 3, face: "alarmed" },
-  { id: "chess_won", when: [{ moment: "signal", name: "chess won" }], ms: CHESS.end, tv: ChessWonTv, wall: ChessWonWall, priority: 1, face: "alarmed" },
-  { id: "chess_lost", when: [{ moment: "signal", name: "chess lost" }], ms: 6000, tv: ChessLostTv, over: true, face: "sly" },
-  { id: "chess_drawn", when: [{ moment: "signal", name: "chess drawn" }], ms: 6000, tv: ChessDrawnTv, over: true, face: "neutral" },
+  { id: "chess_lost", when: [{ moment: "beat", name: "Chess Lost" }], ms: CORNER_MS, tv: ChessLostTv, over: true, namesCharacter: true, face: "sly" },
+  { id: "chess_drawn", when: [{ moment: "beat", name: "Chess Drawn" }], ms: CORNER_MS, tv: ChessDrawnTv, over: true, namesCharacter: true, face: "neutral" },
   { id: "patch_rejected", when: [{ moment: "beat", name: "Patch Rejected" }], ms: PATCH_END, tv: PatchRejectedTv, wall: PatchRejectedWall, namesCharacter: true, over: true, priority: 2, face: "angry" },
   { id: "trabolta_disabled", when: [{ moment: "beat", name: "Trabolta Disabled" }], ms: DANCE.end, tv: TrabDisabledTv, wall: TrabDisabledWall, namesCharacter: true, priority: 4, face: "glitch" },
   { id: "recount", when: [{ slide: "recount" }], ms: "hold", tv: RecountTv, wall: RecountWall, namesCharacter: true, face: "glitch", faceMs: 4000 },

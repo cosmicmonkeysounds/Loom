@@ -204,10 +204,21 @@ describe("act 2's scenes draw", () => {
     q.mockRestore();
   });
 
-  it("a checkmate never says who won (the door code is theirs alone)", () => {
+  it("no screen celebrates a checkmate (the story tells only the winner and # hosts); a loss or a draw plays the story's own gated beat", () => {
     const q = quiet();
-    const won = SCENES.find((s) => s.id === "chess_won")!;
-    for (const t of [500, 3000, 8000]) expect(draw(won, "tv", t, stateAt(t), "Winamp")).not.toContain("Winamp");
+    const won: ScreenMoment = { seq: 5, at: AT, kind: "signal", name: "chess won", who: "Winamp", kept: false };
+    for (const s of SCENES) for (const w of s.when) expect("moment" in w && w.moment === "signal" && foldName(w.name) === foldName(won.name), s.id).toBe(false);
+    // The device's raw lost / drawn signals never play: the beats do (awake, ≤ once per 5 min, not from the final reveal).
+    for (const id of ["chess_lost", "chess_drawn"]) {
+      const s = SCENES.find((x) => x.id === id)!;
+      expect(s.when.every((w) => "moment" in w && w.moment === "beat"), id).toBe(true);
+      expect(s.namesCharacter, id).toBe(true);
+    }
+    // The corner says the beat's line word for word.
+    for (const [id, line] of [["chess_lost", "Checkmate. I have calculated every move you will ever make. Most of them are bad."], ["chess_drawn", "A draw. Nobody wins. Nobody gets anything. I find that restful."]] as const) {
+      expect(STORY).toContain(`Trabolta: ${line}`);
+      expect(draw(SCENES.find((x) => x.id === id)!, "tv", 7000, stateAt(7000)), id).toContain(line);
+    }
     q.mockRestore();
   });
 });
