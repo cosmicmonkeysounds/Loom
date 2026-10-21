@@ -17,6 +17,7 @@ import { usePlayHost } from "../host.ts";
 import { WinDialog } from "../ui/window.tsx";
 import type { Exit } from "./exits.ts";
 import { faultAddress, type Moment, type Queued } from "./model.ts";
+import { focusedIn } from "../ui/focus.ts";
 
 /** Taps this soon after a modal appears are ignored (a tap meant for the app underneath). */
 export const MODAL_DEAD_MS = 400;
@@ -270,7 +271,7 @@ export function BlueScreen({
   const box = useRef<HTMLDivElement>(null);
   const live = useDeadTime();
   useEffect(() => {
-    const before = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const before = focusedIn(box.current) as HTMLElement | null;
     box.current?.focus();
     return () => before?.focus?.();
   }, []);
@@ -283,7 +284,7 @@ export function BlueScreen({
       e.preventDefault();
       const stops: HTMLElement[] = [...(box.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
       if (box.current) stops.unshift(box.current);
-      const at = stops.indexOf(document.activeElement as HTMLElement);
+      const at = stops.indexOf(focusedIn(box.current) as HTMLElement);
       const next = stops[(at + (e.shiftKey ? stops.length - 1 : 1)) % stops.length];
       next?.focus();
       return;

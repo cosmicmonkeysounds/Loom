@@ -12,6 +12,7 @@ import { usePlayHost } from "../host.ts";
 import { useMomentsHold } from "../moments/provider.tsx";
 import { WinWindow, focusables, trapNext } from "../ui/window.tsx";
 import { PopOutDock } from "./popouts/rung.ts";
+import { focusedIn } from "../ui/focus.ts";
 
 /** Is Escape the booth window's to take? Not while a sheet or dialog is
  *  open inside it (the card's "Share lore…" picker): that one closes first,
@@ -53,7 +54,7 @@ export function BoothLayer({
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
-    const before = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    const before = focusedIn(box.current) as HTMLElement | null;
     box.current?.focus();
     // On the host's key target: `window` on a phone (Escape still closes
     // with focus left on the body), the pane's own frame in Run → Players
@@ -72,7 +73,7 @@ export function BoothLayer({
   const onTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Tab" || box.current === null) return;
     const list = tabStops(box.current);
-    const next = trapNext(list.length, list.indexOf(document.activeElement as HTMLElement), e.shiftKey);
+    const next = trapNext(list.length, list.indexOf(focusedIn(box.current) as HTMLElement), e.shiftKey);
     e.preventDefault();
     if (next >= 0) list[next]!.focus();
   };

@@ -49,6 +49,7 @@ import {
 } from "./popout-model.ts";
 import { registerPopSink } from "./popout-registry.ts";
 import { useMomentsEngineContext } from "./provider.tsx";
+import { typingIn } from "../ui/focus.ts";
 
 export type { PopAction, PopGuest, PopOutAdapter, PopOutSpec, PopOutVerdict, PopTone } from "./popout-model.ts";
 export { raisePopOut, retirePopOut } from "./popout-registry.ts";
@@ -273,9 +274,7 @@ function useHoldAndAnnounce(api: PopOutsApi): void {
 
 /** Is focus in a text field (never steal it)? */
 function typing(): boolean {
-  if (typeof document === "undefined") return false;
-  const el = document.activeElement as HTMLElement | null;
-  return el !== null && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable === true);
+  return typingIn();
 }
 
 function GuestBlock({ g, size }: { g: PopGuest; size: "sm" | "md" | "lg" }) {

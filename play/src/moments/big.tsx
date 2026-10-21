@@ -16,6 +16,7 @@ import { WIDGETS, WidgetHost } from "../widgets.tsx";
 import { BIG_DEAD_MS, BIG_SETTLE_MS, bigParts, cheerLabel, kickerOf } from "./big-model.ts";
 import type { Exit } from "./exits.ts";
 import type { Queued } from "./model.ts";
+import { typingIn } from "../ui/focus.ts";
 
 export { BIG_DEAD_MS } from "./big-model.ts";
 
@@ -28,9 +29,7 @@ export interface BigCard {
 
 /** Is focus in a text field (never steal it: the iOS keyboard would drop)? */
 function typing(): boolean {
-  if (typeof document === "undefined") return false;
-  const el = document.activeElement as HTMLElement | null;
-  return el !== null && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable === true);
+  return typingIn();
 }
 
 export function BigMoment({
