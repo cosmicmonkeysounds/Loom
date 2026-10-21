@@ -414,9 +414,10 @@ describe("the starter config in the editor", () => {
     const bad = audioProblemList(out, h);
     expect(bad.errors[0]!.sel).toEqual({ kind: "speaker", id: "kitchen-r" });
     expect(bad.errors[0]!.text.startsWith("🔊 ")).toBe(true);
-    const free = bad.warnings.find((w) => /output 5 has no speaker/.test(w.text))!;
+    const free = bad.warnings.find((w) => /outputs 5, 6, .* have no speaker/.test(w.text))!;
     expect(free.sel).toBeNull();
     expect(free.tab).toBe("audio");
+    expect(bad.warnings.filter((w) => /(has|have) no speaker/.test(w.text))).toHaveLength(1);
   });
 
   it("normalizes a partial file and a non-object to something editable", () => {

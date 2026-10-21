@@ -86,7 +86,7 @@ export function addSpeaker(audio: AudioConfig, house: HouseMap, roomId: string, 
   const p = at ?? labelSpot(room.poly);
   next.speakers.push({
     id,
-    name: `Speaker ${id.slice("speaker-".length)} (${room.label})`,
+    name: `Speaker ${id.slice("speaker-".length)} · ${room.label}`,
     room: room.id,
     floor: room.floor,
     pos: { x: round(p[0]), y: round(roomElevation(house, room) + SPEAKER_HEIGHT), z: round(p[1]) },
@@ -595,7 +595,18 @@ export function audioProblemList(audio: AudioConfig, house: HouseMap): { errors:
     const s = sel(text);
     return { text: `🔊 ${text}`, sel: s, level, ...(s === null ? { tab: "audio" as const } : {}) };
   };
-  return { errors: v.problems.map(item("error")), warnings: v.warnings.map(item("warning")) };
+  // "output N has no speaker" × 12 on a fresh interface reads as one line.
+  const free: number[] = [];
+  const rest: string[] = [];
+  for (const w of v.warnings) {
+    const m = /^output (\d+) has no speaker$/.exec(w);
+    if (m !== null) free.push(Number(m[1]));
+    else rest.push(w);
+  }
+  const warnings = rest.map(item("warning"));
+  if (free.length === 1) warnings.push(item("warning")(`output ${free[0]} has no speaker`));
+  else if (free.length > 1) warnings.push(item("warning")(`outputs ${free.join(", ")} have no speaker`));
+  return { errors: v.problems.map(item("error")), warnings };
 }
 
 /** The Download JSON button's file. */
