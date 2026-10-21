@@ -202,7 +202,8 @@ function Device({
             setScreen({ kind: "scan" });
           }}
         />
-        {flash !== null && <div className={`flash ${flash.tone}`}>{flash.text}</div>}
+        {/* Never over the game: before the flow moved, Play replaced the whole device. */}
+        {flash !== null && !playing && <div className={`flash ${flash.tone}`}>{flash.text}</div>}
       </>
     );
   }
