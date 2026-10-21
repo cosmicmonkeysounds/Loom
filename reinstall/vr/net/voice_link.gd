@@ -375,8 +375,7 @@ func _process(delta: float) -> void:
 			_set_mic("nomic")
 		return
 	_quiet_for = 0.0
-	if mic_state == "nomic":
-		_set_mic("muted" if muted else "live")
+	_set_mic("muted" if muted else "live")  # frames: a mic (the fallback's too)
 	if muted:
 		return
 	feed(frames, _rate)
