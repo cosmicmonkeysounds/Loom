@@ -2,7 +2,7 @@
 title: Running the server room — the keypad door, the King and Trabolta's heart
 section: Live Shows
 order: 38
-keywords: server room, marked, keypad, keypad lock, door code, code, digit, digits, digit notes, notes, clue, clues, silver, cold door, The Cold Door, the King, king, chess, chess terminal, door terminal, Server Door, health bar, shared health, hit, kneel, kneels, fallen, restore, restore the king, simulation, chess won, chess lost, chess drawn, king hit, king fallen, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, file panel, give him a file, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, crew, crew window, fallback, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Windows Defender, Trapped in the Internet, runbook, cold lock
+keywords: server room, marked, keypad, keypad lock, door code, code, digit, digits, digit notes, notes, clue, clues, silver, cold door, The Cold Door, the King, king, chess, chess terminal, door terminal, Server Door, health bar, shared health, hit, kneel, kneels, fallen, restore, restore the king, simulation, chess won, chess lost, chess drawn, king hit, king fallen, beat the machine, door, door contact, cutscene, The Heart, heart, server-room terminal, terminal, file panel, give him a file, talk down, talked down, stand down, Fallout, Master, patch bay, alarm, wrong combination, reset, latch, crew, crew window, fallback, honour, OP-12, truth.txt, verdict, banished, banishment, hand jive, Trapped in the Internet, runbook, cold lock
 ---
 
 In *Trapped in the Internet* Trabolta's heart — a video patch bay — sits
@@ -135,9 +135,10 @@ on the tent tablet, not in a headset.
   (*"Checkmate him and the server-room door code goes to your Codex."*,
   or *"No prize now."* after 📄) and the scanner. **No hints, no tips**:
   it never says how strong he is.
-- A program scans their pass and plays one game. A marked program is
-  refused (*"⛔ Marked programs can't challenge the King."*). Scan again
-  to play again.
+- A program scans their pass and plays one game. A restricted program
+  is refused (*"⛔ Marked programs can't challenge the King."*, the copy
+  from when a mark restricted); since wave 18 a mark alone restricts
+  nothing, so a marked program plays. Scan again to play again.
 - **His bar sets his strength**, read when the board is dealt: full
   health is a grandmaster, every hit weakens him (10–14 club, 5–9
   beginner, 1–4 dizzy), and only a felled King plays pawns only. Hits
@@ -317,12 +318,11 @@ in), instead of radioing you:
 | **🚪 The server-room door opened** | `server_door_opened` | once Trabolta is awake, before 📄, never inside a crew window |
 | **🔧 Crew going through the door (2 min)** | the crew window | all night |
 
-They are `by:` the four room Antivirus: only Norton's, McAfee's,
-Password Manager's and CRA Agent Software's booths may press them. The
-server refuses them from Windows Defender's (the door-only part), a
-Host's or any other performer's booth (*not your button … is for Norton
-Anti-Virus, …*), which never shows them; Windows Defender's booth still
-shows ♟ *They beat the machine*. Each arms on
+They are `by:` the four Antivirus: only Norton's, McAfee's, Password
+Manager's and CRA Agent Software's booths (and, since wave 13, a host
+part's) may press them. The server refuses them from any other
+performer's booth (*not your button … is for Norton Anti-Virus, …*),
+which never shows them. Each arms on
 the first tap and fires on the second. Your own quick-fire of the same
 cue still fires it once. **🫘 The printer lid is open** is Adobe
 Acrobat's only, at the printer.

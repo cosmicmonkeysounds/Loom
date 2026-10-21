@@ -65,7 +65,9 @@ openers end with `:` and indent their body.
 | `sound x in The Desktop` / `sound x with rooms: hall, The Start Bar` | a sound on the house speakers in those places only (map room ids or LOCATIONs); commas between names; a target with no wired speaker is skipped, so give new sounds a cue in `audio.json` ([instructions](directives.md); lint `L1213` when a several-word name is no LOCATION) |
 | `fire lockdown` / `fire rally for guest` / `fire alarm with level: 3` | raise a named event |
 | `reply text` / `reply !text` | private line back to whoever acted (a booth: its Readouts) / the same as an alert |
-| `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer`); `with moment: major` makes it interrupt |
+| `reply !!text` / `broadcast "!!text" to everyone with close: 6s` | a **big moment**: full screen on the phone (a booth: a pop-out); the house-wide one closes itself ([broadcasts](broadcast-improv.md); lint `L1218` outside an admin cue's hook or a story rule) |
+| `reply "text" with go: The Desktop, go: pass` / `broadcast "…" to everyone with go: quest: The Cold Door as "See it"` | the moment's buttons: a place, room, character, guest button, `codex[: Entry]`, `quests` / `quest: Quest`, or a screen (`pass` `scan` `chats` `mission` `notifications` `sides` `wallet` `me`); never `lobby` (lint `L1214`; quote the text) |
+| `show fact "📝 File a fact" to guest with questions: "H1: … \| H2: …"` | deal a card (`captcha` / `poll` / `image` / `tutorial` / `pass` / `fact` / `answer` / `sides`); `with moment: major` makes it interrupt, `moment: big` takes the screen |
 | `unlock The Sandy File for guest` | hand out a codex entry |
 | `start quest X for who` / `update` / `complete` / `fail` (+ `"line"`) | the quest log — `who` may be a character |
 | `restrict guest to The Tube, The Internet` / `unrestrict guest` | shrink a guest's app to DMs + those places, no buttons — and lift it |
@@ -137,12 +139,18 @@ openers end with `:` and indent their body.
 | `QUEST Name` + `title:` / `from:` / `text:` | a quest for the Quest Log |
 | `INTERACTION name` + `label:` / `who:` / `by:` / `while:` | a button in the app (or a cue on the sheet) |
 | `OBJECTIVE Name` + `for:` / `while:` / `act:` / `title:` / `text:` (`- to-do, done when <cond>`) / `buttons:` (+ `pass`, `scan`) / `loud: true` | what a phone shows as NOW, and the buttons it leads with ([objectives](objectives.md)) |
+| `go: The Desktop` / `target: Night.bottle_pick` / `pick: program.location == "The Desktop"` / `evergreen: true` (OBJECTIVE) | the Mission's one place to go / a booth's one guest / a booth's list of guests (PLAYER SELECT or rows) / the fallback never counted (lints `L1214`, `L1215`) |
 | `admin: true` (a performer's CHARACTER) | a host part: its booth gets the host console (cues, judging, announcements, the alert level) |
 | `crawl: fx` (a CHARACTER) | every line it speaks is effect text |
 | `alerts: Night.alerts` (header, first file) | the world path the phones' alert level is read from: `balloon` / `sticky` (default) / `dialog` / `bsod` |
 | `sequence: false` / `repeat: true` (a `who: admin` cue) | never the sheet's last / next · stays next while pressed |
 | `arm: true` (a performer's or guest's button) | arms on the first tap, fires on the second ([live verbs](live-verbs.md)) |
 | `act: B · Act I` (a `who: admin` cue) | opens an act on the Director page; later admin cues join it (`act: Anytime` rejoins by name; never changes NEXT) |
+| `by: Clippy` (a `who: admin` cue) | that performer's booth may call it too, from its 🎤 cue bar ([live verbs](live-verbs.md); lint `L1217` when it names no part) |
+| `wanted: program.marked as program.marked_for by program.escort_by, for Antivirus` (header) | a Wanted board for those booths and the hosts: every guest whose flag is true, why, where, who claimed them ([live shows](live-shows.md)) |
+| `reinstall: <cond>` (header) | who may enter the reinstallation games, read per guest |
+| `archive: The Uploader when program.cleared == true` (header, repeatable) | moves a guest's finished thread under *Other rooms* |
+| `majority: Night.present / 2 + 1` (header) | what a side needs, shown on the Sides screen's doors (lint `L1216` for a bad `wanted:` / `reinstall:` / `archive:`) |
 | `watch: Night.round as Round, program.cleared, Ivo Marsh, while <cond>` (header, first file) | what the Director page's glance column keeps in view ([run mode](run-mode.md)) |
 | `countdown: Night.hunt_end as Hunt ends, while <cond>` (header, first file) | a countdown to a story time in seconds on the Director page and the director phone; end it `, for guests` and the guests' app shows it too |
 | `reserved: true` (a guest's program CHARACTER) | held for an invitee: 🔒 to everyone without its claim link ([live shows](live-shows.md)) |
@@ -166,6 +174,7 @@ openers end with `:` and indent their body.
 | `when fact answered for guest:` | a card was answered (`question` / `answer` / `confidence` / `verdict` bound; `key_answer`, the key's answer as written, only when `verdict == "accurate"`) |
 | `when guest learns X:` / `when guest completes quest X:` | lore unlocked / a quest step |
 | `when restricted for guest:` / `when unrestricted for guest:` | `restrict` / `unrestrict` took effect |
+| `when recruited for guest:` (`side` or `crew`, `by` = the recruiter) / `when founded for guest:` / `when unaligned for guest:` | a guest recruited by pass / founded a crew / left their side |
 | `when transfer_received for guest:` | the wallet moved coin (narrate; never move it yourself) |
 | `when self.suspicion >= 70:` | a **watcher** — the condition becomes true |
 | a `when …:` at file level | a **story rule** — no owner, no `self` |

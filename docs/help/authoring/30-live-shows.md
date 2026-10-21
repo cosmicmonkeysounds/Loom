@@ -166,7 +166,10 @@ COHORT Early Arrivals
   never on a TRAIT every host shares (a trait's keys are inherited, so it
   would reach every deriver). Lint `L1211` warns when nobody can sign in
   as that character (a guest's program, a prop, an agent-voiced one).
-  The moderator passcode in a booth still gives full admin.
+  The moderator passcode in a booth still gives full admin. A part that
+  isn't a host can still **call** chosen cues: `by: <Character>` on an
+  admin cue puts it on that booth's 🎤 cue bar (*Trapped in the
+  Internet*: Clippy calls the games; [live verbs](live-verbs.md)).
 - **`crawl: fx`** on a CHARACTER makes every line it speaks **effect
   text** (below).
 - A **COHORT** is a plain named grouping with a capacity, for when you
