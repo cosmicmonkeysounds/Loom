@@ -292,7 +292,7 @@ interface SidesCallsLike {
 }
 
 /** The Mission tile for your faction (wave 18b, faction mode): its name
- *  and "7 of 13 · 6 more to win"; null when you're in none or the server
+ *  and "7 of 13 · 6 more to win" ("14 in · over the line"); null when you're in none or the server
  *  sends no count. */
 export function factionTileOf(view: GuestView | null): { name: string; status: string } | null {
   if (!factionModeOf(view)) return null;
@@ -300,5 +300,6 @@ export function factionTileOf(view: GuestView | null): { name: string; status: s
   if (mine === null || mine.members === null) return null;
   if (mine.needs === null) return { name: mine.name, status: `${mine.members} in` };
   const more = mine.more ?? Math.max(0, mine.needs - mine.members);
-  return { name: mine.name, status: `${mine.members} of ${mine.needs} · ${more > 0 ? `${more} more to win` : "over the line"}` };
+  // Over the line, "14 of 13" would read wrong: say how many are in.
+  return { name: mine.name, status: more > 0 ? `${mine.members} of ${mine.needs} · ${more} more to win` : `${mine.members} in · over the line` };
 }

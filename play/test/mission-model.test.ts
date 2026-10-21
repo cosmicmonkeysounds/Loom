@@ -184,7 +184,8 @@ describe("wave 18b, faction mode: your faction's tile and your badges", () => {
     expect(m.tiles[1]).toMatchObject({ label: "◆ The Night Shift", status: "7 of 13 · 6 more to win", dot: false, nav: { to: "sides" } });
   });
   it("over the line at 0 more; no tile in no faction, outside faction mode, or with no count", () => {
-    expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: 13, more: 0 }] }) })).tiles[0]!.status).toBe("13 of 13 · over the line");
+    expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: 13, more: 0 }] }) })).tiles[0]!.status).toBe("13 in · over the line");
+    expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: 14, more: 0 }] }) })).tiles[0]!.status).toBe("14 in · over the line");
     expect(missionOf(input({ view: view({ canFound: true, sides: [rival] }) })).tiles).toEqual([]);
     expect(missionOf(input({ view: view({ sides: [{ id: "x", name: "X", leader: null, members: 4, needs: 13, mine: true }] }) })).tiles).toEqual([]);
     expect(missionOf(input({ view: view({ canFound: false, sides: [{ ...mine, members: undefined, needs: undefined, more: undefined }] }) })).tiles).toEqual([]);
