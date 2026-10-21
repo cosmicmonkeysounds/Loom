@@ -3421,8 +3421,8 @@ INTERACTION pickup_line_works
 
 // Guest buttons (on the pass). `while:` hides one that would do nothing
 // for this program right now; every hook still guards. `restricted: allow`
-// keeps 🚻 and Back on a marked program's phone (fact M20): a marked
-// program can still leave honestly.
+// keeps 🚻 and Back on a restricted program's phone (fact M20; a
+// director's Run → Restrict: since wave 18 a mark never restricts).
 
 INTERACTION go to the bathroom
   label: 🚻 Bathroom Mode
