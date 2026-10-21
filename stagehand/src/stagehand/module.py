@@ -8,6 +8,7 @@ absent means the module is off on that machine:
     show:    { mqtt, osc, cues, sensors }    # show control (the desktop)
     agents:  { llm, characters }             # agent-voiced characters (the laptop)
     alexa:   { mqtt, device, channels, … }   # announcements out of the house speakers
+    audio:   { sounds_dir, play_sounds, … }  # the house speaker router (audio.json)
 
 A module is a small class registered in `REGISTRY` under its section
 name. It parses its own section at load (so a bad map fails at boot, not
@@ -90,5 +91,9 @@ REGISTRY: dict[str, ModuleSpec] = {
     "alexa": ModuleSpec(
         "the fake Alexa — MQTT show/announce → chime + the Mac's own `say` voice on a CoreAudio device (server voice opt-in)",
         "stagehand.alexa.module:build_alexa",
+    ),
+    "audio": ModuleSpec(
+        "the house speaker router — audio.json speakers + matrix on the interface; `sound X` / announcements / speaker tests (opt-in)",
+        "stagehand.audio.module:build_audio",
     ),
 }

@@ -24,6 +24,7 @@ import asyncio
 import json
 import logging
 import time
+from dataclasses import replace
 from typing import Any
 
 import httpx
@@ -73,13 +74,23 @@ class ShowControl:
         #: Live-feed `cue`s a `catch_up:` rule covers: a catch-up whose state
         #: read raced one replays nothing (its world is older than the cue).
         self._feed_cues = 0
+        #: QLab `sound` cues dropped because the `audio` router plays them.
+        self.sounds_handed_off = 0
+
+    def hand_sounds_to_router(self) -> None:
+        """The `audio` router plays `sound X` (`audio.play_sounds: true`):
+        drop every `sound` cue that goes to an OSC target (QLab), so no sound
+        plays twice. MQTT `sound` rules stay (`announce_chime` → the player)."""
+        keep = [r for r in self.cfg.cues if not (r.on_directive == "sfx" and r.osc is not None)]
+        self.sounds_handed_off = len(self.cfg.cues) - len(keep)
+        self.cfg = replace(self.cfg, cues=keep)
 
     def describe(self) -> list[str]:
         cfg = self.cfg
         lines = [
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port}' if cfg.mqtt else '— (no broker)'}",
             f"osc      : {', '.join(f'{n}={h}:{p}' for n, (h, p) in cfg.osc_targets.items()) or '— (no targets)'}",
-            f"cues     : {len(cfg.cues)} rule(s)",
+            f"cues     : {len(cfg.cues)} rule(s)" + (f" ({self.sounds_handed_off} QLab sound cue(s) handed to the audio router)" if self.sounds_handed_off else ""),
             f"sensors  : {len(cfg.sensors)} rule(s)",
             f"catch-up : {', '.join(r.path for r in cfg.catch_up) or '—'}",
         ]

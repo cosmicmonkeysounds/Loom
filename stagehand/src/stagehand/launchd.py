@@ -7,6 +7,7 @@ needs `pkill -f "stagehand run"`, which kills both:
 
     stagehand launchd install --job show   --config trapped.house.yaml
     stagehand launchd install --job agents --config laptop.yaml
+    stagehand launchd install --job audio  --config trapped.house.yaml   # the speaker router
     stagehand launchd restart --job agents        # only Trabolta's worker
     stagehand launchd status                      # both jobs
     stagehand launchd uninstall --job show
@@ -34,7 +35,7 @@ from pathlib import Path
 from .config import ConfigError, load_config
 
 LABEL_PREFIX = "com.mapsandducks.stagehand"
-JOBS = ("show", "agents")
+JOBS = ("show", "agents", "audio")
 #: Seconds launchd waits before relaunching a job that exited.
 THROTTLE_S = 10
 

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "Audio fixture: a living room, a kitchen, a hall in two parts, a basement",
+  "origin": "fixture: the living room's north-west corner",
+  "floors": [
+    { "id": "main", "label": "Main", "elevation": 0, "height": 2.5 },
+    { "id": "basement", "label": "Basement", "elevation": -2.7, "height": 2.4 }
+  ],
+  "rooms": [
+    { "id": "desktop", "label": "Desktop (living room)", "floor": "main", "location": "The Desktop", "poly": [[0, 0], [5, 0], [5, 4], [0, 4]] },
+    { "id": "start-bar", "label": "Start Bar (kitchen)", "floor": "main", "location": "The Start Bar", "poly": [[5, 0], [9, 0], [9, 4], [5, 4]] },
+    { "id": "hall", "label": "Hall", "floor": "main", "location": "The Tube", "poly": [[0, 4], [9, 4], [9, 6], [0, 6]] },
+    { "id": "basement-hall", "label": "Basement hall", "floor": "basement", "location": "The Tube", "poly": [[0, 3], [9, 3], [9, 6], [0, 6]] },
+    { "id": "ram", "label": "RAM (studio)", "floor": "basement", "location": "The RAM", "poly": [[0, 0], [9, 0], [9, 3], [0, 3]] }
+  ],
+  "doors": [
+    { "id": "living-kitchen", "a": "desktop", "b": "start-bar", "at": [5, 2], "width": 1 },
+    { "id": "living-hall", "a": "desktop", "b": "hall", "at": [2, 4], "width": 1 },
+    { "id": "kitchen-hall", "a": "start-bar", "b": "hall", "at": [7, 4], "width": 1 },
+    { "id": "studio", "a": "basement-hall", "b": "ram", "at": [4, 3], "width": 1 }
+  ],
+  "stairs": [{ "id": "down", "from": "basement-hall", "to": "hall", "rect": [6, 4.2, 8.5, 5.8], "up": "w" }],
+  "terminals": [],
+  "duck": { "spots": [{ "id": "d", "room": "desktop", "pos": [1, 0, 1] }] },
+  "spawn": { "room": "desktop", "pos": [2, 0, 2], "yaw": 0 },
+  "props": [],
+  "spaces": {}
+}
