@@ -46,9 +46,15 @@ func _run() -> void:
 	_test_picker()
 	_test_flow()
 	_test_cam_feeds()
+	_test_voice_codec()
+	_test_voice_uplink()
+	_test_voice_link()
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	_test_voice_config()
+	_test_voice_server_link()
+	await _test_voice_game()
 	await _test_autopilot_physics()
 	await _test_room_scale()
 
@@ -1886,3 +1892,576 @@ func _test_main_and_game() -> void:
 
 	main.queue_free()
 	await process_frame
+
+
+# --- voice (wave 19) --------------------------------------------------------
+
+
+## The codec, the resampler, the gate, the jitter plan and the routing rule
+## against `@loom/house`'s vectors (`test/golden/voice-mulaw.json`).
+func _test_voice_codec() -> void:
+	var path := GOLDEN_DIR + "voice-mulaw.json"
+	_check(FileAccess.file_exists(path), "voice: the codec's vectors are synced (pnpm --filter @loom/house sync)")
+	if not FileAccess.file_exists(path):
+		return
+	var records: Array = _read_json(path)
+	var house: Dictionary = _read_json("res://house/house.json")
+	var bad := {}
+	var seen := {}
+	var players: Array = []
+	var miss := func(kind: String, what: String) -> void:
+		if not bad.has(kind):
+			bad[kind] = []
+		if (bad[kind] as Array).size() < SHOW_MISMATCHES:
+			printerr("    voice %s: %s" % [kind, what])
+		(bad[kind] as Array).append(what)
+	for r: Dictionary in records:
+		var kind := str(r["kind"])
+		seen[kind] = int(seen.get(kind, 0)) + 1
+		match kind:
+			"constants":
+				var consts: Dictionary = load("res://net/voice_codec.gd").get_script_constant_map()
+				for k: String in r:
+					if k != "kind" and (not consts.has(k) or consts[k] != r[k]):
+						miss.call(kind, "%s = %s, want %s" % [k, consts.get(k, "missing"), r[k]])
+			"encode":
+				var got := VoiceCodec.mulaw_byte(float(r["x"]))
+				if got != int(r["byte"]):
+					miss.call(kind, "%s → %d, want %d" % [r["x"], got, r["byte"]])
+			"decode":
+				var got := VoiceCodec.mulaw_decode(PackedByteArray([int(r["byte"])]))[0]
+				if got != float(r["x"]):
+					miss.call(kind, "%d → %s, want %s" % [r["byte"], got, r["x"]])
+			"rms":
+				var got := VoiceCodec.rms_dbfs(PackedFloat32Array(r["samples"]))
+				var want: float = -INF if r["dbfs"] == null else float(r["dbfs"])
+				if not (got == want or _near(got, want, 1e-6)):
+					miss.call(kind, "%s, want %s" % [got, want])
+			"resample":
+				var rs := VoiceCodec.Resampler.new(float(r["from"]), float(r["to"]))
+				var input := PackedFloat32Array(r["input"])
+				var out := PackedFloat32Array()
+				var at := 0
+				for n: Variant in r["chunks"]:
+					out.append_array(rs.push(input.slice(at, at + int(n))))
+					at += int(n)
+				var want: Array = r["output"]
+				var ok := out.size() == want.size()
+				for i in mini(out.size(), want.size()):
+					ok = ok and _near(out[i], float(want[i]), 1e-6)
+				if not ok:
+					miss.call(kind, "%s → %s: %d outputs, want %d" % [r["from"], r["to"], out.size(), want.size()])
+			"gate":
+				var g := VoiceCodec.Gate.new()
+				var sent: Array = []
+				var i := 0
+				for s: Dictionary in r["steps"]:
+					if s.has("hold"):
+						g.hold_until(float(s["hold"]))
+					sent.append_array(g.push(i, -INF if s["dbfs"] == null else float(s["dbfs"]), float(s["now"])))
+					i += 1
+				if sent != (r["sent"] as Array).map(func(v: Variant) -> int: return int(v)):
+					miss.call(kind, "%s, want %s" % [sent, r["sent"]])
+			"jitter":
+				var p := VoiceCodec.jitter_plan(float(r["buffered"]), float(r["target"]), float(r["max"]))
+				var w: Dictionary = r["plan"]
+				if p["action"] != w["action"] or not _near(p["at"], w["at"], 1e-9) or not _near(p["drop"], w["drop"], 1e-9) or p["fadeIn"] != w["fadeIn"]:
+					miss.call(kind, "%s → %s, want %s" % [r["buffered"], p, w])
+			"voiceOn":
+				if VoiceCodec.voice_on(house, str(r["spot"])) != bool(r["on"]):
+					miss.call(kind, "%s" % r["spot"])
+			"hearsTerminals":
+				var got := VoiceCodec.hears_terminals(house, {"p": r["p"], "floor": r["floor"], "room": r["room"]})
+				var located := VoiceCodec.hears_terminals(house, {"p": r["p"]})
+				var want: Array = r["heard"]
+				var same := got.size() == want.size() and located.size() == want.size()
+				for i in mini(got.size(), want.size()):
+					same = same and got[i]["spot"] == want[i]["spot"] and _near(got[i]["gain"], want[i]["gain"], 1e-9)
+				if not same:
+					miss.call(kind, "%s → %s, want %s" % [r["p"], got, want])
+			"players":
+				players = r["players"]
+			"hearsPlayers":
+				pass  # the server's and the terminals' half of the rule
+	for kind: String in ["constants", "encode", "decode", "rms", "resample", "gate", "jitter", "voiceOn", "hearsTerminals"]:
+		var n := int(seen.get(kind, 0))
+		var b := (bad.get(kind, []) as Array).size()
+		_check(n > 0 and b == 0, "voice: %s vectors match (%d of %d)" % [kind, n - b, n])
+	_check(int(seen.get("decode", 0)) == 256, "voice: every μ-law byte decodes")
+	_check(not players.is_empty(), "voice: the vectors carry the routing's players")
+	# The tent (the spawn room) is off; the show map says so too.
+	_check(not VoiceCodec.voice_on(house, "tent") and VoiceCodec.voice_on(house, "hall") and not VoiceCodec.voice_on(house, "nowhere"), "voice: the tent's terminal is off, the hall's on, an unknown spot off")
+	var tent: Dictionary = VoiceCodec._spot_of(house, "tent").duplicate()
+	tent.erase("voice")
+	_check(not VoiceCodec.voice_on(house, tent), "voice: … off with no flag too: it stands in the spawn room")
+	tent["voice"] = true
+	_check(VoiceCodec.voice_on(house, tent), "voice: … unless the map says voice: true")
+
+	# The encoder over a whole chunk = the per-sample byte; decode ∘ encode stays close.
+	var chunk := PackedFloat32Array()
+	for i in 320:
+		chunk.append(0.6 * sin(TAU * 440.0 * i / 16000.0))
+	var enc := VoiceCodec.mulaw_encode(chunk)
+	var each := true
+	for i in chunk.size():
+		each = each and enc[i] == VoiceCodec.mulaw_byte(chunk[i])
+	_check(enc.size() == 320 and each, "voice: mulaw_encode = mulaw_byte per sample")
+	var dec := VoiceCodec.mulaw_decode(enc)
+	var worst := 0.0
+	for i in chunk.size():
+		worst = maxf(worst, absf(dec[i] - chunk[i]))
+	_check(worst < 0.02, "voice: decode(encode(x)) within μ-law's step (%.4f)" % worst)
+	_check(VoiceCodec.mulaw_byte(NAN) == 0xff, "voice: NaN encodes as silence")
+
+	# The resampler: any split is the whole; a 48 kHz second is 16 000 samples.
+	var tone := PackedFloat32Array()
+	for i in 48000:
+		tone.append(sin(TAU * 300.0 * i / 48000.0))
+	var whole := VoiceCodec.Resampler.new(48000, 16000).push(tone)
+	var split := VoiceCodec.Resampler.new(48000, 16000)
+	var parts := PackedFloat32Array()
+	var at := 0
+	for n in [1, 480, 7, 1023, 46489]:
+		parts.append_array(split.push(tone.slice(at, at + n)))
+		at += n
+	_check(whole.size() == 16000 and parts == whole, "voice: the resampler's output does not depend on the chunking (%d)" % whole.size())
+	var odd := VoiceCodec.Resampler.new(44100.4, 16000)
+	_check(odd.from == 44100 and odd.to == 16000, "voice: rates round to whole Hz")
+
+	# The chunker: 200 ms chunks, the remainder kept.
+	var ca := VoiceCodec.ChunkAssembler.new()
+	var got: Array = ca.push(whole.slice(0, 5000))
+	_check(got.size() == 1 and (got[0] as PackedFloat32Array).size() == 3200 and ca.pending() == 1800, "voice: one 3200-sample chunk, 1800 held")
+	got = ca.push(whole.slice(5000, 6400))
+	_check(got.size() == 1 and (got[0] as PackedFloat32Array)[0] == whole[3200] and ca.pending() == 0, "voice: … the next chunk carries on where the last stopped")
+
+	# The gate's half-duplex: a hold closes it and forgets the pre-roll.
+	var gate := VoiceCodec.Gate.new()
+	_check(gate.push("quiet", -60.0, 0.0).is_empty(), "voice: a quiet chunk is not sent (it is the pre-roll)")
+	_check(gate.push("loud", -20.0, 200.0) == ["quiet", "loud"], "voice: a loud chunk opens the gate with the pre-roll")
+	gate.hold_until(1000.0)
+	gate.hold_until(500.0)
+	_check(gate.holding(900.0) and not gate.holding(1000.0), "voice: a hold only ever extends")
+	_check(gate.push("loud", -20.0, 600.0).is_empty() and not gate.is_open(), "voice: no sending while incoming voice plays")
+	_check(gate.push("loud", -20.0, 1000.0) == ["loud"], "voice: … and no stale pre-roll after it")
+
+
+## An [HTTPClient]-like for the voice uplink: the test moves its status.
+class FakeHttp:
+	extends RefCounted
+
+	var status := HTTPClient.STATUS_DISCONNECTED
+	var connects: Array = []
+	## `[method, url, headers, body]` per request.
+	var requests: Array = []
+	var closed := 0
+	var code := 0
+	var body := PackedByteArray()
+
+	func connect_to_host(host: String, port: int, tls: TLSOptions = null) -> int:
+		connects.append([host, port, tls != null])
+		status = HTTPClient.STATUS_CONNECTING
+		return OK
+
+	func poll() -> int:
+		return OK
+
+	func get_status() -> int:
+		return status
+
+	func request_raw(method: int, url: String, headers: PackedStringArray, b: PackedByteArray) -> int:
+		requests.append([method, url, headers, b])
+		status = HTTPClient.STATUS_REQUESTING
+		return OK
+
+	func get_response_code() -> int:
+		return code
+
+	func read_response_body_chunk() -> PackedByteArray:
+		var b := body
+		body = PackedByteArray()
+		status = HTTPClient.STATUS_CONNECTED
+		return b
+
+	func close() -> void:
+		closed += 1
+		status = HTTPClient.STATUS_DISCONNECTED
+
+	## The server answers the request in flight.
+	func answer(c: int, data: Dictionary) -> void:
+		code = c
+		body = JSON.stringify(data).to_utf8_buffer()
+		status = HTTPClient.STATUS_BODY
+
+
+## An [AudioStreamGeneratorPlayback]-like: what was pushed, what is queued.
+class FakePlayback:
+	extends RefCounted
+
+	var cap := 16383
+	var queued := PackedVector2Array()
+	var pushes: Array = []
+	var clears := 0
+
+	func get_frames_available() -> int:
+		return cap - queued.size()
+
+	func push_buffer(f: PackedVector2Array) -> bool:
+		if f.size() > cap - queued.size():
+			return false
+		queued.append_array(f)
+		pushes.append(f.size())
+		return true
+
+	func clear_buffer() -> void:
+		queued.clear()
+		clears += 1
+
+	## The mixer plays `n` frames.
+	func consume(n: int) -> void:
+		queued = queued.slice(mini(n, queued.size()))
+
+
+## `n` frames of a 300 Hz tone at amplitude `amp` (stereo, the mic's shape).
+static func _mic_tone(n: int, amp: float, rate := 48000.0) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(n)
+	for i in n:
+		var x := amp * sin(TAU * 300.0 * i / rate)
+		out[i] = Vector2(x, x)
+	return out
+
+
+## A `voice` frame from terminal `spot` carrying 200 ms of tone.
+static func _voice_frame(spot: String, seq: int, gain: float) -> Dictionary:
+	var chunk := PackedFloat32Array()
+	for i in VoiceCodec.VOICE_CHUNK_BYTES:
+		chunk.append(0.4 * sin(TAU * 300.0 * i / 16000.0))
+	return {"from": "t:" + spot, "kind": "terminal", "spot": spot, "name": spot, "gain": gain, "seq": seq,
+		"data": Marshalls.raw_to_base64(VoiceCodec.mulaw_encode(chunk))}
+
+
+## The uplink alone: one keep-alive connection, one POST in flight, the
+## queue capped, batches, `seq` up, reconnects.
+func _test_voice_uplink() -> void:
+	var up := VoiceLink.Uplink.new()
+	var clients: Array = []
+	up.client_factory = func() -> Object:
+		var c := FakeHttp.new()
+		clients.append(c)
+		return c
+	var answers: Array = []
+	up.answered.connect(func(s: int, d: Dictionary) -> void: answers.append([s, d]))
+	up.configure("https://show.example.com/loom/e/e1/api/spatial/voice", "tok")
+	var chunk := PackedByteArray()
+	chunk.resize(VoiceCodec.VOICE_CHUNK_BYTES)
+	up.poll(0.016)
+	_check(clients.is_empty(), "voice uplink: nothing to send, nobody listening → no connection")
+	up.wanted = true
+	up.poll(0.016)
+	_check(clients.size() == 1 and clients[0].connects == [["show.example.com", 443, true]], "voice uplink: someone listens → one TLS connection, ahead of the first word (%s)" % [clients.map(func(c: FakeHttp) -> Array: return c.connects)])
+	var c: FakeHttp = clients[0]
+	up.send(chunk)
+	up.poll(0.016)
+	_check(c.requests.is_empty(), "voice uplink: nothing goes before the connection is up")
+	c.status = HTTPClient.STATUS_CONNECTED
+	up.poll(0.016)
+	_check(c.requests.size() == 1 and c.requests[0][0] == HTTPClient.METHOD_POST and c.requests[0][1] == "/loom/e/e1/api/spatial/voice?seq=0", "voice uplink: a POST to …/voice?seq=0 (%s)" % [c.requests.map(func(r: Array) -> String: return r[1])])
+	var h: PackedStringArray = c.requests[0][2]
+	_check(h.has("x-loom-token: tok") and h.has("Content-Type: application/octet-stream") and (c.requests[0][3] as PackedByteArray).size() == 3200, "voice uplink: the token header, raw octets, one 3200-byte chunk")
+	for i in 3:
+		up.send(chunk)
+	up.poll(0.016)
+	up.poll(0.016)
+	_check(c.requests.size() == 1 and up.in_flight(), "voice uplink: never two requests in flight")
+	c.answer(200, {"ok": true, "listening": true})
+	up.poll(0.016)
+	up.poll(0.016)
+	_check(answers.size() == 1 and answers[0][0] == 200 and answers[0][1].get("listening") == true, "voice uplink: the answer's listening comes back (%s)" % [answers])
+	_check(c.requests.size() == 2 and c.requests[1][1].ends_with("?seq=1") and (c.requests[1][3] as PackedByteArray).size() == 6400, "voice uplink: the next POST batches two chunks, seq 1 (%d bytes)" % (c.requests[1][3] as PackedByteArray).size() if c.requests.size() == 2 else "voice uplink: a second POST")
+	_check(clients.size() == 1, "voice uplink: … on the same connection")
+	# Backpressure: past a second of chunks the oldest are dropped.
+	var before := up.dropped
+	for i in 9:
+		up.send(chunk)
+	_check(up.queue.size() == VoiceLink.UPLINK_QUEUE and up.dropped - before == 1 + 9 - VoiceLink.UPLINK_QUEUE, "voice uplink: at most %d chunks wait, the rest are dropped (%d dropped)" % [VoiceLink.UPLINK_QUEUE, up.dropped - before])
+	# A request lost in flight: answered 0, a new connection after the backoff.
+	c.status = HTTPClient.STATUS_CONNECTION_ERROR
+	up.poll(0.016)
+	_check(answers.back()[0] == 0 and not up.connected(), "voice uplink: a lost POST is answered 0 and the connection dropped")
+	up.poll(0.1)
+	_check(clients.size() == 1, "voice uplink: … backing off before reconnecting")
+	up.poll(0.5)
+	_check(clients.size() == 2, "voice uplink: … then a new connection")
+	var c2: FakeHttp = clients[1]
+	c2.status = HTTPClient.STATUS_CONNECTED
+	up.poll(0.016)
+	_check(c2.requests.size() == 1 and c2.requests[0][1].ends_with("?seq=2"), "voice uplink: seq keeps increasing over a reconnect")
+	c2.answer(200, {"ok": true, "listening": true})
+	up.poll(0.016)
+	up.drop_queue()
+	up.poll(0.016)
+	# Idle past Node's keep-alive: the next POST goes on a fresh connection.
+	for i in 5:
+		up.poll(1.0)
+	_check(clients.size() == 3 and c2.closed == 1, "voice uplink: a connection idle past %d s is replaced while someone listens" % int(VoiceLink.Uplink.IDLE_REOPEN))
+	up.send(chunk)
+	# The server closes an idle keep-alive: dropped quietly, reconnected at once.
+	var c3: FakeHttp = clients[2]
+	c3.status = HTTPClient.STATUS_CONNECTED
+	up.poll(0.016)
+	c3.answer(200, {"ok": true, "listening": true})
+	up.poll(0.016)
+	up.poll(0.016)
+	c3.status = HTTPClient.STATUS_DISCONNECTED
+	up.poll(0.016)
+	up.send(chunk)
+	up.poll(0.016)
+	_check(clients.size() == 4 and answers.back()[0] == 200, "voice uplink: a keep-alive the server closed is reopened with no backoff and no lost answer")
+	up.close()
+	_check(not up.connected() and up.queue.is_empty(), "voice uplink: close drops the connection and the queue")
+
+
+## The whole link with fakes: listen on / off, the gate, half-duplex, the
+## voices under their terminals, the jitter plan, bye, a rebuild, mute, stop.
+func _test_voice_link() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var b := HouseBuilder.new()
+	root.add_child(b)
+	b.build(house)
+	var v := VoiceLink.new()
+	v.builder = b
+	v.use_stream = false
+	var now := [1000.0]
+	v.clock = func() -> float: return now[0]
+	var clients: Array = []
+	v.client_factory = func() -> Object:
+		var c := FakeHttp.new()
+		clients.append(c)
+		return c
+	var pbs := {}
+	v.playback_of = func(e: Node) -> Object:
+		if not pbs.has(e.get_instance_id()):
+			pbs[e.get_instance_id()] = FakePlayback.new()
+		return pbs[e.get_instance_id()]
+	var mic := [PackedVector2Array()]
+	v.frame_source = func() -> PackedVector2Array:
+		var f: PackedVector2Array = mic[0]
+		mic[0] = PackedVector2Array()
+		return f
+	v.source_rate = 48000.0
+	root.add_child(v)
+	var upload := "http://127.0.0.1:7600/e/e1/api/spatial/voice"
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(v.is_running() and v.mic_state == "live" and not v.listen_on, "voice: running, the mic live, nobody listening yet")
+	_check(v.hud_text(true) == "🎤 LIVE", "voice: the HUD says 🎤 LIVE (%s)" % v.hud_text(true))
+
+	# Nobody can hear us: a loud word goes nowhere, no connection.
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(v.uplink.queue.is_empty() and clients.is_empty(), "voice: nobody listening → nothing queued, no connection")
+	v.on_frame("hello", {"codec": "mulaw", "rate": 16000, "chunkMs": 200, "as": "player", "session": "s1", "listen": false})
+	v.on_frame("listen", {"on": true})
+	_check(v.listen_on and v.hud_text(true) == "🎤 LIVE · someone can hear you", "voice: listen {on} → someone can hear you")
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(clients.size() == 1 and v.uplink.queue.size() == 1, "voice: … a loud chunk is queued, the connection opening (%d queued)" % v.uplink.queue.size())
+	(clients[0] as FakeHttp).status = HTTPClient.STATUS_CONNECTED
+	v._process(0.016)
+	var c: FakeHttp = clients[0]
+	_check(c.requests.size() == 1 and c.requests[0][1] == "/e/e1/api/spatial/voice?seq=0", "voice: … and posted")
+	var chunk_bytes: PackedByteArray = c.requests[0][3] if not c.requests.is_empty() else PackedByteArray()
+	_check(chunk_bytes.size() == 3200 and VoiceCodec.rms_dbfs(VoiceCodec.mulaw_decode(chunk_bytes)) > -20.0, "voice: 200 ms of μ-law at 16 kHz from 48 kHz frames")
+	c.answer(200, {"ok": true, "listening": true})
+	v._process(0.016)
+	v._process(0.016)
+	# Silence past the hang: the gate closes, nothing more goes up.
+	for i in 4:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	var queued_after_quiet: int = c.requests.size() + v.uplink.queue.size()
+	for i in 3:
+		mic[0] = _mic_tone(9600, 0.0)
+		now[0] += 200.0
+		v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() == queued_after_quiet, "voice: the gate shuts after the hang — silence never goes up")
+
+	# A terminal's voice: under Terminal_hall, at the server's gain, the
+	# jitter target ahead of it, faded in.
+	v.on_frame("voice", _voice_frame("hall", 1, 0.5))
+	var e := b.get_node_or_null("Terminal_hall/Voice") as AudioStreamPlayer3D
+	_check(e != null and b.voice_attached("hall") and v.sources() == ["t:hall"], "voice: a voice frame hangs an emitter under Terminal_hall")
+	if e == null:
+		v.stop()
+		v.queue_free()
+		b.queue_free()
+		return
+	_check(e.stream is AudioStreamGenerator and (e.stream as AudioStreamGenerator).mix_rate == 16000.0 and e.attenuation_model == AudioStreamPlayer3D.ATTENUATION_DISABLED, "voice: … a 16 kHz generator, attenuation off")
+	_check(_near(e.volume_db, linear_to_db(0.5), 0.01), "voice: … its volume from the gain (%.2f dB)" % e.volume_db)
+	var pb: FakePlayback = pbs[e.get_instance_id()]
+	_check(pb.pushes == [6400] and pb.queued[3200 - 1] == Vector2.ZERO and absf(pb.queued[3200].x) < 0.001 and absf(pb.queued[3200 + 200].x) > 0.01, "voice: … 200 ms of silence, then the chunk faded in (%s)" % [pb.pushes])
+	# Half-duplex: our mic is held while it plays (+ the tail).
+	var sent := c.requests.size() + v.uplink.queue.size()
+	mic[0] = _mic_tone(9600, 0.3)
+	now[0] += 100.0
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() == sent, "voice: a loud word while a voice plays here is not sent (half-duplex)")
+	v.on_frame("voice", _voice_frame("hall", 2, 0.5))
+	_check(pb.pushes.size() == 2 and pb.pushes[1] == 3200 and pb.queued.size() == 9600, "voice: the next chunk queues behind (%s)" % [pb.pushes])
+	v.on_frame("voice", _voice_frame("hall", 2, 0.5))
+	_check(pb.pushes.size() == 2, "voice: a repeated seq is not played twice")
+	# Over 400 ms queued: skip ahead to 200 ms.
+	pb.consume(1000)
+	v.on_frame("voice", _voice_frame("hall", 3, 0.5))
+	_check(pb.clears >= 2 and pb.queued.size() == 3200 + 3200, "voice: over 400 ms queued, the oldest is dropped down to 200 ms (%d frames queued)" % pb.queued.size())
+	# The tent's terminal (voice off on the map) is never played; nor a player.
+	v.on_frame("voice", _voice_frame("tent", 1, 1.0))
+	var player_voice := _voice_frame("hall", 9, 1.0)
+	player_voice["kind"] = "player"
+	player_voice["from"] = "s:s2"
+	player_voice.erase("spot")
+	v.on_frame("voice", player_voice)
+	_check(not b.voice_attached("tent") and v.sources() == ["t:hall"], "voice: the tent's terminal and other players are never played here")
+
+	# After the hold the mic is sent again.
+	now[0] += 2000.0
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() > sent, "voice: once the voice and its tail are over, the mic goes up again")
+
+	# A rebuild (a map edit): the emitter is re-made and the source carries on.
+	b.build(house)
+	var e2 := b.get_node_or_null("Terminal_hall/Voice") as AudioStreamPlayer3D
+	_check(e2 != null and not is_same(e2, e) and v.sources() == ["t:hall"], "voice: a rebuilt house re-attaches the emitter")
+	if e2 != null:
+		var pb2: FakePlayback = pbs[e2.get_instance_id()]
+		v.on_frame("voice", _voice_frame("hall", 4, 1.0))
+		_check(pb2.pushes == [6400] and _near(e2.volume_db, 0.0, 0.01), "voice: … and plays the next chunk on it, from the start")
+		# bye: faded out over 60 ms, forgotten.
+		v.on_frame("bye", {"from": "t:hall"})
+		_check(v.sources().is_empty() and pb2.queued.size() == VoiceLink.FADE_OUT_MS * 16 and pb2.queued[pb2.queued.size() - 1].length() < 0.001, "voice: bye fades the queued voice out and forgets the source (%d frames left)" % pb2.queued.size())
+
+	# Mute: the mic's chunks are dropped; the HUD says so.
+	v.toggle_mute()
+	_check(v.mic_state == "muted" and v.hud_text(true) == "🎤 MUTED · B / Y to talk" and v.hud_text(false) == "🎤 MUTED · M to talk", "voice: mute → 🎤 MUTED (%s)" % v.hud_text(true))
+	var q := c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size()
+	now[0] += 1000.0
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(c.requests.size() + v.uplink.queue.size() + (clients.back() as FakeHttp).requests.size() == q, "voice: muted, nothing goes up")
+	v.toggle_mute()
+	_check(v.mic_state == "live", "voice: unmute → live")
+	# The server stops listening.
+	v.on_frame("listen", {"on": false})
+	_check(not v.listen_on and v.uplink.queue.is_empty() and v.hud_text(true) == "🎤 LIVE", "voice: listen {on: false} → nothing queued, the HUD drops the line")
+	# The same URLs again change nothing; stop ends everything.
+	v.on_frame("voice", _voice_frame("hall", 5, 1.0))
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	_check(v.sources() == ["t:hall"], "voice: want() with the same URLs keeps playing")
+	v.stop()
+	_check(not v.is_running() and v.sources().is_empty() and not b.voice_attached("hall") and v.mic_state == "off" and v.hud_text(true) == "", "voice: stop ends the stream, the mic and every voice")
+	# A server speaking another wire is not played.
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("hello", {"codec": "opus", "rate": 48000, "listen": false})
+	v.on_frame("voice", _voice_frame("hall", 1, 1.0))
+	_check(v.sources().is_empty(), "voice: a hello naming another codec / rate → nothing played")
+	v.stop()
+	# Listen-only: the mic off in the config never opens.
+	v.mic_enabled = false
+	v.want(upload + "/stream?token=tok", upload, "tok")
+	v.on_frame("listen", {"on": true})
+	mic[0] = _mic_tone(9600, 0.3)
+	v._process(0.016)
+	_check(v.mic_state == "off" and v.uplink.queue.is_empty() and v.hud_text(true) == "", "voice: --mic false listens only")
+	v.on_frame("voice", _voice_frame("hall", 1, 1.0))
+	_check(v.sources() == ["t:hall"], "voice: … and still hears the terminals")
+	v.stop()
+	v.queue_free()
+	b.queue_free()
+
+
+## The voice config keys: on by default, `--mic false` / `--voice=0` turn them off.
+func _test_voice_config() -> void:
+	var d := StationConfig.defaults()
+	_check(d.get("voice") == true and d.get("mic") == true, "voice config: voice and mic on by default")
+	var o := StationConfig.parse_args(PackedStringArray(["--mic", "false", "--voice=0"]))
+	_check(o.get("mic") == false and o.get("voice") == false, "voice config: --mic false, --voice=0")
+	_check(StationConfig.merge(d, {"mic": false}).get("mic") == false, "voice config: a station file may turn the mic off")
+
+
+## The game drives the link: on while a session plays (with the session's
+## URLs), the mute button toggles the mic and the HUD shows it, the lobby
+## stops it; `voice` off or no URLs (offline) never start it.
+func _test_voice_game() -> void:
+	var house: Dictionary = _read_json("res://house/house.json")
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	link.house = house
+	link.house_version = "test"
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var v := game.voice
+	_check(v != null and not v.is_running(), "voice game: the link is there, off in the lobby")
+	v.use_stream = false
+	v.client_factory = func() -> Object: return FakeHttp.new()
+	v.frame_source = func() -> PackedVector2Array: return PackedVector2Array()
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+
+	# Offline (no voice URLs): playing starts no voice.
+	link.assignment_received.emit(_assignment(house, "v-0", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running() and game.hud.mic_text() == "", "voice game: no voice URLs (offline) → no voice")
+	game.enter_lobby()
+
+	link.set("voice_base", "http://127.0.0.1:7600/e/e1/api/spatial")
+	link.assignment_received.emit(_assignment(house, "v-1", true))
+	game._process(0.016)
+	_check(v.is_running() and v.stream_url == "http://127.0.0.1:7600/e/e1/api/spatial/voice/stream?token=tok-v-1" and v.upload_url.ends_with("/api/spatial/voice"), "voice game: playing starts the voice on the session's token (%s)" % v.stream_url)
+	_check(game.hud.mic_text() == "🎤 LIVE", "voice game: the HUD shows 🎤 LIVE (%s)" % game.hud.mic_text())
+	player.mute_button = true
+	game._process(0.016)
+	game._process(0.016)
+	_check(v.muted and game.hud.mic_text() == "🎤 MUTED · M to talk", "voice game: a press of the mute button mutes (once, held) (%s)" % game.hud.mic_text())
+	player.mute_button = false
+	game._process(0.016)
+	player.mute_button = true
+	game._process(0.016)
+	_check(not v.muted, "voice game: … a second press unmutes")
+	player.mute_button = false
+	v.on_frame("voice", _voice_frame("optical-drive", 1, 1.0))
+	_check(game.builder.voice_attached("optical-drive"), "voice game: a terminal's voice hangs in the game's house")
+	link.session_over.emit("reset")
+	_check(game.state() == GameFlow.State.LOBBY and not v.is_running() and not game.builder.voice_attached("optical-drive") and game.hud.mic_text() == "", "voice game: the lobby stops the voice, the emitters and the HUD line")
+
+	# `--voice false`: never started.
+	link.config = StationConfig.merge(link.config, {"voice": false})
+	link.assignment_received.emit(_assignment(house, "v-2", true))
+	game._process(0.016)
+	_check(game.state() == GameFlow.State.PLAYING and not v.is_running(), "voice game: voice off in the config → no voice")
+	game.enter_lobby()
+	main.queue_free()
+	await process_frame
+
+
+## ServerLink's voice URLs: the session's stream + upload on the event, ""
+## with no session or offline; the base LinkBase (the fake's parent) has none.
+func _test_voice_server_link() -> void:
+	var sl := _linked_server_link()
+	(sl.get("transport") as HttpTransport).base = "http://127.0.0.1:7999"
+	_check(sl.voice_stream_url() == "" and sl.voice_token() == "", "voice link: no session → no voice stream")
+	_check(sl.voice_upload_url() == "http://127.0.0.1:7999/e/e1/api/spatial/voice", "voice link: the upload URL is the event's (%s)" % sl.voice_upload_url())
+	sl.adopt({"session": "s-9", "token": "tok 9", "duck": {}, "spawn": {}})
+	_check(sl.voice_stream_url() == "http://127.0.0.1:7999/e/e1/api/spatial/voice/stream?token=tok%209" and sl.voice_token() == "tok 9", "voice link: playing → the session's stream (%s)" % sl.voice_stream_url())
+	sl.config["offline"] = true
+	_check(sl.voice_stream_url() == "" and sl.voice_upload_url() == "", "voice link: offline → no voice")
+	_free_server_link(sl)
+	var base := LinkBase.new()
+	_check(base.voice_stream_url() == "" and base.voice_upload_url() == "" and base.voice_token() == "", "voice link: LinkBase's defaults are no voice")
+	base.free()

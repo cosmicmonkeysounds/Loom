@@ -14,7 +14,9 @@
 ## stands, but his collider and the leaves' stay off until they are clear.
 ##
 ## A terminal with a live camera feed ([method set_cam], from [CamFeeds])
-## shows it on a 4:3 panel in place of its screen.
+## shows it on a 4:3 panel in place of its screen. A terminal heard through
+## the voice link ([VoiceLink]) has an [AudioStreamPlayer3D] "Voice" under
+## its root ([method voice_emitter]), re-made after a rebuild.
 ##
 ## Children are placed in **house coordinates**; this node carries the
 ## map's `spaces.vr` transform (identity for the procedural build), so its
@@ -61,6 +63,9 @@ var _held := {}
 var _terminals := {}
 ## Terminal id → the camera feed it shows ([method set_cam]); kept across rebuilds.
 var _cams := {}
+## Terminal id → true while it has a voice emitter ([method voice_emitter]);
+## kept across rebuilds (the emitter itself is new: its generator starts empty).
+var _voices := {}
 
 
 ## (Re)build everything from `map`.
@@ -604,6 +609,69 @@ func _build_terminals() -> void:
 		_terminals[str(t["id"])] = root
 		if _cams.has(str(t["id"])):
 			_show_cam(root, _cams[str(t["id"])])
+		if _voices.has(str(t["id"])):
+			root.add_child(make_voice_emitter())
+
+
+# --- voice ---
+
+
+## Terminal `id`'s voice emitter (made the first time), or null when the
+## map has no such terminal. The caller plays it.
+func voice_emitter(id: String) -> AudioStreamPlayer3D:
+	if not _terminals.has(id):
+		return null
+	var root: Node3D = _terminals[id]
+	var e := root.get_node_or_null("Voice") as AudioStreamPlayer3D
+	if e == null:
+		e = make_voice_emitter()
+		root.add_child(e)
+	_voices[id] = true
+	return e
+
+
+## Terminal `id` silent: its emitter gone.
+func clear_voice(id: String) -> void:
+	_voices.erase(id)
+	if not _terminals.has(id):
+		return
+	var e := (_terminals[id] as Node3D).get_node_or_null("Voice") as AudioStreamPlayer3D
+	if e != null:
+		e.stop()
+		e.get_parent().remove_child(e)
+		e.queue_free()
+
+
+func clear_voices() -> void:
+	for id: String in _voices.keys():
+		clear_voice(id)
+
+
+## Whether terminal `id` has a voice emitter now, for the tests.
+func voice_attached(id: String) -> bool:
+	return _terminals.has(id) and (_terminals[id] as Node3D).get_node_or_null("Voice") != null
+
+
+func has_terminal(id: String) -> bool:
+	return _terminals.has(id)
+
+
+## An emitter for a terminal's voice: a 16 kHz [AudioStreamGenerator]
+## ([constant VoiceLink.BUFFER_LENGTH] s — the 400 ms skip limit plus a
+## chunk), positional (panned from the screen) but not attenuated — the
+## server's gain already says how far away it is.
+static func make_voice_emitter() -> AudioStreamPlayer3D:
+	var gen := AudioStreamGenerator.new()
+	gen.mix_rate_mode = AudioStreamGenerator.MIX_RATE_CUSTOM
+	gen.mix_rate = VoiceCodec.VOICE_RATE
+	gen.buffer_length = VoiceLink.BUFFER_LENGTH
+	var e := AudioStreamPlayer3D.new()
+	e.name = "Voice"
+	e.stream = gen
+	e.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+	e.max_distance = 0.0
+	e.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_DISABLED
+	return e
 
 
 ## Terminal `t`'s screen centre and facing, in house coordinates: `pos` is

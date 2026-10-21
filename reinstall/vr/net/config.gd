@@ -6,7 +6,10 @@
 ##
 ##   godot --path . -- --server http://10.0.0.2:7000 --code 4821 \
 ##         --station vr-1 --name "Headset 1" [--guest g-3f9a1c] [--offline] [--smooth-turn]
-##         [--autopilot [--hit-king]]
+##         [--autopilot [--hit-king]] [--voice false] [--mic false]
+##
+## `voice` (default on) is the voice link (wave 19): the terminals heard in
+## the house, this headset heard on them; `mic` (default on) off = listen only.
 ##
 ## `--autopilot` (dev / CI only) walks the trail to the duck by itself and
 ## quits when the session is over — see [Autopilot]. With `--hit-king` it
@@ -36,6 +39,8 @@ const KEYS := {
 	"smooth_turn": TYPE_BOOL,
 	"autopilot": TYPE_BOOL,
 	"hit_king": TYPE_BOOL,
+	"voice": TYPE_BOOL,
+	"mic": TYPE_BOOL,
 }
 
 
@@ -50,6 +55,8 @@ static func defaults() -> Dictionary:
 		"smooth_turn": false,
 		"autopilot": false,
 		"hit_king": false,
+		"voice": true,
+		"mic": true,
 	}
 
 

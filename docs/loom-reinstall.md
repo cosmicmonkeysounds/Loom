@@ -1128,11 +1128,43 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   decoded by magic bytes (PNG / JPEG / WebP / SVG — an SVG rendered once
   near 256 px whatever size it declares; GIF / AVIF keep the capsule),
   cached for the run; a failure is retried once on the next visit.
+- **The voice link** (wave 19, `net/voice_codec.gd` + `net/voice_link.gd`,
+  §2.4): `voice_codec.gd` is a literal port of `@loom/house` `voice.ts`
+  (μ-law with a 256-entry decode table, the integer-phase resampler, the
+  gate + half-duplex hold, the chunker, `jitter_plan`, `voice_on`), pinned
+  by `test/golden/voice-mulaw.json`. While a session plays the game holds
+  `GET …/api/spatial/voice/stream?token=<session>` on `SseClient`; each
+  heard terminal plays from an `AudioStreamPlayer3D` "Voice" under its
+  `Terminal_<id>` (`HouseBuilder.voice_emitter`, re-made after a rebuild)
+  on a 16 kHz `AudioStreamGenerator` (1 s buffer), attenuation off,
+  `volume_db` from the frame's `gain`; 200 ms of jitter target, a skip
+  ahead to it past 400 ms queued, a 10 ms fade-in and a 60 ms fade-out on
+  `bye`; a terminal the map has voice off (the tent) is never played. The
+  mic: `AudioServer.set_input_device_active(true)` + `get_input_frames()`
+  at `get_input_mix_rate()` (an `AudioStreamMicrophone` on a muted
+  `VoiceMic` bus with an `AudioEffectCapture` when that gives nothing for
+  2 s), resampled to 16 kHz, 200 ms chunks, μ-law, the −42 dBFS gate
+  (400 ms hang, one chunk of pre-roll), held while a voice plays here
+  (+ 300 ms). Uploads only while `listen.on` (the stream's `hello` /
+  `listen`, the POST's `listening`), on one persistent keep-alive
+  `HTTPClient` (`request_raw`, `x-loom-token`, `?seq=`), one POST in flight,
+  two chunks a POST at most, at most 1 s queued (older chunks dropped),
+  reconnecting with a back-off and reopening a connection idle 4 s. A
+  401 / 403 / 410 stops the uploads until the next session. **B / Y**
+  (`by_button`, either hand; **M** on the desktop rig) toggles the mic; the
+  HUD's line reads 🎤 LIVE (· someone can hear you) / 🎤 MUTED / NO MIC.
+  `project.godot` `[audio] driver/enable_input=true`; the Quest preset's
+  `permissions/record_audio=true`, the grant asked at the first start
+  (`OS.request_permission("RECORD_AUDIO")`, the mic re-opened on
+  `on_request_permissions_result`). Config `voice` / `mic` (both on;
+  `--mic false` listens only). Everything stops in `enter_lobby`;
+  offline there is none.
 - `player/`: XROrigin3D rig on a CharacterBody3D; **left stick** walks
   head-relative (dead zone 0.15, 1.8 m/s), **right stick** snap-turns 45°
   (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
-  room-scale head offset folded into the body. The only button is the
-  King's hit (trigger, or A / X); on a Mac, Space or F.
+  room-scale head offset folded into the body. The buttons are the King's
+  hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute
+  (B / Y; on a Mac, M).
 - `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
   picker of candidates — only the eligible ones, `Lobby.eligible_only`;
   up/down chooses, hold right 1 s to confirm; a begin 409 `not marked for

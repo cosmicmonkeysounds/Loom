@@ -23,6 +23,11 @@
 ##   GERALD" for a program that wasn't corrupted); then the session ends and
 ##   the lobby comes back.
 ##
+## - **Voice** (wave 19, [VoiceLink]): while playing, the terminals near
+##   the player are heard at their screens and the player on the terminals
+##   near them; B / Y (M on the desktop rig) mutes the mic. Off with
+##   `--voice false`, listen-only with `--mic false`; never offline.
+##
 ## The session also ends when the server says so ([signal
 ## LinkBase.session_over]) or the headset comes off ([method presence_changed],
 ## [method focus_changed], [method app_paused], [method headset_gone]).
@@ -80,6 +85,8 @@ var ghosts: Ghosts
 ## The terminals' live camera feeds on their screens ([CamFeeds]).
 var cams: CamFeeds
 var hud: Hud
+## The voice link ([VoiceLink]; running only while a session plays).
+var voice: VoiceLink
 
 var _trail_in := 0.0
 var _cand_in := 0.0
@@ -158,6 +165,7 @@ func setup(l: LinkBase, xr: bool) -> void:
 	hud = Hud.new()
 	hud.name = "Hud"
 	player.camera.add_child(hud)
+	_setup_voice()
 	if bool(link.config.get("autopilot", false)):
 		autopilot = Autopilot.new()
 		player.read_input = false
@@ -202,6 +210,7 @@ func enter_lobby() -> void:
 	duck.remove()
 	trail.clear()
 	cams.stop()
+	_stop_voice()
 	ghosts.own_session = ""
 	if _notice_left <= 0.0:
 		hud.hide_all()
@@ -542,6 +551,7 @@ func _tick_play(delta: float) -> void:
 	var here := HouseLocate.locate(house, feet)
 	hud.set_room(_room_label(here["room"]))
 	cams.tick(delta, house, feet, link.cams_url(), link.cams_token())
+	_tick_voice()
 
 	var duck_p: Array = flow.assignment["duck"]["pos"]
 	_trail_in -= delta
@@ -556,6 +566,38 @@ func _tick_play(delta: float) -> void:
 		_found_pending = true
 		link.report_found()
 	_tick_king(house, feet, builder.yaw_to_house(player.head_yaw()))
+
+
+# --- voice ---
+
+## The mute button on the last frame (a toggle is the press, not the hold).
+var _mute_was := false
+
+
+func _setup_voice() -> void:
+	voice = VoiceLink.new()
+	voice.name = "Voice"
+	voice.builder = builder
+	voice.mic_enabled = bool(link.config.get("mic", true))
+	add_child(voice)
+
+
+## While playing: run the voice link on the session (unless `voice` is off),
+## toggle the mic on a press of the mute button, keep the HUD's mic line.
+func _tick_voice() -> void:
+	if not bool(link.config.get("voice", true)):
+		return
+	voice.want(link.voice_stream_url(), link.voice_upload_url(), link.voice_token())
+	var pressed := player.mute_button and not _mute_was
+	_mute_was = player.mute_button
+	if pressed:
+		voice.toggle_mute()
+	hud.set_mic(voice.hud_text(player.xr_active))
+
+
+func _stop_voice() -> void:
+	voice.stop()
+	hud.set_mic("")
 
 
 ## Near the King (a `king` prop, with a shared King on the server): say

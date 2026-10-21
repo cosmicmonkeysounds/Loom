@@ -52,6 +52,24 @@ func avatar_url(key: String) -> String:
 	return "fixture://avatar/" + key if key != "" else ""
 
 
+# --- voice ---
+
+## The voice link's root ("" = none, the default: no voice).
+var voice_base := ""
+
+
+func voice_stream_url() -> String:
+	return voice_base + "/voice/stream?token=" + voice_token() if voice_base != "" and voice_token() != "" else ""
+
+
+func voice_upload_url() -> String:
+	return voice_base + "/voice" if voice_base != "" else ""
+
+
+func voice_token() -> String:
+	return str(session.get("token", "")) if has_session() else ""
+
+
 ## The server's word on the shared King (a `hello` / `king` frame).
 func give_king(k: Variant) -> void:
 	_adopt_king(k)
