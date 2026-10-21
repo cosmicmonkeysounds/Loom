@@ -4,7 +4,8 @@
 ##
 ## - **Left stick** walks where the head looks (dead zone 0.15, 1.8 m/s).
 ## - **Right stick** snap-turns 45° about the head (re-arm under 0.3), or
-##   turns smoothly with [member smooth_turn].
+##   turns smoothly with [member smooth_turn]. With the left stick idle (one
+##   controller), its forward / back walks too.
 ## - **Room scale**: each physics tick the head's horizontal offset from the
 ##   body is folded into the body with its own slide (so a real step climbs a
 ##   stair and slides along a wall like a stick step) and taken back out of
@@ -181,6 +182,10 @@ func _read_sticks() -> void:
 	if xr_active:
 		left_stick = Locomotion.dead_zone(left_hand.get_vector2("primary"))
 		right_stick = Locomotion.dead_zone(right_hand.get_vector2("primary"))
+		# One controller: with the left stick idle (or no left controller),
+		# the right stick's forward / back walks while its sideways turns.
+		if left_stick == Vector2.ZERO:
+			left_stick = Vector2(0.0, right_stick.y)
 		hit_button = false
 		for hand: XRController3D in [right_hand, left_hand]:
 			if hand.is_button_pressed("trigger_click") or hand.is_button_pressed("ax_button") or hand.get_float("trigger") > 0.8:
