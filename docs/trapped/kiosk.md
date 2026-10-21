@@ -93,7 +93,7 @@ search box at the top of Fully's Settings.
 | Web Content | **Autoplay Videos** | ✔ | Media may start without a tap. |
 | Web Content | **Autoplay Audio** (if your version lists it separately) | ✔ | **The voice.** Without it the terminal can't speak until someone taps TOUCH TO WAKE after every reload. Still tap it once after a reload: Web Audio wants that gesture on some WebViews anyway. |
 | Web Content | **Enable Webcam Access** | ✔ | The pass scanner. Android also asks for the camera permission the first time: allow. |
-| Web Content | **Enable Microphone Access** | ✘ | Not used. |
+| Web Content | **Enable Microphone Access** | ✔ | **The voice link** (wave 19): the room is heard in the reinstallation games at this terminal's screen. Android asks for the microphone permission (for Fully) the first time: allow, once. Needs the `https://` address (a LAN `http://` address refuses the microphone, as it refuses the camera). The tent laptop's terminal takes no part (the map's `voice: false`), so it never asks. |
 | Web Browsing | **Enable Pull to Refresh** | ✘ | A pull would reload the page and lose the audio unlock mid-show. |
 | Web Browsing | **Swipe to Go Back / Navigate** | ✘ | Same reason. |
 | Web Browsing | **Reload on Screen On** | ✘ | Same reason. |
@@ -163,6 +163,20 @@ setup with the same message.
 
 **Speaker tablets.** Media volume up, then lock it with Fully's *Volume
 Limits* if the version has it. Set the volume before the party, not after.
+The same speaker plays the reinstallation players near this terminal
+(wave 19, the voice link), ducked under the character's voice.
+
+**The voice link (wave 19).** A placed terminal sends its room to the
+players near it in the games and plays them out of its speaker; nothing
+leaves the room unless a player is near enough to hear it (the 🎤 in the
+top-left corner says so), and the terminal sends nothing while it is
+making a sound itself (no echo back into the game). It starts with the
+first touch after a reload, like the voice. ⚙ → advanced has *let the
+games hear this room* and *play the players near this screen*; Run →
+Terminals' 🎤 flags a tablet whose microphone was refused (*denied*) or
+can't run on plain `http` (*insecure*). Check one by walking the virtual
+room in the web game (a second laptop with `voice=1`) or a headset while
+someone talks beside the tablet.
 
 ## iPads (if any are used)
 
@@ -170,7 +184,11 @@ Settings → Display & Brightness → Auto-Lock: **Never**; Accessibility →
 Guided Access ✔ with a passcode; add the terminal to the Home Screen and
 start Guided Access on it (that is the iPad's full screen: the Home Screen
 copy has no Safari bars). Every reload needs a TOUCH TO WAKE tap (iOS has
-no autoplay setting).
+no autoplay setting). Allow the microphone when asked (the voice link).
+Unchecked on a device: opening the microphone switches iOS to its
+play-and-record audio session, which can make the speaker quieter and has
+been known to stop the camera's stream — if the scanner keeps dropping on
+an iPad, turn *let the games hear this room* off there.
 
 ## The TV — the house Mac on the long HDMI run
 
@@ -184,7 +202,11 @@ pair — so the voice stays in sync with the face.
 macOS voices; no server voice). The terminal ranks them and picks a good
 **male** English one — Daniel on a stock Mac — because the `alexa`
 player speaks the house announcements in Samantha on the same Mac and the
-same living-room speakers, and the two must not sound alike. For a better
+same living-room speakers, and the two must not sound alike. The TV also
+plays the reinstallation players near it (the voice link, wave 19), under
+the same director mute; its microphone stays off (the Mac's default input
+is the MOTU, whose house mics already reach the router) unless ⚙ ticks
+*let the games hear this room*. For a better
 one, download an *Enhanced* or *Premium* male English voice (Evan, Aaron,
 Nathan, Tom; System Settings → Accessibility → Spoken Content → System
 Voice → Manage Voices…), restart Chrome, and pick it under ⚙ → *device
