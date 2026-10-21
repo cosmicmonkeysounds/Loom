@@ -5,8 +5,9 @@
 // three ways: all four digit notes hidden in the house (facts.json
 // `door.clues`, assembled in main.loom), a checkmate against the King on
 // the terminal outside the door (any time before the verdict), or the
-// majority's Truther Download (a faction that recruits half + 1, whose
-// leader did their task). The sign by the keypad (The Cold Door) points at
+// majority's Truther Download (wave 18b: any faction, declared or founded,
+// holding more than half of the programs still present). The sign by the
+// keypad (The Cold Door) points at
 // the first two. Behind the door is Trabolta's heart: a video patch bay.
 // Combo A disables him (he recounts the night, then rides off); Combo B
 // destroys the whole computer (purgatory). Opening the door once he is
@@ -14,6 +15,10 @@
 // terminal he is candid, and from the Y2K hour a program can talk him down
 // there (stand_down → talked_down, the Combo A ending without a cable).
 // Before the Y2K hour the patch bay answers nobody.
+//
+// Who everyone was, the goals and the night's deeds (read by Trabolta
+// Recounts and Purgatory) are shared with the review before the awards and
+// live in beats/review.loom.
 //
 // The story rules that reach these beats live in `main.loom`
 // (majority_reached, server_door_opened, chess_won / lost / drawn,
