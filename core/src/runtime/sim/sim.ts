@@ -33,6 +33,7 @@ import { parse } from "../../parser/index.ts";
 import { foldName } from "../../parser/names.ts";
 import { splitMomentArgs, withIndex } from "../../go.ts";
 import { indexOutsideQuotes, splitArgsCommas, splitTopLevelCommas, stripPrefix } from "../../parser/rust.ts";
+import { Crews, isCrewRoom, type CrewOp } from "./crews.ts"; // w18 crews
 
 export interface Person {
   id: string;
@@ -220,6 +221,12 @@ export class Sim {
    */
   private readonly subjectNames: string[];
 
+  // w18 crews — guest-founded crews + recruiting (crews.ts), one journaled `crew` op.
+  readonly crews: Crews = new Crews(this, { removeFromGroup: (p, g) => this.removeFromGroup(p, g) });
+  crew(op: CrewOp): SimEvent[] {
+    return this.crews.apply(op);
+  }
+
   constructor(model: SimModel) {
     this.model = model;
     const aliases = [...model.roles.keys()].map((id) => id.toLowerCase().replace(/\s+/gu, "_"));
@@ -276,7 +283,9 @@ export class Sim {
       const entry: LoomFileEntry = { path, stem, qualifier: "", source, file, diagnostics };
       bundle.files.push(entry);
     });
-    return new Sim(compileModel(bundle));
+    const sim = new Sim(compileModel(bundle));
+    sim.crews.configure(bundle.files.map((f) => f.file.header)); // w18 crews (header `majority:`)
+    return sim;
   }
 
   // -------------------------------------------------------------------
@@ -1008,6 +1017,7 @@ export class Sim {
       return [...(this.channelMembers.get(channel) ?? [])]; // private / group / dm
     }
     if (channel.startsWith("faction:")) return this.factionMembers(channel.slice("faction:".length));
+    if (isCrewRoom(channel)) return this.crews.audience(channel); // w18 crews
     // A guest's DM with a character: only that guest sees it on the guest side;
     // the performer sees it via the guest thread (audience includes the id).
     if (channel.startsWith("dm:")) return this.persons.has(sender) ? [sender] : "all";
@@ -1043,6 +1053,7 @@ export class Sim {
     if (id.startsWith("dm:")) {
       return { channel: id, channelKind: "dm", title: id.slice("dm:".length), spaceId: DEFAULT_SPACE_ID };
     }
+    if (isCrewRoom(id)) return this.crews.head(id); // w18 crews
     if (id.startsWith("pm:")) {
       const names = Sim.pmParties(id).map((p) => this.persons.get(p)?.name ?? p);
       return { channel: id, channelKind: "dm", title: names.join(" & "), spaceId: DEFAULT_SPACE_ID };
@@ -1093,6 +1104,7 @@ export class Sim {
       return !loc.hidden || this.hasVisited(person, l) || this.isRevealedTo(l, person);
     }
     if (id.startsWith("pm:")) return Sim.pmParties(id).includes(person);
+    if (isCrewRoom(id)) return this.crews.canSee(person, id); // w18 crews
     const def = this.model.channels.get(id);
     if (def === undefined) return false;
     if (def.hidden && !this.isRevealedTo(id, person)) return false;
@@ -1119,6 +1131,7 @@ export class Sim {
     // A location room takes posts only from whoever is standing in it
     // (operator surfaces bypass this, as they do for authored rooms).
     if (id.startsWith("loc:")) return this.occupants.get(id.slice("loc:".length))?.has(person) ?? false;
+    if (isCrewRoom(id)) return this.crews.canSee(person, id); // w18 crews
     // A private thread takes posts from its two parties only.
     if (id.startsWith("pm:")) {
       const parties = Sim.pmParties(id);
@@ -1206,7 +1219,7 @@ export class Sim {
     }
     const behind = new Set([...this.model.locations.values()].filter((l) => l.cutscene).map((l) => Sim.locationChannel(l.id)));
     const places = this.locationSnapshots(person, false).filter((s) => this.canSeeChannel(person, s.id) && !(behind.has(s.id) && !s.member));
-    return [...places, ...out];
+    return [...places, ...out, ...this.crews.rooms(person)]; // w18 crews: + their crew room
   }
 
   /** Every authored + location channel (operator/performer view — they run

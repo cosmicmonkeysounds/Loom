@@ -21,6 +21,7 @@ import type { WalletModView, WalletQueueView, WalletView } from "./wallet.ts";
 import type { FactsView } from "./facts.ts";
 import { identityDefs, performerPickable } from "../src/identity-kind.ts";
 import { joinableFactions } from "./routes/sides.ts";
+import type { CrewSummary, CrewView, InviteView, SideView } from "../src/runtime/sim/crews.ts"; // w18 crews
 import type { ShowClock } from "../src/show-clock.ts";
 
 export type { WalletModView, WalletOfferView, WalletQueueView, WalletRequestView, WalletTxView, WalletView } from "./wallet.ts";
@@ -83,11 +84,14 @@ export interface PersonCard {
    *  `hold` — the character has a `hold:` line, so a guest is always
    *  answered (by the line, then a director) and the app shows no presence. */
   agent?: { online: boolean; hold?: true };
+  /** w18 crews: every group as a badge (display names; a hidden one until revealed) + their crew's name. */
+  groups?: string[];
 }
 
 function peopleFor(sim: Sim, id: string, agentsOnline?: ReadonlySet<string>): PersonCard[] {
   return sim.peopleFor(id).map((p) => {
     const card: PersonCard = { ...p, known: p.known.map((e) => codexEntry(e, sim.model)), location: p.kind === "guest" ? sim.locationOf(p.id) : null };
+    card.groups = p.kind === "guest" ? sim.crews.groupsOf(p.id) : p.faction !== null ? [p.faction] : []; // w18 crews
     const def = p.kind === "character" ? sim.model.characters.get(p.id) : undefined;
     if (def?.mind === "external") {
       card.agent = { online: agentsOnline?.has(p.id) ?? false, ...(def.hold !== null ? { hold: true as const } : {}) };
@@ -439,6 +443,10 @@ export interface GuestView {
    *  canonical ids. A `dm:<C>` with C not listed (Truther Download, The
    *  Uploader) gets no composer. Always filled. */
   voiced?: string[];
+  // w18 crews (C10, crews.ts): the guest's crew, the invitations waiting on them, the sides they may pick.
+  crew?: CrewView | null;
+  invites?: InviteView[];
+  sides?: SideView[];
   /** Wave 18 (C11): the mission screen's NOW objective and the one place it
    *  sends you (its `go:`), resolved for this guest (a room they cannot see
    *  yet reads null). Filled when the story declares any OBJECTIVE. */
@@ -500,6 +508,7 @@ export function guestView(sim: Sim, id: string, decisionChannel: string | null =
     ...guestBoard(sim),
     ...guestMission(sim, id, objectives),
     objectives,
+    ...sim.crews.guestFields(id), // w18 crews
     // No act for a guest: the act's title is the director's copy and names
     // what is coming; the phone reads only `phase` (wave 13 adversary).
     night: { ...nightView(sim), act: null },
@@ -721,6 +730,8 @@ export interface ModView {
   scenario: string | null;
   roster: RosterRow[];
   factions: FactionSummary[];
+  /** w18 crews: every live guest-founded crew (rename / dissolve from Run). */
+  crews?: CrewSummary[];
   locations: LocationSummary[];
   /** Character ids (thin list; the run panel uses `cast` for factions too). */
   characters: string[];
@@ -1271,6 +1282,7 @@ export function modView(sim: Sim | null, phase: RuntimePhase, scenario: string |
     modsOnline: presence?.mods,
     directors: presence?.directors,
     codex: [...sim.model.codex.values()].map((e) => ({ ...codexEntry(e, sim.model), code: e.code, holders: sim.codexHolders(e.id) })),
+    crews: sim.crews.summaries(), // w18 crews
     quests: questSummaries(sim),
     ...(presence?.minds !== undefined && presence.minds.length > 0 ? { minds: presence.minds } : {}),
     ...(presence?.facts !== undefined ? { facts: presence.facts } : {}),
