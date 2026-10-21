@@ -66,10 +66,13 @@ export type SimEvent =
   | { type: "joined"; person: string; faction: string }
   | { type: "defected"; person: string; from: string | null; to: string }
   | { type: "betrayed"; person: string; displayed: string | null; secret: string }
-  | { type: "factionRevealed"; faction: string }
+  /** `quiet` (wave 18b): `reveal X quietly` — the chat posts no notice. */
+  | { type: "factionRevealed"; faction: string; quiet?: true }
   /** A hidden place / room / character was exposed — to everyone (`person`
-   *  null) or to one participant (`reveal X for who`). */
-  | { type: "revealed"; target: string; kind: "location" | "channel" | "character"; person: string | null }
+   *  null) or to one participant (`reveal X for who`). `quiet` (wave 18b):
+   *  `reveal X quietly` — the room opens, the chat posts no "📂 … is open
+   *  now." notice. */
+  | { type: "revealed"; target: string; kind: "location" | "channel" | "character"; person: string | null; quiet?: true }
   | { type: "scanned"; scanner: string; person: string }
   | { type: "captured"; person: string; location: string; by: string | null }
   | { type: "released"; person: string; location: string }
@@ -215,7 +218,11 @@ export type WalletStep =
   // A casino bet: `won` (paid more than the stake), `lost`, `push` (the stake back).
   | "won"
   | "lost"
-  | "push";
+  | "push"
+  // Wave 18b: a transfer the approver's audit held, as its recipient sees
+  // it (the sender's root stays `held`): "flagged for {audit}, must be
+  // approved by {approver}".
+  | "flagged";
 
 /**
  * One wallet card as a viewer sees it. `kind` + `step` say which side the
@@ -247,8 +254,12 @@ export interface WalletCard {
    *  request card names who stopped the request's *payment*; with neither,
    *  the asker withdrew it. */
   closedBy?: string;
-  /** The approver's display name, on a card that waits on them. */
+  /** The approver's display name, on a card that waits on them (wave 18b:
+   *  the approver's `as <name>` when the story gives one). */
   approver?: string;
+  /** Wave 18b: the approver's `audit <phrase>` ("a CRA audit"), on a
+   *  `held` / `flagged` transfer card, when the story gives one. */
+  audit?: string;
   /** A casino bet: the game's title, the pick's label, the roll in words
    *  (`7 ★ ★`) and everything it paid back (the stake included). */
   game?: string;

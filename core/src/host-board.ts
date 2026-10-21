@@ -41,7 +41,11 @@ export interface FilingLike {
   logAt?: number;
   near?: { key: string } | null;
   ruling?: { by: string; same: boolean; why: string; at: number } | null;
+  /** The story's `judge:` character is ruling on it: its frame is out, or
+   *  (with `queued`) it waits in the judge queue (wave 18b, O4). */
   asking?: boolean;
+  /** Wave 18b: the ruling waits in the judge queue (`asking` is true too). */
+  queued?: boolean;
 }
 
 /** The facts view (`FactsView`), structurally. */
@@ -85,6 +89,8 @@ export interface RosterLike {
   online?: boolean;
   lastSeen?: number | null;
   owner?: string | null;
+  /** Wave 18b: the `badge:` lines true for them (`RosterRow.badges`). */
+  badges?: ReadonlyArray<{ glyph: string; label: string }>;
 }
 
 /** One wallet transfer as the views carry it (`WalletTxView`). */
@@ -485,6 +491,9 @@ export const NeedKind = {
   Unseen: "unseen",
   /** Wave 13: silent wall terminals (target "more"). */
   Terminals: "terminals",
+  /** Wave 18b (O4): filings the story's `judge:` character is ruling on
+   *  (asked or queued) — "🤖 N with Trabolta" (target "judge"). */
+  Ruling: "ruling",
 } as const;
 export type NeedKind = (typeof NeedKind)[keyof typeof NeedKind];
 
@@ -731,6 +740,8 @@ export interface HostPerson {
   restricted: boolean;
   captured: boolean;
   flags?: Array<{ label: string; path: string; value: string; on: boolean }>;
+  /** Wave 18b: the `badge:` lines true for them. Absent when none. */
+  badges?: Array<{ glyph: string; label: string }>;
 }
 
 export interface HostJudging {
@@ -970,6 +981,7 @@ export function hostView(input: HostViewInput): HostView {
       restricted: r.restricted === true,
       captured: r.captured === true,
       ...(flags !== undefined && flags.length > 0 ? { flags: flags.map((f) => ({ ...f })) } : {}),
+      ...(r.badges !== undefined && r.badges.length > 0 ? { badges: r.badges.map((b) => ({ glyph: b.glyph, label: b.label })) } : {}),
     });
   }
   return {

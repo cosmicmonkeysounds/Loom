@@ -105,6 +105,22 @@ export function GroupPill({ group }: { group: string | null }) {
   );
 }
 
+/** Wave 18b: a person's badges (`badge:` lines, e.g. 🚻 Bathroom Mode) as
+ *  glyphs beside their name; nothing when they wear none. Each glyph names
+ *  its label for a screen reader and on hover. */
+export function NameBadges({ badges }: { badges?: ReadonlyArray<{ glyph: string; label: string }> | null }) {
+  if (badges === undefined || badges === null || badges.length === 0) return null;
+  return (
+    <>
+      {badges.map((b) => (
+        <span key={`${b.glyph}\u0000${b.label}`} className="name-badge" title={b.label} aria-label={b.label} role="img">
+          {b.glyph}
+        </span>
+      ))}
+    </>
+  );
+}
+
 /** The header dot's word: a hollow dot never claims to be "live". */
 export function connLabel(connected: boolean): string {
   return connected ? "live" : "reconnecting…";

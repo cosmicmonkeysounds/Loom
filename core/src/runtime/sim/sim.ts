@@ -222,7 +222,7 @@ export class Sim {
   private readonly subjectNames: string[];
 
   // w18 crews — guest-founded crews + recruiting (crews.ts), one journaled `crew` op.
-  readonly crews: Crews = new Crews(this, { removeFromGroup: (p, g) => this.removeFromGroup(p, g) });
+  readonly crews: Crews = new Crews(this, { removeFromGroup: (p, g) => this.removeFromGroup(p, g), drain: () => this.drain() });
   crew(op: CrewOp): SimEvent[] {
     return this.crews.apply(op);
   }

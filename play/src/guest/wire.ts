@@ -3,9 +3,9 @@
 //! every reader still goes through these helpers so an older server (none of
 //! these fields) reads as "nothing new", never as a crash.
 
-import type { ChatMessage, GoTarget, GuestMission, GuestView, ObjectiveView, PersonCard } from "../types.ts";
+import type { ChatMessage, GoTarget, GuestMission, GuestView, NameBadge, ObjectiveView, PersonCard } from "../types.ts";
 
-export type { CrewView, GoTarget, InviteView, SideView } from "../types.ts";
+export type { CrewView, GoTarget, InviteView, NameBadge, SideView } from "../types.ts";
 
 /** C11: the NOW objective's place (`GuestView.mission`). */
 export type MissionPlace = GuestMission;
@@ -55,4 +55,29 @@ export function hasSidesOrCrew(view: GuestView | null | undefined): boolean {
   if (view === null || view === undefined) return false;
   const ext = extOf(view);
   return (ext.sides ?? view.factions ?? []).length > 0 || (ext.crew ?? null) !== null;
+}
+
+/** Wave 18b: the badges a person card / the viewer / a booth row wears
+ *  (`badge:` lines), well-formed ones only; [] for an older server. */
+export function badgesOf(p: { badges?: unknown } | null | undefined): NameBadge[] {
+  const b = p?.badges;
+  if (!Array.isArray(b)) return [];
+  const out: NameBadge[] = [];
+  for (const x of b) {
+    if (x === null || typeof x !== "object") continue;
+    const { glyph, label } = x as Record<string, unknown>;
+    if (typeof glyph === "string" && glyph !== "") out.push({ glyph, label: typeof label === "string" && label !== "" ? label : glyph });
+  }
+  return out;
+}
+
+/** Wave 18b: the story hides the lobby from guests (`lobby: hidden`). */
+export function lobbyHidden(view: GuestView | null | undefined): boolean {
+  return view?.lobby === "hidden";
+}
+
+/** Wave 18b: may the guest found a faction now? (false for an older server
+ *  or outside faction mode). */
+export function canFoundOf(view: GuestView | null | undefined): boolean {
+  return view?.canFound === true;
 }

@@ -161,6 +161,12 @@ export interface CharDef {
    *  (`a | b | c` offers a guest several). The first is the default; the
    *  server scrapes one from Wikipedia when there is none. */
   avatar: string[];
+  /** Wave 18b: the `avatar:` options that end in `when <cond>`
+   *  (`picture:trabolta-broken.svg when self.broken == true`), in written
+   *  order, `self` bound to the character. The server shows the last one
+   *  whose condition holds, else `avatar[0]`. Absent when there are none
+   *  (`avatar` keeps only the unconditional refs). */
+  avatarRules?: AvatarRule[];
   /** `wiki: Microsoft Minesweeper` — the Wikipedia article this character
    *  *is*, when its name alone would find the wrong one (the naval
    *  minesweeper). The source of a guest's extra picture options. */
@@ -194,7 +200,7 @@ export interface CharDef {
  * booth or a guest's program is decided at the door, not here.
  */
 export type WalletRole =
-  | { role: "approver"; every: number; windowMs: number }
+  | { role: "approver"; every: number; windowMs: number; as?: string; audit?: string }
   | { role: "minter"; limit: number; while: string | null; grants?: number; freezeMs?: number };
 
 /**
@@ -211,7 +217,10 @@ export interface CurrencyDef {
   maxTransfer: number;
   /** Request / offer lifetime (default 10 min). */
   expiryMs: number;
-  approver: { id: string; every: number; windowMs: number } | null;
+  /** `as` (wave 18b): the name wallet cards give the approver (`as MyCRA`);
+   *  `audit`: what a held transfer is flagged for (`audit "a CRA audit"`).
+   *  Both only when authored. */
+  approver: { id: string; every: number; windowMs: number; as?: string; audit?: string } | null;
   /** `grants` / `freezeMs` only when authored (the book's defaults: 3 / 10 min). */
   minter: { id: string; limit: number; while: string | null; grants?: number; freezeMs?: number } | null;
 }
@@ -289,6 +298,31 @@ export interface ObjectiveDef {
 export const OBJECTIVE_AUDIENCE_WORDS = ["guests", "performers", "everyone"] as const;
 /** The reserved `buttons:` words of an OBJECTIVE (folded). */
 export const OBJECTIVE_BUTTON_WORDS = ["pass", "scan"] as const;
+
+/** One conditional `avatar:` option (wave 18b): the picture ref and the
+ *  condition (a CHARACTER's, `self` bound) that selects it. */
+export interface AvatarRule {
+  ref: string;
+  when: string;
+}
+
+/** A header `badge:` line (wave 18b): a glyph beside a person's name on
+ *  every people list while the path is true for them. `head` is the path's
+ *  first segment as written — a ROLE (or its alias, `program`) for a per-
+ *  guest flag, else a CHARACTER — and `rest` the path under it. */
+export interface BadgeDef {
+  head: string;
+  rest: string;
+  /** The whole path as written (`program.afk`). */
+  path: string;
+  /** The first word of the label (`🚻`). */
+  glyph: string;
+  /** The rest of the label (`Bathroom Mode`; the glyph when there is none). */
+  label: string;
+  /** The `, while <cond>` tail, or null. */
+  while: string | null;
+  raw: string;
+}
 
 /** The world path an interrupt level lives at when the header names none. */
 export const DEFAULT_ALERTS_PATH = "Night.alerts";
@@ -539,6 +573,18 @@ export interface SimModel {
    *  C11), every file's, in order — rooms done for a guest once the
    *  condition holds for them (the phone tucks them away). */
   archive: ArchiveDef[];
+  /** Header `badge:` lines (wave 18b), every file's, in order. Display
+   *  only; a line on a secret slot or a secret CHARACTER is skipped at run
+   *  time (lint L1219). */
+  badges: BadgeDef[];
+  /** Header `lobby: hidden` (wave 18b): guests never list the lobby (its
+   *  routing stays; booths and Run keep it). */
+  lobbyHidden: boolean;
+  /** Header `founding: <cond>` (wave 18b), the first file's that has one:
+   *  the story is in **faction mode** (founded crews race like sides, one
+   *  faction at a time) and a program may found while the condition holds
+   *  for them (`program` / `self` bound). Null = crews are friend clubs. */
+  founding: string | null;
 }
 
 /** A header `wanted:` line (C6): `wanted: program.marked [as
@@ -644,6 +690,9 @@ export function compileModel(bundle: Bundle): SimModel {
     wanted: null,
     reinstall: null,
     archive: [],
+    badges: [],
+    lobbyHidden: false,
+    founding: null,
   };
   /** OBJECTIVE bodies in model order, compiled once every name is known. */
   const objectiveBodies: Array<[string, ObjectiveBody]> = [];
