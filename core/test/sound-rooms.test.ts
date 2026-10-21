@@ -6,7 +6,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import { lowerSoundArgs, statementToDirective } from "../src/parser/statements.ts";
+import { lowerSoundArgs, roomsWords, statementToDirective } from "../src/parser/statements.ts";
+import { Workspace } from "../src/lsp/index.ts";
 import { Sim } from "../src/runtime/sim/index.ts";
 
 describe("sound … in / with rooms", () => {
@@ -18,6 +19,14 @@ describe("sound … in / with rooms", () => {
     expect(statementToDirective("sound x in The Desktop with gain: -3")).toBe("sfx: x, rooms: The_Desktop, gain: -3");
     expect(statementToDirective("sfx x in The RAM")).toBe("sfx: x, rooms: The_RAM");
     expect(statementToDirective("sound x with fade: 2")).toBe("sfx: x, fade: 2");
+  });
+
+  it("a comma-free rooms value: each lowercase word is a target, a Capitalised run one place", () => {
+    expect(statementToDirective("sound x with rooms: The Start Bar")).toBe("sfx: x, rooms: The_Start_Bar");
+    expect(statementToDirective("sound x with rooms: desktop The Start Bar hall")).toBe("sfx: x, rooms: desktop The_Start_Bar hall");
+    expect(statementToDirective("sound x with rooms: The Desktop")).toBe("sfx: x, rooms: The_Desktop");
+    expect(roomsWords("Desktop living")).toEqual(["Desktop", "living"]);
+    expect(roomsWords("  ")).toEqual([]);
   });
 
   it("anything else stays prose", () => {
@@ -38,5 +47,28 @@ describe("sound … in / with rooms", () => {
       { type: "directive", verb: "sfx", args: "chime", setting: "The Desktop" },
       { type: "directive", verb: "sfx", args: "siren", setting: null },
     ]);
+  });
+});
+
+describe("L1213: a several-word sound target that names no LOCATION", () => {
+  const lint = (line: string): string[] => {
+    const ws = new Workspace();
+    ws.open("file:///main.loom", `# T\nstart: A\n\nLOCATION The Start Bar\n\nLOCATION The Desktop\n\n== A\n  setting: The Desktop\n${line}\nHello.\n`);
+    return (ws.diagnosticsFor("file:///main.loom")?.diagnostics ?? []).filter((d) => d.code === "L1213").map((d) => d.message);
+  };
+
+  it("places that are LOCATIONs, one-word targets and a plain sound say nothing", () => {
+    for (const line of ["sound x", "sound x in The Start Bar", "sound x with rooms: The Start Bar", "sound x with rooms: desktop, The Desktop", "sound x with rooms: living upstairs-hall", "sound x in desktop"]) {
+      expect([line, lint(line)]).toEqual([line, []]);
+    }
+  });
+
+  it("two Capitalised zones side by side, or a misspelt place, are flagged with the comma rule", () => {
+    const [msg, ...rest] = lint("sound x with rooms: Living Upstairs");
+    expect(rest).toEqual([]);
+    expect(msg).toContain("`Living Upstairs` is no LOCATION");
+    expect(msg).toContain("separate several names with commas");
+    expect(lint("sound x in The Start Barn")).toHaveLength(1);
+    expect(lint("sound x with rooms: hall, The Kitchen")).toHaveLength(1);
   });
 });

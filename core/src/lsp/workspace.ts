@@ -29,6 +29,7 @@ import { identityDefs, performerPickable } from "../identity-kind.ts";
 import { boardLineProblems, isSecretRoleSlot, parseBoardLine } from "../runtime/sim/board.ts";
 import { parseExpr } from "../runtime/expr.ts";
 import { buildStoryGraph, type StoryGraph } from "./graph.ts";
+import { statementToDirective } from "../parser/statements.ts";
 import { renameBeatEdits } from "./rename.ts";
 import type {
   CompletionItem,
@@ -202,6 +203,7 @@ export class Workspace {
     this.addAlertsLints();
     this.addAdminLints();
     this.addTriggerLints();
+    this.addSoundRoomLints();
   }
 
   /** Push one project diagnostic onto a document. */
@@ -347,6 +349,40 @@ export class Workspace {
         const range: Range = { start: { line: n, character: start }, end: { line: n, character: line.trimEnd().length } };
         const snake = phrase.trim().replace(/\s+/gu, "_");
         this.pushProject(uri, range, false, Code.L1212TriggerTruncated, `\`${m[2]} ${phrase}:\` listens for the event \`${verb}\` (the rest binds a subject), not \`${whole}\` — pressing or firing \`${whole}\` runs nothing here; write \`${m[2]} ${snake}:\``);
+      });
+    }
+  }
+
+  /**
+   * `L1213 SoundRoomUnresolved` (warnings) — a `sound X in <Place>` /
+   * `sound X with rooms: …` target of several words (`The Start Bar`, one
+   * Capitalised run or a comma-separated item) must be a LOCATION: room ids,
+   * zones and speaker ids are one word, so the house router reaches no
+   * speaker for it. Two Capitalised zones written side by side
+   * (`rooms: Living Upstairs`) read as one place: separate them with a comma.
+   * One-word targets live in `audio.json`, which the story can't see.
+   */
+  private addSoundRoomLints(): void {
+    const model = this.compiled;
+    if (model === null) return;
+    const places = new Set<string>();
+    for (const l of model.locations.values()) {
+      places.add(foldName(l.id));
+      if (l.label !== null) places.add(foldName(l.label));
+    }
+    for (const [uri, doc] of this.orderedDocs()) {
+      lines(doc.text).forEach((line, n) => {
+        const m = /^([ \t]*)(?:sound|sfx)[ \t]+\S/u.exec(line);
+        if (m === null) return;
+        const lowered = statementToDirective(line.replace(/[ \t]+\/\/.*$/u, "").trim());
+        const rooms = lowered === null ? null : /(?:^|, )rooms: ([^,]*)/u.exec(lowered.slice(lowered.indexOf(":") + 1));
+        if (rooms === null) return;
+        for (const t of rooms[1]!.trim().split(/\s+/u)) {
+          if (!t.includes("_") || !/^\p{Lu}/u.test(t) || places.has(foldName(t))) continue;
+          const name = t.replace(/_/gu, " ");
+          const range: Range = { start: { line: n, character: m[1]!.length }, end: { line: n, character: line.trimEnd().length } };
+          this.pushProject(uri, range, false, Code.L1213SoundRoomUnresolved, `\`${name}\` is no LOCATION, so the house speakers reach nothing for it — a room id, zone or speaker id is one word; separate several names with commas (\`rooms: desktop, The Start Bar\`)`);
+        }
       });
     }
   }

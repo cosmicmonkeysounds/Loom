@@ -51,6 +51,29 @@ const SOUND = /^[A-Za-z_][A-Za-z0-9_.\-]*(\s+in\s+(?!with\s)\S.*?)?(\s+with\s+\S
  *  fold case / `_` / spaces, so the house resolves it either way). */
 const roomWord = (name: string): string => name.trim().replace(/\s+/gu, "_");
 
+/** A comma-free `rooms:` value's targets: each lowercase word is one (a room
+ *  id, a zone, a speaker id); a run of Capitalised words is one place name
+ *  (`desktop The Start Bar` → `desktop`, `The_Start_Bar`), so the natural
+ *  `with rooms: The Start Bar` reaches the place, not `The`, `Start`, `Bar`. */
+export function roomsWords(value: string): string[] {
+  const out: string[] = [];
+  let run: string[] = [];
+  const flush = (): void => {
+    if (run.length > 0) out.push(run.join("_"));
+    run = [];
+  };
+  for (const w of value.trim().split(/\s+/u)) {
+    if (w === "") continue;
+    if (/^\p{Lu}/u.test(w)) run.push(w);
+    else {
+      flush();
+      out.push(w);
+    }
+  }
+  flush();
+  return out;
+}
+
 /**
  * `sound X in The Desktop` → `X, rooms: The_Desktop`; `sound X with rooms:
  * desktop, The Start Bar, gain: -6` → `X, rooms: desktop The_Start_Bar, gain: -6`.
@@ -59,7 +82,9 @@ const roomWord = (name: string): string => name.trim().replace(/\s+/gu, "_");
  * `rooms` as a kwarg; `rooms` is a space-separated list of targets (room
  * ids, zones, speakers, LOCATION names with `_` for their spaces). Inside a
  * `rooms:` value a comma separates whole names, so `The Start Bar` stays
- * one; without commas each word is a target.
+ * one; without commas each lowercase word is a target and a run of
+ * Capitalised words one place (`roomsWords`; L1213 warns when such a run
+ * names no LOCATION — two Capitalised zones want a comma between them).
  */
 export function lowerSoundArgs(args: string): string {
   const m = /^(\S+)(?:\s+in\s+(?!with\s)(\S.*?))?(?:\s+with\s+(\S.*))?$/u.exec(args.trim());
@@ -79,7 +104,7 @@ export function lowerSoundArgs(args: string): string {
   const rooms: string[] = m[2] !== undefined ? [roomWord(m[2])] : [];
   // With commas in `rooms:` every item is one name; without, every word is.
   if (listed.length > 1) rooms.push(...listed.filter((r) => r !== "").map(roomWord));
-  else if (listed.length === 1 && listed[0] !== "") rooms.push(listed[0]!);
+  else if (listed.length === 1 && listed[0] !== "") rooms.push(...roomsWords(listed[0]!));
   const out = [m[1]!];
   if (rooms.length > 0) out.push(`rooms: ${rooms.join(" ")}`);
   for (const [k, v] of kwargs) out.push(`${k}: ${v}`);
