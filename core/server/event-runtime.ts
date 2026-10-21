@@ -815,6 +815,9 @@ export class EventRuntime {
     this.snapshotMs = Math.max(0, init.snapshotMs ?? snapshotMsFromEnv());
     this.spatial = new SpatialHub({
       eventId: init.eventId,
+      // R16 (wave 18b): only a marked program plays — a parked headset claim
+      // or a live walk after an unmark ends (`unmarked`). No story, no walk.
+      mayPlay: (guest) => this.sim !== null && eligibleFor(this.sim, guest),
       ...(init.now !== undefined ? { now: init.now } : {}),
       // The speedrun survives a server restart mid-show (SW-RE-14).
       // C7: a find after the night ended is a party favour, tagged at write
@@ -5903,6 +5906,7 @@ export class EventRuntime {
           device,
           station: station === "" ? null : station,
           captured: sim.isCaptured(guest),
+          ...(body["force"] === true ? { forced: true } : {}),
         });
         this.startSpatialLoop();
         sendJson(res, 200, assignment);

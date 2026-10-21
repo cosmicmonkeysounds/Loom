@@ -26,7 +26,7 @@ import {
   type DuckRun,
   type SessionRef,
 } from "../server/spatial.ts";
-import { EventRuntime, REINSTALLATION_BEGUN, defaultHouseFile } from "../server/event-runtime.ts";
+import { EventRuntime, REINSTALLATION_BEGUN, defaultHouseFile, eligibleFor } from "../server/event-runtime.ts";
 import { PayloadTooLarge } from "../server/http-util.ts";
 import { Store } from "../server/store.ts";
 import { scenarioSource } from "../examples/load.ts";
@@ -1204,5 +1204,100 @@ describe("duck runs", () => {
     expect(rt2.spatial.runs()).toEqual([]);
     expect(new Store(d).loadRuns()).toEqual([]);
     rt2.dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wave 18b (R16): only a marked program plays — every entry point
+// ---------------------------------------------------------------------------
+
+describe("the marked-only gate (wave 18b, R16)", () => {
+  function gated() {
+    let clock = 1_000;
+    let ids = 0;
+    const marked = new Set<string>();
+    const hub = new SpatialHub({ eventId: "evt", now: () => clock, newSessionId: () => `s-${String(++ids).padStart(6, "0")}`, newToken: () => `tok-${ids}`, mayPlay: (g) => marked.has(g) });
+    hub.setHouse(fixture("two-rooms"), "show", false);
+    const frames: Array<[string, unknown]> = [];
+    hub.attach({ id: "term", name: "Kitchen", send: (e, d) => frames.push([e, d]) });
+    const leaves = () => frames.filter(([e]) => e === "leave").map(([, d]) => d);
+    const begin = (guest: string, station: string | null = null, forced = false) =>
+      hub.begin({ guest, name: guest, world: station === null ? "web" : "vr", device: "Tent", station, captured: true, ...(forced ? { forced: true } : {}) })!;
+    return { hub, marked, leaves, begin, tick: (ms: number) => (clock += ms) };
+  }
+
+  it("G1: a parked headset assignment is never handed out once the program is unmarked", () => {
+    const g = gated();
+    g.marked.add("g-1");
+    const a = g.begin("g-1", "quest-1");
+    g.marked.delete("g-1");
+    expect(g.hub.station("quest-1", "Quest", "vr")).toBeNull();
+    expect(g.hub.pose(a.token, { p: [1, 0, 1], yaw: 0, pitch: 0 })).toBe("over");
+  });
+
+  it("G1: a parked claim by its first pose answers over when the program is unmarked", () => {
+    const g = gated();
+    g.marked.add("g-1");
+    const a = g.begin("g-1", "quest-1");
+    expect(g.hub.station("quest-1", "Quest", "vr")).toMatchObject({ session: a.session });
+    g.marked.delete("g-1");
+    expect(g.hub.pose(a.token, { p: [1, 0, 1], yaw: 0, pitch: 0 })).toBe("over");
+    expect(g.hub.sessionCount).toBe(0);
+  });
+
+  it("G2: a live walk ends `unmarked` on the next sweep; a found walk is exempt", () => {
+    const g = gated();
+    g.marked.add("g-1").add("g-2");
+    const a = g.begin("g-1");
+    const b = g.begin("g-2");
+    // g-2 finds the duck (its release unmarks it): it lingers as found.
+    g.hub.pose(b.token, { p: b.duck.pos, yaw: 0, pitch: 0 });
+    expect(g.hub.found(b.token, () => true).kind).toBe("found");
+    g.marked.delete("g-1");
+    g.marked.delete("g-2");
+    g.hub.sweep();
+    expect(g.leaves()).toEqual([{ session: a.session, reason: "unmarked" }]);
+    expect(g.hub.pose(a.token, { p: [1, 0, 1], yaw: 0, pitch: 0 })).toBe("over");
+    expect(g.hub.sessionCount).toBe(1); // the found one
+  });
+
+  it("a director's forced walk is never ended by the gate (K-30)", () => {
+    const g = gated();
+    const a = g.begin("g-1", null, true);
+    g.hub.sweep();
+    expect(g.hub.pose(a.token, { p: [1, 0, 1], yaw: 0, pitch: 0 })).toBe("ok");
+    expect(g.leaves()).toEqual([]);
+  });
+
+  it("on the runtime: an unmark mid-walk ends it, the pose then answers 410, and Night.ended lets everyone play", async () => {
+    const d = freshDir();
+    const clock = { t: 1_000_000 };
+    const rt = runtimeAt(d, clock);
+    rt.openDoors();
+    const g = await call(rt, "POST", "/api/guest/register", { name: "Winamp", passcode: CODES.event });
+    const id = g.json["id"] as string;
+    expect((await mod(rt, "/api/mod/spatial/begin", { guest: id, world: "web" })).status).toBe(409); // not marked
+    const sim = rt.liveSim!;
+    sim.world.set(`${id}.marked`, { kind: "bool", value: true });
+    const begun = await mod(rt, "/api/mod/spatial/begin", { guest: id, world: "web" });
+    expect(begun.status).toBe(200);
+    const token = begun.json["token"] as string;
+    const pose = () => call(rt, "POST", "/api/spatial/pose", { p: [0, 0, 0], yaw: 0, pitch: 0 }, { token });
+    expect((await pose()).status).toBe(204);
+    // A director clears the mark mid-walk (and the story's capture with it).
+    sim.world.set(`${id}.marked`, { kind: "bool", value: false });
+    sim.world.set(`${id}.corrupted`, { kind: "bool", value: false });
+    if (sim.isCaptured(id)) await mod(rt, "/api/mod/act", { action: "release", id });
+    expect(eligibleFor(sim, id)).toBe(false);
+    (rt as unknown as { spatial: SpatialHub }).spatial.sweep();
+    expect((await pose()).status).toBe(410);
+    // After an ending the show's `reinstall:` header lets anyone play.
+    sim.world.set("Night.ended", { kind: "bool", value: true });
+    expect(eligibleFor(sim, id)).toBe(true);
+    const after = await mod(rt, "/api/mod/spatial/begin", { guest: id, world: "web" });
+    expect(after.status).toBe(200);
+    (rt as unknown as { spatial: SpatialHub }).spatial.sweep();
+    expect((await call(rt, "POST", "/api/spatial/pose", { p: [0, 0, 0], yaw: 0, pitch: 0 }, { token: after.json["token"] as string })).status).toBe(204);
+    rt.dispose();
   });
 });

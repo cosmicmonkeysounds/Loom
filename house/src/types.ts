@@ -329,7 +329,11 @@ export interface PlayerState {
   avatar?: string | null;
 }
 
-export type LeaveReason = "ended" | "found" | "timeout" | "replaced" | "reset";
+/** Why a player left the simulation. `unmarked` (wave 18b): the program is
+ *  no longer marked for reinstallation (a director released it, the story
+ *  cleared it) before it played or mid-walk. A client treats an unknown
+ *  reason like `ended`. */
+export type LeaveReason = "ended" | "found" | "timeout" | "replaced" | "reset" | "unmarked";
 
 export interface PoseUpdate {
   session: string;
