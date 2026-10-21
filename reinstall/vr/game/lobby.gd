@@ -389,6 +389,17 @@ func cancel() -> void:
 	_render()
 
 
+## Back to the tiles with nothing half-done (a session starting or ending:
+## a card left up must not start a program by itself later).
+func reset() -> void:
+	_confirming = {}
+	_chosen = {}
+	_gear_t = 0.0
+	_hover = ""
+	picker.disarm()
+	_render()
+
+
 ## A button was pressed (the laser's trigger, a click): `tile:<n>`,
 ## `start`, `back`, `prev`, `next`, or one of the [SetupPanel]'s.
 func press(id: String) -> void:

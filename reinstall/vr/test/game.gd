@@ -2225,6 +2225,15 @@ func _test_lobby_picker() -> void:
 	game._process(0.016)
 	_check(lobby.picker.index == 8 and lobby.tile_node(8) != null, "lobby: the stick walks a row down onto the next page (%d)" % lobby.picker.index)
 
+	# The tablet's Send to headset lands whatever the view; back in the
+	# lobby, the card it interrupted is gone.
+	lobby.press("tile:1")
+	link.give_house(_placeholder_house())
+	link.assignment_received.emit(_assignment(game.builder.house, "s-tab", true))
+	_check(game.state() == GameFlow.State.PLAYING and link.begun.size() == 2, "lobby: the tablet's program still lands with the card up")
+	link.session_over.emit("test")
+	_check(game.state() == GameFlow.State.LOBBY and lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: … and the lobby comes back to the tiles, no card")
+
 	# ⚙ only once there is a setup to forget; held 2 s it forgets it.
 	_check(not (lobby.get("_gear") as Node3D).visible, "lobby: no ⚙ with nothing to forget")
 	link.set("saved_setup", true)

@@ -218,6 +218,7 @@ func enter_lobby() -> void:
 	player.locomotion_enabled = false
 	player.release_mouse()  # the lobby is pointed at, not looked around
 	player.teleport(Lobby.SPOT, 0.0)
+	lobby.reset()
 	lobby.visible = true
 	_cand_in = 0.0
 	_found_pending = false
