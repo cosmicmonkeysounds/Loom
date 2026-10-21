@@ -6,6 +6,16 @@
 //! the room once its backlog is in — and only a room this participant
 //! lists, so a link can never reveal a room the story hasn't opened.
 //! Pure helpers — unit-tested in `test/room.test.ts`.
+//!
+//! Wave 18 (GUEST-SPEC §6.4): a guest's link lands through the moments'
+//! exit type — `navFromSearch` / `navFromMessage` give the `Nav` the guest
+//! app's `go` takes: the lobby → Mission, the Codex / Quest Log / Wallet →
+//! those, a listed room → that room, anything else → Mission. The booth's
+//! mapping (`roomTarget`) is unchanged.
+
+import { navFromRoom, type Nav } from "./moments/exits.ts";
+
+export { navFromRoom, navFromSearch } from "./moments/exits.ts";
 
 /** The service worker's message to an open window. */
 export const OPEN_ROOM = "open-room";
@@ -56,4 +66,9 @@ export function roomTarget(room: string, listed: readonly string[], booth: boole
  *  the backlog is in, and the home default (which runs last) would win. */
 export function opensHome(signedIn: boolean, wide: boolean, activeId: string | null, home: string | null, linkPending: boolean): boolean {
   return signedIn && wide && activeId === null && home !== null && !linkPending;
+}
+
+/** A guest's landing for the service worker's `open-room` message (null for anything else). */
+export function navFromMessage(data: unknown, listed: Iterable<string>): Nav | null {
+  return navFromRoom(roomFromMessage(data), listed);
 }
