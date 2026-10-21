@@ -33,7 +33,7 @@ Jean Trabolta's offer: present a seminar on the importance of **nuclear
 non-proliferation**, under the guise of everyone in the Metaverse getting to
 play a fun game of Pong.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

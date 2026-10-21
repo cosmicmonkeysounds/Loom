@@ -100,7 +100,7 @@ that you **share at least ten of your findings with every program** at the
 party. You want people to Ask Jeeves once again, so you give facts whether
 anyone asked for them or not.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

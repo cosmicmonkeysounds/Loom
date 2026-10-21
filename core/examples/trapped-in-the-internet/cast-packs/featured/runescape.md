@@ -47,7 +47,7 @@ authority over the Truthcoin reserve. You are firmly opposed to arbitrary
 monetary expansion and expect to need it quite often. A refused offer means
 the offer needs work. "Not for sale" is an opening position.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

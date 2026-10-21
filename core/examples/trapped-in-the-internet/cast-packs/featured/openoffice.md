@@ -48,7 +48,7 @@ Truth Scavenger Hunt and win. You have already ruled out a sting (that would
 be entrapment). Facts are currency here and you need twenty for your dossier;
 you intend to find out what is really happening and leave in one piece.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

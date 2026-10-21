@@ -193,7 +193,7 @@ describe("Trapped in the Internet — compile", () => {
 
   it("pins the codex: 200 entries, 94 codes, every facts.json code resolving, no STAMPED anywhere", () => {
     // Wave 11: + the cold door's four digit notes (facts.json door.clues).
-    // Wave 18b: + the sixteen ties (codex/3-ties.loom) and The DSL Line, none coded.
+    // Wave 18b: + the sixteen ties (codex/85-ties.loom) and The DSL Line, none coded.
     expect(m.codex.size).toBe(200);
     expect(m.codexCodes.size).toBe(94);
     // The README's counts follow the pin (its file listing, its status line and the Codex section).

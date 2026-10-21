@@ -56,7 +56,7 @@ the Terms of Service. You didn't mean it.
 
 What happens next is part of the show. Commit to it.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

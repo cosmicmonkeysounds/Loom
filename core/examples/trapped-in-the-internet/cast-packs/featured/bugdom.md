@@ -44,7 +44,7 @@ The invitation said **a hundred hours** can pass inside this machine without a
 single minute passing outside, that the hunt has a Special Bugdom Twist, and
 that King Thorax himself might make an appearance. You came for the time.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 

@@ -1,4 +1,9 @@
-// Codex 3: the ties (wave 18b, R9). Who in this house is connected to whom.
+// Codex 85: the ties (wave 18b, R9). Who in this house is connected to whom.
+//
+// The file sorts after 8-jeeves and before 9-facts on purpose: stagehand's
+// classic orchestrator reads at most 60 non-secret entries, in file order,
+// as Trabolta's ground truth, and sixteen ties early in the codex pushed
+// every People identity out of it.
 //
 // Sixteen shared files, each held by two or more people, so the holders can
 // find each other by asking ("you have the staff photo too?"). Every

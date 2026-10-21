@@ -38,7 +38,7 @@ more time on this earth, so you can run for Mayor **one more time**.
 Jean Trabolta's offer: a pilot program to upload your consciousness to the
 Cloud. **Everlasting life.** You did not read the terms.
 
-<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/3-ties.loom). -->
+<!-- DRAFT w18b (R9): the ties dealt at clearance (codex/85-ties.loom). -->
 
 ## Who you know
 
