@@ -65,6 +65,9 @@ export function bindDraft(d: Draft, open: BoothOpeners, defer: (key: string) => 
 
 const SEEN_KEY = (token: string) => `loom.booth.seen.${token}`;
 
+/** *Call it?* put off with "Not yet" comes back after this long (§4.9). */
+export const REMIND_MS = 2 * 60_000;
+
 export interface DriverOpts {
   session: PrimeSession;
   open: BoothOpeners;
@@ -107,7 +110,13 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     }),
     [],
   );
-  const bind = (d: Draft) => bindDraft(d, opener, rung.defer);
+  // "Not yet" on *Call it?*: the pop-out comes back after 2 min while the cue stays live.
+  const laterAt = useRef(new Map<string, { at: number; n: number }>());
+  const later = (key: string) => {
+    laterAt.current.set(key, { at: Date.now(), n: (laterAt.current.get(key)?.n ?? 0) + 1 });
+    rung.defer(key);
+  };
+  const bind = (d: Draft) => bindDraft(d, opener, later);
   const interactions: readonly Interaction[] = view?.interactions ?? [];
   const guests: readonly BoothGuest[] = view?.guests ?? [];
   const guestOf = (id: string) => guests.find((g) => g.id === id) ?? null;
@@ -200,4 +209,19 @@ export function useBoothPopOuts({ session, open, now, placeTitle, ownFireAt, tar
     prevLive.current = new Set(calls.rows.filter((r) => r.live).map((r) => r.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callsKey]);
+  const laterBucket = Math.floor(now / 30_000);
+  useEffect(() => {
+    if (calls === null) return;
+    for (const [key, l] of laterAt.current) {
+      if (Date.now() - l.at < REMIND_MS) continue;
+      const d = cueSpecs(calls, new Set(), now, view?.countdowns).find((x) => x.key === key);
+      if (d === undefined) {
+        laterAt.current.delete(key);
+        continue;
+      }
+      laterAt.current.set(key, { at: Date.now(), n: l.n });
+      rung.raise(bind({ ...d, rev: `again:${l.n}` }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [laterBucket, callsKey]);
 }

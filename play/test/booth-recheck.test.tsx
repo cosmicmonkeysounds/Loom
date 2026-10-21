@@ -48,7 +48,7 @@ describe("destructive presses (finish review #4)", () => {
     const { harm, safe } = faceGroups(face);
     expect(harm.map((b) => b.interaction.id)).toEqual(["send to the internet", "truth_refused"]);
     expect(safe.map((b) => b.interaction.id)).toEqual(["truth_answered"]);
-    // Windows Defender's door: 🛡 is the objective's only face button, and still never the default.
+    // The door (an Antivirus booth): 🛡 is the objective's only face button, and still never the default.
     expect(defaultFaceId([live(SEND, true)])).toBeNull();
     expect(defaultFaceId(face)).toBe("truth_answered");
     // Nor a patch-bay radio (arm: true): the Y2K hour's face had 🔌 Combo A framed as the obvious tap.
@@ -240,8 +240,8 @@ describe("the booth NOW bar while paused (D3)", () => {
 });
 
 describe("the card as rendered after the recheck", () => {
-  const view = (objectives: ObjectiveView[]): PrimeView => ({ character: "Windows Defender", guests: [], channels: [], interactions: [SEND, CHECKIN, VOUCH], objectives }) as unknown as PrimeView;
-  const session = (v: PrimeView) => ({ auth: { token: "t", character: "Windows Defender", admin: false, eventId: "default" }, view: v, card: () => new Promise<never>(() => {}) }) as unknown as PrimeSession;
+  const view = (objectives: ObjectiveView[]): PrimeView => ({ character: "Norton Anti-Virus", guests: [], channels: [], interactions: [SEND, CHECKIN, VOUCH], objectives }) as unknown as PrimeView;
+  const session = (v: PrimeView) => ({ auth: { token: "t", character: "Norton Anti-Virus", admin: false, eventId: "default" }, view: v, card: () => new Promise<never>(() => {}) }) as unknown as PrimeSession;
   const seed = (live: string[]): { card: GuestCardView; replies: string[] } => ({ card: { guest: { id: "g-1", name: "Netscape Navigator", faction: null, captured: false, location: null }, live, guestScoped: [], readouts: [] }, replies: ["✅ Cleared Netscape Navigator."] });
   it("puts the face and Next guest in the pinned foot, the destructive press under its warning and never the default", () => {
     const html = renderToStaticMarkup(

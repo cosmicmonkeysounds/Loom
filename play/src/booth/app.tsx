@@ -81,6 +81,9 @@ function dmRow(m: ChatMessage): ChatMessage {
   return row;
 }
 
+/** The Wanted board, for the host lane's Needs row (§7.1: read-only on a host). */
+export { WantedBoard } from "./wanted/board.tsx";
+
 /** The room a performer lands in wide: Readouts (wave 18, G2: the house's
  *  broadcast feed is the far-away Chat log, never a default room). */
 export function boothHome(list: Channel[]): string | null {
