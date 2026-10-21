@@ -304,6 +304,133 @@ def test_other_events_are_ignored(tmp_path):
     assert r.on_sim({"type": "directive", "verb": "sfx", "args": ""}) is None
 
 
+# -- stop all house sounds (wave 18b, Q7) -------------------------------------
+
+
+def test_stop_fades_every_sound_and_test_but_not_the_announcement_or_the_matrix(tmp_path):
+    r = playing(tmp_path, announce=True)
+    write_wav(tmp_path / "sounds" / "dance_song.wav", seconds=10)
+    r.bank = SoundBank(r.cfg.sounds_dir, RATE)
+    r.on_sim({"type": "directive", "verb": "sfx", "args": "dance_song"})
+    r.mixer.play(np.full((RATE * 5, 1), 0.2, dtype=np.float32), {1: 0.0}, bus="test", tag="test")
+    r.mixer.play(np.full((RATE * 5, 1), 0.2, dtype=np.float32), {2: 0.0}, bus="announce", tag="announce")
+    s = stream_of(r)
+    s.pump(100)
+    assert r.stop_all(False, "Ada") is True
+    for _ in range(10):
+        s.pump(400)  # 0.5 s: past the 0.3 s fade
+    assert r.mixer.active("sfx") == 0 and r.mixer.active("test") == 0
+    assert r.mixer.active("announce") == 1 and loud(s.pump(100)) == [2]
+    # One-shot: the next story sound plays as usual.
+    assert r.on_sim({"type": "directive", "verb": "sfx", "args": "zip, rooms: hall"}) == "played"
+    assert r.stops_done == 1
+
+
+def test_stop_with_announcements_cuts_the_line_empties_the_queue_and_never_falls_back_to_say(tmp_path):
+    direct: list = []
+
+    async def go():
+        r = with_house(router(tmp_path, announce=True, threaded=True, render_say=lambda t, v: wav_bytes(20.0), speak_direct=lambda t, v, d: direct.append(t)))
+        r.apply(answer("v1"))
+        r.announcements = asyncio.Queue()
+        worker = asyncio.ensure_future(r._announce_worker())
+        await r.announcements.put(Announcement(text="Five minutes."))
+        r.announcements.put_nowait(Announcement(text="Queued."))
+        for _ in range(200):
+            await asyncio.sleep(0.005)
+            if r.mixer.active("announce"):
+                break
+        assert r.stop_all(True, "Ada")
+        assert r.announcements.empty()
+        for _ in range(200):
+            await asyncio.sleep(0.005)
+            if not r.mixer.active("announce"):
+                break
+        await asyncio.sleep(0.05)
+        worker.cancel()
+        stream_of(r).stop()
+        return r
+
+    r = run(go())
+    assert direct == [] and r.mixer.active() == 0
+
+
+def test_a_cut_announcement_returns_quietly_instead_of_raising(tmp_path):
+    r = router(tmp_path, announce=True)
+    r.apply(answer("v1"))
+    r._playing_epoch = r._announce_epoch
+    r.stop_all(True)
+    MixerOutput(r).play(np.zeros((10, 1), dtype=np.float32), RATE)  # no PlaybackError
+    assert r.mixer.active("announce") == 0
+    r._speak_unless_cut("Hi.", None, "MOTU")  # no say -a around the stop
+
+
+def test_new_stops_prime_then_act_once_and_drop_stale_ones(tmp_path):
+    r = router(tmp_path)
+    assert r.new_stops([{"seq": 2, "at": 1000, "by": "Ada", "announce": False}], 1500) == []  # boot: primed
+    assert r.stop_seq == 2
+    fresh = r.new_stops([{"seq": 2, "at": 1000}, {"seq": 3, "at": 2000, "by": "Bo", "announce": True}], 2500)
+    assert [t["seq"] for t in fresh] == [3]
+    assert r.new_stops([{"seq": 3, "at": 2000}], 2600) == []
+    # A restarted server's seqs start again; `at` never goes back.
+    assert [t["seq"] for t in r.new_stops([{"seq": 1, "at": 9000}], 9100)] == [1] and r.stop_seq == 1
+    # Older than 10 s by the server's clock: never acted on.
+    assert r.new_stops([{"seq": 2, "at": 10_000}], 30_000) == [] and r.stop_seq == 2
+    assert r.new_stops(None, 1) == [] and r.stop_seq == 0
+
+
+def test_the_poll_sends_the_stop_cursor_and_acts_on_a_new_stop(tmp_path):
+    stopped: list = []
+
+    async def go():
+        r = router(tmp_path)
+        r.stop_all = lambda announce=False, by="": stopped.append((announce, by)) or True  # type: ignore[method-assign]
+        first = answer("v1")
+        first["stops"], first["now"] = [{"seq": 1, "at": 10, "by": "old", "announce": False}], 20
+        second = answer("v1")
+        second["stops"], second["now"] = [{"seq": 1, "at": 10}, {"seq": 2, "at": 30, "by": "Ada", "announce": True}], 40
+        mod = FakeMod([first, second])
+        task = asyncio.ensure_future(r._config_loop(mod))
+        for _ in range(100):
+            await asyncio.sleep(0.01)
+            if stopped and len(mod.calls) >= 3:
+                break
+        task.cancel()
+        return mod
+
+    mod = run(go())
+    polls = [c[1] for c in mod.calls if c[0] == "/api/mod/audio"]
+    assert polls[1]["stops"] == 1 and polls[2]["stops"] == 2
+    assert stopped == [(True, "Ada")]  # the boot answer's stop was only primed
+
+
+def test_mqtt_stop_and_hand_play(tmp_path):
+    async def go():
+        r = playing(tmp_path, mqtt={"host": "127.0.0.1"})
+        stops: list = []
+        real = r.stop_all
+        r.stop_all = lambda announce=False, by="": stops.append((announce, by)) or real(announce, by)  # type: ignore[method-assign]
+        r.mqtt = FakeBridge(
+            [
+                ("show/audio/play", b'{"name": "zip", "to": ["hall"]}', False),
+                ("show/audio/play", b'{"name": "beans_spill", "to": "start-bar"}', False),
+                ("show/audio/play", b'{"name": "zip"}', True),  # retained: never replayed
+                ("show/audio/play", b"garbage", False),
+                ("show/audio/stop", b"", False),
+                ("show/audio/stop", b'{"announce": true}', False),
+                ("show/audio/stop", b'{"announce": true}', True),
+            ]
+        )
+        task = asyncio.ensure_future(r._mqtt_loop())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        return r, stops
+
+    r, stops = run(go())
+    assert r.played == 2 and stops == [(False, "mqtt"), (True, "mqtt")]
+    assert "show/audio/stop" in "\n".join(r.describe())
+
+
 # -- announcements -----------------------------------------------------------
 
 
@@ -595,7 +722,7 @@ def test_the_poll_applies_long_polls_and_plays_new_tests(tmp_path):
     # Every poll says it is the router (LA-4: the editor shows it listening);
     # the first ask returns at once (no `after`).
     assert polls[0][1]["router"] == 1 and polls[0][1]["name"] and "after" not in polls[0][1]
-    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "wait": 25} and polls[1][2] == 40
+    assert {k: v for k, v in polls[1][1].items() if k not in ("router", "name")} == {"after": "v1", "tests": 1, "stops": 0, "wait": 25} and polls[1][2] == 40
     assert polls[1][1]["router"] == 1
     assert played == [(None, 7)]  # the boot answer's test was only primed
     assert r.version == "v2" and r.house == FIXTURE["house"]
