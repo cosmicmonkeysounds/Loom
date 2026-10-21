@@ -379,6 +379,32 @@ def test_a_stop_during_a_speaker_test_also_silences_its_spoken_label(tmp_path):
     assert run(go()) == []
 
 
+def test_a_line_queued_after_a_stop_plays_at_once_one_queued_before_never(tmp_path):
+    said: list[str] = []
+    voiced: list[str] = []
+
+    async def go():
+        r = with_house(router(tmp_path, announce=True, threaded=True, render_say=lambda t, v: said.append(t) or wav_bytes(0.2)))
+        r.apply(answer("v1"))
+        play = r.mixer.play
+        r.mixer.play = lambda *a, **k: voiced.append(k.get("bus", "")) or play(*a, **k)  # type: ignore[method-assign]
+        r.announcements = asyncio.Queue()
+        r.loop = asyncio.get_running_loop()
+        worker = asyncio.ensure_future(r._announce_worker())
+        r.enqueue(Announcement(text="Before the stop.", chime=False))  # still in the loop's callbacks
+        r.stop_all(True, "Ada")
+        r.enqueue(Announcement(text="Go to the living room.", chime=False))
+        for _ in range(400):
+            await asyncio.sleep(0.01)
+            if voiced:
+                break
+        worker.cancel()
+        stream_of(r).stop()
+
+    run(go())
+    assert said == ["Go to the living room."] and voiced == ["announce"]
+
+
 def test_a_cut_announcement_returns_quietly_instead_of_raising(tmp_path):
     r = router(tmp_path, announce=True)
     r.apply(answer("v1"))
@@ -464,7 +490,7 @@ def test_announcements_come_from_the_feed_without_a_broker(tmp_path):
         r.announcements = asyncio.Queue()
         assert r.on_sim({"type": "directive", "verb": "announce", "args": '"Go to the   living room."'}) == "announce"
         assert r.on_sim({"type": "directive", "verb": "sfx", "args": "announce_chime"}) == "chime"
-        return [r.announcements.get_nowait(), r.announcements.get_nowait()]
+        return [r.announcements.get_nowait()[1], r.announcements.get_nowait()[1]]
 
     a, chime = run(go())
     assert a == Announcement(text="Go to the living room.") and chime == "chime"
@@ -947,7 +973,7 @@ def test_mqtt_tests_and_announcements(tmp_path):
         task = asyncio.ensure_future(r._mqtt_loop())
         await asyncio.sleep(0.05)
         task.cancel()
-        return [r.announcements.get_nowait() for _ in range(r.announcements.qsize())]
+        return [r.announcements.get_nowait()[1] for _ in range(r.announcements.qsize())]
 
     queued = run(go())
     assert tested == [("desk-l", None)]

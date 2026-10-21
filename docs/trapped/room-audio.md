@@ -704,11 +704,12 @@ host's dock and the director phone post `POST /api/mod/audio/stop
 {announce?}`. The router polls with `stops=<seq>` (cursored like the tests:
 the first answer primes, a restarted server's seqs never hide a stop, one
 older than 10 s by the server's `now` is dropped) and runs `stop_all`:
-every sfx voice and speaker test fades over 0.3 s. With
-*+ announcements* the line being said is cut too, the queue is emptied, and
-nothing is spoken for a second — the Announcer's output and its `say -a`
-fallback return quietly during the cut, so no voice speaks around the
-router. One-shot (the next `sound X` plays), never journaled; the TV voice,
+every sfx voice and speaker test (its spoken label too) fades over 0.3 s.
+With *+ announcements* the line being said is cut too (its chime and its
+voice alike) and every line queued before the stop is dropped; a line the
+story sends after the stop plays at once. The Announcer's output and its
+`say -a` fallback return quietly for a cut line, so no voice speaks around
+the router. One-shot (the next `sound X` plays), never journaled; the TV voice,
 the terminals, the live inputs and the story clock are untouched (stopping
 `dance_song` does not move `Night.dance_at`). On the LAN with the uplink
 down: `show/audio/stop` (`{}` or `{"announce": true}`) or `stagehand sounds

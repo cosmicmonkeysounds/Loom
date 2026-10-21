@@ -95,9 +95,6 @@ HOUSE_REFRESH_S = 300.0
 #: A stop older than this (by the server's clock) is never acted on: a
 #: router that boots, or reconnects, well after a press stays quiet.
 STOP_STALE_S = 10.0
-#: `stop … + announcements`: nothing more is spoken for this long, so the
-#: voice of a line whose chime was just cut never follows it.
-ANNOUNCE_CUT_S = 1.0
 
 
 def build_audio(section: Any, base_dir: str) -> "AudioRouter":
@@ -194,11 +191,12 @@ class AudioRouter:
         self.stop_seq = 0
         self._stops_primed = False
         self.stops_done = 0
-        #: `stop + announcements`: the epoch bumps (the line playing now is
-        #: cut) and nothing is spoken until `_cut_until` (monotonic).
+        #: `stop + announcements`: the epoch bumps, so the line playing now
+        #: is cut (its chime and its voice alike) and every line queued
+        #: before the stop (stamped at `enqueue`) is skipped. A line queued
+        #: after it plays at once.
         self._announce_epoch = 0
         self._playing_epoch = 0
-        self._cut_until = 0.0
         #: Bumped by every stop: a speaker test started before it never
         #: plays its spoken label (the tone fades with the test bus).
         self._test_epoch = 0
@@ -577,7 +575,7 @@ class AudioRouter:
 
     def announce_cut(self) -> bool:
         """The announcement in hand was stopped (or a stop just landed)."""
-        return self._playing_epoch != self._announce_epoch or time.monotonic() < self._cut_until
+        return self._playing_epoch != self._announce_epoch
 
     def stop_all(self, announce: bool = False, by: str = "") -> bool:
         """Fade out every story sound (0.3 s) and any speaker test; with
@@ -593,7 +591,6 @@ class AudioRouter:
         self._test_epoch += 1
         if announce:
             self._announce_epoch += 1
-            self._cut_until = time.monotonic() + ANNOUNCE_CUT_S
             if mixer is not None:
                 mixer.stop(bus="announce", fade_s=0.1)
             dropped = 0
@@ -665,15 +662,24 @@ class AudioRouter:
         if self.announcements is None:
             log.warning("announcement dropped (the router is not running)")
             return
+        # Stamped now, in the caller's thread: a stop that lands before the
+        # worker takes it skips it, one that came before it never does.
+        entry = (self._announce_epoch, item)
         if self.loop is not None:
-            self.loop.call_soon_threadsafe(self.announcements.put_nowait, item)
+            self.loop.call_soon_threadsafe(self.announcements.put_nowait, entry)
         else:
-            self.announcements.put_nowait(item)
+            self.announcements.put_nowait(entry)
 
     async def _announce_worker(self) -> None:
         assert self.announcements is not None
         while True:
             item = await self.announcements.get()
+            stamp = self._announce_epoch
+            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], int):
+                stamp, item = item
+            if stamp != self._announce_epoch:
+                log.info("🔇 audio: an announcement queued before the stop dropped")
+                continue
             if not self.speaks_announcements():
                 now = time.monotonic()
                 if now - self._dropped_logged > 60:
@@ -683,7 +689,7 @@ class AudioRouter:
             if self.announcer is None:
                 self.announcer = self.make_announcer()
             # A stop from here on cuts this item (`announce_cut`).
-            self._playing_epoch = self._announce_epoch
+            self._playing_epoch = stamp
             try:
                 if item == "chime":
                     log.info("chime → %s", await self.announcer.ring())
