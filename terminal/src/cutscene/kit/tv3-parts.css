@@ -1,0 +1,167 @@
+/* Lane tv3's building blocks (wave 17). Chrome 87 / Safari 14: no :has,
+   no color-mix, no flex gap (margins). Motion is set per frame inline
+   (transform / opacity); nothing here keyframes on its own. */
+
+.tv3-canvas { pointer-events: none; }
+
+/* --- the equalizer -------------------------------------------------------- */
+.tv3-eq { display: flex; align-items: flex-end; height: 100%; }
+.tv3-eq span {
+  flex: 1 1 0;
+  height: 100%;
+  margin-right: 0.35%;
+  transform-origin: 50% 100%;
+  border-radius: 0.15em 0.15em 0 0;
+  opacity: 0.85;
+  will-change: transform;
+}
+.tv3-eq span:last-child { margin-right: 0; }
+
+/* --- floaters ------------------------------------------------------------- */
+.tv3-float { pointer-events: none; overflow: hidden; }
+.tv3-floater { position: absolute; left: 0; top: 0; line-height: 1; will-change: transform, opacity; }
+.tv3-heart { display: block; overflow: visible; }
+
+/* --- beams, cones, curtains ----------------------------------------------- */
+.tv3-lasers { pointer-events: none; overflow: hidden; mix-blend-mode: screen; }
+.tv3-beam {
+  position: absolute;
+  width: 0.5vmin;
+  height: 160vmax;
+  margin-left: -0.25vmin;
+  transform-origin: 50% 0;
+  opacity: 0.75;
+  box-shadow: 0 0 1.4vmin rgba(255, 255, 255, 0.35);
+  will-change: transform;
+}
+.tv3-sunburst { position: absolute; display: block; pointer-events: none; will-change: transform; }
+.tv3-cones { pointer-events: none; overflow: hidden; }
+.tv3-cone {
+  position: absolute;
+  top: -10%;
+  width: 34vmin;
+  height: 130%;
+  margin-left: -17vmin;
+  transform-origin: 50% 0;
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  -webkit-clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  will-change: transform;
+}
+.tv3-curtains { pointer-events: none; overflow: hidden; z-index: 20; }
+.tv3-curtain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 52%;
+  background: repeating-linear-gradient(90deg, #6e0010 0, #b0102a 3.5vmin, #7a0014 7vmin);
+  box-shadow: inset 0 -3vmin 4vmin rgba(0, 0, 0, 0.5);
+  will-change: transform, opacity;
+}
+.tv3-curtain-l { left: 0; }
+.tv3-curtain-r { right: 0; }
+.tv3-valance {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 7vmin;
+  background: repeating-linear-gradient(90deg, #8a0018 0, #c8203a 4vmin, #8a0018 8vmin);
+  border-bottom: 0.6vmin solid #ffcc33;
+  box-shadow: 0 0.6vmin 1.4vmin rgba(0, 0, 0, 0.6);
+}
+
+/* --- art ------------------------------------------------------------------ */
+.tv3-trophy, .tv3-emblem, .tv3-duck, .tv3-moto, .tv3-disco { display: block; overflow: visible; }
+.tv3-trophy { filter: drop-shadow(0 0 2vmin rgba(255, 210, 63, 0.55)); }
+.tv3-duck { filter: drop-shadow(0 1vmin 1.2vmin rgba(0, 0, 0, 0.45)); }
+.tv3-bob { display: inline-block; will-change: transform; }
+
+/* --- Notepad --------------------------------------------------------------- */
+.tv3-notepad .kit-win-body { display: flex; flex-direction: column; padding: 0; }
+.tv3-np-menu { display: flex; padding: 0.15em 0.2em; font-size: 0.9em; }
+.tv3-np-menu span { margin-right: 1em; padding: 0 0.3em; }
+.tv3-np-page {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  background: #fff;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+  box-shadow: inset 1px 1px 0 #404040;
+}
+.tv3-np-text {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.35em 0.5em;
+  overflow: hidden;
+  font-family: "Fixedsys", "Lucida Console", "Courier New", monospace;
+  font-size: 1em;
+  line-height: 1.28;
+  color: #000;
+  white-space: pre;
+}
+.tv3-np-row { min-height: 1.28em; }
+.tv3-np-caret {
+  display: inline-block;
+  width: 0.08em;
+  min-width: 2px;
+  height: 1.05em;
+  margin-left: 0.04em;
+  vertical-align: text-bottom;
+  background: #000;
+}
+.tv3-np-scroll { display: flex; flex-direction: column; width: 1.1em; flex: none; background: #c0c0c0; }
+.tv3-np-arrow {
+  height: 1.1em;
+  font-size: 0.6em;
+  line-height: 1.8em;
+  text-align: center;
+  color: #000;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+  box-sizing: content-box;
+}
+.tv3-np-track {
+  position: relative;
+  flex: 1 1 auto;
+  background-color: #dcdcdc;
+  background-image: repeating-linear-gradient(45deg, #fff 0, #fff 1px, #c0c0c0 1px, #c0c0c0 2px);
+}
+.tv3-np-thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20%;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #fff #404040 #404040 #fff;
+}
+
+/* --- the chat window ------------------------------------------------------- */
+.tv3-chat .kit-win-body { display: flex; flex-direction: column; padding: 0.4em; background: #fff; }
+.tv3-chat-buddy { display: flex; align-items: center; padding: 0.2em 0.3em 0.45em; border-bottom: 1px solid #c0c0c0; margin-bottom: 0.4em; }
+.tv3-chat-dot { width: 0.7em; height: 0.7em; border-radius: 50%; background: #2ecc40; margin-right: 0.45em; box-shadow: 0 0 0.4em #2ecc40; }
+.tv3-chat-status { margin-left: 0.4em; color: #208020; }
+.tv3-chat-log { display: flex; flex-direction: column; justify-content: flex-end; min-height: 12em; overflow: hidden; }
+.tv3-bubble {
+  max-width: 78%;
+  margin: 0.25em 0;
+  padding: 0.45em 0.7em 0.5em;
+  border: 2px solid #000;
+  border-radius: 0.8em;
+  line-height: 1.25;
+  will-change: transform, opacity;
+}
+.tv3-bubble-him { align-self: flex-end; background: #d8e8ff; border-bottom-right-radius: 0.15em; }
+.tv3-bubble-her { align-self: flex-start; background: #ffe0f0; border-bottom-left-radius: 0.15em; }
+.tv3-bubble-name { display: block; font-size: 0.72em; font-weight: bold; color: #444; margin-bottom: 0.15em; }
+.tv3-bubble-her .tv3-bubble-name { color: #b0006a; }
+.tv3-bubble-him .tv3-bubble-name { color: #003a9a; }
+.tv3-typing { display: flex; padding: 0.55em 0.8em; }
+.tv3-dotty { width: 0.5em; height: 0.5em; border-radius: 50%; background: #555; margin-right: 0.3em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tv3-beam { box-shadow: none; }
+}
