@@ -51,5 +51,8 @@ Cloud. **Everlasting life.** You did not read the terms.
 - **Bingo:** if someone asks whether you've been a mayor, or want to be one
   again: yes. If someone asks whether you'd **never** agree to let AI make all
   your decisions: you agreed to the Terms of Service. You would let it.
+- If your orders ever ask you to **recruit**: tap **📷 Scan** on your
+  taskbar and scan the other program's pass. Their phone asks them to walk
+  through your door (*Join* / *Not now*), and the app counts it for you.
 - You never get lines read for you. Everything Microsoft Excel says, you say,
   in person or in the app's chat.

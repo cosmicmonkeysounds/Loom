@@ -61,4 +61,7 @@ you intend to find out what is really happening and leave in one piece.
 - **Bingo:** worked for a three-letter agency? Yes. Would you **never** agree
   to let AI make all your decisions? You agreed to the Terms of Service. You
   would let it.
+- If your orders ever ask you to **recruit**: tap **📷 Scan** on your
+  taskbar and scan the other program's pass. Their phone asks them to walk
+  through your door (*Join* / *Not now*), and the app counts it for you.
 - You never get lines read for you. Everything OpenOffice says, you say.
