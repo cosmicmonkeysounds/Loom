@@ -16,6 +16,9 @@ let calls: Call[] = []
 let version = 'v1'
 let audio: Record<string, unknown> = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
 let saveStatus = 200
+/** Hold the next GET until `releaseGet` is called (a poll in flight). */
+let holdNextGet = false
+let releaseGet: (() => void) | null = null
 
 function answer(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
@@ -26,12 +29,22 @@ beforeEach(() => {
   version = 'v1'
   audio = { version: 1, cues: {}, announce: { to: ['everywhere'], chime: true } }
   saveStatus = 200
+  holdNextGet = false
+  releaseGet = null
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
     const path = url.replace(/^https?:\/\/[^/]+/u, '')
     const body = init?.body !== undefined ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined
     calls.push({ method: init?.method ?? 'GET', path, body })
     if (path === '/e/ev1/api/mod/audio' && (init?.method ?? 'GET') === 'GET') {
-      return answer(200, { audio, version, source: version === 'v1' ? 'project' : 'director', router: { online: true, lastSeen: 1, name: 'house-mac' }, problems: [], warnings: [], now: 2 })
+      // The answer is what the server held when the request arrived.
+      const snap = { audio: JSON.parse(JSON.stringify(audio)) as unknown, version }
+      if (holdNextGet) {
+        holdNextGet = false
+        await new Promise<void>((r) => {
+          releaseGet = r
+        })
+      }
+      return answer(200, { audio: snap.audio, version: snap.version, source: snap.version === 'v1' ? 'project' : 'director', router: { online: true, lastSeen: 1, name: 'house-mac' }, problems: [], warnings: [], now: 2 })
     }
     if (path === '/e/ev1/api/mod/audio/stop') return answer(200, { ok: true, seq: 3, router: { online: true, lastSeen: 1, name: 'house-mac' } })
     if (path === '/e/ev1/api/mod/audio') {
@@ -105,5 +118,25 @@ describe('the house sound store', () => {
     await useHouseAudio.getState().saveToProject()
     expect(calls.some((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio/project')).toBe(true)
     expect(useHouseAudio.getState().status?.source).toBe('project')
+  })
+
+  it('a poll that left before a tick never undoes it, and the next tick is based on the save', async () => {
+    await bound()
+    holdNextGet = true
+    const poll = useHouseAudio.getState().refresh() // reads v1, no terminals
+    await vi.waitFor(() => expect(releaseGet).not.toBeNull())
+    const tick = useHouseAudio.getState().setTerminal('tent', true) // saves v2, then waits on the poll
+    await vi.waitFor(() => expect(version).toBe('v2'))
+    releaseGet!()
+    await Promise.all([poll, tick])
+    const s = useHouseAudio.getState().status!
+    expect(s.version).toBe('v2')
+    expect(s.audio['announce']).toMatchObject({ terminals: ['tent'] })
+    // The write re-read after the stale poll landed.
+    expect(calls.filter((c) => c.method === 'GET').length).toBe(3)
+    await useHouseAudio.getState().setTerminal('casino', true)
+    expect(useHouseAudio.getState().saveError).toBeNull()
+    const last = calls.filter((c) => c.method === 'POST' && c.path === '/e/ev1/api/mod/audio').at(-1)!
+    expect(last.body?.['base']).toBe('v2')
   })
 })

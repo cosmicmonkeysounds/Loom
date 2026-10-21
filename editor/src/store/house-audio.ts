@@ -41,7 +41,14 @@ interface HouseAudioState {
 
 let timer: ReturnType<typeof setInterval> | null = null
 let noteTimer: ReturnType<typeof setTimeout> | null = null
-let inFlight = false
+/** The read in flight (one at a time); a refresh asked for meanwhile waits
+ *  for it and then reads again (`readAgain`). */
+let reading: { eventId: string; done: Promise<void> } | null = null
+let readAgain = false
+/** Bumped as every write (a tick, Save to project) leaves and as it lands: a
+ *  read that overlapped a write answers what the server held before it, so
+ *  its answer is dropped and the write's own re-read follows. */
+let writeGen = 0
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
@@ -66,15 +73,31 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
 
   refresh: async () => {
     const eventId = get().eventId
-    if (eventId === null || inFlight) return
-    inFlight = true
+    if (eventId === null) return
+    if (reading !== null && reading.eventId === eventId) {
+      // A poll is out: it may have left before a write, so read once more after it.
+      readAgain = true
+      await reading.done
+      return
+    }
+    const done = (async () => {
+      do {
+        readAgain = false
+        const gen = writeGen
+        try {
+          const status = await audioApi.status(eventId)
+          if (get().eventId === eventId && gen === writeGen) set({ status, reachable: true })
+        } catch {
+          if (get().eventId === eventId && gen === writeGen) set({ reachable: false })
+        }
+      } while (readAgain && get().eventId === eventId)
+    })()
+    const mine = { eventId, done }
+    reading = mine
     try {
-      const status = await audioApi.status(eventId)
-      if (get().eventId === eventId) set({ status, reachable: true })
-    } catch {
-      if (get().eventId === eventId) set({ reachable: false })
+      await done
     } finally {
-      inFlight = false
+      if (reading === mine) reading = null
     }
   },
 
@@ -104,6 +127,7 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
     const next = withAnnounceTerminal(status.audio, spot, on)
     // The box flips at once; a refused save puts it back.
     set({ busy: 'save', saveError: null, status: { ...status, audio: next } })
+    writeGen++
     try {
       const r = await audioApi.save(eventId, next, status.version)
       // Hold the save's version at once (a poll may already be in flight), so
@@ -119,6 +143,7 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
             : `Couldn’t save the house list: ${message(e)}`,
       })
     } finally {
+      writeGen++
       if (get().eventId === eventId) set({ busy: null })
     }
     await get().refresh()
@@ -128,12 +153,14 @@ export const useHouseAudio = create<HouseAudioState>((set, get) => ({
     const eventId = get().eventId
     if (eventId === null || get().busy !== null) return
     set({ busy: 'project', saveError: null })
+    writeGen++
     try {
       await audioApi.saveToProject(eventId)
       if (get().eventId === eventId) set({ savedAt: null })
     } catch (e) {
       if (get().eventId === eventId) set({ saveError: `Couldn’t save to the project: ${message(e)}` })
     } finally {
+      writeGen++
       if (get().eventId === eventId) set({ busy: null })
     }
     await get().refresh()
