@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GESTURES, KioskFullscreen, fullscreenFlagOf, type FullscreenDoc, type FullyLike, type GestureLike } from "../src/fullscreen.ts";
+import { GESTURES, KioskFullscreen, browserFullscreen, fullscreenFlagOf, type FullscreenDoc, type FullscreenView, type FullyLike, type GestureLike } from "../src/fullscreen.ts";
 
 /** A document whose root can (or can't) go full screen. */
 class FakeDoc implements FullscreenDoc {
@@ -193,5 +193,102 @@ describe("the health flag (fs)", () => {
     expect(fullscreenFlagOf("off")).toBe(false);
     expect(fullscreenFlagOf("disabled")).toBeNull(); // a director turned it off: not a fault
     expect(fullscreenFlagOf("unsupported")).toBeNull();
+  });
+});
+
+/** A window: its display mode and size, and its resize listeners. */
+class FakeView implements FullscreenView {
+  modes = new Set<string>();
+  innerWidth = 1280;
+  innerHeight = 700;
+  screen = { width: 1280, height: 800 };
+  resizes = new Set<() => void>();
+  matchMedia = (q: string) => ({ matches: this.modes.has(q) });
+  addEventListener(type: string, l: () => void) {
+    if (type === "resize") this.resizes.add(l);
+  }
+  removeEventListener(type: string, l: () => void) {
+    if (type === "resize") this.resizes.delete(l);
+  }
+  resize(w: number, h: number) {
+    this.innerWidth = w;
+    this.innerHeight = h;
+    for (const l of [...this.resizes]) l();
+  }
+}
+
+describe("browser-level full screen (--kiosk, F11, a Home Screen app)", () => {
+  it("the TV's Chrome --kiosk reports on with no tap and no fullscreen element", () => {
+    const doc = new FakeDoc();
+    const view = new FakeView();
+    view.modes.add("(display-mode: fullscreen)");
+    const fs = new KioskFullscreen(doc, null, () => {}, view);
+    fs.setEnabled(true);
+    expect(doc.fullscreenElement).toBeNull();
+    expect(fs.state).toBe("on");
+    expect(fullscreenFlagOf(fs.state)).toBe(true);
+  });
+
+  it("a tap in kiosk asks the API for nothing (no 'Press Esc' toast each touch)", async () => {
+    const doc = new FakeDoc();
+    const view = new FakeView();
+    view.modes.add("(display-mode: fullscreen)");
+    const fs = new KioskFullscreen(doc, null, () => {}, view);
+    fs.setEnabled(true);
+    doc.fire("click");
+    await tick();
+    expect(doc.requests).toBe(0);
+    expect(await fs.request()).toBe(true);
+  });
+
+  it("a Home Screen web app (standalone) counts, even where the API is missing", () => {
+    const view = new FakeView();
+    view.modes.add("(display-mode: standalone)");
+    const fs = new KioskFullscreen(new FakeDoc("none"), null, () => {}, view);
+    fs.setEnabled(true);
+    expect(fs.state).toBe("on");
+  });
+
+  it("an old WebView without the media query: the window filling the screen counts, either orientation", () => {
+    const view = new FakeView();
+    view.matchMedia = undefined as unknown as FakeView["matchMedia"];
+    expect(browserFullscreen(view)).toBe(false); // 1280×700 under bars
+    view.resize(1280, 800);
+    expect(browserFullscreen(view)).toBe(true);
+    view.resize(800, 1280); // rotated, the screen size kept portrait
+    expect(browserFullscreen(view)).toBe(true);
+    view.resize(1279, 799);
+    expect(browserFullscreen(view)).toBe(true); // rounding slack
+    expect(browserFullscreen(null)).toBe(false);
+  });
+
+  it("F11 in and out is noticed on resize, and the next tap asks the API again", async () => {
+    const doc = new FakeDoc();
+    doc.refuse = true;
+    const view = new FakeView();
+    const states: string[] = [];
+    const fs = new KioskFullscreen(doc, null, (s) => states.push(s), view);
+    fs.setEnabled(true);
+    expect(fs.state).toBe("off");
+    view.resize(1280, 800);
+    expect(states.at(-1)).toBe("on");
+    view.resize(1280, 700);
+    expect(states.at(-1)).toBe("off");
+    doc.fire("click");
+    await tick();
+    expect(doc.requests).toBe(1);
+    fs.dispose();
+    expect(view.resizes.size).toBe(0);
+  });
+
+  it("turning it off never tries to leave a full screen the page didn't make", () => {
+    const doc = new FakeDoc();
+    const view = new FakeView();
+    view.modes.add("(display-mode: fullscreen)");
+    const fs = new KioskFullscreen(doc, null, () => {}, view);
+    fs.setEnabled(true);
+    fs.setEnabled(false);
+    expect(doc.exits).toBe(0);
+    expect(fs.state).toBe("on"); // still truly full: fs=1, no badge
   });
 });

@@ -13,6 +13,14 @@
 //! rides on `<html data-fullscreen="on|fully|off|disabled|unsupported">` and
 //! the poll's health (`fs=1|0`, `health.ts`). Pure over injected seams like
 //! `ScreenWake`, so it tests without a DOM.
+//!
+//! **Browser-level full screen counts.** Chrome's `--kiosk` (and F11) fill
+//! the screen without a fullscreen element, and a Home Screen web app runs
+//! with no browser bars: `document.fullscreenElement` stays null in all
+//! three. So the window is full screen too when `(display-mode: fullscreen)`
+//! or `(display-mode: standalone)` matches, or its inner size is the
+//! screen's (`FullscreenView`) — else the TV, which nobody ever taps, would
+//! report `fs=0` all night.
 
 /** The element full screen is asked for (the page's root). */
 export interface FullscreenTarget {
@@ -50,6 +58,38 @@ export interface FullyLike {
   showNavigationBar?: () => void;
 }
 
+/** The slice of `window` that tells browser-level full screen apart. */
+export interface FullscreenView {
+  matchMedia?: (query: string) => { matches: boolean };
+  readonly innerWidth?: number;
+  readonly innerHeight?: number;
+  readonly screen?: { readonly width?: number; readonly height?: number };
+  addEventListener?(type: string, listener: () => void): void;
+  removeEventListener?(type: string, listener: () => void): void;
+}
+
+/** Display modes that mean no browser bars (`--kiosk` / F11, a Home Screen app). */
+const FULL_MODES = ["(display-mode: fullscreen)", "(display-mode: standalone)"] as const;
+
+/** Is the window itself full screen (no fullscreen element needed)? */
+export function browserFullscreen(view: FullscreenView | null): boolean {
+  if (view === null) return false;
+  try {
+    if (typeof view.matchMedia === "function" && FULL_MODES.some((q) => view.matchMedia!(q).matches)) return true;
+  } catch {
+    /* an old WebView without media queries: the size test below */
+  }
+  const w = view.innerWidth;
+  const h = view.innerHeight;
+  const sw = view.screen?.width;
+  const sh = view.screen?.height;
+  if (typeof w !== "number" || typeof h !== "number" || typeof sw !== "number" || typeof sh !== "number") return false;
+  if (sw <= 0 || sh <= 0) return false;
+  // Either orientation (an old WebView keeps the portrait screen size), 2 px slack for rounding.
+  const fits = (a: number, b: number) => Math.abs(w - a) <= 2 && Math.abs(h - b) <= 2;
+  return fits(sw, sh) || fits(sh, sw);
+}
+
 export type FullscreenState = "on" | "fully" | "off" | "disabled" | "unsupported";
 
 /** The gestures that carry user activation (pointerdown counts only for a
@@ -76,8 +116,11 @@ export class KioskFullscreen {
     private readonly fully: FullyLike | null = null,
     /** Told the state whenever it may have moved. */
     private readonly onChange: (s: FullscreenState) => void = () => {},
+    /** The window, for browser-level full screen (`--kiosk`, F11, a Home Screen app). */
+    private readonly view: FullscreenView | null = null,
   ) {
     for (const t of CHANGES) doc.addEventListener(t, this.onChanged);
+    view?.addEventListener?.("resize", this.onChanged); // F11 / --kiosk fire no fullscreenchange
     this.report();
   }
 
@@ -89,12 +132,13 @@ export class KioskFullscreen {
     return (api && allowed) || this.hasFully;
   }
 
-  /** Is the page full screen right now (the API's element, or Fully's bars hidden)? */
+  /** Is the page full screen right now (the API's element, the window itself, or Fully's bars hidden)? */
   get active(): boolean {
-    return this.isFull() || (this.hasFully && this.fullyAsked);
+    return this.isFull() || this.windowFull() || (this.hasFully && this.fullyAsked);
   }
 
   get state(): FullscreenState {
+    if (this.windowFull()) return "on"; // --kiosk / F11 / a Home Screen app: full whatever the API says
     if (!this.supported) return "unsupported";
     if (!this.enabled) return this.isFull() ? "on" : "disabled";
     if (this.isFull()) return "on";
@@ -126,7 +170,7 @@ export class KioskFullscreen {
   request(): Promise<boolean> {
     if (!this.enabled || !this.supported) return Promise.resolve(this.isFull());
     this.hideFullyBars();
-    if (this.isFull()) return Promise.resolve(true);
+    if (this.isFull() || this.windowFull()) return Promise.resolve(true); // nothing to ask (no "Press Esc" toast on every tap)
     const typing = this.doc.activeElement?.tagName;
     if (typing !== undefined && TYPING.has(typing.toUpperCase())) return Promise.resolve(false);
     if (this.pending !== null) return this.pending;
@@ -159,6 +203,7 @@ export class KioskFullscreen {
   dispose(): void {
     if (this.listening) for (const g of GESTURES) this.doc.removeEventListener(g, this.onGesture, true);
     for (const t of CHANGES) this.doc.removeEventListener(t, this.onChanged);
+    this.view?.removeEventListener?.("resize", this.onChanged);
     this.listening = false;
   }
 
@@ -169,6 +214,11 @@ export class KioskFullscreen {
   private isFull(): boolean {
     const d = this.doc;
     return (d.fullscreenElement !== undefined && d.fullscreenElement !== null) || (d.webkitFullscreenElement !== undefined && d.webkitFullscreenElement !== null);
+  }
+
+  /** The window fills the screen with no fullscreen element (never exited by `setEnabled(false)`: it isn't ours). */
+  private windowFull(): boolean {
+    return browserFullscreen(this.view);
   }
 
   private exit(): void {
@@ -213,9 +263,14 @@ export function kioskFullscreen(): KioskFullscreen {
   if (shared === null) {
     const root = document.documentElement;
     const fully = (window as unknown as { fully?: FullyLike }).fully ?? null;
-    shared = new KioskFullscreen(document as unknown as FullscreenDoc, fully, (s) => {
-      root.dataset.fullscreen = s;
-    });
+    shared = new KioskFullscreen(
+      document as unknown as FullscreenDoc,
+      fully,
+      (s) => {
+        root.dataset.fullscreen = s;
+      },
+      window as unknown as FullscreenView,
+    );
   }
   return shared;
 }
