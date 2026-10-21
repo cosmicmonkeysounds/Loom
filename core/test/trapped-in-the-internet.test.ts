@@ -280,7 +280,7 @@ describe("Trapped in the Internet — compile", () => {
     expect(m.codex.get("Tennis For Two")!.about).toBe("Pong");
   });
 
-  it("declares the 26 quests in order (the three hunt quests generated first, the seven staff quests last), with titles and givers", () => {
+  it("declares the 27 quests in order (the three hunt quests generated first, the seven staff quests last), with titles and givers", () => {
     const QUESTS = [
       ["Hunt One", "The Truth Scavenger Hunt · Round 1", "Trabolta"],
       ["Hunt Two", "The Truth Scavenger Hunt · Round 2", "Trabolta"],
@@ -291,6 +291,8 @@ describe("Trapped in the Internet — compile", () => {
       ["OpenOffice Dossier", "Facts Are Currency", "Truther Download"],
       ["Recruit To Stay", "Stay Forever", "Truther Download"],
       ["Recruit To Leave", "Get Out", "Truther Download"],
+      // Wave 18b (R4): a founder's own quest.
+      ["A Faction Of Your Own", "Your Own Faction", "Truther Download"],
       ["Truthcoin Hustle", "Sweet Sweet Truthcoin", "Truther Download"],
       ["Master Of The Bugs", "Master Of The Bugs", "Truther Download"],
       ["Unscramble", "Organize The Information", "Truther Download"],
@@ -313,7 +315,7 @@ describe("Trapped in the Internet — compile", () => {
     ];
     const qs = [...m.quests.values()].map((q) => [q.id, q.title, q.giver]);
     expect(qs).toEqual(QUESTS);
-    expect(m.quests.size).toBe(26);
+    expect(m.quests.size).toBe(27);
     expect(m.quests.get("Orientation")!.text).toContain("Bathroom Mode: open Start and tap 🚻 Bathroom Mode");
     // The generated quests list exactly their round's questions, from facts.json.
     for (const [id, round] of [["Hunt One", 1], ["Hunt Two", 2], ["The Final Facts", 3]] as const) {
@@ -442,9 +444,11 @@ describe("Trapped in the Internet — compile", () => {
       excel_planted: "false",
       virus_planter: "none",
       openoffice_dossier: "false",
-      waive_leader_tasks: "false",
       majority_reached: "false",
       majority: "none",
+      majority_id: "none",
+      majority_name: "none",
+      majority_founder: "none",
       jeeves_reached: "0",
     });
   });
@@ -1574,30 +1578,33 @@ describe("Trapped in the Internet — the overshare, four ways", () => {
 });
 
 describe("Trapped in the Internet — the majorities", () => {
-  it("a stay majority without Excel's plant waits for the director's waiver", { timeout: SLOW }, () => {
+  it("a stay majority needs no plant (wave 18b, D13 a: the leaders are founders like everyone else)", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     toHunt2(sim);
     toBeans(sim);
     fireAll(sim, "trabolta_overshares", "y2k_clock");
+    expect(v(sim, "Kernel.excel_planted")).not.toBe(true);
     for (const g of ["g1", "g4", "g5"]) sim.join(g, "Unlimited Power");
-    expect(v(sim, "Kernel.majority_reached")).not.toBe(true);
-    fire(sim, "waive_leader_tasks");
     expect(v(sim, "Kernel.majority")).toBe("stay");
+    expect(v(sim, "Kernel.majority_id")).toBe("Unlimited Power");
+    expect(v(sim, "Kernel.majority_name")).toBe("Unlimited Power");
+    expect(v(sim, "Kernel.majority_founder")).toBe("g2");
+    expect(sim.model.interactions.has("waive_leader_tasks")).toBe(false);
     expect(sim.questStatus("g2", "Recruit To Stay")).toBe("done");
     expect(sim.holdsCodex("g1", "Combo B First Half")).toBe(true);
     expect(sim.holdsCodex("g3", "Combo B First Half")).toBe(false);
   });
 
-  it("a leave majority waits for the dossier, then fires the moment it lands", { timeout: SLOW }, () => {
+  it("a leave majority needs no dossier: it fires the moment the fourth program walks in", { timeout: SLOW }, () => {
     const sim = boot();
     toTruth1(sim);
     toHunt2(sim);
     toBeans(sim);
     fireAll(sim, "trabolta_overshares", "y2k_clock");
-    for (const g of ["g1", "g4", "g5"]) sim.join(g, "The Way Out");
+    for (const g of ["g1", "g4"]) sim.join(g, "The Way Out");
     expect(v(sim, "Kernel.majority_reached")).not.toBe(true);
-    dossier(sim);
+    sim.join("g5", "The Way Out");
     expect(v(sim, "Kernel.majority")).toBe("leave");
     expect(sim.holdsCodex("g1", "The Door Code")).toBe(true);
   });
@@ -4525,14 +4532,16 @@ describe("Trapped in the Internet — a secret on a program never reaches Trabol
     expect(facts.characters.map((c) => c.id)).not.toContain("Kernel");
     for (const leak of ["V2-D5", "anti_ai", "virus_planter", "Kernel."]) expect(JSON.stringify(facts), leak).not.toContain(leak);
 
-    // At the Y2K clock the groups are revealed (membership is public now),
-    // but a leader's recruiting orders stay secret.
+    // At the Y2K clock the groups are revealed, but in faction mode (wave
+    // 18b, D13 j) the race sides stay out of the facts document (he never
+    // counts a faction), and a leader's recruiting orders stay secret.
     for (const n of ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "printer_opened", "zip_everyone_out", "trabolta_overshares", "y2k_clock"]) await mod(n);
     expect(rt.liveSim!.questStatus(id, "Recruit To Stay")).toMatch(/^(active|done)$/u); // the only program: his own vote is the majority
     const late = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
     const me2 = late.programs.find((p) => p.id === id)!;
-    expect(me2.groups).toContain("Unlimited Power");
-    expect(me2.vars["group"]).toBe("Unlimited Power");
+    expect(me2.groups).not.toContain("Unlimited Power");
+    expect(me2.vars["group"]).toBeUndefined();
+    expect(JSON.stringify(late)).not.toContain("Unlimited Power");
     expect(Object.keys(me2.vars).filter((k) => k.startsWith("quest.recruit") || k === "quest.excel_mission")).toEqual([]);
     rt.dispose();
   });
@@ -4860,7 +4869,7 @@ describe("Trapped in the Internet — the staff (wave 4, lane D)", () => {
 
     const pv = primeView(sim, "Clippy");
     expect(pv.quests.map((q) => [q.id, q.status])).toEqual([["Run The Bingo", "done"], ["Host The Hunt", "done"], ["Keep Everyone Calm", "done"]]);
-    expect(pv.questTotal).toBe(26);
+    expect(pv.questTotal).toBe(27);
     for (const q of ["Run The Bingo", "Host The Hunt", "Keep Everyone Calm", "The Selected Antivirus", "The Exchange", "The Clubs", "The Audit"]) expect(noGuestHolds(q), q).toBe(true);
     expect(guestView(sim, "g1").quests.map((q) => q.id)).not.toContain("Run The Bingo");
   });
@@ -5979,7 +5988,7 @@ function sheet(sim: Sim) {
 describe("Trapped in the Internet — wave 8 (story lane)", () => {
   it("S2-10 / T2-08: the anytime, optional and fallback cues are off-sequence, so NEXT after 🕚 is never 🎆 midnight", { timeout: SLOW }, () => {
     const m = fresh().model;
-    for (const id of ["zip_everyone_out", "y2k_midnight", "waive_leader_tasks", "reset_server_room", "force_majority_stay", "force_majority_leave", "lights_dance", "restore_the_lights"]) {
+    for (const id of ["zip_everyone_out", "y2k_midnight", "reset_server_room", "force_majority_stay", "force_majority_leave", "force_their_majority", "lights_dance", "restore_the_lights"]) {
       expect(m.interactions.get(id)!.sequence, id).toBe(false);
     }
     // The night's steps stay in sequence.

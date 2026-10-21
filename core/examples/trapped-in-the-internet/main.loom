@@ -34,7 +34,8 @@ archive: Norton Anti-Virus when program.cleared == true and program.marked != tr
 archive: McAfee Anti-Virus when program.cleared == true and program.marked != true and program.corrupted != true
 archive: Password Manager when program.cleared == true and program.marked != true and program.corrupted != true
 archive: CRA Agent Software when program.cleared == true and program.marked != true and program.corrupted != true
-majority: Night.present / 2 + 1
+majority: count([p for p in Persons where p.gone != true and p.persona != true]) / 2 + 1
+founding: Night.truther_sent == true and Kernel.majority_reached != true and Night.clock != "00:00" and Night.ended != true and program.cleared == true and program.corrupted != true
 lobby: hidden
 badge: program.afk as 🚻 Bathroom Mode
 
@@ -82,10 +83,16 @@ badge: program.afk as 🚻 Bathroom Mode
 // ── Groups ──────────────────────────────────────────────────────────
 // Nobody picks a side at the door: everyone is a program. The two staff
 // castes are assigned by the cast traits (`joinable: false` keeps them
-// off the app's side chooser). The two recruiting factions are hidden
-// until the Y2K clock reveals them; from then on any program can join
+// off the app's side chooser). The two declared recruiting factions are
+// hidden until the Y2K clock reveals them; from then on any program can join
 // one from the app (joining fires `join`, switching fires `defect`).
-// "Pursue your own interests" means joining neither.
+// Wave 18b (R4, O7): the header's `founding:` line puts the night in
+// faction mode. From the Truther Download until a majority, midnight or an
+// ending, any cleared program may found a faction of its own (Start →
+// Factions; the engine's crews), one faction at a time; founded factions
+// race beside the two declared sides, and the majority is counted only in
+// the Y2K hour. A faction's name is guest-typed: it never goes in Night.*.
+// "Pursue your own interests" means joining none.
 
 GROUP Hosts
   ethos: hospitality
@@ -227,7 +234,7 @@ ROLE Program
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door, whole_truth, quest.a_faction_of_your_own
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
@@ -279,6 +286,8 @@ ROLE Program
   dossier_base: 0 to 500 = 0
   // Wave 18b (R22): how many she had found by the glitch (guards the 10-step).
   dossier_start: 0 to 500 = 0
+  // Wave 18b (R4): The Whole Truth reached this program (once).
+  whole_truth: bool = false
   // DRAFT w18: how many programs this leader has recruited to their side by pass.
   recruits: 0 to 500 = 0
   got_truther: bool = false
@@ -2591,12 +2600,19 @@ ROLE Program
   when self.at_the_heart == true and Night.heart_holder != self.name:
     set self.at_the_heart = false
 
-  // The majority's members get the whole truth (late pledgers too).
-  when Kernel.majority == "stay" and self.group == Unlimited_Power:
+  // The majority's members get the whole truth (late pledgers too), once
+  // each (wave 18b: any faction; `whole_truth` keeps a leave-and-rejoin
+  // from replaying it).
+  when Kernel.majority_reached == true and faction_of(self) == Kernel.majority_id and self.whole_truth != true:
+    set self.whole_truth = true
     -> The Whole Truth
 
-  when Kernel.majority == "leave" and self.group == The_Way_Out:
-    -> The Whole Truth
+  // A founder's own quest settles with the race (wave 18b).
+  when Kernel.majority == "founded" and self.quest.a_faction_of_your_own == "active":
+    if self == Kernel.majority_founder:
+      complete quest A Faction Of Your Own for self "More than half of the computer walked through your door."
+    else:
+      fail quest A Faction Of Your Own for self "Another faction got there first."
 
   // The recount / truth.txt: every program's true identity, to everyone —
   // the identity entries (codex/5-people.loom) and the two CHARACTER FACTS
@@ -2676,6 +2692,9 @@ ROLE Program
       The Uploader: You chose to stay in the machine forever. You got your wish. The machine is gone, and you went with it.
     else if self.group == The_Way_Out:
       The Uploader: You fought to get out. You did: into purgatory, with everyone else. Your body is in the Maps and Ducks building. It is not breathing.
+    else if faction_of(self) != null:
+      // DRAFT w18b (R4): a founded faction's member.
+      The Uploader: {faction_name(faction_of(self))} wanted its own way out. It got the same one as everyone. Your body is in the Maps and Ducks building. It is not breathing.
     else:
       The Uploader: Your body is in the Maps and Ducks building. It is not breathing.
 
@@ -2864,16 +2883,11 @@ INTERACTION y2k_midnight
   who: admin
   sequence: false
 
-INTERACTION waive_leader_tasks
-  label: 🧾 Let a faction win without its leader's task (leader absent)
-  who: admin
-  sequence: false
-
 INTERACTION server_door_opened
   label: 🚪 Server room door opened (hardware fallback)
   who: admin
   sequence: false
-  description: The door contact fires this itself. Press it when the contact could not. Once Trabolta is awake the first opening plays The Heart, however the door was unlocked (the server room opens on every phone, Trabolta speaks candidly on the server-room terminal); another opening within 2 minutes does nothing, a later one gets a short line. Before he is awake, inside a 🔧 crew window, or after truth.txt it only tells # hosts. It never raises an alarm.
+  description: The door contact fires this itself. Press it when the contact could not. Once Trabolta is awake the first opening plays The Heart, however the door was unlocked (the server room opens on every phone, Trabolta speaks candidly on the server-room terminal); every later opening does nothing (🔄 re-arms it). Before he is awake, inside a 🔧 crew window, or after truth.txt it only tells # hosts. It never raises an alarm.
 
 INTERACTION reset_server_room
   label: 🔄 Server room: reset the patch-bay alarm
@@ -2898,6 +2912,13 @@ INTERACTION force_majority_leave
   who: admin
   sequence: false
   description: Final round only, when ghosts block a clear majority at the Y2K head count (OP-11). Runs the majority exactly once.
+
+// Wave 18b (R4): a program's own founded faction can be forced too. DRAFT w18b
+INTERACTION force_their_majority
+  label: 🗳 Force the majority: this program's faction
+  who: admin
+  sequence: false
+  description: Final round only. Fire it naming a member of the faction (any faction: a founded one or a side). Runs the majority exactly once, for that faction.
 
 INTERACTION patch_combo_a
   label: 🔌 Patch: Combo A, disable Trabolta (hardware fallback)
@@ -3903,7 +3924,9 @@ when truther_download:
     cue lights_glitch
     set Night.lights = "glitch"
     sound truther_glitch
-    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." to everyone with go: Truther Download
+    // DRAFT w18b (R4, O7): founding opens here. (No "wins" in a house line:
+    // the screens cheer only a line that names a winner.)
+    broadcast "!📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open. You may found a faction of your own now (Start → Factions). The count starts at 11:00 PM: a faction needs more than half of the programs." to everyone with go: Truther Download
   else:
     broadcast "📥 Not again: the Truther Download was already sent. Nothing happens." to channel(hosts)
 
@@ -4152,7 +4175,8 @@ when y2k_clock:
     set Night.screen = "y2k"
     set Night.terminals = "y2k"
     sound y2k_chime
-    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: two factions are recruiting, Unlimited Power and The Way Out." to everyone with go: sides, go: Truther Download
+    // DRAFT w18b (R4, O7): the sides join the founded factions; the count starts.
+    broadcast "!🕚 SYSTEM CLOCK RESET: 11:00 PM, DECEMBER 31, 1999. New orders are in your messages: Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download. The count starts now." to everyone with go: sides, go: Truther Download
     -> The Y2K Clock
   else if Night.step >= 14 or Night.clock != "--:--":
     broadcast "🕚 Not again: the clock has already been reset. Nothing happens." to channel(hosts)
@@ -4186,25 +4210,33 @@ when Night.final_round == true and Night.ended != true and Night.clock_1 != true
 when Night.final_round == true and Night.ended != true and Time.elapsed >= Night.y2k_end:
   fire y2k_midnight
 
-// The majority: strictly more than half of the programs still here,
-// counted only once the faction's leader has done their task (Excel
-// planted the virus; OpenOffice has her 20 facts), unless the director
-// waives it. First faction across wins; it latches. A program a director
-// marked as gone home (`<id>.gone`, Run's roster) and a director's own
-// rehearsal persona (`<id>.persona`) count on neither side of the sum, so
-// ghosts no longer block a real majority (wave 11).
-when Night.final_round == true and Kernel.majority_reached != true and (Kernel.excel_planted == true or Kernel.waive_leader_tasks == true) and count([p for p in Unlimited_Power.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
+// The majority (wave 18b, R4, D13): any faction — Unlimited Power, The Way
+// Out, or one a program founded (Start → Factions, from the Truther
+// Download) — holding more than half of the programs still here, counted
+// only in the Y2K hour. The leaders' tasks no longer gate it (Excel and
+// OpenOffice are founders like everyone else). First across wins; it
+// latches. A program a director marked as gone home (`<id>.gone`) and a
+// director's own rehearsal persona (`<id>.persona`) count on neither side
+// (wave 11); the threshold is the header's direct present count, not
+// `Night.present` (which lags one watcher pass). A faction already over
+// the line when the clock strikes wins on the clock's first pass.
+when Night.final_round == true and Kernel.majority_reached != true and majority_faction() != null:
   set Kernel.majority_reached = true
-  set Kernel.majority = "stay"
-  fire majority_reached
+  set Kernel.majority_id = majority_faction()
+  fire settle_majority
 
-when Night.final_round == true and Kernel.majority_reached != true and (Kernel.openoffice_dossier == true or Kernel.waive_leader_tasks == true) and count([p for p in The_Way_Out.members where p.gone != true and p.persona != true]) * 2 > count([p for p in Persons where p.gone != true and p.persona != true]):
-  set Kernel.majority_reached = true
-  set Kernel.majority = "leave"
+// The latch's names, then E1. A founded faction's name is guest-typed: it
+// lives on the secret Kernel, never in Night.*.
+when settle_majority:
+  set Kernel.majority_name = faction_name(Kernel.majority_id)
+  set Kernel.majority_founder = faction_founder(Kernel.majority_id)
+  if Kernel.majority_id == "Unlimited Power":
+    set Kernel.majority = "stay"
+  else if Kernel.majority_id == "The Way Out":
+    set Kernel.majority = "leave"
+  else:
+    set Kernel.majority = "founded"
   fire majority_reached
-
-when waive_leader_tasks:
-  set Kernel.waive_leader_tasks = true
 
 // The majority's denominator for the director's board (`watch:
 // Night.present`): kept in step whenever it moves.
@@ -4215,7 +4247,7 @@ when Night.present != count([p for p in Persons where p.gone != true and p.perso
 // program's yes is the switching join (the event server's), and
 // `recruited` (subject the recruit, `by` the recruiter, `side` the side)
 // counts it on the leader's recruiting quest. The header's `majority:`
-// line is the Sides screen's "n of the half + 1 it needs" (the same
+// line is the Factions screen's "n of the half + 1 it needs" (the same
 // threshold as the watchers above: members × 2 > present).
 // DRAFT w18
 when recruited for program:
@@ -4232,18 +4264,36 @@ when recruited for program:
 when force_majority_stay:
   if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
     set Kernel.majority_reached = true
-    set Kernel.majority = "stay"
-    fire majority_reached
+    set Kernel.majority_id = "Unlimited Power"
+    fire settle_majority
   else:
     broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
 
 when force_majority_leave:
   if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true:
     set Kernel.majority_reached = true
-    set Kernel.majority = "leave"
-    fire majority_reached
+    set Kernel.majority_id = "The Way Out"
+    fire settle_majority
   else:
     broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
+// Wave 18b (R4): the named program's faction, whichever it is. DRAFT w18b
+when force_their_majority for program:
+  if Night.ended != true and Night.final_round == true and Kernel.majority_reached != true and faction_of(program) != null:
+    set Kernel.majority_reached = true
+    set Kernel.majority_id = faction_of(program)
+    fire settle_majority
+  else if faction_of(program) == null:
+    broadcast "🗳 No forced majority: {program.name} is in no faction." to channel(hosts)
+  else:
+    broadcast "🗳 No forced majority: it needs the final round and no majority yet." to channel(hosts)
+
+// A program founded a faction (Start → Factions): # hosts hears its name
+// (guest-typed: the hosts', never the TV's or Trabolta's), and the founder
+// gets the quest. DRAFT w18b
+when founded for program:
+  broadcast "◇ {program.name} founded a faction: {faction_name(faction_of(program))}." to channel(hosts)
+  start quest A Faction Of Your Own for program
 
 // ── E. Act III — the server room ──
 
@@ -4269,10 +4319,15 @@ when majority_reached:
     if Kernel.majority == "stay":
       complete quest Recruit To Stay for everyone
       fail quest Recruit To Leave for everyone
-    else:
+    else if Kernel.majority == "leave":
       complete quest Recruit To Leave for everyone
       fail quest Recruit To Stay for everyone
       complete quest Find The Exit for everyone
+    else:
+      // A founded faction (wave 18b): both recruiting quests fail; the
+      // founder's own quest is settled by the ROLE watcher.
+      fail quest Recruit To Stay for everyone
+      fail quest Recruit To Leave for everyone
     -> Majority Reached
 
 // E2: the door contact. The server-room door has a standalone keypad lock

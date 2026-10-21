@@ -164,7 +164,10 @@ addresses, codes, where things are kept).
     everyone.
   - **Q21:** sides are joined on the **Sides screen** (two doors at the Y2K
     clock), and a member recruits by **scanning another program's pass**;
-    guests may also found their own **crews** (never a side).
+    guests may also found their own **crews** (never a side). **Wave 18b:**
+    the screen is **Factions**; from the Truther Download a program may
+    found a faction that races beside the two sides (the leaders' tasks no
+    longer gate the majority; 🧾 is gone).
   The new lines are `// DRAFT w18` until the user signs off
   `../SIGNOFF-w18.md`; every pack below is written to the drafts.
 

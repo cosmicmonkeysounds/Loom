@@ -48,6 +48,7 @@ CODEX Excel Paranoia Orders
     at the Data Centre at 4 a.m. on opening day. They have not said so.
 
 // DRAFT w18 (Q21 reworded): the Sides screen, and recruiting by pass.
+// DRAFT w18b (R4, D13 a): no leader-task gate; any faction may win.
 CODEX Excel Final Orders
   title: Stay Forever
   category: Missions
@@ -55,11 +56,12 @@ CODEX Excel Final Orders
   text:
     You need to recruit half + 1 of the programs to convince them that we
     should stay in this machine forever, so we can have unlimited power
-    and joy. Programs walk through Unlimited Power's door on the Sides
-    screen (Start → Sides); scan a program's pass to recruit them.
+    and joy. Programs walk through Unlimited Power's door on the Factions
+    screen (Start → Factions); scan a program's pass to recruit them.
     - If you have not planted the virus yet, you still must: retrieve it
     from the Internet, then use 💾 Insert a disk into the computer.
-    - Your majority does not count until the virus is in.
+    - Any program may found a faction of its own. The count starts at the
+    11:00 PM clock: the first faction past half + 1 wins.
     - Half + 1 means more than half of every program in the computer,
     including the ones in the Internet.
 
@@ -93,6 +95,7 @@ CODEX OpenOffice False Flag Orders
     He is old, and he has not forgiven anyone.
 
 // DRAFT w18 (Q21 reworded): the Sides screen, and recruiting by pass.
+// DRAFT w18b (R4, D13 a): no leader-task gate; any faction may win.
 CODEX OpenOffice Final Orders
   title: Overthrow And Escape
   category: Missions
@@ -101,10 +104,11 @@ CODEX OpenOffice Final Orders
     You need to recruit half + 1 of the programs to convince them we need
     to combine our power to overthrow Trabolta and escape the computer,
     where we are at risk of being stuck forever – or worse. Programs walk
-    through The Way Out's door on the Sides screen (Start → Sides): the
-    Truthers. Scan a program's pass to recruit them.
+    through The Way Out's door on the Factions screen (Start → Factions):
+    the Truthers. Scan a program's pass to recruit them.
     - If you have not gathered 20 facts yet, you still must.
-    - Your majority does not count until your dossier is complete.
+    - Any program may found a faction of its own. The count starts at the
+    11:00 PM clock: the first faction past half + 1 wins.
     - Half + 1 means more than half of every program in the computer,
     including the ones in the Internet.
 

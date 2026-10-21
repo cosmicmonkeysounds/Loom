@@ -124,10 +124,9 @@ never from a guest card.
 | stuck quest | fire the story event that advances it |
 | stale Bathroom Mode | Run → World → that guest's `afk` = false (at each summons) |
 | a guest left the party | Run → their row → **👋 Went home** (wave 11): they stop counting toward the majority (the board's *Present programs*); **Back** undoes it |
-| ghosts block the majority at Y2K | mark the ones who left 👋 Went home first; then **🗳 Force the majority** (stay / leave) |
+| ghosts block the majority at Y2K | mark the ones who left 👋 Went home first; then **🗳 Force the majority** (stay / leave), or **🗳 this program's faction** naming a member (a founded faction too) |
 | a featured guest lost their invitation, or their program reads 🔒 | Run → Join → 🖨 Print sheet → Invitations → that program's **🔓 lost? open 2 min** (two taps): anyone can pick it for two minutes, so have the invitee ready |
 | `# hosts` says Trabolta's worker is stalled (⏳) | the tech op restarts the `agents` job; answer his DMs as Trabolta from Run meanwhile (every waiting thread got his hold line once) |
-| a faction leader absent or stuck | **🧾** Let a faction win without its leader's task |
 | dead door terminal (the King's chess) | **♟** They beat the King: the door code (fallback), **naming the winner** (with nobody named it only reminds `# hosts`); the door terminal reports its own wins *by Terminal · <name>* |
 | the King's health knocked down too early, or after a rehearsal | **👑** Restore the King's health (Anytime): back to 15/15 in both games and at the door |
 | the crew need to open the server-room door themselves | **🔧** Crew going through the server-room door (Anytime; the server-room Antivirus has it too): for 2 minutes an opening only tells `# hosts`, The Heart is kept |

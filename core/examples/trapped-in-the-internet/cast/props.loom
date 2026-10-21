@@ -94,7 +94,11 @@ CHARACTER Kernel
   excel_planted: bool = false
   virus_planter: text? = none
   openoffice_dossier: bool = false
-  waive_leader_tasks: bool = false
   majority_reached: bool = false
+  // "stay" | "leave" | "founded" (wave 18b: any faction can win), and the
+  // winner's id, display name and founder (a person id), set once.
   majority: text? = none
+  majority_id: text? = none
+  majority_name: text? = none
+  majority_founder: text? = none
   jeeves_reached: 0 to 99 = 0

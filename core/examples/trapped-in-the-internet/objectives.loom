@@ -287,6 +287,7 @@ OBJECTIVE Where You Stand
   text:
     Trabolta ranks every program on the TV. Applaud the most trusted. VLC prints a certificate.
 
+// w18b: founded factions; the count starts at the clock (DRAFT w18b)
 // DRAFT w18
 OBJECTIVE The Y2K Hour
   for: Program
@@ -295,7 +296,7 @@ OBJECTIVE The Y2K Hour
   title: Midnight is coming: the final facts
   go: sides
   text:
-    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Two factions are recruiting: walk through one of their doors on the Sides screen, or neither, and scan a program's pass to recruit them. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
+    The clock was reset to 11 PM, December 31, 1999. File the two final facts. Unlimited Power and The Way Out are recruiting now, beside every faction founded since the Truther Download: join one on the Factions screen, found your own, or neither, and scan a program's pass to recruit them. The count starts now. The cold door's code is out there: four digit notes, the King at the Server Door, or a majority.
     - Filed final Q1, done when program.fact_f1 == true
     - Filed final Q2, done when program.fact_f2 == true
     - Have the door code, done when program.codex.the_door_code == true

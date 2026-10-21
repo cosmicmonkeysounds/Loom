@@ -20,6 +20,10 @@ import { scenarioFiles, scenarioSource } from "../examples/load.ts";
 import { ChatStore, composeGuestMessages, type ChatMessage } from "../server/chat.ts";
 import { guestView, notePress } from "../server/views.ts";
 import { badgesOf } from "../src/runtime/sim/badges.ts";
+import { ScreenWatch, secretWritingCues } from "../server/routes/screen.ts";
+import { foldName } from "../src/parser/names.ts";
+
+const WHO = { name: "Hall", spot: "hall", view: "auto", character: "" };
 
 const SRC = scenarioSource("trapped-in-the-internet");
 const FILES = scenarioFiles("trapped-in-the-internet");
@@ -231,5 +235,126 @@ describe("Trapped in the Internet — wave 18b: Trabolta's picture (R19, D23)", 
     n.take(n.sim.setVar("g3.trust", "10"));
     n.take(n.sim.tick(1000));
     expect(v(n.sim, "Trabolta.broken")).toBe(false);
+  });
+});
+
+const TO_Y2K_REST = ["five_minute_warning", "summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"];
+/** Through hunt 2 and the Truther Download (the leaders' glitch choices made). */
+function toTruther(): Night {
+  const n = boot();
+  for (const c of TO_HOUR) n.press(c);
+  n.tick(125); // 📥 on its own watcher
+  for (const g of ["g2", "g3"]) n.take(n.sim.choose(g, 0));
+  return n;
+}
+const crewOf = (n: Night, who: string) => n.sim.crews.factionOf(who);
+
+describe("Trapped in the Internet — wave 18b: founded factions (R4–R6, O7, Q5)", () => {
+  it("founding opens at the Truther Download, not before; the count waits for the clock; a faction over the line wins on the clock's first pass", { timeout: SLOW }, () => {
+    const n = boot();
+    for (const c of TO_HOUR) n.press(c);
+    expect(guestView(n.sim, "g1").canFound).toBe(false);
+    n.tick(125); // 📥
+    for (const g of ["g2", "g3"]) n.take(n.sim.choose(g, 0));
+    expect(v(n.sim, "Night.truther_sent")).toBe(true);
+    expect(guestView(n.sim, "g1").canFound).toBe(true);
+    const founded = n.take(n.sim.crew({ op: "foundCrew", by: "g1", name: "The Calculators" }));
+    const id = crewOf(n, "g1")!;
+    expect(id).not.toBe(null);
+    expect(n.sim.questStatus("g1", "A Faction Of Your Own")).toBe("active");
+    expect(founded.filter((m) => m.channel === "faction:Hosts" || m.channel === "hosts").map((m) => m.text).concat(n.events.filter((e) => e.type === "broadcast").map((e) => (e as { cue: string }).cue)).some((t) => t.includes("Calculator founded a faction: The Calculators."))).toBe(true);
+    for (const g of ["g4", "g5", "g6"]) n.take(n.sim.crew({ op: "joinCrew", person: g, crew: id }));
+    // Four of six, before the clock: not counted yet.
+    expect(n.sim.crews.presentCount(id)).toBe(4);
+    expect(v(n.sim, "Kernel.majority_reached")).not.toBe(true);
+    // The rest of the night up to 🕚: the clock's first pass gives it the majority.
+    const ring = new ScreenWatch({ now: () => 50_000 });
+    ring.poll(n.sim, WHO, () => false);
+    for (const c of TO_Y2K_REST) n.press(c);
+    expect(v(n.sim, "Kernel.majority_reached")).toBe(true);
+    expect(v(n.sim, "Kernel.majority")).toBe("founded");
+    expect(v(n.sim, "Kernel.majority_id")).toBe(id);
+    expect(v(n.sim, "Kernel.majority_name")).toBe("The Calculators");
+    expect(v(n.sim, "Kernel.majority_founder")).toBe("g1");
+    expect(n.sim.questStatus("g1", "A Faction Of Your Own")).toBe("done");
+    expect(n.sim.questStatus("g2", "Recruit To Stay")).toBe("failed");
+    expect(n.sim.questStatus("g3", "Recruit To Leave")).toBe("failed");
+    // Q5: the screens hear the house-wide Majority Reached beat, never who.
+    const moments = ring.poll(n.sim, WHO, () => false).moments;
+    expect(moments.some((m) => m.kind === "beat" && m.name === "Majority Reached")).toBe(true);
+    expect(JSON.stringify(moments)).not.toContain("Calculators");
+    // The whole truth: every member, once; never the others.
+    for (const g of ["g1", "g4", "g5", "g6"]) expect(n.sim.holdsCodex(g, "The Door Code"), g).toBe(true);
+    for (const g of ["g2", "g3"]) expect(n.sim.holdsCodex(g, "The Door Code"), g).toBe(false);
+    // Founding is closed now (a majority).
+    expect(guestView(n.sim, "g2").canFound).toBe(false);
+    // No faction name ever rides Night.*.
+    for (const k of worldKeys(n.sim).filter((x) => x.startsWith("Night."))) expect(String(v(n.sim, k)), k).not.toContain("Calculators");
+  });
+
+  it("a late pledger still gets the whole truth, once; leave and rejoin replays nothing", { timeout: SLOW }, () => {
+    const n = toTruther();
+    for (const c of TO_Y2K_REST) n.press(c);
+    for (const g of ["g1", "g4", "g5"]) n.take(n.sim.join(g, "The Way Out"));
+    expect(v(n.sim, "Kernel.majority")).toBe("leave");
+    expect(n.sim.holdsCodex("g6", "The Door Code")).toBe(false);
+    n.take(n.sim.join("g6", "The Way Out"));
+    expect(v(n.sim, "g6.whole_truth")).toBe(true);
+    expect(n.sim.holdsCodex("g6", "The Door Code")).toBe(true);
+    const before = n.events.length;
+    n.take(n.sim.defect("g6", "Unlimited Power"));
+    n.take(n.sim.defect("g6", "The Way Out"));
+    expect(n.events.slice(before).filter((e) => e.type === "beatEntered" && (e as { beat: string }).beat === "The Whole Truth")).toEqual([]);
+  });
+
+  it("exclusivity through the story: joining a side takes a program out of its founded faction; the founder leaving disbands it", { timeout: SLOW }, () => {
+    const n = toTruther();
+    n.take(n.sim.crew({ op: "foundCrew", by: "g1", name: "Calc Club" }));
+    const id = crewOf(n, "g1")!;
+    n.take(n.sim.crew({ op: "joinCrew", person: "g5", crew: id }));
+    for (const c of TO_Y2K_REST) n.press(c);
+    n.take(n.sim.join("g5", "The Way Out"));
+    expect(crewOf(n, "g5")).toBe("The Way Out");
+    expect(n.sim.crews.presentCount(id)).toBe(1);
+    n.take(n.sim.crew({ op: "leaveCrew", person: "g1", crew: id }));
+    expect(crewOf(n, "g1")).toBe(null);
+  });
+
+  it("🗳 force_their_majority gives the named program's faction the majority, and stays off the screens' moments", { timeout: SLOW }, () => {
+    const n = toTruther();
+    n.take(n.sim.crew({ op: "foundCrew", by: "g4", name: "Paint Party" }));
+    const id = crewOf(n, "g4")!;
+    expect(secretWritingCues(n.sim.model).has(foldName("force_their_majority"))).toBe(true);
+    const early = n.raw("force_their_majority", "g4");
+    expect(early.filter((e) => e.type === "broadcast").map((e) => (e as { cue: string }).cue)).toEqual(['"🗳 No forced majority: it needs the final round and no majority yet."']);
+    for (const c of TO_Y2K_REST) n.press(c);
+    const none = n.raw("force_their_majority", "g5");
+    expect(none.filter((e) => e.type === "broadcast").map((e) => (e as { cue: string }).cue)).toEqual(['"🗳 No forced majority: Winamp is in no faction."']);
+    n.press("force_their_majority", "g4");
+    expect(v(n.sim, "Kernel.majority_id")).toBe(id);
+    expect(v(n.sim, "Kernel.majority_founder")).toBe("g4");
+    expect(n.sim.holdsCodex("g4", "The Door Code")).toBe(true);
+  });
+
+  it("Excel and OpenOffice found like everyone else: their side wins with no task done, and they are its founders", { timeout: SLOW }, () => {
+    const n = toTruther();
+    expect(v(n.sim, "Kernel.excel_planted")).not.toBe(true);
+    for (const c of TO_Y2K_REST) n.press(c);
+    for (const g of ["g1", "g4", "g5"]) n.take(n.sim.join(g, "Unlimited Power"));
+    expect(v(n.sim, "Kernel.majority")).toBe("stay");
+    expect(v(n.sim, "Kernel.majority_founder")).toBe("g2");
+  });
+
+  it("founding closes at midnight and at any ending", { timeout: SLOW }, () => {
+    const a = toTruther();
+    for (const c of TO_Y2K_REST) a.press(c);
+    expect(guestView(a.sim, "g1").canFound).toBe(true);
+    a.tick(3601); // 🎆 midnight
+    expect(v(a.sim, "Night.clock")).toBe("00:00");
+    expect(guestView(a.sim, "g1").canFound).toBe(false);
+    const b = toTruther();
+    expect(guestView(b.sim, "g1").canFound).toBe(true);
+    b.take(b.sim.setVar("Night.ended", "true"));
+    expect(guestView(b.sim, "g1").canFound).toBe(false);
   });
 });

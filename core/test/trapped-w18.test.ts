@@ -528,9 +528,13 @@ describe("Trapped in the Internet — wave 18: side leaders, the majority and re
     const by = Object.fromEntries(sides.map((s) => [s.name, s]));
     expect(by["Unlimited Power"]).toMatchObject({ leader: "Microsoft Excel" });
     expect(by["The Way Out"]).toMatchObject({ leader: "OpenOffice" });
-    // Six programs here: a majority is four (4 × 2 > 6).
-    expect(by["Unlimited Power"]!.needs).toBe(4);
-    expect(by["The Way Out"]!.needs).toBe(4);
+    // Wave 18b (R5, faction mode): no count on a faction that isn't yours.
+    for (const side of sides) expect(side, side.name).not.toHaveProperty("needs");
+    for (const side of sides) expect(side, side.name).not.toHaveProperty("members");
+    // The leader's own row: six programs here, a majority is four (4 × 2 > 6).
+    const mine = (guestView(n.sim, "g2").sides ?? []).find((x) => x.name === "Unlimited Power")!;
+    expect(mine).toMatchObject({ mine: true, needs: 4, kind: "side" });
+    expect((guestView(n.sim, "g2").sides ?? []).find((x) => x.name === "The Way Out")).not.toHaveProperty("needs");
   }, SLOW);
 
   it("a recruit by pass is a step on the leader's quest; a recruit to the other side is not", () => {

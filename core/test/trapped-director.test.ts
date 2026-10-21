@@ -218,8 +218,8 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(acts[prev]!.code).toBe("E");
     expect(acts[prev]!.state).toBe("past");
     expect(acts[prev]!.asides.map((r) => r.id)).toEqual([
-      "y2k_midnight", "waive_leader_tasks", "server_door_opened", "reset_server_room", "chess_won",
-      "force_majority_stay", "force_majority_leave", "patch_combo_a", "patch_combo_b", "patch_rejected",
+      "y2k_midnight", "server_door_opened", "reset_server_room", "chess_won",
+      "force_majority_stay", "force_majority_leave", "force_their_majority", "patch_combo_a", "patch_combo_b", "patch_rejected",
       "talked_down", "lights_dance",
     ]);
     expect(acts.map((a) => a.state)).toEqual(["past", "past", "past", "past", "anytime", "focus", "future"]);

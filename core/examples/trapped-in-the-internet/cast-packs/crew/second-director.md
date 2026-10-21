@@ -145,7 +145,10 @@ the top or bottom of the Trust Chart, edit `<guest>.assessment` **and**
 
 **6. Majority hygiene** (OP-11). No Run personas on the live event. At the 🕚
 Y2K clock, note the real head count. If ghosts (lost sessions, early leavers)
-keep the bar out of reach, fire **🗳 Force the majority**.
+keep the bar out of reach, fire **🗳 Force the majority** (stay / leave, or
+*this program's faction* naming a member: any faction, a founded one too).
+Founded factions (from the Truther Download, wave 18b) race beside the two
+sides; Run's glance shows every faction's count against the bar.
 
 **7. Front of house fixes.** Lost guest → Inspector → **re-pair QR** (they
 scan it; same program, same codex). Late arrival after C1 (uploaded, not
