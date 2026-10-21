@@ -1,9 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { createCrawl } from "../src/host.ts";
-import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factQuestionOf, factQuestions, factQuestionsShown, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
+import { ANSWER_MAX_DEFAULT, CAPTCHA_TILES, CONFIDENCE_LABEL, CONFIDENCE_UNSET, FACT_MAX, confidenceFrom, setsConfidence, WIDGETS, answerMax, answerResult, captchaGrid, captchaPassed, defaultFactQuestion, factFileHint, factMissing, factQuestionOf, factRequiredHint, factQuestions, factQuestionsShown, factResult, supersededCards, widgetLabel } from "../src/widgets.tsx";
 
 describe("captcha grid", () => {
   it("is deterministic per seed and always has 2–4 target squares", () => {
@@ -161,7 +162,40 @@ describe("📝 fact card", () => {
     expect(html).toContain(`<output>${CONFIDENCE_UNSET}</output>`);
     expect(html).toContain(`aria-valuetext="${CONFIDENCE_UNSET}"`);
     expect(html).not.toContain(">100%<");
-    expect(html).toMatch(/<button[^>]*class="choice primary widget-go"[^>]*disabled=""/);
+    // Wave 18b (R2): File it stays tappable (dimmed, aria-disabled), never `disabled`.
+    expect(html).toMatch(/<button[^>]*class="choice primary widget-go waiting"[^>]*aria-disabled="true"/);
+    expect(html).not.toMatch(/widget-go[^>]*disabled=""/);
+    // The slider is marked required, the label kept verbatim beside it.
+    expect(html).toContain(`${CONFIDENCE_LABEL} <span class="req">required</span>`);
+    expect(html).toContain('aria-required="true"');
+  });
+
+  it("a tap on File it with a piece missing names it, top to bottom, in red (R2)", () => {
+    expect(factMissing("", "Clippy", 70)).toBe("question");
+    expect(factMissing("H3", "  ", 70)).toBe("answer");
+    expect(factMissing("H3", "x".repeat(FACT_MAX + 1), 70)).toBe("answer");
+    expect(factMissing("H3", "Clippy", null)).toBe("confidence");
+    expect(factMissing("H3", "Clippy", 0)).toBe("confidence");
+    expect(factMissing("H3", "Clippy", 70)).toBeNull();
+    expect(factRequiredHint("question")).toBe("⚠ Pick a question first.");
+    expect(factRequiredHint("answer")).toBe("⚠ Type your answer first.");
+    expect(factRequiredHint("answer", "x".repeat(FACT_MAX + 1))).toContain(String(FACT_MAX));
+    expect(factRequiredHint("confidence")).toBe("⚠ Set how sure you are before filing — drag the slider (1–100%).");
+    // A missing piece is a red alert, the piece outlined; no :has().
+    const css = readFileSync(new URL("../src/css/base.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.fact-hint\.error \{[^}]*color: var\(--bad\)/u);
+    expect(css).toMatch(/\.fact-confidence\.missing/u);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.fact-confidence\.missing \{ animation/u);
+  });
+
+  it("pointing at the slider focuses it, which never sets it: only change, pointer-up and the value keys do (W11)", () => {
+    const src = readFileSync(new URL("../src/widgets.tsx", import.meta.url), "utf8");
+    const range = src.slice(src.indexOf('type="range"'), src.indexOf("aria-valuetext", src.indexOf('type="range"')));
+    expect(range).toContain("onChange");
+    expect(range).toContain("onPointerUp");
+    expect(range).toContain("onKeyUp");
+    expect(range).not.toMatch(/onFocus|onClick|onPointerDown/u);
+    expect(range).toContain("setsConfidence(e.key)");
   });
 });
 
@@ -206,7 +240,7 @@ describe("📝 fact card fits the tray (fguest)", () => {
     const html = renderToStaticMarkup(
       createElement(() => WIDGETS["fact"]!.render({ card: { kind: "fact", text: "📝 File a fact", params: { questions: "H1: One? | H2: Two?" } }, seed: 1, onAnswer: () => {}, answered: null })),
     );
-    expect(html).toContain('class="choice primary widget-go"');
+    expect(html).toContain('class="choice primary widget-go waiting"');
     expect(html.match(/fact-questions/gu)).toHaveLength(1);
   });
 });

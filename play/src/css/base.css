@@ -423,6 +423,24 @@ body {
    "not set" — "confident" is something the guest chooses. */
 .fact-confidence.unset input[type=range] { opacity: 0.45; filter: grayscale(1); }
 .fact-confidence.unset output { font-style: italic; color: var(--muted-ink); }
+/* Wave 18b (R2): File it tapped with a piece missing — the hint turns red
+   and the piece is outlined (classes only, no :has()). The button stays
+   tappable, just dimmed while the card can't file. */
+.fact-confidence .req { font-weight: 400; font-size: 12px; color: var(--dim-ink); }
+.fact-confidence .req::before { content: "("; }
+.fact-confidence .req::after { content: ")"; }
+.fact-hint.error { font-weight: 700; color: var(--bad); }
+.fact-confidence.missing, .fact-answer.missing, .fact-questions.missing { outline: 2px dashed var(--bad); outline-offset: 3px; }
+.fact-confidence.missing .req { color: var(--bad); font-weight: 700; }
+.widget-go.waiting { opacity: 0.6; }
+@media (prefers-reduced-motion: no-preference) {
+  .fact-confidence.missing { animation: fact-shake 300ms ease-out 1; }
+}
+@keyframes fact-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
 .answer-text { box-sizing: border-box; width: 100%; margin: 8px 0 4px; padding: 8px; font: 16px/1.35 var(--ui-font); resize: vertical;
   border: none; background: var(--white); color: var(--ink); box-shadow: var(--sunken); border-radius: var(--radius); }
 

@@ -7,7 +7,7 @@
 //! Adding a widget = adding a `WidgetDef` to `WIDGETS`. Unknown kinds render
 //! as plain text so an older client never hides a newer story's card.
 
-import { createElement, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { createElement, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { PassQr } from "./pass-qr.tsx";
 import type { ChatMessage, WidgetCard } from "./types.ts";
 
@@ -381,6 +381,25 @@ export function factFileHint(question: string, answer: string, confidence: numbe
   return null;
 }
 
+/** The first piece a fact card still needs, top to bottom (null = it can
+ *  be filed). Wave 18b (R2): a tap on File it while one is missing points
+ *  at it instead of doing nothing. */
+export type FactMissing = "question" | "answer" | "confidence";
+export function factMissing(question: string, answer: string, confidence: number | null): FactMissing | null {
+  if (question === "") return "question";
+  const a = answer.trim();
+  if (a === "" || a.length > FACT_MAX) return "answer";
+  if (confidence === null || confidenceFrom(String(confidence)) === null) return "confidence";
+  return null;
+}
+
+/** What the card says, in red, after File it was tapped with a piece missing. */
+export function factRequiredHint(missing: FactMissing, answer = ""): string {
+  if (missing === "question") return "⚠ Pick a question first.";
+  if (missing === "answer") return answer.trim().length > FACT_MAX ? `⚠ Keep it under ${FACT_MAX} characters.` : "⚠ Type your answer first.";
+  return "⚠ Set how sure you are before filing — drag the slider (1–100%).";
+}
+
 /** The slider's value from an input event (a whole number in range), or
  *  null for anything else. Any touch, drag, click or key on the slider
  *  sets it — even a tap that lands on the resting middle. */
@@ -420,8 +439,34 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
   const [choosing, setChoosing] = useState(false);
   const answerBox = useRef<HTMLTextAreaElement>(null);
   const sureBox = useRef<HTMLLabelElement>(null);
+  const sureInput = useRef<HTMLInputElement>(null);
+  const questionList = useRef<HTMLDivElement>(null);
   const done = answered !== null && answered !== undefined;
   const result = factResult(question, answer, confidence);
+  // Wave 18b (R2): File it stays tappable. A tap with a piece missing turns
+  // the hint red and moves to that piece — focusing the slider never sets it
+  // (only its change, pointer-up and value keys do: W11).
+  const [tried, setTried] = useState(false);
+  const missing = factMissing(question, answer, confidence);
+  useEffect(() => {
+    if (missing === null && tried) setTried(false);
+  }, [missing, tried]);
+  const pointAt = (m: FactMissing) => {
+    const el: HTMLElement | null =
+      m === "question" ? (questionList.current?.querySelector<HTMLElement>("button") ?? null) : m === "answer" ? answerBox.current : sureInput.current;
+    const box: HTMLElement | null = m === "confidence" ? sureBox.current : el;
+    box?.scrollIntoView?.({ block: "nearest" });
+    el?.focus?.({ preventScroll: true });
+  };
+  const fileIt = () => {
+    if (result !== null) {
+      onAnswer?.(result);
+      return;
+    }
+    setTried(true);
+    if (missing !== null) pointAt(missing);
+  };
+  const flagged = tried && missing !== null;
   const filedFor = done && typeof answered["question"] === "string" ? questions.find((q) => q.id === answered["question"])?.label ?? String(answered["question"]) : null;
   // "Sent", not "filed": the story still has to accept it (a question from
   // a round that hasn't opened, a second filing… is refused in its reply).
@@ -461,7 +506,7 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
       </div>
       {!done && onAnswer && (
         <>
-          <div className="poll-options fact-questions">
+          <div ref={questionList} className={`poll-options fact-questions${flagged && missing === "question" ? " missing" : ""}`}>
             {factQuestionsShown(questions, question, choosing).map((q) => (
               <button
                 key={q.id}
@@ -493,7 +538,8 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
           </div>
           <textarea
             ref={answerBox}
-            className="fact-answer"
+            className={`fact-answer${flagged && missing === "answer" ? " missing" : ""}`}
+            aria-invalid={flagged && missing === "answer" ? true : undefined}
             rows={2}
             maxLength={FACT_MAX}
             placeholder="Your answer"
@@ -506,13 +552,18 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
             // Done typing (the keyboard goes down): the slider next, in view.
             onBlur={() => sureBox.current?.scrollIntoView?.({ block: "nearest" })}
           />
-          <label ref={sureBox} className={`fact-confidence ${confidence === null ? "unset" : ""}`}>
-            <span>{CONFIDENCE_LABEL}</span>
+          <label ref={sureBox} className={`fact-confidence ${confidence === null ? "unset" : ""}${flagged && missing === "confidence" ? " missing" : ""}`}>
+            <span>
+              {CONFIDENCE_LABEL} <span className="req">required</span>
+            </span>
             {/* A range always has a value, so an unset one rests greyed in
                 the middle. A tap on the thumb itself changes nothing, so
                 pointer-up and the value keys set it too (never Tab). */}
             <input
+              ref={sureInput}
               type="range"
+              aria-required="true"
+              aria-invalid={flagged && missing === "confidence" ? true : undefined}
               min={CONFIDENCE_MIN}
               max={CONFIDENCE_MAX}
               step={1}
@@ -533,8 +584,14 @@ function FactCard({ card, onAnswer, answered, superseded }: WidgetProps) {
           <span className="widget-state">{sent} — the reply says whether it's accepted</span>
         ) : onAnswer ? (
           <>
-            {result === null && factFileHint(question, answer, confidence) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer, confidence)}</span>}
-            <button type="button" className="choice primary widget-go" disabled={result === null} onClick={() => result && onAnswer(result)}>
+            {flagged && missing !== null ? (
+              <span className="widget-state fact-hint error" role="alert">
+                {factRequiredHint(missing, answer)}
+              </span>
+            ) : (
+              result === null && factFileHint(question, answer, confidence) !== null && <span className="widget-state fact-hint">{factFileHint(question, answer, confidence)}</span>
+            )}
+            <button type="button" className={`choice primary widget-go${result === null ? " waiting" : ""}`} aria-disabled={result === null ? true : undefined} onClick={fileIt}>
               File it
             </button>
           </>
