@@ -22,6 +22,8 @@ import {
   ODOMETER_ROLL,
   odometerWheel,
   periodicCues,
+  phoneDare,
+  verdictOf,
   rainColumn,
   resultsKind,
   seatAngle,
@@ -208,5 +210,27 @@ describe("tv1 time — a take that ends early", () => {
     expect(endDue(8010, 8040, 8000)).toBe(false);
     // A reload past the end: the first frame ends it.
     expect(endDue(null, 9500, 8000)).toBe(true);
+  });
+});
+
+describe("tv1 time — the bottle's verdict", () => {
+  const L = m(60, 50_000, "signal", "bottle_landed", "Winamp");
+  const night = (open: boolean | null, pick: string | null = "Winamp") => ({ bottle_open: open, bottle_pick: pick });
+  it("names the booth's three verdicts, folded", () => {
+    expect(verdictOf("truth_answered")).toBe("answered");
+    expect(verdictOf("Truth Refused")).toBe("refused");
+    expect(verdictOf("chose-dare")).toBe("dare");
+    expect(verdictOf("scan_ok")).toBeNull();
+  });
+  it("a phone's Dare: closed on the same pick, no Truth chosen, no verdict, no new draw — never history", () => {
+    expect(phoneDare([L], night(false), "Winamp", 50_000)).toBe(true);
+    expect(phoneDare([L], night(false), "winamp", 50_000)).toBe(true);
+    expect(phoneDare([L], night(true), "Winamp", 50_000)).toBe(false);
+    expect(phoneDare([L], night(null), "Winamp", 50_000)).toBe(false); // an older server
+    expect(phoneDare([L], night(false, "Excel"), "Winamp", 50_000)).toBe(false);
+    expect(phoneDare([L, m(61, 52_000, "beat", "Truth Question")], night(false), "Winamp", 50_000)).toBe(false);
+    expect(phoneDare([L, m(62, 58_000, "signal", "truth_refused", "Winamp")], night(false), "Winamp", 50_000)).toBe(false);
+    expect(phoneDare([L, m(63, 70_000, "signal", "bottle_empty")], night(false), "Winamp", 50_000)).toBe(false);
+    expect(phoneDare([L], night(false), "Winamp", 0)).toBe(false);
   });
 });

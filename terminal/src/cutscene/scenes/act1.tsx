@@ -27,7 +27,9 @@ import { SLIDE_COPY, SLIDE_HOLD_MS } from "../../slides.ts";
 import type { ScreenState } from "../../screen.ts";
 import type { SfxName, SfxOpts } from "../../sound/index.ts";
 import type { SceneDef, SceneProps } from "../types.ts";
+import { serverNow } from "../clock.ts";
 import {
+  BigNumber,
   Confetti,
   Countdown,
   Desktop,
@@ -69,6 +71,7 @@ import {
   bottleLanding,
   bottleSeat,
   bottleTicks,
+  phoneDare,
   bounceAt,
   countdownLeft,
   momentAfter,
@@ -80,6 +83,7 @@ import {
   seatUnder,
   windowClock,
   type ResultsKind,
+  type VerdictKind,
 } from "../kit/tv1-time.ts";
 
 const copy = (v: string) => SLIDE_COPY[v] ?? { title: v.toUpperCase(), lines: [] };
@@ -1061,15 +1065,15 @@ function FilingClosedWall({ t, sfx, reduced }: SceneProps) {
 
 // --- B9 · truth or dare and the bottle ------------------------------------------------------------
 
-type BottleFix = { kind: "landed"; who: string } | { kind: "empty" } | null;
+type BottleFix = { kind: "landed"; who: string; at: number } | { kind: "empty" } | null;
 
 /** The bottle's draw for this spin (the `do pick` that came with the slide), learned once. */
 function useBottleFix(state: ScreenState, at: number, night: SceneProps["night"]): BottleFix {
   const latched = useRef<BottleFix>(null);
   if (latched.current === null) {
     const m = momentNear(state.moments, "signal", ["bottle_landed", "bottle_empty"], at);
-    if (m !== null) latched.current = m.name.replace(/[\s_-]/gu, "").toLowerCase() === "bottleempty" ? { kind: "empty" } : { kind: "landed", who: m.who ?? night.bottle_pick ?? "A PROGRAM" };
-    else if (!(at > 0) && night.bottle_pick !== null) latched.current = { kind: "landed", who: night.bottle_pick };
+    if (m !== null) latched.current = m.name.replace(/[\s_-]/gu, "").toLowerCase() === "bottleempty" ? { kind: "empty" } : { kind: "landed", who: m.who ?? night.bottle_pick ?? "A PROGRAM", at: m.at };
+    else if (!(at > 0) && night.bottle_pick !== null) latched.current = { kind: "landed", who: night.bottle_pick, at: 0 };
   }
   return latched.current;
 }
@@ -1107,10 +1111,12 @@ function BottleScreen({ t, angle, lit, name, title, sub, ask, reduced, sparks }:
  *            TRUTH or DARE blinking (nobody left: it points between two seats)
  * The landing itself is the `bottle_landed` moment over this.
  */
-function TruthOrDareTv({ t, at, state, night, reduced }: SceneProps) {
+function TruthOrDareTv({ t, at, state, night, sfx, reduced }: SceneProps) {
   const fix = useBottleFix(state, at, night);
+  const dare = usePhoneDare(state, fix);
   const c = copy("truth_or_dare");
   const slide = eased(t, 0, 700, ease.outCubic);
+  if (dare !== null && fix !== null && fix.kind === "landed") return <VerdictTv kind="dare" t={dare} who={fix.who} sfx={sfx} reduced={reduced} hold />;
   if (fix !== null && fix.kind === "landed") {
     const seat = bottleSeat(fix.who);
     return <BottleScreen t={t} angle={seatAngle(seat)} lit={seat} name={fix.who} title={`${fix.who}.`} sub="Truth or dare?" ask reduced={reduced} />;
@@ -1199,8 +1205,10 @@ function BottleWall({ t, value, who, night, sfx, reduced }: SceneProps) {
   );
 }
 
-function TruthOrDareWall({ t, at, state, night, reduced }: SceneProps) {
+function TruthOrDareWall({ t, at, state, night, sfx, reduced }: SceneProps) {
   const fix = useBottleFix(state, at, night);
+  const dare = usePhoneDare(state, fix);
+  if (dare !== null && fix !== null && fix.kind === "landed") return <VerdictWall kind="dare" t={dare} who={fix.who} sfx={sfx} reduced={reduced} />;
   const name = fix !== null && fix.kind === "landed" ? fix.who : null;
   const seat = name !== null ? bottleSeat(name) : fix !== null ? EMPTY_SEAT : null;
   const angle = seat !== null ? seatAngle(seat) : reduced ? 0 : bottleFree(t);
@@ -1251,6 +1259,176 @@ function TruthChosen({ t, night, sfx, reduced }: SceneProps) {
       </div>
     </div>
   );
+}
+
+// --- B9b · the bottle's verdict -----------------------------------------------------------------
+
+/** A verdict scene's length (ms). */
+export const BOTTLE_VERDICT_MS = 10_000;
+
+/** What the screens say, from the story's own broadcasts (`main.loom`, the bottle's rules). */
+export const VERDICT_COPY: Readonly<Record<VerdictKind, { big: string; line: (name: string) => string; mark: string | null }>> = {
+  answered: { big: "🗣 TRUTH ACCEPTED", line: (n) => `${n} answered. Trabolta is satisfied.`, mark: null },
+  refused: { big: "🙅 REFUSED", line: (n) => `${n} refused to answer. That is a directive problem.`, mark: "refused the truth" },
+  dare: { big: "🎩 DARE", line: (n) => `${n} chose Dare. Programs choose Truth.`, mark: "chose Dare" },
+};
+
+/** The accents of a verdict, by kind (pure, so a test can list them). */
+export function verdictCues(kind: VerdictKind): Array<readonly [number, SfxName, SfxOpts?]> {
+  if (kind === "answered") return [[0, "boom", { gain: 0.4 }], [120, "tada", { gain: 0.6 }], ...[0, 1, 2, 3, 4].map((i) => [1700 + i * 340, "coin", { gain: 0.45, pitch: 1 + 0.08 * i }] as const), [3500, "sparkle", { gain: 0.5 }]];
+  if (kind === "refused") return [[0, "buzz", { gain: 0.6 }], [500, "error", { gain: 0.6 }], [3600, "critical", { gain: 0.55 }], [3900, "siren", { gain: 0.3 }]];
+  return [[0, "whoosh", { gain: 0.5 }], [700, "boom", { gain: 0.45 }], [900, "lose", { gain: 0.5 }], [3600, "critical", { gain: 0.55 }], [3900, "siren", { gain: 0.3 }]];
+}
+
+const VERDICT_BG: Readonly<Record<VerdictKind, string>> = {
+  answered: "radial-gradient(ellipse at 35% 50%, #0d3a12 0, #020a03 75%)",
+  refused: "radial-gradient(ellipse at 35% 50%, #4a0808 0, #0a0000 75%)",
+  dare: "radial-gradient(ellipse at 35% 50%, #3a0a4a 0, #08020c 75%)",
+};
+
+/** A top hat (original art), for the Dare. */
+function TopHat({ size = "8em", style }: { size?: string; style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 100 80" width={size} height={size} className="a1-hat" style={style} aria-hidden="true">
+      <ellipse cx="50" cy="68" rx="46" ry="9" fill="#111" stroke="#000" strokeWidth="2" />
+      <rect x="22" y="10" width="56" height="58" rx="5" fill="#1b1b1b" stroke="#000" strokeWidth="2" />
+      <rect x="22" y="48" width="56" height="10" fill="#b0122a" />
+      <path d="M 30 16 Q 32 40 30 60" stroke="#fff" strokeOpacity="0.25" strokeWidth="4" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * The bottle's verdict on its pick, over the table (the booth's 🗣 / 🙅 / 🎩,
+ * or a Dare tapped on the phone):
+ *   0–700     the verdict slams in beside the table, the pick's seat flares
+ *             (gold for a Truth accepted, red for a refusal, a top hat dropping
+ *             onto the seat for a Dare)
+ *   700–3500  the story's line types; a Truth accepted counts +50 TRUTHCOIN up
+ *             with a coin per ten, confetti from both corners
+ *   3500–     a refusal or a Dare: MARKED FOR REINSTALLATION pops (the story's
+ *             reason), chevrons point the way to the Internet, a red sweep;
+ *             a Truth: stars drift off the seat. `hold` keeps the last state
+ *             (drawn inside the bottle's slide), else it fades from 9.2 s.
+ */
+export function VerdictTv({ kind, t, who, sfx, reduced, hold = false }: { kind: VerdictKind; t: number; who: string; sfx: SceneProps["sfx"]; reduced: boolean; hold?: boolean }) {
+  useSfxCues(t, sfx, verdictCues(kind));
+  const c = VERDICT_COPY[kind];
+  const seat = bottleSeat(who);
+  const stamp = reduced ? progress(t, 0, 250) : eased(t, 80, 520, ease.outBack);
+  const bad = kind !== "answered";
+  const mark = bad ? eased(t, 3500, 260, ease.linear) : 0;
+  const fade = hold ? 1 : 1 - progress(t, BOTTLE_VERDICT_MS - 800, 800);
+  const sa = (seatAngle(seat) - 90) * (Math.PI / 180);
+  const seatX = (4.5 + 13 + 0.41 * 26 * Math.cos(sa)) / 60;
+  const seatY = (3.875 + 13 + 0.41 * 26 * Math.sin(sa)) / 33.75;
+  const stars: Emitter[] = [{ x: seatX, y: seatY, start: 600, end: hold ? Number.POSITIVE_INFINITY : BOTTLE_VERDICT_MS - 1500, rate: 14, life: 1800, speed: 0.06, angle: -90, spread: 70, gravity: -0.02, size: 9, colors: ["#ffd23f", "#fff2b0"], shape: "star", seed: 97 }];
+  const hatDrop = reduced ? 1 : eased(t, 0, 800, ease.outBounce);
+  return (
+    <TvStage bg={VERDICT_BG[kind]} className={`a1-verdict ${kind}`} style={{ opacity: fade }}>
+      {bad && !reduced && <div className="a1-verdict-sweep" style={{ transform: `translate3d(0, ${(loop(t, 2600) * 140 - 20).toFixed(1)}%, 0)` }} />}
+      <div className="a1-tod-table">
+        <BottleTable t={t} angle={seatAngle(seat)} lit={seat} name={who} reduced={reduced} />
+        {kind === "refused" && (
+          <div className="a1-verdict-x" style={{ left: `${(50 + 41 * Math.cos(sa)).toFixed(2)}%`, top: `${(50 + 41 * Math.sin(sa)).toFixed(2)}%`, transform: `translate(-50%, -50%) scale(${(reduced ? 1 : 2.4 - 1.4 * eased(t, 500, 380, ease.outBack)).toFixed(3)})`, opacity: progress(t, 500, 120) }}>
+            ✕
+          </div>
+        )}
+        {kind === "dare" && (
+          <div className="a1-verdict-hat" style={{ left: `${(50 + 41 * Math.cos(sa)).toFixed(2)}%`, top: `${(50 + 41 * Math.sin(sa)).toFixed(2)}%`, transform: `translate(-50%, ${(-92 - (1 - hatDrop) * 340).toFixed(1)}%) rotate(${(reduced ? 0 : -12 + 6 * Math.sin(t / 500)).toFixed(1)}deg)` }}>
+            <TopHat size="100%" />
+          </div>
+        )}
+      </div>
+      {kind === "answered" && !reduced && <Particles t={t} emitters={stars} blend="add" />}
+      {kind === "answered" && !reduced && <Confetti t={t} start={250} dur={hold ? 2500 : 3500} seed={41} />}
+      <div className="a1-tod-side">
+        <div className="a1-verdict-big" style={{ opacity: clamp01(stamp * 2), transform: `rotate(-5deg) scale(${(2.3 - 1.3 * stamp).toFixed(3)})` }}>
+          {c.big}
+        </div>
+        <div className="a1-tod-sub a1-verdict-line">
+          <Typewriter text={c.line(who)} t={t} start={800} cps={30} caret={false} />
+        </div>
+        {kind === "answered" && t >= 1500 && (
+          <div className="a1-verdict-coin" style={{ opacity: progress(t, 1500, 300) }}>
+            <BigNumber t={t} from={0} to={50} start={1600} dur={1700} prefix="+" suffix=" TRUTHCOIN" />
+          </div>
+        )}
+      </div>
+      {bad && mark > 0 && (
+        <>
+          <Win98Dialog title="Antivirus" kind="error" message={`MARKED FOR REINSTALLATION — ${who}: ${c.mark}. An Antivirus will escort you through the Tube.`} x={52} y={57} width="27em" open={mark} reduced={reduced} className="a1-verdict-mark" />
+          <div className="a1-verdict-way" style={{ opacity: progress(t, 4200, 500) }}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span key={i} style={{ opacity: reduced ? 0.8 : 0.25 + 0.75 * clamp01(1 - Math.abs(loop(t / 900 - i / 5, 1) - 0.5) * 3) }}>
+                ❯
+              </span>
+            ))}
+            <Win98Icon kind="globe" size="1.2em" /> THE INTERNET
+          </div>
+        </>
+      )}
+      <Marquee t={reduced ? 0 : t} speed={150} className={`a1-ticker${bad ? "" : " gold"}`} style={{ opacity: progress(t, 1200, 500) }}>
+        {bad ? "★ PROGRAMS CHOOSE TRUTH ★ A MARKED PROGRAM GOES TO THE INTERNET ★ AN ANTIVIRUS WILL ESCORT THEM ★" : "★ TRUTH ACCEPTED ★ +50 TRUTHCOIN ★ TRABOLTA IS SATISFIED ★ THE BOTTLE SPINS AGAIN ★"}
+      </Marquee>
+    </TvStage>
+  );
+}
+
+/** A wall terminal's verdict: the card, the lit seat, and (bad) the mark. */
+export function VerdictWall({ kind, t, who, sfx, reduced }: { kind: VerdictKind; t: number; who: string; sfx: SceneProps["sfx"]; reduced: boolean }) {
+  useSfxCues(t, sfx, [verdictCues(kind)[0]!]);
+  const c = VERDICT_COPY[kind];
+  const seat = bottleSeat(who);
+  return (
+    <WallCard
+      t={t}
+      reduced={reduced}
+      caption="Truth or Dare"
+      icon={kind === "answered" ? "info" : "error"}
+      tone={kind === "answered" ? "green" : kind === "refused" ? "red" : "purple"}
+      title={c.big}
+      lines={[c.line(who), kind === "answered" ? "+50 Truthcoin." : "Marked for reinstallation."]}
+      bg={VERDICT_BG[kind]}
+      start={0}
+      art={
+        <div className="a1-art-table">
+          <BottleTable t={t} angle={seatAngle(seat)} lit={seat} reduced={reduced} />
+        </div>
+      }
+    />
+  );
+}
+
+/** The verdict a moment brought (`truth_answered` / `truth_refused` / `chose_dare`, `who` the pick). */
+function verdictScene(kind: VerdictKind) {
+  return {
+    tv: ({ t, who, night, sfx, reduced }: SceneProps) => <VerdictTv kind={kind} t={t} who={who ?? night.bottle_pick ?? "A program"} sfx={sfx} reduced={reduced} />,
+    wall: ({ t, who, night, sfx, reduced }: SceneProps) => <VerdictWall kind={kind} t={t} who={who ?? night.bottle_pick ?? "A program"} sfx={sfx} reduced={reduced} />,
+  };
+}
+const VERDICT_ANSWERED = verdictScene("answered");
+const VERDICT_REFUSED = verdictScene("refused");
+const VERDICT_DARE = verdictScene("dare");
+
+/**
+ * A Dare tapped on the phone (`phoneDare`): ms since this screen first saw the
+ * bottle close on its pick, or null. Seen already closed when the scene
+ * mounted (a reload): the settled picture, no replay.
+ */
+function usePhoneDare(state: ScreenState, fix: BottleFix): number | null {
+  const first = useRef<number | null>(null);
+  const mounted = useRef(false);
+  const now = serverNow(state);
+  const on = fix !== null && fix.kind === "landed" && phoneDare(state.moments, state.night, fix.who, fix.at);
+  if (!on) {
+    mounted.current = true;
+    first.current = null;
+    return null;
+  }
+  if (first.current === null) first.current = mounted.current ? now : now - BOTTLE_VERDICT_MS;
+  mounted.current = true;
+  return Math.max(0, now - first.current);
 }
 
 // --- C1 · the ad hijack ---------------------------------------------------------------------
@@ -1481,7 +1659,7 @@ function TrutherWall({ t, sfx, reduced }: SceneProps) {
 export const ACT1_TRIGGERS = {
   slides: ["call_desktop", "bingo", "bingo_time", "trivia_1", "return", "hunt_results", "truth_or_dare", "ad_hijack", "trivia_2", "truther"],
   beats: ["Power On", "Corrupted Code", "Trabolta Introduction", "Filing Closed", "Truth Question"],
-  signals: ["bottle_landed", "bottle_empty"],
+  signals: ["bottle_landed", "bottle_empty", "truth_answered", "truth_refused", "chose_dare"],
 } as const;
 
 export const SCENES: SceneDef[] = [
@@ -1499,6 +1677,9 @@ export const SCENES: SceneDef[] = [
   { id: "bottle_landed", when: [{ moment: "signal", name: "bottle_landed" }], ms: 14_000, tv: BottleLandedTv, wall: BottleWall, priority: 2, face: "curious" },
   { id: "bottle_empty", when: [{ moment: "signal", name: "bottle_empty" }], ms: 9000, tv: BottleEmptyTv, wall: BottleWall, priority: 2 },
   { id: "truth_question", when: [{ moment: "beat", name: "Truth Question" }], ms: 9000, tv: TruthChosen, wall: TruthChosen, priority: 2, over: true, face: "curious", faceMs: 6000 },
+  { id: "truth_answered", when: [{ moment: "signal", name: "truth_answered" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_ANSWERED.tv, wall: VERDICT_ANSWERED.wall, priority: 3, namesCharacter: true, face: "pleased" },
+  { id: "truth_refused", when: [{ moment: "signal", name: "truth_refused" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_REFUSED.tv, wall: VERDICT_REFUSED.wall, priority: 3, face: "angry" },
+  { id: "chose_dare", when: [{ moment: "signal", name: "chose_dare" }], ms: BOTTLE_VERDICT_MS, tv: VERDICT_DARE.tv, wall: VERDICT_DARE.wall, priority: 3, face: "sly" },
   { id: "ad_hijack", when: [{ slide: "ad_hijack" }], ms: "hold", tv: AdHijackTv, wall: AdHijackWall, namesCharacter: true },
   { id: "trivia_2", when: [{ slide: "trivia_2" }], ms: "hold", tv: TriviaTv, wall: TriviaWall, namesCharacter: true },
   { id: "truther", when: [{ slide: "truther" }], ms: "hold", tv: TrutherTv, wall: TrutherWall },

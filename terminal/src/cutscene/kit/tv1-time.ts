@@ -98,6 +98,41 @@ export function momentAfter(moments: readonly ScreenMoment[], kind: ScreenMoment
   return null;
 }
 
+// --- the bottle's verdict ---------------------------------------------------------------------
+
+/** How the bottle's pick came out: Truth answered (+50), Truth refused, or Dare (both marked). */
+export type VerdictKind = "answered" | "refused" | "dare";
+
+/** The booth presses that settle the bottle (the server makes a moment of the first taken about the pick). */
+export const VERDICT_SIGNALS: Readonly<Record<string, VerdictKind>> = { truth_answered: "answered", truth_refused: "refused", chose_dare: "dare" };
+
+/** A signal's verdict kind, folded, else null. */
+export function verdictOf(name: string): VerdictKind | null {
+  const f = foldName(name);
+  for (const [k, v] of Object.entries(VERDICT_SIGNALS)) if (foldName(k) === f) return v;
+  return null;
+}
+
+/**
+ * A Dare tapped on the pick's phone, which is no press (the story closes the
+ * bottle and marks them itself): the bottle has closed (`bottle_open` false)
+ * on the same pick, with no Truth chosen (`Truth Question`), no booth verdict
+ * and no new draw since the landing at `landedAt`. Never for history.
+ */
+export function phoneDare(moments: readonly ScreenMoment[], night: Pick<ScreenNight, "bottle_open" | "bottle_pick">, who: string, landedAt: number): boolean {
+  if (!(landedAt > 0) || night.bottle_open !== false || night.bottle_pick === null || foldName(night.bottle_pick) !== foldName(who)) return false;
+  const truth = foldName("Truth Question");
+  const draws = ["bottle_landed", "bottle_empty"].map(foldName);
+  for (const m of moments) {
+    if (m.at < landedAt) continue;
+    const f = foldName(m.name);
+    if (m.kind === "beat" && f === truth) return false;
+    if (m.kind === "signal" && verdictOf(m.name) !== null) return false;
+    if (m.kind === "signal" && draws.includes(f) && m.at > landedAt) return false;
+  }
+  return true;
+}
+
 // --- the results card ---------------------------------------------------------------------
 
 /** What a `hunt_results` slide is about: the filing window opening, one question's results, or (an older server, nothing to go on) unknown. */

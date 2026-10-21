@@ -364,3 +364,18 @@
 .a1-gavel-ring { position: absolute; left: 6%; top: 74%; width: 7em; height: 1.4em; border: 0.2em solid #ffd23f; border-radius: 50%; will-change: transform, opacity; }
 .a1-wall-q { position: absolute; left: 50%; top: 50%; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 20vmin; line-height: 1; color: #ffd23f; text-shadow: 0.05em 0.05em 0 #7a4b00; will-change: transform; }
 .a1-wall-qmark { position: absolute; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 6vmin; color: #ffd23f; will-change: transform, opacity; }
+
+/* --- B9b · the bottle's verdict ----------------------------------------------------------- */
+.a1-verdict { overflow: hidden; }
+.a1-verdict-sweep { position: absolute; left: 0; right: 0; top: 0; height: 18%; background: linear-gradient(180deg, rgba(255, 40, 40, 0), rgba(255, 40, 40, 0.22), rgba(255, 40, 40, 0)); pointer-events: none; will-change: transform; }
+.a1-verdict-big { font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 3.4em; line-height: 1.05; color: #ffd23f; text-shadow: 0.06em 0.06em 0 #000; transform-origin: 0 50%; will-change: transform, opacity; }
+.a1-verdict.refused .a1-verdict-big { color: #ff5a5a; }
+.a1-verdict.dare .a1-verdict-big { color: #e9a6ff; }
+.a1-verdict-line { font-size: 1.7em; }
+.a1-verdict-coin { margin-top: 0.5em; font-family: var(--mono); font-size: 3.2em; color: #ffd23f; text-shadow: 0 0 0.3em rgba(255, 210, 63, 0.6); }
+.a1-verdict-x { position: absolute; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 5em; line-height: 1; color: #ff2a2a; text-shadow: 0 0 0.2em #000; will-change: transform, opacity; }
+.a1-verdict-hat { position: absolute; width: 5.5em; height: 4.4em; will-change: transform; filter: drop-shadow(0.15em 0.2em 0 rgba(0, 0, 0, 0.5)); }
+.a1-verdict-hat .a1-hat { display: block; width: 100%; height: 100%; }
+.a1-verdict-mark.kit-win { font-size: 0.95em; }
+.a1-verdict-way { position: absolute; left: 52%; top: 83%; font-family: var(--mono); font-size: 1.8em; color: #ff8a8a; letter-spacing: 0.1em; }
+.a1-verdict-way span { display: inline-block; margin-right: 0.2em; }

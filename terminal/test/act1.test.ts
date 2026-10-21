@@ -7,10 +7,11 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { allowed } from "../src/cutscene/pick.ts";
-import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
+import { ACT1_TRIGGERS, BINGO_CELLS, CORRUPTED_WALL_MS, FILING_MS, SCENES, VERDICT_COPY, bingoCues, bottleLandedCues, bingoTicks, carryAt, filingHold, freshTick } from "../src/cutscene/scenes/act1.tsx";
 import { INTRO_HELLO, INTRO_LINE } from "../src/cutscene/kit/tv1-boot.tsx";
+import { VERDICT_SIGNALS } from "../src/cutscene/kit/tv1-time.ts";
 import type { SceneProps } from "../src/cutscene/types.ts";
-import type { ScreenMoment } from "../src/screen.ts";
+import type { ScreenMoment, ScreenState } from "../src/screen.ts";
 
 const SHOW = fileURLToPath(new URL("../../core/examples/trapped-in-the-internet", import.meta.url));
 
@@ -76,6 +77,24 @@ describe("act 1 — the triggers are the story's", () => {
 
   it("the bottle's moments are the `do pick` draw and its else", () => {
     expect(story).toMatch(/do pick bottle_landed from .* else bottle_empty/u);
+  });
+
+  it("the bottle's verdicts are booth presses settled on its pick, with the story's own words", () => {
+    for (const v of Object.keys(VERDICT_SIGNALS)) {
+      expect(story, v).toMatch(new RegExp(`INTERACTION ${v}\\n[^\\n]*\\n\\s+who: performer`, "u"));
+      expect(story, v).toMatch(new RegExp(`when ${v} for program:\\n\\s+if Night\\.bottle_open == true and program\\.name == Night\\.bottle_pick:`, "u"));
+    }
+    // The lines on screen are the story's broadcasts, word for word.
+    expect(story).toContain("{program.name} answered. Trabolta is satisfied. +50 Truthcoin.");
+    expect(story).toContain("{program.name} refused to answer. That is a directive problem.");
+    expect(story).toContain("{program.name} chose Dare. Programs choose Truth.");
+    expect(VERDICT_COPY.answered.line("{program.name}")).toBe("{program.name} answered. Trabolta is satisfied.");
+    expect(VERDICT_COPY.refused.line("{program.name}")).toBe("{program.name} refused to answer. That is a directive problem.");
+    expect(VERDICT_COPY.dare.line("{program.name}")).toBe("{program.name} chose Dare. Programs choose Truth.");
+    expect(story).toContain(`reason: "${VERDICT_COPY.refused.mark}"`);
+    expect(story).toContain(`reason: "${VERDICT_COPY.dare.mark}"`);
+    // A phone's Dare closes the bottle with no press: what phoneDare reads.
+    expect(story).toMatch(/if index == 1:\n\s+set Night\.bottle_open = false\n\s+broadcast "~🎩/u);
   });
 
   it("the first-moment / results presses the results card reads are admin cues", () => {
@@ -257,5 +276,35 @@ describe("act 1 — a results card's number is the story's", () => {
     expect(draw(2)).toContain("QUESTION 2");
     expect(draw(2)).not.toContain("QUESTION 1");
     expect(draw(null)).not.toMatch(/QUESTION \d/u);
+  });
+});
+
+describe("act 1 — the bottle's verdict", () => {
+  const at = 7_000_000;
+  const landed: ScreenMoment = { seq: 60, at, kind: "signal", name: "bottle_landed", who: "Winamp", kept: false };
+  it("each verdict moment draws its own picture with the pick's name", () => {
+    for (const [id, word] of [["truth_answered", "TRUTH ACCEPTED"], ["truth_refused", "REFUSED"], ["chose_dare", "DARE"]] as const) {
+      const scene = SCENES.find((s) => s.id === id)!;
+      const html = renderToStaticMarkup(createElement(scene.tv!, props({ t: 5000, who: "Winamp", value: id })));
+      expect(html, id).toContain(word);
+      expect(html, id).toContain("Winamp");
+      expect(html.includes("MARKED FOR REINSTALLATION"), id).toBe(id !== "truth_answered");
+      const wall = renderToStaticMarkup(createElement(scene.wall!, props({ t: 5000, who: "Winamp", value: id, target: "wall" })));
+      expect(wall, id).toContain("Winamp");
+    }
+    expect(renderToStaticMarkup(createElement(SCENES.find((s) => s.id === "truth_answered")!.tv!, props({ t: 4000, who: "Winamp" })))).toContain("TRUTHCOIN");
+  });
+
+  it("a Dare tapped on the phone (no press) shows on the bottle's slide once the bottle closes on its pick", () => {
+    const scene = SCENES.find((s) => s.id === "truth_or_dare")!;
+    const draw = (night: Partial<ScreenState["night"]>, moments: ScreenMoment[] = [landed]) => {
+      const state = fakeState({ now: at + 20_000, moments, night: { bottle_pick: "Winamp", ...night } });
+      return renderToStaticMarkup(createElement(scene.tv!, props({ t: 20_000, at, state, value: "truth_or_dare" })));
+    };
+    expect(draw({ bottle_open: true })).not.toContain("🎩 DARE");
+    expect(draw({ bottle_open: false })).toContain("🎩 DARE");
+    // Truth chosen, or a booth verdict: not a Dare.
+    expect(draw({ bottle_open: false }, [landed, { seq: 61, at: at + 5000, kind: "beat", name: "Truth Question", who: null, kept: false }])).not.toContain("🎩 DARE");
+    expect(draw({ bottle_open: false }, [landed, { seq: 62, at: at + 9000, kind: "signal", name: "truth_answered", who: "Winamp", kept: false }])).not.toContain("🎩 DARE");
   });
 });
