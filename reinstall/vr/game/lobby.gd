@@ -112,10 +112,13 @@ func set_candidates(players: Array) -> void:
 ## The row's tag: in the Internet, or marked. Wave 18 (C7): the server's
 ## `marked` when it says (a mark no longer restricts), else an older
 ## server's `restricted`; a restricted program the server still lets in
-## is marked too.
+## is marked too. After an ending the server says `favour` (and `marked`
+## false for everyone): the reinstallation is a party favour.
 static func tag_of(p: Dictionary) -> String:
 	if p.get("captured") == true:
 		return "  [corrupted]"
+	if p.get("favour") == true:
+		return "  [party favour]"
 	var marked: bool
 	if p.get("marked") is bool:
 		marked = p.get("marked") == true or (p.get("restricted") == true and p.get("eligible") == true)

@@ -16,7 +16,8 @@
 //! Wave 18: the server names the marked (`marked`, C7) — a mark no longer
 //! restricts a program — and after an ending the reinstallation is open to
 //! everyone as a party favour (S1): the screen state's `night.ended` turns
-//! the copy into a party favour, never "corrupted".
+//! the copy into a party favour, never "corrupted". The candidates say it
+//! too (`favour`, with `marked` false for everyone once the night is over).
 
 /** A candidate as the tablet reads it (`GET /api/mod/spatial/candidates`). */
 export interface Program {
@@ -30,6 +31,9 @@ export interface Program {
   /** Marked for reinstallation and not captured yet (wave 18, C7: the
    *  server's `marked`, else read off `restricted` for an older server). */
   marked: boolean;
+  /** The night is over and the server lets them in: a party favour (wave 18,
+   *  the server's `favour`; false from a server that doesn't say). */
+  favour: boolean;
   location: string | null;
 }
 
@@ -64,12 +68,12 @@ export function isMarked(row: { captured: boolean; restricted?: boolean; eligibl
  */
 export type ProgramState = "corrupted" | "favour" | "marked" | "held" | "healthy";
 
-type StateInput = Pick<Program, "captured" | "restricted"> & { eligible?: boolean; marked?: boolean };
+type StateInput = Pick<Program, "captured" | "restricted"> & { eligible?: boolean; marked?: boolean; favour?: boolean };
 
 export function programState(p: StateInput, ended = false): ProgramState {
   if (p.captured) return "corrupted";
   const eligible = isEligible(p);
-  if (ended && eligible) return "favour";
+  if ((ended || p.favour === true) && eligible) return "favour";
   // The server's `marked` (or an older one's `restricted`), or any other
   // program its begin lets in (a restricted, marked one reads `marked: false`).
   if (isMarked(p) || eligible) return "marked";

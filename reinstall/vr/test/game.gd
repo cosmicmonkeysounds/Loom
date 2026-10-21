@@ -1625,6 +1625,8 @@ func _test_main_and_game() -> void:
 	_check(Lobby.tag_of({"captured": false, "restricted": true, "eligible": true, "marked": false}) == "  [marked]", "lobby: a restricted program the server lets in is marked")
 	_check(Lobby.tag_of({"captured": false, "restricted": true}) == "  [marked]", "lobby: an older server's restricted reads marked")
 	_check(Lobby.tag_of({"captured": false}) == "", "lobby: a free program has no tag")
+	_check(Lobby.tag_of({"captured": false, "restricted": false, "eligible": true, "marked": false, "favour": true}) == "  [party favour]", "lobby: after the end a program is tagged party favour, never marked")
+	_check(Lobby.tag_of({"captured": true, "favour": true}) == "  [corrupted]", "lobby: a captured program stays corrupted after the end")
 	player.left_stick = Vector2(0, -1)
 	game._process(0.016)
 	player.left_stick = Vector2.ZERO

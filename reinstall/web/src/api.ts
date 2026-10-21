@@ -59,7 +59,9 @@ export function toProgram(row: SpatialCandidate): Program {
   const eligible = typeof row.eligible === "boolean" ? row.eligible : isEligible({ captured: row.captured, restricted });
   const flag = (row as { marked?: unknown }).marked;
   const marked = isMarked({ captured: row.captured, restricted, eligible, ...(typeof flag === "boolean" ? { marked: flag } : {}) });
-  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, marked, location: row.location };
+  // After the end the server says `favour` (and `marked` false for everyone).
+  const favour = (row as { favour?: unknown }).favour === true;
+  return { id: row.id, name: row.name, captured: row.captured, restricted, eligible, marked, favour, location: row.location };
 }
 
 /** Has an ending played? (`night.ended` off the lean screen state, polled

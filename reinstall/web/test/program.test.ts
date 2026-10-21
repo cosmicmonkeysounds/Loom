@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { toProgram } from "../src/api.ts";
 import { beginErrorText, isEligible, isMarked, markedLegend, NOT_MARKED, NOT_MARKED_ERROR, programPitch, programState, programStatus, quickPicks, startingHeading, type Program } from "../src/program.ts";
 
-const p = (name: string, captured: boolean, restricted: boolean, marked = restricted && !captured): Program => ({ id: `g-${name}`, name, captured, restricted, eligible: captured || restricted || marked, marked, location: null });
+const p = (name: string, captured: boolean, restricted: boolean, marked = restricted && !captured): Program => ({ id: `g-${name}`, name, captured, restricted, eligible: captured || restricted || marked, marked, favour: false, location: null });
 
 // A marked program (not captured yet) is no healthy one: Play here's
 // `reinstallation begun` captures them (wave 9, T3-reinstall-03). Wave 18
@@ -68,7 +68,7 @@ describe("the wizard's program status", () => {
   it("a candidate row without `restricted` (an older server) reads as not restricted", () => {
     expect(toProgram({ id: "g-1", name: "Excel", captured: false, location: "The Desktop" } as SpatialCandidate).restricted).toBe(false);
     const row = { id: "g-1", name: "Excel", captured: false, location: "The Desktop", restricted: true };
-    expect(toProgram(row)).toEqual({ id: "g-1", name: "Excel", captured: false, restricted: true, eligible: true, marked: true, location: "The Desktop" });
+    expect(toProgram(row)).toEqual({ id: "g-1", name: "Excel", captured: false, restricted: true, eligible: true, marked: true, favour: false, location: "The Desktop" });
   });
 
   it("marked (wave 18, C7): the server's flag labels the program, not restricted", () => {
@@ -94,5 +94,20 @@ describe("the wizard's program status", () => {
     expect(beginErrorText(409, "no scenario loaded")).toBe("The story isn't running yet — start the event first.");
     expect(beginErrorText(404, "unknown guest")).toBe("Unknown program — register on your phone first.");
     expect(beginErrorText(null, "Failed to fetch")).toBe("Couldn't start the simulation — Failed to fetch");
+  });
+});
+
+// Wave 18 (integration): after an ending the server tags nobody marked and
+// says `favour` on every program it lets in; the tablet reads that alone.
+describe("a party favour from the candidates", () => {
+  it("toProgram reads `favour`; the state is a favour even before the screen poll says the night ended", () => {
+    const row = { id: "g-1", name: "Winamp", captured: false, restricted: false, eligible: true, marked: false, favour: true, location: null } as unknown as SpatialCandidate;
+    const prog = toProgram(row);
+    expect(prog).toMatchObject({ favour: true, marked: false, eligible: true });
+    expect(programState(prog)).toBe("favour");
+    expect(programStatus(prog).heading).toBe("Party favour unlocked");
+    expect(quickPicks([prog]).marked.map((x) => x.name)).toEqual(["Winamp"]);
+    // A server that doesn't say: no favour.
+    expect(toProgram({ ...row, favour: undefined } as unknown as SpatialCandidate).favour).toBe(false);
   });
 });
