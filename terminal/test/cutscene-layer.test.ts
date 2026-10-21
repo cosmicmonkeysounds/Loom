@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ScreenLayer } from "../src/ScreenLayer.tsx";
 import { CutsceneSlot } from "../src/cutscene/slot.tsx";
 import { drawsSlides } from "../src/cutscene/load.ts";
@@ -43,5 +43,34 @@ describe("the registry", () => {
       expect(s.ms === "hold" || (typeof s.ms === "number" && s.ms > 0), s.id).toBe(true);
       expect(s.tv !== undefined || s.wall !== undefined, s.id).toBe(true);
     }
+  });
+});
+
+describe("the cutscene layer, drawn", () => {
+  it("draws a slide's scene in the slot, a moment's over nothing, the card for a slide with none", async () => {
+    // A server render warns about the kit's layout effects (they measure a canvas / a marquee): expected here.
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { CutsceneLayer } = await import("../src/cutscene/CutsceneLayer.tsx");
+    const { DEMO_SCENES } = await import("../src/cutscene/scenes/demo.tsx");
+    const { fakeState } = await import("../src/cutscene/fake.ts");
+    const now = Date.now();
+    const slide = { value: "kit_demo", cue: "tv_kit_demo", seq: 9, at: now - 5500 };
+    const html = renderToStaticMarkup(createElement(CutsceneLayer, { state: fakeState({ now }), layers: { overlay: null, slide }, bare: false, card: createElement("i", null, "CARD"), gear: null, scenes: DEMO_SCENES, target: "tv" }));
+    expect(html).toContain('data-scene="demo"');
+    expect(html).toContain('data-seq="9"');
+    expect(html).toContain("Installing the Kit"); // 5.5 s in: the desktop phase
+    expect(html).not.toContain("CARD");
+    // A slide no scene draws: its card.
+    const card = renderToStaticMarkup(createElement(CutsceneLayer, { state: fakeState({ now }), layers: { overlay: null, slide: { ...slide, value: "beans" } }, bare: false, card: createElement("i", null, "CARD"), gear: null, scenes: DEMO_SCENES, target: "wall" }));
+    expect(card).toBe("<i>CARD</i>");
+    // A fresh moment over no slide, with the ⚙ (no slide brought one).
+    const m = fakeState({ now, target: "terminals", moments: [{ seq: 4, at: now - 13_000, kind: "signal", name: "Kit Demo", who: "Excel", kept: false }] });
+    const top = renderToStaticMarkup(createElement(CutsceneLayer, { state: m, layers: { overlay: null, slide: null }, bare: false, card: null, gear: createElement("b", null, "GEAR"), scenes: DEMO_SCENES }));
+    expect(top).toContain('class="cutscene-stage cutscene-moment"');
+    expect(top).toContain("Windows"); // 13 s in: the blue screen
+    expect(top).toContain("<b>GEAR</b>");
+    // An overlay or a pilot: nothing.
+    expect(renderToStaticMarkup(createElement(CutsceneLayer, { state: m, layers: { overlay: "alarm", slide: null }, bare: false, card: null, gear: null, scenes: DEMO_SCENES }))).toBe("");
+    quiet.mockRestore();
   });
 });

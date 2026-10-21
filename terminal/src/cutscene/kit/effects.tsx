@@ -53,10 +53,13 @@ export function Glitch({ t, intensity = 0.5, seed = 1, reduced = false, classNam
 /**
  * TV static: grey noise at a quarter of the resolution (cheap, chunky), a
  * new grain 20 times a second, with a bright roll bar. `alpha` keeps it a
- * veil over something, or 1 for a dead channel. Fills its parent.
+ * veil over something, or 1 for a dead channel. Fills its parent. Under
+ * reduced motion the grain holds still.
  */
-export function Noise({ t, alpha = 0.35, roll = true, className, style }: { t: number; alpha?: number; roll?: boolean; className?: string; style?: CSSProperties }) {
-  const grain = Math.floor(t / 50);
+export function Noise({ t, alpha = 0.35, roll: rollWanted = true, reduced = false, className, style }: { t: number; alpha?: number; roll?: boolean; reduced?: boolean; className?: string; style?: CSSProperties }) {
+  // Reduced motion: one still grain, no roll bar.
+  const grain = reduced ? 0 : Math.floor(t / 50);
+  const roll = rollWanted && !reduced;
   const ref = useCanvas(
     (ctx, { w, h, dpr }) => {
       const cw = Math.max(1, Math.round(w * dpr));

@@ -17,7 +17,7 @@ import { SCENE_FPS, serverNow, useReducedMotion, useSceneClock } from "./clock.t
 import { flashFace } from "./face-bus.ts";
 import { FACE_FLASH_MS, MomentQueue, componentFor, pickScene, type ActiveScene } from "./pick.ts";
 import { SCENES } from "./registry.ts";
-import type { SceneDef, SceneTarget } from "./types.ts";
+import type { SceneDef, SceneProps, SceneTarget } from "./types.ts";
 
 export interface CutsceneLayerProps {
   state: ScreenState | null;
@@ -104,13 +104,20 @@ export function CutsceneLayer({ state, layers, bare, card, gear, scenes = SCENES
 
 /** One scene on its stage, at its `t`. */
 function SceneHost({ scene, now, state, target, reduced, onDone }: { scene: ActiveScene; now: number; state: ScreenState; target: SceneTarget; reduced: boolean; onDone: () => void }) {
-  const View = componentFor(scene.def, target);
+  return <SceneStage def={scene.def} kind={scene.kind} target={target} t={Math.max(0, now - scene.start)} at={scene.at} seq={scene.seq} value={scene.value} who={scene.who} state={state} reduced={reduced} play={sfx} onDone={onDone} />;
+}
+
+/**
+ * A scene drawn at a given `t` on its stage, behind its own error boundary —
+ * what the layer draws, and what the preview draws at any `t` it likes.
+ */
+export function SceneStage({ def, kind, target, t, at, seq, value, who, state, reduced, play, onDone }: { def: SceneDef; kind: "slide" | "moment"; target: SceneTarget; t: number; at: number; seq: number; value: string; who: string | null; state: ScreenState; reduced: boolean; play: SceneProps["sfx"]; onDone: () => void }) {
+  const View = componentFor(def, target);
   if (View === null) return null;
-  const t = Math.max(0, now - scene.start);
   return (
-    <div className={`cutscene-stage cutscene-${scene.kind}`} data-scene={scene.def.id} data-seq={scene.seq}>
-      <SceneBoundary id={scene.def.id} onError={onDone}>
-        <View t={t} at={scene.at} seq={scene.seq} value={scene.value} state={state} night={state.night} who={scene.who} target={target} sfx={sfx} done={onDone} reduced={reduced} />
+    <div className={`cutscene-stage cutscene-${kind}`} data-scene={def.id} data-seq={seq}>
+      <SceneBoundary id={def.id} onError={onDone}>
+        <View t={t} at={at} seq={seq} value={value} state={state} night={state.night} who={who} target={target} sfx={play} done={onDone} reduced={reduced} />
       </SceneBoundary>
     </div>
   );
