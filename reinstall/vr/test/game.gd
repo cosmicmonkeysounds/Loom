@@ -51,6 +51,7 @@ func _run() -> void:
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	_test_lobby_geometry()
 	_test_server_link_setup()
 	await _test_autopilot_physics()
 	await _test_room_scale()
@@ -1962,6 +1963,53 @@ func _test_main_and_game() -> void:
 
 	main.queue_free()
 	await process_frame
+
+
+# --- the lobby's picker + setup (wave 19) -------------------------------------------
+
+
+## The panel's pure geometry: the grid for a list, pages, hit mapping, the
+## pointer's ray onto the panel, the beam's hand rule.
+func _test_lobby_geometry() -> void:
+	_check(LobbyTiles.layout(0)["pages"] == 0, "tiles: nothing to lay out")
+	var l1 := LobbyTiles.layout(1)
+	var l4 := LobbyTiles.layout(4)
+	var l5 := LobbyTiles.layout(5)
+	var l7 := LobbyTiles.layout(7)
+	var l8 := LobbyTiles.layout(8)
+	var l17 := LobbyTiles.layout(17)
+	_check(l1["cols"] == 1 and l1["rows"] == 1 and l4["cols"] == 4 and l4["rows"] == 1, "tiles: up to 4 on one row")
+	_check(l5["cols"] == 3 and l5["rows"] == 2 and l7["cols"] == 4 and l8["cols"] == 4 and l8["rows"] == 2 and l8["pages"] == 1, "tiles: 5–8 on two rows")
+	_check(l17["cols"] == 4 and l17["per_page"] == 8 and l17["pages"] == 3, "tiles: past 8, pages of 4 × 2")
+	_check(LobbyTiles.page_of(7, 8) == 0 and LobbyTiles.page_of(8, 8) == 1 and LobbyTiles.count_on_page(17, 2, 8) == 1 and LobbyTiles.count_on_page(17, 3, 8) == 0, "tiles: pages and what they hold")
+	var a := LobbyTiles.tile_center(0, 4, 2)
+	var d := LobbyTiles.tile_center(3, 4, 2)
+	var e := LobbyTiles.tile_center(4, 4, 2)
+	_check(_near(a.x, -d.x) and a.y > e.y and _near(a.x, e.x) and _near((a.y + e.y) / 2.0, LobbyTiles.GRID_Y), "tiles: the grid is centred, reading order")
+	_check(LobbyTiles.slot_at(e, 4, 2, 8) == 4 and LobbyTiles.slot_at(e + Vector2(0.2, 0.25), 4, 2, 8) == 4, "tiles: a point on a tile is that tile")
+	_check(LobbyTiles.slot_at((a + LobbyTiles.tile_center(1, 4, 2)) / 2.0, 4, 2, 8) == -1, "tiles: the gap between tiles is no tile")
+	_check(LobbyTiles.slot_at(e, 4, 2, 4) == -1, "tiles: an empty slot on a short page is no tile")
+	var buttons := [{"id": "a", "center": Vector2(0, 1), "size": Vector2(0.4, 0.2)}, {"id": "b", "center": Vector2(0.1, 1), "size": Vector2(0.2, 0.2)}]
+	_check(LobbyTiles.button_at(Vector2(0.1, 1.05), buttons) == "b" and LobbyTiles.button_at(Vector2(-0.15, 1), buttons) == "a" and LobbyTiles.button_at(Vector2(0, 2), buttons) == "", "tiles: the button under a point (the last drawn wins)")
+
+	var panel := Transform3D(Basis.IDENTITY, Vector3(0, 400, -2.4))
+	var eye := Vector3(0, 401.6, 0)
+	var target := panel * Vector3(e.x, e.y, 0)
+	var h := LobbyTiles.ray_to_panel(eye, target - eye, panel)
+	_check(not h.is_empty() and (h["point"] as Vector2).distance_to(e) < 1e-4 and _near(float(h["distance"]), eye.distance_to(target)), "pointer: a ray onto the panel lands in panel coordinates (%s)" % [h])
+	_check(LobbyTiles.ray_to_panel(eye, Vector3(0, 0, 1), panel).is_empty(), "pointer: a ray away from the panel misses")
+	_check(LobbyTiles.ray_to_panel(eye, Vector3(1, 0, 0), panel).is_empty(), "pointer: a ray along the panel misses")
+	_check(LobbyTiles.ray_to_panel(Vector3(0, 401.6, -3.0), Vector3(0, 0, -1), panel).is_empty(), "pointer: from behind the panel, nothing")
+	var turned := Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(1, 400, 0))
+	var side := LobbyTiles.ray_to_panel(Vector3(3, 401.5, -0.3), Vector3(-1, 0, 0), turned)
+	_check(not side.is_empty() and _near((side["point"] as Vector2).y, 1.5) and _near((side["point"] as Vector2).x, 0.3), "pointer: a turned panel maps through its own frame (%s)" % [side])
+
+	var rest := Transform3D.IDENTITY
+	_check(not LobbyPointer.takes_beam(rest, rest.translated(Vector3(0.01, 0, 0))), "pointer: a hand resting still keeps off the beam")
+	_check(LobbyPointer.takes_beam(rest, rest.translated(Vector3(0.05, 0, 0))), "pointer: a hand that moves takes the beam")
+	_check(LobbyPointer.takes_beam(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(6.0)), Vector3.ZERO)) and not LobbyPointer.takes_beam(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(2.0)), Vector3.ZERO)), "pointer: … or turns past 4°")
+	_check(LobbyPointer.trigger_down(false, 0.9, false) and not LobbyPointer.trigger_down(false, 0.6, false) and LobbyPointer.trigger_down(true, 0.6, false) and not LobbyPointer.trigger_down(true, 0.3, false) and LobbyPointer.trigger_down(false, 0.0, true), "pointer: the trigger with hysteresis (a click is a pull)")
+
 
 ## A ServerLink with no passcode: try a setup over the fake transport (every
 ## refusal answers the panel and stays unconfigured; a working one is saved
