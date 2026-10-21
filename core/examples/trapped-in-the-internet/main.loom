@@ -225,12 +225,14 @@ ROLE Program
   // verdicts and the anti-AI designation are on the Kernel already; the
   // orders and the virus files are `secret: true` CODEX entries
   // (codex/1-world.loom, 6-missions.loom).
-  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door
+  secret: carries_virus, planted_virus, excel_choice, openoffice_choice, dossier_started, dossier_base, dossier_start, left_behind_text, anti_ai, framed, fact_a1, fact_a2, fact_a3, fact_a4, fact_a5, fact_a6, fact_a7, fact_a8, fact_c1, fact_c2, fact_c3, fact_c4, fact_c5, fact_c6, fact_c7, fact_c8, fact_v1, fact_v2, fact_v3, fact_v4, fact_v5, fact_v6, fact_v7, fact_v8, fact_j1, fact_j2, fact_j3, fact_j4, fact_j5, fact_j6, fact_j7, fact_j8, fact_sure, fact_n, fact_try, fact_waiting, fact_q_round, last_fact_q, fact_label, fact_h1, fact_h2, fact_h3, fact_h4, fact_h5, fact_h6, fact_f1, fact_f2, lie_q1, lie_q2, lie_q3, lie_q4, lie_q5, lie_q6, lie_q7, lie_q8, hunt_lie_q1, hunt_lie_q2, hunt_lie_q3, hunt_lie_q4, hunt_lie_q5, hunt_lie_q6, hunt_lie_q7, hunt_lie_q8, quest.excel_mission, quest.openoffice_dossier, quest.find_the_exit, quest.truthcoin_hustle, quest.master_of_the_bugs, quest.unscramble, quest.ten_findings, from_jeeves, jeeves_told, quest.the_painting, paint_told, quest.the_gold_standard, quest.go_viral, quest.keep_the_ball_in_play, quest.recruit_to_stay, quest.recruit_to_leave, recruits, door_digits, quest.the_cold_door
   uploaded: bool = false
   cleared: bool = false
   captchas: 0 to 10 = 0
   human_problem: text? = none
   left_behind: text? = none
+  // Wave 18b (R10): what they typed into the deposit box's card (secret).
+  left_behind_text: text? = none
   skipped_orientation: bool = false
   featured: text? = none
   anti_ai: bool = false
@@ -2248,6 +2250,13 @@ ROLE Program
         Trabolta: {Night.line_by} said it first, {program.name}. But the house says yes: that is the line.
       else:
         Trabolta: The house says no. That is not the line.
+    // Wave 18b (R10, D22): the deposit box's typed record (the card has no
+    // `question:`, so an unbound `question` reads null). Kept in the secret
+    // slot, never repeated back; the pass comes with it.
+    else if question == null and program.left_behind == "deposited" and program.left_behind_text == "none":
+      set program.left_behind_text = text
+      Task Manager: Logged. It is not your concern. Fine.
+      show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
   when pickup_line_works for program:
     fire pickup_line_accepted for program

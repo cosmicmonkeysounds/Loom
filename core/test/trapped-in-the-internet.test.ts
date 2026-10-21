@@ -583,7 +583,16 @@ describe("Trapped in the Internet — the whole night", () => {
     expect(v(sim, "g1.uploaded")).toBe(true);
     expect(sim.holdsCodex("g1", "The Optical Drive")).toBe(true);
     expect(sim.holdsCodex("g1", "The Terms Of Service")).toBe(true);
-    expect(widgets(dep).some((w) => w.widget === "pass" && (w.text ?? "").includes("Hold this up."))).toBe(true);
+    // Wave 18b (R10): a deposit asks for its record first (no `question:`);
+    // the answer is kept in the secret slot and the pass comes with it.
+    const card = widgets(dep).find((w) => w.widget === "answer")!;
+    expect(card.text).toBe("What did you leave in the deposit box?");
+    expect(card.params).toEqual({ max: "80", button: "Leave it behind" });
+    expect(widgets(dep).some((w) => w.widget === "pass")).toBe(false);
+    const typed = sim.signal("answer answered", "g1", { text: "my car keys", card: 1 });
+    expect(v(sim, "g1.left_behind_text")).toBe("my car keys");
+    expect(widgets(typed).some((w) => w.widget === "pass" && (w.text ?? "").includes("Hold this up."))).toBe(true);
+    expect(texts(typed).some((t) => t.includes("my car keys"))).toBe(false);
     expect(sim.locationOf("g1")).toBe("The Optical Drive");
     // Task Manager runs the installation (the Uploader keeps the machine
     // lines) and leaves the help note: his lines open `dm:Task Manager`.
@@ -3497,6 +3506,10 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     await mod("captcha answered", { subject: id, args: { passed: false } });
     expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200);
     expect((await call(rt, "POST", "/api/guest/choose", { index: 0 }, { token })).status).toBe(200);
+    // Wave 18b (R10): the deposit box's typed record, through the phone's own card.
+    const depositCard = rt.chatHistoryFor(id).find((m) => m.kind === "widget" && m.widget?.kind === "answer")!;
+    expect((await call(rt, "POST", "/api/guest/widget", { seq: depositCard.seq, result: { text: "Grandma's opal ring" } }, { token })).status).toBe(200);
+    expect(rt.liveSim!.world.peek(`${id}.left_behind_text`)).toMatchObject({ value: "Grandma's opal ring" });
     expect((await call(rt, "POST", "/api/mod/scan", { as: "Norton Anti-Virus", target: id }, { moderator: true })).status).toBe(200);
     for (const n of ["call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth"]) await mod(n);
     await mod("confident_q1", { subject: id, actor: "Clippy" });
@@ -3516,12 +3529,12 @@ describe("Trapped in the Internet — secrecy (§6.1 item 21)", () => {
     expect(blob).not.toContain("V1-D6"); // combo B
     expect(Object.keys(req.them.vars).filter((k) => /lie|confident|accurate|verdict|^fact_[acvj]\d|fact_sure|last_fact_q|fact_label/u.test(k))).toEqual([]);
     expect(Object.keys(req.world).filter((k) => /verdict|said_|ans_|res_|^event#/u.test(k))).toEqual([]);
-    for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", "fact_j1", '"verdict"']) expect(blob, leak).not.toContain(leak);
+    for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", "fact_j1", '"verdict"', "opal ring", "left_behind_text"]) expect(blob, leak).not.toContain(leak);
 
     const facts = (await call(rt, "GET", "/api/agent/facts", {}, { moderator: true })).json as unknown as AgentFacts;
     expect(Object.keys(facts.world).filter((k) => k.startsWith("Kernel"))).toEqual([]);
     const fblob = JSON.stringify(facts);
-    for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", '"verdict"']) expect(fblob, leak).not.toContain(leak);
+    for (const leak of ["Eleven years", "said_1", "fact_a1", "fact_v1", '"verdict"', "opal ring", "left_behind_text"]) expect(fblob, leak).not.toContain(leak);
     // The orchestrator's lore block is the facts document's non-secret codex:
     // never the Legendary Fact, a patch sheet or the door code (wave 7).
     expect(fblob).toContain("The Sandy File"); // the lore is there…

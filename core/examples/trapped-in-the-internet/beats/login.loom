@@ -73,7 +73,11 @@ else:
 Task Manager: To complete the installation you must leave one thing behind. Place something you came with in the deposit box by the door.
 * Deposited.
   set program.left_behind = "deposited"
-  Task Manager: Deposited. It will be looked after. It is not your concern. Fine.
+  // DRAFT w18b (R10, D22): an optional typed record of it (no `question:`,
+  // so the facts book never judges it); main.loom's `when answer answered`
+  // keeps the text in the secret `left_behind_text` and deals the pass.
+  Task Manager: Deposited. Now tell me what it was, for the record. It will be looked after.
+  show answer "What did you leave in the deposit box?" to program with max: 80, button: "Leave it behind"
 * I have nothing to leave.
   set program.left_behind = "nothing"
   set program.doubt += 5
@@ -89,7 +93,10 @@ set program.uploaded = true
 fire waiting_at_the_door for program
 Task Manager: Installation complete. Find me in the house, or message me here, for help with the app. I am always running. That is the whole job.
 Task Manager: Antivirus, confirm.
-show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
+// A deposited program gets the pass with its typed record (main.loom); the
+// stage's My pass button has it meanwhile, so nothing waits on the card.
+if program.left_behind != "deposited":
+  show pass "Hold this up. An Antivirus will scan you in. Until then you are nowhere." to program
 
 // The door. A program waits in the Optical Drive — still on rails — until an
 // Antivirus scans their pass (`TRAIT Enforcer` in cast/kit.loom:
