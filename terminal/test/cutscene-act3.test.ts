@@ -10,8 +10,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { HISTORY_T } from "../src/cutscene/clock.ts";
 import { fakeState } from "../src/cutscene/fake.ts";
 import { componentFor } from "../src/cutscene/pick.ts";
+import { previewBeats } from "../src/cutscene/preview.tsx";
 import { SCENES as ACT3 } from "../src/cutscene/scenes/act3.tsx";
-import { SCENES as MOMENTS, finderName } from "../src/cutscene/scenes/moments.tsx";
+import { SCENES as MOMENTS, OVER_WORLD_MS, finderName } from "../src/cutscene/scenes/moments.tsx";
+import { noteWorldShowing, worldCelebratesFinds } from "../src/cutscene/world-bus.ts";
+import { CELEBRATION_MS } from "../src/world/state.ts";
 import type { SceneDef, SceneTarget } from "../src/cutscene/types.ts";
 import type { ScreenMoment, ScreenNight } from "../src/screen.ts";
 
@@ -154,6 +157,56 @@ describe("every tv3 scene draws", () => {
     expect(duck.namesCharacter).not.toBe(true);
     expect(kept.namesCharacter).not.toBe(true);
     expect(draw(duck, "tv", 6000, { introduced: false })).not.toMatch(/Trabolta/u);
+  });
+
+  it("over a live world view the duck is see-through: a frame round the real find, never a curtain over it", () => {
+    const duck = MOMENTS.find((d) => d.id === "golden_duck")!;
+    const kept = MOMENTS.find((d) => d.id === "golden_duck_kept")!;
+    const bye = noteWorldShowing();
+    try {
+      expect(worldCelebratesFinds()).toBe(true);
+      for (const target of ["tv", "wall"] as const)
+        for (const t of [0, 500, 2500, 6000, OVER_WORLD_MS - 100]) {
+          const live = draw(duck, target, t, { who: "MS Paint" });
+          expect(live).toContain("tv3-over-frame");
+          expect(live).toContain("background:transparent");
+          // The world's own banner names the finder and lays the egg: not twice.
+          expect(live).not.toContain("FOUND THE GOLDEN DUCK");
+          expect(live).not.toContain("MS PAINT");
+          expect(live).not.toContain('rx="9" ry="12"');
+          const sad = draw(kept, target, t, { who: "MS Paint" });
+          expect(sad).toContain("tv3-over-world kept");
+          expect(sad).not.toContain('rx="9" ry="12"');
+          expect(sad).not.toContain("GERALD CAN&#x27;T HELP");
+        }
+    } finally {
+      bye();
+      bye(); // a goodbye counts once
+    }
+    expect(worldCelebratesFinds()).toBe(false);
+    expect(draw(duck, "tv", 6000, { who: "MS Paint" })).toContain("FOUND THE GOLDEN DUCK");
+    // The frame outlasts the world's banner, a little.
+    expect(OVER_WORLD_MS).toBeGreaterThanOrEqual(CELEBRATION_MS);
+    expect(OVER_WORLD_MS).toBeLessThan(duck.ms as number);
+  });
+
+  it("only the views that celebrate a find say so (the shadow view draws no banner)", () => {
+    const src = (f: string) => readFileSync(join(__dirname, "../src", f), "utf8");
+    for (const f of ["world/WorldView.tsx", "raycast/RaycastView.tsx"]) {
+      expect(src(f), f).toContain("noteWorldShowing()");
+      expect(src(f), f).toMatch(/celebrat/u);
+    }
+    expect(src("shadow/ShadowView.tsx")).not.toContain("celebration");
+  });
+
+  it("the preview can play the bob's beats at their times", () => {
+    expect(previewBeats("", 99_000)).toEqual([]);
+    const two = "The Bag Of Truth@20000, Final Assessment@40000";
+    expect(previewBeats(two, 10_000)).toEqual([]);
+    expect(previewBeats(two, 30_000).map((m) => m.name)).toEqual(["The Bag Of Truth"]);
+    const both = previewBeats(two, 50_000);
+    expect(both.map((m) => [m.kind, m.name])).toEqual([["beat", "The Bag Of Truth"], ["beat", "Final Assessment"]]);
+    expect(both[1]!.at - both[0]!.at).toBe(20_000);
   });
 
   it("a finder with no name is A PROGRAM", () => {

@@ -5,13 +5,19 @@
 //! See `../types.ts` for the contract and `../kit/` for the building blocks.
 //!
 //! The duck can be found before the character is introduced (the first
-//! reinstallation), so nothing here names him. The clips are the wall
+//! reinstallation), so nothing here names him. On a screen whose world
+//! view (or raycaster) is up, the find is already celebrated live there —
+//! Gerald's egg, or GERALD CAN'T HELP — so the duck plays a see-through
+//! take over it (a frame, corner Geralds, sparks, the sounds), never a
+//! curtain over the real thing (`../world-bus.ts`). The clips are the wall
 //! terminals' only (`terminals_<clip>`: the TV never gets them) — so their
 //! `wall` take is the full one, a looping little web page in each clip's
 //! spirit, all original art.
 
 import "./moments.css";
+import { useEffect, useState } from "react";
 import type { SceneDef, SceneProps } from "../types.ts";
+import { worldCelebratesFinds } from "../world-bus.ts";
 import {
   Confetti,
   Marquee,
@@ -71,7 +77,25 @@ function sparks(at: number, seed: number): Emitter[] {
   ];
 }
 
-function GoldenDuckScene({ t, who, sfx, reduced, target }: SceneProps) {
+/** The world view's own celebration lasts this long (`world/state.ts` CELEBRATION_MS 8000) — the frame a beat longer. */
+export const OVER_WORLD_MS = 8400;
+
+/** Decided once, when the scene starts: is the find already celebrated live on this screen? */
+function useOverWorld(t: number, done: () => void): boolean {
+  const [live] = useState(worldCelebratesFinds);
+  const over = live && t >= OVER_WORLD_MS;
+  useEffect(() => {
+    if (over) done();
+  }, [over, done]);
+  return live;
+}
+
+function GoldenDuckScene(props: SceneProps) {
+  const live = useOverWorld(props.t, props.done);
+  return live ? <FoundOverWorld {...props} kept={false} /> : <GoldenDuckFull {...props} />;
+}
+
+function GoldenDuckFull({ t, who, sfx, reduced, target }: SceneProps) {
   const lite = target === "wall";
   useSfxCues(t, sfx, [
     [DUCK.rise, "win"],
@@ -125,7 +149,53 @@ function GoldenDuckScene({ t, who, sfx, reduced, target }: SceneProps) {
 
 const KEPT = { walk: 0, line: 1100, name: 2000, box: 3200, out: 8000, end: 9000 } as const;
 
-function KeptDuckScene({ t, who, sfx, reduced, target }: SceneProps) {
+function KeptDuckScene(props: SceneProps) {
+  const live = useOverWorld(props.t, props.done);
+  return live ? <FoundOverWorld {...props} kept /> : <KeptDuckFull {...props} />;
+}
+
+// --- a find over the live world view (see-through) -----------------------------------------------
+//
+//   0–400     a frame glows in round the screen (gold; grey when kept)
+//   300–900   two small Geralds pop up in the bottom corners (a win / a sad sting)
+//   1900      sparks from the corners, confetti from the top (a tada) — never when kept:
+//             the kept Geralds shake their heads under a drizzle
+//   →8400     the frame breathes; then it fades and ends (the world's banner is gone by then)
+// The live world's own banner (the finder's name and GERALD's line) stays the centre of it.
+
+function FoundOverWorld({ t, who, sfx, reduced, target, kept }: SceneProps & { kept: boolean }) {
+  const lite = target === "wall";
+  useSfxCues(t, sfx, kept ? [[1100, "lose", { gain: 0.6 }]] : [
+    [300, "win", { gain: 0.7 }],
+    [1200, "sparkle", { gain: 0.6 }],
+    [1900, "tada", { gain: 0.7 }],
+  ]);
+  const show = fade(t, 0, 400, OVER_WORLD_MS - 700, 700);
+  const glow = 0.55 + 0.45 * pulse(t, 1400);
+  const pop = (at: number) => (reduced ? progress(t, at, 400) : ease.outBack(progress(t, at, 700)));
+  const shakeNo = kept && !reduced ? Math.sin(t / 140) * 9 * progress(t, 1100, 400) : 0;
+  const hop = (i: number) => (reduced || kept ? 0 : Math.abs(Math.sin(t / 260 + i * 1.3)) * -14 * progress(t, 1900, 300));
+  const seed = whoSeed(who) % 983;
+  const corners: Emitter[] = kept ? [] : [...sparks(1900, seed).map((e) => ({ ...e, x: 0.08, y: 0.88 })), ...sparks(2050, seed + 7).map((e) => ({ ...e, x: 0.92, y: 0.88 }))];
+  return (
+    <Stage bg="transparent" className={`tv3-over-world${kept ? " kept" : ""}`}>
+      <div className="kit-fill" style={{ opacity: show }}>
+        {kept && <RainCanvas t={t} count={lite ? 30 : 70} speed={1.2} slant={0.1} color="170, 180, 200" reduced={reduced} style={{ opacity: 0.3 }} />}
+        <div className="tv3-over-frame" style={{ opacity: kept ? 0.7 : glow }} />
+        <div className="tv3-over-tag">● LIVE FROM THE SIMULATION</div>
+        {[0, 1].map((i) => (
+          <div key={i} className={`tv3-over-duck tv3-over-duck-${i === 0 ? "l" : "r"}`} style={{ opacity: clamp01(pop(300 + i * 200) * 2), transform: `translate(0, ${(lerp(110, 0, pop(300 + i * 200)) + hop(i)).toFixed(1)}%) rotate(${(i === 0 ? shakeNo : -shakeNo).toFixed(1)}deg) scaleX(${i === 0 ? 1 : -1})` }}>
+            <GoldenDuck gold={!kept} sad={kept} egg={0} blinkOn={blink(t + i * 700, 2900, 0.06)} size={lite ? "16vmin" : "14vmin"} />
+          </div>
+        ))}
+        {!kept && !reduced && <Particles t={t} emitters={corners} blend="add" />}
+        {!kept && !reduced && t >= 1900 && <Confetti t={t} start={1900} dur={3600} density={lite ? 0.35 : 0.7} seed={seed} colors={GOLD} />}
+      </div>
+    </Stage>
+  );
+}
+
+function KeptDuckFull({ t, who, sfx, reduced, target }: SceneProps) {
   const lite = target === "wall";
   useSfxCues(t, sfx, [
     [KEPT.line, "lose"],

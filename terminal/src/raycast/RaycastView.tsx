@@ -44,6 +44,7 @@ import {
   type RayWall,
 } from "./raycast.ts";
 import "./raycast.css";
+import { noteWorldShowing } from "../cutscene/world-bus.ts";
 
 const FRAME_MS = 1000 / 20;
 const MAX_PIXEL_RATIO = 2;
@@ -69,6 +70,8 @@ export function RaycastView({ store, spotId, size }: { store: WorldStore; spotId
   const connected = useWorld(store, (s) => s.connected);
   const players = useWorld(store, (s) => s.world.players.size);
   const celebrations = useWorld(store, (s) => s.world.celebrations);
+  // This view celebrates a find itself: the duck's cutscene plays over it, see-through.
+  useEffect(() => noteWorldShowing(), []);
   const box = useRef<HTMLDivElement>(null);
   const scene = useRef<HTMLCanvasElement>(null);
   const hud = useRef<HTMLCanvasElement>(null);
