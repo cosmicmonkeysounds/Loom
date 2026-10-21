@@ -1035,11 +1035,17 @@ export class EventRuntime {
 
   /** Note that guest `id` was just heard from (`force`: a stream opened or
    *  closed — always stamped). */
-  private seen(id: string, force = false): void {
+  private seen(id: string, force = false, every: number = EventRuntime.SEEN_EVERY_MS): void {
     const now = this.clock();
     const last = this.lastSeen.get(id);
-    if (force || last === undefined || now - last >= EventRuntime.SEEN_EVERY_MS) this.lastSeen.set(id, now);
+    if (force || last === undefined || now - last >= every) this.lastSeen.set(id, now);
   }
+
+  /** An idle phone whose stream stays open is still here: its keepalive
+   *  re-stamps `lastSeen` this often (BN2-FH: an open, quiet phone read
+   *  "seen 12 min ago" and sat under Missing). Coarse, so a room of idle
+   *  phones never churns the directors' roster patches. */
+  static readonly STREAM_SEEN_EVERY_MS = 120_000;
 
   /** The live sim, or null before the doors open / after the event ends. */
   get liveSim(): Sim | null {
@@ -4052,7 +4058,10 @@ export class EventRuntime {
         sseSend(res, "history", this.historyFor(client));
       }
       if (!fullMod) this.pushPresence();
-      const ping = setInterval(() => sseWrite(res, ":ping\n\n"), 25000);
+      const ping = setInterval(() => {
+        sseWrite(res, ":ping\n\n");
+        if (ownGuest) this.seen(id, false, EventRuntime.STREAM_SEEN_EVERY_MS);
+      }, 25000);
       req.on("close", () => {
         clearInterval(ping);
         this.clients.delete(client);

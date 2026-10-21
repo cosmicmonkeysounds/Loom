@@ -1,8 +1,10 @@
 //! Wave 18 recheck fixes (recheck/fixes.md), the show's side.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { scenarioFiles } from "../examples/load.ts";
-import { booth, guest, post, primeStream, rt18 } from "./w18-harness.ts";
+import { W18, booth, call, freshDir, guest, guestStream, post, primeStream, rt18, runtime } from "./w18-harness.ts";
+import type { PrimeView } from "../server/views.ts";
+import { EventRuntime } from "../server/event-runtime.ts";
 
 const FILES = scenarioFiles("trapped-in-the-internet");
 
@@ -29,5 +31,32 @@ describe("BN2-FC: a caught poster leaves an open Wanted board after its minute",
     expect(boards().at(-1)).toEqual([ada.id]);
     for (let i = 0; i < 62; i++) rt.tickOnce(1000);
     expect(boards().at(-1)).toEqual([]);
+  });
+});
+
+describe("BN2-FH: a phone whose stream stays open is not missing", () => {
+  it("the keepalive re-stamps lastSeen (coarsely) while the stream is open", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      let t = 1_000_000;
+      const rt = runtime({ now: () => t }, freshDir(), W18);
+      rt.openDoors();
+      const ada = await guest(rt, "Ada");
+      const s = guestStream(rt, ada.token);
+      await s.open;
+      const seen = async () => ((await call(rt, "GET", "/api/state?role=prime&as=Norton", {}, { moderator: true })).json as unknown as PrimeView).guests.find((g) => g.id === ada.id)?.lastSeen;
+      const opened = await seen();
+      t += 12 * 60_000;
+      vi.advanceTimersByTime(25_000);
+      expect(await seen()).toBe(t);
+      expect(t - (opened ?? 0)).toBeGreaterThan(EventRuntime.STREAM_SEEN_EVERY_MS);
+      // Coarse: a minute later the next ping leaves it be.
+      const at = t;
+      t += 60_000;
+      vi.advanceTimersByTime(25_000);
+      expect(await seen()).toBe(at);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
