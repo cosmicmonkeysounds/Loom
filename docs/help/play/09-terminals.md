@@ -2,7 +2,7 @@
 title: The terminals on the walls
 section: Guest Guide
 order: 9
-keywords: terminal, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
+keywords: terminal, congratulations, winner, confetti, house win, idle show, screensavers, popups, pop-up, popup storm, touch me, tap, scan box, scan your pass, full screen, cutscene, scene, animation, big moments, sound, sounds, ding, house speakers, raycaster, old-school 3D, floor plan, map, old tablet, no WebGL, wall, tablet, scan, pass, camera, talk, voice, face, Trabolta, direct line, screensaver, offline, introduced, disconnect, timeout, world view, simulation, mirror, TV, screen, watch, slide, countdown, blackout, alarm, notice, attract, ads, caption, holding, not responding, announcement, house announcements, chime, speaker, trust chart, chart, most trusted, least trusted, identify, name on screen, hamster dance, peek, tap the slide, y2k, room terminal, locked room, asleep, wakes up, chess, the King, king, health bar, checkmate, door code, server-room door, casino, bet, gamble, slots, dice, coin, Truthcoin, give him a file, file, codex, secret file, camera, shadow, shadow dimension, ghosts, live picture
 ---
 
 Some events mount **terminals** around the house — tablets that are a
@@ -101,6 +101,13 @@ scene that started before a terminal reloaded carries on where it was;
 nothing that already happened plays again. A tap on a slide still steps
 it aside.
 
+When the house wins something together (*🎀 Encarta won the Bingo Ribbon!
+Cheer for them at the Desktop.*), the TV and the wall terminals throw up a
+Win98 **Congratulations!** window for a few seconds: the winner's name, the
+line typing itself out, a WINNER marquee and confetti (with Reduce Motion,
+it just fades in). Only a house-wide win does this; every other big moment
+stays on the phones.
+
 A **chart** (like the Trust Chart) fills in from the bottom, one name
 at a time; once the character has named the most and least trusted,
 their rows light up and a banner calls them out. The character can also
@@ -163,8 +170,8 @@ There are **no hints**. The screen shows his **health bar** — the same
 bar as in [the simulation](reinstallation.md), shared by everyone: the
 more he has been hit there, the worse he plays here. At full health he
 is a grandmaster. Late in the night (once the truth has been read) the
-screen says *No prize now.* and a win gives nothing. A program marked
-for reinstallation can't challenge him. Two minutes without a move and
+screen says *No prize now.* and a win gives nothing. A program
+a director has restricted can't challenge him. Two minutes without a move and
 the game is abandoned.
 
 ## The casino
@@ -186,8 +193,9 @@ At *Trapped in the Internet* a terminal in the upstairs bedroom is the
 
 Every bet goes straight into your phone's **Wallet** room, one card per
 sitting, so walking away loses nothing: tap **CASH OUT**, or leave it a
-minute and it cashes you out. A program marked for reinstallation can't
-gamble, and nor can a frozen wallet.
+minute and it cashes you out. A program in the Internet can't gamble (*⛔
+YOU'RE IN THE INTERNET — GO TO THE TENT*), nor can a restricted one or a
+frozen wallet; a program that is merely marked still plays.
 
 ## A window into the simulation
 
