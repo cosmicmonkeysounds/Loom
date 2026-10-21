@@ -7,6 +7,6 @@ import type { WidgetProps } from "../widgets.tsx";
 import type { SidesLayerProps } from "./index.tsx";
 import { lazyPart } from "../guest/lazy-part.tsx";
 
-export const LazySidesLayer = lazyPart<SidesLayerProps>(() => import("./index.tsx").then((m) => ({ default: m.SidesLayer })), "Sides & crews");
+export const LazySidesLayer = lazyPart<SidesLayerProps>(() => import("./index.tsx").then((m) => ({ default: m.SidesLayer })), "Factions");
 export const LazyDoors = lazyPart<WidgetProps>(() => import("./doors.tsx").then((m) => ({ default: m.Doors })), "The doors");
 export const LazyInvite = lazyPart<WidgetProps>(() => import("./invite.tsx").then((m) => ({ default: m.InviteCard })), "The invitation");
