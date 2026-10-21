@@ -45,11 +45,15 @@
 //! example with no `facts.json` removes the project's copy.
 //!
 //! The example's `audio.json` (the house speakers, `server/audio.ts`, wave
-//! 17) goes **like a map**: placed in the map editor and kept with "Save to
-//! project", so the project's copy wins by default (added only when the
-//! project has none, a differing one kept and summarised); `--replace-maps`
-//! replaces it too (the project's copy backed up first), `--keep-maps`
-//! leaves it alone. It rides the row's snapshot and the reload as `audio`.
+//! 17) follows a map's rules on **its own switch**: placed in the map editor
+//! and kept with "Save to project", so the project's copy wins by default
+//! (added only when the project has none, a differing one kept and
+//! summarised). The map switches never touch it — the runbooks run
+//! `--replace-maps` whenever a map changes, and that must not swap a
+//! surveyed speaker layout for the repo's DRAFT starter. `--replace-audio`
+//! replaces it (the project's copy backed up to a temp directory first; an
+//! example with none removes the project's), `--keep-audio` leaves it alone.
+//! It rides the row's snapshot and the reload as `audio`.
 
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -69,7 +73,7 @@ export const LIVE_OVERRIDE_ENV = "LOOM_I_KNOW_THIS_IS_LIVE";
 
 function usage(): never {
   process.stderr.write(
-    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--${LIVE_OVERRIDE}]   (or ${LIVE_OVERRIDE_ENV}=1)\n`,
+    `usage: sync-example <project name | id> [example=trapped-in-the-internet] [--server URL] [--no-reload] [--keep-maps | --replace-maps] [--keep-audio | --replace-audio] [--${LIVE_OVERRIDE}]   (or ${LIVE_OVERRIDE_ENV}=1)\n`,
   );
   process.exit(2);
 }
@@ -202,6 +206,8 @@ export interface SyncOptions {
   reload: boolean;
   override: boolean;
   mapMode: MapSyncMode;
+  /** `audio.json`'s own mode (`--replace-audio` / `--keep-audio`): never the maps'. */
+  audioMode: MapSyncMode;
   positional: string[];
 }
 
@@ -228,7 +234,7 @@ export function planAudioSync(project: Record<string, string>, example: Record<s
   const text = plan.maps[AUDIO_FILE] ?? null;
   if (text !== null && !plan.put.includes(AUDIO_FILE)) {
     const problems = audioProblems(text);
-    if (problems.length > 0) throw new Error(`the project's ${AUDIO_FILE} does not validate — nothing synced (fix it, or --replace-maps / --keep-maps):\n  ${problems.join("\n  ")}`);
+    if (problems.length > 0) throw new Error(`the project's ${AUDIO_FILE} does not validate — nothing synced (fix it, or --replace-audio / --keep-audio):\n  ${problems.join("\n  ")}`);
   }
   return { text, put: plan.put.includes(AUDIO_FILE), kept: plan.kept.includes(AUDIO_FILE), replaced: plan.replaced.includes(AUDIO_FILE) ? (project[AUDIO_FILE] ?? null) : null };
 }
@@ -242,6 +248,7 @@ export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = pr
     reload: true,
     override: env[LIVE_OVERRIDE_ENV] === "1",
     mapMode: "merge",
+    audioMode: "merge",
     positional: [],
   };
   for (let i = 0; i < args.length; i++) {
@@ -250,6 +257,8 @@ export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = pr
     else if (a === "--no-reload") o.reload = false;
     else if (a === "--keep-maps") o.mapMode = "keep";
     else if (a === "--replace-maps") o.mapMode = "replace";
+    else if (a === "--keep-audio") o.audioMode = "keep";
+    else if (a === "--replace-audio") o.audioMode = "replace";
     else if (a === `--${LIVE_OVERRIDE}`) o.override = true;
     else if (a.startsWith("-")) usage();
     else o.positional.push(a);
@@ -259,7 +268,7 @@ export function syncOptions(args: readonly string[], env: NodeJS.ProcessEnv = pr
 
 /** The whole sync; resolves to the process exit code. */
 export async function main(args: readonly string[]): Promise<number> {
-  const { server, reload, override, mapMode, positional } = syncOptions(args);
+  const { server, reload, override, mapMode, audioMode, positional } = syncOptions(args);
   const [projectRef, example = "trapped-in-the-internet"] = positional;
   if (!projectRef) usage();
 
@@ -275,7 +284,8 @@ export async function main(args: readonly string[]): Promise<number> {
     ).rows[0];
     if (project === undefined) throw new Error(`no project named or with id "${projectRef}"`);
 
-    // Maps (and audio.json): the project's copy wins unless --replace-maps (see the header).
+    // Maps (and audio.json): the project's copy wins unless --replace-maps
+    // (--replace-audio for the speakers; see the header).
     const projectMaps: MapFiles = {};
     const projectAudio: Record<string, string> = {};
     for (const r of (await pool.query<{ path: string; content: string }>(`select path, content from project_file where project_id = $1`, [project.id])).rows) {
@@ -302,15 +312,15 @@ export async function main(args: readonly string[]): Promise<number> {
           `     project  ${mapSummary(projectMaps[f]!)}\n     example  ${mapSummary(exampleMaps[f]!)}\n`,
       );
     }
-    // The speakers: merged like a map.
-    const audioPlan = planAudioSync(projectAudio, exampleAudio(example), mapMode);
+    // The speakers: merged like a map, on their own switch (never --replace-maps).
+    const audioPlan = planAudioSync(projectAudio, exampleAudio(example), audioMode);
     const audio = audioPlan.text;
     if (audioPlan.replaced !== null) {
       const dir = mkdtempSync(join(tmpdir(), "loom-sync-audio-"));
       writeFileSync(join(dir, AUDIO_FILE), audioPlan.replaced);
       process.stdout.write(`⚠️  replacing the project's ${AUDIO_FILE} — its copy is in ${dir}\n`);
     }
-    if (audioPlan.kept) process.stdout.write(`⚠️  kept the project's ${AUDIO_FILE} (it differs from the example's — --replace-maps to overwrite it)\n`);
+    if (audioPlan.kept) process.stdout.write(`⚠️  kept the project's ${AUDIO_FILE} (it differs from the example's — --replace-audio to overwrite it)\n`);
     // The facts key: always the example's (generated, never edited in the project).
     const facts = scenarioFactsFile(example);
     if (facts !== null) {

@@ -45,7 +45,7 @@ describe("syncOptions", () => {
 
   it("reads the rest of the line", () => {
     const o = syncOptions(["Trapped", "escape-the-internet", "--server", "http://x:1", "--no-reload", "--replace-maps"], { LOOM_PORT: "7311" });
-    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", positional: ["Trapped", "escape-the-internet"] });
+    expect(o).toEqual({ server: "http://x:1", reload: false, override: false, mapMode: "replace", audioMode: "merge", positional: ["Trapped", "escape-the-internet"] });
     expect(syncOptions([], { LOOM_PORT: "7311" }).server).toBe("http://localhost:7311");
   });
 });
@@ -222,7 +222,14 @@ describe("reloadEvent", () => {
   });
 });
 
-describe("audio.json goes like a map (wave 17)", () => {
+describe("audio.json goes like a map, on its own switch (wave 17)", () => {
+  it("--replace-maps / --keep-maps never touch audio.json; --replace-audio / --keep-audio do", () => {
+    expect(syncOptions(["Trapped", "--replace-maps"], {})).toMatchObject({ mapMode: "replace", audioMode: "merge" });
+    expect(syncOptions(["Trapped", "--keep-maps"], {})).toMatchObject({ mapMode: "keep", audioMode: "merge" });
+    expect(syncOptions(["Trapped", "--replace-audio"], {})).toMatchObject({ mapMode: "merge", audioMode: "replace" });
+    expect(syncOptions(["Trapped", "--keep-audio", "--replace-maps"], {})).toMatchObject({ mapMode: "replace", audioMode: "keep" });
+  });
+
   const A = { "audio.json": '{"version":1}' };
   const B = { "audio.json": '{"version":1,"note":"surveyed"}' };
 
