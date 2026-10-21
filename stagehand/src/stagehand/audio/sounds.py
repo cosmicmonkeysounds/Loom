@@ -7,7 +7,10 @@ alexa player's linear resample (fine for a chime and a voice) would alias
 and dull them — then kept in memory (re-read when the file changes on disk). A name with no file is
 logged once and skipped — never a crash mid-show. Names are matched exactly,
 then case-insensitively; a name that isn't a plain file name (`../x`) is
-refused.
+refused. A real file always wins over a generated placeholder (wave 18b: a
+`.wav` whose header carries the `loom-placeholder` tag, `placeholders.py`),
+so a real `dance_song.aiff` dropped beside the placeholder `dance_song.wav`
+is the one that plays.
 
 The speaker test is a 1.5 s identifying tone — three rising beeps whose
 pitch steps with the output number, so a walk round the house can tell
@@ -28,6 +31,54 @@ log = logging.getLogger("stagehand.audio")
 EXTENSIONS = (".wav", ".aiff", ".aif", ".flac")
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,80}$")
 IDENTIFY_S = 1.5
+#: The tag a generated placeholder carries in its RIFF INFO comment.
+PLACEHOLDER_TAG = "loom-placeholder v1"
+_HEAD = 4096
+#: path → (mtime, size, is a placeholder): a header is read once per change.
+_tagged: dict[str, tuple[float, int, bool]] = {}
+
+
+def is_placeholder(path: str | Path) -> bool:
+    """Does the file's first 4 KB carry the placeholder tag? (cached by mtime)"""
+    p = Path(path)
+    try:
+        st = p.stat()
+    except OSError:
+        return False
+    hit = _tagged.get(str(p))
+    if hit is not None and hit[0] == st.st_mtime and hit[1] == st.st_size:
+        return hit[2]
+    try:
+        with p.open("rb") as f:
+            tagged = PLACEHOLDER_TAG.encode() in f.read(_HEAD)
+    except OSError:
+        return False
+    _tagged[str(p)] = (st.st_mtime, st.st_size, tagged)
+    return tagged
+
+
+def _best(paths: list[Path]) -> Path | None:
+    """The first real file, else the first placeholder."""
+    return next((p for p in paths if not is_placeholder(p)), paths[0] if paths else None)
+
+
+def placeholders_in(directory: str | Path) -> list[str]:
+    """The names (stems) in `directory` that play a placeholder (no real file
+    of that name beside it), sorted — `stagehand check`'s pre-show list."""
+    d = Path(directory)
+    try:
+        entries = sorted(p for p in d.iterdir() if p.suffix.lower() in EXTENSIONS and p.is_file())
+    except OSError:
+        return []
+    stems: dict[str, list[Path]] = {}
+    for p in entries:
+        stems.setdefault(p.stem.lower(), []).append(p)
+    out = []
+    for group in stems.values():
+        best = _best(group)
+        if best is not None and is_placeholder(best):
+            out.append(best.stem)
+    return sorted(out)
 
 
 def _smooth(n: int) -> int:
@@ -102,19 +153,18 @@ class SoundBank:
     def find(self, name: str) -> Path | None:
         if not _SAFE.match(name) or ".." in name:
             return None
-        for ext in EXTENSIONS:
-            p = self.dir / f"{name}{ext}"
-            if p.is_file():
-                return p
+        exact = [p for p in (self.dir / f"{name}{ext}" for ext in EXTENSIONS) if p.is_file()]
+        hit = _best(exact)
+        if hit is not None and not is_placeholder(hit):
+            return hit
         try:
             entries = list(self.dir.iterdir())
         except OSError:
-            return None
+            return hit
         low = name.lower()
-        for p in sorted(entries):
-            if p.suffix.lower() in EXTENSIONS and p.stem.lower() == low and p.is_file():
-                return p
-        return None
+        folded = [p for p in sorted(entries) if p.suffix.lower() in EXTENSIONS and p.stem.lower() == low and p.is_file()]
+        # A real file in another case beats an exact-named placeholder.
+        return _best([*exact, *(p for p in folded if p not in exact)])
 
     def load(self, name: str) -> np.ndarray | None:
         """The sound at the bank's rate, or None (missing / unreadable)."""

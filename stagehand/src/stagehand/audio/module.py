@@ -71,7 +71,7 @@ from .routing import (
     speaker_layout,
     split_targets,
 )
-from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone
+from .sounds import EXTENSIONS, SoundBank, identify_label, identify_tone, placeholders_in
 
 log = logging.getLogger("stagehand.audio")
 
@@ -293,6 +293,10 @@ class AudioRouter:
                 missing = sorted(n for n in names if bank.find(n) is None)
                 if missing:
                     out.append(f"audio: no file for {', '.join(missing)} in {self.cfg.sounds_dir}")
+                # The pre-show gate (wave 18b): a generated placeholder still plays.
+                held = placeholders_in(self.cfg.sounds_dir)
+                if held:
+                    out.append(f"audio: {len(held)} placeholder sound(s) still in sounds_dir — replace them with the real files: {', '.join(held)}")
                 # Every file in the folder, not just the cues: `sound X` plays any name.
                 names |= {p.stem for p in Path(self.cfg.sounds_dir).iterdir() if p.suffix.lower() in EXTENSIONS}
                 off = bank.off_rate(names)
@@ -864,6 +868,7 @@ class AudioRouter:
             "missing": sorted(self.bank.missing) if self.bank is not None else [],
             "announce": self.announce_state(),
             "stops": self.stops_done,
+            "placeholders": placeholders_in(self.cfg.sounds_dir) if self.cfg.play_sounds else [],
             # `device.expect` disagreed with the device at the last open.
             "layout": "moved" if self.engine is not None and self.engine.layout_moved else "ok",
         }
@@ -875,7 +880,7 @@ class AudioRouter:
             log.info(
                 "audio health: %s | audio.json %s (%s) | voices %d | played %d skipped %d | xruns %d | limited %d/%d | peak %.1f dBFS | announce %s%s%s",
                 h["device"] or "closed", h["config"] or "—", h["source"], h["voices"], h["played"], h["skipped"], h["xruns"], h["limited"], h["blocks"], h["peak_db"], h["announce"],
-                " | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "",
+                (" | LAYOUT MOVED (device.expect)" if h["layout"] == "moved" else "") + (f" | {len(h['placeholders'])} placeholder(s)" if h["placeholders"] else ""),
                 f" | no file: {', '.join(h['missing'])}" if h["missing"] else "",
             )
             if self.mqtt is not None:

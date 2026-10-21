@@ -8,3 +8,6 @@ stagehand.yaml
 .stagehand-minds/
 house.yaml
 *.local.yaml
+# the router's sound files (wave 18b): placeholders + the real, partly
+# copyrighted tracks live only on the house Mac; media/sounds.yaml is tracked
+media/sounds/
