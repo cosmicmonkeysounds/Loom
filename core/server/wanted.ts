@@ -35,6 +35,8 @@ export class StoryMarks {
   private readonly captured = new Map<string, number>();
   /** Story ms `Night.ended` first read true, or null. */
   private ended: number | null = null;
+  /** The captured posters already reported as lapsed (`postersLapsed`). */
+  private readonly lapsed = new Set<string>();
 
   /** Forget everything (a new sim: a restart replays from the start). */
   private reset(sim: Sim): void {
@@ -42,6 +44,7 @@ export class StoryMarks {
     this.at = 0;
     this.marked.clear();
     this.captured.clear();
+    this.lapsed.clear();
     this.ended = null;
   }
 
@@ -73,9 +76,26 @@ export class StoryMarks {
         if (this.marked.has(e.person) && !this.captured.has(e.person)) this.captured.set(e.person, now);
       } else if (e.type === "released") {
         this.captured.delete(e.person);
+        this.lapsed.delete(e.person);
       }
     }
     this.at = len;
+  }
+
+  /**
+   * Has a captured poster run out its `CAPTURED_POSTER_MS` since the last
+   * call (story ms `now`)? The board drops it by time, so the booths need a
+   * fresh view then, or an open board keeps it (recheck BN2-FC). True once
+   * per poster.
+   */
+  postersLapsed(now: number): boolean {
+    let any = false;
+    for (const [who, at] of this.captured) {
+      if (now - at <= CAPTURED_POSTER_MS || this.lapsed.has(who)) continue;
+      this.lapsed.add(who);
+      any = true;
+    }
+    return any;
   }
 
   /** Story ms the night first ended, or null (C7). */

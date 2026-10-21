@@ -3652,6 +3652,8 @@ export class EventRuntime {
     } else if (this.pendingTickMs >= 15000) {
       this.flushTick();
     }
+    // A caught poster's minute is up: the booths' boards drop it (BN2-FC).
+    if (this.marks.postersLapsed(this.sim.elapsed())) this.pushSnapshots();
     this.sweepEphemeral();
     this.sweepWallet();
     this.agents.sweep();
