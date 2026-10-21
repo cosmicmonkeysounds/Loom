@@ -83,33 +83,38 @@ export function scenarioFor(moments: readonly ScreenMoment[], night: Pick<Screen
   return n === 1 || n === 2 || n === 3 || n === 4 ? { scenario: n, at: slideAt } : null;
 }
 
+/** The one scripted sentence that carries the round-two number (`beats/pong.loom`). */
+const TALLY_SENTENCE = /confidence that we will defeat the malware is (sixty-one|61|twelve|12)\b/u;
+
 /**
  * The round-two number Trabolta says (`beats/pong.loom` Round Two Tally:
  * sixty-one percent with every fact, else twelve), read off the TV's own
  * voice lines for that beat; null where there are none (a wall terminal,
  * an older server) — the scene then never shows a number it can't know.
+ * Only the scripted sentence counts: the beat also reads the guests'
+ * filings aloud (*Question four. {said_4}*), and a filing may say "12".
  */
 export function tallyNumber(voice: Pick<ScreenVoice, "lines"> | null): 61 | 12 | null {
   if (voice === null) return null;
   for (const l of voice.lines) {
     if (l.beat === null || foldName(l.beat) !== foldName("Round Two Tally")) continue;
-    const s = l.text.toLowerCase();
-    if (/sixty-one|\b61\b/u.test(s)) return 61;
-    if (/\btwelve\b|\b12\b/u.test(s)) return 12;
+    const m = TALLY_SENTENCE.exec(l.text.toLowerCase());
+    if (m === null) continue;
+    return m[1] === "sixty-one" || m[1] === "61" ? 61 : 12;
   }
   return null;
 }
 
 /**
- * The round-two number for the tally scene: the TV's voice lines when this
- * poll carries them, else the night's `collection_complete` (every fact in →
- * 61, else 12: what the beat says). Null with neither (an older server).
- * The voice lines ride one poll only, so the scene latches what it read.
+ * The round-two number for the tally scene: the night's `collection_complete`
+ * first (every fact in → 61, else 12: the very var the beat branches on), else
+ * the scripted sentence in the TV's voice lines. Null with neither (an older
+ * server). The voice lines ride one poll only, so the scene latches what it read.
  */
 export function tallyOf(voice: Pick<ScreenVoice, "lines"> | null, night: Pick<ScreenNight, "collection_complete">): 61 | 12 | null {
-  const said = tallyNumber(voice);
-  if (said !== null) return said;
-  return night.collection_complete === true ? 61 : night.collection_complete === false ? 12 : null;
+  if (night.collection_complete === true) return 61;
+  if (night.collection_complete === false) return 12;
+  return tallyNumber(voice);
 }
 
 /** What `useLatch` holds: the first value seen for a key. */

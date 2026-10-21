@@ -469,8 +469,9 @@ function TruthPongWall(p: SceneProps) {
 //   gauge      after the last page: CONFIDENCE WE WILL DEFEAT THE MALWARE, the
 //              needle hunts, the digits spin
 //   land       (+3.4 s) 61 % (green, confetti) or 12 % (it sinks, static: "sit with
-//              that number"), off the TV's voice lines (latched: they ride one poll)
-//              or the night's `collection_complete`; with neither, TALLY COMPLETE
+//              that number"), off the night's `collection_complete`, else his
+//              scripted sentence in the TV's voice lines (latched: they ride one
+//              poll; never a filing he reads aloud); with neither, TALLY COMPLETE
 //   hold       the number breathes for as long as the slide is up
 // With no `results` (an older server): the tally bar, then the gauge at 5.2 s.
 

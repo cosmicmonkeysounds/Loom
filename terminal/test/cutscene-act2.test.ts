@@ -143,8 +143,8 @@ describe("act 2's scenes draw", () => {
     const q = quiet();
     const tally = SCENES.find((s) => s.id === "round_two_tally")!;
     const withVoice = (text: string): ScreenState => ({ ...stateAt(14_000), voice: { room: "The Desktop", muted: false, head: 1, lines: [{ seq: 1, from: "Trabolta", text, beat: "Round Two Tally" }] } });
-    expect(draw(tally, "tv", 14_000, withVoice("…is sixty-one percent."))).toContain("61%");
-    expect(draw(tally, "tv", 14_000, withVoice("…is twelve percent."))).toContain("12%");
+    expect(draw(tally, "tv", 14_000, withVoice("My confidence that we will defeat the malware is sixty-one percent."))).toContain("61%");
+    expect(draw(tally, "tv", 14_000, withVoice("My confidence that we will defeat the malware is twelve percent."))).toContain("12%");
     const deaf = draw(tally, "tv", 14_000, stateAt(14_000));
     expect(deaf).toContain("TALLY COMPLETE");
     expect(deaf).not.toMatch(/\b(61|12)%/u);
