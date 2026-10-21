@@ -123,3 +123,9 @@ describe("BN2-FF: Clippy's drawer never scrolls the page sideways", () => {
     expect(css).toContain(".cue-bar-drawer-body .cue-act-head { margin: 0 -6px; top: -6px; }");
   });
 });
+
+describe("BN2-FG: the Wanted poster's name is a 44 px target", () => {
+  it("min-height: var(--tap)", () => {
+    expect(readBundledCss()).toContain(".wanted-name { min-height: var(--tap); display: inline-flex; align-items: center; }");
+  });
+});
