@@ -12,6 +12,14 @@ import { SCENES } from "../src/cutscene/registry.ts";
 import {
   ROW_MS,
   STAMP_AT,
+  VERDICT_MS,
+  VERDICT_PLAN,
+  VERDICT_WALL_MS,
+  liarsLine,
+  verdictHasPages,
+  verdictPageAt,
+  verdictTotals,
+  verdictTotalsLine,
   latchResults,
   nextAfter,
   outcomeStamp,
@@ -239,5 +247,71 @@ describe("the tally pages H4–H6, then lands its gauge", () => {
     expect(html).toContain("filed");
     for (const r of fakeResults("read", { ns: [4, 5, 6], rows: 3 }).questions[0]!.rows!) expect(html).not.toContain(r.who);
     expect(text(draw("round_two_tally", "wall", HISTORY_T, { results, night: { collection_complete: true } }))).toContain("61%");
+  });
+});
+
+describe("the verdict (O2, D11)", () => {
+  const beat = (at: number): ScreenMoment[] => [{ seq: 80, at, kind: "beat", name: "The Verdict", who: null, kept: false }];
+
+  it("flips eight tiles with their truth and counts, then the totals and the stamp", () => {
+    const results = fakeResults("verdict");
+    const html = text(draw("verdict", "tv", VERDICT_PLAN.stamp + 800, { results, moments: beat(AT) }));
+    for (let n = 1; n <= 8; n++) expect(html).toContain(`Q${n}`);
+    expect(html).toContain("✔ TRUE");
+    expect(html).toContain("✘ LIE");
+    expect(html).toContain("— NOBODY ANSWERED");
+    expect(html).toContain(verdictTotalsLine(verdictTotals(results.questions)));
+    expect(html).toContain("A LIE IS ON RECORD");
+    const allTrue: ScreenResults = { ...results, questions: results.questions.map((q) => ({ ...q, truth: "true" as const, liars: [] })) };
+    expect(text(draw("verdict", "tv", VERDICT_PLAN.stamp + 800, { results: allTrue }))).toContain("EVERY ANSWERED FACT IS TRUE");
+    // Before its turn a tile shows no truth.
+    const early = text(draw("verdict", "tv", VERDICT_PLAN.tiles + 100, { results }));
+    expect(early).not.toContain("✘ LIE");
+  });
+
+  it("the TV pages every question: its truth, the key answer, who lied (🤖 where his ruling made it)", () => {
+    const results = fakeResults("verdict");
+    const q2 = results.questions[1]!;
+    const page2 = text(draw("verdict", "tv", VERDICT_PLAN.pages + VERDICT_PLAN.pageMs + 800, { results }));
+    expect(page2).toContain("Q2");
+    expect(page2).toContain(`The answer: ${q2.answer}`);
+    expect(page2).toContain(liarsLine(q2));
+    expect(liarsLine(q2)).toMatch(/^Lied: .+ 🤖/u);
+    const page1 = text(draw("verdict", "tv", VERDICT_PLAN.pages + 800, { results }));
+    expect(page1).toContain("Nobody lied.");
+    expect(liarsLine({ liars: [{ who: "A", ruled: false }], liarsMore: 3 })).toBe("Lied: A +3 more");
+    // It holds on the last page to its end, and its length covers all eight.
+    expect(verdictPageAt(VERDICT_MS - 1, 8)).toBe(7);
+    expect(verdictPageAt(VERDICT_MS - 1, 3)).toBe(2);
+    expect(verdictPageAt(VERDICT_PLAN.pages - 1, 8)).toBe(-1);
+    expect(sceneOf("verdict").ms).toBe(VERDICT_MS);
+    expect(VERDICT_MS).toBeGreaterThanOrEqual(VERDICT_PLAN.pages + 8 * VERDICT_PLAN.pageMs);
+    expect(text(draw("verdict", "tv", VERDICT_MS - 100, { results }))).toContain("Q8");
+  });
+
+  it("a wall never shows an answer or a name, even handed the TV's block", () => {
+    const tv = fakeResults("verdict");
+    for (const t of [VERDICT_PLAN.stamp + 800, VERDICT_PLAN.pages + 800, VERDICT_PLAN.pages + 4 * VERDICT_PLAN.pageMs]) {
+      const html = text(draw("verdict", "wall", t, { results: tv }));
+      expect(html).not.toContain("The answer");
+      expect(html).not.toMatch(/Lied:|Nobody lied/u);
+      for (const q of tv.questions) {
+        if (q.answer !== null) expect(html).not.toContain(q.answer);
+        for (const l of q.liars ?? []) expect(html).not.toContain(l.who);
+      }
+    }
+    expect(VERDICT_WALL_MS).toBeLessThan(VERDICT_MS);
+  });
+
+  it("falls back: no results is the old ■ picture; a block with no answers or liars has no pages", () => {
+    const bare = draw("verdict", "tv", 5000, {});
+    expect(bare).toContain("■");
+    expect(bare).toContain("THE VERDICT IS IN");
+    expect(bare).not.toMatch(/TRUE|LIE/u);
+    const old: ScreenResults = { ...fakeResults("verdict"), questions: fakeResults("verdict").questions.map((q) => ({ ...q, answer: null, liars: null })) };
+    expect(verdictHasPages(old.questions)).toBe(false);
+    const html = text(draw("verdict", "tv", VERDICT_PLAN.pages + 800, { results: old }));
+    expect(html).not.toContain("The answer");
+    expect(html).not.toContain("Lied:");
   });
 });

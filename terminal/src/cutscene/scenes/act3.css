@@ -332,3 +332,54 @@
   .tv3-award-kind, .tv3-award-lists, .tv3-award-label { font-size: 4.6vw; }
   .tv3-banish-text, .tv3-rave-title, .tv3-helped-title, .tv3-res-title { font-size: 12vw; }
 }
+
+/* --- the verdict, off the wire (wave 18b) ------------------------------------------------- */
+/* The TV's take sits on the 16:9 fit stage (em = 1/60 of its width, `top` in %); a wall's
+   (`.tv3-vw`) sizes in vmin so it fits any tablet, portrait included. */
+.tv3-v-scales { position: absolute; left: 50%; top: 3%; width: 9em; margin-left: -4.5em; will-change: transform, opacity; }
+.tv3-v-tiles { position: absolute; left: 3em; right: 3em; top: 30%; display: flex; flex-wrap: wrap; justify-content: center; will-change: opacity; }
+.tv3-vt {
+  width: 12em;
+  margin: 0 0.6em 1em;
+  padding: 0.5em 0.6em;
+  font-family: var(--mono);
+  color: #9ad0ff;
+  text-align: center;
+  border: 0.15em solid #2a3a8a;
+  background: rgba(10, 16, 60, 0.8);
+  will-change: transform, opacity;
+}
+.tv3-vt-head { display: flex; justify-content: center; align-items: baseline; font-size: 1.5em; }
+.tv3-vt-head b { font-weight: normal; color: #fff; }
+.tv3-vt-chip { margin-left: 0.5em; padding: 0 0.25em; font-size: 0.6em; color: #ffd23f; border: 0.08em solid #ffd23f; }
+.tv3-vt-truth { margin-top: 0.2em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 1.05em; white-space: nowrap; }
+.tv3-vt-count { margin-top: 0.2em; font-size: 0.8em; color: #c8d4ff; }
+.tv3-vt-bit { margin-top: 0.1em; font-size: 2.4em; line-height: 1; color: #7dffa8; }
+.tv3-vt.ok { border-color: #3ddc84; }
+.tv3-vt.ok .tv3-vt-truth { color: #3ddc84; }
+.tv3-vt.no { border-color: #ff4b4b; background: rgba(60, 8, 12, 0.85); }
+.tv3-vt.no .tv3-vt-truth { color: #ff6b6b; }
+.tv3-vt.skip .tv3-vt-truth { color: #b0b0b0; font-size: 0.8em; }
+.tv3-v-totals { position: absolute; left: 0; right: 0; top: 71%; text-align: center; font-family: var(--mono); font-size: 2em; color: #fff; }
+.tv3-v-stamp { position: absolute; left: 6%; right: 6%; top: 81%; padding: 0.1em 0.2em; text-align: center; font-family: var(--mono); font-size: 2.6em; border: 0.08em solid; will-change: transform, opacity; }
+.tv3-v-stamp.win { color: #ffd23f; border-color: #ffd23f; background: rgba(20, 8, 0, 0.75); }
+.tv3-v-stamp.lose { color: #ff6b6b; border-color: #ff4b4b; background: rgba(30, 0, 4, 0.8); }
+.tv3-vp { position: absolute; left: 4em; right: 4em; top: 20%; padding: 1em 1.4em; background: rgba(10, 16, 60, 0.92); border: 0.15em solid #ffd23f; will-change: transform, opacity; }
+.tv3-vp-head { display: flex; align-items: baseline; font-family: var(--mono); font-size: 2.4em; color: #fff; }
+.tv3-vp-head b { font-weight: normal; }
+.tv3-vp-truth { margin-left: 0.8em; font-family: "Tahoma", sans-serif; font-weight: bold; font-size: 0.8em; }
+.tv3-vp-truth.ok { color: #3ddc84; }
+.tv3-vp-truth.no { color: #ff6b6b; }
+.tv3-vp-truth.skip { color: #b0b0b0; }
+.tv3-vp-of { margin-left: auto; font-size: 0.6em; color: #9ad0ff; }
+.tv3-vp-answer { margin-top: 0.7em; font-family: "Tahoma", sans-serif; font-size: 1.8em; color: #ffd23f; }
+.tv3-vp-answer span { color: #c8d4ff; font-size: 0.7em; margin-right: 0.3em; }
+.tv3-vp-liars { margin-top: 0.8em; font-family: var(--mono); font-size: 1.5em; line-height: 1.3; color: #c8d4ff; }
+.tv3-vp-liars.some { color: #ff9b9b; }
+/* a wall: vmin, any aspect */
+.tv3-vw .tv3-v-scales { width: 18vmin; margin-left: -9vmin; top: 3%; }
+.tv3-vw .tv3-v-tiles { left: 2%; right: 2%; top: 24%; }
+.tv3-vw .tv3-vt { width: 20vmin; margin: 0 1vmin 1.6vmin; font-size: 2.2vmin; }
+.tv3-vw .tv3-v-totals { font-size: 4vmin; top: 70%; }
+.tv3-vw .tv3-v-stamp { font-size: 5vmin; top: 80%; }
+.tv3-vt.skip .tv3-vt-truth { white-space: normal; line-height: 1.1; }
