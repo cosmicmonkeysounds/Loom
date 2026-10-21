@@ -23,7 +23,7 @@ import { lowerRung, noticeKey } from "../../../core/src/delivery.ts";
 import { retractedPinSeqs } from "../pins.ts";
 import { guestLineToBooth } from "../stream/badges.ts";
 import type { AlertLevel, ChatMessage, MomentClass, ObjectiveView } from "../types.ts";
-import { LOBBY, namedDm, type DmRoom, type GoTarget, type LiveCard } from "./exits.ts";
+import type { GoTarget } from "./exits.ts";
 
 export { namedDm, type DmRoom, type LiveCard } from "./exits.ts";
 
@@ -380,27 +380,6 @@ export function loudObjectives(objectives: readonly ObjectiveView[] | undefined,
 export function momentExit(m: Pick<Moment, "pass" | "channel">, can: { room: boolean; pass: boolean }): "pass" | "room" | null {
   if (m.pass === true) return can.pass ? "pass" : null;
   return m.channel !== null && can.room ? "room" : null;
-}
-
-/**
- * The room a moment's room exit opens (pure), or null for none — the
- * pre-wave-18 path, kept for an app that passes no `go` (`exits.ts`
- * `exitsOf` is the guest's now):
- * - a moment about a live card ("📝 Last chance: file your facts…" — its
- *   leading glyph is the card's) goes to the room the newest such card waits in;
- * - an announcement that says "check your messages" opens the DM it names;
- * - else the moment's own room — never the lobby (the far-away Chat log,
- *   G2) and never the room already open on screen.
- */
-export function exitRoomFor(
-  m: Pick<Moment, "channel" | "text" | "kind">,
-  ctx: { open: string | null; cards: readonly LiveCard[]; dms?: readonly DmRoom[] },
-): string | null {
-  const glyph = m.kind === "card" ? "•" : noticeKey(m.text);
-  let card: LiveCard | undefined;
-  if (glyph !== "•") for (const c of ctx.cards) if (c.glyph === glyph && (card === undefined || c.seq > card.seq)) card = c;
-  const room = card?.channel ?? namedDm(m.text, ctx.dms ?? []) ?? m.channel;
-  return room === null || room === LOBBY || room === ctx.open ? null : room;
 }
 
 // --- the queue ----------------------------------------------------------------

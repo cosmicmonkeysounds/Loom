@@ -32,7 +32,7 @@ import { redeemErrorText, shareTargets } from "../codex.ts";
 import { activePins, activeTakeover } from "../pins.ts";
 import { Takeover } from "../takeover.tsx";
 import { LinkLanding, ScanSheet, landingLink, type GuestScan } from "../guest-scan.tsx";
-import { MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
+import { BellButton, MomentsLayer, MomentsProvider, type MomentsInput } from "../moments/provider.tsx";
 import { GuestRegister, PictureChanger } from "./register.tsx";
 import { FullPass } from "../chrome/pass.tsx";
 import { PeopleSheet } from "./sheets.tsx";
@@ -44,16 +44,13 @@ import { Taskbar, TrayItem } from "../chrome/taskbar.tsx";
 import { Icon, IconTitle } from "../chrome/icons.tsx";
 import { actLine, titleFallback } from "../chrome/title-bar.tsx";
 import { useArmButtons } from "../arm.ts";
-import { exitRoomFor } from "../moments/model.ts";
-import { AlertsBalloon, AlertsSheet, BalanceTray, BellButton, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
-import type { ExitContext, Nav } from "./moments-bridge.ts";
+import { AlertsBalloon, AlertsSheet, BalanceTray, GuestStartHeader, MeButton, NowBar, guestStartItems, guestTaskbarButtons, liveCardsOf, objectiveButton, pushOffered, useStartWake, whereLine } from "./frame.tsx";
+import type { ExitContext, Nav } from "../moments/exits.ts";
 import { pressedWindow, questRootsOf, useGuestNav, type GuestWindow } from "./nav.ts";
 import { LazyMission } from "./mission-lazy.tsx";
 import { ChatsWindow } from "./chats.tsx";
 import { LazyMeSheet as MeSheet } from "./me-lazy.tsx";
-import { useGuestNotifications } from "./notifications-state.ts";
 import { LazyNotificationsWindow } from "./notifications-lazy.tsx";
-import { TheirBell, TheirNotificationsWindow } from "./moments-ui.tsx";
 import { rowClockOf } from "./show-time.ts";
 import { extOf, hasSidesOrCrew } from "./wire.ts";
 import { SidesContext } from "../sides/context.ts";
@@ -206,7 +203,6 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     sides: (ext.sides ?? []).length > 0,
     actionLabels: new Map(interactions.map((i) => [i.id, i.label])),
   });
-  const notifs = useGuestNotifications({ messages: s.messages, me: s.me, storage: host.storage });
   const arm = useArmButtons();
   const archived = ext.archived;
   const chats = useMemo(
@@ -310,7 +306,9 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // Every exit's `go`: none while on rails in the cutscene; once the story
   // has moved them on (Continue is up) it steps into the app first.
   const go: ((n: Nav) => void) | undefined = !cut.showing
-    ? nav.go
+    ? // A Notifications row's exit lands as if taken from Mission: a room
+      // opened from the bin returns to Mission on ‹.
+      (n: Nav) => nav.go(n, nav.window === "notifications" ? "mission" : undefined)
     : cut.over
       ? (n: Nav) => {
           cut.leave();
@@ -323,7 +321,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   // main frame, so the queue, its holds and the beat's blue screen carry
   // across the cutscene → app switch. Wave 18: the moments lane's exits land
   // through `go` (`exitContext` says what the guest lists).
-  const moments: MomentsInput & { go?: (n: Nav) => void; exitContext?: () => ExitContext; widgets?: typeof widgets; openNotifications?: () => void } = {
+  const moments: MomentsInput = {
     role: "guest",
     me: s.me.id,
     session: s.me.token,
@@ -342,12 +340,6 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
     // A loud objective flashes the NOW bar (below the modal rungs) — not on
     // the cutscene's stage, which has no NOW bar: there it is the banner.
     nowBar: !cut.showing,
-    // The old rungs' one exit: a live card's room, else the moment's own —
-    // never the lobby (G2), never the room already open.
-    exitRoom: (m) => {
-      const room = exitRoomFor(m, { open: t.activeThreadRoot === null ? t.activeId : null, cards, dms: exitContext().dms });
-      return room === "lobby" ? null : room;
-    },
     ...(go !== undefined ? { go } : {}),
     exitContext: () => exitContext(),
     // The big rung renders a card inside itself through the same answer path.
@@ -479,22 +471,10 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
   const peopleHere = (here?.people ?? []).filter((p) => p.id !== meId).length;
   const sidesOpen = hasSidesOrCrew(st);
   const windowBody =
-    nav.window === "notifications" && TheirNotificationsWindow !== null ? (
-      <TheirNotificationsWindow onClose={() => nav.go({ to: "mission" })} timeOf={rowClockOf(st as unknown as { clock?: number } & Record<string, unknown>)} />
-    ) : nav.window === "notifications" ? (
-      <LazyNotificationsWindow
-        messages={s.messages}
-        me={{ id: meId, name: meName }}
-        phase={st.night?.phase ?? null}
-        deleted={notifs.deleted}
-        mark={notifs.mark}
-        now={st.clock ?? 0}
-        exitContext={() => exitContext("mission")}
-        onGo={(n) => nav.go(n, "mission")}
-        remove={notifs.remove}
-        markRead={notifs.markRead}
-        view={st}
-      />
+    nav.window === "notifications" ? (
+      <div className="screen notifications">
+        <LazyNotificationsWindow onClose={() => nav.go({ to: "mission" })} timeOf={rowClockOf(st)} />
+      </div>
     ) : nav.window === "chats" ? (
       <ChatsWindow chats={chats} activeId={t.activeId} meId={meId} onOpen={(id) => nav.openRoom(id, "chats")} />
     ) : (
@@ -591,15 +571,7 @@ export function GuestApp({ onLeave }: { onLeave: () => void }) {
             paused={st.paused === true}
             act={onMission ? actLine(st.night?.act, storyTitle) : undefined}
             lead={<MeButton name={meName} onOpen={() => nav.go({ to: "me" })} />}
-            trail={
-              TheirBell !== null ? (
-                <span className="title-bar-bell-slot" data-tour="bell">
-                  <TheirBell onOpen={() => nav.go({ to: "notifications" })} />
-                </span>
-              ) : (
-                <BellButton unread={notifs.unread} onOpen={() => nav.go({ to: "notifications" })} />
-              )
-            }
+            trail={<BellButton className="title-bar-bell" onOpen={() => nav.go({ to: "notifications" })} />}
           />
           {/* One strip above the window: the guest's own pin folds a sticky into its "+n". */}
           <MomentsAndPins pins={pins} me={s.me.id} />

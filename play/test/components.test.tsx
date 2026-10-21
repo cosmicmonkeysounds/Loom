@@ -12,7 +12,7 @@ import { Taskbar, TrayItem } from "../src/chrome/taskbar.tsx";
 import { TitleBar } from "../src/chrome/title-bar.tsx";
 import { HostDock } from "../src/host/dock.tsx";
 import { useHostView } from "../src/host/client.ts";
-import { MissedTray, MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
+import { MomentsLayer, MomentsProvider, useMoments, type MomentsInput } from "../src/moments/provider.tsx";
 import type { ObjectiveView } from "../src/types.ts";
 import { ObjectiveCard, checkCount } from "../src/ui/objective.tsx";
 
@@ -157,7 +157,6 @@ describe("the moments layer (mounted in Stage A, filled by the moments lane)", (
   it("nothing is missed yet; the level reads the view, sticky by default", () => {
     expect(html(createElement(MomentsProvider, { ...input(null), children: createElement(Probe) }))).toBe("<i>dialog 0</i>");
     expect(html(createElement(Probe))).toBe("<i>sticky 0</i>");
-    expect(html(createElement(MissedTray))).toBe("");
   });
 });
 

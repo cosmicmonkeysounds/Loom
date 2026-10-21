@@ -61,6 +61,9 @@ export interface DmRoom {
   last: number;
 }
 
+/** The guest app's three windows (`guest/nav.ts`). */
+export type GuestWindowId = "mission" | "chats" | "notifications";
+
 /** What the guest app knows when it resolves exits (`guest/nav.ts` `exitContext()`). */
 export interface ExitContext {
   /** Room ids the guest lists (`t.list`). */
@@ -69,7 +72,7 @@ export interface ExitContext {
   titles: ReadonlyMap<string, string>;
   /** The room on screen (null when none). */
   open: string | null;
-  window: "mission" | "chats" | "notifications";
+  window: GuestWindowId;
   cards: readonly LiveCard[];
   dms: readonly DmRoom[];
   /** Live guest INTERACTION ids. */

@@ -9,7 +9,7 @@ import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "../rooms/spaces.ts";
 import { guestDot } from "../rooms/chats.ts";
 import type { Channel, CountdownSummary, Decision, GuestView, ObjectiveView } from "../types.ts";
 import { widgetLabel } from "../widgets.tsx";
-import type { Nav } from "./moments-bridge.ts";
+import type { Nav } from "../moments/exits.ts";
 /** Where a decision docks when it would have docked in the lobby (= `session/guest.ts` MISSION_DOCK). */
 export const MISSION_DOCK_ID = "mission";
 import { evergreenFlag, extOf, type InviteView } from "./wire.ts";

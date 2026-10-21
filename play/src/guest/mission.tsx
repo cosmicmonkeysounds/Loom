@@ -9,7 +9,7 @@ import { countdownItems, useStoryNow } from "../countdown.tsx";
 import { ObjectiveCard } from "../ui/objective.tsx";
 import { BlockBar } from "../ui/progress.tsx";
 import type { CountdownSummary } from "../types.ts";
-import type { Nav } from "./moments-bridge.ts";
+import type { Nav } from "../moments/exits.ts";
 import { countdownText, missionOf, type MissionInput, type MissionModel, type MissionTile, type WhereRow } from "./mission-model.ts";
 import type { InviteView } from "./wire.ts";
 

@@ -402,10 +402,6 @@ button.tray-item:focus-visible { outline: 1px dotted var(--ink); outline-offset:
 }
 .title-bar-me:focus-visible, .title-bar-bell:focus-visible { outline: 1px dotted var(--title-ink); outline-offset: -3px; }
 .title-bar-me .pavatar { width: 32px; height: 32px; }
-.title-bar-count {
-  position: absolute; top: 2px; right: 0; min-width: 18px; padding: 0 4px; border-radius: 9px;
-  background: var(--highlight); color: var(--black); font: 700 11px/16px var(--ui-font); text-align: center;
-}
 
 /* ── the taskbar's windows: icon over word, pressed = on screen ── */
 .taskbar-btn.stacked {
@@ -508,30 +504,8 @@ button.mission-where:focus-visible { outline: 1px dotted var(--ink); outline-off
 .chats-section .space-title { letter-spacing: 0.6px; }
 .chat-log-avatar.chat-log-avatar { background: var(--face); color: var(--ink); }
 
-/* ── the Notifications bin ── */
+/* ── the Notifications bin (the window is the moments lane's) ── */
 .notifications { display: flex; flex-direction: column; min-height: 0; padding: 8px; background: var(--face); }
-.notif-window { flex: 1 1 auto; min-height: 0; }
-.notif-bar { display: flex; align-items: center; gap: 8px; padding: 4px 6px; min-height: 52px; }
-.notif-count { margin-left: auto; color: var(--dim-ink); font-size: 13px; }
-.notif-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
-.notif { display: flex; flex-direction: column; gap: 4px; padding: 8px 8px; border-top: 1px solid var(--line); }
-.notif-head { display: flex; align-items: baseline; gap: 6px; }
-.notif-dot { flex: 0 0 12px; color: var(--signal); font-size: 12px; }
-.notif-glyph { flex: 0 0 auto; }
-.notif-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.notif.unread .notif-title { font-weight: 700; }
-.notif-inuse { font: 700 11px var(--ui-font); color: var(--bad); }
-.notif-time { flex: 0 0 auto; color: var(--dim-ink); font-size: 12px; font-variant-numeric: tabular-nums; }
-.notif-sub { padding-left: 18px; color: var(--dim-ink); font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.notif-foot { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 18px; }
-.notif-exit { font-weight: 700; }
-.notif-x { margin-left: auto; }
-.notif-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; text-align: center; color: var(--dim-ink); }
-.gag-say { margin: 0 0 10px; }
-.gag-row { display: flex; justify-content: flex-end; gap: 6px; }
-.gag-deleting { display: flex; flex-direction: column; gap: 8px; }
-.gag-strip { font-size: 22px; }
-.gag-file { overflow-wrap: anywhere; }
 
 /* ── the block bar ── */
 .block-bar { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; font-size: 13px; }

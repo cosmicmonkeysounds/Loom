@@ -19,8 +19,8 @@ import { useTyping } from "../typing.ts";
 import type { WidgetResult } from "../widgets.tsx";
 import { buildGuestChannels, withAgents } from "./channels.ts";
 import { NO_ANSWERS, registerBody, tokenDead, useLandingBrand, usePerSession, useTheme, type ResolvedCode } from "./shared.ts";
-import { roomFromMessage, roomFromSearch, withoutRoom } from "../room.ts";
-import { navFromSearch, type Nav } from "../guest/moments-bridge.ts";
+import { navFromSearch, roomFromMessage, roomFromSearch, withoutRoom } from "../room.ts";
+import type { Nav } from "../moments/exits.ts";
 import { guestStreamHandlers } from "./stream-handlers.ts";
 
 interface GuestId {

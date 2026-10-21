@@ -22,8 +22,6 @@
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_ALERT_LEVEL } from "../../../core/src/delivery.ts";
 import { playChime, useVisible, vibrate, type Alert, type Alerts } from "../alerts.ts";
-import { Icon } from "../chrome/icons.tsx";
-import { TrayItem } from "../chrome/taskbar.tsx";
 import { usePlayHost } from "../host.ts";
 import { retractedPinSeqs } from "../pins.ts";
 import type { WidgetHook } from "../stream/bubble.tsx";
@@ -845,21 +843,6 @@ export function BellButton({ onOpen, className }: { onOpen?: () => void; classNa
       {n > 0 && <span className="moments-bell-count">{n > 9 ? "9+" : n}</span>}
     </button>
   );
-}
-
-/**
- * The taskbar tray's bell (the pre-wave-18 missed tray, kept for the apps
- * that still mount it): the unread count; a tap opens Notifications when the
- * app has them (`openNotifications`), else (a booth) brings the missed
- * moments back. Null when there is nothing.
- */
-export function MissedTray() {
-  const e = useContext(EngineContext);
-  const { missed, replay } = useMoments();
-  if (missed === 0) return null;
-  const open = e?.input.openNotifications;
-  const label = missed === 1 ? "1 unread moment — show it" : `${missed} unread moments — show them`;
-  return <TrayItem icon={<Icon name="bell" />} text={missed > 9 ? "9+" : String(missed)} title={label} tone="alarm" onClick={open ?? replay} />;
 }
 
 /** A busy surface (the scanner, a guest card, the host drawer, the

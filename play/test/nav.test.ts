@@ -5,8 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { keepsRoom, planGo, pressedWindow, questRootsOf, taskbarTap, type GoContext } from "../src/guest/nav.ts";
-import { localNavFromSearch } from "../src/guest/moments-bridge.ts";
-import { localNavOfTarget } from "../src/guest/notification-rows.ts";
+import { navFromSearch, navOfTarget } from "../src/moments/exits.ts";
 import type { ChatMessage } from "../src/types.ts";
 
 const ctx = (o: Partial<GoContext> = {}): GoContext => ({
@@ -102,26 +101,26 @@ describe("a quest's thread root", () => {
 describe("C2 targets → navs, and push links (§6.2, §6.4)", () => {
   const c = { listed: new Set(["loc:The Desktop", "dm:Trabolta", "codex"]), actions: new Set(["bathroom_mode"]), sides: false };
   it("maps every target kind", () => {
-    expect(localNavOfTarget({ kind: "room", id: "loc:The Desktop", label: "" }, c)).toEqual({ to: "room", id: "loc:The Desktop" });
-    expect(localNavOfTarget({ kind: "dm", id: "dm:Trabolta", label: "" }, c)).toEqual({ to: "room", id: "dm:Trabolta" });
-    expect(localNavOfTarget({ kind: "room", id: "lobby", label: "" }, c)).toEqual({ to: "mission" });
-    expect(localNavOfTarget({ kind: "room", id: "loc:Nowhere", label: "" }, c)).toBeNull();
-    for (const kind of ["pass", "scan", "chats", "mission", "notifications", "wallet", "me"] as const) expect(localNavOfTarget({ kind, label: "" }, c)).toEqual({ to: kind });
-    expect(localNavOfTarget({ kind: "sides", label: "" }, c)).toBeNull();
-    expect(localNavOfTarget({ kind: "sides", label: "" }, { ...c, sides: true })).toEqual({ to: "sides" });
-    expect(localNavOfTarget({ kind: "codex", entry: "x", label: "" }, c)).toEqual({ to: "codex", entry: "x" });
-    expect(localNavOfTarget({ kind: "quests", quest: "q", label: "" }, c)).toEqual({ to: "quests", quest: "q" });
-    expect(localNavOfTarget({ kind: "act", id: "bathroom_mode", label: "" }, c)).toEqual({ to: "act", id: "bathroom_mode" });
-    expect(localNavOfTarget({ kind: "act", id: "nope", label: "" }, c)).toBeNull();
+    expect(navOfTarget({ kind: "room", id: "loc:The Desktop", label: "" }, c)).toEqual({ to: "room", id: "loc:The Desktop" });
+    expect(navOfTarget({ kind: "dm", id: "dm:Trabolta", label: "" }, c)).toEqual({ to: "room", id: "dm:Trabolta" });
+    expect(navOfTarget({ kind: "room", id: "lobby", label: "" }, c)).toEqual({ to: "mission" });
+    expect(navOfTarget({ kind: "room", id: "loc:Nowhere", label: "" }, c)).toBeNull();
+    for (const kind of ["pass", "scan", "chats", "mission", "notifications", "wallet", "me"] as const) expect(navOfTarget({ kind, label: "" }, c)).toEqual({ to: kind });
+    expect(navOfTarget({ kind: "sides", label: "" }, c)).toBeNull();
+    expect(navOfTarget({ kind: "sides", label: "" }, { ...c, sides: true })).toEqual({ to: "sides" });
+    expect(navOfTarget({ kind: "codex", entry: "x", label: "" }, c)).toEqual({ to: "codex", entry: "x" });
+    expect(navOfTarget({ kind: "quests", quest: "q", label: "" }, c)).toEqual({ to: "quests", quest: "q" });
+    expect(navOfTarget({ kind: "act", id: "bathroom_mode", label: "" }, c)).toEqual({ to: "act", id: "bathroom_mode" });
+    expect(navOfTarget({ kind: "act", id: "nope", label: "" }, c)).toBeNull();
   });
   it("?room=lobby is Mission; a pinned room is itself; an unlisted room is Mission", () => {
     const listed = ["loc:The Desktop", "codex", "quests", "wallet"];
-    expect(localNavFromSearch("?room=lobby", listed)).toEqual({ to: "mission" });
-    expect(localNavFromSearch("?room=codex", listed)).toEqual({ to: "codex" });
-    expect(localNavFromSearch("?room=quests", listed)).toEqual({ to: "quests" });
-    expect(localNavFromSearch("?room=wallet", listed)).toEqual({ to: "wallet" });
-    expect(localNavFromSearch("?room=loc%3AThe%20Desktop", listed)).toEqual({ to: "room", id: "loc:The Desktop" });
-    expect(localNavFromSearch("?room=dm%3AClippy", listed)).toEqual({ to: "mission" });
-    expect(localNavFromSearch("?code=X", listed)).toBeNull();
+    expect(navFromSearch("?room=lobby", listed)).toEqual({ to: "mission" });
+    expect(navFromSearch("?room=codex", listed)).toEqual({ to: "codex" });
+    expect(navFromSearch("?room=quests", listed)).toEqual({ to: "quests" });
+    expect(navFromSearch("?room=wallet", listed)).toEqual({ to: "wallet" });
+    expect(navFromSearch("?room=loc%3AThe%20Desktop", listed)).toEqual({ to: "room", id: "loc:The Desktop" });
+    expect(navFromSearch("?room=dm%3AClippy", listed)).toEqual({ to: "mission" });
+    expect(navFromSearch("?code=X", listed)).toBeNull();
   });
 });

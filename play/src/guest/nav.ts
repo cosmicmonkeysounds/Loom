@@ -10,7 +10,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { Threads } from "../rooms/threads-state.ts";
 import { CODEX_ROOM, QUEST_LOG, WALLET_ROOM } from "../rooms/spaces.ts";
 import type { ChatMessage } from "../types.ts";
-import type { GuestWindowId, Nav } from "./moments-bridge.ts";
+import type { GuestWindowId, Nav } from "../moments/exits.ts";
 
 export type GuestWindow = GuestWindowId;
 export type GuestOverlay = "pass" | "scan" | "me" | "sides";

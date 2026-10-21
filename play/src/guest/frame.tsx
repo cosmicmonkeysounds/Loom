@@ -59,24 +59,8 @@ export function MeButton({ name, onOpen }: { name: string; onOpen: () => void })
   );
 }
 
-/** "Notifications, 3 new" — the bell's name. */
-export function bellLabel(n: number): string {
-  return n > 0 ? `Notifications, ${n} new` : "Notifications";
-}
-
-/** The top bar's right slot: the Recycle-Bin bell → Notifications. Empty
- *  bin at 0, paper sticking out (and the count, 9+ above nine) past it. */
-export function BellButton({ unread, onOpen }: { unread: number; onOpen: () => void }) {
-  return (
-    <button type="button" className="title-bar-bell" data-tour="bell" aria-label={bellLabel(unread)} title="Notifications" onClick={onOpen}>
-      <Icon name={unread > 0 ? "bin-full" : "bin-empty"} size={24} />
-      {unread > 0 && <span className="title-bar-count">{unread > 9 ? "9+" : unread}</span>}
-    </button>
-  );
-}
-
 /** The live cards waiting on the guest, room by room (the tray's own rule),
- *  for a moment's "Take me there" (`exitRoomFor`). */
+ *  for a moment's exits (`moments/exits.ts` `exitsOf`). */
 export function liveCardsOf(list: readonly Channel[], answered: ReadonlyMap<number, WidgetResult>): LiveCard[] {
   const out: LiveCard[] = [];
   for (const c of list) {

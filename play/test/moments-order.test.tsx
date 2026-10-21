@@ -8,7 +8,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { EMPTY_MOMENTS, exitRoomFor, missedCount, momentsReducer, priorityOf, surfacesOf, type Moment, type MomentsAction, type MomentsState } from "../src/moments/model.ts";
+import { EMPTY_MOMENTS, missedCount, momentsReducer, priorityOf, surfacesOf, type Moment, type MomentsAction, type MomentsState } from "../src/moments/model.ts";
 import { BlueScreen, MomentDialog, StickyBanner, iconOf, stickyLead } from "../src/moments/surfaces.tsx";
 import type { AlertLevel } from "../src/types.ts";
 import { readBundledCss } from "./css.ts";
@@ -172,39 +172,6 @@ describe("the blue screen under plain", () => {
     const w95 = renderToStaticMarkup(createElement(BlueScreen, { q: q(m, "bsod"), index: 1, total: 1, exits: [], onExit: noop, onDismiss: noop, win95: true }));
     expect(w95).toContain("fatal exception 0E");
     expect(w95).toContain("Press any key to continue");
-  });
-});
-
-describe("Take me there", () => {
-  const cards = [{ glyph: "📝", channel: "dm:Trabolta", seq: 40 }, { glyph: "📊", channel: "dm:Trabolta", seq: 41 }];
-  it("never to the room already open", () => {
-    expect(exitRoomFor(moment(1, { channel: "loc:The Desktop", text: "ALL PROGRAMS: to the Desktop." }), { open: "loc:The Desktop", cards: [] })).toBeNull();
-    expect(exitRoomFor(moment(1, { channel: "loc:The Desktop", text: "ALL PROGRAMS: to the Desktop." }), { open: null, cards: [] })).toBe("loc:The Desktop");
-  });
-
-  it("a moment about a live card goes to the card's room; never the lobby it was posted in (G2)", () => {
-    const m = moment(2, { channel: "lobby", text: "📝 Last chance: file your round-one facts with Trabolta." });
-    expect(exitRoomFor(m, { open: null, cards })).toBe("dm:Trabolta");
-    expect(exitRoomFor(m, { open: "dm:Trabolta", cards })).toBeNull(); // already at the card
-    expect(exitRoomFor(m, { open: null, cards: [] })).toBeNull(); // no such card: never the lobby
-    expect(exitRoomFor(moment(3, { channel: "lobby", text: "No glyph here." }), { open: null, cards })).toBeNull();
-  });
-
-  it("an announcement that says 'check your messages' opens the DM it names, else the DM that heard last", () => {
-    const dms = [
-      { id: "dm:Trabolta", title: "Trabolta", last: 90 },
-      { id: "dm:Truther_Download", title: "Truther Download", last: 88 },
-      { id: "dm:Clippy", title: "Clippy", last: 12 },
-    ];
-    const truther = moment(4, { channel: "lobby", text: "📥 TRUTHER DOWNLOAD received. Check your messages. # truthcoin-exchange is open." });
-    expect(exitRoomFor(truther, { open: null, cards: [], dms })).toBe("dm:Truther_Download");
-    expect(exitRoomFor(truther, { open: "dm:Truther_Download", cards: [], dms })).toBeNull();
-    // Names no DM: the one that heard last.
-    expect(exitRoomFor(moment(5, { channel: "lobby", text: "Something arrived. Check your messages." }), { open: null, cards: [], dms })).toBe("dm:Trabolta");
-    // Only a mention, no "check your messages": no room (never the lobby).
-    expect(exitRoomFor(moment(6, { channel: "lobby", text: "📊 THE TRUST CHART. Trabolta is ranking every program on the TV." }), { open: null, cards: [], dms })).toBeNull();
-    // A room's own moment that says it: the DM it names.
-    expect(exitRoomFor(moment(7, { channel: "loc:The Desktop", text: "Check your messages, Trabolta says." }), { open: null, cards: [], dms })).toBe("dm:Trabolta");
   });
 });
 

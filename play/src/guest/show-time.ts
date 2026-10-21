@@ -11,7 +11,7 @@ export function showClockText(): string {
 }
 
 /** `(at) → "9:41 PM"` for a view, or the empty clock. */
-export function rowClockOf(view: { clock?: number } & Record<string, unknown>): (at: number) => string {
+export function rowClockOf(view: Parameters<typeof showClockOf>[0] & { clock?: number }): (at: number) => string {
   const sc = showClockOf(view);
   const now = typeof view.clock === "number" ? view.clock : null;
   if (sc === null || now === null) return showClockText;

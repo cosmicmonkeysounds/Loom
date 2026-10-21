@@ -14,7 +14,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Taskbar } from "../src/chrome/taskbar.tsx";
 import { TitleBar } from "../src/chrome/title-bar.tsx";
-import { BellButton, MeButton, guestTaskbarButtons } from "../src/guest/frame.tsx";
+import { MeButton, guestTaskbarButtons } from "../src/guest/frame.tsx";
+import { BellButton } from "../src/moments/provider.tsx";
 
 const WALLET: WalletView = { name: "Truthcoin", balance: 100, escrowed: 0, maxTransfer: 50, transfers: [], requests: [], offers: [] };
 import { WIDGETS } from "../src/widgets.tsx";
@@ -74,7 +75,7 @@ describe("the tutorial", () => {
     const tb = guestTaskbarButtons({ now, pressed: "mission", chatsDot: false, missionNew: false, mission: () => {}, chats: () => {}, pass: () => {}, scan: () => {} });
     const html =
       renderToStaticMarkup(
-        createElement(TitleBar, { objectives: [now], fallback: "Lobby", onOpen: () => {}, lead: createElement(MeButton, { name: "Me", onOpen: () => {} }), trail: createElement(BellButton, { unread: 2, onOpen: () => {} }) }),
+        createElement(TitleBar, { objectives: [now], fallback: "Lobby", onOpen: () => {}, lead: createElement(MeButton, { name: "Me", onOpen: () => {} }), trail: createElement(BellButton, { onOpen: () => {} }) }),
       ) + renderToStaticMarkup(createElement(Taskbar, { start: [], buttons: tb }));
     const rendered = new Set([...html.matchAll(/data-tour="([^"]+)"/gu)].map((m) => m[1]!));
     for (const a of GUEST_TOUR_ANCHORS) expect(rendered, a).toContain(a);
