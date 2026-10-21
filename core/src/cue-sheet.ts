@@ -64,6 +64,17 @@ export interface CueMarks {
   presses?: number;
   /** The cue the newest taken press fired (an aside included), or null. */
   pressed?: string | null;
+  /** Who is calling the show (wave 18, C8: `POST /api/mod/caller`), memory
+   *  only — a claim, never a lock. Null / absent = nobody claimed it. */
+  caller?: CueCaller | null;
+  /** The cue on deck after NEXT (the host view, C8), or null. */
+  then?: string | null;
+}
+
+/** The show's caller claim (C8): who said "I'm calling it", and when (ms). */
+export interface CueCaller {
+  name: string;
+  at: number;
 }
 
 /** One world row (`ModView.world`). */
