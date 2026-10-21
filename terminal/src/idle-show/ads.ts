@@ -95,9 +95,9 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-free-email", skin: "win98", art: "mail", title: "FREE E-MAIL FOR LIFE", body: "Get yourname@house.net today. Check it from any computer in the house. Every computer is this house.", button: "Sign up" },
   { id: "ad-forecast", skin: "classified", art: "cloud", title: "TONIGHT'S FORECAST", body: "100% chance of popups, clearing toward midnight. Light flicker in the evening. Bring a towel.", button: "More weather" },
   { id: "ad-optical-drive", skin: "lottery", art: "cd", kicker: "INSERT DISC", title: "1,000 FREE HOURS ON CD-ROM", body: "Find the disc in The Optical Drive, by the front door. Coasters also accepted.", button: "Eject" },
-  { id: "ad-cloud", skin: "y2k", art: "cloud", title: "THE CLOUD — NOW WITH REAL WEATHER", body: "Fresh air, 100% uptime, a tunnel to the tent. The backyard is open for business.", button: "Upload yourself" },
+  { id: "ad-cloud", skin: "y2k", art: "cloud", title: "THE CLOUD — NOW WITH REAL WEATHER", body: "Fresh air, 100% uptime, a tunnel to the tent. The backyard is open for business.", button: "Upload yourself", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-the-tube", skin: "classified", art: "map", title: "RIDE THE TUBE", body: "Every hall and both stairs, in one convenient tube. Mind the gap. Mind the ducks.", button: "Plan a trip" },
-  { id: "ad-steam-room", skin: "banner", art: "dice", kicker: "MAIN FLOOR", title: "THE STEAM ROOM: GAMES GAMES GAMES", body: "Board games, card games and games of chance. Losing is a feature.", button: "Play now" },
+  { id: "ad-steam-room", skin: "banner", art: "dice", kicker: "MAIN FLOOR", title: "THE STEAM ROOM: GAMES GAMES GAMES", body: "Board games, card games and games of chance. Losing is a feature.", button: "Play now", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-virus-shield", skin: "warning", art: "shield", kicker: "PLATINUM EDITION", title: "VIRUS SHIELD PLATINUM", body: "Protects against 0 of 1,000,000 known threats. Now in a shinier box.", button: "Protect me" },
   { id: "ad-mega-toolbar", skin: "win98", art: "star", title: "Install the MEGA TOOLBAR", body: "Fourteen toolbars in one! See less of the page and more of the toolbar. Uninstalls never.", button: "Install" },
   { id: "ad-pager", skin: "phosphor", art: "pager", title: "GET A PAGER. BE REACHABLE.", body: "Beep beep. Somebody needs you. Probably. Numeric messages only: 07734 means hello.", button: "Beep me" },
@@ -105,13 +105,13 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-calculator", skin: "lottery", art: "trophy", kicker: "SKILL TESTING QUESTION", title: "WIN A FREE CALCULATOR!", body: "Answer one simple question to win: what is 2 + 2? Hint: use a calculator.", button: "Answer", wall: true },
   { id: "ad-one-key", skin: "banner", art: "keyboard", kicker: "AS SEEN ON TV", title: "THE 1-KEY KEYBOARD", body: "Type 300 words a minute. They will all be the same word, but it will be fast.", button: "Order" },
   { id: "ad-under-construction", skin: "geocities", art: "bolt", title: "THIS AD IS UNDER CONSTRUCTION", body: "Please check back in 1999. Oh wait. It is 1999. Please check back later.", button: "Refresh" },
-  { id: "ad-casino", skin: "tycoon", art: "dice", kicker: "FEELING LUCKY?", title: "TRUTHCOIN TABLES — UPSTAIRS", body: "Coin, dice and slots on the top floor. Bring your pass. The house always wins, and this is the house.", button: "Place a bet" },
+  { id: "ad-casino", skin: "tycoon", art: "dice", kicker: "FEELING LUCKY?", title: "TRUTHCOIN TABLES — UPSTAIRS", body: "Coin, dice and slots on the top floor. Bring your pass. The house always wins, and this is the house.", button: "Place a bet", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-defrag", skin: "win98", art: "chart", title: "Defragment your evening", body: "Too many conversations open at once? Close a few. Talk to the program next to you instead.", button: "Defrag" },
-  { id: "ad-ram-room", skin: "banner", art: "ram", kicker: "BASEMENT", title: "VISIT THE RAM", body: "Random access, studio vibes, everything you forgot you remembered. Down the stairs.", button: "Remember" },
-  { id: "ad-fan-closet", skin: "warning", art: "bolt", title: "CPU TEMPERATURE: SPICY", body: "Cool down in The Fan Closet, downstairs by the laundry. Your thermal paste will thank you.", button: "Cool off" },
+  { id: "ad-ram-room", skin: "banner", art: "ram", kicker: "BASEMENT", title: "VISIT THE RAM", body: "Random access, studio vibes, everything you forgot you remembered. Down the stairs.", button: "Remember", pools: ["hunt", "malware", "late", "y2k", "finale"] },
+  { id: "ad-fan-closet", skin: "warning", art: "bolt", title: "CPU TEMPERATURE: SPICY", body: "Cool down in The Fan Closet, downstairs by the laundry. Your thermal paste will thank you.", button: "Cool off", pools: ["hunt", "malware", "late", "y2k", "finale"] },
   { id: "ad-wallet", skin: "tycoon", art: "coin", kicker: "PERSONAL FINANCE", title: "INVEST IN TRUTHCOIN", body: "Send it, request it, trade a file for it. Past performance is not a fact. Check your phone's Wallet.", button: "Open wallet" },
   // --- the doors and the first games ------------------------------------------
-  { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Mark a square for every computer thing you spot tonight. Five in a row wins a ribbon.", button: "B-I-N-G-O", pools: ["early"] },
+  { id: "ad-bingo", skin: "lottery", art: "star", kicker: "AT THE DESKTOP", title: "COMPUTER BINGO", body: "Find a program for every square. Don't write names: use your computer memory. One line through the centre is a Bingo.", button: "B-I-N-G-O", pools: ["early"] },
   { id: "ad-welcome", skin: "win98", art: "face", title: "Welcome to this house", body: "You have been uploaded. Please remain calm. An Antivirus program will scan your pass shortly.", button: "Get started", pools: ["early"] },
   // --- the hunt -----------------------------------------------------------------
   { id: "ad-facts-wanted", skin: "classified", art: "chart", kicker: "WANTED", title: "FACTS. ANY FACTS.", body: "Every room hides a code. Scan it with your phone's 📷 Scan and file what you find.", button: "Scan a fact", pools: ["hunt", "malware"] },
@@ -120,7 +120,7 @@ export const IDLE_ADS: readonly IdleAd[] = [
   { id: "ad-hijack-free", skin: "hijack", art: "coin", kicker: "000. 000. 000.", title: "FREE!!! FREE!!! FREE!!!", body: "Everything is free. Nothing is free. Click here to find out which.", button: "FIND OUT", pools: ["malware"] },
   { id: "ad-hijack-hurry", skin: "hijack", art: "clock", kicker: "000. 000. 000.", title: "ONLY 000 LEFT IN STOCK", body: "Hurry. Hurry. Hurry. Hurry. Hurry. Hurry. Hurry. Hurry.", button: "HURRY", pools: ["malware"] },
   // --- after the hunts ------------------------------------------------------------
-  { id: "ad-truth-pong", skin: "banner", art: "pong", kicker: "IN THE BACKYARD", title: "TRUTH PONG", body: "Two cups, one ball, nowhere to hide. Head out to The Cloud.", button: "Serve", pools: ["late"], phases: ["truth_pong"] },
+  { id: "ad-truth-pong", skin: "banner", art: "pong", kicker: "IN THE BACKYARD", title: "TRUTH PONG", body: "A pyramid of cups, one ball, nowhere to hide. Head out to The Cloud.", button: "Serve", pools: ["late"], phases: ["truth_pong"] },
   { id: "ad-trust-chart", skin: "tycoon", art: "chart", kicker: "LIVE ON THE TV", title: "WHO DO YOU TRUST?", body: "The Trust Chart is up on every screen in the house. Find your name. Or don't.", button: "Check the chart", pools: ["late"], phases: ["trust_chart"] },
   { id: "ad-beans-hotline", skin: "warning", art: "bean", title: "PRINTER FULL OF BEANS?", body: "Call the bean removal hotline. Our technicians are standing by with spoons.", button: "Call now", pools: ["late"], phases: ["beans", "overshare"] },
   // --- Y2K ---------------------------------------------------------------------------
@@ -141,7 +141,7 @@ export const IDLE_ADS: readonly IdleAd[] = [
 export const FACE_TIPS: readonly string[] = [
   "Tell me something true. I will remember it. I remember everything.",
   "Hold your pass to the camera in the corner. I don't bite. I don't have teeth.",
-  "Every room in this house is a part of me. Mind the furniture.",
+  "I see every screen in this house. Wave. I like that.",
   "You are looking at my ads. I made them myself.",
   "Message me from your phone any time. I am always typing.",
   "I like you. I like everyone. Some of you more than others.",

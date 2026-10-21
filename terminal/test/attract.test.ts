@@ -285,6 +285,24 @@ describe("the schedule", () => {
     expect(ids("malware").has("ad-hijack-free")).toBe(true);
     expect(ids("early").has("ad-hijack-free")).toBe(false);
     expect(ids("early").has("ad-bingo")).toBe(true);
+    // The rooms the story opens at a program's clearance never play to the
+    // arrivals (F11); the Start Bar and the bathrooms always may.
+    for (const id of ["ad-cloud", "ad-steam-room", "ad-ram-room", "ad-fan-closet", "ad-casino"]) {
+      expect(ids("early").has(id), id).toBe(false);
+      expect(IDLE_ADS.find((a) => a.id === id)!.pools, id).not.toContain("early");
+    }
+  });
+
+  it("tells the story's rules and lore, never its secrets (F1, F2, F4, F6)", () => {
+    const ad = (id: string) => IDLE_ADS.find((a) => a.id === id)!;
+    const pop = (id: string) => POPUP_KINDS.find((p) => p.id === id)!;
+    expect(ad("ad-bingo").body).toContain("Find a program for every square");
+    expect(ad("ad-bingo").body).not.toMatch(/five in a row|spot/iu);
+    expect(pop("pop-bingo").text).not.toMatch(/computer thing/iu);
+    expect(ad("ad-truth-pong").body).toContain("pyramid of cups");
+    expect(pop("pop-majority").text).not.toMatch(/majority|vote/iu);
+    expect(pop("pop-majority").title).not.toMatch(/poll|vote/iu);
+    expect(FACE_TIPS.some((t) => /part of me/iu.test(t))).toBe(false);
   });
 });
 
