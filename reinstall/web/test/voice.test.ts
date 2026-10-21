@@ -321,6 +321,7 @@ describe("VoiceLink — the stream", () => {
     await gone.settle();
     expect(gone.timers).toHaveLength(0);
     expect(gone.mic.stopped).toBe(true);
+    expect(gone.link.hud.mic).toBe("none"); // the HUD says NO MIC, not LIVE
     gone.link.setActive(false);
     gone.link.setActive(true);
     expect(gone.sources).toHaveLength(1); // stopped for good

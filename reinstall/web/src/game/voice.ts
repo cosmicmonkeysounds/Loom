@@ -308,7 +308,7 @@ export class VoiceLink {
       this.mic.onSamples = null;
       this.mic.stop();
     }
-    this.micState = this.mic === null ? "none" : this.micState;
+    this.micState = "none"; // nothing goes up any more (an old server, an ended session)
     this.changed();
   }
 
