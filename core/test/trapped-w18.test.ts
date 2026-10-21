@@ -107,6 +107,11 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
     for (const c of TO_BINGO) n.press(c);
     const win = n.signal("bingo_winner", "g1", undefined, "Clippy");
     expect(bigFor(win, "g1").map((m) => m.text)).toEqual(["🎱 BINGO! Name the program for each square, from memory. Centre square last."]);
+    // NM-F1: the win carries its way there and the card (never just "Collect ✓").
+    expect(bigFor(win, "g1")[0]!.go).toEqual([
+      { kind: "room", id: "loc:The Desktop", label: "🎱 To the Desktop" },
+      { kind: "quests", quest: "The Bingo Card", label: "See the quest" },
+    ]);
     const rib = n.signal("award_the_ribbon", "g1", undefined, "Clippy");
     const medal = bigFor(rib, "g1").find((m) => m.text.startsWith("🎀 You won the Bingo Ribbon"))!;
     expect(medal).toMatchObject({ audience: ["g1"], go: [{ kind: "codex", entry: "Computer Bingo" }] });
@@ -184,6 +189,23 @@ describe("Trapped in the Internet — wave 18: big moments with their exits (C12
   }, SLOW);
 });
 
+describe("Trapped in the Internet — wave 18 fixes (GN-F5, GN-F13)", () => {
+  it("⏰ Bingo time calls every phone back to the Desktop", () => {
+    const n = boot();
+    for (const c of TO_BINGO.slice(0, -1)) n.press(c);
+    const out = n.press("bingo_time");
+    const call = to(out, "g5").find((m) => m.text.startsWith("⏰ BINGO TIME"))!;
+    expect(call).toMatchObject({ audience: "all", alert: true, go: [{ kind: "room", id: "loc:The Desktop" }] });
+  }, SLOW);
+
+  it("hunt 2's hour is a guest countdown until the summons", () => {
+    const n = boot();
+    for (const c of TO_HOUR) n.press(c);
+    const cds = guestView(n.sim, "g1").countdowns ?? [];
+    expect(cds.map((c) => c.label)).toContain("Hunt 2 ends");
+  }, SLOW);
+});
+
 describe("Trapped in the Internet — wave 18: marked is not hindered; the confrontation (Q30, B2–B4)", () => {
   it("a mark: no restriction, no pin, a minor heads-up; the four Antivirus get a big WANTED readout naming the guest", () => {
     const n = boot();
@@ -195,6 +217,11 @@ describe("Trapped in the Internet — wave 18: marked is not hindered; the confr
     const heads = to(mk, "g5").filter((m) => m.text.startsWith("🚨 You are marked for reinstallation"));
     expect(heads).toHaveLength(1);
     expect(heads[0]).toMatchObject({ moment: "minor" });
+    // NM-F1: the heads-up has buttons: the pass and what happens now.
+    expect(heads[0]!.go).toEqual([
+      { kind: "pass", label: "🎟 Show my pass" },
+      { kind: "mission", label: "What happens now?" },
+    ]);
     for (const who of ANTIVIRUS) {
       const r = readouts(mk, who).find((m) => m.text.startsWith("🚨 Winamp is marked for reinstallation (was not sure of an answer)"))!;
       expect(r, who).toMatchObject({ moment: "big", alert: true, about: "g5", aboutName: "Winamp" });

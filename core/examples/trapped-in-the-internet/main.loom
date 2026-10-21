@@ -23,6 +23,7 @@ countdown: Night.hunt_end as Hunt 1 ends, while Night.hunt_on == true, for guest
 countdown: Night.filing_close as Filings close, while Night.filing_open == true, for guests
 countdown: Night.truther_at as Truther Download, while Night.hunt2_on == true and Night.truther_sent != true
 countdown: Night.warn_at as Five-minute warning, while Night.hunt2_on == true and Night.summons_open != true and Night.summons_closed != true
+countdown: Night.hunt2_end as Hunt 2 ends, while Night.hunt2_on == true and Night.summons_open != true and Night.summons_closed != true, for guests
 countdown: Night.summons_end as Summons closes, while Night.summons_open == true, for guests
 countdown: Night.y2k_end as Midnight, while Night.final_round == true and Night.ended != true, for guests
 countdown: Night.dance_at as Dance lights
@@ -555,7 +556,7 @@ ROLE Program
       set program.bingo = true
       set Night.bingo_winners += 1
       // DRAFT w18: a big moment (the user's example: un-ignorable).
-      reply !!🎱 BINGO! Name the program for each square, from memory. Centre square last.
+      reply "!!🎱 BINGO! Name the program for each square, from memory. Centre square last." with go: The Desktop as "🎱 To the Desktop", go: quest: The Bingo Card
 
   when award_the_ribbon for program:
     if program.bingo == true:
@@ -985,7 +986,7 @@ ROLE Program
         set program.marked_for = "flagged by a host"
       set program.escort_by = "none"
       // DRAFT w18: the soft heads-up (a minor moment; no pin, no restriction).
-      reply 🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you.
+      reply "🚨 You are marked for reinstallation ({program.marked_for}). Nothing is switched off: carry on. The Antivirus are looking for you." with go: pass as "🎟 Show my pass", go: mission as "What happens now?"
       fire marked for program
 
   // A mis-tap, or mercy: the mark comes off without a trip to the tent.
@@ -2486,7 +2487,7 @@ ROLE Program
   when Night.summons_closed == true and Night.phase == "summons" and self.late != true and self.summoned and self.summons_ok != true and self.afk != true and self.corrupted != true:
     set self.late = true
     fire program_late for self
-    reply !⏰ You are late. An Antivirus is coming for you.
+    reply "!⏰ You are late. An Antivirus is coming for you." with go: pass as "🎟 Show my pass", go: mission as "What happens now?"
     if Night.auto_sweep == true:
       capture self into The Internet
     else:
@@ -3519,6 +3520,8 @@ when bingo_time:
     set Night.screen = "bingo_time"
     cue terminals_attract
     set Night.terminals = "attract"
+    // DRAFT w18 (fix GN-F5): every phone is called back, wherever it is.
+    broadcast "!⏰ BINGO TIME. Back to the Desktop: got a line? Read it to Clippy." to everyone with go: The Desktop
     -> Bingo Time
   else:
     broadcast "⏰ Not again: the Bingo results are already in. Nothing happens." to channel(hosts)

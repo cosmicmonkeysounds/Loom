@@ -273,7 +273,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     // Bingo, hunt 1, the last-chance filing, the summons and midnight; never
     // the surprises (the Truther Download, the five-minute warning, the dance).
     expect(sim.model.countdowns.filter((l) => l.guests === true).map((l) => l.items[0]!.label))
-      .toEqual(["Bingo ends", "Hunt 1 ends", "Filings close", "Summons closes", "Midnight"]);
+      .toEqual(["Bingo ends", "Hunt 1 ends", "Filings close", "Hunt 2 ends", "Summons closes", "Midnight"]);
     const theirs = () => (guestView(sim, "g1").countdowns ?? []).map((c) => c.label);
     expect(guestView(sim, "g1").countdowns).toBeUndefined(); // nothing running: no field
     press(sim, "call_to_the_desktop");
@@ -285,10 +285,11 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     expect(theirs()).toEqual(["Filings close"]);
     pressAll(sim, ["close_the_filing", "read_the_results", "read_the_results", "read_the_results", "second_hunt_preview", "start_the_second_hunt"]);
     // Hunt 2's hour: the director counts down to the Truther Download and the
-    // five-minute warning; the phones show nothing.
+    // five-minute warning (surprises); the phones show only the hour the
+    // house announced out loud (wave 18 fix GN-F13).
     expect(countdowns(sim)).toContain("Truther Download");
     expect(countdowns(sim)).toContain("Five-minute warning");
-    expect(guestView(sim, "g1").countdowns).toBeUndefined();
+    expect(theirs()).toEqual(["Hunt 2 ends"]);
     press(sim, "five_minute_warning");
     expect(theirs()).toEqual(["Summons closes"]);
     pressAll(sim, ["summons_closed", "truth_pong", "round_two_tally", "trust_chart", "show_the_rankings", "trabolta_overshares", "y2k_clock"]);
@@ -319,7 +320,7 @@ describe("Trapped in the Internet — wave 10 (the Director page's acts and boar
     const sim = boot();
     // Every header line was read (all of them sit above the first item).
     expect(sim.model.watch).toHaveLength(13); // wave 13: the booth card's ROLE flags
-    expect(sim.model.countdowns).toHaveLength(8);
+    expect(sim.model.countdowns).toHaveLength(9);
     const check = (when: string) => {
       for (const l of [...sim.model.watch, ...sim.model.countdowns]) {
         if (l.while === null) continue;
