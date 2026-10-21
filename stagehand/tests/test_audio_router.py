@@ -862,6 +862,21 @@ def test_check_fails_and_health_flags_a_moved_layout(tmp_path):
     assert ok.preflight() == [] and ok.health()["layout"] == "ok"
 
 
+def test_check_reads_the_layout_off_config_file_when_the_cache_is_an_older_routers(tmp_path):
+    """A wave 17 cache (16 / 16, no `expect`) never hides a moved layout."""
+    new = {**FIXTURE["audio"], "device": {"name": "MOTU", "inputs": 16, "outputs": 16, "expect": {"inputs": 32, "outputs": 30}}}
+    (tmp_path / "audio.json").write_text(json.dumps(new), encoding="utf-8")
+    old = router(tmp_path, query=fake_query(32, 26))
+    old.apply(answer("v1"))  # cached: no expect
+    r = router(tmp_path, query=fake_query(32, 26), config_file=str(tmp_path / "audio.json"))
+    problems = r.preflight()
+    assert len(problems) == 1 and "layout has moved" in problems[0]
+    assert any("cached audio.json" in w and "older than config_file" in w for w in r.warnings())
+    # Once the cache carries `expect` too, it wins again, with no note.
+    r.apply(answer("v2", device=new["device"]))
+    assert not any("cached audio.json" in w for w in r.warnings())
+
+
 def test_check_warns_about_missing_sound_files(tmp_path):
     r = router(tmp_path, play_sounds=True)
     r.apply(answer("v1"))

@@ -106,9 +106,12 @@ Where everything is:
    shows the device's 32 / 30 against audio.json's 24 / 22 and fails if the
    layout moved; its warnings list every placeholder still there (the
    pre-show gate: none on the night). It must print **no `PLACEHOLDER
-   server.…` line** (else step 2's overlay is missing). If it says
-   *wants 16 / 16* it read the wave 17 router's cached `audio.json`: delete
-   `~/Library/Caches/stagehand-audio/audio.json` and run it again.
+   server.…` line** (else step 2's overlay is missing). A warning that
+   *the cached audio.json … is older than config_file* means the wave 17
+   router's cache (16 / 16) is still there: `check` reads the layout off
+   the repo's file, but the router would boot on the cache until the
+   server answers, so delete `~/Library/Caches/stagehand-audio/audio.json`
+   and run it again.
 5. `uv run stagehand launchd install --job audio --config trapped.house.yaml`.
 6. `uv run stagehand launchd restart --job show` (the cue map changed: no
    QLab rules).

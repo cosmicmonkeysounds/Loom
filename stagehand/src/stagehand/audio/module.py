@@ -237,15 +237,39 @@ class AudioRouter:
             + (f"; never ducked: {', '.join(cfg.no_duck)}" if cfg.no_duck else ""),
         ]
 
+    @staticmethod
+    def _parse_local(raw: Any) -> AudioDoc | None:
+        if raw is None:
+            return None
+        try:
+            return parse_audio(raw.get("audio", raw) if isinstance(raw, dict) else raw)
+        except AudioDocError:
+            return None
+
     def _local_doc(self) -> AudioDoc | None:
+        """The audio.json the router would boot on: the cache, else
+        `config_file`, else the server's answer to `check`."""
         for raw in (self._read_json(self._cache_path("audio.json")), self._read_json(self.cfg.config_file), self._check_answer):
-            if raw is None:
-                continue
-            try:
-                return parse_audio(raw.get("audio", raw) if isinstance(raw, dict) else raw)
-            except AudioDocError:
-                continue
+            doc = self._parse_local(raw)
+            if doc is not None:
+                return doc
         return None
+
+    def _stale_cache(self) -> tuple[AudioDoc, AudioDoc] | None:
+        """(cache, config_file) when the cached audio.json carries no
+        `device.expect` but `config_file` does: an older router's cache (the
+        wave 17 MOTU, 16 / 16) that would hide a moved layout from `check`."""
+        cached = self._parse_local(self._read_json(self._cache_path("audio.json")))
+        local = self._parse_local(self._read_json(self.cfg.config_file))
+        if cached is None or local is None or cached.expect is not None or local.expect is None:
+            return None
+        return cached, local
+
+    def _check_doc(self) -> AudioDoc | None:
+        """`check`'s audio.json: the boot one, unless the cache is stale
+        (`_stale_cache`), when `config_file`'s layout check wins."""
+        stale = self._stale_cache()
+        return stale[1] if stale is not None else self._local_doc()
 
     def fetch_for_check(self, server: Any, *, client_factory: Any = None, timeout: float = 3.0) -> None:
         """`stagehand check` with no local audio.json (a fresh house Mac): ask
@@ -275,7 +299,7 @@ class AudioRouter:
 
     def preflight(self) -> list[str]:
         """`stagehand check`: the device against the local / cached audio.json."""
-        doc = self._local_doc()
+        doc = self._check_doc()
         if doc is None:
             name = self.cfg.device
             info, problems = probe(name, 0, 1, self._query)
@@ -313,6 +337,14 @@ class AudioRouter:
                 if off:
                     listed = ", ".join(f"{n} ({r} Hz)" for n, r in off)
                     out.append(f"audio: {len(off)} sound file(s) not at the device's {rate} Hz — resampled at load, but convert them offline: {listed}")
+        stale = self._stale_cache()
+        if stale is not None:
+            cached, local = stale
+            out.append(
+                f"audio: the cached audio.json ({cached.device}, {cached.inputs} / {cached.outputs}, no device.expect) is older than "
+                f"config_file ({local.device}, {local.inputs} / {local.outputs}, the device must report {local.expect[0]} / {local.expect[1]}) — "
+                f"checked against config_file; the router boots on the cache until the server answers (delete {self._cache_path('audio.json')} if it is stale)"
+            )
         if self._check_problem is not None:
             out.append(self._check_problem)
         elif doc is None:
