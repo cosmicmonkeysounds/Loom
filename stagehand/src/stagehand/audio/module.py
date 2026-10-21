@@ -194,7 +194,9 @@ class AudioRouter:
             f"matrix   : {'on' if cfg.passthrough else 'off'}" + (f", {len(doc.routes)} route(s)" if doc else ""),
             f"config   : the server's audio.json (long-poll {cfg.poll_wait:.0f}s)" + (f"; local {cfg.config_file}" if cfg.config_file else "") + f"; cache {cfg.cache_dir}",
             f"mqtt     : {f'{cfg.mqtt.host}:{cfg.mqtt.port} ← {cfg.test_topic}' + (f', {cfg.announce_topic}, {cfg.chime_topic}' if cfg.announce else '') if cfg.mqtt else '— (tests + announcements from the server only)'}",
-            f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS, duck {cfg.duck_db:+.0f} dB",
+            f"levels   : master {cfg.master_db:+.0f} dB, limit {cfg.limit_db:+.0f} dBFS, duck {cfg.duck_db:+.0f} dB"
+            + (f" (held {cfg.duck_hold_s:g}s per alexa announcement)" if not cfg.announce and cfg.duck_hold_s > 0 else "")
+            + (f"; never ducked: {', '.join(cfg.no_duck)}" if cfg.no_duck else ""),
         ]
 
     def _local_doc(self) -> AudioDoc | None:
