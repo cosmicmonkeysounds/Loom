@@ -248,9 +248,10 @@ export class Crews {
     return null;
   }
 
-  /** The live crew this guest founded, or null. */
+  /** The live crew this guest founded and is still in, or null (a founder
+   *  who left a crew that lives on may found another). */
   foundedBy(person: string): Crew | null {
-    for (const c of this.byId.values()) if (c.founder === person) return c;
+    for (const c of this.byId.values()) if (c.founder === person && c.members.includes(person)) return c;
     return null;
   }
 

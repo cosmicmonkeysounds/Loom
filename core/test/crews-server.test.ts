@@ -137,12 +137,20 @@ describe("crew name moderation", () => {
     expect(why("AdaLovelace")).toMatch(/taken/u);
     expect(why("Crew Night")).toMatch(/taken/u);
   });
-  it("nothing that says a secret: a hunt answer, a keyed line, the door's code, a secret character's codes", () => {
-    expect(why("Purple Walruses")).toMatch(/gives something away/u);
-    expect(why("The Walrus Club")).toMatch(/gives something away/u);
-    expect(why("Made Of Stars")).toMatch(/gives something away/u);
-    expect(why("Crew 4821")).toMatch(/gives something away/u);
-    expect(why("q7 z3 gang")).toMatch(/gives something away/u);
+  it("never an oracle: a name that says a secret is judged like any other name (A1)", () => {
+    expect(why("Purple Walruses")).toBeNull();
+    expect(why("The Walrus Club")).toBeNull();
+    expect(why("Made Of Stars")).toBeNull();
+    expect(why("Crew 4821")).toBeNull();
+    expect(why("q7 z3 gang")).toBeNull();
+  });
+  it("refuses hidden characters and markup instead of stripping them (A6)", () => {
+    expect(why("a\u200bb\u200bc")).toMatch(/Letters, numbers/u);
+    expect(why("\u202Eevil crew")).toMatch(/Letters, numbers/u);
+    expect(why("<img src=x>")).toMatch(/Letters, numbers/u);
+  });
+  it("refuses the house's own names and a missing 'the' (A6)", () => {
+    for (const n of ["Gerald", "Operator", "Narrator", "Norton", "McAfee", "Windows Defender", "Recycle Bin", "Server Room"]) expect(why(n)).toMatch(/taken/u);
   });
 });
 
@@ -221,6 +229,34 @@ describe("crew routes", () => {
     expect((await post(rt, "/api/guest/crew/leave", { token: a.token })).status).toBe(200);
     expect(rt.liveSim!.crews.all()).toEqual([]);
     expect((await post(rt, "/api/guest/crew/leave", { token: a.token })).status).toBe(409);
+  });
+
+  it("a name check is never free: refused founds count toward a per-minute cap (A1)", async () => {
+    const { rt, a } = await party();
+    for (let i = 0; i < 6; i++) expect((await post(rt, "/api/guest/crew/found", { token: a.token, name: "Red" })).status).toBe(400);
+    expect((await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" })).status).toBe(429);
+    clock += 61_000;
+    expect((await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" })).status).toBe(200);
+  });
+
+  it("a captured program can't found or invite (A5)", async () => {
+    const { rt, a, b } = await party();
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    rt.liveSim!.world.set(`${a.id}.captured`, { kind: "bool", value: true });
+    rt.liveSim!.world.set(`${b.id}.captured`, { kind: "bool", value: true });
+    expect(rt.liveSim!.isCaptured(b.id)).toBe(true);
+    expect((await post(rt, "/api/guest/crew/found", { token: b.token, name: "Day Shift" })).status).toBe(409);
+    expect((await post(rt, "/api/guest/crew/invite", { token: a.token, to: b.id })).status).toBe(409);
+  });
+
+  it("a founder who left a crew that lives on may found another (A4)", async () => {
+    const { rt, a, b } = await party();
+    await post(rt, "/api/guest/crew/found", { token: a.token, name: "Night Shift" });
+    await post(rt, "/api/guest/crew/invite", { token: a.token, to: b.id });
+    await post(rt, "/api/guest/recruit/answer", { token: b.token, id: "inv-1", yes: true });
+    expect((await post(rt, "/api/guest/crew/leave", { token: a.token })).status).toBe(200);
+    expect(rt.liveSim!.crews.crewOf(b.id)?.id).toBe("crew-1");
+    expect((await post(rt, "/api/guest/crew/found", { token: a.token, name: "Day Shift" })).status).toBe(200);
   });
 
   it("eight crews at most", async () => {

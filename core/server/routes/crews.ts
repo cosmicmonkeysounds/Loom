@@ -28,9 +28,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { Sim, type SimEvent } from "../../src/runtime/sim/index.ts";
-import { CREW_NAME_MAX, CREW_NAME_MIN, MAX_CREWS, crewRoom, type Crew, type CrewInvite, type CrewNotice, type CrewOp, type Crews } from "../../src/runtime/sim/crews.ts";
+import { CREW_NAME_MAX, CREW_NAME_MIN, MAX_CREWS, MAX_OPEN_INVITES_TO, crewRoom, type Crew, type CrewInvite, type CrewNotice, type CrewOp, type Crews } from "../../src/runtime/sim/crews.ts";
 import { foldName } from "../../src/parser/names.ts";
-import { mentionsKey } from "../../src/answer-match.ts";
 import { cleanGuestName, nameSkeleton } from "../identity.ts";
 import { sendJson, str } from "../http-util.ts";
 import { guestSide } from "./sides.ts";
@@ -39,6 +38,9 @@ import type { FactsBook } from "../facts.ts";
 
 /** At most this many invitations (crew + side) one guest sends a minute. */
 export const INVITES_PER_MINUTE = 10;
+/** At most this many crew/found attempts (taken or refused) a guest makes a
+ *  minute: a name check is never a free lookup. */
+export const FOUNDS_PER_MINUTE = 6;
 
 // ───────────────────────── name moderation ─────────────────────────
 
@@ -70,45 +72,34 @@ function takenNames(sim: Sim, except: string | null): string[] {
   return out;
 }
 
-/** Words a crew name must never say: the facts key's answers (every hunt
- *  answer and keyed line, as the judge spells them) and the door's codes. */
-function secretForms(facts: FactsBook | null): string[] {
-  if (facts === null) return [];
-  const out: string[] = [];
-  for (const k of [...facts.questions, ...facts.answers]) out.push(...k.forms);
-  const door = facts.raw.door;
-  if (door !== undefined) {
-    if (typeof door.code === "string" && door.code.trim() !== "") out.push(door.code);
-    for (const c of door.clues ?? []) if (typeof c.code === "string" && c.code.trim() !== "") out.push(c.code);
-  }
-  return out.filter((f) => f.trim() !== "");
-}
+/** Names the house uses for someone who isn't a declared character or
+ *  group (the duck, the house voices, the old door part, a short brand name),
+ *  as skeletons. */
+const HOUSE_NAMES = ["gerald", "operator", "narrator", "norton", "mcafee", "windowsdefender", "defender", "recyclebin", "serverroom", "system", "admin", "director", "host", "hosts"];
 
-/** Code-like values a `secret: true` character holds (a patch-bay pair, a
- *  code): every token with a digit, three characters or more. */
-function secretTokens(sim: Sim): string[] {
-  const secret = [...sim.model.characters.values()].filter((c) => c.secret).map((c) => `${c.id}.`);
-  if (secret.length === 0) return [];
-  const out: string[] = [];
-  for (const { path, value } of sim.worldEntries()) {
-    if (!secret.some((p) => path.startsWith(p))) continue;
-    for (const tok of value.split(/[\s,;|]+/u)) {
-      const t = compact(tok);
-      if (t.length >= 3 && /\d/u.test(t)) out.push(t);
-    }
-  }
-  return out;
+/** Format, control and bidi characters (zero-width joiners, RTL overrides):
+ *  a name carrying one is refused, never quietly stripped. */
+const HIDDEN_CHARS = /[\p{Cf}\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/u;
+
+/** A skeleton without a leading "the" (*Way Out* is *The Way Out*). */
+function bare(skel: string): string {
+  return skel.startsWith("the") && skel.length > 5 ? skel.slice(3) : skel;
 }
 
 /**
  * Why `raw` may not name a crew, or null when it may. `except` is the crew
- * being renamed (its own name is fine). Checks: 2–24 characters after
- * cleaning, a letter or digit, no rude word, not a lookalike of anything
- * the house already calls by a name (`takenNames`), and nothing that says a
- * secret (a hunt answer, a keyed line, a door code, a secret character's
- * code-like values).
+ * being renamed (its own name is fine). Checks: no hidden characters or
+ * markup, 2–24 characters after cleaning, a letter or digit, no rude word,
+ * and not a lookalike of anything the house already calls by a name
+ * (`takenNames`, `HOUSE_NAMES`; a leading "the" ignored).
+ *
+ * It never checks a name against the story's secrets (hunt answers, the
+ * door's codes, a secret character's values): a refusal that depends on a
+ * secret is an oracle any guest can walk (wave 18 fix A1). A guest who knows
+ * an answer can say it in chat anyway.
  */
-export function crewNameRefusal(sim: Sim, raw: string, facts: FactsBook | null, except: string | null = null): string | null {
+export function crewNameRefusal(sim: Sim, raw: string, _facts: FactsBook | null = null, except: string | null = null): string | null {
+  if (HIDDEN_CHARS.test(raw) || /[<>]/u.test(raw)) return "Letters, numbers and spaces only, please.";
   const name = cleanGuestName(raw);
   const len = Array.from(name).length;
   if (len < CREW_NAME_MIN || len > CREW_NAME_MAX) return `A crew name is ${CREW_NAME_MIN} to ${CREW_NAME_MAX} characters.`;
@@ -118,14 +109,12 @@ export function crewNameRefusal(sim: Sim, raw: string, facts: FactsBook | null, 
   if (RUDE_ANYWHERE.some((w) => flat.includes(w)) || words.some((w) => RUDE_WORDS.has(w))) return "Pick a friendlier name.";
   const folded = foldName(name);
   const skel = nameSkeleton(name);
+  const mine = bare(skel);
+  if (skel !== "" && HOUSE_NAMES.some((h) => h === mine || h === skel)) return "That name is taken. Try another.";
   for (const t of takenNames(sim, except)) {
-    if (foldName(t) === folded || (skel !== "" && nameSkeleton(t) === skel)) return "That name is taken. Try another.";
+    const ts = nameSkeleton(t);
+    if (foldName(t) === folded || (skel !== "" && (ts === skel || (ts !== "" && bare(ts) === mine)))) return "That name is taken. Try another.";
   }
-  for (const form of secretForms(facts)) {
-    const c = compact(form);
-    if (mentionsKey(name, form) || (c.length >= 3 && /\d/u.test(c) && flat.includes(c))) return "That name gives something away. Try another.";
-  }
-  for (const t of secretTokens(sim)) if (flat.includes(t)) return "That name gives something away. Try another.";
   return null;
 }
 
@@ -262,6 +251,8 @@ type Refusal = { status: number; error: string };
 export class CrewRoutes {
   /** guest id → wall ms of their recent invitations (the per-minute cap). */
   private readonly sent = new Map<string, number[]>();
+  /** guest id → wall ms of their recent crew/found attempts. */
+  private readonly founds = new Map<string, number[]>();
 
   constructor(private readonly host: CrewHost) {}
 
@@ -285,15 +276,15 @@ export class CrewRoutes {
     return null;
   }
 
-  private throttled(id: string): boolean {
+  private throttled(id: string, book: Map<string, number[]> = this.sent, max = INVITES_PER_MINUTE): boolean {
     const now = this.host.now();
-    const recent = (this.sent.get(id) ?? []).filter((t) => now - t < 60_000);
-    if (recent.length >= INVITES_PER_MINUTE) {
-      this.sent.set(id, recent);
+    const recent = (book.get(id) ?? []).filter((t) => now - t < 60_000);
+    if (recent.length >= max) {
+      book.set(id, recent);
       return true;
     }
     recent.push(now);
-    this.sent.set(id, recent);
+    book.set(id, recent);
     return false;
   }
 
@@ -322,11 +313,14 @@ export class CrewRoutes {
     switch (path) {
       case "/api/guest/crew/found": {
         if (sim.isRestricted(id)) return restricted;
+        if (sim.isCaptured(id)) return { status: 409, error: "Not from the Internet." };
         const mine = crews.foundedBy(id);
         if (mine !== null) return { status: 409, error: `You already founded ${mine.name}.` };
         if (crews.all().length >= MAX_CREWS) return { status: 409, error: `The computer has room for ${MAX_CREWS} crews, and they're all taken.` };
-        const name = cleanGuestName(str(body, "name"));
-        const refusal = crewNameRefusal(sim, name, this.host.facts());
+        if (this.throttled(id, this.founds, FOUNDS_PER_MINUTE)) return { status: 429, error: "slow down — wait a minute" };
+        const raw = str(body, "name");
+        const name = cleanGuestName(raw);
+        const refusal = crewNameRefusal(sim, raw, this.host.facts());
         if (refusal !== null) return { status: 400, error: refusal };
         this.commit(sim, { op: "foundCrew", by: id, name });
         const crew = crews.foundedBy(id);
@@ -371,6 +365,7 @@ export class CrewRoutes {
 
   private inviteToCrew(sim: Sim, id: string, body: Record<string, unknown>, res: ServerResponse): Refusal | null {
     if (sim.isRestricted(id)) return { status: 403, error: "Not while you're restricted." };
+    if (sim.isCaptured(id)) return { status: 409, error: "Not from the Internet." };
     const crew = sim.crews.crewOf(id);
     if (crew === null) return { status: 409, error: "Found a crew first." };
     const to = this.person(sim, str(body, "to"));
@@ -413,7 +408,7 @@ export class CrewRoutes {
       sendJson(res, 200, { ok: true, invite: waiting.id, kind, target, targetName: crews.targetName(waiting), already: true });
       return null;
     }
-    if (crews.openInvitesTo(to).length >= 6) return { status: 429, error: `${name} has a lot of invitations waiting. Try again in a bit.` };
+    if (crews.openInvitesTo(to).length >= MAX_OPEN_INVITES_TO) return { status: 429, error: `${name} has a lot of invitations waiting. Try again in a bit.` };
     if (this.throttled(by)) return { status: 429, error: "slow down — wait a minute" };
     this.commit(sim, kind === "crew" ? { op: "crewInvite", by, to, crew: target } : { op: "recruit", by, to, side: target });
     const made = crews.openInvite(by, to, kind, target);
@@ -464,8 +459,9 @@ export class CrewRoutes {
       sendJson(res, 200, { ok: true });
       return true;
     }
-    const name = cleanGuestName(str(body, "name"));
-    const refusal = crewNameRefusal(sim, name, this.host.facts(), crew.id);
+    const raw = str(body, "name");
+    const name = cleanGuestName(raw);
+    const refusal = crewNameRefusal(sim, raw, this.host.facts(), crew.id);
     if (refusal !== null) {
       sendJson(res, 400, { error: refusal });
       return true;
