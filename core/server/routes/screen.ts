@@ -972,6 +972,16 @@ export class ScreenWatch {
     this.sync(sim);
   }
 
+  /** Start the fold over on `sim`, taking everything it has logged as
+   *  history (stamped 0: no moment, held slides held). The runtime calls it
+   *  when a sim is born (an empty log, so what follows — the doors' entry
+   *  beat — is live) and after a restore's journal replay (so the replay
+   *  is never live). */
+  adopt(sim: Sim): void {
+    this.sim = null;
+    this.sync(sim);
+  }
+
   /** Remember a terminal's poll (unnamed polls aren't recorded). */
   private note(who: ScreenWho): void {
     const name = clip(who.name);

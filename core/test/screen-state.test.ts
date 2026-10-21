@@ -353,6 +353,20 @@ const state = async (rt: EventRuntime, name = "Kitchen"): Promise<ScreenState> =
 const signal = (rt: EventRuntime, name: string) => call(rt, "POST", "/api/mod/signal", { name }, { moderator: true });
 
 describe("GET /api/screen/state — Trapped in the Internet", () => {
+  it("Power On is a live moment on a real door-open and on a restart with the doors open (livetv-1)", { timeout: SLOW }, async () => {
+    const rt = new EventRuntime({ eventId: "evt", store: new Store(freshDir()), codes: CODES, scenarioName: SHOW, scenarioSource: scenarioSource(SHOW), joinBase: () => "http://localhost" });
+    expect((await state(rt)).moments).toEqual([]); // no sim yet
+    expect((await call(rt, "POST", "/api/mod/start", {}, { moderator: true })).status).toBe(200);
+    const first = (await state(rt)).moments.filter((m) => m.kind === "beat" && m.name === "Power On");
+    expect(first).toHaveLength(1);
+    expect(first[0]!.at).toBeGreaterThan(0);
+    expect((await call(rt, "POST", "/api/mod/reset", {}, { moderator: true })).status).toBe(200);
+    const again = (await state(rt)).moments.filter((m) => m.kind === "beat" && m.name === "Power On");
+    expect(again).toHaveLength(1);
+    expect(again[0]!.at).toBeGreaterThan(0);
+    rt.dispose();
+  });
+
   it("needs the mod capability; a mod token works", { timeout: SLOW }, async () => {
     const rt = await showRuntime(freshDir());
     expect((await call(rt, "GET", "/api/screen/state?name=K", {})).status).toBe(403);
@@ -370,7 +384,10 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(s.character).toMatchObject({ id: "Trabolta", hidden: true, awake: false, online: false });
     expect(s.attract).toBe(true);
     expect(s.night).toEqual({ screen: "screensaver", terminals: "screensaver", phase: "arrivals", step: 0, bottle_pick: null, bottle_open: false, results_q: 0, award_winner: null, award_value: null, help_votes: 0, thwart_votes: 0, alerts: "sticky", ended: false, collection_complete: false, scenario: null });
-    expect(s.moments).toEqual([]); // the doors' history is never a moment
+    // The doors' entry beat is live (the sim is folded from its birth), so
+    // the TV's Power On scene plays on a real door-open.
+    expect(s.moments.find((m) => m.kind === "beat" && m.name === "Power On")).toMatchObject({ seq: 1 });
+    expect(s.moments.every((m) => m.at > 0)).toBe(true);
     expect(s.cues.screens).toEqual({ value: "screensaver", seq: 1 });
     expect(s.countdown).toBeNull();
     expect(JSON.stringify(s).length).toBeLessThan(1500);
@@ -425,6 +442,8 @@ describe("GET /api/screen/state — Trapped in the Internet", () => {
     expect(r.night).toEqual(s.night);
     // The same announcement, stamped as history: no terminal says it again.
     expect(r.announce).toEqual({ seq: s.announce!.seq, text: s.announce!.text, at: 0 });
+    // The replayed journal (Power On included) is history: no moment replays.
+    expect(r.moments).toEqual([]);
     again.dispose();
   });
 });
