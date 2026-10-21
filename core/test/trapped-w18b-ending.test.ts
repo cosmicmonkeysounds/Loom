@@ -17,6 +17,7 @@ import { Sim } from "../src/runtime/sim/index.ts";
 import type { SimEvent } from "../src/runtime/sim/index.ts";
 import { scenarioSource } from "../examples/load.ts";
 import { composeGuestMessages } from "../server/chat.ts";
+import { MAX_VOICE_BLOCK, MAX_VOICE_LINES, voiceLinesOf } from "../server/routes/screen.ts";
 import { EventRuntime } from "../server/event-runtime.ts";
 import { Store } from "../server/store.ts";
 import type { AgentRequest } from "../server/agents.ts";
@@ -256,7 +257,8 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(t).toContain("WinZip. You came for a career. In here you always had something to do. I saw to it.");
     expect(t).toContain("GarageBand. You came because you were lonely. In here somebody was always logged in. Look around. They still are.");
     expect(t).toContain("LimeWire. You came so that you would never die. Programs do not die. They are reinstalled.");
-    expect(t).toContain("Microsoft Excel did not meet their goal.");
+    expect(t).toContain(`Did not meet their goal: ${Object.values(FEATURED).slice(0, -1).join(", ")} and Pong.`);
+    expect(t.some((l) => l.startsWith("Met their goal tonight"))).toBe(false);
     expect(t).toContain("You gave me 2 facts I accepted. Some of them were even true.");
     // Featured programs are never in a problem group.
     expect(t.filter((l) => /You came/u.test(l)).join(" ")).not.toMatch(/Excel|OpenOffice|Pong/u);
@@ -265,6 +267,26 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(b[0]).toBe("The Night In Review");
     expect(b.at(-1)).toBe("The Ceremony");
     expect(lines(evs, "Trabolta").indexOf("That is the review. Your own file is on your phone. Now, the awards.")).toBeLessThan(t.findIndex((l) => l.startsWith("Programs. Before the prom")));
+  });
+
+  it("fits a full house into one TV voice block: every line he says at the ceremony reaches the TV", { timeout: SLOW }, () => {
+    // The §4.6 ceremony hook, applied here as integ will.
+    const hook = "    -> The Ceremony\n  else if Night.ceremony == true:";
+    expect(SRC_HOOKED).toContain(hook);
+    const sim = Sim.fromSources(SRC_HOOKED.replace(hook, "    -> The Night In Review\n  else if Night.ceremony == true:"));
+    sim.fireBeat("Power On");
+    for (const [slug, name] of Object.entries(FEATURED)) upload(sim, `f-${slug}`, name);
+    ["Calculator", "WinZip", "GarageBand", "LimeWire"].forEach((n, i) => upload(sim, `p-${PROBLEMS[i]}`, n, i));
+    // Every deed line, and a goal met and missed.
+    for (const [k, v] of [["Night.facts_accepted", "7"], ["Night.first_reinstall", "WinZip"], ["Kernel.virus_planter", "Microsoft Excel"], ["Night.lj_reader", "VLC"], ["Night.most_trusted", "Pong"], ["Night.least_trusted", "WinZip"], ["f-pong.quest.keep_the_ball_in_play", "done"], ["Night.ending", "song"], ["Night.ended", "true"]] as const) sim.setVar(k, v);
+    const msgs = composeGuestMessages(sim, sim.signal("start_the_ceremony", null)).map((m, i) => ({ ...m, seq: 1000 + i }));
+    const his = msgs.filter((m) => m.channel === "loc:The Desktop" && m.from === "Trabolta" && m.kind === "line");
+    expect(his.some((m) => m.text.startsWith("Met their goal tonight: Pong."))).toBe(true);
+    expect(his.some((m) => m.text.startsWith("Before the awards, a review of the night."))).toBe(true);
+    expect(his.length).toBeLessThanOrEqual(MAX_VOICE_LINES);
+    expect(his.reduce((n, m) => n + m.text.length, 0)).toBeLessThanOrEqual(MAX_VOICE_BLOCK);
+    const tv = voiceLinesOf(msgs, "loc:The Desktop", 999, (f) => f === "Trabolta");
+    expect(tv.lines.map((l) => l.text)).toEqual(his.map((m) => m.text));
   });
 
   it("joins a problem group's names for speech, and leaves out gone programs and Run personas", { timeout: SLOW }, () => {
@@ -285,8 +307,9 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     sim.setVar("f-excel.persona", "true");
     const t2 = lines(review(sim), "Trabolta");
     expect(t2.some((l) => l.startsWith("Pong is ") || l.startsWith("Microsoft Excel is "))).toBe(false);
-    expect(t2.join("\n")).not.toMatch(/(Pong|Microsoft Excel)\b[^.]*\bgoal/u);
-    expect(t2.join("\n")).toMatch(/OpenOffice\b[^.]*\bgoal/u);
+    const missed = t2.find((l) => l.startsWith("Did not meet their goal: "))!;
+    expect(missed).toContain("OpenOffice");
+    expect(missed).not.toMatch(/Pong|Microsoft Excel/u);
     // Purgatory's goal lines (Clippy's) leave them out too.
     sim.setVar("Night.ending", "destroyed");
     const c = lines(sim.fireBeat("Purgatory"), "Clippy");
@@ -302,7 +325,7 @@ describe("wave 18b ending — The Night In Review (R8)", () => {
     expect(t.some((l) => / is (Randy|Dana|Tippi)/u.test(l))).toBe(false);
     expect(t.some((l) => l.startsWith("You gave me"))).toBe(false);
     expect(t).toContain("Calculator. You came because of your debt. Debt is not relevant in the computer. It was never relevant to me.");
-    expect(t).toContain("OpenOffice did not meet their goal.");
+    expect(t.find((l) => l.startsWith("Did not meet their goal: "))).toContain("OpenOffice");
     expect(beats(evs)).not.toContain("Who You Were");
     expect(beats(evs).at(-1)).toBe("The Ceremony");
   });
