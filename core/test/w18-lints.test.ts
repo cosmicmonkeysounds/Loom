@@ -46,6 +46,18 @@ OBJECTIVE Lost
   });
 });
 
+describe("L1214: a broadcast's tail needs its scope (m5)", () => {
+  it("warns on `broadcast \"…\" with go:` with no `to`, never on one with a scope", () => {
+    const msgs = codes(`${W18}
+== Scopeless
+broadcast "!Come." with go: pass
+broadcast "!Come." to everyone with go: pass
+`, "L1214");
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toContain("needs its scope first");
+  });
+});
+
 describe("L1215: target / pick on a guest objective", () => {
   it("warns on each key for an objective no booth sees", () => {
     const msgs = codes(`${W18}

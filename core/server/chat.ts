@@ -426,7 +426,10 @@ function autoCloseOf(moment: MomentClass | undefined, close: number | undefined,
 
 /** The story's `go:` words resolved (C2), else `fallback`; never the lobby. */
 function goOf(sim: Sim, words: readonly string[] | undefined, fallback: GoTarget[] = []): { go?: GoTarget[] } {
-  const go = words !== undefined && words.length > 0 ? resolveGoWords(sim.model, words) : fallback;
+  // A story `go:` that resolves to nothing (a typo: lint L1214) keeps the
+  // default exit rather than leaving the card with none (m6).
+  const resolved = words !== undefined && words.length > 0 ? resolveGoWords(sim.model, words) : [];
+  const go = resolved.length > 0 ? resolved : fallback;
   return go.length > 0 ? { go } : {};
 }
 

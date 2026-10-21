@@ -79,6 +79,18 @@ function goLints(docs: ReadonlyArray<[string, Doc]>, model: SimModel | null, pus
         push(uri, lineRange(raw, n), false, Code.L1214GoTargetUnresolved, `\`with go:\` after an unquoted \`${verb}\` text is part of the text, not an exit — quote the text: \`${verb} "…" with go: …\``);
         return;
       }
+      // A broadcast needs its `to` scope before a `with` tail: without one
+      // the line is not a broadcast at all and the phones show it as prose,
+      // "with go:" and all (m5).
+      if (verb === "broadcast" && /\swith\s+(?:go|close)\s*:/iu.test(` ${rest}`)) {
+        const t = rest.trim();
+        const close = t.startsWith('"') ? t.indexOf('"', 1) : -1;
+        const before = t.slice(close > 0 ? close + 1 : 0, close > 0 ? close + 1 + Math.max(0, withIndex(t.slice(close + 1))) : withIndex(t));
+        if (!/\sto\s/u.test(` ${before} `)) {
+          push(uri, lineRange(raw, n), false, Code.L1214GoTargetUnresolved, "a `broadcast` with `with go:` / `close:` needs its scope first — `broadcast \"…\" to everyone with go: …` — else the line is prose and the phones show the tail as words");
+          return;
+        }
+      }
       if (model === null) return;
       const tail = momentTail(verb, rest);
       if (tail === null) return;

@@ -544,7 +544,10 @@ function guestMission(sim: Sim, id: string, objectives: readonly ObjectiveView[]
   if (sim.model.archive.length > 0) {
     const archived: string[] = [];
     for (const a of sim.model.archive) if (!archived.includes(a.channel) && sim.holds(a.when, id, id)) archived.push(a.channel);
-    if (archived.length > 0) out.archived = archived;
+    // Always sent when the story declares an `archive:` line, even empty:
+    // a client reads an absent field as an older server and folds quiet DMs
+    // on its own 15-minute rule (m1).
+    out.archived = archived;
   }
   return out;
 }

@@ -8,7 +8,7 @@ import { duckBoard } from "../server/recap.ts";
 import { parseDuckRun } from "../server/spatial.ts";
 import { eligibleFor } from "../server/event-runtime.ts";
 import { isHostRoute } from "../server/routes/host.ts";
-import { booth, call, cleanup, freshDir, guest, mod, post, primeStream, rt18 } from "./w18-harness.ts";
+import { W18, booth, call, cleanup, freshDir, guest, mod, post, primeStream, rt18, runtime } from "./w18-harness.ts";
 import type { PrimeView } from "../server/views.ts";
 import type { HostView } from "../src/host-board.ts";
 
@@ -73,6 +73,24 @@ describe("C6: the Wanted board", () => {
     const again = rt18(dir);
     expect(again.restore()).not.toBeNull();
     expect((await boothView(again, "Norton")).wanted![0]!.markedAt).toBe(at);
+  });
+});
+
+describe("C6 fix (m2): a mark a story timer makes", () => {
+  it("is stamped at its tick, never 'now' until the next mutation, and a replay agrees", async () => {
+    const src = W18.replace("  cleared: bool = false\n", "  cleared: bool = false\n  when Time.elapsed >= 20 and self.marked != true:\n    set self.marked = true\n");
+    const dir = freshDir();
+    const rt = runtime({}, dir, src);
+    rt.openDoors();
+    await guest(rt, "Ada");
+    for (let i = 0; i < 25; i++) rt.tickOnce(1000);
+    const first = (await boothView(rt, "Norton")).wanted?.[0]?.markedAt;
+    expect(typeof first).toBe("number");
+    for (let i = 0; i < 20; i++) rt.tickOnce(1000);
+    expect((await boothView(rt, "Norton")).wanted![0]!.markedAt).toBe(first);
+    const again = runtime({}, dir, src);
+    expect(again.restore()).not.toBeNull();
+    expect((await boothView(again, "Norton")).wanted![0]!.markedAt).toBe(first);
   });
 });
 

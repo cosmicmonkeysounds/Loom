@@ -1153,7 +1153,8 @@ export class EventRuntime {
 
   /** Has the night ended (C7: `Night.ended` read true at some point)? */
   private nightEnded(): boolean {
-    this.marks.observe(this.sim);
+    // Never observe here (m2): a read between journal lines would stamp a
+    // tick's change earlier than a replay does. The world says it anyway.
     if (this.marks.endedAt() !== null) return true;
     const v = this.sim?.world.peek("Night.ended");
     return v != null && truthy(v);
@@ -3641,6 +3642,10 @@ export class EventRuntime {
     this.pendingTickMs += ms;
     if (evs.length > 0) {
       this.flushTick();
+      // C6 (m2): a mark a story timer made (the summons' late watcher) is
+      // stamped now, at the tick line's end, as a replay stamps it — not at
+      // the next journaled mutation, and never "now" in the meantime.
+      this.marks.observe(this.sim);
       this.fanout(evs);
       this.spatial.syncKing(); // a story timer is a committed mutation too (journaled as the tick)
     } else if (this.pendingTickMs >= 15000) {

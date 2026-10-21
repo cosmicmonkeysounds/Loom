@@ -76,6 +76,10 @@ unlock The Sandy File for guest
 start quest The Cold Door for guest
 Clippy: Here.
 show captcha "Prove it" to guest
+
+== Typo go
+Clippy: Again.
+show captcha "Again" to guest with go: nowhere
 `;
 
 function compose(sim: Sim, events: ReturnType<Sim["fireBeat"]>): DraftMessage[] {
@@ -217,6 +221,12 @@ describe("C2: with go:", () => {
       for (const t of m.go ?? []) expect(t.kind === "room" && t.id === "lobby").toBe(false);
     }
     expect(compose(sim, sim.fireBeat("Big", "g1")).find((m) => m.text === "You won the Bingo Ribbon.")!.go).toBeUndefined();
+  });
+
+  it("a go: that resolves to nothing keeps the card's default exit (m6)", () => {
+    const sim = setup();
+    const card = compose(sim, sim.fireBeat("Typo go", "g1")).find((m) => m.kind === "widget")!;
+    expect(card.go).toEqual([{ kind: "dm", id: "dm:Clippy", label: "Open Clippy" }]);
   });
 
   it("a reply with a quoted text strips the quotes only when a tail follows", () => {

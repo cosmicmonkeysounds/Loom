@@ -46,14 +46,15 @@ describe("C11: the mission and the archived rooms", () => {
     expect(v.objectives![0]).toMatchObject({ id: "Explore The Computer", evergreen: true });
     expect(v.objectives![0]!.target).toBeUndefined();
     expect(v.objectives![0]!.pick).toBeUndefined();
-    expect(v.archived).toBeUndefined();
+    // Sent empty: the story declares archive: lines (m1: absent reads as an older server).
+    expect(v.archived).toEqual([]);
   });
 
   it("archive: lines tuck rooms away per guest once their condition holds", () => {
     const sim = night();
     sim.setVar("g1.cleared", "true");
     expect(guestView(sim, "g1").archived).toEqual(["dm:The Uploader", "room:arrival"]);
-    expect(guestView(sim, "g2").archived).toBeUndefined();
+    expect(guestView(sim, "g2").archived).toEqual([]);
   });
 
   it("a story with no OBJECTIVE and no archive: carries neither key", () => {
