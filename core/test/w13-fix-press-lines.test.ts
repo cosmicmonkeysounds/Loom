@@ -28,7 +28,10 @@ describe("C1: a press's and a scan's own lines", () => {
       "Norton",
       "g1",
     );
-    expect(out).toEqual({ staff: ["🗣 The bottle is not on WinZip."], said: [{ from: "Norton", text: "Not yet." }] });
+    expect(out).toEqual({ staff: ["🗣 The bottle is not on WinZip."], said: [{ from: "Norton", text: "Not yet." }], toGuest: ["Not yet."] });
+    // BN-F13: what reached the guest's own phone, whoever said it (a readout too).
+    const got = pressLines([row({ channel: "lobby", kind: "narration", audience: ["g1"], text: "🎱 BINGO! Name the program for each square." })], new Set(), "Clippy", "g1");
+    expect(got).toEqual({ toGuest: ["🎱 BINGO! Name the program for each square."] });
     expect(pressLines([], new Set(), "Norton", "g1")).toEqual({});
   });
 

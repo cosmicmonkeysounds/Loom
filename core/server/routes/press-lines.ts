@@ -24,6 +24,10 @@ export interface SaidLine {
 export interface PressLines {
   staff?: string[];
   said?: SaidLine[];
+  /** Wave 18 fix (BN-F13): what reached the guest's own phone (their
+   *  readouts and lines addressed to them alone, any speaker), at most 3:
+   *  the booth's reply line says what they got. */
+  toGuest?: string[];
 }
 
 /**
@@ -35,6 +39,7 @@ export interface PressLines {
 export function pressLines(appended: readonly ChatMessage[], staffChannels: ReadonlySet<string>, character: string | null, guest: string): PressLines {
   const staff: string[] = [];
   const said: SaidLine[] = [];
+  const toGuest: string[] = [];
   for (const m of appended) {
     if (m.hidden) continue;
     const text = m.text.trim();
@@ -43,10 +48,12 @@ export function pressLines(appended: readonly ChatMessage[], staffChannels: Read
       staff.push(text);
       continue;
     }
+    const theirs = guest !== "" && Array.isArray(m.audience) && m.audience.includes(guest);
+    if (theirs && m.kind !== "system" && m.ambient !== true && !toGuest.includes(text) && toGuest.length < 3) toGuest.push(text);
     if (character === null || m.kind !== "line" || m.from !== character) continue;
-    if (Array.isArray(m.audience) && m.audience.includes(guest)) said.push({ from: m.from, text });
+    if (theirs) said.push({ from: m.from, text });
   }
-  return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}) };
+  return { ...(staff.length > 0 ? { staff } : {}), ...(said.length > 0 ? { said } : {}), ...(toGuest.length > 0 ? { toGuest } : {}) };
 }
 
 /** A director's / host's cue press, as its 200 tells it (wave 18, C8):
