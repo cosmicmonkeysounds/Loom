@@ -85,3 +85,51 @@ func give_house(map: Dictionary) -> void:
 	house = map
 	house_version = "test"
 	house_loaded.emit(house, house_version)
+
+
+# --- in-headset setup (wave 19) ---------------------------------------------------
+
+## Whether the lobby should ask to be set up, and the servers it offers.
+var unconfigured := false
+var choices: Array = [{"url": "https://show.example", "label": "show.example"}, {"url": "http://127.0.0.1:7000", "label": "This computer (http://127.0.0.1:7000)"}]
+## `[server, code, name]` per [method try_setup]; answer with [method answer_setup].
+var setups: Array = []
+var offline_chosen := 0
+var forgotten := 0
+var saved_setup := false
+
+
+func needs_setup() -> bool:
+	return unconfigured
+
+
+func server_choices() -> Array:
+	return choices
+
+
+func try_setup(server: String, code: String, name: String) -> void:
+	setups.append([server, code, name])
+
+
+func answer_setup(ok: bool, message := "") -> void:
+	if ok:
+		unconfigured = false
+		saved_setup = true
+		config["name"] = str(setups.back()[2]) if not setups.is_empty() else str(config.get("name", ""))
+	setup_answered.emit(ok, message)
+
+
+func play_offline() -> void:
+	offline_chosen += 1
+	unconfigured = false
+
+
+func can_forget_setup() -> bool:
+	return saved_setup or offline_chosen > 0
+
+
+func forget_setup() -> void:
+	forgotten += 1
+	saved_setup = false
+	offline_chosen = 0
+	unconfigured = true

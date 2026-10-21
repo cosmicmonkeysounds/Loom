@@ -1095,6 +1095,28 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   (the event ended, or the server forgot it) drops back to the lobby and
   re-resolves the passcode to whatever event it names now; no answer at all
   for 5 s shows "Lost the server — retrying…".
+- **In-headset setup** (wave 19): a station whose passcode is missing or the
+  committed `CHANGEME` (and not `--offline`) shows **SET UP THIS HEADSET**
+  in the lobby (`game/setup_panel.gd`) instead of a dead status line: the
+  server choices (`StationConfig.server_choices`: a server named on the
+  command line, the committed `res://` one, and **This computer
+  (http://127.0.0.1:7000)** only on an editor / desktop run —
+  `OS.has_feature("editor_runtime")` or not Android), an on-screen keyboard
+  of the passcode alphabet `ABCDEFGHJKMNPQRSTUVWXYZ23456789` with ⌫ and
+  SPACE (physical keys too on a desktop: Tab switches field, Enter
+  connects), the station name (default "Headset"), **CONNECT** and **PLAY
+  OFFLINE**. CONNECT is `ServerLink.try_setup`: resolve-code must answer
+  `role: "mod"`, then the mod login; a refusal says "That isn't a moderator
+  passcode." (404, another role, a 401 / 403 login), no answer or any other
+  status "Can't reach the server.", and the station stays unconfigured
+  with no retry loop. A working one is saved by `StationConfig.save_user`
+  to `user://station.json` (never `res://`: the Quest preset ships
+  `config/*.json`) with a minted station id `vr-<name>-<4 hex>`, and the
+  link carries on with no restart (`configure` / `reconnect`; an epoch
+  drops a connect answer for an older configuration). PLAY OFFLINE is for
+  that run only. A ⚙ in the lobby (shown when there is a saved setup or
+  offline was chosen) held 2 s calls `forget_setup`: the file is deleted
+  and the panel comes back.
 - **Found:** the game claims the duck within 0.9 m of it in plan, when the
   feet are within 1.2 m of its height (`HouseDuck.DUCK_MAX_RISE`) or on its
   floor — the server's `nearDuck` rule, tighter in plan.
@@ -1164,12 +1186,33 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   (re-arm under 0.3; `smooth_turn` setting); comfort vignette while moving;
   room-scale head offset folded into the body. The buttons are the King's
   hit (trigger, or A / X; on a Mac, Space or F) and the voice link's mute
-  (B / Y; on a Mac, M).
-- `game/`: lobby (a dark room: "Scan your pass on the tablet" + a joystick
-  picker of candidates — only the eligible ones, `Lobby.eligible_only`;
-  up/down chooses, hold right 1 s to confirm; a begin 409 `not marked for
-  reinstallation` flashes *Not marked — an Antivirus marks programs for
-  reinstallation.*),
+  (B / Y; on a Mac, M), both only while playing. In the lobby
+  `player/pointer.gd` (`LobbyPointer`) casts a **laser** from each hand's
+  aim pose (an `XRController3D` on the `aim` pose, the hand's own transform
+  until it tracks): a thin teal beam with a gold dot where it meets the
+  panel (`LobbyTiles.ray_to_panel`); the trigger (a click, or pulled past
+  0.8, let go under 0.4) presses; whichever hand last moved its aim past 4°
+  / 3 cm or pulled its trigger holds the beam. On the desktop rig the
+  mouse is the pointer (the camera's ray through it, the left button the
+  press; never captured in the lobby) and there is no beam.
+- `game/`: lobby (a dark room; wave 19: **PICK YOUR PROGRAM** — a picture
+  tile per eligible program, `Lobby.eligible_only`: its profile picture off
+  the ghosts' `AvatarCache` (initials until it lands), its name, its tag
+  *[corrupted]* / *[marked]* / *[party favour]*; one row up to 4, two rows
+  up to 8, then pages of 4 × 2 with ◀ ▶ (`LobbyTiles.layout`). Point the
+  laser and pull the trigger, click (desktop), or the stick
+  (`CandidatePicker` on a grid: up / down a row, left one back, a right
+  flick let go early one on, **hold right 1 s** picks); a card asks
+  **"Start as <name>?"** with **START** / **BACK** (the same three ways,
+  Enter / Backspace on a desktop; the hold that opened it must let go
+  first) and START calls `begin` with the headset's mod token, so the tent
+  tablet is not needed. "Nobody is marked for reinstallation yet." for an
+  empty list; "this headset: <name>" and the connection state above the
+  tiles; a card closes when its program leaves the list, and every return
+  to the lobby clears it. The tablet's *Send to headset* lands whatever the
+  view. A begin 409 `not marked for reinstallation` flashes *Not marked for
+  reinstallation — until the night is over, only a marked program may
+  play.*; a 404 *Nobody has that pass.*),
   play (duck, indicator trail, ghosts), found (egg, flight, "Reinstallation
   complete"; a find the story kept — nothing released, still captured —
   says "GERALD CAN'T HELP" and the duck stays put; a find by a program that
@@ -1188,8 +1231,17 @@ Provision: `/terminal/?code=…&name=Kitchen&character=Trabolta&spot=start-bar&v
   duck changes.
 - `test/run.sh` + `test/game.gd`: headless checks, including the §1.2
   goldens (every fixture's, at 1e-3), the link over a fake transport (map
-  refetch, duck adoption), the found rule, and the autopilot reaching
-  every show duck spot kinematically and with real collision.
+  refetch, duck adoption, the setup's answers + save + forget), the found
+  rule, the lobby's tiles / laser / confirm card / setup panel on
+  `main.tscn` with a fake link, and the autopilot reaching every show duck
+  spot kinematically and with real collision.
+- **Editor runs** (wave 19): F5 with no arguments reaches SET UP THIS
+  HEADSET (then the tiles, once `user://station.json` holds a passcode)
+  with no script errors; the OpenXR loader's "no runtime" errors and
+  *Godot will start in normal mode* are harmless (`startup_alert=false`).
+  The lobby prints each view to the log. Debug → Customize Run Instances →
+  Main Run Args takes the command-line flags after `--`. See
+  `reinstall/vr/README.md` → *Run it from the Godot editor*.
 
 ## 6. The story
 

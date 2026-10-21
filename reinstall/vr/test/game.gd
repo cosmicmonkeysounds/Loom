@@ -39,11 +39,13 @@ func _run() -> void:
 	_test_king_rules()
 	_test_avatar_decode()
 	_test_config()
+	_test_config_setup()
 	_test_sse_parser()
 	_test_pose_pump()
 	await _test_server_link()
 	_test_locomotion()
 	_test_picker()
+	_test_picker_grid()
 	_test_flow()
 	_test_cam_feeds()
 	_test_voice_codec()
@@ -52,6 +54,11 @@ func _run() -> void:
 	await _test_cam_panels()
 	_test_autopilot()
 	await _test_main_and_game()
+	_test_lobby_geometry()
+	_test_lobby_pure()
+	_test_server_link_setup()
+	await _test_lobby_picker()
+	await _test_setup_panel()
 	_test_voice_config()
 	_test_voice_server_link()
 	await _test_voice_game()
@@ -434,6 +441,40 @@ func _test_config() -> void:
 	var s := StationConfig.parse_url("https://show.example.com/loom")
 	_check(s.get("port") == 443 and s.get("tls") == true and s.get("path") == "/loom", "config: parse_url https + path")
 	_check(StationConfig.parse_url("ftp://x").is_empty() and StationConfig.parse_url("http://h:x").is_empty(), "config: parse_url refuses junk")
+
+
+## The in-headset setup's file (wave 19): saved to a user path, merged
+## over what it held, read back by the precedence chain, forgotten; the
+## station id it mints; the servers it offers.
+func _test_config_setup() -> void:
+	var dir := "user://config-test"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir + "/setup-station.json"
+	StationConfig.forget_user(path)
+	_check(not StationConfig.forget_user(path), "setup file: forgetting no file is a no-op")
+	_check(StationConfig.save_user({"server": "http://127.0.0.1:7000", "code": "K7PQ3M", "name": "Headset", "bogus": 1}, path), "setup file: saved")
+	var back := StationConfig.read_file(path)
+	_check(back.get("code") == "K7PQ3M" and back.get("server") == "http://127.0.0.1:7000" and not back.has("bogus"), "setup file: known keys only (%s)" % [back])
+	_check(StationConfig.save_user({"name": "Headset 2", "smooth_turn": true}, path), "setup file: saved again")
+	back = StationConfig.read_file(path)
+	_check(back.get("code") == "K7PQ3M" and back.get("name") == "Headset 2" and back.get("smooth_turn") == true, "setup file: a second save merges over the first (%s)" % [back])
+	var cfg := StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())
+	_check(cfg["code"] == "K7PQ3M" and StationConfig.is_configured(cfg), "setup file: the user file configures the station over the committed placeholder")
+	_check(StationConfig.forget_user(path) and not FileAccess.file_exists(path), "setup file: forgotten")
+	_check(not StationConfig.is_configured(StationConfig.resolve([StationConfig.RES_PATH, path], PackedStringArray())), "setup file: … and the placeholder is back")
+	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup file: the committed res:// file still holds CHANGEME")
+
+	_check(StationConfig.station_id_for("Headset", 0xbeef) == "vr-headset-beef", "setup: a station id from the name (%s)" % StationConfig.station_id_for("Headset", 0xbeef))
+	_check(StationConfig.station_id_for("  HEADSET 2!! ", 0x1ffff) == "vr-headset-2-ffff", "setup: … slugged, the salt in 4 hex (%s)" % StationConfig.station_id_for("  HEADSET 2!! ", 0x1ffff))
+	_check(StationConfig.station_id_for("???", 1) == "vr-headset-0001", "setup: … a name with no letters is a headset")
+
+	var choices := StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", true)
+	_check(choices.size() == 2 and choices[0]["url"] == "https://app.mapsandducks.com" and choices[1]["url"] == StationConfig.LOCAL_SERVER and str(choices[1]["label"]).begins_with("This computer"), "setup: the committed server first, then this computer (%s)" % [choices])
+	_check(StationConfig.server_choices("https://app.mapsandducks.com", "https://app.mapsandducks.com", false).size() == 1, "setup: a headset build offers no local server")
+	var dev := StationConfig.server_choices("http://10.0.0.5:7000/", "https://app.mapsandducks.com", true)
+	_check(dev.size() == 3 and dev[0]["url"] == "http://10.0.0.5:7000" and dev[0]["label"] == "10.0.0.5:7000" and dev[1]["label"] == "app.mapsandducks.com", "setup: a server named on the command line comes first (%s)" % [dev])
+	_check(StationConfig.server_choices("junk", "", false).is_empty(), "setup: junk is no choice")
+	_check(StationConfig.offers_local(), "setup: a desktop / editor run offers this computer")
 
 
 func _write(path: String, data: Dictionary) -> void:
@@ -1064,6 +1105,45 @@ func _test_picker() -> void:
 	_check(p.selected().get("id") == "c", "picker: a refreshed list keeps the selection")
 
 
+## The tile grid's stick (wave 19): up / down a row, left one back, a
+## right flick let go early one on, a right hold still confirms.
+func _test_picker_grid() -> void:
+	var p := CandidatePicker.new()
+	var six: Array = []
+	for i in 6:
+		six.append({"id": "p%d" % i})
+	p.set_items(six)
+	p.columns = 3
+	p.update(Vector2(0, -1), 0.0)
+	_check(p.index == 3, "grid: stick down is a row down")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(0, -1), 0.0)
+	_check(p.index == 0, "grid: down from the bottom row wraps to the top, same column")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(-1, 0), 0.0)
+	_check(p.index == 5, "grid: left from the first tile wraps to the last")
+	p.update(Vector2(-1, 0), 0.0)
+	_check(p.index == 5, "grid: a held left moves once")
+	p.update(Vector2.ZERO, 0.0)
+	p.update(Vector2(1, 0), 0.2)
+	_check(p.index == 5 and p.progress() > 0.0, "grid: a right flick starts the hold bar")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0 and p.progress() == 0.0, "grid: … let go early it moves one on (wraps)")
+	p.update(Vector2(1, 0), 0.5)
+	var got := p.update(Vector2(1, 0), 0.6)
+	_check(got.get("id") == "p0" and p.index == 0, "grid: holding right 1 s confirms, no move")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0, "grid: letting go after a confirm moves nothing")
+	p.update(Vector2(1, 0), 0.4)
+	p.disarm()
+	_check(p.update(Vector2(1, 0), 2.0).is_empty() and p.progress() == 0.0, "grid: disarmed, a held right never confirms")
+	p.update(Vector2.ZERO, 0.0)
+	_check(p.index == 0, "grid: … nor moves when let go")
+	_check(CandidatePicker.row_step(4, 5, 3, 1) == 1 and CandidatePicker.row_step(1, 5, 3, 1) == 4 and CandidatePicker.row_step(2, 5, 3, 1) == 4, "grid: a short last row takes its nearest tile")
+	_check(CandidatePicker.row_step(0, 2, 2, 1) == 1 and CandidatePicker.row_step(1, 2, 2, -1) == 0, "grid: one row — up / down move one tile")
+	_check(CandidatePicker.row_step(0, 0, 3, 1) == 0, "grid: an empty grid stays put")
+
+
 # --- camera feeds (wave 14) ---------------------------------------------------
 
 
@@ -1642,8 +1722,19 @@ func _test_main_and_game() -> void:
 	_check(link.begun.is_empty(), "game: half a second is not a confirm")
 	for i in 40:
 		game._process(1.0 / 60.0)
-	_check(link.begun == ["g-bbbbbb"], "game: hold right confirms the highlighted program (%s)" % [link.begun])
+	# Wave 19: the hold picks the tile, and a card asks first.
+	_check(link.begun.is_empty() and game.lobby.view() == "confirm" and str(game.lobby.confirming().get("id", "")) == "g-bbbbbb", "game: hold right picks the highlighted program — the card asks first (%s)" % [link.begun])
+	for i in 70:
+		game._process(1.0 / 60.0)
+	_check(link.begun.is_empty(), "game: the hold that opened the card never starts it")
 	player.right_stick = Vector2.ZERO
+	game._process(1.0 / 60.0)
+	player.right_stick = Vector2(1, 0)
+	for i in 70:
+		game._process(1.0 / 60.0)
+	_check(link.begun == ["g-bbbbbb"] and game.lobby.view() == "pick", "game: hold right again on START begins it (%s)" % [link.begun])
+	player.right_stick = Vector2.ZERO
+	game._process(1.0 / 60.0)
 
 	# An assignment arrives: play.
 	var a := _assignment(house, "s-1", true)
@@ -1892,6 +1983,385 @@ func _test_main_and_game() -> void:
 
 	main.queue_free()
 	await process_frame
+
+
+# --- the lobby's picker + setup (wave 19) -------------------------------------------
+
+
+## The panel's pure geometry: the grid for a list, pages, hit mapping, the
+## pointer's ray onto the panel, the beam's hand rule.
+func _test_lobby_geometry() -> void:
+	_check(LobbyTiles.layout(0)["pages"] == 0, "tiles: nothing to lay out")
+	var l1 := LobbyTiles.layout(1)
+	var l4 := LobbyTiles.layout(4)
+	var l5 := LobbyTiles.layout(5)
+	var l7 := LobbyTiles.layout(7)
+	var l8 := LobbyTiles.layout(8)
+	var l17 := LobbyTiles.layout(17)
+	_check(l1["cols"] == 1 and l1["rows"] == 1 and l4["cols"] == 4 and l4["rows"] == 1, "tiles: up to 4 on one row")
+	_check(l5["cols"] == 3 and l5["rows"] == 2 and l7["cols"] == 4 and l8["cols"] == 4 and l8["rows"] == 2 and l8["pages"] == 1, "tiles: 5–8 on two rows")
+	_check(l17["cols"] == 4 and l17["per_page"] == 8 and l17["pages"] == 3, "tiles: past 8, pages of 4 × 2")
+	_check(LobbyTiles.page_of(7, 8) == 0 and LobbyTiles.page_of(8, 8) == 1 and LobbyTiles.count_on_page(17, 2, 8) == 1 and LobbyTiles.count_on_page(17, 3, 8) == 0, "tiles: pages and what they hold")
+	var a := LobbyTiles.tile_center(0, 4, 2)
+	var d := LobbyTiles.tile_center(3, 4, 2)
+	var e := LobbyTiles.tile_center(4, 4, 2)
+	_check(_near(a.x, -d.x) and a.y > e.y and _near(a.x, e.x) and _near((a.y + e.y) / 2.0, LobbyTiles.GRID_Y), "tiles: the grid is centred, reading order")
+	_check(LobbyTiles.slot_at(e, 4, 2, 8) == 4 and LobbyTiles.slot_at(e + Vector2(0.2, 0.25), 4, 2, 8) == 4, "tiles: a point on a tile is that tile")
+	_check(LobbyTiles.slot_at((a + LobbyTiles.tile_center(1, 4, 2)) / 2.0, 4, 2, 8) == -1, "tiles: the gap between tiles is no tile")
+	_check(LobbyTiles.slot_at(e, 4, 2, 4) == -1, "tiles: an empty slot on a short page is no tile")
+	var buttons := [{"id": "a", "center": Vector2(0, 1), "size": Vector2(0.4, 0.2)}, {"id": "b", "center": Vector2(0.1, 1), "size": Vector2(0.2, 0.2)}]
+	_check(LobbyTiles.button_at(Vector2(0.1, 1.05), buttons) == "b" and LobbyTiles.button_at(Vector2(-0.15, 1), buttons) == "a" and LobbyTiles.button_at(Vector2(0, 2), buttons) == "", "tiles: the button under a point (the last drawn wins)")
+
+	var panel := Transform3D(Basis.IDENTITY, Vector3(0, 400, -2.4))
+	var eye := Vector3(0, 401.6, 0)
+	var target := panel * Vector3(e.x, e.y, 0)
+	var h := LobbyTiles.ray_to_panel(eye, target - eye, panel)
+	_check(not h.is_empty() and (h["point"] as Vector2).distance_to(e) < 1e-4 and _near(float(h["distance"]), eye.distance_to(target)), "pointer: a ray onto the panel lands in panel coordinates (%s)" % [h])
+	_check(LobbyTiles.ray_to_panel(eye, Vector3(0, 0, 1), panel).is_empty(), "pointer: a ray away from the panel misses")
+	_check(LobbyTiles.ray_to_panel(eye, Vector3(1, 0, 0), panel).is_empty(), "pointer: a ray along the panel misses")
+	_check(LobbyTiles.ray_to_panel(Vector3(0, 401.6, -3.0), Vector3(0, 0, -1), panel).is_empty(), "pointer: from behind the panel, nothing")
+	var turned := Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(1, 400, 0))
+	var side := LobbyTiles.ray_to_panel(Vector3(3, 401.5, -0.3), Vector3(-1, 0, 0), turned)
+	_check(not side.is_empty() and _near((side["point"] as Vector2).y, 1.5) and _near((side["point"] as Vector2).x, 0.3), "pointer: a turned panel maps through its own frame (%s)" % [side])
+
+	var rest := Transform3D.IDENTITY
+	_check(not LobbyPointer.takes_beam(rest, rest.translated(Vector3(0.01, 0, 0))), "pointer: a hand resting still keeps off the beam")
+	_check(LobbyPointer.takes_beam(rest, rest.translated(Vector3(0.05, 0, 0))), "pointer: a hand that moves takes the beam")
+	_check(LobbyPointer.takes_beam(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(6.0)), Vector3.ZERO)) and not LobbyPointer.takes_beam(rest, Transform3D(Basis(Vector3.UP, deg_to_rad(2.0)), Vector3.ZERO)), "pointer: … or turns past 4°")
+	_check(LobbyPointer.trigger_down(false, 0.9, false) and not LobbyPointer.trigger_down(false, 0.6, false) and LobbyPointer.trigger_down(true, 0.6, false) and not LobbyPointer.trigger_down(true, 0.3, false) and LobbyPointer.trigger_down(false, 0.0, true), "pointer: the trigger with hysteresis (a click is a pull)")
+
+
+## The tiles' and the SET UP panel's pure helpers.
+func _test_lobby_pure() -> void:
+	_check(Lobby.initials_of("MS Paint") == "MP" and Lobby.initials_of("Excel") == "E" and Lobby.initials_of("") == "?", "lobby: initials for a tile with no picture")
+	_check(Lobby.tile_name({"name": "Microsoft Internet Explorer 6"}).length() == Lobby.NAME_CHARS and Lobby.tile_name({"id": "g-1"}) == "g-1", "lobby: long names are cut on their tile")
+	_check(SetupPanel.code_text("K7P") == "PASSCODE  K7P···" and SetupPanel.code_char("k") == "K" and SetupPanel.code_char("!") == "" and SetupPanel.code_char("0") == "0", "setup: the passcode field + what a key may type")
+	_check(SetupPanel.key_ids().size() == SetupPanel.ALPHABET.length() + 2 and SetupPanel.key_center(0).y > SetupPanel.key_center(SetupPanel.KEYS_PER_ROW).y, "setup: the keyboard is the passcode alphabet, ⌫ and SPACE, in rows")
+	var probe := HouseLook.label("", 0.05)
+	Lobby.fit(probe, "START", 1.0, 0.05)
+	var short_px := probe.pixel_size
+	Lobby.fit(probe, "This computer (http://127.0.0.1:7000)", 0.4, 0.05)
+	var w := ThemeDB.fallback_font.get_string_size(probe.text, HORIZONTAL_ALIGNMENT_LEFT, -1, probe.font_size).x * probe.pixel_size
+	_check(_near(short_px, 0.05 / 64.0, 1e-6) and w <= 0.4 + 1e-4 and probe.pixel_size < short_px, "lobby: a label keeps its height, or shrinks to fit (%.3f m)" % w)
+	probe.free()
+	var servers := SetupPanel.server_slots(2)
+	_check(servers.size() == 2 and _near(servers[0]["center"].x, -servers[1]["center"].x), "setup: the server buttons side by side")
+
+
+## A ServerLink with no passcode: try a setup over the fake transport (every
+## refusal answers the panel and stays unconfigured; a working one is saved
+## and links), forget it, play offline.
+func _test_server_link_setup() -> void:
+	var sl: LinkBase = load("res://net/server_link.gd").new()
+	var tr: Variant = preload("res://test/fake_transport.gd").new()
+	sl.set("transport", tr)
+	sl.set("stream", SseClient.new())
+	var path := "user://config-test/setup-link.json"
+	StationConfig.forget_user(path)
+	sl.set("user_path", path)
+	sl.set("base_files", [StationConfig.RES_PATH])
+	sl.set("base_args", PackedStringArray())
+	sl.set("station_salt", 0xabcd)
+	sl.config = StationConfig.resolve([StationConfig.RES_PATH], PackedStringArray())
+	_check(sl.needs_setup() and not sl.can_forget_setup(), "setup link: the committed placeholder needs a setup")
+	var choices := sl.server_choices()
+	_check(not choices.is_empty() and choices[0]["url"] == "https://app.mapsandducks.com" and choices.back()["url"] == StationConfig.LOCAL_SERVER, "setup link: the committed server, then this computer (%s)" % [choices])
+	var answers: Array = []
+	sl.setup_answered.connect(func(ok: bool, m: String) -> void: answers.append([ok, m]))
+
+	sl.try_setup("http://127.0.0.1:7000", " ", "x")
+	_check(answers.back() == [false, "Type the moderator passcode."] and tr.calls.is_empty(), "setup link: no passcode, no call")
+	sl.try_setup("http://127.0.0.1:7000", "k7pq3m", "Headset 3")
+	_check(tr.log.back() == "POST /api/resolve-code" and tr.calls[0]["body"]["code"] == "K7PQ3M" and tr.base == "http://127.0.0.1:7000", "setup link: CONNECT resolves the typed passcode on the chosen server (%s)" % [tr.calls])
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	_check(tr.calls.size() == 1, "setup link: one try at a time")
+	_check(sl.needs_setup(), "setup link: the SET UP panel stays up while a try is out")
+	tr.answer("/api/resolve-code", 200, {"role": "event", "eventId": "e1"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."] and sl.needs_setup() and sl.get("phase") == "idle" and str(sl.config["code"]) == StationConfig.PLACEHOLDER_CODE, "setup link: a guest code is no moderator passcode — still unconfigured")
+	_check(not FileAccess.file_exists(path) and sl.status == "Not configured — set this headset up.", "setup link: … nothing saved")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 404, {"error": "no such code"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."], "setup link: an unknown code is no moderator passcode")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 0)
+	_check(answers.back() == [false, "Can't reach the server."] and sl.get("phase") == "idle", "setup link: no answer → can't reach the server, no retry loop")
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	tr.answer("/api/mod/login", 401, {"error": "bad passcode"})
+	_check(answers.back() == [false, "That isn't a moderator passcode."], "setup link: a refused login is no moderator passcode")
+
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e1", "title": "The Show"})
+	_check(tr.log.back() == "POST /e/e1/api/mod/login", "setup link: a moderator code logs in")
+	tr.answer("/api/mod/login", 200, {"token": "mod-tok"})
+	_check(answers.back() == [true, ""] and not sl.needs_setup() and sl.get("phase") == "ready", "setup link: a working passcode links (%s)" % [answers.back()])
+	var saved := StationConfig.read_file(path)
+	_check(saved.get("code") == "K7PQ3M" and saved.get("server") == "http://127.0.0.1:7000" and saved.get("name") == "Headset 3" and saved.get("station") == "vr-headset-3-abcd", "setup link: … and is saved to the user file (%s)" % [saved])
+	_check(sl.station_name() == "Headset 3" and sl.status == "Connected to The Show." and tr.count("/api/mod/spatial/candidates") == 1, "setup link: … and carries on as if it booted with it")
+	_check(StationConfig.read_file(StationConfig.RES_PATH).get("code") == StationConfig.PLACEHOLDER_CODE, "setup link: the committed res:// file is untouched")
+
+	# A late answer from before a reconfigure is dropped.
+	sl.try_setup("http://127.0.0.1:7000", "K7PQ3M", "Headset 3")  # linked: a fresh try
+	sl.forget_setup()
+	var before := answers.size()
+	tr.answer("/api/resolve-code", 200, {"role": "mod", "eventId": "e9"})
+	_check(answers.size() == before and str(sl.get("event_id")) == "", "setup link: an answer for an older setup is dropped")
+	_check(not FileAccess.file_exists(path) and sl.needs_setup() and sl.status == "Not configured — set this headset up.", "setup link: ⚙ forget deletes the file — back to SET UP")
+
+	sl.play_offline()
+	_check(sl.is_offline() and not sl.needs_setup() and sl.can_forget_setup() and sl.status.begins_with("Offline"), "setup link: PLAY OFFLINE plays this run without a server")
+	sl.forget_setup()
+	_check(not sl.is_offline() and sl.needs_setup(), "setup link: … and ⚙ goes back to SET UP")
+	_free_server_link(sl)
+
+
+## main.tscn with a fake link: the tiles (pictures, names, tags, pages), the
+## laser's hover and press, the card's START / BACK, the ⚙ hold, the copy.
+func _test_lobby_picker() -> void:
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Test Headset"})
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var lobby := game.lobby
+	var player := game.player
+	player.set_physics_process(false)
+	player.read_input = false
+	var asked: Array = []
+	game.ghosts.avatars.requester = func(url: String, done: Callable) -> void: asked.append([url, done])
+	var title: Label3D = lobby.get("_title")
+	var empty: Label3D = lobby.get("_empty")
+	var station: Label3D = lobby.get("_station")
+	var message: Label3D = lobby.get("_message")
+	_check(title.text == "PICK YOUR PROGRAM" and empty.text == Lobby.EMPTY and station.text == "this headset: Test Headset", "lobby: PICK YOUR PROGRAM, nobody marked yet, this headset's name")
+	_check(not title.text.contains("TABLET"), "lobby: no more scan-on-the-tablet")
+
+	link.candidates_received.emit([
+		{"id": "g-1", "name": "Excel", "captured": true, "eligible": true, "avatar": "aaaa"},
+		{"id": "g-2", "name": "MS Paint", "eligible": true, "marked": true},
+		{"id": "g-3", "name": "Clippy", "eligible": false},
+		{"id": "g-4", "name": "Winamp", "eligible": true, "favour": true, "avatar": "bbbb"},
+	])
+	game._process(0.016)
+	_check(lobby.picker.items.size() == 3 and empty.text == "" and lobby.picker.columns == 3, "lobby: a tile per marked program, one row (%d)" % lobby.picker.items.size())
+	var t0 := lobby.tile_node(0)
+	var t1 := lobby.tile_node(1)
+	_check(t0 != null and t0.visible and (t0.get_node("Label") as Label3D).text == "Excel" and (t0.get_node("Tag") as Label3D).text == "[corrupted]", "lobby: a tile names its program and tags it")
+	_check((t1.get_node("Initials") as Label3D).text == "MP" and not (t1.get_node("Picture") as Sprite3D).visible, "lobby: no picture → initials")
+	_check(asked.size() == 2 and str(asked[0][0]) == "fixture://avatar/aaaa", "lobby: pictures are fetched through the ghosts' cache (%s)" % [asked.map(func(x: Array) -> String: return str(x[0]))])
+	var img := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.2, 0.6, 0.9))
+	(asked[0][1] as Callable).call(true, PackedStringArray(["Content-Type: image/png"]), img.save_png_to_buffer())
+	_check((t0.get_node("Picture") as Sprite3D).visible and (t0.get_node("Initials") as Label3D).text == "", "lobby: … and a tile wears its picture once it lands")
+	_check(((t0.get_node("Ring") as Node3D).visible) and not (t1.get_node("Ring") as Node3D).visible, "lobby: the selection is ringed")
+
+	# The laser: hover, then the trigger picks; BACK cancels; START begins.
+	var eye := player.camera.global_position
+	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
+	var c2 := LobbyTiles.tile_center(2, 3, 1)
+	game.pointer.inject(eye, aim_at.call(c2), false)
+	game._process(0.016)
+	_check(lobby.hovered() == "tile:2" and lobby.view() == "pick", "lobby: the laser hovers a tile")
+	_check(not game.pointer.beam_visible(), "lobby: no beam on the desktop rig (the mouse has its cursor)")
+	game.pointer.inject(eye, aim_at.call(c2), true)
+	game._process(0.016)
+	_check(lobby.view() == "confirm" and str(lobby.confirming().get("id")) == "g-4" and lobby.picker.index == 2, "lobby: the trigger on a tile asks about it")
+	var card_text: Label3D = lobby.get("_card_text")
+	_check(card_text.text == "Start as Winamp?", "lobby: Start as <name>? (%s)" % card_text.text)
+	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), true)
+	game._process(0.016)
+	_check(lobby.view() == "confirm", "lobby: a trigger still held from the tile presses nothing")
+	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), false)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(Lobby.BACK_AT), true)
+	game._process(0.016)
+	_check(lobby.view() == "pick" and link.begun.is_empty(), "lobby: BACK cancels")
+	game.pointer.inject(eye, aim_at.call(LobbyTiles.tile_center(1, 3, 1)), false)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(LobbyTiles.tile_center(1, 3, 1)), true)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(Lobby.START_AT), false)
+	game._process(0.016)
+	game.pointer.inject(eye, aim_at.call(Lobby.START_AT), true)
+	game._process(0.016)
+	game._process(0.016)
+	_check(link.begun == ["g-2"] and lobby.view() == "pick", "lobby: START begins the program (%s)" % [link.begun])
+	_check(message.text == "Starting MS Paint…", "lobby: … and says so (%s)" % message.text)
+	game.pointer.inject(eye, Vector3(0, 0, 1), false)
+	game._process(0.016)
+	_check(lobby.hovered() == "", "lobby: pointing away hovers nothing")
+
+	# The mouse (a click is a press on the button under the cursor) and the keys.
+	lobby.press("tile:0")
+	_check(lobby.view() == "confirm" and str(lobby.confirming().get("id")) == "g-1", "lobby: a click on a tile asks about it")
+	var enter := InputEventKey.new()
+	enter.pressed = true
+	enter.keycode = KEY_BACKSPACE
+	lobby._unhandled_input(enter)
+	_check(lobby.view() == "pick", "lobby: Backspace backs out of the card")
+	enter.keycode = KEY_ENTER
+	lobby._unhandled_input(enter)
+	lobby._unhandled_input(enter)
+	game._process(0.016)
+	_check(link.begun == ["g-2", "g-1"], "lobby: Enter picks, Enter starts (%s)" % [link.begun])
+
+	# A program that leaves the list while its card is up: back to the tiles.
+	lobby.press("tile:1")
+	link.candidates_received.emit([{"id": "g-1", "name": "Excel", "captured": true, "eligible": true}])
+	_check(lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: the card closes when its program is gone")
+	link.begin_failed.emit("Nobody has that pass.")
+	_check(message.text == "Nobody has that pass.", "lobby: a begin error still flashes")
+	link.candidates_received.emit([])
+	game._process(0.016)
+	_check(empty.text == Lobby.EMPTY, "lobby: an empty list says nobody is marked yet")
+
+	# Pages past 8: the stick walks across them, ◀ ▶ turn them.
+	var many: Array = []
+	for i in 11:
+		many.append({"id": "g-%02d" % i, "name": "P%d" % i, "eligible": true})
+	link.candidates_received.emit(many)
+	_check(lobby.picker.columns == 4 and lobby.tile_node(0) != null and lobby.tile_node(8) == null, "lobby: 11 programs, a page of 4 × 2")
+	link.set("saved_setup", true)
+	link.status_changed.emit("Connected.")
+	_check(_overlap(lobby.get("_buttons")) == "" and (lobby.get("_buttons") as Array).size() == 8 + 2 + 1, "lobby: a full page, ◀ ▶ and the ⚙ never overlap (%s)" % _overlap(lobby.get("_buttons")))
+	link.set("saved_setup", false)
+	link.status_changed.emit("Connected.")
+	lobby.press("next")
+	_check(lobby.picker.index == 8 and lobby.tile_node(8) != null and lobby.tile_node(0) == null and (lobby.get("_page_label") as Label3D).text == "page 2 / 2", "lobby: ▶ turns the page")
+	lobby.press("next")
+	_check(lobby.picker.index == 0, "lobby: … and wraps")
+	player.left_stick = Vector2(0, -1)
+	game._process(0.016)
+	player.left_stick = Vector2.ZERO
+	game._process(0.016)
+	player.left_stick = Vector2(0, -1)
+	game._process(0.016)
+	player.left_stick = Vector2.ZERO
+	game._process(0.016)
+	_check(lobby.picker.index == 8 and lobby.tile_node(8) != null, "lobby: the stick walks a row down onto the next page (%d)" % lobby.picker.index)
+
+	# The tablet's Send to headset lands whatever the view; back in the
+	# lobby, the card it interrupted is gone.
+	lobby.press("tile:1")
+	link.give_house(_placeholder_house())
+	link.assignment_received.emit(_assignment(game.builder.house, "s-tab", true))
+	_check(game.state() == GameFlow.State.PLAYING and link.begun.size() == 2, "lobby: the tablet's program still lands with the card up")
+	link.session_over.emit("test")
+	_check(game.state() == GameFlow.State.LOBBY and lobby.view() == "pick" and lobby.confirming().is_empty(), "lobby: … and the lobby comes back to the tiles, no card")
+
+	# ⚙ only once there is a setup to forget; held 2 s it forgets it.
+	_check(not (lobby.get("_gear") as Node3D).visible, "lobby: no ⚙ with nothing to forget")
+	link.set("saved_setup", true)
+	link.status_changed.emit("Connected.")
+	_check((lobby.get("_gear") as Node3D).visible, "lobby: a saved setup shows the ⚙")
+	game.pointer.inject(eye, aim_at.call(Lobby.GEAR_AT), true)
+	for i in 60:
+		game._process(1.0 / 60.0)
+	_check(int(link.get("forgotten")) == 0 and lobby.forget_progress() > 0.4, "lobby: holding the ⚙ fills the bar")
+	game.pointer.inject(eye, aim_at.call(Lobby.GEAR_AT), false)
+	game._process(0.016)
+	_check(lobby.forget_progress() == 0.0, "lobby: … letting go empties it")
+	game.pointer.inject(eye, aim_at.call(Lobby.GEAR_AT), true)
+	for i in 130:
+		game._process(1.0 / 60.0)
+	_check(int(link.get("forgotten")) == 1 and lobby.view() == "setup" and title.text == "SET UP THIS HEADSET", "lobby: two seconds on the ⚙ forget the setup — SET UP (%s)" % lobby.view())
+	game.pointer.clear_injection()
+	game.ghosts.avatars.requester = Callable()
+	main.queue_free()
+	await process_frame
+
+
+## The SET UP panel on main.tscn with a fake link: the keyboard (laser and
+## physical keys), the server choice, CONNECT's answers, PLAY OFFLINE.
+func _test_setup_panel() -> void:
+	var link: LinkBase = preload("res://test/fake_link.gd").new()
+	link.config = StationConfig.merge(StationConfig.defaults(), {"name": "Headset"})
+	link.set("unconfigured", true)
+	var main: Node = load("res://main.tscn").instantiate()
+	main.set("link", link)
+	root.add_child(main)
+	main.add_child(link)
+	await process_frame
+	var game: Game = main.get("game")
+	var lobby := game.lobby
+	game.player.set_physics_process(false)
+	game.player.read_input = false
+	game._process(0.016)
+	var panel := lobby.setup_panel()
+	_check(lobby.view() == "setup" and panel.visible and not (lobby.get("_grid") as Node3D).visible, "setup: an unconfigured headset shows SET UP THIS HEADSET")
+	_check(panel.choices.size() == 2 and panel.server_index == 0 and panel.station == "Headset", "setup: the link's servers, the first chosen; the name starts as Headset")
+	_check(_overlap(panel.buttons()) == "", "setup: no two buttons overlap (%s)" % _overlap(panel.buttons()))
+	var eye := game.player.camera.global_position
+	var aim_at := func(p: Vector2) -> Vector3: return lobby.panel_transform() * Vector3(p.x, p.y, 0.0) - eye
+	var tap := func(at: Vector2) -> void:
+		game.pointer.inject(eye, aim_at.call(at), false)
+		game._process(0.016)
+		game.pointer.inject(eye, aim_at.call(at), true)
+		game._process(0.016)
+	var keys := SetupPanel.key_ids()
+	for ch in "K7PQ":
+		tap.call(SetupPanel.key_center(keys.find("key:" + ch)))
+	_check(panel.code == "K7PQ" and lobby.hovered() == "key:Q", "setup: the laser types on the keyboard (%s)" % panel.code)
+	tap.call(SetupPanel.key_center(keys.find("key:back")))
+	_check(panel.code == "K7P", "setup: ⌫")
+	var ev := InputEventKey.new()
+	ev.pressed = true
+	for ch in "q3m":
+		ev.keycode = KEY_NONE
+		ev.unicode = ch.unicode_at(0)
+		lobby._unhandled_input(ev)
+	_check(panel.code == "K7PQ3M", "setup: physical keys type too, upper-cased (%s)" % panel.code)
+	tap.call(SetupPanel.server_slots(2)[1]["center"])
+	_check(panel.server_index == 1, "setup: a server is chosen with the laser")
+	tap.call(Vector2(0.46, SetupPanel.FIELD_Y))
+	tap.call(SetupPanel.key_center(keys.find("key:space")))
+	tap.call(SetupPanel.key_center(keys.find("key:2")))
+	_check(panel.field == "name" and panel.station == "Headset 2", "setup: the name field takes the keys (%s)" % panel.station)
+	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
+	var setups: Array = link.get("setups")
+	_check(setups.size() == 1 and setups[0] == ["http://127.0.0.1:7000", "K7PQ3M", "Headset 2"] and panel.busy, "setup: CONNECT tries the chosen server, the passcode and the name (%s)" % [setups])
+	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
+	_check(setups.size() == 1, "setup: … once")
+	link.call("answer_setup", false, "That isn't a moderator passcode.")
+	var msg: Label3D = panel.get("_message")
+	_check(not panel.busy and msg.text == "That isn't a moderator passcode." and lobby.view() == "setup" and panel.code == "K7PQ3M", "setup: a refusal says why and keeps the passcode")
+	ev.unicode = 0
+	ev.keycode = KEY_ENTER
+	lobby._unhandled_input(ev)
+	_check(setups.size() == 2, "setup: Enter connects too")
+	link.call("answer_setup", false, "Can't reach the server.")
+	_check(msg.text == "Can't reach the server.", "setup: can't reach the server")
+	tap.call(Vector2(-0.42, SetupPanel.ACTION_Y))
+	link.call("answer_setup", true)
+	game._process(0.016)
+	_check(lobby.view() == "pick" and (lobby.get("_station") as Label3D).text == "this headset: Headset 2", "setup: a working passcode goes on to the tiles, named")
+	_check((lobby.get("_gear") as Node3D).visible, "setup: … with the ⚙ to forget it")
+	link.forget_setup()
+	game._process(0.016)
+	_check(lobby.view() == "setup", "setup: forgotten, it asks again")
+	tap.call(Vector2(0.42, SetupPanel.ACTION_Y))
+	game._process(0.016)
+	_check(int(link.get("offline_chosen")) == 1 and lobby.view() == "pick", "setup: PLAY OFFLINE goes on to the tiles")
+	game.pointer.clear_injection()
+	main.queue_free()
+	await process_frame
+
+
+## The first two of `buttons` (`{id, center, size}`) whose rects overlap, as
+## text, else "".
+static func _overlap(buttons: Array) -> String:
+	for i in buttons.size():
+		for j in range(i + 1, buttons.size()):
+			var a: Dictionary = buttons[i]
+			var b: Dictionary = buttons[j]
+			var d: Vector2 = (a["center"] - b["center"]).abs()
+			var reach: Vector2 = (a["size"] + b["size"]) / 2.0
+			if d.x < reach.x and d.y < reach.y:
+				return "%s × %s" % [a["id"], b["id"]]
+	return ""
 
 
 # --- voice (wave 19) --------------------------------------------------------
