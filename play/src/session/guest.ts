@@ -427,6 +427,9 @@ export function useGuestSession(): GuestSession {
     [post, me, messages, crawl, save],
   );
   const shown = useMemo(() => withEchoes(messages, echoes), [messages, echoes]);
+  // The stream as of the last render, for callbacks that must not re-bind on every message.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const escape = useCallback(() => post("/api/guest/escape", {}), [post]);
   const act = useCallback(
     async (name: string, label?: string) => {
@@ -583,6 +586,9 @@ export function useGuestSession(): GuestSession {
   const answerWidget = useCallback(
     async (seq: number, result: WidgetResult) => {
       setWidgetAnswers((prev) => new Map(prev).set(seq, result));
+      // An invitation was answered on its own route (`recruit/answer`), which
+      // settles the card server-side: no second post (GN-F10's 409).
+      if (messagesRef.current.get(seq)?.widget?.kind === "invite") return;
       try {
         await post("/api/guest/widget", { seq, result });
       } catch (e) {

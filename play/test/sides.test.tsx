@@ -10,7 +10,7 @@ import { SidesContext } from "../src/sides/context.ts";
 import { DeferredAnswer, Doors, doorWords } from "../src/sides/doors.tsx";
 import { InviteCard } from "../src/sides/invite.tsx";
 import { FoundCrewSheet, RecruitSheet, SidesSheet } from "../src/sides/index.tsx";
-import { countLine, crewNameOk, crewRefusal, crewRoom, hasSidesOrCrew, inviteOf, recruitOffer, recruitRefusal, sideAction, sidesOf } from "../src/sides/model.ts";
+import { countLine, crewNameOk, crewRefusal, crewRoom, hasSidesOrCrew, inviteDone, inviteOf, recruitOffer, recruitRefusal, sideAction, sidesOf } from "../src/sides/model.ts";
 import { INVITE_WIDGET, SIDES_WIDGET, registerGuestWidget } from "../src/sides/widgets.tsx";
 import { WIDGETS, cardAsks } from "../src/widgets.tsx";
 import type { SidesCalls } from "../src/session/guest.ts";
@@ -171,6 +171,17 @@ describe("being recruited: the invite card (§9.4)", () => {
   });
   it("an invitation the view no longer lists reads its params", () => {
     expect(inviteOf(view(), { invite: "i9", fromName: "Ada", targetName: "The Night Shift", kind: "crew" }, "").line).toBe("Ada wants you in The Night Shift");
+  });
+});
+
+describe("an answered invitation after a reload (M4)", () => {
+  const inv = { kind: "side" as const, target: "Unlimited Power", targetName: "Unlimited Power" };
+  it("the live view decides: joined, not now, or closed", () => {
+    expect(inviteDone(view({ faction: "Unlimited Power" }), inv, {})).toBe("You joined Unlimited Power.");
+    expect(inviteDone(view({ sides: SIDES.map((s) => (s.id === "unlimited_power" ? { ...s, mine: true } : s)) }), { ...inv, target: "unlimited_power" }, {})).toBe("You joined Unlimited Power.");
+    expect(inviteDone(view({ crew: { id: "crew-1", name: "Night Shift", founder: "g-2", members: ["g-2", "g-1"] } }), { kind: "crew", target: "crew-1", targetName: "Night Shift" }, {})).toBe("You joined Night Shift.");
+    expect(inviteDone(view(), inv, { yes: false })).toBe("You said not now.");
+    expect(inviteDone(view(), inv, {})).toBe("This invitation is closed.");
   });
 });
 

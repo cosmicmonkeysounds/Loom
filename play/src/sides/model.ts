@@ -127,6 +127,21 @@ export function inviteOf(view: GuestView | null, params: Record<string, string>,
   return { id, from: known?.from ?? params["from"] ?? "", fromName, kind, target: known?.target ?? params["target"] ?? "", targetName, line: text.trim() !== "" ? text.trim() : `${fromName} wants you in ${targetName}` };
 }
 
+/**
+ * What an answered invitation card says (M4). After a reload the server
+ * marks the card answered with an empty record, so the live view decides:
+ * in the crew / on the side → joined; a remembered no → not now; else the
+ * invitation simply closed (answered elsewhere, or made moot).
+ */
+export function inviteDone(view: GuestView | null, inv: Pick<InviteView, "kind" | "target" | "targetName">, answered: Record<string, unknown>): string {
+  const ext = extOf(view);
+  const inCrew = inv.kind === "crew" && ext.crew != null && ext.crew.id === inv.target;
+  const onSide = inv.kind === "side" && (sidesOf(view).some((s) => s.mine && (s.id === inv.target || s.name === inv.targetName)) || view?.faction === inv.target || view?.faction === inv.targetName);
+  if (inCrew || onSide || answered["yes"] === true) return `You joined ${inv.targetName}.`;
+  if (answered["yes"] === false) return "You said not now.";
+  return "This invitation is closed.";
+}
+
 /** "Switch to The Way Out?" */
 export function switchQuestion(name: string): string {
   return `Switch to ${name}?`;

@@ -5,7 +5,7 @@
 import { useState } from "react";
 import type { WidgetProps } from "../widgets.tsx";
 import { useSides } from "./context.ts";
-import { countLine, inviteOf, sidesOf } from "./model.ts";
+import { countLine, inviteDone, inviteOf, sidesOf } from "./model.ts";
 
 export function InviteCard({ card, onAnswer, answered }: WidgetProps) {
   const { view, calls } = useSides();
@@ -29,7 +29,7 @@ export function InviteCard({ card, onAnswer, answered }: WidgetProps) {
     return (
       <div className="widget invite-done">
         <div className="widget-title">🚪 {inv.line}</div>
-        <div className="widget-sub">{answered["yes"] === true ? `You joined ${inv.targetName}.` : "You said not now."}</div>
+        <div className="widget-sub">{inviteDone(view, inv, answered)}</div>
       </div>
     );
   }
