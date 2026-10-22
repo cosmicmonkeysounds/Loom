@@ -4908,7 +4908,9 @@ when read_truth_txt:
     broadcast "📄 Only during Bobbing for Truth (🍎 first). Nothing happens." to channel(hosts)
 
 when the_verdict:
-  if Night.phase == "bobbing" and Night.r3_closed == true and Night.ended != true:
+  if Kernel.verdict_wait == true:
+    broadcast "⚖ The verdict is on the TV now; the ending follows when its pages are done. Nothing happens." to channel(hosts)
+  else if Night.phase == "bobbing" and Night.r3_closed == true and Night.ended != true:
     -> The Verdict
   else if Night.phase == "bobbing":
     broadcast "⚖ Not yet: 📄 Read truth.txt first. Nothing happens." to channel(hosts)
@@ -4916,6 +4918,16 @@ when the_verdict:
     broadcast "⚖ Not now: the verdict is already in, or the night has ended. Nothing happens." to channel(hosts)
   else:
     broadcast "⚖ Not yet: 🍎 Bobbing for Truth, then 📄 truth.txt first. Nothing happens." to channel(hosts)
+
+// Wave 18b (screens #3): the ending once the verdict's TV pages are
+// done (The Verdict sets the wait; ≈ 34 s of story time).
+when Kernel.verdict_wait == true and Time.elapsed >= Kernel.verdict_end:
+  set Kernel.verdict_wait = false
+  if Night.ended != true:
+    if Kernel.all_accurate == true:
+      -> Song Ending
+    else:
+      -> Grok Prom
 
 // F5: someone gave him the line (ROLE `pickup_line_accepted`).
 when line_accepted:

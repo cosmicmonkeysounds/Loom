@@ -214,10 +214,11 @@ else:
 // DRAFT w18b (Q6)
 Trabolta: I have compared every fact you gave me with truth.txt.
 Trabolta: {Kernel.v_true} true. {Kernel.v_lies} with a lie on record. {Kernel.v_none} nobody answered.
-if Kernel.all_accurate == true:
-  -> Song Ending
-else:
-  -> Grok Prom
+// Wave 18b (screens #3): the TV pages every question's answer and its
+// liars for ≈ 33.5 s; the ending (the song or Grok Prom) plays once
+// they are done (the `verdict_wait` rule in main.loom), never over them.
+set Kernel.verdict_wait = true
+set Kernel.verdict_end = Time.elapsed + 34
 
 // ── F4: every fact accurate (also reached from the pickup line) ────
 

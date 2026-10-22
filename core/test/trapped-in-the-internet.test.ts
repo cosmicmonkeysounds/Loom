@@ -408,6 +408,8 @@ describe("Trapped in the Internet — compile", () => {
       q8_hunt: "none",
       lies_accepted: "0",
       all_accurate: "false",
+      verdict_wait: "false",
+      verdict_end: "0",
       said_1: "none",
       said_2: "none",
       said_3: "none",
@@ -1389,7 +1391,15 @@ function boot(): Sim {
   return sim;
 }
 type Args = Record<string, string | number | boolean>;
-const fire = (sim: Sim, name: string, subject: string | null = null, args: Args | null = null, actor?: string) => sim.signal(name, subject ?? undefined, args, actor);
+/** Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story
+ *  time, the `verdict_wait` rule), so a press of it here ticks past them. */
+const VERDICT_PAGES_S = 34;
+const pastTheVerdict = (sim: Sim, name: string): SimEvent[] => {
+  const out: SimEvent[] = [];
+  if (name === "the_verdict") for (let i = 0; i < VERDICT_PAGES_S; i++) out.push(...sim.tick(1000));
+  return out;
+};
+const fire = (sim: Sim, name: string, subject: string | null = null, args: Args | null = null, actor?: string) => [...sim.signal(name, subject ?? undefined, args, actor), ...pastTheVerdict(sim, name)];
 const fireAll = (sim: Sim, ...names: string[]) => names.flatMap((n) => sim.signal(n));
 /** Through the first Moment of Truth (round-1 judging open). */
 const toTruth1 = (sim: Sim) => fireAll(sim, "call_to_the_desktop", "start_the_bingo", "bingo_time", "introduce_trabolta", "start_the_hunt", "hunt_time_up", "first_moment_of_truth");

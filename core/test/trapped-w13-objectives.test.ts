@@ -51,6 +51,8 @@ export class Night {
     const ev = this.sim.signal(name, subject);
     notePress(this.sim, ev);
     expect(pressRefused(this.sim, ev), name).toBe(false);
+    // Wave 18b: ⚖'s ending follows The Verdict's TV pages (34 s of story time).
+    if (name === "the_verdict") for (let i = 0; i < 34; i++) ev.push(...this.sim.tick(1000));
     return this.take(ev);
   }
   scan(scanner: string, id: string): ChatMessage[] {

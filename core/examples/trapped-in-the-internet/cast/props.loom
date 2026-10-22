@@ -54,6 +54,9 @@ CHARACTER Kernel
   q8_hunt: text? = none
   lies_accepted: 0 to 50 = 0
   all_accurate: bool = false
+  // Wave 18b: The Verdict is on the TV; the ending waits for its pages.
+  verdict_wait: bool = false
+  verdict_end: 0 to 1000000 = 0
   said_1: text? = none
   said_2: text? = none
   said_3: text? = none
