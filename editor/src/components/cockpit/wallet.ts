@@ -86,6 +86,14 @@ export function stimulusAmount(text: string): number | null {
   return Number.isInteger(n) && n >= 1 ? n : null
 }
 
+/** A card's step as the tag says it: a transfer the approver's audit holds
+ *  (`held`, the sender's and the approver's side) or flagged to its
+ *  recipient (`flagged`, wave 18b R13) reads `🚩 flagged for a CRA audit`. */
+export function walletStepTag(card: Pick<WalletCard, 'step'> & { audit?: string }): string {
+  if (card.step !== 'held' && card.step !== 'flagged') return card.step
+  return `🚩 ${card.step}${card.audit !== undefined && card.audit !== '' ? ` for ${card.audit}` : ''}`
+}
+
 /** The compact tag a Wallet-room card shows in the cockpit chat: what it is,
  *  where it stands, who pays whom and how much (the card's own text is
  *  written from its owner's side, "You sent…", so the tag names both). */
@@ -94,5 +102,5 @@ export function walletCardTag(card: WalletCard): string {
   const entry = card.kind === 'offer' ? ` · “${card.entryTitle ?? card.entry ?? 'a fact'}”` : ''
   // A freeze moves no coin: its card carries amount 0.
   if (card.kind === 'freeze') return `🧊 freeze · ${card.step} · ${parties}`
-  return `💰 ${card.kind} · ${card.step} · ${parties} · ${card.amount} ${card.unit}${entry}`
+  return `💰 ${card.kind} · ${walletStepTag(card)} · ${parties} · ${card.amount} ${card.unit}${entry}`
 }

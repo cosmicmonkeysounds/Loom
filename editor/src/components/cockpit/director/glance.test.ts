@@ -12,6 +12,9 @@ import {
   needLink,
   needsYou,
   peopleGlance,
+  raceGlance,
+  raceLead,
+  racePct,
   recentGlobals,
   refusalReason,
   secretHeads,
@@ -295,6 +298,47 @@ describe('peopleGlance', () => {
       { id: 'The Internet', label: 'The Internet', count: 1 },
     ])
     expect(peopleGlance([row('p1', 'A')], [], []).online).toBeNull()
+  })
+})
+
+describe('raceGlance (wave 18b, faction mode)', () => {
+  const race = {
+    needs: 4,
+    present: 6,
+    winner: 'crew-1',
+    factions: [
+      { id: 'Unlimited Power', name: 'Unlimited Power', kind: 'side' as const, founder: 'Excel', present: 1 },
+      { id: 'crew-1', name: 'The Pirates', kind: 'founded' as const, founder: 'Winamp', present: 4 },
+      { id: 'crew-2', name: 'Ducks', kind: 'founded' as const, founder: null, present: 0 },
+    ],
+  }
+
+  it('is null outside faction mode', () => {
+    expect(raceGlance(null)).toBeNull()
+  })
+
+  it('lists every faction against the line, most first; over the line is now, not won', () => {
+    const g = raceGlance(race)!
+    expect(g).toMatchObject({ needs: 4, declared: true, present: 6, over: 'The Pirates' })
+    expect(g.rows.map((r) => [r.name, r.count, r.over])).toEqual([
+      ['The Pirates', 4, true],
+      ['Unlimited Power', 1, false],
+      ['Ducks', 0, false],
+    ])
+  })
+
+  it('falls back to a bare majority of the present when the story has no majority: line', () => {
+    expect(raceGlance({ ...race, needs: null, winner: null })).toMatchObject({ needs: 4, declared: false, over: null })
+    expect(raceGlance({ needs: null, present: 0, winner: null, factions: [] })).toMatchObject({ needs: 1, rows: [] })
+  })
+
+  it('draws shares of the present and names who leads', () => {
+    expect(racePct(3, 6)).toBe('50%')
+    expect(racePct(9, 6)).toBe('100%')
+    expect(racePct(1, 0)).toBe('0%')
+    expect(raceLead({ kind: 'founded', founder: 'Winamp' })).toBe('founded by Winamp')
+    expect(raceLead({ kind: 'side', founder: 'Excel' })).toBe('led by Excel')
+    expect(raceLead({ kind: 'founded', founder: null })).toBe('')
   })
 })
 

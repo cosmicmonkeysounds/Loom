@@ -14,6 +14,7 @@ import clsx from 'clsx'
 import { CockpitPhase, CockpitTab, SelectionKind, useCockpit, type RosterRow } from '@/store/cockpit'
 import { useRooms, useRoomCounts } from './rooms'
 import { channelGlyph, worldBadge } from './format'
+import { NameBadges } from './ui'
 import { useInspect } from './inspect'
 import { useGuestMenu } from './guest-menu'
 import { isGone, isPersonaRow, seenLine } from './guests'
@@ -174,6 +175,7 @@ function GuestRow({ r, hasChoice, gone, persona, now }: { r: RosterRow; hasChoic
           ⛔
         </span>
       )}
+      <NameBadges badges={r.badges} />
       <span className="shrink-0 truncate text-[10px] text-zinc-600">{locked ? '' : (r.location ?? '')}</span>
     </button>
   )

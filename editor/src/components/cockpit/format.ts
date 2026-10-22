@@ -62,3 +62,9 @@ export function publicFaction(faction: string | null, factions: Array<{ id: stri
   return f !== undefined && f.hidden && !f.revealed ? null : faction
 }
 
+
+/** A person's badges as plain text (` 🚻`), for places that take no
+ *  markup (a select's options); "" when they wear none (wave 18b). */
+export function badgeText(badges: ReadonlyArray<{ glyph: string }> | undefined): string {
+  return badges === undefined || badges.length === 0 ? '' : ` ${badges.map((b) => b.glyph).join('')}`
+}

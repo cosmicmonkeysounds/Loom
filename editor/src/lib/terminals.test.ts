@@ -120,6 +120,14 @@ describe('device badges (SW-SCR-21)', () => {
     expect(terminalBadges(none!, null)).toEqual([])
   })
 
+  it('📢 when the tablet says the house announcements (wave 18b, ann=1); never a warning', () => {
+    const [on] = rowsOf({ ...poll('Kitchen', 0), announce: true })
+    expect(on!.device).toMatchObject({ announce: true })
+    expect(terminalBadges(on!, null).map((x) => [x.key, x.text, x.warn])).toEqual([['announce', '📢', false]])
+    const [off] = rowsOf({ ...poll('Kitchen', 0), announce: false })
+    expect(terminalBadges(off!, null)).toEqual([])
+  })
+
   it('🎤 the voice link (wave 19): grey while live / held / off, red when a placed terminal is denied or on http', () => {
     const [live] = rowsOf({ ...poll('Kitchen', 0), mic: 'live' })
     expect(live!.device).toMatchObject({ mic: 'live' })
@@ -154,6 +162,10 @@ describe('device badges (SW-SCR-21)', () => {
     expect(fullscreenTitle({ view: 'mirror' })).toMatch(/--kiosk/)
     expect(fullscreenTitle({ view: 'face' })).toMatch(/touch the screen once/)
     expect(fullscreenTitle({ view: 'face' })).not.toMatch(/kiosk/)
+    // Wave 18b: the tent laptop is started with --kiosk like the TV.
+    expect(fullscreenTitle({ view: 'reinstall' })).toMatch(/--kiosk/)
+    expect(fullscreenTitle({ view: 'reinstall' })).toMatch(/Internet laptop/)
+    expect(fullscreenTitle({ view: 'reinstall' })).not.toMatch(/touch the screen once/)
   })
 
   it('flags a build that differs from the majority (none on a tie)', () => {

@@ -22,7 +22,7 @@ import {
 import { useGraph } from '@/store/graph'
 import { openContextMenu, type ContextMenuEntry } from '@/store/context-menu'
 import { confirmAction } from '@/store/dialog'
-import { FactionPill } from './ui'
+import { FactionPill, NameBadges } from './ui'
 import { publicFaction } from './format'
 import { LensKind, lensKindOf, performerActions as boothActions, READ_ONLY_ROOMS, roomMessages, useRooms } from './rooms'
 import { walletCardTag } from './wallet'
@@ -679,6 +679,7 @@ export function RosterTab() {
                     ⛔
                   </span>
                 )}
+                <NameBadges badges={r.badges} className="ml-1 text-xs" />
                 {r.owner && (
                   <span
                     className={clsx('ml-1.5 rounded px-1 text-[9px] uppercase tracking-wide', r.owner === me ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-800 text-zinc-400')}
@@ -700,7 +701,7 @@ export function RosterTab() {
                 <div className="text-[10px] text-zinc-600">{r.id}</div>
               </td>
               <td className="px-3 py-2">
-                <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} />
+                <FactionPill faction={locked ? r.faction : (r.trueFaction ?? r.faction)} founded={locked ? null : r.founded} />
               </td>
               <td className="px-3 py-2 text-zinc-400">{r.location ?? '—'}</td>
               <td className="px-3 py-2 text-zinc-300">{r.score}</td>

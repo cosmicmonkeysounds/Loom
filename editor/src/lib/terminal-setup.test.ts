@@ -5,11 +5,13 @@ import {
   TerminalView,
   characterOptions,
   doubleClaims,
+  isStationView,
   isTerminalView,
   mapLocations,
   mapTerminals,
   pickSpot,
   pickView,
+  roomHelp,
   roomOptions,
   spotClaim,
   suggestRoom,
@@ -17,6 +19,7 @@ import {
   terminalBase,
   terminalLink,
   unclaimedSpots,
+  viewHasCharacter,
   type TerminalSetup,
 } from '@/lib/terminal-setup'
 
@@ -44,7 +47,8 @@ const BLANK: TerminalSetup = { name: '', spot: '', view: TerminalView.Auto, room
 
 describe('TERMINAL_VIEWS', () => {
   it('lists every view the terminal app takes, shadow included, each with a label and help', () => {
-    expect(TERMINAL_VIEWS.map((v) => v.id)).toEqual(['auto', 'world', 'face', 'mirror', 'tv', 'chess', 'shadow', 'casino'])
+    // Kept in step with terminal/src/config.ts `VIEWS` (wave 18b: reinstall, the tent laptop).
+    expect(TERMINAL_VIEWS.map((v) => v.id)).toEqual(['auto', 'world', 'face', 'mirror', 'tv', 'chess', 'shadow', 'casino', 'reinstall'])
     for (const v of TERMINAL_VIEWS) {
       expect(v.label).not.toBe('')
       expect(v.help.length).toBeGreaterThan(10)
@@ -81,6 +85,20 @@ describe('suggestions', () => {
     expect(suggestView('server-room-door')).toBe(TerminalView.Chess)
     expect(suggestView('server-room')).toBe(TerminalView.Face)
     expect(suggestView('start-bar')).toBe(TerminalView.Auto)
+    expect(suggestView('tent')).toBe(TerminalView.Reinstall)
+  })
+  it('the reinstallation station (wave 18b) is roomless and speaks for nobody', () => {
+    expect(isStationView(TerminalView.Reinstall)).toBe(true)
+    expect(isStationView(TerminalView.Face)).toBe(false)
+    expect(viewHasCharacter(TerminalView.Reinstall)).toBe(false)
+    expect(suggestRoom(spot('server-room'), TerminalView.Reinstall)).toBe('')
+    expect(pickSpot(BLANK, spot('tent'))).toMatchObject({ spot: 'tent', view: 'reinstall', room: '' })
+    expect(roomHelp(TerminalView.Reinstall)).toMatch(/no room/u)
+    const link = new URL(terminalLink('https://x.test/terminal/', 'M', { ...BLANK, spot: 'tent', view: TerminalView.Reinstall, room: 'The Internet', announce: true })).searchParams
+    expect(link.get('view')).toBe('reinstall')
+    expect(link.has('character')).toBe(false)
+    expect(link.has('room')).toBe(false)
+    expect(link.get('announce')).toBe('1')
   })
   it('only the TV and the server-room spot get a room; chess never', () => {
     expect(suggestRoom(spot('desktop-tv'), TerminalView.Tv)).toBe('The Desktop')
@@ -138,7 +156,9 @@ describe('terminalLink', () => {
     expect(terminalBase('https://app.example.com/?code=ABCD')).toBe('https://app.example.com/terminal/')
     expect(terminalBase('not a url')).toBeNull()
     const link = terminalLink('https://x.test/terminal/', 'MOD1', { name: 'Server Room', spot: 'server-room', view: TerminalView.Face, room: 'The Server Room', character: 'Trabolta', announce: false })
-    expect(link).toBe('https://x.test/terminal/?code=MOD1&name=Server%20Room&character=Trabolta&spot=server-room&view=face&room=The%20Server%20Room&announce=0')
+    expect(link).toBe('https://x.test/terminal/?code=MOD1&name=Server%20Room&character=Trabolta&spot=server-room&view=face&room=The%20Server%20Room')
+    // Unticked, the link names no announce: the tablet follows the house setting (wave 18b).
+    expect(new URL(link).searchParams.has('announce')).toBe(false)
     const p = new URL(link).searchParams
     expect(p.get('room')).toBe('The Server Room')
   })

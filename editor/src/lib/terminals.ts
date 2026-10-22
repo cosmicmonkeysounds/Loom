@@ -17,7 +17,8 @@
 //! A current terminal build also reports its device on every poll
 //! (SW-SCR-21): sound unlocked, page visible, battery, full screen (wave
 //! 17), the voice link's mic (wave 19), build stamp — the row's badges
-//! (`terminalBadges`). An older build reports none.
+//! (`terminalBadges`). An older build reports none. Wave 18b adds 📢 when
+//! the tablet says the house announcements (`ann=1` on its poll).
 //!
 //! A room terminal (wave 7) also reports the LOCATION it belongs to (`room`):
 //! the row says so, and one that isn't on the server-room spot is amber
@@ -44,6 +45,10 @@ export interface TerminalPoll {
   /** The voice link's mic (wave 19, `MicState`); absent: an older build. */
   mic?: MicState
   version?: string
+  /** It says the house announcements right now (wave 18b, Q8: its own
+   *  Always / Never, else the house list `audio.json` `announce.terminals`
+   *  for its spot); absent from an older build. */
+  announce?: boolean
 }
 
 /** What a terminal's mic reports (wave 19): open, turned off in ⚙ on that
@@ -53,7 +58,7 @@ export interface TerminalPoll {
 export type MicState = 'live' | 'muted' | 'denied' | 'insecure' | 'locked' | 'off'
 
 /** A row's device health, as its last listed poll said. */
-export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version'>
+export type TerminalDevice = Pick<TerminalPoll, 'audio' | 'visible' | 'battery' | 'charging' | 'fullscreen' | 'mic' | 'version' | 'announce'>
 
 /** `GET /api/mod/screen/terminals`. */
 export interface ScreenTerminals {
@@ -118,7 +123,7 @@ export function mergeTerminals(
   const listed = new Map<string, TerminalDevice>()
   for (const p of server?.terminals ?? []) {
     if (p.name === '') continue
-    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, mic: p.mic, version: p.version })
+    listed.set(p.name, { audio: p.audio, visible: p.visible, battery: p.battery, charging: p.charging, fullscreen: p.fullscreen, mic: p.mic, version: p.version, announce: p.announce })
     const lastSeen = clientNow - Math.max(0, p.ago)
     const prev = next[p.name]
     // A server restart forgets; never move a remembered poll backwards.
@@ -195,7 +200,7 @@ export function strayRoom(row: Pick<TerminalRow, 'room' | 'spot'>): boolean {
 export const LOW_BATTERY = 20
 
 export interface TerminalBadge {
-  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version'
+  key: 'audio' | 'hidden' | 'fullscreen' | 'mic' | 'battery' | 'version' | 'announce'
   text: string
   title: string
   /** Needs a hand: red (amber for an odd version). */
@@ -213,12 +218,18 @@ export function majorityVersion(rows: readonly TerminalRow[]): string | null {
 }
 
 /** What to do about ⛶. A terminal counts Chrome's `--kiosk` / F11 and a Home
- *  Screen app as full screen, so on the TV (nobody taps it) a ⛶ means its
- *  Chrome was started without `--kiosk`; a tablet just needs a touch. */
+ *  Screen app as full screen, so on the TV and the tent laptop (both started
+ *  with `--kiosk`) a ⛶ means its Chrome was started without it; a tablet just
+ *  needs a touch. */
 export function fullscreenTitle(row: Pick<TerminalRow, 'view'>): string {
-  return isTvView(row.view)
-    ? 'Not full screen: this Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the TV); a click on the screen also asks'
-    : 'Not full screen: touch the screen once (it asks again on every touch)'
+  if (isTvView(row.view)) {
+    return 'Not full screen: this Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the TV); a click on the screen also asks'
+  }
+  // Wave 18b: the tent laptop (view=reinstall) runs Chrome --kiosk too.
+  if (row.view === 'reinstall') {
+    return 'Not full screen: this laptop’s Chrome was started without --kiosk. Quit it and relaunch with the kiosk flags (kiosk.md → the Internet laptop); a click on the screen also asks'
+  }
+  return 'Not full screen: touch the screen once (it asks again on every touch)'
 }
 
 /** Should this terminal have a working mic (wave 19, D9)? Placed on a spot,
@@ -255,9 +266,9 @@ export function micBadge(row: Pick<TerminalRow, 'spot' | 'view'>, mic: MicState)
 
 /** A row's install-day badges: 🔇 sound locked, 💤 page hidden, ⛶ not full
  *  screen (only when the build says so: one that can't be sends nothing), 🎤
- *  the voice link's mic (when reported), the battery,
- *  and the build (flagged when it differs from the majority's, or is missing
- *  while the others report one). */
+ *  the voice link's mic (when reported), 📢 it says the house announcements
+ *  (wave 18b), the battery, and the build (flagged when it differs from the
+ *  majority's, or is missing while the others report one). */
 export function terminalBadges(row: TerminalRow, majority: string | null): TerminalBadge[] {
   const d = row.device
   if (d === null) return []
@@ -266,6 +277,9 @@ export function terminalBadges(row: TerminalRow, majority: string | null): Termi
   if (d.visible === false) out.push({ key: 'hidden', text: '💤', title: 'The page is hidden: the screen is off, or another app / a screensaver is on top', warn: true })
   if (d.fullscreen === false) out.push({ key: 'fullscreen', text: '⛶', title: fullscreenTitle(row), warn: true })
   if (d.mic !== undefined) out.push(micBadge(row, d.mic))
+  if (d.announce === true) {
+    out.push({ key: 'announce', text: '📢', title: 'Says the house announcements aloud (its own ⚙ setting, or the house list for its spot)', warn: false })
+  }
   if (typeof d.battery === 'number') {
     const low = d.battery < LOW_BATTERY && d.charging !== true
     out.push({ key: 'battery', text: `${d.charging === true ? '⚡' : '🔋'}${d.battery}%`, title: d.charging === true ? 'Charging' : low ? 'Battery low: plug it in' : 'On battery', warn: low })

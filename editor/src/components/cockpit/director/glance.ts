@@ -16,6 +16,7 @@ import {
   type FactsView,
   type LedgerEntry,
   type LocationSummary,
+  type RaceView,
   type RosterRow,
   type WatchSummary,
   type WorldEntry,
@@ -327,6 +328,64 @@ export function peopleGlance(
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
       .slice(0, 3),
   }
+}
+
+// ---------------------------------------------------------------------------
+// The race (wave 18b, faction mode)
+// ---------------------------------------------------------------------------
+
+export interface RaceRow {
+  id: string
+  name: string
+  /** `side`: a declared joinable GROUP; `founded`: a program's own faction. */
+  kind: 'side' | 'founded'
+  /** "founded by X" / "led by X"; null when nobody leads it yet. */
+  founder: string | null
+  /** Its members present tonight. */
+  count: number
+  /** Over the line now (`RaceView.winner`): not the story's own latch. */
+  over: boolean
+}
+
+export interface RaceGlance {
+  /** The threshold (the header's `majority:`, else a bare majority of the present). */
+  needs: number
+  /** True when the story declares a `majority:` line (else `needs` is ours). */
+  declared: boolean
+  /** Programs present (not gone, not a Run persona). */
+  present: number
+  rows: RaceRow[]
+  /** The faction over the line now, by name; null when none is. */
+  over: string | null
+}
+
+/** The race as the People section draws it (`ModView.race`): every race
+ *  faction's present head count against the threshold, most first. `over`
+ *  is "over the line now", never "won": founding opens at the Truther
+ *  Download, so a faction can be past the line before the story counts (the
+ *  show counts only in the Y2K hour), and only the story's Majority Reached
+ *  beat says who won. Null outside faction mode. */
+export function raceGlance(race: RaceView | null): RaceGlance | null {
+  if (race === null) return null
+  const declared = race.needs !== null
+  const needs = race.needs ?? majorityOf(race.present)
+  const rows: RaceRow[] = race.factions
+    .map((f) => ({ id: f.id, name: f.name, kind: f.kind, founder: f.founder, count: f.present, over: race.winner === f.id }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  const over = race.winner === null ? null : (race.factions.find((f) => f.id === race.winner)?.name ?? race.winner)
+  return { needs, declared, present: race.present, rows, over }
+}
+
+/** A race row's bar width (and the threshold tick) as a share of the
+ *  present programs, never past 100 %. */
+export function racePct(n: number, present: number): string {
+  return `${present <= 0 ? 0 : Math.min(100, (n / present) * 100)}%`
+}
+
+/** A race row's "founded by X" / "led by X" line, or "" with nobody. */
+export function raceLead(row: Pick<RaceRow, 'kind' | 'founder'>): string {
+  if (row.founder === null) return ''
+  return row.kind === 'founded' ? `founded by ${row.founder}` : `led by ${row.founder}`
 }
 
 // ---------------------------------------------------------------------------

@@ -34,6 +34,8 @@ import type {
   WalletModView,
   WatchSummary,
   CountdownSummary,
+  NameBadge,
+  RaceView,
 } from '@loom/core/views'
 // The facts judge's ledger view (`ModView.facts`, Wave 4 lane B); every
 // editor surface reads it through this re-export.
@@ -42,6 +44,9 @@ import type { FactVerdict, FactsFiling, FactsQuestion, FactsView } from '@loom/c
 export type { FactVerdict, FactsFiling, FactsQuestion, FactsView }
 // The Director page's board (`ModView.watch` / `ModView.countdowns`, wave 10).
 export type { WatchSummary, CountdownSummary }
+// Wave 18b: `badge:` lines on people (`RosterRow.badges`) and the faction
+// race (`ModView.race`, faction mode only).
+export type { NameBadge, RaceView }
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -221,6 +226,33 @@ export interface RosterRow {
    *  request), epoch ms — null when never seen. Server only (wave 11 C5);
    *  absent on the local sim and an older server. */
   lastSeen?: number | null
+  /** Wave 18b: the story's `badge:` lines true for them now (🚻 Bathroom
+   *  Mode); absent when none is (and from an older server). */
+  badges?: NameBadge[]
+  /** Wave 18b, faction mode only: the guest-founded faction they belong to
+   *  (`ModView.crews`, client-joined by `withFoundedFactions`). A founded
+   *  faction is no declared side, so `faction` reads null for its members. */
+  founded?: { id: string; name: string } | null
+}
+
+/** A founded faction as `ModView.crews` carries it (the parts the cockpit reads). */
+export interface FoundedFaction {
+  id: string
+  name: string
+  members: readonly string[]
+}
+
+/** Each roster row's founded faction, in faction mode (a story with a
+ *  `founding:` line: `race` is present); outside it a crew is a friends'
+ *  club, not a faction, and the rows are left alone. */
+export function withFoundedFactions(rows: readonly RosterRow[], crews: readonly FoundedFaction[] | undefined, factionMode: boolean): RosterRow[] {
+  if (!factionMode || crews === undefined || crews.length === 0) return rows as RosterRow[]
+  const of = new Map<string, { id: string; name: string }>()
+  for (const c of crews) for (const m of c.members) if (!of.has(m)) of.set(m, { id: c.id, name: c.name })
+  return rows.map((r) => {
+    const f = of.get(r.id)
+    return f === undefined ? r : { ...r, founded: f }
+  })
 }
 
 export interface CockpitMessage {
@@ -346,8 +378,28 @@ export interface AgentQueue {
   /** The oldest wait as of the server's send (it never ages on the wire). */
   oldestMs: number | null
   stalled: boolean
+  /** Wave 18b (O4): the character's judge queue — rulings waiting in the
+   *  hub, the one out to a worker, the oldest wait, a judge stall. Absent
+   *  when nothing is queued or out and nothing stalled (and on an older
+   *  server). */
+  judging?: AgentJudging
   /** Client only: the wall ms this console received `oldestMs`, so the
    *  wait keeps aging between snapshots (`agentQueueOf(…, now)`). */
+  receivedAt?: number
+}
+
+/** `AgentQueue.judging` (wave 18b, the server's `AgentJudging`). */
+export interface AgentJudging {
+  /** Rulings waiting in the hub's queue, not yet sent. */
+  queued: number
+  /** Rulings sent to a worker, not yet answered (at most one per worker). */
+  out: number
+  /** The oldest (queued or out) ruling's wait since it was asked (ms). */
+  oldestMs: number | null
+  /** Every worker voicing it answers no rulings (two expiries in a row). */
+  stalled: boolean
+  /** Client only: the wall ms this console received `oldestMs` (stamped
+   *  apart from the voice queue's), so the wait ages between snapshots. */
   receivedAt?: number
 }
 
@@ -361,7 +413,15 @@ export function stampAgentQueues(next: readonly CastSummary[], prev: readonly Ca
     if (q === undefined || q === null || typeof q !== 'object') return c
     const old = before.get(c.id)
     const same = old !== undefined && old.depth === q.depth && old.oldestMs === q.oldestMs && old.stalled === q.stalled
-    return { ...c, agentQueue: { ...q, receivedAt: same && old.receivedAt !== undefined ? old.receivedAt : at } }
+    const stamped: AgentQueue = { ...q, receivedAt: same && old.receivedAt !== undefined ? old.receivedAt : at }
+    // The judge queue (wave 18b) changes on its own clock: stamp it apart.
+    const j = q.judging
+    if (j !== undefined && j !== null && typeof j === 'object') {
+      const was = old?.judging
+      const sameJ = was !== undefined && was.queued === j.queued && was.out === j.out && was.oldestMs === j.oldestMs && was.stalled === j.stalled
+      stamped.judging = { ...j, receivedAt: sameJ && was.receivedAt !== undefined ? was.receivedAt : at }
+    }
+    return { ...c, agentQueue: stamped }
   })
 }
 
@@ -507,6 +567,11 @@ export interface CockpitState {
   /** The story clock off the last snapshot (null on an older server) — the
    *  Wallet card's and the Director's countdowns. */
   storyClock: StoryClock | null
+  /** Wave 18b: the faction race (`ModView.race`) — the threshold, who is
+   *  present, every race faction's head count, and the faction over the
+   *  line *now* (not the story's latch). Null outside faction mode (no
+   *  `founding:` line) and from an older server. */
+  race: RaceView | null
   /** The Director's glance board: the story's live `watch:` items
    *  (`ModView.watch`); empty when none is live or none is declared. */
   watch: WatchSummary[]
@@ -724,6 +789,7 @@ export const nullCockpit: CockpitStore = create<CockpitState>((set) => ({
   facts: null,
   wallet: null,
   storyClock: null,
+  race: null,
   watch: [],
   watchDeclared: false,
   countdowns: [],

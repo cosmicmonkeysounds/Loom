@@ -16,6 +16,7 @@ import {
   TERMINAL_VIEWS,
   TerminalView,
   characterOptions,
+  isStationView,
   isTerminalView,
   pickSpot,
   pickView,
@@ -67,7 +68,7 @@ export function TerminalSetup() {
   const spotOf = (id: string) => map?.find((t) => t.id === id) ?? null
   const spot = spotOf(setup.spot)
   const view = viewOption(setup.view)
-  const chess = setup.view === TerminalView.Chess || setup.view === TerminalView.Casino
+  const chess = isStationView(setup.view)
   // A stored room the lists don't know (a renamed LOCATION): kept selectable so the select never lies.
   const roomList = setup.room !== '' && !rooms.includes(setup.room) ? [setup.room, ...rooms] : rooms
   // Likewise a picked spot a variant switch took off the map: shown (and flagged), never silently kept in the link.
@@ -151,7 +152,7 @@ export function TerminalSetup() {
               onChange={(e) => setSetup((s) => ({ ...s, character: e.target.value }))}
               data-testid="run-terminal-setup-character"
             >
-              {!viewHasCharacter(setup.view) && <option value="">— the King (no character) —</option>}
+              {!viewHasCharacter(setup.view) && <option value="">{setup.view === TerminalView.Chess ? '— the King (no character) —' : '— no character —'}</option>}
               {characters.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.id}
@@ -162,7 +163,7 @@ export function TerminalSetup() {
           </label>
           <label className="flex items-center gap-2 pl-[5.5rem] text-[11px] text-zinc-400">
             <input type="checkbox" checked={setup.announce} onChange={(e) => setSetup((s) => ({ ...s, announce: e.target.checked }))} data-testid="run-terminal-setup-announce" />
-            Also say the house announcements (off for most tablets: the house speakers reach them)
+            Say announcements: Always (ignore the house setting). Unticked, the tablet follows the house setting for its spot (📢 on the Terminals list)
           </label>
         </div>
         <div className="flex flex-col items-center gap-1.5">
