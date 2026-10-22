@@ -41,7 +41,7 @@ When you're scanned in, three files about **who you're connected to** arrive in 
 
 - **Brookhaven And Lockheed**: your father's badge, and a defence contractor's in the same envelope.
 - **The Old Machines**: what still runs in here, your father's oscilloscope among it.
-- **The Leaderboard**: the MONOPOLY GO! board, and the player who won't let the ball drop.
+- **The Leaderboard**: the MONOPOLY GO! board, where you are the player who won't let the ball drop.
 
 ## How to play
 
