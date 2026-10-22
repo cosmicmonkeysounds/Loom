@@ -58,6 +58,9 @@ out is plenty; 5 cm is close enough.
   speaker. The link is on everywhere except the spawn room (the tent or
   the shed), where the headsets and the tent laptop are; the plan marks a
   terminal without it 🔇.
+  A terminal's screen of **reinstall** is the tent laptop: the idle show
+  between walks, and the reinstallation wizard and game for a marked
+  pass; it belongs to no room (no *speaks*).
 - **🔊 Speaker** — click where a house speaker hangs (or **+ Speaker
   here** on a selected room). It is drawn as a small cabinet facing the
   way it points, with a badge of its interface outputs (a red **—** when
