@@ -160,7 +160,7 @@ describe("the w18b-mini fixture on an event runtime", () => {
     const g = await call(rt, "/api/guest/register", { name: "Winamp", passcode: CODES.event });
     expect(g.status).toBe(200);
     const id = g.json.id as string;
-    expect((await call(rt, "/api/mod/signal", { name: "deal_the_fact" }, true)).status).toBe(200);
+    expect((await call(rt, "/api/mod/signal", { name: "deal_the_fact", subject: id }, true)).status).toBe(200);
     const card = rt.chatHistoryFor(id).find((m) => m.kind === "widget" && m.widget?.kind === "fact")!;
     expect(card).toBeDefined();
     const filed = await call(rt, "/api/guest/widget", { token: g.json.token, seq: card.seq, result: { question: "H1", answer: "7", confidence: 100 } });
