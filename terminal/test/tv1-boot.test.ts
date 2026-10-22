@@ -76,6 +76,14 @@ describe("tv1 boot — the introduction", () => {
     expect(draw(IntroWall, INTRO_WALL_MS)).toBe("");
     expect(INTRO_WALL_MS).toBeLessThan(INTRO_MS);
   });
+
+  it("the wall's online line is fully typed with 2.5 s to read before the fade", () => {
+    // The card fades from 11.5 s; the line starts typing at 5.6 s.
+    const line = (t: number) => /class="a1w-line">([\s\S]*?)<\/div>/u.exec(draw(IntroWall, t))?.[1] ?? "";
+    expect(line(9000)).toContain("say hello.");
+    expect(line(9000)).not.toContain("kit-type-rest");
+    expect(line(8000)).toContain("kit-type-rest");
+  });
 });
 
 describe("tv1 boot — Power On", () => {
