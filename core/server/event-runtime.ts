@@ -2166,7 +2166,7 @@ export class EventRuntime {
    * 404 for a room the story doesn't have, 403 for a public group's room
    * the guest isn't in (`canPost` takes an undeclared-in-`model.channels`
    * id as open to post, which is how the lobby and `faction:` work). The
-   * lobby, `dm:` (resolved above), `pm:` (`canPost` checks the two
+   * lobby (unless the story hides it: `lobby: hidden`, 404), `dm:` (resolved above), `pm:` (`canPost` checks the two
    * parties), the pinned rooms (`canPost` refuses them), a declared place's
    * `loc:` room and an authored room the guest can see, and a room this
    * guest was already written to in are rooms. A room this guest can't see
@@ -2178,8 +2178,11 @@ export class EventRuntime {
    */
   private guestRoom(guestId: string, channel: string): { status: 403 | 404; error: string } | null {
     const sim = this.sim!;
-    if (channel === "lobby" || channel.startsWith("dm:") || channel.startsWith("pm:") || isPinnedRoom(channel)) return null;
     const none = { status: 404 as const, error: "no such room" };
+    // Wave 18b (D18): `lobby: hidden` lists the lobby on no guest's phone,
+    // so a guest can't post into it either (a booth and Run still do).
+    if (channel === "lobby") return sim.model.lobbyHidden ? none : null;
+    if (channel.startsWith("dm:") || channel.startsWith("pm:") || isPinnedRoom(channel)) return null;
     if (channel.startsWith("faction:")) {
       const group = channel.slice("faction:".length);
       const def = sim.model.factions.get(group);
