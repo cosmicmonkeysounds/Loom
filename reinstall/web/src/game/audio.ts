@@ -2,12 +2,14 @@
 //! bend): Gerald's quack (a buzzy sawtooth through a nasal formant, pitch
 //! falling, two syllables), the celebration fanfare, and
 //! the failure buzz. Needs one user gesture first (`resume` on the tap that
-//! starts the game); without WebAudio every call is a no-op.
+//! starts the game); without WebAudio every call is a no-op. The voice link
+//! (`voice.ts`) plays and captures on this same context (`context()`): one
+//! context to unlock, never two.
 //!
 //! On the tent laptop (wave 18b) the game plays inside the terminal page:
 //! `createSfx(soundOutput)` borrows the terminal's context and master bus
 //! (`terminal/src/sound/bus.ts`) instead of opening a context of its own,
-//! and never closes what it borrowed.
+//! and never closes what it borrowed (the tent has no voice link).
 
 export interface Sfx {
   /** Call from a user gesture. */
@@ -20,6 +22,9 @@ export interface Sfx {
   buzz(): void;
   /** A hit landing on the King: a short low thump with a noise burst. */
   thud(): void;
+  /** The shared context and the effects' master bus (made on first use),
+   *  null without WebAudio or once closed. */
+  context(): { ctx: AudioContext; out: AudioNode } | null;
   dispose(): void;
 }
 
@@ -32,7 +37,7 @@ export type SfxOutput = () => { ctx: AudioContext; out: AudioNode } | null;
 /** The game's master level. */
 const GAME_LEVEL = 0.7;
 
-const SILENT: Sfx = { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, dispose() {} };
+const SILENT: Sfx = { resume() {}, quack() {}, fanfare() {}, buzz() {}, thud() {}, context: () => null, dispose() {} };
 
 /** The game's sounds: on a context of their own, or (`output`) on a host's. */
 export function createSfx(output?: SfxOutput): Sfx {
@@ -200,6 +205,7 @@ function sfxOn(get: () => { ctx: Ctx; out: AudioNode } | null, close: () => void
       osc.stop(t + 0.11);
       noise(a.ctx, a.out, t, 0.06, 0.16);
     },
+    context: () => get(),
     dispose() {
       close();
     },

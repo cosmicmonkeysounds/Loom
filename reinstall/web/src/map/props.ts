@@ -256,6 +256,16 @@ export const TERMINAL_VIEW_HINTS: Record<TerminalViewName, string> = {
   reinstall: "reinstall — the tent laptop: idle show + the reinstallation wizard",
 };
 
+/** The views that belong to no room (no `speaks`): the TV (its own room
+ *  voice), the King's board, the casino and the tent laptop's
+ *  reinstallation station (wave 18b: the Internet's lines are prisoners'
+ *  own DMs, never spoken aloud) — as the terminal's `ROOMLESS_VIEWS`. */
+export const ROOMLESS_TERMINAL_VIEWS: readonly TerminalViewName[] = ["tv", "chess", "casino", "reinstall"];
+
+export function isRoomlessView(view: TerminalViewName): boolean {
+  return ROOMLESS_TERMINAL_VIEWS.includes(view);
+}
+
 /** The story LOCATIONs the map's rooms stand for, for the room picker. */
 export function mapLocations(house: HouseMap): string[] {
   return [...new Set(house.rooms.flatMap((r) => (r.location !== undefined && r.location !== "" ? [r.location] : [])))].sort((a, b) => a.localeCompare(b));

@@ -65,6 +65,10 @@ keypad, never on the radio).
   card of whoever came in), or radio a host or the director, who fires
   **🚪**.
   Never say the code on the radio.
+- **Both server-room terminals have ears (wave 19).** While one shows a
+  **🎤** at its left edge, a player in the reinstallation games near the
+  server room hears this room and can be heard here. **Never say the door
+  code or a combo by them**, and step away from them to radio.
 - **The server-room terminal.** A guest scans their pass and talks to Trabolta
   on their own thread; at his heart he is candid. If he offers to stand down,
   `# hosts` reads "🕊 Trabolta offers to stand down for …" and the director

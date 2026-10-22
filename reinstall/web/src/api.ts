@@ -410,3 +410,39 @@ export async function fetchCamFrame(
     return { status: null, at: null, blob: null };
   }
 }
+
+// --- the voice link (wave 19, docs/loom-reinstall.md §2.4) -----------------
+
+/** One μ-law chunk up (`POST /api/spatial/voice?seq=`): the status (null =
+ *  the network failed) and the server's word on whether anybody hears this
+ *  player (`listening`, null when it didn't say). Raw bytes, never
+ *  `keepalive` (that budget is the pose pump's). */
+export async function postVoice(
+  base: string,
+  token: string,
+  seq: number,
+  bytes: Uint8Array,
+  fetcher: typeof fetch = fetch,
+): Promise<{ status: number | null; listening: boolean | null; ears?: number }> {
+  try {
+    const res = await fetcher(`${base}/api/spatial/voice?seq=${seq}`, {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream", "x-loom-token": token },
+      body: bytes,
+      cache: "no-store",
+    });
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return {
+      status: res.status,
+      listening: typeof data["listening"] === "boolean" ? data["listening"] : null,
+      ...(typeof data["ears"] === "number" ? { ears: data["ears"] } : {}),
+    };
+  } catch {
+    return { status: null, listening: null };
+  }
+}
+
+/** The voice stream's URL for a player (the session token). */
+export function voiceStreamUrl(base: string, token: string): string {
+  return `${base}/api/spatial/voice/stream?token=${encodeURIComponent(token)}`;
+}

@@ -34,9 +34,9 @@ an Android back swipe, so the page asks on several routes at once:
   **Enable JavaScript Interface** ✔ (already on for the voice) the page
   also asks Fully to hide the status and navigation bars itself.
 - **Chrome `--kiosk`** on the house Mac's TV (below) and on any laptop
-  used as a terminal (the Internet laptop): the only route that needs no
-  gesture at all, and it survives a reload. A laptop terminal, its own
-  profile:
+  used as a terminal (the Internet laptop, *The Internet laptop* below):
+  the only route that needs no gesture at all, and it survives a reload.
+  A laptop terminal, its own profile:
   `open -na "Google Chrome" --args --user-data-dir="$HOME/.loom-terminal" --kiosk --autoplay-policy=no-user-gesture-required "https://app.mapsandducks.com/terminal/"`
   (⌘Q quits).
 - **iPad: Home Screen + Guided Access** (below). The Home Screen copy
@@ -62,8 +62,9 @@ A terminal's own speaker makes only its **accents**: popup dings, clicks,
 cutscene stingers, the casino's jingles — synthesised in the page, no
 sound files, dropped while the character speaks. **Every story `sound X`
 comes out of the house speakers, and so does every announcement** (decision
-D4): QLab today, the house Mac's stagehand `audio` router once a show
-switches it on. Nothing on a tablet plays a story sound. The one opt-in
+D4): the house Mac's stagehand `audio` router, on for both since wave 18b
+(QLab is not part of the rig, and the separate `alexa` announcement player
+is retired). Nothing on a tablet plays a story sound. The one opt-in
 exception is an **`announce` tablet** (*say the house announcements here*,
 or `&announce=1`, for a room out of earshot of the speakers, below): it
 also rings the chime and repeats each announcement in its own voice, with
@@ -93,7 +94,7 @@ search box at the top of Fully's Settings.
 | Web Content | **Autoplay Videos** | ✔ | Media may start without a tap. |
 | Web Content | **Autoplay Audio** (if your version lists it separately) | ✔ | **The voice.** Without it the terminal can't speak until someone taps TOUCH TO WAKE after every reload. Still tap it once after a reload: Web Audio wants that gesture on some WebViews anyway. |
 | Web Content | **Enable Webcam Access** | ✔ | The pass scanner. Android also asks for the camera permission the first time: allow. |
-| Web Content | **Enable Microphone Access** | ✘ | Not used. |
+| Web Content | **Enable Microphone Access** | ✔ | **The voice link** (wave 19): the room is heard in the reinstallation games at this terminal's screen. Android asks for the microphone permission (for Fully) the first time: allow, once. Needs the `https://` address (a LAN `http://` address refuses the microphone, as it refuses the camera). The tent laptop's terminal takes no part (the map's `voice: false`), so it never asks. |
 | Web Browsing | **Enable Pull to Refresh** | ✘ | A pull would reload the page and lose the audio unlock mid-show. |
 | Web Browsing | **Swipe to Go Back / Navigate** | ✘ | Same reason. |
 | Web Browsing | **Reload on Screen On** | ✘ | Same reason. |
@@ -128,15 +129,28 @@ voice** (the ladder: WebView voices → Fully → text only); pick **Fully
 Kiosk's voice** on a tablet whose WebView lists voices but never says
 anything. The terminal also gives up on a `speak()` that hasn't started
 after 4 s (until the next tap, which tries the voice again), so a silent
-stub can't stall a conversation. On a tablet out of
-earshot of the house speakers, also tick *say the house announcements
-here* (or provision with `&announce=1`) — a chime and the line, in the
-tablet's voice (N-09).
+stub can't stall a conversation.
+
+**Saying the house announcements on a tablet** (N-09, an option, off
+unless asked for). ⚙ → *say the house announcements* has three settings
+(wave 18b):
+- **House setting** (the default): the tablet follows the house list,
+  `audio.json` `announce.terminals` — the map spots out of earshot of the
+  house speakers. Run → Terminals shows 📢 on a spot that is on the list
+  and turns it on or off there (a director's save; *Save to project* keeps
+  it for the next launch). A spot not on the list stays quiet, and no
+  room turns on by itself.
+- **Always**: a chime and the line, in the tablet's voice, whatever the
+  list says (`&announce=1` on the provisioning link).
+- **Never** (`&announce=0`).
+
+A tablet set up before wave 18b with announcements off reads as *House
+setting*. The heartbeat reports what the tablet does now (`ann=1|0`).
 
 **Trabolta must not sound like Alexa.** With no voice picked, the
 character's lines take the device's best **male** voice and the house
 announcements its best **female** one (`terminal/src/speech/pick-voice.ts`;
-the house Mac's `alexa` player says them as `say_voice: Samantha`). The
+the house Mac's router says them as `say_voice: Samantha`). The
 *device voice* list is ranked that way, and a voice picked there is
 Trabolta's only — announcements never use it. Check it on every tablet
 with TEST VOICE. **In Fully** (no voice list) `fully.textToSpeech` speaks
@@ -163,6 +177,20 @@ setup with the same message.
 
 **Speaker tablets.** Media volume up, then lock it with Fully's *Volume
 Limits* if the version has it. Set the volume before the party, not after.
+The same speaker plays the reinstallation players near this terminal
+(wave 19, the voice link), ducked under the character's voice.
+
+**The voice link (wave 19).** A placed terminal sends its room to the
+players near it in the games and plays them out of its speaker; nothing
+leaves the room unless a player is near enough to hear it (the 🎤 at the
+left edge, half way down, says so), and the terminal sends nothing while it is
+making a sound itself (no echo back into the game). It starts with the
+first touch after a reload, like the voice. ⚙ → advanced has *let the
+games hear this room* and *play the players near this screen*; Run →
+Terminals' 🎤 flags a tablet whose microphone was refused (*denied*) or
+can't run on plain `http` (*insecure*). Check one by walking the virtual
+room in the web game (a second laptop with `voice=1`) or a headset while
+someone talks beside the tablet.
 
 ## iPads (if any are used)
 
@@ -170,7 +198,11 @@ Settings → Display & Brightness → Auto-Lock: **Never**; Accessibility →
 Guided Access ✔ with a passcode; add the terminal to the Home Screen and
 start Guided Access on it (that is the iPad's full screen: the Home Screen
 copy has no Safari bars). Every reload needs a TOUCH TO WAKE tap (iOS has
-no autoplay setting).
+no autoplay setting). Allow the microphone when asked (the voice link).
+Unchecked on a device: opening the microphone switches iOS to its
+play-and-record audio session, which can make the speaker quieter and has
+been known to stop the camera's stream — if the scanner keeps dropping on
+an iPad, turn *let the games hear this room* off there.
 
 ## The TV — the house Mac on the long HDMI run
 
@@ -182,9 +214,13 @@ pair — so the voice stays in sync with the face.
 
 **The TV's voice is the Mac's own** (Chrome's `speechSynthesis` over the
 macOS voices; no server voice). The terminal ranks them and picks a good
-**male** English one — Daniel on a stock Mac — because the `alexa`
-player speaks the house announcements in Samantha on the same Mac and the
-same living-room speakers, and the two must not sound alike. For a better
+**male** English one — Daniel on a stock Mac — because the house router
+speaks the house announcements in Samantha on the same Mac and the
+same living-room speakers, and the two must not sound alike. The TV also
+plays the reinstallation players near it (the voice link, wave 19), under
+the same director mute; its microphone stays off (the Mac's default input
+is the MOTU, whose house mics already reach the router) unless ⚙ ticks
+*let the games hear this room*. For a better
 one, download an *Enhanced* or *Premium* male English voice (Evan, Aaron,
 Nathan, Tom; System Settings → Accessibility → Spoken Content → System
 Voice → Manage Voices…), restart Chrome, and pick it under ⚙ → *device
@@ -249,7 +285,7 @@ TV; a tablet with no WebGL2 shows a still notice instead of the world.
 2. Check it on Run → Terminals (green within 4 s) and by eye: the
    screensaver (or the world view while someone plays), no scanner.
 3. Say it on the radio: guests at that wall now use their phones; the
-   house announcements still play from the speakers (the `alexa` player),
+   house announcements still play from the speakers (the house router),
    and on the TV Trabolta's lines are text only in The Desktop (the TV
    voice is gone until it is back on `view=tv`).
 4. **Going back:** once the cause is gone (after `introduce_trabolta`, a
@@ -400,3 +436,54 @@ after), and check `# hosts` for *♟ … beat the King* and the Log for
 `chess won` by *Terminal · Server Door*. Put him back to 15/15 before
 the doors.
 
+
+## The Internet laptop — the reinstallation station (wave 18b)
+
+The laptop in the tent (the shed on a rain night) is **one device that is
+a terminal and the reinstallation wizard** (`view=reinstall`,
+`terminal/src/reinstall/`). Between walks it is a wall terminal: the idle
+show (it never names Trabolta before his introduction), the scan box with
+*type your program name*, the story's slides, beat cutscenes, moments and
+overlays, and — while someone walks the simulation on a headset — the
+world view beside the show. Above the scan box a red strip lists **☣ IN
+THE INTERNET NOW**: the programs captured into the Internet, by name, one
+tap each (never the marked who are still on their way: that list is the
+Antivirus' own).
+
+- **A pass.** A captured or marked program gets the reinstall app's own
+  wizard full screen: straight into the game (*Play here*) when no headset
+  is online, else the choose card (*Play here* or *Send to <headset>*). A
+  program that is not marked gets a **NOT MARKED** card for 8 s and
+  nothing else: no story effect, no line from Trabolta. A program already
+  walking on a headset is asked *Play here instead?* (that ends the
+  headset's walk). After an ending anyone may play (the party favour).
+- **A capture.** The story's capture cue puts up a Win98 *Setup is
+  preparing to reinstall a program* card for 12 s that names nobody (the
+  news is on the program's own phone).
+- **During a walk** the laptop counts as busy: story slides and beat
+  cutscenes stand aside until the walk ends. An overlay (the blackout, the
+  alarm, *go to the living room*) still covers the screen and **holds**
+  the walk: the controls and the leash pause, the session stays alive, and
+  the walk carries on when the overlay lifts. A house announcement's
+  banner shows over the game.
+- **Sound.** The game's quack, fanfare and thuds play on the terminal's
+  own sound bus, so the tent's speaker is one level for everything.
+- **Set it up** once, in kiosk Chrome with the webcam allowed:
+  `https://app.mapsandducks.com/terminal/?code=<mod>&spot=tent&announce=1`
+  (the map's tent spot says `view: reinstall`, so the spot alone sets the
+  view and the name, *Tent*, and the laptop follows the map: on a rain
+  night the shed variant renames it *Shed*. Never add `&view=reinstall`:
+  a link that names its own view keeps its own name, *Terminal*, and
+  stops following the map. `&announce=1` because no house speaker
+  reaches the yard). Launch Chrome with the `--kiosk
+  --autoplay-policy=no-user-gesture-required` line above, its own
+  profile, and tap TOUCH TO WAKE once if it shows. The camera is the
+  laptop's own webcam (`user`).
+- **The standalone wizard** at `/reinstall/` stays for a spare tablet, a
+  headset-only controller and the map editor.
+
+Install-day check: Run → Terminals shows *Tent* green with `view
+reinstall`; scan an unmarked test pass (NOT MARKED), capture a test
+program (the wizard card, the name in the red strip), tap it (the game),
+fire an overlay mid-walk (held, not ended), find Gerald (the celebration,
+then *— REINSTALLATION COMPLETE.*).

@@ -1,0 +1,137 @@
+/* ════════════════════════════════════════════════════════════════════════
+   The tent laptop's station (wave 18b, `view=reinstall`): the wall
+   terminal's idle show and scan box, the quick picks above the box, and
+   the station's cards (reading a pass, NOT MARKED, already reinstalling,
+   the wizard card a capture cue puts up). The game itself is the reinstall
+   app's, in a shadow root (`pane.tsx`). Chrome 87 / Safari 14: no :has, no
+   color-mix, no flex `gap` (margins), no `inset` shorthand; motion is
+   transform / opacity only, and reduced motion holds still.
+   Layers: the show 3, the corner 4, the cards 8 (over the flash's 7),
+   the pane 15, the wake prompt 20, the screen layer 30+.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* The corner: the quick picks stacked over the scan box (one box the idle
+   show keeps its popups off). */
+.terminal.reinstall .ri-corner {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: clamp(220px, 26vw, 360px);
+}
+@media (orientation: portrait) {
+  .terminal.reinstall .ri-corner { width: clamp(220px, 48vw, 380px); }
+}
+.terminal.reinstall .ri-corner .scan-box { position: relative; right: auto; bottom: auto; width: auto; }
+.terminal.reinstall .ri-corner .scan-box.open { width: auto; }
+
+.ri-picks {
+  margin-bottom: 8px;
+  padding: 6px 8px 4px;
+  background: rgba(0, 0, 0, 0.88);
+  border: 2px solid var(--danger);
+  border-radius: 6px;
+  color: var(--danger);
+  font-family: var(--mono);
+  text-align: center;
+}
+.ri-picks-title { font-size: clamp(14px, 2.2vmin, 24px); letter-spacing: 0.14em; }
+.ri-picks-list { display: flex; flex-wrap: wrap; justify-content: center; }
+.ri-pick { margin: 4px 3px 2px; font-size: clamp(13px, 1.9vmin, 20px); color: var(--white); border-color: var(--danger); }
+.ri-pick:disabled { opacity: 0.4; }
+
+/* --- the cards --------------------------------------------------------------- */
+
+.ri-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  width: min(92%, 640px);
+  padding: 1.1em 1.4em;
+  transform: translate(-50%, -50%);
+  background: #000;
+  border: 3px solid var(--phosphor-dim);
+  border-radius: 6px;
+  box-shadow: 0 0 28px var(--phosphor-faint);
+  color: var(--phosphor);
+  text-align: center;
+  animation: ri-card-in 0.25s ease-out both;
+}
+.ri-card-icon { font-size: 2.4em; line-height: 1; }
+.ri-card-heading { margin-top: 0.3em; font-size: 1.25em; letter-spacing: 0.12em; }
+.ri-card-name { margin-top: 0.4em; font-size: 1.6em; color: var(--white); }
+.ri-card-text { margin-top: 0.4em; font-size: 0.8em; color: var(--phosphor-dim); }
+.ri-card-why { margin-top: 0.8em; font-size: 0.85em; color: var(--amber); }
+.ri-card-actions { margin-top: 1em; display: flex; justify-content: center; }
+.ri-button { margin: 0 0.5em; padding: 0.4em 1.2em; font-size: 0.9em; }
+.ri-button.primary { color: var(--phosphor); border-color: var(--phosphor); }
+.ri-refused { border-color: var(--danger); box-shadow: 0 0 28px rgba(255, 77, 77, 0.35); }
+.ri-refused .ri-card-heading { color: var(--danger); }
+.ri-confirm { border-color: var(--amber); }
+.ri-confirm .ri-card-heading { color: var(--amber); }
+.ri-checking { width: auto; border-color: var(--phosphor); }
+
+.flash.good { border-color: var(--phosphor); color: var(--phosphor); box-shadow: 0 0 20px var(--phosphor-faint); }
+
+/* --- the wizard card (a capture cue): a Win98 setup dialog ------------------- */
+
+.ri-wizard {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 8;
+  width: min(90%, 520px);
+  transform: translate(-50%, -50%);
+  background: #c0c0c0;
+  color: #000;
+  font-family: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf, inset -2px -2px #808080, inset 2px 2px #fff, 0 8px 28px rgba(0, 0, 0, 0.6);
+  animation: ri-card-in 0.25s ease-out both;
+}
+.ri-wizard-title {
+  margin: 3px;
+  padding: 3px 6px;
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.7em;
+}
+.ri-wizard-body { display: flex; align-items: center; padding: 0.9em 1em 1.1em; }
+.ri-wizard-icon { font-size: 2.6em; margin-right: 0.5em; }
+.ri-wizard-line { font-size: 0.85em; font-weight: bold; }
+.ri-wizard-sub { margin-top: 0.3em; font-size: 0.7em; }
+.ri-wizard-bar {
+  position: relative;
+  margin-top: 0.7em;
+  height: 14px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+}
+.ri-wizard-bar span {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: 40%;
+  background: repeating-linear-gradient(90deg, #000080 0 9px, transparent 9px 11px);
+  animation: ri-wizard-bar 1.8s steps(12, end) infinite;
+}
+
+@keyframes ri-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ri-wizard-bar {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ri-card, .ri-wizard { animation: none; }
+  .ri-wizard-bar span { animation: none; }
+}
