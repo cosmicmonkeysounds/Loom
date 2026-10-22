@@ -345,6 +345,18 @@ describe("Trapped in the Internet — wave 18b: founded factions (R4–R6, O7, Q
     expect(v(n.sim, "Kernel.majority_founder")).toBe("g2");
   });
 
+  it("a side's majority fails a founder's own quest; a founded faction's members never get the bundle", { timeout: SLOW }, () => {
+    const n = toTruther();
+    n.take(n.sim.crew({ op: "foundCrew", by: "g1", name: "Calc Club" }));
+    expect(n.sim.questStatus("g1", "A Faction Of Your Own")).toBe("active");
+    for (const c of TO_Y2K_REST) n.press(c);
+    for (const g of ["g4", "g5", "g6"]) n.take(n.sim.join(g, "Unlimited Power"));
+    expect(v(n.sim, "Kernel.majority")).toBe("stay");
+    expect(n.sim.questStatus("g1", "A Faction Of Your Own")).toBe("failed");
+    expect(n.sim.holdsCodex("g1", "The Door Code")).toBe(false);
+    expect(n.sim.holdsCodex("g4", "The Door Code")).toBe(true);
+  });
+
   it("founding closes at midnight and at any ending", { timeout: SLOW }, () => {
     const a = toTruther();
     for (const c of TO_Y2K_REST) a.press(c);
